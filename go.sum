@@ -158,8 +158,8 @@ github.com/go-openapi/analysis v0.21.4/go.mod h1:4zQ35W4neeZTqh3ol0rv/O8JBbka9Qy
 github.com/go-openapi/errors v0.19.8/go.mod h1:cM//ZKUKyO06HSwqAelJ5NsEMMcpa6VpXe8DOa1Mi1M=
 github.com/go-openapi/errors v0.19.9/go.mod h1:cM//ZKUKyO06HSwqAelJ5NsEMMcpa6VpXe8DOa1Mi1M=
 github.com/go-openapi/errors v0.20.2/go.mod h1:cM//ZKUKyO06HSwqAelJ5NsEMMcpa6VpXe8DOa1Mi1M=
-github.com/go-openapi/errors v0.20.3 h1:rz6kiC84sqNQoqrtulzaL/VERgkoCyB6WdEkc2ujzUc=
-github.com/go-openapi/errors v0.20.3/go.mod h1:Z3FlZ4I8jEGxjUK+bugx3on2mIAk4txuAOhlsB1FSgk=
+github.com/go-openapi/errors v0.20.4 h1:unTcVm6PispJsMECE3zWgvG4xTiKda1LIR5rCRWLG6M=
+github.com/go-openapi/errors v0.20.4/go.mod h1:Z3FlZ4I8jEGxjUK+bugx3on2mIAk4txuAOhlsB1FSgk=
 github.com/go-openapi/jsonpointer v0.19.3/go.mod h1:Pl9vOtqEWErmShwVjC8pYs9cog34VGT37dQOVbmoatg=
 github.com/go-openapi/jsonpointer v0.19.5/go.mod h1:Pl9vOtqEWErmShwVjC8pYs9cog34VGT37dQOVbmoatg=
 github.com/go-openapi/jsonpointer v0.19.6 h1:eCs3fxoIi3Wh6vtgmLTOjdhSpiqphQ+DaPn38N2ZdrE=
@@ -484,8 +484,8 @@ github.com/openziti/channel/v2 v2.0.80 h1:1gDikwcVvhRKs+CO8OyUHMSJWVJarCm5+OmffZ
 github.com/openziti/channel/v2 v2.0.80/go.mod h1:U1KSHZXWlg8VelsZ55+ZGiARYWh+XbJbD7AfN0NXUdQ=
 github.com/openziti/edge-api v0.25.25 h1:1S7L9JsvXuzd8nULZEPNgafPfhnHQY4Hhqj8B00CKTw=
 github.com/openziti/edge-api v0.25.25/go.mod h1:aDUHHxOGtxFXnoDaTXpNF6gq+tbDkWCURP5yaEJbdm0=
-github.com/openziti/fabric v0.23.35 h1:SxdMC88E5PCm7SoE8q0q8yOaO2fC1RiJES/sOYymVe4=
-github.com/openziti/fabric v0.23.35/go.mod h1:eFG042f6bv/vZSOmp48pVAqEntCfkkMJCVAbNG9GHno=
+github.com/openziti/fabric v0.23.36 h1:Al6ubsu2nVy1Ni0gFw/GVyDOT4OA2/CZBfzi8jdy8O8=
+github.com/openziti/fabric v0.23.36/go.mod h1:SQ1sAeuXZF7a8ORFz3ir8kI8RC07IL98xdpkiGFQ8Jg=
 github.com/openziti/foundation/v2 v2.0.25 h1:tGb9wdu6KCpO49RJ3HX2ClOVHf8gdntplIh/7CEVaM4=
 github.com/openziti/foundation/v2 v2.0.25/go.mod h1:EOqea8Q1wXd4hS9MxFYM6ngDgenKGxz8c+CJ8Svr7BI=
 github.com/openziti/identity v1.0.56 h1:h8SzatjWa3TCpIG6/holKUTHSKtNAJ1MuK5CCY31ZOw=

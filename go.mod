@@ -11,7 +11,7 @@ require (
 	github.com/coreos/go-iptables v0.6.0
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
-	github.com/go-openapi/errors v0.20.3
+	github.com/go-openapi/errors v0.20.4
 	github.com/go-openapi/loads v0.21.2
 	github.com/go-openapi/runtime v0.26.0
 	github.com/go-openapi/strfmt v0.21.7
@@ -29,7 +29,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openziti/channel/v2 v2.0.80
 	github.com/openziti/edge-api v0.25.25
-	github.com/openziti/fabric v0.23.35
+	github.com/openziti/fabric v0.23.36
 	github.com/openziti/foundation/v2 v2.0.25
 	github.com/openziti/identity v1.0.56
 	github.com/openziti/jwks v1.0.3
