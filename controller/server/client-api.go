@@ -122,7 +122,7 @@ func (clientApi ClientApiHandler) RootPath() string {
 }
 
 func (clientApi ClientApiHandler) IsHandler(r *http.Request) bool {
-	return strings.HasPrefix(r.URL.Path, clientApi.RootPath())
+	return strings.HasPrefix(r.URL.Path, clientApi.RootPath()) || r.URL.Path == WellKnownEstCaCerts
 }
 
 func (clientApi ClientApiHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -150,14 +150,14 @@ func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set(ZitiInstanceId, ae.InstanceId)
 
-		//if not /edge prefix and not /fabric, translate to "/edge/client/v<latest>", this is a hack
-		//that should be removed once non-prefixed URLs are no longer used
-		if !strings.HasPrefix(r.URL.Path, controller.RestApiRootPath) && !strings.HasPrefix(r.URL.Path, "/fabric") {
-			r.URL.Path = controller.ClientRestApiBaseUrlLatest + r.URL.Path
-		}
-
 		//translate /edge/v1 to /edge/client/v1
 		r.URL.Path = strings.Replace(r.URL.Path, controller.LegacyClientRestApiBaseUrlV1, controller.ClientRestApiBaseUrlLatest, 1)
+
+		// .well-known/est/cacerts can be handled by the client API but the generated server requires
+		// the prefixed path for route resolution.
+		if r.URL.Path == WellKnownEstCaCerts {
+			r.URL.Path = controller.ClientRestApiBaseUrlLatest + WellKnownEstCaCerts
+		}
 
 		if r.URL.Path == controller.ClientRestApiSpecUrl {
 
