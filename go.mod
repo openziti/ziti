@@ -34,8 +34,8 @@ require (
 	github.com/openziti/identity v1.0.57
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.27
-	github.com/openziti/sdk-golang v0.20.64
-	github.com/openziti/secretstream v0.1.8
+	github.com/openziti/sdk-golang v0.20.65
+	github.com/openziti/secretstream v0.1.9
 	github.com/openziti/storage v0.2.7
 	github.com/openziti/transport/v2 v2.0.91
 	github.com/openziti/x509-claims v1.0.3
@@ -51,7 +51,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.7
-	golang.org/x/crypto v0.9.0
+	golang.org/x/crypto v0.10.0
 	golang.org/x/sync v0.2.0
 	golang.org/x/sys v0.9.0
 	google.golang.org/protobuf v1.30.0
