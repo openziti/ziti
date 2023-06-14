@@ -31,6 +31,8 @@ import (
 	"time"
 )
 
+const WellKnownEstCaCerts = "/.well-known/est/cacerts"
+
 var _ xweb.ApiHandlerFactory = &ManagementApiFactory{}
 
 type ManagementApiFactory struct {
@@ -87,7 +89,7 @@ func (managementApi ManagementApiHandler) RootPath() string {
 }
 
 func (managementApi ManagementApiHandler) IsHandler(r *http.Request) bool {
-	return strings.HasPrefix(r.URL.Path, managementApi.RootPath())
+	return strings.HasPrefix(r.URL.Path, managementApi.RootPath()) || r.URL.Path == WellKnownEstCaCerts
 }
 
 func (managementApi ManagementApiHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -115,6 +117,12 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 			rw.WriteHeader(http.StatusOK)
 			_, _ = rw.Write(rest_management_api_server.SwaggerJSON)
 			return
+		}
+
+		// .well-known/est/cacerts can be handled by the management API but the generated server requires
+		// the prefixed path for route resolution
+		if r.URL.Path == WellKnownEstCaCerts {
+			r.URL.Path = controller.ManagementRestApiBaseUrlLatest + WellKnownEstCaCerts
 		}
 
 		rc := ae.CreateRequestContext(rw, r)

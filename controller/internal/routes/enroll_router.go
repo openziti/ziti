@@ -25,7 +25,8 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_client_api_server/operations/enroll"
-	"github.com/openziti/edge-api/rest_client_api_server/operations/well_known"
+	client_well_known "github.com/openziti/edge-api/rest_client_api_server/operations/well_known"
+	management_well_known "github.com/openziti/edge-api/rest_management_api_server/operations/well_known"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
@@ -81,7 +82,11 @@ func (ro *EnrollRouter) Register(ae *env.AppEnv) {
 	})
 
 	// Utility, well-known
-	ae.ClientApi.WellKnownListWellKnownCasHandler = well_known.ListWellKnownCasHandlerFunc(func(params well_known.ListWellKnownCasParams) middleware.Responder {
+	ae.ClientApi.WellKnownListWellKnownCasHandler = client_well_known.ListWellKnownCasHandlerFunc(func(params client_well_known.ListWellKnownCasParams) middleware.Responder {
+		return ae.IsAllowed(ro.getCaCerts, params.HTTPRequest, "", "", permissions.Always())
+	})
+
+	ae.ManagementApi.WellKnownListWellKnownCasHandler = management_well_known.ListWellKnownCasHandlerFunc(func(params management_well_known.ListWellKnownCasParams) middleware.Responder {
 		return ae.IsAllowed(ro.getCaCerts, params.HTTPRequest, "", "", permissions.Always())
 	})
 }
