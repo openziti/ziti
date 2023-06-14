@@ -212,7 +212,8 @@ func Test_MFA(t *testing.T) {
 				mfaUrl, err := url.Parse(provisionString)
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(mfaUrl.Host, "totp")
-				ctx.Req.Equal(mfaUrl.Path, "/ziti.dev:"+mfaStartedIdentityName)
+
+				ctx.Req.Equal(mfaUrl.Path, "/"+ctx.EdgeController.AppEnv.Config.Totp.Hostname+":"+mfaStartedIdentityName)
 				ctx.Req.Equal(mfaUrl.Scheme, "otpauth")
 			})
 		})
