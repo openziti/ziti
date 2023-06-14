@@ -224,7 +224,7 @@ func (self *MfaManager) GetProvisioningUrl(mfa *Mfa) string {
 		WindowSize: WindowSizeTOTP,
 		UTC:        true,
 	}
-	return otcConfig.ProvisionURIWithIssuer(mfa.Identity.Name, "ziti.dev")
+	return otcConfig.ProvisionURIWithIssuer(mfa.Identity.Name, self.env.GetConfig().Totp.Hostname)
 }
 
 func (self *MfaManager) RecreateRecoveryCodes(mfa *Mfa, ctx *change.Context) error {
