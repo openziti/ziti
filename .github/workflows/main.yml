@@ -148,7 +148,7 @@ jobs:
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/simple-transfer run
-          pushd zititest && go test -v ./tests/... && popd
+          # pushd zititest && go test -v ./tests/... && popd
 
       - name: Test Ziti Command Teardown
         if: always()

@@ -1,13 +1,9 @@
-# Release 0.28.1
+# Release 0.28.2
 
 ## What's New
 
-* `ziti` CLI now trims jwt files specified for login preventing a confusing invalid header field value for "Authorization"
-  error when trying to use `-e` flag
-
 ## Component Updates and Bug Fixes
-* github.com/openziti/ziti: [v0.28.0 -> v0.28.1](https://github.com/openziti/ziti/compare/v0.28.0...v0.28.1)
-  * [Issue #1132](https://github.com/openziti/ziti/issues/1132) - Updated `ws` protocol to `wss` as `ws` is no longer supported.
+* github.com/openziti/ziti: [v0.28.1 -> v0.28.2](https://github.com/openziti/ziti/compare/v0.28.1...v0.28.2)
   * [Issue #986](https://github.com/openziti/ziti/issues/986) - Updated default ports in `.env` file to match documentation.
   * [Issue #920](https://github.com/openziti/ziti/issues/920) - Fixed bug causing failure when re-running quickstart.
   * [Issue #779](https://github.com/openziti/ziti/issues/779) - Add ability to upgrade ziti binaries using a quickstart function.
@@ -16,14 +12,61 @@
   * Quickstart environment variable names have been cleaned up.
     * IMPORTANT: If you update your OpenZiti binaries to this version or later (which can be done easily with the `getZiti()` function, you will need to migrate any existing network that has been developed using OpenZiti v0.27.5 or earlier binaries as the new binaries will expect the new environment variable names. A function `performMigration()` has been provided in the `ziti-cli-script.sh` for this purpose. Simply source the latest `ziti-cli-script.sh`, and your current network's .env file, then run `performMigration()` to update environment variable name references. If the migration process cannot find your existing environment file in the default location, you will need to provide the path to the migration function, ex: `performMigration <path-to-environment-file>`
   * [Issue #1030](https://github.com/openziti/ziti/issues/1030) - Provide an upgrade path for quickstart cleanup
-* github.com/openziti/fabric: [v0.23.29 -> v0.23.35](https://github.com/openziti/fabric/compare/v0.23.29...v0.23.35)  
-  * [Issue #732](https://github.com/openziti/fabric/issues/732) - 
-  Added new `bufferSize` config option to amqp handler. Connection handling now happens in the background with exponential retries.
-* github.com/openziti/edge: [v0.24.309 -> v0.24.326](https://github.com/openziti/edge/compare/v0.24.309...v0.24.326)
-  * [Issue #1517](https://github.com/openziti/edge/issues/1517) - allow wildcard domains in intercept.v1 addresses
 
-### AMPQ Event Writer Changes
-A new field is available to the AMQP Event Writer. `bufferSize` denotes how many messages ziti will hold durring AMQP connection outages. Any messages exceeding this limit will be logged and dropped.
+# Release 0.28.1
+
+## What's New
+
+* `ziti` CLI now trims jwt files specified for login preventing a confusing invalid header field value for "Authorization"
+  error when trying to use `-e` flag
+
+## Router Health Check Changes
+
+The link health check on routers now supports an initial delay configuration.
+
+```
+
+healthChecks:
+  linkCheck:
+    minLinks: 1
+    interval: 30s
+    initialDelay: 5s
+```
+
+The health check will also now start with an initial state of unhealthy, unless `minLinks` is set to zero.
+
+Finally, link checks now include the addresses associated with the links:
+
+```json
+    {
+        "details": [
+            {
+                "linkId": "6a72EtnLib5nUvjhVLuHOb",
+                "destRouterId": "5uUxuQ3u6Q",
+                "latency": 2732886.5,
+                "addresses": {
+                    "ack": {
+                        "localAddr": "tcp:127.0.0.1:4023",
+                        "remoteAddr": "tcp:127.0.0.1:33520"
+                    },
+                    "payload": {
+                        "localAddr": "tcp:127.0.0.1:4023",
+                        "remoteAddr": "tcp:127.0.0.1:33504"
+                    }
+                }
+            }
+        ],
+        "healthy": true,
+        "id": "link.health",
+        "lastCheckDuration": "53.213µs",
+        "lastCheckTime": "2023-06-01T18:35:11Z"
+    }
+```
+
+## Event Changes
+
+### AMQP Event Writer Changes
+A new field is available to the AMQP Event Writer. `bufferSize` denotes how many messages ziti will hold during AMQP connection outages. Any messages exceeding this limit will be logged and dropped.
 
 Example configuration:
 ```
@@ -42,7 +85,38 @@ events:
       noWait: false      //default:false
       bufferSize: 50     //default:50
 ```
-  
+ 
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.13 -> v1.0.14](https://github.com/openziti/agent/compare/v1.0.13...v1.0.14)
+* github.com/openziti/channel/v2: [v2.0.78 -> v2.0.80](https://github.com/openziti/channel/compare/v2.0.78...v2.0.80)
+* github.com/openziti/edge: [v0.24.309 -> v0.24.326](https://github.com/openziti/edge/compare/v0.24.309...v0.24.326)
+    * [Issue #1512](https://github.com/openziti/edge/issues/1512) - Panic when removing edge terminator with expired session
+    * [Issue #1509](https://github.com/openziti/edge/issues/1509) - SDK hosted terminators are being removed twice, causing spurious errors
+    * [Issue #1507](https://github.com/openziti/edge/issues/1507) - edge-router with encryption disabled fails
+    * [Issue #1517](https://github.com/openziti/edge/issues/1517) - allow wildcard domains in intercept.v1 addresses
+
+* github.com/openziti/edge-api: [v0.25.24 -> v0.25.25](https://github.com/openziti/edge-api/compare/v0.25.24...v0.25.25)
+* github.com/openziti/fabric: [v0.23.29 -> v0.23.35](https://github.com/openziti/fabric/compare/v0.23.29...v0.23.35)
+    * [Issue #538](https://github.com/openziti/fabric/issues/538) - Allow quiescing/dequiescing routers
+    * [Issue #738](https://github.com/openziti/fabric/issues/738) - Timeout from routing is getting reported as conn refused instead of timeout
+    * [Issue #737](https://github.com/openziti/fabric/issues/737) - Router link check should support initial delay configuration 
+    * [Issue #735](https://github.com/openziti/fabric/issues/735) - router link health check should only be passing initially if min links is zero
+    * [Issue #733](https://github.com/openziti/fabric/issues/733) - Show link addresses in health check
+    * [Issue #732](https://github.com/openziti/fabric/issues/732) - Added new `bufferSize` config option to amqp handler. Connection handling now happens in the background with exponential retries.
+
+* github.com/openziti/foundation/v2: [v2.0.24 -> v2.0.25](https://github.com/openziti/foundation/compare/v2.0.24...v2.0.25)
+* github.com/openziti/identity: [v1.0.54 -> v1.0.56](https://github.com/openziti/identity/compare/v1.0.54...v1.0.56)
+* github.com/openziti/runzmd: [v1.0.24 -> v1.0.25](https://github.com/openziti/runzmd/compare/v1.0.24...v1.0.25)
+* github.com/openziti/sdk-golang: [v0.20.51 -> v0.20.58](https://github.com/openziti/sdk-golang/compare/v0.20.51...v0.20.58)
+    * [Issue #409](https://github.com/openziti/sdk-golang/issues/409) - sdk-golang v0.20.49 loops forever with older 'ws://' edge router
+
+* github.com/openziti/storage: [v0.2.6 -> v0.2.7](https://github.com/openziti/storage/compare/v0.2.6...v0.2.7)
+* github.com/openziti/transport/v2: [v2.0.88 -> v2.0.90](https://github.com/openziti/transport/compare/v2.0.88...v2.0.90)
+* github.com/openziti/metrics: [v1.2.25 -> v1.2.26](https://github.com/openziti/metrics/compare/v1.2.25...v1.2.26)
+* github.com/openziti/ziti: [v0.28.0 -> v0.28.1](https://github.com/openziti/ziti/compare/v0.28.0...v0.28.1)
+  * [Issue #1132](https://github.com/openziti/ziti/issues/1132) - Updated `ws` protocol to `wss` as `ws` is no longer supported.
+ 
 # Release 0.28.0
 
 ## What's New
@@ -65,7 +139,7 @@ events:
 
 ## Event Changes
 
-### AMPQ Event Writer
+### AMQP Event Writer
 Previously events could only be emitted to a file. They can now also be emitted to an AMQP endpoint. 
 
 Example configuration:

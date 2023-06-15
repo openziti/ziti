@@ -18,7 +18,6 @@ package agentcli
 
 import (
 	"fmt"
-	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
@@ -38,8 +37,8 @@ func NewSimpleChAgentCustomCmd(name string, appId AgentAppId, op int32, p common
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.MaximumNArgs(1),
-		Use:  name + " <optional-target> ",
+		Args: cobra.ExactArgs(0),
+		Use:  name,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
@@ -54,15 +53,7 @@ func NewSimpleChAgentCustomCmd(name string, appId AgentAppId, op int32, p common
 
 // Run implements the command
 func (self *SimpleChAgentCmdAction) Run(appId AgentAppId) error {
-	if len(self.Args) == 0 {
-		return self.MakeChannelRequest(byte(appId), self.makeRequest)
-	}
-
-	addr, err := agent.ParseGopsAddress(self.Args)
-	if err != nil {
-		return err
-	}
-	return MakeAgentChannelRequest(addr, byte(appId), self.makeRequest)
+	return self.MakeChannelRequest(byte(appId), self.makeRequest)
 }
 
 func (self *SimpleChAgentCmdAction) makeRequest(ch channel.Channel) error {

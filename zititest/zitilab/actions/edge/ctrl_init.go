@@ -1,11 +1,11 @@
 package edge
 
 import (
-	"errors"
 	"fmt"
 	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/pkg/errors"
 )
 
 func InitController(componentSpec string) model.Action {

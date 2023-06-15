@@ -20,14 +20,14 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/openziti/agent v1.0.13
+	github.com/openziti/agent v1.0.14
 	github.com/openziti/channel/v2 v2.0.80
 	github.com/openziti/edge v0.24.326
 	github.com/openziti/edge-api v0.25.25
 	github.com/openziti/fabric v0.23.35
 	github.com/openziti/foundation/v2 v2.0.25
 	github.com/openziti/identity v1.0.56
-	github.com/openziti/runzmd v1.0.24
+	github.com/openziti/runzmd v1.0.25
 	github.com/openziti/sdk-golang v0.20.58
 	github.com/openziti/storage v0.2.7
 	github.com/openziti/transport/v2 v2.0.90
@@ -163,14 +163,14 @@ require (
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
-	github.com/tklauser/numcpus v0.6.0 // indirect
+	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	go.mongodb.org/mongo-driver v1.11.6 // indirect
+	go.mongodb.org/mongo-driver v1.11.7 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.16.0 // indirect
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect

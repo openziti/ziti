@@ -17,16 +17,14 @@
 package actions
 
 import (
-	"time"
-
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
-	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/model"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
+	"time"
 )
 
 type bootstrapAction struct{}
@@ -43,7 +41,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(component.Stop("#ctrl"))
 	workflow.AddAction(edge.InitController("#ctrl"))
 	workflow.AddAction(component.Start("#ctrl"))
-	workflow.AddAction(semaphore.Sleep(2 * time.Second))
+	workflow.AddAction(edge.ControllerAvailable("#ctrl", 30*time.Second))
 
 	workflow.AddAction(edge.Login("#ctrl"))
 
