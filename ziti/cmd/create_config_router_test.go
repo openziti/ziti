@@ -9,6 +9,9 @@ import (
 	"testing"
 )
 
+// TEST constants
+var testDefaultRouterListenerPort = 10080
+
 /* BEGIN Controller config template structure */
 
 type RouterConfig struct {
@@ -120,16 +123,25 @@ func createRouterConfig(args []string) RouterConfig {
 	return configStruct
 }
 
-func clearOptionsAndTemplateData() {
+func execCreateConfigCommand(args []string, keys map[string]string) {
+	// Setup options
+	clearRouterOptionsAndTemplateData()
+	routerOptions.Output = defaultOutput
+
+	setEnvByMap(keys)
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigRouter()
+	cmd.SetArgs(args)
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+}
+
+func clearRouterOptionsAndTemplateData() {
 	routerOptions = CreateConfigRouterOptions{}
 	data = &ConfigTemplateValues{}
 
-	// Unset environment variables
-	envVars := getZitiEnvironmentVariables()
-	for i := 0; i < len(envVars); i++ {
-		_ = os.Unsetenv(envVars[i])
-	}
-	_ = os.Unsetenv(constants.ExternalDNSVarName)
+	unsetZitiEnv()
 }
 
 func TestSetZitiRouterIdentityCertDefault(t *testing.T) {
@@ -232,54 +244,54 @@ func TestSetZitiRouterIdentityCACustom(t *testing.T) {
 	assert.Equal(t, expectedCustom, rtv.IdentityCA)
 }
 
-func TestSetZitiRouterIdentitySetsAllIdentitiesAndEdgeRouterRawName(t *testing.T) {
+func TestSetZitiRouterIdentitySetsAllIdentitiesAndRouterName(t *testing.T) {
 	// Setup
-	clearOptionsAndTemplateData()
-	expectedRawName := "MyEdgeRouterRawName"
+	clearRouterOptionsAndTemplateData()
+	expectedName := "MyRouterName"
 	blank := ""
 	rtv := &RouterTemplateValues{}
 
 	// Check that they're all currently blank
-	assert.Equal(t, blank, rtv.Edge.Hostname)
+	assert.Equal(t, blank, rtv.Name)
 	assert.Equal(t, blank, rtv.IdentityCert)
 	assert.Equal(t, blank, rtv.IdentityServerCert)
 	assert.Equal(t, blank, rtv.IdentityKey)
 	assert.Equal(t, blank, rtv.IdentityCA)
 
 	// Set the env variable
-	_ = os.Setenv(constants.ZitiEdgeRouterRawNameVarName, expectedRawName)
+	_ = os.Setenv(constants.ZitiEdgeRouterNameVarName, expectedName)
 
-	SetZitiRouterIdentity(rtv, expectedRawName)
+	SetZitiRouterIdentity(rtv, expectedName)
 
 	// Check that the value matches
-	assert.Equal(t, expectedRawName, rtv.Edge.Hostname)
+	assert.Equal(t, expectedName, rtv.Name)
 	assert.NotEqualf(t, blank, rtv.IdentityCert, "Router.IdentityCert expected to have a value, instead it was blank")
 	assert.NotEqualf(t, blank, rtv.IdentityServerCert, "Router.IdentityCert expected to have a value, instead it was blank")
 	assert.NotEqualf(t, blank, rtv.IdentityKey, "Router.IdentityCert expected to have a value, instead it was blank")
 	assert.NotEqualf(t, blank, rtv.IdentityCA, "Router.IdentityCert expected to have a value, instead it was blank")
 }
 
-func TestSetZitiRouterIdentitySetsAllIdentitiesAndEdgeRouterRawNameToHostWhenBlank(t *testing.T) {
+func TestSetZitiRouterIdentitySetsAllIdentitiesAndRouterNameToHostWhenBlank(t *testing.T) {
 	// Setup
-	clearOptionsAndTemplateData()
-	expectedRawName, _ := os.Hostname()
+	clearRouterOptionsAndTemplateData()
+	expectedName, _ := os.Hostname()
 	blank := ""
 	rtv := &RouterTemplateValues{}
 
 	// Check that they're all currently blank
-	assert.Equal(t, blank, rtv.Edge.Hostname)
+	assert.Equal(t, blank, rtv.Name)
 	assert.Equal(t, blank, rtv.IdentityCert)
 	assert.Equal(t, blank, rtv.IdentityServerCert)
 	assert.Equal(t, blank, rtv.IdentityKey)
 	assert.Equal(t, blank, rtv.IdentityCA)
 
 	// Set the env variable to an empty value
-	_ = os.Setenv(constants.ZitiEdgeRouterRawNameVarName, "")
+	_ = os.Setenv(constants.ZitiEdgeRouterNameVarName, "")
 
-	SetZitiRouterIdentity(rtv, expectedRawName)
+	SetZitiRouterIdentity(rtv, expectedName)
 
 	// Check that the value matches
-	assert.Equal(t, expectedRawName, rtv.Edge.Hostname)
+	assert.Equal(t, expectedName, rtv.Name)
 	assert.NotEqualf(t, blank, rtv.IdentityCert, "Router.IdentityCert expected to have a value, instead it was blank")
 	assert.NotEqualf(t, blank, rtv.IdentityServerCert, "Router.IdentityCert expected to have a value, instead it was blank")
 	assert.NotEqualf(t, blank, rtv.IdentityKey, "Router.IdentityCert expected to have a value, instead it was blank")

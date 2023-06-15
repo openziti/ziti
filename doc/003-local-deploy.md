@@ -36,12 +36,12 @@ ZITI_HOME=. \
 ZITI_CTRL_LISTENER_ADDRESS=127.0.0.1 \
 ZITI_CTRL_EDGE_LISTENER_HOST_PORT=127.0.0.1:1280 \
 ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT=127.0.0.1:1280 \
-ZITI_CTRL_IDENTITY_CERT=./etc/ca/intermediate/certs/ctrl-client.cert.pem \
-ZITI_CTRL_IDENTITY_SERVER_CERT=./etc/ca/intermediate/certs/ctrl-server.cert.pem \
-ZITI_CTRL_IDENTITY_KEY=./etc/ca/intermediate/private/ctrl.key.pem \
-ZITI_CTRL_IDENTITY_CA=./etc/ca/intermediate/certs/ca-chain.cert.pem \
-ZITI_SIGNING_CERT=./etc/ca/intermediate/certs/intermediate.cert.pem \
-ZITI_SIGNING_KEY=./etc/ca/intermediate/private/intermediate.key.decrypted.pem \
+ZITI_PKI_CTRL_CERT=./etc/ca/intermediate/certs/ctrl-client.cert.pem \
+ZITI_PKI_CTRL_SERVER_CERT=./etc/ca/intermediate/certs/ctrl-server.cert.pem \
+ZITI_PKI_CTRL_KEY=./etc/ca/intermediate/private/ctrl.key.pem \
+ZITI_PKI_CTRL_CA=./etc/ca/intermediate/certs/ca-chain.cert.pem \
+ZITI_PKI_SIGNER_CERT=./etc/ca/intermediate/certs/intermediate.cert.pem \
+ZITI_PKI_SIGNER_KEY=./etc/ca/intermediate/private/intermediate.key.decrypted.pem \
     ziti create config controller \
         --output ./db/ctrl-config.yml
 ```
@@ -82,8 +82,8 @@ Generate a configuration file for router01.
 
 ```bash
 ZITI_HOME=./db \
-ZITI_CTRL_ADVERTISED_ADDRESS=127.0.0.1 \
-ZITI_EDGE_ROUTER_RAWNAME=localhost \
+ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=127.0.0.1 \
+ZITI_EDGE_ROUTER_NAME=localhost \
     ziti create config router edge \
     --routerName router01 \
     --output ./db/router01-config.yml

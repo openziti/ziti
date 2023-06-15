@@ -64,8 +64,7 @@ func NewCmdCreateConfigRouter() *cobra.Command {
 				logrus.SetOutput(logOut)
 			}
 
-			data.populateEnvVars()
-			data.populateDefaults()
+			data.populateConfigValues()
 
 			// Update router data with options passed in
 			data.Router.Name = validateRouterName(routerOptions.RouterName)
