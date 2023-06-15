@@ -1432,7 +1432,7 @@ function performMigration {
     ZITI_ENV_FILE="${1-}"
   fi
 
-  # Replace old Env Vars with new ones
+  # Replace old Env Vars in the env file with new ones
   # NOTE: the '' after -i is required for Mac, otherwise an error is thrown
   sed -i '' 's/ZITI_CONTROLLER_HOSTNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CONTROLLER_INTERMEDIATE_NAME/ZITI_PKI_CTRL_INTERMEDIATE_NAME/g' "${ZITI_ENV_FILE}"
@@ -1448,7 +1448,7 @@ function performMigration {
   sed -i '' 's/ZITI_EDGE_CONTROLLER_HOSTNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME/ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CONTROLLER_PORT/ZITI_CTRL_EDGE_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_CONTROLLER_RAWNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
+  sed -i '' 's/ZITI_EDGE_CONTROLLER_RAWNAME/ZITI_CTRL_NAME/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CONTROLLER_ROOTCA_NAME/ZITI_PKI_CTRL_EDGE_ROOTCA_NAME/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CTRL_IDENTITY_CA/ZITI_PKI_EDGE_CA/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CTRL_IDENTITY_CERT/ZITI_PKI_EDGE_CERT/g' "${ZITI_ENV_FILE}"
@@ -1459,7 +1459,28 @@ function performMigration {
   sed -i '' 's/ZITI_SIGNING_CERT/ZITI_PKI_SIGNER_CERT/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_SIGNING_KEY/ZITI_PKI_SIGNER_KEY/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_ROUTER_HOSTNAME/ZITI_ROUTER_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
-  echo "export ZITI_CTRL_NAME=${ZITI_NETWORK}" >> "${ZITI_ENV_FILE}"
+
+  # Update environment variables if currently set
+  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" != "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_EDGE_CONTROLLER_HOSTNAME}"; fi
+  if [[ "${ZITI_CONTROLLER_INTERMEDIATE_NAME-}" != "" ]]; then export ZITI_PKI_CTRL_INTERMEDIATE_NAME="${ZITI_CONTROLLER_INTERMEDIATE_NAME}"; fi
+  if [[ "${ZITI_CONTROLLER_ROOTCA_NAME-}" != "" ]]; then export ZITI_PKI_CTRL_ROOTCA_NAME="${ZITI_CONTROLLER_ROOTCA_NAME}"; fi
+  if [[ "${ZITI_CTRL_EDGE_PORT-}" != "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_PORT="${ZITI_CTRL_EDGE_PORT}"; fi
+  if [[ "${ZITI_CTRL_IDENTITY_CA-}" != "" ]]; then export ZITI_PKI_CTRL_CA="${ZITI_CTRL_IDENTITY_CA}"; fi
+  if [[ "${ZITI_CTRL_IDENTITY_CERT-}" != "" ]]; then export ZITI_PKI_CTRL_CERT="${ZITI_CTRL_IDENTITY_CERT}"; fi
+  if [[ "${ZITI_CTRL_IDENTITY_KEY-}" != "" ]]; then export ZITI_PKI_CTRL_KEY="${ZITI_CTRL_IDENTITY_KEY}"; fi
+  if [[ "${ZITI_CTRL_IDENTITY_SERVER_CERT-}" != "" ]]; then export ZITI_PKI_CTRL_SERVER_CERT="${ZITI_CTRL_IDENTITY_SERVER_CERT}"; fi
+  if [[ "${ZITI_CTRL_PORT-}" != "" ]]; then export ZITI_CTRL_LISTENER_PORT="${ZITI_CTRL_PORT}"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME-}" != "" ]]; then export ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME="${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" != "" ]]; then export ZITI_CTRL_NAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_ROOTCA_NAME-}" != "" ]]; then export ZITI_PKI_CTRL_EDGE_ROOTCA_NAME="${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}"; fi
+  if [[ "${ZITI_EDGE_CTRL_IDENTITY_CA-}" != "" ]]; then export ZITI_PKI_EDGE_CA="${ZITI_EDGE_CTRL_IDENTITY_CA}"; fi
+  if [[ "${ZITI_EDGE_CTRL_IDENTITY_CERT-}" != "" ]]; then export ZITI_PKI_EDGE_CERT="${ZITI_EDGE_CTRL_IDENTITY_CERT}"; fi
+  if [[ "${ZITI_EDGE_CTRL_IDENTITY_KEY-}" != "" ]]; then export ZITI_PKI_EDGE_KEY="${ZITI_EDGE_CTRL_IDENTITY_KEY}"; fi
+  if [[ "${ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT-}" != "" ]]; then export ZITI_EDGE_ROUTER_NAME="${ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT}"; fi
+  if [[ "${ZITI_PKI_OS_SPECIFIC-}" != "" ]]; then export ZITI_PKI="${ZITI_PKI_OS_SPECIFIC}"; fi
+  if [[ "${ZITI_SIGNING_CERT-}" != "" ]]; then export ZITI_PKI_SIGNER_CERT="${ZITI_SIGNING_CERT}"; fi
+  if [[ "${ZITI_SIGNING_KEY-}" != "" ]]; then export ZITI_PKI_SIGNER_KEY="${ZITI_SIGNING_KEY}"; fi
+  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME-}" != "" ]]; then export ZITI_ROUTER_ADVERTISED_ADDRESS="${ZITI_EDGE_ROUTER_HOSTNAME}"; fi
 
   # Update the necessary ziti binary references (others are not needed or are overwritten later)
   if [[ "${ZITI_BIN_DIR-}" != "" ]]; then
@@ -1471,12 +1492,12 @@ function performMigration {
     echo "export ZITI_BINARIES_VERSION=${ZITI_BINARIES_VERSION}" >> "${ZITI_ENV_FILE}"
   fi
 
-  echo -e "$(GREEN "SUCCESS Your Environment file has been updated, please use source the file for the latest values")"
+  echo -e "$(GREEN "SUCCESS: Your Environment file has been updated, please use source the file for the latest values. Be sure to source the .env file as needed.")"
 }
 
 # ******* Deprecated functions, refer to new functions **********
 function deprecationMessage {
-  echo -e "$(YELLOW "WARNING The ${1} function has been deprecated, please use ${2} going forward")"
+  echo -e "$(YELLOW "WARNING: The ${1} function has been deprecated, please use ${2} going forward")"
 }
 
 function generateEnvFile {
