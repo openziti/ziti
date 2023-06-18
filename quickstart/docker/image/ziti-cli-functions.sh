@@ -83,15 +83,15 @@ function cleanZitiController {
 }
 function initializeController {
   log_file="${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}-init.log"
-  "${ZITI_BIN_DIR-}/ziti-controller" edge init "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
-  echo -e "ziti-controller initialized. see $(BLUE "${log_file}") for details"
+  "${ZITI_BIN_DIR-}/ziti" controller edge init "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
+  echo -e "ziti controller initialized. see $(BLUE "${log_file}") for details"
 }
 function startController {
   log_file="${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}.log"
   # shellcheck disable=SC2034
-  "${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" &> "${log_file}" &
+  "${ZITI_BIN_DIR-}/ziti" controller run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" &> "${log_file}" &
   ZITI_EXPRESS_CONTROLLER_PID=$!
-  echo -e "ziti-controller started as process id: $ZITI_EXPRESS_CONTROLLER_PID. log located at: $(BLUE "${log_file}")"
+  echo -e "ziti controller started as process id: $ZITI_EXPRESS_CONTROLLER_PID. log located at: $(BLUE "${log_file}")"
 }
 
 function stopController {
@@ -110,7 +110,7 @@ function stopController {
 
 function startRouter {
   log_file="${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log"
-  "${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${log_file}" 2>&1 &
+  "${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${log_file}" 2>&1 &
   ZITI_EXPRESS_EDGE_ROUTER_PID=$!
   echo -e "Express Edge Router started as process id: $ZITI_EXPRESS_EDGE_ROUTER_PID. log located at: $(BLUE "${log_file}")"
 
@@ -582,7 +582,7 @@ function ziti_expressConfiguration {
   sleep 1
   echo "----------  Enrolling edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
 
-  "${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log"
+  "${ZITI_BIN_DIR-}/ziti" router enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log"
   echo ""
 
   stopController
@@ -1216,13 +1216,13 @@ function createControllerSystemdFile {
 
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
-Description=Ziti-Controller
+Description=Ziti Controller
 After=network.target
 
 [Service]
 User=root
 WorkingDirectory=${ZITI_HOME}
-ExecStart="${ZITI_BIN_DIR}/ziti-controller" run "${ZITI_HOME}/${controller_name}.yaml"
+ExecStart="${ZITI_BIN_DIR}/ziti" controller run "${ZITI_HOME}/${controller_name}.yaml"
 Restart=always
 RestartSec=2
 LimitNOFILE=65535
@@ -1273,13 +1273,13 @@ function createRouterSystemdFile {
 
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
-Description=Ziti-Router for ${router_name}
+Description=Ziti Router for ${router_name}
 After=network.target
 
 [Service]
 User=root
 WorkingDirectory=${ZITI_HOME}
-ExecStart="${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME}/${router_name}.yaml"
+ExecStart="${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME}/${router_name}.yaml"
 Restart=always
 RestartSec=2
 LimitNOFILE=65536
@@ -1331,10 +1331,11 @@ cat > "${output_file}" <<HeredocForLaunchd
   <plist version="1.0">
     <dict>
       <key>Label</key>
-      <string>ziti-controller-${controller_name}</string>
+      <string>ziti controller-${controller_name}</string>
       <key>ProgramArguments</key>
       <array>
-        <string>$ZITI_BIN_DIR/ziti-controller</string>
+        <string>$ZITI_BIN_DIR/ziti</string>
+        <string>controller</string>
         <string>run</string>
         <string>$ZITI_HOME/${controller_name}.yaml</string>
       </array>
@@ -1407,7 +1408,8 @@ cat > "${output_file}" <<HeredocForLaunchd
       <string>$router_name</string>
       <key>ProgramArguments</key>
       <array>
-        <string>$ZITI_BIN_DIR/ziti-router</string>
+        <string>$ZITI_BIN_DIR/ziti</string>
+        <string>router</string>
         <string>run</string>
         <string>$ZITI_HOME/ctrl.with.edge.yml</string>
       </array>
