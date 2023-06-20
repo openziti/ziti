@@ -318,7 +318,7 @@ func (self *edgeClientConn) processUnbind(req *channel.Message, ch channel.Chann
 			log.Info("removed terminator")
 		}
 	} else {
-		self.sendStateClosedReply("unbind successful", req)
+		self.sendStateClosedReply(fmt.Sprintf("no terminator found for token '%s'", token), req)
 	}
 }
 
