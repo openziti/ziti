@@ -41,7 +41,7 @@ type WriterEventSink struct {
 }
 
 func (self WriterEventSink) AcceptFormattedEvent(_ string, formattedEvent []byte) {
-	if _, err := fmt.Fprintln(self.out, string(formattedEvent)); err != nil {
+	if _, err := self.out.Write(formattedEvent); err != nil {
 		pfxlog.Logger().WithError(err).Error("failed to output event")
 	}
 }
