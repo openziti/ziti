@@ -21,6 +21,9 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	fabricMetrics "github.com/openziti/fabric/metrics"
+	"github.com/openziti/foundation/v2/goroutines"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -146,13 +149,41 @@ func NewNetwork(config Config) (*Network, error) {
 		config: config,
 	}
 
-	network.Managers = NewManagers(network, config.GetCommandDispatcher(), config.GetDb(), stores)
+	routerCommPool, err := network.createRouterCommPool(config)
+	if err != nil {
+		return nil, err
+	}
+	network.Managers = NewManagers(network, config.GetCommandDispatcher(), config.GetDb(), stores, routerCommPool)
 	network.Managers.Inspections.network = network
 
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
 	network.relayControllerMetrics()
+	network.AddRouterPresenceHandler(network.Managers.RouterMessaging)
+	go network.Managers.RouterMessaging.run()
+
 	return network, nil
+}
+
+func (network *Network) createRouterCommPool(config Config) (goroutines.Pool, error) {
+	poolConfig := goroutines.PoolConfig{
+		QueueSize:   config.GetOptions().RouterComm.QueueSize,
+		MinWorkers:  0,
+		MaxWorkers:  config.GetOptions().RouterComm.MaxWorkers,
+		IdleTime:    30 * time.Second,
+		CloseNotify: config.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during message send to router")
+		},
+	}
+
+	fabricMetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, config.GetMetricsRegistry(), "pool.router.messaging")
+
+	pool, err := goroutines.NewPool(poolConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating router messaging pool")
+	}
+	return pool, nil
 }
 
 func (network *Network) relayControllerMetrics() {
@@ -268,6 +299,10 @@ func (network *Network) GetServiceEventsMetricsRegistry() metrics.UsageRegistry 
 	return network.serviceEventMetrics
 }
 
+func (network *Network) GetCloseNotify() <-chan struct{} {
+	return network.closeNotify
+}
+
 func (network *Network) RouterChanged(r *Router) {
 	network.routerChanged <- r
 }
@@ -363,10 +398,16 @@ func (network *Network) LinkConnected(msg *ctrl_pb.LinkConnected) error {
 	return errors.Errorf("no such link [l/%s]", msg.Id)
 }
 
-func (network *Network) LinkFaulted(id string) error {
+func (network *Network) LinkFaulted(id string, dupe bool) error {
 	if l, found := network.linkController.get(id); found {
 		l.addState(newLinkState(Failed))
-		network.NotifyLinkEvent(l, event.LinkFault)
+		if dupe {
+			network.NotifyLinkEvent(l, event.LinkDuplicate)
+		} else {
+			network.NotifyLinkEvent(l, event.LinkFault)
+		}
+		pfxlog.Logger().WithField("linkId", id).Info("removing failed link")
+		network.linkController.remove(l)
 		return nil
 	}
 	return errors.Errorf("no such link [l/%s]", id)

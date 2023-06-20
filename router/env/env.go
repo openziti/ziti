@@ -29,7 +29,7 @@ type RouterEnv interface {
 	GetNetworkControllers() NetworkControllers
 	GetRouterId() *identity.TokenId
 	GetDialerCfg() map[string]xgress.OptionsData
-	GetXlinkDialer() []xlink.Dialer
+	GetXlinkDialers() []xlink.Dialer
 	GetXrctrls() []Xrctrl
 	GetTraceHandler() *channel.TraceHandler
 	GetXlinkRegistry() xlink.Registry

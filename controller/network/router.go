@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/v2/versions"
 	"google.golang.org/protobuf/proto"
 	"reflect"
@@ -47,13 +48,14 @@ const (
 type Listener interface {
 	AdvertiseAddress() string
 	Protocol() string
+	Groups() []string
 }
 
 type Router struct {
 	models.BaseEntity
 	Name        string
 	Fingerprint *string
-	Listeners   []Listener
+	Listeners   []*ctrl_pb.Listener
 	Control     channel.Channel
 	Connected   atomic.Bool
 	ConnectTime time.Time
@@ -76,12 +78,16 @@ func (entity *Router) toBolt() *db.Router {
 }
 
 func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags []string, groups []string) {
-	entity.Listeners = append(entity.Listeners, linkListener{
-		addr:         addr,
-		linkProtocol: linkProtocol,
-		linkCostTags: linkCostTags,
-		groups:       groups,
+	entity.Listeners = append(entity.Listeners, &ctrl_pb.Listener{
+		Address:  addr,
+		Protocol: linkProtocol,
+		CostTags: linkCostTags,
+		Groups:   groups,
 	})
+}
+
+func (entity *Router) SetLinkListeners(listeners []*ctrl_pb.Listener) {
+	entity.Listeners = listeners
 }
 
 func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Router {
@@ -345,7 +351,10 @@ func (self *RouterManager) HandleRouterDelete(id string) {
 		log.Debug("deleted router not connected, no further action required")
 	}
 
-	self.network.routerDeleted(id)
+	go func() {
+		self.network.routerDeleted(id)
+		self.Managers.RouterMessaging.RouterDeleted(id)
+	}()
 }
 
 func (self *RouterManager) UpdateCachedRouter(id string) {
@@ -511,23 +520,4 @@ func (self *RouterLinks) Remove(link *Link, other *Router) {
 func (self *RouterLinks) Clear() {
 	self.allLinks.Store([]*Link{})
 	self.linkByRouter.Store(map[string][]*Link{})
-}
-
-type linkListener struct {
-	addr         string
-	linkProtocol string
-	linkCostTags []string
-	groups       []string
-}
-
-func (self linkListener) AdvertiseAddress() string {
-	return self.addr
-}
-
-func (self linkListener) Protocol() string {
-	return self.linkProtocol
-}
-
-func (self linkListener) Groups() []string {
-	return self.groups
 }

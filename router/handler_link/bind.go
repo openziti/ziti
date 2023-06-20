@@ -13,7 +13,6 @@ import (
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/v2/concurrenz"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/metrics"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -84,12 +83,6 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		return err
 	}
 
-	doHeartbeat, err := self.getDestVersionInfo().HasMinimumVersion("0.25.0")
-	if err != nil {
-		doHeartbeat = false
-		log.WithError(err).Error("version parsing error")
-	}
-
 	latencyMetric := self.metricsRegistry.Histogram("link." + self.xlink.Id() + ".latency")
 	queueTimeMetric := self.metricsRegistry.Histogram("link." + self.xlink.Id() + ".queue_time")
 	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
@@ -97,40 +90,16 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		queueTimeMetric.Dispose()
 	}))
 
-	if doHeartbeat {
-		log.Info("link destination support heartbeats")
-		cb := &heartbeatCallback{
-			latencyMetric:    latencyMetric,
-			queueTimeMetric:  queueTimeMetric,
-			ch:               binding.GetChannel(),
-			latencySemaphore: concurrenz.NewSemaphore(2),
-		}
-		channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
-	} else if self.trackLatency {
-		log.Info("link destination does not support heartbeats, using latency probe")
-		latencyTimeout := self.forwarderOptions.LatencyProbeTimeout
-		config := &latency.ProbeConfig{
-			Channel:  ch,
-			Interval: self.forwarderOptions.LatencyProbeInterval,
-			Timeout:  latencyTimeout,
-			ResultHandler: func(resultNanos int64) {
-				latencyMetric.Update(resultNanos)
-			},
-			TimeoutHandler: func() {
-				pfxlog.ContextLogger(ch.Label()).Errorf("latency timeout after [%s] on channel [%s]", latencyTimeout, ch.Label())
-			},
-		}
-
-		go latency.ProbeLatencyConfigurable(config)
+	log.Info("link destination support heartbeats")
+	cb := &heartbeatCallback{
+		latencyMetric:    latencyMetric,
+		queueTimeMetric:  queueTimeMetric,
+		ch:               binding.GetChannel(),
+		latencySemaphore: concurrenz.NewSemaphore(2),
 	}
+	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
 
 	return nil
-}
-
-func (self *bindHandler) getDestVersionInfo() *versions.VersionInfo {
-	return &versions.VersionInfo{
-		Version: self.xlink.DestVersion(),
-	}
 }
 
 func (self *bindHandler) verifyRouter(l xlink.Xlink, ch channel.Channel) error {

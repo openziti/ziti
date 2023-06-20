@@ -36,29 +36,10 @@ type bindHandler struct {
 	env                env.RouterEnv
 	forwarder          *forwarder.Forwarder
 	xgDialerPool       goroutines.Pool
-	linkDialerPool     goroutines.Pool
 	ctrlAddressUpdater CtrlAddressUpdater
 }
 
 func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctrlAddressUpdater CtrlAddressUpdater) (channel.BindHandler, error) {
-	linkDialerPoolConfig := goroutines.PoolConfig{
-		QueueSize:   uint32(forwarder.Options.LinkDial.QueueLength),
-		MinWorkers:  0,
-		MaxWorkers:  uint32(forwarder.Options.LinkDial.WorkerCount),
-		IdleTime:    30 * time.Second,
-		CloseNotify: routerEnv.GetCloseNotify(),
-		PanicHandler: func(err interface{}) {
-			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during link dial")
-		},
-	}
-
-	metrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, routerEnv.GetMetricsRegistry(), "pool.link.dialer")
-
-	linkDialerPool, err := goroutines.NewPool(linkDialerPoolConfig)
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating link dialer pool")
-	}
-
 	xgDialerPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(forwarder.Options.XgressDial.QueueLength),
 		MinWorkers:  0,
@@ -81,13 +62,12 @@ func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctr
 		env:                routerEnv,
 		forwarder:          forwarder,
 		xgDialerPool:       xgDialerPool,
-		linkDialerPool:     linkDialerPool,
 		ctrlAddressUpdater: ctrlAddressUpdater,
 	}, nil
 }
 
 func (self *bindHandler) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(newDialHandler(binding.GetChannel(), self.env, self.linkDialerPool))
+	binding.AddTypedReceiveHandler(newPeerStateChangeHandler(self.env))
 	binding.AddTypedReceiveHandler(newRouteHandler(binding.GetChannel(), self.env, self.forwarder, self.xgDialerPool))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.env))
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))

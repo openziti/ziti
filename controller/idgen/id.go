@@ -56,9 +56,10 @@ func (self *shortIdGenerator) NextAlphaNumericPrefixedId() (string, error) {
 	}
 }
 
-func NewUUIDString() (string, error) {
+func NewUUIDString() string {
 	id := uuid.New()
 	v := &big.Int{}
 	v.SetBytes(id[:])
-	return basex.EncodeInt(v)
+	result, _ := basex.EncodeInt(v)
+	return result
 }

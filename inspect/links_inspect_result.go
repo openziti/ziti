@@ -16,15 +16,45 @@
 
 package inspect
 
+import (
+	"time"
+)
+
 type LinksInspectResult struct {
-	Links []*LinkInspectDetail `json:"links"`
+	Links        []*LinkInspectDetail `json:"links"`
+	Destinations []*LinkDest          `json:"destinations"`
+	Errors       []string             `json:"errors"`
 }
 
 type LinkInspectDetail struct {
 	Id          string `json:"id"`
+	Key         string `json:"key"`
 	Split       bool   `json:"split"`
 	Protocol    string `json:"protocol"`
 	DialAddress string `json:"dialAddress"`
 	Dest        string `json:"dest"`
 	DestVersion string `json:"destVersion"`
+}
+
+type LinkDest struct {
+	Id             string       `json:"id"`
+	Version        string       `json:"version"`
+	Healthy        bool         `json:"healthy"`
+	UnhealthySince *time.Time   `json:"unhealthySince,omitempty"`
+	LinkStates     []*LinkState `json:"linkStates"`
+}
+
+type LinkState struct {
+	Id             string   `json:"id"`
+	Key            string   `json:"key"`
+	Status         string   `json:"status"`
+	DialAttempts   uint     `json:"dialAttempts"`
+	ConnectedCount uint     `json:"connectedCount"`
+	RetryDelay     string   `json:"retryDelay"`
+	NextDial       string   `json:"nextDial"`
+	TargetAddress  string   `json:"targetAddress"`
+	TargetGroups   []string `json:"targetGroups"`
+	TargetBinding  string   `json:"targetBinding"`
+	DialerGroups   []string `json:"dialerGroups"`
+	DialerBinding  string   `json:"dialerBinding"`
 }

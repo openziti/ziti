@@ -113,24 +113,6 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ContentType_VerifyLinkType):
-		request := &VerifyLink{}
-		if err := proto.Unmarshal(msg.Body, request); err == nil {
-			meta := channel.NewTraceMessageDecode(DECODER, "Verify Link")
-			meta["linkId"] = request.LinkId
-			data, err := meta.MarshalTraceMessageDecode()
-			if err != nil {
-				pfxlog.Logger().Errorf("unexpected error (%s)", err)
-				return nil, true
-			}
-
-			return data, true
-
-		} else {
-			pfxlog.Logger().Errorf("unexpected error (%s)", err)
-			return nil, true
-		}
-
 	case int32(ContentType_VerifyRouterType):
 		request := &VerifyRouter{}
 		if err := proto.Unmarshal(msg.Body, request); err == nil {

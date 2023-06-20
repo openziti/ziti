@@ -36,6 +36,7 @@ type NetworkControllers interface {
 	GetAll() map[string]NetworkController
 	GetNetworkController(ctrlId string) NetworkController
 	AnyCtrlChannel() channel.Channel
+	AllResponsiveCtrlChannels() []channel.Channel
 	AnyValidCtrlChannel() channel.Channel
 	GetCtrlChannel(ctrlId string) channel.Channel
 	DefaultRequestTimeout() time.Duration
@@ -168,6 +169,16 @@ func (self *networkControllers) AnyCtrlChannel() channel.Channel {
 		return nil
 	}
 	return current.Channel()
+}
+
+func (self *networkControllers) AllResponsiveCtrlChannels() []channel.Channel {
+	var channels []channel.Channel
+	for _, ctrl := range self.ctrls.AsMap() {
+		if !ctrl.IsUnresponsive() {
+			channels = append(channels, ctrl.Channel())
+		}
+	}
+	return channels
 }
 
 func (self *networkControllers) AnyValidCtrlChannel() channel.Channel {

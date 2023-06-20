@@ -82,7 +82,7 @@ func (t testUnderlayFactory) Create(time.Duration, transport.Configuration) (cha
 }
 
 func Test_Throughput(t *testing.T) {
-	factory := testUnderlayFactory{
+	underlayFactory := testUnderlayFactory{
 		underlay: testUnderlay{},
 	}
 
@@ -90,7 +90,7 @@ func Test_Throughput(t *testing.T) {
 
 	options := channel.DefaultOptions()
 	options.OutQueueSize = 64
-	ch, err := channel.NewChannel("test", factory, nil, options)
+	ch, err := channel.NewChannel("test", underlayFactory, nil, options)
 	assert.NoError(t, err)
 
 	registry := metrics.NewRegistry("test", nil)

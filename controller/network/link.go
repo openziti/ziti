@@ -148,6 +148,7 @@ const (
 	Pending LinkMode = iota
 	Connected
 	Failed
+	Duplicate
 )
 
 func (t LinkMode) String() string {
@@ -157,6 +158,8 @@ func (t LinkMode) String() string {
 		return "Connected"
 	} else if t == Failed {
 		return "Failed"
+	} else if t == Duplicate {
+		return "Duplicate"
 	} else {
 		return ""
 	}

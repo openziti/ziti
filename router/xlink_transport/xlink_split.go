@@ -28,6 +28,7 @@ import (
 
 type splitImpl struct {
 	id              string
+	key             string
 	payloadCh       channel.Channel
 	ackCh           channel.Channel
 	routerId        string
@@ -40,6 +41,10 @@ type splitImpl struct {
 
 func (self *splitImpl) Id() string {
 	return self.id
+}
+
+func (self *splitImpl) Key() string {
+	return self.key
 }
 
 func (self *splitImpl) Init(metricsRegistry metrics.Registry) error {
@@ -132,6 +137,7 @@ func (self *splitImpl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 func (self *splitImpl) InspectLink() *inspect.LinkInspectDetail {
 	return &inspect.LinkInspectDetail{
 		Id:          self.Id(),
+		Key:         self.key,
 		Split:       true,
 		Protocol:    self.LinkProtocol(),
 		DialAddress: self.DialAddress(),

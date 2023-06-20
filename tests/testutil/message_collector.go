@@ -25,8 +25,8 @@ type MessageCollector struct {
 }
 
 func (self *MessageCollector) HandleReceive(m *channel.Message, ch channel.Channel) {
-	if m.ContentType == -33 {
-		logrus.Debug("ignoring reconnect ping")
+	if m.ContentType == -33 || m.ContentType == 5 {
+		logrus.Debug("ignoring heartbeats and reconnect ping")
 		return
 	}
 	select {

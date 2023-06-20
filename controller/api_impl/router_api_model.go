@@ -125,8 +125,8 @@ func (RouterModelMapper) ToApi(n *network.Network, _ api.RequestContext, router 
 
 	if connected != nil {
 		for _, listener := range connected.Listeners {
-			advAddr := listener.AdvertiseAddress()
-			linkProtocol := listener.Protocol()
+			advAddr := listener.GetAddress()
+			linkProtocol := listener.GetProtocol()
 			ret.ListenerAddresses = append(ret.ListenerAddresses, &rest_model.RouterListener{
 				Address:  &advAddr,
 				Protocol: &linkProtocol,

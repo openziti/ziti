@@ -34,6 +34,30 @@ type dialer struct {
 	acceptor           xlink.Acceptor
 	transportConfig    transport.Configuration
 	metricsRegistry    metrics.Registry
+	adoptedBinding     string
+}
+
+func (self *dialer) GetHealthyBackoffConfig() xlink.BackoffConfig {
+	return self.config.healthyBackoffConfig
+}
+
+func (self *dialer) GetUnhealthyBackoffConfig() xlink.BackoffConfig {
+	return self.config.unhealthyBackoffConfig
+}
+
+func (self *dialer) GetGroups() []string {
+	return self.config.groups
+}
+
+func (self *dialer) AdoptBinding(l xlink.Listener) {
+	self.adoptedBinding = l.GetLocalBinding()
+}
+
+func (self *dialer) GetBinding() string {
+	if self.adoptedBinding != "" {
+		return self.adoptedBinding
+	}
+	return self.config.localBinding
 }
 
 func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
@@ -71,6 +95,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderType:          {byte(PayloadChannel)},
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
+		LinkHeaderBinding:       []byte(self.GetBinding()),
 	})
 
 	logrus.Debugf("dialing payload channel for [l/%s]", linkId.Token)
@@ -78,10 +103,12 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 	bindHandler := &splitDialBindHandler{
 		dialer: self,
 		link: &splitImpl{
-			id:            linkId.Token,
+			id:            dial.GetLinkId(),
+			key:           dial.GetLinkKey(),
 			routerId:      dial.GetRouterId(),
 			routerVersion: dial.GetRouterVersion(),
 			linkProtocol:  dial.GetLinkProtocol(),
+			dialAddress:   dial.GetAddress(),
 		},
 	}
 
@@ -97,6 +124,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderType:          {byte(AckChannel)},
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
+		LinkHeaderBinding:       []byte(self.GetBinding()),
 	})
 
 	_, err = channel.NewChannelWithTransportConfiguration("l/"+linkId.Token, ackDialer, channel.BindHandlerF(bindHandler.bindAckChannel), self.config.options, self.transportConfig)
@@ -115,15 +143,18 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 		LinkHeaderRouterId:      []byte(self.id.Token),
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
+		LinkHeaderBinding:       []byte(self.GetBinding()),
 	})
 
 	bindHandler := &dialBindHandler{
 		dialer: self,
 		link: &impl{
-			id:            linkId.Token,
+			id:            dial.GetLinkId(),
+			key:           dial.GetLinkKey(),
 			routerId:      dial.GetRouterId(),
 			linkProtocol:  dial.GetLinkProtocol(),
 			routerVersion: dial.GetRouterVersion(),
+			dialAddress:   dial.GetAddress(),
 		},
 	}
 

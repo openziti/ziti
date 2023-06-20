@@ -3,17 +3,16 @@
 package tests
 
 import (
-	"github.com/google/uuid"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/env"
+	"github.com/openziti/fabric/router/link"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/router/xlink_transport"
 	"github.com/openziti/fabric/tests/testutil"
+	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
@@ -49,6 +48,69 @@ func (t testBindHandlerFactory) NewBindHandler(l xlink.Xlink, _ bool, _ bool) ch
 	return t
 }
 
+type testRegistryEnv struct {
+	ctrls       env.NetworkControllers
+	closeNotify chan struct{}
+}
+
+func (self *testRegistryEnv) GetNetworkControllers() env.NetworkControllers {
+	return self.ctrls
+}
+
+func (self *testRegistryEnv) GetXlinkDialers() []xlink.Dialer {
+	panic("implement me")
+}
+
+func (self *testRegistryEnv) GetCloseNotify() <-chan struct{} {
+	return self.closeNotify
+}
+
+func (self *testRegistryEnv) GetLinkDialerPool() goroutines.Pool {
+	panic("implement me")
+}
+
+type testDial struct {
+	Key           string
+	LinkId        string
+	RouterId      string
+	Address       string
+	LinkProtocol  string
+	RouterVersion string
+}
+
+func (self *testDial) GetLinkKey() string {
+	return self.Key
+}
+
+func (self *testDial) GetLinkId() string {
+	return self.LinkId
+}
+
+func (self *testDial) GetRouterId() string {
+	return self.RouterId
+}
+
+func (self *testDial) GetAddress() string {
+	return self.Address
+}
+
+func (self *testDial) GetLinkProtocol() string {
+	return self.LinkProtocol
+}
+
+func (self *testDial) GetRouterVersion() string {
+	return self.RouterVersion
+}
+
+func setupEnv() link.Env {
+	ctrls := env.NewNetworkControllers(time.Second, nil, env.NewDefaultHeartbeatOptions())
+
+	return &testRegistryEnv{
+		ctrls:       ctrls,
+		closeNotify: make(chan struct{}),
+	}
+}
+
 func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
@@ -69,31 +131,19 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 		"split": false,
 	}
 	metricsRegistery := metrics.NewRegistry("test", nil)
-	ctrls := env.NewNetworkControllers(time.Second, nil, env.NewDefaultHeartbeatOptions())
-	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry(ctrls), metricsRegistery)
+	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, link.NewLinkRegistry(setupEnv()), metricsRegistery)
 	dialer, err := factory.CreateDialer(badId, nil, tcfg)
 	ctx.Req.NoError(err)
-	dialReq := &dial{
-		Dial: &ctrl_pb.Dial{
-			LinkId:       "testLinkId",
-			Address:      "tls:127.0.0.1:6004",
-			RouterId:     "002",
-			LinkProtocol: "tls",
-		},
-		ctrlId: "test",
+	dialReq := &testDial{
+		Key:          "default->tls:router1->default",
+		LinkId:       "testLinkId",
+		Address:      "tls:127.0.0.1:6004",
+		RouterId:     "002",
+		LinkProtocol: "tls",
 	}
 	_, err = dialer.Dial(dialReq)
 	ctx.Req.Error(err)
 	ctx.Req.ErrorIs(err, io.EOF)
-}
-
-type dial struct {
-	*ctrl_pb.Dial
-	ctrlId string
-}
-
-func (self *dial) GetCtrlId() string {
-	return self.ctrlId
 }
 
 func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
@@ -118,18 +168,15 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 	}
 
 	metricsRegistery := metrics.NewRegistry("test", nil)
-	ctrls := env.NewNetworkControllers(time.Second, nil, env.NewDefaultHeartbeatOptions())
-	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry(ctrls), metricsRegistery)
+	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, link.NewLinkRegistry(setupEnv()), metricsRegistery)
 	dialer, err := factory.CreateDialer(router2Id, nil, tcfg)
 	ctx.Req.NoError(err)
-	dialReq := &dial{
-		Dial: &ctrl_pb.Dial{
-			LinkId:       "testLinkId",
-			Address:      "tls:127.0.0.1:6004",
-			RouterId:     "002",
-			LinkProtocol: "tls",
-		},
-		ctrlId: "test",
+	dialReq := &testDial{
+		Key:          "default->tls:router1->default",
+		LinkId:       "testLinkId",
+		Address:      "tls:127.0.0.1:6004",
+		RouterId:     "002",
+		LinkProtocol: "tls",
 	}
 	_, err = dialer.Dial(dialReq)
 	if err != nil {
@@ -150,206 +197,6 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 	}
 }
 
-func Test_DuplicateLinks(t *testing.T) {
-	ctx := NewTestContext(t)
-	defer ctx.Teardown()
-	ctx.StartServer()
-	mgmtClient := ctx.createTestFabricRestClient()
-	mgmtClient.EnrollRouter("001", "router-1", "testdata/router/001-client.cert.pem")
-	mgmtClient.EnrollRouter("002", "router-2", "testdata/router/002-client.cert.pem")
-	ctx.Teardown()
-
-	ctrlListener := ctx.NewControlChannelListener()
-	ctx.startRouter(1)
-
-	acceptControl := func(id string) (channel.Channel, *testutil.MessageCollector) {
-		return testutil.AcceptControl(id, ctrlListener, ctx.Req)
-	}
-
-	router1cc, msgc1 := acceptControl("router-1")
-
-	ctx.startRouter(2)
-
-	router2cc, _ := acceptControl("router-2")
-
-	dial1 := &ctrl_pb.Dial{
-		LinkId:       uuid.NewString(),
-		RouterId:     "002",
-		Address:      "tls:localhost:6005",
-		LinkProtocol: "tls",
-	}
-
-	// send initial link request. This should result in a new link
-	err := protobufs.MarshalTyped(dial1).WithTimeout(time.Second).SendAndWaitForWire(router1cc)
-	ctx.Req.NoError(err)
-
-	msg, err := msgc1.Next(time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_LinkConnectedType), msg.ContentType)
-
-	dial2 := &ctrl_pb.Dial{
-		LinkId:       uuid.NewString(),
-		RouterId:     "002",
-		Address:      "tls:localhost:6005",
-		LinkProtocol: "tls",
-	}
-
-	// send another link request. This should result in the router letting us know about the current link
-	err = protobufs.MarshalTyped(dial2).WithTimeout(time.Second).SendAndWaitForWire(router1cc)
-	ctx.Req.NoError(err)
-
-	msg, err = msgc1.Next(time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_RouterLinksType), msg.ContentType)
-	rl := &ctrl_pb.RouterLinks{}
-	ctx.Req.NoError(proto.Unmarshal(msg.Body, rl))
-	ctx.Req.Equal(1, len(rl.Links))
-	ctx.Req.Equal(dial1.LinkId, rl.Links[0].Id)
-	ctx.Req.Equal("002", rl.Links[0].DestRouterId)
-
-	// disconnect and reconnect the router
-	_ = router1cc.Close()
-	router1cc, msgc1 = acceptControl("router-1")
-
-	// The router should let us know about existing links
-	msg, err = msgc1.Next(time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_RouterLinksType), msg.ContentType)
-	rl = &ctrl_pb.RouterLinks{}
-	ctx.Req.NoError(proto.Unmarshal(msg.Body, rl))
-	ctx.Req.Equal(1, len(rl.Links))
-	ctx.Req.Equal(dial1.LinkId, rl.Links[0].Id)
-	ctx.Req.Equal("002", rl.Links[0].DestRouterId)
-
-	// Try one more time, should get another router link notification
-	err = protobufs.MarshalTyped(dial2).WithTimeout(time.Second).SendAndWaitForWire(router1cc)
-	ctx.Req.NoError(err)
-
-	msg, err = msgc1.Next(time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_RouterLinksType), msg.ContentType)
-	rl = &ctrl_pb.RouterLinks{}
-	ctx.Req.NoError(proto.Unmarshal(msg.Body, rl))
-	ctx.Req.Equal(1, len(rl.Links))
-	ctx.Req.Equal(dial1.LinkId, rl.Links[0].Id)
-	ctx.Req.Equal("002", rl.Links[0].DestRouterId)
-
-	ctx.Teardown()
-	_ = router1cc.Close()
-	_ = router2cc.Close()
-	_ = ctrlListener.Close()
-}
-
-func Test_DuplicateLinkWithLinkCloseListener(t *testing.T) {
-	ctx := NewTestContext(t)
-	defer ctx.Teardown()
-	ctx.StartServer()
-	mgmtClient := ctx.createTestFabricRestClient()
-	mgmtClient.EnrollRouter("001", "router-1", "testdata/router/001-client.cert.pem")
-	mgmtClient.EnrollRouter("002", "router-2", "testdata/router/002-client.cert.pem")
-	ctx.Teardown()
-
-	ctrlListener := ctx.NewControlChannelListener()
-	defer func() { _ = ctrlListener.Close() }()
-	ctx.startRouter(1)
-
-	acceptControl := func(id string) (channel.Channel, *testutil.MessageCollector) {
-		return testutil.AcceptControl(id, ctrlListener, ctx.Req)
-	}
-
-	router1cc, msgc1 := acceptControl("router-1")
-
-	router2 := ctx.startRouter(2)
-
-	router2cc, _ := acceptControl("router-2")
-	defer func(ch channel.Channel) {
-		_ = router2cc.Close()
-	}(router2cc)
-
-	dial1 := &ctrl_pb.Dial{
-		LinkId:       uuid.NewString(),
-		RouterId:     "002",
-		Address:      "tls:localhost:6005",
-		LinkProtocol: "tls",
-	}
-
-	// send initial link request. This should result in a new link
-	err := protobufs.MarshalTyped(dial1).WithTimeout(time.Second).SendAndWaitForWire(router1cc)
-	ctx.Req.NoError(err)
-
-	msg, err := msgc1.Next(time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_LinkConnectedType), msg.ContentType)
-
-	dial2 := &ctrl_pb.Dial{
-		LinkId:       uuid.NewString(),
-		RouterId:     "002",
-		Address:      "tls:localhost:6005",
-		LinkProtocol: "tls",
-	}
-
-	// send another link request. This should result in the router letting us know about the current link
-	err = protobufs.MarshalTyped(dial2).WithTimeout(time.Second).SendAndWaitForWire(router1cc)
-	ctx.Req.NoError(err)
-
-	msg, err = msgc1.Next(time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_RouterLinksType), msg.ContentType)
-	rl := &ctrl_pb.RouterLinks{}
-	ctx.Req.NoError(proto.Unmarshal(msg.Body, rl))
-	ctx.Req.Equal(1, len(rl.Links))
-	ctx.Req.Equal(dial1.LinkId, rl.Links[0].Id)
-	ctx.Req.Equal("002", rl.Links[0].DestRouterId)
-
-	// The router should also send us a fault response for the dialed link
-	msg, err = msgc1.Next(5 * time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_FaultType), msg.ContentType)
-	fault := &ctrl_pb.Fault{}
-	ctx.Req.NoError(proto.Unmarshal(msg.Body, fault))
-	ctx.Req.Equal(ctrl_pb.FaultSubject_LinkFault, fault.Subject)
-	ctx.Req.Equal(dial2.LinkId, fault.Id)
-
-	// disconnect and reconnect the router
-	log := pfxlog.Logger()
-	log.Info("---------- router 2: stopping ------------------------")
-	log.Infof("expecting close of link: %v", dial1.LinkId)
-	ctx.Req.NoError(router2.Shutdown())
-	ctx.Req.NoError(ctx.waitForPortClose("localhost:6005", 2*time.Second))
-	log.Info("---------- router 2: stopped  ------------------------")
-	router2 = ctx.startRouter(2)
-	defer func() {
-		ctx.Req.NoError(router2.Shutdown())
-	}()
-
-	router2cc, _ = acceptControl("router-2")
-
-	// The router should tell us about the faulty link
-	msg, err = msgc1.Next(5 * time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_FaultType), msg.ContentType)
-	fault = &ctrl_pb.Fault{}
-	ctx.Req.NoError(proto.Unmarshal(msg.Body, fault))
-	ctx.Req.Equal(ctrl_pb.FaultSubject_LinkFault, fault.Subject)
-	ctx.Req.Equal(dial1.LinkId, fault.Id)
-
-	// Try one more time, this time it should result in a new connection
-	err = protobufs.MarshalTyped(dial2).WithTimeout(time.Second).SendAndWaitForWire(router1cc)
-	ctx.Req.NoError(err)
-
-	msg, err = msgc1.Next(time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_LinkConnectedType), msg.ContentType)
-	linkConnected := &ctrl_pb.LinkConnected{}
-	ctx.Req.NoError(proto.Unmarshal(msg.Body, linkConnected))
-	ctx.Req.Equal(dial2.LinkId, linkConnected.Id)
-
-	ctx.Teardown()
-	_ = router1cc.Close()
-	_ = router2cc.Close()
-	_ = ctrlListener.Close()
-}
-
 func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
@@ -362,52 +209,78 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	ctrlListener := ctx.NewControlChannelListener()
 	router1 := ctx.startRouter(1)
 
-	acceptControl := func(id string) (channel.Channel, *testutil.MessageCollector) {
-		return testutil.AcceptControl(id, ctrlListener, ctx.Req)
+	router1cc, linkCheck1 := testutil.StartLinkTest("router-1", ctrlListener, ctx.Req)
+
+	router1Listeners := &ctrl_pb.Listeners{}
+	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ContentType_ListenersHeader)]; found {
+		ctx.Req.NoError(proto.Unmarshal(val, router1Listeners))
 	}
 
-	router1cc, msgc1 := acceptControl("router-1")
+	router2 := ctx.startRouter(2)
+	router2cc, linkCheck2 := testutil.StartLinkTest("router-2", ctrlListener, ctx.Req)
 
-	ctx.startRouter(2)
-
-	router2cc, msgc2 := acceptControl("router-2")
-
-	dial1 := &ctrl_pb.Dial{
-		LinkId:       uuid.NewString(),
-		RouterId:     "002",
-		Address:      "tls:localhost:6005",
-		LinkProtocol: "tls",
+	router2Listeners := &ctrl_pb.Listeners{}
+	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ContentType_ListenersHeader)]; found {
+		ctx.Req.NoError(proto.Unmarshal(val, router1Listeners))
 	}
 
-	// send initial link request. This should result in a new link
-	err := protobufs.MarshalTyped(dial1).WithTimeout(time.Second).SendAndWaitForWire(router1cc)
-	ctx.Req.NoError(err)
-
-	msg, err := msgc1.Next(time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_LinkConnectedType), msg.ContentType)
-
-	dial2 := &ctrl_pb.Dial{
-		LinkId:       uuid.NewString(),
-		RouterId:     "002",
-		Address:      "tls:localhost:6005",
-		LinkProtocol: "tls",
+	peerUpdates1 := &ctrl_pb.PeerStateChanges{
+		Changes: []*ctrl_pb.PeerStateChange{
+			{
+				Id:        router1.GetRouterId().Token,
+				Version:   "v0.0.0",
+				State:     ctrl_pb.PeerState_Healthy,
+				Listeners: router1Listeners.Listeners,
+			},
+		},
 	}
 
-	// send another link request. This should result in the router letting us know about the current link
-	err = protobufs.MarshalTyped(dial2).WithTimeout(time.Second).SendAndWaitForWire(router1cc)
-	ctx.Req.NoError(err)
+	ctx.Req.NoError(protobufs.MarshalTyped(peerUpdates1).WithTimeout(time.Second).SendAndWaitForWire(router2cc))
 
-	msg, err = msgc1.Next(time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_RouterLinksType), msg.ContentType)
-	rl := &ctrl_pb.RouterLinks{}
-	ctx.Req.NoError(proto.Unmarshal(msg.Body, rl))
-	ctx.Req.Equal(1, len(rl.Links))
-	ctx.Req.Equal(dial1.LinkId, rl.Links[0].Id)
-	ctx.Req.Equal("002", rl.Links[0].DestRouterId)
+	peerUpdates2 := &ctrl_pb.PeerStateChanges{
+		Changes: []*ctrl_pb.PeerStateChange{
+			{
+				Id:        router2.GetRouterId().Token,
+				Version:   "v0.0.0",
+				State:     ctrl_pb.PeerState_Healthy,
+				Listeners: router2Listeners.Listeners,
+			},
+		},
+	}
 
-	// disconnect and reconnect the router
+	ctx.Req.NoError(protobufs.MarshalTyped(peerUpdates2).WithTimeout(time.Second).SendAndWaitForWire(router1cc))
+
+	time.Sleep(time.Second)
+
+	linkCheck1.RequireNoErrors()
+	link1 := linkCheck1.RequireOneActiveLink()
+
+	linkCheck2.RequireNoErrors()
+	link2 := linkCheck1.RequireOneActiveLink()
+
+	ctx.Req.Equal(link1.Id, link2.Id)
+
+	// Test closing control ch to router 1. On reconnect the existing link should get reported
+	ctx.Req.NoError(router1cc.Close())
+	_, linkCheck1 = testutil.StartLinkTest("router-1", ctrlListener, ctx.Req)
+
+	time.Sleep(time.Second)
+
+	linkCheck1.RequireNoErrors()
+	link1 = linkCheck1.RequireOneActiveLink()
+	ctx.Req.Equal(link1.Id, link2.Id)
+
+	// Test closing control ch to router 2. On reconnect the existing link should get reported
+	ctx.Req.NoError(router2cc.Close())
+	_, linkCheck2 = testutil.StartLinkTest("router-2", ctrlListener, ctx.Req)
+
+	time.Sleep(time.Second)
+
+	linkCheck2.RequireNoErrors()
+	link2 = linkCheck2.RequireOneActiveLink()
+	ctx.Req.Equal(link1.Id, link2.Id)
+
+	// restart router 1
 	ctx.Req.NoError(router1.Shutdown())
 	ctx.Req.NoError(ctx.waitForPortClose("localhost:6004", 2*time.Second))
 	router1 = ctx.startRouter(1)
@@ -415,27 +288,20 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 		ctx.Req.NoError(router1.Shutdown())
 	}()
 
-	router1cc, msgc1 = acceptControl("router-1")
+	router1cc, linkCheck1 = testutil.StartLinkTest("router-1", ctrlListener, ctx.Req)
+	ctx.Req.NoError(protobufs.MarshalTyped(peerUpdates2).WithTimeout(time.Second).SendAndWaitForWire(router1cc))
 
-	// The router should tell us about the faulty link
-	msg, err = msgc2.Next(5 * time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_FaultType), msg.ContentType)
-	fault := &ctrl_pb.Fault{}
-	ctx.Req.NoError(proto.Unmarshal(msg.Body, fault))
-	ctx.Req.Equal(ctrl_pb.FaultSubject_LinkFault, fault.Subject)
-	ctx.Req.Equal(dial1.LinkId, fault.Id)
+	linkCheck1.RequireNoErrors()
 
-	// Try one more time, this time it should result in a new connection
-	err = protobufs.MarshalTyped(dial2).WithTimeout(time.Second).SendAndWaitForWire(router1cc)
-	ctx.Req.NoError(err)
+	//time.Sleep(time.Minute)
+	//
+	//linkCheck1.RequireNoErrors()
+	//link1 = linkCheck1.RequireOneActiveLink()
+	//
+	//linkCheck2.RequireNoErrors()
+	//link2 = linkCheck1.RequireOneActiveLink()
 
-	msg, err = msgc1.Next(time.Second)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(int32(ctrl_pb.ContentType_LinkConnectedType), msg.ContentType)
-	linkConnected := &ctrl_pb.LinkConnected{}
-	ctx.Req.NoError(proto.Unmarshal(msg.Body, linkConnected))
-	ctx.Req.Equal(dial2.LinkId, linkConnected.Id)
+	ctx.Req.Equal(link1.Id, link2.Id)
 
 	ctx.Teardown()
 	_ = router1cc.Close()

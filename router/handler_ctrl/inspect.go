@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"
@@ -28,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"strings"
+	"time"
 )
 
 type inspectHandler struct {
@@ -83,10 +83,7 @@ func (context *inspectRequestContext) processLocal() {
 		if lc == "stackdump" {
 			context.appendValue(requested, debugz.GenerateStack())
 		} else if lc == "links" {
-			result := &inspect.LinksInspectResult{}
-			for link := range context.handler.env.GetXlinkRegistry().Iter() {
-				result.Links = append(result.Links, link.InspectLink())
-			}
+			result := context.handler.env.GetXlinkRegistry().Inspect(time.Second)
 			js, err := json.Marshal(result)
 			if err != nil {
 				context.appendError(errors.Wrap(err, "failed to marshal links to json").Error())

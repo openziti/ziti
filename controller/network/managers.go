@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/ioc"
 	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
@@ -39,16 +40,17 @@ const (
 )
 
 type Managers struct {
-	network     *Network
-	db          boltz.Db
-	stores      *db.Stores
-	Terminators *TerminatorManager
-	Routers     *RouterManager
-	Services    *ServiceManager
-	Inspections *InspectionsManager
-	Command     *CommandManager
-	Dispatcher  command.Dispatcher
-	Registry    ioc.Registry
+	network         *Network
+	db              boltz.Db
+	stores          *db.Stores
+	Terminators     *TerminatorManager
+	Routers         *RouterManager
+	Services        *ServiceManager
+	Inspections     *InspectionsManager
+	Command         *CommandManager
+	Dispatcher      command.Dispatcher
+	Registry        ioc.Registry
+	RouterMessaging *RouterMessaging
 }
 
 func (self *Managers) getDb() boltz.Db {
@@ -71,10 +73,7 @@ type updater[T models.Entity] interface {
 
 func DispatchCreate[T models.Entity](c creator[T], entity T, ctx *change.Context) error {
 	if entity.GetId() == "" {
-		id, err := idgen.NewUUIDString()
-		if err != nil {
-			return err
-		}
+		id := idgen.NewUUIDString()
 		entity.SetId(id)
 	}
 
@@ -154,7 +153,7 @@ func RegisterManagerDecoder[T models.Entity](managers *Managers, ctrl command.En
 	RegisterDeleteDecoder(managers, ctrl)
 }
 
-func NewManagers(network *Network, dispatcher command.Dispatcher, db boltz.Db, stores *db.Stores) *Managers {
+func NewManagers(network *Network, dispatcher command.Dispatcher, db boltz.Db, stores *db.Stores, routerCommPool goroutines.Pool) *Managers {
 	result := &Managers{
 		network:    network,
 		db:         db,
@@ -175,6 +174,8 @@ func NewManagers(network *Network, dispatcher command.Dispatcher, db boltz.Db, s
 		}
 	}
 	result.Command.registerGenericCommands()
+
+	result.RouterMessaging = NewRouterMessaging(result, routerCommPool)
 
 	RegisterManagerDecoder[*Service](result, result.Services)
 	RegisterManagerDecoder[*Router](result, result.Routers)

@@ -28,6 +28,7 @@ const (
 
 	LinkDialed                     LinkEventType = "dialed"
 	LinkFault                      LinkEventType = "fault"
+	LinkDuplicate                  LinkEventType = "duplicate"
 	LinkConnected                  LinkEventType = "connected"
 	LinkFromRouterNew              LinkEventType = "routerLinkNew"
 	LinkFromRouterKnown            LinkEventType = "routerLinkKnown"

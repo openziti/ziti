@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"strings"
 )
@@ -58,33 +59,9 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 
 	switch fault.Subject {
 	case ctrl_pb.FaultSubject_LinkFault:
-		linkId := fault.Id
-		if link, found := h.network.GetLink(linkId); found {
-			log = log.WithField("linkId", linkId)
-			wasConnected := link.IsUsable()
-			if err := h.network.LinkFaulted(linkId); err == nil {
-				h.network.LinkChanged(link)
-				otherRouter := link.Src
-				if link.Src.Id == h.r.Id {
-					otherRouter = link.Dst
-				}
-
-				if wasConnected {
-					if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Load() {
-						if err := protobufs.MarshalTyped(fault).Send(ctrl); err != nil {
-							log.WithField("routerId", otherRouter.Id).
-								WithError(err).Error("failed to forward link fault to other router")
-						}
-					}
-				}
-
-				log.Info("link fault")
-			} else {
-				log.WithError(err).Error("error handling link fault")
-			}
-		} else {
-			h.network.NotifyLinkIdEvent(linkId, event.LinkFault)
-		}
+		h.handleFaultedLink(log, fault)
+	case ctrl_pb.FaultSubject_LinkDuplicate:
+		h.handleFaultedLink(log, fault)
 
 	case ctrl_pb.FaultSubject_IngressFault:
 		if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
@@ -129,4 +106,36 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 	default:
 		log.Errorf("unexpected subject (%s)", fault.Subject.String())
 	}
+}
+
+func (h *faultHandler) handleFaultedLink(log *logrus.Entry, fault *ctrl_pb.Fault) {
+	linkId := fault.Id
+	if link, found := h.network.GetLink(linkId); found {
+		log = log.WithField("linkId", linkId)
+		wasConnected := link.IsUsable()
+		if err := h.network.LinkFaulted(linkId, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate); err == nil {
+			h.network.LinkChanged(link)
+			otherRouter := link.Src
+			if link.Src.Id == h.r.Id {
+				otherRouter = link.Dst
+			}
+
+			if wasConnected {
+				fault.Subject = ctrl_pb.FaultSubject_LinkFault
+				if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Load() {
+					if err := protobufs.MarshalTyped(fault).Send(ctrl); err != nil {
+						log.WithField("routerId", otherRouter.Id).
+							WithError(err).Error("failed to forward link fault to other router")
+					}
+				}
+			}
+
+			log.Info("link fault")
+		} else {
+			log.WithError(err).Error("error handling link fault")
+		}
+	} else {
+		h.network.NotifyLinkIdEvent(linkId, event.LinkFault)
+	}
+
 }

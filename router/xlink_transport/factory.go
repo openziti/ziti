@@ -32,6 +32,7 @@ const (
 	LinkHeaderType          = 1
 	LinkHeaderRouterId      = 2
 	LinkHeaderRouterVersion = 3
+	LinkHeaderBinding       = 4
 
 	PayloadChannel channelType = 1
 	AckChannel     channelType = 2

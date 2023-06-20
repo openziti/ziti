@@ -18,11 +18,24 @@ package xlink_transport
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"reflect"
+	"time"
+)
+
+const (
+	GroupDefault                     = "default"
+	DefaultHealthyMinRetryInterval   = 5 * time.Second
+	DefaultHealthyMaxRetryInterval   = 5 * time.Minute
+	DefaultHealthyRetryBackoffFactor = 1.5
+
+	DefaultUnhealthyMinRetryInterval   = time.Minute
+	DefaultUnhealthyMaxRetryInterval   = time.Hour
+	DefaultUnhealthyRetryBackoffFactor = 10
 )
 
 func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, error) {
@@ -42,6 +55,24 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		}
 	} else {
 		return nil, fmt.Errorf("missing 'bind' address in listener config")
+	}
+
+	if value, found := data["bindInterface"]; found {
+		if addressString, ok := value.(string); ok {
+			config.bindInterface = addressString
+		} else {
+			return nil, fmt.Errorf("invalid 'bindInterface' address in listener config (%T)", value)
+		}
+	} else {
+		if addr, ok := config.bind.(transport.HostPortAddress); ok {
+			intf, err := transport.ResolveInterface(addr.Hostname())
+			if err != nil {
+				pfxlog.Logger().WithError(err).WithField("addr", addr.String()).Warn("unable to get interface for address")
+			} else {
+				pfxlog.Logger().Infof("found interface %v for bind address %v", intf.Name, addr.String())
+				config.bindInterface = intf.Name
+			}
+		}
 	}
 
 	if value, found := data["advertise"]; found {
@@ -76,6 +107,10 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		}
 	}
 
+	if len(config.groups) == 0 {
+		config.groups = append(config.groups, GroupDefault)
+	}
+
 	if value, found := data["options"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			options, err := channel.LoadOptions(submap)
@@ -94,12 +129,13 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 }
 
 type listenerConfig struct {
-	bind         transport.Address
-	advertise    transport.Address
-	linkProtocol string
-	linkCostTags []string
-	groups       []string
-	options      *channel.Options
+	bind          transport.Address
+	advertise     transport.Address
+	bindInterface string
+	linkProtocol  string
+	linkCostTags  []string
+	groups        []string
+	options       *channel.Options
 }
 
 func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
@@ -137,6 +173,42 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 		}
 	}
 
+	if len(config.groups) == 0 {
+		config.groups = append(config.groups, GroupDefault)
+	}
+
+	config.healthyBackoffConfig = &backoffConfig{
+		minRetryInterval:   DefaultHealthyMinRetryInterval,
+		maxRetryInterval:   DefaultHealthyMaxRetryInterval,
+		retryBackoffFactor: DefaultHealthyRetryBackoffFactor,
+	}
+
+	config.unhealthyBackoffConfig = &backoffConfig{
+		minRetryInterval:   DefaultUnhealthyMinRetryInterval,
+		maxRetryInterval:   DefaultUnhealthyMaxRetryInterval,
+		retryBackoffFactor: DefaultUnhealthyRetryBackoffFactor,
+	}
+
+	if value, found := data["healthyDialBackoff"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if err := config.healthyBackoffConfig.load(submap); err != nil {
+				return nil, errors.Wrap(err, "failed to parse healthyDialBackoff config")
+			}
+		} else {
+			return nil, fmt.Errorf("invalid 'healthyDialBackoff' in dialer config (%s)", reflect.TypeOf(value))
+		}
+	}
+
+	if value, found := data["unhealthyDialBackoff"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if err := config.unhealthyBackoffConfig.load(submap); err != nil {
+				return nil, errors.Wrap(err, "failed to parse unhealthyDialBackoff config")
+			}
+		} else {
+			return nil, fmt.Errorf("invalid 'healthyDialBackoff' in dialer config (%s)", reflect.TypeOf(value))
+		}
+	}
+
 	if value, found := data["options"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			options, err := channel.LoadOptions(submap)
@@ -152,9 +224,67 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 	return config, nil
 }
 
+type backoffConfig struct {
+	minRetryInterval   time.Duration
+	maxRetryInterval   time.Duration
+	retryBackoffFactor float64
+}
+
+func (self *backoffConfig) GetMinRetryInterval() time.Duration {
+	return self.minRetryInterval
+}
+
+func (self *backoffConfig) GetMaxRetryInterval() time.Duration {
+	return self.maxRetryInterval
+}
+
+func (self *backoffConfig) GetRetryBackoffFactor() float64 {
+	return self.retryBackoffFactor
+}
+
+func (self *backoffConfig) load(data map[interface{}]interface{}) error {
+	if value, found := data["retryBackoffFactor"]; found {
+		if floatValue, ok := value.(float64); ok {
+			self.retryBackoffFactor = floatValue
+		} else if intValue, ok := value.(int); ok {
+			self.retryBackoffFactor = float64(intValue)
+		} else {
+			return errors.Errorf("invalid (non-numeric) value for retryBackoffFactor: %v", value)
+		}
+	}
+
+	if value, found := data["minRetryInterval"]; found {
+		if strVal, ok := value.(string); ok {
+			if d, err := time.ParseDuration(strVal); err == nil {
+				self.minRetryInterval = d
+			} else {
+				return errors.Wrapf(err, "invalid value for minRetryInterval: %v", value)
+			}
+		} else {
+			return errors.Errorf("invalid (non-string) value for minRetryInterval: %v", value)
+		}
+	}
+
+	if value, found := data["maxRetryInterval"]; found {
+		if strVal, ok := value.(string); ok {
+			if d, err := time.ParseDuration(strVal); err == nil {
+				self.maxRetryInterval = d
+			} else {
+				return errors.Wrapf(err, "invalid value for maxRetryInterval: %v", value)
+			}
+		} else {
+			return errors.Errorf("invalid (non-string) value for maxRetryInterval: %v", value)
+		}
+	}
+
+	return nil
+}
+
 type dialerConfig struct {
-	split        bool
-	localBinding string
-	groups       []string
-	options      *channel.Options
+	split                  bool
+	localBinding           string
+	groups                 []string
+	options                *channel.Options
+	healthyBackoffConfig   *backoffConfig
+	unhealthyBackoffConfig *backoffConfig
 }

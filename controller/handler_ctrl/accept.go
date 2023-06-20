@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"time"
@@ -82,19 +81,14 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 				if err := proto.Unmarshal(val, listeners); err != nil {
 					log.WithError(err).Error("unable to unmarshall listeners value")
 				} else {
+					r.SetLinkListeners(listeners.Listeners)
 					for _, listener := range listeners.Listeners {
-						log.WithField("address", listener.GetAddress()).WithField("protocol", listener.GetProtocol()).WithField("costTags", listener.GetCostTags()).Debug("router listener")
-						r.AddLinkListener(listener.GetAddress(), listener.GetProtocol(), listener.GetCostTags(), listener.GetGroups())
+						log.WithField("address", listener.GetAddress()).
+							WithField("protocol", listener.GetProtocol()).
+							WithField("costTags", listener.GetCostTags()).
+							Debug("router listener")
 					}
 				}
-			} else if listenerValue, found := ch.Underlay().Headers()[channel.HelloRouterAdvertisementsHeader]; found {
-				log.Debug("router reported listener using advertisement header")
-				addr := string(listenerValue)
-				linkProtocol := "tls"
-				if addr, _ := transport.ParseAddress(addr); addr != nil {
-					linkProtocol = addr.Type()
-				}
-				r.AddLinkListener(addr, linkProtocol, nil, nil)
 			} else {
 				log.Warn("no advertised listeners")
 			}

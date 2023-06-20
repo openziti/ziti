@@ -82,6 +82,10 @@ func (self *listener) Close() error {
 	return self.listener.Close()
 }
 
+func (self *listener) GetLocalBinding() string {
+	return self.config.bindInterface
+}
+
 func (self *listener) acceptLoop() {
 	for {
 		_, err := channel.NewChannelWithTransportConfiguration("link", self.listener, self, self.config.options, self.tcfg)
@@ -102,8 +106,10 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 
 	headers := binding.GetChannel().Underlay().Headers()
 	var chanType channelType
+
 	routerId := ""
 	routerVersion := ""
+	dialerBinding := ""
 
 	if headers != nil {
 		if v, ok := headers[LinkHeaderRouterId]; ok {
@@ -118,17 +124,27 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 			routerVersion = string(val)
 			log = log.WithField("routerVersion", routerVersion)
 		}
+		if val, ok := headers[LinkHeaderBinding]; ok {
+			dialerBinding = string(val)
+			log = log.WithField("dialerBinding", dialerBinding)
+		}
+	}
+
+	linkMeta := &linkMetadata{
+		routerId:      routerId,
+		routerVersion: routerVersion,
+		dialerBinding: dialerBinding,
 	}
 
 	if chanType != 0 {
 		log = log.WithField("channelType", chanType)
-		return self.bindSplitChannel(binding, chanType, routerId, routerVersion, log)
+		return self.bindSplitChannel(binding, chanType, linkMeta, log)
 	}
 
-	return self.bindNonSplitChannel(binding, routerId, routerVersion, log)
+	return self.bindNonSplitChannel(binding, linkMeta, log)
 }
 
-func (self *listener) bindSplitChannel(binding channel.Binding, chanType channelType, routerId, routerVersion string, log *logrus.Entry) error {
+func (self *listener) bindSplitChannel(binding channel.Binding, chanType channelType, linkMeta *linkMetadata, log *logrus.Entry) error {
 	headers := binding.GetChannel().Underlay().Headers()
 	id, ok := headers[LinkHeaderConnId]
 	if !ok {
@@ -137,7 +153,7 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 
 	log.Info("accepted part of split conn")
 
-	xli, err := self.getOrCreateSplitLink(string(id), routerId, routerVersion, binding, chanType)
+	xli, err := self.getOrCreateSplitLink(string(id), linkMeta, binding, chanType)
 	if err != nil {
 		log.WithError(err).Error("error binding link channel")
 		return err
@@ -169,7 +185,7 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 	return nil
 }
 
-func (self *listener) getOrCreateSplitLink(id, routerId, routerVersion string, binding channel.Binding, chanType channelType) (*splitImpl, error) {
+func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, binding channel.Binding, chanType channelType) (*splitImpl, error) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
@@ -182,9 +198,11 @@ func (self *listener) getOrCreateSplitLink(id, routerId, routerVersion string, b
 		pending = &pendingLink{
 			link: &splitImpl{
 				id:            binding.GetChannel().Id(),
-				routerId:      routerId,
-				routerVersion: routerVersion,
+				key:           xlink.GetLinkKey(linkMeta.dialerBinding, self.GetLinkProtocol(), linkMeta.routerId, self.config.bindInterface),
+				routerId:      linkMeta.routerId,
+				routerVersion: linkMeta.routerVersion,
 				linkProtocol:  self.GetLinkProtocol(),
+				dialAddress:   self.GetAdvertisement(),
 			},
 			eventTime: time.Now(),
 		}
@@ -211,13 +229,15 @@ func (self *listener) getOrCreateSplitLink(id, routerId, routerVersion string, b
 	return link, nil
 }
 
-func (self *listener) bindNonSplitChannel(binding channel.Binding, routerId, routerVersion string, log *logrus.Entry) error {
+func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *linkMetadata, log *logrus.Entry) error {
 	xli := &impl{
 		id:            binding.GetChannel().Id(),
+		key:           xlink.GetLinkKey(linkMeta.dialerBinding, self.GetLinkProtocol(), linkMeta.routerId, self.config.bindInterface),
 		ch:            binding.GetChannel(),
-		routerId:      routerId,
-		routerVersion: routerVersion,
+		routerId:      linkMeta.routerId,
+		routerVersion: linkMeta.routerVersion,
 		linkProtocol:  self.GetLinkProtocol(),
+		dialAddress:   self.GetAdvertisement(),
 	}
 
 	bindHandler := self.bindHandlerFactory.NewBindHandler(xli, true, true)
@@ -267,4 +287,10 @@ func (self *listener) cleanupExpiredPartialLinks() {
 type pendingLink struct {
 	link      *splitImpl
 	eventTime time.Time
+}
+
+type linkMetadata struct {
+	routerId      string
+	routerVersion string
+	dialerBinding string
 }

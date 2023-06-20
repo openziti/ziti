@@ -30,10 +30,6 @@ func (request *RouterLinks) GetContentType() int32 {
 	return int32(ContentType_RouterLinksType)
 }
 
-func (request *VerifyLink) GetContentType() int32 {
-	return int32(ContentType_VerifyLinkType)
-}
-
 func (request *VerifyRouter) GetContentType() int32 {
 	return int32(ContentType_VerifyRouterType)
 }
@@ -98,4 +94,8 @@ func (request *CreateTerminatorRequest) GetXtPrecedence() xt.Precedence {
 
 func (request *UpdateCtrlAddresses) GetContentType() int32 {
 	return int32(ContentType_UpdateCtrlAddressesType)
+}
+
+func (request *PeerStateChanges) GetContentType() int32 {
+	return int32(ContentType_PeerStateChangeRequestType)
 }

@@ -145,15 +145,17 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 
 	missingLinks := make([]*Link, 0)
 	for _, srcR := range routers {
+		doesOwnLinkMgmt, err := srcR.VersionInfo.HasMinimumVersion("0.30.0")
+		if err == nil && doesOwnLinkMgmt {
+			continue
+		}
+
 		for _, dstR := range routers {
 			if srcR != dstR && len(dstR.Listeners) > 0 {
 				for _, listener := range dstR.Listeners {
-					if !linkController.hasLink(srcR, dstR, listener.Protocol(), pendingLimit) {
-						id, err := idgen.NewUUIDString()
-						if err != nil {
-							return nil, err
-						}
-						link := newLink(id, listener.Protocol(), listener.AdvertiseAddress(), linkController.initialLatency)
+					if !linkController.hasLink(srcR, dstR, listener.GetProtocol(), pendingLimit) {
+						id := idgen.NewUUIDString()
+						link := newLink(id, listener.GetProtocol(), listener.GetAddress(), linkController.initialLatency)
 						link.Src = srcR
 						link.Dst = dstR
 						missingLinks = append(missingLinks, link)

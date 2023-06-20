@@ -26,6 +26,10 @@ import (
 )
 
 func (network *Network) assemble() {
+	if !network.options.EnableLegacyLinkMgmt {
+		return
+	}
+
 	log := pfxlog.Logger()
 
 	if network.Routers.connectedCount() > 1 {
@@ -121,6 +125,8 @@ func (network *Network) clean() {
 	log := pfxlog.Logger()
 
 	failedLinks := network.linkController.linksInMode(Failed)
+	duplicateLinks := network.linkController.linksInMode(Duplicate)
+	failedLinks = append(failedLinks, duplicateLinks...)
 
 	now := info.NowInMilliseconds()
 	lRemove := make(map[string]*Link)

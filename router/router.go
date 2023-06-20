@@ -22,12 +22,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/fabric/config"
+	"github.com/openziti/fabric/router/link"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/xweb/v2"
 	metrics2 "github.com/rcrowley/go-metrics"
 	"io/fs"
-	"math/rand"
 	"os"
 	"path"
 	"plugin"
@@ -57,7 +57,6 @@ import (
 	"github.com/openziti/fabric/router/xlink_transport"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -79,8 +78,9 @@ type Router struct {
 	xlinkFactories  map[string]xlink.Factory
 	xlinkListeners  []xlink.Listener
 	xlinkDialers    []xlink.Dialer
-	xlinkRegistry   *linkRegistryImpl
+	xlinkRegistry   xlink.Registry
 	xgressListeners []xgress.Listener
+	linkDialerPool  goroutines.Pool
 	rateLimiterPool goroutines.Pool
 	metricsRegistry metrics.UsageRegistry
 	shutdownC       chan struct{}
@@ -107,7 +107,7 @@ func (self *Router) GetDialerCfg() map[string]xgress.OptionsData {
 	return self.config.Dialers
 }
 
-func (self *Router) GetXlinkDialer() []xlink.Dialer {
+func (self *Router) GetXlinkDialers() []xlink.Dialer {
 	return self.xlinkDialers
 }
 
@@ -164,6 +164,24 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	metricsRegistry := metrics.NewUsageRegistry(config.Id.Token, map[string]string{}, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
 
+	linkDialerPoolConfig := goroutines.PoolConfig{
+		QueueSize:   uint32(config.Forwarder.LinkDial.QueueLength),
+		MinWorkers:  0,
+		MaxWorkers:  uint32(config.Forwarder.LinkDial.WorkerCount),
+		IdleTime:    30 * time.Second,
+		CloseNotify: closeNotify,
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during link dial")
+		},
+	}
+
+	fabricMetrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, metricsRegistry, "pool.link.dialer")
+
+	linkDialerPool, err := goroutines.NewPool(linkDialerPoolConfig)
+	if err != nil {
+		panic(errors.Wrap(err, "error creating link dialer pool"))
+	}
+
 	router := &Router{
 		config:              config,
 		metricsRegistry:     metricsRegistry,
@@ -172,10 +190,11 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 		versionProvider:     versionProvider,
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
+		linkDialerPool:      linkDialerPool,
 	}
 
 	router.ctrls = env.NewNetworkControllers(config.Ctrl.DefaultRequestTimeout, router.connectToController, &config.Ctrl.Heartbeats)
-	router.xlinkRegistry = NewLinkRegistry(router.ctrls)
+	router.xlinkRegistry = link.NewLinkRegistry(router)
 	router.faulter = forwarder.NewFaulter(router.ctrls, config.Forwarder.FaultTxInterval, closeNotify)
 	router.scanner = forwarder.NewScanner(router.ctrls, config.Forwarder, closeNotify)
 	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, router.scanner, config.Forwarder, closeNotify)
@@ -184,7 +203,6 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	xgress.InitAcker(router.forwarder, metricsRegistry, closeNotify)
 	xgress.InitRetransmitter(router.forwarder, router.forwarder, metricsRegistry, closeNotify)
 
-	var err error
 	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, router.forwarder, router)
 	if err != nil {
 		panic(err)
@@ -212,8 +230,6 @@ func (self *Router) GetConfig() *Config {
 }
 
 func (self *Router) Start() error {
-	rand.Seed(info.NowInMilliseconds())
-
 	if err := os.MkdirAll(self.config.Ctrl.DataDir, 0700); err != nil {
 		logrus.WithField("dir", self.config.Ctrl.DataDir).WithError(err).Error("failed to initialize data directory")
 		return err
@@ -244,6 +260,7 @@ func (self *Router) Start() error {
 
 	self.startXlinkDialers()
 	self.startXlinkListeners()
+	self.setDefaultDialerBindings()
 	self.startXgressListeners()
 
 	for _, web := range self.xwebs {
@@ -354,6 +371,10 @@ func (self *Router) initRateLimiterPool() error {
 	return nil
 }
 
+func (self *Router) GetLinkDialerPool() goroutines.Pool {
+	return self.linkDialerPool
+}
+
 func (self *Router) GetRateLimiterPool() goroutines.Pool {
 	return self.rateLimiterPool
 }
@@ -379,8 +400,10 @@ func (self *Router) registerComponents() error {
 		return err
 	}
 
-	if err := self.RegisterXrctrl(self.xlinkRegistry); err != nil {
-		return err
+	if v, ok := self.xlinkRegistry.(env.Xrctrl); ok {
+		if err := self.RegisterXrctrl(v); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -409,7 +432,14 @@ func (self *Router) registerPlugins() error {
 
 func (self *Router) startXlinkDialers() {
 	for _, lmap := range self.config.Link.Dialers {
-		binding := lmap["binding"].(string)
+		binding := "transport"
+		if bindingVal, ok := lmap["binding"]; ok {
+			bindingName := fmt.Sprintf("%v", bindingVal)
+			if len(bindingName) > 0 {
+				binding = bindingName
+			}
+		}
+
 		if factory, found := self.xlinkFactories[binding]; found {
 			dialer, err := factory.CreateDialer(self.config.Id, self.forwarder, lmap)
 			if err != nil {
@@ -423,7 +453,14 @@ func (self *Router) startXlinkDialers() {
 
 func (self *Router) startXlinkListeners() {
 	for _, lmap := range self.config.Link.Listeners {
-		binding := lmap["binding"].(string)
+		binding := "transport"
+		if bindingVal, ok := lmap["binding"]; ok {
+			bindingName := fmt.Sprintf("%v", bindingVal)
+			if len(bindingName) > 0 {
+				binding = bindingName
+			}
+		}
+
 		if factory, found := self.xlinkFactories[binding]; found {
 			lmap["protocol"] = "ziti-link"
 			listener, err := factory.CreateListener(self.config.Id, self.forwarder, lmap)
@@ -436,6 +473,12 @@ func (self *Router) startXlinkListeners() {
 			self.xlinkListeners = append(self.xlinkListeners, listener)
 			logrus.Infof("started Xlink listener with binding [%s] advertising [%s]", binding, listener.GetAdvertisement())
 		}
+	}
+}
+
+func (self *Router) setDefaultDialerBindings() {
+	if len(self.xlinkDialers) == 1 && len(self.xlinkListeners) == 1 && self.xlinkDialers[0].GetBinding() == "" {
+		self.xlinkDialers[0].AdoptBinding(self.xlinkListeners[0])
 	}
 }
 
@@ -513,17 +556,14 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 
 	attributes[channel.HelloVersionHeader] = version
 
-	if len(self.xlinkListeners) == 1 {
-		attributes[channel.HelloRouterAdvertisementsHeader] = []byte(self.xlinkListeners[0].GetAdvertisement())
-	}
-
 	listeners := &ctrl_pb.Listeners{}
 	for _, listener := range self.xlinkListeners {
 		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
-			Address:  listener.GetAdvertisement(),
-			Protocol: listener.GetLinkProtocol(),
-			CostTags: listener.GetLinkCostTags(),
-			Groups:   listener.GetGroups(),
+			Address:      listener.GetAdvertisement(),
+			Protocol:     listener.GetLinkProtocol(),
+			CostTags:     listener.GetLinkCostTags(),
+			Groups:       listener.GetGroups(),
+			LocalBinding: listener.GetLocalBinding(),
 		})
 	}
 
@@ -733,30 +773,30 @@ func (self *linkHealthCheck) Execute(ctx context.Context) (details interface{}, 
 	done := false
 
 	for !done {
-		var link xlink.Xlink
+		var currentLink xlink.Xlink
 		select {
 		case nextLink, ok := <-iter:
 			if !ok {
 				done = true
 			}
-			link = nextLink
+			currentLink = nextLink
 		case <-ctx.Done():
 			done = true
 		}
 
-		if link != nil {
+		if currentLink != nil {
 			detail := &linkDetail{
-				LinkId:       link.Id(),
-				DestRouterId: link.DestinationId(),
+				LinkId:       currentLink.Id(),
+				DestRouterId: currentLink.DestinationId(),
 				Addresses:    map[string]linkConnDetail{},
 			}
-			for _, addr := range link.GetAddresses() {
+			for _, addr := range currentLink.GetAddresses() {
 				detail.Addresses[addr.Id] = linkConnDetail{
 					LocalAddr:  addr.LocalAddr,
 					RemoteAddr: addr.RemoteAddr,
 				}
 			}
-			latencyMetric := self.router.metricsRegistry.Histogram("link." + link.Id() + ".latency")
+			latencyMetric := self.router.metricsRegistry.Histogram("link." + currentLink.Id() + ".latency")
 			if latencyMetric != nil {
 				latency := latencyMetric.(metrics2.Histogram).Mean()
 				detail.Latency = &latency
