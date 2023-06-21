@@ -8,22 +8,22 @@ require (
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/openziti/channel/v2 v2.0.80
-	github.com/openziti/edge v0.24.326
+	github.com/openziti/channel/v2 v2.0.81
+	github.com/openziti/edge v0.24.345
 	github.com/openziti/fablab v0.4.52
-	github.com/openziti/fabric v0.23.35
-	github.com/openziti/foundation/v2 v2.0.25
-	github.com/openziti/identity v1.0.56
-	github.com/openziti/sdk-golang v0.20.58
-	github.com/openziti/storage v0.2.7
-	github.com/openziti/transport/v2 v2.0.90
+	github.com/openziti/fabric v0.23.39
+	github.com/openziti/foundation/v2 v2.0.26
+	github.com/openziti/identity v1.0.57
+	github.com/openziti/sdk-golang v0.20.67
+	github.com/openziti/storage v0.2.8
+	github.com/openziti/transport/v2 v2.0.91
 	github.com/openziti/ziti v0.28.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	go.etcd.io/bbolt v1.3.7
-	golang.org/x/net v0.10.0
+	golang.org/x/net v0.11.0
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -63,14 +63,14 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
-	github.com/go-openapi/errors v0.20.3 // indirect
+	github.com/go-openapi/errors v0.20.4 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/loads v0.21.2 // indirect
 	github.com/go-openapi/runtime v0.26.0 // indirect
 	github.com/go-openapi/spec v0.20.9 // indirect
 	github.com/go-openapi/strfmt v0.21.7 // indirect
-	github.com/go-openapi/swag v0.22.3 // indirect
+	github.com/go-openapi/swag v0.22.4 // indirect
 	github.com/go-openapi/validate v0.22.1 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
@@ -100,7 +100,7 @@ require (
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/kataras/go-events v0.0.3 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/klauspost/compress v1.16.5 // indirect
+	github.com/klauspost/compress v1.16.6 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/kyokomi/emoji/v2 v2.2.12 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
@@ -116,7 +116,7 @@ require (
 	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/michaelquigley/figlet v0.0.0-20191015203154-054d06db54b4 // indirect
-	github.com/miekg/dns v1.1.54 // indirect
+	github.com/miekg/dns v1.1.55 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -126,11 +126,11 @@ require (
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/agent v1.0.14 // indirect
-	github.com/openziti/edge-api v0.25.25 // indirect
+	github.com/openziti/edge-api v0.25.29 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.26 // indirect
-	github.com/openziti/runzmd v1.0.25 // indirect
-	github.com/openziti/secretstream v0.1.8 // indirect
+	github.com/openziti/metrics v1.2.27 // indirect
+	github.com/openziti/runzmd v1.0.26 // indirect
+	github.com/openziti/secretstream v0.1.9 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.0.2 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.1 // indirect
@@ -170,14 +170,14 @@ require (
 	go.opentelemetry.io/otel v1.16.0 // indirect
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
 	go.opentelemetry.io/otel/trace v1.16.0 // indirect
-	golang.org/x/crypto v0.9.0 // indirect
+	golang.org/x/crypto v0.10.0 // indirect
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
-	golang.org/x/image v0.7.0 // indirect
+	golang.org/x/image v0.8.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/sync v0.2.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
-	golang.org/x/term v0.8.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
+	golang.org/x/sys v0.9.0 // indirect
+	golang.org/x/term v0.9.0 // indirect
+	golang.org/x/text v0.10.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
