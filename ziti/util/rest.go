@@ -377,6 +377,10 @@ func UnTargz(tarball, target string, onlyFiles []string) error {
 				return err
 			}
 			continue
+		} else {
+			if err = os.Remove(path); err != nil {
+				fmt.Printf("error removing [%s] (%v)", path, err)
+			}
 		}
 
 		file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
