@@ -5,8 +5,8 @@ services:
     env_file:
       - ./.env
     ports:
-      - ${ZITI_EDGE_CONTROLLER_PORT:-1280}:${ZITI_EDGE_CONTROLLER_PORT:-1280}
-      - ${ZITI_CTRL_PORT:-6262}:${ZITI_CTRL_PORT:-6262}
+      - ${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
+      - ${ZITI_CTRL_LISTENER_PORT:-6262}:${ZITI_CTRL_LISTENER_PORT:-6262}
     environment:
       - ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION=${ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION}
       - ZITI_EDGE_ROUTER_ENROLLMENT_DURATION=${ZITI_EDGE_ROUTER_ENROLLMENT_DURATION}
@@ -28,8 +28,7 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
     env_file:
       - ./.env
     networks:
@@ -51,10 +50,10 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_ROUTER_RAWNAME=${ZITI_EDGE_ROUTER_RAWNAME:-ziti-edge-router}
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+      - ZITI_EDGE_ROUTER_NAME=${ZITI_EDGE_ROUTER_NAME:-ziti-edge-router}
       - ZITI_EDGE_ROUTER_ROLES=public
+      - ZITI_EDGE_ROUTER_ADVERTISED_HOST=${ZITI_EDGE_ROUTER_ADVERTISED_HOST:-ziti-edge-router}
     ports:
       - ${ZITI_EDGE_ROUTER_PORT:-3022}:${ZITI_EDGE_ROUTER_PORT:-3022}
     networks:
@@ -70,11 +69,11 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router-wss
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+      - ZITI_EDGE_ROUTER_NAME=ziti-edge-router-wss
       - ZITI_EDGE_ROUTER_PORT=3023
       - ZITI_EDGE_ROUTER_ROLES=public
+      - ZITI_EDGE_ROUTER_ADVERTISED_HOST=ziti-edge-router-wss
     ports:
       - 3023:3023
     networks:
@@ -90,9 +89,9 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_ROUTER_RAWNAME=ziti-fabric-router-br
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+      - ZITI_EDGE_ROUTER_NAME=ziti-fabric-router-br
+      - ZITI_EDGE_ROUTER_ADVERTISED_HOST=ziti-fabric-router-br
     #ports:
     #  - 3024:3024
     networks:
@@ -108,9 +107,9 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-red
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+      - ZITI_EDGE_ROUTER_NAME=ziti-private-red
+      - ZITI_EDGE_ROUTER_ADVERTISED_HOST=ziti-private-red
     #ports:
     #  - 3025:3025
     networks:
@@ -125,9 +124,9 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-blue
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+      - ZITI_EDGE_ROUTER_NAME=ziti-private-blue
+      - ZITI_EDGE_ROUTER_ADVERTISED_HOST=ziti-private-blue
     #ports:
     #  - 3026:3026
     networks:
@@ -151,8 +150,8 @@ services:
   ziti-console:
     image: openziti/zac
     environment:
-      - ZAC_SERVER_CERT_CHAIN=/persistent/pki/${ZITI_EDGE_CONTROLLER_HOSTNAME:-ziti-controller}-intermediate/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME:-ziti-controller}-server.cert
-      - ZAC_SERVER_KEY=/persistent/pki/${ZITI_EDGE_CONTROLLER_HOSTNAME:-ziti-controller}-intermediate/keys/${ZITI_EDGE_CONTROLLER_HOSTNAME:-ziti-controller}-server.key
+      - ZAC_SERVER_CERT_CHAIN=/persistent/pki/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-controller}-intermediate/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-controller}-server.cert
+      - ZAC_SERVER_KEY=/persistent/pki/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-controller}-intermediate/keys/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-controller}-server.key
       - PORTTLS=8443
     ports:
       - 1408:1408

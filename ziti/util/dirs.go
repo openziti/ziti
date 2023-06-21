@@ -37,7 +37,7 @@ func HomeDir() string {
 }
 
 func ConfigDir() (string, error) {
-	path := os.Getenv("ZITI_HOME")
+	path := os.Getenv("ZITI_CONFIG_DIR")
 	if path != "" {
 		return path, nil
 	}
@@ -49,19 +49,6 @@ func ConfigDir() (string, error) {
 	}
 
 	err := os.MkdirAll(path, DefaultWritePermissions)
-	if err != nil {
-		return "", err
-	}
-	return path, nil
-}
-
-func FabricConfigDir() (string, error) {
-	h, err := ConfigDir()
-	if err != nil {
-		return "", err
-	}
-	path := filepath.Join(h, "fabric")
-	err = os.MkdirAll(path, DefaultWritePermissions)
 	if err != nil {
 		return "", err
 	}

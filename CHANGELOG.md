@@ -1,3 +1,40 @@
+# Release 0.28.2
+
+## What's New
+
+* IMPORTANT: If you update your OpenZiti binaries to this version or later (which can be done easily with the `getZiti()` function, you will need to migrate any existing network that has been developed using OpenZiti v0.27.5 or earlier binaries as the new binaries will expect the new environment variable names. A function `performMigration()` has been provided in the `ziti-cli-script.sh` for this purpose. Simply source the latest `ziti-cli-script.sh`, and your current network's .env file, then run `performMigration()` to update environment variable name references. If the migration process cannot find your existing environment file in the default location, you will need to provide the path to the migration function, ex: `performMigration <path-to-environment-file>`
+* If you were using the `ZITI_HOME` environment variable to configure where your ziti CLI profiles were stored, you should now use `ZITI_CONFIG_DIR` instead.
+
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.80 -> v2.0.81](https://github.com/openziti/channel/compare/v2.0.80...v2.0.81)
+* github.com/openziti/edge: [v0.24.326 -> v0.24.345](https://github.com/openziti/edge/compare/v0.24.326...v0.24.345)
+    * [Issue #1528](https://github.com/openziti/edge/issues/1528) - edge unbind returns incorect message if token is not suplied or invalid
+    * [Issue #1416](https://github.com/openziti/edge/issues/1416) - Allow MFA token name to be configured
+
+* github.com/openziti/edge-api: [v0.25.25 -> v0.25.29](https://github.com/openziti/edge-api/compare/v0.25.25...v0.25.29)
+* github.com/openziti/fabric: [v0.23.35 -> v0.23.39](https://github.com/openziti/fabric/compare/v0.23.35...v0.23.39)
+    * [Issue #751](https://github.com/openziti/fabric/issues/751) - Use of Fprintf causing buffer pool corruption with amqp event output
+
+* github.com/openziti/foundation/v2: [v2.0.25 -> v2.0.26](https://github.com/openziti/foundation/compare/v2.0.25...v2.0.26)
+* github.com/openziti/identity: [v1.0.56 -> v1.0.57](https://github.com/openziti/identity/compare/v1.0.56...v1.0.57)
+* github.com/openziti/runzmd: [v1.0.25 -> v1.0.26](https://github.com/openziti/runzmd/compare/v1.0.25...v1.0.26)
+* github.com/openziti/sdk-golang: [v0.20.58 -> v0.20.67](https://github.com/openziti/sdk-golang/compare/v0.20.58...v0.20.67)
+* github.com/openziti/storage: [v0.2.7 -> v0.2.8](https://github.com/openziti/storage/compare/v0.2.7...v0.2.8)
+* github.com/openziti/transport/v2: [v2.0.90 -> v2.0.91](https://github.com/openziti/transport/compare/v2.0.90...v2.0.91)
+* github.com/openziti/metrics: [v1.2.26 -> v1.2.27](https://github.com/openziti/metrics/compare/v1.2.26...v1.2.27)
+* github.com/openziti/secretstream: [v0.1.8 -> v0.1.9](https://github.com/openziti/secretstream/compare/v0.1.8...v0.1.9)
+* github.com/openziti/ziti: [v0.28.1 -> v0.28.2](https://github.com/openziti/ziti/compare/v0.28.1...v0.28.2)
+    * [Issue #1144](https://github.com/openziti/ziti/issues/1144) - DB explore subcommand panic
+    * [Issue #986](https://github.com/openziti/ziti/issues/986) - Updated default ports in `.env` file to match documentation.
+    * [Issue #920](https://github.com/openziti/ziti/issues/920) - Fixed bug causing failure when re-running quickstart.
+    * [Issue #779](https://github.com/openziti/ziti/issues/779) - Add ability to upgrade ziti binaries using a quickstart function.
+    * [Issue #761](https://github.com/openziti/ziti/issues/761) - Remove Management Listener section from controller config.
+    * [Issue #650](https://github.com/openziti/ziti/issues/650) - Removed/Updated references to `ZITI_EDGE_CONTROLLER_API`
+    * Quickstart environment variable names have been cleaned up.
+    * [Issue #1030](https://github.com/openziti/ziti/issues/1030) - Provide an upgrade path for quickstart cleanup
+
 # Release 0.28.1
 
 ## What's New

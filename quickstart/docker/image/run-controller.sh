@@ -1,21 +1,19 @@
 #!/bin/bash
-
 ziti_controller_cfg="${ZITI_HOME}/ziti-edge-controller.yaml"
 
-export ZITI_CONTROLLER_RAWNAME=ziti-controller
-export ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
+export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=ziti-edge-controller
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
-# access-control.init is created by ziti-controller-init-container after initial controller startup
+echo "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS is ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
 if [ ! -f "${ZITI_HOME}/access-control.init" ]; then
-  generateEnvFile
+  setupEnvironment
+  persistEnvironmentValues
 fi
-. "${ZITI_HOME}/ziti.env"
+. ${ZITI_HOME}/ziti.env
 
 # create pki
 createPki
-
 if [ ! -f "${ziti_controller_cfg}" ]; then
   echo " "
   echo "${ziti_controller_cfg} doesn't exist. Generating config file"
@@ -29,9 +27,9 @@ else
 fi
 
 # initialize the database with the admin user:
-"${ZITI_BIN_DIR}/ziti-controller" edge init "${ZITI_HOME}/ziti-edge-controller.yaml" -u "${ZITI_USER}" -p "${ZITI_PWD}"
+"${ZITI_BIN_DIR}/ziti" controller edge init "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml" -u "${ZITI_USER}" -p "${ZITI_PWD}"
 
 # create a place for the internal db
 mkdir -p $ZITI_HOME/db
 
-"${ZITI_BIN_DIR}/ziti-controller" run "${ZITI_HOME}/ziti-edge-controller.yaml"
+"${ZITI_BIN_DIR}/ziti" controller run "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml"
