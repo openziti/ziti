@@ -377,6 +377,10 @@ func UnTargz(tarball, target string, onlyFiles []string) error {
 				return err
 			}
 			continue
+		} else {
+			if err = os.Remove(path); err != nil {
+				fmt.Printf("error removing [%s] (%v)", path, err)
+			}
 		}
 
 		file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
@@ -862,10 +866,16 @@ func EdgeControllerGetManagementApiBasePath(host string, cert string) string {
 		client.SetRootCertificate(cert)
 	}
 
-	resp, err := client.R().Get("/version")
+	// check v1 path first
+	resp, err := client.R().Get("/edge/client/v1/version")
 
 	if err != nil || resp.StatusCode() != http.StatusOK {
-		return host
+		// if v1 path fails, fall back to removed /version path
+		resp, err = client.R().Get("/version")
+
+		if err != nil || resp.StatusCode() != http.StatusOK {
+			return host
+		}
 	}
 
 	data, err := gabs.ParseJSON(resp.Body())

@@ -47,7 +47,6 @@ func WorkingDir() (string, error) {
 }
 
 func GetZitiHome() (string, error) {
-
 	// Get path from env variable
 	retVal := os.Getenv(constants.ZitiHomeVarName)
 
