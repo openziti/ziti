@@ -14,7 +14,7 @@ func InitEdgeRouters(componentSpec string, concurrency int) model.Action {
 }
 
 func (action *initEdgeRoutersAction) Execute(run model.Run) error {
-	return component.ExecInParallel(action.componentSpec, action.concurrency, (*zitilab.RouterType).CreateAndEnrollRouter).Execute(run)
+	return component.ExecInParallel(action.componentSpec, action.concurrency, zitilab.RouterActionsCreateAndEnroll).Execute(run)
 }
 
 type initEdgeRoutersAction struct {

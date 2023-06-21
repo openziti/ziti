@@ -21,7 +21,6 @@ import (
 	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/zititest/zitilab/pki"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/pkg/errors"
@@ -43,17 +42,12 @@ type ControllerType struct {
 	ConfigName     string
 	Version        string
 	LocalPath      string
-	actions        concurrenz.CopyOnWriteMap[string, model.ComponentAction]
 }
 
 func (self *ControllerType) GetActions() map[string]model.ComponentAction {
-	if len(self.actions.AsMap()) == 0 {
-		self.actions.Put(model.ComponentActionStop, model.ComponentActionF(self.Stop))
-		self.actions.Put(model.ComponentActionStart, model.ComponentActionF(self.Start))
-		self.actions.Put(model.ComponentActionStageFiles, model.ComponentActionF(self.StageFiles))
-		self.actions.Put(ControllerActionInitStandalone, model.ComponentActionF(self.InitStandalone))
+	return map[string]model.ComponentAction{
+		ControllerActionInitStandalone: model.ComponentActionF(self.InitStandalone),
 	}
-	return self.actions.AsMap()
 }
 
 func (self *ControllerType) Dump() any {

@@ -164,6 +164,10 @@ var Model = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},
 							Type:  &zitilab.EchoServerType{},
 						},
+						"iperf-server-ert": {
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
+							Type:  &zitilab.IPerfServerType{},
+						},
 					},
 				},
 				"ziti-edge-tunnel-host": {
@@ -174,6 +178,10 @@ var Model = &model.Model{
 								Version: "v0.21.4",
 							},
 						},
+						"iperf-server-zet": {
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
+							Type:  &zitilab.IPerfServerType{},
+						},
 					},
 				},
 				"ziti-tunnel-host": {
@@ -183,6 +191,10 @@ var Model = &model.Model{
 							Type: &zitilab.ZitiTunnelType{
 								Mode: zitilab.ZitiTunnelModeHost,
 							},
+						},
+						"iperf-server-zt": {
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
+							Type:  &zitilab.IPerfServerType{},
 						},
 					},
 				},
@@ -209,8 +221,12 @@ var Model = &model.Model{
 
 	Infrastructure: model.Stages{
 		aws_ssh_key.Express(),
-		terraform_0.Express(),
-		semaphore0.Ready(time.Minute),
+		&terraform_0.Terraform{
+			Retries: 3,
+			ReadyCheck: &semaphore0.ReadyStage{
+				MaxWait: 90 * time.Second,
+			},
+		},
 	},
 
 	Distribution: model.Stages{

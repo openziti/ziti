@@ -11,7 +11,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/channel/v2 v2.0.81
 	github.com/openziti/edge v0.24.348
-	github.com/openziti/fablab v0.4.58-0.20230614203155-19a2a4d811d3
+	github.com/openziti/fablab v0.5.0
 	github.com/openziti/fabric v0.23.39
 	github.com/openziti/foundation/v2 v2.0.26
 	github.com/openziti/identity v1.0.57

@@ -17,7 +17,7 @@ func InitController(componentSpec string) model.Action {
 }
 
 func (init *edgeInit) Execute(run model.Run) error {
-	return component.Exec(init.componentSpec, (*zitilab.ControllerType).InitStandalone).Execute(run)
+	return component.Exec(init.componentSpec, zitilab.ControllerActionInitStandalone).Execute(run)
 }
 
 type edgeInit struct {

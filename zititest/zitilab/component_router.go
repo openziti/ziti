@@ -31,12 +31,24 @@ import (
 
 var _ model.ComponentType = (*RouterType)(nil)
 
+const (
+	RouterActionsCreateAndEnroll = "createAndEnroll"
+	RouterActionsReEnroll        = "reEnroll"
+)
+
 type RouterType struct {
 	ConfigSourceFS fs.FS
 	ConfigSource   string
 	ConfigName     string
 	Version        string
 	LocalPath      string
+}
+
+func (self *RouterType) GetActions() map[string]model.ComponentAction {
+	return map[string]model.ComponentAction{
+		RouterActionsCreateAndEnroll: model.ComponentActionF(self.CreateAndEnroll),
+		RouterActionsReEnroll:        model.ComponentActionF(self.ReEnroll),
+	}
 }
 
 func (self *RouterType) Dump() any {
@@ -119,7 +131,7 @@ func (self *RouterType) Stop(_ model.Run, c *model.Component) error {
 	return lib.RemoteKillFilterF(factory, self.getProcessFilter(c))
 }
 
-func (self *RouterType) CreateAndEnrollRouter(run model.Run, c *model.Component) error {
+func (self *RouterType) CreateAndEnroll(run model.Run, c *model.Component) error {
 	if err := zitilib_actions.EdgeExec(c.GetModel(), "delete", "edge-router", c.Id); err != nil {
 		pfxlog.Logger().
 			WithError(err).
@@ -165,7 +177,7 @@ func (self *RouterType) CreateAndEnrollRouter(run model.Run, c *model.Component)
 	return host.Exec(c.GetHost(), cmd).Execute(run)
 }
 
-func (self *RouterType) ReEnrollRouter(run model.Run, c *model.Component) error {
+func (self *RouterType) ReEnroll(run model.Run, c *model.Component) error {
 	ssh := lib.NewSshConfigFactory(c.GetHost())
 
 	jwtFileName := filepath.Join(model.ConfigBuild(), c.Id+".jwt")
