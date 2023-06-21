@@ -93,10 +93,12 @@ func NewFileEventLogger(formatterFactory LoggingHandlerFactory, stdout bool, con
 			return nil, errors.New("missing required 'path' config for events FileLogger handler")
 		}
 
-		output = &lumberjack.Logger{
-			Filename:   filepath,
-			MaxSize:    maxsize,
-			MaxBackups: maxBackupFiles,
+		output = &newlineWriter{
+			out: &lumberjack.Logger{
+				Filename:   filepath,
+				MaxSize:    maxsize,
+				MaxBackups: maxBackupFiles,
+			},
 		}
 	}
 
@@ -108,4 +110,21 @@ func NewFileEventLogger(formatterFactory LoggingHandlerFactory, stdout bool, con
 
 	}
 	return nil, errors.New("'format' must be specified for event handler")
+}
+
+type newlineWriter struct {
+	out io.WriteCloser
+}
+
+func (self newlineWriter) Close() error {
+	return self.out.Close()
+}
+
+func (self newlineWriter) Write(p []byte) (int, error) {
+	n, err := self.out.Write(p)
+	if err != nil {
+		return n, err
+	}
+	m, err := self.out.Write([]byte("\n"))
+	return n + m, err
 }
