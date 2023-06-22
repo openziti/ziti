@@ -431,8 +431,8 @@ github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.6.0 h1:uL2shRDx7RTrOrTCUZEGP/wJUFiUI8QT6E7z5o8jga4=
 github.com/hashicorp/golang-lru v0.6.0/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
-github.com/hashicorp/golang-lru/v2 v2.0.3 h1:kmRrRLlInXvng0SmLxmQpQkpbYAvcXm7NPDrgxJa9mE=
-github.com/hashicorp/golang-lru/v2 v2.0.3/go.mod h1:QeFd9opnmA6QUJc5vARoKUSoFhyfM2/ZepoAG6RGpeM=
+github.com/hashicorp/golang-lru/v2 v2.0.4 h1:7GHuZcgid37q8o5i3QI9KMT4nCWQQ3Kx3Ov6bb9MfK0=
+github.com/hashicorp/golang-lru/v2 v2.0.4/go.mod h1:QeFd9opnmA6QUJc5vARoKUSoFhyfM2/ZepoAG6RGpeM=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/hashicorp/logutils v1.0.0/go.mod h1:QIAnNjmIWmVIIkWDTG1z5v++HQmx9WQRO+LraFDTW64=
@@ -643,8 +643,8 @@ github.com/openziti/agent v1.0.14 h1:OTYhj2HeIlFwaFNcVT5BlYf7s4xa0TNmhnjmBpN8Afg
 github.com/openziti/agent v1.0.14/go.mod h1:zfm53+PVWoGFzjGGgQdKby5749G6VRYHe+eQJmoVKy4=
 github.com/openziti/channel/v2 v2.0.81 h1:YtFMJz4pMhhOH92zZbOKAvx/l5zaRz5TQff0lTa5G6w=
 github.com/openziti/channel/v2 v2.0.81/go.mod h1:d+2+i51uXi8J6M8OsazLJg1OzSPmL+sOyzdiRUmra3I=
-github.com/openziti/edge v0.24.345 h1:7anwwljort9FsriHoBAiz6DOOkPJV2XCzZJLmn/TxFo=
-github.com/openziti/edge v0.24.345/go.mod h1:pjU6bCSfaAVQLajeKB/ypGYoeZnIuHw7Y75kX37WHTw=
+github.com/openziti/edge v0.24.348 h1:m0zh1n5OBj7Tjemu9XfxdYhbKvo6HdGQMHfC/Zledbo=
+github.com/openziti/edge v0.24.348/go.mod h1:wcoBVKqW99/CBg7LjzbHT3dJ8JMlRZelPhbjNcjwMr0=
 github.com/openziti/edge-api v0.25.29 h1:DbZ0GKpch9ik+XnC0qoP1dOg1AmgUEeWH4VIyOIehrQ=
 github.com/openziti/edge-api v0.25.29/go.mod h1:mqYquh1RYvHjV/M9MGO4Ng0Xq9ixAH8o8cT5kw5XCWY=
 github.com/openziti/fablab v0.4.52 h1:X5+NaRnfPxbzhxUh9b4IQmVNVgYWFf8/Ck2sKNz77ho=
