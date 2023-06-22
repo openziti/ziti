@@ -1,3 +1,9 @@
+# Release 0.28.3
+
+## Component Updates and Bug Fixes
+
+* Ziti Edge API was restore to the root URL handler for `/version` support and for older enrolled GO SDK clients
+
 # Release 0.28.2
 
 ## What's New
