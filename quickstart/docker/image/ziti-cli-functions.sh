@@ -443,7 +443,7 @@ function startController {
   log_file="${ZITI_HOME-}/${ZITI_CTRL_NAME}.log"
   "${ZITI_BIN_DIR-}/ziti" controller run "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml" &> "${log_file}" 2>&1 &
   pid=$!
-  echo -e "ziti-controller started as process id: ${pid}. log located at: $(BLUE "${log_file}")"
+  echo -e "ziti controller started as process id: ${pid}. log located at: $(BLUE "${log_file}")"
 }
 
 # Disable unused args shellcheck, the arg is optional
@@ -1089,7 +1089,7 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=${ZITI_HOME}
-ExecStart="${ZITI_BIN_DIR}/ziti-controller" run "${ZITI_HOME}/${controller_name}.yaml"
+ExecStart="${ZITI_BIN_DIR}/ziti" controller run "${ZITI_HOME}/${controller_name}.yaml"
 Restart=always
 RestartSec=2
 LimitNOFILE=65535
@@ -1147,7 +1147,7 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=${ZITI_HOME}
-ExecStart="${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME}/${router_name}.yaml"
+ExecStart="${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME}/${router_name}.yaml"
 Restart=always
 RestartSec=2
 LimitNOFILE=65536
@@ -1203,7 +1203,8 @@ cat > "${output_file}" <<HeredocForLaunchd
       <string>ziti-controller-${controller_name}</string>
       <key>ProgramArguments</key>
       <array>
-        <string>$ZITI_BIN_DIR/ziti-controller</string>
+        <string>$ZITI_BIN_DIR/ziti</string>
+        <string>controller</string>
         <string>run</string>
         <string>$ZITI_HOME/${controller_name}.yaml</string>
       </array>
@@ -1277,7 +1278,8 @@ cat > "${output_file}" <<HeredocForLaunchd
       <string>$router_name</string>
       <key>ProgramArguments</key>
       <array>
-        <string>$ZITI_BIN_DIR/ziti-router</string>
+        <string>$ZITI_BIN_DIR/ziti</string>
+        <string>router</string>
         <string>run</string>
         <string>$ZITI_HOME/ctrl.with.edge.yml</string>
       </array>
