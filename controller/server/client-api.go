@@ -150,6 +150,13 @@ func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set(ZitiInstanceId, ae.InstanceId)
 
+		//if not /edge prefix and not /fabric, translate to "/edge/client/v<latest>", this is a hack
+		//that should be removed once non-prefixed URLs are no longer used.
+		//This will affect older go-lang enrolled SDKs and the C-SDK.
+		if !strings.HasPrefix(r.URL.Path, controller.RestApiRootPath) && !strings.HasPrefix(r.URL.Path, "/fabric") && !strings.HasPrefix(r.URL.Path, "/.well-known") {
+			r.URL.Path = controller.ClientRestApiBaseUrlLatest + r.URL.Path
+		}
+
 		//translate /edge/v1 to /edge/client/v1
 		r.URL.Path = strings.Replace(r.URL.Path, controller.LegacyClientRestApiBaseUrlV1, controller.ClientRestApiBaseUrlLatest, 1)
 
