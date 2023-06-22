@@ -1,3 +1,13 @@
+# Release 0.28.3
+
+## What's New
+
+Bug fix
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v0.28.2 -> v0.28.3](https://github.com/openziti/ziti/compare/v0.28.2...v0.28.3)
+
 # Release 0.28.2
 
 ## What's New
