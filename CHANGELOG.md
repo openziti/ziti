@@ -1,3 +1,9 @@
+# Release 0.28.4
+
+## Component Updates and Bug Fixes
+
+* Restores Ziti Edge Client API as the default handler for `/version` and as the root handler to support previously enrolled GO SDK clients
+
 # Release 0.28.3
 
 ## What's New
