@@ -1051,7 +1051,7 @@ function createControllerSystemdFile {
   # Allow controller name to be passed in as an arg
   controller_name="${1-}"
   # If no controller name provided and env var is not set, prompt user for a controller name
-  elif [[ "${controller_name}" == "" ]]; then
+  if [[ "${controller_name}" == "" ]]; then
     controller_name="${ZITI_NETWORK}"
   fi
 
