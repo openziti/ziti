@@ -1051,19 +1051,8 @@ function createControllerSystemdFile {
   # Allow controller name to be passed in as an arg
   controller_name="${1-}"
   # If no controller name provided and env var is not set, prompt user for a controller name
-  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_CTRL_NAME}" ]]; then
-        echo -e "$(YELLOW "createControllerSystemdFile requires a controller name to be supplied") "
-        echo -en "Enter controller name: "
-        read -r controller_name
-
-        # Quit if no name is provided
-        if [[ "${controller_name}" == "" ]]; then
-          echo -e "$(RED "  --- Invalid controller name provided ---")"
-          return 1
-        fi
-  # If no controller name provided and env var is set, use env var
-  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_CTRL_NAME}" ]]; then
-    controller_name="${ZITI_CTRL_NAME}"
+  elif [[ "${controller_name}" == "" ]]; then
+    controller_name="${ZITI_NETWORK}"
   fi
 
   # Make sure necessary env variables are set
