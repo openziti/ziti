@@ -1075,11 +1075,11 @@ function createControllerSystemdFile {
 
   output_file="${ZITI_HOME}/${controller_name}.service"
 
-  getFileOverwritePermission "${output_file}"
-  retVal=$?
-  if [[ "${retVal}" != 0 ]]; then
-    return 1
-  fi
+  #getFileOverwritePermission "${output_file}"
+  #retVal=$?
+  #if [[ "${retVal}" != 0 ]]; then
+  #  return 1
+  #fi
 
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
@@ -1117,11 +1117,11 @@ function createRouterSystemdFile {
     if [[ "${router_name}" == "" ]]; then
       # Check for overwrite of default file
       router_name="${default_router_name}"
-      getFileOverwritePermission "${ZITI_HOME-}/${router_name}.service"
-      retVal=$?
-      if [[ "${retVal}" != 0 ]]; then
-        return 1
-      fi
+      #getFileOverwritePermission "${ZITI_HOME-}/${router_name}.service"
+      #retVal=$?
+      #if [[ "${retVal}" != 0 ]]; then
+      #  return 1
+      #fi
     fi
   fi
 
@@ -1133,11 +1133,11 @@ function createRouterSystemdFile {
 
   output_file="${ZITI_HOME}/${router_name}.service"
 
-  getFileOverwritePermission "${output_file}"
-  retVal=$?
-  if [[ "${retVal}" != 0 ]]; then
-    return 1
-  fi
+  #getFileOverwritePermission "${output_file}"
+  #retVal=$?
+  #if [[ "${retVal}" != 0 ]]; then
+  #  return 1
+  #fi
 
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
@@ -1188,11 +1188,11 @@ function createControllerLaunchdFile {
 
   output_file="${ZITI_HOME}/${controller_name}.plist"
 
-  getFileOverwritePermission "${output_file}"
-  retVal=$?
-  if [[ "${retVal}" != 0 ]]; then
-    return 1
-  fi
+  #getFileOverwritePermission "${output_file}"
+  #retVal=$?
+  #if [[ "${retVal}" != 0 ]]; then
+  #  return 1
+  #fi
 
 cat > "${output_file}" <<HeredocForLaunchd
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1245,11 +1245,11 @@ function createRouterLaunchdFile {
     if [[ "${router_name}" == "" ]]; then
       # Check for overwrite of default file
       router_name="${default_router_name}"
-      getFileOverwritePermission "${ZITI_HOME-}/${router_name}.plist"
-      retVal=$?
-      if [[ "${retVal}" != 0 ]]; then
-        return 1
-      fi
+      #getFileOverwritePermission "${ZITI_HOME-}/${router_name}.plist"
+      #retVal=$?
+      #if [[ "${retVal}" != 0 ]]; then
+      #  return 1
+      #fi
     fi
   fi
 
@@ -1321,11 +1321,11 @@ function createZacSystemdFile {
 
   output_file="${ZITI_HOME}/ziti-console.service"
 
-  getFileOverwritePermission "${output_file}"
-  retVal=$?
-  if [[ "${retVal}" != 0 ]]; then
-    return 1
-  fi
+  #getFileOverwritePermission "${output_file}"
+  #retVal=$?
+  #if [[ "${retVal}" != 0 ]]; then
+  #  return 1
+  #fi
 
   if which node >/dev/null; then
     # store the absolute path to the node executable because it's required by systemd on Amazon Linux, at least
