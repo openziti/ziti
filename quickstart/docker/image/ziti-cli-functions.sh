@@ -33,7 +33,7 @@ function PURPLE { # Generally used for Express Install milestones.
 
 function _wait_for_controller {
   local advertised_host_port="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT}"
-  while [[ "$(curl -w "%{http_code}" -m 1 -s -k -o /dev/null https://"${advertised_host_port}"/version)" != "200" ]]; do
+  while [[ "$(curl -w "%{http_code}" -m 1 -s -k -o /dev/null https://"${advertised_host_port}"/edge/client/v1/version)" != "200" ]]; do
     echo "waiting for https://${advertised_host_port}"
     sleep 3
   done
@@ -443,7 +443,7 @@ function startController {
   log_file="${ZITI_HOME-}/${ZITI_CTRL_NAME}.log"
   "${ZITI_BIN_DIR-}/ziti" controller run "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml" &> "${log_file}" 2>&1 &
   pid=$!
-  echo -e "ziti-controller started as process id: ${pid}. log located at: $(BLUE "${log_file}")"
+  echo -e "ziti controller started as process id: ${pid}. log located at: $(BLUE "${log_file}")"
 }
 
 # Disable unused args shellcheck, the arg is optional
@@ -1051,19 +1051,8 @@ function createControllerSystemdFile {
   # Allow controller name to be passed in as an arg
   controller_name="${1-}"
   # If no controller name provided and env var is not set, prompt user for a controller name
-  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_CTRL_NAME}" ]]; then
-        echo -e "$(YELLOW "createControllerSystemdFile requires a controller name to be supplied") "
-        echo -en "Enter controller name: "
-        read -r controller_name
-
-        # Quit if no name is provided
-        if [[ "${controller_name}" == "" ]]; then
-          echo -e "$(RED "  --- Invalid controller name provided ---")"
-          return 1
-        fi
-  # If no controller name provided and env var is set, use env var
-  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_CTRL_NAME}" ]]; then
-    controller_name="${ZITI_CTRL_NAME}"
+  if [[ "${controller_name}" == "" ]]; then
+    controller_name="${ZITI_NETWORK}"
   fi
 
   # Make sure necessary env variables are set
@@ -1075,7 +1064,7 @@ function createControllerSystemdFile {
 
   output_file="${ZITI_HOME}/${controller_name}.service"
 
-  getFileOverwritePermission "${output_file}"
+  _get_file_overwrite_permission "${output_file}"
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
@@ -1089,7 +1078,7 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=${ZITI_HOME}
-ExecStart="${ZITI_BIN_DIR}/ziti-controller" run "${ZITI_HOME}/${controller_name}.yaml"
+ExecStart="${ZITI_BIN_DIR}/ziti" controller run "${ZITI_HOME}/${controller_name}.yaml"
 Restart=always
 RestartSec=2
 LimitNOFILE=65535
@@ -1117,7 +1106,7 @@ function createRouterSystemdFile {
     if [[ "${router_name}" == "" ]]; then
       # Check for overwrite of default file
       router_name="${default_router_name}"
-      getFileOverwritePermission "${ZITI_HOME-}/${router_name}.service"
+      _get_file_overwrite_permission "${ZITI_HOME-}/${router_name}.service"
       retVal=$?
       if [[ "${retVal}" != 0 ]]; then
         return 1
@@ -1133,7 +1122,7 @@ function createRouterSystemdFile {
 
   output_file="${ZITI_HOME}/${router_name}.service"
 
-  getFileOverwritePermission "${output_file}"
+  _get_file_overwrite_permission "${output_file}"
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
@@ -1147,7 +1136,7 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=${ZITI_HOME}
-ExecStart="${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME}/${router_name}.yaml"
+ExecStart="${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME}/${router_name}.yaml"
 Restart=always
 RestartSec=2
 LimitNOFILE=65536
@@ -1188,7 +1177,7 @@ function createControllerLaunchdFile {
 
   output_file="${ZITI_HOME}/${controller_name}.plist"
 
-  getFileOverwritePermission "${output_file}"
+  _get_file_overwrite_permission "${output_file}"
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
@@ -1203,7 +1192,8 @@ cat > "${output_file}" <<HeredocForLaunchd
       <string>ziti-controller-${controller_name}</string>
       <key>ProgramArguments</key>
       <array>
-        <string>$ZITI_BIN_DIR/ziti-controller</string>
+        <string>$ZITI_BIN_DIR/ziti</string>
+        <string>controller</string>
         <string>run</string>
         <string>$ZITI_HOME/${controller_name}.yaml</string>
       </array>
@@ -1245,7 +1235,7 @@ function createRouterLaunchdFile {
     if [[ "${router_name}" == "" ]]; then
       # Check for overwrite of default file
       router_name="${default_router_name}"
-      getFileOverwritePermission "${ZITI_HOME-}/${router_name}.plist"
+      _get_file_overwrite_permission "${ZITI_HOME-}/${router_name}.plist"
       retVal=$?
       if [[ "${retVal}" != 0 ]]; then
         return 1
@@ -1262,7 +1252,7 @@ function createRouterLaunchdFile {
 
   output_file="${ZITI_HOME-}/${router_name}.plist"
 
-  getFileOverwritePermission "${output_file}"
+  _get_file_overwrite_permission "${output_file}"
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
@@ -1277,7 +1267,8 @@ cat > "${output_file}" <<HeredocForLaunchd
       <string>$router_name</string>
       <key>ProgramArguments</key>
       <array>
-        <string>$ZITI_BIN_DIR/ziti-router</string>
+        <string>$ZITI_BIN_DIR/ziti</string>
+        <string>router</string>
         <string>run</string>
         <string>$ZITI_HOME/ctrl.with.edge.yml</string>
       </array>
@@ -1321,7 +1312,7 @@ function createZacSystemdFile {
 
   output_file="${ZITI_HOME}/ziti-console.service"
 
-  getFileOverwritePermission "${output_file}"
+  _get_file_overwrite_permission "${output_file}"
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
