@@ -2,7 +2,7 @@
 
 ## Component Updates and Bug Fixes
 
-* Ziti Edge API was restore to the root URL handler for `/version` support and for older enrolled GO SDK clients
+* RestoreZiti Edge Client API as the default handler for `/version` and to support previously enrolled GO SDK clients
 
 # Release 0.28.2
 
