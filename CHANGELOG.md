@@ -1,3 +1,15 @@
+# Release 0.29.0
+
+## What's New
+
+This release removes the following deprecated binaries from the release archives.
+
+* `ziti-controller` - replaced by `ziti controller`
+* `ziti-router`     - replaced by `ziti router`
+* `ziti-tunnel`     - replaced by `ziti tunnel`
+
+The release archives now only contain the `ziti` executable. This executable is now at the root of the archive instead of nested under a `ziti` directory.
+
 # Release 0.28.4
 
 ## Component Updates and Bug Fixes
