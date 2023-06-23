@@ -1016,7 +1016,7 @@ function expressInstall {
 
   echo "USING ZITI_EDGE_ROUTER_NAME: $ZITI_EDGE_ROUTER_NAME"
 
-  addRouter "${ZITI_EDGE_ROUTER_NAME}" "public"
+  addRouter "${ZITI_EDGE_ROUTER_NAME}" "public" "public"
   echo ""
 
   stopController
