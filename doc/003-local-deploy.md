@@ -111,10 +111,10 @@ A service is an entity that stores metadata about a server application. The `zit
 When prompted, select your running edge router `router01`.
 
 ```bash
-ziti edge tutorial first-service
+ziti demo first-service
 ```
 
-If you prefer, you may read [the first-service tutorial as a web site](../ziti/cmd/tutorial/tutorials/first-service.md)
+If you prefer, you may read [the first-service tutorial as a web site](../ziti/cmd/demo/tutorials/first-service.md)
 
 ## Further Exploration
 

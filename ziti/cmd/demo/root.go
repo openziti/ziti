@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
+	"time"
 )
 
 func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
@@ -60,6 +61,12 @@ func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
+	demoCmd.AddCommand(newFirstServiceTutorialCmd(p))
+	demoCmd.AddCommand(newPlainEchoServerCmd(p))
+	demoCmd.AddCommand(newPlainEchoClientCmd(p))
+	demoCmd.AddCommand(newZitiEchoClientCmd(p))
+	demoCmd.AddCommand(newZitiEchoServerCmd(p))
+
 	agentCmd.AddCommand(echoServerAgentCmd)
 	echoServerAgentCmd.AddCommand(NewAgentEchoServerUpdateTerminatorCmd(p))
 
@@ -80,4 +87,24 @@ func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
 	echoCmd.AddCommand(newUpdateConfigHACmd(p))
 
 	return demoCmd
+}
+
+type TutorialOptions struct {
+	ControllerUrl string
+	Username      string
+	Password      string
+	NewlinePause  time.Duration
+	AssumeDefault bool
+}
+
+func (self *TutorialOptions) GetControllerUrl() string {
+	return self.ControllerUrl
+}
+
+func (self *TutorialOptions) GetUsername() string {
+	return self.Username
+}
+
+func (self *TutorialOptions) GetPassword() string {
+	return self.Password
 }

@@ -14,41 +14,39 @@
 	limitations under the License.
 */
 
-package tutorial
+package demo
 
 import (
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"time"
+	"strings"
 )
 
 // Options are common options for edge controller commands
-type zitiEchoServerOptions struct {
+type plainEchoClientOptions struct {
 	common.CommonOptions
-	identity string
+	port uint16
+	host string
 }
 
-func (self *zitiEchoServerOptions) run() error {
-	echoServer := &zitiEchoServer{
-		identityJson: self.identity,
+func (self *plainEchoClientOptions) run() error {
+	echoClient := &plainEchoClient{
+		host: self.host,
+		port: self.port,
 	}
-	if err := echoServer.run(); err != nil {
-		return err
-	}
-	time.Sleep(time.Hour * 24 * 365 * 100)
-	return nil
+	return echoClient.echo(strings.Join(self.Args, " "))
 }
 
-func newZitiEchoServerCmd(p common.OptionsProvider) *cobra.Command {
-	options := &zitiEchoServerOptions{
+func newPlainEchoClientCmd(p common.OptionsProvider) *cobra.Command {
+	options := &plainEchoClientOptions{
 		CommonOptions: p(),
 	}
 
 	cmd := &cobra.Command{
-		Use:   "ziti-echo-server",
-		Short: "Runs a ziti-based http echo service",
-		Args:  cobra.ExactArgs(0),
+		Use:   "plain-echo-client strings to echo",
+		Short: "Runs a simple http echo client",
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -60,7 +58,8 @@ func newZitiEchoServerCmd(p common.OptionsProvider) *cobra.Command {
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringVar(&options.identity, "identity", "echo-server.json", "Specify the config file to use")
+	cmd.Flags().Uint16Var(&options.port, "port", 80, "Specify the port to dial on")
+	cmd.Flags().StringVar(&options.host, "host", "localhost", "Specify the host to connect to")
 
 	return cmd
 }
