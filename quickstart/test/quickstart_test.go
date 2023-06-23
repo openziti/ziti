@@ -769,7 +769,7 @@ func deleteServicePolicyByID(client *rest_management_api_client.ZitiEdgeManageme
 func waitForController(hostport string) {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	for {
-		resp, _ := http.Get(hostport)
+		resp, _ := http.Get(hostport + "/edge/client/v1/version")
 		if resp != nil && resp.StatusCode == 200 {
 			break
 		}
