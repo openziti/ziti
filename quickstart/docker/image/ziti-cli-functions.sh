@@ -617,11 +617,12 @@ function getZiti {
     if [[ "${retVal}" != 0 ]]; then
       return 1
     fi
-      # Check if an error occurred while trying to pull desired version (happens with incorrect version or formatting issue)
-      if ! _verify_ziti_version_exists; then
-          echo -e "  * $(RED "ERROR: This version of ziti (${ZITI_VERSION_OVERRIDE}) could not be found. Please check the version and try again. The version should follow the format \"vx.x.x\".") "
-          return 1
-      fi
+
+    # Check if an error occurred while trying to pull desired version (happens with incorrect version or formatting issue)
+    if ! _verify_ziti_version_exists; then
+        echo -e "  * $(RED "ERROR: The version of ziti requested (${ZITI_VERSION_OVERRIDE}) could not be found for OS (${ZITI_OSTYPE}) and architecture (${ZITI_ARCH}). Please check these details and try again. The version should follow the format \"vx.x.x\".") "
+        return 1
+    fi
   fi
 
   # Where to store the ziti binaries zip
@@ -1350,10 +1351,6 @@ HeredocForSystemd
 # the version doesn't exist or possibly just the version format provided in ZITI_VERSION_OVERRIDE is incorrect.
 function _verify_ziti_version_exists {
   local ziticurl
-
-  if ! setOs; then
-    return 1
-  fi
 
   _detect_architecture
 
