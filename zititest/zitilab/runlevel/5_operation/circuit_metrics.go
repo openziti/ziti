@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func CircuitMetrics(pollFreq time.Duration, closer <-chan struct{}, f func(string) string) model.OperatingStage {
+func CircuitMetrics(pollFreq time.Duration, closer <-chan struct{}, f func(string) string) model.Stage {
 	return &circuitMetrics{
 		closer:             closer,
 		circuits:           map[string]struct{}{},
@@ -34,7 +34,7 @@ type circuitMetrics struct {
 	idToSelectorMapper func(string) string
 }
 
-func (self *circuitMetrics) Operate(run model.Run) error {
+func (self *circuitMetrics) Execute(run model.Run) error {
 	self.model = run.GetModel()
 	bindHandler := func(binding channel.Binding) error {
 		binding.AddReceiveHandler(int32(mgmt_pb.ContentType_StreamEventsEventType), channel.ReceiveHandlerF(self.receiveCircuitEvents))

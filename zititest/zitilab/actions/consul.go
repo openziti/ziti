@@ -26,8 +26,8 @@ func StartConsul(hostSpec, consulServer, configDir, dataPath, logFile string) mo
 	}
 }
 
-func (cs *consulStart) Execute(m *model.Model) error {
-	return m.ForEachHost(cs.hostSpec, 24, func(c *model.Host) error {
+func (cs *consulStart) Execute(run model.Run) error {
+	return run.GetModel().ForEachHost(cs.hostSpec, 24, func(c *model.Host) error {
 		ssh := lib.NewSshConfigFactory(c)
 
 		cmd := fmt.Sprintf("screen -d -m nohup consul agent -join %s -config-dir %s -data-dir %s -log-file %s 2>&1 &", cs.consulServer, cs.configDir, cs.dataPath, cs.logFile)

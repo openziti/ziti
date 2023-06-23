@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/common/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -52,6 +53,10 @@ type echoServer struct {
 	bindWithIdentity bool
 	zitiIdentity     identity.Identity
 	zitiListener     edge.Listener
+
+	cliAgentEnabled bool
+	cliAgentAddr    string
+	cliAgentAlias   string
 }
 
 func newEchoServerCmd() *cobra.Command {
@@ -73,7 +78,9 @@ func newEchoServerCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&server.configFile, "identity", "i", "", "Specify the Ziti identity to use. If not specified the Ziti listener won't be started")
 	cmd.Flags().StringVarP(&server.service, "service", "s", "echo", "Ziti service to bind. Defaults to 'echo'")
 	cmd.Flags().BoolVar(&server.bindWithIdentity, "addressable", false, "Specify if this application should be addressable by the edge identity")
-	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().BoolVar(&server.cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
+	cmd.Flags().StringVar(&server.cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
+	cmd.Flags().StringVar(&server.cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 
 	return cmd
 }
@@ -106,6 +113,19 @@ func (self *echoServer) run(*cobra.Command, []string) {
 
 	if self.port == 0 && self.configFile == "" {
 		log.Fatalf("No port specified and no ziti identity specified. Not starting either listener, so nothing to do. exiting.")
+	}
+
+	if self.cliAgentEnabled {
+		options := agent.Options{
+			Addr:       self.cliAgentAddr,
+			AppType:    "echo-server",
+			AppVersion: version.GetVersion(),
+			AppAlias:   self.cliAgentAlias,
+		}
+
+		if err := agent.Listen(options); err != nil {
+			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+		}
 	}
 
 	if self.healthCheckAddr != "" {

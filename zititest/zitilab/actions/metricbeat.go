@@ -24,8 +24,8 @@ func StartMetricbeat(hostSpec, configPath, dataPath, logPath string) model.Actio
 	}
 }
 
-func (mbs *metricbeatStart) Execute(m *model.Model) error {
-	return m.ForEachHost(mbs.hostSpec, 24, func(c *model.Host) error {
+func (mbs *metricbeatStart) Execute(run model.Run) error {
+	return run.GetModel().ForEachHost(mbs.hostSpec, 24, func(c *model.Host) error {
 		ssh := lib.NewSshConfigFactory(c)
 
 		cmd := fmt.Sprintf("screen -d -m nohup metricbeat --path.config %s --path.data %s --path.logs %s 2>&1 &", mbs.configPath, mbs.dataPath, mbs.logPath)

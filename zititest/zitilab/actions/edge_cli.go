@@ -27,8 +27,8 @@ func Edge(args ...string) model.Action {
 	}
 }
 
-func (a *edge) Execute(m *model.Model) error {
-	return EdgeExec(m, a.args...)
+func (a *edge) Execute(run model.Run) error {
+	return EdgeExec(run.GetModel(), a.args...)
 }
 
 type edge struct {

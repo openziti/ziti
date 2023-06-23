@@ -44,7 +44,7 @@ func (self *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 	for _, router := range m.SelectComponents(models.RouterTag) {
-		cert := fmt.Sprintf("/intermediate/certs/%s-client.cert", router.PublicIdentity)
+		cert := fmt.Sprintf("/intermediate/certs/%s-client.cert", router.Id)
 		workflow.AddAction(zitilib_actions.Fabric("create", "router", filepath.Join(model.PkiBuild(), cert)))
 	}
 
@@ -82,7 +82,7 @@ func (_ *bootstrapAction) createServiceActions(m *model.Model) ([]model.Action, 
 
 	for _, h := range hosts {
 		serviceActions = append(serviceActions, zitilib_actions.Fabric("create", "service", h.GetId()))
-		serviceActions = append(serviceActions, zitilib_actions.Fabric("create", "terminator", h.GetId(), router.PublicIdentity, "tcp:"+h.PrivateIp+":8171"))
+		serviceActions = append(serviceActions, zitilib_actions.Fabric("create", "terminator", h.GetId(), router.Id, "tcp:"+h.PrivateIp+":8171"))
 	}
 
 	return serviceActions, nil

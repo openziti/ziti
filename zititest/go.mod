@@ -7,25 +7,24 @@ replace github.com/openziti/ziti => ../
 require (
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.7.0
+	github.com/google/uuid v1.3.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/channel/v2 v2.0.81
 	github.com/openziti/edge v0.24.348
-	github.com/openziti/fablab v0.4.52
+	github.com/openziti/fablab v0.5.0
 	github.com/openziti/fabric v0.23.39
 	github.com/openziti/foundation/v2 v2.0.26
 	github.com/openziti/identity v1.0.57
 	github.com/openziti/sdk-golang v0.20.67
 	github.com/openziti/storage v0.2.8
 	github.com/openziti/transport/v2 v2.0.91
-	github.com/openziti/ziti v0.28.0
+	github.com/openziti/ziti v0.28.3
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	go.etcd.io/bbolt v1.3.7
 	golang.org/x/net v0.11.0
 	google.golang.org/protobuf v1.30.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -78,7 +77,6 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230322041520-c84983bdbf2a // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
@@ -152,6 +150,7 @@ require (
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
+	github.com/spf13/cobra v1.7.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.10.0 // indirect
@@ -165,7 +164,7 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	go.mongodb.org/mongo-driver v1.11.7 // indirect
+	go.mongodb.org/mongo-driver v1.12.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.16.0 // indirect
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
@@ -184,6 +183,7 @@ require (
 	gopkg.in/resty.v1 v1.12.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 	rsc.io/goversion v1.2.0 // indirect
 )

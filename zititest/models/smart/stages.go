@@ -28,9 +28,7 @@ import (
 	aws_ssh_keys6 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	terraform6 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	zitilab_runlevel_1_configuration "github.com/openziti/ziti/zititest/zitilab/runlevel/1_configuration"
 	zitilab_5_operation "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
 	"time"
 )
@@ -43,7 +41,7 @@ func newStageFactory() model.Factory {
 // represent the various phases of the model.
 func (self *stageFactory) Build(m *model.Model) error {
 	// set up ssh keys (if configured), create the cloud infrastructure and restart all instances after they've been updated
-	m.Infrastructure = model.InfrastructureStages{
+	m.Infrastructure = model.Stages{
 		aws_ssh_keys0.Express(),
 		terraform0.Express(),
 		semaphore0.Restart(90 * time.Second),
@@ -55,20 +53,17 @@ func (self *stageFactory) Build(m *model.Model) error {
 	// 2. component configurations, which includes controller and router configurations
 	// 3. loop tester configurations
 	// 4. The actual binaries, including the controller, router, ziti-fabric CLI and the ziti-fabric-test tool
-	m.Configuration = model.ConfigurationStages{
-		zitilab_runlevel_1_configuration.IfNoPki(zitilab_runlevel_1_configuration.Fabric("smart.test")),
-		config.Component(),
+	m.Configuration = model.Stages{
 		config.Static([]config.StaticConfig{
 			{Src: "10-ambient.loop2.yml", Name: "10-ambient.loop2.yml"},
 			{Src: "4k-chatter.loop2.yml", Name: "4k-chatter.loop2.yml"},
 			{Src: "remote_identities.yml", Name: "remote_identities.yml"},
 		}),
-		zitilab.DefaultZitiBinaries(),
 	}
 
 	// Create log directories on hosts that need them
 	// Push the artifacts gather in the configuration stage up to the hosts
-	m.Distribution = model.DistributionStages{
+	m.Distribution = model.Stages{
 		distribution.Locations(models.HasControllerComponent, "logs"),
 		distribution.Locations(models.HasRouterComponent, "logs"),
 		distribution.Locations(models.LoopListenerTag, "logs"),
@@ -94,7 +89,7 @@ func (self *stageFactory) Build(m *model.Model) error {
 	}
 
 	// finally, dispose of the instances and remove any added keys
-	m.Disposal = model.DisposalStages{
+	m.Disposal = model.Stages{
 		terraform6.Dispose(),
 		aws_ssh_keys6.Dispose(),
 	}

@@ -14,8 +14,6 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
-	"github.com/openziti/fablab/kernel/lib/runlevel/1_configuration/config"
-	"github.com/openziti/fablab/kernel/lib/runlevel/2_kitting/devkit"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
 	aws_ssh_key2 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
@@ -26,7 +24,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	zitilib_runlevel_1_configuration "github.com/openziti/ziti/zititest/zitilab/runlevel/1_configuration"
 	"os"
 	"path"
 	"strings"
@@ -73,10 +70,8 @@ func (d dbStrategy) GetSite(router *persistence.EdgeRouter) (string, bool) {
 }
 
 func (d dbStrategy) PostProcess(router *persistence.EdgeRouter, c *model.Component) {
-	c.PublicIdentity = router.Id
 	if router.IsTunnelerEnabled {
 		c.Scope.Tags = append(c.Scope.Tags, "tunneler")
-		c.RunWithSudo = true
 	}
 	c.Scope.Tags = append(c.Scope.Tags, "edge-router")
 	c.Scope.Tags = append(c.Scope.Tags, "pre-created")
@@ -123,11 +118,7 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"ctrl": {
-							Scope:          model.Scope{Tags: model.Tags{"ctrl"}},
-							BinaryName:     "ziti controller",
-							ConfigSrc:      "ctrl.yml",
-							ConfigName:     "ctrl.yml",
-							PublicIdentity: "ctrl",
+							Type: &zitilab.RouterType{},
 						},
 					},
 				},
@@ -158,28 +149,20 @@ var m = &model.Model{
 		"login": model.Bind(edge.Login("#ctrl")),
 	},
 
-	Infrastructure: model.InfrastructureStages{
+	Infrastructure: model.Stages{
 		aws_ssh_key.Express(),
 		terraform_0.Express(),
 		semaphore_0.Ready(90 * time.Second),
 	},
 
-	Configuration: model.ConfigurationStages{
-		zitilib_runlevel_1_configuration.IfPkiNeedsRefresh(
-			zitilib_runlevel_1_configuration.Fabric("router.test", ".ctrl"),
-		),
-		config.Component(),
-		devkit.DevKitF(zitilab.ZitiRoot, []string{"ziti"}),
-	},
-
-	Distribution: model.DistributionStages{
+	Distribution: model.Stages{
 		distribution.DistributeSshKey("*"),
 		distribution.Locations("*", "logs"),
 		rsync.RsyncStaged(),
 		rsync.NewRsyncHost("#ctrl", getDbFile(), "/home/ubuntu/fablab/ctrl.db"),
 	},
 
-	Disposal: model.DisposalStages{
+	Disposal: model.Stages{
 		terraform.Dispose(),
 		aws_ssh_key2.Dispose(),
 	},

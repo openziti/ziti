@@ -1,12 +1,15 @@
 package getziti
 
 import (
+	"context"
 	"fmt"
 	"github.com/blang/semver"
 	"github.com/go-resty/resty/v2"
 	"github.com/michaelquigley/pfxlog"
+	c "github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -115,7 +118,7 @@ func GetLatestGitHubReleaseAsset(appName string, appGitHub string, version strin
 			version = strings.TrimPrefix(version, "v")
 		}
 
-		if appName == "ziti-edge-tunnel" {
+		if appName == "ziti" || appName == "ziti-edge-tunnel" {
 			if !strings.HasPrefix(version, "v") {
 				version = "v" + version
 			}
@@ -126,7 +129,10 @@ func GetLatestGitHubReleaseAsset(appName string, appGitHub string, version strin
 		version = "tags/" + version
 	}
 
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+
 	resp, err := getRequest(verbose).
+		SetContext(ctx).
 		SetQueryParams(map[string]string{}).
 		SetHeader("Accept", "application/vnd.github.v3+json").
 		SetResult(&GitHubReleasesData{}).
@@ -149,7 +155,12 @@ func GetLatestGitHubReleaseAsset(appName string, appGitHub string, version strin
 
 // DownloadGitHubReleaseAsset will download a file from the given GitHUb release area
 func DownloadGitHubReleaseAsset(fullUrl string, filepath string) (err error) {
-	resp, err := getRequest(false).
+	resp, err := resty.
+		New().
+		SetTimeout(time.Minute).
+		SetRetryCount(2).
+		SetRedirectPolicy(resty.FlexibleRedirectPolicy(15)).
+		R().
 		SetOutput(filepath).
 		Get(fullUrl)
 
@@ -177,37 +188,86 @@ func FindVersionAndInstallGitHubRelease(zitiApp string, zitiAppGitHub string, ta
 	if err != nil {
 		return err
 	}
-	return InstallGitHubRelease(zitiApp, release, binDir, targetOS, targetArch)
+	return InstallGitHubRelease(zitiApp, release, binDir, targetOS, targetArch, version)
 }
 
-func InstallGitHubRelease(zitiApp string, release *GitHubReleasesData, binDir string, targetOS, targetArch string) error {
-	fileName := zitiApp
-	if targetOS == "windows" {
-		fileName += ".exe"
-	}
-
-	fullPath := filepath.Join(binDir, fileName)
-	ext := ".zip"
-	zipFile := fullPath + ext
-
+func InstallGitHubRelease(zitiApp string, release *GitHubReleasesData, binDir string, targetOS, targetArch, version string) error {
 	releaseUrl, err := release.GetDownloadUrl(zitiApp, targetOS, targetArch)
 	if err != nil {
 		return err
 	}
 
-	err = DownloadGitHubReleaseAsset(releaseUrl, zipFile)
+	parsedUrl, err := url.Parse(releaseUrl)
 	if err != nil {
 		return err
 	}
 
-	err = Unzip(zipFile, binDir)
+	fileName := filepath.Base(parsedUrl.Path)
+
+	fullPath := filepath.Join(binDir, fileName)
+	err = DownloadGitHubReleaseAsset(releaseUrl, fullPath)
 	if err != nil {
 		return err
 	}
-	err = os.Remove(zipFile)
-	if err != nil {
-		return err
+
+	defer func() {
+		err = os.Remove(fullPath)
+		if err != nil {
+			pfxlog.Logger().WithError(err).Errorf("failed to removed downloaded release archive %s", fullPath)
+		}
+	}()
+
+	if strings.HasSuffix(fileName, ".zip") {
+		if zitiApp == c.ZITI_EDGE_TUNNEL {
+			count := 0
+			zitiFileName := "ziti-edge-tunnel-" + version
+			err = Unzip(fullPath, binDir, func(path string) (string, bool) {
+				if path == "ziti-edge-tunnel" {
+					count++
+					return zitiFileName, true
+				}
+				return "", false
+			})
+
+			if err != nil {
+				return err
+			}
+
+			if count != 1 {
+				return errors.Errorf("didn't find ziti-edge-tunnel executable in release archive. count: %v", count)
+			}
+
+			pfxlog.Logger().Infof("Successfully installed '%s' version '%s' to %s", zitiApp, release.Version, filepath.Join(binDir, zitiFileName))
+			return nil
+		} else {
+			return errors.Errorf("unsupported application '%s'", zitiApp)
+		}
+	} else if strings.HasSuffix(fileName, ".tar.gz") {
+		if zitiApp == c.ZITI {
+			count := 0
+			zitiFileName := "ziti-" + version
+			err = UnTarGz(fullPath, binDir, func(path string) (string, bool) {
+				if path == "ziti/ziti" {
+					count++
+					return zitiFileName, true
+				}
+				return "", false
+			})
+
+			if err != nil {
+				return err
+			}
+
+			if count != 1 {
+				return errors.Errorf("didn't find ziti executable in release archive. count: %v", count)
+			}
+
+			pfxlog.Logger().Infof("Successfully installed '%s' version '%s' to %s", zitiApp, release.Version, filepath.Join(binDir, zitiFileName))
+			return nil
+		} else {
+			return errors.Errorf("unsupported application '%s'", zitiApp)
+		}
+	} else {
+		return errors.Errorf("unsupported release file type '%s'", fileName)
 	}
-	pfxlog.Logger().Infof("Successfully installed '%s' version '%s'", zitiApp, release.Version)
-	return os.Chmod(fullPath, 0755)
 }

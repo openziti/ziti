@@ -16,22 +16,22 @@ func InitIdentities(componentSpec string, concurrency int) model.Action {
 	}
 }
 
-func (action *initIdentitiesAction) Execute(m *model.Model) error {
-	return m.ForEachComponent(action.componentSpec, action.concurrency, func(c *model.Component) error {
-		if err := zitilib_actions.EdgeExec(m, "delete", "identity", c.PublicIdentity); err != nil {
+func (action *initIdentitiesAction) Execute(run model.Run) error {
+	return run.GetModel().ForEachComponent(action.componentSpec, action.concurrency, func(c *model.Component) error {
+		if err := zitilib_actions.EdgeExec(run.GetModel(), "delete", "identity", c.Id); err != nil {
 			return err
 		}
 
-		return action.createAndEnrollIdentity(c)
+		return action.createAndEnrollIdentity(run, c)
 	})
 }
 
-func (action *initIdentitiesAction) createAndEnrollIdentity(c *model.Component) error {
+func (action *initIdentitiesAction) createAndEnrollIdentity(run model.Run, c *model.Component) error {
 	ssh := lib.NewSshConfigFactory(c.GetHost())
 
-	jwtFileName := filepath.Join(model.ConfigBuild(), c.PublicIdentity+".jwt")
+	jwtFileName := filepath.Join(run.GetTmpDir(), c.Id+".jwt")
 
-	err := zitilib_actions.EdgeExec(c.GetModel(), "create", "identity", "service", c.PublicIdentity,
+	err := zitilib_actions.EdgeExec(c.GetModel(), "create", "identity", "service", c.Id,
 		"--jwt-output-file", jwtFileName,
 		"-a", strings.Join(c.Tags, ","))
 
@@ -39,7 +39,7 @@ func (action *initIdentitiesAction) createAndEnrollIdentity(c *model.Component) 
 		return err
 	}
 
-	configFileName := filepath.Join(model.ConfigBuild(), c.PublicIdentity+".json")
+	configFileName := filepath.Join(run.GetTmpDir(), c.Id+".json")
 
 	_, err = cli.Exec(c.GetModel(), "edge", "enroll", "--jwt", jwtFileName, "--out", configFileName)
 
@@ -47,7 +47,7 @@ func (action *initIdentitiesAction) createAndEnrollIdentity(c *model.Component) 
 		return err
 	}
 
-	remoteConfigFile := "/home/ubuntu/fablab/cfg/" + c.PublicIdentity + ".json"
+	remoteConfigFile := "/home/ubuntu/fablab/cfg/" + c.Id + ".json"
 	return lib.SendFile(ssh, configFileName, remoteConfigFile)
 }
 

@@ -1,5 +1,5 @@
 {{$ssh_username := .Model.MustVariable "credentials.ssh.username"}}
-{{$identity := .Component.PublicIdentity}}
+{{$identity := .Component.Id}}
 {{$ctrl_ip := publicIp "component#ctrl"}}
 {{$router_ip := .Host.PublicIp}}
   

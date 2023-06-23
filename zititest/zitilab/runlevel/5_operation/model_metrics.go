@@ -27,13 +27,13 @@ import (
 	"time"
 )
 
-func ModelMetrics(closer <-chan struct{}) model.OperatingStage {
+func ModelMetrics(closer <-chan struct{}) model.Stage {
 	return ModelMetricsWithIdMapper(closer, func(id string) string {
 		return "#" + id
 	})
 }
 
-func ModelMetricsWithIdMapper(closer <-chan struct{}, f func(string) string) model.OperatingStage {
+func ModelMetricsWithIdMapper(closer <-chan struct{}, f func(string) string) model.Stage {
 	return &modelMetrics{
 		closer:             closer,
 		idToSelectorMapper: f,
@@ -47,7 +47,7 @@ type modelMetrics struct {
 	idToSelectorMapper func(string) string
 }
 
-func (self *modelMetrics) Operate(run model.Run) error {
+func (self *modelMetrics) Execute(run model.Run) error {
 	self.m = run.GetModel()
 
 	bindHandler := func(binding channel.Binding) error {

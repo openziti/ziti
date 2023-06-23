@@ -25,7 +25,7 @@ func ZitiRoot() string {
 	return zitiRoot
 }
 
-func DefaultZitiBinaries() model.ConfigurationStage {
+func DefaultZitiBinaries() model.Stage {
 	zitiBinaries := []string{
 		"ziti",
 		"ziti-controller",
