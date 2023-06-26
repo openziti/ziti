@@ -319,3 +319,17 @@ jobs:
     secrets: inherit
     with:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
+
+  call-publish-linux-install-packages:
+    # always() re-enables evaluating conditionals in forks even if Windows or
+    # macOS builds were skipped
+    if: |
+      always()
+      && needs.publish.result == 'success'
+      && github.ref == 'refs/heads/main'
+    name: Publish Release Linux Install Packages
+    needs: publish
+    uses: ./.github/workflows/publish-linux-install-packages.yml
+    secrets: inherit
+    with:
+      ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
