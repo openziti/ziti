@@ -178,7 +178,6 @@ func main() {
 	m.AddActivationActions("stop", "bootstrap", "start", "syncModelEdgeState")
 	// m.VarConfig.EnableDebugLogger()
 
-	model.AddBootstrapExtension(&zitilab.BootstrapFromEnv{})
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
 

@@ -243,10 +243,6 @@ var m = &model.Model{
 func main() {
 	m.AddActivationActions("stop", "bootstrap", "start")
 
-	model.AddBootstrapExtension(
-		zitilab.BootstrapWithFallbacks(
-			&zitilab.BootstrapFromEnv{},
-		))
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
 

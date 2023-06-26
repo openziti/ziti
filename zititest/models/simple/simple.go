@@ -64,6 +64,9 @@ var Model = &model.Model{
 		Defaults: model.Variables{
 			"environment": "simple-transfer-smoketest" + getUniqueId(),
 			"credentials": model.Variables{
+				"aws": model.Variables{
+					"managed_key": true,
+				},
 				"ssh": model.Variables{
 					"username": "ubuntu",
 				},
@@ -102,7 +105,7 @@ var Model = &model.Model{
 				"ctrl": {
 					Components: model.Components{
 						"ctrl": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "long-running"}},
 							Type:  &zitilab.ControllerType{},
 						},
 					},
@@ -111,7 +114,7 @@ var Model = &model.Model{
 					Scope: model.Scope{Tags: model.Tags{"ert-client"}},
 					Components: model.Components{
 						"router-east-1": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client", "long-running"}},
 							Type:  &zitilab.RouterType{},
 						},
 						"zcat": {
@@ -123,7 +126,7 @@ var Model = &model.Model{
 				"router-east-2": {
 					Components: model.Components{
 						"router-east-2": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator", "long-running"}},
 							Type:  &zitilab.RouterType{},
 						},
 					},
@@ -132,7 +135,7 @@ var Model = &model.Model{
 					Scope: model.Scope{Tags: model.Tags{"zet-client"}},
 					Components: model.Components{
 						"ziti-edge-tunnel-client": {
-							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client", "long-running"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
 								Version: "v0.21.4",
 							},
@@ -143,7 +146,7 @@ var Model = &model.Model{
 					Scope: model.Scope{Tags: model.Tags{"ziti-tunnel-client"}},
 					Components: model.Components{
 						"ziti-tunnel-client": {
-							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "client"}},
+							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "client", "long-running"}},
 							Type:  &zitilab.ZitiTunnelType{},
 						},
 					},
@@ -157,15 +160,15 @@ var Model = &model.Model{
 				"router-west": {
 					Components: model.Components{
 						"router-west": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host", "long-running"}},
 							Type:  &zitilab.RouterType{},
 						},
 						"echo-server": {
-							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service", "long-running"}},
 							Type:  &zitilab.EchoServerType{},
 						},
 						"iperf-server-ert": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "long-running"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 					},
@@ -173,13 +176,13 @@ var Model = &model.Model{
 				"ziti-edge-tunnel-host": {
 					Components: model.Components{
 						"ziti-edge-tunnel-host": {
-							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host"}},
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host", "long-running"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
 								Version: "v0.21.4",
 							},
 						},
 						"iperf-server-zet": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "long-running"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 					},
@@ -187,13 +190,13 @@ var Model = &model.Model{
 				"ziti-tunnel-host": {
 					Components: model.Components{
 						"ziti-tunnel-host": {
-							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "host", "ziti-tunnel-host"}},
+							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "host", "ziti-tunnel-host", "long-running"}},
 							Type: &zitilab.ZitiTunnelType{
 								Mode: zitilab.ZitiTunnelModeHost,
 							},
 						},
 						"iperf-server-zt": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "long-running"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 					},
@@ -303,10 +306,6 @@ var Model = &model.Model{
 }
 
 func InitBootstrapExtensions() {
-	model.AddBootstrapExtension(
-		zitilab.BootstrapWithFallbacks(
-			&zitilab.BootstrapFromEnv{},
-		))
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
 }
