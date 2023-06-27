@@ -24,7 +24,7 @@ WORKDIR /persistent
 
 ENV ZITI_HOME=/persistent
 ENV ZITI_SHARED="${ZITI_HOME}/shared"
-ENV ENV_FILE="${ZITI_HOME}/ziti.env"
+ENV ZITI_ENV_FILE="${ZITI_HOME}/ziti.env"
 ENV ZITI_NETWORK=ziti
 # Don't put these paths on shared volume in docker-compose deployment (https://github.com/openziti/ziti/issues/912)
 ENV ZITI_BIN_DIR=/var/openziti/ziti-bin
@@ -40,4 +40,4 @@ COPY --chown=ziti run-with-ziti-cli.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti access-control.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti run-router-external.sh "${ZITI_SCRIPTS}/"
 
-RUN /bin/bash -c "source ${ZITI_SCRIPTS}/ziti-cli-functions.sh; echo source ${ZITI_HOME}/ziti.env >> ~/.bashrc"
+RUN /bin/bash -c "source ${ZITI_SCRIPTS}/ziti-cli-functions.sh; persistEnvironmentValues; echo source ${ZITI_HOME}/ziti.env >> ~/.bashrc"
