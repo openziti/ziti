@@ -50,8 +50,12 @@ function _setup_ziti_env_path {
   if [[ "${ZITI_ENV_FILE-}" == "" ]]; then export ZITI_ENV_FILE="${ZITI_HOME}/${ZITI_NETWORK}.env"; else echo "ZITI_ENV_FILE overridden: ${ZITI_ENV_FILE}"; fi
 }
 
+
 function _setup_ziti_network {
-  if [[ "${ZITI_NETWORK-}" == "" ]]; then ZITI_NETWORK="$(hostname -s)"; export ZITI_NETWORK; else echo "ZITI_NETWORK overridden: ${ZITI_NETWORK}"; fi
+  if [[ "ran" == "${_setup_ziti_network_run}" ]]; then
+    if [[ "${ZITI_NETWORK-}" == "" ]]; then ZITI_NETWORK="$(hostname -s)"; export ZITI_NETWORK; else echo "ZITI_NETWORK overridden: ${ZITI_NETWORK}"; fi
+    _setup_ziti_network_run="ran"
+  fi
 }
 
 function _set_ziti_bin_dir {
