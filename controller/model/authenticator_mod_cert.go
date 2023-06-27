@@ -214,7 +214,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	}
 
 	if !authPolicy.Primary.Cert.AllowExpiredCerts {
-		if module.isCertExpirationValid(clientCert) {
+		if !module.isCertExpirationValid(clientCert) {
 			logger.Error("failed to verify expiration period of client certificate")
 			return nil, apierror.NewInvalidAuth()
 		}
