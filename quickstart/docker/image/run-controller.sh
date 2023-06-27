@@ -1,11 +1,11 @@
 #!/bin/bash
 ziti_controller_cfg="${ZITI_HOME}/ziti-edge-controller.yaml"
 
-export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=ziti-edge-controller
+if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="ziti-edge-controller"; fi
+if [[ "${ZITI_CTRL_NAME-}" == "" ]]; then export ZITI_CTRL_NAME="${ZITI_NETWORK}-controller"; fi
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
-echo "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS is ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
 if [ ! -f "${ZITI_HOME}/access-control.init" ]; then
   setupEnvironment
   persistEnvironmentValues
