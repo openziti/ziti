@@ -8,14 +8,16 @@ services:
       - ${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
       - ${ZITI_CTRL_LISTENER_PORT:-6262}:${ZITI_CTRL_LISTENER_PORT:-6262}
     environment:
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-edge-controller}"
+      - ZITI_CTRL_EDGE_IP_OVERRIDE="${ZITI_CTRL_EDGE_IP_OVERRIDE:-127.0.0.1}"
+      - ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
+      - ZITI_CTRL_LISTENER_PORT=${ZITI_CTRL_LISTENER_PORT:-6262}
       - ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION=${ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION}
       - ZITI_EDGE_ROUTER_ENROLLMENT_DURATION=${ZITI_EDGE_ROUTER_ENROLLMENT_DURATION}
+      - ZITI_USER=${ZITI_USER}
       - ZITI_PWD=${ZITI_PWD}
     networks:
-      zitiblue:
-        aliases:
-          - ziti-edge-controller
-      zitired:
+      ziti:
         aliases:
           - ziti-edge-controller
     volumes:
@@ -33,12 +35,7 @@ services:
     env_file:
       - ./.env
     networks:
-      zitiblue:
-        aliases:
-          - ziti-edge-controller-init-container
-      zitired:
-        aliases:
-          - ziti-edge-controller-init-container
+      ziti:
     volumes:
       - ziti-fs:/persistent
     entrypoint:
@@ -50,15 +47,20 @@ services:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     depends_on:
       - ziti-controller
-    environment:
-      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
-      - ZITI_EDGE_ROUTER_NAME=${ZITI_EDGE_ROUTER_NAME:-ziti-edge-router}
-      - ZITI_EDGE_ROUTER_ROLES=public
     ports:
       - ${ZITI_EDGE_ROUTER_PORT:-3022}:${ZITI_EDGE_ROUTER_PORT:-3022}
+      - ${ZITI_EDGE_ROUTER_LISTENER_BIND_PORT:-10080}:${ZITI_EDGE_ROUTER_LISTENER_BIND_PORT:-10080}
+    environment:
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+      - ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
+      - ZITI_CTRL_LISTENER_PORT=${ZITI_CTRL_LISTENER_PORT:-6262}
+      - ZITI_EDGE_ROUTER_NAME="${ZITI_EDGE_ROUTER_NAME:-ziti-edge-router}"
+      - ZITI_EDGE_ROUTER_ADVERTISED_HOST="cdubu22vm.parkplace-via-dhcp"
+      - ZITI_EDGE_ROUTER_PORT=${ZITI_EDGE_ROUTER_PORT:-3022}
+      - ZITI_EDGE_ROUTER_LISTENER_BIND_PORT=${ZITI_EDGE_ROUTER_LISTENER_BIND_PORT:-10080}
+      - ZITI_EDGE_ROUTER_ROLES=public
     networks:
-      - zitiblue
-      - zitired
+      - ziti
     volumes:
       - ziti-fs:/persistent
     entrypoint: /bin/bash
@@ -74,18 +76,15 @@ services:
     depends_on:
       - ziti-controller
     ports:
-      - 1408:1408
       - 8443:8443
     volumes:
       - ziti-fs:/persistent
 
     networks:
-      - zitiblue
-      - zitired
+      - ziti
 
 networks:
-  zitired:
-  zitiblue:
+  ziti:
 
 volumes:
   ziti-fs:
