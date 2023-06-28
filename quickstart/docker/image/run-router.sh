@@ -9,18 +9,15 @@ _wait_for_controller
 sleep 1
 
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="ziti-edge-controller"; fi
+if [[ "${ZITI_CTRL_EDGE_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_PORT="3022"; fi
 if [[ "${ZITI_EDGE_ROUTER_NAME-}" == "" ]]; then
-  ZITI_EDGE_ROUTER_DESIRED_NAME="${ZITI_NETWORK-}-edge-router"
-else
-  ZITI_EDGE_ROUTER_DESIRED_NAME="${ZITI_EDGE_ROUTER_NAME}"
+  ZITI_EDGE_ROUTER_NAME="${ZITI_NETWORK-}-edge-router"
+  echo "ZITI_EDGE_ROUTER_NAME not set. using default: ${ZITI_EDGE_ROUTER_NAME}"
 fi
 if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
 if [[ "${ZITI_EDGE_ROUTER_ROLES}" == "" ]]; then export ZITI_EDGE_ROUTER_ROLES="${ZITI_EDGE_ROUTER_NAME}"; fi
 
 . ${ZITI_HOME}/ziti.env
-
-# This is a unique situation due to the env file being shared among all routers so we need to explicitly set the router
-export ZITI_EDGE_ROUTER_NAME="${ZITI_EDGE_ROUTER_DESIRED_NAME}"
 
 ziti edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
 

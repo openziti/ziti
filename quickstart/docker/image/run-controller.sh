@@ -29,6 +29,10 @@ fi
 # initialize the database with the admin user:
 "${ZITI_BIN_DIR}/ziti" controller edge init "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml" -u "${ZITI_USER}" -p "${ZITI_PWD}"
 
+echo "controller initialized. unsetting ZITI_USER/ZITI_PWD from env"
+unset ZITI_USER
+unset ZITI_PWD
+
 # create a place for the internal db
 mkdir -p $ZITI_HOME/db
 
