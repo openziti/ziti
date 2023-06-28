@@ -24,6 +24,10 @@ export ZITI_EDGE_ROUTER_NAME="${ZITI_EDGE_ROUTER_DESIRED_NAME}"
 
 ziti edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
 
+echo "tried logging in. unsetting ZITI_USER/ZITI_PWD from env"
+unset ZITI_USER
+unset ZITI_PWD
+
 echo "----------  Creating edge-router ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}...."
 
 if [[ "$1" == "edge" ]]; then
