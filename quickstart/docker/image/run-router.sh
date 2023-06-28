@@ -1,9 +1,12 @@
 #!/bin/bash
 
-# give the controller time to ramp up before running if running in docker-compose
-sleep 5
-
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
+
+# wait for the controller to come online
+_wait_for_controller
+
+# after coming online, give the controller just a second to ramp up in case running via docker compose
+sleep 1
 
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="ziti-edge-controller"; fi
 if [[ "${ZITI_EDGE_ROUTER_NAME-}" == "" ]]; then
@@ -12,7 +15,6 @@ else
   ZITI_EDGE_ROUTER_DESIRED_NAME="${ZITI_EDGE_ROUTER_NAME}"
 fi
 if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
-if [[ "${ZITI_ROUTER_ADVERTISED_ADDRESS}" == "" ]]; then export ZITI_ROUTER_ADVERTISED_ADDRESS="${ZITI_EDGE_ROUTER_NAME}${ZITI_DOMAIN_SUFFIX}"; fi
 if [[ "${ZITI_EDGE_ROUTER_ROLES}" == "" ]]; then export ZITI_EDGE_ROUTER_ROLES="${ZITI_EDGE_ROUTER_NAME}"; fi
 
 . ${ZITI_HOME}/ziti.env
@@ -20,9 +22,9 @@ if [[ "${ZITI_EDGE_ROUTER_ROLES}" == "" ]]; then export ZITI_EDGE_ROUTER_ROLES="
 # This is a unique situation due to the env file being shared among all routers so we need to explicitly set the router
 export ZITI_EDGE_ROUTER_NAME="${ZITI_EDGE_ROUTER_DESIRED_NAME}"
 
-_wait_for_controller
+ziti edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
 
-zitiLogin
+echo "----------  Creating edge-router ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}...."
 
 if [[ "$1" == "edge" ]]; then
   echo "CREATING EDGE ROUTER CONFIG"
@@ -41,17 +43,16 @@ if [[ "$1" == "private" ]]; then
   createPrivateRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
 fi
 
-echo "----------  Creating edge-router ${ZITI_ROUTER_ADVERTISED_ADDRESS}...."
-found=$(ziti edge list edge-routers 'name = "'"${ZITI_ROUTER_ADVERTISED_ADDRESS}"'"' | grep -c "${ZITI_ROUTER_ADVERTISED_ADDRESS}")
+found=$(ziti edge list edge-routers 'name = "'"${ZITI_EDGE_ROUTER_NAME}"'"' | grep -c "${ZITI_EDGE_ROUTER_NAME}")
 if [[ found -gt 0 ]]; then
-  echo "----------  Found existing edge-router ${ZITI_ROUTER_ADVERTISED_ADDRESS}...."
+  echo "----------  Found existing edge-router ${ZITI_EDGE_ROUTER_NAME}...."
 else
-  "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_ROUTER_ADVERTISED_ADDRESS}" -o "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt" -t -a "${ZITI_EDGE_ROUTER_ROLES}"
+  "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_NAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.jwt" -t -a "${ZITI_EDGE_ROUTER_ROLES}"
   sleep 1
-  echo "---------- Enrolling edge-router ${ZITI_ROUTER_ADVERTISED_ADDRESS}...."
-  "${ZITI_BIN_DIR}/ziti-router" enroll "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.yaml" --jwt "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt"
+  echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_NAME}...."
+  "${ZITI_BIN_DIR}/ziti-router" enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.jwt"
   echo ""
 fi
 
-"${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.yaml" > "${ZITI_HOME}/ziti-${ZITI_ROUTER_ADVERTISED_ADDRESS}.log"
+"${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml" > "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.log"
 
