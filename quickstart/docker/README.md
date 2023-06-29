@@ -12,6 +12,7 @@ First, decide what you are trying to do. Are you trying to:
 1. build the `ziti` CLI somewhere
 1. change to this directory from checkout root: `cd quickstart/docker`
 1. make a directory named `ziti-bin`: `mkdir ./ziti-bin` 
+1. copy the `ziti` CLI to `./ziti-bin`: `cp /path/to/ziti ./ziti-bin`
 1. run the script `./createLocalImage.sh` which will create a `openziti/quickstart:latest` tag
    using the `ziti` CLI located in `./ziti-bin`
 
