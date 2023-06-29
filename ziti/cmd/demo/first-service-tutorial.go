@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package tutorial
+package demo
 
 import (
 	_ "embed"

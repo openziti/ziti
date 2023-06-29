@@ -40,10 +40,11 @@ func TestSdkEcho(t *testing.T) {
 		ssh := lib.NewSshConfigFactory(c.GetHost())
 		remoteConfigFile := "/home/ubuntu/fablab/cfg/" + c.Id + ".json"
 
-		echoClientCmd := fmt.Sprintf(`echo "%s" | /home/%s/fablab/bin/ziti learn demo zcat --identity %s ziti:echo 2>&1`,
+		echoClientCmd := fmt.Sprintf(`echo "%s" | /home/%s/fablab/bin/ziti demo zcat --identity %s ziti:echo 2>&1`,
 			string(data), ssh.User(), remoteConfigFile)
 
 		output, err := lib.RemoteExec(ssh, echoClientCmd)
+		t.Logf("test output:\n%s", output)
 		req.NoError(err)
 		//trim the newline ssh added
 		output = strings.TrimRight(output, "\n")

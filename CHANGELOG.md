@@ -2,6 +2,7 @@
 
 ## What's New
 
+### Deprecated Binary Removal
 This release removes the following deprecated binaries from the release archives.
 
 * `ziti-controller` - replaced by `ziti controller`
@@ -9,6 +10,11 @@ This release removes the following deprecated binaries from the release archives
 * `ziti-tunnel`     - replaced by `ziti tunnel`
 
 The release archives now only contain the `ziti` executable. This executable is now at the root of the archive instead of nested under a `ziti` directory.
+
+### Ziti CLI Demo Consolidation
+
+The ziti CLI functions under `ziti learn`, namely `ziti learn demo` and `ziti learn tutorial` have been consolidate under `ziti demo`.
+
 
 # Release 0.28.4
 
