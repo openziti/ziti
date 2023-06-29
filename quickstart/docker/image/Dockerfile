@@ -5,9 +5,13 @@ ARG ZITI_VERSION_OVERRIDE
 
 COPY . /docker.build.context
 RUN apt update && apt install jq curl -y && \
-    # get local ziti build in "ziti-bin", if present.
-    # otherwise fetch from releases (respecting ZITI_VERSION_OVERRIDE, if set).
-    # put the result in /ziti-bin
+    # to use a locally built `ziti` cli \
+    #   create a ./ziti-bin directory adjacent to this Dockerfile \
+    #   and include any desired binaries to include in the image
+    # to use the latest released version of ziti \
+    #   just build the Dockerfile \
+    # to use a specific version of ziti, specify ZITI_VERSION_OVERRIDE then  \
+    #   build the Dockerfile
     /bin/bash /docker.build.context/fetch-ziti-bins.sh /ziti-bin
 
 FROM ubuntu:rolling
