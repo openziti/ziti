@@ -60,7 +60,7 @@ const (
 	PkiCtrlCAVarName                                 = "ZITI_PKI_CTRL_CA"
 	PkiCtrlCAVarDescription                          = "Path to Identity CA for Ziti Controller"
 	CtrlBindAddressVarName                           = "ZITI_CTRL_BIND_ADDRESS"
-	CtrlBindAddressVarDescription                    = "The address on which the controller will listen for router communication."
+	CtrlBindAddressVarDescription                    = "The address on which the controller will listen for communication on the control plane."
 	CtrlAdvertisedAddressVarName                     = "ZITI_CTRL_ADVERTISED_ADDRESS"
 	CtrlAdvertisedAddressVarDescription              = "The address routers will use to connect to the Ziti Controller"
 	CtrlAdvertisedPortVarName                        = "ZITI_CTRL_ADVERTISED_PORT"
