@@ -27,6 +27,17 @@ First, decide what you are trying to do. Are you trying to:
 1. run the script `./createLocalImage.sh` which will create a `openziti/quickstart:latest` tag
    using the specified version of `ziti` [from GitHub](https://github.com/openziti/ziti/releases/tag/v0.28.4)
 
+## ERROR: existing instance for "ziti-builder"
+When running the `./createLocalImage.sh` script, you might get this error:
+```
+ERROR: existing instance for "ziti-builder" but no append mode, specify --node to make changes for existing instances
+```
+It's probably safest to just remove the buildx builder using:
+```
+docker buildx rm ziti-builder
+```
+
+
 ## Build Docker Image For Publication
 To publish the latest `ziti` CLI, use [the GitHub Action](https://github.com/openziti/ziti/actions/workflows/push-quickstart.yml).
 It's preferable to use `main` as the branch to create the docker image from, but it's 
