@@ -17,6 +17,7 @@ import (
 const (
 	testDefaultCtrlEdgeAdvertisedPort         = "1280"
 	testDefaultCtrlAdvertisedAddress          = "0.0.0.0"
+	testDefaultCtrlBindAddress                = "0.0.0.0"
 	testDefaultCtrlAdvertisedPort             = "6262"
 	testDefaultBoltCheckInterval              = "30s"
 	testDefaultBoltCheckTimeout               = "20s"
@@ -41,6 +42,7 @@ func getZitiEnvironmentVariables() []string {
 		"ZITI_PKI_CTRL_SERVER_CERT",
 		"ZITI_PKI_CTRL_KEY",
 		"ZITI_PKI_CTRL_CA",
+		"ZITI_CTRL_BIND_ADDRESS",
 		"ZITI_CTRL_ADVERTISED_ADDRESS",
 		"ZITI_CTRL_ADVERTISED_PORT",
 		"ZITI_CTRL_EDGE_API_ADDRESS",

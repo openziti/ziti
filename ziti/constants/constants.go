@@ -42,6 +42,7 @@ const (
 	DefaultZitiEdgeRouterPort     = "3022"
 	DefaultCtrlEdgeAdvertisedPort = "1280"
 	DefaultCtrlAdvertisedAddress  = "0.0.0.0"
+	DefaultCtrlBindAddress        = "0.0.0.0"
 	DefaultCtrlAdvertisedPort     = "6262"
 )
 
@@ -58,6 +59,8 @@ const (
 	PkiCtrlKeyVarDescription                         = "Path to Identity Key for Ziti Controller"
 	PkiCtrlCAVarName                                 = "ZITI_PKI_CTRL_CA"
 	PkiCtrlCAVarDescription                          = "Path to Identity CA for Ziti Controller"
+	CtrlBindAddressVarName                           = "ZITI_CTRL_BIND_ADDRESS"
+	CtrlBindAddressVarDescription                    = "The address on which the controller will listen for router communication."
 	CtrlAdvertisedAddressVarName                     = "ZITI_CTRL_ADVERTISED_ADDRESS"
 	CtrlAdvertisedAddressVarDescription              = "The address routers will use to connect to the Ziti Controller"
 	CtrlAdvertisedPortVarName                        = "ZITI_CTRL_ADVERTISED_PORT"

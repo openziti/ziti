@@ -85,6 +85,10 @@ func GetCtrlAdvertisedAddress() (string, error) {
 	return getValueOrSetAndGetDefault(constants.CtrlAdvertisedAddressVarName, constants.DefaultCtrlAdvertisedAddress)
 }
 
+func GetCtrlBindAddress() (string, error) {
+	return getValueOrSetAndGetDefault(constants.CtrlBindAddressVarName, constants.DefaultCtrlBindAddress)
+}
+
 func GetCtrlAdvertisedPort() (string, error) {
 	return getValueOrSetAndGetDefault(constants.CtrlAdvertisedPortVarName, constants.DefaultCtrlAdvertisedPort)
 }

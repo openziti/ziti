@@ -131,6 +131,7 @@ func TestCreateConfigControllerTemplateValues(t *testing.T) {
 		".Controller.Identity.ServerCert",
 		".Controller.Identity.Key",
 		".Controller.Identity.Ca",
+		".Controller.Ctrl.BindAddress",
 		".Controller.Ctrl.AdvertisedAddress",
 		".Controller.Ctrl.AdvertisedPort",
 		".Controller.EdgeApi.Address",
@@ -154,6 +155,7 @@ func TestCreateConfigControllerTemplateValues(t *testing.T) {
 		&data.Controller.Identity.ServerCert,
 		&data.Controller.Identity.Key,
 		&data.Controller.Identity.Ca,
+		&data.Controller.Ctrl.BindAddress,
 		&data.Controller.Ctrl.AdvertisedAddress,
 		&data.Controller.Ctrl.AdvertisedPort,
 		&data.Controller.EdgeApi.Address,
@@ -273,10 +275,10 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 	})
 
 	// ctrl:
-	t.Run("TestAdvertisedAddress", func(t *testing.T) {
-		expectedValue := testDefaultCtrlAdvertisedAddress
+	t.Run("TestBindAddress", func(t *testing.T) {
+		expectedValue := testDefaultCtrlBindAddress
 
-		assert.Equal(t, expectedValue, data.Controller.Ctrl.AdvertisedAddress)
+		assert.Equal(t, expectedValue, data.Controller.Ctrl.BindAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[1])
 	})
 	t.Run("TestAdvertisedPort", func(t *testing.T) {
@@ -338,8 +340,8 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 
 	// web:bindPoints
 	t.Run("TestEdgeBindpointInterfaceAddress", func(t *testing.T) {
-		// Should default to the value of Ctrl Listener Address
-		expectedValue := data.Controller.Ctrl.AdvertisedAddress
+		// Should default to the value of Ctrl Listener/bind Address
+		expectedValue := data.Controller.Ctrl.BindAddress
 
 		assert.Equal(t, expectedValue, data.Controller.Web.BindPoints.InterfaceAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[0])
@@ -473,10 +475,10 @@ func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 	})
 
 	// ctrl:
-	t.Run("TestAdvertisedAddress", func(t *testing.T) {
-		expectedValue := testDefaultCtrlAdvertisedAddress
+	t.Run("TestBindAddress", func(t *testing.T) {
+		expectedValue := testDefaultCtrlBindAddress
 
-		assert.Equal(t, expectedValue, data.Controller.Ctrl.AdvertisedAddress)
+		assert.Equal(t, expectedValue, data.Controller.Ctrl.BindAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[1])
 	})
 	t.Run("TestAdvertisedPort", func(t *testing.T) {
@@ -546,8 +548,8 @@ func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 
 	// web:bindPoints
 	t.Run("TestEdgeBindpointInterfaceAddress", func(t *testing.T) {
-		// Should default to the value of Ctrl Listener Address
-		expectedValue := data.Controller.Ctrl.AdvertisedAddress
+		// Should default to the value of Ctrl Listener/bind Address
+		expectedValue := data.Controller.Ctrl.BindAddress
 
 		assert.Equal(t, expectedValue, data.Controller.Web.BindPoints.InterfaceAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[0])
@@ -661,15 +663,15 @@ func TestZitiCtrlIdentitySection(t *testing.T) {
 	assert.Equal(t, caPath, ctrlConfig.Identity.Ca)
 }
 
-func TestCtrlAdvertisedAddress(t *testing.T) {
+func TestCtrlBindAddress(t *testing.T) {
 	customValue := "123.456.7.8"
 	keys := map[string]string{
-		"ZITI_CTRL_ADVERTISED_ADDRESS": customValue,
+		"ZITI_CTRL_BIND_ADDRESS": customValue,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
 
-	assert.Equal(t, customValue, data.Controller.Ctrl.AdvertisedAddress)
+	assert.Equal(t, customValue, data.Controller.Ctrl.BindAddress)
 	assert.Equal(t, customValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[1])
 }
 

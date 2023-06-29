@@ -70,6 +70,7 @@ type CtrlValues struct {
 	DefaultConnectTimeout      time.Duration
 	AdvertisedAddress          string
 	AdvertisedPort             string
+	BindAddress                string
 }
 
 type HealthChecksValues struct {
@@ -228,8 +229,8 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	handleVariableError(err, constants.CtrlAdvertisedAddressVarName)
 
 	// Get Ziti Controller ctrl:listener address and port
-	ctrlAdvertisedAddress, err := cmdHelper.GetCtrlAdvertisedAddress()
-	handleVariableError(err, constants.CtrlAdvertisedAddressVarName)
+	ctrlBindAddress, err := cmdHelper.GetCtrlBindAddress()
+	handleVariableError(err, constants.CtrlBindAddressVarName)
 	ctrlAdvertisedPort, err := cmdHelper.GetCtrlAdvertisedPort()
 	handleVariableError(err, constants.CtrlAdvertisedPortVarName)
 
@@ -281,7 +282,7 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	data.Controller.Ctrl.MaxConnectTimeout = channel.MaxConnectTimeout
 	data.Controller.Ctrl.DefaultConnectTimeout = channel.DefaultConnectTimeout
 	data.Controller.Ctrl.AdvertisedAddress = zitiCtrlAdvertisedAddress
-	data.Controller.Ctrl.AdvertisedAddress = ctrlAdvertisedAddress
+	data.Controller.Ctrl.BindAddress = ctrlBindAddress
 	data.Controller.Ctrl.AdvertisedPort = ctrlAdvertisedPort
 	// healthChecks:
 	data.Controller.HealthChecks.Interval = fabCtrl.DefaultHealthChecksBoltCheckInterval
