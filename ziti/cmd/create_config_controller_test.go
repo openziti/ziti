@@ -131,8 +131,9 @@ func TestCreateConfigControllerTemplateValues(t *testing.T) {
 		".Controller.Identity.ServerCert",
 		".Controller.Identity.Key",
 		".Controller.Identity.Ca",
-		".Controller.Ctrl.ListenerAddress",
-		".Controller.Ctrl.ListenerPort",
+		".Controller.Ctrl.BindAddress",
+		".Controller.Ctrl.AdvertisedAddress",
+		".Controller.Ctrl.AdvertisedPort",
 		".Controller.EdgeApi.Address",
 		".Controller.EdgeApi.Port",
 		".Controller.EdgeEnrollment.SigningCert",
@@ -154,8 +155,9 @@ func TestCreateConfigControllerTemplateValues(t *testing.T) {
 		&data.Controller.Identity.ServerCert,
 		&data.Controller.Identity.Key,
 		&data.Controller.Identity.Ca,
-		&data.Controller.Ctrl.ListenerAddress,
-		&data.Controller.Ctrl.ListenerPort,
+		&data.Controller.Ctrl.BindAddress,
+		&data.Controller.Ctrl.AdvertisedAddress,
+		&data.Controller.Ctrl.AdvertisedPort,
 		&data.Controller.EdgeApi.Address,
 		&data.Controller.EdgeApi.Port,
 		&data.Controller.EdgeEnrollment.SigningCert,
@@ -273,16 +275,16 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 	})
 
 	// ctrl:
-	t.Run("TestListenerAddress", func(t *testing.T) {
-		expectedValue := testDefaultCtrlListenerAddress
+	t.Run("TestBindAddress", func(t *testing.T) {
+		expectedValue := testDefaultCtrlBindAddress
 
-		assert.Equal(t, expectedValue, data.Controller.Ctrl.ListenerAddress)
+		assert.Equal(t, expectedValue, data.Controller.Ctrl.BindAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[1])
 	})
-	t.Run("TestListenerPort", func(t *testing.T) {
-		expectedValue := testDefaultCtrlListenerPort
+	t.Run("TestAdvertisedPort", func(t *testing.T) {
+		expectedValue := testDefaultCtrlAdvertisedPort
 
-		assert.Equal(t, expectedValue, data.Controller.Ctrl.ListenerPort)
+		assert.Equal(t, expectedValue, data.Controller.Ctrl.AdvertisedPort)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[2])
 	})
 
@@ -338,8 +340,8 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 
 	// web:bindPoints
 	t.Run("TestEdgeBindpointInterfaceAddress", func(t *testing.T) {
-		// Should default to the value of Ctrl Listener Address
-		expectedValue := data.Controller.Ctrl.ListenerAddress
+		// Should default to the value of Ctrl Listener/bind Address
+		expectedValue := data.Controller.Ctrl.BindAddress
 
 		assert.Equal(t, expectedValue, data.Controller.Web.BindPoints.InterfaceAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[0])
@@ -473,16 +475,16 @@ func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 	})
 
 	// ctrl:
-	t.Run("TestListenerAddress", func(t *testing.T) {
-		expectedValue := testDefaultCtrlListenerAddress
+	t.Run("TestBindAddress", func(t *testing.T) {
+		expectedValue := testDefaultCtrlBindAddress
 
-		assert.Equal(t, expectedValue, data.Controller.Ctrl.ListenerAddress)
+		assert.Equal(t, expectedValue, data.Controller.Ctrl.BindAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[1])
 	})
-	t.Run("TestListenerPort", func(t *testing.T) {
-		expectedValue := testDefaultCtrlListenerPort
+	t.Run("TestAdvertisedPort", func(t *testing.T) {
+		expectedValue := testDefaultCtrlAdvertisedPort
 
-		assert.Equal(t, expectedValue, data.Controller.Ctrl.ListenerPort)
+		assert.Equal(t, expectedValue, data.Controller.Ctrl.AdvertisedPort)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[2])
 	})
 
@@ -546,8 +548,8 @@ func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 
 	// web:bindPoints
 	t.Run("TestEdgeBindpointInterfaceAddress", func(t *testing.T) {
-		// Should default to the value of Ctrl Listener Address
-		expectedValue := data.Controller.Ctrl.ListenerAddress
+		// Should default to the value of Ctrl Listener/bind Address
+		expectedValue := data.Controller.Ctrl.BindAddress
 
 		assert.Equal(t, expectedValue, data.Controller.Web.BindPoints.InterfaceAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[0])
@@ -661,27 +663,27 @@ func TestZitiCtrlIdentitySection(t *testing.T) {
 	assert.Equal(t, caPath, ctrlConfig.Identity.Ca)
 }
 
-func TestCtrlListenerAddress(t *testing.T) {
+func TestCtrlBindAddress(t *testing.T) {
 	customValue := "123.456.7.8"
 	keys := map[string]string{
-		"ZITI_CTRL_LISTENER_ADDRESS": customValue,
+		"ZITI_CTRL_BIND_ADDRESS": customValue,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
 
-	assert.Equal(t, customValue, data.Controller.Ctrl.ListenerAddress)
+	assert.Equal(t, customValue, data.Controller.Ctrl.BindAddress)
 	assert.Equal(t, customValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[1])
 }
 
-func TestCtrlListenerPort(t *testing.T) {
+func TestCtrlAdvertisedPort(t *testing.T) {
 	customValue := "9999"
 	keys := map[string]string{
-		"ZITI_CTRL_LISTENER_PORT": customValue,
+		"ZITI_CTRL_ADVERTISED_PORT": customValue,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
 
-	assert.Equal(t, customValue, data.Controller.Ctrl.ListenerPort)
+	assert.Equal(t, customValue, data.Controller.Ctrl.AdvertisedPort)
 	assert.Equal(t, customValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[2])
 }
 

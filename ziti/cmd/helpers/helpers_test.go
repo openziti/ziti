@@ -93,16 +93,16 @@ func TestGetCtrlEdgeAdvertisedAddressWhenSet(t *testing.T) {
 	assert.Equal(t, expectedValue, actualValue)
 }
 
-func TestGetCtrlPortWhenUnset(t *testing.T) {
+func TestGetCtrlAdvertisedPortWhenUnset(t *testing.T) {
 	// Setup
-	varName := "ZITI_CTRL_LISTENER_PORT"
+	varName := "ZITI_CTRL_ADVERTISED_PORT"
 
 	// Ensure the variable is unset
 	_ = os.Unsetenv(varName)
 	expectedValue := "6262"
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlListenerPort()
+	actualValue, _ := GetCtrlAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
 
 	// The env variable should be populated with the expected value
@@ -110,29 +110,29 @@ func TestGetCtrlPortWhenUnset(t *testing.T) {
 	assert.Equal(t, expectedValue, envValue)
 }
 
-func TestGetCtrlPortWhenSet(t *testing.T) {
+func TestGetCtrlAdvertisedPortWhenSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_CTRL_LISTENER_PORT"
+	varName := "ZITI_CTRL_ADVERTISED_PORT"
 	expectedValue := "1234"
 
 	// Set the env variable
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlListenerPort()
+	actualValue, _ := GetCtrlAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
-func TestGetCtrlListenerAddressWhenUnset(t *testing.T) {
+func TestGetCtrlAdvertisedAddressWhenUnset(t *testing.T) {
 	// Setup
-	varName := "ZITI_CTRL_LISTENER_ADDRESS"
+	varName := "ZITI_CTRL_ADVERTISED_ADDRESS"
 
 	// Ensure the variable is unset
 	_ = os.Unsetenv(varName)
 	expectedValue := "0.0.0.0"
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlListenerAddress()
+	actualValue, _ := GetCtrlAdvertisedAddress()
 	assert.Equal(t, expectedValue, actualValue)
 
 	// The env variable should be populated with the expected value
@@ -140,16 +140,16 @@ func TestGetCtrlListenerAddressWhenUnset(t *testing.T) {
 	assert.Equal(t, expectedValue, envValue)
 }
 
-func TestGetCtrlListenerAddressWhenSet(t *testing.T) {
+func TestGetCtrlAdvertisedAddressWhenSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_CTRL_LISTENER_ADDRESS"
+	varName := "ZITI_CTRL_ADVERTISED_ADDRESS"
 	expectedValue := "localhost"
 
 	// Set the env variable
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlListenerAddress()
+	actualValue, _ := GetCtrlAdvertisedAddress()
 	assert.Equal(t, expectedValue, actualValue)
 }
 

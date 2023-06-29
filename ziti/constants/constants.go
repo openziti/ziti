@@ -41,8 +41,9 @@ const (
 
 	DefaultZitiEdgeRouterPort     = "3022"
 	DefaultCtrlEdgeAdvertisedPort = "1280"
-	DefaultCtrlListenerAddress    = "0.0.0.0"
-	DefaultCtrlListenerPort       = "6262"
+	DefaultCtrlAdvertisedAddress  = "0.0.0.0"
+	DefaultCtrlBindAddress        = "0.0.0.0"
+	DefaultCtrlAdvertisedPort     = "6262"
 )
 
 // Env Var Constants
@@ -58,10 +59,12 @@ const (
 	PkiCtrlKeyVarDescription                         = "Path to Identity Key for Ziti Controller"
 	PkiCtrlCAVarName                                 = "ZITI_PKI_CTRL_CA"
 	PkiCtrlCAVarDescription                          = "Path to Identity CA for Ziti Controller"
-	CtrlListenerAddressVarName                       = "ZITI_CTRL_LISTENER_ADDRESS"
-	CtrlListenerAddressVarDescription                = "The address routers will use to connect to the Ziti Controller"
-	CtrlListenerPortVarName                          = "ZITI_CTRL_LISTENER_PORT"
-	CtrlListenerPortVarDescription                   = "The port routers will use to connect to the Ziti Controller"
+	CtrlBindAddressVarName                           = "ZITI_CTRL_BIND_ADDRESS"
+	CtrlBindAddressVarDescription                    = "The address on which the controller will listen for communication on the control plane."
+	CtrlAdvertisedAddressVarName                     = "ZITI_CTRL_ADVERTISED_ADDRESS"
+	CtrlAdvertisedAddressVarDescription              = "The address routers will use to connect to the Ziti Controller"
+	CtrlAdvertisedPortVarName                        = "ZITI_CTRL_ADVERTISED_PORT"
+	CtrlAdvertisedPortVarDescription                 = "The port routers will use to connect to the Ziti Controller"
 	CtrlEdgeApiAddressVarName                        = "ZITI_CTRL_EDGE_API_ADDRESS"
 	CtrlEdgeApiAddressVarDescription                 = "The address for the controller's API plane"
 	CtrlEdgeApiPortVarName                           = "ZITI_CTRL_EDGE_API_PORT"

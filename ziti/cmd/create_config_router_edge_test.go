@@ -19,8 +19,8 @@ func TestEdgeRouterAdvertisedAddress(t *testing.T) {
 	routerAdvHostIp := "192.168.10.10"
 	routerAdvHostDns := "controller01.zitinetwork.example.org"
 	keys := map[string]string{
-		"ZITI_CTRL_LISTENER_PORT": "80",
-		"ZITI_EDGE_ROUTER_PORT":   "443",
+		"ZITI_CTRL_ADVERTISED_PORT": "80",
+		"ZITI_EDGE_ROUTER_PORT":     "443",
 	}
 	// Defaults to hostname if nothing is set
 	execCreateConfigCommand(defaultArgs, keys)

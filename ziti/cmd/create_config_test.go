@@ -16,8 +16,9 @@ import (
 // as they are expecting these hard-coded values. In which case, we update the hard-coded values and check any docs.
 const (
 	testDefaultCtrlEdgeAdvertisedPort         = "1280"
-	testDefaultCtrlListenerAddress            = "0.0.0.0"
-	testDefaultCtrlListenerPort               = "6262"
+	testDefaultCtrlAdvertisedAddress          = "0.0.0.0"
+	testDefaultCtrlBindAddress                = "0.0.0.0"
+	testDefaultCtrlAdvertisedPort             = "6262"
 	testDefaultBoltCheckInterval              = "30s"
 	testDefaultBoltCheckTimeout               = "20s"
 	testDefaultBoltCheckInitialDelay          = "30s"
@@ -41,8 +42,9 @@ func getZitiEnvironmentVariables() []string {
 		"ZITI_PKI_CTRL_SERVER_CERT",
 		"ZITI_PKI_CTRL_KEY",
 		"ZITI_PKI_CTRL_CA",
-		"ZITI_CTRL_LISTENER_ADDRESS",
-		"ZITI_CTRL_LISTENER_PORT",
+		"ZITI_CTRL_BIND_ADDRESS",
+		"ZITI_CTRL_ADVERTISED_ADDRESS",
+		"ZITI_CTRL_ADVERTISED_PORT",
 		"ZITI_CTRL_EDGE_API_ADDRESS",
 		"ZITI_CTRL_EDGE_API_PORT",
 		"ZITI_PKI_SIGNER_CERT",
