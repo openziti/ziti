@@ -316,9 +316,10 @@ function setupEnvironment {
 
   # Controller Values
   if [[ "${ZITI_CTRL_NAME-}" == "" ]]; then export ZITI_CTRL_NAME="${ZITI_NETWORK}"; else echo "ZITI_CTRL_NAME overridden: ${ZITI_CTRL_NAME}"; fi
-  if [[ "${ZITI_CTRL_LISTENER_PORT-}" == "" ]]; then export ZITI_CTRL_LISTENER_PORT="6262"; else echo "ZITI_CTRL_LISTENER_PORT overridden: ${ZITI_CTRL_LISTENER_PORT}"; fi
   if [[ "${ZITI_CTRL_EDGE_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_PORT="1280"; else echo "ZITI_CTRL_EDGE_ADVERTISED_PORT overridden: ${ZITI_CTRL_EDGE_ADVERTISED_PORT}"; fi
   if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_NETWORK-}"; else echo "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS overridden: ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"; fi
+  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_NETWORK-}"; else echo "ZITI_CTRL_ADVERTISED_ADDRESS overridden: ${ZITI_CTRL_ADVERTISED_ADDRESS}"; fi
+  if [[ "${ZITI_CTRL_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_PORT="6262"; else echo "ZITI_CTRL_ADVERTISED_PORT overridden: ${ZITI_CTRL_ADVERTISED_PORT}"; fi
   if [[ "${ZITI_PKI_CTRL_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_ROOTCA_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-root-ca"; else echo "ZITI_PKI_CTRL_ROOTCA_NAME overridden: ${ZITI_PKI_CTRL_ROOTCA_NAME}"; fi
   if [[ "${ZITI_PKI_CTRL_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_INTERMEDIATE_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-intermediate"; else echo "ZITI_PKI_CTRL_INTERMEDIATE_NAME overridden: ${ZITI_PKI_CTRL_INTERMEDIATE_NAME}"; fi
   if [[ "${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_EDGE_ROOTCA_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-root-ca"; else echo "ZITI_PKI_CTRL_EDGE_ROOTCA_NAME overridden: ${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}"; fi
@@ -529,7 +530,7 @@ function stopRouter {
 # Checks all ports intended to be used in the Ziti network
 function checkZitiPorts {
     local returnCnt=0
-    _portCheck "ZITI_CTRL_LISTENER_PORT" "Controller"
+    _portCheck "ZITI_CTRL_ADVERTISED_PORT" "Controller"
     returnCnt=$((returnCnt + $?))
     _portCheck "ZITI_EDGE_ROUTER_PORT" "Edge Router"
     returnCnt=$((returnCnt + $?))
@@ -850,8 +851,8 @@ function _create_router_config {
 
   # Make sure necessary env variables are set
   # The following are used by ziti bin to generate the config so they need to be checked:
-  # ZITI_CTRL_EDGE_ADVERTISED_ADDRESS ZITI_CTRL_LISTENER_PORT
-  _check_env_variable ZITI_HOME ZITI_BIN_DIR ZITI_CTRL_EDGE_ADVERTISED_ADDRESS ZITI_CTRL_LISTENER_PORT
+  # ZITI_CTRL_EDGE_ADVERTISED_ADDRESS ZITI_CTRL_ADVERTISED_PORT
+  _check_env_variable ZITI_HOME ZITI_BIN_DIR ZITI_CTRL_EDGE_ADVERTISED_ADDRESS ZITI_CTRL_ADVERTISED_PORT
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
@@ -1431,13 +1432,12 @@ function performMigration {
   sed -i '' 's/ZITI_CONTROLLER_INTERMEDIATE_NAME/ZITI_PKI_CTRL_INTERMEDIATE_NAME/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CONTROLLER_RAWNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CONTROLLER_ROOTCA_NAME/ZITI_PKI_CTRL_ROOTCA_NAME/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CTRL_ADVERTISED_ADDRESS/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CTRL_EDGE_PORT/ZITI_CTRL_EDGE_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CTRL_IDENTITY_CA/ZITI_PKI_CTRL_CA/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CTRL_IDENTITY_CERT/ZITI_PKI_CTRL_CERT/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CTRL_IDENTITY_KEY/ZITI_PKI_CTRL_KEY/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CTRL_IDENTITY_SERVER_CERT/ZITI_PKI_CTRL_SERVER_CERT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CTRL_PORT/ZITI_CTRL_LISTENER_PORT/g' "${ZITI_ENV_FILE}"
+  sed -i '' 's/ZITI_CTRL_PORT/ZITI_CTRL_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CONTROLLER_HOSTNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME/ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CONTROLLER_PORT/ZITI_CTRL_EDGE_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
@@ -1462,7 +1462,7 @@ function performMigration {
   if [[ "${ZITI_CTRL_IDENTITY_CERT-}" != "" ]]; then export ZITI_PKI_CTRL_CERT="${ZITI_CTRL_IDENTITY_CERT}"; fi
   if [[ "${ZITI_CTRL_IDENTITY_KEY-}" != "" ]]; then export ZITI_PKI_CTRL_KEY="${ZITI_CTRL_IDENTITY_KEY}"; fi
   if [[ "${ZITI_CTRL_IDENTITY_SERVER_CERT-}" != "" ]]; then export ZITI_PKI_CTRL_SERVER_CERT="${ZITI_CTRL_IDENTITY_SERVER_CERT}"; fi
-  if [[ "${ZITI_CTRL_PORT-}" != "" ]]; then export ZITI_CTRL_LISTENER_PORT="${ZITI_CTRL_PORT}"; fi
+  if [[ "${ZITI_CTRL_PORT-}" != "" ]]; then export ZITI_CTRL_ADVERTISED_PORT="${ZITI_CTRL_PORT}"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME-}" != "" ]]; then export ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME="${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" != "" ]]; then export ZITI_CTRL_NAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_ROOTCA_NAME-}" != "" ]]; then export ZITI_PKI_CTRL_EDGE_ROOTCA_NAME="${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}"; fi

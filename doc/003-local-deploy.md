@@ -33,8 +33,8 @@ Before you can run the controller will initialize its configuration and database
 
 ```bash
 ZITI_HOME=. \                              
-ZITI_CTRL_LISTENER_ADDRESS=127.0.0.1 \
-ZITI_CTRL_EDGE_LISTENER_HOST_PORT=127.0.0.1:1280 \
+ZITI_CTRL_ADVERTISED_ADDRESS=127.0.0.1 \
+ZITI_CTRL_EDGE_ADVERTISED_HOST_PORT=127.0.0.1:1280 \
 ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT=127.0.0.1:1280 \
 ZITI_PKI_CTRL_CERT=./etc/ca/intermediate/certs/ctrl-client.cert.pem \
 ZITI_PKI_CTRL_SERVER_CERT=./etc/ca/intermediate/certs/ctrl-server.cert.pem \

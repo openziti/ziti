@@ -103,8 +103,8 @@ func NewCmdCreateConfigController() *cobra.Command {
 			data.populateConfigValues()
 
 			// Update controller specific values with configOptions passed in if the argument was provided or the value is currently blank
-			if data.Controller.Ctrl.ListenerPort == "" || controllerOptions.CtrlPort != constants.DefaultCtrlListenerPort {
-				data.Controller.Ctrl.ListenerPort = controllerOptions.CtrlPort
+			if data.Controller.Ctrl.AdvertisedPort == "" || controllerOptions.CtrlPort != constants.DefaultCtrlAdvertisedPort {
+				data.Controller.Ctrl.AdvertisedPort = controllerOptions.CtrlPort
 			}
 			// Update with the passed in arg if it's not the default (CLI flag should override other methods of modifying these values)
 			if controllerOptions.EdgeIdentityEnrollmentDuration != edge.DefaultEdgeEnrollmentDuration {
@@ -138,7 +138,7 @@ func NewCmdCreateConfigController() *cobra.Command {
 }
 
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&options.CtrlPort, optionCtrlPort, constants.DefaultCtrlListenerPort, "port used for the router to controller communication")
+	cmd.Flags().StringVar(&options.CtrlPort, optionCtrlPort, constants.DefaultCtrlAdvertisedPort, "port used for the router to controller communication")
 	cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, "ctrl.db", "location of the database file")
 	cmd.Flags().DurationVar(&options.EdgeIdentityEnrollmentDuration, optionEdgeIdentityEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge identity enrollment duration, use 0h0m0s format")
 	cmd.Flags().DurationVar(&options.EdgeRouterEnrollmentDuration, optionEdgeRouterEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge router enrollment duration, use 0h0m0s format")

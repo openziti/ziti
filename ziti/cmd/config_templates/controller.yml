@@ -75,7 +75,7 @@ ctrl:
   #maxOutstandingConnects: {{ .Controller.Ctrl.DefaultOutstandingConnects }}
   # the number of milliseconds to wait before a hello synchronization fails and closes the connection ({{ .Controller.Ctrl.MinConnectTimeout.Milliseconds }}ms to {{ .Controller.Ctrl.MaxConnectTimeout.Milliseconds }}ms, default: {{ .Controller.Ctrl.DefaultConnectTimeout.Milliseconds }}ms)
   #connectTimeoutMs:       {{ .Controller.Ctrl.DefaultConnectTimeout.Milliseconds }}
-  listener:             tls:{{ .Controller.Ctrl.ListenerAddress }}:{{ .Controller.Ctrl.ListenerPort }}
+  listener:             tls:{{ .Controller.Ctrl.AdvertisedAddress }}:{{ .Controller.Ctrl.AdvertisedPort }}
 
 #metrics:
 #  influxdb:

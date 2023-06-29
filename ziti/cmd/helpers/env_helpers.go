@@ -81,12 +81,12 @@ func HostnameOrNetworkName() string {
 	return val
 }
 
-func GetCtrlListenerAddress() (string, error) {
-	return getValueOrSetAndGetDefault(constants.CtrlListenerAddressVarName, constants.DefaultCtrlListenerAddress)
+func GetCtrlAdvertisedAddress() (string, error) {
+	return getValueOrSetAndGetDefault(constants.CtrlAdvertisedAddressVarName, constants.DefaultCtrlAdvertisedAddress)
 }
 
-func GetCtrlListenerPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.CtrlListenerPortVarName, constants.DefaultCtrlListenerPort)
+func GetCtrlAdvertisedPort() (string, error) {
+	return getValueOrSetAndGetDefault(constants.CtrlAdvertisedPortVarName, constants.DefaultCtrlAdvertisedPort)
 }
 
 func GetCtrlEdgeApiAddress() (string, error) {
@@ -117,9 +117,9 @@ func GetCtrlEdgeApiPort() (string, error) {
 
 func GetCtrlEdgeInterfaceAddress() (string, error) {
 	// Get the controller's listener hostname to use as the default
-	defaultHostname, err := GetCtrlListenerAddress()
+	defaultHostname, err := GetCtrlAdvertisedAddress()
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.CtrlListenerAddressVarName)
+		err := errors.Wrap(err, "Unable to get "+constants.CtrlAdvertisedAddressVarName)
 		if err != nil {
 			return "", err
 		}

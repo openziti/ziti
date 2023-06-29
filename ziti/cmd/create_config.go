@@ -68,8 +68,8 @@ type CtrlValues struct {
 	MinConnectTimeout          time.Duration
 	MaxConnectTimeout          time.Duration
 	DefaultConnectTimeout      time.Duration
-	ListenerAddress            string
-	ListenerPort               string
+	AdvertisedAddress          string
+	AdvertisedPort             string
 }
 
 type HealthChecksValues struct {
@@ -223,11 +223,15 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	zitiHome, err := cmdHelper.GetZitiHome()
 	handleVariableError(err, constants.ZitiHomeVarName)
 
+	// Get Ziti Controller Advertised Address
+	zitiCtrlAdvertisedAddress, err := cmdHelper.GetCtrlAdvertisedAddress()
+	handleVariableError(err, constants.CtrlAdvertisedAddressVarName)
+
 	// Get Ziti Controller ctrl:listener address and port
-	ctrlListenerAddress, err := cmdHelper.GetCtrlListenerAddress()
-	handleVariableError(err, constants.CtrlListenerAddressVarName)
-	ctrlListenerPort, err := cmdHelper.GetCtrlListenerPort()
-	handleVariableError(err, constants.CtrlListenerPortVarName)
+	ctrlAdvertisedAddress, err := cmdHelper.GetCtrlAdvertisedAddress()
+	handleVariableError(err, constants.CtrlAdvertisedAddressVarName)
+	ctrlAdvertisedPort, err := cmdHelper.GetCtrlAdvertisedPort()
+	handleVariableError(err, constants.CtrlAdvertisedPortVarName)
 
 	// Get Ziti Controller edge:api address and port
 	ctrlEdgeApiAddress, err := cmdHelper.GetCtrlEdgeApiAddress()
@@ -276,8 +280,9 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	data.Controller.Ctrl.MinConnectTimeout = channel.MinConnectTimeout
 	data.Controller.Ctrl.MaxConnectTimeout = channel.MaxConnectTimeout
 	data.Controller.Ctrl.DefaultConnectTimeout = channel.DefaultConnectTimeout
-	data.Controller.Ctrl.ListenerAddress = ctrlListenerAddress
-	data.Controller.Ctrl.ListenerPort = ctrlListenerPort
+	data.Controller.Ctrl.AdvertisedAddress = zitiCtrlAdvertisedAddress
+	data.Controller.Ctrl.AdvertisedAddress = ctrlAdvertisedAddress
+	data.Controller.Ctrl.AdvertisedPort = ctrlAdvertisedPort
 	// healthChecks:
 	data.Controller.HealthChecks.Interval = fabCtrl.DefaultHealthChecksBoltCheckInterval
 	data.Controller.HealthChecks.Timeout = fabCtrl.DefaultHealthChecksBoltCheckTimeout
