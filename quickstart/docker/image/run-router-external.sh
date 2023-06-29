@@ -1,5 +1,19 @@
 #!/bin/bash
 
+echo ""
+echo ""
+echo "-------------------------------------------"
+echo "--         DEPRECATION NOTICE            --"
+echo "-------------------------------------------"
+echo "-- this script will be removed in future --"
+echo "-- releases. You are urged to stop using --"
+echo "-- this script and change to using the   --"
+echo "-- existing 'run-router.sh' script which --"
+echo "-- now works externally                  --"
+echo "-------------------------------------------"
+echo ""
+echo ""
+
 # give the controller time to ramp up before running if running in docker-compose
 echo "Waiting for 5 seconds...."
 sleep 5
