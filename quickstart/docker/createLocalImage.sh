@@ -10,8 +10,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 ###
 echo "CREATING latest quickstart containers LOCALLY"
 if [ -d != "${SCRIPT_DIR}/ziti-bin" ]; then
+  echo "rebuilding quickstart using latest ziti from github: no image/ziti-bin directory found"
   echo ""
-  echo "WARNING: no image/ziti-bin directory found. Using latest published relese"
+else
+  echo "rebuilding quickstart using locally built ziti located in image/ziti-bin directory"
+  echo ""
 fi
 
 $SCRIPT_DIR/pushLatestDocker.sh local
