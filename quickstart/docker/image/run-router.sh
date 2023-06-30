@@ -10,14 +10,20 @@ sleep 1
 
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="ziti-edge-controller"; fi
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_PORT="3022"; fi
-if [[ "${ZITI_EDGE_ROUTER_NAME-}" == "" ]]; then
-  ZITI_EDGE_ROUTER_NAME="${ZITI_NETWORK-}-edge-router"
-  echo "ZITI_EDGE_ROUTER_NAME not set. using default: ${ZITI_EDGE_ROUTER_NAME}"
-fi
 if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
 if [[ "${ZITI_EDGE_ROUTER_ROLES}" == "" ]]; then export ZITI_EDGE_ROUTER_ROLES="${ZITI_EDGE_ROUTER_NAME}"; fi
 
+if [[ "${ZITI_EDGE_ROUTER_NAME-}" != "" ]]; then
+  _ZITI_EDGE_ROUTER_NAME="${ZITI_EDGE_ROUTER_NAME}"
+  echo "_ZITI_EDGE_ROUTER_NAME set to: ${_ZITI_EDGE_ROUTER_NAME}"
+fi
+
 . ${ZITI_HOME}/ziti.env
+
+if [[ "${_ZITI_EDGE_ROUTER_NAME}" != "" ]]; then
+  export ZITI_EDGE_ROUTER_NAME="${_ZITI_EDGE_ROUTER_NAME}"
+  echo "ZITI_EDGE_ROUTER_NAME set to: ${ZITI_EDGE_ROUTER_NAME}"
+fi
 
 ziti edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
 
@@ -28,19 +34,19 @@ unset ZITI_PWD
 echo "----------  Creating edge-router ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}...."
 
 if [[ "$1" == "edge" ]]; then
-  echo "CREATING EDGE ROUTER CONFIG"
+  echo "CREATING EDGE ROUTER CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
   createEdgeRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
 fi
 if [[ "$1" == "wss" ]]; then
-  echo "CREATING EDGE ROUTER WSS CONFIG"
+  echo "CREATING EDGE ROUTER WSS CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
   createEdgeRouterWssConfig "${ZITI_EDGE_ROUTER_NAME}"
 fi
 if [[ "$1" == "fabric" ]]; then
-  echo "CREATING FABRIC ROUTER CONFIG"
+  echo "CREATING FABRIC ROUTER CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
   createFabricRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
 fi
 if [[ "$1" == "private" ]]; then
-  echo "CREATING PRIVATE ROUTER CONFIG"
+  echo "CREATING PRIVATE ROUTER CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
   createPrivateRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
 fi
 

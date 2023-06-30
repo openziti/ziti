@@ -52,7 +52,7 @@ function _setup_ziti_env_path {
 
 
 function _setup_ziti_network {
-  if [[ "ran" != "${_setup_ziti_network_run}" ]]; then
+  if [[ "ran" == "${_setup_ziti_network_run}" ]]; then
     if [[ "${ZITI_NETWORK-}" == "" ]]; then ZITI_NETWORK="$(hostname -s)"; export ZITI_NETWORK; else echo "ZITI_NETWORK overridden: ${ZITI_NETWORK}"; fi
     _setup_ziti_network_run="ran"
   fi
@@ -845,8 +845,8 @@ function _create_router_config {
   # Get router type or set as default
   if [[ "${router_type}" == "" ]]; then
     router_type="private"
-  elif [[ "private" != "${router_type}" ]] && [[ "public" != "${router_type}" ]]; then
-    echo -e "Unknown router type parameter provided, use 'public', 'private', 'fabric', or 'wss'"
+  elif [[ "private" != "${router_type}" ]] && [[ "public" != "${router_type}" ]] && [[ "fabric" != "${router_type}" ]] && [[ "wss" != "${router_type}" ]]; then
+    echo -e "Unknown router type parameter provided '${router_type}', use 'public', 'private', 'fabric', or 'wss'"
   fi
 
   # Make sure necessary env variables are set
