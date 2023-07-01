@@ -110,10 +110,13 @@ type BindPointsValues struct {
 }
 
 type IdentityValues struct {
-	Ca         string
-	Key        string
-	ServerCert string
-	Cert       string
+	Ca            string
+	Key           string
+	ServerCert    string
+	Cert          string
+	AltServerCert string
+	AltServerKey  string
+	HasAltCerts   bool
 }
 
 type WebOptionsValues struct {

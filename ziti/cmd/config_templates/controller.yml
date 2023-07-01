@@ -164,7 +164,10 @@ web:
       ca:          "{{ .Controller.Web.Identity.Ca }}"
       key:         "{{ .Controller.Web.Identity.Key }}"
       server_cert: "{{ .Controller.Web.Identity.ServerCert }}"
-      cert:        "{{ .Controller.Web.Identity.Cert }}"
+      cert:        "{{ .Controller.Web.Identity.Cert }}"{{ if .Controller.Web.Identity.HasAltCerts }}
+      alt_server_certs:
+      - server_cert: "{{ .Controller.Web.Identity.AltServerCert }}"
+        server_key: "{{ .Controller.Web.Identity.AltServerKey }}"{{ end }}
     # options - optional
     # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
     # used for all http servers started by the current webListener.
