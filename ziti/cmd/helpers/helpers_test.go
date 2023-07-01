@@ -86,7 +86,7 @@ func TestGetCtrlEdgeAdvertisedAddressWhenSet(t *testing.T) {
 
 	// Set the env variable
 	_ = os.Setenv(varName, expectedValue)
-	a := get
+
 	// Check that the value matches
 	actualValue := GetCtrlEdgeAdvertisedAddress()
 	assert.Equal(t, expectedValue, actualValue)

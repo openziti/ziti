@@ -57,7 +57,7 @@ else
   "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_NAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.jwt" -t -a "${ZITI_EDGE_ROUTER_ROLES}"
   sleep 1
   echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_NAME}...."
-  "${ZITI_BIN_DIR}/ziti-router" enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.jwt"
+  "${ZITI_BIN_DIR}/ziti" router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.jwt"
   echo ""
 fi
 
