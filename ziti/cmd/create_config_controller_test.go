@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/constants"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -441,9 +442,9 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 
 func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 	keys := map[string]string{
-		"ZITI_PKI_CTRL_CERT":                "",
-		"ZITI_CTRL_EDGE_ADVERTISED_ADDRESS": "",
-		"ZITI_HOME":                         "",
+		constants.PkiCtrlCertVarName:               "",
+		constants.CtrlEdgeAdvertisedAddressVarName: "",
+		constants.ZitiHomeVarName:                  "",
 	}
 	// run the config
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
@@ -645,10 +646,10 @@ func TestZitiCtrlIdentitySection(t *testing.T) {
 	keyPath := "/var/test/custom/path/file.key"
 	caPath := "/var/test/custom/path/file.pem"
 	keys := map[string]string{
-		"ZITI_PKI_CTRL_CERT":        certPath,
-		"ZITI_PKI_CTRL_SERVER_CERT": serverCertPath,
-		"ZITI_PKI_CTRL_KEY":         keyPath,
-		"ZITI_PKI_CTRL_CA":          caPath,
+		constants.PkiCtrlCertVarName:       certPath,
+		constants.PkiCtrlServerCertVarName: serverCertPath,
+		constants.PkiCtrlKeyVarName:        keyPath,
+		constants.PkiCtrlCAVarName:         caPath,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
@@ -666,7 +667,7 @@ func TestZitiCtrlIdentitySection(t *testing.T) {
 func TestCtrlBindAddress(t *testing.T) {
 	customValue := "123.456.7.8"
 	keys := map[string]string{
-		"ZITI_CTRL_BIND_ADDRESS": customValue,
+		constants.CtrlBindAddressVarName: customValue,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
@@ -676,9 +677,9 @@ func TestCtrlBindAddress(t *testing.T) {
 }
 
 func TestCtrlAdvertisedPort(t *testing.T) {
-	customValue := "9999"
+	customValue := "9996"
 	keys := map[string]string{
-		"ZITI_CTRL_ADVERTISED_PORT": customValue,
+		constants.CtrlAdvertisedPortVarName: customValue,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
@@ -690,7 +691,7 @@ func TestCtrlAdvertisedPort(t *testing.T) {
 func TestCtrlEdgeAPIAddress(t *testing.T) {
 	customValue := "123.456.7.8"
 	keys := map[string]string{
-		"ZITI_CTRL_EDGE_API_ADDRESS": customValue,
+		constants.CtrlEdgeAdvertisedAddressVarName: customValue,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
@@ -700,9 +701,9 @@ func TestCtrlEdgeAPIAddress(t *testing.T) {
 }
 
 func TestCtrlEdgeAPIPort(t *testing.T) {
-	customValue := "9999"
+	customValue := "9995"
 	keys := map[string]string{
-		"ZITI_CTRL_EDGE_API_PORT": customValue,
+		constants.CtrlEdgeAdvertisedPortVarName: customValue,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
@@ -715,8 +716,8 @@ func TestCtrlEdgeAPIEnrollmentSignerCert(t *testing.T) {
 	certPath := "/var/test/custom/path/file.cert"
 	keyPath := "/var/test/custom/path/file.key"
 	keys := map[string]string{
-		"ZITI_PKI_SIGNER_CERT": certPath,
-		"ZITI_PKI_SIGNER_KEY":  keyPath,
+		constants.PkiSignerCertVarName: certPath,
+		constants.PkiSignerKeyVarName:  keyPath,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
@@ -732,7 +733,7 @@ func TestEdgeIdentityEnrollmentDurationEnvVar(t *testing.T) {
 	customValue := "5"
 	expectedValue := customValue + "m" // Env Var int is converted to minutes format
 	keys := map[string]string{
-		"ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION": customValue,
+		constants.CtrlEdgeIdentityEnrollmentDurationVarName: customValue,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
@@ -746,7 +747,7 @@ func TestEdgeIdentityEnrollmentDurationCLITakesPriority(t *testing.T) {
 	cliValue := "10m"  // Setting a CLI custom duration which is also not the default value
 	expectedConfigValue := cliValue
 	keys := map[string]string{
-		"ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION": envVarValue,
+		constants.CtrlEdgeIdentityEnrollmentDurationVarName: envVarValue,
 	}
 	args := []string{"--identityEnrollmentDuration", cliValue}
 
@@ -780,7 +781,7 @@ func TestEdgeRouterEnrollmentDurationEnvVar(t *testing.T) {
 	customValue := "5"
 	expectedValue := customValue + "m" // Env Var int is converted to minutes format
 	keys := map[string]string{
-		"ZITI_EDGE_ROUTER_ENROLLMENT_DURATION": customValue,
+		constants.CtrlEdgeRouterEnrollmentDurationVarName: customValue,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
@@ -794,7 +795,7 @@ func TestEdgeRouterEnrollmentDurationCLITakesPriority(t *testing.T) {
 	cliValue := "10m"  // Setting a CLI custom duration which is also not the default value
 	expectedConfigValue := cliValue
 	keys := map[string]string{
-		"ZITI_EDGE_ROUTER_ENROLLMENT_DURATION": envVarValue,
+		constants.CtrlEdgeRouterEnrollmentDurationVarName: envVarValue,
 	}
 	args := []string{"--routerEnrollmentDuration", cliValue}
 
@@ -846,8 +847,8 @@ func TestEdgeRouterAndIdentityEnrollmentDurationTogetherEnvVar(t *testing.T) {
 
 	// Create and run the CLI command
 	keys := map[string]string{
-		"ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION": envVarIdentityDurationValue,
-		"ZITI_EDGE_ROUTER_ENROLLMENT_DURATION":   envVarRouterDurationValue,
+		constants.CtrlEdgeIdentityEnrollmentDurationVarName: envVarIdentityDurationValue,
+		constants.CtrlEdgeRouterEnrollmentDurationVarName:   envVarRouterDurationValue,
 	}
 	configStruct := execCreateConfigControllerCommand(nil, keys)
 
@@ -857,33 +858,24 @@ func TestEdgeRouterAndIdentityEnrollmentDurationTogetherEnvVar(t *testing.T) {
 }
 
 func TestCtrlEdgeInterfaceAddress(t *testing.T) {
-	customValue := "123.456.7.8"
+	addy := "custom.domain.name"
+	port := "9998"
 	keys := map[string]string{
-		"ZITI_CTRL_EDGE_INTERFACE_ADDRESS": customValue,
+		constants.CtrlEdgeBindAddressVarName: addy,
+		constants.CtrlEdgeAdvertisedPortVarName: port,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
 
-	assert.Equal(t, customValue, data.Controller.Web.BindPoints.InterfaceAddress)
-	assert.Equal(t, customValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[0])
-}
-
-func TestCtrlEdgeInterfacePort(t *testing.T) {
-	customValue := "9999"
-	keys := map[string]string{
-		"ZITI_CTRL_EDGE_INTERFACE_PORT": customValue,
-	}
-
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
-
-	assert.Equal(t, customValue, data.Controller.Web.BindPoints.InterfacePort)
-	assert.Equal(t, customValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[1])
+	assert.Equal(t, addy, data.Controller.Web.BindPoints.InterfaceAddress)
+	assert.Equal(t, addy, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[0])
+	assert.Equal(t, port, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[1])
 }
 
 func TestCtrlEdgeAdvertisedAddress(t *testing.T) {
 	customValue := "123.456.7.8"
 	keys := map[string]string{
-		"ZITI_CTRL_EDGE_ADVERTISED_ADDRESS": customValue,
+		constants.CtrlEdgeAdvertisedAddressVarName: customValue,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
@@ -893,9 +885,9 @@ func TestCtrlEdgeAdvertisedAddress(t *testing.T) {
 }
 
 func TestCtrlEdgeAdvertisedPort(t *testing.T) {
-	customValue := "9999"
+	customValue := "9997"
 	keys := map[string]string{
-		"ZITI_CTRL_EDGE_ADVERTISED_PORT": customValue,
+		constants.CtrlEdgeAdvertisedPortVarName: customValue,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
@@ -910,10 +902,10 @@ func TestCtrlEdgeIdentitySection(t *testing.T) {
 	serverCertPath := "/var/test/custom/path/file.chain.pem"
 	certPath := "/var/test/custom/path/file.cert"
 	keys := map[string]string{
-		"ZITI_PKI_CTRL_CA":          caPath,
-		"ZITI_PKI_CTRL_KEY":         keyPath,
-		"ZITI_PKI_CTRL_SERVER_CERT": serverCertPath,
-		"ZITI_PKI_CTRL_CERT":        certPath,
+		constants.PkiCtrlCAVarName:         caPath,
+		constants.PkiCtrlKeyVarName:        keyPath,
+		constants.PkiCtrlServerCertVarName: serverCertPath,
+		constants.PkiCtrlCertVarName:       certPath,
 	}
 
 	ctrlConfig := execCreateConfigControllerCommand(nil, keys)

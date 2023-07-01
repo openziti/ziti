@@ -225,20 +225,15 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	handleVariableError(err, constants.ZitiHomeVarName)
 
 	// Get Ziti Controller Advertised Address
-	zitiCtrlAdvertisedAddress, err := cmdHelper.GetCtrlAdvertisedAddress()
-	handleVariableError(err, constants.CtrlAdvertisedAddressVarName)
+	zitiCtrlAdvertisedAddress := cmdHelper.GetCtrlAdvertisedAddress()
 
 	// Get Ziti Controller ctrl:listener address and port
-	ctrlBindAddress, err := cmdHelper.GetCtrlBindAddress()
-	handleVariableError(err, constants.CtrlBindAddressVarName)
-	ctrlAdvertisedPort, err := cmdHelper.GetCtrlAdvertisedPort()
-	handleVariableError(err, constants.CtrlAdvertisedPortVarName)
+	ctrlBindAddress := cmdHelper.GetCtrlBindAddress()
+	ctrlAdvertisedPort := cmdHelper.GetCtrlAdvertisedPort()
 
 	// Get Ziti Controller edge:api address and port
-	ctrlEdgeApiAddress, err := cmdHelper.GetCtrlEdgeApiAddress()
-	handleVariableError(err, constants.CtrlEdgeApiAddressVarName)
-	ctrlEdgeApiPort, err := cmdHelper.GetCtrlEdgeApiPort()
-	handleVariableError(err, constants.CtrlEdgeApiPortVarName)
+	ctrlEdgeApiAddress := cmdHelper.GetCtrlEdgeAdvertisedAddress()
+	ctrlEdgeApiPort := cmdHelper.GetCtrlEdgeAdvertisedPort()
 
 	// Get Ziti Controller Identity edge:enrollment duration
 	ctrlEdgeIdentityEnrollmentDuration, err := cmdHelper.GetCtrlEdgeIdentityEnrollmentDuration()
@@ -249,22 +244,17 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	handleVariableError(err, constants.CtrlEdgeRouterEnrollmentDurationVarName)
 
 	// Get Ziti Controller web:bindPoints interface address and port
-	ctrlEdgeInterfaceAddress, err := cmdHelper.GetCtrlEdgeInterfaceAddress()
-	handleVariableError(err, constants.CtrlEdgeInterfaceAddressVarName)
-	ctrlEdgeInterfacePort, err := cmdHelper.GetCtrlEdgeInterfacePort()
-	handleVariableError(err, constants.CtrlEdgeInterfacePortVarName)
+	ctrlEdgeInterfaceAddress := cmdHelper.GetCtrlEdgeBindAddress()
+	ctrlEdgeInterfacePort := cmdHelper.GetCtrlEdgeAdvertisedPort()
 
 	// Get Ziti Controller web:bindPoints address address and port
-	ctrlEdgeAdvertisedAddress, err := cmdHelper.GetCtrlEdgeAdvertisedAddress()
-	handleVariableError(err, constants.CtrlEdgeAdvertisedAddressVarName)
-	ctrlEdgeAdvertisedPort, err := cmdHelper.GetCtrlEdgeAdvertisedPort()
-	handleVariableError(err, constants.CtrlEdgeAdvertisedPortVarName)
+	ctrlEdgeAdvertisedAddress := cmdHelper.GetCtrlEdgeAdvertisedAddress()
+	ctrlEdgeAdvertisedPort := cmdHelper.GetCtrlEdgeAdvertisedPort()
 
 	// Get Ziti Edge Router Port
-	zitiEdgeRouterPort, err := cmdHelper.GetZitiEdgeRouterPort()
-	handleVariableError(err, constants.ZitiEdgeRouterPortVarName)
+	zitiEdgeRouterPort := cmdHelper.GetZitiEdgeRouterPort()
 
-	zitiEdgeRouterListenerBindPort, err := cmdHelper.GetZitiEdgeRouterListenerBindPort()
+	zitiEdgeRouterListenerBindPort := cmdHelper.GetZitiEdgeRouterListenerBindPort()
 	handleVariableError(err, constants.ZitiEdgeRouterListenerBindPortVarName)
 
 	data.ZitiHome = zitiHome

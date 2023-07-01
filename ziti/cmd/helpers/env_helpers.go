@@ -81,104 +81,49 @@ func HostnameOrNetworkName() string {
 	return val
 }
 
-func GetCtrlAdvertisedAddress() (string, error) {
-	return getValueOrSetAndGetDefault(constants.CtrlAdvertisedAddressVarName, constants.DefaultCtrlAdvertisedAddress)
-}
-
-func GetCtrlBindAddress() (string, error) {
-	return getValueOrSetAndGetDefault(constants.CtrlBindAddressVarName, constants.DefaultCtrlBindAddress)
-}
-
-func GetCtrlAdvertisedPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.CtrlAdvertisedPortVarName, constants.DefaultCtrlAdvertisedPort)
-}
-
-func GetCtrlEdgeApiAddress() (string, error) {
-	// Get the controller's edge advertised hostname to use as the default
-	defaultAddress, err := GetCtrlEdgeAdvertisedAddress()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeAdvertisedAddressVarName)
-		if err != nil {
-			return "", err
-		}
+func defaultValue(val string) func() string {
+	return func() string {
+		return val
 	}
-
-	return getValueOrSetAndGetDefault(constants.CtrlEdgeApiAddressVarName, defaultAddress)
 }
-
-func GetCtrlEdgeApiPort() (string, error) {
-	// Get the controller's edge advertised port to use as the default
-	defaultPort, err := GetCtrlEdgeAdvertisedPort()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeAdvertisedPortVarName)
-		if err != nil {
-			return "", err
-		}
+func defaultIntValue(val int64) func() string {
+	return func() string {
+		return strconv.FormatInt(val, 10)
 	}
-
-	return getValueOrSetAndGetDefault(constants.CtrlEdgeApiPortVarName, defaultPort)
 }
 
-func GetCtrlEdgeInterfaceAddress() (string, error) {
-	// Get the controller's listener hostname to use as the default
-	defaultHostname, err := GetCtrlAdvertisedAddress()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.CtrlAdvertisedAddressVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return getValueOrSetAndGetDefault(constants.CtrlEdgeInterfaceAddressVarName, defaultHostname)
+func GetCtrlBindAddress() string {
+	return getFromEnv(constants.CtrlBindAddressVarName, defaultValue(constants.DefaultCtrlBindAddress))
 }
 
-func GetCtrlEdgeInterfacePort() (string, error) {
-	// Get the controller's edge advertised port to use as the default
-	defaultPort, err := GetCtrlEdgeAdvertisedPort()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeAdvertisedPortVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return getValueOrSetAndGetDefault(constants.CtrlEdgeInterfacePortVarName, defaultPort)
+func GetCtrlAdvertisedAddress() string {
+	return getFromEnv(constants.CtrlAdvertisedAddressVarName, HostnameOrNetworkName)
 }
 
-func GetCtrlEdgeAdvertisedAddress() (string, error) {
-
-	// Use hostname if edge advertised address not set
-	hostname, err := os.Hostname()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get hostname")
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return getValueOrSetAndGetDefault(constants.CtrlEdgeAdvertisedAddressVarName, hostname)
+func GetCtrlAdvertisedPort() string {
+	return getFromEnv(constants.CtrlAdvertisedPortVarName, defaultValue(constants.DefaultCtrlAdvertisedPort))
 }
 
-func GetCtrlEdgeAdvertisedPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.CtrlEdgeAdvertisedPortVarName, constants.DefaultCtrlEdgeAdvertisedPort)
+func GetCtrlEdgeBindAddress() string {
+	return getFromEnv(constants.CtrlEdgeBindAddressVarName, defaultValue(constants.DefaultCtrlEdgeBindAddress))
+}
+func GetCtrlEdgeAdvertisedAddress() string {
+	return getFromEnv(constants.CtrlEdgeAdvertisedAddressVarName, HostnameOrNetworkName)
+}
+func GetCtrlEdgeAdvertisedPort() string {
+	return getFromEnv(constants.CtrlEdgeAdvertisedPortVarName, defaultValue(constants.DefaultCtrlEdgeAdvertisedPort))
 }
 
-func GetZitiEdgeRouterPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiEdgeRouterPortVarName, constants.DefaultZitiEdgeRouterPort)
+func GetZitiEdgeRouterPort() string {
+	return getFromEnv(constants.ZitiEdgeRouterPortVarName, defaultValue(constants.DefaultZitiEdgeRouterPort))
 }
 
-func GetZitiEdgeRouterListenerBindPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiEdgeRouterListenerBindPortVarName, constants.DefaultZitiEdgeRouterListenerBindPort)
+func GetZitiEdgeRouterListenerBindPort() string {
+	return getFromEnv(constants.ZitiEdgeRouterListenerBindPortVarName, defaultValue(constants.DefaultZitiEdgeRouterListenerBindPort))
 }
 
 func GetCtrlEdgeIdentityEnrollmentDuration() (time.Duration, error) {
-	retVal, err := getValueOrSetAndGetDefault(constants.CtrlEdgeIdentityEnrollmentDurationVarName, strconv.FormatInt(int64(edge.DefaultEdgeEnrollmentDuration.Minutes()), 10))
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeIdentityEnrollmentDurationVarDescription)
-		if err != nil {
-			return edge.DefaultEdgeEnrollmentDuration, err
-		}
-	}
+	retVal := getFromEnv(constants.CtrlEdgeIdentityEnrollmentDurationVarName, defaultIntValue(int64(edge.DefaultEdgeEnrollmentDuration.Minutes())))
 	retValInt, err := strconv.Atoi(retVal)
 	if err != nil {
 		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeIdentityEnrollmentDurationVarDescription)
@@ -191,13 +136,7 @@ func GetCtrlEdgeIdentityEnrollmentDuration() (time.Duration, error) {
 }
 
 func GetCtrlEdgeRouterEnrollmentDuration() (time.Duration, error) {
-	retVal, err := getValueOrSetAndGetDefault(constants.CtrlEdgeRouterEnrollmentDurationVarName, strconv.FormatInt(int64(edge.DefaultEdgeEnrollmentDuration.Minutes()), 10))
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeRouterEnrollmentDurationVarDescription)
-		if err != nil {
-			return edge.DefaultEdgeEnrollmentDuration, err
-		}
-	}
+	retVal := getFromEnv(constants.CtrlEdgeRouterEnrollmentDurationVarName, defaultIntValue(int64(edge.DefaultEdgeEnrollmentDuration.Minutes())))
 	retValInt, err := strconv.Atoi(retVal)
 	if err != nil {
 		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeRouterEnrollmentDurationVarDescription)
@@ -206,25 +145,18 @@ func GetCtrlEdgeRouterEnrollmentDuration() (time.Duration, error) {
 		}
 	}
 
-	//fmt.Println("Router Duration: " + retVal + " - " + (time.Duration(retValInt) * time.Minute).String())
 	return time.Duration(retValInt) * time.Minute, nil
 }
 
-func getValueOrSetAndGetDefault(envVarName string, defaultValue string) (string, error) {
+type envVarNotFound func() string
+
+func getFromEnv(envVarName string, onNotFound envVarNotFound) string {
 	// Get path from env variable
 	retVal := os.Getenv(envVarName)
 	if retVal != "" {
-		return retVal, nil
+		return retVal
 	}
-
-	err := os.Setenv(envVarName, defaultValue)
-	if err != nil {
-		return "", err
-	}
-
-	retVal = os.Getenv(envVarName)
-
-	return retVal, nil
+	return onNotFound()
 }
 
 // NormalizePath replaces windows \ with / which windows allows for

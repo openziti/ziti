@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+var hostname string
+
+func init() {
+	hn, _ := os.Hostname()
+	hostname = hn
+}
+
 func TestHomeDirHasNoWindowsSlashes(t *testing.T) {
 	value := HomeDir()
 	assert.Zero(t, strings.Count(value, "\\"))
@@ -31,10 +38,6 @@ func TestGetZitiHomeWhenUnset(t *testing.T) {
 	// Check that the value matches
 	actualValue, _ := GetZitiHome()
 	assert.Equal(t, expectedValue, actualValue)
-
-	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
-	assert.Equal(t, expectedValue, envValue)
 }
 
 func TestGetZitiHomeWhenSet(t *testing.T) {
@@ -69,15 +72,11 @@ func TestGetCtrlEdgeAdvertisedAddressWhenUnset(t *testing.T) {
 
 	// Ensure the variable is unset
 	_ = os.Unsetenv(varName)
-	expectedValue, _ := os.Hostname()
+	expectedValue := hostname
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeAdvertisedAddress()
+	actualValue := GetCtrlEdgeAdvertisedAddress()
 	assert.Equal(t, expectedValue, actualValue)
-
-	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
-	assert.Equal(t, expectedValue, envValue)
 }
 
 func TestGetCtrlEdgeAdvertisedAddressWhenSet(t *testing.T) {
@@ -87,9 +86,9 @@ func TestGetCtrlEdgeAdvertisedAddressWhenSet(t *testing.T) {
 
 	// Set the env variable
 	_ = os.Setenv(varName, expectedValue)
-
+	a := get
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeAdvertisedAddress()
+	actualValue := GetCtrlEdgeAdvertisedAddress()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -102,12 +101,8 @@ func TestGetCtrlAdvertisedPortWhenUnset(t *testing.T) {
 	expectedValue := "6262"
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlAdvertisedPort()
+	actualValue := GetCtrlAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
-
-	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
-	assert.Equal(t, expectedValue, envValue)
 }
 
 func TestGetCtrlAdvertisedPortWhenSet(t *testing.T) {
@@ -119,7 +114,7 @@ func TestGetCtrlAdvertisedPortWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlAdvertisedPort()
+	actualValue := GetCtrlAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -129,15 +124,11 @@ func TestGetCtrlAdvertisedAddressWhenUnset(t *testing.T) {
 
 	// Ensure the variable is unset
 	_ = os.Unsetenv(varName)
-	expectedValue := "0.0.0.0"
+	expectedValue := hostname
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlAdvertisedAddress()
+	actualValue := GetCtrlAdvertisedAddress()
 	assert.Equal(t, expectedValue, actualValue)
-
-	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
-	assert.Equal(t, expectedValue, envValue)
 }
 
 func TestGetCtrlAdvertisedAddressWhenSet(t *testing.T) {
@@ -149,7 +140,7 @@ func TestGetCtrlAdvertisedAddressWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlAdvertisedAddress()
+	actualValue := GetCtrlAdvertisedAddress()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -162,12 +153,8 @@ func TestGetEdgeRouterPortWhenUnset(t *testing.T) {
 	expectedValue := "3022"
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeRouterPort()
+	actualValue := GetZitiEdgeRouterPort()
 	assert.Equal(t, expectedValue, actualValue)
-
-	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
-	assert.Equal(t, expectedValue, envValue)
 }
 
 func TestGetEdgeRouterPortWhenSet(t *testing.T) {
@@ -179,7 +166,7 @@ func TestGetEdgeRouterPortWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeRouterPort()
+	actualValue := GetZitiEdgeRouterPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -192,7 +179,7 @@ func TestGetCtrlEdgeAdvertisedPortWhenNotSet(t *testing.T) {
 	_ = os.Unsetenv(varName)
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeAdvertisedPort()
+	actualValue := GetCtrlEdgeAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -205,7 +192,7 @@ func TestGetCtrlEdgeAdvertisedPortWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeAdvertisedPort()
+	actualValue := GetCtrlEdgeAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
