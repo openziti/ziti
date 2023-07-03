@@ -232,7 +232,7 @@ func (store *BaseStore[E]) Update(ctx MutateContext, entity E, checker FieldChec
 		return errors.Errorf("cannot update %v from nil value", store.GetSingularEntityType())
 	}
 
-	for _, childStoreStrategy := range store.childStoreStragies {
+	for _, childStoreStrategy := range store.childStoreStrategies {
 		if handled, err := childStoreStrategy.HandleUpdate(ctx, entity, checker); handled {
 			return err
 		}
@@ -396,7 +396,7 @@ func (store *BaseStore[E]) DeleteById(ctx MutateContext, id string) error {
 
 	hasChildren := false
 	var changeFlows = []entityChangeFlow{nil}
-	for _, handler := range store.childStoreStragies {
+	for _, handler := range store.childStoreStrategies {
 		if err = handler.HandleDelete(ctx, entity); err != nil {
 			return err
 		}
