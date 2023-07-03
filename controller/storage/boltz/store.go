@@ -198,16 +198,16 @@ type entityChangeFlow interface {
 }
 
 type BaseStore[E Entity] struct {
-	entityStrategy     EntityStrategy[E]
-	childStoreStragies []ChildStoreStrategy[E]
-	parent             Store
-	parentMapper       func(childEntity Entity) Entity
-	entityType         string
-	entityPath         []string
-	symbols            map[string]EntitySymbol
-	publicSymbols      map[string]struct{}
-	mapSymbols         map[string]*entityMapSymbol
-	isExtended         bool
+	entityStrategy       EntityStrategy[E]
+	childStoreStrategies []ChildStoreStrategy[E]
+	parent               Store
+	parentMapper         func(childEntity Entity) Entity
+	entityType           string
+	entityPath           []string
+	symbols              map[string]EntitySymbol
+	publicSymbols        map[string]struct{}
+	mapSymbols           map[string]*entityMapSymbol
+	isExtended           bool
 	Indexer
 	links           map[string]LinkCollection
 	refCountedLinks map[string]RefCountedLinkCollection
@@ -227,7 +227,7 @@ func (store *BaseStore[E]) InitImpl(impl EntityStore[E]) {
 }
 
 func (store *BaseStore[E]) RegisterChildStoreStrategy(childStoreStrategy ChildStoreStrategy[E]) {
-	store.childStoreStragies = append(store.childStoreStragies, childStoreStrategy)
+	store.childStoreStrategies = append(store.childStoreStrategies, childStoreStrategy)
 }
 
 func (store *BaseStore[E]) GetRootPath() []string {
