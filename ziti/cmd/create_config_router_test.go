@@ -297,3 +297,26 @@ func TestSetZitiRouterIdentitySetsAllIdentitiesAndRouterNameToHostWhenBlank(t *t
 	assert.NotEqualf(t, blank, rtv.IdentityKey, "Router.IdentityCert expected to have a value, instead it was blank")
 	assert.NotEqualf(t, blank, rtv.IdentityCA, "Router.IdentityCert expected to have a value, instead it was blank")
 }
+
+func TestAltServerCerts(t *testing.T) {
+	clearRouterOptionsAndTemplateData()
+	certPath := "/path/to/cert"
+	keyPath := "/path/to/key"
+	_ = os.Setenv("ZITI_PKI_ALT_SERVER_CERT", certPath)
+
+	rtv := &RouterTemplateValues{}
+	SetZitiRouterIdentity(rtv, "routerTest")
+
+	//with only ZITI_ALT_SERVER_CERT set, should be false/blank
+	assert.False(t, rtv.HasAltCerts)
+	assert.Equal(t, "", rtv.AltServerCert)
+	assert.Equal(t, "", rtv.AltServerKey)
+
+	_ = os.Setenv("ZITI_PKI_ALT_SERVER_KEY", keyPath)
+	rtv = &RouterTemplateValues{}
+	SetZitiRouterIdentity(rtv, "routerTest")
+
+	assert.True(t, rtv.HasAltCerts)
+	assert.Equal(t, certPath, rtv.AltServerCert)
+	assert.Equal(t, keyPath, rtv.AltServerKey)
+}

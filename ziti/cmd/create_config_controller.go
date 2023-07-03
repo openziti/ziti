@@ -239,7 +239,7 @@ func SetWebConfig(data *ControllerTemplateValues) {
 	SetWebIdentityServerCert(data)
 	SetWebIdentityKey(data)
 	SetWebIdentityCA(data)
-	SetAlServerCerts(data)
+	SetCtrlAltServerCerts(data)
 }
 func SetWebIdentityCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeCertVarName)
@@ -270,12 +270,12 @@ func SetWebIdentityCA(c *ControllerTemplateValues) {
 	c.Web.Identity.Ca = helpers2.NormalizePath(val)
 }
 
-func SetAlServerCerts(c *ControllerTemplateValues) {
-	altServerCert := os.Getenv(constants.CtrlPkiAltServerCertVarName)
+func SetCtrlAltServerCerts(c *ControllerTemplateValues) {
+	altServerCert := os.Getenv(constants.PkiAltServerCertVarName)
 	if altServerCert == "" {
 		return //exit unless both vars are set
 	}
-	altServerKey := os.Getenv(constants.CtrlPkiAltServerKeyVarName)
+	altServerKey := os.Getenv(constants.PkiAltServerKeyVarName)
 	if altServerKey == "" {
 		return //exit unless both vars are set
 	}

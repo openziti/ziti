@@ -7,10 +7,13 @@
  documentation.*/}}v: 3
 
 identity:
-  cert:                 "{{ .Router.IdentityCert }}"
-  server_cert:          "{{ .Router.IdentityServerCert }}"
-  key:                  "{{ .Router.IdentityKey }}"
-  ca:                   "{{ .Router.IdentityCA }}"
+  cert:             "{{ .Router.IdentityCert }}"
+  server_cert:      "{{ .Router.IdentityServerCert }}"
+  key:              "{{ .Router.IdentityKey }}"
+  ca:               "{{ .Router.IdentityCA }}"{{ if .Router.HasAltCerts }}
+  alt_server_certs:
+    - server_cert:  "{{ .Router.AltServerCert }}"
+      server_key:   "{{ .Router.AltServerKey }}"{{ end }}
 
 ctrl:
   endpoint:             tls:{{ .Controller.Ctrl.AdvertisedAddress }}:{{ .Controller.Ctrl.AdvertisedPort }}

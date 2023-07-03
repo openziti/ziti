@@ -146,6 +146,9 @@ type RouterTemplateValues struct {
 	IdentityServerCert string
 	IdentityKey        string
 	IdentityCA         string
+	AltServerCert      string
+	AltServerKey       string
+	HasAltCerts        bool
 	Edge               EdgeRouterTemplateValues
 	Wss                WSSRouterTemplateValues
 	Forwarder          RouterForwarderTemplateValues
