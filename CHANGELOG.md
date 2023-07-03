@@ -13,7 +13,20 @@ The release archives now only contain the `ziti` executable. This executable is 
 
 ### Ziti CLI Demo Consolidation
 
-The ziti CLI functions under `ziti learn`, namely `ziti learn demo` and `ziti learn tutorial` have been consolidate under `ziti demo`.
+The ziti CLI functions under `ziti learn`, namely `ziti learn demo` and `ziti learn tutorial` have been consolidated under `ziti demo`.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.81 -> v2.0.82](https://github.com/openziti/channel/compare/v2.0.81...v2.0.82)
+* github.com/openziti/edge: [v0.24.348 -> v0.24.351](https://github.com/openziti/edge/compare/v0.24.348...v0.24.351)
+* github.com/openziti/fabric: [v0.23.39 -> v0.23.40](https://github.com/openziti/fabric/compare/v0.23.39...v0.23.40)
+* github.com/openziti/sdk-golang: [v0.20.67 -> v0.20.69](https://github.com/openziti/sdk-golang/compare/v0.20.67...v0.20.69)
+* github.com/openziti/metrics: [v1.2.27 -> v1.2.28](https://github.com/openziti/metrics/compare/v1.2.27...v1.2.28)
+* github.com/openziti/ziti: [v0.28.4 -> v0.29.0](https://github.com/openziti/ziti/compare/v0.28.4...v0.29.0)
+    * [Issue #1180](https://github.com/openziti/ziti/issues/1180) - Add ability to debug failed smoketests
+    * [Issue #1169](https://github.com/openziti/ziti/issues/1169) - Consolidate demo and tutorial under demo
+    * [Issue #1168](https://github.com/openziti/ziti/issues/1168) - Remove ziti-controller, ziti-router and ziti-tunnel executables from build
+    * [Issue #1158](https://github.com/openziti/ziti/issues/1158) - Add iperf tests to ziti smoketest
 
 
 # Release 0.28.4

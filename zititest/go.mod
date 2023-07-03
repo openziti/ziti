@@ -9,13 +9,13 @@ require (
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/google/uuid v1.3.0
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/openziti/channel/v2 v2.0.81
-	github.com/openziti/edge v0.24.348
+	github.com/openziti/channel/v2 v2.0.82
+	github.com/openziti/edge v0.24.351
 	github.com/openziti/fablab v0.5.1
-	github.com/openziti/fabric v0.23.39
+	github.com/openziti/fabric v0.23.40
 	github.com/openziti/foundation/v2 v2.0.26
 	github.com/openziti/identity v1.0.57
-	github.com/openziti/sdk-golang v0.20.67
+	github.com/openziti/sdk-golang v0.20.69
 	github.com/openziti/storage v0.2.8
 	github.com/openziti/transport/v2 v2.0.91
 	github.com/openziti/ziti v0.28.3
@@ -24,7 +24,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	go.etcd.io/bbolt v1.3.7
 	golang.org/x/net v0.11.0
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (
@@ -126,7 +126,7 @@ require (
 	github.com/openziti/agent v1.0.14 // indirect
 	github.com/openziti/edge-api v0.25.29 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.27 // indirect
+	github.com/openziti/metrics v1.2.28 // indirect
 	github.com/openziti/runzmd v1.0.26 // indirect
 	github.com/openziti/secretstream v0.1.9 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
@@ -144,7 +144,7 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
 	github.com/russross/blackfriday v1.5.2 // indirect
-	github.com/shirou/gopsutil/v3 v3.23.5 // indirect
+	github.com/shirou/gopsutil/v3 v3.23.6 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
@@ -170,9 +170,9 @@ require (
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
 	go.opentelemetry.io/otel/trace v1.16.0 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
+	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df // indirect
 	golang.org/x/image v0.8.0 // indirect
-	golang.org/x/mod v0.8.0 // indirect
+	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/term v0.9.0 // indirect
