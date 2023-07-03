@@ -20,13 +20,11 @@ ARG RUNGROUP=ziti
 ARG RUNUSERID=2171
 
 RUN apt update && \
-    apt install jq curl netcat-openbsd vim inetutils-ping net-tools lsof -y sudo
+    apt install jq curl netcat-openbsd vim inetutils-ping net-tools lsof -y
 
 RUN useradd -u $RUNUSERID -ms /bin/bash $RUNUSER && \
     mkdir /persistent && chown $RUNUSER:$RUNGROUP /persistent && \
-    mkdir /persistent/scripts && chown $RUNUSER:$RUNGROUP /persistent/scripts && \
-    usermod -aG sudo $RUNUSER && \
-    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+    mkdir /persistent/scripts && chown $RUNUSER:$RUNGROUP /persistent/scripts
 
 USER $RUNUSER
 
