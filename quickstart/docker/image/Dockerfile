@@ -15,15 +15,21 @@ RUN apt update && apt install jq curl -y && \
     /bin/bash /docker.build.context/fetch-ziti-bins.sh /ziti-bin
 
 FROM ubuntu:rolling
+ARG RUNUSER=ziti
+ARG RUNGROUP=ziti
+ARG RUNUSERID=2171
 
 RUN apt update && \
-    apt install jq curl netcat-openbsd vim inetutils-ping net-tools lsof -y
+    apt install jq curl netcat-openbsd vim inetutils-ping net-tools lsof -y sudo
 
-RUN useradd -ms /bin/bash ziti && \
-    mkdir /persistent && chown ziti:ziti /persistent && \
-    mkdir /persistent/scripts && chown ziti:ziti /persistent/scripts
+RUN useradd -u $RUNUSERID -ms /bin/bash $RUNUSER && \
+    mkdir /persistent && chown $RUNUSER:$RUNGROUP /persistent && \
+    mkdir /persistent/scripts && chown $RUNUSER:$RUNGROUP /persistent/scripts && \
+    usermod -aG sudo $RUNUSER && \
+    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-USER ziti
+USER $RUNUSER
+
 WORKDIR /persistent
 
 ENV ZITI_HOME=/persistent
