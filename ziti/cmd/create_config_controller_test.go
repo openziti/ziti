@@ -927,7 +927,7 @@ func TestCtrlEdgeAltAddress(t *testing.T) {
 
 	altAddy := "alternative.address.ziti"
 	keys := map[string]string{
-		"ZITI_CTRL_EDGE_ALT_CTRL_ADVERTISED_ADDRESS": altAddy,
+		"ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS": altAddy,
 	}
 	ctrlConfig2, data2 := execCreateConfigControllerCommand(nil, keys)
 	assert.Equal(t, altAddy, data2.Controller.Ctrl.AltAdvertisedAddress)
