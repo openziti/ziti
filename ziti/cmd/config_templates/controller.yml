@@ -13,7 +13,10 @@ identity:
   cert:                 "{{ .Controller.Identity.Cert }}"
   server_cert:          "{{ .Controller.Identity.ServerCert }}"
   key:                  "{{ .Controller.Identity.Key }}"
-  ca:                   "{{ .Controller.Identity.Ca }}"
+  ca:                   "{{ .Controller.Identity.Ca }}"{{ if .Controller.Web.Identity.HasAltCerts }}
+  alt_server_certs:
+    - server_cert: "{{ .Controller.Web.Identity.AltServerCert }}"
+      server_key: "{{ .Controller.Web.Identity.AltServerKey }}"{{ end }}
 
 # Network Configuration
 #
