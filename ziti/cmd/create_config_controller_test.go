@@ -924,6 +924,7 @@ func TestCtrlEdgeAltAddress(t *testing.T) {
 	ctrlConfig, data := execCreateConfigControllerCommand(nil, map[string]string{})
 	assert.Equal(t, hostname, data.Controller.Ctrl.AltAdvertisedAddress)
 	assert.Equal(t, hostname+":"+testDefaultCtrlEdgeAdvertisedPort, ctrlConfig.Web[0].BindPoints[0].Address)
+	assert.Equal(t, hostname+":"+testDefaultCtrlEdgeAdvertisedPort, ctrlConfig.Edge.Api.Address)
 
 	altAddy := "alternative.address.ziti"
 	keys := map[string]string{
@@ -932,6 +933,7 @@ func TestCtrlEdgeAltAddress(t *testing.T) {
 	ctrlConfig2, data2 := execCreateConfigControllerCommand(nil, keys)
 	assert.Equal(t, altAddy, data2.Controller.Ctrl.AltAdvertisedAddress)
 	assert.Equal(t, altAddy+":"+testDefaultCtrlEdgeAdvertisedPort, ctrlConfig2.Web[0].BindPoints[0].Address)
+	assert.Equal(t, altAddy+":"+testDefaultCtrlEdgeAdvertisedPort, ctrlConfig2.Edge.Api.Address)
 }
 
 func configToStruct(config string) ControllerConfig {

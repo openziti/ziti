@@ -257,7 +257,7 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	data.Controller.EdgeApi.APIActivityUpdateBatchSize = edge.DefaultEdgeApiActivityUpdateBatchSize
 	data.Controller.EdgeApi.APIActivityUpdateInterval = edge.DefaultEdgeAPIActivityUpdateInterval
 	data.Controller.EdgeApi.SessionTimeout = edge.DefaultEdgeSessionTimeout
-	data.Controller.EdgeApi.Address = cmdHelper.GetCtrlEdgeAdvertisedAddress()
+	data.Controller.EdgeApi.Address = cmdHelper.GetCtrlEdgeAltAdvertisedAddress()
 	data.Controller.EdgeApi.Port = cmdHelper.GetCtrlEdgeAdvertisedPort()
 	data.Controller.EdgeEnrollment.EdgeIdentityDuration = cmdHelper.GetCtrlEdgeIdentityEnrollmentDuration()
 	data.Controller.EdgeEnrollment.EdgeRouterDuration = cmdHelper.GetCtrlEdgeRouterEnrollmentDuration()
