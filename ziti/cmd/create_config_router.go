@@ -83,8 +83,8 @@ func NewCmdCreateConfigRouter(routerOptions *CreateConfigRouterOptions) *NewCrea
 		RenderedValues: data,
 	}
 
-	cmd.AddCommand(NewCmdCreateConfigRouterEdge())
-	cmd.AddCommand(NewCmdCreateConfigRouterFabric())
+	cmd.AddCommand(NewCmdCreateConfigRouterEdge(routerOptions, data))
+	cmd.AddCommand(NewCmdCreateConfigRouterFabric(routerOptions, data))
 
 	routerOptions.addCreateFlags(cmd.Command)
 	routerOptions.addFlags(cmd.Command)

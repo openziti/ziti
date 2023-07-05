@@ -15,8 +15,7 @@ var defaultArgs = []string{"edge", "--routerName", "test-router"}
 var testHostname, _ = os.Hostname()
 
 func TestEdgeRouterAdvertisedAddress(t *testing.T) {
-	data := &ConfigTemplateValues{}
-	clearEnvAndInitializeTestData()
+	routerOpts := clearEnvAndInitializeTestData()
 	routerAdvHostIp := "192.168.10.10"
 	routerAdvHostDns := "controller01.zitinetwork.example.org"
 	keys := map[string]string{
@@ -24,25 +23,24 @@ func TestEdgeRouterAdvertisedAddress(t *testing.T) {
 		"ZITI_EDGE_ROUTER_PORT":     "443",
 	}
 	// Defaults to hostname if nothing is set
-	createRouterConfig(defaultArgs, nil, keys)
+	_, data := createRouterConfig(defaultArgs, routerOpts, keys)
 	require.Equal(t, testHostname, data.Router.Edge.AdvertisedHost, nil)
 
 	// If IP override set, uses that value over hostname
 	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
-	createRouterConfig(defaultArgs, nil, keys)
-	require.Equal(t, routerAdvHostIp, data.Router.Edge.AdvertisedHost, nil)
+	_, data2 := createRouterConfig(defaultArgs, routerOpts, keys)
+	require.Equal(t, routerAdvHostIp, data2.Router.Edge.AdvertisedHost, nil)
 
 	// If advertised address set, uses that over IP override or hostname
 	keys["ZITI_EDGE_ROUTER_ADVERTISED_HOST"] = routerAdvHostDns
 	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
-	createRouterConfig(defaultArgs, nil, keys)
-	require.Equal(t, routerAdvHostDns, data.Router.Edge.AdvertisedHost, nil)
+	_, data3 := createRouterConfig(defaultArgs, routerOpts, keys)
+	require.Equal(t, routerAdvHostDns, data3.Router.Edge.AdvertisedHost, nil)
 }
 
 func TestTunnelerEnabledByDefault(t *testing.T) {
 	// Setup options
 	routerOptions := clearEnvAndInitializeTestData()
-	routerOptions.Output = defaultOutput
 
 	// Create and run the CLI command without the tunnel flag
 	config, _ := createRouterConfig([]string{"edge", "--routerName", "myRouter"}, routerOptions, nil)
