@@ -45,6 +45,8 @@ var routerConfigFabricTemplate string
 
 // NewCmdCreateConfigRouterFabric creates a command object for the "fabric" command
 func NewCmdCreateConfigRouterFabric() *cobra.Command {
+	data := &ConfigTemplateValues{}
+	routerOptions := &CreateConfigRouterOptions{}
 
 	cmd := &cobra.Command{
 		Use:     "fabric",

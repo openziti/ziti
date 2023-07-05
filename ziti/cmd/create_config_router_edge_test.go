@@ -15,7 +15,8 @@ var defaultArgs = []string{"edge", "--routerName", "test-router"}
 var testHostname, _ = os.Hostname()
 
 func TestEdgeRouterAdvertisedAddress(t *testing.T) {
-	clearRouterOptionsAndTemplateData()
+	data := &ConfigTemplateValues{}
+	clearEnvAndInitializeTestData()
 	routerAdvHostIp := "192.168.10.10"
 	routerAdvHostDns := "controller01.zitinetwork.example.org"
 	keys := map[string]string{
@@ -23,28 +24,28 @@ func TestEdgeRouterAdvertisedAddress(t *testing.T) {
 		"ZITI_EDGE_ROUTER_PORT":     "443",
 	}
 	// Defaults to hostname if nothing is set
-	execCreateConfigCommand(defaultArgs, keys)
+	createRouterConfig(defaultArgs, nil, keys)
 	require.Equal(t, testHostname, data.Router.Edge.AdvertisedHost, nil)
 
 	// If IP override set, uses that value over hostname
 	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
-	execCreateConfigCommand(defaultArgs, keys)
+	createRouterConfig(defaultArgs, nil, keys)
 	require.Equal(t, routerAdvHostIp, data.Router.Edge.AdvertisedHost, nil)
 
 	// If advertised address set, uses that over IP override or hostname
 	keys["ZITI_EDGE_ROUTER_ADVERTISED_HOST"] = routerAdvHostDns
 	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
-	execCreateConfigCommand(defaultArgs, keys)
+	createRouterConfig(defaultArgs, nil, keys)
 	require.Equal(t, routerAdvHostDns, data.Router.Edge.AdvertisedHost, nil)
 }
 
 func TestTunnelerEnabledByDefault(t *testing.T) {
 	// Setup options
-	clearRouterOptionsAndTemplateData()
+	routerOptions := clearEnvAndInitializeTestData()
 	routerOptions.Output = defaultOutput
 
 	// Create and run the CLI command without the tunnel flag
-	config := createRouterConfig([]string{"edge", "--routerName", "myRouter"})
+	config, _ := createRouterConfig([]string{"edge", "--routerName", "myRouter"}, routerOptions, nil)
 
 	// Confirm tunneler is enabled in config output
 	foundTunnel := false
@@ -58,11 +59,10 @@ func TestTunnelerEnabledByDefault(t *testing.T) {
 
 func TestTunnelerNoneMode(t *testing.T) {
 	// Setup options
-	clearRouterOptionsAndTemplateData()
-	routerOptions.Output = defaultOutput
+	routerOptions := clearEnvAndInitializeTestData()
 
 	// Create and run the CLI command with the disable tunnel flag
-	config := createRouterConfig([]string{"edge", "--routerName", "myRouter", "--tunnelerMode", "none"})
+	config, data := createRouterConfig([]string{"edge", "--routerName", "myRouter", "--tunnelerMode", "none"}, routerOptions, nil)
 
 	// Expect tunneler mode to be "none" mode
 	assert.Equal(t, noneTunMode, data.Router.TunnelerMode, "Expected tunneler mode to be %s but found %s", noneTunMode, data.Router.TunnelerMode)
@@ -79,11 +79,10 @@ func TestTunnelerNoneMode(t *testing.T) {
 
 func TestTunnelerHostModeIsDefault(t *testing.T) {
 	// Setup options
-	clearRouterOptionsAndTemplateData()
-	routerOptions.Output = defaultOutput
+	routerOptions := clearEnvAndInitializeTestData()
 
 	// Create and run the CLI command without the tunnel flag
-	config := createRouterConfig([]string{"edge", "--routerName", "myRouter"})
+	config, data := createRouterConfig([]string{"edge", "--routerName", "myRouter"}, routerOptions, nil)
 
 	// Expect tunneler mode to be "host" mode
 	assert.Equal(t, hostTunMode, data.Router.TunnelerMode, "Expected tunneler mode to be %s but found %s", hostTunMode, data.Router.TunnelerMode)
@@ -98,11 +97,10 @@ func TestTunnelerHostModeIsDefault(t *testing.T) {
 
 func TestTunnelerTproxyMode(t *testing.T) {
 	// Setup options
-	clearRouterOptionsAndTemplateData()
-	routerOptions.Output = defaultOutput
+	routerOptions := clearEnvAndInitializeTestData()
 
 	// Create and run the CLI command without the tunnel flag
-	config := createRouterConfig([]string{"edge", "--routerName", "myRouter", "--tunnelerMode", tproxyTunMode})
+	config, data := createRouterConfig([]string{"edge", "--routerName", "myRouter", "--tunnelerMode", tproxyTunMode}, routerOptions, nil)
 
 	// Expect tunneler mode to be "host" mode
 	assert.Equal(t, tproxyTunMode, data.Router.TunnelerMode, "Expected tunneler mode to be %s but found %s", tproxyTunMode, data.Router.TunnelerMode)
@@ -121,8 +119,7 @@ func TestTunnelerInvalidMode(t *testing.T) {
 	expectedErrorMsg := "Unknown tunneler mode [" + invalidMode + "] provided, should be \"" + noneTunMode + "\", \"" + hostTunMode + "\", or \"" + tproxyTunMode + "\""
 
 	// Create the options with both flags set to true
-	clearRouterOptionsAndTemplateData()
-	routerOptions.Output = defaultOutput
+	routerOptions := clearEnvAndInitializeTestData()
 	routerOptions.TunnelerMode = invalidMode
 
 	err := routerOptions.runEdgeRouter(&ConfigTemplateValues{})
@@ -131,10 +128,10 @@ func TestTunnelerInvalidMode(t *testing.T) {
 }
 
 func TestPrivateEdgeRouterNotAdvertising(t *testing.T) {
-	clearRouterOptionsAndTemplateData()
+	routerOptions := clearEnvAndInitializeTestData()
 
 	// Create and run the CLI command
-	config := createRouterConfig([]string{"edge", "--routerName", "myRouter", "--private"})
+	config, _ := createRouterConfig([]string{"edge", "--routerName", "myRouter", "--private"}, routerOptions, nil)
 
 	// Expect that the config values are represented correctly
 	assert.Equal(t, 0, len(config.Link.Listeners), "Expected zero link listeners for private edge router, found a non-zero value")
@@ -145,15 +142,14 @@ func TestBlankEdgeRouterNameBecomesHostname(t *testing.T) {
 	blank := ""
 
 	// Setup options with blank router name
-	clearRouterOptionsAndTemplateData()
-	routerOptions.Output = defaultOutput
+	routerOptions := clearEnvAndInitializeTestData()
 	routerOptions.RouterName = blank
 
 	// Check that template values is a blank name
-	assert.Equal(t, blank, data.Router.Name, "Mismatch router name, expected %s but got %s", "", hostname)
+	//xx how does this work? assert.Equal(t, blank, data.Router.Name, "Mismatch router name, expected %s but got %s", "", hostname)
 
 	// Create and run the CLI command
-	_ = createRouterConfig([]string{"edge", "--routerName", blank})
+	_, data := createRouterConfig([]string{"edge", "--routerName", blank}, routerOptions, nil)
 
 	// Check that the blank name was replaced with hostname in the template values
 	assert.Equal(t, hostname, data.Router.Name, "Mismatch router name, expected %s but got %s", "", hostname)
@@ -161,13 +157,14 @@ func TestBlankEdgeRouterNameBecomesHostname(t *testing.T) {
 }
 
 func TestDefaultZitiEdgeRouterListenerBindPort(t *testing.T) {
+	routerOptions := clearEnvAndInitializeTestData()
 	expectedDefaultPortStr := strconv.Itoa(testDefaultRouterListenerPort)
 
 	// Make sure the related env vars are unset
 	_ = os.Unsetenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT")
 
 	// Create and run the CLI command
-	config := createRouterConfig([]string{"edge", "--routerName", "testRouter"})
+	config, data := createRouterConfig([]string{"edge", "--routerName", "testRouter"}, routerOptions, nil)
 
 	// Check that the template data has been updated as expected
 	assert.Equal(t, expectedDefaultPortStr, data.Router.Edge.ListenerBindPort)
@@ -184,13 +181,14 @@ func TestDefaultZitiEdgeRouterListenerBindPort(t *testing.T) {
 }
 
 func TestSetZitiEdgeRouterListenerBindPort(t *testing.T) {
+	routerOptions := clearEnvAndInitializeTestData()
 	myPortValue := "1234"
 
 	// Set the port manually
 	_ = os.Setenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT", myPortValue)
 
 	// Create and run the CLI command
-	config := createRouterConfig([]string{"edge", "--routerName", "testRouter"})
+	config, data := createRouterConfig([]string{"edge", "--routerName", "testRouter"}, routerOptions, nil)
 
 	assert.Equal(t, myPortValue, data.Router.Edge.ListenerBindPort)
 
@@ -209,8 +207,7 @@ func TestEdgeRouterCannotBeWSSAndPrivate(t *testing.T) {
 	expectedErrorMsg := "Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both"
 
 	// Create the options with both flags set to true
-	clearRouterOptionsAndTemplateData()
-	routerOptions.Output = defaultOutput
+	routerOptions := clearEnvAndInitializeTestData()
 	routerOptions.IsPrivate = true
 	routerOptions.WssEnabled = true
 
@@ -223,7 +220,7 @@ func TestEdgeRouterOutputPathDoesNotExist(t *testing.T) {
 	expectedErrorMsg := "stat /IDoNotExist: no such file or directory"
 
 	// Set the router options
-	clearRouterOptionsAndTemplateData()
+	routerOptions := clearEnvAndInitializeTestData()
 	routerOptions.TunnelerMode = defaultTunnelerMode
 	routerOptions.RouterName = "MyEdgeRouter"
 	routerOptions.Output = "/IDoNotExist/MyEdgeRouter.yaml"
@@ -234,16 +231,19 @@ func TestEdgeRouterOutputPathDoesNotExist(t *testing.T) {
 }
 
 func TestExecuteCreateConfigRouterEdgeHasNonBlankTemplateValues(t *testing.T) {
+	routerOptions := clearEnvAndInitializeTestData()
+
 	routerName := "MyEdgeRouter"
+
+	// Create and run the CLI command
+	_, data := createRouterConfig([]string{"edge", "--routerName", routerName}, routerOptions, nil)
+
 	expectedNonEmptyStringFields := []string{".Router.Edge.ListenerBindPort", ".ZitiHome", ".Hostname", ".Router.Name", ".Router.IdentityCert", ".Router.IdentityServerCert", ".Router.IdentityKey", ".Router.IdentityCA", ".Router.Edge.Port"}
 	expectedNonEmptyStringValues := []*string{&data.Router.Edge.ListenerBindPort, &data.ZitiHome, &data.Hostname, &data.Router.Name, &data.Router.IdentityCert, &data.Router.IdentityServerCert, &data.Router.IdentityKey, &data.Router.IdentityCA, &data.Router.Edge.Port}
 	expectedNonEmptyIntFields := []string{".Router.Listener.OutQueueSize", ".Router.Wss.ReadBufferSize", ".Router.Wss.WriteBufferSize", ".Router.Forwarder.XgressDialQueueLength", ".Router.Forwarder.XgressDialWorkerCount", ".Router.Forwarder.LinkDialQueueLength", ".Router.Forwarder.LinkDialWorkerCount"}
 	expectedNonEmptyIntValues := []*int{&data.Router.Listener.OutQueueSize, &data.Router.Wss.ReadBufferSize, &data.Router.Wss.WriteBufferSize, &data.Router.Forwarder.XgressDialQueueLength, &data.Router.Forwarder.XgressDialWorkerCount, &data.Router.Forwarder.LinkDialQueueLength, &data.Router.Forwarder.LinkDialWorkerCount}
 	expectedNonEmptyTimeFields := []string{".Router.Listener.ConnectTimeout", "Router.Listener.GetSessionTimeout", ".Router.Wss.WriteTimeout", ".Router.Wss.ReadTimeout", ".Router.Wss.IdleTimeout", ".Router.Wss.PongTimeout", ".Router.Wss.PingInterval", ".Router.Wss.HandshakeTimeout", ".Router.Forwarder.LatencyProbeInterval"}
 	expectedNonEmptyTimeValues := []*time.Duration{&data.Router.Listener.ConnectTimeout, &data.Router.Listener.GetSessionTimeout, &data.Router.Wss.WriteTimeout, &data.Router.Wss.ReadTimeout, &data.Router.Wss.IdleTimeout, &data.Router.Wss.PongTimeout, &data.Router.Wss.PingInterval, &data.Router.Wss.HandshakeTimeout, &data.Router.Forwarder.LatencyProbeInterval}
-
-	// Create and run the CLI command
-	_ = createRouterConfig([]string{"edge", "--routerName", routerName})
 
 	// Check that the expected string template values are not blank
 	for field, value := range expectedNonEmptyStringValues {
@@ -262,22 +262,20 @@ func TestExecuteCreateConfigRouterEdgeHasNonBlankTemplateValues(t *testing.T) {
 }
 
 func TestEdgeRouterIPOverrideIsConsumed(t *testing.T) {
-	routerName := "MyFabricRouter"
-	blank := ""
-	externalIP := "123.456.78.9"
+	routerOptions := clearEnvAndInitializeTestData()
 
-	// Setup options
-	clearRouterOptionsAndTemplateData()
-	routerOptions.Output = defaultOutput
+	routerName := "MyFabricRouter"
+	//useful?    blank := ""
+	externalIP := "123.456.78.9"
 
 	// Set the env variable to non-empty value
 	_ = os.Setenv(constants.ZitiEdgeRouterIPOverrideVarName, externalIP)
 
-	// Check that template value is currently blank
-	assert.Equal(t, blank, data.Router.Edge.IPOverride, "Mismatch router IP override, expected %s but got %s", blank, data.Router.Edge.IPOverride)
+	//useful?	// Check that template value is currently blank
+	//useful?	assert.Equal(t, blank, data.Router.Edge.IPOverride, "Mismatch router IP override, expected %s but got %s", blank, data.Router.Edge.IPOverride)
 
 	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
-	config := createRouterConfig([]string{"edge", "--routerName", routerName})
+	config, data := createRouterConfig([]string{"edge", "--routerName", routerName}, routerOptions, nil)
 
 	// Check that the template values now contains the custom external IP override value
 	assert.Equal(t, externalIP, data.Router.Edge.IPOverride, "Mismatch router IP override, expected %s but got %s", externalIP, data.Router.Edge.IPOverride)

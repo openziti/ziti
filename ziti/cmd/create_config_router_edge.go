@@ -64,7 +64,8 @@ var routerConfigEdgeTemplate string
 
 // NewCmdCreateConfigRouterEdge creates a command object for the "edge" command
 func NewCmdCreateConfigRouterEdge() *cobra.Command {
-
+	data := &ConfigTemplateValues{}
+	routerOptions := &CreateConfigRouterOptions{}
 	cmd := &cobra.Command{
 		Use:     "edge",
 		Short:   "Create an edge router config",

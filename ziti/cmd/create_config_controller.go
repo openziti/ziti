@@ -76,63 +76,71 @@ type CreateConfigControllerOptions struct {
 	EdgeRouterEnrollmentDuration   time.Duration
 }
 
+type CreateControllerConfigCmd struct {
+	*cobra.Command
+	ConfigData *ConfigTemplateValues
+}
+
 // NewCmdCreateConfigController creates a command object for the "create" command
-func NewCmdCreateConfigController() *cobra.Command {
+func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 	controllerOptions := &CreateConfigControllerOptions{}
-
-	cmd := &cobra.Command{
-		Use:     "controller",
-		Short:   "Create a controller config",
-		Aliases: []string{"ctrl"},
-		Long:    createConfigControllerLong,
-		Example: createConfigControllerExample,
-		PreRun: func(cmd *cobra.Command, args []string) {
-			// Setup logging
-			var logOut *os.File
-			if controllerOptions.Verbose {
-				logrus.SetLevel(logrus.DebugLevel)
-				// Only print log to stdout if not printing config to stdout
-				if strings.ToLower(controllerOptions.Output) != "stdout" {
-					logOut = os.Stdout
-				} else {
-					logOut = os.Stderr
+	data := &ConfigTemplateValues{}
+	cmd := &CreateControllerConfigCmd{
+		ConfigData: data,
+		Command: &cobra.Command{
+			Use:     "controller",
+			Short:   "Create a controller config",
+			Aliases: []string{"ctrl"},
+			Long:    createConfigControllerLong,
+			Example: createConfigControllerExample,
+			PreRun: func(cmd *cobra.Command, args []string) {
+				// Setup logging
+				var logOut *os.File
+				if controllerOptions.Verbose {
+					logrus.SetLevel(logrus.DebugLevel)
+					// Only print log to stdout if not printing config to stdout
+					if strings.ToLower(controllerOptions.Output) != "stdout" {
+						logOut = os.Stdout
+					} else {
+						logOut = os.Stderr
+					}
+					logrus.SetOutput(logOut)
 				}
-				logrus.SetOutput(logOut)
-			}
 
-			data.populateConfigValues()
+				data.populateConfigValues()
 
-			// Update controller specific values with configOptions passed in if the argument was provided or the value is currently blank
-			if data.Controller.Ctrl.AdvertisedPort == "" || controllerOptions.CtrlPort != constants.DefaultCtrlAdvertisedPort {
-				data.Controller.Ctrl.AdvertisedPort = controllerOptions.CtrlPort
-			}
-			// Update with the passed in arg if it's not the default (CLI flag should override other methods of modifying these values)
-			if controllerOptions.EdgeIdentityEnrollmentDuration != edge.DefaultEdgeEnrollmentDuration {
-				data.Controller.EdgeEnrollment.EdgeIdentityDuration = controllerOptions.EdgeIdentityEnrollmentDuration
-			}
-			if controllerOptions.EdgeRouterEnrollmentDuration != edge.DefaultEdgeEnrollmentDuration {
-				data.Controller.EdgeEnrollment.EdgeRouterDuration = controllerOptions.EdgeRouterEnrollmentDuration
-			}
+				// Update controller specific values with configOptions passed in if the argument was provided or the value is currently blank
+				if data.Controller.Ctrl.AdvertisedPort == "" || controllerOptions.CtrlPort != constants.DefaultCtrlAdvertisedPort {
+					data.Controller.Ctrl.AdvertisedPort = controllerOptions.CtrlPort
+				}
+				// Update with the passed in arg if it's not the default (CLI flag should override other methods of modifying these values)
+				if controllerOptions.EdgeIdentityEnrollmentDuration != edge.DefaultEdgeEnrollmentDuration {
+					data.Controller.EdgeEnrollment.EdgeIdentityDuration = controllerOptions.EdgeIdentityEnrollmentDuration
+				}
+				if controllerOptions.EdgeRouterEnrollmentDuration != edge.DefaultEdgeEnrollmentDuration {
+					data.Controller.EdgeEnrollment.EdgeRouterDuration = controllerOptions.EdgeRouterEnrollmentDuration
+				}
 
-			// process identity information
-			SetControllerIdentity(&data.Controller)
-			SetEdgeConfig(&data.Controller)
-			SetWebConfig(&data.Controller)
+				// process identity information
+				SetControllerIdentity(&data.Controller)
+				SetEdgeConfig(&data.Controller)
+				SetWebConfig(&data.Controller)
 
-		},
-		Run: func(cmd *cobra.Command, args []string) {
-			controllerOptions.Cmd = cmd
-			controllerOptions.Args = args
-			err := controllerOptions.run(data)
-			helpers2.CheckErr(err)
-		},
-		PostRun: func(cmd *cobra.Command, args []string) {
-			// Reset log output after run completes
-			logrus.SetOutput(os.Stdout)
+			},
+			Run: func(cmd *cobra.Command, args []string) {
+				controllerOptions.Cmd = cmd
+				controllerOptions.Args = args
+				err := controllerOptions.run(data)
+				helpers2.CheckErr(err)
+			},
+			PostRun: func(cmd *cobra.Command, args []string) {
+				// Reset log output after run completes
+				logrus.SetOutput(os.Stdout)
+			},
 		},
 	}
-	controllerOptions.addCreateFlags(cmd)
-	controllerOptions.addFlags(cmd)
+	controllerOptions.addCreateFlags(cmd.Command)
+	controllerOptions.addFlags(cmd.Command)
 
 	return cmd
 }

@@ -71,6 +71,8 @@ const (
 	CtrlEdgeBindAddressVarDescription                = "The address on which the edge controller will listen on for API connections."
 	CtrlEdgeAdvertisedAddressVarName                 = "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS"
 	CtrlEdgeAdvertisedAddressVarDescription          = "The publicly addressable controller address value"
+	CtrlEdgeAltAdvertisedAddressVarName              = "ZITI_CTRL_EDGE_ALT_CTRL_ADVERTISED_ADDRESS"
+	CtrlEdgeAltAdvertisedAddressVarDescription       = "The publicly addressable, alternative controller address value"
 	CtrlEdgeAdvertisedPortVarName                    = "ZITI_CTRL_EDGE_ADVERTISED_PORT"
 	CtrlEdgeAdvertisedPortVarDescription             = "The publicly addressable controller port value"
 	PkiSignerCertVarName                             = "ZITI_PKI_SIGNER_CERT"

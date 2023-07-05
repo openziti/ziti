@@ -107,9 +107,15 @@ func GetCtrlAdvertisedPort() string {
 func GetCtrlEdgeBindAddress() string {
 	return getFromEnv(constants.CtrlEdgeBindAddressVarName, defaultValue(constants.DefaultCtrlEdgeBindAddress))
 }
+
 func GetCtrlEdgeAdvertisedAddress() string {
 	return getFromEnv(constants.CtrlEdgeAdvertisedAddressVarName, HostnameOrNetworkName)
 }
+
+func GetCtrlEdgeAltAdvertisedAddress() string {
+	return getFromEnv(constants.CtrlEdgeAltAdvertisedAddressVarName, GetCtrlEdgeAdvertisedAddress)
+}
+
 func GetCtrlEdgeAdvertisedPort() string {
 	return getFromEnv(constants.CtrlEdgeAdvertisedPortVarName, defaultValue(constants.DefaultCtrlEdgeAdvertisedPort))
 }
@@ -122,30 +128,30 @@ func GetZitiEdgeRouterListenerBindPort() string {
 	return getFromEnv(constants.ZitiEdgeRouterListenerBindPortVarName, defaultValue(constants.DefaultZitiEdgeRouterListenerBindPort))
 }
 
-func GetCtrlEdgeIdentityEnrollmentDuration() (time.Duration, error) {
+func GetCtrlEdgeIdentityEnrollmentDuration() time.Duration {
 	retVal := getFromEnv(constants.CtrlEdgeIdentityEnrollmentDurationVarName, defaultIntValue(int64(edge.DefaultEdgeEnrollmentDuration.Minutes())))
 	retValInt, err := strconv.Atoi(retVal)
 	if err != nil {
 		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeIdentityEnrollmentDurationVarDescription)
 		if err != nil {
-			return edge.DefaultEdgeEnrollmentDuration, err
+			return edge.DefaultEdgeEnrollmentDuration
 		}
 	}
 
-	return time.Duration(retValInt) * time.Minute, nil
+	return time.Duration(retValInt) * time.Minute
 }
 
-func GetCtrlEdgeRouterEnrollmentDuration() (time.Duration, error) {
+func GetCtrlEdgeRouterEnrollmentDuration() time.Duration {
 	retVal := getFromEnv(constants.CtrlEdgeRouterEnrollmentDurationVarName, defaultIntValue(int64(edge.DefaultEdgeEnrollmentDuration.Minutes())))
 	retValInt, err := strconv.Atoi(retVal)
 	if err != nil {
 		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeRouterEnrollmentDurationVarDescription)
 		if err != nil {
-			return edge.DefaultEdgeEnrollmentDuration, err
+			return edge.DefaultEdgeEnrollmentDuration
 		}
 	}
 
-	return time.Duration(retValInt) * time.Minute, nil
+	return time.Duration(retValInt) * time.Minute
 }
 
 type envVarNotFound func() string

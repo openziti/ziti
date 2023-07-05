@@ -205,7 +205,7 @@ func TestGetEdgeIdentityEnrollmentDurationWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeIdentityEnrollmentDuration()
+	actualValue := GetCtrlEdgeIdentityEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -220,7 +220,7 @@ func TestGetEdgeIdentityEnrollmentDurationWhenSetToBlank(t *testing.T) {
 	_ = os.Setenv(varName, "")
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeIdentityEnrollmentDuration()
+	actualValue := GetCtrlEdgeIdentityEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -234,7 +234,7 @@ func TestGetEdgeIdentityEnrollmentDurationWhenNotSet(t *testing.T) {
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeIdentityEnrollmentDuration()
+	actualValue := GetCtrlEdgeIdentityEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -247,7 +247,7 @@ func TestGetEdgeRouterEnrollmentDurationWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeRouterEnrollmentDuration()
+	actualValue := GetCtrlEdgeRouterEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -262,7 +262,7 @@ func TestGetEdgeRouterEnrollmentDurationWhenSetToBlank(t *testing.T) {
 	_ = os.Setenv(varName, "")
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeRouterEnrollmentDuration()
+	actualValue := GetCtrlEdgeRouterEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -276,6 +276,6 @@ func TestGetEdgeRouterEnrollmentDurationWhenNotSet(t *testing.T) {
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeRouterEnrollmentDuration()
+	actualValue := GetCtrlEdgeRouterEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }

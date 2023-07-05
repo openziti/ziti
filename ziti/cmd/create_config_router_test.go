@@ -105,9 +105,10 @@ type Forwarder struct {
 
 /* END Controller config template structure */
 
-func createRouterConfig(args []string) RouterConfig {
+func createRouterConfig(args []string, routerOptions *CreateConfigRouterOptions, keys map[string]string) (RouterConfig, *ConfigTemplateValues) {
 	// Create and run the CLI command
-	cmd := NewCmdCreateConfigRouter()
+	setEnvByMap(keys)
+	cmd := NewCmdCreateConfigRouter(routerOptions)
 	cmd.SetArgs(args)
 	// captureOutput is used to consume output, otherwise config prints to stdout along with test results
 	output := captureOutput(func() {
@@ -120,28 +121,15 @@ func createRouterConfig(args []string) RouterConfig {
 	if err2 != nil {
 		fmt.Println(err2)
 	}
-	return configStruct
+	return configStruct, cmd.RenderedValues
 }
 
-func execCreateConfigCommand(args []string, keys map[string]string) {
-	// Setup options
-	clearRouterOptionsAndTemplateData()
+func clearEnvAndInitializeTestData() *CreateConfigRouterOptions {
+	unsetZitiEnv()
+	routerOptions := &CreateConfigRouterOptions{}
 	routerOptions.Output = defaultOutput
 
-	setEnvByMap(keys)
-	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
-	cmd := NewCmdCreateConfigRouter()
-	cmd.SetArgs(args)
-	_ = captureOutput(func() {
-		_ = cmd.Execute()
-	})
-}
-
-func clearRouterOptionsAndTemplateData() {
-	routerOptions = CreateConfigRouterOptions{}
-	data = &ConfigTemplateValues{}
-
-	unsetZitiEnv()
+	return &CreateConfigRouterOptions{}
 }
 
 func TestSetZitiRouterIdentityCertDefault(t *testing.T) {
@@ -246,7 +234,7 @@ func TestSetZitiRouterIdentityCACustom(t *testing.T) {
 
 func TestSetZitiRouterIdentitySetsAllIdentitiesAndRouterName(t *testing.T) {
 	// Setup
-	clearRouterOptionsAndTemplateData()
+	clearEnvAndInitializeTestData()
 	expectedName := "MyRouterName"
 	blank := ""
 	rtv := &RouterTemplateValues{}
@@ -273,7 +261,7 @@ func TestSetZitiRouterIdentitySetsAllIdentitiesAndRouterName(t *testing.T) {
 
 func TestSetZitiRouterIdentitySetsAllIdentitiesAndRouterNameToHostWhenBlank(t *testing.T) {
 	// Setup
-	clearRouterOptionsAndTemplateData()
+	clearEnvAndInitializeTestData()
 	expectedName, _ := os.Hostname()
 	blank := ""
 	rtv := &RouterTemplateValues{}
@@ -299,7 +287,7 @@ func TestSetZitiRouterIdentitySetsAllIdentitiesAndRouterNameToHostWhenBlank(t *t
 }
 
 func TestAltServerCerts(t *testing.T) {
-	clearRouterOptionsAndTemplateData()
+	clearEnvAndInitializeTestData()
 	certPath := "/path/to/cert"
 	keyPath := "/path/to/key"
 	_ = os.Setenv("ZITI_PKI_ALT_SERVER_CERT", certPath)
