@@ -499,8 +499,8 @@ github.com/openziti/sdk-golang v0.20.72 h1:v40UzZVaoDnTw0qTvy49FjLr3odNmYO17Ue//
 github.com/openziti/sdk-golang v0.20.72/go.mod h1:k7r7vxaX4CElz65LScQRAw1vQ6eUFCNw3ufyjUxEuPo=
 github.com/openziti/secretstream v0.1.9 h1:mNCMr9oYQ4JAfdU4iU79i3si4vqVVsErzrhXuKC7R3M=
 github.com/openziti/secretstream v0.1.9/go.mod h1:tq0XVUwFAT0TwfBpILp4KaeEnasduNTUixOIrmUZUGA=
-github.com/openziti/storage v0.2.9 h1:/JfavzhItdZSbX8csRc5yfqJ9WniVVaSy7k1puB4Ong=
-github.com/openziti/storage v0.2.9/go.mod h1:Cd1YuhqSLbVI0vaujTQl/cHgPCECapLGh/s4bMgKczM=
+github.com/openziti/storage v0.2.10 h1:gpQUeq5EGOqpXo8LJytgOEjbxnec61Lr1nxBKoRje8Y=
+github.com/openziti/storage v0.2.10/go.mod h1:/r6j1tXLUrvn4sIHsYY6EO0kW+URcljxOLAIMM0xWiQ=
 github.com/openziti/transport/v2 v2.0.92 h1:cZ5YAdKMjmZAV5uXWJ3uh1MlCiPl0F9T92a1MA/iLdk=
 github.com/openziti/transport/v2 v2.0.92/go.mod h1:3M7W/wHvTUu1+3m4V0iVtvogcgJujv1Yd4Lszm4Zxz4=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
