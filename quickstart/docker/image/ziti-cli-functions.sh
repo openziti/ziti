@@ -372,7 +372,7 @@ function persistEnvironmentValues {
   for zEnvVar in $(set | grep -e "^ZITI_" | sort); do
       envvar="$(echo "${zEnvVar}" | cut -d '=' -f1)"
       envval="$(echo "${zEnvVar}" | cut -d '=' -f2-1000)"
-      echo 'if [[ "'${envvar}'" == "" ]]; then '${envvar}'="'${envval}'"; else echo "NOT OVERRIDING: env var '${envvar}' already set. using existing value"; fi' >> "${filepath}"
+      echo 'if [[ "$'${envvar}'" == "" ]]; then '${envvar}'="'${envval}'"; else echo "NOT OVERRIDING: env var '${envvar}' already set. using existing value"; fi' >> "${filepath}"
   done
 
   export PFXLOG_NO_JSON=true
