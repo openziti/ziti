@@ -24,8 +24,8 @@ if [[ "${_ZITI_EDGE_ROUTER_NAME}" != "" ]]; then
   export ZITI_EDGE_ROUTER_NAME="${_ZITI_EDGE_ROUTER_NAME}"
   echo "ZITI_EDGE_ROUTER_NAME set to: ${ZITI_EDGE_ROUTER_NAME}"
 fi
-
-if [ ! -f "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.init" ]; then
+_UNIQUE_NAME="${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}-${HOSTNAME}.init"
+if [ ! -f "${_UNIQUE_NAME}" ]; then
   echo "system has not been initialized. initializing..."
   ziti edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
 
@@ -59,7 +59,7 @@ if [ ! -f "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.init" ]; then
     echo ""
   fi
   echo "system initialized. writing marker file"
-  echo "system initialized" > "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.init"
+  echo "system initialized" > "${_UNIQUE_NAME}"
 else
   echo "system has been initialized. starting the process."
 fi
