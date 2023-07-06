@@ -55,6 +55,12 @@ type ZitiTunnelType struct {
 	LocalPath string
 }
 
+func (self *ZitiTunnelType) InitType(*model.Component) {
+	if self.Version != "" && !strings.HasPrefix(self.Version, "v") {
+		self.Version = "v" + self.Version
+	}
+}
+
 func (self *ZitiTunnelType) Dump() any {
 	return map[string]string{
 		"type_id":    "ziti-tunnel",

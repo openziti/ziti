@@ -40,16 +40,15 @@ func (self *ZitiEdgeTunnelType) Dump() any {
 	}
 }
 
-func (self *ZitiEdgeTunnelType) getVersion() string {
+func (self *ZitiEdgeTunnelType) InitType(*model.Component) {
 	if strings.HasPrefix(self.Version, "v") {
-		return self.Version[1:]
+		self.Version = self.Version[1:]
 	}
-	return self.Version
 }
 
 func (self *ZitiEdgeTunnelType) getBinaryName() string {
 	binaryName := "ziti-edge-tunnel"
-	version := self.getVersion()
+	version := self.Version
 	if version != "" {
 		binaryName += "-" + version
 	}
@@ -57,7 +56,7 @@ func (self *ZitiEdgeTunnelType) getBinaryName() string {
 }
 
 func (self *ZitiEdgeTunnelType) StageFiles(r model.Run, c *model.Component) error {
-	return stageziti.StageZitiEdgeTunnelOnce(r, c, self.getVersion(), self.LocalPath)
+	return stageziti.StageZitiEdgeTunnelOnce(r, c, self.Version, self.LocalPath)
 }
 
 func (self *ZitiEdgeTunnelType) getProcessFilter(c *model.Component) func(string) bool {

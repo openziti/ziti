@@ -53,7 +53,7 @@ func StageZiti(run model.Run, component *model.Component, version string, source
 			logrus.Infof("[%s] => [%s]", source, target)
 			return util.CopyFile(source, target)
 		}
-		if envSource, found := component.GetStringVariable("ziti.path"); found {
+		if envSource, found := component.GetStringVariable("ZITI_PATH"); found {
 			logrus.Infof("[%s] => [%s]", envSource, target)
 			return util.CopyFile(envSource, target)
 		}
@@ -61,7 +61,7 @@ func StageZiti(run model.Run, component *model.Component, version string, source
 			logrus.Infof("[%s] => [%s]", zitiPath, target)
 			return util.CopyFile(zitiPath, target)
 		}
-		return errors.New("ziti binary not found in path, no path provided and no ziti.path env variable set")
+		return errors.New("ziti binary not found in path, no path provided and no ZITI_PATH env variable set")
 	}
 
 	found, err := run.FileExists(filepath.Join(model.BuildKitDir, model.BuildBinDir, fileName))
