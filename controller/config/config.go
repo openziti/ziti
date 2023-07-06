@@ -444,6 +444,8 @@ func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
 			fingerprint := toHex(hash[:])
 			newPem := pem.EncodeToMemory(block)
 			caPemMap[fingerprint] = newPem
+		} else {
+			blocksToProcess = nil
 		}
 	}
 
