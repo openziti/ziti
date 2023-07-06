@@ -10,13 +10,13 @@ v: 3
 db:                     "{{ .ZitiHome }}/db/ctrl.db"
 
 identity:
-  cert:                 "{{ .Controller.Identity.Cert }}"
-  server_cert:          "{{ .Controller.Identity.ServerCert }}"
-  key:                  "{{ .Controller.Identity.Key }}"
-  ca:                   "{{ .Controller.Identity.Ca }}"{{ if .Controller.Web.Identity.HasAltCerts }}
+  cert:        "{{ .Controller.Identity.Cert }}"
+  server_cert: "{{ .Controller.Identity.ServerCert }}"
+  key:         "{{ .Controller.Identity.Key }}"
+  ca:          "{{ .Controller.Identity.Ca }}"{{ if .Controller.Web.Identity.HasAltCerts }}
   alt_server_certs:
-    - server_cert: "{{ .Controller.Web.Identity.AltServerCert }}"
-      server_key: "{{ .Controller.Web.Identity.AltServerKey }}"{{ end }}
+    - server_cert:  "{{ .Controller.Web.Identity.AltServerCert }}"
+      server_key:   "{{ .Controller.Web.Identity.AltServerKey }}"{{ end }}
 
 # Network Configuration
 #
@@ -170,7 +170,7 @@ web:
       cert:        "{{ .Controller.Web.Identity.Cert }}"{{ if .Controller.Web.Identity.HasAltCerts }}
       alt_server_certs:
       - server_cert: "{{ .Controller.Web.Identity.AltServerCert }}"
-        server_key: "{{ .Controller.Web.Identity.AltServerKey }}"{{ end }}
+        server_key:  "{{ .Controller.Web.Identity.AltServerKey }}"{{ end }}
     # options - optional
     # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
     # used for all http servers started by the current webListener.
