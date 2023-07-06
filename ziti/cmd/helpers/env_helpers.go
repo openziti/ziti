@@ -158,6 +158,26 @@ func GetCtrlEdgeRouterEnrollmentDuration() time.Duration {
 	return time.Duration(retValInt) * time.Minute
 }
 
+func GetZitiEdgeRouterC() string {
+	return getFromEnv(constants.ZitiEdgeRouterCsrCVarName, defaultValue(constants.DefaultEdgeRouterCsrC))
+}
+
+func GetZitiEdgeRouterST() string {
+	return getFromEnv(constants.ZitiEdgeRouterCsrSTVarName, defaultValue(constants.DefaultEdgeRouterCsrST))
+}
+
+func GetZitiEdgeRouterL() string {
+	return getFromEnv(constants.ZitiEdgeRouterCsrLVarName, defaultValue(constants.DefaultEdgeRouterCsrL))
+}
+
+func GetZitiEdgeRouterO() string {
+	return getFromEnv(constants.ZitiEdgeRouterCsrOVarName, defaultValue(constants.DefaultEdgeRouterCsrO))
+}
+
+func GetZitiEdgeRouterOU() string {
+	return getFromEnv(constants.ZitiEdgeRouterCsrOUVarName, defaultValue(constants.DefaultEdgeRouterCsrOU))
+}
+
 type envVarNotFound func() string
 
 func getFromEnv(envVarName string, onNotFound envVarNotFound) string {

@@ -162,6 +162,11 @@ type EdgeRouterTemplateValues struct {
 	AdvertisedHost   string
 	LanInterface     string
 	ListenerBindPort string
+	CsrC             string
+	CsrST            string
+	CsrL             string
+	CsrO             string
+	CsrOU            string
 }
 
 type WSSRouterTemplateValues struct {
@@ -278,6 +283,11 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	// ************* Router Values ************
 	data.Router.Edge.Port = cmdHelper.GetZitiEdgeRouterPort()
 	data.Router.Edge.ListenerBindPort = cmdHelper.GetZitiEdgeRouterListenerBindPort()
+	data.Router.Edge.CsrC = cmdHelper.GetZitiEdgeRouterC()
+	data.Router.Edge.CsrST = cmdHelper.GetZitiEdgeRouterST()
+	data.Router.Edge.CsrL = cmdHelper.GetZitiEdgeRouterL()
+	data.Router.Edge.CsrO = cmdHelper.GetZitiEdgeRouterO()
+	data.Router.Edge.CsrOU = cmdHelper.GetZitiEdgeRouterOU()
 	data.Router.Listener.GetSessionTimeout = constants.DefaultGetSessionTimeout
 
 	data.Router.Wss.WriteTimeout = foundation.DefaultWsWriteTimeout

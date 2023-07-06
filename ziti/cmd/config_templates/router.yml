@@ -58,11 +58,11 @@ csr:
 {{ else }}
 edge:
   csr:
-    country: US
-    province: NC
-    locality: Charlotte
-    organization: NetFoundry
-    organizationalUnit: Ziti
+    country: {{ .Router.Edge.CsrC }}
+    province: {{ .Router.Edge.CsrST }}
+    locality: {{ .Router.Edge.CsrL }}
+    organization: {{ .Router.Edge.CsrO }}
+    organizationalUnit: {{ .Router.Edge.CsrOU }}
     sans:
       dns:
         - {{ .Router.Edge.AdvertisedHost }}

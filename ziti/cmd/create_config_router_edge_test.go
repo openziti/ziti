@@ -287,3 +287,44 @@ func TestEdgeRouterIPOverrideIsConsumed(t *testing.T) {
 	}
 	assert.True(t, found, "Expected value not found; expected to find value of "+constants.ZitiEdgeRouterIPOverrideVarName+" in edge router config output.")
 }
+
+func TestEdgeRouterCsrFields(t *testing.T) {
+	routerOptions := clearEnvAndInitializeTestData()
+	routerName := "CstTest"
+	config, data := createRouterConfig([]string{"edge", "--routerName", routerName}, routerOptions, nil)
+	// Check that the template values now contains the custom external IP override value
+	assert.Equal(t, "US", data.Router.Edge.CsrC)
+	assert.Equal(t, "US", config.Edge.Csr.Country)
+	assert.Equal(t, "NC", data.Router.Edge.CsrST)
+	assert.Equal(t, "NC", config.Edge.Csr.Province)
+	assert.Equal(t, "Charlotte", data.Router.Edge.CsrL)
+	assert.Equal(t, "Charlotte", config.Edge.Csr.Locality)
+	assert.Equal(t, "NetFoundry", data.Router.Edge.CsrO)
+	assert.Equal(t, "NetFoundry", config.Edge.Csr.Organization)
+	assert.Equal(t, "Ziti", data.Router.Edge.CsrOU)
+	assert.Equal(t, "Ziti", config.Edge.Csr.OrganizationalUnit)
+
+	C := "C"
+	ST := "ST"
+	L := "L"
+	O := "O"
+	OU := "OU"
+	_ = os.Setenv(constants.ZitiEdgeRouterCsrCVarName, C)
+	_ = os.Setenv(constants.ZitiEdgeRouterCsrSTVarName, ST)
+	_ = os.Setenv(constants.ZitiEdgeRouterCsrLVarName, L)
+	_ = os.Setenv(constants.ZitiEdgeRouterCsrOVarName, O)
+	_ = os.Setenv(constants.ZitiEdgeRouterCsrOUVarName, OU)
+
+	config2, data2 := createRouterConfig([]string{"edge", "--routerName", routerName}, routerOptions, nil)
+	// Check that the template values now contains the custom external IP override value
+	assert.Equal(t, C, data2.Router.Edge.CsrC)
+	assert.Equal(t, C, config2.Edge.Csr.Country)
+	assert.Equal(t, ST, data2.Router.Edge.CsrST)
+	assert.Equal(t, ST, config2.Edge.Csr.Province)
+	assert.Equal(t, L, data2.Router.Edge.CsrL)
+	assert.Equal(t, L, config2.Edge.Csr.Locality)
+	assert.Equal(t, O, data2.Router.Edge.CsrO)
+	assert.Equal(t, O, config2.Edge.Csr.Organization)
+	assert.Equal(t, OU, data2.Router.Edge.CsrOU)
+	assert.Equal(t, OU, config2.Edge.Csr.OrganizationalUnit)
+}

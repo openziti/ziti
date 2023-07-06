@@ -46,6 +46,12 @@ const (
 
 	DefaultCtrlEdgeBindAddress    = "0.0.0.0"
 	DefaultCtrlEdgeAdvertisedPort = "1280"
+
+	DefaultEdgeRouterCsrC  = "US"
+	DefaultEdgeRouterCsrST = "NC"
+	DefaultEdgeRouterCsrL  = "Charlotte"
+	DefaultEdgeRouterCsrO  = "NetFoundry"
+	DefaultEdgeRouterCsrOU = "Ziti"
 )
 
 // Env Var Constants
@@ -113,4 +119,14 @@ const (
 	ZitiEdgeRouterAdvertisedHostVarDescription       = "The advertised host of the router"
 	ZitiEdgeRouterListenerBindPortVarName            = "ZITI_EDGE_ROUTER_LISTENER_BIND_PORT"
 	ZitiEdgeRouterListenerBindPortVarDescription     = "The port a public router will advertise on"
+	ZitiEdgeRouterCsrCVarName                        = "ZITI_EDGE_ROUTER_CSR_C"
+	ZitiEdgeRouterCsrCVarDescription                 = "The country (C) to use for router CSRs"
+	ZitiEdgeRouterCsrSTVarName                       = "ZITI_EDGE_ROUTER_CSR_ST"
+	ZitiEdgeRouterCsrSTVarDescription                = "The state/province (ST) to use for router CSRs"
+	ZitiEdgeRouterCsrLVarName                        = "ZITI_EDGE_ROUTER_CSR_L"
+	ZitiEdgeRouterCsrLVarDescription                 = "The locality (L) to use for router CSRs"
+	ZitiEdgeRouterCsrOVarName                        = "ZITI_EDGE_ROUTER_CSR_O"
+	ZitiEdgeRouterCsrOVarDescription                 = "The organization (O) to use for router CSRs"
+	ZitiEdgeRouterCsrOUVarName                       = "ZITI_EDGE_ROUTER_CSR_OU"
+	ZitiEdgeRouterCsrOUVarDescription                = "The organization unit to use for router CSRs"
 )

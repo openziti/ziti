@@ -125,6 +125,11 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 				{constants.ZitiRouterIdentityCAVarName, constants.ZitiRouterIdentityCAVarDescription, data.Router.IdentityCA},
 				{constants.ZitiEdgeRouterIPOverrideVarName, constants.ZitiEdgeRouterIPOverrideVarDescription, data.Router.Edge.IPOverride},
 				{constants.ZitiEdgeRouterAdvertisedHostVarName, constants.ZitiEdgeRouterAdvertisedHostVarDescription, data.Router.Edge.AdvertisedHost},
+				{constants.ZitiEdgeRouterCsrCVarName, constants.ZitiEdgeRouterCsrCVarDescription, data.Router.Edge.CsrC},
+				{constants.ZitiEdgeRouterCsrSTVarName, constants.ZitiEdgeRouterCsrSTVarDescription, data.Router.Edge.CsrST},
+				{constants.ZitiEdgeRouterCsrLVarName, constants.ZitiEdgeRouterCsrLVarDescription, data.Router.Edge.CsrL},
+				{constants.ZitiEdgeRouterCsrOVarName, constants.ZitiEdgeRouterCsrOVarDescription, data.Router.Edge.CsrO},
+				{constants.ZitiEdgeRouterCsrOUVarName, constants.ZitiEdgeRouterCsrOUVarDescription, data.Router.Edge.CsrOU},
 			}
 
 			// Setup logging
@@ -196,6 +201,11 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiRouterIdentityCAVarName, constants.ZitiRouterIdentityCAVarDescription, data.Router.IdentityCA))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterIPOverrideVarName, constants.ZitiEdgeRouterIPOverrideVarDescription, data.Router.Edge.IPOverride))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterAdvertisedHostVarName, constants.ZitiEdgeRouterAdvertisedHostVarDescription, data.Router.Edge.AdvertisedHost))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterCsrCVarName, constants.ZitiEdgeRouterCsrCVarDescription, data.Router.Edge.CsrC))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterCsrSTVarName, constants.ZitiEdgeRouterCsrSTVarDescription, data.Router.Edge.CsrST))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterCsrLVarName, constants.ZitiEdgeRouterCsrLVarDescription, data.Router.Edge.CsrL))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterCsrOVarName, constants.ZitiEdgeRouterCsrOVarDescription, data.Router.Edge.CsrO))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterCsrOUVarName, constants.ZitiEdgeRouterCsrOUVarDescription, data.Router.Edge.CsrOU))
 
 	cmd.Long = sb.String()
 
