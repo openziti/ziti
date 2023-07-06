@@ -102,6 +102,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 				{constants.CtrlAdvertisedAddressVarName, constants.CtrlAdvertisedAddressVarDescription, data.Controller.Ctrl.AdvertisedAddress},
 				{constants.CtrlAdvertisedPortVarName, constants.CtrlAdvertisedPortVarDescription, data.Controller.Ctrl.AdvertisedPort},
 				{constants.CtrlEdgeAdvertisedAddressVarName, constants.CtrlEdgeAdvertisedAddressVarDescription, data.Controller.EdgeApi.Address},
+				{constants.CtrlEdgeAltAdvertisedAddressVarName, constants.CtrlEdgeAltAdvertisedAddressVarDescription, data.Controller.EdgeApi.Address},
 				{constants.CtrlEdgeAdvertisedPortVarName, constants.CtrlEdgeAdvertisedPortVarDescription, data.Controller.EdgeApi.Port},
 				{constants.CtrlEdgeBindAddressVarName, constants.CtrlEdgeBindAddressVarDescription, data.Controller.EdgeApi.Address},
 				{constants.PkiSignerCertVarName, constants.PkiSignerCertVarDescription, data.Controller.EdgeEnrollment.SigningCert},
@@ -178,6 +179,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiCtrlCAVarName, constants.PkiCtrlCAVarDescription, data.Controller.Identity.Ca))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlBindAddressVarName, constants.CtrlBindAddressVarDescription, data.Controller.Ctrl.BindAddress))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlAdvertisedAddressVarName, constants.CtrlAdvertisedAddressVarDescription, data.Controller.Ctrl.AdvertisedAddress))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlEdgeAltAdvertisedAddressVarName, constants.CtrlEdgeAltAdvertisedAddressVarDescription, data.Controller.Ctrl.AdvertisedAddress))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlAdvertisedPortVarName, constants.CtrlAdvertisedPortVarDescription, data.Controller.Ctrl.AdvertisedPort))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlEdgeBindAddressVarName, constants.CtrlEdgeBindAddressVarDescription, data.Controller.EdgeApi.Address))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlEdgeAdvertisedPortVarName, constants.CtrlEdgeAdvertisedPortVarDescription, data.Controller.EdgeApi.Port))

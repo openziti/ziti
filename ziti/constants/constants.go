@@ -78,7 +78,7 @@ const (
 	CtrlEdgeAdvertisedAddressVarName                 = "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS"
 	CtrlEdgeAdvertisedAddressVarDescription          = "The publicly addressable controller address value"
 	CtrlEdgeAltAdvertisedAddressVarName              = "ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS"
-	CtrlEdgeAltAdvertisedAddressVarDescription       = "The publicly addressable, alternative controller address value"
+	CtrlEdgeAltAdvertisedAddressVarDescription       = "The publicly addressable, alternative controller address value. Overrides ZITI_CTRL_EDGE_ADVERTISED_ADDRESS"
 	CtrlEdgeAdvertisedPortVarName                    = "ZITI_CTRL_EDGE_ADVERTISED_PORT"
 	CtrlEdgeAdvertisedPortVarDescription             = "The publicly addressable controller port value"
 	PkiSignerCertVarName                             = "ZITI_PKI_SIGNER_CERT"
