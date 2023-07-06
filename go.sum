@@ -485,10 +485,10 @@ github.com/openziti/channel/v2 v2.0.83 h1:Vm7h/9i+nKsWzvYNYneKspgjYbshP+pzRtcHYm
 github.com/openziti/channel/v2 v2.0.83/go.mod h1:NdRM+1qC4hf6RUR8rMA6xvBBTOIX1UPdOPVWGEqaus8=
 github.com/openziti/edge-api v0.25.29 h1:DbZ0GKpch9ik+XnC0qoP1dOg1AmgUEeWH4VIyOIehrQ=
 github.com/openziti/edge-api v0.25.29/go.mod h1:mqYquh1RYvHjV/M9MGO4Ng0Xq9ixAH8o8cT5kw5XCWY=
-github.com/openziti/fabric v0.23.42 h1:1JWSYgDN+YamJ3rq75Q2agHO1YgNSzmbmnvY3LaLHm0=
-github.com/openziti/fabric v0.23.42/go.mod h1:Enq9BCs4ZGYGo3Y0TBg594CDruL4vxQ53Wb7tBwNywQ=
-github.com/openziti/foundation/v2 v2.0.27 h1:rIhIZ7iS0IIsz6IvijcuJ7G5h/VMAScyUfc3p9gkpu4=
-github.com/openziti/foundation/v2 v2.0.27/go.mod h1:hI++ZNd3zh+a8h1GwLQYnt2VPkh1uuzNsDZX9oyHkQg=
+github.com/openziti/fabric v0.23.43 h1:+++nxfblsrHG+soVQmbmoJIrlKOE/oVD7g3jPc328KM=
+github.com/openziti/fabric v0.23.43/go.mod h1:R96lDD3zq8yhe2xmyc/IIvCnPzJAJn/N2u5fL2wcf3o=
+github.com/openziti/foundation/v2 v2.0.28 h1:AAdHhtUj1tCIXollSpbDlKwPKRasNAgADpTZAF1WCOQ=
+github.com/openziti/foundation/v2 v2.0.28/go.mod h1:psKxxQw/zRo5+oKN7AR+MKYaeR3mbBPhb65qq8rqB0U=
 github.com/openziti/identity v1.0.58 h1:Ff0etAIuB5y/y7EFffKw2JUNV1naa7/mNmp7h2fzk2g=
 github.com/openziti/identity v1.0.58/go.mod h1:UEsIaYZz3tTKnP9z9DtwDcqZofs87jXKOwwJzbTnAX8=
 github.com/openziti/jwks v1.0.3 h1:hf8wkb+Cg4nH/HM0KROFd7u+C3DkRVcFZJ7tDV+4icc=
@@ -499,8 +499,8 @@ github.com/openziti/sdk-golang v0.20.73 h1:lVWDMCer3ikc2hCY3/NYC55AWLw4ANJZZV6pK
 github.com/openziti/sdk-golang v0.20.73/go.mod h1:ggW8E0XQD5O8r4Ni12A+dA7V97CnRJ04gqJeTEBSaQI=
 github.com/openziti/secretstream v0.1.10 h1:aLheoP6vVAv96mItwkXxWr9Ym0tTooJ5o9H1j2fAh04=
 github.com/openziti/secretstream v0.1.10/go.mod h1:HrS6P9G0jjHNHuKESMaybNdxBHjD1b0SzxSi0rDzshY=
-github.com/openziti/storage v0.2.10 h1:gpQUeq5EGOqpXo8LJytgOEjbxnec61Lr1nxBKoRje8Y=
-github.com/openziti/storage v0.2.10/go.mod h1:/r6j1tXLUrvn4sIHsYY6EO0kW+URcljxOLAIMM0xWiQ=
+github.com/openziti/storage v0.2.11 h1:Ws23any7NtbEKQroFJt6DJmeEFGMPjZqjAK2/Re9LIE=
+github.com/openziti/storage v0.2.11/go.mod h1:M46XIxPYwTDTgaamI6o9cyEJkYvUYfhJjwvZtQu4tUQ=
 github.com/openziti/transport/v2 v2.0.92 h1:cZ5YAdKMjmZAV5uXWJ3uh1MlCiPl0F9T92a1MA/iLdk=
 github.com/openziti/transport/v2 v2.0.92/go.mod h1:3M7W/wHvTUu1+3m4V0iVtvogcgJujv1Yd4Lszm4Zxz4=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
