@@ -7,6 +7,7 @@ if [[ "${ZITI_CTRL_NAME-}" == "" ]]; then export ZITI_CTRL_NAME="${ZITI_NETWORK}
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
 if [ ! -f "${ZITI_HOME}/access-control.init" ]; then
+  echo "system has not been initialized. initializing..."
   setupEnvironment
   persistEnvironmentValues
   # don't move the sourcing of the file. yes it's duplicated but it needs to be here
@@ -35,7 +36,7 @@ if [ ! -f "${ZITI_HOME}/access-control.init" ]; then
   # initialize the database with the admin user:
   "${ZITI_BIN_DIR}/ziti" controller edge init "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml" -u "${ZITI_USER}" -p "${ZITI_PWD}"
 else
-  echo "system has been initialized already. just starting the process"
+  echo "system has been initialized. starting the process."
   # don't move the sourcing of the file. yes it's duplicated but it needs to be here
   . ${ZITI_HOME}/ziti.env
 fi

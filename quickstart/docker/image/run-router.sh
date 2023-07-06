@@ -25,41 +25,47 @@ if [[ "${_ZITI_EDGE_ROUTER_NAME}" != "" ]]; then
   echo "ZITI_EDGE_ROUTER_NAME set to: ${ZITI_EDGE_ROUTER_NAME}"
 fi
 
-ziti edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
+if [ ! -f "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.init" ]; then
+  echo "system has not been initialized. initializing..."
+  ziti edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
 
-echo "tried logging in. unsetting ZITI_USER/ZITI_PWD from env"
+  echo "----------  Creating edge-router ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}...."
+
+  if [[ "$1" == "edge" ]]; then
+    echo "CREATING EDGE ROUTER CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
+    createEdgeRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
+  fi
+  if [[ "$1" == "wss" ]]; then
+    echo "CREATING EDGE ROUTER WSS CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
+    createEdgeRouterWssConfig "${ZITI_EDGE_ROUTER_NAME}"
+  fi
+  if [[ "$1" == "fabric" ]]; then
+    echo "CREATING FABRIC ROUTER CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
+    createFabricRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
+  fi
+  if [[ "$1" == "private" ]]; then
+    echo "CREATING PRIVATE ROUTER CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
+    createPrivateRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
+  fi
+
+  found=$(ziti edge list edge-routers 'name = "'"${ZITI_EDGE_ROUTER_NAME}"'"' | grep -c "${ZITI_EDGE_ROUTER_NAME}")
+  if [[ found -gt 0 ]]; then
+    echo "----------  Found existing edge-router ${ZITI_EDGE_ROUTER_NAME}...."
+  else
+    "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_NAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.jwt" -t -a "${ZITI_EDGE_ROUTER_ROLES}"
+    sleep 1
+    echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_NAME}...."
+    "${ZITI_BIN_DIR}/ziti" router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.jwt"
+    echo ""
+  fi
+  echo "system initialized. writing marker file"
+  echo "system initialized" > "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.init"
+else
+  echo "system has been initialized. starting the process."
+fi
+
 unset ZITI_USER
 unset ZITI_PWD
-
-echo "----------  Creating edge-router ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}...."
-
-if [[ "$1" == "edge" ]]; then
-  echo "CREATING EDGE ROUTER CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
-  createEdgeRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
-fi
-if [[ "$1" == "wss" ]]; then
-  echo "CREATING EDGE ROUTER WSS CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
-  createEdgeRouterWssConfig "${ZITI_EDGE_ROUTER_NAME}"
-fi
-if [[ "$1" == "fabric" ]]; then
-  echo "CREATING FABRIC ROUTER CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
-  createFabricRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
-fi
-if [[ "$1" == "private" ]]; then
-  echo "CREATING PRIVATE ROUTER CONFIG: ${ZITI_EDGE_ROUTER_NAME}"
-  createPrivateRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
-fi
-
-found=$(ziti edge list edge-routers 'name = "'"${ZITI_EDGE_ROUTER_NAME}"'"' | grep -c "${ZITI_EDGE_ROUTER_NAME}")
-if [[ found -gt 0 ]]; then
-  echo "----------  Found existing edge-router ${ZITI_EDGE_ROUTER_NAME}...."
-else
-  "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_NAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.jwt" -t -a "${ZITI_EDGE_ROUTER_ROLES}"
-  sleep 1
-  echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_NAME}...."
-  "${ZITI_BIN_DIR}/ziti" router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.jwt"
-  echo ""
-fi
 
 "${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml" > "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.log"
 
