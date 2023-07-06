@@ -279,6 +279,7 @@ func SetWebIdentityCA(c *ControllerTemplateValues) {
 }
 
 func SetCtrlAltServerCerts(c *ControllerTemplateValues) {
+	c.Web.Identity.AltCertsEnabled = "#"
 	altServerCert := os.Getenv(constants.PkiAltServerCertVarName)
 	if altServerCert == "" {
 		return //exit unless both vars are set
@@ -287,7 +288,7 @@ func SetCtrlAltServerCerts(c *ControllerTemplateValues) {
 	if altServerKey == "" {
 		return //exit unless both vars are set
 	}
-	c.Web.Identity.HasAltCerts = true
+	c.Web.Identity.AltCertsEnabled = ""
 	c.Web.Identity.AltServerCert = helpers2.NormalizePath(altServerCert)
 	c.Web.Identity.AltServerKey = helpers2.NormalizePath(altServerKey)
 }

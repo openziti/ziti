@@ -94,6 +94,7 @@ func validateRouterName(name string) string {
 }
 
 func SetRouterAltServerCerts(c *RouterTemplateValues) {
+	c.AltCertsEnabled = "#"
 	altServerCert := os.Getenv(constants.PkiAltServerCertVarName)
 	if altServerCert == "" {
 		return //exit unless both vars are set
@@ -102,7 +103,7 @@ func SetRouterAltServerCerts(c *RouterTemplateValues) {
 	if altServerKey == "" {
 		return //exit unless both vars are set
 	}
-	c.HasAltCerts = true
+	c.AltCertsEnabled = ""
 	c.AltServerCert = helpers2.NormalizePath(altServerCert)
 	c.AltServerKey = helpers2.NormalizePath(altServerKey)
 }

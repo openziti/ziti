@@ -111,13 +111,13 @@ type BindPointsValues struct {
 }
 
 type IdentityValues struct {
-	Ca            string
-	Key           string
-	ServerCert    string
-	Cert          string
-	AltServerCert string
-	AltServerKey  string
-	HasAltCerts   bool
+	Ca              string
+	Key             string
+	ServerCert      string
+	Cert            string
+	AltServerCert   string
+	AltServerKey    string
+	AltCertsEnabled string //a string containing either nothing "" or "#"
 }
 
 type WebOptionsValues struct {
@@ -149,7 +149,7 @@ type RouterTemplateValues struct {
 	IdentityCA         string
 	AltServerCert      string
 	AltServerKey       string
-	HasAltCerts        bool
+	AltCertsEnabled    string //a string containing either nothing "" or "#"
 	Edge               EdgeRouterTemplateValues
 	Wss                WSSRouterTemplateValues
 	Forwarder          RouterForwarderTemplateValues

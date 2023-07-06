@@ -111,7 +111,7 @@ func TestDefaultZitiFabricRouterListenerBindPort(t *testing.T) {
 	expectedDefaultPortStr := strconv.Itoa(testDefaultRouterListenerPort)
 
 	// Make sure the related env vars are unset
-	_ = os.Unsetenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT")
+	_ = os.Unsetenv("ZITI_ROUTER_LISTENER_BIND_PORT")
 
 	// Create and run the CLI command
 	config, data := createRouterConfig([]string{"fabric", "--routerName", "testRouter"}, routerOptions, nil)
@@ -135,7 +135,7 @@ func TestSetZitiFabricRouterListenerBindPort(t *testing.T) {
 	myPortValue := "1234"
 
 	// Set the port manually
-	_ = os.Setenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT", myPortValue)
+	_ = os.Setenv("ZITI_ROUTER_LISTENER_BIND_PORT", myPortValue)
 
 	// Create and run the CLI command
 	config, data := createRouterConfig([]string{"fabric", "--routerName", "testRouter"}, routerOptions, nil)

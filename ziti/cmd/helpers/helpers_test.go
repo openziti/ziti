@@ -146,7 +146,7 @@ func TestGetCtrlAdvertisedAddressWhenSet(t *testing.T) {
 
 func TestGetEdgeRouterPortWhenUnset(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_ROUTER_PORT"
+	varName := "ZITI_ROUTER_PORT"
 
 	// Ensure the variable is unset
 	_ = os.Unsetenv(varName)
@@ -159,7 +159,7 @@ func TestGetEdgeRouterPortWhenUnset(t *testing.T) {
 
 func TestGetEdgeRouterPortWhenSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_ROUTER_PORT"
+	varName := "ZITI_ROUTER_PORT"
 	expectedValue := "4321"
 
 	// Set the env variable
@@ -240,7 +240,7 @@ func TestGetEdgeIdentityEnrollmentDurationWhenNotSet(t *testing.T) {
 
 func TestGetEdgeRouterEnrollmentDurationWhenSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_ROUTER_ENROLLMENT_DURATION"
+	varName := "ZITI_ROUTER_ENROLLMENT_DURATION"
 	expectedValue := 5 * time.Minute
 
 	// Set the env variable
@@ -254,7 +254,7 @@ func TestGetEdgeRouterEnrollmentDurationWhenSet(t *testing.T) {
 /*  Ensure that the default value is returned even if the environment variable is set but is blank. */
 func TestGetEdgeRouterEnrollmentDurationWhenSetToBlank(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_ROUTER_ENROLLMENT_DURATION"
+	varName := "ZITI_ROUTER_ENROLLMENT_DURATION"
 	// Expect the default, hard coding the value to act as an alert if default is changed in edge project
 	expectedValue := 180 * time.Minute
 
@@ -268,7 +268,7 @@ func TestGetEdgeRouterEnrollmentDurationWhenSetToBlank(t *testing.T) {
 
 func TestGetEdgeRouterEnrollmentDurationWhenNotSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_ROUTER_ENROLLMENT_DURATION"
+	varName := "ZITI_ROUTER_ENROLLMENT_DURATION"
 	// Expect the default, hard coding the value to act as an alert if default is changed in edge project
 	expectedValue := 180 * time.Minute
 

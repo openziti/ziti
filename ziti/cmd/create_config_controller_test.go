@@ -780,7 +780,7 @@ func TestEdgeRouterEnrollmentDurationEnvVar(t *testing.T) {
 	customValue := "5"
 	expectedValue := customValue + "m" // Env Var int is converted to minutes format
 	keys := map[string]string{
-		"ZITI_EDGE_ROUTER_ENROLLMENT_DURATION": customValue,
+		"ZITI_ROUTER_ENROLLMENT_DURATION": customValue,
 	}
 
 	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
@@ -794,7 +794,7 @@ func TestEdgeRouterEnrollmentDurationCLITakesPriority(t *testing.T) {
 	cliValue := "10m"  // Setting a CLI custom duration which is also not the default value
 	expectedConfigValue := cliValue
 	keys := map[string]string{
-		"ZITI_EDGE_ROUTER_ENROLLMENT_DURATION": envVarValue,
+		"ZITI_ROUTER_ENROLLMENT_DURATION": envVarValue,
 	}
 	args := []string{"--routerEnrollmentDuration", cliValue}
 
@@ -847,7 +847,7 @@ func TestEdgeRouterAndIdentityEnrollmentDurationTogetherEnvVar(t *testing.T) {
 	// Create and run the CLI command
 	keys := map[string]string{
 		"ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION": envVarIdentityDurationValue,
-		"ZITI_EDGE_ROUTER_ENROLLMENT_DURATION":   envVarRouterDurationValue,
+		"ZITI_ROUTER_ENROLLMENT_DURATION":        envVarRouterDurationValue,
 	}
 	configStruct, _ := execCreateConfigControllerCommand(nil, keys)
 

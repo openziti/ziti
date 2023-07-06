@@ -20,20 +20,20 @@ func TestEdgeRouterAdvertisedAddress(t *testing.T) {
 	routerAdvHostDns := "controller01.zitinetwork.example.org"
 	keys := map[string]string{
 		"ZITI_CTRL_ADVERTISED_PORT": "80",
-		"ZITI_EDGE_ROUTER_PORT":     "443",
+		"ZITI_ROUTER_PORT":          "443",
 	}
 	// Defaults to hostname if nothing is set
 	_, data := createRouterConfig(defaultArgs, routerOpts, keys)
 	require.Equal(t, testHostname, data.Router.Edge.AdvertisedHost, nil)
 
 	// If IP override set, uses that value over hostname
-	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
+	keys["ZITI_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
 	_, data2 := createRouterConfig(defaultArgs, routerOpts, keys)
 	require.Equal(t, routerAdvHostIp, data2.Router.Edge.AdvertisedHost, nil)
 
 	// If advertised address set, uses that over IP override or hostname
-	keys["ZITI_EDGE_ROUTER_ADVERTISED_HOST"] = routerAdvHostDns
-	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
+	keys["ZITI_ROUTER_ADVERTISED_HOST"] = routerAdvHostDns
+	keys["ZITI_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
 	_, data3 := createRouterConfig(defaultArgs, routerOpts, keys)
 	require.Equal(t, routerAdvHostDns, data3.Router.Edge.AdvertisedHost, nil)
 }
@@ -159,7 +159,7 @@ func TestDefaultZitiEdgeRouterListenerBindPort(t *testing.T) {
 	expectedDefaultPortStr := strconv.Itoa(testDefaultRouterListenerPort)
 
 	// Make sure the related env vars are unset
-	_ = os.Unsetenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT")
+	_ = os.Unsetenv("ZITI_ROUTER_LISTENER_BIND_PORT")
 
 	// Create and run the CLI command
 	config, data := createRouterConfig([]string{"edge", "--routerName", "testRouter"}, routerOptions, nil)
@@ -183,7 +183,7 @@ func TestSetZitiEdgeRouterListenerBindPort(t *testing.T) {
 	myPortValue := "1234"
 
 	// Set the port manually
-	_ = os.Setenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT", myPortValue)
+	_ = os.Setenv("ZITI_ROUTER_LISTENER_BIND_PORT", myPortValue)
 
 	// Create and run the CLI command
 	config, data := createRouterConfig([]string{"edge", "--routerName", "testRouter"}, routerOptions, nil)

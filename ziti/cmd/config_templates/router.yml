@@ -10,10 +10,10 @@ identity:
   cert:             "{{ .Router.IdentityCert }}"
   server_cert:      "{{ .Router.IdentityServerCert }}"
   key:              "{{ .Router.IdentityKey }}"
-  ca:               "{{ .Router.IdentityCA }}"{{ if .Router.HasAltCerts }}
-  alt_server_certs:
-    - server_cert:  "{{ .Router.AltServerCert }}"
-      server_key:   "{{ .Router.AltServerKey }}"{{ end }}
+  ca:               "{{ .Router.IdentityCA }}"
+  {{ .Router.AltCertsEnabled }}alt_server_certs:
+  {{ .Router.AltCertsEnabled }}  - server_cert:  "{{ .Router.AltServerCert }}"
+  {{ .Router.AltCertsEnabled }}    server_key:   "{{ .Router.AltServerKey }}"
 
 ctrl:
   endpoint:             tls:{{ .Controller.Ctrl.AdvertisedAddress }}:{{ .Controller.Ctrl.AdvertisedPort }}
