@@ -663,7 +663,7 @@ main(){
     kubectl get secrets "minicontroller-admin-secret" \
         --namespace "${ZITI_NAMESPACE}" \
         --output go-template='{{"\n'\
-'INFO: Your OpenZiti Console is here:\thttp://miniconsole.ziti\n'\
+'INFO: Your OpenZiti Console is here:\thttps://miniconsole.ziti\n'\
 'INFO: The password for \"admin\" is:\t"}}{{index .data "admin-password" | base64decode }}'\
 '{{"\n\n"}}'
 
