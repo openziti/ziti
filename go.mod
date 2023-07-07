@@ -29,7 +29,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openziti/channel/v2 v2.0.84
 	github.com/openziti/edge-api v0.25.30
-	github.com/openziti/fabric v0.23.44
+	github.com/openziti/fabric v0.23.46
 	github.com/openziti/foundation/v2 v2.0.28
 	github.com/openziti/identity v1.0.59
 	github.com/openziti/jwks v1.0.3

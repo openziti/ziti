@@ -485,8 +485,8 @@ github.com/openziti/channel/v2 v2.0.84 h1:bIdg2Z2SZan0HqSz2sbtY6Ibo33BH9Ir+qbuzy
 github.com/openziti/channel/v2 v2.0.84/go.mod h1:njjvl7YH6TfbJPbYxz6Y7+7uhv4Ea2GdLEJIcQOZMU8=
 github.com/openziti/edge-api v0.25.30 h1:40pAcd3Y2yT8hYYHTJTkSTLA0pvbDCw4prt72JdQMuI=
 github.com/openziti/edge-api v0.25.30/go.mod h1:ODMG0fB9Dj1pL0UqDC8jzSUAlUZy8aYhzF3xHPg6Xm0=
-github.com/openziti/fabric v0.23.44 h1:9WUHiP8H00pMbkSrryoix2vCNIhNDs6SSacfpcACECM=
-github.com/openziti/fabric v0.23.44/go.mod h1:020yoPx2kuvX0kZVwPbdXVuJ7B9yKv6xCvIRYh/Js1g=
+github.com/openziti/fabric v0.23.46 h1:1LwN5ImhVHBZwloYZWEBFMciRuezbn8MRq9CxUmEPy0=
+github.com/openziti/fabric v0.23.46/go.mod h1:zSiVE7b1hIYAhEMq710iqquJyl85IEfr8yhZX/4g9+I=
 github.com/openziti/foundation/v2 v2.0.28 h1:AAdHhtUj1tCIXollSpbDlKwPKRasNAgADpTZAF1WCOQ=
 github.com/openziti/foundation/v2 v2.0.28/go.mod h1:psKxxQw/zRo5+oKN7AR+MKYaeR3mbBPhb65qq8rqB0U=
 github.com/openziti/identity v1.0.59 h1:YShXqxa9nTbCnPtIAji10hx7BG1nQukg4ddUJExNXa8=
