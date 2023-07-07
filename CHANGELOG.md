@@ -432,3 +432,7 @@ listeners:
     * [Issue #1119](https://github.com/openziti/ziti/issues/1119) - intercept.v1 config should permit underscores in the address
     * [Issue #1123](https://github.com/openziti/ziti/issues/1123) - cannot update config types with ziti cli
 
+# Archived Changelogs
+
+Archives are in the [changelogs](./changelogs/) folder.
+
