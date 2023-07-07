@@ -86,9 +86,6 @@ func TestNoUnknownOutputEnvVariablesExist(t *testing.T) {
 	// Get the list of ZITI_* environment variables
 	allEnvVars := getZitiEnvironmentVariables()
 
-	// Create a config environment command which will populate the env variable metadata
-	NewCmdCreateConfigEnvironment()
-
 	// Run the environment options command and capture stdout
 	cmd := NewCmdCreateConfigEnvironment()
 	cmd.SetArgs([]string{"-o", "stdout"})
@@ -130,9 +127,6 @@ func TestAllKnownEnvVariablesAreFoundInOutput(t *testing.T) {
 	// Get the list of ZITI_* environment variables
 	allEnvVars := getZitiEnvironmentVariables()
 
-	// Create a config environment command which will populate the env variable metadata
-	NewCmdCreateConfigEnvironment()
-
 	// Run the environment options command and capture stdout
 	cmd := NewCmdCreateConfigEnvironment()
 	cmd.SetArgs([]string{"-o", "stdout"})
@@ -170,9 +164,6 @@ func TestAllKnownEnvVariablesAreFoundInHelpOutput(t *testing.T) {
 	// Get the list of ZITI_* environment variables
 	allEnvVars := getZitiEnvironmentVariables()
 
-	// Create a config environment command which will populate the env variable metadata
-	NewCmdCreateConfigEnvironment()
-
 	// Run the environment options command and capture stdout from help
 	cmd := NewCmdCreateConfigEnvironment()
 	cmd.SetArgs([]string{"-h"})
@@ -208,9 +199,6 @@ func TestAllKnownEnvVariablesAreFoundInHelpOutput(t *testing.T) {
 func TestNoUnknownHelpEnvVariablesExist(t *testing.T) {
 	// Get the list of ZITI_* environment variables
 	allEnvVars := getZitiEnvironmentVariables()
-
-	// Create a config environment command which will populate the env variable metadata
-	NewCmdCreateConfigEnvironment()
 
 	// Run the environment options command and capture stdout from help
 	cmd := NewCmdCreateConfigEnvironment()

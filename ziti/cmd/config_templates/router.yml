@@ -33,7 +33,7 @@ link:
 {{ if .Router.IsFabric }}#{{ end }}  - binding: edge
 {{ if .Router.IsFabric }}#{{ end }}    address: {{ if .Router.IsWss }}wss{{ else }}tls{{end}}:0.0.0.0:{{ .Router.Edge.Port }}
 {{ if .Router.IsFabric }}#{{ end }}    options:
-{{ if .Router.IsFabric }}#{{ end }}      advertise: {{ .Router.Edge.AdvertisedHost }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
+{{ if .Router.IsFabric }}#{{ end }}      advertise: {{ .Router.Edge.AdvertisedHost }}:{{ .Router.Edge.Port }}
 {{ if .Router.IsFabric }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeout.Milliseconds }}
 {{ if .Router.IsFabric }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeout.Seconds }}
 {{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#{{ end }}  - binding: tunnel
