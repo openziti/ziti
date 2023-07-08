@@ -186,7 +186,7 @@ function _check_prereq {
       echo " "
       echo "You're missing one or more commands that are used in this script."
       echo "Please ensure the commands listed are on the path and then try again."
-      echo "${missing_requirements}"
+      echo -e "${missing_requirements}"
       echo " "
       echo " "
       return 1
