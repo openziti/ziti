@@ -52,7 +52,7 @@ function _setup_ziti_env_path {
 
 
 function _setup_ziti_network {
-  if [[ "ran" == "${_setup_ziti_network_run}" ]]; then
+  if [[ "ran" != "${_setup_ziti_network_run}" ]]; then
     if [[ "${ZITI_NETWORK-}" == "" ]]; then ZITI_NETWORK="$(hostname -s)"; export ZITI_NETWORK; else echo "ZITI_NETWORK overridden: ${ZITI_NETWORK}"; fi
     _setup_ziti_network_run="ran"
   fi
@@ -1395,10 +1395,9 @@ function _portCheck {
     return 0
   fi
 
-  echo -en "Checking ${2-}'s port (${envVarValue})"
+  echo -en "Checking ${2-}'s port (${envVarValue}) "
   portCheckResult=$(lsof -w -i :"${envVarValue}" 2>&1)
   if [[ "${portCheckResult}" != "" ]]; then
-      echo -e "$(RED " ")"
       echo -e "$(RED "The intended ${2-} port (${envVarValue}) is currently being used, the process using this port should be closed or the port value should be changed.")"
       echo -e "$(RED "To use a different port, set the port value in ${envVar}")"
       echo -e "$(RED " ")"
