@@ -70,6 +70,7 @@ func getZitiEnvironmentVariables() []string {
 		"ZITI_ROUTER_CSR_L",
 		"ZITI_ROUTER_CSR_O",
 		"ZITI_ROUTER_CSR_OU",
+		"ZITI_ROUTER_CSR_SANS_DNS",
 	}
 }
 

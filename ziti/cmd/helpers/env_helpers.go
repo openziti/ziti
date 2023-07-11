@@ -193,3 +193,10 @@ func getFromEnv(envVarName string, onNotFound envVarNotFound) string {
 func NormalizePath(input string) string {
 	return strings.ReplaceAll(input, "\\", "/")
 }
+
+func GetRouterAdvertisedAddress() string {
+	return getFromEnv(constants.ZitiEdgeRouterAdvertisedHostVarName, HostnameOrNetworkName)
+}
+func GetRouterSans() string {
+	return getFromEnv(constants.ZitiRouterCsrSansDnsVarName, GetRouterAdvertisedAddress)
+}

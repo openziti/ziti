@@ -167,6 +167,7 @@ type EdgeRouterTemplateValues struct {
 	CsrL             string
 	CsrO             string
 	CsrOU            string
+	CsrSans          string
 }
 
 type WSSRouterTemplateValues struct {
@@ -288,6 +289,7 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	data.Router.Edge.CsrL = cmdHelper.GetZitiEdgeRouterL()
 	data.Router.Edge.CsrO = cmdHelper.GetZitiEdgeRouterO()
 	data.Router.Edge.CsrOU = cmdHelper.GetZitiEdgeRouterOU()
+	data.Router.Edge.CsrSans = cmdHelper.GetRouterSans()
 	data.Router.Listener.GetSessionTimeout = constants.DefaultGetSessionTimeout
 
 	data.Router.Wss.WriteTimeout = foundation.DefaultWsWriteTimeout

@@ -291,29 +291,32 @@ func TestEdgeRouterIPOverrideIsConsumed(t *testing.T) {
 func TestEdgeRouterCsrFields(t *testing.T) {
 	routerOptions := clearEnvAndInitializeTestData()
 	routerName := "CstTest"
-	config, data := createRouterConfig([]string{"edge", "--routerName", routerName}, routerOptions, nil)
+	config1, data := createRouterConfig([]string{"edge", "--routerName", routerName}, routerOptions, nil)
 	// Check that the template values now contains the custom external IP override value
 	assert.Equal(t, "US", data.Router.Edge.CsrC)
-	assert.Equal(t, "US", config.Edge.Csr.Country)
+	assert.Equal(t, "US", config1.Edge.Csr.Country)
 	assert.Equal(t, "NC", data.Router.Edge.CsrST)
-	assert.Equal(t, "NC", config.Edge.Csr.Province)
+	assert.Equal(t, "NC", config1.Edge.Csr.Province)
 	assert.Equal(t, "Charlotte", data.Router.Edge.CsrL)
-	assert.Equal(t, "Charlotte", config.Edge.Csr.Locality)
+	assert.Equal(t, "Charlotte", config1.Edge.Csr.Locality)
 	assert.Equal(t, "NetFoundry", data.Router.Edge.CsrO)
-	assert.Equal(t, "NetFoundry", config.Edge.Csr.Organization)
+	assert.Equal(t, "NetFoundry", config1.Edge.Csr.Organization)
 	assert.Equal(t, "Ziti", data.Router.Edge.CsrOU)
-	assert.Equal(t, "Ziti", config.Edge.Csr.OrganizationalUnit)
+	assert.Equal(t, "Ziti", config1.Edge.Csr.OrganizationalUnit)
+	assert.Contains(t, config1.Edge.Csr.Sans.Dns, hostname)
 
 	C := "C"
 	ST := "ST"
 	L := "L"
 	O := "O"
 	OU := "OU"
+	extAddy := "some.external.address"
 	_ = os.Setenv(constants.ZitiEdgeRouterCsrCVarName, C)
 	_ = os.Setenv(constants.ZitiEdgeRouterCsrSTVarName, ST)
 	_ = os.Setenv(constants.ZitiEdgeRouterCsrLVarName, L)
 	_ = os.Setenv(constants.ZitiEdgeRouterCsrOVarName, O)
 	_ = os.Setenv(constants.ZitiEdgeRouterCsrOUVarName, OU)
+	_ = os.Setenv(constants.ZitiRouterCsrSansDnsVarName, extAddy)
 
 	config2, data2 := createRouterConfig([]string{"edge", "--routerName", routerName}, routerOptions, nil)
 	// Check that the template values now contains the custom external IP override value
@@ -327,4 +330,5 @@ func TestEdgeRouterCsrFields(t *testing.T) {
 	assert.Equal(t, O, config2.Edge.Csr.Organization)
 	assert.Equal(t, OU, data2.Router.Edge.CsrOU)
 	assert.Equal(t, OU, config2.Edge.Csr.OrganizationalUnit)
+	assert.Contains(t, config2.Edge.Csr.Sans.Dns, extAddy)
 }

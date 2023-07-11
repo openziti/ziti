@@ -65,7 +65,7 @@ edge:
     organizationalUnit: {{ .Router.Edge.CsrOU }}
     sans:
       dns:
-        - {{ .Router.Edge.AdvertisedHost }}
+        - {{ .Router.Edge.CsrSans }}
         - localhost
       ip:
         - "127.0.0.1"

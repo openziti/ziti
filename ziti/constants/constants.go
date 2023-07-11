@@ -129,4 +129,6 @@ const (
 	ZitiEdgeRouterCsrOVarDescription                 = "The organization (O) to use for router CSRs"
 	ZitiEdgeRouterCsrOUVarName                       = "ZITI_ROUTER_CSR_OU"
 	ZitiEdgeRouterCsrOUVarDescription                = "The organization unit to use for router CSRs"
+	ZitiRouterCsrSansDnsVarName                      = "ZITI_ROUTER_CSR_SANS_DNS"
+	ZitiRouterCsrSansDnsVarDescription               = "The SANS value to use for the CSR in the internal PKI. If not supplied, defaults to ZITI_ROUTER_ADVERTISED_HOST"
 )
