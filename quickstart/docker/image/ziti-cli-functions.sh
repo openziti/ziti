@@ -269,8 +269,9 @@ function unsetZitiEnv {
     if [[ "-s" != "${param1-}" ]]; then echo "unsetting [${envvar}] ${zEnvVar}"; fi
     unset "${envvar}"
   done
-  # Have to explicitly unset this one (no ZITI_ prefix)
+  # Have to explicitly unset these (no ZITI_ prefix)
   unset ZITIx_EXPRESS_COMPLETE
+  unset _setup_ziti_network_run
 }
 
 # Checks for explicit environment variables or set as defaults, also creating directories as needed
