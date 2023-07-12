@@ -11,10 +11,13 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/models"
 )
 
-//func NewStartAction() model.ActionBinder {
-//	action := &startAction{}
-//	return action.bind
-//}
+func NewStartAction(metricbeat MetricbeatConfig, consul ConsulConfig) model.ActionBinder {
+	action := &startAction{
+		Metricbeat: metricbeat,
+		Consul:     consul,
+	}
+	return action.bind
+}
 
 func (a *startAction) bind(m *model.Model) model.Action {
 	workflow := actions.Workflow()
