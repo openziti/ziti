@@ -11,16 +11,18 @@ import (
 )
 
 func TestExecuteCreateConfigRouterFabricHasNonBlankTemplateValues(t *testing.T) {
+	routerOptions := clearEnvAndInitializeTestData()
 	routerName := "MyFabricRouter"
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	_, data := createRouterConfig([]string{"fabric", "--routerName", routerName}, routerOptions, nil)
+
 	expectedNonEmptyStringFields := []string{".Router.Listener.BindPort", ".ZitiHome", ".Hostname", ".Router.Name", ".Router.IdentityCert", ".Router.IdentityServerCert", ".Router.IdentityKey", ".Router.IdentityCA", ".Router.Edge.Port"}
 	expectedNonEmptyStringValues := []*string{&data.Router.Edge.ListenerBindPort, &data.ZitiHome, &data.Hostname, &data.Router.Name, &data.Router.IdentityCert, &data.Router.IdentityServerCert, &data.Router.IdentityKey, &data.Router.IdentityCA, &data.Router.Edge.Port}
 	expectedNonEmptyIntFields := []string{".Router.Listener.OutQueueSize", ".Router.Wss.ReadBufferSize", ".Router.Wss.WriteBufferSize", ".Router.Forwarder.XgressDialQueueLength", ".Router.Forwarder.XgressDialWorkerCount", ".Router.Forwarder.LinkDialQueueLength", ".Router.Forwarder.LinkDialWorkerCount"}
 	expectedNonEmptyIntValues := []*int{&data.Router.Listener.OutQueueSize, &data.Router.Wss.ReadBufferSize, &data.Router.Wss.WriteBufferSize, &data.Router.Forwarder.XgressDialQueueLength, &data.Router.Forwarder.XgressDialWorkerCount, &data.Router.Forwarder.LinkDialQueueLength, &data.Router.Forwarder.LinkDialWorkerCount}
 	expectedNonEmptyTimeFields := []string{".Router.Listener.ConnectTimeout", "Router.Listener.GetSessionTimeout", ".Router.Wss.WriteTimeout", ".Router.Wss.ReadTimeout", ".Router.Wss.IdleTimeout", ".Router.Wss.PongTimeout", ".Router.Wss.PingInterval", ".Router.Wss.HandshakeTimeout", ".Router.Forwarder.LatencyProbeInterval"}
 	expectedNonEmptyTimeValues := []*time.Duration{&data.Router.Listener.ConnectTimeout, &data.Router.Listener.GetSessionTimeout, &data.Router.Wss.WriteTimeout, &data.Router.Wss.ReadTimeout, &data.Router.Wss.IdleTimeout, &data.Router.Wss.PongTimeout, &data.Router.Wss.PingInterval, &data.Router.Wss.HandshakeTimeout, &data.Router.Forwarder.LatencyProbeInterval}
-
-	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
-	_ = createRouterConfig([]string{"fabric", "--routerName", routerName})
 
 	// Check that the expected string template values are not blank
 	for field, value := range expectedNonEmptyStringValues {
@@ -39,22 +41,15 @@ func TestExecuteCreateConfigRouterFabricHasNonBlankTemplateValues(t *testing.T) 
 }
 
 func TestFabricRouterIPOverrideIsConsumed(t *testing.T) {
+	routerOptions := clearEnvAndInitializeTestData()
 	routerName := "MyFabricRouter"
-	blank := ""
 	externalIP := "123.456.78.9"
-
-	// Setup options
-	clearRouterOptionsAndTemplateData()
-	routerOptions.Output = defaultOutput
 
 	// Set the env variable to non-empty value
 	_ = os.Setenv(constants.ZitiEdgeRouterIPOverrideVarName, externalIP)
 
-	// Check that template value is currently blank
-	assert.Equal(t, blank, data.Router.Edge.IPOverride, "Mismatch router IP override, expected %s but got %s", blank, data.Router.Edge.IPOverride)
-
 	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
-	config := createRouterConfig([]string{"fabric", "--routerName", routerName})
+	config, data := createRouterConfig([]string{"fabric", "--routerName", routerName}, routerOptions, nil)
 
 	// Check that the template values now contains the custom external IP override value
 	assert.Equal(t, externalIP, data.Router.Edge.IPOverride, "Mismatch router IP override, expected %s but got %s", externalIP, data.Router.Edge.IPOverride)
@@ -70,29 +65,27 @@ func TestFabricRouterIPOverrideIsConsumed(t *testing.T) {
 }
 
 func TestFabricRouterHasNoListeners(t *testing.T) {
-	clearRouterOptionsAndTemplateData()
+	routerOptions := clearEnvAndInitializeTestData()
 
 	// Create and run the CLI command
-	config := createRouterConfig([]string{"fabric", "--routerName", "myRouter"})
+	config, _ := createRouterConfig([]string{"fabric", "--routerName", "myRouter"}, routerOptions, nil)
 
 	// Expect that the config values are represented correctly
 	assert.Equal(t, 0, len(config.Listeners), "Expected zero listeners for fabric router, found a non-zero value")
 }
 
 func TestBlankFabricRouterNameBecomesHostname(t *testing.T) {
+	routerOptions := clearEnvAndInitializeTestData()
 	hostname, _ := os.Hostname()
 	blank := ""
 
 	// Create the options with empty router name
-	clearRouterOptionsAndTemplateData()
+	clearEnvAndInitializeTestData()
 	routerOptions.Output = defaultOutput
 	routerOptions.RouterName = blank
 
-	// Check that template values is a blank name
-	assert.Equal(t, blank, data.Router.Name, "Mismatch router name, expected %s but got %s", "", hostname)
-
 	// Create and run the CLI command
-	_ = createRouterConfig([]string{"fabric", "--routerName", blank})
+	_, data := createRouterConfig([]string{"fabric", "--routerName", blank}, routerOptions, nil)
 
 	// Check that the blank name was replaced with hostname in the template values
 	assert.Equal(t, hostname, data.Router.Name, "Mismatch router name, expected %s but got %s", "", hostname)
@@ -100,10 +93,11 @@ func TestBlankFabricRouterNameBecomesHostname(t *testing.T) {
 }
 
 func TestFabricRouterOutputPathDoesNotExist(t *testing.T) {
+	routerOptions := clearEnvAndInitializeTestData()
 	expectedErrorMsg := "stat /IDoNotExist: no such file or directory"
 
 	// Set the router options
-	clearRouterOptionsAndTemplateData()
+	clearEnvAndInitializeTestData()
 	routerOptions.RouterName = "MyFabricRouter"
 	routerOptions.Output = "/IDoNotExist/MyFabricRouter.yaml"
 
@@ -113,13 +107,14 @@ func TestFabricRouterOutputPathDoesNotExist(t *testing.T) {
 }
 
 func TestDefaultZitiFabricRouterListenerBindPort(t *testing.T) {
+	routerOptions := clearEnvAndInitializeTestData()
 	expectedDefaultPortStr := strconv.Itoa(testDefaultRouterListenerPort)
 
 	// Make sure the related env vars are unset
-	_ = os.Unsetenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT")
+	_ = os.Unsetenv("ZITI_ROUTER_LISTENER_BIND_PORT")
 
 	// Create and run the CLI command
-	config := createRouterConfig([]string{"fabric", "--routerName", "testRouter"})
+	config, data := createRouterConfig([]string{"fabric", "--routerName", "testRouter"}, routerOptions, nil)
 
 	// Check that the template data has been updated as expected
 	assert.Equal(t, expectedDefaultPortStr, data.Router.Edge.ListenerBindPort)
@@ -136,13 +131,14 @@ func TestDefaultZitiFabricRouterListenerBindPort(t *testing.T) {
 }
 
 func TestSetZitiFabricRouterListenerBindPort(t *testing.T) {
+	routerOptions := clearEnvAndInitializeTestData()
 	myPortValue := "1234"
 
 	// Set the port manually
-	_ = os.Setenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT", myPortValue)
+	_ = os.Setenv("ZITI_ROUTER_LISTENER_BIND_PORT", myPortValue)
 
 	// Create and run the CLI command
-	config := createRouterConfig([]string{"fabric", "--routerName", "testRouter"})
+	config, data := createRouterConfig([]string{"fabric", "--routerName", "testRouter"}, routerOptions, nil)
 
 	assert.Equal(t, myPortValue, data.Router.Edge.ListenerBindPort)
 

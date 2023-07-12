@@ -15,6 +15,34 @@ The release archives now only contain the `ziti` executable. This executable is 
 
 The ziti CLI functions under `ziti learn`, namely `ziti learn demo` and `ziti learn tutorial` have been consolidated under `ziti demo`.
 
+### Continued Quickstart Changes
+
+The quickstart continues to evolve. A breaking change has occurred as numerous environment variables used to customize the quickstart
+have changed again. A summary of changes is below
+
+* All `ZITI_EDGE_ROUTER_` variables have been changed to just `ZITI_ROUTER_`.
+  * `ZITI_EDGE_ROUTER_NAME` -> `ZITI_ROUTER_NAME`
+  * `ZITI_EDGE_ROUTER_PORT` -> `ZITI_ROUTER_PORT`
+  * `ZITI_EDGE_ROUTER_ADVERTISED_HOST` -> `ZITI_ROUTER_ADVERTISED_HOST`
+  * `ZITI_EDGE_ROUTER_IP_OVERRIDE` -> `ZITI_ROUTER_IP_OVERRIDE`
+  * `ZITI_EDGE_ROUTER_ENROLLMENT_DURATION` -> `ZITI_ROUTER_ENROLLMENT_DURATION`
+  * `ZITI_EDGE_ROUTER_ADVERTISED_HOST` -> `ZITI_ROUTER_ADVERTISED_HOST`
+  * `ZITI_EDGE_ROUTER_LISTENER_BIND_PORT` -> `ZITI_ROUTER_LISTENER_BIND_PORT`
+* Additional variables have been added to support "alternative addresses" and "alternative PKI", for example
+  to support using Let's Encrypt certificates easily in the quickstarts.
+* New variables were introduced to allow automatic generation of the `alt_server_certs` section. Both variables
+  must be supplied for the variables to impact the configurations.
+  * `ZITI_PKI_ALT_SERVER_CERT` - "Alternative server certificate. Must be specified with ZITI_PKI_ALT_SERVER_KEY"
+  * `ZITI_PKI_ALT_SERVER_KEY` - "Key to use with the alternative server certificate. Must be specified with ZITI_PKI_ALT_SERVER_CERT"
+* New variables were introduced to allow one to override and customize the CSR section of routers which is used during enrollment.
+  * `ZITI_ROUTER_CSR_C` - "The country (C) to use for router CSRs"
+  * `ZITI_ROUTER_CSR_ST` - "The state/province (ST) to use for router CSRs"
+  * `ZITI_ROUTER_CSR_L` - "The locality (L) to use for router CSRs"
+  * `ZITI_ROUTER_CSR_O` - "The organization (O) to use for router CSRs"
+  * `ZITI_ROUTER_CSR_OU` - "The organization unit to use for router CSRs"
+  *	`ZITI_ROUTER_CSR_SANS_DNS` - "The DNS name used in the CSR request"
+* New variable `ZITI_CTRL_EDGE_BIND_ADDRESS` allows controlling the IP the edge API uses
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/channel/v2: [v2.0.81 -> v2.0.84](https://github.com/openziti/channel/compare/v2.0.81...v2.0.84)
@@ -36,7 +64,6 @@ The ziti CLI functions under `ziti learn`, namely `ziti learn demo` and `ziti le
     * [Issue #1169](https://github.com/openziti/ziti/issues/1169) - Consolidate demo and tutorial under demo
     * [Issue #1168](https://github.com/openziti/ziti/issues/1168) - Remove ziti-controller, ziti-router and ziti-tunnel executables from build
     * [Issue #1158](https://github.com/openziti/ziti/issues/1158) - Add iperf tests to ziti smoketest
-
 
 # Release 0.28.4
 

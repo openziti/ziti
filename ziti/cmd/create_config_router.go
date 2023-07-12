@@ -19,11 +19,10 @@ package cmd
 import (
 	_ "embed"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"os"
-	"strings"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"os"
+	"strings"
 )
 
 const (
@@ -41,45 +40,54 @@ type CreateConfigRouterOptions struct {
 	LanInterface string
 }
 
-var routerOptions = CreateConfigRouterOptions{}
+type NewCreateConfigRouterCmd struct {
+	*cobra.Command
+	RenderedValues *ConfigTemplateValues
+}
 
 // NewCmdCreateConfigRouter creates a command object for the "router" command
-func NewCmdCreateConfigRouter() *cobra.Command {
-
-	cmd := &cobra.Command{
-		Use:     "router",
-		Short:   "Creates a config file for specified Router name",
-		Aliases: []string{"rtr"},
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			// Setup logging
-			var logOut *os.File
-			if routerOptions.Verbose {
-				logrus.SetLevel(logrus.DebugLevel)
-				// Only print log to stdout if not printing config to stdout
-				if strings.ToLower(routerOptions.Output) != "stdout" {
-					logOut = os.Stdout
-				} else {
-					logOut = os.Stderr
+func NewCmdCreateConfigRouter(routerOptions *CreateConfigRouterOptions) *NewCreateConfigRouterCmd {
+	data := &ConfigTemplateValues{}
+	if routerOptions == nil {
+		routerOptions = &CreateConfigRouterOptions{}
+	}
+	cmd := &NewCreateConfigRouterCmd{
+		Command: &cobra.Command{
+			Use:     "router",
+			Short:   "Creates a config file for specified Router name",
+			Aliases: []string{"rtr"},
+			PersistentPreRun: func(cmd *cobra.Command, args []string) {
+				// Setup logging
+				var logOut *os.File
+				if routerOptions.Verbose {
+					logrus.SetLevel(logrus.DebugLevel)
+					// Only print log to stdout if not printing config to stdout
+					if strings.ToLower(routerOptions.Output) != "stdout" {
+						logOut = os.Stdout
+					} else {
+						logOut = os.Stderr
+					}
+					logrus.SetOutput(logOut)
 				}
-				logrus.SetOutput(logOut)
-			}
 
-			data.populateConfigValues()
+				data.populateConfigValues()
 
-			// Update router data with options passed in
-			data.Router.Name = validateRouterName(routerOptions.RouterName)
-			SetZitiRouterIdentity(&data.Router, data.Router.Name)
+				// Update router data with options passed in
+				data.Router.Name = validateRouterName(routerOptions.RouterName)
+				SetZitiRouterIdentity(&data.Router, data.Router.Name)
+			},
+			Run: func(cmd *cobra.Command, args []string) {
+				cmdhelper.CheckErr(cmd.Help())
+			},
 		},
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
+		RenderedValues: data,
 	}
 
-	cmd.AddCommand(NewCmdCreateConfigRouterEdge())
-	cmd.AddCommand(NewCmdCreateConfigRouterFabric())
+	cmd.AddCommand(NewCmdCreateConfigRouterEdge(routerOptions, data))
+	cmd.AddCommand(NewCmdCreateConfigRouterFabric(routerOptions, data))
 
-	routerOptions.addCreateFlags(cmd)
-	routerOptions.addFlags(cmd)
+	routerOptions.addCreateFlags(cmd.Command)
+	routerOptions.addFlags(cmd.Command)
 	return cmd
 }
 

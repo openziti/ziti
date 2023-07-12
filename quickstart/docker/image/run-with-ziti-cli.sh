@@ -37,10 +37,10 @@ sleep 1
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="ziti-edge-controller"; fi
-if [[ "${ZITI_EDGE_ROUTER_NAME-}" == "" ]]; then export ZITI_EDGE_ROUTER_NAME="${ZITI_NETWORK-}-edge-router"; fi
-if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
-if [[ "${ZITI_ROUTER_ADVERTISED_ADDRESS}" == "" ]]; then export ZITI_ROUTER_ADVERTISED_ADDRESS="${ZITI_EDGE_ROUTER_NAME}${ZITI_DOMAIN_SUFFIX}"; fi
-if [[ "${ZITI_EDGE_ROUTER_ROLES}" == "" ]]; then export ZITI_EDGE_ROUTER_ROLES="${ZITI_EDGE_ROUTER_NAME}"; fi
+if [[ "${ZITI_ROUTER_NAME-}" == "" ]]; then export ZITI_ROUTER_NAME="${ZITI_NETWORK-}-edge-router"; fi
+if [[ "${ZITI_ROUTER_PORT-}" == "" ]]; then export ZITI_ROUTER_PORT="3022"; fi
+if [[ "${ZITI_ROUTER_ADVERTISED_ADDRESS}" == "" ]]; then export ZITI_ROUTER_ADVERTISED_ADDRESS="${ZITI_ROUTER_NAME}${ZITI_DOMAIN_SUFFIX}"; fi
+if [[ "${ZITI_ROUTER_ROLES}" == "" ]]; then export ZITI_ROUTER_ROLES="${ZITI_ROUTER_NAME}"; fi
 
 . "${ZITI_HOME}"/ziti.env
 
