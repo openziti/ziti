@@ -15,7 +15,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
-	"github.com/openziti/ziti/zititest/models/ha/actions"
+	"github.com/openziti/ziti/zititest/models/db-creation/actions"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/sirupsen/logrus"
@@ -50,10 +50,10 @@ func getConfigData(filePath string) []byte {
 
 // Definition of the model, which houses most you need to run things.
 var m = &model.Model{
-	Id: "endpointTesting",
+	Id: "db-creation",
 	Scope: model.Scope{
 		Defaults: model.Variables{
-			"environment": "endpointTesting",
+			"environment": "db-creation",
 			"credentials": model.Variables{
 				"ssh": model.Variables{
 					"username": "ubuntu",
