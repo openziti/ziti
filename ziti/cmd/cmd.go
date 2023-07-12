@@ -27,7 +27,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/fabric"
 	"github.com/openziti/ziti/ziti/cmd/install"
 	"github.com/openziti/ziti/ziti/cmd/templates"
-	"github.com/openziti/ziti/ziti/cmd/tutorial"
 	c "github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/internal/log"
@@ -131,7 +130,6 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	pkiCommands := NewCmdPKI(out, err)
 	fabricCommand := fabric.NewFabricCmd(p)
 	edgeCommand := edge.NewCmdEdge(out, err)
-	tutorialCmd := tutorial.NewTutorialCmd(p)
 	demoCmd := demo.NewDemoCmd(p)
 
 	opsCommands := &cobra.Command{
@@ -142,14 +140,6 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	opsCommands.AddCommand(database.NewCmdDb(out, err))
 	opsCommands.AddCommand(NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
-
-	learnCommands := &cobra.Command{
-		Use:   "learn ",
-		Short: "Tutorials and demos to help you learn about Ziti",
-	}
-
-	learnCommands.AddCommand(demoCmd)
-	learnCommands.AddCommand(tutorialCmd)
 
 	installCommands := []*cobra.Command{
 		install.NewCmdInstall(out, err),
@@ -195,7 +185,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 		{
 			Message: "Learning Ziti",
 			Commands: []*cobra.Command{
-				learnCommands,
+				demoCmd,
 			},
 		},
 	}

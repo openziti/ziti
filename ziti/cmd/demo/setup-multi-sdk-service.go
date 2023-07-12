@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/tutorial"
 	"github.com/spf13/cobra"
 	"time"
 )
@@ -33,7 +32,7 @@ var multiSdkHostedScriptSource []byte
 
 type multiSdkHosted struct {
 	api.Options
-	tutorial.TutorialOptions
+	TutorialOptions
 	interactive bool
 }
 

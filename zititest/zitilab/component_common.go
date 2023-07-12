@@ -68,3 +68,10 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 
 	return nil
 }
+
+func getPrefixVersion(version string) string {
+	if version == "" || strings.HasPrefix(version, "v") {
+		return version
+	}
+	return "v" + version
+}

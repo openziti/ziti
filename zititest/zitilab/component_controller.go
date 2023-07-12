@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/pkg/errors"
 	"io/fs"
+	"strings"
 )
 
 var _ model.ComponentType = (*ControllerType)(nil)
@@ -42,6 +43,13 @@ type ControllerType struct {
 	ConfigName     string
 	Version        string
 	LocalPath      string
+	DNSNames       []string
+}
+
+func (self *ControllerType) InitType(*model.Component) {
+	if self.Version != "" && !strings.HasPrefix(self.Version, "v") {
+		self.Version = "v" + self.Version
+	}
 }
 
 func (self *ControllerType) GetActions() map[string]model.ComponentAction {
@@ -72,7 +80,7 @@ func (self *ControllerType) StageFiles(r model.Run, c *model.Component) error {
 		return err
 	}
 
-	if err := pki.CreateControllerCerts(r, c, c.Id); err != nil {
+	if err := pki.CreateControllerCerts(r, c, self.DNSNames, c.Id); err != nil {
 		return err
 	}
 

@@ -18,6 +18,12 @@ type EchoServerType struct {
 	LocalPath string
 }
 
+func (self *EchoServerType) InitType(*model.Component) {
+	if self.Version != "" && !strings.HasPrefix(self.Version, "v") {
+		self.Version = "v" + self.Version
+	}
+}
+
 func (self *EchoServerType) Dump() any {
 	return map[string]string{
 		"type_id":    "echo-server",
@@ -55,7 +61,7 @@ func (self *EchoServerType) Start(_ model.Run, c *model.Component) error {
 	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s.json", factory.User(), c.Id)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", factory.User(), c.Id)
 
-	serviceCmd := fmt.Sprintf("nohup %s learn demo echo-server -i %s --cli-agent-alias %s > %s 2>&1 &",
+	serviceCmd := fmt.Sprintf("nohup %s demo echo-server -i %s --cli-agent-alias %s > %s 2>&1 &",
 		binaryPath, configPath, c.Id, logsPath)
 
 	value, err := lib.RemoteExec(factory, serviceCmd)

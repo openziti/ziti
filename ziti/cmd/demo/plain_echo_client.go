@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -14,25 +14,30 @@
 	limitations under the License.
 */
 
-package zitilab
+package demo
 
 import (
-	"github.com/openziti/fablab/kernel/lib/runlevel/2_kitting/devkit"
-	"github.com/openziti/fablab/kernel/model"
+	"fmt"
+	"github.com/fatih/color"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
 )
 
-func ZitiRoot() string {
-	return zitiRoot
+type plainEchoClient struct {
+	host string
+	port uint16
 }
 
-func DefaultZitiBinaries() model.Stage {
-	zitiBinaries := []string{
-		"ziti",
-		"ziti-controller",
-		"ziti-router",
+func (self *plainEchoClient) echo(input string) error {
+	input = url.QueryEscape(input)
+	u := fmt.Sprintf("http://%v:%v?input=%v", self.host, self.port, input)
+	resp, err := (&http.Client{}).Get(u)
+	if err == nil {
+		c := color.New(color.FgBlue, color.Bold)
+		c.Print("\nplain-http-echo-client: ")
+		_, err = io.Copy(os.Stdout, resp.Body)
 	}
-
-	return devkit.DevKitF(ZitiRoot, zitiBinaries)
+	return err
 }
-
-var zitiRoot string

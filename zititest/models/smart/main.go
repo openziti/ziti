@@ -164,11 +164,6 @@ var smartrouting = &model.Model{
 func main() {
 	//smartrouting.VarConfig.EnableDebugLogger()
 
-	model.AddBootstrapExtension(
-		zitilab.BootstrapWithFallbacks(
-			&zitilab.BootstrapFromEnv{},
-			&zitilab.BootstrapFromFind{},
-		))
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
 

@@ -18,11 +18,11 @@ package helpers
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"net/url"
 	"os"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 )
 
@@ -51,14 +51,8 @@ func DefaultBehaviorOnFatal() {
 	fatalErrHandler = fatal
 }
 
-// fatal prints the message (if provided) and then exits. If V(2) or greater,
-// glog.Fatal is invoked for extended information.
+// fatal prints the message (if provided) and then exits.
 func fatal(msg string, code int) {
-	/*
-		if glog.V(2) {
-			glog.FatalDepth(2, msg)
-		}
-	*/
 	if len(msg) > 0 {
 		// add newline if needed
 		if !strings.HasSuffix(msg, "\n") {
@@ -156,28 +150,9 @@ func checkErr(prefix string, err error, handleErr func(string, int)) {
 // This method is generic to the command in use and may be used by non-Kubectl
 // commands.
 func StandardErrorMessage(err error) (string, bool) {
-	/*
-		if debugErr, ok := err.(debugError); ok {
-			glog.V(4).Infof(debugErr.DebugError())
-		}
-		status, isStatus := err.(kerrors.APIStatus)
-		switch {
-		case isStatus:
-			switch s := status.Status(); {
-			case s.Reason == unversioned.StatusReasonUnauthorized:
-				return fmt.Sprintf("error: You must be logged in to the server (%s)", s.Message), true
-			case len(s.Reason) > 0:
-				return fmt.Sprintf("Error from server (%s): %s", s.Reason, err.Error()), true
-			default:
-				return fmt.Sprintf("Error from server: %s", err.Error()), true
-			}
-		case kerrors.IsUnexpectedObjectError(err):
-			return fmt.Sprintf("Server returned an unexpected response: %s", err.Error()), true
-		}
-	*/
 	switch t := err.(type) {
 	case *url.Error:
-		glog.V(4).Infof("Connection error: %s %s: %v", t.Op, t.URL, t.Err)
+		pfxlog.Logger().Infof("Connection error: %s %s: %v", t.Op, t.URL, t.Err)
 		switch {
 		case strings.Contains(t.Err.Error(), "connection refused"):
 			host := t.URL

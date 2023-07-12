@@ -90,7 +90,7 @@ func loadInfoFile(file string) string {
 	return string(data)
 }
 
-func EnsureServerCertExists(run model.Run, name string, ip string, spiffeId string) error {
+func EnsureServerCertExists(run model.Run, name string, ip string, dns []string, spiffeId string) error {
 	logrus.Infof("generating server certificate [%s:%s]", name, ip)
 
 	certFile := name + "-server"
@@ -124,6 +124,10 @@ func EnsureServerCertExists(run model.Run, name string, ip string, spiffeId stri
 		"--allow-overwrite",
 		"--ip", ip}
 
+	if len(dns) > 0 {
+		args = append(args, "--dns", strings.Join(dns, ","))
+	}
+
 	if spiffeId != "" {
 		args = append(args, "--spiffe-id", spiffeId)
 	}
@@ -138,7 +142,7 @@ func EnsureServerCertExists(run model.Run, name string, ip string, spiffeId stri
 	return os.WriteFile(infoFile, []byte(certInfo), 0600)
 }
 
-func CreateControllerCerts(run model.Run, component *model.Component, name string) error {
+func CreateControllerCerts(run model.Run, component *model.Component, dns []string, name string) error {
 	trustDomain := component.GetStringVariableOr("ca.trustDomain", "ziti.test")
 	rootCaName := component.GetStringVariableOr("ca.rootName", "root")
 	if err := EnsureCaExists(run, trustDomain, rootCaName); err != nil {
@@ -149,5 +153,5 @@ func CreateControllerCerts(run model.Run, component *model.Component, name strin
 		return errors.Wrapf(err, "error generating public identity for component [%s]", component.Id)
 	}
 
-	return EnsureServerCertExists(run, name, component.Host.PublicIp, "controller/"+name)
+	return EnsureServerCertExists(run, name, component.Host.PublicIp, dns, "controller/"+name)
 }

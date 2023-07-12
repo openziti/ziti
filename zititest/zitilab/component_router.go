@@ -44,6 +44,12 @@ type RouterType struct {
 	LocalPath      string
 }
 
+func (self *RouterType) InitType(*model.Component) {
+	if self.Version != "" && !strings.HasPrefix(self.Version, "v") {
+		self.Version = "v" + self.Version
+	}
+}
+
 func (self *RouterType) GetActions() map[string]model.ComponentAction {
 	return map[string]model.ComponentAction{
 		RouterActionsCreateAndEnroll: model.ComponentActionF(self.CreateAndEnroll),
