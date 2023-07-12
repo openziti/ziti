@@ -89,7 +89,14 @@ var m = &model.Model{
 					Components: model.Components{
 						"ctrl": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
-							Type:  &zitilab.ControllerType{LocalPath: "/mnt/c/Users/padib/OneDrive/Documents/NF Files/NF_Repos/ziti/ziti"},
+							Type: &zitilab.ControllerType{
+								ConfigSourceFS: nil,
+								ConfigSource:   "",
+								ConfigName:     "",
+								Version:        "v0.28.4",
+								LocalPath:      "/mnt/c/Users/padib/OneDrive/Documents/NF Files/NF_Repos/ziti/ziti",
+								DNSNames:       nil,
+							},
 						},
 					},
 				},
@@ -120,16 +127,6 @@ var m = &model.Model{
 		semaphore_0.Restart(90 * time.Second),
 	},
 
-	//Configuration: model.Stages{
-	//	zitilib_runlevel_1_configuration.IfPkiNeedsRefresh(
-	//		zitilib_runlevel_1_configuration.Fabric("domain.com"),
-	//		//zitilib_runlevel_1_configuration.DotZiti(),
-	//	),
-	//	config.Component(),
-	//	zitilab.DefaultZitiBinaries(),
-	//	devkit.DevKitF(zitilab.ZitiRoot, []string{"ziti-edge-tunnel"}),
-	//},
-
 	Distribution: model.Stages{
 		distribution.DistributeSshKey("*"),
 		distribution.Locations("*", "logs"),
@@ -158,23 +155,9 @@ var m = &model.Model{
 }
 
 func main() {
-	//m.AddActivationActions("stop", "bootstrap", "start")
 	m.AddActivationActions("stop", "bootstrap")
-	//model.AddBootstrapExtension(
-	//	zitilab.BootstrapWithFallbacks(
-	//		&zitilab.BootstrapFromEnv{},
-	//	))
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
-
-	//endpoint := func(m *model.Model) string {
-	//	return m.MustSelectHost("component.iperf-server").PublicIp
-	//}
-
-	//m.AddOperatingStage(fablib_5_operation.Iperf("Ziti_Overlay", endpoint, "component.iperf-server", "component.iperf-client", 60, true))
-	//m.AddOperatingStage(fablib_5_operation.Persist())
-	//m.AddOperatingStage(fablib_5_operation.Iperf("Ziti_Underlay_Only", endpoint, "component.iperf-server", "component.iperf-client", 60, false))
-	//m.AddOperatingStage(fablib_5_operation.Persist())
 	fablab.InitModel(m)
 	fablab.Run()
 }
