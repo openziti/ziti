@@ -1,33 +1,19 @@
 v: 3
 
-db: /home/ubuntu/fablab/ctrl.db
-
-#identity:
-#  cert: /home/ubuntu/fablab/pki/intermediate/certs/ctrl-client.cert
-#  server_cert: /home/ubuntu/fablab/pki/intermediate/certs/ctrl-server.cert
-#  key: /home/ubuntu/fablab/pki/intermediate/keys/ctrl.key
-#  ca: /home/ubuntu/fablab/pki/intermediate/certs/ctrl-server.chain.pem
+raft:
+  minClusterSize: 3
+  dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
 
 identity:
-  cert: /home/ubuntu/fablab/pki/ctrl/certs/ctrl-server.cert
-  key: /home/ubuntu/fablab/pki/ctrl/keys/ctrl-server.key
-  ca: /home/ubuntu/fablab/pki/ctrl/certs/ctrl-server.chain.pem
-
-
-# trace:
-#  path:                 ctrl.trace
-
-profile:
-#   cpu:
-#       path: /home/plorenz/tmp/ctrl.cpu.pprof
-#  memory:
-#    path: ctrl.memprof
+  cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.cert
+  key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}-server.key
+  ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem
 
 # the endpoint that routers will connect to the controller over.
 ctrl:
   listener: tls:0.0.0.0:6262
   options:
-    advertiseAddress: tls:${serverHost.PublicIp}:6262
+    advertiseAddress: tls:{{ .Host.PublicIp }}:6262
     # (optional) settings
     # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
     #maxQueuedConnects:      50
@@ -46,106 +32,30 @@ ctrl:
     # connections. The value of newListener must be resolvable both via DNS and validate via certificates
     #newListener: tls:localhost:6262
 
-# the endpoint that management tools connect to the controller over.
-mgmt:
-  listener: tls:0.0.0.0:10000
-    #options:
-    # (optional) settings
-  # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
-  #maxQueuedConnects:      50
-  # the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
-  #maxOutstandingConnects: 100
-  # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
-  #connectTimeoutMs:       3000
-
-  #metrics:
-  #file:
-  #path: /tmp/ziti-controller-metrics.log
-  #maxsizemb: 100:wq
-  # Supported formats: json, plain
-  # Defaults to json
-  #format: plain
-  #influxdb:
-  #url:                http://localhost:8086
-  #database:           ziti
-
-metrics:
-  reportInterval: 1m
-
-events:
-  jsonLogger:
-    subscriptions:
-      - type: metrics
-        metricFilter: "link.latency.*"
-      - type: metrics
-        sourceFilter: .*
-        metricFilter: "(.*session.create.*)|(bolt.*)"
-      - type: metrics
-        sourceFilter: .*
-        metricFilter: "/edge*"
-      - type: metrics
-        metricFilter: "ctrl.*"
-    #      - type: services
-    #      - type: fabric.usage
-    #      - type: edge.entityCounts
-    #        interval: 5s
-    handler:
-      type: file
-      format: json
-      path: /home/ubuntu/logs/utilization-metrics.log
-      maxsizemb: 1024
-      maxbackups: 1
-
-  edgeSessionLogger:
-    subscriptions:
-      - type: edge.sessions
-        include:
-          - created
-    handler:
-      type: file
-      format: json
-      path: /home/ubuntu/logs/utilization-edgesessions.log
-      maxsizemb: 1024
-      maxbackups: 1
-
-  utilizationLogger:
-    subscriptions:
-      - type: fabric.circuits
-        version: 3
-        include:
-          - created
-          - failed
-          - pathUpdated
-      - type: fabric.usage
-        version: 3
-    handler:
-      type: file
-      format: json
-      path: /home/ubuntu/logs/utilization-usage.log
-      maxsizemb: 1024
-      maxbackups: 5
-
-  eventsLogger:
-    subscriptions:
-      - type: edge.apiSessions
-      - type: fabric.routers
-      - type: services
-      - type: edge.entityCounts
-      - type: fabric.terminators
-      - type: fabric.links
-    handler:
-      type: file
-      format: json
-      path: /home/ubuntu/logs/utilization-events.log
-      maxsizemb: 1024
-      maxbackups: 1
-
-
-# xctrl_example
-#
-#example:
-#  enabled:              false
-#  delay:                5
+#events:
+#  jsonLogger:
+#    subscriptions:
+#      - type: fabric.routers
+#      - type: fabric.terminators
+#      - type: metrics
+#        sourceFilter: .*
+#        metricFilter: .*egress.*m1_rate*
+#      - type: fabric.circuits
+#        include:
+#          - created
+#      - type: edge.sessions
+#        include:
+#          - created
+#      - type: edge.apiSessions
+#      - type: fabric.usage
+#      - type: services
+#      - type: fabric.usage
+#      - type: edge.entityCounts
+#        interval: 5s
+#    handler:
+#      type: file
+#      format: json
+#      path: /tmp/ziti-events.log
 
 healthChecks:
   boltCheck:
@@ -172,7 +82,7 @@ edge:
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in a bind point's address field for the `edge-client` API in the web section.
-    address: {{.Host.PublicIp}}:1280
+    address: {{ .Host.PublicIp }}:1280
   # enrollment - required
   # A section containing settings pertaining to enrollment.
   enrollment:
@@ -180,14 +90,9 @@ edge:
     # A Ziti Identity configuration section that specifically makes use of the cert and key fields to define
     # a signing certificate from the PKI that the Ziti environment is using to sign certificates. The signingCert.cert
     # will be added to the /.well-known CA store that is used to bootstrap trust with the Ziti Controller.
-
-    #    signingCert:
-    #      cert: /home/ubuntu/fablab/pki/intermediate/certs/intermediate.cert
-    #      key: /home/ubuntu/fablab/pki/intermediate/keys/intermediate.key
-
     signingCert:
-      cert: /home/ubuntu/fablab/pki/ctrl/certs/ctrl.cert
-      key: /home/ubuntu/fablab/pki/ctrl/keys/ctrl.key
+      cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}.cert
+      key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}.key
 
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
@@ -225,7 +130,7 @@ web:
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
-        address: {{.Host.PublicIp}}:1280
+        address: {{ .Host.PublicIp }}:1280
 
         # newAddress - optional
         # A host:port string which will be sent out as an HTTP header "ziti-new-address" if specified. If the header
@@ -279,13 +184,13 @@ web:
       #   - edge-client
       #   - fabric-management
       - binding: health-checks
-        options: { }
+        options: {}
       - binding: fabric
       - binding: edge-management
         # options - variable optional/required
         # This section is used to define values that are specified by the API they are associated with.
         # These settings are per API. The example below is for the `edge-api` and contains both optional values and
         # required values.
-        options: { }
+        options: {}
       - binding: edge-client
-        options: { }
+        options: {}
