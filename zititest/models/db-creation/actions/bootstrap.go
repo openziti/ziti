@@ -24,13 +24,13 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow := actions.Workflow()
 
 	// Setup Ziti Controller
+	workflow.AddAction(component.Stop(".ctrl"))
 	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
-	workflow.AddAction(component.Stop("#ctrl"))
+	workflow.AddAction(host.GroupExec(".ctrl", 5, "rf -rf ./fablab/ctrldata"))
+	workflow.AddAction(component.Start(".ctrl"))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	//Comment out the below line if you are inserting your own DB.
 	workflow.AddAction(edge.InitController("#ctrl"))
-	workflow.AddAction(semaphore.Sleep(2 * time.Second))
-	workflow.AddAction(component.Start("#ctrl"))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 	// Login to Ziti Controller
@@ -41,8 +41,6 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(component.StopInParallel(models.EdgeRouterTag, 25))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))
-	workflow.AddAction(semaphore.Sleep(2 * time.Second))
-	workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 25))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 	// Init Identities
