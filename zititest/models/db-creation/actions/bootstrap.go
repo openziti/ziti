@@ -1,7 +1,7 @@
 package actions
 
 import (
-	zitilib_actions "github.com/openziti/zitilab/actions"
+	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"time"
 
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -9,8 +9,8 @@ import (
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/zitilab/actions/edge"
-	"github.com/openziti/zitilab/models"
+	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
+	"github.com/openziti/ziti/zititest/zitilab/models"
 )
 
 type bootstrapAction struct{}
