@@ -41,7 +41,7 @@ have changed again. A summary of changes is below
   * `ZITI_ROUTER_CSR_O` - "The organization (O) to use for router CSRs"
   * `ZITI_ROUTER_CSR_OU` - "The organization unit to use for router CSRs"
   *	`ZITI_ROUTER_CSR_SANS_DNS` - "The DNS name used in the CSR request"
-* Net variable `ZITI_CTRL_EDGE_BIND_ADDRESS` allows controlling the IP the edge API uses
+* New variable `ZITI_CTRL_EDGE_BIND_ADDRESS` allows controlling the IP the edge API uses
 
 # Release 0.28.4
 
