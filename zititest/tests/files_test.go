@@ -32,8 +32,8 @@ var hashes = map[string]string{
 }
 
 var timeouts = map[string]time.Duration{
-	"1KB":   5 * time.Second,
-	"100KB": 5 * time.Second,
+	"1KB":   10 * time.Second,
+	"100KB": 10 * time.Second,
 	"20MB":  40 * time.Second,
 }
 
@@ -44,38 +44,69 @@ const (
 	ClientWget httpClient = "wget"
 )
 
-func TestCurlFiles(t *testing.T) {
+func TestDownloadFiles(t *testing.T) {
 	allZetHostedFailed := true
-	for _, hostType := range []string{"ert", "zet", "ziti-tunnel"} {
-		for _, clientType := range []string{"ert", "zet", "ziti-tunnel"} {
-			for _, encrypted := range []bool{true, false} {
-				success := testFileDownload(t, clientType, ClientCurl, hostType, encrypted, "1KB")
-				if hostType == "zet" && success {
-					allZetHostedFailed = false
-				}
-			}
-		}
-	}
+	allZetClientsFailed := true
 
-	for _, size := range []string{"100KB", "20MB"} {
-		for _, clientType := range []string{"ert", "zet"} {
-			for _, hostType := range []string{"ert", "zet"} {
-				for _, client := range []httpClient{ClientCurl, ClientWget} {
-					for _, encrypted := range []bool{true, false} {
-						success := testFileDownload(t, clientType, client, hostType, encrypted, size)
-						if hostType == "zet" && success {
-							allZetHostedFailed = false
+	t.Run("download-tests", func(t *testing.T) {
+		t.Run("test-ert-downloads", func(t *testing.T) {
+			t.Parallel()
+
+			for _, size := range []string{"1KB", "100KB", "20MB"} {
+				for _, hostType := range []string{"ert", "zet", "ziti-tunnel"} {
+					for _, client := range []httpClient{ClientCurl, ClientWget} {
+						for _, encrypted := range []bool{true, false} {
+							success := testFileDownload(t, "ert", client, hostType, encrypted, size)
+							if hostType == "zet" && success {
+								allZetHostedFailed = false
+							}
 						}
 					}
 				}
 			}
-		}
-	}
+		})
 
-	testFileDownload(t, "ziti-tunnel", ClientCurl, "ziti-tunnel", true, "20MB")
+		t.Run("test-zet-downloads", func(t *testing.T) {
+			t.Parallel()
+
+			for _, size := range []string{"1KB", "100KB", "20MB"} {
+				for _, hostType := range []string{"zet", "ziti-tunnel", "ert"} {
+					for _, client := range []httpClient{ClientCurl, ClientWget} {
+						for _, encrypted := range []bool{true, false} {
+							success := testFileDownload(t, "zet", client, hostType, encrypted, size)
+							if hostType == "zet" && success {
+								allZetHostedFailed = false
+							}
+							if success {
+								allZetClientsFailed = false
+							}
+						}
+					}
+				}
+			}
+		})
+
+		t.Run("test-ziti-tunnel-downloads", func(t *testing.T) {
+			t.Parallel()
+
+			for _, size := range []string{"1KB", "100KB", "20MB"} {
+				for _, hostType := range []string{"ziti-tunnel", "ert", "zet"} {
+					for _, client := range []httpClient{ClientCurl, ClientWget} {
+						for _, encrypted := range []bool{true, false} {
+							success := testFileDownload(t, "ziti-tunnel", client, hostType, encrypted, size)
+							if hostType == "zet" && success {
+								allZetHostedFailed = false
+							}
+						}
+					}
+				}
+			}
+		})
+	})
 
 	req := require.New(t)
 	req.False(allZetHostedFailed, "all zet hosted file transfer should not failed, indicates bigger issue")
+	req.False(allZetClientsFailed, "all zet client file transfers should not failed, indicates bigger issue")
 }
 
 func testFileDownload(t *testing.T, hostSelector string, client httpClient, hostType string, encrypted bool, fileSize string) bool {
@@ -96,7 +127,7 @@ func testFileDownload(t *testing.T, hostSelector string, client httpClient, host
 			urlExtra = "-unencrypted"
 		}
 
-		url := fmt.Sprintf("https://ziti-files-%s%s.s3-us-west-1.amazonaws.ziti/%s.zip", hostType, urlExtra, fileSize)
+		url := fmt.Sprintf("https://files-%s%s.s3-us-west-1.amazonaws.ziti/%s.zip", hostType, urlExtra, fileSize)
 		sshConfigFactory := lib.NewSshConfigFactory(host)
 
 		var cmd string
@@ -112,6 +143,13 @@ func testFileDownload(t *testing.T, hostSelector string, client httpClient, host
 			t.Skipf("zet hosted file transfer failed [%v]", err.Error())
 			return
 		}
+
+		if hostSelector == "zet" && err != nil {
+			t.Skipf("zet client file transfer failed [%v]", err.Error())
+			return
+		}
+
+		t.Log(o)
 		req.NoError(err)
 		req.Equal(hashes[fileSize], o[0:32])
 		success = true

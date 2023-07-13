@@ -25,8 +25,6 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	semaphore0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
 	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
-	"github.com/openziti/fablab/kernel/lib/runlevel/1_configuration/config"
-	"github.com/openziti/fablab/kernel/lib/runlevel/2_kitting/devkit"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
 	aws_ssh_key2 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
@@ -37,7 +35,6 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	zitilib_runlevel_1_configuration "github.com/openziti/ziti/zititest/zitilab/runlevel/1_configuration"
 	"github.com/sirupsen/logrus"
 	"os"
 	"time"
@@ -85,14 +82,8 @@ var m = &model.Model{
 					InstanceType: "t3.micro",
 					Components: model.Components{
 						"ctrl1": {
-							Scope:          model.Scope{Tags: model.Tags{"ctrl", "spiffe:controller"}},
-							BinaryName:     "ziti controller",
-							ConfigSrc:      "ctrl.yml.tmpl",
-							ConfigName:     "ctrl1.yml",
-							PublicIdentity: "ctrl1",
-						},
-						"consul": {
-							BinaryName: "consul",
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Type:  &zitilab.ControllerType{},
 						},
 					},
 				},
@@ -100,14 +91,8 @@ var m = &model.Model{
 					InstanceType: "t3.micro",
 					Components: model.Components{
 						"ctrl2": {
-							Scope:          model.Scope{Tags: model.Tags{"ctrl", "spiffe:controller"}},
-							BinaryName:     "ziti controller",
-							ConfigSrc:      "ctrl.yml.tmpl",
-							ConfigName:     "ctrl2.yml",
-							PublicIdentity: "ctrl2",
-						},
-						"consul": {
-							BinaryName: "consul",
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Type:  &zitilab.ControllerType{},
 						},
 					},
 				},
@@ -116,19 +101,12 @@ var m = &model.Model{
 					InstanceType: "t2.micro",
 					Components: model.Components{
 						"router-east": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator"}},
-							BinaryName:     "ziti router",
-							ConfigSrc:      "router.yml.tmpl",
-							ConfigName:     "router-east.yml",
-							PublicIdentity: "router-east",
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator"}},
+							Type:  &zitilab.RouterType{},
 						},
 						"echo-server": {
-							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "service"}},
-							BinaryName:     "echo-server",
-							PublicIdentity: "echo-server",
-						},
-						"consul": {
-							BinaryName: "consul",
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},
+							Type:  &zitilab.EchoServerType{},
 						},
 					},
 				},
@@ -142,14 +120,8 @@ var m = &model.Model{
 					InstanceType: "t3.micro",
 					Components: model.Components{
 						"ctrl3": {
-							Scope:          model.Scope{Tags: model.Tags{"ctrl", "spiffe:controller"}},
-							BinaryName:     "ziti controller",
-							ConfigSrc:      "ctrl.yml.tmpl",
-							ConfigName:     "ctrl3.yml",
-							PublicIdentity: "ctrl3",
-						},
-						"consul": {
-							BinaryName: "consul",
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Type:  &zitilab.ControllerType{},
 						},
 					},
 				},
@@ -159,19 +131,12 @@ var m = &model.Model{
 					InstanceType: "t2.micro",
 					Components: model.Components{
 						"router-west": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator"}},
-							BinaryName:     "ziti router",
-							ConfigSrc:      "router.yml.tmpl",
-							ConfigName:     "router-west.yml",
-							PublicIdentity: "router-west",
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator"}},
+							Type:  &zitilab.RouterType{},
 						},
-						"echo-client": {
-							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "client"}},
-							BinaryName:     "echo-client",
-							PublicIdentity: "echo-client",
-						},
-						"consul": {
-							BinaryName: "consul",
+						"zcat": {
+							Scope: model.Scope{Tags: model.Tags{"sdk-app"}},
+							Type:  &zitilab.ZCatType{},
 						},
 					},
 				},
@@ -196,21 +161,13 @@ var m = &model.Model{
 		"login": model.Bind(edge.Login("#ctrl1")),
 	},
 
-	Infrastructure: model.InfrastructureStages{
+	Infrastructure: model.Stages{
 		aws_ssh_key.Express(),
 		terraform_0.Express(),
 		semaphore0.Ready(time.Minute),
 	},
 
-	Configuration: model.ConfigurationStages{
-		zitilib_runlevel_1_configuration.IfPkiNeedsRefresh(
-			zitilib_runlevel_1_configuration.Fabric("simple-transfer.test", ".ctrl"),
-		),
-		config.Component(),
-		devkit.DevKitF(zitilab.ZitiRoot, []string{"ziti", "ziti-echo"}),
-	},
-
-	Distribution: model.DistributionStages{
+	Distribution: model.Stages{
 		distribution.DistributeSshKey("*"),
 		distribution.Locations("*", "logs"),
 		distribution.DistributeDataWithReplaceCallbacks(
@@ -277,7 +234,7 @@ var m = &model.Model{
 		rsync.RsyncStaged(),
 	},
 
-	Disposal: model.DisposalStages{
+	Disposal: model.Stages{
 		terraform.Dispose(),
 		aws_ssh_key2.Dispose(),
 	},
@@ -286,10 +243,6 @@ var m = &model.Model{
 func main() {
 	m.AddActivationActions("stop", "bootstrap", "start")
 
-	model.AddBootstrapExtension(
-		zitilab.BootstrapWithFallbacks(
-			&zitilab.BootstrapFromEnv{},
-		))
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
 

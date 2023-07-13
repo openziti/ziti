@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+var hostname string
+
+func init() {
+	hn, _ := os.Hostname()
+	hostname = hn
+}
+
 func TestHomeDirHasNoWindowsSlashes(t *testing.T) {
 	value := HomeDir()
 	assert.Zero(t, strings.Count(value, "\\"))
@@ -31,10 +38,6 @@ func TestGetZitiHomeWhenUnset(t *testing.T) {
 	// Check that the value matches
 	actualValue, _ := GetZitiHome()
 	assert.Equal(t, expectedValue, actualValue)
-
-	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
-	assert.Equal(t, expectedValue, envValue)
 }
 
 func TestGetZitiHomeWhenSet(t *testing.T) {
@@ -69,15 +72,11 @@ func TestGetCtrlEdgeAdvertisedAddressWhenUnset(t *testing.T) {
 
 	// Ensure the variable is unset
 	_ = os.Unsetenv(varName)
-	expectedValue, _ := os.Hostname()
+	expectedValue := hostname
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeAdvertisedAddress()
+	actualValue := GetCtrlEdgeAdvertisedAddress()
 	assert.Equal(t, expectedValue, actualValue)
-
-	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
-	assert.Equal(t, expectedValue, envValue)
 }
 
 func TestGetCtrlEdgeAdvertisedAddressWhenSet(t *testing.T) {
@@ -89,97 +88,85 @@ func TestGetCtrlEdgeAdvertisedAddressWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeAdvertisedAddress()
+	actualValue := GetCtrlEdgeAdvertisedAddress()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
-func TestGetCtrlPortWhenUnset(t *testing.T) {
+func TestGetCtrlAdvertisedPortWhenUnset(t *testing.T) {
 	// Setup
-	varName := "ZITI_CTRL_LISTENER_PORT"
+	varName := "ZITI_CTRL_ADVERTISED_PORT"
 
 	// Ensure the variable is unset
 	_ = os.Unsetenv(varName)
 	expectedValue := "6262"
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlListenerPort()
+	actualValue := GetCtrlAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
-
-	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
-	assert.Equal(t, expectedValue, envValue)
 }
 
-func TestGetCtrlPortWhenSet(t *testing.T) {
+func TestGetCtrlAdvertisedPortWhenSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_CTRL_LISTENER_PORT"
+	varName := "ZITI_CTRL_ADVERTISED_PORT"
 	expectedValue := "1234"
 
 	// Set the env variable
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlListenerPort()
+	actualValue := GetCtrlAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
-func TestGetCtrlListenerAddressWhenUnset(t *testing.T) {
+func TestGetCtrlAdvertisedAddressWhenUnset(t *testing.T) {
 	// Setup
-	varName := "ZITI_CTRL_LISTENER_ADDRESS"
+	varName := "ZITI_CTRL_ADVERTISED_ADDRESS"
 
 	// Ensure the variable is unset
 	_ = os.Unsetenv(varName)
-	expectedValue := "0.0.0.0"
+	expectedValue := hostname
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlListenerAddress()
+	actualValue := GetCtrlAdvertisedAddress()
 	assert.Equal(t, expectedValue, actualValue)
-
-	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
-	assert.Equal(t, expectedValue, envValue)
 }
 
-func TestGetCtrlListenerAddressWhenSet(t *testing.T) {
+func TestGetCtrlAdvertisedAddressWhenSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_CTRL_LISTENER_ADDRESS"
+	varName := "ZITI_CTRL_ADVERTISED_ADDRESS"
 	expectedValue := "localhost"
 
 	// Set the env variable
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlListenerAddress()
+	actualValue := GetCtrlAdvertisedAddress()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
 func TestGetEdgeRouterPortWhenUnset(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_ROUTER_PORT"
+	varName := "ZITI_ROUTER_PORT"
 
 	// Ensure the variable is unset
 	_ = os.Unsetenv(varName)
 	expectedValue := "3022"
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeRouterPort()
+	actualValue := GetZitiEdgeRouterPort()
 	assert.Equal(t, expectedValue, actualValue)
-
-	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
-	assert.Equal(t, expectedValue, envValue)
 }
 
 func TestGetEdgeRouterPortWhenSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_ROUTER_PORT"
+	varName := "ZITI_ROUTER_PORT"
 	expectedValue := "4321"
 
 	// Set the env variable
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeRouterPort()
+	actualValue := GetZitiEdgeRouterPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -192,7 +179,7 @@ func TestGetCtrlEdgeAdvertisedPortWhenNotSet(t *testing.T) {
 	_ = os.Unsetenv(varName)
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeAdvertisedPort()
+	actualValue := GetCtrlEdgeAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -205,7 +192,7 @@ func TestGetCtrlEdgeAdvertisedPortWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeAdvertisedPort()
+	actualValue := GetCtrlEdgeAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -218,7 +205,7 @@ func TestGetEdgeIdentityEnrollmentDurationWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeIdentityEnrollmentDuration()
+	actualValue := GetCtrlEdgeIdentityEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -233,7 +220,7 @@ func TestGetEdgeIdentityEnrollmentDurationWhenSetToBlank(t *testing.T) {
 	_ = os.Setenv(varName, "")
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeIdentityEnrollmentDuration()
+	actualValue := GetCtrlEdgeIdentityEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -247,27 +234,27 @@ func TestGetEdgeIdentityEnrollmentDurationWhenNotSet(t *testing.T) {
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeIdentityEnrollmentDuration()
+	actualValue := GetCtrlEdgeIdentityEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
 func TestGetEdgeRouterEnrollmentDurationWhenSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_ROUTER_ENROLLMENT_DURATION"
+	varName := "ZITI_ROUTER_ENROLLMENT_DURATION"
 	expectedValue := 5 * time.Minute
 
 	// Set the env variable
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeRouterEnrollmentDuration()
+	actualValue := GetCtrlEdgeRouterEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
 /*  Ensure that the default value is returned even if the environment variable is set but is blank. */
 func TestGetEdgeRouterEnrollmentDurationWhenSetToBlank(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_ROUTER_ENROLLMENT_DURATION"
+	varName := "ZITI_ROUTER_ENROLLMENT_DURATION"
 	// Expect the default, hard coding the value to act as an alert if default is changed in edge project
 	expectedValue := 180 * time.Minute
 
@@ -275,13 +262,13 @@ func TestGetEdgeRouterEnrollmentDurationWhenSetToBlank(t *testing.T) {
 	_ = os.Setenv(varName, "")
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeRouterEnrollmentDuration()
+	actualValue := GetCtrlEdgeRouterEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
 func TestGetEdgeRouterEnrollmentDurationWhenNotSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_ROUTER_ENROLLMENT_DURATION"
+	varName := "ZITI_ROUTER_ENROLLMENT_DURATION"
 	// Expect the default, hard coding the value to act as an alert if default is changed in edge project
 	expectedValue := 180 * time.Minute
 
@@ -289,6 +276,6 @@ func TestGetEdgeRouterEnrollmentDurationWhenNotSet(t *testing.T) {
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetCtrlEdgeRouterEnrollmentDuration()
+	actualValue := GetCtrlEdgeRouterEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }

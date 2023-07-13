@@ -10,10 +10,13 @@ v: 3
 db:                     "{{ .ZitiHome }}/db/ctrl.db"
 
 identity:
-  cert:                 "{{ .Controller.Identity.Cert }}"
-  server_cert:          "{{ .Controller.Identity.ServerCert }}"
-  key:                  "{{ .Controller.Identity.Key }}"
-  ca:                   "{{ .Controller.Identity.Ca }}"
+  cert:        "{{ .Controller.Identity.Cert }}"
+  server_cert: "{{ .Controller.Identity.ServerCert }}"
+  key:         "{{ .Controller.Identity.Key }}"
+  ca:          "{{ .Controller.Identity.Ca }}"
+  {{ .Controller.Web.Identity.AltCertsEnabled }}alt_server_certs:
+  {{ .Controller.Web.Identity.AltCertsEnabled }}  - server_cert:  "{{ .Controller.Web.Identity.AltServerCert }}"
+  {{ .Controller.Web.Identity.AltCertsEnabled }}    server_key:   "{{ .Controller.Web.Identity.AltServerKey }}"
 
 # Network Configuration
 #
@@ -75,7 +78,7 @@ ctrl:
   #maxOutstandingConnects: {{ .Controller.Ctrl.DefaultOutstandingConnects }}
   # the number of milliseconds to wait before a hello synchronization fails and closes the connection ({{ .Controller.Ctrl.MinConnectTimeout.Milliseconds }}ms to {{ .Controller.Ctrl.MaxConnectTimeout.Milliseconds }}ms, default: {{ .Controller.Ctrl.DefaultConnectTimeout.Milliseconds }}ms)
   #connectTimeoutMs:       {{ .Controller.Ctrl.DefaultConnectTimeout.Milliseconds }}
-  listener:             tls:{{ .Controller.Ctrl.ListenerAddress }}:{{ .Controller.Ctrl.ListenerPort }}
+  listener:             tls:{{ .Controller.Ctrl.BindAddress }}:{{ .Controller.Ctrl.AdvertisedPort }}
 
 #metrics:
 #  influxdb:
@@ -165,6 +168,10 @@ web:
       key:         "{{ .Controller.Web.Identity.Key }}"
       server_cert: "{{ .Controller.Web.Identity.ServerCert }}"
       cert:        "{{ .Controller.Web.Identity.Cert }}"
+      {{ .Controller.Web.Identity.AltCertsEnabled }}alt_server_certs:
+      {{ .Controller.Web.Identity.AltCertsEnabled }}- server_cert: "{{ .Controller.Web.Identity.AltServerCert }}"
+      {{ .Controller.Web.Identity.AltCertsEnabled }}  server_key:  "{{ .Controller.Web.Identity.AltServerKey }}"
+      
     # options - optional
     # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
     # used for all http servers started by the current webListener.

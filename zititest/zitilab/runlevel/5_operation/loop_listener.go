@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func Loop3Listener(host *model.Host, joiner chan struct{}, bindAddress string, extraArgs ...string) model.OperatingStage {
+func Loop3Listener(host *model.Host, joiner chan struct{}, bindAddress string, extraArgs ...string) model.Stage {
 	return &loopListener{
 		host:        host,
 		joiner:      joiner,
@@ -18,7 +18,7 @@ func Loop3Listener(host *model.Host, joiner chan struct{}, bindAddress string, e
 	}
 }
 
-func LoopListener(host *model.Host, joiner chan struct{}, bindAddress string, extraArgs ...string) model.OperatingStage {
+func LoopListener(host *model.Host, joiner chan struct{}, bindAddress string, extraArgs ...string) model.Stage {
 	return &loopListener{
 		host:        host,
 		joiner:      joiner,
@@ -28,7 +28,7 @@ func LoopListener(host *model.Host, joiner chan struct{}, bindAddress string, ex
 	}
 }
 
-func (self *loopListener) Operate(run model.Run) error {
+func (self *loopListener) Execute(run model.Run) error {
 	ssh := lib.NewSshConfigFactory(self.host)
 	if err := lib.RemoteKill(ssh, fmt.Sprintf("ziti-fabric-test %v listener", self.subcmd)); err != nil {
 		return fmt.Errorf("error killing %v listeners (%w)", self.subcmd, err)

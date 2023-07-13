@@ -33,9 +33,10 @@ type Store interface {
 	//  Is the bundle to add an intermediate CA.
 	//  The raw private key.
 	//  The raw certificate.
+	//  Flag indicating if existing certs can be overwritten
 	//
 	// Returns an error if it failed to store the bundle.
-	Add(string, string, bool, []byte, []byte) error
+	Add(string, string, bool, []byte, []byte, bool) error
 
 	// Chain concats a signing cert and a newly signed certificate bundle and adds the chained cert to the store.
 	//

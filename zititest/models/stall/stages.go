@@ -73,7 +73,7 @@ func (_ *stageFactory) listeners(m *model.Model) error {
 	// only start 1 listener
 	c := components[0]
 
-	remoteConfigFile := fmt.Sprintf("/home/%v/fablab/cfg/%v.json", m.MustVariable("credentials.ssh.username"), c.PublicIdentity)
+	remoteConfigFile := fmt.Sprintf("/home/%v/fablab/cfg/%v.json", m.MustVariable("credentials.ssh.username"), c.Id)
 	stage := zitilib_5_operation.Loop3Listener(c.GetHost(), nil, "tcp:0.0.0.0:8171",
 		"--config-file", remoteConfigFile, "--health-check-addr 127.0.0.1:8172")
 	m.AddOperatingStage(stage)
@@ -91,8 +91,8 @@ func (_ *stageFactory) dialers(m *model.Model, phase fablib_5_operation.Phase) e
 	// only start 1 dialer
 	c := components[0]
 
-	remoteConfigFile := fmt.Sprintf("/home/%v/fablab/cfg/%v.json", m.MustVariable("credentials.ssh.username"), c.PublicIdentity)
-	stage := zitilib_5_operation.Loop3Dialer(c.GetHost(), c.ConfigName, "tcp:test.service:8171", phase.AddJoiner(), "--config-file", remoteConfigFile, "-d")
+	remoteConfigFile := fmt.Sprintf("/home/%v/fablab/cfg/%v.json", m.MustVariable("credentials.ssh.username"), c.Id)
+	stage := zitilib_5_operation.Loop3Dialer(c.GetHost(), c.Id, "tcp:test.service:8171", phase.AddJoiner(), "--config-file", remoteConfigFile, "-d")
 	m.AddOperatingStage(stage)
 
 	return nil

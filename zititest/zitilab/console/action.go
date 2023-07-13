@@ -30,7 +30,7 @@ func Console() model.Action {
 	return &console{}
 }
 
-func (consoleAction *console) Execute(m *model.Model) error {
+func (consoleAction *console) Execute(model.Run) error {
 	server := NewServer()
 	go server.Listen()
 

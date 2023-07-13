@@ -53,7 +53,7 @@ type ClientMetrics struct {
 	idToSelectorMapper func(string) string
 }
 
-func (metrics *ClientMetrics) Activate(run model.Run) error {
+func (metrics *ClientMetrics) Execute(run model.Run) error {
 	if err := zitilib_actions.EdgeExec(run.GetModel(), "delete", "identity", "metrics-host"); err != nil {
 		return err
 	}

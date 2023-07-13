@@ -26,11 +26,11 @@ import (
 	"time"
 )
 
-func Mesh(closer <-chan struct{}) model.OperatingStage {
+func Mesh(closer <-chan struct{}) model.Stage {
 	return &mesh{closer: closer}
 }
 
-func (mesh *mesh) Operate(run model.Run) error {
+func (mesh *mesh) Execute(run model.Run) error {
 	if endpoint, id, err := dotziti.LoadIdentity(model.ActiveInstanceId()); err == nil {
 		if address, err := transport.ParseAddress(endpoint); err == nil {
 			dialer := channel.NewClassicDialer(id, address, nil)

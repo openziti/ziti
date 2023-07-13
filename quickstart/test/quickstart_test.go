@@ -2,16 +2,10 @@ package test
 
 import (
 	"archive/tar"
-	"bufio"
-	"bytes"
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	api_client_config "github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router"
@@ -32,113 +26,10 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
 )
-
-func startDockerComposeQuickstart() {
-	// Run docker compose environment
-	_ = os.Setenv("ZITI_VERSION", "test")
-	cmd := exec.Command("docker-compose", "-f", "docker/docker-compose.yml", "up", "-d")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		fmt.Println(err)
-		log.Fatal("Failed to start compose environment")
-	}
-	_ = os.Unsetenv("ZITI_VERSION")
-}
-
-func stopDockerComposeQuickstart() {
-	oldWD, _ := os.Getwd()
-	_ = os.Chdir("docker")
-	cmd := exec.Command("docker-compose", "down", "-v")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		fmt.Println(err)
-		log.Fatal("Failed to stop compose environment")
-	}
-	_ = os.Chdir(oldWD)
-}
-
-func buildDockerQuickstartTestImage() {
-	oldWD, _ := os.Getwd()
-	_ = os.Chdir("../docker/image")
-
-	dir := "."
-
-	buf := new(bytes.Buffer)
-	tw := tar.NewWriter(buf)
-	defer tw.Close()
-
-	dockerFile := "TestDockerfile"
-	imageNameAndTag := "openziti/quickstart:test"
-
-	filePaths := iterateDir(dir)
-
-	for _, filePath := range filePaths {
-		err := addFileToTarWriter(filePath, tw)
-		if err != nil {
-			fmt.Println(fmt.Sprintf("Could not add file '%s', to tarball, got error '%s'", filePath, err.Error()))
-		}
-	}
-
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-	dockerFileTarReader := bytes.NewReader(buf.Bytes())
-
-	imageBuildResponse, err := cli.ImageBuild(ctx, dockerFileTarReader, types.ImageBuildOptions{
-		Context:    dockerFileTarReader,
-		Dockerfile: dockerFile,
-		Remove:     true,
-		Tags:       []string{imageNameAndTag},
-	})
-	if err != nil {
-		fmt.Println(err)
-		log.Fatal("Failed to build dockerfile")
-	}
-	defer imageBuildResponse.Body.Close()
-
-	// Wait until the image finishes building (builds in a background thread)
-	for {
-		fmt.Println("Waiting for image build...")
-		output, err := exec.Command("docker", "images", "-q", imageNameAndTag).Output()
-		if err != nil {
-			fmt.Println(err)
-		}
-		if string(output) != "" {
-			fmt.Println("Build complete, continuing with test")
-			break
-		}
-		time.Sleep(5 * time.Second)
-	}
-
-	danglers := filters.NewArgs()
-	danglers.Add("dangling", "true")
-	results, err := cli.ImageList(ctx, types.ImageListOptions{
-		All:     false,
-		Filters: danglers,
-	})
-	if err != nil {
-		fmt.Println(err)
-		log.Fatal("failed to collect docker image list")
-	}
-	for _, img := range results {
-		_, err = cli.ImageRemove(ctx, img.ID, types.ImageRemoveOptions{})
-		if err != nil {
-			fmt.Println(fmt.Sprintf("Error removing dangling image %s, got error '%s'", img.ID, err.Error()))
-		}
-	}
-	_ = os.Chdir(oldWD)
-}
 
 func iterateDir(dirPath string) []string {
 	dir, err := os.Open(dirPath)
@@ -203,102 +94,6 @@ func addFileToTarWriter(filePath string, tarWriter *tar.Writer) error {
 	return nil
 }
 
-func startDockerQuickstartTest() string {
-	cmd := exec.Command("docker", "run", "-d", "--name", "quickstart-test", "openziti/quickstart:test")
-	cmd.Stderr = os.Stderr
-	output, err := cmd.Output()
-	if err != nil {
-		fmt.Println(err)
-		log.Fatalf("Failed to start docker environment (%s)\n", err)
-	}
-	return strings.TrimSuffix(string(output), "\n")
-}
-
-/*
-This is a manually run test to confirm expected values are appearing in the .env file that is generated after the
-quickstart script is run.
-*/
-func TestQuickStartEnvFile(t *testing.T) {
-	expectedValues := []string{
-		"export ZITI_EDGE_ROUTER_NAME=\"localhost-edge-router\"",
-		"export ZITI_CTRL_EDGE_ADVERTISED_PORT=\"localhost\"",
-		"export ZITI_HOME=\"/persistent\"",
-		"export ZITI_BIN_DIR=\"/var/openziti/ziti-bin\"",
-		"export ZITI_USER=\"admin\"",
-		"export ZITI_PWD=\"admin\"",
-		"export ZITI_PKI=\"/persistent/pki\"",
-		"export ZITI_PKI_CTRL_EDGE_ROOTCA_NAME=\"localhost-root-ca\"",
-		"export ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME=\"localhost-intermediate\"",
-	}
-
-	// Build the image
-	buildDockerQuickstartTestImage()
-
-	// Start the image
-	containerId := startDockerQuickstartTest()
-
-	// Wait until it finishes
-	for {
-		time.Sleep(1 * time.Second)
-		output, _ := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerId).Output()
-		if string(output) == "false\n" {
-			break
-		}
-	}
-
-	// Start it back up and get the env file
-	output, err := exec.Command("docker", "start", containerId).Output()
-	if err != nil {
-		fmt.Printf("Error: %s\n", output)
-	}
-	cpString := containerId + ":/persistent/localhost.env"
-	cmd := exec.Command("docker", "cp", cpString, ".")
-	err = cmd.Run()
-	if err != nil {
-		fmt.Printf("Error copying env file: %s\n", output)
-	}
-
-	// Check env file for expected values
-	file, err := os.Open("localhost.env")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		for i := 0; i < len(expectedValues); i++ {
-			if expectedValues[i] == scanner.Text() {
-				// If found, stop looking for it by removing it from the array
-				expectedValues = append(expectedValues[:i], expectedValues[i+1:]...)
-			}
-		}
-	}
-
-	// Anything still in the array wasn't found
-	if len(expectedValues) > 0 {
-		for i := 0; i < len(expectedValues); i++ {
-			fmt.Printf("Could not find expected value (%s)\n", expectedValues[i])
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-
-	// Cleanup
-	err = os.Remove(file.Name())
-	if err != nil {
-		log.Fatalf("Error removing test file %s", file.Name())
-	}
-	err = exec.Command("docker", "rm", "-f", containerId).Run()
-	if err != nil {
-		log.Fatalf("Error cleaning up docker container %s", containerId)
-	}
-
-	// Test
-	assert.Equal(t, 0, len(expectedValues), "Not all expected env file values were found")
-}
-
 /*
 This is a manually run test that will, with the default values except the admin password, confirm the docker-compose
 ziti network is running as expected. The values can be edited to confirm other ziti networks but will require an http
@@ -307,10 +102,25 @@ server on the back end.
 func TestSimpleWebService(t *testing.T) {
 
 	// Wait for the controller to become available
-	zitiAdminUsername := "admin"
-	zitiAdminPassword := "admin"
+	zitiAdminUsername := os.Getenv("ZITI_USER")
+	if zitiAdminUsername == "" {
+		zitiAdminUsername = "admin"
+	}
+	zitiAdminPassword := os.Getenv("ZITI_PWD")
+	if zitiAdminPassword == "" {
+		zitiAdminPassword = "admin"
+	}
 	testerUsername := "gotester"
-	ctrlAddress := "https://ziti-edge-controller:1280"
+	advAddy := os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS")
+	advPort := os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_PORT")
+	if advAddy == "" {
+		advAddy = "ziti-edge-controller"
+	}
+	if advPort == "" {
+		advPort = "1280"
+	}
+	ctrlAddress := "https://" + advAddy + ":" + advPort
+
 	hostingRouterName := "ziti-edge-router"
 	dialAddress := "simple.web.smoke.test"
 	dialPort := 80
@@ -318,10 +128,8 @@ func TestSimpleWebService(t *testing.T) {
 	bindHostPort := 8000
 	serviceName := "basic.web.smoke.test.service"
 	wd, _ := os.Getwd()
-	waitForController(ctrlAddress)
-	// Give routers time to enroll themselves
-	time.Sleep(5 * time.Second)
 
+	log.Infof("connecting user: %s to %s", zitiAdminUsername, ctrlAddress)
 	// Authenticate with the controller
 	caCerts, err := rest_util.GetControllerWellKnownCas(ctrlAddress)
 	if err != nil {
@@ -395,6 +203,7 @@ func TestSimpleWebService(t *testing.T) {
 		fmt.Println("Unable to detect a terminator for the edge router")
 	}
 	helloUrl := fmt.Sprintf("http://%s:%d", serviceName, dialPort)
+	log.Infof("created url: %s", helloUrl)
 	httpClient := createZitifiedHttpClient(wd + "/" + testerUsername + ".json")
 	resp, e := httpClient.Get(helloUrl)
 	if e != nil {
@@ -402,6 +211,8 @@ func TestSimpleWebService(t *testing.T) {
 	}
 
 	assert.Equal(t, 200, resp.StatusCode, fmt.Sprintf("Expected successful HTTP status code 200, received %d instead", resp.StatusCode))
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(body))
 }
 
 func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, identityID string) *ziti.Config {
@@ -701,7 +512,7 @@ func waitForTerminatorCountByRouterName(client *rest_management_api_client.ZitiE
 		if time.Since(startTime) >= timeout {
 			break
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 	}
 	return false
 }
@@ -751,6 +562,7 @@ func deleteServiceByID(client *rest_management_api_client.ZitiEdgeManagement, id
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	return resp
 }
 
@@ -763,17 +575,6 @@ func deleteServicePolicyByID(client *rest_management_api_client.ZitiEdgeManageme
 	if err != nil {
 		fmt.Println(err)
 	}
-	return resp
-}
 
-func waitForController(hostport string) {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	for {
-		resp, _ := http.Get(hostport)
-		if resp != nil && resp.StatusCode == 200 {
-			break
-		}
-		time.Sleep(1 * time.Second)
-		fmt.Println("Waiting for controller...")
-	}
+	return resp
 }

@@ -68,8 +68,10 @@ type CtrlValues struct {
 	MinConnectTimeout          time.Duration
 	MaxConnectTimeout          time.Duration
 	DefaultConnectTimeout      time.Duration
-	ListenerAddress            string
-	ListenerPort               string
+	AdvertisedAddress          string
+	AdvertisedPort             string
+	BindAddress                string
+	AltAdvertisedAddress       string
 }
 
 type HealthChecksValues struct {
@@ -109,10 +111,13 @@ type BindPointsValues struct {
 }
 
 type IdentityValues struct {
-	Ca         string
-	Key        string
-	ServerCert string
-	Cert       string
+	Ca              string
+	Key             string
+	ServerCert      string
+	Cert            string
+	AltServerCert   string
+	AltServerKey    string
+	AltCertsEnabled string //a string containing either nothing "" or "#"
 }
 
 type WebOptionsValues struct {
@@ -142,6 +147,9 @@ type RouterTemplateValues struct {
 	IdentityServerCert string
 	IdentityKey        string
 	IdentityCA         string
+	AltServerCert      string
+	AltServerKey       string
+	AltCertsEnabled    string //a string containing either nothing "" or "#"
 	Edge               EdgeRouterTemplateValues
 	Wss                WSSRouterTemplateValues
 	Forwarder          RouterForwarderTemplateValues
@@ -154,6 +162,12 @@ type EdgeRouterTemplateValues struct {
 	AdvertisedHost   string
 	LanInterface     string
 	ListenerBindPort string
+	CsrC             string
+	CsrST            string
+	CsrL             string
+	CsrO             string
+	CsrOU            string
+	CsrSans          string
 }
 
 type WSSRouterTemplateValues struct {
@@ -183,7 +197,6 @@ type RouterListenerTemplateValues struct {
 }
 
 var workingDir string
-var data = &ConfigTemplateValues{}
 
 func init() {
 	workingDir, _ = cmdHelper.GetZitiHome()
@@ -200,8 +213,9 @@ func NewCmdCreateConfig() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(NewCmdCreateConfigController())
-	cmd.AddCommand(NewCmdCreateConfigRouter())
+	opts := &CreateConfigRouterOptions{}
+	cmd.AddCommand(NewCmdCreateConfigController().Command)
+	cmd.AddCommand(NewCmdCreateConfigRouter(opts).Command)
 	cmd.AddCommand(NewCmdCreateConfigEnvironment())
 
 	return cmd
@@ -223,45 +237,6 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	zitiHome, err := cmdHelper.GetZitiHome()
 	handleVariableError(err, constants.ZitiHomeVarName)
 
-	// Get Ziti Controller ctrl:listener address and port
-	ctrlListenerAddress, err := cmdHelper.GetCtrlListenerAddress()
-	handleVariableError(err, constants.CtrlListenerAddressVarName)
-	ctrlListenerPort, err := cmdHelper.GetCtrlListenerPort()
-	handleVariableError(err, constants.CtrlListenerPortVarName)
-
-	// Get Ziti Controller edge:api address and port
-	ctrlEdgeApiAddress, err := cmdHelper.GetCtrlEdgeApiAddress()
-	handleVariableError(err, constants.CtrlEdgeApiAddressVarName)
-	ctrlEdgeApiPort, err := cmdHelper.GetCtrlEdgeApiPort()
-	handleVariableError(err, constants.CtrlEdgeApiPortVarName)
-
-	// Get Ziti Controller Identity edge:enrollment duration
-	ctrlEdgeIdentityEnrollmentDuration, err := cmdHelper.GetCtrlEdgeIdentityEnrollmentDuration()
-	handleVariableError(err, constants.CtrlEdgeIdentityEnrollmentDurationVarName)
-
-	// Get Ziti Controller Router edge:enrollment enrollment duration
-	ctrlEdgeRouterEnrollmentDuration, err := cmdHelper.GetCtrlEdgeRouterEnrollmentDuration()
-	handleVariableError(err, constants.CtrlEdgeRouterEnrollmentDurationVarName)
-
-	// Get Ziti Controller web:bindPoints interface address and port
-	ctrlEdgeInterfaceAddress, err := cmdHelper.GetCtrlEdgeInterfaceAddress()
-	handleVariableError(err, constants.CtrlEdgeInterfaceAddressVarName)
-	ctrlEdgeInterfacePort, err := cmdHelper.GetCtrlEdgeInterfacePort()
-	handleVariableError(err, constants.CtrlEdgeInterfacePortVarName)
-
-	// Get Ziti Controller web:bindPoints address address and port
-	ctrlEdgeAdvertisedAddress, err := cmdHelper.GetCtrlEdgeAdvertisedAddress()
-	handleVariableError(err, constants.CtrlEdgeAdvertisedAddressVarName)
-	ctrlEdgeAdvertisedPort, err := cmdHelper.GetCtrlEdgeAdvertisedPort()
-	handleVariableError(err, constants.CtrlEdgeAdvertisedPortVarName)
-
-	// Get Ziti Edge Router Port
-	zitiEdgeRouterPort, err := cmdHelper.GetZitiEdgeRouterPort()
-	handleVariableError(err, constants.ZitiEdgeRouterPortVarName)
-
-	zitiEdgeRouterListenerBindPort, err := cmdHelper.GetZitiEdgeRouterListenerBindPort()
-	handleVariableError(err, constants.ZitiEdgeRouterListenerBindPortVarName)
-
 	data.ZitiHome = zitiHome
 	data.Hostname = hostname
 	// ************* Controller Values ************
@@ -276,8 +251,10 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	data.Controller.Ctrl.MinConnectTimeout = channel.MinConnectTimeout
 	data.Controller.Ctrl.MaxConnectTimeout = channel.MaxConnectTimeout
 	data.Controller.Ctrl.DefaultConnectTimeout = channel.DefaultConnectTimeout
-	data.Controller.Ctrl.ListenerAddress = ctrlListenerAddress
-	data.Controller.Ctrl.ListenerPort = ctrlListenerPort
+	data.Controller.Ctrl.AdvertisedAddress = cmdHelper.GetCtrlAdvertisedAddress()
+	data.Controller.Ctrl.AltAdvertisedAddress = cmdHelper.GetCtrlEdgeAltAdvertisedAddress()
+	data.Controller.Ctrl.BindAddress = cmdHelper.GetCtrlBindAddress()
+	data.Controller.Ctrl.AdvertisedPort = cmdHelper.GetCtrlAdvertisedPort()
 	// healthChecks:
 	data.Controller.HealthChecks.Interval = fabCtrl.DefaultHealthChecksBoltCheckInterval
 	data.Controller.HealthChecks.Timeout = fabCtrl.DefaultHealthChecksBoltCheckTimeout
@@ -286,17 +263,17 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	data.Controller.EdgeApi.APIActivityUpdateBatchSize = edge.DefaultEdgeApiActivityUpdateBatchSize
 	data.Controller.EdgeApi.APIActivityUpdateInterval = edge.DefaultEdgeAPIActivityUpdateInterval
 	data.Controller.EdgeApi.SessionTimeout = edge.DefaultEdgeSessionTimeout
-	data.Controller.EdgeApi.Address = ctrlEdgeApiAddress
-	data.Controller.EdgeApi.Port = ctrlEdgeApiPort
-	data.Controller.EdgeEnrollment.EdgeIdentityDuration = ctrlEdgeIdentityEnrollmentDuration
-	data.Controller.EdgeEnrollment.EdgeRouterDuration = ctrlEdgeRouterEnrollmentDuration
+	data.Controller.EdgeApi.Address = cmdHelper.GetCtrlEdgeAltAdvertisedAddress()
+	data.Controller.EdgeApi.Port = cmdHelper.GetCtrlEdgeAdvertisedPort()
+	data.Controller.EdgeEnrollment.EdgeIdentityDuration = cmdHelper.GetCtrlEdgeIdentityEnrollmentDuration()
+	data.Controller.EdgeEnrollment.EdgeRouterDuration = cmdHelper.GetCtrlEdgeRouterEnrollmentDuration()
 	data.Controller.EdgeEnrollment.DefaultEdgeIdentityDuration = edge.DefaultEdgeEnrollmentDuration
 	data.Controller.EdgeEnrollment.DefaultEdgeRouterDuration = edge.DefaultEdgeEnrollmentDuration
 	// web:
-	data.Controller.Web.BindPoints.InterfaceAddress = ctrlEdgeInterfaceAddress
-	data.Controller.Web.BindPoints.InterfacePort = ctrlEdgeInterfacePort
-	data.Controller.Web.BindPoints.AddressAddress = ctrlEdgeAdvertisedAddress
-	data.Controller.Web.BindPoints.AddressPort = ctrlEdgeAdvertisedPort
+	data.Controller.Web.BindPoints.InterfaceAddress = cmdHelper.GetCtrlEdgeBindAddress()
+	data.Controller.Web.BindPoints.InterfacePort = cmdHelper.GetCtrlEdgeAdvertisedPort()
+	data.Controller.Web.BindPoints.AddressAddress = cmdHelper.GetCtrlEdgeAltAdvertisedAddress()
+	data.Controller.Web.BindPoints.AddressPort = cmdHelper.GetCtrlEdgeAdvertisedPort()
 	// Web Identities are handled in create_config_controller
 	data.Controller.Web.Options.IdleTimeout = edge.DefaultHttpIdleTimeout
 	data.Controller.Web.Options.ReadTimeout = edge.DefaultHttpReadTimeout
@@ -305,8 +282,14 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	data.Controller.Web.Options.MaxTLSVersion = fabXweb.ReverseTlsVersionMap[fabXweb.MaxTLSVersion]
 
 	// ************* Router Values ************
-	data.Router.Edge.Port = zitiEdgeRouterPort
-	data.Router.Edge.ListenerBindPort = zitiEdgeRouterListenerBindPort
+	data.Router.Edge.Port = cmdHelper.GetZitiEdgeRouterPort()
+	data.Router.Edge.ListenerBindPort = cmdHelper.GetZitiEdgeRouterListenerBindPort()
+	data.Router.Edge.CsrC = cmdHelper.GetZitiEdgeRouterC()
+	data.Router.Edge.CsrST = cmdHelper.GetZitiEdgeRouterST()
+	data.Router.Edge.CsrL = cmdHelper.GetZitiEdgeRouterL()
+	data.Router.Edge.CsrO = cmdHelper.GetZitiEdgeRouterO()
+	data.Router.Edge.CsrOU = cmdHelper.GetZitiEdgeRouterOU()
+	data.Router.Edge.CsrSans = cmdHelper.GetRouterSans()
 	data.Router.Listener.GetSessionTimeout = constants.DefaultGetSessionTimeout
 
 	data.Router.Wss.WriteTimeout = foundation.DefaultWsWriteTimeout

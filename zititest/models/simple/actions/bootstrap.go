@@ -17,6 +17,10 @@
 package actions
 
 import (
+	"fmt"
+	"github.com/openziti/ziti/zititest/zitilab"
+	"time"
+
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
@@ -24,7 +28,6 @@ import (
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	"time"
 )
 
 type bootstrapAction struct{}
@@ -39,7 +42,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
 	workflow.AddAction(component.Stop("#ctrl"))
-	workflow.AddAction(edge.InitController("#ctrl"))
+	workflow.AddAction(component.Exec("#ctrl", zitilab.ControllerActionInitStandalone))
 	workflow.AddAction(component.Start("#ctrl"))
 	workflow.AddAction(edge.ControllerAvailable("#ctrl", 30*time.Second))
 
@@ -66,56 +69,52 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 			"protocol" : "tcp"
 		}`))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-intercept-ert-unencrypted", "intercept.v1", `
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "iperf-host", "host.v1", `
 		{
-			"addresses": ["ziti-files-ert-unencrypted.s3-us-west-1.amazonaws.ziti"],
-			"portRanges" : [ { "low": 443, "high": 443 } ],
-			"protocols": ["tcp"]
+			"address" : "localhost", 
+			"port" : 5201, 
+			"protocol" : "tcp"
 		}`))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-intercept-ert", "intercept.v1", `
-		{
-			"addresses": ["ziti-files-ert.s3-us-west-1.amazonaws.ziti"],
-			"portRanges" : [ { "low": 443, "high": 443 } ],
-			"protocols": ["tcp"]
-		}`))
+	for _, encrypted := range []bool{false, true} {
+		for _, hostType := range []string{"ert", "zet", "ziti-tunnel"} {
+			suffix := ""
+			encryptionFlag := "ON"
 
-	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-intercept-zet-unencrypted", "intercept.v1", `
-		{
-			"addresses": ["ziti-files-zet-unencrypted.s3-us-west-1.amazonaws.ziti"],
-			"portRanges" : [ { "low": 443, "high": 443 } ],
-			"protocols": ["tcp"]
-		}`))
+			if !encrypted {
+				suffix = "-unencrypted"
+				encryptionFlag = "OFF"
+			}
 
-	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-intercept-zet", "intercept.v1", `
-		{
-			"addresses": ["ziti-files-zet.s3-us-west-1.amazonaws.ziti"],
-			"portRanges" : [ { "low": 443, "high": 443 } ],
-			"protocols": ["tcp"]
-		}`))
+			filesConfigName := fmt.Sprintf("files-intercept-%s%s", hostType, suffix)
+			filesConfigDef := fmt.Sprintf(`
+				{
+					"addresses": ["files-%s%s.s3-us-west-1.amazonaws.ziti"],
+					"portRanges" : [ { "low": 443, "high": 443 } ],
+					"protocols": ["tcp"]
+				}`, hostType, suffix)
 
-	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-intercept-ziti-tunnel-unencrypted", "intercept.v1", `
-		{
-			"addresses": ["ziti-files-ziti-tunnel-unencrypted.s3-us-west-1.amazonaws.ziti"],
-			"portRanges" : [ { "low": 443, "high": 443 } ],
-			"protocols": ["tcp"]
-		}`))
+			workflow.AddAction(zitilib_actions.Edge("create", "config", filesConfigName, "intercept.v1", filesConfigDef))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-intercept-ziti-tunnel", "intercept.v1", `
-		{
-			"addresses": ["ziti-files-ziti-tunnel.s3-us-west-1.amazonaws.ziti"],
-			"portRanges" : [ { "low": 443, "high": 443 } ],
-			"protocols": ["tcp"]
-		}`))
+			iperfConfigName := fmt.Sprintf("iperf-intercept-%s%s", hostType, suffix)
+			iperfConfigDef := fmt.Sprintf(`
+				{
+					"addresses": ["iperf-%s%s.ziti"],
+					"portRanges" : [ { "low": 5201, "high": 5201 } ],
+					"protocols": ["tcp"]
+				}`, hostType, suffix)
 
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "ert-files-unencrypted", "-c", "files-host,files-intercept-ert-unencrypted", "-e", "OFF", "-a", "ert"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "ert-files", "-c", "files-host,files-intercept-ert", "-a", "ert"))
+			workflow.AddAction(zitilib_actions.Edge("create", "config", iperfConfigName, "intercept.v1", iperfConfigDef))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "zet-files-unencrypted", "-c", "files-host,files-intercept-zet-unencrypted", "-e", "OFF", "-a", "zet"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "zet-files", "-c", "files-host,files-intercept-zet", "-a", "zet"))
+			filesServiceName := fmt.Sprintf("%s-files%s", hostType, suffix)
+			filesConfigs := fmt.Sprintf("files-host,%s", filesConfigName)
+			workflow.AddAction(zitilib_actions.Edge("create", "service", filesServiceName, "-c", filesConfigs, "-e", encryptionFlag, "-a", hostType))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "ziti-tunnel-files-unencrypted", "-c", "files-host,files-intercept-ziti-tunnel-unencrypted", "-e", "OFF", "-a", "ziti-tunnel"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "ziti-tunnel-files", "-c", "files-host,files-intercept-ziti-tunnel", "-a", "ziti-tunnel"))
+			iperfServiceName := fmt.Sprintf("%s-iperf%s", hostType, suffix)
+			iperfConfigs := fmt.Sprintf("iperf-host,%s", iperfConfigName)
+			workflow.AddAction(zitilib_actions.Edge("create", "service", iperfServiceName, "-c", iperfConfigs, "-e", encryptionFlag, "-a", hostType))
+		}
+	}
 
 	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "ert-hosts", "Bind", "--service-roles", "#ert", "--identity-roles", "#ert-host"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "zet-hosts", "Bind", "--service-roles", "#zet", "--identity-roles", "#zet-host"))
@@ -126,17 +125,6 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "host-routers", "--edge-router-roles", "#host", "--identity-roles", "#host"))
 
 	workflow.AddAction(component.Stop(models.ControllerTag))
-
-	workflow.AddAction(model.ActionFunc(func(m *model.Model) error {
-		cmds := []string{
-			"sudo sed -i 's/#DNS=/DNS=127.0.0.1/g' /etc/systemd/resolved.conf",
-			"sudo systemctl restart systemd-resolved",
-		}
-
-		return m.ForEachComponent(".ziti-tunnel", 2, func(c *model.Component) error {
-			return host.Exec(c.GetHost(), cmds...).Execute(c.GetModel())
-		})
-	}))
 
 	return workflow
 }

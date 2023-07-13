@@ -27,8 +27,8 @@ func Fabric(args ...string) model.Action {
 	}
 }
 
-func (a *fabric) Execute(m *model.Model) error {
-	_, err := cli.Exec(m, append([]string{"fabric", "-i", model.ActiveInstanceId()}, a.args...)...)
+func (a *fabric) Execute(run model.Run) error {
+	_, err := cli.Exec(run.GetModel(), append([]string{"fabric", "-i", model.ActiveInstanceId()}, a.args...)...)
 	return err
 }
 

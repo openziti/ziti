@@ -39,7 +39,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: '1.20.x'
 
@@ -71,7 +71,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: '1.20.x'
 
@@ -92,10 +92,8 @@ jobs:
           path: release/
           retention-days: 5
 
-  fablab-smoketest:
-    name: Fablab Smoketest
-    # not applicable to forks. shouldn't run on release build
-    if: github.repository_owner == 'openziti' && github.ref != 'refs/heads/main' 
+  linux-build:
+    name: Build Linux binaries
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
@@ -104,7 +102,45 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20.x'
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Build and Test
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          go install github.com/mitchellh/gox@latest
+          $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
+          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
+          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-release-${{ github.run_id }}
+          path: release/
+          retention-days: 5
+
+  fablab-smoketest:
+    name: Fablab Smoketest
+    # not applicable to forks. shouldn't run on release build
+    if: github.repository_owner == 'openziti' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v4
         with:
           go-version: '1.20.x'
 
@@ -122,42 +158,65 @@ jobs:
           pushd zititest && go install ./... && popd
           go install -tags=all,tests ./...
 
-      - name: Create Zitilab Bindings
-        run: |
-          mkdir ~/.fablab
-          touch ~/.fablab/bindings.yml
-          echo "credentials:"           >> ~/.fablab/bindings.yml
-          echo "  aws:"                 >> ~/.fablab/bindings.yml
-          echo "    managed_key: true"  >> ~/.fablab/bindings.yml
-          echo "  edge:"                >> ~/.fablab/bindings.yml
-          echo "    username: admin"    >> ~/.fablab/bindings.yml
-          echo "    password: admin"    >> ~/.fablab/bindings.yml
-          echo "  influxdb:"            >> ~/.fablab/bindings.yml
-          echo "    username: fablab"   >> ~/.fablab/bindings.yml
-          echo "    password: fablab"   >> ~/.fablab/bindings.yml
-          echo "ziti_version: $($(go env GOPATH)/bin/ziti-ci -q get-current-version)" >> ~/.fablab/bindings.yml
-          cat ~/.fablab/bindings.yml
-
       - name: Create Test Environment
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/simple-transfer create
+          $(go env GOPATH)/bin/simple-transfer create -d simple-transfer-${GITHUB_RUN_NUMBER} -n simple-transfer-${GITHUB_RUN_NUMBER} -l environment=gh,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
           $(go env GOPATH)/bin/simple-transfer up
 
       - name: Test Ziti Command
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/simple-transfer run
-          # pushd zititest && go test -v ./tests/... && popd
+          pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
 
-      - name: Test Ziti Command Teardown
+      - name: Create fablab instance archive
+        if: always()
+        env:
+          FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
+        run: |
+          cp $(go env GOPATH)/bin/simple-transfer simple-transfer-${GITHUB_RUN_NUMBER}
+          cp ~/.fablab/config.yml simple-transfer-${GITHUB_RUN_NUMBER}/
+          tar --exclude *terraform-provider-aws* -czvf - simple-transfer-${GITHUB_RUN_NUMBER}/ | gpg --symmetric --cipher-algo aes256 --batch --quiet --passphrase ${FABLAB_PASSPHRASE} -o simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+          aws s3 cp ./simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg s3://ziti-smoketest-fablab-instances/
+
+      - name: Test Report Generation
         if: always()
         run: |
-          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/simple-transfer dispose
-          $(go env GOPATH)/bin/simple-transfer clean
+          go install github.com/jstemmer/go-junit-report/v2@latest
+          $(go env GOPATH)/bin/go-junit-report -in zititest/test.out -out test-report.xml
+
+      - name: Test Summary
+        uses: test-summary/action@v2
+        with:
+          paths: |
+            test-report.xml
+          show: "fail, skip"
+        if: always()
 
       # END linux-build-steps
+
+  fablab-smoketest-teardown:
+    name: Teardown SmokeTest
+    if: always()
+    runs-on: ubuntu-20.04
+    needs: [ fablab-smoketest ]
+    steps:
+      - name: Sleep If Failed
+        if: needs.fablab-smoketest.result != 'success'
+        run: |
+          sleep 30m
+
+      - name: Teardown Test Environment
+        if: always()
+        env:
+          FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
+        run: |
+          aws s3 cp s3://ziti-smoketest-fablab-instances/simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg .
+          gpg --quiet --batch --yes --decrypt --passphrase=${FABLAB_PASSPHRASE} --output simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+          tar -xzf simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz 
+          ./simple-transfer-${GITHUB_RUN_NUMBER}/simple-transfer import simple-transfer-${GITHUB_RUN_NUMBER}
+          ./simple-transfer-${GITHUB_RUN_NUMBER}/simple-transfer dispose
+          aws s3 rm s3://ziti-smoketest-fablab-instances/simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg
 
   publish:
     name: Publish Binaries
@@ -169,7 +228,7 @@ jobs:
       && (needs.windows-build.result == 'success' || needs.windows-build.result == 'skipped')
       && (needs.fablab-smoketest.result == 'success' || needs.fablab-smoketest.result == 'skipped')
     runs-on: ubuntu-20.04
-    needs: [ mac-os-build, windows-build, fablab-smoketest ]
+    needs: [ linux-build, mac-os-build, windows-build, fablab-smoketest ]
     outputs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
     steps:
@@ -179,7 +238,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: '1.20.x'
 
@@ -191,28 +250,11 @@ jobs:
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
 
-      - name: Build and Test
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
-          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
-        run: |
-          sudo apt-get update
-          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
-          $(go env GOPATH)/bin/ziti-ci configure-git
-          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          go install github.com/mitchellh/gox@latest
-          $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
-          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
-          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
-
-      # upload Linux artifacts so we can copy them into a container image in another workflow
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+      - name: Download linux release artifact
+        uses: actions/download-artifact@v3
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
-          retention-days: 5
 
       - name: Download darwin release artifact
         if: needs.mac-os-build.result == 'success'
@@ -242,7 +284,7 @@ jobs:
           ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         run: |
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
-          $(go env GOPATH)/bin/ziti-ci publish-to-github
+          $(go env GOPATH)/bin/ziti-ci publish-to-github --archive-base ""
 
       # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
       - name: Compute the Ziti Version String for CI Jobs

@@ -104,8 +104,11 @@ type ApiOptions struct {
 }
 
 /* END Controller config template structure */
+var hostname string
 
-var controllerOptions = CreateConfigControllerOptions{}
+func init() {
+	hostname, _ = os.Hostname()
+}
 
 func TestControllerOutputPathDoesNotExist(t *testing.T) {
 	expectedErrorMsg := "stat /IDoNotExist: no such file or directory"
@@ -123,7 +126,7 @@ func TestCreateConfigControllerTemplateValues(t *testing.T) {
 
 	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
 	// This must run first, otherwise the addresses used later won't be correct; this command re-allocates the `data` struct
-	_ = execCreateConfigControllerCommand(nil, nil)
+	_, data := execCreateConfigControllerCommand(nil, nil)
 
 	expectedNonEmptyStringFields := []string{
 		".ZitiHome",
@@ -131,8 +134,9 @@ func TestCreateConfigControllerTemplateValues(t *testing.T) {
 		".Controller.Identity.ServerCert",
 		".Controller.Identity.Key",
 		".Controller.Identity.Ca",
-		".Controller.Ctrl.ListenerAddress",
-		".Controller.Ctrl.ListenerPort",
+		".Controller.Ctrl.BindAddress",
+		".Controller.Ctrl.AdvertisedAddress",
+		".Controller.Ctrl.AdvertisedPort",
 		".Controller.EdgeApi.Address",
 		".Controller.EdgeApi.Port",
 		".Controller.EdgeEnrollment.SigningCert",
@@ -154,8 +158,9 @@ func TestCreateConfigControllerTemplateValues(t *testing.T) {
 		&data.Controller.Identity.ServerCert,
 		&data.Controller.Identity.Key,
 		&data.Controller.Identity.Ca,
-		&data.Controller.Ctrl.ListenerAddress,
-		&data.Controller.Ctrl.ListenerPort,
+		&data.Controller.Ctrl.BindAddress,
+		&data.Controller.Ctrl.AdvertisedAddress,
+		&data.Controller.Ctrl.AdvertisedPort,
 		&data.Controller.EdgeApi.Address,
 		&data.Controller.EdgeApi.Port,
 		&data.Controller.EdgeEnrollment.SigningCert,
@@ -241,10 +246,7 @@ func TestCreateConfigControllerTemplateValues(t *testing.T) {
 }
 
 func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
-	// Clears template data and unsets all env vars
-	clearControllerOptionsAndTemplateData()
-
-	ctrlConfig := execCreateConfigControllerCommand(nil, nil)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, nil)
 
 	// identity:
 	t.Run("TestPKICert", func(t *testing.T) {
@@ -273,16 +275,16 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 	})
 
 	// ctrl:
-	t.Run("TestListenerAddress", func(t *testing.T) {
-		expectedValue := testDefaultCtrlListenerAddress
+	t.Run("TestBindAddress", func(t *testing.T) {
+		expectedValue := testDefaultCtrlBindAddress
 
-		assert.Equal(t, expectedValue, data.Controller.Ctrl.ListenerAddress)
+		assert.Equal(t, expectedValue, data.Controller.Ctrl.BindAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[1])
 	})
-	t.Run("TestListenerPort", func(t *testing.T) {
-		expectedValue := testDefaultCtrlListenerPort
+	t.Run("TestAdvertisedPort", func(t *testing.T) {
+		expectedValue := testDefaultCtrlAdvertisedPort
 
-		assert.Equal(t, expectedValue, data.Controller.Ctrl.ListenerPort)
+		assert.Equal(t, expectedValue, data.Controller.Ctrl.AdvertisedPort)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[2])
 	})
 
@@ -338,8 +340,8 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 
 	// web:bindPoints
 	t.Run("TestEdgeBindpointInterfaceAddress", func(t *testing.T) {
-		// Should default to the value of Ctrl Listener Address
-		expectedValue := data.Controller.Ctrl.ListenerAddress
+		// Should default to the value of Ctrl Listener/bind Address
+		expectedValue := data.Controller.Ctrl.BindAddress
 
 		assert.Equal(t, expectedValue, data.Controller.Web.BindPoints.InterfaceAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[0])
@@ -444,7 +446,7 @@ func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 		"ZITI_HOME":                         "",
 	}
 	// run the config
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
 	// identity:
 	t.Run("TestPKICert", func(t *testing.T) {
@@ -473,16 +475,16 @@ func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 	})
 
 	// ctrl:
-	t.Run("TestListenerAddress", func(t *testing.T) {
-		expectedValue := testDefaultCtrlListenerAddress
+	t.Run("TestBindAddress", func(t *testing.T) {
+		expectedValue := testDefaultCtrlBindAddress
 
-		assert.Equal(t, expectedValue, data.Controller.Ctrl.ListenerAddress)
+		assert.Equal(t, expectedValue, data.Controller.Ctrl.BindAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[1])
 	})
-	t.Run("TestListenerPort", func(t *testing.T) {
-		expectedValue := testDefaultCtrlListenerPort
+	t.Run("TestAdvertisedPort", func(t *testing.T) {
+		expectedValue := testDefaultCtrlAdvertisedPort
 
-		assert.Equal(t, expectedValue, data.Controller.Ctrl.ListenerPort)
+		assert.Equal(t, expectedValue, data.Controller.Ctrl.AdvertisedPort)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[2])
 	})
 
@@ -546,8 +548,8 @@ func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 
 	// web:bindPoints
 	t.Run("TestEdgeBindpointInterfaceAddress", func(t *testing.T) {
-		// Should default to the value of Ctrl Listener Address
-		expectedValue := data.Controller.Ctrl.ListenerAddress
+		// Should default to the value of Ctrl Listener/bind Address
+		expectedValue := data.Controller.Ctrl.BindAddress
 
 		assert.Equal(t, expectedValue, data.Controller.Web.BindPoints.InterfaceAddress)
 		assert.Equal(t, expectedValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[0])
@@ -649,7 +651,7 @@ func TestZitiCtrlIdentitySection(t *testing.T) {
 		"ZITI_PKI_CTRL_CA":          caPath,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
 	assert.Equal(t, certPath, data.Controller.Identity.Cert)
 	assert.Equal(t, certPath, ctrlConfig.Identity.Cert)
@@ -661,49 +663,49 @@ func TestZitiCtrlIdentitySection(t *testing.T) {
 	assert.Equal(t, caPath, ctrlConfig.Identity.Ca)
 }
 
-func TestCtrlListenerAddress(t *testing.T) {
+func TestCtrlBindAddress(t *testing.T) {
 	customValue := "123.456.7.8"
 	keys := map[string]string{
-		"ZITI_CTRL_LISTENER_ADDRESS": customValue,
+		"ZITI_CTRL_BIND_ADDRESS": customValue,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
-	assert.Equal(t, customValue, data.Controller.Ctrl.ListenerAddress)
+	assert.Equal(t, customValue, data.Controller.Ctrl.BindAddress)
 	assert.Equal(t, customValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[1])
 }
 
-func TestCtrlListenerPort(t *testing.T) {
-	customValue := "9999"
+func TestCtrlAdvertisedPort(t *testing.T) {
+	customValue := "9996"
 	keys := map[string]string{
-		"ZITI_CTRL_LISTENER_PORT": customValue,
+		"ZITI_CTRL_ADVERTISED_PORT": customValue,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
-	assert.Equal(t, customValue, data.Controller.Ctrl.ListenerPort)
+	assert.Equal(t, customValue, data.Controller.Ctrl.AdvertisedPort)
 	assert.Equal(t, customValue, strings.Split(ctrlConfig.Ctrl.Listener, ":")[2])
 }
 
 func TestCtrlEdgeAPIAddress(t *testing.T) {
 	customValue := "123.456.7.8"
 	keys := map[string]string{
-		"ZITI_CTRL_EDGE_API_ADDRESS": customValue,
+		"ZITI_CTRL_EDGE_ADVERTISED_ADDRESS": customValue,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
 	assert.Equal(t, customValue, data.Controller.EdgeApi.Address)
 	assert.Equal(t, customValue, strings.Split(ctrlConfig.Edge.Api.Address, ":")[0])
 }
 
 func TestCtrlEdgeAPIPort(t *testing.T) {
-	customValue := "9999"
+	customValue := "9995"
 	keys := map[string]string{
-		"ZITI_CTRL_EDGE_API_PORT": customValue,
+		"ZITI_CTRL_EDGE_ADVERTISED_PORT": customValue,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
 	assert.Equal(t, customValue, data.Controller.EdgeApi.Port)
 	assert.Equal(t, customValue, strings.Split(ctrlConfig.Edge.Api.Address, ":")[1])
@@ -717,7 +719,7 @@ func TestCtrlEdgeAPIEnrollmentSignerCert(t *testing.T) {
 		"ZITI_PKI_SIGNER_KEY":  keyPath,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
 	assert.Equal(t, certPath, data.Controller.EdgeEnrollment.SigningCert)
 	assert.Equal(t, certPath, ctrlConfig.Edge.Enrollment.SigningCert.Cert)
@@ -733,7 +735,7 @@ func TestEdgeIdentityEnrollmentDurationEnvVar(t *testing.T) {
 		"ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION": customValue,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
 	assert.Equal(t, customDuration, data.Controller.EdgeEnrollment.EdgeIdentityDuration)
 	assert.Equal(t, expectedValue, ctrlConfig.Edge.Enrollment.EdgeIdentity.Duration)
@@ -748,7 +750,7 @@ func TestEdgeIdentityEnrollmentDurationCLITakesPriority(t *testing.T) {
 	}
 	args := []string{"--identityEnrollmentDuration", cliValue}
 
-	ctrlConfig := execCreateConfigControllerCommand(args, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(args, keys)
 
 	// Expect that the CLI value was used over the environment variable
 	expectedValue, _ := time.ParseDuration(cliValue)
@@ -763,7 +765,7 @@ func TestEdgeIdentityEnrollmentDurationCLIConvertsToMin(t *testing.T) {
 	expectedConfigValue := "60m" // Config value representation should be in minutes
 
 	args := []string{"--identityEnrollmentDuration", cliValue}
-	ctrlConfig := execCreateConfigControllerCommand(args, nil)
+	ctrlConfig, data := execCreateConfigControllerCommand(args, nil)
 
 	// Expect that the CLI value was used over the environment variable
 	expectedValue, _ := time.ParseDuration(cliValue)
@@ -778,10 +780,10 @@ func TestEdgeRouterEnrollmentDurationEnvVar(t *testing.T) {
 	customValue := "5"
 	expectedValue := customValue + "m" // Env Var int is converted to minutes format
 	keys := map[string]string{
-		"ZITI_EDGE_ROUTER_ENROLLMENT_DURATION": customValue,
+		"ZITI_ROUTER_ENROLLMENT_DURATION": customValue,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
 	assert.Equal(t, customDuration, data.Controller.EdgeEnrollment.EdgeRouterDuration)
 	assert.Equal(t, expectedValue, ctrlConfig.Edge.Enrollment.EdgeRouter.Duration)
@@ -792,11 +794,11 @@ func TestEdgeRouterEnrollmentDurationCLITakesPriority(t *testing.T) {
 	cliValue := "10m"  // Setting a CLI custom duration which is also not the default value
 	expectedConfigValue := cliValue
 	keys := map[string]string{
-		"ZITI_EDGE_ROUTER_ENROLLMENT_DURATION": envVarValue,
+		"ZITI_ROUTER_ENROLLMENT_DURATION": envVarValue,
 	}
 	args := []string{"--routerEnrollmentDuration", cliValue}
 
-	ctrlConfig := execCreateConfigControllerCommand(args, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(args, keys)
 
 	// Expect that the CLI value was used over the environment variable
 	expectedValue, _ := time.ParseDuration(cliValue)
@@ -811,7 +813,7 @@ func TestEdgeRouterEnrollmentDurationCLIConvertsToMin(t *testing.T) {
 	expectedConfigValue := "60m" // Config value representation should be in minutes
 
 	args := []string{"--routerEnrollmentDuration", cliValue}
-	ctrlConfig := execCreateConfigControllerCommand(args, nil)
+	ctrlConfig, data := execCreateConfigControllerCommand(args, nil)
 
 	// Expect that the CLI value was used over the environment variable
 	expectedValue, _ := time.ParseDuration(cliValue)
@@ -829,7 +831,7 @@ func TestEdgeRouterAndIdentityEnrollmentDurationTogetherCLI(t *testing.T) {
 
 	// Create and run the CLI command
 	args := []string{"--routerEnrollmentDuration", cliRouterDurationValue, "--identityEnrollmentDuration", cliIdentityDurationValue}
-	configStruct := execCreateConfigControllerCommand(args, nil)
+	configStruct, _ := execCreateConfigControllerCommand(args, nil)
 
 	// Expect that the config values are represented correctly
 	assert.Equal(t, expectedIdentityConfigValue, configStruct.Edge.Enrollment.EdgeIdentity.Duration)
@@ -845,9 +847,9 @@ func TestEdgeRouterAndIdentityEnrollmentDurationTogetherEnvVar(t *testing.T) {
 	// Create and run the CLI command
 	keys := map[string]string{
 		"ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION": envVarIdentityDurationValue,
-		"ZITI_EDGE_ROUTER_ENROLLMENT_DURATION":   envVarRouterDurationValue,
+		"ZITI_ROUTER_ENROLLMENT_DURATION":        envVarRouterDurationValue,
 	}
-	configStruct := execCreateConfigControllerCommand(nil, keys)
+	configStruct, _ := execCreateConfigControllerCommand(nil, keys)
 
 	// Expect that the config values are represented correctly
 	assert.Equal(t, expectedIdentityConfigValue, configStruct.Edge.Enrollment.EdgeIdentity.Duration)
@@ -855,27 +857,18 @@ func TestEdgeRouterAndIdentityEnrollmentDurationTogetherEnvVar(t *testing.T) {
 }
 
 func TestCtrlEdgeInterfaceAddress(t *testing.T) {
-	customValue := "123.456.7.8"
+	addy := "custom.domain.name"
+	port := "9998"
 	keys := map[string]string{
-		"ZITI_CTRL_EDGE_INTERFACE_ADDRESS": customValue,
+		"ZITI_CTRL_EDGE_BIND_ADDRESS":    addy,
+		"ZITI_CTRL_EDGE_ADVERTISED_PORT": port,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
-	assert.Equal(t, customValue, data.Controller.Web.BindPoints.InterfaceAddress)
-	assert.Equal(t, customValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[0])
-}
-
-func TestCtrlEdgeInterfacePort(t *testing.T) {
-	customValue := "9999"
-	keys := map[string]string{
-		"ZITI_CTRL_EDGE_INTERFACE_PORT": customValue,
-	}
-
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
-
-	assert.Equal(t, customValue, data.Controller.Web.BindPoints.InterfacePort)
-	assert.Equal(t, customValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[1])
+	assert.Equal(t, addy, data.Controller.Web.BindPoints.InterfaceAddress)
+	assert.Equal(t, addy, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[0])
+	assert.Equal(t, port, strings.Split(ctrlConfig.Web[0].BindPoints[0].BpInterface, ":")[1])
 }
 
 func TestCtrlEdgeAdvertisedAddress(t *testing.T) {
@@ -884,19 +877,19 @@ func TestCtrlEdgeAdvertisedAddress(t *testing.T) {
 		"ZITI_CTRL_EDGE_ADVERTISED_ADDRESS": customValue,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
 	assert.Equal(t, customValue, data.Controller.Web.BindPoints.AddressAddress)
 	assert.Equal(t, customValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].Address, ":")[0])
 }
 
 func TestCtrlEdgeAdvertisedPort(t *testing.T) {
-	customValue := "9999"
+	customValue := "9997"
 	keys := map[string]string{
 		"ZITI_CTRL_EDGE_ADVERTISED_PORT": customValue,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
 	assert.Equal(t, customValue, data.Controller.Web.BindPoints.AddressPort)
 	assert.Equal(t, customValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].Address, ":")[1])
@@ -914,7 +907,7 @@ func TestCtrlEdgeIdentitySection(t *testing.T) {
 		"ZITI_PKI_CTRL_CERT":        certPath,
 	}
 
-	ctrlConfig := execCreateConfigControllerCommand(nil, keys)
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
 
 	assert.Equal(t, certPath, data.Controller.Web.Identity.Cert)
 	assert.Equal(t, certPath, ctrlConfig.Web[0].Identity.Cert)
@@ -926,11 +919,21 @@ func TestCtrlEdgeIdentitySection(t *testing.T) {
 	assert.Equal(t, caPath, ctrlConfig.Web[0].Identity.Ca)
 }
 
-func clearControllerOptionsAndTemplateData() {
-	controllerOptions = CreateConfigControllerOptions{}
-	data = &ConfigTemplateValues{}
+func TestCtrlEdgeAltAddress(t *testing.T) {
+	// first test when it's not set
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, map[string]string{})
+	assert.Equal(t, hostname, data.Controller.Ctrl.AltAdvertisedAddress)
+	assert.Equal(t, hostname+":"+testDefaultCtrlEdgeAdvertisedPort, ctrlConfig.Web[0].BindPoints[0].Address)
+	assert.Equal(t, hostname+":"+testDefaultCtrlEdgeAdvertisedPort, ctrlConfig.Edge.Api.Address)
 
-	unsetZitiEnv()
+	altAddy := "alternative.address.ziti"
+	keys := map[string]string{
+		"ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS": altAddy,
+	}
+	ctrlConfig2, data2 := execCreateConfigControllerCommand(nil, keys)
+	assert.Equal(t, altAddy, data2.Controller.Ctrl.AltAdvertisedAddress)
+	assert.Equal(t, altAddy+":"+testDefaultCtrlEdgeAdvertisedPort, ctrlConfig2.Web[0].BindPoints[0].Address)
+	assert.Equal(t, altAddy+":"+testDefaultCtrlEdgeAdvertisedPort, ctrlConfig2.Edge.Api.Address)
 }
 
 func configToStruct(config string) ControllerConfig {
@@ -942,9 +945,10 @@ func configToStruct(config string) ControllerConfig {
 	return configStruct
 }
 
-func execCreateConfigControllerCommand(args []string, keys map[string]string) ControllerConfig {
+func execCreateConfigControllerCommand(args []string, keys map[string]string) (ControllerConfig, *ConfigTemplateValues) {
 	// Setup
-	clearControllerOptionsAndTemplateData()
+	clearEnvAndInitializeTestData()
+	controllerOptions := CreateConfigControllerOptions{}
 	controllerOptions.Output = defaultOutput
 
 	setEnvByMap(keys)
@@ -955,5 +959,5 @@ func execCreateConfigControllerCommand(args []string, keys map[string]string) Co
 		_ = cmd.Execute()
 	})
 
-	return configToStruct(configOutput)
+	return configToStruct(configOutput), cmd.ConfigData
 }

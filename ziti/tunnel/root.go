@@ -68,6 +68,7 @@ func NewTunnelCmd(standalone bool) *cobra.Command {
 	root.PersistentFlags().StringP(dnsSvcIpRangeFlag, "d", "100.64.0.1/10", "cidr to use when assigning IPs to unresolvable intercept hostnames")
 	root.PersistentFlags().BoolVar(&cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
 	root.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
+	root.PersistentFlags().StringVar(&cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 
 	p := common.NewOptionsProvider(os.Stdout, os.Stderr)
 	root.AddCommand(enrollment.NewEnrollCommand(p))
@@ -83,6 +84,7 @@ var interceptor intercept.Interceptor
 var logFormatter string
 var cliAgentEnabled bool
 var cliAgentAddr string
+var cliAgentAlias string
 
 func Execute() {
 	if err := NewTunnelCmd(true).Execute(); err != nil {
@@ -120,7 +122,13 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 		// don't use the agent's shutdown handler. it calls os.Exit on SIGINT
 		// which interferes with the servicePoller shutdown
 		cleanup := false
-		if err := agent.Listen(agent.Options{Addr: cliAgentAddr, ShutdownCleanup: &cleanup}); err != nil {
+		err := agent.Listen(agent.Options{
+			Addr:            cliAgentAddr,
+			ShutdownCleanup: &cleanup,
+			AppAlias:        cliAgentAlias,
+		})
+
+		if err != nil {
 			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 		}
 	}

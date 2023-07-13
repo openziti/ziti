@@ -14,7 +14,8 @@ func Login(componentSelector string) model.Action {
 	}
 }
 
-func (l *login) Execute(m *model.Model) error {
+func (l *login) Execute(run model.Run) error {
+	m := run.GetModel()
 	ctrl, err := m.SelectComponent(l.componentSelector)
 	if err != nil {
 		return err
@@ -24,7 +25,7 @@ func (l *login) Execute(m *model.Model) error {
 	password := m.MustStringVariable("credentials.edge.password")
 	edgeApiBaseUrl := ctrl.Host.PublicIp + ":1280"
 
-	caChain := filepath.Join(model.PkiBuild(), ctrl.PublicIdentity, "certs", ctrl.PublicIdentity+".cert")
+	caChain := filepath.Join(model.KitBuild(), model.BuildPkiDir, ctrl.Id, "certs", ctrl.Id+".cert")
 
 	if username == "" {
 		return errors.New("variable credentials/edge/username must be a string")

@@ -50,8 +50,12 @@ function _setup_ziti_env_path {
   if [[ "${ZITI_ENV_FILE-}" == "" ]]; then export ZITI_ENV_FILE="${ZITI_HOME}/${ZITI_NETWORK}.env"; else echo "ZITI_ENV_FILE overridden: ${ZITI_ENV_FILE}"; fi
 }
 
+
 function _setup_ziti_network {
-  if [[ "${ZITI_NETWORK-}" == "" ]]; then ZITI_NETWORK="$(hostname -s)"; export ZITI_NETWORK; else echo "ZITI_NETWORK overridden: ${ZITI_NETWORK}"; fi
+  if [[ "ran" != "${_setup_ziti_network_run}" ]]; then
+    if [[ "${ZITI_NETWORK-}" == "" ]]; then ZITI_NETWORK="$(hostname -s)"; export ZITI_NETWORK; else echo "ZITI_NETWORK overridden: ${ZITI_NETWORK}"; fi
+    _setup_ziti_network_run="ran"
+  fi
 }
 
 function _set_ziti_bin_dir {
@@ -182,7 +186,7 @@ function _check_prereq {
       echo " "
       echo "You're missing one or more commands that are used in this script."
       echo "Please ensure the commands listed are on the path and then try again."
-      echo "${missing_requirements}"
+      echo -e "${missing_requirements}"
       echo " "
       echo " "
       return 1
@@ -265,8 +269,9 @@ function unsetZitiEnv {
     if [[ "-s" != "${param1-}" ]]; then echo "unsetting [${envvar}] ${zEnvVar}"; fi
     unset "${envvar}"
   done
-  # Have to explicitly unset this one (no ZITI_ prefix)
+  # Have to explicitly unset these (no ZITI_ prefix)
   unset ZITIx_EXPRESS_COMPLETE
+  unset _setup_ziti_network_run
 }
 
 # Checks for explicit environment variables or set as defaults, also creating directories as needed
@@ -312,9 +317,11 @@ function setupEnvironment {
 
   # Controller Values
   if [[ "${ZITI_CTRL_NAME-}" == "" ]]; then export ZITI_CTRL_NAME="${ZITI_NETWORK}"; else echo "ZITI_CTRL_NAME overridden: ${ZITI_CTRL_NAME}"; fi
-  if [[ "${ZITI_CTRL_LISTENER_PORT-}" == "" ]]; then export ZITI_CTRL_LISTENER_PORT="6262"; else echo "ZITI_CTRL_LISTENER_PORT overridden: ${ZITI_CTRL_LISTENER_PORT}"; fi
   if [[ "${ZITI_CTRL_EDGE_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_PORT="1280"; else echo "ZITI_CTRL_EDGE_ADVERTISED_PORT overridden: ${ZITI_CTRL_EDGE_ADVERTISED_PORT}"; fi
   if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_NETWORK-}"; else echo "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS overridden: ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"; fi
+  if [[ "${ZITI_CTRL_BIND_ADDRESS-}" != "" ]]; then echo "ZITI_CTRL_BIND_ADDRESS overridden: ${ZITI_CTRL_BIND_ADDRESS}"; fi
+  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_NETWORK-}"; else echo "ZITI_CTRL_ADVERTISED_ADDRESS overridden: ${ZITI_CTRL_ADVERTISED_ADDRESS}"; fi
+  if [[ "${ZITI_CTRL_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_PORT="6262"; else echo "ZITI_CTRL_ADVERTISED_PORT overridden: ${ZITI_CTRL_ADVERTISED_PORT}"; fi
   if [[ "${ZITI_PKI_CTRL_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_ROOTCA_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-root-ca"; else echo "ZITI_PKI_CTRL_ROOTCA_NAME overridden: ${ZITI_PKI_CTRL_ROOTCA_NAME}"; fi
   if [[ "${ZITI_PKI_CTRL_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_INTERMEDIATE_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-intermediate"; else echo "ZITI_PKI_CTRL_INTERMEDIATE_NAME overridden: ${ZITI_PKI_CTRL_INTERMEDIATE_NAME}"; fi
   if [[ "${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_EDGE_ROOTCA_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-root-ca"; else echo "ZITI_PKI_CTRL_EDGE_ROOTCA_NAME overridden: ${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}"; fi
@@ -329,9 +336,10 @@ function setupEnvironment {
   if [[ "${ZITI_PKI_EDGE_CA}" == "" ]]; then export ZITI_PKI_EDGE_CA="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}.cert"; else echo "ZITI_PKI_EDGE_CA overridden: ${ZITI_PKI_EDGE_CA}"; fi
 
   # Router Values
-  if [[ "${ZITI_EDGE_ROUTER_NAME-}" == "" ]]; then export ZITI_EDGE_ROUTER_NAME="${ZITI_NETWORK}-edge-router"; else echo "ZITI_EDGE_ROUTER_NAME overridden: ${ZITI_EDGE_ROUTER_NAME}"; fi
-  if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; else echo "ZITI_EDGE_ROUTER_PORT overridden: ${ZITI_EDGE_ROUTER_PORT}"; fi
-  if [[ "${EXTERNAL_DNS-}" != "" ]]; then export ZITI_EDGE_ROUTER_ADVERTISED_HOST="${EXTERNAL_DNS}"; fi
+  if [[ "${ZITI_ROUTER_NAME-}" == "" ]]; then export ZITI_ROUTER_NAME="${ZITI_NETWORK}-edge-router"; else echo "ZITI_ROUTER_NAME overridden: ${ZITI_ROUTER_NAME}"; fi
+  if [[ "${ZITI_ROUTER_PORT-}" == "" ]]; then export ZITI_ROUTER_PORT="3022"; else echo "ZITI_ROUTER_PORT overridden: ${ZITI_ROUTER_PORT}"; fi
+  if [[ "${ZITI_ROUTER_LISTENER_BIND_PORT-}" == "" ]]; then export ZITI_ROUTER_LISTENER_BIND_PORT="8444"; else echo "ZITI_ROUTER_LISTENER_BIND_PORT overridden: ${ZITI_ROUTER_LISTENER_BIND_PORT}"; fi
+  if [[ "${EXTERNAL_DNS-}" != "" ]]; then export ZITI_ROUTER_ADVERTISED_HOST="${EXTERNAL_DNS}"; fi
 
   # Set up directories
   mkdir -p "${ZITI_HOME}"
@@ -363,9 +371,9 @@ function persistEnvironmentValues {
   # Store all ZITI_ variables in the environment file, creating the directory if necessary
   mkdir -p "$(dirname "${filepath}")" && echo "" > "${filepath}"
   for zEnvVar in $(set | grep -e "^ZITI_" | sort); do
-    envvar="$(echo "${zEnvVar}" | cut -d '=' -f1)"
-    envval="$(echo "${zEnvVar}" | cut -d '=' -f2-100)"
-    echo "export ${envvar}=\"${envval}\"" >> "${filepath}"
+      envvar="$(echo "${zEnvVar}" | cut -d '=' -f1)"
+      envval="$(echo "${zEnvVar}" | cut -d '=' -f2-1000)"
+      echo 'if [[ "$'${envvar}'" == "" ]]; then export '${envvar}'="'${envval}'"; else echo "NOT OVERRIDING: env var '${envvar}' already set. using existing value"; fi' >> "${filepath}"
   done
 
   export PFXLOG_NO_JSON=true
@@ -479,13 +487,13 @@ function stopController {
 
 function startRouter {
   local pid retVal log_file
-  _check_env_variable ZITI_HOME ZITI_EDGE_ROUTER_NAME ZITI_BIN_DIR
+  _check_env_variable ZITI_HOME ZITI_ROUTER_NAME ZITI_BIN_DIR
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
   fi
-  log_file="${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.log"
-  "${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml" > "${log_file}" 2>&1 &
+  log_file="${ZITI_HOME}/${ZITI_ROUTER_NAME}.log"
+  "${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME}/${ZITI_ROUTER_NAME}.yaml" > "${log_file}" 2>&1 &
   pid=$!
   echo -e "Express Edge Router started as process id: ${pid}. log located at: $(BLUE "${log_file}")"
 }
@@ -496,7 +504,7 @@ function stopRouter {
   local pid retVal
   pid=${1-}
   if [[ "${pid}" == "" ]]; then
-    _check_env_variable ZITI_EDGE_ROUTER_PORT
+    _check_env_variable ZITI_ROUTER_PORT
     retVal=$?
     if [[ "${retVal}" != 0 ]]; then
       echo "You will need to source the ziti env file first so that the router process can be found"
@@ -504,7 +512,7 @@ function stopRouter {
     fi
 
     # Get the pid listening on the controller port
-    pid=$(lsof -ti:"${ZITI_EDGE_ROUTER_PORT}")
+    pid=$(lsof -ti:"${ZITI_ROUTER_PORT}")
   fi
 
   if [[ -n ${pid:-} ]]; then
@@ -524,15 +532,15 @@ function stopRouter {
 # Checks all ports intended to be used in the Ziti network
 function checkZitiPorts {
     local returnCnt=0
-    _portCheck "ZITI_CTRL_LISTENER_PORT" "Controller"
+    _portCheck "ZITI_CTRL_ADVERTISED_PORT" "Controller"
     returnCnt=$((returnCnt + $?))
-    _portCheck "ZITI_EDGE_ROUTER_PORT" "Edge Router"
+    _portCheck "ZITI_ROUTER_PORT" "Edge Router"
     returnCnt=$((returnCnt + $?))
     _portCheck "ZITI_CTRL_EDGE_ADVERTISED_PORT" "Edge Controller"
     returnCnt=$((returnCnt + $?))
-    if [[ "${ZITI_EDGE_ROUTER_LISTENER_BIND_PORT-}" != "" ]]; then
+    if [[ "${ZITI_ROUTER_LISTENER_BIND_PORT-}" != "" ]]; then
       # This port can be explicitly set but is not always, only check if set
-      _portCheck "ZITI_EDGE_ROUTER_LISTENER_BIND_PORT" "Router Listener Bind Port"
+      _portCheck "ZITI_ROUTER_LISTENER_BIND_PORT" "Router Listener Bind Port"
       returnCnt=$((returnCnt + $?))
     fi
     if [[ "returnCnt" -gt "0" ]]; then return 1; fi
@@ -617,11 +625,12 @@ function getZiti {
     if [[ "${retVal}" != 0 ]]; then
       return 1
     fi
-      # Check if an error occurred while trying to pull desired version (happens with incorrect version or formatting issue)
-      if ! _verify_ziti_version_exists; then
-          echo -e "  * $(RED "ERROR: This version of ziti (${ZITI_VERSION_OVERRIDE}) could not be found. Please check the version and try again. The version should follow the format \"vx.x.x\".") "
-          return 1
-      fi
+
+    # Check if an error occurred while trying to pull desired version (happens with incorrect version or formatting issue)
+    if ! _verify_ziti_version_exists; then
+        echo -e "  * $(RED "ERROR: The version of ziti requested (${ZITI_VERSION_OVERRIDE}) could not be found for OS (${ZITI_OSTYPE}) and architecture (${ZITI_ARCH}). Please check these details and try again. The version should follow the format \"vx.x.x\".") "
+        return 1
+    fi
   fi
 
   # Where to store the ziti binaries zip
@@ -728,7 +737,7 @@ function createPki {
   if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"; fi
   if [[ "${EXTERNAL_DNS}" != "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${EXTERNAL_DNS}"; fi
   pki_allow_list_ip="127.0.0.1"
-  if [[ "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}"; fi
+  if [[ "${ZITI_CTRL_EDGE_IP_OVERRIDE}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}"; fi
   if [[ "${EXTERNAL_IP}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${EXTERNAL_IP}"; fi
 
   pki_allow_list_dns="${pki_allow_list_dns},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
@@ -820,7 +829,7 @@ function _create_router_config {
 
     # If router name is not passed as arg, prompt user for input
     echo -e "$(YELLOW "createEdgeRouterConfig requires a router name to be supplied") "
-    default_router_name="${ZITI_EDGE_ROUTER_NAME}"
+    default_router_name="${ZITI_ROUTER_NAME}"
     echo -en "Enter router name (${default_router_name}): "
     read -r router_name
 
@@ -838,14 +847,14 @@ function _create_router_config {
   # Get router type or set as default
   if [[ "${router_type}" == "" ]]; then
     router_type="private"
-  elif [[ "private" != "${router_type}" ]] && [[ "public" != "${router_type}" ]]; then
-    echo -e "Unknown router type parameter provided, use 'public', 'private', 'fabric', or 'wss'"
+  elif [[ "private" != "${router_type}" ]] && [[ "public" != "${router_type}" ]] && [[ "fabric" != "${router_type}" ]] && [[ "wss" != "${router_type}" ]]; then
+    echo -e "Unknown router type parameter provided '${router_type}', use 'public', 'private', 'fabric', or 'wss'"
   fi
 
   # Make sure necessary env variables are set
   # The following are used by ziti bin to generate the config so they need to be checked:
-  # ZITI_CTRL_EDGE_ADVERTISED_ADDRESS ZITI_CTRL_LISTENER_PORT
-  _check_env_variable ZITI_HOME ZITI_BIN_DIR ZITI_CTRL_EDGE_ADVERTISED_ADDRESS ZITI_CTRL_LISTENER_PORT
+  # ZITI_CTRL_EDGE_ADVERTISED_ADDRESS ZITI_CTRL_ADVERTISED_PORT
+  _check_env_variable ZITI_HOME ZITI_BIN_DIR ZITI_CTRL_EDGE_ADVERTISED_ADDRESS ZITI_CTRL_ADVERTISED_PORT
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
@@ -889,7 +898,7 @@ function addRouter {
   router_type="${2-}"
   router_attr="${3-}"
   # If no router name provided and env var is not set, prompt user for a router name
-  if [[ "${router_name}" == "" ]] && [[ -z "${ZITI_EDGE_ROUTER_NAME}" ]]; then
+  if [[ "${router_name}" == "" ]] && [[ -z "${ZITI_ROUTER_NAME}" ]]; then
     echo -e "$(YELLOW "addRouter requires a router name to be supplied") "
     echo -en "Enter router name: "
     read -r router_name
@@ -900,8 +909,8 @@ function addRouter {
       return 1
     fi
   # If no router name provided and env var is set, use env var
-  elif [[ "${router_name}" == "" ]] && [[ -n "${ZITI_EDGE_ROUTER_NAME}" ]]; then
-    router_name="${ZITI_EDGE_ROUTER_NAME}"
+  elif [[ "${router_name}" == "" ]] && [[ -n "${ZITI_ROUTER_NAME}" ]]; then
+    router_name="${ZITI_ROUTER_NAME}"
   fi
 
   # Create router
@@ -1014,9 +1023,9 @@ function expressInstall {
   "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcAllRouters --edge-router-roles '#all' --service-roles '#all' > /dev/null
   echo ""
 
-  echo "USING ZITI_EDGE_ROUTER_NAME: $ZITI_EDGE_ROUTER_NAME"
+  echo "USING ZITI_ROUTER_NAME: $ZITI_ROUTER_NAME"
 
-  addRouter "${ZITI_EDGE_ROUTER_NAME}" "public"
+  addRouter "${ZITI_ROUTER_NAME}" "public" "public"
   echo ""
 
   stopController
@@ -1098,7 +1107,7 @@ function createRouterSystemdFile {
 
     # If router name is not passed as arg, prompt user for input
     echo -e "$(YELLOW "createRouterSystemdFile requires a router name to be supplied") "
-    default_router_name="${ZITI_EDGE_ROUTER_NAME}"
+    default_router_name="${ZITI_ROUTER_NAME}"
     echo -en "Enter router name (${default_router_name}): "
     read -r router_name
 
@@ -1227,7 +1236,7 @@ function createRouterLaunchdFile {
 
     # If router name is not passed as arg, prompt user for input
     echo -e "$(YELLOW "createRouterLaunchdFile requires a router name to be supplied") "
-    default_router_name="${ZITI_EDGE_ROUTER_NAME}"
+    default_router_name="${ZITI_ROUTER_NAME}"
     echo -en "Enter router name (${default_router_name}): "
     read -r router_name
 
@@ -1351,10 +1360,6 @@ HeredocForSystemd
 function _verify_ziti_version_exists {
   local ziticurl
 
-  if ! setOs; then
-    return 1
-  fi
-
   _detect_architecture
 
   ziticurl="$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/tags/"${ZITI_VERSION_OVERRIDE}")"
@@ -1391,10 +1396,9 @@ function _portCheck {
     return 0
   fi
 
-  echo -en "Checking ${2-}'s port (${envVarValue})"
+  echo -en "Checking ${2-}'s port (${envVarValue}) "
   portCheckResult=$(lsof -w -i :"${envVarValue}" 2>&1)
   if [[ "${portCheckResult}" != "" ]]; then
-      echo -e "$(RED " ")"
       echo -e "$(RED "The intended ${2-} port (${envVarValue}) is currently being used, the process using this port should be closed or the port value should be changed.")"
       echo -e "$(RED "To use a different port, set the port value in ${envVar}")"
       echo -e "$(RED " ")"
@@ -1429,13 +1433,12 @@ function performMigration {
   sed -i '' 's/ZITI_CONTROLLER_INTERMEDIATE_NAME/ZITI_PKI_CTRL_INTERMEDIATE_NAME/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CONTROLLER_RAWNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CONTROLLER_ROOTCA_NAME/ZITI_PKI_CTRL_ROOTCA_NAME/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CTRL_ADVERTISED_ADDRESS/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CTRL_EDGE_PORT/ZITI_CTRL_EDGE_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CTRL_IDENTITY_CA/ZITI_PKI_CTRL_CA/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CTRL_IDENTITY_CERT/ZITI_PKI_CTRL_CERT/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CTRL_IDENTITY_KEY/ZITI_PKI_CTRL_KEY/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_CTRL_IDENTITY_SERVER_CERT/ZITI_PKI_CTRL_SERVER_CERT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CTRL_PORT/ZITI_CTRL_LISTENER_PORT/g' "${ZITI_ENV_FILE}"
+  sed -i '' 's/ZITI_CTRL_PORT/ZITI_CTRL_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CONTROLLER_HOSTNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME/ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CONTROLLER_PORT/ZITI_CTRL_EDGE_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
@@ -1445,11 +1448,11 @@ function performMigration {
   sed -i '' 's/ZITI_EDGE_CTRL_IDENTITY_CERT/ZITI_PKI_EDGE_CERT/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CTRL_IDENTITY_KEY/ZITI_PKI_EDGE_KEY/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT/ZITI_PKI_EDGE_SERVER_CERT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_ROUTER_RAWNAME/ZITI_EDGE_ROUTER_NAME/g' "${ZITI_ENV_FILE}"
+  sed -i '' 's/ZITI_ROUTER_RAWNAME/ZITI_ROUTER_NAME/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_PKI_OS_SPECIFIC/ZITI_PKI/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_SIGNING_CERT/ZITI_PKI_SIGNER_CERT/g' "${ZITI_ENV_FILE}"
   sed -i '' 's/ZITI_SIGNING_KEY/ZITI_PKI_SIGNER_KEY/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_ROUTER_HOSTNAME/ZITI_ROUTER_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
+  sed -i '' 's/ZITI_ROUTER_HOSTNAME/ZITI_ROUTER_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
 
   # Update environment variables if currently set
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" != "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_EDGE_CONTROLLER_HOSTNAME}"; fi
@@ -1460,18 +1463,18 @@ function performMigration {
   if [[ "${ZITI_CTRL_IDENTITY_CERT-}" != "" ]]; then export ZITI_PKI_CTRL_CERT="${ZITI_CTRL_IDENTITY_CERT}"; fi
   if [[ "${ZITI_CTRL_IDENTITY_KEY-}" != "" ]]; then export ZITI_PKI_CTRL_KEY="${ZITI_CTRL_IDENTITY_KEY}"; fi
   if [[ "${ZITI_CTRL_IDENTITY_SERVER_CERT-}" != "" ]]; then export ZITI_PKI_CTRL_SERVER_CERT="${ZITI_CTRL_IDENTITY_SERVER_CERT}"; fi
-  if [[ "${ZITI_CTRL_PORT-}" != "" ]]; then export ZITI_CTRL_LISTENER_PORT="${ZITI_CTRL_PORT}"; fi
+  if [[ "${ZITI_CTRL_PORT-}" != "" ]]; then export ZITI_CTRL_ADVERTISED_PORT="${ZITI_CTRL_PORT}"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME-}" != "" ]]; then export ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME="${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" != "" ]]; then export ZITI_CTRL_NAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_ROOTCA_NAME-}" != "" ]]; then export ZITI_PKI_CTRL_EDGE_ROOTCA_NAME="${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}"; fi
   if [[ "${ZITI_EDGE_CTRL_IDENTITY_CA-}" != "" ]]; then export ZITI_PKI_EDGE_CA="${ZITI_EDGE_CTRL_IDENTITY_CA}"; fi
   if [[ "${ZITI_EDGE_CTRL_IDENTITY_CERT-}" != "" ]]; then export ZITI_PKI_EDGE_CERT="${ZITI_EDGE_CTRL_IDENTITY_CERT}"; fi
   if [[ "${ZITI_EDGE_CTRL_IDENTITY_KEY-}" != "" ]]; then export ZITI_PKI_EDGE_KEY="${ZITI_EDGE_CTRL_IDENTITY_KEY}"; fi
-  if [[ "${ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT-}" != "" ]]; then export ZITI_EDGE_ROUTER_NAME="${ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT}"; fi
+  if [[ "${ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT-}" != "" ]]; then export ZITI_ROUTER_NAME="${ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT}"; fi
   if [[ "${ZITI_PKI_OS_SPECIFIC-}" != "" ]]; then export ZITI_PKI="${ZITI_PKI_OS_SPECIFIC}"; fi
   if [[ "${ZITI_SIGNING_CERT-}" != "" ]]; then export ZITI_PKI_SIGNER_CERT="${ZITI_SIGNING_CERT}"; fi
   if [[ "${ZITI_SIGNING_KEY-}" != "" ]]; then export ZITI_PKI_SIGNER_KEY="${ZITI_SIGNING_KEY}"; fi
-  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME-}" != "" ]]; then export ZITI_ROUTER_ADVERTISED_ADDRESS="${ZITI_EDGE_ROUTER_HOSTNAME}"; fi
+  if [[ "${ZITI_ROUTER_HOSTNAME-}" != "" ]]; then export ZITI_ROUTER_ADVERTISED_ADDRESS="${ZITI_ROUTER_HOSTNAME}"; fi
 
   # Update the necessary ziti binary references (others are not needed or are overwritten later)
   if [[ "${ZITI_BIN_DIR-}" != "" ]]; then

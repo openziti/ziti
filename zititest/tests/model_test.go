@@ -44,5 +44,9 @@ func init() {
 		logrus.Fatalf("unable to bootstrap (%s)", err)
 	}
 
-	run = model.NewRun()
+	var err error
+	run, err = model.NewRun()
+	if err != nil {
+		logrus.WithError(err).Fatal("error initializing run")
+	}
 }
