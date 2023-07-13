@@ -202,12 +202,12 @@ jobs:
     needs: [ fablab-smoketest ]
     steps:
       - name: Sleep If Failed
-        if: needs.fablab-smoketest.result != 'success'
+        if: needs.fablab-smoketest.result != 'success' && needs.fablab-smoketest.result != 'skipped'
         run: |
           sleep 30m
 
       - name: Teardown Test Environment
-        if: always()
+        if: always() && needs.fablab-smoketest.result != 'skipped'
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         run: |
@@ -283,6 +283,7 @@ jobs:
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
           ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
           $(go env GOPATH)/bin/ziti-ci publish-to-github --archive-base ""
 
