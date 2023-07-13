@@ -39,19 +39,21 @@ import (
 const (
 	PeerAddrHeader = 11
 
-	RaftConnectType = 2048
-	RaftDataType    = 2049
+	RaftConnectType   = 2048
+	RaftDataType      = 2049
+	SigningCertHeader = 2050
 
 	ChannelTypeMesh = "ctrl.mesh"
 )
 
 type Peer struct {
-	mesh     *impl
-	Id       raft.ServerID
-	Address  string
-	Channel  channel.Channel
-	RaftConn *raftPeerConn
-	Version  *versions.VersionInfo
+	mesh         *impl
+	Id           raft.ServerID
+	Address      string
+	Channel      channel.Channel
+	RaftConn     *raftPeerConn
+	Version      *versions.VersionInfo
+	SigningCerts []*x509.Certificate
 }
 
 func (self *Peer) HandleClose(channel.Channel) {
@@ -240,10 +242,17 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		return nil, err
 	}
 
+	tlsCert := self.id.ServerCert()
+	var serverCert []byte
+	if len(tlsCert) != 0 && len(tlsCert[0].Certificate) != 0 {
+		serverCert = tlsCert[0].Certificate[0]
+	}
+
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader: self.versionEncoded,
 		channel.TypeHeader:         []byte(ChannelTypeMesh),
 		PeerAddrHeader:             []byte(self.raftAddr),
+		SigningCertHeader:          serverCert,
 	}
 
 	dialer := channel.NewClassicDialer(self.id, addr, headers)
@@ -284,6 +293,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 
 		peer.Version = versionInfo
 		peer.RaftConn = newRaftPeerConn(peer, self.netAddr)
+		peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
 
 		binding.AddTypedReceiveHandler(peer)
 		binding.AddTypedReceiveHandler(peer.RaftConn)
@@ -371,9 +381,10 @@ func (self *impl) PeerConnected(peer *Peer) {
 
 	evt := event.NewClusterEvent(event.ClusterPeerConnected)
 	evt.Peers = append(evt.Peers, &event.ClusterPeer{
-		Id:      string(peer.Id),
-		Addr:    peer.Address,
-		Version: peer.Version.Version,
+		Id:         string(peer.Id),
+		Addr:       peer.Address,
+		Version:    peer.Version.Version,
+		ServerCert: peer.SigningCerts,
 	})
 
 	self.eventDispatcher.AcceptClusterEvent(evt)
@@ -469,6 +480,13 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		versionInfo, err := self.version.EncoderDecoder().Decode(versionEncoded)
 		if err != nil {
 			return errors.Wrap(err, "can't decode version from returned from dialing peer")
+		}
+
+		certHeader, found := ch.Underlay().Headers()[SigningCertHeader]
+		if found {
+			if cert, err := x509.ParseCertificate(certHeader); err == nil {
+				peer.SigningCerts = append(peer.SigningCerts, cert)
+			}
 		}
 
 		peer.Version = versionInfo

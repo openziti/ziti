@@ -19,6 +19,7 @@ package controller
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/fabric/config"
@@ -79,6 +80,20 @@ type Controller struct {
 	metricsRegistry   metrics.Registry
 	versionProvider   versions.VersionProvider
 	eventDispatcher   *events.Dispatcher
+}
+
+func (c *Controller) GetPeerSigners() []*x509.Certificate {
+	if c.raftController == nil || c.raftController.Mesh == nil {
+		return nil
+	}
+
+	var certs []*x509.Certificate
+
+	for _, peer := range c.raftController.Mesh.GetPeers() {
+		certs = append(certs, peer.SigningCerts...)
+	}
+
+	return certs
 }
 
 func (c *Controller) GetId() *identity.TokenId {

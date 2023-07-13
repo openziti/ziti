@@ -17,6 +17,7 @@
 package event
 
 import (
+	"crypto/x509"
 	"fmt"
 	"time"
 )
@@ -36,9 +37,10 @@ const (
 )
 
 type ClusterPeer struct {
-	Id      string `json:"id,omitempty"`
-	Addr    string `json:"addr,omitempty"`
-	Version string `json:"version,omitempty"`
+	Id         string              `json:"id,omitempty"`
+	Addr       string              `json:"addr,omitempty"`
+	Version    string              `json:"version,omitempty"`
+	ServerCert []*x509.Certificate `json:"-"`
 }
 
 func (self *ClusterPeer) String() string {
