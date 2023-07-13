@@ -1537,4 +1537,3 @@ function showIssuerAndSubjectForPEM() {
   openssl crl2pkcs7 -nocrl -certfile "${1-}" | openssl pkcs7 -print_certs -text -noout | grep -E "(Subject|Issuer)"
 }
 set +uo pipefail
-
