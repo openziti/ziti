@@ -695,11 +695,6 @@ function getZiti {
   # Unzip the files
   tar -xf "${ziti_binaries_file_abspath}" --directory "${ZITI_BIN_DIR}"
 
-  # Files unzip to a /ziti subdirectory, move them into ZITI_BIN_DIR
-  # Have to rename the directory first since 'ziti' matches the filename for the 'ziti' binary
-  mv "${ZITI_BIN_DIR}/ziti" "${ZITI_BIN_DIR}/ziti-extract"
-  mv "${ZITI_BIN_DIR}/ziti-extract"/* "${ZITI_BIN_DIR}"
-
   # Cleanup
   rm "${ziti_binaries_file_abspath}"      # Remove zip
   rm -rf "${ZITI_BIN_DIR}/ziti-extract"   # Remove extract folder
