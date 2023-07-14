@@ -127,7 +127,7 @@ func TestSimpleWebService(t *testing.T) {
 	}
 
 	ctrlAddress := "https://" + advAddy + ":" + advPort
-	bindHostAddress := os.Getenv("ZITI_QUICKSTART_SERVICE")
+	bindHostAddress := os.Getenv("ZITI_QUICKSTART_TEST_ADDRESS")
 	if bindHostAddress == "" {
 		bindHostAddress = ctrlAddress
 	}
