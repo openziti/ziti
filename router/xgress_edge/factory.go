@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
@@ -112,6 +113,10 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	if err = config.LoadConfigFromMap(configMap); err != nil {
 		return err
 	}
+	if config.Tcfg == nil {
+		config.Tcfg = make(transport.Configuration)
+	}
+	config.Tcfg["protocol"] = append(config.Tcfg.Protocols(), "ziti-edge", "")
 
 	factory.id = config.RouterConfig.Id
 
