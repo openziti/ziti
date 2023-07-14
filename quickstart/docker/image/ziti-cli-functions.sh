@@ -323,13 +323,13 @@ function setupEnvironment {
   if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_NETWORK-}"; else echo "ZITI_CTRL_ADVERTISED_ADDRESS overridden: ${ZITI_CTRL_ADVERTISED_ADDRESS}"; fi
   if [[ "${ZITI_CTRL_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_PORT="6262"; else echo "ZITI_CTRL_ADVERTISED_PORT overridden: ${ZITI_CTRL_ADVERTISED_PORT}"; fi
   if [[ "${ZITI_PKI_CTRL_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_ROOTCA_NAME="${ZITI_CTRL_ADVERTISED_ADDRESS}-root-ca"; else echo "ZITI_PKI_CTRL_ROOTCA_NAME overridden: ${ZITI_PKI_CTRL_ROOTCA_NAME}"; fi
-  if [[ "${ZITI_PKI_CTRL_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_INTERMEDIATE_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-intermediate"; else echo "ZITI_PKI_CTRL_INTERMEDIATE_NAME overridden: ${ZITI_PKI_CTRL_INTERMEDIATE_NAME}"; fi
+  if [[ "${ZITI_PKI_CTRL_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_INTERMEDIATE_NAME="${ZITI_CTRL_ADVERTISED_ADDRESS}-intermediate"; else echo "ZITI_PKI_CTRL_INTERMEDIATE_NAME overridden: ${ZITI_PKI_CTRL_INTERMEDIATE_NAME}"; fi
   if [[ "${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_EDGE_ROOTCA_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-root-ca"; else echo "ZITI_PKI_CTRL_EDGE_ROOTCA_NAME overridden: ${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}"; fi
   if [[ "${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-intermediate"; else echo "ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME overridden: ${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}"; fi
-  if [[ "${ZITI_PKI_CTRL_SERVER_CERT-}" == "" ]]; then export ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-server.chain.pem"; else echo "ZITI_PKI_CTRL_SERVER_CERT overridden: ${ZITI_PKI_CTRL_SERVER_CERT}"; fi
-  if [[ "${ZITI_PKI_CTRL_KEY-}" == "" ]]; then export ZITI_PKI_CTRL_KEY="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/keys/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-server.key"; else echo "ZITI_PKI_CTRL_KEY overridden: ${ZITI_PKI_CTRL_KEY}"; fi
+  if [[ "${ZITI_PKI_CTRL_SERVER_CERT-}" == "" ]]; then export ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_ADVERTISED_ADDRESS}-server.chain.pem"; else echo "ZITI_PKI_CTRL_SERVER_CERT overridden: ${ZITI_PKI_CTRL_SERVER_CERT}"; fi
+  if [[ "${ZITI_PKI_CTRL_KEY-}" == "" ]]; then export ZITI_PKI_CTRL_KEY="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/keys/${ZITI_CTRL_ADVERTISED_ADDRESS}-server.key"; else echo "ZITI_PKI_CTRL_KEY overridden: ${ZITI_PKI_CTRL_KEY}"; fi
   if [[ "${ZITI_PKI_CTRL_CA-}" == "" ]]; then export ZITI_PKI_CTRL_CA="${ZITI_PKI}/cas.pem"; else echo "ZITI_PKI_CTRL_CA overridden: ${ZITI_PKI_CTRL_CA}"; fi
-  if [[ "${ZITI_PKI_CTRL_CERT-}" == "" ]]; then export ZITI_PKI_CTRL_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-client.cert"; else echo "ZITI_PKI_CTRL_CERT overridden: ${ZITI_PKI_CTRL_CERT}"; fi
+  if [[ "${ZITI_PKI_CTRL_CERT-}" == "" ]]; then export ZITI_PKI_CTRL_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_ADVERTISED_ADDRESS}-client.cert"; else echo "ZITI_PKI_CTRL_CERT overridden: ${ZITI_PKI_CTRL_CERT}"; fi
   if [[ "${ZITI_PKI_EDGE_CERT-}" == "" ]]; then export ZITI_PKI_EDGE_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-client.cert"; else echo "ZITI_PKI_EDGE_CERT overridden: ${ZITI_PKI_EDGE_CERT}"; fi
   if [[ "${ZITI_PKI_EDGE_SERVER_CERT}" == "" ]]; then export ZITI_PKI_EDGE_SERVER_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-server.chain.pem"; else echo "ZITI_PKI_EDGE_SERVER_CERT overridden: ${ZITI_PKI_EDGE_SERVER_CERT}"; fi
   if [[ "${ZITI_PKI_EDGE_KEY}" == "" ]]; then export ZITI_PKI_EDGE_KEY="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/keys/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-server.key"; else echo "ZITI_PKI_EDGE_KEY overridden: ${ZITI_PKI_EDGE_KEY}"; fi
@@ -735,8 +735,8 @@ function createPki {
   if [[ "${ZITI_CTRL_EDGE_IP_OVERRIDE}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}"; fi
   if [[ "${EXTERNAL_IP}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${EXTERNAL_IP}"; fi
 
-  pki_allow_list_dns="${pki_allow_list_dns},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
-  _pki_client_server "${pki_allow_list_dns}" "${ZITI_PKI_CTRL_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+  pki_allow_list_dns="${pki_allow_list_dns},${ZITI_CTRL_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
+  _pki_client_server "${pki_allow_list_dns}" "${ZITI_PKI_CTRL_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_ADVERTISED_ADDRESS}"
   echo -e "$(GREEN "PKI generated successfully")"
   echo -e ""
 }
