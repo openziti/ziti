@@ -52,10 +52,18 @@ func NewFactory(accepter xlink.Acceptor,
 	c transport.Configuration,
 	xlinkRegistry xlink.Registry,
 	metricsRegistry metrics.Registry) xlink.Factory {
+
+	cfg := make(transport.Configuration)
+	for k, v := range c {
+		cfg[k] = v
+	}
+
+	cfg["protocol"] = append(c.Protocols(), "ziti-link")
+
 	return &factory{
 		acceptor:           accepter,
 		bindHandlerFactory: bindHandlerFactory,
-		transportConfig:    c,
+		transportConfig:    cfg,
 		xlinkRegistry:      xlinkRegistry,
 		metricsRegistry:    metricsRegistry,
 	}

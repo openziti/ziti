@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/config"
 	"github.com/openziti/fabric/controller/handler_peer_ctrl"
+	"github.com/openziti/transport/v2"
 	"os"
 	"sync/atomic"
 	"time"
@@ -259,6 +260,7 @@ func (c *Controller) Run() error {
 		ConnectOptions:   c.config.Ctrl.Options.ConnectOptions,
 		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(c.network.GetMetricsRegistry(), "pool.listener.ctrl"),
 		Headers:          headers,
+		TransportConfig:  transport.Configuration{"protocol": "ziti-ctrl"},
 	}
 	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, ctrlChannelListenerConfig)
 	c.ctrlListener = ctrlListener

@@ -3,6 +3,7 @@ package tests
 import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller"
+	"github.com/openziti/transport/v2"
 )
 
 func (ctx *TestContext) NewControlChannelListener() channel.UnderlayListener {
@@ -16,8 +17,9 @@ func (ctx *TestContext) NewControlChannelListener() channel.UnderlayListener {
 	}
 
 	ctrlChannelListenerConfig := channel.ListenerConfig{
-		ConnectOptions: config.Ctrl.Options.ConnectOptions,
-		Headers:        headers,
+		ConnectOptions:  config.Ctrl.Options.ConnectOptions,
+		Headers:         headers,
+		TransportConfig: transport.Configuration{"protocol": "ziti-ctrl"},
 	}
 	ctrlListener := channel.NewClassicListener(config.Id, config.Ctrl.Listener, ctrlChannelListenerConfig)
 	ctx.Req.NoError(ctrlListener.Listen())

@@ -425,6 +425,7 @@ func (self *Router) startXlinkListeners() {
 	for _, lmap := range self.config.Link.Listeners {
 		binding := lmap["binding"].(string)
 		if factory, found := self.xlinkFactories[binding]; found {
+			lmap["protocol"] = "ziti-link"
 			listener, err := factory.CreateListener(self.config.Id, self.forwarder, lmap)
 			if err != nil {
 				logrus.Fatalf("error creating Xlink listener (%v)", err)
@@ -549,7 +550,8 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 	dialer := channel.NewReconnectingDialerWithHandlerAndLocalBinding(self.config.Id, addr, self.config.Ctrl.LocalBinding, attributes, reconnectHandler)
 
 	bindHandler = channel.BindHandlers(bindHandler, self.ctrlBindhandler)
-	ch, err := channel.NewChannel("ctrl", dialer, bindHandler, self.config.Ctrl.Options)
+	tcfg := transport.Configuration{"protocol": "ziti-ctrl"}
+	ch, err := channel.NewChannelWithTransportConfiguration("ctrl", dialer, bindHandler, self.config.Ctrl.Options, tcfg)
 	if err != nil {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
