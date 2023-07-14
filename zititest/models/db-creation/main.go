@@ -144,7 +144,7 @@ var m = &model.Model{
 				},
 			}),
 		rsync.RsyncStaged(),
-		//rsync.NewRsyncHost("#ctrl", "/home/padibona/.fablab/instances/services-pete/kit/0.27.9_Ziti_Full.db", "/home/ubuntu/fablab/ctrl.db"),
+		rsync.NewRsyncHost("#ctrl", "/home/padibona/resources/aws_setup.sh", "/home/ubuntu/fablab/bin/aws_setup.sh"),
 		rsync.NewRsyncHost("#ctrl", "/home/padibona/resources/db_creator_script_external.sh", "/home/ubuntu/fablab/bin/db_creator_script_external.sh"),
 	},
 
