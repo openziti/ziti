@@ -1,0 +1,168 @@
+version: '2.4'
+services:
+  ziti-controller:
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    ports:
+      - ${ZITI_CTRL_EDGE_ADVERTISED_PORT}:${ZITI_CTRL_EDGE_ADVERTISED_PORT}
+      - ${ZITI_CTRL_ADVERTISED_PORT}:${ZITI_CTRL_ADVERTISED_PORT}
+    environment:
+      - ZITI_CTRL_NAME=${ZITI_CTRL_NAME}
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}
+      - ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS}
+      - ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_EDGE_ADVERTISED_PORT}
+      - ZITI_CTRL_EDGE_IP_OVERRIDE=${ZITI_CTRL_EDGE_IP_OVERRIDE}
+      - ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}
+      - ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION=${ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION}
+      - ZITI_ROUTER_ENROLLMENT_DURATION=${ZITI_ROUTER_ENROLLMENT_DURATION}
+      - ZITI_USER=${ZITI_USER}
+      - ZITI_PWD=${ZITI_PWD}
+      - ZITI_PKI_ALT_SERVER_CERT=${ZITI_PKI_ALT_SERVER_CERT}
+      - ZITI_PKI_ALT_SERVER_KEY=${ZITI_PKI_ALT_SERVER_KEY}
+    networks:
+      ziti:
+        aliases:
+          - ${ZITI_CTRL_NAME}
+          - ${ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS}
+    volumes:
+      - ziti-fs:/persistent
+      - /etc/letsencrypt/:/etc/letsencrypt/
+    entrypoint:
+      - "/var/openziti/scripts/run-controller.sh"
+
+  ziti-controller-init-container:
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    depends_on:
+      - ziti-controller
+    environment:
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS}
+      - ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_EDGE_ADVERTISED_PORT}
+    networks:
+      ziti:
+    volumes:
+      - ziti-fs:/persistent
+    entrypoint:
+      - "/var/openziti/scripts/run-with-ziti-cli.sh"
+    command:
+      - "/var/openziti/scripts/access-control.sh"
+
+  ziti-edge-router:
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    depends_on:
+      - ziti-controller
+    ports:
+      - ${ZITI_ROUTER_PORT}:${ZITI_ROUTER_PORT}
+      - ${ZITI_ROUTER_LISTENER_BIND_PORT}:${ZITI_ROUTER_LISTENER_BIND_PORT}
+    environment:
+      - ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}
+      - ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS}
+      - ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_EDGE_ADVERTISED_PORT}
+      - ZITI_ROUTER_NAME=${ZITI_ROUTER_NAME}
+      - ZITI_ROUTER_ADVERTISED_HOST=${ZITI_ROUTER_ADVERTISED_HOST}
+      - ZITI_ROUTER_PORT=${ZITI_ROUTER_PORT}
+      - ZITI_ROUTER_LISTENER_BIND_PORT=${ZITI_ROUTER_LISTENER_BIND_PORT}
+      - ZITI_ROUTER_ROLES=${ZITI_ROUTER_ROLES}
+      - ZITI_PKI_ALT_SERVER_CERT=${ZITI_PKI_ALT_SERVER_CERT}
+      - ZITI_PKI_ALT_SERVER_KEY=${ZITI_PKI_ALT_SERVER_KEY}
+    networks:
+      - ziti
+    volumes:
+      - ziti-fs:/persistent
+      - /etc/letsencrypt/:/etc/letsencrypt/
+    entrypoint: /bin/bash
+    command: "/var/openziti/scripts/run-router.sh edge"
+
+  ziti-edge-router-wss:
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    depends_on:
+      - ziti-controller
+    ports:
+      - ${ZITI_ROUTER_PORT_WSS}:${ZITI_ROUTER_PORT_WSS}
+      - ${ZITI_ROUTER_LISTENER_BIND_PORT_WSS}:${ZITI_ROUTER_LISTENER_BIND_PORT_WSS}
+    environment:
+      - ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}
+      - ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS}
+      - ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_EDGE_ADVERTISED_PORT}
+      - ZITI_ROUTER_NAME=${ZITI_ROUTER_NAME_WSS}
+      - ZITI_ROUTER_ADVERTISED_HOST=${ZITI_ROUTER_ADVERTISED_HOST_WSS}
+      - ZITI_ROUTER_PORT=${ZITI_ROUTER_PORT_WSS}
+      - ZITI_ROUTER_LISTENER_BIND_PORT=${ZITI_ROUTER_LISTENER_BIND_PORT_WSS}
+      - ZITI_ROUTER_ROLES=${ZITI_ROUTER_ROLES_WSS}
+      - ZITI_PKI_ALT_SERVER_CERT=${ZITI_PKI_ALT_SERVER_CERT}
+      - ZITI_PKI_ALT_SERVER_KEY=${ZITI_PKI_ALT_SERVER_KEY}
+      - ZITI_ROUTER_CSR_SANS_DNS=${ZITI_ROUTER_CSR_SANS_DNS}
+    networks:
+      - ziti
+    volumes:
+      - ziti-fs:/persistent
+      - /etc/letsencrypt/:/etc/letsencrypt/
+    entrypoint: /bin/bash
+    command: "/var/openziti/scripts/run-router.sh wss"
+
+  ziti-console:
+    image: openziti/zac
+    working_dir: /usr/src/app
+    environment:
+      - PORTTLS=${ZAC_PORTTLS}
+      - ZAC_SERVER_CERT_CHAIN=${ZAC_SERVER_CERT_CHAIN}
+      - ZAC_SERVER_KEY=${ZAC_SERVER_KEY}
+      - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}
+      - ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_EDGE_ADVERTISED_PORT}
+      - ZITI_CTRL_NAME=${ZITI_CTRL_NAME}
+    depends_on:
+      - ziti-controller
+    ports:
+      - ${ZAC_PORTTLS}:${ZAC_PORTTLS}
+    volumes:
+      - ziti-fs:/persistent
+      - /etc/letsencrypt/:/etc/letsencrypt/
+    networks:
+      - ziti
+
+  ziti-http-agent:
+    image: ghcr.io/openziti/ziti-http-agent:pr177.432
+    #restart: always
+    volumes:
+      - /usr/local/ziti/log:/home/node/ziti-http-agent/log
+      - /opt/ziti:/ziti
+    ports:
+      - ${ZITI_BROWZER_PORT}:443
+    environment:
+      NODE_ENV: production
+      ZITI_AGENT_LOGLEVEL: debug
+      ZITI_BROWZER_RUNTIME_LOGLEVEL: debug
+      ZITI_BROWZER_RUNTIME_HOTKEY: f8
+      ZITI_CONTROLLER_HOST: ${ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS}
+      ZITI_CONTROLLER_PORT: ${ZITI_CTRL_EDGE_ADVERTISED_PORT}
+      ZITI_AGENT_HOST: ${ZITI_BROWZER_HTTP_AGENT_ADDRESS}
+      ZITI_AGENT_SCHEME: https
+      ZITI_AGENT_CERTIFICATE_PATH: /ziti/fullchain.pem
+      ZITI_AGENT_KEY_PATH: /ziti/privkey.pem
+      ZITI_AGENT_LISTEN_PORT: ${ZITI_BROWZER_PORT}
+      ZITI_AGENT_TARGETS: >
+          {
+            "targetArray": [{
+                       "vhost": "${ZITI_BROWZER_VHOST}",
+                       "service": "${ZITI_BROWZER_SERVICE}",
+                       "path": "/",
+                       "scheme": "http",
+                       "idp_issuer_base_url": "${ZITI_BROWZER_OIDC_URL}",
+                       "idp_client_id": "${ZITI_BROWZER_CLIENT_ID}"
+            }]
+          }
+
+  docker-whale:
+    image: crccheck/hello-world
+    ports:
+      - 80:8000
+    networks:
+      ziti:
+        aliases:
+          - docker.whale
+
+networks:
+  ziti:
+
+volumes:
+  ziti-fs:
