@@ -3,6 +3,7 @@ package test
 import (
 	"archive/tar"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
@@ -26,6 +27,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -119,13 +121,19 @@ func TestSimpleWebService(t *testing.T) {
 	if advPort == "" {
 		advPort = "1280"
 	}
-	ctrlAddress := "https://" + advAddy + ":" + advPort
+	erName := os.Getenv("ZITI_ROUTER_NAME")
+	if erName == "" {
+		erName = "ziti-edge-router"
+	}
 
-	hostingRouterName := "ziti-edge-router"
+	ctrlAddress := "https://" + advAddy + ":" + advPort
+	bindHostAddress := os.Getenv("ZITI_QUICKSTART_SERVICE")
+	if bindHostAddress == "" {
+		bindHostAddress = ctrlAddress
+	}
+	hostingRouterName := erName
 	dialAddress := "simple.web.smoke.test"
 	dialPort := 80
-	bindHostAddress := "web-test-blue"
-	bindHostPort := 8000
 	serviceName := "basic.web.smoke.test.service"
 	wd, _ := os.Getwd()
 
@@ -178,13 +186,15 @@ func TestSimpleWebService(t *testing.T) {
 	defer func() { _ = deleteServiceConfigByID(client, dialSvcConfig.ID) }()
 
 	// Provide host config for the hostname
-	bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", bindHostAddress, bindHostPort)
+	bindPort, _ := strconv.Atoi(advPort)
+	bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", advAddy, bindPort)
 	defer func() { _ = deleteServiceConfigByID(client, bindSvcConfig.ID) }()
 
 	// Create a service that "links" the dial and bind configs
 	createService(client, serviceName, []string{bindSvcConfig.ID, dialSvcConfig.ID})
 
 	// Create a service policy to allow the router to host the web test service
+	fmt.Println("finding hostingRouterName: ", hostingRouterName)
 	hostRouterIdent := getIdentityByName(client, hostingRouterName)
 	webTestService := getServiceByName(client, serviceName)
 	defer func() { _ = deleteServiceByID(client, *webTestService.ID) }()
@@ -192,6 +202,7 @@ func TestSimpleWebService(t *testing.T) {
 	defer func() { _ = deleteServicePolicyByID(client, bindSP.ID) }()
 
 	// Create a service policy to allow tester to dial the service
+	fmt.Println("finding testerUsername: ", testerUsername)
 	testerIdent := getIdentityByName(client, testerUsername)
 	dialSP := createServicePolicy(client, "basic.web.smoke.test.service.dial", rest_model.DialBindDial, rest_model.Roles{"@" + *testerIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
 	defer func() { _ = deleteServicePolicyByID(client, dialSP.ID) }()
@@ -202,9 +213,10 @@ func TestSimpleWebService(t *testing.T) {
 	if !termCntReached {
 		fmt.Println("Unable to detect a terminator for the edge router")
 	}
-	helloUrl := fmt.Sprintf("http://%s:%d", serviceName, dialPort)
+	helloUrl := fmt.Sprintf("https://%s:%d", serviceName, dialPort)
 	log.Infof("created url: %s", helloUrl)
 	httpClient := createZitifiedHttpClient(wd + "/" + testerUsername + ".json")
+
 	resp, e := httpClient.Get(helloUrl)
 	if e != nil {
 		panic(e)
@@ -265,6 +277,7 @@ func createZitifiedHttpClient(idFile string) http.Client {
 	}
 	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
 	zitiTransport.DialContext = Dial                                 //zitiDialContext.Dial
+	zitiTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	return http.Client{Transport: zitiTransport}
 }
 
@@ -335,6 +348,7 @@ func getIdentityByName(client *rest_management_api_client.ZitiEdgeManagement, na
 		log.Fatalf("Could not obtain an ID for the identity named %s", name)
 		fmt.Println(err)
 	}
+
 	return resp.GetPayload().Data[0]
 }
 
