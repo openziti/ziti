@@ -1047,8 +1047,8 @@ function getLatestZitiVersion {
   _detect_architecture
 
   ziti_latest=$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/latest)
-  ZITI_BINARIES_FILE=$(echo "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
-  ZITI_BINARIES_VERSION=$(echo "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.tag_name')
+  ZITI_BINARIES_FILE=$(printf "%s" "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
+  ZITI_BINARIES_VERSION=$(printf "%s" "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.tag_name')
 }
 
 function createControllerSystemdFile {
