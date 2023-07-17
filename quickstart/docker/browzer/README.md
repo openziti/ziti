@@ -24,3 +24,14 @@ ll /etc/letsencrypt/
 
 
 
+
+sudo chown -R root:root /etc/letsencrypt/
+sudo gpasswd -d $USER zitiweb
+sudo userdel ziggy
+sudo groupdel zitiweb
+
+sudo groupadd -g 2171 zitiweb
+sudo useradd -u 2171 -s /bin/bash ziggy
+sudo usermod -aG zitiweb ziggy
+sudo usermod -aG zitiweb $USER
+sudo chown -R root:zitiweb /etc/letsencrypt/

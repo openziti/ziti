@@ -8,7 +8,7 @@ services:
     environment:
       - ZITI_CTRL_NAME=${ZITI_CTRL_NAME}
       - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}
-      - ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS}
+      - ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}
       - ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_EDGE_ADVERTISED_PORT}
       - ZITI_CTRL_EDGE_IP_OVERRIDE=${ZITI_CTRL_EDGE_IP_OVERRIDE}
       - ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}
@@ -22,6 +22,7 @@ services:
       ziti:
         aliases:
           - ${ZITI_CTRL_NAME}
+          - ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}
           - ${ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS}
     volumes:
       - ziti-fs:/persistent
@@ -121,7 +122,7 @@ services:
       - ziti
 
   ziti-http-agent:
-    image: ghcr.io/openziti/ziti-http-agent:pr177.432
+    image: ghcr.io/openziti/ziti-http-agent:${ZITI_BROWZER_VERSION}
     #restart: always
     volumes:
       - /usr/local/ziti/log:/home/node/ziti-http-agent/log
@@ -137,8 +138,8 @@ services:
       ZITI_CONTROLLER_PORT: ${ZITI_CTRL_EDGE_ADVERTISED_PORT}
       ZITI_AGENT_HOST: ${ZITI_BROWZER_HTTP_AGENT_ADDRESS}
       ZITI_AGENT_SCHEME: https
-      ZITI_AGENT_CERTIFICATE_PATH: /ziti/fullchain.pem
-      ZITI_AGENT_KEY_PATH: /ziti/privkey.pem
+      ZITI_AGENT_CERTIFICATE_PATH: /etc/letsencrypt/live/zititv.demo.openziti.org/fullchain.pem
+      ZITI_AGENT_KEY_PATH: /etc/letsencrypt/live/zititv.demo.openziti.org/privkey.pem
       ZITI_AGENT_LISTEN_PORT: ${ZITI_BROWZER_PORT}
       ZITI_AGENT_TARGETS: >
           {
