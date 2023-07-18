@@ -650,7 +650,7 @@ function getZiti {
     echo -e "ziti found in ZITI_BIN_DIR ($(BLUE "${ZITI_BIN_DIR}"))"
     # Get the current version and compare with latest
     local currentVersion
-    currentVersion="$("${ZITI_BIN_DIR}"/ziti --version) "
+    currentVersion="$("${ZITI_BIN_DIR}"/ziti --version)"
     if [[ "${ZITI_BINARIES_VERSION}" != "${currentVersion}" ]]; then
       # Prompt user for new download
       echo -en "There is a newer version of OpenZiti, would you like to download it? (Y/n) "
@@ -1047,8 +1047,8 @@ function getLatestZitiVersion {
   _detect_architecture
 
   ziti_latest=$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/latest)
-  ZITI_BINARIES_FILE=$(echo "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
-  ZITI_BINARIES_VERSION=$(echo "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.tag_name')
+  ZITI_BINARIES_FILE=$(printf "%s" "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
+  ZITI_BINARIES_VERSION=$(printf "%s" "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.tag_name')
 }
 
 function createControllerSystemdFile {

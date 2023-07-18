@@ -1,3 +1,11 @@
+# Release 0.29.1
+
+## What's New
+
+## Component Updates and Bug Fixes
+* github.com/openziti/ziti: [v0.29.0 -> v0.29.1](https://github.com/openziti/ziti/compare/v0.29.0...v0.29.1)
+  * [Issue #1212](https://github.com/openziti/ziti/issues/1212) - Fixed getZiti function on Mac/ZSH
+
 # Release 0.29.0
 
 ## What's New
