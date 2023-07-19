@@ -272,16 +272,16 @@ jobs:
 
       - name: List downloaded release artifacts
         run: |
-          ls -lR release/
+          ls -lAhR release/
 
       - name: Restore execute filemode on macOS and Linux release artifacts before publishing
         run: |
           find  ./release \
+                -type f \
+                -print0 \
                 -path "./release/*/darwin/ziti" \
                 -o \
                 -path "./release/*/linux/ziti" \
-                -type f \
-                -print0 \
             | xargs -0 chmod -c +x
 
       - name: Install Jfrog CLI
