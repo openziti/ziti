@@ -709,7 +709,7 @@ function getZiti {
 
 # Create a custom PKI
 function createPki {
-  local retVal pki_allow_list_dns pki_allow_list_ip ZITI_SPURIOUS_INTERMEDIATE
+  local retVal pki_allow_list pki_allow_list_ip ZITI_SPURIOUS_INTERMEDIATE
   _check_env_variable ZITI_PKI_CTRL_ROOTCA_NAME ZITI_PKI_CTRL_EDGE_ROOTCA_NAME ZITI_PKI_SIGNER_ROOTCA_NAME \
                       ZITI_PKI_SIGNER_INTERMEDIATE_NAME ZITI_PKI_CTRL_INTERMEDIATE_NAME \
                       ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME
@@ -736,6 +736,9 @@ function createPki {
 
   pki_allow_list="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
   pki_allow_list_ip="127.0.0.1"
+  if [[ "${ZITI_CTRL_EDGE_IP_OVERRIDE-}" != "" ]]; then
+    pki_allow_list_ip="${pki_allow_list_ip},${ZITI_CTRL_EDGE_IP_OVERRIDE}"
+  fi
   _pki_client_server "${pki_allow_list}" "${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
 
   echo -e "$(GREEN "PKI generated successfully")"
