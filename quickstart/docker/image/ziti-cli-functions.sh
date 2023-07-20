@@ -1153,6 +1153,51 @@ HeredocForSystemd
   echo -e "Router systemd file written to: $(BLUE "${output_file}")"
 }
 
+function createBrowZerSystemdFile {
+  local retVal output_file node_bin
+  _check_env_variable ZITI_HOME
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
+  output_file="${ZITI_HOME}/browzer-bootstrapper.service"
+
+  if which node >/dev/null; then
+    # store the absolute path to the node executable because it's required by systemd on Amazon Linux, at least
+    node_bin=$(readlink -f "$(which node)")
+  else
+    echo "ERROR: missing executable 'node'" >&2
+    return 1
+  fi
+
+  _get_file_overwrite_permission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
+  cat > "${output_file}" << HeredocForSystemd
+[Unit]
+Description=A systemd unit file for the Ziti BrowZer Bootstrapper
+After=network.target
+
+[Service]
+User=root
+EnvironmentFile=${ZITI_HOME}/browzer.env
+WorkingDirectory=${ZITI_HOME}/ziti-http-agent
+ExecStart=${node_bin} "${ZITI_HOME}/ziti-http-agent/index.js"
+Restart=always
+RestartSec=2
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+HeredocForSystemd
+  echo -e "Ziti BrowZer Bootstrapper systemd file written to: $(BLUE "${output_file}")"
+}
+
 function createControllerLaunchdFile {
   local controller_name retVal output_file
   # Allow controller name to be passed in as arg
