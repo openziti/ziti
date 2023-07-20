@@ -72,11 +72,6 @@ type Totp struct {
 	Hostname string
 }
 
-type Oidc struct {
-	RedirectURIs   []string
-	PostLogoutURIs []string
-}
-
 type Api struct {
 	SessionTimeout          time.Duration
 	ActivityUpdateBatchSize int
@@ -86,8 +81,6 @@ type Api struct {
 	Address       string
 	IdentityCaPem []byte
 	HttpTimeouts  HttpTimeouts
-
-	Oidc Oidc
 }
 
 type Config struct {

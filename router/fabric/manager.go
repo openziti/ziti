@@ -57,7 +57,7 @@ type StateManager interface {
 
 	//ApiSessions
 	GetApiSession(token string) *ApiSession
-	GetApiSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.ApiSession
+	GetApiSessionWithTimeout(token string, timeout time.Duration) *ApiSession
 	AddApiSession(apiSession *edge_ctrl_pb.ApiSession)
 	UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession)
 	RemoveApiSession(token string)
@@ -224,7 +224,7 @@ func (sm *StateManagerImpl) RemoveEdgeSession(token string) {
 
 }
 
-func (sm *StateManagerImpl) GetApiSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.ApiSession {
+func (sm *StateManagerImpl) GetApiSessionWithTimeout(token string, timeout time.Duration) *ApiSession {
 	deadline := time.Now().Add(timeout)
 	session := sm.GetApiSession(token)
 
@@ -557,21 +557,23 @@ func (sm *StateManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint3
 }
 
 func (sm *StateManagerImpl) keyFunc(token *jwt.Token) (interface{}, error) {
-	kid, kidFound := token.Header["kid"]
+	kidVal, kidHeaderFound := token.Header["kid"]
 
-	if !kidFound {
-		return nil, fmt.Errorf("token has not kid, unable to lookup")
+	if !kidHeaderFound {
+		return nil, fmt.Errorf("token does not have kid header, unable to lookup")
 	}
+
+	kid := kidVal.(string)
 
 	key, keyFound := sm.signerPublicCerts.Get(kid)
 
 	if !keyFound {
 		sm.RefreshSigners()
 
-		kid, kidFound = token.Header["kid"]
+		key, keyFound = sm.signerPublicCerts.Get(kid)
 
-		if !kidFound {
-			return nil, fmt.Errorf("kids %s not found after refresh", kid)
+		if !keyFound {
+			return nil, fmt.Errorf("key for kid %s not found after refresh", kid)
 		}
 	}
 
