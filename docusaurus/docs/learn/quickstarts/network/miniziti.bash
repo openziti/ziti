@@ -554,63 +554,63 @@ main(){
         | grep -q "${MINIKUBE_PROFILE}-client"; then
         logDebug "creating identity ${MINIKUBE_PROFILE}-client"
         ziti edge create identity device "${MINIKUBE_PROFILE}-client" \
-            --jwt-output-file "/tmp/${MINIKUBE_PROFILE}-client.jwt" --role-attributes miniziti-httpbin-clients >&3
+            --jwt-output-file "/tmp/${MINIKUBE_PROFILE}-client.jwt" --role-attributes httpbin-clients >&3
     else
         logDebug "ignoring identity ${MINIKUBE_PROFILE}-client"
     fi
 
-    if  ! ziti edge list identities 'name="miniziti-httpbin-host"' --csv \
-        | grep -q "miniziti-httpbin-host"; then
-        logDebug "creating identity miniziti-httpbin-host"
-        ziti edge create identity device "miniziti-httpbin-host" \
-            --jwt-output-file /tmp/miniziti-httpbin-host.jwt --role-attributes miniziti-httpbin-hosts >&3
+    if  ! ziti edge list identities 'name="httpbin-host"' --csv \
+        | grep -q "httpbin-host"; then
+        logDebug "creating identity httpbin-host"
+        ziti edge create identity device "httpbin-host" \
+            --jwt-output-file /tmp/httpbin-host.jwt --role-attributes httpbin-hosts >&3
     else
-        logDebug "ignoring identity miniziti-httpbin-host"
+        logDebug "ignoring identity httpbin-host"
     fi
 
-    if  ! ziti edge list configs 'name="miniziti-httpbin-intercept-config"' --csv \
-        | grep -q "miniziti-httpbin-intercept-config"; then
-        logDebug "creating config miniziti-httpbin-intercept-config"
-        ziti edge create config "miniziti-httpbin-intercept-config" intercept.v1 \
-            '{"protocols":["tcp"],"addresses":["miniziti-httpbin.ziti"], "portRanges":[{"low":80, "high":80}]}' >&3
+    if  ! ziti edge list configs 'name="httpbin-intercept-config"' --csv \
+        | grep -q "httpbin-intercept-config"; then
+        logDebug "creating config httpbin-intercept-config"
+        ziti edge create config "httpbin-intercept-config" intercept.v1 \
+            '{"protocols":["tcp"],"addresses":["httpbin.ziti"], "portRanges":[{"low":80, "high":80}]}' >&3
     else
-        logDebug "ignoring config miniziti-httpbin-intercept-config"
+        logDebug "ignoring config httpbin-intercept-config"
     fi
 
-    if  ! ziti edge list configs 'name="miniziti-httpbin-host-config"' --csv \
-        | grep -q "miniziti-httpbin-host-config"; then
-        logDebug "creating config miniziti-httpbin-host-config"
-        ziti edge create config "miniziti-httpbin-host-config" host.v1 \
+    if  ! ziti edge list configs 'name="httpbin-host-config"' --csv \
+        | grep -q "httpbin-host-config"; then
+        logDebug "creating config httpbin-host-config"
+        ziti edge create config "httpbin-host-config" host.v1 \
             '{"protocol":"tcp", "address":"httpbin","port":8080}' >&3
     else
-        logDebug "ignoring config miniziti-httpbin-host-config"
+        logDebug "ignoring config httpbin-host-config"
     fi
 
-    if  ! ziti edge list services 'name="miniziti-httpbin-service"' --csv \
-        | grep -q "miniziti-httpbin-service"; then
-        logDebug "creating service miniziti-httpbin-service"
-        ziti edge create service "miniziti-httpbin-service" \
-            --configs miniziti-httpbin-intercept-config,miniziti-httpbin-host-config >&3
+    if  ! ziti edge list services 'name="httpbin-service"' --csv \
+        | grep -q "httpbin-service"; then
+        logDebug "creating service httpbin-service"
+        ziti edge create service "httpbin-service" \
+            --configs httpbin-intercept-config,httpbin-host-config >&3
     else
-        logDebug "ignoring service miniziti-httpbin-service"
+        logDebug "ignoring service httpbin-service"
     fi
 
-    if  ! ziti edge list service-policies 'name="miniziti-httpbin-bind-policy"' --csv \
-        | grep -q "miniziti-httpbin-bind-policy"; then
-        logDebug "creating service-policy miniziti-httpbin-bind-policy"
-        ziti edge create service-policy "miniziti-httpbin-bind-policy" Bind \
-            --service-roles '@miniziti-httpbin-service' --identity-roles '#miniziti-httpbin-hosts' >&3
+    if  ! ziti edge list service-policies 'name="httpbin-bind-policy"' --csv \
+        | grep -q "httpbin-bind-policy"; then
+        logDebug "creating service-policy httpbin-bind-policy"
+        ziti edge create service-policy "httpbin-bind-policy" Bind \
+            --service-roles '@httpbin-service' --identity-roles '#httpbin-hosts' >&3
     else
-        logDebug "ignoring service-policy miniziti-httpbin-bind-policy"
+        logDebug "ignoring service-policy httpbin-bind-policy"
     fi
 
-    if  ! ziti edge list service-policies 'name="miniziti-httpbin-dial-policy"' --csv \
-        | grep -q "miniziti-httpbin-dial-policy"; then
-        logDebug "creating service-policy miniziti-httpbin-dial-policy"
-        ziti edge create service-policy "miniziti-httpbin-dial-policy" Dial \
-            --service-roles '@miniziti-httpbin-service' --identity-roles '#miniziti-httpbin-clients' >&3
+    if  ! ziti edge list service-policies 'name="httpbin-dial-policy"' --csv \
+        | grep -q "httpbin-dial-policy"; then
+        logDebug "creating service-policy httpbin-dial-policy"
+        ziti edge create service-policy "httpbin-dial-policy" Dial \
+            --service-roles '@httpbin-service' --identity-roles '#httpbin-clients' >&3
     else
-        logDebug "ignoring service-policy miniziti-httpbin-dial-policy"
+        logDebug "ignoring service-policy httpbin-dial-policy"
     fi
 
     if  ! ziti edge list edge-router-policies 'name="public-routers"' --csv \
@@ -631,17 +631,17 @@ main(){
         logDebug "ignoring service-edge-router-policy public-routers"
     fi
 
-    if [[ -s /tmp/miniziti-httpbin-host.jwt ]]; then
-        logDebug "enrolling /tmp/miniziti-httpbin-host.jwt"
+    if [[ -s /tmp/httpbin-host.jwt ]]; then
+        logDebug "enrolling /tmp/httpbin-host.jwt"
         # discard expected output that normally flows to stderr
         ENROLL_OUT="$(
-            ziti edge enroll /tmp/miniziti-httpbin-host.jwt 2>&1 \
+            ziti edge enroll /tmp/httpbin-host.jwt 2>&1 \
                 | grep -vE '(generating.*key|enrolled\s+successfully)' \
                 || true
         )"
         if [[ -z "${ENROLL_OUT}" ]]; then
-            rm -f /tmp/miniziti-httpbin-host.jwt
-            logDebug "deleted /tmp/miniziti-httpbin-host.jwt after enrolling successfully"
+            rm -f /tmp/httpbin-host.jwt
+            logDebug "deleted /tmp/httpbin-host.jwt after enrolling successfully"
         else
             echo -e "ERROR: unexpected result during OpenZiti Identity enrollment\n"\
                     "${ENROLL_OUT}"
@@ -649,13 +649,13 @@ main(){
         fi
     fi
 
-    if [[ -s /tmp/miniziti-httpbin-host.json ]]; then
-        logDebug "installing httpbin chart as 'miniziti-httpbin-host'"
-        helm install "miniziti-httpbin-host" "${ZITI_CHARTS}/httpbin" \
-            --set-file zitiIdentity=/tmp/miniziti-httpbin-host.json \
-            --set zitiServiceName=miniziti-httpbin-service >&3
-        rm -f /tmp/miniziti-httpbin-host.json
-        logDebug "deleted /tmp/miniziti-httpbin-host.json after installing successfully with miniziti-httpbin-host chart"
+    if [[ -s /tmp/httpbin-host.json ]]; then
+        logDebug "installing httpbin chart as 'miniziti-httpbin'"
+        helm install "miniziti-httpbin" "${ZITI_CHARTS}/httpbin" \
+            --set-file zitiIdentity=/tmp/httpbin-host.json \
+            --set zitiServiceName=httpbin-service >&3
+        rm -f /tmp/httpbin-host.json
+        logDebug "deleted /tmp/httpbin-host.json after installing successfully with miniziti-httpbin chart"
     fi
 
     kubectl get secrets "ziti-controller-admin-secret" \
