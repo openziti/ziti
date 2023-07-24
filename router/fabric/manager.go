@@ -258,7 +258,7 @@ func (sm *StateManagerImpl) GetApiSession(token string) *ApiSession {
 
 		if err == nil {
 			if accessClaims.Type != oidc_auth.TokenTypeAccess {
-				pfxlog.Logger().Error("provided a token with invalid type '%s'", accessClaims.Type)
+				pfxlog.Logger().Errorf("provided a token with invalid type '%s'", accessClaims.Type)
 				return nil
 			}
 

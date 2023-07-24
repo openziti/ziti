@@ -144,13 +144,13 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
-		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  *validJwtSigner.Audience,
-			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-			Id:        time.Now().String(),
-			IssuedAt:  time.Now().Unix(),
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{*validJwtSigner.Audience},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			Issuer:    *validJwtSigner.Issuer,
-			NotBefore: time.Now().Unix(),
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
@@ -176,13 +176,13 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
-		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  "ziti.controller",
-			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-			Id:        time.Now().String(),
-			IssuedAt:  time.Now().Unix(),
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{"ziti.controller"},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			Issuer:    "fake.issuer",
-			NotBefore: time.Now().Unix(),
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
@@ -203,13 +203,13 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
-		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  *validJwtSigner.Audience,
-			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-			Id:        time.Now().String(),
-			IssuedAt:  time.Now().Unix(),
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{*validJwtSigner.Audience},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			Issuer:    "i will cause this to fail",
-			NotBefore: time.Now().Unix(),
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
@@ -230,13 +230,13 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
-		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  "this test shall not succeed",
-			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-			Id:        time.Now().String(),
-			IssuedAt:  time.Now().Unix(),
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{"this test shall not succeed"},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			Issuer:    *validJwtSigner.Issuer,
-			NotBefore: time.Now().Unix(),
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
@@ -257,13 +257,13 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
-		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  "ziti.controller",
-			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-			Id:        time.Now().String(),
-			IssuedAt:  time.Now().Unix(),
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{"ziti.controller"},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			Issuer:    "fake.issuer",
-			NotBefore: time.Now().Unix(),
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
@@ -282,13 +282,13 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
-		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  "ziti.controller",
-			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-			Id:        time.Now().String(),
-			IssuedAt:  time.Now().Unix(),
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{"ziti.controller"},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			Issuer:    "fake.issuer",
-			NotBefore: time.Now().Unix(),
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
@@ -309,13 +309,13 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
-		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  "ziti.controller",
-			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-			Id:        time.Now().String(),
-			IssuedAt:  time.Now().Unix(),
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{"ziti.controller"},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			Issuer:    "fake.issuer",
-			NotBefore: time.Now().Unix(),
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
@@ -401,13 +401,13 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.NotEmpty(identityCreateResult.Data.ID)
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
-		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  *validExtIdJwtSigner.Audience,
-			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-			Id:        time.Now().String(),
-			IssuedAt:  time.Now().Unix(),
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{*validExtIdJwtSigner.Audience},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			Issuer:    *validExtIdJwtSigner.Issuer,
-			NotBefore: time.Now().Unix(),
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   externalId,
 		}
 
@@ -488,13 +488,13 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.NotEmpty(identityCreateResult.Data.ID)
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
-		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  *validExtIdJwtSigner.Audience,
-			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-			Id:        time.Now().String(),
-			IssuedAt:  time.Now().Unix(),
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{*validExtIdJwtSigner.Audience},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			Issuer:    *validExtIdJwtSigner.Issuer,
-			NotBefore: time.Now().Unix(),
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   uuid.NewString(),
 		}
 
@@ -569,13 +569,13 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.NotEmpty(identityCreateResult.Data.ID)
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
-		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  *validExtIdJwtSigner.Audience,
-			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-			Id:        time.Now().String(),
-			IssuedAt:  time.Now().Unix(),
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{*validExtIdJwtSigner.Audience},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			Issuer:    *validExtIdJwtSigner.Issuer,
-			NotBefore: time.Now().Unix(),
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   externalId,
 		}
 
@@ -650,19 +650,19 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.NotEmpty(identityCreateResult.Data.ID)
 
 		type altClaims struct {
-			jwt.StandardClaims
+			jwt.RegisteredClaims
 			Alt string `json:"alt,omitempty"`
 		}
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
 		jwtToken.Claims = altClaims{
-			StandardClaims: jwt.StandardClaims{
-				Audience:  *validAltExtIdJwtSigner.Audience,
-				ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-				Id:        time.Now().String(),
-				IssuedAt:  time.Now().Unix(),
+			RegisteredClaims: jwt.RegisteredClaims{
+				Audience:  []string{*validAltExtIdJwtSigner.Audience},
+				ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+				ID:        time.Now().String(),
+				IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 				Issuer:    *validAltExtIdJwtSigner.Issuer,
-				NotBefore: time.Now().Unix(),
+				NotBefore: &jwt.NumericDate{Time: time.Now()},
 				Subject:   uuid.NewString(),
 			},
 			Alt: externalId,

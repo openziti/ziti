@@ -759,13 +759,13 @@ func Test_Identity(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			jwtToken := jwt.New(jwt.SigningMethodES256)
-			jwtToken.Claims = jwt.StandardClaims{
-				Audience:  *extJwtSigner.Audience,
-				ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-				Id:        time.Now().String(),
-				IssuedAt:  time.Now().Unix(),
+			jwtToken.Claims = jwt.RegisteredClaims{
+				Audience:  []string{*extJwtSigner.Audience},
+				ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+				ID:        time.Now().String(),
+				IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 				Issuer:    *extJwtSigner.Issuer,
-				NotBefore: time.Now().Unix(),
+				NotBefore: &jwt.NumericDate{Time: time.Now()},
 				Subject:   identityCreated.Data.ID,
 			}
 

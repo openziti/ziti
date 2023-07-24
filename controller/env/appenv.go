@@ -705,7 +705,17 @@ func (ae *AppEnv) getJwtTokenFromRequest(r *http.Request) *jwt.Token {
 }
 
 func (ae *AppEnv) ControllersKeyFunc(token *jwt.Token) (interface{}, error) {
-	kid := token.Header["kid"].(string)
+	kidVal, ok := token.Header["kid"]
+
+	if !ok {
+		return nil, nil
+	}
+
+	kid, ok := kidVal.(string)
+
+	if !ok {
+		return nil, nil
+	}
 
 	return ae.GetControllerPublicKey(kid), nil
 }
