@@ -30,6 +30,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/transport/v2"
 
 	identity2 "github.com/openziti/identity"
 	"github.com/pkg/errors"
@@ -367,7 +368,9 @@ func Test_RouterEnrollment(t *testing.T) {
 					id := identity2.NewClientTokenIdentity(certs, privateKey, caCerts)
 					ctx.Req.NotNil(id)
 
-					ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
+					tcfg := transport.Configuration{"protocol": "ziti-ctrl"}
+					ch, err := channel.NewChannelWithTransportConfiguration("apitest",
+						channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil, tcfg)
 
 					defer func() {
 						if ch != nil {
@@ -567,7 +570,8 @@ func Test_RouterEnrollment(t *testing.T) {
 							id := identity2.NewClientTokenIdentity(extensionClientCerts, extensionPrivateKey, caCerts)
 							ctx.Req.NotNil(id)
 
-							ch, err := channel.NewChannel("apitestextension", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
+							tcfg := transport.Configuration{"protocol": "ziti-ctrl"}
+							ch, err := channel.NewChannelWithTransportConfiguration("apitestextension", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil, tcfg)
 
 							defer func() {
 								if ch != nil {
