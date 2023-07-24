@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/fabric/build"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/storage/ast"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
@@ -191,7 +192,7 @@ func (strategy *InstantStrategy) RouterDisconnected(router *network.Router) {
 	log := pfxlog.Logger().WithField("sync_strategy", strategy.Type()).
 		WithField("routerId", router.Id).
 		WithField("routerName", router.Name).
-		WithField("routerFingerprint", *router.Fingerprint)
+		WithField("routerFingerprint", genext.OrDefault(router.Fingerprint))
 
 	existingRtx := strategy.rtxMap.Get(router.Id)
 
