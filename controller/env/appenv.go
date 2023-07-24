@@ -391,7 +391,7 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 		}
 	}
 
-	var configTypes map[string]struct{}
+	configTypes := map[string]struct{}{}
 
 	for _, configType := range rc.Claims.ConfigTypes {
 		configTypes[configType] = struct{}{}
@@ -412,7 +412,7 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 		MfaComplete:        rc.Claims.TotpComplete(),
 		MfaRequired:        false,
 		ExpiresAt:          rc.Claims.Expiration.AsTime(),
-		ExpirationDuration: rc.Claims.Expiration.AsTime().Sub(time.Now()),
+		ExpirationDuration: time.Until(rc.Claims.Expiration.AsTime()),
 		LastActivityAt:     time.Now(),
 		AuthenticatorId:    "oidc",
 	}

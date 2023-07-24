@@ -50,8 +50,6 @@ func newRevocationStore(stores *stores) *revocationStoreImpl {
 
 type revocationStoreImpl struct {
 	*baseStore[*Revocation]
-	indexName         boltz.ReadIndex
-	symbolEnrollments boltz.EntitySetSymbol
 }
 
 func (store *revocationStoreImpl) initializeLocal() {

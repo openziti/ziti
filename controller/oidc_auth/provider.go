@@ -64,7 +64,7 @@ func newHttpRouter(ctx context.Context, config Config) (*mux.Router, error) {
 	router.HandleFunc(pathLoggedOut, func(w http.ResponseWriter, req *http.Request) {
 		_, err := w.Write([]byte("signed out successfully"))
 		if err != nil {
-			pfxlog.Logger().Error("error serving logged out page: %v", err)
+			pfxlog.Logger().Errorf("error serving logged out page: %v", err)
 		}
 	})
 

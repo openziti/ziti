@@ -3,7 +3,6 @@ package oidc_auth
 import (
 	"context"
 	"crypto"
-	"crypto/rsa"
 	"crypto/sha1"
 	"errors"
 	"fmt"
@@ -54,10 +53,6 @@ type Storage interface {
 
 	// GetAuthRequest returns an *AuthRequest by its id
 	GetAuthRequest(id string) (*AuthRequest, error)
-}
-
-type Service struct {
-	keys map[string]*rsa.PublicKey
 }
 
 func NewRevocation(tokenId string, expiresAt time.Time) *model.Revocation {
@@ -210,11 +205,7 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 func (s *HybridStorage) IsTokenRevoked(tokenId string) bool {
 	revocation, _ := s.env.GetManagers().Revocation.Read(tokenId)
 
-	if revocation == nil {
-		return false
-	}
-
-	return true
+	return revocation != nil
 }
 
 // VerifyTotp will update and return the AuthRequest associated with `id`
@@ -784,6 +775,11 @@ func (s *HybridStorage) renewRefreshToken(currentRefreshToken string) (string, *
 
 func (s *HybridStorage) setInfo(userInfo *oidc.UserInfo, identityId string, scopes []string) (err error) {
 	identity, err := s.env.GetManagers().Identity.Read(identityId)
+
+	if err != nil {
+		return err
+	}
+
 	if identity == nil {
 		return fmt.Errorf("user not found")
 	}

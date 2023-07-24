@@ -67,8 +67,8 @@ func (a *AuthRequest) HasPrimaryAuth() bool {
 
 // HasSecondaryAuth returns true if all applicable secondary authentications have been passed
 func (a *AuthRequest) HasSecondaryAuth() bool {
-	return (a.SecondaryTotpRequired == false || a.HasAmr(AuthMethodSecondaryTotp)) &&
-		(a.SecondaryExtJwtRequired == false || a.HasAmr(AuthMethodSecondaryExtJwt))
+	return (!a.SecondaryTotpRequired || a.HasAmr(AuthMethodSecondaryTotp)) &&
+		(!a.SecondaryExtJwtRequired || a.HasAmr(AuthMethodSecondaryExtJwt))
 }
 
 // HasAmr returns true if the supplied amr is present
