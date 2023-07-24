@@ -485,8 +485,8 @@ github.com/openziti/channel/v2 v2.0.87 h1:+54diAb1NjwnQ3qADptq76gq3IFF+hW+uLD5st
 github.com/openziti/channel/v2 v2.0.87/go.mod h1:GggAVKAlOf2ezo8VvgQ2yRK5Gokp6wlvS4kBhmoKn1g=
 github.com/openziti/edge-api v0.25.30 h1:40pAcd3Y2yT8hYYHTJTkSTLA0pvbDCw4prt72JdQMuI=
 github.com/openziti/edge-api v0.25.30/go.mod h1:ODMG0fB9Dj1pL0UqDC8jzSUAlUZy8aYhzF3xHPg6Xm0=
-github.com/openziti/fabric v0.23.48 h1:ZWJdIUNrPpQZKE/5FZ37jPbKpZWIzYKJV+bMNJIJcZo=
-github.com/openziti/fabric v0.23.48/go.mod h1:MiSRLBjXd/cSKbyWb7IDY4GMTSaEubOLHxpueA/4OwU=
+github.com/openziti/fabric v0.23.52 h1:8F4jt00RDrZJz6YiKliJ8UGnknE3jSuWwxsK3641ehE=
+github.com/openziti/fabric v0.23.52/go.mod h1:wLYKhlnhthLR7FBqfGlfdCZ0hbQCcSnr5b2wpjA4/vM=
 github.com/openziti/foundation/v2 v2.0.28 h1:AAdHhtUj1tCIXollSpbDlKwPKRasNAgADpTZAF1WCOQ=
 github.com/openziti/foundation/v2 v2.0.28/go.mod h1:psKxxQw/zRo5+oKN7AR+MKYaeR3mbBPhb65qq8rqB0U=
 github.com/openziti/identity v1.0.59 h1:YShXqxa9nTbCnPtIAji10hx7BG1nQukg4ddUJExNXa8=
@@ -505,8 +505,8 @@ github.com/openziti/transport/v2 v2.0.96 h1:onLHb0oNS+xzmqnAVYHDGb00qtLODzyPVubq
 github.com/openziti/transport/v2 v2.0.96/go.mod h1:L0MZ3LZsJ9Jheg05Bp6QYJBfuq4fDtjoL9stcTSmtko=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
 github.com/openziti/x509-claims v1.0.3/go.mod h1:Z0WIpBm6c4ecrpRKrou6Gk2wrLWxJO/+tuUwKh8VewE=
-github.com/openziti/xweb/v2 v2.0.2 h1:XYlVFriTq/U1wcUrc+XPnWJGhXh9NJPhtQ7+r3aC0cU=
-github.com/openziti/xweb/v2 v2.0.2/go.mod h1:KQOOlnJk08EZT3TWkvDj/pbIUEVbgG0IrrNzl8gsi40=
+github.com/openziti/xweb/v2 v2.1.0 h1:Xhh3C2pZkq/Prr65V+SfFSibLDYteoc4f62KQCcTZF4=
+github.com/openziti/xweb/v2 v2.1.0/go.mod h1:wPkjm5y45RYCV8AafjcAXP/ZM4DBOofXhRwSGgjF8w8=
 github.com/orcaman/concurrent-map/v2 v2.0.1 h1:jOJ5Pg2w1oeB6PeDurIYf6k9PQ+aTITr/6lP/L/zp6c=
 github.com/orcaman/concurrent-map/v2 v2.0.1/go.mod h1:9Eq3TG2oBe5FirmYWQfYO5iH1q0Jv47PLaNK++uCdOM=
 github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 h1:mOvehYivJ4Aqu2CPe3D3lv8jhqOI9/1o0THxJHBE0qw=
