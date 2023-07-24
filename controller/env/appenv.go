@@ -721,14 +721,21 @@ func (ae *AppEnv) ControllersKeyFunc(token *jwt.Token) (interface{}, error) {
 }
 
 func (ae *AppEnv) GetControllerPublicKey(kid string) crypto.PublicKey {
-	tlsCert, kid, _ := ae.GetServerCert()
-	var kids []string
+	serverTlsCert, serverKid, _ := ae.GetServerCert()
+	signers := ae.GetHostController().GetPeerSigners()
 
-	kids = append(kids, kid)
+	kids := map[string]crypto.PublicKey{
+		serverKid: serverTlsCert.Leaf.PublicKey,
+	}
 
-	for _, curKid := range kids {
-		if kid == curKid {
-			return tlsCert.Leaf.PublicKey
+	for _, signer := range signers {
+		signerKid := fmt.Sprintf("%s", sha1.Sum(signer.Raw))
+		kids[signerKid] = signer.PublicKey
+	}
+
+	for curKid, publicKey := range kids {
+		if curKid == kid {
+			return publicKey
 		}
 	}
 
