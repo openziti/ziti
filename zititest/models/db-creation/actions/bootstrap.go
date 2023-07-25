@@ -17,20 +17,42 @@
 package actions
 
 import (
-	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
-	"github.com/openziti/ziti/zititest/zitilab"
-	"time"
-
+	"encoding/json"
+	"fmt"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
+	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/ziti/zititest/zitilab"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
+	"time"
 )
 
 type bootstrapAction struct{}
+
+// Define a struct to represent the nested "ResourceRecordSet" object
+type ResourceRecordSet struct {
+	Name            string `json:"Name"`
+	Type            string `json:"Type"`
+	TTL             int    `json:"TTL"`
+	ResourceRecords []struct {
+		Value string `json:"Value"`
+	} `json:"ResourceRecords"`
+}
+
+// Define a struct to represent the nested "Changes" object
+type Change struct {
+	Action            string            `json:"Action"`
+	ResourceRecordSet ResourceRecordSet `json:"ResourceRecordSet"`
+}
+
+// Define the main Payload struct to represent the entire JSON payload
+type Payload struct {
+	Changes []Change `json:"Changes"`
+}
 
 func NewBootstrapAction() model.ActionBinder {
 	action := &bootstrapAction{}
@@ -38,8 +60,35 @@ func NewBootstrapAction() model.ActionBinder {
 }
 
 func (a *bootstrapAction) bind(m *model.Model) model.Action {
-	workflow := actions.Workflow()
+	dnsAddJsonData := `{
+	"Changes": [{
+		"Action": "CREATE",
+		"ResourceRecordSet": {
+			"Name": "controller.testing.openziti.org",
+			"Type": "A",
+			"TTL": 300,
+			"ResourceRecords": [{
+				"Value": "52.90.174.214"
+			}]
+		}
+	}]
+}`
 
+	// Create an instance of the Payload struct to store the JSON data
+	var data Payload
+
+	// Unmarshal the JSON data into the struct
+	err := json.Unmarshal([]byte(dnsAddJsonData), &data)
+	if err != nil {
+		fmt.Println("Error while unmarshalling JSON:", err)
+		return nil
+	}
+
+	//fmt.Println("dnsAddJsonData: \n", data)
+
+	addDNSRecord := "aws route53 change-resource-record-sets --hosted-zone-id Z09612893W445K5ME8MYS --change-batch '" + dnsAddJsonData + "'"
+	workflow := actions.Workflow()
+	workflow.AddAction(host.GroupExec("*", 25, addDNSRecord))
 	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
 	workflow.AddAction(component.Stop("#ctrl"))
 	workflow.AddAction(component.Exec("#ctrl", zitilab.ControllerActionInitStandalone))

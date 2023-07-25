@@ -95,7 +95,7 @@ var m = &model.Model{
 								ConfigName:     "",
 								Version:        "v0.28.4",
 								LocalPath:      "/mnt/c/Users/padib/OneDrive/Documents/NF Files/NF_Repos/ziti/ziti",
-								DNSNames:       nil,
+								DNSNames:       []string{"controller.testing.openziti.org"},
 							},
 						},
 					},
