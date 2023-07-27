@@ -40,7 +40,14 @@ func (b *Bundle) Raw() ([]byte, []byte) {
 func RawToBundle(name string, key []byte, cert []byte) (*Bundle, error) {
 	k, err := x509.ParsePKCS8PrivateKey(key)
 	if err != nil {
-		return nil, fmt.Errorf("failed parsing private key: %v", err)
+		//previous versions may have stored private keys as PKCS1 (aka RSA only) try as a secondary action
+		var pkcs1Err error
+		k, pkcs1Err = x509.ParsePKCS1PrivateKey(key)
+
+		if pkcs1Err != nil {
+			return nil, fmt.Errorf("failed parsing private key PKCS8 error: %w, PKCS1 error: %w", err, pkcs1Err)
+		}
+
 	}
 	c, err := x509.ParseCertificate(cert)
 	if err != nil {
