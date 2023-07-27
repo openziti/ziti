@@ -92,6 +92,17 @@ function _dedupe_list {
   echo "${list}" | tr "'${delimiter}'" '\n' | sort -u | xargs | tr ' ' ','
 }
 
+# Checks if a value is likely an IP address
+function _is_ip {
+  local param pattern
+  param="${1}"
+  pattern="^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$"
+  if [[ "${param}" =~ $pattern ]]; then
+    return 1
+  fi
+  return 0
+}
+
 function _pki_client_server {
   local retVal dns_allow_list ZITI_CA_NAME_local ip_allow_list file_name
   _check_env_variable ZITI_PKI ZITI_BIN_DIR
@@ -730,7 +741,7 @@ function createPki {
   _pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}" 1
 
   echo " "
-  pki_allow_list="${ZITI_CTRL_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
+  pki_allow_list="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS},${ZITI_CTRL_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
   pki_allow_list_ip="127.0.0.1"
   _pki_client_server "${pki_allow_list}" "${ZITI_PKI_CTRL_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_ADVERTISED_ADDRESS}"
 
