@@ -17,7 +17,7 @@
 package certificate
 
 import (
-	"crypto/rsa"
+	"crypto"
 	"crypto/x509"
 	"fmt"
 )
@@ -25,19 +25,20 @@ import (
 // Bundle represents a pair of private key and certificate.
 type Bundle struct {
 	Name string
-	Key  *rsa.PrivateKey
+	Key  crypto.PrivateKey
 	Cert *x509.Certificate
 }
 
 // Raw returns the raw bytes for the private key and certificate.
 func (b *Bundle) Raw() ([]byte, []byte) {
-	return x509.MarshalPKCS1PrivateKey(b.Key), b.Cert.Raw
+	keyBytes, _ := x509.MarshalPKCS8PrivateKey(b.Key)
+	return keyBytes, b.Cert.Raw
 }
 
 // RawToBundle creates a bundle from the name and bytes given for a private key
 // and a certificate.
 func RawToBundle(name string, key []byte, cert []byte) (*Bundle, error) {
-	k, err := x509.ParsePKCS1PrivateKey(key)
+	k, err := x509.ParsePKCS8PrivateKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed parsing private key: %v", err)
 	}

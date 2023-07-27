@@ -183,7 +183,7 @@ func (s *AccountsStorage) GetPrivateKey(keyType certcrypto.KeyType) crypto.Priva
 
 	privateKey, err := loadPrivateKey(accKeyPath)
 	if err != nil {
-		log.Fatalf("Could not load RSA private key from file %s: %v", accKeyPath, err)
+		log.Fatalf("Could not load private key from file %s: %v", accKeyPath, err)
 	}
 
 	return privateKey

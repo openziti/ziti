@@ -18,6 +18,8 @@ package store
 
 import (
 	"bufio"
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
@@ -156,19 +158,22 @@ func (l *Local) AddCSR(caName, name string, isCa bool, key, cert []byte) error {
 	return nil
 }
 
-// AddKey adds the given key to the local filesystem.
+// AddKey adds the given private key to the local filesystem.
 func (l *Local) AddKey(caName string, name string, key []byte) error {
 	if l.Exists(caName, name) {
 		return fmt.Errorf("a key already exists for the key name %v within CA %v", name, caName)
 	}
-	if err := l.writeKey(caName, name, key); err != nil {
+
+	pemType := getPkPemType(key)
+
+	if err := l.writeKey(caName, name, pemType, key); err != nil {
 		return fmt.Errorf("failed writing key %v within CA %v to the local filesystem: %v", name, caName, err)
 	}
 	return nil
 }
 
 // writeKey encodes in PEM format the bundle private key and stores it on the local filesystem.
-func (l *Local) writeKey(caName string, name string, key []byte) error {
+func (l *Local) writeKey(caName, name, pemType string, key []byte) error {
 	caDir := filepath.Join(l.Root, caName)
 	if _, err := os.Stat(caDir); err != nil {
 		if err := InitCADir(caDir); err != nil {
@@ -176,10 +181,24 @@ func (l *Local) writeKey(caName string, name string, key []byte) error {
 		}
 	}
 	keyPath, _ := l.path(caName, name)
-	if err := encodeAndWrite(keyPath, "RSA PRIVATE KEY", key); err != nil {
+	if err := encodeAndWrite(keyPath, pemType, key); err != nil {
 		return fmt.Errorf("failed encoding and writing private key file: %v", err)
 	}
 	return nil
+}
+
+func getPkPemType(key []byte) string {
+	parsedKey, _ := x509.ParsePKCS8PrivateKey(key)
+
+	keyPemType := "UNKNOWN PRIVATE KEY"
+	switch parsedKey.(type) {
+	case *rsa.PrivateKey:
+		keyPemType = "RSA PRIVATE KEY"
+	case *ecdsa.PrivateKey:
+		keyPemType = "EC PRIVATE KEY"
+	}
+
+	return keyPemType
 }
 
 // writeBundle encodes in PEM format the bundle private key and
@@ -191,8 +210,11 @@ func (l *Local) writeBundle(caName, name string, isCa bool, key, cert []byte) er
 			return fmt.Errorf("root directory for CA %v does not exist and cannot be created: %v", caDir, err)
 		}
 	}
+
+	keyPemType := getPkPemType(key)
+
 	keyPath, certPath := l.path(caName, name)
-	if err := encodeAndWrite(keyPath, "RSA PRIVATE KEY", key); err != nil {
+	if err := encodeAndWrite(keyPath, keyPemType, key); err != nil {
 		return fmt.Errorf("failed encoding and writing private key file: %v", err)
 	}
 	if err := encodeAndWrite(certPath, "CERTIFICATE", cert); err != nil {

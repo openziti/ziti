@@ -17,16 +17,18 @@
 package cmd
 
 import (
+	"crypto/elliptic"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
 	"fmt"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/pki/pki"
 	"github.com/openziti/ziti/ziti/util"
 	"io"
-	"io/ioutil"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -78,32 +80,32 @@ func NewCmdPKICreate(out io.Writer, errOut io.Writer) *cobra.Command {
 func (options *PKICreateOptions) addPKICreateFlags(cmd *cobra.Command) {
 	viperLock.Lock()
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKIRoot, "pki-root", "", "", "Directory in which to store CA")
-	cmd.MarkFlagRequired("pki-root")
-	viper.BindPFlag("pki_root", cmd.PersistentFlags().Lookup("pki-root"))
+	_ = cmd.MarkFlagRequired("pki-root")
+	_ = viper.BindPFlag("pki_root", cmd.PersistentFlags().Lookup("pki-root"))
 
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKIOrganization, "pki-organization", "", "NetFoundry", "Organization")
-	cmd.MarkFlagRequired("pki-organization")
-	viper.BindPFlag("pki-organization", cmd.PersistentFlags().Lookup("pki-organization"))
+	_ = cmd.MarkFlagRequired("pki-organization")
+	_ = viper.BindPFlag("pki-organization", cmd.PersistentFlags().Lookup("pki-organization"))
 
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKIOrganizationalUnit, "pki-organizational-unit", "", "ADV-DEV", "Organization unit")
-	cmd.MarkFlagRequired("pki-organizational-unit")
-	viper.BindPFlag("pki-organizational-unit", cmd.PersistentFlags().Lookup("pki-organizational-unit"))
+	_ = cmd.MarkFlagRequired("pki-organizational-unit")
+	_ = viper.BindPFlag("pki-organizational-unit", cmd.PersistentFlags().Lookup("pki-organizational-unit"))
 
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKICountry, "pki-country", "", "US", "Country")
-	cmd.MarkFlagRequired("pki-country")
-	viper.BindPFlag("pki-country", cmd.PersistentFlags().Lookup("pki-country"))
+	_ = cmd.MarkFlagRequired("pki-country")
+	_ = viper.BindPFlag("pki-country", cmd.PersistentFlags().Lookup("pki-country"))
 
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKILocality, "pki-locality", "", "Charlotte", "Locality/Location")
-	cmd.MarkFlagRequired("pki-locality")
-	viper.BindPFlag("pki-locality", cmd.PersistentFlags().Lookup("pki-locality"))
+	_ = cmd.MarkFlagRequired("pki-locality")
+	_ = viper.BindPFlag("pki-locality", cmd.PersistentFlags().Lookup("pki-locality"))
 
 	// cmd.PersistentFlags().StringVarP(&options.Flags.PKILocality, "pki-location", "", "Charlotte", "Location/Locality")
 	// cmd.MarkFlagRequired("pki-location")
 	// viper.BindPFlag("pki-location", cmd.PersistentFlags().Lookup("pki-location"))
 
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKIProvince, "pki-province", "", "NC", "Province/State")
-	cmd.MarkFlagRequired("pki-province")
-	viper.BindPFlag("pki-province", cmd.PersistentFlags().Lookup("pki-province"))
+	_ = cmd.MarkFlagRequired("pki-province")
+	_ = viper.BindPFlag("pki-province", cmd.PersistentFlags().Lookup("pki-province"))
 
 	// cmd.PersistentFlags().StringVarP(&options.Flags.PKIProvince, "pki-state", "", "NC", "State/Province")
 	// cmd.MarkFlagRequired("pki-state")
@@ -118,111 +120,111 @@ func (o *PKICreateOptions) Run() error {
 
 // ObtainPKIRoot returns the value for pki-root
 func (o *PKICreateOptions) ObtainPKIRoot() (string, error) {
-	pkiroot := o.Flags.PKIRoot
-	if pkiroot == "" {
-		pkiroot = viper.GetString("pki-root")
-		if pkiroot == "" {
+	pkiRoot := o.Flags.PKIRoot
+	if pkiRoot == "" {
+		pkiRoot = viper.GetString("pki-root")
+		if pkiRoot == "" {
 			pkiRootDir, err := util.PKIRootDir()
 			if err != nil {
 				return "", err
 			}
-			pkiroot, err = util.PickValue("Required flag 'pki-root' not specified; Enter PKI Root now:", pkiRootDir, true)
+			pkiRoot, err = util.PickValue("Required flag 'pki-root' not specified; Enter PKI Root now:", pkiRootDir, true)
 			if err != nil {
 				return "", err
 			}
 		}
 	}
-	return pkiroot, nil
+	return pkiRoot, nil
 }
 
 // ObtainCAFile returns the value for ca-file
 func (o *PKICreateOptions) ObtainCAFile() (string, error) {
-	cafile := o.Flags.CAFile
-	if cafile == "" {
-		cafile = viper.GetString("ca-file")
-		if cafile == "" {
+	caFile := o.Flags.CAFile
+	if caFile == "" {
+		caFile = viper.GetString("ca-file")
+		if caFile == "" {
 			var err error
-			cafile, err = util.PickValue("Required flag 'ca-file' not specified; Enter CA name now:", "ca", true)
+			caFile, err = util.PickValue("Required flag 'ca-file' not specified; Enter CA name now:", "ca", true)
 			if err != nil {
 				return "", err
 			}
 		}
 	}
-	return cafile, nil
+	return caFile, nil
 }
 
 // ObtainIntermediateCAFile returns the value for intermediate-file
 func (o *PKICreateOptions) ObtainIntermediateCAFile() (string, error) {
-	intermediatefile := o.Flags.IntermediateFile
-	if intermediatefile == "" {
-		intermediatefile = viper.GetString("intermediate-file")
-		if intermediatefile == "" {
+	intermediateFile := o.Flags.IntermediateFile
+	if intermediateFile == "" {
+		intermediateFile = viper.GetString("intermediate-file")
+		if intermediateFile == "" {
 			var err error
-			intermediatefile, err = util.PickValue("Required flag 'intermediate-file' not specified; Enter Intermediate CA name now:", "intermediate", true)
+			intermediateFile, err = util.PickValue("Required flag 'intermediate-file' not specified; Enter Intermediate CA name now:", "intermediate", true)
 			if err != nil {
 				return "", err
 			}
 		}
 	}
-	return intermediatefile, nil
+	return intermediateFile, nil
 }
 
 // ObtainIntermediateCSRFile returns the value for intermediate-file
 func (o *PKICreateOptions) ObtainIntermediateCSRFile() (string, error) {
-	intermediatecsrfile := viper.GetString("intermediate-csr-file")
-	if intermediatecsrfile == "" {
+	intermediateCsrFile := viper.GetString("intermediate-csr-file")
+	if intermediateCsrFile == "" {
 		var err error
-		intermediatecsrfile, err = util.PickValue("Required flag 'intermediate--csr-file' not specified; Enter Intermediate CSR file name now:", "intermediate-csr", true)
+		intermediateCsrFile, err = util.PickValue("Required flag 'intermediate--csr-file' not specified; Enter Intermediate CSR file name now:", "intermediate-csr", true)
 		if err != nil {
 			return "", err
 		}
 	}
-	return intermediatecsrfile, nil
+	return intermediateCsrFile, nil
 }
 
 // ObtainCSRFile returns the value for csr-file
 func (o *PKICreateOptions) ObtainCSRFile() (string, error) {
-	csrfile := viper.GetString("csr-file")
-	if csrfile == "" {
+	csrFile := viper.GetString("csr-file")
+	if csrFile == "" {
 		var err error
-		csrfile, err = util.PickValue("Required flag 'csr-file' not specified; Enter CSR name now:", "csr", true)
+		csrFile, err = util.PickValue("Required flag 'csr-file' not specified; Enter CSR name now:", "csr", true)
 		if err != nil {
 			return "", err
 		}
 	}
-	return csrfile, nil
+	return csrFile, nil
 }
 
 // ObtainServerCertFile returns the value for server-file
 func (o *PKICreateOptions) ObtainServerCertFile() (string, error) {
-	serverfile := o.Flags.ServerFile
-	if serverfile == "" {
-		serverfile = viper.GetString("server-file")
-		if serverfile == "" {
+	serverFile := o.Flags.ServerFile
+	if serverFile == "" {
+		serverFile = viper.GetString("server-file")
+		if serverFile == "" {
 			var err error
-			serverfile, err = util.PickValue("Required flag 'server-file' not specified; Enter name now:", "server", true)
+			serverFile, err = util.PickValue("Required flag 'server-file' not specified; Enter name now:", "server", true)
 			if err != nil {
 				return "", err
 			}
 		}
 	}
-	return serverfile, nil
+	return serverFile, nil
 }
 
 // ObtainClientCertFile returns the value for client-file
 func (o *PKICreateOptions) ObtainClientCertFile() (string, error) {
-	clientfile := o.Flags.ClientFile
-	if clientfile == "" {
-		clientfile = viper.GetString("client-file")
-		if clientfile == "" {
+	clientFile := o.Flags.ClientFile
+	if clientFile == "" {
+		clientFile = viper.GetString("client-file")
+		if clientFile == "" {
 			var err error
-			clientfile, err = util.PickValue("Required flag 'client-file' not specified; Enter name now:", "client", true)
+			clientFile, err = util.PickValue("Required flag 'client-file' not specified; Enter name now:", "client", true)
 			if err != nil {
 				return "", err
 			}
 		}
 	}
-	return clientfile, nil
+	return clientFile, nil
 }
 
 // ObtainKeyFile returns the value for key-file
@@ -244,13 +246,13 @@ func (o *PKICreateOptions) ObtainKeyFile(required bool) (string, error) {
 }
 
 // ObtainCAName returns the value for ca-name
-func (o *PKICreateOptions) ObtainCAName(pkiroot string) (string, error) {
-	caname := o.Flags.CAName
-	if caname == "" {
-		caname = viper.GetString("ca-name")
-		if caname == "" {
+func (o *PKICreateOptions) ObtainCAName(pkiRoot string) (string, error) {
+	caName := o.Flags.CAName
+	if caName == "" {
+		caName = viper.GetString("ca-name")
+		if caName == "" {
 			var err error
-			files, err := ioutil.ReadDir(pkiroot)
+			files, err := os.ReadDir(pkiRoot)
 			if err != nil {
 				return "", err
 			}
@@ -262,14 +264,14 @@ func (o *PKICreateOptions) ObtainCAName(pkiroot string) (string, error) {
 					}
 				}
 			}
-			caname, err = util.PickName(names, "Required flag 'ca-name' not specified; choose from below (dirs seen in your ZITI_PKI_ROOT):")
+			caName, err = util.PickName(names, "Required flag 'ca-name' not specified; choose from below (dirs seen in your ZITI_PKI_ROOT):")
 			if err != nil {
 				return "", err
 			}
 		}
 	}
-	fmt.Println("Using CA name: ", caname)
-	return caname, nil
+	fmt.Println("Using CA name: ", caName)
+	return caName, nil
 }
 
 // ObtainCommonName returns the value for CN
@@ -289,9 +291,9 @@ func (o *PKICreateOptions) ObtainCommonName() (string, error) {
 }
 
 // ObtainFileName returns the value for the 'name' used in the PKI request
-func (o *PKICreateOptions) ObtainFileName(cafile string, commonName string) string {
+func (o *PKICreateOptions) ObtainFileName(caFile string, commonName string) string {
 	var filename string
-	if filename = cafile; len(cafile) == 0 {
+	if filename = caFile; len(caFile) == 0 {
 		filename = strings.Replace(commonName, " ", "_", -1)
 		filename = strings.Replace(filename, "*", "wildcard", -1)
 	}
@@ -321,18 +323,18 @@ func (o *PKICreateOptions) ObtainPKIRequestTemplate(commonName string) *x509.Cer
 	template := &x509.Certificate{
 		Subject:    subject,
 		NotAfter:   time.Now().AddDate(0, 0, o.Flags.CAExpire),
-		MaxPathLen: o.Flags.CAMaxpath,
+		MaxPathLen: o.Flags.CAMaxPath,
 	}
 
 	return template
 }
 
 // ObtainKeyName returns the private key from the key-file
-func (o *PKICreateOptions) ObtainKeyName(pkiroot string) (string, error) {
-	keyname := viper.GetString("key-name")
-	if keyname == "" {
+func (o *PKICreateOptions) ObtainKeyName(pkiRoot string) (string, error) {
+	keyName := viper.GetString("key-name")
+	if keyName == "" {
 		var err error
-		files, err := ioutil.ReadDir(pkiroot)
+		files, err := os.ReadDir(pkiRoot)
 		if err != nil {
 			return "", err
 		}
@@ -342,13 +344,13 @@ func (o *PKICreateOptions) ObtainKeyName(pkiroot string) (string, error) {
 				names = append(names, f.Name())
 			}
 		}
-		keyname, err = util.PickName(names, "Required flag 'key-name' not specified; choose from below (dirs seen in your ZITI_PKI_ROOT):")
+		keyName, err = util.PickName(names, "Required flag 'key-name' not specified; choose from below (dirs seen in your ZITI_PKI_ROOT):")
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return keyname, nil
+	return keyName, nil
 }
 
 // ObtainPKICSRRequestTemplate returns the CSR 'template' used in the PKI request
@@ -379,8 +381,7 @@ func (o *PKICreateOptions) ObtainPKICSRRequestTemplate(commonName string) *x509.
 	val, _ := asn1.Marshal(basicConstraints{true, 0})
 
 	csrTemplate := &x509.CertificateRequest{
-		Subject:            subject,
-		SignatureAlgorithm: x509.SHA512WithRSA,
+		Subject: subject,
 		ExtraExtensions: []pkix.Extension{
 			{
 				Id:       asn1.ObjectIdentifier{2, 5, 29, 19},
@@ -393,7 +394,7 @@ func (o *PKICreateOptions) ObtainPKICSRRequestTemplate(commonName string) *x509.
 	return csrTemplate
 }
 
-// ObtainIPsAndDNSNames returns the IP addrs and/or DNS names used in the PKI request template
+// ObtainIPsAndDNSNames returns the IP address and/or DNS names used in the PKI request template
 func (o *PKICreateOptions) ObtainIPsAndDNSNames() ([]net.IP, []string, error) {
 
 	if (len(o.Flags.IP) == 0) && (len(o.Flags.DNSName) == 0) {
@@ -408,4 +409,52 @@ func (o *PKICreateOptions) ObtainIPsAndDNSNames() ([]net.IP, []string, error) {
 	}
 
 	return IPs, o.Flags.DNSName, nil
+}
+
+// ObtainPrivateKeyOptions returns the private key options necessary to generate a private key
+func (o *PKICreateOptions) ObtainPrivateKeyOptions() (pki.PrivateKeyOptions, error) {
+	isEc := o.Flags.EcCurve != ""
+
+	if isEc {
+		return o.obtainEcOptions()
+	}
+
+	return o.obtainRsaOptions()
+}
+
+func (o *PKICreateOptions) obtainEcOptions() (pki.PrivateKeyOptions, error) {
+	target := strings.Replace(strings.ToLower(o.Flags.EcCurve), "-", "", -1)
+
+	validCurves := []elliptic.Curve{
+		elliptic.P224(),
+		elliptic.P256(),
+		elliptic.P384(),
+		elliptic.P521(),
+	}
+	for _, validCurve := range validCurves {
+		curCurveName := strings.Replace(strings.ToLower(validCurve.Params().Name), "-", "", -1)
+
+		if curCurveName == target {
+			return &pki.EcPrivateKeyOptions{
+				Curve: validCurve,
+			}, nil
+		}
+	}
+
+	validCurveString := ""
+
+	for _, validCurve := range validCurves {
+		if validCurveString != "" {
+			validCurveString = validCurveString + ", "
+		}
+
+		validCurveString = validCurveString + strings.Replace(validCurve.Params().Name, "-", "", -1)
+	}
+	return nil, fmt.Errorf("unknown curve name '%s', valid curves (case and dash insensitive) %s", o.Flags.EcCurve, validCurveString)
+}
+
+func (o *PKICreateOptions) obtainRsaOptions() (pki.PrivateKeyOptions, error) {
+	return &pki.RsaPrivateKeyOptions{
+		Size: o.Flags.CAPrivateKeySize,
+	}, nil
 }

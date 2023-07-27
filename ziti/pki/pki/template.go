@@ -19,17 +19,16 @@ package pki
 import (
 	"crypto"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
-	"encoding/asn1"
 	"fmt"
 	"math/big"
 	"time"
 )
 
 func defaultTemplate(genReq *Request, publicKey crypto.PublicKey) error {
-	publicKeyBytes, err := asn1.Marshal(*publicKey.(*rsa.PublicKey))
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
+
 	if err != nil {
 		return fmt.Errorf("failed marshaling public key: %v", err)
 	}
@@ -45,7 +44,6 @@ func defaultTemplate(genReq *Request, publicKey crypto.PublicKey) error {
 	genReq.Template.SerialNumber = sn
 
 	genReq.Template.NotBefore = time.Now().Add(-time.Minute)
-	genReq.Template.SignatureAlgorithm = x509.SHA256WithRSA
 	return nil
 }
 

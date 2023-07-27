@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/openziti/fabric/controller/idgen"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
@@ -73,21 +74,22 @@ func (o *PKICreateClientOptions) addPKICreateClientFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.Flags.ClientName, FlagCaClientName, "", "NetFoundry Inc. Client", "Common Name (CN) to use for new Client certificate")
 	cmd.Flags().StringSliceVar(&o.Flags.Email, "email", []string{}, "Email addr(s) to add to Subject Alternate Name (SAN) for new Client certificate")
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 365, "Expiration limit in days")
-	cmd.Flags().IntVarP(&o.Flags.CAMaxpath, "max-path-len", "", -1, "Intermediate maximum path length")
-	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 2048, "Size of the private key")
+	cmd.Flags().IntVarP(&o.Flags.CAMaxPath, "max-path-len", "", -1, "Intermediate maximum path length")
+	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the RSA private key, ignored if -curve is set")
+	cmd.Flags().StringVarP(&o.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521")
 	cmd.Flags().StringVar(&o.Flags.SpiffeID, "spiffe-id", "", "Optionally provide the path portion of a SPIFFE id. The trust domain will be taken from the signing certificate.")
 }
 
 // Run implements this command
 func (o *PKICreateClientOptions) Run() error {
-	pkiroot, err := o.ObtainPKIRoot()
+	pkiRoot, err := o.ObtainPKIRoot()
 	if err != nil {
 		return err
 	}
 
 	o.Flags.PKI = &pki.ZitiPKI{Store: &store.Local{}}
 	local := o.Flags.PKI.Store.(*store.Local)
-	local.Root = pkiroot
+	local.Root = pkiRoot
 
 	if !o.Cmd.Flags().Changed(FlagCaClientName) {
 		o.Flags.ClientName = o.Flags.ClientName + " " + idgen.New()
@@ -108,7 +110,7 @@ func (o *PKICreateClientOptions) Run() error {
 
 	var signer *certificate.Bundle
 
-	caname, err := o.ObtainCAName(pkiroot)
+	caName, err := o.ObtainCAName(pkiRoot)
 	if err != nil {
 		return err
 	}
@@ -118,7 +120,7 @@ func (o *PKICreateClientOptions) Run() error {
 		return err
 	}
 
-	signer, err = o.Flags.PKI.GetCA(caname)
+	signer, err = o.Flags.PKI.GetCA(caName)
 	if err != nil {
 		return errors.Wrap(err, "cannot locate signer")
 	}
@@ -143,12 +145,18 @@ func (o *PKICreateClientOptions) Run() error {
 		template.URIs = append(template.URIs, &spiffId)
 	}
 
+	privateKeyOptions, err := o.ObtainPrivateKeyOptions()
+
+	if err != nil {
+		return fmt.Errorf("could not resolve private key options: %w", err)
+	}
+
 	req := &pki.Request{
 		Name:                filename,
 		KeyName:             keyFile,
 		Template:            template,
 		IsClientCertificate: true,
-		PrivateKeySize:      o.Flags.CAPrivateKeySize,
+		PrivateKeyOptions:   privateKeyOptions,
 	}
 
 	if err := o.Flags.PKI.Sign(signer, req); err != nil {
