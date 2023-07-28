@@ -21,6 +21,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -200,10 +201,27 @@ func generateCert(options *verifyCaOptions, token string) ([]byte, crypto.Signer
 	}
 
 	var signerInterface crypto.Signer
-	if caPrivateKeyBlock.Type == "EC PRIVATE KEY" {
+
+	switch caPrivateKeyBlock.Type {
+	case "EC PRIVATE KEY":
 		signerInterface, err = x509.ParseECPrivateKey(caPrivateKeyBlock.Bytes)
-	} else {
+	case "RSA PRIVATE KEY":
 		signerInterface, err = x509.ParsePKCS1PrivateKey(caPrivateKeyBlock.Bytes)
+	case "PRIVATE KEY":
+		key, err := x509.ParsePKCS8PrivateKey(caPrivateKeyBlock.Bytes)
+
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not parse PKCS8 key file (%s)", err)
+		}
+
+		switch typedKey := key.(type) {
+		case *rsa.PrivateKey:
+			signerInterface = typedKey
+		case *ecdsa.PrivateKey:
+			signerInterface = typedKey
+		default:
+			return nil, nil, fmt.Errorf("unsupported private key parsed from PKCS8 %T", typedKey)
+		}
 	}
 
 	if err != nil {

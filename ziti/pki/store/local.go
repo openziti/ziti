@@ -18,8 +18,6 @@ package store
 
 import (
 	"bufio"
-	"crypto/ecdsa"
-	"crypto/rsa"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
@@ -188,17 +186,21 @@ func (l *Local) writeKey(caName, name, pemType string, key []byte) error {
 }
 
 func getPkPemType(key []byte) string {
-	parsedKey, _ := x509.ParsePKCS8PrivateKey(key)
+	var pkcs1Err error
+	_, pkcs1Err = x509.ParsePKCS1PrivateKey(key)
 
-	keyPemType := "UNKNOWN PRIVATE KEY"
-	switch parsedKey.(type) {
-	case *rsa.PrivateKey:
-		keyPemType = "RSA PRIVATE KEY"
-	case *ecdsa.PrivateKey:
-		keyPemType = "EC PRIVATE KEY"
+	if pkcs1Err == nil {
+		return "RSA PRIVATE KEY"
 	}
 
-	return keyPemType
+	var pkcsEcErr error
+	_, pkcsEcErr = x509.ParseECPrivateKey(key)
+
+	if pkcsEcErr == nil {
+		return "EC PRIVATE KEY"
+	}
+
+	return "PRIVATE KEY"
 }
 
 // writeBundle encodes in PEM format the bundle private key and

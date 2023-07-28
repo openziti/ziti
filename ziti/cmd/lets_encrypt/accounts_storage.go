@@ -229,6 +229,8 @@ func loadPrivateKey(file string) (crypto.PrivateKey, error) {
 		return x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
 	case "EC PRIVATE KEY":
 		return x509.ParseECPrivateKey(keyBlock.Bytes)
+	case "PRIVATE KEY":
+		return x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
 	}
 
 	return nil, errors.New("unknown private key type")
