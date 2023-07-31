@@ -2,12 +2,6 @@
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
-# wait for the controller to come online
-_wait_for_controller
-
-# after coming online, give the controller just a second to ramp up in case running via docker compose
-sleep 1
-
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="ziti-edge-controller"; fi
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_PORT="3022"; fi
 if [[ "${ZITI_ROUTER_PORT-}" == "" ]]; then export ZITI_ROUTER_PORT="3022"; fi
@@ -19,6 +13,12 @@ if [[ "${ZITI_ROUTER_NAME-}" != "" ]]; then
 fi
 
 . ${ZITI_HOME}/ziti.env
+
+# wait for the controller to come online
+_wait_for_controller
+
+# after coming online, give the controller just a second to ramp up in case running via docker compose
+sleep 1
 
 if [[ "${_ZITI_ROUTER_NAME}" != "" ]]; then
   export ZITI_ROUTER_NAME="${_ZITI_ROUTER_NAME}"
