@@ -9,15 +9,15 @@ require (
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/google/uuid v1.3.0
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/openziti/channel/v2 v2.0.84
-	github.com/openziti/edge v0.24.364
+	github.com/openziti/channel/v2 v2.0.87
+	github.com/openziti/edge v0.24.372
 	github.com/openziti/fablab v0.5.5
-	github.com/openziti/fabric v0.23.45
+	github.com/openziti/fabric v0.23.52
 	github.com/openziti/foundation/v2 v2.0.28
 	github.com/openziti/identity v1.0.59
-	github.com/openziti/sdk-golang v0.20.78
+	github.com/openziti/sdk-golang v0.20.80
 	github.com/openziti/storage v0.2.11
-	github.com/openziti/transport/v2 v2.0.93
+	github.com/openziti/transport/v2 v2.0.96
 	github.com/openziti/ziti v0.28.3
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
@@ -129,7 +129,7 @@ require (
 	github.com/openziti/runzmd v1.0.28 // indirect
 	github.com/openziti/secretstream v0.1.10 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
-	github.com/openziti/xweb/v2 v2.0.2 // indirect
+	github.com/openziti/xweb/v2 v2.1.0 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.1 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
