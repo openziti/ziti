@@ -27,9 +27,9 @@ fi
 _UNIQUE_NAME="${ZITI_HOME}/${ZITI_ROUTER_NAME}-${HOSTNAME}.init"
 if [ ! -f "${_UNIQUE_NAME}" ]; then
   echo "system has not been initialized. initializing..."
-  ziti edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
+  "${ZITI_BIN_DIR-}/ziti" edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
 
-  echo "----------  Creating edge-router ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}...."
+  echo "----------  Creating edge-router ${ZITI_ROUTER_NAME}...."
 
   if [[ "$1" == "edge" ]]; then
     echo "CREATING EDGE ROUTER CONFIG: ${ZITI_ROUTER_NAME}"
