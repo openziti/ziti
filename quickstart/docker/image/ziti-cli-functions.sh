@@ -602,11 +602,11 @@ function getZiti {
     default_path="${ZITI_HOME}/ziti-bin/ziti-${ZITI_BINARIES_VERSION}"
     echo -en "The path for ziti binaries has not been set, use the default (${default_path})? (Y/n) "
     read -r reply
-    if [[ -z "${reply}" || ${reply} =~ [yY]* ]]; then
+    if [[ -z "${reply}" || ${reply} =~ [yY] ]]; then
       echo "INFO: using the default path ${default_path}"
       ZITI_BIN_DIR="${default_path}"
     else
-      echo -en "Enter the preferred path and press <enter> (the path will be created if necessary) "
+      echo -en "Enter the preferred fully qualified path and press <enter> (the path will be created if necessary) "
       read -r ZITI_BIN_DIR
     fi
   fi
