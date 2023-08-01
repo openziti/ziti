@@ -15,6 +15,12 @@ if [ -z "${ZITI_VERSION}" ]; then
   exit 1
 fi
 
+IMAGE_TAG="${2-}"
+if [ -z "${IMAGE_TAG}" ]; then
+  IMAGE_TAG="latest"
+  echo "image tag name was not provided, using default '${IMAGE_TAG}'"
+fi
+
 docker buildx create --use --name=ziti-builder
 
 if [ "local" == "${1}" ]; then
@@ -28,5 +34,5 @@ fi
 docker buildx build ${_BUILDX_PLATFORM} "${SCRIPT_DIR}/image" \
   --build-arg ZITI_VERSION_OVERRIDE="v${ZITI_VERSION}" \
   --tag "openziti/quickstart:${ZITI_VERSION}" \
-  --tag "openziti/quickstart:latest" \
+  --tag "openziti/quickstart:${IMAGE_TAG}" \
   ${_BUILDX_ACTION}
