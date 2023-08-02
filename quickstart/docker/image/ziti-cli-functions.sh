@@ -98,9 +98,9 @@ function _is_ip {
   param="${1}"
   pattern="^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$"
   if [[ "${param}" =~ $pattern ]]; then
-    return 1
+    return 0
   fi
-  return 0
+  return 1
 }
 
 function _pki_client_server {
