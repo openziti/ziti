@@ -37,6 +37,7 @@ type splitImpl struct {
 	dialAddress     string
 	closeNotified   atomic.Bool
 	droppedMsgMeter metrics.Meter
+	dialed          bool
 }
 
 func (self *splitImpl) Id() string {
@@ -130,6 +131,10 @@ func (self *splitImpl) IsClosed() bool {
 	return self.payloadCh.IsClosed() || self.ackCh.IsClosed()
 }
 
+func (self *splitImpl) IsDialed() bool {
+	return self.dialed
+}
+
 func (self *splitImpl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 	detail.LinkDetails[self.id] = self.InspectLink()
 }
@@ -143,6 +148,7 @@ func (self *splitImpl) InspectLink() *inspect.LinkInspectDetail {
 		DialAddress: self.DialAddress(),
 		Dest:        self.DestinationId(),
 		DestVersion: self.DestVersion(),
+		Dialed:      self.dialed,
 	}
 }
 

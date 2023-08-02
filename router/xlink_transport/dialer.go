@@ -109,6 +109,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 			routerVersion: dial.GetRouterVersion(),
 			linkProtocol:  dial.GetLinkProtocol(),
 			dialAddress:   dial.GetAddress(),
+			dialed:        true,
 		},
 	}
 
@@ -155,6 +156,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 			linkProtocol:  dial.GetLinkProtocol(),
 			routerVersion: dial.GetRouterVersion(),
 			dialAddress:   dial.GetAddress(),
+			dialed:        true,
 		},
 	}
 

@@ -35,6 +35,7 @@ type impl struct {
 	dialAddress     string
 	closeNotified   atomic.Bool
 	droppedMsgMeter metrics.Meter
+	dialed          bool
 }
 
 func (self *impl) Id() string {
@@ -102,6 +103,10 @@ func (self *impl) DialAddress() string {
 	return self.dialAddress
 }
 
+func (self *impl) IsDialed() bool {
+	return self.dialed
+}
+
 func (self *impl) HandleCloseNotification(f func()) {
 	if self.closeNotified.CompareAndSwap(false, true) {
 		f()
@@ -125,6 +130,7 @@ func (self *impl) InspectLink() *inspect.LinkInspectDetail {
 		DialAddress: self.DialAddress(),
 		Dest:        self.DestinationId(),
 		DestVersion: self.DestVersion(),
+		Dialed:      self.dialed,
 	}
 }
 

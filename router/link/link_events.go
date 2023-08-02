@@ -154,7 +154,9 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 
 	state, found := dest.linkMap[link.Key()]
 	if !found {
-		log.WithField("linkDest", link.DestinationId()).Warnf("unable to mark link as %s, link state not present in registry", self.status)
+		if link.IsDialed() { // if link was created by listener, rather than dialer we may not have an entry for it
+			log.WithField("linkDest", link.DestinationId()).Warnf("unable to mark link as %s, link state not present in registry", self.status)
+		}
 		return
 	}
 

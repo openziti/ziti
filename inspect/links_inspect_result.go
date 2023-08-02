@@ -34,6 +34,7 @@ type LinkInspectDetail struct {
 	DialAddress string `json:"dialAddress"`
 	Dest        string `json:"dest"`
 	DestVersion string `json:"destVersion"`
+	Dialed      bool   `json:"dialed"`
 }
 
 type LinkDest struct {

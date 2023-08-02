@@ -128,6 +128,7 @@ type Xlink interface {
 	IsClosed() bool
 	InspectLink() *inspect.LinkInspectDetail
 	GetAddresses() []*ctrl_pb.LinkConn
+	IsDialed() bool
 }
 
 type Forwarder interface {

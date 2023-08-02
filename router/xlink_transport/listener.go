@@ -203,6 +203,7 @@ func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, bi
 				routerVersion: linkMeta.routerVersion,
 				linkProtocol:  self.GetLinkProtocol(),
 				dialAddress:   self.GetAdvertisement(),
+				dialed:        false,
 			},
 			eventTime: time.Now(),
 		}
@@ -238,6 +239,7 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *lin
 		routerVersion: linkMeta.routerVersion,
 		linkProtocol:  self.GetLinkProtocol(),
 		dialAddress:   self.GetAdvertisement(),
+		dialed:        false,
 	}
 
 	bindHandler := self.bindHandlerFactory.NewBindHandler(xli, true, true)
