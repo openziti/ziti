@@ -1,6 +1,135 @@
-# Release 0.29.1
+# Release 0.30.0
 
 ## What's New
+
+* Link management is now delegated to routers
+
+## Link Management Updates
+
+Previously, the controller would do its best to determine where links needed to be established.
+It would send messages to the routers, telling them which addresses to dial on other routes.
+The routers would in turn let the controller know if link establishment was successful or
+if the router already had a link to the given endpoint.
+
+With this release, the controller will only let routers know which routers exist, whether they 
+are currently connected to the controller, and what link listeners they are advertising. The 
+routers will now decide which links to make and let the controllers know as links are created 
+and broken.
+
+### Link Groups
+
+Both dialers and listeners can now specify a set of groups. If no groups are specified, the 
+dialer or listener will be placed in the `default` group. Dialers will only attempt to dial 
+listeners who have at least one group in common with them.
+
+
+### Failed Links
+
+Previously when a link failed, the controller would show it in the link list as failed for a time
+before removing it. Now failed links are removed immediately. There are existing link events for
+link creation and link failure which can be used for forensics. 
+
+### Duplicate Links
+
+There is a new link status `Duplicate` used when a router receives a link request and determines
+that it's a duplicate of an existing link. This happens when two routers both have listeners
+and dialers. They will often dial each other at the same time, resulting in a duplicate link.
+
+### Compatibility
+
+If you use a 0.30+ controller with older routers, the controller will still do link calculation
+and send dial messages, as long as the `enableLegacyLinkMgmt` setting is set to true.
+
+If you use a pre 0.30.0 controller with newer routers, the new routers will still accept the
+dial messages.
+
+### New Configuration
+
+#### Controller
+
+The controller has three new options:
+
+```
+network:
+    routerMessaging:
+        queueSize: 100
+        maxWorkers: 100
+    enableLegacyLinkMgmt: true
+```
+
+When a router connects or disconnects from the controller, we send two sets of updates. 
+
+1. If a router has connected we send it the the state of the other routers
+1. We send all the other routers the updated state of the connecting/disconnecting router
+
+These messages are sent using a worker pool. The size of the queue feeding the worker pool is controlled with
+ `routerMessaging.queueSize`. The max size of the worker pool is controlled used the `routerMessaging.maxWorkers` 
+option.
+
+* queueSize
+    * Min value: 0
+    * Max value: 1,000,000
+    * Default: 100
+* maxWorkers
+    * Min value: 1
+    * Max value: 10,000
+    * Default: 100
+
+If you have routers older than 0.30.0, the controller will calculate which links to dial. This can be disabled
+by setting `enableLegacyLinkMgmt` to false. This setting currently defaults to true, but will default to false
+in a future release. In a subsequent release this functionality will be removed all together.
+
+#### Router
+
+The router has new configuration options for link dialing. 
+
+```
+link:
+   dialers:
+       - binding: transport
+         groups: 
+             - public
+             - vpc1234
+         healthyDialBackoff:
+             retryBackoffFactor: 1.5
+             minRetryInterval: 5s
+             maxRetryInterval: 5m
+         unhealthyDialBackoff:
+             retryBackoffFactor: 10
+             minRetryInterval: 1m
+             maxRetryInterval: 1h
+    listeners:
+        - binding: transport
+          groups: vpc1234
+```
+
+**Groups**
+
+See above for a description of link groups work. 
+
+Default value: `default`
+
+**Dial Back-off**
+
+Dialers can be configured with custom back-off behavior. Each dialer has a back-off policy for dialing
+healthy routers (those that are connected to a controller) and a separate policy for unhealthy routers.
+
+The back-off policies have the following attributes:
+
+* minRetryInterval - duration specifying the minimum time between dial attempts
+    * Min value: 10ms 
+    * Max value: 24h
+    * Default: 5s for healthy, 1m for unhealthy
+    * Format: Golang Durations, see: https://pkg.go.dev/maze.io/x/duration#ParseDuration
+* maxRetryInterval - duration specifying the maximum time between dial attempts
+    * Min value: 10ms
+    * Max value: 24h
+    * Default: 5m for healthy, 1h for unhealthy
+    * Format: Golang duration, see: https://pkg.go.dev/maze.io/x/duration#ParseDuration
+* retryBackoffFactor - factor by which to increase the retry interval between failed dial attempts
+    * Min value: 1
+    * Max value: 100
+    * Default: 1.5 for healthy, 100 for unhealthy
 
 ## Component Updates and Bug Fixes
 * github.com/openziti/ziti: [v0.29.0 -> v0.29.1](https://github.com/openziti/ziti/compare/v0.29.0...v0.29.1)
