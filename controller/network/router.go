@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/foundation/v2/versions"
 	"google.golang.org/protobuf/proto"
 	"reflect"
@@ -64,6 +65,7 @@ type Router struct {
 	Cost        uint16
 	NoTraversal bool
 	Disabled    bool
+	Metadata    *ctrl_pb.RouterMetadata
 }
 
 func (entity *Router) toBolt() *db.Router {
@@ -88,6 +90,14 @@ func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags []
 
 func (entity *Router) SetLinkListeners(listeners []*ctrl_pb.Listener) {
 	entity.Listeners = listeners
+}
+
+func (entity *Router) SetMetadata(metadata *ctrl_pb.RouterMetadata) {
+	entity.Metadata = metadata
+}
+
+func (entity *Router) HasCapability(capability ctrl_pb.RouterCapability) bool {
+	return entity.Metadata != nil && genext.Contains(entity.Metadata.Capabilities, capability)
 }
 
 func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Router {

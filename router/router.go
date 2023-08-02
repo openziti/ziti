@@ -575,6 +575,18 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 		}
 	}
 
+	routerMeta := &ctrl_pb.RouterMetadata{
+		Capabilities: []ctrl_pb.RouterCapability{
+			ctrl_pb.RouterCapability_LinkManagement,
+		},
+	}
+
+	if buf, err := proto.Marshal(routerMeta); err != nil {
+		return errors.Wrap(err, "unable to router metadata")
+	} else {
+		attributes[int32(ctrl_pb.ContentType_RouterMetadataHeader)] = buf
+	}
+
 	var channelRef concurrenz.AtomicValue[channel.Channel]
 	reconnectHandler := func() {
 		if ch := channelRef.Load(); ch != nil {

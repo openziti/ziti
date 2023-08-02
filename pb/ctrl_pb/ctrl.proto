@@ -40,6 +40,12 @@ enum ContentType {
   PeerStateChangeRequestType = 1050;
 
   ListenersHeader = 10;
+  RouterMetadataHeader = 11;
+}
+
+enum RouterCapability {
+  CapabilityZero = 0;
+  LinkManagement = 1;
 }
 
 // SettingTypes are used with the Settings message send arbitrary settings to routers.
@@ -244,4 +250,8 @@ message PeerStateChange {
 
 message PeerStateChanges {
   repeated PeerStateChange changes = 1;
+}
+
+message RouterMetadata {
+  repeated RouterCapability capabilities = 1;
 }

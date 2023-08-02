@@ -28,7 +28,14 @@ import (
 )
 
 const (
-	GroupDefault                     = "default"
+	GroupDefault = "default"
+
+	MinRetryInterval = 10 * time.Millisecond
+	MaxRetryInterval = 24 * time.Hour
+
+	MinRetryBackoffFactor = 1
+	MaxRetryBackoffFactor = 100
+
 	DefaultHealthyMinRetryInterval   = 5 * time.Second
 	DefaultHealthyMaxRetryInterval   = 5 * time.Minute
 	DefaultHealthyRetryBackoffFactor = 1.5
@@ -251,6 +258,13 @@ func (self *backoffConfig) load(data map[interface{}]interface{}) error {
 		} else {
 			return errors.Errorf("invalid (non-numeric) value for retryBackoffFactor: %v", value)
 		}
+
+		if self.retryBackoffFactor < MinRetryBackoffFactor {
+			return errors.Errorf("retryBackoffFactor of %v is lower than minimum value of %v", self.retryBackoffFactor, MinRetryBackoffFactor)
+		}
+		if self.retryBackoffFactor > MaxRetryBackoffFactor {
+			return errors.Errorf("retryBackoffFactor of %v is larger than maximum value of %v", self.retryBackoffFactor, MaxRetryBackoffFactor)
+		}
 	}
 
 	if value, found := data["minRetryInterval"]; found {
@@ -262,6 +276,13 @@ func (self *backoffConfig) load(data map[interface{}]interface{}) error {
 			}
 		} else {
 			return errors.Errorf("invalid (non-string) value for minRetryInterval: %v", value)
+		}
+
+		if self.minRetryInterval < MinRetryInterval {
+			return errors.Errorf("minRetryInterval of %v is lower than minimum value of %v", self.minRetryInterval, MinRetryInterval)
+		}
+		if self.minRetryInterval > MaxRetryInterval {
+			return errors.Errorf("minRetryInterval of %v is larger than maximum value of %v", self.minRetryInterval, MaxRetryInterval)
 		}
 	}
 
@@ -275,6 +296,17 @@ func (self *backoffConfig) load(data map[interface{}]interface{}) error {
 		} else {
 			return errors.Errorf("invalid (non-string) value for maxRetryInterval: %v", value)
 		}
+
+		if self.maxRetryInterval < MinRetryInterval {
+			return errors.Errorf("maxRetryInterval of %v is lower than minimum value of %v", self.maxRetryInterval, MinRetryInterval)
+		}
+		if self.maxRetryInterval > MaxRetryInterval {
+			return errors.Errorf("maxRetryInterval of %v is larger than maximum value of %v", self.maxRetryInterval, MaxRetryInterval)
+		}
+	}
+
+	if self.minRetryInterval > self.maxRetryInterval {
+		return errors.Errorf("minRetryInterval of %v is larger than maxRetryInterval value of %v", self.minRetryInterval, self.maxRetryInterval)
 	}
 
 	return nil

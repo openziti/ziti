@@ -40,6 +40,9 @@ const (
 	DefaultNetworkOptionsRouterCommQueueSize      = 100
 	DefaultNetworkOptionsRouterCommMaxWorkers     = 100
 	DefaultNetworkOptionsEnableLegacyLinkMgmt     = true
+
+	NetworkOptionsRouterCommMaxQueueSize = 1_000_000
+	NetworkOptionsRouterCommMaxWorkers   = 10_000
 )
 
 type Options struct {
@@ -169,6 +172,12 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap["queueSize"]; found {
 				if queueSize, ok := value.(int); ok {
+					if queueSize < 0 {
+						return nil, errors.New("invalid value for 'routerMessaging.queueSize', must be greater than or equal to 0")
+					}
+					if queueSize > NetworkOptionsRouterCommMaxQueueSize {
+						return nil, errors.Errorf("invalid value for 'routerMessaging.queueSize', must be less than or equal to %v", NetworkOptionsRouterCommMaxQueueSize)
+					}
 					options.RouterComm.QueueSize = uint32(queueSize)
 				} else {
 					return nil, errors.New("invalid value for 'routerMessaging.queueSize'")
@@ -177,6 +186,13 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 
 			if value, found := submap["maxWorkers"]; found {
 				if maxWorkers, ok := value.(int); ok {
+					if maxWorkers < 1 {
+						return nil, errors.New("invalid value for 'routerMessaging.maxWorkers', must be greater than 0")
+					}
+					if maxWorkers > NetworkOptionsRouterCommMaxWorkers {
+						return nil, errors.Errorf("invalid value for 'routerMessaging.maxWorkers', must be less than or equal to %v", NetworkOptionsRouterCommMaxWorkers)
+					}
+
 					options.RouterComm.MaxWorkers = uint32(maxWorkers)
 				} else {
 					return nil, errors.New("invalid value for 'routerMessaging.maxWorkers'")

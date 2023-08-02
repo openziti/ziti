@@ -92,6 +92,14 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 			} else {
 				log.Warn("no advertised listeners")
 			}
+			if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ContentType_RouterMetadataHeader)]; found {
+				log.Debug("router reported listeners using listeners header")
+				routerMetadata := &ctrl_pb.RouterMetadata{}
+				if err = proto.Unmarshal(val, routerMetadata); err != nil {
+					log.WithError(err).Error("unable to unmarshall router metadata value")
+				}
+				r.SetMetadata(routerMetadata)
+			}
 		} else {
 			log.Warn("no attributes provided")
 		}
