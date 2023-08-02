@@ -14,6 +14,12 @@ fi
 
 . ${ZITI_HOME}/ziti.env
 
+# wait for the controller to come online
+_wait_for_controller
+
+# after coming online, give the controller just a second to ramp up in case running via docker compose
+sleep 1
+
 if [[ "${_ZITI_ROUTER_NAME}" != "" ]]; then
   export ZITI_ROUTER_NAME="${_ZITI_ROUTER_NAME}"
   echo "ZITI_ROUTER_NAME set to: ${ZITI_ROUTER_NAME}"
