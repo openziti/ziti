@@ -741,11 +741,35 @@ function createPki {
   _pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}" 1
 
   echo " "
-  pki_allow_list="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS},${ZITI_CTRL_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
+  pki_allow_list="localhost,${ZITI_NETWORK}"
+  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" != "" ]]; then
+    if ! _is_ip "${ZITI_CTRL_ADVERTISED_ADDRESS-}"; then
+      pki_allow_list="${pki_allow_list},${ZITI_CTRL_ADVERTISED_ADDRESS}"
+    else
+      echo -e "$(YELLOW "ZITI_CTRL_ADVERTISED_ADDRESS seems to be an IP address, it will not be added to the SANs DNS list.") "
+    fi
+  fi
+  if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" != "" ]]; then
+    if ! _is_ip "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}"; then
+      pki_allow_list="${pki_allow_list},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+    else
+      echo -e "$(YELLOW "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS seems to be an IP address, it will not be added to the SANs DNS list.") "
+    fi
+  fi
   pki_allow_list_ip="127.0.0.1"
+  if [[ "${ZITI_CTRL_EDGE_IP_OVERRIDE-}" != "" ]]; then
+    pki_allow_list_ip="${pki_allow_list_ip},${ZITI_CTRL_EDGE_IP_OVERRIDE}"
+  fi
   _pki_client_server "${pki_allow_list}" "${ZITI_PKI_CTRL_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_ADVERTISED_ADDRESS}"
 
-  pki_allow_list="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
+  pki_allow_list="localhost,${ZITI_NETWORK}"
+  if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" != "" ]]; then
+    if ! _is_ip "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}"; then
+      pki_allow_list="${pki_allow_list},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+    else
+      echo -e "$(YELLOW "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS seems to be an IP address, it will not be added to the SANs DNS list.") "
+    fi
+  fi
   pki_allow_list_ip="127.0.0.1"
   if [[ "${ZITI_CTRL_EDGE_IP_OVERRIDE-}" != "" ]]; then
     pki_allow_list_ip="${pki_allow_list_ip},${ZITI_CTRL_EDGE_IP_OVERRIDE}"
