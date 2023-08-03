@@ -70,6 +70,7 @@ type linkState struct {
 	dest           *linkDest
 	listener       *ctrl_pb.Listener
 	dialer         xlink.Dialer
+	allowedDials   int
 }
 
 func (self *linkState) GetLinkKey() string {
@@ -97,6 +98,15 @@ func (self *linkState) GetRouterVersion() string {
 }
 
 func (self *linkState) dialFailed(registry *linkRegistryImpl) {
+	if self.allowedDials > 0 {
+		self.allowedDials--
+	}
+
+	if self.allowedDials == 0 {
+		delete(self.dest.linkMap, self.linkKey)
+		return
+	}
+
 	backoffConfig := self.dialer.GetHealthyBackoffConfig()
 	if !self.dest.healthy {
 		backoffConfig = self.dialer.GetUnhealthyBackoffConfig()

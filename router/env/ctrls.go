@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
@@ -145,6 +146,17 @@ func (self *networkControllers) Add(address string, ch channel.Channel) error {
 		address:          address,
 		heartbeatOptions: self.heartbeatOptions,
 	}
+
+	if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
+		if versionInfo, err := versions.StdVersionEncDec.Decode(versionValue); err == nil {
+			ctrl.versionInfo = versionInfo
+		} else {
+			return errors.Wrap(err, "could not parse version info from controller hello, closing connection")
+		}
+	} else {
+		return errors.New("no version header provided")
+	}
+
 	if existing := self.ctrls.Get(ch.Id()); existing != nil {
 		if !existing.Channel().IsClosed() {
 			return fmt.Errorf("duplicate channel with id %v", ctrl.Channel().Id())

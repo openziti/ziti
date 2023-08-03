@@ -18,6 +18,7 @@ package link
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -26,6 +27,10 @@ import (
 	"github.com/pkg/errors"
 	"sync/atomic"
 	"time"
+)
+
+const (
+	GroupDefault = "default"
 )
 
 type event interface {
@@ -97,7 +102,7 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 	for _, listener := range self.listeners {
 		for _, dialer := range registry.env.GetXlinkDialers() {
 			if stringz.ContainsAny(listener.Groups, dialer.GetGroups()...) {
-				linkKey := xlink.GetLinkKey(dialer.GetBinding(), listener.Protocol, self.id, listener.GetLocalBinding())
+				linkKey := registry.GetLinkKey(dialer.GetBinding(), listener.Protocol, self.id, listener.GetLocalBinding())
 
 				delete(currentLinkKeys, linkKey)
 
@@ -108,12 +113,13 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 				existingLinkState, ok := dest.linkMap[linkKey]
 				if !ok {
 					newLinkState := &linkState{
-						linkKey:  linkKey,
-						linkId:   idgen.NewUUIDString(),
-						status:   StatusPending,
-						dest:     dest,
-						listener: listener,
-						dialer:   dialer,
+						linkKey:      linkKey,
+						linkId:       idgen.NewUUIDString(),
+						status:       StatusPending,
+						dest:         dest,
+						listener:     listener,
+						dialer:       dialer,
+						allowedDials: -1,
 					}
 					dest.linkMap[linkKey] = newLinkState
 					log.Info("new potential link")
@@ -135,6 +141,66 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 	for linkKey := range currentLinkKeys {
 		// this will prevent the link from being recreated once closed
 		delete(dest.linkMap, linkKey)
+	}
+}
+
+type dialRequest struct {
+	ctrlCh channel.Channel
+	dial   *ctrl_pb.Dial
+}
+
+func (self *dialRequest) Handle(registry *linkRegistryImpl) {
+	dest := registry.destinations[self.dial.RouterId]
+
+	if dest == nil {
+		dest = &linkDest{
+			id:          self.dial.RouterId,
+			healthy:     true,
+			unhealthyAt: time.Time{},
+			linkMap:     map[string]*linkState{},
+			version:     self.dial.RouterVersion,
+		}
+		registry.destinations[self.dial.RouterId] = dest
+	}
+
+	for _, dialer := range registry.env.GetXlinkDialers() {
+		if stringz.ContainsAny(dialer.GetGroups(), GroupDefault) {
+			linkKey := registry.GetLinkKey(GroupDefault, self.dial.LinkProtocol, self.dial.RouterId, GroupDefault)
+
+			log := pfxlog.Logger().WithField("routerId", self.dial.RouterId).
+				WithField("address", self.dial.Address).
+				WithField("linkKey", linkKey)
+
+			if link, found := registry.linkMap[linkKey]; found {
+				registry.SendRouterLinkMessage(link, self.ctrlCh)
+				continue
+			}
+
+			existingLinkState, ok := dest.linkMap[linkKey]
+			if !ok {
+				newLinkState := &linkState{
+					linkKey: linkKey,
+					linkId:  idgen.NewUUIDString(),
+					status:  StatusPending,
+					dest:    dest,
+					listener: &ctrl_pb.Listener{
+						Address:  self.dial.Address,
+						Protocol: self.dial.LinkProtocol,
+						Groups:   []string{GroupDefault},
+					},
+					dialer:       dialer,
+					allowedDials: 1,
+				}
+				dest.linkMap[linkKey] = newLinkState
+				log.Info("new potential link")
+				registry.evaluateLinkState(newLinkState)
+			} else if existingLinkState.status != StatusEstablished {
+				existingLinkState.retryDelay = time.Duration(0)
+				existingLinkState.nextDial = time.Now()
+				existingLinkState.allowedDials = 1
+				registry.evaluateLinkState(existingLinkState)
+			}
+		}
 	}
 }
 

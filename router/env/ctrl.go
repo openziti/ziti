@@ -17,6 +17,7 @@
 package env
 
 import (
+	"github.com/openziti/foundation/v2/versions"
 	"sync/atomic"
 	"time"
 
@@ -30,6 +31,7 @@ type NetworkController interface {
 	HeartbeatCallback() channel.HeartbeatCallback
 	IsUnresponsive() bool
 	isMoreResponsive(other NetworkController) bool
+	GetVersion() *versions.VersionInfo
 }
 
 type networkCtrl struct {
@@ -40,6 +42,7 @@ type networkCtrl struct {
 	lastRx           int64
 	latency          atomic.Int64
 	unresponsive     atomic.Bool
+	versionInfo      *versions.VersionInfo
 }
 
 func (self *networkCtrl) HeartbeatCallback() channel.HeartbeatCallback {
@@ -48,6 +51,10 @@ func (self *networkCtrl) HeartbeatCallback() channel.HeartbeatCallback {
 
 func (self *networkCtrl) Channel() channel.Channel {
 	return self.ch
+}
+
+func (self *networkCtrl) GetVersion() *versions.VersionInfo {
+	return self.versionInfo
 }
 
 func (self *networkCtrl) Address() string {

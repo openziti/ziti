@@ -17,7 +17,6 @@
 package xlink
 
 import (
-	"fmt"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -35,6 +34,9 @@ type Registry interface {
 
 	// RemoveLinkDest removes the given link destination
 	RemoveLinkDest(id string)
+
+	// DialRequested will set up a one-time dial to support older controllers which don't support sending PeerStatus
+	DialRequested(ctrlCh channel.Channel, dial *ctrl_pb.Dial)
 
 	// GetLink returns the link to the given router, of the given type, if one exists
 	GetLink(linkKey string) (Xlink, bool)
@@ -59,6 +61,9 @@ type Registry interface {
 
 	// DebugForgetLink will remove the link from the registry to inject an error condition
 	DebugForgetLink(linkId string) bool
+
+	// GetLinkKey returns the link key for the given link parameters
+	GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string
 }
 
 // A Factory creates link listeners and link dialers
@@ -135,14 +140,4 @@ type Forwarder interface {
 	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload) error
 	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
 	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
-}
-
-func GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string {
-	if dialerBinding == "" {
-		dialerBinding = "default"
-	}
-	if listenerBinding == "" {
-		listenerBinding = "default"
-	}
-	return fmt.Sprintf("%s->%s:%s->%s", dialerBinding, protocol, dest, listenerBinding)
 }

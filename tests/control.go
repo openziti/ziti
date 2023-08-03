@@ -3,6 +3,7 @@ package tests
 import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 )
 
@@ -10,7 +11,7 @@ func (ctx *TestContext) NewControlChannelListener() channel.UnderlayListener {
 	config, err := controller.LoadConfig(ControllerConfFile)
 	ctx.Req.NoError(err)
 
-	versionHeader, err := VersionProviderTest{}.EncoderDecoder().Encode(VersionProviderTest{}.AsVersionInfo())
+	versionHeader, err := versions.StdVersionEncDec.Encode(VersionProviderTest{}.AsVersionInfo())
 	ctx.Req.NoError(err)
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader: versionHeader,

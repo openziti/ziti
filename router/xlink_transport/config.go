@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/fabric/router/link"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -28,8 +29,6 @@ import (
 )
 
 const (
-	GroupDefault = "default"
-
 	MinRetryInterval = 10 * time.Millisecond
 	MaxRetryInterval = 24 * time.Hour
 
@@ -115,7 +114,7 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 	}
 
 	if len(config.groups) == 0 {
-		config.groups = append(config.groups, GroupDefault)
+		config.groups = append(config.groups, link.GroupDefault)
 	}
 
 	if value, found := data["options"]; found {
@@ -181,7 +180,7 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 	}
 
 	if len(config.groups) == 0 {
-		config.groups = append(config.groups, GroupDefault)
+		config.groups = append(config.groups, link.GroupDefault)
 	}
 
 	config.healthyBackoffConfig = &backoffConfig{

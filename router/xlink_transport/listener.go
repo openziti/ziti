@@ -198,7 +198,7 @@ func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, bi
 		pending = &pendingLink{
 			link: &splitImpl{
 				id:            binding.GetChannel().Id(),
-				key:           xlink.GetLinkKey(linkMeta.dialerBinding, self.GetLinkProtocol(), linkMeta.routerId, self.config.bindInterface),
+				key:           self.xlinkRegistery.GetLinkKey(linkMeta.dialerBinding, self.GetLinkProtocol(), linkMeta.routerId, self.config.bindInterface),
 				routerId:      linkMeta.routerId,
 				routerVersion: linkMeta.routerVersion,
 				linkProtocol:  self.GetLinkProtocol(),
@@ -233,7 +233,7 @@ func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, bi
 func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *linkMetadata, log *logrus.Entry) error {
 	xli := &impl{
 		id:            binding.GetChannel().Id(),
-		key:           xlink.GetLinkKey(linkMeta.dialerBinding, self.GetLinkProtocol(), linkMeta.routerId, self.config.bindInterface),
+		key:           self.xlinkRegistery.GetLinkKey(linkMeta.dialerBinding, self.GetLinkProtocol(), linkMeta.routerId, self.config.bindInterface),
 		ch:            binding.GetChannel(),
 		routerId:      linkMeta.routerId,
 		routerVersion: linkMeta.routerVersion,

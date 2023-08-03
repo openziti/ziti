@@ -18,6 +18,7 @@ package link
 
 import (
 	"container/heap"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
@@ -119,10 +120,8 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		log = log.WithField("currentLinkId", existing.Id())
 		if existing.Id() < link.Id() {
 			// give the other side a chance to close the link first and report it as a duplicate
-			// don't report this link to the controller. We never notified it that it was a valid
-			// link so we don't need to report that it's going away.
 			time.AfterFunc(30*time.Second, func() {
-				if err := link.CloseNotified(); err != nil {
+				if err := link.Close(); err != nil {
 					log.WithError(err).Error("error closing duplicate link")
 				}
 			})
@@ -130,11 +129,17 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		}
 		log.Info("duplicate link detected. closing current link (current link id is > than new link id)")
 
+		legacyCtl := self.useLegacyLinkMgmtForOldCtrl()
+
 		self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
 			// report link fault, then close link after allowing some time for circuits to be re-routed
 			fault := &ctrl_pb.Fault{
 				Id:      existing.Id(),
 				Subject: ctrl_pb.FaultSubject_LinkDuplicate,
+			}
+
+			if legacyCtl {
+				fault.Subject = ctrl_pb.FaultSubject_LinkFault
 			}
 
 			if err := protobufs.MarshalTyped(fault).Send(ch); err != nil {
@@ -272,6 +277,13 @@ func (self *linkRegistryImpl) RemoveLinkDest(id string) {
 	})
 }
 
+func (self *linkRegistryImpl) DialRequested(ctrlCh channel.Channel, dial *ctrl_pb.Dial) {
+	self.queueEvent(&dialRequest{
+		ctrlCh: ctrlCh,
+		dial:   dial,
+	})
+}
+
 func (self *linkRegistryImpl) queueEvent(evt event) {
 	select {
 	case <-self.env.GetCloseNotify():
@@ -392,4 +404,28 @@ func (self *linkRegistryImpl) Inspect(timeout time.Duration) *inspect.LinksInspe
 		result.Errors = append(result.Errors, err.Error())
 	}
 	return result
+}
+
+func (self *linkRegistryImpl) useLegacyLinkMgmtForOldCtrl() bool {
+	legacyCtrl := false
+
+	for _, ctrl := range self.ctrls.GetAll() {
+		if ok, _ := ctrl.GetVersion().HasMinimumVersion("0.30.0"); !ok {
+			legacyCtrl = true
+		}
+	}
+	return legacyCtrl
+}
+
+func (self *linkRegistryImpl) GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string {
+	legacyCtrl := self.useLegacyLinkMgmtForOldCtrl()
+	if dialerBinding == "" || legacyCtrl {
+		dialerBinding = "default"
+	}
+
+	if listenerBinding == "" || legacyCtrl {
+		listenerBinding = "default"
+	}
+
+	return fmt.Sprintf("%s->%s:%s->%s", dialerBinding, protocol, dest, listenerBinding)
 }
