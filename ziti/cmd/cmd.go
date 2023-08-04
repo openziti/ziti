@@ -76,7 +76,6 @@ func exitWithError(err error) {
 
 // Execute is ...
 func Execute() {
-	goflag.CommandLine.Parse([]string{})
 	if err := rootCommand.cobraCommand.Execute(); err != nil {
 		exitWithError(err)
 	}

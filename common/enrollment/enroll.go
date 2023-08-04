@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/identity/engines"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -36,7 +35,6 @@ import (
 
 // global state used by all subcommands are located here for easy discovery
 
-const verboseDesc = "Enable verbose logging."
 const outpathDesc = "Output configuration file."
 const jwtpathDesc = "Enrollment token (JWT file). Required"
 const certDesc = "The certificate to present when establishing a connection."
@@ -113,10 +111,12 @@ func NewEnrollCommand(p common.OptionsProvider) *cobra.Command {
 	enrollSubCmd.Flags().BoolVar(&action.RemoveJwt, "rm", false, "Remove the JWT on success")
 	enrollSubCmd.Flags().BoolVarP(&action.Verbose, "verbose", "v", false, "Enable verbose logging")
 
-	action.KeyAlg.Set("RSA") // set default
+	if err := action.KeyAlg.Set("RSA"); err != nil { // set default
+		panic(err)
+	}
 	enrollSubCmd.Flags().VarP(&action.KeyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
 
-	var keyDesc = ""
+	var keyDesc string
 	certEngines := engines.ListEngines()
 	if len(certEngines) > 0 {
 		keyDesc = fmt.Sprintf("The key to use with the certificate. Optionally specify the engine to use. supported engines: %v", certEngines)
@@ -153,7 +153,7 @@ func (e *EnrollAction) Run() error {
 		return fmt.Errorf("the output path must not be the same as the jwt path")
 	}
 
-	tokenStr, _ := ioutil.ReadFile(e.JwtPath)
+	tokenStr, _ := os.ReadFile(e.JwtPath)
 
 	pfxlog.Logger().Debugf("jwt to parse: %s", tokenStr)
 	tkn, _, err := enroll.ParseToken(string(tokenStr))

@@ -21,7 +21,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"github.com/openziti/ziti/ziti/internal/log"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -165,7 +164,7 @@ func (s *CertificatesStorage) ExistsFile(domain, extension string) bool {
 }
 
 func (s *CertificatesStorage) ReadFile(domain, extension string) ([]byte, error) {
-	return ioutil.ReadFile(s.GetFileName(domain, extension))
+	return os.ReadFile(s.GetFileName(domain, extension))
 }
 
 func (s *CertificatesStorage) GetFileName(domain, extension string) string {
@@ -184,12 +183,9 @@ func (s *CertificatesStorage) ReadCertificate(domain, extension string) ([]*x509
 }
 
 func (s *CertificatesStorage) WriteFile(domain, extension string, data []byte) error {
-	var baseFileName string
-	baseFileName = sanitizedDomain(domain)
-
+	baseFileName := sanitizedDomain(domain)
 	filePath := filepath.Join(s.rootPath, baseFileName+extension)
-
-	return ioutil.WriteFile(filePath, data, filePerm)
+	return os.WriteFile(filePath, data, filePerm)
 }
 
 func (s *CertificatesStorage) MoveToArchive(domain string) error {

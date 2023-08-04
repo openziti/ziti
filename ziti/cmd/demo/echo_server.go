@@ -17,7 +17,6 @@
 package demo
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
@@ -342,14 +341,4 @@ func (self *echoServer) SendOpResult(request *channel.Message, ch channel.Channe
 	if err := response.WithTimeout(time.Second).SendAndWaitForWire(ch); err != nil {
 		log.WithError(err).Error("failed to send result")
 	}
-}
-
-func (self *echoServer) handleResult(err error, bconn *bufio.ReadWriter) error {
-	if err != nil {
-		return err
-	}
-	if _, err = bconn.WriteString("OK"); err != nil {
-		return err
-	}
-	return bconn.Flush()
 }

@@ -69,7 +69,6 @@ var environmentOptions *CreateConfigEnvironmentOptions
 type CreateConfigEnvironmentOptions struct {
 	CreateConfigOptions
 	EnvVariableTemplateData
-	output string
 }
 
 // NewCmdCreateConfigEnvironment creates a command object for the "environment" command

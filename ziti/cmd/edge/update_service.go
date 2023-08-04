@@ -62,7 +62,9 @@ func newUpdateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&options.terminatorStrategy, "terminator-strategy", "", "Specifies the terminator strategy for the service")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the service. Use --role-attributes '' to set an empty list")
-	options.encryption.Set("ON")
+	if err := options.encryption.Set("ON"); err != nil {
+		panic(err)
+	}
 	cmd.Flags().VarP(&options.encryption, "encryption", "e", "Controls end-to-end encryption for the service")
 	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
 

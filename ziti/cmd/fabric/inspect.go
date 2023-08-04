@@ -127,7 +127,7 @@ func (self *InspectAction) inspect(appRegex string, requestValues ...string) err
 				if idx > 0 {
 					fmt.Println()
 				}
-				fmt.Printf(color.New(color.FgGreen, color.Bold).Sprintf("%v.%v\n", appId, name))
+				fmt.Print(color.New(color.FgGreen, color.Bold).Sprintf("%v.%v\n", appId, name))
 				out = os.Stdout
 			}
 			if err = self.prettyPrint(out, value.Value, 0); err != nil {

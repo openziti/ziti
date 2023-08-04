@@ -8,7 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -31,7 +31,7 @@ func WriteCert(p common.Printer, id string, cert []byte) (string, error) {
 		return "", errors.Wrapf(err, "unable to create ziti certs dir %v", certsDir)
 	}
 	certFile := filepath.Join(certsDir, id)
-	if err = ioutil.WriteFile(certFile, cert, 0600); err != nil {
+	if err = os.WriteFile(certFile, cert, 0600); err != nil {
 		return "", err
 	}
 	p.Printf("Server certificate chain written to %v\n", certFile)
@@ -51,7 +51,7 @@ func ReadCert(id string) ([]byte, string, error) {
 		}
 		return nil, "", errors.Wrapf(err, "error while statting cert file for %v", id)
 	}
-	result, err := ioutil.ReadFile(certFile)
+	result, err := os.ReadFile(certFile)
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "error while reading cert for %v", id)
 	}
@@ -81,11 +81,11 @@ func AreCertsTrusted(host string, certs []byte) (bool, error) {
 
 	tlsConfig.RootCAs.AppendCertsFromPEM(certs)
 
-	transport := *http.DefaultTransport.(*http.Transport)
+	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig = tlsConfig
 
 	client := http.Client{
-		Transport: &transport,
+		Transport: transport,
 	}
 
 	resp, err := client.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
@@ -100,12 +100,12 @@ func AreCertsTrusted(host string, certs []byte) (bool, error) {
 }
 
 func GetWellKnownCerts(host string) ([]byte, []*x509.Certificate, error) {
-	transport := *http.DefaultTransport.(*http.Transport)
+	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: true,
 	}
 	client := http.Client{
-		Transport: &transport,
+		Transport: transport,
 	}
 
 	resp, err := client.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
@@ -113,7 +113,7 @@ func GetWellKnownCerts(host string) ([]byte, []*x509.Certificate, error) {
 		return nil, nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	encoded, err := ioutil.ReadAll(resp.Body)
+	encoded, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, nil, err
 	}

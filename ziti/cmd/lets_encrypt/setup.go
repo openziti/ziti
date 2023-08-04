@@ -17,11 +17,7 @@
 package lets_encrypt
 
 import (
-	"crypto/x509"
-	"encoding/pem"
-	"fmt"
 	"github.com/openziti/ziti/ziti/internal/log"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -59,7 +55,7 @@ func newClient(options *leOptions, acc registration.User) *lego.Client {
 		KeyType: options.keyType.Get(),
 		Timeout: time.Duration(30) * time.Second, // Only used when obtaining certificates
 	}
-	config.UserAgent = fmt.Sprintf("zitii-cli")
+	config.UserAgent = "ziti-cli"
 
 	client, err := lego.NewClient(config)
 	if err != nil {
@@ -69,14 +65,6 @@ func newClient(options *leOptions, acc registration.User) *lego.Client {
 	return client
 }
 
-func getEmail(options *leOptions) string {
-	email := options.email
-	if len(email) == 0 {
-		log.Fatal("You have to pass an account (email address) to the program using --email or -m")
-	}
-	return email
-}
-
 func createNonExistingFolder(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return os.MkdirAll(path, 0o700)
@@ -84,35 +72,4 @@ func createNonExistingFolder(path string) error {
 		return err
 	}
 	return nil
-}
-
-func readCSRFile(filename string) (*x509.CertificateRequest, error) {
-	bytes, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	raw := bytes
-
-	// see if we can find a PEM-encoded CSR
-	var p *pem.Block
-	rest := bytes
-	for {
-		// decode a PEM block
-		p, rest = pem.Decode(rest)
-
-		// did we fail?
-		if p == nil {
-			break
-		}
-
-		// did we get a CSR?
-		if p.Type == "CERTIFICATE REQUEST" {
-			raw = p.Bytes
-		}
-	}
-
-	// no PEM-encoded CSR
-	// assume we were given a DER-encoded ASN.1 CSR
-	// (if this assumption is wrong, parsing these bytes will fail)
-	return x509.ParseCertificateRequest(raw)
 }

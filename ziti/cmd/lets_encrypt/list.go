@@ -21,8 +21,8 @@ import (
 	"fmt"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -52,7 +52,9 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().BoolVarP(&options.accounts, "accounts", "a", false, "Display Account info")
 	cmd.Flags().BoolVarP(&options.names, "names", "n", false, "Display Names info")
 	cmd.Flags().StringVarP(&options.path, "path", "p", "", "Directory where data is stored")
-	cmd.MarkFlagRequired("path")
+	if err := cmd.MarkFlagRequired("path"); err != nil {
+		panic(err)
+	}
 
 	return cmd
 }
@@ -83,7 +85,7 @@ func listAccount(options *leOptions) error {
 
 	fmt.Println("Found the following accounts:")
 	for _, filename := range matches {
-		data, err := ioutil.ReadFile(filename)
+		data, err := os.ReadFile(filename)
 		if err != nil {
 			return err
 		}
@@ -132,7 +134,7 @@ func listCertificates(options *leOptions) error {
 			continue
 		}
 
-		data, err := ioutil.ReadFile(filename)
+		data, err := os.ReadFile(filename)
 		if err != nil {
 			return err
 		}

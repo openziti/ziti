@@ -25,8 +25,8 @@ import (
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"io"
-	"io/ioutil"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -77,38 +77,39 @@ func NewCmdPKICreate(out io.Writer, errOut io.Writer) *cobra.Command {
 
 func (options *PKICreateOptions) addPKICreateFlags(cmd *cobra.Command) {
 	viperLock.Lock()
+	defer viperLock.Unlock()
+
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKIRoot, "pki-root", "", "", "Directory in which to store CA")
-	cmd.MarkFlagRequired("pki-root")
-	viper.BindPFlag("pki_root", cmd.PersistentFlags().Lookup("pki-root"))
+	err := viper.BindPFlag("pki_root", cmd.PersistentFlags().Lookup("pki-root"))
+	options.panicOnErr(err)
 
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKIOrganization, "pki-organization", "", "NetFoundry", "Organization")
-	cmd.MarkFlagRequired("pki-organization")
-	viper.BindPFlag("pki-organization", cmd.PersistentFlags().Lookup("pki-organization"))
+	err = viper.BindPFlag("pki-organization", cmd.PersistentFlags().Lookup("pki-organization"))
+	options.panicOnErr(err)
 
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKIOrganizationalUnit, "pki-organizational-unit", "", "ADV-DEV", "Organization unit")
-	cmd.MarkFlagRequired("pki-organizational-unit")
-	viper.BindPFlag("pki-organizational-unit", cmd.PersistentFlags().Lookup("pki-organizational-unit"))
+	err = viper.BindPFlag("pki-organizational-unit", cmd.PersistentFlags().Lookup("pki-organizational-unit"))
+	options.panicOnErr(err)
 
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKICountry, "pki-country", "", "US", "Country")
-	cmd.MarkFlagRequired("pki-country")
-	viper.BindPFlag("pki-country", cmd.PersistentFlags().Lookup("pki-country"))
+	err = viper.BindPFlag("pki-country", cmd.PersistentFlags().Lookup("pki-country"))
+	options.panicOnErr(err)
 
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKILocality, "pki-locality", "", "Charlotte", "Locality/Location")
-	cmd.MarkFlagRequired("pki-locality")
-	viper.BindPFlag("pki-locality", cmd.PersistentFlags().Lookup("pki-locality"))
+	err = viper.BindPFlag("pki-locality", cmd.PersistentFlags().Lookup("pki-locality"))
+	options.panicOnErr(err)
 
 	// cmd.PersistentFlags().StringVarP(&options.Flags.PKILocality, "pki-location", "", "Charlotte", "Location/Locality")
 	// cmd.MarkFlagRequired("pki-location")
 	// viper.BindPFlag("pki-location", cmd.PersistentFlags().Lookup("pki-location"))
 
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKIProvince, "pki-province", "", "NC", "Province/State")
-	cmd.MarkFlagRequired("pki-province")
-	viper.BindPFlag("pki-province", cmd.PersistentFlags().Lookup("pki-province"))
+	err = viper.BindPFlag("pki-province", cmd.PersistentFlags().Lookup("pki-province"))
+	options.panicOnErr(err)
 
 	// cmd.PersistentFlags().StringVarP(&options.Flags.PKIProvince, "pki-state", "", "NC", "State/Province")
 	// cmd.MarkFlagRequired("pki-state")
 	// viper.BindPFlag("pki-state", cmd.PersistentFlags().Lookup("pki-state"))
-	viperLock.Unlock()
 }
 
 // Run implements this command
@@ -250,7 +251,7 @@ func (o *PKICreateOptions) ObtainCAName(pkiroot string) (string, error) {
 		caname = viper.GetString("ca-name")
 		if caname == "" {
 			var err error
-			files, err := ioutil.ReadDir(pkiroot)
+			files, err := os.ReadDir(pkiroot)
 			if err != nil {
 				return "", err
 			}
@@ -332,7 +333,7 @@ func (o *PKICreateOptions) ObtainKeyName(pkiroot string) (string, error) {
 	keyname := viper.GetString("key-name")
 	if keyname == "" {
 		var err error
-		files, err := ioutil.ReadDir(pkiroot)
+		files, err := os.ReadDir(pkiroot)
 		if err != nil {
 			return "", err
 		}
