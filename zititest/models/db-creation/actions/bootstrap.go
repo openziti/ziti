@@ -60,34 +60,35 @@ func NewBootstrapAction() model.ActionBinder {
 }
 
 func (a *bootstrapAction) bind(m *model.Model) model.Action {
-	dnsAddJsonData := `{
-	"Changes": [{
-		"Action": "CREATE",
-		"ResourceRecordSet": {
-			"Name": "controller.testing.openziti.org",
-			"Type": "A",
-			"TTL": 300,
-			"ResourceRecords": [{
-				"Value": "52.90.174.214"
-			}]
-		}
-	}]
-}`
+	payload := Payload{
+		Changes: []Change{
+			{
+				Action: "CREATE",
+				ResourceRecordSet: ResourceRecordSet{
+					Name: "controller.testing.openziti.org", // The DNS record name
+					Type: "A",                               // Type A represents an IPv4 address
+					TTL:  300,                               // TTL value in seconds
+					ResourceRecords: []struct {
+						Value string `json:"Value"`
+					}{
+						{Value: m.MustSelectHost("#ctrl").PublicIp},
+					},
+				},
+			},
+		},
+	}
 
-	// Create an instance of the Payload struct to store the JSON data
-	var data Payload
-
-	// Unmarshal the JSON data into the struct
-	err := json.Unmarshal([]byte(dnsAddJsonData), &data)
+	jsonData, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
-		fmt.Println("Error while unmarshalling JSON:", err)
+		fmt.Println("Error marshaling struct to JSON:", err)
 		return nil
 	}
 
-	//fmt.Println("dnsAddJsonData: \n", data)
+	dnsAddJsonData := string(jsonData)
 
 	addDNSRecord := "aws route53 change-resource-record-sets --hosted-zone-id Z09612893W445K5ME8MYS --change-batch '" + dnsAddJsonData + "'"
 	workflow := actions.Workflow()
+	workflow.AddAction(host.GroupExec("*", 25, "/home/ubuntu/fablab/bin/aws_setup.sh"))
 	workflow.AddAction(host.GroupExec("*", 25, addDNSRecord))
 	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
 	workflow.AddAction(component.Stop("#ctrl"))
@@ -129,6 +130,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	// Start Beats Services
 	workflow.AddAction(host.GroupExec("*", 25, "sudo service filebeat stop; sleep 5; sudo service filebeat start"))
 	workflow.AddAction(host.GroupExec("*", 25, "sudo service metricbeat stop; sleep 5; sudo service metricbeat start"))
-
+	// Run DB Creation Shell script
+	workflow.AddAction(host.GroupExec("*", 25, "/home/ubuntu/fablab/bin/db_creator_script_external.sh"))
 	return workflow
 }
