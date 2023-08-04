@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/edge/common/eid"
-	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/edge/common/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"

@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/fabric/build"

@@ -19,8 +19,8 @@ package model
 import (
 	"fmt"
 	"github.com/blang/semver"
+	"github.com/openziti/edge/common/pb/edge_cmd_pb"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"
