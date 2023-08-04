@@ -27,6 +27,7 @@ enum ContentType {
   RemoveTerminatorResponseType = 20212;
   ValidateSessionsRequestType = 20213;
   HealthEventType = 20214;
+  SigningCertAddedType = 20215;
 
   EnrollType = 20300;
   EnrollmentCertsResponseType = 20301;
@@ -65,6 +66,7 @@ enum Header {
 message ServerHello {
   string version = 1;
   map<string, string> data = 2;
+  map<string,bytes> byteData = 3;
 }
 
 message Address {
@@ -107,6 +109,46 @@ message Service {
   string id = 1;
   string name = 2;
   bool encryptionRequired = 3;
+}
+
+enum ConfigType {
+  Add = 0;
+  Remove = 1;
+  Replace = 2;
+}
+
+
+message Config {
+  string syncId = 1;
+  string id = 2;
+  ConfigType type = 3;
+  repeated bytes signerKeys = 4;
+  repeated Identity identities = 5;
+  repeated Service services = 6;
+  repeated PostureSet postureSet = 7;
+  repeated PostureCheck postureChecks = 8;
+}
+
+message SignerCerts {
+  repeated bytes keys = 1;
+}
+
+message Identity {
+  string id = 1;
+  string name = 2;
+  repeated string serviceIds = 3;
+}
+
+message PostureSet {
+  string id = 1;
+  string name = 2;
+  repeated string postureCheckIds = 3;
+}
+
+message PostureCheck {
+  string id = 1;
+  string type = 2;
+  map<string,bytes> data = 3;
 }
 
 message Session {

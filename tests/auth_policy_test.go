@@ -20,7 +20,7 @@
 package tests
 
 import (
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/persistence"
@@ -1157,13 +1157,13 @@ func Test_AuthPolicies(t *testing.T) {
 			ctx.Req.NotEmpty(identityExtJwtCreated.Data.ID)
 
 			jwtToken := jwt.New(jwt.SigningMethodES256)
-			jwtToken.Claims = jwt.StandardClaims{
-				Audience:  "ziti.controller",
-				ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-				Id:        time.Now().String(),
-				IssuedAt:  time.Now().Unix(),
+			jwtToken.Claims = jwt.RegisteredClaims{
+				Audience:  []string{"ziti.controller"},
+				ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+				ID:        time.Now().String(),
+				IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 				Issuer:    "fake.issuer",
-				NotBefore: time.Now().Unix(),
+				NotBefore: &jwt.NumericDate{Time: time.Now()},
 				Subject:   identityExtJwtCreated.Data.ID,
 			}
 
@@ -1276,13 +1276,13 @@ func Test_AuthPolicies(t *testing.T) {
 
 		t.Run("can authenticate with approved external jwt signer", func(t *testing.T) {
 			jwtToken := jwt.New(jwt.SigningMethodES256)
-			jwtToken.Claims = jwt.StandardClaims{
-				ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-				Id:        time.Now().String(),
-				IssuedAt:  time.Now().Unix(),
+			jwtToken.Claims = jwt.RegisteredClaims{
+				ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+				ID:        time.Now().String(),
+				IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 				Issuer:    "test-issuer-107",
-				Audience:  "test-audience-107",
-				NotBefore: time.Now().Unix(),
+				Audience:  []string{"test-audience-107"},
+				NotBefore: &jwt.NumericDate{Time: time.Now()},
 				Subject:   identityExtJwtCreated.Data.ID,
 			}
 
@@ -1303,13 +1303,13 @@ func Test_AuthPolicies(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			jwtToken := jwt.New(jwt.SigningMethodES256)
-			jwtToken.Claims = jwt.StandardClaims{
-				Audience:  "ziti.controller",
-				ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-				Id:        time.Now().String(),
-				IssuedAt:  time.Now().Unix(),
+			jwtToken.Claims = jwt.RegisteredClaims{
+				Audience:  []string{"ziti.controller"},
+				ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+				ID:        time.Now().String(),
+				IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 				Issuer:    "fake.issuer",
-				NotBefore: time.Now().Unix(),
+				NotBefore: &jwt.NumericDate{Time: time.Now()},
 				Subject:   identityExtJwtCreated.Data.ID,
 			}
 
@@ -1441,13 +1441,13 @@ func Test_AuthPolicies(t *testing.T) {
 				ctx.testContextChanged(t)
 
 				jwtToken := jwt.New(jwt.SigningMethodES256)
-				jwtToken.Claims = jwt.StandardClaims{
-					ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-					Id:        time.Now().String(),
-					IssuedAt:  time.Now().Unix(),
+				jwtToken.Claims = jwt.RegisteredClaims{
+					ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+					ID:        time.Now().String(),
+					IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 					Issuer:    "test-issuer-109",
-					Audience:  "test-audience-109",
-					NotBefore: time.Now().Unix(),
+					Audience:  []string{"test-audience-109"},
+					NotBefore: &jwt.NumericDate{Time: time.Now()},
 					Subject:   identityExtJwtCreated.Data.ID,
 				}
 

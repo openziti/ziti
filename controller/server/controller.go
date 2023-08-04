@@ -287,6 +287,7 @@ func (c *Controller) Run() {
 
 	managementApiFactory := NewManagementApiFactory(c.AppEnv)
 	clientApiFactory := NewClientApiFactory(c.AppEnv)
+	oidcApiFactory := NewOidcApiFactory(c.AppEnv)
 
 	if err := c.AppEnv.HostController.GetXWebInstance().GetRegistry().Add(managementApiFactory); err != nil {
 		pfxlog.Logger().Fatalf("failed to create Edge Management API factory: %v", err)
@@ -294,6 +295,10 @@ func (c *Controller) Run() {
 
 	if err := c.AppEnv.HostController.GetXWebInstance().GetRegistry().Add(clientApiFactory); err != nil {
 		pfxlog.Logger().Fatalf("failed to create Edge Client API factory: %v", err)
+	}
+
+	if err := c.AppEnv.HostController.GetXWebInstance().GetRegistry().Add(oidcApiFactory); err != nil {
+		pfxlog.Logger().Fatalf("failed to create OIDC API factory: %v", err)
 	}
 
 	if err := c.policyEngine.Start(c.AppEnv.HostController.GetCloseNotifyChannel()); err != nil {

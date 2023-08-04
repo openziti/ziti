@@ -2,7 +2,7 @@ package tests
 
 import (
 	"crypto/x509"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
@@ -148,13 +148,13 @@ func TestSdkAuth(t *testing.T) {
 		//valid signed jwt
 		subjectId := uuid.NewString()
 		jwtToken := jwt.New(jwt.SigningMethodES256)
-		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  *validJwtSigner.Audience,
-			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
-			Id:        time.Now().String(),
-			IssuedAt:  time.Now().Unix(),
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{*validJwtSigner.Audience},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			Issuer:    *validJwtSigner.Issuer,
-			NotBefore: time.Now().Unix(),
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   subjectId,
 		}
 

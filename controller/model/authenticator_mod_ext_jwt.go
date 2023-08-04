@@ -20,7 +20,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
@@ -181,6 +181,7 @@ func (r *signerRecord) Resolve(force bool) error {
 func (a *AuthModuleExtJwt) CanHandle(method string) bool {
 	return method == a.method
 }
+
 func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 	logger := pfxlog.Logger().WithField("method", a.method)
 

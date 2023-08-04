@@ -43,6 +43,8 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 			apiError = apierror.NewMethodNotAllowed()
 		} else if openApiError.Code() == http.StatusUnauthorized {
 			apiError = errorz.NewUnauthorized()
+		} else if openApiError.Code() == http.StatusForbidden {
+			apiError = errorz.NewUnauthorized()
 		} else if openApiError.Code() >= 600 && openApiError.Code() < 700 {
 			//openapi defines error codes 601+ for validation errors
 			apiError = errorz.NewCouldNotValidate(inErr)

@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )
@@ -34,6 +35,7 @@ const (
 	ApiSessionAddedType     = int32(edge_ctrl_pb.ContentType_ApiSessionAddedType)
 	ApiSessionUpdatedType   = int32(edge_ctrl_pb.ContentType_ApiSessionUpdatedType)
 	RequestClientReSyncType = int32(edge_ctrl_pb.ContentType_RequestClientReSyncType)
+	SigningCertAdded        = int32(edge_ctrl_pb.ContentType_SigningCertAddedType)
 
 	ServerHelloType = int32(edge_ctrl_pb.ContentType_ServerHelloType)
 	ClientHelloType = int32(edge_ctrl_pb.ContentType_ClientHelloType)
@@ -69,8 +71,15 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateDeleted, boltz.EntityDeletedAsync)
 
 	ae.HostController.GetNetwork().AddRouterPresenceHandler(broker)
+	ae.HostController.GetEventDispatcher().AddClusterEventHandler(broker)
 
 	return broker
+}
+
+func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {
+	if clusterEvent.EventType == event.ClusterPeerConnected && len(clusterEvent.Peers) > 0 {
+		broker.routerSyncStrategy.PeerAdded(clusterEvent.Peers)
+	}
 }
 
 func (broker *Broker) GetReceiveHandlers() []channel.TypedReceiveHandler {

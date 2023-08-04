@@ -18,8 +18,10 @@ package response
 
 import (
 	"errors"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/controller/oidc_auth"
 	"github.com/openziti/fabric/controller/change"
 	"net/http"
 	"time"
@@ -32,19 +34,27 @@ const (
 
 type RequestContext struct {
 	Responder
-	Id                string
-	ApiSession        *model.ApiSession
+
+	// The unique id of the current request
+	Id string
+
+	// An opaque session token
+	SessionToken string
+	Jwt          *jwt.Token
+	Claims       *oidc_auth.AccessClaims
+	ApiSession   *model.ApiSession
+
 	Identity          *model.Identity
 	AuthPolicy        *model.AuthPolicy
 	AuthQueries       rest_model.AuthQueryList
 	ActivePermissions []string
 	ResponseWriter    http.ResponseWriter
 	Request           *http.Request
-	SessionToken      string
-	entityId          string
-	entitySubId       string
-	Body              []byte
-	StartTime         time.Time
+
+	entityId    string
+	entitySubId string
+	Body        []byte
+	StartTime   time.Time
 }
 
 func (rc *RequestContext) GetId() string {

@@ -62,14 +62,14 @@ const (
 )
 
 func (factory *Factory) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewHelloHandler(factory.edgeRouterConfig.EdgeListeners))
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewHelloHandler(factory.stateManager, factory.edgeRouterConfig.EdgeListeners))
 
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewSessionRemovedHandler(factory.stateManager))
 
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionAddedHandler(factory.stateManager, binding))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionRemovedHandler(factory.stateManager))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionUpdatedHandler(factory.stateManager))
-
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewSigningCertAddedHandler(factory.stateManager))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.routerConfig.Id, func() {
 		factory.certChecker.CertsUpdated()
 	}))

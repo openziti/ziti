@@ -17,7 +17,9 @@
 package model
 
 import (
-	"github.com/golang-jwt/jwt"
+	"crypto/tls"
+	"crypto/x509"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/persistence"
@@ -39,6 +41,10 @@ var _ HostController = &testHostController{}
 type testHostController struct {
 	closeNotify chan struct{}
 	ctx         *persistence.TestContext
+}
+
+func (self *testHostController) GetPeerSigners() []*x509.Certificate {
+	return nil
 }
 
 func (self *testHostController) Identity() identity.Identity {
@@ -73,9 +79,18 @@ type TestContext struct {
 	hostController  *testHostController
 }
 
+func (ctx *TestContext) JwtSignerKeyFunc(token *jwt.Token) (interface{}, error) {
+	tlsCert, _, _ := ctx.GetServerCert()
+	return tlsCert.Leaf.PublicKey, nil
+}
+
+func (ctx *TestContext) GetServerCert() (*tls.Certificate, string, jwt.SigningMethod) {
+	return nil, "", nil
+}
+
 func (ctx *TestContext) HandleServiceUpdatedEventForIdentityId(identityId string) {}
 
-func (ctx *TestContext) Generate(string, string, jwt.MapClaims) (string, error) {
+func (ctx *TestContext) Generate(string, string, jwt.Claims) (string, error) {
 	return "I'm a very legitimate claim", nil
 }
 

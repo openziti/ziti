@@ -18,14 +18,17 @@ package env
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
 	openApiMiddleware "github.com/go-openapi/runtime/middleware"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
@@ -39,15 +42,18 @@ import (
 	"github.com/openziti/edge/controller/events"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/controller/oidc_auth"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwtsigner"
 	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
@@ -56,6 +62,7 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/xweb/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	"io"
 	"net/http"
@@ -78,20 +85,54 @@ type AppEnv struct {
 	ApiClientCsrSigner     cert.Signer
 	ControlClientCsrSigner cert.Signer
 
-	FingerprintGenerator cert.FingerprintGenerator
-	AuthRegistry         model.AuthRegistry
-	EnrollRegistry       model.EnrollmentRegistry
-	Broker               *Broker
-	HostController       HostController
-	ManagementApi        *managementOperations.ZitiEdgeManagementAPI
-	ClientApi            *clientOperations.ZitiEdgeClientAPI
-	IdentityRefreshMap   cmap.ConcurrentMap[string, time.Time]
-	identityRefreshMeter metrics.Meter
-	StartupTime          time.Time
-	InstanceId           string
-	enrollmentSigner     jwtsigner.Signer
-	TraceManager         *TraceManager
-	EventDispatcher      *events.Dispatcher
+	FingerprintGenerator    cert.FingerprintGenerator
+	AuthRegistry            model.AuthRegistry
+	EnrollRegistry          model.EnrollmentRegistry
+	Broker                  *Broker
+	HostController          HostController
+	ManagementApi           *managementOperations.ZitiEdgeManagementAPI
+	ClientApi               *clientOperations.ZitiEdgeClientAPI
+	IdentityRefreshMap      cmap.ConcurrentMap[string, time.Time]
+	identityRefreshMeter    metrics.Meter
+	StartupTime             time.Time
+	InstanceId              string
+	enrollmentSigner        jwtsigner.Signer
+	TraceManager            *TraceManager
+	EventDispatcher         *events.Dispatcher
+	ServerCert              *tls.Certificate
+	ServerCertSigningMethod jwt.SigningMethod
+}
+
+// JwtSignerKeyFunc is used in combination with jwt.Parse or jwt.ParseWithClaims to
+// facilitate verifying JWTs from the current controller or any peer controllers.
+func (ae *AppEnv) JwtSignerKeyFunc(token *jwt.Token) (interface{}, error) {
+	certs := ae.HostController.GetPeerSigners()
+
+	certs = append(certs, ae.ServerCert.Leaf)
+
+	val := token.Header["kid"]
+	targetKid := val.(string)
+
+	if targetKid == "" {
+		return nil, errors.New("missing kid in token")
+	}
+
+	for _, curCert := range certs {
+		//might want to create a cache of these if this becomes a CPU throughput problem
+		//would best be done in fabric's mesh peer collections
+		kid := fmt.Sprintf("%x", sha1.Sum(curCert.Raw))
+
+		if kid == targetKid {
+			return curCert.PublicKey, nil
+		}
+	}
+
+	return nil, errors.New("invalid kid: " + targetKid)
+}
+
+func (ae *AppEnv) GetServerCert() (serverCert *tls.Certificate, kid string, signingMethod jwt.SigningMethod) {
+	kid = fmt.Sprintf("%x", sha1.Sum(ae.ServerCert.Certificate[0]))
+	return ae.ServerCert, kid, ae.ServerCertSigningMethod
 }
 
 func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {
@@ -160,6 +201,8 @@ type HostController interface {
 	Shutdown()
 	Identity() identity.Identity
 	IsRaftEnabled() bool
+	GetPeerSigners() []*x509.Certificate
+	GetEventDispatcher() event.Dispatcher
 }
 
 type Schemes struct {
@@ -238,9 +281,10 @@ func (a authorizer) Authorize(request *http.Request, principal interface{}) erro
 	return nil
 }
 
-func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
-	rc.SessionToken = ae.GetSessionTokenFromRequest(rc.Request)
+func (ae *AppEnv) ProcessZtSession(rc *response.RequestContext, ztSession string) error {
 	logger := pfxlog.Logger()
+
+	rc.SessionToken = ztSession
 
 	if rc.SessionToken != "" {
 		_, err := uuid.Parse(rc.SessionToken)
@@ -315,6 +359,97 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 		if rc.Identity.IsAdmin || rc.Identity.IsDefaultAdmin {
 			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AdminPermission)
 		}
+	}
+
+	return nil
+}
+
+func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) error {
+	rc.SessionToken = token.Raw
+	rc.Jwt = token
+	rc.Claims = token.Claims.(*oidc_auth.AccessClaims)
+
+	if rc.Claims == nil {
+		return fmt.Errorf("could not convert tonek.Claims from %T to %T", rc.Jwt.Claims, rc.Claims)
+	}
+
+	if rc.Claims.Type != oidc_auth.TokenTypeAccess {
+		return errors.New("invalid token")
+	}
+
+	var err error
+	rc.Identity, err = ae.GetManagers().Identity.Read(rc.Claims.Subject)
+
+	if err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			apiErr := errorz.NewUnauthorized()
+			apiErr.Cause = fmt.Errorf("jwt associated identity %s not found", rc.ApiSession.IdentityId)
+			apiErr.AppendCause = true
+			return apiErr
+		} else {
+			return err
+		}
+	}
+
+	configTypes := map[string]struct{}{}
+
+	for _, configType := range rc.Claims.ConfigTypes {
+		configTypes[configType] = struct{}{}
+	}
+
+	rc.ApiSession = &model.ApiSession{
+		BaseEntity: models.BaseEntity{
+			Id:        rc.Claims.JWTID,
+			CreatedAt: rc.Claims.IssuedAt.AsTime(),
+			UpdatedAt: rc.Claims.IssuedAt.AsTime(),
+			IsSystem:  false,
+		},
+		Token:              rc.Jwt.Raw,
+		IdentityId:         rc.Claims.Subject,
+		Identity:           rc.Identity,
+		IPAddress:          rc.Request.RemoteAddr,
+		ConfigTypes:        configTypes,
+		MfaComplete:        rc.Claims.TotpComplete(),
+		MfaRequired:        false,
+		ExpiresAt:          rc.Claims.Expiration.AsTime(),
+		ExpirationDuration: time.Until(rc.Claims.Expiration.AsTime()),
+		LastActivityAt:     time.Now(),
+		AuthenticatorId:    "oidc",
+	}
+
+	rc.AuthPolicy, err = ae.GetManagers().AuthPolicy.Read(rc.Identity.AuthPolicyId)
+
+	if err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			apiErr := errorz.NewUnauthorized()
+			apiErr.Cause = fmt.Errorf("jwt associated auth policy %s not found", rc.Identity.AuthPolicyId)
+			apiErr.AppendCause = true
+			return apiErr
+		} else {
+			return err
+		}
+	}
+
+	rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)
+
+	if rc.Identity.IsAdmin || rc.Identity.IsDefaultAdmin {
+		rc.ActivePermissions = append(rc.ActivePermissions, permissions.AdminPermission)
+	}
+
+	return nil
+}
+
+func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
+	ztSession := ae.getZtSessionFromRequest(rc.Request)
+
+	if ztSession != "" {
+		return ae.ProcessZtSession(rc, ztSession)
+	}
+
+	token := ae.getJwtTokenFromRequest(rc.Request)
+
+	if token != nil {
+		return ae.ProcessJwt(rc, token)
 	}
 
 	return nil
@@ -420,6 +555,23 @@ func NewAppEnv(c *edgeConfig.Config, host HostController) *AppEnv {
 	clientApi.ApplicationPkcs10Consumer = noOpConsumer
 	clientApi.ApplicationXPemFileProducer = &PemProducer{}
 	clientApi.TextYamlProducer = &YamlProducer{}
+
+	clientApi.Oauth2Auth = func(token string, scopes []string) (principal interface{}, err error) {
+		found := false
+		for _, scope := range scopes {
+			if scope == "openid" {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return nil, errorz.NewUnauthorized()
+		}
+
+		return &model.ApiSession{}, nil
+	}
+
 	clientApi.ZtSessionAuth = func(token string) (principal interface{}, err error) {
 		principal, err = ae.GetManagers().ApiSession.ReadByToken(token)
 
@@ -436,6 +588,7 @@ func NewAppEnv(c *edgeConfig.Config, host HostController) *AppEnv {
 
 	managementApi.TextYamlProducer = &YamlProducer{}
 	managementApi.ZtSessionAuth = clientApi.ZtSessionAuth
+	managementApi.Oauth2Auth = clientApi.Oauth2Auth
 
 	ae.ApiClientCsrSigner = cert.NewClientSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
 	ae.ApiServerCsrSigner = cert.NewServerSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
@@ -525,8 +678,68 @@ func getJwtSigningMethod(cert *tls.Certificate) jwt.SigningMethod {
 	return sm
 }
 
-func (ae *AppEnv) GetSessionTokenFromRequest(r *http.Request) string {
+func (ae *AppEnv) getZtSessionFromRequest(r *http.Request) string {
 	return r.Header.Get(ZitiSession)
+}
+
+func (ae *AppEnv) getJwtTokenFromRequest(r *http.Request) *jwt.Token {
+	headers := r.Header.Values("authorization")
+
+	for _, header := range headers {
+		if strings.HasPrefix(header, "Bearer ") {
+			token := header[7:]
+			parsedToken, err := jwt.ParseWithClaims(token, &oidc_auth.AccessClaims{}, ae.ControllersKeyFunc)
+
+			if err != nil {
+				pfxlog.Logger().WithError(err).Error("error during JWT parsing during API request")
+				continue
+			}
+			if parsedToken.Valid {
+				return parsedToken
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (ae *AppEnv) ControllersKeyFunc(token *jwt.Token) (interface{}, error) {
+	kidVal, ok := token.Header["kid"]
+
+	if !ok {
+		return nil, nil
+	}
+
+	kid, ok := kidVal.(string)
+
+	if !ok {
+		return nil, nil
+	}
+
+	return ae.GetControllerPublicKey(kid), nil
+}
+
+func (ae *AppEnv) GetControllerPublicKey(kid string) crypto.PublicKey {
+	serverTlsCert, serverKid, _ := ae.GetServerCert()
+	signers := ae.GetHostController().GetPeerSigners()
+
+	kids := map[string]crypto.PublicKey{
+		serverKid: serverTlsCert.Leaf.PublicKey,
+	}
+
+	for _, signer := range signers {
+		signerKid := fmt.Sprintf("%s", sha1.Sum(signer.Raw))
+		kids[signerKid] = signer.PublicKey
+	}
+
+	for curKid, publicKey := range kids {
+		if curKid == kid {
+			return publicKey
+		}
+	}
+
+	return nil
 }
 
 func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
@@ -637,5 +850,12 @@ func (ae *AppEnv) HandleServiceUpdatedEventForIdentityId(identityId string) {
 
 func (ae *AppEnv) SetEnrollmentSigningCert(serverCert *tls.Certificate) {
 	signMethod := getJwtSigningMethod(serverCert)
-	ae.enrollmentSigner = jwtsigner.New(ae.Config.Api.Address, signMethod, serverCert.PrivateKey)
+	kid := fmt.Sprintf("%x", sha1.Sum(serverCert.Certificate[0]))
+	ae.enrollmentSigner = jwtsigner.New(ae.Config.Api.Address, signMethod, serverCert.PrivateKey, kid)
+}
+
+func (ae *AppEnv) SetServerIdentity(certificate *tls.Certificate) {
+	ae.ServerCert = certificate
+	ae.ServerCertSigningMethod = getJwtSigningMethod(certificate)
+
 }

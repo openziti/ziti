@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/build"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/storage/ast"
@@ -222,6 +223,29 @@ func (strategy *InstantStrategy) GetReceiveHandlers() []channel.TypedReceiveHand
 	return result
 }
 
+func (strategy *InstantStrategy) PeerAdded(peers []*event.ClusterPeer) {
+	logger := pfxlog.Logger().WithField("strategy", strategy.Type())
+
+	logger.WithField("peerCount", len(peers)).Info("new signing certificates from peers")
+
+	keys := &edge_ctrl_pb.SignerCerts{}
+
+	var addrs []string
+
+	for _, peer := range peers {
+		addrs = append(addrs, peer.Addr)
+		for _, cert := range peer.ServerCert {
+			keys.Keys = append(keys.Keys, cert.Raw)
+		}
+	}
+
+	strategy.rtxMap.Range(func(rtx *RouterSender) {
+		_ = strategy.sendSigningCerts(rtx, keys)
+	})
+
+	logger.WithField("addrs", addrs).Info("done sending new signing certificates")
+}
+
 func (strategy *InstantStrategy) ApiSessionAdded(apiSession *persistence.ApiSession) {
 	logger := pfxlog.Logger().WithField("strategy", strategy.Type())
 
@@ -352,11 +376,39 @@ func (strategy *InstantStrategy) hello(rtx *RouterSender) {
 	strategy.sendHello(rtx)
 }
 
+func (strategy *InstantStrategy) getSignerKeys() *edge_ctrl_pb.SignerCerts {
+	signers := strategy.ae.HostController.GetPeerSigners()
+
+	var keys [][]byte
+	for _, signer := range signers {
+		keys = append(keys, signer.Raw)
+	}
+
+	serverCert, _, _ := strategy.ae.GetServerCert()
+
+	keys = append(keys, serverCert.Certificate[0])
+
+	signerKeys := &edge_ctrl_pb.SignerCerts{
+		Keys: keys,
+	}
+
+	return signerKeys
+}
+
 func (strategy *InstantStrategy) sendHello(rtx *RouterSender) {
 	logger := rtx.logger().WithField("strategy", strategy.Type())
 	serverVersion := build.GetBuildInfo().Version()
 	serverHello := &edge_ctrl_pb.ServerHello{
-		Version: serverVersion,
+		Version:  serverVersion,
+		ByteData: map[string][]byte{},
+	}
+
+	signerKeysBuf, err := proto.Marshal(strategy.getSignerKeys())
+
+	if err != nil {
+		logger.WithError(err).Error("could not create signer keys on edge router connect")
+	} else {
+		serverHello.ByteData[edge_ctrl_pb.SignerPublicCertsHeader] = signerKeysBuf
 	}
 
 	buf, err := proto.Marshal(serverHello)
@@ -536,6 +588,14 @@ func (strategy *InstantStrategy) sendApiSessionAdded(rtx *RouterSender, isFullSt
 
 	msg.Headers[env.SyncStrategyTypeHeader] = []byte(strategy.Type())
 	msg.Headers[env.SyncStrategyStateHeader] = stateBytes
+
+	return rtx.Send(msg)
+}
+
+func (strategy *InstantStrategy) sendSigningCerts(rtx *RouterSender, keys *edge_ctrl_pb.SignerCerts) interface{} {
+	msgContentBytes, _ := proto.Marshal(keys)
+
+	msg := channel.NewMessage(env.SigningCertAdded, msgContentBytes)
 
 	return rtx.Send(msg)
 }
