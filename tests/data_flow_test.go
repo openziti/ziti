@@ -22,7 +22,7 @@ package tests
 import (
 	"bytes"
 	"github.com/google/uuid"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"math"
 	"testing"

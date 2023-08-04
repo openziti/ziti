@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/stringz"

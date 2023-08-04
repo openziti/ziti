@@ -2,8 +2,8 @@ package env
 
 import (
 	"bytes"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/eid"
 	"io"
 	"net/http"
 )

@@ -11,7 +11,7 @@ import (
 	"encoding/pem"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	id "github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"

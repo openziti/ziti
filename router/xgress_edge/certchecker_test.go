@@ -8,7 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/edge/router/internal/edgerouter"
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/foundation/v2/tlz"

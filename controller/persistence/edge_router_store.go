@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"

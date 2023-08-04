@@ -21,7 +21,7 @@ package tests
 import (
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/foundation/v2/errorz"
 	"math"
 	"net/http"

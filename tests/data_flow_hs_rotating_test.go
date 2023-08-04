@@ -21,7 +21,7 @@ package tests
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"

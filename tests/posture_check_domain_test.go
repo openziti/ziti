@@ -21,7 +21,7 @@ package tests
 import (
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"net/http"
 	"testing"
 )

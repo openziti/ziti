@@ -19,7 +19,7 @@ package persistence
 import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"

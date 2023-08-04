@@ -30,7 +30,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"math/big"
 	"net/http"
 	"strings"

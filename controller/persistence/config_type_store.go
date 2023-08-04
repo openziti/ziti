@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"encoding/json"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"

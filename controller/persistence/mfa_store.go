@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"github.com/google/uuid"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/storage/boltz"
 )
 

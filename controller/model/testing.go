@@ -19,9 +19,9 @@ package model
 import (
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwtsigner"
 	"github.com/openziti/fabric/controller/change"

@@ -20,7 +20,7 @@
 package tests
 
 import (
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"sort"
 	"testing"
 )
