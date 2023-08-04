@@ -24,7 +24,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/crypto"
 	"github.com/openziti/edge/eid"
 	edgeCert "github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
@@ -361,7 +360,7 @@ func (self *AuthenticatorManager) PatchSelf(authenticatorSelf *AuthenticatorSelf
 }
 
 func (self *AuthenticatorManager) HashPassword(password string) *HashedPassword {
-	newResult := crypto.Hash(password)
+	newResult := Hash(password)
 	b64Password := base64.StdEncoding.EncodeToString(newResult.Hash)
 	b64Salt := base64.StdEncoding.EncodeToString(newResult.Salt)
 
@@ -373,7 +372,7 @@ func (self *AuthenticatorManager) HashPassword(password string) *HashedPassword 
 }
 
 func (self *AuthenticatorManager) ReHashPassword(password string, salt []byte) *HashedPassword {
-	newResult := crypto.ReHash(password, salt)
+	newResult := ReHash(password, salt)
 	b64Password := base64.StdEncoding.EncodeToString(newResult.Hash)
 	b64Salt := base64.StdEncoding.EncodeToString(newResult.Salt)
 
@@ -791,9 +790,9 @@ func (self *AuthenticatorManager) ProtobufToAuthenticator(msg *edge_cmd_pb.Authe
 }
 
 type HashedPassword struct {
-	RawResult *crypto.HashResult //raw byte hash results
-	Salt      string             //base64 encoded hash
-	Password  string             //base64 encoded hash
+	RawResult *HashResult //raw byte hash results
+	Salt      string      //base64 encoded hash
+	Password  string      //base64 encoded hash
 }
 
 type AuthenticatorListQueryResult struct {

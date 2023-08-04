@@ -29,7 +29,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge/edge_common"
+	"github.com/openziti/edge/common"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/router/enroll"
 	"github.com/openziti/edge/router/fabric"
@@ -458,10 +458,10 @@ func (ctx *TestContext) startEdgeRouter() {
 
 	stateManager := fabric.NewStateManager()
 	xgressEdgeFactory := xgress_edge.NewFactory(config, NewVersionProviderTest(), stateManager, ctx.router.GetMetricsRegistry())
-	xgress.GlobalRegistry().Register(edge_common.EdgeBinding, xgressEdgeFactory)
+	xgress.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
 
 	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(ctx.router, config, stateManager)
-	xgress.GlobalRegistry().Register(edge_common.TunnelBinding, xgressEdgeTunnelFactory)
+	xgress.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
 
 	ctx.Req.NoError(ctx.router.RegisterXrctrl(xgressEdgeFactory))
 	ctx.Req.NoError(ctx.router.RegisterXrctrl(xgressEdgeTunnelFactory))

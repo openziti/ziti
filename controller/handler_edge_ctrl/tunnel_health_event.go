@@ -18,8 +18,8 @@ package handler_edge_ctrl
 
 import (
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/common"
 	"github.com/openziti/edge/controller/env"
-	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/metrics"
 	"time"
@@ -69,7 +69,7 @@ func (self *tunnelHealthEventHandler) handleHealthEvent(ctx *TunnelHealthEventRe
 		return
 	}
 
-	terminator := ctx.verifyTerminator(ctx.terminatorId, edge_common.TunnelBinding)
+	terminator := ctx.verifyTerminator(ctx.terminatorId, common.TunnelBinding)
 	if terminator != nil && ctx.err == nil {
 		if ctx.checkPassed {
 			self.serviceHealthCheckPassedCounter.Update(terminator.Service, time.Now(), 1)

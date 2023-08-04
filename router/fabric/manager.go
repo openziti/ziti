@@ -22,8 +22,8 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	runner2 "github.com/openziti/edge/common/runner"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/edge/runner"
 	"github.com/openziti/fabric/router/env"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
@@ -83,7 +83,7 @@ type StateManagerImpl struct {
 	ClusterId      string
 	NodeId         string
 	events.EventEmmiter
-	heartbeatRunner    runner.Runner
+	heartbeatRunner    runner2.Runner
 	heartbeatOperation *heartbeatOperation
 	currentSync        string
 	syncLock           sync.Mutex
@@ -293,7 +293,7 @@ func (sm *StateManagerImpl) StartHeartbeat(env env.RouterEnv, intervalSeconds in
 	sm.heartbeatOperation = newHeartbeatOperation(env, time.Duration(intervalSeconds)*time.Second, sm)
 
 	var err error
-	sm.heartbeatRunner, err = runner.NewRunner(1*time.Second, 24*time.Hour, func(e error, operation runner.Operation) {
+	sm.heartbeatRunner, err = runner2.NewRunner(1*time.Second, 24*time.Hour, func(e error, operation runner2.Operation) {
 		pfxlog.Logger().WithError(err).Error("error during heartbeat runner")
 	})
 

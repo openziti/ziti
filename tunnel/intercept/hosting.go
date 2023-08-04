@@ -19,9 +19,9 @@ package intercept
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/entities"
+	"github.com/openziti/edge/tunnel/health"
 	"github.com/openziti/edge/tunnel/router"
 	"github.com/openziti/edge/tunnel/utils"
 	"github.com/openziti/sdk-golang/ziti"

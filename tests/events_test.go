@@ -20,7 +20,7 @@ package tests
 
 import (
 	"fmt"
-	events2 "github.com/openziti/edge/events"
+	events2 "github.com/openziti/edge/controller/events"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/stringz"
