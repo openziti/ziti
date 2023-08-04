@@ -31,7 +31,7 @@ func (f *encryptionVar) String() string {
 func (f *encryptionVar) Set(value string) error {
 	value = strings.ToUpper(value)
 	if value != "ON" && value != "OFF" && value != "TRUE" && value != "FALSE" {
-		return errors.New("Invalid option -- must specify either 'ON' or 'OFF'")
+		return errors.New("invalid option -- must specify either 'ON' or 'OFF'")
 	}
 	*f = encryptionVar(value)
 	return nil

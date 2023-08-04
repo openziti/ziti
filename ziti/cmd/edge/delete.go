@@ -173,7 +173,3 @@ func getPlural(entityType string) string {
 	}
 	return entityType + "s"
 }
-
-func deleteEntityOfType(entityType string, id string, options *api.Options) error {
-	return util.ControllerDelete("edge", entityType, id, "", options.Out, options.OutputJSONRequest, options.OutputJSONResponse, options.Timeout, options.Verbose)
-}

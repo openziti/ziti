@@ -17,9 +17,7 @@
 package edge
 
 import (
-	"github.com/openziti/ziti/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/util"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -40,9 +38,4 @@ func newVerifyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newVerifyCaCmd(out, errOut))
 
 	return cmd
-}
-
-// createEntityOfType create an entity of the given type on the Ziti Edge Controller
-func verifyEntityOfType(entityType, body, id string, options *api.Options) error {
-	return util.EdgeControllerVerify(entityType, id, body, options.Out, options.OutputJSONResponse, options.Timeout, options.Verbose)
 }

@@ -129,7 +129,8 @@ func GetLatestGitHubReleaseAsset(appName string, appGitHub string, version strin
 		version = "tags/" + version
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancelF := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelF()
 
 	resp, err := getRequest(verbose).
 		SetContext(ctx).

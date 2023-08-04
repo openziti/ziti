@@ -17,13 +17,11 @@
 package install
 
 import (
-	"fmt"
 	"github.com/blang/semver"
 	"github.com/openziti/ziti/common/getziti"
 	c "github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/util"
-	"gopkg.in/AlecAivazis/survey.v1"
 	"gopkg.in/resty.v1"
 	"os"
 	"os/exec"
@@ -31,50 +29,6 @@ import (
 	"runtime"
 	"strings"
 )
-
-// installRequirements installs any requirements needed to run the ziti CLI
-func (o *InstallOptions) installRequirements(extraDependencies ...string) error {
-	var deps []string
-
-	for _, dep := range extraDependencies {
-		deps = o.addRequiredBinary(dep, deps)
-	}
-
-	return o.installMissingDependencies(deps)
-}
-
-func (o *InstallOptions) addRequiredBinary(binName string, deps []string) []string {
-	d := binaryShouldBeInstalled(binName)
-	if d != "" && util.StringArrayIndex(deps, d) < 0 {
-		deps = append(deps, d)
-	}
-	return deps
-}
-
-// appends the binary to the deps array if it cannot be found on the $PATH
-func binaryShouldBeInstalled(d string) string {
-	_, err := exec.LookPath(d)
-	if err != nil {
-		// look for windows exec
-		if runtime.GOOS == "windows" {
-			d = d + ".exe"
-			_, err = exec.LookPath(d)
-			if err == nil {
-				return ""
-			}
-		}
-		binDir, err := util.BinaryLocation()
-		if err == nil {
-			exists, err := util.FileExists(filepath.Join(binDir, d))
-			if err == nil && exists {
-				return ""
-			}
-		}
-		log.Infof("%s not found\n", d)
-		return d
-	}
-	return ""
-}
 
 func isBinaryInstalled(d string) bool {
 	binDir, err := util.BinaryLocation()
@@ -104,47 +58,6 @@ func (o *InstallOptions) deleteInstalledBinary(d string) bool {
 	return false
 }
 
-func (o *InstallOptions) installMissingDependencies(deps []string) error {
-
-	if len(deps) == 0 {
-		return nil
-	}
-
-	if o.BatchMode {
-		return fmt.Errorf("run without batch mode or manually install missing dependencies %v", deps)
-	}
-	install := []string{}
-	prompt := &survey.MultiSelect{
-		Message: "Installing required dependencies, deselect to avoid auto installing:",
-		Options: deps,
-		Default: deps,
-	}
-	survey.AskOne(prompt, &install, nil)
-
-	return o.doInstallMissingDependencies(install)
-}
-
-func (o *InstallOptions) doInstallMissingDependencies(install []string) error {
-
-	for _, i := range install {
-		var err error
-		switch i {
-		case "aws":
-			err = o.installAWSCli()
-		default:
-			return fmt.Errorf("unknown dependency to install %s", i)
-		}
-		if err != nil {
-			return fmt.Errorf("error installing %s: %v", i, err)
-		}
-	}
-	return nil
-}
-
-func (o *InstallOptions) installAWSCli() error {
-	return fmt.Errorf("Ziti's ability to auto-install the AWS CLI is curently un-implemented; For now, you must manually install the AWS CLI")
-}
-
 func (o *InstallOptions) shouldInstallBinary(binDir string, name string) (fileName string, download bool, err error) {
 	fileName = name
 	download = false
@@ -168,20 +81,6 @@ func (o *InstallOptions) shouldInstallBinary(binDir string, name string) (fileNa
 	}
 	download = true
 	return
-}
-
-func (o *InstallOptions) downloadFile(clientURL string, fullPath string) error {
-	log.Infof("Downloading %s to %s...\n", util.ColorInfo(clientURL), util.ColorInfo(fullPath))
-	err := util.DownloadFile(fullPath, clientURL)
-	if err != nil {
-		return fmt.Errorf("Unable to download file %s from %s due to: %v", fullPath, clientURL, err)
-	}
-	log.Infof("Downloaded %s\n", util.ColorInfo(fullPath))
-	return nil
-}
-
-func (o *InstallOptions) getLatestZitiVersion(branch string) (semver.Version, error) {
-	return util.GetLatestVersionFromArtifactory(o.Verbose, o.Staging, branch, c.ZITI)
 }
 
 func (o *InstallOptions) getLatestZitiAppVersion(branch string, zitiApp string) (semver.Version, error) {

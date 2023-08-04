@@ -82,17 +82,17 @@ type Transport struct {
 }
 
 type Ws struct {
-	writeTimeout      int    `yaml:"writeTimeout"`
-	readTimeout       int    `yaml:"readTimeout"`
-	idleTimeout       int    `yaml:"idleTimeout"`
-	pongTimeout       int    `yaml:"pongTimeout"`
-	pingInterval      int    `yaml:"pingInterval"`
-	handshakeTimeout  int    `yaml:"handshakeTimeout"`
-	readBufferSize    int    `yaml:"readBufferSize"`
-	writeBufferSize   int    `yaml:"writeBufferSize"`
-	enableCompression string `yaml:"enableCompression"`
-	server_cert       string `yaml:"server_Cert"`
-	key               string `yaml:"key"`
+	WriteTimeout      int    `yaml:"writeTimeout"`
+	ReadTimeout       int    `yaml:"readTimeout"`
+	IdleTimeout       int    `yaml:"idleTimeout"`
+	PongTimeout       int    `yaml:"pongTimeout"`
+	PingInterval      int    `yaml:"pingInterval"`
+	HandshakeTimeout  int    `yaml:"handshakeTimeout"`
+	ReadBufferSize    int    `yaml:"readBufferSize"`
+	WriteBufferSize   int    `yaml:"writeBufferSize"`
+	EnableCompression string `yaml:"enableCompression"`
+	Server_cert       string `yaml:"server_Cert"`
+	Key               string `yaml:"key"`
 }
 
 type Forwarder struct {

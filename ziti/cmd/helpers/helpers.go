@@ -19,37 +19,17 @@ package helpers
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/pkg/errors"
 	"net/url"
 	"os"
 	"strings"
-
-	"github.com/spf13/cobra"
 )
 
 const (
 	DefaultErrorExitCode = 1
-
-	DefaultWritePermissions = 0760
 )
 
-type debugError interface {
-	DebugError() (msg string, args []interface{})
-}
-
 var fatalErrHandler = fatal
-
-// BehaviorOnFatal allows you to override the default behavior when a fatal
-// error occurs, which is to call os.Exit(code). You can pass 'panic' as a function
-// here if you prefer the panic() over os.Exit(1).
-func BehaviorOnFatal(f func(string, int)) {
-	fatalErrHandler = f
-}
-
-// DefaultBehaviorOnFatal allows you to undo any previous override.  Useful in
-// tests.
-func DefaultBehaviorOnFatal() {
-	fatalErrHandler = fatal
-}
 
 // fatal prints the message (if provided) and then exits.
 func fatal(msg string, code int) {
@@ -74,11 +54,6 @@ var ErrExit = fmt.Errorf("exit")
 // commands.
 func CheckErr(err error) {
 	checkErr("", err, fatalErrHandler)
-}
-
-// checkErrWithPrefix works like CheckErr, but adds a caller-defined prefix to non-nil errors
-func checkErrWithPrefix(prefix string, err error) {
-	checkErr(prefix, err, fatalErrHandler)
 }
 
 // checkErr formats a given error as a string and calls the passed handleErr
@@ -166,14 +141,9 @@ func StandardErrorMessage(err error) (string, bool) {
 	return "", false
 }
 
-func UsageError(cmd *cobra.Command, format string, args ...interface{}) error {
-	msg := fmt.Sprintf(format, args...)
-	return fmt.Errorf("%s\nSee '%s -h' for help and examples.", msg, cmd.CommandPath())
-}
-
 func JFrogAPIKey() string {
 	if h := os.Getenv("JFROG_API_KEY"); h != "" {
 		return h
 	}
-	panic(fmt.Sprintf("ERROR: the JFROG_API_KEY env variable has not been set"))
+	panic(errors.New("ERROR: the JFROG_API_KEY env variable has not been set"))
 }

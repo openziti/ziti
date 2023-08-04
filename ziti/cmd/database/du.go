@@ -21,7 +21,6 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/spf13/cobra"
 	"go.etcd.io/bbolt"
-	"strings"
 )
 
 type DiskUsageAction struct {
@@ -114,12 +113,6 @@ func (self *sizeVisitor) VisitKeyValue(path string, key, value []byte) bool {
 	return true
 }
 
-func (self *sizeVisitor) getParent(path string) *sizeNode {
-	parentPath := self.getParentPath(path)
-	fmt.Printf("%v has parent %v\n", path, parentPath)
-	return self.getNode(parentPath)
-}
-
 func (self *sizeVisitor) getNode(path string) *sizeNode {
 	if path == "" {
 		return self.getNode("/")
@@ -132,16 +125,4 @@ func (self *sizeVisitor) getNode(path string) *sizeNode {
 		self.m[path] = node
 	}
 	return node
-}
-
-func (self *sizeVisitor) getParentPath(path string) string {
-	idx := strings.LastIndexByte(path, '/')
-	if idx < 0 {
-		return path
-	}
-	parent := path[0:idx]
-	if parent == "" {
-		return "/"
-	}
-	return parent
 }

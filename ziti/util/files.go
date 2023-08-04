@@ -19,7 +19,6 @@ package util
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -27,8 +26,6 @@ import (
 
 const (
 	DefaultWritePermissions = 0760
-
-	MaximumNewDirectoryAttempts = 1000
 )
 
 func FileExists(path string) (bool, error) {
@@ -134,7 +131,7 @@ func CopyDir(src string, dst string, force bool) (err error) {
 		return
 	}
 
-	entries, err := ioutil.ReadDir(src)
+	entries, err := os.ReadDir(src)
 	if err != nil {
 		return
 	}
@@ -150,7 +147,7 @@ func CopyDir(src string, dst string, force bool) (err error) {
 			}
 		} else {
 			// Skip symlinks.
-			if entry.Mode()&os.ModeSymlink != 0 {
+			if entry.Type()&os.ModeSymlink != 0 {
 				continue
 			}
 
@@ -227,7 +224,7 @@ func CopyDirOverwrite(src string, dst string) (err error) {
 		return
 	}
 
-	entries, err := ioutil.ReadDir(src)
+	entries, err := os.ReadDir(src)
 	if err != nil {
 		return
 	}
@@ -243,7 +240,7 @@ func CopyDirOverwrite(src string, dst string) (err error) {
 			}
 		} else {
 			// Skip symlinks.
-			if entry.Mode()&os.ModeSymlink != 0 {
+			if entry.Type()&os.ModeSymlink != 0 {
 				continue
 			}
 
@@ -259,7 +256,7 @@ func CopyDirOverwrite(src string, dst string) (err error) {
 // loads a file
 func LoadBytes(dir, name string) ([]byte, error) {
 	path := filepath.Join(dir, name) // relative path
-	bytes, err := ioutil.ReadFile(path)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error loading file %s in directory %s, %v", name, dir, err)
 	}

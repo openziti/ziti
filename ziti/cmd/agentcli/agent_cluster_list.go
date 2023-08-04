@@ -18,8 +18,8 @@ package agentcli
 
 import (
 	"fmt"
+	"google.golang.org/protobuf/proto"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/pb/mgmt_pb"
