@@ -28,7 +28,7 @@ else
 fi
 
 # cd to ziti bin dir
-cd $directory
+cd $directory || exit
 ls -lsa
 
 # Prompt to allow for proper creation of ziti_version
