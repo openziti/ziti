@@ -19,10 +19,10 @@ package server
 import (
 	"fmt"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	runner2 "github.com/openziti/edge/common/runner"
 	"github.com/openziti/edge/controller/handler_edge_mgmt"
 	sync2 "github.com/openziti/edge/controller/sync_strats"
-	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/api_impl"
 	"os"
 	"sync"

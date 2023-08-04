@@ -19,6 +19,7 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
@@ -28,7 +29,6 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/edge/internal/cert"
-	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"

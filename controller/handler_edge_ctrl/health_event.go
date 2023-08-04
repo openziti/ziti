@@ -17,13 +17,13 @@
 package handler_edge_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/metrics"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 

@@ -2,8 +2,8 @@ package handler_edge_ctrl
 
 import (
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/controller/env"
-	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )

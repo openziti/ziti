@@ -2,6 +2,7 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
+	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/fields"
 	"math"
@@ -11,7 +12,6 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
-	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"

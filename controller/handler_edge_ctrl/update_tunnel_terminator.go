@@ -20,8 +20,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/common"
+	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/controller/env"
-	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )

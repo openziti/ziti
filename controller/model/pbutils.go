@@ -17,7 +17,7 @@
 package model
 
 import (
-	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/edge/common/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/change"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"

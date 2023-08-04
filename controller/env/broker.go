@@ -19,8 +19,8 @@ package env
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/storage/boltz"
