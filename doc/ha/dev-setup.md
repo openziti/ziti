@@ -89,8 +89,8 @@ You should now have a three node cluster running. You can log into each controll
 You could then create some model data on any controller:
 
 ```
-ziti learn demo setup echo client 
-ziti learn demo setup echo single-sdk-hosted
+ziti demo setup echo client 
+ziti demo setup echo single-sdk-hosted
 ```
 
 Any view the results on any controller
