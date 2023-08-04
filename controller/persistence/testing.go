@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"

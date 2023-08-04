@@ -19,9 +19,9 @@ package sync_strats
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
-	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/network"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"

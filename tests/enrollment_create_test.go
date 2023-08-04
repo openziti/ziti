@@ -21,7 +21,7 @@ package tests
 import (
 	"encoding/pem"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"net/http"
 	"testing"
 	"time"

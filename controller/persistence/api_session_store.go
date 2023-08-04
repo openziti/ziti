@@ -19,7 +19,7 @@ package persistence
 import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/storage/ast"

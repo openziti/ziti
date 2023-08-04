@@ -18,9 +18,9 @@ package policy
 
 import (
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/eid"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
 	"github.com/sirupsen/logrus"

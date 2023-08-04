@@ -22,7 +22,7 @@ package tests
 import (
 	"errors"
 	"fmt"
-	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/sdk-golang/ziti"
 	"io"
 	"testing"
