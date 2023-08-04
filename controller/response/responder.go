@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/go-openapi/errors"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge/internal/version"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/foundation/v2/errorz"
@@ -47,8 +46,8 @@ func (self EdgeResponseMapper) MapApiError(requestId string, apiError *errorz.Ap
 	return &rest_model.APIErrorEnvelope{
 		Error: self.toRestModel(apiError, requestId),
 		Meta: &rest_model.Meta{
-			APIEnrollmentVersion: version.GetApiEnrollmentVersion(),
-			APIVersion:           version.GetApiVersion(),
+			APIEnrollmentVersion: GetApiEnrollmentVersion(),
+			APIVersion:           GetApiVersion(),
 		},
 	}
 }
