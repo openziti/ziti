@@ -65,7 +65,7 @@ deleteMiniziti(){
         logDebug "no integer param detected to deleteMiniziti(), using default wait time ${WAIT}s"
     fi
     (( SAFETY_WAIT )) && {
-        echo "WARN: deleting ${MINIKUBE_PROFILE} in ${WAIT}s" >&2
+        logWarn "deleting ${MINIKUBE_PROFILE} in ${WAIT}s" >&2
         sleep "$WAIT"
     }
     logInfo "waiting for ${MINIKUBE_PROFILE} to be deleted"
