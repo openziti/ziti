@@ -29,17 +29,17 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/miekg/dns v1.1.55
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/openziti/channel/v2 v2.0.87
+	github.com/openziti/channel/v2 v2.0.89
 	github.com/openziti/edge-api v0.25.31
 	github.com/openziti/fabric v0.23.52
 	github.com/openziti/foundation/v2 v2.0.28
 	github.com/openziti/identity v1.0.59
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.30
-	github.com/openziti/sdk-golang v0.20.83
+	github.com/openziti/sdk-golang v0.20.87
 	github.com/openziti/secretstream v0.1.10
 	github.com/openziti/storage v0.2.11
-	github.com/openziti/transport/v2 v2.0.96
+	github.com/openziti/transport/v2 v2.0.97
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -123,7 +123,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.8.1 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/rs/cors v1.9.0 // indirect
-	github.com/shirou/gopsutil/v3 v3.23.6 // indirect
+	github.com/shirou/gopsutil/v3 v3.23.7 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
@@ -138,7 +138,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.16.0 // indirect
 	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1 // indirect
 	golang.org/x/mod v0.11.0 // indirect
-	golang.org/x/net v0.12.0 // indirect
+	golang.org/x/net v0.13.0 // indirect
 	golang.org/x/oauth2 v0.9.0 // indirect
 	golang.org/x/term v0.10.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
