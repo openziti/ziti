@@ -2,7 +2,7 @@ package xgress_edge
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/edge/edge_common"
+	"github.com/openziti/edge/common"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -113,7 +113,7 @@ const (
 
 func newTestConfigWithConnectOptions() xgress.OptionsData {
 	return xgress.OptionsData{
-		"binding": edge_common.EdgeBinding,
+		"binding": common.EdgeBinding,
 		"address": "tls:0.0.0.0:3022",
 		"options": map[interface{}]interface{}{
 			"advertise":              "127.0.0.1:3022",
@@ -126,7 +126,7 @@ func newTestConfigWithConnectOptions() xgress.OptionsData {
 
 func newTestConfigWithoutConnectOptions() xgress.OptionsData {
 	return xgress.OptionsData{
-		"binding": edge_common.EdgeBinding,
+		"binding": common.EdgeBinding,
 		"address": "tls:0.0.0.0:3022",
 		"options": map[interface{}]interface{}{
 			"advertise": "127.0.0.1:3022",

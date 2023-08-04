@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package edge_common
+package common
 
 const (
 	EdgeBinding   = "edge"

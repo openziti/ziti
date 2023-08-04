@@ -21,7 +21,6 @@ import (
 	"errors"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/crypto"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/change"
@@ -82,7 +81,7 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 	}
 	password = val.(string)
 
-	hash := crypto.Hash(password)
+	hash := Hash(password)
 
 	encodedPassword := base64.StdEncoding.EncodeToString(hash.Hash)
 	encodedSalt := base64.StdEncoding.EncodeToString(hash.Salt)

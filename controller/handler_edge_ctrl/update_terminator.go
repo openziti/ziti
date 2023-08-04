@@ -19,9 +19,9 @@ package handler_edge_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/common"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -82,7 +82,7 @@ func (self *updateTerminatorHandler) UpdateTerminator(ctx *UpdateTerminatorReque
 	ctx.loadSession(ctx.req.SessionToken)
 	ctx.checkSessionType(persistence.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
-	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, edge_common.EdgeBinding)
+	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, common.EdgeBinding)
 
 	ctx.updateTerminator(terminator, ctx.req, ctx.newChangeContext())
 

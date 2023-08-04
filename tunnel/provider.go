@@ -3,7 +3,7 @@ package tunnel
 import (
 	"encoding/json"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge/health"
+	"github.com/openziti/edge/tunnel/health"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"

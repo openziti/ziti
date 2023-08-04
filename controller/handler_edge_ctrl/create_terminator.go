@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/common"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/models"
@@ -105,7 +105,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 		},
 		Service:        ctx.session.ServiceId,
 		Router:         ctx.sourceRouter.Id,
-		Binding:        edge_common.EdgeBinding,
+		Binding:        common.EdgeBinding,
 		Address:        "hosted:" + ctx.session.Token,
 		InstanceId:     ctx.req.InstanceId,
 		InstanceSecret: ctx.req.InstanceSecret,

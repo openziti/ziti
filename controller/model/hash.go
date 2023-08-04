@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package crypto
+package model
 
 import (
 	"crypto/rand"

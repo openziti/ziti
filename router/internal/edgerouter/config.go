@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openziti/edge/edge_common"
+	"github.com/openziti/edge/common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/identity"
@@ -241,7 +241,7 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 		if value, found := submap["binding"]; found {
 			binding := value.(string)
 
-			if binding == edge_common.EdgeBinding {
+			if binding == common.EdgeBinding {
 
 				if value, found := submap["address"]; found {
 					address := value.(string)

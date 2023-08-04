@@ -19,8 +19,8 @@ package handler_edge_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/common"
 	"github.com/openziti/edge/controller/env"
-	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -76,7 +76,7 @@ func (self *updateTunnelTerminatorHandler) UpdateTerminator(ctx *UpdateTunnelTer
 
 	logrus.Debug("update request received")
 
-	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, edge_common.TunnelBinding)
+	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, common.TunnelBinding)
 	ctx.updateTerminator(terminator, ctx.req, ctx.newTunnelChangeContext())
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)

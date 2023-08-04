@@ -19,6 +19,7 @@ package server
 import (
 	"fmt"
 	"github.com/openziti/channel/v2"
+	runner2 "github.com/openziti/edge/common/runner"
 	"github.com/openziti/edge/controller/handler_edge_mgmt"
 	sync2 "github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
@@ -35,7 +36,6 @@ import (
 	"github.com/openziti/edge/controller/handler_edge_ctrl"
 	_ "github.com/openziti/edge/controller/internal/routes"
 	"github.com/openziti/edge/controller/model"
-	"github.com/openziti/edge/runner"
 	"github.com/openziti/fabric/config"
 	"github.com/openziti/storage/boltz"
 )
@@ -45,7 +45,7 @@ type Controller struct {
 	AppEnv          *env.AppEnv
 	xmgmt           *submgmt
 	xctrl           *subctrl
-	policyEngine    runner.Runner
+	policyEngine    runner2.Runner
 	isLoaded        bool
 	initModulesOnce sync.Once
 	initialized     bool
@@ -78,7 +78,7 @@ func NewController(cfg config.Configurable, host env.HostController) (*Controlle
 
 	pfxlog.Logger().Infof("edge controller instance id: %s", c.AppEnv.InstanceId)
 
-	pe, err := runner.NewRunner(policyMinFreq, policyMaxFreq, func(e error, enforcer runner.Operation) {
+	pe, err := runner2.NewRunner(policyMinFreq, policyMaxFreq, func(e error, enforcer runner2.Operation) {
 		pfxlog.Logger().
 			WithField("cause", e).
 			WithField("enforcerName", enforcer.GetName()).

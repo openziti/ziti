@@ -18,8 +18,8 @@ package handler_edge_ctrl
 
 import (
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/common"
 	"github.com/openziti/edge/controller/env"
-	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/sirupsen/logrus"
 )
@@ -61,7 +61,7 @@ func (self *removeTunnelTerminatorHandler) RemoveTerminator(ctx *RemoveTunnelTer
 		return
 	}
 
-	t := ctx.verifyTerminator(ctx.terminatorId, edge_common.TunnelBinding)
+	t := ctx.verifyTerminator(ctx.terminatorId, common.TunnelBinding)
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)
 		return

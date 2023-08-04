@@ -2,8 +2,8 @@ package model
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/common"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
@@ -74,7 +74,7 @@ type terminator interface {
 }
 
 func (self *CreateEdgeTerminatorCmd) getTerminatorSession(tx *bbolt.Tx, terminator terminator, context string) (*persistence.Session, error) {
-	if terminator.GetBinding() != edge_common.EdgeBinding {
+	if terminator.GetBinding() != common.EdgeBinding {
 		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetInstanceId())
 	}
 

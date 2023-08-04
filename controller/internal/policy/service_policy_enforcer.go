@@ -19,12 +19,12 @@ package policy
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/common/runner"
 	"github.com/openziti/fabric/controller/change"
 	"time"
 
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/runner"
 	"go.etcd.io/bbolt"
 )
 
