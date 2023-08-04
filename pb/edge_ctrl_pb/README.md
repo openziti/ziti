@@ -1,7 +1,7 @@
 # Prerequisites
 
 1. Install the protoc binary from: https://github.com/protocolbuffers/protobuf/releases
-2. Install the protoc plugin for Go ```go get -u github.com/golang/protobuf/protoc-gen-go```
+2. Install the protoc plugin for Go ```go install google.golang.org/protobuf/cmd/protoc-gen-go@latest```
 3. Ensure ```protoc``` is on your path.
 4. Ensure your Go bin directory is on your path
 

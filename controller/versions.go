@@ -38,6 +38,7 @@ const (
 	LegacyClientApiBinding = "edge"
 	ClientApiBinding       = "edge-client"
 	ManagementApiBinding   = "edge-management"
+	OidcApiBinding         = "edge-oidc"
 )
 
 // AllApiBindingVersions is a map of: API Binding -> Api Version -> API Path

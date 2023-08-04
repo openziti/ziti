@@ -53,6 +53,7 @@ type Stores struct {
 	IdentityType            IdentityTypeStore
 	Index                   boltz.Store
 	Session                 SessionStore
+	Revocation              RevocationStore
 	ServiceEdgeRouterPolicy ServiceEdgeRouterPolicyStore
 	ServicePolicy           ServicePolicyStore
 	TransitRouter           TransitRouterStore
@@ -162,6 +163,7 @@ type stores struct {
 	externalJwtSigner       *externalJwtSignerStoreImpl
 	identity                *identityStoreImpl
 	identityType            *IdentityTypeStoreImpl
+	revocation              *revocationStoreImpl
 	serviceEdgeRouterPolicy *serviceEdgeRouterPolicyStoreImpl
 	servicePolicy           *servicePolicyStoreImpl
 	session                 *sessionStoreImpl
@@ -202,6 +204,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.identity = newIdentityStore(internalStores)
 	internalStores.identityType = newIdentityTypeStore(internalStores)
 	internalStores.enrollment = newEnrollmentStore(internalStores)
+	internalStores.revocation = newRevocationStore(internalStores)
 	internalStores.serviceEdgeRouterPolicy = newServiceEdgeRouterPolicyStore(internalStores)
 	internalStores.servicePolicy = newServicePolicyStore(internalStores)
 	internalStores.session = newSessionStore(internalStores)
@@ -231,6 +234,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		TransitRouter:           internalStores.transitRouter,
 		Identity:                internalStores.identity,
 		IdentityType:            internalStores.identityType,
+		Revocation:              internalStores.revocation,
 		ServiceEdgeRouterPolicy: internalStores.serviceEdgeRouterPolicy,
 		ServicePolicy:           internalStores.servicePolicy,
 		Session:                 internalStores.session,
