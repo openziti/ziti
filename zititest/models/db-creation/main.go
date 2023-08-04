@@ -2,9 +2,11 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
+	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	semaphore_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
@@ -25,6 +27,52 @@ import (
 
 //go:embed configs
 var configResource embed.FS
+
+// Define a struct to represent the nested "ResourceRecordSet" object
+type ResourceRecordSet struct {
+	Name            string `json:"Name"`
+	Type            string `json:"Type"`
+	TTL             int    `json:"TTL"`
+	ResourceRecords []struct {
+		Value string `json:"Value"`
+	} `json:"ResourceRecords"`
+}
+
+// Define a struct to represent the nested "Changes" object
+type Change struct {
+	Action            string            `json:"Action"`
+	ResourceRecordSet ResourceRecordSet `json:"ResourceRecordSet"`
+}
+
+// Define the main Payload struct to represent the entire JSON payload
+type Payload struct {
+	Changes []Change `json:"Changes"`
+}
+
+// Instance of Payload struct with dynamic IP Address
+var payload = Payload{
+	Changes: []Change{
+		{
+			Action: "CREATE",
+			ResourceRecordSet: ResourceRecordSet{
+				Name: "controller.testing.openziti.org", // The DNS record name
+				Type: "A",                               // Type A represents an IPv4 address
+				TTL:  300,                               // TTL value in seconds
+				ResourceRecords: []struct {
+					Value string `json:"Value"`
+				}{
+					{Value: m.MustSelectHost("#ctrl").PublicIp},
+				},
+			},
+		},
+	},
+}
+
+var jsonData, _ = json.MarshalIndent(payload, "", "  ")
+
+var dnsRemoveJsonData = string(jsonData)
+
+var deleteDNSRecord = "aws route53 change-resource-record-sets --hosted-zone-id Z09612893W445K5ME8MYS --change-batch '" + dnsRemoveJsonData + "'"
 
 type scaleStrategy struct{}
 
@@ -149,6 +197,7 @@ var m = &model.Model{
 	},
 
 	Disposal: model.Stages{
+		host.GroupExec("ctrl", 25, deleteDNSRecord),
 		terraform.Dispose(),
 		aws_ssh_key2.Dispose(),
 	},
