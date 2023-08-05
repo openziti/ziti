@@ -427,10 +427,11 @@ main(){
             exit 1
         fi
 
-        logDebug "patching coredns configmap with *.${MINIZITI_INGRESS_ZONE} forwarder to minikube ingress-dns nameserver"
-        kubectl patch configmap "coredns" \
-            --namespace kube-system \
-            --patch "
+        (( MINIZITI_HOSTS )) && {
+            logDebug "patching coredns configmap with *.${MINIZITI_INGRESS_ZONE} forwarder to minikube ingress-dns nameserver"
+            kubectl patch configmap "coredns" \
+                --namespace kube-system \
+                --patch "
         data:
             Corefile: |
                 .:53 {
@@ -458,24 +459,25 @@ main(){
                     reload
                     loadbalance
                 }
-                ziti:53 {
+                ${MINIZITI_INGRESS_ZONE}:53 {
                     errors
                     cache 30
                     forward . ${MINIKUBE_NODE_EXTERNAL}
                 }
         " >&3
 
-        logDebug "deleting coredns pod so a new one will have modified Corefile"
-        kubectl get pods \
-            --namespace kube-system \
-            | awk '/^coredns-/ {print $1}' \
-            | xargs kubectl delete pods \
-                --namespace kube-system >&3
+            logDebug "deleting coredns pod so a new one will have modified Corefile"
+            kubectl get pods \
+                --namespace kube-system \
+                | awk '/^coredns-/ {print $1}' \
+                | xargs kubectl delete pods \
+                    --namespace kube-system >&3
 
-        logDebug "waiting for cluster dns to be ready"
-        kubectl wait deployments "coredns" \
-            --namespace kube-system \
-            --for condition=Available=True >&3
+            logDebug "waiting for cluster dns to be ready"
+            kubectl wait deployments "coredns" \
+                --namespace kube-system \
+                --for condition=Available=True >&3
+        }
 
         # perform a DNS query in a pod so we know ingress-dns is working inside the cluster
         testClusterDns "${MINIKUBE_NODE_EXTERNAL}"
