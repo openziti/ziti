@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/openziti/fabric/controller/idgen"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
@@ -70,22 +71,23 @@ func (o *PKICreateIntermediateOptions) addPKICreateIntermediateFlags(cmd *cobra.
 	cmd.Flags().StringVarP(&o.Flags.IntermediateFile, "intermediate-file", "", "intermediate", "Dir/File name (within PKI_ROOT) in which to store new Intermediate CA")
 	cmd.Flags().StringVarP(&o.Flags.IntermediateName, FlagCaIntermediateName, "", "NetFoundry Inc. Intermediate CA", "Common Name (CN) to use for new Intermediate CA")
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 3650, "Expiration limit in days")
-	cmd.Flags().IntVarP(&o.Flags.CAMaxpath, "max-path-len", "", 0, "Intermediate maximum path length")
-	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the private key")
+	cmd.Flags().IntVarP(&o.Flags.CAMaxPath, "max-path-len", "", 0, "Intermediate maximum path length")
+	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the RSA private key, ignored if -curve is set")
+	cmd.Flags().StringVarP(&o.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521")
 }
 
 // Run implements this command
 func (o *PKICreateIntermediateOptions) Run() error {
-	pkiroot, err := o.ObtainPKIRoot()
+	pkiRoot, err := o.ObtainPKIRoot()
 	if err != nil {
 		return err
 	}
 
 	o.Flags.PKI = &pki.ZitiPKI{Store: &store.Local{}}
 	local := o.Flags.PKI.Store.(*store.Local)
-	local.Root = pkiroot
+	local.Root = pkiRoot
 
-	intermediatefile, err := o.ObtainIntermediateCAFile()
+	intermediateFile, err := o.ObtainIntermediateCAFile()
 	if err != nil {
 		return err
 	}
@@ -96,19 +98,19 @@ func (o *PKICreateIntermediateOptions) Run() error {
 
 	commonName := o.Flags.IntermediateName
 
-	filename := o.ObtainFileName(intermediatefile, commonName)
+	filename := o.ObtainFileName(intermediateFile, commonName)
 	template := o.ObtainPKIRequestTemplate(commonName)
 
 	template.IsCA = true
 
 	var signer *certificate.Bundle
 
-	caname, err := o.ObtainCAName(pkiroot)
+	caName, err := o.ObtainCAName(pkiRoot)
 	if err != nil {
 		return err
 	}
 
-	signer, err = o.Flags.PKI.GetCA(caname)
+	signer, err = o.Flags.PKI.GetCA(caName)
 	if err != nil {
 		return errors.Wrap(err, "cannot locate signer")
 	}
@@ -119,11 +121,17 @@ func (o *PKICreateIntermediateOptions) Run() error {
 		}
 	}
 
+	privateKeyOptions, err := o.ObtainPrivateKeyOptions()
+
+	if err != nil {
+		return fmt.Errorf("could not resolve private key options: %w", err)
+	}
+
 	req := &pki.Request{
 		Name:                filename,
 		Template:            template,
 		IsClientCertificate: false,
-		PrivateKeySize:      o.Flags.CAPrivateKeySize,
+		PrivateKeyOptions:   privateKeyOptions,
 	}
 
 	if err := o.Flags.PKI.Sign(signer, req); err != nil {

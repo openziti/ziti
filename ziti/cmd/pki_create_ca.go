@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/openziti/fabric/controller/idgen"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
@@ -70,23 +71,24 @@ func (o *PKICreateCAOptions) addPKICreateCAFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.Flags.CAFile, "ca-file", "", "", "Dir/File name (within PKI_ROOT) in which to store new CA")
 	cmd.Flags().StringVarP(&o.Flags.CAName, FlagCaName, "", "NetFoundry Inc. Certificate Authority", "Name of CA")
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 3650, "Expiration limit in days")
-	cmd.Flags().IntVarP(&o.Flags.CAMaxpath, "max-path-len", "", -1, "Intermediate maximum path length")
-	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the private key")
+	cmd.Flags().IntVarP(&o.Flags.CAMaxPath, "max-path-len", "", -1, "Intermediate maximum path length")
+	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the RSA private key, ignored if -curve is set")
+	cmd.Flags().StringVarP(&o.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521")
 	cmd.Flags().StringVar(&o.Flags.SpiffeID, "trust-domain", "", "An optional spiffe trust domain. spiffe:// will be automatically prefixed, if not provided")
 }
 
 // Run implements this command
 func (o *PKICreateCAOptions) Run() error {
-	pkiroot, err := o.ObtainPKIRoot()
+	pkiRoot, err := o.ObtainPKIRoot()
 	if err != nil {
 		return err
 	}
 
 	o.Flags.PKI = &pki.ZitiPKI{Store: &store.Local{}}
 	local := o.Flags.PKI.Store.(*store.Local)
-	local.Root = pkiroot
+	local.Root = pkiRoot
 
-	cafile, err := o.ObtainCAFile()
+	caFile, err := o.ObtainCAFile()
 	if err != nil {
 		return err
 	}
@@ -98,7 +100,7 @@ func (o *PKICreateCAOptions) Run() error {
 
 	commonName := o.Flags.CAName
 
-	filename := o.ObtainFileName(cafile, commonName)
+	filename := o.ObtainFileName(caFile, commonName)
 	template := o.ObtainPKIRequestTemplate(commonName)
 
 	template.IsCA = true
@@ -114,13 +116,19 @@ func (o *PKICreateCAOptions) Run() error {
 		template.URIs = append(template.URIs, spiffeId)
 	}
 
+	privateKeyOptions, err := o.ObtainPrivateKeyOptions()
+
+	if err != nil {
+		return fmt.Errorf("could not resolve private key options: %w", err)
+	}
+
 	var signer *certificate.Bundle
 
 	req := &pki.Request{
 		Name:                filename,
 		Template:            template,
 		IsClientCertificate: false,
-		PrivateKeySize:      o.Flags.CAPrivateKeySize,
+		PrivateKeyOptions:   privateKeyOptions,
 	}
 
 	if err = o.Flags.PKI.Sign(signer, req); err != nil {

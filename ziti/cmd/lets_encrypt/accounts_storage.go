@@ -181,7 +181,7 @@ func (s *AccountsStorage) GetPrivateKey(keyType certcrypto.KeyType) crypto.Priva
 
 	privateKey, err := loadPrivateKey(accKeyPath)
 	if err != nil {
-		log.Fatalf("Could not load RSA private key from file %s: %v", accKeyPath, err)
+		log.Fatalf("Could not load private key from file %s: %v", accKeyPath, err)
 	}
 
 	return privateKey
@@ -227,6 +227,8 @@ func loadPrivateKey(file string) (crypto.PrivateKey, error) {
 		return x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
 	case "EC PRIVATE KEY":
 		return x509.ParseECPrivateKey(keyBlock.Bytes)
+	case "PRIVATE KEY":
+		return x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
 	}
 
 	return nil, errors.New("unknown private key type")

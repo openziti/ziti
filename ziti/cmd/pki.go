@@ -43,7 +43,7 @@ type PKIFlags struct {
 	CAName                string
 	CommonName            string
 	CAExpire              int
-	CAMaxpath             int
+	CAMaxPath             int
 	CAPrivateKeySize      int
 	IntermediateFile      string
 	IntermediateName      string
@@ -61,6 +61,7 @@ type PKIFlags struct {
 	PKI                   *pki.ZitiPKI
 	SpiffeID              string
 	AllowOverwrite        bool
+	EcCurve               string
 }
 
 var (
