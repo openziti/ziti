@@ -21,7 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/latency"
-	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/edge/common/cert"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"math"
 )

@@ -19,10 +19,10 @@ package handler_edge_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/common/cert"
 	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
-	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/models"
 	"google.golang.org/protobuf/proto"
