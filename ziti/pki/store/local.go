@@ -401,8 +401,13 @@ func (l *Local) Update(caName string, sn *big.Int, st certificate.State) error {
 		}
 	}
 
-	f.Truncate(0)
-	f.Seek(0, 0)
+	if err = f.Truncate(0); err != nil {
+		return err
+	}
+
+	if _, err = f.Seek(0, 0); err != nil {
+		return err
+	}
 
 	for _, line := range lines {
 		n, err := fmt.Fprintln(f, line)

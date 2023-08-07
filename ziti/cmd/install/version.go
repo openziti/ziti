@@ -72,8 +72,10 @@ func NewCmdVersion(out io.Writer, errOut io.Writer) *cobra.Command {
 
 // Run ...
 func (o *VersionOptions) Run() error {
-
-	util.ConfigDir()
+	_, err := util.ConfigDir()
+	if err != nil {
+		return err
+	}
 
 	info := util.ColorInfo
 
@@ -126,12 +128,24 @@ func (o *VersionOptions) versionPrintZitiApp(zitiApp string, table *table.Table)
 }
 
 func (o *VersionOptions) versionCheck() error {
-	o.versionCheckZitiApp(c.ZITI)
-	o.versionCheckZitiApp(c.ZITI_CONTROLLER)
-	o.versionCheckZitiApp(c.ZITI_PROX_C)
-	o.versionCheckZitiApp(c.ZITI_ROUTER)
-	o.versionCheckZitiApp(c.ZITI_TUNNEL)
-	o.versionCheckZitiApp(c.ZITI_EDGE_TUNNEL)
+	if err := o.versionCheckZitiApp(c.ZITI); err != nil {
+		return err
+	}
+	if err := o.versionCheckZitiApp(c.ZITI_CONTROLLER); err != nil {
+		return err
+	}
+	if err := o.versionCheckZitiApp(c.ZITI_PROX_C); err != nil {
+		return err
+	}
+	if err := o.versionCheckZitiApp(c.ZITI_ROUTER); err != nil {
+		return err
+	}
+	if err := o.versionCheckZitiApp(c.ZITI_TUNNEL); err != nil {
+		return err
+	}
+	if err := o.versionCheckZitiApp(c.ZITI_EDGE_TUNNEL); err != nil {
+		return err
+	}
 	return nil
 }
 

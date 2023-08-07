@@ -20,11 +20,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"math/rand"
 	"sync/atomic"
@@ -144,36 +144,34 @@ func (p *protocol) txer(done chan bool) {
 			time.Sleep(p.txPauseFor)
 			lastPause = time.Now()
 		}
-		select {
-		case block := <-p.blocks:
-			if block != nil {
-				if p.txPacing > 0 {
-					jitter := time.Duration(0)
-					if p.txMaxJitter > 0 {
-						jitter = time.Duration(rand.Intn(int(p.txMaxJitter)))
-					}
-
-					nextSend := lastSend.Add(p.txPacing + jitter)
-					if nextSend.After(now) {
-						time.Sleep(nextSend.Sub(now))
-						lastSend = nextSend
-					} else {
-						lastSend = now
-					}
+		block := <-p.blocks
+		if block != nil {
+			if p.txPacing > 0 {
+				jitter := time.Duration(0)
+				if p.txMaxJitter > 0 {
+					jitter = time.Duration(rand.Intn(int(p.txMaxJitter)))
 				}
 
-				block.PrepForSend(p)
-				if err := block.Tx(p); err == nil {
-					atomic.AddInt32(&p.txCount, 1)
+				nextSend := lastSend.Add(p.txPacing + jitter)
+				if nextSend.After(now) {
+					time.Sleep(nextSend.Sub(now))
+					lastSend = nextSend
 				} else {
-					log.Errorf("error sending block (%s)", err)
-					p.errors <- err
-					return
+					lastSend = now
 				}
+			}
+
+			block.PrepForSend(p)
+			if err := block.Tx(p); err == nil {
+				atomic.AddInt32(&p.txCount, 1)
 			} else {
-				log.Errorf("tx blocks chan closed")
+				log.Errorf("error sending block (%s)", err)
+				p.errors <- err
 				return
 			}
+		} else {
+			log.Errorf("tx blocks chan closed")
+			return
 		}
 	}
 

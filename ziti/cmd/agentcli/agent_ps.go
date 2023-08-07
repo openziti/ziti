@@ -105,7 +105,9 @@ func (self *AgentPsAction) Run() error {
 
 		fmt.Fprint(buf, p.Path)
 		fmt.Fprintln(buf)
-		buf.WriteTo(os.Stdout)
+		if _, err := buf.WriteTo(os.Stdout); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -169,6 +171,7 @@ func FindAll() []P {
 			path, version, agent, ok, err := isGo(pr)
 			if err != nil {
 				// TODO(jbd): Return a list of errors.
+				return
 			}
 			if !ok {
 				return

@@ -85,6 +85,9 @@ func (o *InstallZitiControllerOptions) Run() error {
 
 	if o.Version != "" {
 		newVersion, err = semver.Make(o.Version)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Infoln("Attempting to install '" + c.ZITI_CONTROLLER + "' version: " + newVersion.String())

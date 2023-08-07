@@ -21,10 +21,9 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"io"
-	"io/ioutil"
-
 	"github.com/pkg/errors"
+	"io"
+	"os"
 
 	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
@@ -78,7 +77,7 @@ func runCreateConfigType(o *createConfigTypeOptions) error {
 			return errors.New("schema specified both in file and on command line. please pick one")
 		}
 		var err error
-		if schemaBytes, err = ioutil.ReadFile(o.schemaFile); err != nil {
+		if schemaBytes, err = os.ReadFile(o.schemaFile); err != nil {
 			return fmt.Errorf("failed to read schema file %v: %w", o.schemaFile, err)
 		}
 	}

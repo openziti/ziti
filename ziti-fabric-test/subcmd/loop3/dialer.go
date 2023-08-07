@@ -202,7 +202,7 @@ func (cmd *dialerCmd) connect() net.Conn {
 		}
 	}
 
-	ConnectionTime.Update(time.Now().Sub(start))
+	ConnectionTime.Update(time.Since(start))
 
 	return conn
 }

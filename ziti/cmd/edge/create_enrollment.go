@@ -45,7 +45,6 @@ func newCreateEnrollmentCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 type createEnrollmentOptions struct {
 	api.Options
-	name     string
 	duration int64
 }
 

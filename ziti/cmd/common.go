@@ -42,3 +42,9 @@ func (options *CommonOptions) AddCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&options.Timeout, "timeout", "t", 5, "Timeout for REST operations (specified in seconds)")
 	options.Cmd = cmd
 }
+
+func (options *CommonOptions) panicOnErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
