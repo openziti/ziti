@@ -34,7 +34,7 @@ _usage(){
             "   --namespace\t\tZITI_NAMESPACE (MINIKUBE_PROFILE)\n"\
             "   --no-hosts\t\tdon't use local hosts DB or ingress-dns nameserver\n"\
             "\n DEBUG\n"\
-            "   --charts\t\tZITI_CHARTS (openziti) alternative charts repo\n"\
+            "   --charts\t\tZITI_CHARTS_REF (openziti) alternative charts repo\n"\
             "   --now\t\teliminate safety waits, e.g., before deleting miniziti\n"\
             "   --\t\t\tMINIKUBE_START_ARGS args after -- passed to minikube start\n"
 }
@@ -172,7 +172,8 @@ main(){
             DELETE_MINIZITI=0 \
             SAFETY_WAIT=1 \
             MINIKUBE_NODE_EXTERNAL \
-            ZITI_CHARTS="openziti" \
+            ZITI_CHARTS_REF="openziti" \
+            ZITI_CHARTS_URL="https://openziti.io/helm-charts/charts" \
             MINIZITI_HOSTS=1 \
             MINIZITI_INGRESS_ZONE="ziti" \
             MINIZITI_INTERCEPT_ZONE="miniziti"
@@ -198,7 +199,8 @@ main(){
             -n|--namespace) ZITI_NAMESPACE="$2"
                             shift 2
             ;;
-            --charts)       ZITI_CHARTS="$2"
+            --charts)       ZITI_CHARTS_REF="$2"
+                            ZITI_CHARTS_URL="$2"
                             shift 2
             ;;
             -q|--quiet)     exec > /dev/null
@@ -353,23 +355,23 @@ main(){
 
     if helm status ziti-controller --namespace "${ZITI_NAMESPACE}" &>/dev/null; then
         logInfo "upgrading openziti controller"
-        helm upgrade "ziti-controller" "${ZITI_CHARTS}/ziti-controller" \
+        helm upgrade "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller" \
             --namespace "${ZITI_NAMESPACE}" \
             --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}" \
             --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}" \
             --set trust-manager.enabled=true \
             --set cert-manager.enabled=true \
-            --values "${ZITI_CHARTS:-https://openziti.io/helm-charts/charts}/ziti-controller/values-ingress-nginx.yaml" >&3
+            --values "${ZITI_CHARTS_URL}/ziti-controller/values-ingress-nginx.yaml" >&3
     else
         logInfo "installing openziti controller"
-        helm dependency build "${ZITI_CHARTS}/ziti-controller" >&3
-        helm install "ziti-controller" "${ZITI_CHARTS}/ziti-controller" \
+        helm dependency build "${ZITI_CHARTS_REF}/ziti-controller" >&3
+        helm install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller" \
             --namespace "${ZITI_NAMESPACE}" --create-namespace \
             --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}" \
             --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}" \
             --set trust-manager.enabled=true \
             --set cert-manager.enabled=true \
-            --values "${ZITI_CHARTS:-https://openziti.io/helm-charts/charts}/ziti-controller/values-ingress-nginx.yaml" >&3
+            --values "${ZITI_CHARTS_URL}/ziti-controller/values-ingress-nginx.yaml" >&3
     fi
 
     logDebug "setting default namespace '${ZITI_NAMESPACE}' in kubeconfig context '${MINIKUBE_PROFILE}'"
@@ -510,23 +512,23 @@ main(){
 
     if  helm status ziti-router --namespace "${ZITI_NAMESPACE}" &>/dev/null; then
         logDebug "upgrading router chart as 'ziti-router'"
-        helm upgrade "ziti-router" "${ZITI_CHARTS}/ziti-router" \
+        helm upgrade "ziti-router" "${ZITI_CHARTS_REF}/ziti-router" \
             --namespace "${ZITI_NAMESPACE}" \
             --set enrollmentJwt=\ \
             --set edge.advertisedHost="miniziti-router.${MINIZITI_INGRESS_ZONE}" \
             --set linkListeners.transport.advertisedHost="miniziti-router-transport.${MINIZITI_INGRESS_ZONE}" \
             --set "ctrl.endpoint=ziti-controller-ctrl.${ZITI_NAMESPACE}.svc:443" \
-            --values "${ZITI_CHARTS:-https://openziti.io/helm-charts/charts}/ziti-router/values-ingress-nginx.yaml" >&3
+            --values "${ZITI_CHARTS_URL}/ziti-router/values-ingress-nginx.yaml" >&3
     else
         logDebug "installing router chart as 'ziti-router'"
-        helm dependency build "${ZITI_CHARTS}/ziti-router" >&3
-        helm install "ziti-router" "${ZITI_CHARTS}/ziti-router" \
+        helm dependency build "${ZITI_CHARTS_REF}/ziti-router" >&3
+        helm install "ziti-router" "${ZITI_CHARTS_REF}/ziti-router" \
             --namespace "${ZITI_NAMESPACE}" \
             --set-file enrollmentJwt=/tmp/miniziti-router.jwt \
             --set edge.advertisedHost="miniziti-router.${MINIZITI_INGRESS_ZONE}" \
             --set linkListeners.transport.advertisedHost="miniziti-router-transport.${MINIZITI_INGRESS_ZONE}" \
             --set "ctrl.endpoint=ziti-controller-ctrl.${ZITI_NAMESPACE}.svc:443" \
-            --values "${ZITI_CHARTS:-https://openziti.io/helm-charts/charts}/ziti-router/values-ingress-nginx.yaml" >&3
+            --values "${ZITI_CHARTS_URL}/ziti-router/values-ingress-nginx.yaml" >&3
     fi
 
     logInfo "waiting for ziti-router to be ready"
@@ -551,19 +553,19 @@ main(){
     if  helm --namespace "${ZITI_NAMESPACE}" list --all \
         | grep -q ziti-console; then
         logDebug "upgrading console chart as 'ziti-console'"
-        helm upgrade "ziti-console" "${ZITI_CHARTS}/ziti-console" \
+        helm upgrade "ziti-console" "${ZITI_CHARTS_REF}/ziti-console" \
             --namespace "${ZITI_NAMESPACE}" \
             --set ingress.advertisedHost="miniziti-console.${MINIZITI_INGRESS_ZONE}" \
             --set "settings.edgeControllers[0].url=https://ziti-controller-client.${ZITI_NAMESPACE}.svc:443" \
-            --values "${ZITI_CHARTS:-https://openziti.io/helm-charts/charts}/ziti-console/values-ingress-nginx.yaml" >&3
+            --values "${ZITI_CHARTS_URL}/ziti-console/values-ingress-nginx.yaml" >&3
     else
         logDebug "installing console chart as 'ziti-console'"
-        helm dependency build "${ZITI_CHARTS}/ziti-console" >&3
-        helm install "ziti-console" "${ZITI_CHARTS}/ziti-console" \
+        helm dependency build "${ZITI_CHARTS_REF}/ziti-console" >&3
+        helm install "ziti-console" "${ZITI_CHARTS_REF}/ziti-console" \
             --namespace "${ZITI_NAMESPACE}" \
             --set ingress.advertisedHost="miniziti-console.${MINIZITI_INGRESS_ZONE}" \
             --set "settings.edgeControllers[0].url=https://ziti-controller-client.${ZITI_NAMESPACE}.svc:443" \
-            --values "${ZITI_CHARTS:-https://openziti.io/helm-charts/charts}/ziti-console/values-ingress-nginx.yaml" >&3
+            --values "${ZITI_CHARTS_URL}/ziti-console/values-ingress-nginx.yaml" >&3
     fi
 
     logInfo "waiting for ziti-console to be ready"
@@ -682,8 +684,8 @@ main(){
 
     if [[ -s /tmp/httpbin-host.json ]]; then
         logDebug "installing httpbin chart as 'miniziti-httpbin'"
-        helm dependency build "${ZITI_CHARTS}/httpbin" >&3
-        helm install "miniziti-httpbin" "${ZITI_CHARTS}/httpbin" \
+        helm dependency build "${ZITI_CHARTS_REF}/httpbin" >&3
+        helm install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
             --set-file zitiIdentity=/tmp/httpbin-host.json \
             --set zitiServiceName=httpbin-service >&3
         rm -f /tmp/httpbin-host.json
