@@ -19,6 +19,7 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/edge/common/cert"
 	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/edge/common/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/change"
@@ -32,7 +33,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/storage/boltz"

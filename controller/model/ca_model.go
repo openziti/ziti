@@ -19,10 +19,10 @@ package model
 import (
 	"crypto/x509"
 	"fmt"
+	"github.com/openziti/edge/common/cert"
 	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
