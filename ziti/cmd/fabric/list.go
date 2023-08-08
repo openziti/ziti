@@ -89,9 +89,11 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 
 func runListCircuits(o *api.Options) error {
 	return WithFabricClient(o, func(client *fabric_rest_client.ZitiFabric) error {
+		ctx, cancelF := o.GetContext()
+		defer cancelF()
 		result, err := client.Circuit.ListCircuits(&circuit.ListCircuitsParams{
 			//Filter:  o.GetFilter(),
-			Context: o.GetContext(),
+			Context: ctx,
 		})
 		return outputResult(result, err, o, outputCircuits)
 	})
@@ -135,9 +137,11 @@ func outputCircuits(o *api.Options, results *circuit.ListCircuitsOK) error {
 
 func runListLinks(o *api.Options) error {
 	return WithFabricClient(o, func(client *fabric_rest_client.ZitiFabric) error {
+		ctx, cancelF := o.GetContext()
+		defer cancelF()
 		result, err := client.Link.ListLinks(&link.ListLinksParams{
 			//Filter:  o.GetFilter(),
-			Context: o.GetContext(),
+			Context: ctx,
 		})
 		return outputResult(result, err, o, outputLinks)
 	})
@@ -183,9 +187,12 @@ func outputLinks(o *api.Options, results *link.ListLinksOK) error {
 
 func runListTerminators(o *api.Options) error {
 	return WithFabricClient(o, func(client *fabric_rest_client.ZitiFabric) error {
+		ctx, cancelF := o.GetContext()
+		defer cancelF()
+
 		result, err := client.Terminator.ListTerminators(&terminator.ListTerminatorsParams{
 			Filter:  o.GetFilter(),
-			Context: o.GetContext(),
+			Context: ctx,
 		})
 		return outputResult(result, err, o, outputTerminators)
 	})
@@ -217,9 +224,12 @@ func outputTerminators(o *api.Options, result *terminator.ListTerminatorsOK) err
 
 func runListServices(o *api.Options) error {
 	return WithFabricClient(o, func(client *fabric_rest_client.ZitiFabric) error {
+		ctx, cancelF := o.GetContext()
+		defer cancelF()
+
 		result, err := client.Service.ListServices(&service.ListServicesParams{
 			Filter:  o.GetFilter(),
-			Context: o.GetContext(),
+			Context: ctx,
 		})
 		return outputResult(result, err, o, outputServices)
 	})
@@ -245,9 +255,12 @@ func outputServices(o *api.Options, result *service.ListServicesOK) error {
 
 func runListRouters(o *api.Options) error {
 	return WithFabricClient(o, func(client *fabric_rest_client.ZitiFabric) error {
+		ctx, cancelF := o.GetContext()
+		defer cancelF()
+
 		result, err := client.Router.ListRouters(&router.ListRoutersParams{
 			Filter:  o.GetFilter(),
-			Context: o.GetContext(),
+			Context: ctx,
 		})
 		return outputResult(result, err, o, outputRouters)
 	})

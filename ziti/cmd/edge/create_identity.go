@@ -21,6 +21,8 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"io"
 	"math"
 	"os"
@@ -104,7 +106,8 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	entityData := gabs.New()
 	api.SetJSONValue(entityData, o.Args[0], "name")
-	api.SetJSONValue(entityData, strings.Title(idType), "type")
+	idType = cases.Title(language.English).String(idType)
+	api.SetJSONValue(entityData, idType, "type")
 
 	o.username = strings.TrimSpace(o.username)
 	if o.username != "" {
