@@ -32,7 +32,6 @@ _usage(){
             "   --verbose\t\tshow DEBUG messages\n"\
             "   --profile\t\tMINIKUBE_PROFILE (miniziti)\n"\
             "   --namespace\t\tZITI_NAMESPACE (MINIKUBE_PROFILE)\n"\
-            "   --no-hosts\t\tdon't use local hosts DB or ingress-dns nameserver\n"\
             "\n DEBUG\n"\
             "   --charts\t\tZITI_CHARTS_REF (openziti) alternative charts repo\n"\
             "   --now\t\teliminate safety waits, e.g., before deleting miniziti\n"\
@@ -278,7 +277,7 @@ main(){
     MINIKUBE_NODE_EXTERNAL=$(minikube --profile "${MINIKUBE_PROFILE}" ip)
     # if --no-hosts then build a new zone name for RFC-1918 wildcard DNS
     (( MINIZITI_HOSTS )) || {
-        MINIZITI_INGRESS_ZONE="${MINIKUBE_NODE_EXTERNAL}.mini.openziti.io"
+        MINIZITI_INGRESS_ZONE="${MINIKUBE_NODE_EXTERNAL}.sslip.io"
         logDebug "DNS wildcard zone for ingresses is ${MINIZITI_INGRESS_ZONE}"
     }
     if [[ -n "${MINIKUBE_NODE_EXTERNAL:-}" ]]; then
