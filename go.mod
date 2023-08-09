@@ -18,16 +18,16 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.15
-	github.com/openziti/channel/v2 v2.0.89
+	github.com/openziti/channel/v2 v2.0.91
 	github.com/openziti/edge v0.24.374
 	github.com/openziti/edge-api v0.25.31
-	github.com/openziti/fabric v0.23.52
-	github.com/openziti/foundation/v2 v2.0.28
-	github.com/openziti/identity v1.0.59
+	github.com/openziti/fabric v0.24.2
+	github.com/openziti/foundation/v2 v2.0.29
+	github.com/openziti/identity v1.0.60
 	github.com/openziti/runzmd v1.0.28
 	github.com/openziti/sdk-golang v0.20.87
-	github.com/openziti/storage v0.2.11
-	github.com/openziti/transport/v2 v2.0.97
+	github.com/openziti/storage v0.2.12
+	github.com/openziti/transport/v2 v2.0.99
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pkg/errors v0.9.1
@@ -135,7 +135,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.30 // indirect
+	github.com/openziti/metrics v1.2.31 // indirect
 	github.com/openziti/secretstream v0.1.10 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
