@@ -172,6 +172,7 @@ main(){
             DELETE_MINIZITI=0 \
             SAFETY_WAIT=1 \
             MINIKUBE_NODE_EXTERNAL \
+            ZITI_CHARTS_ALT=0 \
             ZITI_CHARTS_REF="openziti" \
             ZITI_CHARTS_URL="https://openziti.io/helm-charts/charts" \
             MINIZITI_HOSTS=1 \
@@ -201,6 +202,7 @@ main(){
             ;;
             --charts)       ZITI_CHARTS_REF="$2"
                             ZITI_CHARTS_URL="$2"
+                            ZITI_CHARTS_ALT=1
                             shift 2
             ;;
             -q|--quiet)     exec > /dev/null
@@ -364,7 +366,9 @@ main(){
             --values "${ZITI_CHARTS_URL}/ziti-controller/values-ingress-nginx.yaml" >&3
     else
         logInfo "installing openziti controller"
-        helm dependency build "${ZITI_CHARTS_REF}/ziti-controller" >&3
+        (( ZITI_CHARTS_ALT )) && {
+            helm dependency build "${ZITI_CHARTS_REF}/ziti-controller" >&3
+        }
         helm install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller" \
             --namespace "${ZITI_NAMESPACE}" --create-namespace \
             --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}" \
@@ -521,7 +525,9 @@ main(){
             --values "${ZITI_CHARTS_URL}/ziti-router/values-ingress-nginx.yaml" >&3
     else
         logDebug "installing router chart as 'ziti-router'"
-        helm dependency build "${ZITI_CHARTS_REF}/ziti-router" >&3
+        (( ZITI_CHARTS_ALT )) && {
+            helm dependency build "${ZITI_CHARTS_REF}/ziti-router" >&3
+        }
         helm install "ziti-router" "${ZITI_CHARTS_REF}/ziti-router" \
             --namespace "${ZITI_NAMESPACE}" \
             --set-file enrollmentJwt=/tmp/miniziti-router.jwt \
@@ -560,7 +566,9 @@ main(){
             --values "${ZITI_CHARTS_URL}/ziti-console/values-ingress-nginx.yaml" >&3
     else
         logDebug "installing console chart as 'ziti-console'"
-        helm dependency build "${ZITI_CHARTS_REF}/ziti-console" >&3
+        (( ZITI_CHARTS_ALT )) && {
+            helm dependency build "${ZITI_CHARTS_REF}/ziti-console" >&3
+        }
         helm install "ziti-console" "${ZITI_CHARTS_REF}/ziti-console" \
             --namespace "${ZITI_NAMESPACE}" \
             --set ingress.advertisedHost="miniziti-console.${MINIZITI_INGRESS_ZONE}" \
@@ -684,7 +692,9 @@ main(){
 
     if [[ -s /tmp/httpbin-host.json ]]; then
         logDebug "installing httpbin chart as 'miniziti-httpbin'"
-        helm dependency build "${ZITI_CHARTS_REF}/httpbin" >&3
+        (( ZITI_CHARTS_ALT )) && {
+            helm dependency build "${ZITI_CHARTS_REF}/httpbin" >&3
+        }
         helm install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
             --set-file zitiIdentity=/tmp/httpbin-host.json \
             --set zitiServiceName=httpbin-service >&3
