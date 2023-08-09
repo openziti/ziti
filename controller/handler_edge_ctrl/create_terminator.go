@@ -92,11 +92,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 		return
 	}
 
-	id, err := idgen.NewUUIDString()
-	if err != nil {
-		self.returnError(ctx, internalError(err))
-		return
-	}
+	id := idgen.NewUUIDString()
 
 	terminator := &network.Terminator{
 		BaseEntity: models.BaseEntity{
@@ -120,8 +116,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 		Entity:  terminator,
 		Context: ctx.newChangeContext(),
 	}
-	err = self.appEnv.GetHostController().GetNetwork().Managers.Command.Dispatch(cmd)
-	if err != nil {
+	if err := self.appEnv.GetHostController().GetNetwork().Managers.Command.Dispatch(cmd); err != nil {
 		self.returnError(ctx, internalError(err))
 		return
 	}

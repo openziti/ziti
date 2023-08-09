@@ -12,11 +12,13 @@ import (
 	"github.com/openziti/edge/router/internal/edgerouter"
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/foundation/v2/tlz"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"math/big"
+	"net"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -563,6 +565,76 @@ func newCertChecker() (*CertExpirationChecker, func()) {
 	return NewCertExpirationChecker(id, &edgerouter.Config{}, ctrls, closeNotify), func() { close(closeNotify) }
 }
 
+type simpleTestUnderlay struct{}
+
+func (s simpleTestUnderlay) Rx() (*channel.Message, error) {
+	panic("implement me")
+}
+
+func (s simpleTestUnderlay) Tx(*channel.Message) error {
+	panic("implement me")
+}
+
+func (s simpleTestUnderlay) Id() string {
+	return "id-test"
+}
+
+func (s simpleTestUnderlay) LogicalName() string {
+	return "logical-test"
+}
+
+func (s simpleTestUnderlay) ConnectionId() string {
+	return "conn-test"
+}
+
+func (s simpleTestUnderlay) Certificates() []*x509.Certificate {
+	panic("implement me")
+}
+
+func (s simpleTestUnderlay) Label() string {
+	return "label-test"
+}
+
+func (s simpleTestUnderlay) Close() error {
+	panic("implement me")
+}
+
+func (s simpleTestUnderlay) IsClosed() bool {
+	return false
+}
+
+func (s simpleTestUnderlay) Headers() map[int32][]byte {
+	v, err := versions.StdVersionEncDec.Encode(&versions.VersionInfo{
+		Version:   "0.0.0",
+		Revision:  "1",
+		BuildDate: "2000-01-01",
+		OS:        "linux",
+		Arch:      "amd64",
+	})
+	if err != nil {
+		panic(err)
+	}
+	return map[int32][]byte{
+		channel.HelloVersionHeader: v,
+	}
+}
+
+func (s simpleTestUnderlay) SetWriteTimeout(time.Duration) error {
+	panic("implement me")
+}
+
+func (s simpleTestUnderlay) SetWriteDeadline(time.Time) error {
+	panic("implement me")
+}
+
+func (s simpleTestUnderlay) GetLocalAddr() net.Addr {
+	panic("implement me")
+}
+
+func (s simpleTestUnderlay) GetRemoteAddr() net.Addr {
+	panic("implement me")
+}
+
 type simpleTestChannel struct {
 	isClosed bool
 }
@@ -571,28 +643,28 @@ func (ch *simpleTestChannel) Bind(h channel.BindHandler) error {
 	return h.BindChannel(ch)
 }
 
-func (ch *simpleTestChannel) AddPeekHandler(h channel.PeekHandler) {
+func (ch *simpleTestChannel) AddPeekHandler(channel.PeekHandler) {
 }
 
-func (ch *simpleTestChannel) AddTransformHandler(h channel.TransformHandler) {
+func (ch *simpleTestChannel) AddTransformHandler(channel.TransformHandler) {
 }
 
-func (ch *simpleTestChannel) AddReceiveHandler(contentType int32, h channel.ReceiveHandler) {
+func (ch *simpleTestChannel) AddReceiveHandler(int32, channel.ReceiveHandler) {
 }
 
-func (ch *simpleTestChannel) AddReceiveHandlerF(contentType int32, h channel.ReceiveHandlerF) {
+func (ch *simpleTestChannel) AddReceiveHandlerF(int32, channel.ReceiveHandlerF) {
 }
 
-func (ch *simpleTestChannel) AddTypedReceiveHandler(h channel.TypedReceiveHandler) {
+func (ch *simpleTestChannel) AddTypedReceiveHandler(channel.TypedReceiveHandler) {
 }
 
-func (ch *simpleTestChannel) AddErrorHandler(h channel.ErrorHandler) {
+func (ch *simpleTestChannel) AddErrorHandler(channel.ErrorHandler) {
 }
 
-func (ch *simpleTestChannel) AddCloseHandler(h channel.CloseHandler) {
+func (ch *simpleTestChannel) AddCloseHandler(channel.CloseHandler) {
 }
 
-func (ch *simpleTestChannel) SetUserData(data interface{}) {
+func (ch *simpleTestChannel) SetUserData(interface{}) {
 }
 
 func (ch *simpleTestChannel) GetUserData() interface{} {
@@ -603,19 +675,16 @@ func (ch *simpleTestChannel) GetChannel() channel.Channel {
 	return ch
 }
 
-func (ch *simpleTestChannel) TrySend(s channel.Sendable) (bool, error) {
-	//TODO implement me
+func (ch *simpleTestChannel) TrySend(channel.Sendable) (bool, error) {
 	panic("implement me")
 }
 
-func (ch *simpleTestChannel) Send(s channel.Sendable) error {
-	//TODO implement me
+func (ch *simpleTestChannel) Send(channel.Sendable) error {
 	panic("implement me")
 }
 
 func (ch *simpleTestChannel) Underlay() channel.Underlay {
-	//TODO implement me
-	panic("implement me")
+	return simpleTestUnderlay{}
 }
 
 func (ch *simpleTestChannel) StartRx() {
