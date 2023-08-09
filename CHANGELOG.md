@@ -6,6 +6,7 @@
 * github.com/openziti/ziti: [v0.29.0 -> v0.29.1](https://github.com/openziti/ziti/compare/v0.29.0...v0.29.1)
   * [Issue #1212](https://github.com/openziti/ziti/issues/1212) - Fixed getZiti function on Mac/ZSH
   * [Issue #1220](https://github.com/openziti/ziti/issues/1220) - Fixed getZiti function not respecting user input for custom path
+  * [Issue #1225](https://github.com/openziti/ziti/issues/1225) - Updated ZITI_ROUTER_ADVERTISED_HOST to use the more common naming convention of ZITI_ROUTER_ADVERTISED_ADDRESS
 
 # Release 0.29.0
 

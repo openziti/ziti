@@ -195,7 +195,7 @@ func NormalizePath(input string) string {
 }
 
 func GetRouterAdvertisedAddress() string {
-	return getFromEnv(constants.ZitiEdgeRouterAdvertisedHostVarName, HostnameOrNetworkName)
+	return getFromEnv(constants.ZitiEdgeRouterAdvertisedAddressVarName, HostnameOrNetworkName)
 }
 func GetRouterSans() string {
 	return getFromEnv(constants.ZitiRouterCsrSansDnsVarName, GetRouterAdvertisedAddress)

@@ -340,7 +340,7 @@ function setupEnvironment {
   if [[ "${ZITI_ROUTER_NAME-}" == "" ]]; then export ZITI_ROUTER_NAME="${ZITI_NETWORK}-edge-router"; else echo "ZITI_ROUTER_NAME overridden: ${ZITI_ROUTER_NAME}"; fi
   if [[ "${ZITI_ROUTER_PORT-}" == "" ]]; then export ZITI_ROUTER_PORT="3022"; else echo "ZITI_ROUTER_PORT overridden: ${ZITI_ROUTER_PORT}"; fi
   if [[ "${ZITI_ROUTER_LISTENER_BIND_PORT-}" == "" ]]; then export ZITI_ROUTER_LISTENER_BIND_PORT="10080"; else echo "ZITI_ROUTER_LISTENER_BIND_PORT overridden: ${ZITI_ROUTER_LISTENER_BIND_PORT}"; fi
-  if [[ "${EXTERNAL_DNS-}" != "" ]]; then export ZITI_ROUTER_ADVERTISED_HOST="${EXTERNAL_DNS}"; fi
+  if [[ "${EXTERNAL_DNS-}" != "" ]]; then export ZITI_ROUTER_ADVERTISED_ADDRESS="${EXTERNAL_DNS}"; fi
 
   # Set up directories
   mkdir -p "${ZITI_HOME}"

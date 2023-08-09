@@ -115,8 +115,8 @@ const (
 	ZitiRouterIdentityCAVarDescription               = "Path to Identity CA for Ziti Router"
 	ZitiEdgeRouterIPOverrideVarName                  = "ZITI_ROUTER_IP_OVERRIDE"
 	ZitiEdgeRouterIPOverrideVarDescription           = "Override the default edge router IP with a custom IP, this IP will also be added to the PKI"
-	ZitiEdgeRouterAdvertisedHostVarName              = "ZITI_ROUTER_ADVERTISED_HOST"
-	ZitiEdgeRouterAdvertisedHostVarDescription       = "The advertised host of the router"
+	ZitiEdgeRouterAdvertisedAddressVarName           = "ZITI_ROUTER_ADVERTISED_ADDRESS"
+	ZitiEdgeRouterAdvertisedAddressVarDescription    = "The advertised address of the router"
 	ZitiEdgeRouterListenerBindPortVarName            = "ZITI_ROUTER_LISTENER_BIND_PORT"
 	ZitiEdgeRouterListenerBindPortVarDescription     = "The port a public router will advertise on"
 	ZitiEdgeRouterCsrCVarName                        = "ZITI_ROUTER_CSR_C"
@@ -130,5 +130,5 @@ const (
 	ZitiEdgeRouterCsrOUVarName                       = "ZITI_ROUTER_CSR_OU"
 	ZitiEdgeRouterCsrOUVarDescription                = "The organization unit to use for router CSRs"
 	ZitiRouterCsrSansDnsVarName                      = "ZITI_ROUTER_CSR_SANS_DNS"
-	ZitiRouterCsrSansDnsVarDescription               = "The SANS value to use for the CSR in the internal PKI. If not supplied, defaults to ZITI_ROUTER_ADVERTISED_HOST"
+	ZitiRouterCsrSansDnsVarDescription               = "The SANS value to use for the CSR in the internal PKI. If not supplied, defaults to ZITI_ROUTER_ADVERTISED_ADDRESS"
 )
