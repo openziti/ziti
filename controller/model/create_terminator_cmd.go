@@ -11,6 +11,7 @@ import (
 	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	"strings"
 )
@@ -54,7 +55,14 @@ func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(ctx boltz.Mutate
 		}
 		if otherSession != nil {
 			if otherSession.ApiSession.IdentityId != session.ApiSession.IdentityId {
-				return errors.Errorf("sibling terminator %v with shared identity %v belongs to different identity", terminator.GetId(), terminator.GetInstanceId())
+				pfxlog.Logger().WithFields(logrus.Fields{
+					"terminatorId":       terminator.GetId(),
+					"siblingId":          otherTerminator.GetId(),
+					"instanceId":         terminator.InstanceId,
+					"terminatorIdentity": session.ApiSession.IdentityId,
+					"existingIdentity":   otherSession.ApiSession.IdentityId,
+				}).Warn("validation of terminator failed, shared identity belongs to different identity")
+				return errors.Errorf("sibling terminator %v with shared identity %v belongs to different identity", otherTerminator.GetId(), terminator.GetInstanceId())
 			}
 		}
 	}
