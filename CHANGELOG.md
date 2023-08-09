@@ -132,9 +132,37 @@ The back-off policies have the following attributes:
     * Default: 1.5 for healthy, 100 for unhealthy
 
 ## Component Updates and Bug Fixes
-* github.com/openziti/ziti: [v0.29.0 -> v0.29.1](https://github.com/openziti/ziti/compare/v0.29.0...v0.29.1)
-  * [Issue #1212](https://github.com/openziti/ziti/issues/1212) - Fixed getZiti function on Mac/ZSH
-  * [Issue #1220](https://github.com/openziti/ziti/issues/1220) - Fixed getZiti function not respecting user input for custom path
+* github.com/openziti/agent: [v1.0.14 -> v1.0.15](https://github.com/openziti/agent/compare/v1.0.14...v1.0.15)
+* github.com/openziti/channel/v2: [v2.0.84 -> v2.0.91](https://github.com/openziti/channel/compare/v2.0.84...v2.0.91)
+    * [Issue #108](https://github.com/openziti/channel/issues/108) - Reconnecting underlay not returning headers from hello message
+
+* github.com/openziti/edge: [v0.24.364 -> v0.24.381](https://github.com/openziti/edge/compare/v0.24.364...v0.24.381)
+    * [Issue #1548](https://github.com/openziti/edge/issues/1548) - Panic in edge@v0.24.326/controller/sync_strats/sync_instant.go:194
+
+* github.com/openziti/edge-api: [v0.25.30 -> v0.25.31](https://github.com/openziti/edge-api/compare/v0.25.30...v0.25.31)
+* github.com/openziti/fabric: [v0.23.45 -> v0.24.2](https://github.com/openziti/fabric/compare/v0.23.45...v0.24.2)
+    * [Issue #766](https://github.com/openziti/fabric/issues/766) - Lookup of terminators with same instance id isn't filtering by instance id 
+    * [Issue #692](https://github.com/openziti/fabric/issues/692) - Add ability to control link formation between devices more granularly
+    * [Issue #749](https://github.com/openziti/fabric/issues/749) - Move link control to router
+    * [Issue #343](https://github.com/openziti/fabric/issues/343) - Link state Failed on startup
+
+* github.com/openziti/foundation/v2: [v2.0.28 -> v2.0.29](https://github.com/openziti/foundation/compare/v2.0.28...v2.0.29)
+* github.com/openziti/identity: [v1.0.59 -> v1.0.60](https://github.com/openziti/identity/compare/v1.0.59...v1.0.60)
+* github.com/openziti/runzmd: [v1.0.28 -> v1.0.29](https://github.com/openziti/runzmd/compare/v1.0.28...v1.0.29)
+* github.com/openziti/sdk-golang: [v0.20.78 -> v0.20.90](https://github.com/openziti/sdk-golang/compare/v0.20.78...v0.20.90)
+* github.com/openziti/storage: [v0.2.11 -> v0.2.12](https://github.com/openziti/storage/compare/v0.2.11...v0.2.12)
+* github.com/openziti/transport/v2: [v2.0.93 -> v2.0.99](https://github.com/openziti/transport/compare/v2.0.93...v2.0.99)
+* github.com/openziti/xweb/v2: [v2.0.2 -> v2.1.0](https://github.com/openziti/xweb/compare/v2.0.2...v2.1.0)
+* github.com/openziti/ziti-db-explorer: [v1.1.1 -> v1.1.3](https://github.com/openziti/ziti-db-explorer/compare/v1.1.1...v1.1.3)
+    * [Issue #4](https://github.com/openziti/ziti-db-explorer/issues/4) - db explore timeout error is uninformative
+
+* github.com/openziti/metrics: [v1.2.30 -> v1.2.31](https://github.com/openziti/metrics/compare/v1.2.30...v1.2.31)
+* github.com/openziti/ziti: [v0.29.0 -> v0.30.0](https://github.com/openziti/ziti/compare/v0.29.0...v0.30.0)
+    * [Issue #1199](https://github.com/openziti/ziti/issues/1199) - ziti edge list enrollments - CLI gets 404
+    * [Issue #1135](https://github.com/openziti/ziti/issues/1135) - Edge Router: Support multiple protocols on the same listener port
+    * [Issue #65](https://github.com/openziti/ziti/issues/65) - Add ECDSA support to PKI subcmd
+    * [Issue #1212](https://github.com/openziti/ziti/issues/1212) - getZiti fails on Mac OS
+    * [Issue #1220](https://github.com/openziti/ziti/issues/1220) - Fixed getZiti function not respecting user input for custom path
 
 # Release 0.29.0
 
