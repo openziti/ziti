@@ -41,6 +41,7 @@ func Test_TerminatorStore(t *testing.T) {
 	t.Run("test update terminators", ctx.testUpdateTerminators)
 	t.Run("test delete terminators", ctx.testDeleteTerminators)
 	t.Run("test patch terminators", ctx.testPatchTerminator)
+	t.Run("test sibling lookup", ctx.testFindSiblings)
 }
 
 func (ctx *TestContext) testCreateInvalidTerminators(t *testing.T) {
@@ -285,6 +286,45 @@ func (ctx *TestContext) testPatchTerminator(*testing.T) {
 	}
 	boltztest.RequirePatch(ctx, terminator, checker)
 	boltztest.ValidateUpdated(ctx, terminator)
+}
+
+func (ctx *TestContext) testFindSiblings(*testing.T) {
+	service := ctx.requireNewService()
+	router := ctx.requireNewRouter()
+
+	terminator := &Terminator{}
+	terminator.Service = service.Id
+	terminator.Router = router.Id
+	terminator.Binding = uuid.NewString()
+	terminator.Address = uuid.NewString()
+	terminator.InstanceId = uuid.NewString()
+	boltztest.RequireCreate(ctx, terminator)
+
+	terminator2 := &Terminator{}
+	terminator2.Service = service.Id
+	terminator2.Router = router.Id
+	terminator2.Binding = terminator.Binding
+	terminator2.Address = uuid.NewString()
+	terminator2.InstanceId = terminator.InstanceId
+	boltztest.RequireCreate(ctx, terminator2)
+
+	terminator3 := &Terminator{}
+	terminator3.Service = service.Id
+	terminator3.Router = router.Id
+	terminator3.Binding = terminator.Binding
+	terminator3.Address = uuid.NewString()
+	terminator3.InstanceId = uuid.NewString()
+	boltztest.RequireCreate(ctx, terminator3)
+
+	var siblings []*Terminator
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		var err error
+		siblings, err = ctx.stores.Terminator.GetTerminatorsInIdentityGroup(tx, terminator.Id)
+		return err
+	})
+	ctx.NoError(err)
+	ctx.Equal(1, len(siblings))
+	ctx.Equal(terminator2.Id, siblings[0].Id)
 }
 
 type testStrategyFactory struct{}

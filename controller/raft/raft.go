@@ -17,6 +17,7 @@
 package raft
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/go-hclog"
@@ -473,6 +474,8 @@ func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (int
 
 // Init sets up the Mesh and Raft instances
 func (self *Controller) Init() error {
+	self.validateCert()
+
 	raftConfig := self.Config
 
 	if raftConfig.Logger == nil {
@@ -552,6 +555,16 @@ func (self *Controller) Init() error {
 	self.ObserveLeaderChanges()
 
 	return nil
+}
+
+func (self *Controller) validateCert() {
+	var certs []*x509.Certificate
+	for _, cert := range self.env.GetId().ServerCert() {
+		certs = append(certs, cert.Leaf)
+	}
+	if _, err := mesh.ExtractSpiffeId(certs); err != nil {
+		logrus.WithError(err).Fatal("controller cert must have Subject Alternative Name URI of form spiffe://<trust domain>/controller/<controller id>")
+	}
 }
 
 func (self *Controller) ObserveLeaderChanges() {
