@@ -291,14 +291,13 @@ func (store *terminatorStoreImpl) GetTerminatorsInIdentityGroup(tx *bbolt.Tx, te
 	}
 
 	serviceId := terminator.GetServiceId()
-	identity := terminator.GetInstanceId()
 
 	terminatorIds := store.stores.service.GetRelatedEntitiesIdList(tx, serviceId, EntityTypeTerminators)
 	var identityTerminators []*Terminator
 	for _, siblingId := range terminatorIds {
 		if siblingId != terminatorId {
 			if sibling, _, _ := store.FindById(tx, siblingId); sibling != nil {
-				if identity == terminator.InstanceId {
+				if terminator.InstanceId == sibling.InstanceId {
 					identityTerminators = append(identityTerminators, sibling)
 				}
 			}

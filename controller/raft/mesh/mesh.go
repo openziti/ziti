@@ -362,14 +362,20 @@ func (self *impl) extractPeerId(peerAddr string, certs []*x509.Certificate) (str
 		return "", errors.Errorf("no certificates for peer at %v", peerAddr)
 	}
 
-	leaf := certs[0]
-	for _, uri := range leaf.URIs {
-		if uri.Scheme == "spiffe" {
-			return strings.TrimPrefix(uri.Path, "/controller/"), nil
+	return ExtractSpiffeId(certs)
+}
+
+func ExtractSpiffeId(certs []*x509.Certificate) (string, error) {
+	if len(certs) > 0 {
+		leaf := certs[0]
+		for _, uri := range leaf.URIs {
+			if uri.Scheme == "spiffe" && strings.HasPrefix(uri.Path, "/controller/") {
+				return strings.TrimPrefix(uri.Path, "/controller/"), nil
+			}
 		}
 	}
 
-	return "", errors.New("no controller SPIFFE ID found in peer certificates")
+	return "", errors.New("invalid controller certificate, no controller SPIFFE ID in cert")
 }
 
 func (self *impl) PeerConnected(peer *Peer) {
