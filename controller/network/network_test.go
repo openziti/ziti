@@ -11,7 +11,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/logcontext"
+	"github.com/openziti/fabric/common/logcontext"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"

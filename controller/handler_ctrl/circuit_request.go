@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/common/ctrl_msg"
-	"github.com/openziti/fabric/logcontext"
+	"github.com/openziti/fabric/common/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/identity"
 )

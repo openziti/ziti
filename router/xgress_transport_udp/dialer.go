@@ -24,7 +24,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/logcontext"
+	"github.com/openziti/fabric/common/logcontext"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
 	"github.com/openziti/identity"

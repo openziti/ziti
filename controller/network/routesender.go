@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/common/ctrl_msg"
-	"github.com/openziti/fabric/logcontext"
+	"github.com/openziti/fabric/common/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
