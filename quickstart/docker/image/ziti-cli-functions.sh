@@ -317,19 +317,20 @@ function setupEnvironment {
 
   # Controller Values
   if [[ "${ZITI_CTRL_NAME-}" == "" ]]; then export ZITI_CTRL_NAME="${ZITI_NETWORK}"; else echo "ZITI_CTRL_NAME overridden: ${ZITI_CTRL_NAME}"; fi
+  if [[ "${ZITI_CTRL_EDGE_NAME-}" == "" ]]; then export ZITI_CTRL_EDGE_NAME="${ZITI_NETWORK}-edge-controller"; else echo "ZITI_CTRL_EDGE_NAME overridden: ${ZITI_CTRL_EDGE_NAME}"; fi
   if [[ "${ZITI_CTRL_EDGE_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_PORT="1280"; else echo "ZITI_CTRL_EDGE_ADVERTISED_PORT overridden: ${ZITI_CTRL_EDGE_ADVERTISED_PORT}"; fi
   if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_NETWORK-}"; else echo "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS overridden: ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"; fi
   if [[ "${ZITI_CTRL_BIND_ADDRESS-}" != "" ]]; then echo "ZITI_CTRL_BIND_ADDRESS overridden: ${ZITI_CTRL_BIND_ADDRESS}"; fi
   if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_NETWORK-}"; else echo "ZITI_CTRL_ADVERTISED_ADDRESS overridden: ${ZITI_CTRL_ADVERTISED_ADDRESS}"; fi
   if [[ "${ZITI_CTRL_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_PORT="6262"; else echo "ZITI_CTRL_ADVERTISED_PORT overridden: ${ZITI_CTRL_ADVERTISED_PORT}"; fi
-  if [[ "${ZITI_PKI_CTRL_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_ROOTCA_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-root-ca"; else echo "ZITI_PKI_CTRL_ROOTCA_NAME overridden: ${ZITI_PKI_CTRL_ROOTCA_NAME}"; fi
-  if [[ "${ZITI_PKI_CTRL_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_INTERMEDIATE_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-intermediate"; else echo "ZITI_PKI_CTRL_INTERMEDIATE_NAME overridden: ${ZITI_PKI_CTRL_INTERMEDIATE_NAME}"; fi
-  if [[ "${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_EDGE_ROOTCA_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-root-ca"; else echo "ZITI_PKI_CTRL_EDGE_ROOTCA_NAME overridden: ${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}"; fi
-  if [[ "${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-intermediate"; else echo "ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME overridden: ${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}"; fi
-  if [[ "${ZITI_PKI_CTRL_SERVER_CERT-}" == "" ]]; then export ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-server.chain.pem"; else echo "ZITI_PKI_CTRL_SERVER_CERT overridden: ${ZITI_PKI_CTRL_SERVER_CERT}"; fi
-  if [[ "${ZITI_PKI_CTRL_KEY-}" == "" ]]; then export ZITI_PKI_CTRL_KEY="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/keys/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-server.key"; else echo "ZITI_PKI_CTRL_KEY overridden: ${ZITI_PKI_CTRL_KEY}"; fi
+  if [[ "${ZITI_PKI_CTRL_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_ROOTCA_NAME="${ZITI_CTRL_ADVERTISED_ADDRESS}-root-ca"; else echo "ZITI_PKI_CTRL_ROOTCA_NAME overridden: ${ZITI_PKI_CTRL_ROOTCA_NAME}"; fi
+  if [[ "${ZITI_PKI_CTRL_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_INTERMEDIATE_NAME="${ZITI_CTRL_ADVERTISED_ADDRESS}-intermediate"; else echo "ZITI_PKI_CTRL_INTERMEDIATE_NAME overridden: ${ZITI_PKI_CTRL_INTERMEDIATE_NAME}"; fi
+  if [[ "${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_EDGE_ROOTCA_NAME="${ZITI_CTRL_EDGE_NAME}-root-ca"; else echo "ZITI_PKI_CTRL_EDGE_ROOTCA_NAME overridden: ${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}"; fi
+  if [[ "${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME="${ZITI_CTRL_EDGE_NAME}-intermediate"; else echo "ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME overridden: ${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}"; fi
+  if [[ "${ZITI_PKI_CTRL_SERVER_CERT-}" == "" ]]; then export ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_ADVERTISED_ADDRESS}-server.chain.pem"; else echo "ZITI_PKI_CTRL_SERVER_CERT overridden: ${ZITI_PKI_CTRL_SERVER_CERT}"; fi
+  if [[ "${ZITI_PKI_CTRL_KEY-}" == "" ]]; then export ZITI_PKI_CTRL_KEY="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/keys/${ZITI_CTRL_ADVERTISED_ADDRESS}-server.key"; else echo "ZITI_PKI_CTRL_KEY overridden: ${ZITI_PKI_CTRL_KEY}"; fi
   if [[ "${ZITI_PKI_CTRL_CA-}" == "" ]]; then export ZITI_PKI_CTRL_CA="${ZITI_PKI}/cas.pem"; else echo "ZITI_PKI_CTRL_CA overridden: ${ZITI_PKI_CTRL_CA}"; fi
-  if [[ "${ZITI_PKI_CTRL_CERT-}" == "" ]]; then export ZITI_PKI_CTRL_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-client.cert"; else echo "ZITI_PKI_CTRL_CERT overridden: ${ZITI_PKI_CTRL_CERT}"; fi
+  if [[ "${ZITI_PKI_CTRL_CERT-}" == "" ]]; then export ZITI_PKI_CTRL_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_ADVERTISED_ADDRESS}-client.cert"; else echo "ZITI_PKI_CTRL_CERT overridden: ${ZITI_PKI_CTRL_CERT}"; fi
   if [[ "${ZITI_PKI_EDGE_CERT-}" == "" ]]; then export ZITI_PKI_EDGE_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-client.cert"; else echo "ZITI_PKI_EDGE_CERT overridden: ${ZITI_PKI_EDGE_CERT}"; fi
   if [[ "${ZITI_PKI_EDGE_SERVER_CERT}" == "" ]]; then export ZITI_PKI_EDGE_SERVER_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-server.chain.pem"; else echo "ZITI_PKI_EDGE_SERVER_CERT overridden: ${ZITI_PKI_EDGE_SERVER_CERT}"; fi
   if [[ "${ZITI_PKI_EDGE_KEY}" == "" ]]; then export ZITI_PKI_EDGE_KEY="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/keys/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-server.key"; else echo "ZITI_PKI_EDGE_KEY overridden: ${ZITI_PKI_EDGE_KEY}"; fi
@@ -338,7 +339,7 @@ function setupEnvironment {
   # Router Values
   if [[ "${ZITI_ROUTER_NAME-}" == "" ]]; then export ZITI_ROUTER_NAME="${ZITI_NETWORK}-edge-router"; else echo "ZITI_ROUTER_NAME overridden: ${ZITI_ROUTER_NAME}"; fi
   if [[ "${ZITI_ROUTER_PORT-}" == "" ]]; then export ZITI_ROUTER_PORT="3022"; else echo "ZITI_ROUTER_PORT overridden: ${ZITI_ROUTER_PORT}"; fi
-  if [[ "${ZITI_ROUTER_LISTENER_BIND_PORT-}" == "" ]]; then export ZITI_ROUTER_LISTENER_BIND_PORT="8444"; else echo "ZITI_ROUTER_LISTENER_BIND_PORT overridden: ${ZITI_ROUTER_LISTENER_BIND_PORT}"; fi
+  if [[ "${ZITI_ROUTER_LISTENER_BIND_PORT-}" == "" ]]; then export ZITI_ROUTER_LISTENER_BIND_PORT="10080"; else echo "ZITI_ROUTER_LISTENER_BIND_PORT overridden: ${ZITI_ROUTER_LISTENER_BIND_PORT}"; fi
   if [[ "${EXTERNAL_DNS-}" != "" ]]; then export ZITI_ROUTER_ADVERTISED_HOST="${EXTERNAL_DNS}"; fi
 
   # Set up directories
@@ -601,11 +602,11 @@ function getZiti {
     default_path="${ZITI_HOME}/ziti-bin/ziti-${ZITI_BINARIES_VERSION}"
     echo -en "The path for ziti binaries has not been set, use the default (${default_path})? (Y/n) "
     read -r reply
-    if [[ -z "${reply}" || ${reply} =~ [yY]* ]]; then
+    if [[ -z "${reply}" || ${reply} =~ [yY] ]]; then
       echo "INFO: using the default path ${default_path}"
       ZITI_BIN_DIR="${default_path}"
     else
-      echo -en "Enter the preferred path and press <enter> (the path will be created if necessary) "
+      echo -en "Enter the preferred fully qualified path and press <enter> (the path will be created if necessary) "
       read -r ZITI_BIN_DIR
     fi
   fi
@@ -649,7 +650,7 @@ function getZiti {
     echo -e "ziti found in ZITI_BIN_DIR ($(BLUE "${ZITI_BIN_DIR}"))"
     # Get the current version and compare with latest
     local currentVersion
-    currentVersion="$("${ZITI_BIN_DIR}"/ziti --version) "
+    currentVersion="$("${ZITI_BIN_DIR}"/ziti --version)"
     if [[ "${ZITI_BINARIES_VERSION}" != "${currentVersion}" ]]; then
       # Prompt user for new download
       echo -en "There is a newer version of OpenZiti, would you like to download it? (Y/n) "
@@ -695,11 +696,6 @@ function getZiti {
   # Unzip the files
   tar -xf "${ziti_binaries_file_abspath}" --directory "${ZITI_BIN_DIR}"
 
-  # Files unzip to a /ziti subdirectory, move them into ZITI_BIN_DIR
-  # Have to rename the directory first since 'ziti' matches the filename for the 'ziti' binary
-  mv "${ZITI_BIN_DIR}/ziti" "${ZITI_BIN_DIR}/ziti-extract"
-  mv "${ZITI_BIN_DIR}/ziti-extract"/* "${ZITI_BIN_DIR}"
-
   # Cleanup
   rm "${ziti_binaries_file_abspath}"      # Remove zip
   rm -rf "${ZITI_BIN_DIR}/ziti-extract"   # Remove extract folder
@@ -733,15 +729,15 @@ function createPki {
   _pki_create_intermediate "${ZITI_PKI_SIGNER_ROOTCA_NAME}" "${ZITI_SPURIOUS_INTERMEDIATE}" 2
   _pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}" 1
 
-  pki_allow_list_dns="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
-  if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"; fi
-  if [[ "${EXTERNAL_DNS}" != "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${EXTERNAL_DNS}"; fi
+  echo " "
+  pki_allow_list="${ZITI_CTRL_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
   pki_allow_list_ip="127.0.0.1"
-  if [[ "${ZITI_CTRL_EDGE_IP_OVERRIDE}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}"; fi
-  if [[ "${EXTERNAL_IP}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${EXTERNAL_IP}"; fi
+  _pki_client_server "${pki_allow_list}" "${ZITI_PKI_CTRL_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_ADVERTISED_ADDRESS}"
 
-  pki_allow_list_dns="${pki_allow_list_dns},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
-  _pki_client_server "${pki_allow_list_dns}" "${ZITI_PKI_CTRL_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+  pki_allow_list="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
+  pki_allow_list_ip="127.0.0.1"
+  _pki_client_server "${pki_allow_list}" "${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+
   echo -e "$(GREEN "PKI generated successfully")"
   echo -e ""
 }
@@ -1051,8 +1047,8 @@ function getLatestZitiVersion {
   _detect_architecture
 
   ziti_latest=$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/latest)
-  ZITI_BINARIES_FILE=$(echo "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
-  ZITI_BINARIES_VERSION=$(echo "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.tag_name')
+  ZITI_BINARIES_FILE=$(printf "%s" "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
+  ZITI_BINARIES_VERSION=$(printf "%s" "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.tag_name')
 }
 
 function createControllerSystemdFile {
@@ -1155,6 +1151,51 @@ WantedBy=multi-user.target
 
 HeredocForSystemd
   echo -e "Router systemd file written to: $(BLUE "${output_file}")"
+}
+
+function createBrowZerSystemdFile {
+  local retVal output_file node_bin
+  _check_env_variable ZITI_HOME
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
+  output_file="${ZITI_HOME}/browzer-bootstrapper.service"
+
+  if which node >/dev/null; then
+    # store the absolute path to the node executable because it's required by systemd on Amazon Linux, at least
+    node_bin=$(readlink -f "$(which node)")
+  else
+    echo "ERROR: missing executable 'node'" >&2
+    return 1
+  fi
+
+  _get_file_overwrite_permission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
+  cat > "${output_file}" << HeredocForSystemd
+[Unit]
+Description=A systemd unit file for the Ziti BrowZer Bootstrapper
+After=network.target
+
+[Service]
+User=root
+EnvironmentFile=${ZITI_HOME}/browzer.env
+WorkingDirectory=${ZITI_HOME}/ziti-http-agent
+ExecStart=${node_bin} "${ZITI_HOME}/ziti-http-agent/index.js"
+Restart=always
+RestartSec=2
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+HeredocForSystemd
+  echo -e "Ziti BrowZer Bootstrapper systemd file written to: $(BLUE "${output_file}")"
 }
 
 function createControllerLaunchdFile {
@@ -1503,4 +1544,42 @@ function waitForController {
   _wait_for_controller
 }
 
+function printUsage() {
+    echo "Usage: ${1-} [cert to test] [ca pool to use]"
+}
+
+function verifyCertAgainstPool() {
+  if [[ "" == "${1-}" ]]
+  then
+      printUsage "verifyCertAgainstPool"
+      return 1
+  fi
+
+  if [[ "" == "$2" ]]
+  then
+      printUsage "verifyCertAgainstPool"
+      return 1
+  fi
+
+  echo "    Verifying that this certificate:"
+  echo "        - ${1-}"
+  echo "    is valid for this ca pool:"
+  echo "        - $2"
+  echo ""
+  openssl verify -partial_chain -CAfile "$2" "${1-}"
+  # shellcheck disable=SC2181
+  if [ $? -eq 0 ]; then
+      echo ""
+      echo "============      SUCCESS!      ============"
+  else
+      echo ""
+      echo "============ FAILED TO VALIDATE ============"
+  fi
+}
+
+function showIssuerAndSubjectForPEM() {
+  echo "Displaying Issuer and Subject for cert pool:"
+  echo "    ${1-}"
+  openssl crl2pkcs7 -nocrl -certfile "${1-}" | openssl pkcs7 -print_certs -text -noout | grep -E "(Subject|Issuer)"
+}
 set +uo pipefail

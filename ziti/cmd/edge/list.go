@@ -684,35 +684,11 @@ func outputEnrollments(o *api.Options, children []*gabs.Container, pagingInfo *a
 }
 
 func runListEnrollments(o *api.Options) error {
-	children, pagingInfo, err := listEntitiesWithOptions("ext-jwt-signers", o)
+	children, pagingInfo, err := listEntitiesWithOptions("enrollments", o)
 	if err != nil {
 		return err
 	}
 	return outputEnrollments(o, children, pagingInfo)
-}
-
-func outputExtJwtSigners(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
-	if o.OutputJSONResponse {
-		return nil
-	}
-
-	t := table.NewWriter()
-	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Method", "Identity Id", "Identity Name", "Expires At", "Token", "JWT"})
-
-	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		method := entity.Path("method").Data().(string)
-		identityId := entity.Path("identityId").Data().(string)
-		identityName := entity.Path("identity.name").Data().(string)
-		expiresAt := entity.Path("expiresAt").Data().(string)
-		token := entity.Path("token").Data().(string)
-		jwt := "See json"
-
-		t.AppendRow(table.Row{id, method, identityId, identityName, expiresAt, token, jwt})
-	}
-	api.RenderTable(o, t, pagingInfo)
-	return nil
 }
 
 func runListTerminators(o *api.Options) error {

@@ -86,6 +86,9 @@ func (o *InstallTerraformProviderEdgeControllerOptions) Run() error {
 
 	if o.Version != "" {
 		newVersion, err = semver.Make(o.Version)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Infoln("Attempting to install Terraform Provider '" + c.TERRAFORM_PROVIDER_EDGE_CONTROLLER + "' version: " + newVersion.String())

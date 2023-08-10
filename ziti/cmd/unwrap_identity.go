@@ -6,7 +6,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/spf13/cobra"
 	"io"
-	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -42,7 +42,7 @@ func NewUnwrapIdentityFileCommand(out io.Writer, errOut io.Writer) *cobra.Comman
 				outCaFile = rootFileName + ".ca"
 			}
 
-			identityJson, err := ioutil.ReadFile(identityFile)
+			identityJson, err := os.ReadFile(identityFile)
 
 			if err != nil {
 				_, _ = fmt.Fprintf(errOut, "error opening file %s: %v\n", args[0], err)
@@ -57,7 +57,7 @@ func NewUnwrapIdentityFileCommand(out io.Writer, errOut io.Writer) *cobra.Comman
 
 			if strings.HasPrefix(config.ID.Cert, "pem:") {
 				data := strings.TrimPrefix(config.ID.Cert, "pem:")
-				if err := ioutil.WriteFile(outCertFile, []byte(data), 0); err != nil {
+				if err := os.WriteFile(outCertFile, []byte(data), 0); err != nil {
 					_, _ = fmt.Fprintf(errOut, "error writing certificate to file [%s]: %v\n", outCertFile, err)
 					return
 				}
@@ -67,7 +67,7 @@ func NewUnwrapIdentityFileCommand(out io.Writer, errOut io.Writer) *cobra.Comman
 
 			if strings.HasPrefix(config.ID.Key, "pem:") {
 				data := strings.TrimPrefix(config.ID.Key, "pem:")
-				if err := ioutil.WriteFile(outKeyFile, []byte(data), 0); err != nil {
+				if err := os.WriteFile(outKeyFile, []byte(data), 0); err != nil {
 					_, _ = fmt.Fprintf(errOut, "error writing private key to file [%s]: %v\n", outKeyFile, err)
 					return
 				}
@@ -77,7 +77,7 @@ func NewUnwrapIdentityFileCommand(out io.Writer, errOut io.Writer) *cobra.Comman
 
 			if strings.HasPrefix(config.ID.Key, "pem:") {
 				data := strings.TrimPrefix(config.ID.CA, "pem:")
-				if err := ioutil.WriteFile(outCaFile, []byte(data), 0); err != nil {
+				if err := os.WriteFile(outCaFile, []byte(data), 0); err != nil {
 					_, _ = fmt.Fprintf(errOut, "error writing CAs to file [%s]: %v\n", outCaFile, err)
 					return
 				}

@@ -21,6 +21,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -35,8 +36,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/resty.v1"
 	"io"
-	"io/ioutil"
 	"math/big"
+	"os"
 	"time"
 )
 
@@ -85,7 +86,7 @@ func newVerifyCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 			if options.certPath != "" {
 				var err error
-				options.certPemBytes, err = ioutil.ReadFile(options.certPath)
+				options.certPemBytes, err = os.ReadFile(options.certPath)
 
 				if err != nil {
 					return fmt.Errorf("could not read --cert file (%s): %v", options.certPath, err)
@@ -93,13 +94,13 @@ func newVerifyCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 				options.isGenerateCert = false
 			} else if options.caCertPath != "" && options.caKeyPath != "" {
 				var err error
-				options.caKeyPemBytes, err = ioutil.ReadFile(options.caKeyPath)
+				options.caKeyPemBytes, err = os.ReadFile(options.caKeyPath)
 
 				if err != nil {
 					return fmt.Errorf("could not read --cakey file (%s): %v", options.caKeyPath, err)
 				}
 
-				options.caCertPemBytes, err = ioutil.ReadFile(options.caCertPath)
+				options.caCertPemBytes, err = os.ReadFile(options.caCertPath)
 
 				if err != nil {
 					return fmt.Errorf("could not read --cacert file (%s): %v", options.caCertPath, err)
@@ -165,7 +166,7 @@ func runValidateCa(options *verifyCaOptions) error {
 
 func generateCert(options *verifyCaOptions, token string) ([]byte, crypto.Signer, error) {
 
-	certBlocks := nfpem.PemToX509(string(options.caCertPemBytes))
+	certBlocks := nfpem.PemStringToCertificates(string(options.caCertPemBytes))
 
 	if len(certBlocks) == 0 {
 		return nil, nil, errors.New("could not parse cert file, 0 PEM blocks detected1")
@@ -199,18 +200,33 @@ func generateCert(options *verifyCaOptions, token string) ([]byte, crypto.Signer
 		}
 	}
 
-	var signerInterface crypto.Signer
-	if caPrivateKeyBlock.Type == "EC PRIVATE KEY" {
-		signerInterface, err = x509.ParseECPrivateKey(caPrivateKeyBlock.Bytes)
-	} else {
-		signerInterface, err = x509.ParsePKCS1PrivateKey(caPrivateKeyBlock.Bytes)
+	var caKey crypto.Signer
+
+	switch caPrivateKeyBlock.Type {
+	case "EC PRIVATE KEY":
+		caKey, err = x509.ParseECPrivateKey(caPrivateKeyBlock.Bytes)
+	case "RSA PRIVATE KEY":
+		caKey, err = x509.ParsePKCS1PrivateKey(caPrivateKeyBlock.Bytes)
+	case "PRIVATE KEY":
+		key, err := x509.ParsePKCS8PrivateKey(caPrivateKeyBlock.Bytes)
+
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not parse PKCS8 key file (%s)", err)
+		}
+
+		switch typedKey := key.(type) {
+		case *rsa.PrivateKey:
+			caKey = typedKey
+		case *ecdsa.PrivateKey:
+			caKey = typedKey
+		default:
+			return nil, nil, fmt.Errorf("unsupported private key parsed from PKCS8 %T", typedKey)
+		}
 	}
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not parse key file (%s)", err)
 	}
-
-	caKey := signerInterface.(crypto.Signer)
 
 	if caKey == nil {
 		return nil, nil, fmt.Errorf("key was not of correct type, could not be used as signer")

@@ -2,14 +2,8 @@
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
-# wait for the controller to come online
-_wait_for_controller
-
-# after coming online, give the controller just a second to ramp up in case running via docker compose
-sleep 1
-
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="ziti-edge-controller"; fi
-if [[ "${ZITI_CTRL_EDGE_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_PORT="3022"; fi
+if [[ "${ZITI_CTRL_EDGE_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_PORT="1280"; fi
 if [[ "${ZITI_ROUTER_PORT-}" == "" ]]; then export ZITI_ROUTER_PORT="3022"; fi
 if [[ "${ZITI_ROUTER_ROLES}" == "" ]]; then export ZITI_ROUTER_ROLES="${ZITI_ROUTER_NAME}"; fi
 
@@ -20,6 +14,12 @@ fi
 
 . ${ZITI_HOME}/ziti.env
 
+# wait for the controller to come online
+_wait_for_controller
+
+# after coming online, give the controller just a second to ramp up in case running via docker compose
+sleep 1
+
 if [[ "${_ZITI_ROUTER_NAME}" != "" ]]; then
   export ZITI_ROUTER_NAME="${_ZITI_ROUTER_NAME}"
   echo "ZITI_ROUTER_NAME set to: ${ZITI_ROUTER_NAME}"
@@ -27,9 +27,9 @@ fi
 _UNIQUE_NAME="${ZITI_HOME}/${ZITI_ROUTER_NAME}-${HOSTNAME}.init"
 if [ ! -f "${_UNIQUE_NAME}" ]; then
   echo "system has not been initialized. initializing..."
-  ziti edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
+  "${ZITI_BIN_DIR-}/ziti" edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
 
-  echo "----------  Creating edge-router ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}...."
+  echo "----------  Creating edge-router ${ZITI_ROUTER_NAME}...."
 
   if [[ "$1" == "edge" ]]; then
     echo "CREATING EDGE ROUTER CONFIG: ${ZITI_ROUTER_NAME}"

@@ -270,6 +270,20 @@ jobs:
           name: windows-release-${{ github.run_id }}
           path: release/
 
+      - name: List downloaded release artifacts
+        run: |
+          ls -lAhR release/
+
+      - name: Restore execute filemode on macOS and Linux release artifacts before publishing
+        run: |
+          find  ./release \
+                -type f \
+                -print0 \
+                -path "./release/*/darwin/ziti" \
+                -o \
+                -path "./release/*/linux/ziti" \
+            | xargs -0 chmod -c +x
+
       - name: Install Jfrog CLI
         uses: jfrog/setup-jfrog-cli@v3
         with:

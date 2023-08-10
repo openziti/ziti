@@ -22,9 +22,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"github.com/openziti/ziti/ziti/internal/log"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -132,11 +130,11 @@ func (s *AccountsStorage) Save(account *Account) error {
 		return err
 	}
 
-	return ioutil.WriteFile(s.accountFilePath, jsonBytes, filePerm)
+	return os.WriteFile(s.accountFilePath, jsonBytes, filePerm)
 }
 
 func (s *AccountsStorage) LoadAccount(options *leOptions, privateKey crypto.PrivateKey) *Account {
-	fileBytes, err := ioutil.ReadFile(s.accountFilePath)
+	fileBytes, err := os.ReadFile(s.accountFilePath)
 	if err != nil {
 		log.Fatalf("Could not load file for account %s: %v", s.userID, err)
 	}
@@ -183,7 +181,7 @@ func (s *AccountsStorage) GetPrivateKey(keyType certcrypto.KeyType) crypto.Priva
 
 	privateKey, err := loadPrivateKey(accKeyPath)
 	if err != nil {
-		log.Fatalf("Could not load RSA private key from file %s: %v", accKeyPath, err)
+		log.Fatalf("Could not load private key from file %s: %v", accKeyPath, err)
 	}
 
 	return privateKey
@@ -217,7 +215,7 @@ func generatePrivateKey(file string, keyType certcrypto.KeyType) (crypto.Private
 }
 
 func loadPrivateKey(file string) (crypto.PrivateKey, error) {
-	keyBytes, err := ioutil.ReadFile(file)
+	keyBytes, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
@@ -229,6 +227,8 @@ func loadPrivateKey(file string) (crypto.PrivateKey, error) {
 		return x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
 	case "EC PRIVATE KEY":
 		return x509.ParseECPrivateKey(keyBlock.Bytes)
+	case "PRIVATE KEY":
+		return x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
 	}
 
 	return nil, errors.New("unknown private key type")
@@ -238,7 +238,7 @@ func tryRecoverRegistration(options *leOptions, privateKey crypto.PrivateKey) (*
 	// couldn't load account but got a key. Try to look the account up.
 	config := lego.NewConfig(&Account{key: privateKey})
 	config.CADirURL = options.acmeserver
-	config.UserAgent = fmt.Sprintf("ziti-cli")
+	config.UserAgent = "ziti-cli"
 
 	client, err := lego.NewClient(config)
 	if err != nil {
