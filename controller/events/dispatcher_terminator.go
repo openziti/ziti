@@ -19,9 +19,9 @@ package events
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/event"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"

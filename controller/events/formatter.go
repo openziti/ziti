@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/event"
+	"github.com/openziti/fabric/controller/event"
 	"github.com/pkg/errors"
 	"io"
 	"reflect"

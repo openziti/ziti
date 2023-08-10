@@ -18,7 +18,7 @@ package mesh
 
 import (
 	"crypto/x509"
-	"github.com/openziti/fabric/event"
+	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"net"

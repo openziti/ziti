@@ -17,8 +17,8 @@
 package network
 
 import (
+	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/event"
 	"github.com/pkg/errors"
 	"time"
 )

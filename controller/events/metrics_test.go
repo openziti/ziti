@@ -19,7 +19,7 @@ package events
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/fabric/event"
+	"github.com/openziti/fabric/controller/event"
 	metrics2 "github.com/openziti/metrics"
 	"github.com/stretchr/testify/require"
 	"regexp"
