@@ -22,7 +22,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/fabric/config"
+	"github.com/openziti/fabric/common/config"
 	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/fabric/controller/events"
 	"github.com/openziti/fabric/controller/handler_peer_ctrl"

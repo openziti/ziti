@@ -24,7 +24,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/config"
+	"github.com/openziti/fabric/common/config"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/raft"

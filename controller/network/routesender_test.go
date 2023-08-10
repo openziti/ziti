@@ -7,7 +7,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
-	"github.com/openziti/fabric/ctrl_msg"
+	"github.com/openziti/fabric/common/ctrl_msg"
 )
 
 func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(t *testing.T) {

@@ -18,7 +18,7 @@ package xmgmt
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/config"
+	"github.com/openziti/fabric/common/config"
 )
 
 type Xmgmt interface {
