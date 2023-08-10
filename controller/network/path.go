@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/pkg/errors"
 )
 

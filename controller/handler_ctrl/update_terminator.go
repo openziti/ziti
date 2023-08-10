@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/common/handler_common"
-	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"math"

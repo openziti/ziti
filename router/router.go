@@ -41,7 +41,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/common/health"
 	fabricMetrics "github.com/openziti/fabric/common/metrics"
-	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/openziti/fabric/common/profiler"
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"

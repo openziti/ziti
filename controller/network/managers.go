@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/ioc"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/fabric/common/pb/cmd_pb"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/storage/ast"

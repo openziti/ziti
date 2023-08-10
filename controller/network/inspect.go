@@ -21,7 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"regexp"
 	"sync"

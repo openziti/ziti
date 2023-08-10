@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/fabric/common/pb/cmd_pb"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"

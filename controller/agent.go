@@ -2,7 +2,7 @@ package controller
 
 import (
 	"fmt"
-	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/fabric/common/pb/cmd_pb"
 	"io"
 	"net"
 	"time"
@@ -11,7 +11,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/common/handler_common"
-	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/fabric/common/pb/mgmt_pb"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )

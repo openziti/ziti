@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/peermsg"
 	"github.com/openziti/fabric/controller/raft"
-	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/fabric/common/pb/cmd_pb"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"

@@ -5,7 +5,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/latency"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"
 	metrics2 "github.com/openziti/fabric/router/metrics"
