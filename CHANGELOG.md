@@ -3,6 +3,7 @@
 ## What's New
 
 * Link management is now delegated to routers
+* Controller and routers can operate with a single listening port
 
 ## Link Management Updates
 
@@ -130,6 +131,35 @@ The back-off policies have the following attributes:
     * Min value: 1
     * Max value: 100
     * Default: 1.5 for healthy, 100 for unhealthy
+
+
+## Single Sort Changes
+Ziti Controller and Routers can operate with a single open port. In order to implement this feature we use 
+ALPN ([Application Layer Protocol Negotiation](https://en.wikipedia.org/wiki/Application-Layer_Protocol_Negotiation)) 
+TLS extension. It allows TLS client to request and TLS server to select appropriate application protocol handler during 
+TLS handshake.
+
+### Protocol Details
+
+The following protocol identifiers are defined:
+
+| id        | purpose |
+| --------- | ------- |
+| ziti-ctrl | Control plane connections             |
+| ziti-link | Fabric link  connections              |
+| ziti-edge | Client SDK connection to Edge Routers |
+
+Standard HTTP protocol identifiers (`h2`, `http/1.1`) are used for Controller REST API and Websocket listeners.
+
+### Backward Compatibility
+
+This feature is designed to be backward compatible with SDK clients: older client will still be able to connect without
+requesting `ziti-edge` protocol.
+
+**Breaking** 
+
+Older routers won't be able to establish control channel or fabric links with updated network.
+However, newer Edge Routers should be able to join older network in some circumstances -- only outbound links from new Routers would work.
 
 ## Component Updates and Bug Fixes
 * github.com/openziti/agent: [v1.0.14 -> v1.0.15](https://github.com/openziti/agent/compare/v1.0.14...v1.0.15)
