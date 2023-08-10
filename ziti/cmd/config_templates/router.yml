@@ -12,9 +12,9 @@ identity:
   server_cert:      "{{ .Router.IdentityServerCert }}"
   key:              "{{ .Router.IdentityKey }}"
   ca:               "{{ .Router.IdentityCA }}"
-{{ if not .Router.AltCertsEnabled }}#{{ end }}alt_server_certs:
-{{ if not .Router.AltCertsEnabled }}#{{ end }}  - server_cert:  "{{ .Router.AltServerCert }}"
-{{ if not .Router.AltCertsEnabled }}#{{ end }}    server_key:   "{{ .Router.AltServerKey }}"
+  {{ if not .Router.AltCertsEnabled }}#{{ end }}alt_server_certs:
+  {{ if not .Router.AltCertsEnabled }}#{{ end }}  - server_cert:  "{{ .Router.AltServerCert }}"
+  {{ if not .Router.AltCertsEnabled }}#{{ end }}    server_key:   "{{ .Router.AltServerKey }}"
 
 ctrl:
   endpoint:             tls:{{ .Controller.Ctrl.AdvertisedAddress }}:{{ .Controller.Ctrl.AdvertisedPort }}
@@ -87,9 +87,9 @@ edge:
 {{ if not .Router.IsWss }}#{{ end }}    enableCompression: {{ .Router.Wss.EnableCompression }}
 {{ if not .Router.IsWss }}#{{ end }}    server_cert: {{ .Router.IdentityServerCert }}
 {{ if not .Router.IsWss }}#{{ end }}    key: {{ .Router.IdentityKey }}
-{{ .Router.AltCertsEnabled }}alt_server_certs:
-{{ .Router.AltCertsEnabled }}  - server_cert:  "{{ .Router.AltServerCert }}"
-{{ .Router.AltCertsEnabled }}    server_key:   "{{ .Router.AltServerKey }}"
+{{ if not .Router.AltCertsEnabled }}#{{ end }}alt_server_certs:
+{{ if not .Router.AltCertsEnabled }}#{{ end }}  - server_cert:  "{{ .Router.AltServerCert }}"
+{{ if not .Router.AltCertsEnabled }}#{{ end }}    server_key:   "{{ .Router.AltServerKey }}"
 forwarder:
   latencyProbeInterval: {{ .Router.Forwarder.LatencyProbeInterval.Seconds }}
   xgressDialQueueLength: {{ .Router.Forwarder.XgressDialQueueLength }}
