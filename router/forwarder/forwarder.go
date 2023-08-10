@@ -18,7 +18,7 @@ package forwarder
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/inspect"
+	"github.com/openziti/fabric/common/inspect"
 	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"

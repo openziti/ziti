@@ -21,7 +21,7 @@ import (
 	"github.com/emirpasic/gods/trees/btree"
 	"github.com/emirpasic/gods/utils"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/inspect"
+	"github.com/openziti/fabric/common/inspect"
 	"sync/atomic"
 	"time"
 )
