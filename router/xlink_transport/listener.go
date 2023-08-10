@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	fabricMetrics "github.com/openziti/fabric/metrics"
+	fabricMetrics "github.com/openziti/fabric/common/metrics"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"

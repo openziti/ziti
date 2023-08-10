@@ -50,7 +50,7 @@ import (
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/controller/xt_weighted"
 	"github.com/openziti/fabric/common/health"
-	fabricMetrics "github.com/openziti/fabric/metrics"
+	fabricMetrics "github.com/openziti/fabric/common/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/profiler"
 	"github.com/openziti/foundation/v2/versions"

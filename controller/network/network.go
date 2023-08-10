@@ -22,7 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/fabric/controller/event"
-	fabricMetrics "github.com/openziti/fabric/metrics"
+	fabricMetrics "github.com/openziti/fabric/common/metrics"
 	"github.com/openziti/foundation/v2/goroutines"
 	"runtime/debug"
 	"sort"
