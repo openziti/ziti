@@ -684,7 +684,7 @@ func outputEnrollments(o *api.Options, children []*gabs.Container, pagingInfo *a
 }
 
 func runListEnrollments(o *api.Options) error {
-	children, pagingInfo, err := listEntitiesWithOptions("ext-jwt-signers", o)
+	children, pagingInfo, err := listEntitiesWithOptions("enrollments", o)
 	if err != nil {
 		return err
 	}
