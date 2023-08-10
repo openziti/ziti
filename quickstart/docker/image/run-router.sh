@@ -12,6 +12,12 @@ if [[ "${ZITI_ROUTER_NAME-}" != "" ]]; then
   echo "_ZITI_ROUTER_NAME set to: ${_ZITI_ROUTER_NAME}"
 fi
 
+# Wait until the file exists, then give one more second for the file to be completely written
+until [ -f "${ZITI_HOME}/ziti.env" ]
+do
+     sleep 1
+done
+sleep 1
 . ${ZITI_HOME}/ziti.env
 
 # wait for the controller to come online
