@@ -13,11 +13,6 @@ on:
         type: string
         required: false   # this allows manually triggering the smoketest with the UNKNOWN version default
 
-# cancel older, redundant runs of same workflow on same branch
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
-
 jobs:
   jenkins-smoketest:
     runs-on: ubuntu-latest
