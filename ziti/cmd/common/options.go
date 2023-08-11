@@ -76,9 +76,8 @@ func (options *CommonOptions) GetFilter() *string {
 	return nil
 }
 
-func (options *CommonOptions) GetContext() context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*time.Duration(options.Timeout))
-	return ctx
+func (options *CommonOptions) GetContext() (context.Context, func()) {
+	return context.WithTimeout(context.Background(), time.Second*time.Duration(options.Timeout))
 }
 
 func (options *CommonOptions) Printf(format string, args ...interface{}) {

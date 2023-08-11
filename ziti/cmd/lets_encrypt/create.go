@@ -30,8 +30,6 @@ import (
 const acmeStaging string = "https://acme-staging-v02.api.letsencrypt.org/directory"
 const acmeProd string = "https://acme-v02.api.letsencrypt.org/directory"
 
-const rootPathWarningMessage = `!!!! HEADS UP !!!!`
-
 // We need a user or account type that implements acme.User
 type AcmeUser struct {
 	Email        string
@@ -70,14 +68,20 @@ func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 
 	cmd.Flags().StringVarP(&options.domain, "domain", "d", "", "Domain for which Cert is being generated (e.g. me.example.com)")
-	cmd.MarkFlagRequired("domain")
+	if err := cmd.MarkFlagRequired("domain"); err != nil {
+		panic(err)
+	}
 	cmd.Flags().BoolVarP(&options.staging, "staging", "s", false, "Enable creation of 'staging' Certs (instead of production Certs)")
 	cmd.Flags().StringVarP(&options.acmeserver, "acmeserver", "a", acmeProd, "ACME CA hostname")
 	cmd.Flags().StringVarP(&options.email, "email", "e", "openziti@netfoundry.io", "Email used for registration and recovery contact")
-	options.keyType.Set("RSA4096") // set default
+	if err := options.keyType.Set("RSA4096"); err != nil { // set default
+		panic(err)
+	}
 	cmd.Flags().VarP(&options.keyType, "keytype", "k", "Key type to use for private keys")
 	cmd.Flags().StringVarP(&options.path, "path", "p", "", "Directory to use for storing the data")
-	cmd.MarkFlagRequired("path")
+	if err := cmd.MarkFlagRequired("path"); err != nil {
+		panic(err)
+	}
 	cmd.Flags().StringVarP(&options.port, "port", "o", "80", "Port to listen on for HTTP based ACME challenges")
 	cmd.Flags().StringVarP(&options.csr, "csr", "", "", "Certificate Signing Request filename, if an external CSR is to be used")
 

@@ -48,7 +48,6 @@ func newCreatePostureCheckCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 type createPostureCheckOptions struct {
 	api.EntityOptions
-	name           string
 	roleAttributes []string
 }
 

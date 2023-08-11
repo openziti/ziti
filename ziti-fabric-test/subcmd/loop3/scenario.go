@@ -19,7 +19,7 @@ package loop3
 import (
 	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
+	"os"
 	"time"
 )
 
@@ -108,7 +108,7 @@ type Metrics struct {
 }
 
 func LoadScenario(path string) (*Scenario, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

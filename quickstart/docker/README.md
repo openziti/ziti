@@ -15,17 +15,20 @@ First, decide what you are trying to do. Are you trying to:
 1. copy the `ziti` CLI to `./ziti-bin`: `cp /path/to/ziti ./ziti-bin`
 1. run the script `./createLocalImage.sh` which will create a `openziti/quickstart:latest` tag
    using the `ziti` CLI located in `./ziti-bin`
+   1. Optionally, you may provide an argument for the image tag. `./createLocalImage.sh <tagname>`
 
 ## Build Docker Image for Docker-related Changes
 1. change to this directory from checkout root: `cd quickstart/docker`
 1. run the script `./createLocalImage.sh` which will create a `openziti/quickstart:latest` tag
    using the latest `ziti` [release from GitHub](https://github.com/openziti/ziti/releases/latest)
+   1. Optionally, you may provide an argument for the image tag. `./createLocalImage.sh <tagname>`
 
 ## Build Docker Image with Specific ziti Version
 1. change to this directory from checkout root: `cd quickstart/docker`
 1. set `ZITI_VERSION_OVERRIDE` to desired version: `export ZITI_VERSION_OVERRIDE=v0.28.4`
 1. run the script `./createLocalImage.sh` which will create a `openziti/quickstart:latest` tag
    using the specified version of `ziti` [from GitHub](https://github.com/openziti/ziti/releases/tag/v0.28.4)
+   1. Optionally, you may provide an argument for the image tag. `./createLocalImage.sh <tagname>`
 
 ## ERROR: existing instance for "ziti-builder"
 When running the `./createLocalImage.sh` script, you might get this error:

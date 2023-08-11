@@ -60,38 +60,23 @@ func (f *KeyTypeVar) Set(value string) error {
 }
 
 func (f *KeyTypeVar) EC256() bool {
-	if certcrypto.KeyType(*f) == certcrypto.EC256 {
-		return true
-	}
-	return false
+	return certcrypto.KeyType(*f) == certcrypto.EC256
 }
 
 func (f *KeyTypeVar) EC384() bool {
-	if certcrypto.KeyType(*f) == certcrypto.EC384 {
-		return true
-	}
-	return false
+	return certcrypto.KeyType(*f) == certcrypto.EC384
 }
 
 func (f *KeyTypeVar) RSA2048() bool {
-	if certcrypto.KeyType(*f) == certcrypto.RSA2048 {
-		return true
-	}
-	return false
+	return certcrypto.KeyType(*f) == certcrypto.RSA2048
 }
 
 func (f *KeyTypeVar) RSA4096() bool {
-	if certcrypto.KeyType(*f) == certcrypto.RSA4096 {
-		return true
-	}
-	return false
+	return certcrypto.KeyType(*f) == certcrypto.RSA4096
 }
 
 func (f *KeyTypeVar) RSA8192() bool {
-	if certcrypto.KeyType(*f) == certcrypto.RSA8192 {
-		return true
-	}
-	return false
+	return certcrypto.KeyType(*f) == certcrypto.RSA8192
 }
 
 func (f *KeyTypeVar) Get() certcrypto.KeyType {

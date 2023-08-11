@@ -65,7 +65,7 @@ type Store interface {
 	// Args:
 	//  The intermediate CA name
 	//  The Key name
-	//  The raw private key.
+	//  The private key
 	//
 	// Returns an error if it failed to store the bundle.
 	AddKey(string, string, []byte) error

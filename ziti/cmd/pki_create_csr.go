@@ -64,28 +64,27 @@ func (o *PKICreateCSROptions) addPKICreateCSRFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.Flags.CSRName, "csr-name", "", "NetFoundry Inc. CSR", "Name of CSR")
 	cmd.Flags().StringVarP(&o.Flags.KeyName, "key-name", "", "", "Name of file that contains private key for CSR")
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 365, "Expiration limit in days")
-	cmd.Flags().IntVarP(&o.Flags.CAMaxpath, "max-path-len", "", -1, "Intermediate maximum path length")
-	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the private key")
+	cmd.Flags().IntVarP(&o.Flags.CAMaxPath, "max-path-len", "", -1, "Intermediate maximum path length")
 }
 
 // Run implements this command
 func (o *PKICreateCSROptions) Run() error {
 
-	pkiroot, err := o.ObtainPKIRoot()
+	pkiRoot, err := o.ObtainPKIRoot()
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
 
 	o.Flags.PKI = &pki.ZitiPKI{Store: &store.Local{}}
 	local := o.Flags.PKI.Store.(*store.Local)
-	local.Root = pkiroot
+	local.Root = pkiRoot
 
-	csrfile, err := o.ObtainCSRFile()
+	csrFile, err := o.ObtainCSRFile()
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
 
-	keyname, err := o.ObtainKeyName(pkiroot)
+	keyName, err := o.ObtainKeyName(pkiRoot)
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
@@ -93,13 +92,13 @@ func (o *PKICreateCSROptions) Run() error {
 	commonName := o.Flags.CSRName
 	template := o.ObtainPKICSRRequestTemplate(commonName)
 
-	key, err := o.Flags.PKI.GetPrivateKey(keyname, keyname)
+	key, err := o.Flags.PKI.GetPrivateKey(keyName, keyName)
 	if err != nil {
-		return fmt.Errorf("Cannot locate private key: %v", err)
+		return fmt.Errorf("cannot locate private key: %v", err)
 	}
 
-	if err := o.Flags.PKI.CSR(keyname, csrfile, *template, key); err != nil {
-		return fmt.Errorf("Cannot create CSR: %v", err)
+	if err := o.Flags.PKI.CSR(keyName, csrFile, *template, key); err != nil {
+		return fmt.Errorf("cannot create CSR: %v", err)
 	}
 
 	log.Infoln("Success")

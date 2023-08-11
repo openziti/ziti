@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/openziti/fabric/controller/idgen"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
@@ -74,8 +75,9 @@ func (o *PKICreateServerOptions) addPKICreateServerFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSliceVar(&o.Flags.DNSName, "dns", []string{}, "DNS name(s) to add to Subject Alternate Name (SAN) for new Server certificate")
 	cmd.Flags().StringSliceVar(&o.Flags.IP, "ip", []string{}, "IP addr(s) to add to Subject Alternate Name (SAN) for new Server certificate")
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 365, "Expiration limit in days")
-	cmd.Flags().IntVarP(&o.Flags.CAMaxpath, "max-path-len", "", -1, "Intermediate maximum path length")
-	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the private key")
+	cmd.Flags().IntVarP(&o.Flags.CAMaxPath, "max-path-len", "", -1, "Intermediate maximum path length")
+	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the RSA private key, ignored if -curve is set")
+	cmd.Flags().StringVarP(&o.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521")
 	cmd.Flags().StringVar(&o.Flags.SpiffeID, "spiffe-id", "", "Optionally provide the path portion of a SPIFFE id. The trust domain will be taken from the signing certificate.")
 	cmd.Flags().BoolVar(&o.Flags.AllowOverwrite, "allow-overwrite", false, "Allow overwrite existing certs")
 }
@@ -151,12 +153,18 @@ func (o *PKICreateServerOptions) Run() error {
 		template.URIs = append(template.URIs, &spiffId)
 	}
 
+	privateKeyOptions, err := o.ObtainPrivateKeyOptions()
+
+	if err != nil {
+		return fmt.Errorf("could not resolve private key options: %w", err)
+	}
+
 	req := &pki.Request{
 		Name:                filename,
 		KeyName:             keyFile,
 		Template:            template,
 		IsClientCertificate: false,
-		PrivateKeySize:      o.Flags.CAPrivateKeySize,
+		PrivateKeyOptions:   privateKeyOptions,
 		AllowOverwrite:      o.Flags.AllowOverwrite,
 	}
 

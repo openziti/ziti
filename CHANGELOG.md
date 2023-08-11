@@ -1,12 +1,199 @@
-# Release 0.29.1
+# Release 0.30.0
 
 ## What's New
 
+* Link management is now delegated to routers
+* Controller and routers can operate with a single listening port
+
+## Link Management Updates
+
+Previously, the controller would do its best to determine where links needed to be established.
+It would send messages to the routers, telling them which addresses to dial on other routes.
+The routers would in turn let the controller know if link establishment was successful or
+if the router already had a link to the given endpoint.
+
+With this release, the controller will only let routers know which routers exist, whether they 
+are currently connected to the controller, and what link listeners they are advertising. The 
+routers will now decide which links to make and let the controllers know as links are created 
+and broken.
+
+### Link Groups
+
+Both dialers and listeners can now specify a set of groups. If no groups are specified, the 
+dialer or listener will be placed in the `default` group. Dialers will only attempt to dial 
+listeners who have at least one group in common with them.
+
+
+### Failed Links
+
+Previously when a link failed, the controller would show it in the link list as failed for a time
+before removing it. Now failed links are removed immediately. There are existing link events for
+link creation and link failure which can be used for forensics. 
+
+### Duplicate Links
+
+There is a new link status `Duplicate` used when a router receives a link request and determines
+that it's a duplicate of an existing link. This happens when two routers both have listeners
+and dialers. They will often dial each other at the same time, resulting in a duplicate link.
+
+### Compatibility
+
+If you use a 0.30+ controller with older routers, the controller will still do link calculation
+and send dial messages, as long as the `enableLegacyLinkMgmt` setting is set to true.
+
+If you use a pre 0.30.0 controller with newer routers, the new routers will still accept the
+dial messages.
+
+### New Configuration
+
+#### Controller
+
+The controller has three new options:
+
+```
+network:
+    routerMessaging:
+        queueSize: 100
+        maxWorkers: 100
+    enableLegacyLinkMgmt: true
+```
+
+When a router connects or disconnects from the controller, we send two sets of updates. 
+
+1. If a router has connected we send it the the state of the other routers
+1. We send all the other routers the updated state of the connecting/disconnecting router
+
+These messages are sent using a worker pool. The size of the queue feeding the worker pool is controlled with
+ `routerMessaging.queueSize`. The max size of the worker pool is controlled used the `routerMessaging.maxWorkers` 
+option.
+
+* queueSize
+    * Min value: 0
+    * Max value: 1,000,000
+    * Default: 100
+* maxWorkers
+    * Min value: 1
+    * Max value: 10,000
+    * Default: 100
+
+If you have routers older than 0.30.0, the controller will calculate which links to dial. This can be disabled
+by setting `enableLegacyLinkMgmt` to false. This setting currently defaults to true, but will default to false
+in a future release. In a subsequent release this functionality will be removed all together.
+
+#### Router
+
+The router has new configuration options for link dialing. 
+
+```
+link:
+   dialers:
+       - binding: transport
+         groups: 
+             - public
+             - vpc1234
+         healthyDialBackoff:
+             retryBackoffFactor: 1.5
+             minRetryInterval: 5s
+             maxRetryInterval: 5m
+         unhealthyDialBackoff:
+             retryBackoffFactor: 10
+             minRetryInterval: 1m
+             maxRetryInterval: 1h
+    listeners:
+        - binding: transport
+          groups: vpc1234
+```
+
+**Groups**
+
+See above for a description of link groups work. 
+
+Default value: `default`
+
+**Dial Back-off**
+
+Dialers can be configured with custom back-off behavior. Each dialer has a back-off policy for dialing
+healthy routers (those that are connected to a controller) and a separate policy for unhealthy routers.
+
+The back-off policies have the following attributes:
+
+* minRetryInterval - duration specifying the minimum time between dial attempts
+    * Min value: 10ms 
+    * Max value: 24h
+    * Default: 5s for healthy, 1m for unhealthy
+    * Format: Golang Durations, see: https://pkg.go.dev/maze.io/x/duration#ParseDuration
+* maxRetryInterval - duration specifying the maximum time between dial attempts
+    * Min value: 10ms
+    * Max value: 24h
+    * Default: 5m for healthy, 1h for unhealthy
+    * Format: Golang duration, see: https://pkg.go.dev/maze.io/x/duration#ParseDuration
+* retryBackoffFactor - factor by which to increase the retry interval between failed dial attempts
+    * Min value: 1
+    * Max value: 100
+    * Default: 1.5 for healthy, 100 for unhealthy
+
+
+## Single Sort Changes
+Ziti Controller and Routers can operate with a single open port. In order to implement this feature we use 
+ALPN ([Application Layer Protocol Negotiation](https://en.wikipedia.org/wiki/Application-Layer_Protocol_Negotiation)) 
+TLS extension. It allows TLS client to request and TLS server to select appropriate application protocol handler during 
+TLS handshake.
+
+### Protocol Details
+
+The following protocol identifiers are defined:
+
+| id        | purpose |
+| --------- | ------- |
+| ziti-ctrl | Control plane connections             |
+| ziti-link | Fabric link  connections              |
+| ziti-edge | Client SDK connection to Edge Routers |
+
+Standard HTTP protocol identifiers (`h2`, `http/1.1`) are used for Controller REST API and Websocket listeners.
+
+### Backward Compatibility
+
+This feature is designed to be backward compatible with SDK clients: older client will still be able to connect without
+requesting `ziti-edge` protocol.
+
+**Breaking** 
+
+Older routers won't be able to establish control channel or fabric links with updated network.
+However, newer Edge Routers should be able to join older network in some circumstances -- only outbound links from new Routers would work.
+
 ## Component Updates and Bug Fixes
-* github.com/openziti/ziti: [v0.29.0 -> v0.29.1](https://github.com/openziti/ziti/compare/v0.29.0...v0.29.1)
-  * [Issue #1212](https://github.com/openziti/ziti/issues/1212) - Fixed getZiti function on Mac/ZSH
-  * [Issue #1220](https://github.com/openziti/ziti/issues/1220) - Fixed getZiti function not respecting user input for custom path
-  * [Issue #1219](https://github.com/openziti/ziti/issues/1219) - Added check for IPs provided as a DNS SANs entry, IPs will be ignored and not added as a DNS entry in the expressInstall PKI or router config generation.
+* github.com/openziti/agent: [v1.0.14 -> v1.0.15](https://github.com/openziti/agent/compare/v1.0.14...v1.0.15)
+* github.com/openziti/channel/v2: [v2.0.84 -> v2.0.91](https://github.com/openziti/channel/compare/v2.0.84...v2.0.91)
+    * [Issue #108](https://github.com/openziti/channel/issues/108) - Reconnecting underlay not returning headers from hello message
+
+* github.com/openziti/edge: [v0.24.364 -> v0.24.381](https://github.com/openziti/edge/compare/v0.24.364...v0.24.381)
+    * [Issue #1548](https://github.com/openziti/edge/issues/1548) - Panic in edge@v0.24.326/controller/sync_strats/sync_instant.go:194
+
+* github.com/openziti/edge-api: [v0.25.30 -> v0.25.31](https://github.com/openziti/edge-api/compare/v0.25.30...v0.25.31)
+* github.com/openziti/fabric: [v0.23.45 -> v0.24.2](https://github.com/openziti/fabric/compare/v0.23.45...v0.24.2)
+    * [Issue #766](https://github.com/openziti/fabric/issues/766) - Lookup of terminators with same instance id isn't filtering by instance id 
+    * [Issue #692](https://github.com/openziti/fabric/issues/692) - Add ability to control link formation between devices more granularly
+    * [Issue #749](https://github.com/openziti/fabric/issues/749) - Move link control to router
+    * [Issue #343](https://github.com/openziti/fabric/issues/343) - Link state Failed on startup
+
+* github.com/openziti/foundation/v2: [v2.0.28 -> v2.0.29](https://github.com/openziti/foundation/compare/v2.0.28...v2.0.29)
+* github.com/openziti/identity: [v1.0.59 -> v1.0.60](https://github.com/openziti/identity/compare/v1.0.59...v1.0.60)
+* github.com/openziti/runzmd: [v1.0.28 -> v1.0.29](https://github.com/openziti/runzmd/compare/v1.0.28...v1.0.29)
+* github.com/openziti/sdk-golang: [v0.20.78 -> v0.20.90](https://github.com/openziti/sdk-golang/compare/v0.20.78...v0.20.90)
+* github.com/openziti/storage: [v0.2.11 -> v0.2.12](https://github.com/openziti/storage/compare/v0.2.11...v0.2.12)
+* github.com/openziti/transport/v2: [v2.0.93 -> v2.0.99](https://github.com/openziti/transport/compare/v2.0.93...v2.0.99)
+* github.com/openziti/xweb/v2: [v2.0.2 -> v2.1.0](https://github.com/openziti/xweb/compare/v2.0.2...v2.1.0)
+* github.com/openziti/ziti-db-explorer: [v1.1.1 -> v1.1.3](https://github.com/openziti/ziti-db-explorer/compare/v1.1.1...v1.1.3)
+    * [Issue #4](https://github.com/openziti/ziti-db-explorer/issues/4) - db explore timeout error is uninformative
+
+* github.com/openziti/metrics: [v1.2.30 -> v1.2.31](https://github.com/openziti/metrics/compare/v1.2.30...v1.2.31)
+* github.com/openziti/ziti: [v0.29.0 -> v0.30.0](https://github.com/openziti/ziti/compare/v0.29.0...v0.30.0)
+    * [Issue #1199](https://github.com/openziti/ziti/issues/1199) - ziti edge list enrollments - CLI gets 404
+    * [Issue #1135](https://github.com/openziti/ziti/issues/1135) - Edge Router: Support multiple protocols on the same listener port
+    * [Issue #65](https://github.com/openziti/ziti/issues/65) - Add ECDSA support to PKI subcmd
+    * [Issue #1212](https://github.com/openziti/ziti/issues/1212) - getZiti fails on Mac OS
+    * [Issue #1220](https://github.com/openziti/ziti/issues/1220) - Fixed getZiti function not respecting user input for custom path
+    * [Issue #1219](https://github.com/openziti/ziti/issues/1219) - Added check for IPs provided as a DNS SANs entry, IPs will be ignored and not added as a DNS entry in the expressInstall PKI or router config generation.
 
 # Release 0.29.0
 

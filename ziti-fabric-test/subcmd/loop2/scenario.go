@@ -18,7 +18,7 @@ package loop2
 
 import (
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
+	"os"
 )
 
 type Scenario struct {
@@ -43,7 +43,7 @@ type Test struct {
 }
 
 func LoadScenario(path string) (*Scenario, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

@@ -66,13 +66,16 @@ There are now three new agent commands specific to the controller.
 
 ```shell
 # Adding Members
-ziti agent controller raft-join <other controller raft address>
+ziti agent cluster add <other controller raft address>
 
 # Listing Members
-ziti agent controller raft-list 
+ziti agent cluster list
 
 # Removing Members
-ziti agent controller raft-remove <controller id>
+ziti agent cluster remove <controller id>
+
+# Transfer Leadership
+ziti agent cluster transfer-leadership [new leader id]
 ```
 
 #### Edge Admin Initialization

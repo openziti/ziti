@@ -21,10 +21,9 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"io"
-	"io/ioutil"
-
 	"github.com/pkg/errors"
+	"io"
+	"os"
 
 	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
@@ -76,7 +75,7 @@ func runCreateConfig(o *createConfigOptions) error {
 			return errors.New("config json specified both in file and on command line. please pick one")
 		}
 		var err error
-		if jsonBytes, err = ioutil.ReadFile(o.jsonFile); err != nil {
+		if jsonBytes, err = os.ReadFile(o.jsonFile); err != nil {
 			return fmt.Errorf("failed to read config json file %v: %w", o.jsonFile, err)
 		}
 	}

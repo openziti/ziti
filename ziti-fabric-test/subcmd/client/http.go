@@ -22,12 +22,12 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/router/xgress_transport"
-	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/identity"
+	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
 	"github.com/spf13/cobra"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 )
@@ -83,7 +83,7 @@ func doHttp(cmd *cobra.Command, args []string) {
 				request.Host = httpCmdHost
 			}
 			if response, err := c.Do(request); err == nil {
-				body, err := ioutil.ReadAll(response.Body)
+				body, err := io.ReadAll(response.Body)
 				if err != nil {
 					panic(err)
 				}

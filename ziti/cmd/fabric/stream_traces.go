@@ -192,13 +192,13 @@ func (self *streamTracesAction) DecodeTraceAndFormat(decode []byte) string {
 				out += k
 				out += "=["
 				v := meta[k]
-				switch v.(type) {
+				switch val := v.(type) {
 				case string:
-					out += v.(string)
+					out += val
 				case float64:
-					out += fmt.Sprintf("%0.0f", v.(float64))
+					out += fmt.Sprintf("%0.0f", val)
 				case bool:
-					out += fmt.Sprintf("%t", v.(bool))
+					out += fmt.Sprintf("%t", val)
 				default:
 					out += fmt.Sprintf("<%s>", reflect.TypeOf(v))
 				}
