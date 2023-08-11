@@ -7,8 +7,10 @@ replace github.com/openziti/ziti => ../
 require (
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.7.0
+	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/michaelquigley/pfxlog v0.6.10
+	github.com/openziti/agent v1.0.15
 	github.com/openziti/channel/v2 v2.0.91
 	github.com/openziti/edge v0.24.381
 	github.com/openziti/fablab v0.5.5
@@ -20,11 +22,14 @@ require (
 	github.com/openziti/transport/v2 v2.0.99
 	github.com/openziti/ziti v0.28.3
 	github.com/pkg/errors v0.9.1
+	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/sirupsen/logrus v1.9.3
+	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	go.etcd.io/bbolt v1.3.7
 	golang.org/x/net v0.14.0
 	google.golang.org/protobuf v1.31.0
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
@@ -75,7 +80,6 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230716120725-531d2d74bc12 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/schema v1.2.0 // indirect
@@ -125,7 +129,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/openziti/agent v1.0.15 // indirect
+	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/edge-api v0.25.31 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
 	github.com/openziti/metrics v1.2.31 // indirect
@@ -142,7 +146,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
 	github.com/rabbitmq/amqp091-go v1.8.1 // indirect
-	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
 	github.com/rs/cors v1.9.0 // indirect
@@ -153,7 +156,6 @@ require (
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
-	github.com/spf13/cobra v1.7.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.10.0 // indirect
@@ -188,7 +190,6 @@ require (
 	gopkg.in/ini.v1 v1.66.2 // indirect
 	gopkg.in/resty.v1 v1.12.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 	rsc.io/goversion v1.2.0 // indirect
