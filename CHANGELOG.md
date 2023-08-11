@@ -193,6 +193,7 @@ However, newer Edge Routers should be able to join older network in some circums
     * [Issue #65](https://github.com/openziti/ziti/issues/65) - Add ECDSA support to PKI subcmd
     * [Issue #1212](https://github.com/openziti/ziti/issues/1212) - getZiti fails on Mac OS
     * [Issue #1220](https://github.com/openziti/ziti/issues/1220) - Fixed getZiti function not respecting user input for custom path
+    * [Issue #1219](https://github.com/openziti/ziti/issues/1219) - Added check for IPs provided as a DNS SANs entry, IPs will be ignored and not added as a DNS entry in the expressInstall PKI or router config generation.
 
 # Release 0.29.0
 

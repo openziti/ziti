@@ -296,7 +296,7 @@ func TestAltServerCerts(t *testing.T) {
 	SetZitiRouterIdentity(rtv, "routerTest")
 
 	//with only ZITI_ALT_SERVER_CERT set, should be false/blank
-	assert.Equal(t, "#", rtv.AltCertsEnabled)
+	assert.False(t, rtv.AltCertsEnabled)
 	assert.Equal(t, "", rtv.AltServerCert)
 	assert.Equal(t, "", rtv.AltServerKey)
 
@@ -304,7 +304,7 @@ func TestAltServerCerts(t *testing.T) {
 	rtv = &RouterTemplateValues{}
 	SetZitiRouterIdentity(rtv, "routerTest")
 
-	assert.Equal(t, "", rtv.AltCertsEnabled)
+	assert.True(t, rtv.AltCertsEnabled)
 	assert.Equal(t, certPath, rtv.AltServerCert)
 	assert.Equal(t, keyPath, rtv.AltServerKey)
 }

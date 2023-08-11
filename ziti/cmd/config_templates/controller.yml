@@ -14,9 +14,9 @@ identity:
   server_cert: "{{ .Controller.Identity.ServerCert }}"
   key:         "{{ .Controller.Identity.Key }}"
   ca:          "{{ .Controller.Identity.Ca }}"
-  {{ .Controller.Web.Identity.AltCertsEnabled }}alt_server_certs:
-  {{ .Controller.Web.Identity.AltCertsEnabled }}  - server_cert:  "{{ .Controller.Web.Identity.AltServerCert }}"
-  {{ .Controller.Web.Identity.AltCertsEnabled }}    server_key:   "{{ .Controller.Web.Identity.AltServerKey }}"
+  {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}alt_server_certs:
+  {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}  - server_cert:  "{{ .Controller.Web.Identity.AltServerCert }}"
+  {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}    server_key:   "{{ .Controller.Web.Identity.AltServerKey }}"
 
 # Network Configuration
 #
@@ -168,9 +168,9 @@ web:
       key:         "{{ .Controller.Web.Identity.Key }}"
       server_cert: "{{ .Controller.Web.Identity.ServerCert }}"
       cert:        "{{ .Controller.Web.Identity.Cert }}"
-      {{ .Controller.Web.Identity.AltCertsEnabled }}alt_server_certs:
-      {{ .Controller.Web.Identity.AltCertsEnabled }}- server_cert: "{{ .Controller.Web.Identity.AltServerCert }}"
-      {{ .Controller.Web.Identity.AltCertsEnabled }}  server_key:  "{{ .Controller.Web.Identity.AltServerKey }}"
+      {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}alt_server_certs:
+      {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}- server_cert: "{{ .Controller.Web.Identity.AltServerCert }}"
+      {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}  server_key:  "{{ .Controller.Web.Identity.AltServerKey }}"
       
     # options - optional
     # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
