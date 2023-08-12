@@ -21,8 +21,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"io"
 	"math"
 	"os"
@@ -56,11 +54,7 @@ func newCreateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		}
 	}
 
-	cmd := &cobra.Command{
-		Use:   "identity",
-		Short: "creates a new identity managed by the Ziti Edge Controller",
-		Long:  "creates a new identity managed by the Ziti Edge Controller",
-	}
+	cmd := newCreateIdentityOfTypeCmd("identity", newOptions())
 
 	cmd.AddCommand(newCreateIdentityOfTypeCmd("device", newOptions()))
 	cmd.AddCommand(newCreateIdentityOfTypeCmd("user", newOptions()))
@@ -69,19 +63,24 @@ func newCreateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *cobra.Command {
+func newCreateIdentityOfTypeCmd(name string, options *createIdentityOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   idType + " <name>",
-		Short: "creates a new " + idType + " identity managed by the Ziti Edge Controller",
-		Long:  "creates a new " + idType + " identity managed by the Ziti Edge Controller",
+		Use:   name + " <name>",
+		Short: "creates a new identity managed by the Ziti Edge Controller",
+		Long:  "creates a new identity managed by the Ziti Edge Controller",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateIdentity(idType, options)
+			err := runCreateIdentity(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
+	}
+
+	if name != "identity" {
+		cmd.Hidden = true
+		cmd.Deprecated = "this command is deprecated, specifying identity type is no longer required"
 	}
 
 	// allow interspersing positional args and flags
@@ -103,11 +102,10 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 	return cmd
 }
 
-func runCreateIdentity(idType string, o *createIdentityOptions) error {
+func runCreateIdentity(o *createIdentityOptions) error {
 	entityData := gabs.New()
 	api.SetJSONValue(entityData, o.Args[0], "name")
-	idType = cases.Title(language.English).String(idType)
-	api.SetJSONValue(entityData, idType, "type")
+	api.SetJSONValue(entityData, "Default", "type")
 
 	o.username = strings.TrimSpace(o.username)
 	if o.username != "" {
