@@ -25,6 +25,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/common/eid"
 	"github.com/openziti/sdk-golang/ziti"
 	"math/big"
@@ -243,7 +244,7 @@ func (entity *terminator) fromJson(ctx *TestContext, c *gabs.Container) {
 func newTestIdentity(isAdmin bool, roleAttributes ...string) *identity {
 	return &identity{
 		name:           eid.New(),
-		identityType:   "User",
+		identityType:   string(rest_model.IdentityTypeDefault),
 		isAdmin:        isAdmin,
 		roleAttributes: roleAttributes,
 	}

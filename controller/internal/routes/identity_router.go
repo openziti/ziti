@@ -192,6 +192,9 @@ func (r *IdentityRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func getIdentityTypeId(ae *env.AppEnv, identityType rest_model.IdentityType) string {
 	//todo: Remove this, should be identityTypeId coming in through the API so we can defer this lookup and subsequent checks to the handlers
+	if identityType == rest_model.IdentityTypeDevice || identityType == rest_model.IdentityTypeService || identityType == rest_model.IdentityTypeUser {
+		return persistence.DefaultIdentityType
+	}
 	identityTypeId := ""
 	if identityType, err := ae.Managers.IdentityType.ReadByName(string(identityType)); identityType != nil && err == nil {
 		identityTypeId = identityType.Id

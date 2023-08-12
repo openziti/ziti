@@ -1,5 +1,4 @@
 //go:build perftests
-// +build perftests
 
 package tests
 
@@ -266,7 +265,7 @@ func (ctx *modelPerf) createIdentities(spec *perfScenarioSpec) {
 				Id: id,
 			},
 			Name:           id,
-			IdentityTypeId: "User",
+			IdentityTypeId: string(rest_model.IdentityTypeDefault),
 			IsDefaultAdmin: false,
 			IsAdmin:        false,
 			RoleAttributes: spec.identityAttrs[i],

@@ -175,17 +175,12 @@ func (module *EnrollModuleCa) completeCertAuthenticatorEnrollment(log *logrus.En
 
 	log = log.WithField("determinedName", identityName)
 
-	identType, err := module.env.GetManagers().IdentityType.ReadByName("Device")
-	if err != nil {
-		return nil, err
-	}
-
 	identity := &Identity{
 		BaseEntity: models.BaseEntity{
 			Id: identityId,
 		},
 		Name:           identityName,
-		IdentityTypeId: identType.Id,
+		IdentityTypeId: persistence.DefaultIdentityType,
 		IsDefaultAdmin: false,
 		IsAdmin:        false,
 		RoleAttributes: ca.IdentityRoles,
@@ -246,17 +241,12 @@ func (module *EnrollModuleCa) completeExternalIdEnrollment(log *logrus.Entry, co
 
 	log = log.WithField("determinedName", identityName)
 
-	identType, err := module.env.GetManagers().IdentityType.ReadByName("Device")
-	if err != nil {
-		return nil, err
-	}
-
 	identity := &Identity{
 		BaseEntity: models.BaseEntity{
 			Id: identityId,
 		},
 		Name:           identityName,
-		IdentityTypeId: identType.Id,
+		IdentityTypeId: persistence.DefaultIdentityType,
 		IsDefaultAdmin: false,
 		IsAdmin:        false,
 		RoleAttributes: ca.IdentityRoles,
@@ -264,7 +254,7 @@ func (module *EnrollModuleCa) completeExternalIdEnrollment(log *logrus.Entry, co
 
 	identity.ExternalId = &externalId
 
-	if err = module.env.GetManagers().Identity.Create(identity, context.GetChangeContext()); err != nil {
+	if err := module.env.GetManagers().Identity.Create(identity, context.GetChangeContext()); err != nil {
 		log.WithError(err).Error("failed to create identity, enrollment failed")
 		return nil, err
 	}

@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -22,6 +21,7 @@ package tests
 import (
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_model"
 	"net/http"
 	"testing"
 )
@@ -40,7 +40,7 @@ func Test_EnrollmentUpdb(t *testing.T) {
 		updbName := uuid.New().String()
 		updbUsername := uuid.New().String()
 		updbPassword := uuid.New().String()
-		updbType := "User"
+		updbType := rest_model.IdentityTypeDefault
 
 		_, err := updbCreate.Set(updbName, "name")
 		ctx.Req.NoError(err)
