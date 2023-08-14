@@ -42,10 +42,10 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	}
 
 	// Set advertised host
-	advertisedHost := os.Getenv(constants.ZitiEdgeRouterAdvertisedHostVarName)
+	advertisedAddress := os.Getenv(constants.ZitiEdgeRouterAdvertisedAddressVarName)
 	resolvedHostname, _ := os.Hostname()
-	if advertisedHost != "" {
-		r.Edge.AdvertisedHost = advertisedHost
+	if advertisedAddress != "" {
+		r.Edge.AdvertisedHost = advertisedAddress
 	} else {
 		// If advertised host is not provided, set to IP override, or default to resolved hostname
 		if edgeRouterIPOverride != "" {
