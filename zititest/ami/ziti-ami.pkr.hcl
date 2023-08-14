@@ -122,22 +122,18 @@ build {
 
       "cloud-init status --wait",
 
-      # Add metricsbeat sources
-      "curl --fail --silent --show-error --location https://artifacts.elastic.co/GPG-KEY-elasticsearch | gpg --dearmor | sudo dd of=/usr/share/keyrings/elasticsearch-archive-keyring.gpg",
-      "echo \"deb [arch=amd64 signed-by=/usr/share/keyrings/elasticsearch-archive-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main\" | sudo tee -a /etc/apt/sources.list.d/elastic-8.x.list",
-
       # Linux updates/package installs
-      "sudo apt-get update -y",
-      "sudo apt install awscli --no-install-recommends -y",
-      "sudo apt  install --no-install-recommends jq -y",
+      "sudo apt-get -qq -y update",
+      "sudo apt-get -qq -y --no-install-recommends install awscli",
+      "sudo apt-get -qq -y --no-install-recommends install jq",
 
       # Install filebeat
       "curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.17.5-amd64.deb",
-      "sudo dpkg -i filebeat-7.17.5-amd64.deb",
+      "sudo dpkg -i -y filebeat-7.17.5-amd64.deb",
 
       # Install metricbeat
       "curl -L -O https://artifacts.elastic.co/downloads/beats/metricbeat/metricbeat-7.17.5-amd64.deb",
-      "sudo dpkg -i metricbeat-7.17.5-amd64.deb",
+      "sudo dpkg -i -y metricbeat-7.17.5-amd64.deb",
 
       # add consul sources
       "curl --fail --silent --show-error --location https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo dd of=/usr/share/keyrings/hashicorp-archive-keyring.gpg",
@@ -157,9 +153,9 @@ build {
       "sudo mv /home/ubuntu/filebeat.yml /etc/filebeat/",
       "sudo mv  /home/ubuntu/system.yml /etc/filebeat/modules.d/system.yml",
 
-      "sudo apt install -y iperf3 tcpdump sysstat",
+      "sudo apt-get -qq -y install iperf3 tcpdump sysstat",
       "sudo mv /home/ubuntu/metricbeat.yml /etc/metricbeat/",
-      "sudo apt install -y consul",
+      "sudo apt-get -qq -y install consul",
       "sudo systemctl enable metricbeat",
       "sudo systemctl start metricbeat",
       "sudo systemctl enable filebeat",
