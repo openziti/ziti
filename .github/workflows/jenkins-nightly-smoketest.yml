@@ -5,6 +5,11 @@ on:
     # Runs "at minute 28 past every 0400 GMT from GitHub main branch"
     - cron: '28 4 * * *'
 
+# cancel older, redundant runs of same workflow on same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   jenkins-nightly-smoketest:
     runs-on: ubuntu-latest
