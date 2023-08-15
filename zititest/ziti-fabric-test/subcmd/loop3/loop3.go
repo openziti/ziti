@@ -17,7 +17,7 @@
 package loop3
 
 import (
-	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
+	"github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd"
 	"github.com/spf13/cobra"
 )
 
