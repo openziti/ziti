@@ -3,7 +3,7 @@ package testutil
 import (
 	"fmt"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"

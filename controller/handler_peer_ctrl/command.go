@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/common/metrics"
-	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/fabric/common/pb/cmd_pb"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/sirupsen/logrus"
 	"time"

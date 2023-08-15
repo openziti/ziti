@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/common/ctrl_msg"
 	"github.com/openziti/fabric/common/logcontext"
-	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_xgress"
 	"github.com/openziti/fabric/router/xgress"

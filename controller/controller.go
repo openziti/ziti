@@ -51,7 +51,7 @@ import (
 	"github.com/openziti/fabric/controller/xt_weighted"
 	"github.com/openziti/fabric/common/health"
 	fabricMetrics "github.com/openziti/fabric/common/metrics"
-	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/openziti/fabric/common/profiler"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"

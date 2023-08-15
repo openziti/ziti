@@ -18,7 +18,7 @@ package raft
 
 import (
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/fabric/common/pb/cmd_pb"
 	"time"
 
 	"github.com/hashicorp/raft"

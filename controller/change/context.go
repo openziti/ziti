@@ -18,7 +18,7 @@ package change
 
 import (
 	"context"
-	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/fabric/common/pb/cmd_pb"
 	"github.com/openziti/storage/boltz"
 )
 

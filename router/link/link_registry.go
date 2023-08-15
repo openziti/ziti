@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/inspect"
-	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/v2/goroutines"
