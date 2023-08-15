@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/fabric/controller/event"
 	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/foundation/v2/goroutines"
 	"runtime/debug"
@@ -30,7 +31,6 @@ import (
 	"time"
 
 	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/versions"
 
 	"github.com/michaelquigley/pfxlog"

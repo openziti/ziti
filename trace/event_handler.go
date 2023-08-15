@@ -18,7 +18,7 @@ package trace
 
 import (
 	"github.com/openziti/channel/v2/trace/pb"
-	"github.com/openziti/fabric/event"
+	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/foundation/v2/concurrenz"
 )
 

@@ -18,12 +18,12 @@ package events
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/event"
 	"io"
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
 )

@@ -17,7 +17,7 @@
 package events
 
 import (
-	"github.com/openziti/fabric/event"
+	"github.com/openziti/fabric/controller/event"
 	"github.com/pkg/errors"
 	"reflect"
 )

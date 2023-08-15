@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/event"
+	event2 "github.com/openziti/fabric/controller/event"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -38,7 +38,7 @@ const (
 	fieldIndex = "raftIndex"
 )
 
-func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, eventDispatcher event.Dispatcher) *BoltDbFsm {
+func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, eventDispatcher event2.Dispatcher) *BoltDbFsm {
 	return &BoltDbFsm{
 		decoders:        decoders,
 		dbPath:          path.Join(dataDir, "ctrl-ha.db"),
@@ -52,7 +52,7 @@ type BoltDbFsm struct {
 	dbPath          string
 	decoders        command.Decoders
 	indexTracker    IndexTracker
-	eventDispatcher event.Dispatcher
+	eventDispatcher event2.Dispatcher
 	currentState    *raft.Configuration
 	index           uint64
 }
@@ -122,10 +122,10 @@ func (self *BoltDbFsm) GetCurrentState(raft *raft.Raft) (uint64, *raft.Configura
 
 func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Configuration) {
 	self.currentState = &configuration
-	evt := event.NewClusterEvent(event.ClusterMembersChanged)
+	evt := event2.NewClusterEvent(event2.ClusterMembersChanged)
 	evt.Index = index
 	for _, srv := range configuration.Servers {
-		evt.Peers = append(evt.Peers, &event.ClusterPeer{
+		evt.Peers = append(evt.Peers, &event2.ClusterPeer{
 			Id:   string(srv.ID),
 			Addr: string(srv.Address),
 		})
