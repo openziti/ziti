@@ -1223,8 +1223,8 @@ After=network.target
 [Service]
 User=root
 EnvironmentFile=${ZITI_HOME}/browzer.env
-WorkingDirectory=${ZITI_HOME}/ziti-http-agent
-ExecStart=${node_bin} "${ZITI_HOME}/ziti-http-agent/index.js"
+WorkingDirectory=${ZITI_HOME}/ziti-browzer-bootstrapper
+ExecStart=${node_bin} "${ZITI_HOME}/ziti-browzer-bootstrapper/index.js"
 Restart=always
 RestartSec=2
 LimitNOFILE=65536
