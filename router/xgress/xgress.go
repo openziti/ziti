@@ -32,7 +32,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/inspect"
-	"github.com/openziti/fabric/logcontext"
+	"github.com/openziti/fabric/common/logcontext"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/info"
