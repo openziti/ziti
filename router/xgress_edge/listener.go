@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/openziti/edge/common/cert"
 	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
-	fabricMetrics "github.com/openziti/fabric/metrics"
+	fabricMetrics "github.com/openziti/fabric/common/metrics"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"time"

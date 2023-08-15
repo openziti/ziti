@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/event"
+	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )

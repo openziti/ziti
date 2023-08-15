@@ -19,8 +19,8 @@ package events
 import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/event"
-	"github.com/openziti/fabric/events"
+	"github.com/openziti/fabric/controller/event"
+	"github.com/openziti/fabric/controller/events"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
 	"io"

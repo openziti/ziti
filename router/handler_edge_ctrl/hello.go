@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/router/fabric"
-	"github.com/openziti/fabric/build"
+	"github.com/openziti/fabric/common/build"
 	"google.golang.org/protobuf/proto"
 	"strconv"
 )

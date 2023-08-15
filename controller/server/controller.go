@@ -36,7 +36,7 @@ import (
 	"github.com/openziti/edge/controller/handler_edge_ctrl"
 	_ "github.com/openziti/edge/controller/internal/routes"
 	"github.com/openziti/edge/controller/model"
-	"github.com/openziti/fabric/config"
+	"github.com/openziti/fabric/common/config"
 	"github.com/openziti/storage/boltz"
 )
 

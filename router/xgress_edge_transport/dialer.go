@@ -17,14 +17,14 @@
 package xgress_edge_transport
 
 import (
-	"github.com/openziti/fabric/ctrl_msg"
+	"github.com/openziti/fabric/common/ctrl_msg"
 	"github.com/pkg/errors"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/logcontext"
+	"github.com/openziti/fabric/common/logcontext"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
