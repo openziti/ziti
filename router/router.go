@@ -21,7 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/fabric/config"
+	"github.com/openziti/fabric/common/config"
 	"github.com/openziti/fabric/router/link"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"

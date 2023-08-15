@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/handler_common"
+	"github.com/openziti/fabric/common/handler_common"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"io"
 )

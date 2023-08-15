@@ -17,7 +17,7 @@
 package xgress_transport
 
 import (
-	"github.com/openziti/fabric/ctrl_msg"
+	"github.com/openziti/fabric/common/ctrl_msg"
 	"github.com/openziti/fabric/router/env"
 	"time"
 
