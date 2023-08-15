@@ -138,11 +138,10 @@ func (e *ZitiPKI) Sign(signer *certificate.Bundle, req *Request) error {
 			return fmt.Errorf("failed generating private key: %v", err)
 		}
 	} else {
-		pk, err := e.GetPrivateKey(signer.Name, req.KeyName)
+		privateKey, err = e.GetPrivateKey(signer.Name, req.KeyName)
 		if err != nil {
 			return fmt.Errorf("failed fetching private key: %v", err)
 		}
-		privateKey = pk.(*rsa.PrivateKey)
 	}
 
 	publicKey, err := publicKeyFromPrivate(privateKey)
