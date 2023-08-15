@@ -6,6 +6,7 @@
 
 * github.com/openziti/ziti: [v0.30.0 -> v0.30.1](https://github.com/openziti/ziti/compare/v0.28.4...v0.29.0)
   * [Issue #1225](https://github.com/openziti/ziti/issues/1225) - Updated ZITI_ROUTER_ADVERTISED_HOST to use the more common naming convention of ZITI_ROUTER_ADVERTISED_ADDRESS
+  * [Issue #1233](https://github.com/openziti/ziti/issues/1233) - Added `lsof` to the list of prerequisites to be checked during quickstart
 
 # Release 0.30.0
 
