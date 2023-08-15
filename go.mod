@@ -29,7 +29,7 @@ require (
 	github.com/miekg/dns v1.1.55
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openziti/channel/v2 v2.0.91
-	github.com/openziti/edge-api v0.25.31
+	github.com/openziti/edge-api v0.25.32
 	github.com/openziti/fabric v0.24.2
 	github.com/openziti/foundation/v2 v2.0.29
 	github.com/openziti/identity v1.0.60
@@ -121,7 +121,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
 	github.com/rabbitmq/amqp091-go v1.8.1 // indirect
-	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/rs/cors v1.9.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.7 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
