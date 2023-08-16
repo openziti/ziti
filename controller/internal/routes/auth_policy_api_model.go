@@ -62,6 +62,10 @@ func MapAuthPolicyToRestModel(model *model.AuthPolicy) (*rest_model.AuthPolicyDe
 		},
 	}
 
+	if ret.Primary.ExtJWT.AllowedSigners == nil {
+		ret.Primary.ExtJWT.AllowedSigners = []string{}
+	}
+
 	return ret, nil
 }
 
