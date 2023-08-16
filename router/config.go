@@ -138,6 +138,7 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
+	Proxy   *transport.ProxyConfiguration
 	Plugins []string
 	src     map[interface{}]interface{}
 	path    string
@@ -709,6 +710,18 @@ func LoadConfig(path string) (*Config, error) {
 			}
 		} else {
 			pfxlog.Logger().Warn("invalid plugins value")
+		}
+	}
+
+	if value, found := cfgmap[transport.KeyProxy]; found {
+		if proxyMap, ok := value.(map[interface{}]interface{}); ok {
+			proxyConfig, err := transport.LoadProxyConfiguration(proxyMap)
+			if err != nil {
+				return nil, err
+			}
+			cfg.Proxy = proxyConfig
+		} else {
+			pfxlog.Logger().Warn("invalid proxy configuration, must be map")
 		}
 	}
 

@@ -50,21 +50,14 @@ func (self channelType) String() string {
 
 func NewFactory(accepter xlink.Acceptor,
 	bindHandlerFactory BindHandlerFactory,
-	c transport.Configuration,
+	tcfg transport.Configuration,
 	xlinkRegistry xlink.Registry,
 	metricsRegistry metrics.Registry) xlink.Factory {
-
-	cfg := make(transport.Configuration)
-	for k, v := range c {
-		cfg[k] = v
-	}
-
-	cfg["protocol"] = append(c.Protocols(), "ziti-link")
 
 	return &factory{
 		acceptor:           accepter,
 		bindHandlerFactory: bindHandlerFactory,
-		transportConfig:    cfg,
+		transportConfig:    tcfg,
 		xlinkRegistry:      xlinkRegistry,
 		metricsRegistry:    metricsRegistry,
 	}

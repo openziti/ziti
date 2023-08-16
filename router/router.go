@@ -389,7 +389,15 @@ func (self *Router) registerComponents() error {
 		self.metricsRegistry,
 		self.xlinkRegistry,
 	)
-	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, self.config.Transport, self.xlinkRegistry, self.metricsRegistry)
+
+	linkTransportConfig := map[interface{}]interface{}{}
+	for k, v := range self.config.Transport {
+		linkTransportConfig[k] = v
+	}
+	linkTransportConfig[transport.KeyCachedProxyConfiguration] = self.config.Proxy
+	linkTransportConfig[transport.KeyProtocol] = append(transport.Configuration(self.config.Transport).Protocols(), "ziti-link")
+
+	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, linkTransportConfig, self.xlinkRegistry, self.metricsRegistry)
 
 	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
 	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self.ctrls))
@@ -462,7 +470,7 @@ func (self *Router) startXlinkListeners() {
 		}
 
 		if factory, found := self.xlinkFactories[binding]; found {
-			lmap["protocol"] = "ziti-link"
+			lmap[transport.KeyProtocol] = "ziti-link"
 			listener, err := factory.CreateListener(self.config.Id, self.forwarder, lmap)
 			if err != nil {
 				logrus.Fatalf("error creating Xlink listener (%v)", err)
@@ -602,7 +610,10 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 	dialer := channel.NewReconnectingDialerWithHandlerAndLocalBinding(self.config.Id, addr, self.config.Ctrl.LocalBinding, attributes, reconnectHandler)
 
 	bindHandler = channel.BindHandlers(bindHandler, self.ctrlBindhandler)
-	tcfg := transport.Configuration{"protocol": "ziti-ctrl"}
+	tcfg := transport.Configuration{
+		transport.KeyProtocol:                 "ziti-ctrl",
+		transport.KeyCachedProxyConfiguration: self.config.Proxy,
+	}
 	ch, err := channel.NewChannelWithTransportConfiguration("ctrl", dialer, bindHandler, self.config.Ctrl.Options, tcfg)
 	if err != nil {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
