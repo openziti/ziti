@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/network"
 
-	"github.com/openziti/fabric/rest_model"
+	"github.com/openziti/fabric/controller/rest_model"
 
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/stringz"

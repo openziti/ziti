@@ -20,9 +20,9 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/rest_model"
-	"github.com/openziti/fabric/rest_server/operations"
-	"github.com/openziti/fabric/rest_server/operations/inspect"
+	"github.com/openziti/fabric/controller/rest_model"
+	"github.com/openziti/fabric/controller/rest_server/operations"
+	"github.com/openziti/fabric/controller/rest_server/operations/inspect"
 	"github.com/openziti/foundation/v2/stringz"
 	"net/http"
 )

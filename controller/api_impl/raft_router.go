@@ -7,9 +7,9 @@ import (
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/network"
 	nfraft "github.com/openziti/fabric/controller/raft"
-	"github.com/openziti/fabric/rest_model"
-	"github.com/openziti/fabric/rest_server/operations"
-	"github.com/openziti/fabric/rest_server/operations/raft"
+	"github.com/openziti/fabric/controller/rest_model"
+	"github.com/openziti/fabric/controller/rest_server/operations"
+	"github.com/openziti/fabric/controller/rest_server/operations/raft"
 )
 
 func init() {

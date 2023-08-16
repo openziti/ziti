@@ -19,7 +19,7 @@ package api_impl
 import (
 	"encoding/json"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/rest_model"
+	"github.com/openziti/fabric/controller/rest_model"
 	"strings"
 )
 

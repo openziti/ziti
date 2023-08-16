@@ -1,6 +1,6 @@
 package api_impl
 
-import "github.com/openziti/fabric/rest_server/operations"
+import "github.com/openziti/fabric/controller/rest_server/operations"
 
 var routers []Router
 

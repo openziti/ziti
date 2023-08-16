@@ -2,7 +2,7 @@ package api_impl
 
 import (
 	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/rest_model"
+	"github.com/openziti/fabric/controller/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 )
