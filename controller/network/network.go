@@ -40,7 +40,7 @@ import (
 	"github.com/openziti/fabric/common/ctrl_msg"
 	"github.com/openziti/fabric/common/logcontext"
 	"github.com/openziti/fabric/common/pb/ctrl_pb"
-	"github.com/openziti/fabric/trace"
+	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/sequence"

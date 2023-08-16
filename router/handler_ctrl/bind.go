@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/fabric/common/metrics"
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"
-	"github.com/openziti/fabric/trace"
+	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

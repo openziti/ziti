@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/channel/v2"
 	trace_pb "github.com/openziti/channel/v2/trace/pb"
 	"github.com/openziti/fabric/common/pb/ctrl_pb"
-	"github.com/openziti/fabric/trace"
+	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/identity"
 	"google.golang.org/protobuf/proto"
 )

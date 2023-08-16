@@ -10,7 +10,7 @@ import (
 	"github.com/openziti/fabric/router/forwarder"
 	metrics2 "github.com/openziti/fabric/router/metrics"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/fabric/trace"
+	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/foundation/v2/concurrenz"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/metrics"

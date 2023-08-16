@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	metrics2 "github.com/openziti/fabric/router/metrics"
-	"github.com/openziti/fabric/trace"
+	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/metrics"
 )
@@ -53,7 +53,6 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		"routerVersion": self.router.VersionInfo.Version,
 	})
 
-	traceDispatchWrapper := trace.NewDispatchWrapper(self.network.GetEventDispatcher().Dispatch)
 	binding.AddTypedReceiveHandler(newCircuitRequestHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newRouteResultHandler(self.network, self.router))
 	binding.AddTypedReceiveHandler(newCircuitConfirmationHandler(self.network, self.router))
@@ -66,7 +65,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newVerifyRouterHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newMetricsHandler(self.network))
-	binding.AddTypedReceiveHandler(newTraceHandler(traceDispatchWrapper))
+	binding.AddTypedReceiveHandler(newTraceHandler(self.network.GetTraceController()))
 	binding.AddTypedReceiveHandler(newInspectHandler(self.network))
 	binding.AddTypedReceiveHandler(newQuiesceRouterHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newDequiesceRouterHandler(self.router, self.network))

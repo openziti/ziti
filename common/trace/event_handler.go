@@ -18,7 +18,6 @@ package trace
 
 import (
 	"github.com/openziti/channel/v2/trace/pb"
-	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/foundation/v2/concurrenz"
 )
 
@@ -41,23 +40,8 @@ type eventWrapper struct {
 	wrapped *trace_pb.ChannelMessage
 }
 
-func (event *eventWrapper) Handle() {
+func (event *eventWrapper) handle(impl *controllerImpl) {
 	for _, handler := range EventHandlerRegistry.Value() {
 		handler.Accept(event.wrapped)
 	}
-}
-
-func NewDispatchWrapper(delegate func(event event.Event)) EventHandler {
-	return &DispatchWrapper{
-		delegate: delegate,
-	}
-}
-
-type DispatchWrapper struct {
-	delegate func(event event.Event)
-}
-
-func (dispatchWrapper *DispatchWrapper) Accept(event *trace_pb.ChannelMessage) {
-	eventWrapper := &eventWrapper{wrapped: event}
-	dispatchWrapper.delegate(eventWrapper)
 }
