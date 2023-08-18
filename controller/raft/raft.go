@@ -21,9 +21,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/go-hclog"
+	"github.com/openziti/fabric/common/pb/cmd_pb"
 	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/fabric/controller/peermsg"
-	"github.com/openziti/fabric/common/pb/cmd_pb"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
@@ -57,7 +57,6 @@ type Config struct {
 	BootstrapMembers      []string
 	CommandHandlerOptions struct {
 		MaxQueueSize uint16
-		MaxWorkers   uint16
 	}
 
 	SnapshotInterval  *time.Duration
@@ -65,8 +64,9 @@ type Config struct {
 	TrailingLogs      *uint32
 	MaxAppendEntries  *uint32
 
-	HeartbeatTimeout   *time.Duration
 	ElectionTimeout    *time.Duration
+	CommitTimeout      *time.Duration
+	HeartbeatTimeout   *time.Duration
 	LeaderLeaseTimeout *time.Duration
 
 	LogLevel *string
@@ -88,6 +88,10 @@ func (self *Config) Configure(conf *raft.Config) {
 
 	if self.MaxAppendEntries != nil {
 		conf.MaxAppendEntries = int(*self.MaxAppendEntries)
+	}
+
+	if self.CommitTimeout != nil {
+		conf.CommitTimeout = *self.CommitTimeout
 	}
 
 	if self.ElectionTimeout != nil {

@@ -19,9 +19,9 @@ package handler_peer_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/common/metrics"
 	"github.com/openziti/fabric/common/pb/cmd_pb"
+	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -31,7 +31,7 @@ func newCommandHandler(controller *raft.Controller) channel.TypedReceiveHandler 
 	poolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(controller.Config.CommandHandlerOptions.MaxQueueSize),
 		MinWorkers:  0,
-		MaxWorkers:  uint32(controller.Config.CommandHandlerOptions.MaxWorkers),
+		MaxWorkers:  1, // we should only have one thing apply entries, so they don't get applied out of order
 		IdleTime:    time.Second,
 		CloseNotify: controller.GetCloseNotify(),
 		PanicHandler: func(err interface{}) {

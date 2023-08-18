@@ -25,11 +25,11 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/common/config"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/pb/mgmt_pb"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/raft"
-	"github.com/openziti/fabric/common/pb/ctrl_pb"
-	"github.com/openziti/fabric/common/pb/mgmt_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/storage/boltz"
@@ -48,7 +48,6 @@ const (
 	DefaultHealthChecksBoltCheckInitialDelay = 30 * time.Second
 
 	DefaultRaftCommandHandlerMaxQueueSize = 1000
-	DefaultRaftCommandHandlerMaxWorkers   = 10
 )
 
 type Config struct {
@@ -160,7 +159,6 @@ func LoadConfig(path string) (*Config, error) {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			controllerConfig.Raft = &raft.Config{}
 			controllerConfig.Raft.CommandHandlerOptions.MaxQueueSize = DefaultRaftCommandHandlerMaxQueueSize
-			controllerConfig.Raft.CommandHandlerOptions.MaxWorkers = DefaultRaftCommandHandlerMaxWorkers
 
 			if value, found := submap["dataDir"]; found {
 				controllerConfig.Raft.DataDir = value.(string)
@@ -189,6 +187,22 @@ func LoadConfig(path string) (*Config, error) {
 					controllerConfig.Raft.SnapshotInterval = &val
 				} else {
 					return nil, errors.Wrapf(err, "failed to parse raft.snapshotInterval value '%v", value)
+				}
+			}
+
+			if value, found := submap["commitTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.CommitTimeout = &val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.commitTimeout value '%v", value)
+				}
+			}
+
+			if value, found := submap["electionTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.ElectionTimeout = &val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.electionTimeout value '%v", value)
 				}
 			}
 
@@ -249,9 +263,6 @@ func LoadConfig(path string) (*Config, error) {
 				if chSubMap, ok := value.(map[interface{}]interface{}); ok {
 					if value, found := chSubMap["maxQueueSize"]; found {
 						controllerConfig.Raft.CommandHandlerOptions.MaxQueueSize = uint16(value.(int))
-					}
-					if value, found := chSubMap["maxWorkers"]; found {
-						controllerConfig.Raft.CommandHandlerOptions.MaxWorkers = uint16(value.(int))
 					}
 				} else {
 					return nil, errors.New("invalid commandHandler value, should be map")
