@@ -22,7 +22,6 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/latency"
 	"github.com/openziti/fabric/common/metrics"
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"
@@ -79,7 +78,6 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newUpdateCtrlAddressesHandler(self.ctrlAddressUpdater))
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
-	latency.AddLatencyProbeResponder(binding)
 
 	ctrl := self.env.GetNetworkControllers().GetNetworkController(binding.GetChannel().Id())
 	if ctrl == nil {

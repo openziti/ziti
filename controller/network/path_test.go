@@ -67,7 +67,7 @@ func TestSimplePath2(t *testing.T) {
 	assert.Equal(t, r1, path.EgressRouter())
 
 	terminator := &Terminator{Address: addr, Binding: "transport"}
-	routeMessages := path.CreateRouteMessages(0, "s0", terminator, time.Now().Add(DefaultNetworkOptionsRouteTimeout))
+	routeMessages := path.CreateRouteMessages(0, "s0", terminator, time.Now().Add(DefaultOptionsRouteTimeout))
 	assert.NotNil(t, routeMessages)
 	assert.Equal(t, 2, len(routeMessages))
 
@@ -141,7 +141,7 @@ func TestTransitPath2(t *testing.T) {
 	assert.Equal(t, r2, path.EgressRouter())
 
 	terminator := &Terminator{Address: addr, Binding: "transport"}
-	routeMessages := path.CreateRouteMessages(0, "s0", terminator, time.Now().Add(DefaultNetworkOptionsRouteTimeout))
+	routeMessages := path.CreateRouteMessages(0, "s0", terminator, time.Now().Add(DefaultOptionsRouteTimeout))
 	assert.NotNil(t, routeMessages)
 	assert.Equal(t, 3, len(routeMessages))
 

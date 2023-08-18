@@ -25,77 +25,75 @@ import (
 )
 
 const (
-	DefaultNetworkOptionsCycleSeconds             = 60
-	DefaultNetworkOptionsRouteTimeout             = 10 * time.Second
-	DefaultNetworkOptionsCreateCircuitRetries     = 2
-	DefaultNetworkOptionsCtrlChanLatencyInterval  = 10 * time.Second
-	DefaultNetworkOptionsPendingLinkTimeout       = 10 * time.Second
-	DefaultNetworkOptionsMinRouterCost            = 10
-	DefaultNetworkOptionsSmartRerouteMinCostDelta = 15
-	DefaultNetworkOptionsRouterConnectChurnLimit  = time.Minute
-	DefaultNetworkOptionsSmartRerouteFraction     = 0.02
-	DefaultNetworkOptionsSmartRerouteCap          = 4
-	DefaultNetworkOptionsInitialLinkLatency       = 65 * time.Second
-	DefaultNetworkOptionsMetricsReportInterval    = time.Minute
-	DefaultNetworkOptionsRouterCommQueueSize      = 100
-	DefaultNetworkOptionsRouterCommMaxWorkers     = 100
-	DefaultNetworkOptionsEnableLegacyLinkMgmt     = true
+	DefaultOptionsCreateCircuitRetries      = 2
+	DefaultOptionsCycleSeconds              = 60
+	DefaultOptionsEnableLegacyLinkMgmt      = true
+	DefaultOptionsInitialLinkLatency        = 65 * time.Second
+	DefaultOptionsPendingLinkTimeout        = 10 * time.Second
+	DefaultOptionsMetricsReportInterval     = time.Minute
+	DefaultOptionsMinRouterCost             = 10
+	DefaultOptionsRouterConnectChurnLimit   = time.Minute
+	DefaultOptionsRouterMessagingMaxWorkers = 100
+	DefaultOptionsRouterMessagingQueueSize  = 100
+	DefaultOptionsRouteTimeout              = 10 * time.Second
 
-	NetworkOptionsRouterCommMaxQueueSize = 1_000_000
-	NetworkOptionsRouterCommMaxWorkers   = 10_000
+	DefaultOptionsSmartRerouteCap          = 4
+	DefaultOptionsSmartRerouteFraction     = 0.02
+	DefaultOptionsSmartRerouteMinCostDelta = 15
+
+	OptionsRouterCommMaxQueueSize = 1_000_000
+	OptionsRouterCommMaxWorkers   = 10_000
 )
 
 type Options struct {
-	CycleSeconds uint32
-	Smart        struct {
-		RerouteFraction float32
-		RerouteCap      uint32
-		MinCostDelta    uint32
-	}
-	RouteTimeout            time.Duration
 	CreateCircuitRetries    uint32
-	CtrlChanLatencyInterval time.Duration
-	PendingLinkTimeout      time.Duration
-	MinRouterCost           uint16
-	RouterConnectChurnLimit time.Duration
+	CycleSeconds            uint32
+	EnableLegacyLinkMgmt    bool
 	InitialLinkLatency      time.Duration
-	MetricsReportInterval   time.Duration
 	IntervalAgeThreshold    time.Duration
+	MetricsReportInterval   time.Duration
+	MinRouterCost           uint16
+	PendingLinkTimeout      time.Duration
+	RouteTimeout            time.Duration
+	RouterConnectChurnLimit time.Duration
 	RouterComm              struct {
 		QueueSize  uint32
 		MaxWorkers uint32
 	}
-	EnableLegacyLinkMgmt bool
+	Smart struct {
+		RerouteFraction float32
+		RerouteCap      uint32
+		MinCostDelta    uint32
+	}
 }
 
 func DefaultOptions() *Options {
 	options := &Options{
+		CreateCircuitRetries:  DefaultOptionsCreateCircuitRetries,
+		CycleSeconds:          DefaultOptionsCycleSeconds,
+		EnableLegacyLinkMgmt:  DefaultOptionsEnableLegacyLinkMgmt,
+		InitialLinkLatency:    DefaultOptionsInitialLinkLatency,
+		MetricsReportInterval: DefaultOptionsMetricsReportInterval,
+		MinRouterCost:         DefaultOptionsMinRouterCost,
+		PendingLinkTimeout:    DefaultOptionsPendingLinkTimeout,
+		RouterComm: struct {
+			QueueSize  uint32
+			MaxWorkers uint32
+		}{
+			QueueSize:  DefaultOptionsRouterMessagingQueueSize,
+			MaxWorkers: DefaultOptionsRouterMessagingMaxWorkers,
+		},
+		RouterConnectChurnLimit: DefaultOptionsRouterConnectChurnLimit,
+		RouteTimeout:            DefaultOptionsRouteTimeout,
 		Smart: struct {
 			RerouteFraction float32
 			RerouteCap      uint32
 			MinCostDelta    uint32
 		}{
-			RerouteFraction: DefaultNetworkOptionsSmartRerouteFraction,
-			RerouteCap:      DefaultNetworkOptionsSmartRerouteCap,
-			MinCostDelta:    DefaultNetworkOptionsSmartRerouteMinCostDelta,
+			RerouteFraction: DefaultOptionsSmartRerouteFraction,
+			RerouteCap:      DefaultOptionsSmartRerouteCap,
+			MinCostDelta:    DefaultOptionsSmartRerouteMinCostDelta,
 		},
-		CycleSeconds:            DefaultNetworkOptionsCycleSeconds,
-		RouteTimeout:            DefaultNetworkOptionsRouteTimeout,
-		CreateCircuitRetries:    DefaultNetworkOptionsCreateCircuitRetries,
-		CtrlChanLatencyInterval: DefaultNetworkOptionsCtrlChanLatencyInterval,
-		PendingLinkTimeout:      DefaultNetworkOptionsPendingLinkTimeout,
-		MinRouterCost:           DefaultNetworkOptionsMinRouterCost,
-		RouterConnectChurnLimit: DefaultNetworkOptionsRouterConnectChurnLimit,
-		InitialLinkLatency:      DefaultNetworkOptionsInitialLinkLatency,
-		MetricsReportInterval:   DefaultNetworkOptionsMetricsReportInterval,
-		RouterComm: struct {
-			QueueSize  uint32
-			MaxWorkers uint32
-		}{
-			QueueSize:  DefaultNetworkOptionsRouterCommQueueSize,
-			MaxWorkers: DefaultNetworkOptionsRouterCommMaxWorkers,
-		},
-		EnableLegacyLinkMgmt: DefaultNetworkOptionsEnableLegacyLinkMgmt,
 	}
 	return options
 }
@@ -127,14 +125,6 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.CreateCircuitRetries = uint32(createCircuitRetries)
 		} else {
 			return nil, errors.New("invalid value for 'createCircuitRetries'")
-		}
-	}
-
-	if value, found := src["ctrlChanLatencyIntervalSeconds"]; found {
-		if val, ok := value.(int); ok {
-			options.CtrlChanLatencyInterval = time.Duration(val) * time.Second
-		} else {
-			return nil, errors.New("invalid value for 'ctrlChanLatencyIntervalSeconds'")
 		}
 	}
 
@@ -175,8 +165,8 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 					if queueSize < 0 {
 						return nil, errors.New("invalid value for 'routerMessaging.queueSize', must be greater than or equal to 0")
 					}
-					if queueSize > NetworkOptionsRouterCommMaxQueueSize {
-						return nil, errors.Errorf("invalid value for 'routerMessaging.queueSize', must be less than or equal to %v", NetworkOptionsRouterCommMaxQueueSize)
+					if queueSize > OptionsRouterCommMaxQueueSize {
+						return nil, errors.Errorf("invalid value for 'routerMessaging.queueSize', must be less than or equal to %v", OptionsRouterCommMaxQueueSize)
 					}
 					options.RouterComm.QueueSize = uint32(queueSize)
 				} else {
@@ -189,8 +179,8 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 					if maxWorkers < 1 {
 						return nil, errors.New("invalid value for 'routerMessaging.maxWorkers', must be greater than 0")
 					}
-					if maxWorkers > NetworkOptionsRouterCommMaxWorkers {
-						return nil, errors.Errorf("invalid value for 'routerMessaging.maxWorkers', must be less than or equal to %v", NetworkOptionsRouterCommMaxWorkers)
+					if maxWorkers > OptionsRouterCommMaxWorkers {
+						return nil, errors.Errorf("invalid value for 'routerMessaging.maxWorkers', must be less than or equal to %v", OptionsRouterCommMaxWorkers)
 					}
 
 					options.RouterComm.MaxWorkers = uint32(maxWorkers)

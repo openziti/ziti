@@ -21,8 +21,8 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/fabric/controller/event"
 	fabricMetrics "github.com/openziti/fabric/common/metrics"
+	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/foundation/v2/goroutines"
 	"runtime/debug"
 	"sort"
@@ -35,12 +35,12 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/common/ctrl_msg"
 	"github.com/openziti/fabric/common/logcontext"
 	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/openziti/fabric/common/trace"
+	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/sequence"
@@ -925,7 +925,7 @@ func (network *Network) watchdog() {
 func (network *Network) handleLinkChanged(l *Link) {
 	log := logrus.WithField("linkId", l.Id)
 	log.Info("changed link")
-	if err := network.rerouteLink(l, time.Now().Add(DefaultNetworkOptionsRouteTimeout)); err != nil {
+	if err := network.rerouteLink(l, time.Now().Add(DefaultOptionsRouteTimeout)); err != nil {
 		log.WithError(err).Error("unexpected error rerouting link")
 	}
 }
@@ -1003,7 +1003,7 @@ func (network *Network) rerouteCircuitWithTries(circuit *Circuit, retries int) b
 	log := pfxlog.Logger().WithField("circuitId", circuit.Id)
 
 	for i := 0; i < retries; i++ {
-		deadline := time.Now().Add(DefaultNetworkOptionsRouteTimeout)
+		deadline := time.Now().Add(DefaultOptionsRouteTimeout)
 		err := network.rerouteCircuit(circuit, deadline)
 		if err == nil {
 			return true

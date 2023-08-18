@@ -31,8 +31,8 @@ func (network *Network) smart() {
 	candidates := network.getRerouteCandidates()
 
 	for _, update := range candidates {
-		if retry := network.smartReroute(update.circuit, update.path, time.Now().Add(DefaultNetworkOptionsRouteTimeout)); retry {
-			go network.rerouteCircuitWithTries(update.circuit, DefaultNetworkOptionsCreateCircuitRetries)
+		if retry := network.smartReroute(update.circuit, update.path, time.Now().Add(DefaultOptionsRouteTimeout)); retry {
+			go network.rerouteCircuitWithTries(update.circuit, DefaultOptionsCreateCircuitRetries)
 		}
 	}
 }

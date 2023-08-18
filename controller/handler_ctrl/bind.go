@@ -52,6 +52,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		"routerId":      self.router.Id,
 		"routerVersion": self.router.VersionInfo.Version,
 	})
+	log.Debug("binding router channel")
 
 	binding.AddTypedReceiveHandler(newCircuitRequestHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newRouteResultHandler(self.network, self.router))
@@ -73,12 +74,6 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController()))
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
 
-	doHeartbeat, err := self.router.VersionInfo.HasMinimumVersion("0.25.5")
-	if err != nil {
-		doHeartbeat = false
-		log.WithError(err).Error("version parsing error")
-	}
-
 	roundTripHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.latency:" + self.router.Id)
 	queueTimeHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.queue_time:" + self.router.Id)
 	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
@@ -86,27 +81,15 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		queueTimeHistogram.Dispose()
 	}))
 
-	if doHeartbeat {
-		log.Info("router supports heartbeats")
-		cb := &heartbeatCallback{
-			latencyMetric:            roundTripHistogram,
-			queueTimeMetric:          queueTimeHistogram,
-			ch:                       binding.GetChannel(),
-			latencySemaphore:         concurrenz.NewSemaphore(2),
-			closeUnresponsiveTimeout: self.heartbeatOptions.CloseUnresponsiveTimeout,
-			lastResponse:             time.Now().Add(self.heartbeatOptions.CloseUnresponsiveTimeout * 2).UnixMilli(), // wait at least 2x timeout before closing
-		}
-		channel.ConfigureHeartbeat(binding, self.heartbeatOptions.SendInterval, self.heartbeatOptions.CheckInterval, cb)
-	} else if supportLatency, err := self.router.VersionInfo.HasMinimumVersion("0.18.7"); supportLatency && err == nil {
-		log.Info("router does not support heartbeats, using latency probe")
-		latencyHandler := &ctrlChannelLatencyHandler{
-			roundTripHistogram: roundTripHistogram,
-			queueTimeHistogram: queueTimeHistogram,
-		}
-		latency.AddLatencyProbe(binding.GetChannel(), binding, self.network.GetOptions().CtrlChanLatencyInterval/time.Duration(10), 10, latencyHandler.HandleLatency)
-	} else if err != nil {
-		log.WithError(err).Error("version parsing error")
+	cb := &heartbeatCallback{
+		latencyMetric:            roundTripHistogram,
+		queueTimeMetric:          queueTimeHistogram,
+		ch:                       binding.GetChannel(),
+		latencySemaphore:         concurrenz.NewSemaphore(2),
+		closeUnresponsiveTimeout: self.heartbeatOptions.CloseUnresponsiveTimeout,
+		lastResponse:             time.Now().Add(self.heartbeatOptions.CloseUnresponsiveTimeout * 2).UnixMilli(), // wait at least 2x timeout before closing
 	}
+	channel.ConfigureHeartbeat(binding, self.heartbeatOptions.SendInterval, self.heartbeatOptions.CheckInterval, cb)
 
 	xctrlDone := make(chan struct{})
 	for _, x := range self.xctrls {
