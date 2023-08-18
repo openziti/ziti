@@ -31,6 +31,9 @@ import (
 	"time"
 )
 
+const Create = "CREATE"
+const Delete = "DELETE"
+
 type bootstrapAction struct{}
 
 // Define a struct to represent the nested "ResourceRecordSet" object
@@ -59,11 +62,11 @@ func NewBootstrapAction() model.ActionBinder {
 	return action.bind
 }
 
-func createRoute53String(m *model.Model) string {
+func Route53StringCreator(m *model.Model, action string) string {
 	var payload = Payload{
 		Changes: []Change{
 			{
-				Action: "CREATE",
+				Action: action,
 				ResourceRecordSet: ResourceRecordSet{
 					Name: "controller.testing.openziti.org", // The DNS record name
 					Type: "A",                               // Type A represents an IPv4 address
@@ -87,10 +90,14 @@ func createRoute53String(m *model.Model) string {
 }
 
 func (a *bootstrapAction) bind(m *model.Model) model.Action {
+
 	workflow := actions.Workflow()
 	workflow.AddAction(host.GroupExec("#ctrl", 25, "/home/ubuntu/fablab/bin/aws_setup.sh"))
-	route53String := createRoute53String(m)
-	workflow.AddAction(host.GroupExec("ctrl", 25, route53String))
+	workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+		m := run.GetModel()
+		s := Route53StringCreator(m, Create)
+		return host.Exec(m.MustSelectHost("#ctrl"), s).Execute(run)
+	}))
 	workflow.AddAction(host.GroupExec("ctrl", 25, "rm -f logs/*"))
 	workflow.AddAction(component.Stop("#ctrl"))
 	workflow.AddAction(component.Exec("#ctrl", zitilab.ControllerActionInitStandalone))
