@@ -54,6 +54,8 @@ func NewFactory(accepter xlink.Acceptor,
 	xlinkRegistry xlink.Registry,
 	metricsRegistry metrics.Registry) xlink.Factory {
 
+	tcfg[transport.KeyProtocol] = append(tcfg.Protocols(), "ziti-link")
+
 	return &factory{
 		acceptor:           accepter,
 		bindHandlerFactory: bindHandlerFactory,

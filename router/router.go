@@ -395,7 +395,6 @@ func (self *Router) registerComponents() error {
 		linkTransportConfig[k] = v
 	}
 	linkTransportConfig[transport.KeyCachedProxyConfiguration] = self.config.Proxy
-	linkTransportConfig[transport.KeyProtocol] = append(transport.Configuration(self.config.Transport).Protocols(), "ziti-link")
 
 	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, linkTransportConfig, self.xlinkRegistry, self.metricsRegistry)
 
