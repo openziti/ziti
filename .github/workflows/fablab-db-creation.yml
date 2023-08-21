@@ -3,7 +3,7 @@ name: Build and Run db-creation Golang
 on:
   push:
     branches:
-      - db-creation
+      - main
 
 jobs:
   build:
