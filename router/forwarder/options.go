@@ -22,8 +22,6 @@ import (
 )
 
 const (
-	DefaultLatencyProbeInterval        = 10 * time.Second
-	DefaultLatencyProbeTimeout         = 10 * time.Second
 	DefaultXgressCloseCheckInterval    = 5 * time.Second
 	DefaultXgressDialDwellTime         = 0
 	DefaultFaultTxInterval             = 15 * time.Second
@@ -52,16 +50,14 @@ const (
 )
 
 type Options struct {
-	LatencyProbeInterval     time.Duration
-	LatencyProbeTimeout      time.Duration
-	XgressCloseCheckInterval time.Duration
-	XgressDialDwellTime      time.Duration
 	FaultTxInterval          time.Duration
-	IdleTxInterval           time.Duration
 	IdleCircuitTimeout       time.Duration
-	XgressDial               WorkerPoolOptions
+	IdleTxInterval           time.Duration
 	LinkDial                 WorkerPoolOptions
 	RateLimiter              WorkerPoolOptions
+	XgressCloseCheckInterval time.Duration
+	XgressDial               WorkerPoolOptions
+	XgressDialDwellTime      time.Duration
 }
 
 type WorkerPoolOptions struct {
@@ -71,17 +67,9 @@ type WorkerPoolOptions struct {
 
 func DefaultOptions() *Options {
 	return &Options{
-		LatencyProbeInterval:     DefaultLatencyProbeInterval,
-		LatencyProbeTimeout:      DefaultLatencyProbeTimeout,
-		XgressCloseCheckInterval: DefaultXgressCloseCheckInterval,
-		XgressDialDwellTime:      DefaultXgressDialDwellTime,
-		FaultTxInterval:          DefaultFaultTxInterval,
-		IdleTxInterval:           DefaultIdleTxInterval,
-		IdleCircuitTimeout:       DefaultIdleCircuitTimeout,
-		XgressDial: WorkerPoolOptions{
-			QueueLength: DefaultXgressDialWorkerQueueLength,
-			WorkerCount: DefaultXgressDialWorkerCount,
-		},
+		FaultTxInterval:    DefaultFaultTxInterval,
+		IdleCircuitTimeout: DefaultIdleCircuitTimeout,
+		IdleTxInterval:     DefaultIdleTxInterval,
 		LinkDial: WorkerPoolOptions{
 			QueueLength: DefaultLinkDialQueueLength,
 			WorkerCount: DefaultLinkDialWorkerCount,
@@ -90,57 +78,23 @@ func DefaultOptions() *Options {
 			QueueLength: DefaultRateLimiterQueueLength,
 			WorkerCount: DefaultRateLimiterWorkerCount,
 		},
+		XgressCloseCheckInterval: DefaultXgressCloseCheckInterval,
+		XgressDial: WorkerPoolOptions{
+			QueueLength: DefaultXgressDialWorkerQueueLength,
+			WorkerCount: DefaultXgressDialWorkerCount,
+		},
+		XgressDialDwellTime: DefaultXgressDialDwellTime,
 	}
 }
 
 func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 	options := DefaultOptions()
 
-	if value, found := src["latencyProbeInterval"]; found {
-		if latencyProbeInterval, ok := value.(int); ok {
-			options.LatencyProbeInterval = time.Duration(latencyProbeInterval) * time.Millisecond
-		} else {
-			return nil, errors.New("invalid value for 'latencyProbeInterval'")
-		}
-	}
-
-	if value, found := src["latencyProbeTimeout"]; found {
-		if latencyProbeTimeout, ok := value.(int); ok {
-			options.LatencyProbeTimeout = time.Duration(latencyProbeTimeout) * time.Millisecond
-		} else {
-			return nil, errors.New("invalid value for 'latencyProbeTimeout'")
-		}
-	}
-
-	if value, found := src["xgressCloseCheckInterval"]; found {
-		if val, ok := value.(int); ok {
-			options.XgressCloseCheckInterval = time.Duration(val) * time.Millisecond
-		} else {
-			return nil, errors.New("invalid value for 'latencyProbeInterval'")
-		}
-	}
-
-	if value, found := src["xgressDialDwellTime"]; found {
-		if v, ok := value.(int); ok {
-			options.XgressDialDwellTime = time.Duration(v) * time.Millisecond
-		} else {
-			return nil, errors.New("invalid value for 'xgressDialDwellTime'")
-		}
-	}
-
 	if value, found := src["faultTxInterval"]; found {
 		if val, ok := value.(int); ok {
 			options.FaultTxInterval = time.Duration(val) * time.Millisecond
 		} else {
 			return nil, errors.New("invalid value for 'faultTxInterval'")
-		}
-	}
-
-	if value, found := src["idleTxInterval"]; found {
-		if val, ok := value.(int); ok {
-			options.IdleTxInterval = time.Duration(val) * time.Millisecond
-		} else {
-			return nil, errors.New("invalid value for 'idleTxInterval'")
 		}
 	}
 
@@ -152,25 +106,11 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 		}
 	}
 
-	if value, found := src["xgressDialQueueLength"]; found {
-		if length, ok := value.(int); ok {
-			if length < MinXgressDialWorkerQueueLength || length > MaxXgressDialWorkerQueueLength {
-				return nil, errors.Errorf("invalid value for 'xgressDialQueueLength', expected integer between %v and %v", MinXgressDialWorkerQueueLength, MaxXgressDialWorkerQueueLength)
-			}
-			options.XgressDial.QueueLength = uint16(length)
+	if value, found := src["idleTxInterval"]; found {
+		if val, ok := value.(int); ok {
+			options.IdleTxInterval = time.Duration(val) * time.Millisecond
 		} else {
-			return nil, errors.Errorf("invalid value for 'xgressDialQueueLength', expected integer between %v and %v", MinXgressDialWorkerQueueLength, MaxXgressDialWorkerQueueLength)
-		}
-	}
-
-	if value, found := src["xgressDialWorkerCount"]; found {
-		if workers, ok := value.(int); ok {
-			if workers < MinXgressDialWorkerCount || workers > MaxXgressDialWorkerCount {
-				return nil, errors.Errorf("invalid value for 'xgressDialWorkerCount', expected integer between %v and %v", MinXgressDialWorkerCount, MaxXgressDialWorkerCount)
-			}
-			options.XgressDial.WorkerCount = uint16(workers)
-		} else {
-			return nil, errors.Errorf("invalid value for 'xgressDialWorkerCount', expected integer between %v and %v", MinXgressDialWorkerCount, MaxXgressDialWorkerCount)
+			return nil, errors.New("invalid value for 'idleTxInterval'")
 		}
 	}
 
@@ -215,6 +155,44 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.RateLimiter.WorkerCount = uint16(workers)
 		} else {
 			return nil, errors.Errorf("invalid value for 'rateLimitedWorkerCount', expected integer between %v and %v", MinRateLimiterWorkerCount, MaxRateLimiterWorkerCount)
+		}
+	}
+
+	if value, found := src["xgressCloseCheckInterval"]; found {
+		if val, ok := value.(int); ok {
+			options.XgressCloseCheckInterval = time.Duration(val) * time.Millisecond
+		} else {
+			return nil, errors.New("invalid value for 'latencyProbeInterval'")
+		}
+	}
+
+	if value, found := src["xgressDialDwellTime"]; found {
+		if v, ok := value.(int); ok {
+			options.XgressDialDwellTime = time.Duration(v) * time.Millisecond
+		} else {
+			return nil, errors.New("invalid value for 'xgressDialDwellTime'")
+		}
+	}
+
+	if value, found := src["xgressDialQueueLength"]; found {
+		if length, ok := value.(int); ok {
+			if length < MinXgressDialWorkerQueueLength || length > MaxXgressDialWorkerQueueLength {
+				return nil, errors.Errorf("invalid value for 'xgressDialQueueLength', expected integer between %v and %v", MinXgressDialWorkerQueueLength, MaxXgressDialWorkerQueueLength)
+			}
+			options.XgressDial.QueueLength = uint16(length)
+		} else {
+			return nil, errors.Errorf("invalid value for 'xgressDialQueueLength', expected integer between %v and %v", MinXgressDialWorkerQueueLength, MaxXgressDialWorkerQueueLength)
+		}
+	}
+
+	if value, found := src["xgressDialWorkerCount"]; found {
+		if workers, ok := value.(int); ok {
+			if workers < MinXgressDialWorkerCount || workers > MaxXgressDialWorkerCount {
+				return nil, errors.Errorf("invalid value for 'xgressDialWorkerCount', expected integer between %v and %v", MinXgressDialWorkerCount, MaxXgressDialWorkerCount)
+			}
+			options.XgressDial.WorkerCount = uint16(workers)
+		} else {
+			return nil, errors.Errorf("invalid value for 'xgressDialWorkerCount', expected integer between %v and %v", MinXgressDialWorkerCount, MaxXgressDialWorkerCount)
 		}
 	}
 

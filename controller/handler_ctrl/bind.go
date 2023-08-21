@@ -108,19 +108,6 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	return nil
 }
 
-type ctrlChannelLatencyHandler struct {
-	roundTripHistogram metrics.Histogram
-	queueTimeHistogram metrics.Histogram
-}
-
-func (self *ctrlChannelLatencyHandler) HandleLatency(latencyType latency.Type, elapsed time.Duration) {
-	if latencyType == latency.RoundTripType {
-		self.roundTripHistogram.Update(elapsed.Nanoseconds())
-	} else if latencyType == latency.BeforeSendType {
-		self.queueTimeHistogram.Update(elapsed.Nanoseconds())
-	}
-}
-
 type heartbeatCallback struct {
 	latencyMetric            metrics.Histogram
 	queueTimeMetric          metrics.Histogram
