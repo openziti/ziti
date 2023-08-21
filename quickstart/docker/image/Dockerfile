@@ -5,26 +5,34 @@ ARG ZITI_VERSION_OVERRIDE
 
 COPY . /docker.build.context
 RUN apt update && apt install jq curl -y && \
-    # get local ziti build in "ziti-bin", if present.
-    # otherwise fetch from releases (respecting ZITI_VERSION_OVERRIDE, if set).
-    # put the result in /ziti-bin
+    # to use a locally built `ziti` cli \
+    #   create a ./ziti-bin directory adjacent to this Dockerfile \
+    #   and include any desired binaries to include in the image
+    # to use the latest released version of ziti \
+    #   just build the Dockerfile \
+    # to use a specific version of ziti, specify ZITI_VERSION_OVERRIDE then  \
+    #   build the Dockerfile
     /bin/bash /docker.build.context/fetch-ziti-bins.sh /ziti-bin
 
 FROM ubuntu:rolling
+ARG RUNUSER=ziti
+ARG RUNGROUP=ziti
+ARG RUNUSERID=2171
 
 RUN apt update && \
     apt install jq curl netcat-openbsd vim inetutils-ping net-tools lsof -y
 
-RUN useradd -ms /bin/bash ziti && \
-    mkdir /persistent && chown ziti:ziti /persistent && \
-    mkdir /persistent/scripts && chown ziti:ziti /persistent/scripts
+RUN useradd -u $RUNUSERID -ms /bin/bash $RUNUSER && \
+    mkdir /persistent && chown $RUNUSER:$RUNGROUP /persistent && \
+    mkdir /persistent/scripts && chown $RUNUSER:$RUNGROUP /persistent/scripts
 
-USER ziti
+USER $RUNUSER
+
 WORKDIR /persistent
 
 ENV ZITI_HOME=/persistent
 ENV ZITI_SHARED="${ZITI_HOME}/shared"
-ENV ENV_FILE="${ZITI_HOME}/ziti.env"
+ENV ZITI_ENV_FILE="${ZITI_HOME}/ziti.env"
 ENV ZITI_NETWORK=ziti
 # Don't put these paths on shared volume in docker-compose deployment (https://github.com/openziti/ziti/issues/912)
 ENV ZITI_BIN_DIR=/var/openziti/ziti-bin
@@ -40,4 +48,4 @@ COPY --chown=ziti run-with-ziti-cli.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti access-control.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti run-router-external.sh "${ZITI_SCRIPTS}/"
 
-RUN /bin/bash -c "source ${ZITI_SCRIPTS}/ziti-cli-functions.sh; echo source ${ZITI_HOME}/ziti.env >> ~/.bashrc"
+RUN /bin/bash -c "source ${ZITI_SCRIPTS}/ziti-cli-functions.sh; persistEnvironmentValues; echo source ${ZITI_HOME}/ziti.env >> ~/.bashrc"

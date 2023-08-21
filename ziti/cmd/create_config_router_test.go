@@ -82,17 +82,17 @@ type Transport struct {
 }
 
 type Ws struct {
-	writeTimeout      int    `yaml:"writeTimeout"`
-	readTimeout       int    `yaml:"readTimeout"`
-	idleTimeout       int    `yaml:"idleTimeout"`
-	pongTimeout       int    `yaml:"pongTimeout"`
-	pingInterval      int    `yaml:"pingInterval"`
-	handshakeTimeout  int    `yaml:"handshakeTimeout"`
-	readBufferSize    int    `yaml:"readBufferSize"`
-	writeBufferSize   int    `yaml:"writeBufferSize"`
-	enableCompression string `yaml:"enableCompression"`
-	server_cert       string `yaml:"server_Cert"`
-	key               string `yaml:"key"`
+	WriteTimeout      int    `yaml:"writeTimeout"`
+	ReadTimeout       int    `yaml:"readTimeout"`
+	IdleTimeout       int    `yaml:"idleTimeout"`
+	PongTimeout       int    `yaml:"pongTimeout"`
+	PingInterval      int    `yaml:"pingInterval"`
+	HandshakeTimeout  int    `yaml:"handshakeTimeout"`
+	ReadBufferSize    int    `yaml:"readBufferSize"`
+	WriteBufferSize   int    `yaml:"writeBufferSize"`
+	EnableCompression string `yaml:"enableCompression"`
+	Server_cert       string `yaml:"server_Cert"`
+	Key               string `yaml:"key"`
 }
 
 type Forwarder struct {
@@ -105,9 +105,10 @@ type Forwarder struct {
 
 /* END Controller config template structure */
 
-func createRouterConfig(args []string) RouterConfig {
+func createRouterConfig(args []string, routerOptions *CreateConfigRouterOptions, keys map[string]string) (RouterConfig, *ConfigTemplateValues) {
 	// Create and run the CLI command
-	cmd := NewCmdCreateConfigRouter()
+	setEnvByMap(keys)
+	cmd := NewCmdCreateConfigRouter(routerOptions)
 	cmd.SetArgs(args)
 	// captureOutput is used to consume output, otherwise config prints to stdout along with test results
 	output := captureOutput(func() {
@@ -120,28 +121,15 @@ func createRouterConfig(args []string) RouterConfig {
 	if err2 != nil {
 		fmt.Println(err2)
 	}
-	return configStruct
+	return configStruct, cmd.RenderedValues
 }
 
-func execCreateConfigCommand(args []string, keys map[string]string) {
-	// Setup options
-	clearRouterOptionsAndTemplateData()
+func clearEnvAndInitializeTestData() *CreateConfigRouterOptions {
+	unsetZitiEnv()
+	routerOptions := &CreateConfigRouterOptions{}
 	routerOptions.Output = defaultOutput
 
-	setEnvByMap(keys)
-	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
-	cmd := NewCmdCreateConfigRouter()
-	cmd.SetArgs(args)
-	_ = captureOutput(func() {
-		_ = cmd.Execute()
-	})
-}
-
-func clearRouterOptionsAndTemplateData() {
-	routerOptions = CreateConfigRouterOptions{}
-	data = &ConfigTemplateValues{}
-
-	unsetZitiEnv()
+	return &CreateConfigRouterOptions{}
 }
 
 func TestSetZitiRouterIdentityCertDefault(t *testing.T) {
@@ -246,7 +234,7 @@ func TestSetZitiRouterIdentityCACustom(t *testing.T) {
 
 func TestSetZitiRouterIdentitySetsAllIdentitiesAndRouterName(t *testing.T) {
 	// Setup
-	clearRouterOptionsAndTemplateData()
+	clearEnvAndInitializeTestData()
 	expectedName := "MyRouterName"
 	blank := ""
 	rtv := &RouterTemplateValues{}
@@ -273,7 +261,7 @@ func TestSetZitiRouterIdentitySetsAllIdentitiesAndRouterName(t *testing.T) {
 
 func TestSetZitiRouterIdentitySetsAllIdentitiesAndRouterNameToHostWhenBlank(t *testing.T) {
 	// Setup
-	clearRouterOptionsAndTemplateData()
+	clearEnvAndInitializeTestData()
 	expectedName, _ := os.Hostname()
 	blank := ""
 	rtv := &RouterTemplateValues{}
@@ -296,4 +284,27 @@ func TestSetZitiRouterIdentitySetsAllIdentitiesAndRouterNameToHostWhenBlank(t *t
 	assert.NotEqualf(t, blank, rtv.IdentityServerCert, "Router.IdentityCert expected to have a value, instead it was blank")
 	assert.NotEqualf(t, blank, rtv.IdentityKey, "Router.IdentityCert expected to have a value, instead it was blank")
 	assert.NotEqualf(t, blank, rtv.IdentityCA, "Router.IdentityCert expected to have a value, instead it was blank")
+}
+
+func TestAltServerCerts(t *testing.T) {
+	clearEnvAndInitializeTestData()
+	certPath := "/path/to/cert"
+	keyPath := "/path/to/key"
+	_ = os.Setenv("ZITI_PKI_ALT_SERVER_CERT", certPath)
+
+	rtv := &RouterTemplateValues{}
+	SetZitiRouterIdentity(rtv, "routerTest")
+
+	//with only ZITI_ALT_SERVER_CERT set, should be false/blank
+	assert.Equal(t, "#", rtv.AltCertsEnabled)
+	assert.Equal(t, "", rtv.AltServerCert)
+	assert.Equal(t, "", rtv.AltServerKey)
+
+	_ = os.Setenv("ZITI_PKI_ALT_SERVER_KEY", keyPath)
+	rtv = &RouterTemplateValues{}
+	SetZitiRouterIdentity(rtv, "routerTest")
+
+	assert.Equal(t, "", rtv.AltCertsEnabled)
+	assert.Equal(t, certPath, rtv.AltServerCert)
+	assert.Equal(t, keyPath, rtv.AltServerKey)
 }

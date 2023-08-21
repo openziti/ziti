@@ -85,6 +85,9 @@ func (o *InstallZitiRouterOptions) Run() error {
 
 	if o.Version != "" {
 		newVersion, err = semver.Make(o.Version)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Infoln("Attempting to install '" + c.ZITI_ROUTER + "' version: " + newVersion.String())

@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/spf13/cobra"
-	"io/ioutil"
+	"os"
 )
 
 var jwtPath *string
@@ -39,7 +39,9 @@ func NewEnrollGwCmd() *cobra.Command {
 
 	jwtPath = enrollEdgeRouterCmd.Flags().StringP("jwt", "j", "", "The path to a JWT file")
 	engine = enrollEdgeRouterCmd.Flags().StringP("engine", "e", "", "An engine")
-	keyAlg.Set("RSA") // set default
+	if err := keyAlg.Set("RSA"); err != nil { // set default
+		panic(err)
+	}
 	enrollEdgeRouterCmd.Flags().VarP(&keyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
 
 	return enrollEdgeRouterCmd
@@ -57,7 +59,7 @@ func enrollGw(cmd *cobra.Command, args []string) {
 			log.Panicf("could not load config: %s", err)
 		}
 
-		jwtBuf, err := ioutil.ReadFile(*jwtPath)
+		jwtBuf, err := os.ReadFile(*jwtPath)
 		if err != nil {
 			log.Panicf("could not load JWT file from path [%s]", *jwtPath)
 		}

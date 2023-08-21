@@ -44,9 +44,13 @@ func newRevokeCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 
 	cmd.Flags().StringVarP(&options.domain, "domain", "d", "", "Domain for which Cert is being generated (e.g. me.example.com)")
-	cmd.MarkFlagRequired("domain")
+	if err := cmd.MarkFlagRequired("domain"); err != nil {
+		panic(err)
+	}
 	cmd.Flags().StringVarP(&options.path, "path", "p", "", "Directory where data is stored")
-	cmd.MarkFlagRequired("path")
+	if err := cmd.MarkFlagRequired("path"); err != nil {
+		panic(err)
+	}
 	cmd.Flags().StringVarP(&options.email, "email", "e", "openziti@netfoundry.io", "Email used for registration and recovery contact")
 	cmd.Flags().StringVarP(&options.acmeserver, "acmeserver", "a", acmeProd, "ACME CA hostname")
 	cmd.Flags().BoolVarP(&options.staging, "staging", "s", false, "Enable creation of 'staging' Certs (instead of production Certs)")

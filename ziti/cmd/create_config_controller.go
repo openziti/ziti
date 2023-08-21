@@ -76,69 +76,77 @@ type CreateConfigControllerOptions struct {
 	EdgeRouterEnrollmentDuration   time.Duration
 }
 
+type CreateControllerConfigCmd struct {
+	*cobra.Command
+	ConfigData *ConfigTemplateValues
+}
+
 // NewCmdCreateConfigController creates a command object for the "create" command
-func NewCmdCreateConfigController() *cobra.Command {
+func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 	controllerOptions := &CreateConfigControllerOptions{}
-
-	cmd := &cobra.Command{
-		Use:     "controller",
-		Short:   "Create a controller config",
-		Aliases: []string{"ctrl"},
-		Long:    createConfigControllerLong,
-		Example: createConfigControllerExample,
-		PreRun: func(cmd *cobra.Command, args []string) {
-			// Setup logging
-			var logOut *os.File
-			if controllerOptions.Verbose {
-				logrus.SetLevel(logrus.DebugLevel)
-				// Only print log to stdout if not printing config to stdout
-				if strings.ToLower(controllerOptions.Output) != "stdout" {
-					logOut = os.Stdout
-				} else {
-					logOut = os.Stderr
+	data := &ConfigTemplateValues{}
+	cmd := &CreateControllerConfigCmd{
+		ConfigData: data,
+		Command: &cobra.Command{
+			Use:     "controller",
+			Short:   "Create a controller config",
+			Aliases: []string{"ctrl"},
+			Long:    createConfigControllerLong,
+			Example: createConfigControllerExample,
+			PreRun: func(cmd *cobra.Command, args []string) {
+				// Setup logging
+				var logOut *os.File
+				if controllerOptions.Verbose {
+					logrus.SetLevel(logrus.DebugLevel)
+					// Only print log to stdout if not printing config to stdout
+					if strings.ToLower(controllerOptions.Output) != "stdout" {
+						logOut = os.Stdout
+					} else {
+						logOut = os.Stderr
+					}
+					logrus.SetOutput(logOut)
 				}
-				logrus.SetOutput(logOut)
-			}
 
-			data.populateConfigValues()
+				data.populateConfigValues()
 
-			// Update controller specific values with configOptions passed in if the argument was provided or the value is currently blank
-			if data.Controller.Ctrl.ListenerPort == "" || controllerOptions.CtrlPort != constants.DefaultCtrlListenerPort {
-				data.Controller.Ctrl.ListenerPort = controllerOptions.CtrlPort
-			}
-			// Update with the passed in arg if it's not the default (CLI flag should override other methods of modifying these values)
-			if controllerOptions.EdgeIdentityEnrollmentDuration != edge.DefaultEdgeEnrollmentDuration {
-				data.Controller.EdgeEnrollment.EdgeIdentityDuration = controllerOptions.EdgeIdentityEnrollmentDuration
-			}
-			if controllerOptions.EdgeRouterEnrollmentDuration != edge.DefaultEdgeEnrollmentDuration {
-				data.Controller.EdgeEnrollment.EdgeRouterDuration = controllerOptions.EdgeRouterEnrollmentDuration
-			}
+				// Update controller specific values with configOptions passed in if the argument was provided or the value is currently blank
+				if data.Controller.Ctrl.AdvertisedPort == "" || controllerOptions.CtrlPort != constants.DefaultCtrlAdvertisedPort {
+					data.Controller.Ctrl.AdvertisedPort = controllerOptions.CtrlPort
+				}
+				// Update with the passed in arg if it's not the default (CLI flag should override other methods of modifying these values)
+				if controllerOptions.EdgeIdentityEnrollmentDuration != edge.DefaultEdgeEnrollmentDuration {
+					data.Controller.EdgeEnrollment.EdgeIdentityDuration = controllerOptions.EdgeIdentityEnrollmentDuration
+				}
+				if controllerOptions.EdgeRouterEnrollmentDuration != edge.DefaultEdgeEnrollmentDuration {
+					data.Controller.EdgeEnrollment.EdgeRouterDuration = controllerOptions.EdgeRouterEnrollmentDuration
+				}
 
-			// process identity information
-			SetControllerIdentity(&data.Controller)
-			SetEdgeConfig(&data.Controller)
-			SetWebConfig(&data.Controller)
+				// process identity information
+				SetControllerIdentity(&data.Controller)
+				SetEdgeConfig(&data.Controller)
+				SetWebConfig(&data.Controller)
 
-		},
-		Run: func(cmd *cobra.Command, args []string) {
-			controllerOptions.Cmd = cmd
-			controllerOptions.Args = args
-			err := controllerOptions.run(data)
-			helpers2.CheckErr(err)
-		},
-		PostRun: func(cmd *cobra.Command, args []string) {
-			// Reset log output after run completes
-			logrus.SetOutput(os.Stdout)
+			},
+			Run: func(cmd *cobra.Command, args []string) {
+				controllerOptions.Cmd = cmd
+				controllerOptions.Args = args
+				err := controllerOptions.run(data)
+				helpers2.CheckErr(err)
+			},
+			PostRun: func(cmd *cobra.Command, args []string) {
+				// Reset log output after run completes
+				logrus.SetOutput(os.Stdout)
+			},
 		},
 	}
-	controllerOptions.addCreateFlags(cmd)
-	controllerOptions.addFlags(cmd)
+	controllerOptions.addCreateFlags(cmd.Command)
+	controllerOptions.addFlags(cmd.Command)
 
 	return cmd
 }
 
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&options.CtrlPort, optionCtrlPort, constants.DefaultCtrlListenerPort, "port used for the router to controller communication")
+	cmd.Flags().StringVar(&options.CtrlPort, optionCtrlPort, constants.DefaultCtrlAdvertisedPort, "port used for the router to controller communication")
 	cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, "ctrl.db", "location of the database file")
 	cmd.Flags().DurationVar(&options.EdgeIdentityEnrollmentDuration, optionEdgeIdentityEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge identity enrollment duration, use 0h0m0s format")
 	cmd.Flags().DurationVar(&options.EdgeRouterEnrollmentDuration, optionEdgeRouterEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge router enrollment duration, use 0h0m0s format")
@@ -239,6 +247,7 @@ func SetWebConfig(data *ControllerTemplateValues) {
 	SetWebIdentityServerCert(data)
 	SetWebIdentityKey(data)
 	SetWebIdentityCA(data)
+	SetCtrlAltServerCerts(data)
 }
 func SetWebIdentityCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeCertVarName)
@@ -267,4 +276,19 @@ func SetWebIdentityCA(c *ControllerTemplateValues) {
 		val = c.Identity.Ca //default
 	}
 	c.Web.Identity.Ca = helpers2.NormalizePath(val)
+}
+
+func SetCtrlAltServerCerts(c *ControllerTemplateValues) {
+	c.Web.Identity.AltCertsEnabled = "#"
+	altServerCert := os.Getenv(constants.PkiAltServerCertVarName)
+	if altServerCert == "" {
+		return //exit unless both vars are set
+	}
+	altServerKey := os.Getenv(constants.PkiAltServerKeyVarName)
+	if altServerKey == "" {
+		return //exit unless both vars are set
+	}
+	c.Web.Identity.AltCertsEnabled = ""
+	c.Web.Identity.AltServerCert = helpers2.NormalizePath(altServerCert)
+	c.Web.Identity.AltServerKey = helpers2.NormalizePath(altServerKey)
 }

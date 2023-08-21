@@ -2,11 +2,11 @@ package loop3
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha512"
 	"github.com/google/go-cmp/cmp"
 	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
 	"github.com/stretchr/testify/require"
-	"math/rand"
 	"reflect"
 	"testing"
 )
@@ -22,7 +22,8 @@ func (t *testPeer) Close() error {
 func Test_MessageSerDeser(t *testing.T) {
 	req := require.New(t)
 	data := make([]byte, 4192)
-	rand.Read(data)
+	_, err := rand.Read(data)
+	req.NoError(err)
 
 	hash := sha512.Sum512(data)
 
@@ -50,7 +51,9 @@ func Test_MessageSerDeser(t *testing.T) {
 	req.True(reflect.DeepEqual(block, readBlock), cmp.Diff(block, readBlock))
 
 	data = make([]byte, 4192)
-	rand.Read(data)
+	_, err = rand.Read(data)
+	req.NoError(err)
+
 	hash = sha512.Sum512(data)
 
 	block = &RandHashedBlock{

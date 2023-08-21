@@ -89,8 +89,8 @@ func (r *Result) Rx(p *protocol) error {
 
 const (
 	BlockTypePlain           byte = 1
-	BlockTypeLatencyRequest       = 2
-	BlockTypeLatencyResponse      = 3
+	BlockTypeLatencyRequest  byte = 2
+	BlockTypeLatencyResponse byte = 3
 )
 
 type Block interface {
@@ -233,7 +233,7 @@ func (block *RandHashedBlock) Rx(p *protocol) error {
 	BytesRxRate.Mark(int64(8 + length))
 
 	if block.Type == BlockTypeLatencyResponse {
-		elapsed := time.Now().Sub(block.Timestamp)
+		elapsed := time.Since(block.Timestamp)
 		MsgLatency.Update(elapsed)
 	}
 

@@ -7,13 +7,16 @@
  documentation.*/}}v: 3
 
 identity:
-  cert:                 "{{ .Router.IdentityCert }}"
-  server_cert:          "{{ .Router.IdentityServerCert }}"
-  key:                  "{{ .Router.IdentityKey }}"
-  ca:                   "{{ .Router.IdentityCA }}"
+  cert:             "{{ .Router.IdentityCert }}"
+  server_cert:      "{{ .Router.IdentityServerCert }}"
+  key:              "{{ .Router.IdentityKey }}"
+  ca:               "{{ .Router.IdentityCA }}"
+  {{ .Router.AltCertsEnabled }}alt_server_certs:
+  {{ .Router.AltCertsEnabled }}  - server_cert:  "{{ .Router.AltServerCert }}"
+  {{ .Router.AltCertsEnabled }}    server_key:   "{{ .Router.AltServerKey }}"
 
 ctrl:
-  endpoint:             tls:{{ .Controller.Web.BindPoints.AddressAddress }}:{{ .Controller.Ctrl.ListenerPort }}
+  endpoint:             tls:{{ .Controller.Ctrl.AdvertisedAddress }}:{{ .Controller.Ctrl.AdvertisedPort }}
 
 link:
   dialers:
@@ -30,7 +33,7 @@ link:
 {{ if .Router.IsFabric }}#{{ end }}  - binding: edge
 {{ if .Router.IsFabric }}#{{ end }}    address: {{ if .Router.IsWss }}wss{{ else }}tls{{end}}:0.0.0.0:{{ .Router.Edge.Port }}
 {{ if .Router.IsFabric }}#{{ end }}    options:
-{{ if .Router.IsFabric }}#{{ end }}      advertise: {{ .Router.Edge.AdvertisedHost }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
+{{ if .Router.IsFabric }}#{{ end }}      advertise: {{ .Router.Edge.AdvertisedHost }}:{{ .Router.Edge.Port }}
 {{ if .Router.IsFabric }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeout.Milliseconds }}
 {{ if .Router.IsFabric }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeout.Seconds }}
 {{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#{{ end }}  - binding: tunnel
@@ -55,14 +58,14 @@ csr:
 {{ else }}
 edge:
   csr:
-    country: US
-    province: NC
-    locality: Charlotte
-    organization: NetFoundry
-    organizationalUnit: Ziti
+    country: {{ .Router.Edge.CsrC }}
+    province: {{ .Router.Edge.CsrST }}
+    locality: {{ .Router.Edge.CsrL }}
+    organization: {{ .Router.Edge.CsrO }}
+    organizationalUnit: {{ .Router.Edge.CsrOU }}
     sans:
       dns:
-        - {{ .Router.Edge.AdvertisedHost }}
+        - {{ .Router.Edge.CsrSans }}
         - localhost
       ip:
         - "127.0.0.1"
@@ -81,7 +84,9 @@ edge:
 {{ if not .Router.IsWss }}#{{ end }}    enableCompression: {{ .Router.Wss.EnableCompression }}
 {{ if not .Router.IsWss }}#{{ end }}    server_cert: {{ .Router.IdentityServerCert }}
 {{ if not .Router.IsWss }}#{{ end }}    key: {{ .Router.IdentityKey }}
-
+{{ .Router.AltCertsEnabled }}alt_server_certs:
+{{ .Router.AltCertsEnabled }}  - server_cert:  "{{ .Router.AltServerCert }}"
+{{ .Router.AltCertsEnabled }}    server_key:   "{{ .Router.AltServerKey }}"
 forwarder:
   latencyProbeInterval: {{ .Router.Forwarder.LatencyProbeInterval.Seconds }}
   xgressDialQueueLength: {{ .Router.Forwarder.XgressDialQueueLength }}

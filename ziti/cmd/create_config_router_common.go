@@ -18,9 +18,11 @@ package cmd
 
 import (
 	_ "embed"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/constants"
 	"os"
+
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	helpers2 "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/constants"
 )
 
 func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
@@ -28,6 +30,7 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	SetZitiRouterIdentityServerCert(r, routerName)
 	SetZitiRouterIdentityKey(r, routerName)
 	SetZitiRouterIdentityCA(r, routerName)
+	SetRouterAltServerCerts(r)
 
 	// Set the router name
 	r.Name = routerName
@@ -88,4 +91,19 @@ func validateRouterName(name string) string {
 		return hostname
 	}
 	return name
+}
+
+func SetRouterAltServerCerts(c *RouterTemplateValues) {
+	c.AltCertsEnabled = "#"
+	altServerCert := os.Getenv(constants.PkiAltServerCertVarName)
+	if altServerCert == "" {
+		return //exit unless both vars are set
+	}
+	altServerKey := os.Getenv(constants.PkiAltServerKeyVarName)
+	if altServerKey == "" {
+		return //exit unless both vars are set
+	}
+	c.AltCertsEnabled = ""
+	c.AltServerCert = helpers2.NormalizePath(altServerCert)
+	c.AltServerKey = helpers2.NormalizePath(altServerKey)
 }

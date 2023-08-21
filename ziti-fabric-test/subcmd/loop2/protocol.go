@@ -17,16 +17,16 @@
 package loop2
 
 import (
-	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
-	"github.com/openziti/foundation/v2/info"
 	"bytes"
 	"crypto/sha512"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"math/rand"
 	"time"
@@ -89,29 +89,27 @@ func (p *protocol) txer(done chan bool) {
 	defer log.Debug("complete")
 
 	for p.txCount < p.test.TxRequests {
-		select {
-		case block := <-p.txGenerator.blocks:
-			if block != nil {
-				if err := p.txBlock(block); err == nil {
-					p.txCount++
+		block := <-p.txGenerator.blocks
+		if block != nil {
+			if err := p.txBlock(block); err == nil {
+				p.txCount++
 
-					if p.test.TxPacing > 0 {
-						jitter := 0
-						if p.test.TxMaxJitter > 0 {
-							jitter = rand.Intn(int(p.test.TxMaxJitter))
-						}
-						time.Sleep(time.Duration(int(p.test.TxPacing)+jitter) * time.Millisecond)
+				if p.test.TxPacing > 0 {
+					jitter := 0
+					if p.test.TxMaxJitter > 0 {
+						jitter = rand.Intn(int(p.test.TxMaxJitter))
 					}
-
-				} else {
-					log.Errorf("error sending block (%s)", err)
-					p.errors <- err
-					return
+					time.Sleep(time.Duration(int(p.test.TxPacing)+jitter) * time.Millisecond)
 				}
+
 			} else {
-				log.Errorf("tx blocks chan closed")
+				log.Errorf("error sending block (%s)", err)
+				p.errors <- err
 				return
 			}
+		} else {
+			log.Errorf("tx blocks chan closed")
+			return
 		}
 	}
 

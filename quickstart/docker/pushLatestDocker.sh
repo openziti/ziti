@@ -16,8 +16,17 @@ if [ -z "${ZITI_VERSION}" ]; then
 fi
 
 docker buildx create --use --name=ziti-builder
-docker buildx build --platform linux/amd64,linux/arm64 "${SCRIPT_DIR}/image" \
+
+if [ "local" == "${1}" ]; then
+  echo "LOADING LOCALLY instead of pushing to dockerhub"
+  _BUILDX_PLATFORM=""
+  _BUILDX_ACTION="--load"
+else
+  _BUILDX_PLATFORM="--platform linux/amd64,linux/arm64"
+  _BUILDX_ACTION="--push"
+fi
+docker buildx build ${_BUILDX_PLATFORM} "${SCRIPT_DIR}/image" \
   --build-arg ZITI_VERSION_OVERRIDE="v${ZITI_VERSION}" \
   --tag "openziti/quickstart:${ZITI_VERSION}" \
   --tag "openziti/quickstart:latest" \
-  --push
+  ${_BUILDX_ACTION}

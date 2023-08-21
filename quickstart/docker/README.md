@@ -1,29 +1,45 @@
-Building and Deploying the Latest Quickstart Docker Image
+# Building and Deploying the Latest Quickstart Docker Image
 ==========================
 
-Build Docker Image for Local Dev (probably for docker-compose testing)
-------------------
-1. change to this directory: `cd quickstart/docker`
-2. run the script `./buildLocalDev.sh` which will create a `openziti/quickstart:dev` tag
-3. update `.env` and change the value for `ZITI_VERSION` to `dev`
-4. run `docker-compose` as normal
-5. If you encounter any strange errors, it's probably best to prune docker
-   and try again. Issue `docker system prune -a` and allow it to clear/cleanup
-   the entire docker world
+First, decide what you are trying to do. Are you trying to:
 
-Build Docker Image For Publication
-------------------
-1. change to this directory: `cd quickstart/docker`
-1. set an environment variable: `export ZITI_HOME=$(pwd)`
-1. source the helper script: `source ../ziti-cli-functions.sh`
-1. cleanup the binary directory if it exists: `rm -rf ./image/ziti.ignore`
-1. issue this function to pull the latest ziti binaries: `getLatestZiti`
-1. move the ziti binaries: `mv ziti-bin/ziti image/ziti.ignore/`
-1. build the docker image: `docker build image -t openziti/quickstart`
-1. exec into a container and make sure it's the version you expect: `docker run --rm -it openziti/quickstart ziti --version`
-1. cleanup: `rm ziti-*tar.gz; rm -rf ziti-bin`
+* build a `ziti` from source, bake it into a docker image, and run the docker container?
+* dev on the scripts inside the docker container, or the Dockerfile/compose file?
+* build an 'older' version of `ziti` into a docker image to run
 
-Push Docker Image to dockerhub
+## Build Docker Image for Local Dev
 ------------------
-1. `source ./image/ziti-cli-functions.sh`
-1. just run `./pushLatestDocker.sh`
+1. build the `ziti` CLI somewhere
+1. change to this directory from checkout root: `cd quickstart/docker`
+1. make a directory named `ziti-bin`: `mkdir ./ziti-bin` 
+1. copy the `ziti` CLI to `./ziti-bin`: `cp /path/to/ziti ./ziti-bin`
+1. run the script `./createLocalImage.sh` which will create a `openziti/quickstart:latest` tag
+   using the `ziti` CLI located in `./ziti-bin`
+
+## Build Docker Image for Docker-related Changes
+1. change to this directory from checkout root: `cd quickstart/docker`
+1. run the script `./createLocalImage.sh` which will create a `openziti/quickstart:latest` tag
+   using the latest `ziti` [release from GitHub](https://github.com/openziti/ziti/releases/latest)
+
+## Build Docker Image with Specific ziti Version
+1. change to this directory from checkout root: `cd quickstart/docker`
+1. set `ZITI_VERSION_OVERRIDE` to desired version: `export ZITI_VERSION_OVERRIDE=v0.28.4`
+1. run the script `./createLocalImage.sh` which will create a `openziti/quickstart:latest` tag
+   using the specified version of `ziti` [from GitHub](https://github.com/openziti/ziti/releases/tag/v0.28.4)
+
+## ERROR: existing instance for "ziti-builder"
+When running the `./createLocalImage.sh` script, you might get this error:
+```
+ERROR: existing instance for "ziti-builder" but no append mode, specify --node to make changes for existing instances
+```
+It's probably safest to just remove the buildx builder using:
+```
+docker buildx rm ziti-builder
+```
+
+
+## Build Docker Image For Publication
+To publish the latest `ziti` CLI, use [the GitHub Action](https://github.com/openziti/ziti/actions/workflows/push-quickstart.yml).
+It's preferable to use `main` as the branch to create the docker image from, but it's 
+perfectly fine to use 'release-next' as the source if there are script-related changes that need
+to be pushed out faster than waiting for a merge to main.

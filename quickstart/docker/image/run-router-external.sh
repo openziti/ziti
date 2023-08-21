@@ -1,5 +1,19 @@
 #!/bin/bash
 
+echo ""
+echo ""
+echo "-------------------------------------------"
+echo "--         DEPRECATION NOTICE            --"
+echo "-------------------------------------------"
+echo "-- this script will be removed in future --"
+echo "-- releases. You are urged to stop using --"
+echo "-- this script and change to using the   --"
+echo "-- existing 'run-router.sh' script which --"
+echo "-- now works externally                  --"
+echo "-------------------------------------------"
+echo ""
+echo ""
+
 # give the controller time to ramp up before running if running in docker-compose
 echo "Waiting for 5 seconds...."
 sleep 5
@@ -8,7 +22,7 @@ sleep 5
 
 # If we have not defined these, then no point going further - so dont
 if [[ "${ZITI_ROUTER_ADVERTISED_ADDRESS}" == "" ]]; then echo "ERROR: Missing ZITI_ROUTER_ADVERTISED_ADDRESS definition" >&2; exit; fi
-export ZITI_EDGE_ROUTER_NAME=${ZITI_EDGE_ROUTER_NAME_OVERRIDE}
+export ZITI_ROUTER_NAME=${ZITI_ROUTER_NAME_OVERRIDE}
 
 echo "ZITI_ROUTER_ADVERTISED_ADDRESS = ${ZITI_ROUTER_ADVERTISED_ADDRESS}"
 
@@ -22,28 +36,28 @@ if [ ! -f ${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt ]; then
 
   # If we have override variables then override the base variable
   # This is required as the .bashrc loads the env file which clobbers passed in varibles
-  if [[ "${ZITI_EDGE_ROUTER_RAWNAME_OVERRIDE}" == "" ]]; then echo "ERROR: Missing ZITI_EDGE_ROUTER_RAWNAME_OVERRIDE definition" >&2; exit; fi
+  if [[ "${ZITI_ROUTER_RAWNAME_OVERRIDE}" == "" ]]; then echo "ERROR: Missing ZITI_ROUTER_RAWNAME_OVERRIDE definition" >&2; exit; fi
     # May have been a bad attempt before, so lets clean up
-  rm -f ${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}*
+  rm -f ${ZITI_HOME}/${ZITI_ROUTER_NAME}*
 
   if [[ ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS} != "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}; fi
   if [[ ${ZITI_USER_OVERRIDE} != "" ]]; then export ZITI_USER=${ZITI_USER_OVERRIDE}; fi
   if [[ ${ZITI_PWD_OVERRIDE} != "" ]]; then export ZITI_PWD=${ZITI_PWD_OVERRIDE}; fi
   if [[ ${ZITI_EDGE_CONTROLLER_PORT_OVERRIDE} != "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_EDGE_CONTROLLER_PORT_OVERRIDE}; fi
-  if [[ ${ZITI_ROUTER_ADVERTISED_ADDRESS} == "" ]]; then export ZITI_ROUTER_ADVERTISED_ADDRESS=${ZITI_EDGE_ROUTER_NAME}; fi
+  if [[ ${ZITI_ROUTER_ADVERTISED_ADDRESS} == "" ]]; then export ZITI_ROUTER_ADVERTISED_ADDRESS=${ZITI_ROUTER_NAME}; fi
 
   # First off - lets make sure we have what we need
   if [[ ${ZITI_USER} == "" ]] || [[ ${ZITI_PWD} == "" ]]; then echo "ERROR:  Need ZITI_USER and ZITI_PWD defined" >&2; exit; fi
   if [[ "$1" == "" ]]; then echo "ERROR:  Have not defined router type.  It should be one of edge,wss,fabric or private." >&2; exit; fi
   if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}" == "" ]]; then echo "ERROR: Missing ZITI_CTRL_EDGE_ADVERTISED_ADDRESS definition" >&2; exit; fi
-  if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
-  if [[ "${ZITI_EDGE_ROUTER_ROLES}" == "" ]]; then export ZITI_EDGE_ROUTER_ROLES="${ZITI_ROUTER_ADVERTISED_ADDRESS}"; fi
+  if [[ "${ZITI_ROUTER_PORT-}" == "" ]]; then export ZITI_ROUTER_PORT="3022"; fi
+  if [[ "${ZITI_ROUTER_ROLES}" == "" ]]; then export ZITI_ROUTER_ROLES="${ZITI_ROUTER_ADVERTISED_ADDRESS}"; fi
 
-  echo "ZITI_EDGE_ROUTER_NAME = ${ZITI_EDGE_ROUTER_NAME}"
-  echo "ZITI_EDGE_ROUTER_ROLES = ${ZITI_EDGE_ROUTER_ROLES}"
-  echo "ZITI_EDGE_ROUTER_PORT = ${ZITI_EDGE_ROUTER_PORT}"
+  echo "ZITI_ROUTER_NAME = ${ZITI_ROUTER_NAME}"
+  echo "ZITI_ROUTER_ROLES = ${ZITI_ROUTER_ROLES}"
+  echo "ZITI_ROUTER_PORT = ${ZITI_ROUTER_PORT}"
   echo "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS = ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
-  echo "ZITI_CTRL_LISTENER_PORT = ${ZITI_CTRL_LISTENER_PORT}"
+  echo "ZITI_CTRL_ADVERTISED_PORT = ${ZITI_CTRL_ADVERTISED_PORT}"
   echo "ZITI_USER = ${ZITI_USER}"
   if [[ ! "${ZITI_PWD}" == "" ]]; then echo "ZITI_PWD = (obscured)"; fi
 
@@ -52,29 +66,29 @@ if [ ! -f ${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt ]; then
 
   if [[ "$1" == "edge" ]]; then
     echo "CREATING EDGE ROUTER CONFIG"
-    createEdgeRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
+    createEdgeRouterConfig "${ZITI_ROUTER_NAME}"
   fi
   if [[ "$1" == "wss" ]]; then
     echo "CREATING EDGE ROUTER WSS CONFIG"
-    createEdgeRouterWssConfig "${ZITI_EDGE_ROUTER_NAME}"
+    createEdgeRouterWssConfig "${ZITI_ROUTER_NAME}"
   fi
   if [[ "$1" == "fabric" ]]; then
     echo "CREATING FABRIC ROUTER CONFIG"
-    createFabricRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
+    createFabricRouterConfig "${ZITI_ROUTER_NAME}"
   fi
   if [[ "$1" == "private" ]]; then
     echo "CREATING PRIVATE ROUTER CONFIG"
-    createPrivateRouterConfig "${ZITI_EDGE_ROUTER_NAME}"
+    createPrivateRouterConfig "${ZITI_ROUTER_NAME}"
   fi
 
-  mv ${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml ${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.yaml
+  mv ${ZITI_HOME}/${ZITI_ROUTER_NAME}.yaml ${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.yaml
 
-  echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_NAME}...."
+  echo "----------  Creating edge-router ${ZITI_ROUTER_NAME}...."
   found=$(${ZITI_BIN_DIR}/ziti edge list edge-routers 'name = "'"${ZITI_ROUTER_ADVERTISED_ADDRESS}"'"' | grep -c "${ZITI_ROUTER_ADVERTISED_ADDRESS}")
   if [[ found -gt 0 ]]; then
     echo "----------  Found existing edge-router ${ZITI_ROUTER_ADVERTISED_ADDRESS}...."
   else
-    "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_ROUTER_ADVERTISED_ADDRESS}" -o "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt" -t -a "${ZITI_EDGE_ROUTER_ROLES}"
+    "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_ROUTER_ADVERTISED_ADDRESS}" -o "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt" -t -a "${ZITI_ROUTER_ROLES}"
     sleep 1
     echo "---------- Enrolling edge-router ${ZITI_ROUTER_ADVERTISED_ADDRESS}...."
   "${ZITI_BIN_DIR}/ziti-router" enroll "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.yaml" --jwt "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt"

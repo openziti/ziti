@@ -19,7 +19,6 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -186,7 +185,7 @@ func WriteZitiAppFile(zitiApp string, fileType string, appData interface{}) erro
 		return err
 	}
 
-	return ioutil.WriteFile(filePath, data, 0600)
+	return os.WriteFile(filePath, data, 0600)
 }
 
 // ReadZitiAppConfigFile reads in the config file data for the given Ziti application from an appropriate location
@@ -203,7 +202,7 @@ func ReadZitiAppFile(zitiApp string, fileType string, configData interface{}) er
 
 	filePath := filepath.Join(configDir, fileType+".json")
 
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}

@@ -202,12 +202,12 @@ jobs:
     needs: [ fablab-smoketest ]
     steps:
       - name: Sleep If Failed
-        if: needs.fablab-smoketest.result != 'success'
+        if: needs.fablab-smoketest.result != 'success' && needs.fablab-smoketest.result != 'skipped'
         run: |
           sleep 30m
 
       - name: Teardown Test Environment
-        if: always()
+        if: always() && needs.fablab-smoketest.result != 'skipped'
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         run: |
@@ -270,6 +270,20 @@ jobs:
           name: windows-release-${{ github.run_id }}
           path: release/
 
+      - name: List downloaded release artifacts
+        run: |
+          ls -lAhR release/
+
+      - name: Restore execute filemode on macOS and Linux release artifacts before publishing
+        run: |
+          find  ./release \
+                -type f \
+                -print0 \
+                -path "./release/*/darwin/ziti" \
+                -o \
+                -path "./release/*/linux/ziti" \
+            | xargs -0 chmod -c +x
+
       - name: Install Jfrog CLI
         uses: jfrog/setup-jfrog-cli@v3
         with:
@@ -283,6 +297,7 @@ jobs:
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
           ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
           $(go env GOPATH)/bin/ziti-ci publish-to-github --archive-base ""
 
