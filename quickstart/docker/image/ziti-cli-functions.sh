@@ -740,6 +740,9 @@ function createPki {
   _pki_create_intermediate "${ZITI_PKI_SIGNER_ROOTCA_NAME}" "${ZITI_SPURIOUS_INTERMEDIATE}" 2
   _pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}" 1
 
+  echo "adding secondary intermediate into ca bundle"
+  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_spurious_intermediate.cert" >>"${ZITI_PKI_CTRL_CA}"
+
   echo " "
   pki_allow_list="localhost,${ZITI_NETWORK}"
   if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" != "" ]]; then
