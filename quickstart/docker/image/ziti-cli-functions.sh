@@ -820,8 +820,8 @@ function createControllerConfig {
   echo "adding controller root CA to ca bundle: $ZITI_PKI/$ZITI_PKI_CTRL_ROOTCA_NAME/certs/$ZITI_PKI_CTRL_ROOTCA_NAME.cert"
   cat "$ZITI_PKI/$ZITI_PKI_CTRL_ROOTCA_NAME/certs/$ZITI_PKI_CTRL_ROOTCA_NAME.cert" > "${ZITI_PKI_CTRL_CA}"
 
-  echo "adding signing root CA to ca bundle: $ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/$ZITI_PKI_SIGNER_ROOTCA_NAME.cert" >> "${ZITI_PKI_CTRL_CA}"
-  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/$ZITI_PKI_SIGNER_ROOTCA_NAME.cert" >>"${ZITI_PKI_CTRL_CA}"
+  echo "adding signing root CA to ca bundle: $ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/$ZITI_PKI_SIGNER_ROOTCA_NAME.cert"
+  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/$ZITI_PKI_SIGNER_ROOTCA_NAME.cert" >>"${ZITI_PKI_CTRL_CA}" >> "${ZITI_PKI_CTRL_CA}"
 
   echo "adding secondary signing intermediate into ca bundle: $ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_spurious_intermediate.cert"
   cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_spurious_intermediate.cert" >> "${ZITI_PKI_CTRL_CA}"
