@@ -32,7 +32,7 @@ func TestEdgeRouterAdvertisedAddress(t *testing.T) {
 	require.Equal(t, routerAdvHostIp, data2.Router.Edge.AdvertisedHost, nil)
 
 	// If advertised address set, uses that over IP override or hostname
-	keys["ZITI_ROUTER_ADVERTISED_HOST"] = routerAdvHostDns
+	keys["ZITI_ROUTER_ADVERTISED_ADDRESS"] = routerAdvHostDns
 	keys["ZITI_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
 	_, data3 := createRouterConfig(defaultArgs, routerOpts, keys)
 	require.Equal(t, routerAdvHostDns, data3.Router.Edge.AdvertisedHost, nil)

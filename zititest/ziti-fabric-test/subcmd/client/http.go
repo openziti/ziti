@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
+	"github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd"
 	"github.com/spf13/cobra"
 	"io"
 	"net"

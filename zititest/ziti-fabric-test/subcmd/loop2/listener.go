@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
+	"github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/loop2/pb"
 	"github.com/spf13/cobra"
 	"net"
 	"strings"

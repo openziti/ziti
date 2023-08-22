@@ -13,7 +13,6 @@ require (
 	github.com/go-openapi/runtime v0.26.0
 	github.com/go-openapi/strfmt v0.21.7
 	github.com/go-resty/resty/v2 v2.7.0
-	github.com/google/go-cmp v0.5.9
 	github.com/gorilla/websocket v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/michaelquigley/pfxlog v0.6.10
@@ -31,7 +30,6 @@ require (
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.3
 	github.com/pkg/errors v0.9.1
-	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/russross/blackfriday v1.5.2
 	github.com/shirou/gopsutil/v3 v3.23.7
 	github.com/sirupsen/logrus v1.9.3
@@ -90,6 +88,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230716120725-531d2d74bc12 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
@@ -145,6 +144,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
 	github.com/rabbitmq/amqp091-go v1.8.1 // indirect
+	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
 	github.com/rs/cors v1.9.0 // indirect

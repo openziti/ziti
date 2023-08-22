@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/transport/v2"
-	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
+	loop3_pb "github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/loop3/pb"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net"
