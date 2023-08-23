@@ -162,4 +162,36 @@ const (
 	MfaNotEnrolledCode    string = "MFA_NOT_ENROLLED"
 	MfaNotEnrolledMessage string = "The current identity is not enrolled in MFA"
 	MfaNotEnrolledStatus  int    = http.StatusConflict
+
+	CouldNotDecodeProxiedCertCode    string = "COULD_NOT_PARSE_PROXY_CERT"
+	CouldNotDecodeProxiedCertMessage string = "could not decode proxy client cert"
+	CouldNotDecodeProxiedCertStatus  int    = http.StatusInternalServerError
+
+	MissingCertClaimCode    string = "MISSING_CERT_CLAIM"
+	MissingCertClaimMessage string = "The certificate is expected to contain and externalId, which was not found"
+	MissingCertClaimStatus  int    = http.StatusBadRequest
+
+	EdgeRouterFailedReEnrollmentCode        = "FAILED_ER_REENROLLMENT"
+	EdgeRouterFailedReEnrollmentMessage     = "the edge router failed to be re-enrolled, see cause"
+	EdgeRouterFailedReEnrollmentStatus  int = http.StatusInternalServerError
+
+	InvalidClientCertCode    string = "INVALID_CLIENT_CERT"
+	InvalidClientCertMessage string = "The provided client certificate is invalid"
+	InvalidClientCertStatus  int    = http.StatusBadRequest
+
+	InvalidCertificatePemCode    string = "INVALID_CERT_PEM"
+	InvalidCertificatePemMessage string = "the supplied certificate PEM is either invalid or contains the incorrect number of certificates"
+	InvalidCertificatePemStatus  int    = http.StatusBadRequest
+
+	CanNotDeleteReferencedEntityCode    string = "CAN_NOT_DELETE_REFERENCED_ENTITY"
+	CanNotDeleteReferencedEntityMessage string = "the entity cannot be deleted because it is referenced by another entity, see cause"
+	CanNotDeleteReferencedEntityStatus  int    = http.StatusConflict
+
+	ReferencedEntityNotFoundCode    string = "REFERENCED_ENTITY_NOT_FOUND"
+	ReferencedEntityNotFoundMessage string = "REFERENCED_ENTITY_NOT_FOUND"
+	ReferencedEntityNotFoundStatus  int    = http.StatusBadRequest
+
+	EnrollmentExistsCode    string = "ENROLLMENT_EXISTS"
+	EnrollmentExistsMessage string = "ENROLLMENT_EXISTS"
+	EnrollmentExistsStatus  int    = http.StatusConflict
 )
