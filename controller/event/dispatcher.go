@@ -78,8 +78,6 @@ type Dispatcher interface {
 	ProcessSubscriptions(handler interface{}, subscriptions []*Subscription) error
 	RemoveAllSubscriptions(handler interface{})
 
-	Dispatch(event Event)
-
 	AddCircuitEventHandler(handler CircuitEventHandler)
 	RemoveCircuitEventHandler(handler CircuitEventHandler)
 
@@ -125,10 +123,6 @@ type Dispatcher interface {
 	TerminatorEventHandler
 	UsageEventHandler
 	ClusterEventHandler
-}
-
-type Event interface {
-	Handle()
 }
 
 // A Subscription has information to configure an event handler. It contains the EventType to

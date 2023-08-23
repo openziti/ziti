@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xmgmt"
-	"github.com/openziti/fabric/trace"
+	"github.com/openziti/fabric/common/trace"
 )
 
 type BindHandler struct {

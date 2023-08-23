@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/trace/pb"
-	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/common/handler_common"
 	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/openziti/fabric/common/pb/mgmt_pb"
-	"github.com/openziti/fabric/trace"
+	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/common/trace"
 	"google.golang.org/protobuf/proto"
 	"sync"
 	"time"
@@ -37,7 +37,7 @@ type traceTogglePipeHandler struct {
 
 func newTogglePipeTracesHandler(network *network.Network) *traceTogglePipeHandler {
 	return &traceTogglePipeHandler{
-		eventHandler: trace.NewDispatchWrapper(network.GetEventDispatcher().Dispatch),
+		eventHandler: network.GetTraceController(),
 		network:      network,
 	}
 }

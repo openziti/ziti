@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/fabric/common/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/fabric/trace"
+	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/metrics"

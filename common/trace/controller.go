@@ -147,11 +147,12 @@ type Controller interface {
 	Source
 	AddSource(source Source)
 	RemoveSource(source Source)
+	EventHandler
 }
 
 func NewController(closeNotify <-chan struct{}) Controller {
 	controller := &controllerImpl{
-		events:      make(chan controllerEvent, 1),
+		events:      make(chan controllerEvent, 25),
 		sources:     make(map[Source]Source),
 		closeNotify: closeNotify,
 	}
@@ -211,6 +212,13 @@ type controllerImpl struct {
 	events      chan controllerEvent
 	sources     map[Source]Source
 	closeNotify <-chan struct{}
+}
+
+func (controller *controllerImpl) Accept(event *trace_pb.ChannelMessage) {
+	select {
+	case controller.events <- &eventWrapper{wrapped: event}:
+	case <-controller.closeNotify:
+	}
 }
 
 func (controller *controllerImpl) EnableTracing(sourceType SourceType, matcher SourceMatcher, handler EventHandler, resultChan chan<- ToggleApplyResult) {

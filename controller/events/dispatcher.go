@@ -44,7 +44,6 @@ func (self *delegatingRegistrar) Unregister(handler interface{}) {
 func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result := &Dispatcher{
 		closeNotify: closeNotify,
-		eventC:      make(chan event.Event, 25),
 		entityChangeEventsDispatcher: entityChangeEventDispatcher{
 			notifyCh:       make(chan struct{}, 1),
 			globalMetadata: map[string]any{},
@@ -69,8 +68,6 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result.RegisterEventHandlerFactory("file", FileEventLoggerFactory{})
 	result.RegisterEventHandlerFactory("stdout", StdOutLoggerFactory{})
 	result.RegisterEventHandlerFactory("amqp", AMQPEventLoggerFactory{})
-
-	go result.eventLoop()
 
 	return result
 }
@@ -99,7 +96,6 @@ type Dispatcher struct {
 	entityChangeEventsDispatcher entityChangeEventDispatcher
 	entityTypes                  []string
 	closeNotify                  <-chan struct{}
-	eventC                       chan event.Event
 }
 
 func (self *Dispatcher) InitializeNetworkEvents(n *network.Network) {
@@ -116,27 +112,6 @@ func (self *Dispatcher) InitializeNetworkEvents(n *network.Network) {
 
 func (self *Dispatcher) AddMetricsMapper(mapper event.MetricsMapper) {
 	self.metricsMappers.Append(mapper)
-}
-
-func (self *Dispatcher) eventLoop() {
-	pfxlog.Logger().Info("event dispatcher: started")
-	defer pfxlog.Logger().Info("event dispatcher: stopped")
-
-	for {
-		select {
-		case evt := <-self.eventC:
-			evt.Handle()
-		case <-self.closeNotify:
-			return
-		}
-	}
-}
-
-func (self *Dispatcher) Dispatch(event event.Event) {
-	select {
-	case self.eventC <- event:
-	case <-self.closeNotify:
-	}
 }
 
 func (self *Dispatcher) RegisterEventType(eventType string, typeRegistrar event.TypeRegistrar) {

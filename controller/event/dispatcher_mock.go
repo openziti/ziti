@@ -55,8 +55,6 @@ func (d DispatcherMock) RegisterEventType(string, TypeRegistrar) {}
 
 func (d DispatcherMock) RegisterEventHandlerFactory(string, HandlerFactory) {}
 
-func (d DispatcherMock) Dispatch(Event) {}
-
 func (d DispatcherMock) AddCircuitEventHandler(CircuitEventHandler) {}
 
 func (d DispatcherMock) RemoveCircuitEventHandler(CircuitEventHandler) {}

@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/common/handler_common"
 	"github.com/openziti/fabric/common/pb/mgmt_pb"
-	"github.com/openziti/fabric/trace"
+	"github.com/openziti/fabric/common/trace"
 	"google.golang.org/protobuf/proto"
 )
 
