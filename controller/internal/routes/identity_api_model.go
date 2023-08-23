@@ -118,7 +118,7 @@ func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeI
 			Tags: TagsOrDefault(identity.Tags),
 		},
 		Name:                      stringz.OrEmpty(identity.Name),
-		IdentityTypeId:            identityTypeId,
+		IdentityTypeId:            persistence.DefaultIdentityType,
 		IsDefaultAdmin:            false,
 		IsAdmin:                   *identity.IsAdmin,
 		RoleAttributes:            AttributesOrDefault(identity.RoleAttributes),

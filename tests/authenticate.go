@@ -377,7 +377,7 @@ func (request *authenticatedRequests) RequireCreateSdkContext(roleAttributes ...
 func (request *authenticatedRequests) requireCreateIdentity(name string, isAdmin bool, rolesAttributes ...string) string {
 	entityData := gabs.New()
 	request.testContext.setJsonValue(entityData, name, "name")
-	request.testContext.setJsonValue(entityData, "User", "type")
+	request.testContext.setJsonValue(entityData, rest_model.IdentityTypeDefault, "type")
 	request.testContext.setJsonValue(entityData, isAdmin, "isAdmin")
 	request.testContext.setJsonValue(entityData, rolesAttributes, "roleAttributes")
 
@@ -471,7 +471,7 @@ func (request *authenticatedRequests) requireCreateIdentityWithUpdbEnrollment(na
 
 	identity := &identity{
 		name:         name,
-		identityType: "User",
+		identityType: string(rest_model.IdentityTypeDefault),
 		isAdmin:      isAdmin,
 		enrollment: map[string]interface{}{
 			"updb": name,
@@ -487,7 +487,7 @@ func (request *authenticatedRequests) requireCreateIdentityWithUpdbEnrollment(na
 func (request *authenticatedRequests) requireCreateIdentityOttEnrollment(name string, isAdmin bool, rolesAttributes ...string) (string, *certAuthenticator) {
 	entityData := gabs.New()
 	request.testContext.setJsonValue(entityData, name, "name")
-	request.testContext.setJsonValue(entityData, "User", "type")
+	request.testContext.setJsonValue(entityData, rest_model.IdentityTypeDefault, "type")
 	request.testContext.setJsonValue(entityData, isAdmin, "isAdmin")
 	request.testContext.setJsonValue(entityData, rolesAttributes, "roleAttributes")
 
@@ -506,7 +506,7 @@ func (request *authenticatedRequests) requireCreateIdentityOttEnrollment(name st
 func (request *authenticatedRequests) requireCreateIdentityOttEnrollmentUnfinished(name string, isAdmin bool, rolesAttributes ...string) string {
 	entityData := gabs.New()
 	request.testContext.setJsonValue(entityData, name, "name")
-	request.testContext.setJsonValue(entityData, "User", "type")
+	request.testContext.setJsonValue(entityData, rest_model.IdentityTypeDefault, "type")
 	request.testContext.setJsonValue(entityData, isAdmin, "isAdmin")
 	request.testContext.setJsonValue(entityData, rolesAttributes, "roleAttributes")
 

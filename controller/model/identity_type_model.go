@@ -23,10 +23,6 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-const (
-	IdentityTypeUser = "User"
-)
-
 type IdentityType struct {
 	models.BaseEntity
 	Name string `json:"name"`

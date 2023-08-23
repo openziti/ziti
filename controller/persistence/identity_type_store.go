@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	RouterIdentityType = "Router"
+	RouterIdentityType  = "Router"
+	DefaultIdentityType = "Default"
 )
 
 type IdentityType struct {

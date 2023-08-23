@@ -178,15 +178,13 @@ func (ctx *TestContext) Cleanup() {
 }
 
 func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
-	identityType, err := ctx.managers.IdentityType.ReadByIdOrName("Service")
-	ctx.NoError(err)
-	identity := &Identity{
+	newIdentity := &Identity{
 		Name:           eid.New(),
 		IsAdmin:        isAdmin,
-		IdentityTypeId: identityType.Id,
+		IdentityTypeId: persistence.DefaultIdentityType,
 	}
-	ctx.NoError(ctx.managers.Identity.Create(identity, change.New()))
-	return identity
+	ctx.NoError(ctx.managers.Identity.Create(newIdentity, change.New()))
+	return newIdentity
 }
 
 func (ctx *TestContext) requireNewService() *Service {

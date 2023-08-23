@@ -208,7 +208,7 @@ func (self *IdentityManager) InitializeDefaultAdmin(username, password, name str
 		return errorz.NewFieldError(fmt.Sprintf("name must be at most %v characters", maxDefaultAdminNameLength), "name", name)
 	}
 
-	identityType, err := self.env.GetManagers().IdentityType.ReadByName(IdentityTypeUser)
+	identityType, err := self.env.GetManagers().IdentityType.ReadByName(persistence.DefaultIdentityType)
 
 	if err != nil {
 		return err

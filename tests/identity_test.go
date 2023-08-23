@@ -328,7 +328,7 @@ func Test_Identity(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		terminatorCost := rest_model.TerminatorCost(1)
-		identityType := rest_model.IdentityTypeDevice
+		identityType := rest_model.IdentityTypeDefault
 
 		identityCreate := &rest_model.IdentityCreate{
 			AppData: &rest_model.Tags{
@@ -401,7 +401,7 @@ func Test_Identity(t *testing.T) {
 			ctx.testContextChanged(t)
 			updateContent := gabs.New()
 			_, _ = updateContent.SetP(eid.New(), "name")
-			_, _ = updateContent.SetP("Device", "type")
+			_, _ = updateContent.SetP(rest_model.IdentityTypeDefault, "type")
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
 			_, _ = updateContent.SetP("", "authPolicyId")
@@ -424,7 +424,8 @@ func Test_Identity(t *testing.T) {
 			ctx.testContextChanged(t)
 			updateContent := gabs.New()
 			_, _ = updateContent.SetP(eid.New(), "name")
-			_, _ = updateContent.SetP("Device", "type")
+			_, _ = updateContent.SetP(rest_model.IdentityTypeDefault, "type")
+			_, _ = updateContent.SetP(rest_model.IdentityTypeDefault, "type")
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
 			_, _ = updateContent.SetP("", "authPolicyId")
@@ -449,7 +450,7 @@ func Test_Identity(t *testing.T) {
 
 			updateContent := gabs.New()
 			_, _ = updateContent.SetP(eid.New(), "name")
-			_, _ = updateContent.SetP("Device", "type")
+			_, _ = updateContent.SetP(rest_model.IdentityTypeDefault, "type")
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(true, "isAdmin")
 			_, _ = updateContent.SetP(true, "isDefaultAdmin")
@@ -472,7 +473,7 @@ func Test_Identity(t *testing.T) {
 			newName := eid.New()
 			updateContent := gabs.New()
 			_, _ = updateContent.SetP(newName, "name")
-			_, _ = updateContent.SetP("Device", "type")
+			_, _ = updateContent.SetP(rest_model.IdentityTypeDefault, "type")
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
 			_, _ = updateContent.SetP("", "authPolicyId")
@@ -562,7 +563,7 @@ func Test_Identity(t *testing.T) {
 	t.Run("disable and enable identities affect cert authentication", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		identityType := rest_model.IdentityTypeDevice
+		identityType := rest_model.IdentityTypeDefault
 		identity := &rest_model.IdentityCreate{
 			IsAdmin: B(false),
 			Name:    S("test-identity-disable-cert"),
@@ -635,7 +636,7 @@ func Test_Identity(t *testing.T) {
 		ctx.testContextChanged(t)
 		username := "test-identity-disable-updb"
 		password := "test-identity-disable-updb-password"
-		identityType := rest_model.IdentityTypeDevice
+		identityType := rest_model.IdentityTypeDefault
 		identity := &rest_model.IdentityCreate{
 			IsAdmin: B(false),
 			Name:    S("test-identity-disable-updb"),
@@ -741,7 +742,7 @@ func Test_Identity(t *testing.T) {
 		ctx.NoError(err)
 		ctx.Equal(http.StatusOK, resp.StatusCode())
 
-		identityType := rest_model.IdentityTypeDevice
+		identityType := rest_model.IdentityTypeDefault
 		identity := &rest_model.IdentityCreate{
 			IsAdmin: B(false),
 			Name:    S("test-identity-disable-updb-01"),

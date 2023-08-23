@@ -47,9 +47,7 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 }
 
 var IdentityTypesV1 = map[string]string{
-	"User":    "User",
-	"Device":  "Device",
-	"Service": "Service",
+	"Default": "Default",
 	"Router":  "Router",
 }
 
