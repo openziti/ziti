@@ -173,7 +173,7 @@ services:
     command: "/var/openziti/scripts/run-router.sh private"
 
   web-test-blue:
-    image: crccheck/hello-world
+    image: openziti/hello-world
     ports:
       - 80:8000
     networks:
