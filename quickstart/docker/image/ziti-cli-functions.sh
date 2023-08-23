@@ -720,7 +720,7 @@ function getZiti {
 
 # Create a custom PKI
 function createPki {
-  local retVal pki_allow_list pki_allow_list_ip ZITI_grandparent_INTERMEDIATE
+  local retVal pki_allow_list pki_allow_list_ip ZITI_GRANDPARENT_INTERMEDIATE
   _check_env_variable ZITI_PKI_CTRL_ROOTCA_NAME ZITI_PKI_CTRL_EDGE_ROOTCA_NAME ZITI_PKI_SIGNER_ROOTCA_NAME \
                       ZITI_PKI_SIGNER_INTERMEDIATE_NAME ZITI_PKI_CTRL_INTERMEDIATE_NAME \
                       ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME
@@ -734,11 +734,11 @@ function createPki {
   _pki_create_ca "${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}"
   _pki_create_ca "${ZITI_PKI_SIGNER_ROOTCA_NAME}"
 
-  ZITI_grandparent_INTERMEDIATE="${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_grandparent_intermediate"
+  ZITI_GRANDPARENT_INTERMEDIATE="${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_grandparent_intermediate"
   _pki_create_intermediate "${ZITI_PKI_CTRL_ROOTCA_NAME}" "${ZITI_PKI_CTRL_INTERMEDIATE_NAME}" 1
   _pki_create_intermediate "${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}" "${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}" 1
-  _pki_create_intermediate "${ZITI_PKI_SIGNER_ROOTCA_NAME}" "${ZITI_grandparent_INTERMEDIATE}" 2
-  _pki_create_intermediate "${ZITI_grandparent_INTERMEDIATE}" "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}" 1
+  _pki_create_intermediate "${ZITI_PKI_SIGNER_ROOTCA_NAME}" "${ZITI_GRANDPARENT_INTERMEDIATE}" 2
+  _pki_create_intermediate "${ZITI_GRANDPARENT_INTERMEDIATE}" "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}" 1
 
   echo " "
   pki_allow_list="localhost,${ZITI_NETWORK}"
