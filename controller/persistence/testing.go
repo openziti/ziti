@@ -22,12 +22,11 @@ import (
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/event"
+	"github.com/openziti/fabric/controller/events"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
-	"github.com/openziti/fabric/controller/event"
-	"github.com/openziti/fabric/controller/events"
-	tests "github.com/openziti/fabric/tests"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -46,7 +45,7 @@ func newTestConfig(ctx *TestContext) *testConfig {
 		ctx:             ctx,
 		options:         options,
 		metricsRegistry: metrics.NewRegistry("test", nil),
-		versionProvider: tests.NewVersionProviderTest(),
+		versionProvider: versions.NewDefaultVersionProvider(),
 		eventDispatcher: events.NewDispatcher(ctx.closeNotify),
 	}
 }

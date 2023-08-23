@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-func (self *Dispatcher) AddEntityCountEventHandler(handler EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool) {
+func (self *EdgeEventDispatcher) AddEntityCountEventHandler(handler EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool) {
 	self.entityCountEventHandlers.Append(&entityCountState{
 		handler:          handler,
 		onlyLeaderEvents: onlyLeaderEvents,
@@ -32,7 +32,7 @@ func (self *Dispatcher) AddEntityCountEventHandler(handler EntityCountEventHandl
 	})
 }
 
-func (self *Dispatcher) RemoveEntityCountEventHandler(handler EntityCountEventHandler) {
+func (self *EdgeEventDispatcher) RemoveEntityCountEventHandler(handler EntityCountEventHandler) {
 	for _, state := range self.entityCountEventHandlers.Value() {
 		if state.handler == handler {
 			self.entityCountEventHandlers.Delete(state)
@@ -40,11 +40,11 @@ func (self *Dispatcher) RemoveEntityCountEventHandler(handler EntityCountEventHa
 	}
 }
 
-func (self *Dispatcher) initEntityEvents() {
+func (self *EdgeEventDispatcher) initEntityEvents() {
 	go self.generateEntityEvents()
 }
 
-func (self *Dispatcher) generateEntityEvents() {
+func (self *EdgeEventDispatcher) generateEntityEvents() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -70,7 +70,7 @@ func (self *Dispatcher) generateEntityEvents() {
 	}
 }
 
-func (self *Dispatcher) generateEntityCountEvent() *EntityCountEvent {
+func (self *EdgeEventDispatcher) generateEntityCountEvent() *EntityCountEvent {
 	event := &EntityCountEvent{
 		Namespace: EntityCountEventNS,
 		Timestamp: time.Now(),
@@ -86,7 +86,7 @@ func (self *Dispatcher) generateEntityCountEvent() *EntityCountEvent {
 	return event
 }
 
-func (self *Dispatcher) registerEntityCountEventHandler(val interface{}, config map[string]interface{}) error {
+func (self *EdgeEventDispatcher) registerEntityCountEventHandler(val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(EntityCountEventHandler)
 
 	if !ok {
@@ -123,7 +123,7 @@ func (self *Dispatcher) registerEntityCountEventHandler(val interface{}, config 
 	return nil
 }
 
-func (self *Dispatcher) unregisterEntityCountEventHandler(val interface{}) {
+func (self *EdgeEventDispatcher) unregisterEntityCountEventHandler(val interface{}) {
 	if handler, ok := val.(EntityCountEventHandler); ok {
 		self.RemoveEntityCountEventHandler(handler)
 	}

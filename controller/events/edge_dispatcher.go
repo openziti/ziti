@@ -18,16 +18,16 @@ package events
 
 import (
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/fabric/controller/events"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
 	"io"
 )
 
-func NewDispatcher(n *network.Network, dbProvider persistence.DbProvider, stores *persistence.Stores, closeNotify <-chan struct{}) *Dispatcher {
-	result := &Dispatcher{
+func NewEdgeEventDispatcher(n *network.Network, dbProvider persistence.DbProvider, stores *persistence.Stores, closeNotify <-chan struct{}) *EdgeEventDispatcher {
+	result := &EdgeEventDispatcher{
 		network:          n,
 		fabricDispatcher: n.GetEventDispatcher(),
 		dbProvider:       dbProvider,
@@ -55,7 +55,7 @@ func NewDispatcher(n *network.Network, dbProvider persistence.DbProvider, stores
 	return result
 }
 
-type Dispatcher struct {
+type EdgeEventDispatcher struct {
 	apiSessionEventHandlers  concurrenz.CopyOnWriteSlice[ApiSessionEventHandler]
 	entityCountEventHandlers concurrenz.CopyOnWriteSlice[*entityCountState]
 	sessionEventHandlers     concurrenz.CopyOnWriteSlice[SessionEventHandler]
@@ -67,7 +67,7 @@ type Dispatcher struct {
 	closeNotify      <-chan struct{}
 }
 
-func (self *Dispatcher) InitializeEvents() {
+func (self *EdgeEventDispatcher) InitializeEvents() {
 	self.initApiSessionEvents(self.stores)
 	self.initSessionEvents(self.stores)
 	self.initEntityEvents()

@@ -26,11 +26,11 @@ import (
 	"time"
 )
 
-func (self *Dispatcher) AddApiSessionEventHandler(handler ApiSessionEventHandler) {
+func (self *EdgeEventDispatcher) AddApiSessionEventHandler(handler ApiSessionEventHandler) {
 	self.apiSessionEventHandlers.Append(handler)
 }
 
-func (self *Dispatcher) RemoveApiSessionEventHandler(handler ApiSessionEventHandler) {
+func (self *EdgeEventDispatcher) RemoveApiSessionEventHandler(handler ApiSessionEventHandler) {
 	self.apiSessionEventHandlers.DeleteIf(func(val ApiSessionEventHandler) bool {
 		if val == handler {
 			return true
@@ -42,12 +42,12 @@ func (self *Dispatcher) RemoveApiSessionEventHandler(handler ApiSessionEventHand
 	})
 }
 
-func (self *Dispatcher) initApiSessionEvents(stores *persistence.Stores) {
+func (self *EdgeEventDispatcher) initApiSessionEvents(stores *persistence.Stores) {
 	stores.ApiSession.AddEntityEventListenerF(self.apiSessionCreated, boltz.EntityCreated)
 	stores.ApiSession.AddEntityEventListenerF(self.apiSessionDeleted, boltz.EntityDeleted)
 }
 
-func (self *Dispatcher) apiSessionCreated(apiSession *persistence.ApiSession) {
+func (self *EdgeEventDispatcher) apiSessionCreated(apiSession *persistence.ApiSession) {
 	event := &ApiSessionEvent{
 		Namespace:  ApiSessionEventNS,
 		EventType:  ApiSessionEventTypeCreated,
@@ -63,7 +63,7 @@ func (self *Dispatcher) apiSessionCreated(apiSession *persistence.ApiSession) {
 	}
 }
 
-func (self *Dispatcher) apiSessionDeleted(apiSession *persistence.ApiSession) {
+func (self *EdgeEventDispatcher) apiSessionDeleted(apiSession *persistence.ApiSession) {
 	event := &ApiSessionEvent{
 		Namespace:  ApiSessionEventNS,
 		EventType:  ApiSessionEventTypeDeleted,
@@ -79,7 +79,7 @@ func (self *Dispatcher) apiSessionDeleted(apiSession *persistence.ApiSession) {
 	}
 }
 
-func (self *Dispatcher) registerApiSessionEventHandler(val interface{}, config map[string]interface{}) error {
+func (self *EdgeEventDispatcher) registerApiSessionEventHandler(val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(ApiSessionEventHandler)
 
 	if !ok {
@@ -117,7 +117,7 @@ func (self *Dispatcher) registerApiSessionEventHandler(val interface{}, config m
 	return nil
 }
 
-func (self *Dispatcher) unregisterApiSessionEventHandler(val interface{}) {
+func (self *EdgeEventDispatcher) unregisterApiSessionEventHandler(val interface{}) {
 	if handler, ok := val.(ApiSessionEventHandler); ok {
 		self.RemoveApiSessionEventHandler(handler)
 	}

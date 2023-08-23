@@ -49,11 +49,11 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
-	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
@@ -98,7 +98,7 @@ type AppEnv struct {
 	InstanceId              string
 	enrollmentSigner        jwtsigner.Signer
 	TraceManager            *TraceManager
-	EventDispatcher         *events.Dispatcher
+	EventDispatcher         *events.EdgeEventDispatcher
 	ServerCert              *tls.Certificate
 	ServerCertSigningMethod jwt.SigningMethod
 }
@@ -644,7 +644,7 @@ func (ae *AppEnv) InitPersistence() error {
 	})
 
 	ae.Managers = model.InitEntityManagers(ae)
-	ae.EventDispatcher = events.NewDispatcher(ae.GetHostController().GetNetwork(), ae.GetDbProvider(), ae.BoltStores, ae.GetHostController().GetCloseNotifyChannel())
+	ae.EventDispatcher = events.NewEdgeEventDispatcher(ae.GetHostController().GetNetwork(), ae.GetDbProvider(), ae.BoltStores, ae.GetHostController().GetCloseNotifyChannel())
 
 	persistence.ServiceEvents.AddServiceEventHandler(ae.HandleServiceEvent)
 	ae.BoltStores.Identity.AddEntityIdListener(ae.IdentityRefreshMap.Remove, boltz.EntityDeletedAsync)
