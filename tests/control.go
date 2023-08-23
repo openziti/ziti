@@ -7,8 +7,8 @@ import (
 	"github.com/openziti/transport/v2"
 )
 
-func (ctx *TestContext) NewControlChannelListener() channel.UnderlayListener {
-	config, err := controller.LoadConfig(ControllerConfFile)
+func (ctx *FabricTestContext) NewControlChannelListener() channel.UnderlayListener {
+	config, err := controller.LoadConfig(FabricControllerConfFile)
 	ctx.Req.NoError(err)
 
 	versionHeader, err := versions.StdVersionEncDec.Encode(VersionProviderTest{}.AsVersionInfo())

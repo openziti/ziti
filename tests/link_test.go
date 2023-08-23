@@ -112,7 +112,7 @@ func setupEnv() link.Env {
 }
 
 func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
-	ctx := NewTestContext(t)
+	ctx := NewFabricTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
 	mgmtClient := ctx.createTestFabricRestClient()
@@ -147,7 +147,7 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 }
 
 func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
-	ctx := NewTestContext(t)
+	ctx := NewFabricTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
 	mgmtClient := ctx.createTestFabricRestClient()
@@ -198,7 +198,7 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 }
 
 func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
-	ctx := NewTestContext(t)
+	ctx := NewFabricTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
 	mgmtClient := ctx.createTestFabricRestClient()

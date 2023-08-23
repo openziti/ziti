@@ -11,7 +11,7 @@ import (
 )
 
 func Test_FabricAuthNoCert(t *testing.T) {
-	ctx := NewTestContext(t)
+	ctx := NewFabricTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
 	ctx.requireRestPort(5 * time.Second)
@@ -22,7 +22,7 @@ func Test_FabricAuthNoCert(t *testing.T) {
 }
 
 func Test_FabricAuthWithCertFromDifferentChain(t *testing.T) {
-	ctx := NewTestContext(t)
+	ctx := NewFabricTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
 	ctx.requireRestPort(5 * time.Second)
@@ -40,7 +40,7 @@ func Test_FabricAuthWithCertFromDifferentChain(t *testing.T) {
 }
 
 func Test_ListFabricServicesWithValidCert(t *testing.T) {
-	ctx := NewTestContext(t)
+	ctx := NewFabricTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
 	ctx.requireRestPort(5 * time.Second)
