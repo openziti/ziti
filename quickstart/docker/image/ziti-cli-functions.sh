@@ -720,7 +720,7 @@ function getZiti {
 
 # Create a custom PKI
 function createPki {
-  local retVal pki_allow_list pki_allow_list_ip ZITI_SPURIOUS_INTERMEDIATE
+  local retVal pki_allow_list pki_allow_list_ip ZITI_grandparent_INTERMEDIATE
   _check_env_variable ZITI_PKI_CTRL_ROOTCA_NAME ZITI_PKI_CTRL_EDGE_ROOTCA_NAME ZITI_PKI_SIGNER_ROOTCA_NAME \
                       ZITI_PKI_SIGNER_INTERMEDIATE_NAME ZITI_PKI_CTRL_INTERMEDIATE_NAME \
                       ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME
@@ -734,11 +734,11 @@ function createPki {
   _pki_create_ca "${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}"
   _pki_create_ca "${ZITI_PKI_SIGNER_ROOTCA_NAME}"
 
-  ZITI_SPURIOUS_INTERMEDIATE="${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_spurious_intermediate"
+  ZITI_grandparent_INTERMEDIATE="${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_grandparent_intermediate"
   _pki_create_intermediate "${ZITI_PKI_CTRL_ROOTCA_NAME}" "${ZITI_PKI_CTRL_INTERMEDIATE_NAME}" 1
   _pki_create_intermediate "${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}" "${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}" 1
-  _pki_create_intermediate "${ZITI_PKI_SIGNER_ROOTCA_NAME}" "${ZITI_SPURIOUS_INTERMEDIATE}" 2
-  _pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}" 1
+  _pki_create_intermediate "${ZITI_PKI_SIGNER_ROOTCA_NAME}" "${ZITI_grandparent_INTERMEDIATE}" 2
+  _pki_create_intermediate "${ZITI_grandparent_INTERMEDIATE}" "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}" 1
 
   echo " "
   pki_allow_list="localhost,${ZITI_NETWORK}"
@@ -826,7 +826,7 @@ function createControllerConfig {
   echo "adding parent intermediate CA to ZITI_PKI_SIGNER_CERT: $ZITI_PKI_SIGNER_CERT"
   cat "$ZITI_PKI/$ZITI_PKI_SIGNER_INTERMEDIATE_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}.cert" > "${ZITI_PKI_SIGNER_CERT}"
   echo "adding grandparent intermediate CA to ZITI_PKI_SIGNER_CERT: $ZITI_PKI_SIGNER_CERT"
-  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_spurious_intermediate.cert" >> "${ZITI_PKI_SIGNER_CERT}"
+  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_grandparent_intermediate.cert" >> "${ZITI_PKI_SIGNER_CERT}"
   echo -e "wrote signer cert file to: $(BLUE "${ZITI_PKI_SIGNER_CERT}")"
 
   output_file="${file_path}/${controller_name}.yaml"
