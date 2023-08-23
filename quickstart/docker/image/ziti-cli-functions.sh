@@ -315,7 +315,7 @@ function setupEnvironment {
   if [[ "${ZITI_PKI_SIGNER_CERT_NAME-}" == "" ]]; then export ZITI_PKI_SIGNER_CERT_NAME="${ZITI_NETWORK}-signing"; else echo "ZITI_PKI_SIGNER_CERT_NAME overridden: ${ZITI_PKI_SIGNER_CERT_NAME}"; fi
   if [[ "${ZITI_PKI_SIGNER_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_SIGNER_ROOTCA_NAME="${ZITI_PKI_SIGNER_CERT_NAME}-root-ca"; else echo "ZITI_PKI_SIGNER_ROOTCA_NAME overridden: ${ZITI_PKI_SIGNER_ROOTCA_NAME}"; fi
   if [[ "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_SIGNER_INTERMEDIATE_NAME="${ZITI_PKI_SIGNER_CERT_NAME}-intermediate"; else echo "ZITI_PKI_SIGNER_INTERMEDIATE_NAME overridden: ${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}"; fi
-  if [[ "${ZITI_PKI_SIGNER_CERT}" == "" ]]; then export ZITI_PKI_SIGNER_CERT="${ZITI_PKI}/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}.cert"; else echo "ZITI_PKI_SIGNER_CERT overridden: ${ZITI_PKI_SIGNER_CERT}"; fi
+  if [[ "${ZITI_PKI_SIGNER_CERT}" == "" ]]; then export ZITI_PKI_SIGNER_CERT="${ZITI_PKI}/signing.pem"; else echo "ZITI_PKI_SIGNER_CERT overridden: ${ZITI_PKI_SIGNER_CERT}"; fi
   if [[ "${ZITI_PKI_SIGNER_KEY}" == "" ]]; then export ZITI_PKI_SIGNER_KEY="${ZITI_PKI}/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}/keys/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}.key"; else echo "ZITI_PKI_SIGNER_KEY overridden: ${ZITI_PKI_SIGNER_KEY}"; fi
 
   # Run these functions to populate other pertinent environment values
@@ -819,14 +819,15 @@ function createControllerConfig {
 
   echo "adding controller root CA to ca bundle: $ZITI_PKI/$ZITI_PKI_CTRL_ROOTCA_NAME/certs/$ZITI_PKI_CTRL_ROOTCA_NAME.cert"
   cat "$ZITI_PKI/$ZITI_PKI_CTRL_ROOTCA_NAME/certs/$ZITI_PKI_CTRL_ROOTCA_NAME.cert" > "${ZITI_PKI_CTRL_CA}"
-
-  echo "adding signing root CA to ca bundle: $ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/$ZITI_PKI_SIGNER_ROOTCA_NAME.cert"
-  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/$ZITI_PKI_SIGNER_ROOTCA_NAME.cert" >>"${ZITI_PKI_CTRL_CA}"
-
-  echo "adding secondary signing intermediate into ca bundle: $ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_spurious_intermediate.cert"
-  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_spurious_intermediate.cert" >> "${ZITI_PKI_CTRL_CA}"
-
+  echo "adding signing root CA to ZITI_PKI_CTRL_CA: $ZITI_PKI_CTRL_CA"
+  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/$ZITI_PKI_SIGNER_ROOTCA_NAME.cert" >> "${ZITI_PKI_CTRL_CA}"
   echo -e "wrote CA file to: $(BLUE "${ZITI_PKI_CTRL_CA}")"
+  
+  echo "adding parent intermediate CA to ZITI_PKI_SIGNER_CERT: $ZITI_PKI_SIGNER_CERT"
+  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_INTERMEDIATE_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}.cert" > "${ZITI_PKI_SIGNER_CERT}"
+  echo "adding grandparent intermediate CA to ZITI_PKI_SIGNER_CERT: $ZITI_PKI_SIGNER_CERT"
+  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_spurious_intermediate.cert" >> "${ZITI_PKI_SIGNER_CERT}"
+  echo -e "wrote signer cert file to: $(BLUE "${ZITI_PKI_SIGNER_CERT}")"
 
   output_file="${file_path}/${controller_name}.yaml"
 
