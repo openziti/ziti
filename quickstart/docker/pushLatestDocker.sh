@@ -21,8 +21,6 @@ if [ -z "${IMAGE_TAG}" ]; then
   echo "image tag name was not provided, using default '${IMAGE_TAG}'"
 fi
 
-docker buildx create --use --name=ziti-builder
-
 if [ "local" == "${1}" ]; then
   echo "LOADING LOCALLY instead of pushing to dockerhub"
   _BUILDX_PLATFORM=""
@@ -31,8 +29,13 @@ else
   _BUILDX_PLATFORM="--platform linux/amd64,linux/arm64"
   _BUILDX_ACTION="--push"
 fi
-docker buildx build ${_BUILDX_PLATFORM} "${SCRIPT_DIR}/image" \
+
+docker buildx create \
+  --use --name=ziti-builder --driver docker-container 2>/dev/null \
+  || docker buildx use --default ziti-builder
+
+eval docker buildx build "${_BUILDX_PLATFORM}" "${SCRIPT_DIR}/image" \
   --build-arg ZITI_VERSION_OVERRIDE="v${ZITI_VERSION}" \
   --tag "openziti/quickstart:${ZITI_VERSION}" \
   --tag "openziti/quickstart:${IMAGE_TAG}" \
-  ${_BUILDX_ACTION}
+  "${_BUILDX_ACTION}"
