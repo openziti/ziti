@@ -19,7 +19,7 @@ package model
 import (
 	"fmt"
 	"github.com/lucsky/cuid"
-	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	fabricApiError "github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/change"

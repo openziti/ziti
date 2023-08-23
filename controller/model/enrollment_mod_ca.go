@@ -23,7 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/common/cert"
 	"github.com/openziti/edge/common/eid"
-	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/sirupsen/logrus"

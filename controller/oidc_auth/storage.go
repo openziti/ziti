@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/models"

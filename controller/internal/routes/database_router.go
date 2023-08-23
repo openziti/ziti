@@ -23,7 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/database"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"

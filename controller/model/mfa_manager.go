@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"github.com/dgryski/dgoogauth"
 	"github.com/openziti/edge/common/pb/edge_cmd_pb"
-	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"

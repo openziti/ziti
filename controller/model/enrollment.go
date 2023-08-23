@@ -20,7 +20,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"github.com/go-openapi/runtime"
-	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/fabric/controller/apierror"
 	fabricApiError "github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/change"
 	"io"
