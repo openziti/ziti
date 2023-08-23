@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/fabric/common/pb/cmd_pb"
 	"google.golang.org/protobuf/proto"
 	"strconv"
 

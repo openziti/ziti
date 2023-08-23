@@ -8,7 +8,7 @@ import (
 	"github.com/openziti/edge/common/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/fabric/logcontext"
+	"github.com/openziti/fabric/common/logcontext"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
 	"github.com/sirupsen/logrus"

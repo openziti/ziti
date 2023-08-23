@@ -29,7 +29,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/fabric/build"
+	"github.com/openziti/fabric/common/build"
 	"github.com/openziti/fabric/controller/models"
 	"time"
 )
