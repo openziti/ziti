@@ -21,8 +21,8 @@ import (
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/rest_server/operations"
-	"github.com/openziti/fabric/rest_server/operations/router"
+	"github.com/openziti/fabric/controller/rest_server/operations"
+	"github.com/openziti/fabric/controller/rest_server/operations/router"
 )
 
 func init() {

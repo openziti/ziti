@@ -24,9 +24,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/apierror"
-	"github.com/openziti/fabric/rest_model"
-	"github.com/openziti/fabric/rest_server/operations"
-	"github.com/openziti/fabric/rest_server/operations/database"
+	"github.com/openziti/fabric/controller/rest_model"
+	"github.com/openziti/fabric/controller/rest_server/operations"
+	"github.com/openziti/fabric/controller/rest_server/operations/database"
 	"sync/atomic"
 
 	"github.com/openziti/fabric/controller/network"

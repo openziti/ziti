@@ -22,9 +22,9 @@ import (
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/rest_model"
-	"github.com/openziti/fabric/rest_server/operations"
-	"github.com/openziti/fabric/rest_server/operations/link"
+	"github.com/openziti/fabric/controller/rest_model"
+	"github.com/openziti/fabric/controller/rest_server/operations"
+	"github.com/openziti/fabric/controller/rest_server/operations/link"
 	"github.com/openziti/storage/boltz"
 	"sort"
 )

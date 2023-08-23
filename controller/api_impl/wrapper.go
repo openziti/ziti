@@ -9,7 +9,7 @@ import (
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/rest_server"
+	"github.com/openziti/fabric/controller/rest_server"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/identity"
 	"github.com/pkg/errors"

@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/rest_model"
+	"github.com/openziti/fabric/controller/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
