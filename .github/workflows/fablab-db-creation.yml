@@ -21,8 +21,7 @@ jobs:
 
       - name: Build and Run
         run: |
-          cd ..
-          ls -lsa
-          cd ~/ziti/zititest/models/db-creation
+          pwd
+          cd zititest/models/db-creation
           go build -o db-creation main.go
           ./db-creation
