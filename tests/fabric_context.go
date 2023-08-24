@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/fabric/controller/rest_util"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/foundation/v2/util"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/certtools"
 	"net"
@@ -184,7 +185,7 @@ func (ctx *FabricTestContext) StartServerFor(test string, clean bool) {
 	ctx.ControllerConfig = config
 
 	log.Info("creating fabric controller")
-	ctx.fabricController, err = controller.NewController(config, NewVersionProviderTest())
+	ctx.fabricController, err = controller.NewController(config, versions.NewDefaultVersionProvider())
 	ctx.Req.NoError(err)
 
 	go func() {
@@ -200,7 +201,7 @@ func (ctx *FabricTestContext) StartServerFor(test string, clean bool) {
 func (ctx *FabricTestContext) startRouter(index uint8) *router.Router {
 	config, err := router.LoadConfig(fmt.Sprintf(FabricRouterConfFile, index))
 	ctx.Req.NoError(err)
-	r := router.Create(config, NewVersionProviderTest())
+	r := router.Create(config, versions.NewDefaultVersionProvider())
 	ctx.Req.NoError(r.Start())
 
 	ctx.routers = append(ctx.routers, r)

@@ -11,7 +11,7 @@ func (ctx *FabricTestContext) NewControlChannelListener() channel.UnderlayListen
 	config, err := controller.LoadConfig(FabricControllerConfFile)
 	ctx.Req.NoError(err)
 
-	versionHeader, err := versions.StdVersionEncDec.Encode(VersionProviderTest{}.AsVersionInfo())
+	versionHeader, err := versions.StdVersionEncDec.Encode(versions.NewDefaultVersionProvider().AsVersionInfo())
 	ctx.Req.NoError(err)
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader: versionHeader,
