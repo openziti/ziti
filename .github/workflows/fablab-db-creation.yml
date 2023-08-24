@@ -23,5 +23,5 @@ jobs:
         run: |
           pwd
           cd zititest/models/db-creation
-          go build -o db-creation main.go
+          CGO_ENABLED=1 go build -tags no_pkcs11 -o db-creation main.go
           ./db-creation
