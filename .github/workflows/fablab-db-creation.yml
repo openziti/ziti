@@ -1,4 +1,4 @@
-name: Build and Run db-creation Golang
+name: fablab db-creation workflow
 
 on:
   push:
@@ -21,9 +21,9 @@ jobs:
 
       - name: Build and Run
         run: |
-          pwd
           cd zititest/models/db-creation
-          CGO_ENABLED=1 go build -tags no_pkcs11 -o db-creation main.go
-          ./db-creation up
+          go build -o db-creation main.go
+          ./db-creation create db-creation
+          
           
           
