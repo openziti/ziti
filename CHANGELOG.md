@@ -1,3 +1,64 @@
+# Release 0.30.2
+
+## What's New
+
+* Identity type consolidation
+* HTTP Connect Proxy support for control channel and links
+
+## Identity Type Consolidation
+
+Prior to this release there were four identity types:
+
+* User
+* Service
+* Device
+* Router
+
+Of these four types, only Router has any functional purpose. Given that, the other three have been merged into
+a single `Default` identity type. Since Router identities can only be created by the system, it's no longer
+necesary to specify the identity type when creating identities. 
+
+The identity type may still be provided, but a deprecation warning will be emitted. 
+
+**Backwards Compatibility**
+
+Existing non-Router identities will be migrated to the `Default` identity type. If an identity type other
+than `Default` is provided when creating an identity, it will be coerced to the `Default` type. Existing
+code may have issues with the new identity type being returned. 
+
+
+## HTTP Connect Proxy support
+
+Routers may now specify a proxy configuation which will be used when establishing connections to controllers
+and data links to other routers. At this point only HTTP Connect Proxies with no authentication required are 
+supported.
+
+Example router config:
+
+```yaml
+proxy:
+  type: http
+  address: localhost:3128
+
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.91 -> v2.0.92](https://github.com/openziti/channel/compare/v2.0.91...v2.0.92)
+* github.com/openziti/edge: [v0.24.381 -> v0.24.387](https://github.com/openziti/edge/compare/v0.24.381...v0.24.387)
+    * [Issue #1428](https://github.com/openziti/edge/issues/1428) - Make identity type optional. Consolidate User/Service/Device to 'Default'. 
+    * [Issue #1584](https://github.com/openziti/edge/issues/1584) - AuthPolicyDetail is incompatible with API response
+
+* github.com/openziti/edge-api: [v0.25.31 -> v0.25.33](https://github.com/openziti/edge-api/compare/v0.25.31...v0.25.33)
+* github.com/openziti/fabric: [v0.24.2 -> v0.24.14](https://github.com/openziti/fabric/compare/v0.24.2...v0.24.14)
+    * [Issue #775](https://github.com/openziti/fabric/issues/775) - Add support for proxies for control channel and links
+
+* github.com/openziti/sdk-golang: [v0.20.90 -> v0.20.93](https://github.com/openziti/sdk-golang/compare/v0.20.90...v0.20.93)
+* github.com/openziti/transport/v2: [v2.0.99 -> v2.0.100](https://github.com/openziti/transport/compare/v2.0.99...v2.0.100)
+    * [Issue #54](https://github.com/openziti/transport/issues/54) - Support HTTP Connect proxying for TLS connections
+
+* github.com/openziti/ziti: [v0.30.1 -> v0.30.2](https://github.com/openziti/ziti/compare/v0.30.1...v0.30.2)
+
 # Release 0.30.1
 
 ## What's New

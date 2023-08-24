@@ -18,7 +18,7 @@ package main
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/build"
+	"github.com/openziti/fabric/common/build"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"

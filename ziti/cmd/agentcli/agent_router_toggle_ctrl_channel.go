@@ -19,7 +19,7 @@ package agentcli
 import (
 	"fmt"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/fabric/common/pb/mgmt_pb"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
