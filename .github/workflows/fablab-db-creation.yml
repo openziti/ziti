@@ -24,6 +24,8 @@ jobs:
           cd zititest/models/db-creation
           go build -o db-creation main.go
           ./db-creation create db-creation
+          ./db-creation up
+          
           
           
           
