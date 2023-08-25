@@ -2,9 +2,16 @@ FROM ubuntu:rolling as fetch-ziti-bins
 
 # optional arg to specify which version to fetch when local "ziti-bin" directory is not present
 ARG ZITI_VERSION_OVERRIDE
+ARG DEBIAN_FRONTEND=noninteractive
 
 COPY . /docker.build.context
-RUN apt update && apt install jq curl -y && \
+RUN apt-get update \
+    && apt-get --yes install \
+        jq \
+        curl \
+    && apt-get --yes autoremove \
+    && apt-get clean autoclean \
+    && rm -fr /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
     # to use a locally built `ziti` cli \
     #   create a ./ziti-bin directory adjacent to this Dockerfile \
     #   and include any desired binaries to include in the image
@@ -12,15 +19,26 @@ RUN apt update && apt install jq curl -y && \
     #   just build the Dockerfile \
     # to use a specific version of ziti, specify ZITI_VERSION_OVERRIDE then  \
     #   build the Dockerfile
-    /bin/bash /docker.build.context/fetch-ziti-bins.sh /ziti-bin
+RUN bash /docker.build.context/fetch-ziti-bins.sh /ziti-bin
 
 FROM ubuntu:rolling
 ARG RUNUSER=ziti
 ARG RUNGROUP=ziti
 ARG RUNUSERID=2171
 
-RUN apt update && \
-    apt install jq curl netcat-openbsd vim inetutils-ping net-tools lsof -y
+RUN apt-get update \
+    && apt-get --yes install \
+        jq \
+        curl \
+        netcat-openbsd \
+        vim \
+        inetutils-ping \
+        net-tools \
+        lsof \
+        zsh \
+    && apt-get --yes autoremove \
+    && apt-get clean autoclean \
+    && rm -fr /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
 RUN useradd -u $RUNUSERID -ms /bin/bash $RUNUSER && \
     mkdir /persistent && chown $RUNUSER:$RUNGROUP /persistent && \
@@ -48,4 +66,9 @@ COPY --chown=ziti run-with-ziti-cli.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti access-control.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti run-router-external.sh "${ZITI_SCRIPTS}/"
 
-RUN /bin/bash -c "source ${ZITI_SCRIPTS}/ziti-cli-functions.sh; persistEnvironmentValues; echo source ${ZITI_HOME}/ziti.env >> ~/.bashrc"
+RUN /bin/bash -c " \
+    source ${ZITI_SCRIPTS}/ziti-cli-functions.sh; \
+    persistEnvironmentValues; \
+    echo source ${ZITI_HOME}/ziti.env \
+        >> ~/.bashrc \
+    "
