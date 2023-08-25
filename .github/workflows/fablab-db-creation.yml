@@ -4,7 +4,14 @@ on:
   push:
     branches:
       - main
-
+env:
+  GOFLAGS: "-trimpath"
+  GOX_OUTPUT: "release/{{.Arch}}/{{.OS}}/{{.Dir}}"
+  GOX_TEST_OUTPUT: "test/{{.Arch}}/{{.OS}}/bin/{{.Dir}}"
+  AWS_ACCESS_KEY_ID: ${{ secrets.FABLAB_AWS_EC2_PETE_D_ACCESS_KEY }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.FABLAB_AWS_EC2_PETE_D_SECRET }}
+  AWS_DEFAULT_REGION: "us-east-1"
+  
 jobs:
   build:
     name: Build and Run
