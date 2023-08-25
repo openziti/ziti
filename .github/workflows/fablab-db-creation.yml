@@ -20,7 +20,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
+        with:
+          ref: refs/heads/pete-iperf
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
