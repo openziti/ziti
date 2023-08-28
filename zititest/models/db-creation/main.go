@@ -167,5 +167,5 @@ func main() {
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
 	fablab.InitModel(m)
 	fablab.Run()
-	//comment
+
 }
