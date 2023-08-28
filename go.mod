@@ -20,7 +20,7 @@ require (
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/mux v1.8.0
-	github.com/hashicorp/golang-lru/v2 v2.0.4
+	github.com/hashicorp/golang-lru/v2 v2.0.6
 	github.com/jinzhu/copier v0.3.5
 	github.com/kataras/go-events v0.0.3
 	github.com/lucsky/cuid v1.2.1
