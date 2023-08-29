@@ -72,7 +72,7 @@ var m = &model.Model{
 	},
 
 	Factories: []model.Factory{
-		newStageFactory(),
+		//newStageFactory(),
 	},
 
 	Resources: model.Resources{
