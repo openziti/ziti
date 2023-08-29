@@ -8,7 +8,7 @@ OpenZiti represents the next generation of secure, open-source networking for yo
 
 ## Quick Reference
 
-* [Documentation](https://openziti.github.io/)
+* [Documentation](https://openziti.io/docs/learn/introduction/)
 * [Developer Overview](./doc/001-overview.md)
 * [Local Development Tutorial](./doc/002-local-dev.md)
 * [Local Deployment Tutorial](./doc/003-local-deploy.md)
@@ -39,8 +39,8 @@ OpenZiti represents the next generation of secure, open-source networking for yo
 
 * [Open source code, available with the Apache 2.0 license](https://github.com/openziti)
 * Fully programmable REST management APIs
-* [SDKs for a variety of programming languages](https://openziti.github.io/ziti/clients/sdks)
-* [Application specific configuration store allowing centralized management of configuration allowing you to add structured configuration specific to your application](https://openziti.github.io/ziti/config-store/overview)
+* [SDKs for a variety of programming languages](https://openziti.io/docs/reference/developer/sdk)
+* [Application specific configuration store allowing centralized management of configuration allowing you to add structured configuration specific to your application](https://openziti.io/docs/learn/core-concepts/config-store/overview)
 * An extensible fabric, allowing you to add your own
   * load balancing algorithms
   * interconnect protocols
@@ -50,9 +50,9 @@ OpenZiti represents the next generation of secure, open-source networking for yo
 
 ### Easy Management
 
-* [A flexible and expressive policy model for managing access to services and edge routers](https://openziti.github.io/ziti/policies/overview)
+* [A flexible and expressive policy model for managing access to services and edge routers](https://openziti.io/docs/learn/core-concepts/security/authorization/policies/overview)
 * A web based admin console
-* [Pre-built tunnelers and proxies for a variety of operating systems, including mobile](https://openziti.github.io/ziti/clients/tunneler)
+* [Pre-built tunnelers and proxies for a variety of operating systems, including mobile](https://openziti.io/docs/reference/tunnelers)
 
 Let's break some of these buzzwords down.
 
@@ -95,7 +95,7 @@ End-to-end encryption means that even if systems between the client and server a
 ## Getting started with OpenZiti
 
 If you are looking to jump right in feet first you can follow along with one of our [up-and-running quickstart
-guides](https://openziti.github.io/ziti/quickstarts/quickstart-overview.html). These guides are designed to get an
+guides](https://openziti.io/docs/learn/quickstarts/). These guides are designed to get an
 overlay network quickly and allow you to run it all locally, use Docker or host it anywhere.
 
 This environment is perfect for evaluators to get to know OpenZiti and the capabilities it offers.  The environment was not
