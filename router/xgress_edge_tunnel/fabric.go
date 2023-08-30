@@ -239,8 +239,9 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 	}
 
 	if response.ApiSession != nil {
-		log.WithField("apiSessionId", response.ApiSession.SessionId).Info("received new apiSession")
-		self.updateApiSession(ctrlCh.Id(), response.ApiSession)
+		if self.updateApiSession(ctrlCh.Id(), response.ApiSession) {
+			log.WithField("apiSessionId", response.ApiSession.SessionId).Info("received new apiSession")
+		}
 	}
 
 	if response.Session != nil && response.Session.SessionId != sessionId {
