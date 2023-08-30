@@ -139,6 +139,7 @@ func (self *baseTunnelRequestContext) ensureApiSessionLocking(configTypes []stri
 				if _, _, err := self.handler.getAppEnv().GetManagers().ApiSession.MarkLastActivityByTokens(self.apiSession.Token); err != nil {
 					logger.WithError(err).Error("unexpected error while marking api session activity")
 				}
+				state.setCurrentApiSessionId(apiSession.Id)
 				return true
 			}
 		}
