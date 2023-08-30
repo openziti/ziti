@@ -41,5 +41,9 @@ resource "aws_instance" "fablab" {
 
   tags = {
     Name = var.name
+    cost_environment = "non-production"
+    cost_category = "CICD"
+    cost_team_owner = "ADVDEV"
+    source = "fablab"
   }
 }

@@ -22,7 +22,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/fabric/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
