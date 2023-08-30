@@ -24,7 +24,7 @@ import (
 	clientApiAuthentication "github.com/openziti/edge-api/rest_client_api_server/operations/authentication"
 	managementApiAuthentication "github.com/openziti/edge-api/rest_management_api_server/operations/authentication"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"

@@ -26,11 +26,11 @@ import (
 	"time"
 )
 
-func (self *Dispatcher) AddSessionEventHandler(handler SessionEventHandler) {
+func (self *EdgeEventDispatcher) AddSessionEventHandler(handler SessionEventHandler) {
 	self.sessionEventHandlers.Append(handler)
 }
 
-func (self *Dispatcher) RemoveSessionEventHandler(handler SessionEventHandler) {
+func (self *EdgeEventDispatcher) RemoveSessionEventHandler(handler SessionEventHandler) {
 	self.sessionEventHandlers.DeleteIf(func(val SessionEventHandler) bool {
 		if val == handler {
 			return true
@@ -42,12 +42,12 @@ func (self *Dispatcher) RemoveSessionEventHandler(handler SessionEventHandler) {
 	})
 }
 
-func (self *Dispatcher) initSessionEvents(stores *persistence.Stores) {
+func (self *EdgeEventDispatcher) initSessionEvents(stores *persistence.Stores) {
 	stores.Session.AddEntityEventListenerF(self.sessionCreated, boltz.EntityCreated)
 	stores.Session.AddEntityEventListenerF(self.sessionDeleted, boltz.EntityDeleted)
 }
 
-func (self *Dispatcher) sessionCreated(session *persistence.Session) {
+func (self *EdgeEventDispatcher) sessionCreated(session *persistence.Session) {
 	event := &SessionEvent{
 		Namespace:    SessionEventNS,
 		EventType:    SessionEventTypeCreated,
@@ -65,7 +65,7 @@ func (self *Dispatcher) sessionCreated(session *persistence.Session) {
 	}
 }
 
-func (self *Dispatcher) sessionDeleted(session *persistence.Session) {
+func (self *EdgeEventDispatcher) sessionDeleted(session *persistence.Session) {
 	event := &SessionEvent{
 		Namespace:    SessionEventNS,
 		EventType:    SessionEventTypeDeleted,
@@ -82,7 +82,7 @@ func (self *Dispatcher) sessionDeleted(session *persistence.Session) {
 	}
 }
 
-func (self *Dispatcher) registerSessionEventHandler(val interface{}, config map[string]interface{}) error {
+func (self *EdgeEventDispatcher) registerSessionEventHandler(val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(SessionEventHandler)
 
 	if !ok {
@@ -120,7 +120,7 @@ func (self *Dispatcher) registerSessionEventHandler(val interface{}, config map[
 	return nil
 }
 
-func (self *Dispatcher) unregisterSessionEventHandler(val interface{}) {
+func (self *EdgeEventDispatcher) unregisterSessionEventHandler(val interface{}) {
 	if handler, ok := val.(SessionEventHandler); ok {
 		self.RemoveSessionEventHandler(handler)
 	}

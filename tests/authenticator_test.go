@@ -25,7 +25,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/common/eid"
-	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/stretchr/testify/require"
 	"net/http"

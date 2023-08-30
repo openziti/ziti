@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/common/cert"
-	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/pkg/errors"

@@ -20,7 +20,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"github.com/openziti/edge/common/cert"
-	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	fabricApiError "github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/change"
