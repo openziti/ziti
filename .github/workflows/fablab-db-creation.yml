@@ -11,16 +11,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Pete-iPerf branch
         uses: actions/checkout@v3
-
-      - name: Set up Go
-        uses: actions/setup-go@v3
         with:
-          go-version: 1.2X
+          repository: padibona/fablab
+          ref: refs/heads/pete-iperf
+
+      - name: Checkout DB-Creation branch
+        uses: actions/checkout@v3
+        with:
+          repository: padibona/ziti
+          ref: refs/heads/db-creation
 
       - name: Build and Run
         run: |
           cd ~/ziti/zititest/models/db-creation
           go build -o db-creation main.go
-          ./db-creation
+          ./db-creation create db-creation
+          ./db-creation up
+          ./db-creation dispose
