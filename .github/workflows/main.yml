@@ -6,15 +6,12 @@ on:
       - main
       - release-v*
       - release-next
-    # TODO: revert to paths-ignore pending bug https://github.com/actions/runner/issues/2324
-    paths:
-      - '!quickstart/**'
-      - '!.github/workflows/test-quickstart.yml'
   pull_request:
-    # TODO: revert to paths-ignore pending bug https://github.com/actions/runner/issues/2324
+    # TODO: use paths-ignore when resolved https://github.com/actions/runner/issues/2324
     paths:
-      - '!quickstart/**'
+      - '/**'
       - '!.github/workflows/test-quickstart.yml'
+      - '!quickstart/**'
   workflow_dispatch:
 
 # cancel older, redundant runs of same workflow on same branch
