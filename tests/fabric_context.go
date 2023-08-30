@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/fabric/controller/rest_util"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/foundation/v2/util"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/certtools"
 	"net"
@@ -51,8 +52,8 @@ import (
 )
 
 const (
-	ControllerConfFile = "./testdata/config/ctrl.yml"
-	RouterConfFile     = "./testdata/config/router-%v.yml"
+	FabricControllerConfFile = "./testdata/config/ctrl.yml"
+	FabricRouterConfFile     = "./testdata/config/router-%v.yml"
 )
 
 func init() {
@@ -69,7 +70,7 @@ func init() {
 	transport.AddAddressParser(tcp.AddressParser{})
 }
 
-type TestContext struct {
+type FabricTestContext struct {
 	fabricController *controller.Controller
 	Req              *require.Assertions
 
@@ -79,8 +80,8 @@ type TestContext struct {
 	ControllerConfig *controller.Config
 }
 
-func NewTestContext(t *testing.T) *TestContext {
-	ret := &TestContext{
+func NewFabricTestContext(t *testing.T) *FabricTestContext {
+	ret := &FabricTestContext{
 		LogLevel: os.Getenv("ZITI_TEST_LOG_LEVEL"),
 		Req:      require.New(t),
 	}
@@ -92,16 +93,16 @@ func NewTestContext(t *testing.T) *TestContext {
 // testContextChanged is used to update the *testing.T reference used by library
 // level tests. Necessary because using the wrong *testing.T will cause go test library
 // errors.
-func (ctx *TestContext) testContextChanged(t *testing.T) {
+func (ctx *FabricTestContext) testContextChanged(t *testing.T) {
 	ctx.testing = t
 	ctx.Req = require.New(t)
 }
 
-func (ctx *TestContext) T() *testing.T {
+func (ctx *FabricTestContext) T() *testing.T {
 	return ctx.testing
 }
 
-func (ctx *TestContext) NewTransport(i identity.Identity) *http.Transport {
+func (ctx *FabricTestContext) NewTransport(i identity.Identity) *http.Transport {
 	var tlsClientConfig *tls2.Config
 
 	if i != nil {
@@ -122,7 +123,7 @@ func (ctx *TestContext) NewTransport(i identity.Identity) *http.Transport {
 	}
 }
 
-func (ctx *TestContext) NewHttpClient(transport *http.Transport) *http.Client {
+func (ctx *FabricTestContext) NewHttpClient(transport *http.Transport) *http.Client {
 	jar, err := cookiejar.New(&cookiejar.Options{})
 	ctx.Req.NoError(err)
 
@@ -134,11 +135,11 @@ func (ctx *TestContext) NewHttpClient(transport *http.Transport) *http.Client {
 	}
 }
 
-func (ctx *TestContext) NewRestClient(i identity.Identity) *resty.Client {
+func (ctx *FabricTestContext) NewRestClient(i identity.Identity) *resty.Client {
 	return resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport(i)))
 }
 
-func (ctx *TestContext) NewRestClientWithDefaults() *resty.Client {
+func (ctx *FabricTestContext) NewRestClientWithDefaults() *resty.Client {
 	id, err := identity.LoadClientIdentity(
 		"./testdata/valid_client_cert/client.cert",
 		"./testdata/valid_client_cert/client.key",
@@ -147,11 +148,11 @@ func (ctx *TestContext) NewRestClientWithDefaults() *resty.Client {
 	return resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport(id)))
 }
 
-func (ctx *TestContext) StartServer() {
+func (ctx *FabricTestContext) StartServer() {
 	ctx.StartServerFor("default", true)
 }
 
-func (ctx *TestContext) StartServerFor(test string, clean bool) {
+func (ctx *FabricTestContext) StartServerFor(test string, clean bool) {
 	api_impl.OverrideRequestWrapper(nil) // clear possible wrapper from another test
 	if ctx.LogLevel != "" {
 		if level, err := logrus.ParseLevel(ctx.LogLevel); err == nil {
@@ -178,13 +179,13 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	ctx.Req.NoError(err)
 
 	log.Info("loading config")
-	config, err := controller.LoadConfig(ControllerConfFile)
+	config, err := controller.LoadConfig(FabricControllerConfFile)
 	ctx.Req.NoError(err)
 
 	ctx.ControllerConfig = config
 
 	log.Info("creating fabric controller")
-	ctx.fabricController, err = controller.NewController(config, NewVersionProviderTest())
+	ctx.fabricController, err = controller.NewController(config, versions.NewDefaultVersionProvider())
 	ctx.Req.NoError(err)
 
 	go func() {
@@ -197,33 +198,33 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	ctx.requireRestPort(time.Second * 5)
 }
 
-func (ctx *TestContext) startRouter(index uint8) *router.Router {
-	config, err := router.LoadConfig(fmt.Sprintf(RouterConfFile, index))
+func (ctx *FabricTestContext) startRouter(index uint8) *router.Router {
+	config, err := router.LoadConfig(fmt.Sprintf(FabricRouterConfFile, index))
 	ctx.Req.NoError(err)
-	r := router.Create(config, NewVersionProviderTest())
+	r := router.Create(config, versions.NewDefaultVersionProvider())
 	ctx.Req.NoError(r.Start())
 
 	ctx.routers = append(ctx.routers, r)
 	return r
 }
 
-func (ctx *TestContext) shutdownRouters() {
+func (ctx *FabricTestContext) shutdownRouters() {
 	for _, r := range ctx.routers {
 		ctx.Req.NoError(r.Shutdown())
 	}
 	ctx.routers = nil
 }
 
-func (ctx *TestContext) waitForCtrlPort(duration time.Duration) error {
+func (ctx *FabricTestContext) waitForCtrlPort(duration time.Duration) error {
 	return ctx.waitForPort("127.0.0.1:6363", duration)
 }
 
-func (ctx *TestContext) requireRestPort(duration time.Duration) {
+func (ctx *FabricTestContext) requireRestPort(duration time.Duration) {
 	err := ctx.waitForPort("127.0.0.1:1281", duration)
 	ctx.Req.NoError(err)
 }
 
-func (ctx *TestContext) waitForPort(address string, duration time.Duration) error {
+func (ctx *FabricTestContext) waitForPort(address string, duration time.Duration) error {
 	now := time.Now()
 	endTime := now.Add(duration)
 	maxWait := duration
@@ -242,7 +243,7 @@ func (ctx *TestContext) waitForPort(address string, duration time.Duration) erro
 	}
 }
 
-func (ctx *TestContext) waitForPortClose(address string, duration time.Duration) error {
+func (ctx *FabricTestContext) waitForPortClose(address string, duration time.Duration) error {
 	now := time.Now()
 	endTime := now.Add(duration)
 	maxWait := duration
@@ -261,7 +262,7 @@ func (ctx *TestContext) waitForPortClose(address string, duration time.Duration)
 	}
 }
 
-func (ctx *TestContext) Teardown() {
+func (ctx *FabricTestContext) Teardown() {
 	pfxlog.Logger().Info("tearing down test context")
 	ctx.shutdownRouters()
 	if ctx.fabricController != nil {
@@ -270,7 +271,7 @@ func (ctx *TestContext) Teardown() {
 	}
 }
 
-func (ctx *TestContext) createFabricRestClient() *rest_client.ZitiFabric {
+func (ctx *FabricTestContext) createFabricRestClient() *rest_client.ZitiFabric {
 	id, err := identity.LoadClientIdentity(
 		"./testdata/valid_client_cert/client.cert",
 		"./testdata/valid_client_cert/client.key",
@@ -282,16 +283,16 @@ func (ctx *TestContext) createFabricRestClient() *rest_client.ZitiFabric {
 	return client
 }
 
-func (ctx *TestContext) createTestFabricRestClient() *RestClient {
+func (ctx *FabricTestContext) createTestFabricRestClient() *RestClient {
 	client := ctx.createFabricRestClient()
 	return &RestClient{
-		TestContext: ctx,
-		client:      client,
+		FabricTestContext: ctx,
+		client:            client,
 	}
 }
 
 type RestClient struct {
-	*TestContext
+	*FabricTestContext
 	client *rest_client.ZitiFabric
 }
 

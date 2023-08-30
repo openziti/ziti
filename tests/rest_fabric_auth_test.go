@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func Test_TestAuthNoCert(t *testing.T) {
-	ctx := NewTestContext(t)
+func Test_FabricAuthNoCert(t *testing.T) {
+	ctx := NewFabricTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
 	ctx.requireRestPort(5 * time.Second)
@@ -21,8 +21,8 @@ func Test_TestAuthNoCert(t *testing.T) {
 	ctx.Req.True(err != nil || resp.IsError())
 }
 
-func Test_TestAuthWithCertFromDifferentChain(t *testing.T) {
-	ctx := NewTestContext(t)
+func Test_FabricAuthWithCertFromDifferentChain(t *testing.T) {
+	ctx := NewFabricTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
 	ctx.requireRestPort(5 * time.Second)
@@ -39,8 +39,8 @@ func Test_TestAuthWithCertFromDifferentChain(t *testing.T) {
 	ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode())
 }
 
-func Test_ListServicesWithValidCert(t *testing.T) {
-	ctx := NewTestContext(t)
+func Test_ListFabricServicesWithValidCert(t *testing.T) {
+	ctx := NewFabricTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
 	ctx.requireRestPort(5 * time.Second)

@@ -7,11 +7,11 @@ import (
 	"github.com/openziti/transport/v2"
 )
 
-func (ctx *TestContext) NewControlChannelListener() channel.UnderlayListener {
-	config, err := controller.LoadConfig(ControllerConfFile)
+func (ctx *FabricTestContext) NewControlChannelListener() channel.UnderlayListener {
+	config, err := controller.LoadConfig(FabricControllerConfFile)
 	ctx.Req.NoError(err)
 
-	versionHeader, err := versions.StdVersionEncDec.Encode(VersionProviderTest{}.AsVersionInfo())
+	versionHeader, err := versions.StdVersionEncDec.Encode(versions.NewDefaultVersionProvider().AsVersionInfo())
 	ctx.Req.NoError(err)
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader: versionHeader,

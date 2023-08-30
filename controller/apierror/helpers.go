@@ -17,6 +17,7 @@
 package apierror
 
 import (
+	"fmt"
 	"github.com/openziti/foundation/v2/errorz"
 )
 
@@ -267,5 +268,110 @@ func NewTimeoutError() *errorz.ApiError {
 		Code:    TimeoutCode,
 		Message: TimeoutMessage,
 		Status:  TimeoutStatus,
+	}
+}
+
+func NewNoEdgeRoutersAvailable() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    NoEdgeRoutersAvailableCode,
+		Message: NoEdgeRoutersAvailableMessage,
+		Status:  NoEdgeRoutersAvailableStatus,
+	}
+}
+
+func NewMissingCertClaim() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    MissingCertClaimCode,
+		Message: MissingCertClaimMessage,
+		Status:  MissingCertClaimStatus,
+	}
+}
+
+func NewInvalidPosture(cause error) *errorz.ApiError {
+	return &errorz.ApiError{
+		Cause:   cause,
+		Code:    InvalidPostureCode,
+		Message: InvalidPostureMessage,
+		Status:  InvalidPostureStatus,
+	}
+}
+
+func NewMfaExistsError() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    MfaExistsCode,
+		Message: MfaExistsMessage,
+		Status:  MfaExistsStatus,
+	}
+}
+
+func NewMfaNotEnrolledError() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    MfaNotEnrolledCode,
+		Message: MfaNotEnrolledMessage,
+		Status:  MfaNotEnrolledStatus,
+	}
+}
+
+func NewInvalidMfaTokenError() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    MfaInvalidTokenCode,
+		Message: MfaInvalidTokenMessage,
+		Status:  MfaInvalidTokenStatus,
+	}
+}
+
+func NewEdgeRouterFailedReEnrollment(cause error) *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:        EdgeRouterFailedReEnrollmentCode,
+		Message:     EdgeRouterFailedReEnrollmentMessage,
+		Status:      EdgeRouterFailedReEnrollmentStatus,
+		Cause:       cause,
+		AppendCause: true,
+	}
+}
+
+func NewInvalidClientCertificate() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    InvalidClientCertCode,
+		Message: InvalidClientCertMessage,
+		Status:  InvalidClientCertStatus,
+	}
+}
+
+func NewInvalidCertificatePem() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    InvalidCertificatePemCode,
+		Message: InvalidCertificatePemMessage,
+		Status:  InvalidCertificatePemStatus,
+	}
+}
+
+func NewCanNotDeleteReferencedEntity(localEntityType, remoteEntityType string, referencingEntityTypeIds []string, fieldName string) *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:        CanNotDeleteReferencedEntityCode,
+		Message:     CanNotDeleteReferencedEntityMessage,
+		Status:      CanNotDeleteReferencedEntityStatus,
+		Cause:       errorz.NewFieldError(fmt.Sprintf("entity type %s referenced by %s: %v", localEntityType, remoteEntityType, referencingEntityTypeIds), fieldName, referencingEntityTypeIds),
+		AppendCause: true,
+	}
+}
+
+func NewBadRequestFieldError(fieldError errorz.FieldError) *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:        ReferencedEntityNotFoundCode,
+		Message:     ReferencedEntityNotFoundMessage,
+		Status:      ReferencedEntityNotFoundStatus,
+		Cause:       fieldError,
+		AppendCause: true,
+	}
+}
+
+func NewEnrollmentExists(enrollmentMethod string) *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:        EnrollmentExistsCode,
+		Message:     EnrollmentExistsMessage,
+		Status:      EnrollmentExistsStatus,
+		Cause:       errorz.NewFieldError("enrollment of same method exists", "method", enrollmentMethod),
+		AppendCause: true,
 	}
 }
