@@ -9,6 +9,10 @@ packer {
   }
 }
 
+variable "elastic_version" {
+  default = "7.17.5"
+}
+
 source "amazon-ebs" "ziti-tests-ubuntu-ami" {
   ami_description = "An Ubuntu AMI that has everything needed for running fablab smoketests."
   ami_name        = "ziti-tests-{{ timestamp }}"
@@ -113,6 +117,7 @@ build {
       "sudo chmod 0644 /home/ubuntu/logstashCA.crt",
 
       # Move custom files into proper locations
+      "sudo chmod 755 /etc/sysctl.d",
       "sudo mv /home/ubuntu/99remote-not-fancy /etc/apt/apt.conf.d/",
       "sudo mv /home/ubuntu/51-network-tuning.conf /etc/sysctl.d/",
       "sudo mv /home/ubuntu/10-ziti-logs.conf /etc/sysctl.d/",
@@ -125,19 +130,22 @@ build {
       # Linux updates/package installs
       "sudo apt-get -qq -y update",
       "sudo apt-get -qq -y --no-install-recommends install awscli",
+      "sudo apt-get -qq -y --no-install-recommends install iperf3",
+      "sudo apt-get -qq -y --no-install-recommends install tcpdump",
+      "sudo apt-get -qq -y --no-install-recommends install sysstat",
       "sudo apt-get -qq -y --no-install-recommends install jq",
+      "sudo apt-get -qq -y --no-install-recommends upgrade",
 
-      # Install filebeat
-      "curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.17.5-amd64.deb",
-      "sudo dpkg -i -y filebeat-7.17.5-amd64.deb",
+      # Install filebeat and metricbeat
+      "curl -L -O https://artifacts.elastic.co/downloads/beats/metricbeat/metricbeat-${var.elastic_version}-amd64.deb",
+      "sudo dpkg -i metricbeat-${var.elastic_version}-amd64.deb",
+      "curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-${var.elastic_version}-amd64.deb",
+      "sudo dpkg -i filebeat-${var.elastic_version}-amd64.deb",
 
-      # Install metricbeat
-      "curl -L -O https://artifacts.elastic.co/downloads/beats/metricbeat/metricbeat-7.17.5-amd64.deb",
-      "sudo dpkg -i -y metricbeat-7.17.5-amd64.deb",
-
-      # add consul sources
-      "curl --fail --silent --show-error --location https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo dd of=/usr/share/keyrings/hashicorp-archive-keyring.gpg",
-      "echo \"deb [arch=amd64 signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main\" | sudo tee -a /etc/apt/sources.list.d/hashicorp.list",
+      # Consul install
+      # "curl --fail --silent --show-error --location https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo dd of=/usr/share/keyrings/hashicorp-archive-keyring.gpg",
+      # "echo \"deb [arch=amd64 signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main\" | sudo tee -a /etc/apt/sources.list.d/hashicorp.list",
+      "sudo apt-get -qq -y install consul",
 
       # Set New Beats files with proper permissions
       "sudo chown root /home/ubuntu/system.yml",
@@ -153,9 +161,7 @@ build {
       "sudo mv /home/ubuntu/filebeat.yml /etc/filebeat/",
       "sudo mv  /home/ubuntu/system.yml /etc/filebeat/modules.d/system.yml",
 
-      "sudo apt-get -qq -y install iperf3 tcpdump sysstat",
       "sudo mv /home/ubuntu/metricbeat.yml /etc/metricbeat/",
-      "sudo apt-get -qq -y install consul",
       "sudo systemctl enable metricbeat",
       "sudo systemctl start metricbeat",
       "sudo systemctl enable filebeat",
