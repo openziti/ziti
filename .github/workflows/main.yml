@@ -9,7 +9,7 @@ on:
   pull_request:
     # TODO: use paths-ignore when resolved https://github.com/actions/runner/issues/2324
     paths:
-      - '/**'
+      - '**'
       - '!.github/workflows/test-quickstart.yml'
       - '!quickstart/**'
   workflow_dispatch:
