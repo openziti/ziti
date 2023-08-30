@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+ZITI_BIN="${SCRIPT_DIR}/image/ziti-bin"
+
+case "${1:-}" in
+  --build)
+    mkdir -p "${ZITI_BIN}"
+    go build -o "${ZITI_BIN}" "${SCRIPT_DIR}/../../..."
+    shift
+  ;;
+esac
 
 ###
 ### This script will recreate the *LATEST* quickstart image locally from *PUBLISHED* binaries
@@ -9,12 +18,12 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 ### to quickly/easily recreate the image for local dev use that CI will publish
 ###
 echo "CREATING latest quickstart containers LOCALLY"
-if [ -d != "${SCRIPT_DIR}/ziti-bin" ]; then
-  echo "rebuilding quickstart using latest ziti from github: no image/ziti-bin directory found"
+if [ -d "${ZITI_BIN}" ]; then
+  echo "rebuilding quickstart using locally built ziti located in ${ZITI_BIN} directory"
   echo ""
 else
-  echo "rebuilding quickstart using locally built ziti located in image/ziti-bin directory"
+  echo "rebuilding quickstart using latest ziti from github: no ${ZITI_BIN} directory found"
   echo ""
 fi
 
-$SCRIPT_DIR/pushLatestDocker.sh local "${1}"
+"${SCRIPT_DIR}/pushLatestDocker.sh" local "${1:-}"
