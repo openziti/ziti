@@ -39,6 +39,28 @@ function _wait_for_controller {
   done
 }
 
+function _wait_for_public_router {
+  local advertised_host_port="${ZITI_ROUTER_NAME}:${ZITI_ROUTER_PORT}"
+  local COUNTDOWN=30
+  until [[ -s "${ZITI_HOME}/${ZITI_ROUTER_NAME}.cert" ]] \
+    && openssl s_client \
+      -connect "${advertised_host_port}" \
+      -servername "${ZITI_ROUTER_NAME}" \
+      -alpn "ziti-edge,h2,http/1.1" \
+      -cert "${ZITI_HOME}/${ZITI_ROUTER_NAME}.cert" \
+      -key "${ZITI_HOME}/${ZITI_ROUTER_NAME}.key" \
+      <>/dev/null 2>&1 # client cert needed for a zero exit code
+  do
+    if (( COUNTDOWN-- )); then
+      echo "INFO: waiting for https://${advertised_host_port}"
+      sleep 3
+    else
+      echo "ERROR: timed out waiting for https://${advertised_host_port}" >&2
+      return 1
+    fi
+  done
+}
+
 function _setup_ziti_home {
   _setup_ziti_network
   if [[ "${ZITI_HOME-}" == "" ]]; then export ZITI_HOME="${HOME}/.ziti/quickstart/${ZITI_NETWORK-}"; else echo "ZITI_HOME overridden: ${ZITI_HOME}"; fi
