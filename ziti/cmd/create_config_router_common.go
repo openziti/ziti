@@ -42,10 +42,10 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	}
 
 	// Set advertised host
-	advertisedHost := os.Getenv(constants.ZitiEdgeRouterAdvertisedHostVarName)
+	advertisedAddress := os.Getenv(constants.ZitiEdgeRouterAdvertisedAddressVarName)
 	resolvedHostname, _ := os.Hostname()
-	if advertisedHost != "" {
-		r.Edge.AdvertisedHost = advertisedHost
+	if advertisedAddress != "" {
+		r.Edge.AdvertisedHost = advertisedAddress
 	} else {
 		// If advertised host is not provided, set to IP override, or default to resolved hostname
 		if edgeRouterIPOverride != "" {
@@ -94,7 +94,7 @@ func validateRouterName(name string) string {
 }
 
 func SetRouterAltServerCerts(c *RouterTemplateValues) {
-	c.AltCertsEnabled = "#"
+	c.AltCertsEnabled = false
 	altServerCert := os.Getenv(constants.PkiAltServerCertVarName)
 	if altServerCert == "" {
 		return //exit unless both vars are set
@@ -103,7 +103,7 @@ func SetRouterAltServerCerts(c *RouterTemplateValues) {
 	if altServerKey == "" {
 		return //exit unless both vars are set
 	}
-	c.AltCertsEnabled = ""
+	c.AltCertsEnabled = true
 	c.AltServerCert = helpers2.NormalizePath(altServerCert)
 	c.AltServerKey = helpers2.NormalizePath(altServerKey)
 }

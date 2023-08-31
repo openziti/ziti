@@ -1,3 +1,13 @@
+# Release 0.30.1
+
+## What's New
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v0.30.0 -> v0.30.1](https://github.com/openziti/ziti/compare/v0.28.4...v0.29.0)
+  * [Issue #1225](https://github.com/openziti/ziti/issues/1225) - Updated ZITI_ROUTER_ADVERTISED_HOST to use the more common naming convention of ZITI_ROUTER_ADVERTISED_ADDRESS
+  * [Issue #1233](https://github.com/openziti/ziti/issues/1233) - Added `lsof` to the list of prerequisites to be checked during quickstart
+
 # Release 0.30.0
 
 ## What's New
@@ -193,6 +203,7 @@ However, newer Edge Routers should be able to join older network in some circums
     * [Issue #65](https://github.com/openziti/ziti/issues/65) - Add ECDSA support to PKI subcmd
     * [Issue #1212](https://github.com/openziti/ziti/issues/1212) - getZiti fails on Mac OS
     * [Issue #1220](https://github.com/openziti/ziti/issues/1220) - Fixed getZiti function not respecting user input for custom path
+    * [Issue #1219](https://github.com/openziti/ziti/issues/1219) - Added check for IPs provided as a DNS SANs entry, IPs will be ignored and not added as a DNS entry in the expressInstall PKI or router config generation.
 
 # Release 0.29.0
 

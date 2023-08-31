@@ -17,4 +17,4 @@ else
   echo ""
 fi
 
-$SCRIPT_DIR/pushLatestDocker.sh local
+$SCRIPT_DIR/pushLatestDocker.sh local "${1}"

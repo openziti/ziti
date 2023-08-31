@@ -29,10 +29,10 @@ import (
 	"github.com/openziti/transport/v2/transwarptls"
 	"github.com/openziti/transport/v2/wss"
 	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
-	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/client"
-	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2"
-	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3"
+	"github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd"
+	_ "github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/client"
+	_ "github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/loop2"
+	_ "github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/loop3"
 	"github.com/sirupsen/logrus"
 )
 

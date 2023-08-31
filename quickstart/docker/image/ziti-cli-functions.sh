@@ -92,6 +92,17 @@ function _dedupe_list {
   echo "${list}" | tr "'${delimiter}'" '\n' | sort -u | xargs | tr ' ' ','
 }
 
+# Checks if a value is likely an IP address
+function _is_ip {
+  local param pattern
+  param="${1}"
+  pattern="^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$"
+  if [[ "${param}" =~ $pattern ]]; then
+    return 0
+  fi
+  return 1
+}
+
 function _pki_client_server {
   local retVal dns_allow_list ZITI_CA_NAME_local ip_allow_list file_name
   _check_env_variable ZITI_PKI ZITI_BIN_DIR
@@ -334,13 +345,13 @@ function setupEnvironment {
   if [[ "${ZITI_PKI_EDGE_CERT-}" == "" ]]; then export ZITI_PKI_EDGE_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-client.cert"; else echo "ZITI_PKI_EDGE_CERT overridden: ${ZITI_PKI_EDGE_CERT}"; fi
   if [[ "${ZITI_PKI_EDGE_SERVER_CERT}" == "" ]]; then export ZITI_PKI_EDGE_SERVER_CERT="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-server.chain.pem"; else echo "ZITI_PKI_EDGE_SERVER_CERT overridden: ${ZITI_PKI_EDGE_SERVER_CERT}"; fi
   if [[ "${ZITI_PKI_EDGE_KEY}" == "" ]]; then export ZITI_PKI_EDGE_KEY="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/keys/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}-server.key"; else echo "ZITI_PKI_EDGE_KEY overridden: ${ZITI_PKI_EDGE_KEY}"; fi
-  if [[ "${ZITI_PKI_EDGE_CA}" == "" ]]; then export ZITI_PKI_EDGE_CA="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}.cert"; else echo "ZITI_PKI_EDGE_CA overridden: ${ZITI_PKI_EDGE_CA}"; fi
+  if [[ "${ZITI_PKI_EDGE_CA}" == "" ]]; then export ZITI_PKI_EDGE_CA="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}/certs/${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}.cert"; else echo "ZITI_PKI_EDGE_CA overridden: ${ZITI_PKI_EDGE_CA}"; fi
 
   # Router Values
   if [[ "${ZITI_ROUTER_NAME-}" == "" ]]; then export ZITI_ROUTER_NAME="${ZITI_NETWORK}-edge-router"; else echo "ZITI_ROUTER_NAME overridden: ${ZITI_ROUTER_NAME}"; fi
   if [[ "${ZITI_ROUTER_PORT-}" == "" ]]; then export ZITI_ROUTER_PORT="3022"; else echo "ZITI_ROUTER_PORT overridden: ${ZITI_ROUTER_PORT}"; fi
   if [[ "${ZITI_ROUTER_LISTENER_BIND_PORT-}" == "" ]]; then export ZITI_ROUTER_LISTENER_BIND_PORT="10080"; else echo "ZITI_ROUTER_LISTENER_BIND_PORT overridden: ${ZITI_ROUTER_LISTENER_BIND_PORT}"; fi
-  if [[ "${EXTERNAL_DNS-}" != "" ]]; then export ZITI_ROUTER_ADVERTISED_HOST="${EXTERNAL_DNS}"; fi
+  if [[ "${EXTERNAL_DNS-}" != "" ]]; then export ZITI_ROUTER_ADVERTISED_ADDRESS="${EXTERNAL_DNS}"; fi
 
   # Set up directories
   mkdir -p "${ZITI_HOME}"
@@ -709,7 +720,7 @@ function getZiti {
 
 # Create a custom PKI
 function createPki {
-  local retVal pki_allow_list_dns pki_allow_list_ip ZITI_SPURIOUS_INTERMEDIATE
+  local retVal pki_allow_list pki_allow_list_ip ZITI_SPURIOUS_INTERMEDIATE
   _check_env_variable ZITI_PKI_CTRL_ROOTCA_NAME ZITI_PKI_CTRL_EDGE_ROOTCA_NAME ZITI_PKI_SIGNER_ROOTCA_NAME \
                       ZITI_PKI_SIGNER_INTERMEDIATE_NAME ZITI_PKI_CTRL_INTERMEDIATE_NAME \
                       ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME
@@ -730,12 +741,39 @@ function createPki {
   _pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}" 1
 
   echo " "
-  pki_allow_list="${ZITI_CTRL_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
+  pki_allow_list="localhost,${ZITI_NETWORK}"
+  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" != "" ]]; then
+    if ! _is_ip "${ZITI_CTRL_ADVERTISED_ADDRESS-}"; then
+      pki_allow_list="${pki_allow_list},${ZITI_CTRL_ADVERTISED_ADDRESS}"
+    else
+      echo -e "$(YELLOW "ZITI_CTRL_ADVERTISED_ADDRESS seems to be an IP address, it will not be added to the SANs DNS list.") "
+    fi
+  fi
+  if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" != "" ]]; then
+    if ! _is_ip "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}"; then
+      pki_allow_list="${pki_allow_list},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+    else
+      echo -e "$(YELLOW "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS seems to be an IP address, it will not be added to the SANs DNS list.") "
+    fi
+  fi
   pki_allow_list_ip="127.0.0.1"
+  if [[ "${ZITI_CTRL_EDGE_IP_OVERRIDE-}" != "" ]]; then
+    pki_allow_list_ip="${pki_allow_list_ip},${ZITI_CTRL_EDGE_IP_OVERRIDE}"
+  fi
   _pki_client_server "${pki_allow_list}" "${ZITI_PKI_CTRL_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_ADVERTISED_ADDRESS}"
 
-  pki_allow_list="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
+  pki_allow_list="localhost,${ZITI_NETWORK}"
+  if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" != "" ]]; then
+    if ! _is_ip "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}"; then
+      pki_allow_list="${pki_allow_list},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+    else
+      echo -e "$(YELLOW "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS seems to be an IP address, it will not be added to the SANs DNS list.") "
+    fi
+  fi
   pki_allow_list_ip="127.0.0.1"
+  if [[ "${ZITI_CTRL_EDGE_IP_OVERRIDE-}" != "" ]]; then
+    pki_allow_list_ip="${pki_allow_list_ip},${ZITI_CTRL_EDGE_IP_OVERRIDE}"
+  fi
   _pki_client_server "${pki_allow_list}" "${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
 
   echo -e "$(GREEN "PKI generated successfully")"
@@ -779,8 +817,15 @@ function createControllerConfig {
   file_path="${ZITI_HOME}"
   if [[ "${ZITI_HOME-}" == "" ]]; then file_path="."; fi
 
-  cat "${ZITI_PKI_CTRL_SERVER_CERT}" >"${ZITI_PKI_CTRL_CA}"
-  cat "${ZITI_PKI_SIGNER_CERT}" >>"${ZITI_PKI_CTRL_CA}"
+  echo "adding controller root CA to ca bundle: $ZITI_PKI/$ZITI_PKI_CTRL_ROOTCA_NAME/certs/$ZITI_PKI_CTRL_ROOTCA_NAME.cert"
+  cat "$ZITI_PKI/$ZITI_PKI_CTRL_ROOTCA_NAME/certs/$ZITI_PKI_CTRL_ROOTCA_NAME.cert" > "${ZITI_PKI_CTRL_CA}"
+
+  echo "adding signing root CA to ca bundle: $ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/$ZITI_PKI_SIGNER_ROOTCA_NAME.cert"
+  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/$ZITI_PKI_SIGNER_ROOTCA_NAME.cert" >>"${ZITI_PKI_CTRL_CA}"
+
+  echo "adding secondary signing intermediate into ca bundle: $ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_spurious_intermediate.cert"
+  cat "$ZITI_PKI/$ZITI_PKI_SIGNER_ROOTCA_NAME/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}_spurious_intermediate.cert" >> "${ZITI_PKI_CTRL_CA}"
+
   echo -e "wrote CA file to: $(BLUE "${ZITI_PKI_CTRL_CA}")"
 
   output_file="${file_path}/${controller_name}.yaml"
@@ -967,7 +1012,7 @@ function expressInstall {
   _issue_preamble
 
   # This is redundant but better to check here to prevent going any further
-  _check_prereq curl jq tar hostname
+  _check_prereq curl jq tar hostname lsof
   retVal=$?
   if [ $retVal -ne 0 ]; then
     return 1
@@ -1185,8 +1230,8 @@ After=network.target
 [Service]
 User=root
 EnvironmentFile=${ZITI_HOME}/browzer.env
-WorkingDirectory=${ZITI_HOME}/ziti-http-agent
-ExecStart=${node_bin} "${ZITI_HOME}/ziti-http-agent/index.js"
+WorkingDirectory=${ZITI_HOME}/ziti-browzer-bootstrapper
+ExecStart=${node_bin} "${ZITI_HOME}/ziti-browzer-bootstrapper/index.js"
 Restart=always
 RestartSec=2
 LimitNOFILE=65536

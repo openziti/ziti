@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdHelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/constants"
-	"os"
+	"regexp"
 	"time"
 
 	"github.com/openziti/channel/v2"
@@ -117,7 +117,7 @@ type IdentityValues struct {
 	Cert            string
 	AltServerCert   string
 	AltServerKey    string
-	AltCertsEnabled string //a string containing either nothing "" or "#"
+	AltCertsEnabled bool
 }
 
 type WebOptionsValues struct {
@@ -149,7 +149,7 @@ type RouterTemplateValues struct {
 	IdentityCA         string
 	AltServerCert      string
 	AltServerKey       string
-	AltCertsEnabled    string //a string containing either nothing "" or "#"
+	AltCertsEnabled    bool
 	Edge               EdgeRouterTemplateValues
 	Wss                WSSRouterTemplateValues
 	Forwarder          RouterForwarderTemplateValues
@@ -230,15 +230,13 @@ func (options *CreateConfigOptions) addCreateFlags(cmd *cobra.Command) {
 func (data *ConfigTemplateValues) populateConfigValues() {
 
 	// Get and add hostname to the params
-	hostname, err := os.Hostname()
-	handleVariableError(err, "hostname")
+	data.Hostname = cmdHelper.HostnameOrNetworkName()
 
 	// Get and add ziti home to the params
 	zitiHome, err := cmdHelper.GetZitiHome()
 	handleVariableError(err, constants.ZitiHomeVarName)
 
 	data.ZitiHome = zitiHome
-	data.Hostname = hostname
 	// ************* Controller Values ************
 	// Identities are handled in create_config_controller
 	// ctrl:
@@ -290,6 +288,12 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	data.Router.Edge.CsrO = cmdHelper.GetZitiEdgeRouterO()
 	data.Router.Edge.CsrOU = cmdHelper.GetZitiEdgeRouterOU()
 	data.Router.Edge.CsrSans = cmdHelper.GetRouterSans()
+	// If CSR SANs is an IP, ignore it by setting it blank
+	result, _ := regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", data.Router.Edge.CsrSans)
+	if result {
+		logrus.Warnf("DNS provided (%s) appears to be an IP, ignoring for DNS entry", data.Router.Edge.CsrSans)
+		data.Router.Edge.CsrSans = ""
+	}
 	data.Router.Listener.GetSessionTimeout = constants.DefaultGetSessionTimeout
 
 	data.Router.Wss.WriteTimeout = foundation.DefaultWsWriteTimeout
