@@ -1,12 +1,11 @@
-version: '2.4'
 services:
   ziti-controller:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     env_file:
       - ./.env
     ports:
-      - ${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
-      - ${ZITI_CTRL_ADVERTISED_PORT:-6262}:${ZITI_CTRL_ADVERTISED_PORT:-6262}
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL_ADVERTISED_PORT:-6262}:${ZITI_CTRL_ADVERTISED_PORT:-6262}
     environment:
       - ZITI_CTRL_NAME=${ZITI_CTRL_NAME:-ziti-edge-controller}
       - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-edge-controller}
@@ -51,8 +50,8 @@ services:
     depends_on:
       - ziti-controller
     ports:
-      - ${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
-      - ${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}:${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}:${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}
     environment:
       - ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS:-ziti-controller}
       - ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT:-6262}
@@ -83,7 +82,7 @@ services:
     depends_on:
       - ziti-controller
     ports:
-      - 8443:8443
+      - ${ZITI_INTERFACE:-0.0.0.0}:8443:8443
     volumes:
       - ziti-fs:/persistent
     networks:

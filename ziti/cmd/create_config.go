@@ -305,7 +305,6 @@ func (data *ConfigTemplateValues) populateConfigValues() {
 	data.Router.Wss.ReadBufferSize = foundation.DefaultWsReadBufferSize
 	data.Router.Wss.WriteBufferSize = foundation.DefaultWsWriteBufferSize
 	data.Router.Wss.EnableCompression = foundation.DefaultWsEnableCompression
-	data.Router.Forwarder.LatencyProbeInterval = fabForwarder.DefaultLatencyProbeInterval
 	data.Router.Forwarder.XgressDialQueueLength = fabForwarder.DefaultXgressDialWorkerQueueLength
 	data.Router.Forwarder.XgressDialWorkerCount = fabForwarder.DefaultXgressDialWorkerCount
 	data.Router.Forwarder.LinkDialQueueLength = fabForwarder.DefaultLinkDialQueueLength

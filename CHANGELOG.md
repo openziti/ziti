@@ -1,10 +1,88 @@
+# Release 0.30.2
+
+## What's New
+
+* Identity type consolidation
+* HTTP Connect Proxy support for control channel and links
+
+## Identity Type Consolidation
+
+Prior to this release there were four identity types:
+
+* User
+* Service
+* Device
+* Router
+
+Of these four types, only Router has any functional purpose. Given that, the other three have been merged into
+a single `Default` identity type. Since Router identities can only be created by the system, it's no longer
+necesary to specify the identity type when creating identities. 
+
+The identity type may still be provided, but a deprecation warning will be emitted. 
+
+**Backwards Compatibility**
+
+Existing non-Router identities will be migrated to the `Default` identity type. If an identity type other
+than `Default` is provided when creating an identity, it will be coerced to the `Default` type. Existing
+code may have issues with the new identity type being returned. 
+
+
+## HTTP Connect Proxy support
+
+Routers may now specify a proxy configuation which will be used when establishing connections to controllers
+and data links to other routers. At this point only HTTP Connect Proxies with no authentication required are 
+supported.
+
+Example router config:
+
+```yaml
+proxy:
+  type: http
+  address: localhost:3128
+
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.91 -> v2.0.95](https://github.com/openziti/channel/compare/v2.0.91...v2.0.95)
+* github.com/openziti/edge: [v0.24.381 -> v0.24.401](https://github.com/openziti/edge/compare/v0.24.381...v0.24.401)
+    * [Issue #1597](https://github.com/openziti/edge/issues/1597) - ER/T cached API sessions aren't remembered when pulled from cache
+    * [Issue #1428](https://github.com/openziti/edge/issues/1428) - Make identity type optional. Consolidate User/Service/Device to 'Default'. 
+    * [Issue #1584](https://github.com/openziti/edge/issues/1584) - AuthPolicyDetail is incompatible with API response
+
+* github.com/openziti/edge-api: [v0.25.31 -> v0.25.33](https://github.com/openziti/edge-api/compare/v0.25.31...v0.25.33)
+* github.com/openziti/fabric: [v0.24.2 -> v0.24.20](https://github.com/openziti/fabric/compare/v0.24.2...v0.24.20)
+    * [Issue #775](https://github.com/openziti/fabric/issues/775) - Add support for proxies for control channel and links
+
+* github.com/openziti/foundation/v2: [v2.0.29 -> v2.0.30](https://github.com/openziti/foundation/compare/v2.0.29...v2.0.30)
+* github.com/openziti/identity: [v1.0.60 -> v1.0.61](https://github.com/openziti/identity/compare/v1.0.60...v1.0.61)
+* github.com/openziti/runzmd: [v1.0.29 -> v1.0.30](https://github.com/openziti/runzmd/compare/v1.0.29...v1.0.30)
+* github.com/openziti/sdk-golang: [v0.20.90 -> v0.20.101](https://github.com/openziti/sdk-golang/compare/v0.20.90...v0.20.101)
+* github.com/openziti/storage: [v0.2.12 -> v0.2.14](https://github.com/openziti/storage/compare/v0.2.12...v0.2.14)
+* github.com/openziti/transport/v2: [v2.0.99 -> v2.0.103](https://github.com/openziti/transport/compare/v2.0.99...v2.0.103)
+    * [Issue #54](https://github.com/openziti/transport/issues/54) - Support HTTP Connect proxying for TLS connections
+
+* github.com/openziti/metrics: [v1.2.31 -> v1.2.33](https://github.com/openziti/metrics/compare/v1.2.31...v1.2.33)
+* github.com/openziti/secretstream: [v0.1.10 -> v0.1.11](https://github.com/openziti/secretstream/compare/v0.1.10...v0.1.11)
+* github.com/openziti/ziti: [v0.30.1 -> v0.30.2](https://github.com/openziti/ziti/compare/v0.30.1...v0.30.2)
+    * [Issue #1266](https://github.com/openziti/ziti/issues/1266) - Outdated README.md: Some links return "Page Not Found"
+
 # Release 0.30.1
 
 ## What's New
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/ziti: [v0.30.0 -> v0.30.1](https://github.com/openziti/ziti/compare/v0.28.4...v0.29.0)
+* github.com/openziti/ziti: [v0.30.1 -> v0.30.2](https://github.com/openziti/ziti/compare/v0.30.1...v0.30.2)
+  * [Issue #1266](https://github.com/openziti/ziti/issues/1266) - Updated dead links in README
+
+# Release 0.30.1
+
+## What's New
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v0.30.0 -> v0.30.1](https://github.com/openziti/ziti/compare/v0.30.0...v0.30.1)
   * [Issue #1225](https://github.com/openziti/ziti/issues/1225) - Updated ZITI_ROUTER_ADVERTISED_HOST to use the more common naming convention of ZITI_ROUTER_ADVERTISED_ADDRESS
   * [Issue #1233](https://github.com/openziti/ziti/issues/1233) - Added `lsof` to the list of prerequisites to be checked during quickstart
 

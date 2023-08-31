@@ -18,7 +18,7 @@ package fabric
 
 import (
 	"github.com/Jeffail/gabs"
-	fabric_rest_client "github.com/openziti/fabric/rest_client"
+	fabric_rest_client "github.com/openziti/fabric/controller/rest_client"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"

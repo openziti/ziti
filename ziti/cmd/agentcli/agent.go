@@ -12,7 +12,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/router/debugops"
 	"github.com/openziti/fabric/controller"
-	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/fabric/common/pb/mgmt_pb"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/common"
