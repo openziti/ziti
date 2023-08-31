@@ -8,11 +8,6 @@ on:
         type: string
         required: true
 
-# cancel older, redundant runs of same workflow on same branch
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
-
 jobs:
   publish-linux-packages:
     runs-on: ubuntu-latest
