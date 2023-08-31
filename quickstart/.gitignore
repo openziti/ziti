@@ -1,2 +1,3 @@
-ziti-bin
+# only ignore the correct location of the ziti-bin dir to highlight any misplace files
+/docker/image/ziti-bin
 test/gotester.json

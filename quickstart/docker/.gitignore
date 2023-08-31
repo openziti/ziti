@@ -1,1 +1,2 @@
-ziti-bin
+# only ignore the correct location of the ziti-bin dir to highlight any misplace files
+/image/ziti-bin
