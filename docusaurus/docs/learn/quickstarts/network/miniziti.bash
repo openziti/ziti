@@ -33,6 +33,7 @@ _usage(){
             "   --profile\t\tMINIKUBE_PROFILE (miniziti)\n"\
             "   --namespace\t\tZITI_NAMESPACE (MINIKUBE_PROFILE)\n"\
             "   --no-hosts\t\tdon't use local hosts DB or ingress-dns nameserver\n"\
+            "   --modify-hosts\t\tadd local hosts to /etc/hosts. Requires sudo it not running as root. Linux only.\n"\
             "\n DEBUG\n"\
             "   --charts\t\tZITI_CHARTS_REF (openziti) alternative charts repo\n"\
             "   --now\t\teliminate safety waits, e.g., before deleting miniziti\n"\
@@ -128,12 +129,65 @@ validateDnsName(){
     fi
 }
 
+HOSTS_FILE='/etc/hosts'
+MINIZITI_MARKER='miniziti-'
+
+
+checkSudoRequired() {
+    (( EUID != 0 )) && logInfo "sudo is required when not running as root"
+}
+
+cleanHosts() {
+    (( MINIZITI_MODIFY_HOSTS )) || return
+
+    checkSudoRequired
+
+    if grep -q "$MINIZITI_MARKER" "$HOSTS_FILE"; then
+        logInfo "Removing stale miniziti entries from $HOSTS_FILE"
+        if (( EUID != 0 )); then
+            sudo sed -i "/${MINIZITI_MARKER}/d" "$HOSTS_FILE"
+        else
+            sed -i "/${MINIZITI_MARKER}/d" "$HOSTS_FILE"
+        fi
+    fi
+}
+
+installHosts() {
+    (( MINIZITI_MODIFY_HOSTS )) || return
+
+    hosts=(
+        "miniziti-controller.${MINIZITI_INGRESS_ZONE}"
+        "miniziti-router.${MINIZITI_INGRESS_ZONE}"
+        "miniziti-console.${MINIZITI_INGRESS_ZONE}"
+    )
+
+    hosts_line="${MINIKUBE_NODE_EXTERNAL} ${hosts[*]}"
+
+    if ! grep -q "$hosts_line" "$HOSTS_FILE"; then
+        cleanHosts
+        logInfo "Adding miniziti entries to $HOSTS_FILE"
+        if (( EUID != 0 )); then
+            echo "$hosts_line" | sudo tee -a "$HOSTS_FILE" > /dev/null
+        else
+            echo "$hosts_line" | tee -a "$HOSTS_FILE" > /dev/null
+        fi
+    fi
+}
+
 logInfo() {
     (( $# )) || {
         logError "logInfo() takes 1 or more args"
         return 1
     }
     echo "INFO: $*"
+}
+
+logWarn() {
+    (( $# )) || {
+        logError "logWarn() takes 1 or more args"
+        return 1
+    }
+    echo "WARN: $*"
 }
 
 logError() {
@@ -154,7 +208,7 @@ logDebug() {
 
 main(){
     # require commands
-    declare -a BINS=(ziti minikube kubectl helm)
+    declare -a BINS=(ziti minikube kubectl helm sed)
     for BIN in "${BINS[@]}"; do
         if ! command -v "$BIN" &>/dev/null; then
             logError "this script requires commands '${BINS[*]}'. Please install on the search PATH and try again."
@@ -176,6 +230,7 @@ main(){
             ZITI_CHARTS_REF="openziti" \
             ZITI_CHARTS_URL="https://openziti.io/helm-charts/charts" \
             MINIZITI_HOSTS=1 \
+            MINIZITI_MODIFY_HOSTS=0 \
             MINIZITI_INGRESS_ZONE="ziti" \
             MINIZITI_INTERCEPT_ZONE="miniziti"
     # local arrays with defaults that never produce an error
@@ -215,7 +270,14 @@ main(){
             --now)          SAFETY_WAIT=0
                             shift
             ;;
-            --no-hosts)     MINIZITI_HOSTS=0
+            --no-hosts)     MINIZITI_HOSTS=1
+                            shift
+            ;;
+            --modify-hosts) if [[ "$DETECTED_OS" != "Linux" ]]; then
+                                logError "The '--modify-hosts' option is only available for Linux"
+                                exit 1
+                            fi
+                            MINIZITI_MODIFY_HOSTS=1
                             shift
             ;;
             --)             shift
@@ -252,6 +314,7 @@ main(){
     # delete and exit if --delete
     (( DELETE_MINIZITI )) && {
         deleteMiniziti 10
+        cleanHosts
         exit 0
     }
 
@@ -287,6 +350,8 @@ main(){
         logError "failed to find minikube external IP"
         exit 1
     fi
+
+    installHosts
 
     # verify current context can connect to apiserver
     kubectl cluster-info >&3
