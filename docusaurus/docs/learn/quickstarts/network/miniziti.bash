@@ -187,7 +187,7 @@ logWarn() {
         logError "logWarn() takes 1 or more args"
         return 1
     }
-    echo "WARN: $*"
+    echo "WARN: $*" >&2
 }
 
 logError() {
