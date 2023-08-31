@@ -138,8 +138,6 @@ checkSudoRequired() {
 }
 
 cleanHosts() {
-    (( MINIZITI_MODIFY_HOSTS )) || return
-
     checkSudoRequired
 
     if grep -q "$MINIZITI_MARKER" "$HOSTS_FILE"; then
@@ -153,8 +151,6 @@ cleanHosts() {
 }
 
 installHosts() {
-    (( MINIZITI_MODIFY_HOSTS )) || return
-
     hosts=(
         "miniziti-controller.${MINIZITI_INGRESS_ZONE}"
         "miniziti-router.${MINIZITI_INGRESS_ZONE}"
@@ -314,7 +310,9 @@ main(){
     # delete and exit if --delete
     (( DELETE_MINIZITI )) && {
         deleteMiniziti 10
-        cleanHosts
+        if (( MINIZITI_MODIFY_HOSTS )); then
+            cleanHosts
+        fi
         exit 0
     }
 
@@ -351,7 +349,9 @@ main(){
         exit 1
     fi
 
-    installHosts
+    if (( MINIZITI_MODIFY_HOSTS )); then
+        installHosts
+    fi
 
     # verify current context can connect to apiserver
     kubectl cluster-info >&3
