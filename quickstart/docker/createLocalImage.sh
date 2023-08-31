@@ -26,4 +26,16 @@ else
   echo ""
 fi
 
+# optionally, configure ZITI_VERSION for pushLatestDocker.sh
+if [[ -n "${ZITI_VERSION_OVERRIDE:-}" && -n "${ZITI_VERSION:-}" ]]; then
+  echo "WARN: both ZITI_VERSION and ZITI_VERSION_OVERRIDE are set, overriding $ZITI_VERSION with $ZITI_OVERRIDE_VERSION" >&2
+  export ZITI_VERSION="${ZITI_VERSION_OVERRIDE#v}"
+elif [[ -n "${ZITI_VERSION_OVERRIDE:-}" ]]; then
+  echo "INFO: ZITI_VERSION_OVERRIDE is set, setting ZITI_VERSION=${ZITI_OVERRIDE_VERSION#v}"
+  export ZITI_VERSION="${ZITI_VERSION_OVERRIDE#v}"
+elif [[ -n "${ZITI_VERSION:-}" ]]; then
+  echo "INFO: ZITI_VERSION is set, using ZITI_VERSION=${ZITI_VERSION#v}"
+  export ZITI_VERSION="${ZITI_VERSION#v}"
+fi
+
 "${SCRIPT_DIR}/pushLatestDocker.sh" local "${1:-}"
