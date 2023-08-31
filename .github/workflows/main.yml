@@ -391,7 +391,7 @@ jobs:
       always()
       && needs.publish.result == 'success'
       && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release-next')
-    name: Publish Release Linux Packages
+    name: Publish Linux Packages
     needs: publish
     uses: ./.github/workflows/publish-linux-packages.yml
     secrets: inherit
