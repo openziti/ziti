@@ -232,6 +232,30 @@ jobs:
             echo "WARN: No instance archive found for simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg" >&2
           fi
 
+  quickstart:
+    name: Run the Go Quickstart
+    # - always() allows evaluating further conditional expressions even if
+    #   needed jobs were skipped
+    if: |
+      always()
+    runs-on: ubuntu-20.04
+    needs: [ linux-build ]
+    steps:
+      - name: Git Shallow Checkout
+        uses: actions/checkout@v3
+
+      - name: Download linux release artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-release-${{ github.run_id }}
+          path: release/
+
+      - name: Run Go Quickstart Test
+        timeout-minutes: 5
+        run: |
+          go clean -testcache;
+          go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
+
   publish:
     name: Publish Binaries
     # - always() allows evaluating further conditional expressions even if
