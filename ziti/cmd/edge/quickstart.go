@@ -162,15 +162,23 @@ func run(out io.Writer, errOut io.Writer) {
 		logrus.Fatal(erEnrollErr)
 	}
 
-	//./ziti router run ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml &> ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.log &
-	erRunCmd := router.NewRunCmd()
-	erRunCmd.SetArgs([]string{
-		fmt.Sprintf(erYaml),
-	})
-	erRunCmdErr := erRunCmd.Execute()
-	if erRunCmdErr != nil {
-		logrus.Fatal(erRunCmdErr)
-	}
+	go func() {
+		//./ziti router run ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml &> ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.log &
+		erRunCmd := router.NewRunCmd()
+		erRunCmd.SetArgs([]string{
+			fmt.Sprintf(erYaml),
+		})
+		erRunCmdErr := erRunCmd.Execute()
+		if erRunCmdErr != nil {
+			logrus.Fatal(erRunCmdErr)
+		}
+	}()
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
+
+	<-ch
+	removeTempDir(tmpDir)
 }
 
 func createMinimalPki(out io.Writer, errOut io.Writer) {
@@ -231,9 +239,4 @@ func createMinimalPki(out io.Writer, errOut io.Writer) {
 	if clientErr != nil {
 		logrus.Fatal(clientErr)
 	}
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
-
-	<-ch
-	removeTempDir(tmpDir)
 }
