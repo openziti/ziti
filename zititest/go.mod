@@ -12,9 +12,9 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.15
 	github.com/openziti/channel/v2 v2.0.95
-	github.com/openziti/edge v0.24.401
+	github.com/openziti/edge v0.24.404
 	github.com/openziti/fablab v0.5.5
-	github.com/openziti/fabric v0.24.20
+	github.com/openziti/fabric v0.24.23
 	github.com/openziti/foundation/v2 v2.0.30
 	github.com/openziti/identity v1.0.61
 	github.com/openziti/sdk-golang v0.20.101
@@ -150,7 +150,7 @@ require (
 	github.com/rodaine/table v1.0.1 // indirect
 	github.com/rs/cors v1.9.0 // indirect
 	github.com/russross/blackfriday v1.5.2 // indirect
-	github.com/shirou/gopsutil/v3 v3.23.7 // indirect
+	github.com/shirou/gopsutil/v3 v3.23.8 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
