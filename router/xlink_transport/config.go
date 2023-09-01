@@ -104,7 +104,9 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 	}
 
 	if value, found := data["groups"]; found {
-		if groups, ok := value.([]interface{}); ok {
+		if group, ok := value.(string); ok {
+			config.groups = append(config.groups, group)
+		} else if groups, ok := value.([]interface{}); ok {
 			for _, group := range groups {
 				config.groups = append(config.groups, fmt.Sprint(group))
 			}
@@ -170,7 +172,9 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 	}
 
 	if value, found := data["groups"]; found {
-		if groups, ok := value.([]interface{}); ok {
+		if group, ok := value.(string); ok {
+			config.groups = append(config.groups, group)
+		} else if groups, ok := value.([]interface{}); ok {
 			for _, group := range groups {
 				config.groups = append(config.groups, fmt.Sprint(group))
 			}
