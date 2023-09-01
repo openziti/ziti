@@ -302,7 +302,11 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		return nil
 	})
 
-	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != nil {
+	transportCfg := transport.Configuration{
+		transport.KeyProtocol: "ziti-ctrl",
+	}
+
+	if _, err = channel.NewChannelWithTransportConfiguration(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions(), transportCfg); err != nil {
 		return nil, errors.Wrapf(err, "unable to dial %v", address)
 	}
 
@@ -346,7 +350,11 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		return markerErr
 	})
 
-	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != markerErr {
+	transportCfg := transport.Configuration{
+		transport.KeyProtocol: "ziti-ctrl",
+	}
+
+	if _, err = channel.NewChannelWithTransportConfiguration(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions(), transportCfg); err != markerErr {
 		return "", "", errors.Wrapf(err, "unable to dial %v", address)
 	}
 
