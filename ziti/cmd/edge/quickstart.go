@@ -32,7 +32,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 // newCreateCmd creates a command object for the "create" command
@@ -111,8 +110,7 @@ func run(out io.Writer, errOut io.Writer) {
 	}()
 
 	fmt.Println("Controller running... Configuring and starting Router...")
-	time.Sleep(5 * time.Second)
-
+	
 	//ziti edge login https://localhost:1280 -u admin -p admin -y
 	loginCmd := NewLoginCmd(out, errOut)
 	loginCmd.SetArgs([]string{
