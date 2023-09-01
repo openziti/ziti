@@ -14,11 +14,12 @@
 	limitations under the License.
 */
 
-package cmd
+package pki
 
 import (
 	"fmt"
 	"github.com/openziti/fabric/controller/idgen"
+	cmd2 "github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/certificate"
@@ -30,17 +31,17 @@ import (
 	"net/url"
 )
 
-// PKICreateClientOptions the options for the create spring command
-type PKICreateClientOptions struct {
+// PKICreateServerOptions the options for the create spring command
+type PKICreateServerOptions struct {
 	PKICreateOptions
 }
 
-// NewCmdPKICreateClient creates a command object for the "create" command
-func NewCmdPKICreateClient(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PKICreateClientOptions{
+// NewCmdPKICreateServer creates a command object for the "create" command
+func NewCmdPKICreateServer(out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &PKICreateServerOptions{
 		PKICreateOptions: PKICreateOptions{
 			PKIOptions: PKIOptions{
-				CommonOptions: CommonOptions{
+				CommonOptions: cmd2.CommonOptions{
 					Out: out,
 					Err: errOut,
 				},
@@ -49,9 +50,9 @@ func NewCmdPKICreateClient(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "client",
-		Short:   "Creates new Client certificate (signed by previously created Intermediate-chain)",
-		Aliases: []string{"c"},
+		Use:     "server",
+		Short:   "Creates new Server certificate (signed by previously created Intermediate-chain)",
+		Aliases: []string{"s"},
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -60,57 +61,65 @@ func NewCmdPKICreateClient(out io.Writer, errOut io.Writer) *cobra.Command {
 		},
 	}
 
-	options.addPKICreateClientFlags(cmd)
+	options.addPKICreateServerFlags(cmd)
 	return cmd
 }
 
-const FlagCaClientName = "client-name"
+const FlagCaServerName = "server-name"
 
-func (o *PKICreateClientOptions) addPKICreateClientFlags(cmd *cobra.Command) {
+func (o *PKICreateServerOptions) addPKICreateServerFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.Flags.PKIRoot, "pki-root", "", "", "Directory in which PKI resides")
-	cmd.Flags().StringVarP(&o.Flags.CAName, "ca-name", "", "intermediate", "Name of Intermediate CA (within PKI_ROOT) to use to sign the new Client certificate")
-	cmd.Flags().StringVarP(&o.Flags.ClientFile, "client-file", "", "client", "Name of file (under chosen CA) in which to store new Client certificate and private key")
-	cmd.Flags().StringVarP(&o.Flags.KeyFile, "key-file", "", "", "Name of file (under chosen CA) containing private key to use when generating Client certificate")
-	cmd.Flags().StringVarP(&o.Flags.ClientName, FlagCaClientName, "", "NetFoundry Inc. Client", "Common Name (CN) to use for new Client certificate")
-	cmd.Flags().StringSliceVar(&o.Flags.Email, "email", []string{}, "Email addr(s) to add to Subject Alternate Name (SAN) for new Client certificate")
+	cmd.Flags().StringVarP(&o.Flags.CAName, "ca-name", "", "intermediate", "Name of Intermediate CA (within PKI_ROOT) to use to sign the new Server certificate")
+	cmd.Flags().StringVarP(&o.Flags.ServerFile, "server-file", "", "server", "Name of file (under chosen CA) in which to store new Server certificate and private key")
+	cmd.Flags().StringVarP(&o.Flags.KeyFile, "key-file", "", "", "Name of file (under chosen CA) containing private key to use when generating Server certificate")
+	cmd.Flags().StringVarP(&o.Flags.ServerName, FlagCaServerName, "", "NetFoundry Inc. Server", "Common Name (CN) to use for new Server certificate")
+	cmd.Flags().StringSliceVar(&o.Flags.DNSName, "dns", []string{}, "DNS name(s) to add to Subject Alternate Name (SAN) for new Server certificate")
+	cmd.Flags().StringSliceVar(&o.Flags.IP, "ip", []string{}, "IP addr(s) to add to Subject Alternate Name (SAN) for new Server certificate")
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 365, "Expiration limit in days")
 	cmd.Flags().IntVarP(&o.Flags.CAMaxPath, "max-path-len", "", -1, "Intermediate maximum path length")
 	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the RSA private key, ignored if -curve is set")
 	cmd.Flags().StringVarP(&o.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521")
 	cmd.Flags().StringVar(&o.Flags.SpiffeID, "spiffe-id", "", "Optionally provide the path portion of a SPIFFE id. The trust domain will be taken from the signing certificate.")
+	cmd.Flags().BoolVar(&o.Flags.AllowOverwrite, "allow-overwrite", false, "Allow overwrite existing certs")
 }
 
 // Run implements this command
-func (o *PKICreateClientOptions) Run() error {
-	pkiRoot, err := o.ObtainPKIRoot()
+func (o *PKICreateServerOptions) Run() error {
+	IPs, DNSNames, err := o.ObtainIPsAndDNSNames()
+	if err != nil {
+		return err
+	}
+
+	pkiroot, err := o.ObtainPKIRoot()
 	if err != nil {
 		return err
 	}
 
 	o.Flags.PKI = &pki.ZitiPKI{Store: &store.Local{}}
 	local := o.Flags.PKI.Store.(*store.Local)
-	local.Root = pkiRoot
+	local.Root = pkiroot
 
-	if !o.Cmd.Flags().Changed(FlagCaClientName) {
-		o.Flags.ClientName = o.Flags.ClientName + " " + idgen.New()
+	if !o.Cmd.Flags().Changed(FlagCaServerName) {
+		o.Flags.ServerName = o.Flags.ServerName + " " + idgen.New()
 	}
 
-	commonName := o.Flags.ClientName
+	commonName := o.Flags.ServerName
 
-	clientCertFile, err := o.ObtainClientCertFile()
+	serverCertFile, err := o.ObtainServerCertFile()
 	if err != nil {
 		return err
 	}
 
-	filename := o.ObtainFileName(clientCertFile, commonName)
+	filename := o.ObtainFileName(serverCertFile, commonName)
 	template := o.ObtainPKIRequestTemplate(commonName)
 
 	template.IsCA = false
-	template.EmailAddresses = o.Flags.Email
+	template.IPAddresses = IPs
+	template.DNSNames = DNSNames
 
 	var signer *certificate.Bundle
 
-	caName, err := o.ObtainCAName(pkiRoot)
+	caname, err := o.ObtainCAName(pkiroot)
 	if err != nil {
 		return err
 	}
@@ -120,7 +129,7 @@ func (o *PKICreateClientOptions) Run() error {
 		return err
 	}
 
-	signer, err = o.Flags.PKI.GetCA(caName)
+	signer, err = o.Flags.PKI.GetCA(caname)
 	if err != nil {
 		return errors.Wrap(err, "cannot locate signer")
 	}
@@ -155,16 +164,21 @@ func (o *PKICreateClientOptions) Run() error {
 		Name:                filename,
 		KeyName:             keyFile,
 		Template:            template,
-		IsClientCertificate: true,
+		IsClientCertificate: false,
 		PrivateKeyOptions:   privateKeyOptions,
+		AllowOverwrite:      o.Flags.AllowOverwrite,
 	}
 
 	if err := o.Flags.PKI.Sign(signer, req); err != nil {
 		return errors.Wrap(err, "cannot sign")
 	}
 
+	// Concat the newly-created server cert with the intermediate cert to create a server.chain.pem file
+	if err := o.Flags.PKI.Chain(signer, req); err != nil {
+		return errors.Wrap(err, "unable to generate cert chain")
+	}
+
 	log.Infoln("Success")
 
 	return nil
-
 }

@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package cmd
+package pki
 
 import (
 	"crypto/elliptic"
@@ -23,6 +23,7 @@ import (
 	"encoding/asn1"
 	"errors"
 	"fmt"
+	cmd2 "github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/pki/pki"
 	"github.com/openziti/ziti/ziti/util"
@@ -49,7 +50,7 @@ type PKICreateOptions struct {
 func NewCmdPKICreate(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PKICreateOptions{
 		PKIOptions: PKIOptions{
-			CommonOptions: CommonOptions{
+			CommonOptions: cmd2.CommonOptions{
 				Out: out,
 				Err: errOut,
 			},
@@ -458,4 +459,10 @@ func (o *PKICreateOptions) obtainRsaOptions() (pki.PrivateKeyOptions, error) {
 	return &pki.RsaPrivateKeyOptions{
 		Size: o.Flags.CAPrivateKeySize,
 	}, nil
+}
+
+func (options *PKICreateOptions) panicOnErr(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

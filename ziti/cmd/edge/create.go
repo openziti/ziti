@@ -45,7 +45,7 @@ func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newCreateCaCmd(out, errOut))
 	cmd.AddCommand(newCreateConfigCmd(out, errOut))
 	cmd.AddCommand(newCreateConfigTypeCmd(out, errOut))
-	cmd.AddCommand(newCreateEdgeRouterCmd(out, errOut))
+	cmd.AddCommand(NewCreateEdgeRouterCmd(out, errOut))
 	cmd.AddCommand(newCreateEdgeRouterPolicyCmd(out, errOut))
 	cmd.AddCommand(newCreateEnrollmentCmd(out, errOut))
 	cmd.AddCommand(newCreateIdentityCmd(out, errOut))

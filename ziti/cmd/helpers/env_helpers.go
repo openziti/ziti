@@ -46,7 +46,7 @@ func WorkingDir() (string, error) {
 	return NormalizePath(wd), nil
 }
 
-func GetZitiHome() (string, error) {
+func GetZitiHome() string {
 	// Get path from env variable
 	retVal := os.Getenv(constants.ZitiHomeVarName)
 
@@ -59,14 +59,10 @@ func GetZitiHome() (string, error) {
 		}
 
 		err = os.Setenv(constants.ZitiHomeVarName, workingDir)
-		if err != nil {
-			return "", err
-		}
-
 		retVal = os.Getenv(constants.ZitiHomeVarName)
 	}
 
-	return NormalizePath(retVal), nil
+	return NormalizePath(retVal)
 }
 
 func HostnameOrNetworkName() string {

@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package cmd
+package create
 
 import (
 	"github.com/openziti/ziti/ziti/cmd/common"
@@ -196,12 +196,6 @@ type RouterListenerTemplateValues struct {
 	OutQueueSize      int
 }
 
-var workingDir string
-
-func init() {
-	workingDir, _ = cmdHelper.GetZitiHome()
-}
-
 // NewCmdCreateConfig creates a command object for the "config" command
 func NewCmdCreateConfig() *cobra.Command {
 	cmd := &cobra.Command{
@@ -227,14 +221,13 @@ func (options *CreateConfigOptions) addCreateFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&options.Output, optionOutput, "o", defaultOutput, outputDescription)
 }
 
-func (data *ConfigTemplateValues) populateConfigValues() {
+func (data *ConfigTemplateValues) PopulateConfigValues() {
 
 	// Get and add hostname to the params
 	data.Hostname = cmdHelper.HostnameOrNetworkName()
 
 	// Get and add ziti home to the params
-	zitiHome, err := cmdHelper.GetZitiHome()
-	handleVariableError(err, constants.ZitiHomeVarName)
+	zitiHome := cmdHelper.GetZitiHome()
 
 	data.ZitiHome = zitiHome
 	// ************* Controller Values ************

@@ -1,4 +1,4 @@
-package cmd
+package create
 
 import (
 	"fmt"
@@ -250,25 +250,25 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 
 	// identity:
 	t.Run("TestPKICert", func(t *testing.T) {
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".cert"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".cert"
 
 		assert.Equal(t, expectedValue, data.Controller.Identity.Cert)
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Cert)
 	})
 	t.Run("TestPKIServerCert", func(t *testing.T) {
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".server.chain.cert"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".server.chain.cert"
 
 		assert.Equal(t, expectedValue, data.Controller.Identity.ServerCert)
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.ServerCert)
 	})
 	t.Run("TestPKIKey", func(t *testing.T) {
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".key"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".key"
 
 		assert.Equal(t, expectedValue, data.Controller.Identity.Key)
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Key)
 	})
 	t.Run("TestPKICA", func(t *testing.T) {
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".ca"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".ca"
 
 		assert.Equal(t, expectedValue, data.Controller.Identity.Ca)
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Ca)
@@ -325,14 +325,14 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 	})
 	t.Run("TestEdgeEnrollmentSigningCert", func(t *testing.T) {
 		// Should default to the value of Ctrl Edge Advertised Port
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".signing.cert"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".signing.cert"
 
 		assert.Equal(t, expectedValue, data.Controller.EdgeEnrollment.SigningCert)
 		assert.Equal(t, expectedValue, ctrlConfig.Edge.Enrollment.SigningCert.Cert)
 	})
 	t.Run("TestEdgeEnrollmentSigningKey", func(t *testing.T) {
 		// Should default to the value of Ctrl Edge Advertised Port
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".signing.key"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".signing.key"
 
 		assert.Equal(t, expectedValue, data.Controller.EdgeEnrollment.SigningCertKey)
 		assert.Equal(t, expectedValue, ctrlConfig.Edge.Enrollment.SigningCert.Key)
@@ -450,25 +450,25 @@ func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 
 	// identity:
 	t.Run("TestPKICert", func(t *testing.T) {
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".cert"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".cert"
 
 		assert.Equal(t, expectedValue, data.Controller.Identity.Cert)
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Cert)
 	})
 	t.Run("TestPKIServerCert", func(t *testing.T) {
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".server.chain.cert"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".server.chain.cert"
 
 		assert.Equal(t, expectedValue, data.Controller.Identity.ServerCert)
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.ServerCert)
 	})
 	t.Run("TestPKIKey", func(t *testing.T) {
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".key"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".key"
 
 		assert.Equal(t, expectedValue, data.Controller.Identity.Key)
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Key)
 	})
 	t.Run("TestPKICA", func(t *testing.T) {
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".ca"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".ca"
 
 		assert.Equal(t, expectedValue, data.Controller.Identity.Ca)
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Ca)
@@ -525,14 +525,14 @@ func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 	})
 	t.Run("TestEdgeEnrollmentSigningCert", func(t *testing.T) {
 		// Should default to the value of Ctrl Edge Advertised Port
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".signing.cert"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".signing.cert"
 
 		assert.Equal(t, expectedValue, data.Controller.EdgeEnrollment.SigningCert)
 		assert.Equal(t, expectedValue, ctrlConfig.Edge.Enrollment.SigningCert.Cert)
 	})
 	t.Run("TestEdgeEnrollmentSigningKey", func(t *testing.T) {
 		// Should default to the value of Ctrl Edge Advertised Port
-		expectedValue := workingDir + "/" + cmdhelper.HostnameOrNetworkName() + ".signing.key"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".signing.key"
 
 		assert.Equal(t, expectedValue, data.Controller.EdgeEnrollment.SigningCertKey)
 		assert.Equal(t, expectedValue, ctrlConfig.Edge.Enrollment.SigningCert.Key)
@@ -661,6 +661,23 @@ func TestZitiCtrlIdentitySection(t *testing.T) {
 	assert.Equal(t, keyPath, ctrlConfig.Identity.Key)
 	assert.Equal(t, caPath, data.Controller.Identity.Ca)
 	assert.Equal(t, caPath, ctrlConfig.Identity.Ca)
+}
+
+func TestDefaultPkiPath(t *testing.T) {
+	expectedPkiRoot := "/tmp/expectedPkiRoot"
+	keys := map[string]string{
+		"ZITI_HOME": expectedPkiRoot,
+	}
+
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
+
+	assert.Contains(t, data.Controller.Identity.Cert, expectedPkiRoot)
+	assert.Contains(t, data.Controller.Identity.ServerCert, expectedPkiRoot)
+	assert.Contains(t, ctrlConfig.Identity.ServerCert, expectedPkiRoot)
+	assert.Contains(t, data.Controller.Identity.Key, expectedPkiRoot)
+	assert.Contains(t, ctrlConfig.Identity.Key, expectedPkiRoot)
+	assert.Contains(t, data.Controller.Identity.Ca, expectedPkiRoot)
+	assert.Contains(t, ctrlConfig.Identity.Ca, expectedPkiRoot)
 }
 
 func TestCtrlBindAddress(t *testing.T) {

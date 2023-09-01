@@ -21,11 +21,13 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/cmd/create"
 	"github.com/openziti/ziti/ziti/cmd/database"
 	"github.com/openziti/ziti/ziti/cmd/demo"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/cmd/fabric"
 	"github.com/openziti/ziti/ziti/cmd/install"
+	"github.com/openziti/ziti/ziti/cmd/pki"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/controller"
@@ -45,7 +47,7 @@ import (
 
 // InitOptions the flags for running init
 type MainOptions struct {
-	CommonOptions
+	common.CommonOptions
 }
 
 type RootCmd struct {
@@ -121,12 +123,12 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 
 	p := common.NewOptionsProvider(out, err)
 
-	createCommands := NewCmdCreate(out, err)
+	createCommands := create.NewCmdCreate(out, err)
 	controllerCmd := controller.NewControllerCmd()
 	tunnelCmd := tunnel.NewTunnelCmd(false)
 	routerCmd := router.NewRouterCmd()
 	agentCommands := agentcli.NewAgentCmd(p)
-	pkiCommands := NewCmdPKI(out, err)
+	pkiCommands := pki.NewCmdPKI(out, err)
 	fabricCommand := fabric.NewFabricCmd(p)
 	edgeCommand := edge.NewCmdEdge(out, err)
 	demoCmd := demo.NewDemoCmd(p)

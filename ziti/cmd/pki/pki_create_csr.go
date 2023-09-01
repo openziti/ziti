@@ -14,10 +14,11 @@
 	limitations under the License.
 */
 
-package cmd
+package pki
 
 import (
 	"fmt"
+	cmd2 "github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/pki"
@@ -36,7 +37,7 @@ func NewCmdPKICreateCSR(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PKICreateCSROptions{
 		PKICreateOptions: PKICreateOptions{
 			PKIOptions: PKIOptions{
-				CommonOptions: CommonOptions{
+				CommonOptions: cmd2.CommonOptions{
 					Out: out,
 					Err: errOut,
 				},
