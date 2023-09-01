@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/create"
 	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/pki"
+	"github.com/openziti/ziti/ziti/constants"
 	controller2 "github.com/openziti/ziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/router"
 	"github.com/sirupsen/logrus"
@@ -69,11 +70,17 @@ func run(out io.Writer, errOut io.Writer) {
 	_ = os.Setenv("ZITI_PKI_SIGNER_KEY", tmpDir+"/pki/intermediate-ca/keys/intermediate-ca.key")
 	_ = os.Setenv("ZITI_PKI_CTRL_SERVER_CERT", tmpDir+"/pki/intermediate-ca/certs/server.chain.pem")
 
+	routerName := "quickstart-router"
+	routerNameFromEnv := os.Getenv(constants.ZitiEdgeRouterNameVarName)
+	if routerNameFromEnv != "" {
+		routerName = routerNameFromEnv
+	}
+
 	dbDir := tmpDir + "/db"
 	_, _ = fmt.Fprintf(os.Stdout, "creating the tmp dir [%v] for the database.\n\n", dbDir)
 	_ = os.MkdirAll(dbDir, 0o777)
 
-	createMinimalPki(out, errOut)
+	createMinimalPki(out, errOut, tmpDir+"/pki")
 
 	ctrl := create.NewCmdCreateConfigController()
 	ctrl.SetArgs([]string{
@@ -121,9 +128,9 @@ func run(out io.Writer, errOut io.Writer) {
 
 	//./ziti edge create edge-router ${ZITI_HOSTNAME}-edge-router -o ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt -t -a public
 	createErCmd := NewCreateEdgeRouterCmd(out, errOut)
-	erJwt := tmpDir + "/quickstart.er.jwt"
+	erJwt := tmpDir + "/" + routerName + ".jwt"
 	createErCmd.SetArgs([]string{
-		fmt.Sprintf("quickstart-router"),
+		fmt.Sprintf(routerName),
 		fmt.Sprintf("--jwt-output-file=%s", erJwt),
 		fmt.Sprintf("--tunneler-enabled"),
 		fmt.Sprintf("--role-attributes=%s", "public"),
@@ -138,11 +145,11 @@ func run(out io.Writer, errOut io.Writer) {
 
 	data := &create.ConfigTemplateValues{}
 	data.PopulateConfigValues()
-	create.SetZitiRouterIdentity(&data.Router, "quickstart-router")
+	create.SetZitiRouterIdentity(&data.Router, routerName)
 	erCfg := create.NewCmdCreateConfigRouterEdge(opts, data)
-	erYaml := tmpDir + "/quickstart.er.yaml"
+	erYaml := tmpDir + "/" + routerName + ".yaml"
 	erCfg.SetArgs([]string{
-		fmt.Sprintf("--routerName=%s", "quickstart-router"),
+		fmt.Sprintf("--routerName=%s", routerName),
 		fmt.Sprintf("--output=%s", erYaml),
 	})
 	_ = ctrl.Execute()
@@ -181,15 +188,13 @@ func run(out io.Writer, errOut io.Writer) {
 	removeTempDir(tmpDir)
 }
 
-func createMinimalPki(out io.Writer, errOut io.Writer) {
-	tmpDir := os.Getenv("ZITI_HOME")
-	pkiDir := tmpDir + "/pki"
-	fmt.Println("emitting a minimal PKI:")
+func createMinimalPki(out io.Writer, errOut io.Writer, where string) {
+	fmt.Println("emitting a minimal PKI")
 
 	//ziti pki create ca --pki-root="$pkiDir" --ca-file="root-ca" --ca-name="root-ca"
 	ca := pki.NewCmdPKICreateCA(out, errOut)
 	ca.SetArgs([]string{
-		fmt.Sprintf("--pki-root=%s", pkiDir),
+		fmt.Sprintf("--pki-root=%s", where),
 		fmt.Sprintf("--ca-file=%s", "root-ca"),
 		fmt.Sprintf("--ca-name=%s", "root-ca"),
 	})
@@ -201,7 +206,7 @@ func createMinimalPki(out io.Writer, errOut io.Writer) {
 	//ziti pki create intermediate --pki-root "$pkiDir" --ca-name "root-ca" --intermediate-name "intermediate-ca" --intermediate-file "intermediate-ca" --max-path-len "1"
 	intermediate := pki.NewCmdPKICreateIntermediate(out, errOut)
 	intermediate.SetArgs([]string{
-		fmt.Sprintf("--pki-root=%s", pkiDir),
+		fmt.Sprintf("--pki-root=%s", where),
 		fmt.Sprintf("--ca-name=%s", "root-ca"),
 		fmt.Sprintf("--intermediate-name=%s", "intermediate-ca"),
 		fmt.Sprintf("--intermediate-file=%s", "intermediate-ca"),
@@ -215,7 +220,7 @@ func createMinimalPki(out io.Writer, errOut io.Writer) {
 	//ziti pki create server --pki-root="${ZITI_HOME}/pki" --ca-name "intermediate-ca" --server-name "server" --server-file "server" --dns "localhost,${ZITI_HOSTNAME}"
 	svr := pki.NewCmdPKICreateServer(out, errOut)
 	svr.SetArgs([]string{
-		fmt.Sprintf("--pki-root=%s", pkiDir),
+		fmt.Sprintf("--pki-root=%s", where),
 		fmt.Sprintf("--ca-name=%s", "intermediate-ca"),
 		fmt.Sprintf("--server-name=%s", "server"),
 		fmt.Sprintf("--server-file=%s", "server"),
@@ -229,7 +234,7 @@ func createMinimalPki(out io.Writer, errOut io.Writer) {
 	//ziti pki create client --pki-root="${ZITI_HOME}/pki" --ca-name "intermediate-ca" --client-name "client" --client-file "client" --key-file "server"
 	client := pki.NewCmdPKICreateClient(out, errOut)
 	client.SetArgs([]string{
-		fmt.Sprintf("--pki-root=%s", pkiDir),
+		fmt.Sprintf("--pki-root=%s", where),
 		fmt.Sprintf("--ca-name=%s", "intermediate-ca"),
 		fmt.Sprintf("--client-name=%s", "client"),
 		fmt.Sprintf("--client-file=%s", "client"),
