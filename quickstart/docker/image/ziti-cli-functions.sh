@@ -388,7 +388,7 @@ function setupEnvironment {
 
 # Stores environment variables prefixed with ZITI_ to a .env file
 function persistEnvironmentValues {
-  local filepath retVal envval envvar zEnvVar
+  local filepath tmpfilepath retVal envval envvar zEnvVar
   # Get the file path
   filepath="${1-}"
   if [[ "" == "${filepath}" ]]; then
@@ -403,23 +403,24 @@ function persistEnvironmentValues {
   fi
 
   # Store all ZITI_ variables in the environment file, creating the directory if necessary
-  mkdir -p "$(dirname "${filepath}")" && echo "" > "${filepath}"
+  tmpfilepath="$(mktemp)"
+  mkdir -p "$(dirname "${filepath}")" && echo "" > "${tmpfilepath}"
   for zEnvVar in $(set | grep -e "^ZITI_" | sort); do
       envvar="$(echo "${zEnvVar}" | cut -d '=' -f1)"
       envval="$(echo "${zEnvVar}" | cut -d '=' -f2-1000)"
-      echo 'if [[ "$'${envvar}'" == "" ]]; then export '${envvar}'="'${envval}'"; else echo "NOT OVERRIDING: env var '${envvar}' already set. using existing value"; fi' >> "${filepath}"
+      echo 'if [[ "$'${envvar}'" == "" ]]; then export '${envvar}'="'${envval}'"; else echo "NOT OVERRIDING: env var '${envvar}' already set. using existing value"; fi' >> "${tmpfilepath}"
   done
 
   export PFXLOG_NO_JSON=true
   # shellcheck disable=SC2129
-  echo "export PFXLOG_NO_JSON=true" >> "${filepath}"
+  echo "export PFXLOG_NO_JSON=true" >> "${tmpfilepath}"
 
-  echo "alias zec='ziti edge'" >> "${filepath}"
-  echo "alias zitiLogin='ziti edge login \"\${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:\${ZITI_CTRL_EDGE_ADVERTISED_PORT}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -y'" >> "${filepath}"
-  echo "alias psz='ps -ef | grep ziti'" >> "${filepath}"
+  echo "alias zec='ziti edge'" >> "${tmpfilepath}"
+  echo "alias zitiLogin='ziti edge login \"\${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:\${ZITI_CTRL_EDGE_ADVERTISED_PORT}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -y'" >> "${tmpfilepath}"
+  echo "alias psz='ps -ef | grep ziti'" >> "${tmpfilepath}"
 
   #when sourcing the emitted file add the bin folder to the path
-  tee -a "${filepath}" > /dev/null <<'heredoc'
+  cat >> "${tmpfilepath}" <<'HEREDOC'
 echo " "
 if [[ ! "$(echo "$PATH"|grep -q "${ZITI_BIN_DIR}" && echo "yes")" == "yes" ]]; then
   echo "adding ${ZITI_BIN_DIR} to the path"
@@ -429,8 +430,9 @@ echo    "                  ziti binaries are located at: ${ZITI_BIN_DIR}"
 echo -e 'add this to your path if you want by executing: export PATH=$PATH:'"${ZITI_BIN_DIR}"
 echo " "
 fi
-heredoc
+HEREDOC
 
+  mv "${tmpfilepath}" "${filepath}"
   echo -e "A file with all pertinent environment values was created here: $(BLUE "${filepath}")"
   echo ""
 }
