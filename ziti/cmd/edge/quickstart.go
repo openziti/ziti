@@ -17,6 +17,7 @@
 package edge
 
 import (
+	"crypto/tls"
 	"fmt"
 	edgeSubCmd "github.com/openziti/edge/controller/subcmd"
 	"github.com/openziti/ziti/common/version"
@@ -29,8 +30,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -112,12 +115,42 @@ func run(out io.Writer, errOut io.Writer) {
 
 	fmt.Println("Controller running... Configuring and starting Router...")
 
-	time.Sleep(5 * time.Second)
+	ctrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
+	ctrlPort := helpers.GetCtrlEdgeAdvertisedPort()
+	ctrlUrl := fmt.Sprintf("https://%s:%s", ctrlAddy, ctrlPort)
+
+	c := make(chan struct{})
+	wg := &sync.WaitGroup{}
+	timeout, _ := time.ParseDuration("10s")
+	go func() {
+		defer close(c)
+
+		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+		client := &http.Client{Transport: tr}
+		for {
+			r, e := client.Get(ctrlUrl)
+			if e != nil || r == nil || r.StatusCode != 200 {
+				time.Sleep(10 * time.Millisecond)
+			} else {
+				fmt.Println("Controller online. Continuing...")
+				break
+			}
+		}
+		wg.Wait()
+	}()
+	select {
+	case <-c:
+		//completed normally
+	case <-time.After(timeout):
+		fmt.Println("timed out waiting for controller")
+		removeTempDir(tmpDir)
+		os.Exit(1)
+	}
 
 	//ziti edge login https://localhost:1280 -u admin -p admin -y
 	loginCmd := NewLoginCmd(out, errOut)
 	loginCmd.SetArgs([]string{
-		fmt.Sprintf("localhost:1280"),
+		fmt.Sprintf(ctrlUrl),
 		fmt.Sprintf("--username=%s", "admin"),
 		fmt.Sprintf("--password=%s", "admin"),
 		fmt.Sprintf("-y"),
