@@ -33,7 +33,7 @@ _usage(){
             "   --profile\t\tMINIKUBE_PROFILE (miniziti)\n"\
             "   --namespace\t\tZITI_NAMESPACE (MINIKUBE_PROFILE)\n"\
             "   --no-hosts\t\tdon't use local hosts DB or ingress-dns nameserver\n"\
-            "   --modify-hosts\t\tadd local hosts to /etc/hosts. Requires sudo it not running as root. Linux only.\n"\
+            "   --modify-hosts\tadd local hosts to /etc/hosts. Requires sudo it not running as root. Linux only.\n"\
             "\n DEBUG\n"\
             "   --charts\t\tZITI_CHARTS_REF (openziti) alternative charts repo\n"\
             "   --now\t\teliminate safety waits, e.g., before deleting miniziti\n"\
@@ -266,7 +266,7 @@ main(){
             --now)          SAFETY_WAIT=0
                             shift
             ;;
-            --no-hosts)     MINIZITI_HOSTS=1
+            --no-hosts)     MINIZITI_HOSTS=0
                             shift
             ;;
             --modify-hosts) if [[ "$DETECTED_OS" != "Linux" ]]; then
