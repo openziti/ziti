@@ -206,13 +206,15 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [ fablab-smoketest ]
     steps:
+      # allow time for investigation unless the workflow is cancelled or the smoketest succeeded or was skipped
       - name: Sleep If Failed
-        if: needs.fablab-smoketest.result != 'success' && needs.fablab-smoketest.result != 'skipped'
+        if: ${{ needs.fablab-smoketest.result != 'success' && needs.fablab-smoketest.result != 'skipped' && needs.fablab-smoketest.result != 'cancelled' }}
         run: |
           sleep 30m
 
+      # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
       - name: Teardown Test Environment
-        if: always() && needs.fablab-smoketest.result != 'skipped'
+        if: needs.fablab-smoketest.result != 'skipped'
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         run: |
