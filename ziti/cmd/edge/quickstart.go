@@ -29,6 +29,8 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -229,16 +231,9 @@ func createMinimalPki(out io.Writer, errOut io.Writer) {
 	if clientErr != nil {
 		logrus.Fatal(clientErr)
 	}
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
 
+	<-ch
+	removeTempDir(tmpDir)
 }
-
-//func waitForShutdown(fabricController *controller.Controller, edgeController *server.Controller) {
-//	ch := make(chan os.Signal, 1)
-//	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
-//
-//	<-ch
-//
-//	pfxlog.Logger().Info("shutting down ziti-controller")
-//	edgeController.Shutdown()
-//	fabricController.Shutdown()
-//}
