@@ -101,6 +101,8 @@ func NewEdgeInitializeCmd(versionProvider versions.VersionProvider) *cobra.Comma
 			if err := ctrl.AppEnv.Managers.Identity.InitializeDefaultAdmin(options.username, options.password, options.name); err != nil {
 				pfxlog.Logger().Fatal(err)
 			}
+			ctrl.Shutdown()
+
 			pfxlog.Logger().Info("Ziti Edge initialization complete")
 		},
 	}
