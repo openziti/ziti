@@ -137,6 +137,7 @@ jobs:
     name: Fablab Smoketest
     # not applicable to forks. shouldn't run on release build
     if: github.repository_owner == 'openziti' && github.ref != 'refs/heads/main'
+    needs: [ quickstart ]
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
