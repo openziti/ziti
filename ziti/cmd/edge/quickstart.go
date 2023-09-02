@@ -95,7 +95,7 @@ func run(out io.Writer, errOut io.Writer) {
 	initCmd.SetArgs([]string{
 		fmt.Sprintf("--username=%s", "admin"),
 		fmt.Sprintf("--password=%s", "admin"),
-		fmt.Sprintf(ctrlYaml),
+		ctrlYaml,
 	})
 	initErr := initCmd.Execute()
 	if initErr != nil {
@@ -105,7 +105,7 @@ func run(out io.Writer, errOut io.Writer) {
 	go func() {
 		runCtrl := controller2.NewRunCmd()
 		runCtrl.SetArgs([]string{
-			fmt.Sprintf(ctrlYaml),
+			ctrlYaml,
 		})
 		runCtrlErr := runCtrl.Execute()
 		if runCtrlErr != nil {
@@ -153,7 +153,7 @@ func run(out io.Writer, errOut io.Writer) {
 		fmt.Sprintf(ctrlUrl),
 		fmt.Sprintf("--username=%s", "admin"),
 		fmt.Sprintf("--password=%s", "admin"),
-		fmt.Sprintf("-y"),
+		"-y",
 	})
 	loginErr := loginCmd.Execute()
 	if loginErr != nil {
@@ -166,7 +166,7 @@ func run(out io.Writer, errOut io.Writer) {
 	createErCmd.SetArgs([]string{
 		fmt.Sprintf(routerName),
 		fmt.Sprintf("--jwt-output-file=%s", erJwt),
-		fmt.Sprintf("--tunneler-enabled"),
+		"--tunneler-enabled",
 		fmt.Sprintf("--role-attributes=%s", "public"),
 	})
 	createErErr := createErCmd.Execute()
@@ -244,7 +244,7 @@ func createMinimalPki(out io.Writer, errOut io.Writer, where string) {
 		fmt.Sprintf("--ca-name=%s", "root-ca"),
 		fmt.Sprintf("--intermediate-name=%s", "intermediate-ca"),
 		fmt.Sprintf("--intermediate-file=%s", "intermediate-ca"),
-		fmt.Sprintf("--max-path-len=1"),
+		"--max-path-len=1",
 	})
 	intErr := intermediate.Execute()
 	if intErr != nil {

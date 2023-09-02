@@ -305,9 +305,3 @@ func (data *ConfigTemplateValues) PopulateConfigValues() {
 	data.Router.Listener.OutQueueSize = channel.DefaultOutQueueSize
 	data.Router.Listener.ConnectTimeout = channel.DefaultConnectTimeout
 }
-
-func handleVariableError(err error, varName string) {
-	if err != nil {
-		logrus.Errorf("Unable to get %s: %v", varName, err)
-	}
-}
