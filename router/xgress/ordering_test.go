@@ -53,6 +53,10 @@ func (n noopForwarder) ForwardAcknowledgement(Address, *Acknowledgement) error {
 	return nil
 }
 
+func (n noopForwarder) RetransmitPayload(Address, *Payload) error {
+	return nil
+}
+
 type noopReceiveHandler struct{}
 
 func (n noopReceiveHandler) HandleXgressReceive(*Payload, *Xgress) {}

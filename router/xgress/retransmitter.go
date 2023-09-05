@@ -145,7 +145,7 @@ func (retransmitter *Retransmitter) retransmitSender() {
 		select {
 		case retransmit := <-retransmitter.retransmitSend:
 			if !retransmit.isAcked() {
-				if err := retransmitter.forwarder.ForwardPayload(retransmit.x.address, retransmit.payload); err != nil {
+				if err := retransmitter.forwarder.RetransmitPayload(retransmit.x.address, retransmit.payload); err != nil {
 					// if xgress is closed, don't log the error. We still want to try retransmitting in case we're re-sending end of circuit
 					if !retransmit.x.Closed() {
 						logger.WithError(err).Errorf("unexpected error while retransmitting payload from [@/%v]", retransmit.x.address)
