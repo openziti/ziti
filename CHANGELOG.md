@@ -237,7 +237,7 @@ The back-off policies have the following attributes:
     * Default: 1.5 for healthy, 100 for unhealthy
 
 
-## Single Sort Changes
+## Single Port Support / ALPN
 Ziti Controller and Routers can operate with a single open port. In order to implement this feature we use 
 ALPN ([Application Layer Protocol Negotiation](https://en.wikipedia.org/wiki/Application-Layer_Protocol_Negotiation)) 
 TLS extension. It allows TLS client to request and TLS server to select appropriate application protocol handler during 
