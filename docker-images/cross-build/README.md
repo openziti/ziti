@@ -12,9 +12,9 @@ This article supports local development by providing a local containerized metho
 You only need to build the container image once unless you change the Dockerfile or `./linux-build.sh` (the container's entrypoint).
 
 ```bash
-# build a container image named "zitibuilder" with the same version of Go that's declared in go.mod
+# build a container image named "ziti-go-builder" with the same version of Go that's declared in go.mod
 docker buildx build \
-    --tag=zitibuilder \
+    --tag=ziti-go-builder \
     --build-arg uid=$UID \
     --build-arg gid=$GID \
     --build-arg golang_version=$(grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' go.mod) \
@@ -34,16 +34,16 @@ Executing the following `docker run` command will:
 # build for all three architectures: amd64 arm arm64
 docker run \
     --rm \
-    --name=zitibuilder \
+    --name=ziti-go-builder \
     --volume=$PWD:/mnt \
-    zitibuilder
+    ziti-go-builder
 
 # build only amd64 
 docker run \
     --rm \
-    --name=zitibuilder \
+    --name=ziti-go-builder \
     --volume=$PWD:/mnt \
-    zitibuilder \
+    ziti-go-builder \
         amd64
 ```
 
@@ -53,7 +53,7 @@ You will find the built artifacts in `./release`.
 
 ```bash
  ❯ docker buildx build \
-    --tag=zitibuilder \
+    --tag=ziti-go-builder \
     --build-arg uid=$UID \
     --build-arg gid=$GID \
     --build-arg golang_version="$(/bin/grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' go.mod)" \
@@ -89,9 +89,9 @@ You will find the built artifacts in `./release`.
 
  ❯ docker run \                                        
     --rm \
-    --name=zitibuilder \
+    --name=ziti-go-builder \
     --volume=$PWD:/mnt \
-    zitibuilder           
+    ziti-go-builder           
 Number of parallel builds: 4
 
 -->       linux/arm: github.com/openziti/ziti/ziti

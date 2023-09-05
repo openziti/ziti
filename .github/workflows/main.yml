@@ -381,3 +381,19 @@ jobs:
     secrets: inherit
     with:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
+
+  # call on release-next and main branches to publish linux packages to
+  # "testing" and "release" package repos in Artifactory
+  call-publish-linux-packages:
+    # always() re-enables evaluating conditionals in forks even if Windows or
+    # macOS builds were skipped
+    if: |
+      always()
+      && needs.publish.result == 'success'
+      && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release-next')
+    name: Publish Linux Packages
+    needs: publish
+    uses: ./.github/workflows/publish-linux-packages.yml
+    secrets: inherit
+    with:
+      ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
