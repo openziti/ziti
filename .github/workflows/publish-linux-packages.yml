@@ -61,7 +61,7 @@ jobs:
         with:
           nfpm_version: "2.32.0"
           packager: ${{ matrix.nfpm_packager }}
-          config: build/dist-packages/linux/nfpm-${{ matrix.package_name }}.yaml
+          config: dist/dist-packages/linux/nfpm-${{ matrix.package_name }}.yaml
           target: release/
 
       - name: get the package name from the output
