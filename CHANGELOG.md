@@ -1,3 +1,19 @@
+# Release 0.30.3
+
+## What's New
+
+* Bugfixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge: [v0.24.401 -> v0.24.404](https://github.com/openziti/edge/compare/v0.24.401...v0.24.404)
+* github.com/openziti/fabric: [v0.24.20 -> v0.24.23](https://github.com/openziti/fabric/compare/v0.24.20...v0.24.23)
+    * [Issue #786](https://github.com/openziti/fabric/issues/786) - entityChangeEventDispatcher.flushLoop doesn't shutdown when controller shuts down
+    * [Issue #785](https://github.com/openziti/fabric/issues/785) - Allow link groups to be single string value 
+    * [Issue #783](https://github.com/openziti/fabric/issues/783) - Raft cluster connections not updated for ALPN 
+
+* github.com/openziti/ziti: [v0.30.2 -> v0.30.3](https://github.com/openziti/ziti/compare/v0.30.2...v0.30.3)
+
 # Release 0.30.2
 
 ## What's New
