@@ -33,7 +33,7 @@ _usage(){
             "   --profile\t\tMINIKUBE_PROFILE (miniziti)\n"\
             "   --namespace\t\tZITI_NAMESPACE (MINIKUBE_PROFILE)\n"\
             "   --no-hosts\t\tdon't use local hosts DB or ingress-dns nameserver\n"\
-            "   --modify-hosts\tadd local hosts to /etc/hosts. Requires sudo it not running as root. Linux only.\n"\
+            "   --modify-hosts\tadd entries to local hosts database. Requires sudo if not running as root. Linux only.\n"\
             "\n DEBUG\n"\
             "   --charts\t\tZITI_CHARTS_REF (openziti) alternative charts repo\n"\
             "   --now\t\teliminate safety waits, e.g., before deleting miniziti\n"\
@@ -130,23 +130,13 @@ validateDnsName(){
 }
 
 HOSTS_FILE='/etc/hosts'
-MINIZITI_MARKER='miniziti-'
-
-
-checkSudoRequired() {
-    (( EUID != 0 )) && logInfo "sudo is required when not running as root"
-}
 
 cleanHosts() {
-    checkSudoRequired
-
-    if grep -q "$MINIZITI_MARKER" "$HOSTS_FILE"; then
-        logInfo "Removing stale miniziti entries from $HOSTS_FILE"
-        if (( EUID != 0 )); then
-            sudo sed -i "/${MINIZITI_MARKER}/d" "$HOSTS_FILE"
-        else
-            sed -i "/${MINIZITI_MARKER}/d" "$HOSTS_FILE"
-        fi
+    local miniziti_marker="$1"
+    if (( EUID != 0 )); then
+        sudo sed -i "/${miniziti_marker}/d" "$HOSTS_FILE"
+    else
+        sed -i "/${miniziti_marker}/d" "$HOSTS_FILE"
     fi
 }
 
@@ -157,10 +147,19 @@ installHosts() {
         "miniziti-console.${MINIZITI_INGRESS_ZONE}"
     )
 
-    hosts_line="${MINIKUBE_NODE_EXTERNAL} ${hosts[*]}"
+    hosts_suffix="${hosts[*]}"
+    hosts_line="${MINIKUBE_NODE_EXTERNAL} $hosts_suffix"
 
     if ! grep -q "$hosts_line" "$HOSTS_FILE"; then
-        cleanHosts
+        if (( EUID != 0 )); then
+            logInfo "sudo is required when not running as root"
+        fi
+
+        if grep -q "$hosts_suffix" "$HOSTS_FILE"; then
+            logWarn "Removing stale miniziti entries from $HOSTS_FILE"
+            cleanHosts "$hosts_suffix"
+        fi
+
         logInfo "Adding miniziti entries to $HOSTS_FILE"
         if (( EUID != 0 )); then
             echo "$hosts_line" | sudo tee -a "$HOSTS_FILE" > /dev/null
@@ -310,9 +309,6 @@ main(){
     # delete and exit if --delete
     (( DELETE_MINIZITI )) && {
         deleteMiniziti 10
-        if (( MINIZITI_MODIFY_HOSTS )); then
-            cleanHosts
-        fi
         exit 0
     }
 
