@@ -1,3 +1,18 @@
+# Release 0.30.4
+
+## What's New
+
+* `ziti edge quickstart`](https://github.com/openziti/ziti/issues/1298). You can now
+  download the `ziti` CLI and have a functioning network with just one command. The
+  network it creates is ephemeral and is intended to be torn down when the process exits.
+  It is intended for quick evaluation and testing of an overlay network.
+
+* Bugfixes
+
+## Component Updates and Bug Fixes
+
+
+
 # Release 0.30.3
 
 ## What's New
