@@ -136,7 +136,7 @@ func run(out io.Writer, errOut io.Writer, ctx context.Context) {
 	//ziti edge login https://localhost:1280 -u admin -p admin -y
 	loginCmd := NewLoginCmd(out, errOut)
 	loginCmd.SetArgs([]string{
-		fmt.Sprintf(ctrlUrl),
+		ctrlUrl,
 		fmt.Sprintf("--username=%s", "admin"),
 		fmt.Sprintf("--password=%s", "admin"),
 		"-y",
@@ -150,7 +150,7 @@ func run(out io.Writer, errOut io.Writer, ctx context.Context) {
 	createErCmd := NewCreateEdgeRouterCmd(out, errOut)
 	erJwt := tmpDir + "/" + routerName + ".jwt"
 	createErCmd.SetArgs([]string{
-		fmt.Sprintf(routerName),
+		routerName,
 		fmt.Sprintf("--jwt-output-file=%s", erJwt),
 		"--tunneler-enabled",
 		fmt.Sprintf("--role-attributes=%s", "public"),
@@ -180,7 +180,7 @@ func run(out io.Writer, errOut io.Writer, ctx context.Context) {
 	//./ziti router enroll ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml --jwt ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt
 	erEnroll := router.NewEnrollGwCmd()
 	erEnroll.SetArgs([]string{
-		fmt.Sprintf(erYaml),
+		erYaml,
 		fmt.Sprintf("--jwt=%s", erJwt),
 	})
 	erEnrollErr := erEnroll.Execute()
@@ -192,7 +192,7 @@ func run(out io.Writer, errOut io.Writer, ctx context.Context) {
 		//./ziti router run ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml &> ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.log &
 		erRunCmd := router.NewRunCmd()
 		erRunCmd.SetArgs([]string{
-			fmt.Sprintf(erYaml),
+			erYaml,
 		})
 		erRunCmdErr := erRunCmd.Execute()
 		if erRunCmdErr != nil {

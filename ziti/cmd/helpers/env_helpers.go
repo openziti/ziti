@@ -58,7 +58,7 @@ func GetZitiHome() string {
 			workingDir = "."
 		}
 
-		err = os.Setenv(constants.ZitiHomeVarName, workingDir)
+		_ = os.Setenv(constants.ZitiHomeVarName, workingDir)
 		retVal = os.Getenv(constants.ZitiHomeVarName)
 	}
 
