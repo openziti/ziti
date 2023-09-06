@@ -5,6 +5,9 @@ set -o nounset
 set -o pipefail
 
 banner(){
+
+    local profile="${1-}"
+
     cat <<BANNER
                   __   ___
     |\/| | |\ | |  / |  |  |
@@ -12,7 +15,7 @@ banner(){
 
 BANNER
 
-    if (( $# )); then
+    if [[ -n "$profile" ]] && [[ "$profile" != "miniziti" ]]; then
         echo -e "   .: $* :.\n"
     fi
 }
@@ -26,6 +29,7 @@ _usage(){
     echo -e "\n COMMANDS\n"\
             "   start\t\tstart miniziti (default)\n"\
             "   delete\t\tdelete miniziti\n"\
+            "   show-admin\t\tprints admin user updb credentials\n"\
             "   help\t\tshow these usage hints\n"\
             "\n OPTIONS\n"\
             "   --quiet\t\tsuppress INFO messages\n"\
@@ -34,6 +38,7 @@ _usage(){
             "   --namespace\t\tZITI_NAMESPACE (MINIKUBE_PROFILE)\n"\
             "   --no-hosts\t\tdon't use local hosts DB or ingress-dns nameserver\n"\
             "   --modify-hosts\tadd entries to local hosts database. Requires sudo if not running as root. Linux only.\n"\
+            "   --yes\t\tanswer 'yes' to all prompts"\
             "\n DEBUG\n"\
             "   --charts\t\tZITI_CHARTS_REF (openziti) alternative charts repo\n"\
             "   --now\t\teliminate safety waits, e.g., before deleting miniziti\n"\
@@ -89,20 +94,31 @@ detectOs(){
     fi
 }
 
-getClientOttPath(){
-    local ID_PATH="/tmp/${MINIKUBE_PROFILE}-client.jwt"
-    if [[ $# -eq 1 ]]; then
-        case $1 in
-            macOS|Linux)     echo "$ID_PATH"
+makeMinizitiXDGStateDir() {
+    local detected_os="$1"
+
+    case "$detected_os" in
+        MacOS)
+            state_dir="${XDG_STATE_DIR:-$HOME/Library/Application Support}/miniziti"
             ;;
-            Windows)         wslpath -w "$ID_PATH"
+        Linux)
+            state_dir="${XDG_STATE_DIR:-$HOME/.local/state}/miniziti"
             ;;
-        esac
-    else
-        logError "getClientOttPath() takes one param, DETECTED_OS"
-        return 1
+        Windows)
+            wsl_state_dir="${XDG_STATE_DIR:-$HOME/.local/state}/miniziti"
+            state_dir="$(wslpath -w "$wsl_state_dir")"
+            ;;
+        *)
+            logError "Unknown os: $detected_os"
+            exit 1
+    esac
+
+    if [[ ! -d "$state_dir" ]]; then
+        logDebug "Creating miniziti state directory: $state_dir"
+        mkdir -p "$state_dir"
     fi
 
+    echo "$state_dir"
 }
 
 testClusterDns(){
@@ -129,14 +145,38 @@ validateDnsName(){
     fi
 }
 
+checkSudoRequired() {
+    if (( EUID != 0 )); then
+        logInfo "sudo is required when not running as root"
+    fi
+}
+
+askConfirmation() {
+    local question="$1"
+
+    while true; do
+        read -r -p "$question (yes/no): " choice
+        case "$choice" in
+            [Yy]|[Yy][Ee][Ss])
+                return 0
+                ;;
+            [Nn]|[Nn][Oo])
+                return 1
+                ;;
+            *)
+                ;;
+        esac
+    done
+}
+
 HOSTS_FILE='/etc/hosts'
 
 cleanHosts() {
-    local miniziti_marker="$1"
+    logWarn "Removing stale miniziti entries from $HOSTS_FILE"
     if (( EUID != 0 )); then
-        sudo sed -i "/${miniziti_marker}/d" "$HOSTS_FILE"
+        sudo sed -i "/${MINIZITI_PROFILE_MARKER}/d" "$HOSTS_FILE"
     else
-        sed -i "/${miniziti_marker}/d" "$HOSTS_FILE"
+        sed -i "/${MINIZITI_PROFILE_MARKER}/d" "$HOSTS_FILE"
     fi
 }
 
@@ -147,17 +187,14 @@ installHosts() {
         "miniziti-console.${MINIZITI_INGRESS_ZONE}"
     )
 
-    hosts_suffix="${hosts[*]}"
-    hosts_line="${MINIKUBE_NODE_EXTERNAL} $hosts_suffix"
+    hosts_line="${MINIKUBE_NODE_EXTERNAL} ${hosts[*]} $MINIZITI_PROFILE_MARKER"
 
     if ! grep -q "$hosts_line" "$HOSTS_FILE"; then
-        if (( EUID != 0 )); then
-            logInfo "sudo is required when not running as root"
-        fi
 
-        if grep -q "$hosts_suffix" "$HOSTS_FILE"; then
-            logWarn "Removing stale miniziti entries from $HOSTS_FILE"
-            cleanHosts "$hosts_suffix"
+        checkSudoRequired
+
+        if grep -q "$MINIZITI_PROFILE_MARKER" "$HOSTS_FILE"; then
+            cleanHosts
         fi
 
         logInfo "Adding miniziti entries to $HOSTS_FILE"
@@ -169,36 +206,41 @@ installHosts() {
     fi
 }
 
-logInfo() {
-    (( $# )) || {
-        logError "logInfo() takes 1 or more args"
+getAdminSecret() {
+    kubectl get secrets "ziti-controller-admin-secret" \
+        --namespace "${ZITI_NAMESPACE}" \
+        --output go-template='{{index .data "admin-password" | base64decode }}'
+}
+
+showAdminCreds() {
+    logInfo "The password for 'admin' is: '$(getAdminSecret)'"
+}
+
+logger() {
+    local caller="${FUNCNAME[1]}"
+    if (( $# < 1 )); then
+        echo "ERROR: $caller() takes 1 or more args" >&2
         return 1
-    }
-    echo "INFO: $*"
+    fi
+
+    caller_level="${caller##log}"
+    echo -e "${caller_level^^}:${FUNCNAME[2]}:${BASH_LINENO[1]}: $*"
+}
+
+logInfo() {
+    logger "$*"
 }
 
 logWarn() {
-    (( $# )) || {
-        logError "logWarn() takes 1 or more args"
-        return 1
-    }
-    echo "WARN: $*" >&2
+    logger "$*" >&2
 }
 
 logError() {
-    (( $# )) || {
-        echo "ERROR: logError() takes 1 or more args" >&2
-        return 1
-    }
-    echo "ERROR: $*" >&2
+    logger "$*" >&2
 }
 
 logDebug() {
-    (( $# )) || {
-        logError "logDebug() takes 1 or more args"
-        return 1
-    }
-    echo "DEBUG: $*" >&3
+    logger "$*" >&3
 }
 
 main(){
@@ -216,18 +258,20 @@ main(){
 
     # local strings with defaults that never produce an error
     declare DETECTED_OS \
-            MINIKUBE_PROFILE="miniziti" \
-            ZITI_NAMESPACE \
             DELETE_MINIZITI=0 \
-            SAFETY_WAIT=1 \
             MINIKUBE_NODE_EXTERNAL \
+            MINIKUBE_PROFILE="miniziti" \
+            MINIZITI_HOSTS=1 \
+            MINIZITI_INTERCEPT_ZONE="miniziti" \
+            MINIZITI_MODIFY_HOSTS=0 \
+            MINIZITI_YES=0 \
+            SAFETY_WAIT=1 \
+            SHOW_ADMIN_CREDS=0 \
             ZITI_CHARTS_ALT=0 \
             ZITI_CHARTS_REF="openziti" \
             ZITI_CHARTS_URL="https://openziti.io/helm-charts/charts" \
-            MINIZITI_HOSTS=1 \
-            MINIZITI_MODIFY_HOSTS=0 \
-            MINIZITI_INGRESS_ZONE="ziti" \
-            MINIZITI_INTERCEPT_ZONE="miniziti"
+            ZITI_NAMESPACE
+
     # local arrays with defaults that never produce an error
     declare -a MINIKUBE_START_ARGS=()
 
@@ -243,8 +287,19 @@ main(){
             delete)         DELETE_MINIZITI=1
                             shift
             ;;
+            show-admin)     SHOW_ADMIN_CREDS=1
+                            shift
+            ;;
             -p|--profile)   validateDnsName "$2"
                             MINIKUBE_PROFILE="$2"
+                            # sanity check the profile name input
+                            if [[ ${MINIKUBE_PROFILE} =~ ^- ]]; then
+                                # in case the arg value is another option instead of the profile name
+                                logError "--profile needs a profile name not starting with a hyphen"
+                                _usage
+                                exit 1
+                            fi
+
                             shift 2
             ;;
             -n|--namespace) ZITI_NAMESPACE="$2"
@@ -272,7 +327,11 @@ main(){
                                 logError "The '--modify-hosts' option is only available for Linux"
                                 exit 1
                             fi
+                            MINIZITI_PROFILE_MARKER="# miniziti:profile:$MINIKUBE_PROFILE"
                             MINIZITI_MODIFY_HOSTS=1
+                            shift
+            ;;
+            --yes)          MINIZITI_YES=1
                             shift
             ;;
             --)             shift
@@ -293,26 +352,50 @@ main(){
         esac
     done
 
-    if [[ ${MINIKUBE_PROFILE} == "miniziti" ]]; then
-        banner
-    else
-        # sanity check the profile name input
-        if [[ ${MINIKUBE_PROFILE} =~ ^- ]]; then
-            # in case the arg value is another option instead of the profile name
-            logError "--profile needs a profile name not starting with a hyphen"
-            _usage; exit 1
-        fi
-        # print the alternative profile name if not default "miniziti"
-        banner "$MINIKUBE_PROFILE"
+    : "${ZITI_NAMESPACE:=${MINIKUBE_PROFILE}}"
+
+    MINIZITI_INGRESS_ZONE="$MINIKUBE_PROFILE.ziti"
+    state_dir="$(makeMinizitiXDGStateDir "$DETECTED_OS")"
+    profile_dir="$state_dir/profiles/${MINIKUBE_PROFILE}"
+    identities_dir="$profile_dir/identities"
+
+    if (( SHOW_ADMIN_CREDS )); then
+        showAdminCreds
+        exit 0
     fi
 
-    # delete and exit if --delete
+    banner "$MINIKUBE_PROFILE"
+
     (( DELETE_MINIZITI )) && {
         deleteMiniziti 10
+
+        if (( MINIZITI_MODIFY_HOSTS )) && grep -q "$MINIZITI_PROFILE_MARKER" "$HOSTS_FILE"; then
+            checkSudoRequired
+            cleanHosts
+        fi
+
+        if [[ -d "$profile_dir" ]]; then
+            if (( MINIZITI_YES )) || askConfirmation "Delete profile state directory ($profile_dir)?"; then
+                logDebug "Deleting miniziti profile directory: $profile_dir"
+                rm -rf  "$profile_dir"
+            fi
+        fi
+
+        cert_file="$(find "$HOME/.config/ziti/certs" -maxdepth 1 -type f -name "miniziti-controller.$MINIKUBE_PROFILE.*" -print -quit)"
+        if [[ -n "$cert_file" ]]; then
+            if (( MINIZITI_YES )) || askConfirmation "Delete certiicate file ($cert_file)?"; then
+                logDebug "Deleting miniziti certificate file: $cert_file"
+                rm -f  "$cert_file"
+            fi
+        fi
+
         exit 0
     }
 
-    : "${ZITI_NAMESPACE:=${MINIKUBE_PROFILE}}"
+    if [[ ! -d "$identities_dir" ]]; then
+        logDebug "Creating miniziti identities directory: ($identities_dir)"
+        mkdir -p "$identities_dir"
+    fi
 
     #
     ## Ensure Minikube is Started and Configured
@@ -555,24 +638,28 @@ main(){
     #
 
     logDebug "fetching admin password from k8s secret to log in to ziti mgmt"
-    kubectl get secrets "ziti-controller-admin-secret" \
-        --namespace "${ZITI_NAMESPACE}" \
-        --output go-template='{{index .data "admin-password" | base64decode }}' \
-        | xargs ziti edge login "miniziti-controller.${MINIZITI_INGRESS_ZONE}:443" \
-            --yes --username "admin" \
+            getAdminSecret | xargs ziti edge login "miniziti-controller.${MINIZITI_INGRESS_ZONE}:443" \
+            --yes \
+            --cli-identity "$MINIKUBE_PROFILE" \
+            --username "admin" \
             --password >&3
 
-    if  ziti edge list edge-routers 'name="miniziti-router"' \
+    logDebug "setting ziti cli default identity"
+    ziti edge use "$MINIKUBE_PROFILE"
+
+    router_name='miniziti-router'
+    router_ott="$identities_dir/$router_name.jwt"
+    if  ziti edge list edge-routers "name=\"$router_name\"" \
         | grep -q miniziti-router; then
-        logDebug "updating miniziti-router"
-        ziti edge update edge-router "miniziti-router" \
+        logDebug "updating $router_name"
+        ziti edge update edge-router "$router_name" \
             --role-attributes "public-routers" >&3
     else
-        logDebug "creating miniziti-router"
-        ziti edge create edge-router "miniziti-router" \
+        logDebug "creating $router_name"
+        ziti edge create edge-router "$router_name" \
             --role-attributes "public-routers" \
             --tunneler-enabled \
-            --jwt-output-file /tmp/miniziti-router.jwt >&3
+            --jwt-output-file "$router_ott" >&3
     fi
 
     if  helm status ziti-router --namespace "${ZITI_NAMESPACE}" &>/dev/null; then
@@ -591,7 +678,7 @@ main(){
         }
         helm install "ziti-router" "${ZITI_CHARTS_REF}/ziti-router" \
             --namespace "${ZITI_NAMESPACE}" \
-            --set-file enrollmentJwt=/tmp/miniziti-router.jwt \
+            --set-file enrollmentJwt="$router_ott" \
             --set edge.advertisedHost="miniziti-router.${MINIZITI_INGRESS_ZONE}" \
             --set linkListeners.transport.advertisedHost="miniziti-router-transport.${MINIZITI_INGRESS_ZONE}" \
             --set "ctrl.endpoint=ziti-controller-ctrl.${ZITI_NAMESPACE}.svc:443" \
@@ -604,7 +691,7 @@ main(){
         --for condition=Available=True >&3
 
     logDebug "probing miniziti-router for online status"
-    if ziti edge list edge-routers 'name="miniziti-router"' \
+    if ziti edge list edge-routers "name=\"$router_name\"" \
         | awk '/miniziti-router/ {print $6}' \
         | grep -q true; then
         logInfo "miniziti-router is online"
@@ -652,22 +739,29 @@ main(){
     ## Ensure OpenZiti Identities and Services are Created
     #
 
-    if  ! ziti edge list identities "name=\"${MINIKUBE_PROFILE}-client\"" --csv \
-        | grep -q "${MINIKUBE_PROFILE}-client"; then
-        logDebug "creating identity ${MINIKUBE_PROFILE}-client"
-        ziti edge create identity device "${MINIKUBE_PROFILE}-client" \
-            --jwt-output-file "/tmp/${MINIKUBE_PROFILE}-client.jwt" --role-attributes httpbin-clients >&3
+    client_name="${MINIKUBE_PROFILE}-client"
+    client_ott="$identities_dir/$client_name.jwt"
+
+    if  ! ziti edge list identities "name=\"$client_name\"" --csv \
+        | grep -q "$client_name"; then
+        logDebug "creating identity $client_name"
+        ziti edge create identity device "$client_name" \
+            --jwt-output-file "$client_ott" --role-attributes httpbin-clients >&3
     else
-        logDebug "ignoring identity ${MINIKUBE_PROFILE}-client"
+        logDebug "ignoring identity $client_name"
     fi
 
-    if  ! ziti edge list identities 'name="httpbin-host"' --csv \
-        | grep -q "httpbin-host"; then
-        logDebug "creating identity httpbin-host"
-        ziti edge create identity device "httpbin-host" \
-            --jwt-output-file /tmp/httpbin-host.jwt --role-attributes httpbin-hosts >&3
+    httpbin_name="httpbin-host"
+    httpbin_ott="$identities_dir/$httpbin_name.jwt"
+    httpbin_json="$identities_dir/$httpbin_name.json"
+
+    if  ! ziti edge list identities "name=\"$httpbin_name\"" --csv \
+        | grep -q "$httpbin_name"; then
+        logDebug "creating identity $httpbin_name"
+        ziti edge create identity device "$httpbin_name" \
+            --jwt-output-file "$httpbin_ott" --role-attributes httpbin-hosts >&3
     else
-        logDebug "ignoring identity httpbin-host"
+        logDebug "ignoring identity $httpbin_name"
     fi
 
     if  ! ziti edge list configs 'name="httpbin-intercept-config"' --csv \
@@ -733,17 +827,17 @@ main(){
         logDebug "ignoring service-edge-router-policy public-routers"
     fi
 
-    if [[ -s /tmp/httpbin-host.jwt ]]; then
-        logDebug "enrolling /tmp/httpbin-host.jwt"
+    if [[ -s "$httpbin_ott" ]]; then
+        logDebug "enrolling $httpbin_ott"
         # discard expected output that normally flows to stderr
         ENROLL_OUT="$(
-            ziti edge enroll /tmp/httpbin-host.jwt 2>&1 \
+            ziti edge enroll "$httpbin_ott" 2>&1 \
                 | grep -vE '(generating.*key|enrolled\s+successfully)' \
                 || true
         )"
         if [[ -z "${ENROLL_OUT}" ]]; then
-            rm -f /tmp/httpbin-host.jwt
-            logDebug "deleted /tmp/httpbin-host.jwt after enrolling successfully"
+            rm -f "$httpbin_ott"
+            logDebug "deleted $httpbin_ott after enrolling successfully"
         else
             echo -e "ERROR: unexpected result during OpenZiti Identity enrollment\n"\
                     "${ENROLL_OUT}"
@@ -751,26 +845,24 @@ main(){
         fi
     fi
 
-    if [[ -s /tmp/httpbin-host.json ]]; then
+    if [[ -s "$httpbin_json" ]]; then
         logDebug "installing httpbin chart as 'miniziti-httpbin'"
         (( ZITI_CHARTS_ALT )) && {
             helm dependency build "${ZITI_CHARTS_REF}/httpbin" >&3
         }
         helm install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
-            --set-file zitiIdentity=/tmp/httpbin-host.json \
+            --set-file zitiIdentity="$httpbin_json" \
             --set zitiServiceName=httpbin-service >&3
-        rm -f /tmp/httpbin-host.json
-        logDebug "deleted /tmp/httpbin-host.json after installing successfully with miniziti-httpbin chart"
+        rm -f "$httpbin_json"
+        logDebug "deleted $httpbin_json after installing successfully with miniziti-httpbin chart"
     fi
 
-    kubectl get secrets "ziti-controller-admin-secret" \
-        --namespace "${ZITI_NAMESPACE}" \
-        --output go-template='{{"\n'\
-'INFO: Your OpenZiti Console is here:\thttps://miniziti-console.'"${MINIZITI_INGRESS_ZONE}"'\n'\
-'INFO: The password for \"admin\" is:\t"}}{{index .data "admin-password" | base64decode }}'\
-'{{"\n\n"}}'
+    echo -e "\n\n"
+    logInfo "Your OpenZiti Console is here: https://miniziti-console.${MINIZITI_INGRESS_ZONE}"
+    showAdminCreds
+    echo -e "\n\n"
 
-    logInfo "Success! Remember to add your edge client identity '$(getClientOttPath "${DETECTED_OS}")' in your tunneler, e.g. Ziti Desktop Edge."
+    logInfo "Success! Remember to add your edge client identity '$client_ott' in your tunneler, e.g. Ziti Desktop Edge."
 }
 
 main "$@"
