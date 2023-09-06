@@ -429,7 +429,11 @@ func (self *Controller) parseFieldError(m map[string]any) *errorz.FieldError {
 		FieldValue: m["value"],
 	}
 
-	if reason, ok := m["reason"]; ok {
+	if reason, ok := m["message"]; ok {
+		if reasonStr, ok := reason.(string); ok {
+			fieldError.Reason = reasonStr
+		}
+	} else if reason, ok := m["reason"]; ok {
 		if reasonStr, ok := reason.(string); ok {
 			fieldError.Reason = reasonStr
 		}
