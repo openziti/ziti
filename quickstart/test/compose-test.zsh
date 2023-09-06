@@ -92,11 +92,11 @@ fi
 mv ./simplified-docker-compose.yml ./compose.yml
 
 # learn the expected Go version from the Go mod file so we can pull the correct container image
-ZITI_GO_VERSION="$(grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' ./go.mod)"
+ZITI_GO_VERSION="1.20"
 # make this var available in the Compose project
-sed -Ei "s/^(#\s+)?(ZITI_GO_VERSION)=.*/\2=${ZITI_GO_VERSION}/" ./.env
-sed -Ei "s/^(#\s+)?(ZITI_PWD)=.*/\2=${ZITI_PWD}/" ./.env
-sed -Ei "s/^(#\s+)?(ZITI_INTERFACE)=.*/\2=${ZITI_INTERFACE:-127.0.0.1}/" ./.env
+sed -Ei '' "s/^(#[[:space:]]+)?(ZITI_GO_VERSION)=.*/\2=${ZITI_GO_VERSION}/" ./.env
+sed -Ei '' "s/^(#\s+)?(ZITI_PWD)=.*/\2=${ZITI_PWD}/" ./.env
+sed -Ei '' "s/^(#\s+)?(ZITI_INTERFACE)=.*/\2=${ZITI_INTERFACE:-127.0.0.1}/" ./.env
 
 # pull images preemptively that we never build locally because pull=never when using a local quickstart image
 for IMAGE in \
@@ -111,7 +111,7 @@ trap down_project SIGTERM SIGINT EXIT
 
 # if ZITI_QUICK_IMAGE_TAG is set then run the locally-built image
 if [[ -n "${ZITI_QUICK_IMAGE_TAG:-}" ]]; then
-    sed -Ei "s/^(#\s+)?(ZITI_VERSION)=.*/\2=${ZITI_QUICK_IMAGE_TAG}/" ./.env
+    sed -Ei '' "s/^(#\s+)?(ZITI_VERSION)=.*/\2=${ZITI_QUICK_IMAGE_TAG}/" ./.env
     docker compose up --detach --pull=never &>/dev/null # no pull because local quickstart image
 else
     echo "ERROR: ZITI_QUICK_IMAGE_TAG is not set" >&2

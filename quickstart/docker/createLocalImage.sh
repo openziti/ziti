@@ -7,7 +7,7 @@ ZITI_BIN="${SCRIPT_DIR}/image/ziti-bin"
 case "${1:-}" in
   --build)
     mkdir -p "${ZITI_BIN}"
-    go build -o "${ZITI_BIN}" "${SCRIPT_DIR}/../../..."
+    GOOS="linux" go build -o "${ZITI_BIN}" "${SCRIPT_DIR}/../../..."
     shift
   ;;
 esac
