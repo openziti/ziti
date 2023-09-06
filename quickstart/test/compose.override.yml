@@ -2,10 +2,13 @@ services:
   quickstart-test:
     image: golang:${ZITI_GO_VERSION:-noop}-alpine
     volumes:
-      - .:/mnt
+      # mount the parent dir of the quickstart, which is the top-level of the ziti repo working copy, as /mnt
+      - ${ZITI_QUICK_DIR:-noop}/..:/mnt
+      - ${GOPATH:-noop}:/go
     working_dir: /mnt
     environment:
       - ZITI_PWD
     networks:
       - ziti
-    command: go test -v ./quickstart_test.go
+    command: >
+      go test -v -tags "quickstart manual" ./ziti/cmd/edge/...
