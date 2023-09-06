@@ -172,7 +172,6 @@ func run(out io.Writer, errOut io.Writer, ctx context.Context) {
 		fmt.Sprintf("--routerName=%s", routerName),
 		fmt.Sprintf("--output=%s", erYaml),
 	})
-	_ = ctrl.Execute()
 	erCfgErr := erCfg.Execute()
 	if erCfgErr != nil {
 		logrus.Fatal(erCfgErr)

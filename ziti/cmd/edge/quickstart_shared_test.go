@@ -1,3 +1,5 @@
+//go:build quickstart && (automated || manual)
+
 package edge
 
 import (
@@ -19,7 +21,6 @@ import (
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/enroll"
-	"github.com/openziti/ziti/ziti/cmd/helpers"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -31,205 +32,6 @@ import (
 	"testing"
 	"time"
 )
-
-func TestEdgeQuickstart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	os.Setenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS", "localhost") //force localhost
-	os.Setenv("ZITI_ROUTER_NAME", "quickstart-router")
-	cmdComplete := make(chan bool)
-	qs := NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
-	go func() {
-		err := qs.Execute()
-		if err != nil {
-			log.Fatal(err)
-		}
-		cmdComplete <- true
-	}()
-
-	ctrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
-	ctrlPort := helpers.GetCtrlEdgeAdvertisedPort()
-	ctrlUrl := fmt.Sprintf("https://%s:%s", ctrlAddy, ctrlPort)
-
-	c := make(chan struct{})
-	go waitForController(ctrlUrl, c)
-	timeout, _ := time.ParseDuration("60s")
-	select {
-	case <-c:
-		//completed normally
-		log.Info("controller online")
-	case <-time.After(timeout):
-		cancel()
-		panic("timed out waiting for controller")
-	}
-
-	time.Sleep(10 * time.Second)
-	// Wait for the controller to become available
-	zitiAdminUsername := os.Getenv("ZITI_USER")
-	if zitiAdminUsername == "" {
-		zitiAdminUsername = "admin"
-	}
-	zitiAdminPassword := os.Getenv("ZITI_PWD")
-	if zitiAdminPassword == "" {
-		zitiAdminPassword = "admin"
-	}
-	testerUsername := "gotester"
-	advAddy := os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS")
-	advPort := os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_PORT")
-	if advAddy == "" {
-		advAddy = "ziti-edge-controller"
-	}
-	if advPort == "" {
-		advPort = "1280"
-	}
-	erName := os.Getenv("ZITI_ROUTER_NAME")
-	if erName == "" {
-		erName = "ziti-edge-router"
-	}
-
-	ctrlAddress := "https://" + advAddy + ":" + advPort
-	//bindHostAddress := os.Getenv("ZITI_QUICKSTART_TEST_ADDRESS")
-	//if bindHostAddress == "" {
-	//	bindHostAddress = ctrlAddress
-	//}
-	hostingRouterName := erName
-	dialAddress := "simple.web.smoke.test"
-	dialPort := 80
-	serviceName := "basic.web.smoke.test.service"
-	wd, _ := os.Getwd()
-
-	log.Infof("connecting user: %s to %s", zitiAdminUsername, ctrlAddress)
-	// Authenticate with the controller
-	caCerts, err := rest_util.GetControllerWellKnownCas(ctrlAddress)
-	if err != nil {
-		log.Fatal(err)
-	}
-	caPool := x509.NewCertPool()
-	for _, ca := range caCerts {
-		caPool.AddCert(ca)
-	}
-	client, err := rest_util.NewEdgeManagementClientWithUpdb(zitiAdminUsername, zitiAdminPassword, ctrlAddress, caPool)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create the tester identity
-	ident := createIdentity(client, testerUsername, rest_model.IdentityTypeUser, false)
-	defer func() { _ = deleteIdentityByID(client, ident.GetPayload().Data.ID) }()
-
-	// Enroll the identity
-	identConfig := enrollIdentity(client, ident.Payload.Data.ID)
-
-	// Create a json config file
-	output, err := os.Create(testerUsername + ".json")
-	if err != nil {
-		fmt.Println(err)
-		log.Fatal("Failed to create output config file")
-	}
-	defer func() {
-		_ = output.Close()
-		err = os.Remove(testerUsername + ".json")
-		if err != nil {
-			fmt.Println(err)
-			log.Fatal("Failed to delete json config file")
-		}
-	}()
-	enc := json.NewEncoder(output)
-	enc.SetEscapeHTML(false)
-	encErr := enc.Encode(&identConfig)
-	if encErr != nil {
-		fmt.Println(err)
-		log.Fatal("Failed to generate encoded output")
-	}
-
-	// Verify all identities can access all routers
-	allIdRoles := rest_model.Roles{"#all"}
-	serpParams := service_edge_router_policy.NewCreateServiceEdgeRouterPolicyParams()
-	serpParams.Policy = &rest_model.ServiceEdgeRouterPolicyCreate{
-		ServiceRoles:    allIdRoles,
-		EdgeRouterRoles: allIdRoles,
-		Name:            ToPtr(uuid.NewString()),
-		Semantic:        ToPtr(rest_model.SemanticAnyOf),
-	}
-	serpParams.SetTimeout(30 * time.Second)
-	serp, err := client.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(serpParams, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() { _ = deleteServiceEdgeRouterPolicyById(client, serp.Payload.Data.ID) }()
-
-	p := &rest_model.EdgeRouterPolicyCreate{
-		EdgeRouterRoles: allIdRoles,
-		IdentityRoles:   allIdRoles,
-		Name:            ToPtr("all-erps"),
-		Semantic:        ToPtr(rest_model.SemanticAnyOf),
-		Tags:            nil,
-	}
-	erpParams := &edge_router_policy.CreateEdgeRouterPolicyParams{
-		Policy: p,
-	}
-	erpParams.SetTimeout(30 * time.Second)
-	erp, err := client.EdgeRouterPolicy.CreateEdgeRouterPolicy(erpParams, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() { _ = deleteEdgeRouterPolicyById(client, erp.Payload.Data.ID) }()
-
-	// Allow dialing the service using an intercept config (intercept because we'll be using the SDK)
-	dialSvcConfig := createInterceptV1ServiceConfig(client, "basic.smoke.dial", []string{"tcp"}, []string{dialAddress}, dialPort, dialPort)
-	defer func() { _ = deleteServiceConfigByID(client, dialSvcConfig.ID) }()
-
-	// Provide host config for the hostname
-	bindPort, _ := strconv.Atoi(advPort)
-	bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", advAddy, bindPort)
-	defer func() { _ = deleteServiceConfigByID(client, bindSvcConfig.ID) }()
-
-	// Create a service that "links" the dial and bind configs
-	createService(client, serviceName, []string{bindSvcConfig.ID, dialSvcConfig.ID})
-
-	// Create a service policy to allow the router to host the web test service
-	fmt.Println("finding hostingRouterName: ", hostingRouterName)
-	hostRouterIdent := getIdentityByName(client, hostingRouterName)
-	webTestService := getServiceByName(client, serviceName)
-	defer func() { _ = deleteServiceByID(client, *webTestService.ID) }()
-	bindSP := createServicePolicy(client, "basic.web.smoke.test.service.bind", rest_model.DialBindBind, rest_model.Roles{"@" + *hostRouterIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
-	defer func() { _ = deleteServicePolicyByID(client, bindSP.ID) }()
-
-	// Create a service policy to allow tester to dial the service
-	fmt.Println("finding testerUsername: ", testerUsername)
-	testerIdent := getIdentityByName(client, testerUsername)
-	dialSP := createServicePolicy(client, "basic.web.smoke.test.service.dial", rest_model.DialBindDial, rest_model.Roles{"@" + *testerIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
-	defer func() { _ = deleteServicePolicyByID(client, dialSP.ID) }()
-
-	// Test connectivity with private edge router, wait some time for the terminator to be created
-	currentCount := getTerminatorCountByRouterName(client, hostingRouterName)
-	termCntReached := waitForTerminatorCountByRouterName(client, hostingRouterName, currentCount+1, 30*time.Second)
-	if !termCntReached {
-		fmt.Println("Unable to detect a terminator for the edge router")
-	}
-	helloUrl := fmt.Sprintf("https://%s:%d", serviceName, dialPort)
-	log.Infof("created url: %s", helloUrl)
-	httpClient := createZitifiedHttpClient(wd + "/" + testerUsername + ".json")
-
-	resp, e := httpClient.Get(helloUrl)
-	if e != nil {
-		panic(e)
-	}
-
-	assert.Equal(t, 200, resp.StatusCode, fmt.Sprintf("Expected successful HTTP status code 200, received %d instead", resp.StatusCode))
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Println(string(body))
-
-	cancel() //terminate the running ctrl/router
-
-	select { //wait for quickstart to cleanup
-	case <-cmdComplete:
-		fmt.Println("Operation completed")
-	}
-}
-
-func ToPtr[T any](in T) *T {
-	return &in
-}
 
 func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, identityID string) *ziti.Config {
 	// Get the identity object
@@ -560,4 +362,168 @@ func deleteServicePolicyByID(client *rest_management_api_client.ZitiEdgeManageme
 	}
 
 	return resp
+}
+
+// in order to share test code between quickstart_test.go and quickstart_test_manual.go, this function had to be
+// created. I couldn't find a way to share the code any other way. Happy to learn a better way!
+func performQuickstartTest(t *testing.T) {
+	// Wait for the controller to become available
+	zitiAdminUsername := os.Getenv("ZITI_USER")
+	if zitiAdminUsername == "" {
+		zitiAdminUsername = "admin"
+	}
+	zitiAdminPassword := os.Getenv("ZITI_PWD")
+	if zitiAdminPassword == "" {
+		zitiAdminPassword = "admin"
+	}
+	testerUsername := "gotester"
+	advAddy := os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS")
+	advPort := os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_PORT")
+	if advAddy == "" {
+		advAddy = "ziti-edge-controller"
+	}
+	if advPort == "" {
+		advPort = "1280"
+	}
+	erName := os.Getenv("ZITI_ROUTER_NAME")
+	if erName == "" {
+		erName = "ziti-edge-router"
+	}
+
+	ctrlAddress := "https://" + advAddy + ":" + advPort
+	//bindHostAddress := os.Getenv("ZITI_QUICKSTART_TEST_ADDRESS")
+	//if bindHostAddress == "" {
+	//	bindHostAddress = ctrlAddress
+	//}
+	hostingRouterName := erName
+	dialAddress := "simple.web.smoke.test"
+	dialPort := 80
+	serviceName := "basic.web.smoke.test.service"
+	wd, _ := os.Getwd()
+
+	log.Infof("connecting user: %s to %s", zitiAdminUsername, ctrlAddress)
+	// Authenticate with the controller
+	caCerts, err := rest_util.GetControllerWellKnownCas(ctrlAddress)
+	if err != nil {
+		log.Fatal(err)
+	}
+	caPool := x509.NewCertPool()
+	for _, ca := range caCerts {
+		caPool.AddCert(ca)
+	}
+	client, err := rest_util.NewEdgeManagementClientWithUpdb(zitiAdminUsername, zitiAdminPassword, ctrlAddress, caPool)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create the tester identity
+	ident := createIdentity(client, testerUsername, rest_model.IdentityTypeUser, false)
+	defer func() { _ = deleteIdentityByID(client, ident.GetPayload().Data.ID) }()
+
+	// Enroll the identity
+	identConfig := enrollIdentity(client, ident.Payload.Data.ID)
+
+	// Create a json config file
+	output, err := os.Create(testerUsername + ".json")
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal("Failed to create output config file")
+	}
+	defer func() {
+		_ = output.Close()
+		err = os.Remove(testerUsername + ".json")
+		if err != nil {
+			fmt.Println(err)
+			log.Fatal("Failed to delete json config file")
+		}
+	}()
+	enc := json.NewEncoder(output)
+	enc.SetEscapeHTML(false)
+	encErr := enc.Encode(&identConfig)
+	if encErr != nil {
+		fmt.Println(err)
+		log.Fatal("Failed to generate encoded output")
+	}
+
+	// Verify all identities can access all routers
+	allIdRoles := rest_model.Roles{"#all"}
+	serpParams := service_edge_router_policy.NewCreateServiceEdgeRouterPolicyParams()
+	serpParams.Policy = &rest_model.ServiceEdgeRouterPolicyCreate{
+		ServiceRoles:    allIdRoles,
+		EdgeRouterRoles: allIdRoles,
+		Name:            toPtr(uuid.NewString()),
+		Semantic:        toPtr(rest_model.SemanticAnyOf),
+	}
+	serpParams.SetTimeout(30 * time.Second)
+	serp, err := client.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(serpParams, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = deleteServiceEdgeRouterPolicyById(client, serp.Payload.Data.ID) }()
+
+	p := &rest_model.EdgeRouterPolicyCreate{
+		EdgeRouterRoles: allIdRoles,
+		IdentityRoles:   allIdRoles,
+		Name:            toPtr("all-erps"),
+		Semantic:        toPtr(rest_model.SemanticAnyOf),
+		Tags:            nil,
+	}
+	erpParams := &edge_router_policy.CreateEdgeRouterPolicyParams{
+		Policy: p,
+	}
+	erpParams.SetTimeout(30 * time.Second)
+	erp, err := client.EdgeRouterPolicy.CreateEdgeRouterPolicy(erpParams, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = deleteEdgeRouterPolicyById(client, erp.Payload.Data.ID) }()
+
+	// Allow dialing the service using an intercept config (intercept because we'll be using the SDK)
+	dialSvcConfig := createInterceptV1ServiceConfig(client, "basic.smoke.dial", []string{"tcp"}, []string{dialAddress}, dialPort, dialPort)
+	defer func() { _ = deleteServiceConfigByID(client, dialSvcConfig.ID) }()
+
+	// Provide host config for the hostname
+	bindPort, _ := strconv.Atoi(advPort)
+	bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", advAddy, bindPort)
+	defer func() { _ = deleteServiceConfigByID(client, bindSvcConfig.ID) }()
+
+	// Create a service that "links" the dial and bind configs
+	createService(client, serviceName, []string{bindSvcConfig.ID, dialSvcConfig.ID})
+
+	// Create a service policy to allow the router to host the web test service
+	fmt.Println("finding hostingRouterName: ", hostingRouterName)
+	hostRouterIdent := getIdentityByName(client, hostingRouterName)
+	webTestService := getServiceByName(client, serviceName)
+	defer func() { _ = deleteServiceByID(client, *webTestService.ID) }()
+	bindSP := createServicePolicy(client, "basic.web.smoke.test.service.bind", rest_model.DialBindBind, rest_model.Roles{"@" + *hostRouterIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
+	defer func() { _ = deleteServicePolicyByID(client, bindSP.ID) }()
+
+	// Create a service policy to allow tester to dial the service
+	fmt.Println("finding testerUsername: ", testerUsername)
+	testerIdent := getIdentityByName(client, testerUsername)
+	dialSP := createServicePolicy(client, "basic.web.smoke.test.service.dial", rest_model.DialBindDial, rest_model.Roles{"@" + *testerIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
+	defer func() { _ = deleteServicePolicyByID(client, dialSP.ID) }()
+
+	// Test connectivity with private edge router, wait some time for the terminator to be created
+	currentCount := getTerminatorCountByRouterName(client, hostingRouterName)
+	termCntReached := waitForTerminatorCountByRouterName(client, hostingRouterName, currentCount+1, 30*time.Second)
+	if !termCntReached {
+		fmt.Println("Unable to detect a terminator for the edge router")
+	}
+	helloUrl := fmt.Sprintf("https://%s:%d", serviceName, dialPort)
+	log.Infof("created url: %s", helloUrl)
+	httpClient := createZitifiedHttpClient(wd + "/" + testerUsername + ".json")
+
+	resp, e := httpClient.Get(helloUrl)
+	if e != nil {
+		panic(e)
+	}
+
+	assert.Equal(t, 200, resp.StatusCode, fmt.Sprintf("Expected successful HTTP status code 200, received %d instead", resp.StatusCode))
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(body))
+}
+
+func toPtr[T any](in T) *T {
+	return &in
 }

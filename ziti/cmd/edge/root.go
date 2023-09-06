@@ -17,6 +17,7 @@
 package edge
 
 import (
+	"context"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/util"
 	"io"
@@ -50,7 +51,7 @@ func populateEdgeCommands(out io.Writer, errOut io.Writer, cmd *cobra.Command) *
 	cmd.AddCommand(newTraceRouteCmd(out, errOut))
 	cmd.AddCommand(newShowCmd(out, errOut))
 	cmd.AddCommand(newReEnrollCmd(out, errOut))
-	cmd.AddCommand(NewQuickStartCmd(out, errOut, nil))
+	cmd.AddCommand(NewQuickStartCmd(out, errOut, context.Background()))
 
 	p := common.NewOptionsProvider(out, errOut)
 	cmd.AddCommand(enrollment.NewEnrollCommand(p))
