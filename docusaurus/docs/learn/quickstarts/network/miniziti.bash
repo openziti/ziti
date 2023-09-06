@@ -29,7 +29,9 @@ _usage(){
     echo -e "\n COMMANDS\n"\
             "   start\t\tstart miniziti (default)\n"\
             "   delete\t\tdelete miniziti\n"\
+            "   login\t\trun ziti edge login with miniziti context\n"\
             "   show-admin\t\tprints admin user updb credentials\n"\
+            "   ziti\t\tziti cli wrapper with miniziti context\n"\
             "   help\t\tshow these usage hints\n"\
             "\n OPTIONS\n"\
             "   --quiet\t\tsuppress INFO messages\n"\
@@ -121,7 +123,7 @@ makeMinizitiXDGStateDir() {
 }
 
 testClusterDns(){
-    if kubectl run "dnstest" --rm --tty --stdin --image busybox --restart Never -- \
+    if kubectl_wrapper run "dnstest" --rm --tty --stdin --image busybox --restart Never -- \
         nslookup "miniziti-controller.${MINIZITI_INGRESS_ZONE}" | grep "$1" >&3; then
         logInfo "cluster dns test succeeded"
     else
@@ -188,13 +190,20 @@ installHosts() {
 }
 
 getAdminSecret() {
-    kubectl get secrets "ziti-controller-admin-secret" \
+    kubectl_wrapper get secrets "ziti-controller-admin-secret" \
         --namespace "${ZITI_NAMESPACE}" \
         --output go-template='{{index .data "admin-password" | base64decode }}'
 }
 
 showAdminCreds() {
     logInfo "The password for 'admin' is: '$(getAdminSecret)'"
+}
+
+miniziti_login() {
+    getAdminSecret | xargs ziti edge login  \
+            --cli-identity "$MINIKUBE_PROFILE" \
+            --username "admin" \
+            --password
 }
 
 logger() {
@@ -228,6 +237,14 @@ logDebug() {
     logger "$*" >&3
 }
 
+ziti_wrapper() {
+    ziti "$@" --cli-identity "$MINIKUBE_PROFILE"
+}
+
+kubectl_wrapper() {
+    minikube kubectl --profile "$MINIKUBE_PROFILE" -- --context "$MINIKUBE_PROFILE" "$@"
+}
+
 main(){
     # require commands
     declare -a BINS=(ziti minikube kubectl helm sed)
@@ -244,12 +261,14 @@ main(){
     # local strings with defaults that never produce an error
     declare DETECTED_OS \
             DELETE_MINIZITI=0 \
+            DO_ZITI_LOGIN=0 \
             MINIKUBE_NODE_EXTERNAL \
             MINIKUBE_PROFILE="miniziti" \
             MINIZITI_DEBUG=0 \
             MINIZITI_HOSTS=1 \
             MINIZITI_INTERCEPT_ZONE="miniziti" \
             MINIZITI_MODIFY_HOSTS=0 \
+            RUN_ZITI_CLI=0 \
             SAFETY_WAIT=1 \
             SHOW_ADMIN_CREDS=0 \
             ZITI_CHARTS_ALT=0 \
@@ -272,8 +291,16 @@ main(){
             delete)         DELETE_MINIZITI=1
                             shift
             ;;
+            login)          DO_ZITI_LOGIN=1
+                            shift
+            ;;
             show-admin)     SHOW_ADMIN_CREDS=1
                             shift
+            ;;
+            ziti)           RUN_ZITI_CLI=1
+                            shift
+                            ziti_cli_args=("$@")
+                            shift "${#ziti_cli_args[@]}"
             ;;
             -p|--profile)   validateDnsName "$2"
                             MINIKUBE_PROFILE="$2"
@@ -336,16 +363,26 @@ main(){
 
     : "${ZITI_NAMESPACE:=${MINIKUBE_PROFILE}}"
 
-    MINIZITI_PROFILE_MARKER="miniziti-controller.$MINIKUBE_PROFILE"
+    MINIZITI_PROFILE_MARKER="miniziti-controller.$MINIKUBE_PROFILE."
     MINIZITI_INGRESS_ZONE="$MINIKUBE_PROFILE.ziti"
     state_dir="$(makeMinizitiXDGStateDir "$DETECTED_OS")"
     profile_dir="$state_dir/profiles/${MINIKUBE_PROFILE}"
     identities_dir="$profile_dir/identities"
 
+    if (( DO_ZITI_LOGIN )); then
+        miniziti_login
+        exit 0
+    fi
     if (( SHOW_ADMIN_CREDS )); then
         showAdminCreds
         exit 0
     fi
+
+    if (( RUN_ZITI_CLI )); then
+        ziti_wrapper  "${ziti_cli_args[@]}"
+        exit 0
+    fi
+
 
     banner "$MINIKUBE_PROFILE"
 
@@ -369,7 +406,7 @@ main(){
         fi
 
         logWarn "Removing $MINIKUBE_PROFILE profile identity from ziti-cli.json"
-        ziti edge logout --cli-identity "$MINIKUBE_PROFILE" >&3
+        ziti_wrapper edge logout --cli-identity "$MINIKUBE_PROFILE" >&3
 
         exit 0
     }
@@ -415,11 +452,11 @@ main(){
     fi
 
     # verify current context can connect to apiserver
-    kubectl cluster-info >&3
+    kubectl_wrapper cluster-info >&3
     logDebug "kubectl successfully obtained cluster-info from apiserver"
 
     # enable ssl-passthrough for OpenZiti ingresses
-    if kubectl get deployment "ingress-nginx-controller" \
+    if kubectl_wrapper get deployment "ingress-nginx-controller" \
         --namespace ingress-nginx \
         --output 'go-template={{ (index .spec.template.spec.containers 0).args }}' 2>/dev/null \
         | grep -q enable-ssl-passthrough; then
@@ -435,7 +472,7 @@ main(){
                 --profile "${MINIKUBE_PROFILE}" >&3
         }
         logDebug "patching ingress-nginx deployment to enable ssl-passthrough"
-        kubectl patch deployment "ingress-nginx-controller" \
+        kubectl_wrapper patch deployment "ingress-nginx-controller" \
             --namespace ingress-nginx \
             --type json \
             --patch '[{"op": "add",
@@ -446,21 +483,21 @@ main(){
 
     logInfo "waiting for ingress-nginx to be ready"
     # wait for ingress-nginx
-    kubectl wait jobs "ingress-nginx-admission-patch" \
+    kubectl_wrapper wait jobs "ingress-nginx-admission-patch" \
         --namespace ingress-nginx \
         --for condition=complete \
         --timeout 120s >&3
 
-    kubectl wait pods \
+    kubectl_wrapper wait pods \
         --namespace ingress-nginx \
         --for condition=ready \
         --selector app.kubernetes.io/component=controller \
         --timeout 120s >&3
 
     logDebug "applying Custom Resource Definitions: Certificate, Issuer, and Bundle"
-    kubectl apply \
+    kubectl_wrapper apply \
         --filename https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml >&3
-    kubectl apply \
+    kubectl_wrapper apply \
         --filename https://raw.githubusercontent.com/cert-manager/trust-manager/v0.4.0/deploy/crds/trust.cert-manager.io_bundles.yaml >&3
 
     declare -A HELM_REPOS
@@ -505,13 +542,12 @@ main(){
     fi
 
     logDebug "setting default namespace '${ZITI_NAMESPACE}' in kubeconfig context '${MINIKUBE_PROFILE}'"
-    minikube kubectl --profile "${MINIKUBE_PROFILE}" -- \
-        config set-context "${MINIKUBE_PROFILE}" \
+        kubectl_wrapper config set-context "${MINIKUBE_PROFILE}" \
             --namespace "${ZITI_NAMESPACE}" >&3
 
     for DEPLOYMENT in ziti-controller-cert-manager trust-manager ziti-controller; do
         logInfo "waiting for $DEPLOYMENT to be ready"
-        kubectl wait deployments "$DEPLOYMENT" \
+        kubectl_wrapper wait deployments "$DEPLOYMENT" \
             --namespace "${ZITI_NAMESPACE}" \
             --for condition=Available=True \
             --timeout 240s >&3
@@ -561,7 +597,7 @@ main(){
 
         (( MINIZITI_HOSTS )) && {
             logDebug "patching coredns configmap with *.${MINIZITI_INGRESS_ZONE} forwarder to minikube ingress-dns nameserver"
-            kubectl patch configmap "coredns" \
+            kubectl_wrapper patch configmap "coredns" \
                 --namespace kube-system \
                 --patch "
         data:
@@ -599,14 +635,15 @@ main(){
         " >&3
 
             logDebug "deleting coredns pod so a new one will have modified Corefile"
-            kubectl get pods \
+            kubectl_wrapper get pods \
                 --namespace kube-system \
                 | awk '/^coredns-/ {print $1}' \
                 | xargs kubectl delete pods \
+                    --context "$MINIKUBE_PROFILE" \
                     --namespace kube-system >&3
 
             logDebug "waiting for cluster dns to be ready"
-            kubectl wait deployments "coredns" \
+            kubectl_wrapper wait deployments "coredns" \
                 --namespace kube-system \
                 --for condition=Available=True >&3
         }
@@ -626,19 +663,19 @@ main(){
             --username "admin" \
             --password >&3
 
-    logInfo "setting ziti cli default identity to '$MINIKUBE_PROFILE'"
-    ziti edge use "$MINIKUBE_PROFILE" >&3
+    logInfo "Setting default ziti identity to: $MINIKUBE_PROFILE"
+    ziti_wrapper edge use "$MINIKUBE_PROFILE" >&3
 
     router_name='miniziti-router'
     router_ott="$identities_dir/$router_name.jwt"
-    if  ziti edge list edge-routers "name=\"$router_name\"" \
+    if  ziti_wrapper edge list edge-routers "name=\"$router_name\"" \
         | grep -q miniziti-router; then
         logDebug "updating $router_name"
-        ziti edge update edge-router "$router_name" \
+        ziti_wrapper edge update edge-router "$router_name" \
             --role-attributes "public-routers" >&3
     else
         logDebug "creating $router_name"
-        ziti edge create edge-router "$router_name" \
+        ziti_wrapper edge create edge-router "$router_name" \
             --role-attributes "public-routers" \
             --tunneler-enabled \
             --jwt-output-file "$router_ott" >&3
@@ -668,12 +705,12 @@ main(){
     fi
 
     logInfo "waiting for ziti-router to be ready"
-    kubectl wait deployments "ziti-router" \
+    kubectl_wrapper wait deployments "ziti-router" \
         --namespace "${ZITI_NAMESPACE}" \
         --for condition=Available=True >&3
 
     logDebug "probing miniziti-router for online status"
-    if ziti edge list edge-routers "name=\"$router_name\"" \
+    if ziti_wrapper edge list edge-routers "name=\"$router_name\"" \
         | awk '/miniziti-router/ {print $6}' \
         | grep -q true; then
         logInfo "miniziti-router is online"
@@ -707,14 +744,13 @@ main(){
     fi
 
     logInfo "waiting for ziti-console to be ready"
-    kubectl wait deployments "ziti-console" \
+    kubectl_wrapper wait deployments "ziti-console" \
         --namespace "${ZITI_NAMESPACE}" \
         --for condition=Available=True \
         --timeout 240s >&3
 
     logDebug "setting default namespace to '${ZITI_NAMESPACE}' in kubeconfig context '${MINIKUBE_PROFILE}'"
-    minikube kubectl --profile "${MINIKUBE_PROFILE}" -- \
-        config set-context "${MINIKUBE_PROFILE}" \
+        kubectl_wrapper config set-context "${MINIKUBE_PROFILE}" \
             --namespace "${ZITI_NAMESPACE}" >&3
 
     #
@@ -724,10 +760,10 @@ main(){
     client_name="${MINIKUBE_PROFILE}-client"
     client_ott="$identities_dir/$client_name.jwt"
 
-    if  ! ziti edge list identities "name=\"$client_name\"" --csv \
+    if  ! ziti_wrapper edge list identities "name=\"$client_name\"" --csv \
         | grep -q "$client_name"; then
         logDebug "creating identity $client_name"
-        ziti edge create identity device "$client_name" \
+        ziti_wrapper edge create identity device "$client_name" \
             --jwt-output-file "$client_ott" --role-attributes httpbin-clients >&3
     else
         logDebug "ignoring identity $client_name"
@@ -737,73 +773,73 @@ main(){
     httpbin_ott="$identities_dir/$httpbin_name.jwt"
     httpbin_json="$identities_dir/$httpbin_name.json"
 
-    if  ! ziti edge list identities "name=\"$httpbin_name\"" --csv \
+    if  ! ziti_wrapper edge list identities "name=\"$httpbin_name\"" --csv \
         | grep -q "$httpbin_name"; then
         logDebug "creating identity $httpbin_name"
-        ziti edge create identity device "$httpbin_name" \
+        ziti_wrapper edge create identity device "$httpbin_name" \
             --jwt-output-file "$httpbin_ott" --role-attributes httpbin-hosts >&3
     else
         logDebug "ignoring identity $httpbin_name"
     fi
 
-    if  ! ziti edge list configs 'name="httpbin-intercept-config"' --csv \
+    if  ! ziti_wrapper edge list configs 'name="httpbin-intercept-config"' --csv \
         | grep -q "httpbin-intercept-config"; then
         logDebug "creating config httpbin-intercept-config"
-        ziti edge create config "httpbin-intercept-config" intercept.v1 \
+        ziti_wrapper edge create config "httpbin-intercept-config" intercept.v1 \
             '{"protocols":["tcp"],"addresses":["httpbin.'"${MINIZITI_INTERCEPT_ZONE}"'"], "portRanges":[{"low":80, "high":80}]}' >&3
     else
         logDebug "ignoring config httpbin-intercept-config"
     fi
 
-    if  ! ziti edge list configs 'name="httpbin-host-config"' --csv \
+    if  ! ziti_wrapper edge list configs 'name="httpbin-host-config"' --csv \
         | grep -q "httpbin-host-config"; then
         logDebug "creating config httpbin-host-config"
-        ziti edge create config "httpbin-host-config" host.v1 \
+        ziti_wrapper edge create config "httpbin-host-config" host.v1 \
             '{"protocol":"tcp", "address":"httpbin","port":8080}' >&3
     else
         logDebug "ignoring config httpbin-host-config"
     fi
 
-    if  ! ziti edge list services 'name="httpbin-service"' --csv \
+    if  ! ziti_wrapper edge list services 'name="httpbin-service"' --csv \
         | grep -q "httpbin-service"; then
         logDebug "creating service httpbin-service"
-        ziti edge create service "httpbin-service" \
+        ziti_wrapper edge create service "httpbin-service" \
             --configs httpbin-intercept-config,httpbin-host-config >&3
     else
         logDebug "ignoring service httpbin-service"
     fi
 
-    if  ! ziti edge list service-policies 'name="httpbin-bind-policy"' --csv \
+    if  ! ziti_wrapper edge list service-policies 'name="httpbin-bind-policy"' --csv \
         | grep -q "httpbin-bind-policy"; then
         logDebug "creating service-policy httpbin-bind-policy"
-        ziti edge create service-policy "httpbin-bind-policy" Bind \
+        ziti_wrapper edge create service-policy "httpbin-bind-policy" Bind \
             --service-roles '@httpbin-service' --identity-roles '#httpbin-hosts' >&3
     else
         logDebug "ignoring service-policy httpbin-bind-policy"
     fi
 
-    if  ! ziti edge list service-policies 'name="httpbin-dial-policy"' --csv \
+    if  ! ziti_wrapper edge list service-policies 'name="httpbin-dial-policy"' --csv \
         | grep -q "httpbin-dial-policy"; then
         logDebug "creating service-policy httpbin-dial-policy"
-        ziti edge create service-policy "httpbin-dial-policy" Dial \
+        ziti_wrapper edge create service-policy "httpbin-dial-policy" Dial \
             --service-roles '@httpbin-service' --identity-roles '#httpbin-clients' >&3
     else
         logDebug "ignoring service-policy httpbin-dial-policy"
     fi
 
-    if  ! ziti edge list edge-router-policies 'name="public-routers"' --csv \
+    if  ! ziti_wrapper edge list edge-router-policies 'name="public-routers"' --csv \
         | grep -q "public-routers"; then
         logDebug "creating edge-router-policy public-routers"
-        ziti edge create edge-router-policy "public-routers" \
+        ziti_wrapper edge create edge-router-policy "public-routers" \
             --edge-router-roles '#public-routers' --identity-roles '#all' >&3
     else
         logDebug "ignoring edge-router-policy public-routers"
     fi
 
-    if  ! ziti edge list service-edge-router-policies 'name="public-routers"' --csv \
+    if  ! ziti_wrapper edge list service-edge-router-policies 'name="public-routers"' --csv \
         | grep -q "public-routers"; then
         logDebug "creating service-edge-router-policy public-routers"
-        ziti edge create service-edge-router-policy "public-routers" \
+        ziti_wrapper edge create service-edge-router-policy "public-routers" \
             --edge-router-roles '#public-routers' --service-roles '#all' >&3
     else
         logDebug "ignoring service-edge-router-policy public-routers"
