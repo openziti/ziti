@@ -18,6 +18,7 @@ package actions
 
 import (
 	"fmt"
+	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"time"
 
@@ -40,13 +41,28 @@ func NewBootstrapAction() model.ActionBinder {
 func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow := actions.Workflow()
 
-	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
-	workflow.AddAction(component.Stop("#ctrl"))
-	workflow.AddAction(component.Exec("#ctrl", zitilab.ControllerActionInitStandalone))
-	workflow.AddAction(component.Start("#ctrl"))
-	workflow.AddAction(edge.ControllerAvailable("#ctrl", 30*time.Second))
+	isHA := len(m.SelectComponents(".ctrl")) > 1
 
-	workflow.AddAction(edge.Login("#ctrl"))
+	workflow.AddAction(component.Stop(".ctrl"))
+	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
+	workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
+
+	if !isHA {
+		workflow.AddAction(component.Exec("#ctrl1", zitilab.ControllerActionInitStandalone))
+	}
+
+	workflow.AddAction(component.Start(".ctrl"))
+
+	if isHA {
+		workflow.AddAction(semaphore.Sleep(2 * time.Second))
+		workflow.AddAction(edge.RaftJoin(".ctrl"))
+		workflow.AddAction(semaphore.Sleep(2 * time.Second))
+		workflow.AddAction(edge.InitRaftController("#ctrl1"))
+	}
+
+	workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
+
+	workflow.AddAction(edge.Login("#ctrl1"))
 
 	workflow.AddAction(component.StopInParallel(models.EdgeRouterTag, 25))
 	workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))

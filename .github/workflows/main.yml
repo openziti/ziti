@@ -204,8 +204,6 @@ jobs:
           show: "fail, skip"
         if: ${{ !cancelled() }}
 
-      # END linux-build-steps
-
   fablab-smoketest-teardown:
     name: Teardown SmokeTest
     if: always()
@@ -238,6 +236,105 @@ jobs:
             echo "WARN: No instance archive found for simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg" >&2
           fi
 
+  fablab-ha-smoketest:
+    name: Fablab HA Smoketest
+    # not applicable to forks. shouldn't run on release build
+    if: github.repository_owner == 'openziti' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21.x'
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Build and Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          pushd zititest && go install ./... && popd
+          go install -tags=all,tests ./...
+
+      - name: Create Test Environment
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          $(go env GOPATH)/bin/simple-transfer create -d simple-transfer-ha-${GITHUB_RUN_NUMBER} -n simple-transfer-ha-${GITHUB_RUN_NUMBER} -l ha=true,environment=gh,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
+          $(go env GOPATH)/bin/simple-transfer up
+
+      #      - name: Test Ziti Command
+      #        run: |
+      #          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+      #          pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
+
+      - name: Create fablab instance archive
+        if: always()
+        env:
+          FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
+        run: |
+          cp $(go env GOPATH)/bin/simple-transfer simple-transfer-ha-${GITHUB_RUN_NUMBER}
+          cp ~/.fablab/config.yml simple-transfer-ha-${GITHUB_RUN_NUMBER}/
+          tar --exclude *terraform-provider-aws* -czvf - simple-transfer-ha-${GITHUB_RUN_NUMBER}/ | gpg --symmetric --cipher-algo aes256 --batch --quiet --passphrase ${FABLAB_PASSPHRASE} -o simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+          aws s3 cp ./simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg s3://ziti-smoketest-fablab-instances/
+          
+          #      - name: Test Report Generation
+          #        if: always()
+          #        run: |
+          #          go install github.com/jstemmer/go-junit-report/v2@latest
+          #$(go env GOPATH)/bin/go-junit-report -in zititest/test.out -out test-report.xml
+
+      #      - name: Test Summary
+      #        uses: test-summary/action@v2
+      #        with:
+      #          paths: |
+      #            test-report.xml
+      #          show: "fail, skip"
+      #        if: always()
+
+      # END linux-build-steps
+
+  fablab-ha-smoketest-teardown:
+    name: Teardown HA SmokeTest
+    if: always()
+    runs-on: ubuntu-20.04
+    needs: [ fablab-ha-smoketest ]
+    steps:
+      # allow time for investigation unless the workflow is cancelled or the smoketest succeeded or was skipped
+      - name: Sleep If Failed
+        if: needs.fablab-ha-smoketest.result != 'success' && needs.fablab-ha-smoketest.result != 'skipped' && needs.fablab-ha-smoketest.result != 'cancelled'
+        run: |
+          sleep 30m
+
+      # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
+      - name: Teardown Test Environment
+        if: needs.fablab-smoketest-ha.result != 'skipped'
+        env:
+          FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
+        run: |
+          if aws s3api head-object \
+            --bucket ziti-smoketest-fablab-instances \
+            --key simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+          then
+            aws s3 cp s3://ziti-smoketest-fablab-instances/simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg .
+            gpg --quiet --batch --yes --decrypt --passphrase=${FABLAB_PASSPHRASE} --output simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+            tar -xzf simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz 
+            ./simple-transfer-ha-${GITHUB_RUN_NUMBER}/simple-transfer import simple-transfer-ha-${GITHUB_RUN_NUMBER}
+            ./simple-transfer-ha-${GITHUB_RUN_NUMBER}/simple-transfer dispose
+            aws s3 rm s3://ziti-smoketest-fablab-instances/simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+          else
+            echo "WARN: No instance archive found for simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg" >&2
+          fi
+
   publish:
     name: Publish Binaries
     # - !cancelled() allows evaluating further conditional expressions even if
@@ -247,9 +344,10 @@ jobs:
       && (needs.mac-os-build.result == 'success' || needs.mac-os-build.result == 'skipped')
       && (needs.windows-build.result == 'success' || needs.windows-build.result == 'skipped')
       && (needs.fablab-smoketest.result == 'success' || needs.fablab-smoketest.result == 'skipped') 
+      && (needs.fablab-ha-smoketest.result == 'success' || needs.fablab-ha-smoketest.result == 'skipped')
       }}
     runs-on: ubuntu-20.04
-    needs: [ linux-build, mac-os-build, windows-build, fablab-smoketest ]
+    needs: [ linux-build, mac-os-build, windows-build, fablab-smoketest, fablab-ha-smoketest ]
     outputs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
     steps:
