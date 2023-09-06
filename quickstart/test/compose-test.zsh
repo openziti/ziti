@@ -92,11 +92,11 @@ fi
 mv ./simplified-docker-compose.yml ./compose.yml
 
 # learn the expected Go version from the Go mod file so we can pull the correct container image
-ZITI_GO_VERSION="1.20"
+ZITI_GO_VERSION="$(awk '/^go\s+/ {print $2}' ./go.mod)"
 # make this var available in the Compose project
 sed -Ei '' "s/^(#[[:space:]]+)?(ZITI_GO_VERSION)=.*/\2=${ZITI_GO_VERSION}/" ./.env
-sed -Ei '' "s/^(#\s+)?(ZITI_PWD)=.*/\2=${ZITI_PWD}/" ./.env
-sed -Ei '' "s/^(#\s+)?(ZITI_INTERFACE)=.*/\2=${ZITI_INTERFACE:-127.0.0.1}/" ./.env
+sed -Ei '' "s/^(#[[:space:]]+)?(ZITI_PWD)=.*/\2=${ZITI_PWD}/" ./.env
+sed -Ei '' "s/^(#[[:space:]]+)?(ZITI_INTERFACE)=.*/\2=${ZITI_INTERFACE:-127.0.0.1}/" ./.env
 
 # pull images preemptively that we never build locally because pull=never when using a local quickstart image
 for IMAGE in \
@@ -111,7 +111,7 @@ trap down_project SIGTERM SIGINT EXIT
 
 # if ZITI_QUICK_IMAGE_TAG is set then run the locally-built image
 if [[ -n "${ZITI_QUICK_IMAGE_TAG:-}" ]]; then
-    sed -Ei '' "s/^(#\s+)?(ZITI_VERSION)=.*/\2=${ZITI_QUICK_IMAGE_TAG}/" ./.env
+    sed -Ei '' "s/^(#[[:space:]]+)?(ZITI_VERSION)=.*/\2=${ZITI_QUICK_IMAGE_TAG}/" ./.env
     docker compose up --detach --pull=never &>/dev/null # no pull because local quickstart image
 else
     echo "ERROR: ZITI_QUICK_IMAGE_TAG is not set" >&2
@@ -120,15 +120,15 @@ fi
 
 # copy files that are not present in older quickstart container images to the persistent volume; this allows us to run
 # the test suite against them and investigate if the test fails and the container is destroyed
-for FILE in \
-    ""
+# for FILE in \
+    # ""
     # check-cert-chains.zsh
     # TODO: re-add cert checks to cp list after https://github.com/openziti/ziti/pull/1278
-do
-    docker compose cp \
-        "./${FILE}" \
-        "ziti-controller:/persistent/${FILE}" &>/dev/null
-done
+# do
+    # docker compose cp \
+    #     "./${FILE}" \
+    #     "ziti-controller:/persistent/${FILE}" &>/dev/null
+# done
 # TODO: build these executables into the container image?
 
 # wait for the controller and router to be ready and run the certificate check script; NOUNSET option is enabled after
@@ -137,12 +137,10 @@ docker compose exec ziti-controller \
     bash -eo pipefail -c '
         source "${ZITI_SCRIPTS}/ziti-cli-functions.sh" >/dev/null;
         echo "INFO: waiting for controller";
-        sleep 3;
         source /persistent/ziti.env >/dev/null;
         set -u;
         _wait_for_controller >/dev/null;
         echo "INFO: waiting for public router";
-        sleep 3;
         source /persistent/ziti.env >/dev/null;
         _wait_for_public_router >/dev/null;
     '
