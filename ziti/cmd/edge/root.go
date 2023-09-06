@@ -50,7 +50,7 @@ func populateEdgeCommands(out io.Writer, errOut io.Writer, cmd *cobra.Command) *
 	cmd.AddCommand(newTraceRouteCmd(out, errOut))
 	cmd.AddCommand(newShowCmd(out, errOut))
 	cmd.AddCommand(newReEnrollCmd(out, errOut))
-	cmd.AddCommand(newQuickStartCmd(out, errOut))
+	cmd.AddCommand(NewQuickStartCmd(out, errOut, nil))
 
 	p := common.NewOptionsProvider(out, errOut)
 	cmd.AddCommand(enrollment.NewEnrollCommand(p))

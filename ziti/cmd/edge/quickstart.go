@@ -17,6 +17,7 @@
 package edge
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	edgeSubCmd "github.com/openziti/edge/controller/subcmd"
@@ -33,19 +34,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 )
 
-// newCreateCmd creates a command object for the "create" command
-func newQuickStartCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+// NewQuickStartCmd creates a command object for the "create" command
+func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "quickstart",
 		Short: "runs a Controller and Router in quickstart mode",
 		Long:  "runs a Controller and Router in quickstart mode. A totally ephemeral network only valid while running.",
 		Run: func(cmd *cobra.Command, args []string) {
-			run(out, errOut)
+			run(out, errOut, context)
 		},
 	}
 
@@ -57,7 +57,7 @@ func removeTempDir(tmpDir string) {
 	_ = os.RemoveAll(tmpDir)
 }
 
-func run(out io.Writer, errOut io.Writer) {
+func run(out io.Writer, errOut io.Writer, ctx context.Context) {
 	tmpDir, _ := os.MkdirTemp("", "quickstart")
 
 	defer removeTempDir(tmpDir)
@@ -120,31 +120,17 @@ func run(out io.Writer, errOut io.Writer) {
 	ctrlUrl := fmt.Sprintf("https://%s:%s", ctrlAddy, ctrlPort)
 
 	c := make(chan struct{})
-	wg := &sync.WaitGroup{}
-	timeout, _ := time.ParseDuration("10s")
-	go func() {
-		defer close(c)
-
-		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-		client := &http.Client{Transport: tr}
-		for {
-			r, e := client.Get(ctrlUrl)
-			if e != nil || r == nil || r.StatusCode != 200 {
-				time.Sleep(10 * time.Millisecond)
-			} else {
-				fmt.Println("Controller online. Continuing...")
-				break
-			}
-		}
-		wg.Wait()
-	}()
+	defer close(c)
+	timeout, _ := time.ParseDuration("30s")
+	go waitForController(ctrlUrl, c)
 	select {
 	case <-c:
 		//completed normally
+		logrus.Info("Controller online. Continuing...")
 	case <-time.After(timeout):
 		fmt.Println("timed out waiting for controller")
 		removeTempDir(tmpDir)
-		os.Exit(1)
+		return
 	}
 
 	//ziti edge login https://localhost:1280 -u admin -p admin -y
@@ -218,7 +204,12 @@ func run(out io.Writer, errOut io.Writer) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
 
-	<-ch
+	select {
+	case <-ch:
+		fmt.Println("Signal to shutdown received")
+	case <-ctx.Done():
+		fmt.Println("Cancellation request received")
+	}
 	removeTempDir(tmpDir)
 }
 
@@ -278,4 +269,18 @@ func createMinimalPki(out io.Writer, errOut io.Writer, where string) {
 	if clientErr != nil {
 		logrus.Fatal(clientErr)
 	}
+}
+
+func waitForController(ctrlUrl string, done chan struct{}) {
+	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	client := &http.Client{Transport: tr}
+	for {
+		r, e := client.Get(ctrlUrl)
+		if e != nil || r == nil || r.StatusCode != 200 {
+			time.Sleep(50 * time.Millisecond)
+		} else {
+			break
+		}
+	}
+	done <- struct{}{}
 }
