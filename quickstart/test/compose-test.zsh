@@ -58,7 +58,6 @@ echo "INFO: Testing Compose project $PWD"
 
 declare -a QUICK_FILES=(
     ../go.{mod,sum}
-    ./ziti/cmd/edge/quickstart_manual_test.go
     test/compose.override.yml
     docker/{simplified-docker-compose.yml,.env}
 )
@@ -96,7 +95,9 @@ mv ./simplified-docker-compose.yml ./compose.yml
 ZITI_GO_VERSION="$(awk '/^go[[:space:]]+/ {print $2}' ./go.mod)"
 # make this var available in the Compose project
 sed -Ee "s/^(#[[:space:]]+)?(ZITI_GO_VERSION)=.*/\2=${ZITI_GO_VERSION}/" \
+    -e  "s|^(#[[:space:]]+)?(GOPATH)=.*|\2=${GOPATH:-${HOME}/go}|" \
     -e  "s/^(#[[:space:]]+)?(ZITI_PWD)=.*/\2=${ZITI_PWD}/" \
+    -e  "s|^(#[[:space:]]+)?(ZITI_QUICK_DIR)=.*|\2=${ZITI_QUICK_DIR}|" \
     -e  "s/^(#[[:space:]]+)?(ZITI_INTERFACE)=.*/\2=${ZITI_INTERFACE:-127.0.0.1}/" ./.env > ./.env.tmp
 mv ./.env.tmp ./.env
 
