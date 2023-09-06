@@ -15,7 +15,7 @@ banner(){
 
 BANNER
 
-    if [[ -n "$profile" ]] && [[ "$profile" != "miniziti" ]]; then
+    if [[ -n "$profile" && "$profile" != "miniziti" ]]; then
         echo -e "   .: $* :.\n"
     fi
 }
@@ -365,9 +365,9 @@ main(){
 
     MINIZITI_PROFILE_MARKER="miniziti-controller.$MINIKUBE_PROFILE."
     MINIZITI_INGRESS_ZONE="$MINIKUBE_PROFILE.ziti"
-    state_dir="$(makeMinizitiXDGStateDir "$DETECTED_OS")"
-    profile_dir="$state_dir/profiles/${MINIKUBE_PROFILE}"
-    identities_dir="$profile_dir/identities"
+    STATE_DIR="$(makeMinizitiXDGStateDir "$DETECTED_OS")"
+    PROFILE_DIR="$STATE_DIR/profiles/${MINIKUBE_PROFILE}"
+    IDENTITIES_DIR="$PROFILE_DIR/identities"
 
     if (( DO_ZITI_LOGIN )); then
         miniziti_login
@@ -394,15 +394,15 @@ main(){
             cleanHosts
         fi
 
-        if [[ -d "$profile_dir" ]]; then
-            logWarn "Deleting miniziti profile directory: $profile_dir"
-            rm -rf  "$profile_dir"
+        if [[ -d "$PROFILE_DIR" ]]; then
+            logWarn "Deleting miniziti profile directory: $PROFILE_DIR"
+            rm -rf  "$PROFILE_DIR"
         fi
 
-        cert_file="$(find "$HOME/.config/ziti/certs" -maxdepth 1 -type f -name "miniziti-controller.$MINIKUBE_PROFILE.*" -print -quit)"
-        if [[ -n "$cert_file" ]]; then
-            logWarn "Deleting miniziti certificate file: $cert_file"
-            rm -f  "$cert_file"
+        CERT_FILE="$(find "$HOME/.config/ziti/certs" -maxdepth 1 -type f -name "miniziti-controller.$MINIKUBE_PROFILE.*" -print -quit)"
+        if [[ -n "$CERT_FILE" ]]; then
+            logWarn "Deleting miniziti certificate file: $CERT_FILE"
+            rm -f  "$CERT_FILE"
         fi
 
         logWarn "Removing $MINIKUBE_PROFILE profile identity from ziti-cli.json"
@@ -411,9 +411,9 @@ main(){
         exit 0
     }
 
-    if [[ ! -d "$identities_dir" ]]; then
-        logDebug "Creating miniziti identities directory: ($identities_dir)"
-        mkdir -p "$identities_dir"
+    if [[ ! -d "$IDENTITIES_DIR" ]]; then
+        logDebug "Creating miniziti identities directory: ($IDENTITIES_DIR)"
+        mkdir -p "$IDENTITIES_DIR"
     fi
 
     #
@@ -666,19 +666,19 @@ main(){
     logInfo "Setting default ziti identity to: $MINIKUBE_PROFILE"
     ziti_wrapper edge use "$MINIKUBE_PROFILE" >&3
 
-    router_name='miniziti-router'
-    router_ott="$identities_dir/$router_name.jwt"
-    if  ziti_wrapper edge list edge-routers "name=\"$router_name\"" \
+    ROUTER_NAME='miniziti-router'
+    ROUTER_OTT="$IDENTITIES_DIR/$ROUTER_NAME.jwt"
+    if  ziti_wrapper edge list edge-routers "name=\"$ROUTER_NAME\"" \
         | grep -q miniziti-router; then
-        logDebug "updating $router_name"
-        ziti_wrapper edge update edge-router "$router_name" \
+        logDebug "updating $ROUTER_NAME"
+        ziti_wrapper edge update edge-router "$ROUTER_NAME" \
             --role-attributes "public-routers" >&3
     else
-        logDebug "creating $router_name"
-        ziti_wrapper edge create edge-router "$router_name" \
+        logDebug "creating $ROUTER_NAME"
+        ziti_wrapper edge create edge-router "$ROUTER_NAME" \
             --role-attributes "public-routers" \
             --tunneler-enabled \
-            --jwt-output-file "$router_ott" >&3
+            --jwt-output-file "$ROUTER_OTT" >&3
     fi
 
     if  helm status ziti-router --namespace "${ZITI_NAMESPACE}" &>/dev/null; then
@@ -697,7 +697,7 @@ main(){
         }
         helm install "ziti-router" "${ZITI_CHARTS_REF}/ziti-router" \
             --namespace "${ZITI_NAMESPACE}" \
-            --set-file enrollmentJwt="$router_ott" \
+            --set-file enrollmentJwt="$ROUTER_OTT" \
             --set edge.advertisedHost="miniziti-router.${MINIZITI_INGRESS_ZONE}" \
             --set linkListeners.transport.advertisedHost="miniziti-router-transport.${MINIZITI_INGRESS_ZONE}" \
             --set "ctrl.endpoint=ziti-controller-ctrl.${ZITI_NAMESPACE}.svc:443" \
@@ -710,7 +710,7 @@ main(){
         --for condition=Available=True >&3
 
     logDebug "probing miniziti-router for online status"
-    if ziti_wrapper edge list edge-routers "name=\"$router_name\"" \
+    if ziti_wrapper edge list edge-routers "name=\"$ROUTER_NAME\"" \
         | awk '/miniziti-router/ {print $6}' \
         | grep -q true; then
         logInfo "miniziti-router is online"
@@ -757,29 +757,29 @@ main(){
     ## Ensure OpenZiti Identities and Services are Created
     #
 
-    client_name="${MINIKUBE_PROFILE}-client"
-    client_ott="$identities_dir/$client_name.jwt"
+    CLIENT_NAME="${MINIKUBE_PROFILE}-client"
+    CLIENT_OTT="$IDENTITIES_DIR/$CLIENT_NAME.jwt"
 
-    if  ! ziti_wrapper edge list identities "name=\"$client_name\"" --csv \
-        | grep -q "$client_name"; then
-        logDebug "creating identity $client_name"
-        ziti_wrapper edge create identity device "$client_name" \
-            --jwt-output-file "$client_ott" --role-attributes httpbin-clients >&3
+    if  ! ziti_wrapper edge list identities "name=\"$CLIENT_NAME\"" --csv \
+        | grep -q "$CLIENT_NAME"; then
+        logDebug "creating identity $CLIENT_NAME"
+        ziti_wrapper edge create identity device "$CLIENT_NAME" \
+            --jwt-output-file "$CLIENT_OTT" --role-attributes httpbin-clients >&3
     else
-        logDebug "ignoring identity $client_name"
+        logDebug "ignoring identity $CLIENT_NAME"
     fi
 
-    httpbin_name="httpbin-host"
-    httpbin_ott="$identities_dir/$httpbin_name.jwt"
-    httpbin_json="$identities_dir/$httpbin_name.json"
+    HTTPBIN_NAME="httpbin-host"
+    HTTPBIN_OTT="$IDENTITIES_DIR/$HTTPBIN_NAME.jwt"
+    HTTPBIN_JSON="$IDENTITIES_DIR/$HTTPBIN_NAME.json"
 
-    if  ! ziti_wrapper edge list identities "name=\"$httpbin_name\"" --csv \
-        | grep -q "$httpbin_name"; then
-        logDebug "creating identity $httpbin_name"
-        ziti_wrapper edge create identity device "$httpbin_name" \
-            --jwt-output-file "$httpbin_ott" --role-attributes httpbin-hosts >&3
+    if  ! ziti_wrapper edge list identities "name=\"$HTTPBIN_NAME\"" --csv \
+        | grep -q "$HTTPBIN_NAME"; then
+        logDebug "creating identity $HTTPBIN_NAME"
+        ziti_wrapper edge create identity device "$HTTPBIN_NAME" \
+            --jwt-output-file "$HTTPBIN_OTT" --role-attributes httpbin-hosts >&3
     else
-        logDebug "ignoring identity $httpbin_name"
+        logDebug "ignoring identity $HTTPBIN_NAME"
     fi
 
     if  ! ziti_wrapper edge list configs 'name="httpbin-intercept-config"' --csv \
@@ -845,17 +845,17 @@ main(){
         logDebug "ignoring service-edge-router-policy public-routers"
     fi
 
-    if [[ -s "$httpbin_ott" ]]; then
-        logDebug "enrolling $httpbin_ott"
+    if [[ -s "$HTTPBIN_OTT" ]]; then
+        logDebug "enrolling $HTTPBIN_OTT"
         # discard expected output that normally flows to stderr
         ENROLL_OUT="$(
-            ziti edge enroll "$httpbin_ott" 2>&1 \
+            ziti edge enroll "$HTTPBIN_OTT" 2>&1 \
                 | grep -vE '(generating.*key|enrolled\s+successfully)' \
                 || true
         )"
         if [[ -z "${ENROLL_OUT}" ]]; then
-            rm -f "$httpbin_ott"
-            logDebug "deleted $httpbin_ott after enrolling successfully"
+            rm -f "$HTTPBIN_OTT"
+            logDebug "deleted $HTTPBIN_OTT after enrolling successfully"
         else
             echo -e "ERROR: unexpected result during OpenZiti Identity enrollment\n"\
                     "${ENROLL_OUT}"
@@ -863,16 +863,16 @@ main(){
         fi
     fi
 
-    if [[ -s "$httpbin_json" ]]; then
+    if [[ -s "$HTTPBIN_JSON" ]]; then
         logDebug "installing httpbin chart as 'miniziti-httpbin'"
         (( ZITI_CHARTS_ALT )) && {
             helm dependency build "${ZITI_CHARTS_REF}/httpbin" >&3
         }
         helm install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
-            --set-file zitiIdentity="$httpbin_json" \
+            --set-file zitiIdentity="$HTTPBIN_JSON" \
             --set zitiServiceName=httpbin-service >&3
-        rm -f "$httpbin_json"
-        logDebug "deleted $httpbin_json after installing successfully with miniziti-httpbin chart"
+        rm -f "$HTTPBIN_JSON"
+        logDebug "deleted $HTTPBIN_JSON after installing successfully with miniziti-httpbin chart"
     fi
 
     echo -e "\n\n"
@@ -880,7 +880,7 @@ main(){
     showAdminCreds
     echo -e "\n\n"
 
-    logInfo "Success! Remember to add your edge client identity '$client_ott' in your tunneler, e.g. Ziti Desktop Edge."
+    logInfo "Success! Remember to add your edge client identity '$CLIENT_OTT' in your tunneler, e.g. Ziti Desktop Edge."
 }
 
 main "$@"
