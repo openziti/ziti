@@ -94,10 +94,8 @@ mv ./simplified-docker-compose.yml ./compose.yml
 # learn the expected Go version from the Go mod file so we can pull the correct container image
 ZITI_GO_VERSION="$(awk '/^go[[:space:]]+/ {print $2}' ./go.mod)"
 # make this var available in the Compose project
-sed -Ee "s/^(#[[:space:]]+)?(ZITI_GO_VERSION)=.*/\2=${ZITI_GO_VERSION}/" \
-    -e  "s|^(#[[:space:]]+)?(GOPATH)=.*|\2=${GOPATH:-${HOME}/go}|" \
+sed -E \
     -e  "s/^(#[[:space:]]+)?(ZITI_PWD)=.*/\2=${ZITI_PWD}/" \
-    -e  "s|^(#[[:space:]]+)?(ZITI_QUICK_DIR)=.*|\2=${ZITI_QUICK_DIR}|" \
     -e  "s/^(#[[:space:]]+)?(ZITI_INTERFACE)=.*/\2=${ZITI_INTERFACE:-127.0.0.1}/" ./.env > ./.env.tmp
 mv ./.env.tmp ./.env
 
@@ -111,6 +109,12 @@ done
 
 # any halt after this point should cause the Compose project to be torn down
 trap down_project SIGTERM SIGINT EXIT
+
+# these compose vars are used to configure the golang service that runs the test suite
+echo -e "ZITI_GO_VERSION=${ZITI_GO_VERSION}"\
+        "\nGOPATH=${GOPATH:-${HOME}/go}"\
+        "\nZITI_QUICK_DIR=${ZITI_QUICK_DIR}" \
+        >> ./.env
 
 # if ZITI_QUICK_IMAGE_TAG is set then run the locally-built image
 if [[ -n "${ZITI_QUICK_IMAGE_TAG:-}" ]]; then
