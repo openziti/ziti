@@ -30,7 +30,7 @@ _usage(){
             "   start\t\tstart miniziti (default)\n"\
             "   delete\t\tdelete miniziti\n"\
             "   login\t\trun ziti edge login with miniziti context\n"\
-            "   show-admin\t\tprints admin user updb credentials\n"\
+            "   admin-creds\t\tprints admin user updb credentials\n"\
             "   ziti\t\tziti cli wrapper with miniziti context\n"\
             "   help\t\tshow these usage hints\n"\
             "\n OPTIONS\n"\
@@ -95,7 +95,7 @@ detectOs(){
     fi
 }
 
-makeMinizitiXDGStateDir() {
+makeMinizitiStateDir() {
     local detected_os="$1"
 
     case "$detected_os" in
@@ -294,7 +294,7 @@ main(){
             login)          DO_ZITI_LOGIN=1
                             shift
             ;;
-            show-admin)     SHOW_ADMIN_CREDS=1
+            admin-creds)     SHOW_ADMIN_CREDS=1
                             shift
             ;;
             ziti)           RUN_ZITI_CLI=1
@@ -365,7 +365,7 @@ main(){
 
     MINIZITI_PROFILE_MARKER="miniziti-controller.$MINIKUBE_PROFILE."
     MINIZITI_INGRESS_ZONE="$MINIKUBE_PROFILE.ziti"
-    STATE_DIR="$(makeMinizitiXDGStateDir "$DETECTED_OS")"
+    STATE_DIR="$(makeMinizitiStateDir "$DETECTED_OS")"
     PROFILE_DIR="$STATE_DIR/profiles/${MINIKUBE_PROFILE}"
     IDENTITIES_DIR="$PROFILE_DIR/identities"
 
