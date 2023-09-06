@@ -38,7 +38,6 @@ _usage(){
             "   --namespace\t\tZITI_NAMESPACE (MINIKUBE_PROFILE)\n"\
             "   --no-hosts\t\tdon't use local hosts DB or ingress-dns nameserver\n"\
             "   --modify-hosts\tadd entries to local hosts database. Requires sudo if not running as root. Linux only.\n"\
-            "   --yes\t\tanswer 'yes' to all prompts"\
             "\n DEBUG\n"\
             "   --charts\t\tZITI_CHARTS_REF (openziti) alternative charts repo\n"\
             "   --now\t\teliminate safety waits, e.g., before deleting miniziti\n"\
@@ -151,24 +150,6 @@ checkSudoRequired() {
     fi
 }
 
-askConfirmation() {
-    local question="$1"
-
-    while true; do
-        read -r -p "$question (yes/no): " choice
-        case "$choice" in
-            [Yy]|[Yy][Ee][Ss])
-                return 0
-                ;;
-            [Nn]|[Nn][Oo])
-                return 1
-                ;;
-            *)
-                ;;
-        esac
-    done
-}
-
 HOSTS_FILE='/etc/hosts'
 
 cleanHosts() {
@@ -269,7 +250,6 @@ main(){
             MINIZITI_HOSTS=1 \
             MINIZITI_INTERCEPT_ZONE="miniziti" \
             MINIZITI_MODIFY_HOSTS=0 \
-            MINIZITI_YES=0 \
             SAFETY_WAIT=1 \
             SHOW_ADMIN_CREDS=0 \
             ZITI_CHARTS_ALT=0 \
@@ -336,9 +316,6 @@ main(){
                             MINIZITI_MODIFY_HOSTS=1
                             shift
             ;;
-            --yes)          MINIZITI_YES=1
-                            shift
-            ;;
             --)             shift
                             mapfile -t -n1 MINIKUBE_START_ARGS <<< "$*"
                             shift $#
@@ -381,21 +358,17 @@ main(){
         fi
 
         if [[ -d "$profile_dir" ]]; then
-            if (( MINIZITI_YES )) || askConfirmation "Delete profile state directory ($profile_dir)?"; then
-                logDebug "Deleting miniziti profile directory: $profile_dir"
-                rm -rf  "$profile_dir"
-            fi
+            logWarn "Deleting miniziti profile directory: $profile_dir"
+            rm -rf  "$profile_dir"
         fi
 
         cert_file="$(find "$HOME/.config/ziti/certs" -maxdepth 1 -type f -name "miniziti-controller.$MINIKUBE_PROFILE.*" -print -quit)"
         if [[ -n "$cert_file" ]]; then
-            if (( MINIZITI_YES )) || askConfirmation "Delete certiicate file ($cert_file)?"; then
-                logDebug "Deleting miniziti certificate file: $cert_file"
-                rm -f  "$cert_file"
-            fi
+            logWarn "Deleting miniziti certificate file: $cert_file"
+            rm -f  "$cert_file"
         fi
 
-        logDebug "Removing $MINIKUBE_PROFILE profile identity from ziti-cli.json"
+        logWarn "Removing $MINIKUBE_PROFILE profile identity from ziti-cli.json"
         ziti edge logout --cli-identity "$MINIKUBE_PROFILE" >&3
 
         exit 0
