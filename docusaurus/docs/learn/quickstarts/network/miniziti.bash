@@ -187,7 +187,7 @@ installHosts() {
         "miniziti-console.${MINIZITI_INGRESS_ZONE}"
     )
 
-    hosts_line="${MINIKUBE_NODE_EXTERNAL} ${hosts[*]} $MINIZITI_PROFILE_MARKER"
+    hosts_line="${MINIKUBE_NODE_EXTERNAL} ${hosts[*]}"
 
     if ! grep -q "$hosts_line" "$HOSTS_FILE"; then
 
@@ -224,7 +224,11 @@ logger() {
     fi
 
     caller_level="${caller##log}"
-    echo -e "${caller_level^^}:${FUNCNAME[2]}:${BASH_LINENO[1]}: $*"
+    if (( MINIZITI_DEBUG )); then
+        echo -e "${caller_level^^} ${FUNCNAME[2]}:${BASH_LINENO[1]}: $*"
+    else
+        echo -e "${caller_level^^} $*"
+    fi
 }
 
 logInfo() {
@@ -261,6 +265,7 @@ main(){
             DELETE_MINIZITI=0 \
             MINIKUBE_NODE_EXTERNAL \
             MINIKUBE_PROFILE="miniziti" \
+            MINIZITI_DEBUG=0 \
             MINIZITI_HOSTS=1 \
             MINIZITI_INTERCEPT_ZONE="miniziti" \
             MINIZITI_MODIFY_HOSTS=0 \
@@ -314,6 +319,7 @@ main(){
                             shift
             ;;
             -v|--verbose|--debug)
+                            MINIZITI_DEBUG=1
                             exec 3>&1
                             shift
             ;;
@@ -327,7 +333,6 @@ main(){
                                 logError "The '--modify-hosts' option is only available for Linux"
                                 exit 1
                             fi
-                            MINIZITI_PROFILE_MARKER="# miniziti:profile:$MINIKUBE_PROFILE"
                             MINIZITI_MODIFY_HOSTS=1
                             shift
             ;;
@@ -354,6 +359,7 @@ main(){
 
     : "${ZITI_NAMESPACE:=${MINIKUBE_PROFILE}}"
 
+    MINIZITI_PROFILE_MARKER="miniziti-controller.$MINIKUBE_PROFILE"
     MINIZITI_INGRESS_ZONE="$MINIKUBE_PROFILE.ziti"
     state_dir="$(makeMinizitiXDGStateDir "$DETECTED_OS")"
     profile_dir="$state_dir/profiles/${MINIKUBE_PROFILE}"
@@ -388,6 +394,9 @@ main(){
                 rm -f  "$cert_file"
             fi
         fi
+
+        logDebug "Removing $MINIKUBE_PROFILE profile identity from ziti-cli.json"
+        ziti edge logout --cli-identity "$MINIKUBE_PROFILE" >&3
 
         exit 0
     }
@@ -644,8 +653,8 @@ main(){
             --username "admin" \
             --password >&3
 
-    logDebug "setting ziti cli default identity"
-    ziti edge use "$MINIKUBE_PROFILE"
+    logInfo "setting ziti cli default identity to '$MINIKUBE_PROFILE'"
+    ziti edge use "$MINIKUBE_PROFILE" >&3
 
     router_name='miniziti-router'
     router_ott="$identities_dir/$router_name.jwt"
