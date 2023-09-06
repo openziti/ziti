@@ -58,7 +58,8 @@ echo "INFO: Testing Compose project $PWD"
 
 declare -a QUICK_FILES=(
     ../go.{mod,sum}
-    test/{quickstart_test.go,compose.override.yml}
+    ./ziti/cmd/edge/quickstart_manual_test.go
+    test/compose.override.yml
     docker/{simplified-docker-compose.yml,.env}
 )
         # TODO: re-add cert checks files after https://github.com/openziti/ziti/pull/1278
