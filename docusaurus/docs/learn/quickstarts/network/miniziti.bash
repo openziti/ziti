@@ -159,20 +159,20 @@ HOSTS_FILE='/etc/hosts'
 cleanHosts() {
     logWarn "Removing stale miniziti entries from $HOSTS_FILE"
     if (( EUID != 0 )); then
-        sudo sed -i "/${MINIZITI_PROFILE_MARKER}/d" "$HOSTS_FILE"
+        sudo sed -i "/$MINIZITI_PROFILE_MARKER/d" "$HOSTS_FILE"
     else
-        sed -i "/${MINIZITI_PROFILE_MARKER}/d" "$HOSTS_FILE"
+        sed -i "/$MINIZITI_PROFILE_MARKER/d" "$HOSTS_FILE"
     fi
 }
 
 installHosts() {
     hosts=(
-        "miniziti-controller.${MINIZITI_INGRESS_ZONE}"
-        "miniziti-router.${MINIZITI_INGRESS_ZONE}"
-        "miniziti-console.${MINIZITI_INGRESS_ZONE}"
+        "miniziti-controller.$MINIZITI_INGRESS_ZONE"
+        "miniziti-router.$MINIZITI_INGRESS_ZONE"
+        "miniziti-console.$MINIZITI_INGRESS_ZONE"
     )
 
-    hosts_line="${MINIKUBE_NODE_EXTERNAL} ${hosts[*]}"
+    hosts_line="$MINIKUBE_NODE_EXTERNAL ${hosts[*]} $MINIZITI_PROFILE_MARKER"
 
     if ! grep -q "$hosts_line" "$HOSTS_FILE"; then
 
@@ -193,7 +193,7 @@ installHosts() {
 
 getAdminSecret() {
     kubectl_wrapper get secrets "ziti-controller-admin-secret" \
-        --namespace "${ZITI_NAMESPACE}" \
+        --namespace "$ZITI_NAMESPACE" \
         --output go-template='{{index .data "admin-password" | base64decode }}'
 }
 
@@ -365,7 +365,7 @@ main(){
 
     : "${ZITI_NAMESPACE:=${MINIKUBE_PROFILE}}"
 
-    MINIZITI_PROFILE_MARKER="miniziti-controller.$MINIKUBE_PROFILE."
+    MINIZITI_PROFILE_MARKER="# miniziti:profile:$MINIKUBE_PROFILE"
     MINIZITI_INGRESS_ZONE="$MINIKUBE_PROFILE.ziti"
     STATE_DIR="$(makeMinizitiStateDir)"
     PROFILE_DIR="$STATE_DIR/profiles/${MINIKUBE_PROFILE}"
