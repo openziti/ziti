@@ -80,15 +80,29 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-host", "host.v1", `
 		{
-			"address" : "ziti-smoketest-files.s3-us-west-1.amazonaws.com", 
-			"port" : 443, 
+			"address" : "ziti-smoketest-files.s3-us-west-1.amazonaws.com",
+			"port" : 443,
 			"protocol" : "tcp"
 		}`))
 
 	workflow.AddAction(zitilib_actions.Edge("create", "config", "iperf-host", "host.v1", `
 		{
-			"address" : "localhost", 
-			"port" : 5201, 
+			"address" : "localhost",
+			"port" : 5201,
+			"protocol" : "tcp"
+		}`))
+
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "ssh-host", "host.v1", `
+		{
+			"address" : "localhost",
+			"port" : 22,
+			"protocol" : "tcp"
+		}`))
+
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "fortio-host", "host.v1", `
+		{
+			"address" : "localhost",
+			"port" : 8080,
 			"protocol" : "tcp"
 		}`))
 
@@ -122,6 +136,26 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 			workflow.AddAction(zitilib_actions.Edge("create", "config", iperfConfigName, "intercept.v1", iperfConfigDef))
 
+			sshConfigName := fmt.Sprintf("ssh-intercept-%s%s", hostType, suffix)
+			sshConfigDef := fmt.Sprintf(`
+				{
+					"addresses": ["ssh-%s%s.ziti"],
+					"portRanges" : [ { "low": 2022, "high": 2022 } ],
+					"protocols": ["tcp"]
+				}`, hostType, suffix)
+
+			workflow.AddAction(zitilib_actions.Edge("create", "config", sshConfigName, "intercept.v1", sshConfigDef))
+
+			fortioConfigName := fmt.Sprintf("fortio-intercept-%s%s", hostType, suffix)
+			fortioConfigDef := fmt.Sprintf(`
+				{
+					"addresses": ["fortio-%s%s.ziti"],
+					"portRanges" : [ { "low": 8080, "high": 8080 } ],
+					"protocols": ["tcp"]
+				}`, hostType, suffix)
+
+			workflow.AddAction(zitilib_actions.Edge("create", "config", fortioConfigName, "intercept.v1", fortioConfigDef))
+
 			filesServiceName := fmt.Sprintf("%s-files%s", hostType, suffix)
 			filesConfigs := fmt.Sprintf("files-host,%s", filesConfigName)
 			workflow.AddAction(zitilib_actions.Edge("create", "service", filesServiceName, "-c", filesConfigs, "-e", encryptionFlag, "-a", hostType))
@@ -129,6 +163,14 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 			iperfServiceName := fmt.Sprintf("%s-iperf%s", hostType, suffix)
 			iperfConfigs := fmt.Sprintf("iperf-host,%s", iperfConfigName)
 			workflow.AddAction(zitilib_actions.Edge("create", "service", iperfServiceName, "-c", iperfConfigs, "-e", encryptionFlag, "-a", hostType))
+
+			sshServiceName := fmt.Sprintf("%s-ssh%s", hostType, suffix)
+			sshConfigs := fmt.Sprintf("ssh-host,%s", sshConfigName)
+			workflow.AddAction(zitilib_actions.Edge("create", "service", sshServiceName, "-c", sshConfigs, "-e", encryptionFlag, "-a", hostType))
+
+			fortioServiceName := fmt.Sprintf("%s-fortio%s", hostType, suffix)
+			fortioConfigs := fmt.Sprintf("fortio-host,%s", fortioConfigName)
+			workflow.AddAction(zitilib_actions.Edge("create", "service", fortioServiceName, "-c", fortioConfigs, "-e", encryptionFlag, "-a", hostType))
 		}
 	}
 
