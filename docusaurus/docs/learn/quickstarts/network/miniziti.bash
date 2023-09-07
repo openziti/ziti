@@ -210,16 +210,30 @@ miniziti_login() {
 
 logger() {
     local caller="${FUNCNAME[1]}"
+
     if (( $# < 1 )); then
         echo "ERROR: $caller() takes 1 or more args" >&2
         return 1
     fi
 
+    local message="$*"
+
+    if [[ "$message" =~ ^r\'(.+)\'$ ]]; then
+        raw_message="${BASH_REMATCH[1]}"
+        message="$raw_message"
+    fi
+
     caller_level="${caller##log}"
     if (( MINIZITI_DEBUG )); then
-        echo -e "${caller_level^^} ${FUNCNAME[2]}:${BASH_LINENO[1]}: $*"
+        line="${caller_level^^} ${FUNCNAME[2]}:${BASH_LINENO[1]}: $message"
     else
-        echo -e "${caller_level^^} $*"
+        line="${caller_level^^} $message"
+    fi
+
+    if [[ -n "${raw_message-}" ]]; then
+        echo -E "${line}"
+    else
+        echo -e "${line}"
     fi
 }
 
@@ -882,7 +896,7 @@ main(){
     showAdminCreds
     echo -e "\n\n"
 
-    logInfo "Success! Remember to add your edge client identity '$(pathToNative "$CLIENT_OTT")' in your tunneler, e.g. Ziti Desktop Edge."
+    logInfo "r'Success! Remember to add your edge client identity '$(pathToNative "$CLIENT_OTT")' in your tunneler, e.g. Ziti Desktop Edge.'"
 }
 
 main "$@"
