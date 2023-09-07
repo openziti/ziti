@@ -97,7 +97,7 @@ detectOs(){
 
 makeMinizitiStateDir() {
     case "$DETECTED_OS" in
-        MacOS)
+        macOS)
             state_dir="${XDG_STATE_DIR:-$HOME/Library/Application Support}/miniziti"
             ;;
         Linux|Windows)
@@ -224,16 +224,17 @@ logger() {
     fi
 
     caller_level="${caller##log}"
+    level="$(echo "$caller_level" | tr '[:lower:]' '[:upper:]')"
     if (( MINIZITI_DEBUG )); then
-        line="${caller_level^^} ${FUNCNAME[2]}:${BASH_LINENO[1]}: $message"
+        line="$level ${FUNCNAME[2]}:${BASH_LINENO[1]}: $message"
     else
-        line="${caller_level^^} $message"
+        line="$level $message"
     fi
 
     if [[ -n "${raw_message-}" ]]; then
-        echo -E "${line}"
+        echo -E "$line"
     else
-        echo -e "${line}"
+        echo -e "$line"
     fi
 }
 
