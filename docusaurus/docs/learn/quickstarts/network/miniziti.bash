@@ -266,6 +266,7 @@ helm_wrapper() {
 }
 
 main(){
+    MINIZITI_DEBUG=0
     # require commands
     declare -a BINS=(ziti minikube kubectl helm sed)
     for BIN in "${BINS[@]}"; do
@@ -284,9 +285,7 @@ main(){
             DO_ZITI_LOGIN=0 \
             MINIKUBE_NODE_EXTERNAL \
             MINIKUBE_PROFILE="miniziti" \
-            MINIZITI_DEBUG=0 \
             MINIZITI_HOSTS=1 \
-            MINIZITI_INTERCEPT_ZONE="miniziti" \
             MINIZITI_MODIFY_HOSTS=0 \
             RUN_ZITI_CLI=0 \
             SAFETY_WAIT=1 \
@@ -384,7 +383,8 @@ main(){
     : "${ZITI_NAMESPACE:=${MINIKUBE_PROFILE}}"
 
     MINIZITI_PROFILE_MARKER="# miniziti:profile:$MINIKUBE_PROFILE"
-    MINIZITI_INGRESS_ZONE="$MINIKUBE_PROFILE.ziti"
+    MINIZITI_INGRESS_ZONE="$MINIKUBE_PROFILE.internal"
+    MINIZITI_INTERCEPT_ZONE="$MINIKUBE_PROFILE.private" \
     STATE_DIR="$(makeMinizitiStateDir)"
     PROFILE_DIR="$STATE_DIR/profiles/${MINIKUBE_PROFILE}"
     IDENTITIES_DIR="$PROFILE_DIR/identities"
