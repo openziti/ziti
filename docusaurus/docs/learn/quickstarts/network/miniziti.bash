@@ -231,11 +231,10 @@ logger() {
     fi
 
     caller_level="${caller##log}"
-    level="$(echo "$caller_level" | tr '[:lower:]' '[:upper:]')"
     if (( MINIZITI_DEBUG )); then
-        line="$level ${FUNCNAME[2]}:${BASH_LINENO[1]}: $message"
+        line="${caller_level^^} ${FUNCNAME[2]}:${BASH_LINENO[1]}: $message"
     else
-        line="$level $message"
+        line="${caller_level^^} $message"
     fi
 
     if [[ -n "${raw_message-}" ]]; then
@@ -429,7 +428,10 @@ main(){
             rm -rf  "$PROFILE_DIR"
         fi
 
-        CERT_FILE="$(find "$ZITI_CLI_CERTS_DIR" -maxdepth 1 -type f -name "miniziti-controller.$MINIKUBE_PROFILE.*" -print -quit)"
+        # This is best effort, when '--no-hosts' is specified,
+        # the right file is unknown due to the way the cli names the file,
+        # and we don't store enough state to recover it at this time.
+        CERT_FILE="$(find "$ZITI_CLI_CERTS_DIR" -maxdepth 1 -type f -name "miniziti-controller.$MINIKUBE_PROFILE.*" -print -quit 2> /dev/null)"
         if [[ -n "$CERT_FILE" ]]; then
             logWarn "Deleting miniziti certificate file: $CERT_FILE"
             rm -f  "$CERT_FILE"
