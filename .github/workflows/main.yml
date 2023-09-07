@@ -126,6 +126,11 @@ jobs:
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
+      - name: Run Go Quickstart Test
+        timeout-minutes: 5
+        run: |
+          go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -137,7 +142,6 @@ jobs:
     name: Fablab Smoketest
     # not applicable to forks. shouldn't run on release build
     if: github.repository_owner == 'openziti' && github.ref != 'refs/heads/main'
-    needs: [ quickstart ]
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
@@ -232,18 +236,6 @@ jobs:
           else
             echo "WARN: No instance archive found for simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg" >&2
           fi
-
-  quickstart:
-    name: Run the Go Quickstart
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Git Shallow Checkout
-        uses: actions/checkout@v3
-
-      - name: Run Go Quickstart Test
-        timeout-minutes: 5
-        run: |
-          go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
 
   publish:
     name: Publish Binaries
