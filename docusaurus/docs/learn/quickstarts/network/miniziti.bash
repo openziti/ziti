@@ -261,6 +261,10 @@ kubectl_wrapper() {
     minikube kubectl --profile "$MINIKUBE_PROFILE" -- --context "$MINIKUBE_PROFILE" "$@"
 }
 
+helm_wrapper() {
+    helm --kube-context "$MINIKUBE_PROFILE" "$@"
+}
+
 main(){
     # require commands
     declare -a BINS=(ziti minikube kubectl helm sed)
@@ -521,12 +525,12 @@ main(){
     HELM_REPOS[jetstack]="charts.jetstack.io"
     HELM_REPOS[ingress-nginx]="kubernetes.github.io/ingress-nginx"
     for REPO in "${!HELM_REPOS[@]}"; do
-        if helm repo list | cut -f1 | grep -qE "^${REPO}(\s+)?$"; then
+        if helm_wrapper repo list | cut -f1 | grep -qE "^${REPO}(\s+)?$"; then
             logDebug "refreshing ${REPO} Helm Charts"
-            helm repo update "${REPO}" >&3
+            helm_wrapper repo update "${REPO}" >&3
         else
             logInfo "subscribing to ${REPO} Helm Charts"
-            helm repo add "${REPO}" "https://${HELM_REPOS[${REPO}]}" >&3
+            helm_wrapper repo add "${REPO}" "https://${HELM_REPOS[${REPO}]}" >&3
         fi
     done
 
@@ -534,9 +538,9 @@ main(){
     ## Ensure OpenZiti Controller is Upgraded and Ready
     #
 
-    if helm status ziti-controller --namespace "${ZITI_NAMESPACE}" &>/dev/null; then
+    if helm_wrapper status ziti-controller --namespace "${ZITI_NAMESPACE}" &>/dev/null; then
         logInfo "upgrading openziti controller"
-        helm upgrade "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller" \
+        helm_wrapper upgrade "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller" \
             --namespace "${ZITI_NAMESPACE}" \
             --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}" \
             --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}" \
@@ -546,9 +550,9 @@ main(){
     else
         logInfo "installing openziti controller"
         (( ZITI_CHARTS_ALT )) && {
-            helm dependency build "${ZITI_CHARTS_REF}/ziti-controller" >&3
+            helm_wrapper dependency build "${ZITI_CHARTS_REF}/ziti-controller" >&3
         }
-        helm install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller" \
+        helm_wrapper install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller" \
             --namespace "${ZITI_NAMESPACE}" --create-namespace \
             --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}" \
             --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}" \
@@ -697,9 +701,9 @@ main(){
             --jwt-output-file "$ROUTER_OTT" >&3
     fi
 
-    if  helm status ziti-router --namespace "${ZITI_NAMESPACE}" &>/dev/null; then
+    if  helm_wrapper status ziti-router --namespace "${ZITI_NAMESPACE}" &>/dev/null; then
         logDebug "upgrading router chart as 'ziti-router'"
-        helm upgrade "ziti-router" "${ZITI_CHARTS_REF}/ziti-router" \
+        helm_wrapper upgrade "ziti-router" "${ZITI_CHARTS_REF}/ziti-router" \
             --namespace "${ZITI_NAMESPACE}" \
             --set enrollmentJwt=\ \
             --set edge.advertisedHost="miniziti-router.${MINIZITI_INGRESS_ZONE}" \
@@ -709,9 +713,9 @@ main(){
     else
         logDebug "installing router chart as 'ziti-router'"
         (( ZITI_CHARTS_ALT )) && {
-            helm dependency build "${ZITI_CHARTS_REF}/ziti-router" >&3
+            helm_wrapper dependency build "${ZITI_CHARTS_REF}/ziti-router" >&3
         }
-        helm install "ziti-router" "${ZITI_CHARTS_REF}/ziti-router" \
+        helm_wrapper install "ziti-router" "${ZITI_CHARTS_REF}/ziti-router" \
             --namespace "${ZITI_NAMESPACE}" \
             --set-file enrollmentJwt="$ROUTER_OTT" \
             --set edge.advertisedHost="miniziti-router.${MINIZITI_INGRESS_ZONE}" \
@@ -739,10 +743,10 @@ main(){
     ## Ensure OpenZiti Console is Configured and Ready
     #
 
-    if  helm --namespace "${ZITI_NAMESPACE}" list --all \
+    if  helm_wrapper --namespace "${ZITI_NAMESPACE}" list --all \
         | grep -q ziti-console; then
         logDebug "upgrading console chart as 'ziti-console'"
-        helm upgrade "ziti-console" "${ZITI_CHARTS_REF}/ziti-console" \
+        helm_wrapper upgrade "ziti-console" "${ZITI_CHARTS_REF}/ziti-console" \
             --namespace "${ZITI_NAMESPACE}" \
             --set ingress.advertisedHost="miniziti-console.${MINIZITI_INGRESS_ZONE}" \
             --set "settings.edgeControllers[0].url=https://ziti-controller-client.${ZITI_NAMESPACE}.svc:443" \
@@ -750,9 +754,9 @@ main(){
     else
         logDebug "installing console chart as 'ziti-console'"
         (( ZITI_CHARTS_ALT )) && {
-            helm dependency build "${ZITI_CHARTS_REF}/ziti-console" >&3
+            helm_wrapper dependency build "${ZITI_CHARTS_REF}/ziti-console" >&3
         }
-        helm install "ziti-console" "${ZITI_CHARTS_REF}/ziti-console" \
+        helm_wrapper install "ziti-console" "${ZITI_CHARTS_REF}/ziti-console" \
             --namespace "${ZITI_NAMESPACE}" \
             --set ingress.advertisedHost="miniziti-console.${MINIZITI_INGRESS_ZONE}" \
             --set "settings.edgeControllers[0].url=https://ziti-controller-client.${ZITI_NAMESPACE}.svc:443" \
@@ -882,9 +886,9 @@ main(){
     if [[ -s "$HTTPBIN_JSON" ]]; then
         logDebug "installing httpbin chart as 'miniziti-httpbin'"
         (( ZITI_CHARTS_ALT )) && {
-            helm dependency build "${ZITI_CHARTS_REF}/httpbin" >&3
+            helm_wrapper dependency build "${ZITI_CHARTS_REF}/httpbin" >&3
         }
-        helm install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
+        helm_wrapper install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
             --set-file zitiIdentity="$HTTPBIN_JSON" \
             --set zitiServiceName=httpbin-service >&3
         rm -f "$HTTPBIN_JSON"
