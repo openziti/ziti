@@ -96,21 +96,15 @@ detectOs(){
 }
 
 makeMinizitiStateDir() {
-    local detected_os="$1"
-
-    case "$detected_os" in
+    case "$DETECTED_OS" in
         MacOS)
             state_dir="${XDG_STATE_DIR:-$HOME/Library/Application Support}/miniziti"
             ;;
-        Linux)
+        Linux|Windows)
             state_dir="${XDG_STATE_DIR:-$HOME/.local/state}/miniziti"
             ;;
-        Windows)
-            wsl_state_dir="${XDG_STATE_DIR:-$HOME/.local/state}/miniziti"
-            state_dir="$(wslpath -w "$wsl_state_dir")"
-            ;;
         *)
-            logError "Unknown os: $detected_os"
+            logError "Unknown os: $DETECTED_OS"
             exit 1
     esac
 
@@ -120,6 +114,14 @@ makeMinizitiStateDir() {
     fi
 
     echo "$state_dir"
+}
+
+pathToNative() {
+    local path="$1"
+    case "$DETECTED_OS" in
+        Windows) wslpath -w "$path" ;;
+        *) echo "$path" ;;
+    esac
 }
 
 testClusterDns(){
@@ -365,7 +367,7 @@ main(){
 
     MINIZITI_PROFILE_MARKER="miniziti-controller.$MINIKUBE_PROFILE."
     MINIZITI_INGRESS_ZONE="$MINIKUBE_PROFILE.ziti"
-    STATE_DIR="$(makeMinizitiStateDir "$DETECTED_OS")"
+    STATE_DIR="$(makeMinizitiStateDir)"
     PROFILE_DIR="$STATE_DIR/profiles/${MINIKUBE_PROFILE}"
     IDENTITIES_DIR="$PROFILE_DIR/identities"
 
@@ -880,7 +882,7 @@ main(){
     showAdminCreds
     echo -e "\n\n"
 
-    logInfo "Success! Remember to add your edge client identity '$CLIENT_OTT' in your tunneler, e.g. Ziti Desktop Edge."
+    logInfo "Success! Remember to add your edge client identity '$(pathToNative "$CLIENT_OTT")' in your tunneler, e.g. Ziti Desktop Edge."
 }
 
 main "$@"
