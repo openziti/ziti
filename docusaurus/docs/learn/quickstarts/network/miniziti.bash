@@ -29,8 +29,8 @@ _usage(){
     echo -e "\n COMMANDS\n"\
             "   start\t\tstart miniziti (default)\n"\
             "   delete\t\tdelete miniziti\n"\
+            "   creds\t\tprints admin user updb credentials\n"\
             "   login\t\trun ziti edge login with miniziti context\n"\
-            "   admin-creds\t\tprints admin user updb credentials\n"\
             "   ziti\t\tziti cli wrapper with miniziti context\n"\
             "   help\t\tshow these usage hints\n"\
             "\n OPTIONS\n"\
@@ -293,10 +293,10 @@ main(){
             delete)         DELETE_MINIZITI=1
                             shift
             ;;
-            login)          DO_ZITI_LOGIN=1
+            creds)          SHOW_ADMIN_CREDS=1
                             shift
             ;;
-            admin-creds)     SHOW_ADMIN_CREDS=1
+            login)          DO_ZITI_LOGIN=1
                             shift
             ;;
             ziti)           RUN_ZITI_CLI=1
