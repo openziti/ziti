@@ -116,6 +116,13 @@ makeMinizitiStateDir() {
     echo "$state_dir"
 }
 
+getZitiCliHome() {
+    case "$DETECTED_OS" in
+        Linux) echo "$HOME/.config/ziti" ;;
+        *) echo "$HOME/.ziti" ;;
+    esac
+}
+
 pathToNative() {
     local path="$1"
     case "$DETECTED_OS" in
@@ -385,7 +392,9 @@ main(){
 
     MINIZITI_PROFILE_MARKER="# miniziti:profile:$MINIKUBE_PROFILE"
     MINIZITI_INGRESS_ZONE="$MINIKUBE_PROFILE.internal"
-    MINIZITI_INTERCEPT_ZONE="$MINIKUBE_PROFILE.private" \
+    MINIZITI_INTERCEPT_ZONE="$MINIKUBE_PROFILE.private"
+    ZITI_CLI_HOME="$(getZitiCliHome)"
+    ZITI_CLI_CERTS_DIR="$ZITI_CLI_HOME/certs"
     STATE_DIR="$(makeMinizitiStateDir)"
     PROFILE_DIR="$STATE_DIR/profiles/${MINIKUBE_PROFILE}"
     IDENTITIES_DIR="$PROFILE_DIR/identities"
@@ -420,7 +429,7 @@ main(){
             rm -rf  "$PROFILE_DIR"
         fi
 
-        CERT_FILE="$(find "$HOME/.config/ziti/certs" -maxdepth 1 -type f -name "miniziti-controller.$MINIKUBE_PROFILE.*" -print -quit)"
+        CERT_FILE="$(find "$ZITI_CLI_CERTS_DIR" -maxdepth 1 -type f -name "miniziti-controller.$MINIKUBE_PROFILE.*" -print -quit)"
         if [[ -n "$CERT_FILE" ]]; then
             logWarn "Deleting miniziti certificate file: $CERT_FILE"
             rm -f  "$CERT_FILE"
