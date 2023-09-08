@@ -448,6 +448,12 @@ main(){
             logWarn "Deleting miniziti certificate file: $CERT_FILE"
             rm -f  "$CERT_FILE"
         fi
+
+        if check_command ziti &>/dev/null; then
+            logWarn "Removing $MINIKUBE_PROFILE profile identity from ziti-cli.json"
+            ziti edge logout --cli-identity "$MINIKUBE_PROFILE" >&3
+        fi
+
         exit 0
     }
 
