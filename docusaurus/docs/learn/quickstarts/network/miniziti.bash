@@ -210,6 +210,7 @@ showAdminCreds() {
 }
 
 miniziti_login() {
+    check_command ziti
     getAdminSecret | xargs ziti edge login  \
             --cli-identity "$MINIKUBE_PROFILE" \
             --username "admin" \
@@ -275,15 +276,19 @@ helm_wrapper() {
     helm --kube-context "$MINIKUBE_PROFILE" "$@"
 }
 
+check_command() {
+    if ! command -v "$1" &>/dev/null; then
+        logError "this script requires command '$1'. Please install on the search PATH and try again."
+        $1
+    fi
+}
+
 main(){
     MINIZITI_DEBUG=0
     # require commands
-    declare -a BINS=(ziti minikube kubectl helm sed)
+    declare -a BINS=(minikube helm sed)
     for BIN in "${BINS[@]}"; do
-        if ! command -v "$BIN" &>/dev/null; then
-            logError "this script requires commands '${BINS[*]}'. Please install on the search PATH and try again."
-            $BIN || exit 1
-        fi
+        check_command "$BIN"
     done
 
     # open a descriptor for debug messages
