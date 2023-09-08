@@ -34,7 +34,7 @@ _usage(){
             "   ziti\t\tziti cli wrapper with miniziti context\n"\
             "   kubectl\t\tkubectl cli wrapper with miniziti context\n"\
             "   minikube\t\tminikube cli wrapper with miniziti context\n"\
-            "   exec\t\trun bash interactively inside the ziti-controller container\n"\
+            "   shell\t\trun interactive shell inside the ziti-controller container\n"\
             "   help\t\tshow these usage hints\n"\
             "\n OPTIONS\n"\
             "   --quiet\t\tsuppress INFO messages\n"\
