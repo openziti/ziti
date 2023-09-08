@@ -41,9 +41,11 @@ func (st *circuitTable) setForwardTable(circuitId string, ft *forwardTable) {
 	st.circuits.Set(circuitId, ft)
 }
 
-func (st *circuitTable) getForwardTable(circuitId string) (*forwardTable, bool) {
+func (st *circuitTable) getForwardTable(circuitId string, markActive bool) (*forwardTable, bool) {
 	if ft, found := st.circuits.Get(circuitId); found {
-		atomic.StoreInt64(&ft.last, time.Now().UnixMilli())
+		if markActive {
+			atomic.StoreInt64(&ft.last, time.Now().UnixMilli())
+		}
 		return ft, true
 	}
 	return nil, false

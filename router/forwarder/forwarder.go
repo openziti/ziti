@@ -20,9 +20,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/common/inspect"
 	"github.com/openziti/fabric/common/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/metrics"
@@ -123,7 +123,7 @@ func (forwarder *Forwarder) UnregisterLink(link xlink.LinkDestination) {
 func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
 	circuitId := route.CircuitId
 	var circuitFt *forwardTable
-	if ft, found := forwarder.circuits.getForwardTable(circuitId); found {
+	if ft, found := forwarder.circuits.getForwardTable(circuitId, true); found {
 		circuitFt = ft
 	} else {
 		circuitFt = newForwardTable(ctrlId)
@@ -159,10 +159,18 @@ func (forwarder *Forwarder) EndCircuit(circuitId string) {
 }
 
 func (forwarder *Forwarder) ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload) error {
+	return forwarder.forwardPayload(srcAddr, payload, true)
+}
+
+func (forwarder *Forwarder) RetransmitPayload(srcAddr xgress.Address, payload *xgress.Payload) error {
+	return forwarder.forwardPayload(srcAddr, payload, false)
+}
+
+func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgress.Payload, markActive bool) error {
 	log := pfxlog.ContextLogger(string(srcAddr))
 
 	circuitId := payload.GetCircuitId()
-	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId); found {
+	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId, markActive); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
 			if dst, found := forwarder.destinations.getDestination(dstAddr); found {
 				if err := dst.SendPayload(payload); err != nil {
@@ -185,7 +193,7 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 	log := pfxlog.ContextLogger(string(srcAddr))
 
 	circuitId := acknowledgement.CircuitId
-	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId); found {
+	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId, true); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
 			if dst, found := forwarder.destinations.getDestination(dstAddr); found {
 				if err := dst.SendAcknowledgement(acknowledgement); err != nil {
@@ -213,7 +221,7 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 
 	var err error
 
-	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId); found {
+	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId, true); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
 			if dst, found := forwarder.destinations.getDestination(dstAddr); found {
 				if control.IsTypeTraceRoute() {
