@@ -262,7 +262,8 @@ logDebug() {
 }
 
 ziti_wrapper() {
-    ziti "$@" --cli-identity "$MINIKUBE_PROFILE"
+    CONTROLLER_POD=$(kubectl_wrapper get pods --selector app.kubernetes.io/component=ziti-controller --output jsonpath='{.items[0].metadata.name}')
+    kubectl_wrapper exec "$CONTROLLER_POD" --container ziti-controller -- bash -c "zitiLogin &>/dev/null; ziti $*"
 }
 
 kubectl_wrapper() {
@@ -441,10 +442,6 @@ main(){
             logWarn "Deleting miniziti certificate file: $CERT_FILE"
             rm -f  "$CERT_FILE"
         fi
-
-        logWarn "Removing $MINIKUBE_PROFILE profile identity from ziti-cli.json"
-        ziti_wrapper edge logout --cli-identity "$MINIKUBE_PROFILE" >&3
-
         exit 0
     }
 
