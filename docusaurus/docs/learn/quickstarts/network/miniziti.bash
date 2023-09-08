@@ -694,13 +694,6 @@ main(){
     ## Ensure OpenZiti Router is Enrolled and Ready
     #
 
-    logDebug "fetching admin password from k8s secret to log in to ziti mgmt"
-            getAdminSecret | xargs ziti edge login "miniziti-controller.${MINIZITI_INGRESS_ZONE}:443" \
-            --yes \
-            --cli-identity "$MINIKUBE_PROFILE" \
-            --username "admin" \
-            --password >&3
-
     logInfo "Setting default ziti identity to: $MINIKUBE_PROFILE"
     ziti_wrapper edge use "$MINIKUBE_PROFILE" >&3
 
