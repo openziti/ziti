@@ -34,6 +34,7 @@ _usage(){
             "   ziti\t\tziti cli wrapper with miniziti context\n"\
             "   kubectl\t\tkubectl cli wrapper with miniziti context\n"\
             "   minikube\t\tminikube cli wrapper with miniziti context\n"\
+            "   exec\t\trun bash interactively inside the ziti-controller container\n"\
             "   help\t\tshow these usage hints\n"\
             "\n OPTIONS\n"\
             "   --quiet\t\tsuppress INFO messages\n"\
@@ -263,10 +264,16 @@ logDebug() {
     logger "$*" >&3
 }
 
+controller_pod() {
+    kubectl_wrapper get pods --selector app.kubernetes.io/component=ziti-controller --output jsonpath='{.items[0].metadata.name}'
+}
+
 ziti_wrapper() {
-    local controller_pod
-    controller_pod=$(kubectl_wrapper get pods --selector app.kubernetes.io/component=ziti-controller --output jsonpath='{.items[0].metadata.name}')
-    kubectl_wrapper exec "$controller_pod" --container ziti-controller -- bash -c "zitiLogin &>/dev/null; ziti $*"
+    kubectl_wrapper exec "$(controller_pod)" --container ziti-controller -- bash -c "zitiLogin &>/dev/null; ziti $*"
+}
+
+shell_wrapper() {
+    kubectl_wrapper exec "$(controller_pod)" --container ziti-controller --tty --stdin -- bash
 }
 
 kubectl_wrapper() {
@@ -347,6 +354,10 @@ main(){
             ;;
             minikube)       shift
                             minikube_wrapper "${@:-}"
+                            exit
+            ;;
+            shell)          shift
+                            shell_wrapper "${@:-}"
                             exit
             ;;
             -p|--profile)   validateDnsName "$2"
