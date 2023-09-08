@@ -33,6 +33,7 @@ _usage(){
             "   login\t\trun ziti edge login with miniziti context\n"\
             "   ziti\t\tziti cli wrapper with miniziti context\n"\
             "   kubectl\t\tkubectl cli wrapper with miniziti context\n"\
+            "   minikube\t\tminikube cli wrapper with miniziti context\n"\
             "   help\t\tshow these usage hints\n"\
             "\n OPTIONS\n"\
             "   --quiet\t\tsuppress INFO messages\n"\
@@ -272,6 +273,10 @@ kubectl_wrapper() {
     minikube kubectl --profile "$MINIKUBE_PROFILE" -- --context "$MINIKUBE_PROFILE" "$@"
 }
 
+minikube_wrapper() {
+    minikube --profile "$MINIKUBE_PROFILE" "$@"
+}
+
 helm_wrapper() {
     helm --kube-context "$MINIKUBE_PROFILE" "$@"
 }
@@ -338,6 +343,10 @@ main(){
             ;;
             kubectl)        shift
                             kubectl_wrapper "${@:-}"
+                            exit
+            ;;
+            minikube)       shift
+                            minikube_wrapper "${@:-}"
                             exit
             ;;
             -p|--profile)   validateDnsName "$2"
