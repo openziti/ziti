@@ -224,7 +224,7 @@ logger() {
         return 1
     fi
 
-    local message="$*"
+    --container ziti-controller local message="$*"
 
     if [[ "$message" =~ ^r\'(.+)\'$ ]]; then
         raw_message="${BASH_REMATCH[1]}"
@@ -262,8 +262,9 @@ logDebug() {
 }
 
 ziti_wrapper() {
-    CONTROLLER_POD=$(kubectl_wrapper get pods --selector app.kubernetes.io/component=ziti-controller --output jsonpath='{.items[0].metadata.name}')
-    kubectl_wrapper exec "$CONTROLLER_POD" --container ziti-controller -- bash -c "zitiLogin &>/dev/null; ziti $*"
+    local controller_pod
+    controller_pod=$(kubectl_wrapper get pods --selector app.kubernetes.io/component=ziti-controller --output jsonpath='{.items[0].metadata.name}')
+    kubectl_wrapper exec "$controller_pod" --container ziti-controller -- bash -c "zitiLogin &>/dev/null; ziti $*"
 }
 
 kubectl_wrapper() {
