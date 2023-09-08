@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package cmd
+package create
 
 import (
 	_ "embed"
@@ -83,7 +83,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		Long:    createConfigEnvironmentLong,
 		Example: createConfigEnvironmentExample,
 		PreRun: func(cmd *cobra.Command, args []string) {
-			data.populateConfigValues()
+			data.PopulateConfigValues()
 			// Set router identities
 			SetZitiRouterIdentity(&data.Router, validateRouterName(""))
 			// Set up other identity info

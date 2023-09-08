@@ -14,10 +14,11 @@
 	limitations under the License.
 */
 
-package cmd
+package create
 
 import (
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/pki"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	"github.com/spf13/cobra"
 	"io"
@@ -43,11 +44,11 @@ func NewCmdCreate(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	cmd.AddCommand(NewCmdCreateConfig())
 
-	cmd.AddCommand(NewCmdPKICreateCA(out, errOut))
-	cmd.AddCommand(NewCmdPKICreateIntermediate(out, errOut))
-	cmd.AddCommand(NewCmdPKICreateServer(out, errOut))
-	cmd.AddCommand(NewCmdPKICreateClient(out, errOut))
-	cmd.AddCommand(NewCmdPKICreateCSR(out, errOut))
+	cmd.AddCommand(pki.NewCmdPKICreateCA(out, errOut))
+	cmd.AddCommand(pki.NewCmdPKICreateIntermediate(out, errOut))
+	cmd.AddCommand(pki.NewCmdPKICreateServer(out, errOut))
+	cmd.AddCommand(pki.NewCmdPKICreateClient(out, errOut))
+	cmd.AddCommand(pki.NewCmdPKICreateCSR(out, errOut))
 
 	return cmd
 }

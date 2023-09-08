@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"io"
@@ -27,12 +28,12 @@ import (
 const ()
 
 type ArtOptions struct {
-	CommonOptions
+	common.CommonOptions
 }
 
 func NewCmdArt(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &ArtOptions{
-		CommonOptions: CommonOptions{
+		CommonOptions: common.CommonOptions{
 			Out: out,
 			Err: errOut,
 		},

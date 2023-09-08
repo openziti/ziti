@@ -12,7 +12,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.15
 	github.com/openziti/channel/v2 v2.0.95
-	github.com/openziti/edge v0.24.404
+	github.com/openziti/edge v0.24.405
 	github.com/openziti/fablab v0.5.5
 	github.com/openziti/fabric v0.24.23
 	github.com/openziti/foundation/v2 v2.0.30

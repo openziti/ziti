@@ -14,12 +14,12 @@
 	limitations under the License.
 */
 
-package cmd
+package create
 
 import (
 	_ "embed"
 	edge "github.com/openziti/edge/controller/config"
-	helpers2 "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
@@ -107,7 +107,7 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 					logrus.SetOutput(logOut)
 				}
 
-				data.populateConfigValues()
+				data.PopulateConfigValues()
 
 				// Update controller specific values with configOptions passed in if the argument was provided or the value is currently blank
 				if data.Controller.Ctrl.AdvertisedPort == "" || controllerOptions.CtrlPort != constants.DefaultCtrlAdvertisedPort {
@@ -131,7 +131,7 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 				controllerOptions.Cmd = cmd
 				controllerOptions.Args = args
 				err := controllerOptions.run(data)
-				helpers2.CheckErr(err)
+				helpers.CheckErr(err)
 			},
 			PostRun: func(cmd *cobra.Command, args []string) {
 				// Reset log output after run completes
@@ -196,30 +196,30 @@ func SetControllerIdentity(data *ControllerTemplateValues) {
 func SetControllerIdentityCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlCertVarName)
 	if val == "" {
-		val = workingDir + "/" + helpers2.HostnameOrNetworkName() + ".cert" // default
+		val = helpers.GetZitiHome() + "/" + helpers.HostnameOrNetworkName() + ".cert" // default
 	}
-	c.Identity.Cert = helpers2.NormalizePath(val)
+	c.Identity.Cert = helpers.NormalizePath(val)
 }
 func SetControllerIdentityServerCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlServerCertVarName)
 	if val == "" {
-		val = workingDir + "/" + helpers2.HostnameOrNetworkName() + ".server.chain.cert" // default
+		val = helpers.GetZitiHome() + "/" + helpers.HostnameOrNetworkName() + ".server.chain.cert" // default
 	}
-	c.Identity.ServerCert = helpers2.NormalizePath(val)
+	c.Identity.ServerCert = helpers.NormalizePath(val)
 }
 func SetControllerIdentityKey(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlKeyVarName)
 	if val == "" {
-		val = workingDir + "/" + helpers2.HostnameOrNetworkName() + ".key" // default
+		val = helpers.GetZitiHome() + "/" + helpers.HostnameOrNetworkName() + ".key" // default
 	}
-	c.Identity.Key = helpers2.NormalizePath(val)
+	c.Identity.Key = helpers.NormalizePath(val)
 }
 func SetControllerIdentityCA(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlCAVarName)
 	if val == "" {
-		val = workingDir + "/" + helpers2.HostnameOrNetworkName() + ".ca" // default
+		val = helpers.GetZitiHome() + "/" + helpers.HostnameOrNetworkName() + ".ca" // default
 	}
-	c.Identity.Ca = helpers2.NormalizePath(val)
+	c.Identity.Ca = helpers.NormalizePath(val)
 }
 
 func SetEdgeConfig(data *ControllerTemplateValues) {
@@ -229,17 +229,17 @@ func SetEdgeConfig(data *ControllerTemplateValues) {
 func SetEdgeSigningCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiSignerCertVarName)
 	if val == "" {
-		val = workingDir + "/" + helpers2.HostnameOrNetworkName() + ".signing.cert" // default
+		val = helpers.GetZitiHome() + "/" + helpers.HostnameOrNetworkName() + ".signing.cert" // default
 	}
-	c.EdgeEnrollment.SigningCert = helpers2.NormalizePath(val)
+	c.EdgeEnrollment.SigningCert = helpers.NormalizePath(val)
 
 }
 func SetEdgeSigningKey(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiSignerKeyVarName)
 	if val == "" {
-		val = workingDir + "/" + helpers2.HostnameOrNetworkName() + ".signing.key" // default
+		val = helpers.GetZitiHome() + "/" + helpers.HostnameOrNetworkName() + ".signing.key" // default
 	}
-	c.EdgeEnrollment.SigningCertKey = helpers2.NormalizePath(val)
+	c.EdgeEnrollment.SigningCertKey = helpers.NormalizePath(val)
 }
 
 func SetWebConfig(data *ControllerTemplateValues) {
@@ -254,28 +254,28 @@ func SetWebIdentityCert(c *ControllerTemplateValues) {
 	if val == "" {
 		val = c.Identity.Cert //default
 	}
-	c.Web.Identity.Cert = helpers2.NormalizePath(val)
+	c.Web.Identity.Cert = helpers.NormalizePath(val)
 }
 func SetWebIdentityServerCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeServerCertVarName)
 	if val == "" {
 		val = c.Identity.ServerCert //default
 	}
-	c.Web.Identity.ServerCert = helpers2.NormalizePath(val)
+	c.Web.Identity.ServerCert = helpers.NormalizePath(val)
 }
 func SetWebIdentityKey(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeKeyVarName)
 	if val == "" {
 		val = c.Identity.Key //default
 	}
-	c.Web.Identity.Key = helpers2.NormalizePath(val)
+	c.Web.Identity.Key = helpers.NormalizePath(val)
 }
 func SetWebIdentityCA(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeCAVarName)
 	if val == "" {
 		val = c.Identity.Ca //default
 	}
-	c.Web.Identity.Ca = helpers2.NormalizePath(val)
+	c.Web.Identity.Ca = helpers.NormalizePath(val)
 }
 
 func SetCtrlAltServerCerts(c *ControllerTemplateValues) {
@@ -289,6 +289,6 @@ func SetCtrlAltServerCerts(c *ControllerTemplateValues) {
 		return //exit unless both vars are set
 	}
 	c.Web.Identity.AltCertsEnabled = true
-	c.Web.Identity.AltServerCert = helpers2.NormalizePath(altServerCert)
-	c.Web.Identity.AltServerKey = helpers2.NormalizePath(altServerKey)
+	c.Web.Identity.AltServerCert = helpers.NormalizePath(altServerCert)
+	c.Web.Identity.AltServerKey = helpers.NormalizePath(altServerKey)
 }

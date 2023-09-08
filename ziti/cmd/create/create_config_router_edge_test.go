@@ -1,4 +1,4 @@
-package cmd
+package create
 
 import (
 	"github.com/openziti/ziti/ziti/constants"

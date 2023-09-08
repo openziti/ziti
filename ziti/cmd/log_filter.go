@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -26,7 +27,7 @@ import (
 
 // LogFormatOptions contains the command line options
 type LogFormatOptions struct {
-	CommonOptions
+	common.CommonOptions
 
 	absoluteTime bool
 	trimPrefix   string
@@ -35,7 +36,7 @@ type LogFormatOptions struct {
 // NewCmdLogFormat a command object for the "log-format" command
 func NewCmdLogFormat(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &LogFormatOptions{
-		CommonOptions: CommonOptions{
+		CommonOptions: common.CommonOptions{
 			Out: out,
 			Err: errOut,
 		},

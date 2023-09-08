@@ -14,11 +14,12 @@
 	limitations under the License.
 */
 
-package cmd
+package pki
 
 import (
 	"fmt"
 	"github.com/openziti/fabric/controller/idgen"
+	cmd2 "github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/certificate"
@@ -41,7 +42,7 @@ func NewCmdPKICreateCA(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PKICreateCAOptions{
 		PKICreateOptions: PKICreateOptions{
 			PKIOptions: PKIOptions{
-				CommonOptions: CommonOptions{
+				CommonOptions: cmd2.CommonOptions{
 					Out: out,
 					Err: errOut,
 				},
@@ -97,7 +98,7 @@ func (o *PKICreateCAOptions) Run() error {
 		//default name, ensure uniqueness by adding a random id
 		o.Flags.CAName = o.Flags.CAName + " " + idgen.New()
 	}
-
+	
 	commonName := o.Flags.CAName
 
 	filename := o.ObtainFileName(caFile, commonName)

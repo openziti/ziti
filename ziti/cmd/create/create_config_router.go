@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package cmd
+package create
 
 import (
 	_ "embed"
@@ -70,7 +70,7 @@ func NewCmdCreateConfigRouter(routerOptions *CreateConfigRouterOptions) *NewCrea
 					logrus.SetOutput(logOut)
 				}
 
-				data.populateConfigValues()
+				data.PopulateConfigValues()
 
 				// Update router data with options passed in
 				data.Router.Name = validateRouterName(routerOptions.RouterName)

@@ -14,11 +14,12 @@
 	limitations under the License.
 */
 
-package cmd
+package pki
 
 import (
 	"fmt"
 	"github.com/openziti/fabric/controller/idgen"
+	cmd2 "github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/certificate"
@@ -39,7 +40,7 @@ func NewCmdPKICreateIntermediate(out io.Writer, errOut io.Writer) *cobra.Command
 	options := &PKICreateIntermediateOptions{
 		PKICreateOptions: PKICreateOptions{
 			PKIOptions: PKIOptions{
-				CommonOptions: CommonOptions{
+				CommonOptions: cmd2.CommonOptions{
 					Out: out,
 					Err: errOut,
 				},

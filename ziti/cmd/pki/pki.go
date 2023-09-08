@@ -14,9 +14,10 @@
 	limitations under the License.
 */
 
-package cmd
+package pki
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/lets_encrypt"
 	"github.com/openziti/ziti/ziti/cmd/templates"
@@ -27,7 +28,7 @@ import (
 
 // PKIOptions contains the command line options
 type PKIOptions struct {
-	CommonOptions
+	common.CommonOptions
 
 	Flags PKIFlags
 }
@@ -73,7 +74,7 @@ Provide the components needed to manage a Ziti PKI.
 // NewCmdPKI PKIs a command object for the "PKI" command
 func NewCmdPKI(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PKIOptions{
-		CommonOptions: CommonOptions{
+		CommonOptions: common.CommonOptions{
 			Out: out,
 			Err: errOut,
 		},

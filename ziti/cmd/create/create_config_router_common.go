@@ -14,14 +14,13 @@
 	limitations under the License.
 */
 
-package cmd
+package create
 
 import (
 	_ "embed"
 	"os"
 
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	helpers2 "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/constants"
 )
 
@@ -58,28 +57,28 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 func SetZitiRouterIdentityCert(r *RouterTemplateValues, routerName string) {
 	val := os.Getenv(constants.ZitiRouterIdentityCertVarName)
 	if val == "" {
-		val = workingDir + "/" + routerName + ".cert" // default
+		val = cmdhelper.GetZitiHome() + "/" + routerName + ".cert" // default
 	}
 	r.IdentityCert = cmdhelper.NormalizePath(val)
 }
 func SetZitiRouterIdentityServerCert(r *RouterTemplateValues, routerName string) {
 	val := os.Getenv(constants.ZitiRouterIdentityServerCertVarName)
 	if val == "" {
-		val = workingDir + "/" + routerName + ".server.chain.cert" // default
+		val = cmdhelper.GetZitiHome() + "/" + routerName + ".server.chain.cert" // default
 	}
 	r.IdentityServerCert = cmdhelper.NormalizePath(val)
 }
 func SetZitiRouterIdentityKey(r *RouterTemplateValues, routerName string) {
 	val := os.Getenv(constants.ZitiRouterIdentityKeyVarName)
 	if val == "" {
-		val = workingDir + "/" + routerName + ".key" // default
+		val = cmdhelper.GetZitiHome() + "/" + routerName + ".key" // default
 	}
 	r.IdentityKey = cmdhelper.NormalizePath(val)
 }
 func SetZitiRouterIdentityCA(r *RouterTemplateValues, routerName string) {
 	val := os.Getenv(constants.ZitiRouterIdentityCAVarName)
 	if val == "" {
-		val = workingDir + "/" + routerName + ".cas" // default
+		val = cmdhelper.GetZitiHome() + "/" + routerName + ".cas" // default
 	}
 	r.IdentityCA = cmdhelper.NormalizePath(val)
 }
@@ -104,6 +103,6 @@ func SetRouterAltServerCerts(c *RouterTemplateValues) {
 		return //exit unless both vars are set
 	}
 	c.AltCertsEnabled = true
-	c.AltServerCert = helpers2.NormalizePath(altServerCert)
-	c.AltServerKey = helpers2.NormalizePath(altServerKey)
+	c.AltServerCert = cmdhelper.NormalizePath(altServerCert)
+	c.AltServerKey = cmdhelper.NormalizePath(altServerKey)
 }

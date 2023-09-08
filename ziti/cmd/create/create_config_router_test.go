@@ -1,7 +1,8 @@
-package cmd
+package create
 
 import (
 	"fmt"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -137,7 +138,7 @@ func TestSetZitiRouterIdentityCertDefault(t *testing.T) {
 	_ = os.Setenv(constants.ZitiRouterIdentityCertVarName, "")
 
 	routerName := "RouterTest"
-	expectedDefault := workingDir + "/" + routerName + ".cert"
+	expectedDefault := cmdhelper.GetZitiHome() + "/" + routerName + ".cert"
 	rtv := &RouterTemplateValues{}
 	SetZitiRouterIdentityCert(rtv, routerName)
 
@@ -162,7 +163,7 @@ func TestSetZitiRouterIdentityServerCertDefault(t *testing.T) {
 	_ = os.Setenv(constants.ZitiRouterIdentityServerCertVarName, "")
 
 	routerName := "RouterTest"
-	expectedDefault := workingDir + "/" + routerName + ".server.chain.cert"
+	expectedDefault := cmdhelper.GetZitiHome() + "/" + routerName + ".server.chain.cert"
 	rtv := &RouterTemplateValues{}
 	SetZitiRouterIdentityServerCert(rtv, routerName)
 
@@ -187,7 +188,7 @@ func TestSetZitiRouterIdentityKeyCertDefault(t *testing.T) {
 	_ = os.Setenv(constants.ZitiRouterIdentityKeyVarDescription, "")
 
 	routerName := "RouterTest"
-	expectedDefault := workingDir + "/" + routerName + ".key"
+	expectedDefault := cmdhelper.GetZitiHome() + "/" + routerName + ".key"
 	rtv := &RouterTemplateValues{}
 	SetZitiRouterIdentityKey(rtv, routerName)
 
@@ -212,7 +213,7 @@ func TestSetZitiRouterIdentityKeyCADefault(t *testing.T) {
 	_ = os.Setenv(constants.ZitiRouterIdentityCAVarName, "")
 
 	routerName := "RouterTest"
-	expectedDefault := workingDir + "/" + routerName + ".cas"
+	expectedDefault := cmdhelper.GetZitiHome() + "/" + routerName + ".cas"
 	rtv := &RouterTemplateValues{}
 	SetZitiRouterIdentityCA(rtv, routerName)
 
