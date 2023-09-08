@@ -725,7 +725,7 @@ main(){
 
     ROUTER_NAME='miniziti-router'
     ROUTER_OTT="$IDENTITIES_DIR/$ROUTER_NAME.jwt"
-    if  ziti_wrapper edge list edge-routers "name=\"$ROUTER_NAME\"" \
+    if  ziti_wrapper edge list edge-routers "'name=\"$ROUTER_NAME\"'" \
         | grep -q miniziti-router; then
         logDebug "updating $ROUTER_NAME"
         ziti_wrapper edge update edge-router "$ROUTER_NAME" \
@@ -767,7 +767,7 @@ main(){
         --for condition=Available=True >&3
 
     logDebug "probing miniziti-router for online status"
-    if ziti_wrapper edge list edge-routers "name=\"$ROUTER_NAME\"" \
+    if ziti_wrapper edge list edge-routers "'name=\"$ROUTER_NAME\"'" \
         | awk '/miniziti-router/ {print $6}' \
         | grep -q true; then
         logInfo "miniziti-router is online"
@@ -817,7 +817,7 @@ main(){
     CLIENT_NAME="${MINIKUBE_PROFILE}-client"
     CLIENT_OTT="$IDENTITIES_DIR/$CLIENT_NAME.jwt"
 
-    if  ! ziti_wrapper edge list identities "name=\"$CLIENT_NAME\"" --csv \
+    if  ! ziti_wrapper edge list identities "'name=\"$CLIENT_NAME\"'" --csv \
         | grep -q "$CLIENT_NAME"; then
         logDebug "creating identity $CLIENT_NAME"
         ziti_wrapper edge create identity device "$CLIENT_NAME" \
@@ -830,7 +830,7 @@ main(){
     HTTPBIN_OTT="$IDENTITIES_DIR/$HTTPBIN_NAME.jwt"
     HTTPBIN_JSON="$IDENTITIES_DIR/$HTTPBIN_NAME.json"
 
-    if  ! ziti_wrapper edge list identities "name=\"$HTTPBIN_NAME\"" --csv \
+    if  ! ziti_wrapper edge list identities "'name=\"$HTTPBIN_NAME\"'" --csv \
         | grep -q "$HTTPBIN_NAME"; then
         logDebug "creating identity $HTTPBIN_NAME"
         ziti_wrapper edge create identity device "$HTTPBIN_NAME" \
