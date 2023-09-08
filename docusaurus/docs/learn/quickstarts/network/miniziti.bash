@@ -298,7 +298,7 @@ check_command() {
 main(){
     MINIZITI_DEBUG=0
     # require commands
-    declare -a BINS=(minikube helm sed)
+    declare -a BINS=(minikube helm sed nslookup xargs awk grep pgrep)
     for BIN in "${BINS[@]}"; do
         check_command "$BIN"
     done
