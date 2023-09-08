@@ -672,12 +672,10 @@ main(){
         " >&3
 
             logDebug "deleting coredns pod so a new one will have modified Corefile"
-            kubectl_wrapper get pods \
+            kubectl_wrapper delete pods \
+                --context "$MINIKUBE_PROFILE" \
                 --namespace kube-system \
-                | awk '/^coredns-/ {print $1}' \
-                | xargs kubectl delete pods \
-                    --context "$MINIKUBE_PROFILE" \
-                    --namespace kube-system >&3
+                --selector k8s-app=kube-dns >&3
 
             logDebug "waiting for cluster dns to be ready"
             kubectl_wrapper wait deployments "coredns" \
