@@ -32,6 +32,7 @@ _usage(){
             "   creds\t\tprints admin user updb credentials\n"\
             "   login\t\trun ziti edge login with miniziti context\n"\
             "   ziti\t\tziti cli wrapper with miniziti context\n"\
+            "   kubectl\t\tkubectl cli wrapper with miniziti context\n"\
             "   help\t\tshow these usage hints\n"\
             "\n OPTIONS\n"\
             "   --quiet\t\tsuppress INFO messages\n"\
@@ -327,6 +328,10 @@ main(){
                             shift
                             ziti_cli_args=("$@")
                             shift "${#ziti_cli_args[@]}"
+            ;;
+            kubectl)        shift
+                            kubectl_wrapper "${@:-}"
+                            exit
             ;;
             -p|--profile)   validateDnsName "$2"
                             MINIKUBE_PROFILE="$2"
