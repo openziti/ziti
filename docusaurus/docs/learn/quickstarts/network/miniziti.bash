@@ -224,7 +224,7 @@ logger() {
         return 1
     fi
 
-    --container ziti-controller local message="$*"
+    local message="$*"
 
     if [[ "$message" =~ ^r\'(.+)\'$ ]]; then
         raw_message="${BASH_REMATCH[1]}"
