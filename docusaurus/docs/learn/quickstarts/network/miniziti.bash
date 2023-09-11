@@ -26,24 +26,26 @@ _usage(){
     else
         banner
     fi
-    echo -e "\n COMMANDS\n"\
-            "   start\t\tstart miniziti (default)\n"\
+    echo -e "\n Basic Commands:\n"\
+            "   start\t\tstart miniziti\n"\
             "   delete\t\tdelete miniziti\n"\
-            "   creds\t\tprints admin user updb credentials\n"\
-            "   login\t\trun ziti edge login with miniziti context\n"\
             "   ziti\t\tziti cli wrapper with miniziti context\n"\
+            "   creds\t\tprints admin user updb credentials\n"\
+            "   help\t\tshow these usage hints\n"\
+            "\n Advanced Commands:\n"\
+            "   shell\t\trun interactive shell inside the ziti-controller container\n"\
+            "   login\t\trun local ziti binary edge login with miniziti context\n"\
+            "\n Other Commands:\n"\
             "   kubectl\t\tkubectl cli wrapper with miniziti context\n"\
             "   minikube\t\tminikube cli wrapper with miniziti context\n"\
-            "   shell\t\trun interactive shell inside the ziti-controller container\n"\
-            "   help\t\tshow these usage hints\n"\
-            "\n OPTIONS\n"\
+            "\n Options:\n"\
             "   --quiet\t\tsuppress INFO messages\n"\
             "   --verbose\t\tshow DEBUG messages\n"\
             "   --profile\t\tMINIKUBE_PROFILE (miniziti)\n"\
             "   --namespace\t\tZITI_NAMESPACE (MINIKUBE_PROFILE)\n"\
             "   --no-hosts\t\tdon't use local hosts DB or ingress-dns nameserver\n"\
             "   --modify-hosts\tadd entries to local hosts database. Requires sudo if not running as root. Linux only.\n"\
-            "\n DEBUG\n"\
+            "\n Debug:\n"\
             "   --charts\t\tZITI_CHARTS_REF (openziti) alternative charts repo\n"\
             "   --now\t\teliminate safety waits, e.g., before deleting miniziti\n"\
             "   --\t\t\tMINIKUBE_START_ARGS args after -- passed to minikube start\n"
@@ -310,6 +312,7 @@ main(){
 
     # local strings with defaults that never produce an error
     declare DETECTED_OS \
+            START_MINIZITI=0 \
             DELETE_MINIZITI=0 \
             DO_ZITI_LOGIN=0 \
             MINIKUBE_NODE_EXTERNAL \
@@ -334,7 +337,8 @@ main(){
 
     while (( $# )); do
         case "$1" in
-            start)          shift
+            start)          START_MINIZITI=1
+                            shift
             ;;
             delete)         DELETE_MINIZITI=1
                             shift
@@ -447,9 +451,8 @@ main(){
     fi
 
 
-    banner "$MINIKUBE_PROFILE"
-
     (( DELETE_MINIZITI )) && {
+        banner "$MINIKUBE_PROFILE"
         deleteMiniziti 10
 
         if (( MINIZITI_MODIFY_HOSTS )) && grep -q "$MINIZITI_PROFILE_MARKER" "$HOSTS_FILE"; then
@@ -479,6 +482,14 @@ main(){
 
         exit 0
     }
+
+    if (( START_MINIZITI != 1 )); then
+        _usage
+        exit 0;
+    fi
+
+
+    banner "$MINIKUBE_PROFILE"
 
     if [[ ! -d "$IDENTITIES_DIR" ]]; then
         logDebug "Creating miniziti identities directory: ($IDENTITIES_DIR)"
