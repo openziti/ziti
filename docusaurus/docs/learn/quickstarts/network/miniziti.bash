@@ -349,6 +349,7 @@ main(){
     # local defaults that are inherited or may error
     DETECTED_OS="$(detectOs)"
     : "${DEBUG_MINIKUBE_TUNNEL:=0}"  # set env = 1 to trigger the minikube tunnel probe
+    : "${MINIZITI_TIMEOUT_SECS:=240}"
 
     while (( $# )); do
         case "$1" in
@@ -581,13 +582,13 @@ main(){
     kubectl_wrapper wait jobs "ingress-nginx-admission-patch" \
         --namespace ingress-nginx \
         --for condition=complete \
-        --timeout 120s >&3
+        --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
 
     kubectl_wrapper wait pods \
         --namespace ingress-nginx \
         --for condition=ready \
         --selector app.kubernetes.io/component=controller \
-        --timeout 120s >&3
+        --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
 
     logDebug "applying Custom Resource Definitions: Certificate, Issuer, and Bundle"
     kubectl_wrapper apply \
@@ -645,7 +646,7 @@ main(){
         kubectl_wrapper wait deployments "$DEPLOYMENT" \
             --namespace "${ZITI_NAMESPACE}" \
             --for condition=Available=True \
-            --timeout 240s >&3
+            --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
     done
 
     #
@@ -738,7 +739,8 @@ main(){
             logDebug "waiting for cluster dns to be ready"
             kubectl_wrapper wait deployments "coredns" \
                 --namespace kube-system \
-                --for condition=Available=True >&3
+                --for condition=Available=True \
+                --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
         }
 
         # perform a DNS query in a pod so we know ingress-dns is working inside the cluster
@@ -796,7 +798,8 @@ main(){
     logInfo "waiting for ziti-router to be ready"
     kubectl_wrapper wait deployments "ziti-router" \
         --namespace "${ZITI_NAMESPACE}" \
-        --for condition=Available=True >&3
+        --for condition=Available=True \
+        --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
 
     logDebug "probing miniziti-router for online status"
     if ziti_wrapper edge list edge-routers "name=\"$ROUTER_NAME\"" \
@@ -836,7 +839,7 @@ main(){
     kubectl_wrapper wait deployments "ziti-console" \
         --namespace "${ZITI_NAMESPACE}" \
         --for condition=Available=True \
-        --timeout 240s >&3
+        --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
 
     logDebug "setting default namespace to '${ZITI_NAMESPACE}' in kubeconfig context '${MINIKUBE_PROFILE}'"
         kubectl_wrapper config set-context "${MINIKUBE_PROFILE}" \
