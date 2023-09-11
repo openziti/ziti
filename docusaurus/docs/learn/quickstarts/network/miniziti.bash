@@ -8,7 +8,7 @@ checkBashVersion() {
     if (( "${BASH_VERSION%%.*}" < 4 )); then
         echo "This script requires Bash major version 4 or greater."
         echo "Detected version: $BASH_VERSION"
-        if [[ "$DETECTED_OS" == "macOS" ]]; then
+        if [[ ${OSTYPE:-} =~ [Dd]arwin ]]; then
             echo -e "\nOn macOS, you can install bash with Homebrew:"
             echo "brew install bash"
             echo -e "\nThen run:"
@@ -315,6 +315,7 @@ check_command() {
 }
 
 main(){
+    checkBashVersion >&2
     MINIZITI_DEBUG=0
     # require commands
     declare -a BINS=(awk grep helm jq minikube nslookup pgrep sed xargs)
@@ -348,8 +349,6 @@ main(){
     # local defaults that are inherited or may error
     DETECTED_OS="$(detectOs)"
     : "${DEBUG_MINIKUBE_TUNNEL:=0}"  # set env = 1 to trigger the minikube tunnel probe
-
-    checkBashVersion >&2
 
     while (( $# )); do
         case "$1" in
