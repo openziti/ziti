@@ -6,14 +6,14 @@ set -o pipefail
 
 checkBashVersion() {
     if (( "${BASH_VERSION%%.*}" < 4 )); then
-        echo "This script requires Bash major version 4 or greater." >&2
-        echo "Detected version: $BASH_VERSION" >&2
+        echo "This script requires Bash major version 4 or greater."
+        echo "Detected version: $BASH_VERSION"
         if [[ "$DETECTED_OS" == "macOS" ]]; then
-            echo -e "\nOn macOS, you can install bash with Homebrew:" >&2
-            echo "brew install bash" >&2
-            echo -e "\nThen run:" >&2
+            echo -e "\nOn macOS, you can install bash with Homebrew:"
+            echo "brew install bash"
+            echo -e "\nThen run:"
             #shellcheck disable=SC2016
-            echo '"$(brew --prefix bash)" ./miniziti.bash ...' >&2
+            echo '"$(brew --prefix bash)" ./miniziti.bash ...'
         fi
         exit 1;
     fi
@@ -349,7 +349,7 @@ main(){
     DETECTED_OS="$(detectOs)"
     : "${DEBUG_MINIKUBE_TUNNEL:=0}"  # set env = 1 to trigger the minikube tunnel probe
 
-    checkBashVersion
+    checkBashVersion >&2
 
     while (( $# )); do
         case "$1" in
