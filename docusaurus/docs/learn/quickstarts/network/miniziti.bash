@@ -471,10 +471,11 @@ main(){
             rm -f  "$CERT_FILE"
         fi
 
-        if check_command ziti &>/dev/null; then
-            logWarn "Removing $MINIKUBE_PROFILE profile identity from ziti-cli.json"
-            #ziti edge logout --cli-identity "$MINIKUBE_PROFILE" >&3
-        fi
+        # Cannot nicely call logout until https://github.com/openziti/ziti/issues/1305 is addressed.
+        # if check_command ziti &>/dev/null; then
+        #     logWarn "Removing $MINIKUBE_PROFILE profile identity from ziti-cli.json"
+        #     ziti edge logout --cli-identity "$MINIKUBE_PROFILE" >&3
+        # fi
 
         exit 0
     }
