@@ -741,7 +741,7 @@ main(){
         ziti_wrapper edge list edge-routers \
             "name=\"$ROUTER_NAME\"" \
             --output-json \
-            | jq -r '.data[0].enrollmentJwt' > "$ROUTER_OTT"
+            | jq --exit-status --raw-output '.data[0].enrollmentJwt' > "$ROUTER_OTT"
     fi
 
     if  helm_wrapper status ziti-router --namespace "${ZITI_NAMESPACE}" &>/dev/null; then
@@ -830,7 +830,7 @@ main(){
             --role-attributes httpbin-clients >&3
         ziti_wrapper edge list identities "name=\"$CLIENT_NAME\"" \
             --output-json \
-        | jq -r '.data[0].enrollment.ott.jwt' > "$CLIENT_OTT"
+        | jq --exit-status --raw-output '.data[0].enrollment.ott.jwt' > "$CLIENT_OTT"
     else
         logDebug "ignoring identity $CLIENT_NAME"
     fi
@@ -846,7 +846,7 @@ main(){
             --role-attributes httpbin-hosts >&3
         ziti_wrapper edge list identities "name=\"$HTTPBIN_NAME\"" \
             --output-json \
-        | jq -r '.data[0].enrollment.ott.jwt' > "$HTTPBIN_OTT"
+        | jq --exit-status --raw-output '.data[0].enrollment.ott.jwt' > "$HTTPBIN_OTT"
 
     else
         logDebug "ignoring identity $HTTPBIN_NAME"
