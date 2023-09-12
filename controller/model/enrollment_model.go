@@ -66,7 +66,6 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 			ExpiresAt: &jwt.NumericDate{Time: expiresAt},
 			ID:        entity.Token,
 			Issuer:    fmt.Sprintf("https://%s", env.GetConfig().Api.Address),
-			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   subject,
 		},
 	}
