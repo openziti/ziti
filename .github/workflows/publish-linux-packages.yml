@@ -39,6 +39,8 @@ jobs:
       ZITI_HOMEPAGE: "https://openziti.io"
       ZITI_VENDOR: "NetFoundry"
       GOARCH: ${{ matrix.arch.goreleaser }}
+      ZITI_DEB_REPO: ${{ vars.ZITI_DEB_REPO || 'zitipax-openziti-deb-stable' }}
+      ZITI_RPM_REPO: ${{ vars.ZITI_RPM_REPO || 'zitipax-openziti-rpm-stable' }}
     steps:
       - name: Checkout Workspace
         uses: actions/checkout@v3
@@ -87,7 +89,7 @@ jobs:
         run: >
           jf rt upload
           ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
-          /zitipax-openziti-rpm-stable/testing/${{ matrix.arch.rpm }}/
+          /${{ env.ZITI_RPM_REPO }}/testing/${{ matrix.arch.rpm }}/
           --recursive=false
           --flat=true 
 
@@ -96,7 +98,7 @@ jobs:
         run: >
           jf rt upload
           ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
-          /zitipax-openziti-rpm-stable/release/${{ matrix.arch.rpm }}/
+          /${{ env.ZITI_RPM_REPO }}/release/${{ matrix.arch.rpm }}/
           --recursive=false
           --flat=true 
 
@@ -105,7 +107,7 @@ jobs:
         run: >
           jf rt upload
           ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
-          /zitipax-openziti-deb-stable/pool/${{ matrix.package_name }}/testing/${{ matrix.arch.deb }}/
+          /${{ env.ZITI_DEB_REPO }}/pool/${{ matrix.package_name }}/testing/${{ matrix.arch.deb }}/
           --deb=testing/main/${{ matrix.arch.deb }}
           --recursive=false
           --flat=true 
@@ -115,7 +117,7 @@ jobs:
         run: >
           jf rt upload
           ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
-          /zitipax-openziti-deb-stable/pool/${{ matrix.package_name }}/release/${{ matrix.arch.deb }}/
+          /${{ env.ZITI_DEB_REPO }}/pool/${{ matrix.package_name }}/release/${{ matrix.arch.deb }}/
           --deb=release/main/${{ matrix.arch.deb }}
           --recursive=false
           --flat=true 
