@@ -31,10 +31,10 @@ if [[ "${_ZITI_ROUTER_NAME}" != "" ]]; then
   echo "ZITI_ROUTER_NAME set to: ${ZITI_ROUTER_NAME}"
 fi
 
-"${ZITI_BIN_DIR-}/ziti" edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
 _CONFIG_PATH="${ZITI_HOME}/${ZITI_ROUTER_NAME}.yaml"
 if [ ! -f "${_CONFIG_PATH}" ]; then
   echo "config has not been generated, generating config..."
+  "${ZITI_BIN_DIR-}/ziti" edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
 
   echo "----------  Creating edge-router ${ZITI_ROUTER_NAME}...."
 
@@ -54,20 +54,19 @@ if [ ! -f "${_CONFIG_PATH}" ]; then
     echo "CREATING PRIVATE ROUTER CONFIG: ${ZITI_ROUTER_NAME}"
     createPrivateRouterConfig "${ZITI_ROUTER_NAME}"
   fi
-  else
-    echo " Found existing config file ${_CONFIG_PATH}, not creating a new config."
-    echo " If you would like to overwrite this config, delete the file and restart the container."
-fi
 
-found=$("${ZITI_BIN_DIR-}/ziti" edge list edge-routers 'name = "'"${ZITI_ROUTER_NAME}"'"' | grep -c "${ZITI_ROUTER_NAME}")
-if [[ found -gt 0 ]]; then
-  echo "----------  Found existing edge-router ${ZITI_ROUTER_NAME}...."
+  found=$("${ZITI_BIN_DIR-}/ziti" edge list edge-routers 'name = "'"${ZITI_ROUTER_NAME}"'"' | grep -c "${ZITI_ROUTER_NAME}")
+  if [[ found -gt 0 ]]; then
+    echo "----------  Found existing edge-router ${ZITI_ROUTER_NAME}...."
+  else
+    "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_ROUTER_NAME}" -o "${ZITI_HOME}/${ZITI_ROUTER_NAME}.jwt" -t -a "${ZITI_ROUTER_ROLES}"
+    sleep 1
+    echo "---------- Enrolling edge-router ${ZITI_ROUTER_NAME}...."
+    "${ZITI_BIN_DIR}/ziti" router enroll "${ZITI_HOME}/${ZITI_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_ROUTER_NAME}.jwt"
+    echo ""
+  fi
 else
-  "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_ROUTER_NAME}" -o "${ZITI_HOME}/${ZITI_ROUTER_NAME}.jwt" -t -a "${ZITI_ROUTER_ROLES}"
-  sleep 1
-  echo "---------- Enrolling edge-router ${ZITI_ROUTER_NAME}...."
-  "${ZITI_BIN_DIR}/ziti" router enroll "${ZITI_HOME}/${ZITI_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_ROUTER_NAME}.jwt"
-  echo ""
+    echo " Found existing config file ${_CONFIG_PATH}, not creating a new config."
 fi
 
 unset ZITI_USER
