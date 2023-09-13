@@ -24,11 +24,11 @@ import (
 	clientApiAuthentication "github.com/openziti/edge-api/rest_client_api_server/operations/authentication"
 	managementApiAuthentication "github.com/openziti/edge-api/rest_management_api_server/operations/authentication"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"net"
@@ -79,8 +79,6 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 
 	authResult, err := ae.Managers.Authenticator.Authorize(authContext)
 
-	changeCtx := rc.NewChangeContext()
-
 	if err != nil {
 		rc.RespondWithError(err)
 		return
@@ -94,6 +92,8 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	rc.AuthPolicy = authResult.AuthPolicy()
 
 	identity := authResult.Identity()
+	rc.Identity = identity
+
 	if identity.EnvInfo == nil {
 		identity.EnvInfo = &model.EnvInfo{}
 	}
@@ -102,25 +102,30 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		identity.SdkInfo = &model.SdkInfo{}
 	}
 
+	changeCtx := rc.NewChangeContext()
+
 	if dataMap := authContext.GetData(); dataMap != nil {
 		shouldUpdate := false
 
 		if envInfoInterface := dataMap["envInfo"]; envInfoInterface != nil {
-			if envInfo := envInfoInterface.(map[string]interface{}); envInfo != nil {
-				if err := mapstructure.Decode(envInfo, &identity.EnvInfo); err != nil {
+			if envInfoMap := envInfoInterface.(map[string]interface{}); envInfoMap != nil {
+				var envInfo *model.EnvInfo
+				if err := mapstructure.Decode(envInfoMap, &envInfo); err != nil {
 					logger.WithError(err).Error("error processing env info")
-				} else {
+				} else if !identity.EnvInfo.Equals(envInfo) {
+					identity.EnvInfo = envInfo
 					shouldUpdate = true
 				}
-
 			}
 		}
 
 		if sdkInfoInterface := dataMap["sdkInfo"]; sdkInfoInterface != nil {
-			if sdkInfo := sdkInfoInterface.(map[string]interface{}); sdkInfo != nil {
-				if err := mapstructure.Decode(sdkInfo, &identity.SdkInfo); err != nil {
+			if sdkInfoMap := sdkInfoInterface.(map[string]interface{}); sdkInfoMap != nil {
+				var sdkInfo *model.SdkInfo
+				if err := mapstructure.Decode(sdkInfoMap, &sdkInfo); err != nil {
 					logger.WithError(err).Error("error processing sdk info")
-				} else {
+				} else if !identity.SdkInfo.Equals(sdkInfo) {
+					identity.SdkInfo = sdkInfo
 					shouldUpdate = true
 				}
 			}
