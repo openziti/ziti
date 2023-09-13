@@ -527,6 +527,7 @@ main(){
                 rm -f  "$CERT_FILE"
             fi
         fi
+        trap - EXIT
 
         deleteMiniziti 10
 
