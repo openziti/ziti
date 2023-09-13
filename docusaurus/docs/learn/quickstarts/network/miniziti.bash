@@ -44,15 +44,16 @@ _usage(){
     echo -e "\n Basic Commands:\n"\
             "   start\t\tstart miniziti\n"\
             "   delete\t\tdelete miniziti\n"\
-            "   ziti\t\tziti cli wrapper with miniziti context\n"\
+            "   console\t\topen ziti-console in browser\n"\
             "   creds\t\tprints admin user updb credentials\n"\
+            "   ziti\t\tziti cli wrapper\n"\
             "   help\t\tshow these usage hints\n"\
             "\n Advanced Commands:\n"\
             "   shell\t\trun interactive shell inside the ziti-controller container\n"\
-            "   login\t\trun local ziti binary edge login with miniziti context\n"\
+            "   login\t\trun local ziti binary edge login\n"\
             "\n Other Commands:\n"\
-            "   kubectl\t\tkubectl cli wrapper with miniziti context\n"\
-            "   minikube\t\tminikube cli wrapper with miniziti context\n"\
+            "   kubectl\t\tkubectl cli wrapper\n"\
+            "   minikube\t\tminikube cli wrapper\n"\
             "\n Options:\n"\
             "   --quiet\t\tsuppress INFO messages\n"\
             "   --verbose\t\tshow DEBUG messages\n"\
@@ -237,6 +238,21 @@ miniziti_login() {
             --password
 }
 
+openZitiConsole() {
+    console_url="https://miniziti-console.$MINIKUBE_PROFILE.internal"
+    case "$DETECTED_OS" in
+        "Windows")
+            check_command wslview
+            wslview "$console_url"
+        ;;
+        *)
+            check_command xdg-open
+            xdg-open "$console_url"
+        ;;
+    esac
+    logInfo "Opening ziti-console: $console_url ..."
+}
+
 logger() {
     local caller="${FUNCNAME[1]}"
 
@@ -327,17 +343,18 @@ main(){
     exec 3>/dev/null
 
     # local strings with defaults that never produce an error
-    declare DETECTED_OS \
-            START_MINIZITI=0 \
-            DELETE_MINIZITI=0 \
+    declare DELETE_MINIZITI=0 \
+            DETECTED_OS \
             DO_ZITI_LOGIN=0 \
             MINIKUBE_NODE_EXTERNAL \
             MINIKUBE_PROFILE="miniziti" \
             MINIZITI_HOSTS=1 \
             MINIZITI_MODIFY_HOSTS=0 \
+            OPEN_ZITI_CONSOLE=0 \
             RUN_ZITI_CLI=0 \
             SAFETY_WAIT=1 \
             SHOW_ADMIN_CREDS=0 \
+            START_MINIZITI=0 \
             ZITI_CHARTS_ALT=0 \
             ZITI_CHARTS_REF="openziti" \
             ZITI_CHARTS_URL="https://openziti.io/helm-charts/charts" \
@@ -357,6 +374,9 @@ main(){
                             shift
             ;;
             delete)         DELETE_MINIZITI=1
+                            shift
+            ;;
+            console)        OPEN_ZITI_CONSOLE=1
                             shift
             ;;
             creds)          SHOW_ADMIN_CREDS=1
@@ -456,8 +476,14 @@ main(){
         miniziti_login
         exit 0
     fi
+
     if (( SHOW_ADMIN_CREDS )); then
         showAdminCreds
+        exit 0
+    fi
+
+    if (( OPEN_ZITI_CONSOLE )); then
+        openZitiConsole
         exit 0
     fi
 
@@ -466,8 +492,7 @@ main(){
         exit 0
     fi
 
-
-    (( DELETE_MINIZITI )) && {
+    if (( DELETE_MINIZITI )); then
         banner "$MINIKUBE_PROFILE"
         deleteMiniziti 10
 
@@ -497,7 +522,7 @@ main(){
         # fi
 
         exit 0
-    }
+    fi
 
     if (( START_MINIZITI != 1 )); then
         _usage
@@ -855,7 +880,7 @@ main(){
     if  ! ziti_wrapper edge list identities "name=\"$CLIENT_NAME\"" --csv \
         | grep -q "$CLIENT_NAME"; then
         logDebug "creating identity $CLIENT_NAME"
-        ziti_wrapper edge create identity device "$CLIENT_NAME" \
+        ziti_wrapper edge create identity "$CLIENT_NAME" \
             --role-attributes httpbin-clients >&3
         ziti_wrapper edge list identities "name=\"$CLIENT_NAME\"" \
             --output-json \
@@ -870,7 +895,7 @@ main(){
     if  ! ziti_wrapper edge list identities "name=\"$HTTPBIN_NAME\"" --csv \
         | grep -q "$HTTPBIN_NAME"; then
         logDebug "creating identity $HTTPBIN_NAME"
-        ziti_wrapper edge create identity device "$HTTPBIN_NAME" \
+        ziti_wrapper edge create identity "$HTTPBIN_NAME" \
             --role-attributes httpbin-hosts >&3
         ziti_wrapper edge list identities "name=\"$HTTPBIN_NAME\"" \
             --output-json \
