@@ -54,6 +54,6 @@ if($addToPath.Trim() -eq "") {
 }
 
 if($addToPath -ilike "y*") {
-  $env:Path+=";${toDir}\${version}\ziti\"
+  $env:Path+=";${toDir}\${version}"
   Write-Output "ziti added to your path!"
 }
