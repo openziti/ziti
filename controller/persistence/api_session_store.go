@@ -47,7 +47,7 @@ const (
 type ApiSession struct {
 	boltz.BaseExtEntity
 	IdentityId      string    `json:"identityId"`
-	Token           string    `json:"token"`
+	Token           string    `json:"-"`
 	IPAddress       string    `json:"ipAddress"`
 	ConfigTypes     []string  `json:"configTypes"`
 	MfaComplete     bool      `json:"mfaComplete"`

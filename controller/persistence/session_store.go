@@ -42,7 +42,7 @@ var validSessionTypes = []string{SessionTypeDial, SessionTypeBind}
 
 type Session struct {
 	boltz.BaseExtEntity
-	Token           string      `json:"token"`
+	Token           string      `json:"-"`
 	IdentityId      string      `json:"identityId"`
 	ApiSessionId    string      `json:"apiSessionId"`
 	ServiceId       string      `json:"serviceId"`
