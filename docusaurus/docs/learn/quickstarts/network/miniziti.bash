@@ -245,6 +245,10 @@ openZitiConsole() {
             check_command wslview
             wslview "$console_url"
         ;;
+        "macOS")
+            check_command open
+            open "$console_url"
+        ;;
         *)
             check_command xdg-open
             xdg-open "$console_url"
