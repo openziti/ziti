@@ -799,7 +799,7 @@ main(){
         logDebug "$MINIZITI_INGRESS_ZONE_CONFIGMAP configmap has been applied"
     else
         logInfo "Applying $MINIZITI_INGRESS_ZONE_CONFIGMAP configmap"
-        cat <<EOF | kubectlWrapper apply -f -
+        cat <<EOF | kubectlWrapper apply -f - >&3
 apiVersion: v1
 kind: ConfigMap
 metadata:
