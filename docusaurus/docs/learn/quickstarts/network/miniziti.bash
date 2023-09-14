@@ -46,8 +46,13 @@ _usage(){
             "   delete\t\tdelete miniziti\n"\
             "   console\t\topen ziti-console in browser\n"\
             "   creds\t\tprints admin user updb credentials\n"\
+            "   status\t\tprint ziti component status\n"\
             "   ziti\t\tziti cli wrapper\n"\
             "   help\t\tshow these usage hints\n"\
+            "\n Profile Commands:\n"\
+            "   profile list\tlist available profiles\n"\
+            "   profile show\tshow default profile\n"\
+            "   profile use\t\tset default profile\n"\
             "\n Advanced Commands:\n"\
             "   shell\t\trun interactive shell inside the ziti-controller container\n"\
             "   login\t\trun local ziti binary edge login\n"\
@@ -65,6 +70,26 @@ _usage(){
             "   --charts\t\tZITI_CHARTS_REF (openziti) alternative charts repo\n"\
             "   --now\t\teliminate safety waits, e.g., before deleting miniziti\n"\
             "   --\t\t\tMINIKUBE_START_ARGS args after -- passed to minikube start\n"
+}
+
+_usageProfileUse(){
+    echo -e "\nSet miniziti default profile\n"\
+            "\n Usage:\n"\
+            "   ziti profile use [profile]\n"
+}
+
+_usageProfile(){
+    if (( $# )); then
+        echo -e "\nERROR: unexpected arg '$1'" >&2
+    fi
+
+    echo -e "\nProfile management commands\n"\
+            "\n Usage:\n"\
+            "   ziti profile [command]\n"\
+            "\n Available Commands:\n"\
+            "   list\tlist available profiles\n"\
+            "   show\tshow default profile\n"\
+            "   use\t\tset miniziti profile\n"
 }
 
 checkDns(){
@@ -185,8 +210,8 @@ checkSudoRequired() {
 HOSTS_FILE='/etc/hosts'
 
 cleanHosts() {
+    local marker="$1"
     logWarn "Removing stale miniziti entries from $HOSTS_FILE"
-    marker="$(getIngressZone)"
     if (( EUID != 0 )); then
         sudo sed -i "/$marker/d" "$HOSTS_FILE"
     else
@@ -208,7 +233,7 @@ installHosts() {
         checkSudoRequired
 
         if grep -q "$MINIZITI_INGRESS_ZONE" "$HOSTS_FILE"; then
-            cleanHosts
+            cleanHosts "$MINIZITI_INGRESS_ZONE"
         fi
 
         logInfo "Adding miniziti entries to $HOSTS_FILE"
@@ -230,8 +255,17 @@ showAdminCreds() {
     logInfo "The password for 'admin' is: '$(getAdminSecret)'"
 }
 
+getConfigMapKey() {
+    local configmap="$1"
+    local key="$2"
+    kubectlWrapper get configmap "$configmap" \
+        --ignore-not-found=true \
+        --output jsonpath="{.data.$key}" 2> /dev/null
+}
+
 getIngressZone() {
-    if ! ingress_zone="$(kubectlWrapper get configmap "$MINIZITI_INGRESS_ZONE_CONFIGMAP" -o json | jq --exit-status --raw-output '.data.zone')"; then
+    ingress_zone="$(getConfigMapKey "$MINIZITI_CONFIGMAP" 'ingress-zone')"
+    if [[ -z "$ingress_zone" ]]; then
         logError "Failed to retrieve ingress zone. Did you start profile '$MINIKUBE_PROFILE' successfully?"
         exit 1
     else
@@ -270,6 +304,10 @@ minizitiConsole() {
         ;;
     esac
     logInfo "Opening ziti-console: $console_url ..."
+}
+
+listProfiles() {
+    dir --format=single-column --ignore=default --sort=time --reverse "$PROFILES_DIR"
 }
 
 logger() {
@@ -318,7 +356,50 @@ logDebug() {
 }
 
 controllerPod() {
-    kubectlWrapper get pods --selector app.kubernetes.io/component=ziti-controller --output jsonpath='{.items[0].metadata.name}'
+    kubectlWrapper get pods \
+        --selector app.kubernetes.io/component=ziti-controller \
+        --output jsonpath='{.items[0].metadata.name}'
+}
+
+getPodStatus() {
+    local pod_name="$1"
+    kubectl get pod \
+        --selector app.kubernetes.io/component="$pod_name" \
+        --ignore-not-found=true \
+        --output jsonpath='{.items[0].status.phase}' 2> /dev/null
+}
+
+showStatus() {
+    COMPONENTS=("ziti-controller" "ziti-router" "ziti-console")
+    for component in "${COMPONENTS[@]}"; do
+        status="$(getPodStatus "$component")"
+        if [[ -z "$status" ]]; then
+            logError "Could not retrieve status for component $component"
+            exit 1
+        fi
+        echo "$component: $status"
+    done
+}
+
+getDefaultProfile() {
+    default_profile="$DEFAULT_PROFILE"
+    if [[ -L "$default_profile" ]]; then
+        basename "$(readlink -f "$default_profile")"
+    else
+        echo "miniziti"
+    fi
+}
+
+setProfile() {
+    profile="$1"
+    profiles="$(listProfiles)"
+    if ! echo "$profiles" | grep -q "$profile"; then
+        logError "Invalid profile: $profile\nValid profiles are:\n$profiles"
+        exit 1
+    else
+        ln --no-dereference --symbolic --force "$PROFILES_DIR/$profile" "$DEFAULT_PROFILE"
+        logInfo "Set default profile to: '$profile'"
+    fi
 }
 
 zitiWrapper() {
@@ -366,7 +447,7 @@ main(){
             DETECTED_OS \
             DO_ZITI_LOGIN=0 \
             MINIKUBE_NODE_EXTERNAL \
-            MINIKUBE_PROFILE="miniziti" \
+            MINIKUBE_PROFILE \
             MINIZITI_HOSTS=1 \
             MINIZITI_MODIFY_HOSTS=0 \
             OPEN_ZITI_CONSOLE=0 \
@@ -386,6 +467,15 @@ main(){
     DETECTED_OS="$(detectOs)"
     : "${DEBUG_MINIKUBE_TUNNEL:=0}"  # set env = 1 to trigger the minikube tunnel probe
     : "${MINIZITI_TIMEOUT_SECS:=240}"
+    MINIZITI_CONFIGMAP="miniziti-config"
+    ZITI_CLI_HOME="$(getZitiCliHome)"
+    ZITI_CLI_CERTS_DIR="$ZITI_CLI_HOME/certs"
+    STATE_DIR="$(makeMinizitiStateDir)"
+    PROFILES_DIR="$STATE_DIR/profiles"
+    [[ ! -d "$PROFILES_DIR" ]] && mkdir "$PROFILES_DIR"
+    DEFAULT_PROFILE="$PROFILES_DIR/default"
+
+    MINIKUBE_PROFILE="$(getDefaultProfile)"
 
     while (( $# )); do
         case "$1" in
@@ -401,8 +491,43 @@ main(){
             creds)          SHOW_ADMIN_CREDS=1
                             shift
             ;;
+            profile)
+                            shift
+                            if (( $# == 0 )); then
+                                _usageProfile
+                                exit 1
+                            fi
+                            case "$1" in
+                                list)
+                                    shift
+                                    listProfiles
+                                    exit
+                                ;;
+                                use)
+                                    shift
+                                    if (( $# != 1 )); then
+                                        _usageProfileUse
+                                        exit 1
+                                    fi
+                                    setProfile "$1"
+                                    exit
+                                ;;
+                                show)
+                                    getDefaultProfile
+                                    exit
+                                ;;
+                                *)
+                                    _usageProfile "$1"
+                                    exit 1
+                                ;;
+                            esac
+            ;;
             login)          DO_ZITI_LOGIN=1
                             shift
+            ;;
+            status)
+                            showStatus
+                            exit
             ;;
             ziti)           RUN_ZITI_CLI=1
                             shift
@@ -483,12 +608,8 @@ main(){
     : "${ZITI_NAMESPACE:=${MINIKUBE_PROFILE}}"
 
     MINIZITI_INGRESS_ZONE="$MINIKUBE_PROFILE.internal"
-    MINIZITI_INGRESS_ZONE_CONFIGMAP="ziti-ingress-zone"
     MINIZITI_INTERCEPT_ZONE="$MINIKUBE_PROFILE.private"
-    ZITI_CLI_HOME="$(getZitiCliHome)"
-    ZITI_CLI_CERTS_DIR="$ZITI_CLI_HOME/certs"
-    STATE_DIR="$(makeMinizitiStateDir)"
-    PROFILE_DIR="$STATE_DIR/profiles/${MINIKUBE_PROFILE}"
+    PROFILE_DIR="$PROFILES_DIR/${MINIKUBE_PROFILE}"
     IDENTITIES_DIR="$PROFILE_DIR/identities"
 
     if (( DO_ZITI_LOGIN )); then
@@ -518,7 +639,7 @@ main(){
         if ingress_zone="$(getIngressZone)"; then
             if (( MINIZITI_MODIFY_HOSTS )) && grep -q "$ingress_zone" "$HOSTS_FILE"; then
                 checkSudoRequired
-                cleanHosts
+                cleanHosts "$ingress_zone"
             fi
 
             CERT_FILE="$(find "$ZITI_CLI_CERTS_DIR" -maxdepth 1 -type f -name "miniziti-controller.$ingress_zone" -print -quit 2> /dev/null)"
@@ -534,6 +655,12 @@ main(){
         if [[ -d "$PROFILE_DIR" ]]; then
             logWarn "Deleting miniziti profile directory: $PROFILE_DIR"
             rm -rf  "$PROFILE_DIR"
+        fi
+
+        if [[ -L "$DEFAULT_PROFILE" ]]; then
+            if [[ "$(basename "$(readlink -f "$DEFAULT_PROFILE")")" == "$MINIKUBE_PROFILE" ]]; then
+                unlink "$DEFAULT_PROFILE"
+            fi
         fi
 
         # Cannot nicely call logout until https://github.com/openziti/ziti/issues/1305 is addressed.
@@ -794,19 +921,18 @@ main(){
         testClusterDns "${MINIKUBE_NODE_EXTERNAL}"
     fi
 
-    if miniziti kubectl get configmaps \
-        | grep -q "$MINIZITI_INGRESS_ZONE_CONFIGMAP"; then
-        logDebug "$MINIZITI_INGRESS_ZONE_CONFIGMAP configmap has been applied"
+    if kubectlWrapper get configmap "$MINIZITI_CONFIGMAP" 2> /dev/null; then
+        logDebug "$MINIZITI_CONFIGMAP configmap has been applied"
     else
-        logInfo "Applying $MINIZITI_INGRESS_ZONE_CONFIGMAP configmap"
+        logInfo "Applying $MINIZITI_CONFIGMAP configmap"
         cat <<EOF | kubectlWrapper apply -f - >&3
 apiVersion: v1
 kind: ConfigMap
 metadata:
-    name: "$MINIZITI_INGRESS_ZONE_CONFIGMAP"
-    namespace: "$ZITI_NAMESPACE"
+  name: "$MINIZITI_CONFIGMAP"
+  namespace: "$ZITI_NAMESPACE"
 data:
-    zone: "$MINIZITI_INGRESS_ZONE"
+  ingress-zone: "$MINIZITI_INGRESS_ZONE"
 EOF
     fi
 
