@@ -384,7 +384,7 @@ showStatus() {
 getDefaultProfile() {
     default_profile="$DEFAULT_PROFILE"
     if [[ -L "$default_profile" ]]; then
-        basename "$(readlink -f "$default_profile")"
+        basename "$(realpath "$default_profile")"
     else
         echo "miniziti"
     fi
@@ -397,7 +397,7 @@ setProfile() {
         logError "Invalid profile: $profile\nValid profiles are:\n$profiles"
         exit 1
     else
-        ln --no-dereference --symbolic --force "$PROFILES_DIR/$profile" "$DEFAULT_PROFILE"
+        ln -nsf "$PROFILES_DIR/$profile" "$DEFAULT_PROFILE"
         logInfo "Set default profile to: '$profile'"
     fi
 }
@@ -658,7 +658,7 @@ main(){
         fi
 
         if [[ -L "$DEFAULT_PROFILE" ]]; then
-            if [[ "$(basename "$(readlink -f "$DEFAULT_PROFILE")")" == "$MINIKUBE_PROFILE" ]]; then
+            if [[ "$(basename "$(realpath "$DEFAULT_PROFILE")")" == "$MINIKUBE_PROFILE" ]]; then
                 unlink "$DEFAULT_PROFILE"
             fi
         fi
