@@ -180,7 +180,7 @@ jobs:
           pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
 
       - name: Create fablab instance archive
-        if: always()
+        if: ${{ !cancelled() }}
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         run: |
@@ -190,7 +190,7 @@ jobs:
           aws s3 cp ./simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg s3://ziti-smoketest-fablab-instances/
 
       - name: Test Report Generation
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           go install github.com/jstemmer/go-junit-report/v2@latest
           $(go env GOPATH)/bin/go-junit-report -in zititest/test.out -out test-report.xml
@@ -201,13 +201,13 @@ jobs:
           paths: |
             test-report.xml
           show: "fail, skip"
-        if: always()
+        if: ${{ !cancelled() }}
 
       # END linux-build-steps
 
   fablab-smoketest-teardown:
     name: Teardown SmokeTest
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-20.04
     needs: [ fablab-smoketest ]
     steps:
@@ -239,13 +239,14 @@ jobs:
 
   publish:
     name: Publish Binaries
-    # - always() allows evaluating further conditional expressions even if
+    # - !cancelled() allows evaluating further conditional expressions even if
     #   needed jobs were skipped
-    if: |
-      always()
+    if: ${{ 
+      !cancelled()
       && (needs.mac-os-build.result == 'success' || needs.mac-os-build.result == 'skipped')
       && (needs.windows-build.result == 'success' || needs.windows-build.result == 'skipped')
-      && (needs.fablab-smoketest.result == 'success' || needs.fablab-smoketest.result == 'skipped')
+      && (needs.fablab-smoketest.result == 'success' || needs.fablab-smoketest.result == 'skipped') 
+      }}
     runs-on: ubuntu-20.04
     needs: [ linux-build, mac-os-build, windows-build, fablab-smoketest ]
     outputs:
@@ -369,12 +370,13 @@ jobs:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
 
   call-publish-prerelease-docker-images:
-    # always() re-enables evaluating conditionals in forks even if Windows or
-    # macOS builds were skipped
-    if: |
-      always()
+    # - !cancelled() allows evaluating further conditional expressions even if
+    #   needed jobs were skipped
+    if: ${{
+      !cancelled()
       && needs.publish.result == 'success'
       && github.ref == 'refs/heads/release-next'
+      }}
     name: Publish Pre-Release Docker Images
     needs: publish
     uses: ./.github/workflows/publish-docker-images.yml
@@ -383,12 +385,13 @@ jobs:
       ziti-version: release-next
 
   call-publish-release-docker-images:
-    # always() re-enables evaluating conditionals in forks even if Windows or
-    # macOS builds were skipped
-    if: |
-      always()
+    # - !cancelled() allows evaluating further conditional expressions even if
+    #   needed jobs were skipped
+    if: ${{
+      !cancelled()
       && needs.publish.result == 'success'
       && github.ref == 'refs/heads/main'
+      }}
     name: Publish Release Docker Images
     needs: publish
     uses: ./.github/workflows/publish-docker-images.yml
@@ -399,12 +402,13 @@ jobs:
   # call on release-next and main branches to publish linux packages to
   # "testing" and "release" package repos in Artifactory
   call-publish-linux-packages:
-    # always() re-enables evaluating conditionals in forks even if Windows or
-    # macOS builds were skipped
-    if: |
-      always()
+    # - !cancelled() allows evaluating further conditional expressions even if
+    #   needed jobs were skipped
+    if: ${{
+      !cancelled()
       && needs.publish.result == 'success'
       && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release-next')
+      }}
     name: Publish Linux Packages
     needs: publish
     uses: ./.github/workflows/publish-linux-packages.yml
