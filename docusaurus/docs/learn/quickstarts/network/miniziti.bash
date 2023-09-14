@@ -363,7 +363,7 @@ controllerPod() {
 
 getPodStatus() {
     local pod_name="$1"
-    kubectl get pod \
+    kubectlWrapper get pod \
         --selector app.kubernetes.io/component="$pod_name" \
         --ignore-not-found=true \
         --output jsonpath='{.items[0].status.phase}' 2> /dev/null
