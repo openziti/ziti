@@ -863,7 +863,6 @@ main(){
 
     HTTPBIN_NAME="httpbin-host"
     HTTPBIN_OTT="$IDENTITIES_DIR/$HTTPBIN_NAME.jwt"
-    HTTPBIN_JSON="$IDENTITIES_DIR/$HTTPBIN_NAME.json"
 
     if  ! ziti_wrapper edge list identities "name=\"$HTTPBIN_NAME\"" --csv \
         | grep -q "$HTTPBIN_NAME"; then
@@ -942,33 +941,15 @@ main(){
     fi
 
     if [[ -s "$HTTPBIN_OTT" ]]; then
-        logDebug "enrolling $HTTPBIN_OTT"
-        # discard expected output that normally flows to stderr
-        ENROLL_OUT="$(
-            ziti edge enroll "$HTTPBIN_OTT" 2>&1 \
-                | grep -vE '(generating.*key|enrolled\s+successfully)' \
-                || true
-        )"
-        if [[ -z "${ENROLL_OUT}" ]]; then
-            rm -f "$HTTPBIN_OTT"
-            logDebug "deleted $HTTPBIN_OTT after enrolling successfully"
-        else
-            echo -e "ERROR: unexpected result during OpenZiti Identity enrollment\n"\
-                    "${ENROLL_OUT}"
-            exit 1
-        fi
-    fi
-
-    if [[ -s "$HTTPBIN_JSON" ]]; then
         logDebug "installing httpbin chart as 'miniziti-httpbin'"
         (( ZITI_CHARTS_ALT )) && {
             helm_wrapper dependency build "${ZITI_CHARTS_REF}/httpbin" >&3
         }
         helm_wrapper install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
-            --set-file zitiIdentity="$HTTPBIN_JSON" \
+            --set-file zitiEnrollment="$HTTPBIN_OTT" \
             --set zitiServiceName=httpbin-service >&3
-        rm -f "$HTTPBIN_JSON"
-        logDebug "deleted $HTTPBIN_JSON after installing successfully with miniziti-httpbin chart"
+        rm -f "$HTTPBIN_OTT"
+        logDebug "deleted $HTTPBIN_OTT after installing successfully with miniziti-httpbin chart"
     fi
 
     echo -e "\n\n"
