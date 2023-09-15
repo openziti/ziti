@@ -17,16 +17,16 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.15
-	github.com/openziti/channel/v2 v2.0.95
-	github.com/openziti/edge v0.24.405
+	github.com/openziti/channel/v2 v2.0.98
+	github.com/openziti/edge v0.24.411-0.20230915181008-89f19d018570
 	github.com/openziti/edge-api v0.25.33
-	github.com/openziti/fabric v0.24.23
-	github.com/openziti/foundation/v2 v2.0.30
-	github.com/openziti/identity v1.0.61
+	github.com/openziti/fabric v0.24.28
+	github.com/openziti/foundation/v2 v2.0.31
+	github.com/openziti/identity v1.0.62
 	github.com/openziti/runzmd v1.0.30
-	github.com/openziti/sdk-golang v0.20.101
-	github.com/openziti/storage v0.2.14
-	github.com/openziti/transport/v2 v2.0.103
+	github.com/openziti/sdk-golang v0.20.103
+	github.com/openziti/storage v0.2.15
+	github.com/openziti/transport/v2 v2.0.106
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.3
 	github.com/pkg/errors v0.9.1
@@ -38,7 +38,7 @@ require (
 	github.com/spf13/viper v1.10.0
 	github.com/stretchr/testify v1.8.4
 	go.etcd.io/bbolt v1.3.7
-	golang.org/x/net v0.14.0
+	golang.org/x/net v0.15.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
 	gopkg.in/resty.v1 v1.12.0
@@ -133,7 +133,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.33 // indirect
+	github.com/openziti/metrics v1.2.34 // indirect
 	github.com/openziti/secretstream v0.1.11 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
@@ -169,15 +169,15 @@ require (
 	go.opentelemetry.io/otel v1.17.0 // indirect
 	go.opentelemetry.io/otel/metric v1.17.0 // indirect
 	go.opentelemetry.io/otel/trace v1.17.0 // indirect
-	golang.org/x/crypto v0.12.0 // indirect
+	golang.org/x/crypto v0.13.0 // indirect
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63 // indirect
 	golang.org/x/image v0.11.0 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/term v0.11.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/term v0.12.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/tools v0.12.1-0.20230815132531-74c255bcf846 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
