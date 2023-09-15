@@ -23,10 +23,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/latency"
+	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	metrics2 "github.com/openziti/fabric/router/metrics"
-	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/metrics"
 )
@@ -137,9 +137,9 @@ func (self *heartbeatCallback) CheckHeartBeat() {
 	now := time.Now().UnixMilli()
 	if self.timeSinceLastResponse(now) > self.closeUnresponsiveTimeout {
 		log := self.logger()
-		log.Error("heartbeat not received in time, closing link")
+		log.Error("heartbeat not received in time, closing control channel connection")
 		if err := self.ch.Close(); err != nil {
-			log.WithError(err).Error("error while closing link")
+			log.WithError(err).Error("error while closing control channel connection")
 		}
 	}
 	go self.checkQueueTime()

@@ -115,8 +115,9 @@ type Config struct {
 		Heartbeats            env.HeartbeatOptions
 	}
 	Link struct {
-		Listeners []map[interface{}]interface{}
-		Dialers   []map[interface{}]interface{}
+		Listeners  []map[interface{}]interface{}
+		Dialers    []map[interface{}]interface{}
+		Heartbeats channel.HeartbeatOptions
 	}
 	Dialers   map[string]xgress.OptionsData
 	Listeners []listenerBinding
@@ -164,6 +165,9 @@ const (
 	TimeFormatMinute  = "04"
 	TimeFormatSeconds = "05"
 	TimestampFormat   = TimeFormatYear + TimeFormatMonth + TimeFormatDay + TimeFormatHour + TimeFormatMinute + TimeFormatSeconds
+
+	DefaultLinkHeartbeatSendInterval = 10 * time.Second
+	DefaultLinkUnresponsiveTimeout   = time.Minute
 )
 
 // CreateBackup will attempt to use the current path value to create a backup of
@@ -517,6 +521,10 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
+	cfg.Link.Heartbeats = *channel.DefaultHeartbeatOptions()
+	cfg.Link.Heartbeats.SendInterval = DefaultLinkHeartbeatSendInterval
+	cfg.Link.Heartbeats.CloseUnresponsiveTimeout = DefaultLinkUnresponsiveTimeout
+
 	if value, found := cfgmap["link"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap["listeners"]; found {
@@ -559,6 +567,16 @@ func LoadConfig(path string) (*Config, error) {
 					}
 				} else {
 					return nil, fmt.Errorf("[link/dialers] must provide at least one dialer (%v)", value)
+				}
+			}
+
+			if value, found := submap["heartbeats"]; found {
+				if submap, ok := value.(map[interface{}]interface{}); ok {
+					options, err := channel.LoadHeartbeatOptions(submap)
+					if err != nil {
+						return nil, err
+					}
+					cfg.Link.Heartbeats = *options
 				}
 			}
 		}

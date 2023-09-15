@@ -47,6 +47,9 @@ const (
 	DefaultRateLimiterWorkerCount   = 5
 	MinRateLimiterWorkerCount       = 1
 	MaxRateLimiterWorkerCount       = 10000
+
+	DefaultUnresponsiveLinkTimeout = time.Minute
+	MinUnresponsiveLinkTimeout     = 5 * time.Second
 )
 
 type Options struct {
@@ -55,6 +58,7 @@ type Options struct {
 	IdleTxInterval           time.Duration
 	LinkDial                 WorkerPoolOptions
 	RateLimiter              WorkerPoolOptions
+	UnresponsiveLinkTimeout  time.Duration
 	XgressCloseCheckInterval time.Duration
 	XgressDial               WorkerPoolOptions
 	XgressDialDwellTime      time.Duration
@@ -78,6 +82,7 @@ func DefaultOptions() *Options {
 			QueueLength: DefaultRateLimiterQueueLength,
 			WorkerCount: DefaultRateLimiterWorkerCount,
 		},
+		UnresponsiveLinkTimeout:  DefaultUnresponsiveLinkTimeout,
 		XgressCloseCheckInterval: DefaultXgressCloseCheckInterval,
 		XgressDial: WorkerPoolOptions{
 			QueueLength: DefaultXgressDialWorkerQueueLength,
@@ -155,6 +160,24 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.RateLimiter.WorkerCount = uint16(workers)
 		} else {
 			return nil, errors.Errorf("invalid value for 'rateLimitedWorkerCount', expected integer between %v and %v", MinRateLimiterWorkerCount, MaxRateLimiterWorkerCount)
+		}
+	}
+
+	if value, found := src["unresponsiveLinkTimeout"]; found {
+		if val, ok := value.(string); ok {
+			if d, err := time.ParseDuration(val); err != nil {
+				return nil, errors.Wrapf(err, "failed to parse duration [%s] for 'unresponsiveLinkTimeout'", val)
+			} else {
+				options.UnresponsiveLinkTimeout = d
+			}
+		} else if val, ok := value.(int); ok {
+			options.UnresponsiveLinkTimeout = time.Duration(val) * time.Millisecond
+		} else {
+			return nil, errors.New("invalid value for 'latencyProbeInterval'")
+		}
+
+		if options.UnresponsiveLinkTimeout < MinUnresponsiveLinkTimeout {
+			return nil, errors.Errorf("invalid duration %v for 'unresponsiveLinkTimeout', must be >= %v", options.UnresponsiveLinkTimeout, MinUnresponsiveLinkTimeout)
 		}
 	}
 

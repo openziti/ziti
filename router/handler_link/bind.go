@@ -6,11 +6,11 @@ import (
 	"github.com/openziti/channel/v2/latency"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/common/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"
 	metrics2 "github.com/openziti/fabric/router/metrics"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/fabric/common/trace"
 	"github.com/openziti/foundation/v2/concurrenz"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/metrics"
@@ -19,22 +19,22 @@ import (
 	"time"
 )
 
-func NewBindHandlerFactory(c env.NetworkControllers, f *forwarder.Forwarder, fo *forwarder.Options, mr metrics.Registry, registry xlink.Registry) *bindHandlerFactory {
+func NewBindHandlerFactory(c env.NetworkControllers, f *forwarder.Forwarder, hbo *channel.HeartbeatOptions, mr metrics.Registry, registry xlink.Registry) *bindHandlerFactory {
 	return &bindHandlerFactory{
 		ctrl:             c,
 		forwarder:        f,
-		forwarderOptions: fo,
 		metricsRegistry:  mr,
 		xlinkRegistry:    registry,
+		heartbeatOptions: hbo,
 	}
 }
 
 type bindHandlerFactory struct {
 	ctrl             env.NetworkControllers
 	forwarder        *forwarder.Forwarder
-	forwarderOptions *forwarder.Options
 	metricsRegistry  metrics.Registry
 	xlinkRegistry    xlink.Registry
+	heartbeatOptions *channel.HeartbeatOptions
 }
 
 func (self *bindHandlerFactory) NewBindHandler(link xlink.Xlink, latency bool, listenerSide bool) channel.BindHandler {
@@ -95,7 +95,9 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		latencyMetric:    latencyMetric,
 		queueTimeMetric:  queueTimeMetric,
 		ch:               binding.GetChannel(),
+		heartbeatOptions: self.heartbeatOptions,
 		latencySemaphore: concurrenz.NewSemaphore(2),
+		lastResponse:     time.Now().Add(self.heartbeatOptions.CloseUnresponsiveTimeout * 2).UnixMilli(),
 	}
 	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
 
@@ -141,17 +143,13 @@ func (self *bindHandler) verifyRouter(l xlink.Xlink, ch channel.Channel) error {
 type heartbeatCallback struct {
 	latencyMetric    metrics.Histogram
 	queueTimeMetric  metrics.Histogram
-	firstSent        int64
 	lastResponse     int64
+	heartbeatOptions *channel.HeartbeatOptions
 	ch               channel.Channel
 	latencySemaphore concurrenz.Semaphore
 }
 
-func (self *heartbeatCallback) HeartbeatTx(int64) {
-	if self.firstSent == 0 {
-		self.firstSent = time.Now().UnixMilli()
-	}
-}
+func (self *heartbeatCallback) HeartbeatTx(int64) {}
 
 func (self *heartbeatCallback) HeartbeatRx(int64) {}
 
@@ -166,11 +164,19 @@ func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {
 func (self *heartbeatCallback) CheckHeartBeat() {
 	log := pfxlog.Logger().WithField("channelId", self.ch.Label())
 	now := time.Now().UnixMilli()
-	if self.firstSent != 0 && (now-self.firstSent > 30000) && (now-self.lastResponse > 30000) {
+	if delta := now - self.lastResponse; delta > 30000 {
 		log.Warn("heartbeat not received in time, link may be unhealthy")
 		self.latencyMetric.Clear()
 		self.latencyMetric.Update(88888888888)
+
+		if delta > self.heartbeatOptions.CloseUnresponsiveTimeout.Milliseconds() {
+			log.Error("heartbeat not received in time, closing router link connection")
+			if err := self.ch.Close(); err != nil {
+				log.WithError(err).Error("error while closing router link connection")
+			}
+		}
 	}
+
 	go self.checkQueueTime()
 }
 

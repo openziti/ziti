@@ -385,7 +385,7 @@ func (self *Router) registerComponents() error {
 	xlinkChAccepter := handler_link.NewBindHandlerFactory(
 		self.ctrls,
 		self.forwarder,
-		self.config.Forwarder,
+		&self.config.Link.Heartbeats,
 		self.metricsRegistry,
 		self.xlinkRegistry,
 	)

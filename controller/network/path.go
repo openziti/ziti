@@ -21,8 +21,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/common/pb/ctrl_pb"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/pkg/errors"
 )
 
@@ -246,7 +246,7 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int
 	routerPath = append(routerPath, dstR)
 
 	if routerPath[0] != srcR {
-		return nil, 0, fmt.Errorf("can't route from %v -> %v. source unreachable", srcR.Id, dstR.Id)
+		return nil, 0, fmt.Errorf("can't route from %v -> %v", srcR.Id, dstR.Id)
 	}
 	if routerPath[len(routerPath)-1] != dstR {
 		return nil, 0, fmt.Errorf("can't route from %v -> %v. destination unreachable", srcR.Id, dstR.Id)
