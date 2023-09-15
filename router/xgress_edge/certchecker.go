@@ -109,10 +109,16 @@ func (self *CertExpirationChecker) Run() error {
 			}
 		}
 
-		durationToWait, err := self.getWaitTime()
+		durationToWait := 0 * time.Second
+		if self.edgeConfig.ForceExtendEnrollment {
+			self.edgeConfig.ForceExtendEnrollment = false
+		} else {
+			var err error
+			durationToWait, err = self.getWaitTime()
 
-		if err != nil {
-			return fmt.Errorf("could not extend certificates: %v", err)
+			if err != nil {
+				return fmt.Errorf("could not determine enrollent extension wait time: %v", err)
+			}
 		}
 
 		pfxlog.Logger().Infof("waiting %s to renew certificates", durationToWait)
@@ -130,18 +136,50 @@ func (self *CertExpirationChecker) Run() error {
 	}
 }
 
+func (self *CertExpirationChecker) AnyCtrlChannelWithTimeout(timeout time.Duration) (channel.Channel, bool) {
+	startTime := time.Now()
+	interval := 500 * time.Millisecond
+	for {
+		ctrlCh := self.ctrls.AnyCtrlChannel()
+
+		if ctrlCh != nil && !ctrlCh.IsClosed() {
+			return ctrlCh, false
+		}
+
+		select {
+		case <-time.After(interval):
+			break
+		case <-self.closeNotify:
+			return nil, true
+		}
+
+		if time.Since(startTime) >= timeout {
+			break
+		}
+	}
+
+	return nil, false
+}
+
 func (self *CertExpirationChecker) ExtendEnrollment() error {
 	if !self.extender.IsRequestingCompareAndSwap(false, true) {
 		return fmt.Errorf("could not send enrollment extension request, a request has already been sent")
 	}
 
-	ctrlCh := self.ctrls.AnyCtrlChannel()
-	if ctrlCh == nil {
-		return errors.New("cannot request updates, no controller is available")
-	}
+	var ctrlCh channel.Channel
+	timeout := 10 * time.Second
+	intervalWait := 1 * time.Minute
+	for ctrlCh == nil {
+		var closeNotified bool
+		ctrlCh, closeNotified = self.AnyCtrlChannelWithTimeout(timeout)
 
-	if ctrlCh.IsClosed() {
-		return errors.New("cannot request updates, control channel has closed")
+		if closeNotified {
+			return errors.New("router shutting down")
+		}
+
+		if ctrlCh == nil {
+			pfxlog.Logger().Errorf("cannot send enrollment extension request, no controller is available, waited %s for a control channel, waiting %s to try again", timeout, intervalWait)
+		}
 	}
 
 	self.requestSentAt = time.Now()
@@ -180,36 +218,27 @@ func (self *CertExpirationChecker) ExtendEnrollment() error {
 }
 
 func (self *CertExpirationChecker) getWaitTime() (time.Duration, error) {
-	var durationToWait time.Duration
+	now := time.Now()
 
-	if self.edgeConfig.ExtendEnrollment {
-		self.edgeConfig.ExtendEnrollment = false
-		durationToWait = 0
+	if self.id.Cert().Leaf.NotAfter.Before(now) || self.id.Cert().Leaf.NotAfter == now {
+		return 0, fmt.Errorf("client certificate has expired")
+	}
 
-		pfxlog.Logger().Info("enrollment extension was forced")
-	} else {
-		now := time.Now()
+	clientExpirationDuration := self.id.Cert().Leaf.NotAfter.Add(-7 * 24 * time.Hour).Sub(now) //1 week before client cert expires
 
-		if self.id.Cert().Leaf.NotAfter.Before(now) || self.id.Cert().Leaf.NotAfter == now {
-			return 0, fmt.Errorf("client certificate has expired")
-		}
+	if clientExpirationDuration < 0 {
+		return 0, nil
+	}
 
-		clientExpirationDuration := self.id.Cert().Leaf.NotAfter.Add(-7 * 24 * time.Hour).Sub(now) //1 week before client cert expires
+	serverExpirationDuration := self.id.ServerCert()[0].Leaf.NotAfter.Add(-7 * 24 * time.Hour).Sub(now) // 1 week before server cert expires
 
-		if clientExpirationDuration < 0 {
-			return 0, nil
-		}
+	if serverExpirationDuration < 0 {
+		return 0, nil
+	}
 
-		serverExpirationDuration := self.id.ServerCert()[0].Leaf.NotAfter.Add(-7 * 24 * time.Hour).Sub(now) // 1 week before server cert expires
-
-		if serverExpirationDuration < 0 {
-			return 0, nil
-		}
-
-		durationToWait = serverExpirationDuration
-		if clientExpirationDuration < serverExpirationDuration {
-			durationToWait = clientExpirationDuration
-		}
+	durationToWait := serverExpirationDuration
+	if clientExpirationDuration < serverExpirationDuration {
+		durationToWait = clientExpirationDuration
 	}
 
 	return durationToWait, nil

@@ -55,7 +55,7 @@ type Config struct {
 	SessionValidateMinInterval time.Duration
 	SessionValidateMaxInterval time.Duration
 	Tcfg                       transport.Configuration
-	ExtendEnrollment           bool
+	ForceExtendEnrollment      bool
 
 	RouterConfig             *router.Config
 	EnrollmentIdentityConfig *identity.Config
@@ -113,7 +113,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 	if val, ok := configMap[FlagsCfgMapKey]; ok {
 		if flags, ok := val.(map[string]*pflag.Flag); ok {
 			if flag, ok := flags["extend"]; ok {
-				config.ExtendEnrollment = flag.Value.String() == "true"
+				config.ForceExtendEnrollment = flag.Value.String() == "true"
 			}
 		}
 	}
