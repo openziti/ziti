@@ -53,12 +53,12 @@ func NewCreateService(ctx *middleware.Context, handler CreateServiceHandler) *Cr
 	return &CreateService{Context: ctx, Handler: handler}
 }
 
-/*
-	CreateService swagger:route POST /services Service createService
+/* CreateService swagger:route POST /services Service createService
 
-# Create a service resource
+Create a service resource
 
 Create a service resource. Requires admin access.
+
 */
 type CreateService struct {
 	Context *middleware.Context

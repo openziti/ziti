@@ -78,12 +78,10 @@ func NewUpdateTerminatorParamsWithHTTPClient(client *http.Client) *UpdateTermina
 	}
 }
 
-/*
-UpdateTerminatorParams contains all the parameters to send to the API endpoint
+/* UpdateTerminatorParams contains all the parameters to send to the API endpoint
+   for the update terminator operation.
 
-	for the update terminator operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type UpdateTerminatorParams struct {
 

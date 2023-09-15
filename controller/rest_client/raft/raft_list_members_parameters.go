@@ -76,12 +76,10 @@ func NewRaftListMembersParamsWithHTTPClient(client *http.Client) *RaftListMember
 	}
 }
 
-/*
-RaftListMembersParams contains all the parameters to send to the API endpoint
+/* RaftListMembersParams contains all the parameters to send to the API endpoint
+   for the raft list members operation.
 
-	for the raft list members operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type RaftListMembersParams struct {
 	timeout    time.Duration

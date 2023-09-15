@@ -40,8 +40,7 @@ import (
 // DeleteServiceOKCode is the HTTP code returned for type DeleteServiceOK
 const DeleteServiceOKCode int = 200
 
-/*
-DeleteServiceOK The delete request was successful and the resource has been removed
+/*DeleteServiceOK The delete request was successful and the resource has been removed
 
 swagger:response deleteServiceOK
 */
@@ -85,8 +84,7 @@ func (o *DeleteServiceOK) WriteResponse(rw http.ResponseWriter, producer runtime
 // DeleteServiceBadRequestCode is the HTTP code returned for type DeleteServiceBadRequest
 const DeleteServiceBadRequestCode int = 400
 
-/*
-DeleteServiceBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*DeleteServiceBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response deleteServiceBadRequest
 */
@@ -130,8 +128,7 @@ func (o *DeleteServiceBadRequest) WriteResponse(rw http.ResponseWriter, producer
 // DeleteServiceUnauthorizedCode is the HTTP code returned for type DeleteServiceUnauthorized
 const DeleteServiceUnauthorizedCode int = 401
 
-/*
-DeleteServiceUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*DeleteServiceUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response deleteServiceUnauthorized
 */
@@ -175,8 +172,7 @@ func (o *DeleteServiceUnauthorized) WriteResponse(rw http.ResponseWriter, produc
 // DeleteServiceConflictCode is the HTTP code returned for type DeleteServiceConflict
 const DeleteServiceConflictCode int = 409
 
-/*
-DeleteServiceConflict The resource requested to be removed/altered cannot be as it is referenced by another object.
+/*DeleteServiceConflict The resource requested to be removed/altered cannot be as it is referenced by another object.
 
 swagger:response deleteServiceConflict
 */

@@ -53,12 +53,12 @@ func NewDetailRouter(ctx *middleware.Context, handler DetailRouterHandler) *Deta
 	return &DetailRouter{Context: ctx, Handler: handler}
 }
 
-/*
-	DetailRouter swagger:route GET /routers/{id} Router detailRouter
+/* DetailRouter swagger:route GET /routers/{id} Router detailRouter
 
-# Retrieves a single router
+Retrieves a single router
 
 Retrieves a single router by id. Requires admin access.
+
 */
 type DetailRouter struct {
 	Context *middleware.Context

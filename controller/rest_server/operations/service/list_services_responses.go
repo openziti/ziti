@@ -40,8 +40,7 @@ import (
 // ListServicesOKCode is the HTTP code returned for type ListServicesOK
 const ListServicesOKCode int = 200
 
-/*
-ListServicesOK A list of services
+/*ListServicesOK A list of services
 
 swagger:response listServicesOK
 */
@@ -85,8 +84,7 @@ func (o *ListServicesOK) WriteResponse(rw http.ResponseWriter, producer runtime.
 // ListServicesUnauthorizedCode is the HTTP code returned for type ListServicesUnauthorized
 const ListServicesUnauthorizedCode int = 401
 
-/*
-ListServicesUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*ListServicesUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response listServicesUnauthorized
 */

@@ -77,12 +77,10 @@ func NewListRoutersParamsWithHTTPClient(client *http.Client) *ListRoutersParams 
 	}
 }
 
-/*
-ListRoutersParams contains all the parameters to send to the API endpoint
+/* ListRoutersParams contains all the parameters to send to the API endpoint
+   for the list routers operation.
 
-	for the list routers operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type ListRoutersParams struct {
 

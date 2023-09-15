@@ -53,12 +53,13 @@ func NewListRouters(ctx *middleware.Context, handler ListRoutersHandler) *ListRo
 	return &ListRouters{Context: ctx, Handler: handler}
 }
 
-/*
-	ListRouters swagger:route GET /routers Router listRouters
+/* ListRouters swagger:route GET /routers Router listRouters
 
-# List routers
+List routers
 
 Retrieves a list of router resources; supports filtering, sorting, and pagination. Requires admin access.
+
+
 */
 type ListRouters struct {
 	Context *middleware.Context

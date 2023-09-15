@@ -34,10 +34,6 @@ import (
 	"path"
 )
 
-const (
-	fieldIndex = "raftIndex"
-)
-
 func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, eventDispatcher event2.Dispatcher) *BoltDbFsm {
 	return &BoltDbFsm{
 		decoders:        decoders,
@@ -84,11 +80,7 @@ func (self *BoltDbFsm) GetDb() boltz.Db {
 func (self *BoltDbFsm) loadCurrentIndex() (uint64, error) {
 	var result uint64
 	err := self.db.View(func(tx *bbolt.Tx) error {
-		if raftBucket := boltz.Path(tx, db.RootBucket, db.MetadataBucket); raftBucket != nil {
-			if val := raftBucket.GetInt64(fieldIndex); val != nil {
-				result = uint64(*val)
-			}
-		}
+		result = db.LoadCurrentRaftIndex(tx)
 		return nil
 	})
 	return result, err
@@ -96,7 +88,7 @@ func (self *BoltDbFsm) loadCurrentIndex() (uint64, error) {
 
 func (self *BoltDbFsm) updateIndexInTx(tx *bbolt.Tx, index uint64) error {
 	raftBucket := boltz.GetOrCreatePath(tx, db.RootBucket, db.MetadataBucket)
-	raftBucket.SetInt64(fieldIndex, int64(index), nil)
+	raftBucket.SetInt64(db.FieldRaftIndex, int64(index), nil)
 	return raftBucket.GetError()
 }
 

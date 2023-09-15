@@ -586,6 +586,27 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+  '/database/snapshot':
+    post:
+      summary: Create a new database snapshot with path
+      description: Create a new database snapshot with path. Requires admin access.
+      tags:
+        - Database
+      operationId: createDatabaseSnapshotWithPath
+      parameters:
+        - name: snapshot
+          in: body
+          required: true
+          description: snapshot parameters
+          schema:
+            $ref: '#/definitions/databaseSnapshotCreate'
+      responses:
+        '200':
+          $ref: '#/responses/databaseSnapshotCreateResult'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
   '/database/check-data-integrity':
     post:
       summary: Starts a data integrity scan on the datastore
@@ -820,7 +841,6 @@ responses:
     description: The create request was successful and the resource has been added at the following location
     schema:
       $ref: '#/definitions/createEnvelope'
-
   ###################################################################
   # Services
   ##################################################################
@@ -896,6 +916,11 @@ responses:
     description: A list of data integrity issues found
     schema:
       $ref: '#/definitions/dataIntegrityCheckResultEnvelope'
+
+  databaseSnapshotCreateResult:
+    description: The path to the created snapshot
+    schema:
+      $ref: '#/definitions/databaseSnapshotCreateResultEnvelope'
 
   ###################################################################
   # Raft
@@ -1048,6 +1073,30 @@ definitions:
       os:
         type: string
       arch:
+        type: string
+
+  databaseSnapshotCreate:
+    type: object
+    properties:
+      path:
+        type: string
+
+  databaseSnapshotCreateResultEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/databaseSnapshotCreateDetails'
+  databaseSnapshotCreateDetails:
+    type: object
+    required:
+      - path
+    properties:
+      path:
         type: string
 
   dataIntegrityCheckResultEnvelope:

@@ -53,12 +53,12 @@ func NewDetailLink(ctx *middleware.Context, handler DetailLinkHandler) *DetailLi
 	return &DetailLink{Context: ctx, Handler: handler}
 }
 
-/*
-	DetailLink swagger:route GET /links/{id} Link detailLink
+/* DetailLink swagger:route GET /links/{id} Link detailLink
 
-# Retrieves a single link
+Retrieves a single link
 
 Retrieves a single link by id. Requires admin access.
+
 */
 type DetailLink struct {
 	Context *middleware.Context

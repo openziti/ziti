@@ -40,8 +40,7 @@ import (
 // RaftListMembersOKCode is the HTTP code returned for type RaftListMembersOK
 const RaftListMembersOKCode int = 200
 
-/*
-RaftListMembersOK A response to a raft list-members request
+/*RaftListMembersOK A response to a raft list-members request
 
 swagger:response raftListMembersOK
 */
@@ -85,8 +84,7 @@ func (o *RaftListMembersOK) WriteResponse(rw http.ResponseWriter, producer runti
 // RaftListMembersUnauthorizedCode is the HTTP code returned for type RaftListMembersUnauthorized
 const RaftListMembersUnauthorizedCode int = 401
 
-/*
-RaftListMembersUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*RaftListMembersUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response raftListMembersUnauthorized
 */

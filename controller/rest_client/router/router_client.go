@@ -72,9 +72,9 @@ type ClientService interface {
 }
 
 /*
-CreateRouter creates a router resource
+  CreateRouter creates a router resource
 
-Create a router resource. Requires admin access.
+  Create a router resource. Requires admin access.
 */
 func (a *Client) CreateRouter(params *CreateRouterParams, opts ...ClientOption) (*CreateRouterCreated, error) {
 	// TODO: Validate the params before sending
@@ -112,9 +112,9 @@ func (a *Client) CreateRouter(params *CreateRouterParams, opts ...ClientOption) 
 }
 
 /*
-DeleteRouter deletes a router
+  DeleteRouter deletes a router
 
-Delete a router by id. Requires admin access.
+  Delete a router by id. Requires admin access.
 */
 func (a *Client) DeleteRouter(params *DeleteRouterParams, opts ...ClientOption) (*DeleteRouterOK, error) {
 	// TODO: Validate the params before sending
@@ -152,9 +152,9 @@ func (a *Client) DeleteRouter(params *DeleteRouterParams, opts ...ClientOption) 
 }
 
 /*
-DetailRouter retrieves a single router
+  DetailRouter retrieves a single router
 
-Retrieves a single router by id. Requires admin access.
+  Retrieves a single router by id. Requires admin access.
 */
 func (a *Client) DetailRouter(params *DetailRouterParams, opts ...ClientOption) (*DetailRouterOK, error) {
 	// TODO: Validate the params before sending
@@ -192,9 +192,10 @@ func (a *Client) DetailRouter(params *DetailRouterParams, opts ...ClientOption) 
 }
 
 /*
-ListRouterTerminators lists of terminators assigned to a router
+  ListRouterTerminators lists of terminators assigned to a router
 
-Retrieves a list of terminator resources that are assigned specific router; supports filtering, sorting, and pagination.
+  Retrieves a list of terminator resources that are assigned specific router; supports filtering, sorting, and pagination.
+
 */
 func (a *Client) ListRouterTerminators(params *ListRouterTerminatorsParams, opts ...ClientOption) (*ListRouterTerminatorsOK, error) {
 	// TODO: Validate the params before sending
@@ -232,9 +233,10 @@ func (a *Client) ListRouterTerminators(params *ListRouterTerminatorsParams, opts
 }
 
 /*
-ListRouters lists routers
+  ListRouters lists routers
 
-Retrieves a list of router resources; supports filtering, sorting, and pagination. Requires admin access.
+  Retrieves a list of router resources; supports filtering, sorting, and pagination. Requires admin access.
+
 */
 func (a *Client) ListRouters(params *ListRoutersParams, opts ...ClientOption) (*ListRoutersOK, error) {
 	// TODO: Validate the params before sending
@@ -272,9 +274,9 @@ func (a *Client) ListRouters(params *ListRoutersParams, opts ...ClientOption) (*
 }
 
 /*
-PatchRouter updates the supplied fields on a router
+  PatchRouter updates the supplied fields on a router
 
-Update the supplied fields on a router. Requires admin access.
+  Update the supplied fields on a router. Requires admin access.
 */
 func (a *Client) PatchRouter(params *PatchRouterParams, opts ...ClientOption) (*PatchRouterOK, error) {
 	// TODO: Validate the params before sending
@@ -312,9 +314,9 @@ func (a *Client) PatchRouter(params *PatchRouterParams, opts ...ClientOption) (*
 }
 
 /*
-UpdateRouter updates all fields on a router
+  UpdateRouter updates all fields on a router
 
-Update all fields on a router by id. Requires admin access.
+  Update all fields on a router by id. Requires admin access.
 */
 func (a *Client) UpdateRouter(params *UpdateRouterParams, opts ...ClientOption) (*UpdateRouterOK, error) {
 	// TODO: Validate the params before sending

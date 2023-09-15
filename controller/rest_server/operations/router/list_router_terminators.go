@@ -53,12 +53,13 @@ func NewListRouterTerminators(ctx *middleware.Context, handler ListRouterTermina
 	return &ListRouterTerminators{Context: ctx, Handler: handler}
 }
 
-/*
-	ListRouterTerminators swagger:route GET /routers/{id}/terminators Router listRouterTerminators
+/* ListRouterTerminators swagger:route GET /routers/{id}/terminators Router listRouterTerminators
 
-# List of terminators assigned to a router
+List of terminators assigned to a router
 
 Retrieves a list of terminator resources that are assigned specific router; supports filtering, sorting, and pagination.
+
+
 */
 type ListRouterTerminators struct {
 	Context *middleware.Context

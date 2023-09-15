@@ -69,8 +69,7 @@ func NewListCircuitsOK() *ListCircuitsOK {
 	return &ListCircuitsOK{}
 }
 
-/*
-ListCircuitsOK describes a response with status code 200, with default header values.
+/* ListCircuitsOK describes a response with status code 200, with default header values.
 
 A list of circuits
 */
@@ -78,44 +77,9 @@ type ListCircuitsOK struct {
 	Payload *rest_model.ListCircuitsEnvelope
 }
 
-// IsSuccess returns true when this list circuits o k response has a 2xx status code
-func (o *ListCircuitsOK) IsSuccess() bool {
-	return true
-}
-
-// IsRedirect returns true when this list circuits o k response has a 3xx status code
-func (o *ListCircuitsOK) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this list circuits o k response has a 4xx status code
-func (o *ListCircuitsOK) IsClientError() bool {
-	return false
-}
-
-// IsServerError returns true when this list circuits o k response has a 5xx status code
-func (o *ListCircuitsOK) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this list circuits o k response a status code equal to that given
-func (o *ListCircuitsOK) IsCode(code int) bool {
-	return code == 200
-}
-
-// Code gets the status code for the list circuits o k response
-func (o *ListCircuitsOK) Code() int {
-	return 200
-}
-
 func (o *ListCircuitsOK) Error() string {
 	return fmt.Sprintf("[GET /circuits][%d] listCircuitsOK  %+v", 200, o.Payload)
 }
-
-func (o *ListCircuitsOK) String() string {
-	return fmt.Sprintf("[GET /circuits][%d] listCircuitsOK  %+v", 200, o.Payload)
-}
-
 func (o *ListCircuitsOK) GetPayload() *rest_model.ListCircuitsEnvelope {
 	return o.Payload
 }
@@ -137,8 +101,7 @@ func NewListCircuitsUnauthorized() *ListCircuitsUnauthorized {
 	return &ListCircuitsUnauthorized{}
 }
 
-/*
-ListCircuitsUnauthorized describes a response with status code 401, with default header values.
+/* ListCircuitsUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -146,44 +109,9 @@ type ListCircuitsUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this list circuits unauthorized response has a 2xx status code
-func (o *ListCircuitsUnauthorized) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this list circuits unauthorized response has a 3xx status code
-func (o *ListCircuitsUnauthorized) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this list circuits unauthorized response has a 4xx status code
-func (o *ListCircuitsUnauthorized) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this list circuits unauthorized response has a 5xx status code
-func (o *ListCircuitsUnauthorized) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this list circuits unauthorized response a status code equal to that given
-func (o *ListCircuitsUnauthorized) IsCode(code int) bool {
-	return code == 401
-}
-
-// Code gets the status code for the list circuits unauthorized response
-func (o *ListCircuitsUnauthorized) Code() int {
-	return 401
-}
-
 func (o *ListCircuitsUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /circuits][%d] listCircuitsUnauthorized  %+v", 401, o.Payload)
 }
-
-func (o *ListCircuitsUnauthorized) String() string {
-	return fmt.Sprintf("[GET /circuits][%d] listCircuitsUnauthorized  %+v", 401, o.Payload)
-}
-
 func (o *ListCircuitsUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

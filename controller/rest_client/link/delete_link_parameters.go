@@ -76,12 +76,10 @@ func NewDeleteLinkParamsWithHTTPClient(client *http.Client) *DeleteLinkParams {
 	}
 }
 
-/*
-DeleteLinkParams contains all the parameters to send to the API endpoint
+/* DeleteLinkParams contains all the parameters to send to the API endpoint
+   for the delete link operation.
 
-	for the delete link operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type DeleteLinkParams struct {
 

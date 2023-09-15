@@ -78,12 +78,10 @@ func NewPatchTerminatorParamsWithHTTPClient(client *http.Client) *PatchTerminato
 	}
 }
 
-/*
-PatchTerminatorParams contains all the parameters to send to the API endpoint
+/* PatchTerminatorParams contains all the parameters to send to the API endpoint
+   for the patch terminator operation.
 
-	for the patch terminator operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type PatchTerminatorParams struct {
 

@@ -40,8 +40,7 @@ import (
 // DetailCircuitOKCode is the HTTP code returned for type DetailCircuitOK
 const DetailCircuitOKCode int = 200
 
-/*
-DetailCircuitOK A single circuit
+/*DetailCircuitOK A single circuit
 
 swagger:response detailCircuitOK
 */
@@ -85,8 +84,7 @@ func (o *DetailCircuitOK) WriteResponse(rw http.ResponseWriter, producer runtime
 // DetailCircuitUnauthorizedCode is the HTTP code returned for type DetailCircuitUnauthorized
 const DetailCircuitUnauthorizedCode int = 401
 
-/*
-DetailCircuitUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*DetailCircuitUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response detailCircuitUnauthorized
 */
@@ -130,8 +128,7 @@ func (o *DetailCircuitUnauthorized) WriteResponse(rw http.ResponseWriter, produc
 // DetailCircuitNotFoundCode is the HTTP code returned for type DetailCircuitNotFound
 const DetailCircuitNotFoundCode int = 404
 
-/*
-DetailCircuitNotFound The requested resource does not exist
+/*DetailCircuitNotFound The requested resource does not exist
 
 swagger:response detailCircuitNotFound
 */

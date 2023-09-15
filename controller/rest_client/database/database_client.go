@@ -58,6 +58,8 @@ type ClientService interface {
 
 	CreateDatabaseSnapshot(params *CreateDatabaseSnapshotParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateDatabaseSnapshotOK, error)
 
+	CreateDatabaseSnapshotWithPath(params *CreateDatabaseSnapshotWithPathParams, opts ...ClientOption) (*CreateDatabaseSnapshotWithPathOK, error)
+
 	DataIntegrityResults(params *DataIntegrityResultsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DataIntegrityResultsOK, error)
 
 	FixDataIntegrity(params *FixDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*FixDataIntegrityAccepted, error)
@@ -66,9 +68,9 @@ type ClientService interface {
 }
 
 /*
-CheckDataIntegrity starts a data integrity scan on the datastore
+  CheckDataIntegrity starts a data integrity scan on the datastore
 
-Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
+  Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
 */
 func (a *Client) CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CheckDataIntegrityAccepted, error) {
 	// TODO: Validate the params before sending
@@ -107,9 +109,9 @@ func (a *Client) CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo r
 }
 
 /*
-CreateDatabaseSnapshot creates a new database snapshot
+  CreateDatabaseSnapshot creates a new database snapshot
 
-Create a new database snapshot. Requires admin access.
+  Create a new database snapshot. Requires admin access.
 */
 func (a *Client) CreateDatabaseSnapshot(params *CreateDatabaseSnapshotParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateDatabaseSnapshotOK, error) {
 	// TODO: Validate the params before sending
@@ -148,9 +150,49 @@ func (a *Client) CreateDatabaseSnapshot(params *CreateDatabaseSnapshotParams, au
 }
 
 /*
-DataIntegrityResults returns any results found from in progress integrity checks
+  CreateDatabaseSnapshotWithPath creates a new database snapshot with path
 
-Returns any results found from in-progress integrity checks. Requires admin access.
+  Create a new database snapshot with path. Requires admin access.
+*/
+func (a *Client) CreateDatabaseSnapshotWithPath(params *CreateDatabaseSnapshotWithPathParams, opts ...ClientOption) (*CreateDatabaseSnapshotWithPathOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewCreateDatabaseSnapshotWithPathParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "createDatabaseSnapshotWithPath",
+		Method:             "POST",
+		PathPattern:        "/database/snapshot",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &CreateDatabaseSnapshotWithPathReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*CreateDatabaseSnapshotWithPathOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for createDatabaseSnapshotWithPath: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  DataIntegrityResults returns any results found from in progress integrity checks
+
+  Returns any results found from in-progress integrity checks. Requires admin access.
 */
 func (a *Client) DataIntegrityResults(params *DataIntegrityResultsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DataIntegrityResultsOK, error) {
 	// TODO: Validate the params before sending
@@ -189,9 +231,9 @@ func (a *Client) DataIntegrityResults(params *DataIntegrityResultsParams, authIn
 }
 
 /*
-FixDataIntegrity runs a data integrity scan on the datastore attempts to fix any issues it can and returns any found issues
+  FixDataIntegrity runs a data integrity scan on the datastore attempts to fix any issues it can and returns any found issues
 
-Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
+  Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
 */
 func (a *Client) FixDataIntegrity(params *FixDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*FixDataIntegrityAccepted, error) {
 	// TODO: Validate the params before sending

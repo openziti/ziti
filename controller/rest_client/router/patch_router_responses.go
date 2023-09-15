@@ -81,8 +81,7 @@ func NewPatchRouterOK() *PatchRouterOK {
 	return &PatchRouterOK{}
 }
 
-/*
-PatchRouterOK describes a response with status code 200, with default header values.
+/* PatchRouterOK describes a response with status code 200, with default header values.
 
 The patch request was successful and the resource has been altered
 */
@@ -90,44 +89,9 @@ type PatchRouterOK struct {
 	Payload *rest_model.Empty
 }
 
-// IsSuccess returns true when this patch router o k response has a 2xx status code
-func (o *PatchRouterOK) IsSuccess() bool {
-	return true
-}
-
-// IsRedirect returns true when this patch router o k response has a 3xx status code
-func (o *PatchRouterOK) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this patch router o k response has a 4xx status code
-func (o *PatchRouterOK) IsClientError() bool {
-	return false
-}
-
-// IsServerError returns true when this patch router o k response has a 5xx status code
-func (o *PatchRouterOK) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this patch router o k response a status code equal to that given
-func (o *PatchRouterOK) IsCode(code int) bool {
-	return code == 200
-}
-
-// Code gets the status code for the patch router o k response
-func (o *PatchRouterOK) Code() int {
-	return 200
-}
-
 func (o *PatchRouterOK) Error() string {
 	return fmt.Sprintf("[PATCH /routers/{id}][%d] patchRouterOK  %+v", 200, o.Payload)
 }
-
-func (o *PatchRouterOK) String() string {
-	return fmt.Sprintf("[PATCH /routers/{id}][%d] patchRouterOK  %+v", 200, o.Payload)
-}
-
 func (o *PatchRouterOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -149,8 +113,7 @@ func NewPatchRouterBadRequest() *PatchRouterBadRequest {
 	return &PatchRouterBadRequest{}
 }
 
-/*
-PatchRouterBadRequest describes a response with status code 400, with default header values.
+/* PatchRouterBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -158,44 +121,9 @@ type PatchRouterBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this patch router bad request response has a 2xx status code
-func (o *PatchRouterBadRequest) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this patch router bad request response has a 3xx status code
-func (o *PatchRouterBadRequest) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this patch router bad request response has a 4xx status code
-func (o *PatchRouterBadRequest) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this patch router bad request response has a 5xx status code
-func (o *PatchRouterBadRequest) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this patch router bad request response a status code equal to that given
-func (o *PatchRouterBadRequest) IsCode(code int) bool {
-	return code == 400
-}
-
-// Code gets the status code for the patch router bad request response
-func (o *PatchRouterBadRequest) Code() int {
-	return 400
-}
-
 func (o *PatchRouterBadRequest) Error() string {
 	return fmt.Sprintf("[PATCH /routers/{id}][%d] patchRouterBadRequest  %+v", 400, o.Payload)
 }
-
-func (o *PatchRouterBadRequest) String() string {
-	return fmt.Sprintf("[PATCH /routers/{id}][%d] patchRouterBadRequest  %+v", 400, o.Payload)
-}
-
 func (o *PatchRouterBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -217,8 +145,7 @@ func NewPatchRouterUnauthorized() *PatchRouterUnauthorized {
 	return &PatchRouterUnauthorized{}
 }
 
-/*
-PatchRouterUnauthorized describes a response with status code 401, with default header values.
+/* PatchRouterUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -226,44 +153,9 @@ type PatchRouterUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this patch router unauthorized response has a 2xx status code
-func (o *PatchRouterUnauthorized) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this patch router unauthorized response has a 3xx status code
-func (o *PatchRouterUnauthorized) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this patch router unauthorized response has a 4xx status code
-func (o *PatchRouterUnauthorized) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this patch router unauthorized response has a 5xx status code
-func (o *PatchRouterUnauthorized) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this patch router unauthorized response a status code equal to that given
-func (o *PatchRouterUnauthorized) IsCode(code int) bool {
-	return code == 401
-}
-
-// Code gets the status code for the patch router unauthorized response
-func (o *PatchRouterUnauthorized) Code() int {
-	return 401
-}
-
 func (o *PatchRouterUnauthorized) Error() string {
 	return fmt.Sprintf("[PATCH /routers/{id}][%d] patchRouterUnauthorized  %+v", 401, o.Payload)
 }
-
-func (o *PatchRouterUnauthorized) String() string {
-	return fmt.Sprintf("[PATCH /routers/{id}][%d] patchRouterUnauthorized  %+v", 401, o.Payload)
-}
-
 func (o *PatchRouterUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -285,8 +177,7 @@ func NewPatchRouterNotFound() *PatchRouterNotFound {
 	return &PatchRouterNotFound{}
 }
 
-/*
-PatchRouterNotFound describes a response with status code 404, with default header values.
+/* PatchRouterNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -294,44 +185,9 @@ type PatchRouterNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this patch router not found response has a 2xx status code
-func (o *PatchRouterNotFound) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this patch router not found response has a 3xx status code
-func (o *PatchRouterNotFound) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this patch router not found response has a 4xx status code
-func (o *PatchRouterNotFound) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this patch router not found response has a 5xx status code
-func (o *PatchRouterNotFound) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this patch router not found response a status code equal to that given
-func (o *PatchRouterNotFound) IsCode(code int) bool {
-	return code == 404
-}
-
-// Code gets the status code for the patch router not found response
-func (o *PatchRouterNotFound) Code() int {
-	return 404
-}
-
 func (o *PatchRouterNotFound) Error() string {
 	return fmt.Sprintf("[PATCH /routers/{id}][%d] patchRouterNotFound  %+v", 404, o.Payload)
 }
-
-func (o *PatchRouterNotFound) String() string {
-	return fmt.Sprintf("[PATCH /routers/{id}][%d] patchRouterNotFound  %+v", 404, o.Payload)
-}
-
 func (o *PatchRouterNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

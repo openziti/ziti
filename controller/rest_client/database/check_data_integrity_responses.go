@@ -75,8 +75,7 @@ func NewCheckDataIntegrityAccepted() *CheckDataIntegrityAccepted {
 	return &CheckDataIntegrityAccepted{}
 }
 
-/*
-CheckDataIntegrityAccepted describes a response with status code 202, with default header values.
+/* CheckDataIntegrityAccepted describes a response with status code 202, with default header values.
 
 Base empty response
 */
@@ -84,44 +83,9 @@ type CheckDataIntegrityAccepted struct {
 	Payload *rest_model.Empty
 }
 
-// IsSuccess returns true when this check data integrity accepted response has a 2xx status code
-func (o *CheckDataIntegrityAccepted) IsSuccess() bool {
-	return true
-}
-
-// IsRedirect returns true when this check data integrity accepted response has a 3xx status code
-func (o *CheckDataIntegrityAccepted) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this check data integrity accepted response has a 4xx status code
-func (o *CheckDataIntegrityAccepted) IsClientError() bool {
-	return false
-}
-
-// IsServerError returns true when this check data integrity accepted response has a 5xx status code
-func (o *CheckDataIntegrityAccepted) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this check data integrity accepted response a status code equal to that given
-func (o *CheckDataIntegrityAccepted) IsCode(code int) bool {
-	return code == 202
-}
-
-// Code gets the status code for the check data integrity accepted response
-func (o *CheckDataIntegrityAccepted) Code() int {
-	return 202
-}
-
 func (o *CheckDataIntegrityAccepted) Error() string {
 	return fmt.Sprintf("[POST /database/check-data-integrity][%d] checkDataIntegrityAccepted  %+v", 202, o.Payload)
 }
-
-func (o *CheckDataIntegrityAccepted) String() string {
-	return fmt.Sprintf("[POST /database/check-data-integrity][%d] checkDataIntegrityAccepted  %+v", 202, o.Payload)
-}
-
 func (o *CheckDataIntegrityAccepted) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -143,8 +107,7 @@ func NewCheckDataIntegrityUnauthorized() *CheckDataIntegrityUnauthorized {
 	return &CheckDataIntegrityUnauthorized{}
 }
 
-/*
-CheckDataIntegrityUnauthorized describes a response with status code 401, with default header values.
+/* CheckDataIntegrityUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -152,44 +115,9 @@ type CheckDataIntegrityUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this check data integrity unauthorized response has a 2xx status code
-func (o *CheckDataIntegrityUnauthorized) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this check data integrity unauthorized response has a 3xx status code
-func (o *CheckDataIntegrityUnauthorized) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this check data integrity unauthorized response has a 4xx status code
-func (o *CheckDataIntegrityUnauthorized) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this check data integrity unauthorized response has a 5xx status code
-func (o *CheckDataIntegrityUnauthorized) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this check data integrity unauthorized response a status code equal to that given
-func (o *CheckDataIntegrityUnauthorized) IsCode(code int) bool {
-	return code == 401
-}
-
-// Code gets the status code for the check data integrity unauthorized response
-func (o *CheckDataIntegrityUnauthorized) Code() int {
-	return 401
-}
-
 func (o *CheckDataIntegrityUnauthorized) Error() string {
 	return fmt.Sprintf("[POST /database/check-data-integrity][%d] checkDataIntegrityUnauthorized  %+v", 401, o.Payload)
 }
-
-func (o *CheckDataIntegrityUnauthorized) String() string {
-	return fmt.Sprintf("[POST /database/check-data-integrity][%d] checkDataIntegrityUnauthorized  %+v", 401, o.Payload)
-}
-
 func (o *CheckDataIntegrityUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -211,8 +139,7 @@ func NewCheckDataIntegrityTooManyRequests() *CheckDataIntegrityTooManyRequests {
 	return &CheckDataIntegrityTooManyRequests{}
 }
 
-/*
-CheckDataIntegrityTooManyRequests describes a response with status code 429, with default header values.
+/* CheckDataIntegrityTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -220,44 +147,9 @@ type CheckDataIntegrityTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this check data integrity too many requests response has a 2xx status code
-func (o *CheckDataIntegrityTooManyRequests) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this check data integrity too many requests response has a 3xx status code
-func (o *CheckDataIntegrityTooManyRequests) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this check data integrity too many requests response has a 4xx status code
-func (o *CheckDataIntegrityTooManyRequests) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this check data integrity too many requests response has a 5xx status code
-func (o *CheckDataIntegrityTooManyRequests) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this check data integrity too many requests response a status code equal to that given
-func (o *CheckDataIntegrityTooManyRequests) IsCode(code int) bool {
-	return code == 429
-}
-
-// Code gets the status code for the check data integrity too many requests response
-func (o *CheckDataIntegrityTooManyRequests) Code() int {
-	return 429
-}
-
 func (o *CheckDataIntegrityTooManyRequests) Error() string {
 	return fmt.Sprintf("[POST /database/check-data-integrity][%d] checkDataIntegrityTooManyRequests  %+v", 429, o.Payload)
 }
-
-func (o *CheckDataIntegrityTooManyRequests) String() string {
-	return fmt.Sprintf("[POST /database/check-data-integrity][%d] checkDataIntegrityTooManyRequests  %+v", 429, o.Payload)
-}
-
 func (o *CheckDataIntegrityTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

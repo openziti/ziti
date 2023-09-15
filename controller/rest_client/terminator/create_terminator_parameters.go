@@ -78,12 +78,10 @@ func NewCreateTerminatorParamsWithHTTPClient(client *http.Client) *CreateTermina
 	}
 }
 
-/*
-CreateTerminatorParams contains all the parameters to send to the API endpoint
+/* CreateTerminatorParams contains all the parameters to send to the API endpoint
+   for the create terminator operation.
 
-	for the create terminator operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type CreateTerminatorParams struct {
 

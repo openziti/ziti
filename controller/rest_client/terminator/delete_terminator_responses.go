@@ -81,8 +81,7 @@ func NewDeleteTerminatorOK() *DeleteTerminatorOK {
 	return &DeleteTerminatorOK{}
 }
 
-/*
-DeleteTerminatorOK describes a response with status code 200, with default header values.
+/* DeleteTerminatorOK describes a response with status code 200, with default header values.
 
 The delete request was successful and the resource has been removed
 */
@@ -90,44 +89,9 @@ type DeleteTerminatorOK struct {
 	Payload *rest_model.Empty
 }
 
-// IsSuccess returns true when this delete terminator o k response has a 2xx status code
-func (o *DeleteTerminatorOK) IsSuccess() bool {
-	return true
-}
-
-// IsRedirect returns true when this delete terminator o k response has a 3xx status code
-func (o *DeleteTerminatorOK) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete terminator o k response has a 4xx status code
-func (o *DeleteTerminatorOK) IsClientError() bool {
-	return false
-}
-
-// IsServerError returns true when this delete terminator o k response has a 5xx status code
-func (o *DeleteTerminatorOK) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete terminator o k response a status code equal to that given
-func (o *DeleteTerminatorOK) IsCode(code int) bool {
-	return code == 200
-}
-
-// Code gets the status code for the delete terminator o k response
-func (o *DeleteTerminatorOK) Code() int {
-	return 200
-}
-
 func (o *DeleteTerminatorOK) Error() string {
 	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorOK  %+v", 200, o.Payload)
 }
-
-func (o *DeleteTerminatorOK) String() string {
-	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorOK  %+v", 200, o.Payload)
-}
-
 func (o *DeleteTerminatorOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -149,8 +113,7 @@ func NewDeleteTerminatorBadRequest() *DeleteTerminatorBadRequest {
 	return &DeleteTerminatorBadRequest{}
 }
 
-/*
-DeleteTerminatorBadRequest describes a response with status code 400, with default header values.
+/* DeleteTerminatorBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -158,44 +121,9 @@ type DeleteTerminatorBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this delete terminator bad request response has a 2xx status code
-func (o *DeleteTerminatorBadRequest) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this delete terminator bad request response has a 3xx status code
-func (o *DeleteTerminatorBadRequest) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete terminator bad request response has a 4xx status code
-func (o *DeleteTerminatorBadRequest) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this delete terminator bad request response has a 5xx status code
-func (o *DeleteTerminatorBadRequest) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete terminator bad request response a status code equal to that given
-func (o *DeleteTerminatorBadRequest) IsCode(code int) bool {
-	return code == 400
-}
-
-// Code gets the status code for the delete terminator bad request response
-func (o *DeleteTerminatorBadRequest) Code() int {
-	return 400
-}
-
 func (o *DeleteTerminatorBadRequest) Error() string {
 	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorBadRequest  %+v", 400, o.Payload)
 }
-
-func (o *DeleteTerminatorBadRequest) String() string {
-	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorBadRequest  %+v", 400, o.Payload)
-}
-
 func (o *DeleteTerminatorBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -217,8 +145,7 @@ func NewDeleteTerminatorUnauthorized() *DeleteTerminatorUnauthorized {
 	return &DeleteTerminatorUnauthorized{}
 }
 
-/*
-DeleteTerminatorUnauthorized describes a response with status code 401, with default header values.
+/* DeleteTerminatorUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -226,44 +153,9 @@ type DeleteTerminatorUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this delete terminator unauthorized response has a 2xx status code
-func (o *DeleteTerminatorUnauthorized) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this delete terminator unauthorized response has a 3xx status code
-func (o *DeleteTerminatorUnauthorized) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete terminator unauthorized response has a 4xx status code
-func (o *DeleteTerminatorUnauthorized) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this delete terminator unauthorized response has a 5xx status code
-func (o *DeleteTerminatorUnauthorized) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete terminator unauthorized response a status code equal to that given
-func (o *DeleteTerminatorUnauthorized) IsCode(code int) bool {
-	return code == 401
-}
-
-// Code gets the status code for the delete terminator unauthorized response
-func (o *DeleteTerminatorUnauthorized) Code() int {
-	return 401
-}
-
 func (o *DeleteTerminatorUnauthorized) Error() string {
 	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorUnauthorized  %+v", 401, o.Payload)
 }
-
-func (o *DeleteTerminatorUnauthorized) String() string {
-	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorUnauthorized  %+v", 401, o.Payload)
-}
-
 func (o *DeleteTerminatorUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -285,8 +177,7 @@ func NewDeleteTerminatorConflict() *DeleteTerminatorConflict {
 	return &DeleteTerminatorConflict{}
 }
 
-/*
-DeleteTerminatorConflict describes a response with status code 409, with default header values.
+/* DeleteTerminatorConflict describes a response with status code 409, with default header values.
 
 The resource requested to be removed/altered cannot be as it is referenced by another object.
 */
@@ -294,44 +185,9 @@ type DeleteTerminatorConflict struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this delete terminator conflict response has a 2xx status code
-func (o *DeleteTerminatorConflict) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this delete terminator conflict response has a 3xx status code
-func (o *DeleteTerminatorConflict) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete terminator conflict response has a 4xx status code
-func (o *DeleteTerminatorConflict) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this delete terminator conflict response has a 5xx status code
-func (o *DeleteTerminatorConflict) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete terminator conflict response a status code equal to that given
-func (o *DeleteTerminatorConflict) IsCode(code int) bool {
-	return code == 409
-}
-
-// Code gets the status code for the delete terminator conflict response
-func (o *DeleteTerminatorConflict) Code() int {
-	return 409
-}
-
 func (o *DeleteTerminatorConflict) Error() string {
 	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorConflict  %+v", 409, o.Payload)
 }
-
-func (o *DeleteTerminatorConflict) String() string {
-	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorConflict  %+v", 409, o.Payload)
-}
-
 func (o *DeleteTerminatorConflict) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

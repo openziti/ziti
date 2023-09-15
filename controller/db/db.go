@@ -18,11 +18,13 @@ package db
 
 import (
 	"github.com/openziti/storage/boltz"
+	"go.etcd.io/bbolt"
 )
 
 const (
 	RootBucket     = "ziti"
 	MetadataBucket = "metadata"
+	FieldRaftIndex = "raftIndex"
 )
 
 func Open(path string) (boltz.Db, error) {
@@ -41,4 +43,13 @@ func Open(path string) (boltz.Db, error) {
 	}
 
 	return db, nil
+}
+
+func LoadCurrentRaftIndex(tx *bbolt.Tx) uint64 {
+	if raftBucket := boltz.Path(tx, RootBucket, MetadataBucket); raftBucket != nil {
+		if val := raftBucket.GetInt64(FieldRaftIndex); val != nil {
+			return uint64(*val)
+		}
+	}
+	return 0
 }

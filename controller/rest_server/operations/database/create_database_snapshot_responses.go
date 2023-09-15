@@ -40,8 +40,7 @@ import (
 // CreateDatabaseSnapshotOKCode is the HTTP code returned for type CreateDatabaseSnapshotOK
 const CreateDatabaseSnapshotOKCode int = 200
 
-/*
-CreateDatabaseSnapshotOK Base empty response
+/*CreateDatabaseSnapshotOK Base empty response
 
 swagger:response createDatabaseSnapshotOK
 */
@@ -85,8 +84,7 @@ func (o *CreateDatabaseSnapshotOK) WriteResponse(rw http.ResponseWriter, produce
 // CreateDatabaseSnapshotUnauthorizedCode is the HTTP code returned for type CreateDatabaseSnapshotUnauthorized
 const CreateDatabaseSnapshotUnauthorizedCode int = 401
 
-/*
-CreateDatabaseSnapshotUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*CreateDatabaseSnapshotUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response createDatabaseSnapshotUnauthorized
 */
@@ -130,8 +128,7 @@ func (o *CreateDatabaseSnapshotUnauthorized) WriteResponse(rw http.ResponseWrite
 // CreateDatabaseSnapshotTooManyRequestsCode is the HTTP code returned for type CreateDatabaseSnapshotTooManyRequests
 const CreateDatabaseSnapshotTooManyRequestsCode int = 429
 
-/*
-CreateDatabaseSnapshotTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*CreateDatabaseSnapshotTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response createDatabaseSnapshotTooManyRequests
 */

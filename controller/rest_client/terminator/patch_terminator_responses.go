@@ -81,8 +81,7 @@ func NewPatchTerminatorOK() *PatchTerminatorOK {
 	return &PatchTerminatorOK{}
 }
 
-/*
-PatchTerminatorOK describes a response with status code 200, with default header values.
+/* PatchTerminatorOK describes a response with status code 200, with default header values.
 
 The patch request was successful and the resource has been altered
 */
@@ -90,44 +89,9 @@ type PatchTerminatorOK struct {
 	Payload *rest_model.Empty
 }
 
-// IsSuccess returns true when this patch terminator o k response has a 2xx status code
-func (o *PatchTerminatorOK) IsSuccess() bool {
-	return true
-}
-
-// IsRedirect returns true when this patch terminator o k response has a 3xx status code
-func (o *PatchTerminatorOK) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this patch terminator o k response has a 4xx status code
-func (o *PatchTerminatorOK) IsClientError() bool {
-	return false
-}
-
-// IsServerError returns true when this patch terminator o k response has a 5xx status code
-func (o *PatchTerminatorOK) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this patch terminator o k response a status code equal to that given
-func (o *PatchTerminatorOK) IsCode(code int) bool {
-	return code == 200
-}
-
-// Code gets the status code for the patch terminator o k response
-func (o *PatchTerminatorOK) Code() int {
-	return 200
-}
-
 func (o *PatchTerminatorOK) Error() string {
 	return fmt.Sprintf("[PATCH /terminators/{id}][%d] patchTerminatorOK  %+v", 200, o.Payload)
 }
-
-func (o *PatchTerminatorOK) String() string {
-	return fmt.Sprintf("[PATCH /terminators/{id}][%d] patchTerminatorOK  %+v", 200, o.Payload)
-}
-
 func (o *PatchTerminatorOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -149,8 +113,7 @@ func NewPatchTerminatorBadRequest() *PatchTerminatorBadRequest {
 	return &PatchTerminatorBadRequest{}
 }
 
-/*
-PatchTerminatorBadRequest describes a response with status code 400, with default header values.
+/* PatchTerminatorBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -158,44 +121,9 @@ type PatchTerminatorBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this patch terminator bad request response has a 2xx status code
-func (o *PatchTerminatorBadRequest) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this patch terminator bad request response has a 3xx status code
-func (o *PatchTerminatorBadRequest) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this patch terminator bad request response has a 4xx status code
-func (o *PatchTerminatorBadRequest) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this patch terminator bad request response has a 5xx status code
-func (o *PatchTerminatorBadRequest) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this patch terminator bad request response a status code equal to that given
-func (o *PatchTerminatorBadRequest) IsCode(code int) bool {
-	return code == 400
-}
-
-// Code gets the status code for the patch terminator bad request response
-func (o *PatchTerminatorBadRequest) Code() int {
-	return 400
-}
-
 func (o *PatchTerminatorBadRequest) Error() string {
 	return fmt.Sprintf("[PATCH /terminators/{id}][%d] patchTerminatorBadRequest  %+v", 400, o.Payload)
 }
-
-func (o *PatchTerminatorBadRequest) String() string {
-	return fmt.Sprintf("[PATCH /terminators/{id}][%d] patchTerminatorBadRequest  %+v", 400, o.Payload)
-}
-
 func (o *PatchTerminatorBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -217,8 +145,7 @@ func NewPatchTerminatorUnauthorized() *PatchTerminatorUnauthorized {
 	return &PatchTerminatorUnauthorized{}
 }
 
-/*
-PatchTerminatorUnauthorized describes a response with status code 401, with default header values.
+/* PatchTerminatorUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -226,44 +153,9 @@ type PatchTerminatorUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this patch terminator unauthorized response has a 2xx status code
-func (o *PatchTerminatorUnauthorized) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this patch terminator unauthorized response has a 3xx status code
-func (o *PatchTerminatorUnauthorized) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this patch terminator unauthorized response has a 4xx status code
-func (o *PatchTerminatorUnauthorized) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this patch terminator unauthorized response has a 5xx status code
-func (o *PatchTerminatorUnauthorized) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this patch terminator unauthorized response a status code equal to that given
-func (o *PatchTerminatorUnauthorized) IsCode(code int) bool {
-	return code == 401
-}
-
-// Code gets the status code for the patch terminator unauthorized response
-func (o *PatchTerminatorUnauthorized) Code() int {
-	return 401
-}
-
 func (o *PatchTerminatorUnauthorized) Error() string {
 	return fmt.Sprintf("[PATCH /terminators/{id}][%d] patchTerminatorUnauthorized  %+v", 401, o.Payload)
 }
-
-func (o *PatchTerminatorUnauthorized) String() string {
-	return fmt.Sprintf("[PATCH /terminators/{id}][%d] patchTerminatorUnauthorized  %+v", 401, o.Payload)
-}
-
 func (o *PatchTerminatorUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -285,8 +177,7 @@ func NewPatchTerminatorNotFound() *PatchTerminatorNotFound {
 	return &PatchTerminatorNotFound{}
 }
 
-/*
-PatchTerminatorNotFound describes a response with status code 404, with default header values.
+/* PatchTerminatorNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -294,44 +185,9 @@ type PatchTerminatorNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this patch terminator not found response has a 2xx status code
-func (o *PatchTerminatorNotFound) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this patch terminator not found response has a 3xx status code
-func (o *PatchTerminatorNotFound) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this patch terminator not found response has a 4xx status code
-func (o *PatchTerminatorNotFound) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this patch terminator not found response has a 5xx status code
-func (o *PatchTerminatorNotFound) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this patch terminator not found response a status code equal to that given
-func (o *PatchTerminatorNotFound) IsCode(code int) bool {
-	return code == 404
-}
-
-// Code gets the status code for the patch terminator not found response
-func (o *PatchTerminatorNotFound) Code() int {
-	return 404
-}
-
 func (o *PatchTerminatorNotFound) Error() string {
 	return fmt.Sprintf("[PATCH /terminators/{id}][%d] patchTerminatorNotFound  %+v", 404, o.Payload)
 }
-
-func (o *PatchTerminatorNotFound) String() string {
-	return fmt.Sprintf("[PATCH /terminators/{id}][%d] patchTerminatorNotFound  %+v", 404, o.Payload)
-}
-
 func (o *PatchTerminatorNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

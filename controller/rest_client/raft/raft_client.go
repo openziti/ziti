@@ -60,9 +60,9 @@ type ClientService interface {
 }
 
 /*
-RaftListMembers returns all members of a cluster and their current status
+  RaftListMembers returns all members of a cluster and their current status
 
-Returns all members of a cluster and their current status
+  Returns all members of a cluster and their current status
 */
 func (a *Client) RaftListMembers(params *RaftListMembersParams, opts ...ClientOption) (*RaftListMembersOK, error) {
 	// TODO: Validate the params before sending

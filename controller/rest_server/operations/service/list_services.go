@@ -53,12 +53,13 @@ func NewListServices(ctx *middleware.Context, handler ListServicesHandler) *List
 	return &ListServices{Context: ctx, Handler: handler}
 }
 
-/*
-	ListServices swagger:route GET /services Service listServices
+/* ListServices swagger:route GET /services Service listServices
 
-# List services
+List services
 
 Retrieves a list of service resources; supports filtering, sorting, and pagination. Requires admin access.
+
+
 */
 type ListServices struct {
 	Context *middleware.Context

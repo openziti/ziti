@@ -72,9 +72,9 @@ type ClientService interface {
 }
 
 /*
-CreateService creates a service resource
+  CreateService creates a service resource
 
-Create a service resource. Requires admin access.
+  Create a service resource. Requires admin access.
 */
 func (a *Client) CreateService(params *CreateServiceParams, opts ...ClientOption) (*CreateServiceCreated, error) {
 	// TODO: Validate the params before sending
@@ -112,9 +112,9 @@ func (a *Client) CreateService(params *CreateServiceParams, opts ...ClientOption
 }
 
 /*
-DeleteService deletes a service
+  DeleteService deletes a service
 
-Delete a service by id. Requires admin access.
+  Delete a service by id. Requires admin access.
 */
 func (a *Client) DeleteService(params *DeleteServiceParams, opts ...ClientOption) (*DeleteServiceOK, error) {
 	// TODO: Validate the params before sending
@@ -152,9 +152,9 @@ func (a *Client) DeleteService(params *DeleteServiceParams, opts ...ClientOption
 }
 
 /*
-DetailService retrieves a single service
+  DetailService retrieves a single service
 
-Retrieves a single service by id. Requires admin access.
+  Retrieves a single service by id. Requires admin access.
 */
 func (a *Client) DetailService(params *DetailServiceParams, opts ...ClientOption) (*DetailServiceOK, error) {
 	// TODO: Validate the params before sending
@@ -192,9 +192,10 @@ func (a *Client) DetailService(params *DetailServiceParams, opts ...ClientOption
 }
 
 /*
-ListServiceTerminators lists of terminators assigned to a service
+  ListServiceTerminators lists of terminators assigned to a service
 
-Retrieves a list of terminator resources that are assigned specific service; supports filtering, sorting, and pagination.
+  Retrieves a list of terminator resources that are assigned specific service; supports filtering, sorting, and pagination.
+
 */
 func (a *Client) ListServiceTerminators(params *ListServiceTerminatorsParams, opts ...ClientOption) (*ListServiceTerminatorsOK, error) {
 	// TODO: Validate the params before sending
@@ -232,9 +233,10 @@ func (a *Client) ListServiceTerminators(params *ListServiceTerminatorsParams, op
 }
 
 /*
-ListServices lists services
+  ListServices lists services
 
-Retrieves a list of service resources; supports filtering, sorting, and pagination. Requires admin access.
+  Retrieves a list of service resources; supports filtering, sorting, and pagination. Requires admin access.
+
 */
 func (a *Client) ListServices(params *ListServicesParams, opts ...ClientOption) (*ListServicesOK, error) {
 	// TODO: Validate the params before sending
@@ -272,9 +274,9 @@ func (a *Client) ListServices(params *ListServicesParams, opts ...ClientOption) 
 }
 
 /*
-PatchService updates the supplied fields on a service
+  PatchService updates the supplied fields on a service
 
-Update the supplied fields on a service. Requires admin access.
+  Update the supplied fields on a service. Requires admin access.
 */
 func (a *Client) PatchService(params *PatchServiceParams, opts ...ClientOption) (*PatchServiceOK, error) {
 	// TODO: Validate the params before sending
@@ -312,9 +314,9 @@ func (a *Client) PatchService(params *PatchServiceParams, opts ...ClientOption) 
 }
 
 /*
-UpdateService updates all fields on a service
+  UpdateService updates all fields on a service
 
-Update all fields on a service by id. Requires admin access.
+  Update all fields on a service by id. Requires admin access.
 */
 func (a *Client) UpdateService(params *UpdateServiceParams, opts ...ClientOption) (*UpdateServiceOK, error) {
 	// TODO: Validate the params before sending

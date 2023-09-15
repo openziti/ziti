@@ -40,8 +40,7 @@ import (
 // DetailLinkOKCode is the HTTP code returned for type DetailLinkOK
 const DetailLinkOKCode int = 200
 
-/*
-DetailLinkOK A single link
+/*DetailLinkOK A single link
 
 swagger:response detailLinkOK
 */
@@ -85,8 +84,7 @@ func (o *DetailLinkOK) WriteResponse(rw http.ResponseWriter, producer runtime.Pr
 // DetailLinkUnauthorizedCode is the HTTP code returned for type DetailLinkUnauthorized
 const DetailLinkUnauthorizedCode int = 401
 
-/*
-DetailLinkUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*DetailLinkUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response detailLinkUnauthorized
 */
@@ -130,8 +128,7 @@ func (o *DetailLinkUnauthorized) WriteResponse(rw http.ResponseWriter, producer 
 // DetailLinkNotFoundCode is the HTTP code returned for type DetailLinkNotFound
 const DetailLinkNotFoundCode int = 404
 
-/*
-DetailLinkNotFound The requested resource does not exist
+/*DetailLinkNotFound The requested resource does not exist
 
 swagger:response detailLinkNotFound
 */

@@ -53,12 +53,12 @@ func NewDetailCircuit(ctx *middleware.Context, handler DetailCircuitHandler) *De
 	return &DetailCircuit{Context: ctx, Handler: handler}
 }
 
-/*
-	DetailCircuit swagger:route GET /circuits/{id} Circuit detailCircuit
+/* DetailCircuit swagger:route GET /circuits/{id} Circuit detailCircuit
 
-# Retrieves a single circuit
+Retrieves a single circuit
 
 Retrieves a single circuit by id. Requires admin access.
+
 */
 type DetailCircuit struct {
 	Context *middleware.Context

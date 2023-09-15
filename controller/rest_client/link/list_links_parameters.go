@@ -76,12 +76,10 @@ func NewListLinksParamsWithHTTPClient(client *http.Client) *ListLinksParams {
 	}
 }
 
-/*
-ListLinksParams contains all the parameters to send to the API endpoint
+/* ListLinksParams contains all the parameters to send to the API endpoint
+   for the list links operation.
 
-	for the list links operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type ListLinksParams struct {
 	timeout    time.Duration

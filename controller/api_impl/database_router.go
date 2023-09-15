@@ -64,6 +64,12 @@ func (r *DatabaseRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper R
 		return wrapper.WrapRequest(r.CreateSnapshot, params.HTTPRequest, "", "")
 	})
 
+	fabricApi.DatabaseCreateDatabaseSnapshotWithPathHandler = database.CreateDatabaseSnapshotWithPathHandlerFunc(func(params database.CreateDatabaseSnapshotWithPathParams) middleware.Responder {
+		return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) {
+			r.CreateSnapshotWithPath(n, rc, params.Snapshot)
+		}, params.HTTPRequest, "", "")
+	})
+
 	fabricApi.DatabaseCheckDataIntegrityHandler = database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, _ interface{}) middleware.Responder {
 		return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) { r.CheckDatastoreIntegrity(n, rc, false) }, params.HTTPRequest, "", "")
 	})
@@ -87,6 +93,31 @@ func (r *DatabaseRouter) CreateSnapshot(n *network.Network, rc api.RequestContex
 		return
 	}
 	rc.RespondWithEmptyOk()
+}
+
+func (r *DatabaseRouter) CreateSnapshotWithPath(n *network.Network, rc api.RequestContext, snapshot *rest_model.DatabaseSnapshotCreate) {
+	var path string
+	if snapshot != nil {
+		path = snapshot.Path
+	}
+	actualPath, err := n.SnapshotDatabaseToFile(path)
+	if err != nil {
+		if errors.Is(err, network.DbSnapshotTooFrequentError) {
+			rc.RespondWithApiError(apierror.NewRateLimited())
+			return
+		}
+		rc.RespondWithError(err)
+		return
+	}
+
+	result := rest_model.DatabaseSnapshotCreateResultEnvelope{
+		Data: &rest_model.DatabaseSnapshotCreateDetails{
+			Path: &actualPath,
+		},
+		Meta: &rest_model.Meta{},
+	}
+
+	rc.Respond(result, http.StatusOK)
 }
 
 func (r *DatabaseRouter) CheckDatastoreIntegrity(n *network.Network, rc api.RequestContext, fixErrors bool) {

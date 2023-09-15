@@ -78,12 +78,10 @@ func NewPatchLinkParamsWithHTTPClient(client *http.Client) *PatchLinkParams {
 	}
 }
 
-/*
-PatchLinkParams contains all the parameters to send to the API endpoint
+/* PatchLinkParams contains all the parameters to send to the API endpoint
+   for the patch link operation.
 
-	for the patch link operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type PatchLinkParams struct {
 

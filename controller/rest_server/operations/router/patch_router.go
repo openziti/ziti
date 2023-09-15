@@ -53,12 +53,12 @@ func NewPatchRouter(ctx *middleware.Context, handler PatchRouterHandler) *PatchR
 	return &PatchRouter{Context: ctx, Handler: handler}
 }
 
-/*
-	PatchRouter swagger:route PATCH /routers/{id} Router patchRouter
+/* PatchRouter swagger:route PATCH /routers/{id} Router patchRouter
 
-# Update the supplied fields on a router
+Update the supplied fields on a router
 
 Update the supplied fields on a router. Requires admin access.
+
 */
 type PatchRouter struct {
 	Context *middleware.Context

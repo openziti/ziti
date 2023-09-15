@@ -75,8 +75,7 @@ func NewCreateDatabaseSnapshotOK() *CreateDatabaseSnapshotOK {
 	return &CreateDatabaseSnapshotOK{}
 }
 
-/*
-CreateDatabaseSnapshotOK describes a response with status code 200, with default header values.
+/* CreateDatabaseSnapshotOK describes a response with status code 200, with default header values.
 
 Base empty response
 */
@@ -84,44 +83,9 @@ type CreateDatabaseSnapshotOK struct {
 	Payload *rest_model.Empty
 }
 
-// IsSuccess returns true when this create database snapshot o k response has a 2xx status code
-func (o *CreateDatabaseSnapshotOK) IsSuccess() bool {
-	return true
-}
-
-// IsRedirect returns true when this create database snapshot o k response has a 3xx status code
-func (o *CreateDatabaseSnapshotOK) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this create database snapshot o k response has a 4xx status code
-func (o *CreateDatabaseSnapshotOK) IsClientError() bool {
-	return false
-}
-
-// IsServerError returns true when this create database snapshot o k response has a 5xx status code
-func (o *CreateDatabaseSnapshotOK) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this create database snapshot o k response a status code equal to that given
-func (o *CreateDatabaseSnapshotOK) IsCode(code int) bool {
-	return code == 200
-}
-
-// Code gets the status code for the create database snapshot o k response
-func (o *CreateDatabaseSnapshotOK) Code() int {
-	return 200
-}
-
 func (o *CreateDatabaseSnapshotOK) Error() string {
 	return fmt.Sprintf("[POST /database][%d] createDatabaseSnapshotOK  %+v", 200, o.Payload)
 }
-
-func (o *CreateDatabaseSnapshotOK) String() string {
-	return fmt.Sprintf("[POST /database][%d] createDatabaseSnapshotOK  %+v", 200, o.Payload)
-}
-
 func (o *CreateDatabaseSnapshotOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -143,8 +107,7 @@ func NewCreateDatabaseSnapshotUnauthorized() *CreateDatabaseSnapshotUnauthorized
 	return &CreateDatabaseSnapshotUnauthorized{}
 }
 
-/*
-CreateDatabaseSnapshotUnauthorized describes a response with status code 401, with default header values.
+/* CreateDatabaseSnapshotUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -152,44 +115,9 @@ type CreateDatabaseSnapshotUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this create database snapshot unauthorized response has a 2xx status code
-func (o *CreateDatabaseSnapshotUnauthorized) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this create database snapshot unauthorized response has a 3xx status code
-func (o *CreateDatabaseSnapshotUnauthorized) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this create database snapshot unauthorized response has a 4xx status code
-func (o *CreateDatabaseSnapshotUnauthorized) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this create database snapshot unauthorized response has a 5xx status code
-func (o *CreateDatabaseSnapshotUnauthorized) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this create database snapshot unauthorized response a status code equal to that given
-func (o *CreateDatabaseSnapshotUnauthorized) IsCode(code int) bool {
-	return code == 401
-}
-
-// Code gets the status code for the create database snapshot unauthorized response
-func (o *CreateDatabaseSnapshotUnauthorized) Code() int {
-	return 401
-}
-
 func (o *CreateDatabaseSnapshotUnauthorized) Error() string {
 	return fmt.Sprintf("[POST /database][%d] createDatabaseSnapshotUnauthorized  %+v", 401, o.Payload)
 }
-
-func (o *CreateDatabaseSnapshotUnauthorized) String() string {
-	return fmt.Sprintf("[POST /database][%d] createDatabaseSnapshotUnauthorized  %+v", 401, o.Payload)
-}
-
 func (o *CreateDatabaseSnapshotUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -211,8 +139,7 @@ func NewCreateDatabaseSnapshotTooManyRequests() *CreateDatabaseSnapshotTooManyRe
 	return &CreateDatabaseSnapshotTooManyRequests{}
 }
 
-/*
-CreateDatabaseSnapshotTooManyRequests describes a response with status code 429, with default header values.
+/* CreateDatabaseSnapshotTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -220,44 +147,9 @@ type CreateDatabaseSnapshotTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this create database snapshot too many requests response has a 2xx status code
-func (o *CreateDatabaseSnapshotTooManyRequests) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this create database snapshot too many requests response has a 3xx status code
-func (o *CreateDatabaseSnapshotTooManyRequests) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this create database snapshot too many requests response has a 4xx status code
-func (o *CreateDatabaseSnapshotTooManyRequests) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this create database snapshot too many requests response has a 5xx status code
-func (o *CreateDatabaseSnapshotTooManyRequests) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this create database snapshot too many requests response a status code equal to that given
-func (o *CreateDatabaseSnapshotTooManyRequests) IsCode(code int) bool {
-	return code == 429
-}
-
-// Code gets the status code for the create database snapshot too many requests response
-func (o *CreateDatabaseSnapshotTooManyRequests) Code() int {
-	return 429
-}
-
 func (o *CreateDatabaseSnapshotTooManyRequests) Error() string {
 	return fmt.Sprintf("[POST /database][%d] createDatabaseSnapshotTooManyRequests  %+v", 429, o.Payload)
 }
-
-func (o *CreateDatabaseSnapshotTooManyRequests) String() string {
-	return fmt.Sprintf("[POST /database][%d] createDatabaseSnapshotTooManyRequests  %+v", 429, o.Payload)
-}
-
 func (o *CreateDatabaseSnapshotTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

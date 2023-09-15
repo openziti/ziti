@@ -53,12 +53,12 @@ func NewUpdateTerminator(ctx *middleware.Context, handler UpdateTerminatorHandle
 	return &UpdateTerminator{Context: ctx, Handler: handler}
 }
 
-/*
-	UpdateTerminator swagger:route PUT /terminators/{id} Terminator updateTerminator
+/* UpdateTerminator swagger:route PUT /terminators/{id} Terminator updateTerminator
 
-# Update all fields on a terminator
+Update all fields on a terminator
 
 Update all fields on a terminator by id. Requires admin access.
+
 */
 type UpdateTerminator struct {
 	Context *middleware.Context

@@ -53,12 +53,12 @@ func NewPatchService(ctx *middleware.Context, handler PatchServiceHandler) *Patc
 	return &PatchService{Context: ctx, Handler: handler}
 }
 
-/*
-	PatchService swagger:route PATCH /services/{id} Service patchService
+/* PatchService swagger:route PATCH /services/{id} Service patchService
 
-# Update the supplied fields on a service
+Update the supplied fields on a service
 
 Update the supplied fields on a service. Requires admin access.
+
 */
 type PatchService struct {
 	Context *middleware.Context

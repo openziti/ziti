@@ -81,8 +81,7 @@ func NewDeleteCircuitOK() *DeleteCircuitOK {
 	return &DeleteCircuitOK{}
 }
 
-/*
-DeleteCircuitOK describes a response with status code 200, with default header values.
+/* DeleteCircuitOK describes a response with status code 200, with default header values.
 
 The delete request was successful and the resource has been removed
 */
@@ -90,44 +89,9 @@ type DeleteCircuitOK struct {
 	Payload *rest_model.Empty
 }
 
-// IsSuccess returns true when this delete circuit o k response has a 2xx status code
-func (o *DeleteCircuitOK) IsSuccess() bool {
-	return true
-}
-
-// IsRedirect returns true when this delete circuit o k response has a 3xx status code
-func (o *DeleteCircuitOK) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete circuit o k response has a 4xx status code
-func (o *DeleteCircuitOK) IsClientError() bool {
-	return false
-}
-
-// IsServerError returns true when this delete circuit o k response has a 5xx status code
-func (o *DeleteCircuitOK) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete circuit o k response a status code equal to that given
-func (o *DeleteCircuitOK) IsCode(code int) bool {
-	return code == 200
-}
-
-// Code gets the status code for the delete circuit o k response
-func (o *DeleteCircuitOK) Code() int {
-	return 200
-}
-
 func (o *DeleteCircuitOK) Error() string {
 	return fmt.Sprintf("[DELETE /circuits/{id}][%d] deleteCircuitOK  %+v", 200, o.Payload)
 }
-
-func (o *DeleteCircuitOK) String() string {
-	return fmt.Sprintf("[DELETE /circuits/{id}][%d] deleteCircuitOK  %+v", 200, o.Payload)
-}
-
 func (o *DeleteCircuitOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -149,8 +113,7 @@ func NewDeleteCircuitBadRequest() *DeleteCircuitBadRequest {
 	return &DeleteCircuitBadRequest{}
 }
 
-/*
-DeleteCircuitBadRequest describes a response with status code 400, with default header values.
+/* DeleteCircuitBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -158,44 +121,9 @@ type DeleteCircuitBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this delete circuit bad request response has a 2xx status code
-func (o *DeleteCircuitBadRequest) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this delete circuit bad request response has a 3xx status code
-func (o *DeleteCircuitBadRequest) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete circuit bad request response has a 4xx status code
-func (o *DeleteCircuitBadRequest) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this delete circuit bad request response has a 5xx status code
-func (o *DeleteCircuitBadRequest) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete circuit bad request response a status code equal to that given
-func (o *DeleteCircuitBadRequest) IsCode(code int) bool {
-	return code == 400
-}
-
-// Code gets the status code for the delete circuit bad request response
-func (o *DeleteCircuitBadRequest) Code() int {
-	return 400
-}
-
 func (o *DeleteCircuitBadRequest) Error() string {
 	return fmt.Sprintf("[DELETE /circuits/{id}][%d] deleteCircuitBadRequest  %+v", 400, o.Payload)
 }
-
-func (o *DeleteCircuitBadRequest) String() string {
-	return fmt.Sprintf("[DELETE /circuits/{id}][%d] deleteCircuitBadRequest  %+v", 400, o.Payload)
-}
-
 func (o *DeleteCircuitBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -217,8 +145,7 @@ func NewDeleteCircuitUnauthorized() *DeleteCircuitUnauthorized {
 	return &DeleteCircuitUnauthorized{}
 }
 
-/*
-DeleteCircuitUnauthorized describes a response with status code 401, with default header values.
+/* DeleteCircuitUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -226,44 +153,9 @@ type DeleteCircuitUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this delete circuit unauthorized response has a 2xx status code
-func (o *DeleteCircuitUnauthorized) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this delete circuit unauthorized response has a 3xx status code
-func (o *DeleteCircuitUnauthorized) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete circuit unauthorized response has a 4xx status code
-func (o *DeleteCircuitUnauthorized) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this delete circuit unauthorized response has a 5xx status code
-func (o *DeleteCircuitUnauthorized) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete circuit unauthorized response a status code equal to that given
-func (o *DeleteCircuitUnauthorized) IsCode(code int) bool {
-	return code == 401
-}
-
-// Code gets the status code for the delete circuit unauthorized response
-func (o *DeleteCircuitUnauthorized) Code() int {
-	return 401
-}
-
 func (o *DeleteCircuitUnauthorized) Error() string {
 	return fmt.Sprintf("[DELETE /circuits/{id}][%d] deleteCircuitUnauthorized  %+v", 401, o.Payload)
 }
-
-func (o *DeleteCircuitUnauthorized) String() string {
-	return fmt.Sprintf("[DELETE /circuits/{id}][%d] deleteCircuitUnauthorized  %+v", 401, o.Payload)
-}
-
 func (o *DeleteCircuitUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -285,8 +177,7 @@ func NewDeleteCircuitConflict() *DeleteCircuitConflict {
 	return &DeleteCircuitConflict{}
 }
 
-/*
-DeleteCircuitConflict describes a response with status code 409, with default header values.
+/* DeleteCircuitConflict describes a response with status code 409, with default header values.
 
 The resource requested to be removed/altered cannot be as it is referenced by another object.
 */
@@ -294,44 +185,9 @@ type DeleteCircuitConflict struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this delete circuit conflict response has a 2xx status code
-func (o *DeleteCircuitConflict) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this delete circuit conflict response has a 3xx status code
-func (o *DeleteCircuitConflict) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete circuit conflict response has a 4xx status code
-func (o *DeleteCircuitConflict) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this delete circuit conflict response has a 5xx status code
-func (o *DeleteCircuitConflict) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete circuit conflict response a status code equal to that given
-func (o *DeleteCircuitConflict) IsCode(code int) bool {
-	return code == 409
-}
-
-// Code gets the status code for the delete circuit conflict response
-func (o *DeleteCircuitConflict) Code() int {
-	return 409
-}
-
 func (o *DeleteCircuitConflict) Error() string {
 	return fmt.Sprintf("[DELETE /circuits/{id}][%d] deleteCircuitConflict  %+v", 409, o.Payload)
 }
-
-func (o *DeleteCircuitConflict) String() string {
-	return fmt.Sprintf("[DELETE /circuits/{id}][%d] deleteCircuitConflict  %+v", 409, o.Payload)
-}
-
 func (o *DeleteCircuitConflict) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

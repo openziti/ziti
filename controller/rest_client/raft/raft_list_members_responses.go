@@ -69,8 +69,7 @@ func NewRaftListMembersOK() *RaftListMembersOK {
 	return &RaftListMembersOK{}
 }
 
-/*
-RaftListMembersOK describes a response with status code 200, with default header values.
+/* RaftListMembersOK describes a response with status code 200, with default header values.
 
 A response to a raft list-members request
 */
@@ -78,44 +77,9 @@ type RaftListMembersOK struct {
 	Payload *rest_model.RaftMemberListResponse
 }
 
-// IsSuccess returns true when this raft list members o k response has a 2xx status code
-func (o *RaftListMembersOK) IsSuccess() bool {
-	return true
-}
-
-// IsRedirect returns true when this raft list members o k response has a 3xx status code
-func (o *RaftListMembersOK) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this raft list members o k response has a 4xx status code
-func (o *RaftListMembersOK) IsClientError() bool {
-	return false
-}
-
-// IsServerError returns true when this raft list members o k response has a 5xx status code
-func (o *RaftListMembersOK) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this raft list members o k response a status code equal to that given
-func (o *RaftListMembersOK) IsCode(code int) bool {
-	return code == 200
-}
-
-// Code gets the status code for the raft list members o k response
-func (o *RaftListMembersOK) Code() int {
-	return 200
-}
-
 func (o *RaftListMembersOK) Error() string {
 	return fmt.Sprintf("[GET /raft/list-members][%d] raftListMembersOK  %+v", 200, o.Payload)
 }
-
-func (o *RaftListMembersOK) String() string {
-	return fmt.Sprintf("[GET /raft/list-members][%d] raftListMembersOK  %+v", 200, o.Payload)
-}
-
 func (o *RaftListMembersOK) GetPayload() *rest_model.RaftMemberListResponse {
 	return o.Payload
 }
@@ -137,8 +101,7 @@ func NewRaftListMembersUnauthorized() *RaftListMembersUnauthorized {
 	return &RaftListMembersUnauthorized{}
 }
 
-/*
-RaftListMembersUnauthorized describes a response with status code 401, with default header values.
+/* RaftListMembersUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -146,44 +109,9 @@ type RaftListMembersUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this raft list members unauthorized response has a 2xx status code
-func (o *RaftListMembersUnauthorized) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this raft list members unauthorized response has a 3xx status code
-func (o *RaftListMembersUnauthorized) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this raft list members unauthorized response has a 4xx status code
-func (o *RaftListMembersUnauthorized) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this raft list members unauthorized response has a 5xx status code
-func (o *RaftListMembersUnauthorized) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this raft list members unauthorized response a status code equal to that given
-func (o *RaftListMembersUnauthorized) IsCode(code int) bool {
-	return code == 401
-}
-
-// Code gets the status code for the raft list members unauthorized response
-func (o *RaftListMembersUnauthorized) Code() int {
-	return 401
-}
-
 func (o *RaftListMembersUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /raft/list-members][%d] raftListMembersUnauthorized  %+v", 401, o.Payload)
 }
-
-func (o *RaftListMembersUnauthorized) String() string {
-	return fmt.Sprintf("[GET /raft/list-members][%d] raftListMembersUnauthorized  %+v", 401, o.Payload)
-}
-
 func (o *RaftListMembersUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

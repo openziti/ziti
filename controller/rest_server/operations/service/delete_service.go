@@ -53,12 +53,12 @@ func NewDeleteService(ctx *middleware.Context, handler DeleteServiceHandler) *De
 	return &DeleteService{Context: ctx, Handler: handler}
 }
 
-/*
-	DeleteService swagger:route DELETE /services/{id} Service deleteService
+/* DeleteService swagger:route DELETE /services/{id} Service deleteService
 
-# Delete a service
+Delete a service
 
 Delete a service by id. Requires admin access.
+
 */
 type DeleteService struct {
 	Context *middleware.Context

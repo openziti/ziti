@@ -75,8 +75,7 @@ func NewCreateTerminatorCreated() *CreateTerminatorCreated {
 	return &CreateTerminatorCreated{}
 }
 
-/*
-CreateTerminatorCreated describes a response with status code 201, with default header values.
+/* CreateTerminatorCreated describes a response with status code 201, with default header values.
 
 The create request was successful and the resource has been added at the following location
 */
@@ -84,44 +83,9 @@ type CreateTerminatorCreated struct {
 	Payload *rest_model.CreateEnvelope
 }
 
-// IsSuccess returns true when this create terminator created response has a 2xx status code
-func (o *CreateTerminatorCreated) IsSuccess() bool {
-	return true
-}
-
-// IsRedirect returns true when this create terminator created response has a 3xx status code
-func (o *CreateTerminatorCreated) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this create terminator created response has a 4xx status code
-func (o *CreateTerminatorCreated) IsClientError() bool {
-	return false
-}
-
-// IsServerError returns true when this create terminator created response has a 5xx status code
-func (o *CreateTerminatorCreated) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this create terminator created response a status code equal to that given
-func (o *CreateTerminatorCreated) IsCode(code int) bool {
-	return code == 201
-}
-
-// Code gets the status code for the create terminator created response
-func (o *CreateTerminatorCreated) Code() int {
-	return 201
-}
-
 func (o *CreateTerminatorCreated) Error() string {
 	return fmt.Sprintf("[POST /terminators][%d] createTerminatorCreated  %+v", 201, o.Payload)
 }
-
-func (o *CreateTerminatorCreated) String() string {
-	return fmt.Sprintf("[POST /terminators][%d] createTerminatorCreated  %+v", 201, o.Payload)
-}
-
 func (o *CreateTerminatorCreated) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
@@ -143,8 +107,7 @@ func NewCreateTerminatorBadRequest() *CreateTerminatorBadRequest {
 	return &CreateTerminatorBadRequest{}
 }
 
-/*
-CreateTerminatorBadRequest describes a response with status code 400, with default header values.
+/* CreateTerminatorBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -152,44 +115,9 @@ type CreateTerminatorBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this create terminator bad request response has a 2xx status code
-func (o *CreateTerminatorBadRequest) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this create terminator bad request response has a 3xx status code
-func (o *CreateTerminatorBadRequest) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this create terminator bad request response has a 4xx status code
-func (o *CreateTerminatorBadRequest) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this create terminator bad request response has a 5xx status code
-func (o *CreateTerminatorBadRequest) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this create terminator bad request response a status code equal to that given
-func (o *CreateTerminatorBadRequest) IsCode(code int) bool {
-	return code == 400
-}
-
-// Code gets the status code for the create terminator bad request response
-func (o *CreateTerminatorBadRequest) Code() int {
-	return 400
-}
-
 func (o *CreateTerminatorBadRequest) Error() string {
 	return fmt.Sprintf("[POST /terminators][%d] createTerminatorBadRequest  %+v", 400, o.Payload)
 }
-
-func (o *CreateTerminatorBadRequest) String() string {
-	return fmt.Sprintf("[POST /terminators][%d] createTerminatorBadRequest  %+v", 400, o.Payload)
-}
-
 func (o *CreateTerminatorBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -211,8 +139,7 @@ func NewCreateTerminatorUnauthorized() *CreateTerminatorUnauthorized {
 	return &CreateTerminatorUnauthorized{}
 }
 
-/*
-CreateTerminatorUnauthorized describes a response with status code 401, with default header values.
+/* CreateTerminatorUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -220,44 +147,9 @@ type CreateTerminatorUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this create terminator unauthorized response has a 2xx status code
-func (o *CreateTerminatorUnauthorized) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this create terminator unauthorized response has a 3xx status code
-func (o *CreateTerminatorUnauthorized) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this create terminator unauthorized response has a 4xx status code
-func (o *CreateTerminatorUnauthorized) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this create terminator unauthorized response has a 5xx status code
-func (o *CreateTerminatorUnauthorized) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this create terminator unauthorized response a status code equal to that given
-func (o *CreateTerminatorUnauthorized) IsCode(code int) bool {
-	return code == 401
-}
-
-// Code gets the status code for the create terminator unauthorized response
-func (o *CreateTerminatorUnauthorized) Code() int {
-	return 401
-}
-
 func (o *CreateTerminatorUnauthorized) Error() string {
 	return fmt.Sprintf("[POST /terminators][%d] createTerminatorUnauthorized  %+v", 401, o.Payload)
 }
-
-func (o *CreateTerminatorUnauthorized) String() string {
-	return fmt.Sprintf("[POST /terminators][%d] createTerminatorUnauthorized  %+v", 401, o.Payload)
-}
-
 func (o *CreateTerminatorUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

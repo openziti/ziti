@@ -24,6 +24,8 @@ import (
 	fabricMetrics "github.com/openziti/fabric/common/metrics"
 	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/foundation/v2/goroutines"
+	"os"
+	"path/filepath"
 	"runtime/debug"
 	"sort"
 	"strings"
@@ -1255,6 +1257,63 @@ func (network *Network) SnapshotDatabase() error {
 		network.lastSnapshot = time.Now()
 	}
 	return err
+}
+
+func (network *Network) SnapshotDatabaseToFile(path string) (string, error) {
+	network.lock.Lock()
+	defer network.lock.Unlock()
+
+	if network.lastSnapshot.Add(time.Minute).After(time.Now()) {
+		return "", DbSnapshotTooFrequentError
+	}
+
+	actualPath := path
+	if actualPath == "" {
+		actualPath = "DB_DIR/DB_FILE-DATE-TIME"
+	}
+
+	err := network.GetDb().View(func(tx *bbolt.Tx) error {
+		now := time.Now()
+		dateStr := now.Format("20060102")
+		timeStr := now.Format("150405")
+		actualPath = strings.ReplaceAll(actualPath, "DATE", dateStr)
+		actualPath = strings.ReplaceAll(actualPath, "TIME", timeStr)
+
+		currentIndex := db.LoadCurrentRaftIndex(tx)
+		actualPath = strings.ReplaceAll(actualPath, "RAFT_INDEX", fmt.Sprintf("%v", currentIndex))
+		actualPath = strings.ReplaceAll(actualPath, "DB_DIR", filepath.Dir(tx.DB().Path()))
+		actualPath = strings.ReplaceAll(actualPath, "DB_FILE", filepath.Base(tx.DB().Path()))
+
+		pfxlog.Logger().WithField("path", actualPath).Info("snapshotting database to file")
+
+		_, err := os.Stat(actualPath)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return err
+			}
+		} else {
+			pfxlog.Logger().Infof("bolt db backup already exists: %v", actualPath)
+			return errors.Errorf("bolt db backup already exists [%s]", actualPath)
+		}
+
+		file, err := os.OpenFile(actualPath, os.O_WRONLY|os.O_CREATE, 0600)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err = file.Close(); err != nil {
+				pfxlog.Logger().WithError(err).Errorf("failed to close backup database file %v", actualPath)
+			}
+		}()
+
+		_, err = tx.WriteTo(file)
+		return err
+	})
+
+	if err == nil {
+		network.lastSnapshot = time.Now()
+	}
+	return actualPath, err
 }
 
 func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand) error {

@@ -75,8 +75,7 @@ func NewDetailLinkOK() *DetailLinkOK {
 	return &DetailLinkOK{}
 }
 
-/*
-DetailLinkOK describes a response with status code 200, with default header values.
+/* DetailLinkOK describes a response with status code 200, with default header values.
 
 A single link
 */
@@ -84,44 +83,9 @@ type DetailLinkOK struct {
 	Payload *rest_model.DetailLinkEnvelope
 }
 
-// IsSuccess returns true when this detail link o k response has a 2xx status code
-func (o *DetailLinkOK) IsSuccess() bool {
-	return true
-}
-
-// IsRedirect returns true when this detail link o k response has a 3xx status code
-func (o *DetailLinkOK) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this detail link o k response has a 4xx status code
-func (o *DetailLinkOK) IsClientError() bool {
-	return false
-}
-
-// IsServerError returns true when this detail link o k response has a 5xx status code
-func (o *DetailLinkOK) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this detail link o k response a status code equal to that given
-func (o *DetailLinkOK) IsCode(code int) bool {
-	return code == 200
-}
-
-// Code gets the status code for the detail link o k response
-func (o *DetailLinkOK) Code() int {
-	return 200
-}
-
 func (o *DetailLinkOK) Error() string {
 	return fmt.Sprintf("[GET /links/{id}][%d] detailLinkOK  %+v", 200, o.Payload)
 }
-
-func (o *DetailLinkOK) String() string {
-	return fmt.Sprintf("[GET /links/{id}][%d] detailLinkOK  %+v", 200, o.Payload)
-}
-
 func (o *DetailLinkOK) GetPayload() *rest_model.DetailLinkEnvelope {
 	return o.Payload
 }
@@ -143,8 +107,7 @@ func NewDetailLinkUnauthorized() *DetailLinkUnauthorized {
 	return &DetailLinkUnauthorized{}
 }
 
-/*
-DetailLinkUnauthorized describes a response with status code 401, with default header values.
+/* DetailLinkUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -152,44 +115,9 @@ type DetailLinkUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this detail link unauthorized response has a 2xx status code
-func (o *DetailLinkUnauthorized) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this detail link unauthorized response has a 3xx status code
-func (o *DetailLinkUnauthorized) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this detail link unauthorized response has a 4xx status code
-func (o *DetailLinkUnauthorized) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this detail link unauthorized response has a 5xx status code
-func (o *DetailLinkUnauthorized) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this detail link unauthorized response a status code equal to that given
-func (o *DetailLinkUnauthorized) IsCode(code int) bool {
-	return code == 401
-}
-
-// Code gets the status code for the detail link unauthorized response
-func (o *DetailLinkUnauthorized) Code() int {
-	return 401
-}
-
 func (o *DetailLinkUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /links/{id}][%d] detailLinkUnauthorized  %+v", 401, o.Payload)
 }
-
-func (o *DetailLinkUnauthorized) String() string {
-	return fmt.Sprintf("[GET /links/{id}][%d] detailLinkUnauthorized  %+v", 401, o.Payload)
-}
-
 func (o *DetailLinkUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -211,8 +139,7 @@ func NewDetailLinkNotFound() *DetailLinkNotFound {
 	return &DetailLinkNotFound{}
 }
 
-/*
-DetailLinkNotFound describes a response with status code 404, with default header values.
+/* DetailLinkNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -220,44 +147,9 @@ type DetailLinkNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this detail link not found response has a 2xx status code
-func (o *DetailLinkNotFound) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this detail link not found response has a 3xx status code
-func (o *DetailLinkNotFound) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this detail link not found response has a 4xx status code
-func (o *DetailLinkNotFound) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this detail link not found response has a 5xx status code
-func (o *DetailLinkNotFound) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this detail link not found response a status code equal to that given
-func (o *DetailLinkNotFound) IsCode(code int) bool {
-	return code == 404
-}
-
-// Code gets the status code for the detail link not found response
-func (o *DetailLinkNotFound) Code() int {
-	return 404
-}
-
 func (o *DetailLinkNotFound) Error() string {
 	return fmt.Sprintf("[GET /links/{id}][%d] detailLinkNotFound  %+v", 404, o.Payload)
 }
-
-func (o *DetailLinkNotFound) String() string {
-	return fmt.Sprintf("[GET /links/{id}][%d] detailLinkNotFound  %+v", 404, o.Payload)
-}
-
 func (o *DetailLinkNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

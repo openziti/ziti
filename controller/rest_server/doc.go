@@ -25,20 +25,20 @@
 
 // Package rest_server Ziti Fabric
 //
-//	OpenZiti Fabric API
-//	Schemes:
-//	  https
-//	Host: demo.ziti.dev
-//	BasePath: /fabric/v1
-//	Version: 0.16.54
-//	License: Apache 2.0 http://www.apache.org/licenses/LICENSE-2.0.html
-//	Contact: OpenZiti<help@openziti.org> https://openziti.discourse.group
+//  OpenZiti Fabric API
+//  Schemes:
+//    https
+//  Host: demo.ziti.dev
+//  BasePath: /fabric/v1
+//  Version: 0.16.54
+//  License: Apache 2.0 http://www.apache.org/licenses/LICENSE-2.0.html
+//  Contact: OpenZiti<help@openziti.org> https://openziti.discourse.group
 //
-//	Consumes:
-//	  - application/json
+//  Consumes:
+//    - application/json
 //
-//	Produces:
-//	  - application/json
+//  Produces:
+//    - application/json
 //
 // swagger:meta
 package rest_server

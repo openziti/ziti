@@ -81,6 +81,9 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		DatabaseCreateDatabaseSnapshotHandler: database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.CreateDatabaseSnapshot has not yet been implemented")
 		}),
+		DatabaseCreateDatabaseSnapshotWithPathHandler: database.CreateDatabaseSnapshotWithPathHandlerFunc(func(params database.CreateDatabaseSnapshotWithPathParams) middleware.Responder {
+			return middleware.NotImplemented("operation database.CreateDatabaseSnapshotWithPath has not yet been implemented")
+		}),
 		RouterCreateRouterHandler: router.CreateRouterHandlerFunc(func(params router.CreateRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.CreateRouter has not yet been implemented")
 		}),
@@ -214,6 +217,8 @@ type ZitiFabricAPI struct {
 	DatabaseCheckDataIntegrityHandler database.CheckDataIntegrityHandler
 	// DatabaseCreateDatabaseSnapshotHandler sets the operation handler for the create database snapshot operation
 	DatabaseCreateDatabaseSnapshotHandler database.CreateDatabaseSnapshotHandler
+	// DatabaseCreateDatabaseSnapshotWithPathHandler sets the operation handler for the create database snapshot with path operation
+	DatabaseCreateDatabaseSnapshotWithPathHandler database.CreateDatabaseSnapshotWithPathHandler
 	// RouterCreateRouterHandler sets the operation handler for the create router operation
 	RouterCreateRouterHandler router.CreateRouterHandler
 	// ServiceCreateServiceHandler sets the operation handler for the create service operation
@@ -358,6 +363,9 @@ func (o *ZitiFabricAPI) Validate() error {
 	}
 	if o.DatabaseCreateDatabaseSnapshotHandler == nil {
 		unregistered = append(unregistered, "database.CreateDatabaseSnapshotHandler")
+	}
+	if o.DatabaseCreateDatabaseSnapshotWithPathHandler == nil {
+		unregistered = append(unregistered, "database.CreateDatabaseSnapshotWithPathHandler")
 	}
 	if o.RouterCreateRouterHandler == nil {
 		unregistered = append(unregistered, "router.CreateRouterHandler")
@@ -548,6 +556,10 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/database"] = database.NewCreateDatabaseSnapshot(o.context, o.DatabaseCreateDatabaseSnapshotHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/database/snapshot"] = database.NewCreateDatabaseSnapshotWithPath(o.context, o.DatabaseCreateDatabaseSnapshotWithPathHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}

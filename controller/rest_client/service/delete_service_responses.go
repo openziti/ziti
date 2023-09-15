@@ -81,8 +81,7 @@ func NewDeleteServiceOK() *DeleteServiceOK {
 	return &DeleteServiceOK{}
 }
 
-/*
-DeleteServiceOK describes a response with status code 200, with default header values.
+/* DeleteServiceOK describes a response with status code 200, with default header values.
 
 The delete request was successful and the resource has been removed
 */
@@ -90,44 +89,9 @@ type DeleteServiceOK struct {
 	Payload *rest_model.Empty
 }
 
-// IsSuccess returns true when this delete service o k response has a 2xx status code
-func (o *DeleteServiceOK) IsSuccess() bool {
-	return true
-}
-
-// IsRedirect returns true when this delete service o k response has a 3xx status code
-func (o *DeleteServiceOK) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete service o k response has a 4xx status code
-func (o *DeleteServiceOK) IsClientError() bool {
-	return false
-}
-
-// IsServerError returns true when this delete service o k response has a 5xx status code
-func (o *DeleteServiceOK) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete service o k response a status code equal to that given
-func (o *DeleteServiceOK) IsCode(code int) bool {
-	return code == 200
-}
-
-// Code gets the status code for the delete service o k response
-func (o *DeleteServiceOK) Code() int {
-	return 200
-}
-
 func (o *DeleteServiceOK) Error() string {
 	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceOK  %+v", 200, o.Payload)
 }
-
-func (o *DeleteServiceOK) String() string {
-	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceOK  %+v", 200, o.Payload)
-}
-
 func (o *DeleteServiceOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -149,8 +113,7 @@ func NewDeleteServiceBadRequest() *DeleteServiceBadRequest {
 	return &DeleteServiceBadRequest{}
 }
 
-/*
-DeleteServiceBadRequest describes a response with status code 400, with default header values.
+/* DeleteServiceBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -158,44 +121,9 @@ type DeleteServiceBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this delete service bad request response has a 2xx status code
-func (o *DeleteServiceBadRequest) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this delete service bad request response has a 3xx status code
-func (o *DeleteServiceBadRequest) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete service bad request response has a 4xx status code
-func (o *DeleteServiceBadRequest) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this delete service bad request response has a 5xx status code
-func (o *DeleteServiceBadRequest) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete service bad request response a status code equal to that given
-func (o *DeleteServiceBadRequest) IsCode(code int) bool {
-	return code == 400
-}
-
-// Code gets the status code for the delete service bad request response
-func (o *DeleteServiceBadRequest) Code() int {
-	return 400
-}
-
 func (o *DeleteServiceBadRequest) Error() string {
 	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceBadRequest  %+v", 400, o.Payload)
 }
-
-func (o *DeleteServiceBadRequest) String() string {
-	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceBadRequest  %+v", 400, o.Payload)
-}
-
 func (o *DeleteServiceBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -217,8 +145,7 @@ func NewDeleteServiceUnauthorized() *DeleteServiceUnauthorized {
 	return &DeleteServiceUnauthorized{}
 }
 
-/*
-DeleteServiceUnauthorized describes a response with status code 401, with default header values.
+/* DeleteServiceUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -226,44 +153,9 @@ type DeleteServiceUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this delete service unauthorized response has a 2xx status code
-func (o *DeleteServiceUnauthorized) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this delete service unauthorized response has a 3xx status code
-func (o *DeleteServiceUnauthorized) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete service unauthorized response has a 4xx status code
-func (o *DeleteServiceUnauthorized) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this delete service unauthorized response has a 5xx status code
-func (o *DeleteServiceUnauthorized) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete service unauthorized response a status code equal to that given
-func (o *DeleteServiceUnauthorized) IsCode(code int) bool {
-	return code == 401
-}
-
-// Code gets the status code for the delete service unauthorized response
-func (o *DeleteServiceUnauthorized) Code() int {
-	return 401
-}
-
 func (o *DeleteServiceUnauthorized) Error() string {
 	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceUnauthorized  %+v", 401, o.Payload)
 }
-
-func (o *DeleteServiceUnauthorized) String() string {
-	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceUnauthorized  %+v", 401, o.Payload)
-}
-
 func (o *DeleteServiceUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -285,8 +177,7 @@ func NewDeleteServiceConflict() *DeleteServiceConflict {
 	return &DeleteServiceConflict{}
 }
 
-/*
-DeleteServiceConflict describes a response with status code 409, with default header values.
+/* DeleteServiceConflict describes a response with status code 409, with default header values.
 
 The resource requested to be removed/altered cannot be as it is referenced by another object.
 */
@@ -294,44 +185,9 @@ type DeleteServiceConflict struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-// IsSuccess returns true when this delete service conflict response has a 2xx status code
-func (o *DeleteServiceConflict) IsSuccess() bool {
-	return false
-}
-
-// IsRedirect returns true when this delete service conflict response has a 3xx status code
-func (o *DeleteServiceConflict) IsRedirect() bool {
-	return false
-}
-
-// IsClientError returns true when this delete service conflict response has a 4xx status code
-func (o *DeleteServiceConflict) IsClientError() bool {
-	return true
-}
-
-// IsServerError returns true when this delete service conflict response has a 5xx status code
-func (o *DeleteServiceConflict) IsServerError() bool {
-	return false
-}
-
-// IsCode returns true when this delete service conflict response a status code equal to that given
-func (o *DeleteServiceConflict) IsCode(code int) bool {
-	return code == 409
-}
-
-// Code gets the status code for the delete service conflict response
-func (o *DeleteServiceConflict) Code() int {
-	return 409
-}
-
 func (o *DeleteServiceConflict) Error() string {
 	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceConflict  %+v", 409, o.Payload)
 }
-
-func (o *DeleteServiceConflict) String() string {
-	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceConflict  %+v", 409, o.Payload)
-}
-
 func (o *DeleteServiceConflict) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

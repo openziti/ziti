@@ -53,12 +53,13 @@ func NewListCircuits(ctx *middleware.Context, handler ListCircuitsHandler) *List
 	return &ListCircuits{Context: ctx, Handler: handler}
 }
 
-/*
-	ListCircuits swagger:route GET /circuits Circuit listCircuits
+/* ListCircuits swagger:route GET /circuits Circuit listCircuits
 
-# List circuits
+List circuits
 
 Retrieves a list of circuit resources; does not supports filtering, sorting, or pagination. Requires admin access.
+
+
 */
 type ListCircuits struct {
 	Context *middleware.Context

@@ -40,8 +40,7 @@ import (
 // UpdateServiceOKCode is the HTTP code returned for type UpdateServiceOK
 const UpdateServiceOKCode int = 200
 
-/*
-UpdateServiceOK The update request was successful and the resource has been altered
+/*UpdateServiceOK The update request was successful and the resource has been altered
 
 swagger:response updateServiceOK
 */
@@ -85,8 +84,7 @@ func (o *UpdateServiceOK) WriteResponse(rw http.ResponseWriter, producer runtime
 // UpdateServiceBadRequestCode is the HTTP code returned for type UpdateServiceBadRequest
 const UpdateServiceBadRequestCode int = 400
 
-/*
-UpdateServiceBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*UpdateServiceBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response updateServiceBadRequest
 */
@@ -130,8 +128,7 @@ func (o *UpdateServiceBadRequest) WriteResponse(rw http.ResponseWriter, producer
 // UpdateServiceUnauthorizedCode is the HTTP code returned for type UpdateServiceUnauthorized
 const UpdateServiceUnauthorizedCode int = 401
 
-/*
-UpdateServiceUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*UpdateServiceUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response updateServiceUnauthorized
 */
@@ -175,8 +172,7 @@ func (o *UpdateServiceUnauthorized) WriteResponse(rw http.ResponseWriter, produc
 // UpdateServiceNotFoundCode is the HTTP code returned for type UpdateServiceNotFound
 const UpdateServiceNotFoundCode int = 404
 
-/*
-UpdateServiceNotFound The requested resource does not exist
+/*UpdateServiceNotFound The requested resource does not exist
 
 swagger:response updateServiceNotFound
 */

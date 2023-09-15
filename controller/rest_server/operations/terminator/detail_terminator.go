@@ -53,12 +53,12 @@ func NewDetailTerminator(ctx *middleware.Context, handler DetailTerminatorHandle
 	return &DetailTerminator{Context: ctx, Handler: handler}
 }
 
-/*
-	DetailTerminator swagger:route GET /terminators/{id} Terminator detailTerminator
+/* DetailTerminator swagger:route GET /terminators/{id} Terminator detailTerminator
 
-# Retrieves a single terminator
+Retrieves a single terminator
 
 Retrieves a single terminator by id. Requires admin access.
+
 */
 type DetailTerminator struct {
 	Context *middleware.Context

@@ -45,7 +45,7 @@ import (
 	"github.com/openziti/fabric/controller/rest_server/operations/terminator"
 )
 
-//go:generate swagger generate server --target ../../fabric --name ZitiFabric --spec ../specs/swagger.yml --model-package rest_model --server-package rest_server --principal interface{} --exclude-main
+//go:generate swagger generate server --target ../../controller --name ZitiFabric --spec ../specs/swagger.yml --model-package rest_model --server-package rest_server --principal interface{} --exclude-main
 
 func configureFlags(api *operations.ZitiFabricAPI) {
 	// api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{ ... }
@@ -77,6 +77,11 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 	if api.DatabaseCreateDatabaseSnapshotHandler == nil {
 		api.DatabaseCreateDatabaseSnapshotHandler = database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.CreateDatabaseSnapshot has not yet been implemented")
+		})
+	}
+	if api.DatabaseCreateDatabaseSnapshotWithPathHandler == nil {
+		api.DatabaseCreateDatabaseSnapshotWithPathHandler = database.CreateDatabaseSnapshotWithPathHandlerFunc(func(params database.CreateDatabaseSnapshotWithPathParams) middleware.Responder {
+			return middleware.NotImplemented("operation database.CreateDatabaseSnapshotWithPath has not yet been implemented")
 		})
 	}
 	if api.RouterCreateRouterHandler == nil {

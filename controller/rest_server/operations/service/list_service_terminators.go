@@ -53,12 +53,13 @@ func NewListServiceTerminators(ctx *middleware.Context, handler ListServiceTermi
 	return &ListServiceTerminators{Context: ctx, Handler: handler}
 }
 
-/*
-	ListServiceTerminators swagger:route GET /services/{id}/terminators Service listServiceTerminators
+/* ListServiceTerminators swagger:route GET /services/{id}/terminators Service listServiceTerminators
 
-# List of terminators assigned to a service
+List of terminators assigned to a service
 
 Retrieves a list of terminator resources that are assigned specific service; supports filtering, sorting, and pagination.
+
+
 */
 type ListServiceTerminators struct {
 	Context *middleware.Context

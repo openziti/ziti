@@ -40,8 +40,7 @@ import (
 // PatchServiceOKCode is the HTTP code returned for type PatchServiceOK
 const PatchServiceOKCode int = 200
 
-/*
-PatchServiceOK The patch request was successful and the resource has been altered
+/*PatchServiceOK The patch request was successful and the resource has been altered
 
 swagger:response patchServiceOK
 */
@@ -85,8 +84,7 @@ func (o *PatchServiceOK) WriteResponse(rw http.ResponseWriter, producer runtime.
 // PatchServiceBadRequestCode is the HTTP code returned for type PatchServiceBadRequest
 const PatchServiceBadRequestCode int = 400
 
-/*
-PatchServiceBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*PatchServiceBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response patchServiceBadRequest
 */
@@ -130,8 +128,7 @@ func (o *PatchServiceBadRequest) WriteResponse(rw http.ResponseWriter, producer 
 // PatchServiceUnauthorizedCode is the HTTP code returned for type PatchServiceUnauthorized
 const PatchServiceUnauthorizedCode int = 401
 
-/*
-PatchServiceUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*PatchServiceUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response patchServiceUnauthorized
 */
@@ -175,8 +172,7 @@ func (o *PatchServiceUnauthorized) WriteResponse(rw http.ResponseWriter, produce
 // PatchServiceNotFoundCode is the HTTP code returned for type PatchServiceNotFound
 const PatchServiceNotFoundCode int = 404
 
-/*
-PatchServiceNotFound The requested resource does not exist
+/*PatchServiceNotFound The requested resource does not exist
 
 swagger:response patchServiceNotFound
 */

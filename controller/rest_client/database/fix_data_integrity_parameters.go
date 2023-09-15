@@ -76,12 +76,10 @@ func NewFixDataIntegrityParamsWithHTTPClient(client *http.Client) *FixDataIntegr
 	}
 }
 
-/*
-FixDataIntegrityParams contains all the parameters to send to the API endpoint
+/* FixDataIntegrityParams contains all the parameters to send to the API endpoint
+   for the fix data integrity operation.
 
-	for the fix data integrity operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type FixDataIntegrityParams struct {
 	timeout    time.Duration

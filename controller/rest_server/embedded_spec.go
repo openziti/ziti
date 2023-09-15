@@ -246,6 +246,38 @@ func init() {
         }
       }
     },
+    "/database/snapshot": {
+      "post": {
+        "description": "Create a new database snapshot with path. Requires admin access.",
+        "tags": [
+          "Database"
+        ],
+        "summary": "Create a new database snapshot with path",
+        "operationId": "createDatabaseSnapshotWithPath",
+        "parameters": [
+          {
+            "description": "snapshot parameters",
+            "name": "snapshot",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/databaseSnapshotCreate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/databaseSnapshotCreateResult"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "429": {
+            "$ref": "#/responses/rateLimitedResponse"
+          }
+        }
+      }
+    },
     "/inspections": {
       "post": {
         "description": "Requests system information, such as stack dumps or information about capabilities. Requires admin access.\n",
@@ -1242,6 +1274,40 @@ func init() {
       "properties": {
         "data": {
           "$ref": "#/definitions/dataIntegrityCheckDetails"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "databaseSnapshotCreate": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "databaseSnapshotCreateDetails": {
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "databaseSnapshotCreateResultEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/databaseSnapshotCreateDetails"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -2248,6 +2314,12 @@ func init() {
         "$ref": "#/definitions/dataIntegrityCheckResultEnvelope"
       }
     },
+    "databaseSnapshotCreateResult": {
+      "description": "The path to the created snapshot",
+      "schema": {
+        "$ref": "#/definitions/databaseSnapshotCreateResultEnvelope"
+      }
+    },
     "deleteResponse": {
       "description": "The delete request was successful and the resource has been removed",
       "schema": {
@@ -2907,6 +2979,82 @@ func init() {
             "description": "Base empty response",
             "schema": {
               "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The resource requested is rate limited and the rate limit has been exceeded",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "causeMessage": "you have hit a rate limit in the requested operation",
+                  "code": "RATE_LIMITED",
+                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/database/snapshot": {
+      "post": {
+        "description": "Create a new database snapshot with path. Requires admin access.",
+        "tags": [
+          "Database"
+        ],
+        "summary": "Create a new database snapshot with path",
+        "operationId": "createDatabaseSnapshotWithPath",
+        "parameters": [
+          {
+            "description": "snapshot parameters",
+            "name": "snapshot",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/databaseSnapshotCreate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The path to the created snapshot",
+            "schema": {
+              "$ref": "#/definitions/databaseSnapshotCreateResultEnvelope"
             }
           },
           "401": {
@@ -5553,6 +5701,40 @@ func init() {
         }
       }
     },
+    "databaseSnapshotCreate": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "databaseSnapshotCreateDetails": {
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "databaseSnapshotCreateResultEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/databaseSnapshotCreateDetails"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
     "detailCircuitEnvelope": {
       "type": "object",
       "required": [
@@ -6556,6 +6738,12 @@ func init() {
       "description": "A list of data integrity issues found",
       "schema": {
         "$ref": "#/definitions/dataIntegrityCheckResultEnvelope"
+      }
+    },
+    "databaseSnapshotCreateResult": {
+      "description": "The path to the created snapshot",
+      "schema": {
+        "$ref": "#/definitions/databaseSnapshotCreateResultEnvelope"
       }
     },
     "deleteResponse": {

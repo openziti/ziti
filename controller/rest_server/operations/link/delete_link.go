@@ -53,12 +53,12 @@ func NewDeleteLink(ctx *middleware.Context, handler DeleteLinkHandler) *DeleteLi
 	return &DeleteLink{Context: ctx, Handler: handler}
 }
 
-/*
-	DeleteLink swagger:route DELETE /links/{id} Link deleteLink
+/* DeleteLink swagger:route DELETE /links/{id} Link deleteLink
 
-# Delete a link
+Delete a link
 
 Delete a link by id. Requires admin access.
+
 */
 type DeleteLink struct {
 	Context *middleware.Context

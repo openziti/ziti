@@ -53,12 +53,12 @@ func NewPatchTerminator(ctx *middleware.Context, handler PatchTerminatorHandler)
 	return &PatchTerminator{Context: ctx, Handler: handler}
 }
 
-/*
-	PatchTerminator swagger:route PATCH /terminators/{id} Terminator patchTerminator
+/* PatchTerminator swagger:route PATCH /terminators/{id} Terminator patchTerminator
 
-# Update the supplied fields on a terminator
+Update the supplied fields on a terminator
 
 Update the supplied fields on a terminator. Requires admin access.
+
 */
 type PatchTerminator struct {
 	Context *middleware.Context

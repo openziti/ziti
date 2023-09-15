@@ -53,12 +53,12 @@ func NewDeleteCircuit(ctx *middleware.Context, handler DeleteCircuitHandler) *De
 	return &DeleteCircuit{Context: ctx, Handler: handler}
 }
 
-/*
-	DeleteCircuit swagger:route DELETE /circuits/{id} Circuit deleteCircuit
+/* DeleteCircuit swagger:route DELETE /circuits/{id} Circuit deleteCircuit
 
-# Delete a circuit
+Delete a circuit
 
 Delete a circuit by id. Requires admin access.
+
 */
 type DeleteCircuit struct {
 	Context *middleware.Context

@@ -40,8 +40,7 @@ import (
 // DeleteTerminatorOKCode is the HTTP code returned for type DeleteTerminatorOK
 const DeleteTerminatorOKCode int = 200
 
-/*
-DeleteTerminatorOK The delete request was successful and the resource has been removed
+/*DeleteTerminatorOK The delete request was successful and the resource has been removed
 
 swagger:response deleteTerminatorOK
 */
@@ -85,8 +84,7 @@ func (o *DeleteTerminatorOK) WriteResponse(rw http.ResponseWriter, producer runt
 // DeleteTerminatorBadRequestCode is the HTTP code returned for type DeleteTerminatorBadRequest
 const DeleteTerminatorBadRequestCode int = 400
 
-/*
-DeleteTerminatorBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*DeleteTerminatorBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response deleteTerminatorBadRequest
 */
@@ -130,8 +128,7 @@ func (o *DeleteTerminatorBadRequest) WriteResponse(rw http.ResponseWriter, produ
 // DeleteTerminatorUnauthorizedCode is the HTTP code returned for type DeleteTerminatorUnauthorized
 const DeleteTerminatorUnauthorizedCode int = 401
 
-/*
-DeleteTerminatorUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*DeleteTerminatorUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response deleteTerminatorUnauthorized
 */
@@ -175,8 +172,7 @@ func (o *DeleteTerminatorUnauthorized) WriteResponse(rw http.ResponseWriter, pro
 // DeleteTerminatorConflictCode is the HTTP code returned for type DeleteTerminatorConflict
 const DeleteTerminatorConflictCode int = 409
 
-/*
-DeleteTerminatorConflict The resource requested to be removed/altered cannot be as it is referenced by another object.
+/*DeleteTerminatorConflict The resource requested to be removed/altered cannot be as it is referenced by another object.
 
 swagger:response deleteTerminatorConflict
 */

@@ -53,12 +53,12 @@ func NewRaftListMembers(ctx *middleware.Context, handler RaftListMembersHandler)
 	return &RaftListMembers{Context: ctx, Handler: handler}
 }
 
-/*
-	RaftListMembers swagger:route GET /raft/list-members Raft raftListMembers
-
-# Returns all members of a cluster and their current status
+/* RaftListMembers swagger:route GET /raft/list-members Raft raftListMembers
 
 Returns all members of a cluster and their current status
+
+Returns all members of a cluster and their current status
+
 */
 type RaftListMembers struct {
 	Context *middleware.Context

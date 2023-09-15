@@ -53,12 +53,12 @@ func NewCreateTerminator(ctx *middleware.Context, handler CreateTerminatorHandle
 	return &CreateTerminator{Context: ctx, Handler: handler}
 }
 
-/*
-	CreateTerminator swagger:route POST /terminators Terminator createTerminator
+/* CreateTerminator swagger:route POST /terminators Terminator createTerminator
 
-# Create a terminator resource
+Create a terminator resource
 
 Create a terminator resource. Requires admin access.
+
 */
 type CreateTerminator struct {
 	Context *middleware.Context

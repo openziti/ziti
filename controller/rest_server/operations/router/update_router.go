@@ -53,12 +53,12 @@ func NewUpdateRouter(ctx *middleware.Context, handler UpdateRouterHandler) *Upda
 	return &UpdateRouter{Context: ctx, Handler: handler}
 }
 
-/*
-	UpdateRouter swagger:route PUT /routers/{id} Router updateRouter
+/* UpdateRouter swagger:route PUT /routers/{id} Router updateRouter
 
-# Update all fields on a router
+Update all fields on a router
 
 Update all fields on a router by id. Requires admin access.
+
 */
 type UpdateRouter struct {
 	Context *middleware.Context
