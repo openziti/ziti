@@ -207,7 +207,7 @@ jobs:
 
   fablab-smoketest-teardown:
     name: Teardown SmokeTest
-    if: ${{ !cancelled() }}
+    if: always()
     runs-on: ubuntu-20.04
     needs: [ fablab-smoketest ]
     steps:
