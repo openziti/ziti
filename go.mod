@@ -12,21 +12,21 @@ require (
 	github.com/go-acme/lego/v4 v4.2.0
 	github.com/go-openapi/runtime v0.26.0
 	github.com/go-openapi/strfmt v0.21.7
-	github.com/go-resty/resty/v2 v2.7.0
+	github.com/go-resty/resty/v2 v2.8.0
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.15
 	github.com/openziti/channel/v2 v2.0.98
-	github.com/openziti/edge v0.24.418
+	github.com/openziti/edge v0.24.420
 	github.com/openziti/edge-api v0.25.35
-	github.com/openziti/fabric v0.24.30
+	github.com/openziti/fabric v0.24.32
 	github.com/openziti/foundation/v2 v2.0.31
 	github.com/openziti/identity v1.0.62
 	github.com/openziti/runzmd v1.0.31
-	github.com/openziti/sdk-golang v0.20.108
-	github.com/openziti/storage v0.2.15
+	github.com/openziti/sdk-golang v0.20.109
+	github.com/openziti/storage v0.2.16
 	github.com/openziti/transport/v2 v2.0.106
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -54,7 +54,7 @@ require (
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
@@ -87,7 +87,7 @@ require (
 	github.com/go-openapi/validate v0.22.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20230916125811-7478c230c7cd // indirect
+	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
@@ -134,7 +134,7 @@ require (
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
 	github.com/openziti/metrics v1.2.34 // indirect
-	github.com/openziti/secretstream v0.1.11 // indirect
+	github.com/openziti/secretstream v0.1.12 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
