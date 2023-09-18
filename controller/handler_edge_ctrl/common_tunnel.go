@@ -341,25 +341,36 @@ func (self *baseTunnelRequestContext) getCreateSessionResponse() *edge_ctrl_pb.C
 
 func (self *baseTunnelRequestContext) updateIdentityInfo(envInfo *edge_ctrl_pb.EnvInfo, sdkInfo *edge_ctrl_pb.SdkInfo) {
 	if self.err == nil {
+		updateIdentity := false
 		if envInfo != nil {
-			self.identity.EnvInfo = &model.EnvInfo{}
-			self.identity.EnvInfo.Arch = envInfo.Arch
-			self.identity.EnvInfo.Os = envInfo.Os
-			self.identity.EnvInfo.OsRelease = envInfo.OsRelease
-			self.identity.EnvInfo.OsVersion = envInfo.OsVersion
+			newEnvInfo := &model.EnvInfo{
+				Arch:      envInfo.Arch,
+				Os:        envInfo.Os,
+				OsRelease: envInfo.OsRelease,
+				OsVersion: envInfo.OsVersion,
+			}
+			if !self.identity.EnvInfo.Equals(newEnvInfo) {
+				self.identity.EnvInfo = newEnvInfo
+				updateIdentity = true
+			}
 		}
 
 		if sdkInfo != nil {
-			self.identity.SdkInfo = &model.SdkInfo{}
-			self.identity.SdkInfo.AppId = sdkInfo.AppId
-			self.identity.SdkInfo.AppVersion = sdkInfo.AppVersion
-			self.identity.SdkInfo.Branch = sdkInfo.Branch
-			self.identity.SdkInfo.Revision = sdkInfo.Revision
-			self.identity.SdkInfo.Type = sdkInfo.Type
-			self.identity.SdkInfo.Version = sdkInfo.Version
+			newSdkInfo := &model.SdkInfo{
+				AppId:      sdkInfo.AppId,
+				AppVersion: sdkInfo.AppVersion,
+				Branch:     sdkInfo.Branch,
+				Revision:   sdkInfo.Revision,
+				Type:       sdkInfo.Type,
+				Version:    sdkInfo.Version,
+			}
+			if !self.identity.SdkInfo.Equals(newSdkInfo) {
+				self.identity.SdkInfo = newSdkInfo
+				updateIdentity = true
+			}
 		}
 
-		if envInfo != nil || sdkInfo != nil {
+		if updateIdentity {
 			self.err = internalError(self.handler.getAppEnv().GetManagers().Identity.PatchInfo(self.identity, self.newTunnelChangeContext()))
 		}
 	}

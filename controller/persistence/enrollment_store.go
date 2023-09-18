@@ -52,7 +52,7 @@ type Enrollment struct {
 	IssuedAt        *time.Time `json:"issuedAt"`
 	CaId            *string    `json:"caId"`
 	Username        *string    `json:"username"`
-	Jwt             string     `json:"jwt"`
+	Jwt             string     `json:"-"`
 }
 
 func (entity *Enrollment) GetEntityType() string {

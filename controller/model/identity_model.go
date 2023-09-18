@@ -33,6 +33,19 @@ type EnvInfo struct {
 	OsVersion string
 }
 
+func (self *EnvInfo) Equals(other *EnvInfo) bool {
+	if self == nil {
+		return other == nil
+	}
+	if other == nil {
+		return false
+	}
+	return self.Arch == other.Arch &&
+		self.Os == other.Os &&
+		self.OsRelease == other.OsRelease &&
+		self.OsVersion == other.OsVersion
+}
+
 type SdkInfo struct {
 	AppId      string
 	AppVersion string
@@ -40,6 +53,21 @@ type SdkInfo struct {
 	Revision   string
 	Type       string
 	Version    string
+}
+
+func (self *SdkInfo) Equals(other *SdkInfo) bool {
+	if self == nil {
+		return other == nil
+	}
+	if other == nil {
+		return false
+	}
+	return self.AppId == other.AppId &&
+		self.AppVersion == other.AppVersion &&
+		self.Branch == other.Branch &&
+		self.Revision == other.Revision &&
+		self.Type == other.Type &&
+		self.Version == other.Version
 }
 
 type Identity struct {
