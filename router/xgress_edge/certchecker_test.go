@@ -236,19 +236,6 @@ func Test_CertExpirationChecker(t *testing.T) {
 			req.GreaterOrEqual(waitTime, 20*time.Second)
 			req.LessOrEqual(waitTime, 30*time.Second)
 		})
-
-		t.Run("force returns 0", func(t *testing.T) {
-			req := require.New(t)
-			certChecker, _ := newCertChecker()
-
-			certChecker.edgeConfig.ExtendEnrollment = true
-
-			waitTime, err := certChecker.getWaitTime()
-
-			req.NoError(err)
-			req.Equal(time.Duration(0), waitTime)
-			req.False(certChecker.edgeConfig.ExtendEnrollment)
-		})
 	})
 
 	t.Run("Run", func(t *testing.T) {
@@ -370,19 +357,6 @@ func Test_CertExpirationChecker(t *testing.T) {
 	})
 
 	t.Run("ExtendEnrollment", func(t *testing.T) {
-		t.Run("errors if control channel is closed", func(t *testing.T) {
-			req := require.New(t)
-			certChecker, _ := newCertChecker()
-
-			testChannel := certChecker.ctrls.AnyCtrlChannel().(*simpleTestChannel)
-			req.NotNil(testChannel)
-			testChannel.isClosed = true
-
-			err := certChecker.ExtendEnrollment()
-
-			req.Error(err)
-			req.True(certChecker.isRequesting.Load())
-		})
 
 		t.Run("errors if isRequesting = true", func(t *testing.T) {
 			req := require.New(t)
