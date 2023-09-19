@@ -181,7 +181,9 @@ jobs:
           pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
 
       - name: Create fablab instance archive
-        if: ${{ !cancelled() }}
+        # always create, even if cancelled, because the teardown job needs it to destroy the created test environment
+        if: always()
+        timeout-minutes: 30
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         run: |
@@ -206,6 +208,7 @@ jobs:
 
   fablab-smoketest-teardown:
     name: Teardown SmokeTest
+    # ensure reasonable timeout-minutes on steps in this un-cancellable job
     if: always()
     runs-on: ubuntu-20.04
     needs: [ fablab-smoketest ]
@@ -219,6 +222,7 @@ jobs:
       # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
       - name: Teardown Test Environment
         if: needs.fablab-smoketest.result != 'skipped'
+        timeout-minutes: 30
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         run: |
