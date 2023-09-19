@@ -29,13 +29,13 @@ require (
 	github.com/miekg/dns v1.1.56
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openziti/channel/v2 v2.0.98
-	github.com/openziti/edge-api v0.25.33
+	github.com/openziti/edge-api v0.25.34
 	github.com/openziti/fabric v0.24.30
 	github.com/openziti/foundation/v2 v2.0.31
 	github.com/openziti/identity v1.0.62
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.34
-	github.com/openziti/sdk-golang v0.20.104
+	github.com/openziti/sdk-golang v0.20.107
 	github.com/openziti/secretstream v0.1.11
 	github.com/openziti/storage v0.2.15
 	github.com/openziti/transport/v2 v2.0.106
@@ -121,7 +121,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
 	github.com/rabbitmq/amqp091-go v1.8.1 // indirect
 	github.com/rs/cors v1.9.0 // indirect
-	github.com/shirou/gopsutil/v3 v3.23.7 // indirect
+	github.com/shirou/gopsutil/v3 v3.23.8 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
