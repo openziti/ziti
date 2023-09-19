@@ -1,6 +1,5 @@
 {{$ssh_username := .Model.MustVariable "credentials.ssh.username"}}
 {{$identity := .Component.Id}}
-{{$ctrl_ip := publicIp "component#ctrl"}}
 {{$router_ip := .Host.PublicIp}}
   
 v: 3
@@ -14,7 +13,8 @@ identity:
   ca:                   /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-server.chain.pem
 
 ctrl:
-  endpoint:             tls:{{$ctrl_ip}}:6262
+  endpoints: {{ range $host := .Model.MustSelectHosts "component.ctrl" 1 }}
+    - tls:{{ $host.PublicIp }}:6262{{end}}
 
 healthChecks:
   ctrlPingCheck:

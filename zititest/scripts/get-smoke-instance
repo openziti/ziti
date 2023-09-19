@@ -1,0 +1,4 @@
+# You must have a FABLAB_PASSPHRASE environment variable set with the GPG key to decrypt the smoketests
+aws s3 cp s3://ziti-smoketest-fablab-instances/simple-transfer-$1.tar.gz.gpg ${HOME}/Downloads/simple-transfer-$1.tar.gz.gpg
+simple-transfer import ${HOME}/Downloads/simple-transfer-$1.tar.gz.gpg
+rm ${HOME}/Downloads/simple-transfer-$1.tar.gz.gpg

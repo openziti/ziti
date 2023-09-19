@@ -38,8 +38,8 @@ func NewStartAction(metricbeat MetricbeatConfig, consul ConsulConfig) model.Acti
 
 func (a *startAction) bind(m *model.Model) model.Action {
 	workflow := actions.Workflow()
-	workflow.AddAction(component.Start("#ctrl"))
-	workflow.AddAction(edge.ControllerAvailable("#ctrl", 30*time.Second))
+	workflow.AddAction(component.Start(".ctrl"))
+	workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
 	workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 25))
 	workflow.AddAction(component.StartInParallel(".iperf", 5))
 
