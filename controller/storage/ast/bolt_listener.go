@@ -18,11 +18,11 @@ package ast
 
 import (
 	"fmt"
+	"github.com/antlr4-go/antlr/v4"
 	"reflect"
 	"strconv"
 	"strings"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
 	zitiql "github.com/openziti/storage/zitiql"
 	"github.com/pkg/errors"
 )

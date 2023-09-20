@@ -18,7 +18,7 @@ package zitiql
 
 import (
 	"fmt"
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr4-go/antlr/v4"
 	"regexp"
 	"strings"
 	"sync"
@@ -57,8 +57,7 @@ func parse(str string, l ZitiQlListener, el antlr.ErrorListener, debug bool) {
 	p.AddErrorListener(el)
 
 	p.BuildParseTrees = true
-	tree := p.Start()
-
+	tree := p.Query()
 	antlr.ParseTreeWalkerDefault.Walk(l, tree)
 }
 
@@ -82,6 +81,8 @@ type ParseError struct {
 func (p ParseError) Error() string {
 	return fmt.Sprintf("%v. line: %v, column: %v, symbol: %v", p.Message, p.Line, p.Column, p.Symbol)
 }
+
+var _ antlr.ErrorListener = (*ErrorListener)(nil)
 
 func newErrorListener() *ErrorListener {
 	return &ErrorListener{
@@ -108,17 +109,29 @@ func (el *ErrorListener) SyntaxError(_ antlr.Recognizer, offendingSymbol interfa
 	})
 }
 
-func (el *ErrorListener) ReportAmbiguity(antlr.Parser, *antlr.DFA, int, int, bool, *antlr.BitSet, antlr.ATNConfigSet) {
+func (el *ErrorListener) ReportAmbiguity(recognizer antlr.Parser, dfa *antlr.DFA, startIndex, stopIndex int, exact bool, ambigAlts *antlr.BitSet, configs *antlr.ATNConfigSet) {
 	// ignored
 }
 
-func (el *ErrorListener) ReportAttemptingFullContext(antlr.Parser, *antlr.DFA, int, int, *antlr.BitSet, antlr.ATNConfigSet) {
+func (el *ErrorListener) ReportAttemptingFullContext(recognizer antlr.Parser, dfa *antlr.DFA, startIndex, stopIndex int, conflictingAlts *antlr.BitSet, configs *antlr.ATNConfigSet) {
 	// ignored
 }
 
-func (el *ErrorListener) ReportContextSensitivity(antlr.Parser, *antlr.DFA, int, int, int, antlr.ATNConfigSet) {
+func (el *ErrorListener) ReportContextSensitivity(recognizer antlr.Parser, dfa *antlr.DFA, startIndex, stopIndex, prediction int, configs *antlr.ATNConfigSet) {
 	// ignored
 }
+
+//func (el *ErrorListener) ReportAmbiguity(antlr.Parser, *antlr.DFA, int, int, bool, *antlr.BitSet, antlr.ATNConfigSet) {
+//	// ignored
+//}
+//
+//func (el *ErrorListener) ReportAttemptingFullContext(antlr.Parser, *antlr.DFA, int, int, *antlr.BitSet, antlr.ATNConfigSet) {
+//	// ignored
+//}
+//
+//func (el *ErrorListener) ReportContextSensitivity(antlr.Parser, *antlr.DFA, int, int, int, antlr.ATNConfigSet) {
+//	// ignored
+//}
 
 func ParseZqlString(text string) string {
 	t := strings.TrimSuffix(strings.TrimPrefix(text, `"`), `"`)
