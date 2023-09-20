@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -31,7 +32,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -211,8 +215,19 @@ func (self *echoServer) run(*cobra.Command, []string) {
 		go self.accept("ziti", listener)
 	}
 
-	waitC := make(chan struct{})
-	<-waitC
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
+
+	s := <-ch
+
+	if s == syscall.SIGQUIT {
+		fmt.Println("=== STACK DUMP BEGIN ===")
+		debugz.DumpStack()
+		fmt.Println("=== STACK DUMP CLOSE ===")
+	}
+
+	pfxlog.Logger().Info("shutting down echo-server")
+	os.Exit(0)
 }
 
 func (self *echoServer) accept(connType string, listener net.Listener) {
