@@ -20,11 +20,16 @@ resource "aws_vpc" "fablab" {
   enable_dns_hostnames = true
   tags = {
     Name = var.environment_tag
+    source = "fablab"
   }
 }
 
 resource "aws_internet_gateway" "fablab" {
   vpc_id = aws_vpc.fablab.id
+  tags = {
+    Name = var.environment_tag
+    source = "fablab"
+  }
 }
 
 resource "aws_subnet" "fablab" {
@@ -33,6 +38,7 @@ resource "aws_subnet" "fablab" {
   availability_zone = var.az
   tags = {
     Name = var.environment_tag
+    source = "fablab"
   }
 }
 
@@ -44,6 +50,7 @@ resource "aws_route_table" "fablab" {
   }
   tags = {
     Name = var.environment_tag
+    source = "fablab"
   }
 }
 
@@ -125,5 +132,6 @@ resource "aws_security_group" "fablab" {
   }
   tags = {
     Name = var.environment_tag
+    source = "fablab"
   }
 }

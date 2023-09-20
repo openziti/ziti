@@ -172,7 +172,7 @@ jobs:
       - name: Create Test Environment
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/simple-transfer create -d simple-transfer-${GITHUB_RUN_NUMBER} -n simple-transfer-${GITHUB_RUN_NUMBER} -l environment=gh,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
+          $(go env GOPATH)/bin/simple-transfer create -d simple-transfer-${GITHUB_RUN_NUMBER} -n simple-transfer-${GITHUB_RUN_NUMBER} -l environment=gh-fablab-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
           $(go env GOPATH)/bin/simple-transfer up
 
       - name: Test Ziti Command
@@ -273,7 +273,7 @@ jobs:
       - name: Create Test Environment
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/simple-transfer create -d simple-transfer-ha-${GITHUB_RUN_NUMBER} -n simple-transfer-ha-${GITHUB_RUN_NUMBER} -l ha=true,environment=gh,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
+          $(go env GOPATH)/bin/simple-transfer create -d simple-transfer-ha-${GITHUB_RUN_NUMBER} -n simple-transfer-ha-${GITHUB_RUN_NUMBER} -l ha=true,environment=gh-fablab-ha-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
           $(go env GOPATH)/bin/simple-transfer up
 
       #      - name: Test Ziti Command
