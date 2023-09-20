@@ -2,12 +2,17 @@
 
 ## What's New
 
+* `ziti edge quickstart`](https://github.com/openziti/ziti/issues/1298). You can now
+  download the `ziti` CLI and have a functioning network with just one command. The
+  network it creates is ephemeral and is intended to be torn down when the process exits.
+  It is intended for quick evaluation and testing of an overlay network.
+
 * Bugfixes
 
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v0.30.3 -> v0.30.4](https://github.com/openziti/ziti/compare/v0.30.3...v0.30.4)
-    * Fixed an issue causing router configs to be rewritten when docker compose was brought up with existing configs
+  * Fixed an issue causing router configs to be rewritten when docker compose was brought up with existing configs
 
 # Release 0.30.3
 
@@ -248,7 +253,7 @@ The back-off policies have the following attributes:
     * Default: 1.5 for healthy, 100 for unhealthy
 
 
-## Single Sort Changes
+## Single Port Support / ALPN
 Ziti Controller and Routers can operate with a single open port. In order to implement this feature we use 
 ALPN ([Application Layer Protocol Negotiation](https://en.wikipedia.org/wiki/Application-Layer_Protocol_Negotiation)) 
 TLS extension. It allows TLS client to request and TLS server to select appropriate application protocol handler during 

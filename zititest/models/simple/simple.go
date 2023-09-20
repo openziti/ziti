@@ -31,7 +31,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
-	actions2 "github.com/openziti/ziti/zititest/models/simple/actions"
+	"github.com/openziti/ziti/zititest/models/simple/actions"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
@@ -78,6 +78,17 @@ var Model = &model.Model{
 		},
 	},
 
+	StructureFactories: []model.Factory{
+		model.FactoryFunc(func(m *model.Model) error {
+			if val, _ := m.GetBoolVariable("ha"); !val {
+				for _, host := range m.SelectHosts("component.ha") {
+					delete(host.Region.Hosts, host.Id)
+				}
+			}
+			return nil
+		}),
+	},
+
 	Factories: []model.Factory{
 		model.FactoryFunc(func(m *model.Model) error {
 			pfxlog.Logger().Infof("environment [%s]", m.MustStringVariable("environment"))
@@ -102,10 +113,18 @@ var Model = &model.Model{
 			Region: "us-east-1",
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
-				"ctrl": {
+				"ctrl1": {
 					Components: model.Components{
-						"ctrl": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "long-running"}},
+						"ctrl1": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Type:  &zitilab.ControllerType{},
+						},
+					},
+				},
+				"ctrl2": {
+					Components: model.Components{
+						"ctrl2": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
 							Type:  &zitilab.ControllerType{},
 						},
 					},
@@ -114,7 +133,7 @@ var Model = &model.Model{
 					Scope: model.Scope{Tags: model.Tags{"ert-client"}},
 					Components: model.Components{
 						"router-east-1": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client", "long-running"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client"}},
 							Type:  &zitilab.RouterType{},
 						},
 						"zcat": {
@@ -126,7 +145,7 @@ var Model = &model.Model{
 				"router-east-2": {
 					Components: model.Components{
 						"router-east-2": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator", "long-running"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator"}},
 							Type:  &zitilab.RouterType{},
 						},
 					},
@@ -135,7 +154,7 @@ var Model = &model.Model{
 					Scope: model.Scope{Tags: model.Tags{"zet-client"}},
 					Components: model.Components{
 						"ziti-edge-tunnel-client": {
-							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client", "long-running"}},
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
 								Version: "v0.21.4",
 							},
@@ -146,7 +165,7 @@ var Model = &model.Model{
 					Scope: model.Scope{Tags: model.Tags{"ziti-tunnel-client"}},
 					Components: model.Components{
 						"ziti-tunnel-client": {
-							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "client", "long-running"}},
+							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "client"}},
 							Type:  &zitilab.ZitiTunnelType{},
 						},
 					},
@@ -157,18 +176,27 @@ var Model = &model.Model{
 			Region: "us-west-2",
 			Site:   "us-west-2b",
 			Hosts: model.Hosts{
+				"ctrl3": {
+					Components: model.Components{
+						"ctrl3": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
+							Type:  &zitilab.ControllerType{},
+						},
+					},
+				},
+
 				"router-west": {
 					Components: model.Components{
 						"router-west": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host", "long-running"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host"}},
 							Type:  &zitilab.RouterType{},
 						},
 						"echo-server": {
-							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service", "long-running"}},
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},
 							Type:  &zitilab.EchoServerType{},
 						},
 						"iperf-server-ert": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "long-running"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 					},
@@ -176,13 +204,13 @@ var Model = &model.Model{
 				"ziti-edge-tunnel-host": {
 					Components: model.Components{
 						"ziti-edge-tunnel-host": {
-							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host", "long-running"}},
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
 								Version: "v0.21.4",
 							},
 						},
 						"iperf-server-zet": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "long-running"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 					},
@@ -190,13 +218,13 @@ var Model = &model.Model{
 				"ziti-tunnel-host": {
 					Components: model.Components{
 						"ziti-tunnel-host": {
-							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "host", "ziti-tunnel-host", "long-running"}},
+							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "host", "ziti-tunnel-host"}},
 							Type: &zitilab.ZitiTunnelType{
 								Mode: zitilab.ZitiTunnelModeHost,
 							},
 						},
 						"iperf-server-zt": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "long-running"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 					},
@@ -206,20 +234,20 @@ var Model = &model.Model{
 	},
 
 	Actions: model.ActionBinders{
-		"bootstrap": actions2.NewBootstrapAction(),
-		"start": actions2.NewStartAction(actions2.MetricbeatConfig{
+		"bootstrap": actions.NewBootstrapAction(),
+		"start": actions.NewStartAction(actions.MetricbeatConfig{
 			ConfigPath: "metricbeat",
 			DataPath:   "metricbeat/data",
 			LogPath:    "metricbeat/logs",
 		},
-			actions2.ConsulConfig{
+			actions.ConsulConfig{
 				ServerAddr: os.Getenv("CONSUL_ENDPOINT"),
 				ConfigDir:  "consul",
 				DataPath:   "consul/data",
 				LogPath:    "consul/log.out",
 			}),
 		"stop":  model.Bind(component.StopInParallel("*", 15)),
-		"login": model.Bind(edge.Login("#ctrl")),
+		"login": model.Bind(edge.Login("#ctrl1")),
 	},
 
 	Infrastructure: model.Stages{

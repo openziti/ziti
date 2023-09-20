@@ -18,7 +18,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.15
 	github.com/openziti/channel/v2 v2.0.95
-	github.com/openziti/edge v0.24.404
+	github.com/openziti/edge v0.24.405
 	github.com/openziti/edge-api v0.25.33
 	github.com/openziti/fabric v0.24.23
 	github.com/openziti/foundation/v2 v2.0.30
@@ -31,7 +31,7 @@ require (
 	github.com/openziti/ziti-db-explorer v1.1.3
 	github.com/pkg/errors v0.9.1
 	github.com/russross/blackfriday v1.5.2
-	github.com/shirou/gopsutil/v3 v3.23.8
+	github.com/shirou/gopsutil/v3 v3.23.7
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5

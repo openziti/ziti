@@ -36,7 +36,7 @@ func TestGetZitiHomeWhenUnset(t *testing.T) {
 	expectedValue := NormalizePath(wd)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiHome()
+	actualValue := GetZitiHome()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -49,7 +49,7 @@ func TestGetZitiHomeWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiHome()
+	actualValue := GetZitiHome()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -62,7 +62,7 @@ func TestGetHomeWhenSetWithWindowsSlashes(t *testing.T) {
 	_ = os.Setenv(varName, strings.ReplaceAll(expectedValue, "/", "\\"))
 
 	// Check that the value matches
-	actualValue, _ := GetZitiHome()
+	actualValue := GetZitiHome()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
