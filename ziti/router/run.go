@@ -114,7 +114,7 @@ func run(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	go waitForShutdown(r, config)
+	go waitForShutdown(r)
 
 	if err := r.Run(); err != nil {
 		logrus.WithError(err).Fatal("error starting")
@@ -129,7 +129,7 @@ func getFlags(cmd *cobra.Command) map[string]*pflag.Flag {
 	return ret
 }
 
-func waitForShutdown(r *router.Router, config *router.Config) {
+func waitForShutdown(r *router.Router) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
 
