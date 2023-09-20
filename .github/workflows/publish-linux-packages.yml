@@ -87,7 +87,7 @@ jobs:
           JF_ENV_1: ${{ secrets.ZITI_ARTIFACTORY_CLI_CONFIG_PACKAGE_UPLOAD }}
 
       - name: Upload RPM to Artifactory testing repo
-        if: ${{ !github.event.release.published && matrix.nfpm_packager == 'rpm' }}
+        if: github.ref == 'refs/heads/release-next' && matrix.nfpm_packager == 'rpm'
         shell: bash
         run: >
           jf rt upload
@@ -97,7 +97,8 @@ jobs:
           --flat=true 
 
       - name: Upload RPM to Artifactory release repo
-        if: ${{ github.event.release.published && matrix.nfpm_packager == 'rpm' }}
+        if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
+            && matrix.nfpm_packager == 'rpm'
         shell: bash
         run: >
           jf rt upload
@@ -107,7 +108,7 @@ jobs:
           --flat=true 
 
       - name: Upload DEB to Artifactory testing repo
-        if: ${{ !github.event.release.published && matrix.nfpm_packager == 'deb' }}
+        if: github.ref == 'refs/heads/release-next' && matrix.nfpm_packager == 'deb'
         shell: bash
         run: >
           jf rt upload
@@ -118,7 +119,8 @@ jobs:
           --flat=true 
 
       - name: Upload DEB to Artifactory release repo
-        if: ${{ github.event.release.published && matrix.nfpm_packager == 'deb' }}
+        if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
+            && matrix.nfpm_packager == 'deb'
         shell: bash
         run: >
           jf rt upload
