@@ -19,6 +19,7 @@ jobs:
     name: Jenkins On-Demand Smoketest
     steps:
       - name: debug ziti-version input
+        shell: bash
         run: |
           echo ziti-version=${{ inputs.ziti-version || github.event.inputs.ziti-version }} 
       - name: Send Webhook to Jenkinstest

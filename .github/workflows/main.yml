@@ -52,6 +52,7 @@ jobs:
         uses: openziti/ziti-ci@v1
 
       - name: Build and Test
+        shell: bash
         run: |
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
@@ -128,6 +129,7 @@ jobs:
 
       - name: Run Go Quickstart Test
         timeout-minutes: 5
+        shell: bash
         run: |
           go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
 
@@ -162,6 +164,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
           ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        shell: bash
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
@@ -170,12 +173,14 @@ jobs:
           go install -tags=all,tests ./...
 
       - name: Create Test Environment
+        shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/simple-transfer create -d simple-transfer-${GITHUB_RUN_NUMBER} -n simple-transfer-${GITHUB_RUN_NUMBER} -l environment=gh,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
           $(go env GOPATH)/bin/simple-transfer up
 
       - name: Test Ziti Command
+        shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
@@ -186,6 +191,7 @@ jobs:
         timeout-minutes: 30
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
+        shell: bash
         run: |
           cp $(go env GOPATH)/bin/simple-transfer simple-transfer-${GITHUB_RUN_NUMBER}
           cp ~/.fablab/config.yml simple-transfer-${GITHUB_RUN_NUMBER}/
@@ -194,6 +200,7 @@ jobs:
 
       - name: Test Report Generation
         if: ${{ !cancelled() }}
+        shell: bash
         run: |
           go install github.com/jstemmer/go-junit-report/v2@latest
           $(go env GOPATH)/bin/go-junit-report -in zititest/test.out -out test-report.xml
@@ -216,6 +223,7 @@ jobs:
       # allow time for investigation unless the workflow is cancelled or the smoketest succeeded or was skipped
       - name: Sleep If Failed
         if: needs.fablab-smoketest.result != 'success' && needs.fablab-smoketest.result != 'skipped' && needs.fablab-smoketest.result != 'cancelled'
+        shell: bash
         run: |
           sleep 30m
 
@@ -225,6 +233,7 @@ jobs:
         timeout-minutes: 30
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
+        shell: bash
         run: |
           if aws s3api head-object \
             --bucket ziti-smoketest-fablab-instances \
@@ -264,6 +273,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
           ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        shell: bash
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
@@ -271,12 +281,14 @@ jobs:
           go install -tags=all,tests ./...
 
       - name: Create Test Environment
+        shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/simple-transfer create -d simple-transfer-ha-${GITHUB_RUN_NUMBER} -n simple-transfer-ha-${GITHUB_RUN_NUMBER} -l ha=true,environment=gh,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
           $(go env GOPATH)/bin/simple-transfer up
 
       #      - name: Test Ziti Command
+      #        shell: bash
       #        run: |
       #          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
       #          pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
@@ -285,6 +297,7 @@ jobs:
         if: always()
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
+        shell: bash
         run: |
           cp $(go env GOPATH)/bin/simple-transfer simple-transfer-ha-${GITHUB_RUN_NUMBER}
           cp ~/.fablab/config.yml simple-transfer-ha-${GITHUB_RUN_NUMBER}/
@@ -293,6 +306,7 @@ jobs:
           
           #      - name: Test Report Generation
           #        if: always()
+          #        shell: bash
           #        run: |
           #          go install github.com/jstemmer/go-junit-report/v2@latest
           #$(go env GOPATH)/bin/go-junit-report -in zititest/test.out -out test-report.xml
@@ -316,6 +330,7 @@ jobs:
       # allow time for investigation unless the workflow is cancelled or the smoketest succeeded or was skipped
       - name: Sleep If Failed
         if: needs.fablab-ha-smoketest.result != 'success' && needs.fablab-ha-smoketest.result != 'skipped' && needs.fablab-ha-smoketest.result != 'cancelled'
+        shell: bash
         run: |
           sleep 30m
 
@@ -324,6 +339,7 @@ jobs:
         if: needs.fablab-smoketest-ha.result != 'skipped'
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
+        shell: bash
         run: |
           if aws s3api head-object \
             --bucket ziti-smoketest-fablab-instances \
@@ -394,10 +410,12 @@ jobs:
           path: release/
 
       - name: List downloaded release artifacts
+        shell: bash
         run: |
           ls -lAhR release/
 
       - name: Restore execute filemode on macOS and Linux release artifacts before publishing
+        shell: bash
         run: |
           find  ./release \
                 -type f \
@@ -419,6 +437,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
           ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        shell: bash
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
@@ -431,6 +450,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REF: ${{ github.ref }}
           GITHUB_RUN_ID: ${{ github.run_id }}
+        shell: bash
         run: |
           ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
           # drop the leading 'v', if any
@@ -452,6 +472,7 @@ jobs:
 
       - name: Publish to Artifactory
         if: ${{ env.JFROG_API_KEY != null && github.repository == 'openziti/ziti' }}
+        shell: bash
         run: |
           $(go env GOPATH)/bin/ziti-ci publish-to-artifactory
         env:

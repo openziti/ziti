@@ -48,6 +48,7 @@ jobs:
         env:
           IMAGE_REPO: ${{ env.ZITI_CLI_IMAGE }}
         id: tagprep_cli
+        shell: bash
         run: |
           DOCKER_TAGS=""
           DOCKER_TAGS="${IMAGE_REPO}:${ZITI_VERSION}"
@@ -76,6 +77,7 @@ jobs:
         env:
           IMAGE_REPO: ${{ env. ZITI_CONTROLLER_IMAGE }}
         id: tagprep_ctrl
+        shell: bash
         run: |
           DOCKER_TAGS=""
           DOCKER_TAGS="${IMAGE_REPO}:${ZITI_VERSION}"
@@ -104,6 +106,7 @@ jobs:
         env:
           IMAGE_REPO: ${{ env.ZITI_ROUTER_IMAGE }}
         id: tagprep_router
+        shell: bash
         run: |
           DOCKER_TAGS=""
           DOCKER_TAGS="${IMAGE_REPO}:${ZITI_VERSION}"
@@ -130,6 +133,7 @@ jobs:
           IMAGE_REPO: ${{ env.ZITI_TUNNEL_IMAGE }}
           LEGACY_REPO: netfoundry/ziti-tunnel
         id: tagprep_tun
+        shell: bash
         run: |
           DOCKER_TAGS=""
           for REPO in ${LEGACY_REPO} ${IMAGE_REPO}; do

@@ -50,6 +50,7 @@ jobs:
           path: release/
 
       - name: Move Release Artifact for Architecture to Predictable Location for nfpm
+        shell: bash
         run: |
           mv -v ./release/${{ matrix.arch.gox }}/linux/ziti \
                 ./release/ziti
@@ -69,6 +70,7 @@ jobs:
         shell: bash
 
       - run: ls -lh release/
+        shell: bash
 
       - name: upload package artifact to build summary page
         uses: actions/upload-artifact@v3
@@ -84,6 +86,7 @@ jobs:
 
       - name: Upload RPM to Artifactory testing repo
         if: ${{ !github.event.release.published && matrix.nfpm_packager == 'rpm' }}
+        shell: bash
         run: >
           jf rt upload
           ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
@@ -93,6 +96,7 @@ jobs:
 
       - name: Upload RPM to Artifactory release repo
         if: ${{ github.event.release.published && matrix.nfpm_packager == 'rpm' }}
+        shell: bash
         run: >
           jf rt upload
           ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
@@ -102,6 +106,7 @@ jobs:
 
       - name: Upload DEB to Artifactory testing repo
         if: ${{ !github.event.release.published && matrix.nfpm_packager == 'deb' }}
+        shell: bash
         run: >
           jf rt upload
           ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
@@ -112,6 +117,7 @@ jobs:
 
       - name: Upload DEB to Artifactory release repo
         if: ${{ github.event.release.published && matrix.nfpm_packager == 'deb' }}
+        shell: bash
         run: >
           jf rt upload
           ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
