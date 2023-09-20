@@ -98,7 +98,7 @@ func (o *PKICreateCAOptions) Run() error {
 		//default name, ensure uniqueness by adding a random id
 		o.Flags.CAName = o.Flags.CAName + " " + idgen.New()
 	}
-	
+
 	commonName := o.Flags.CAName
 
 	filename := o.ObtainFileName(caFile, commonName)

@@ -30,9 +30,10 @@ if [[ "${_ZITI_ROUTER_NAME}" != "" ]]; then
   export ZITI_ROUTER_NAME="${_ZITI_ROUTER_NAME}"
   echo "ZITI_ROUTER_NAME set to: ${ZITI_ROUTER_NAME}"
 fi
-_UNIQUE_NAME="${ZITI_HOME}/${ZITI_ROUTER_NAME}-${HOSTNAME}.init"
-if [ ! -f "${_UNIQUE_NAME}" ]; then
-  echo "system has not been initialized. initializing..."
+
+_CONFIG_PATH="${ZITI_HOME}/${ZITI_ROUTER_NAME}.yaml"
+if [ ! -f "${_CONFIG_PATH}" ]; then
+  echo "config has not been generated, generating config..."
   "${ZITI_BIN_DIR-}/ziti" edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
 
   echo "----------  Creating edge-router ${ZITI_ROUTER_NAME}...."
@@ -64,10 +65,8 @@ if [ ! -f "${_UNIQUE_NAME}" ]; then
     "${ZITI_BIN_DIR}/ziti" router enroll "${ZITI_HOME}/${ZITI_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_ROUTER_NAME}.jwt"
     echo ""
   fi
-  echo "system initialized. writing marker file"
-  echo "system initialized" > "${_UNIQUE_NAME}"
 else
-  echo "system has been initialized. starting the process."
+    echo " Found existing config file ${_CONFIG_PATH}, not creating a new config."
 fi
 
 unset ZITI_USER

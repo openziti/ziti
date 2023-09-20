@@ -11,7 +11,8 @@
 
 ## Component Updates and Bug Fixes
 
-
+* github.com/openziti/ziti: [v0.30.3 -> v0.30.4](https://github.com/openziti/ziti/compare/v0.30.3...v0.30.4)
+  * Fixed an issue causing router configs to be rewritten when docker compose was brought up with existing configs
 
 # Release 0.30.3
 
