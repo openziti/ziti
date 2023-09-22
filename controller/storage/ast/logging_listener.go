@@ -18,7 +18,7 @@ package ast
 
 import (
 	"fmt"
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr4-go/antlr/v4"
 	zitiql "github.com/openziti/storage/zitiql"
 	"runtime"
 	"strings"
@@ -55,19 +55,19 @@ func (l *LoggingListener) printDebug(tree antlr.ParseTree) {
 	l.printChildren(tree)
 }
 
-func (l LoggingListener) VisitTerminal(node antlr.TerminalNode) {
+func (l *LoggingListener) VisitTerminal(node antlr.TerminalNode) {
 	l.printDebug(node)
 }
 
-func (l LoggingListener) VisitErrorNode(node antlr.ErrorNode) {
+func (l *LoggingListener) VisitErrorNode(node antlr.ErrorNode) {
 	l.printDebug(node)
 }
 
-func (l LoggingListener) EnterEveryRule(ctx antlr.ParserRuleContext) {
+func (l *LoggingListener) EnterEveryRule(ctx antlr.ParserRuleContext) {
 	l.printDebug(ctx)
 }
 
-func (l LoggingListener) ExitEveryRule(ctx antlr.ParserRuleContext) {
+func (l *LoggingListener) ExitEveryRule(ctx antlr.ParserRuleContext) {
 	l.printDebug(ctx)
 }
 
@@ -111,63 +111,63 @@ func (l *LoggingListener) ExitLimitExpr(c *zitiql.LimitExprContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterSetFunctionExpr(c *zitiql.SetFunctionExprContext) {
+func (l *LoggingListener) EnterSetFunctionExpr(c *zitiql.SetFunctionExprContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBinaryLhs(c *zitiql.BinaryLhsContext) {
+func (l *LoggingListener) EnterBinaryLhs(c *zitiql.BinaryLhsContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterStringArray(c *zitiql.StringArrayContext) {
+func (l *LoggingListener) EnterStringArray(c *zitiql.StringArrayContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterNumberArray(c *zitiql.NumberArrayContext) {
+func (l *LoggingListener) EnterNumberArray(c *zitiql.NumberArrayContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterDatetimeArray(c *zitiql.DatetimeArrayContext) {
+func (l *LoggingListener) EnterDatetimeArray(c *zitiql.DatetimeArrayContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterEnd(c *zitiql.EndContext) {
+func (l *LoggingListener) EnterEnd(c *zitiql.EndContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterGroup(c *zitiql.GroupContext) {
+func (l *LoggingListener) EnterGroup(c *zitiql.GroupContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterOrExpr(c *zitiql.OrExprContext) {
+func (l *LoggingListener) EnterOrExpr(c *zitiql.OrExprContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterOperationOp(c *zitiql.OperationOpContext) {
+func (l *LoggingListener) EnterOperationOp(c *zitiql.OperationOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterAndExpr(c *zitiql.AndExprContext) {
+func (l *LoggingListener) EnterAndExpr(c *zitiql.AndExprContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterInStringArrayOp(c *zitiql.InStringArrayOpContext) {
+func (l *LoggingListener) EnterInStringArrayOp(c *zitiql.InStringArrayOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterInNumberArrayOp(c *zitiql.InNumberArrayOpContext) {
+func (l *LoggingListener) EnterInNumberArrayOp(c *zitiql.InNumberArrayOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterInDatetimeArrayOp(c *zitiql.InDatetimeArrayOpContext) {
+func (l *LoggingListener) EnterInDatetimeArrayOp(c *zitiql.InDatetimeArrayOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBetweenNumberOp(c *zitiql.BetweenNumberOpContext) {
+func (l *LoggingListener) EnterBetweenNumberOp(c *zitiql.BetweenNumberOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBetweenDateOp(c *zitiql.BetweenDateOpContext) {
+func (l *LoggingListener) EnterBetweenDateOp(c *zitiql.BetweenDateOpContext) {
 	l.printDebug(c)
 }
 
@@ -187,35 +187,35 @@ func (l *LoggingListener) ExitBinaryGreaterThanStringOp(c *zitiql.BinaryGreaterT
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBinaryLessThanNumberOp(c *zitiql.BinaryLessThanNumberOpContext) {
+func (l *LoggingListener) EnterBinaryLessThanNumberOp(c *zitiql.BinaryLessThanNumberOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBinaryLessThanDatetimeOp(c *zitiql.BinaryLessThanDatetimeOpContext) {
+func (l *LoggingListener) EnterBinaryLessThanDatetimeOp(c *zitiql.BinaryLessThanDatetimeOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBinaryGreaterThanNumberOp(c *zitiql.BinaryGreaterThanNumberOpContext) {
+func (l *LoggingListener) EnterBinaryGreaterThanNumberOp(c *zitiql.BinaryGreaterThanNumberOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBinaryGreaterThanDatetimeOp(c *zitiql.BinaryGreaterThanDatetimeOpContext) {
+func (l *LoggingListener) EnterBinaryGreaterThanDatetimeOp(c *zitiql.BinaryGreaterThanDatetimeOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBinaryEqualToStringOp(c *zitiql.BinaryEqualToStringOpContext) {
+func (l *LoggingListener) EnterBinaryEqualToStringOp(c *zitiql.BinaryEqualToStringOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBinaryEqualToNumberOp(c *zitiql.BinaryEqualToNumberOpContext) {
+func (l *LoggingListener) EnterBinaryEqualToNumberOp(c *zitiql.BinaryEqualToNumberOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBinaryEqualToDatetimeOp(c *zitiql.BinaryEqualToDatetimeOpContext) {
+func (l *LoggingListener) EnterBinaryEqualToDatetimeOp(c *zitiql.BinaryEqualToDatetimeOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBinaryEqualToBoolOp(c *zitiql.BinaryEqualToBoolOpContext) {
+func (l *LoggingListener) EnterBinaryEqualToBoolOp(c *zitiql.BinaryEqualToBoolOpContext) {
 	l.printDebug(c)
 }
 
@@ -223,108 +223,108 @@ func (l *LoggingListener) ExitBinaryEqualToBoolOp(c *zitiql.BinaryEqualToBoolOpC
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBinaryEqualToNullOp(c *zitiql.BinaryEqualToNullOpContext) {
+func (l *LoggingListener) EnterBinaryEqualToNullOp(c *zitiql.BinaryEqualToNullOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) EnterBinaryContainsOp(c *zitiql.BinaryContainsOpContext) {
+func (l *LoggingListener) EnterBinaryContainsOp(c *zitiql.BinaryContainsOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitSetFunctionExpr(c *zitiql.SetFunctionExprContext) {
+func (l *LoggingListener) ExitSetFunctionExpr(c *zitiql.SetFunctionExprContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitBinaryLhs(c *zitiql.BinaryLhsContext) {
+func (l *LoggingListener) ExitBinaryLhs(c *zitiql.BinaryLhsContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitStringArray(c *zitiql.StringArrayContext) {
+func (l *LoggingListener) ExitStringArray(c *zitiql.StringArrayContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitNumberArray(c *zitiql.NumberArrayContext) {
+func (l *LoggingListener) ExitNumberArray(c *zitiql.NumberArrayContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitDatetimeArray(c *zitiql.DatetimeArrayContext) {
+func (l *LoggingListener) ExitDatetimeArray(c *zitiql.DatetimeArrayContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitEnd(c *zitiql.EndContext) {
+func (l *LoggingListener) ExitEnd(c *zitiql.EndContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitGroup(c *zitiql.GroupContext) {
+func (l *LoggingListener) ExitGroup(c *zitiql.GroupContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitOrExpr(c *zitiql.OrExprContext) {
+func (l *LoggingListener) ExitOrExpr(c *zitiql.OrExprContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitOperationOp(c *zitiql.OperationOpContext) {
+func (l *LoggingListener) ExitOperationOp(c *zitiql.OperationOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitAndExpr(c *zitiql.AndExprContext) {
+func (l *LoggingListener) ExitAndExpr(c *zitiql.AndExprContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitInStringArrayOp(c *zitiql.InStringArrayOpContext) {
+func (l *LoggingListener) ExitInStringArrayOp(c *zitiql.InStringArrayOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitInNumberArrayOp(c *zitiql.InNumberArrayOpContext) {
+func (l *LoggingListener) ExitInNumberArrayOp(c *zitiql.InNumberArrayOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitInDatetimeArrayOp(c *zitiql.InDatetimeArrayOpContext) {
+func (l *LoggingListener) ExitInDatetimeArrayOp(c *zitiql.InDatetimeArrayOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitBetweenNumberOp(c *zitiql.BetweenNumberOpContext) {
+func (l *LoggingListener) ExitBetweenNumberOp(c *zitiql.BetweenNumberOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitBetweenDateOp(c *zitiql.BetweenDateOpContext) {
+func (l *LoggingListener) ExitBetweenDateOp(c *zitiql.BetweenDateOpContext) {
 	l.printDebug(c)
 
 }
 
-func (l LoggingListener) ExitBinaryLessThanNumberOp(c *zitiql.BinaryLessThanNumberOpContext) {
+func (l *LoggingListener) ExitBinaryLessThanNumberOp(c *zitiql.BinaryLessThanNumberOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitBinaryLessThanDatetimeOp(c *zitiql.BinaryLessThanDatetimeOpContext) {
+func (l *LoggingListener) ExitBinaryLessThanDatetimeOp(c *zitiql.BinaryLessThanDatetimeOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitBinaryGreaterThanNumberOp(c *zitiql.BinaryGreaterThanNumberOpContext) {
+func (l *LoggingListener) ExitBinaryGreaterThanNumberOp(c *zitiql.BinaryGreaterThanNumberOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitBinaryGreaterThanDatetimeOp(c *zitiql.BinaryGreaterThanDatetimeOpContext) {
+func (l *LoggingListener) ExitBinaryGreaterThanDatetimeOp(c *zitiql.BinaryGreaterThanDatetimeOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitBinaryEqualToStringOp(c *zitiql.BinaryEqualToStringOpContext) {
+func (l *LoggingListener) ExitBinaryEqualToStringOp(c *zitiql.BinaryEqualToStringOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitBinaryEqualToNumberOp(c *zitiql.BinaryEqualToNumberOpContext) {
+func (l *LoggingListener) ExitBinaryEqualToNumberOp(c *zitiql.BinaryEqualToNumberOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitBinaryEqualToDatetimeOp(c *zitiql.BinaryEqualToDatetimeOpContext) {
+func (l *LoggingListener) ExitBinaryEqualToDatetimeOp(c *zitiql.BinaryEqualToDatetimeOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitBinaryEqualToNullOp(c *zitiql.BinaryEqualToNullOpContext) {
+func (l *LoggingListener) ExitBinaryEqualToNullOp(c *zitiql.BinaryEqualToNullOpContext) {
 	l.printDebug(c)
 }
 
-func (l LoggingListener) ExitBinaryContainsOp(c *zitiql.BinaryContainsOpContext) {
+func (l *LoggingListener) ExitBinaryContainsOp(c *zitiql.BinaryContainsOpContext) {
 	l.printDebug(c)
 }
 
