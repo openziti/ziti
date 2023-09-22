@@ -30,14 +30,14 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openziti/channel/v2 v2.0.98
 	github.com/openziti/edge-api v0.25.35
-	github.com/openziti/fabric v0.24.30
+	github.com/openziti/fabric v0.24.31
 	github.com/openziti/foundation/v2 v2.0.31
 	github.com/openziti/identity v1.0.62
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.34
 	github.com/openziti/sdk-golang v0.20.108
 	github.com/openziti/secretstream v0.1.11
-	github.com/openziti/storage v0.2.15
+	github.com/openziti/storage v0.2.16
 	github.com/openziti/transport/v2 v2.0.106
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
@@ -66,7 +66,7 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
