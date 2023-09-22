@@ -167,7 +167,7 @@ func (self *heartbeatCallback) CheckHeartBeat() {
 	if delta := now - self.lastResponse; delta > 30000 {
 		log.Warn("heartbeat not received in time, link may be unhealthy")
 		self.latencyMetric.Clear()
-		self.latencyMetric.Update(88888888888)
+		self.latencyMetric.Update(8888888888888)
 
 		if delta > self.heartbeatOptions.CloseUnresponsiveTimeout.Milliseconds() {
 			log.Error("heartbeat not received in time, closing router link connection")
