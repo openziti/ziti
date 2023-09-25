@@ -9,13 +9,12 @@
   following flags:
   
   ```
-      --already-initialized     Specifies the PKI does not need to be created and the db does not need to be initialized. default: false
+      --already-initialized     Specifies the PKI does not need to be created and the db does not need to be initialized. Recommended to be combined with --persistent. If --persistent is not specified the environment will be destroyed on shutdown! default: false
       --ctrl-address string     Sets the advertised address for the control plane and API
       --ctrl-port int16         Sets the port to use for the control plane and API
   -h, --help                    help for quickstart
-      --home string             Sets the directory the environment should be installed into. defaults to a temporary directory
+      --home string             Sets the directory the environment should be installed into. Defaults to a temporary directory. If specified, the environment will not be removed on exit.
   -p, --password string         Password to use for authenticating to the Ziti Edge Controller. default: admin
-      --persistent              Prevents the environment from being destroyed when shutting down. default: false
       --router-address string   Sets the advertised address for the integrated router
       --router-port int16       Sets the port to use for the integrated router
   -u, --username string         Username to use when creating the Ziti Edge Controller. default: admin
@@ -28,8 +27,7 @@
     --ctrl-port 12345 \
     --router-address avacado \
     --router-port 23456 \
-    --home /tmp/my-pet-ziti \
-    --persistent \
+    --home $HOME/.ziti/pet-ziti \
     --already-initialized \
     --username someOtherUsername \
     --password someOtherPassword

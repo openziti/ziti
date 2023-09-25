@@ -42,7 +42,6 @@ import (
 type QuickstartOpts struct {
 	Username           string
 	Password           string
-	Persistent         bool
 	AlreadyInitialized bool
 	Home               string
 	ControllerAddress  string
@@ -51,6 +50,7 @@ type QuickstartOpts struct {
 	RouterPort         int16
 	out                io.Writer
 	errOut             io.Writer
+	cleanOnExit        bool
 }
 
 // NewQuickStartCmd creates a command object for the "create" command
@@ -69,9 +69,8 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "Username to use when creating the Ziti Edge Controller. default: admin")
 	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "Password to use for authenticating to the Ziti Edge Controller. default: admin")
 
-	cmd.Flags().BoolVar(&options.Persistent, "persistent", false, "Prevents the environment from being destroyed when shutting down. default: false")
 	cmd.Flags().BoolVar(&options.AlreadyInitialized, "already-initialized", false, "Specifies the PKI does not need to be created and the db does not need to be initialized. Recommended to be combined with --persistent. If --persistent is not specified the environment will be destroyed on shutdown! default: false")
-	cmd.Flags().StringVar(&options.Home, "home", "", "Sets the directory the environment should be installed into. defaults to a temporary directory")
+	cmd.Flags().StringVar(&options.Home, "home", "", "Sets the directory the environment should be installed into. Defaults to a temporary directory. If specified, the environment will not be removed on exit.")
 
 	cmd.Flags().StringVar(&options.ControllerAddress, "ctrl-address", "", "Sets the advertised address for the control plane and API")
 	cmd.Flags().Int16Var(&options.ControllerPort, "ctrl-port", 0, "Sets the port to use for the control plane and API")
@@ -81,11 +80,11 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 }
 
 func (o *QuickstartOpts) cleanupHome() {
-	if o.Persistent {
-		fmt.Println("Persistent flag set. Environment left intact at: " + o.Home)
-	} else {
+	if o.cleanOnExit {
 		fmt.Println("Removing temp directory at: " + o.Home)
 		_ = os.RemoveAll(o.Home)
+	} else {
+		fmt.Println("Environment left intact at: " + o.Home)
 	}
 }
 
@@ -94,6 +93,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 	if o.Home == "" {
 		tmpDir, _ := os.MkdirTemp("", "quickstart")
 		o.Home = tmpDir
+		o.cleanOnExit = true
 	}
 	if o.ControllerAddress != "" {
 		_ = os.Setenv(constants.CtrlAdvertisedAddressVarName, o.ControllerAddress)
@@ -116,8 +116,6 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 	if o.Password == "" {
 		o.Password = "admin"
 	}
-
-	defer o.cleanupHome()
 
 	ctrlYaml := o.Home + "/ctrl.yaml"
 
