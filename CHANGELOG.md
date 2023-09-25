@@ -5,8 +5,36 @@
 * `ziti edge quickstart`](https://github.com/openziti/ziti/issues/1298). You can now
   download the `ziti` CLI and have a functioning network with just one command. The
   network it creates is ephemeral and is intended to be torn down when the process exits.
-  It is intended for quick evaluation and testing of an overlay network.
-
+  It is intended for quick evaluation and testing of an overlay network. It supports the
+  following flags:
+  
+  ```
+      --ctrl-address string     Sets the advertised address for the control plane and API
+      --ctrl-port int16         Sets the port to use for the control plane and API
+  -h, --help                    help for quickstart
+      --home string             Sets the directory the environment should be installed into. defaults to a temporary directory
+  -p, --password string         Password to use for authenticating to the Ziti Edge Controller. default: admin
+      --persistent              Prevents the environment from being destroyed when shutting down. default: false
+      --router-address string   Sets the advertised address for the integrated router
+      --router-port int16       Sets the port to use for the integrated router
+      --skip-pki-gen            Specifies the PKI does not need to be created. default: false
+  -u, --username string         Username to use when creating the Ziti Edge Controller. default: admin
+  ```
+  
+  Example Usage:
+  ```
+  build/ziti edge quickstart \
+    --ctrl-address potato \
+    --ctrl-port 12345 \
+    --router-address avacado \
+    --router-port 23456 \
+    --home /tmp/my-pet-ziti \
+    --persistent \
+    --skip-pki-gen \
+    --username someOtherUsername \
+    --password someOtherPassword
+  ```
+  
 * Bugfixes
 
 ## Component Updates and Bug Fixes
