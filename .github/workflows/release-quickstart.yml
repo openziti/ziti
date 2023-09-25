@@ -123,11 +123,16 @@ jobs:
             ZITI_VERSION_OVERRIDE=${{ steps.get_version.outputs.ZITI_VERSION_OVERRIDE }}
           push: true
 
-      - name: Manage Quickstart Latest Tag
-        uses: julbme/gh-action-manage-tag@v1
-        with:
-          name: quickstart-latest
-          state: present
-          from: ${{ env.GITHUB_SHA }}
+      - name: Configure Python
+        shell: bash
+        run: |
+          pip install --upgrade boto3 jinja2 requests
+          python --version
+        
+      - name: Deploy the CloudFront Function for get.openziti.io
+        shell: bash
+        run: python ./dist/cloudfront/get.openziti.io/deploy-cloudfront-function.py
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}

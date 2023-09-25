@@ -1,0 +1,17 @@
+function handler(event) {
+    var request = event.request;
+
+    var uri = request.uri;
+
+    switch (true) {
+      {% for name, data in routes.items() -%}
+      // GitHub raw shortcut route: /{{name}}/
+      case /{{data.re}}/i.test(uri):
+        var re = /{{data.re}}/;
+        request.uri = uri.replace(re, '{{data.uri}}');
+        break;
+      {%- endfor %}
+    }
+    console.log(`Routing "${uri}" to "${request.uri}"`);
+    return request;
+}
