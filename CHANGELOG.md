@@ -9,7 +9,7 @@
   following flags:
   
   ```
-      --already-initialized     Specifies the PKI does not need to be created and the db does not need to be initialized. Recommended to be combined with --persistent. If --persistent is not specified the environment will be destroyed on shutdown! default: false
+      --already-initialized     Specifies the PKI does not need to be created and the db does not need to be initialized. Recommended to be combined with --home. If --home is not specified the environment will be destroyed on shutdown! default: false
       --ctrl-address string     Sets the advertised address for the control plane and API
       --ctrl-port int16         Sets the port to use for the control plane and API
   -h, --help                    help for quickstart

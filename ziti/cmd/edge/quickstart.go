@@ -69,7 +69,7 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "Username to use when creating the Ziti Edge Controller. default: admin")
 	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "Password to use for authenticating to the Ziti Edge Controller. default: admin")
 
-	cmd.Flags().BoolVar(&options.AlreadyInitialized, "already-initialized", false, "Specifies the PKI does not need to be created and the db does not need to be initialized. Recommended to be combined with --persistent. If --persistent is not specified the environment will be destroyed on shutdown! default: false")
+	cmd.Flags().BoolVar(&options.AlreadyInitialized, "already-initialized", false, "Specifies the PKI does not need to be created and the db does not need to be initialized. Recommended to be combined with --home. If --home is not specified the environment will be destroyed on shutdown! default: false")
 	cmd.Flags().StringVar(&options.Home, "home", "", "Sets the directory the environment should be installed into. Defaults to a temporary directory. If specified, the environment will not be removed on exit.")
 
 	cmd.Flags().StringVar(&options.ControllerAddress, "ctrl-address", "", "Sets the advertised address for the control plane and API")
