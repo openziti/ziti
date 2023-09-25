@@ -23,7 +23,7 @@
   
   Example Usage:
   ```
-  build/ziti edge quickstart \
+  ziti edge quickstart \
     --ctrl-address potato \
     --ctrl-port 12345 \
     --router-address avacado \

@@ -59,7 +59,7 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	cmd := &cobra.Command{
 		Use:   "quickstart",
 		Short: "runs a Controller and Router in quickstart mode",
-		Long:  "runs a Controller and Router in quickstart mode. A totally ephemeral network only valid while running.",
+		Long: `runs a Controller and Router in quickstart mode. By default, this will create a totally ephemeral network, only valid while running.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			options.out = out
 			options.errOut = errOut
@@ -70,7 +70,7 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "Password to use for authenticating to the Ziti Edge Controller. default: admin")
 
 	cmd.Flags().BoolVar(&options.Persistent, "persistent", false, "Prevents the environment from being destroyed when shutting down. default: false")
-	cmd.Flags().BoolVar(&options.AlreadyInitialized, "already-initialized", false, "Specifies the PKI does not need to be created and the db does not need to be initialized. default: false")
+	cmd.Flags().BoolVar(&options.AlreadyInitialized, "already-initialized", false, "Specifies the PKI does not need to be created and the db does not need to be initialized. Recommended to be combined with --persistent. If --persistent is not specified the environment will be destroyed on shutdown! default: false")
 	cmd.Flags().StringVar(&options.Home, "home", "", "Sets the directory the environment should be installed into. defaults to a temporary directory")
 
 	cmd.Flags().StringVar(&options.ControllerAddress, "ctrl-address", "", "Sets the advertised address for the control plane and API")
@@ -101,12 +101,14 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 	}
 	if o.ControllerPort > 0 {
 		_ = os.Setenv(constants.CtrlAdvertisedPortVarName, strconv.Itoa(int(o.ControllerPort)))
+		_ = os.Setenv(constants.CtrlEdgeAdvertisedPortVarName, strconv.Itoa(int(o.ControllerPort)))
 	}
 	if o.RouterAddress != "" {
 		_ = os.Setenv(constants.ZitiEdgeRouterAdvertisedAddressVarName, o.RouterAddress)
 	}
 	if o.RouterPort > 0 {
 		_ = os.Setenv(constants.ZitiEdgeRouterPortVarName, strconv.Itoa(int(o.RouterPort)))
+		_ = os.Setenv(constants.ZitiEdgeRouterListenerBindPortVarName, strconv.Itoa(int(o.RouterPort)))
 	}
 	if o.Username == "" {
 		o.Username = "admin"
