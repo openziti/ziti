@@ -40,6 +40,31 @@ Perform these steps in PR branches based on release-next (trunk).
     fixed, as long as the git commit has `fixed #<issue number>` (or fixes, closes, closed, etc.).
     1. Sanity-check and paste the output into CHANGELOG.md under a heading like `## Component Updates and Bug Fixes`.
 
+### Shell Script
+
+```bash
+(
+  set -euxo pipefail
+  go list -m -f '{{ .Path }} {{ .Main }}' all \
+    | grep ziti | grep -v "$(go list -m)" | grep -v dilithium | cut -f 1 -d ' ' \
+    | xargs -n1 /bin/bash -c 'echo "Checking for updates to $@";go get -u -v $@;' ''
+  go mod tidy
+  if git diff --quiet go.mod go.sum; then
+    echo "no changes"
+  else
+    echo "dependency updates found"
+  fi
+
+  if [ -f "zititest/go.mod" ]; then
+    echo "./zititest$ go mod tidy"
+    cd zititest
+    go mod tidy
+    cd ..
+  fi
+  ziti-ci build-release-notes
+)
+```
+
 ## Release Pre-requisites
 
 Perform these steps in the release-next (trunk) branch which is based on main to release Ziti.
