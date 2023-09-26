@@ -36,7 +36,7 @@ Perform these steps in PR branches based on release-next (trunk).
     1. Make sure you have a clean build in GitHub Actions.
     2. Make sure you have a clean build in fablab smoketest.
 5. Ensure CHANGELOG.md is up to date.
-    1. Run `ziti-ci build-release-notes` in your PR branch to generate library version updates and summarize issues
+    1. Run `ziti-ci build-release-notes` in your PR branch to generate library version updates and summarize issues. Note that you will need a working copy of each module that has changed in an adjacent directory with the default repo name in order for this to work.
     fixed, as long as the git commit has `fixed #<issue number>` (or fixes, closes, closed, etc.).
     1. Sanity-check and paste the output into CHANGELOG.md under a heading like `## Component Updates and Bug Fixes`.
 
