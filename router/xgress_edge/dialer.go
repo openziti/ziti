@@ -23,8 +23,8 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/common/logcontext"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
@@ -36,19 +36,9 @@ type dialer struct {
 }
 
 func (dialer *dialer) IsTerminatorValid(id string, destination string) bool {
-	destParts := strings.Split(destination, ":")
-	if len(destParts) != 2 {
-		return false
-	}
-
-	if destParts[0] != "hosted" {
-		return false
-	}
-
-	token := destParts[1]
-
+	terminatorAddress := strings.TrimPrefix(destination, "hosted:")
 	pfxlog.Logger().Debug("looking up hosted service conn")
-	terminator, found := dialer.factory.hostedServices.Get(token)
+	terminator, found := dialer.factory.hostedServices.Get(terminatorAddress)
 	return found && terminator.terminatorId.Load() == id
 }
 
@@ -61,29 +51,20 @@ func newDialer(factory *Factory, options *Options) xgress.Dialer {
 }
 
 func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
-	destination := params.GetDestination()
+	terminatorAddress := params.GetDestination()
 	circuitId := params.GetCircuitId()
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(params.GetLogContext()).
 		WithField("binding", "edge").
-		WithField("destination", destination)
+		WithField("terminatorAddress", terminatorAddress)
 
-	destParts := strings.Split(destination, ":")
-	if len(destParts) != 2 {
-		return nil, fmt.Errorf("destination '%v' format is incorrect", destination)
-	}
+	terminatorAddress = strings.TrimPrefix(terminatorAddress, "hosted:")
 
-	if destParts[0] != "hosted" {
-		return nil, fmt.Errorf("unsupported destination type: '%v'", destParts[0])
-	}
-
-	token := destParts[1]
-
-	log.Debugf("looking up hosted service conn for token %v", token)
-	listenConn, found := dialer.factory.hostedServices.Get(token)
+	log.Debugf("looking up hosted service conn for address %v", terminatorAddress)
+	terminator, found := dialer.factory.hostedServices.Get(terminatorAddress)
 	if !found {
-		return nil, xgress.InvalidTerminatorError{InnerError: fmt.Errorf("host for token '%v' not found", token)}
+		return nil, xgress.InvalidTerminatorError{InnerError: fmt.Errorf("host for terminator address '%v' not found", terminatorAddress)}
 	}
-	log = log.WithField("bindConnId", listenConn.Id())
+	log = log.WithField("bindConnId", terminator.MsgChannel.Id())
 
 	callerId := ""
 	if circuitId.Data != nil {
@@ -93,7 +74,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 	}
 
 	log.Debug("dialing sdk client hosting service")
-	dialRequest := edge.NewDialMsg(listenConn.Id(), token, callerId)
+	dialRequest := edge.NewDialMsg(terminator.Id(), terminator.token, callerId)
 	if pk, ok := circuitId.Data[edge.PublicKeyHeader]; ok {
 		dialRequest.Headers[edge.PublicKeyHeader] = pk
 	}
@@ -103,15 +84,15 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		dialRequest.Headers[edge.AppDataHeader] = appData
 	}
 
-	if listenConn.assignIds {
-		connId := listenConn.nextDialConnId()
+	if terminator.assignIds {
+		connId := terminator.nextDialConnId()
 		log = log.WithField("connId", connId)
 		log.Debugf("router assigned connId %v for dial", connId)
 		dialRequest.PutUint32Header(edge.RouterProvidedConnId, connId)
 
-		conn, err := listenConn.newConnection(connId)
+		conn, err := terminator.newConnection(connId)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to create edge xgress conn for token %v", token)
+			return nil, errors.Wrapf(err, "failed to create edge xgress conn for terminator address %v", terminatorAddress)
 		}
 
 		// On the terminator, which this is, this only starts the txer, which pulls data from the link
@@ -128,7 +109,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		if timeToDeadline > 0 && timeToDeadline < to {
 			to = timeToDeadline
 		}
-		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(to).SendForReply(listenConn.Channel)
+		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(to).SendForReply(terminator.Channel)
 		if err != nil {
 			conn.close(false, err.Error())
 			x.Close()
@@ -143,7 +124,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		}
 
 		if !result.Success {
-			msg := fmt.Sprintf("failed to establish connection with token %v. error: (%v)", token, result.Message)
+			msg := fmt.Sprintf("failed to establish connection with terminator address %v. error: (%v)", terminatorAddress, result.Message)
 			conn.close(false, msg)
 			x.Close()
 			return nil, fmt.Errorf(msg)
@@ -153,7 +134,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		return nil, nil
 	} else {
 		log.Debug("router not assigning connId for dial")
-		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(5 * time.Second).SendForReply(listenConn.Channel)
+		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(5 * time.Second).SendForReply(terminator.Channel)
 		if err != nil {
 			return nil, err
 		}
@@ -164,19 +145,19 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		}
 
 		if !result.Success {
-			return nil, fmt.Errorf("failed to establish connection with token %v. error: (%v)", token, result.Message)
+			return nil, fmt.Errorf("failed to establish connection with terminator address %v. error: (%v)", terminatorAddress, result.Message)
 		}
 
-		conn, err := listenConn.newConnection(result.NewConnId)
+		conn, err := terminator.newConnection(result.NewConnId)
 		if err != nil {
 			startFail := edge.NewStateConnectedMsg(result.ConnId)
 			startFail.ReplyTo(reply)
 
-			if sendErr := listenConn.SendState(startFail); sendErr != nil {
+			if sendErr := terminator.SendState(startFail); sendErr != nil {
 				log.Debug("failed to send state disconnected")
 			}
 
-			return nil, errors.Wrapf(err, "failed to create edge xgress conn for token %v", token)
+			return nil, errors.Wrapf(err, "failed to create edge xgress conn for terminator address %v", terminatorAddress)
 		}
 
 		x := xgress.NewXgress(circuitId.Token, params.GetCtrlId(), params.GetAddress(), conn, xgress.Terminator, &dialer.options.Options, params.GetCircuitTags())
@@ -186,6 +167,6 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 
 		start := edge.NewStateConnectedMsg(result.ConnId)
 		start.ReplyTo(reply)
-		return nil, listenConn.SendState(start)
+		return nil, terminator.SendState(start)
 	}
 }

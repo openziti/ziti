@@ -30,9 +30,6 @@ func (request *CreateTerminatorRequest) GetContentType() int32 {
 	return int32(ContentType_CreateTerminatorRequestType)
 }
 
-func (request *Error) GetContentType() int32 {
-	return int32(ContentType_ErrorType)
-}
 func (request *CreateTerminatorRequest) GetXtPrecedence() xt.Precedence {
 	if request.GetPrecedence() == TerminatorPrecedence_Failed {
 		return xt.Precedences.Failed
@@ -41,6 +38,28 @@ func (request *CreateTerminatorRequest) GetXtPrecedence() xt.Precedence {
 		return xt.Precedences.Required
 	}
 	return xt.Precedences.Default
+}
+
+func (request *CreateTerminatorV2Request) GetContentType() int32 {
+	return int32(ContentType_CreateTerminatorV2RequestType)
+}
+
+func (request *CreateTerminatorV2Request) GetXtPrecedence() xt.Precedence {
+	if request.GetPrecedence() == TerminatorPrecedence_Failed {
+		return xt.Precedences.Failed
+	}
+	if request.GetPrecedence() == TerminatorPrecedence_Required {
+		return xt.Precedences.Required
+	}
+	return xt.Precedences.Default
+}
+
+func (request *CreateTerminatorV2Response) GetContentType() int32 {
+	return int32(ContentType_CreateTerminatorV2ResponseType)
+}
+
+func (request *Error) GetContentType() int32 {
+	return int32(ContentType_ErrorType)
 }
 
 func (request *UpdateTerminatorRequest) GetContentType() int32 {

@@ -28,6 +28,8 @@ enum ContentType {
   ValidateSessionsRequestType = 20213;
   HealthEventType = 20214;
   SigningCertAddedType = 20215;
+  CreateTerminatorV2RequestType = 20216;
+  CreateTerminatorV2ResponseType = 20217;
 
   EnrollType = 20300;
   EnrollmentCertsResponseType = 20301;
@@ -66,7 +68,7 @@ enum Header {
 message ServerHello {
   string version = 1;
   map<string, string> data = 2;
-  map<string,bytes> byteData = 3;
+  map<string, bytes> byteData = 3;
 }
 
 message Address {
@@ -148,7 +150,7 @@ message PostureSet {
 message PostureCheck {
   string id = 1;
   string type = 2;
-  map<string,bytes> data = 3;
+  map<string, bytes> data = 3;
 }
 
 message Session {
@@ -222,6 +224,29 @@ message CreateTerminatorRequest {
   TerminatorPrecedence precedence = 5;
   string instanceId = 6;
   bytes instanceSecret = 7;
+}
+
+message CreateTerminatorV2Request {
+  string address = 1;
+  string sessionToken = 2;
+  repeated string fingerprints = 3;
+  map<uint32, bytes> peerData = 4;
+  uint32 cost = 5;
+  TerminatorPrecedence precedence = 6;
+  string instanceId = 7;
+  bytes instanceSecret = 8;
+}
+
+enum CreateTerminatorResult {
+  Success = 0;
+  FailedIdConflict = 1;
+  FailedOther = 2;
+}
+
+message CreateTerminatorV2Response {
+  string terminatorId = 1;
+  CreateTerminatorResult result = 2;
+  string msg = 3;
 }
 
 message RemoveTerminatorRequest {

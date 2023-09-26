@@ -11,6 +11,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/coreos/go-iptables v0.6.0
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
+	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663
 	github.com/fatih/color v1.15.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/go-acme/lego/v4 v4.2.0
@@ -18,7 +19,7 @@ require (
 	github.com/go-openapi/loads v0.21.2
 	github.com/go-openapi/runtime v0.26.0
 	github.com/go-openapi/strfmt v0.21.7
-	github.com/go-resty/resty/v2 v2.7.0
+	github.com/go-resty/resty/v2 v2.8.0
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/gopacket v1.1.19
@@ -37,7 +38,7 @@ require (
 	github.com/openziti/agent v1.0.15
 	github.com/openziti/channel/v2 v2.0.99
 	github.com/openziti/edge-api v0.25.36
-	github.com/openziti/fabric v0.24.30
+	github.com/openziti/fabric v0.24.36
 	github.com/openziti/foundation/v2 v2.0.32
 	github.com/openziti/identity v1.0.63
 	github.com/openziti/jwks v1.0.3
@@ -45,7 +46,7 @@ require (
 	github.com/openziti/runzmd v1.0.31
 	github.com/openziti/sdk-golang v0.20.112
 	github.com/openziti/secretstream v0.1.12
-	github.com/openziti/storage v0.2.15
+	github.com/openziti/storage v0.2.18
 	github.com/openziti/transport/v2 v2.0.107
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
@@ -84,7 +85,7 @@ require (
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
@@ -92,7 +93,6 @@ require (
 	github.com/c-bata/go-prompt v0.2.6 // indirect
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
