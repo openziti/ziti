@@ -31,11 +31,11 @@ require (
 	github.com/openziti/channel/v2 v2.0.98
 	github.com/openziti/edge-api v0.25.35
 	github.com/openziti/fabric v0.24.32
-	github.com/openziti/foundation/v2 v2.0.31
+	github.com/openziti/foundation/v2 v2.0.32
 	github.com/openziti/identity v1.0.62
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.34
-	github.com/openziti/sdk-golang v0.20.109
+	github.com/openziti/metrics v1.2.35
+	github.com/openziti/sdk-golang v0.20.110
 	github.com/openziti/secretstream v0.1.12
 	github.com/openziti/storage v0.2.16
 	github.com/openziti/transport/v2 v2.0.106
