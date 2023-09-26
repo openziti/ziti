@@ -22,11 +22,13 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/fabric/common/capabilities"
 	"github.com/openziti/fabric/common/config"
 	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/fabric/controller/events"
 	"github.com/openziti/fabric/controller/handler_peer_ctrl"
 	"github.com/openziti/transport/v2"
+	"math/big"
 	"os"
 	"sync/atomic"
 	"time"
@@ -37,6 +39,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/fabric/common/health"
+	fabricMetrics "github.com/openziti/fabric/common/metrics"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
+	"github.com/openziti/fabric/common/profiler"
 	"github.com/openziti/fabric/controller/api_impl"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/handler_ctrl"
@@ -49,10 +55,6 @@ import (
 	"github.com/openziti/fabric/controller/xt_random"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/controller/xt_weighted"
-	"github.com/openziti/fabric/common/health"
-	fabricMetrics "github.com/openziti/fabric/common/metrics"
-	"github.com/openziti/fabric/common/pb/ctrl_pb"
-	"github.com/openziti/fabric/common/profiler"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -245,8 +247,12 @@ func (c *Controller) Run() error {
 	if err != nil {
 		pfxlog.Logger().Panicf("could not prepare version headers: %v", err)
 	}
+
+	capabilityMask := &big.Int{}
+	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateTerminatorV2, 1)
 	headers := map[int32][]byte{
-		channel.HelloVersionHeader: versionHeader,
+		channel.HelloVersionHeader:                    versionHeader,
+		int32(ctrl_pb.ContentType_CapabilitiesHeader): capabilityMask.Bytes(),
 	}
 
 	if c.raftController != nil {
