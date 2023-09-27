@@ -1,0 +1,387 @@
+{
+    "$id": "http://ziti-edge.netfoundry.io/schemas/host.v1.schema.json",
+    "additionalProperties": false,
+    "allOf": [
+        {
+            "else": {
+                "required": [
+                    "protocol"
+                ]
+            },
+            "if": {
+                "properties": {
+                    "forwardProtocol": {
+                        "const": true
+                    }
+                },
+                "required": [
+                    "forwardProtocol"
+                ]
+            },
+            "then": {
+                "required": [
+                    "allowedProtocols"
+                ]
+            }
+        },
+        {
+            "else": {
+                "required": [
+                    "address"
+                ]
+            },
+            "if": {
+                "properties": {
+                    "forwardAddress": {
+                        "const": true
+                    }
+                },
+                "required": [
+                    "forwardAddress"
+                ]
+            },
+            "then": {
+                "required": [
+                    "allowedAddresses"
+                ]
+            }
+        },
+        {
+            "else": {
+                "required": [
+                    "port"
+                ]
+            },
+            "if": {
+                "properties": {
+                    "forwardPort": {
+                        "const": true
+                    }
+                },
+                "required": [
+                    "forwardPort"
+                ]
+            },
+            "then": {
+                "required": [
+                    "allowedPortRanges"
+                ]
+            }
+        }
+    ],
+    "definitions": {
+        "action": {
+            "additionalProperties": false,
+            "properties": {
+                "action": {
+                    "pattern": "(mark (un)?healthy|increase cost [0-9]+|decrease cost [0-9]+|send event)",
+                    "type": "string"
+                },
+                "consecutiveEvents": {
+                    "maximum": 65535,
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "duration": {
+                    "$ref": "#/definitions/duration"
+                },
+                "trigger": {
+                    "enum": [
+                        "fail",
+                        "pass",
+                        "change"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "trigger",
+                "action"
+            ],
+            "type": "object"
+        },
+        "actionList": {
+            "items": {
+                "$ref": "#/definitions/action"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+        },
+        "dialAddress": {
+            "format": "idn-hostname",
+            "not": {
+                "pattern": "^$"
+            },
+            "type": "string"
+        },
+        "duration": {
+            "pattern": "[0-9]+(h|m|s|ms)",
+            "type": "string"
+        },
+        "httpCheck": {
+            "additionalProperties": false,
+            "properties": {
+                "actions": {
+                    "$ref": "#/definitions/actionList"
+                },
+                "body": {
+                    "type": "string"
+                },
+                "expectInBody": {
+                    "type": "string"
+                },
+                "expectStatus": {
+                    "maximum": 599,
+                    "minimum": 100,
+                    "type": "integer"
+                },
+                "interval": {
+                    "$ref": "#/definitions/duration"
+                },
+                "method": {
+                    "$ref": "#/definitions/method"
+                },
+                "timeout": {
+                    "$ref": "#/definitions/duration"
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "interval",
+                "timeout",
+                "url"
+            ],
+            "type": "object"
+        },
+        "httpCheckList": {
+            "items": {
+                "$ref": "#/definitions/httpCheck"
+            },
+            "type": "array"
+        },
+        "inhabitedSet": {
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+        },
+        "listenAddress": {
+            "description": "idn-hostname allows ipv4 and ipv6 addresses, as well as hostnames that might happen to contain '*' and/or '/'. so idn-hostname allows every supported intercept address, although ip addresses, wildcards and cidrs are only being validated as hostnames by this format. client applications will need to look for _valid_ ips, cidrs, and wildcards when parsing intercept addresses and treat them accordingly. anything else should be interpreted as a dns label. this means e.g. that '1.2.3.4/56' should be treated as a dns label, since it is not a valid cidr",
+            "format": "idn-hostname",
+            "not": {
+                "pattern": "^$"
+            },
+            "type": "string"
+        },
+        "method": {
+            "enum": [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH"
+            ],
+            "type": "string"
+        },
+        "portCheck": {
+            "additionalProperties": false,
+            "properties": {
+                "actions": {
+                    "$ref": "#/definitions/actionList"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "interval": {
+                    "$ref": "#/definitions/duration"
+                },
+                "timeout": {
+                    "$ref": "#/definitions/duration"
+                }
+            },
+            "required": [
+                "interval",
+                "timeout",
+                "address"
+            ],
+            "type": "object"
+        },
+        "portCheckList": {
+            "items": {
+                "$ref": "#/definitions/portCheck"
+            },
+            "type": "array"
+        },
+        "portNumber": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+        },
+        "portRange": {
+            "additionalProperties": false,
+            "properties": {
+                "high": {
+                    "$ref": "#/definitions/portNumber"
+                },
+                "low": {
+                    "$ref": "#/definitions/portNumber"
+                }
+            },
+            "required": [
+                "low",
+                "high"
+            ],
+            "type": "object"
+        },
+        "protocolName": {
+            "enum": [
+                "tcp",
+                "udp"
+            ],
+            "type": "string"
+        },
+        "timeoutSeconds": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+        }
+    },
+    "properties": {
+        "address": {
+            "$ref": "#/definitions/dialAddress",
+            "description": "Dial the specified ip address or hostname when a ziti client connects to the service."
+        },
+        "allowedAddresses": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/listenAddress"
+                    }
+                }
+            ],
+            "description": "Only allow addresses from this set to be dialed"
+        },
+        "allowedPortRanges": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/portRange"
+                    }
+                }
+            ],
+            "description": "Only allow ports from this set to be dialed"
+        },
+        "allowedProtocols": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/protocolName"
+                    }
+                }
+            ],
+            "description": "Only allow protocols from this set to be dialed"
+        },
+        "allowedSourceAddresses": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/listenAddress"
+                    }
+                }
+            ],
+            "description": "hosting tunnelers establish local routes for the specified source addresses so binding will succeed"
+        },
+        "forwardAddress": {
+            "description": "Dial the same ip address that was intercepted at the client tunneler. 'address' and 'forwardAddress' are mutually exclusive.",
+            "enum": [
+                true
+            ],
+            "type": "boolean"
+        },
+        "forwardPort": {
+            "description": "Dial the same port that was intercepted at the client tunneler. 'port' and 'forwardPort' are mutually exclusive.",
+            "enum": [
+                true
+            ],
+            "type": "boolean"
+        },
+        "forwardProtocol": {
+            "description": "Dial the same protocol that was intercepted at the client tunneler. 'protocol' and 'forwardProtocol' are mutually exclusive.",
+            "enum": [
+                true
+            ],
+            "type": "boolean"
+        },
+        "httpChecks": {
+            "$ref": "#/definitions/httpCheckList"
+        },
+        "listenOptions": {
+            "additionalProperties": false,
+            "properties": {
+                "bindUsingEdgeIdentity": {
+                    "description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
+                    "type": "boolean"
+                },
+                "connectTimeout": {
+                    "$ref": "#/definitions/duration",
+                    "description": "Timeout when making outbound connections. Defaults to '5s'. If both connectTimoutSeconds and connectTimeout are specified, connectTimeout will be used."
+                },
+                "connectTimeoutSeconds": {
+                    "$ref": "#/definitions/timeoutSeconds",
+                    "deprecated": true,
+                    "description": "Timeout when making outbound connections. Defaults to 5. If both connectTimoutSeconds and connectTimeout are specified, connectTimeout will be used."
+                },
+                "cost": {
+                    "description": "defaults to 0",
+                    "maximum": 65535,
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "identity": {
+                    "description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
+                    "type": "string"
+                },
+                "maxConnections": {
+                    "description": "defaults to 3",
+                    "minimum": 1,
+                    "type": "integer"
+                },
+                "precedence": {
+                    "description": "defaults to 'default'",
+                    "enum": [
+                        "default",
+                        "required",
+                        "failed"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "port": {
+            "$ref": "#/definitions/portNumber",
+            "description": "Dial the specified port when a ziti client connects to the service."
+        },
+        "portChecks": {
+            "$ref": "#/definitions/portCheckList"
+        },
+        "protocol": {
+            "$ref": "#/definitions/protocolName",
+            "description": "Dial the specified protocol when a ziti client connects to the service."
+        }
+    },
+    "type": "object"
+}

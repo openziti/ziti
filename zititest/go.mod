@@ -11,15 +11,14 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.15
-	github.com/openziti/channel/v2 v2.0.98
-	github.com/openziti/edge v0.24.418
+	github.com/openziti/channel/v2 v2.0.99
 	github.com/openziti/fablab v0.5.16
 	github.com/openziti/fabric v0.24.30
-	github.com/openziti/foundation/v2 v2.0.31
-	github.com/openziti/identity v1.0.62
-	github.com/openziti/sdk-golang v0.20.108
+	github.com/openziti/foundation/v2 v2.0.32
+	github.com/openziti/identity v1.0.63
+	github.com/openziti/sdk-golang v0.20.112
 	github.com/openziti/storage v0.2.15
-	github.com/openziti/transport/v2 v2.0.106
+	github.com/openziti/transport/v2 v2.0.107
 	github.com/openziti/ziti v0.28.3
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
@@ -130,11 +129,11 @@ require (
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
-	github.com/openziti/edge-api v0.25.35 // indirect
+	github.com/openziti/edge-api v0.25.36 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.34 // indirect
+	github.com/openziti/metrics v1.2.35 // indirect
 	github.com/openziti/runzmd v1.0.31 // indirect
-	github.com/openziti/secretstream v0.1.11 // indirect
+	github.com/openziti/secretstream v0.1.12 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.1.0 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect

@@ -20,7 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	edgeSubCmd "github.com/openziti/edge/controller/subcmd"
+	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/ziti/cmd/create"
 	"github.com/openziti/ziti/ziti/cmd/helpers"

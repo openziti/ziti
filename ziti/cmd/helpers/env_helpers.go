@@ -17,7 +17,7 @@
 package helpers
 
 import (
-	edge "github.com/openziti/edge/controller/config"
+	edge "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
 	"os"

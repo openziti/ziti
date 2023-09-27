@@ -1,0 +1,121 @@
+{
+    "$id": "http://edge.openziti.org/schemas/intercept.v1.config.json",
+    "additionalProperties": false,
+    "definitions": {
+        "dialAddress": {
+            "format": "idn-hostname",
+            "not": {
+                "pattern": "^$"
+            },
+            "type": "string"
+        },
+        "inhabitedSet": {
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+        },
+        "listenAddress": {
+            "description": "idn-hostname allows ipv4 and ipv6 addresses, as well as hostnames that might happen to contain '*' and/or '/'. so idn-hostname allows every supported intercept address, although ip addresses, wildcards and cidrs are only being validated as hostnames by this format. client applications will need to look for _valid_ ips, cidrs, and wildcards when parsing intercept addresses and treat them accordingly. anything else should be interpreted as a dns label. this means e.g. that '1.2.3.4/56' should be treated as a dns label, since it is not a valid cidr",
+            "format": "idn-hostname",
+            "not": {
+                "pattern": "^$"
+            },
+            "type": "string"
+        },
+        "portNumber": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+        },
+        "portRange": {
+            "additionalProperties": false,
+            "properties": {
+                "high": {
+                    "$ref": "#/definitions/portNumber"
+                },
+                "low": {
+                    "$ref": "#/definitions/portNumber"
+                }
+            },
+            "required": [
+                "low",
+                "high"
+            ],
+            "type": "object"
+        },
+        "protocolName": {
+            "enum": [
+                "tcp",
+                "udp"
+            ],
+            "type": "string"
+        },
+        "timeoutSeconds": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+        }
+    },
+    "properties": {
+        "addresses": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/listenAddress"
+                    }
+                }
+            ]
+        },
+        "dialOptions": {
+            "additionalProperties": false,
+            "properties": {
+                "connectTimeoutSeconds": {
+                    "$ref": "#/definitions/timeoutSeconds",
+                    "description": "defaults to 5 seconds if no dialOptions are defined. defaults to 15 if dialOptions are defined but connectTimeoutSeconds is not specified."
+                },
+                "identity": {
+                    "description": "Dial a terminator with the specified identity. '$dst_protocol', '$dst_ip', '$dst_port are resolved to the corresponding value of the destination address.",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "portRanges": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/portRange"
+                    }
+                }
+            ]
+        },
+        "protocols": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/protocolName"
+                    }
+                }
+            ]
+        },
+        "sourceIp": {
+            "description": "The source IP (and optional :port) to spoof when the connection is egressed from the hosting tunneler. '$tunneler_id.name' resolves to the name of the client tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the client tunneler's identity. '$src_ip' and '$src_port' resolve to the source IP / port of the originating client. '$dst_port' resolves to the port that the client is trying to connect.",
+            "type": "string"
+        }
+    },
+    "required": [
+        "protocols",
+        "addresses",
+        "portRanges"
+    ],
+    "type": "object"
+}

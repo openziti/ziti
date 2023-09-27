@@ -4,7 +4,7 @@ import (
 	"embed"
 	_ "embed"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
