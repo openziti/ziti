@@ -46,12 +46,17 @@ func newTraceRouteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 
-	cmd.Flags().StringVarP(&options.configFile, "config-file", "c", "", "Config file path")
+	cmd.Flags().StringVarP(&options.configFile, "config-file", "c", "",
+		"Path to identity config file. Identity must have dial access to the selected service")
 	cmd.Flags().BoolVarP(&options.skipIntermediate, "skip-intermediate", "s", false, "Skip intermediate hops")
 	cmd.Flags().Uint8Var(&options.hops, "hops", 0, "Maximum number of hops")
 	cmd.Flags().DurationVarP(&options.timeout, "timeout", "t", 5*time.Second, "Trace route response timeout")
 	cmd.Flags().BoolVarP(&options.Verbose, "verbose", "", false, "Enable verbose logging")
 	cmd.Flags().BoolVarP(&options.lookupRouterName, "get-router-names", "n", false, "Lookup and output router names instead of ids. Requires admin privileges")
+
+	if err := cmd.MarkFlagRequired("config-file"); err != nil {
+		panic(err)
+	}
 
 	return cmd
 }
