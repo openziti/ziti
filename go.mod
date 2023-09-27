@@ -29,13 +29,13 @@ require (
 	github.com/miekg/dns v1.1.56
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openziti/channel/v2 v2.0.99
-	github.com/openziti/edge-api v0.25.35
+	github.com/openziti/edge-api v0.25.36
 	github.com/openziti/fabric v0.24.36
 	github.com/openziti/foundation/v2 v2.0.32
 	github.com/openziti/identity v1.0.63
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.35
-	github.com/openziti/sdk-golang v0.20.111
+	github.com/openziti/sdk-golang v0.20.112
 	github.com/openziti/secretstream v0.1.12
 	github.com/openziti/storage v0.2.18
 	github.com/openziti/transport/v2 v2.0.107
@@ -131,9 +131,9 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.mongodb.org/mongo-driver v1.12.1 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	go.opentelemetry.io/otel v1.17.0 // indirect
-	go.opentelemetry.io/otel/metric v1.17.0 // indirect
-	go.opentelemetry.io/otel/trace v1.17.0 // indirect
+	go.opentelemetry.io/otel v1.18.0 // indirect
+	go.opentelemetry.io/otel/metric v1.18.0 // indirect
+	go.opentelemetry.io/otel/trace v1.18.0 // indirect
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.15.0 // indirect
