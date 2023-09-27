@@ -1,0 +1,30 @@
+# this is a list of shortcut routes at get.openziti.io for raw.githubusercontent.com
+
+# these are file shortcuts, so the shortcut is the test file
+- get: /ziti-cli-functions.sh
+  raw: /openziti/ziti/{{GITHUB_SHA}}/quickstart/docker/image/
+
+- get: /miniziti.bash
+  raw: /openziti/ziti/{{GITHUB_SHA}}/quickstart/kubernetes/
+
+# these are directory shortcuts, so you must supply a test file
+- get: /quick/
+  raw: /openziti/ziti/{{GITHUB_SHA}}/quickstart/docker/image/
+  file: ziti-cli-functions.sh
+
+- get: /dock/
+  raw: /openziti/ziti/{{GITHUB_SHA}}/quickstart/docker/
+  file: docker-compose.yml
+
+- get: /spec/
+  raw: /openziti/edge-api/main/
+  file: management.yml
+
+- get: /tun/
+  raw: /openziti/ziti-tunnel-sdk-c/main/
+  file: scripts/install-ubuntu.bash
+  # file: docker/ziti-tun-daemonset.yaml
+
+- get: /pack/
+  raw: /openziti/ziti-tunnel-sdk-c/main/
+  file: package-repos.gpg

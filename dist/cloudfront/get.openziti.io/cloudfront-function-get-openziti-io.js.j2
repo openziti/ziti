@@ -4,11 +4,11 @@ function handler(event) {
     var uri = request.uri;
 
     switch (true) {
-      {% for name, data in routes.items() -%}
-      // GitHub raw shortcut route: /{{name}}/
-      case /{{data.re}}/i.test(uri):
-        var re = /{{data.re}}/;
-        request.uri = uri.replace(re, '{{data.uri}}');
+      {% for route in routes -%}
+      // GitHub raw routecut: {{route['get']}}
+      case /{{route['re']}}/i.test(uri):
+        var re = /{{route['re']}}/;
+        request.uri = uri.replace(re, '{{route['raw']}}');
         break;
       {%- endfor %}
     }
