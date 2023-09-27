@@ -74,6 +74,7 @@ func (self *ServiceConfig) ToHostV2Config() *HostV2Config {
 type HostV1ListenOptions struct {
 	BindUsingEdgeIdentity bool
 	ConnectTimeoutSeconds *int
+	ConnectTimeout        *time.Duration
 	Cost                  *uint16
 	Identity              string
 	MaxConnections        int
@@ -115,14 +116,10 @@ func (self *HostV1Config) ToHostV2Config() *HostV2Config {
 	}
 
 	if self.ListenOptions != nil {
-		var timeout *time.Duration
-		if self.ListenOptions.ConnectTimeoutSeconds != nil {
-			val := time.Duration(*self.ListenOptions.ConnectTimeoutSeconds) * time.Second
-			timeout = &val
-		}
 		terminator.ListenOptions = &HostV2ListenOptions{
 			BindUsingEdgeIdentity: self.ListenOptions.BindUsingEdgeIdentity,
-			ConnectTimeout:        timeout,
+			ConnectTimeoutSeconds: self.ListenOptions.ConnectTimeoutSeconds,
+			ConnectTimeout:        self.ListenOptions.ConnectTimeout,
 			Cost:                  self.ListenOptions.Cost,
 			Identity:              self.ListenOptions.Identity,
 			MaxConnections:        self.ListenOptions.MaxConnections,
@@ -139,6 +136,7 @@ func (self *HostV1Config) ToHostV2Config() *HostV2Config {
 
 type HostV2ListenOptions struct {
 	BindUsingEdgeIdentity bool
+	ConnectTimeoutSeconds *int
 	ConnectTimeout        *time.Duration
 	Cost                  *uint16
 	Identity              string
@@ -216,8 +214,13 @@ type HostV2Terminator struct {
 }
 
 func (self *HostV2Terminator) GetDialTimeout(defaultTimeout time.Duration) time.Duration {
-	if self.ListenOptions != nil && self.ListenOptions.ConnectTimeout != nil {
-		return *self.ListenOptions.ConnectTimeout
+	if self.ListenOptions != nil {
+		if self.ListenOptions.ConnectTimeout != nil {
+			return *self.ListenOptions.ConnectTimeout
+		}
+		if self.ListenOptions.ConnectTimeoutSeconds != nil {
+			return time.Second * time.Duration(*self.ListenOptions.ConnectTimeoutSeconds)
+		}
 	}
 	return defaultTimeout
 }
