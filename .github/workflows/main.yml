@@ -140,6 +140,35 @@ jobs:
           path: release/
           retention-days: 5
 
+  tests:
+    name: Run Unit and Integration Tests
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20.x'
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Run Go Quickstart Test
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
+
+      - name: Run Unit and Integration Tests
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          go test ./... --tags apitests
+
   fablab-smoketest:
     name: Fablab Smoketest
     # not applicable to forks. shouldn't run on release build
@@ -366,7 +395,7 @@ jobs:
         && (needs.fablab-smoketest.result == 'success' || needs.fablab-smoketest.result == 'skipped') 
       }}
     runs-on: ubuntu-20.04
-    needs: [ linux-build, mac-os-build, windows-build, fablab-smoketest, fablab-ha-smoketest ]
+    needs: [ tests, linux-build, mac-os-build, windows-build, fablab-smoketest, fablab-ha-smoketest ]
     outputs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
     steps:
