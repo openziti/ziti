@@ -26,7 +26,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/golang-lru/v2 v2.0.6
-	github.com/jedib0t/go-pretty/v6 v6.4.0
+	github.com/jedib0t/go-pretty/v6 v6.4.7
 	github.com/jinzhu/copier v0.4.0
 	github.com/kataras/go-events v0.0.3
 	github.com/lucsky/cuid v1.2.1
