@@ -42,9 +42,11 @@ type edgeTerminator struct {
 	edge.MsgChannel
 	edgeClientConn *edgeClientConn
 	token          string
+	instance       string
 	terminatorId   concurrenz.AtomicValue[string]
 	assignIds      bool
 	onClose        func()
+	v2             bool
 }
 
 func (self *edgeTerminator) nextDialConnId() uint32 {
@@ -70,22 +72,43 @@ func (self *edgeTerminator) close(notify bool, reason string) {
 		}
 	}
 
-	if self.terminatorId.Load() != "" {
-		logger.Info("removing terminator on controller")
-		ctrlCh := self.edgeClientConn.listener.factory.ctrls.AnyCtrlChannel()
-		if ctrlCh == nil {
-			logger.Error("no controller available, unable to remove terminator")
-		} else if err := self.edgeClientConn.removeTerminator(ctrlCh, self); err != nil {
-			logger.WithError(err).Error("failed to remove terminator")
-		} else {
-			logger.Info("Successfully removed terminator on channel close")
+	if self.v2 {
+		if terminatorId := self.terminatorId.Load(); terminatorId != "" {
+			if self.terminatorId.CompareAndSwap(terminatorId, "") {
+				logger.Info("removing terminator on controller")
+				ctrlCh := self.edgeClientConn.listener.factory.ctrls.AnyCtrlChannel()
+				if ctrlCh == nil {
+					logger.Error("no controller available, unable to remove terminator")
+				} else if err := self.edgeClientConn.removeTerminator(ctrlCh, self.token, terminatorId); err != nil {
+					logger.WithError(err).Error("failed to remove terminator")
+				} else {
+					logger.Info("Successfully removed terminator on channel close")
+				}
+			} else {
+				logger.Warn("edge terminator closing, but no terminator id set, so can't remove on controller")
+			}
+
+			logger.Debug("removing terminator on router")
+			self.edgeClientConn.listener.factory.hostedServices.Delete(self.token)
 		}
 	} else {
-		logger.Warn("edge terminator closing, but no terminator id set, so can't remove on controller")
-	}
+		if terminatorId := self.terminatorId.Load(); terminatorId != "" {
+			logger.Info("removing terminator on controller")
+			ctrlCh := self.edgeClientConn.listener.factory.ctrls.AnyCtrlChannel()
+			if ctrlCh == nil {
+				logger.Error("no controller available, unable to remove terminator")
+			} else if err := self.edgeClientConn.removeTerminator(ctrlCh, self.token, terminatorId); err != nil {
+				logger.WithError(err).Error("failed to remove terminator")
+			} else {
+				logger.Info("Successfully removed terminator on channel close")
+			}
+		} else {
+			logger.Warn("edge terminator closing, but no terminator id set, so can't remove on controller")
+		}
 
-	logger.Debug("removing terminator on router")
-	self.edgeClientConn.listener.factory.hostedServices.Delete(self.token)
+		logger.Debug("removing terminator on router")
+		self.edgeClientConn.listener.factory.hostedServices.Delete(self.token)
+	}
 
 	if self.onClose != nil {
 		self.onClose()

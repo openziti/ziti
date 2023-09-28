@@ -19,21 +19,27 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/dineshappavoo/basex"
+	"github.com/openziti/fabric/common/capabilities"
+	fabricMetrics "github.com/openziti/fabric/common/metrics"
+	"github.com/openziti/fabric/common/pb/ctrl_pb"
+	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	fabricMetrics "github.com/openziti/fabric/common/metrics"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/sha3"
 	"google.golang.org/protobuf/proto"
+	"math/big"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/xgress_common"
 )
 
 type listener struct {
@@ -183,24 +189,44 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 }
 
 func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel) {
+	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		errStr := "no controller available, cannot create terminator"
+		pfxlog.ContextLogger(ch.Label()).
+			WithField("sessionToken", string(req.Body)).
+			WithFields(edge.GetLoggerFields(req)).
+			WithField("routerId", self.listener.id.Token).
+			Error(errStr)
+		self.sendStateClosedReply(errStr, req)
+		return
+	}
+
+	supportsCreateTerminatorV2 := false
+	headers := ctrlCh.Underlay().Headers()
+	if val, found := headers[int32(ctrl_pb.ContentType_CapabilitiesHeader)]; found {
+		capabilitiesMask := &big.Int{}
+		capabilitiesMask.SetBytes(val)
+		supportsCreateTerminatorV2 = capabilitiesMask.Bit(capabilities.ControllerCreateTerminatorV2) == 1
+	}
+
+	if supportsCreateTerminatorV2 {
+		self.processBindV2(req, ch, ctrlCh)
+	} else {
+		self.processBindV1(req, ch, ctrlCh)
+	}
+}
+
+func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
 	token := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("sessionId", token).
+		WithField("sessionToken", token).
 		WithFields(edge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
 
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
 	if !found {
 		pfxlog.Logger().Errorf("connId not set. unable to process bind message")
-		return
-	}
-
-	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
-	if ctrlCh == nil {
-		errStr := "no controller available, cannot create terminator"
-		log.Error(errStr)
-		self.sendStateClosedReply(errStr, req)
 		return
 	}
 
@@ -288,45 +314,171 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 	log.Info("created terminator")
 }
 
-func (self *edgeClientConn) processUnbind(req *channel.Message, ch channel.Channel) {
-	token := string(req.Body)
-	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("sessionId", token).
-		WithFields(edge.GetLoggerFields(req))
+func (self *edgeClientConn) getTerminatorId(sessionToken, terminatorInstance string) string {
+	hasher := sha3.NewShake256()
+	// Shake.Write is documented to only fail if written to after being read
+	_, _ = hasher.Write([]byte(self.listener.id.Token))
+	_, _ = hasher.Write([]byte(sessionToken))
+	_, _ = hasher.Write([]byte(terminatorInstance))
 
-	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
-	if ctrlCh == nil {
-		errStr := "no controller available, cannot remove terminator"
-		log.Error(errStr)
-		self.sendStateClosedReply(errStr, req)
+	buf := make([]byte, 16)
+	// Shake.Read is documented not to fail
+	_, _ = hasher.Read(buf)
+
+	v := &big.Int{}
+	v.SetBytes(buf)
+	result, _ := basex.EncodeInt(v)
+	return result
+}
+
+func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
+	token := string(req.Body)
+
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithField("sessionToken", token).
+		WithFields(edge.GetLoggerFields(req)).
+		WithField("routerId", self.listener.id.Token)
+
+	connId, found := req.GetUint32Header(edge.ConnIdHeader)
+	if !found {
+		pfxlog.Logger().Errorf("connId not set. unable to process bind message")
 		return
 	}
 
-	terminator, ok := self.listener.factory.hostedServices.Get(token)
-	if ok {
-		log = log.WithField("routerId", self.listener.id.Token).
-			WithField("terminatorId", terminator.terminatorId.Load())
+	terminatorInstance, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
 
-		defer self.listener.factory.hostedServices.Delete(token)
+	assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId)
+	log.Debugf("client requested router provided connection ids: %v", assignIds)
 
-		log.Debug("removing terminator")
-		if err := self.removeTerminator(ctrlCh, terminator); err != nil {
-			log.WithError(err).Error("error while removing terminator")
-			self.sendStateClosedReply(err.Error(), req)
+	terminatorId := self.getTerminatorId(token, terminatorInstance)
+
+	messageSink := &edgeTerminator{
+		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
+		edgeClientConn: self,
+		token:          token,
+		instance:       terminatorInstance,
+		assignIds:      assignIds,
+		v2:             true,
+	}
+
+	log = log.WithField("bindConnId", messageSink.MsgChannel.Id())
+
+	createTerminatorOnCtrl := true
+
+	terminator, found := self.listener.factory.hostedServices.Get(terminatorId)
+	// we unfortunately can't re-use existing edgeTerminators, as a new bind request will have a new connId.
+	if found {
+		// if we somehow got a conflict, just use a new terminator id
+		if terminator.token != token || terminator.instance != terminatorInstance {
+			terminatorId = idgen.NewUUIDString()
+		} else if terminator.terminatorId.CompareAndSwap(terminatorId, "") {
+			// there was an existing terminator, and we got to it before it was torn down. We can just replace it
+			// and carry on
+			self.listener.factory.hostedServices.Put(terminatorId, messageSink)
+			createTerminatorOnCtrl = false
+			log.WithField("terminatorId", terminatorId).
+				WithField("oldBindConnId", terminator.MsgChannel.Id()).
+				Info("duplicate create terminator request detected, taking over terminator")
 		} else {
-			self.sendStateClosedReply("unbind successful", req)
-			log.Info("removed terminator")
+			terminatorId = idgen.NewUUIDString()
 		}
-	} else {
+	}
+
+	messageSink.terminatorId.Store(terminatorId)
+
+	log = log.WithField("terminatorId", terminatorId)
+	log.Debug("binding service")
+
+	hostData := make(map[uint32][]byte)
+	pubKey, hasKey := req.Headers[edge.PublicKeyHeader]
+	if hasKey {
+		hostData[edge.PublicKeyHeader] = pubKey
+	}
+
+	cost := uint16(0)
+	if costBytes, hasCost := req.Headers[edge.CostHeader]; hasCost {
+		cost = binary.LittleEndian.Uint16(costBytes)
+	}
+
+	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
+	if precedenceData, hasPrecedence := req.Headers[edge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
+		edgePrecedence := edge.Precedence(precedenceData[0])
+		if edgePrecedence == edge.PrecedenceRequired {
+			precedence = edge_ctrl_pb.TerminatorPrecedence_Required
+		} else if edgePrecedence == edge.PrecedenceFailed {
+			precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
+		}
+	}
+
+	log.Debug("establishing listener")
+
+	// need to remove session remove listener on close
+	messageSink.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
+		messageSink.close(true, "session ended")
+	})
+
+	self.listener.factory.hostedServices.Put(terminatorId, messageSink)
+
+	var terminatorInstanceSecret []byte
+	if terminatorInstance != "" {
+		terminatorInstanceSecret = req.Headers[edge.TerminatorIdentitySecretHeader]
+	}
+
+	request := &edge_ctrl_pb.CreateTerminatorV2Request{
+		Address:        terminatorId,
+		SessionToken:   token,
+		Fingerprints:   self.fingerprints.Prints(),
+		PeerData:       hostData,
+		Cost:           uint32(cost),
+		Precedence:     precedence,
+		InstanceId:     terminatorInstance,
+		InstanceSecret: terminatorInstanceSecret,
+	}
+
+	if createTerminatorOnCtrl {
+		timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
+		responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
+		resp := &edge_ctrl_pb.CreateTerminatorV2Response{}
+		err = protobufs.TypedResponse(resp).Unmarshall(responseMsg, err)
+		if err == nil && resp.Result != edge_ctrl_pb.CreateTerminatorResult_Success {
+			err = errors.Errorf("terminator create failed: %s", resp.Msg)
+		}
+
+		if err != nil {
+			log.WithError(err).Warn("error creating terminator")
+			messageSink.close(false, "") // don't notify here, as we're notifying next line with a response
+			self.sendStateClosedReply(err.Error(), req)
+			return
+		}
+	}
+
+	if messageSink.MsgChannel.IsClosed() {
+		log.Warn("edge channel closed while setting up terminator. cleaning up terminator now")
+		messageSink.close(false, "edge channel closed")
+		return
+	}
+
+	log.Debug("registered listener for terminator")
+	log.Debug("returning connection state CONNECTED to client")
+	self.sendStateConnectedReply(req, nil)
+
+	log.Info("created terminator")
+}
+
+func (self *edgeClientConn) processUnbind(req *channel.Message, _ channel.Channel) {
+	token := string(req.Body)
+	atLeastOneTerminatorRemoved := self.listener.factory.hostedServices.unbindSession(token, self)
+
+	if !atLeastOneTerminatorRemoved {
 		self.sendStateClosedReply(fmt.Sprintf("no terminator found for token '%s'", token), req)
 	}
 }
 
-func (self *edgeClientConn) removeTerminator(ctrlCh channel.Channel, terminator *edgeTerminator) error {
+func (self *edgeClientConn) removeTerminator(ctrlCh channel.Channel, token, terminatorId string) error {
 	request := &edge_ctrl_pb.RemoveTerminatorRequest{
-		SessionToken: terminator.token,
+		SessionToken: token,
 		Fingerprints: self.fingerprints.Prints(),
-		TerminatorId: terminator.terminatorId.Load(),
+		TerminatorId: terminatorId,
 	}
 
 	timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
@@ -336,11 +488,11 @@ func (self *edgeClientConn) removeTerminator(ctrlCh channel.Channel, terminator 
 
 func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.Channel) {
 	token := string(req.Body)
-	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 
-	terminator, ok := self.listener.factory.hostedServices.Get(token)
+	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionToken", token).WithFields(edge.GetLoggerFields(req))
+	terminators := self.listener.factory.hostedServices.getRelatedTerminators(token, self)
 
-	if !ok {
+	if len(terminators) == 0 {
 		log.Error("failed to update bind, no listener found")
 		return
 	}
@@ -351,42 +503,44 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 		return
 	}
 
-	request := &edge_ctrl_pb.UpdateTerminatorRequest{
-		SessionToken: token,
-		Fingerprints: self.fingerprints.Prints(),
-		TerminatorId: terminator.terminatorId.Load(),
-	}
-
-	if costVal, hasCost := req.GetUint16Header(edge.CostHeader); hasCost {
-		request.UpdateCost = true
-		request.Cost = uint32(costVal)
-	}
-
-	if precedenceData, hasPrecedence := req.Headers[edge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
-		edgePrecedence := edge.Precedence(precedenceData[0])
-		request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Default
-		request.UpdatePrecedence = true
-		if edgePrecedence == edge.PrecedenceRequired {
-			request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-		} else if edgePrecedence == edge.PrecedenceFailed {
-			request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
+	for _, terminator := range terminators {
+		request := &edge_ctrl_pb.UpdateTerminatorRequest{
+			SessionToken: token,
+			Fingerprints: self.fingerprints.Prints(),
+			TerminatorId: terminator.terminatorId.Load(),
 		}
-	}
 
-	log = log.WithField("terminator", terminator.terminatorId.Load()).
-		WithField("precedence", request.Precedence).
-		WithField("cost", request.Cost).
-		WithField("updatingPrecedence", request.UpdatePrecedence).
-		WithField("updatingCost", request.UpdateCost)
+		if costVal, hasCost := req.GetUint16Header(edge.CostHeader); hasCost {
+			request.UpdateCost = true
+			request.Cost = uint32(costVal)
+		}
 
-	log.Debug("updating terminator")
+		if precedenceData, hasPrecedence := req.Headers[edge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
+			edgePrecedence := edge.Precedence(precedenceData[0])
+			request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Default
+			request.UpdatePrecedence = true
+			if edgePrecedence == edge.PrecedenceRequired {
+				request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Required
+			} else if edgePrecedence == edge.PrecedenceFailed {
+				request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
+			}
+		}
 
-	timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
-	if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTerminatorResponseType); err != nil {
-		log.WithError(err).Error("terminator update failed")
-	} else {
-		log.Debug("terminator updated successfully")
+		log = log.WithField("terminator", terminator.terminatorId.Load()).
+			WithField("precedence", request.Precedence).
+			WithField("cost", request.Cost).
+			WithField("updatingPrecedence", request.UpdatePrecedence).
+			WithField("updatingCost", request.UpdateCost)
+
+		log.Debug("updating terminator")
+
+		timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
+		responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
+		if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTerminatorResponseType); err != nil {
+			log.WithError(err).Error("terminator update failed")
+		} else {
+			log.Debug("terminator updated successfully")
+		}
 	}
 }
 

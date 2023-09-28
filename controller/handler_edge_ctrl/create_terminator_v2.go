@@ -20,94 +20,88 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/controller/network"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"math"
-	"time"
 )
 
-type createTunnelTerminatorHandler struct {
+type createTerminatorV2Handler struct {
 	baseRequestHandler
-	*TunnelState
 }
 
-func NewCreateTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.TypedReceiveHandler {
-	return &createTunnelTerminatorHandler{
-		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
-		TunnelState:        tunnelState,
+func NewCreateTerminatorV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+	return &createTerminatorV2Handler{
+		baseRequestHandler{
+			ch:     ch,
+			appEnv: appEnv,
+		},
 	}
 }
 
-func (self *createTunnelTerminatorHandler) getTunnelState() *TunnelState {
-	return self.TunnelState
+func (self *createTerminatorV2Handler) ContentType() int32 {
+	return int32(edge_ctrl_pb.ContentType_CreateTerminatorV2RequestType)
 }
 
-func (self *createTunnelTerminatorHandler) ContentType() int32 {
-	return int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorRequestType)
+func (self *createTerminatorV2Handler) Label() string {
+	return "create.terminator"
 }
 
-func (self *createTunnelTerminatorHandler) Label() string {
-	return "tunnel.create.terminator"
-}
-
-func (self *createTunnelTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	startTime := time.Now()
-
-	req := &edge_ctrl_pb.CreateTunnelTerminatorRequest{}
+func (self *createTerminatorV2Handler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	req := &edge_ctrl_pb.CreateTerminatorV2Request{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
-		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal CreateTerminatorRequest")
+		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal CreateTerminatorV2Request")
 		return
 	}
 
-	ctx := &CreateTunnelTerminatorRequestContext{
-		baseTunnelRequestContext: baseTunnelRequestContext{
-			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
-			apiSession:                nil,
-			identity:                  nil,
-		},
-		req: req,
+	ctx := &CreateTerminatorV2RequestContext{
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		req:                       req,
 	}
 
-	go self.CreateTerminator(ctx, startTime)
+	go self.CreateTerminatorV2(ctx)
 }
 
-func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTerminatorRequestContext, startTime time.Time) {
-	logger := logrus.
+func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV2RequestContext) {
+	logger := pfxlog.ContextLogger(self.ch.Label()).
 		WithField("routerId", self.ch.Id()).
+		WithField("token", ctx.req.SessionToken).
 		WithField("terminatorId", ctx.req.Address)
 
 	if !ctx.loadRouter() {
 		return
 	}
-	ctx.loadIdentity()
-	newApiSession := ctx.ensureApiSession(nil)
-	ctx.loadServiceForName(ctx.req.ServiceName)
-	ctx.ensureSessionForService(ctx.req.SessionId, persistence.SessionTypeBind)
+	ctx.loadSession(ctx.req.SessionToken)
+	ctx.checkSessionType(persistence.SessionTypeBind)
+	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	ctx.verifyEdgeRouterAccess()
+	ctx.loadService()
 
 	if ctx.err != nil {
-		self.logResult(ctx, ctx.err)
+		self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, ctx.err, logger)
 		return
 	}
 
 	logger = logger.WithField("serviceId", ctx.service.Id).WithField("service", ctx.service.Name)
 
 	if ctx.req.Cost > math.MaxUint16 {
-		self.returnError(ctx, invalidCost(fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", ctx.req.Cost, math.MaxUint16)))
+		ctx.err = invalidCost(fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", ctx.req.Cost, math.MaxUint16))
+		self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, ctx.err, logger)
 		return
 	}
 
 	terminator, _ := self.getNetwork().Terminators.Read(ctx.req.Address)
 	if terminator != nil {
-		if err := ctx.validateExistingTerminator(terminator, logger); err != nil {
-			self.returnError(ctx, err)
+		if ctx.err = ctx.validateExistingTerminator(terminator, logger); ctx.err != nil {
+			self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedIdConflict, ctx.err, logger)
 			return
 		}
 	} else {
@@ -118,7 +112,7 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 			},
 			Service:        ctx.session.ServiceId,
 			Router:         ctx.sourceRouter.Id,
-			Binding:        common.TunnelBinding,
+			Binding:        common.EdgeBinding,
 			Address:        ctx.req.Address,
 			InstanceId:     ctx.req.InstanceId,
 			InstanceSecret: ctx.req.InstanceSecret,
@@ -128,36 +122,31 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 			HostId:         ctx.session.IdentityId,
 		}
 
-		n := self.appEnv.GetHostController().GetNetwork()
-		if err := n.Terminators.Create(terminator, ctx.newTunnelChangeContext()); err != nil {
+		cmd := &model.CreateEdgeTerminatorCmd{
+			Env:     self.appEnv,
+			Entity:  terminator,
+			Context: ctx.newChangeContext(),
+		}
+
+		if err := self.appEnv.GetHostController().GetNetwork().Managers.Command.Dispatch(cmd); err != nil {
 			// terminator might have been created while we were trying to create.
 			if terminator, _ = self.getNetwork().Terminators.Read(ctx.req.Address); terminator != nil {
 				if validateError := ctx.validateExistingTerminator(terminator, logger); validateError != nil {
-					self.returnError(ctx, validateError)
+					self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedIdConflict, validateError, logger)
 					return
 				}
 			} else {
-				self.returnError(ctx, internalError(err))
+				self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
 				return
 			}
 		} else {
-			logger.Info("created terminator")
+			logger.WithField("terminator", terminator.Id).Info("created terminator")
 		}
 	}
 
-	response := &edge_ctrl_pb.CreateTunnelTerminatorResponse{
-		Session:      ctx.getCreateSessionResponse(),
-		TerminatorId: ctx.req.Address,
-		StartTime:    ctx.req.StartTime,
-	}
-
-	if newApiSession {
-		var err error
-		response.ApiSession, err = ctx.getCreateApiSessionResponse()
-		if err != nil {
-			self.returnError(ctx, internalError(err))
-			return
-		}
+	response := &edge_ctrl_pb.CreateTerminatorV2Response{
+		TerminatorId: terminator.Id,
+		Result:       edge_ctrl_pb.CreateTerminatorResult_Success,
 	}
 
 	body, err := proto.Marshal(response)
@@ -172,17 +161,35 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 		logger.WithError(err).Error("failed to send CreateTunnelTerminatorResponse")
 	}
 
-	logger.WithField("elapsedTime", time.Since(startTime)).Info("completed create tunnel terminator operation")
+	logger.Info("completed create tunnel terminator operation")
 }
 
-type CreateTunnelTerminatorRequestContext struct {
-	baseTunnelRequestContext
-	req *edge_ctrl_pb.CreateTunnelTerminatorRequest
+func (self *createTerminatorV2Handler) returnError(ctx *CreateTerminatorV2RequestContext, resultType edge_ctrl_pb.CreateTerminatorResult, err error, logger *logrus.Entry) {
+	response := &edge_ctrl_pb.CreateTerminatorV2Response{
+		TerminatorId: ctx.req.Address,
+		Result:       resultType,
+		Msg:          err.Error(),
+	}
+
+	if sendErr := protobufs.MarshalTyped(response).ReplyTo(ctx.msg).Send(self.ch); sendErr != nil {
+		logger.WithError(err).WithField("sendError", sendErr).Error("failed to send error response")
+	} else {
+		logger.WithError(err).Error("responded with error")
+	}
 }
 
-func (self *CreateTunnelTerminatorRequestContext) validateExistingTerminator(terminator *network.Terminator, log *logrus.Entry) controllerError {
-	if terminator.Binding != common.TunnelBinding {
-		log.WithField("binding", common.TunnelBinding).
+type CreateTerminatorV2RequestContext struct {
+	baseSessionRequestContext
+	req *edge_ctrl_pb.CreateTerminatorV2Request
+}
+
+func (self *CreateTerminatorV2RequestContext) GetSessionToken() string {
+	return self.req.SessionToken
+}
+
+func (self *CreateTerminatorV2RequestContext) validateExistingTerminator(terminator *network.Terminator, log *logrus.Entry) controllerError {
+	if terminator.Binding != common.EdgeBinding {
+		log.WithField("binding", common.EdgeBinding).
 			WithField("conflictingBinding", terminator.Binding).
 			Error("selected terminator address conflicts with a terminator for a different binding")
 		return internalError(errors.New("selected id conflicts with terminator for different binding"))

@@ -17,11 +17,21 @@
 package xgress_edge
 
 import (
+	"github.com/michaelquigley/pfxlog"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"sync"
 )
 
+func NewHostedServicesRegistry() *hostedServiceRegistry {
+	return &hostedServiceRegistry{
+		services: sync.Map{},
+		ids:      cmap.New[string](),
+	}
+}
+
 type hostedServiceRegistry struct {
 	services sync.Map
+	ids      cmap.ConcurrentMap[string, string]
 }
 
 func (registry *hostedServiceRegistry) Put(hostId string, conn *edgeTerminator) {
@@ -50,4 +60,34 @@ func (registry *hostedServiceRegistry) cleanupServices(proxy *edgeClientConn) {
 		}
 		return true
 	})
+}
+
+func (registry *hostedServiceRegistry) unbindSession(sessionToken string, proxy *edgeClientConn) bool {
+	atLeastOneRemoved := false
+	registry.services.Range(func(key, value interface{}) bool {
+		terminator := value.(*edgeTerminator)
+		if terminator.token == sessionToken && terminator.edgeClientConn == proxy {
+			terminator.close(true, "unbind successful") // don't notify, sdk asked us to unbind
+			registry.services.Delete(key)
+			pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
+				WithField("sessionToken", sessionToken).
+				WithField("terminatorId", terminator.terminatorId.Load()).
+				Info("terminator removed")
+			atLeastOneRemoved = true
+		}
+		return true
+	})
+	return atLeastOneRemoved
+}
+
+func (registry *hostedServiceRegistry) getRelatedTerminators(sessionToken string, proxy *edgeClientConn) []*edgeTerminator {
+	var result []*edgeTerminator
+	registry.services.Range(func(key, value interface{}) bool {
+		terminator := value.(*edgeTerminator)
+		if terminator.token == sessionToken && terminator.edgeClientConn == proxy {
+			result = append(result, terminator)
+		}
+		return true
+	})
+	return result
 }

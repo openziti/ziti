@@ -129,7 +129,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 // NewFactory constructs a new Edge Xgress Factory instance
 func NewFactory(routerConfig *router.Config, versionProvider versions.VersionProvider, stateManager fabric.StateManager, metricsRegistry metrics.Registry) *Factory {
 	factory := &Factory{
-		hostedServices:  &hostedServiceRegistry{},
+		hostedServices:  NewHostedServicesRegistry(),
 		stateManager:    stateManager,
 		versionProvider: versionProvider,
 		routerConfig:    routerConfig,

@@ -154,6 +154,7 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),
 		handler_edge_ctrl.NewCreateCircuitHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewCreateTerminatorHandler(c.AppEnv, ch),
+		handler_edge_ctrl.NewCreateTerminatorV2Handler(c.AppEnv, ch),
 		handler_edge_ctrl.NewUpdateTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewRemoveTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewValidateSessionsHandler(c.AppEnv, ch),
