@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css?family=Russo+One" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700" rel="stylesheet"/>
+    <style>
+        html,
+        body {
+            font-size: 16px;
+        }
+
+        h1 {
+            color: #002567 !important;
+            opacity: 1;
+            font-family: 'Russo One', Arial, sans-serif;
+            font-size: 1.5rem !important;
+            line-height: 1.75rem;
+            font-weight: 400 !important;
+            margin: 0 !important;
+            text-align: center;
+        }
+
+        h2 {
+            color: #46515e !important;
+            opacity: 1;
+            font-family: 'Open Sans', Arial, sans-serif;
+            font-size: 1.2rem !important;
+            line-height: 1.4rem;
+            font-weight: 200 !important;
+            margin: auto !important;
+            text-align: center;
+        }
+
+        h2.intro {
+            max-width: 400px;
+            padding-bottom: 10px;
+        }
+
+        a {
+            color: #006cff;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        a:focus,
+        a:hover {
+            text-decoration: underline;
+            filter: brightness(97%) !important;
+            transition: all 0.3s ease;
+            -webkit-transition: all 0.3s ease;
+            -moz-transition: all 0.3s ease;
+        }
+
+        a:active {
+            filter: brightness(95%) !important;
+            box-shadow: none !important;
+            transform: translateY(1px) !important;
+            transition: all 0.3s ease;
+            -webkit-transition: all 0.3s ease;
+            -moz-transition: all 0.3s ease;
+        }
+
+        input {
+            border-radius: 7px !important;
+            box-shadow: unset !important;
+        }
+
+        .page {
+            background-color: #f6f7fb;
+            font-family: 'Open Sans';
+            height: 100vh;
+        }
+
+        .gradientbg {
+            position: absolute;
+            top: -1000px;
+            left: 0;
+            right: 0;
+            transform-origin: 0 50%;
+            height: 1700px;
+            background: rgb(244, 4, 77);
+            background: linear-gradient(80deg, rgba(244, 4, 77, 1) 0%, rgba(0, 108, 254, 1) 100%);
+            transform: skewY(-11deg);
+        }
+
+        .centerblock {
+            margin-top: 15vh;
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        @media (max-width: 1200px) {
+            .centerblock {
+                margin-top: 5vh;
+            }
+        }
+
+
+        @media (max-width: 768px) {
+            .centerblock {
+                margin-top: 1vh;
+            }
+        }
+
+        .logo-img {
+            height: 100%;
+            width: 50%;
+            margin: auto;
+            margin-bottom: 12px;
+        }
+
+        #title {
+            color: white;
+            font-family: 'Russo One', Arial, Helvetica, sans-serif;
+            font-size: 1.7rem;
+            line-height: 1.8rem;
+            word-wrap: break-word;
+            grid-area: title;
+            margin-top: 53px;
+            padding-left: 16px;
+        }
+
+        label {
+            display: inline-block;
+            max-width: 100%;
+            margin-bottom: 5px;
+            font-weight: 400 !important;
+            font-family: 'Open Sans';
+            color: #434c5e;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .control-box {
+            padding: 30px;
+            padding-bottom: 15px;
+            background: rgba(240, 240, 240, 0.9);
+            border-radius: 25px;
+            box-shadow: 0 5px 25px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        @supports ((-webkit-backdrop-filter: saturate(180%) blur(20px)) or (backdrop-filter: saturate(180%) blur(20px))) {
+            .control-box {
+                background: rgba(246, 247, 251, 0.8);
+                -webkit-backdrop-filter: saturate(180%) blur(20px);
+                backdrop-filter: saturate(180%) blur(20px);
+            }
+        }
+
+        .control-box > div {
+            width: 100%;
+            height: auto;
+        }
+
+        .control-box .title {
+            padding-top: 8px;
+        }
+
+        .control-box input {
+            border-radius: 7px;
+            font-size: 1rem;
+            color: #434c5e;
+            height: 55px;
+            border: 2px solid #ffffff;
+            box-shadow: unset !important;
+        }
+
+        .control-box input:focus {
+            border: 2px solid #006cff;
+        }
+
+        button[name='action'] {
+            display: inline-block !important;
+            padding: 0px;
+            margin-top: 10px !important;
+            font-size: 11px !important;
+            line-height: 40px !important;
+            height: 50px !important;
+            border: none !important;
+            background: none !important;
+            vertical-align: middle !important;
+            text-align: center !important;
+            position: relative !important;
+            z-index: 1 !important;
+            -webkit-backface-visibility: hidden !important;
+            backface-visibility: hidden !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            overflow: hidden !important;
+            -webkit-transition: color 0.2s !important;
+            transition: color 0.2s !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            font-family: 'Open Sans' !important;
+            text-transform: uppercase !important;
+            border-radius: 8px !important;
+            box-shadow: 0 3px 9px 0 rgba(2, 115, 251, 0.3) !important;
+            cursor: pointer !important;
+        }
+
+        button[name='action'] {
+            background-color: #0273fb !important;
+            -webkit-box-shadow: 0 3px 9px 0 rgba(2, 115, 251, 0.3) !important;
+            -moz-box-shadow: 0 3px 9px 0 rgba(2, 115, 251, 0.3) !important;
+            box-shadow: 0 3px 9px 0 rgba(2, 115, 251, 0.3) !important;
+            color: white !important;
+        }
+
+        button[name='action']:hover {
+            outline: 0 !important;
+            filter: brightness(99%) !important;
+            box-shadow: 0px 5px 20px 0px rgba(0, 0, 0, 0.05) !important;
+            transition: all 0.3s ease;
+            -webkit-transition: all 0.3s ease;
+            -moz-transition: all 0.3s ease;
+        }
+
+        button[name='action']:active {
+            filter: brightness(95%) !important;
+            box-shadow: none !important;
+            transform: translateY(1px) !important;
+            transition: all 0.3s ease;
+            -webkit-transition: all 0.3s ease;
+            -moz-transition: all 0.3s ease;
+        }
+
+        a:hover {
+            cursor: pointer;
+        }
+
+        .mb16 {
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="page">
+    <div class="gradientbg"></div>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-offset-3 col-lg-6 col-md-offset-3 col-md-6 col-xs-12">
+                <div class="centerblock">
+                    <div class="titleLine">
+                        <div class="titleBlock">
+                            <div class="logo-img">
+                                <svg version="1.1" id="Ziti_NG_xA0_Image_1_" xmlns="http://www.w3.org/2000/svg"
+                                     x="0px" y="0px" viewBox="0 0 2333 539.2"
+                                     xml:space="preserve">
+                    <style type="text/css">
+                      .st0 {
+                          opacity: 0.13;
+                          fill: #FFFFFF;
+                      }
+
+                      .st1 {
+                          fill: #FFFFFF;
+                      }
+                    </style>
+                                    <circle class="st0" cx="268.9" cy="273.8" r="257"/>
+                                    <path id="Lightning_Crashes" class="st1"
+                                          d="M270.3,62.3L138.9,267.2l76.5,48.8l12.3-19.3l41.7,188.6l129.3-206.1l-74.3-47.4
+    l-12.4,19.5L270.3,62.3z M332.6,265.7l32.6,21.5l-85,133.6l-41.8-189l-31.7,49.7L174.6,261l85.4-134l41.5,187.4L332.6,265.7z"/>
+                                    <g>
+                      <path class="st1" d="M269.6,539.2c-36.4,0-71.7-7.1-104.9-21.2c-32.1-13.6-60.9-33-85.7-57.8c-24.8-24.8-44.2-53.6-57.8-85.7
+        C7.1,341.3,0,306,0,269.6c0-36.4,7.1-71.7,21.2-104.9c13.6-32.1,33-60.9,57.8-85.7c24.8-24.8,53.6-44.2,85.7-57.8
+        C197.9,7.1,233.2,0,269.6,0c36.4,0,71.7,7.1,104.9,21.2c32.1,13.6,60.9,33,85.7,57.8c24.8,24.8,44.2,53.6,57.8,85.7
+        c14.1,33.2,21.2,68.5,21.2,104.9c0,36.4-7.1,71.7-21.2,104.9c-13.6,32.1-33,60.9-57.8,85.7c-24.8,24.8-53.6,44.2-85.7,57.8
+        C341.3,532,306,539.2,269.6,539.2z M269.6,21c-66.4,0-128.9,25.9-175.8,72.8c-47,47-72.8,109.4-72.8,175.8s25.9,128.9,72.8,175.8
+        c47,47,109.4,72.8,175.8,72.8s128.9-25.9,175.8-72.8c47-47,72.8-109.4,72.8-175.8s-25.9-128.9-72.8-175.8
+        C398.4,46.8,336,21,269.6,21z"/>
+                    </g>
+                                    <g>
+                      <path class="st1" d="M900.3,318c0,28-6.3,48.3-19,61c-12.7,12.7-33,19-61,19h-100c-28,0-48.3-6.3-61-19c-12.7-12.7-19-33-19-61V190
+        c0-28,6.3-48.3,19-61c12.7-12.7,33-19,61-19h100c28,0,48.3,6.3,61,19c12.7,12.7,19,33,19,61V318z M828.3,190c0-16-8-24-24-24h-68
+        c-16,0-24,8-24,24v128c0,16,8,24,24,24h68c16,0,24-8,24-24V190z"/>
+                                        <path class="st1" d="M1006.3,394v68h-70V182h62l4,20c12.5-8.3,25.4-14.3,38.6-18.2c13.2-3.9,24.3-5.8,33.4-5.8h18
+        c18.1,0,32.7,5.5,43.6,16.4c10.9,10.9,16.4,25.5,16.4,43.6v92c0,20-5.7,35.7-17,47c-11.3,11.3-27,17-47,17H1006.3z M1054.3,236
+        c-14.1,0-30.1,2.7-48,8v96h60c10.7,0,16-5.3,16-16v-74c0-4-1.3-7.3-4-10c-2.7-2.7-6-4-10-4H1054.3z"/>
+                                        <path class="st1" d="M1384.2,390c-51.5,5.3-98.1,8-140,8c-18.1,0-32.7-5.5-43.6-16.4c-10.9-10.9-16.4-25.5-16.4-43.6v-96
+        c0-20,5.7-35.7,17-47c11.3-11.3,27-17,47-17h80c20,0,35.7,5.7,47,17c11.3,11.3,17,27,17,47v74h-138v16c0,4,1.3,7.3,4,10
+        c2.7,2.7,6,4,10,4c26.4,0,65.1-2,116-6V390z M1270.2,228c-10.7,0-16,5.3-16,16v22h68v-22c0-10.7-5.3-16-16-16H1270.2z"/>
+                                        <path class="st1" d="M1546.2,236c-14.1,0-30.1,2.7-48,8v150h-70V182h62l4,20c12.5-8.3,25.4-14.3,38.6-18.2
+        c13.2-3.9,24.3-5.8,33.4-5.8h18c18.1,0,32.7,5.5,43.6,16.4c10.9,10.9,16.4,25.5,16.4,43.6v156h-70V250c0-4-1.3-7.3-4-10
+        c-2.7-2.7-6-4-10-4H1546.2z"/>
+                                        <path class="st1"
+                                              d="M1921,170l-140,168h140v56h-228v-56l140-168h-140v-56h228V170z"/>
+                                        <path class="st1"
+                                              d="M2037,190v204h-70V244h-30v-54H2037z M1967,110h70v56h-70V110z"/>
+                                        <path class="st1" d="M2225,394c-25.9,2.7-51.2,4-76,4c-18.1,0-32.7-5.5-43.6-16.4c-10.9-10.9-16.4-25.5-16.4-43.6V236h-24v-54h24
+        l8-48h62v48h50v54h-50v92c0,4,1.3,7.3,4,10c2.7,2.7,6,4,10,4h52V394z"/>
+                                        <path class="st1"
+                                              d="M2333,190v204h-70V244h-30v-54H2333z M2263,110h70v56h-70V110z"/>
+                    </g>
+                  </svg>
+
+                            </div>
+                        </div>
+                        <div class="control-box" id="signupBox">
+                            <h1>Let's Get Started</h1>
+                            <h2 class="intro">
+                                Please provide your login credentials.
+                            </h2>
+                            <form method="POST" action="/oidc/login/username">
+                                <input type="hidden" name="id" value="{{.ID}}">
+                                <div class="form-group">
+                                    <label for="username">Username</label>
+                                    <input class="form-control" id="username" name="username"
+                                           placeholder="Enter your Username"
+                                           type="text"/>
+                                </div>
+                                <div class="form-group">
+                                    <div>
+                                        <label for="password">Password</label>
+                                    </div>
+
+                                    <input class="form-control" id="password" name="password"
+                                           placeholder="Enter your password"
+                                           type="password"/>
+                                </div>
+                                <div class="form-group">
+                                    <p style="color:red; min-height: 1rem; display: {{.ErrorDisplay}};">{{.Error}}</p>
+                                </div>
+                                <button class="btn btn-primary btn-block mb16" name="action" type="submit">
+                                    LOGIN
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+
+</html>

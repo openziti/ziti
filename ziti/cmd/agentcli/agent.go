@@ -10,7 +10,7 @@ import (
 
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/edge/router/debugops"
+	"github.com/openziti/ziti/router/debugops"
 	"github.com/openziti/fabric/common/pb/mgmt_pb"
 	"github.com/openziti/fabric/controller"
 	"github.com/openziti/fabric/router"

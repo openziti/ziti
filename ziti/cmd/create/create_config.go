@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/openziti/channel/v2"
-	edge "github.com/openziti/edge/controller/config"
+	edge "github.com/openziti/ziti/controller/config"
 	fabCtrl "github.com/openziti/fabric/controller"
 	fabForwarder "github.com/openziti/fabric/router/forwarder"
 	foundation "github.com/openziti/transport/v2"

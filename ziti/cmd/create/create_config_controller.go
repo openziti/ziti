@@ -18,7 +18,7 @@ package create
 
 import (
 	_ "embed"
-	edge "github.com/openziti/edge/controller/config"
+	edge "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/constants"

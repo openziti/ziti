@@ -21,7 +21,7 @@ package tunnel
 
 import (
 	"fmt"
-	"github.com/openziti/edge/tunnel/intercept/tproxy"
+	"github.com/openziti/ziti/tunnel/intercept/tproxy"
 	"github.com/spf13/cobra"
 )
 
