@@ -118,15 +118,24 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 
 		oidcEnabled := false
 
+		for _, serverConfig := range ae.HostController.GetXWebInstance().GetConfig().ServerConfigs {
+			for _, api := range serverConfig.APIs {
+				if api.Binding() == controller.OidcApiBinding {
+					oidcEnabled = true
+					break
+				}
+			}
+
+			if oidcEnabled {
+				break
+			}
+		}
+
 		for apiBinding, apiVersionMap := range ir.cachedVersions.APIVersions {
 			for apiBaseUrl := range apiToBaseUrls[apiBinding] {
 				apiVersion := apiVersionMap["v1"]
 				apiVersion.APIBaseUrls = append(apiVersion.APIBaseUrls, "https://"+apiBaseUrl)
 				apiVersionMap["v1"] = apiVersion
-			}
-
-			if apiBinding == controller.OidcApiBinding {
-				oidcEnabled = true
 			}
 		}
 
