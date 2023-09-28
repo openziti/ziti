@@ -232,4 +232,3 @@ web:
         options: { }
       - binding: edge-client
         options: { }
-
