@@ -22,12 +22,12 @@ import (
 	clientInformational "github.com/openziti/edge-api/rest_client_api_server/operations/informational"
 	managementInformational "github.com/openziti/edge-api/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/fabric/common/build"
+	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/fabric/common/build"
-	"github.com/openziti/xweb/v2"
 	"runtime"
 	"sync"
 )
@@ -58,6 +58,10 @@ func (ir *VersionRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.Always())
 	})
 
+	ae.ClientApi.InformationalListEnumeratedCapabilitiesHandler = clientInformational.ListEnumeratedCapabilitiesHandlerFunc(func(params clientInformational.ListEnumeratedCapabilitiesParams) middleware.Responder {
+		return ae.IsAllowed(ir.ListCapabilities, params.HTTPRequest, "", "", permissions.Always())
+	})
+
 	ae.ManagementApi.InformationalListVersionHandler = managementInformational.ListVersionHandlerFunc(func(params managementInformational.ListVersionParams) middleware.Responder {
 		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.Always())
 	})
@@ -65,9 +69,13 @@ func (ir *VersionRouter) Register(ae *env.AppEnv) {
 	ae.ManagementApi.InformationalListRootHandler = managementInformational.ListRootHandlerFunc(func(params managementInformational.ListRootParams) middleware.Responder {
 		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.Always())
 	})
+
+	ae.ManagementApi.InformationalListEnumeratedCapabilitiesHandler = managementInformational.ListEnumeratedCapabilitiesHandlerFunc(func(params managementInformational.ListEnumeratedCapabilitiesParams) middleware.Responder {
+		return ae.IsAllowed(ir.ListCapabilities, params.HTTPRequest, "", "", permissions.Always())
+	})
 }
 
-func (ir *VersionRouter) List(_ *env.AppEnv, rc *response.RequestContext) {
+func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	ir.cachedVersionsOnce.Do(func() {
 
 		buildInfo := build.GetBuildInfo()
@@ -80,6 +88,7 @@ func (ir *VersionRouter) List(_ *env.AppEnv, rc *response.RequestContext) {
 				controller.ClientApiBinding:     {controller.VersionV1: mapApiVersionToRestModel(controller.ClientRestApiBaseUrlV1)},
 				controller.ManagementApiBinding: {controller.VersionV1: mapApiVersionToRestModel(controller.ManagementRestApiBaseUrlV1)},
 			},
+			Capabilities: []string{},
 		}
 
 		for apiBinding, apiVersionToPathMap := range controller.AllApiBindingVersions {
@@ -107,18 +116,42 @@ func (ir *VersionRouter) List(_ *env.AppEnv, rc *response.RequestContext) {
 			}
 		}
 
+		oidcEnabled := false
+
 		for apiBinding, apiVersionMap := range ir.cachedVersions.APIVersions {
 			for apiBaseUrl := range apiToBaseUrls[apiBinding] {
 				apiVersion := apiVersionMap["v1"]
 				apiVersion.APIBaseUrls = append(apiVersion.APIBaseUrls, "https://"+apiBaseUrl)
 				apiVersionMap["v1"] = apiVersion
 			}
+
+			if apiBinding == controller.OidcApiBinding {
+				oidcEnabled = true
+			}
 		}
 
 		ir.cachedVersions.APIVersions[controller.LegacyClientApiBinding] = ir.cachedVersions.APIVersions[controller.ClientApiBinding]
+
+		if oidcEnabled {
+			ir.cachedVersions.Capabilities = append(ir.cachedVersions.Capabilities, string(rest_model.CapabilitiesOIDCAUTH))
+		}
+
+		if ae.HostController.IsRaftEnabled() {
+			ir.cachedVersions.Capabilities = append(ir.cachedVersions.Capabilities, string(rest_model.CapabilitiesHACONTROLLER))
+		}
+
 	})
 
 	rc.RespondWithOk(ir.cachedVersions, &rest_model.Meta{})
+}
+
+func (ir *VersionRouter) ListCapabilities(_ *env.AppEnv, rc *response.RequestContext) {
+	capabilities := []rest_model.Capabilities{
+		rest_model.CapabilitiesOIDCAUTH,
+		rest_model.CapabilitiesHACONTROLLER,
+	}
+
+	rc.RespondWithOk(capabilities, &rest_model.Meta{})
 }
 
 func apiBindingToPath(binding string) string {
