@@ -19,11 +19,13 @@ package server
 import (
 	"fmt"
 	"github.com/openziti/channel/v2"
+	fabricconfig "github.com/openziti/fabric/common/config"
+	"github.com/openziti/fabric/controller/api_impl"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	runner2 "github.com/openziti/ziti/common/runner"
+	edgeconfig "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/handler_edge_mgmt"
 	sync2 "github.com/openziti/ziti/controller/sync_strats"
-	"github.com/openziti/fabric/controller/api_impl"
 	"os"
 	"sync"
 	"time"
@@ -31,17 +33,16 @@ import (
 	"github.com/openziti/ziti/controller/internal/policy"
 
 	"github.com/michaelquigley/pfxlog"
-	edgeconfig "github.com/openziti/ziti/controller/config"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/handler_edge_ctrl"
 	_ "github.com/openziti/ziti/controller/internal/routes"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/fabric/common/config"
-	"github.com/openziti/storage/boltz"
 )
 
 type Controller struct {
-	config          *edgeconfig.Config
+	config          *config.Config
 	AppEnv          *env.AppEnv
 	xmgmt           *submgmt
 	xctrl           *subctrl
@@ -60,7 +61,7 @@ const (
 	ZitiInstanceId = "ziti-instance-id"
 )
 
-func NewController(cfg config.Configurable, host env.HostController) (*Controller, error) {
+func NewController(cfg fabricconfig.Configurable, host env.HostController) (*Controller, error) {
 	c := &Controller{}
 
 	if err := cfg.Configure(c); err != nil {

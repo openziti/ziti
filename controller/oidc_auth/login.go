@@ -3,12 +3,15 @@ package oidc_auth
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/pkg/errors"
 	"github.com/zitadel/oidc/v2/pkg/op"
 	"html/template"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -27,6 +30,8 @@ const (
 	passwordLoginUrl = "/oidc/login/username?authRequestID="
 	certLoginUrl     = "/oidc/login/cert?authRequestID="
 	extJwtLoginUrl   = "/oidc/login/ext-jwt?authRequestID="
+
+	AuthRequestIdHeader = "auth-request-id"
 )
 
 const ()
@@ -99,9 +104,26 @@ func (l *login) createRouter(issuerInterceptor *op.IssuerInterceptor) {
 	l.router = mux.NewRouter()
 	l.router.Path("/username").Methods("GET").HandlerFunc(l.loginHandler)
 	l.router.Path("/username").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.authenticate))
+
+	l.router.Path("/cert").Methods("GET").HandlerFunc(issuerInterceptor.HandlerFunc(l.genericHandler))
 	l.router.Path("/cert").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.authenticate))
+
+	l.router.Path("/ext-jwt").Methods("GET").HandlerFunc(issuerInterceptor.HandlerFunc(l.genericHandler))
 	l.router.Path("/ext-jwt").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.authenticate))
+
 	l.router.Path("/totp").Methods("POST").HandlerFunc(l.checkTotp)
+}
+
+func (l *login) genericHandler(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("cannot parse form:%s", err), http.StatusInternalServerError)
+		return
+	}
+
+	id := r.FormValue(queryAuthRequestID)
+	w.Header().Set(AuthRequestIdHeader, id)
+	_, _ = w.Write([]byte("please POST to this URL"))
 }
 
 func (l *login) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +133,9 @@ func (l *login) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	renderLogin(w, r.FormValue(queryAuthRequestID), nil)
+	id := r.FormValue(queryAuthRequestID)
+	w.Header().Set(AuthRequestIdHeader, id)
+	renderLogin(w, id, nil)
 }
 
 func renderLogin(w http.ResponseWriter, id string, err error) {
@@ -169,23 +193,44 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, l.callback(r.Context(), id), http.StatusFound)
 }
 
-func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
+type updbCreds struct {
+	rest_model.Authenticate
+	AuthRequestId string `json:"id"`
+}
+
+func (l *login) parseUpdbForm(r *http.Request) (*updbCreds, error) {
 	err := r.ParseForm()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("cannot parse form:%s", err), http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("cannot parse form:%s", err)
 	}
 
-	username := r.FormValue("username")
-	password := r.FormValue("password")
-	configTypes := r.Form["configTypes"]
-
-	id := r.FormValue("id")
-
-	if id == "" {
-		id = r.URL.Query().Get("id")
+	result := &updbCreds{
+		Authenticate: rest_model.Authenticate{
+			EnvInfo: &rest_model.EnvInfo{
+				Arch:      r.FormValue("envArch"),
+				Os:        r.FormValue("envOs"),
+				OsRelease: r.FormValue("envOsRelease"),
+				OsVersion: r.FormValue("envOsVersion"),
+			},
+			SdkInfo: &rest_model.SdkInfo{
+				AppID:      r.FormValue("sdkAppId"),
+				AppVersion: r.FormValue("sdkAppVersion"),
+				Branch:     r.FormValue("sdkBranch"),
+				Revision:   r.FormValue("sdkRevision"),
+				Type:       r.FormValue("sdkType"),
+				Version:    r.FormValue("sdkVersion"),
+			},
+			Username:    rest_model.Username(r.FormValue("username")),
+			Password:    rest_model.Password(r.FormValue("password")),
+			ConfigTypes: r.Form["configTypes"],
+		},
+		AuthRequestId: r.FormValue("id"),
 	}
 
+	return result, nil
+}
+
+func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	pathSplits := strings.Split(r.URL.Path, "/")
 
 	if len(pathSplits) == 0 {
@@ -195,22 +240,54 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 
 	method := pathSplits[len(pathSplits)-1]
 
+	//patch username from standard OIDC auth URIs
 	if method == "username" {
 		method = AuthMethodPassword
 	}
 
-	authCtx := model.NewAuthContextHttp(r, method, map[string]any{
-		"username":    username,
-		"password":    password,
-		"configTypes": configTypes,
-	}, NewHttpChangeCtx(r))
+	var authCtx model.AuthContext
 
-	authRequest, err := l.store.Authenticate(authCtx, id, configTypes)
+	contentType := r.Header.Get("content-type")
+
+	creds := &updbCreds{}
+
+	if contentType == "application/x-www-form-urlencoded" {
+		var err error
+		creds, err = l.parseUpdbForm(r)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+	} else if strings.Contains(contentType, "json") {
+		body, err := io.ReadAll(r.Body)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = json.Unmarshal(body, creds)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	if creds.AuthRequestId == "" {
+		creds.AuthRequestId = r.URL.Query().Get("id")
+	}
+
+	authCtx = model.NewAuthContextHttp(r, method, creds, NewHttpChangeCtx(r))
+
+	authRequest, err := l.store.Authenticate(authCtx, creds.AuthRequestId, creds.ConfigTypes)
 
 	if err != nil {
 		invalid := apierror.NewInvalidAuth()
 		if method == AuthMethodPassword {
-			renderLogin(w, id, invalid)
+			renderLogin(w, creds.AuthRequestId, invalid)
 			return
 		}
 
@@ -219,11 +296,18 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if authRequest.SecondaryTotpRequired && !authRequest.HasAmr(AuthMethodSecondaryTotp) {
-		renderTotp(w, id, err)
+		renderTotp(w, creds.AuthRequestId, err)
 		return
 	}
 
 	authRequest.AuthTime = time.Now()
+	authRequest.SdkInfo = creds.SdkInfo
+	authRequest.EnvInfo = creds.EnvInfo
 
-	http.Redirect(w, r, l.callback(r.Context(), id), http.StatusFound)
+	callbackUrl := l.callback(r.Context(), creds.AuthRequestId)
+	http.Redirect(w, r, callbackUrl, http.StatusFound)
+}
+
+func (l *login) returnAuthRequestId(writer http.ResponseWriter, request *http.Request) {
+
 }

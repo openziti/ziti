@@ -17,14 +17,15 @@
 package model
 
 import (
-	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/controller/persistence"
+	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -102,4 +103,18 @@ func (self *ServicePolicyManager) Unmarshall(bytes []byte) (*ServicePolicy, erro
 		PostureCheckRoles: msg.PostureCheckRoles,
 		PolicyType:        msg.PolicyType,
 	}, nil
+}
+
+type AssociatedIdsResult struct {
+	ServiceIds      []string
+	IdentityIds     []string
+	PostureCheckIds []string
+}
+
+func (self *ServicePolicyManager) ListAssociatedIds(tx *bbolt.Tx, id string) *AssociatedIdsResult {
+	return &AssociatedIdsResult{
+		IdentityIds:     self.env.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, id, persistence.EntityTypeIdentities),
+		ServiceIds:      self.env.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, id, persistence.EntityTypeServicePolicies),
+		PostureCheckIds: self.env.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, id, persistence.EntityTypePostureChecks),
+	}
 }

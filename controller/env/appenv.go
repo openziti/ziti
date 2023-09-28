@@ -38,16 +38,6 @@ import (
 	managementServer "github.com/openziti/edge-api/rest_management_api_server"
 	managementOperations "github.com/openziti/edge-api/rest_management_api_server/operations"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/common/eid"
-	edgeConfig "github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/events"
-	"github.com/openziti/ziti/controller/internal/permissions"
-	"github.com/openziti/ziti/controller/jwtsigner"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/oidc_auth"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/event"
 	"github.com/openziti/fabric/controller/models"
@@ -61,6 +51,16 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/events"
+	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/jwtsigner"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/response"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
@@ -77,7 +77,7 @@ const ZitiSession = "zt-session"
 type AppEnv struct {
 	BoltStores *persistence.Stores
 	Managers   *model.Managers
-	Config     *edgeConfig.Config
+	Config     *config.Config
 
 	Versions *ziti.Versions
 
@@ -155,7 +155,7 @@ func (ae *AppEnv) GetManagers() *model.Managers {
 	return ae.Managers
 }
 
-func (ae *AppEnv) GetConfig() *edgeConfig.Config {
+func (ae *AppEnv) GetConfig() *config.Config {
 	return ae.Config
 }
 
@@ -367,13 +367,13 @@ func (ae *AppEnv) ProcessZtSession(rc *response.RequestContext, ztSession string
 func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) error {
 	rc.SessionToken = token.Raw
 	rc.Jwt = token
-	rc.Claims = token.Claims.(*oidc_auth.AccessClaims)
+	rc.Claims = token.Claims.(*common.AccessClaims)
 
 	if rc.Claims == nil {
 		return fmt.Errorf("could not convert tonek.Claims from %T to %T", rc.Jwt.Claims, rc.Claims)
 	}
 
-	if rc.Claims.Type != oidc_auth.TokenTypeAccess {
+	if rc.Claims.Type != common.TokenTypeAccess {
 		return errors.New("invalid token")
 	}
 
@@ -508,7 +508,7 @@ func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
 	}
 }
 
-func NewAppEnv(c *edgeConfig.Config, host HostController) *AppEnv {
+func NewAppEnv(c *config.Config, host HostController) *AppEnv {
 	clientSpec, err := loads.Embedded(clientServer.SwaggerJSON, clientServer.FlatSwaggerJSON)
 	if err != nil {
 		pfxlog.Logger().Fatalln(err)
@@ -688,7 +688,7 @@ func (ae *AppEnv) getJwtTokenFromRequest(r *http.Request) *jwt.Token {
 	for _, header := range headers {
 		if strings.HasPrefix(header, "Bearer ") {
 			token := header[7:]
-			parsedToken, err := jwt.ParseWithClaims(token, &oidc_auth.AccessClaims{}, ae.ControllersKeyFunc)
+			parsedToken, err := jwt.ParseWithClaims(token, &common.AccessClaims{}, ae.ControllersKeyFunc)
 
 			if err != nil {
 				pfxlog.Logger().WithError(err).Error("error during JWT parsing during API request")

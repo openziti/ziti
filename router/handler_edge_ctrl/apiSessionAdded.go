@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/sync_strats"
-	"github.com/openziti/ziti/router/fabric"
+	"github.com/openziti/ziti/router/state"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"sync"
@@ -36,7 +36,7 @@ import (
 
 type apiSessionAddedHandler struct {
 	control     channel.Channel
-	sm          fabric.StateManager
+	sm          state.Manager
 	syncTracker *apiSessionSyncTracker
 
 	reqChan chan *apiSessionAddedWithState
@@ -46,7 +46,7 @@ type apiSessionAddedHandler struct {
 	trackerLock sync.Mutex
 }
 
-func NewApiSessionAddedHandler(sm fabric.StateManager, binding channel.Binding) *apiSessionAddedHandler {
+func NewApiSessionAddedHandler(sm state.Manager, binding channel.Binding) *apiSessionAddedHandler {
 	handler := &apiSessionAddedHandler{
 		control: binding.GetChannel(),
 		sm:      sm,

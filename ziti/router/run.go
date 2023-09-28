@@ -20,16 +20,16 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/router/debugops"
-	"github.com/openziti/ziti/router/fabric"
-	"github.com/openziti/ziti/router/xgress_edge"
-	"github.com/openziti/ziti/router/xgress_edge_transport"
-	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/version"
+	"github.com/openziti/ziti/router/debugops"
+	"github.com/openziti/ziti/router/state"
+	"github.com/openziti/ziti/router/xgress_edge"
+	"github.com/openziti/ziti/router/xgress_edge_transport"
+	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -73,7 +73,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	r := router.Create(config, version.GetCmdBuildInfo())
 
-	stateManager := fabric.NewStateManager()
+	stateManager := state.NewManager()
 
 	xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo(), stateManager, r.GetMetricsRegistry())
 	xgress.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)

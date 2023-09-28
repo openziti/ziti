@@ -40,6 +40,16 @@ func (c *Client) PostLogoutRedirectURIs() []string {
 	return c.postLogoutRedirectURIs
 }
 
+// RedirectURIGlobs must return the registered redirect_uris for Code and Implicit Flow that match via path.Match
+func (c *Client) RedirectURIGlobs() []string {
+	return c.redirectURIs
+}
+
+// PostLogoutRedirectURIGlobs must return the registered post_logout_redirect_uris for sign-outs that match via path.Math
+func (c *Client) PostLogoutRedirectURIGlobs() []string {
+	return []string{}
+}
+
 // ApplicationType returns the application type (app, native, user agent), implements op.Client
 func (c *Client) ApplicationType() op.ApplicationType {
 	return c.applicationType

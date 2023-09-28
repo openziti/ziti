@@ -59,6 +59,9 @@ type Config struct {
 
 	RouterConfig             *router.Config
 	EnrollmentIdentityConfig *identity.Config
+
+	Db             string
+	DbSaveInterval time.Duration
 }
 
 type Csr struct {
@@ -129,6 +132,23 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 
 	if err := config.ensureIdentity(configMap); err != nil {
 		return err
+	}
+
+	if val, found := edgeConfigMap["db"]; found {
+		config.Db = val.(string)
+	}
+
+	if config.Db == "" {
+		config.Db = "./db.json.gzip"
+	}
+
+	if val, found := edgeConfigMap["dbSaveIntervalSeconds"]; found {
+		seconds := val.(int)
+		config.DbSaveInterval = time.Duration(seconds) * time.Second
+	}
+
+	if config.DbSaveInterval < 30*time.Second {
+		config.DbSaveInterval = 30 * time.Second
 	}
 
 	if val, found := edgeConfigMap["heartbeatIntervalSeconds"]; found {

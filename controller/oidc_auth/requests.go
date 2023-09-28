@@ -4,6 +4,8 @@ import (
 	"crypto/sha1"
 	"crypto/x509"
 	"fmt"
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/common"
 	"time"
 
 	"github.com/zitadel/oidc/v2/pkg/oidc"
@@ -31,6 +33,8 @@ type AuthRequest struct {
 	PeerCerts           []*x509.Certificate
 	RequestedMethod     string
 	BearerTokenDetected bool
+	SdkInfo             *rest_model.SdkInfo
+	EnvInfo             *rest_model.EnvInfo
 }
 
 // GetID returns an AuthRequest's ID and implements op.AuthRequest
@@ -87,7 +91,7 @@ func (a *AuthRequest) AddAmr(amr string) {
 
 // GetAudience returns all current audience targets and implements op.AuthRequest
 func (a *AuthRequest) GetAudience() []string {
-	return []string{a.ClientID, ClaimAudienceOpenZiti}
+	return []string{a.ClientID, common.ClaimAudienceOpenZiti}
 }
 
 // GetAuthTime returns the time at which authentication has occurred and implements op.AuthRequest
@@ -166,7 +170,7 @@ func (a *AuthRequest) GetCertFingerprints() []string {
 // RefreshTokenRequest is a wrapper around RefreshClaims to avoid collisions between go-jwt interface requirements and
 // zitadel oidc interface names. Implements zitadel op.RefreshTokenRequest
 type RefreshTokenRequest struct {
-	RefreshClaims
+	common.RefreshClaims
 }
 
 // GetAMR implements op.RefreshTokenRequest

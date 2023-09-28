@@ -1,14 +1,14 @@
 package debugops
 
 import (
-	"github.com/openziti/ziti/router/fabric"
 	"github.com/openziti/fabric/router"
+	"github.com/openziti/ziti/router/state"
 )
 
 const (
 	DumpApiSessions byte = 128
 )
 
-func RegisterEdgeRouterAgentOps(router *router.Router, sm fabric.StateManager, debugEnabled bool) {
+func RegisterEdgeRouterAgentOps(router *router.Router, sm state.Manager, debugEnabled bool) {
 	router.RegisterAgentOp(DumpApiSessions, sm.DumpApiSessions)
 }

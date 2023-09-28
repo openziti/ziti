@@ -21,6 +21,7 @@ require (
 	github.com/go-openapi/strfmt v0.21.7
 	github.com/go-resty/resty/v2 v2.8.0
 	github.com/golang-jwt/jwt/v5 v5.0.0
+	github.com/golang/protobuf v1.5.3
 	github.com/google/go-cmp v0.5.9
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.3.1
@@ -110,7 +111,6 @@ require (
 	github.com/go-openapi/spec v0.20.9 // indirect
 	github.com/go-openapi/swag v0.22.4 // indirect
 	github.com/go-openapi/validate v0.22.1 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230916125811-7478c230c7cd // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/schema v1.2.0 // indirect
