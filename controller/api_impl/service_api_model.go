@@ -17,13 +17,13 @@
 package api_impl
 
 import (
-	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/idgen"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/ziti/controller/network"
 
-	"github.com/openziti/fabric/controller/rest_model"
+	"github.com/openziti/ziti/controller/rest_model"
 
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/stringz"
 )
 

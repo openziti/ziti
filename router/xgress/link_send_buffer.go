@@ -18,7 +18,7 @@ package xgress
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/common/inspect"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

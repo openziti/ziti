@@ -18,8 +18,8 @@ package env
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/fabric/router/xlink"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"

@@ -17,14 +17,14 @@
 package xgress_transport
 
 import (
-	"github.com/openziti/fabric/common/ctrl_msg"
-	"github.com/openziti/fabric/router/env"
+	"github.com/openziti/ziti/common/ctrl_msg"
+	"github.com/openziti/ziti/router/env"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/common/logcontext"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"

@@ -17,16 +17,16 @@
 package xgress_transport_udp
 
 import (
-	"github.com/openziti/fabric/router/env"
+	"github.com/openziti/ziti/router/env"
 	"github.com/pkg/errors"
 	"net"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/common/logcontext"
-	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/fabric/router/xgress_udp"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_udp"
 	"github.com/openziti/identity"
 )
 

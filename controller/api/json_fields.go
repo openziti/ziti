@@ -18,8 +18,8 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/openziti/fabric/controller/apierror"
-	"github.com/openziti/fabric/controller/fields"
+	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/fields"
 )
 
 func GetFields(body []byte) (fields.UpdatedFields, error) {

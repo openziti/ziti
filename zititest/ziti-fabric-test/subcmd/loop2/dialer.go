@@ -19,7 +19,7 @@ package loop2
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/router/xgress_transport"
+	"github.com/openziti/ziti/router/xgress_transport"
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/sdk-golang/ziti"

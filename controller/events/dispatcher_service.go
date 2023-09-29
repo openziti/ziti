@@ -17,8 +17,8 @@
 package events
 
 import (
-	"github.com/openziti/fabric/controller/event"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"reflect"
@@ -44,7 +44,7 @@ func (self *Dispatcher) AcceptServiceEvent(event *event.ServiceEvent) {
 func (self *Dispatcher) registerServiceEventHandler(val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.ServiceEventHandler)
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/event/ServiceEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/event/ServiceEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	self.AddServiceEventHandler(handler)

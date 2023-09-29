@@ -17,7 +17,7 @@
 package events
 
 import (
-	"github.com/openziti/fabric/controller/events"
+	"github.com/openziti/ziti/controller/events"
 	"github.com/pkg/errors"
 	"io"
 	"strings"

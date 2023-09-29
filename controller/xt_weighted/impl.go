@@ -17,8 +17,8 @@
 package xt_weighted
 
 import (
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/controller/xt_common"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/controller/xt_common"
 	"math"
 	"math/rand"
 	"time"

@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/secretstream"
 	"github.com/openziti/secretstream/kx"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/sdk-golang/ziti/edge"

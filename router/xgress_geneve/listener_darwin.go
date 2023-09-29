@@ -17,7 +17,7 @@
 package xgress_geneve
 
 import (
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 )
 

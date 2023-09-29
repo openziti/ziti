@@ -17,9 +17,9 @@
 package network
 
 import (
-	"github.com/openziti/fabric/controller/idgen"
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/common/logcontext"
+	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/identity"
 	"github.com/orcaman/concurrent-map/v2"
 	"sync/atomic"

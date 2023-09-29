@@ -20,10 +20,10 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
 )

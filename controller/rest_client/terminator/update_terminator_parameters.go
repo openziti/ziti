@@ -39,7 +39,7 @@ import (
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 
-	"github.com/openziti/fabric/controller/rest_model"
+	"github.com/openziti/ziti/controller/rest_model"
 )
 
 // NewUpdateTerminatorParams creates a new UpdateTerminatorParams object,

@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/router/enroll"
 	"github.com/openziti/ziti/router/internal/edgerouter"
-	routerEnv "github.com/openziti/fabric/router/env"
+	routerEnv "github.com/openziti/ziti/router/env"
 	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"

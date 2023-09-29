@@ -204,7 +204,7 @@ func relevantCaller() goruntime.Frame {
 	var frame goruntime.Frame
 	for {
 		frame, more := frames.Next()
-		if !strings.HasPrefix(frame.Function, "net/http.") && !strings.HasPrefix(frame.Function, "github.com/openziti/fabric/controller/api_impl/timeout") {
+		if !strings.HasPrefix(frame.Function, "net/http.") && !strings.HasPrefix(frame.Function, "github.com/openziti/ziti/controller/api_impl/timeout") {
 			return frame
 		}
 		if !more {

@@ -1,7 +1,7 @@
 package mesh
 
 import (
-	"github.com/openziti/fabric/controller/event"
+	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/foundation/v2/versions"
 	"runtime"
 	"testing"

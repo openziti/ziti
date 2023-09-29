@@ -16,7 +16,7 @@
 
 package ctrl_pb
 
-import "github.com/openziti/fabric/controller/xt"
+import "github.com/openziti/ziti/controller/xt"
 
 func (request *CircuitConfirmation) GetContentType() int32 {
 	return int32(ContentType_CircuitConfirmationType)

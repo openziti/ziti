@@ -19,8 +19,8 @@ package handler_peer_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"google.golang.org/protobuf/proto"
 )
 

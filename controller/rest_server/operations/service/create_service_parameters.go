@@ -39,7 +39,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/validate"
 
-	"github.com/openziti/fabric/controller/rest_model"
+	"github.com/openziti/ziti/controller/rest_model"
 )
 
 // NewCreateServiceParams creates a new CreateServiceParams object

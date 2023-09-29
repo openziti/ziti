@@ -17,8 +17,8 @@
 package events
 
 import (
-	"github.com/openziti/fabric/controller/event"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/metrics/metrics_pb"
 	"strings"
 )

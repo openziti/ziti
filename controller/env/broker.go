@@ -21,8 +21,8 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/controller/event"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )

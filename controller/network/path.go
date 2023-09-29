@@ -21,8 +21,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/openziti/fabric/common/pb/ctrl_pb"
-	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/pkg/errors"
 )
 

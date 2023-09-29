@@ -23,9 +23,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/sirupsen/logrus"
 )
 

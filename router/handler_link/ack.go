@@ -20,9 +20,9 @@ import (
 	"github.com/ef-ds/deque"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/router/forwarder"
-	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/fabric/router/xlink"
+	"github.com/openziti/ziti/router/forwarder"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xlink"
 	"sync/atomic"
 )
 

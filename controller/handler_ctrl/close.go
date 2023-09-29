@@ -19,7 +19,7 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/network"
 )
 
 type closeHandler struct {

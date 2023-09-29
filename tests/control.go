@@ -2,7 +2,7 @@ package tests
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller"
+	"github.com/openziti/ziti/controller"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 )

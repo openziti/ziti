@@ -18,9 +18,9 @@ package handler_mgmt
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/controller/xmgmt"
-	"github.com/openziti/fabric/common/trace"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/xmgmt"
+	"github.com/openziti/ziti/common/trace"
 )
 
 type BindHandler struct {

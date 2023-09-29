@@ -27,7 +27,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/router/internal/edgerouter"
-	"github.com/openziti/fabric/router"
+	"github.com/openziti/ziti/router"
 	"github.com/openziti/identity/certtools"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/enroll"

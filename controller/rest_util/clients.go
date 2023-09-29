@@ -21,7 +21,7 @@ package rest_util
 import (
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
-	fabric_rest_client "github.com/openziti/fabric/controller/rest_client"
+	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/identity"
 	"net/url"
 )

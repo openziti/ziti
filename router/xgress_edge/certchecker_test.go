@@ -10,7 +10,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/router/internal/edgerouter"
-	"github.com/openziti/fabric/router/env"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"

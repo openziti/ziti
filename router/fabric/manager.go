@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/oidc_auth"
-	"github.com/openziti/fabric/router/env"
+	"github.com/openziti/ziti/router/env"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"

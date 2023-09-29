@@ -19,7 +19,7 @@
 package tests
 
 import (
-	"github.com/openziti/fabric/controller/xt_smartrouting"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"

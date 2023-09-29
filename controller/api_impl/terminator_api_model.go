@@ -19,11 +19,11 @@ package api_impl
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/controller/rest_model"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 )
 

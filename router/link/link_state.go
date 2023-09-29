@@ -18,8 +18,8 @@ package link
 
 import (
 	"container/heap"
-	"github.com/openziti/fabric/common/pb/ctrl_pb"
-	"github.com/openziti/fabric/router/xlink"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/router/xlink"
 	"time"
 )
 

@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/fabric/controller/fields"
+	"github.com/openziti/ziti/controller/fields"
 )
 
 func init() {

@@ -17,7 +17,7 @@
 package xgress_udp
 
 import (
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/router/xgress"
 	"io"
 	"net"
 )

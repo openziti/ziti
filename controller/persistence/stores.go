@@ -17,8 +17,8 @@
 package persistence
 
 import (
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"

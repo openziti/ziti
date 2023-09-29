@@ -17,8 +17,8 @@
 package network
 
 import (
-	"github.com/openziti/fabric/common/pb/ctrl_pb"
-	"github.com/openziti/fabric/controller/idgen"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/orcaman/concurrent-map/v2"
 	"math"

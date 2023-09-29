@@ -33,7 +33,7 @@ import (
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/ziti/controller/change"
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/stretchr/testify/require"
 	"net/http"

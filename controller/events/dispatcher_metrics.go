@@ -18,8 +18,8 @@ package events
 
 import (
 	"github.com/google/uuid"
-	"github.com/openziti/fabric/controller/event"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"reflect"
@@ -87,7 +87,7 @@ func (self *Dispatcher) relayMessagesToEventsUnfiltered(msg *metrics_pb.MetricsM
 func (self *Dispatcher) registerMetricsEventHandler(val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(event.MetricsEventHandler)
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/event/MetricsEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/event/MetricsEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	var sourceFilterDef = ""

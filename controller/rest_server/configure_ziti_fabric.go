@@ -34,15 +34,15 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 
-	"github.com/openziti/fabric/controller/rest_server/operations"
-	"github.com/openziti/fabric/controller/rest_server/operations/circuit"
-	"github.com/openziti/fabric/controller/rest_server/operations/database"
-	"github.com/openziti/fabric/controller/rest_server/operations/inspect"
-	"github.com/openziti/fabric/controller/rest_server/operations/link"
-	"github.com/openziti/fabric/controller/rest_server/operations/raft"
-	"github.com/openziti/fabric/controller/rest_server/operations/router"
-	"github.com/openziti/fabric/controller/rest_server/operations/service"
-	"github.com/openziti/fabric/controller/rest_server/operations/terminator"
+	"github.com/openziti/ziti/controller/rest_server/operations"
+	"github.com/openziti/ziti/controller/rest_server/operations/circuit"
+	"github.com/openziti/ziti/controller/rest_server/operations/database"
+	"github.com/openziti/ziti/controller/rest_server/operations/inspect"
+	"github.com/openziti/ziti/controller/rest_server/operations/link"
+	"github.com/openziti/ziti/controller/rest_server/operations/raft"
+	"github.com/openziti/ziti/controller/rest_server/operations/router"
+	"github.com/openziti/ziti/controller/rest_server/operations/service"
+	"github.com/openziti/ziti/controller/rest_server/operations/terminator"
 )
 
 //go:generate swagger generate server --target ../../controller --name ZitiFabric --spec ../specs/swagger.yml --model-package rest_model --server-package rest_server --principal interface{} --exclude-main

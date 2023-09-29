@@ -25,8 +25,8 @@ import (
 
 	"github.com/openziti/channel/v2"
 	edge "github.com/openziti/ziti/controller/config"
-	fabCtrl "github.com/openziti/fabric/controller"
-	fabForwarder "github.com/openziti/fabric/router/forwarder"
+	fabCtrl "github.com/openziti/ziti/controller"
+	fabForwarder "github.com/openziti/ziti/router/forwarder"
 	foundation "github.com/openziti/transport/v2"
 	fabXweb "github.com/openziti/xweb/v2"
 	"github.com/sirupsen/logrus"

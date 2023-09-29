@@ -22,7 +22,7 @@ import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/ziti/controller/xctrl"
 	"github.com/openziti/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"time"

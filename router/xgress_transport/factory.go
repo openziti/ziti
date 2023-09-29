@@ -17,8 +17,8 @@
 package xgress_transport
 
 import (
-	"github.com/openziti/fabric/router/env"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"

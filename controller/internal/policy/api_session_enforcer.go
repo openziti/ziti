@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/sirupsen/logrus"
 	"time"
 )

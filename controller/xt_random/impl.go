@@ -17,7 +17,7 @@
 package xt_random
 
 import (
-	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/ziti/controller/xt"
 	"math/rand"
 )
 

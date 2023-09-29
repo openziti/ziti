@@ -1,7 +1,7 @@
 package xt_common
 
 import (
-	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/ziti/controller/xt"
 	"math"
 )
 

@@ -18,9 +18,9 @@ package xlink_transport
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/common/inspect"
-	"github.com/openziti/fabric/common/pb/ctrl_pb"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/common/inspect"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/metrics"
 	"sync/atomic"
 )

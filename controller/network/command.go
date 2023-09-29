@@ -17,9 +17,9 @@
 package network
 
 import (
-	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/controller/ioc"
-	"github.com/openziti/fabric/common/pb/cmd_pb"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/ioc"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"google.golang.org/protobuf/proto"
 )
 

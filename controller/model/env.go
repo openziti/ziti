@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/jwtsigner"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/xeipuuv/gojsonschema"

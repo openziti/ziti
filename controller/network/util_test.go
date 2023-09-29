@@ -18,11 +18,11 @@ package network
 
 import (
 	"fmt"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/controller/xt_smartrouting"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 
-	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 )

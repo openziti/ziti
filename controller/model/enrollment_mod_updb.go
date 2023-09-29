@@ -21,10 +21,10 @@ import (
 	"errors"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 )
 

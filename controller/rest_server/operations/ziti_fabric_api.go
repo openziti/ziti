@@ -43,14 +43,14 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 
-	"github.com/openziti/fabric/controller/rest_server/operations/circuit"
-	"github.com/openziti/fabric/controller/rest_server/operations/database"
-	"github.com/openziti/fabric/controller/rest_server/operations/inspect"
-	"github.com/openziti/fabric/controller/rest_server/operations/link"
-	"github.com/openziti/fabric/controller/rest_server/operations/raft"
-	"github.com/openziti/fabric/controller/rest_server/operations/router"
-	"github.com/openziti/fabric/controller/rest_server/operations/service"
-	"github.com/openziti/fabric/controller/rest_server/operations/terminator"
+	"github.com/openziti/ziti/controller/rest_server/operations/circuit"
+	"github.com/openziti/ziti/controller/rest_server/operations/database"
+	"github.com/openziti/ziti/controller/rest_server/operations/inspect"
+	"github.com/openziti/ziti/controller/rest_server/operations/link"
+	"github.com/openziti/ziti/controller/rest_server/operations/raft"
+	"github.com/openziti/ziti/controller/rest_server/operations/router"
+	"github.com/openziti/ziti/controller/rest_server/operations/service"
+	"github.com/openziti/ziti/controller/rest_server/operations/terminator"
 )
 
 // NewZitiFabricAPI creates a new ZitiFabric instance

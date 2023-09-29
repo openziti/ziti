@@ -23,7 +23,7 @@ import (
 	"bytes"
 	"github.com/google/uuid"
 	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/fabric/controller/xt_smartrouting"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"math"
 	"testing"
 	"time"

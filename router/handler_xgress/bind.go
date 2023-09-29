@@ -17,9 +17,9 @@
 package handler_xgress
 
 import (
-	"github.com/openziti/fabric/router/forwarder"
-	"github.com/openziti/fabric/router/metrics"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/router/forwarder"
+	"github.com/openziti/ziti/router/metrics"
+	"github.com/openziti/ziti/router/xgress"
 )
 
 type bindHandler struct {

@@ -19,8 +19,8 @@ package db
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/openziti/fabric/controller/fields"
-	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltztest"
 	"go.etcd.io/bbolt"

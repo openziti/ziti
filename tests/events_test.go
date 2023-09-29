@@ -21,8 +21,8 @@ package tests
 import (
 	"fmt"
 	events2 "github.com/openziti/ziti/controller/events"
-	"github.com/openziti/fabric/controller/xt_smartrouting"
-	"github.com/openziti/fabric/controller/event"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
+	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/foundation/v2/stringz"
 	"reflect"
 	"sync"

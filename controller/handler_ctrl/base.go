@@ -18,8 +18,8 @@ package handler_ctrl
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/network"
 )
 
 type baseHandler struct {

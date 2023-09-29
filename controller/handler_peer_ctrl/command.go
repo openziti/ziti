@@ -19,9 +19,9 @@ package handler_peer_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/common/metrics"
-	"github.com/openziti/fabric/common/pb/cmd_pb"
-	"github.com/openziti/fabric/controller/raft"
+	"github.com/openziti/ziti/common/metrics"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/controller/raft"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/sirupsen/logrus"
 	"time"

@@ -18,8 +18,8 @@ package model
 
 import (
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )

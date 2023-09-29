@@ -3,8 +3,8 @@ package db
 import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/controller/xt_smartrouting"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
 	"testing"

@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/sirupsen/logrus"
 )
 

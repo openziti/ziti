@@ -4,12 +4,12 @@ import (
 	"net/http"
 
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/network"
-	nfraft "github.com/openziti/fabric/controller/raft"
-	"github.com/openziti/fabric/controller/rest_model"
-	"github.com/openziti/fabric/controller/rest_server/operations"
-	"github.com/openziti/fabric/controller/rest_server/operations/raft"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/network"
+	nfraft "github.com/openziti/ziti/controller/raft"
+	"github.com/openziti/ziti/controller/rest_model"
+	"github.com/openziti/ziti/controller/rest_server/operations"
+	"github.com/openziti/ziti/controller/rest_server/operations/raft"
 )
 
 func init() {

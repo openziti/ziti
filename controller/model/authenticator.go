@@ -19,7 +19,7 @@ package model
 import (
 	"crypto/x509"
 	"encoding/json"
-	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/ziti/controller/change"
 	"net/http"
 )
 

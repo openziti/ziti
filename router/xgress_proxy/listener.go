@@ -20,8 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/router/env"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 )

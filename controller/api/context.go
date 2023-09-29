@@ -19,7 +19,7 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/pkg/errors"
 	"net/http"
 )

@@ -17,12 +17,12 @@
 package network
 
 import (
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/controller/fields"
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/common/pb/cmd_pb"
-	"github.com/openziti/fabric/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/foundation/v2/versions"
 	"google.golang.org/protobuf/proto"
@@ -33,8 +33,8 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"

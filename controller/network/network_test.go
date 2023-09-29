@@ -1,17 +1,17 @@
 package network
 
 import (
-	"github.com/openziti/fabric/controller/event"
+	"github.com/openziti/ziti/controller/event"
 	"github.com/pkg/errors"
 	"runtime"
 	"testing"
 	"time"
 
-	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/common/logcontext"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"

@@ -20,10 +20,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/trace/pb"
-	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/common/handler_common"
-	"github.com/openziti/fabric/common/pb/mgmt_pb"
-	"github.com/openziti/fabric/common/trace"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/common/handler_common"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/common/trace"
 	"google.golang.org/protobuf/proto"
 )
 

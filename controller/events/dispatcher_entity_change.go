@@ -20,10 +20,10 @@ import (
 	"context"
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/event"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
@@ -65,7 +65,7 @@ func (self *Dispatcher) registerEntityChangeEventHandler(val interface{}, option
 	handler, ok := val.(event.EntityChangeEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/event/EntityChangeEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/event/EntityChangeEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	propagateAlways := false

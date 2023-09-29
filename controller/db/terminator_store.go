@@ -19,7 +19,7 @@ package db
 import (
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/foundation/v2/sequence"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"

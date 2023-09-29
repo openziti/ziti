@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/oidc_auth"
-	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/xweb/v2"
 	"net/http"

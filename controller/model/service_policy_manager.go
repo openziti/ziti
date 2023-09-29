@@ -19,11 +19,11 @@ package model
 import (
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/controller/fields"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/storage/boltz"
 	"google.golang.org/protobuf/proto"
 )

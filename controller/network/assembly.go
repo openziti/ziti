@@ -19,8 +19,8 @@ package network
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/fabric/controller/event"
-	"github.com/openziti/fabric/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/foundation/v2/info"
 	"time"
 )

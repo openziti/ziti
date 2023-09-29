@@ -17,7 +17,7 @@
 package router
 
 import (
-	"github.com/openziti/fabric/router/forwarder"
+	"github.com/openziti/ziti/router/forwarder"
 )
 
 type routerMonitor struct{}

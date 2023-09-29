@@ -2,7 +2,7 @@ package persistence
 
 import (
 	"github.com/google/uuid"
-	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
 	"testing"

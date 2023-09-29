@@ -18,12 +18,12 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/fields"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/common/pb/cmd_pb"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/storage/boltz"
 	"github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"

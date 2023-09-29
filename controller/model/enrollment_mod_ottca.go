@@ -20,11 +20,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/persistence"
-	fabricApiError "github.com/openziti/fabric/controller/apierror"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/models"
+	fabricApiError "github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/models"
 )
 
 type EnrollModuleOttCa struct {

@@ -3,7 +3,7 @@ package xgress_edge
 import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"

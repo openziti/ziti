@@ -17,8 +17,8 @@
 package db
 
 import (
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/controller/xt_smartrouting"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"

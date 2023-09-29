@@ -3,10 +3,10 @@ package network
 import (
 	"testing"
 
-	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/common/pb/cmd_pb"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/stretchr/testify/require"
 )
 

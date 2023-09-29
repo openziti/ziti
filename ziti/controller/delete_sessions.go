@@ -18,8 +18,8 @@ package controller
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller"
-	fabricdb "github.com/openziti/fabric/controller/db"
+	"github.com/openziti/ziti/controller"
+	fabricdb "github.com/openziti/ziti/controller/db"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/version"
 	"github.com/pkg/errors"

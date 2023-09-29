@@ -49,7 +49,7 @@ import (
 	flags "github.com/jessevdk/go-flags"
 	"golang.org/x/net/netutil"
 
-	"github.com/openziti/fabric/controller/rest_server/operations"
+	"github.com/openziti/ziti/controller/rest_server/operations"
 )
 
 const (

@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/common/logcontext"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/stretchr/testify/assert"
 )

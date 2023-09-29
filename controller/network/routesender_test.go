@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/controller/xt_smartrouting"
-	"github.com/openziti/fabric/common/ctrl_msg"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
+	"github.com/openziti/ziti/common/ctrl_msg"
 )
 
 func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(t *testing.T) {

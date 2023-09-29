@@ -1,7 +1,7 @@
 package router
 
 import (
-	"github.com/openziti/fabric/router/env"
+	"github.com/openziti/ziti/router/env"
 	"github.com/stretchr/testify/require"
 	"os"
 	"path"

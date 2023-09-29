@@ -18,7 +18,7 @@ package xgress_proxy
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 )

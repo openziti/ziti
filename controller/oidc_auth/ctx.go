@@ -2,7 +2,7 @@ package oidc_auth
 
 import (
 	"context"
-	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/zitadel/oidc/v2/pkg/oidc"
 	"net/http"
 )

@@ -2,8 +2,8 @@ package testutil
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/common/handler_common"
-	"github.com/openziti/fabric/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/common/handler_common"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/stretchr/testify/require"
 	"time"
 )

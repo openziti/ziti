@@ -18,7 +18,7 @@ package env
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/common/config"
+	"github.com/openziti/ziti/common/config"
 )
 
 // An Xrctrl allows adding handlers to the router <-> controller connection

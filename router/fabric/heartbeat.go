@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/env"
-	routerEnv "github.com/openziti/fabric/router/env"
+	routerEnv "github.com/openziti/ziti/router/env"
 	"google.golang.org/protobuf/proto"
 	"time"
 )

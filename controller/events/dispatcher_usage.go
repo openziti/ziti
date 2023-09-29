@@ -18,7 +18,7 @@ package events
 
 import (
 	"fmt"
-	"github.com/openziti/fabric/controller/event"
+	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"reflect"
@@ -81,13 +81,13 @@ func (self *Dispatcher) registerUsageEventHandler(val interface{}, config map[st
 	if version == 2 {
 		handler, ok := val.(event.UsageEventHandler)
 		if !ok {
-			return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/event/UsageEventHandler interface.", reflect.TypeOf(val))
+			return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/event/UsageEventHandler interface.", reflect.TypeOf(val))
 		}
 		self.AddUsageEventHandler(handler)
 	} else if version == 3 {
 		handler, ok := val.(event.UsageEventV3Handler)
 		if !ok {
-			return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/event/UsageEventV3Handler interface.", reflect.TypeOf(val))
+			return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/event/UsageEventV3Handler interface.", reflect.TypeOf(val))
 		}
 
 		if includeListVal, found := config["include"]; found {

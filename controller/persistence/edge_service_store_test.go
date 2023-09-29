@@ -19,8 +19,8 @@ package persistence
 import (
 	"fmt"
 	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/storage/boltztest"
 	"testing"
 	"time"

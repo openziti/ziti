@@ -19,9 +19,9 @@ package handler_link
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/router/forwarder"
-	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/fabric/router/xlink"
+	"github.com/openziti/ziti/router/forwarder"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xlink"
 )
 
 type payloadHandler struct {

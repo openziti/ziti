@@ -19,9 +19,9 @@ package api_impl
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/fabric/controller/event"
-	"github.com/openziti/fabric/controller/events"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/events"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"strings"

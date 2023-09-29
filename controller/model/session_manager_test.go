@@ -3,7 +3,7 @@ package model
 import (
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/storage/boltztest"
 	"github.com/stretchr/testify/require"
 	"testing"

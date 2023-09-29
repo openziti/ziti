@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/fabric/controller/fields"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 )

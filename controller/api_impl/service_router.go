@@ -18,11 +18,11 @@ package api_impl
 
 import (
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/fields"
-	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/controller/rest_server/operations"
-	"github.com/openziti/fabric/controller/rest_server/operations/service"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/rest_server/operations"
+	"github.com/openziti/ziti/controller/rest_server/operations/service"
 )
 
 func init() {

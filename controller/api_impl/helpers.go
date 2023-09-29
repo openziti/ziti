@@ -4,9 +4,9 @@ import (
 	"fmt"
 	openApiErrors "github.com/go-openapi/errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/api"
-	apierror2 "github.com/openziti/fabric/controller/apierror"
-	"github.com/openziti/fabric/controller/rest_model"
+	"github.com/openziti/ziti/controller/api"
+	apierror2 "github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 )

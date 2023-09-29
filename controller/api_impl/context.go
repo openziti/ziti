@@ -18,8 +18,8 @@ package api_impl
 
 import (
 	"bytes"
-	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/idgen"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/idgen"
 	"io"
 	"net/http"
 )

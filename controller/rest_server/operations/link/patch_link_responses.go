@@ -34,7 +34,7 @@ import (
 
 	"github.com/go-openapi/runtime"
 
-	"github.com/openziti/fabric/controller/rest_model"
+	"github.com/openziti/ziti/controller/rest_model"
 )
 
 // PatchLinkOKCode is the HTTP code returned for type PatchLinkOK
