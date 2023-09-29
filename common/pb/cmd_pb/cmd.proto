@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package ziti.cmd.pb;
+option go_package = "github.com/openziti/fabric/pb/cmd_pb";
+
+// ContentTypes should be in the range 2000 - 2999, to ensure they don't overlap with ctrl_pb messages
+enum ContentType {
+  ContentTypeZero = 0;
+
+  NewLogEntryType = 2050;
+  ErrorResponseType = 2051;
+  SuccessResponseType = 2052;
+
+  AddPeerRequestType = 2053;
+  RemovePeerRequestType = 2054;
+  TransferLeadershipRequestType = 2055;
+}
+
+enum CommandType {
+  Zero = 0;
+
+  CreateEntityType = 1;
+  UpdateEntityType = 2;
+  DeleteEntityType = 3;
+  DeleteTerminatorsBatchType = 4;
+
+  SyncSnapshot = 10;
+}
+
+message ChangeContext {
+  map<string, string> attributes = 1;
+  uint64 raftIndex = 2;
+}
+
+message AddPeerRequest {
+  string id = 1;
+  string addr = 2;
+  bool isVoter = 3;
+
+  ChangeContext ctx = 4;
+}
+
+message RemovePeerRequest {
+  string id = 1;
+  ChangeContext ctx = 2;
+}
+
+message TransferLeadershipRequest {
+  string id = 1;
+  ChangeContext ctx = 2;
+}
+
+message CreateEntityCommand {
+  string entityType = 1;
+  bytes entityData = 2;
+  uint32 flags = 3;
+  ChangeContext ctx = 4;
+}
+
+message UpdateEntityCommand {
+  string entityType = 1;
+  bytes entityData = 2;
+  repeated string updatedFields = 3;
+  uint32 flags = 4;
+  ChangeContext ctx = 5;
+}
+
+message DeleteEntityCommand {
+  string entityId = 1;
+  string entityType = 2;
+  ChangeContext ctx = 3;
+}
+
+message SyncSnapshotCommand {
+  string snapshotId = 1;
+  bytes snapshot = 2;
+}
+
+message DeleteTerminatorsBatchCommand {
+  repeated string entityIds = 1;
+  ChangeContext ctx = 2;
+}
+
+message TagValue {
+  oneof value {
+    bool boolValue = 1;
+    string stringValue = 2;
+    double fpValue = 3;
+    bool nilValue = 4;
+  }
+}
+
+message Service {
+  string id = 1;
+  string name = 2;
+  string terminatorStrategy = 3;
+  map<string, TagValue> tags = 4;
+}
+
+message Router {
+  string id = 1;
+  string name = 2;
+  bytes fingerprint = 3;
+  uint32 cost = 4;
+  bool noTraversal = 5;
+  bool disabled = 6;
+  map<string, TagValue> tags = 7;
+}
+
+message Terminator {
+  string id = 1;
+  string serviceId = 2;
+  string routerId = 3;
+  string binding = 4;
+  string address = 5;
+  string instanceId = 6;
+  bytes instanceSecret = 7;
+  uint32 cost = 8;
+  uint32 precedence = 9;
+  map<uint32, bytes> peerData = 10;
+  map<string, TagValue> tags = 11;
+  string hostId = 12;
+  bool isSystem = 13;
+  uint32 savedPrecedence = 14;
+}

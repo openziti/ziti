@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package ziti.mgmt_pb;
+option go_package = "github.com/openziti/fabric/pb/mgmt_pb";
+
+import "google/protobuf/timestamp.proto";
+
+enum ContentType {
+  // Protoc says this has to be here
+  Zero = 0;
+
+  // Streams
+  StreamEventsRequestType = 10040;
+  StreamEventsEventType = 10041;
+
+  TogglePipeTracesRequestType = 10044;
+  ToggleCircuitTracesRequestType = 10045;
+  StreamTracesRequestType = 10046;
+  StreamTracesEventType = 10047;
+
+
+  // Inspect
+  InspectRequestType = 10048;
+  InspectResponseType = 10049;
+
+  // Snapshot db
+  SnapshotDbRequestType = 10070;
+
+  // Router Mgmt
+  RouterDebugForgetLinkRequestType = 10071;
+  RouterDebugToggleCtrlChannelRequestType = 10072;
+  RouterDebugUpdateRouteRequestType = 10073;
+  RouterDebugDumpForwarderTablesRequestType = 10074;
+  RouterDebugDumpLinksRequestType = 10075;
+  RouterDebugUnrouteRequestType = 10076;
+  RouterQuiesce = 10077;
+  RouterDequiesce = 10078;
+
+  // Raft
+  RaftListMembersRequestType = 10080;
+  RaftListMembersResponseType = 10081;
+  RaftAddPeerRequestType = 10082;
+  RaftRemovePeerRequestType = 10083;
+  RaftTransferLeadershipRequestType = 10084;
+  RaftInitFromDb = 10085;
+}
+
+enum Header {
+  NoneHeader = 0;
+
+  EventTypeHeader = 10;
+  CtrlChanToggle = 11;
+  ControllerId = 12;
+}
+
+//
+// --- Streams ------------------------------------------------------------------------------------------------------ //
+//
+
+message StreamMetricsRequest {
+  repeated MetricMatcher matchers = 1;
+
+  message MetricMatcher {
+    string nameRegex = 1;
+    string sourceIDRegex = 2;
+  }
+}
+
+message StreamMetricsEvent {
+  string sourceId = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  map<string, string> tags = 3;
+
+  map<string, int64> intMetrics = 4;
+  map<string, double> floatMetrics = 5;
+
+  repeated IntervalMetric intervalMetrics = 6;
+
+  message IntervalMetric {
+    string name = 1;
+    google.protobuf.Timestamp intervalStartUTC = 2;
+    google.protobuf.Timestamp intervalEndUTC = 3;
+    map<string, uint64> values = 4;
+  }
+
+  map<string, string> metricGroup = 7;
+}
+
+enum StreamCircuitEventType {
+  CircuitCreated = 0;
+  CircuitDeleted = 1;
+  CircuitPresent = 2;
+  PathUpdated = 3;
+  CircuitFailed = 4;
+}
+
+message Path {
+  repeated string nodes = 1;
+  repeated string links = 2;
+  string terminatorLocalAddress = 3;
+}
+
+message StreamCircuitsEvent {
+  StreamCircuitEventType eventType = 1;
+  string circuitId = 2;
+  string clientId = 3;
+  string serviceId = 4;
+  Path path = 5;
+  optional int64 creationTimespan = 6;
+  string terminatorId = 7;
+}
+
+message ToggleCircuitTracesRequest {
+  bool enable = 1;
+  string serviceRegex = 2;
+  string clientRegex = 3;
+}
+
+enum TraceFilterType {
+  EXCLUDE = 0;
+  INCLUDE = 1;
+}
+
+message StreamTracesRequest {
+  bool enabledFilter = 1;
+  TraceFilterType filterType = 2;
+  repeated int32 contentTypes = 3;
+}
+
+message InspectRequest {
+  string appRegex = 1;
+  repeated string requestedValues = 2;
+}
+
+message InspectResponse {
+  bool success = 1;
+  repeated string errors = 2;
+  repeated InspectValue values = 3;
+
+  message InspectValue {
+    string appId = 1;
+    string name = 2;
+    string value = 3;
+  }
+}
+
+// Raft
+message RaftMember  {
+  string Id = 1;
+  string Addr = 2;
+  bool IsVoter = 3;
+  bool IsLeader = 4;
+  string Version = 5;
+  bool IsConnected = 6;
+}
+
+message RaftMemberListResponse {
+  repeated RaftMember members = 1;
+}
