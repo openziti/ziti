@@ -18,13 +18,15 @@ package events
 
 import (
 	"fmt"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/persistence"
 	"io"
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 )
 
@@ -61,6 +63,10 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result.RegisterEventTypeFunctions(event.UsageEventsNs, result.registerUsageEventHandler, result.unregisterUsageEventHandler)
 	result.RegisterEventTypeFunctions(event.ClusterEventsNs, result.registerClusterEventHandler, result.unregisterClusterEventHandler)
 
+	result.RegisterEventTypeFunctions(event.ApiSessionEventNS, result.registerApiSessionEventHandler, result.unregisterApiSessionEventHandler)
+	result.RegisterEventTypeFunctions(event.EntityCountEventNS, result.registerEntityCountEventHandler, result.unregisterEntityCountEventHandler)
+	result.RegisterEventTypeFunctions(event.SessionEventNS, result.registerSessionEventHandler, result.unregisterSessionEventHandler)
+
 	result.RegisterFormatterFactory("json", event.FormatterFactoryF(func(sink event.FormattedEventSink) io.Closer {
 		return NewJsonFormatter(16, sink)
 	}))
@@ -87,11 +93,18 @@ type Dispatcher struct {
 	usageEventV3Handlers      concurrenz.CopyOnWriteSlice[event.UsageEventV3Handler]
 	clusterEventHandlers      concurrenz.CopyOnWriteSlice[event.ClusterEventHandler]
 
+	apiSessionEventHandlers  concurrenz.CopyOnWriteSlice[event.ApiSessionEventHandler]
+	entityCountEventHandlers concurrenz.CopyOnWriteSlice[*entityCountState]
+	sessionEventHandlers     concurrenz.CopyOnWriteSlice[event.SessionEventHandler]
+
 	metricsMappers concurrenz.CopyOnWriteSlice[event.MetricsMapper]
 
 	registrationHandlers  concurrenz.CopyOnWriteMap[string, event.TypeRegistrar]
 	eventHandlerFactories concurrenz.CopyOnWriteMap[string, event.HandlerFactory]
 	formatterFactories    concurrenz.CopyOnWriteMap[string, event.FormatterFactory]
+
+	network *network.Network
+	stores  *persistence.Stores
 
 	entityChangeEventsDispatcher entityChangeEventDispatcher
 	entityTypes                  []string
@@ -99,6 +112,7 @@ type Dispatcher struct {
 }
 
 func (self *Dispatcher) InitializeNetworkEvents(n *network.Network) {
+	self.network = n
 	self.initMetricsEvents(n)
 	self.initRouterEvents(n)
 	self.initServiceEvents(n)
@@ -108,6 +122,25 @@ func (self *Dispatcher) InitializeNetworkEvents(n *network.Network) {
 
 	self.AddMetricsMapper(ctrlChannelMetricsMapper{}.mapMetrics)
 	self.AddMetricsMapper((&linkMetricsMapper{network: n}).mapMetrics)
+}
+
+func (self *Dispatcher) InitializeEdgeEvents(stores *persistence.Stores) {
+	self.stores = stores
+	self.initApiSessionEvents(self.stores)
+	self.initSessionEvents(self.stores)
+	self.initEntityEvents()
+
+	fabricStores := map[boltz.Store]struct{}{}
+
+	for _, store := range self.network.GetStores().GetStoreList() {
+		fabricStores[store] = struct{}{}
+	}
+
+	for _, store := range self.stores.GetStores() {
+		if _, found := fabricStores[store]; !found {
+			self.AddEntityChangeSource(store)
+		}
+	}
 }
 
 func (self *Dispatcher) AddMetricsMapper(mapper event.MetricsMapper) {

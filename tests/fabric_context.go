@@ -23,16 +23,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-resty/resty/v2"
+	"github.com/openziti/foundation/v2/util"
+	"github.com/openziti/foundation/v2/versions"
+	id "github.com/openziti/identity"
+	"github.com/openziti/identity/certtools"
 	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/rest_client"
 	restClientRouter "github.com/openziti/ziti/controller/rest_client/router"
 	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/controller/rest_util"
 	"github.com/openziti/ziti/router"
-	"github.com/openziti/foundation/v2/util"
-	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/identity"
-	"github.com/openziti/identity/certtools"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -43,10 +43,10 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/controller"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -102,7 +102,7 @@ func (ctx *FabricTestContext) T() *testing.T {
 	return ctx.testing
 }
 
-func (ctx *FabricTestContext) NewTransport(i identity.Identity) *http.Transport {
+func (ctx *FabricTestContext) NewTransport(i id.Identity) *http.Transport {
 	var tlsClientConfig *tls2.Config
 
 	if i != nil {
@@ -135,12 +135,12 @@ func (ctx *FabricTestContext) NewHttpClient(transport *http.Transport) *http.Cli
 	}
 }
 
-func (ctx *FabricTestContext) NewRestClient(i identity.Identity) *resty.Client {
+func (ctx *FabricTestContext) NewRestClient(i id.Identity) *resty.Client {
 	return resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport(i)))
 }
 
 func (ctx *FabricTestContext) NewRestClientWithDefaults() *resty.Client {
-	id, err := identity.LoadClientIdentity(
+	id, err := id.LoadClientIdentity(
 		"./testdata/valid_client_cert/client.cert",
 		"./testdata/valid_client_cert/client.key",
 		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")
@@ -272,7 +272,7 @@ func (ctx *FabricTestContext) Teardown() {
 }
 
 func (ctx *FabricTestContext) createFabricRestClient() *rest_client.ZitiFabric {
-	id, err := identity.LoadClientIdentity(
+	id, err := id.LoadClientIdentity(
 		"./testdata/valid_client_cert/client.cert",
 		"./testdata/valid_client_cert/client.key",
 		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")

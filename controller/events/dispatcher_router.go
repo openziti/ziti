@@ -51,7 +51,7 @@ func (self *Dispatcher) registerRouterEventHandler(val interface{}, _ map[string
 	handler, ok := val.(event.RouterEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/event/RouterEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/RouterEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	self.AddRouterEventHandler(handler)

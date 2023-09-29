@@ -51,7 +51,7 @@ func (self *Dispatcher) registerCircuitEventHandler(val interface{}, config map[
 	handler, ok := val.(event.CircuitEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/event/CircuitEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/CircuitEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	var includeList []string

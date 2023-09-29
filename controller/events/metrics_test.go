@@ -19,8 +19,8 @@ package events
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/ziti/controller/event"
 	metrics2 "github.com/openziti/metrics"
+	"github.com/openziti/ziti/controller/event"
 	"github.com/stretchr/testify/require"
 	"regexp"
 	"testing"

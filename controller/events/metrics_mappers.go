@@ -17,9 +17,9 @@
 package events
 
 import (
+	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/metrics/metrics_pb"
 	"strings"
 )
 

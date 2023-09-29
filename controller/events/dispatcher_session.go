@@ -18,39 +18,40 @@ package events
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/persistence"
 	"github.com/pkg/errors"
 	"reflect"
 	"time"
 )
 
-func (self *EdgeEventDispatcher) AddSessionEventHandler(handler SessionEventHandler) {
+func (self *Dispatcher) AddSessionEventHandler(handler event.SessionEventHandler) {
 	self.sessionEventHandlers.Append(handler)
 }
 
-func (self *EdgeEventDispatcher) RemoveSessionEventHandler(handler SessionEventHandler) {
-	self.sessionEventHandlers.DeleteIf(func(val SessionEventHandler) bool {
+func (self *Dispatcher) RemoveSessionEventHandler(handler event.SessionEventHandler) {
+	self.sessionEventHandlers.DeleteIf(func(val event.SessionEventHandler) bool {
 		if val == handler {
 			return true
 		}
-		if w, ok := val.(SessionEventHandlerWrapper); ok {
+		if w, ok := val.(event.SessionEventHandlerWrapper); ok {
 			return w.IsWrapping(handler)
 		}
 		return false
 	})
 }
 
-func (self *EdgeEventDispatcher) initSessionEvents(stores *persistence.Stores) {
+func (self *Dispatcher) initSessionEvents(stores *persistence.Stores) {
 	stores.Session.AddEntityEventListenerF(self.sessionCreated, boltz.EntityCreated)
 	stores.Session.AddEntityEventListenerF(self.sessionDeleted, boltz.EntityDeleted)
 }
 
-func (self *EdgeEventDispatcher) sessionCreated(session *persistence.Session) {
-	event := &SessionEvent{
-		Namespace:    SessionEventNS,
-		EventType:    SessionEventTypeCreated,
+func (self *Dispatcher) sessionCreated(session *persistence.Session) {
+	evt := &event.SessionEvent{
+		Namespace:    event.SessionEventNS,
+		EventType:    event.SessionEventTypeCreated,
 		Id:           session.Id,
 		SessionType:  session.Type,
 		Timestamp:    time.Now(),
@@ -61,14 +62,14 @@ func (self *EdgeEventDispatcher) sessionCreated(session *persistence.Session) {
 	}
 
 	for _, handler := range self.sessionEventHandlers.Value() {
-		go handler.AcceptSessionEvent(event)
+		go handler.AcceptSessionEvent(evt)
 	}
 }
 
-func (self *EdgeEventDispatcher) sessionDeleted(session *persistence.Session) {
-	event := &SessionEvent{
-		Namespace:    SessionEventNS,
-		EventType:    SessionEventTypeDeleted,
+func (self *Dispatcher) sessionDeleted(session *persistence.Session) {
+	evt := &event.SessionEvent{
+		Namespace:    event.SessionEventNS,
+		EventType:    event.SessionEventTypeDeleted,
 		Id:           session.Id,
 		SessionType:  session.Type,
 		Timestamp:    time.Now(),
@@ -78,15 +79,15 @@ func (self *EdgeEventDispatcher) sessionDeleted(session *persistence.Session) {
 	}
 
 	for _, handler := range self.sessionEventHandlers.Value() {
-		go handler.AcceptSessionEvent(event)
+		go handler.AcceptSessionEvent(evt)
 	}
 }
 
-func (self *EdgeEventDispatcher) registerSessionEventHandler(val interface{}, config map[string]interface{}) error {
-	handler, ok := val.(SessionEventHandler)
+func (self *Dispatcher) registerSessionEventHandler(val interface{}, config map[string]interface{}) error {
+	handler, ok := val.(event.SessionEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/events/SessionEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/edge/events/SessionEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	var includeList []string
@@ -98,16 +99,16 @@ func (self *EdgeEventDispatcher) registerSessionEventHandler(val interface{}, co
 				includeList = append(includeList, fmt.Sprintf("%v", val))
 			}
 		} else {
-			return errors.Errorf("invalid type %v for %v include configuration", reflect.TypeOf(includeVar), SessionEventNS)
+			return errors.Errorf("invalid type %v for %v include configuration", reflect.TypeOf(includeVar), event.SessionEventNS)
 		}
 	}
 
-	if len(includeList) == 0 || (len(includeList) == 2 && stringz.ContainsAll(includeList, SessionEventTypeCreated, SessionEventTypeDeleted)) {
+	if len(includeList) == 0 || (len(includeList) == 2 && stringz.ContainsAll(includeList, event.SessionEventTypeCreated, event.SessionEventTypeDeleted)) {
 		self.AddSessionEventHandler(handler)
 	} else {
 		for _, include := range includeList {
-			if include != SessionEventTypeCreated && include != SessionEventTypeDeleted {
-				return errors.Errorf("invalid include %v for %v. valid values are ['created', 'deleted']", include, SessionEventNS)
+			if include != event.SessionEventTypeCreated && include != event.SessionEventTypeDeleted {
+				return errors.Errorf("invalid include %v for %v. valid values are ['created', 'deleted']", include, event.SessionEventNS)
 			}
 		}
 
@@ -120,28 +121,28 @@ func (self *EdgeEventDispatcher) registerSessionEventHandler(val interface{}, co
 	return nil
 }
 
-func (self *EdgeEventDispatcher) unregisterSessionEventHandler(val interface{}) {
-	if handler, ok := val.(SessionEventHandler); ok {
+func (self *Dispatcher) unregisterSessionEventHandler(val interface{}) {
+	if handler, ok := val.(event.SessionEventHandler); ok {
 		self.RemoveSessionEventHandler(handler)
 	}
 }
 
 type sessionEventAdapter struct {
-	wrapped     SessionEventHandler
+	wrapped     event.SessionEventHandler
 	includeList []string
 }
 
-func (adapter *sessionEventAdapter) AcceptSessionEvent(event *SessionEvent) {
+func (adapter *sessionEventAdapter) AcceptSessionEvent(event *event.SessionEvent) {
 	if stringz.Contains(adapter.includeList, event.EventType) {
 		adapter.wrapped.AcceptSessionEvent(event)
 	}
 }
 
-func (self *sessionEventAdapter) IsWrapping(value SessionEventHandler) bool {
+func (self *sessionEventAdapter) IsWrapping(value event.SessionEventHandler) bool {
 	if self.wrapped == value {
 		return true
 	}
-	if w, ok := self.wrapped.(SessionEventHandlerWrapper); ok {
+	if w, ok := self.wrapped.(event.SessionEventHandlerWrapper); ok {
 		return w.IsWrapping(value)
 	}
 	return false

@@ -4,7 +4,7 @@ package tests
 
 import (
 	"fmt"
-	"github.com/openziti/identity"
+	id "github.com/openziti/identity"
 	"net/http"
 	"testing"
 	"time"
@@ -27,7 +27,7 @@ func Test_FabricAuthWithCertFromDifferentChain(t *testing.T) {
 	ctx.StartServer()
 	ctx.requireRestPort(5 * time.Second)
 
-	badId, err := identity.LoadClientIdentity(
+	badId, err := id.LoadClientIdentity(
 		"./testdata/invalid_client_cert/client.cert",
 		"./testdata/invalid_client_cert/client.key",
 		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")

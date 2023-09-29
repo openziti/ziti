@@ -20,10 +20,9 @@ package tests
 
 import (
 	"fmt"
-	events2 "github.com/openziti/ziti/controller/events"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
-	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"reflect"
 	"sync"
 	"testing"
@@ -44,7 +43,7 @@ func (self *eventsCollector) AcceptUsageEvent(event *event.UsageEvent) {
 	self.acceptEvent(event)
 }
 
-func (self *eventsCollector) AcceptSessionEvent(event *events2.SessionEvent) {
+func (self *eventsCollector) AcceptSessionEvent(event *event.SessionEvent) {
 	self.acceptEvent(event)
 }
 
@@ -77,9 +76,8 @@ func Test_EventsTest(t *testing.T) {
 	dispatcher.AddCircuitEventHandler(ec)
 	defer dispatcher.RemoveCircuitEventHandler(ec)
 
-	edgeDispatcher := ctx.EdgeController.AppEnv.EventDispatcher
-	edgeDispatcher.AddSessionEventHandler(ec)
-	defer edgeDispatcher.RemoveSessionEventHandler(ec)
+	dispatcher.AddSessionEventHandler(ec)
+	defer dispatcher.RemoveSessionEventHandler(ec)
 
 	dispatcher.AddUsageEventHandler(ec)
 	defer dispatcher.RemoveUsageEventHandler(ec)
@@ -117,14 +115,14 @@ func Test_EventsTest(t *testing.T) {
 	ctx.Req.NoError(err)
 
 	evt := ec.PopNextEvent(ctx, "edge.sessions.created", time.Second)
-	edgeSession, ok := evt.(*events2.SessionEvent)
+	edgeSession, ok := evt.(*event.SessionEvent)
 	ctx.Req.True(ok)
 	ctx.Req.Equal("edge.sessions", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal(hostIdentity.Id, edgeSession.IdentityId)
 
 	evt = ec.PopNextEvent(ctx, "edge.sessions.created", time.Second)
-	edgeSession, ok = evt.(*events2.SessionEvent)
+	edgeSession, ok = evt.(*event.SessionEvent)
 	ctx.Req.True(ok)
 	ctx.Req.Equal("edge.sessions", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)

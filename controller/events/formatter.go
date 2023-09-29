@@ -195,6 +195,36 @@ func (event *JsonEntityChangeEvent) Format() ([]byte, error) {
 	return MarshalJson(event)
 }
 
+type JsonSessionEvent event.SessionEvent
+
+func (event *JsonSessionEvent) GetEventType() string {
+	return "session"
+}
+
+func (event *JsonSessionEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
+}
+
+type JsonApiSessionEvent event.ApiSessionEvent
+
+func (event *JsonApiSessionEvent) GetEventType() string {
+	return "apiSession"
+}
+
+func (event *JsonApiSessionEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
+}
+
+type JsonEntityCountEvent event.EntityCountEvent
+
+func (event *JsonEntityCountEvent) GetEventType() string {
+	return "entityCount"
+}
+
+func (event *JsonEntityCountEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
+}
+
 func NewJsonFormatter(queueDepth int, sink event.FormattedEventSink) *JsonFormatter {
 	result := &JsonFormatter{
 		BaseFormatter: BaseFormatter{
@@ -249,6 +279,18 @@ func (formatter *JsonFormatter) AcceptClusterEvent(evt *event.ClusterEvent) {
 
 func (formatter *JsonFormatter) AcceptEntityChangeEvent(evt *event.EntityChangeEvent) {
 	formatter.AcceptLoggingEvent((*JsonEntityChangeEvent)(evt))
+}
+
+func (formatter *JsonFormatter) AcceptApiSessionEvent(event *event.ApiSessionEvent) {
+	formatter.AcceptLoggingEvent((*JsonApiSessionEvent)(event))
+}
+
+func (formatter *JsonFormatter) AcceptSessionEvent(event *event.SessionEvent) {
+	formatter.AcceptLoggingEvent((*JsonSessionEvent)(event))
+}
+
+func (formatter *JsonFormatter) AcceptEntityCountEvent(event *event.EntityCountEvent) {
+	formatter.AcceptLoggingEvent((*JsonEntityCountEvent)(event))
 }
 
 var histogramBuckets = map[string]string{"p50": "0.50", "p75": "0.75", "p95": "0.95", "p99": "0.99", "p999": "0.999", "p9999": "0.9999"}

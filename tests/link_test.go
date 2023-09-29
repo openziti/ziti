@@ -5,6 +5,10 @@ package tests
 import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/foundation/v2/goroutines"
+	id "github.com/openziti/identity"
+	"github.com/openziti/metrics"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/link"
@@ -12,10 +16,6 @@ import (
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/ziti/router/xlink_transport"
 	"github.com/openziti/ziti/tests/testutil"
-	"github.com/openziti/foundation/v2/goroutines"
-	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
-	"github.com/openziti/transport/v2"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"io"
@@ -120,7 +120,7 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 	ctx.startRouter(1)
 	ctx.Req.NoError(ctx.waitForPort("127.0.0.1:6004", 2*time.Second))
 
-	badId, err := identity.LoadClientIdentity(
+	badId, err := id.LoadClientIdentity(
 		"./testdata/invalid_client_cert/client.cert",
 		"./testdata/invalid_client_cert/client.key",
 		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")
@@ -156,7 +156,7 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 	ctx.startRouter(1)
 	ctx.Req.NoError(ctx.waitForPort("127.0.0.1:6004", 2*time.Second))
 
-	router2Id, err := identity.LoadClientIdentity(
+	router2Id, err := id.LoadClientIdentity(
 		"./testdata/router/002-client.cert.pem",
 		"./testdata/router/002.key.pem",
 		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")

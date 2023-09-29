@@ -82,11 +82,11 @@ func (t testUnderlayFactory) Create(time.Duration, transport.Configuration) (cha
 }
 
 func Test_Throughput(t *testing.T) {
+	t.SkipNow()
+
 	underlayFactory := testUnderlayFactory{
 		underlay: testUnderlay{},
 	}
-
-	t.SkipNow()
 
 	options := channel.DefaultOptions()
 	options.OutQueueSize = 64

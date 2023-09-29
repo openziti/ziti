@@ -38,22 +38,6 @@ import (
 	managementServer "github.com/openziti/edge-api/rest_management_api_server"
 	managementOperations "github.com/openziti/edge-api/rest_management_api_server/operations"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/common/eid"
-	edgeConfig "github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/events"
-	"github.com/openziti/ziti/controller/internal/permissions"
-	"github.com/openziti/ziti/controller/jwtsigner"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/oidc_auth"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/xctrl"
-	"github.com/openziti/ziti/controller/xmgmt"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
@@ -61,6 +45,22 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/api"
+	edgeConfig "github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/events"
+	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/jwtsigner"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/oidc_auth"
+	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/ziti/controller/xctrl"
+	"github.com/openziti/ziti/controller/xmgmt"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
@@ -98,7 +98,6 @@ type AppEnv struct {
 	InstanceId              string
 	enrollmentSigner        jwtsigner.Signer
 	TraceManager            *TraceManager
-	EventDispatcher         *events.EdgeEventDispatcher
 	ServerCert              *tls.Certificate
 	ServerCertSigningMethod jwt.SigningMethod
 }
@@ -644,7 +643,7 @@ func (ae *AppEnv) InitPersistence() error {
 	})
 
 	ae.Managers = model.InitEntityManagers(ae)
-	ae.EventDispatcher = events.NewEdgeEventDispatcher(ae.GetHostController().GetNetwork(), ae.GetDbProvider(), ae.BoltStores, ae.GetHostController().GetCloseNotifyChannel())
+	ae.GetHostController().GetNetwork().GetEventDispatcher().(*events.Dispatcher).InitializeEdgeEvents(ae.BoltStores)
 
 	persistence.ServiceEvents.AddServiceEventHandler(ae.HandleServiceEvent)
 	ae.BoltStores.Identity.AddEntityIdListener(ae.IdentityRefreshMap.Remove, boltz.EntityDeletedAsync)

@@ -42,7 +42,7 @@ func (self *Dispatcher) registerLinkEventHandler(val interface{}, _ map[string]i
 	handler, ok := val.(event.LinkEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/event/LinkEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/LinkEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	self.linkEventHandlers.Append(handler)

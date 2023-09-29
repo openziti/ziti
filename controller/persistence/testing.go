@@ -18,20 +18,19 @@ package persistence
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/events"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"testing"
@@ -46,7 +45,6 @@ func newTestConfig(ctx *TestContext) *testConfig {
 		options:         options,
 		metricsRegistry: metrics.NewRegistry("test", nil),
 		versionProvider: versions.NewDefaultVersionProvider(),
-		eventDispatcher: events.NewDispatcher(ctx.closeNotify),
 	}
 }
 
@@ -55,11 +53,10 @@ type testConfig struct {
 	options         *network.Options
 	metricsRegistry metrics.Registry
 	versionProvider versions.VersionProvider
-	eventDispatcher *events.Dispatcher
 }
 
 func (self *testConfig) GetEventDispatcher() event.Dispatcher {
-	return self.eventDispatcher
+	return event.DispatcherMock{}
 }
 
 func (self *testConfig) GetId() *identity.TokenId {

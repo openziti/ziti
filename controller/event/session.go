@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package events
+package event
 
 import (
 	"fmt"

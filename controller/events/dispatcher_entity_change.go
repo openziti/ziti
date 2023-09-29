@@ -20,12 +20,12 @@ import (
 	"context"
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/genext"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/foundation/v2/genext"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -65,7 +65,7 @@ func (self *Dispatcher) registerEntityChangeEventHandler(val interface{}, option
 	handler, ok := val.(event.EntityChangeEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/event/EntityChangeEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/EntityChangeEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	propagateAlways := false
@@ -140,7 +140,7 @@ func (self *Dispatcher) initEntityChangeEvents(n *network.Network) {
 		self.AddEntityChangeSource(store)
 	}
 	self.AddGlobalEntityChangeMetadata("version", n.VersionProvider.Version())
-	go self.entityChangeEventsDispatcher.flushLoop(n.GetCloseNotify())
+	go self.entityChangeEventsDispatcher.flushLoop()
 }
 
 func (self *Dispatcher) AddEntityChangeSource(store boltz.Store) {
@@ -295,13 +295,10 @@ func (self *entityChangeEventDispatcher) notifyFlush() {
 	}
 }
 
-func (self *entityChangeEventDispatcher) flushLoop(closeNotify <-chan struct{}) {
+func (self *entityChangeEventDispatcher) flushLoop() {
 	for {
-		// wait to be notified of an event or for controller shutdown
-		select {
-		case <-self.notifyCh:
-		case <-closeNotify:
-		}
+		// wait to be notified of an event
+		<-self.notifyCh
 
 		// wait until we've not gotten an event for 5 seconds before cleaning up
 		flushed := false
@@ -312,9 +309,6 @@ func (self *entityChangeEventDispatcher) flushLoop(closeNotify <-chan struct{}) 
 				pfxlog.Logger().Debug("cleaning up entity change events")
 				self.flushCommittedTxEvents(false)
 				flushed = true
-			case <-closeNotify:
-				self.flushCommittedTxEvents(false)
-				return
 			}
 		}
 	}

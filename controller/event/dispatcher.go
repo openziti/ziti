@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/storage/boltz"
 	"io"
 	"regexp"
+	"time"
 )
 
 // A TypeRegistrar handles registering and unregistering handlers for a given event type
@@ -110,8 +111,18 @@ type Dispatcher interface {
 
 	AddEntityChangeEventHandler(handler EntityChangeEventHandler)
 	RemoveEntityChangeEventHandler(handler EntityChangeEventHandler)
+
 	AddEntityChangeSource(store boltz.Store)
 	AddGlobalEntityChangeMetadata(k string, v any)
+
+	AddApiSessionEventHandler(handler ApiSessionEventHandler)
+	RemoveApiSessionEventHandler(handler ApiSessionEventHandler)
+
+	AddSessionEventHandler(handler SessionEventHandler)
+	RemoveSessionEventHandler(handler SessionEventHandler)
+
+	AddEntityCountEventHandler(handler EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool)
+	RemoveEntityCountEventHandler(handler EntityCountEventHandler)
 
 	CircuitEventHandler
 	EntityChangeEventHandler

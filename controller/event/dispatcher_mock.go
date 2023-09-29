@@ -20,11 +20,25 @@ import (
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/storage/boltz"
 	"regexp"
+	"time"
 )
 
 var _ Dispatcher = DispatcherMock{}
 
 type DispatcherMock struct{}
+
+func (d DispatcherMock) AddApiSessionEventHandler(handler ApiSessionEventHandler) {}
+
+func (d DispatcherMock) RemoveApiSessionEventHandler(handler ApiSessionEventHandler) {}
+
+func (d DispatcherMock) AddSessionEventHandler(handler SessionEventHandler) {}
+
+func (d DispatcherMock) RemoveSessionEventHandler(handler SessionEventHandler) {}
+
+func (d DispatcherMock) AddEntityCountEventHandler(handler EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool) {
+}
+
+func (d DispatcherMock) RemoveEntityCountEventHandler(handler EntityCountEventHandler) {}
 
 func (d DispatcherMock) AddEntityChangeSource(store boltz.Store) {}
 
