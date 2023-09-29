@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
@@ -84,26 +83,11 @@ func (self *removeTerminatorHandler) RemoveTerminator(ctx *RemoveTerminatorReque
 		return
 	}
 
-	ctx.loadSession(ctx.req.SessionToken)
-	if ctx.err != nil {
-		// if the session is invalid, we still want to delete the terminator if the session is gone, but
-		// the terminator matches the sessions
-		if terminator.Address == "hosted:"+ctx.req.SessionToken {
-			ctx.err = nil
-		} else {
-			self.returnError(ctx, ctx.err)
-			return
-		}
-	} else {
-		ctx.checkSessionType(persistence.SessionTypeBind)
-		ctx.checkSessionFingerprints(ctx.req.Fingerprints)
-	}
-
-	if ctx.err != nil {
-		self.returnError(ctx, ctx.err)
-		return
-	}
-
+	// SDKs can't request terminator deletes directly, they can only do so through the router.
+	// The router will only ask to delete terminators that belong to the SDK, so we shouldn't need
+	// to check the session again here. The session may already be deleted, and if it is, we don't
+	// currently have a way to verify that it's associated. Also, with idempotent terminators, a
+	// terminator may belong to a series of sessions.
 	err := self.getNetwork().Terminators.Delete(ctx.req.TerminatorId, ctx.newChangeContext())
 	if err != nil {
 		self.returnError(ctx, internalError(err))

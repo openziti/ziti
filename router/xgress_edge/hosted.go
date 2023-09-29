@@ -62,6 +62,23 @@ func (registry *hostedServiceRegistry) cleanupServices(proxy *edgeClientConn) {
 	})
 }
 
+func (registry *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
+	registry.services.Range(func(key, value interface{}) bool {
+		terminator := value.(*edgeTerminator)
+		if terminator != newest && newest.token == terminator.token && newest.instance == terminator.instance {
+			terminator.close(true, "duplicate terminator") // don't notify, channel is already closed, we can't send messages
+			registry.services.Delete(key)
+			pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
+				WithField("sessionToken", terminator.token).
+				WithField("instance", terminator.instance).
+				WithField("terminatorId", terminator.terminatorId.Load()).
+				WithField("duplicateOf", newest.terminatorId.Load()).
+				Info("duplicate removed")
+		}
+		return true
+	})
+}
+
 func (registry *hostedServiceRegistry) unbindSession(sessionToken string, proxy *edgeClientConn) bool {
 	atLeastOneRemoved := false
 	registry.services.Range(func(key, value interface{}) bool {

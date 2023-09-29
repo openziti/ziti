@@ -16,7 +16,7 @@ require (
 	github.com/openziti/fabric v0.24.36
 	github.com/openziti/foundation/v2 v2.0.32
 	github.com/openziti/identity v1.0.63
-	github.com/openziti/sdk-golang v0.20.112
+	github.com/openziti/sdk-golang v0.20.116
 	github.com/openziti/storage v0.2.18
 	github.com/openziti/transport/v2 v2.0.107
 	github.com/openziti/ziti v0.28.3
@@ -78,7 +78,7 @@ require (
 	github.com/go-resty/resty/v2 v2.8.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20230916125811-7478c230c7cd // indirect
+	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/schema v1.2.0 // indirect
@@ -129,10 +129,10 @@ require (
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
-	github.com/openziti/edge-api v0.25.36 // indirect
+	github.com/openziti/edge-api v0.25.37 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
 	github.com/openziti/metrics v1.2.35 // indirect
-	github.com/openziti/runzmd v1.0.31 // indirect
+	github.com/openziti/runzmd v1.0.32 // indirect
 	github.com/openziti/secretstream v0.1.12 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.1.0 // indirect
@@ -171,9 +171,9 @@ require (
 	github.com/zitadel/oidc/v2 v2.7.0 // indirect
 	go.mongodb.org/mongo-driver v1.12.1 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	go.opentelemetry.io/otel v1.18.0 // indirect
-	go.opentelemetry.io/otel/metric v1.18.0 // indirect
-	go.opentelemetry.io/otel/trace v1.18.0 // indirect
+	go.opentelemetry.io/otel v1.19.0 // indirect
+	go.opentelemetry.io/otel/metric v1.19.0 // indirect
+	go.opentelemetry.io/otel/trace v1.19.0 // indirect
 	golang.org/x/crypto v0.13.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/image v0.12.0 // indirect

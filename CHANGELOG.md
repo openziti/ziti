@@ -2,6 +2,11 @@
 
 ## What's New
 
+* `ziti edge quickstart`
+* Edge SDK terminator improvements
+
+## `ziti edge quickstart`
+
 * `ziti edge quickstart`](https://github.com/openziti/ziti/issues/1298). You can now
   download the `ziti` CLI and have a functioning network with just one command. The
   network it creates is ephemeral and is intended to be torn down when the process exits.
@@ -33,10 +38,46 @@
     --password someOtherPassword
   ```
   
-* Bugfixes
+## Edge SDK Terminator Improvements
+
+There was a race condition in edge sdk terminator handling, where if sdk noticed a broken connection before the router did,
+it would reconnect and rebind while the router still though it had the old connection and old binding. Because we were 
+using the session token to key terminator state in the router, the new terminator information would overwrite the old 
+terminator information in the router. However, in the controller, the information wouldn't get overridden, since we use a
+UUID to key things in the controller. When the router noticed the old connection was gone it would try to clean things
+up, but since the state had been overwritten, it couldn't and the controller would be left with an orphaned terminator.
+
+The router now uses a UUID as well so there shouldn't be any more orphaned terminators. 
 
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/channel/v2: [v2.0.95 -> v2.0.99](https://github.com/openziti/channel/compare/v2.0.95...v2.0.99)
+* github.com/openziti/edge-api: [v0.25.33 -> v0.25.37](https://github.com/openziti/edge-api/compare/v0.25.33...v0.25.37)
+    * [Issue #44](https://github.com/openziti/edge-api/issues/44) - create session can return 404 if service id is invalid
+
+* github.com/openziti/fabric: [v0.24.23 -> v0.24.36](https://github.com/openziti/fabric/compare/v0.24.23...v0.24.36)
+    * [Issue #799](https://github.com/openziti/fabric/issues/799) - Alll controllers to advertise capabilities to routers/other controllers
+    * [Issue #796](https://github.com/openziti/fabric/issues/796) - Make link heartbeats configurable, including an unresponive close timeout
+    * [Issue #794](https://github.com/openziti/fabric/issues/794) - Add output file to ziti agent controller snapshot-db command
+    * [Issue #792](https://github.com/openziti/fabric/issues/792) - include raft index in DB snapshot filename
+    * [Issue #791](https://github.com/openziti/fabric/issues/791) - FieldError Reason field not parsed correct when transmitted from cluster node to cluster node
+    * [Issue #789](https://github.com/openziti/fabric/issues/789) - Retransmitting prevents circuit from being idle checked
+
+* github.com/openziti/foundation/v2: [v2.0.30 -> v2.0.32](https://github.com/openziti/foundation/compare/v2.0.30...v2.0.32)
+* github.com/openziti/identity: [v1.0.61 -> v1.0.63](https://github.com/openziti/identity/compare/v1.0.61...v1.0.63)
+* github.com/openziti/metrics: [v1.2.33 -> v1.2.35](https://github.com/openziti/metrics/compare/v1.2.33...v1.2.35)
+* github.com/openziti/runzmd: [v1.0.30 -> v1.0.32](https://github.com/openziti/runzmd/compare/v1.0.30...v1.0.32)
+* github.com/openziti/sdk-golang: [v0.20.101 -> v0.20.116](https://github.com/openziti/sdk-golang/compare/v0.20.101...v0.20.116)
+    * [Issue #431](https://github.com/openziti/sdk-golang/issues/431) - sdk can panic when re-authenticating and rebinding at the same time
+    * [Issue #238](https://github.com/openziti/sdk-golang/issues/238) - service binding needs to restart if service is recreated
+    * [Issue #115](https://github.com/openziti/sdk-golang/issues/115) - Don't use hostname for CN in CSR
+    * [Issue #429](https://github.com/openziti/sdk-golang/issues/429) - error handling is broken, so we don't properly retry 
+
+* github.com/openziti/secretstream: [v0.1.11 -> v0.1.12](https://github.com/openziti/secretstream/compare/v0.1.11...v0.1.12)
+* github.com/openziti/storage: [v0.2.14 -> v0.2.18](https://github.com/openziti/storage/compare/v0.2.14...v0.2.18)
+    * [Issue #31](https://github.com/openziti/storage/issues/31) - Fix ANTLR int overflow error on arm 32
+
+* github.com/openziti/transport/v2: [v2.0.103 -> v2.0.107](https://github.com/openziti/transport/compare/v2.0.103...v2.0.107)
 * github.com/openziti/ziti: [v0.30.3 -> v0.30.4](https://github.com/openziti/ziti/compare/v0.30.3...v0.30.4)
   * Fixed an issue causing router configs to be rewritten when docker compose was brought up with existing configs
 

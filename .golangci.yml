@@ -1,4 +1,6 @@
 run:
+  build-tags:
+    - apitests
   deadline: 8m
   skip-files:
     - ziti/cmd/edge/verify_ca.go

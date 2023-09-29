@@ -11,7 +11,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/coreos/go-iptables v0.6.0
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
-	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663
 	github.com/fatih/color v1.15.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/go-acme/lego/v4 v4.2.0
@@ -37,14 +36,14 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openziti/agent v1.0.15
 	github.com/openziti/channel/v2 v2.0.99
-	github.com/openziti/edge-api v0.25.36
+	github.com/openziti/edge-api v0.25.37
 	github.com/openziti/fabric v0.24.36
 	github.com/openziti/foundation/v2 v2.0.32
 	github.com/openziti/identity v1.0.63
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.35
-	github.com/openziti/runzmd v1.0.31
-	github.com/openziti/sdk-golang v0.20.112
+	github.com/openziti/runzmd v1.0.32
+	github.com/openziti/sdk-golang v0.20.116
 	github.com/openziti/secretstream v0.1.12
 	github.com/openziti/storage v0.2.18
 	github.com/openziti/transport/v2 v2.0.107
@@ -93,6 +92,7 @@ require (
 	github.com/c-bata/go-prompt v0.2.6 // indirect
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -111,7 +111,7 @@ require (
 	github.com/go-openapi/swag v0.22.4 // indirect
 	github.com/go-openapi/validate v0.22.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20230916125811-7478c230c7cd // indirect
+	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/schema v1.2.0 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
@@ -171,9 +171,9 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.mongodb.org/mongo-driver v1.12.1 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	go.opentelemetry.io/otel v1.18.0 // indirect
-	go.opentelemetry.io/otel/metric v1.18.0 // indirect
-	go.opentelemetry.io/otel/trace v1.18.0 // indirect
+	go.opentelemetry.io/otel v1.19.0 // indirect
+	go.opentelemetry.io/otel/metric v1.19.0 // indirect
+	go.opentelemetry.io/otel/trace v1.19.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/image v0.12.0 // indirect
 	golang.org/x/mod v0.12.0 // indirect
