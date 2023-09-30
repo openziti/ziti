@@ -127,12 +127,6 @@ jobs:
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
-      - name: Run Go Quickstart Test
-        timeout-minutes: 5
-        shell: bash
-        run: |
-          go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -164,7 +158,7 @@ jobs:
           go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
 
       - name: Run Unit and Integration Tests
-        timeout-minutes: 5
+        timeout-minutes: 10
         shell: bash
         run: |
           go test ./... --tags apitests

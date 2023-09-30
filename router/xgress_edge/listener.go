@@ -19,7 +19,6 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/dineshappavoo/basex"
 	"github.com/openziti/fabric/common/capabilities"
 	fabricMetrics "github.com/openziti/fabric/common/metrics"
 	"github.com/openziti/fabric/common/pb/ctrl_pb"
@@ -27,7 +26,6 @@ import (
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/sha3"
 	"google.golang.org/protobuf/proto"
 	"math/big"
 	"time"
@@ -314,23 +312,6 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 	log.Info("created terminator")
 }
 
-func (self *edgeClientConn) getTerminatorId(sessionToken, terminatorInstance string) string {
-	hasher := sha3.NewShake256()
-	// Shake.Write is documented to only fail if written to after being read
-	_, _ = hasher.Write([]byte(self.listener.id.Token))
-	_, _ = hasher.Write([]byte(sessionToken))
-	_, _ = hasher.Write([]byte(terminatorInstance))
-
-	buf := make([]byte, 16)
-	// Shake.Read is documented not to fail
-	_, _ = hasher.Read(buf)
-
-	v := &big.Int{}
-	v.SetBytes(buf)
-	result, _ := basex.EncodeInt(v)
-	return result
-}
-
 func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
 	token := string(req.Body)
 
@@ -350,9 +331,9 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 	assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId)
 	log.Debugf("client requested router provided connection ids: %v", assignIds)
 
-	terminatorId := self.getTerminatorId(token, terminatorInstance)
+	terminatorId := idgen.NewUUIDString()
 
-	messageSink := &edgeTerminator{
+	terminator := &edgeTerminator{
 		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
 		edgeClientConn: self,
 		token:          token,
@@ -361,30 +342,8 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		v2:             true,
 	}
 
-	log = log.WithField("bindConnId", messageSink.MsgChannel.Id())
-
-	createTerminatorOnCtrl := true
-
-	terminator, found := self.listener.factory.hostedServices.Get(terminatorId)
-	// we unfortunately can't re-use existing edgeTerminators, as a new bind request will have a new connId.
-	if found {
-		// if we somehow got a conflict, just use a new terminator id
-		if terminator.token != token || terminator.instance != terminatorInstance {
-			terminatorId = idgen.NewUUIDString()
-		} else if terminator.terminatorId.CompareAndSwap(terminatorId, "") {
-			// there was an existing terminator, and we got to it before it was torn down. We can just replace it
-			// and carry on
-			self.listener.factory.hostedServices.Put(terminatorId, messageSink)
-			createTerminatorOnCtrl = false
-			log.WithField("terminatorId", terminatorId).
-				WithField("oldBindConnId", terminator.MsgChannel.Id()).
-				Info("duplicate create terminator request detected, taking over terminator")
-		} else {
-			terminatorId = idgen.NewUUIDString()
-		}
-	}
-
-	messageSink.terminatorId.Store(terminatorId)
+	log = log.WithField("bindConnId", terminator.MsgChannel.Id())
+	terminator.terminatorId.Store(terminatorId)
 
 	log = log.WithField("terminatorId", terminatorId)
 	log.Debug("binding service")
@@ -413,11 +372,11 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 	log.Debug("establishing listener")
 
 	// need to remove session remove listener on close
-	messageSink.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
-		messageSink.close(true, "session ended")
+	terminator.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
+		terminator.close(true, "session ended")
 	})
 
-	self.listener.factory.hostedServices.Put(terminatorId, messageSink)
+	self.listener.factory.hostedServices.Put(terminatorId, terminator)
 
 	var terminatorInstanceSecret []byte
 	if terminatorInstance != "" {
@@ -435,32 +394,32 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		InstanceSecret: terminatorInstanceSecret,
 	}
 
-	if createTerminatorOnCtrl {
-		timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
-		responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
-		resp := &edge_ctrl_pb.CreateTerminatorV2Response{}
-		err = protobufs.TypedResponse(resp).Unmarshall(responseMsg, err)
-		if err == nil && resp.Result != edge_ctrl_pb.CreateTerminatorResult_Success {
-			err = errors.Errorf("terminator create failed: %s", resp.Msg)
-		}
-
-		if err != nil {
-			log.WithError(err).Warn("error creating terminator")
-			messageSink.close(false, "") // don't notify here, as we're notifying next line with a response
-			self.sendStateClosedReply(err.Error(), req)
-			return
-		}
+	timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
+	resp := &edge_ctrl_pb.CreateTerminatorV2Response{}
+	err = protobufs.TypedResponse(resp).Unmarshall(responseMsg, err)
+	if err == nil && resp.Result != edge_ctrl_pb.CreateTerminatorResult_Success {
+		err = errors.Errorf("terminator create failed: %s", resp.Msg)
 	}
 
-	if messageSink.MsgChannel.IsClosed() {
+	if err != nil {
+		log.WithError(err).Warn("error creating terminator")
+		terminator.close(false, "") // don't notify here, as we're notifying next line with a response
+		self.sendStateClosedReply(err.Error(), req)
+		return
+	}
+
+	if terminator.MsgChannel.IsClosed() {
 		log.Warn("edge channel closed while setting up terminator. cleaning up terminator now")
-		messageSink.close(false, "edge channel closed")
+		terminator.close(false, "edge channel closed")
 		return
 	}
 
 	log.Debug("registered listener for terminator")
 	log.Debug("returning connection state CONNECTED to client")
 	self.sendStateConnectedReply(req, nil)
+
+	self.listener.factory.hostedServices.cleanupDuplicates(terminator)
 
 	log.Info("created terminator")
 }

@@ -205,7 +205,7 @@ func Test_SDK_Events(t *testing.T) {
 					defer removeUnauthedListener()
 
 					implZtx := ztxPostMfa.(*ziti.ContextImpl)
-					apiSessionId := *implZtx.CtrlClt.CurrentAPISessionDetail.ID
+					apiSessionId := *implZtx.CtrlClt.CurrentAPISessionDetail.Load().ID
 
 					deleteParams := api_session.NewDeleteAPISessionsParams()
 					deleteParams.ID = apiSessionId
