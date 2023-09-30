@@ -19,13 +19,13 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/edge_router"
-	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/fabric/controller/fields"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/ast"
 )
 

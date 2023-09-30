@@ -20,7 +20,7 @@ import (
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/fabric/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/sdk-golang/ziti"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/cli"

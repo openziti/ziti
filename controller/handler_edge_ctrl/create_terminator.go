@@ -25,9 +25,9 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/idgen"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 	"math"
 )

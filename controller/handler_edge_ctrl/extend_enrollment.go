@@ -23,8 +23,8 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/models"
 	"google.golang.org/protobuf/proto"
 )
 

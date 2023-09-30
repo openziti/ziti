@@ -17,13 +17,14 @@
 package events
 
 import (
+	"github.com/openziti/ziti/controller/event"
 	"github.com/pkg/errors"
 	"reflect"
 	"strings"
 	"time"
 )
 
-func (self *EdgeEventDispatcher) AddEntityCountEventHandler(handler EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool) {
+func (self *Dispatcher) AddEntityCountEventHandler(handler event.EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool) {
 	self.entityCountEventHandlers.Append(&entityCountState{
 		handler:          handler,
 		onlyLeaderEvents: onlyLeaderEvents,
@@ -32,7 +33,7 @@ func (self *EdgeEventDispatcher) AddEntityCountEventHandler(handler EntityCountE
 	})
 }
 
-func (self *EdgeEventDispatcher) RemoveEntityCountEventHandler(handler EntityCountEventHandler) {
+func (self *Dispatcher) RemoveEntityCountEventHandler(handler event.EntityCountEventHandler) {
 	for _, state := range self.entityCountEventHandlers.Value() {
 		if state.handler == handler {
 			self.entityCountEventHandlers.Delete(state)
@@ -40,18 +41,18 @@ func (self *EdgeEventDispatcher) RemoveEntityCountEventHandler(handler EntityCou
 	}
 }
 
-func (self *EdgeEventDispatcher) initEntityEvents() {
+func (self *Dispatcher) initEntityEvents() {
 	go self.generateEntityEvents()
 }
 
-func (self *EdgeEventDispatcher) generateEntityEvents() {
+func (self *Dispatcher) generateEntityEvents() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case t := <-ticker.C:
-			var event *EntityCountEvent
+			var event *event.EntityCountEvent
 			leader := self.network.Dispatcher.IsLeaderOrLeaderless()
 			for _, state := range self.entityCountEventHandlers.Value() {
 				if !state.onlyLeaderEvents || leader {
@@ -70,13 +71,13 @@ func (self *EdgeEventDispatcher) generateEntityEvents() {
 	}
 }
 
-func (self *EdgeEventDispatcher) generateEntityCountEvent() *EntityCountEvent {
-	event := &EntityCountEvent{
-		Namespace: EntityCountEventNS,
+func (self *Dispatcher) generateEntityCountEvent() *event.EntityCountEvent {
+	event := &event.EntityCountEvent{
+		Namespace: event.EntityCountEventNS,
 		Timestamp: time.Now(),
 	}
 
-	data, err := self.stores.GetEntityCounts(self.dbProvider)
+	data, err := self.stores.GetEntityCounts(self.network.GetDb())
 	if err != nil {
 		event.Error = err.Error()
 	} else {
@@ -86,11 +87,11 @@ func (self *EdgeEventDispatcher) generateEntityCountEvent() *EntityCountEvent {
 	return event
 }
 
-func (self *EdgeEventDispatcher) registerEntityCountEventHandler(val interface{}, config map[string]interface{}) error {
-	handler, ok := val.(EntityCountEventHandler)
+func (self *Dispatcher) registerEntityCountEventHandler(val interface{}, config map[string]interface{}) error {
+	handler, ok := val.(event.EntityCountEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/events/EntityCountEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/events/EntityCountEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	interval := time.Minute * 5
@@ -123,14 +124,14 @@ func (self *EdgeEventDispatcher) registerEntityCountEventHandler(val interface{}
 	return nil
 }
 
-func (self *EdgeEventDispatcher) unregisterEntityCountEventHandler(val interface{}) {
-	if handler, ok := val.(EntityCountEventHandler); ok {
+func (self *Dispatcher) unregisterEntityCountEventHandler(val interface{}) {
+	if handler, ok := val.(event.EntityCountEventHandler); ok {
 		self.RemoveEntityCountEventHandler(handler)
 	}
 }
 
 type entityCountState struct {
-	handler          EntityCountEventHandler
+	handler          event.EntityCountEventHandler
 	onlyLeaderEvents bool
 	interval         time.Duration
 	nextRun          time.Time

@@ -19,8 +19,8 @@ package fabric
 import (
 	"context"
 	"fmt"
-	"github.com/openziti/fabric/controller/rest_client/database"
-	"github.com/openziti/fabric/controller/rest_model"
+	"github.com/openziti/ziti/controller/rest_client/database"
+	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"

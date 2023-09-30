@@ -20,7 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/router/xgress_common"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"

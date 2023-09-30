@@ -17,7 +17,7 @@
 package response
 
 import (
-	"github.com/openziti/fabric/common/build"
+	"github.com/openziti/ziti/common/build"
 	"strconv"
 )
 

@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 )

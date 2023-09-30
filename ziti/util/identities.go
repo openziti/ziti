@@ -8,7 +8,7 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/ziti/controller/env"
-	fabric_rest_client "github.com/openziti/fabric/controller/rest_client"
+	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/pkg/errors"

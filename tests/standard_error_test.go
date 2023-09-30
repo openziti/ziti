@@ -19,7 +19,7 @@
 package tests
 
 import (
-	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/stretchr/testify/require"
 	"testing"

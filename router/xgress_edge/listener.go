@@ -19,12 +19,12 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/openziti/fabric/common/capabilities"
-	fabricMetrics "github.com/openziti/fabric/common/metrics"
-	"github.com/openziti/fabric/common/pb/ctrl_pb"
-	"github.com/openziti/fabric/controller/idgen"
+	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/cert"
+	fabricMetrics "github.com/openziti/ziti/common/metrics"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/idgen"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"math/big"
@@ -33,10 +33,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 )
 

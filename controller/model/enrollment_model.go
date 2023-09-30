@@ -21,7 +21,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"

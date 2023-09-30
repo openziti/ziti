@@ -17,11 +17,11 @@
 package persistence
 
 import (
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -91,10 +91,10 @@ func (stores *Stores) buildStoreMap() {
 	}
 }
 
-func (stores *Stores) GetEntityCounts(dbProvider DbProvider) (map[string]int64, error) {
+func (stores *Stores) GetEntityCounts(db boltz.Db) (map[string]int64, error) {
 	result := map[string]int64{}
 	for _, store := range stores.storeMap {
-		err := dbProvider.GetDb().View(func(tx *bbolt.Tx) error {
+		err := db.View(func(tx *bbolt.Tx) error {
 			key := store.GetEntityType()
 			if store.IsChildStore() {
 				if _, ok := store.(TransitRouterStore); ok {

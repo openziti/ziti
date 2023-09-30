@@ -29,8 +29,8 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/fabric/common/build"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/common/build"
+	"github.com/openziti/ziti/controller/models"
 	"time"
 )
 

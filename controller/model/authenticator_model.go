@@ -20,7 +20,7 @@ import (
 	"encoding/base64"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"reflect"

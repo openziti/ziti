@@ -22,7 +22,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/fabric/router"
+	"github.com/openziti/ziti/router"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"

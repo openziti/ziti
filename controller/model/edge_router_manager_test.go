@@ -2,7 +2,7 @@ package model
 
 import (
 	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/ziti/controller/change"
 	"go.etcd.io/bbolt"
 	"testing"
 )

@@ -18,7 +18,7 @@ package pki
 
 import (
 	"fmt"
-	"github.com/openziti/fabric/controller/idgen"
+	"github.com/openziti/ziti/controller/idgen"
 	cmd2 "github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"

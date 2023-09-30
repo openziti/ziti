@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/oidc_auth"
-	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/ziti/controller/change"
 	"net/http"
 	"time"
 )

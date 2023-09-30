@@ -20,7 +20,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/foundation/v2/errorz"
 	cmap "github.com/orcaman/concurrent-map/v2"

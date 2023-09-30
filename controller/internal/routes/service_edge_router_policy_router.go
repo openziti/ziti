@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/fabric/controller/fields"
+	"github.com/openziti/ziti/controller/fields"
 )
 
 func init() {

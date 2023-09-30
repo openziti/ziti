@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"

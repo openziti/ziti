@@ -11,10 +11,11 @@ import (
 	"encoding/pem"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/eid"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	id "github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/common/eid"
 	"io"
 	"math/big"
 	"net/http"
@@ -214,10 +215,21 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 			listener, err := context.Listen(service.Name)
 			ctx.Req.NoError(err)
 			ctx.Req.NotNil(listener)
-
 			defer func() {
 				ctx.Req.NoError(listener.Close())
 			}()
+
+			listenerEstablished := make(chan struct{}, 1)
+			listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.Listener) {
+				if len(conn) > 0 {
+					close(listenerEstablished)
+				}
+			})
+			select {
+			case <-listenerEstablished:
+			case <-time.After(5 * time.Second):
+				ctx.Fail("timed out waiting for listener to be established")
+			}
 
 			errC := make(chan error, 1)
 			done := make(chan struct{})

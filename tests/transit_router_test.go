@@ -20,9 +20,9 @@
 package tests
 
 import (
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/network"
 	"testing"
 	"time"
 )

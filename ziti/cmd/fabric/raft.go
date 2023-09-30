@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/openziti/fabric/controller/rest_client/raft"
+	"github.com/openziti/ziti/controller/rest_client/raft"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"

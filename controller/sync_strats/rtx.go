@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/network"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

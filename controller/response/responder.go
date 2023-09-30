@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/go-openapi/errors"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 )

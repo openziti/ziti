@@ -19,9 +19,9 @@ package model
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"

@@ -28,7 +28,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_model"
-	fabric_rest_client "github.com/openziti/fabric/controller/rest_client"
+	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/common/version"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	c "github.com/openziti/ziti/ziti/constants"

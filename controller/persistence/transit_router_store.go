@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/storage/boltz"
 )
 

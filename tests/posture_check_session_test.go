@@ -20,7 +20,7 @@ package tests
 
 import (
 	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/fabric/controller/xt_smartrouting"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/sdk-golang/ziti"
 	"testing"
 	"time"

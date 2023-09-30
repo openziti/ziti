@@ -13,7 +13,7 @@ import (
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	idloader "github.com/openziti/identity"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"

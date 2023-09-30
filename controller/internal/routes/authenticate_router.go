@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"net"

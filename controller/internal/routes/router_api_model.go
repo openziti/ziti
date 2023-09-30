@@ -8,7 +8,7 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/stringz"
 )
 

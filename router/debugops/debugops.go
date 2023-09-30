@@ -2,7 +2,7 @@ package debugops
 
 import (
 	"github.com/openziti/ziti/router/fabric"
-	"github.com/openziti/fabric/router"
+	"github.com/openziti/ziti/router"
 )
 
 const (

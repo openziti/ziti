@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"time"

@@ -18,8 +18,8 @@ package routes
 
 import (
 	"encoding/json"
-	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/fields"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/fields"
 	"reflect"
 	"testing"
 

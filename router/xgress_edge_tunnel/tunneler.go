@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/ziti/tunnel/intercept/host"
 	"github.com/openziti/ziti/tunnel/intercept/proxy"
 	"github.com/openziti/ziti/tunnel/intercept/tproxy"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/router/xgress"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"math"

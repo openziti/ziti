@@ -22,10 +22,10 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/foundation/v2/stringz"
 )
 

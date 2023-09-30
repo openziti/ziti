@@ -22,9 +22,9 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/fabric/controller/api_impl"
-	"github.com/openziti/fabric/controller/fields"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/api_impl"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/network"
 )
 
 func init() {

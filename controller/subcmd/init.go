@@ -20,7 +20,7 @@ import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/controller/server"
-	"github.com/openziti/fabric/controller"
+	"github.com/openziti/ziti/controller"
 	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/spf13/cobra"

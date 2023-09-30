@@ -22,7 +22,7 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"

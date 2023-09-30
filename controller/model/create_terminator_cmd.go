@@ -2,10 +2,10 @@ package model
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/common/pb/cmd_pb"
-	"github.com/openziti/fabric/controller/change"
-	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"

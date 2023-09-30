@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/pb/edge_mgmt_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/fabric/common/handler_common"
+	"github.com/openziti/ziti/common/handler_common"
 	"google.golang.org/protobuf/proto"
 )
 
