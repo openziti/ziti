@@ -13,7 +13,6 @@ require (
 	github.com/openziti/agent v1.0.15
 	github.com/openziti/channel/v2 v2.0.99
 	github.com/openziti/fablab v0.5.16
-	github.com/openziti/fabric v0.24.36
 	github.com/openziti/foundation/v2 v2.0.32
 	github.com/openziti/identity v1.0.63
 	github.com/openziti/sdk-golang v0.20.116

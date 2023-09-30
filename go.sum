@@ -646,8 +646,6 @@ github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAP
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
 github.com/openziti/edge-api v0.25.37 h1:VfxJJUPTWGTyfSSfIlthvp6yrb6qrBWHpZWhThoctwc=
 github.com/openziti/edge-api v0.25.37/go.mod h1:OMedQFZPoBER7E9nkyECML/Pt2C2uajdbm/BBP1wOuY=
-github.com/openziti/fabric v0.24.36 h1:KAlMvFjeCeTfuZDKbH55M03eKpIiv/Zx4Tt+qdRydDE=
-github.com/openziti/fabric v0.24.36/go.mod h1:ZglDYZABDfl0rWI4eXo4AYMc9G18XSlDNombiGNzs7Q=
 github.com/openziti/foundation/v2 v2.0.32 h1:I4CS7UCMjxWrS2JqzQvPfgalJM9Z9PKi3wtn0b7ULmM=
 github.com/openziti/foundation/v2 v2.0.32/go.mod h1:KCQatGmkVDIZnfSLrohKwmQi7kg7vnECpNTkpuLNguc=
 github.com/openziti/identity v1.0.63 h1:yJwVAcPpc+e7zhi2fb9lgAnqtR7cO5cdxuk2Y9Z6i0I=
@@ -1410,6 +1408,7 @@ gopkg.in/ini.v1 v1.62.0/go.mod h1:pNLf8WUiyNEtQjuu5G5vTm06TEv9tsIgeAvK8hOrP4k=
 gopkg.in/ini.v1 v1.67.0 h1:Dgnx+6+nfE+IfzjUEISNeydPJh9AXNNsWbGP9KzCsOA=
 gopkg.in/ini.v1 v1.67.0/go.mod h1:pNLf8WUiyNEtQjuu5G5vTm06TEv9tsIgeAvK8hOrP4k=
 gopkg.in/natefinch/lumberjack.v2 v2.0.0 h1:1Lc07Kr7qY4U2YPouBjpCLxpiyxIVoxqXgkXLknAOE8=
+gopkg.in/natefinch/lumberjack.v2 v2.0.0/go.mod h1:l0ndWWf7gzL7RNwBG7wST/UCcT4T24xpD6X8LsfU/+k=
 gopkg.in/resty.v1 v1.12.0 h1:CuXP0Pjfw9rOuY6EP+UvtNvt5DSqHpIxILZKT/quCZI=
 gopkg.in/resty.v1 v1.12.0/go.mod h1:mDo4pnntr5jdWRML875a/NmxYqAlA73dVijT2AXvQQo=
 gopkg.in/square/go-jose.v2 v2.6.0 h1:NGk74WTnPKBNUhNzQX7PYcTLUjoq7mzKk2OKbvwk2iI=
