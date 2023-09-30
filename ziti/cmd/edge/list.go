@@ -669,12 +669,12 @@ func outputEnrollments(o *api.Options, children []*gabs.Container, pagingInfo *a
 	t.AppendHeader(table.Row{"ID", "Method", "Identity Id", "Identity Name", "Expires At", "Token", "JWT"})
 
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		method := entity.Path("method").Data().(string)
-		identityId := entity.Path("identityId").Data().(string)
-		identityName := entity.Path("identity.name").Data().(string)
-		expiresAt := entity.Path("expiresAt").Data().(string)
-		token := entity.Path("token").Data().(string)
+		id := api.GetJsonString(entity, "id")
+		method := api.GetJsonString(entity, "method")
+		identityId := api.GetJsonString(entity, "identityId")
+		identityName := api.GetJsonString(entity, "identity.name")
+		expiresAt := api.GetJsonString(entity, "expiresAt")
+		token := api.GetJsonString(entity, "token")
 		jwt := "See json"
 
 		t.AppendRow(table.Row{id, method, identityId, identityName, expiresAt, token, jwt})

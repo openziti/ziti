@@ -17,12 +17,15 @@
 package fabric
 
 import (
+	"context"
+	"fmt"
+	"github.com/openziti/ziti/controller/rest_client/database"
+	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 type dbSnapshotOptions struct {
@@ -35,9 +38,10 @@ func newDbSnapshotCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "snapshot",
-		Short: "creates a database snapshot",
-		Args:  cobra.ExactArgs(0),
+		Use:   "snapshot <snapshot file path>",
+		Short: "Creates a database snapshot.",
+		Long:  "Creates a database snapshot. The snapshot file destination may optionally be specified. The snapshot will be created on the controller's filesystem",
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -55,6 +59,33 @@ func newDbSnapshotCmd(p common.OptionsProvider) *cobra.Command {
 }
 
 func runSnapshotDb(o *dbSnapshotOptions) error {
-	_, err := util.ControllerUpdate("edge", "database/snapshot", "", o.Out, http.MethodPost, false, false, o.Options.Timeout, o.Options.Verbose)
-	return err
+	client, err := util.NewFabricManagementClient(o)
+	if err != nil {
+		return err
+	}
+
+	var path string
+	if len(o.Args) > 0 {
+		path = o.Args[0]
+	}
+
+	ok, err := client.Database.CreateDatabaseSnapshotWithPath(&database.CreateDatabaseSnapshotWithPathParams{
+		Snapshot: &rest_model.DatabaseSnapshotCreate{
+			Path: path,
+		},
+		Context: context.Background(),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if !o.OutputJSONResponse {
+		if ok != nil && ok.Payload != nil && ok.Payload.Data != nil && ok.Payload.Data.Path != nil {
+			fmt.Println(*ok.Payload.Data.Path)
+		} else {
+			fmt.Printf("snapshot created successfully")
+		}
+	}
+	return nil
 }

@@ -1,0 +1,57 @@
+v: 3
+
+#trace:
+#  path: /tmp/ctrl.trace
+
+#profile:
+#  memory:
+#    path: ctrl.memprof
+
+db: ${ZITI_TEST_DB}
+
+identity:
+  cert: testdata/ca/intermediate/certs/ctrl-client.cert.pem
+  server_cert: testdata/ca/intermediate/certs/ctrl-server.cert.pem
+  key: testdata/ca/intermediate/private/ctrl.key.pem
+  ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
+
+ctrl:
+  listener: tls:127.0.0.1:6262
+
+mgmt:
+  listener: tls:127.0.0.1:10000
+
+terminator:
+  validators:
+    edge: edge
+
+#metrics:
+#  influxdb:
+#    url:                http://localhost:8086
+#    database:           ziti
+
+edge:
+  api:
+    sessionTimeout: 30m
+    address: 127.0.0.1:1281
+  enrollment:
+    signingCert:
+      cert: testdata/ca/intermediate/certs/intermediate.cert.pem
+      key: testdata/ca/intermediate/private/intermediate.key.decrypted.pem
+      ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
+    edgeIdentity:
+      duration: 5m
+    edgeRouter:
+      duration: 5m
+
+
+web:
+  - name: client-management-localhost
+    bindPoints:
+      - interface: 127.0.0.1:1281
+        address: 127.0.0.1:1281
+    options: {}
+    apis:
+      - binding: fabric
+      - binding: edge-management
+      - binding: edge-client

@@ -20,14 +20,14 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
-	"github.com/openziti/edge/common"
-	"github.com/openziti/edge/router/debugops"
-	"github.com/openziti/edge/router/fabric"
-	"github.com/openziti/edge/router/xgress_edge"
-	"github.com/openziti/edge/router/xgress_edge_transport"
-	"github.com/openziti/edge/router/xgress_edge_tunnel"
-	"github.com/openziti/fabric/router"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/router/debugops"
+	"github.com/openziti/ziti/router/fabric"
+	"github.com/openziti/ziti/router/xgress_edge"
+	"github.com/openziti/ziti/router/xgress_edge_transport"
+	"github.com/openziti/ziti/router/xgress_edge_tunnel"
+	"github.com/openziti/ziti/router"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
@@ -114,7 +114,7 @@ func run(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	go waitForShutdown(r, config)
+	go waitForShutdown(r)
 
 	if err := r.Run(); err != nil {
 		logrus.WithError(err).Fatal("error starting")
@@ -129,7 +129,7 @@ func getFlags(cmd *cobra.Command) map[string]*pflag.Flag {
 	return ret
 }
 
-func waitForShutdown(r *router.Router, config *router.Config) {
+func waitForShutdown(r *router.Router) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
 

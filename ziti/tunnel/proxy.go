@@ -17,7 +17,7 @@
 package tunnel
 
 import (
-	"github.com/openziti/edge/tunnel/intercept/proxy"
+	"github.com/openziti/ziti/tunnel/intercept/proxy"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"math"

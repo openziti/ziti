@@ -45,10 +45,6 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s", factory.User(), configName)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", factory.User(), c.Id)
 
-	if zitiType == "tunnel" {
-
-	}
-
 	useSudo := ""
 	if zitiType == "tunnel" || c.HasTag("tunneler") {
 		useSudo = "sudo"

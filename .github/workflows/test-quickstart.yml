@@ -1,0 +1,33 @@
+name: Test Quickstart
+on:
+  workflow_dispatch:
+  # test quickstart changes after merge
+  push:
+    branches:
+      - release-next
+      - main
+    paths:
+      - 'quickstart/**'
+  # test quickstart changes before merge
+  pull_request:
+    paths:
+      - 'quickstart/**'
+
+# cancel older, redundant runs of same workflow on same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  compose-test:
+    name: Test Compose Quickstart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Shallow checkout
+        uses: actions/checkout@v3
+      - name: Install zsh
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install --yes zsh
+      - name: Build and run a quickstart container image
+        shell: bash
+        run: ./quickstart/test/compose-test.zsh

@@ -1,0 +1,124 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
+package routes
+
+import (
+	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime/middleware"
+	"github.com/openziti/edge-api/rest_management_api_server/operations/config"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/ziti/controller/fields"
+)
+
+func init() {
+	r := NewConfigRouter()
+	env.AddRouter(r)
+}
+
+type ConfigRouter struct {
+	BasePath string
+}
+
+func NewConfigRouter() *ConfigRouter {
+	return &ConfigRouter{
+		BasePath: "/" + EntityNameConfig,
+	}
+}
+
+func (r *ConfigRouter) Register(ae *env.AppEnv) {
+	ae.ManagementApi.ConfigDeleteConfigHandler = config.DeleteConfigHandlerFunc(func(params config.DeleteConfigParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.ManagementApi.ConfigDetailConfigHandler = config.DetailConfigHandlerFunc(func(params config.DetailConfigParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.ManagementApi.ConfigListConfigsHandler = config.ListConfigsHandlerFunc(func(params config.ListConfigsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.ManagementApi.ConfigUpdateConfigHandler = config.UpdateConfigHandlerFunc(func(params config.UpdateConfigParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.ManagementApi.ConfigCreateConfigHandler = config.CreateConfigHandlerFunc(func(params config.CreateConfigParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.ManagementApi.ConfigPatchConfigHandler = config.PatchConfigHandlerFunc(func(params config.PatchConfigParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+}
+
+func (r *ConfigRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler[*model.Config](ae, rc, ae.Managers.Config, MapConfigToRestEntity)
+}
+
+func (r *ConfigRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler[*model.Config](ae, rc, ae.Managers.Config, MapConfigToRestEntity)
+}
+
+func (r *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params config.CreateConfigParams) {
+	if params.Config.Data == nil {
+		ae.ManagementApi.ServeErrorFor("")(rc.ResponseWriter, rc.Request, errors.Required("data", "body", nil))
+		return
+	}
+
+	Create(rc, rc, ConfigLinkFactory, func() (string, error) {
+		entity, err := MapCreateConfigToModel(params.Config)
+		if err != nil {
+			return "", err
+		}
+		return MapCreate(ae.Managers.Config.Create, entity, rc)
+	})
+}
+
+func (r *ConfigRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	DeleteWithHandler(rc, ae.Managers.Config)
+}
+
+func (r *ConfigRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params config.UpdateConfigParams) {
+	if params.Config.Data == nil {
+		ae.ManagementApi.ServeErrorFor("")(rc.ResponseWriter, rc.Request, errors.Required("data", "body", nil))
+		return
+	}
+
+	Update(rc, func(id string) error {
+		model, err := MapUpdateConfigToModel(params.ID, params.Config)
+
+		if err != nil {
+			return err
+		}
+
+		return ae.Managers.Config.Update(model, nil, rc.NewChangeContext())
+	})
+}
+
+func (r *ConfigRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params config.PatchConfigParams) {
+	Patch(rc, func(id string, fields fields.UpdatedFields) error {
+		model, err := MapPatchConfigToModel(params.ID, params.Config)
+
+		if err != nil {
+			return err
+		}
+		return ae.Managers.Config.Update(model, fields.FilterMaps("tags", "data"), rc.NewChangeContext())
+	})
+}

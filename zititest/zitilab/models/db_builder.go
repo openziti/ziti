@@ -2,10 +2,10 @@ package models
 
 import (
 	"fmt"
-	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/pkg/errors"

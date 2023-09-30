@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/trace/pb"
-	"github.com/openziti/fabric/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"

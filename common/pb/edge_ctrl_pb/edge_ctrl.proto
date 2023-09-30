@@ -1,0 +1,390 @@
+syntax = "proto3";
+
+package ziti.edge_ctrl.pb;
+
+option go_package = "github.com/openziti/edge/pb/edge_ctrl_pb";
+
+enum ContentType {
+  Zero = 0;
+  ServerHelloType = 20000;
+  ClientHelloType = 20001;
+  ErrorType = 20002;
+  // SessionAddedType = 20100;
+  // SessionUpdatedType = 20101;
+  SessionRemovedType = 20102;
+  ApiSessionAddedType = 20200;
+  ApiSessionUpdatedType = 20201;
+  ApiSessionRemovedType = 20202;
+  ApiSessionHeartbeatType = 20203;
+  RequestClientReSyncType = 20204;
+  CreateCircuitRequestType = 20205;
+  CreateCircuitResponseType = 20206;
+  CreateTerminatorRequestType = 20207;
+  CreateTerminatorResponseType = 20208;
+  UpdateTerminatorRequestType = 20209;
+  UpdateTerminatorResponseType = 20210;
+  RemoveTerminatorRequestType = 20211;
+  RemoveTerminatorResponseType = 20212;
+  ValidateSessionsRequestType = 20213;
+  HealthEventType = 20214;
+  SigningCertAddedType = 20215;
+  CreateTerminatorV2RequestType = 20216;
+  CreateTerminatorV2ResponseType = 20217;
+
+  EnrollType = 20300;
+  EnrollmentCertsResponseType = 20301;
+  EnrollmentExtendRouterRequestType = 20302;
+  EnrollmentExtendRouterVerifyRequestType = 20303;
+
+  CreateApiSessionRequestType = 20400;
+  CreateApiSessionResponseType = 20401;
+  CreateCircuitForServiceRequestType = 20402;
+  CreateCircuitForServiceResponseType = 20403;
+  ListServicesRequestType = 20404;
+  ServiceListType = 20405;
+  CreateTunnelTerminatorRequestType = 20406;
+  CreateTunnelTerminatorResponseType = 20407;
+
+  UpdateTunnelTerminatorRequestType = 20408;
+  UpdateTunnelTerminatorResponseType = 20409;
+
+  RemoveTunnelTerminatorRequestType = 20410;
+  RemoveTunnelTerminatorResponseType = 20411;
+
+  TunnelHealthEventType = 20412;
+}
+
+enum SessionType {
+  Dial = 0;
+  Bind = 1;
+}
+
+enum Header {
+  HeaderZero = 0;
+  TerminatorId = 1022;
+  CheckPassed = 1023;
+}
+
+message ServerHello {
+  string version = 1;
+  map<string, string> data = 2;
+  map<string, bytes> byteData = 3;
+}
+
+message Address {
+  string value = 10;
+  string protocol = 20;
+  string hostname = 30;
+  int32 port = 40;
+}
+
+message Listener {
+  Address address = 10;
+  Address advertise = 20;
+}
+
+message ClientHello {
+  string version = 1;
+  string hostname = 2;
+
+  // deprecated used listeners instead
+  repeated string protocols = 3;
+
+
+  // arbitrary data
+  map<string, string> data = 4;
+
+  // deprecated use listeners instead
+  repeated string protocolPorts = 5;
+
+  // an array of configured edge listeners
+  repeated Listener listeners = 10;
+}
+
+message Error {
+  string code = 1;
+  string message = 2;
+  string cause = 3;
+}
+
+message Service {
+  string id = 1;
+  string name = 2;
+  bool encryptionRequired = 3;
+}
+
+enum ConfigType {
+  Add = 0;
+  Remove = 1;
+  Replace = 2;
+}
+
+
+message Config {
+  string syncId = 1;
+  string id = 2;
+  ConfigType type = 3;
+  repeated bytes signerKeys = 4;
+  repeated Identity identities = 5;
+  repeated Service services = 6;
+  repeated PostureSet postureSet = 7;
+  repeated PostureCheck postureChecks = 8;
+}
+
+message SignerCerts {
+  repeated bytes keys = 1;
+}
+
+message Identity {
+  string id = 1;
+  string name = 2;
+  repeated string serviceIds = 3;
+}
+
+message PostureSet {
+  string id = 1;
+  string name = 2;
+  repeated string postureCheckIds = 3;
+}
+
+message PostureCheck {
+  string id = 1;
+  string type = 2;
+  map<string, bytes> data = 3;
+}
+
+message Session {
+  string token = 1;
+  SessionType type = 2;
+  repeated string certFingerprints = 3;
+  repeated string urls = 4;
+  Service service = 5;
+  string id = 7;
+  string apiSessionId = 8;
+}
+
+message ApiSession {
+  string token = 1;
+  repeated string certFingerprints = 2;
+  string id = 3;
+}
+
+message ApiSessionAdded {
+  bool isFullState = 1;
+  repeated ApiSession apiSessions = 2;
+}
+
+message ApiSessionUpdated {
+  repeated ApiSession apiSessions = 1;
+}
+
+message ApiSessionRemoved {
+  repeated string tokens = 1;
+  repeated string ids = 2;
+}
+
+message ApiSessionHeartbeat {
+  repeated string tokens = 1;
+}
+
+message SessionRemoved {
+  repeated string tokens = 1;
+  repeated string ids = 2;
+}
+
+message RequestClientReSync {
+  string reason = 1;
+}
+
+message CreateCircuitRequest {
+  string sessionToken = 1;
+  repeated string fingerprints = 2;
+  string terminatorInstanceId = 3;
+  map<uint32, bytes> peerData = 4;
+}
+
+message CreateCircuitResponse {
+  string circuitId = 1;
+  string address = 2;
+  map<uint32, bytes> peerData = 3;
+  map<string, string> tags = 4;
+}
+
+enum TerminatorPrecedence {
+  Default = 0;
+  Required = 1;
+  Failed = 2;
+}
+
+message CreateTerminatorRequest {
+  string sessionToken = 1;
+  repeated string fingerprints = 2;
+  map<uint32, bytes> peerData = 3;
+  uint32 cost = 4;
+  TerminatorPrecedence precedence = 5;
+  string instanceId = 6;
+  bytes instanceSecret = 7;
+}
+
+message CreateTerminatorV2Request {
+  string address = 1;
+  string sessionToken = 2;
+  repeated string fingerprints = 3;
+  map<uint32, bytes> peerData = 4;
+  uint32 cost = 5;
+  TerminatorPrecedence precedence = 6;
+  string instanceId = 7;
+  bytes instanceSecret = 8;
+}
+
+enum CreateTerminatorResult {
+  Success = 0;
+  FailedIdConflict = 1;
+  FailedOther = 2;
+}
+
+message CreateTerminatorV2Response {
+  string terminatorId = 1;
+  CreateTerminatorResult result = 2;
+  string msg = 3;
+}
+
+message RemoveTerminatorRequest {
+  string sessionToken = 1;
+  repeated string fingerprints = 2;
+  string terminatorId = 3;
+}
+
+message UpdateTerminatorRequest {
+  string sessionToken = 1;
+  repeated string fingerprints = 2;
+  string terminatorId = 3;
+  uint32 cost = 4;
+  TerminatorPrecedence precedence = 5;
+  bool updatePrecedence = 6;
+  bool updateCost = 7;
+}
+
+message HealthEventRequest {
+  string sessionToken = 1;
+  repeated string fingerprints = 2;
+  string terminatorId = 3;
+  bool checkPassed = 4;
+}
+
+message ValidateSessionsRequest {
+  repeated string sessionTokens = 1;
+}
+
+message EnvInfo  {
+  string arch = 1;
+  string Os = 2;
+  string OsRelease = 3;
+  string OsVersion = 4;
+}
+
+message SdkInfo {
+  string AppId = 1;
+  string AppVersion = 2;
+  string Branch = 3;
+  string Revision = 4;
+  string Type = 5;
+  string Version = 6;
+}
+
+message CreateApiSessionRequest {
+  EnvInfo envInfo = 1;
+  SdkInfo sdkInfo = 2;
+  repeated string configTypes = 3;
+}
+
+message CreateApiSessionResponse {
+  string sessionId = 1;
+  string token = 2;
+  uint32 refreshIntervalSeconds = 3;
+  string identityId = 4;
+  string identityName = 5;
+  TerminatorPrecedence defaultHostingPrecedence = 6;
+  uint32 defaultHostingCost = 7;
+  string appDataJson = 8;
+  map<string, TerminatorPrecedence> servicePrecedences = 9;
+  map<string, uint32> serviceCosts = 10;
+}
+
+message CreateCircuitForServiceRequest {
+  string sessionId = 1;
+  string serviceName = 2;
+  string terminatorInstanceId = 3;
+  map<uint32, bytes> peerData = 4;
+}
+
+message CreateSessionResponse {
+  string sessionId = 1;
+  string token = 2;
+}
+
+message CreateCircuitForServiceResponse {
+  CreateApiSessionResponse apiSession = 1;
+  CreateSessionResponse session = 2;
+  string circuitId = 3;
+  string address = 4;
+  map<uint32, bytes> peerData = 5;
+  map<string, string> tags = 6;
+}
+
+message ServicesList {
+  bytes lastUpdate = 1;
+  repeated TunnelService services = 2;
+}
+
+message TunnelService {
+  string id = 1;
+  string name = 2;
+  repeated string permissions = 3;
+  bool encryption = 4;
+  bytes config = 5;
+  bytes tags = 6;
+}
+
+message CreateTunnelTerminatorRequest {
+  string serviceName = 1;
+  string sessionId = 2;
+  string address = 3;
+  map<uint32, bytes> peerData = 4;
+  uint32 cost = 5;
+  TerminatorPrecedence precedence = 6;
+  string instanceId = 7;
+  bytes instanceSecret = 8;
+  int64 startTime = 9;
+}
+
+message CreateTunnelTerminatorResponse {
+  CreateApiSessionResponse apiSession = 1;
+  CreateSessionResponse session = 2;
+  string terminatorId = 3;
+  int64 startTime = 4;
+}
+
+message UpdateTunnelTerminatorRequest {
+  string terminatorId = 1;
+  uint32 cost = 2;
+  TerminatorPrecedence precedence = 3;
+  bool updatePrecedence = 4;
+  bool updateCost = 5;
+}
+
+message EnrollmentExtendRouterRequest {
+  string clientCertCsr = 1;
+  string serverCertCsr = 2;
+  bool requireVerification = 3;
+}
+
+message EnrollmentCertsResponse {
+  string clientCertPem = 1;
+  string serverCertPem = 2;
+  string caCertsPem = 3;
+}
+
+message EnrollmentExtendRouterVerifyRequest {
+  string clientCertPem = 1;
+}

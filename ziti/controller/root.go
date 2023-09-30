@@ -19,7 +19,7 @@ package controller
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	edgeSubCmd "github.com/openziti/edge/controller/subcmd"
+	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/util"

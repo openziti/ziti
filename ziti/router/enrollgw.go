@@ -18,8 +18,8 @@ package router
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/router/enroll"
-	"github.com/openziti/fabric/router"
+	"github.com/openziti/ziti/router/enroll"
+	"github.com/openziti/ziti/router"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/spf13/cobra"
 	"os"

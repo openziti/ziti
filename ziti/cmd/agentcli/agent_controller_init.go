@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/edge/common/pb/edge_mgmt_pb"
+	"github.com/openziti/ziti/common/pb/edge_mgmt_pb"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 )

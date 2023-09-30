@@ -51,8 +51,8 @@ type LoginOptions struct {
 	ExtJwt       string
 }
 
-// newLoginCmd creates the command
-func newLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+// NewLoginCmd creates the command
+func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &LoginOptions{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},

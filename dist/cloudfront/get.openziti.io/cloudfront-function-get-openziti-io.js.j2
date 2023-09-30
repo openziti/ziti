@@ -1,0 +1,17 @@
+function handler(event) {
+    var request = event.request;
+
+    var uri = request.uri;
+
+    switch (true) {
+      {% for route in routes -%}
+      // GitHub raw routecut: {{route['get']}}
+      case /{{route['re']}}/i.test(uri):
+        var re = /{{route['re']}}/;
+        request.uri = uri.replace(re, '{{route['raw']}}');
+        break;
+      {%- endfor %}
+    }
+    console.log(`Routing "${uri}" to "${request.uri}"`);
+    return request;
+}

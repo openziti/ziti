@@ -17,7 +17,7 @@
 package helpers
 
 import (
-	edge "github.com/openziti/edge/controller/config"
+	edge "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
 	"os"
@@ -46,7 +46,7 @@ func WorkingDir() (string, error) {
 	return NormalizePath(wd), nil
 }
 
-func GetZitiHome() (string, error) {
+func GetZitiHome() string {
 	// Get path from env variable
 	retVal := os.Getenv(constants.ZitiHomeVarName)
 
@@ -58,15 +58,11 @@ func GetZitiHome() (string, error) {
 			workingDir = "."
 		}
 
-		err = os.Setenv(constants.ZitiHomeVarName, workingDir)
-		if err != nil {
-			return "", err
-		}
-
+		_ = os.Setenv(constants.ZitiHomeVarName, workingDir)
 		retVal = os.Getenv(constants.ZitiHomeVarName)
 	}
 
-	return NormalizePath(retVal), nil
+	return NormalizePath(retVal)
 }
 
 func HostnameOrNetworkName() string {

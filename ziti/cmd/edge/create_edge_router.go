@@ -37,7 +37,7 @@ type createEdgeRouterOptions struct {
 	disabled          bool
 }
 
-func newCreateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCreateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createEdgeRouterOptions{
 		EntityOptions: api.NewEntityOptions(out, errOut),
 	}

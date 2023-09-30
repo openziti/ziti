@@ -1,0 +1,429 @@
+syntax = "proto3";
+
+package ziti.edge_cmd.pb;
+option go_package = "github.com/openziti/edge/pb/edge_cmd_pb";
+
+import "google/protobuf/timestamp.proto";
+
+enum CommandType {
+  Zero = 0;
+  CreateEdgeTerminatorType = 1000;
+  ReplaceEnrollmentWithAuthenticatorType = 1001;
+  CreateEdgeRouterType = 1002;
+  CreateTransitRouterType = 1003;
+  CreateIdentityWithEnrollmentsType = 1004;
+  UpdateServiceConfigsType = 1005;
+}
+
+message ChangeContext {
+  map<string, string> attributes = 1;
+  uint64 raftIndex = 2;
+}
+
+
+message CreateEdgeTerminatorCommand {
+  bytes terminatorData = 1;
+
+  ChangeContext ctx = 2;
+}
+
+message TagValue {
+  oneof value {
+    bool boolValue = 1;
+    string stringValue = 2;
+    double fpValue = 3;
+    bool nilValue = 4;
+  }
+}
+
+message JsonMap {
+  map<string, JsonValue> value = 1;
+}
+
+message JsonList {
+  repeated JsonValue value = 1;
+}
+
+message JsonValue {
+  oneof value {
+    bool boolValue = 1;
+    string stringValue = 2;
+    double fpValue = 3;
+    int64 int64Value = 4;
+    bool nilValue = 5;
+    JsonMap mapValue = 6;
+    JsonList listValue = 7;
+  }
+}
+
+// Authenticators
+message Authenticator {
+  message Cert {
+    string fingerprint = 1;
+    string pem = 2;
+    string unverifiedFingerprint = 3;
+    string unverifiedPem = 4;
+  }
+
+  message Updb {
+    string username = 1;
+    string password = 2;
+    string salt = 3;
+  }
+
+  string id = 1;
+  map<string, TagValue> tags = 2;
+  string identityId = 3;
+  oneof subtype {
+    Cert cert = 4;
+    Updb updb = 5;
+  }
+}
+
+// Auth Policies
+message AuthPolicy {
+  message Primary {
+    message Cert {
+      bool allowed = 1;
+      bool allowExpiredCerts = 2;
+    }
+
+    message Updb {
+      bool allowed = 1;
+      int64 MinPasswordLength = 2;
+      bool RequireSpecialChar = 3;
+      bool requireNumberChar = 4;
+      bool RequireMixedCase = 5;
+      int64 MaxAttempts = 6;
+      int64 LockoutDurationMinutes = 7;
+
+    }
+    message ExtJwt {
+      bool allowed = 1;
+      bool allowAllSigners = 2;
+      repeated string allowedExtJwtSigners = 3;
+
+    }
+    Cert cert = 1;
+    Updb updb = 2;
+    ExtJwt extJwt = 3;
+  }
+
+  message Secondary {
+    bool requireTotp = 1;
+    optional string requiredExtJwtSigner = 2;
+  }
+
+  string id = 1;
+  string name = 2;
+  Primary primary = 3;
+  Secondary secondary = 4;
+  map<string, TagValue> tags = 5;
+}
+
+// CAs
+message Ca {
+  message ExternalIdClaim {
+    string location = 1;
+    string matcher = 2;
+    string MatcherCriteria = 3;
+    string Parser = 4;
+    string ParserCriteria = 5;
+    int64 Index = 6;
+  }
+
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string fingerprint = 4;
+  string certPem = 5;
+  bool isVerified = 6;
+  string verificationToken = 7;
+  bool isAutoCaEnrollmentEnabled = 8;
+  bool isOttCaEnrollmentEnabled = 9;
+  bool isAuthEnabled = 10;
+  repeated string identityRoles = 11;
+  string identityNameFormat = 12;
+  optional ExternalIdClaim externalIdClaim = 13;
+}
+
+// Configs
+message Config {
+  string id = 1;
+  string name = 2;
+  string configTypeId = 3;
+  bytes data = 4;
+  map<string, TagValue> tags = 5;
+}
+
+// Config Types
+message ConfigType {
+  string id = 1;
+  string name = 2;
+  bytes schema = 3;
+  map<string, TagValue> tags = 4;
+}
+
+// Edge Routers
+message EdgeRouter {
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  repeated string roleAttributes = 4;
+  bool isVerified = 5;
+  optional string fingerprint = 6;
+  optional string certPem = 7;
+  optional string hostname = 8;
+  bool isTunnelerEnabled = 9;
+  bytes appData = 10;
+  optional string unverifiedFingerprint = 11;
+  optional string unverifiedCertPem = 12;
+  uint32 cost = 13;
+  bool noTraversal = 14;
+  bool disabled = 15;
+}
+
+message CreateEdgeRouterCmd {
+  EdgeRouter edgeRouter = 1;
+  Enrollment enrollment = 2;
+
+  ChangeContext ctx = 3;
+}
+
+// Edge Router Policies
+message EdgeRouterPolicy {
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string semantic = 4;
+  repeated string edgeRouterRoles = 5;
+  repeated string identityRoles = 6;
+}
+
+// Enrollments
+message Enrollment {
+  string id = 1;
+  map<string, TagValue> tags = 2;
+  string method = 3;
+  optional string identityId = 4;
+  optional string transitRouterId = 5;
+  optional string edgeRouterId = 6;
+  string token = 7;
+  google.protobuf.Timestamp issuedAt = 8;
+  google.protobuf.Timestamp expiresAt = 9;
+  string jwt = 10;
+  optional string caId = 11;
+  optional string username = 12;
+}
+
+message ReplaceEnrollmentWithAuthenticatorCmd {
+  string enrollmentId = 1;
+  Authenticator authenticator = 2;
+
+  ChangeContext ctx = 3;
+}
+
+// External JWT Signers
+message ExternalJwtSigner {
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  optional string certPem = 4;
+  optional string jwksEndpoint = 5;
+  optional string kid = 6;
+  bool enabled = 7;
+  optional string externalAuthUrl = 8;
+  bool useExternalId = 9;
+  optional string claimsProperty = 10;
+  optional string issuer = 11;
+  optional string audience = 12;
+  string commonName = 13;
+  optional string fingerprint = 14;
+  google.protobuf.Timestamp notAfter = 15;
+  google.protobuf.Timestamp notBefore = 16;
+}
+
+// Identities
+message Identity {
+  message EnvInfo {
+    string Arch = 1;
+    string Os = 2;
+    string OsRelease = 3;
+    string OsVersion = 4;
+  }
+
+  message SdkInfo {
+    string AppId = 1;
+    string AppVersion = 2;
+    string Branch = 3;
+    string Revision = 4;
+    string Type = 5;
+    string Version = 6;
+  }
+
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string identityTypeId = 4;
+  bool isDefaultAdmin = 5;
+  bool isAdmin = 6;
+  repeated string roleAttributes = 7;
+  optional EnvInfo envInfo = 8;
+  optional SdkInfo sdkInfo = 9;
+  uint32 defaultHostingPrecedence = 10;
+  uint32 defaultHostingCost = 11;
+  map<string, uint32> serviceHostingPrecedences = 12;
+  map<string, uint32> serviceHostingCosts = 13;
+  bytes appData = 14;
+  string authPolicyId = 15;
+  optional string externalId = 16;
+  bool disabled = 17;
+  optional google.protobuf.Timestamp disabledAt = 18;
+  optional google.protobuf.Timestamp disabledUntil = 19;
+}
+
+message CreateIdentityWithEnrollmentsCmd {
+  Identity identity = 1;
+  repeated Enrollment enrollments = 2;
+
+  ChangeContext ctx = 3;
+}
+
+// MFA
+message Mfa {
+  string id = 1;
+  map<string, TagValue> tags = 2;
+  bool isVerified = 3;
+  string identityId = 4;
+  string secret = 5;
+  repeated string recoveryCodes = 6;
+}
+
+// Posture Checks
+/*
+ */
+message PostureCheck {
+  message Mac {
+    repeated string macAddresses = 1;
+  }
+
+  message Mfa {
+    int64 TimeoutSeconds = 1;
+    bool PromptOnWake = 2;
+    bool PromptOnUnlock = 3;
+    bool IgnoreLegacyEndpoints = 4;
+  }
+
+  message Os {
+    string OsType = 1;
+    repeated string OsVersions = 2;
+  }
+
+  message OsList {
+    repeated Os osList = 1;
+  }
+
+  message Process {
+    string OsType = 1;
+    string Path = 2;
+    repeated string Hashes = 3;
+    repeated string Fingerprints = 4;
+  }
+
+  message ProcessMulti {
+    string semantic = 1;
+    repeated Process processes = 2;
+  }
+
+  message Domains {
+    repeated string domains = 1;
+  }
+
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string typeId = 4;
+  int64 version = 5;
+  repeated string roleAttributes = 6;
+
+  oneof subtype {
+    Mac mac = 7;
+    Mfa mfa = 8;
+    OsList osList = 9;
+    Process process = 10;
+    ProcessMulti processMulti = 11;
+    Domains domains = 12;
+  };
+}
+
+message Revocation {
+  string id = 1;
+  google.protobuf.Timestamp expiresAt = 2;
+  map<string, TagValue> tags = 3;
+}
+
+// Services
+message Service {
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string terminatorStrategy = 4;
+  repeated string roleAttributes = 5;
+  repeated string configs = 6;
+  bool encryptionRequired = 7;
+}
+
+// Service Edge Router Policies
+message ServiceEdgeRouterPolicy {
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string semantic = 4;
+  repeated string edgeRouterRoles = 5;
+  repeated string serviceRoles = 6;
+}
+
+// Service Policies
+message ServicePolicy {
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string semantic = 4;
+  repeated string identityRoles = 5;
+  repeated string serviceRoles = 6;
+  repeated string postureCheckRoles = 7;
+  string policyType = 8;
+}
+
+// Transit Routers
+message TransitRouter {
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  bool isVerified = 4;
+  optional string fingerprint = 5;
+  optional string unverifiedFingerprint = 6;
+  optional string unverifiedCertPem = 7;
+  uint32 cost = 8;
+  bool noTraversal = 9;
+  bool disabled = 10;
+}
+
+message CreateTransitRouterCmd {
+  TransitRouter router = 1;
+  Enrollment enrollment = 2;
+
+  ChangeContext ctx = 3;
+}
+
+message UpdateServiceConfigsCmd {
+  message ServiceConfig {
+    string serviceId = 1;
+    string configId = 2;
+  }
+
+  string identityId = 1;
+  bool add = 2;
+  repeated ServiceConfig serviceConfigs = 3;
+  ChangeContext ctx = 4;
+}

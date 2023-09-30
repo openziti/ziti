@@ -1,0 +1,138 @@
+name: Release Quickstart Workflow
+on:
+  pull_request_target:
+    types:
+      - closed
+    branches:
+      - main
+      - release-v*
+      - release-next
+
+jobs:
+  release-quickstart:
+    name: Release Quickstart Job
+    # when the ref is release-next the label "quickstartrelease" must be present on the PR for this job to run, and when
+    # the ref is a release branch the label is not required
+    if: |
+      github.event.pull_request.merged == true
+      && (
+        github.ref != 'refs/heads/release-next'
+        || contains(github.event.pull_request.labels.*.name, 'quickstartrelease')
+      )
+    runs-on: ubuntu-latest
+    env:
+      ZITI_QUICKSTART_IMAGE: ${{ vars.ZITI_QUICKSTART_IMAGE || 'docker.io/openziti/quickstart' }}
+      # use github.ref, not github.head_ref, because this workflow should only run on merged PRs in the target/base
+      # branch context, not the PR source branch
+      GITHUB_REF:            ${{ github.ref }}
+      # user github.sha, not github.pull_request.head.sha, because this workflow should only run on merged PRs in the
+      # target/base branch, not the PR source branch
+      GITHUB_SHA:            ${{ github.sha }}
+    steps:
+      - name: Debug action
+        uses: hmarr/debug-action@v2.1.0
+
+      - name: Wait for other builds to complete
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ env.GITHUB_SHA }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          # seconds between polling the checks api for job statuses
+          wait-interval: 20
+          # confusingly, this means "pause this step until all jobs from all workflows in same run have completed"
+          running-workflow-name: release-quickstart
+
+      - name: Checkout Workspace
+        uses: actions/checkout@v3
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Set Up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: amd64,arm64
+
+      - name: Set Up Docker BuildKit
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          # it is preferable to obtain the username from a var so that
+          # recurrences of the same string are not masked in CI output
+          username: ${{ vars.DOCKER_HUB_API_USER || secrets.DOCKER_HUB_API_USER }}
+          password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
+
+      - name: Compute the Ziti Quickstart Version String
+        id: get_version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          QUICKSTART_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
+          # drop the leading 'v', if any
+          QUICKSTART_VERSION=${QUICKSTART_VERSION#v}
+          if ! [[ "${QUICKSTART_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # fail the job because we could not obtain the current version from ziti-ci
+            echo "ERROR: QUICKSTART_VERSION=${QUICKSTART_VERSION} is not a semver"
+            exit 1
+          elif [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main$) ]]; then
+            # Set output parameters for release branches
+            echo "DEBUG: QUICKSTART_VERSION=${QUICKSTART_VERSION}"
+            echo QUICKSTART_VERSION="${QUICKSTART_VERSION}" >> $GITHUB_OUTPUT
+          else
+            # Append short sha for non-Ziti-release refs to identify quickstart docker images
+            # shipped from release-next
+            QUICKSTART_VERSION="${QUICKSTART_VERSION}-$(git rev-parse --short ${GITHUB_SHA})"
+            echo "DEBUG: QUICKSTART_VERSION=${QUICKSTART_VERSION}"
+            echo QUICKSTART_VERSION="${QUICKSTART_VERSION}" >> $GITHUB_OUTPUT
+          fi
+
+          # configure the env var used by the quickstart's Dockerfile to download the correct version of ziti for the
+          # target architecture of each image build by trimming the hyphenated short sha suffix so that the preceding
+          # release version of the ziti executable is installed in the quickstart container image
+          ZITI_OVERRIDE_VERSION=${QUICKSTART_VERSION%-*}
+          echo "DEBUG: ZITI_OVERRIDE_VERSION=${ZITI_OVERRIDE_VERSION}"
+          echo ZITI_OVERRIDE_VERSION="${ZITI_OVERRIDE_VERSION}" >> $GITHUB_OUTPUT
+
+      # This container differs in that :latest is pushed from branch release-next in addition to main and hotfix
+      # branches like releasev1.2.x. See https://github.com/openziti/ziti/issues/898
+      - name: Configure Quickstart Container
+        env:
+          IMAGE_REPO: ${{ env.ZITI_QUICKSTART_IMAGE }}
+          IMAGE_TAG:  ${{ steps.get_version.outputs.QUICKSTART_VERSION }}
+        id: tagprep_qs
+        shell: bash
+        run: |
+          DOCKER_TAGS=""
+          DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
+          DOCKER_TAGS+=",${IMAGE_REPO}:latest"
+          echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
+          echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Multi-Platform Quickstart Container Image to Hub
+        uses: docker/build-push-action@v3
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ github.workspace }}/quickstart/docker/image
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tagprep_qs.outputs.DOCKER_TAGS }}
+          build-args: |
+            ZITI_VERSION_OVERRIDE=${{ steps.get_version.outputs.ZITI_VERSION_OVERRIDE }}
+          push: true
+
+      - name: Configure Python
+        shell: bash
+        run: |
+          pip install --upgrade boto3 jinja2 requests pyyaml
+          python --version
+        
+      - name: Deploy the CloudFront Function for get.openziti.io
+        shell: bash
+        run: python ./dist/cloudfront/get.openziti.io/deploy-cloudfront-function.py
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
