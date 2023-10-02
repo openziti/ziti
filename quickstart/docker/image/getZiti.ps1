@@ -18,9 +18,31 @@ None. If "dot sourced" this script will add the resultant directory to your path
 .EXAMPLE
 PS> . .\getZiti.ps1
 #>
+Add-Type -AssemblyName System.Runtime.InteropServices
+
+$osDescription = [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
+$osArchitecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+$frameworkDescription = [System.Runtime.InteropServices.RuntimeInformation]::FrameworkDescription
+
+$arch=$osArchitecture.ToString().ToLower()
+if($arch -match "x64") {
+  $arch = "amd64"
+}
+
+if($osDescription.ToLower() -match "windows") {
+  $matchFilter="ziti-windows-$arch"
+} elseif($osDescription.ToLower() -match "darwin") {
+  $matchFilter="ziti-darwin-$arch"
+} elseif($osDescription.ToLower() -match "linux") {
+  $matchFilter="ziti-linux-$arch"
+} else {
+  Write-Error "An error occurred. os not detected from osDescription: $osDescription"
+  return
+}
+
 $latestFromGitHub=(irm https://api.github.com/repos/openziti/ziti/releases/latest)
 $version=($latestFromGitHub.tag_name)
-$zitidl=($latestFromGitHub).assets | where {$_.browser_download_url -Match "ziti-windows.*zip"}
+$zitidl=($latestFromGitHub).assets | where {$_.browser_download_url -Match "$matchFilter.*zip"}
 $downloadUrl=($zitidl.browser_download_url)
 $name=$zitidl.name
 $defaultFolder="$env:USERPROFILE\.ziti\bin"
