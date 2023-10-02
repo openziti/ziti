@@ -39,7 +39,7 @@ if($osDescription.ToLower() -match "windows") {
   Write-Error "An error occurred. os not detected from osDescription: $osDescription"
   return
 }
-$pathSeparator = [System.IO.Path]::PathSeparator
+$pathSeparator = [System.IO.Path]::DirectorySeparatorChar
 $latestFromGitHub=(irm https://api.github.com/repos/openziti/ziti/releases/latest)
 $version=($latestFromGitHub.tag_name)
 $zitidl=($latestFromGitHub).assets | where {$_.browser_download_url -Match "$matchFilter.*zip"}
