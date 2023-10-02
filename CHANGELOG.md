@@ -4,8 +4,10 @@
 
 ## Component Updates and Bug Fixes
 
-* [Issue #1336](https://github.com/openziti/ziti/issues/1336) - `ziti edge quickstart` did
-  not create the usual edge router/service edge router policy.
+* github.com/openziti/ziti: [v0.30.4 -> v0.30.5](https://github.com/openziti/ziti/compare/v0.30.4...v0.30.5)
+    * [Issue #1336](https://github.com/openziti/ziti/issues/1336) - `ziti edge quickstart` did
+      not create the usual edge router/service edge router policy.
+    * [Issue #1382](https://github.com/openziti/ziti/issues/1382) - service failure costs are not shrinking over time
 
 # Release 0.30.4
 
@@ -83,104 +85,49 @@ to `connectTimeout`.
 
 ## Edge and Fabric Merges
 
-The code from the [fabric](https://github.com/openziti/fabric)
-and [edge](https://github.com/openziti/edge)
+The code from the [fabric](https://github.com/openziti/fabric) and [edge](https://github.com/openziti/edge)
 repositories has been merged into the ziti repository. Once issues have been migrated, those two
 projects will be archived.
 
 ## Component Updates and Bug Fixes
 
-*
+* github.com/openziti/channel/v2: [v2.0.95 -> v2.0.99](https://github.com/openziti/channel/compare/v2.0.95...v2.0.99)
+* github.com/openziti/edge: [v0.24.404 -> v0.24.420](https://github.com/openziti/edge/compare/v0.24.404...v0.24.420)
+    * [Issue #1610](https://github.com/openziti/edge/issues/1610) - Don't update identity on auth if sdkInfo and envInfo haven't changed 
+    * [Issue #1611](https://github.com/openziti/edge/issues/1611) - Some entity changes events are unattributed when generated from edge client rest endpoint 
+    * [Issue #1616](https://github.com/openziti/edge/issues/1616) - host.v1 and host.v2 are out of sync 
+    * [Issue #1599](https://github.com/openziti/edge/issues/1599) - entityChange events should mask or redact jwt token 
+    * [Issue #1607](https://github.com/openziti/edge/issues/1607) - remove enrollment tokens `not before`
+    * [Issue #1310](https://github.com/openziti/ziti/issues/1310) - router run --extend doesn't wait for control channel
 
-github.com/openziti/channel/v2: [v2.0.95 -> v2.0.99](https://github.com/openziti/channel/compare/v2.0.95...v2.0.99)
+* github.com/openziti/edge-api: [v0.25.33 -> v0.25.37](https://github.com/openziti/edge-api/compare/v0.25.33...v0.25.37)
+    * [Issue #44](https://github.com/openziti/edge-api/issues/44) - create session can return 404 if service id is invalid
 
-*
+* github.com/openziti/fabric: [v0.24.23 -> v0.24.36](https://github.com/openziti/fabric/compare/v0.24.23...v0.24.36)
+    * [Issue #799](https://github.com/openziti/fabric/issues/799) - Alll controllers to advertise capabilities to routers/other controllers 
+    * [Issue #796](https://github.com/openziti/fabric/issues/796) - Make link heartbeats configurable, including an unresponive close timeout 
+    * [Issue #794](https://github.com/openziti/fabric/issues/794) - Add output file to ziti agent controller snapshot-db command 
+    * [Issue #792](https://github.com/openziti/fabric/issues/792) - include raft index in DB snapshot filename 
+    * [Issue #791](https://github.com/openziti/fabric/issues/791) - FieldError Reason field not parsed correct when transmitted from cluster node to cluster node 
+    * [Issue #789](https://github.com/openziti/fabric/issues/789) - Retransmitting prevents circuit from being idle checked
 
-github.com/openziti/edge: [v0.24.404 -> v0.24.420](https://github.com/openziti/edge/compare/v0.24.404...v0.24.420)
+* github.com/openziti/foundation/v2: [v2.0.30 -> v2.0.32](https://github.com/openziti/foundation/compare/v2.0.30...v2.0.32)
+* github.com/openziti/identity: [v1.0.61 -> v1.0.63](https://github.com/openziti/identity/compare/v1.0.61...v1.0.63)
+* github.com/openziti/metrics: [v1.2.33 -> v1.2.35](https://github.com/openziti/metrics/compare/v1.2.33...v1.2.35)
+* github.com/openziti/runzmd: [v1.0.30 -> v1.0.32](https://github.com/openziti/runzmd/compare/v1.0.30...v1.0.32)
+* github.com/openziti/sdk-golang: [v0.20.101 -> v0.20.116](https://github.com/openziti/sdk-golang/compare/v0.20.101...v0.20.116)
+    * [Issue #431](https://github.com/openziti/sdk-golang/issues/431) - sdk can panic when re-authenticating and rebinding at the same time 
+    * [Issue #238](https://github.com/openziti/sdk-golang/issues/238) - service binding needs to restart if service is recreated 
+    * [Issue #115](https://github.com/openziti/sdk-golang/issues/115) - Don't use hostname for CN in CSR 
+    * [Issue #429](https://github.com/openziti/sdk-golang/issues/429) - error handling is broken, so we don't properly retry
 
-* [Issue #1610](https://github.com/openziti/edge/issues/1610) - Don't update identity on auth if
-  sdkInfo and envInfo haven't
-  changed * [Issue #1611](https://github.com/openziti/edge/issues/1611) - Some entity changes events
-  are unattributed when generated from edge client rest
-  endpoint * [Issue #1616](https://github.com/openziti/edge/issues/1616) - host.v1 and host.v2 are
-  out of sync * [Issue #1599](https://github.com/openziti/edge/issues/1599) - entityChange events
-  should mask or redact jwt token * [Issue #1607](https://github.com/openziti/edge/issues/1607) -
-  remove enrollment tokens `not before`
-* [Issue #1310](https://github.com/openziti/ziti/issues/1310) - router run --extend doesn't wait for
-  control channel
+* github.com/openziti/secretstream: [v0.1.11 -> v0.1.12](https://github.com/openziti/secretstream/compare/v0.1.11...v0.1.12)
+* github.com/openziti/storage: [v0.2.14 -> v0.2.18](https://github.com/openziti/storage/compare/v0.2.14...v0.2.18)
+    * [Issue #31](https://github.com/openziti/storage/issues/31) - Fix ANTLR int overflow error on arm 32
 
-*
-
-github.com/openziti/edge-api: [v0.25.33 -> v0.25.37](https://github.com/openziti/edge-api/compare/v0.25.33...v0.25.37)
-
-* [Issue #44](https://github.com/openziti/edge-api/issues/44) - create session can return 404 if
-  service id is invalid
-
-*
-
-github.com/openziti/fabric: [v0.24.23 -> v0.24.36](https://github.com/openziti/fabric/compare/v0.24.23...v0.24.36)
-
-* [Issue #799](https://github.com/openziti/fabric/issues/799) - Alll controllers to advertise
-  capabilities to routers/other
-  controllers * [Issue #796](https://github.com/openziti/fabric/issues/796) - Make link heartbeats
-  configurable, including an unresponive close
-  timeout * [Issue #794](https://github.com/openziti/fabric/issues/794) - Add output file to ziti
-  agent controller snapshot-db
-  command * [Issue #792](https://github.com/openziti/fabric/issues/792) - include raft index in DB
-  snapshot filename * [Issue #791](https://github.com/openziti/fabric/issues/791) - FieldError
-  Reason field not parsed correct when transmitted from cluster node to cluster
-  node * [Issue #789](https://github.com/openziti/fabric/issues/789) - Retransmitting prevents
-  circuit from being idle checked
-
-*
-
-github.com/openziti/foundation/v2: [v2.0.30 -> v2.0.32](https://github.com/openziti/foundation/compare/v2.0.30...v2.0.32)
-
-*
-
-github.com/openziti/identity: [v1.0.61 -> v1.0.63](https://github.com/openziti/identity/compare/v1.0.61...v1.0.63)
-
-*
-
-github.com/openziti/metrics: [v1.2.33 -> v1.2.35](https://github.com/openziti/metrics/compare/v1.2.33...v1.2.35)
-
-*
-
-github.com/openziti/runzmd: [v1.0.30 -> v1.0.32](https://github.com/openziti/runzmd/compare/v1.0.30...v1.0.32)
-
-*
-
-github.com/openziti/sdk-golang: [v0.20.101 -> v0.20.116](https://github.com/openziti/sdk-golang/compare/v0.20.101...v0.20.116)
-
-* [Issue #431](https://github.com/openziti/sdk-golang/issues/431) - sdk can panic when
-  re-authenticating and rebinding at the same
-  time * [Issue #238](https://github.com/openziti/sdk-golang/issues/238) - service binding needs to
-  restart if service is
-  recreated * [Issue #115](https://github.com/openziti/sdk-golang/issues/115) - Don't use hostname
-  for CN in CSR * [Issue #429](https://github.com/openziti/sdk-golang/issues/429) - error handling
-  is broken, so we don't properly retry
-
-*
-
-github.com/openziti/secretstream: [v0.1.11 -> v0.1.12](https://github.com/openziti/secretstream/compare/v0.1.11...v0.1.12)
-
-*
-
-github.com/openziti/storage: [v0.2.14 -> v0.2.18](https://github.com/openziti/storage/compare/v0.2.14...v0.2.18)
-
-* [Issue #31](https://github.com/openziti/storage/issues/31) - Fix ANTLR int overflow error on arm
-  32
-
-*
-
-github.com/openziti/transport/v2: [v2.0.103 -> v2.0.107](https://github.com/openziti/transport/compare/v2.0.103...v2.0.107)
-
-*
-
-github.com/openziti/ziti: [v0.30.3 -> v0.30.4](https://github.com/openziti/ziti/compare/v0.30.3...v0.30.4)
-
-* Fixed an issue causing router configs to be rewritten when docker compose was brought up with
-  existing configs
+* github.com/openziti/transport/v2: [v2.0.103 -> v2.0.107](https://github.com/openziti/transport/compare/v2.0.103...v2.0.107)
+* github.com/openziti/ziti: [v0.30.3 -> v0.30.4](https://github.com/openziti/ziti/compare/v0.30.3...v0.30.4)
+    * Fixed an issue causing router configs to be rewritten when docker compose was brought up with existing configs
 
 # Release 0.30.3
 

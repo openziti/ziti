@@ -28,7 +28,13 @@ func (self *failureCosts) CreditOverTime(credit uint8, period time.Duration) *ti
 	go func() {
 		for range ticker.C {
 			for val := range self.costMap.IterBuffered() {
-				self.successWithCredit(val.Key, uint16(credit))
+				actualCredit := self.successWithCredit(val.Key, uint16(credit))
+				GlobalCosts().UpdateDynamicCost(val.Key, func(u uint16) uint16 {
+					if u < actualCredit {
+						return 0
+					}
+					return u - actualCredit
+				})
 			}
 		}
 	}()

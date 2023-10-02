@@ -108,7 +108,7 @@ func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool)
 			fmt.Sprintf("scp -o StrictHostKeyChecking=no ./fablab/bin/ziti ssh-%s%s.ziti:/tmp/ziti-%s", hostType, nameExtra, uuid.NewString()),
 		}
 
-		o, err := lib.RemoteExecAllWithTimeout(sshConfigFactory, 10*time.Second, cmds...)
+		o, err := lib.RemoteExecAllWithTimeout(sshConfigFactory, 30*time.Second, cmds...)
 		if hostType == "zet" && err != nil {
 			t.Skipf("zet hosted ssh failed [%v]", err.Error())
 			return
