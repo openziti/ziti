@@ -42,7 +42,7 @@ if($osDescription.ToLower() -match "windows") {
 $pathSeparator = [System.IO.Path]::DirectorySeparatorChar
 $latestFromGitHub=(irm https://api.github.com/repos/openziti/ziti/releases/latest)
 $version=($latestFromGitHub.tag_name)
-$zitidl=($latestFromGitHub).assets | where {$_.browser_download_url -Match "$matchFilter.*zip"}
+$zitidl=($latestFromGitHub).assets | where {$_.browser_download_url -Match "$matchFilter.*"}
 $downloadUrl=($zitidl.browser_download_url)
 $name=$zitidl.name
 $homeDirectory = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
