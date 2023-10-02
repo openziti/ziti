@@ -13,7 +13,7 @@ checkBashVersion() {
             echo "brew install bash"
             echo -e "\nThen run:"
             #shellcheck disable=SC2016
-            echo '"$(brew --prefix bash)" ./miniziti.bash ...'
+            echo '"$(brew --prefix bash)/bin/bash" ./miniziti.bash ...'
         fi
         exit 1;
     fi
@@ -921,7 +921,7 @@ main(){
         testClusterDns "${MINIKUBE_NODE_EXTERNAL}"
     fi
 
-    if kubectlWrapper get configmap "$MINIZITI_CONFIGMAP" 2> /dev/null; then
+    if kubectlWrapper get configmap "$MINIZITI_CONFIGMAP" &> /dev/null; then
         logDebug "$MINIZITI_CONFIGMAP configmap has been applied"
     else
         logInfo "Applying $MINIZITI_CONFIGMAP configmap"
