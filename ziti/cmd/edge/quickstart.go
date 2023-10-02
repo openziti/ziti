@@ -55,6 +55,12 @@ type QuickstartOpts struct {
 
 // NewQuickStartCmd creates a command object for the "create" command
 func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) *cobra.Command {
+	currentCtrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
+	currentCtrlPort := helpers.GetCtrlEdgeAdvertisedPort()
+	currentRouterAddy := helpers.GetRouterAdvertisedAddress()
+	currentRouterPort := helpers.GetZitiEdgeRouterPort()
+	defautlCtrlPort, _ := strconv.ParseInt(constants.DefaultCtrlEdgeAdvertisedPort, 10, 16)
+	defautlRouterPort, _ := strconv.ParseInt(constants.DefaultZitiEdgeRouterPort, 10, 16)
 	options := &QuickstartOpts{}
 	cmd := &cobra.Command{
 		Use:   "quickstart",
@@ -72,10 +78,10 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	cmd.Flags().BoolVar(&options.AlreadyInitialized, "already-initialized", false, "Specifies the PKI does not need to be created and the db does not need to be initialized. Recommended to be combined with --home. If --home is not specified the environment will be destroyed on shutdown! default: false")
 	cmd.Flags().StringVar(&options.Home, "home", "", "Sets the directory the environment should be installed into. Defaults to a temporary directory. If specified, the environment will not be removed on exit.")
 
-	cmd.Flags().StringVar(&options.ControllerAddress, "ctrl-address", "", "Sets the advertised address for the control plane and API")
-	cmd.Flags().Int16Var(&options.ControllerPort, "ctrl-port", 0, "Sets the port to use for the control plane and API")
-	cmd.Flags().StringVar(&options.RouterAddress, "router-address", "", "Sets the advertised address for the integrated router")
-	cmd.Flags().Int16Var(&options.RouterPort, "router-port", 0, "Sets the port to use for the integrated router")
+	cmd.Flags().StringVar(&options.ControllerAddress, "ctrl-address", "", "Sets the advertised address for the control plane and API. current: "+currentCtrlAddy)
+	cmd.Flags().Int16Var(&options.ControllerPort, "ctrl-port", int16(defautlCtrlPort), "Sets the port to use for the control plane and API. current: "+currentCtrlPort)
+	cmd.Flags().StringVar(&options.RouterAddress, "router-address", "", "Sets the advertised address for the integrated router. current: "+currentRouterAddy)
+	cmd.Flags().Int16Var(&options.RouterPort, "router-port", int16(defautlRouterPort), "Sets the port to use for the integrated router. current: "+currentRouterPort)
 	return cmd
 }
 
