@@ -32,7 +32,8 @@ if($arch -match "x64") {
 if($osDescription.ToLower() -match "windows") {
   $matchFilter="ziti-windows-$arch"
 } elseif($osDescription.ToLower() -match "darwin") {
-  $matchFilter="ziti-darwin-$arch"
+  $matchFilter="ziti-darwin-amd64"
+  #todo: replace $arch some day
 } elseif($osDescription.ToLower() -match "linux") {
   $matchFilter="ziti-linux-$arch"
 } else {
