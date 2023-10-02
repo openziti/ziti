@@ -20,8 +20,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/common/version"
+	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/ziti/cmd/create"
 	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/pki"
@@ -204,7 +204,33 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 			logrus.Fatal(loginErr)
 		}
 
-		//./ziti edge create edge-router ${ZITI_HOSTNAME}-edge-router -o ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt -t -a public
+		// Allow all identities to use any edge router with the "public" attribute
+		// ziti edge create edge-router-policy all-endpoints-public-routers --edge-router-roles "#public" --identity-roles "#all"
+		erpCmd := NewCreateEdgeRouterPolicyCmd(o.out, o.errOut)
+		erpCmd.SetArgs([]string{
+			"all-endpoints-public-routers",
+			fmt.Sprintf("--edge-router-roles=%s", "#public"),
+			fmt.Sprintf("--identity-roles=%s", "#all"),
+		})
+		erpCmdErr := erpCmd.Execute()
+		if erpCmdErr != nil {
+			logrus.Fatal(erpCmdErr)
+		}
+
+		// # Allow all edge-routers to access all services
+		// ziti edge create service-edge-router-policy all-routers-all-services --edge-router-roles "#all" --service-roles "#all"
+		serpCmd := NewCreateServiceEdgeRouterPolicyCmd(o.out, o.errOut)
+		serpCmd.SetArgs([]string{
+			"all-routers-all-services",
+			fmt.Sprintf("--edge-router-roles=%s", "#all"),
+			fmt.Sprintf("--service-roles=%s", "#all"),
+		})
+		serpCmdErr := serpCmd.Execute()
+		if serpCmdErr != nil {
+			logrus.Fatal(serpCmdErr)
+		}
+
+		// ziti edge create edge-router ${ZITI_HOSTNAME}-edge-router -o ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt -t -a public
 		createErCmd := NewCreateEdgeRouterCmd(o.out, o.errOut)
 		erJwt := o.Home + "/" + routerName + ".jwt"
 		createErCmd.SetArgs([]string{
@@ -218,7 +244,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 			logrus.Fatal(createErErr)
 		}
 
-		//./ziti create config router edge --routerName ${ZITI_HOSTNAME}-edge-router >${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml
+		// ziti create config router edge --routerName ${ZITI_HOSTNAME}-edge-router >${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml
 		opts := &create.CreateConfigRouterOptions{}
 
 		data := &create.ConfigTemplateValues{}
@@ -234,7 +260,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 			logrus.Fatal(erCfgErr)
 		}
 
-		//./ziti router enroll ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml --jwt ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt
+		// ziti router enroll ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml --jwt ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt
 		erEnroll := router.NewEnrollGwCmd()
 		erEnroll.SetArgs([]string{
 			erYaml,
@@ -247,7 +273,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 	}
 
 	go func() {
-		//./ziti router run ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml &> ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.log &
+		// ziti router run ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml &> ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.log &
 		erRunCmd := router.NewRunCmd()
 		erRunCmd.SetArgs([]string{
 			erYaml,

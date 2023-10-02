@@ -32,8 +32,8 @@ type createEdgeRouterPolicyOptions struct {
 	semantic        string
 }
 
-// newCreateEdgeRouterPolicyCmd creates the 'edge controller create edge-router-policy' command
-func newCreateEdgeRouterPolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+// NewCreateEdgeRouterPolicyCmd creates the 'edge controller create edge-router-policy' command
+func NewCreateEdgeRouterPolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createEdgeRouterPolicyOptions{
 		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
