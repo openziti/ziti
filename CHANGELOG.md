@@ -1,3 +1,12 @@
+# Release 0.30.5
+
+## What's New
+
+## Component Updates and Bug Fixes
+
+* [Issue #1336](https://github.com/openziti/ziti/issues/1336) - `ziti edge quickstart` did
+  not create the usual edge router/service edge router policy.
+
 # Release 0.30.4
 
 ## What's New
