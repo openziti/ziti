@@ -58,7 +58,7 @@ $zipFile="${toDir}${dirSeparator}${name}"
 if($(Test-Path -Path $zipFile -PathType Leaf)) {
     Write-Output "The file has already been downloading. No need to download again"
 } else {
-    mkdir "${toDir}" -ErrorAction SilentlyContinue
+    mkdir -p "${toDir}" -ErrorAction SilentlyContinue
     Write-Output "Downloading file "
     Write-Output "    from: ${downloadUrl} "
     Write-Output "      to: ${zipFile}"
@@ -72,7 +72,7 @@ if($osDescription.ToLower() -match "windows") {
     Expand-Archive -Path $zipFile -DestinationPath "${toDir}${dirSeparator}${version}" -ErrorAction SilentlyContinue
 } else {
     $env:LC_ALL = "en_US.UTF-8"
-    mkdir "${toDir}${dirSeparator}${version}"
+    mkdir -p "${toDir}${dirSeparator}${version}"
     tar -xvf $zipFile -C "${toDir}${dirSeparator}${version}"
 }
 
