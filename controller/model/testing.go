@@ -23,7 +23,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/config"
+	edgeconfig "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/jwtsigner"
 	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
@@ -74,7 +74,7 @@ func (ctx testHostController) IsRaftEnabled() bool {
 type TestContext struct {
 	*persistence.TestContext
 	managers        *Managers
-	config          *config.Config
+	config          *edgeconfig.Config
 	metricsRegistry metrics.Registry
 	hostController  *testHostController
 }
@@ -98,7 +98,7 @@ func (ctx *TestContext) GetManagers() *Managers {
 	return ctx.managers
 }
 
-func (ctx *TestContext) GetConfig() *config.Config {
+func (ctx *TestContext) GetConfig() *edgeconfig.Config {
 	return ctx.config
 }
 
@@ -160,9 +160,9 @@ func NewTestContext(t *testing.T) *TestContext {
 }
 func (ctx *TestContext) Init() {
 	ctx.TestContext.Init()
-	ctx.config = &config.Config{
-		Enrollment: config.Enrollment{
-			EdgeRouter: config.EnrollmentOption{
+	ctx.config = &edgeconfig.Config{
+		Enrollment: edgeconfig.Enrollment{
+			EdgeRouter: edgeconfig.EnrollmentOption{
 				Duration: 60 * time.Second,
 			},
 		},

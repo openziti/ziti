@@ -41,6 +41,9 @@ type RouterSender struct {
 	closeNotify chan struct{}
 	running     atomic.Bool
 
+	SupportsRouterModel bool
+	RouterModelIndex    *uint64
+
 	sync.Mutex
 }
 

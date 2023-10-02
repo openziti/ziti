@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package ziti.edge_ctrl.pb;
 
-option go_package = "github.com/openziti/edge/pb/edge_ctrl_pb";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/openziti/ziti/common/pb/edge_ctrl_pb";
 
 enum ContentType {
   Zero = 0;
@@ -27,7 +29,6 @@ enum ContentType {
   RemoveTerminatorResponseType = 20212;
   ValidateSessionsRequestType = 20213;
   HealthEventType = 20214;
-  SigningCertAddedType = 20215;
   CreateTerminatorV2RequestType = 20216;
   CreateTerminatorV2ResponseType = 20217;
 
@@ -52,6 +53,10 @@ enum ContentType {
   RemoveTunnelTerminatorResponseType = 20411;
 
   TunnelHealthEventType = 20412;
+
+  DataStateType = 20500;
+  DataStateEventType = 20501;
+  UpdateTokenType = 20502;
 }
 
 enum SessionType {
@@ -113,44 +118,187 @@ message Service {
   bool encryptionRequired = 3;
 }
 
-enum ConfigType {
-  Add = 0;
-  Remove = 1;
-  Replace = 2;
+message PostureResponses {
+  repeated PostureResponse responses = 1;
 }
 
+message PostureResponse {
+  oneof Type {
+    Macs macs = 1;
+    OperatingSystem os = 2;
+    ProcessList processList = 3;
+    Domain domain = 4;
+    Woken woken = 5;
+    Unlocked unlocked = 6;
+    SdkInfo sdkInfo = 7;
+  };
 
-message Config {
-  string syncId = 1;
-  string id = 2;
-  ConfigType type = 3;
-  repeated bytes signerKeys = 4;
-  repeated Identity identities = 5;
-  repeated Service services = 6;
-  repeated PostureSet postureSet = 7;
-  repeated PostureCheck postureChecks = 8;
+
+  message Macs {
+    repeated string addresses = 1;
+  }
+
+  message OperatingSystem {
+    string type  = 1;
+    string version = 2;
+    string build = 3;
+  }
+
+  message Domain {
+    string name = 1;
+  }
+
+  message Process {
+    string path = 1;
+    bool isRunning = 2;
+    string hash = 3;
+    repeated string signerFingerprints = 4;
+  }
+
+  message ProcessList {
+    repeated Process processes = 1;
+  }
+
+  message Woken {
+    google.protobuf.Timestamp Time = 1;
+  }
+
+  message Unlocked {
+    google.protobuf.Timestamp Time = 1;
+  }
+
+  message SdkInfo {
+    string appId       = 1;
+    string appVersion = 2;
+    string branch     = 3;
+    string revision   = 4;
+    string type       = 5;
+    string version    = 6;
+  }
 }
 
-message SignerCerts {
-  repeated bytes keys = 1;
+message UpdateToken {
+  string token = 1;
 }
 
-message Identity {
-  string id = 1;
-  string name = 2;
-  repeated string serviceIds = 3;
-}
+message DataState {
+  repeated Event events = 1;
+  uint64 endIndex  = 2;
 
-message PostureSet {
-  string id = 1;
-  string name = 2;
-  repeated string postureCheckIds = 3;
-}
+  enum Action {
+    Create = 0;
+    Update = 1;
+    Delete = 2;
+  }
 
-message PostureCheck {
-  string id = 1;
-  string type = 2;
-  map<string, bytes> data = 3;
+  message Identity {
+    string id = 1;
+    string name = 2;
+    repeated string servicePolicyIds = 3;
+  }
+
+  message Service {
+    string id = 1;
+    string name = 2;
+    bool encryptionRequired = 3;
+  }
+
+  message ServicePolicy {
+    string id = 1;
+    string name = 2;
+    repeated string serviceIds = 3;
+    repeated string postureCheckIds =4;
+    repeated string identityIds = 5;
+  }
+
+  message Revocation {
+    string id = 1;
+    google.protobuf.Timestamp ExpiresAt = 2;
+  }
+
+  message Event {
+    Action action = 1;
+    uint64 index = 2;
+    bool isDistributedIndex = 3;
+
+    oneof Model{
+      Identity identity = 10;
+      Service service = 11;
+      ServicePolicy servicePolicy = 12;
+      PostureCheck postureCheck = 13;
+      PublicKey publicKey = 14;
+      Revocation revocation = 15;
+    }
+  }
+
+  message PublicKey {
+    bytes data = 1; //public key
+    string kid = 2; //key id/fingerprint
+    repeated Usage usages = 3; // what the public key in data is used for
+    Format format = 4; //the format of the public key in data and chain
+
+    enum Usage {
+      JWTValidation = 0;
+      ClientX509CertValidation = 1;
+    }
+
+    enum Format {
+      X509CertDer = 0; //x509 cert
+      PKIXPublicKey = 1; //asn.1 public key
+      //JWK = 3; //JSON Web Key
+    }
+  }
+
+  message PostureCheck {
+    message Mac {
+      repeated string macAddresses = 1;
+    }
+
+    message Mfa {
+      int64 TimeoutSeconds = 1;
+      bool PromptOnWake = 2;
+      bool PromptOnUnlock = 3;
+      bool IgnoreLegacyEndpoints = 4;
+    }
+
+    message Os {
+      string OsType = 1;
+      repeated string OsVersions = 2;
+    }
+
+    message OsList {
+      repeated Os osList = 1;
+    }
+
+    message Process {
+      string OsType = 1;
+      string Path = 2;
+      repeated string Hashes = 3;
+      repeated string Fingerprints = 4;
+    }
+
+    message ProcessMulti {
+      string semantic = 1;
+      repeated Process processes = 2;
+    }
+
+    message Domains {
+      repeated string domains = 1;
+    }
+
+    string id = 1;
+    string name = 2;
+    string typeId = 4;
+
+    oneof subtype {
+      Mac mac = 7;
+      Mfa mfa = 8;
+      OsList osList = 9;
+      Process process = 10;
+      ProcessMulti processMulti = 11;
+      Domains domains = 12;
+    };
+  }
 }
 
 message Session {

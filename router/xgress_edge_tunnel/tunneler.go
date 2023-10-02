@@ -18,7 +18,7 @@ package xgress_edge_tunnel
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/router/fabric"
+	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/intercept"
 	"github.com/openziti/ziti/tunnel/intercept/host"
@@ -36,7 +36,7 @@ import (
 type tunneler struct {
 	dialOptions   *Options
 	listenOptions *Options
-	stateManager  fabric.StateManager
+	stateManager  state.Manager
 	bindHandler   xgress.BindHandler
 
 	interceptor     intercept.Interceptor
@@ -46,7 +46,7 @@ type tunneler struct {
 	notifyReconnect chan struct{}
 }
 
-func newTunneler(factory *Factory, stateManager fabric.StateManager) *tunneler {
+func newTunneler(factory *Factory, stateManager state.Manager) *tunneler {
 	result := &tunneler{
 		stateManager:    stateManager,
 		terminators:     cmap.New[*tunnelTerminator](),

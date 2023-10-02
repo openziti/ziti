@@ -1,9 +1,10 @@
-package oidc_auth
+package common
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/zitadel/oidc/v2/pkg/oidc"
 	"time"
 )
@@ -26,14 +27,16 @@ const (
 )
 
 type CustomClaims struct {
-	ApiSessionId     string   `json:"z_asid,omitempty"`
-	ExternalId       string   `json:"z_eid,omitempty"`
-	IsAdmin          bool     `json:"z_ia,omitempty"`
-	ConfigTypes      []string `json:"z_ct,omitempty"`
-	ApplicationId    string   `json:"z_aid,omitempty"`
-	Type             string   `json:"z_t"`
-	CertFingerprints []string `json:"z_cfs"`
-	Scopes           []string `json:"scopes,omitempty"`
+	ApiSessionId     string              `json:"z_asid,omitempty"`
+	ExternalId       string              `json:"z_eid,omitempty"`
+	IsAdmin          bool                `json:"z_ia,omitempty"`
+	ConfigTypes      []string            `json:"z_ct,omitempty"`
+	ApplicationId    string              `json:"z_aid,omitempty"`
+	Type             string              `json:"z_t"`
+	CertFingerprints []string            `json:"z_cfs"`
+	Scopes           []string            `json:"scopes,omitempty"`
+	SdkInfo          *rest_model.SdkInfo `json:"z_sdk"`
+	EnvInfo          *rest_model.EnvInfo `json:"z_env"`
 }
 
 type RefreshClaims struct {

@@ -50,6 +50,7 @@ const (
 	//msg headers
 	SyncStrategyTypeHeader  = 1013
 	SyncStrategyStateHeader = 1014
+	SyncStrategyLastIndex   = 1015
 )
 
 // RouterSyncStrategy handles the life cycle of an Edge Router connecting to the controller, synchronizing
@@ -60,7 +61,6 @@ type RouterSyncStrategy interface {
 	Stop()
 	RouterConnectionHandler
 	RouterSynchronizerEventHandler
-	PeerAdded(peers []*event.ClusterPeer)
 }
 
 // RouterConnectionHandler is responsible for handling router connect/disconnect for synchronizing state.
@@ -79,6 +79,8 @@ type RouterSynchronizerEventHandler interface {
 	ApiSessionDeleted(apiSession *persistence.ApiSession)
 
 	SessionDeleted(session *persistence.Session)
+
+	PeerAdded([]*event.ClusterPeer)
 }
 
 // RouterState provides a thread save mechanism to access and set router status information that may be influx

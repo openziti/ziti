@@ -20,10 +20,6 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/router/fabric"
-	"github.com/openziti/ziti/router/handler_edge_ctrl"
-	"github.com/openziti/ziti/router/internal/apiproxy"
-	"github.com/openziti/ziti/router/internal/edgerouter"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
@@ -31,6 +27,10 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/handler_edge_ctrl"
+	"github.com/openziti/ziti/router/internal/apiproxy"
+	"github.com/openziti/ziti/router/internal/edgerouter"
+	"github.com/openziti/ziti/router/state"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
@@ -43,7 +43,7 @@ type Factory struct {
 	routerConfig     *router.Config
 	edgeRouterConfig *edgerouter.Config
 	hostedServices   *hostedServiceRegistry
-	stateManager     fabric.StateManager
+	stateManager     state.Manager
 	versionProvider  versions.VersionProvider
 	certChecker      *CertExpirationChecker
 	metricsRegistry  metrics.Registry
@@ -69,10 +69,12 @@ func (factory *Factory) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionAddedHandler(factory.stateManager, binding))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionRemovedHandler(factory.stateManager))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionUpdatedHandler(factory.stateManager))
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewSigningCertAddedHandler(factory.stateManager))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.routerConfig.Id, func() {
 		factory.certChecker.CertsUpdated()
 	}))
+
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewDataStateHandler(factory.stateManager))
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewDataStateEventHandler(factory.stateManager))
 
 	return nil
 }
@@ -89,6 +91,10 @@ func (factory *Factory) Run(env env.RouterEnv) error {
 	factory.ctrls = env.GetNetworkControllers()
 
 	factory.stateManager.StartHeartbeat(env, factory.edgeRouterConfig.HeartbeatIntervalSeconds, env.GetCloseNotify())
+
+	factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
+
+	factory.stateManager.StartRouterModelSave(env, factory.edgeRouterConfig.Db, factory.edgeRouterConfig.DbSaveInterval)
 
 	factory.certChecker = NewCertExpirationChecker(factory.routerConfig.Id, factory.edgeRouterConfig, env.GetNetworkControllers(), env.GetCloseNotify())
 
@@ -127,7 +133,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 }
 
 // NewFactory constructs a new Edge Xgress Factory instance
-func NewFactory(routerConfig *router.Config, versionProvider versions.VersionProvider, stateManager fabric.StateManager, metricsRegistry metrics.Registry) *Factory {
+func NewFactory(routerConfig *router.Config, versionProvider versions.VersionProvider, stateManager state.Manager, metricsRegistry metrics.Registry) *Factory {
 	factory := &Factory{
 		hostedServices:  NewHostedServicesRegistry(),
 		stateManager:    stateManager,
