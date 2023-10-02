@@ -5,8 +5,8 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/pkg/errors"
 	"github.com/zitadel/oidc/v2/pkg/op"
@@ -306,8 +306,4 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 
 	callbackUrl := l.callback(r.Context(), creds.AuthRequestId)
 	http.Redirect(w, r, callbackUrl, http.StatusFound)
-}
-
-func (l *login) returnAuthRequestId(writer http.ResponseWriter, request *http.Request) {
-
 }
