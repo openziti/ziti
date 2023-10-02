@@ -45,8 +45,9 @@ $version=($latestFromGitHub.tag_name)
 $zitidl=($latestFromGitHub).assets | where {$_.browser_download_url -Match "$matchFilter.*zip"}
 $downloadUrl=($zitidl.browser_download_url)
 $name=$zitidl.name
-$defaultFolder="$env:USERPROFILE\.ziti\bin"
-$toDir=$(Read-Host "Where folder should be used for ziti? [default: ${defaultfolder}]")
+$homeDirectory = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
+$defaultFolder="$homeDirectory\.ziti\bin"
+$toDir=$(Read-Host "Where should ziti be installed? [default: ${defaultfolder}]")
 if($toDir.Trim() -eq "") {
     $toDir=("${defaultfolder}")
 }
