@@ -40,20 +40,21 @@ if($osDescription.ToLower() -match "windows") {
   Write-Error "An error occurred. os not detected from osDescription: $osDescription"
   return
 }
-$pathSeparator = [System.IO.Path]::DirectorySeparatorChar
+$dirSeparator = [System.IO.Path]::DirectorySeparatorChar
+$pathSeparator = [System.IO.Path]::PathSeparator
 $latestFromGitHub=(irm https://api.github.com/repos/openziti/ziti/releases/latest)
 $version=($latestFromGitHub.tag_name)
 $zitidl=($latestFromGitHub).assets | where {$_.browser_download_url -Match "$matchFilter.*"}
 $downloadUrl=($zitidl.browser_download_url)
 $name=$zitidl.name
 $homeDirectory = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
-$defaultFolder="$homeDirectory${pathSeparator}.ziti${pathSeparator}bin"
+$defaultFolder="$homeDirectory${dirSeparator}.ziti${dirSeparator}bin"
 $toDir=$(Read-Host "Where should ziti be installed? [default: ${defaultfolder}]")
 if($toDir.Trim() -eq "") {
     $toDir=("${defaultfolder}")
 }
 
-$zipFile="${toDir}${pathSeparator}${name}"
+$zipFile="${toDir}${dirSeparator}${name}"
 if($(Test-Path -Path $zipFile -PathType Leaf)) {
     Write-Output "The file has already been downloading. No need to download again"
 } else {
@@ -67,10 +68,16 @@ if($(Test-Path -Path $zipFile -PathType Leaf)) {
     $ProgressPreference=$SavedProgressPreference
 }
 
-Expand-Archive -Path $zipFile -DestinationPath "${toDir}${pathSeparator}${version}" -ErrorAction SilentlyContinue
+if($osDescription.ToLower() -match "windows") {
+    Expand-Archive -Path $zipFile -DestinationPath "${toDir}${dirSeparator}${version}" -ErrorAction SilentlyContinue
+} else {
+    $env:LC_ALL = "en_US.UTF-8"
+    mkdir "${toDir}${dirSeparator}${version}"
+    tar -xvf $zipFile -C "${toDir}${dirSeparator}${version}"
+}
 
 Write-Output " "
-Write-Output "Extracted binaries to ${toDir}${pathSeparator}${version}${pathSeparator}ziti"
+Write-Output "Extracted binaries to ${toDir}${dirSeparator}${version}${dirSeparator}ziti"
 Write-Output " "
 $addToPath=$(Read-Host "Would you like to add ziti to this session's path? [default: Y]")
 if($addToPath.Trim() -eq "") {
@@ -78,6 +85,6 @@ if($addToPath.Trim() -eq "") {
 }
 
 if($addToPath -ilike "y*") {
-  $env:Path+=";${toDir}${pathSeparator}${version}"
+  $env:PATH+="$pathSeparator${toDir}${dirSeparator}${version}"
   Write-Output "ziti added to your path!"
 }
