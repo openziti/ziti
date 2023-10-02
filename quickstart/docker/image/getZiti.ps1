@@ -58,7 +58,7 @@ $zipFile="${toDir}${dirSeparator}${name}"
 if($(Test-Path -Path $zipFile -PathType Leaf)) {
     Write-Output "The file has already been downloading. No need to download again"
 } else {
-    mkdir -p "${toDir}" -ErrorAction SilentlyContinue
+    mkdir -p "${toDir}"
     Write-Output "Downloading file "
     Write-Output "    from: ${downloadUrl} "
     Write-Output "      to: ${zipFile}"
