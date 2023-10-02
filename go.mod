@@ -24,7 +24,7 @@ require (
 	github.com/go-openapi/strfmt v0.21.7
 	github.com/go-openapi/swag v0.22.4
 	github.com/go-openapi/validate v0.22.1
-	github.com/go-resty/resty/v2 v2.8.0
+	github.com/go-resty/resty/v2 v2.9.1
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/gopacket v1.1.19
