@@ -34,8 +34,6 @@ const (
 	AuthRequestIdHeader = "auth-request-id"
 )
 
-const ()
-
 // embedded file/HTML resources
 var (
 	//go:embed resources
