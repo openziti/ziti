@@ -39,20 +39,20 @@ if($osDescription.ToLower() -match "windows") {
   Write-Error "An error occurred. os not detected from osDescription: $osDescription"
   return
 }
-
+$pathSeparator = [System.IO.Path]::PathSeparator
 $latestFromGitHub=(irm https://api.github.com/repos/openziti/ziti/releases/latest)
 $version=($latestFromGitHub.tag_name)
 $zitidl=($latestFromGitHub).assets | where {$_.browser_download_url -Match "$matchFilter.*zip"}
 $downloadUrl=($zitidl.browser_download_url)
 $name=$zitidl.name
 $homeDirectory = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
-$defaultFolder="$homeDirectory\.ziti\bin"
+$defaultFolder="$homeDirectory${pathSeparator}.ziti${pathSeparator}bin"
 $toDir=$(Read-Host "Where should ziti be installed? [default: ${defaultfolder}]")
 if($toDir.Trim() -eq "") {
     $toDir=("${defaultfolder}")
 }
 
-$zipFile="${toDir}\${name}"
+$zipFile="${toDir}${pathSeparator}${name}"
 if($(Test-Path -Path $zipFile -PathType Leaf)) {
     Write-Output "The file has already been downloading. No need to download again"
 } else {
@@ -66,10 +66,10 @@ if($(Test-Path -Path $zipFile -PathType Leaf)) {
     $ProgressPreference=$SavedProgressPreference
 }
 
-Expand-Archive -Path $zipFile -DestinationPath "${toDir}\${version}" -ErrorAction SilentlyContinue
+Expand-Archive -Path $zipFile -DestinationPath "${toDir}${pathSeparator}${version}" -ErrorAction SilentlyContinue
 
 Write-Output " "
-Write-Output "Extracted binaries to ${toDir}\${version}\ziti"
+Write-Output "Extracted binaries to ${toDir}${pathSeparator}${version}${pathSeparator}ziti"
 Write-Output " "
 $addToPath=$(Read-Host "Would you like to add ziti to this session's path? [default: Y]")
 if($addToPath.Trim() -eq "") {
@@ -77,6 +77,6 @@ if($addToPath.Trim() -eq "") {
 }
 
 if($addToPath -ilike "y*") {
-  $env:Path+=";${toDir}\${version}"
+  $env:Path+=";${toDir}${pathSeparator}${version}"
   Write-Output "ziti added to your path!"
 }
