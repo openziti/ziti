@@ -117,7 +117,7 @@ type InstantStrategy struct {
 
 // Initialize implements RouterDataModelCache
 func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) error {
-	strategy.RouterDataModel = common.NewRouterDataModel(logSize, bufferSize)
+	strategy.RouterDataModel = common.NewSenderRouterDataModel(logSize, bufferSize)
 
 	if strategy.ae.HostController.IsRaftEnabled() {
 		strategy.indexProvider = &RaftIndexProvider{}
@@ -133,7 +133,7 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 		return err
 	}
 
-	go strategy.handleRouterModelEvents(strategy.RouterDataModel.GetEventChannel())
+	go strategy.handleRouterModelEvents(strategy.RouterDataModel.NewListener())
 
 	//policy create/delete/update
 	strategy.servicePolicyHandler = &constraintToIndexedEvents[*persistence.ServicePolicy]{
@@ -225,7 +225,7 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 		ae:                       ae,
 		routerConnectedQueue:     make(chan *RouterSender, options.MaxQueuedRouterConnects),
 		receivedClientHelloQueue: make(chan *RouterSender, options.MaxQueuedClientHellos),
-		RouterDataModel:          common.NewRouterDataModel(10000, 10000),
+		RouterDataModel:          common.NewSenderRouterDataModel(10000, 10000),
 		stopNotify:               make(chan struct{}),
 	}
 

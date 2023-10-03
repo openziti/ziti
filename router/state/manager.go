@@ -46,6 +46,8 @@ const (
 	EventAddedApiSession   = "AddedApiSession"
 	EventUpdatedApiSession = "UpdatedApiSession"
 	EventRemovedApiSession = "RemovedApiSession"
+
+	RouterDataModelListerBufferSize = 100
 )
 
 type RemoveListener func()
@@ -123,11 +125,11 @@ func (sm *ManagerImpl) StartRouterModelSave(routerEnv env.RouterEnv, filePath st
 }
 
 func (sm *ManagerImpl) LoadRouterModel(filePath string) {
-	model, err := common.NewReceiverRouterDataModelFromFile(filePath)
+	model, err := common.NewReceiverRouterDataModelFromFile(filePath, RouterDataModelListerBufferSize)
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("could not load router model from file [%s]", filePath)
-		model = common.NewReceiverRouterDataModel()
+		model = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
 	}
 
 	sm.SetRouterDataModel(model)
@@ -234,7 +236,7 @@ func (sm *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 
 func (sm *ManagerImpl) RouterDataModel() *common.RouterDataModel {
 	if sm.routerDataModel == nil {
-		sm.routerDataModel = common.NewReceiverRouterDataModel()
+		sm.routerDataModel = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
 	}
 	return sm.routerDataModel
 }

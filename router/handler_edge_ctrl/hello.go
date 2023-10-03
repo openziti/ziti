@@ -77,6 +77,7 @@ func (h *helloHandler) ContentType() int32 {
 
 func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
+
 		serverHello := &edge_ctrl_pb.ServerHello{}
 		if err := proto.Unmarshal(msg.Body, serverHello); err == nil {
 			pfxlog.Logger().Info("received server hello, replying")

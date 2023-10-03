@@ -31,7 +31,7 @@ func (dsh *DataStateHandler) HandleReceive(msg *channel.Message, ch channel.Chan
 		return
 	}
 
-	model := common.NewReceiverRouterDataModel()
+	model := common.NewReceiverRouterDataModel(state.RouterDataModelListerBufferSize)
 
 	for _, event := range newState.Events {
 		model.Apply(event)
