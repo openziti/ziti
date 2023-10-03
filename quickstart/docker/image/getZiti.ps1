@@ -21,10 +21,9 @@ PS> . .\getZiti.ps1
 Add-Type -AssemblyName System.Runtime.InteropServices
 
 $osDescription = [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
-$osArchitecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
 $frameworkDescription = [System.Runtime.InteropServices.RuntimeInformation]::FrameworkDescription
 
-$arch=$osArchitecture.ToString().ToLower()
+$arch=${env:PROCESSOR_ARCHITECTURE}.ToString().ToLower()
 if($arch -match "x64") {
   $arch = "amd64"
 }
