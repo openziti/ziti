@@ -23,6 +23,11 @@ Add-Type -AssemblyName System.Runtime.InteropServices
 $osDescription = [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
 $frameworkDescription = [System.Runtime.InteropServices.RuntimeInformation]::FrameworkDescription
 
+$arch=${env:PROCESSOR_ARCHITECTURE}.ToString().ToLower()
+if($arch -match "x64") {
+  $arch = "amd64"
+}
+
 if($osDescription.ToLower() -match "windows") {
   $matchFilter="ziti-windows-$arch"
 } elseif($osDescription.ToLower() -match "darwin") {
