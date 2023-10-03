@@ -57,7 +57,7 @@ func parse(str string, l ZitiQlListener, el antlr.ErrorListener, debug bool) {
 	p.AddErrorListener(el)
 
 	p.BuildParseTrees = true
-	tree := p.Query()
+	tree := p.Start_()
 	antlr.ParseTreeWalkerDefault.Walk(l, tree)
 }
 
