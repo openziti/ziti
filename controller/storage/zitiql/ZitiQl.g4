@@ -109,7 +109,7 @@ stringArray: LBRACKET WS* STRING (WS* ',' WS* STRING)* WS* RBRACKET;
 numberArray: LBRACKET WS* NUMBER (WS* ',' WS* NUMBER)* WS* RBRACKET;
 datetimeArray: LBRACKET WS* DATETIME (WS* ',' WS* DATETIME)* WS* RBRACKET;
 
-start: WS* query* WS* EOF #End;
+start: WS* query WS* EOF #End;
 
 query:
     boolExpr (WS+ sortBy)? (WS+ skip)? (WS+ limit)? #QueryStmt
