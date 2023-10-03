@@ -17,6 +17,7 @@
 package ast
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"reflect"
 	"testing"
@@ -718,4 +719,16 @@ func runFilterTest(t *testing.T, tt testDef) {
 	if tt.result != result {
 		t.Errorf("expected filter result %v, got %v", tt.result, result)
 	}
+}
+
+func TestIncompleteInput(t *testing.T) {
+	listener := NewListener()
+	listener.PrintRuleLocation = false
+	listener.PrintChildren = false
+	listener.PrintStackOps = false
+
+	req := require.New(t)
+	parseErrors := zitiql.Parse("updatedAt > datetime(2023-10-02T21:08:58.577Z)sort by updatedAt desc skip 500 limit 500", listener)
+	req.True(len(parseErrors) > 0)
+	fmt.Println(parseErrors[0])
 }
