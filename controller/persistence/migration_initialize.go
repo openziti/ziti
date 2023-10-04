@@ -18,8 +18,8 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
 	"math"
 	"time"
 )
@@ -508,6 +508,13 @@ var interceptV1ConfigType = &ConfigType{
 			"sourceIp": map[string]interface{}{
 				"type":        "string",
 				"description": "The source IP (and optional :port) to spoof when the connection is egressed from the hosting tunneler. '$tunneler_id.name' resolves to the name of the client tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the client tunneler's identity. '$src_ip' and '$src_port' resolve to the source IP / port of the originating client. '$dst_port' resolves to the port that the client is trying to connect.",
+			},
+			"allowedSourceAddresses": map[string]interface{}{
+				"allOf": []interface{}{
+					map[string]interface{}{"$ref": "#/definitions/inhabitedSet"},
+					map[string]interface{}{"items": map[string]interface{}{"$ref": "#/definitions/listenAddress"}},
+				},
+				"description": "white list of source ips/cidrs that can be intercepted. all ips can be intercepted if this is not set.",
 			},
 		},
 		"required": []interface{}{

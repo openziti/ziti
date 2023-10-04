@@ -18,13 +18,13 @@ package persistence
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 )
 
 const (
-	CurrentDbVersion = 34
+	CurrentDbVersion = 35
 	FieldVersion     = "version"
 )
 
@@ -154,6 +154,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
 		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
 		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
+	}
+
+	if step.CurrentVersion < 35 {
+		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
 	}
 
 	// current version

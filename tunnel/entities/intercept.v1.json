@@ -69,6 +69,19 @@
                 }
             ]
         },
+        "allowedSourceAddresses": {
+            "description": "white list of source ips/cidrs that can be intercepted. all ips can be intercepted if this is not set.",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/listenAddress"
+                    }
+                }
+            ]
+        },
         "dialOptions": {
             "additionalProperties": false,
             "properties": {
