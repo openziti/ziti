@@ -2,6 +2,26 @@
 
 ## What's New
 
+* Initial proxy support in host.v1/host.v2
+
+## Proxy Support in host.v1/host.v2
+
+`host.v1` and `host.v2` configurations may now specify a proxy to use. 
+Currently only HTTP Connect proxies which don't require authentication are supported.
+
+**Example using `host.v1`**
+
+{
+    "address": "192.168.2.50",
+    "port": 1234,
+    "protocol": "tcp",
+    "proxy": {
+        "address": "192.168.1.110:3128",
+        "type": "http"
+    }
+}
+
+
 ## Component Updates and Bug Fixes
 * github.com/openziti/storage: [v0.2.18 -> v0.2.19](https://github.com/openziti/storage/compare/v0.2.18...v0.2.19)
     * [Issue #52](https://github.com/openziti/storage/issues/52) - Grammar should expect single valid query followed by EOF
@@ -9,6 +29,8 @@
 * github.com/openziti/ziti: [v0.30.4 -> v0.30.5](https://github.com/openziti/ziti/compare/v0.30.4...v0.30.5)
     * [Issue #1336](https://github.com/openziti/ziti/issues/1336) - `ziti edge quickstart` did
       not create the usual edge router/service edge router policy.
+    * [Issue #1397](https://github.com/openziti/ziti/issues/1397) - HTTP Proxy suport for host.v1/host.v2 config types
+    * [Issue #1406](https://github.com/openziti/ziti/issues/1406) - Entity change event dispatcher isn't shutting down properly when controller shuts down
     * [Issue #1382](https://github.com/openziti/ziti/issues/1382) - service failure costs are not shrinking over time
 
 # Release 0.30.4

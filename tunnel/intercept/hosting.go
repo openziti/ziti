@@ -19,13 +19,16 @@ package intercept
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/transport/v2"
+	"github.com/openziti/transport/v2/proxies"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/openziti/ziti/tunnel/entities"
 	"github.com/openziti/ziti/tunnel/health"
 	"github.com/openziti/ziti/tunnel/router"
 	"github.com/openziti/ziti/tunnel/utils"
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
+	"golang.org/x/net/proxy"
 	"net"
 	"strconv"
 	"strings"
@@ -52,7 +55,7 @@ func createHostingContexts(service *entities.Service, identity *rest_model.Ident
 	return result
 }
 
-func newDefaultHostingContext(identity *rest_model.IdentityDetail, service *entities.Service, config *entities.HostV2Terminator, tracker AddressTracker) *hostingContext {
+func newDefaultHostingContext(identity *rest_model.IdentityDetail, service *entities.Service, config *entities.HostV1Config, tracker AddressTracker) *hostingContext {
 	log := pfxlog.Logger().WithField("service", service.Name)
 
 	if config.ForwardProtocol && len(config.AllowedProtocols) < 1 {
@@ -91,9 +94,18 @@ func newDefaultHostingContext(identity *rest_model.IdentityDetail, service *enti
 		return nil
 	}
 
+	var proxyConf *transport.ProxyConfiguration
+	if config.Proxy != nil {
+		proxyConf = &transport.ProxyConfiguration{
+			Address: config.Proxy.Address,
+			Type:    transport.ProxyType(config.Proxy.Type),
+		}
+	}
+
 	return &hostingContext{
 		service:     service,
 		options:     listenOptions,
+		proxyConf:   proxyConf,
 		dialTimeout: config.GetDialTimeout(5 * time.Second),
 		config:      config,
 		addrTracker: tracker,
@@ -104,7 +116,8 @@ func newDefaultHostingContext(identity *rest_model.IdentityDetail, service *enti
 type hostingContext struct {
 	service     *entities.Service
 	options     *ziti.ListenOptions
-	config      *entities.HostV2Terminator
+	proxyConf   *transport.ProxyConfiguration
+	config      *entities.HostV1Config
 	dialTimeout time.Duration
 	onClose     func()
 	addrTracker AddressTracker
@@ -130,6 +143,8 @@ func (self *hostingContext) dialAddress(options map[string]interface{}, protocol
 	var conn net.Conn
 	var err error
 
+	var dialer proxy.Dialer
+
 	if sourceAddr != "" {
 		sourceIp := sourceAddr
 		sourcePort := 0
@@ -153,11 +168,20 @@ func (self *hostingContext) dialAddress(options map[string]interface{}, protocol
 			return nil, false, errors.Errorf("unsupported protocol for source address '%v'", protocol)
 		}
 
-		dialer := net.Dialer{LocalAddr: localAddr, Timeout: self.dialTimeout}
-		conn, err = dialer.Dial(protocol, address)
+		dialer = &net.Dialer{LocalAddr: localAddr, Timeout: self.dialTimeout}
 	} else {
-		conn, err = net.DialTimeout(protocol, address, self.dialTimeout)
+		dialer = &net.Dialer{Timeout: self.dialTimeout}
 	}
+
+	if self.proxyConf != nil && self.proxyConf.Type != transport.ProxyTypeNone {
+		if self.proxyConf.Type == transport.ProxyTypeHttpConnect {
+			dialer = proxies.NewHttpConnectProxyDialer(dialer, self.proxyConf.Address, self.proxyConf.Auth, self.dialTimeout)
+		} else {
+			return nil, false, errors.Errorf("unsupported proxy type %s", string(self.proxyConf.Type))
+		}
+	}
+
+	conn, err = dialer.Dial(protocol, address)
 
 	return conn, enableHalfClose, err
 }
@@ -229,7 +253,7 @@ func (self *hostingContext) Dial(options map[string]interface{}) (net.Conn, bool
 	return self.dialAddress(options, protocol, address+":"+port)
 }
 
-func getDefaultOptions(service *entities.Service, identity *rest_model.IdentityDetail, config *entities.HostV2Terminator) (*ziti.ListenOptions, error) {
+func getDefaultOptions(service *entities.Service, identity *rest_model.IdentityDetail, config *entities.HostV1Config) (*ziti.ListenOptions, error) {
 	options := ziti.DefaultListenOptions()
 	options.ManualStart = true
 	options.Precedence = ziti.GetPrecedenceForLabel(string(identity.DefaultHostingPrecedence))

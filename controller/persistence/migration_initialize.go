@@ -18,8 +18,8 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
 	"math"
 	"time"
 )
@@ -270,6 +270,28 @@ var tunnelDefinitions = map[string]interface{}{
 		"minimum": float64(0),
 		"maximum": float64(math.MaxInt32),
 	},
+	"proxyType": map[string]interface{}{
+		"type":        "string",
+		"enum":        []interface{}{"http"},
+		"description": "supported proxy types",
+	},
+	"proxyConfiguration": map[string]interface{}{
+		"type": "object",
+		"required": []interface{}{
+			"type",
+			"address",
+		},
+		"properties": map[string]interface{}{
+			"type": map[string]interface{}{
+				"$ref":        "#/definitions/proxyType",
+				"description": "The type of the proxy being used",
+			},
+			"address": map[string]interface{}{
+				"type":        "string",
+				"description": "The address of the proxy in host:port format",
+			},
+		},
+	},
 }
 
 // hostV1 schema with ["$id"] and ["definitions"] excluded
@@ -370,6 +392,10 @@ var hostV1SchemaSansDefs = map[string]interface{}{
 						"description": "defaults to 'default'",
 					},
 				},
+			},
+			"proxy": map[string]interface{}{
+				"$ref":        "#/definitions/proxyConfiguration",
+				"description": "If defined, outgoing connections will be send through this proxy server",
 			},
 		},
 	),
