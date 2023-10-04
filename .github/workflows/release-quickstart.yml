@@ -126,7 +126,7 @@ jobs:
       - name: Configure Python
         shell: bash
         run: |
-          pip install --upgrade boto3 jinja2 requests pyyaml
+          pip install --requirement ./dist/cloudfront/get.openziti.io/requirements.txt
           python --version
         
       - name: Deploy the CloudFront Function for get.openziti.io
