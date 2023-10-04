@@ -640,7 +640,7 @@ function addZitiToPath {
 # Downloads and extracts ziti binaries onto the system. The latest version is used unless ZITI_VERSION_OVERRIDE is set.
 function getZiti {
   local retVal default_path ziti_binaries_file_abspath zitidl reply
-  
+  _check_prereq curl jq tar 
   if [[ "${ZITI_BIN_DIR}" == "" ]]; then
     # Prompt user for input or use default
     _setup_ziti_home
