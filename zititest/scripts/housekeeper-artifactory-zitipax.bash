@@ -5,7 +5,7 @@ set -euo pipefail
 BASENAME=$(basename "$0")
 typeset -a  ARTIFACTS=() \
             STAGES=() \
-            KNOWN_ARTIFACTS=(ziti-cli ziti-edge-tunnel) \
+            KNOWN_ARTIFACTS=(openziti openziti-controller openziti-router ziti-cli ziti-edge-tunnel) \
             KNOWN_STAGES=(testing release)
 AGE=30  # days
 export CI=0    # jfrog CLI is interactive and prompts for confirmation by default
