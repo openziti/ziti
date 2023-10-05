@@ -47,6 +47,7 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result := &Dispatcher{
 		closeNotify: closeNotify,
 		entityChangeEventsDispatcher: entityChangeEventDispatcher{
+			closeNotify:    closeNotify,
 			notifyCh:       make(chan struct{}, 1),
 			globalMetadata: map[string]any{},
 		},
