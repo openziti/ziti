@@ -21,6 +21,8 @@ contents:
   - src: /opt/openziti/bin/ziti
     dst: /usr/bin/ziti
     type: symlink
+replaces:
+  - ziti-cli
 
 # packager-neutral scripts may be overriden by packager-specific scripts
 # scripts:
