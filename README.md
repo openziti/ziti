@@ -1,6 +1,14 @@
-[![Build Status](https://github.com/openziti/ziti/actions/workflows/main.yml/badge.svg)](https://github.com/openziti/ziti/actions/workflows/main.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/openziti/ziti)](https://goreportcard.com/report/github.com/openziti/ziti)
 ![OpenZiti Logo](https://raw.githubusercontent.com/openziti/ziti-doc/main/docusaurus/static/img/ziti-logo-dark.svg)
+
+<br>
+
+[![Build Status](https://github.com/openziti/ziti/actions/workflows/main.yml/badge.svg?query=branch%3Arelease-next)](https://github.com/openziti/ziti/actions/workflows/main.yml?query=branch%3Arelease-next)
+[![Go Report Card](https://goreportcard.com/badge/github.com/openziti/ziti)](https://goreportcard.com/report/github.com/openziti/ziti)
+[![GoDoc](https://godoc.org/github.com/openziti/ziti?status.svg)](https://pkg.go.dev/github.com/openziti/ziti)
+[![Discourse Widget](https://img.shields.io/badge/join-us%20on%20discourse-gray.svg?longCache=true&logo=discourse&colorB=brightgreen")](https://openziti.discourse.group/)
+[![License: Apache-v2](https://img.shields.io/badge/License-Apache--2.0-yellow.svg)](LICENSE)
+
+<br>
 
 # OpenZiti
 
