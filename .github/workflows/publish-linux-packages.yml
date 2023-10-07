@@ -93,8 +93,8 @@ jobs:
         shell: bash
         run: >
           jf rt upload
-          ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
-          /${{ env.ZITI_RPM_TEST_REPO }}/testing/${{ matrix.arch.rpm }}/
+          ./release/${{ matrix.package_name }}*.rpm
+          /${{ env.ZITI_RPM_TEST_REPO }}/testing/${{ matrix.package_name }}/${{ matrix.arch.rpm }}/
           --recursive=false
           --flat=true 
 
@@ -104,8 +104,8 @@ jobs:
         shell: bash
         run: >
           jf rt upload
-          ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
-          /${{ env.ZITI_RPM_PROD_REPO }}/release/${{ matrix.arch.rpm }}/
+          ./release/${{ matrix.package_name }}*.rpm
+          /${{ env.ZITI_RPM_PROD_REPO }}/release/${{ matrix.package_name }}/${{ matrix.arch.rpm }}/
           --recursive=false
           --flat=true 
 
@@ -114,9 +114,9 @@ jobs:
         shell: bash
         run: >
           jf rt upload
-          ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
-          /${{ env.ZITI_DEB_TEST_REPO }}/pool/${{ matrix.package_name }}/testing/${{ matrix.arch.deb }}/
-          --deb=testing/main/${{ matrix.arch.deb }}
+          ./release/${{ matrix.package_name }}*.deb
+          /${{ env.ZITI_DEB_TEST_REPO }}/pool/testing/${{ matrix.package_name }}/${{ matrix.arch.deb }}/
+          --deb=debian/main/${{ matrix.arch.deb }}
           --recursive=false
           --flat=true 
 
@@ -126,8 +126,8 @@ jobs:
         shell: bash
         run: >
           jf rt upload
-          ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
-          /${{ env.ZITI_DEB_PROD_REPO }}/pool/${{ matrix.package_name }}/release/${{ matrix.arch.deb }}/
-          --deb=release/main/${{ matrix.arch.deb }}
+          ./release/${{ matrix.package_name }}*.deb
+          /${{ env.ZITI_DEB_PROD_REPO }}/pool/release/${{ matrix.package_name }}/${{ matrix.arch.deb }}/
+          --deb=debian/main/${{ matrix.arch.deb }}
           --recursive=false
           --flat=true 
