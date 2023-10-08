@@ -10,6 +10,7 @@ on:
 
 jobs:
   publish-linux-packages:
+    name: ${{ matrix.package_name }} ${{ matrix.arch.rpm }} ${{ matrix.nfpm_packager }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
