@@ -1,20 +1,22 @@
 name: fablab db-creation workflow
 
 on:
+  workflow_dispatch:
+
   push:
     branches:
-      - main
+#      - main
+      - *
 env:
   GOFLAGS: "-trimpath"
   GOX_OUTPUT: "release/{{.Arch}}/{{.OS}}/{{.Dir}}"
   GOX_TEST_OUTPUT: "test/{{.Arch}}/{{.OS}}/bin/{{.Dir}}"
-  AWS_ACCESS_KEY_ID: ${{ secrets.FABLAB_AWS_EC2_PETE_D_ACCESS_KEY }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.FABLAB_AWS_EC2_PETE_D_SECRET }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_DEFAULT_REGION: "us-east-1"
   gh_ci_key: ${{ secrets.GH_CI_KEY }}
-  GH_TOKEN: ${{ secrets.PAT_TOKEN }}
-  S3_KEY: ${{ secrets.FABLAB_S3_IDENTITIES_DB_ACCESS_KEY }}
-  S3_SECRET: ${{ secrets.FABLAB_S3_IDENTITIES_DB_SECRET }}
+  S3_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  S3_SECRET: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
   build:
@@ -22,20 +24,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Pete-iPerf branch
-        uses: actions/checkout@v3
-        with:
-          repository: openziti/fablab
-          ref: refs/heads/pete-iperf
-          token: ${{ secrets.GH_CI_KEY }}
-          path: fablab
 
       - name: Checkout DB-Creation branch
         uses: actions/checkout@v3
         with:
-          repository: openziti/ziti
-          ref: refs/heads/db-creation
-          token: ${{ secrets.GH_CI_KEY }}
           path: ziti
 
       - name: Set up Go
@@ -48,4 +40,9 @@ jobs:
           go build -o db-creation main.go
           ./db-creation create db-creation
           ./db-creation up          
+
+      - name: Teardown
+        if: always()
+        run: |
+          cd ziti/zititest/models/db-creation          
           ./db-creation dispose
