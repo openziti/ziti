@@ -17,6 +17,7 @@ concurrency:
 jobs:
   test-cloudfront-proxy-function:
     name: CloudFront Proxy Function Dry Run
+    if: github.repository_owner == 'openziti'
     runs-on: ubuntu-latest
     steps:
       - name: Shallow checkout
