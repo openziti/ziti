@@ -2,11 +2,9 @@ name: fablab db-creation workflow
 
 on:
   workflow_dispatch:
-
   push:
     branches:
-#      - main
-      - *
+      - '*'
 env:
   GOFLAGS: "-trimpath"
   GOX_OUTPUT: "release/{{.Arch}}/{{.OS}}/{{.Dir}}"
@@ -22,25 +20,26 @@ jobs:
   build:
     name: Build and Run
     runs-on: ubuntu-latest
-
     steps:
-
-      - name: Checkout DB-Creation branch
+      - name: Checkout ziti
         uses: actions/checkout@v3
         with:
           path: ziti
-
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
           go-version: '1.20.x'
+      - name: Set Ziti Version as Environment Variable
+        run: |
+          version=$(ziti --version)
+          echo "Ziti Version: $version"
+          echo "ZITI_VERSION=$version" >> $GITHUB_ENV
       - name: Build and Run
         run: |
           cd ziti/zititest/models/db-creation
           go build -o db-creation main.go
           ./db-creation create db-creation
-          ./db-creation up          
-
+          ./db-creation up
       - name: Teardown
         if: always()
         run: |

@@ -73,7 +73,7 @@ BUCKET_NAME_DB="fablab-ziti-databases"
 DOCUMENT_PATH_DB="/home/ubuntu/fablab/ctrl.db"
 S3_KEY_DB="ctrl.db-${ziti_version}"
 
-for i in {20000..24000}; do
+for i in {20000..20005}; do
     ./ziti-${ziti_version} edge create service service$i -c ${interceptv1},${hostv1}
     ./ziti-${ziti_version} edge create service-policy service${i}Bind Bind --service-roles @service${i} --identity-roles '#iperf-server'
     ./ziti-${ziti_version} edge create service-policy service${i}Dial Dial --service-roles @service${i} --identity-roles '#iperf-client'

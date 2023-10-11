@@ -73,7 +73,7 @@ var m = &model.Model{
 								ConfigSourceFS: nil,
 								ConfigSource:   "",
 								ConfigName:     "",
-								Version:        "v0.28.4",
+								Version:        os.Getenv("ZITI_VERSION"),
 								LocalPath:      "",
 								DNSNames:       []string{actions.DomainName},
 							},
@@ -123,7 +123,6 @@ var m = &model.Model{
 			s := actions.Route53StringCreator(m, actions.Delete)
 			return host.Exec(m.MustSelectHost("#ctrl"), s).Execute(run)
 		}),
-
 		terraform.Dispose(),
 		aws_ssh_key2.Dispose(),
 	},

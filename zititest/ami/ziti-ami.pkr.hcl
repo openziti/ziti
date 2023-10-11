@@ -9,6 +9,10 @@ packer {
   }
 }
 
+variable "elastic_version" {
+  default = "7.17.5"
+}
+
 source "amazon-ebs" "ziti-tests-ubuntu-ami" {
   ami_description = "An Ubuntu AMI that has everything needed for running fablab smoketests."
   ami_name        = "ziti-tests-{{ timestamp }}"
