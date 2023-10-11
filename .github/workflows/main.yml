@@ -501,20 +501,6 @@ jobs:
           JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  jenkins-smoketest:
-    # BEGIN smoketest-job
-    #
-    # Any event that triggers this main workflow also triggers the smoketest
-    #
-    needs: publish
-    name: Call the On-Demand Smoketest Workflow
-    # not applicable to forks
-    if: github.repository_owner == 'openziti'
-    uses: ./.github/workflows/jenkins-smoketest.yml
-    secrets: inherit
-    with:
-      ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
-
   call-publish-prerelease-docker-images:
     # - !cancelled() allows evaluating further conditional expressions even if
     #   needed jobs were skipped
