@@ -19,9 +19,9 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/xctrl"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"time"
@@ -101,7 +101,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 				r.SetMetadata(routerMetadata)
 			}
 		} else {
-			log.Warn("no attributes provided")
+			return errors.New("no version info header, closing router connection")
 		}
 
 		r.Control = ch
