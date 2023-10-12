@@ -36,8 +36,7 @@ jobs:
 
       - name: Configure Git
         run: |
-          go env GOPATH
-          ls -lsa /home/runner/go/bin/ziti-ci
+          ls -lsa
           $(go env GOPATH)/bin/ziti-ci configure-git
 
       - name: Pull ZITI_VERSION and set as $GITHUB_ENV for use with fablab
