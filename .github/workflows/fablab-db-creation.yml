@@ -40,7 +40,9 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci configure-git
 
       - name: Pull ZITI_VERSION and set as $GITHUB_ENV for use with fablab
-        run: |          
+        run: |
+          TAG=${{ github.event.release.tag_name }}
+          echo $TAG
           cd ziti
           version="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
           version=${version#v}
