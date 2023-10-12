@@ -43,6 +43,7 @@ jobs:
         run: |          
           cd ziti
           version="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
+          version=${version#v}
           echo "Ziti Version: $version"
           echo "ZITI_VERSION=$version" >> $GITHUB_ENV
 
