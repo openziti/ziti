@@ -5,11 +5,12 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/genext"
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/openziti/ziti/tunnel/health"
 	"github.com/openziti/ziti/tunnel/utils"
-	"github.com/openziti/foundation/v2/genext"
-	"github.com/openziti/foundation/v2/stringz"
 	"github.com/pkg/errors"
 	"net"
 	"reflect"
@@ -56,7 +57,7 @@ func (self *ServiceConfig) ToInterceptV1Config() *InterceptV1Config {
 }
 
 func (self *ServiceConfig) ToHostV2Config() *HostV2Config {
-	terminator := &HostV2Terminator{
+	terminator := &HostV1Config{
 		Protocol:   self.Protocol,
 		Address:    self.Hostname,
 		Port:       self.Port,
@@ -65,7 +66,7 @@ func (self *ServiceConfig) ToHostV2Config() *HostV2Config {
 	}
 
 	return &HostV2Config{
-		Terminators: []*HostV2Terminator{
+		Terminators: []*HostV1Config{
 			terminator,
 		},
 	}
@@ -97,39 +98,15 @@ type HostV1Config struct {
 	HttpChecks []*health.HttpCheckDefinition
 
 	ListenOptions *HostV1ListenOptions
+	Proxy         *ProxyConfiguration
+
+	allowedAddrs []allowedAddress
 }
 
 func (self *HostV1Config) ToHostV2Config() *HostV2Config {
-	terminator := &HostV2Terminator{
-		Protocol:               self.Protocol,
-		ForwardProtocol:        self.ForwardProtocol,
-		AllowedProtocols:       self.AllowedProtocols,
-		Address:                self.Address,
-		ForwardAddress:         self.ForwardAddress,
-		AllowedAddresses:       self.AllowedAddresses,
-		Port:                   self.Port,
-		ForwardPort:            self.ForwardPort,
-		AllowedPortRanges:      self.AllowedPortRanges,
-		AllowedSourceAddresses: self.AllowedSourceAddresses,
-		PortChecks:             self.PortChecks,
-		HttpChecks:             self.HttpChecks,
-	}
-
-	if self.ListenOptions != nil {
-		terminator.ListenOptions = &HostV2ListenOptions{
-			BindUsingEdgeIdentity: self.ListenOptions.BindUsingEdgeIdentity,
-			ConnectTimeoutSeconds: self.ListenOptions.ConnectTimeoutSeconds,
-			ConnectTimeout:        self.ListenOptions.ConnectTimeout,
-			Cost:                  self.ListenOptions.Cost,
-			Identity:              self.ListenOptions.Identity,
-			MaxConnections:        self.ListenOptions.MaxConnections,
-			Precedence:            self.ListenOptions.Precedence,
-		}
-	}
-
 	return &HostV2Config{
-		Terminators: []*HostV2Terminator{
-			terminator,
+		Terminators: []*HostV1Config{
+			self,
 		},
 	}
 }
@@ -142,6 +119,7 @@ type HostV2ListenOptions struct {
 	Identity              string
 	MaxConnections        int
 	Precedence            *string
+	Proxy                 *transport.ProxyConfiguration
 }
 
 type allowedAddress interface {
@@ -193,27 +171,12 @@ func makeAllowedAddress(addr string) (allowedAddress, error) {
 	return &hostnameAddress{hostname: strings.ToLower(addr)}, nil
 }
 
-type HostV2Terminator struct {
-	Protocol               string
-	ForwardProtocol        bool
-	AllowedProtocols       []string
-	Address                string
-	ForwardAddress         bool
-	AllowedAddresses       []string
-	Port                   int
-	ForwardPort            bool
-	AllowedPortRanges      []*PortRange
-	AllowedSourceAddresses []string
-
-	PortChecks []*health.PortCheckDefinition
-	HttpChecks []*health.HttpCheckDefinition
-
-	ListenOptions *HostV2ListenOptions
-
-	allowedAddrs []allowedAddress
+type ProxyConfiguration struct {
+	Address string
+	Type    string
 }
 
-func (self *HostV2Terminator) GetDialTimeout(defaultTimeout time.Duration) time.Duration {
+func (self *HostV1Config) GetDialTimeout(defaultTimeout time.Duration) time.Duration {
 	if self.ListenOptions != nil {
 		if self.ListenOptions.ConnectTimeout != nil {
 			return *self.ListenOptions.ConnectTimeout
@@ -225,7 +188,7 @@ func (self *HostV2Terminator) GetDialTimeout(defaultTimeout time.Duration) time.
 	return defaultTimeout
 }
 
-func (self *HostV2Terminator) GetAllowedAddresses() []allowedAddress {
+func (self *HostV1Config) GetAllowedAddresses() []allowedAddress {
 	log := pfxlog.Logger()
 	if self.allowedAddrs != nil {
 		return self.allowedAddrs
@@ -242,15 +205,15 @@ func (self *HostV2Terminator) GetAllowedAddresses() []allowedAddress {
 	return self.allowedAddrs
 }
 
-func (self *HostV2Terminator) GetPortChecks() []*health.PortCheckDefinition {
+func (self *HostV1Config) GetPortChecks() []*health.PortCheckDefinition {
 	return self.PortChecks
 }
 
-func (self *HostV2Terminator) GetHttpChecks() []*health.HttpCheckDefinition {
+func (self *HostV1Config) GetHttpChecks() []*health.HttpCheckDefinition {
 	return self.HttpChecks
 }
 
-func (self *HostV2Terminator) getValue(options map[string]interface{}, key string) (string, error) {
+func (self *HostV1Config) getValue(options map[string]interface{}, key string) (string, error) {
 	val, ok := options[key]
 	if !ok {
 		return "", errors.Errorf("%v required but not provided", key)
@@ -262,7 +225,7 @@ func (self *HostV2Terminator) getValue(options map[string]interface{}, key strin
 	return result, nil
 }
 
-func (self *HostV2Terminator) GetProtocol(options map[string]interface{}) (string, error) {
+func (self *HostV1Config) GetProtocol(options map[string]interface{}) (string, error) {
 	if self.ForwardProtocol {
 		protocol, err := self.getValue(options, tunnel.DestinationProtocolKey)
 		if err != nil {
@@ -276,7 +239,7 @@ func (self *HostV2Terminator) GetProtocol(options map[string]interface{}) (strin
 	return self.Protocol, nil
 }
 
-func (self *HostV2Terminator) GetAddress(options map[string]interface{}) (string, error) {
+func (self *HostV1Config) GetAddress(options map[string]interface{}) (string, error) {
 	if self.ForwardAddress {
 		allowedAddresses := self.GetAllowedAddresses()
 
@@ -304,7 +267,7 @@ func (self *HostV2Terminator) GetAddress(options map[string]interface{}) (string
 	return self.Address, nil
 }
 
-func (self *HostV2Terminator) GetPort(options map[string]interface{}) (string, error) {
+func (self *HostV1Config) GetPort(options map[string]interface{}) (string, error) {
 	if self.ForwardPort {
 		portStr, err := self.getValue(options, tunnel.DestinationPortKey)
 		if err != nil {
@@ -324,7 +287,7 @@ func (self *HostV2Terminator) GetPort(options map[string]interface{}) (string, e
 	return strconv.Itoa(self.Port), nil
 }
 
-func (self *HostV2Terminator) GetAllowedSourceAddressRoutes() ([]*net.IPNet, error) {
+func (self *HostV1Config) GetAllowedSourceAddressRoutes() ([]*net.IPNet, error) {
 	var routes []*net.IPNet
 	for _, addr := range self.AllowedSourceAddresses {
 		// need to get CIDR from address - iputils.getInterceptIp?
@@ -338,7 +301,7 @@ func (self *HostV2Terminator) GetAllowedSourceAddressRoutes() ([]*net.IPNet, err
 }
 
 type HostV2Config struct {
-	Terminators []*HostV2Terminator
+	Terminators []*HostV1Config
 }
 
 type DialOptions struct {

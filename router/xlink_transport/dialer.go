@@ -18,11 +18,12 @@ package xlink_transport
 
 import (
 	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -79,7 +80,10 @@ func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
 		return nil, errors.Wrapf(err, "error dialing outgoing link [l/%s]", linkId.Token)
 	}
 
-	if err := self.acceptor.Accept(xli); err != nil {
+	if err = self.acceptor.Accept(xli); err != nil {
+		if closeErr := xli.Close(); closeErr != nil {
+			pfxlog.Logger().WithError(closeErr).WithField("acceptErr", err).Error("error closing link after accept error")
+		}
 		return nil, errors.Wrapf(err, "error accepting link [l/%s]", linkId.Token)
 	}
 
