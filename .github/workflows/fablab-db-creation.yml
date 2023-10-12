@@ -36,6 +36,7 @@ jobs:
 
       - name: Configure Git
         run: |
+          cd ziti
           ls -lsa
           $(go env GOPATH)/bin/ziti-ci configure-git
 
