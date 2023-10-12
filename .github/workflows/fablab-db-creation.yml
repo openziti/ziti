@@ -37,11 +37,11 @@ jobs:
       - name: Configure Git
         run: |
           cd ziti
-          ls -lsa
           $(go env GOPATH)/bin/ziti-ci configure-git
 
       - name: Pull ZITI_VERSION and set as $GITHUB_ENV for use with fablab
         run: |          
+          cd ziti
           version="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
           echo "Ziti Version: $version"
           echo "ZITI_VERSION=version" >> $GITHUB_ENV
