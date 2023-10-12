@@ -23,13 +23,25 @@ Currently only HTTP Connect proxies which don't require authentication are suppo
 
 
 ## Component Updates and Bug Fixes
-* github.com/openziti/storage: [v0.2.18 -> v0.2.19](https://github.com/openziti/storage/compare/v0.2.18...v0.2.19)
+* github.com/openziti/channel/v2: [v2.0.99 -> v2.0.101](https://github.com/openziti/channel/compare/v2.0.99...v2.0.101)
+* github.com/openziti/edge-api: [v0.25.37 -> v0.25.38](https://github.com/openziti/edge-api/compare/v0.25.37...v0.25.38)
+* github.com/openziti/foundation/v2: [v2.0.32 -> v2.0.33](https://github.com/openziti/foundation/compare/v2.0.32...v2.0.33)
+* github.com/openziti/identity: [v1.0.63 -> v1.0.64](https://github.com/openziti/identity/compare/v1.0.63...v1.0.64)
+* github.com/openziti/metrics: [v1.2.35 -> v1.2.36](https://github.com/openziti/metrics/compare/v1.2.35...v1.2.36)
+* github.com/openziti/runzmd: [v1.0.32 -> v1.0.33](https://github.com/openziti/runzmd/compare/v1.0.32...v1.0.33)
+* github.com/openziti/sdk-golang: [v0.20.116 -> v0.20.122](https://github.com/openziti/sdk-golang/compare/v0.20.116...v0.20.122)
+    * [Issue #436](https://github.com/openziti/sdk-golang/issues/436) - HTTP calls should respect environment proxy settings
+
+* github.com/openziti/storage: [v0.2.18 -> v0.2.20](https://github.com/openziti/storage/compare/v0.2.18...v0.2.20)
     * [Issue #52](https://github.com/openziti/storage/issues/52) - Grammar should expect single valid query followed by EOF
 
+* github.com/openziti/transport/v2: [v2.0.107 -> v2.0.109](https://github.com/openziti/transport/compare/v2.0.107...v2.0.109)
 * github.com/openziti/ziti: [v0.30.4 -> v0.30.5](https://github.com/openziti/ziti/compare/v0.30.4...v0.30.5)
     * [Issue #1336](https://github.com/openziti/ziti/issues/1336) - `ziti edge quickstart` did
       not create the usual edge router/service edge router policy.
     * [Issue #1397](https://github.com/openziti/ziti/issues/1397) - HTTP Proxy suport for host.v1/host.v2 config types
+    * [Issue #1423](https://github.com/openziti/ziti/issues/1423) - Controller crashes when edge router reconnects (Client Hello)
+    * [Issue #1414](https://github.com/openziti/ziti/issues/1414) - Race condition in xgress_edge_tunnel tunneller at start but not seen in pre-compiled binary
     * [Issue #1406](https://github.com/openziti/ziti/issues/1406) - Entity change event dispatcher isn't shutting down properly when controller shuts down
     * [Issue #1382](https://github.com/openziti/ziti/issues/1382) - service failure costs are not shrinking over time
 
