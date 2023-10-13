@@ -17,6 +17,8 @@
 package database
 
 import (
+	"fmt"
+	"github.com/google/uuid"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/change"
@@ -31,11 +33,11 @@ import (
 func NewAddDebugAdminAction() *cobra.Command {
 	action := &addDebugAdminAction{}
 	return &cobra.Command{
-		Use:   "add-debug-admin </path/to/ziti-controller.db.file>",
-		Short: "Adds an admin (username: admin, password: admin) to the given database file for debugging purposes",
-		Args:  cobra.ExactArgs(1),
+		Use:   "add-debug-admin </path/to/ziti-controller.db.file> <username> <password>",
+		Short: "Adds an admin user to the given database file for debugging purposes",
+		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
-			action.run(args[0])
+			action.run(args[0], args[1], args[2])
 		},
 	}
 }
@@ -64,7 +66,7 @@ func (action *addDebugAdminAction) noError(err error) {
 	}
 }
 
-func (action *addDebugAdminAction) run(dbFile string) {
+func (action *addDebugAdminAction) run(dbFile, username, password string) {
 	boltDb, err := db.Open(dbFile)
 	action.noError(err)
 
@@ -85,44 +87,51 @@ func (action *addDebugAdminAction) run(dbFile string) {
 	stores, err := persistence.NewBoltStores(dbProvider)
 	action.noError(err)
 
-	id := "7dbd3fc9-e4c8-489a-ab8f-4bbb3d768f57"
+	id := "debug-admin"
+	name := fmt.Sprintf("debug admin (%v)", uuid.NewString())
 	ctx := change.New().SetChangeAuthorType("cli.debug-db").NewMutateContext()
 	err = dbProvider.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		tx := ctx.Tx()
 		identity, _ := stores.Identity.LoadOneById(tx, id)
-		if identity == nil {
-			identity = &persistence.Identity{
-				BaseExtEntity:  boltz.BaseExtEntity{Id: id},
-				Name:           "DebugAdmin",
-				IdentityTypeId: "Default",
-				IsDefaultAdmin: false,
-				IsAdmin:        true,
-			}
-			if err = stores.Identity.Create(ctx, identity); err != nil {
+		if identity != nil {
+			if err = stores.Identity.DeleteById(ctx, id); err != nil {
 				return err
 			}
-
-			authHandler := model.AuthenticatorManager{}
-			result := authHandler.HashPassword("admin")
-			authenticator := &persistence.AuthenticatorUpdb{
-				Authenticator: persistence.Authenticator{
-					BaseExtEntity: boltz.BaseExtEntity{
-						Id: eid.New(),
-					},
-					Type:       "updb",
-					IdentityId: id,
-				},
-				Username: "admin",
-				Password: result.Password,
-				Salt:     result.Salt,
-			}
-			authenticator.SubType = authenticator
-
-			if err = stores.Authenticator.Create(ctx, &authenticator.Authenticator); err != nil {
-				return err
-			}
+			fmt.Printf("removing existing identity with id '%v'\n", id)
 		}
 
+		identity = &persistence.Identity{
+			BaseExtEntity:  boltz.BaseExtEntity{Id: id},
+			Name:           name,
+			IdentityTypeId: persistence.DefaultIdentityType,
+			IsDefaultAdmin: false,
+			IsAdmin:        true,
+		}
+		if err = stores.Identity.Create(ctx, identity); err != nil {
+			return err
+		}
+
+		authHandler := model.AuthenticatorManager{}
+		result := authHandler.HashPassword(password)
+		authenticator := &persistence.AuthenticatorUpdb{
+			Authenticator: persistence.Authenticator{
+				BaseExtEntity: boltz.BaseExtEntity{
+					Id: eid.New(),
+				},
+				Type:       "updb",
+				IdentityId: id,
+			},
+			Username: username,
+			Password: result.Password,
+			Salt:     result.Salt,
+		}
+		authenticator.SubType = authenticator
+
+		if err = stores.Authenticator.Create(ctx, &authenticator.Authenticator); err != nil {
+			return err
+		}
+
+		fmt.Printf("added debug admin with username '%v'\n", username)
 		return nil
 	})
 	action.noError(err)
