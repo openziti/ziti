@@ -59,6 +59,6 @@ jobs:
       - name: Teardown
         if: always()
         run: |
-          tree -a -L 3 /home/runner/
+          tree -a -L 3 /home/runner/.fablab/instances/db-creation
           cd ziti/zititest/models/db-creation          
           ./db-creation dispose
