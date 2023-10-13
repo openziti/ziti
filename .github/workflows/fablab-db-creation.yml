@@ -52,7 +52,7 @@ jobs:
           cd ziti/zititest/models/db-creation
           go build -o db-creation main.go
           ./db-creation create db-creation
-          ls -lsa /home/runner/.fablab
+          ls -lsa /home/runner/.fablab/instances/db-creation
           ./db-creation up
 
       - name: Teardown
