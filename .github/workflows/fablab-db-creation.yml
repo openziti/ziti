@@ -52,15 +52,13 @@ jobs:
           cd ziti/zititest/models/db-creation
           go build -o db-creation main.go
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          env
-          ls -l /home/runner/
           ./db-creation create db-creation
-          tree -L 4 /home/runner/
           cat /home/runner/.fablab/instances/db-creation/fablab.yml
           ./db-creation up
 
       - name: Teardown
         if: always()
         run: |
+          tree -L 3 /home/runner/
           cd ziti/zititest/models/db-creation          
           ./db-creation dispose
