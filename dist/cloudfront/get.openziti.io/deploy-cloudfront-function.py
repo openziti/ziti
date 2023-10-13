@@ -3,10 +3,11 @@
 import json
 import logging
 import os
-import requests
-import yaml
+import sys
 
 import jinja2
+import requests
+import yaml
 
 logger = logging.getLogger()
 logger.addHandler(logging.StreamHandler())  # stdout
@@ -138,12 +139,15 @@ def test_route(client: object, etag: str, route: dict):
 for route in routes:
     test_route(client=client, etag=candidate_function_etag, route=route)
 
-# promote candidate from DEVELOPMENT to LIVE
-publish_response = client.publish_function(
-    Name=CF_FUNCTION_NAME,
-    IfMatch=candidate_function_etag
-)
-logger.info(f"published function: {publish_response['FunctionSummary']['Name']}")
+if len(sys.argv) > 1 and sys.argv[1] == '--no-publish':
+    logger.info(f"not publishing function: {CF_FUNCTION_NAME}")
+else:
+    # promote candidate from DEVELOPMENT to LIVE
+    publish_response = client.publish_function(
+        Name=CF_FUNCTION_NAME,
+        IfMatch=candidate_function_etag
+    )
+    logger.info(f"published function: {publish_response['FunctionSummary']['Name']}")
 
 #
 # scratch

@@ -21,11 +21,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/ziti/router/link"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/common/config"
+	"github.com/openziti/ziti/router/link"
 	metrics2 "github.com/rcrowley/go-metrics"
 	"io/fs"
 	"os"
@@ -39,6 +39,12 @@ import (
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/health"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
@@ -55,12 +61,6 @@ import (
 	"github.com/openziti/ziti/router/xgress_transport_udp"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/ziti/router/xlink_transport"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
-	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -531,12 +531,6 @@ func (self *Router) startControlPlane() error {
 
 	self.ctrls.UpdateControllerEndpoints(endpoints)
 
-	for _, x := range self.xrctrls {
-		if err := x.Run(self); err != nil {
-			return err
-		}
-	}
-
 	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
@@ -548,6 +542,13 @@ func (self *Router) startControlPlane() error {
 			pfxlog.Logger().Fatal("unable to connect to any controllers before timeout")
 		}
 	})
+
+	_ = self.ctrls.AnyValidCtrlChannel()
+	for _, x := range self.xrctrls {
+		if err := x.Run(self); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

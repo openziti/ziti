@@ -1,0 +1,38 @@
+name: Test CloudFront Proxy Function
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - release-next
+      - main
+      - release-v*
+    paths:
+      - 'dist/cloudfront/get.openziti.io/**'
+
+# cancel older, redundant runs of same workflow on same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test-cloudfront-proxy-function:
+    name: CloudFront Proxy Function Dry Run
+    if: github.repository_owner == 'openziti'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Shallow checkout
+        uses: actions/checkout@v3
+
+      - name: Configure Python
+        shell: bash
+        run: |
+          pip install --requirement ./dist/cloudfront/get.openziti.io/requirements.txt
+          python --version
+        
+      - name: Dry Run Deploy CloudFront Function for get.openziti.io
+        shell: bash
+        run: python ./dist/cloudfront/get.openziti.io/deploy-cloudfront-function.py --no-publish
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}

@@ -625,12 +625,23 @@ function _detect_architecture {
   fi
 }
 
+function addZitiToPath {
+  if [[ "${1-}" == "yes" ]]; then
+    echo "Adding ${ZITI_BIN_DIR} to the path if necessary:"
+    if [[ "$(echo "$PATH"|grep -q "${ZITI_BIN_DIR}" && echo "yes")" == "yes" ]]; then
+      echo -e "$(GREEN "${ZITI_BIN_DIR}") is already on the path"
+    else
+      echo -e "adding $(RED "${ZITI_BIN_DIR}") to the path"
+      export PATH=$PATH:"${ZITI_BIN_DIR}"
+    fi
+  fi
+}
+
 # Downloads and extracts ziti binaries onto the system. The latest version is used unless ZITI_VERSION_OVERRIDE is set.
 function getZiti {
   local retVal default_path ziti_binaries_file_abspath zitidl reply
-  _check_env_variable ZITI_BIN_DIR
-  retVal=$?
-  if [[ "${retVal}" != 0 ]]; then
+  _check_prereq curl jq tar 
+  if [[ "${ZITI_BIN_DIR}" == "" ]]; then
     # Prompt user for input or use default
     _setup_ziti_home
     getLatestZitiVersion  # sets ZITI_BINARIES_FILE & ZITI_BINARIES_VERSION
@@ -715,10 +726,12 @@ function getZiti {
         echo -e "$(YELLOW 'Getting latest binaries ')$(BLUE "${ZITI_BIN_DIR}")"
       else
         echo -e "$(YELLOW 'Using existing binaries at ')$(BLUE "${ZITI_BIN_DIR}")"
+        addZitiToPath "$1"
         return 0
       fi
     else
       echo -e "$(YELLOW 'Latest binaries already exist, using existing binaries at ')$(BLUE "${ZITI_BIN_DIR}")"
+      addZitiToPath "$1"
       return 0
     fi
   fi
@@ -740,6 +753,7 @@ function getZiti {
 
   echo -e "$(GREEN "OpenZiti binaries ${ZITI_BINARIES_VERSION} successfully extracted to $(BLUE "${ZITI_BIN_DIR}")")"
   echo ""
+  addZitiToPath "$1"
 }
 
 # Create a custom PKI

@@ -3,9 +3,9 @@ package intercept
 import (
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/openziti/ziti/tunnel/entities"
-	"github.com/openziti/foundation/v2/util"
 	"github.com/stretchr/testify/require"
 	"net"
 	"testing"
@@ -83,7 +83,7 @@ func Test_TemplateIdentity(t *testing.T) {
 			},
 		},
 	}
-	hostTerminator := &entities.HostV2Terminator{ListenOptions: &entities.HostV2ListenOptions{}}
+	hostTerminator := &entities.HostV1Config{ListenOptions: &entities.HostV1ListenOptions{}}
 	provider := &testProvider{}
 	currentIdentity, err := provider.GetCurrentIdentity()
 	req := require.New(t)

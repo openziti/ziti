@@ -24,18 +24,18 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router/xgress_common"
-	"github.com/openziti/ziti/tunnel"
-	"github.com/openziti/ziti/common/build"
-	"github.com/openziti/ziti/common/ctrl_msg"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/sdkinfo"
 	"github.com/openziti/secretstream/kx"
+	"github.com/openziti/ziti/common/build"
+	"github.com/openziti/ziti/common/ctrl_msg"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_common"
+	"github.com/openziti/ziti/tunnel"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -168,12 +168,20 @@ func (self *fabricProvider) authenticate() error {
 	}
 
 	ctrlMap := self.factory.ctrls.GetAll()
-	results := newAuthResults(len(ctrlMap))
+	ctrlChMap := map[string]channel.Channel{}
 	for k, v := range ctrlMap {
+		ctrlChMap[k] = v.Channel()
+	}
+	if len(ctrlChMap) == 0 {
+		ctrlCh := self.factory.ctrls.AnyValidCtrlChannel()
+		ctrlChMap[ctrlCh.Id()] = ctrlCh
+	}
+	results := newAuthResults(len(ctrlChMap))
+	for k, v := range ctrlChMap {
 		ctrlId := k
-		ctrl := v
+		ctrlCh := v
 		go func() {
-			respMsg, err := protobufs.MarshalTyped(request).WithTimeout(30 * time.Second).SendForReply(ctrl.Channel())
+			respMsg, err := protobufs.MarshalTyped(request).WithTimeout(30 * time.Second).SendForReply(ctrlCh)
 
 			resp := &edge_ctrl_pb.CreateApiSessionResponse{}
 			if err = xgress_common.GetResultOrFailure(respMsg, err, resp); err != nil {

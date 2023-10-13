@@ -20,8 +20,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/common/version"
+	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/ziti/cmd/create"
 	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/pki"
@@ -55,6 +55,12 @@ type QuickstartOpts struct {
 
 // NewQuickStartCmd creates a command object for the "create" command
 func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) *cobra.Command {
+	currentCtrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
+	currentCtrlPort := helpers.GetCtrlEdgeAdvertisedPort()
+	currentRouterAddy := helpers.GetRouterAdvertisedAddress()
+	currentRouterPort := helpers.GetZitiEdgeRouterPort()
+	defautlCtrlPort, _ := strconv.ParseInt(constants.DefaultCtrlEdgeAdvertisedPort, 10, 16)
+	defautlRouterPort, _ := strconv.ParseInt(constants.DefaultZitiEdgeRouterPort, 10, 16)
 	options := &QuickstartOpts{}
 	cmd := &cobra.Command{
 		Use:   "quickstart",
@@ -72,10 +78,10 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	cmd.Flags().BoolVar(&options.AlreadyInitialized, "already-initialized", false, "Specifies the PKI does not need to be created and the db does not need to be initialized. Recommended to be combined with --home. If --home is not specified the environment will be destroyed on shutdown! default: false")
 	cmd.Flags().StringVar(&options.Home, "home", "", "Sets the directory the environment should be installed into. Defaults to a temporary directory. If specified, the environment will not be removed on exit.")
 
-	cmd.Flags().StringVar(&options.ControllerAddress, "ctrl-address", "", "Sets the advertised address for the control plane and API")
-	cmd.Flags().Int16Var(&options.ControllerPort, "ctrl-port", 0, "Sets the port to use for the control plane and API")
-	cmd.Flags().StringVar(&options.RouterAddress, "router-address", "", "Sets the advertised address for the integrated router")
-	cmd.Flags().Int16Var(&options.RouterPort, "router-port", 0, "Sets the port to use for the integrated router")
+	cmd.Flags().StringVar(&options.ControllerAddress, "ctrl-address", "", "Sets the advertised address for the control plane and API. current: "+currentCtrlAddy)
+	cmd.Flags().Int16Var(&options.ControllerPort, "ctrl-port", int16(defautlCtrlPort), "Sets the port to use for the control plane and API. current: "+currentCtrlPort)
+	cmd.Flags().StringVar(&options.RouterAddress, "router-address", "", "Sets the advertised address for the integrated router. current: "+currentRouterAddy)
+	cmd.Flags().Int16Var(&options.RouterPort, "router-port", int16(defautlRouterPort), "Sets the port to use for the integrated router. current: "+currentRouterPort)
 	return cmd
 }
 
@@ -204,7 +210,33 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 			logrus.Fatal(loginErr)
 		}
 
-		//./ziti edge create edge-router ${ZITI_HOSTNAME}-edge-router -o ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt -t -a public
+		// Allow all identities to use any edge router with the "public" attribute
+		// ziti edge create edge-router-policy all-endpoints-public-routers --edge-router-roles "#public" --identity-roles "#all"
+		erpCmd := NewCreateEdgeRouterPolicyCmd(o.out, o.errOut)
+		erpCmd.SetArgs([]string{
+			"all-endpoints-public-routers",
+			fmt.Sprintf("--edge-router-roles=%s", "#public"),
+			fmt.Sprintf("--identity-roles=%s", "#all"),
+		})
+		erpCmdErr := erpCmd.Execute()
+		if erpCmdErr != nil {
+			logrus.Fatal(erpCmdErr)
+		}
+
+		// # Allow all edge-routers to access all services
+		// ziti edge create service-edge-router-policy all-routers-all-services --edge-router-roles "#all" --service-roles "#all"
+		serpCmd := NewCreateServiceEdgeRouterPolicyCmd(o.out, o.errOut)
+		serpCmd.SetArgs([]string{
+			"all-routers-all-services",
+			fmt.Sprintf("--edge-router-roles=%s", "#all"),
+			fmt.Sprintf("--service-roles=%s", "#all"),
+		})
+		serpCmdErr := serpCmd.Execute()
+		if serpCmdErr != nil {
+			logrus.Fatal(serpCmdErr)
+		}
+
+		// ziti edge create edge-router ${ZITI_HOSTNAME}-edge-router -o ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt -t -a public
 		createErCmd := NewCreateEdgeRouterCmd(o.out, o.errOut)
 		erJwt := o.Home + "/" + routerName + ".jwt"
 		createErCmd.SetArgs([]string{
@@ -218,7 +250,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 			logrus.Fatal(createErErr)
 		}
 
-		//./ziti create config router edge --routerName ${ZITI_HOSTNAME}-edge-router >${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml
+		// ziti create config router edge --routerName ${ZITI_HOSTNAME}-edge-router >${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml
 		opts := &create.CreateConfigRouterOptions{}
 
 		data := &create.ConfigTemplateValues{}
@@ -234,7 +266,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 			logrus.Fatal(erCfgErr)
 		}
 
-		//./ziti router enroll ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml --jwt ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt
+		// ziti router enroll ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml --jwt ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt
 		erEnroll := router.NewEnrollGwCmd()
 		erEnroll.SetArgs([]string{
 			erYaml,
@@ -247,7 +279,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 	}
 
 	go func() {
-		//./ziti router run ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml &> ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.log &
+		// ziti router run ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml &> ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.log &
 		erRunCmd := router.NewRunCmd()
 		erRunCmd.SetArgs([]string{
 			erYaml,

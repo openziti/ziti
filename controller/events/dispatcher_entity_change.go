@@ -163,6 +163,7 @@ func bytesToTxId(b []byte) uint64 {
 type entityChangeEventDispatcher struct {
 	network        *network.Network
 	dispatcher     *Dispatcher
+	closeNotify    <-chan struct{}
 	notifyCh       chan struct{}
 	globalMetadata map[string]any
 }
@@ -298,12 +299,18 @@ func (self *entityChangeEventDispatcher) notifyFlush() {
 func (self *entityChangeEventDispatcher) flushLoop() {
 	for {
 		// wait to be notified of an event
-		<-self.notifyCh
+		select {
+		case <-self.closeNotify:
+			return
+		case <-self.notifyCh:
+		}
 
 		// wait until we've not gotten an event for 5 seconds before cleaning up
 		flushed := false
 		for !flushed {
 			select {
+			case <-self.closeNotify:
+				return
 			case <-self.notifyCh:
 			case <-time.After(5 * time.Second):
 				pfxlog.Logger().Debug("cleaning up entity change events")
