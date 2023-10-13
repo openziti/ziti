@@ -44,7 +44,7 @@ jobs:
           cd ziti
           version="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
           echo "Ziti Version: $version"
-          echo "ZITI_VERSION=$version" >> $GITHUB_ENV          
+          echo "ZITI_VERSION=$version" >> $GITHUB_ENV
 
       - name: Build and Run
         run: |
@@ -57,7 +57,5 @@ jobs:
       - name: Teardown
         if: always()
         run: |
-          cat /home/runner/.fablab/instances/db-creation/fablab.yml
-          tree -a -L 3 /home/runner/.fablab/instances/db-creation
           cd ziti/zititest/models/db-creation          
           ./db-creation dispose

@@ -95,7 +95,17 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow := actions.Workflow()
 	// Set AWS config remotely
 	accessKey := os.Getenv("S3_KEY")
+	if accessKey != "" {
+		fmt.Println("S3_KEY", accessKey)
+	} else {
+		fmt.Println("S3_KEY missing")
+	}
 	accessSecret := os.Getenv("S3_SECRET")
+	if accessSecret != "" {
+		fmt.Println("S3_SECRET", accessSecret)
+	} else {
+		fmt.Println("S3_SECRET missing")
+	}
 	accessKeyIDString := "export AWS_ACCESS_KEY_ID=" + accessKey
 	accessSecretString := "export AWS_SECRET_ACCESS_KEY=" + accessSecret
 	setAccessKeyIDString := "aws configure set aws_access_key_id " + accessKey
