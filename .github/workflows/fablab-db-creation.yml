@@ -45,14 +45,14 @@ jobs:
           version="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
           version=${version#v}
           echo "Ziti Version: $version"
-          echo "ZITI_VERSION=$version" >> $GITHUB_ENV
-          ls -lsa /home/runner/.fablab/instances/db-creation/kit/bin/
+          echo "ZITI_VERSION=$version" >> $GITHUB_ENV          
 
       - name: Build and Run
         run: |
           cd ziti/zititest/models/db-creation
           go build -o db-creation main.go
           ./db-creation create db-creation
+          ls -lsa /home/runner/.fablab/instances/db-creation/kit/bin
           ./db-creation up
 
       - name: Teardown
