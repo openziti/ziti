@@ -53,7 +53,7 @@ jobs:
           go build -o db-creation main.go
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           env
-          sudo apt-get install tree
+          ls -l /home/runner/.fablab
           tree /home/runner/.fablab
           ./db-creation create db-creation
           cat /home/runner/.fablab/instances/db-creation/fablab.yml
