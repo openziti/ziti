@@ -55,7 +55,7 @@ jobs:
           env
           ls -l /home/runner/
           ./db-creation create db-creation
-          tree -L 2 /home/runner/
+          tree -L 4 /home/runner/
           cat /home/runner/.fablab/instances/db-creation/fablab.yml
           ./db-creation up
 
