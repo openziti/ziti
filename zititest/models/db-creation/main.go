@@ -16,9 +16,11 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/zititest/models/db-creation/actions"
+	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"os"
+	"path"
 	"time"
 )
 
@@ -56,7 +58,8 @@ var m = &model.Model{
 
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),
-		resources.Terraform: resources.DefaultTerraformResources(),
+		resources.Binaries:  os.DirFS(path.Join(os.Getenv("GOPATH"), "bin")),
+		resources.Terraform: test_resources.TerraformResources(),
 	},
 
 	Regions: model.Regions{
