@@ -89,19 +89,8 @@ var m = &model.Model{
 
 	Actions: model.ActionBinders{
 		"bootstrap": actions.NewBootstrapAction(),
-		"start": actions.NewStartAction(actions.MetricbeatConfig{
-			ConfigPath: "metricbeat",
-			DataPath:   "metricbeat/data",
-			LogPath:    "metricbeat/logs",
-		},
-			actions.ConsulConfig{
-				ServerAddr: os.Getenv("CONSUL_ENDPOINT"),
-				ConfigDir:  "consul",
-				DataPath:   "consul/data",
-				LogPath:    "consul/log.out",
-			}),
-		"stop":  model.Bind(component.StopInParallel("ctrl", 1)),
-		"login": model.Bind(edge.Login("#ctrl")),
+		"stop":      model.Bind(component.StopInParallel("ctrl", 1)),
+		"login":     model.Bind(edge.Login("#ctrl")),
 	},
 
 	Infrastructure: model.Stages{
