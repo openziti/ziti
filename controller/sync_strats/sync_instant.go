@@ -52,8 +52,8 @@ import (
 
 const (
 	RouterSyncStrategyInstant env.RouterSyncStrategyType = "instant"
-	ZdbIndexKey                                          = "index"
-	ZdbKey                                               = "zdb"
+	ZdbIndexKey               string                     = "index"
+	ZdbKey                    string                     = "zdb"
 )
 
 var _ env.RouterSyncStrategy = &InstantStrategy{}
