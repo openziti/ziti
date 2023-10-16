@@ -12,7 +12,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.15
 	github.com/openziti/channel/v2 v2.0.101
-	github.com/openziti/fablab v0.5.16
+	github.com/openziti/fablab v0.5.20
 	github.com/openziti/foundation/v2 v2.0.33
 	github.com/openziti/identity v1.0.64
 	github.com/openziti/sdk-golang v0.20.122
@@ -111,7 +111,7 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect

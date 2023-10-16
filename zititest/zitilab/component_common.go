@@ -18,9 +18,10 @@ package zitilab
 
 import (
 	"fmt"
-	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/model"
+	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/sirupsen/logrus"
+	"path/filepath"
 	"strings"
 )
 
@@ -39,11 +40,11 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 		binaryName += "-" + version
 	}
 
-	factory := lib.NewSshConfigFactory(c.GetHost())
+	user := c.GetHost().GetSshUser()
 
-	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", factory.User(), binaryName)
-	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s", factory.User(), configName)
-	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", factory.User(), c.Id)
+	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", user, binaryName)
+	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s", user, configName)
+	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
 	useSudo := ""
 	if zitiType == "tunnel" || c.HasTag("tunneler") {
@@ -53,7 +54,7 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 	serviceCmd := fmt.Sprintf("nohup %s %s %s run --log-formatter pfxlog %s --cli-agent-alias %s > %s 2>&1 &",
 		useSudo, binaryPath, zitiType, configPath, c.Id, logsPath)
 
-	value, err := lib.RemoteExec(factory, serviceCmd)
+	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {
 		return err
 	}
@@ -70,4 +71,32 @@ func getPrefixVersion(version string) string {
 		return version
 	}
 	return "v" + version
+}
+
+func reEnrollIdentity(run model.Run, c *model.Component, binaryName string, configName string) error {
+	if err := zitilib_actions.EdgeExec(run.GetModel(), "delete", "authenticator", "where", fmt.Sprintf("identity=\"%v\"", c.Id)); err != nil {
+		return err
+	}
+
+	if err := zitilib_actions.EdgeExec(run.GetModel(), "delete", "enrollment", "where", fmt.Sprintf("identity=\"%v\"", c.Id)); err != nil {
+		return err
+	}
+
+	jwtFileName := filepath.Join(model.ConfigBuild(), c.Id+".jwt")
+
+	args := []string{"create", "enrollment", "ott", "--jwt-output-file", jwtFileName, "--", c.Id}
+
+	if err := zitilib_actions.EdgeExec(c.GetModel(), args...); err != nil {
+		return err
+	}
+
+	remoteJwt := "/home/ubuntu/fablab/cfg/" + c.Id + ".jwt"
+	if err := c.GetHost().SendFile(jwtFileName, remoteJwt); err != nil {
+		return err
+	}
+
+	tmpl := "set -o pipefail; /home/ubuntu/fablab/bin/%s edge enroll %s 2>&1 | tee /home/ubuntu/logs/%s.identity.enroll.log "
+	cmd := fmt.Sprintf(tmpl, binaryName, remoteJwt, c.Id)
+
+	return c.GetHost().ExecLogOnlyOnError(cmd)
 }

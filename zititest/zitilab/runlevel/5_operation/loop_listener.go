@@ -2,7 +2,7 @@ package zitilib_runlevel_5_operation
 
 import (
 	"fmt"
-	"github.com/openziti/fablab/kernel/lib"
+	"github.com/openziti/fablab/kernel/libssh"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/sirupsen/logrus"
 	"strings"
@@ -29,8 +29,8 @@ func LoopListener(host *model.Host, joiner chan struct{}, bindAddress string, ex
 }
 
 func (self *loopListener) Execute(run model.Run) error {
-	ssh := lib.NewSshConfigFactory(self.host)
-	if err := lib.RemoteKill(ssh, fmt.Sprintf("ziti-fabric-test %v listener", self.subcmd)); err != nil {
+	ssh := self.host.NewSshConfigFactory()
+	if err := libssh.RemoteKill(ssh, fmt.Sprintf("ziti-fabric-test %v listener", self.subcmd)); err != nil {
 		return fmt.Errorf("error killing %v listeners (%w)", self.subcmd, err)
 	}
 
@@ -46,12 +46,12 @@ func (self *loopListener) run(run model.Run) {
 		}
 	}()
 
-	ssh := lib.NewSshConfigFactory(self.host)
+	ssh := self.host.NewSshConfigFactory()
 
 	logFile := fmt.Sprintf("/home/%s/logs/%v-listener-%s.log", ssh.User(), self.subcmd, run.GetId())
 	listenerCmd := fmt.Sprintf("/home/%s/fablab/bin/ziti-fabric-test %v listener -b %v %v >> %s 2>&1",
 		ssh.User(), self.subcmd, self.bindAddress, strings.Join(self.extraArgs, " "), logFile)
-	if output, err := lib.RemoteExec(ssh, listenerCmd); err != nil {
+	if output, err := libssh.RemoteExec(ssh, listenerCmd); err != nil {
 		logrus.Errorf("error starting loop listener [%s] (%v)", output, err)
 	}
 }

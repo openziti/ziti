@@ -19,6 +19,7 @@ package tests
 import (
 	"fmt"
 	"github.com/openziti/fablab/kernel/lib"
+	"github.com/openziti/fablab/kernel/libssh"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -98,7 +99,7 @@ func testIPerf(t *testing.T, hostSelector string, hostType string, encrypted boo
 		cmd := fmt.Sprintf(`set -o pipefail; iperf3 -c %s -P 1 -t 10 %s`, addr, extraOptions)
 
 		sshConfigFactory := lib.NewSshConfigFactory(host)
-		o, err := lib.RemoteExecAllWithTimeout(sshConfigFactory, 20*time.Second, cmd)
+		o, err := libssh.RemoteExecAllWithTimeout(sshConfigFactory, 20*time.Second, cmd)
 		if hostType == "zet" && err != nil {
 			t.Skipf("zet hosted iperf test failed [%v]", err.Error())
 			return

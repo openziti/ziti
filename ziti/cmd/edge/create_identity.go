@@ -183,15 +183,18 @@ func runCreateIdentity(o *createIdentityOptions) error {
 
 	if o.jwtOutputFile != "" {
 		id := result.S("data", "id").Data().(string)
-		if err := getIdentityJwt(o, id, o.Options.Timeout, o.Options.Verbose); err != nil {
+		enrollmentType := "ott"
+		if o.username != "" {
+			enrollmentType = "updb"
+		}
+		if err = getIdentityJwt(&o.Options, id, o.jwtOutputFile, enrollmentType, o.Options.Timeout, o.Options.Verbose); err != nil {
 			return err
 		}
 	}
 	return err
 }
 
-func getIdentityJwt(o *createIdentityOptions, id string, timeout int, verbose bool) error {
-
+func getIdentityJwt(o *api.Options, id string, outputFile string, enrollmentType string, timeout int, verbose bool) error {
 	newIdentity, err := DetailEntityOfType("identities", id, o.OutputJSONResponse, o.Out, timeout, verbose)
 	if err != nil {
 		return err
@@ -202,10 +205,12 @@ func getIdentityJwt(o *createIdentityOptions, id string, timeout int, verbose bo
 	}
 
 	var dataContainer *gabs.Container
-	if o.username != "" {
+	if enrollmentType == "updb" {
 		dataContainer = newIdentity.Path("enrollment.updb.jwt")
-	} else {
+	} else if enrollmentType == "ott" {
 		dataContainer = newIdentity.Path("enrollment.ott.jwt")
+	} else {
+		return errors.Errorf("unsupported enrollment type '%s'", enrollmentType)
 	}
 
 	data := dataContainer.Data()
@@ -219,8 +224,8 @@ func getIdentityJwt(o *createIdentityOptions, id string, timeout int, verbose bo
 		return fmt.Errorf("enrollment JWT not present for new identity")
 	}
 
-	if err := os.WriteFile(o.jwtOutputFile, []byte(jwt), 0600); err != nil {
-		fmt.Printf("Failed to write JWT to file(%v)\n", o.jwtOutputFile)
+	if err = os.WriteFile(outputFile, []byte(jwt), 0600); err != nil {
+		fmt.Printf("Failed to write JWT to file(%v)\n", outputFile)
 		return err
 	}
 

@@ -571,8 +571,8 @@ github.com/mattn/go-isatty v0.0.11/go.mod h1:PhnuNfih5lzO57/f3n+odYbM4JtupLOxQOA
 github.com/mattn/go-isatty v0.0.12/go.mod h1:cbi8OIDigv2wuxKPP5vlRcQ1OAZbq2CE4Kysco4FUpU=
 github.com/mattn/go-isatty v0.0.14/go.mod h1:7GGIvUiUoEMVVmxf/4nioHXj79iQHKdU27kJ6hsGG94=
 github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=
-github.com/mattn/go-isatty v0.0.19 h1:JITubQf0MOLdlGRuRq+jtsDlekdYPia9ZFsB8h/APPA=
-github.com/mattn/go-isatty v0.0.19/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
+github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
+github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/mattn/go-runewidth v0.0.6/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m2gUSrubnMI=
 github.com/mattn/go-runewidth v0.0.9/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m2gUSrubnMI=
 github.com/mattn/go-runewidth v0.0.12/go.mod h1:RAqKPSqVFrSLVXbA8x7dzmKdmGzieGRCM46jaSJTDAk=
@@ -657,8 +657,8 @@ github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAP
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
 github.com/openziti/edge-api v0.25.38 h1:aijFEC4pMCi2gR6zL6FYQRkm59SQAwrF0tZS4LZsxi4=
 github.com/openziti/edge-api v0.25.38/go.mod h1:5mmcMgqK1MsBb0K8V1CBfGbtRUji5KYdmhJJJkJBMqY=
-github.com/openziti/fablab v0.5.16 h1:+tqqDR5Sl4qLT3fSC+Dv1AGZuOeeX87h9LNKa1KJS5Y=
-github.com/openziti/fablab v0.5.16/go.mod h1:KiU/NxThNtH9U803Ep0WcSrbov3moZso2oRgIpQq0S0=
+github.com/openziti/fablab v0.5.20 h1:7Xo85q2S0QpEQXkizjV/5Sh3FJ3w/W4dy+1puN4K8Gs=
+github.com/openziti/fablab v0.5.20/go.mod h1:wKw2t0WrOPwVd7mfshGpxqtslC6ffaBeXI1DryPnko4=
 github.com/openziti/foundation/v2 v2.0.33 h1:8CP+fi4KsmzA4jDi54jibwFWWxKpd0rSiplzN9Z0Isw=
 github.com/openziti/foundation/v2 v2.0.33/go.mod h1:dWR0g3NOka3uKz9MgUHq6dmuRLmSvunkyeuOXEW/5qU=
 github.com/openziti/identity v1.0.64 h1:HwALRY1J/rNNcIAlr1OwCwTHU/rlMRaUi5TXAfZotjw=

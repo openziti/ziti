@@ -26,7 +26,7 @@ import (
 
 func DeleteEntitiesOfType(api util.API, o *Options, entityType string, ids []string, body string) error {
 	for _, id := range ids {
-		err := util.ControllerDelete(api, entityType, id, body, o.Out, o.OutputJSONRequest, o.OutputJSONResponse, o.Timeout, o.Verbose)
+		err, _ := util.ControllerDelete(api, entityType, id, body, o.Out, o.OutputJSONRequest, o.OutputJSONResponse, o.Timeout, o.Verbose)
 		if err != nil {
 			o.Printf("delete of %v with id %v: %v\n", boltz.GetSingularEntityType(entityType), id, color.New(color.FgRed, color.Bold).Sprint("FAIL"))
 			return err

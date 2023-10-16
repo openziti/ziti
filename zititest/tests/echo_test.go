@@ -19,7 +19,6 @@ package tests
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/openziti/fablab/kernel/lib"
 	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
@@ -37,13 +36,12 @@ func TestSdkEcho(t *testing.T) {
 	}
 
 	for _, c := range components {
-		ssh := lib.NewSshConfigFactory(c.GetHost())
 		remoteConfigFile := "/home/ubuntu/fablab/cfg/" + c.Id + ".json"
 
 		echoClientCmd := fmt.Sprintf(`echo "%s" | /home/%s/fablab/bin/ziti demo zcat --identity %s ziti:echo 2>&1`,
-			string(data), ssh.User(), remoteConfigFile)
+			string(data), c.GetHost().GetSshUser(), remoteConfigFile)
 
-		output, err := lib.RemoteExec(ssh, echoClientCmd)
+		output, err := c.GetHost().ExecLogged(echoClientCmd)
 		t.Logf("test output:\n%s", output)
 		req.NoError(err)
 		//trim the newline ssh added

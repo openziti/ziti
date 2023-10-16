@@ -100,8 +100,7 @@ func (self *ControllerType) getProcessFilter(c *model.Component) func(string) bo
 }
 
 func (self *ControllerType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	pids, err := lib.FindProcesses(factory, self.getProcessFilter(c))
+	pids, err := c.GetHost().FindProcesses(self.getProcessFilter(c))
 	if err != nil {
 		return false, err
 	}
@@ -113,8 +112,7 @@ func (self *ControllerType) Start(_ model.Run, c *model.Component) error {
 }
 
 func (self *ControllerType) Stop(_ model.Run, c *model.Component) error {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	return lib.RemoteKillFilterF(factory, self.getProcessFilter(c))
+	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c))
 }
 
 func (self *ControllerType) InitStandalone(run model.Run, c *model.Component) error {
@@ -129,7 +127,7 @@ func (self *ControllerType) InitStandalone(run model.Run, c *model.Component) er
 		return errors.New("variable credentials/edge/password must be a string")
 	}
 
-	factory := lib.NewSshConfigFactory(c.GetHost())
+	factory := c.GetHost().NewSshConfigFactory()
 
 	binaryName := "ziti"
 	if self.Version != "" {
