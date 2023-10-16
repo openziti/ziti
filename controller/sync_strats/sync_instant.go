@@ -748,7 +748,7 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		strategy.ApplyServicePolicyEvent(newEvent, newModel)
+		strategy.HandleServicePolicyEvent(newEvent, newModel)
 	}
 
 	return nil
@@ -763,7 +763,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
 			Model:  newModel,
 		}
 
-		strategy.ApplyPublicKeyEvent(newEvent, newModel)
+		strategy.HandlePublicKeyEvent(newEvent, newModel)
 	}
 
 	caPEMs := strategy.ae.Config.CaPems()
@@ -777,7 +777,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
 			Model:  newModel,
 		}
 
-		strategy.ApplyPublicKeyEvent(newEvent, newModel)
+		strategy.HandlePublicKeyEvent(newEvent, newModel)
 	}
 
 	for cursor := strategy.ae.GetStores().Ca.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
@@ -803,7 +803,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		strategy.ApplyPublicKeyEvent(newEvent, newModel)
+		strategy.HandlePublicKeyEvent(newEvent, newModel)
 	}
 
 	return nil
@@ -831,6 +831,8 @@ func (strategy *InstantStrategy) BuildAll() error {
 			return err
 		}
 
+		strategy.SetCurrentIndex(strategy.indexProvider.CurrentIndex())
+
 		return nil
 	})
 
@@ -854,7 +856,7 @@ func (strategy *InstantStrategy) BuildIdentities(tx *bbolt.Tx) error {
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		strategy.ApplyIdentityEvent(newEvent, newModel)
+		strategy.HandleIdentityEvent(newEvent, newModel)
 	}
 
 	return nil
@@ -876,7 +878,7 @@ func (strategy *InstantStrategy) BuildServices(tx *bbolt.Tx) error {
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		strategy.ApplyServiceEvent(newEvent, newModel)
+		strategy.HandleServiceEvent(newEvent, newModel)
 	}
 
 	return nil
@@ -898,7 +900,7 @@ func (strategy *InstantStrategy) BuildPostureChecks(tx *bbolt.Tx) error {
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		strategy.ApplyPostureCheckEvent(newEvent, newModel)
+		strategy.HandlePostureCheckEvent(newEvent, newModel)
 	}
 	return nil
 }
@@ -1342,6 +1344,8 @@ func (p *NonHaIndexProvider) NextIndex(_ boltz.MutateContext) (uint64, error) {
 }
 
 func (p *NonHaIndexProvider) CurrentIndex() uint64 {
+	p.initialLoad.Do(p.load)
+
 	p.lock.Lock()
 	defer p.lock.Unlock()
 

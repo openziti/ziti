@@ -25,6 +25,9 @@ type EventCache interface {
 	// WhileLocked allows the execution of arbitrary functionality while the event cache is locked. This function
 	// is blocking.
 	WhileLocked(func())
+
+	// SetCurrentIndex sets the current index to the supplied value. All event log history may be lost.
+	SetCurrentIndex(uint64)
 }
 
 // ForgetfulEventCache does not store events or support replaying. It tracks
@@ -37,6 +40,10 @@ type ForgetfulEventCache struct {
 
 func NewForgetfulEventCache() *ForgetfulEventCache {
 	return &ForgetfulEventCache{}
+}
+
+func (cache *ForgetfulEventCache) SetCurrentIndex(index uint64) {
+	cache.index = &index
 }
 
 func (cache *ForgetfulEventCache) WhileLocked(callback func()) {
@@ -60,6 +67,7 @@ func (cache *ForgetfulEventCache) Store(event *edge_ctrl_pb.DataState_Event, onS
 			return fmt.Errorf("out of order event detected, currentIndex: %d, expectedIndex: %d, recievedIndex: %d, type :%T", *cache.index, (*cache.index)+1, event.Index, cache)
 		}
 	}
+
 	cache.index = &event.Index
 
 	if onSuccess != nil {
@@ -107,6 +115,16 @@ type LoggingEventCache struct {
 	LogSize      uint64
 	Log          []uint64
 	Events       map[uint64]*edge_ctrl_pb.DataState_Event
+}
+
+func (cache *LoggingEventCache) SetCurrentIndex(index uint64) {
+	cache.lock.Lock()
+	defer cache.lock.Unlock()
+
+	cache.HeadLogIndex = 0
+	cache.Log = make([]uint64, cache.LogSize)
+	cache.Log[0] = index
+	cache.Events = map[uint64]*edge_ctrl_pb.DataState_Event{}
 }
 
 func (cache *LoggingEventCache) Store(event *edge_ctrl_pb.DataState_Event, onSuccess OnStoreSuccess) error {

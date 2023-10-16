@@ -142,25 +142,32 @@ func (rdm *RouterDataModel) Apply(event *edge_ctrl_pb.DataState_Event) {
 	}
 }
 
+// HandleIdentityEvent will apply the delta event to the router data model. It is not restricted by index calculations.
+// Use ApplyIdentityEvent for event logged event handling. This method is generally meant for bulk loading of data
+// during startup.
+func (rdm *RouterDataModel) HandleIdentityEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Identity) {
+	if event.Action == edge_ctrl_pb.DataState_Delete {
+		rdm.Identities.Remove(model.Identity.Id)
+
+		rdm.ServicePolicies.IterCb(func(servicePolicyId string, servicePolicy *edge_ctrl_pb.DataState_ServicePolicy) {
+			servicePolicy.IdentityIds = stringz.Remove(servicePolicy.IdentityIds, model.Identity.Id)
+		})
+	} else {
+		rdm.Identities.Upsert(model.Identity.Id, nil, func(exist bool, valueInMap *edge_ctrl_pb.DataState_Identity, newValue *edge_ctrl_pb.DataState_Identity) *edge_ctrl_pb.DataState_Identity {
+			if !exist {
+				return model.Identity
+			}
+
+			valueInMap.Name = model.Identity.Name
+
+			return valueInMap
+		})
+	}
+}
+
 func (rdm *RouterDataModel) ApplyIdentityEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Identity) {
 	err := rdm.EventCache.Store(event, func(index uint64, event *edge_ctrl_pb.DataState_Event) {
-		if event.Action == edge_ctrl_pb.DataState_Delete {
-			rdm.Identities.Remove(model.Identity.Id)
-
-			rdm.ServicePolicies.IterCb(func(servicePolicyId string, servicePolicy *edge_ctrl_pb.DataState_ServicePolicy) {
-				servicePolicy.IdentityIds = stringz.Remove(servicePolicy.IdentityIds, model.Identity.Id)
-			})
-		} else {
-			rdm.Identities.Upsert(model.Identity.Id, nil, func(exist bool, valueInMap *edge_ctrl_pb.DataState_Identity, newValue *edge_ctrl_pb.DataState_Identity) *edge_ctrl_pb.DataState_Identity {
-				if !exist {
-					return model.Identity
-				}
-
-				valueInMap.Name = model.Identity.Name
-
-				return valueInMap
-			})
-		}
+		rdm.HandleIdentityEvent(event, model)
 	})
 
 	if err != nil {
@@ -175,13 +182,20 @@ func (rdm *RouterDataModel) ApplyIdentityEvent(event *edge_ctrl_pb.DataState_Eve
 	rdm.sendEvent(event)
 }
 
+// HandleServiceEvent will apply the delta event to the router data model. It is not restricted by index calculations.
+// Use ApplyServiceEvent for event logged event handling. This method is generally meant for bulk loading of data
+// during startup.
+func (rdm *RouterDataModel) HandleServiceEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Service) {
+	if event.Action == edge_ctrl_pb.DataState_Delete {
+		rdm.Services.Remove(model.Service.Id)
+	} else {
+		rdm.Services.Set(model.Service.Id, model.Service)
+	}
+}
+
 func (rdm *RouterDataModel) ApplyServiceEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Service) {
 	err := rdm.EventCache.Store(event, func(index uint64, event *edge_ctrl_pb.DataState_Event) {
-		if event.Action == edge_ctrl_pb.DataState_Delete {
-			rdm.Services.Remove(model.Service.Id)
-		} else {
-			rdm.Services.Set(model.Service.Id, model.Service)
-		}
+		rdm.HandleServiceEvent(event, model)
 	})
 
 	if err != nil {
@@ -261,12 +275,7 @@ func (rdm *RouterDataModel) applyUpdateServicePolicyEvent(event *edge_ctrl_pb.Da
 	}
 }
 
-func (rdm *RouterDataModel) applyDeleteServicePolicyEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
-	if index, ok := rdm.EventCache.CurrentIndex(); ok && index >= event.Index {
-		// old event
-		return
-	}
-
+func (rdm *RouterDataModel) applyDeleteServicePolicyEvent(_ *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
 	for _, identityId := range model.ServicePolicy.IdentityIds {
 		if identity, ok := rdm.Identities.Get(identityId); ok {
 			identity.ServicePolicyIds = stringz.Remove(identity.ServicePolicyIds, model.ServicePolicy.Id)
@@ -276,16 +285,23 @@ func (rdm *RouterDataModel) applyDeleteServicePolicyEvent(event *edge_ctrl_pb.Da
 	rdm.ServicePolicies.Remove(model.ServicePolicy.Id)
 }
 
+// HandleServicePolicyEvent will apply the delta event to the router data model. It is not restricted by index calculations.
+// Use ApplyServicePolicyEvent for event logged event handling. This method is generally meant for bulk loading of data
+// during startup.
+func (rdm *RouterDataModel) HandleServicePolicyEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
+	switch event.Action {
+	case edge_ctrl_pb.DataState_Create:
+		rdm.applyCreateServicePolicyEvent(event, model)
+	case edge_ctrl_pb.DataState_Update:
+		rdm.applyUpdateServicePolicyEvent(event, model)
+	case edge_ctrl_pb.DataState_Delete:
+		rdm.applyDeleteServicePolicyEvent(event, model)
+	}
+}
+
 func (rdm *RouterDataModel) ApplyServicePolicyEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
 	err := rdm.EventCache.Store(event, func(index uint64, event *edge_ctrl_pb.DataState_Event) {
-		switch event.Action {
-		case edge_ctrl_pb.DataState_Create:
-			rdm.applyCreateServicePolicyEvent(event, model)
-		case edge_ctrl_pb.DataState_Update:
-			rdm.applyUpdateServicePolicyEvent(event, model)
-		case edge_ctrl_pb.DataState_Delete:
-			rdm.applyDeleteServicePolicyEvent(event, model)
-		}
+		rdm.HandleServicePolicyEvent(event, model)
 	})
 
 	if err != nil {
@@ -300,13 +316,20 @@ func (rdm *RouterDataModel) ApplyServicePolicyEvent(event *edge_ctrl_pb.DataStat
 	rdm.sendEvent(event)
 }
 
+// HandlePostureCheckEvent will apply the delta event to the router data model. It is not restricted by index calculations.
+// Use ApplyPostureCheckEvent for event logged event handling. This method is generally meant for bulk loading of data
+// during startup.
+func (rdm *RouterDataModel) HandlePostureCheckEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_PostureCheck) {
+	if event.Action == edge_ctrl_pb.DataState_Delete {
+		rdm.PostureChecks.Remove(model.PostureCheck.Id)
+	} else {
+		rdm.PostureChecks.Set(model.PostureCheck.Id, model.PostureCheck)
+	}
+}
+
 func (rdm *RouterDataModel) ApplyPostureCheckEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_PostureCheck) {
 	err := rdm.EventCache.Store(event, func(index uint64, event *edge_ctrl_pb.DataState_Event) {
-		if event.Action == edge_ctrl_pb.DataState_Delete {
-			rdm.PostureChecks.Remove(model.PostureCheck.Id)
-		} else {
-			rdm.PostureChecks.Set(model.PostureCheck.Id, model.PostureCheck)
-		}
+		rdm.HandlePostureCheckEvent(event, model)
 	})
 
 	if err != nil {
@@ -321,14 +344,20 @@ func (rdm *RouterDataModel) ApplyPostureCheckEvent(event *edge_ctrl_pb.DataState
 	rdm.sendEvent(event)
 }
 
+// HandlePublicKeyEvent will apply the delta event to the router data model. It is not restricted by index calculations.
+// Use ApplyPublicKeyEvent for event logged event handling. This method is generally meant for bulk loading of data
+// during startup.
+func (rdm *RouterDataModel) HandlePublicKeyEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_PublicKey) {
+	if event.Action == edge_ctrl_pb.DataState_Delete {
+		rdm.PublicKeys.Remove(model.PublicKey.Kid)
+	} else {
+		rdm.PublicKeys.Set(model.PublicKey.Kid, model.PublicKey)
+	}
+}
+
 func (rdm *RouterDataModel) ApplyPublicKeyEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_PublicKey) {
 	err := rdm.EventCache.Store(event, func(index uint64, event *edge_ctrl_pb.DataState_Event) {
-		if event.Action == edge_ctrl_pb.DataState_Delete {
-			rdm.PublicKeys.Remove(model.PublicKey.Kid)
-		} else {
-			rdm.PublicKeys.Set(model.PublicKey.Kid, model.PublicKey)
-		}
-
+		rdm.HandlePublicKeyEvent(event, model)
 	})
 
 	if err != nil {
@@ -343,13 +372,20 @@ func (rdm *RouterDataModel) ApplyPublicKeyEvent(event *edge_ctrl_pb.DataState_Ev
 	rdm.sendEvent(event)
 }
 
+// HandleRevocationEvent will apply the delta event to the router data model. It is not restricted by index calculations.
+// Use ApplyRevocationEvent for event logged event handling. This method is generally meant for bulk loading of data
+// during startup.
+func (rdm *RouterDataModel) HandleRevocationEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Revocation) {
+	if event.Action == edge_ctrl_pb.DataState_Delete {
+		rdm.Revocations.Remove(model.Revocation.Id)
+	} else {
+		rdm.Revocations.Set(model.Revocation.Id, model.Revocation)
+	}
+}
+
 func (rdm *RouterDataModel) ApplyRevocationEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Revocation) {
 	err := rdm.EventCache.Store(event, func(index uint64, event *edge_ctrl_pb.DataState_Event) {
-		if event.Action == edge_ctrl_pb.DataState_Delete {
-			rdm.Revocations.Remove(model.Revocation.Id)
-		} else {
-			rdm.Revocations.Set(model.Revocation.Id, model.Revocation)
-		}
+		rdm.HandleRevocationEvent(event, model)
 	})
 
 	if err != nil {
