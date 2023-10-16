@@ -68,6 +68,8 @@ enum Header {
   HeaderZero = 0;
   TerminatorId = 1022;
   CheckPassed = 1023;
+  RouterDataModel = 1024;
+  RouterDataModelIndex = 1025;
 }
 
 message ServerHello {
@@ -219,7 +221,6 @@ message DataState {
   message Event {
     Action action = 1;
     uint64 index = 2;
-    bool isDistributedIndex = 3;
 
     oneof Model{
       Identity identity = 10;

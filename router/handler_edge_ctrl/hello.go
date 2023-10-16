@@ -17,11 +17,9 @@
 package handler_edge_ctrl
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
@@ -91,15 +89,18 @@ func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 				Data:          map[string]string{},
 			}
 
-			if serverHello.Data[common.DataRouterModel] == "true" {
-				clientHello.Data[common.DataRouterModel] = "true"
+			outMsg := protobufs.MarshalTyped(clientHello).ToSendable().Msg()
+			if supported, ok := msg.Headers.GetBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel)); ok && supported {
+
+				outMsg.Headers.PutBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel), true)
 
 				if index, ok := h.stateManager.RouterDataModel().CurrentIndex(); ok {
-					clientHello.Data[common.DataRouterModelIndex] = fmt.Sprintf("%d", index)
+					outMsg.Headers.PutUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex), index)
 				}
+
 			}
 
-			if err := protobufs.MarshalTyped(clientHello).ReplyTo(msg).Send(ch); err != nil {
+			if err := outMsg.ReplyTo(msg).Send(ch); err != nil {
 				pfxlog.Logger().WithError(err).Error("could not send client hello")
 			}
 			return

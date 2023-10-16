@@ -45,7 +45,6 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -511,7 +510,7 @@ func (strategy *InstantStrategy) ReceiveResync(r *network.Router, _ *edge_ctrl_p
 	strategy.receivedClientHelloQueue <- rtx
 }
 
-func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello *edge_ctrl_pb.ClientHello) {
+func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, msg *channel.Message, respHello *edge_ctrl_pb.ClientHello) {
 	rtx := strategy.rtxMap.Get(r.Id)
 
 	if rtx == nil {
@@ -530,17 +529,11 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello
 		WithField("listeners", respHello.Listeners).
 		WithField("data", respHello.Data)
 
-	if respHello.Data != nil && respHello.Data[common.DataRouterModel] == "true" {
+	if supported, ok := msg.Headers.GetBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel)); ok && supported {
 		rtx.SupportsRouterModel = true
 
-		indexStr := respHello.Data[common.DataRouterModelIndex]
-
-		if len(indexStr) > 0 {
-			index, err := strconv.ParseUint(indexStr, 10, 64)
-
-			if err == nil {
-				rtx.RouterModelIndex = &index
-			}
+		if index, ok := msg.Headers.GetUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex)); ok {
+			rtx.RouterModelIndex = &index
 		}
 	}
 

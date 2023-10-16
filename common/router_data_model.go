@@ -12,11 +12,6 @@ import (
 	"os"
 )
 
-const (
-	DataRouterModel      = "routerDataModel"
-	DataRouterModelIndex = "routerModelIndex"
-)
-
 // AccessPolicies represents the Identity's access to a Service through many Policies. The PostureChecks provided
 // are referenced by the granting Policies. The PostureChecks for each of the Policies may be evaluated to determine
 // a valid policy and posture access path.
