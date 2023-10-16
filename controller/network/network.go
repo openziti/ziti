@@ -21,9 +21,9 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/foundation/v2/goroutines"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/foundation/v2/goroutines"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -32,17 +32,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/controller/command"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/ziti/common/ctrl_msg"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/common/trace"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/sequence"
@@ -50,6 +44,12 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/ctrl_msg"
+	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/common/trace"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
@@ -909,6 +909,8 @@ func (network *Network) watchdog() {
 		case <-network.watchdogCh:
 			consecutiveFails = 0
 			continue
+		case <-network.closeNotify:
+			return
 		default:
 			consecutiveFails++
 			// network.Run didn't complete, something is stalling it
