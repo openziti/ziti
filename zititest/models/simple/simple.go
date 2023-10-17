@@ -18,7 +18,6 @@ package simple
 
 import (
 	"embed"
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/binding"
@@ -35,23 +34,14 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	"github.com/sirupsen/logrus"
 	"os"
 	"time"
 )
 
-const ZitiEdgeTunnelVersion = "v0.21.4"
+const ZitiEdgeTunnelVersion = "v0.22.11"
 
 //go:embed configs
 var configResource embed.FS
-
-func getConfigData(filePath string) []byte {
-	data, err := configResource.ReadFile(fmt.Sprintf("configs/%s", filePath))
-	if err != nil {
-		logrus.Errorf("Unable to read config data from %s: [%s]", filePath, err)
-	}
-	return data
-}
 
 func getUniqueId() string {
 	if runId := os.Getenv("GITHUB_RUN_ID"); runId != "" {
