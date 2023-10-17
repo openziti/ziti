@@ -142,6 +142,23 @@ func (rdm *RouterDataModel) Apply(event *edge_ctrl_pb.DataState_Event) {
 	}
 }
 
+func (rdm *RouterDataModel) Handle(event *edge_ctrl_pb.DataState_Event) {
+	switch typedModel := event.Model.(type) {
+	case *edge_ctrl_pb.DataState_Event_Identity:
+		rdm.HandleIdentityEvent(event, typedModel)
+	case *edge_ctrl_pb.DataState_Event_Service:
+		rdm.HandleServiceEvent(event, typedModel)
+	case *edge_ctrl_pb.DataState_Event_ServicePolicy:
+		rdm.HandleServicePolicyEvent(event, typedModel)
+	case *edge_ctrl_pb.DataState_Event_PostureCheck:
+		rdm.HandlePostureCheckEvent(event, typedModel)
+	case *edge_ctrl_pb.DataState_Event_PublicKey:
+		rdm.HandlePublicKeyEvent(event, typedModel)
+	case *edge_ctrl_pb.DataState_Event_Revocation:
+		rdm.HandleRevocationEvent(event, typedModel)
+	}
+}
+
 // HandleIdentityEvent will apply the delta event to the router data model. It is not restricted by index calculations.
 // Use ApplyIdentityEvent for event logged event handling. This method is generally meant for bulk loading of data
 // during startup.
@@ -403,7 +420,7 @@ func (rdm *RouterDataModel) ApplyRevocationEvent(event *edge_ctrl_pb.DataState_E
 func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
 	var events []*edge_ctrl_pb.DataState_Event
 
-	rdm.EventCache.WhileLocked(func() {
+	rdm.EventCache.WhileLocked(func(_ uint64, _ bool) {
 		identityBuffer := rdm.Identities.IterBuffered()
 		serviceBuffer := rdm.Services.IterBuffered()
 		ServicePoliciesBuffer := rdm.ServicePolicies.IterBuffered()
@@ -473,11 +490,8 @@ type rdmDb struct {
 }
 
 func (rdm *RouterDataModel) Save(path string) {
-	rdm.EventCache.WhileLocked(func() {
-
-		index, ok := rdm.CurrentIndex()
-
-		if !ok {
+	rdm.EventCache.WhileLocked(func(index uint64, indexInitialized bool) {
+		if !indexInitialized {
 			pfxlog.Logger().Debug("could not save router data model, no index")
 			return
 		}
@@ -487,6 +501,8 @@ func (rdm *RouterDataModel) Save(path string) {
 			pfxlog.Logger().Debug("no changes to router model, nothing to save")
 			return
 		}
+
+		rdm.lastSaveIndex = &index
 
 		rdmFile := rdmDb{
 			RouterDataModel: rdm,

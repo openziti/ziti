@@ -24,7 +24,7 @@ type EventCache interface {
 
 	// WhileLocked allows the execution of arbitrary functionality while the event cache is locked. This function
 	// is blocking.
-	WhileLocked(func())
+	WhileLocked(func(uint64, bool))
 
 	// SetCurrentIndex sets the current index to the supplied value. All event log history may be lost.
 	SetCurrentIndex(uint64)
@@ -46,11 +46,11 @@ func (cache *ForgetfulEventCache) SetCurrentIndex(index uint64) {
 	cache.index = &index
 }
 
-func (cache *ForgetfulEventCache) WhileLocked(callback func()) {
+func (cache *ForgetfulEventCache) WhileLocked(callback func(uint64, bool)) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
-	callback()
+	callback(cache.currentIndex())
 }
 
 func (cache *ForgetfulEventCache) Store(event *edge_ctrl_pb.DataState_Event, onSuccess OnStoreSuccess) error {
@@ -90,17 +90,21 @@ func NewLoggingEventCache(logSize uint64) *LoggingEventCache {
 	}
 }
 
-func (cache *LoggingEventCache) WhileLocked(callback func()) {
+func (cache *LoggingEventCache) WhileLocked(callback func(uint64, bool)) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
-	callback()
+	callback(cache.currentIndex())
 }
 
 func (cache *ForgetfulEventCache) CurrentIndex() (uint64, bool) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
+	return cache.currentIndex()
+}
+
+func (cache *ForgetfulEventCache) currentIndex() (uint64, bool) {
 	if cache.index == nil {
 		return 0, false
 	}
