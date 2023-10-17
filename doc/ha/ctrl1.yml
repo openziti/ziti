@@ -50,3 +50,4 @@ web:
       - binding: fabric
       - binding: edge-management
       - binding: edge-client
+      - binding: edge-oidc

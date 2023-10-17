@@ -37,6 +37,7 @@ import (
 	"math/rand"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -108,7 +109,7 @@ type ManagerImpl struct {
 	syncLock           sync.Mutex
 
 	certCache       cmap.ConcurrentMap[string, *x509.Certificate]
-	routerDataModel *common.RouterDataModel
+	routerDataModel atomic.Pointer[common.RouterDataModel]
 }
 
 func (sm *ManagerImpl) StartRouterModelSave(routerEnv env.RouterEnv, filePath string, duration time.Duration) {
@@ -165,7 +166,9 @@ func (sm *ManagerImpl) VerifyClientCert(cert *x509.Certificate) error {
 
 	rootPool := x509.NewCertPool()
 
-	for keysTuple := range sm.routerDataModel.PublicKeys.IterBuffered() {
+	rdm := sm.routerDataModel.Load()
+
+	for keysTuple := range rdm.PublicKeys.IterBuffered() {
 		if contains(keysTuple.Val.Usages, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation) {
 			cert, err := sm.getX509FromData(keysTuple.Val.Kid, keysTuple.Val.GetData())
 
@@ -223,7 +226,8 @@ func (sm *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 
 	kid = strings.TrimSpace(kid)
 
-	for keysTuple := range sm.routerDataModel.PublicKeys.IterBuffered() {
+	rdm := sm.routerDataModel.Load()
+	for keysTuple := range rdm.PublicKeys.IterBuffered() {
 		if contains(keysTuple.Val.Usages, edge_ctrl_pb.DataState_PublicKey_JWTValidation) {
 			if kid == keysTuple.Val.Kid {
 				return sm.parsePublicKey(keysTuple.Val)
@@ -235,14 +239,16 @@ func (sm *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 }
 
 func (sm *ManagerImpl) RouterDataModel() *common.RouterDataModel {
-	if sm.routerDataModel == nil {
-		sm.routerDataModel = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
+	rdm := sm.routerDataModel.Load()
+	if rdm == nil {
+		rdm := common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
+		sm.routerDataModel.Store(rdm)
 	}
-	return sm.routerDataModel
+	return rdm
 }
 
 func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel) {
-	sm.routerDataModel = model
+	sm.routerDataModel.Store(model)
 }
 
 func (sm *ManagerImpl) MarkSyncInProgress(trackerId string) {
