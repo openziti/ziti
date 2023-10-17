@@ -20,10 +20,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/router/fabric"
-	"github.com/openziti/ziti/common/build"
+	"github.com/openziti/ziti/router/state"
 	"google.golang.org/protobuf/proto"
 	"strconv"
 )
@@ -35,10 +35,10 @@ type helloHandler struct {
 	hostname           string
 	supportedProtocols []string
 	protocolPorts      []string
-	stateManager       fabric.StateManager
+	stateManager       state.Manager
 }
 
-func NewHelloHandler(stateManager fabric.StateManager, listeners []*edge_ctrl_pb.Listener) *helloHandler {
+func NewHelloHandler(stateManager state.Manager, listeners []*edge_ctrl_pb.Listener) *helloHandler {
 	//supportedProtocols, protocolPorts, and hostname is for backwards compatability with v0.26.3 and older controllers
 	var supportedProtocols []string
 	var protocolPorts []string
@@ -75,30 +75,32 @@ func (h *helloHandler) ContentType() int32 {
 
 func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
+
 		serverHello := &edge_ctrl_pb.ServerHello{}
 		if err := proto.Unmarshal(msg.Body, serverHello); err == nil {
 			pfxlog.Logger().Info("received server hello, replying")
 
-			byteData := serverHello.ByteData[edge_ctrl_pb.SignerPublicCertsHeader]
-
-			if byteData != nil {
-				signerCerts := &edge_ctrl_pb.SignerCerts{}
-				if err := proto.Unmarshal(byteData, signerCerts); err == nil {
-					h.stateManager.AddSignerPublicCert(signerCerts.Keys)
-				} else {
-					pfxlog.Logger().WithError(err).Error("could not unmarshal public key signers")
-				}
-			}
-
 			clientHello := &edge_ctrl_pb.ClientHello{
-				Version:   build.GetBuildInfo().Version(),
-				Listeners: h.listeners,
-
+				Version:       build.GetBuildInfo().Version(),
+				Listeners:     h.listeners,
 				Hostname:      h.hostname,
 				Protocols:     h.supportedProtocols,
 				ProtocolPorts: h.protocolPorts,
+				Data:          map[string]string{},
 			}
-			if err := protobufs.MarshalTyped(clientHello).ReplyTo(msg).Send(ch); err != nil {
+
+			outMsg := protobufs.MarshalTyped(clientHello).ToSendable().Msg()
+			if supported, ok := msg.Headers.GetBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel)); ok && supported {
+
+				outMsg.Headers.PutBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel), true)
+
+				if index, ok := h.stateManager.RouterDataModel().CurrentIndex(); ok {
+					outMsg.Headers.PutUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex), index)
+				}
+
+			}
+
+			if err := outMsg.ReplyTo(msg).Send(ch); err != nil {
 				pfxlog.Logger().WithError(err).Error("could not send client hello")
 			}
 			return

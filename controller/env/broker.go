@@ -19,11 +19,11 @@ package env
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/persistence"
 	"go.etcd.io/bbolt"
 )
 
@@ -35,7 +35,8 @@ const (
 	ApiSessionAddedType     = int32(edge_ctrl_pb.ContentType_ApiSessionAddedType)
 	ApiSessionUpdatedType   = int32(edge_ctrl_pb.ContentType_ApiSessionUpdatedType)
 	RequestClientReSyncType = int32(edge_ctrl_pb.ContentType_RequestClientReSyncType)
-	SigningCertAdded        = int32(edge_ctrl_pb.ContentType_SigningCertAddedType)
+	DataStateType           = int32(edge_ctrl_pb.ContentType_DataStateType)
+	DataStateEventType      = int32(edge_ctrl_pb.ContentType_DataStateEventType)
 
 	ServerHelloType = int32(edge_ctrl_pb.ContentType_ServerHelloType)
 	ClientHelloType = int32(edge_ctrl_pb.ContentType_ClientHelloType)
@@ -44,6 +45,9 @@ const (
 	EnrollmentExtendRouterRequestType       = int32(edge_ctrl_pb.ContentType_EnrollmentExtendRouterRequestType)
 	EnrollmentExtendRouterVerifyRequestType = int32(edge_ctrl_pb.ContentType_EnrollmentExtendRouterVerifyRequestType)
 )
+
+type RouterSyncCache struct {
+}
 
 // The Broker delegates Ziti Edge events to a RouterSyncStrategy. Handling the details of which events to watch
 // and dealing with casting arguments to their proper concrete types.

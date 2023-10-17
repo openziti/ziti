@@ -10,9 +10,11 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/common"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"net/http"
 	"strings"
@@ -353,12 +355,14 @@ func (s *HybridStorage) CreateAccessToken(_ context.Context, request op.TokenReq
 }
 
 // createAccessToken converts an op.TokenRequest into an access token
-func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *AccessClaims, error) {
+func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *common.AccessClaims, error) {
 	var applicationID string
 	var apiSessionID string
 	var amr []string
 	var configTypes []string
 	var certsFingerprints []string
+	var envInfo *rest_model.EnvInfo
+	var sdkInfo *rest_model.SdkInfo
 
 	now := time.Now()
 	authTime := oidc.Time(now.Unix())
@@ -370,20 +374,23 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *Acc
 		configTypes = req.ConfigTypes
 		amr = req.GetAMR()
 		certsFingerprints = req.GetCertFingerprints()
+		envInfo = req.EnvInfo
+		sdkInfo = req.SdkInfo
 	case *RefreshTokenRequest:
 		applicationID = req.ApplicationId
 		amr = req.AuthenticationMethodsReferences
 		authTime = req.AuthTime
 		configTypes = req.ConfigTypes
 		certsFingerprints = req.GetCertFingerprints()
-
+		envInfo = req.EnvInfo
+		sdkInfo = req.SdkInfo
 	case op.TokenExchangeRequest:
 		applicationID = req.GetClientID()
 		claims := req.GetExchangeSubjectTokenClaims()
 		amr = req.GetAMR()
 
 		if claims != nil {
-			val, ok := claims[CustomClaimApiSessionId]
+			val, ok := claims[common.CustomClaimApiSessionId]
 
 			if !ok {
 				return "", nil, errors.New("invalid token exchange request claims: no api session id")
@@ -391,13 +398,13 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *Acc
 
 			apiSessionID = val.(string)
 
-			val, ok = claims[CustomClaimsConfigTypes]
+			val, ok = claims[common.CustomClaimsConfigTypes]
 
 			if ok {
 				configTypes = val.([]string)
 			}
 
-			val, ok = claims[CustomClaimsCertFingerprints]
+			val, ok = claims[common.CustomClaimsCertFingerprints]
 
 			if ok {
 				certsFingerprints = val.([]string)
@@ -411,13 +418,13 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *Acc
 		return "", nil, err
 	}
 
-	claims := &AccessClaims{
+	claims := &common.AccessClaims{
 		AccessTokenClaims: oidc.AccessTokenClaims{
 			TokenClaims: oidc.TokenClaims{
 				JWTID:                           uuid.NewString(),
 				Issuer:                          s.config.Issuer,
 				Subject:                         request.GetSubject(),
-				Audience:                        []string{ClaimAudienceOpenZiti},
+				Audience:                        []string{common.ClaimAudienceOpenZiti},
 				Expiration:                      oidc.Time(now.Add(s.config.AccessTokenDuration).Unix()),
 				IssuedAt:                        oidc.Time(now.Unix()),
 				AuthTime:                        authTime,
@@ -426,15 +433,17 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *Acc
 				ClientID:                        applicationID,
 			},
 		},
-		CustomClaims: CustomClaims{
+		CustomClaims: common.CustomClaims{
 			ApiSessionId:     apiSessionID,
 			ExternalId:       stringz.OrEmpty(identity.ExternalId),
 			IsAdmin:          identity.IsAdmin,
 			ConfigTypes:      configTypes,
 			ApplicationId:    applicationID,
 			Scopes:           request.GetScopes(),
-			Type:             TokenTypeAccess,
+			Type:             common.TokenTypeAccess,
 			CertFingerprints: certsFingerprints,
+			EnvInfo:          envInfo,
+			SdkInfo:          sdkInfo,
 		},
 	}
 
@@ -471,8 +480,8 @@ func (s *HybridStorage) CreateAccessAndRefreshTokens(_ context.Context, request 
 }
 
 // parseRefreshToken parses a JWT refresh token
-func (s *HybridStorage) parseRefreshToken(tokenStr string) (*jwt.Token, *RefreshClaims, error) {
-	refreshClaims := &RefreshClaims{}
+func (s *HybridStorage) parseRefreshToken(tokenStr string) (*jwt.Token, *common.RefreshClaims, error) {
+	refreshClaims := &common.RefreshClaims{}
 	parsedToken, err := jwt.ParseWithClaims(tokenStr, refreshClaims, s.env.JwtSignerKeyFunc)
 
 	if err != nil || parsedToken == nil {
@@ -483,7 +492,7 @@ func (s *HybridStorage) parseRefreshToken(tokenStr string) (*jwt.Token, *Refresh
 		return nil, nil, fmt.Errorf("invalid refresh_token")
 	}
 
-	if refreshClaims.Type != TokenTypeRefresh {
+	if refreshClaims.Type != common.TokenTypeRefresh {
 		return nil, nil, errors.New("invalid token type")
 	}
 
@@ -491,8 +500,8 @@ func (s *HybridStorage) parseRefreshToken(tokenStr string) (*jwt.Token, *Refresh
 }
 
 // parseAccessToken parses a JWT access token
-func (s *HybridStorage) parseAccessToken(tokenStr string) (*jwt.Token, *AccessClaims, error) {
-	accessClaims := &AccessClaims{}
+func (s *HybridStorage) parseAccessToken(tokenStr string) (*jwt.Token, *common.AccessClaims, error) {
+	accessClaims := &common.AccessClaims{}
 	parsedToken, err := jwt.ParseWithClaims(tokenStr, accessClaims, s.env.JwtSignerKeyFunc)
 
 	if err != nil || parsedToken == nil {
@@ -658,7 +667,7 @@ func (s *HybridStorage) SetUserinfoFromToken(ctx context.Context, userinfo *oidc
 		return err
 	}
 
-	if claims.Type != TokenTypeAccess {
+	if claims.Type != common.TokenTypeAccess {
 		return errors.New("token is invalid type")
 	}
 
@@ -682,13 +691,13 @@ func (s *HybridStorage) getPrivateClaims(_ context.Context, identityId, _ string
 		return nil, err
 	}
 
-	claims = appendClaim(claims, CustomClaimIsAdmin, identity.IsAdmin)
-	claims = appendClaim(claims, CustomClaimExternalId, identity.ExternalId)
+	claims = appendClaim(claims, common.CustomClaimIsAdmin, identity.IsAdmin)
+	claims = appendClaim(claims, common.CustomClaimExternalId, identity.ExternalId)
 
 	for _, scope := range scopes {
 		if strings.HasPrefix(scope, ScopeApiSessionId) {
 			apiSessionId := scope[len(ScopeApiSessionId):]
-			claims = appendClaim(claims, CustomClaimApiSessionId, apiSessionId)
+			claims = appendClaim(claims, common.CustomClaimApiSessionId, apiSessionId)
 		}
 	}
 
@@ -726,8 +735,8 @@ func (s *HybridStorage) Health(_ context.Context) error {
 	return nil
 }
 
-func (s *HybridStorage) createRefreshClaims(accessClaims *AccessClaims) (string, *RefreshClaims, error) {
-	claims := &RefreshClaims{
+func (s *HybridStorage) createRefreshClaims(accessClaims *common.AccessClaims) (string, *common.RefreshClaims, error) {
+	claims := &common.RefreshClaims{
 		IDTokenClaims: oidc.IDTokenClaims{
 			TokenClaims: accessClaims.TokenClaims,
 			NotBefore:   accessClaims.NotBefore,
@@ -736,7 +745,7 @@ func (s *HybridStorage) createRefreshClaims(accessClaims *AccessClaims) (string,
 	}
 
 	claims.Expiration = oidc.Time(time.Now().Add(s.config.RefreshTokenDuration).Unix())
-	claims.Type = TokenTypeRefresh
+	claims.Type = common.TokenTypeRefresh
 
 	token, _ := s.env.GetJwtSigner().Generate("", "", claims)
 
@@ -747,7 +756,7 @@ func (s *HybridStorage) saveRevocation(revocation *model.Revocation) error {
 	return s.env.GetManagers().Revocation.Create(revocation, change.New())
 }
 
-func (s *HybridStorage) renewRefreshToken(currentRefreshToken string) (string, *RefreshClaims, error) {
+func (s *HybridStorage) renewRefreshToken(currentRefreshToken string) (string, *common.RefreshClaims, error) {
 	_, refreshClaims, err := s.parseRefreshToken(currentRefreshToken)
 
 	if err != nil {
@@ -758,7 +767,7 @@ func (s *HybridStorage) renewRefreshToken(currentRefreshToken string) (string, *
 		return "", nil, err
 	}
 
-	newRefreshClaims := &RefreshClaims{
+	newRefreshClaims := &common.RefreshClaims{
 		IDTokenClaims: refreshClaims.IDTokenClaims,
 		CustomClaims:  refreshClaims.CustomClaims,
 	}
@@ -790,10 +799,10 @@ func (s *HybridStorage) setInfo(userInfo *oidc.UserInfo, identityId string, scop
 			userInfo.Subject = identity.Id
 			userInfo.Name = identity.Name
 			if identity.ExternalId != nil && *identity.ExternalId != "" {
-				userInfo.AppendClaims(CustomClaimExternalId, identity.ExternalId)
+				userInfo.AppendClaims(common.CustomClaimExternalId, identity.ExternalId)
 			}
 
-			userInfo.AppendClaims(CustomClaimIsAdmin, identity.IsAdmin)
+			userInfo.AppendClaims(common.CustomClaimIsAdmin, identity.IsAdmin)
 		}
 	}
 	return nil

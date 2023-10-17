@@ -29,12 +29,6 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/router/enroll"
-	"github.com/openziti/ziti/router/fabric"
-	"github.com/openziti/ziti/router/xgress_edge"
-	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/xgress"
@@ -44,6 +38,12 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	sdkEnroll "github.com/openziti/sdk-golang/ziti/enroll"
+	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/router/enroll"
+	"github.com/openziti/ziti/router/state"
+	"github.com/openziti/ziti/router/xgress_edge"
+	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	"github.com/pkg/errors"
 	"io"
 	"net"
@@ -62,12 +62,12 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/server"
 	"github.com/openziti/ziti/controller"
 	idlib "github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/controller/server"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -224,7 +224,7 @@ func (ctx *TestContext) NewTransportWithClientCert(cert *x509.Certificate, priva
 }
 
 func (ctx *TestContext) NewHttpClient(transport *http.Transport) *http.Client {
-	jar, err := cookiejar.New(&cookiejar.Options{})
+	jar, err := cookiejar.New(nil)
 	ctx.Req.NoError(err)
 
 	return &http.Client{
@@ -456,7 +456,7 @@ func (ctx *TestContext) startEdgeRouter() {
 	ctx.Req.NoError(err)
 	ctx.router = router.Create(config, NewVersionProviderTest())
 
-	stateManager := fabric.NewStateManager()
+	stateManager := state.NewManager()
 	xgressEdgeFactory := xgress_edge.NewFactory(config, NewVersionProviderTest(), stateManager, ctx.router.GetMetricsRegistry())
 	xgress.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
 
