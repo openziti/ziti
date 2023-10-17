@@ -75,7 +75,6 @@ func TestScp(t *testing.T) {
 
 	req := require.New(t)
 	req.False(allZetHostedFailed, "all zet hosted file transfer should not failed, indicates bigger issue")
-
 	req.False(allZetClientsFailed, "all zet client file transfers should not failed, indicates bigger issue")
 }
 

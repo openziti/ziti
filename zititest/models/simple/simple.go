@@ -93,6 +93,29 @@ var Model = &model.Model{
 				return nil
 			})
 		}),
+
+		model.FactoryFunc(func(m *model.Model) error {
+			zetPath, useLocalPath := m.GetStringVariable("local_zet_path")
+			return m.ForEachComponent("*", 1, func(c *model.Component) error {
+				if c.Type == nil {
+					return nil
+				}
+
+				if zet, ok := c.Type.(*zitilab.ZitiEdgeTunnelType); ok {
+					if useLocalPath {
+						zet.Version = ""
+						zet.LocalPath = zetPath
+					} else {
+						zet.Version = ZitiEdgeTunnelVersion
+						zet.LocalPath = ""
+					}
+					zet.InitType(c)
+					return nil
+				}
+
+				return nil
+			})
+		}),
 	},
 
 	Resources: model.Resources{

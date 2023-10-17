@@ -116,7 +116,7 @@ func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
 		useSudo = "sudo"
 	}
 
-	serviceCmd := fmt.Sprintf("nohup %s %s tunnel %s --log-formatter pfxlog -i %s --cli-agent-alias %s > %s 2>&1 &",
+	serviceCmd := fmt.Sprintf("%s %s tunnel %s --log-formatter pfxlog -i %s --cli-agent-alias %s > %s 2>&1 &",
 		useSudo, binaryPath, mode.String(), configPath, c.Id, logsPath)
 
 	value, err := lib.RemoteExec(factory, serviceCmd)
