@@ -40,6 +40,8 @@ import (
 	"time"
 )
 
+const ZitiEdgeTunnelVersion = "v0.21.4"
+
 //go:embed configs
 var configResource embed.FS
 
@@ -156,7 +158,7 @@ var Model = &model.Model{
 						"ziti-edge-tunnel-client": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								Version: "v0.21.4",
+								Version: ZitiEdgeTunnelVersion,
 							},
 						},
 					},
@@ -206,7 +208,7 @@ var Model = &model.Model{
 						"ziti-edge-tunnel-host": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								Version: "v0.21.4",
+								Version: ZitiEdgeTunnelVersion,
 							},
 						},
 						"iperf-server-zet": {
@@ -235,19 +237,9 @@ var Model = &model.Model{
 
 	Actions: model.ActionBinders{
 		"bootstrap": actions.NewBootstrapAction(),
-		"start": actions.NewStartAction(actions.MetricbeatConfig{
-			ConfigPath: "metricbeat",
-			DataPath:   "metricbeat/data",
-			LogPath:    "metricbeat/logs",
-		},
-			actions.ConsulConfig{
-				ServerAddr: os.Getenv("CONSUL_ENDPOINT"),
-				ConfigDir:  "consul",
-				DataPath:   "consul/data",
-				LogPath:    "consul/log.out",
-			}),
-		"stop":  model.Bind(component.StopInParallel("*", 15)),
-		"login": model.Bind(edge.Login("#ctrl1")),
+		"start":     actions.NewStartAction(),
+		"stop":      model.Bind(component.StopInParallel("*", 15)),
+		"login":     model.Bind(edge.Login("#ctrl1")),
 	},
 
 	Infrastructure: model.Stages{
@@ -262,68 +254,6 @@ var Model = &model.Model{
 
 	Distribution: model.Stages{
 		distribution.DistributeSshKey("*"),
-		distribution.Locations("*", "logs"),
-		distribution.DistributeDataWithReplaceCallbacks(
-			"*",
-			string(getConfigData("metricbeat.yml")),
-			"metricbeat/metricbeat.yml",
-			os.FileMode(0644),
-			map[string]func(*model.Host) string{
-				"${host}": func(h *model.Host) string {
-					return os.Getenv("ELASTIC_ENDPOINT")
-				},
-				"${user}": func(h *model.Host) string {
-					return os.Getenv("ELASTIC_USERNAME")
-				},
-				"${password}": func(h *model.Host) string {
-					return os.Getenv("ELASTIC_PASSWORD")
-				},
-				"${build_number}": func(h *model.Host) string {
-					return os.Getenv("BUILD_NUMBER")
-				},
-				"${ziti_version}": func(h *model.Host) string {
-					return h.MustStringVariable("ziti_version")
-				},
-			},
-		),
-
-		distribution.DistributeDataWithReplaceCallbacks(
-			"*",
-			string(getConfigData("consul.hcl")),
-			"consul/consul.hcl",
-			os.FileMode(0644),
-			map[string]func(*model.Host) string{
-				"${public_ip}": func(h *model.Host) string {
-					return h.PublicIp
-				},
-				"${encryption_key}": func(h *model.Host) string {
-					return os.Getenv("CONSUL_ENCRYPTION_KEY")
-				},
-				"${build_number}": func(h *model.Host) string {
-					return os.Getenv("BUILD_NUMBER")
-				},
-				"${ziti_version}": func(h *model.Host) string {
-					return h.MustStringVariable("ziti_version")
-				},
-			},
-		),
-		distribution.DistributeDataWithReplaceCallbacks(
-			"#ctrl",
-			string(getConfigData("ziti.hcl")),
-			"consul/ziti.hcl",
-			os.FileMode(0644),
-			map[string]func(*model.Host) string{
-				"${build_number}": func(h *model.Host) string {
-					return os.Getenv("BUILD_NUMBER")
-				},
-				"${ziti_version}": func(h *model.Host) string {
-					return h.MustStringVariable("ziti_version")
-				},
-			}),
-		distribution.DistributeData(
-			"*",
-			[]byte(os.Getenv("CONSUL_AGENT_CERT")),
-			"consul/consul-agent-ca.pem"),
 		rsync.RsyncStaged(),
 	},
 

@@ -117,7 +117,7 @@ func testFileDownload(t *testing.T, hostSelector string, client httpClient, host
 
 	success := false
 
-	t.Run(fmt.Sprintf("%v-(%s->%s)-%s-%v", client, hostSelector, hostType, fileSize, encDesk), func(t *testing.T) {
+	t.Run(fmt.Sprintf("%v-(%s<-%s)-%s-%v", client, hostSelector, hostType, fileSize, encDesk), func(t *testing.T) {
 		host, err := model.GetModel().SelectHost("." + hostSelector + "-client")
 		req := require.New(t)
 		req.NoError(err)
