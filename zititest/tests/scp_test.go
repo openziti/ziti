@@ -75,9 +75,7 @@ func TestScp(t *testing.T) {
 
 	req := require.New(t)
 	req.False(allZetHostedFailed, "all zet hosted file transfer should not failed, indicates bigger issue")
-
-	// TODO: fix once ZET client tests are working
-	req.True(allZetClientsFailed, "all zet client file transfers should not failed, indicates bigger issue")
+	req.False(allZetClientsFailed, "all zet client file transfers should not failed, indicates bigger issue")
 }
 
 func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool) bool {
@@ -88,40 +86,44 @@ func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool)
 
 	success := false
 
-	t.Run(fmt.Sprintf("(%s->%s)-%v", hostSelector, hostType, encDesk), func(t *testing.T) {
-		if hostSelector == "zet" {
-			t.Skipf("zet is currently failing as client")
-		}
-		host, err := model.GetModel().SelectHost("." + hostSelector + "-client")
-		req := require.New(t)
-		req.NoError(err)
+	nameExtra := ""
+	if !encrypted {
+		nameExtra = "-unencrypted"
+	}
 
-		nameExtra := ""
-		if !encrypted {
-			nameExtra = "-unencrypted"
-		}
+	tests := []struct {
+		direction string
+		cmd       string
+	}{
+		{
+			direction: "<-",
+			cmd:       fmt.Sprintf("scp -o StrictHostKeyChecking=no scp://ssh-%s%s.ziti:2022/fablab/bin/ziti /tmp/ziti-%s", hostType, nameExtra, uuid.NewString()),
+		}, {
+			direction: "->",
+			cmd:       fmt.Sprintf("scp -o StrictHostKeyChecking=no ./fablab/bin/ziti scp://ssh-%s%s.ziti:2022//tmp/ziti-%s", hostType, nameExtra, uuid.NewString()),
+		},
+	}
 
-		sshConfigFactory := lib.NewSshConfigFactory(host)
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("(%s%s%s)-%v", hostSelector, test.direction, hostType, encDesk), func(t *testing.T) {
+			host, err := model.GetModel().SelectHost("." + hostSelector + "-client")
+			req := require.New(t)
+			req.NoError(err)
 
-		cmds := []string{
-			fmt.Sprintf("scp -o StrictHostKeyChecking=no ssh-%s%s.ziti:./fablab/bin/ziti /tmp/ziti-%s", hostType, nameExtra, uuid.NewString()),
-			fmt.Sprintf("scp -o StrictHostKeyChecking=no ./fablab/bin/ziti ssh-%s%s.ziti:/tmp/ziti-%s", hostType, nameExtra, uuid.NewString()),
-		}
+			sshConfigFactory := lib.NewSshConfigFactory(host)
 
-		o, err := lib.RemoteExecAllWithTimeout(sshConfigFactory, 30*time.Second, cmds...)
-		if hostType == "zet" && err != nil {
-			t.Skipf("zet hosted ssh failed [%v]", err.Error())
-			return
-		}
+			o, err := lib.RemoteExecAllWithTimeout(sshConfigFactory, 50*time.Second, test.cmd)
+			if hostType == "zet" && err != nil {
+				t.Skipf("zet hosted ssh failed [%v]", err.Error())
+			} else if hostSelector == "zet" && err != nil {
+				t.Skipf("zet client ssh failed [%v]", err.Error())
+			} else {
+				t.Log(o)
+				req.NoError(err)
+				success = true
+			}
+		})
+	}
 
-		if hostSelector == "zet" && err != nil {
-			t.Skipf("zet client ssh failed [%v]", err.Error())
-			return
-		}
-
-		t.Log(o)
-		req.NoError(err)
-		success = true
-	})
 	return success
 }
