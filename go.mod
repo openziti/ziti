@@ -46,7 +46,7 @@ require (
 	github.com/miekg/dns v1.1.56
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/agent v1.0.15
+	github.com/openziti/agent v1.0.16
 	github.com/openziti/channel/v2 v2.0.101
 	github.com/openziti/edge-api v0.25.38
 	github.com/openziti/foundation/v2 v2.0.33
