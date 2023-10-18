@@ -19,12 +19,12 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/oidc_auth"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/xweb/v2"
 	"net/http"
 	"strings"
 )
@@ -113,16 +113,14 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 	if secretVal, ok := options["secret"]; ok {
 		if secret, ok := secretVal.(string); ok {
 			secret = strings.TrimSpace(secret)
-			if secret == "" {
-				return nil, fmt.Errorf("[edge-oidc.options.secret] must not be empty")
+			if secret != "" {
+				oidcConfig.TokenSecret = secret
 			}
-
-			oidcConfig.TokenSecret = secret
-		} else {
-			return nil, fmt.Errorf("[edge-oidc.options.secret] must be a string")
 		}
-	} else {
-		return nil, fmt.Errorf("[edge-oidc.options.secret] must be definded")
+	}
+
+	if oidcConfig.TokenSecret == "" {
+		oidcConfig.TokenSecret = uuid.NewString()
 	}
 
 	if redirectVal, ok := options["redirectURIs"]; ok {
@@ -145,12 +143,21 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 		}
 	}
 
-	if !stringz.Contains(oidcConfig.RedirectURIs, "openziti://auth/callback") {
+	// add defaults
+	if len(oidcConfig.RedirectURIs) == 0 {
 		oidcConfig.RedirectURIs = append(oidcConfig.RedirectURIs, "openziti://auth/callback")
+		oidcConfig.RedirectURIs = append(oidcConfig.RedirectURIs, "https://127.0.0.1:*/auth/callback")
+		oidcConfig.RedirectURIs = append(oidcConfig.RedirectURIs, "http://127.0.0.1:*/auth/callback")
+		oidcConfig.RedirectURIs = append(oidcConfig.RedirectURIs, "https://localhost:*/auth/callback")
+		oidcConfig.RedirectURIs = append(oidcConfig.RedirectURIs, "http://localhost:*/auth/callback")
 	}
 
-	if !stringz.Contains(oidcConfig.PostLogoutURIs, "openziti://auth/logout") {
+	if len(oidcConfig.PostLogoutURIs) == 0 {
 		oidcConfig.PostLogoutURIs = append(oidcConfig.PostLogoutURIs, "openziti://auth/logout")
+		oidcConfig.PostLogoutURIs = append(oidcConfig.PostLogoutURIs, "https://127.0.0.1:*/auth/logout")
+		oidcConfig.PostLogoutURIs = append(oidcConfig.PostLogoutURIs, "http://127.0.0.1:*/auth/logout")
+		oidcConfig.PostLogoutURIs = append(oidcConfig.PostLogoutURIs, "https://localhost:*/auth/logout")
+		oidcConfig.PostLogoutURIs = append(oidcConfig.PostLogoutURIs, "http://localhost:*/auth/logout")
 	}
 
 	var err error
