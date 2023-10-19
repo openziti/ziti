@@ -20,9 +20,9 @@ package tests
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/pkg/errors"
 	"sync/atomic"
 	"testing"
