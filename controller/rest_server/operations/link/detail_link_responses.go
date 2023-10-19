@@ -168,3 +168,47 @@ func (o *DetailLinkNotFound) WriteResponse(rw http.ResponseWriter, producer runt
 		}
 	}
 }
+
+// DetailLinkTooManyRequestsCode is the HTTP code returned for type DetailLinkTooManyRequests
+const DetailLinkTooManyRequestsCode int = 429
+
+/*DetailLinkTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response detailLinkTooManyRequests
+*/
+type DetailLinkTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewDetailLinkTooManyRequests creates DetailLinkTooManyRequests with default headers values
+func NewDetailLinkTooManyRequests() *DetailLinkTooManyRequests {
+
+	return &DetailLinkTooManyRequests{}
+}
+
+// WithPayload adds the payload to the detail link too many requests response
+func (o *DetailLinkTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *DetailLinkTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the detail link too many requests response
+func (o *DetailLinkTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *DetailLinkTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

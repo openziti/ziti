@@ -212,3 +212,47 @@ func (o *PatchTerminatorNotFound) WriteResponse(rw http.ResponseWriter, producer
 		}
 	}
 }
+
+// PatchTerminatorTooManyRequestsCode is the HTTP code returned for type PatchTerminatorTooManyRequests
+const PatchTerminatorTooManyRequestsCode int = 429
+
+/*PatchTerminatorTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response patchTerminatorTooManyRequests
+*/
+type PatchTerminatorTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewPatchTerminatorTooManyRequests creates PatchTerminatorTooManyRequests with default headers values
+func NewPatchTerminatorTooManyRequests() *PatchTerminatorTooManyRequests {
+
+	return &PatchTerminatorTooManyRequests{}
+}
+
+// WithPayload adds the payload to the patch terminator too many requests response
+func (o *PatchTerminatorTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *PatchTerminatorTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the patch terminator too many requests response
+func (o *PatchTerminatorTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *PatchTerminatorTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

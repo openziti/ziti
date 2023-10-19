@@ -18,16 +18,16 @@ package model
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/persistence"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )

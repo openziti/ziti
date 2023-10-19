@@ -19,9 +19,9 @@ package command
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/sirupsen/logrus"
 	"reflect"
 )
@@ -56,6 +56,7 @@ type Dispatcher interface {
 // LocalDispatcher should be used when running a non-clustered system
 type LocalDispatcher struct {
 	EncodeDecodeCommands bool
+	Limiter              RateLimiter
 }
 
 func (self *LocalDispatcher) IsLeaderOrLeaderless() bool {
@@ -82,7 +83,7 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 	if changeCtx == nil {
 		changeCtx = change.New().SetSourceType("unattributed").SetChangeAuthorType(change.AuthorTypeUnattributed)
 	}
-	ctx := changeCtx.NewMutateContext()
+
 	if self.EncodeDecodeCommands {
 		bytes, err := command.Encode()
 		if err != nil {
@@ -92,10 +93,13 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 		if err != nil {
 			return err
 		}
-		return cmd.Apply(ctx)
+		command = cmd
 	}
 
-	return command.Apply(ctx)
+	return self.Limiter.RunRateLimited(func() error {
+		ctx := changeCtx.NewMutateContext()
+		return command.Apply(ctx)
+	})
 }
 
 // Decoder instances know how to decode encoded commands

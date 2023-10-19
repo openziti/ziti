@@ -71,6 +71,12 @@ func (o *PatchLinkReader) ReadResponse(response runtime.ClientResponse, consumer
 			return nil, err
 		}
 		return nil, result
+	case 429:
+		result := NewPatchLinkTooManyRequests()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -193,6 +199,38 @@ func (o *PatchLinkNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 }
 
 func (o *PatchLinkNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPatchLinkTooManyRequests creates a PatchLinkTooManyRequests with default headers values
+func NewPatchLinkTooManyRequests() *PatchLinkTooManyRequests {
+	return &PatchLinkTooManyRequests{}
+}
+
+/* PatchLinkTooManyRequests describes a response with status code 429, with default header values.
+
+The resource requested is rate limited and the rate limit has been exceeded
+*/
+type PatchLinkTooManyRequests struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *PatchLinkTooManyRequests) Error() string {
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkTooManyRequests  %+v", 429, o.Payload)
+}
+func (o *PatchLinkTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *PatchLinkTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

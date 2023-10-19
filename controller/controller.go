@@ -22,12 +22,12 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/events"
 	"github.com/openziti/ziti/controller/handler_peer_ctrl"
-	"github.com/openziti/transport/v2"
 	"math/big"
 	"os"
 	"sync/atomic"
@@ -39,6 +39,11 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/common/health"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
@@ -55,11 +60,6 @@ import (
 	"github.com/openziti/ziti/controller/xt_random"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/ziti/controller/xt_weighted"
-	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/xweb/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -67,6 +67,7 @@ type Controller struct {
 	config             *Config
 	network            *network.Network
 	raftController     *raft.Controller
+	localDispatcher    *command.LocalDispatcher
 	ctrlConnectHandler *handler_ctrl.ConnectHandler
 	xctrls             []xctrl.Xctrl
 	xmgmts             []xmgmt.Xmgmt
@@ -113,7 +114,16 @@ func (c *Controller) GetOptions() *network.Options {
 
 func (c *Controller) GetCommandDispatcher() command.Dispatcher {
 	if c.raftController == nil {
-		return nil
+		if c.localDispatcher != nil {
+			return c.localDispatcher
+		}
+		devVersion := versions.MustParseSemVer("0.0.0")
+		version := versions.MustParseSemVer(c.GetVersionProvider().Version())
+		c.localDispatcher = &command.LocalDispatcher{
+			EncodeDecodeCommands: devVersion.Equals(version),
+			Limiter:              command.NewRateLimiter(c.config.CommandRateLimiter, c.metricsRegistry, c.shutdownC),
+		}
+		return c.localDispatcher
 	}
 	return c.raftController
 }
@@ -136,6 +146,10 @@ func (c *Controller) GetCloseNotify() <-chan struct{} {
 
 func (c *Controller) GetRaftConfig() *raft.Config {
 	return c.config.Raft
+}
+
+func (c *Controller) GetCommandRateLimiterConfig() command.RateLimiterConfig {
+	return c.config.CommandRateLimiter
 }
 
 func (c *Controller) RenderJsonConfig() (string, error) {

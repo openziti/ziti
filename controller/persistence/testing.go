@@ -72,7 +72,9 @@ func (self *testConfig) GetOptions() *network.Options {
 }
 
 func (self *testConfig) GetCommandDispatcher() command.Dispatcher {
-	return nil
+	return &command.LocalDispatcher{
+		Limiter: command.NoOpRateLimiter{},
+	}
 }
 
 func (self *testConfig) GetDb() boltz.Db {

@@ -18,6 +18,7 @@ package edge
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
@@ -109,9 +110,9 @@ func runCreateIdentity(o *createIdentityOptions) error {
 
 	o.username = strings.TrimSpace(o.username)
 	if o.username != "" {
-		api.SetJSONValue(entityData, o.username, "enrollment", "updb")
+		api.SetJSONValue(entityData, o.username, "enrollment", persistence.MethodEnrollUpdb)
 	} else {
-		api.SetJSONValue(entityData, true, "enrollment", "ott")
+		api.SetJSONValue(entityData, true, "enrollment", persistence.MethodEnrollOtt)
 	}
 	api.SetJSONValue(entityData, o.isAdmin, "isAdmin")
 	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
@@ -183,9 +184,9 @@ func runCreateIdentity(o *createIdentityOptions) error {
 
 	if o.jwtOutputFile != "" {
 		id := result.S("data", "id").Data().(string)
-		enrollmentType := "ott"
+		enrollmentType := persistence.MethodEnrollOtt
 		if o.username != "" {
-			enrollmentType = "updb"
+			enrollmentType = persistence.MethodEnrollUpdb
 		}
 		if err = getIdentityJwt(&o.Options, id, o.jwtOutputFile, enrollmentType, o.Options.Timeout, o.Options.Verbose); err != nil {
 			return err
@@ -205,9 +206,9 @@ func getIdentityJwt(o *api.Options, id string, outputFile string, enrollmentType
 	}
 
 	var dataContainer *gabs.Container
-	if enrollmentType == "updb" {
+	if enrollmentType == persistence.MethodEnrollUpdb {
 		dataContainer = newIdentity.Path("enrollment.updb.jwt")
-	} else if enrollmentType == "ott" {
+	} else if enrollmentType == persistence.MethodEnrollOtt {
 		dataContainer = newIdentity.Path("enrollment.ott.jwt")
 	} else {
 		return errors.Errorf("unsupported enrollment type '%s'", enrollmentType)

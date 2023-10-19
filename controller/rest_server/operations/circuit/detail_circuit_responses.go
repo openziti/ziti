@@ -168,3 +168,47 @@ func (o *DetailCircuitNotFound) WriteResponse(rw http.ResponseWriter, producer r
 		}
 	}
 }
+
+// DetailCircuitTooManyRequestsCode is the HTTP code returned for type DetailCircuitTooManyRequests
+const DetailCircuitTooManyRequestsCode int = 429
+
+/*DetailCircuitTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response detailCircuitTooManyRequests
+*/
+type DetailCircuitTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewDetailCircuitTooManyRequests creates DetailCircuitTooManyRequests with default headers values
+func NewDetailCircuitTooManyRequests() *DetailCircuitTooManyRequests {
+
+	return &DetailCircuitTooManyRequests{}
+}
+
+// WithPayload adds the payload to the detail circuit too many requests response
+func (o *DetailCircuitTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *DetailCircuitTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the detail circuit too many requests response
+func (o *DetailCircuitTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *DetailCircuitTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
