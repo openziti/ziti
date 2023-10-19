@@ -83,7 +83,7 @@ func (self *ZitiEdgeTunnelType) Start(_ model.Run, c *model.Component) error {
 	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s.json", factory.User(), c.Id)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", factory.User(), c.Id)
 
-	serviceCmd := fmt.Sprintf("nohup sudo %s run -i %s > %s 2>&1 &", binaryPath, configPath, logsPath)
+	serviceCmd := fmt.Sprintf("sudo %s run -i %s > %s 2>&1 &", binaryPath, configPath, logsPath)
 
 	value, err := lib.RemoteExec(factory, serviceCmd)
 	if err != nil {

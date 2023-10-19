@@ -241,6 +241,30 @@
             ],
             "type": "string"
         },
+        "proxyConfiguration": {
+            "properties": {
+                "address": {
+                    "description": "The address of the proxy in host:port format",
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/proxyType",
+                    "description": "The type of the proxy being used"
+                }
+            },
+            "required": [
+                "type",
+                "address"
+            ],
+            "type": "object"
+        },
+        "proxyType": {
+            "description": "supported proxy types",
+            "enum": [
+                "http"
+            ],
+            "type": "string"
+        },
         "timeoutSeconds": {
             "maximum": 2147483647,
             "minimum": 0,
@@ -381,6 +405,10 @@
         "protocol": {
             "$ref": "#/definitions/protocolName",
             "description": "Dial the specified protocol when a ziti client connects to the service."
+        },
+        "proxy": {
+            "$ref": "#/definitions/proxyConfiguration",
+            "description": "If defined, outgoing connections will be send through this proxy server"
         }
     },
     "type": "object"

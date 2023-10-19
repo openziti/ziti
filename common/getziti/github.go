@@ -6,6 +6,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/go-resty/resty/v2"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/versions"
 	c "github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
 	"net/http"
@@ -247,8 +248,17 @@ func InstallGitHubRelease(zitiApp string, release *GitHubReleasesData, binDir st
 		if zitiApp == c.ZITI {
 			count := 0
 			zitiFileName := "ziti-" + version
+			semVer, err := versions.ParseSemVer(version)
+			if err != nil {
+				return err
+			}
+			expectedPath := "ziti"
+			pathChangedVersion := versions.MustParseSemVer("0.29.0")
+			if semVer.CompareTo(pathChangedVersion) < 0 {
+				expectedPath = "ziti/ziti"
+			}
 			err = UnTarGz(fullPath, binDir, func(path string) (string, bool) {
-				if path == "ziti/ziti" {
+				if path == expectedPath {
 					count++
 					return zitiFileName, true
 				}

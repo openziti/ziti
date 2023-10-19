@@ -2,13 +2,13 @@
 #
 # check https://nfpm.goreleaser.com/configuration for detailed usage
 #
-name: ziti-cli
+name: openziti
 arch: ${GOARCH}
 platform: linux
 version: ${ZITI_VERSION}
 maintainer: ${ZITI_MAINTAINER}
 description: >
-  The ziti-cli package provides the ziti executable binary as a command line
+  The openziti package provides the ziti executable binary as a command line
   interface for Ziti.
 vendor: ${ZITI_VENDOR}
 homepage: ${ZITI_HOMEPAGE}
@@ -21,6 +21,8 @@ contents:
   - src: /opt/openziti/bin/ziti
     dst: /usr/bin/ziti
     type: symlink
+replaces:
+  - ziti-cli
 
 # packager-neutral scripts may be overriden by packager-specific scripts
 # scripts:

@@ -48,9 +48,9 @@ func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 		return
 	}
 
-	r, err := h.appEnv.GetHostController().GetNetwork().GetRouter(ch.Id())
-	if err != nil {
-		pfxlog.Logger().WithError(err).Errorf("could not find router %v, closing channel", ch.Id())
+	r := h.appEnv.GetHostController().GetNetwork().GetConnectedRouter(ch.Id())
+	if r == nil {
+		pfxlog.Logger().Errorf("could not find router %v, closing channel", ch.Id())
 		_ = ch.Close()
 		return
 	}

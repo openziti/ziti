@@ -14,7 +14,8 @@ jobs:
     # when the ref is release-next the label "quickstartrelease" must be present on the PR for this job to run, and when
     # the ref is a release branch the label is not required
     if: |
-      github.event.pull_request.merged == true
+      github.repository_owner == 'openziti'
+      && github.event.pull_request.merged == true
       && (
         github.ref != 'refs/heads/release-next'
         || contains(github.event.pull_request.labels.*.name, 'quickstartrelease')
@@ -126,7 +127,7 @@ jobs:
       - name: Configure Python
         shell: bash
         run: |
-          pip install --upgrade boto3 jinja2 requests pyyaml
+          pip install --requirement ./dist/cloudfront/get.openziti.io/requirements.txt
           python --version
         
       - name: Deploy the CloudFront Function for get.openziti.io
