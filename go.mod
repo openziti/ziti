@@ -48,7 +48,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.15
 	github.com/openziti/channel/v2 v2.0.101
-	github.com/openziti/edge-api v0.25.38
+	github.com/openziti/edge-api v0.26.0
 	github.com/openziti/foundation/v2 v2.0.33
 	github.com/openziti/identity v1.0.64
 	github.com/openziti/jwks v1.0.3

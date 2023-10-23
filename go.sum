@@ -645,8 +645,8 @@ github.com/openziti/channel/v2 v2.0.101 h1:UaveW/ogYKVtCQZfwRoMhsZhj/tvs1bD7SvH0
 github.com/openziti/channel/v2 v2.0.101/go.mod h1:b9CBWpH6tnLqCHInDKL6AzMGqXdbEjsul3yVQUGENVU=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge-api v0.25.38 h1:aijFEC4pMCi2gR6zL6FYQRkm59SQAwrF0tZS4LZsxi4=
-github.com/openziti/edge-api v0.25.38/go.mod h1:5mmcMgqK1MsBb0K8V1CBfGbtRUji5KYdmhJJJkJBMqY=
+github.com/openziti/edge-api v0.26.0 h1:082hXjj8rnyMBZHYiB6jb4n7mCXtdMXpF2iCqZOv4IM=
+github.com/openziti/edge-api v0.26.0/go.mod h1:/e1pK92L471fvOAwE/hLX5sqBuuo+NwI8vmL04dUHsM=
 github.com/openziti/foundation/v2 v2.0.33 h1:8CP+fi4KsmzA4jDi54jibwFWWxKpd0rSiplzN9Z0Isw=
 github.com/openziti/foundation/v2 v2.0.33/go.mod h1:dWR0g3NOka3uKz9MgUHq6dmuRLmSvunkyeuOXEW/5qU=
 github.com/openziti/identity v1.0.64 h1:HwALRY1J/rNNcIAlr1OwCwTHU/rlMRaUi5TXAfZotjw=
