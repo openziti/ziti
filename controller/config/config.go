@@ -19,6 +19,7 @@ package config
 import (
 	"bytes"
 	"crypto/sha1"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
@@ -434,11 +435,39 @@ func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
 
 	newCaPems := bytes.Buffer{}
 	blocksToProcess := caPems.Bytes()
+
 	for len(blocksToProcess) != 0 {
 		var block *pem.Block
 		block, blocksToProcess = pem.Decode(blocksToProcess)
 
 		if block != nil {
+
+			if block.Type != "CERTIFICATE" {
+				pfxlog.Logger().
+					WithField("type", block.Type).
+					WithField("block", pem.EncodeToMemory(block)).
+					Warn("encountered an invalid PEM block type loading configured CAs, block will be ignored")
+				continue
+			}
+
+			cert, err := x509.ParseCertificate(block.Bytes)
+
+			if err != nil {
+				pfxlog.Logger().
+					WithField("type", block.Type).
+					WithField("block", pem.EncodeToMemory(block)).
+					WithError(err).
+					Warn("block could not be parsed as a certificate, block will be ignored")
+				continue
+			}
+
+			if cert.IsCA != true {
+				pfxlog.Logger().
+					WithField("type", block.Type).
+					WithField("block", pem.EncodeToMemory(block)).
+					Warn("block is not a CA, block will be ignored")
+				continue
+			}
 			// #nosec
 			hash := sha1.Sum(block.Bytes)
 			fingerprint := toHex(hash[:])
