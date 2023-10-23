@@ -4,7 +4,6 @@ import (
 	"embed"
 	_ "embed"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -20,10 +19,12 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
+	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
+	"go.etcd.io/bbolt"
 	"os"
 	"path"
 	"strings"
@@ -56,7 +57,11 @@ func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 
 type dbStrategy struct{}
 
-func (d dbStrategy) GetDbFile() string {
+func (d dbStrategy) ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
+	return builder.CreateEdgeRouterHosts(tx, m)
+}
+
+func (d dbStrategy) GetDbFile(*model.Model) string {
 	return getDbFile()
 }
 
@@ -118,7 +123,7 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"ctrl": {
-							Type: &zitilab.RouterType{},
+							Type: &zitilab.ControllerType{},
 						},
 					},
 				},

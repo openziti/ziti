@@ -71,6 +71,12 @@ func (o *PatchRouterReader) ReadResponse(response runtime.ClientResponse, consum
 			return nil, err
 		}
 		return nil, result
+	case 429:
+		result := NewPatchRouterTooManyRequests()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -193,6 +199,38 @@ func (o *PatchRouterNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 }
 
 func (o *PatchRouterNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPatchRouterTooManyRequests creates a PatchRouterTooManyRequests with default headers values
+func NewPatchRouterTooManyRequests() *PatchRouterTooManyRequests {
+	return &PatchRouterTooManyRequests{}
+}
+
+/* PatchRouterTooManyRequests describes a response with status code 429, with default header values.
+
+The resource requested is rate limited and the rate limit has been exceeded
+*/
+type PatchRouterTooManyRequests struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *PatchRouterTooManyRequests) Error() string {
+	return fmt.Sprintf("[PATCH /routers/{id}][%d] patchRouterTooManyRequests  %+v", 429, o.Payload)
+}
+func (o *PatchRouterTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *PatchRouterTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

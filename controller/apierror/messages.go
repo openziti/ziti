@@ -194,4 +194,8 @@ const (
 	EnrollmentExistsCode    string = "ENROLLMENT_EXISTS"
 	EnrollmentExistsMessage string = "ENROLLMENT_EXISTS"
 	EnrollmentExistsStatus  int    = http.StatusConflict
+
+	ServerTooManyRequestsCode    string = "SERVER_TOO_MANY_REQUESTS"
+	ServerTooManyRequestsMessage string = "Too many requests to alter state have been issued. Please slow your request rate or try again later."
+	ServerTooManyRequestsStatus  int    = http.StatusTooManyRequests
 )

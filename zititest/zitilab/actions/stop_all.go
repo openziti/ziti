@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry Inc.
+	Copyright 2019 NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -14,27 +14,30 @@
 	limitations under the License.
 */
 
-package apierror
+package zitilib_actions
 
 import (
-	"github.com/Jeffail/gabs"
+	"github.com/openziti/fablab/kernel/model"
 )
 
-type GenericCauseError struct {
-	Message string
-	DataMap map[string]interface{}
+func StopAll(hostSpec string) model.Action {
+	return StopAllInParallel(hostSpec, 1)
 }
 
-func (e *GenericCauseError) Error() string {
-	return e.Message
-}
-
-func (e *GenericCauseError) MarshalJSON() ([]byte, error) {
-	data, err := gabs.Consume(e.DataMap) //gabs to avoid zero values being omitted
-
-	if err != nil {
-		return nil, err
+func StopAllInParallel(hostSpec string, concurrency int) model.Action {
+	return &stopAll{
+		hostSpec:    hostSpec,
+		concurrency: concurrency,
 	}
+}
 
-	return data.Bytes(), nil
+func (stop *stopAll) Execute(run model.Run) error {
+	return run.GetModel().ForEachHost(stop.hostSpec, stop.concurrency, func(c *model.Host) error {
+		return nil
+	})
+}
+
+type stopAll struct {
+	hostSpec    string
+	concurrency int
 }

@@ -1,34 +1,23 @@
 v: 3
 
-network:
-  # Sets router minimum cost. Defaults to 10
-  minRouterCost: 10
-
-  # Sets how often a new control channel connection can take over for a router with an existing control channel connection
-  # Defaults to 1 minute
-  routerConnectChurnLimit: 1m
-
-#trace:
-#  path:                 ctrl.trace
-
-profile:
-#   cpu:
-#       path: /home/plorenz/tmp/ctrl.cpu.pprof
-#  memory:
-#    path: ctrl.memprof
-
-db: ${ZITI_DATA}/db/ctrl.db
+{{if .Component.GetFlag "ha"}}
+raft:
+  minClusterSize: 3
+  dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
+{{else}}
+db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrl.db
+{{end}}
 
 identity:
-  cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-client.cert.pem
-  server_cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-server.cert.pem
-  key: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/ctrl.key.pem
-  ca: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ca-chain.cert.pem
+  cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.cert
+  key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}-server.key
+  ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem
 
 # the endpoint that routers will connect to the controller over.
 ctrl:
-  listener: tls:127.0.0.1:6262
+  listener: tls:0.0.0.0:6262
   options:
+    advertiseAddress: tls:{{ .Host.PublicIp }}:6262
     # (optional) settings
     # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
     #maxQueuedConnects:      50
@@ -50,51 +39,27 @@ ctrl:
 #events:
 #  jsonLogger:
 #    subscriptions:
-#      - type: entityChange
-#        include:
-#          - services
-#          - identities
-#      - type: fabric.circuits
-#      - type: fabric.links
 #      - type: fabric.routers
 #      - type: fabric.terminators
 #      - type: metrics
 #        sourceFilter: .*
-#        metricFilter: .*
+#        metricFilter: .*egress.*m1_rate*
+#      - type: fabric.circuits
+#        include:
+#          - created
 #      - type: edge.sessions
+#        include:
+#          - created
 #      - type: edge.apiSessions
 #      - type: fabric.usage
-#        version: 3
-#        include:
-#          - ingress.rx
-#          - egress.rx
 #      - type: services
+#      - type: fabric.usage
 #      - type: edge.entityCounts
 #        interval: 5s
 #    handler:
 #      type: file
 #      format: json
 #      path: /tmp/ziti-events.log
-#  usageLogger:
-#    subscriptions:
-#      - type: fabric.usage
-#        interval: 5s
-#    handler:
-#      type: amqp
-#      format: json
-#      url: "amqp://localhost:5672" 
-#      queue: ziti
-#      durable: true      //default:true
-#      autoDelete: false  //default:false
-#      exclusive: false   //default:false
-#      noWait: false      //default:false
-#      bufferSize: 50     //default:50
-
-# xctrl_example
-#
-#example:
-#  enabled:              false
-#  delay:                5
 
 healthChecks:
   boltCheck:
@@ -121,7 +86,7 @@ edge:
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in a bind point's address field for the `edge-client` API in the web section.
-    address: 127.0.0.1:1280
+    address: {{ .Host.PublicIp }}:1280
   # enrollment - required
   # A section containing settings pertaining to enrollment.
   enrollment:
@@ -130,22 +95,23 @@ edge:
     # a signing certificate from the PKI that the Ziti environment is using to sign certificates. The signingCert.cert
     # will be added to the /.well-known CA store that is used to bootstrap trust with the Ziti Controller.
     signingCert:
-      cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/intermediate.cert.pem
-      key: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/intermediate.key.decrypted.pem
+      cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}.cert
+      key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}.key
+
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
     edgeIdentity:
       # duration - optional, default 5m
       # The length of time that a Ziti Edge Identity enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
-      duration: 5m
+      duration: 1h
     # edgeRouter - Optional
     # A section for edge router enrollment specific settings.
     edgeRouter:
       # duration - optional, default 5m
       # The length of time that a Ziti Edge Router enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
-      duration: 5m
+      duration: 1h
 
 
 # web - optional
@@ -163,18 +129,18 @@ web:
     bindPoints:
       #interface - required
       # A host:port string on which network interface to listen on. 0.0.0.0 will listen on all interfaces
-      - interface: 127.0.0.1:1280
+      - interface: 0.0.0.0:1280
 
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
-        address: 127.0.0.1:1280
+        address: {{ .Host.PublicIp }}:1280
 
         # newAddress - optional
         # A host:port string which will be sent out as an HTTP header "ziti-new-address" if specified. If the header
         # is present, clients should update location configuration to immediately use the new address for future
         # connections. The value of newAddress must be resolvable both via DNS and validate via certificates
-        newAddress: localhost:1280
+        #newAddress: localhost:1280
     # identity - optional
     # Allows the webListener to have a specific identity instead of defaulting to the root `identity` section.
     #    identity:
@@ -222,17 +188,13 @@ web:
       #   - edge-client
       #   - fabric-management
       - binding: health-checks
-        options: { }
+        options: {}
       - binding: fabric
       - binding: edge-management
         # options - variable optional/required
         # This section is used to define values that are specified by the API they are associated with.
         # These settings are per API. The example below is for the `edge-api` and contains both optional values and
         # required values.
-        options: { }
+        options: {}
       - binding: edge-client
-        options: { }
-
-commandRateLimiter:
-    enabled: true
-    maxQueued: 100
+        options: {}

@@ -18,8 +18,6 @@ package zitilab
 
 import (
 	"fmt"
-	"github.com/openziti/fablab/kernel/lib"
-	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
@@ -34,6 +32,8 @@ const (
 	ZitiTunnelModeTproxy ZitiTunnelMode = 0
 	ZitiTunnelModeProxy  ZitiTunnelMode = 1
 	ZitiTunnelModeHost   ZitiTunnelMode = 2
+
+	ZitiTunnelActionsReEnroll = "reEnroll"
 )
 
 func (self ZitiTunnelMode) String() string {
@@ -55,6 +55,12 @@ type ZitiTunnelType struct {
 	LocalPath string
 }
 
+func (self *ZitiTunnelType) GetActions() map[string]model.ComponentAction {
+	return map[string]model.ComponentAction{
+		ZitiTunnelActionsReEnroll: model.ComponentActionF(self.ReEnroll),
+	}
+}
+
 func (self *ZitiTunnelType) InitType(*model.Component) {
 	if self.Version != "" && !strings.HasPrefix(self.Version, "v") {
 		self.Version = "v" + self.Version
@@ -73,15 +79,15 @@ func (self *ZitiTunnelType) StageFiles(r model.Run, c *model.Component) error {
 	return stageziti.StageZitiOnce(r, c, self.Version, self.LocalPath)
 }
 
-func (self *ZitiTunnelType) InitializeHost(run model.Run, c *model.Component) error {
-	cmds := []string{"mkdir -p /home/ubuntu/logs"}
+func (self *ZitiTunnelType) InitializeHost(_ model.Run, c *model.Component) error {
 	if self.Mode == ZitiTunnelModeTproxy {
-		cmds = append(cmds,
+		cmds := []string{
 			"sudo sed -i 's/#DNS=/DNS=127.0.0.1/g' /etc/systemd/resolved.conf",
 			"sudo systemctl restart systemd-resolved",
-		)
+		}
+		return c.Host.ExecLogOnlyOnError(cmds...)
 	}
-	return host.Exec(c.GetHost(), cmds...).Execute(run)
+	return nil
 }
 
 func (self *ZitiTunnelType) getProcessFilter(c *model.Component) func(string) bool {
@@ -89,27 +95,33 @@ func (self *ZitiTunnelType) getProcessFilter(c *model.Component) func(string) bo
 }
 
 func (self *ZitiTunnelType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	pids, err := lib.FindProcesses(factory, self.getProcessFilter(c))
+	pids, err := c.GetHost().FindProcesses(self.getProcessFilter(c))
 	if err != nil {
 		return false, err
 	}
 	return len(pids) > 0, nil
 }
 
-func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
+func (self *ZitiTunnelType) GetBinaryName() string {
 	binaryName := "ziti"
 	if self.Version != "" {
 		binaryName += "-" + self.Version
 	}
+	return binaryName
+}
 
+func (self *ZitiTunnelType) GetConfigName(c *model.Component) string {
+	return fmt.Sprintf("%s.json", c.Id)
+}
+
+func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
 	mode := self.Mode
 
-	factory := lib.NewSshConfigFactory(c.GetHost())
+	user := c.GetHost().GetSshUser()
 
-	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", factory.User(), binaryName)
-	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s.json", factory.User(), c.Id)
-	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", factory.User(), c.Id)
+	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", user, self.GetBinaryName())
+	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s", user, self.GetConfigName(c))
+	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
 	useSudo := ""
 	if mode == ZitiTunnelModeTproxy {
@@ -119,7 +131,9 @@ func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
 	serviceCmd := fmt.Sprintf("%s %s tunnel %s --log-formatter pfxlog -i %s --cli-agent-alias %s > %s 2>&1 &",
 		useSudo, binaryPath, mode.String(), configPath, c.Id, logsPath)
 
-	value, err := lib.RemoteExec(factory, serviceCmd)
+	value, err := c.Host.ExecLogged(
+		"rm -f "+logsPath,
+		serviceCmd)
 	if err != nil {
 		return err
 	}
@@ -132,6 +146,9 @@ func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
 }
 
 func (self *ZitiTunnelType) Stop(_ model.Run, c *model.Component) error {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	return lib.RemoteKillSignalFilterF(factory, "-KILL", self.getProcessFilter(c))
+	return c.GetHost().KillProcesses("-KILL", self.getProcessFilter(c))
+}
+
+func (self *ZitiTunnelType) ReEnroll(run model.Run, c *model.Component) error {
+	return reEnrollIdentity(run, c, self.GetBinaryName(), self.GetConfigName(c))
 }

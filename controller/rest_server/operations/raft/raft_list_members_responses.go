@@ -124,3 +124,47 @@ func (o *RaftListMembersUnauthorized) WriteResponse(rw http.ResponseWriter, prod
 		}
 	}
 }
+
+// RaftListMembersTooManyRequestsCode is the HTTP code returned for type RaftListMembersTooManyRequests
+const RaftListMembersTooManyRequestsCode int = 429
+
+/*RaftListMembersTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response raftListMembersTooManyRequests
+*/
+type RaftListMembersTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewRaftListMembersTooManyRequests creates RaftListMembersTooManyRequests with default headers values
+func NewRaftListMembersTooManyRequests() *RaftListMembersTooManyRequests {
+
+	return &RaftListMembersTooManyRequests{}
+}
+
+// WithPayload adds the payload to the raft list members too many requests response
+func (o *RaftListMembersTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *RaftListMembersTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the raft list members too many requests response
+func (o *RaftListMembersTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *RaftListMembersTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

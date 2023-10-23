@@ -65,6 +65,12 @@ func (o *DetailCircuitReader) ReadResponse(response runtime.ClientResponse, cons
 			return nil, err
 		}
 		return nil, result
+	case 429:
+		result := NewDetailCircuitTooManyRequests()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -155,6 +161,38 @@ func (o *DetailCircuitNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 }
 
 func (o *DetailCircuitNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewDetailCircuitTooManyRequests creates a DetailCircuitTooManyRequests with default headers values
+func NewDetailCircuitTooManyRequests() *DetailCircuitTooManyRequests {
+	return &DetailCircuitTooManyRequests{}
+}
+
+/* DetailCircuitTooManyRequests describes a response with status code 429, with default header values.
+
+The resource requested is rate limited and the rate limit has been exceeded
+*/
+type DetailCircuitTooManyRequests struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *DetailCircuitTooManyRequests) Error() string {
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitTooManyRequests  %+v", 429, o.Payload)
+}
+func (o *DetailCircuitTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *DetailCircuitTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

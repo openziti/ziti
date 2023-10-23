@@ -18,7 +18,6 @@ package zitilab
 
 import (
 	"fmt"
-	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/sirupsen/logrus"
 	"strings"
@@ -44,15 +43,14 @@ func (self *IPerfServerType) GetPort() uint16 {
 	return self.Port
 }
 
-func (self *IPerfServerType) getProcessFilter(*model.Component) func(string) bool {
+func (self *IPerfServerType) getProcessFilter() func(string) bool {
 	return func(s string) bool {
 		return strings.Contains(s, fmt.Sprintf("iperf3 -s -p %v", self.GetPort()))
 	}
 }
 
 func (self *IPerfServerType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	pids, err := lib.FindProcesses(factory, self.getProcessFilter(c))
+	pids, err := c.GetHost().FindProcesses(self.getProcessFilter())
 	if err != nil {
 		return false, err
 	}
@@ -60,12 +58,11 @@ func (self *IPerfServerType) IsRunning(_ model.Run, c *model.Component) (bool, e
 }
 
 func (self *IPerfServerType) Start(_ model.Run, c *model.Component) error {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-
-	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", factory.User(), c.Id)
+	user := c.GetHost().GetSshUser()
+	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 	serviceCmd := fmt.Sprintf("nohup iperf3 -s -p %v > %s 2>&1 &", self.GetPort(), logsPath)
 
-	value, err := lib.RemoteExec(factory, serviceCmd)
+	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {
 		return err
 	}
@@ -78,6 +75,5 @@ func (self *IPerfServerType) Start(_ model.Run, c *model.Component) error {
 }
 
 func (self *IPerfServerType) Stop(_ model.Run, c *model.Component) error {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	return lib.RemoteKillFilterF(factory, self.getProcessFilter(c))
+	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter())
 }

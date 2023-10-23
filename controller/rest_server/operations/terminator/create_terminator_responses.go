@@ -168,3 +168,47 @@ func (o *CreateTerminatorUnauthorized) WriteResponse(rw http.ResponseWriter, pro
 		}
 	}
 }
+
+// CreateTerminatorTooManyRequestsCode is the HTTP code returned for type CreateTerminatorTooManyRequests
+const CreateTerminatorTooManyRequestsCode int = 429
+
+/*CreateTerminatorTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response createTerminatorTooManyRequests
+*/
+type CreateTerminatorTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewCreateTerminatorTooManyRequests creates CreateTerminatorTooManyRequests with default headers values
+func NewCreateTerminatorTooManyRequests() *CreateTerminatorTooManyRequests {
+
+	return &CreateTerminatorTooManyRequests{}
+}
+
+// WithPayload adds the payload to the create terminator too many requests response
+func (o *CreateTerminatorTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *CreateTerminatorTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the create terminator too many requests response
+func (o *CreateTerminatorTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *CreateTerminatorTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

@@ -2,8 +2,8 @@ package zitilib_actions
 
 import (
 	"fmt"
+	"github.com/openziti/fablab/kernel/libssh"
 
-	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/sirupsen/logrus"
 )
@@ -27,12 +27,12 @@ func StartConsul(hostSpec, consulServer, configDir, dataPath, logFile string) mo
 }
 
 func (cs *consulStart) Execute(run model.Run) error {
-	return run.GetModel().ForEachHost(cs.hostSpec, 24, func(c *model.Host) error {
-		ssh := lib.NewSshConfigFactory(c)
+	return run.GetModel().ForEachHost(cs.hostSpec, 24, func(host *model.Host) error {
+		ssh := host.NewSshConfigFactory()
 
 		cmd := fmt.Sprintf("screen -d -m nohup consul agent -join %s -config-dir %s -data-dir %s -log-file %s 2>&1 &", cs.consulServer, cs.configDir, cs.dataPath, cs.logFile)
 
-		if output, err := lib.RemoteExec(ssh, cmd); err != nil {
+		if output, err := libssh.RemoteExec(ssh, cmd); err != nil {
 			logrus.Errorf("error starting consul service [%s] (%v)", output, err)
 			return err
 		}
