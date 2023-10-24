@@ -39,6 +39,9 @@ func Test_AddressableTerminators(t *testing.T) {
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
+	watcher := ctx.AdminManagementSession.newTerminatorWatcher()
+	defer watcher.Close()
+
 	type host struct {
 		id       *identity
 		context  ziti.Context
@@ -59,7 +62,7 @@ func Test_AddressableTerminators(t *testing.T) {
 			BindUsingEdgeIdentity: true,
 		})
 		ctx.Req.NoError(err)
-		ctx.requireNListener(1, host.listener, 5*time.Second)
+		watcher.waitForTerminators(service.Id, 1, 5*time.Second)
 	}
 
 	type client struct {

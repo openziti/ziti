@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	_ "embed"
+	"errors"
 	"fmt"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -26,28 +27,23 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"go.etcd.io/bbolt"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
 	"time"
 )
 
-const TargetZitiVersion = "v0.30.5"
+// const TargetZitiVersion = "v0.31.0"
+
+const TargetZitiVersion = ""
+const TargetZitiEdgeTunnelVersion = ""
+
+//const TargetZitiEdgeTunnelVersion = "0.22.12"
+
+var TunnelType = "!zet"
 
 //go:embed configs
 var configResource embed.FS
-
-type scaleStrategy struct{}
-
-func (self scaleStrategy) IsScaled(entity model.Entity) bool {
-	return entity.GetType() == model.EntityTypeHost && entity.GetScope().HasTag("scaled")
-}
-
-func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
-	if entity.GetType() == model.EntityTypeHost && entity.GetScope().HasTag("scaled") {
-		return 4
-	}
-	return 1
-}
 
 type dbStrategy struct{}
 
@@ -75,7 +71,7 @@ func (d dbStrategy) PostProcess(router *persistence.EdgeRouter, c *model.Compone
 	}
 	c.Scope.Tags = append(c.Scope.Tags, "edge-router")
 	c.Scope.Tags = append(c.Scope.Tags, "pre-created")
-	c.Host.InstanceType = "c5.large"
+	c.Host.InstanceType = "c5.xlarge"
 	c.Type.(*zitilab.RouterType).Version = TargetZitiVersion
 }
 
@@ -112,6 +108,8 @@ func (d dbStrategy) CreateIdentityHosts(tx *bbolt.Tx, m *model.Model, builder *m
 			hostingIdentities[identityId] = identityServiceCount
 		}
 	}
+
+	fmt.Printf("service count: %v\n", servicesCount)
 
 	regionCount := len(m.Regions)
 
@@ -151,7 +149,7 @@ func (d dbStrategy) CreateIdentityHosts(tx *bbolt.Tx, m *model.Model, builder *m
 				Scope:        model.Scope{Tags: model.Tags{}},
 				Region:       region,
 				Components:   model.Components{},
-				InstanceType: "t3.medium",
+				InstanceType: "t3.xlarge",
 			}
 			hostId := fmt.Sprintf("%s_svc_hosts_%v", regionId, i)
 			region.Hosts[hostId] = tunnelsHost
@@ -165,13 +163,30 @@ func (d dbStrategy) CreateIdentityHosts(tx *bbolt.Tx, m *model.Model, builder *m
 
 			svcCount := hostingIdentities[identityId]
 
+			getConfigPath := func(c *model.Component) string {
+				user := c.GetHost().GetSshUser()
+				return fmt.Sprintf("/home/%s/etc/%s.json", user, c.Id)
+			}
+
+			var tunnelType model.ComponentType
+			if TunnelType == "zet" {
+				tunnelType = &zitilab.ZitiEdgeTunnelType{
+					Version:     TargetZitiEdgeTunnelVersion,
+					LogConfig:   "'2;bind.c=6'",
+					ConfigPathF: getConfigPath,
+				}
+			} else {
+				tunnelType = &zitilab.ZitiTunnelType{
+					Mode:        zitilab.ZitiTunnelModeHost,
+					Version:     TargetZitiVersion,
+					ConfigPathF: getConfigPath,
+				}
+			}
+
 			tunnelComponent := &model.Component{
 				Scope: model.Scope{Tags: model.Tags{"sdk-tunneler", "pre-created", fmt.Sprintf("serviceCount=%v", svcCount)}},
-				Type: &zitilab.ZitiTunnelType{
-					Mode:    zitilab.ZitiTunnelModeHost,
-					Version: TargetZitiVersion,
-				},
-				Host: tunnelHost,
+				Type:  tunnelType,
+				Host:  tunnelHost,
 			}
 			tunnelHost.Components[identityId] = tunnelComponent
 		}
@@ -183,7 +198,7 @@ func (d dbStrategy) CreateIdentityHosts(tx *bbolt.Tx, m *model.Model, builder *m
 var dbStrategyInstance = dbStrategy{}
 
 var m = &model.Model{
-	Id: "router-test",
+	Id: "sdk-hosting-test",
 	Scope: model.Scope{
 		Defaults: model.Variables{
 			"environment": "sdk-hosting-test",
@@ -208,7 +223,6 @@ var m = &model.Model{
 		},
 	},
 	StructureFactories: []model.Factory{
-		model.NewScaleFactoryWithDefaultEntityFactory(scaleStrategy{}),
 		&models.ZitiDbBuilder{Strategy: dbStrategyInstance},
 	},
 	Resources: model.Resources{
@@ -222,7 +236,7 @@ var m = &model.Model{
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
 				"ctrl": {
-					InstanceType: "c5.large",
+					InstanceType: "c5.xlarge",
 					Components: model.Components{
 						"ctrl": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
@@ -240,16 +254,15 @@ var m = &model.Model{
 		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
 
-			//workflow.AddAction(component.Stop("*"))
-			//workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
-
 			workflow.AddAction(component.Start("#ctrl"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 			workflow.AddAction(edge.Login("#ctrl"))
 
 			workflow.AddAction(edge.ReEnrollEdgeRouters(".edge-router .pre-created", 2))
-			workflow.AddAction(edge.ReEnrollIdentities(".sdk-tunneler .pre-created", 10))
+			if quickRun, _ := m.GetBoolVariable("quick_run"); !quickRun {
+				workflow.AddAction(edge.ReEnrollIdentities(".sdk-tunneler .pre-created", 10))
+			}
 			return workflow
 		}),
 		"stop": model.Bind(component.StopInParallelHostExclusive("*", 15)),
@@ -258,6 +271,44 @@ var m = &model.Model{
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
 		"login": model.Bind(edge.Login("#ctrl")),
+		"refreshCtrlZiti": model.ActionBinder(func(m *model.Model) model.Action {
+			return model.ActionFunc(func(run model.Run) error {
+				zitiPath, err := exec.LookPath("ziti")
+				if err != nil {
+					return err
+				}
+
+				deferred := rsync.NewRsyncHost("ctrl", zitiPath, "/home/ubuntu/fablab/bin/ziti")
+				return deferred.Execute(run)
+			})
+		}),
+		"refreshRouterZiti": model.ActionBinder(func(m *model.Model) model.Action {
+			return model.ActionFunc(func(run model.Run) error {
+				zitiPath, err := exec.LookPath("ziti")
+				if err != nil {
+					return err
+				}
+
+				deferred := rsync.NewRsyncHost("component.edge-router", zitiPath, "/home/ubuntu/fablab/bin/ziti")
+				return deferred.Execute(run)
+			})
+		}),
+		"refreshZiti": model.ActionBinder(func(m *model.Model) model.Action {
+			return model.ActionFunc(func(run model.Run) error {
+				zitiPath, err := exec.LookPath("ziti")
+				if err != nil {
+					return err
+				}
+
+				hosts := os.Getenv("HOSTS")
+				if hosts == "" {
+					return errors.New("expected hosts to refresh in HOSTS env")
+				}
+
+				deferred := rsync.NewRsyncHost(hosts, zitiPath, "/home/ubuntu/fablab/bin/ziti")
+				return deferred.Execute(run)
+			})
+		}),
 	},
 
 	Infrastructure: model.Stages{
@@ -272,12 +323,14 @@ var m = &model.Model{
 
 	Distribution: model.Stages{
 		distribution.DistributeSshKey("*"),
-		distribution.Locations("*", "logs"),
 		rsync.RsyncStaged(),
 		model.StageActionF(func(run model.Run) error {
-			dbFile := dbStrategyInstance.GetDbFile(run.GetModel())
-			deferred := rsync.NewRsyncHost("#ctrl", dbFile, "/home/ubuntu/fablab/ctrl.db")
-			return deferred.Execute(run)
+			if quickRun, _ := run.GetModel().GetBoolVariable("quick_run"); !quickRun {
+				dbFile := dbStrategyInstance.GetDbFile(run.GetModel())
+				deferred := rsync.NewRsyncHost("#ctrl", dbFile, "/home/ubuntu/ctrl.db")
+				return deferred.Execute(run)
+			}
+			return nil
 		}),
 	},
 

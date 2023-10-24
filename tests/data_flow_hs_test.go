@@ -38,20 +38,23 @@ func Test_HSDataflow(t *testing.T) {
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
+	watcher := ctx.AdminManagementSession.newTerminatorWatcher()
+	defer watcher.Close()
+
 	_, hostContext1 := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer hostContext1.Close()
 
 	listener1, err := hostContext1.Listen(service.Name)
 	ctx.Req.NoError(err)
-	ctx.requireNListener(1, listener1, 2*time.Second)
 
 	_, hostContext2 := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer hostContext2.Close()
 
 	listener2, err := hostContext2.Listen(service.Name)
 	ctx.Req.NoError(err)
-	ctx.requireNListener(1, listener2, 2*time.Second)
 	defer listener2.Close()
+
+	watcher.waitForTerminators(service.Id, 2, 2*time.Second)
 
 	serverHandler := func(conn *testServerConn) error {
 		for {

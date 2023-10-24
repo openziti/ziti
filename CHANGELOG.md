@@ -1,3 +1,48 @@
+# Release 0.31.1
+
+## What's New
+
+* SDK Hosting Improvements
+* Terminator validation utility
+
+## SDK Hosting Improvments
+
+In previous versions of OpenZiti, if many SDK clients were attempting to establish hosting, the controller could get overwhelmed. 
+In this release, routers will use the rate limiter pool introduced in 0.27.6 when creating terminators on behalf of sdk clients
+hosting applications. Additionally, routers now have the ability to verify terminator state with the sdk, if the sdk supports it.
+In general, hosting large numbers of services using the sdk should now be less suceptible to thundering herd issues.
+
+## Manual Terminator Validation
+
+There is a new CLI command available to validate terminator state. This is primarily a developer tool to validate that terminator 
+setup logic is correct. However it may also be used to diagnose and resolve issues with production systems, should the need arise.
+
+```
+ziti fabric validate terminators
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.105 -> v2.0.110](https://github.com/openziti/channel/compare/v2.0.105...v2.0.110)
+* github.com/openziti/edge-api: [v0.26.0 -> v0.26.1](https://github.com/openziti/edge-api/compare/v0.26.0...v0.26.1)
+* github.com/openziti/foundation/v2: [v2.0.33 -> v2.0.35](https://github.com/openziti/foundation/compare/v2.0.33...v2.0.35)
+* github.com/openziti/identity: [v1.0.66 -> v1.0.68](https://github.com/openziti/identity/compare/v1.0.66...v1.0.68)
+* github.com/openziti/metrics: [v1.2.37 -> v1.2.40](https://github.com/openziti/metrics/compare/v1.2.37...v1.2.40)
+* github.com/openziti/sdk-golang: [v0.20.129 -> v0.20.139](https://github.com/openziti/sdk-golang/compare/v0.20.129...v0.20.139)
+    * [Issue #457](https://github.com/openziti/sdk-golang/issues/457) - Add  inspect support
+    * [Issue #450](https://github.com/openziti/sdk-golang/issues/450) - Support idempotent terminator creation
+
+* github.com/openziti/secretstream: [v0.1.13 -> v0.1.14](https://github.com/openziti/secretstream/compare/v0.1.13...v0.1.14)
+* github.com/openziti/transport/v2: [v2.0.113 -> v2.0.119](https://github.com/openziti/transport/compare/v2.0.113...v2.0.119)
+* github.com/openziti/ziti: [v0.31.0 -> v0.31.1](https://github.com/openziti/ziti/compare/v0.31.0...v0.31.1)
+    * [Issue #1446](https://github.com/openziti/ziti/issues/1446) - Allow for idempotent sdk based terminators 
+    * [Issue #1523](https://github.com/openziti/ziti/issues/1523) - Bootstrap members not working
+    * [Issue #1525](https://github.com/openziti/ziti/issues/1525) - Improve cluster list output
+    * [Issue #1519](https://github.com/openziti/ziti/issues/1519) - Simplify link ack handling
+    * [Issue #1513](https://github.com/openziti/ziti/issues/1513) - DNS service failure should not cause a router restart
+    * [Issue #1494](https://github.com/openziti/ziti/issues/1494) - Panic if applying raft log returns nil result
+
+
 # Release 0.31.0
 
 ## What's New

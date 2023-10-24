@@ -45,9 +45,7 @@ type RouterType struct {
 }
 
 func (self *RouterType) InitType(*model.Component) {
-	if self.Version != "" && self.Version != "latest" && !strings.HasPrefix(self.Version, "v") {
-		self.Version = "v" + self.Version
-	}
+	canonicalizeZitiVersion(&self.Version)
 }
 
 func (self *RouterType) GetActions() map[string]model.ComponentAction {
@@ -104,15 +102,6 @@ func (self *RouterType) getConfigName(c *model.Component) string {
 		configName = c.Id + ".yml"
 	}
 	return configName
-}
-
-func (self *RouterType) getBinaryName() string {
-	binaryName := "ziti"
-	version := self.Version
-	if version != "" {
-		binaryName += "-" + version
-	}
-	return binaryName
 }
 
 func (self *RouterType) getProcessFilter(c *model.Component) func(string) bool {
@@ -173,8 +162,8 @@ func (self *RouterType) CreateAndEnroll(run model.Run, c *model.Component) error
 		return err
 	}
 
-	tmpl := "set -o pipefail; /home/ubuntu/fablab/bin/%v router enroll /home/ubuntu/fablab/cfg/%s -j %s 2>&1 | tee /home/ubuntu/logs/%s.router.enroll.log "
-	cmd := fmt.Sprintf(tmpl, self.getBinaryName(), self.getConfigName(c), remoteJwt, c.Id)
+	tmpl := "set -o pipefail; %s router enroll /home/ubuntu/fablab/cfg/%s -j %s 2>&1 | tee /home/ubuntu/logs/%s.router.enroll.log "
+	cmd := fmt.Sprintf(tmpl, getZitiBinaryPath(c, self.Version), self.getConfigName(c), remoteJwt, c.Id)
 
 	return c.GetHost().ExecLogOnlyOnError(cmd)
 }
@@ -193,8 +182,8 @@ func (self *RouterType) ReEnroll(_ model.Run, c *model.Component) error {
 		return err
 	}
 
-	tmpl := "set -o pipefail; /home/ubuntu/fablab/bin/%s router enroll /home/ubuntu/fablab/cfg/%s -j %s 2>&1 | tee /home/ubuntu/logs/%s.router.enroll.log "
-	cmd := fmt.Sprintf(tmpl, self.getBinaryName(), self.getConfigName(c), remoteJwt, c.Id)
+	tmpl := "set -o pipefail; %s router enroll /home/ubuntu/fablab/cfg/%s -j %s 2>&1 | tee /home/ubuntu/logs/%s.router.enroll.log "
+	cmd := fmt.Sprintf(tmpl, getZitiBinaryPath(c, self.Version), self.getConfigName(c), remoteJwt, c.Id)
 
 	return c.GetHost().ExecLogOnlyOnError(cmd)
 }
