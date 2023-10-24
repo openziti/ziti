@@ -59,64 +59,75 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 	ch := binding.GetChannel()
 
 	log := pfxlog.Logger().WithField("routerId", ch.Id())
-
 	// Use a new copy of the router instance each time we connect. That way we can tell on disconnect
 	// if we're working with the right connection, in case connects and disconnects happen quickly.
 	// It also means that the channel and connected time fields don't change and we don't have to protect them
-	if r, err := self.network.GetReloadedRouter(ch.Id()); err == nil {
-		if ch.Underlay().Headers() != nil {
-			if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
-				if versionInfo, err := self.network.VersionProvider.EncoderDecoder().Decode(versionValue); err == nil {
-					r.VersionInfo = versionInfo
-				} else {
-					return errors.Wrap(err, "could not parse version info from router hello, closing router connection")
-				}
+	r, err := self.network.GetReloadedRouter(ch.Id())
+	if err != nil {
+		return err
+	}
+	if r == nil {
+		return errors.Errorf("no router with id [%v] found, closing connection", ch.Id())
+	}
+
+	if ch.Underlay().Headers() != nil {
+		if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
+			if versionInfo, err := self.network.VersionProvider.EncoderDecoder().Decode(versionValue); err == nil {
+				r.VersionInfo = versionInfo
+				log = log.WithField("version", r.VersionInfo.Version).
+					WithField("revision", r.VersionInfo.Revision).
+					WithField("buildDate", r.VersionInfo.BuildDate).
+					WithField("os", r.VersionInfo.OS).
+					WithField("arch", r.VersionInfo.Arch)
 			} else {
-				return errors.New("no version info header, closing router connection")
-			}
-			r.Listeners = nil
-			if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ContentType_ListenersHeader)]; found {
-				log.Debug("router reported listeners using listeners header")
-				listeners := &ctrl_pb.Listeners{}
-				if err := proto.Unmarshal(val, listeners); err != nil {
-					log.WithError(err).Error("unable to unmarshall listeners value")
-				} else {
-					r.SetLinkListeners(listeners.Listeners)
-					for _, listener := range listeners.Listeners {
-						log.WithField("address", listener.GetAddress()).
-							WithField("protocol", listener.GetProtocol()).
-							WithField("costTags", listener.GetCostTags()).
-							Debug("router listener")
-					}
-				}
-			} else {
-				log.Warn("no advertised listeners")
-			}
-			if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ContentType_RouterMetadataHeader)]; found {
-				log.Debug("router reported listeners using listeners header")
-				routerMetadata := &ctrl_pb.RouterMetadata{}
-				if err = proto.Unmarshal(val, routerMetadata); err != nil {
-					log.WithError(err).Error("unable to unmarshall router metadata value")
-				}
-				r.SetMetadata(routerMetadata)
+				return errors.Wrap(err, "could not parse version info from router hello, not accepting router connection")
 			}
 		} else {
-			return errors.New("no version info header, closing router connection")
+			return errors.New("no version info header, not accepting router connection")
 		}
 
-		r.Control = ch
-		r.ConnectTime = time.Now()
-		if err := binding.Bind(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls)); err != nil {
-			return errors.Wrap(err, "error binding router")
+		r.Listeners = nil
+		if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ContentType_ListenersHeader)]; found {
+			listeners := &ctrl_pb.Listeners{}
+			if err = proto.Unmarshal(val, listeners); err != nil {
+				log.WithError(err).Error("unable to unmarshall listeners value")
+			} else {
+				r.SetLinkListeners(listeners.Listeners)
+				for _, listener := range listeners.Listeners {
+					log.WithField("address", listener.GetAddress()).
+						WithField("protocol", listener.GetProtocol()).
+						WithField("costTags", listener.GetCostTags()).
+						Debug("router listener")
+				}
+			}
+		} else {
+			log.Debug("no advertised listeners")
 		}
 
-		if self.traceHandler != nil {
-			binding.AddPeekHandler(self.traceHandler)
+		if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ContentType_RouterMetadataHeader)]; found {
+			routerMetadata := &ctrl_pb.RouterMetadata{}
+			if err = proto.Unmarshal(val, routerMetadata); err != nil {
+				log.WithError(err).Error("unable to unmarshall router metadata value")
+			}
+			r.SetMetadata(routerMetadata)
 		}
-
-		log.Infof("accepted new router connection [r/%s]", r.Id)
-
-		self.network.ConnectRouter(r)
+	} else {
+		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
 	}
+
+	r.Control = ch
+	r.ConnectTime = time.Now()
+	if err := binding.Bind(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls)); err != nil {
+		return errors.Wrap(err, "error binding router")
+	}
+
+	if self.traceHandler != nil {
+		binding.AddPeekHandler(self.traceHandler)
+	}
+
+	log.Info("accepted new router connection")
+
+	self.network.ConnectRouter(r)
+
 	return nil
 }
