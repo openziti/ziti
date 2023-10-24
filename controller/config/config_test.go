@@ -195,19 +195,65 @@ func Test_validateHostPortString(t *testing.T) {
 }
 
 func Test_CalculateCaPems(t *testing.T) {
-	ca1, _ := newSelfSignedCert(uuid.NewString())
-	ca2, _ := newSelfSignedCert(uuid.NewString())
-	ca3, _ := newSelfSignedCert(uuid.NewString())
+	ca1, _ := newSelfSignedCert(uuid.NewString(), true)
+	ca2, _ := newSelfSignedCert(uuid.NewString(), true)
+	ca3, _ := newSelfSignedCert(uuid.NewString(), true)
+
+	notCaSelfSigned, _ := newSelfSignedCert(uuid.NewString(), false)
 
 	ca1Pem := nfpem.EncodeToBytes(ca1)
 	ca2Pem := nfpem.EncodeToBytes(ca2)
 	ca3Pem := nfpem.EncodeToBytes(ca3)
+	notCaSelfSignedPem := nfpem.EncodeToBytes(notCaSelfSigned)
 
 	inCas := []*x509.Certificate{
 		ca1,
 		ca2,
 		ca3,
 	}
+
+	t.Run("1 non-ca in, 0 out", func(t *testing.T) {
+		req := require.New(t)
+
+		buf := bytes.NewBuffer([]byte{})
+
+		buf.Write(notCaSelfSignedPem)
+
+		outBuf := CalculateCaPems(buf)
+
+		outCerts := nfpem.PemBytesToCertificates(outBuf.Bytes())
+
+		req.Len(outCerts, 0)
+	})
+
+	t.Run("1 non-ca + 3 ca in, 3 out", func(t *testing.T) {
+		req := require.New(t)
+
+		buf := bytes.NewBuffer([]byte{})
+
+		buf.Write(notCaSelfSignedPem)
+		buf.Write(ca1Pem)
+		buf.Write(ca2Pem)
+		buf.Write(ca3Pem)
+
+		outBuf := CalculateCaPems(buf)
+
+		outCerts := nfpem.PemBytesToCertificates(outBuf.Bytes())
+
+		req.Len(outCerts, 3)
+
+		for _, inCert := range inCas {
+			found := false
+			for _, outCert := range outCerts {
+				if bytes.Equal(inCert.Raw, outCert.Raw) {
+					req.Falsef(found, "certificate %s was found multiple times, expected once instance in output", inCert.Subject.String())
+
+					found = true
+				}
+			}
+			req.Truef(found, "certificate %s was provided as input but not found as output", inCert.Subject.String())
+		}
+	})
 
 	t.Run("three unique CAs in, three out", func(t *testing.T) {
 		req := require.New(t)
@@ -315,7 +361,7 @@ func Test_CalculateCaPems(t *testing.T) {
 
 }
 
-func newSelfSignedCert(commonName string) (*x509.Certificate, crypto.PrivateKey) {
+func newSelfSignedCert(commonName string, isCas bool) (*x509.Certificate, crypto.PrivateKey) {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		panic(err)
@@ -326,12 +372,15 @@ func newSelfSignedCert(commonName string) (*x509.Certificate, crypto.PrivateKey)
 			CommonName:   commonName,
 			Organization: []string{"API Test Co"},
 		},
-		NotBefore: time.Now(),
-		NotAfter:  time.Now().Add(time.Hour * 24 * 180),
-
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour * 24 * 180),
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
+	}
+
+	if isCas {
+		template.IsCA = true
 	}
 
 	der, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
