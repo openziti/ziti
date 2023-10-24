@@ -461,7 +461,7 @@ func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
 				continue
 			}
 
-			if cert.IsCA != true {
+			if !cert.IsCA {
 				pfxlog.Logger().
 					WithField("type", block.Type).
 					WithField("block", pem.EncodeToMemory(block)).
