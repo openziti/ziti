@@ -259,6 +259,11 @@ func captureOutput(function func()) string {
 		_ = r.Close()
 	}()
 
+	type readResult struct {
+		out []byte
+		err error
+	}
+
 	defer func() {
 		os.Stdout = oldStdOut
 	}()
@@ -266,21 +271,36 @@ func captureOutput(function func()) string {
 	var output []byte
 	var outputErr error
 
+	outChan := make(chan *readResult, 1)
+
 	// Start reading before writing, so we do not create backpressure that is never relieved in OSs with smaller buffers
 	// than the resulting configuration file (i.e. Windows). Go will not yield to other routines unless there is
 	// a system call. The fake os.Stdout will never yield and some code paths executed as `function()` may not
 	// have syscalls.
 	go func() {
 		output, outputErr = io.ReadAll(r)
+		outChan <- &readResult{
+			output,
+			outputErr,
+		}
 	}()
 
 	function()
 
-	if outputErr != nil {
-		panic(outputErr)
+	os.Stdout = oldStdOut
+	_ = w.Close()
+
+	result := <-outChan
+
+	if result == nil {
+		panic("no output")
 	}
 
-	return string(output)
+	if result.err != nil {
+		panic(result.err)
+	}
+
+	return string(result.out)
 }
 
 func setEnvByMap[K string, V string](m map[K]V) {
