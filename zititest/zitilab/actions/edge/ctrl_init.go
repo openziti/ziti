@@ -2,7 +2,6 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
@@ -44,7 +43,7 @@ func (init *raftInit) Execute(run model.Run) error {
 	}
 
 	for _, c := range m.SelectComponents(init.componentSpec) {
-		sshConfigFactory := lib.NewSshConfigFactory(c.GetHost())
+		sshConfigFactory := c.GetHost().NewSshConfigFactory()
 
 		tmpl := "set -o pipefail; /home/%s/fablab/bin/ziti agent controller init %s %s default.admin 2>&1 | tee logs/controller.edge.init.log"
 		if err := host.Exec(c.GetHost(), fmt.Sprintf(tmpl, sshConfigFactory.User(), username, password)).Execute(run); err != nil {

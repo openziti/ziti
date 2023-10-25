@@ -19,6 +19,7 @@ package tests
 import (
 	"fmt"
 	"github.com/openziti/fablab/kernel/lib"
+	"github.com/openziti/fablab/kernel/libssh"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -138,7 +139,7 @@ func testFileDownload(t *testing.T, hostSelector string, client httpClient, host
 		}
 
 		timeout := timeouts[fileSize]
-		o, err := lib.RemoteExecAllWithTimeout(sshConfigFactory, timeout, cmd)
+		o, err := libssh.RemoteExecAllWithTimeout(sshConfigFactory, timeout, cmd)
 		if hostType == "zet" && err != nil {
 			t.Skipf("zet hosted file transfer failed [%v]", err.Error())
 			return

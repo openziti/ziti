@@ -168,3 +168,47 @@ func (o *DetailServiceNotFound) WriteResponse(rw http.ResponseWriter, producer r
 		}
 	}
 }
+
+// DetailServiceTooManyRequestsCode is the HTTP code returned for type DetailServiceTooManyRequests
+const DetailServiceTooManyRequestsCode int = 429
+
+/*DetailServiceTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response detailServiceTooManyRequests
+*/
+type DetailServiceTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewDetailServiceTooManyRequests creates DetailServiceTooManyRequests with default headers values
+func NewDetailServiceTooManyRequests() *DetailServiceTooManyRequests {
+
+	return &DetailServiceTooManyRequests{}
+}
+
+// WithPayload adds the payload to the detail service too many requests response
+func (o *DetailServiceTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *DetailServiceTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the detail service too many requests response
+func (o *DetailServiceTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *DetailServiceTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

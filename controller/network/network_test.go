@@ -7,16 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/transport/v2/tcp"
+	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,7 +64,9 @@ func (self *testConfig) GetOptions() *Options {
 }
 
 func (self *testConfig) GetCommandDispatcher() command.Dispatcher {
-	return &command.LocalDispatcher{}
+	return &command.LocalDispatcher{
+		Limiter: command.NoOpRateLimiter{},
+	}
 }
 
 func (self *testConfig) GetDb() boltz.Db {

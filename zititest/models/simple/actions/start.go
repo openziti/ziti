@@ -41,7 +41,6 @@ func (a *startAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(component.StartInParallel(".iperf", 5))
 
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
-	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(component.StartInParallel(".sdk-app", 5))
 
 	workflow.AddAction(semaphore.Sleep(5 * time.Second))
@@ -51,5 +50,4 @@ func (a *startAction) bind(m *model.Model) model.Action {
 	return workflow
 }
 
-type startAction struct {
-}
+type startAction struct{}

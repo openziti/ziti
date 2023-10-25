@@ -30,6 +30,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type deleteOptions struct {
+	*api.Options
+	ignoreMissing bool
+}
+
 // newDeleteCmd creates a command object for the "edge controller delete" command
 func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
@@ -42,11 +47,13 @@ func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		},
 	}
 
-	newOptions := func() *api.Options {
-		return &api.Options{
-			CommonOptions: common.CommonOptions{
-				Out: out,
-				Err: errOut,
+	newOptions := func() *deleteOptions {
+		return &deleteOptions{
+			Options: &api.Options{
+				CommonOptions: common.CommonOptions{
+					Out: out,
+					Err: errOut,
+				},
 			},
 		}
 	}
@@ -74,7 +81,7 @@ func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 // newDeleteCmdForEntityType creates the delete command for the given entity type
-func newDeleteCmdForEntityType(entityType string, options *api.Options, aliases ...string) *cobra.Command {
+func newDeleteCmdForEntityType(entityType string, options *deleteOptions, aliases ...string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     entityType + " <id>",
 		Short:   "deletes " + getPlural(entityType) + " managed by the Ziti Edge Controller",
@@ -92,13 +99,14 @@ func newDeleteCmdForEntityType(entityType string, options *api.Options, aliases 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	options.AddCommonFlags(cmd)
+	cmd.Flags().BoolVar(&options.ignoreMissing, "ignore-missing", false, "don't error if the entity can't be found to be deleted")
 
 	cmd.AddCommand(newDeleteWhereCmdForEntityType(entityType, options))
 
 	return cmd
 }
 
-func newDeleteWhereCmdForEntityType(entityType string, options *api.Options) *cobra.Command {
+func newDeleteWhereCmdForEntityType(entityType string, options *deleteOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "where <filter>",
 		Short: "deletes " + getPlural(entityType) + " matching the filter managed by the Ziti Edge Controller",
@@ -120,21 +128,25 @@ func newDeleteWhereCmdForEntityType(entityType string, options *api.Options) *co
 }
 
 // runDeleteEntityOfType implements the commands to delete various entity types
-func runDeleteEntityOfType(o *api.Options, entityType string) error {
+func runDeleteEntityOfType(o *deleteOptions, entityType string) error {
 	var err error
 	ids := o.Args
 	if entityType != "terminators" && entityType != "api-sessions" && entityType != "sessions" && entityType != "authenticators" && entityType != "enrollments" {
-		if ids, err = mapNamesToIDs(entityType, *o, true, ids...); err != nil {
+		if ids, err = mapNamesToIDs(entityType, *o.Options, true, ids...); err != nil {
 			return err
 		}
 	}
 	return deleteEntitiesOfType(o, entityType, ids)
 }
 
-func deleteEntitiesOfType(o *api.Options, entityType string, ids []string) error {
+func deleteEntitiesOfType(o *deleteOptions, entityType string, ids []string) error {
 	for _, id := range ids {
-		err := util.ControllerDelete("edge", entityType, id, "", o.Out, o.OutputJSONRequest, o.OutputJSONResponse, o.Timeout, o.Verbose)
+		err, statusCode := util.ControllerDelete("edge", entityType, id, "", o.Out, o.OutputJSONRequest, o.OutputJSONResponse, o.Timeout, o.Verbose)
 		if err != nil {
+			if statusCode != nil && o.ignoreMissing {
+				o.Printf("delete of %v with id %v: %v\n", boltz.GetSingularEntityType(entityType), id, color.New(color.FgYellow, color.Bold).Sprint("NOT FOUND"))
+				return nil
+			}
 			o.Printf("delete of %v with id %v: %v\n", boltz.GetSingularEntityType(entityType), id, color.New(color.FgRed, color.Bold).Sprint("FAIL"))
 			return err
 		}
@@ -144,7 +156,7 @@ func deleteEntitiesOfType(o *api.Options, entityType string, ids []string) error
 }
 
 // runDeleteEntityOfType implements the commands to delete various entity types
-func runDeleteEntityOfTypeWhere(options *api.Options, entityType string) error {
+func runDeleteEntityOfTypeWhere(options *deleteOptions, entityType string) error {
 	filter := strings.Join(options.Args, " ")
 
 	params := url.Values{}
@@ -156,7 +168,7 @@ func runDeleteEntityOfTypeWhere(options *api.Options, entityType string) error {
 	}
 
 	options.Printf("filter returned ")
-	pageInfo.Output(options)
+	pageInfo.Output(options.Options)
 
 	var ids []string
 	for _, entity := range children {

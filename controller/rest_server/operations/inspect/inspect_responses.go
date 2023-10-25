@@ -124,3 +124,47 @@ func (o *InspectUnauthorized) WriteResponse(rw http.ResponseWriter, producer run
 		}
 	}
 }
+
+// InspectTooManyRequestsCode is the HTTP code returned for type InspectTooManyRequests
+const InspectTooManyRequestsCode int = 429
+
+/*InspectTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response inspectTooManyRequests
+*/
+type InspectTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewInspectTooManyRequests creates InspectTooManyRequests with default headers values
+func NewInspectTooManyRequests() *InspectTooManyRequests {
+
+	return &InspectTooManyRequests{}
+}
+
+// WithPayload adds the payload to the inspect too many requests response
+func (o *InspectTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *InspectTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the inspect too many requests response
+func (o *InspectTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *InspectTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

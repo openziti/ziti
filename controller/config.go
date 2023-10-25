@@ -24,18 +24,20 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/identity"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/raft"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/identity"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -78,7 +80,8 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
-	src map[interface{}]interface{}
+	CommandRateLimiter command.RateLimiterConfig
+	src                map[interface{}]interface{}
 }
 
 // CtrlOptions extends channel.Options to include support for additional, non-channel specific options
@@ -456,6 +459,31 @@ func LoadConfig(path string) (*Config, error) {
 			}
 		} else {
 			pfxlog.Logger().Warn("invalid [healthChecks] stanza")
+		}
+	}
+
+	controllerConfig.CommandRateLimiter.QueueSize = command.DefaultLimiterSize
+
+	if value, found := cfgmap["commandRateLimiter"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["enabled"]; found {
+				controllerConfig.CommandRateLimiter.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
+			}
+
+			if value, found := submap["maxQueued"]; found {
+				if intVal, ok := value.(int); ok {
+					v := int64(intVal)
+					if v < command.MinLimiterSize {
+						return nil, errors.Errorf("invalid value %v for commandRateLimiter, must be at least %v", value, command.MinLimiterSize)
+					}
+					if v > math.MaxUint32 {
+						return nil, errors.Errorf("invalid value %v for commandRateLimiter, must be at most %v", value, int64(math.MaxUint32))
+					}
+					controllerConfig.CommandRateLimiter.QueueSize = uint32(v)
+				} else {
+					return nil, errors.Errorf("invalid value %v for commandRateLimiter, must be integer value", value)
+				}
+			}
 		}
 	}
 

@@ -18,10 +18,10 @@ package zitilib_actions
 
 import (
 	"fmt"
+	"github.com/openziti/fablab/kernel/libssh"
 	"os"
 	"path/filepath"
 
-	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/sirupsen/logrus"
@@ -39,7 +39,7 @@ func (self *logs) Execute(run model.Run) error {
 	snapshot := fmt.Sprintf("%d", info.NowInMilliseconds())
 	for rn, r := range run.GetModel().Regions {
 		for hn, h := range r.Hosts {
-			ssh := lib.NewSshConfigFactory(h)
+			ssh := h.NewSshConfigFactory()
 			if err := self.forHost(snapshot, rn, hn, ssh); err != nil {
 				return fmt.Errorf("error retrieving logs for [%s/%s] (%w)", rn, hn, err)
 			}
@@ -48,14 +48,14 @@ func (self *logs) Execute(run model.Run) error {
 	return nil
 }
 
-func (self *logs) forHost(snapshot, rn, hn string, ssh lib.SshConfigFactory) error {
+func (self *logs) forHost(snapshot, rn, hn string, ssh libssh.SshConfigFactory) error {
 	path := filepath.Join(model.AllocateForensicScenario(snapshot, "logs"), rn, hn)
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		return fmt.Errorf("error creating logs path [%s] for host [%s/%s] (%w)", path, rn, hn, err)
 	}
 	logrus.Infof("=> [%s]", path)
 
-	fis, err := lib.RemoteFileList(ssh, ".")
+	fis, err := libssh.RemoteFileList(ssh, ".")
 	if err != nil {
 		return fmt.Errorf("error retrieving home directory for host [%s/%s] (%w)", rn, hn, err)
 	}
@@ -76,8 +76,8 @@ func (self *logs) forHost(snapshot, rn, hn string, ssh lib.SshConfigFactory) err
 	return nil
 }
 
-func (self *logs) forHostDir(localPath, remotePath string, ssh lib.SshConfigFactory) error {
-	fis, err := lib.RemoteFileList(ssh, remotePath)
+func (self *logs) forHostDir(localPath, remotePath string, ssh libssh.SshConfigFactory) error {
+	fis, err := libssh.RemoteFileList(ssh, remotePath)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (self *logs) forHostDir(localPath, remotePath string, ssh lib.SshConfigFact
 			paths = append(paths, filepath.Join(remotePath, fi.Name()))
 		}
 	}
-	if err := lib.RetrieveRemoteFiles(ssh, localPath, paths...); err != nil {
+	if err := libssh.RetrieveRemoteFiles(ssh, localPath, paths...); err != nil {
 		return fmt.Errorf("error retrieving from [%s] (%w)", localPath, err)
 	}
 	return nil

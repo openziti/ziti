@@ -168,3 +168,47 @@ func (o *DeleteLinkUnauthorized) WriteResponse(rw http.ResponseWriter, producer 
 		}
 	}
 }
+
+// DeleteLinkTooManyRequestsCode is the HTTP code returned for type DeleteLinkTooManyRequests
+const DeleteLinkTooManyRequestsCode int = 429
+
+/*DeleteLinkTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response deleteLinkTooManyRequests
+*/
+type DeleteLinkTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewDeleteLinkTooManyRequests creates DeleteLinkTooManyRequests with default headers values
+func NewDeleteLinkTooManyRequests() *DeleteLinkTooManyRequests {
+
+	return &DeleteLinkTooManyRequests{}
+}
+
+// WithPayload adds the payload to the delete link too many requests response
+func (o *DeleteLinkTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *DeleteLinkTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the delete link too many requests response
+func (o *DeleteLinkTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *DeleteLinkTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

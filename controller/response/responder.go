@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"github.com/go-openapi/errors"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 )
 
@@ -110,7 +110,7 @@ func (self EdgeResponseMapper) toRestModel(e *errorz.ApiError, requestId string)
 			ret.Code = errorz.CouldNotValidateCode
 			ret.Message = errorz.CouldNotValidateMessage
 
-		} else if genericErr, ok := e.Cause.(apierror.GenericCauseError); ok {
+		} else if genericErr, ok := e.Cause.(*apierror.GenericCauseError); ok {
 			ret.Cause = &rest_model.APIErrorCause{
 				APIError: rest_model.APIError{
 					Data:    genericErr.DataMap,

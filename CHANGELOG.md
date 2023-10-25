@@ -1,3 +1,37 @@
+# Release 0.31.0
+
+## What's New
+
+* Rate limited for model changes
+
+## Rate Limiter for Model Changes
+
+To prevent the controller from being overwhelmed by a flood of changes, a rate limiter
+can be enabled in the configuration file. A maximum number of queued changes can also
+be configured. The rate limited is disabled by default for now. If not specified the
+default number of queued changes is 100.
+
+When the rate limit is hit, an error will be returned. If the request came in from 
+the REST API, the response will use HTTP status code 429 (too many requests). 
+
+The OpenAPI specs have been updated, so if you're using a generated client to make
+REST calls, it's recommened that you regenerate your client.
+
+
+```
+commandRateLimiter:
+    enabled:   true
+    maxQueued: 100
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.15 -> v1.0.16](https://github.com/openziti/agent/compare/v1.0.15...v1.0.16)
+* github.com/openziti/ziti: [v0.30.5 -> v0.30.6](https://github.com/openziti/ziti/compare/v0.30.5...v0.30.6)
+    * [Issue #1445](https://github.com/openziti/ziti/issues/1445) - Add controller update guardrail
+    * [Issue #1442](https://github.com/openziti/ziti/issues/1442) - Network watchdog not shutting down when controller shuts down
+
+
 # Release 0.30.5
 
 ## What's New
@@ -11,6 +45,7 @@ Currently only HTTP Connect proxies which don't require authentication are suppo
 
 **Example using `host.v1`**
 
+```
 {
     "address": "192.168.2.50",
     "port": 1234,
@@ -20,6 +55,7 @@ Currently only HTTP Connect proxies which don't require authentication are suppo
         "type": "http"
     }
 }
+```
 
 
 ## Component Updates and Bug Fixes

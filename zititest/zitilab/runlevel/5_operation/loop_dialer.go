@@ -18,7 +18,7 @@ package zitilib_runlevel_5_operation
 
 import (
 	"fmt"
-	"github.com/openziti/fablab/kernel/lib"
+	"github.com/openziti/fablab/kernel/libssh"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/sirupsen/logrus"
 	"strings"
@@ -47,8 +47,8 @@ func LoopDialer(host *model.Host, scenario, endpoint string, joiner chan struct{
 }
 
 func (self *loopDialer) Execute(run model.Run) error {
-	ssh := lib.NewSshConfigFactory(self.host)
-	if err := lib.RemoteKill(ssh, fmt.Sprintf("ziti-fabric-test %v dialer", self.subcmd)); err != nil {
+	ssh := self.host.NewSshConfigFactory()
+	if err := libssh.RemoteKill(ssh, fmt.Sprintf("ziti-fabric-test %v dialer", self.subcmd)); err != nil {
 		return fmt.Errorf("error killing %v listeners (%w)", self.subcmd, err)
 	}
 
@@ -64,11 +64,11 @@ func (self *loopDialer) run(ctx model.Run) {
 		}
 	}()
 
-	ssh := lib.NewSshConfigFactory(self.host)
+	ssh := self.host.NewSshConfigFactory()
 	logFile := fmt.Sprintf("/home/%s/logs/%v-dialer-%s.log", ssh.User(), self.subcmd, ctx.GetId())
 	dialerCmd := fmt.Sprintf("/home/%s/fablab/bin/ziti-fabric-test %v dialer /home/%s/fablab/cfg/%s -e %s -s %s %s >> %s 2>&1",
 		ssh.User(), self.subcmd, ssh.User(), self.scenario, self.endpoint, self.host.GetId(), strings.Join(self.extraArgs, " "), logFile)
-	if output, err := lib.RemoteExec(ssh, dialerCmd); err != nil {
+	if output, err := libssh.RemoteExec(ssh, dialerCmd); err != nil {
 		logrus.Errorf("error starting loop dialer [%s] (%v)", output, err)
 	}
 }

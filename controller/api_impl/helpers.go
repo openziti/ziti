@@ -4,10 +4,10 @@ import (
 	"fmt"
 	openApiErrors "github.com/go-openapi/errors"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/api"
 	apierror2 "github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/rest_model"
-	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 )
 
@@ -124,7 +124,7 @@ func ToRestModel(e *errorz.ApiError, requestId string) *rest_model.APIError {
 			ret.Code = errorz.CouldNotValidateCode
 			ret.Message = errorz.CouldNotValidateMessage
 
-		} else if genericErr, ok := e.Cause.(apierror2.GenericCauseError); ok {
+		} else if genericErr, ok := e.Cause.(*apierror2.GenericCauseError); ok {
 			ret.Cause = &rest_model.APIErrorCause{
 				APIError: rest_model.APIError{
 					Data:    genericErr.DataMap,

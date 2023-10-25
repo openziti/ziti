@@ -18,6 +18,7 @@ package edge
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
@@ -109,9 +110,9 @@ func runCreateIdentity(o *createIdentityOptions) error {
 
 	o.username = strings.TrimSpace(o.username)
 	if o.username != "" {
-		api.SetJSONValue(entityData, o.username, "enrollment", "updb")
+		api.SetJSONValue(entityData, o.username, "enrollment", persistence.MethodEnrollUpdb)
 	} else {
-		api.SetJSONValue(entityData, true, "enrollment", "ott")
+		api.SetJSONValue(entityData, true, "enrollment", persistence.MethodEnrollOtt)
 	}
 	api.SetJSONValue(entityData, o.isAdmin, "isAdmin")
 	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
@@ -183,15 +184,18 @@ func runCreateIdentity(o *createIdentityOptions) error {
 
 	if o.jwtOutputFile != "" {
 		id := result.S("data", "id").Data().(string)
-		if err := getIdentityJwt(o, id, o.Options.Timeout, o.Options.Verbose); err != nil {
+		enrollmentType := persistence.MethodEnrollOtt
+		if o.username != "" {
+			enrollmentType = persistence.MethodEnrollUpdb
+		}
+		if err = getIdentityJwt(&o.Options, id, o.jwtOutputFile, enrollmentType, o.Options.Timeout, o.Options.Verbose); err != nil {
 			return err
 		}
 	}
 	return err
 }
 
-func getIdentityJwt(o *createIdentityOptions, id string, timeout int, verbose bool) error {
-
+func getIdentityJwt(o *api.Options, id string, outputFile string, enrollmentType string, timeout int, verbose bool) error {
 	newIdentity, err := DetailEntityOfType("identities", id, o.OutputJSONResponse, o.Out, timeout, verbose)
 	if err != nil {
 		return err
@@ -202,10 +206,12 @@ func getIdentityJwt(o *createIdentityOptions, id string, timeout int, verbose bo
 	}
 
 	var dataContainer *gabs.Container
-	if o.username != "" {
+	if enrollmentType == persistence.MethodEnrollUpdb {
 		dataContainer = newIdentity.Path("enrollment.updb.jwt")
-	} else {
+	} else if enrollmentType == persistence.MethodEnrollOtt {
 		dataContainer = newIdentity.Path("enrollment.ott.jwt")
+	} else {
+		return errors.Errorf("unsupported enrollment type '%s'", enrollmentType)
 	}
 
 	data := dataContainer.Data()
@@ -219,8 +225,8 @@ func getIdentityJwt(o *createIdentityOptions, id string, timeout int, verbose bo
 		return fmt.Errorf("enrollment JWT not present for new identity")
 	}
 
-	if err := os.WriteFile(o.jwtOutputFile, []byte(jwt), 0600); err != nil {
-		fmt.Printf("Failed to write JWT to file(%v)\n", o.jwtOutputFile)
+	if err = os.WriteFile(outputFile, []byte(jwt), 0600); err != nil {
+		fmt.Printf("Failed to write JWT to file(%v)\n", outputFile)
 		return err
 	}
 
