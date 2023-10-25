@@ -130,6 +130,7 @@ func Test_MetricsFormat(t *testing.T) {
 	go func() {
 		registry := metrics2.NewRegistry("test", nil)
 		meter := registry.Meter("foo.bar")
+		time.Sleep(10 * time.Millisecond)
 		meter.Mark(1)
 		dispatcher.AcceptMetricsMsg(registry.Poll())
 	}()
