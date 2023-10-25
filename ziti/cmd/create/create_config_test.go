@@ -256,6 +256,10 @@ func captureOutput(function func()) string {
 	os.Stdout = w
 
 	defer func() {
+		_ = r.Close()
+	}()
+
+	defer func() {
 		os.Stdout = oldStdOut
 	}()
 
