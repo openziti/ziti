@@ -28,7 +28,7 @@ import (
 
 func HomeDir() string {
 	if h := os.Getenv("HOME"); h != "" {
-		return h
+		return NormalizePath(h)
 	}
 	h := os.Getenv("USERPROFILE") // windows
 	if h == "" {

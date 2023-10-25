@@ -2,10 +2,12 @@ package create
 
 import (
 	"github.com/openziti/ziti/ziti/constants"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -94,7 +96,6 @@ func TestBlankFabricRouterNameBecomesHostname(t *testing.T) {
 
 func TestFabricRouterOutputPathDoesNotExist(t *testing.T) {
 	routerOptions := clearEnvAndInitializeTestData()
-	expectedErrorMsg := "stat /IDoNotExist: no such file or directory"
 
 	// Set the router options
 	clearEnvAndInitializeTestData()
@@ -103,7 +104,8 @@ func TestFabricRouterOutputPathDoesNotExist(t *testing.T) {
 
 	err := routerOptions.runFabricRouter(&ConfigTemplateValues{})
 
-	assert.EqualError(t, err, expectedErrorMsg, "Error does not match, expected %s but got %s", expectedErrorMsg, err)
+	assert.Error(t, err)
+	assert.Equal(t, errors.Unwrap(err), syscall.ENOENT)
 }
 
 func TestDefaultZitiFabricRouterListenerBindPort(t *testing.T) {
