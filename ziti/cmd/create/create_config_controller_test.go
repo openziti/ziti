@@ -3,10 +3,12 @@ package create
 import (
 	"fmt"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -111,15 +113,14 @@ func init() {
 }
 
 func TestControllerOutputPathDoesNotExist(t *testing.T) {
-	expectedErrorMsg := "stat /IDoNotExist: no such file or directory"
-
 	// Create the options with non-existent path
 	options := &CreateConfigControllerOptions{}
 	options.Output = "/IDoNotExist/MyController.yaml"
 
 	err := options.run(&ConfigTemplateValues{})
 
-	assert.EqualError(t, err, expectedErrorMsg, "Error does not match, expected %s but got %s", expectedErrorMsg, err)
+	//check for system errors instead of error msgs as paths and error msg formatting differs between os
+	assert.Equal(t, errors.Unwrap(err), syscall.ENOENT)
 }
 
 func TestCreateConfigControllerTemplateValues(t *testing.T) {

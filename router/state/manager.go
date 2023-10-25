@@ -241,7 +241,7 @@ func (sm *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 func (sm *ManagerImpl) RouterDataModel() *common.RouterDataModel {
 	rdm := sm.routerDataModel.Load()
 	if rdm == nil {
-		rdm := common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
+		rdm = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
 		sm.routerDataModel.Store(rdm)
 	}
 	return rdm
