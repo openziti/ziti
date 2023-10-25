@@ -22,31 +22,6 @@ import (
 	"time"
 )
 
-type testTracker struct {
-	IndexTracker
-}
-
-func (t *testTracker) notifyAsync(index uint64, after time.Duration) {
-	go func() {
-		time.Sleep(after)
-		t.NotifyOfIndex(index)
-	}()
-}
-
-func (t *testTracker) waitAsync(index uint64, timeout time.Duration) <-chan error {
-	result := make(chan error, 1)
-	go func() {
-		err := t.WaitForIndex(index, time.Now().Add(timeout))
-		if err == nil {
-			close(result)
-		} else {
-			result <- err
-			close(result)
-		}
-	}()
-	return result
-}
-
 func TestIndexTracker(t *testing.T) {
 
 	t.Run("index 1 can be set and notifies", func(t *testing.T) {
@@ -93,7 +68,7 @@ func TestIndexTracker(t *testing.T) {
 
 		//notify of index 3 after a delay
 		//during the delay check to see if the index has arrived after varying levels of timeouts
-		indexTracker.notifyAsync(3, 300*time.Millisecond)
+		indexTracker.notifyAsync(3, 200*time.Millisecond)
 
 		var results []<-chan error
 
@@ -106,22 +81,47 @@ func TestIndexTracker(t *testing.T) {
 		index3Notified := false
 
 		for _, result := range results {
-			select {
-			case err := <-result:
-				if index3Notified {
-					if err != nil {
-						req.Fail("received error after first notification of index received, expected no more errors")
-					}
-				} else {
-					//no notification yet, if no error, that is the notification
-					if err == nil {
-						index3Notified = true
-					}
+			err := <-result
+
+			if index3Notified {
+				if err != nil {
+					req.Fail("received error after first notification of index received, expected no more errors")
+				}
+			} else {
+				//no notification yet, if no error, that is the notification
+				if err == nil {
+					index3Notified = true
 				}
 			}
 		}
 
 		//make sure we didn't receive all errors and index 3 was eventually notified
-		req.True(index3Notified)
+		req.True(index3Notified, "index 3 was never received")
 	})
+}
+
+// testTracker adds helper function used to power async index notification used in the above tests.
+type testTracker struct {
+	IndexTracker
+}
+
+func (t *testTracker) notifyAsync(index uint64, after time.Duration) {
+	go func() {
+		time.Sleep(after)
+		t.NotifyOfIndex(index)
+	}()
+}
+
+func (t *testTracker) waitAsync(index uint64, timeout time.Duration) <-chan error {
+	result := make(chan error, 1)
+	go func() {
+		err := t.WaitForIndex(index, time.Now().Add(timeout))
+		if err == nil {
+			close(result)
+		} else {
+			result <- err
+			close(result)
+		}
+	}()
+	return result
 }
