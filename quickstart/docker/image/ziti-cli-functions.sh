@@ -405,7 +405,7 @@ function persistEnvironmentValues {
   # Store all ZITI_ variables in the environment file, creating the directory if necessary
   tmpfilepath="$(mktemp)"
   mkdir -p "$(dirname "${filepath}")" && echo "" > "${tmpfilepath}"
-  for zEnvVar in $(set | grep -e "^ZITI_" | sort); do
+  for zEnvVar in $(set | grep -e "^ZITI_" | sed "s/='\(.*\)'\$/=\1/" | sort); do
       envvar="$(echo "${zEnvVar}" | cut -d '=' -f1)"
       envval="$(echo "${zEnvVar}" | cut -d '=' -f2-1000)"
       echo 'if [[ "$'${envvar}'" == "" ]]; then export '${envvar}'="'${envval}'"; else echo "NOT OVERRIDING: env var '${envvar}' already set. using existing value"; fi' >> "${tmpfilepath}"
