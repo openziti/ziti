@@ -31,15 +31,6 @@ function PURPLE { # Generally used for Express Install milestones.
   echo "${ASCI_PURPLE}${1-}${ASCI_RESTORE}"
 }
 
-function _check_password_requirements {
-  # Check that the ziti password meets requirements
-  if [ -n "${ZITI_PWD-}" ] && [ ${#ZITI_PWD} -lt 5 ]; then
-    echo -e "$(RED "ERROR: The password must be at least 5 characters long.")"
-    return 1
-  fi
-  return 0
-}
-
 function _wait_for_controller {
   local advertised_host_port="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT}"
   while [[ "$(curl -w "%{http_code}" -m 1 -s -k -o /dev/null https://"${advertised_host_port}"/edge/client/v1/version)" != "200" ]]; do
@@ -334,16 +325,8 @@ function setupEnvironment {
     if [[ -z "${pwd_reply}" || ${pwd_reply} =~ [yY] ]]; then
       echo "INFO: using ZITI_PWD=${ZITI_PWD}"
     else
-      while true; do
-        echo -en "Type the preferred admin password and press <enter> "
-        read -r ZITI_PWD
-
-        if _check_password_requirements; then
-            break  # Exit loop if requirements are met
-        else
-            echo -e "$(RED "ERROR: The password doesn't meet requirements. Please try again.")"
-        fi
-      done
+      echo -en "Type the preferred admin password and press <enter> "
+      read -r ZITI_PWD
     fi
   else
     echo "ZITI_PWD overridden: ${ZITI_PWD}"
@@ -1041,6 +1024,11 @@ function initializeController {
 
   log_file="${ZITI_HOME-}/${ZITI_CTRL_NAME}-init.log"
   "${ZITI_BIN_DIR-}/ziti" controller edge init "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    echo -e "$(RED "  --- There was an error while initializing the controller, check the logs at ${log_file} ---")"
+    return 1
+  fi
   echo -e "${ZITI_CTRL_NAME} initialized. See $(BLUE "${log_file}") for details"
 }
 
@@ -1102,7 +1090,9 @@ function expressInstall {
 
   echo -e "$(PURPLE "********         Setting Up Controller        ********")"
   createControllerConfig
-  initializeController
+  if ! initializeController; then
+    return 1
+  fi
   startController
   echo "waiting for the controller to come online to allow the edge router to enroll"
   _wait_for_controller
