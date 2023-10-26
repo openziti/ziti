@@ -2,6 +2,12 @@
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
+# Check the password early on in the process so the error appears prominently
+if ! _check_password_requirements; then
+    echo -e "ERROR: The password doesn't meet requirements. Please update the password and recreate the container."
+    exit 1
+fi
+
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="ziti-edge-controller"; fi
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_PORT="1280"; fi
 if [[ "${ZITI_ROUTER_PORT-}" == "" ]]; then export ZITI_ROUTER_PORT="3022"; fi

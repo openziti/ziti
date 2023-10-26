@@ -6,6 +6,12 @@ if [[ "${ZITI_CTRL_NAME-}" == "" ]]; then export ZITI_CTRL_NAME="${ZITI_NETWORK}
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
+# Check the password early on in the process
+if ! _check_password_requirements; then
+    echo -e "ERROR: The password doesn't meet requirements. Please update the password and recreate the Ziti Controller."
+    exit 1
+fi
+
 if [ ! -f "${ZITI_HOME}/access-control.init" ]; then
   echo "system has not been initialized. initializing..."
   setupEnvironment
