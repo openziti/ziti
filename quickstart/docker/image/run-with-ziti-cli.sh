@@ -28,20 +28,13 @@ if [[ -f "${initFile}" ]]; then
   exit 0
 fi
 
-. "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
-
-# Check the password early on in the process so the error appears prominently
-if ! _check_password_requirements; then
-    echo -e "ERROR: The password doesn't meet requirements. Please update the password and recreate the Ziti Controller."
-    exit 1
-fi
-
-
 # give the controller scripts time to start and create the ziti environment file if running in docker compose 
 until $(test -f "${ZITI_HOME}/ziti.env"); do echo "waiting for ziti.env..."; sleep 1; done
 
 # Pause shortly to avoid the intermittent error of reading the file before it's completely done being written to.
 sleep 1
+
+. "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="ziti-edge-controller"; fi
 if [[ "${ZITI_ROUTER_NAME-}" == "" ]]; then export ZITI_ROUTER_NAME="${ZITI_NETWORK-}-edge-router"; fi
