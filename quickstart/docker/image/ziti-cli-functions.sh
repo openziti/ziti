@@ -715,7 +715,7 @@ function getZiti {
 
         # Update the .env file with the new downloaded version
         if ! test -f "${ZITI_ENV_FILE}"; then
-          echo -e "  * $(YELLOW "WARN: The Ziti Environment file could not be found to update ziti binary related paths")"
+          echo -e "  * $(YELLOW "WARN: The OpenZiti Environment file could not be found to update ziti binary related paths")"
         else
           sed -i.bak "s/export ZITI_BIN_DIR=.*/export ZITI_BIN_DIR=$(echo ${ZITI_BIN_DIR} | sed 's/\//\\\//g')/g" "${ZITI_ENV_FILE}"
           sed -i.bak "s/export ZITI_BINARIES_VERSION=.*/export ZITI_BINARIES_VERSION=$(echo ${ZITI_BINARIES_VERSION} | sed 's/\//\\\//g')/g" "${ZITI_ENV_FILE}"
