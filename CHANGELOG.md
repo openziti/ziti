@@ -38,6 +38,9 @@ If the rate limiter is enabled, the following metrics will be produced:
 * github.com/openziti/ziti: [v0.30.5 -> v0.30.6](https://github.com/openziti/ziti/compare/v0.30.5...v0.30.6)
     * [Issue #1445](https://github.com/openziti/ziti/issues/1445) - Add controller update guardrail
     * [Issue #1442](https://github.com/openziti/ziti/issues/1442) - Network watchdog not shutting down when controller shuts down
+    * [Issue #1468](https://github.com/openziti/ziti/issues/1468) - Quickstart was consuming controller initialization failures. Failures now cause quickstart to fail.
+    * [Issue #1465](https://github.com/openziti/ziti/issues/1465) - Upgrade functions `getZiti` and `performMigration` were only functional on Mac OS, now they are functional for Linux and Mac OSs.
+    * [Issue #1217](https://github.com/openziti/ziti/issues/1217) - Quickstart was improperly handling special characters in `ZITI_PWD`. Special characters are now supported for `ZITI_PWD` in quickstart functions.
 
 
 # Release 0.30.5

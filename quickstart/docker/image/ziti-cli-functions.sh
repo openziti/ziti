@@ -1024,6 +1024,11 @@ function initializeController {
 
   log_file="${ZITI_HOME-}/${ZITI_CTRL_NAME}-init.log"
   "${ZITI_BIN_DIR-}/ziti" controller edge init "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    echo -e "$(RED "  --- There was an error while initializing the controller, check the logs at ${log_file} ---")"
+    return 1
+  fi
   echo -e "${ZITI_CTRL_NAME} initialized. See $(BLUE "${log_file}") for details"
 }
 
@@ -1085,7 +1090,9 @@ function expressInstall {
 
   echo -e "$(PURPLE "********         Setting Up Controller        ********")"
   createControllerConfig
-  initializeController
+  if ! initializeController; then
+    return 1
+  fi
   startController
   echo "waiting for the controller to come online to allow the edge router to enroll"
   _wait_for_controller

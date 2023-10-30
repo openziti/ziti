@@ -1,6 +1,14 @@
 #!/bin/bash
 ziti_controller_cfg="${ZITI_HOME}/ziti-edge-controller.yaml"
 
+# Global Variables
+ASCI_RESTORE='\033[0m'
+ASCI_RED='\033[00;31m'
+
+function RED {  # Generally used for ERROR
+  echo "${ASCI_RED}${1-}${ASCI_RESTORE}"
+}
+
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="ziti-edge-controller"; fi
 if [[ "${ZITI_CTRL_NAME-}" == "" ]]; then export ZITI_CTRL_NAME="${ZITI_NETWORK}-controller"; fi
 
@@ -35,6 +43,10 @@ if [ ! -f "${ZITI_HOME}/access-control.init" ]; then
 
   # initialize the database with the admin user:
   "${ZITI_BIN_DIR}/ziti" controller edge init "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml" -u "${ZITI_USER}" -p "${ZITI_PWD}"
+  if [[ "$?" != 0 ]]; then
+    echo -e "$(RED "  --- There was an error while initializing the controller ---")"
+    exit 1
+  fi
 else
   echo "system has been initialized. starting the process."
   # don't move the sourcing of the file. yes it's duplicated but it needs to be here
