@@ -47,7 +47,7 @@ type ControllerType struct {
 }
 
 func (self *ControllerType) InitType(*model.Component) {
-	if self.Version != "" && !strings.HasPrefix(self.Version, "v") {
+	if self.Version != "" && self.Version != "latest" && !strings.HasPrefix(self.Version, "v") {
 		self.Version = "v" + self.Version
 	}
 }
