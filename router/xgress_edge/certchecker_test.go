@@ -50,7 +50,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			req := require.New(t)
 			certChecker, _ := newCertChecker()
 
-			now := time.Now()
+			now := time.Now().UTC()
 			notAfter := now.AddDate(0, 0, 7)
 
 			certChecker.id.Cert().Leaf.NotAfter = notAfter
@@ -59,7 +59,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			waitTime, err := certChecker.getWaitTime()
 
 			req.NoError(err)
-			req.LessOrEqual(waitTime, 1*time.Hour+1*time.Second)
+			req.Equal(0*time.Second, waitTime)
 		})
 
 		t.Run("both 4d out is 0", func(t *testing.T) {
@@ -210,7 +210,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			req := require.New(t)
 			certChecker, _ := newCertChecker()
 
-			now := time.Now()
+			now := time.Now().UTC()
 			notAfter := now.AddDate(0, 0, 7)
 
 			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
@@ -218,7 +218,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			waitTime, err := certChecker.getWaitTime()
 
 			req.NoError(err)
-			req.LessOrEqual(waitTime, 1*time.Hour+1*time.Second, waitTime)
+			req.Equal(0*time.Second, waitTime)
 		})
 
 		t.Run("server 7d30s out returns 0", func(t *testing.T) {
