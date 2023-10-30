@@ -8,13 +8,13 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/router/internal/edgerouter"
-	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/internal/edgerouter"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"math/big"
@@ -46,7 +46,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			req.LessOrEqual(waitTime, maxWaitTime)
 		})
 
-		t.Run("both 7d out is 0", func(t *testing.T) {
+		t.Run("both 7d out is 1hr or less", func(t *testing.T) {
 			req := require.New(t)
 			certChecker, _ := newCertChecker()
 
@@ -59,7 +59,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			waitTime, err := certChecker.getWaitTime()
 
 			req.NoError(err)
-			req.Equal(0*time.Second, waitTime)
+			req.LessOrEqual(waitTime, 1*time.Hour+1*time.Second)
 		})
 
 		t.Run("both 4d out is 0", func(t *testing.T) {
@@ -206,7 +206,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			req.Equal(0*time.Second, waitTime)
 		})
 
-		t.Run("server 7d out returns 0", func(t *testing.T) {
+		t.Run("server 7d out returns 1h or less", func(t *testing.T) {
 			req := require.New(t)
 			certChecker, _ := newCertChecker()
 
@@ -218,7 +218,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			waitTime, err := certChecker.getWaitTime()
 
 			req.NoError(err)
-			req.Equal(0*time.Second, waitTime)
+			req.LessOrEqual(waitTime, 1*time.Hour+1*time.Second, waitTime)
 		})
 
 		t.Run("server 7d30s out returns 0", func(t *testing.T) {

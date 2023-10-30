@@ -21,9 +21,9 @@ package tests
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/common/eid"
 	"github.com/pkg/errors"
 	"math/rand"
 	"sync"
@@ -122,7 +122,9 @@ func testClientFirstWithStrategy(t *testing.T, strategy string) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContext(clientConfig)
+
+	clientContext, err := ziti.NewContext(clientConfig)
+	ctx.Req.NoError(err)
 
 	logger := pfxlog.Logger()
 
@@ -265,7 +267,9 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContext(clientConfig)
+
+	clientContext, err := ziti.NewContext(clientConfig)
+	ctx.Req.NoError(err)
 
 	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
