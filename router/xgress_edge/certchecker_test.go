@@ -46,7 +46,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			req.LessOrEqual(waitTime, maxWaitTime)
 		})
 
-		t.Run("both 7d out is 1hr or less", func(t *testing.T) {
+		t.Run("both 7d out is 0", func(t *testing.T) {
 			req := require.New(t)
 			certChecker, _ := newCertChecker()
 
@@ -206,7 +206,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			req.Equal(0*time.Second, waitTime)
 		})
 
-		t.Run("server 7d out returns 1h or less", func(t *testing.T) {
+		t.Run("server 7d out returns 0", func(t *testing.T) {
 			req := require.New(t)
 			certChecker, _ := newCertChecker()
 
