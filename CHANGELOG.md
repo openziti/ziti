@@ -24,6 +24,14 @@ commandRateLimiter:
     maxQueued: 100
 ```
 
+If the rate limiter is enabled, the following metrics will be produced:
+
+* `command.limiter.queued_count` - guage of the current number of queued operations
+* `command.limiter.work_timer` - timer for operations. Includes the following:
+    * A histogram of how long operations take to complete 
+    * A meter showing that rate at which operations are executed
+    * A count of how many operations have been executed
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.15 -> v1.0.16](https://github.com/openziti/agent/compare/v1.0.15...v1.0.16)
