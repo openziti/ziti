@@ -2,11 +2,13 @@ package create
 
 import (
 	"github.com/openziti/ziti/ziti/constants"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -215,8 +217,6 @@ func TestEdgeRouterCannotBeWSSAndPrivate(t *testing.T) {
 }
 
 func TestEdgeRouterOutputPathDoesNotExist(t *testing.T) {
-	expectedErrorMsg := "stat /IDoNotExist: no such file or directory"
-
 	// Set the router options
 	routerOptions := clearEnvAndInitializeTestData()
 	routerOptions.TunnelerMode = defaultTunnelerMode
@@ -225,7 +225,8 @@ func TestEdgeRouterOutputPathDoesNotExist(t *testing.T) {
 
 	err := routerOptions.runEdgeRouter(&ConfigTemplateValues{})
 
-	assert.EqualError(t, err, expectedErrorMsg, "Error does not match, expected %s but got %s", expectedErrorMsg, err)
+	assert.Error(t, err)
+	assert.Equal(t, errors.Unwrap(err), syscall.ENOENT)
 }
 
 func TestExecuteCreateConfigRouterEdgeHasNonBlankTemplateValues(t *testing.T) {
