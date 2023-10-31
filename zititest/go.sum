@@ -213,8 +213,8 @@ github.com/go-kit/kit v0.9.0/go.mod h1:xBxKIO96dXMWWy0MnWVtmwkA9/13aqxPnvrjFYMA2
 github.com/go-logfmt/logfmt v0.3.0/go.mod h1:Qt1PoO58o5twSAckw1HlFXLmHsOX5/0LbT9GBnD5lWE=
 github.com/go-logfmt/logfmt v0.4.0/go.mod h1:3RMwSq7FuexP4Kalkev3ejPJsZTpXXBr9+V4qmtdjCk=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
-github.com/go-logr/logr v1.2.4 h1:g01GSCwiDw2xSZfjJ2/T9M+S6pFdcNtFYsp+Y43HYDQ=
-github.com/go-logr/logr v1.2.4/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
+github.com/go-logr/logr v1.3.0 h1:2y3SDp0ZXuc6/cjLSZ+Q3ir+QB9T/iG5yYRXqsagWSY=
+github.com/go-logr/logr v1.3.0/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-logr/stdr v1.2.2 h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=
 github.com/go-logr/stdr v1.2.2/go.mod h1:mMo/vtBO5dYbehREoey6XUKy/eSumjCCveDpRre4VKE=
 github.com/go-ole/go-ole v1.2.6/go.mod h1:pprOEPIfldk/42T2oK7lQ4v4JSDwmV0As9GaiUsvbm0=
@@ -644,8 +644,8 @@ github.com/openziti/metrics v1.2.37 h1:5yWvMwQT6X43LDlNVcUtqAPJQXfKtbWSYoCIiOfXz
 github.com/openziti/metrics v1.2.37/go.mod h1:jIL9iilxby8tR98C18uZaSe6bRG15ItR8XF2hmMt8vs=
 github.com/openziti/runzmd v1.0.33 h1:tOyjRoUuVXIo1z1pNU32jALWkMmhzsSaDrhLtuOn3Ts=
 github.com/openziti/runzmd v1.0.33/go.mod h1:8c/uvZR/XWXQNllTq6LuTpfKL2DTNxfI2X2wYhgRwik=
-github.com/openziti/sdk-golang v0.20.123 h1:VD0xmA6fbiHZDtdQqTAKZeJ9prb66gyTVphjHSSoxlo=
-github.com/openziti/sdk-golang v0.20.123/go.mod h1:AbQs2gfbVsmL7/xXA2VTqAc84dFeQsyVkWBeWKNd1d4=
+github.com/openziti/sdk-golang v0.20.129 h1:FjvXsGFxEiHq89sNyLSvNymruACFW5tbhkgZ3VCg2pE=
+github.com/openziti/sdk-golang v0.20.129/go.mod h1:ZpJ7HCcIQbp8XiSno3YXkfhoDIbgjCjS2ScK2bda8eo=
 github.com/openziti/secretstream v0.1.13 h1:grp53Q5gCFPXv6okwWHDVvqBBk2BhD0ikHwfV3Adhnc=
 github.com/openziti/secretstream v0.1.13/go.mod h1:M4DYavDc3TVF/eemNqp5Fa+zGuYTNa0HTGSz/GkgUzA=
 github.com/openziti/storage v0.2.23 h1:R5ZBGDGC/LvOz3fE/GlevwbPZ3HL7VxYEvlhKuezvNU=

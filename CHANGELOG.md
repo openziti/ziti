@@ -41,7 +41,9 @@ If the rate limiter is enabled, the following metrics will be produced:
 
 * github.com/openziti/identity: [v1.0.64 -> v1.0.66](https://github.com/openziti/identity/compare/v1.0.64...v1.0.66)
 * github.com/openziti/metrics: [v1.2.36 -> v1.2.37](https://github.com/openziti/metrics/compare/v1.2.36...v1.2.37)
-* github.com/openziti/sdk-golang: [v0.20.122 -> v0.20.123](https://github.com/openziti/sdk-golang/compare/v0.20.122...v0.20.123)
+* github.com/openziti/sdk-golang: [v0.20.122 -> v0.20.129](https://github.com/openziti/sdk-golang/compare/v0.20.122...v0.20.129)
+    * [Issue #443](https://github.com/openziti/sdk-golang/issues/443) - Don't send close in reponse to a close on a listener
+
 * github.com/openziti/secretstream: [v0.1.12 -> v0.1.13](https://github.com/openziti/secretstream/compare/v0.1.12...v0.1.13)
 * github.com/openziti/storage: [v0.2.20 -> v0.2.23](https://github.com/openziti/storage/compare/v0.2.20...v0.2.23)
 * github.com/openziti/transport/v2: [v2.0.109 -> v2.0.113](https://github.com/openziti/transport/compare/v2.0.109...v2.0.113)

@@ -15,7 +15,7 @@ require (
 	github.com/openziti/fablab v0.5.20
 	github.com/openziti/foundation/v2 v2.0.33
 	github.com/openziti/identity v1.0.66
-	github.com/openziti/sdk-golang v0.20.123
+	github.com/openziti/sdk-golang v0.20.129
 	github.com/openziti/storage v0.2.23
 	github.com/openziti/transport/v2 v2.0.113
 	github.com/openziti/ziti v0.28.3
@@ -62,7 +62,7 @@ require (
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
 	github.com/go-acme/lego/v4 v4.14.2 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
-	github.com/go-logr/logr v1.2.4 // indirect
+	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
