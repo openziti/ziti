@@ -115,10 +115,6 @@ func (dt *destinationTable) addDestination(addr xgress.Address, destination Dest
 	dt.destinations.Set(string(addr), destination)
 }
 
-func (dt *destinationTable) addDestinationIfAbsent(addr xgress.Address, destination Destination) bool {
-	return dt.destinations.SetIfAbsent(string(addr), destination)
-}
-
 func (dt *destinationTable) getDestination(addr xgress.Address) (Destination, bool) {
 	if dst, found := dt.destinations.Get(string(addr)); found {
 		return dst, true
@@ -128,6 +124,12 @@ func (dt *destinationTable) getDestination(addr xgress.Address) (Destination, bo
 
 func (dt *destinationTable) removeDestination(addr xgress.Address) {
 	dt.destinations.Remove(string(addr))
+}
+
+func (dt *destinationTable) removeDestinationIfMatches(addr xgress.Address, destination Destination) {
+	dt.destinations.RemoveCb(string(addr), func(key string, v Destination, exists bool) bool {
+		return exists && destination == v
+	})
 }
 
 func (dt *destinationTable) linkDestinationToCircuit(circuitId string, address xgress.Address) {
