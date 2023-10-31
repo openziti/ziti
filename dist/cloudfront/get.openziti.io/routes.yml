@@ -28,3 +28,7 @@
 - get: /pack/
   raw: /openziti/ziti-tunnel-sdk-c/main/
   file: package-repos.gpg
+  
+- get: /zdew/
+  raw: /openziti/desktop-edge-win/main/
+  file: version-check.json
