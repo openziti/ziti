@@ -18,14 +18,14 @@ package forwarder
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/trace"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/metrics"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -110,14 +110,12 @@ func (forwarder *Forwarder) HasDestination(address xgress.Address) bool {
 }
 
 func (forwarder *Forwarder) RegisterLink(link xlink.LinkDestination) error {
-	if !forwarder.destinations.addDestinationIfAbsent(xgress.Address(link.Id()), link) {
-		return errors.Errorf("unable to register link %v as it is already registered", link.Id())
-	}
+	forwarder.destinations.addDestination(xgress.Address(link.Id()), link)
 	return nil
 }
 
 func (forwarder *Forwarder) UnregisterLink(link xlink.LinkDestination) {
-	forwarder.destinations.removeDestination(xgress.Address(link.Id()))
+	forwarder.destinations.removeDestinationIfMatches(xgress.Address(link.Id()), link)
 }
 
 func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
