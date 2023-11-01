@@ -36,7 +36,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/raft v1.5.0
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0
-	github.com/jedib0t/go-pretty/v6 v6.4.8
+	github.com/jedib0t/go-pretty/v6 v6.4.9
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/kataras/go-events v0.0.3
