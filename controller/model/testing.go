@@ -21,15 +21,15 @@ import (
 	"crypto/x509"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/common/eid"
-	edgeconfig "github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/jwtsigner"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/change"
+	edgeconfig "github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/jwtsigner"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/persistence"
 	"testing"
 	"time"
 )
@@ -41,6 +41,10 @@ var _ HostController = &testHostController{}
 type testHostController struct {
 	closeNotify chan struct{}
 	ctx         *persistence.TestContext
+}
+
+func (self *testHostController) GetRaftIndex() uint64 {
+	return 0
 }
 
 func (self *testHostController) GetPeerSigners() []*x509.Certificate {

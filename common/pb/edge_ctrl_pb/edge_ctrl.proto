@@ -158,6 +158,7 @@ message DataState {
   message Event {
     Action action = 1;
     uint64 index = 2;
+    bool isSynthetic = 3;
 
     oneof Model{
       Identity identity = 10;

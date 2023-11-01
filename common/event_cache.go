@@ -57,14 +57,21 @@ func (cache *ForgetfulEventCache) Store(event *edge_ctrl_pb.DataState_Event, onS
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
+	// Synthetic events are not backed by any kind of data store that provides and index. They are not stored and
+	// trigger the on success callback immediately.
+	if event.IsSynthetic {
+		onSuccess(event.Index, event)
+		return nil
+	}
+
 	if cache.index != nil {
 		if *cache.index >= event.Index {
 			//already past this index
 			return nil
 		}
 
-		if (*cache.index + 1) != event.Index {
-			return fmt.Errorf("out of order event detected, currentIndex: %d, expectedIndex: %d, recievedIndex: %d, type :%T", *cache.index, (*cache.index)+1, event.Index, cache)
+		if *cache.index >= event.Index {
+			return fmt.Errorf("out of order event detected, currentIndex: %d, recievedIndex: %d, type :%T", *cache.index, event.Index, cache)
 		}
 	}
 
@@ -135,15 +142,20 @@ func (cache *LoggingEventCache) Store(event *edge_ctrl_pb.DataState_Event, onSuc
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
-	currentIndex, ok := cache.currentIndex()
-	expectedIndex := currentIndex + 1
+	// Synthetic events are not backed by any kind of data store that provides and index. They are not stored and
+	// trigger the on success callback immediately.
+	if event.IsSynthetic {
+		onSuccess(event.Index, event)
+		return nil
+	}
 
-	if ok && expectedIndex != event.Index {
-		return fmt.Errorf("out of order event detected, currentIndex: %d, expectedIndex: %d, recievedIndex: %d, type :%T", currentIndex, expectedIndex, event.Index, cache)
+	currentIndex, ok := cache.currentIndex()
+
+	if ok && currentIndex >= event.Index {
+		return fmt.Errorf("out of order event detected, currentIndex: %d, recievedIndex: %d, type :%T", currentIndex, event.Index, cache)
 	}
 
 	targetLogIndex := uint64(0)
-
 	targetLogIndex = (cache.HeadLogIndex + 1) % cache.LogSize
 
 	// delete old value if we have looped

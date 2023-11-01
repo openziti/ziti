@@ -132,6 +132,10 @@ func (c *Controller) IsRaftEnabled() bool {
 	return c.raftController != nil
 }
 
+func (c *Controller) GetRaftIndex() uint64 {
+	return c.raftController.Raft.LastIndex()
+}
+
 func (c *Controller) GetDb() boltz.Db {
 	return c.config.Db
 }

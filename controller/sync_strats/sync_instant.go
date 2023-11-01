@@ -45,6 +45,7 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -119,7 +120,9 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 	strategy.RouterDataModel = common.NewSenderRouterDataModel(logSize, bufferSize)
 
 	if strategy.ae.HostController.IsRaftEnabled() {
-		strategy.indexProvider = &RaftIndexProvider{}
+		strategy.indexProvider = &RaftIndexProvider{
+			index: strategy.ae.GetHostController().GetRaftIndex(),
+		}
 	} else {
 		strategy.indexProvider = &NonHaIndexProvider{
 			ae: strategy.ae,
@@ -659,7 +662,33 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 				for _, curEvent := range events {
 					err = strategy.sendDataStatEvent(rtx, curEvent)
 					if err != nil {
-						break
+						pfxlog.Logger().WithError(err).
+							WithField("eventIndex", curEvent.Index).
+							WithField("evenType", reflect.TypeOf(curEvent).String()).
+							WithField("eventAction", curEvent.Action).
+							WithField("eventIsSynthetic", curEvent.IsSynthetic).
+							Error("could not send data state event")
+					}
+				}
+
+				for tuple := range strategy.RouterDataModel.PublicKeys.IterBuffered() {
+					peerEvent := &edge_ctrl_pb.DataState_Event{
+						IsSynthetic: true,
+						Action:      edge_ctrl_pb.DataState_Create,
+						Model: &edge_ctrl_pb.DataState_Event_PublicKey{
+							PublicKey: newPublicKey(tuple.Val.Data, tuple.Val.Format, tuple.Val.Usages),
+						},
+					}
+
+					err = strategy.sendDataStatEvent(rtx, peerEvent)
+
+					if err != nil {
+						pfxlog.Logger().WithError(err).
+							WithField("eventIndex", peerEvent.Index).
+							WithField("evenType", reflect.TypeOf(peerEvent).String()).
+							WithField("eventAction", peerEvent.Action).
+							WithField("eventIsSynthetic", peerEvent.IsSynthetic).
+							Error("could not send data state event for peers")
 					}
 				}
 			}
@@ -1178,9 +1207,11 @@ func (strategy *InstantStrategy) PostureCheckDelete(index uint64, postureCheck *
 }
 
 func (strategy *InstantStrategy) PeerAdded(peers []*event.ClusterPeer) {
+
 	for _, peer := range peers {
 		strategy.Apply(&edge_ctrl_pb.DataState_Event{
-			Action: edge_ctrl_pb.DataState_Create,
+			IsSynthetic: true,
+			Action:      edge_ctrl_pb.DataState_Create,
 			Model: &edge_ctrl_pb.DataState_Event_PublicKey{
 				PublicKey: newPublicKey(peer.ServerCert[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation}),
 			},

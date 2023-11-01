@@ -20,13 +20,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/cert"
 	edgeconfig "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/jwtsigner"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/controller/persistence"
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -57,6 +57,7 @@ type HostController interface {
 	IsRaftEnabled() bool
 	Identity() identity.Identity
 	GetPeerSigners() []*x509.Certificate
+	GetRaftIndex() uint64
 }
 
 type Schemas interface {

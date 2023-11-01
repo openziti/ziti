@@ -202,6 +202,7 @@ type HostController interface {
 	IsRaftEnabled() bool
 	GetPeerSigners() []*x509.Certificate
 	GetEventDispatcher() event.Dispatcher
+	GetRaftIndex() uint64
 }
 
 type Schemes struct {

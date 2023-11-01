@@ -485,9 +485,15 @@ func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (int
 		if err := f.Error(); err != nil {
 			return err
 		}
+		resp := f.Response()
 
-		returnValue.Store(f.Response())
+		if resp == nil {
+			return errors.New("response was nil")
+		}
+
+		returnValue.Store(resp)
 		index.Store(f.Index())
+
 		return nil
 	})
 

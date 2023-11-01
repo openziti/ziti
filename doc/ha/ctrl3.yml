@@ -5,7 +5,7 @@ raft:
   dataDir: ./data/ctrl3
 
 identity:
-  cert: ./pki/ctrl3/certs/server.cert
+  cert: ./pki/ctrl3/certs/server.chain.pem
   key: ./pki/ctrl3/keys/server.key
   ca: ./pki/ctrl3/certs/server.chain.pem
 
