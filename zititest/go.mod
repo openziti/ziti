@@ -12,7 +12,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.16
 	github.com/openziti/channel/v2 v2.0.105
-	github.com/openziti/fablab v0.5.20
+	github.com/openziti/fablab v0.5.25
 	github.com/openziti/foundation/v2 v2.0.33
 	github.com/openziti/identity v1.0.66
 	github.com/openziti/sdk-golang v0.20.129
@@ -40,7 +40,7 @@ require (
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
-	github.com/aws/aws-sdk-go v1.45.13 // indirect
+	github.com/aws/aws-sdk-go v1.47.0 // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
@@ -94,7 +94,7 @@ require (
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d // indirect
-	github.com/jedib0t/go-pretty/v6 v6.4.8 // indirect
+	github.com/jedib0t/go-pretty/v6 v6.4.9 // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
