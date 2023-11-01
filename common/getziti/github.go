@@ -178,15 +178,21 @@ func DownloadGitHubReleaseAsset(fullUrl string, filepath string) (err error) {
 }
 
 func FindVersionAndInstallGitHubRelease(zitiApp string, zitiAppGitHub string, targetOS, targetArch string, binDir string, version string, verbose bool) error {
-	if version != "" {
+	releaseVersion := version
+	if version != "" && version != "latest" {
 		if _, err := semver.Make(strings.TrimPrefix(version, "v")); err != nil {
 			return err
 		}
 	} else {
 		version = "latest"
+		v, err := GetLatestGitHubReleaseVersion(zitiApp, verbose)
+		if err != nil {
+			return err
+		}
+		releaseVersion = v.String()
 	}
 
-	release, err := GetLatestGitHubReleaseAsset(zitiApp, zitiAppGitHub, version, verbose)
+	release, err := GetLatestGitHubReleaseAsset(zitiApp, zitiAppGitHub, releaseVersion, verbose)
 	if err != nil {
 		return err
 	}
@@ -248,14 +254,17 @@ func InstallGitHubRelease(zitiApp string, release *GitHubReleasesData, binDir st
 		if zitiApp == c.ZITI {
 			count := 0
 			zitiFileName := "ziti-" + version
-			semVer, err := versions.ParseSemVer(version)
-			if err != nil {
-				return err
-			}
 			expectedPath := "ziti"
-			pathChangedVersion := versions.MustParseSemVer("0.29.0")
-			if semVer.CompareTo(pathChangedVersion) < 0 {
-				expectedPath = "ziti/ziti"
+			if version != "latest" {
+				semVer, err := versions.ParseSemVer(version)
+				if err != nil {
+					return err
+				}
+
+				pathChangedVersion := versions.MustParseSemVer("0.29.0")
+				if semVer.CompareTo(pathChangedVersion) < 0 {
+					expectedPath = "ziti/ziti"
+				}
 			}
 			err = UnTarGz(fullPath, binDir, func(path string) (string, bool) {
 				if path == expectedPath {

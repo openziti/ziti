@@ -405,7 +405,7 @@ function persistEnvironmentValues {
   # Store all ZITI_ variables in the environment file, creating the directory if necessary
   tmpfilepath="$(mktemp)"
   mkdir -p "$(dirname "${filepath}")" && echo "" > "${tmpfilepath}"
-  for zEnvVar in $(set | grep -e "^ZITI_" | sort); do
+  for zEnvVar in $(set | grep -e "^ZITI_" | sed "s/='\(.*\)'\$/=\1/" | sort); do
       envvar="$(echo "${zEnvVar}" | cut -d '=' -f1)"
       envval="$(echo "${zEnvVar}" | cut -d '=' -f2-1000)"
       echo 'if [[ "$'${envvar}'" == "" ]]; then export '${envvar}'="'${envval}'"; else echo "NOT OVERRIDING: env var '${envvar}' already set. using existing value"; fi' >> "${tmpfilepath}"
@@ -717,10 +717,10 @@ function getZiti {
         if ! test -f "${ZITI_ENV_FILE}"; then
           echo -e "  * $(YELLOW "WARN: The OpenZiti Environment file could not be found to update ziti binary related paths")"
         else
-          sed "s/export ZITI_BIN_DIR=.*/export ZITI_BIN_DIR=${ZITI_BIN_DIR}/g"
-          sed "s/export ZITI_BINARIES_VERSION=.*/export ZITI_BINARIES_VERSION=${ZITI_BINARIES_VERSION}/g"
-          sed "s/export ZITI_BINARIES_FILE=.*/export ZITI_BINARIES_FILE=${ZITI_BINARIES_FILE}/g"
-          sed "s/export ZITI_BINARIES_FILE_ABSPATH=.*/d"
+          sed -i.bak "s/export ZITI_BIN_DIR=.*/export ZITI_BIN_DIR=$(echo ${ZITI_BIN_DIR} | sed 's/\//\\\//g')/g" "${ZITI_ENV_FILE}"
+          sed -i.bak "s/export ZITI_BINARIES_VERSION=.*/export ZITI_BINARIES_VERSION=$(echo ${ZITI_BINARIES_VERSION} | sed 's/\//\\\//g')/g" "${ZITI_ENV_FILE}"
+          sed -i.bak "s/export ZITI_BINARIES_FILE=.*/export ZITI_BINARIES_FILE=$(echo ${ZITI_BINARIES_FILE} | sed 's/\//\\\//g')/g" "${ZITI_ENV_FILE}"
+          sed -i.bak "/export ZITI_BINARIES_FILE_ABSPATH=.*/d" "${ZITI_ENV_FILE}"
         fi
 
         echo -e "$(YELLOW 'Getting latest binaries ')$(BLUE "${ZITI_BIN_DIR}")"
@@ -1024,6 +1024,11 @@ function initializeController {
 
   log_file="${ZITI_HOME-}/${ZITI_CTRL_NAME}-init.log"
   "${ZITI_BIN_DIR-}/ziti" controller edge init "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    echo -e "$(RED "  --- There was an error while initializing the controller, check the logs at ${log_file} ---")"
+    return 1
+  fi
   echo -e "${ZITI_CTRL_NAME} initialized. See $(BLUE "${log_file}") for details"
 }
 
@@ -1085,7 +1090,9 @@ function expressInstall {
 
   echo -e "$(PURPLE "********         Setting Up Controller        ********")"
   createControllerConfig
-  initializeController
+  if ! initializeController; then
+    return 1
+  fi
   startController
   echo "waiting for the controller to come online to allow the edge router to enroll"
   _wait_for_controller
@@ -1553,31 +1560,33 @@ function performMigration {
   fi
 
   # Replace old Env Vars in the env file with new ones
-  # NOTE: the '' after -i is required for Mac, otherwise an error is thrown
-  sed -i '' 's/ZITI_CONTROLLER_HOSTNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CONTROLLER_INTERMEDIATE_NAME/ZITI_PKI_CTRL_INTERMEDIATE_NAME/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CONTROLLER_RAWNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CONTROLLER_ROOTCA_NAME/ZITI_PKI_CTRL_ROOTCA_NAME/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CTRL_EDGE_PORT/ZITI_CTRL_EDGE_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CTRL_IDENTITY_CA/ZITI_PKI_CTRL_CA/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CTRL_IDENTITY_CERT/ZITI_PKI_CTRL_CERT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CTRL_IDENTITY_KEY/ZITI_PKI_CTRL_KEY/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CTRL_IDENTITY_SERVER_CERT/ZITI_PKI_CTRL_SERVER_CERT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_CTRL_PORT/ZITI_CTRL_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_CONTROLLER_HOSTNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME/ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_CONTROLLER_PORT/ZITI_CTRL_EDGE_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_CONTROLLER_RAWNAME/ZITI_CTRL_NAME/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_CONTROLLER_ROOTCA_NAME/ZITI_PKI_CTRL_EDGE_ROOTCA_NAME/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_CTRL_IDENTITY_CA/ZITI_PKI_EDGE_CA/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_CTRL_IDENTITY_CERT/ZITI_PKI_EDGE_CERT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_CTRL_IDENTITY_KEY/ZITI_PKI_EDGE_KEY/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT/ZITI_PKI_EDGE_SERVER_CERT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_ROUTER_RAWNAME/ZITI_ROUTER_NAME/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_PKI_OS_SPECIFIC/ZITI_PKI/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_SIGNING_CERT/ZITI_PKI_SIGNER_CERT/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_SIGNING_KEY/ZITI_PKI_SIGNER_KEY/g' "${ZITI_ENV_FILE}"
-  sed -i '' 's/ZITI_ROUTER_HOSTNAME/ZITI_ROUTER_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
+  # NOTE: use of -i behaves differently for Mac vs Linux. -i.bak is a workaround so the command works in both OSs
+  sed -i.bak 's/ZITI_CONTROLLER_HOSTNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_CONTROLLER_INTERMEDIATE_NAME/ZITI_PKI_CTRL_INTERMEDIATE_NAME/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_CONTROLLER_RAWNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_CONTROLLER_ROOTCA_NAME/ZITI_PKI_CTRL_ROOTCA_NAME/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_CTRL_EDGE_PORT/ZITI_CTRL_EDGE_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_CTRL_IDENTITY_CA/ZITI_PKI_CTRL_CA/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_CTRL_IDENTITY_CERT/ZITI_PKI_CTRL_CERT/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_CTRL_IDENTITY_KEY/ZITI_PKI_CTRL_KEY/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_CTRL_IDENTITY_SERVER_CERT/ZITI_PKI_CTRL_SERVER_CERT/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_CTRL_PORT/ZITI_CTRL_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_EDGE_CONTROLLER_HOSTNAME/ZITI_CTRL_EDGE_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME/ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_EDGE_CONTROLLER_PORT/ZITI_CTRL_EDGE_ADVERTISED_PORT/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_EDGE_CONTROLLER_RAWNAME/ZITI_CTRL_NAME/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_EDGE_CONTROLLER_ROOTCA_NAME/ZITI_PKI_CTRL_EDGE_ROOTCA_NAME/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_EDGE_CTRL_IDENTITY_CA/ZITI_PKI_EDGE_CA/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_EDGE_CTRL_IDENTITY_CERT/ZITI_PKI_EDGE_CERT/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_EDGE_CTRL_IDENTITY_KEY/ZITI_PKI_EDGE_KEY/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT/ZITI_PKI_EDGE_SERVER_CERT/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_ROUTER_RAWNAME/ZITI_ROUTER_NAME/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_PKI_OS_SPECIFIC/ZITI_PKI/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_SIGNING_CERT/ZITI_PKI_SIGNER_CERT/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_SIGNING_KEY/ZITI_PKI_SIGNER_KEY/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_ROUTER_HOSTNAME/ZITI_ROUTER_ADVERTISED_ADDRESS/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_SIGNING_ROOTCA_NAME/ZITI_PKI_SIGNER_ROOTCA_NAME/g' "${ZITI_ENV_FILE}"
+  sed -i.bak 's/ZITI_SIGNING_INTERMEDIATE_NAME/ZITI_PKI_SIGNER_INTERMEDIATE_NAME/g' "${ZITI_ENV_FILE}"
 
   # Update environment variables if currently set
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" != "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_EDGE_CONTROLLER_HOSTNAME}"; fi
@@ -1600,14 +1609,16 @@ function performMigration {
   if [[ "${ZITI_SIGNING_CERT-}" != "" ]]; then export ZITI_PKI_SIGNER_CERT="${ZITI_SIGNING_CERT}"; fi
   if [[ "${ZITI_SIGNING_KEY-}" != "" ]]; then export ZITI_PKI_SIGNER_KEY="${ZITI_SIGNING_KEY}"; fi
   if [[ "${ZITI_ROUTER_HOSTNAME-}" != "" ]]; then export ZITI_ROUTER_ADVERTISED_ADDRESS="${ZITI_ROUTER_HOSTNAME}"; fi
+  if [[ "${ZITI_SIGNING_ROOTCA_NAME-}" != "" ]]; then export ZITI_PKI_SIGNER_ROOTCA_NAME="${ZITI_SIGNING_ROOTCA_NAME}"; fi
+  if [[ "${ZITI_SIGNING_INTERMEDIATE_NAME-}" != "" ]]; then export ZITI_PKI_SIGNER_INTERMEDIATE_NAME="${ZITI_SIGNING_INTERMEDIATE_NAME}"; fi
 
   # Update the necessary ziti binary references (others are not needed or are overwritten later)
   if [[ "${ZITI_BIN_DIR-}" != "" ]]; then
-    sed '/^export ZITI_BIN_DIR=/d' "${ZITI_ENV_FILE}"
+    sed -i.bak '/^export ZITI_BIN_DIR=/d' "${ZITI_ENV_FILE}"
     echo "export ZITI_BIN_DIR=${ZITI_BIN_DIR}" >> "${ZITI_ENV_FILE}"
   fi
   if [[ "${ZITI_BINARIES_VERSION-}" != "" ]]; then
-    sed '/^export ZITI_BINARIES_VERSION=/d' "${ZITI_ENV_FILE}"
+    sed -i.bak '/^export ZITI_BINARIES_VERSION=/d' "${ZITI_ENV_FILE}"
     echo "export ZITI_BINARIES_VERSION=${ZITI_BINARIES_VERSION}" >> "${ZITI_ENV_FILE}"
   fi
 

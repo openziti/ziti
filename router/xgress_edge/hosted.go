@@ -66,7 +66,7 @@ func (registry *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator)
 	registry.services.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator != newest && newest.token == terminator.token && newest.instance == terminator.instance {
-			terminator.close(true, "duplicate terminator") // don't notify, channel is already closed, we can't send messages
+			terminator.close(false, "duplicate terminator") // don't notify, channel is already closed, we can't send messages
 			registry.services.Delete(key)
 			pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
 				WithField("sessionToken", terminator.token).

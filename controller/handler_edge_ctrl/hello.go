@@ -21,16 +21,15 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 )
 
 type helloHandler struct {
 	appEnv   *env.AppEnv
-	callback func(r *network.Router, msg *channel.Message, respHello *edge_ctrl_pb.ClientHello)
+	callback func(routerId string, msg *channel.Message, respHello *edge_ctrl_pb.ClientHello)
 }
 
-func NewHelloHandler(appEnv *env.AppEnv, callback func(r *network.Router, msg *channel.Message, respHello *edge_ctrl_pb.ClientHello)) *helloHandler {
+func NewHelloHandler(appEnv *env.AppEnv, callback func(routerId string, msg *channel.Message, respHello *edge_ctrl_pb.ClientHello)) *helloHandler {
 	return &helloHandler{
 		appEnv:   appEnv,
 		callback: callback,
@@ -48,12 +47,5 @@ func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 		return
 	}
 
-	r := h.appEnv.GetHostController().GetNetwork().GetConnectedRouter(ch.Id())
-	if r == nil {
-		pfxlog.Logger().Errorf("could not find router %v, closing channel", ch.Id())
-		_ = ch.Close()
-		return
-	}
-
-	h.callback(r, msg, respHello)
+	h.callback(ch.Id(), msg, respHello)
 }

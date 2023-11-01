@@ -24,12 +24,34 @@ commandRateLimiter:
     maxQueued: 100
 ```
 
+If the rate limiter is enabled, the following metrics will be produced:
+
+* `command.limiter.queued_count` - guage of the current number of queued operations
+* `command.limiter.work_timer` - timer for operations. Includes the following:
+    * A histogram of how long operations take to complete 
+    * A meter showing that rate at which operations are executed
+    * A count of how many operations have been executed
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.15 -> v1.0.16](https://github.com/openziti/agent/compare/v1.0.15...v1.0.16)
-* github.com/openziti/ziti: [v0.30.5 -> v0.30.6](https://github.com/openziti/ziti/compare/v0.30.5...v0.30.6)
+* github.com/openziti/channel/v2: [v2.0.101 -> v2.0.105](https://github.com/openziti/channel/compare/v2.0.101...v2.0.105)
+* github.com/openziti/edge-api: [v0.25.38 -> v0.26.0](https://github.com/openziti/edge-api/compare/v0.25.38...v0.26.0)
+    * [Issue #49](https://github.com/openziti/edge-api/issues/49) - Add 429 responses to allow indicating that the server is too busy
+
+* github.com/openziti/identity: [v1.0.64 -> v1.0.66](https://github.com/openziti/identity/compare/v1.0.64...v1.0.66)
+* github.com/openziti/metrics: [v1.2.36 -> v1.2.37](https://github.com/openziti/metrics/compare/v1.2.36...v1.2.37)
+* github.com/openziti/sdk-golang: [v0.20.122 -> v0.20.123](https://github.com/openziti/sdk-golang/compare/v0.20.122...v0.20.123)
+* github.com/openziti/secretstream: [v0.1.12 -> v0.1.13](https://github.com/openziti/secretstream/compare/v0.1.12...v0.1.13)
+* github.com/openziti/storage: [v0.2.20 -> v0.2.23](https://github.com/openziti/storage/compare/v0.2.20...v0.2.23)
+* github.com/openziti/transport/v2: [v2.0.109 -> v2.0.113](https://github.com/openziti/transport/compare/v2.0.109...v2.0.113)
+* github.com/openziti/ziti: [v0.30.5 -> v0.31.0](https://github.com/openziti/ziti/compare/v0.30.5...v0.31.0)
+    * [Issue #1471](https://github.com/openziti/ziti/issues/1471) - Router links not resilient to controller crash
+    * [Issue #1468](https://github.com/openziti/ziti/issues/1468) - Quickstart quietly fails if password is < 5 characters long
     * [Issue #1445](https://github.com/openziti/ziti/issues/1445) - Add controller update guardrail
     * [Issue #1442](https://github.com/openziti/ziti/issues/1442) - Network watchdog not shutting down when controller shuts down
+    * [Issue #1465](https://github.com/openziti/ziti/issues/1465) - Upgrade functions `getZiti` and `performMigration` were only functional on Mac OS, now they are functional for Linux and Mac OSs.
+    * [Issue #1217](https://github.com/openziti/ziti/issues/1217) - Quickstart was improperly handling special characters in `ZITI_PWD`. Special characters are now supported for `ZITI_PWD` in quickstart functions.
 
 
 # Release 0.30.5

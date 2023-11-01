@@ -52,6 +52,8 @@ func (self *closeHandler) HandleClose(ch channel.Channel) {
 			WithField("linkId", self.link.Id()).
 			WithField("routerId", self.link.DestinationId())
 
+		self.forwarder.UnregisterLink(self.link)
+
 		// ensure that both parts of a split link are closed, if one side closes
 		go func() {
 			_ = self.link.Close()
@@ -72,7 +74,6 @@ func (self *closeHandler) HandleClose(ch channel.Channel) {
 			})
 		})
 
-		self.forwarder.UnregisterLink(self.link)
 		close(self.closeNotify)
 	}
 }

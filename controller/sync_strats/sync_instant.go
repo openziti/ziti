@@ -492,14 +492,18 @@ func (strategy *InstantStrategy) sendHello(rtx *RouterSender) {
 	}
 }
 
-func (strategy *InstantStrategy) ReceiveResync(r *network.Router, _ *edge_ctrl_pb.RequestClientReSync) {
-	rtx := strategy.rtxMap.Get(r.Id)
+func (strategy *InstantStrategy) ReceiveResync(routerId string, _ *edge_ctrl_pb.RequestClientReSync) {
+	rtx := strategy.rtxMap.Get(routerId)
 
 	if rtx == nil {
+		routerName := "<unable to retrieve>"
+		if router, _ := strategy.ae.Managers.Router.Read(routerId); router != nil {
+			routerName = router.Name
+		}
 		pfxlog.Logger().
 			WithField("strategy", strategy.Type()).
-			WithField("routerId", r.Id).
-			WithField("routerName", r.Name).
+			WithField("routerId", routerId).
+			WithField("routerName", routerName).
 			Error("received resync from router that is currently not tracked by the strategy, dropping resync")
 		return
 	}
@@ -513,14 +517,18 @@ func (strategy *InstantStrategy) ReceiveResync(r *network.Router, _ *edge_ctrl_p
 	strategy.receivedClientHelloQueue <- rtx
 }
 
-func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, msg *channel.Message, respHello *edge_ctrl_pb.ClientHello) {
-	rtx := strategy.rtxMap.Get(r.Id)
+func (strategy *InstantStrategy) ReceiveClientHello(routerId string, msg *channel.Message, respHello *edge_ctrl_pb.ClientHello) {
+	rtx := strategy.rtxMap.Get(routerId)
 
 	if rtx == nil {
+		routerName := "<unable to retrieve>"
+		if router, _ := strategy.ae.Managers.Router.Read(routerId); router != nil {
+			routerName = router.Name
+		}
 		pfxlog.Logger().
 			WithField("strategy", strategy.Type()).
-			WithField("routerId", r.Id).
-			WithField("routerName", r.Name).
+			WithField("routerId", routerId).
+			WithField("routerName", routerName).
 			Error("received hello from router that is currently not tracked by the strategy, dropping hello")
 		return
 	}
@@ -530,7 +538,12 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, msg *chan
 		WithField("protocols", respHello.Protocols).
 		WithField("protocolPorts", respHello.ProtocolPorts).
 		WithField("listeners", respHello.Listeners).
-		WithField("data", respHello.Data)
+		WithField("data", respHello.Data).
+		WithField("version", rtx.Router.VersionInfo.Version).
+		WithField("revision", rtx.Router.VersionInfo.Revision).
+		WithField("buildDate", rtx.Router.VersionInfo.BuildDate).
+		WithField("os", rtx.Router.VersionInfo.OS).
+		WithField("arch", rtx.Router.VersionInfo.Arch)
 
 	if supported, ok := msg.Headers.GetBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel)); ok && supported {
 		rtx.SupportsRouterModel = true
@@ -538,16 +551,6 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, msg *chan
 		if index, ok := msg.Headers.GetUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex)); ok {
 			rtx.RouterModelIndex = &index
 		}
-	}
-
-	serverVersion := build.GetBuildInfo().Version()
-
-	if r.VersionInfo != nil {
-		logger = logger.WithField("version", r.VersionInfo.Version).
-			WithField("revision", r.VersionInfo.Revision).
-			WithField("buildDate", r.VersionInfo.BuildDate).
-			WithField("os", r.VersionInfo.OS).
-			WithField("arch", r.VersionInfo.Arch)
 	}
 
 	protocols := map[string]string{}
@@ -568,8 +571,9 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, msg *chan
 
 	rtx.SetHostname(respHello.Hostname)
 	rtx.SetProtocols(protocols)
-	rtx.SetVersionInfo(*r.VersionInfo)
+	rtx.SetVersionInfo(*rtx.Router.VersionInfo)
 
+	serverVersion := build.GetBuildInfo().Version()
 	logger.Infof("edge router sent hello with version [%s] to controller with version [%s]", respHello.Version, serverVersion)
 	strategy.receivedClientHelloQueue <- rtx
 }

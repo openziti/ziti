@@ -21,16 +21,15 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 )
 
 type resyncHandler struct {
 	appEnv   *env.AppEnv
-	callback func(r *network.Router, respHello *edge_ctrl_pb.RequestClientReSync)
+	callback func(routerId string, respHello *edge_ctrl_pb.RequestClientReSync)
 }
 
-func NewResyncHandler(appEnv *env.AppEnv, callback func(r *network.Router, respHello *edge_ctrl_pb.RequestClientReSync)) *resyncHandler {
+func NewResyncHandler(appEnv *env.AppEnv, callback func(routerId string, respHello *edge_ctrl_pb.RequestClientReSync)) *resyncHandler {
 	return &resyncHandler{
 		appEnv:   appEnv,
 		callback: callback,
@@ -48,12 +47,5 @@ func (h *resyncHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 		return
 	}
 
-	r, err := h.appEnv.GetHostController().GetNetwork().GetRouter(ch.Id())
-	if err != nil {
-		pfxlog.Logger().WithError(err).Errorf("could not find router %v, closing channel", ch.Id())
-		_ = ch.Close()
-		return
-	}
-
-	h.callback(r, resyncReq)
+	h.callback(ch.Id(), resyncReq)
 }

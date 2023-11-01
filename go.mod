@@ -29,7 +29,7 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
@@ -48,17 +48,17 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.101
+	github.com/openziti/channel/v2 v2.0.105
 	github.com/openziti/edge-api v0.26.0
 	github.com/openziti/foundation/v2 v2.0.33
-	github.com/openziti/identity v1.0.64
+	github.com/openziti/identity v1.0.66
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.36
+	github.com/openziti/metrics v1.2.37
 	github.com/openziti/runzmd v1.0.33
 	github.com/openziti/sdk-golang v0.20.123
-	github.com/openziti/secretstream v0.1.12
-	github.com/openziti/storage v0.2.20
-	github.com/openziti/transport/v2 v2.0.109
+	github.com/openziti/secretstream v0.1.13
+	github.com/openziti/storage v0.2.23
+	github.com/openziti/transport/v2 v2.0.113
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -77,7 +77,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zitadel/oidc/v2 v2.7.0
-	go.etcd.io/bbolt v1.3.7
+	go.etcd.io/bbolt v1.3.8
 	golang.org/x/crypto v0.14.0
 	golang.org/x/net v0.17.0
 	golang.org/x/sync v0.4.0
@@ -186,5 +186,5 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
-	nhooyr.io/websocket v1.8.9 // indirect
+	nhooyr.io/websocket v1.8.10 // indirect
 )
