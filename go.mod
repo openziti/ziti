@@ -54,7 +54,7 @@ require (
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.37
 	github.com/openziti/runzmd v1.0.33
-	github.com/openziti/sdk-golang v0.20.123
+	github.com/openziti/sdk-golang v0.20.129
 	github.com/openziti/secretstream v0.1.13
 	github.com/openziti/storage v0.2.23
 	github.com/openziti/transport/v2 v2.0.113
@@ -111,7 +111,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
-	github.com/go-logr/logr v1.2.4 // indirect
+	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
