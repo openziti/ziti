@@ -45,7 +45,7 @@ type RouterType struct {
 }
 
 func (self *RouterType) InitType(*model.Component) {
-	if self.Version != "" && !strings.HasPrefix(self.Version, "v") {
+	if self.Version != "" && self.Version != "latest" && !strings.HasPrefix(self.Version, "v") {
 		self.Version = "v" + self.Version
 	}
 }
@@ -120,8 +120,7 @@ func (self *RouterType) getProcessFilter(c *model.Component) func(string) bool {
 }
 
 func (self *RouterType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	pids, err := lib.FindProcesses(factory, self.getProcessFilter(c))
+	pids, err := c.GetHost().FindProcesses(self.getProcessFilter(c))
 	if err != nil {
 		return false, err
 	}
@@ -133,8 +132,7 @@ func (self *RouterType) Start(_ model.Run, c *model.Component) error {
 }
 
 func (self *RouterType) Stop(_ model.Run, c *model.Component) error {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	return lib.RemoteKillFilterF(factory, self.getProcessFilter(c))
+	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c))
 }
 
 func (self *RouterType) CreateAndEnroll(run model.Run, c *model.Component) error {
@@ -144,8 +142,6 @@ func (self *RouterType) CreateAndEnroll(run model.Run, c *model.Component) error
 			WithField("router", c.Id).
 			Warn("unable to delete router (may not be present")
 	}
-
-	ssh := lib.NewSshConfigFactory(c.GetHost())
 
 	jwtFileName := filepath.Join(run.GetTmpDir(), c.Id+".jwt")
 
@@ -173,19 +169,17 @@ func (self *RouterType) CreateAndEnroll(run model.Run, c *model.Component) error
 	}
 
 	remoteJwt := "/home/ubuntu/fablab/cfg/" + c.Id + ".jwt"
-	if err := lib.SendFile(ssh, jwtFileName, remoteJwt); err != nil {
+	if err := c.GetHost().SendFile(jwtFileName, remoteJwt); err != nil {
 		return err
 	}
 
 	tmpl := "set -o pipefail; /home/ubuntu/fablab/bin/%v router enroll /home/ubuntu/fablab/cfg/%s -j %s 2>&1 | tee /home/ubuntu/logs/%s.router.enroll.log "
 	cmd := fmt.Sprintf(tmpl, self.getBinaryName(), self.getConfigName(c), remoteJwt, c.Id)
 
-	return host.Exec(c.GetHost(), cmd).Execute(run)
+	return c.GetHost().ExecLogOnlyOnError(cmd)
 }
 
-func (self *RouterType) ReEnroll(run model.Run, c *model.Component) error {
-	ssh := lib.NewSshConfigFactory(c.GetHost())
-
+func (self *RouterType) ReEnroll(_ model.Run, c *model.Component) error {
 	jwtFileName := filepath.Join(model.ConfigBuild(), c.Id+".jwt")
 
 	args := []string{"re-enroll", "edge-router", c.Id, "-j", "--jwt-output-file", jwtFileName}
@@ -195,12 +189,12 @@ func (self *RouterType) ReEnroll(run model.Run, c *model.Component) error {
 	}
 
 	remoteJwt := "/home/ubuntu/fablab/cfg/" + c.Id + ".jwt"
-	if err := lib.SendFile(ssh, jwtFileName, remoteJwt); err != nil {
+	if err := c.GetHost().SendFile(jwtFileName, remoteJwt); err != nil {
 		return err
 	}
 
-	tmpl := "set -o pipefail; /home/ubuntu/fablab/bin/%s enroll /home/ubuntu/fablab/cfg/%s -j %s 2>&1 | tee /home/ubuntu/logs/%s.router.enroll.log "
+	tmpl := "set -o pipefail; /home/ubuntu/fablab/bin/%s router enroll /home/ubuntu/fablab/cfg/%s -j %s 2>&1 | tee /home/ubuntu/logs/%s.router.enroll.log "
 	cmd := fmt.Sprintf(tmpl, self.getBinaryName(), self.getConfigName(c), remoteJwt, c.Id)
 
-	return host.Exec(c.GetHost(), cmd).Execute(run)
+	return c.GetHost().ExecLogOnlyOnError(cmd)
 }

@@ -25,7 +25,7 @@ type GenericCauseError struct {
 	DataMap map[string]interface{}
 }
 
-func (e GenericCauseError) Error() string {
+func (e *GenericCauseError) Error() string {
 	return e.Message
 }
 

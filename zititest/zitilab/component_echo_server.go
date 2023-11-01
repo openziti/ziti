@@ -2,7 +2,6 @@ package zitilab
 
 import (
 	"fmt"
-	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
@@ -19,7 +18,7 @@ type EchoServerType struct {
 }
 
 func (self *EchoServerType) InitType(*model.Component) {
-	if self.Version != "" && !strings.HasPrefix(self.Version, "v") {
+	if self.Version != "" && self.Version != "latest" && !strings.HasPrefix(self.Version, "v") {
 		self.Version = "v" + self.Version
 	}
 }
@@ -41,8 +40,7 @@ func (self *EchoServerType) getProcessFilter(c *model.Component) func(string) bo
 }
 
 func (self *EchoServerType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	pids, err := lib.FindProcesses(factory, self.getProcessFilter(c))
+	pids, err := c.GetHost().FindProcesses(self.getProcessFilter(c))
 	if err != nil {
 		return false, err
 	}
@@ -55,16 +53,16 @@ func (self *EchoServerType) Start(_ model.Run, c *model.Component) error {
 		binaryName += "-" + self.Version
 	}
 
-	factory := lib.NewSshConfigFactory(c.GetHost())
+	user := c.GetHost().GetSshUser()
 
-	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", factory.User(), binaryName)
-	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s.json", factory.User(), c.Id)
-	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", factory.User(), c.Id)
+	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", user, binaryName)
+	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s.json", user, c.Id)
+	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
 	serviceCmd := fmt.Sprintf("nohup %s demo echo-server -i %s --cli-agent-alias %s > %s 2>&1 &",
 		binaryPath, configPath, c.Id, logsPath)
 
-	value, err := lib.RemoteExec(factory, serviceCmd)
+	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {
 		return err
 	}
@@ -77,6 +75,5 @@ func (self *EchoServerType) Start(_ model.Run, c *model.Component) error {
 }
 
 func (self *EchoServerType) Stop(_ model.Run, c *model.Component) error {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	return lib.RemoteKillFilterF(factory, self.getProcessFilter(c))
+	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c))
 }

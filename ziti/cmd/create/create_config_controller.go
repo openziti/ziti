@@ -173,10 +173,12 @@ func (options *CreateConfigControllerOptions) run(data *ConfigTemplateValues) er
 		if err != nil {
 			return errors.Wrapf(err, "unable to create config file: %s", options.Output)
 		}
+
+		//only close things we open
+		defer func() { _ = f.Close() }()
 	} else {
 		f = os.Stdout
 	}
-	defer func() { _ = f.Close() }()
 
 	if err := tmpl.Execute(f, data); err != nil {
 		return errors.Wrap(err, "unable to execute template")

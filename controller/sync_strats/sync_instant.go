@@ -22,17 +22,17 @@ import (
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/handler_edge_ctrl"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/common/build"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/storage/ast"
+	"github.com/openziti/ziti/common/build"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/handler_edge_ctrl"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/persistence"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -431,14 +431,18 @@ func (strategy *InstantStrategy) sendHello(rtx *RouterSender) {
 	}
 }
 
-func (strategy *InstantStrategy) ReceiveResync(r *network.Router, _ *edge_ctrl_pb.RequestClientReSync) {
-	rtx := strategy.rtxMap.Get(r.Id)
+func (strategy *InstantStrategy) ReceiveResync(routerId string, _ *edge_ctrl_pb.RequestClientReSync) {
+	rtx := strategy.rtxMap.Get(routerId)
 
 	if rtx == nil {
+		routerName := "<unable to retrieve>"
+		if router, _ := strategy.ae.Managers.Router.Read(routerId); router != nil {
+			routerName = router.Name
+		}
 		pfxlog.Logger().
 			WithField("strategy", strategy.Type()).
-			WithField("routerId", r.Id).
-			WithField("routerName", r.Name).
+			WithField("routerId", routerId).
+			WithField("routerName", routerName).
 			Error("received resync from router that is currently not tracked by the strategy, dropping resync")
 		return
 	}
@@ -450,14 +454,18 @@ func (strategy *InstantStrategy) ReceiveResync(r *network.Router, _ *edge_ctrl_p
 	strategy.receivedClientHelloQueue <- rtx
 }
 
-func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello *edge_ctrl_pb.ClientHello) {
-	rtx := strategy.rtxMap.Get(r.Id)
+func (strategy *InstantStrategy) ReceiveClientHello(routerId string, respHello *edge_ctrl_pb.ClientHello) {
+	rtx := strategy.rtxMap.Get(routerId)
 
 	if rtx == nil {
+		routerName := "<unable to retrieve>"
+		if router, _ := strategy.ae.Managers.Router.Read(routerId); router != nil {
+			routerName = router.Name
+		}
 		pfxlog.Logger().
 			WithField("strategy", strategy.Type()).
-			WithField("routerId", r.Id).
-			WithField("routerName", r.Name).
+			WithField("routerId", routerId).
+			WithField("routerName", routerName).
 			Error("received hello from router that is currently not tracked by the strategy, dropping hello")
 		return
 	}
@@ -467,17 +475,12 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello
 		WithField("protocols", respHello.Protocols).
 		WithField("protocolPorts", respHello.ProtocolPorts).
 		WithField("listeners", respHello.Listeners).
-		WithField("data", respHello.Data)
-
-	serverVersion := build.GetBuildInfo().Version()
-
-	if r.VersionInfo != nil {
-		logger = logger.WithField("version", r.VersionInfo.Version).
-			WithField("revision", r.VersionInfo.Revision).
-			WithField("buildDate", r.VersionInfo.BuildDate).
-			WithField("os", r.VersionInfo.OS).
-			WithField("arch", r.VersionInfo.Arch)
-	}
+		WithField("data", respHello.Data).
+		WithField("version", rtx.Router.VersionInfo.Version).
+		WithField("revision", rtx.Router.VersionInfo.Revision).
+		WithField("buildDate", rtx.Router.VersionInfo.BuildDate).
+		WithField("os", rtx.Router.VersionInfo.OS).
+		WithField("arch", rtx.Router.VersionInfo.Arch)
 
 	protocols := map[string]string{}
 
@@ -497,8 +500,9 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello
 
 	rtx.SetHostname(respHello.Hostname)
 	rtx.SetProtocols(protocols)
-	rtx.SetVersionInfo(*r.VersionInfo)
+	rtx.SetVersionInfo(*rtx.Router.VersionInfo)
 
+	serverVersion := build.GetBuildInfo().Version()
 	logger.Infof("edge router sent hello with version [%s] to controller with version [%s]", respHello.Version, serverVersion)
 	strategy.receivedClientHelloQueue <- rtx
 }

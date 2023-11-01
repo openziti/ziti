@@ -212,3 +212,47 @@ func (o *UpdateRouterNotFound) WriteResponse(rw http.ResponseWriter, producer ru
 		}
 	}
 }
+
+// UpdateRouterTooManyRequestsCode is the HTTP code returned for type UpdateRouterTooManyRequests
+const UpdateRouterTooManyRequestsCode int = 429
+
+/*UpdateRouterTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response updateRouterTooManyRequests
+*/
+type UpdateRouterTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewUpdateRouterTooManyRequests creates UpdateRouterTooManyRequests with default headers values
+func NewUpdateRouterTooManyRequests() *UpdateRouterTooManyRequests {
+
+	return &UpdateRouterTooManyRequests{}
+}
+
+// WithPayload adds the payload to the update router too many requests response
+func (o *UpdateRouterTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *UpdateRouterTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the update router too many requests response
+func (o *UpdateRouterTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *UpdateRouterTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

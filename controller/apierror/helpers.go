@@ -375,3 +375,11 @@ func NewEnrollmentExists(enrollmentMethod string) *errorz.ApiError {
 		AppendCause: true,
 	}
 }
+
+func NewTooManyUpdatesError() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    ServerTooManyRequestsCode,
+		Message: ServerTooManyRequestsMessage,
+		Status:  ServerTooManyRequestsStatus,
+	}
+}

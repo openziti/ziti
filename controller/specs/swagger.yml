@@ -46,6 +46,9 @@ paths:
           $ref: '#/responses/listServices'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     post:
       summary: Create a service resource
       description: Create a service resource. Requires admin access.
@@ -66,6 +69,9 @@ paths:
           $ref: '#/responses/badRequestResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
   '/services/{id}':
     parameters:
       - $ref: '#/parameters/id'
@@ -82,6 +88,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     put:
       summary: Update all fields on a service
       description: Update all fields on a service by id. Requires admin access.
@@ -104,6 +113,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     patch:
       summary: Update the supplied fields on a service
       description: Update the supplied fields on a service. Requires admin access.
@@ -126,6 +138,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     delete:
       summary: Delete a service
       description: Delete a service by id. Requires admin access.
@@ -141,6 +156,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '409':
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
 
   '/services/{id}/terminators':
     parameters:
@@ -163,6 +180,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
 
   ###################################################################
   # Routers
@@ -184,6 +203,9 @@ paths:
           $ref: '#/responses/listRouters'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     post:
       summary: Create a router resource
       description: Create a router resource. Requires admin access.
@@ -204,6 +226,9 @@ paths:
           $ref: '#/responses/badRequestResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
   '/routers/{id}':
     parameters:
       - $ref: '#/parameters/id'
@@ -220,6 +245,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     put:
       summary: Update all fields on a router
       description: Update all fields on a router by id. Requires admin access.
@@ -242,6 +270,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     patch:
       summary: Update the supplied fields on a router
       description: Update the supplied fields on a router. Requires admin access.
@@ -264,6 +295,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     delete:
       summary: Delete a router
       description: Delete a router by id. Requires admin access.
@@ -279,6 +313,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '409':
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
 
   '/routers/{id}/terminators':
     parameters:
@@ -301,6 +337,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
 
   ###################################################################
   # Terminators
@@ -324,6 +362,9 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     post:
       summary: Create a terminator resource
       description: Create a terminator resource. Requires admin access.
@@ -344,6 +385,9 @@ paths:
           $ref: '#/responses/badRequestResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
   '/terminators/{id}':
     parameters:
       - $ref: '#/parameters/id'
@@ -360,6 +404,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     put:
       summary: Update all fields on a terminator
       description: Update all fields on a terminator by id. Requires admin access.
@@ -382,6 +429,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     patch:
       summary: Update the supplied fields on a terminator
       description: Update the supplied fields on a terminator. Requires admin access.
@@ -404,6 +454,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     delete:
       summary: Delete a terminator
       description: Delete a terminator by id. Requires admin access.
@@ -419,6 +472,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '409':
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
 
   ###################################################################
   # Links
@@ -436,6 +491,9 @@ paths:
           $ref: '#/responses/listLinks'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
   '/links/{id}':
     parameters:
       - $ref: '#/parameters/id'
@@ -452,6 +510,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     patch:
       summary: Update the supplied fields on a link
       description: Update the supplied fields on a link. Requires admin access.
@@ -474,6 +535,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     delete:
       summary: Delete a link
       description: Delete a link by id. Requires admin access.
@@ -487,6 +551,8 @@ paths:
           $ref: '#/responses/badRequestResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
 
   ###################################################################
   # Circuits
@@ -504,6 +570,9 @@ paths:
           $ref: '#/responses/listCircuits'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
   '/circuits/{id}':
     parameters:
       - $ref: '#/parameters/id'
@@ -520,6 +589,9 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
     delete:
       summary: Delete a circuit
       description: Delete a circuit by id. Requires admin access.
@@ -542,6 +614,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '409':
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
 
   ###################################################################
   # Inspections
@@ -566,6 +640,8 @@ paths:
           $ref: '#/responses/inspectResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
 
   ###################################################################
   # Database
@@ -653,6 +729,8 @@ paths:
           $ref: '#/responses/dataIntegrityCheckResult'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
 
   ###################################################################
   # Raft
@@ -669,6 +747,8 @@ paths:
           $ref: '#/responses/raftListMembersResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
 
 #######################################################################################################################
 #

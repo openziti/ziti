@@ -65,6 +65,12 @@ func (o *ListRouterTerminatorsReader) ReadResponse(response runtime.ClientRespon
 			return nil, err
 		}
 		return nil, result
+	case 429:
+		result := NewListRouterTerminatorsTooManyRequests()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -155,6 +161,38 @@ func (o *ListRouterTerminatorsUnauthorized) GetPayload() *rest_model.APIErrorEnv
 }
 
 func (o *ListRouterTerminatorsUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewListRouterTerminatorsTooManyRequests creates a ListRouterTerminatorsTooManyRequests with default headers values
+func NewListRouterTerminatorsTooManyRequests() *ListRouterTerminatorsTooManyRequests {
+	return &ListRouterTerminatorsTooManyRequests{}
+}
+
+/* ListRouterTerminatorsTooManyRequests describes a response with status code 429, with default header values.
+
+The resource requested is rate limited and the rate limit has been exceeded
+*/
+type ListRouterTerminatorsTooManyRequests struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ListRouterTerminatorsTooManyRequests) Error() string {
+	return fmt.Sprintf("[GET /routers/{id}/terminators][%d] listRouterTerminatorsTooManyRequests  %+v", 429, o.Payload)
+}
+func (o *ListRouterTerminatorsTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ListRouterTerminatorsTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

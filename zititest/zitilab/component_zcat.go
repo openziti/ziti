@@ -1,7 +1,6 @@
 package zitilab
 
 import (
-	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"strings"
@@ -17,7 +16,7 @@ type ZCatType struct {
 }
 
 func (self *ZCatType) InitType(*model.Component) {
-	if self.Version != "" && !strings.HasPrefix(self.Version, "v") {
+	if self.Version != "" && self.Version != "latest" && !strings.HasPrefix(self.Version, "v") {
 		self.Version = "v" + self.Version
 	}
 }
@@ -34,15 +33,14 @@ func (self *ZCatType) StageFiles(r model.Run, c *model.Component) error {
 	return stageziti.StageZitiOnce(r, c, self.Version, self.LocalPath)
 }
 
-func (self *ZCatType) getProcessFilter(c *model.Component) func(string) bool {
+func (self *ZCatType) getProcessFilter() func(string) bool {
 	return func(s string) bool {
 		return strings.Contains(s, "ziti") && strings.Contains(s, "zcat ")
 	}
 }
 
 func (self *ZCatType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	pids, err := lib.FindProcesses(factory, self.getProcessFilter(c))
+	pids, err := c.GetHost().FindProcesses(self.getProcessFilter())
 	if err != nil {
 		return false, err
 	}
@@ -50,6 +48,5 @@ func (self *ZCatType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
 }
 
 func (self *ZCatType) Stop(_ model.Run, c *model.Component) error {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	return lib.RemoteKillFilterF(factory, self.getProcessFilter(c))
+	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter())
 }

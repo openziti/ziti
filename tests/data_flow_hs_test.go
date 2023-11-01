@@ -21,8 +21,8 @@ package tests
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/common/eid"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -76,7 +76,9 @@ func Test_HSDataflow(t *testing.T) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContext(clientConfig)
+
+	clientContext, err := ziti.NewContext(clientConfig)
+	ctx.Req.NoError(err)
 
 	for i := 0; i < 100; i++ {
 		conn := ctx.WrapConn(clientContext.Dial(service.Name))

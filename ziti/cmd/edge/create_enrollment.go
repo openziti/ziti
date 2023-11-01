@@ -45,7 +45,8 @@ func newCreateEnrollmentCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 type createEnrollmentOptions struct {
 	api.Options
-	duration int64
+	jwtOutputFile string
+	duration      int64
 }
 
 func newCreateEnrollmentOtt(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -76,6 +77,7 @@ func newCreateEnrollmentOtt(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	options.AddCommonFlags(cmd)
 	cmd.Flags().Int64VarP(&options.duration, "duration", "d", 30, "the duration of time the enrollment should valid for")
+	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the enrollment JWT ")
 
 	return cmd
 }
@@ -149,6 +151,11 @@ func runCreateEnrollmentOtt(options *createEnrollmentOptions) error {
 		panic(err)
 	}
 
+	if options.jwtOutputFile != "" {
+		if err = getIdentityJwt(&options.Options, identityId, options.jwtOutputFile, "ott", options.Options.Timeout, options.Options.Verbose); err != nil {
+			return err
+		}
+	}
 	return err
 }
 

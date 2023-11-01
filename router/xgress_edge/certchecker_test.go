@@ -8,13 +8,13 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/router/internal/edgerouter"
-	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/internal/edgerouter"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"math/big"
@@ -50,7 +50,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			req := require.New(t)
 			certChecker, _ := newCertChecker()
 
-			now := time.Now()
+			now := time.Now().UTC()
 			notAfter := now.AddDate(0, 0, 7)
 
 			certChecker.id.Cert().Leaf.NotAfter = notAfter
@@ -210,7 +210,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			req := require.New(t)
 			certChecker, _ := newCertChecker()
 
-			now := time.Now()
+			now := time.Now().UTC()
 			notAfter := now.AddDate(0, 0, 7)
 
 			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter

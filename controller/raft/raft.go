@@ -21,12 +21,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/go-hclog"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/peermsg"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/peermsg"
 	"os"
 	"path"
 	"reflect"
@@ -39,12 +39,12 @@ import (
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/raft/mesh"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/raft/mesh"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -192,18 +192,21 @@ func newClusterState(isLeader, isReadWrite bool) ClusterState {
 type Env interface {
 	GetId() *identity.TokenId
 	GetVersionProvider() versions.VersionProvider
+	GetCommandRateLimiterConfig() command.RateLimiterConfig
 	GetRaftConfig() *Config
 	GetMetricsRegistry() metrics.Registry
 	GetEventDispatcher() event.Dispatcher
+	GetCloseNotify() <-chan struct{}
 }
 
 func NewController(env Env, migrationMgr MigrationManager) *Controller {
 	result := &Controller{
-		env:           env,
-		Config:        env.GetRaftConfig(),
-		indexTracker:  NewIndexTracker(),
-		migrationMgr:  migrationMgr,
-		clusterEvents: make(chan raft.Observation, 16),
+		env:                env,
+		Config:             env.GetRaftConfig(),
+		indexTracker:       NewIndexTracker(),
+		migrationMgr:       migrationMgr,
+		clusterEvents:      make(chan raft.Observation, 16),
+		commandRateLimiter: command.NewRateLimiter(env.GetCommandRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
 	}
 	return result
 }
@@ -224,6 +227,7 @@ type Controller struct {
 	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState)]
 	isLeader                   atomic.Bool
 	clusterEvents              chan raft.Observation
+	commandRateLimiter         command.RateLimiter
 }
 
 func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, state ClusterState)) {
@@ -448,6 +452,7 @@ func (self *Controller) applyCommand(cmd command.Command) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	return self.ApplyEncodedCommand(encoded)
 }
 
@@ -473,11 +478,24 @@ func (self *Controller) ApplyEncodedCommand(encoded []byte) (uint64, error) {
 
 // ApplyWithTimeout applies the given command to the RAFT distributed log with the given timeout
 func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (interface{}, uint64, error) {
-	f := self.Raft.Apply(log, timeout)
-	if err := f.Error(); err != nil {
+	returnValue := atomic.Value{}
+	index := atomic.Uint64{}
+	err := self.commandRateLimiter.RunRateLimited(func() error {
+		f := self.Raft.Apply(log, timeout)
+		if err := f.Error(); err != nil {
+			return err
+		}
+
+		returnValue.Store(f.Response())
+		index.Store(f.Index())
+		return nil
+	})
+
+	if err != nil {
 		return nil, 0, err
 	}
-	return f.Response(), f.Index(), nil
+
+	return returnValue.Load(), index.Load(), nil
 }
 
 // Init sets up the Mesh and Raft instances

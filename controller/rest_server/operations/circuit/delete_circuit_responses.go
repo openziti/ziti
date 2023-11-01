@@ -212,3 +212,47 @@ func (o *DeleteCircuitConflict) WriteResponse(rw http.ResponseWriter, producer r
 		}
 	}
 }
+
+// DeleteCircuitTooManyRequestsCode is the HTTP code returned for type DeleteCircuitTooManyRequests
+const DeleteCircuitTooManyRequestsCode int = 429
+
+/*DeleteCircuitTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response deleteCircuitTooManyRequests
+*/
+type DeleteCircuitTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewDeleteCircuitTooManyRequests creates DeleteCircuitTooManyRequests with default headers values
+func NewDeleteCircuitTooManyRequests() *DeleteCircuitTooManyRequests {
+
+	return &DeleteCircuitTooManyRequests{}
+}
+
+// WithPayload adds the payload to the delete circuit too many requests response
+func (o *DeleteCircuitTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *DeleteCircuitTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the delete circuit too many requests response
+func (o *DeleteCircuitTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *DeleteCircuitTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

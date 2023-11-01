@@ -1,7 +1,7 @@
 package edge
 
 import (
-	"github.com/openziti/fablab/kernel/lib"
+	"github.com/openziti/fablab/kernel/libssh"
 	"github.com/openziti/fablab/kernel/model"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
@@ -27,7 +27,7 @@ func (action *initIdentitiesAction) Execute(run model.Run) error {
 }
 
 func (action *initIdentitiesAction) createAndEnrollIdentity(run model.Run, c *model.Component) error {
-	ssh := lib.NewSshConfigFactory(c.GetHost())
+	ssh := c.GetHost().NewSshConfigFactory()
 
 	jwtFileName := filepath.Join(run.GetTmpDir(), c.Id+".jwt")
 
@@ -48,7 +48,7 @@ func (action *initIdentitiesAction) createAndEnrollIdentity(run model.Run, c *mo
 	}
 
 	remoteConfigFile := "/home/ubuntu/fablab/cfg/" + c.Id + ".json"
-	return lib.SendFile(ssh, configFileName, remoteConfigFile)
+	return libssh.SendFile(ssh, configFileName, remoteConfigFile)
 }
 
 type initIdentitiesAction struct {

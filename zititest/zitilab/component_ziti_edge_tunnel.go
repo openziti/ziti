@@ -18,7 +18,6 @@ package zitilab
 
 import (
 	"fmt"
-	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
@@ -68,8 +67,7 @@ func (self *ZitiEdgeTunnelType) getProcessFilter(c *model.Component) func(string
 }
 
 func (self *ZitiEdgeTunnelType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	pids, err := lib.FindProcesses(factory, self.getProcessFilter(c))
+	pids, err := c.GetHost().FindProcesses(self.getProcessFilter(c))
 	if err != nil {
 		return false, err
 	}
@@ -77,15 +75,15 @@ func (self *ZitiEdgeTunnelType) IsRunning(_ model.Run, c *model.Component) (bool
 }
 
 func (self *ZitiEdgeTunnelType) Start(_ model.Run, c *model.Component) error {
-	factory := lib.NewSshConfigFactory(c.GetHost())
+	user := c.GetHost().GetSshUser()
 
-	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", factory.User(), self.getBinaryName())
-	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s.json", factory.User(), c.Id)
-	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", factory.User(), c.Id)
+	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", user, self.getBinaryName())
+	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s.json", user, c.Id)
+	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
-	serviceCmd := fmt.Sprintf("nohup sudo %s run -i %s > %s 2>&1 &", binaryPath, configPath, logsPath)
+	serviceCmd := fmt.Sprintf("sudo %s run -i %s > %s 2>&1 &", binaryPath, configPath, logsPath)
 
-	value, err := lib.RemoteExec(factory, serviceCmd)
+	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {
 		return err
 	}
@@ -98,6 +96,5 @@ func (self *ZitiEdgeTunnelType) Start(_ model.Run, c *model.Component) error {
 }
 
 func (self *ZitiEdgeTunnelType) Stop(_ model.Run, c *model.Component) error {
-	factory := lib.NewSshConfigFactory(c.GetHost())
-	return lib.RemoteKillFilterF(factory, self.getProcessFilter(c))
+	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c))
 }

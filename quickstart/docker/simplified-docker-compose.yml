@@ -1,6 +1,11 @@
 services:
   ziti-controller:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    healthcheck:
+      test: curl -m 1 -s -k https://${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-edge-controller}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}/edge/client/v1/version
+      interval: 1s
+      timeout: 3s
+      retries: 30
     env_file:
       - ./.env
     ports:
@@ -28,7 +33,8 @@ services:
   ziti-controller-init-container:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     depends_on:
-      - ziti-controller
+      ziti-controller:
+        condition: service_healthy
     environment:
       - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-edge-controller}
       - ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
@@ -48,7 +54,8 @@ services:
     env_file:
       - ./.env
     depends_on:
-      - ziti-controller
+      ziti-controller:
+        condition: service_healthy
     ports:
       - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
       - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}:${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}
@@ -80,7 +87,8 @@ services:
       - ZITI_CTRL_NAME=${ZITI_CTRL_NAME:-ziti-edge-controller}
       - PORTTLS=8443
     depends_on:
-      - ziti-controller
+      ziti-controller:
+        condition: service_healthy
     ports:
       - ${ZITI_INTERFACE:-0.0.0.0}:8443:8443
     volumes:

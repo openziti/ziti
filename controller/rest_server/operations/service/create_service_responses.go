@@ -168,3 +168,47 @@ func (o *CreateServiceUnauthorized) WriteResponse(rw http.ResponseWriter, produc
 		}
 	}
 }
+
+// CreateServiceTooManyRequestsCode is the HTTP code returned for type CreateServiceTooManyRequests
+const CreateServiceTooManyRequestsCode int = 429
+
+/*CreateServiceTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response createServiceTooManyRequests
+*/
+type CreateServiceTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewCreateServiceTooManyRequests creates CreateServiceTooManyRequests with default headers values
+func NewCreateServiceTooManyRequests() *CreateServiceTooManyRequests {
+
+	return &CreateServiceTooManyRequests{}
+}
+
+// WithPayload adds the payload to the create service too many requests response
+func (o *CreateServiceTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *CreateServiceTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the create service too many requests response
+func (o *CreateServiceTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *CreateServiceTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

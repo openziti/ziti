@@ -65,6 +65,12 @@ func (o *DetailTerminatorReader) ReadResponse(response runtime.ClientResponse, c
 			return nil, err
 		}
 		return nil, result
+	case 429:
+		result := NewDetailTerminatorTooManyRequests()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -155,6 +161,38 @@ func (o *DetailTerminatorNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 }
 
 func (o *DetailTerminatorNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewDetailTerminatorTooManyRequests creates a DetailTerminatorTooManyRequests with default headers values
+func NewDetailTerminatorTooManyRequests() *DetailTerminatorTooManyRequests {
+	return &DetailTerminatorTooManyRequests{}
+}
+
+/* DetailTerminatorTooManyRequests describes a response with status code 429, with default header values.
+
+The resource requested is rate limited and the rate limit has been exceeded
+*/
+type DetailTerminatorTooManyRequests struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *DetailTerminatorTooManyRequests) Error() string {
+	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorTooManyRequests  %+v", 429, o.Payload)
+}
+func (o *DetailTerminatorTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *DetailTerminatorTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

@@ -233,3 +233,6 @@ web:
       - binding: edge-client
         options: { }
 
+commandRateLimiter:
+    enabled: true
+    maxQueued: 100

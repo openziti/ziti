@@ -28,8 +28,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_model"
-	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/common/version"
+	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	c "github.com/openziti/ziti/ziti/constants"
 	"gopkg.in/resty.v1"
@@ -546,6 +546,7 @@ func (edgeTransport *edgeTransport) RoundTrip(r *http.Request) (*http.Response, 
 }
 
 type ApiErrorPayload interface {
+	Error() string
 	GetPayload() *rest_model.APIErrorEnvelope
 }
 
@@ -573,12 +574,12 @@ func (a RestApiError) Error() string {
 	if payload := a.ApiErrorPayload.GetPayload(); payload != nil {
 
 		if payload.Error == nil {
-			return fmt.Sprintf("could not read API error, payload.error was nil: %v", a.Error())
+			return fmt.Sprintf("could not read API error, payload.error was nil: %v", a.ApiErrorPayload.Error())
 		}
 		return formatApiError(payload.Error)
 	}
 
-	return fmt.Sprintf("could not read API error, payload was nil: %v", a.Error())
+	return fmt.Sprintf("could not read API error, payload was nil: %v", a.ApiErrorPayload.Error())
 }
 
 func WrapIfApiError(err error) error {
@@ -669,20 +670,20 @@ func ControllerCreate(api API, entityType string, body string, out io.Writer, lo
 }
 
 // ControllerDelete will delete entities of the given type in the given Controller
-func ControllerDelete(api API, entityType string, id string, body string, out io.Writer, logRequestJson bool, logResponseJson bool, timeout int, verbose bool) error {
+func ControllerDelete(api API, entityType string, id string, body string, out io.Writer, logRequestJson bool, logResponseJson bool, timeout int, verbose bool) (error, *int) {
 	restClientIdentity, err := LoadSelectedRWIdentityForApi(api)
 	if err != nil {
-		return err
+		return err, nil
 	}
 
 	baseUrl, err := restClientIdentity.GetBaseUrlForApi(api)
 	if err != nil {
-		return err
+		return err, nil
 	}
 
 	req, err := NewRequest(restClientIdentity, timeout, verbose)
 	if err != nil {
-		return err
+		return err, nil
 	}
 
 	entityPath := entityType + "/" + id
@@ -701,19 +702,20 @@ func ControllerDelete(api API, entityType string, id string, body string, out io
 	resp, err := req.Delete(fullUrl)
 
 	if err != nil {
-		return fmt.Errorf("unable to delete %v instance in Ziti Edge Controller at %v. Error: %v", entityPath, baseUrl, err)
+		return fmt.Errorf("unable to delete %v instance in Ziti Edge Controller at %v. Error: %v", entityPath, baseUrl, err), nil
 	}
 
 	if resp.StatusCode() != http.StatusOK {
+		statusCode := resp.StatusCode()
 		return fmt.Errorf("error deleting %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityPath, baseUrl, resp.Status(), PrettyPrintResponse(resp))
+			entityPath, baseUrl, resp.Status(), PrettyPrintResponse(resp)), &statusCode
 	}
 
 	if logResponseJson {
 		OutputJson(out, resp.Body())
 	}
 
-	return nil
+	return nil, nil
 }
 
 // ControllerUpdate will update entities of the given type in the given Edge Controller

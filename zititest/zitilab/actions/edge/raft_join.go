@@ -2,7 +2,6 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/pkg/errors"
@@ -24,7 +23,7 @@ func (self *raftJoin) Execute(run model.Run) error {
 		return errors.Errorf("no controllers found with spec '%v'", self.componentSpec)
 	}
 	primary := ctrls[0]
-	sshConfigFactory := lib.NewSshConfigFactory(primary.GetHost())
+	sshConfigFactory := primary.GetHost().NewSshConfigFactory()
 	for _, c := range ctrls[1:] {
 		tmpl := "/home/%s/fablab/bin/ziti agent cluster add %v --id %v"
 		if err := host.Exec(primary.GetHost(), fmt.Sprintf(tmpl, sshConfigFactory.User(), "tls:"+c.Host.PublicIp+":6262", c.Id)).Execute(run); err != nil {

@@ -1,3 +1,61 @@
+# Release 0.31.0
+
+## What's New
+
+* Rate limited for model changes
+
+## Rate Limiter for Model Changes
+
+To prevent the controller from being overwhelmed by a flood of changes, a rate limiter
+can be enabled in the configuration file. A maximum number of queued changes can also
+be configured. The rate limited is disabled by default for now. If not specified the
+default number of queued changes is 100.
+
+When the rate limit is hit, an error will be returned. If the request came in from 
+the REST API, the response will use HTTP status code 429 (too many requests). 
+
+The OpenAPI specs have been updated, so if you're using a generated client to make
+REST calls, it's recommened that you regenerate your client.
+
+
+```
+commandRateLimiter:
+    enabled:   true
+    maxQueued: 100
+```
+
+If the rate limiter is enabled, the following metrics will be produced:
+
+* `command.limiter.queued_count` - guage of the current number of queued operations
+* `command.limiter.work_timer` - timer for operations. Includes the following:
+    * A histogram of how long operations take to complete 
+    * A meter showing that rate at which operations are executed
+    * A count of how many operations have been executed
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.15 -> v1.0.16](https://github.com/openziti/agent/compare/v1.0.15...v1.0.16)
+* github.com/openziti/channel/v2: [v2.0.101 -> v2.0.105](https://github.com/openziti/channel/compare/v2.0.101...v2.0.105)
+* github.com/openziti/edge-api: [v0.25.38 -> v0.26.0](https://github.com/openziti/edge-api/compare/v0.25.38...v0.26.0)
+    * [Issue #49](https://github.com/openziti/edge-api/issues/49) - Add 429 responses to allow indicating that the server is too busy
+
+* github.com/openziti/identity: [v1.0.64 -> v1.0.66](https://github.com/openziti/identity/compare/v1.0.64...v1.0.66)
+* github.com/openziti/metrics: [v1.2.36 -> v1.2.37](https://github.com/openziti/metrics/compare/v1.2.36...v1.2.37)
+* github.com/openziti/sdk-golang: [v0.20.122 -> v0.20.129](https://github.com/openziti/sdk-golang/compare/v0.20.122...v0.20.129)
+    * [Issue #443](https://github.com/openziti/sdk-golang/issues/443) - Don't send close in reponse to a close on a listener
+
+* github.com/openziti/secretstream: [v0.1.12 -> v0.1.13](https://github.com/openziti/secretstream/compare/v0.1.12...v0.1.13)
+* github.com/openziti/storage: [v0.2.20 -> v0.2.23](https://github.com/openziti/storage/compare/v0.2.20...v0.2.23)
+* github.com/openziti/transport/v2: [v2.0.109 -> v2.0.113](https://github.com/openziti/transport/compare/v2.0.109...v2.0.113)
+* github.com/openziti/ziti: [v0.30.5 -> v0.31.0](https://github.com/openziti/ziti/compare/v0.30.5...v0.31.0)
+    * [Issue #1471](https://github.com/openziti/ziti/issues/1471) - Router links not resilient to controller crash
+    * [Issue #1468](https://github.com/openziti/ziti/issues/1468) - Quickstart quietly fails if password is < 5 characters long
+    * [Issue #1445](https://github.com/openziti/ziti/issues/1445) - Add controller update guardrail
+    * [Issue #1442](https://github.com/openziti/ziti/issues/1442) - Network watchdog not shutting down when controller shuts down
+    * [Issue #1465](https://github.com/openziti/ziti/issues/1465) - Upgrade functions `getZiti` and `performMigration` were only functional on Mac OS, now they are functional for Linux and Mac OSs.
+    * [Issue #1217](https://github.com/openziti/ziti/issues/1217) - Quickstart was improperly handling special characters in `ZITI_PWD`. Special characters are now supported for `ZITI_PWD` in quickstart functions.
+
+
 # Release 0.30.5
 
 ## What's New
@@ -11,6 +69,7 @@ Currently only HTTP Connect proxies which don't require authentication are suppo
 
 **Example using `host.v1`**
 
+```
 {
     "address": "192.168.2.50",
     "port": 1234,
@@ -20,6 +79,7 @@ Currently only HTTP Connect proxies which don't require authentication are suppo
         "type": "http"
     }
 }
+```
 
 
 ## Component Updates and Bug Fixes
