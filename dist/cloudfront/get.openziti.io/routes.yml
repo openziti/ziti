@@ -29,7 +29,7 @@
   raw: /openziti/ziti-tunnel-sdk-c/main/
   file: package-repos.gpg
   
-- get: /zdew/
-  raw: /openziti/desktop-edge-win/release-next/
+- get: /zdew/release-streams/
+  raw: /openziti/desktop-edge-win/release-next
   file: latest.json
   
