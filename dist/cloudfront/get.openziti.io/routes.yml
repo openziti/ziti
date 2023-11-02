@@ -30,9 +30,9 @@
   file: package-repos.gpg
   
 - get: /zdew/
-  raw: /openziti/desktop-edge-win/release-next/
+  raw: /openziti/desktop-edge-win/release-next/release-stream
   file: latest.json
   
 - get: /zdew/
-  raw: /openziti/desktop-edge-win/release-next/
+  raw: /openziti/desktop-edge-win/release-next/release-stream
   file: beta.json
