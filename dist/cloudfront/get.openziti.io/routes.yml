@@ -31,4 +31,8 @@
   
 - get: /zdew/
   raw: /openziti/desktop-edge-win/release-next/
-  file: version-check.json
+  file: latest.json
+  
+- get: /zdew/
+  raw: /openziti/desktop-edge-win/release-next/
+  file: beta.json
