@@ -487,11 +487,10 @@ func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (int
 		}
 		resp := f.Response()
 
-		if resp == nil {
-			return errors.New("response was nil")
+		if resp != nil {
+			returnValue.Store(resp)
 		}
 
-		returnValue.Store(resp)
 		index.Store(f.Index())
 
 		return nil
