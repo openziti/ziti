@@ -792,7 +792,7 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
 
 func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
 	for _, x509Cert := range strategy.ae.HostController.GetPeerSigners() {
-		publicKey := newPublicKey(x509Cert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation})
+		publicKey := newPublicKey(x509Cert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation, edge_ctrl_pb.DataState_PublicKey_JWTValidation})
 		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
 		newEvent := &edge_ctrl_pb.DataState_Event{
 			Action: edge_ctrl_pb.DataState_Create,
@@ -806,7 +806,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
 	caCerts := nfPem.PemBytesToCertificates(caPEMs)
 
 	for _, caCert := range caCerts {
-		publicKey := newPublicKey(caCert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})
+		publicKey := newPublicKey(caCert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})
 		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
 		newEvent := &edge_ctrl_pb.DataState_Event{
 			Action: edge_ctrl_pb.DataState_Create,
@@ -1213,7 +1213,7 @@ func (strategy *InstantStrategy) PeerAdded(peers []*event.ClusterPeer) {
 			IsSynthetic: true,
 			Action:      edge_ctrl_pb.DataState_Create,
 			Model: &edge_ctrl_pb.DataState_Event_PublicKey{
-				PublicKey: newPublicKey(peer.ServerCert[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation}),
+				PublicKey: newPublicKey(peer.ServerCert[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation, edge_ctrl_pb.DataState_PublicKey_JWTValidation}),
 			},
 		})
 	}

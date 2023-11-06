@@ -33,7 +33,7 @@ var (
 	_ op.ClientCredentialsStorage = &HybridStorage{}
 )
 
-const JwtTokenPrefix = "eY"
+const JwtTokenPrefix = "ey"
 
 // Storage is a compound interface of op.Storage and custom storage functions
 type Storage interface {

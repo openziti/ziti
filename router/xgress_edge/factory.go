@@ -20,17 +20,17 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/router"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/internal/apiproxy"
 	"github.com/openziti/ziti/router/internal/edgerouter"
 	"github.com/openziti/ziti/router/state"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
@@ -92,8 +92,6 @@ func (factory *Factory) Run(env env.RouterEnv) error {
 
 	factory.stateManager.StartHeartbeat(env, factory.edgeRouterConfig.HeartbeatIntervalSeconds, env.GetCloseNotify())
 
-	factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
-
 	factory.stateManager.StartRouterModelSave(env, factory.edgeRouterConfig.Db, factory.edgeRouterConfig.DbSaveInterval)
 
 	factory.certChecker = NewCertExpirationChecker(factory.routerConfig.Id, factory.edgeRouterConfig, env.GetNetworkControllers(), env.GetCloseNotify())
@@ -127,6 +125,9 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	factory.id = config.RouterConfig.Id
 
 	factory.edgeRouterConfig = config
+
+	factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
+
 	go apiproxy.Start(config)
 
 	return nil

@@ -227,8 +227,10 @@ func (sm *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 	kid = strings.TrimSpace(kid)
 
 	rdm := sm.routerDataModel.Load()
-	for keysTuple := range rdm.PublicKeys.IterBuffered() {
+	publicKeys := rdm.PublicKeys.IterBuffered()
+	for keysTuple := range publicKeys {
 		if contains(keysTuple.Val.Usages, edge_ctrl_pb.DataState_PublicKey_JWTValidation) {
+
 			if kid == keysTuple.Val.Kid {
 				return sm.parsePublicKey(keysTuple.Val)
 			}
@@ -248,7 +250,11 @@ func (sm *ManagerImpl) RouterDataModel() *common.RouterDataModel {
 }
 
 func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel) {
+	publicKeys := model.PublicKeys.Items()
+	pfxlog.Logger().Debugf("number of public keys in rdm: %d, %v", len(publicKeys), publicKeys)
+
 	sm.routerDataModel.Store(model)
+
 }
 
 func (sm *ManagerImpl) MarkSyncInProgress(trackerId string) {
