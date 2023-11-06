@@ -7,6 +7,11 @@
 - get: /miniziti.bash
   raw: /openziti/ziti/{{GITHUB_SHA}}/quickstart/kubernetes/
 
+  # Linux package install script for ziti, zrok CLI, and metapackages that are in the main release repo for generic,
+  # portable Linux packages, not ziti-edge-tunnel
+- get: /install.bash
+  raw: /openziti/ziti/main/dist/dist-packages/linux/
+
 # these are directory shortcuts, so you must supply a test file
 - get: /quick/
   raw: /openziti/ziti/{{GITHUB_SHA}}/quickstart/docker/image/
@@ -32,4 +37,3 @@
 - get: /zdew/
   raw: /openziti/desktop-edge-win/release-next/release-streams/
   file: latest.json
-  
