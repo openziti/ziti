@@ -3,9 +3,13 @@ package oidc_auth
 import (
 	"context"
 	"embed"
+	"encoding"
 	"encoding/json"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/pkg/errors"
@@ -32,7 +36,19 @@ const (
 	extJwtLoginUrl   = "/oidc/login/ext-jwt?authRequestID="
 
 	AuthRequestIdHeader = "auth-request-id"
+	AcceptHeader        = "accept"
+	TotpRequiredHeader  = "totp-required"
+	ContentTypeHeader   = "content-type"
+
+	FormContentType = "application/x-www-form-urlencoded"
+	JsonContentType = "application/json"
+	HtmlContentType = "text/html"
 )
+
+type totpCode struct {
+	rest_model.MfaCode
+	AuthRequestId string `json:"id"`
+}
 
 // embedded file/HTML resources
 var (
@@ -168,13 +184,52 @@ func renderPage(w http.ResponseWriter, pageTemplate *template.Template, id strin
 }
 
 func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
+	responseType, err := negotiateContentType(r)
+
 	if err != nil {
-		http.Error(w, fmt.Sprintf("cannot parse form:%s", err), http.StatusInternalServerError)
+		safeRenderJson(w, http.StatusNotAcceptable, &rest_model.APIError{
+			Code:    "NOT_ACCEPTABLE",
+			Message: err.Error(),
+		})
+
 		return
 	}
-	id := r.FormValue("id")
-	code := r.FormValue("code")
+
+	contentType := r.Header.Get(ContentTypeHeader)
+	id := ""
+	code := ""
+	if contentType == FormContentType {
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("cannot parse form:%s", err), http.StatusInternalServerError)
+			return
+		}
+		id = r.FormValue("id")
+		code = r.FormValue("code")
+	} else if contentType == JsonContentType {
+		payload := &totpCode{}
+		body, err := io.ReadAll(r.Body)
+
+		if err != nil {
+			safeRenderJson(w, http.StatusInternalServerError, &rest_model.APIError{
+				Code:    "INTERNAL_ERROR",
+				Message: err.Error(),
+			})
+			return
+		}
+		err = json.Unmarshal(body, payload)
+
+		if err != nil {
+			safeRenderJson(w, http.StatusInternalServerError, &rest_model.APIError{
+				Code:    "INTERNAL_ERROR",
+				Message: err.Error(),
+			})
+			return
+		}
+
+		id = payload.AuthRequestId
+		code = stringz.OrEmpty(payload.Code)
+	}
 
 	ctx := NewHttpChangeCtx(r)
 	authRequest, err := l.store.VerifyTotp(ctx, code, id)
@@ -188,7 +243,11 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 		renderTotp(w, id, errors.New("invalid TOTP code"))
 	}
 
-	http.Redirect(w, r, l.callback(r.Context(), id), http.StatusFound)
+	if responseType == HtmlContentType {
+		http.Redirect(w, r, l.callback(r.Context(), id), http.StatusFound)
+	}
+
+	safeRenderJson(w, http.StatusOK, &rest_model.Empty{})
 }
 
 type updbCreds struct {
@@ -196,7 +255,7 @@ type updbCreds struct {
 	AuthRequestId string `json:"id"`
 }
 
-func (l *login) parseUpdbForm(r *http.Request) (*updbCreds, error) {
+func (l *login) parseFormData(r *http.Request) (*updbCreds, error) {
 	err := r.ParseForm()
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse form:%s", err)
@@ -245,20 +304,19 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 
 	var authCtx model.AuthContext
 
-	contentType := r.Header.Get("content-type")
-
+	contentType := r.Header.Get(ContentTypeHeader)
 	creds := &updbCreds{}
 
-	if contentType == "application/x-www-form-urlencoded" {
+	if contentType == FormContentType {
 		var err error
-		creds, err = l.parseUpdbForm(r)
+		creds, err = l.parseFormData(r)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-	} else if strings.Contains(contentType, "json") {
+	} else if contentType == FormContentType {
 		body, err := io.ReadAll(r.Body)
 
 		if err != nil {
@@ -272,10 +330,18 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+	} else {
+		http.Error(w, fmt.Sprintf("invalid content type: %s,", contentType), http.StatusUnsupportedMediaType)
 	}
 
 	if creds.AuthRequestId == "" {
 		creds.AuthRequestId = r.URL.Query().Get("id")
+	}
+
+	responseType, err := negotiateContentType(r)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotAcceptable)
 	}
 
 	authCtx = model.NewAuthContextHttp(r, method, creds, NewHttpChangeCtx(r))
@@ -294,7 +360,13 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if authRequest.SecondaryTotpRequired && !authRequest.HasAmr(AuthMethodSecondaryTotp) {
-		renderTotp(w, creds.AuthRequestId, err)
+		w.Header().Set(TotpRequiredHeader, "true")
+		if responseType == HtmlContentType {
+			renderTotp(w, creds.AuthRequestId, err)
+		} else if responseType == JsonContentType {
+			safeRenderJson(w, http.StatusOK, &rest_model.Empty{})
+		}
+
 		return
 	}
 
@@ -304,4 +376,81 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 
 	callbackUrl := l.callback(r.Context(), creds.AuthRequestId)
 	http.Redirect(w, r, callbackUrl, http.StatusFound)
+}
+
+// renderJson will attempt to marshal the data argument. If marshalling fails true and an error is returned
+// without altering the http.ResponseWriter. If writing to the http.ResponseWriter fails, false and an error
+// is returned. The boolean return signals the http.ResponseWriter is sill "writable".
+func renderJson(w http.ResponseWriter, status int, data encoding.BinaryMarshaler) (bool, error) {
+	payload, err := data.MarshalBinary()
+
+	if err != nil {
+		return true, err
+	}
+
+	w.Header().Set(ContentTypeHeader, JsonContentType)
+	w.WriteHeader(status)
+	_, err = w.Write(payload)
+
+	return false, err
+}
+
+// safeRenderJson will attempt to call renderJson to return an error. If it fails, false will be returned.
+// If possible, an error is written to the HTTP response. Otherwise, true is returned.
+func safeRenderJson(w http.ResponseWriter, status int, data encoding.BinaryMarshaler) bool {
+	canStillWrite, err := renderJson(w, http.StatusOK, &rest_model.Empty{})
+	if err != nil {
+		pfxlog.Logger().WithError(err).Errorf("could not marshal to JSON")
+		if canStillWrite {
+			_, internalErr := renderJson(w, http.StatusInternalServerError, &rest_model.APIError{
+				Code:    errorz.UnhandledCode,
+				Message: fmt.Sprintf("could not marhsal to JSON: %s", err),
+			})
+
+			if internalErr != nil {
+				pfxlog.Logger().WithError(internalErr).Errorf("could not write JSON marshaling error to HTTP response")
+			}
+
+			return false
+		}
+	}
+
+	return true
+}
+
+// parseAcceptHeader parses HTTP accept headers and returns an array of supported
+// content types sorted by quality factor (0=most desired response type). The return
+// strings are the content type only (e.g. "application/json")
+func parseAcceptHeader(acceptHeader string) []string {
+	parts := strings.Split(acceptHeader, ",")
+	contentTypes := make([]string, len(parts))
+
+	for i, part := range parts {
+		typeAndFactor := strings.Split(strings.TrimSpace(part), ";")
+		contentTypes[i] = typeAndFactor[0]
+	}
+
+	return contentTypes
+}
+
+// negotiateContentType returns the response content type that should be
+// used based on the results of parseAcceptHeader. If the accept header
+// cannot be satisfied an error is returned.
+func negotiateContentType(r *http.Request) (string, error) {
+	acceptHeader := r.Header.Get(AcceptHeader)
+	contentTypes := parseAcceptHeader(acceptHeader)
+
+	if len(contentTypes) == 0 || acceptHeader == "" {
+		return JsonContentType, nil
+	}
+
+	for _, contentType := range contentTypes {
+		if contentType == JsonContentType {
+			return contentType, nil
+		} else if contentType == HtmlContentType {
+			return HtmlContentType, nil
+		}
+	}
+
+	return "", fmt.Errorf("unable to satisfy accept header provided: %s. Supported headers include %s and %s", acceptHeader, JsonContentType, HtmlContentType)
 }

@@ -688,7 +688,8 @@ func (ae *AppEnv) getJwtTokenFromRequest(r *http.Request) *jwt.Token {
 	for _, header := range headers {
 		if strings.HasPrefix(header, "Bearer ") {
 			token := header[7:]
-			parsedToken, err := jwt.ParseWithClaims(token, &common.AccessClaims{}, ae.ControllersKeyFunc)
+			claims := &common.AccessClaims{}
+			parsedToken, err := jwt.ParseWithClaims(token, claims, ae.ControllersKeyFunc)
 
 			if err != nil {
 				pfxlog.Logger().WithError(err).Error("error during JWT parsing during API request")

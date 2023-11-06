@@ -18,8 +18,9 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/api"
@@ -120,7 +121,13 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 	}
 
 	if oidcConfig.TokenSecret == "" {
-		oidcConfig.TokenSecret = uuid.NewString()
+		bytes := make([]byte, 32)
+		_, err := rand.Read(bytes)
+		if err != nil {
+			return nil, fmt.Errorf("could not genreate random secret: %w", err)
+		}
+
+		oidcConfig.TokenSecret = hex.EncodeToString(bytes)
 	}
 
 	if redirectVal, ok := options["redirectURIs"]; ok {

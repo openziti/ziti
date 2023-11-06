@@ -232,6 +232,8 @@ web:
         options: { }
       - binding: edge-client
         options: { }
+      - binding: edge-oidc
+        options: { }
 
 commandRateLimiter:
     enabled: true

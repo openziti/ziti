@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openziti/identity"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router"
-	"github.com/openziti/identity"
-	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"net"
@@ -46,6 +46,7 @@ const (
 )
 
 type Config struct {
+	FilePath                   string
 	Enabled                    bool
 	ApiProxy                   ApiProxy
 	EdgeListeners              []*edge_ctrl_pb.Listener
@@ -140,6 +141,16 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 
 	if config.Db == "" {
 		config.Db = "./db.json.gzip"
+
+		if value, found := configMap[router.PathMapKey]; found {
+			configPath := value.(string)
+			configPath = strings.TrimSpace(configPath)
+			config.Db = configPath + ".json.gzip"
+		} else {
+			pfxlog.Logger().Warn("the db property was not set, using default for cached data model: %s", config.Db)
+		}
+
+		pfxlog.Logger().Infof("cached data modile file set to: %s", config.Db)
 	}
 
 	if val, found := edgeConfigMap["dbSaveIntervalSeconds"]; found {

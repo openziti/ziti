@@ -18,16 +18,19 @@ package model
 
 import (
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/lucsky/cuid"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
-	fabricApiError "github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/controller/apierror"
+	fabricApiError "github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/persistence"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -151,6 +154,55 @@ func (self *SessionManager) EvaluatePostureForService(identityId, apiSessionId, 
 	}
 }
 
+func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (string, error) {
+	entity.Id = uuid.New().String()
+	claims := jwt.MapClaims{
+		"jti":                          entity.Id,
+		"sub":                          entity.ServiceId,
+		"iss":                          time.Now(),
+		"aud":                          "openziti",
+		common.CustomClaimApiSessionId: entity.ApiSessionId,
+		common.CustomClaimServiceId:    entity.ServiceId,
+		common.CustomClaimsTokenType:   "s",
+	}
+
+	service, err := self.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, entity.IdentityId, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if entity.Type == "" {
+		entity.Type = persistence.SessionTypeDial
+	}
+
+	if persistence.SessionTypeDial == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
+		return "", errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
+	}
+
+	if persistence.SessionTypeBind == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
+		return "", errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
+	}
+
+	policyResult := self.EvaluatePostureForService(entity.IdentityId, entity.ApiSessionId, entity.Type, service.Id, service.Name)
+
+	if !policyResult.Passed {
+		self.env.GetManagers().PostureResponse.postureCache.AddSessionRequestFailure(entity.IdentityId, policyResult.Failure)
+		return "", apierror.NewInvalidPosture(policyResult.Cause)
+	}
+
+	edgeRouterAvailable, err := self.GetEnv().GetManagers().EdgeRouter.IsSharedEdgeRouterPresent(entity.IdentityId, entity.ServiceId)
+	if err != nil {
+		return "", err
+	}
+
+	if !edgeRouterAvailable {
+		return "", apierror.NewNoEdgeRoutersAvailable()
+	}
+	entity.ServicePolicies = policyResult.PassingPolicyIds
+
+	return self.env.GetJwtSigner().Generate("", "", claims)
+}
+
 func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string, error) {
 	if self.getExistingSessionEntity(entity) {
 		return entity.Id, nil
@@ -194,6 +246,7 @@ func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string
 	if err != nil {
 		return "", err
 	}
+
 	if !edgeRouterAvailable {
 		return "", apierror.NewNoEdgeRoutersAvailable()
 	}

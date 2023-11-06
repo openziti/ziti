@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/models"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"net/http"
 	"strings"
@@ -455,7 +455,7 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 }
 
 // CreateAccessAndRefreshTokens implements the op.Storage interface
-func (s *HybridStorage) CreateAccessAndRefreshTokens(_ context.Context, request op.TokenRequest, currentRefreshToken string) (accessTokenID string, newRefreshToken string, expiration time.Time, err error) {
+func (s *HybridStorage) CreateAccessAndRefreshTokens(ctx context.Context, request op.TokenRequest, currentRefreshToken string) (accessTokenID string, newRefreshToken string, expiration time.Time, err error) {
 	accessTokenId, accessClaims, err := s.createAccessToken(request)
 
 	if err != nil {
@@ -684,7 +684,7 @@ func (s *HybridStorage) GetPrivateClaimsFromScopes(ctx context.Context, identity
 	return s.getPrivateClaims(ctx, identityId, clientID, scopes)
 }
 
-func (s *HybridStorage) getPrivateClaims(_ context.Context, identityId, _ string, scopes []string) (claims map[string]interface{}, err error) {
+func (s *HybridStorage) getPrivateClaims(ctx context.Context, identityId, _ string, scopes []string) (claims map[string]interface{}, err error) {
 	identity, err := s.env.GetManagers().Identity.Read(identityId)
 
 	if err != nil {
@@ -693,6 +693,7 @@ func (s *HybridStorage) getPrivateClaims(_ context.Context, identityId, _ string
 
 	claims = appendClaim(claims, common.CustomClaimIsAdmin, identity.IsAdmin)
 	claims = appendClaim(claims, common.CustomClaimExternalId, identity.ExternalId)
+	claims = appendClaim(claims, common.CustomClaimsTokenType, common.TokenTypeAccess)
 
 	for _, scope := range scopes {
 		if strings.HasPrefix(scope, ScopeApiSessionId) {

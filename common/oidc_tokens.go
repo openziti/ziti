@@ -17,6 +17,8 @@ const (
 	CustomClaimIsAdmin           = "z_ia"
 	CustomClaimsConfigTypes      = "z_ct"
 	CustomClaimsCertFingerprints = "z_cfs"
+	CustomClaimsTokenType        = "z_t"
+	CustomClaimServiceId         = "z_sid"
 
 	DefaultAccessTokenDuration  = 30 * time.Minute
 	DefaultIdTokenDuration      = 30 * time.Minute
@@ -105,6 +107,17 @@ func (c *RefreshClaims) UnmarshalJSON(data []byte) error {
 type AccessClaims struct {
 	oidc.AccessTokenClaims
 	CustomClaims
+}
+
+func (r *AccessClaims) UnmarshalJSON(raw []byte) error {
+	err := json.Unmarshal(raw, &r.AccessTokenClaims)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(raw, &r.CustomClaims)
+
+	return err
 }
 
 func (r *AccessClaims) GetExpirationTime() (*jwt.NumericDate, error) {
