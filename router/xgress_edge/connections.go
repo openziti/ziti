@@ -27,7 +27,7 @@ import (
 	"github.com/openziti/ziti/router/state"
 )
 
-const JwtTokenPrefix = "eY"
+const JwtTokenPrefix = "ey"
 
 type sessionConnectionHandler struct {
 	stateManager                     state.Manager
@@ -66,7 +66,12 @@ func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding) er
 	fingerprints := fpg.FromCerts(certificates)
 
 	token := string(byteToken)
+
 	apiSession := handler.stateManager.GetApiSessionWithTimeout(token, handler.options.lookupApiSessionTimeout)
+
+	if apiSession.Claims != nil {
+		token = apiSession.Claims.ApiSessionId
+	}
 
 	if apiSession == nil {
 		_ = ch.Close()
@@ -93,8 +98,11 @@ func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding) er
 						pfxlog.Logger().WithError(err).Error("could not close channel during api session removal")
 					}
 				}
+
+				handler.stateManager.RemoveActiveChannel(ch)
 			})
 
+			handler.stateManager.AddActiveChannel(ch, apiSession)
 			handler.stateManager.AddConnectedApiSessionWithChannel(token, removeListener, ch)
 
 			return nil

@@ -2,24 +2,29 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/oidc_auth"
+	"github.com/pkg/errors"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/sirupsen/logrus"
 )
 
@@ -112,6 +117,8 @@ type baseSessionRequestContext struct {
 	service      *model.Service
 	newSession   bool
 	logContext   logcontext.Context
+	env          model.Env
+	accessClaims *common.AccessClaims
 }
 
 func (self *baseSessionRequestContext) newChangeContext() *change.Context {
@@ -171,53 +178,140 @@ func (self *baseSessionRequestContext) loadRouter() bool {
 	return true
 }
 
-func (self *baseSessionRequestContext) loadSession(token string) {
-	if self.err == nil {
-		var err error
-		self.session, err = self.handler.getAppEnv().Managers.Session.ReadByToken(token)
-		if err != nil {
-			if boltz.IsErrNotFoundErr(err) {
-				self.err = InvalidSessionError{}
-			} else {
-				self.err = internalError(err)
-			}
-			logrus.
-				WithField("token", token).
-				WithField("operation", self.handler.Label()).
-				WithError(self.err).Errorf("invalid session")
-			return
-		}
-		apiSession, err := self.handler.getAppEnv().Managers.ApiSession.Read(self.session.ApiSessionId)
-		if err != nil {
-			if boltz.IsErrNotFoundErr(err) {
-				self.err = InvalidApiSessionError{}
-			} else {
-				self.err = internalError(err)
-			}
-			logrus.
-				WithField("token", token).
-				WithField("operation", self.handler.Label()).
-				WithError(self.err).Errorf("invalid api-session")
-			return
-		}
-		self.apiSession = apiSession
-
-		self.logContext = logcontext.NewContext()
-		traceSpec := self.handler.getAppEnv().TraceManager.GetIdentityTrace(apiSession.IdentityId)
-		traceEnabled := traceSpec != nil && time.Now().Before(traceSpec.Until)
-		if traceEnabled {
-			self.logContext.SetChannelsMask(traceSpec.ChannelMask)
-			self.logContext.WithField("traceId", traceSpec.TraceId)
-		}
-		self.logContext.WithField("sessionId", self.session.Id)
-		self.logContext.WithField("apiSessionId", apiSession.Id)
-
-		if traceEnabled {
-			pfxlog.ChannelLogger(logcontext.EstablishPath).
-				Wire(self.logContext).
-				Debug("tracing enabled for this session")
-		}
+func (self *baseSessionRequestContext) loadSession(sessionToken string, apiSessionToken string) {
+	if strings.HasPrefix(sessionToken, oidc_auth.JwtTokenPrefix) {
+		self.loadFromTokens(sessionToken, apiSessionToken)
+	} else {
+		self.loadFromBolt(sessionToken)
 	}
+
+	if self.err != nil {
+		return
+	}
+
+	if self.session == nil {
+		self.err = internalError(errors.New("session was not found after load"))
+		return
+	}
+
+	if self.apiSession == nil {
+		self.err = internalError(errors.New("api session was not found after load"))
+		return
+	}
+
+	self.logContext = logcontext.NewContext()
+	traceSpec := self.handler.getAppEnv().TraceManager.GetIdentityTrace(self.apiSession.IdentityId)
+	traceEnabled := traceSpec != nil && time.Now().Before(traceSpec.Until)
+	if traceEnabled {
+		self.logContext.SetChannelsMask(traceSpec.ChannelMask)
+		self.logContext.WithField("traceId", traceSpec.TraceId)
+	}
+	self.logContext.WithField("sessionId", self.session.Id)
+	self.logContext.WithField("apiSessionId", self.apiSession.Id)
+
+	if traceEnabled {
+		pfxlog.ChannelLogger(logcontext.EstablishPath).
+			Wire(self.logContext).
+			Debug("tracing enabled for this session")
+	}
+}
+
+func (self *baseSessionRequestContext) loadFromTokens(sessionToken, apiSessionToken string) {
+	if self.err != nil {
+		return
+	}
+
+	var err error
+	self.accessClaims, err = self.env.ValidateAccessToken(apiSessionToken)
+
+	if err != nil {
+		self.err = internalError(err)
+		return
+	}
+
+	serviceAccessClaims, err := self.env.ValidateServiceAccessToken(sessionToken, &self.accessClaims.ApiSessionId)
+
+	if err != nil {
+		self.err = internalError(err)
+		return
+	}
+
+	if self.accessClaims.Subject != serviceAccessClaims.IdentityId {
+		self.err = internalError(fmt.Errorf("access and service tokens do not match, got access identity id %s and service identity id %s", self.accessClaims.Subject, serviceAccessClaims.IdentityId))
+		return
+	}
+
+	self.session = &model.Session{
+		BaseEntity: models.BaseEntity{
+			Id:        serviceAccessClaims.ID,
+			CreatedAt: serviceAccessClaims.IssuedAt.Time,
+			UpdatedAt: serviceAccessClaims.IssuedAt.Time,
+		},
+		Token:        sessionToken,
+		IdentityId:   serviceAccessClaims.IdentityId,
+		ApiSessionId: serviceAccessClaims.ApiSessionId,
+		ServiceId:    serviceAccessClaims.Subject,
+		Type:         serviceAccessClaims.Type,
+	}
+
+	tokenIdentity, err := self.env.GetManagers().Identity.Read(self.accessClaims.Subject)
+
+	if err != nil {
+		self.err = internalError(err)
+		return
+	}
+
+	self.apiSession = &model.ApiSession{
+		BaseEntity: models.BaseEntity{
+			Id: serviceAccessClaims.ApiSessionId,
+		},
+		Token:              apiSessionToken,
+		IdentityId:         serviceAccessClaims.IdentityId,
+		Identity:           tokenIdentity,
+		IPAddress:          self.accessClaims.RemoteAddress,
+		ConfigTypes:        self.accessClaims.ConfigTypesAsMap(),
+		MfaComplete:        false,
+		MfaRequired:        false,
+		ExpiresAt:          time.Time{},
+		ExpirationDuration: 0,
+		LastActivityAt:     time.Time{},
+		AuthenticatorId:    "",
+	}
+}
+
+func (self *baseSessionRequestContext) loadFromBolt(token string) {
+	if self.err != nil {
+		return
+	}
+
+	var err error
+	self.session, err = self.handler.getAppEnv().Managers.Session.ReadByToken(token)
+	if err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			self.err = InvalidSessionError{}
+		} else {
+			self.err = internalError(err)
+		}
+		logrus.
+			WithField("token", token).
+			WithField("operation", self.handler.Label()).
+			WithError(self.err).Errorf("invalid session")
+		return
+	}
+	apiSession, err := self.handler.getAppEnv().Managers.ApiSession.Read(self.session.ApiSessionId)
+	if err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			self.err = InvalidApiSessionError{}
+		} else {
+			self.err = internalError(err)
+		}
+		logrus.
+			WithField("token", token).
+			WithField("operation", self.handler.Label()).
+			WithError(self.err).Errorf("invalid api-session")
+		return
+	}
+	self.apiSession = apiSession
 }
 
 func (self *baseSessionRequestContext) checkSessionType(sessionType string) {
@@ -233,10 +327,25 @@ func (self *baseSessionRequestContext) checkSessionType(sessionType string) {
 }
 
 func (self *baseSessionRequestContext) checkSessionFingerprints(fingerprints []string) {
-	if self.err == nil {
-		var apiSessionCertFingerprints []string
+	if self.err != nil {
+		return
+	}
 
-		found := false
+	var apiSessionCertFingerprints []string
+	found := false
+
+	if self.accessClaims != nil {
+		apiSessionCertFingerprints = self.accessClaims.CertFingerprints
+
+		for _, fingerprint := range fingerprints {
+			found = stringz.Contains(apiSessionCertFingerprints, fingerprint)
+
+			if found {
+				break
+			}
+		}
+
+	} else {
 		err := self.GetHandler().getAppEnv().Managers.ApiSession.VisitFingerprintsForApiSessionId(self.session.ApiSessionId, func(fingerprint string) bool {
 			apiSessionCertFingerprints = append(apiSessionCertFingerprints, fingerprint)
 			if stringz.Contains(fingerprints, fingerprint) {
@@ -247,19 +356,20 @@ func (self *baseSessionRequestContext) checkSessionFingerprints(fingerprints []s
 		})
 
 		self.err = internalError(err)
-
-		if self.err != nil || !found {
-			if self.err == nil {
-				self.err = InvalidApiSessionError{}
-			}
-			logrus.
-				WithField("sessionId", self.session.Id).
-				WithField("operation", self.handler.Label()).
-				WithField("apiSessionFingerprints", apiSessionCertFingerprints).
-				WithField("clientFingerprints", fingerprints).
-				Error("matching fingerprint not found for connect")
-		}
 	}
+
+	if self.err != nil || !found {
+		if self.err == nil {
+			self.err = InvalidApiSessionError{}
+		}
+		logrus.
+			WithField("sessionId", self.session.Id).
+			WithField("operation", self.handler.Label()).
+			WithField("apiSessionFingerprints", apiSessionCertFingerprints).
+			WithField("clientFingerprints", fingerprints).
+			Error("matching fingerprint not found for connect")
+	}
+
 }
 
 func (self *baseSessionRequestContext) verifyEdgeRouterAccess() {

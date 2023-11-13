@@ -17,30 +17,40 @@
 package jwtsigner
 
 import (
+	"crypto"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type Signer interface {
-	Generate(string, string, jwt.Claims) (string, error)
+	Generate(jwt.Claims) (string, error)
+	SigningMethod() jwt.SigningMethod
+	KeyId() string
 }
 
-type IdentitySigner struct {
+type SignerImpl struct {
 	signingMethod jwt.SigningMethod
 	issuer        string
-	key           interface{}
+	key           crypto.PrivateKey
 	keyId         string
 }
 
-func New(issuer string, sm jwt.SigningMethod, key interface{}, keyId string) *IdentitySigner {
-	return &IdentitySigner{
+func New(sm jwt.SigningMethod, key crypto.PrivateKey, keyId string) *SignerImpl {
+	return &SignerImpl{
 		signingMethod: sm,
-		issuer:        issuer,
 		key:           key,
 		keyId:         keyId,
 	}
 }
 
-func (j *IdentitySigner) Generate(subj, jti string, claims jwt.Claims) (string, error) {
+func (j *SignerImpl) SigningMethod() jwt.SigningMethod {
+	return j.signingMethod
+}
+
+func (j *SignerImpl) KeyId() string {
+	return j.keyId
+}
+
+func (j *SignerImpl) Generate(claims jwt.Claims) (string, error) {
 	token := jwt.NewWithClaims(j.signingMethod, claims)
 
 	if j.keyId != "" {

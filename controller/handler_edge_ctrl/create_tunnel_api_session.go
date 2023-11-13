@@ -43,7 +43,7 @@ func (self *createApiSessionHandler) HandleReceive(msg *channel.Message, _ chann
 
 	ctx := &createApiSessionRequestContext{
 		baseTunnelRequestContext: baseTunnelRequestContext{
-			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		},
 		req: req,
 	}

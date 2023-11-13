@@ -23,6 +23,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/change"
@@ -83,6 +84,38 @@ type TestContext struct {
 	hostController  *testHostController
 }
 
+func (ctx *TestContext) ValidateAccessToken(token string) (*common.AccessClaims, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ctx *TestContext) ValidateServiceAccessToken(token string, apiSessionId *string) (*common.ServiceAccessClaims, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ctx *TestContext) OidcIssuer() string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ctx *TestContext) RootIssuer() string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ctx *TestContext) GetPeerControllerAddresses() []string {
+	return nil
+}
+
+func (ctx *TestContext) SigningMethod() jwt.SigningMethod {
+	return nil
+}
+
+func (ctx *TestContext) KeyId() string {
+	return "123-test-context"
+}
+
 func (ctx *TestContext) JwtSignerKeyFunc(token *jwt.Token) (interface{}, error) {
 	tlsCert, _, _ := ctx.GetServerCert()
 	return tlsCert.Leaf.PublicKey, nil
@@ -94,7 +127,7 @@ func (ctx *TestContext) GetServerCert() (*tls.Certificate, string, jwt.SigningMe
 
 func (ctx *TestContext) HandleServiceUpdatedEventForIdentityId(identityId string) {}
 
-func (ctx *TestContext) Generate(string, string, jwt.Claims) (string, error) {
+func (ctx *TestContext) Generate(jwt.Claims) (string, error) {
 	return "I'm a very legitimate claim", nil
 }
 
@@ -106,7 +139,7 @@ func (ctx *TestContext) GetConfig() *edgeconfig.Config {
 	return ctx.config
 }
 
-func (ctx *TestContext) GetJwtSigner() jwtsigner.Signer {
+func (ctx *TestContext) GetServerJwtSigner() jwtsigner.Signer {
 	return ctx
 }
 

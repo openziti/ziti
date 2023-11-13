@@ -23,9 +23,9 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/persistence"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -68,7 +68,7 @@ func (self *createTunnelTerminatorHandler) HandleReceive(msg *channel.Message, c
 
 	ctx := &CreateTunnelTerminatorRequestContext{
 		baseTunnelRequestContext: baseTunnelRequestContext{
-			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 			apiSession:                nil,
 			identity:                  nil,
 		},

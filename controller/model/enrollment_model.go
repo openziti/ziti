@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/persistence"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -59,8 +59,15 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 		entity.Token = uuid.New().String()
 	}
 
+	peerControllers := env.GetPeerControllerAddresses()
+
+	for i, addr := range peerControllers {
+		peerControllers[i] = "https://" + addr
+	}
+
 	enrollmentClaims := &ziti.EnrollmentClaims{
 		EnrollmentMethod: entity.Method,
+		Controllers:      peerControllers,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Audience:  []string{""},
 			ExpiresAt: &jwt.NumericDate{Time: expiresAt},
@@ -70,7 +77,7 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 		},
 	}
 
-	signedJwt, err := env.GetJwtSigner().Generate(subject, entity.Id, enrollmentClaims)
+	signedJwt, err := env.GetServerJwtSigner().Generate(enrollmentClaims)
 
 	if err != nil {
 		return err

@@ -19,10 +19,10 @@ package handler_edge_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/metrics"
 	"google.golang.org/protobuf/proto"
 	"time"
 )
@@ -61,7 +61,7 @@ func (self *healthEventHandler) HandleReceive(msg *channel.Message, ch channel.C
 	}
 
 	ctx := &HealthEventRequestContext{
-		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		req:                       req,
 	}
 
@@ -73,7 +73,7 @@ func (self *healthEventHandler) handleHealthEvent(ctx *HealthEventRequestContext
 		return
 	}
 
-	ctx.loadSession(ctx.req.SessionToken)
+	ctx.loadSession(ctx.req.SessionToken, ctx.req.ApiSessionToken)
 	ctx.checkSessionType(persistence.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 

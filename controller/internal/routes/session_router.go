@@ -126,7 +126,7 @@ func (r *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params session.CreateSessionParams) {
 	start := time.Now()
 	if rc.Claims != nil {
-		request := MapCreateSessionToModel(rc.Identity.Id, rc.ApiSession.Id, params.Session)
+		request := MapCreateSessionToModel(rc.Claims.Subject, rc.Claims.ApiSessionId, params.Session)
 		token, err := ae.Managers.Session.CreateJwt(request, rc.NewChangeContext())
 
 		if err != nil {

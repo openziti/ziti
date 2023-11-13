@@ -24,14 +24,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/certificate_authority"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"net/http"
 )
@@ -265,11 +265,13 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 	claims := &ziti.EnrollmentClaims{
 		EnrollmentMethod: method,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer: fmt.Sprintf(`https://%s/`, ae.Config.Api.Address),
+			Issuer:  fmt.Sprintf(`https://%s/`, ae.Config.Api.Address),
+			Subject: ca.Id,
+			ID:      ca.Id,
 		},
 	}
 
-	jwtStr, genErr := ae.GetJwtSigner().Generate(ca.Id, ca.Id, claims)
+	jwtStr, genErr := ae.GetServerJwtSigner().Generate(claims)
 
 	if genErr != nil {
 		rc.RespondWithError(errors.New("could not generate claims"))

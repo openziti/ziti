@@ -100,6 +100,21 @@ func (c *Controller) GetPeerSigners() []*x509.Certificate {
 	return certs
 }
 
+func (c *Controller) GetPeerAddresses() []string {
+	if c.raftController == nil || c.raftController.Mesh == nil {
+		return nil
+	}
+
+	var addresses []string
+
+	for _, peer := range c.raftController.Mesh.GetPeers() {
+		addresses = append(addresses, peer.Address)
+	}
+
+	return addresses
+
+}
+
 func (c *Controller) GetId() *identity.TokenId {
 	return c.config.Id
 }

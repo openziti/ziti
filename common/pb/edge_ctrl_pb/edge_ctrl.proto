@@ -288,6 +288,7 @@ message CreateCircuitRequest {
   repeated string fingerprints = 2;
   string terminatorInstanceId = 3;
   map<uint32, bytes> peerData = 4;
+  string apiSessionToken = 5;
 }
 
 message CreateCircuitResponse {
@@ -311,6 +312,7 @@ message CreateTerminatorRequest {
   TerminatorPrecedence precedence = 5;
   string instanceId = 6;
   bytes instanceSecret = 7;
+  string apiSessionToken = 8;
 }
 
 message CreateTerminatorV2Request {
@@ -322,6 +324,7 @@ message CreateTerminatorV2Request {
   TerminatorPrecedence precedence = 6;
   string instanceId = 7;
   bytes instanceSecret = 8;
+  string apiSessionToken = 9;
 }
 
 enum CreateTerminatorResult {
@@ -340,6 +343,7 @@ message RemoveTerminatorRequest {
   string sessionToken = 1;
   repeated string fingerprints = 2;
   string terminatorId = 3;
+  string apiSessionToken = 4;
 }
 
 message UpdateTerminatorRequest {
@@ -350,6 +354,7 @@ message UpdateTerminatorRequest {
   TerminatorPrecedence precedence = 5;
   bool updatePrecedence = 6;
   bool updateCost = 7;
+  string apiSessionToken = 8;
 }
 
 message HealthEventRequest {
@@ -357,6 +362,7 @@ message HealthEventRequest {
   repeated string fingerprints = 2;
   string terminatorId = 3;
   bool checkPassed = 4;
+  string apiSessionToken = 5;
 }
 
 message ValidateSessionsRequest {

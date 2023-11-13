@@ -19,6 +19,7 @@ package sync_strats
 import (
 	"context"
 	"crypto/sha1"
+	"crypto/tls"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -113,6 +114,17 @@ type InstantStrategy struct {
 	serviceHandler       *constraintToIndexedEvents[*persistence.EdgeService]
 	caHandler            *constraintToIndexedEvents[*persistence.Ca]
 	revocationHandler    *constraintToIndexedEvents[*persistence.Revocation]
+}
+
+func (strategy *InstantStrategy) AddPublicKey(cert *tls.Certificate) {
+	publicKey := newPublicKey(cert.Certificate[0], edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation, edge_ctrl_pb.DataState_PublicKey_JWTValidation})
+	newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
+	newEvent := &edge_ctrl_pb.DataState_Event{
+		Action: edge_ctrl_pb.DataState_Create,
+		Model:  newModel,
+	}
+
+	strategy.HandlePublicKeyEvent(newEvent, newModel)
 }
 
 // Initialize implements RouterDataModelCache

@@ -88,13 +88,32 @@ type Manager interface {
 
 	StartRouterModelSave(routerEnv env.RouterEnv, path string, duration time.Duration)
 	LoadRouterModel(filePath string)
+
+	AddActiveChannel(ch channel.Channel, session *ApiSession)
+	RemoveActiveChannel(ch channel.Channel)
+	GetApiSessionFromCh(ch channel.Channel) *ApiSession
 }
 
 var _ Manager = (*ManagerImpl)(nil)
 
+func NewManager() Manager {
+	return &ManagerImpl{
+		EventEmmiter:            events.New(),
+		apiSessionsByToken:      cmap.New[*edge_ctrl_pb.ApiSession](),
+		activeApiSessions:       cmap.New[*MapWithMutex](),
+		sessions:                cmap.New[uint32](),
+		recentlyRemovedSessions: cmap.New[time.Time](),
+		certCache:               cmap.New[*x509.Certificate](),
+		activeChannels:          cmap.New[*ApiSession](),
+	}
+}
+
 type ManagerImpl struct {
-	apiSessionsByToken      cmap.ConcurrentMap[string, *edge_ctrl_pb.ApiSession]
-	activeApiSessions       cmap.ConcurrentMap[string, *MapWithMutex]
+	apiSessionsByToken cmap.ConcurrentMap[string, *edge_ctrl_pb.ApiSession]
+
+	activeApiSessions cmap.ConcurrentMap[string, *MapWithMutex]
+	activeChannels    cmap.ConcurrentMap[string, *ApiSession]
+
 	sessions                cmap.ConcurrentMap[string, uint32]
 	recentlyRemovedSessions cmap.ConcurrentMap[string, time.Time]
 
@@ -110,6 +129,20 @@ type ManagerImpl struct {
 
 	certCache       cmap.ConcurrentMap[string, *x509.Certificate]
 	routerDataModel atomic.Pointer[common.RouterDataModel]
+}
+
+func (sm *ManagerImpl) GetApiSessionFromCh(ch channel.Channel) *ApiSession {
+	apiSession, _ := sm.activeChannels.Get(ch.Id())
+
+	return apiSession
+}
+
+func (sm *ManagerImpl) AddActiveChannel(ch channel.Channel, session *ApiSession) {
+	sm.activeChannels.Set(ch.Id(), session)
+}
+
+func (sm *ManagerImpl) RemoveActiveChannel(ch channel.Channel) {
+	sm.activeChannels.Remove(ch.Id())
 }
 
 func (sm *ManagerImpl) StartRouterModelSave(routerEnv env.RouterEnv, filePath string, duration time.Duration) {
@@ -277,17 +310,6 @@ func (sm *ManagerImpl) IsSyncInProgress() bool {
 	return sm.currentSync == ""
 }
 
-func NewManager() Manager {
-	return &ManagerImpl{
-		EventEmmiter:            events.New(),
-		apiSessionsByToken:      cmap.New[*edge_ctrl_pb.ApiSession](),
-		activeApiSessions:       cmap.New[*MapWithMutex](),
-		sessions:                cmap.New[uint32](),
-		recentlyRemovedSessions: cmap.New[time.Time](),
-		certCache:               cmap.New[*x509.Certificate](),
-	}
-}
-
 func (sm *ManagerImpl) AddApiSession(apiSession *edge_ctrl_pb.ApiSession) {
 	pfxlog.Logger().
 		WithField("apiSessionId", apiSession.Id).
@@ -389,6 +411,11 @@ func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
 		jwtToken, accessClaims, err := sm.ParseJwt(token)
 
 		if err == nil {
+			if !accessClaims.HasAudience(common.ClaimAudienceOpenZiti) {
+				pfxlog.Logger().Errorf("provided a token with invalid audience '%s', expected: %s", accessClaims.Audience, common.ClaimAudienceOpenZiti)
+				return nil
+			}
+
 			if accessClaims.Type != common.TokenTypeAccess {
 				pfxlog.Logger().Errorf("provided a token with invalid type '%s'", accessClaims.Type)
 				return nil
@@ -562,7 +589,24 @@ func (sm *ManagerImpl) RemoveConnectedApiSessionWithChannel(token string, ch cha
 }
 
 func (sm *ManagerImpl) ActiveApiSessionTokens() []string {
-	return sm.activeApiSessions.Keys()
+	var toClose []func()
+	var activeKeys []string
+	for i := range sm.activeApiSessions.IterBuffered() {
+		func() {
+			token := i.Key
+			chMutex := i.Val
+
+			chMutex.Visit(func(ch channel.Channel, closeCb func()) {
+				if ch.IsClosed() {
+					toClose = append(toClose, closeCb)
+				} else {
+					activeKeys = append(activeKeys, token)
+				}
+			})
+		}()
+	}
+
+	return activeKeys
 }
 
 func (sm *ManagerImpl) flushRecentlyRemoved() {
@@ -641,6 +685,15 @@ func (self *MapWithMutex) Put(ch channel.Channel, f func()) {
 	self.Lock()
 	defer self.Unlock()
 	self.m[ch] = f
+}
+
+func (self *MapWithMutex) Visit(cb func(ch channel.Channel, closeCb func())) {
+	self.Lock()
+	defer self.Unlock()
+
+	for ch, closeCb := range self.m {
+		cb(ch, closeCb)
+	}
 }
 
 func (sm *ManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration) {

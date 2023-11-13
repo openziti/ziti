@@ -17,6 +17,7 @@
 package env
 
 import (
+	"crypto/tls"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/ziti/controller/event"
@@ -61,6 +62,7 @@ type RouterSyncStrategy interface {
 	Stop()
 	RouterConnectionHandler
 	RouterSynchronizerEventHandler
+	AddPublicKey(cert *tls.Certificate)
 }
 
 // RouterConnectionHandler is responsible for handling router connect/disconnect for synchronizing state.

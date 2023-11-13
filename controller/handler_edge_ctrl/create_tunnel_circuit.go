@@ -74,7 +74,7 @@ func (self *createCircuitForServiceHandler) HandleReceive(msg *channel.Message, 
 
 	ctx := &CreateCircuitForServiceRequestContext{
 		baseTunnelRequestContext: baseTunnelRequestContext{
-			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		},
 		req: req,
 	}

@@ -108,7 +108,7 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 	cert := serverCert[0].Leaf
 	key := serverCert[0].PrivateKey
 
-	issuer := "https://" + ae.Config.Api.Address + "/oidc"
+	issuer := ae.OidcIssuer()
 	oidcConfig := oidc_auth.NewConfig(issuer, cert, key)
 
 	if secretVal, ok := options["secret"]; ok {

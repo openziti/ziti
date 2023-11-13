@@ -35,6 +35,7 @@ type AuthRequest struct {
 	BearerTokenDetected bool
 	SdkInfo             *rest_model.SdkInfo
 	EnvInfo             *rest_model.EnvInfo
+	RemoteAddress       string
 }
 
 // GetID returns an AuthRequest's ID and implements op.AuthRequest
@@ -161,7 +162,7 @@ func (a *AuthRequest) GetCertFingerprints() []string {
 	var prints []string
 
 	for _, cert := range a.PeerCerts {
-		prints = append(prints, fmt.Sprintf("%s", sha1.Sum(cert.Raw)))
+		prints = append(prints, fmt.Sprintf("%x", sha1.Sum(cert.Raw)))
 	}
 
 	return prints

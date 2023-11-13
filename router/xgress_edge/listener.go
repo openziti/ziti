@@ -25,9 +25,11 @@ import (
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/ziti/router/state"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -113,9 +115,9 @@ func (self *edgeClientConn) ContentType() int32 {
 	return edge.ContentTypeData
 }
 
-func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Channel) {
-	token := string(req.Body)
-	log := pfxlog.ContextLogger(ch.Label()).WithField("token", token).WithFields(edge.GetLoggerFields(req))
+func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.Message, ch channel.Channel) {
+	sessionToken := string(req.Body)
+	log := pfxlog.ContextLogger(ch.Label()).WithField("token", sessionToken).WithFields(edge.GetLoggerFields(req))
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
 	if !found {
 		pfxlog.Logger().Errorf("connId not set. unable to process connect message")
@@ -137,13 +139,13 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	}
 
 	// need to remove session remove listener on close
-	conn.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
+	conn.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(sessionToken, func(token string) {
 		conn.close(true, "session closed")
 	})
 
 	// We can't fix conn id, since it's provided by the client
 	if err := self.msgMux.AddMsgSink(conn); err != nil {
-		log.WithError(err).WithField("token", token).Error("error adding to msg mux")
+		log.WithError(err).WithField("token", sessionToken).Error("error adding to msg mux")
 		self.sendStateClosedReply(err.Error(), req)
 		return
 	}
@@ -161,10 +163,21 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
 
 	request := &edge_ctrl_pb.CreateCircuitRequest{
-		SessionToken:         token,
+		SessionToken:         sessionToken,
 		Fingerprints:         self.fingerprints.Prints(),
 		TerminatorInstanceId: terminatorIdentity,
 		PeerData:             peerData,
+	}
+
+	if strings.HasPrefix(sessionToken, JwtTokenPrefix) {
+		apiSession := manager.GetApiSessionFromCh(ch)
+
+		if apiSession == nil {
+			pfxlog.Logger().Errorf("could not find api session for channel, unable to process bind message")
+			return
+		}
+
+		request.ApiSessionToken = apiSession.Token
 	}
 
 	response := &edge_ctrl_pb.CreateCircuitResponse{}
@@ -186,7 +199,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	x.Start()
 }
 
-func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel) {
+func (self *edgeClientConn) processBind(manager state.Manager, req *channel.Message, ch channel.Channel) {
 	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
 	if ctrlCh == nil {
 		errStr := "no controller available, cannot create terminator"
@@ -208,17 +221,17 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 	}
 
 	if supportsCreateTerminatorV2 {
-		self.processBindV2(req, ch, ctrlCh)
+		self.processBindV2(manager, req, ch, ctrlCh)
 	} else {
-		self.processBindV1(req, ch, ctrlCh)
+		self.processBindV1(manager, req, ch, ctrlCh)
 	}
 }
 
-func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
-	token := string(req.Body)
+func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
+	sessionToken := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("sessionToken", token).
+		WithField("sessionToken", sessionToken).
 		WithFields(edge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
 
@@ -259,16 +272,16 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 	messageSink := &edgeTerminator{
 		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
 		edgeClientConn: self,
-		token:          token,
+		token:          sessionToken,
 		assignIds:      assignIds,
 	}
 
 	// need to remove session remove listener on close
-	messageSink.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
+	messageSink.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(sessionToken, func(token string) {
 		messageSink.close(true, "session ended")
 	})
 
-	self.listener.factory.hostedServices.Put(token, messageSink)
+	self.listener.factory.hostedServices.Put(sessionToken, messageSink)
 
 	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
 	var terminatorIdentitySecret []byte
@@ -277,13 +290,24 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 	}
 
 	request := &edge_ctrl_pb.CreateTerminatorRequest{
-		SessionToken:   token,
+		SessionToken:   sessionToken,
 		Fingerprints:   self.fingerprints.Prints(),
 		PeerData:       hostData,
 		Cost:           uint32(cost),
 		Precedence:     precedence,
 		InstanceId:     terminatorIdentity,
 		InstanceSecret: terminatorIdentitySecret,
+	}
+
+	if strings.HasPrefix(sessionToken, JwtTokenPrefix) {
+		apiSession := manager.GetApiSessionFromCh(ch)
+
+		if apiSession == nil {
+			pfxlog.Logger().Errorf("could not find api session for channel, unable to process bind message")
+			return
+		}
+
+		request.ApiSessionToken = apiSession.Token
 	}
 
 	timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
@@ -312,11 +336,11 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 	log.Info("created terminator")
 }
 
-func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
-	token := string(req.Body)
+func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
+	sessionToken := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("sessionToken", token).
+		WithField("sessionToken", sessionToken).
 		WithFields(edge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
 
@@ -336,7 +360,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 	terminator := &edgeTerminator{
 		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
 		edgeClientConn: self,
-		token:          token,
+		token:          sessionToken,
 		instance:       terminatorInstance,
 		assignIds:      assignIds,
 		v2:             true,
@@ -372,7 +396,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 	log.Debug("establishing listener")
 
 	// need to remove session remove listener on close
-	terminator.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
+	terminator.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(sessionToken, func(token string) {
 		terminator.close(true, "session ended")
 	})
 
@@ -385,13 +409,24 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 
 	request := &edge_ctrl_pb.CreateTerminatorV2Request{
 		Address:        terminatorId,
-		SessionToken:   token,
+		SessionToken:   sessionToken,
 		Fingerprints:   self.fingerprints.Prints(),
 		PeerData:       hostData,
 		Cost:           uint32(cost),
 		Precedence:     precedence,
 		InstanceId:     terminatorInstance,
 		InstanceSecret: terminatorInstanceSecret,
+	}
+
+	if strings.HasPrefix(sessionToken, JwtTokenPrefix) {
+		apiSession := manager.GetApiSessionFromCh(ch)
+
+		if apiSession == nil {
+			pfxlog.Logger().Errorf("could not find api session for channel, unable to process bind message")
+			return
+		}
+
+		request.ApiSessionToken = apiSession.Token
 	}
 
 	timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
@@ -424,7 +459,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 	log.Info("created terminator")
 }
 
-func (self *edgeClientConn) processUnbind(req *channel.Message, _ channel.Channel) {
+func (self *edgeClientConn) processUnbind(manager state.Manager, req *channel.Message, _ channel.Channel) {
 	token := string(req.Body)
 	atLeastOneTerminatorRemoved := self.listener.factory.hostedServices.unbindSession(token, self)
 
@@ -445,11 +480,11 @@ func (self *edgeClientConn) removeTerminator(ctrlCh channel.Channel, token, term
 	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTerminatorResponseType)
 }
 
-func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.Channel) {
-	token := string(req.Body)
+func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channel.Message, ch channel.Channel) {
+	sessionToken := string(req.Body)
 
-	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionToken", token).WithFields(edge.GetLoggerFields(req))
-	terminators := self.listener.factory.hostedServices.getRelatedTerminators(token, self)
+	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionToken", sessionToken).WithFields(edge.GetLoggerFields(req))
+	terminators := self.listener.factory.hostedServices.getRelatedTerminators(sessionToken, self)
 
 	if len(terminators) == 0 {
 		log.Error("failed to update bind, no listener found")
@@ -464,9 +499,14 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 
 	for _, terminator := range terminators {
 		request := &edge_ctrl_pb.UpdateTerminatorRequest{
-			SessionToken: token,
+			SessionToken: sessionToken,
 			Fingerprints: self.fingerprints.Prints(),
 			TerminatorId: terminator.terminatorId.Load(),
+		}
+
+		if strings.HasPrefix(sessionToken, JwtTokenPrefix) {
+			apiSession := manager.GetApiSessionFromCh(ch)
+			request.ApiSessionToken = apiSession.Token
 		}
 
 		if costVal, hasCost := req.GetUint16Header(edge.CostHeader); hasCost {
@@ -503,9 +543,9 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 	}
 }
 
-func (self *edgeClientConn) processHealthEvent(req *channel.Message, ch channel.Channel) {
-	token := string(req.Body)
-	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
+func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *channel.Message, ch channel.Channel) {
+	sessionToken := string(req.Body)
+	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", sessionToken).WithFields(edge.GetLoggerFields(req))
 
 	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
 	if ctrlCh == nil {
@@ -513,7 +553,7 @@ func (self *edgeClientConn) processHealthEvent(req *channel.Message, ch channel.
 		return
 	}
 
-	terminator, ok := self.listener.factory.hostedServices.Get(token)
+	terminator, ok := self.listener.factory.hostedServices.Get(sessionToken)
 
 	if !ok {
 		log.Error("failed to update bind, no listener found")
@@ -523,10 +563,15 @@ func (self *edgeClientConn) processHealthEvent(req *channel.Message, ch channel.
 	checkPassed, _ := req.GetBoolHeader(edge.HealthStatusHeader)
 
 	request := &edge_ctrl_pb.HealthEventRequest{
-		SessionToken: token,
+		SessionToken: sessionToken,
 		Fingerprints: self.fingerprints.Prints(),
 		TerminatorId: terminator.terminatorId.Load(),
 		CheckPassed:  checkPassed,
+	}
+
+	if strings.HasPrefix(sessionToken, JwtTokenPrefix) {
+		apiSession := manager.GetApiSessionFromCh(ch)
+		request.ApiSessionToken = apiSession.Token
 	}
 
 	log = log.WithField("terminator", terminator.terminatorId.Load()).WithField("checkPassed", checkPassed)

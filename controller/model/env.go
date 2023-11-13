@@ -22,6 +22,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/cert"
 	edgeconfig "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/jwtsigner"
@@ -33,7 +34,6 @@ import (
 type Env interface {
 	GetManagers() *Managers
 	GetConfig() *edgeconfig.Config
-	GetJwtSigner() jwtsigner.Signer
 	GetDbProvider() persistence.DbProvider
 	GetStores() *persistence.Stores
 	GetAuthRegistry() AuthRegistry
@@ -46,8 +46,17 @@ type Env interface {
 	GetMetricsRegistry() metrics.Registry
 	GetFingerprintGenerator() cert.FingerprintGenerator
 	HandleServiceUpdatedEventForIdentityId(identityId string)
+
+	GetServerJwtSigner() jwtsigner.Signer
 	GetServerCert() (*tls.Certificate, string, jwt.SigningMethod)
 	JwtSignerKeyFunc(token *jwt.Token) (interface{}, error)
+	GetPeerControllerAddresses() []string
+
+	ValidateAccessToken(token string) (*common.AccessClaims, error)
+	ValidateServiceAccessToken(token string, apiSessionId *string) (*common.ServiceAccessClaims, error)
+
+	OidcIssuer() string
+	RootIssuer() string
 }
 
 type HostController interface {

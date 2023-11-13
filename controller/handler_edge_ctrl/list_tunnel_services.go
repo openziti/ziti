@@ -3,9 +3,9 @@ package handler_edge_ctrl
 import (
 	"encoding/json"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/storage/ast"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/storage/ast"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"time"
@@ -40,7 +40,7 @@ func (self *listTunnelServicesHandler) HandleReceive(msg *channel.Message, _ cha
 
 	ctx := &listTunnelServicesRequestContext{
 		baseTunnelRequestContext: baseTunnelRequestContext{
-			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		},
 	}
 

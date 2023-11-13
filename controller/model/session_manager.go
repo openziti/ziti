@@ -156,15 +156,6 @@ func (self *SessionManager) EvaluatePostureForService(identityId, apiSessionId, 
 
 func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (string, error) {
 	entity.Id = uuid.New().String()
-	claims := jwt.MapClaims{
-		"jti":                          entity.Id,
-		"sub":                          entity.ServiceId,
-		"iss":                          time.Now(),
-		"aud":                          "openziti",
-		common.CustomClaimApiSessionId: entity.ApiSessionId,
-		common.CustomClaimServiceId:    entity.ServiceId,
-		common.CustomClaimsTokenType:   "s",
-	}
 
 	service, err := self.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, entity.IdentityId, nil)
 	if err != nil {
@@ -200,7 +191,22 @@ func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (str
 	}
 	entity.ServicePolicies = policyResult.PassingPolicyIds
 
-	return self.env.GetJwtSigner().Generate("", "", claims)
+	claims := common.ServiceAccessClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    self.env.RootIssuer(),
+			Subject:   entity.ServiceId,
+			Audience:  jwt.ClaimStrings{common.ClaimAudienceOpenZiti},
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+			ID:        entity.Id,
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().AddDate(1, 0, 0)}, //bound by API Session
+		},
+		ApiSessionId: entity.ApiSessionId,
+		IdentityId:   entity.IdentityId,
+		Type:         entity.Type,
+		TokenType:    common.TokenTypeServiceAccess,
+	}
+
+	return self.env.GetServerJwtSigner().Generate(claims)
 }
 
 func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string, error) {

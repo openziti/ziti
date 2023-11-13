@@ -85,21 +85,26 @@ type AppEnv struct {
 	ApiClientCsrSigner     cert.Signer
 	ControlClientCsrSigner cert.Signer
 
-	FingerprintGenerator    cert.FingerprintGenerator
-	AuthRegistry            model.AuthRegistry
-	EnrollRegistry          model.EnrollmentRegistry
-	Broker                  *Broker
-	HostController          HostController
-	ManagementApi           *managementOperations.ZitiEdgeManagementAPI
-	ClientApi               *clientOperations.ZitiEdgeClientAPI
-	IdentityRefreshMap      cmap.ConcurrentMap[string, time.Time]
-	identityRefreshMeter    metrics.Meter
-	StartupTime             time.Time
-	InstanceId              string
-	enrollmentSigner        jwtsigner.Signer
-	TraceManager            *TraceManager
-	ServerCert              *tls.Certificate
-	ServerCertSigningMethod jwt.SigningMethod
+	FingerprintGenerator cert.FingerprintGenerator
+	AuthRegistry         model.AuthRegistry
+	EnrollRegistry       model.EnrollmentRegistry
+	Broker               *Broker
+	HostController       HostController
+	ManagementApi        *managementOperations.ZitiEdgeManagementAPI
+	ClientApi            *clientOperations.ZitiEdgeClientAPI
+	IdentityRefreshMap   cmap.ConcurrentMap[string, time.Time]
+	identityRefreshMeter metrics.Meter
+	StartupTime          time.Time
+	InstanceId           string
+
+	serverSigner jwtsigner.Signer
+	ServerCert   *tls.Certificate
+
+	TraceManager *TraceManager
+}
+
+func (ae *AppEnv) GetPeerControllerAddresses() []string {
+	return ae.HostController.GetPeerAddresses()
 }
 
 // JwtSignerKeyFunc is used in combination with jwt.Parse or jwt.ParseWithClaims to
@@ -129,9 +134,106 @@ func (ae *AppEnv) JwtSignerKeyFunc(token *jwt.Token) (interface{}, error) {
 	return nil, errors.New("invalid kid: " + targetKid)
 }
 
+func (ae *AppEnv) ValidateAccessToken(token string) (*common.AccessClaims, error) {
+	accessClaims := &common.AccessClaims{}
+
+	parsedToken, err := jwt.ParseWithClaims(token, accessClaims, ae.JwtSignerKeyFunc)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !parsedToken.Valid {
+		return nil, errors.New("access token is invalid")
+	}
+
+	if !accessClaims.HasAudience(common.ClaimAudienceOpenZiti) {
+		return nil, fmt.Errorf("invalind audience, expected an instance of %s, got %v", common.ClaimAudienceOpenZiti, accessClaims.Audience)
+	}
+
+	if accessClaims.Type != common.TokenTypeAccess {
+		return nil, fmt.Errorf("invalid token type, expected %s, got %s", common.TokenTypeAccess, accessClaims.Type)
+	}
+
+	tokenRevocation, err := ae.GetManagers().Revocation.Read(accessClaims.JWTID)
+
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return nil, err
+	}
+
+	if tokenRevocation != nil {
+		return nil, errors.New("access token has been revoked by id")
+	}
+
+	revocation, err := ae.GetManagers().Revocation.Read(accessClaims.Subject)
+
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return nil, err
+	}
+
+	if revocation != nil && tokenRevocation.CreatedAt.After(accessClaims.IssuedAt.AsTime()) {
+		return nil, errors.New("access token has been revoked by identity")
+	}
+
+	return accessClaims, nil
+}
+
+func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string) (*common.ServiceAccessClaims, error) {
+	serviceAccessClaims := &common.ServiceAccessClaims{}
+
+	parsedToken, err := jwt.ParseWithClaims(token, serviceAccessClaims, ae.JwtSignerKeyFunc)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !parsedToken.Valid {
+		return nil, errors.New("service access token is invalid")
+	}
+
+	if !serviceAccessClaims.HasAudience(common.ClaimAudienceOpenZiti) {
+		return nil, fmt.Errorf("invalind audience, expected an instance of %s, got %v", common.ClaimAudienceOpenZiti, serviceAccessClaims.Audience)
+	}
+
+	if serviceAccessClaims.TokenType != common.TokenTypeServiceAccess {
+		return nil, fmt.Errorf("invalid token type, expected %s, got %s", common.TokenTypeServiceAccess, serviceAccessClaims.Type)
+	}
+
+	if apiSessionId != nil {
+		if *apiSessionId == "" {
+			return nil, errors.New("invalid target api session id, must not be empty string")
+		}
+
+		if serviceAccessClaims.ApiSessionId != *apiSessionId {
+			return nil, fmt.Errorf("invalid api sessoin id, expected %s, got %s", *apiSessionId, serviceAccessClaims.ApiSessionId)
+		}
+	}
+
+	tokenRevocation, err := ae.GetManagers().Revocation.Read(serviceAccessClaims.ID)
+
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return nil, err
+	}
+
+	if tokenRevocation != nil {
+		return nil, errors.New("service access token has been revoked by id")
+	}
+
+	revocation, err := ae.GetManagers().Revocation.Read(serviceAccessClaims.IdentityId)
+
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return nil, err
+	}
+
+	if revocation != nil && tokenRevocation.CreatedAt.After(serviceAccessClaims.IssuedAt.Time) {
+		return nil, errors.New("service access token has been revoked by identity")
+	}
+
+	return serviceAccessClaims, nil
+}
+
 func (ae *AppEnv) GetServerCert() (serverCert *tls.Certificate, kid string, signingMethod jwt.SigningMethod) {
-	kid = fmt.Sprintf("%x", sha1.Sum(ae.ServerCert.Certificate[0]))
-	return ae.ServerCert, kid, ae.ServerCertSigningMethod
+	return ae.ServerCert, ae.serverSigner.KeyId(), ae.serverSigner.SigningMethod()
 }
 
 func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {
@@ -158,8 +260,8 @@ func (ae *AppEnv) GetConfig() *config.Config {
 	return ae.Config
 }
 
-func (ae *AppEnv) GetJwtSigner() jwtsigner.Signer {
-	return ae.enrollmentSigner
+func (ae *AppEnv) GetServerJwtSigner() jwtsigner.Signer {
+	return ae.serverSigner
 }
 
 func (ae *AppEnv) GetDbProvider() persistence.DbProvider {
@@ -203,6 +305,7 @@ type HostController interface {
 	GetPeerSigners() []*x509.Certificate
 	GetEventDispatcher() event.Dispatcher
 	GetRaftIndex() uint64
+	GetPeerAddresses() []string
 }
 
 type Schemes struct {
@@ -399,7 +502,7 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 
 	rc.ApiSession = &model.ApiSession{
 		BaseEntity: models.BaseEntity{
-			Id:        rc.Claims.JWTID,
+			Id:        rc.Claims.ApiSessionId,
 			CreatedAt: rc.Claims.IssuedAt.AsTime(),
 			UpdatedAt: rc.Claims.IssuedAt.AsTime(),
 			IsSystem:  false,
@@ -849,14 +952,20 @@ func (ae *AppEnv) HandleServiceUpdatedEventForIdentityId(identityId string) {
 	ae.identityRefreshMeter.Mark(1)
 }
 
-func (ae *AppEnv) SetEnrollmentSigningCert(serverCert *tls.Certificate) {
+func (ae *AppEnv) SetServerCert(serverCert *tls.Certificate) {
+	ae.ServerCert = serverCert
+
 	signMethod := getJwtSigningMethod(serverCert)
 	kid := fmt.Sprintf("%x", sha1.Sum(serverCert.Certificate[0]))
-	ae.enrollmentSigner = jwtsigner.New(ae.Config.Api.Address, signMethod, serverCert.PrivateKey, kid)
+	ae.serverSigner = jwtsigner.New(signMethod, serverCert.PrivateKey, kid)
+
+	ae.Broker.routerSyncStrategy.AddPublicKey(ae.ServerCert)
 }
 
-func (ae *AppEnv) SetServerIdentity(certificate *tls.Certificate) {
-	ae.ServerCert = certificate
-	ae.ServerCertSigningMethod = getJwtSigningMethod(certificate)
+func (ae *AppEnv) OidcIssuer() string {
+	return ae.RootIssuer() + "/oidc"
+}
 
+func (ae *AppEnv) RootIssuer() string {
+	return "https://" + ae.Config.Api.Address
 }
