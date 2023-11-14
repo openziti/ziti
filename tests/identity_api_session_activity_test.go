@@ -3,9 +3,9 @@ package tests
 import (
 	rest_identity "github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/controller"
 	"net/url"
 	"testing"
 	"time"
@@ -42,7 +42,9 @@ func Test_Identity_HasErConnection(t *testing.T) {
 	caPool, err := ziti.GetControllerWellKnownCaPool("https://" + ctx.ApiHost)
 	ctx.Req.NoError(err)
 
-	managementClient := edge_apis.NewManagementApiClient(managementUrl, caPool)
+	managementClient := edge_apis.NewManagementApiClient(managementUrl, caPool, func(strings chan string) {
+		strings <- "123"
+	})
 
 	curSession, err := managementClient.Authenticate(creds, nil)
 	ctx.Req.NoError(err)

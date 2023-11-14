@@ -284,7 +284,7 @@ func (sm *ManagerImpl) RouterDataModel() *common.RouterDataModel {
 
 func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel) {
 	publicKeys := model.PublicKeys.Items()
-	pfxlog.Logger().Debugf("number of public keys in rdm: %d, %v", len(publicKeys), publicKeys)
+	pfxlog.Logger().Debugf("number of public keys in rdm: %d", len(publicKeys))
 
 	sm.routerDataModel.Store(model)
 

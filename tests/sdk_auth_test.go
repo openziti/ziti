@@ -31,7 +31,9 @@ func TestSdkAuth(t *testing.T) {
 	ctx.Req.NoError(err)
 
 	adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
-	adminClient := edge_apis.NewManagementApiClient(managementApiUrl, ctx.ControllerConfig.Id.CA())
+	adminClient := edge_apis.NewManagementApiClient(managementApiUrl, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+		strings <- "123"
+	})
 	apiSession, err := adminClient.Authenticate(adminCreds, nil)
 
 	t.Run("management updb", func(t *testing.T) {
@@ -47,7 +49,9 @@ func TestSdkAuth(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		creds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
-		client := edge_apis.NewClientApiClient(clientApiUrl, ctx.ControllerConfig.Id.CA())
+		client := edge_apis.NewClientApiClient(clientApiUrl, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+			strings <- "123"
+		})
 		apiSession, err := client.Authenticate(creds, nil)
 
 		ctx.Req.NoError(err)
@@ -62,7 +66,9 @@ func TestSdkAuth(t *testing.T) {
 		creds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
 		creds.CaPool = ctx.ControllerConfig.Id.CA()
 
-		client := edge_apis.NewClientApiClient(clientApiUrl, nil)
+		client := edge_apis.NewClientApiClient(clientApiUrl, nil, func(strings chan string) {
+			strings <- "123"
+		})
 		apiSession, err := client.Authenticate(creds, nil)
 
 		ctx.Req.NoError(err)
@@ -75,7 +81,9 @@ func TestSdkAuth(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		creds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
-		client := edge_apis.NewManagementApiClient(managementApiUrl, ctx.ControllerConfig.Id.CA())
+		client := edge_apis.NewManagementApiClient(managementApiUrl, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+			strings <- "123"
+		})
 		apiSession, err := client.Authenticate(creds, nil)
 
 		ctx.Req.NoError(err)
@@ -90,7 +98,9 @@ func TestSdkAuth(t *testing.T) {
 		creds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
 		creds.CaPool = ctx.ControllerConfig.Id.CA()
 
-		client := edge_apis.NewManagementApiClient(managementApiUrl, nil)
+		client := edge_apis.NewManagementApiClient(managementApiUrl, nil, func(strings chan string) {
+			strings <- "123"
+		})
 		apiSession, err := client.Authenticate(creds, nil)
 
 		ctx.Req.NoError(err)
@@ -104,7 +114,9 @@ func TestSdkAuth(t *testing.T) {
 
 		creds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
 
-		client := edge_apis.NewClientApiClient(clientApiUrl, ctx.ControllerConfig.Id.CA())
+		client := edge_apis.NewClientApiClient(clientApiUrl, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+			strings <- "123"
+		})
 		apiSession, err := client.Authenticate(creds, nil)
 
 		ctx.Req.NoError(err)
@@ -119,7 +131,9 @@ func TestSdkAuth(t *testing.T) {
 		creds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
 		creds.CaPool = ctx.ControllerConfig.Id.CA()
 
-		client := edge_apis.NewClientApiClient(clientApiUrl, nil)
+		client := edge_apis.NewClientApiClient(clientApiUrl, nil, func(strings chan string) {
+			strings <- "123"
+		})
 		apiSession, err := client.Authenticate(creds, nil)
 
 		ctx.Req.NoError(err)
@@ -225,7 +239,9 @@ func TestSdkAuth(t *testing.T) {
 		t.Run("client jwt, ca pool on client", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			creds := edge_apis.NewJwtCredentials(jwtStrSigned)
-			client := edge_apis.NewClientApiClient(clientApiUrl, ctx.ControllerConfig.Id.CA())
+			client := edge_apis.NewClientApiClient(clientApiUrl, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+				strings <- "123"
+			})
 			apiSession, err := client.Authenticate(creds, nil)
 
 			ctx.Req.NoError(err)
@@ -239,7 +255,9 @@ func TestSdkAuth(t *testing.T) {
 			creds := edge_apis.NewJwtCredentials(jwtStrSigned)
 			creds.CaPool = ctx.ControllerConfig.Id.CA()
 
-			client := edge_apis.NewClientApiClient(clientApiUrl, nil)
+			client := edge_apis.NewClientApiClient(clientApiUrl, nil, func(strings chan string) {
+				strings <- "123"
+			})
 			apiSession, err := client.Authenticate(creds, nil)
 
 			ctx.Req.NoError(err)
@@ -251,7 +269,9 @@ func TestSdkAuth(t *testing.T) {
 		t.Run("management jwt, ca pool on client", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			creds := edge_apis.NewJwtCredentials(jwtStrSigned)
-			client := edge_apis.NewManagementApiClient(managementApiUrl, ctx.ControllerConfig.Id.CA())
+			client := edge_apis.NewManagementApiClient(managementApiUrl, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+				strings <- "123"
+			})
 			apiSession, err := client.Authenticate(creds, nil)
 
 			ctx.Req.NoError(err)
@@ -265,7 +285,9 @@ func TestSdkAuth(t *testing.T) {
 			creds := edge_apis.NewJwtCredentials(jwtStrSigned)
 			creds.CaPool = ctx.ControllerConfig.Id.CA()
 
-			client := edge_apis.NewManagementApiClient(managementApiUrl, nil)
+			client := edge_apis.NewManagementApiClient(managementApiUrl, nil, func(strings chan string) {
+				strings <- "123"
+			})
 			apiSession, err := client.Authenticate(creds, nil)
 
 			ctx.Req.NoError(err)
