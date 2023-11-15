@@ -97,7 +97,7 @@ installDebian(){
     # always update the pubkey
     $GETTERCMD https://get.openziti.io/tun/package-repos.gpg \
     | $GNUPGCMD --batch --yes --dearmor --output /usr/share/keyrings/openziti.gpg
-    chmod +r /usr/share/keyrings/openziti.gpg
+    chmod a+r /usr/share/keyrings/openziti.gpg
 
     local REPOSRC="deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/${ZITIPAX_DEB:-zitipax-openziti-deb-stable} debian main"
 
