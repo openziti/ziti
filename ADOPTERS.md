@@ -14,9 +14,19 @@ If you're interested in getting your project added to the list either:
   * Link to logo
 * Fork the repo and put up a pull request for this page! :)
 
-## Adopters
+## Open Source Projects
 
-Here's the list of projects using and adopting OpenZiti
+The OpenZiti project supports a strong, open source ecosystem. This table will contain the list of projects which are
+open source that have embedded OpenZiti into the project, or use OpenZiti for secure communication in some other way.
+
+| Project Name | Project Link    | Source URL | Logo                                                                                           | How OpenZiti is used or why OpenZiti was chosen                                                                          |
+|-------------|-----------------|------------|------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| zrok        | https://zrok.io | https://github.com/openziti/zrok           | <img src="https://zrok.io/wp-content/uploads/2023/01/space3-1327x1536.png.webp" width="100px"> | An open source sharing solution built on OpenZiti, the zero trust networking platform. Available as SaaS or self-hosted. |
+
+
+## Other Adopters
+
+Here's the list of projects which are proudly adopting and using OpenZiti
 
 | Project Name                     | Project Link                                  | Logo     | How OpenZiti is used or why OpenZiti was chosen     |
 |----------------------------------|-----------------------------------------------|----------|-----------------|
