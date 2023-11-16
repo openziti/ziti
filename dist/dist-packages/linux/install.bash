@@ -11,7 +11,7 @@ checkSum() {
             break
         fi
     done
-    if [ -z "$SUMCMD" ]; then
+    if [ -z "${SUMCMD:-}" ]; then
         echo "ERROR: No checksum command found. Tried 'sha256sum', 'md5sum'." >&2
         exit 1
     fi
@@ -26,7 +26,7 @@ installRedHat(){
             break
         fi
     done
-    if [ -z "$PACKAGER" ]; then
+    if [ -z "${PACKAGER:-}" ]; then
         echo "ERROR: No package manager found. Tried 'dnf', 'yum'." >&2
         exit 1
     fi
@@ -70,7 +70,7 @@ installDebian(){
             break
         fi
     done
-    if [ -z "$GNUPGCMD" ]; then
+    if [ -z "${GNUPGCMD:-}" ]; then
         echo "ERROR: No GnuPG CLI found. Tried 'gpg', gpg2." >&2
         exit 1
     fi
@@ -80,7 +80,7 @@ installDebian(){
             break
         fi
     done
-    if [ -z "$GETTER" ]; then
+    if [ -z "${GETTER:-}" ]; then
         echo "ERROR: No http client found. Tried 'wget', 'curl'." >&2
         exit 1
     else
