@@ -70,32 +70,54 @@ ziti pki create server --pki-root ./pki --ca-name ctrl3 --dns localhost --ip 127
 ## Running the Controllers
 
 1. The controller configuration files have relative paths, so make sure you're running things from this directory.
-2. Start all three controllers
-    1. `ziti controller run ctrl1.yml`
-    2. `ziti controller run ctrl2.yml`
-    3. `ziti controller run ctrl3.yml`
-    4. All three are configured with `minClusterSize` of 3, so they will wait to be joined to a raft cluster
-    5. The ctrl1.yml config file has the other two controllers as bootstrap members, so when it starts the first controller will start trying form the raft cluster.
-3. Initialize the edge using the agent
-    1. `ziti agent controller init <pid of any controller> admin admin 'Default Admin'`
-    2. You can of course use different values if you desire
+2. Start all three controllers.
 
-You should now have a three node cluster running. You can log into each controller individually.
+    ```bash
+    ziti controller run ctrl1.yml
+    ziti controller run ctrl2.yml
+    ziti controller run ctrl3.yml
+    ```
+
+    All three are configured with `minClusterSize` of 3, so they will wait to be joined to a raft cluster.
+    The ctrl1.yml config file has the other two controllers as bootstrap members, so when it starts the first
+    controller will start trying form the raft cluster.
+
+3. Call `ctrl1` to add `ctrl2`, `ctrl3` to the cluster by `ctrl.listener`.
+
+    ```bash
+    ziti agent cluster --app-id ctrl1 add tls:127.0.0.1:6363
+    ziti agent cluster --app-id ctrl1 add tls:127.0.0.1:6464
+    ```
+
+4. Inspect the cluster.
+
+    ```bash
+    ziti agent cluster list --app-id ctrl1
+    ```
+
+5. Initialize the edge administrator.
+
+    ```bash
+    ziti agent controller init admin admin 'Default Admin' --app-id ctrl1
+    ```
+
+You should now have a three node cluster running. You can log into each controller individually with separate named CLI profiles.
 
 1. `ziti edge login localhost:1280`
 2. `ziti edge -i ctrl2 login localhost:1380`
 3. `ziti edge -i ctrl3 login localhost:1480`
 
-You could then create some model data on any controller:
+You could then create some model data on any controller. These demos will run to completion and print built-in
+documentation about the actions performed.
 
-```
+```bash
 ziti demo setup echo client 
 ziti demo setup echo single-sdk-hosted
 ```
 
 Any view the results on any controller
 
-```
+```bash
 ziti edge ls services
 ziti edge -i ctrl2 ls services
 ziti edge -i ctrl3 ls services
