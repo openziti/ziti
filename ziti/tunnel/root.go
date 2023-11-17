@@ -28,13 +28,13 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/common/enrollment"
+	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/entities"
 	"github.com/openziti/ziti/tunnel/intercept"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/common/enrollment"
-	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -136,7 +136,10 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 	sdkinfo.SetApplication("ziti-tunnel", version.GetVersion())
 
 	resolverConfig := cmd.Flag(resolverCfgFlag).Value.String()
-	resolver := dns.NewResolver(resolverConfig)
+	resolver, err := dns.NewResolver(resolverConfig)
+	if err != nil {
+		log.WithError(err).Fatal("failed to start DNS resolver")
+	}
 
 	serviceListenerGroup := intercept.NewServiceListenerGroup(interceptor, resolver)
 
