@@ -18,8 +18,8 @@ package xgress
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"math"
@@ -105,7 +105,7 @@ func NewLinkSendBuffer(x *Xgress) *LinkSendBuffer {
 		x:                 x,
 		buffer:            make(map[int32]*txPayload),
 		newlyBuffered:     make(chan *txPayload, x.Options.TxQueueSize),
-		newlyReceivedAcks: make(chan *Acknowledgement),
+		newlyReceivedAcks: make(chan *Acknowledgement, 2),
 		closeNotify:       make(chan struct{}),
 		windowsSize:       x.Options.TxPortalStartSize,
 		retxThreshold:     x.Options.RetxStartMs,
