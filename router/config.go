@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/router/env"
 	"io"
@@ -180,10 +181,13 @@ type Config struct {
 		}
 	}
 	ConnectEvents env.ConnectEventsConfig
-	Proxy         *transport.ProxyConfiguration
-	Plugins       []string
-	src           map[interface{}]interface{}
-	path          string
+	Mgmt          struct {
+		Pipe datapipe.Config
+	}
+	Proxy   *transport.ProxyConfiguration
+	Plugins []string
+	src     map[interface{}]interface{}
+	path    string
 }
 
 func (config *Config) CurrentCtrlAddress() string {
@@ -889,6 +893,18 @@ func LoadConfig(path string) (*Config, error) {
 	if cfg.ConnectEvents.MaxQueuedEvents > MaxConnectEventsMaxQueuedEvents {
 		pfxlog.Logger().Warnf("connectEvents.maxQueuedEvents greater than allowed maximum of %d", MaxConnectEventsMaxQueuedEvents)
 		cfg.ConnectEvents.MaxQueuedEvents = MaxConnectEventsMaxQueuedEvents
+	}
+
+	if value, found := cfgmap["mgmt"]; found {
+		if subMap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found = subMap["pipe"]; found {
+				if subMap, ok = value.(map[interface{}]interface{}); ok {
+					if err = cfg.Mgmt.Pipe.LoadConfig(subMap); err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
 	}
 
 	return cfg, nil

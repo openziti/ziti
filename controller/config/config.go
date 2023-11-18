@@ -32,6 +32,7 @@ import (
 	transporttls "github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/config"
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/command"
@@ -117,7 +118,10 @@ type Config struct {
 	RouterDataModel         common.RouterDataModelConfig
 	CommandRateLimiter      command.RateLimiterConfig
 	TlsHandshakeRateLimiter command.AdaptiveRateLimiterConfig
-	Src                     map[interface{}]interface{}
+	Mgmt                    struct {
+		Pipe datapipe.Config
+	}
+	Src map[interface{}]interface{}
 }
 
 func (self *Config) ToJson() (string, error) {
@@ -721,6 +725,18 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 	controllerConfig.Edge = edgeConfig
+
+	if value, found := cfgmap["mgmt"]; found {
+		if subMap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found = subMap["pipe"]; found {
+				if subMap, ok = value.(map[interface{}]interface{}); ok {
+					if err = controllerConfig.Mgmt.Pipe.LoadConfig(subMap); err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+	}
 
 	return controllerConfig, nil
 }

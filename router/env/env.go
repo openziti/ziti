@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/config"
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
 	"time"
@@ -48,6 +49,7 @@ type RouterEnv interface {
 	GetRouterDataModel() *common.RouterDataModel
 	GetConnectEventsConfig() *ConnectEventsConfig
 	GetRouterDataModelEnabledConfig() *config.Value[bool]
+	GetMgmtPipeConfig() *datapipe.Config
 }
 
 type ConnectEventsConfig struct {

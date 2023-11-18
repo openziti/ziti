@@ -17,6 +17,14 @@ identity:
 
 trustDomain: smoke-test
 
+mgmt:
+  pipe:
+    enabled: true
+    enableExperimentalFeature: true
+    destination: embedded-ssh-server
+    authorizedKeysFile: /home/ubuntu/.ssh/authorized_keys
+    shell: /usr/bin/bash
+
 # the endpoint that routers will connect to the controller over.
 ctrl:
   listener: tls:0.0.0.0:6262

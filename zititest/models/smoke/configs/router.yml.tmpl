@@ -20,6 +20,14 @@ identity:
 tls:
   handshakeTimeout: 30s
 
+mgmt:
+  pipe:
+    enabled: true
+    enableExperimentalFeature: true
+    destination: embedded-ssh-server
+    authorizedKeysFile: /home/ubuntu/.ssh/authorized_keys
+    shell: /usr/bin/bash
+
 ctrl:
   endpoints: {{ range $host := .Model.MustSelectHosts "component.ctrl" 1 }}
     - tls:{{ $host.PublicIp }}:6262{{end}}

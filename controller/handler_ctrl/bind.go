@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/sirupsen/logrus"
@@ -34,18 +35,24 @@ import (
 )
 
 type bindHandler struct {
-	heartbeatOptions *channel.HeartbeatOptions
-	router           *model.Router
-	network          *network.Network
-	xctrls           []xctrl.Xctrl
+	heartbeatOptions     *channel.HeartbeatOptions
+	router               *model.Router
+	network              *network.Network
+	xctrls               []xctrl.Xctrl
+	securityPipeRegistry *datapipe.Registry
 }
 
-func newBindHandler(heartbeatOptions *channel.HeartbeatOptions, router *model.Router, network *network.Network, xctrls []xctrl.Xctrl) channel.BindHandler {
+func newBindHandler(heartbeatOptions *channel.HeartbeatOptions,
+	router *model.Router,
+	network *network.Network,
+	xctrls []xctrl.Xctrl,
+	securePipeRegistry *datapipe.Registry) channel.BindHandler {
 	return &bindHandler{
-		heartbeatOptions: heartbeatOptions,
-		router:           router,
-		network:          network,
-		xctrls:           xctrls,
+		heartbeatOptions:     heartbeatOptions,
+		router:               router,
+		network:              network,
+		xctrls:               xctrls,
+		securityPipeRegistry: securePipeRegistry,
 	}
 }
 
@@ -78,6 +85,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		Type:    int32(ctrl_pb.ContentType_ValidateTerminatorsV2ResponseType),
 		Handler: self.network.RouterMessaging.NewValidationResponseHandler(self.network, self.router),
 	})
+	binding.AddTypedReceiveHandler(newCtrlPipeDataHandler(self.securityPipeRegistry))
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController()))
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
 
