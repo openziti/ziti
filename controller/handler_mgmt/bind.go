@@ -19,18 +19,24 @@ package handler_mgmt
 import (
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/common/trace"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/xmgmt"
 )
 
 type BindHandler struct {
-	network *network.Network
-	xmgmts  *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
+	network            *network.Network
+	xmgmts             *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
+	securePipeRegistry *datapipe.Registry
 }
 
-func NewBindHandler(network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) channel.BindHandler {
-	return &BindHandler{network: network, xmgmts: xmgmts}
+func NewBindHandler(network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt], securePipeRegistry *datapipe.Registry) channel.BindHandler {
+	return &BindHandler{
+		network:            network,
+		xmgmts:             xmgmts,
+		securePipeRegistry: securePipeRegistry,
+	}
 }
 
 func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
@@ -69,6 +75,16 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newTogglePipeTracesHandler(bindHandler.network))
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(bindHandler.network.GetAppId(), binding.GetChannel(), bindHandler.network.GetTraceController()))
+
+	if bindHandler.securePipeRegistry.GetConfig().Enabled {
+		mgmtPipeRequestHandler := newMgmtPipeHandler(bindHandler.network, bindHandler.securePipeRegistry, binding.GetChannel())
+		binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+			Type:    mgmtPipeRequestHandler.ContentType(),
+			Handler: mgmtPipeRequestHandler.HandleReceive,
+		})
+		binding.AddCloseHandler(mgmtPipeRequestHandler)
+		binding.AddTypedReceiveHandler(newMgmtPipeDataHandler(bindHandler.securePipeRegistry))
+	}
 
 	xmgmtDone := make(chan struct{})
 	for _, x := range bindHandler.xmgmts.Value() {

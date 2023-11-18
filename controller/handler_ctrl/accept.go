@@ -19,6 +19,7 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/xctrl"
@@ -28,24 +29,27 @@ import (
 )
 
 type CtrlAccepter struct {
-	network          *network.Network
-	xctrls           []xctrl.Xctrl
-	options          *channel.Options
-	heartbeatOptions *channel.HeartbeatOptions
-	traceHandler     *channel.TraceHandler
+	network            *network.Network
+	xctrls             []xctrl.Xctrl
+	options            *channel.Options
+	heartbeatOptions   *channel.HeartbeatOptions
+	traceHandler       *channel.TraceHandler
+	securePipeRegistry *datapipe.Registry
 }
 
 func NewCtrlAccepter(network *network.Network,
 	xctrls []xctrl.Xctrl,
 	options *channel.Options,
 	heartbeatOptions *channel.HeartbeatOptions,
-	traceHandler *channel.TraceHandler) *CtrlAccepter {
+	traceHandler *channel.TraceHandler,
+	securePipeRegistry *datapipe.Registry) *CtrlAccepter {
 	return &CtrlAccepter{
-		network:          network,
-		xctrls:           xctrls,
-		options:          options,
-		heartbeatOptions: heartbeatOptions,
-		traceHandler:     traceHandler,
+		network:            network,
+		xctrls:             xctrls,
+		options:            options,
+		heartbeatOptions:   heartbeatOptions,
+		traceHandler:       traceHandler,
+		securePipeRegistry: securePipeRegistry,
 	}
 }
 
@@ -117,7 +121,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 
 	r.Control = ch
 	r.ConnectTime = time.Now()
-	if err := binding.Bind(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls)); err != nil {
+	if err := binding.Bind(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls, self.securePipeRegistry)); err != nil {
 		return errors.Wrap(err, "error binding router")
 	}
 
