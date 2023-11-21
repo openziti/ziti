@@ -310,7 +310,7 @@ func parseEdgeListenerOptions(index int, address string, edgeListenerMap map[int
 			}
 
 			if advertisePort != addressPort {
-				pfxlog.Logger().Warnf("port in [listeners[%d].options.advertise] must equal port in [listeners[%d].address] for edge binding but did not. Got [%d] [%d]", index, index, advertisePort, addressPort)
+				pfxlog.Logger().Debugf("advertised port [%d] in [listeners[%d].options.advertise] does not match the listening port [%d] in [listeners[%d].address].", index, advertisePort, index, addressPort)
 			}
 
 			return &edge_ctrl_pb.Listener{
