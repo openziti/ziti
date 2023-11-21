@@ -385,6 +385,8 @@ func (c *Controller) Shutdown() {
 			}
 		}
 
+		c.raftController.Close()
+
 		go c.xweb.Shutdown()
 	}
 }
