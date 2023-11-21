@@ -7,13 +7,13 @@ v: 3
 #  memory:
 #    path: ctrl.memprof
 
-db:                     "{{ .ZitiHome }}/db/ctrl.db"
 
 {{ if .Controller.Ctrl.MinClusterSize }}
 raft:
   dataDir:         "{{ .ZitiHome }}/raft"
   minClusterSize:  {{ .Controller.Ctrl.MinClusterSize }}
 {{ else }}
+db:                     "{{ .ZitiHome }}/db/ctrl.db"
 # uncomment and configure to enable HA
 # raft:
 #   dataDir:         "{{ .ZitiHome }}/raft"
