@@ -146,13 +146,13 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 
 	o.createMinimalPki()
 
-	ctrl := create.NewCmdCreateConfigController()
-	ctrl.SetArgs([]string{
-		fmt.Sprintf("--output=%s", ctrlYaml),
-	})
-	_ = ctrl.Execute()
-
 	if !o.AlreadyInitialized {
+		ctrl := create.NewCmdCreateConfigController()
+		ctrl.SetArgs([]string{
+			fmt.Sprintf("--output=%s", ctrlYaml),
+		})
+		_ = ctrl.Execute()
+
 		initCmd := edgeSubCmd.NewEdgeInitializeCmd(version.GetCmdBuildInfo())
 		initCmd.SetArgs([]string{
 			fmt.Sprintf("--username=%s", o.Username),
