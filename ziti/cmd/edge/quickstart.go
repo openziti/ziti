@@ -185,7 +185,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 
 	c := make(chan struct{})
 	defer close(c)
-	timeout, _ := time.ParseDuration("300s")
+	timeout, _ := time.ParseDuration("30s")
 	go waitForController(ctrlUrl, c)
 	select {
 	case <-c:
