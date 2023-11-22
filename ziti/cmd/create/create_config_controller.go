@@ -37,6 +37,7 @@ const (
 	optionDatabaseFile                   = "databaseFile"
 	optionEdgeIdentityEnrollmentDuration = "identityEnrollmentDuration"
 	optionEdgeRouterEnrollmentDuration   = "routerEnrollmentDuration"
+	optionMinCluster                     = "minCluster"
 )
 
 var (
@@ -74,6 +75,7 @@ type CreateConfigControllerOptions struct {
 	CtrlPort                       string
 	EdgeIdentityEnrollmentDuration time.Duration
 	EdgeRouterEnrollmentDuration   time.Duration
+	MinCluster                     int
 }
 
 type CreateControllerConfigCmd struct {
@@ -108,6 +110,7 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 				}
 
 				data.PopulateConfigValues()
+				data.Controller.Ctrl.MinClusterSize = controllerOptions.MinCluster
 
 				// Update controller specific values with configOptions passed in if the argument was provided or the value is currently blank
 				if data.Controller.Ctrl.AdvertisedPort == "" || controllerOptions.CtrlPort != constants.DefaultCtrlAdvertisedPort {
@@ -150,6 +153,7 @@ func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, "ctrl.db", "location of the database file")
 	cmd.Flags().DurationVar(&options.EdgeIdentityEnrollmentDuration, optionEdgeIdentityEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge identity enrollment duration, use 0h0m0s format")
 	cmd.Flags().DurationVar(&options.EdgeRouterEnrollmentDuration, optionEdgeRouterEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge router enrollment duration, use 0h0m0s format")
+	cmd.Flags().IntVar(&options.MinCluster, optionMinCluster, 0, "minimum cluster size. Enables HA mode if > 0")
 }
 
 // run implements the command

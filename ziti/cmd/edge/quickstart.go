@@ -65,7 +65,7 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	cmd := &cobra.Command{
 		Use:   "quickstart",
 		Short: "runs a Controller and Router in quickstart mode",
-		Long: `runs a Controller and Router in quickstart mode. By default, this will create a totally ephemeral network, only valid while running.`,
+		Long:  `runs a Controller and Router in quickstart mode. By default, this will create a totally ephemeral network, only valid while running.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			options.out = out
 			options.errOut = errOut
@@ -148,6 +148,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 
 	ctrl := create.NewCmdCreateConfigController()
 	ctrl.SetArgs([]string{
+		"--minCluster=1",
 		fmt.Sprintf("--output=%s", ctrlYaml),
 	})
 	_ = ctrl.Execute()
@@ -191,7 +192,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		//completed normally
 		logrus.Info("Controller online. Continuing...")
 	case <-time.After(timeout):
-		fmt.Println("timed out waiting for controller")
+		fmt.Println("timed out waiting for controller:", ctrlUrl)
 		o.cleanupHome()
 		return
 	}
@@ -313,6 +314,7 @@ func (o *QuickstartOpts) createMinimalPki() {
 			fmt.Sprintf("--pki-root=%s", where),
 			fmt.Sprintf("--ca-file=%s", "root-ca"),
 			fmt.Sprintf("--ca-name=%s", "root-ca"),
+			fmt.Sprintf("--trust-domain=%s", helpers.GetCtrlAdvertisedAddress()),
 		})
 		pkiErr := ca.Execute()
 		if pkiErr != nil {
@@ -341,6 +343,7 @@ func (o *QuickstartOpts) createMinimalPki() {
 			fmt.Sprintf("--server-name=%s", "server"),
 			fmt.Sprintf("--server-file=%s", "server"),
 			fmt.Sprintf("--dns=%s,%s", "localhost", helpers.GetCtrlAdvertisedAddress()),
+			fmt.Sprintf("--spiffe-id=/controller/%s", helpers.GetCtrlAdvertisedAddress()),
 		})
 		svrErr := svr.Execute()
 		if svrErr != nil {

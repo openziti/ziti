@@ -217,6 +217,7 @@ type Controller struct {
 	Config                     *Config
 	Mesh                       mesh.Mesh
 	Raft                       *raft.Raft
+	raftDB                     *raftboltdb.BoltStore
 	Fsm                        *BoltDbFsm
 	bootstrapped               atomic.Bool
 	clusterLock                sync.Mutex
@@ -315,6 +316,16 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 	}
 
 	log.WithField("cmd", reflect.TypeOf(cmd)).WithField("dest", self.GetLeaderAddr()).Info("forwarding command")
+
+	leader := self.GetLeaderAddr()
+	for leader == "" {
+		time.Sleep(100 * time.Millisecond)
+		if self.IsLeader() {
+			_, err := self.applyCommand(cmd)
+			return err
+		}
+		leader = self.GetLeaderAddr()
+	}
 
 	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)
 	if err != nil {
@@ -581,6 +592,7 @@ func (self *Controller) Init() error {
 		return errors.Wrap(err, "error reloading raft configuration")
 	}
 
+	self.raftDB = boltDbStore
 	self.Raft = r
 	self.addEventsHandlers()
 	self.ObserveLeaderChanges()
@@ -798,4 +810,15 @@ func (self *Controller) addEventsHandlers() {
 type MigrationManager interface {
 	TryInitializeRaftFromBoltDb() error
 	InitializeRaftFromBoltDb(srcDb string) error
+}
+
+func (c *Controller) Close() {
+	log := pfxlog.Logger()
+	if err := c.Raft.Shutdown().Error(); err != nil {
+		log.WithError(err).Warn("raft shutdown")
+	}
+
+	if err := c.raftDB.Close(); err != nil {
+		log.WithError(err).Warn("raft.db close")
+	}
 }
