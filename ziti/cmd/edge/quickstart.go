@@ -341,6 +341,7 @@ func (o *QuickstartOpts) createMinimalPki() {
 			fmt.Sprintf("--server-name=%s", "server"),
 			fmt.Sprintf("--server-file=%s", "server"),
 			fmt.Sprintf("--dns=%s,%s", "localhost", helpers.GetCtrlAdvertisedAddress()),
+			"--ip=127.0.0.1",
 		})
 		svrErr := svr.Execute()
 		if svrErr != nil {
