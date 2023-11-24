@@ -335,7 +335,7 @@ func (o *QuickstartOpts) createMinimalPki() {
 
 		//ziti pki create server --pki-root="${ZITI_HOME}/pki" --ca-name "intermediate-ca" --server-name "server" --server-file "server" --dns "localhost,${ZITI_HOSTNAME}"
 		svr := pki.NewCmdPKICreateServer(o.out, o.errOut)
-		var ips = "127.0.0.1"
+		var ips = "127.0.0.1,::1"
 		ip_override := os.Getenv("ZITI_CTRL_EDGE_IP_OVERRIDE")
 		if ip_override != "" {
 			ips = ips + "," + ip_override
