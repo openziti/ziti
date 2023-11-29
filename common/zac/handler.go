@@ -117,7 +117,7 @@ func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Returns a request handler (http.Handler) that serves a single
-// page application from a given public directory (publicDir).
-func SpaHandler(publicDir string, contextRoot string, indexFile string) http.Handler {
-	return &spaHandler{publicDir, contextRoot, indexFile}
+// page application from a given public directory (location).
+func SpaHandler(location string, contextRoot string, indexFile string) http.Handler {
+	return &spaHandler{location, contextRoot, indexFile}
 }
