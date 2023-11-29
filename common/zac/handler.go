@@ -19,7 +19,10 @@ package zac
 import (
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/openziti/xweb/v2"
+	log "github.com/sirupsen/logrus"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -46,12 +49,16 @@ func (factory ZitiAdminConsoleFactory) Binding() string {
 }
 
 func (factory ZitiAdminConsoleFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
-	loc := "./"
-	if options["location"] != "" {
-		loc = options["location"].(string)
+	loc := options["location"]
+	if loc == nil || loc == "" {
+		log.Panic("location must be supplied in zac options")
+	}
+	indexFile := options["indexFile"]
+	if indexFile == nil || indexFile == "" {
+		indexFile = "index.html"
 	}
 	zac := &ZitiAdminConsoleHandler{
-		httpHandler: http.FileServer(http.Dir(loc)),
+		httpHandler: SpaHandler(loc.(string), "/"+Binding, indexFile.(string)),
 	}
 
 	return zac, nil
@@ -79,8 +86,41 @@ func (self *ZitiAdminConsoleHandler) IsHandler(r *http.Request) bool {
 }
 
 func (self *ZitiAdminConsoleHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	if !strings.HasPrefix(request.URL.Path, self.RootPath()) {
-		request.URL.Path = self.RootPath() + "/" + request.URL.Path
-	}
 	self.httpHandler.ServeHTTP(writer, request)
+}
+
+// Thanks to https://github.com/roberthodgen/spa-server
+// Serve from a public directory with specific index
+type spaHandler struct {
+	content     string // The directory from which to serve
+	contextRoot string // The context root to remove
+	indexFile   string // The fallback/default file to serve
+}
+
+// Falls back to a supplied index (indexFile) when either condition is true:
+// (1) Request (file) path is not found
+// (2) Request path is a directory
+// Otherwise serves the requested file.
+func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, h.contextRoot) {
+		// strip off the path
+		r.URL.Path = r.URL.Path[len(h.contextRoot):]
+	}
+	p := filepath.Join(h.content, filepath.Clean(r.URL.Path))
+
+	if info, err := os.Stat(p); err != nil {
+		http.ServeFile(w, r, filepath.Join(h.content, h.indexFile))
+		return
+	} else if info.IsDir() {
+		http.ServeFile(w, r, filepath.Join(h.content, h.indexFile))
+		return
+	}
+
+	http.ServeFile(w, r, p)
+}
+
+// Returns a request handler (http.Handler) that serves a single
+// page application from a given public directory (publicDir).
+func SpaHandler(publicDir string, contextRoot string, indexFile string) http.Handler {
+	return &spaHandler{publicDir, contextRoot, indexFile}
 }
