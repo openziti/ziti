@@ -17,7 +17,6 @@
 package zac
 
 import (
-	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/openziti/xweb/v2"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -31,7 +30,6 @@ const (
 )
 
 type ZitiAdminConsoleFactory struct {
-	healthChecker gosundheit.Health
 }
 
 var _ xweb.ApiHandlerFactory = &ZitiAdminConsoleFactory{}
@@ -65,7 +63,6 @@ func (factory ZitiAdminConsoleFactory) New(_ *xweb.ServerConfig, options map[int
 }
 
 type ZitiAdminConsoleHandler struct {
-	options     map[interface{}]interface{}
 	httpHandler http.Handler
 }
 
@@ -104,7 +101,7 @@ type spaHandler struct {
 func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, h.contextRoot) {
 		// strip off the path
-		r.URL.Path = r.URL.Path[len(h.contextRoot):]
+		r.URL.Path = strings.TrimPrefix(r.URL.Path, h.contextRoot)
 	}
 	p := filepath.Join(h.content, filepath.Clean(r.URL.Path))
 
