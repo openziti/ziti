@@ -99,10 +99,7 @@ type spaHandler struct {
 // (2) Request path is a directory
 // Otherwise serves the requested file.
 func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, h.contextRoot) {
-		// strip off the path
-		r.URL.Path = strings.TrimPrefix(r.URL.Path, h.contextRoot)
-	}
+	r.URL.Path = strings.TrimPrefix(r.URL.Path, h.contextRoot)
 	p := filepath.Join(h.content, filepath.Clean(r.URL.Path))
 
 	if info, err := os.Stat(p); err != nil {
