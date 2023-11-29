@@ -96,6 +96,10 @@ func GetCtrlAdvertisedAddress() string {
 	return getFromEnv(constants.CtrlAdvertisedAddressVarName, HostnameOrNetworkName)
 }
 
+func GetCtrlIpOverride() string {
+	return getFromEnv(constants.CtrlAdvertisedAddressVarName, HostnameOrNetworkName)
+}
+
 func GetEdgeRouterIpOvderride() string {
 	return getFromEnv(constants.ZitiEdgeRouterIPOverrideVarName, defaultValue(""))
 }
