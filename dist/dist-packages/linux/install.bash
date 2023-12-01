@@ -55,7 +55,6 @@ repo_gpgcheck=1"
 
     fi
 
-    $PACKAGER update --assumeyes
     $PACKAGER install --assumeyes "$@"
     for PKG in "$@"; do
         $PACKAGER info "$PKG"
