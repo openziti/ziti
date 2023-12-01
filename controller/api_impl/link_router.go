@@ -18,6 +18,7 @@ package api_impl
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/fields"
@@ -25,8 +26,6 @@ import (
 	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/rest_server/operations/link"
-	"github.com/openziti/storage/boltz"
-	"sort"
 )
 
 func init() {
@@ -64,10 +63,16 @@ func (r *LinkRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Reque
 
 func (r *LinkRouter) ListLinks(n *network.Network, rc api.RequestContext) {
 	ListWithEnvelopeFactory(rc, defaultToListEnvelope, func(rc api.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
-		links := n.GetAllLinks()
-		sort.Slice(links, func(i, j int) bool {
-			return links[i].Id < links[j].Id
-		})
+		query, err := queryOptions.getFullQuery(n.GetLinkStore())
+		if err != nil {
+			return nil, err
+		}
+
+		links, count, err := n.GetLinkStore().QueryEntitiesC(query)
+		if err != nil {
+			return nil, err
+		}
+
 		apiLinks := make([]*rest_model.LinkDetail, 0, len(links))
 		for _, modelLink := range links {
 			apiLink, err := MapLinkToRestModel(n, rc, modelLink)
@@ -78,9 +83,9 @@ func (r *LinkRouter) ListLinks(n *network.Network, rc api.RequestContext) {
 		}
 		result := &QueryResult{
 			Result:           apiLinks,
-			Count:            int64(len(links)),
-			Limit:            -1,
-			Offset:           0,
+			Count:            count,
+			Limit:            *query.GetLimit(),
+			Offset:           *query.GetSkip(),
 			FilterableFields: nil,
 		}
 		return result, nil

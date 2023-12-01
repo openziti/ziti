@@ -18,10 +18,10 @@ package persistence
 
 import (
 	"fmt"
+	"github.com/openziti/storage/boltztest"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/storage/boltztest"
 	"testing"
 	"time"
 
@@ -71,7 +71,7 @@ func (ctx *TestContext) testServiceParentChild(_ *testing.T) {
 	//
 	//err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 	//	query := fmt.Sprintf(`id = "%v" and name = "%v"`, fabricService.Id, edgeService.Name)
-	//	ids, _, err := ctx.stores.EdgeService.QueryIds(tx, query)
+	//	ids, _, err := ctx.stores.EdgeService.QueryEntities(tx, query)
 	//	if err != nil {
 	//		return err
 	//	}
