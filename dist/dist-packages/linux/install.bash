@@ -71,7 +71,7 @@ installDebian(){
         fi
     done
     if [ -z "${GNUPGCMD:-}" ]; then
-        echo "ERROR: No GnuPG CLI found. Tried 'gpg', gpg2." >&2
+        echo "ERROR: No GnuPG CLI found. Tried commands 'gpg', gpg2. Try installing 'gnupg'." >&2
         exit 1
     fi
     for CMD in wget curl; do
