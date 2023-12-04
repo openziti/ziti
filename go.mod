@@ -29,7 +29,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.4.0
-	github.com/gorilla/handlers v1.5.1
+	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.1
 	github.com/hashicorp/go-hclog v1.5.0
@@ -108,7 +108,7 @@ require (
 	github.com/dlclark/regexp2 v1.10.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
-	github.com/felixge/httpsnoop v1.0.1 // indirect
+	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
