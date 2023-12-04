@@ -19,18 +19,18 @@ package model
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/persistence"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -72,7 +72,7 @@ func (self *TransitRouterManager) Create(txRouter *TransitRouter, ctx *change.Co
 	}
 
 	enrollment := &Enrollment{
-		BaseEntity:      models.BaseEntity{},
+		BaseEntity:      models.BaseEntity{Id: eid.New()},
 		Method:          MethodEnrollTransitRouterOtt,
 		TransitRouterId: &txRouter.Id,
 	}
