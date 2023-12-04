@@ -176,6 +176,8 @@ func (self *tunneler) ReestablishTerminators() {
 	log := pfxlog.Logger()
 	terminators := self.terminators.Items()
 
+	time.Sleep(10 * time.Second) // wait for validate terminator messages to come in first
+
 	if len(terminators) > 0 {
 		pfxlog.Logger().Debugf("reestablishing %v terminators", len(terminators))
 	}

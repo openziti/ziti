@@ -17,29 +17,118 @@
 package xgress_edge
 
 import (
+	"fmt"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	routerEnv "github.com/openziti/ziti/router/env"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	"sync"
+	"time"
 )
 
-func NewHostedServicesRegistry() *hostedServiceRegistry {
-	return &hostedServiceRegistry{
-		services: sync.Map{},
-		ids:      cmap.New[string](),
+func newHostedServicesRegistry(env routerEnv.RouterEnv) *hostedServiceRegistry {
+	result := &hostedServiceRegistry{
+		services:       sync.Map{},
+		events:         make(chan terminatorEvent),
+		env:            env,
+		retriesPending: false,
+		waits:          cmap.New[chan struct{}](),
 	}
+	go result.run()
+	return result
 }
 
 type hostedServiceRegistry struct {
-	services sync.Map
-	ids      cmap.ConcurrentMap[string, string]
+	services       sync.Map
+	events         chan terminatorEvent
+	env            routerEnv.RouterEnv
+	retriesPending bool
+	waits          cmap.ConcurrentMap[string, chan struct{}]
 }
 
-func (registry *hostedServiceRegistry) Put(hostId string, conn *edgeTerminator) {
-	registry.services.Store(hostId, conn)
+type terminatorEvent interface {
+	handle(registry *hostedServiceRegistry)
 }
 
-func (registry *hostedServiceRegistry) Get(hostId string) (*edgeTerminator, bool) {
-	val, ok := registry.services.Load(hostId)
+func (self *hostedServiceRegistry) run() {
+	retryTicker := time.NewTicker(50 * time.Millisecond)
+	defer retryTicker.Stop()
+
+	for {
+		var retryChan <-chan time.Time
+		if self.retriesPending {
+			retryChan = retryTicker.C
+		}
+
+		select {
+		case <-self.env.GetCloseNotify():
+			return
+		case event := <-self.events:
+			event.handle(self)
+		case <-retryChan:
+			self.scanForRetries()
+		}
+	}
+}
+
+type establishTerminatorEvent struct {
+	terminator *edgeTerminator
+}
+
+func (self *establishTerminatorEvent) handle(registry *hostedServiceRegistry) {
+	registry.tryEstablish(self.terminator)
+}
+
+func (self *hostedServiceRegistry) EstablishTerminator(terminator *edgeTerminator) {
+	event := &establishTerminatorEvent{
+		terminator: terminator,
+	}
+
+	self.Put(terminator.terminatorId.Load(), terminator)
+
+	select {
+	case <-self.env.GetCloseNotify():
+		pfxlog.Logger().WithField("terminatorId", terminator.terminatorId.Load()).
+			Error("unable to establish terminator, hosted service registry has been shutdown")
+	case self.events <- event:
+	}
+}
+
+func (self *hostedServiceRegistry) scanForRetries() {
+	self.services.Range(func(key, value any) bool {
+		terminator := value.(*edgeTerminator)
+		if terminator.state.Load() == TerminatorStatePendingEstablishment {
+			self.tryEstablish(terminator)
+		}
+		return true
+	})
+}
+
+func (self *hostedServiceRegistry) tryEstablish(terminator *edgeTerminator) {
+	terminator.state.Store(TerminatorStateEstablishing)
+	err := self.env.GetRateLimiterPool().QueueOrError(func() {
+		self.establishTerminatorWithRetry(terminator)
+	})
+	if err != nil {
+		terminator.state.Store(TerminatorStatePendingEstablishment)
+		pfxlog.Logger().WithField("terminatorId", terminator.Id()).Info("rate limited: unable to queue to establish")
+		self.retriesPending = true
+	}
+}
+
+func (self *hostedServiceRegistry) Put(hostId string, conn *edgeTerminator) {
+	self.services.Store(hostId, conn)
+}
+
+func (self *hostedServiceRegistry) Get(hostId string) (*edgeTerminator, bool) {
+	val, ok := self.services.Load(hostId)
 	if !ok {
 		return nil, false
 	}
@@ -47,27 +136,40 @@ func (registry *hostedServiceRegistry) Get(hostId string) (*edgeTerminator, bool
 	return ch, ok
 }
 
-func (registry *hostedServiceRegistry) Delete(hostId string) {
-	registry.services.Delete(hostId)
+func (self *hostedServiceRegistry) GetTerminatorForListener(listenerId string) *edgeTerminator {
+	var result *edgeTerminator
+	self.services.Range(func(key, value interface{}) bool {
+		terminator := value.(*edgeTerminator)
+		if terminator.listenerId == listenerId {
+			result = terminator
+			return false
+		}
+		return true
+	})
+	return result
 }
 
-func (registry *hostedServiceRegistry) cleanupServices(proxy *edgeClientConn) {
-	registry.services.Range(func(key, value interface{}) bool {
+func (self *hostedServiceRegistry) Delete(hostId string) {
+	self.services.Delete(hostId)
+}
+
+func (self *hostedServiceRegistry) cleanupServices(proxy *edgeClientConn) {
+	self.services.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator.edgeClientConn == proxy {
 			terminator.close(false, "") // don't notify, channel is already closed, we can't send messages
-			registry.services.Delete(key)
+			self.services.Delete(key)
 		}
 		return true
 	})
 }
 
-func (registry *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
-	registry.services.Range(func(key, value interface{}) bool {
+func (self *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
+	self.services.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator != newest && newest.token == terminator.token && newest.instance == terminator.instance {
 			terminator.close(false, "duplicate terminator") // don't notify, channel is already closed, we can't send messages
-			registry.services.Delete(key)
+			self.services.Delete(key)
 			pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
 				WithField("sessionToken", terminator.token).
 				WithField("instance", terminator.instance).
@@ -79,13 +181,13 @@ func (registry *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator)
 	})
 }
 
-func (registry *hostedServiceRegistry) unbindSession(sessionToken string, proxy *edgeClientConn) bool {
+func (self *hostedServiceRegistry) unbindSession(connId uint32, sessionToken string, proxy *edgeClientConn) bool {
 	atLeastOneRemoved := false
-	registry.services.Range(func(key, value interface{}) bool {
+	self.services.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
-		if terminator.token == sessionToken && terminator.edgeClientConn == proxy {
-			terminator.close(true, "unbind successful") // don't notify, sdk asked us to unbind
-			registry.services.Delete(key)
+		if terminator.MsgChannel.Id() == connId && terminator.token == sessionToken && terminator.edgeClientConn == proxy {
+			terminator.close(false, "unbind successful") // don't notify, sdk asked us to unbind
+			self.services.Delete(key)
 			pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
 				WithField("sessionToken", sessionToken).
 				WithField("terminatorId", terminator.terminatorId.Load()).
@@ -97,9 +199,9 @@ func (registry *hostedServiceRegistry) unbindSession(sessionToken string, proxy 
 	return atLeastOneRemoved
 }
 
-func (registry *hostedServiceRegistry) getRelatedTerminators(sessionToken string, proxy *edgeClientConn) []*edgeTerminator {
+func (self *hostedServiceRegistry) getRelatedTerminators(sessionToken string, proxy *edgeClientConn) []*edgeTerminator {
 	var result []*edgeTerminator
-	registry.services.Range(func(key, value interface{}) bool {
+	self.services.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator.token == sessionToken && terminator.edgeClientConn == proxy {
 			result = append(result, terminator)
@@ -107,4 +209,154 @@ func (registry *hostedServiceRegistry) getRelatedTerminators(sessionToken string
 		return true
 	})
 	return result
+}
+
+func (self *hostedServiceRegistry) establishTerminatorWithRetry(terminator *edgeTerminator) {
+	log := logrus.WithField("terminatorId", terminator.terminatorId.Load())
+
+	if state := terminator.state.Load(); state != TerminatorStateEstablishing {
+		log.WithField("state", state.String()).Info("not attempting to establish terminator, not in establishing state")
+		return
+	}
+
+	operation := func() error {
+		if terminator.edgeClientConn.ch.IsClosed() {
+			return backoff.Permanent(fmt.Errorf("edge link is closed, stopping terminator creation for terminator %s",
+				terminator.terminatorId.Load()))
+		}
+		if state := terminator.state.Load(); state != TerminatorStateEstablishing {
+			return backoff.Permanent(fmt.Errorf("terminator state is %v, stopping terminator creation for terminator %s",
+				state.String(), terminator.terminatorId.Load()))
+		}
+
+		var err error
+		log.Info("attempting to establish terminator")
+		err = self.establishTerminator(terminator)
+		if err != nil && terminator.state.Load() != TerminatorStateEstablishing {
+			return backoff.Permanent(err)
+		}
+		return err
+	}
+
+	expBackoff := backoff.NewExponentialBackOff()
+	expBackoff.InitialInterval = 5 * time.Second
+	expBackoff.MaxInterval = 5 * time.Minute
+
+	if err := backoff.Retry(operation, expBackoff); err != nil {
+		log.WithError(err).Error("stopping attempts to establish terminator, see error")
+	} else if terminator.postValidate {
+		if result, err := terminator.inspect(true); err != nil {
+			log.WithError(err).Error("error validating terminator after create")
+		} else if result.Type != edge.ConnTypeBind {
+			log.WithError(err).Error("terminator invalid in sdk after create, closed")
+		} else {
+			log.Info("terminator validated successfully")
+		}
+	}
+}
+
+func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminator) error {
+	factory := terminator.edgeClientConn.listener.factory
+
+	log := pfxlog.Logger().
+		WithField("routerId", factory.env.GetRouterId().Token).
+		WithField("terminatorId", terminator.terminatorId.Load())
+
+	request := &edge_ctrl_pb.CreateTerminatorV2Request{
+		Address:        terminator.terminatorId.Load(),
+		SessionToken:   terminator.token,
+		Fingerprints:   terminator.edgeClientConn.fingerprints.Prints(),
+		PeerData:       terminator.hostData,
+		Cost:           uint32(terminator.cost),
+		Precedence:     terminator.precedence,
+		InstanceId:     terminator.instance,
+		InstanceSecret: terminator.instanceSecret,
+	}
+
+	timeout := factory.ctrls.DefaultRequestTimeout()
+	ctrlCh := factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		errStr := "no controller available, cannot create terminator"
+		log.Error(errStr)
+		return errors.New(errStr)
+	}
+
+	err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendAndWaitForWire(ctrlCh)
+	if err != nil {
+		return err
+	}
+
+	if self.waitForTerminatorCreated(terminator.terminatorId.Load(), 10*time.Second) {
+		return nil
+	}
+
+	// return an error to indicate that we need to check if a response has come back after the next interval,
+	// and if not, re-send
+	return errors.Errorf("timeout waiting for response to create terminator request for terminator %v", terminator.terminatorId.Load())
+}
+
+func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.Message, ctrlCh channel.Channel) {
+	log := pfxlog.Logger().WithField("routerId", self.env.GetRouterId().Token)
+
+	response := &edge_ctrl_pb.CreateTerminatorV2Response{}
+
+	if err := proto.Unmarshal(msg.Body, response); err != nil {
+		log.WithError(err).Error("error unmarshalling create terminator v2 response")
+		return
+	}
+
+	log = log.WithField("terminatorId", response.TerminatorId)
+
+	terminator, found := self.Get(response.TerminatorId)
+	if !found {
+		log.Error("no terminator found for id")
+		return
+	}
+
+	if terminator.state.CompareAndSwap(TerminatorStateEstablishing, TerminatorStateEstablished) {
+		self.notifyTerminatorCreated(response.TerminatorId)
+		log.Info("received terminator created notification")
+	} else {
+		log.Info("received additional terminator created notification")
+	}
+}
+
+func (self *hostedServiceRegistry) waitForTerminatorCreated(id string, timeout time.Duration) bool {
+	notifyC := make(chan struct{})
+	defer self.waits.Remove(id)
+
+	self.waits.Set(id, notifyC)
+	select {
+	case <-notifyC:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
+}
+
+func (self *hostedServiceRegistry) notifyTerminatorCreated(id string) {
+	notifyC, _ := self.waits.Get(id)
+	if notifyC != nil {
+		close(notifyC)
+	}
+}
+
+func (self *hostedServiceRegistry) HandleReconnect() {
+	var restablishList []*edgeTerminator
+	self.services.Range(func(key, value interface{}) bool {
+		terminator := value.(*edgeTerminator)
+		if terminator.state.CompareAndSwap(TerminatorStateEstablished, TerminatorStatePendingEstablishment) {
+			restablishList = append(restablishList, terminator)
+		}
+		return true
+	})
+
+	// wait for verify terminator events to come in
+	time.Sleep(10 * time.Second)
+
+	for _, terminator := range restablishList {
+		if terminator.state.Load() == TerminatorStatePendingEstablishment {
+			self.EstablishTerminator(terminator)
+		}
+	}
 }

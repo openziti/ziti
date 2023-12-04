@@ -16,9 +16,7 @@ type ZCatType struct {
 }
 
 func (self *ZCatType) InitType(*model.Component) {
-	if self.Version != "" && self.Version != "latest" && !strings.HasPrefix(self.Version, "v") {
-		self.Version = "v" + self.Version
-	}
+	canonicalizeZitiVersion(&self.Version)
 }
 
 func (self *ZCatType) Dump() any {

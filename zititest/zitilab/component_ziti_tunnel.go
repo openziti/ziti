@@ -50,9 +50,10 @@ func (self ZitiTunnelMode) String() string {
 }
 
 type ZitiTunnelType struct {
-	Mode      ZitiTunnelMode
-	Version   string
-	LocalPath string
+	Mode        ZitiTunnelMode
+	Version     string
+	LocalPath   string
+	ConfigPathF func(c *model.Component) string
 }
 
 func (self *ZitiTunnelType) GetActions() map[string]model.ComponentAction {
@@ -62,9 +63,7 @@ func (self *ZitiTunnelType) GetActions() map[string]model.ComponentAction {
 }
 
 func (self *ZitiTunnelType) InitType(*model.Component) {
-	if self.Version != "" && self.Version != "latest" && !strings.HasPrefix(self.Version, "v") {
-		self.Version = "v" + self.Version
-	}
+	canonicalizeZitiVersion(&self.Version)
 }
 
 func (self *ZitiTunnelType) Dump() any {
@@ -102,16 +101,11 @@ func (self *ZitiTunnelType) IsRunning(_ model.Run, c *model.Component) (bool, er
 	return len(pids) > 0, nil
 }
 
-func (self *ZitiTunnelType) GetBinaryName() string {
-	binaryName := "ziti"
-	if self.Version != "" {
-		binaryName += "-" + self.Version
+func (self *ZitiTunnelType) GetConfigPath(c *model.Component) string {
+	if self.ConfigPathF != nil {
+		return self.ConfigPathF(c)
 	}
-	return binaryName
-}
-
-func (self *ZitiTunnelType) GetConfigName(c *model.Component) string {
-	return fmt.Sprintf("%s.json", c.Id)
+	return fmt.Sprintf("/home/%s/fablab/cfg/%s.json", c.GetHost().GetSshUser(), c.Id)
 }
 
 func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
@@ -119,8 +113,8 @@ func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
 
 	user := c.GetHost().GetSshUser()
 
-	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", user, self.GetBinaryName())
-	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s", user, self.GetConfigName(c))
+	binaryPath := getZitiBinaryPath(c, self.Version)
+	configPath := self.GetConfigPath(c)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
 	useSudo := ""
@@ -128,7 +122,7 @@ func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
 		useSudo = "sudo"
 	}
 
-	serviceCmd := fmt.Sprintf("%s %s tunnel %s --log-formatter pfxlog -i %s --cli-agent-alias %s > %s 2>&1 &",
+	serviceCmd := fmt.Sprintf("%s %s tunnel %s -v --log-formatter pfxlog -i %s --cli-agent-alias %s > %s 2>&1 &",
 		useSudo, binaryPath, mode.String(), configPath, c.Id, logsPath)
 
 	value, err := c.Host.ExecLogged(
@@ -150,5 +144,5 @@ func (self *ZitiTunnelType) Stop(_ model.Run, c *model.Component) error {
 }
 
 func (self *ZitiTunnelType) ReEnroll(run model.Run, c *model.Component) error {
-	return reEnrollIdentity(run, c, self.GetBinaryName(), self.GetConfigName(c))
+	return reEnrollIdentity(run, c, getZitiBinaryPath(c, self.Version), self.GetConfigPath(c))
 }
