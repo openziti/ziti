@@ -17,7 +17,6 @@
 package boltz
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"strings"
 
@@ -325,30 +324,10 @@ func (store *BaseStore[E]) NewScanner(sort []ast.SortField) Scanner {
 	return &sortingScanner{store: store}
 }
 
-type sortFieldImpl struct {
-	name  string
-	isAsc bool
-}
-
-func (sortField *sortFieldImpl) Symbol() string {
-	return sortField.name
-}
-
-func (sortField *sortFieldImpl) IsAscending() bool {
-	return sortField.isAsc
-}
-
-func (sortField *sortFieldImpl) String() string {
-	if sortField.isAsc {
-		return sortField.name
-	}
-	return fmt.Sprintf("%v DESC", sortField.name)
-}
-
 func (store *BaseStore[E]) newRowComparator(sort []ast.SortField) (RowComparator, error) {
 	// always have id as last sort element. this way if other sorts come out equal, we still
 	// can order on something, instead of having duplicates which causes rows to get discarded
-	sort = append(sort, &sortFieldImpl{name: "id", isAsc: true})
+	sort = append(sort, ast.NewSortFieldNode("id", true))
 
 	var symbolsComparators []symbolComparator
 	for _, sortField := range sort {

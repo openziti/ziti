@@ -232,6 +232,15 @@ func (node *SortByNode) IsConst() bool {
 	return false
 }
 
+func NewSortFieldNode(symbol string, isAscending bool) SortField {
+	return &SortFieldNode{
+		symbol: &UntypedSymbolNode{
+			symbol: symbol,
+		},
+		isAscending: isAscending,
+	}
+}
+
 type SortFieldNode struct {
 	symbol      SymbolNode
 	isAscending bool
