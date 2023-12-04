@@ -24,6 +24,7 @@ type compoundObjectComparator[T any] struct {
 	comparators []objectComparator[T]
 }
 
+//lint:ignore U1000 Ignore unused function as this is a false positive in staticcheck
 func (self *compoundObjectComparator[T]) compare(a, b T) int {
 	result := 0
 	for _, symbol := range self.comparators {
@@ -40,6 +41,7 @@ type objectBoolSymbolComparator[T any] struct {
 	forward bool
 }
 
+//lint:ignore U1000 Ignore unused function as this is a false positive in staticcheck
 func (c *objectBoolSymbolComparator[T]) compare(a, b T) int {
 	s1 := c.symbol.EvalBool(a)
 	s2 := c.symbol.EvalBool(b)
@@ -68,6 +70,7 @@ type objectStringSymbolComparator[T any] struct {
 	forward bool
 }
 
+//lint:ignore U1000 Ignore unused function as this is a false positive in staticcheck
 func (c *objectStringSymbolComparator[T]) compare(a, b T) int {
 	s1 := c.symbol.EvalString(a)
 	s2 := c.symbol.EvalString(b)
@@ -96,6 +99,7 @@ type objectInt64SymbolComparator[T any] struct {
 	forward bool
 }
 
+//lint:ignore U1000 Ignore unused function as this is a false positive in staticcheck
 func (c *objectInt64SymbolComparator[T]) compare(a, b T) int {
 	s1 := c.symbol.EvalInt64(a)
 	s2 := c.symbol.EvalInt64(b)
@@ -124,6 +128,7 @@ type objectFloat64SymbolComparator[T any] struct {
 	forward bool
 }
 
+//lint:ignore U1000 Ignore unused function as this is a false positive in staticcheck
 func (c *objectFloat64SymbolComparator[T]) compare(a, b T) int {
 	s1 := c.symbol.EvalFloat64(a)
 	s2 := c.symbol.EvalFloat64(b)
@@ -152,6 +157,7 @@ type objectDatetimeSymbolComparator[T any] struct {
 	forward bool
 }
 
+//lint:ignore U1000 Ignore unused function as this is a false positive in staticcheck
 func (c *objectDatetimeSymbolComparator[T]) compare(a, b T) int {
 	s1 := c.symbol.EvalDatetime(a)
 	s2 := c.symbol.EvalDatetime(b)
