@@ -17,11 +17,11 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -41,12 +41,12 @@ type ApiSession struct {
 	AuthenticatorId    string
 }
 
-func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.ApiSession, error) {
+func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, env Env) (*db.ApiSession, error) {
 	if !env.GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
 		return nil, errorz.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
 
-	boltEntity := &persistence.ApiSession{
+	boltEntity := &db.ApiSession{
 		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Token:           entity.Token,
 		IdentityId:      entity.IdentityId,
@@ -61,15 +61,15 @@ func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.ApiS
 	return boltEntity, nil
 }
 
-func (entity *ApiSession) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persistence.ApiSession, error) {
+func (entity *ApiSession) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.ApiSession, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.ApiSession, error) {
+func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.ApiSession, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *ApiSession) fillFrom(env Env, tx *bbolt.Tx, boltApiSession *persistence.ApiSession) error {
+func (entity *ApiSession) fillFrom(env Env, tx *bbolt.Tx, boltApiSession *db.ApiSession) error {
 	entity.FillCommon(boltApiSession)
 	entity.Token = boltApiSession.Token
 	entity.IdentityId = boltApiSession.IdentityId

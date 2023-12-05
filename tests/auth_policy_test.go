@@ -23,8 +23,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/persistence"
 	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/ziti/controller/db"
 	"net/http"
 	"testing"
 	"time"
@@ -781,7 +781,7 @@ func Test_AuthPolicies(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			identityPatch := &rest_model.IdentityPatch{
-				AuthPolicyID: S(persistence.DefaultAuthPolicyId),
+				AuthPolicyID: S(db.DefaultAuthPolicyId),
 			}
 			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityPatch).Patch("/identities/" + identityCreated.Data.ID)
 			ctx.Req.NoError(err)
@@ -798,7 +798,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 	t.Run("cannot delete the default auth policy", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete("/auth-policies/" + persistence.DefaultAuthPolicyId)
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete("/auth-policies/" + db.DefaultAuthPolicyId)
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(http.StatusConflict, resp.StatusCode(), "expected 409 for DELETE: %s", resp.Body())
 	})
@@ -862,7 +862,7 @@ func Test_AuthPolicies(t *testing.T) {
 			},
 		}
 
-		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyUpdate).Put("/auth-policies/" + persistence.DefaultAuthPolicyId)
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyUpdate).Put("/auth-policies/" + db.DefaultAuthPolicyId)
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PUT %T: %s", extJwtSigner, resp.Body())
 
@@ -871,7 +871,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 			authPolicyUpdatedEnvelope := &rest_model.DetailAuthPolicyEnvelope{}
 
-			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(authPolicyUpdatedEnvelope).Get("/auth-policies/" + persistence.DefaultAuthPolicyId)
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(authPolicyUpdatedEnvelope).Get("/auth-policies/" + db.DefaultAuthPolicyId)
 			ctx.Req.NoError(err)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for GET %s: %s", resp.Request.URL, resp.Body())
 			authPolicyUpdatedDetail := authPolicyUpdatedEnvelope.Data
@@ -906,7 +906,7 @@ func Test_AuthPolicies(t *testing.T) {
 			Name: S("PatchedName On Default"),
 		}
 
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyPatch).Patch("/auth-policies/" + persistence.DefaultAuthPolicyId)
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyPatch).Patch("/auth-policies/" + db.DefaultAuthPolicyId)
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %T: %s", "default auth policy", resp.Body())
 
@@ -915,7 +915,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 			authPolicyPatchEnvelope := &rest_model.DetailAuthPolicyEnvelope{}
 
-			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(authPolicyPatchEnvelope).Get("/auth-policies/" + persistence.DefaultAuthPolicyId)
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(authPolicyPatchEnvelope).Get("/auth-policies/" + db.DefaultAuthPolicyId)
 			ctx.Req.NoError(err)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for GET %s: %s", resp.Request.URL, resp.Body())
 			authPolicyPatchedDetail := authPolicyPatchEnvelope.Data
@@ -1007,9 +1007,9 @@ func Test_AuthPolicies(t *testing.T) {
 			ctx.Req.Equal(*authPolicy.Primary.ExtJWT.Allowed, *authPolicyDetail.Primary.ExtJWT.Allowed)
 
 			ctx.Req.Equal(*authPolicy.Primary.Updb.Allowed, *authPolicyDetail.Primary.Updb.Allowed)
-			ctx.Req.Equal(persistence.UpdbUnlimitedAttemptsLimit, *authPolicyDetail.Primary.Updb.MaxAttempts)
-			ctx.Req.Equal(persistence.DefaultUpdbMinPasswordLength, *authPolicyDetail.Primary.Updb.MinPasswordLength)
-			ctx.Req.Equal(persistence.UpdbIndefiniteLockout, *authPolicyDetail.Primary.Updb.LockoutDurationMinutes)
+			ctx.Req.Equal(db.UpdbUnlimitedAttemptsLimit, *authPolicyDetail.Primary.Updb.MaxAttempts)
+			ctx.Req.Equal(db.DefaultUpdbMinPasswordLength, *authPolicyDetail.Primary.Updb.MinPasswordLength)
+			ctx.Req.Equal(db.UpdbIndefiniteLockout, *authPolicyDetail.Primary.Updb.LockoutDurationMinutes)
 			ctx.Req.Equal(*authPolicy.Primary.Updb.RequireMixedCase, *authPolicyDetail.Primary.Updb.RequireMixedCase)
 			ctx.Req.Equal(*authPolicy.Primary.Updb.RequireNumberChar, *authPolicyDetail.Primary.Updb.RequireNumberChar)
 			ctx.Req.Equal(*authPolicy.Primary.Updb.RequireSpecialChar, *authPolicyDetail.Primary.Updb.RequireSpecialChar)

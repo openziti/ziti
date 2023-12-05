@@ -1,6 +1,6 @@
 .DS_Store
 release/
-db/
+/db/
 # Binaries for programs and plugins
 *.exe
 *.exe~

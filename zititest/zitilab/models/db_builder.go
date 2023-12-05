@@ -6,7 +6,6 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -15,16 +14,15 @@ import (
 
 type ZitiDbBuilderStrategy interface {
 	GetDbFile(m *model.Model) string
-	GetSite(router *persistence.EdgeRouter) (string, bool)
-	PostProcess(router *persistence.EdgeRouter, c *model.Component)
+	GetSite(router *db.EdgeRouter) (string, bool)
+	PostProcess(router *db.EdgeRouter, c *model.Component)
 	ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *ZitiDbBuilder) error
 }
 
 type ZitiDbBuilder struct {
-	Strategy   ZitiDbBuilderStrategy
-	zitiDb     boltz.Db
-	stores     *db.Stores
-	edgeStores *persistence.Stores
+	Strategy ZitiDbBuilderStrategy
+	zitiDb   boltz.Db
+	stores   *db.Stores
 }
 
 func (self *ZitiDbBuilder) GetDb() boltz.Db {
@@ -33,10 +31,6 @@ func (self *ZitiDbBuilder) GetDb() boltz.Db {
 
 func (self *ZitiDbBuilder) GetStores() *db.Stores {
 	return self.stores
-}
-
-func (self *ZitiDbBuilder) GetEdgeStores() *persistence.Stores {
-	return self.edgeStores
 }
 
 func (self *ZitiDbBuilder) GetManagers() *network.Managers {
@@ -63,24 +57,19 @@ func (self *ZitiDbBuilder) Build(m *model.Model) error {
 		return errors.Wrapf(err, "unable to init fabric stores using db [%v]", dbFile)
 	}
 
-	self.edgeStores, err = persistence.NewBoltStores(self)
-	if err != nil {
-		return errors.Wrapf(err, "unable to init edge stores using db [%v]", dbFile)
-	}
-
 	return self.zitiDb.View(func(tx *bbolt.Tx) error {
 		return self.Strategy.ProcessDbModel(tx, m, self)
 	})
 }
 
 func (self *ZitiDbBuilder) CreateEdgeRouterHosts(tx *bbolt.Tx, m *model.Model) error {
-	ids, _, err := self.edgeStores.EdgeRouter.QueryIds(tx, "true limit none")
+	ids, _, err := self.stores.EdgeRouter.QueryIds(tx, "true limit none")
 	if err != nil {
 		return err
 	}
 
 	for _, id := range ids {
-		er, err := self.edgeStores.EdgeRouter.LoadOneById(tx, id)
+		er, err := self.stores.EdgeRouter.LoadOneById(tx, id)
 		if err != nil {
 			return err
 		}
@@ -130,7 +119,7 @@ func (self *ZitiDbBuilder) CreateEdgeRouterHosts(tx *bbolt.Tx, m *model.Model) e
 	return nil
 }
 
-func (self *ZitiDbBuilder) DefaultGetSite(er *persistence.EdgeRouter) (string, bool) {
+func (self *ZitiDbBuilder) DefaultGetSite(er *db.EdgeRouter) (string, bool) {
 	if val, found := er.Tags["fablab.site"]; found {
 		return fmt.Sprintf("%v", val), true
 	}

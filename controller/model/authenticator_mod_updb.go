@@ -20,9 +20,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/db"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"time"
 )
@@ -122,7 +122,7 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 		return 0
 	})
 
-	if authPolicy.Primary.Updb.MaxAttempts != persistence.UpdbUnlimitedAttemptsLimit && attempts > authPolicy.Primary.Updb.MaxAttempts {
+	if authPolicy.Primary.Updb.MaxAttempts != db.UpdbUnlimitedAttemptsLimit && attempts > authPolicy.Primary.Updb.MaxAttempts {
 		logger.WithField("attempts", attempts).WithField("maxAttempts", authPolicy.Primary.Updb.MaxAttempts).Error("updb auth failed, max attempts exceeded")
 
 		duration := time.Duration(authPolicy.Primary.Updb.LockoutDurationMinutes) * time.Minute

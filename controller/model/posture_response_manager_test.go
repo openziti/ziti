@@ -17,7 +17,7 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
@@ -42,7 +42,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 	})
 
 	t.Run("returns false if no prompts (all false), timeout remaining is greater than grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnWake:          false,
 			PromptOnUnlock:        false,
@@ -59,7 +59,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 
 	// promptOnWake = true, wake = true
 	t.Run("returns true if promptOnWake=true, wake=true, timeout remaining is greater than grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnWake:          true,
 			PromptOnUnlock:        false,
@@ -75,7 +75,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 	})
 
 	t.Run("returns false if promptOnWake=true, wake=true, timeout remaining is less than grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnWake:          true,
 			PromptOnUnlock:        false,
@@ -91,7 +91,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 	})
 
 	t.Run("returns false if promptOnWake=true, wake=true, timeout remaining equals grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnWake:          true,
 			PromptOnUnlock:        false,
@@ -108,7 +108,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 
 	// promptOnWake = true, wake = false
 	t.Run("returns false if promptOnWake=true, wake=false, timeout remaining is greater than grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnWake:          true,
 			PromptOnUnlock:        false,
@@ -124,7 +124,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 	})
 
 	t.Run("returns false if promptOnWake=true, wake=false, timeout remaining is less than grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnWake:          true,
 			PromptOnUnlock:        false,
@@ -140,7 +140,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 	})
 
 	t.Run("returns false if promptOnWake=true, wake=false, timeout remaining equals grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnWake:          true,
 			PromptOnUnlock:        false,
@@ -157,7 +157,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 
 	// promptOnUnlock = true, unlock = true
 	t.Run("returns true if promptOnUnlock=true, unlock=true, timeout remaining is greater than grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnUnlock:        true,
 			PromptOnWake:          false,
@@ -173,7 +173,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 	})
 
 	t.Run("returns false if promptOnUnlock=true, unlock=true, timeout remaining is less than grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnUnlock:        true,
 			PromptOnWake:          false,
@@ -189,7 +189,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 	})
 
 	t.Run("returns false if promptOnUnlock=true, unlock=true, timeout remaining equals grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnUnlock:        true,
 			PromptOnWake:          false,
@@ -206,7 +206,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 
 	// promptOnUnlock = true, unlock = false
 	t.Run("returns false if promptOnUnlock=true, unlock=false, timeout remaining is greater than grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnUnlock:        true,
 			PromptOnWake:          false,
@@ -222,7 +222,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 	})
 
 	t.Run("returns false if promptOnUnlock=true, unlock=false, timeout remaining is less than grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnUnlock:        true,
 			PromptOnWake:          false,
@@ -238,7 +238,7 @@ func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testi
 	})
 
 	t.Run("returns false if promptOnUnlock=true, unlock=false, timeout remaining equals grace", func(t *testing.T) {
-		mfaCheck := &persistence.PostureCheckMfa{
+		mfaCheck := &db.PostureCheckMfa{
 			TimeoutSeconds:        int64(mustParseDuration("10m").Seconds()),
 			PromptOnUnlock:        true,
 			PromptOnWake:          false,

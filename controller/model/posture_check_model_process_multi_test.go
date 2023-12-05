@@ -17,7 +17,7 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
@@ -177,7 +177,7 @@ func newMatchingProcessMultiCheckAndData() (*PostureCheckProcessMulti, *PostureD
 
 	processCheck := &PostureCheckProcessMulti{
 		PostureCheckId: postureCheckId,
-		Semantic:       persistence.SemanticAllOf,
+		Semantic:       db.SemanticAllOf,
 		Processes: []*ProcessMulti{
 			{
 				OsType: "Windows",

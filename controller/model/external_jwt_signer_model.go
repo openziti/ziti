@@ -17,11 +17,11 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -45,8 +45,8 @@ type ExternalJwtSigner struct {
 	NotBefore   time.Time
 }
 
-func (entity *ExternalJwtSigner) toBoltEntity() (*persistence.ExternalJwtSigner, error) {
-	signer := &persistence.ExternalJwtSigner{
+func (entity *ExternalJwtSigner) toBoltEntity() (*db.ExternalJwtSigner, error) {
+	signer := &db.ExternalJwtSigner{
 		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:            entity.Name,
 		CertPem:         entity.CertPem,
@@ -78,15 +78,15 @@ func (entity *ExternalJwtSigner) toBoltEntity() (*persistence.ExternalJwtSigner,
 	return signer, nil
 }
 
-func (entity *ExternalJwtSigner) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.ExternalJwtSigner, error) {
+func (entity *ExternalJwtSigner) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.ExternalJwtSigner, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ExternalJwtSigner) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.ExternalJwtSigner, error) {
+func (entity *ExternalJwtSigner) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.ExternalJwtSigner, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ExternalJwtSigner) fillFrom(_ Env, _ *bbolt.Tx, boltExternalJwtSigner *persistence.ExternalJwtSigner) error {
+func (entity *ExternalJwtSigner) fillFrom(_ Env, _ *bbolt.Tx, boltExternalJwtSigner *db.ExternalJwtSigner) error {
 	entity.FillCommon(boltExternalJwtSigner)
 	entity.Name = boltExternalJwtSigner.Name
 	entity.CommonName = boltExternalJwtSigner.CommonName

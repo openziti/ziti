@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"
@@ -32,7 +32,7 @@ import (
 
 func NewApiSessionManager(env Env) *ApiSessionManager {
 	manager := &ApiSessionManager{
-		baseEntityManager: newBaseEntityManager[*ApiSession, *persistence.ApiSession](env, env.GetStores().ApiSession),
+		baseEntityManager: newBaseEntityManager[*ApiSession, *db.ApiSession](env, env.GetStores().ApiSession),
 	}
 
 	manager.HeartbeatCollector = NewHeartbeatCollector(env, env.GetConfig().Api.ActivityUpdateBatchSize, env.GetConfig().Api.ActivityUpdateInterval, manager.heartbeatFlush)
@@ -43,7 +43,7 @@ func NewApiSessionManager(env Env) *ApiSessionManager {
 }
 
 type ApiSessionManager struct {
-	baseEntityManager[*ApiSession, *persistence.ApiSession]
+	baseEntityManager[*ApiSession, *db.ApiSession]
 	HeartbeatCollector *HeartbeatCollector
 }
 
@@ -123,7 +123,7 @@ func (self *ApiSessionManager) UpdateWithFieldChecker(apiSession *ApiSession, fi
 
 func (self *ApiSessionManager) MfaCompleted(apiSession *ApiSession, ctx *change.Context) error {
 	apiSession.MfaComplete = true
-	return self.updateEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldApiSessionMfaComplete), self}, ctx.NewMutateContext())
+	return self.updateEntity(apiSession, &OrFieldChecker{NewFieldChecker(db.FieldApiSessionMfaComplete), self}, ctx.NewMutateContext())
 }
 
 func (self *ApiSessionManager) Delete(id string, ctx *change.Context) error {
@@ -148,7 +148,7 @@ func (self *ApiSessionManager) MarkLastActivityByTokens(tokens ...string) ([]str
 	var notFoundTokens []string
 	store := self.env.GetStores().ApiSession
 
-	var apiSessions []*persistence.ApiSession
+	var apiSessions []*db.ApiSession
 	identityIds := map[string]struct{}{}
 
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
@@ -186,12 +186,12 @@ func (self *ApiSessionManager) heartbeatFlush(beats []*Heartbeat) {
 		store := self.env.GetStores().ApiSession
 
 		for _, beat := range beats {
-			err := store.Update(ctx, &persistence.ApiSession{
+			err := store.Update(ctx, &db.ApiSession{
 				BaseExtEntity: boltz.BaseExtEntity{
 					Id: beat.ApiSessionId,
 				},
 				LastActivityAt: beat.LastActivityAt,
-			}, persistence.UpdateLastActivityAtChecker{})
+			}, db.UpdateLastActivityAtChecker{})
 
 			if err != nil {
 				pfxlog.Logger().Errorf("could not flush heartbeat activity for api session id %s: %v", beat.ApiSessionId, err)
@@ -289,7 +289,7 @@ func (self *ApiSessionManager) VisitFingerprintsForApiSession(tx *bbolt.Tx, iden
 
 func (self *ApiSessionManager) DeleteByIdentityId(identityId string, changeCtx *change.Context) error {
 	return self.GetEnv().GetDbProvider().GetDb().Update(changeCtx.NewMutateContext(), func(ctx boltz.MutateContext) error {
-		query := fmt.Sprintf(`%s = "%s"`, persistence.FieldApiSessionIdentity, identityId)
+		query := fmt.Sprintf(`%s = "%s"`, db.FieldApiSessionIdentity, identityId)
 		return self.Store.DeleteWhere(ctx, query)
 	})
 }

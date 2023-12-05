@@ -19,13 +19,13 @@ package model
 import (
 	"encoding/base64"
 	"errors"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/foundation/v2/errorz"
 )
 
 type EnrollModuleUpdb struct {
@@ -37,7 +37,7 @@ type EnrollModuleUpdb struct {
 func NewEnrollModuleUpdb(env Env) *EnrollModuleUpdb {
 	return &EnrollModuleUpdb{
 		env:                  env,
-		method:               persistence.MethodEnrollUpdb,
+		method:               db.MethodEnrollUpdb,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 	}
 }
@@ -90,7 +90,7 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 		BaseEntity: models.BaseEntity{
 			Id: eid.New(),
 		},
-		Method:     persistence.MethodAuthenticatorUpdb,
+		Method:     db.MethodAuthenticatorUpdb,
 		IdentityId: *enrollment.IdentityId,
 		SubType: &AuthenticatorUpdb{
 			Username: *enrollment.Username,

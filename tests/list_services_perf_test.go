@@ -5,10 +5,10 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/model"
 	"go.etcd.io/bbolt"
 	"net/url"
 	"os"
@@ -70,8 +70,8 @@ func Test_ExportIdentityServicePostureChecks(t *testing.T) {
 	managers := ctx.EdgeController.AppEnv.Managers
 	identityManager := managers.Identity
 
-	bindServices := stores.Identity.GetRefCountedLinkCollection(persistence.FieldIdentityBindServices)
-	dialServices := stores.Identity.GetRefCountedLinkCollection(persistence.FieldIdentityDialServices)
+	bindServices := stores.Identity.GetRefCountedLinkCollection(db.FieldIdentityBindServices)
+	dialServices := stores.Identity.GetRefCountedLinkCollection(db.FieldIdentityDialServices)
 
 	type identityServicePostureChecks struct {
 		Id       string

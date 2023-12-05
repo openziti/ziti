@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
@@ -30,7 +30,7 @@ import (
 
 func NewApiSessionCertificateManager(env Env) *ApiSessionCertificateManager {
 	manager := &ApiSessionCertificateManager{
-		baseEntityManager: newBaseEntityManager[*ApiSessionCertificate, *persistence.ApiSessionCertificate](env, env.GetStores().ApiSessionCertificate),
+		baseEntityManager: newBaseEntityManager[*ApiSessionCertificate, *db.ApiSessionCertificate](env, env.GetStores().ApiSessionCertificate),
 	}
 	manager.impl = manager
 
@@ -38,7 +38,7 @@ func NewApiSessionCertificateManager(env Env) *ApiSessionCertificateManager {
 }
 
 type ApiSessionCertificateManager struct {
-	baseEntityManager[*ApiSessionCertificate, *persistence.ApiSessionCertificate]
+	baseEntityManager[*ApiSessionCertificate, *db.ApiSessionCertificate]
 }
 
 func (self *ApiSessionCertificateManager) newModelEntity() *ApiSessionCertificate {

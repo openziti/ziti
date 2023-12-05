@@ -49,6 +49,7 @@ import (
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/api"
 	edgeConfig "github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/events"
 	"github.com/openziti/ziti/controller/internal/permissions"
@@ -57,7 +58,6 @@ import (
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/oidc_auth"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/xctrl"
 	"github.com/openziti/ziti/controller/xmgmt"
@@ -75,9 +75,8 @@ var _ model.Env = &AppEnv{}
 const ZitiSession = "zt-session"
 
 type AppEnv struct {
-	BoltStores *persistence.Stores
-	Managers   *model.Managers
-	Config     *edgeConfig.Config
+	Managers *model.Managers
+	Config   *edgeConfig.Config
 
 	Versions *ziti.Versions
 
@@ -162,12 +161,12 @@ func (ae *AppEnv) GetJwtSigner() jwtsigner.Signer {
 	return ae.enrollmentSigner
 }
 
-func (ae *AppEnv) GetDbProvider() persistence.DbProvider {
+func (ae *AppEnv) GetDbProvider() network.DbProvider {
 	return ae.HostController.GetNetwork()
 }
 
-func (ae *AppEnv) GetStores() *persistence.Stores {
-	return ae.BoltStores
+func (ae *AppEnv) GetStores() *db.Stores {
+	return ae.HostController.GetNetwork().GetStores()
 }
 
 func (ae *AppEnv) GetAuthRegistry() model.AuthRegistry {
@@ -606,35 +605,28 @@ func NewAppEnv(c *edgeConfig.Config, host HostController) *AppEnv {
 func (ae *AppEnv) InitPersistence() error {
 	var err error
 
-	ae.BoltStores, err = persistence.NewBoltStores(ae.HostController.GetNetwork())
-	if err != nil {
-		return err
-	}
+	stores := ae.HostController.GetNetwork().GetStores()
 
-	if err = persistence.RunMigrations(ae.GetDbProvider().GetDb(), ae.BoltStores); err != nil {
-		return err
-	}
-
-	ae.BoltStores.EventualEventer.AddListener(persistence.EventualEventAddedName, func(i ...interface{}) {
+	stores.EventualEventer.AddListener(db.EventualEventAddedName, func(i ...interface{}) {
 		if len(i) == 0 {
 			pfxlog.Logger().Errorf("could not update metrics for %s gauge on add, event argument length was 0", EventualEventsGauge)
 			return
 		}
 
-		if event, ok := i[0].(*persistence.EventualEventAdded); ok {
+		if event, ok := i[0].(*db.EventualEventAdded); ok {
 			gauge := ae.GetHostController().GetNetwork().GetMetricsRegistry().Gauge(EventualEventsGauge)
 			gauge.Update(event.Total)
 		} else {
 			pfxlog.Logger().Errorf("could not update metrics for %s gauge on add, event argument was %T expected *EventualEventAdded", EventualEventsGauge, i[0])
 		}
 	})
-	ae.BoltStores.EventualEventer.AddListener(persistence.EventualEventRemovedName, func(i ...interface{}) {
+	stores.EventualEventer.AddListener(db.EventualEventRemovedName, func(i ...interface{}) {
 		if len(i) == 0 {
 			pfxlog.Logger().Errorf("could not update metrics for %s gauge on remove, event argument length was 0", EventualEventsGauge)
 			return
 		}
 
-		if event, ok := i[0].(*persistence.EventualEventRemoved); ok {
+		if event, ok := i[0].(*db.EventualEventRemoved); ok {
 			gauge := ae.GetHostController().GetNetwork().GetMetricsRegistry().Gauge(EventualEventsGauge)
 			gauge.Update(event.Total)
 		} else {
@@ -643,10 +635,10 @@ func (ae *AppEnv) InitPersistence() error {
 	})
 
 	ae.Managers = model.InitEntityManagers(ae)
-	ae.GetHostController().GetNetwork().GetEventDispatcher().(*events.Dispatcher).InitializeEdgeEvents(ae.BoltStores)
+	ae.GetHostController().GetNetwork().GetEventDispatcher().(*events.Dispatcher).InitializeEdgeEvents(stores)
 
-	persistence.ServiceEvents.AddServiceEventHandler(ae.HandleServiceEvent)
-	ae.BoltStores.Identity.AddEntityIdListener(ae.IdentityRefreshMap.Remove, boltz.EntityDeletedAsync)
+	db.ServiceEvents.AddServiceEventHandler(ae.HandleServiceEvent)
+	stores.Identity.AddEntityIdListener(ae.IdentityRefreshMap.Remove, boltz.EntityDeletedAsync)
 
 	return err
 }
@@ -838,7 +830,7 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 	})
 }
 
-func (ae *AppEnv) HandleServiceEvent(event *persistence.ServiceEvent) {
+func (ae *AppEnv) HandleServiceEvent(event *db.ServiceEvent) {
 	ae.HandleServiceUpdatedEventForIdentityId(event.IdentityId)
 }
 

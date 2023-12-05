@@ -21,19 +21,19 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/network"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -53,14 +53,14 @@ const (
 )
 
 type IdentityManager struct {
-	baseEntityManager[*Identity, *persistence.Identity]
+	baseEntityManager[*Identity, *db.Identity]
 	updateSdkInfoTimer metrics.Timer
 	identityStatusMap  *identityStatusMap
 }
 
 func NewIdentityManager(env Env) *IdentityManager {
 	manager := &IdentityManager{
-		baseEntityManager:  newBaseEntityManager[*Identity, *persistence.Identity](env, env.GetStores().Identity),
+		baseEntityManager:  newBaseEntityManager[*Identity, *db.Identity](env, env.GetStores().Identity),
 		updateSdkInfoTimer: env.GetMetricsRegistry().Timer("identity.update-sdk-info"),
 		identityStatusMap:  newIdentityStatusMap(IdentityActiveIntervalSeconds * time.Second),
 	}
@@ -150,7 +150,7 @@ func (self *IdentityManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ident
 }
 
 func (self *IdentityManager) IsUpdated(field string) bool {
-	return field != persistence.FieldIdentityAuthenticators && field != persistence.FieldIdentityEnrollments && field != persistence.FieldIdentityIsDefaultAdmin
+	return field != db.FieldIdentityAuthenticators && field != db.FieldIdentityEnrollments && field != db.FieldIdentityIsDefaultAdmin
 }
 
 func (self *IdentityManager) ReadByName(name string) (*Identity, error) {
@@ -208,7 +208,7 @@ func (self *IdentityManager) InitializeDefaultAdmin(username, password, name str
 		return errorz.NewFieldError(fmt.Sprintf("name must be at most %v characters", maxDefaultAdminNameLength), "name", name)
 	}
 
-	identityType, err := self.env.GetManagers().IdentityType.ReadByName(persistence.DefaultIdentityType)
+	identityType, err := self.env.GetManagers().IdentityType.ReadByName(db.DefaultIdentityType)
 
 	if err != nil {
 		return err
@@ -231,7 +231,7 @@ func (self *IdentityManager) InitializeDefaultAdmin(username, password, name str
 		BaseEntity: models.BaseEntity{
 			Id: authenticatorId,
 		},
-		Method:     persistence.MethodAuthenticatorUpdb,
+		Method:     db.MethodAuthenticatorUpdb,
 		IdentityId: identityId,
 		SubType: &AuthenticatorUpdb{
 			Username: username,
@@ -257,7 +257,7 @@ func (self *IdentityManager) CollectAuthenticators(id string, collector func(ent
 		if err != nil {
 			return err
 		}
-		authenticatorIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityAuthenticators)
+		authenticatorIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, db.FieldIdentityAuthenticators)
 		for _, authenticatorId := range authenticatorIds {
 			authenticator := &Authenticator{}
 			err := self.env.GetManagers().Authenticator.readEntityInTx(tx, authenticatorId, authenticator)
@@ -277,7 +277,7 @@ func (self *IdentityManager) visitAuthenticators(tx *bbolt.Tx, id string, visito
 	if err != nil {
 		return err
 	}
-	authenticatorIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityAuthenticators)
+	authenticatorIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, db.FieldIdentityAuthenticators)
 	for _, authenticatorId := range authenticatorIds {
 		authenticator := &Authenticator{}
 		if err := self.env.GetManagers().Authenticator.readEntityInTx(tx, authenticatorId, authenticator); err != nil {
@@ -303,7 +303,7 @@ func (self *IdentityManager) collectEnrollmentsInTx(tx *bbolt.Tx, id string, col
 		return err
 	}
 
-	associationIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityEnrollments)
+	associationIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, db.FieldIdentityEnrollments)
 	for _, enrollmentId := range associationIds {
 		enrollment, err := self.env.GetManagers().Enrollment.readInTx(tx, enrollmentId)
 		if err != nil {
@@ -444,16 +444,16 @@ func (self *IdentityManager) QueryRoleAttributes(queryString string) ([]string, 
 func (self *IdentityManager) PatchInfo(identity *Identity, changeCtx *change.Context) error {
 	start := time.Now()
 	checker := boltz.MapFieldChecker{
-		persistence.FieldIdentityEnvInfoArch:       struct{}{},
-		persistence.FieldIdentityEnvInfoOs:         struct{}{},
-		persistence.FieldIdentityEnvInfoOsRelease:  struct{}{},
-		persistence.FieldIdentityEnvInfoOsVersion:  struct{}{},
-		persistence.FieldIdentitySdkInfoBranch:     struct{}{},
-		persistence.FieldIdentitySdkInfoRevision:   struct{}{},
-		persistence.FieldIdentitySdkInfoType:       struct{}{},
-		persistence.FieldIdentitySdkInfoVersion:    struct{}{},
-		persistence.FieldIdentitySdkInfoAppId:      struct{}{},
-		persistence.FieldIdentitySdkInfoAppVersion: struct{}{},
+		db.FieldIdentityEnvInfoArch:       struct{}{},
+		db.FieldIdentityEnvInfoOs:         struct{}{},
+		db.FieldIdentityEnvInfoOsRelease:  struct{}{},
+		db.FieldIdentityEnvInfoOsVersion:  struct{}{},
+		db.FieldIdentitySdkInfoBranch:     struct{}{},
+		db.FieldIdentitySdkInfoRevision:   struct{}{},
+		db.FieldIdentitySdkInfoType:       struct{}{},
+		db.FieldIdentitySdkInfoVersion:    struct{}{},
+		db.FieldIdentitySdkInfoAppId:      struct{}{},
+		db.FieldIdentitySdkInfoAppVersion: struct{}{},
 	}
 
 	err := self.updateEntityBatch(identity, checker, changeCtx)
@@ -489,7 +489,7 @@ func (self *IdentityManager) VisitIdentityAuthenticatorFingerprints(tx *bbolt.Tx
 }
 
 func (self *IdentityManager) ReadByExternalId(externalId string) (*Identity, error) {
-	query := fmt.Sprintf("%s = \"%v\"", persistence.FieldIdentityExternalId, externalId)
+	query := fmt.Sprintf("%s = \"%v\"", db.FieldIdentityExternalId, externalId)
 
 	entity, err := self.readEntityByQuery(query)
 
@@ -516,8 +516,8 @@ func (self *IdentityManager) Disable(identityId string, duration time.Duration, 
 	}
 
 	fieldMap := fields.UpdatedFieldsMap{
-		persistence.FieldIdentityDisabledAt:    struct{}{},
-		persistence.FieldIdentityDisabledUntil: struct{}{},
+		db.FieldIdentityDisabledAt:    struct{}{},
+		db.FieldIdentityDisabledUntil: struct{}{},
 	}
 
 	lockedAt := time.Now()
@@ -545,8 +545,8 @@ func (self *IdentityManager) Disable(identityId string, duration time.Duration, 
 
 func (self *IdentityManager) Enable(identityId string, ctx *change.Context) error {
 	fieldMap := fields.UpdatedFieldsMap{
-		persistence.FieldIdentityDisabledAt:    struct{}{},
-		persistence.FieldIdentityDisabledUntil: struct{}{},
+		db.FieldIdentityDisabledAt:    struct{}{},
+		db.FieldIdentityDisabledUntil: struct{}{},
 	}
 
 	return self.Update(&Identity{

@@ -19,7 +19,7 @@ package model
 import (
 	"fmt"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -37,7 +37,7 @@ type PostureCheckProcess struct {
 }
 
 func (p *PostureCheckProcess) TypeId() string {
-	return persistence.PostureCheckTypeProcess
+	return db.PostureCheckTypeProcess
 }
 
 func (p *PostureCheckProcess) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
@@ -148,8 +148,8 @@ func newPostureCheckProcess() PostureCheckSubType {
 	return &PostureCheckProcess{}
 }
 
-func (p *PostureCheckProcess) fillFrom(_ Env, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
-	subCheck := subType.(*persistence.PostureCheckProcess)
+func (p *PostureCheckProcess) fillFrom(_ Env, tx *bbolt.Tx, check *db.PostureCheck, subType db.PostureCheckSubType) error {
+	subCheck := subType.(*db.PostureCheckProcess)
 
 	if subCheck == nil {
 		return fmt.Errorf("could not covert process check to bolt type")
@@ -163,8 +163,8 @@ func (p *PostureCheckProcess) fillFrom(_ Env, tx *bbolt.Tx, check *persistence.P
 	return nil
 }
 
-func (p *PostureCheckProcess) toBoltEntityForCreate(*bbolt.Tx, Env) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckProcess{
+func (p *PostureCheckProcess) toBoltEntityForCreate(*bbolt.Tx, Env) (db.PostureCheckSubType, error) {
+	return &db.PostureCheckProcess{
 		OperatingSystem: p.OsType,
 		Path:            p.Path,
 		Hashes:          p.Hashes,

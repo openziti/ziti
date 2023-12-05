@@ -19,7 +19,7 @@ package model
 import (
 	"fmt"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"
@@ -32,7 +32,7 @@ type PostureCheckMacAddresses struct {
 }
 
 func (p *PostureCheckMacAddresses) TypeId() string {
-	return persistence.PostureCheckTypeMAC
+	return db.PostureCheckTypeMAC
 }
 
 func (p *PostureCheckMacAddresses) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
@@ -96,8 +96,8 @@ func newPostureCheckMacAddresses() PostureCheckSubType {
 	return &PostureCheckMacAddresses{}
 }
 
-func (p *PostureCheckMacAddresses) fillFrom(_ Env, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
-	subCheck := subType.(*persistence.PostureCheckMacAddresses)
+func (p *PostureCheckMacAddresses) fillFrom(_ Env, tx *bbolt.Tx, check *db.PostureCheck, subType db.PostureCheckSubType) error {
+	subCheck := subType.(*db.PostureCheckMacAddresses)
 
 	if subCheck == nil {
 		return fmt.Errorf("could not covert mac address check to bolt type")
@@ -107,8 +107,8 @@ func (p *PostureCheckMacAddresses) fillFrom(_ Env, tx *bbolt.Tx, check *persiste
 	return nil
 }
 
-func (p *PostureCheckMacAddresses) toBoltEntityForCreate(*bbolt.Tx, Env) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckMacAddresses{
+func (p *PostureCheckMacAddresses) toBoltEntityForCreate(*bbolt.Tx, Env) (db.PostureCheckSubType, error) {
+	return &db.PostureCheckMacAddresses{
 		MacAddresses: p.MacAddresses,
 	}, nil
 }

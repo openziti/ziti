@@ -17,15 +17,15 @@
 package model
 
 import (
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -33,7 +33,7 @@ import (
 
 func NewExternalJwtSignerManager(env Env) *ExternalJwtSignerManager {
 	manager := &ExternalJwtSignerManager{
-		baseEntityManager: newBaseEntityManager[*ExternalJwtSigner, *persistence.ExternalJwtSigner](env, env.GetStores().ExternalJwtSigner),
+		baseEntityManager: newBaseEntityManager[*ExternalJwtSigner, *db.ExternalJwtSigner](env, env.GetStores().ExternalJwtSigner),
 	}
 	manager.impl = manager
 
@@ -43,7 +43,7 @@ func NewExternalJwtSignerManager(env Env) *ExternalJwtSignerManager {
 }
 
 type ExternalJwtSignerManager struct {
-	baseEntityManager[*ExternalJwtSigner, *persistence.ExternalJwtSigner]
+	baseEntityManager[*ExternalJwtSigner, *db.ExternalJwtSigner]
 }
 
 func (self *ExternalJwtSignerManager) newModelEntity() *ExternalJwtSigner {

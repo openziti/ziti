@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"github.com/blang/semver"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -36,7 +36,7 @@ type PostureCheckOperatingSystem struct {
 }
 
 func (p *PostureCheckOperatingSystem) TypeId() string {
-	return persistence.PostureCheckTypeOs
+	return db.PostureCheckTypeOs
 }
 
 func (p *PostureCheckOperatingSystem) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
@@ -148,8 +148,8 @@ func newPostureCheckOperatingSystem() PostureCheckSubType {
 	return &PostureCheckOperatingSystem{}
 }
 
-func (p *PostureCheckOperatingSystem) fillFrom(_ Env, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
-	subCheck := subType.(*persistence.PostureCheckOperatingSystem)
+func (p *PostureCheckOperatingSystem) fillFrom(_ Env, tx *bbolt.Tx, check *db.PostureCheck, subType db.PostureCheckSubType) error {
+	subCheck := subType.(*db.PostureCheckOperatingSystem)
 
 	if subCheck == nil {
 		return fmt.Errorf("could not covert os check to bolt type")
@@ -178,9 +178,9 @@ func (p *PostureCheckOperatingSystem) validateOsVersions() error {
 	return nil
 }
 
-func (p *PostureCheckOperatingSystem) toBoltEntityForCreate(*bbolt.Tx, Env) (persistence.PostureCheckSubType, error) {
-	ret := &persistence.PostureCheckOperatingSystem{
-		OperatingSystems: []persistence.OperatingSystem{},
+func (p *PostureCheckOperatingSystem) toBoltEntityForCreate(*bbolt.Tx, Env) (db.PostureCheckSubType, error) {
+	ret := &db.PostureCheckOperatingSystem{
+		OperatingSystems: []db.OperatingSystem{},
 	}
 
 	if err := p.validateOsVersions(); err != nil {
@@ -188,7 +188,7 @@ func (p *PostureCheckOperatingSystem) toBoltEntityForCreate(*bbolt.Tx, Env) (per
 	}
 
 	for _, osMatch := range p.OperatingSystems {
-		ret.OperatingSystems = append(ret.OperatingSystems, persistence.OperatingSystem{
+		ret.OperatingSystems = append(ret.OperatingSystems, db.OperatingSystem{
 			OsType:     osMatch.OsType,
 			OsVersions: osMatch.OsVersions,
 		})

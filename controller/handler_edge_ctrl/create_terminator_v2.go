@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -82,7 +81,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		return
 	}
 	ctx.loadSession(ctx.req.SessionToken)
-	ctx.checkSessionType(persistence.SessionTypeBind)
+	ctx.checkSessionType(db.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	ctx.verifyEdgeRouterAccess()
 	ctx.loadService()

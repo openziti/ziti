@@ -17,11 +17,10 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 )
 
@@ -47,8 +46,8 @@ func (self *EdgeRouter) GetName() string {
 	return self.Name
 }
 
-func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.EdgeRouter, error) {
-	boltEntity := &persistence.EdgeRouter{
+func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.EdgeRouter, error) {
+	boltEntity := &db.EdgeRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 			Name:          entity.Name,
@@ -65,8 +64,8 @@ func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.Ed
 	return boltEntity, nil
 }
 
-func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.EdgeRouter, error) {
-	return &persistence.EdgeRouter{
+func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.EdgeRouter, error) {
+	return &db.EdgeRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 			Name:          entity.Name,
@@ -85,7 +84,7 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldCheck
 	}, nil
 }
 
-func (entity *EdgeRouter) fillFrom(_ Env, _ *bbolt.Tx, boltEdgeRouter *persistence.EdgeRouter) error {
+func (entity *EdgeRouter) fillFrom(_ Env, _ *bbolt.Tx, boltEdgeRouter *db.EdgeRouter) error {
 	entity.FillCommon(boltEdgeRouter)
 	entity.Name = boltEdgeRouter.Name
 	entity.RoleAttributes = boltEdgeRouter.RoleAttributes
