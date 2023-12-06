@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package main
+package actions
 
 import (
 	"github.com/openziti/fablab/kernel/lib/actions"
