@@ -18,6 +18,7 @@ package fabric
 
 import (
 	"fmt"
+	"github.com/openziti/foundation/v2/stringz"
 	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/controller/rest_client/circuit"
 	"github.com/openziti/ziti/controller/rest_client/link"
@@ -25,11 +26,11 @@ import (
 	"github.com/openziti/ziti/controller/rest_client/service"
 	"github.com/openziti/ziti/controller/rest_client/terminator"
 	"github.com/openziti/ziti/controller/rest_model"
-	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"strings"
+	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -92,7 +93,7 @@ func runListCircuits(o *api.Options) error {
 		ctx, cancelF := o.GetContext()
 		defer cancelF()
 		result, err := client.Circuit.ListCircuits(&circuit.ListCircuitsParams{
-			//Filter:  o.GetFilter(),
+			Filter:  o.GetFilter(),
 			Context: ctx,
 		})
 		return outputResult(result, err, o, outputCircuits)
@@ -102,7 +103,7 @@ func runListCircuits(o *api.Options) error {
 func outputCircuits(o *api.Options, results *circuit.ListCircuitsOK) error {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Client", "Service", "Terminator", "Path"})
+	t.AppendHeader(table.Row{"ID", "Client", "Service", "Terminator", "CreatedAt", "Path"})
 
 	for _, entity := range results.Payload.Data {
 		pathLabel := strings.Builder{}
@@ -126,6 +127,7 @@ func outputCircuits(o *api.Options, results *circuit.ListCircuitsOK) error {
 			entity.ClientID,
 			entity.Service.Name,
 			entity.Terminator.ID,
+			time.Time(*entity.CreatedAt).UTC().Format(time.DateTime),
 			pathLabel.String(),
 		})
 	}
@@ -140,7 +142,7 @@ func runListLinks(o *api.Options) error {
 		ctx, cancelF := o.GetContext()
 		defer cancelF()
 		result, err := client.Link.ListLinks(&link.ListLinksParams{
-			//Filter:  o.GetFilter(),
+			Filter:  o.GetFilter(),
 			Context: ctx,
 		})
 		return outputResult(result, err, o, outputLinks)
