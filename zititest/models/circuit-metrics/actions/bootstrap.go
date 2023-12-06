@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"fmt"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/ziti/zititest/zitilab"
@@ -38,14 +37,14 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	// Setup Ziti Routers
 	workflow.AddAction(component.StopInParallel(models.EdgeRouterTag, 25))
-	fmt.Print("Starting Edge Routers")
+	//fmt.Print("Starting Edge Routers")
 	workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 25))
 	//fmt.Print("Init Edge Routers")
-	//workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))
+	workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 	// Init Identities
-	fmt.Print("Init Identities")
+	//fmt.Print("Init Identities")
 	workflow.AddAction(edge.InitIdentities(models.SdkAppTag, 2))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 

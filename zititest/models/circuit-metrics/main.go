@@ -121,6 +121,7 @@ var m = &model.Model{
 
 	Actions: model.ActionBinders{
 		"bootstrap": cmActions.NewBootstrapAction(),
+		"start":     cmActions.NewStartAction(),
 		"stop":      model.Bind(component.StopInParallel("*", 15)),
 		"clean": model.Bind(actions.Workflow(
 			component.StopInParallel("*", 15),
