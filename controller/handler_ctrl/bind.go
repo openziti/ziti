@@ -23,12 +23,12 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/latency"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/trace"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/xctrl"
 	metrics2 "github.com/openziti/ziti/router/metrics"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/metrics"
 )
 
 type bindHandler struct {
@@ -70,6 +70,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newInspectHandler(self.network))
 	binding.AddTypedReceiveHandler(newQuiesceRouterHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newDequiesceRouterHandler(self.router, self.network))
+	binding.AddTypedReceiveHandler(newDecommissionRouterHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newPingHandler())
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController()))
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))

@@ -60,7 +60,7 @@ func (network *Network) CircuitEvent(eventType event.CircuitEventType, circuit *
 		CircuitId:        circuit.Id,
 		Timestamp:        time.Now(),
 		ClientId:         circuit.ClientId,
-		ServiceId:        circuit.Service.Id,
+		ServiceId:        circuit.ServiceId,
 		TerminatorId:     circuit.Terminator.GetId(),
 		InstanceId:       circuit.Terminator.GetInstanceId(),
 		CreationTimespan: creationTimespan,

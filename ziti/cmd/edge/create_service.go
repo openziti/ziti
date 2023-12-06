@@ -22,10 +22,12 @@ import (
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
+	"time"
 )
 
 type createServiceOptions struct {
 	api.EntityOptions
+	maxIdleTime        time.Duration
 	terminatorStrategy string
 	roleAttributes     []string
 	configs            []string
@@ -57,6 +59,8 @@ func newCreateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new service")
 	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
 	cmd.Flags().StringVar(&options.terminatorStrategy, "terminator-strategy", "", "Specifies the terminator strategy for the service")
+	cmd.Flags().DurationVar(&options.maxIdleTime, "max-idle-time", 0, "Time after which idle circuit will be terminated. Defaults to 0, which indicates no limit on idle circuits")
+
 	if err := options.encryption.Set("ON"); err != nil {
 		panic(err)
 	}
@@ -82,6 +86,8 @@ func runCreateService(o *createServiceOptions) (err error) {
 	api.SetJSONValue(entityData, o.encryption.Get(), "encryptionRequired")
 	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
 	api.SetJSONValue(entityData, configs, "configs")
+	api.SetJSONValue(entityData, o.maxIdleTime.Milliseconds(), "maxIdleTimeMillis")
+
 	o.SetTags(entityData)
 
 	result, err := CreateEntityOfType("services", entityData.String(), &o.Options)

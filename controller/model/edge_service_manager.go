@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/ziti/controller/network"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
+	"time"
 )
 
 func NewEdgeServiceManager(env Env) *EdgeServiceManager {
@@ -210,6 +211,7 @@ func (self *EdgeServiceManager) Marshall(entity *Service) ([]byte, error) {
 	msg := &edge_cmd_pb.Service{
 		Id:                 entity.Id,
 		Name:               entity.Name,
+		MaxIdleTime:        int64(entity.MaxIdleTime),
 		Tags:               tags,
 		TerminatorStrategy: entity.TerminatorStrategy,
 		RoleAttributes:     entity.RoleAttributes,
@@ -232,6 +234,7 @@ func (self *EdgeServiceManager) Unmarshall(bytes []byte) (*Service, error) {
 			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
 		},
 		Name:               msg.Name,
+		MaxIdleTime:        time.Duration(msg.MaxIdleTime),
 		TerminatorStrategy: msg.TerminatorStrategy,
 		RoleAttributes:     msg.RoleAttributes,
 		Configs:            msg.Configs,

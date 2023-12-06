@@ -30,7 +30,7 @@ import (
 type Circuit struct {
 	Id         string
 	ClientId   string
-	Service    *Service
+	ServiceId  string
 	Terminator xt.CostedTerminator
 	Path       *Path
 	Tags       map[string]string
@@ -84,6 +84,13 @@ func (self *Circuit) HasRouter(routerId string) bool {
 	return false
 }
 
+func (self *Circuit) IsEndpointRouter(routerId string) bool {
+	if self == nil || self.Path == nil || len(self.Path.Nodes) == 0 {
+		return false
+	}
+	return self.Path.Nodes[0].Id == routerId || self.Path.Nodes[len(self.Path.Nodes)-1].Id == routerId
+}
+
 type circuitController struct {
 	circuits    cmap.ConcurrentMap[string, *Circuit]
 	idGenerator idgen.Generator
@@ -105,7 +112,7 @@ func newCircuitController() *circuitController {
 		return &entity.ClientId
 	})
 	result.store.AddStringSymbol("service", func(entity *Circuit) *string {
-		return &entity.Service.Id
+		return &entity.ServiceId
 	})
 	result.store.AddStringSymbol("terminator", func(entity *Circuit) *string {
 		val := entity.Terminator.GetId()
