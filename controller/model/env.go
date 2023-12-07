@@ -20,13 +20,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/jwtsigner"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/jwtsigner"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -34,8 +34,8 @@ type Env interface {
 	GetManagers() *Managers
 	GetConfig() *config.Config
 	GetJwtSigner() jwtsigner.Signer
-	GetDbProvider() persistence.DbProvider
-	GetStores() *persistence.Stores
+	GetDbProvider() network.DbProvider
+	GetStores() *db.Stores
 	GetAuthRegistry() AuthRegistry
 	GetEnrollRegistry() EnrollmentRegistry
 	GetApiClientCsrSigner() cert.Signer

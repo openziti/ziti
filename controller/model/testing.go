@@ -21,15 +21,19 @@ import (
 	"crypto/x509"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/jwtsigner"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/jwtsigner"
+	"github.com/openziti/ziti/controller/network"
 	"testing"
 	"time"
 )
@@ -40,7 +44,7 @@ var _ HostController = &testHostController{}
 
 type testHostController struct {
 	closeNotify chan struct{}
-	ctx         *persistence.TestContext
+	ctx         *TestContext
 }
 
 func (self *testHostController) GetPeerSigners() []*x509.Certificate {
@@ -52,34 +56,39 @@ func (self *testHostController) Identity() identity.Identity {
 }
 
 func (self *testHostController) GetNetwork() *network.Network {
-	return self.ctx.GetNetwork()
+	return self.ctx.n
 }
 
-func (self testHostController) Shutdown() {
+func (self *testHostController) Shutdown() {
 	close(self.closeNotify)
 }
 
-func (self testHostController) GetCloseNotifyChannel() <-chan struct{} {
+func (self *testHostController) GetCloseNotifyChannel() <-chan struct{} {
 	return self.closeNotify
 }
 
-func (self testHostController) Stop() {
+func (self *testHostController) Stop() {
 	close(self.closeNotify)
 }
 
-func (ctx testHostController) IsRaftEnabled() bool {
+func (ctx *testHostController) IsRaftEnabled() bool {
 	return false
 }
 
 type TestContext struct {
-	*persistence.TestContext
+	*db.TestContext
+	n               *network.Network
 	managers        *Managers
 	config          *config.Config
 	metricsRegistry metrics.Registry
 	hostController  *testHostController
 }
 
-func (ctx *TestContext) JwtSignerKeyFunc(token *jwt.Token) (interface{}, error) {
+func (ctx *TestContext) GetDbProvider() network.DbProvider {
+	return ctx.n
+}
+
+func (ctx *TestContext) JwtSignerKeyFunc(*jwt.Token) (interface{}, error) {
 	tlsCert, _, _ := ctx.GetServerCert()
 	return tlsCert.Leaf.PublicKey, nil
 }
@@ -88,7 +97,7 @@ func (ctx *TestContext) GetServerCert() (*tls.Certificate, string, jwt.SigningMe
 	return nil, "", nil
 }
 
-func (ctx *TestContext) HandleServiceUpdatedEventForIdentityId(identityId string) {}
+func (ctx *TestContext) HandleServiceUpdatedEventForIdentityId(string) {}
 
 func (ctx *TestContext) Generate(string, string, jwt.Claims) (string, error) {
 	return "I'm a very legitimate claim", nil
@@ -147,19 +156,26 @@ func (ctx *TestContext) GetFingerprintGenerator() cert.FingerprintGenerator {
 }
 
 func NewTestContext(t *testing.T) *TestContext {
-	fabricTestContext := persistence.NewTestContext(t)
+	fabricTestContext := db.NewTestContext(t)
 	context := &TestContext{
 		TestContext:     fabricTestContext,
 		metricsRegistry: metrics.NewRegistry("test", nil),
-		hostController: &testHostController{
-			ctx:         fabricTestContext,
-			closeNotify: make(chan struct{}),
-		},
 	}
+
+	context.hostController = &testHostController{
+		ctx:         context,
+		closeNotify: make(chan struct{}),
+	}
+
 	return context
 }
 func (ctx *TestContext) Init() {
 	ctx.TestContext.Init()
+	cfg := newTestConfig(ctx.TestContext)
+	n, err := network.NewNetwork(cfg)
+	ctx.NoError(err)
+	ctx.n = n
+
 	ctx.config = &config.Config{
 		Enrollment: config.Enrollment{
 			EdgeRouter: config.EnrollmentOption{
@@ -181,7 +197,7 @@ func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
 	newIdentity := &Identity{
 		Name:           eid.New(),
 		IsAdmin:        isAdmin,
-		IdentityTypeId: persistence.DefaultIdentityType,
+		IdentityTypeId: db.DefaultIdentityType,
 	}
 	ctx.NoError(ctx.managers.Identity.Create(newIdentity, change.New()))
 	return newIdentity
@@ -231,7 +247,7 @@ func (ctx *TestContext) requireNewSession(apiSession *ApiSession, serviceId stri
 func (ctx *TestContext) requireNewServicePolicy(policyType string, identityRoles, serviceRoles []string) *ServicePolicy {
 	policy := &ServicePolicy{
 		Name:          eid.New(),
-		Semantic:      persistence.SemanticAllOf,
+		Semantic:      db.SemanticAllOf,
 		IdentityRoles: identityRoles,
 		ServiceRoles:  serviceRoles,
 		PolicyType:    policyType,
@@ -243,7 +259,7 @@ func (ctx *TestContext) requireNewServicePolicy(policyType string, identityRoles
 func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRoles []string) *EdgeRouterPolicy {
 	policy := &EdgeRouterPolicy{
 		Name:            eid.New(),
-		Semantic:        persistence.SemanticAllOf,
+		Semantic:        db.SemanticAllOf,
 		IdentityRoles:   identityRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
@@ -254,7 +270,7 @@ func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRole
 func (ctx *TestContext) requireNewServiceNewEdgeRouterPolicy(serviceRoles, edgeRouterRoles []string) *ServiceEdgeRouterPolicy {
 	policy := &ServiceEdgeRouterPolicy{
 		Name:            eid.New(),
-		Semantic:        persistence.SemanticAllOf,
+		Semantic:        db.SemanticAllOf,
 		ServiceRoles:    serviceRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
@@ -265,3 +281,84 @@ func (ctx *TestContext) requireNewServiceNewEdgeRouterPolicy(serviceRoles, edgeR
 func ss(vals ...string) []string {
 	return vals
 }
+
+func newTestConfig(ctx *db.TestContext) *testConfig {
+	options := network.DefaultOptions()
+	options.MinRouterCost = 0
+
+	return &testConfig{
+		closeNotify:     make(chan struct{}),
+		ctx:             ctx,
+		options:         options,
+		metricsRegistry: metrics.NewRegistry("test", nil),
+		versionProvider: versions.NewDefaultVersionProvider(),
+	}
+}
+
+type testConfig struct {
+	closeNotify     chan struct{}
+	ctx             *db.TestContext
+	options         *network.Options
+	metricsRegistry metrics.Registry
+	versionProvider versions.VersionProvider
+}
+
+func (self *testConfig) GetEventDispatcher() event.Dispatcher {
+	return event.DispatcherMock{}
+}
+
+func (self *testConfig) GetId() *identity.TokenId {
+	return &identity.TokenId{Token: "test"}
+}
+
+func (self *testConfig) GetMetricsRegistry() metrics.Registry {
+	return self.metricsRegistry
+}
+
+func (self *testConfig) GetOptions() *network.Options {
+	return self.options
+}
+
+func (self *testConfig) GetCommandDispatcher() command.Dispatcher {
+	return &command.LocalDispatcher{
+		Limiter: command.NoOpRateLimiter{},
+	}
+}
+
+func (self *testConfig) GetDb() boltz.Db {
+	return self.ctx.GetDb()
+}
+
+func (self *testConfig) GetVersionProvider() versions.VersionProvider {
+	return self.versionProvider
+}
+
+func (self *testConfig) GetCloseNotify() <-chan struct{} {
+	return self.closeNotify
+}
+
+//
+//type testDbProvider struct {
+//	ctx *TestContext
+//}
+//
+//func (p *testDbProvider) GetDb() boltz.Db {
+//	return p.ctx.GetDb()
+//}
+//
+//func (p *testDbProvider) GetStores() *Stores {
+//	return p.ctx.n.GetStores()
+//}
+//
+//func (p *testDbProvider) GetServiceCache() network.Cache {
+//	return p
+//}
+//
+//func (p *testDbProvider) NotifyRouterRenamed(_, _ string) {}
+//
+//func (p *testDbProvider) RemoveFromCache(_ string) {
+//}
+//
+//func (p *testDbProvider) GetManagers() *network.Managers {
+//	return p.ctx.n.Managers
+//}

@@ -17,10 +17,9 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -41,8 +40,8 @@ func (self *TransitRouter) GetName() string {
 	return self.Name
 }
 
-func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.TransitRouter, error) {
-	boltEntity := &persistence.TransitRouter{
+func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.TransitRouter, error) {
+	boltEntity := &db.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 			Name:          entity.Name,
@@ -57,8 +56,8 @@ func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence
 	return boltEntity, nil
 }
 
-func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.TransitRouter, error) {
-	ret := &persistence.TransitRouter{
+func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.TransitRouter, error) {
+	ret := &db.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 			Name:          entity.Name,
@@ -75,7 +74,7 @@ func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldCh
 	return ret, nil
 }
 
-func (entity *TransitRouter) fillFrom(_ Env, _ *bbolt.Tx, boltTransitRouter *persistence.TransitRouter) error {
+func (entity *TransitRouter) fillFrom(_ Env, _ *bbolt.Tx, boltTransitRouter *db.TransitRouter) error {
 	entity.FillCommon(boltTransitRouter)
 	entity.Name = boltTransitRouter.Name
 	entity.IsVerified = boltTransitRouter.IsVerified

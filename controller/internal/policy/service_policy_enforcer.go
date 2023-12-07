@@ -21,10 +21,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
 	"time"
 
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/persistence"
 	"go.etcd.io/bbolt"
 )
 
@@ -48,19 +48,19 @@ func NewServicePolicyEnforcer(appEnv *env.AppEnv, f time.Duration) *ServicePolic
 		notify:        make(chan struct{}, 1),
 	}
 	result.notify <- struct{}{} // ensure we do a full scan on startup
-	persistence.ServiceEvents.AddServiceEventHandler(result.handleServiceEvent)
+	db.ServiceEvents.AddServiceEventHandler(result.handleServiceEvent)
 	return result
 }
 
-func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *persistence.ServiceEvent) {
+func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *db.ServiceEvent) {
 	policyType := ""
 
-	if event.Type == persistence.ServiceDialAccessLost {
-		policyType = persistence.PolicyTypeDialName
+	if event.Type == db.ServiceDialAccessLost {
+		policyType = db.PolicyTypeDialName
 	}
 
-	if event.Type == persistence.ServiceBindAccessLost {
-		policyType = persistence.PolicyTypeBindName
+	if event.Type == db.ServiceBindAccessLost {
+		policyType = db.PolicyTypeBindName
 	}
 
 	if policyType == "" {
@@ -148,9 +148,9 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 				continue
 			}
 
-			policyType := persistence.PolicyTypeDial
-			if session.Type == persistence.SessionTypeBind {
-				policyType = persistence.PolicyTypeBind
+			policyType := db.PolicyTypeDial
+			if session.Type == db.SessionTypeBind {
+				policyType = db.PolicyTypeBind
 			}
 			query := fmt.Sprintf(`id = "%v" and not isEmpty(from servicePolicies where type = %v and anyOf(services) = "%v")`, identity.Id, policyType.Id(), session.ServiceId)
 			_, count, err := enforcer.appEnv.GetStores().Identity.QueryIds(tx, query)

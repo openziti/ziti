@@ -22,15 +22,15 @@ import (
 	clientCurrentIdentity "github.com/openziti/edge-api/rest_client_api_server/operations/current_identity"
 	managementCurrentIdentity "github.com/openziti/edge-api/rest_management_api_server/operations/current_identity"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/response"
 	"github.com/pkg/errors"
 	"net/http"
 )
@@ -177,7 +177,7 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 		rc.ApiSession.MfaComplete = true
 		rc.ApiSession.MfaRequired = true
 
-		if err := ae.Managers.ApiSession.UpdateWithFieldChecker(rc.ApiSession, boltz.MapFieldChecker{persistence.FieldApiSessionMfaComplete: struct{}{}, persistence.FieldApiSessionMfaRequired: struct{}{}}, changeCtx); err != nil {
+		if err := ae.Managers.ApiSession.UpdateWithFieldChecker(rc.ApiSession, boltz.MapFieldChecker{db.FieldApiSessionMfaComplete: struct{}{}, db.FieldApiSessionMfaRequired: struct{}{}}, changeCtx); err != nil {
 			pfxlog.Logger().Errorf("could not update API Session with new MFA status: %v", err)
 		}
 

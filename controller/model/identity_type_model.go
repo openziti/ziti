@@ -17,9 +17,9 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 )
 
@@ -28,22 +28,22 @@ type IdentityType struct {
 	Name string `json:"name"`
 }
 
-func (entity *IdentityType) toBoltEntity() (*persistence.IdentityType, error) {
-	return &persistence.IdentityType{
+func (entity *IdentityType) toBoltEntity() (*db.IdentityType, error) {
+	return &db.IdentityType{
 		Name:          entity.Name,
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 	}, nil
 }
 
-func (entity *IdentityType) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.IdentityType, error) {
+func (entity *IdentityType) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.IdentityType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *IdentityType) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.IdentityType, error) {
+func (entity *IdentityType) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.IdentityType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *IdentityType) fillFrom(_ Env, _ *bbolt.Tx, boltIdentityType *persistence.IdentityType) error {
+func (entity *IdentityType) fillFrom(_ Env, _ *bbolt.Tx, boltIdentityType *db.IdentityType) error {
 	entity.FillCommon(boltIdentityType)
 	entity.Name = boltIdentityType.Name
 	return nil

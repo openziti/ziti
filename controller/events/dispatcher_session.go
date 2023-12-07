@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/pkg/errors"
 	"reflect"
 	"time"
@@ -43,12 +43,12 @@ func (self *Dispatcher) RemoveSessionEventHandler(handler event.SessionEventHand
 	})
 }
 
-func (self *Dispatcher) initSessionEvents(stores *persistence.Stores) {
+func (self *Dispatcher) initSessionEvents(stores *db.Stores) {
 	stores.Session.AddEntityEventListenerF(self.sessionCreated, boltz.EntityCreated)
 	stores.Session.AddEntityEventListenerF(self.sessionDeleted, boltz.EntityDeleted)
 }
 
-func (self *Dispatcher) sessionCreated(session *persistence.Session) {
+func (self *Dispatcher) sessionCreated(session *db.Session) {
 	evt := &event.SessionEvent{
 		Namespace:    event.SessionEventNS,
 		EventType:    event.SessionEventTypeCreated,
@@ -66,7 +66,7 @@ func (self *Dispatcher) sessionCreated(session *persistence.Session) {
 	}
 }
 
-func (self *Dispatcher) sessionDeleted(session *persistence.Session) {
+func (self *Dispatcher) sessionDeleted(session *db.Session) {
 	evt := &event.SessionEvent{
 		Namespace:    event.SessionEventNS,
 		EventType:    event.SessionEventTypeDeleted,

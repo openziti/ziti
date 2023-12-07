@@ -21,10 +21,10 @@ import (
 	"github.com/jinzhu/copier"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"regexp"
@@ -107,7 +107,7 @@ func (pc *PostureCache) evaluate() {
 	// Chunk data in maxToDelete bunches to limit how many sessions we are deleting in a transaction.
 	// Requires tracking of which session was last evaluated, kept in lastId.
 	for !done {
-		var sessions []*persistence.Session
+		var sessions []*db.Session
 		_ = pc.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 			cursor := pc.env.GetStores().Session.IterateIds(tx, ast.BoolNodeTrue)
 
@@ -277,11 +277,11 @@ func (pc *PostureCache) WithPostureData(identityId string, f func(data *PostureD
 	})
 }
 
-func (pc *PostureCache) ApiSessionCreated(apiSession *persistence.ApiSession) {
+func (pc *PostureCache) ApiSessionCreated(apiSession *db.ApiSession) {
 	pc.apiSessionIdToIdentityId.Set(apiSession.Id, apiSession.IdentityId)
 }
 
-func (pc *PostureCache) ApiSessionDeleted(apiSession *persistence.ApiSession) {
+func (pc *PostureCache) ApiSessionDeleted(apiSession *db.ApiSession) {
 	pc.identityToPostureData.Upsert(apiSession.IdentityId, newPostureData(), func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
 		if exist {
 			if valueInMap != nil && valueInMap.ApiSessions != nil {
@@ -297,14 +297,14 @@ func (pc *PostureCache) ApiSessionDeleted(apiSession *persistence.ApiSession) {
 	pc.apiSessionIdToIdentityId.Remove(apiSession.Id)
 }
 
-func (pc *PostureCache) IdentityDeleted(identity *persistence.Identity) {
+func (pc *PostureCache) IdentityDeleted(identity *db.Identity) {
 	pc.identityToPostureData.Remove(identity.Id)
 }
 
 // PostureCheckChanged notifies all associated identities that posture configuration has changed
 // and that endpoints may need to reevaluate posture queries.
 func (pc *PostureCache) PostureCheckChanged(entity boltz.Entity) {
-	servicePolicyLinks := pc.env.GetStores().PostureCheck.GetLinkCollection(persistence.EntityTypeServicePolicies)
+	servicePolicyLinks := pc.env.GetStores().PostureCheck.GetLinkCollection(db.EntityTypeServicePolicies)
 
 	if servicePolicyLinks == nil {
 		pfxlog.Logger().Error("posture checks had no links to service policies")
@@ -317,7 +317,7 @@ func (pc *PostureCache) PostureCheckChanged(entity boltz.Entity) {
 		servicePolicyCursor := servicePolicyLinks.IterateLinks(tx, []byte(entity.GetId()))
 
 		for servicePolicyCursor.IsValid() {
-			identityLink := pc.env.GetStores().ServicePolicy.GetLinkCollection(persistence.EntityTypeIdentities)
+			identityLink := pc.env.GetStores().ServicePolicy.GetLinkCollection(db.EntityTypeIdentities)
 
 			if identityLink == nil {
 				pfxlog.Logger().Error("service policies had no link to identities")

@@ -19,11 +19,11 @@ package env
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/network"
 	"go.etcd.io/bbolt"
 )
 
@@ -66,7 +66,7 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 
 	broker.ae.GetStores().Session.AddEntityEventListenerF(broker.routerSyncStrategy.SessionDeleted, boltz.EntityDeletedAsync)
 	broker.ae.GetStores().ApiSession.AddEntityEventListenerF(broker.routerSyncStrategy.ApiSessionDeleted, boltz.EntityDeletedAsync)
-	broker.ae.GetStores().ApiSession.GetEventsEmitter().AddListener(persistence.EventFullyAuthenticated, broker.apiSessionFullyAuthenticated)
+	broker.ae.GetStores().ApiSession.GetEventsEmitter().AddListener(db.EventFullyAuthenticated, broker.apiSessionFullyAuthenticated)
 	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateCreated, boltz.EntityCreatedAsync)
 	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateDeleted, boltz.EntityDeletedAsync)
 
@@ -121,9 +121,9 @@ func (broker *Broker) RouterDisconnected(r *network.Router) {
 }
 
 func (broker *Broker) apiSessionFullyAuthenticated(args ...interface{}) {
-	var apiSession *persistence.ApiSession
+	var apiSession *db.ApiSession
 	if len(args) == 1 {
-		apiSession, _ = args[0].(*persistence.ApiSession)
+		apiSession, _ = args[0].(*db.ApiSession)
 	}
 
 	if apiSession == nil {
@@ -133,16 +133,16 @@ func (broker *Broker) apiSessionFullyAuthenticated(args ...interface{}) {
 	go broker.routerSyncStrategy.ApiSessionAdded(apiSession)
 }
 
-func (broker *Broker) apiSessionCertificateCreated(entity *persistence.ApiSessionCertificate) {
+func (broker *Broker) apiSessionCertificateCreated(entity *db.ApiSessionCertificate) {
 	go broker.apiSessionCertificateHandler(false, entity)
 }
 
-func (broker *Broker) apiSessionCertificateDeleted(entity *persistence.ApiSessionCertificate) {
+func (broker *Broker) apiSessionCertificateDeleted(entity *db.ApiSessionCertificate) {
 	go broker.apiSessionCertificateHandler(true, entity)
 }
 
-func (broker *Broker) apiSessionCertificateHandler(delete bool, apiSessionCert *persistence.ApiSessionCertificate) {
-	var apiSession *persistence.ApiSession
+func (broker *Broker) apiSessionCertificateHandler(delete bool, apiSessionCert *db.ApiSessionCertificate) {
+	var apiSession *db.ApiSession
 	var err error
 	err = broker.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		apiSession, err = broker.ae.GetStores().ApiSession.LoadOneById(tx, apiSessionCert.ApiSessionId)

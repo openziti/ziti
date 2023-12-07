@@ -27,12 +27,12 @@ import (
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/handler_edge_ctrl"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/persistence"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -246,7 +246,7 @@ func (strategy *InstantStrategy) PeerAdded(peers []*event.ClusterPeer) {
 	logger.WithField("addrs", addrs).Info("done sending new signing certificates")
 }
 
-func (strategy *InstantStrategy) ApiSessionAdded(apiSession *persistence.ApiSession) {
+func (strategy *InstantStrategy) ApiSessionAdded(apiSession *db.ApiSession) {
 	logger := pfxlog.Logger().WithField("strategy", strategy.Type())
 
 	apiSessionProto, err := apiSessionToProto(strategy.ae, apiSession.Token, apiSession.IdentityId, apiSession.Id)
@@ -270,7 +270,7 @@ func (strategy *InstantStrategy) ApiSessionAdded(apiSession *persistence.ApiSess
 	})
 }
 
-func (strategy *InstantStrategy) ApiSessionUpdated(apiSession *persistence.ApiSession, _ *persistence.ApiSessionCertificate) {
+func (strategy *InstantStrategy) ApiSessionUpdated(apiSession *db.ApiSession, _ *db.ApiSessionCertificate) {
 	logger := pfxlog.Logger().WithField("strategy", strategy.Type())
 
 	apiSessionProto, err := apiSessionToProto(strategy.ae, apiSession.Token, apiSession.IdentityId, apiSession.Id)
@@ -296,7 +296,7 @@ func (strategy *InstantStrategy) ApiSessionUpdated(apiSession *persistence.ApiSe
 	})
 }
 
-func (strategy *InstantStrategy) ApiSessionDeleted(apiSession *persistence.ApiSession) {
+func (strategy *InstantStrategy) ApiSessionDeleted(apiSession *db.ApiSession) {
 	sessionRemoved := &edge_ctrl_pb.ApiSessionRemoved{
 		Tokens: []string{apiSession.Token},
 	}
@@ -308,7 +308,7 @@ func (strategy *InstantStrategy) ApiSessionDeleted(apiSession *persistence.ApiSe
 	})
 }
 
-func (strategy *InstantStrategy) SessionDeleted(session *persistence.Session) {
+func (strategy *InstantStrategy) SessionDeleted(session *db.Session) {
 	sessionRemoved := &edge_ctrl_pb.SessionRemoved{
 		Tokens: []string{session.Token},
 	}

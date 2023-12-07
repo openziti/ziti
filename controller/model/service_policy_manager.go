@@ -17,20 +17,20 @@
 package model
 
 import (
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/storage/boltz"
 	"google.golang.org/protobuf/proto"
 )
 
 func NewServicePolicyManager(env Env) *ServicePolicyManager {
 	manager := &ServicePolicyManager{
-		baseEntityManager: newBaseEntityManager[*ServicePolicy, *persistence.ServicePolicy](env, env.GetStores().ServicePolicy),
+		baseEntityManager: newBaseEntityManager[*ServicePolicy, *db.ServicePolicy](env, env.GetStores().ServicePolicy),
 	}
 	manager.impl = manager
 
@@ -40,7 +40,7 @@ func NewServicePolicyManager(env Env) *ServicePolicyManager {
 }
 
 type ServicePolicyManager struct {
-	baseEntityManager[*ServicePolicy, *persistence.ServicePolicy]
+	baseEntityManager[*ServicePolicy, *db.ServicePolicy]
 }
 
 func (self *ServicePolicyManager) newModelEntity() *ServicePolicy {

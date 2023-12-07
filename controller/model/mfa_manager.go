@@ -21,16 +21,16 @@ import (
 	"encoding/base32"
 	"fmt"
 	"github.com/dgryski/dgoogauth"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/skip2/go-qrcode"
 	"go.etcd.io/bbolt"
@@ -44,7 +44,7 @@ const (
 
 func NewMfaManager(env Env) *MfaManager {
 	manager := &MfaManager{
-		baseEntityManager: newBaseEntityManager[*Mfa, *persistence.Mfa](env, env.GetStores().Mfa),
+		baseEntityManager: newBaseEntityManager[*Mfa, *db.Mfa](env, env.GetStores().Mfa),
 	}
 	manager.impl = manager
 
@@ -54,7 +54,7 @@ func NewMfaManager(env Env) *MfaManager {
 }
 
 type MfaManager struct {
-	baseEntityManager[*Mfa, *persistence.Mfa]
+	baseEntityManager[*Mfa, *db.Mfa]
 }
 
 func (self *MfaManager) newModelEntity() *Mfa {
@@ -123,7 +123,7 @@ func (self *MfaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Mfa], ctx 
 }
 
 func (self *MfaManager) IsUpdated(field string) bool {
-	return field == persistence.FieldMfaIsVerified || field == persistence.FieldMfaRecoveryCodes
+	return field == db.FieldMfaIsVerified || field == db.FieldMfaRecoveryCodes
 }
 
 func (self *MfaManager) Query(query string) (*MfaListResult, error) {

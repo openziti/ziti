@@ -19,12 +19,12 @@ package routes
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/response"
 	"strings"
 )
 
@@ -151,9 +151,9 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 			PostureQueries: []*rest_model.PostureQuery{},
 		}
 
-		if policyPostureChecks.PolicyType == persistence.PolicyTypeBind {
+		if policyPostureChecks.PolicyType == db.PolicyTypeBind {
 			querySet.PolicyType = rest_model.DialBindBind
-		} else if policyPostureChecks.PolicyType == persistence.PolicyTypeDial {
+		} else if policyPostureChecks.PolicyType == db.PolicyTypeDial {
 			querySet.PolicyType = rest_model.DialBindDial
 		} else {
 			pfxlog.Logger().Errorf("attempting to render API response for policy type [%s] for policy id [%s], unknown type expected dial/bind", policyPostureChecks.PolicyType, policyId)

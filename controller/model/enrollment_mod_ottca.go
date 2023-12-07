@@ -21,9 +21,9 @@ import (
 	"encoding/pem"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
 	fabricApiError "github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 )
 
@@ -36,7 +36,7 @@ type EnrollModuleOttCa struct {
 func NewEnrollModuleOttCa(env Env) *EnrollModuleOttCa {
 	return &EnrollModuleOttCa{
 		env:                  env,
-		method:               persistence.MethodEnrollOttCa,
+		method:               db.MethodEnrollOttCa,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 	}
 }
@@ -132,7 +132,7 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 
 	newAuthenticator := &Authenticator{
 		BaseEntity: models.BaseEntity{},
-		Method:     persistence.MethodAuthenticatorCert,
+		Method:     db.MethodAuthenticatorCert,
 		IdentityId: identity.Id,
 		SubType: &AuthenticatorCert{
 			Fingerprint: fingerprint,

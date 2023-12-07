@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
@@ -51,7 +51,7 @@ func (d dbStrategy) GetDbFile(m *model.Model) string {
 	return m.MustStringVariable("db_file")
 }
 
-func (d dbStrategy) GetSite(router *persistence.EdgeRouter) (string, bool) {
+func (d dbStrategy) GetSite(router *db.EdgeRouter) (string, bool) {
 	if strings.Contains(strings.ToLower(router.Name), "london") {
 		return "eu-west-2a", true // london region
 	}
@@ -65,7 +65,7 @@ func (d dbStrategy) GetSite(router *persistence.EdgeRouter) (string, bool) {
 	return "us-east-1a", true
 }
 
-func (d dbStrategy) PostProcess(router *persistence.EdgeRouter, c *model.Component) {
+func (d dbStrategy) PostProcess(router *db.EdgeRouter, c *model.Component) {
 	if router.IsTunnelerEnabled {
 		c.Scope.Tags = append(c.Scope.Tags, "tunneler")
 	}
@@ -83,8 +83,8 @@ func (d dbStrategy) ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *models
 }
 
 func (d dbStrategy) CreateIdentityHosts(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
-	edgeStores := builder.GetEdgeStores()
-	ids, _, err := edgeStores.Identity.QueryIds(tx, "true limit none")
+	stores := builder.GetStores()
+	ids, _, err := stores.Identity.QueryIds(tx, "true limit none")
 	if err != nil {
 		return err
 	}
@@ -93,12 +93,12 @@ func (d dbStrategy) CreateIdentityHosts(tx *bbolt.Tx, m *model.Model, builder *m
 	hostingIdentities := map[string]int{}
 
 	for _, identityId := range ids {
-		cursorProvider := edgeStores.Identity.GetIdentityServicesCursorProvider(identityId)
+		cursorProvider := stores.Identity.GetIdentityServicesCursorProvider(identityId)
 		cursor := cursorProvider(tx, true)
 		identityServiceCount := 0
 		for cursor.IsValid() {
 			serviceId := string(cursor.Current())
-			if edgeStores.EdgeService.IsBindableByIdentity(tx, serviceId, identityId) {
+			if stores.EdgeService.IsBindableByIdentity(tx, serviceId, identityId) {
 				identityServiceCount++
 			}
 			cursor.Next()

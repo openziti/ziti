@@ -18,10 +18,10 @@ package model
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -37,8 +37,8 @@ type PostureCheck struct {
 
 type PostureCheckSubType interface {
 	TypeId() string
-	toBoltEntityForCreate(tx *bbolt.Tx, env Env) (persistence.PostureCheckSubType, error)
-	fillFrom(env Env, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error
+	toBoltEntityForCreate(tx *bbolt.Tx, env Env) (db.PostureCheckSubType, error)
+	fillFrom(env Env, tx *bbolt.Tx, check *db.PostureCheck, subType db.PostureCheckSubType) error
 	Evaluate(apiSessionId string, pd *PostureData) bool
 	FailureValues(_ string, pd *PostureData) PostureCheckFailureValues
 	GetTimeoutSeconds() int64
@@ -83,7 +83,7 @@ func newSubType(typeId string) PostureCheckSubType {
 	return nil
 }
 
-func (entity *PostureCheck) fillFrom(env Env, tx *bbolt.Tx, boltPostureCheck *persistence.PostureCheck) error {
+func (entity *PostureCheck) fillFrom(env Env, tx *bbolt.Tx, boltPostureCheck *db.PostureCheck) error {
 	entity.FillCommon(boltPostureCheck)
 	entity.Name = boltPostureCheck.Name
 	entity.TypeId = boltPostureCheck.TypeId
@@ -105,8 +105,8 @@ func (entity *PostureCheck) fillFrom(env Env, tx *bbolt.Tx, boltPostureCheck *pe
 	return nil
 }
 
-func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persistence.PostureCheck, error) {
-	boltEntity := &persistence.PostureCheck{
+func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.PostureCheck, error) {
+	boltEntity := &db.PostureCheck{
 		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:           entity.Name,
 		TypeId:         entity.TypeId,
@@ -122,7 +122,7 @@ func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persi
 	return boltEntity, nil
 }
 
-func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.PostureCheck, error) {
+func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.PostureCheck, error) {
 	return entity.toBoltEntityForCreate(tx, env)
 }
 

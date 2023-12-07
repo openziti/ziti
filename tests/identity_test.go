@@ -24,10 +24,10 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/persistence"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/db"
 	"net/http"
 	"net/url"
 	"sort"
@@ -127,7 +127,7 @@ func Test_Identity(t *testing.T) {
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(getResponse).Get("/identities/" + createResponse.Data.ID)
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-		ctx.Req.Equal(persistence.DefaultAuthPolicyId, *getResponse.Data.AuthPolicyID)
+		ctx.Req.Equal(db.DefaultAuthPolicyId, *getResponse.Data.AuthPolicyID)
 
 	})
 
