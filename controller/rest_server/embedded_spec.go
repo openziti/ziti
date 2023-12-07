@@ -77,6 +77,17 @@ func init() {
         ],
         "summary": "List circuits",
         "operationId": "listCircuits",
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/filter"
+          }
+        ],
         "responses": {
           "200": {
             "$ref": "#/responses/listCircuits"
@@ -330,6 +341,17 @@ func init() {
         ],
         "summary": "List links",
         "operationId": "listLinks",
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/filter"
+          }
+        ],
         "responses": {
           "200": {
             "$ref": "#/responses/listLinks"
@@ -1225,49 +1247,33 @@ func init() {
       }
     },
     "circuitDetail": {
-      "type": "object",
-      "required": [
-        "id",
-        "service",
-        "terminator",
-        "path",
-        "createdAt"
-      ],
-      "properties": {
-        "clientId": {
-          "type": "string"
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
         },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "id": {
-          "type": "string"
-        },
-        "path": {
+        {
           "type": "object",
+          "required": [
+            "service",
+            "terminator",
+            "path"
+          ],
           "properties": {
-            "links": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/entityRef"
-              }
+            "clientId": {
+              "type": "string"
             },
-            "nodes": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/entityRef"
-              }
+            "path": {
+              "$ref": "#/definitions/path"
+            },
+            "service": {
+              "$ref": "#/definitions/entityRef"
+            },
+            "terminator": {
+              "$ref": "#/definitions/entityRef"
             }
           }
-        },
-        "service": {
-          "$ref": "#/definitions/entityRef"
-        },
-        "terminator": {
-          "$ref": "#/definitions/entityRef"
         }
-      }
+      ]
     },
     "circuitList": {
       "type": "array",
@@ -1784,6 +1790,23 @@ func init() {
         "totalCount": {
           "type": "number",
           "format": "int64"
+        }
+      }
+    },
+    "path": {
+      "type": "object",
+      "properties": {
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entityRef"
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entityRef"
+          }
         }
       }
     },
@@ -2641,6 +2664,23 @@ func init() {
         ],
         "summary": "List circuits",
         "operationId": "listCircuits",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "filter",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "A list of circuits",
@@ -3373,6 +3413,23 @@ func init() {
         ],
         "summary": "List links",
         "operationId": "listLinks",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "filter",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "A list of links",
@@ -6203,23 +6260,6 @@ func init() {
     }
   },
   "definitions": {
-    "CircuitDetailPath": {
-      "type": "object",
-      "properties": {
-        "links": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/entityRef"
-          }
-        },
-        "nodes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/entityRef"
-          }
-        }
-      }
-    },
     "apiError": {
       "type": "object",
       "properties": {
@@ -6336,49 +6376,33 @@ func init() {
       }
     },
     "circuitDetail": {
-      "type": "object",
-      "required": [
-        "id",
-        "service",
-        "terminator",
-        "path",
-        "createdAt"
-      ],
-      "properties": {
-        "clientId": {
-          "type": "string"
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
         },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "id": {
-          "type": "string"
-        },
-        "path": {
+        {
           "type": "object",
+          "required": [
+            "service",
+            "terminator",
+            "path"
+          ],
           "properties": {
-            "links": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/entityRef"
-              }
+            "clientId": {
+              "type": "string"
             },
-            "nodes": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/entityRef"
-              }
+            "path": {
+              "$ref": "#/definitions/path"
+            },
+            "service": {
+              "$ref": "#/definitions/entityRef"
+            },
+            "terminator": {
+              "$ref": "#/definitions/entityRef"
             }
           }
-        },
-        "service": {
-          "$ref": "#/definitions/entityRef"
-        },
-        "terminator": {
-          "$ref": "#/definitions/entityRef"
         }
-      }
+      ]
     },
     "circuitList": {
       "type": "array",
@@ -6895,6 +6919,23 @@ func init() {
         "totalCount": {
           "type": "number",
           "format": "int64"
+        }
+      }
+    },
+    "path": {
+      "type": "object",
+      "properties": {
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entityRef"
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entityRef"
+          }
         }
       }
     },

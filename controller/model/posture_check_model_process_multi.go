@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"
@@ -36,7 +36,7 @@ type PostureCheckProcessMulti struct {
 }
 
 func (p *PostureCheckProcessMulti) TypeId() string {
-	return persistence.PostureCheckTypeProcessMulti
+	return db.PostureCheckTypeProcessMulti
 }
 
 func (p *PostureCheckProcessMulti) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
@@ -118,12 +118,12 @@ func (p *PostureCheckProcessMulti) Evaluate(_ string, pd *PostureData) bool {
 
 func (p *PostureCheckProcessMulti) evaluate(pd *PostureData) PostureCheckFailureValues {
 	switch p.Semantic {
-	case persistence.SemanticAllOf:
+	case db.SemanticAllOf:
 		return p.requireAll(pd)
-	case persistence.SemanticAnyOf:
+	case db.SemanticAnyOf:
 		return p.requireOne(pd)
 	default:
-		pfxlog.Logger().Panicf("invalid semantic, expected %s or %s got [%s]", persistence.SemanticAllOf, persistence.SemanticAnyOf, p.Semantic)
+		pfxlog.Logger().Panicf("invalid semantic, expected %s or %s got [%s]", db.SemanticAllOf, db.SemanticAnyOf, p.Semantic)
 		return nil
 	}
 }
@@ -184,8 +184,8 @@ func newPostureCheckProcessMulti() PostureCheckSubType {
 	return &PostureCheckProcessMulti{}
 }
 
-func (p *PostureCheckProcessMulti) fillFrom(_ Env, _ *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
-	subCheck := subType.(*persistence.PostureCheckProcessMulti)
+func (p *PostureCheckProcessMulti) fillFrom(_ Env, _ *bbolt.Tx, check *db.PostureCheck, subType db.PostureCheckSubType) error {
+	subCheck := subType.(*db.PostureCheckProcessMulti)
 
 	if subCheck == nil {
 		return fmt.Errorf("could not covert process check process multi to bolt type")
@@ -208,13 +208,13 @@ func (p *PostureCheckProcessMulti) fillFrom(_ Env, _ *bbolt.Tx, check *persisten
 	return nil
 }
 
-func (p *PostureCheckProcessMulti) toBoltEntityForCreate(_ *bbolt.Tx, _ Env) (persistence.PostureCheckSubType, error) {
-	ret := &persistence.PostureCheckProcessMulti{
+func (p *PostureCheckProcessMulti) toBoltEntityForCreate(_ *bbolt.Tx, _ Env) (db.PostureCheckSubType, error) {
+	ret := &db.PostureCheckProcessMulti{
 		Semantic: p.Semantic,
 	}
 
 	for _, process := range p.Processes {
-		newProc := &persistence.ProcessMulti{
+		newProc := &db.ProcessMulti{
 			OsType:             process.OsType,
 			Path:               process.Path,
 			Hashes:             process.Hashes,

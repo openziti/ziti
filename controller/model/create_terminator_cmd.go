@@ -2,14 +2,14 @@ package model
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
@@ -71,7 +71,7 @@ type terminator interface {
 	GetAddress() string
 }
 
-func (self *CreateEdgeTerminatorCmd) getTerminatorSession(tx *bbolt.Tx, terminator terminator, context string) (*persistence.Session, error) {
+func (self *CreateEdgeTerminatorCmd) getTerminatorSession(tx *bbolt.Tx, terminator terminator, context string) (*db.Session, error) {
 	if terminator.GetBinding() != common.EdgeBinding {
 		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetInstanceId())
 	}

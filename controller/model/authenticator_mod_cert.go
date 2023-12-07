@@ -21,14 +21,14 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"net/http"
 	"time"
@@ -52,7 +52,7 @@ type AuthModuleCert struct {
 func NewAuthModuleCert(env Env, caChain []byte) *AuthModuleCert {
 	return &AuthModuleCert{
 		env:                  env,
-		method:               persistence.MethodAuthenticatorCert,
+		method:               db.MethodAuthenticatorCert,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 		staticCaCerts:        nfpem.PemBytesToCertificates(caChain),
 		dynamicCaCache:       cmap.New[[]*x509.Certificate](),
@@ -220,7 +220,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		}
 	}
 
-	if authenticator.Method == persistence.MethodAuthenticatorCert {
+	if authenticator.Method == db.MethodAuthenticatorCert {
 		module.ensureAuthenticatorCertPem(authenticator, clientCert, context.GetChangeContext())
 	}
 
@@ -350,7 +350,7 @@ func (module *AuthModuleCert) authenticatorExternalId(identityId string, clientC
 			Tags:      nil,
 			IsSystem:  true,
 		},
-		Method:     persistence.MethodAuthenticatorCertCaExternalId,
+		Method:     db.MethodAuthenticatorCertCaExternalId,
 		IdentityId: identityId,
 	}
 

@@ -14,9 +14,19 @@ If you're interested in getting your project added to the list either:
   * Link to logo
 * Fork the repo and put up a pull request for this page! :)
 
-## Adopters
+## Open Source Projects
 
-Here's the list of projects using and adopting OpenZiti
+The OpenZiti project supports a strong, open source ecosystem. This table will contain the list of projects which are
+open source that have embedded OpenZiti into the project, or use OpenZiti for secure communication in some other way.
+
+| Project Name | Project Link    | Source URL | Logo                                                                                           | How OpenZiti is used or why OpenZiti was chosen                                                                          |
+|-------------|-----------------|------------|------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| zrok        | https://zrok.io | https://github.com/openziti/zrok           | <img src="https://zrok.io/wp-content/uploads/2023/01/space3-1327x1536.png.webp" width="100px"> | An open source sharing solution built on OpenZiti, the zero trust networking platform. Available as SaaS or self-hosted. |
+
+
+## Other Adopters
+
+Here's the list of projects which are proudly adopting and using OpenZiti
 
 | Project Name                     | Project Link                                  | Logo     | How OpenZiti is used or why OpenZiti was chosen     |
 |----------------------------------|-----------------------------------------------|----------|-----------------|
@@ -28,3 +38,5 @@ Here's the list of projects using and adopting OpenZiti
 | Analytics HQ                     | https://AnalyticsHQ.com/                      | <img src="https://ahq-public.s3-us-gov-west-1.amazonaws.com/ahq-logo.png" width="100px"> | Analytics HQ is a next-generation unified platform built for modern data management and advanced analytics. |
 | PITS Global Data Recovery Services | https://www.pitsdatarecovery.net/ | <img src="https://www.pitsdatarecovery.net/wp-content/uploads/2020/09/pits-logo.svg" width="100px"> | PITS Global Data Recovery Services is a data recovery company in the United States that offers services for recovering data from hard drives, SSDs, flash drives, RAID arrays and more.  |
 | KEOIC                            |  http://www.keoic.com/                        | <img src="https://static.wixstatic.com/media/300f00_ebca9ecefd8743eb82769e1d3079e55a~mv2.jpg" width="100px"> | KEO International Consultants is a multifaceted AEC firm with a presence across the Middle East and Europe. KEO uses the CloudZiti platform to facilitate zero-trust connections for users, devices, and applications throughout their worldwide network of branch offices and sites. |
+| ChirpWireless                            |  https://chirpwireless.io/                       | <img src="https://docs.chirptoken.io/img/logo.svg" width="100px"> | Chirp is a project at the forefront of the DePIN (Decentralized physical infrastructure) movement, revolutionizing the world of wireless connectivity. It's a global telecommunications network that offers wireless internet and IoT connectivity for both residential and commercial use. OpenZiti overlay network is used for management of our LoRaWAN gateway miners ("Blackbirds") across multiple countries, allowing them to be dark. |
+| GIGO Dev                         | https://gigo.dev/                             | <img src="https://gigo.dev/logo192.png" width="100px"> | GIGO Dev is a learn-to-code platform that focuses on aligning learning with the real world of development. On GIGO you work in DevSpaces (Cloud Development Environments) capable of running nearly any system configuration needed for the challenge. We use OpenZiti to dynamically and securely expose network applications inside your DevSpace. Ziti provides the simplest, easiest, and most reliable system to securely route traffic into the local network of your DevSpace. |

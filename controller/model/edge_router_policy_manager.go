@@ -17,20 +17,20 @@
 package model
 
 import (
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/storage/boltz"
 	"google.golang.org/protobuf/proto"
 )
 
 func NewEdgeRouterPolicyManager(env Env) *EdgeRouterPolicyManager {
 	manager := &EdgeRouterPolicyManager{
-		baseEntityManager: newBaseEntityManager[*EdgeRouterPolicy, *persistence.EdgeRouterPolicy](env, env.GetStores().EdgeRouterPolicy),
+		baseEntityManager: newBaseEntityManager[*EdgeRouterPolicy, *db.EdgeRouterPolicy](env, env.GetStores().EdgeRouterPolicy),
 	}
 	manager.impl = manager
 
@@ -40,7 +40,7 @@ func NewEdgeRouterPolicyManager(env Env) *EdgeRouterPolicyManager {
 }
 
 type EdgeRouterPolicyManager struct {
-	baseEntityManager[*EdgeRouterPolicy, *persistence.EdgeRouterPolicy]
+	baseEntityManager[*EdgeRouterPolicy, *db.EdgeRouterPolicy]
 }
 
 func (self *EdgeRouterPolicyManager) newModelEntity() *EdgeRouterPolicy {

@@ -17,11 +17,11 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -92,7 +92,7 @@ type Identity struct {
 	DisabledUntil             *time.Time
 }
 
-func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*persistence.Identity, error) {
+func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*db.Identity, error) {
 	identityType, err := env.GetManagers().IdentityType.ReadByIdOrName(entity.IdentityTypeId)
 
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
@@ -106,14 +106,14 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*persistenc
 		return nil, apiErr
 	}
 
-	if identityType.Name == persistence.RouterIdentityType {
+	if identityType.Name == db.RouterIdentityType {
 		fieldErr := errorz.NewFieldError("may not create identities with given typeId", "typeId", entity.IdentityTypeId)
 		return nil, errorz.NewFieldApiError(fieldErr)
 	}
 
 	entity.IdentityTypeId = identityType.Id
 
-	boltEntity := &persistence.Identity{
+	boltEntity := &db.Identity{
 		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:                      entity.Name,
 		IdentityTypeId:            entity.IdentityTypeId,
@@ -132,7 +132,7 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*persistenc
 	}
 
 	if entity.EnvInfo != nil {
-		boltEntity.EnvInfo = &persistence.EnvInfo{
+		boltEntity.EnvInfo = &db.EnvInfo{
 			Arch:      entity.EnvInfo.Arch,
 			Os:        entity.EnvInfo.Os,
 			OsRelease: entity.EnvInfo.OsRelease,
@@ -141,7 +141,7 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*persistenc
 	}
 
 	if entity.SdkInfo != nil {
-		boltEntity.SdkInfo = &persistence.SdkInfo{
+		boltEntity.SdkInfo = &db.SdkInfo{
 			Branch:     entity.SdkInfo.Branch,
 			Revision:   entity.SdkInfo.Revision,
 			Type:       entity.SdkInfo.Type,
@@ -155,7 +155,7 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*persistenc
 	return boltEntity, nil
 }
 
-func fillModelInfo(identity *Identity, envInfo *persistence.EnvInfo, sdkInfo *persistence.SdkInfo) {
+func fillModelInfo(identity *Identity, envInfo *db.EnvInfo, sdkInfo *db.SdkInfo) {
 	if envInfo != nil {
 		identity.EnvInfo = &EnvInfo{
 			Arch:      envInfo.Arch,
@@ -177,9 +177,9 @@ func fillModelInfo(identity *Identity, envInfo *persistence.EnvInfo, sdkInfo *pe
 	}
 }
 
-func fillPersistenceInfo(identity *persistence.Identity, envInfo *EnvInfo, sdkInfo *SdkInfo) {
+func fillPersistenceInfo(identity *db.Identity, envInfo *EnvInfo, sdkInfo *SdkInfo) {
 	if envInfo != nil {
-		identity.EnvInfo = &persistence.EnvInfo{
+		identity.EnvInfo = &db.EnvInfo{
 			Arch:      envInfo.Arch,
 			Os:        envInfo.Os,
 			OsRelease: envInfo.OsRelease,
@@ -188,7 +188,7 @@ func fillPersistenceInfo(identity *persistence.Identity, envInfo *EnvInfo, sdkIn
 	}
 
 	if sdkInfo != nil {
-		identity.SdkInfo = &persistence.SdkInfo{
+		identity.SdkInfo = &db.SdkInfo{
 			Branch:     sdkInfo.Branch,
 			Revision:   sdkInfo.Revision,
 			Type:       sdkInfo.Type,
@@ -199,7 +199,7 @@ func fillPersistenceInfo(identity *persistence.Identity, envInfo *EnvInfo, sdkIn
 	}
 }
 
-func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker boltz.FieldChecker) (*persistence.Identity, error) {
+func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker boltz.FieldChecker) (*db.Identity, error) {
 	if checker == nil || checker.IsUpdated("type") {
 		identityType, err := env.GetManagers().IdentityType.ReadByIdOrName(entity.IdentityTypeId)
 
@@ -217,7 +217,7 @@ func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker bol
 		entity.IdentityTypeId = identityType.Id
 	}
 
-	boltEntity := &persistence.Identity{
+	boltEntity := &db.Identity{
 		Name:                      entity.Name,
 		IdentityTypeId:            entity.IdentityTypeId,
 		AuthPolicyId:              entity.AuthPolicyId,
@@ -235,19 +235,19 @@ func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker bol
 	}
 
 	identityStore := env.GetManagers().Identity.GetStore()
-	_, currentType := identityStore.GetSymbol(persistence.FieldIdentityType).Eval(tx, []byte(entity.Id))
-	if string(currentType) == persistence.RouterIdentityType {
-		if (checker == nil || checker.IsUpdated("identityTypeId")) && entity.IdentityTypeId != persistence.RouterIdentityType {
+	_, currentType := identityStore.GetSymbol(db.FieldIdentityType).Eval(tx, []byte(entity.Id))
+	if string(currentType) == db.RouterIdentityType {
+		if (checker == nil || checker.IsUpdated("identityTypeId")) && entity.IdentityTypeId != db.RouterIdentityType {
 			fieldErr := errorz.NewFieldError("may not change type of router identities", "typeId", entity.IdentityTypeId)
 			return nil, errorz.NewFieldApiError(fieldErr)
 		}
 
-		_, currentName := identityStore.GetSymbol(persistence.FieldName).Eval(tx, []byte(entity.Id))
-		if (checker == nil || checker.IsUpdated(persistence.FieldName)) && string(currentName) != entity.Name {
+		_, currentName := identityStore.GetSymbol(db.FieldName).Eval(tx, []byte(entity.Id))
+		if (checker == nil || checker.IsUpdated(db.FieldName)) && string(currentName) != entity.Name {
 			fieldErr := errorz.NewFieldError("may not change name of router identities", "name", entity.Name)
 			return nil, errorz.NewFieldApiError(fieldErr)
 		}
-	} else if (checker == nil || checker.IsUpdated("identityTypeId")) && entity.IdentityTypeId == persistence.RouterIdentityType {
+	} else if (checker == nil || checker.IsUpdated("identityTypeId")) && entity.IdentityTypeId == db.RouterIdentityType {
 		fieldErr := errorz.NewFieldError("may not change type to router", "typeId", entity.IdentityTypeId)
 		return nil, errorz.NewFieldApiError(fieldErr)
 	}
@@ -257,7 +257,7 @@ func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker bol
 	return boltEntity, nil
 }
 
-func (entity *Identity) fillFrom(env Env, _ *bbolt.Tx, boltIdentity *persistence.Identity) error {
+func (entity *Identity) fillFrom(env Env, _ *bbolt.Tx, boltIdentity *db.Identity) error {
 	entity.FillCommon(boltIdentity)
 	entity.Name = boltIdentity.Name
 	entity.IdentityTypeId = boltIdentity.IdentityTypeId
@@ -285,11 +285,11 @@ type ServiceConfig struct {
 	Config  string
 }
 
-func toBoltServiceConfigs(tx *bbolt.Tx, env Env, serviceConfigs []ServiceConfig) ([]persistence.ServiceConfig, error) {
+func toBoltServiceConfigs(tx *bbolt.Tx, env Env, serviceConfigs []ServiceConfig) ([]db.ServiceConfig, error) {
 	serviceStore := env.GetStores().EdgeService
 	configStore := env.GetStores().Config
 
-	var boltServiceConfigs []persistence.ServiceConfig
+	var boltServiceConfigs []db.ServiceConfig
 	for _, serviceConfig := range serviceConfigs {
 		if !serviceStore.IsEntityPresent(tx, serviceConfig.Service) {
 			return nil, boltz.NewNotFoundError(serviceStore.GetSingularEntityType(), "id or name", serviceConfig.Service)
@@ -299,7 +299,7 @@ func toBoltServiceConfigs(tx *bbolt.Tx, env Env, serviceConfigs []ServiceConfig)
 			return nil, boltz.NewNotFoundError(configStore.GetSingularEntityType(), "id or name", serviceConfig.Config)
 		}
 
-		boltServiceConfigs = append(boltServiceConfigs, persistence.ServiceConfig{
+		boltServiceConfigs = append(boltServiceConfigs, db.ServiceConfig{
 			ServiceId: serviceConfig.Service,
 			ConfigId:  serviceConfig.Config,
 		})

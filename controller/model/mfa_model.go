@@ -17,10 +17,10 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 )
 
@@ -38,12 +38,12 @@ type Mfa struct {
 	RecoveryCodes []string
 }
 
-func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.Mfa, error) {
+func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, env Env) (*db.Mfa, error) {
 	if !env.GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
 		return nil, errorz.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
 
-	boltEntity := &persistence.Mfa{
+	boltEntity := &db.Mfa{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		IsVerified:    entity.IsVerified,
 		IdentityId:    entity.IdentityId,
@@ -54,15 +54,15 @@ func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.Mfa, error)
 	return boltEntity, nil
 }
 
-func (entity *Mfa) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persistence.Mfa, error) {
+func (entity *Mfa) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.Mfa, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *Mfa) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.Mfa, error) {
+func (entity *Mfa) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.Mfa, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *Mfa) fillFrom(env Env, tx *bbolt.Tx, boltMfa *persistence.Mfa) error {
+func (entity *Mfa) fillFrom(env Env, tx *bbolt.Tx, boltMfa *db.Mfa) error {
 	entity.FillCommon(boltMfa)
 	entity.IsVerified = boltMfa.IsVerified
 	entity.IdentityId = boltMfa.IdentityId

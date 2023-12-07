@@ -57,7 +57,7 @@ func (self *validateSessionsHandler) HandleReceive(msg *channel.Message, ch chan
 }
 
 func (self *validateSessionsHandler) validateSessions(req *edge_ctrl_pb.ValidateSessionsRequest) {
-	sessionStore := self.getAppEnv().BoltStores.Session
+	sessionStore := self.getAppEnv().GetStores().Session
 	tokenIndex := sessionStore.GetTokenIndex()
 
 	var invalidTokens []string

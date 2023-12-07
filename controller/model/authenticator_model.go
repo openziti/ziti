@@ -19,9 +19,9 @@ package model
 import (
 	"encoding/base64"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"reflect"
 )
@@ -51,7 +51,7 @@ func (entity *Authenticator) Fingerprints() []string {
 	}
 }
 
-func (entity *Authenticator) fillFrom(_ Env, _ *bbolt.Tx, boltAuthenticator *persistence.Authenticator) error {
+func (entity *Authenticator) fillFrom(_ Env, _ *bbolt.Tx, boltAuthenticator *db.Authenticator) error {
 	entity.FillCommon(boltAuthenticator)
 	entity.Method = boltAuthenticator.Type
 	entity.IdentityId = boltAuthenticator.IdentityId
@@ -59,14 +59,14 @@ func (entity *Authenticator) fillFrom(_ Env, _ *bbolt.Tx, boltAuthenticator *per
 	boltSubType := boltAuthenticator.ToSubType()
 
 	switch boltAuth := boltSubType.(type) {
-	case *persistence.AuthenticatorUpdb:
+	case *db.AuthenticatorUpdb:
 		entity.SubType = &AuthenticatorUpdb{
 			Authenticator: entity,
 			Username:      boltAuth.Username,
 			Password:      boltAuth.Password,
 			Salt:          boltAuth.Salt,
 		}
-	case *persistence.AuthenticatorCert:
+	case *db.AuthenticatorCert:
 		entity.SubType = &AuthenticatorCert{
 			Authenticator: entity,
 			Fingerprint:   boltAuth.Fingerprint,
@@ -82,14 +82,14 @@ func (entity *Authenticator) fillFrom(_ Env, _ *bbolt.Tx, boltAuthenticator *per
 	return nil
 }
 
-func (entity *Authenticator) toBoltEntity() (*persistence.Authenticator, error) {
-	boltEntity := &persistence.Authenticator{
+func (entity *Authenticator) toBoltEntity() (*db.Authenticator, error) {
+	boltEntity := &db.Authenticator{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Type:          entity.Method,
 		IdentityId:    entity.IdentityId,
 	}
 
-	var subType persistence.AuthenticatorSubType
+	var subType db.AuthenticatorSubType
 
 	switch entity.SubType.(type) {
 	case *AuthenticatorUpdb:
@@ -99,7 +99,7 @@ func (entity *Authenticator) toBoltEntity() (*persistence.Authenticator, error) 
 			pfxlog.Logger().Panicf("unexpected type assertion failure to updb authenticator conversion to bolt model for type %s", reflect.TypeOf(entity.SubType))
 		}
 
-		subType = &persistence.AuthenticatorUpdb{
+		subType = &db.AuthenticatorUpdb{
 			Authenticator: *boltEntity,
 			Username:      updbModel.Username,
 			Password:      updbModel.Password,
@@ -112,7 +112,7 @@ func (entity *Authenticator) toBoltEntity() (*persistence.Authenticator, error) 
 			pfxlog.Logger().Panicf("unexpected type assertion failure to cert authenticator conversion to bolt model for type %s", reflect.TypeOf(entity.SubType))
 		}
 
-		subType = &persistence.AuthenticatorCert{
+		subType = &db.AuthenticatorCert{
 			Authenticator:         *boltEntity,
 			Fingerprint:           certModel.Fingerprint,
 			Pem:                   certModel.Pem,
@@ -129,11 +129,11 @@ func (entity *Authenticator) toBoltEntity() (*persistence.Authenticator, error) 
 	return boltEntity, nil
 }
 
-func (entity *Authenticator) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.Authenticator, error) {
+func (entity *Authenticator) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Authenticator, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *Authenticator) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.Authenticator, error) {
+func (entity *Authenticator) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.Authenticator, error) {
 	return entity.toBoltEntity()
 }
 

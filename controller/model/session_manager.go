@@ -19,29 +19,29 @@ package model
 import (
 	"fmt"
 	"github.com/lucsky/cuid"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
-	fabricApiError "github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/apierror"
+	fabricApiError "github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
 )
 
 func NewSessionManager(env Env) *SessionManager {
 	manager := &SessionManager{
-		baseEntityManager: newBaseEntityManager[*Session, *persistence.Session](env, env.GetStores().Session),
+		baseEntityManager: newBaseEntityManager[*Session, *db.Session](env, env.GetStores().Session),
 	}
 	manager.impl = manager
 	return manager
 }
 
 type SessionManager struct {
-	baseEntityManager[*Session, *persistence.Session]
+	baseEntityManager[*Session, *db.Session]
 }
 
 func (self *SessionManager) newModelEntity() *Session {
@@ -172,14 +172,14 @@ func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string
 	}
 
 	if entity.Type == "" {
-		entity.Type = persistence.SessionTypeDial
+		entity.Type = db.SessionTypeDial
 	}
 
-	if persistence.SessionTypeDial == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
+	if db.SessionTypeDial == entity.Type && !stringz.Contains(service.Permissions, db.PolicyTypeDialName) {
 		return "", errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
-	if persistence.SessionTypeBind == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
+	if db.SessionTypeBind == entity.Type && !stringz.Contains(service.Permissions, db.PolicyTypeBindName) {
 		return "", errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 

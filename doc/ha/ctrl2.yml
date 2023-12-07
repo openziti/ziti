@@ -5,9 +5,9 @@ raft:
   dataDir: ./data/ctrl2
 
 identity:
-  cert: ./pki/ctrl2/certs/server.cert
+  cert: ./pki/ctrl2/certs/server.chain.pem
   key: ./pki/ctrl2/keys/server.key
-  ca: ./pki/ctrl2/certs/server.chain.pem
+  ca: ./pki/ctrl2/certs/ctrl2.chain.pem
 
 ctrl:
   listener: tls:127.0.0.1:6363

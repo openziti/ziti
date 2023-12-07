@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/pkg/errors"
 	"github.com/zitadel/oidc/v2/pkg/op"
 	"golang.org/x/text/language"
@@ -21,7 +21,7 @@ const (
 
 	AuthMethodPassword = model.AuthMethodPassword
 	AuthMethodExtJwt   = model.AuthMethodExtJwt
-	AuthMethodCert     = persistence.MethodAuthenticatorCert
+	AuthMethodCert     = db.MethodAuthenticatorCert
 
 	AuthMethodSecondaryTotp   = "totp"
 	AuthMethodSecondaryExtJwt = "ejs"

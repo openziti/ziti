@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/entities"
 	"github.com/openziti/ziti/tunnel/health"
-	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
 	logrus "github.com/sirupsen/logrus"
 	"net"
@@ -83,9 +83,6 @@ func (self *ServiceListenerGroup) WaitForShutdown() {
 		logrus.Debugf("caught signal %v", s)
 		break
 	}
-
-	self.Lock()
-	defer self.Unlock()
 
 	for _, listener := range self.listener {
 		listener.stop()

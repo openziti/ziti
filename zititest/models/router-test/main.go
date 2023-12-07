@@ -19,7 +19,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
@@ -65,7 +65,7 @@ func (d dbStrategy) GetDbFile(*model.Model) string {
 	return getDbFile()
 }
 
-func (d dbStrategy) GetSite(router *persistence.EdgeRouter) (string, bool) {
+func (d dbStrategy) GetSite(router *db.EdgeRouter) (string, bool) {
 	for _, attr := range router.RoleAttributes {
 		if strings.Contains(attr, "Hosted") {
 			return "us-west-2b", true
@@ -74,7 +74,7 @@ func (d dbStrategy) GetSite(router *persistence.EdgeRouter) (string, bool) {
 	return "us-west-1c", true
 }
 
-func (d dbStrategy) PostProcess(router *persistence.EdgeRouter, c *model.Component) {
+func (d dbStrategy) PostProcess(router *db.EdgeRouter, c *model.Component) {
 	if router.IsTunnelerEnabled {
 		c.Scope.Tags = append(c.Scope.Tags, "tunneler")
 	}

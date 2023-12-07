@@ -30,13 +30,13 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/common/inspect"
+	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/sirupsen/logrus"
 )
 
@@ -70,6 +70,11 @@ type DialParams interface {
 type Dialer interface {
 	Dial(params DialParams) (xt.PeerData, error)
 	IsTerminatorValid(id string, destination string) bool
+}
+
+type InspectableDialer interface {
+	Dialer
+	InspectTerminator(id string, destination string, fixInvalid bool) (bool, string)
 }
 
 type Factory interface {

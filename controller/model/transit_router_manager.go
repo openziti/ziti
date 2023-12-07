@@ -19,18 +19,17 @@ package model
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -38,10 +37,10 @@ import (
 
 func NewTransitRouterManager(env Env) *TransitRouterManager {
 	manager := &TransitRouterManager{
-		baseEntityManager: newBaseEntityManager[*TransitRouter, *persistence.TransitRouter](env, env.GetStores().TransitRouter),
+		baseEntityManager: newBaseEntityManager[*TransitRouter, *db.TransitRouter](env, env.GetStores().TransitRouter),
 		allowedFields: boltz.MapFieldChecker{
-			persistence.FieldName: struct{}{},
-			boltz.FieldTags:       struct{}{},
+			db.FieldName:    struct{}{},
+			boltz.FieldTags: struct{}{},
 		},
 	}
 	manager.impl = manager
@@ -54,7 +53,7 @@ func NewTransitRouterManager(env Env) *TransitRouterManager {
 }
 
 type TransitRouterManager struct {
-	baseEntityManager[*TransitRouter, *persistence.TransitRouter]
+	baseEntityManager[*TransitRouter, *db.TransitRouter]
 	allowedFields boltz.FieldChecker
 }
 
@@ -72,7 +71,7 @@ func (self *TransitRouterManager) Create(txRouter *TransitRouter, ctx *change.Co
 	}
 
 	enrollment := &Enrollment{
-		BaseEntity:      models.BaseEntity{},
+		BaseEntity:      models.BaseEntity{Id: eid.New()},
 		Method:          MethodEnrollTransitRouterOtt,
 		TransitRouterId: &txRouter.Id,
 	}
@@ -172,7 +171,7 @@ func (self *TransitRouterManager) collectEnrollmentsInTx(tx *bbolt.Tx, id string
 		return err
 	}
 
-	associationIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldTransitRouterEnrollments)
+	associationIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, db.FieldTransitRouterEnrollments)
 	for _, enrollmentId := range associationIds {
 		enrollment, err := self.env.GetManagers().Enrollment.readInTx(tx, enrollmentId)
 		if err != nil {
@@ -215,8 +214,8 @@ func (self *TransitRouterManager) ExtendEnrollment(router *TransitRouter, client
 	router.Fingerprint = &fingerprint
 
 	err = self.Update(router, true, &fields.UpdatedFieldsMap{
-		persistence.FieldEdgeRouterCertPEM: struct{}{},
-		db.FieldRouterFingerprint:          struct{}{},
+		db.FieldEdgeRouterCertPEM: struct{}{},
+		db.FieldRouterFingerprint: struct{}{},
 	}, ctx)
 
 	if err != nil {
@@ -257,8 +256,8 @@ func (self *TransitRouterManager) ExtendEnrollmentWithVerify(router *TransitRout
 	router.UnverifiedFingerprint = &fingerprint
 
 	err = self.Update(router, true, &fields.UpdatedFieldsMap{
-		persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
-		persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
+		db.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
+		db.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
 	}, ctx)
 
 	if err != nil {
@@ -272,7 +271,7 @@ func (self *TransitRouterManager) ExtendEnrollmentWithVerify(router *TransitRout
 }
 
 func (self *TransitRouterManager) ReadOneByUnverifiedFingerprint(fingerprint string) (*TransitRouter, error) {
-	return self.ReadOneByQuery(fmt.Sprintf(`%s = "%v"`, persistence.FieldEdgeRouterUnverifiedFingerprint, fingerprint))
+	return self.ReadOneByQuery(fmt.Sprintf(`%s = "%v"`, db.FieldEdgeRouterUnverifiedFingerprint, fingerprint))
 }
 
 func (self *TransitRouterManager) ExtendEnrollmentVerify(router *TransitRouter, ctx *change.Context) error {
@@ -283,9 +282,9 @@ func (self *TransitRouterManager) ExtendEnrollmentVerify(router *TransitRouter, 
 		router.UnverifiedCertPem = nil
 
 		return self.Update(router, true, fields.UpdatedFieldsMap{
-			db.FieldRouterFingerprint:                        struct{}{},
-			persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
-			persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
+			db.FieldRouterFingerprint:               struct{}{},
+			db.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
+			db.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
 		}, ctx)
 	}
 

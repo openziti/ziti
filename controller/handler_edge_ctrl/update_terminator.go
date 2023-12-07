@@ -21,8 +21,8 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
@@ -80,7 +80,7 @@ func (self *updateTerminatorHandler) UpdateTerminator(ctx *UpdateTerminatorReque
 	logger.Debug("update request received")
 
 	ctx.loadSession(ctx.req.SessionToken)
-	ctx.checkSessionType(persistence.SessionTypeBind)
+	ctx.checkSessionType(db.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, common.EdgeBinding)
 

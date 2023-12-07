@@ -17,7 +17,6 @@
 package api_impl
 
 import (
-	"github.com/go-openapi/strfmt"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/network"
 
@@ -46,7 +45,7 @@ func (factory *CircuitLinkFactoryIml) Links(entity LinkEntity) rest_model.Links 
 }
 
 func MapCircuitToRestModel(_ *network.Network, _ api.RequestContext, circuit *network.Circuit) (*rest_model.CircuitDetail, error) {
-	path := &rest_model.CircuitDetailPath{}
+	path := &rest_model.Path{}
 	for _, node := range circuit.Path.Nodes {
 		path.Nodes = append(path.Nodes, ToEntityRef(node.Name, node, RouterLinkFactory))
 	}
@@ -54,14 +53,12 @@ func MapCircuitToRestModel(_ *network.Network, _ api.RequestContext, circuit *ne
 		path.Links = append(path.Links, ToEntityRef(link.Id, link, LinkLinkFactory))
 	}
 
-	createdAt := strfmt.DateTime(circuit.CreatedAt)
 	ret := &rest_model.CircuitDetail{
-		ID:         &circuit.Id,
+		BaseEntity: BaseEntityToRestModel(circuit, CircuitLinkFactory),
 		ClientID:   circuit.ClientId,
 		Path:       path,
 		Service:    ToEntityRef(circuit.Service.Name, circuit.Service, ServiceLinkFactory),
 		Terminator: ToEntityRef(circuit.Terminator.GetId(), circuit.Terminator, TerminatorLinkFactory),
-		CreatedAt:  &createdAt,
 	}
 
 	return ret, nil

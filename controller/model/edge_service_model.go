@@ -18,11 +18,10 @@ package model
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 )
 
@@ -35,12 +34,12 @@ type Service struct {
 	EncryptionRequired bool     `json:"encryptionRequired"`
 }
 
-func (entity *Service) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.EdgeService, error) {
+func (entity *Service) toBoltEntity(tx *bbolt.Tx, env Env) (*db.EdgeService, error) {
 	if err := entity.validateConfigs(tx, env); err != nil {
 		return nil, err
 	}
 
-	edgeService := &persistence.EdgeService{
+	edgeService := &db.EdgeService{
 		Service: db.Service{
 			BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
 			Name:               entity.Name,
@@ -53,17 +52,17 @@ func (entity *Service) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.EdgeSer
 	return edgeService, nil
 }
 
-func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persistence.EdgeService, error) {
+func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.EdgeService, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
 func (entity *Service) validateConfigs(tx *bbolt.Tx, env Env) error {
-	typeMap := map[string]*persistence.Config{}
+	typeMap := map[string]*db.Config{}
 	configStore := env.GetStores().Config
 	for _, id := range entity.Configs {
 		config, _ := configStore.LoadOneById(tx, id)
 		if config == nil {
-			return boltz.NewNotFoundError(persistence.EntityTypeConfigs, "id", id)
+			return boltz.NewNotFoundError(db.EntityTypeConfigs, "id", id)
 		}
 		conflictConfig, found := typeMap[config.Type]
 		if found {
@@ -80,11 +79,11 @@ func (entity *Service) validateConfigs(tx *bbolt.Tx, env Env) error {
 	return nil
 }
 
-func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.EdgeService, error) {
+func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.EdgeService, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *Service) fillFrom(_ Env, _ *bbolt.Tx, boltService *persistence.EdgeService) error {
+func (entity *Service) fillFrom(_ Env, _ *bbolt.Tx, boltService *db.EdgeService) error {
 	entity.FillCommon(boltService)
 	entity.Name = boltService.Name
 	entity.TerminatorStrategy = boltService.TerminatorStrategy
@@ -105,15 +104,15 @@ type ServiceDetail struct {
 	EncryptionRequired bool                              `json:"encryptionRequired"`
 }
 
-func (entity *ServiceDetail) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.EdgeService, error) {
+func (entity *ServiceDetail) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.EdgeService, error) {
 	panic("should never be called")
 }
 
-func (entity *ServiceDetail) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.EdgeService, error) {
+func (entity *ServiceDetail) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.EdgeService, error) {
 	panic("should never be called")
 }
 
-func (entity *ServiceDetail) fillFrom(_ Env, _ *bbolt.Tx, boltService *persistence.EdgeService) error {
+func (entity *ServiceDetail) fillFrom(_ Env, _ *bbolt.Tx, boltService *db.EdgeService) error {
 	entity.FillCommon(boltService)
 	entity.Name = boltService.Name
 	entity.TerminatorStrategy = boltService.TerminatorStrategy

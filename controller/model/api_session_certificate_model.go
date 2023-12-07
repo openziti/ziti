@@ -18,11 +18,11 @@ package model
 
 import (
 	"crypto/x509"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -51,12 +51,12 @@ func NewApiSessionCertificate(cert *x509.Certificate) *ApiSessionCertificate {
 	return ret
 }
 
-func (entity *ApiSessionCertificate) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.ApiSessionCertificate, error) {
+func (entity *ApiSessionCertificate) toBoltEntity(tx *bbolt.Tx, env Env) (*db.ApiSessionCertificate, error) {
 	if !env.GetStores().ApiSession.IsEntityPresent(tx, entity.ApiSessionId) {
 		return nil, errorz.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
-	boltEntity := &persistence.ApiSessionCertificate{
+	boltEntity := &db.ApiSessionCertificate{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		ApiSessionId:  entity.ApiSessionId,
 		Subject:       entity.Subject,
@@ -69,15 +69,15 @@ func (entity *ApiSessionCertificate) toBoltEntity(tx *bbolt.Tx, env Env) (*persi
 	return boltEntity, nil
 }
 
-func (entity *ApiSessionCertificate) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persistence.ApiSessionCertificate, error) {
+func (entity *ApiSessionCertificate) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.ApiSessionCertificate, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *ApiSessionCertificate) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.ApiSessionCertificate, error) {
+func (entity *ApiSessionCertificate) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.ApiSessionCertificate, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *ApiSessionCertificate) fillFrom(env Env, tx *bbolt.Tx, boltApiSessionCertificate *persistence.ApiSessionCertificate) error {
+func (entity *ApiSessionCertificate) fillFrom(env Env, tx *bbolt.Tx, boltApiSessionCertificate *db.ApiSessionCertificate) error {
 	entity.FillCommon(boltApiSessionCertificate)
 	entity.Subject = boltApiSessionCertificate.Subject
 	entity.Fingerprint = boltApiSessionCertificate.Fingerprint

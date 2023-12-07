@@ -19,14 +19,16 @@ package xgress_edge
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/router/xgress_common"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/pkg/errors"
 	"io"
 	"math"
 	"sync/atomic"
+	"time"
 )
 
 // headers to pass through fabric to the other side
@@ -38,15 +40,60 @@ var headersFromFabric = map[uint8]int32{
 	xgress_common.PayloadFlagsHeader: edge.FlagsHeader,
 }
 
+type terminatorState int
+
+const (
+	TerminatorStatePendingEstablishment terminatorState = 0
+	TerminatorStateEstablishing         terminatorState = 1
+	TerminatorStateEstablished          terminatorState = 2
+	TerminatorStateDeleting             terminatorState = 3
+)
+
+func (self terminatorState) String() string {
+	switch self {
+	case TerminatorStatePendingEstablishment:
+		return "pending-establishment"
+	case TerminatorStateEstablishing:
+		return "establishing"
+	case TerminatorStateEstablished:
+		return "established"
+	case TerminatorStateDeleting:
+		return "deleting"
+	default:
+		return "unknown"
+	}
+}
+
 type edgeTerminator struct {
 	edge.MsgChannel
 	edgeClientConn *edgeClientConn
+	terminatorId   concurrenz.AtomicValue[string]
+	listenerId     string
 	token          string
 	instance       string
-	terminatorId   concurrenz.AtomicValue[string]
+	instanceSecret []byte
+	cost           uint16
+	precedence     edge_ctrl_pb.TerminatorPrecedence
+	hostData       map[uint32][]byte
 	assignIds      bool
 	onClose        func()
 	v2             bool
+	state          concurrenz.AtomicValue[terminatorState]
+	postValidate   bool
+}
+
+func (self *edgeTerminator) inspect(fixInvalidTerminators bool) (*edge.InspectResult, error) {
+	msg := channel.NewMessage(edge.ContentTypeConnInspectRequest, nil)
+	msg.PutUint32Header(edge.ConnIdHeader, self.Id())
+	resp, err := msg.WithTimeout(10 * time.Second).SendForReply(self.Channel)
+	if err != nil {
+		return nil, errors.New("unable to check status with sdk client")
+	}
+	result, err := edge.UnmarshalInspectResult(resp)
+	if result != nil && result.Type != edge.ConnTypeBind && fixInvalidTerminators {
+		self.close(true, "terminator invalid")
+	}
+	return result, err
 }
 
 func (self *edgeTerminator) nextDialConnId() uint32 {
@@ -61,7 +108,8 @@ func (self *edgeTerminator) nextDialConnId() uint32 {
 func (self *edgeTerminator) close(notify bool, reason string) {
 	logger := pfxlog.Logger().
 		WithField("terminatorId", self.terminatorId.Load()).
-		WithField("token", self.token)
+		WithField("token", self.token).
+		WithField("reason", reason)
 
 	if notify && !self.IsClosed() {
 		// Notify edge client of close
@@ -75,6 +123,10 @@ func (self *edgeTerminator) close(notify bool, reason string) {
 	if self.v2 {
 		if terminatorId := self.terminatorId.Load(); terminatorId != "" {
 			if self.terminatorId.CompareAndSwap(terminatorId, "") {
+				logger.Debug("removing terminator on router")
+				self.edgeClientConn.listener.factory.hostedServices.Delete(terminatorId)
+
+				self.state.Store(TerminatorStateDeleting)
 				logger.Info("removing terminator on controller")
 				ctrlCh := self.edgeClientConn.listener.factory.ctrls.AnyCtrlChannel()
 				if ctrlCh == nil {
@@ -82,14 +134,11 @@ func (self *edgeTerminator) close(notify bool, reason string) {
 				} else if err := self.edgeClientConn.removeTerminator(ctrlCh, self.token, terminatorId); err != nil {
 					logger.WithError(err).Error("failed to remove terminator")
 				} else {
-					logger.Info("Successfully removed terminator on channel close")
+					logger.Info("Successfully removed terminator")
 				}
 			} else {
 				logger.Warn("edge terminator closing, but no terminator id set, so can't remove on controller")
 			}
-
-			logger.Debug("removing terminator on router")
-			self.edgeClientConn.listener.factory.hostedServices.Delete(self.token)
 		}
 	} else {
 		if terminatorId := self.terminatorId.Load(); terminatorId != "" {
@@ -100,7 +149,7 @@ func (self *edgeTerminator) close(notify bool, reason string) {
 			} else if err := self.edgeClientConn.removeTerminator(ctrlCh, self.token, terminatorId); err != nil {
 				logger.WithError(err).Error("failed to remove terminator")
 			} else {
-				logger.Info("Successfully removed terminator on channel close")
+				logger.Info("successfully removed terminator")
 			}
 		} else {
 			logger.Warn("edge terminator closing, but no terminator id set, so can't remove on controller")

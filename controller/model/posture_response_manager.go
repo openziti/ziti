@@ -19,10 +19,9 @@ package model
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/storage/ast"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/storage/ast"
 	"go.etcd.io/bbolt"
 	"runtime/debug"
 	"time"
@@ -260,7 +259,7 @@ type ServiceWithTimeout struct {
 	Timeout int64
 }
 
-func shouldPostureCheckTimeoutBeAltered(mfaCheck *persistence.PostureCheckMfa, timeSinceLastMfa, gracePeriod time.Duration, onWake, onUnlock bool) bool {
+func shouldPostureCheckTimeoutBeAltered(mfaCheck *db.PostureCheckMfa, timeSinceLastMfa, gracePeriod time.Duration, onWake, onUnlock bool) bool {
 	if mfaCheck == nil {
 		return false
 	}
@@ -281,7 +280,7 @@ func shouldPostureCheckTimeoutBeAltered(mfaCheck *persistence.PostureCheckMfa, t
 func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeSinceLastMfa, gracePeriod time.Duration, onWake bool, onUnlock bool) []*ServiceWithTimeout {
 	affectedChecks := map[string]int64{} //check id -> timeout
 	if onWake || onUnlock {
-		queryStr := fmt.Sprintf("%s=true or %s=true", persistence.FieldPostureCheckMfaPromptOnUnlock, persistence.FieldPostureCheckMfaPromptOnWake)
+		queryStr := fmt.Sprintf("%s=true or %s=true", db.FieldPostureCheckMfaPromptOnUnlock, db.FieldPostureCheckMfaPromptOnWake)
 		query, err := ast.Parse(self.env.GetStores().PostureCheck, queryStr)
 		if err != nil {
 			pfxlog.Logger().Errorf("error querying for onWake/onUnlock posture checks: %v", err)
@@ -291,7 +290,7 @@ func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeS
 
 				for cursor.IsValid() {
 					if check, err := self.env.GetStores().PostureCheck.LoadOneById(tx, string(cursor.Current())); err == nil {
-						if mfaCheck, ok := check.SubType.(*persistence.PostureCheckMfa); ok {
+						if mfaCheck, ok := check.SubType.(*db.PostureCheckMfa); ok {
 							if shouldPostureCheckTimeoutBeAltered(mfaCheck, timeSinceLastMfa, gracePeriod, onWake, onUnlock) {
 								affectedChecks[check.Id] = mfaCheck.TimeoutSeconds
 							}
@@ -315,7 +314,7 @@ func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeS
 	if len(affectedChecks) > 0 {
 		_ = self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 			for checkId, timeout := range affectedChecks {
-				policyCursor := self.env.GetStores().PostureCheck.GetRelatedEntitiesCursor(tx, checkId, persistence.EntityTypeServicePolicies, true)
+				policyCursor := self.env.GetStores().PostureCheck.GetRelatedEntitiesCursor(tx, checkId, db.EntityTypeServicePolicies, true)
 
 				for policyCursor.IsValid() {
 					serviceCursor := self.env.GetStores().ServicePolicy.GetRelatedEntitiesCursor(tx, string(policyCursor.Current()), db.EntityTypeServices, true)
