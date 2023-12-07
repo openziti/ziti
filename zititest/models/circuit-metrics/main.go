@@ -46,8 +46,8 @@ var m = &model.Model{
 					"password": "admin",
 				},
 				"influxdb": model.Variables{
-					"username": "pete",
-					"password": "oI5ns3X+R#aG",
+					"username": os.Getenv("INFLUX_USERNAME"),
+					"password": os.Getenv("INFLUX_PASSWORD"),
 				},
 				"aws": model.Variables{
 					"managed_key": true,
@@ -57,8 +57,8 @@ var m = &model.Model{
 			},
 			"metrics": model.Variables{
 				"influxdb": model.Variables{
-					"url": "http://3.90.26.17:8086/orgs/1690e1ae86127b82",
-					"db":  "flow-control",
+					"url": os.Getenv("INFLUX_URL"),
+					"db":  os.Getenv("INFLUX_DB"),
 				},
 			},
 		},
@@ -95,7 +95,7 @@ var m = &model.Model{
 					InstanceType: "t3.micro",
 					Components: model.Components{
 						"iperf-client": {
-							Scope: model.Scope{Tags: model.Tags{"iperf-client", "terminator", "tunneler", "edge-router"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "terminator", "tunneler", "edge-router"}},
 							Type:  &zitilab.RouterType{Version: zitiVersion},
 						},
 					},
@@ -110,7 +110,7 @@ var m = &model.Model{
 					InstanceType: "t3.micro",
 					Components: model.Components{
 						"iperf-server": {
-							Scope: model.Scope{Tags: model.Tags{"iperf-server", "terminator", "tunneler", "edge-router"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "terminator", "tunneler", "edge-router"}},
 							Type:  &zitilab.RouterType{Version: zitiVersion},
 						},
 					},
