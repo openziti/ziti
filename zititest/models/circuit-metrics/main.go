@@ -152,7 +152,7 @@ var m = &model.Model{
 func main() {
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
-	m.AddActivationActions("stop", "bootstrap")
+	m.AddActivationActions("stop", "bootstrap", "start")
 	m.AddOperatingActions("login", "syncModelEdgeState")
 	fablab.InitModel(m)
 	runPhase := fablib_5_operation.NewPhase()
