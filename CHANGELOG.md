@@ -30,22 +30,28 @@ in the bbolt datastore. There's now basic support for querying in-memory types a
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v2: [v2.0.105 -> v2.0.110](https://github.com/openziti/channel/compare/v2.0.105...v2.0.110)
+* github.com/openziti/channel/v2: [v2.0.105 -> v2.0.111](https://github.com/openziti/channel/compare/v2.0.105...v2.0.111)
+    * [Issue #118](https://github.com/openziti/channel/issues/118) - Allowing checking if reconnecting impl is currently connected
+
 * github.com/openziti/edge-api: [v0.26.0 -> v0.26.1](https://github.com/openziti/edge-api/compare/v0.26.0...v0.26.1)
 * github.com/openziti/foundation/v2: [v2.0.33 -> v2.0.35](https://github.com/openziti/foundation/compare/v2.0.33...v2.0.35)
 * github.com/openziti/identity: [v1.0.66 -> v1.0.68](https://github.com/openziti/identity/compare/v1.0.66...v1.0.68)
 * github.com/openziti/metrics: [v1.2.37 -> v1.2.40](https://github.com/openziti/metrics/compare/v1.2.37...v1.2.40)
 * github.com/openziti/runzmd: [v1.0.33 -> v1.0.36](https://github.com/openziti/runzmd/compare/v1.0.33...v1.0.36)
-* github.com/openziti/sdk-golang: [v0.20.129 -> v0.21.1](https://github.com/openziti/sdk-golang/compare/v0.20.129...v0.21.1)
+* github.com/openziti/sdk-golang: [v0.20.129 -> v0.20.139](https://github.com/openziti/sdk-golang/compare/v0.20.129...v0.20.139)
+    * [Issue #457](https://github.com/openziti/sdk-golang/issues/457) - Add  inspect support
+    * [Issue #450](https://github.com/openziti/sdk-golang/issues/450) - Support idempotent terminator creation
+
 * github.com/openziti/secretstream: [v0.1.13 -> v0.1.14](https://github.com/openziti/secretstream/compare/v0.1.13...v0.1.14)
 * github.com/openziti/storage: [v0.2.23 -> v0.2.26](https://github.com/openziti/storage/compare/v0.2.23...v0.2.26)
     * [Issue #57](https://github.com/openziti/storage/issues/57) - Support querying collections of in memory objects
 
 * github.com/openziti/transport/v2: [v2.0.113 -> v2.0.119](https://github.com/openziti/transport/compare/v2.0.113...v2.0.119)
-* github.com/openziti/dilithium: [v0.3.3 -> v0.3.5](https://github.com/openziti/dilithium/compare/v0.3.3...v0.3.5)
 * github.com/openziti/ziti: [v0.31.0 -> v0.31.1](https://github.com/openziti/ziti/compare/v0.31.0...v0.31.1)
+    * [Issue #1555](https://github.com/openziti/ziti/issues/1555) - Consolidate fabric/edge persistence code
     * [Issue #1547](https://github.com/openziti/ziti/issues/1547) - Support filtering, sorting and paging circuits and links
     * [Issue #1446](https://github.com/openziti/ziti/issues/1446) - Allow for idempotent sdk based terminators 
+    * [Issue #1540](https://github.com/openziti/ziti/issues/1540) - Transit router create fails in HA environment
     * [Issue #1523](https://github.com/openziti/ziti/issues/1523) - Bootstrap members not working
     * [Issue #1525](https://github.com/openziti/ziti/issues/1525) - Improve cluster list output
     * [Issue #1519](https://github.com/openziti/ziti/issues/1519) - Simplify link ack handling
