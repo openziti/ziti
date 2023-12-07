@@ -1,3 +1,9 @@
+# Release 0.31.2
+
+## What's New
+
+* Go version updated from 1.20 to 1.21
+
 # Release 0.31.1
 
 ## What's New
@@ -293,14 +299,6 @@ proxy:
 * github.com/openziti/ziti: [v0.30.1 -> v0.30.2](https://github.com/openziti/ziti/compare/v0.30.1...v0.30.2)
   * [Issue #1266](https://github.com/openziti/ziti/issues/1266) - Outdated README.md: Some links return "Page Not Found"
 
-# Release 0.30.1
-
-## What's New
-
-## Component Updates and Bug Fixes
-
-* github.com/openziti/ziti: [v0.30.1 -> v0.30.2](https://github.com/openziti/ziti/compare/v0.30.1...v0.30.2)
-  * [Issue #1266](https://github.com/openziti/ziti/issues/1266) - Updated dead links in README
 
 # Release 0.30.1
 
