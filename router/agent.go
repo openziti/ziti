@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
+	"os"
 	"time"
 )
 
@@ -29,8 +30,9 @@ func (self *Router) RegisterDefaultAgentOps(debugEnabled bool) {
 	self.agentBindHandlers = append(self.agentBindHandlers, channel.BindHandlerF(func(binding channel.Binding) error {
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugDumpForwarderTablesRequestType), self.agentOpDumpForwarderTables)
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugDumpLinksRequestType), self.agentOpsDumpLinks)
-		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterQuiesce), self.agentOpQuiesceRouter)
-		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDequiesce), self.agentOpDequiesceRouter)
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterQuiesceRequestType), self.agentOpQuiesceRouter)
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDequiesceRequestType), self.agentOpDequiesceRouter)
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDecommissionRequestType), self.agentOpDecommissionRouter)
 
 		if debugEnabled {
 			binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugUpdateRouteRequestType), self.agentOpUpdateRoute)
@@ -175,6 +177,40 @@ func (self *Router) agentOpDequiesceRouter(m *channel.Message, ch channel.Channe
 
 	result := channel.UnmarshalResult(resp)
 	handler_common.SendOpResult(m, ch, "dequiesce", result.Message+"\n", result.Success)
+}
+
+func (self *Router) agentOpDecommissionRouter(m *channel.Message, ch channel.Channel) {
+	ctrlCh := self.ctrls.AnyValidCtrlChannel()
+	if ctrlCh == nil {
+		handler_common.SendOpResult(m, ch, "decomission", "unable to reach controller", false)
+		return
+	}
+
+	msg := channel.NewMessage(int32(ctrl_pb.ContentType_DecommissionRouterRequestType), nil)
+	err := msg.WithTimeout(5 * time.Second).SendAndWaitForWire(ctrlCh)
+	if err != nil {
+		handler_common.SendOpResult(m, ch, "decommission", "unexpected result, no disconnect but no error", false)
+		return
+	}
+
+	connectable, ok := ctrlCh.Underlay().(interface{ IsConnected() bool })
+	if !ok {
+		pfxlog.Logger().Warn("control channel can't be checked to see if it's connected")
+	}
+
+	for i := 0; i < 100; i++ {
+		// decommissioning router should cause control channel to close
+		if connectable == nil || !connectable.IsConnected() {
+			handler_common.SendOpResult(m, ch, "decommission", "router decommissioned\n", true)
+			time.Sleep(500 * time.Millisecond)
+			pfxlog.Logger().Info("router decommissioned, shutting down")
+			os.Exit(0)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	pfxlog.Logger().Warn("control channel still connected after decomission")
+	handler_common.SendOpResult(m, ch, "decommission", "controller didn't disconnect after decommission", false)
 }
 
 func (self *Router) agentOpDumpForwarderTables(m *channel.Message, ch channel.Channel) {

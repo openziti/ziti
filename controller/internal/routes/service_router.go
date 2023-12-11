@@ -21,11 +21,11 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	clientService "github.com/openziti/edge-api/rest_client_api_server/operations/service"
 	managementService "github.com/openziti/edge-api/rest_management_api_server/operations/service"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/models"
 	"strings"
 	"time"
 
@@ -245,7 +245,7 @@ func (r *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext, para
 
 func (r *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params managementService.PatchServiceParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.EdgeService.Update(MapPatchServiceToModel(params.ID, params.Service), fields.FilterMaps("tags"), rc.NewChangeContext())
+		return ae.Managers.EdgeService.Update(MapPatchServiceToModel(params.ID, params.Service), fields.FilterMaps("tags").MapField("maxIdleTimeMillis", "maxIdleTime"), rc.NewChangeContext())
 	})
 }
 

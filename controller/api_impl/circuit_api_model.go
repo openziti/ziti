@@ -44,7 +44,7 @@ func (factory *CircuitLinkFactoryIml) Links(entity LinkEntity) rest_model.Links 
 	return links
 }
 
-func MapCircuitToRestModel(_ *network.Network, _ api.RequestContext, circuit *network.Circuit) (*rest_model.CircuitDetail, error) {
+func MapCircuitToRestModel(n *network.Network, _ api.RequestContext, circuit *network.Circuit) (*rest_model.CircuitDetail, error) {
 	path := &rest_model.Path{}
 	for _, node := range circuit.Path.Nodes {
 		path.Nodes = append(path.Nodes, ToEntityRef(node.Name, node, RouterLinkFactory))
@@ -53,11 +53,15 @@ func MapCircuitToRestModel(_ *network.Network, _ api.RequestContext, circuit *ne
 		path.Links = append(path.Links, ToEntityRef(link.Id, link, LinkLinkFactory))
 	}
 
+	svc, err := n.Services.Read(circuit.ServiceId)
+	if err != nil {
+		return nil, err
+	}
 	ret := &rest_model.CircuitDetail{
 		BaseEntity: BaseEntityToRestModel(circuit, CircuitLinkFactory),
 		ClientID:   circuit.ClientId,
 		Path:       path,
-		Service:    ToEntityRef(circuit.Service.Name, circuit.Service, ServiceLinkFactory),
+		Service:    ToEntityRef(svc.Name, svc, ServiceLinkFactory),
 		Terminator: ToEntityRef(circuit.Terminator.GetId(), circuit.Terminator, TerminatorLinkFactory),
 	}
 

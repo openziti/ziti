@@ -73,11 +73,16 @@ func (self *Scanner) scan() {
 	logrus.Debugf("scanning [%d] circuits", len(circuits))
 
 	now := time.Now().UnixMilli()
-	idleCircuits := map[string][]string{}
+	idleCircuits := map[string]map[string]int64{}
 	for circuitId, ft := range circuits {
 		idleTime := time.Duration(now-atomic.LoadInt64(&ft.last)) * time.Millisecond
 		if idleTime > self.timeout {
-			idleCircuits[ft.ctrlId] = append(idleCircuits[ft.ctrlId], circuitId)
+			ctrlMap := idleCircuits[ft.ctrlId]
+			if ctrlMap == nil {
+				ctrlMap = map[string]int64{}
+				idleCircuits[ft.ctrlId] = ctrlMap
+			}
+			ctrlMap[circuitId] = int64(idleTime)
 			logrus.WithField("circuitId", circuitId).
 				WithField("ctrlId", ft.ctrlId).
 				WithField("idleTime", idleTime).
@@ -86,15 +91,18 @@ func (self *Scanner) scan() {
 		}
 	}
 
-	for ctrlId, idleCircuitIds := range idleCircuits {
-		if len(idleCircuitIds) > 0 {
+	for ctrlId, idleCircuitMap := range idleCircuits {
+		if len(idleCircuitMap) > 0 {
 			log := pfxlog.Logger().WithField("ctrlId", ctrlId)
-			log.Debugf("found [%d] idle circuits, confirming with controller", len(idleCircuitIds))
+			log.Debugf("found [%d] idle circuits, confirming with controller", len(idleCircuitMap))
 
 			if ctrl := self.ctrls.GetCtrlChannel(ctrlId); ctrl != nil {
-				confirm := &ctrl_pb.CircuitConfirmation{CircuitIds: idleCircuitIds}
+				confirm := &ctrl_pb.CircuitConfirmation{IdleTimes: idleCircuitMap}
+				for circuitId := range idleCircuitMap {
+					confirm.CircuitIds = append(confirm.CircuitIds, circuitId)
+				}
 				if err := protobufs.MarshalTyped(confirm).Send(ctrl); err == nil {
-					log.WithField("circuitCount", len(idleCircuitIds)).Warnf("sent confirmation for circuits")
+					log.WithField("circuitCount", len(idleCircuitMap)).Warnf("sent confirmation for circuits")
 				} else {
 					log.WithError(err).Error("error sending confirmation request")
 				}

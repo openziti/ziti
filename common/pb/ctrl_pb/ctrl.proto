@@ -38,6 +38,7 @@ enum ContentType {
   DequiesceRouterRequestType = 1040;
   ValidateTerminatorsV2RequestType = 1041;
   ValidateTerminatorsV2ResponseType = 1042;
+  DecommissionRouterRequestType = 1043;
 
   PeerStateChangeRequestType = 1050;
 
@@ -73,6 +74,7 @@ message CircuitRequest {
 
 message CircuitConfirmation {
   repeated string circuitIds = 1;
+  map<string, int64> idleTimes = 2;
 }
 
 enum TerminatorPrecedence {

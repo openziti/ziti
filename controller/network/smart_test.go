@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openziti/transport/v2/tcp"
+	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/transport/v2/tcp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -80,7 +80,7 @@ func TestSmartRerouteMinCostDelta(t *testing.T) {
 
 	circuit := &Circuit{
 		Id:         uuid.NewString(),
-		Service:    svc,
+		ServiceId:  svc.Id,
 		Path:       path,
 		Terminator: terminator,
 		CreatedAt:  time.Now(),
