@@ -3,9 +3,7 @@ package main
 import (
 	"embed"
 	"github.com/openziti/fablab"
-	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
-	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	semaphore_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
@@ -31,6 +29,25 @@ import (
 var configResource embed.FS
 
 const zitiVersion = "latest"
+
+type StartIPerfTestAction struct{}
+
+func (a *StartIPerfTestAction) Execute(run model.Run) error {
+	m := run.GetModel()
+	hosts := m.SelectHosts("*") // modify to select correct hosts
+	for _, host := range hosts {
+		for _, c := range host.Components {
+			if iperfComponent, ok := c.Type.(*zitilab.IPerfServerType); ok {
+				err := iperfComponent.Start(run, c)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
 
 var m = &model.Model{
 	Id: "flow-control",
@@ -91,12 +108,16 @@ var m = &model.Model{
 						},
 					},
 				},
-				"iperf-client": {
+				"router-us": {
 					InstanceType: "t3.micro",
 					Components: model.Components{
-						"iperf-client": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "terminator", "tunneler", "edge-router"}},
+						"edge-router-us": {
+							Scope: model.Scope{Tags: model.Tags{"terminator", "tunneler", "edge-router", "iperf-server"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
 							Type:  &zitilab.RouterType{Version: zitiVersion},
+						},
+						"iperf-server": {
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "iperf-server", "sdk-app"}},
+							Type:  &zitilab.IPerfServerType{},
 						},
 					},
 				},
@@ -106,12 +127,16 @@ var m = &model.Model{
 			Region: "eu-west-2",
 			Site:   "eu-west-2a",
 			Hosts: model.Hosts{
-				"iperf-server": {
+				"router-eu": {
 					InstanceType: "t3.micro",
 					Components: model.Components{
-						"iperf-server": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "terminator", "tunneler", "edge-router"}},
+						"edge-router-eu": {
+							Scope: model.Scope{Tags: model.Tags{"terminator", "tunneler", "edge-router", "iperf-client"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
 							Type:  &zitilab.RouterType{Version: zitiVersion},
+						},
+						"iperf-client": {
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "iperf-client", "sdk-app"}},
+							Type:  &zitilab.IPerfServerType{},
 						},
 					},
 				},
@@ -120,15 +145,12 @@ var m = &model.Model{
 	},
 
 	Actions: model.ActionBinders{
-		"bootstrap": cmActions.NewBootstrapAction(),
-		"start":     cmActions.NewStartAction(),
-		"stop":      model.Bind(component.StopInParallel("*", 15)),
-		"clean": model.Bind(actions.Workflow(
-			component.StopInParallel("*", 15),
-			host.GroupExec("*", 25, "rm -f logs/*"),
-		)),
+		"bootstrap":          cmActions.NewBootstrapAction(),
+		"start":              cmActions.NewStartAction(),
+		"stop":               model.Bind(component.StopInParallel("*", 15)),
 		"login":              model.Bind(edge.Login("#ctrl")),
 		"syncModelEdgeState": model.Bind(edge.SyncModelEdgeState(".terminator")),
+		"start-iperf-tests":  model.Bind(&StartIPerfTestAction{}),
 	},
 
 	Infrastructure: model.Stages{
@@ -153,7 +175,7 @@ func main() {
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
 	m.AddActivationActions("stop", "bootstrap", "start")
-	m.AddOperatingActions("login", "syncModelEdgeState")
+	m.AddOperatingActions("login", "syncModelEdgeState", "start-iperf-tests")
 	fablab.InitModel(m)
 	runPhase := fablib_5_operation.NewPhase()
 
