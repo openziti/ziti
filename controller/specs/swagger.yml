@@ -753,10 +753,89 @@ paths:
       responses:
         '200':
           $ref: '#/responses/raftListMembersResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+
+
+  '/raft/add-member':
+    post:
+      summary: Add a member to the raft cluster
+      description: Add a member to the raft cluster. Requires admin access.
+      tags:
+        - Raft
+      operationId: raftMemberAdd
+      parameters:
+        - name: member
+          in: body
+          required: true
+          description: member parameters
+          schema:
+            $ref: '#/definitions/raftMemberAdd'
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
+  '/raft/remove-member':
+    post:
+      summary: Remove a member from the raft cluster
+      description: Remove a member from the raft cluster. Requires admin access.
+      tags:
+        - Raft
+      operationId: raftMemberRemove
+      parameters:
+        - name: member
+          in: body
+          required: true
+          description: member parameters
+          schema:
+            $ref: '#/definitions/raftMemberRemove'
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+
+  '/raft/transfer-leadership':
+    post:
+      summary: Attempts to transfer leadership to a different member of the cluster
+      description: Attempts to transfer leadership to a different member of the cluster. Requires admin access.
+      tags:
+        - Raft
+      operationId: raftTranferLeadership
+      parameters:
+        - name: member
+          in: body
+          required: true
+          description: transfer operation parameters
+          schema:
+            $ref: '#/definitions/raftTransferLeadership'
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+        '500':
+          $ref: '#/responses/badRequestResponse'
 
 #######################################################################################################################
 #
@@ -1238,6 +1317,32 @@ definitions:
         type: string
       fixed:
         type: boolean
+
+  raftMemberAdd:
+    type: object
+    required:
+      - address
+      - isVoter
+    properties:
+      address:
+        type: string
+      isVoter:
+        type: boolean
+
+  raftMemberRemove:
+    type: object
+    required:
+      - id
+    properties:
+      id:
+        type: string
+
+  raftTransferLeadership:
+    type: object
+    properties:
+      newLeaderId:
+        type: string
+
 
   ###################################################################
   # Errors

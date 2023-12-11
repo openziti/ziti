@@ -383,3 +383,11 @@ func NewTooManyUpdatesError() *errorz.ApiError {
 		Status:  ServerTooManyRequestsStatus,
 	}
 }
+
+func NewNotRunningInClusterModeError() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    ServerNotRunningInClusterModeCode,
+		Message: ServerNotRunningInClusterModeMessage,
+		Status:  ServerNotRunningInClusterModeStatus,
+	}
+}
