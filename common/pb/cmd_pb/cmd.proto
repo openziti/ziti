@@ -95,6 +95,7 @@ message Service {
   string name = 2;
   string terminatorStrategy = 3;
   map<string, TagValue> tags = 4;
+  int64 maxIdleTime = 5;
 }
 
 message Router {

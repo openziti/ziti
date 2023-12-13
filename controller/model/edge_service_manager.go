@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/ziti/controller/network"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
+	"time"
 )
 
 func NewEdgeServiceManager(env Env) *EdgeServiceManager {
@@ -210,6 +211,7 @@ func (self *EdgeServiceManager) Marshall(entity *Service) ([]byte, error) {
 	msg := &edge_cmd_pb.Service{
 		Id:                 entity.Id,
 		Name:               entity.Name,
+		MaxIdleTime:        int64(entity.MaxIdleTime),
 		Tags:               tags,
 		TerminatorStrategy: entity.TerminatorStrategy,
 		RoleAttributes:     entity.RoleAttributes,
@@ -232,6 +234,7 @@ func (self *EdgeServiceManager) Unmarshall(bytes []byte) (*Service, error) {
 			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
 		},
 		Name:               msg.Name,
+		MaxIdleTime:        time.Duration(msg.MaxIdleTime),
 		TerminatorStrategy: msg.TerminatorStrategy,
 		RoleAttributes:     msg.RoleAttributes,
 		Configs:            msg.Configs,
@@ -326,6 +329,7 @@ type PolicyPostureChecks struct {
 
 func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId string) map[string]*PolicyPostureChecks {
 	policyIdToChecks := map[string]*PolicyPostureChecks{}
+
 	postureCheckCache := map[string]*PostureCheck{}
 
 	servicePolicyStore := self.env.GetStores().ServicePolicy
@@ -336,6 +340,10 @@ func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId str
 	policyTypeSymbol := self.env.GetStores().ServicePolicy.GetSymbol(db.FieldServicePolicyType)
 
 	_ = self.GetDb().View(func(tx *bbolt.Tx) error {
+		if !self.env.GetStores().PostureCheck.IterateIds(tx, ast.BoolNodeTrue).IsValid() {
+			return nil
+		}
+
 		policyCursor := self.env.GetStores().Identity.GetRelatedEntitiesCursor(tx, identityId, db.EntityTypeServicePolicies, true)
 		policyCursor = ast.NewFilteredCursor(policyCursor, func(policyId []byte) bool {
 			return serviceLinks.IsLinked(tx, policyId, []byte(serviceId))

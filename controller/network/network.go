@@ -613,7 +613,7 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 		circuit := &Circuit{
 			Id:         circuitId,
 			ClientId:   clientId.Token,
-			Service:    svc,
+			ServiceId:  svc.Id,
 			Path:       path,
 			Terminator: terminator,
 			PeerData:   peerData,
@@ -771,13 +771,18 @@ func (network *Network) RemoveCircuit(circuitId string, now bool) error {
 				log.Errorf("error sending unroute to [r/%s] (%s)", r.Id, err)
 			}
 		}
+
 		network.circuitController.remove(circuit)
 		network.CircuitEvent(event.CircuitDeleted, circuit, nil)
 
-		if strategy, err := network.strategyRegistry.GetStrategy(circuit.Service.TerminatorStrategy); strategy != nil {
-			strategy.NotifyEvent(xt.NewCircuitRemoved(circuit.Terminator))
-		} else if err != nil {
-			log.Warnf("failed to notify strategy %v of circuit end. invalid strategy (%v)", circuit.Service.TerminatorStrategy, err)
+		if svc, err := network.Services.Read(circuit.ServiceId); err == nil {
+			if strategy, err := network.strategyRegistry.GetStrategy(svc.TerminatorStrategy); strategy != nil {
+				strategy.NotifyEvent(xt.NewCircuitRemoved(circuit.Terminator))
+			} else if err != nil {
+				log.WithError(err).WithField("terminatorStrategy", svc.TerminatorStrategy).Warn("failed to notify strategy of circuit end, invalid strategy")
+			}
+		} else {
+			log.WithError(err).Error("unable to get service for circuit")
 		}
 
 		log.Debug("removed circuit")

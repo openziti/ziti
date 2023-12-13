@@ -319,6 +319,17 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 	} else {
 		log.Info("received additional terminator created notification")
 	}
+
+	if terminator.notifyEstablished {
+		go func() {
+			notifyMsg := channel.NewMessage(edge.ContentTypeBindSuccess, nil)
+			notifyMsg.PutUint32Header(edge.ConnIdHeader, terminator.MsgChannel.Id())
+
+			if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.Channel); err != nil {
+				log.WithError(err).Error("failed to send bind success")
+			}
+		}()
+	}
 }
 
 func (self *hostedServiceRegistry) waitForTerminatorCreated(id string, timeout time.Duration) bool {

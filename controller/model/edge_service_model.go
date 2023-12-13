@@ -23,15 +23,17 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 type Service struct {
 	models.BaseEntity
-	Name               string   `json:"name"`
-	TerminatorStrategy string   `json:"terminatorStrategy"`
-	RoleAttributes     []string `json:"roleAttributes"`
-	Configs            []string `json:"configs"`
-	EncryptionRequired bool     `json:"encryptionRequired"`
+	Name               string        `json:"name"`
+	MaxIdleTime        time.Duration `json:"maxIdleTime"`
+	TerminatorStrategy string        `json:"terminatorStrategy"`
+	RoleAttributes     []string      `json:"roleAttributes"`
+	Configs            []string      `json:"configs"`
+	EncryptionRequired bool          `json:"encryptionRequired"`
 }
 
 func (entity *Service) toBoltEntity(tx *bbolt.Tx, env Env) (*db.EdgeService, error) {
@@ -43,6 +45,7 @@ func (entity *Service) toBoltEntity(tx *bbolt.Tx, env Env) (*db.EdgeService, err
 		Service: db.Service{
 			BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
 			Name:               entity.Name,
+			MaxIdleTime:        entity.MaxIdleTime,
 			TerminatorStrategy: entity.TerminatorStrategy,
 		},
 		RoleAttributes:     entity.RoleAttributes,
@@ -96,6 +99,7 @@ func (entity *Service) fillFrom(_ Env, _ *bbolt.Tx, boltService *db.EdgeService)
 type ServiceDetail struct {
 	models.BaseEntity
 	Name               string                            `json:"name"`
+	MaxIdleTime        time.Duration                     `json:"maxIdleTime"`
 	TerminatorStrategy string                            `json:"terminatorStrategy"`
 	RoleAttributes     []string                          `json:"roleAttributes"`
 	Permissions        []string                          `json:"permissions"`
@@ -114,6 +118,7 @@ func (entity *ServiceDetail) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldCh
 
 func (entity *ServiceDetail) fillFrom(_ Env, _ *bbolt.Tx, boltService *db.EdgeService) error {
 	entity.FillCommon(boltService)
+	entity.MaxIdleTime = boltService.MaxIdleTime
 	entity.Name = boltService.Name
 	entity.TerminatorStrategy = boltService.TerminatorStrategy
 	entity.RoleAttributes = boltService.RoleAttributes

@@ -1,3 +1,60 @@
+# Release 0.31.3
+
+## What's New
+
+* Services Max Idle Time
+* Add/Remove Peer and Transfer Leadership via REST
+
+## Service Max Idle Time
+
+A max idle time can now be configured on services. The default value of 0 indicates that no maximum will 
+be enforced. A circuit is considered idle when no traffic is flowing across through the initiating or
+terminating router. 
+
+```
+ziti edge create service test-service --max-idle-time 5m
+```
+
+Note that the idle time calculation is done on the router, so if max idle time on a service is less 
+than the configured scan interval on the router, it make take longer than expected for idle circuits
+to be removed.
+
+## Raft Cluster Management via REST
+
+The controller now allows some Raft cluster management operations to be performed via REST. 
+
+NOTE: If your cluster is not bootstrapped yet, the REST API won't be available. These will only work on a bootstrapped cluster! 
+
+The following operations are now supported:
+
+* Add member
+* Remove member
+* Transfer leadership
+
+```
+ziti fabric raft add-member tls:localhost:6363
+ziti fabric raft add-member tls:localhost:6464
+ziti fabric raft transfer-leadership 
+ziti fabric raft transfer-leadership ctrl3
+ziti fabric raft remove-member ctrl2
+ziti fabric raft remove-member ctrl3
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge-api: [v0.26.1 -> v0.26.6](https://github.com/openziti/edge-api/compare/v0.26.1...v0.26.6)
+* github.com/openziti/sdk-golang: [v0.20.139 -> v0.21.2](https://github.com/openziti/sdk-golang/compare/v0.20.139...v0.21.2)
+    * [Issue #465](https://github.com/openziti/sdk-golang/issues/465) - Allow listen options to specify how many listeners need to be established before returning
+    * [Issue #462](https://github.com/openziti/sdk-golang/issues/462) - Allow refreshing a single service
+
+* github.com/openziti/ziti: [v0.31.2 -> v0.31.3](https://github.com/openziti/ziti/compare/v0.31.2...v0.31.3)
+    * [Issue #1583](https://github.com/openziti/ziti/issues/1583) - xgress: Potential data stall due when processing acks after checking window size 
+    * [Issue #1578](https://github.com/openziti/ziti/issues/1578) - Send BindSuccess notifications to SDK if supported
+    * [Issue #1544](https://github.com/openziti/ziti/issues/1544) - Support transfer raft leadership via REST
+    * [Issue #1543](https://github.com/openziti/ziti/issues/1543) - Support add/remove raft peer via REST
+    * [Issue #1496](https://github.com/openziti/ziti/issues/1496) - Configurable Timer needed to close idle circuits
+    * [Issue #1402](https://github.com/openziti/ziti/issues/1402) - Allow router to decomission itself
+
 # Release 0.31.2
 
 ## What's New

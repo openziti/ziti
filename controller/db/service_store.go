@@ -17,22 +17,25 @@
 package db
 
 import (
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 const (
 	EntityTypeServices             = "services"
 	FieldServiceTerminatorStrategy = "terminatorStrategy"
+	FieldServiceMaxIdleTime        = "maxIdleTime"
 )
 
 type Service struct {
 	boltz.BaseExtEntity
-	Name               string `json:"name"`
-	TerminatorStrategy string `json:"terminatorStrategy"`
+	Name               string        `json:"name"`
+	MaxIdleTime        time.Duration `json:"maxIdleTime"`
+	TerminatorStrategy string        `json:"terminatorStrategy"`
 }
 
 func (entity *Service) GetEntityType() string {
@@ -91,11 +94,13 @@ func (store *serviceStoreImpl) FillEntity(entity *Service, bucket *boltz.TypedBu
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.TerminatorStrategy = bucket.GetStringWithDefault(FieldServiceTerminatorStrategy, "")
+	entity.MaxIdleTime = time.Duration(bucket.GetInt64WithDefault(FieldServiceMaxIdleTime, 0))
 }
 
 func (store *serviceStoreImpl) PersistEntity(entity *Service, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
+	ctx.SetInt64(FieldServiceMaxIdleTime, int64(entity.MaxIdleTime))
 
 	if entity.TerminatorStrategy == "" {
 		entity.TerminatorStrategy = xt_smartrouting.Name

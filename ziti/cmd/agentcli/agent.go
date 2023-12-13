@@ -10,11 +10,11 @@ import (
 
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/router/debugops"
+	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/router"
-	"github.com/openziti/identity"
+	"github.com/openziti/ziti/router/debugops"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
@@ -99,13 +99,16 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	routerCmd.AddCommand(NewToggleCtrlChannelAgentCmd(p, "disconnect", false))
 	routerCmd.AddCommand(NewToggleCtrlChannelAgentCmd(p, "reconnect", true))
 
-	quiesceCmd := NewSimpleChAgentCustomCmd("quiesce", AgentAppRouter, int32(mgmt_pb.ContentType_RouterQuiesce), p)
+	quiesceCmd := NewSimpleChAgentCustomCmd("quiesce", AgentAppRouter, int32(mgmt_pb.ContentType_RouterQuiesceRequestType), p)
 	quiesceCmd.Hidden = true
 	routerCmd.AddCommand(quiesceCmd)
 
-	dequiesceCmd := NewSimpleChAgentCustomCmd("dequiesce", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDequiesce), p)
+	dequiesceCmd := NewSimpleChAgentCustomCmd("dequiesce", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDequiesceRequestType), p)
 	dequiesceCmd.Hidden = true
 	routerCmd.AddCommand(dequiesceCmd)
+
+	decommissionCmd := NewSimpleChAgentCustomCmd("decommission", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDecommissionRequestType), p)
+	routerCmd.AddCommand(decommissionCmd)
 
 	return agentCmd
 }

@@ -168,6 +168,15 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		RaftRaftListMembersHandler: raft.RaftListMembersHandlerFunc(func(params raft.RaftListMembersParams) middleware.Responder {
 			return middleware.NotImplemented("operation raft.RaftListMembers has not yet been implemented")
 		}),
+		RaftRaftMemberAddHandler: raft.RaftMemberAddHandlerFunc(func(params raft.RaftMemberAddParams) middleware.Responder {
+			return middleware.NotImplemented("operation raft.RaftMemberAdd has not yet been implemented")
+		}),
+		RaftRaftMemberRemoveHandler: raft.RaftMemberRemoveHandlerFunc(func(params raft.RaftMemberRemoveParams) middleware.Responder {
+			return middleware.NotImplemented("operation raft.RaftMemberRemove has not yet been implemented")
+		}),
+		RaftRaftTranferLeadershipHandler: raft.RaftTranferLeadershipHandlerFunc(func(params raft.RaftTranferLeadershipParams) middleware.Responder {
+			return middleware.NotImplemented("operation raft.RaftTranferLeadership has not yet been implemented")
+		}),
 		RouterUpdateRouterHandler: router.UpdateRouterHandlerFunc(func(params router.UpdateRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.UpdateRouter has not yet been implemented")
 		}),
@@ -275,6 +284,12 @@ type ZitiFabricAPI struct {
 	TerminatorPatchTerminatorHandler terminator.PatchTerminatorHandler
 	// RaftRaftListMembersHandler sets the operation handler for the raft list members operation
 	RaftRaftListMembersHandler raft.RaftListMembersHandler
+	// RaftRaftMemberAddHandler sets the operation handler for the raft member add operation
+	RaftRaftMemberAddHandler raft.RaftMemberAddHandler
+	// RaftRaftMemberRemoveHandler sets the operation handler for the raft member remove operation
+	RaftRaftMemberRemoveHandler raft.RaftMemberRemoveHandler
+	// RaftRaftTranferLeadershipHandler sets the operation handler for the raft tranfer leadership operation
+	RaftRaftTranferLeadershipHandler raft.RaftTranferLeadershipHandler
 	// RouterUpdateRouterHandler sets the operation handler for the update router operation
 	RouterUpdateRouterHandler router.UpdateRouterHandler
 	// ServiceUpdateServiceHandler sets the operation handler for the update service operation
@@ -450,6 +465,15 @@ func (o *ZitiFabricAPI) Validate() error {
 	}
 	if o.RaftRaftListMembersHandler == nil {
 		unregistered = append(unregistered, "raft.RaftListMembersHandler")
+	}
+	if o.RaftRaftMemberAddHandler == nil {
+		unregistered = append(unregistered, "raft.RaftMemberAddHandler")
+	}
+	if o.RaftRaftMemberRemoveHandler == nil {
+		unregistered = append(unregistered, "raft.RaftMemberRemoveHandler")
+	}
+	if o.RaftRaftTranferLeadershipHandler == nil {
+		unregistered = append(unregistered, "raft.RaftTranferLeadershipHandler")
 	}
 	if o.RouterUpdateRouterHandler == nil {
 		unregistered = append(unregistered, "router.UpdateRouterHandler")
@@ -672,6 +696,18 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/raft/list-members"] = raft.NewRaftListMembers(o.context, o.RaftRaftListMembersHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/raft/add-member"] = raft.NewRaftMemberAdd(o.context, o.RaftRaftMemberAddHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/raft/remove-member"] = raft.NewRaftMemberRemove(o.context, o.RaftRaftMemberRemoveHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/raft/transfer-leadership"] = raft.NewRaftTranferLeadership(o.context, o.RaftRaftTranferLeadershipHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
