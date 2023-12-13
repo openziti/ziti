@@ -193,16 +193,9 @@ func (buffer *LinkSendBuffer) run() {
 	defer retransmitTicker.Stop()
 
 	for {
-		// don't block when we're closing, since the only thing that should still be coming in is end-of-circuit
-		// if we're blocked, but empty, let one payload in to reduce the chances of a stall
-		if buffer.isBlocked() && !buffer.closeWhenEmpty.Load() && buffer.linkSendBufferSize != 0 {
-			buffered = nil
-		} else {
-			buffered = buffer.newlyBuffered
-		}
-
-		// bias acks by allowing 10 acks to be processed for every payload in
-		for i := 0; i < 10; i++ {
+		// bias acks, process all pending, since that should not block
+		processingAcks := true
+		for processingAcks {
 			select {
 			case ack := <-buffer.newlyReceivedAcks:
 				buffer.receiveAcknowledgement(ack)
@@ -210,8 +203,16 @@ func (buffer *LinkSendBuffer) run() {
 				buffer.close()
 				return
 			default:
-				i = 10
+				processingAcks = false
 			}
+		}
+
+		// don't block when we're closing, since the only thing that should still be coming in is end-of-circuit
+		// if we're blocked, but empty, let one payload in to reduce the chances of a stall
+		if buffer.isBlocked() && !buffer.closeWhenEmpty.Load() && buffer.linkSendBufferSize != 0 {
+			buffered = nil
+		} else {
+			buffered = buffer.newlyBuffered
 		}
 
 		select {

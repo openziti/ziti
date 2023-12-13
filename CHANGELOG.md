@@ -48,6 +48,7 @@ ziti fabric raft remove-member ctrl3
     * [Issue #462](https://github.com/openziti/sdk-golang/issues/462) - Allow refreshing a single service
 
 * github.com/openziti/ziti: [v0.31.2 -> v0.31.3](https://github.com/openziti/ziti/compare/v0.31.2...v0.31.3)
+    * [Issue #1583](https://github.com/openziti/ziti/issues/1583) - xgress: Potential data stall due when processing acks after checking window size 
     * [Issue #1578](https://github.com/openziti/ziti/issues/1578) - Send BindSuccess notifications to SDK if supported
     * [Issue #1544](https://github.com/openziti/ziti/issues/1544) - Support transfer raft leadership via REST
     * [Issue #1543](https://github.com/openziti/ziti/issues/1543) - Support add/remove raft peer via REST
