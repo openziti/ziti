@@ -105,7 +105,7 @@ func (r *RaftRouter) listMembers(n *network.Network, rc api.RequestContext) {
 		}, http.StatusOK)
 
 	} else {
-		rc.RespondWithApiError(apierror.NewNotRunningInClusterModeError())
+		rc.RespondWithApiError(apierror.NewNotRunningInHAModeError())
 	}
 }
 
@@ -138,7 +138,7 @@ func (r *RaftRouter) addMember(n *network.Network, rc api.RequestContext, params
 		rc.RespondWithEmptyOk()
 
 	} else {
-		rc.RespondWithApiError(apierror.NewNotRunningInClusterModeError())
+		rc.RespondWithApiError(apierror.NewNotRunningInHAModeError())
 	}
 }
 
@@ -158,7 +158,7 @@ func (r *RaftRouter) removeMember(n *network.Network, rc api.RequestContext, par
 		rc.RespondWithEmptyOk()
 
 	} else {
-		rc.RespondWithApiError(apierror.NewNotRunningInClusterModeError())
+		rc.RespondWithApiError(apierror.NewNotRunningInHAModeError())
 	}
 }
 
@@ -183,6 +183,6 @@ func (r *RaftRouter) transferLeadership(n *network.Network, rc api.RequestContex
 		rc.RespondWithEmptyOk()
 
 	} else {
-		rc.RespondWithApiError(apierror.NewNotRunningInClusterModeError())
+		rc.RespondWithApiError(apierror.NewNotRunningInHAModeError())
 	}
 }

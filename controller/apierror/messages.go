@@ -199,9 +199,9 @@ const (
 	ServerTooManyRequestsMessage string = "Too many requests to alter state have been issued. Please slow your request rate or try again later."
 	ServerTooManyRequestsStatus  int    = http.StatusTooManyRequests
 
-	ServerNotRunningInClusterModeCode    string = "SERVER_NOT_RUNNING_IN_CLUSTER_MODE"
-	ServerNotRunningInClusterModeMessage string = "The server is not running in cluster mode. Cluster operations are not permitted"
-	ServerNotRunningInClusterModeStatus         = http.StatusBadRequest
+	ServerNotRunningInHAModeCode    string = "SERVER_NOT_RUNNING_IN_HA_MODE"
+	ServerNotRunningInHAModeMessage string = "The server is not running in HA mode. HA operations are not permitted"
+	ServerNotRunningInHAModeStatus         = http.StatusBadRequest
 
 	TransferLeadershipErrorCode    string = "TRANSFER_LEADERSHIP_ERROR"
 	TransferLeadershipErrorMessage string = "Error while attempting to transfer leadership"

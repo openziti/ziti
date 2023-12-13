@@ -384,10 +384,10 @@ func NewTooManyUpdatesError() *errorz.ApiError {
 	}
 }
 
-func NewNotRunningInClusterModeError() *errorz.ApiError {
+func NewNotRunningInHAModeError() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    ServerNotRunningInClusterModeCode,
-		Message: ServerNotRunningInClusterModeMessage,
-		Status:  ServerNotRunningInClusterModeStatus,
+		Code:    ServerNotRunningInHAModeCode,
+		Message: ServerNotRunningInHAModeMessage,
+		Status:  ServerNotRunningInHAModeStatus,
 	}
 }
