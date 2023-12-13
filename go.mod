@@ -19,7 +19,7 @@ require (
 	github.com/go-acme/lego/v4 v4.14.2
 	github.com/go-openapi/errors v0.20.4
 	github.com/go-openapi/loads v0.21.2
-	github.com/go-openapi/runtime v0.26.0
+	github.com/go-openapi/runtime v0.26.2
 	github.com/go-openapi/spec v0.20.11
 	github.com/go-openapi/strfmt v0.21.9
 	github.com/go-openapi/swag v0.22.4
@@ -48,7 +48,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
 	github.com/openziti/channel/v2 v2.0.111
-	github.com/openziti/edge-api v0.26.2-0.20231207222636-f76d62194689
+	github.com/openziti/edge-api v0.26.6
 	github.com/openziti/foundation/v2 v2.0.35
 	github.com/openziti/identity v1.0.68
 	github.com/openziti/jwks v1.0.3
