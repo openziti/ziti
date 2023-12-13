@@ -42,14 +42,17 @@ ziti fabric raft remove-member ctrl3
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/edge-api: [v0.26.1 -> v0.26.5](https://github.com/openziti/edge-api/compare/v0.26.1...v0.26.5)
+* github.com/openziti/edge-api: [v0.26.1 -> v0.26.6](https://github.com/openziti/edge-api/compare/v0.26.1...v0.26.6)
+* github.com/openziti/sdk-golang: [v0.20.139 -> v0.21.2](https://github.com/openziti/sdk-golang/compare/v0.20.139...v0.21.2)
+    * [Issue #465](https://github.com/openziti/sdk-golang/issues/465) - Allow listen options to specify how many listeners need to be established before returning
+    * [Issue #462](https://github.com/openziti/sdk-golang/issues/462) - Allow refreshing a single service
+
 * github.com/openziti/ziti: [v0.31.2 -> v0.31.3](https://github.com/openziti/ziti/compare/v0.31.2...v0.31.3)
+    * [Issue #1578](https://github.com/openziti/ziti/issues/1578) - Send BindSuccess notifications to SDK if supported
     * [Issue #1544](https://github.com/openziti/ziti/issues/1544) - Support transfer raft leadership via REST
     * [Issue #1543](https://github.com/openziti/ziti/issues/1543) - Support add/remove raft peer via REST
     * [Issue #1496](https://github.com/openziti/ziti/issues/1496) - Configurable Timer needed to close idle circuits
     * [Issue #1402](https://github.com/openziti/ziti/issues/1402) - Allow router to decomission itself
-
-
 
 # Release 0.31.2
 
