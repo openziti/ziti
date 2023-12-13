@@ -15,7 +15,7 @@ require (
 	github.com/openziti/fablab v0.5.32
 	github.com/openziti/foundation/v2 v2.0.35
 	github.com/openziti/identity v1.0.68
-	github.com/openziti/sdk-golang v0.20.139
+	github.com/openziti/sdk-golang v0.21.2
 	github.com/openziti/storage v0.2.26
 	github.com/openziti/transport/v2 v2.0.119
 	github.com/openziti/ziti v0.28.3
@@ -129,7 +129,7 @@ require (
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
-	github.com/openziti/edge-api v0.26.5 // indirect
+	github.com/openziti/edge-api v0.26.6 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
 	github.com/openziti/metrics v1.2.40 // indirect
 	github.com/openziti/runzmd v1.0.36 // indirect

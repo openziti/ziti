@@ -387,23 +387,22 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		hostData[edge.PublicKeyHeader] = pubKey
 	}
 
-	postValidate := false
-	if supportsInspect, _ := req.GetBoolHeader(edge.SupportsInspectHeader); supportsInspect {
-		postValidate = true
-	}
+	postValidate, _ := req.GetBoolHeader(edge.SupportsInspectHeader)
+	notifyEstablished, _ := req.GetBoolHeader(edge.SupportsBindSuccessHeader)
 
 	terminator := &edgeTerminator{
-		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
-		edgeClientConn: self,
-		token:          token,
-		cost:           cost,
-		precedence:     precedence,
-		instance:       terminatorInstance,
-		instanceSecret: terminatorInstanceSecret,
-		hostData:       hostData,
-		assignIds:      assignIds,
-		v2:             true,
-		postValidate:   postValidate,
+		MsgChannel:        *edge.NewEdgeMsgChannel(self.ch, connId),
+		edgeClientConn:    self,
+		token:             token,
+		cost:              cost,
+		precedence:        precedence,
+		instance:          terminatorInstance,
+		instanceSecret:    terminatorInstanceSecret,
+		hostData:          hostData,
+		assignIds:         assignIds,
+		v2:                true,
+		postValidate:      postValidate,
+		notifyEstablished: notifyEstablished,
 	}
 	terminator.terminatorId.Store(terminatorId)
 
