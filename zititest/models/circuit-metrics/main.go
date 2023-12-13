@@ -25,6 +25,19 @@ import (
 	"time"
 )
 
+// configResource is a variable of type embed.FS used to store the configuration resources.
+// Example usage:
+// To access the configuration resources, you can use the configResource variable like this:
+// configPath := "configs/myconfig.json"
+// configFile, err := configResource.Open(configPath)
+//
+//	if err != nil {
+//	    // handle error
+//	}
+//
+// defer configFile.Close()
+// Note: The exact usage and behavior of the configResource variable depend on the context in which it is used, and the specific methods and functions that interact
+//
 //go:embed configs
 var configResource embed.FS
 
@@ -63,19 +76,23 @@ var m = &model.Model{
 					"password": "admin",
 				},
 				"influxdb": model.Variables{
-					"username": os.Getenv("INFLUX_USERNAME"),
-					"password": os.Getenv("INFLUX_PASSWORD"),
+					//"username": os.Getenv("INFLUX_USERNAME"), // These env variables are local to your machine
+					//"password": os.Getenv("INFLUX_PASSWORD"), // These env variables are local to your machine
+					"token": os.Getenv("INFLUX_TOKEN"), // These env variables are local to your machine
 				},
 				"aws": model.Variables{
 					"managed_key": true,
-					"access_key":  os.Getenv("AWS_ACCESS_KEY_ID"),
-					"secret_key":  os.Getenv("AWS_SECRET_ACCESS_KEY"),
+					"access_key":  os.Getenv("AWS_ACCESS_KEY_ID"),     // These env variables are local to your machine
+					"secret_key":  os.Getenv("AWS_SECRET_ACCESS_KEY"), // These env variables are local to your machine
 				},
 			},
 			"metrics": model.Variables{
 				"influxdb": model.Variables{
-					"url": os.Getenv("INFLUX_URL"),
-					"db":  os.Getenv("INFLUX_DB"),
+					"url":    os.Getenv("INFLUX_URL"),    // These env variables are local to your machine
+					"db":     os.Getenv("INFLUX_DB"),     // These env variables are local to your machine
+					"org":    os.Getenv("INFLUX_ORG"),    // These env variables are local to your machine
+					"bucket": os.Getenv("INFLUX_BUCKET"), // These env variables are local to your machine
+					"token":  os.Getenv("INFLUX_TOKEN"),  // These env variables are local to your machine
 				},
 			},
 		},
@@ -109,7 +126,7 @@ var m = &model.Model{
 					},
 				},
 				"router-us": {
-					InstanceType: "t3.micro",
+					InstanceType: "c5.large",
 					Components: model.Components{
 						"edge-router-us": {
 							Scope: model.Scope{Tags: model.Tags{"terminator", "tunneler", "edge-router", "iperf-server"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
@@ -128,7 +145,7 @@ var m = &model.Model{
 			Site:   "eu-west-2a",
 			Hosts: model.Hosts{
 				"router-eu": {
-					InstanceType: "t3.micro",
+					InstanceType: "c5.large",
 					Components: model.Components{
 						"edge-router-eu": {
 							Scope: model.Scope{Tags: model.Tags{"terminator", "tunneler", "edge-router", "iperf-client"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
@@ -176,7 +193,6 @@ func main() {
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
 	m.AddActivationActions("stop", "bootstrap", "start")
 	m.AddOperatingActions("login", "syncModelEdgeState", "start-iperf-tests")
-	fablab.InitModel(m)
 	runPhase := fablib_5_operation.NewPhase()
 
 	// Add the CircuitMetrics stage to the FabLab Model - the func/last arguments is needed to map the router name to lookup expression that will return a host.
@@ -186,8 +202,8 @@ func main() {
 	})
 	m.AddOperatingStage(circuitMetricsStage)
 
-	// Add the InfluxMetricsReporter stage to the FabLab Model
-	influxMetricsReporterStage := fablib_5_operation.InfluxMetricsReporter()
+	// Add the InfluxMetricsReporter2 stage to the FabLab Model
+	influxMetricsReporterStage := fablib_5_operation.InfluxMetricsReporter2()
 	m.AddOperatingStage(influxMetricsReporterStage)
 
 	var iPerfServerEndpoint = func(m *model.Model) string {
@@ -195,7 +211,9 @@ func main() {
 		return "iperf.service"
 	}
 	m.AddOperatingStage(fablib_5_operation.Iperf("Ziti_Overlay", iPerfServerEndpoint, "component.iperf-server", "component.iperf-client", 60))
+
 	m.AddOperatingStage(runPhase)
 	m.AddOperatingStage(fablib_5_operation.Persist())
+	fablab.InitModel(m)
 	fablab.Run()
 }
