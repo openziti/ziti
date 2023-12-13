@@ -1,3 +1,56 @@
+# Release 0.31.3
+
+## What's New
+
+* Services Max Idle Time
+* Add/Remove Peer and Transfer Leadership via REST
+
+## Service Max Idle Time
+
+A max idle time can now be configured on services. The default value of 0 indicates that no maximum will 
+be enforced. A circuit is considered idle when no traffic is flowing across through the initiating or
+terminating router. 
+
+```
+ziti edge create service test-service --max-idle-time 5m
+```
+
+Note that the idle time calculation is done on the router, so if max idle time on a service is less 
+than the configured scan interval on the router, it make take longer than expected for idle circuits
+to be removed.
+
+## Raft Cluster Management via REST
+
+The controller now allows some Raft cluster management operations to be performed via REST. 
+
+NOTE: If your cluster is not bootstrapped yet, the REST API won't be available. These will only work on a bootstrapped cluster! 
+
+The following operations are now supported:
+
+* Add member
+* Remove member
+* Transfer leadership
+
+```
+ziti fabric raft add-member tls:localhost:6363
+ziti fabric raft add-member tls:localhost:6464
+ziti fabric raft transfer-leadership 
+ziti fabric raft transfer-leadership ctrl3
+ziti fabric raft remove-member ctrl2
+ziti fabric raft remove-member ctrl3
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge-api: [v0.26.1 -> v0.26.5](https://github.com/openziti/edge-api/compare/v0.26.1...v0.26.5)
+* github.com/openziti/ziti: [v0.31.2 -> v0.31.3](https://github.com/openziti/ziti/compare/v0.31.2...v0.31.3)
+    * [Issue #1544](https://github.com/openziti/ziti/issues/1544) - Support transfer raft leadership via REST
+    * [Issue #1543](https://github.com/openziti/ziti/issues/1543) - Support add/remove raft peer via REST
+    * [Issue #1496](https://github.com/openziti/ziti/issues/1496) - Configurable Timer needed to close idle circuits
+    * [Issue #1402](https://github.com/openziti/ziti/issues/1402) - Allow router to decomission itself
+
+
+
 # Release 0.31.2
 
 ## What's New

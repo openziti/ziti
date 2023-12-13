@@ -39,34 +39,34 @@ import (
 	"github.com/openziti/ziti/controller/rest_model"
 )
 
-// RaftListMembersReader is a Reader for the RaftListMembers structure.
-type RaftListMembersReader struct {
+// RaftMemberAddReader is a Reader for the RaftMemberAdd structure.
+type RaftMemberAddReader struct {
 	formats strfmt.Registry
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *RaftListMembersReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *RaftMemberAddReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
 	case 200:
-		result := NewRaftListMembersOK()
+		result := NewRaftMemberAddOK()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
 		return result, nil
 	case 400:
-		result := NewRaftListMembersBadRequest()
+		result := NewRaftMemberAddBadRequest()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
 		return nil, result
 	case 401:
-		result := NewRaftListMembersUnauthorized()
+		result := NewRaftMemberAddUnauthorized()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
 		return nil, result
 	case 429:
-		result := NewRaftListMembersTooManyRequests()
+		result := NewRaftMemberAddTooManyRequests()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -76,29 +76,29 @@ func (o *RaftListMembersReader) ReadResponse(response runtime.ClientResponse, co
 	}
 }
 
-// NewRaftListMembersOK creates a RaftListMembersOK with default headers values
-func NewRaftListMembersOK() *RaftListMembersOK {
-	return &RaftListMembersOK{}
+// NewRaftMemberAddOK creates a RaftMemberAddOK with default headers values
+func NewRaftMemberAddOK() *RaftMemberAddOK {
+	return &RaftMemberAddOK{}
 }
 
-/* RaftListMembersOK describes a response with status code 200, with default header values.
+/* RaftMemberAddOK describes a response with status code 200, with default header values.
 
-A response to a raft list-members request
+Base empty response
 */
-type RaftListMembersOK struct {
-	Payload *rest_model.RaftMemberListResponse
+type RaftMemberAddOK struct {
+	Payload *rest_model.Empty
 }
 
-func (o *RaftListMembersOK) Error() string {
-	return fmt.Sprintf("[GET /raft/list-members][%d] raftListMembersOK  %+v", 200, o.Payload)
+func (o *RaftMemberAddOK) Error() string {
+	return fmt.Sprintf("[POST /raft/add-member][%d] raftMemberAddOK  %+v", 200, o.Payload)
 }
-func (o *RaftListMembersOK) GetPayload() *rest_model.RaftMemberListResponse {
+func (o *RaftMemberAddOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
 
-func (o *RaftListMembersOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *RaftMemberAddOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(rest_model.RaftMemberListResponse)
+	o.Payload = new(rest_model.Empty)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
@@ -108,27 +108,27 @@ func (o *RaftListMembersOK) readResponse(response runtime.ClientResponse, consum
 	return nil
 }
 
-// NewRaftListMembersBadRequest creates a RaftListMembersBadRequest with default headers values
-func NewRaftListMembersBadRequest() *RaftListMembersBadRequest {
-	return &RaftListMembersBadRequest{}
+// NewRaftMemberAddBadRequest creates a RaftMemberAddBadRequest with default headers values
+func NewRaftMemberAddBadRequest() *RaftMemberAddBadRequest {
+	return &RaftMemberAddBadRequest{}
 }
 
-/* RaftListMembersBadRequest describes a response with status code 400, with default header values.
+/* RaftMemberAddBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
-type RaftListMembersBadRequest struct {
+type RaftMemberAddBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *RaftListMembersBadRequest) Error() string {
-	return fmt.Sprintf("[GET /raft/list-members][%d] raftListMembersBadRequest  %+v", 400, o.Payload)
+func (o *RaftMemberAddBadRequest) Error() string {
+	return fmt.Sprintf("[POST /raft/add-member][%d] raftMemberAddBadRequest  %+v", 400, o.Payload)
 }
-func (o *RaftListMembersBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
+func (o *RaftMemberAddBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
 
-func (o *RaftListMembersBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *RaftMemberAddBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
@@ -140,27 +140,27 @@ func (o *RaftListMembersBadRequest) readResponse(response runtime.ClientResponse
 	return nil
 }
 
-// NewRaftListMembersUnauthorized creates a RaftListMembersUnauthorized with default headers values
-func NewRaftListMembersUnauthorized() *RaftListMembersUnauthorized {
-	return &RaftListMembersUnauthorized{}
+// NewRaftMemberAddUnauthorized creates a RaftMemberAddUnauthorized with default headers values
+func NewRaftMemberAddUnauthorized() *RaftMemberAddUnauthorized {
+	return &RaftMemberAddUnauthorized{}
 }
 
-/* RaftListMembersUnauthorized describes a response with status code 401, with default header values.
+/* RaftMemberAddUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
-type RaftListMembersUnauthorized struct {
+type RaftMemberAddUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *RaftListMembersUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /raft/list-members][%d] raftListMembersUnauthorized  %+v", 401, o.Payload)
+func (o *RaftMemberAddUnauthorized) Error() string {
+	return fmt.Sprintf("[POST /raft/add-member][%d] raftMemberAddUnauthorized  %+v", 401, o.Payload)
 }
-func (o *RaftListMembersUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
+func (o *RaftMemberAddUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
 
-func (o *RaftListMembersUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *RaftMemberAddUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
@@ -172,27 +172,27 @@ func (o *RaftListMembersUnauthorized) readResponse(response runtime.ClientRespon
 	return nil
 }
 
-// NewRaftListMembersTooManyRequests creates a RaftListMembersTooManyRequests with default headers values
-func NewRaftListMembersTooManyRequests() *RaftListMembersTooManyRequests {
-	return &RaftListMembersTooManyRequests{}
+// NewRaftMemberAddTooManyRequests creates a RaftMemberAddTooManyRequests with default headers values
+func NewRaftMemberAddTooManyRequests() *RaftMemberAddTooManyRequests {
+	return &RaftMemberAddTooManyRequests{}
 }
 
-/* RaftListMembersTooManyRequests describes a response with status code 429, with default header values.
+/* RaftMemberAddTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
-type RaftListMembersTooManyRequests struct {
+type RaftMemberAddTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *RaftListMembersTooManyRequests) Error() string {
-	return fmt.Sprintf("[GET /raft/list-members][%d] raftListMembersTooManyRequests  %+v", 429, o.Payload)
+func (o *RaftMemberAddTooManyRequests) Error() string {
+	return fmt.Sprintf("[POST /raft/add-member][%d] raftMemberAddTooManyRequests  %+v", 429, o.Payload)
 }
-func (o *RaftListMembersTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
+func (o *RaftMemberAddTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
 
-func (o *RaftListMembersTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *RaftMemberAddTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

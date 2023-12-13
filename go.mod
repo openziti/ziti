@@ -19,7 +19,7 @@ require (
 	github.com/go-acme/lego/v4 v4.14.2
 	github.com/go-openapi/errors v0.20.4
 	github.com/go-openapi/loads v0.21.2
-	github.com/go-openapi/runtime v0.26.0
+	github.com/go-openapi/runtime v0.26.2
 	github.com/go-openapi/spec v0.20.11
 	github.com/go-openapi/strfmt v0.21.9
 	github.com/go-openapi/swag v0.22.4
@@ -48,7 +48,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
 	github.com/openziti/channel/v2 v2.0.111
-	github.com/openziti/edge-api v0.26.2-0.20231207222636-f76d62194689
+	github.com/openziti/edge-api v0.26.5
 	github.com/openziti/foundation/v2 v2.0.35
 	github.com/openziti/identity v1.0.68
 	github.com/openziti/jwks v1.0.3
@@ -71,7 +71,7 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.18.0
+	github.com/spf13/viper v1.18.1
 	github.com/stretchr/testify v1.8.4
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0

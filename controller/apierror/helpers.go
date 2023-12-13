@@ -383,3 +383,11 @@ func NewTooManyUpdatesError() *errorz.ApiError {
 		Status:  ServerTooManyRequestsStatus,
 	}
 }
+
+func NewNotRunningInHAModeError() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    ServerNotRunningInHAModeCode,
+		Message: ServerNotRunningInHAModeMessage,
+		Status:  ServerNotRunningInHAModeStatus,
+	}
+}
