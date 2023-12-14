@@ -1,3 +1,20 @@
+# Release 0.31.4
+
+## What's New
+
+* Bug fix for a data flow stall which is especially likely to happen on circuits with single router paths
+
+## Thanks
+
+* @marvkis - for providing high quality debug data which made tracking down a couple of flow control stall issues much easier
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/metrics: [v1.2.40 -> v1.2.41](https://github.com/openziti/metrics/compare/v1.2.40...v1.2.41)
+* github.com/openziti/storage: [v0.2.26 -> v0.2.27](https://github.com/openziti/storage/compare/v0.2.26...v0.2.27)
+* github.com/openziti/ziti: [v0.31.3 -> v0.31.4](https://github.com/openziti/ziti/compare/v0.31.3...v0.31.4)
+    * [Issue #1586](https://github.com/openziti/ziti/issues/1586) - If ack is received before payload is processed by link send buffer, a stall can result
+
 # Release 0.31.3
 
 ## What's New

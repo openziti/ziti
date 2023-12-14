@@ -101,10 +101,12 @@ func (self *txPayload) isRetransmittable() bool {
 func NewLinkSendBuffer(x *Xgress) *LinkSendBuffer {
 	logrus.Debugf("txPortalStartSize = %d", x.Options.TxPortalStartSize)
 
+	// newlyBuffered should be size 0, otherwise payloads can be sent and acks received before the payload is
+	// processed by the LinkSendBuffer
 	buffer := &LinkSendBuffer{
 		x:                 x,
 		buffer:            make(map[int32]*txPayload),
-		newlyBuffered:     make(chan *txPayload, x.Options.TxQueueSize),
+		newlyBuffered:     make(chan *txPayload),
 		newlyReceivedAcks: make(chan *Acknowledgement, 2),
 		closeNotify:       make(chan struct{}),
 		windowsSize:       x.Options.TxPortalStartSize,
@@ -139,7 +141,12 @@ func (buffer *LinkSendBuffer) ReceiveAcknowledgement(ack *Acknowledgement) {
 	case buffer.newlyReceivedAcks <- ack:
 		log.Debug("ack processed")
 	case <-buffer.closeNotify:
-		log.Error("payload buffer closed")
+		// if end of circuit was received, we've cleanly shutdown and can ignore any trailing acks
+		if buffer.x.IsEndOfCircuitReceived() {
+			log.Debug("payload buffer closed")
+		} else {
+			log.Error("payload buffer closed")
+		}
 	}
 }
 

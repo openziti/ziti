@@ -34,17 +34,12 @@ type Scanner struct {
 	closeNotify <-chan struct{}
 }
 
-func NewScanner(ctrls env.NetworkControllers, options *Options, closeNotify <-chan struct{}) *Scanner {
+func newScanner(ctrls env.NetworkControllers, options *Options, closeNotify <-chan struct{}) *Scanner {
 	s := &Scanner{
 		ctrls:       ctrls,
 		interval:    options.IdleTxInterval,
 		timeout:     options.IdleCircuitTimeout,
 		closeNotify: closeNotify,
-	}
-	if s.interval > 0 {
-		go s.run()
-	} else {
-		logrus.Warnf("scanner disabled")
 	}
 	return s
 }
