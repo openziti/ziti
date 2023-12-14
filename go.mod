@@ -28,11 +28,11 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.5.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.1
-	github.com/hashicorp/go-hclog v1.6.1
+	github.com/hashicorp/go-hclog v1.6.2
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/raft v1.6.0
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0
@@ -52,11 +52,11 @@ require (
 	github.com/openziti/foundation/v2 v2.0.35
 	github.com/openziti/identity v1.0.68
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.40
+	github.com/openziti/metrics v1.2.41
 	github.com/openziti/runzmd v1.0.36
 	github.com/openziti/sdk-golang v0.21.2
 	github.com/openziti/secretstream v0.1.14
-	github.com/openziti/storage v0.2.26
+	github.com/openziti/storage v0.2.27
 	github.com/openziti/transport/v2 v2.0.119
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
