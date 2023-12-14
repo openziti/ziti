@@ -337,8 +337,8 @@ github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5/go.mod h1:kpwsk12EmLe
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/google/uuid v1.4.0 h1:MtMxsa51/r9yyhkyLsVeVt0B+BGQZzpQiTQ4eHZ8bc4=
-github.com/google/uuid v1.4.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.5.0 h1:1p67kYwdtXjb0gL0BPiP1Av9wiZPo5A8z2cWkTZ+eyU=
+github.com/google/uuid v1.5.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gax-go v2.0.0+incompatible/go.mod h1:SFVmujtThgffbyetf+mdk2eWhX2bMyUtNHzFKcPA9HY=
 github.com/googleapis/gax-go/v2 v2.0.3/go.mod h1:LLvjysVCY1JZeum8Z6l8qUty8fiNwE08qbEPm1M08qg=
 github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+vpHVxEJEs9eg=
@@ -592,8 +592,8 @@ github.com/openziti/identity v1.0.68 h1:SaFr7BeFQBoWQDiT28vUb8D9w7v6lIAK6/9RkwmV
 github.com/openziti/identity v1.0.68/go.mod h1:HbOu3TQ032v8xE6xZWjO51azF4fUxRLjO/l/oGqJwUI=
 github.com/openziti/jwks v1.0.3 h1:hf8wkb+Cg4nH/HM0KROFd7u+C3DkRVcFZJ7tDV+4icc=
 github.com/openziti/jwks v1.0.3/go.mod h1:t4xxq8vlXGsPn29kiQVnZBBDDnEoOFqtJoHibkJunQQ=
-github.com/openziti/metrics v1.2.40 h1:gySRgR8prCPqaEjmUtX0eXFs7NkI9uPAzp+z6A8+JqA=
-github.com/openziti/metrics v1.2.40/go.mod h1:HXdVryf3xpZfnY4VcaOjMxiBv+qw0wJlEJNLbooB9hY=
+github.com/openziti/metrics v1.2.41 h1:JShcFb6qJPA2cMiWQLtcSXiJjsrhEWpH+aVcjT/Mcbs=
+github.com/openziti/metrics v1.2.41/go.mod h1:L9h0NrliMA3+p7+ascKgvx28qoKHymN9l+CMA+Q+sZc=
 github.com/openziti/runzmd v1.0.36 h1:HOqTZFzTTFu52qmCAQfFvKDmCSl8ZqP1PQQ0UnJIA4E=
 github.com/openziti/runzmd v1.0.36/go.mod h1:jYqummjskmFh63htJFF2SrUuvxNQifqd5REUhYVaY/A=
 github.com/openziti/sdk-golang v0.21.2 h1:P66cslOAmQX37VFan+df+MoD2PqaFjHWDNMpuhhXHSo=
