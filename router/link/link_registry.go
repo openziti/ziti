@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
@@ -34,6 +35,7 @@ import (
 )
 
 type Env interface {
+	GetRouterId() *identity.TokenId
 	GetNetworkControllers() env.NetworkControllers
 	GetXlinkDialers() []xlink.Dialer
 	GetCloseNotify() <-chan struct{}
@@ -118,7 +120,9 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	}
 	if existing := self.linkMap[link.Key()]; existing != nil {
 		log = log.WithField("currentLinkId", existing.Id())
-		if existing.Id() < link.Id() {
+		// once we have an established link, we'll store the same id on both sides. Once that happens we can't use
+		// the link id to decide which duplicate to throw away, so we'll use the router ids instead
+		if existing.Id() < link.Id() || (existing.Id() == link.Id() && self.env.GetRouterId().Token < link.DestinationId()) {
 			// give the other side a chance to close the link first and report it as a duplicate
 			time.AfterFunc(30*time.Second, func() {
 				if err := link.Close(); err != nil {

@@ -11,9 +11,15 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/metrics: [v1.2.40 -> v1.2.41](https://github.com/openziti/metrics/compare/v1.2.40...v1.2.41)
+* github.com/openziti/sdk-golang: [v0.21.2 -> v0.22.0](https://github.com/openziti/sdk-golang/compare/v0.21.2...v0.22.0)
+    * [Issue #468](https://github.com/openziti/sdk-golang/issues/468) - SDK does an unnecessary number of session refreshes
+
 * github.com/openziti/storage: [v0.2.26 -> v0.2.27](https://github.com/openziti/storage/compare/v0.2.26...v0.2.27)
 * github.com/openziti/ziti: [v0.31.3 -> v0.31.4](https://github.com/openziti/ziti/compare/v0.31.3...v0.31.4)
+    * [Issue #1645](https://github.com/openziti/ziti/issues/1645) - Once routers share a link id, we can't use the link id to decide which duplicate link to discard
+    * [Issue #1642](https://github.com/openziti/ziti/issues/1642) - Revert posture check optimization
     * [Issue #1586](https://github.com/openziti/ziti/issues/1586) - If ack is received before payload is processed by link send buffer, a stall can result
+
 
 # Release 0.31.3
 
