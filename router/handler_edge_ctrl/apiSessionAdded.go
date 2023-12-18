@@ -20,6 +20,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
@@ -29,9 +33,6 @@ import (
 	"github.com/openziti/ziti/router/fabric"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type apiSessionAddedHandler struct {
@@ -121,7 +122,7 @@ func (h *apiSessionAddedHandler) applySync(tracker *apiSessionSyncTracker) {
 
 	tracker.isDone.Store(true)
 	duration := tracker.endTime.Sub(tracker.startTime)
-	logrus.Infof("finished sychronizing api sessions [count: %d, syncId: %s, duration: %v]", len(apiSessions), tracker.syncId, duration)
+	logrus.Infof("finished synchronizing api sessions [count: %d, syncId: %s, duration: %v]", len(apiSessions), tracker.syncId, duration)
 }
 
 func (h *apiSessionAddedHandler) syncFailed(err error) {
