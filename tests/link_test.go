@@ -53,6 +53,12 @@ type testRegistryEnv struct {
 	closeNotify chan struct{}
 }
 
+func (self *testRegistryEnv) GetRouterId() *id.TokenId {
+	return &id.TokenId{
+		Token: "test-router",
+	}
+}
+
 func (self *testRegistryEnv) GetNetworkControllers() env.NetworkControllers {
 	return self.ctrls
 }
