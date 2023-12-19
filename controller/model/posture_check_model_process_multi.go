@@ -19,12 +19,13 @@ package model
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckProcessMulti{}
@@ -188,7 +189,7 @@ func (p *PostureCheckProcessMulti) fillFrom(_ Env, _ *bbolt.Tx, check *db.Postur
 	subCheck := subType.(*db.PostureCheckProcessMulti)
 
 	if subCheck == nil {
-		return fmt.Errorf("could not covert process check process multi to bolt type")
+		return fmt.Errorf("could not convert process check process multi to bolt type")
 	}
 
 	p.PostureCheckId = check.Id

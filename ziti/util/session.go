@@ -56,7 +56,7 @@ func (session *Session) Load() error {
 		return fmt.Errorf("unable to load Ziti CLI configuration. Exiting. Error: %v", err)
 	}
 	if session.Host == "" {
-		return fmt.Errorf("host not specififed in cli config file. Exiting")
+		return fmt.Errorf("host not specified in cli config file. Exiting")
 	}
 	return nil
 }

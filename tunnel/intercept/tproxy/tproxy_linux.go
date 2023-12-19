@@ -19,27 +19,28 @@ package tproxy
 import (
 	"context"
 	"fmt"
+	"net"
+	"os/exec"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/foundation/v2/mempool"
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/sdk-golang/ziti/edge/network"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/entities"
 	"github.com/openziti/ziti/tunnel/intercept"
 	"github.com/openziti/ziti/tunnel/router"
 	"github.com/openziti/ziti/tunnel/udp_vconn"
-	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/foundation/v2/mempool"
-	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/sdk-golang/ziti/edge/network"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
-	"net"
-	"os/exec"
-	"strings"
-	"syscall"
-	"time"
 )
 
 const (
@@ -231,7 +232,7 @@ func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resol
 	}
 
 	if t.tcpLn == nil && t.udpLn == nil {
-		return nil, errors.Errorf("service %v has no supported protocols (tcp, udp). Serivce protocols: %+v", *service.Name, config.Protocols)
+		return nil, errors.Errorf("service %v has no supported protocols (tcp, udp). Service protocols: %+v", *service.Name, config.Protocols)
 	}
 
 	if t.tcpLn != nil {
@@ -483,7 +484,7 @@ func (self *tProxy) Apply(addr *intercept.InterceptAddress) {
 	if err := self.addInterceptAddr(addr, self.service, port, self.tracker); err != nil {
 		logrus.Debugf("failed for service %v, intercepting proto: %v, cidr: %v, ports: %v:%v", *self.service.Name, addr.Proto(), addr.IpNet(), addr.LowPort(), addr.HighPort())
 
-		// do we undo the previous succesful ones?
+		// do we undo the previous successful ones?
 		// only fail at end and return all that failed?
 	}
 }

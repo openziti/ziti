@@ -166,7 +166,7 @@ These are true for all REST API and control channel addresses.
 
 Notes:
 
-- This process may take days, weeks, or months depending on the size of the nework and how often the router/clients are
+- This process may take days, weeks, or months depending on the size of the network and how often the router/clients are
   run
 - It is imperative that all clients/routers that will remain in use after the IP/hostname move connect at least once
   after `newAddress` and `newListener` values are configured and in use

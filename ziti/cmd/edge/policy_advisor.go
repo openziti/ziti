@@ -18,13 +18,14 @@ package edge
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // newPolicyAdvisor creates a command object for the "controller policy-advisor" command
@@ -176,7 +177,7 @@ func outputHeader(o *policyAdvisorOptions) error {
 		"Policy General Guidelines\n"+
 		"  In order for an identity to dial or bind a service, the following must be true:\n"+
 		"    - The identity must have access to the service via a service policy of the correct type (dial or bind)\n"+
-		"    - The identity must have acces to at least one on-line edge router via an edge router policy\n"+
+		"    - The identity must have access to at least one on-line edge router via an edge router policy\n"+
 		"    - The service must have access to at least one on-line edge router via a service edge router policy\n"+
 		"    - There must be at least one on-line edge router that both the identity and service have access to.\n"+
 		"\n"+

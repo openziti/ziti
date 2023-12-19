@@ -257,7 +257,7 @@ policies must now be created with no other roles or entity references.
 
 ### Service Edge Router Policy
 
-Previously services could be confgured with edge router roles, which limited which edge routers
+Previously services could be configured with edge router roles, which limited which edge routers
 could be used to dial or bind the service.
 
 In 0.9 that is replaced with a new standalone type: service edge router policies. A service edge

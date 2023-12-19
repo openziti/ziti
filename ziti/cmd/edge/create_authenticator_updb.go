@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge-api/rest_management_api_client/authenticator"
 	"github.com/openziti/foundation/v2/term"
@@ -105,7 +106,7 @@ func runCreateIdentityPassword(idType string, options *createAuthenticatorUpdb) 
 	}
 
 	if len(result.Payload.Data) != 0 {
-		return fmt.Errorf("updb authentictor already exists, update or remove it instead")
+		return fmt.Errorf("updb authenticator already exists, update or remove it instead")
 	}
 
 	if options.password == "" {

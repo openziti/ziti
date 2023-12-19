@@ -1,9 +1,9 @@
-# quick notes on builing a snap from scratch...
+# quick notes on building a snap from scratch...
 
 * checkout branch
 * install snapd if needed - https://docs.snapcraft.io/installing-snapd/6735
-* install snapcraft --classic to build snaps 
-    
+* install snapcraft --classic to build snaps
+
     snap install snapcraft --classic
     hash -r
 
@@ -13,17 +13,17 @@
 
     Cleaning later steps and re-staging ziti ('build' step changed)
     Priming ziti 
-    Snapping 'netfoundry' -                                                                                   
+    Snapping 'netfoundry' -
     Snapped netfoundry_0.0.1_amd64.snap
 
-* install the snap in spoooky 'dangerous' and 'devmode': 
+* install the snap in spoooky 'dangerous' and 'devmode':
 
     sudo snap install --devmode --dangerous netfoundry*.snap
 
 * ensure the snap is listed:
 
     snap list | grep netfoundry
-    
+
     should return something like:
     netfoundry            0.0.1                      x1    -            -           devmode
 

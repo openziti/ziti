@@ -3,15 +3,16 @@ package health
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	health "github.com/AppsFlyer/go-sundheit"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
-	"reflect"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -268,7 +269,7 @@ func (self *manager) OnCheckCompleted(name string, r health.Result) {
 	}
 
 	// If result processing is slow, let it drop on the floor. In general results should be coming in
-	// slowly enough that we shouln't have any trouble keeping up
+	// slowly enough that we shouldn't have any trouble keeping up
 	select {
 	case self.results <- wrapped:
 	default:
