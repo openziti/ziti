@@ -23,10 +23,10 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 )
 
@@ -36,10 +36,30 @@ type dialer struct {
 }
 
 func (dialer *dialer) IsTerminatorValid(id string, destination string) bool {
+	valid, _ := dialer.InspectTerminator(id, destination, true)
+	return valid
+}
+
+func (dialer *dialer) InspectTerminator(id string, destination string, fixInvalid bool) (bool, string) {
 	terminatorAddress := strings.TrimPrefix(destination, "hosted:")
 	pfxlog.Logger().Debug("looking up hosted service conn")
 	terminator, found := dialer.factory.hostedServices.Get(terminatorAddress)
-	return found && terminator.terminatorId.Load() == id
+	if found && terminator.terminatorId.Load() == id {
+		updated := terminator.state.CompareAndSwap(TerminatorStateEstablishing, TerminatorStateEstablished) ||
+			terminator.state.CompareAndSwap(TerminatorStatePendingEstablishment, TerminatorStateEstablished)
+
+		if updated {
+			dialer.factory.hostedServices.notifyTerminatorCreated(id)
+		}
+
+		result, err := terminator.inspect(fixInvalid)
+		if err != nil {
+			return true, err.Error()
+		}
+		return result.Type == edge.ConnTypeBind, result.Detail
+	}
+
+	return false, "terminator not found"
 }
 
 func newDialer(factory *Factory, options *Options) xgress.Dialer {

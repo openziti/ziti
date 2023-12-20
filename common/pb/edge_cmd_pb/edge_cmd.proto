@@ -371,6 +371,7 @@ message Service {
   repeated string roleAttributes = 5;
   repeated string configs = 6;
   bool encryptionRequired = 7;
+  int64 maxIdleTime = 8;
 }
 
 // Service Edge Router Policies

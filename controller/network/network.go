@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/storage/objectz"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/controller/event"
 	"os"
@@ -269,6 +270,14 @@ func (network *Network) GetCircuit(circuitId string) (*Circuit, bool) {
 
 func (network *Network) GetAllCircuits() []*Circuit {
 	return network.circuitController.all()
+}
+
+func (network *Network) GetCircuitStore() *objectz.ObjectStore[*Circuit] {
+	return network.circuitController.store
+}
+
+func (network *Network) GetLinkStore() *objectz.ObjectStore[*Link] {
+	return network.linkController.store
 }
 
 func (network *Network) RouteResult(rs *RouteStatus) bool {
@@ -599,15 +608,17 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 		delete(peerData, uint32(ctrl_msg.TerminatorLocalAddressHeader))
 		delete(peerData, uint32(ctrl_msg.TerminatorRemoteAddressHeader))
 
+		now := time.Now()
 		// 6: Create Circuit Object
 		circuit := &Circuit{
 			Id:         circuitId,
 			ClientId:   clientId.Token,
-			Service:    svc,
+			ServiceId:  svc.Id,
 			Path:       path,
 			Terminator: terminator,
 			PeerData:   peerData,
-			CreatedAt:  time.Now(),
+			CreatedAt:  now,
+			UpdatedAt:  now,
 			Tags:       tags,
 		}
 		network.circuitController.add(circuit)
@@ -760,13 +771,18 @@ func (network *Network) RemoveCircuit(circuitId string, now bool) error {
 				log.Errorf("error sending unroute to [r/%s] (%s)", r.Id, err)
 			}
 		}
+
 		network.circuitController.remove(circuit)
 		network.CircuitEvent(event.CircuitDeleted, circuit, nil)
 
-		if strategy, err := network.strategyRegistry.GetStrategy(circuit.Service.TerminatorStrategy); strategy != nil {
-			strategy.NotifyEvent(xt.NewCircuitRemoved(circuit.Terminator))
-		} else if err != nil {
-			log.Warnf("failed to notify strategy %v of circuit end. invalid strategy (%v)", circuit.Service.TerminatorStrategy, err)
+		if svc, err := network.Services.Read(circuit.ServiceId); err == nil {
+			if strategy, err := network.strategyRegistry.GetStrategy(svc.TerminatorStrategy); strategy != nil {
+				strategy.NotifyEvent(xt.NewCircuitRemoved(circuit.Terminator))
+			} else if err != nil {
+				log.WithError(err).WithField("terminatorStrategy", svc.TerminatorStrategy).Warn("failed to notify strategy of circuit end, invalid strategy")
+			}
+		} else {
+			log.WithError(err).Error("unable to get service for circuit")
 		}
 
 		log.Debug("removed circuit")
@@ -1031,6 +1047,7 @@ func (network *Network) rerouteCircuit(circuit *Circuit, deadline time.Time) err
 
 		if cq, err := network.UpdatePath(circuit.Path); err == nil {
 			circuit.Path = cq
+			circuit.UpdatedAt = time.Now()
 
 			rms := cq.CreateRouteMessages(SmartRerouteAttempt, circuit.Id, circuit.Terminator, deadline)
 
@@ -1060,6 +1077,7 @@ func (network *Network) smartReroute(circuit *Circuit, cq *Path, deadline time.T
 		defer circuit.Rerouting.Store(false)
 
 		circuit.Path = cq
+		circuit.UpdatedAt = time.Now()
 
 		rms := cq.CreateRouteMessages(SmartRerouteAttempt, circuit.Id, circuit.Terminator, deadline)
 

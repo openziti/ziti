@@ -1,9 +1,8 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/db"
 	"go.etcd.io/bbolt"
 )
 
@@ -63,8 +62,8 @@ func (advisor *PolicyAdvisor) AnalyzeServiceReachability(identityId, serviceId s
 	result := &AdvisorServiceReachability{
 		Identity:            identity,
 		Service:             service,
-		IsBindAllowed:       stringz.Contains(permissions, persistence.PolicyTypeBindName),
-		IsDialAllowed:       stringz.Contains(permissions, persistence.PolicyTypeDialName),
+		IsBindAllowed:       stringz.Contains(permissions, db.PolicyTypeBindName),
+		IsDialAllowed:       stringz.Contains(permissions, db.PolicyTypeDialName),
 		IdentityRouterCount: len(edgeRouters),
 		ServiceRouterCount:  len(serviceEdgeRouters),
 	}
@@ -95,7 +94,7 @@ func (advisor *PolicyAdvisor) getServicePermissions(identityId, serviceId string
 		return nil
 	}
 
-	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeServicePolicies, servicePolicyIterator); err != nil {
+	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, db.EntityTypeServicePolicies, servicePolicyIterator); err != nil {
 		return nil, err
 	}
 
@@ -125,7 +124,7 @@ func (advisor *PolicyAdvisor) getIdentityEdgeRouters(identityId string) (map[str
 
 		return advisor.env.GetManagers().EdgeRouterPolicy.iterateRelatedEntitiesInTx(tx, edgeRouterPolicyId, db.EntityTypeRouters, edgeRouterIterator)
 	}
-	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeEdgeRouterPolicies, edgeRouterPolicyIterator); err != nil {
+	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, db.EntityTypeEdgeRouterPolicies, edgeRouterPolicyIterator); err != nil {
 		return nil, err
 	}
 
@@ -143,7 +142,7 @@ func (advisor *PolicyAdvisor) getServiceEdgeRouters(serviceId string) (map[strin
 		return advisor.env.GetManagers().ServiceEdgeRouterPolicy.iterateRelatedEntitiesInTx(tx, policyId, db.EntityTypeRouters, edgeRouterIterator)
 	}
 
-	if err := advisor.env.GetManagers().EdgeService.iterateRelatedEntities(serviceId, persistence.EntityTypeServiceEdgeRouterPolicies, serviceEdgeRouterPolicyIterator); err != nil {
+	if err := advisor.env.GetManagers().EdgeService.iterateRelatedEntities(serviceId, db.EntityTypeServiceEdgeRouterPolicies, serviceEdgeRouterPolicyIterator); err != nil {
 		return nil, err
 	}
 
@@ -196,7 +195,7 @@ func (advisor *PolicyAdvisor) getEdgeRouterPolicies(identityId, edgeRouterId str
 		return nil
 	}
 
-	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeEdgeRouterPolicies, policyIterator); err != nil {
+	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, db.EntityTypeEdgeRouterPolicies, policyIterator); err != nil {
 		return nil, err
 	}
 
@@ -249,7 +248,7 @@ func (advisor *PolicyAdvisor) getServicePolicies(identityId, serviceId string) (
 		return nil
 	}
 
-	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeServicePolicies, policyIterator); err != nil {
+	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, db.EntityTypeServicePolicies, policyIterator); err != nil {
 		return nil, err
 	}
 
@@ -302,7 +301,7 @@ func (advisor *PolicyAdvisor) getServiceEdgeRouterPolicies(serviceId, edgeRouter
 		return nil
 	}
 
-	if err := advisor.env.GetManagers().EdgeService.iterateRelatedEntities(serviceId, persistence.EntityTypeServiceEdgeRouterPolicies, policyIterator); err != nil {
+	if err := advisor.env.GetManagers().EdgeService.iterateRelatedEntities(serviceId, db.EntityTypeServiceEdgeRouterPolicies, policyIterator); err != nil {
 		return nil, err
 	}
 

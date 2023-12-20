@@ -224,6 +224,21 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 			return middleware.NotImplemented("operation raft.RaftListMembers has not yet been implemented")
 		})
 	}
+	if api.RaftRaftMemberAddHandler == nil {
+		api.RaftRaftMemberAddHandler = raft.RaftMemberAddHandlerFunc(func(params raft.RaftMemberAddParams) middleware.Responder {
+			return middleware.NotImplemented("operation raft.RaftMemberAdd has not yet been implemented")
+		})
+	}
+	if api.RaftRaftMemberRemoveHandler == nil {
+		api.RaftRaftMemberRemoveHandler = raft.RaftMemberRemoveHandlerFunc(func(params raft.RaftMemberRemoveParams) middleware.Responder {
+			return middleware.NotImplemented("operation raft.RaftMemberRemove has not yet been implemented")
+		})
+	}
+	if api.RaftRaftTranferLeadershipHandler == nil {
+		api.RaftRaftTranferLeadershipHandler = raft.RaftTranferLeadershipHandlerFunc(func(params raft.RaftTranferLeadershipParams) middleware.Responder {
+			return middleware.NotImplemented("operation raft.RaftTranferLeadership has not yet been implemented")
+		})
+	}
 	if api.RouterUpdateRouterHandler == nil {
 		api.RouterUpdateRouterHandler = router.UpdateRouterHandlerFunc(func(params router.UpdateRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.UpdateRouter has not yet been implemented")

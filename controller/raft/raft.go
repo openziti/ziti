@@ -486,7 +486,9 @@ func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (int
 			return err
 		}
 
-		returnValue.Store(f.Response())
+		if response := f.Response(); response != nil {
+			returnValue.Store(response)
+		}
 		index.Store(f.Index())
 		return nil
 	})
@@ -681,6 +683,7 @@ func (self *Controller) addConfiguredBootstrapMembers() error {
 
 		if id, addr, err := self.Mesh.GetPeerInfo(bootstrapMember, time.Second*5); err != nil {
 			pfxlog.Logger().WithError(err).Errorf("unable to get id for bootstrap member [%v]", bootstrapMember)
+			go self.retryBootstrapMember(bootstrapMember)
 		} else {
 			self.addBootstrapServer(raft.Server{
 				Suffrage: raft.Voter,
@@ -690,6 +693,34 @@ func (self *Controller) addConfiguredBootstrapMembers() error {
 		}
 	}
 	return nil
+}
+
+func (self *Controller) retryBootstrapMember(bootstrapMember string) {
+	ticker := time.NewTicker(6 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		<-ticker.C
+
+		// If we've bootstrapped, exit out
+		if self.bootstrapped.Load() {
+			return
+		}
+
+		if id, addr, err := self.Mesh.GetPeerInfo(bootstrapMember, time.Second*5); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("unable to get id for bootstrap member [%v]", bootstrapMember)
+		} else {
+			req := &cmd_pb.AddPeerRequest{
+				Addr:    string(addr),
+				Id:      string(id),
+				IsVoter: true,
+			}
+
+			if err = self.Join(req); err == nil {
+				return
+			}
+		}
+	}
 }
 
 // Join adds the given node to the raft cluster

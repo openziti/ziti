@@ -19,13 +19,13 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/posture_checks"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/response"
 )
 
 func init() {
@@ -138,30 +138,30 @@ func (r *PostureCheckRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, 
 		check := MapPatchPostureCheckToModel(params.ID, params.PostureCheck)
 
 		if fields.IsUpdated("operatingSystems") {
-			fields.AddField(persistence.FieldPostureCheckOsType)
-			fields.AddField(persistence.FieldPostureCheckOsVersions)
+			fields.AddField(db.FieldPostureCheckOsType)
+			fields.AddField(db.FieldPostureCheckOsVersions)
 		}
 
 		if fields.IsUpdated("process.hashes") {
-			fields.AddField(persistence.FieldPostureCheckProcessHashes)
+			fields.AddField(db.FieldPostureCheckProcessHashes)
 		}
 		if fields.IsUpdated("process.path") {
-			fields.AddField(persistence.FieldPostureCheckProcessPath)
+			fields.AddField(db.FieldPostureCheckProcessPath)
 		}
 
 		if fields.IsUpdated("process.osType") {
-			fields.AddField(persistence.FieldPostureCheckProcessOs)
+			fields.AddField(db.FieldPostureCheckProcessOs)
 		}
 
 		if fields.IsUpdated("process.signerFingerprint") {
-			fields.AddField(persistence.FieldPostureCheckProcessFingerprint)
+			fields.AddField(db.FieldPostureCheckProcessFingerprint)
 		}
 
 		if fields.IsUpdated("processes") {
-			fields.AddField(persistence.FieldPostureCheckProcessMultiPath)
-			fields.AddField(persistence.FieldPostureCheckProcessMultiOsType)
-			fields.AddField(persistence.FieldPostureCheckProcessMultiSignerFingerprints)
-			fields.AddField(persistence.FieldPostureCheckProcessMultiHashes)
+			fields.AddField(db.FieldPostureCheckProcessMultiPath)
+			fields.AddField(db.FieldPostureCheckProcessMultiOsType)
+			fields.AddField(db.FieldPostureCheckProcessMultiSignerFingerprints)
+			fields.AddField(db.FieldPostureCheckProcessMultiHashes)
 		}
 
 		return ae.Managers.PostureCheck.Update(check, fields.FilterMaps("tags"), rc.NewChangeContext())

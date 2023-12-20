@@ -12,12 +12,11 @@ This article supports local development by providing a local containerized metho
 You only need to build the container image once unless you change the Dockerfile or `./linux-build.sh` (the container's entrypoint).
 
 ```bash
-# build a container image named "ziti-go-builder" with the same version of Go that's declared in go.mod
+# build a container image named "ziti-go-builder"
 docker buildx build \
     --tag=ziti-go-builder \
     --build-arg uid=$UID \
     --build-arg gid=$GID \
-    --build-arg golang_version=$(grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' go.mod) \
     --load \
     ./docker-images/cross-build/
 ```
@@ -56,7 +55,6 @@ You will find the built artifacts in `./release`.
     --tag=ziti-go-builder \
     --build-arg uid=$UID \
     --build-arg gid=$GID \
-    --build-arg golang_version="$(/bin/grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' go.mod)" \
     --load \
     ./docker-images/cross-build/
 

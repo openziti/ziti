@@ -22,11 +22,12 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xlink"
-	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
@@ -34,6 +35,7 @@ import (
 )
 
 type Env interface {
+	GetRouterId() *identity.TokenId
 	GetNetworkControllers() env.NetworkControllers
 	GetXlinkDialers() []xlink.Dialer
 	GetCloseNotify() <-chan struct{}
@@ -118,7 +120,9 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	}
 	if existing := self.linkMap[link.Key()]; existing != nil {
 		log = log.WithField("currentLinkId", existing.Id())
-		if existing.Id() < link.Id() {
+		// once we have an established link, we'll store the same id on both sides. Once that happens we can't use
+		// the link id to decide which duplicate to throw away, so we'll use the router ids instead
+		if existing.Id() < link.Id() || (existing.Id() == link.Id() && self.env.GetRouterId().Token < link.DestinationId()) {
 			// give the other side a chance to close the link first and report it as a duplicate
 			time.AfterFunc(30*time.Second, func() {
 				if err := link.Close(); err != nil {
@@ -165,9 +169,9 @@ func (self *linkRegistryImpl) LinkClosed(link xlink.Xlink) {
 	defer self.Unlock()
 	if val := self.linkMap[link.Key()]; val == link {
 		delete(self.linkMap, link.Key())
+		self.updateLinkStateClosed(link) // only update link state to closed if this was the current link
 	}
 	delete(self.linkByIdMap, link.Id())
-	self.updateLinkStateClosed(link)
 }
 
 func (self *linkRegistryImpl) Shutdown() {
@@ -325,12 +329,32 @@ func (self *linkRegistryImpl) evaluateLinkStateQueue() {
 }
 
 func (self *linkRegistryImpl) evaluateDestinations() {
-	for _, dest := range self.destinations {
-		// TODO: When do we drop destinations? Should we ask the controller after the router has been
-		//       unhealthy for a while and it doesn't have any established links? Do this on exponential backoff?
-		//      Should the controller send router removed messages?
+	for destId, dest := range self.destinations {
+		hasEstablishedLinks := false
 		for _, state := range dest.linkMap {
+			// verify that links marked as established have an open link. There's a small chance that a link established
+			// and link closed could be processed out of order if the event queue is full. This way, it will eventually
+			// get fixed.
+			if state.status == StatusEstablished {
+				link, _ := self.GetLink(state.linkKey)
+				if link == nil || link.IsClosed() {
+					// If the link is not valid, allow it to be re-dialed
+					state.retryDelay = time.Duration(0)
+					state.nextDial = time.Now()
+					state.status = StatusLinkFailed
+				} else {
+					hasEstablishedLinks = true
+				}
+			}
+
 			self.evaluateLinkState(state)
+		}
+
+		// we are notified of deleted routers. In case we're unreachable while a router is deleted,
+		// we will also stop trying to contact unhealthy routers after a period. If a destination
+		// has nothing to dial, it should also be removed
+		if len(dest.linkMap) == 0 || (!dest.healthy && !hasEstablishedLinks && time.Since(dest.unhealthyAt) > 48*time.Hour) {
+			delete(self.destinations, destId)
 		}
 	}
 }
@@ -343,14 +367,17 @@ func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 	if couldDial {
 		state.status = StatusDialing
 		state.dialAttempts++
+		log.Info("queuing link to dial")
 
 		err := self.env.GetLinkDialerPool().QueueOrError(func() {
 			link, _ := self.GetLink(state.linkKey)
 			if link != nil {
-				log.Warn("link already present, but link status still pending")
+				log.Info("link already present, attempting to mark established")
+				self.updateLinkStateEstablished(link)
 				return
 			}
 
+			log.Info("dialing link")
 			link, err := state.dialer.Dial(state)
 			if err != nil {
 				log.WithError(err).Error("error dialing link")
@@ -360,14 +387,23 @@ func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 				})
 				return
 			}
-			self.DialSucceeded(link)
+
+			existing, success := self.DialSucceeded(link)
+			if !success {
+				if existing != nil {
+					self.updateLinkStateEstablished(link)
+				} else {
+					self.queueEvent(&updateLinkState{
+						linkState: state,
+						status:    StatusDialFailed,
+					})
+				}
+			}
 		})
 		if err != nil {
 			log.WithError(err).Error("unable to queue link dial, see pool error")
-			self.queueEvent(&updateLinkState{
-				linkState: state,
-				status:    StatusQueueFailed,
-			})
+			state.status = StatusQueueFailed
+			state.dialFailed(self)
 		}
 	}
 }

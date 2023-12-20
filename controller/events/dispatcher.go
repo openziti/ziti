@@ -19,8 +19,8 @@ package events
 import (
 	"fmt"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/persistence"
 	"io"
 	"strings"
 
@@ -105,7 +105,7 @@ type Dispatcher struct {
 	formatterFactories    concurrenz.CopyOnWriteMap[string, event.FormatterFactory]
 
 	network *network.Network
-	stores  *persistence.Stores
+	stores  *db.Stores
 
 	entityChangeEventsDispatcher entityChangeEventDispatcher
 	entityTypes                  []string
@@ -125,7 +125,7 @@ func (self *Dispatcher) InitializeNetworkEvents(n *network.Network) {
 	self.AddMetricsMapper((&linkMetricsMapper{network: n}).mapMetrics)
 }
 
-func (self *Dispatcher) InitializeEdgeEvents(stores *persistence.Stores) {
+func (self *Dispatcher) InitializeEdgeEvents(stores *db.Stores) {
 	self.stores = stores
 	self.initApiSessionEvents(self.stores)
 	self.initSessionEvents(self.stores)

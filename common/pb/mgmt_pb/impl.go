@@ -11,3 +11,15 @@ func (request *InspectResponse) GetContentType() int32 {
 func (request *RaftMemberListResponse) GetContentType() int32 {
 	return int32(ContentType_RaftListMembersResponseType)
 }
+
+func (request *ValidateTerminatorsRequest) GetContentType() int32 {
+	return int32(ContentType_ValidateTerminatorsRequestType)
+}
+
+func (request *ValidateTerminatorsResponse) GetContentType() int32 {
+	return int32(ContentType_ValidateTerminatorResponseType)
+}
+
+func (request *TerminatorDetail) GetContentType() int32 {
+	return int32(ContentType_ValidateTerminatorResultType)
+}

@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/pkg/errors"
 	"io/fs"
-	"strings"
 )
 
 var _ model.ComponentType = (*ControllerType)(nil)
@@ -47,9 +46,7 @@ type ControllerType struct {
 }
 
 func (self *ControllerType) InitType(*model.Component) {
-	if self.Version != "" && self.Version != "latest" && !strings.HasPrefix(self.Version, "v") {
-		self.Version = "v" + self.Version
-	}
+	canonicalizeZitiVersion(&self.Version)
 }
 
 func (self *ControllerType) GetActions() map[string]model.ComponentAction {
@@ -134,9 +131,10 @@ func (self *ControllerType) InitStandalone(run model.Run, c *model.Component) er
 		binaryName += "-" + self.Version
 	}
 
+	binaryPath := getZitiBinaryPath(c, self.Version)
 	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s", factory.User(), self.getConfigName(c))
 
-	tmpl := "rm -f /home/%v/fablab/ctrl.db && set -o pipefail; /home/%s/fablab/bin/%s controller --log-formatter pfxlog edge init %s -u %s -p %s 2>&1 | tee logs/controller.edge.init.log"
-	cmd := fmt.Sprintf(tmpl, factory.User(), factory.User(), binaryName, configPath, username, password)
+	tmpl := "rm -f /home/%v/fablab/ctrl.db && set -o pipefail; %s controller --log-formatter pfxlog edge init %s -u %s -p %s 2>&1 | tee logs/controller.edge.init.log"
+	cmd := fmt.Sprintf(tmpl, factory.User(), binaryPath, configPath, username, password)
 	return host.Exec(c.GetHost(), cmd).Execute(run)
 }

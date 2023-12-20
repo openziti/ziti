@@ -17,9 +17,9 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -29,19 +29,19 @@ type Revocation struct {
 	ExpiresAt time.Time
 }
 
-func (entity *Revocation) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker boltz.FieldChecker) (*persistence.Revocation, error) {
+func (entity *Revocation) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker boltz.FieldChecker) (*db.Revocation, error) {
 	return entity.toBoltEntityForCreate(tx, env)
 }
 
-func (entity *Revocation) fillFrom(_ Env, _ *bbolt.Tx, boltRevocation *persistence.Revocation) error {
+func (entity *Revocation) fillFrom(_ Env, _ *bbolt.Tx, boltRevocation *db.Revocation) error {
 	entity.FillCommon(boltRevocation)
 	entity.ExpiresAt = boltRevocation.ExpiresAt
 
 	return nil
 }
 
-func (entity *Revocation) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.Revocation, error) {
-	boltEntity := &persistence.Revocation{
+func (entity *Revocation) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Revocation, error) {
+	boltEntity := &db.Revocation{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		ExpiresAt:     entity.ExpiresAt,
 	}

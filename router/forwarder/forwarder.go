@@ -18,14 +18,15 @@ package forwarder
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/common/trace"
-	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/common/inspect"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/common/trace"
+	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -34,8 +35,7 @@ import (
 type Forwarder struct {
 	circuits        *circuitTable
 	destinations    *destinationTable
-	faulter         *Faulter
-	scanner         *Scanner
+	faulter         FaultReceiver
 	metricsRegistry metrics.UsageRegistry
 	traceController trace.Controller
 	Options         *Options
@@ -58,19 +58,28 @@ type XgressDestination interface {
 	GetTimeOfLastRxFromLink() int64
 }
 
-func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter *Faulter, scanner *Scanner, options *Options, closeNotify <-chan struct{}) *Forwarder {
+func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter FaultReceiver, options *Options, closeNotify <-chan struct{}) *Forwarder {
 	f := &Forwarder{
 		circuits:        newCircuitTable(),
 		destinations:    newDestinationTable(),
 		faulter:         faulter,
-		scanner:         scanner,
 		metricsRegistry: metricsRegistry,
 		traceController: trace.NewController(closeNotify),
 		Options:         options,
 		CloseNotify:     closeNotify,
 	}
-	f.scanner.setCircuitTable(f.circuits)
 	return f
+}
+
+func (forwarder *Forwarder) StartScanner(ctrls env.NetworkControllers) {
+	scanner := newScanner(ctrls, forwarder.Options, forwarder.CloseNotify)
+	scanner.setCircuitTable(forwarder.circuits)
+
+	if scanner.interval > 0 {
+		go scanner.run()
+	} else {
+		logrus.Warnf("scanner disabled")
+	}
 }
 
 func (forwarder *Forwarder) MetricsRegistry() metrics.UsageRegistry {
@@ -110,14 +119,12 @@ func (forwarder *Forwarder) HasDestination(address xgress.Address) bool {
 }
 
 func (forwarder *Forwarder) RegisterLink(link xlink.LinkDestination) error {
-	if !forwarder.destinations.addDestinationIfAbsent(xgress.Address(link.Id()), link) {
-		return errors.Errorf("unable to register link %v as it is already registered", link.Id())
-	}
+	forwarder.destinations.addDestination(xgress.Address(link.Id()), link)
 	return nil
 }
 
 func (forwarder *Forwarder) UnregisterLink(link xlink.LinkDestination) {
-	forwarder.destinations.removeDestination(xgress.Address(link.Id()))
+	forwarder.destinations.removeDestinationIfMatches(xgress.Address(link.Id()), link)
 }
 
 func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
@@ -131,7 +138,7 @@ func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
 	for _, forward := range route.Forwards {
 		if !forwarder.HasDestination(xgress.Address(forward.DstAddress)) {
 			if forward.DstType == ctrl_pb.DestType_Link {
-				forwarder.faulter.notifyInvalidLink(forward.DstAddress)
+				forwarder.faulter.NotifyInvalidLink(forward.DstAddress)
 				return errors.Errorf("invalid link destination %v", forward.DstAddress)
 			}
 			if forward.DstType == ctrl_pb.DestType_End {
@@ -260,7 +267,7 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 
 func (forwarder *Forwarder) ReportForwardingFault(circuitId string, ctrlId string) {
 	if forwarder.faulter != nil {
-		forwarder.faulter.report(circuitId, ctrlId)
+		forwarder.faulter.Report(circuitId, ctrlId)
 	} else {
 		logrus.Error("nil faulter, cannot accept forwarding fault report")
 	}

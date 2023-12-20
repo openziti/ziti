@@ -19,11 +19,11 @@ package link
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/router/xlink"
-	"github.com/openziti/foundation/v2/stringz"
 	"github.com/pkg/errors"
 	"sync/atomic"
 	"time"
@@ -255,7 +255,7 @@ func (self *updateLinkState) Handle(registry *linkRegistryImpl) {
 	}
 
 	state.status = self.status
-	if state.status == StatusQueueFailed || state.status == StatusDialFailed {
+	if state.status == StatusDialFailed {
 		state.dialFailed(registry)
 	}
 }

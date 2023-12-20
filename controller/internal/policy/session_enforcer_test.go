@@ -18,11 +18,11 @@ package policy
 
 import (
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/sirupsen/logrus"
 	"testing"
 	"time"
@@ -46,10 +46,10 @@ func (ctx *enforcerTestContext) testSessionsCleanup() {
 	logrus.SetLevel(logrus.DebugLevel)
 	ctx.CleanupAll()
 
-	compareOpts := cmpopts.IgnoreFields(persistence.Session{}, "ApiSession")
+	compareOpts := cmpopts.IgnoreFields(db.Session{}, "ApiSession")
 
 	identity := ctx.RequireNewIdentity("Jojo", false)
-	apiSession := persistence.NewApiSession(identity.Id)
+	apiSession := db.NewApiSession(identity.Id)
 	boltztest.RequireCreate(ctx, apiSession)
 	service := ctx.RequireNewService("test-service")
 	session := NewSession(apiSession.Id, service.Id)
@@ -57,7 +57,7 @@ func (ctx *enforcerTestContext) testSessionsCleanup() {
 	boltztest.ValidateBaseline(ctx, session, compareOpts)
 
 	session2 := NewSession(apiSession.Id, service.Id)
-	session2.Type = persistence.PolicyTypeBindName
+	session2.Type = db.PolicyTypeBindName
 	boltztest.RequireCreate(ctx, session2)
 	boltztest.ValidateBaseline(ctx, session2, compareOpts)
 
@@ -92,12 +92,12 @@ func (ctx *enforcerTestContext) testSessionsCleanup() {
 	boltztest.ValidateDeleted(ctx, session3.Id)
 }
 
-func NewSession(apiSessionId, serviceId string) *persistence.Session {
-	return &persistence.Session{
+func NewSession(apiSessionId, serviceId string) *db.Session {
+	return &db.Session{
 		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		Token:         eid.New(),
 		ApiSessionId:  apiSessionId,
 		ServiceId:     serviceId,
-		Type:          persistence.SessionTypeDial,
+		Type:          db.SessionTypeDial,
 	}
 }

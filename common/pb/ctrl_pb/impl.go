@@ -50,6 +50,14 @@ func (request *ValidateTerminatorsRequest) GetContentType() int32 {
 	return int32(ContentType_ValidateTerminatorsRequestType)
 }
 
+func (request *ValidateTerminatorsV2Request) GetContentType() int32 {
+	return int32(ContentType_ValidateTerminatorsV2RequestType)
+}
+
+func (request *ValidateTerminatorsV2Response) GetContentType() int32 {
+	return int32(ContentType_ValidateTerminatorsV2ResponseType)
+}
+
 func (request *Dial) GetContentType() int32 {
 	return int32(ContentType_DialType)
 }

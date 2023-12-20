@@ -51,36 +51,41 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 
 	for _, srv := range configFuture.Configuration().Servers {
 		memberSet[string(srv.Address)] = true
+
+		version := "<not connected>"
+		connected := false
+		if string(srv.ID) == self.env.GetId().Token {
+			version = self.env.GetVersionProvider().Version()
+			connected = true
+		} else if peer, exists := peers[string(srv.Address)]; exists {
+			version = peer.Version.Version
+			connected = true
+		}
+
 		result = append(result, &Member{
-			Id:     string(srv.ID),
-			Addr:   string(srv.Address),
-			Voter:  srv.Suffrage == raft.Voter,
-			Leader: srv.Address == leaderAddr,
-			Version: func() string {
-				if srv.Address == leaderAddr {
-					return self.env.GetVersionProvider().Version()
-				}
-				if peer, exists := peers[string(srv.Address)]; exists {
-					return peer.Version.Version
-				}
-				return "N/A"
-			}(),
-			Connected: true,
+			Id:        string(srv.ID),
+			Addr:      string(srv.Address),
+			Voter:     srv.Suffrage == raft.Voter,
+			Leader:    srv.Address == leaderAddr,
+			Version:   version,
+			Connected: connected,
 		})
 	}
 
-	for addr, peer := range peers {
-		if _, exists := memberSet[addr]; exists {
-			continue
+	if len(result) == 0 {
+		for addr, peer := range peers {
+			if _, exists := memberSet[addr]; exists {
+				continue
+			}
+			result = append(result, &Member{
+				Id:        string(peer.Id),
+				Addr:      peer.Address,
+				Voter:     false,
+				Leader:    peer.Address == string(leaderAddr),
+				Version:   peer.Version.Version,
+				Connected: true,
+			})
 		}
-		result = append(result, &Member{
-			Id:        string(peer.Id),
-			Addr:      peer.Address,
-			Voter:     false,
-			Leader:    peer.Address == string(leaderAddr),
-			Version:   peer.Version.Version,
-			Connected: true,
-		})
 	}
 
 	return result, nil

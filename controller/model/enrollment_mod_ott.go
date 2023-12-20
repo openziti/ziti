@@ -22,8 +22,8 @@ import (
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 )
 
@@ -36,7 +36,7 @@ type EnrollModuleOtt struct {
 func NewEnrollModuleOtt(env Env) *EnrollModuleOtt {
 	return &EnrollModuleOtt{
 		env:                  env,
-		method:               persistence.MethodEnrollOtt,
+		method:               db.MethodEnrollOtt,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 	}
 }
@@ -106,7 +106,7 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 		BaseEntity: models.BaseEntity{
 			Id: eid.New(),
 		},
-		Method:     persistence.MethodAuthenticatorCert,
+		Method:     db.MethodAuthenticatorCert,
 		IdentityId: *enrollment.IdentityId,
 		SubType: &AuthenticatorCert{
 			Fingerprint: fp,

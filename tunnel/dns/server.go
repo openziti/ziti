@@ -60,29 +60,32 @@ func flushDnsCaches() {
 	}
 }
 
-func NewResolver(config string) Resolver {
+func NewResolver(config string) (Resolver, error) {
 	flushDnsCaches()
 	if config == "" {
-		return nil
+		return nil, nil
 	}
 
 	resolverURL, err := url.Parse(config)
 	if err != nil {
-		log.Fatalf("failed to parse resolver configuration '%s': %s", config, err)
+		return nil, fmt.Errorf("failed to parse resolver configuration '%s': %w", config, err)
 	}
 
 	switch resolverURL.Scheme {
 	case "", "file":
-		return NewRefCountingResolver(NewHostFile(resolverURL.Path))
+		return NewRefCountingResolver(NewHostFile(resolverURL.Path)), nil
 	case "udp":
-		return NewRefCountingResolver(NewDnsServer(resolverURL.Host))
+		dnsResolver, err := NewDnsServer(resolverURL.Host)
+		if err != nil {
+			return nil, err
+		}
+		return NewRefCountingResolver(dnsResolver), nil
 	}
 
-	log.Fatalf("invalid resolver configuration '%s'. must be 'file://' or 'udp://' URL", config)
-	return nil
+	return nil, fmt.Errorf("invalid resolver configuration '%s'. must be 'file://' or 'udp://' URL", config)
 }
 
-func NewDnsServer(addr string) Resolver {
+func NewDnsServer(addr string) (Resolver, error) {
 	log.Infof("starting dns server...")
 	s := &dns.Server{
 		Addr: addr,
@@ -108,9 +111,9 @@ func NewDnsServer(addr string) Resolver {
 	select {
 	case err := <-errChan:
 		if err != nil {
-			log.Fatalf("dns server failed to start: %s", err)
+			return nil, fmt.Errorf("dns server failed to start: %w", err)
 		} else {
-			log.Fatal("dns server stopped prematurely")
+			return nil, fmt.Errorf("dns server stopped prematurely")
 		}
 	case <-time.After(2 * time.Second):
 		log.Infof("dns server running at %s", s.Addr)
@@ -125,10 +128,10 @@ func NewDnsServer(addr string) Resolver {
 	err := r.testSystemResolver()
 	if err != nil {
 		_ = r.Cleanup()
-		log.Fatalf("system resolver test failed: %s\n\n"+resolverConfigHelp, err, addr)
+		return nil, fmt.Errorf("system resolver test failed: %s\n\n"+resolverConfigHelp, err, addr)
 	}
 
-	return r
+	return r, nil
 }
 
 func (r *resolver) testSystemResolver() error {

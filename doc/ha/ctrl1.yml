@@ -7,9 +7,9 @@ raft:
     - tls:127.0.0.1:6464
 
 identity:
-  cert: ./pki/ctrl1/certs/server.cert
+  cert: ./pki/ctrl1/certs/server.chain.pem
   key: ./pki/ctrl1/keys/server.key
-  ca: ./pki/ctrl1/certs/server.chain.pem
+  ca: ./pki/ctrl1/certs/ctrl1.chain.pem
 
 ctrl:
   listener: tls:127.0.0.1:6262

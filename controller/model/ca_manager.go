@@ -18,15 +18,15 @@ package model
 
 import (
 	"fmt"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"strings"
@@ -34,7 +34,7 @@ import (
 
 func NewCaManager(env Env) *CaManager {
 	manager := &CaManager{
-		baseEntityManager: newBaseEntityManager[*Ca, *persistence.Ca](env, env.GetStores().Ca),
+		baseEntityManager: newBaseEntityManager[*Ca, *db.Ca](env, env.GetStores().Ca),
 	}
 	manager.impl = manager
 
@@ -44,7 +44,7 @@ func NewCaManager(env Env) *CaManager {
 }
 
 type CaManager struct {
-	baseEntityManager[*Ca, *persistence.Ca]
+	baseEntityManager[*Ca, *db.Ca]
 }
 
 func (self *CaManager) newModelEntity() *Ca {
@@ -62,7 +62,7 @@ func (self *CaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Ca], ctx bo
 
 func (self *CaManager) Update(entity *Ca, checker fields.UpdatedFields, ctx *change.Context) error {
 	if checker != nil {
-		checker.RemoveFields(persistence.FieldCaIsVerified)
+		checker.RemoveFields(db.FieldCaIsVerified)
 	}
 	return network.DispatchUpdate[*Ca](self, entity, checker, ctx)
 }
@@ -73,7 +73,7 @@ func (self *CaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ca], ctx bo
 	// isVerified should only be set by the Verified method. We remove isVerified
 	// from updated fields coming through Update method
 	if cmd.UpdatedFields != nil {
-		if cmd.UpdatedFields.IsUpdated(persistence.FieldCaIsVerified) {
+		if cmd.UpdatedFields.IsUpdated(db.FieldCaIsVerified) {
 			checker = cmd.UpdatedFields
 		} else {
 			checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
@@ -100,20 +100,20 @@ func (self *CaManager) readInTx(tx *bbolt.Tx, id string) (*Ca, error) {
 }
 
 func (self *CaManager) IsUpdated(field string) bool {
-	return strings.EqualFold(field, persistence.FieldName) ||
+	return strings.EqualFold(field, db.FieldName) ||
 		strings.EqualFold(field, boltz.FieldTags) ||
-		strings.EqualFold(field, persistence.FieldCaIsAutoCaEnrollmentEnabled) ||
-		strings.EqualFold(field, persistence.FieldCaIsOttCaEnrollmentEnabled) ||
-		strings.EqualFold(field, persistence.FieldCaIsAuthEnabled) ||
-		strings.EqualFold(field, persistence.FieldIdentityRoles) ||
-		strings.EqualFold(field, persistence.FieldCaIdentityNameFormat) ||
-		strings.HasPrefix(field, persistence.FieldCaExternalIdClaim+".")
+		strings.EqualFold(field, db.FieldCaIsAutoCaEnrollmentEnabled) ||
+		strings.EqualFold(field, db.FieldCaIsOttCaEnrollmentEnabled) ||
+		strings.EqualFold(field, db.FieldCaIsAuthEnabled) ||
+		strings.EqualFold(field, db.FieldIdentityRoles) ||
+		strings.EqualFold(field, db.FieldCaIdentityNameFormat) ||
+		strings.HasPrefix(field, db.FieldCaExternalIdClaim+".")
 }
 
 func (self *CaManager) Verified(ca *Ca, ctx *change.Context) error {
 	ca.IsVerified = true
 	checker := &fields.UpdatedFieldsMap{
-		persistence.FieldCaIsVerified: struct{}{},
+		db.FieldCaIsVerified: struct{}{},
 	}
 	return network.DispatchUpdate[*Ca](self, ca, checker, ctx)
 }

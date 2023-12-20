@@ -19,15 +19,15 @@ package model
 import (
 	"fmt"
 	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"strings"
@@ -43,7 +43,7 @@ func NewPostureCheckManager(env Env) *PostureCheckManager {
 		panic(err)
 	}
 	manager := &PostureCheckManager{
-		baseEntityManager: newBaseEntityManager[*PostureCheck, *persistence.PostureCheck](env, env.GetStores().PostureCheck),
+		baseEntityManager: newBaseEntityManager[*PostureCheck, *db.PostureCheck](env, env.GetStores().PostureCheck),
 		cache:             cache,
 	}
 	manager.impl = manager
@@ -59,7 +59,7 @@ func NewPostureCheckManager(env Env) *PostureCheckManager {
 }
 
 type PostureCheckManager struct {
-	baseEntityManager[*PostureCheck, *persistence.PostureCheck]
+	baseEntityManager[*PostureCheck, *db.PostureCheck]
 	cache *lru.Cache[string, *PostureCheck]
 }
 
@@ -114,27 +114,27 @@ func (self *PostureCheckManager) readInTx(tx *bbolt.Tx, id string) (*PostureChec
 }
 
 func (self *PostureCheckManager) IsUpdated(field string) bool {
-	return strings.EqualFold(field, persistence.FieldName) ||
+	return strings.EqualFold(field, db.FieldName) ||
 		strings.EqualFold(field, boltz.FieldTags) ||
-		strings.EqualFold(field, persistence.FieldRoleAttributes) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckOsType) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckOsVersions) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckMacAddresses) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckDomains) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckProcessFingerprint) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckProcessOs) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckProcessPath) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckProcessHashes) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckMfaPromptOnWake) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckMfaPromptOnUnlock) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckMfaTimeoutSeconds) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckMfaIgnoreLegacyEndpoints) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiOsType) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiHashes) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiPath) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiSignerFingerprints) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiProcesses) ||
-		strings.EqualFold(field, persistence.FieldSemantic)
+		strings.EqualFold(field, db.FieldRoleAttributes) ||
+		strings.EqualFold(field, db.FieldPostureCheckOsType) ||
+		strings.EqualFold(field, db.FieldPostureCheckOsVersions) ||
+		strings.EqualFold(field, db.FieldPostureCheckMacAddresses) ||
+		strings.EqualFold(field, db.FieldPostureCheckDomains) ||
+		strings.EqualFold(field, db.FieldPostureCheckProcessFingerprint) ||
+		strings.EqualFold(field, db.FieldPostureCheckProcessOs) ||
+		strings.EqualFold(field, db.FieldPostureCheckProcessPath) ||
+		strings.EqualFold(field, db.FieldPostureCheckProcessHashes) ||
+		strings.EqualFold(field, db.FieldPostureCheckMfaPromptOnWake) ||
+		strings.EqualFold(field, db.FieldPostureCheckMfaPromptOnUnlock) ||
+		strings.EqualFold(field, db.FieldPostureCheckMfaTimeoutSeconds) ||
+		strings.EqualFold(field, db.FieldPostureCheckMfaIgnoreLegacyEndpoints) ||
+		strings.EqualFold(field, db.FieldPostureCheckProcessMultiOsType) ||
+		strings.EqualFold(field, db.FieldPostureCheckProcessMultiHashes) ||
+		strings.EqualFold(field, db.FieldPostureCheckProcessMultiPath) ||
+		strings.EqualFold(field, db.FieldPostureCheckProcessMultiSignerFingerprints) ||
+		strings.EqualFold(field, db.FieldPostureCheckProcessMultiProcesses) ||
+		strings.EqualFold(field, db.FieldSemantic)
 }
 
 func (self *PostureCheckManager) Query(query string) (*PostureCheckListResult, error) {

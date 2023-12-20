@@ -16,18 +16,20 @@
 
 package model
 
-import "github.com/openziti/ziti/controller/persistence"
+import (
+	"github.com/openziti/ziti/controller/db"
+)
 
 func NewPostureCheckTypeManager(env Env) *PostureCheckTypeManager {
 	manager := &PostureCheckTypeManager{
-		baseEntityManager: newBaseEntityManager[*PostureCheckType, *persistence.PostureCheckType](env, env.GetStores().PostureCheckType),
+		baseEntityManager: newBaseEntityManager[*PostureCheckType, *db.PostureCheckType](env, env.GetStores().PostureCheckType),
 	}
 	manager.impl = manager
 	return manager
 }
 
 type PostureCheckTypeManager struct {
-	baseEntityManager[*PostureCheckType, *persistence.PostureCheckType]
+	baseEntityManager[*PostureCheckType, *db.PostureCheckType]
 }
 
 func (self *PostureCheckTypeManager) newModelEntity() *PostureCheckType {

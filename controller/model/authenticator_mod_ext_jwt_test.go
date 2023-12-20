@@ -3,9 +3,9 @@ package model
 import (
 	"encoding/json"
 	"github.com/Jeffail/gabs/v2"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/jwks"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
@@ -74,7 +74,7 @@ func Test_signerRecord_Resolve(t *testing.T) {
 
 		signerRec := &signerRecord{
 			kidToPubKey: map[string]pubKey{},
-			externalJwtSigner: &persistence.ExternalJwtSigner{
+			externalJwtSigner: &db.ExternalJwtSigner{
 				BaseExtEntity: boltz.BaseExtEntity{
 					Id:        "fake-id",
 					CreatedAt: time.Now(),

@@ -20,12 +20,12 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/external_jwt_signer"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/fields"
 )
 
 func init() {
@@ -102,11 +102,11 @@ func (r *ExternalJwtSignerRouter) Update(ae *env.AppEnv, rc *response.RequestCon
 func (r *ExternalJwtSignerRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params external_jwt_signer.PatchExternalJWTSignerParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 
-		if fields.IsUpdated(persistence.FieldExternalJwtSignerCertPem) {
-			fields.AddField(persistence.FieldExternalJwtSignerCommonName)
-			fields.AddField(persistence.FieldExternalJwtSignerNotBefore)
-			fields.AddField(persistence.FieldExternalJwtSignerNotAfter)
-			fields.AddField(persistence.FieldExternalJwtSignerFingerprint)
+		if fields.IsUpdated(db.FieldExternalJwtSignerCertPem) {
+			fields.AddField(db.FieldExternalJwtSignerCommonName)
+			fields.AddField(db.FieldExternalJwtSignerNotBefore)
+			fields.AddField(db.FieldExternalJwtSignerNotAfter)
+			fields.AddField(db.FieldExternalJwtSignerFingerprint)
 		}
 
 		externalJwtSigner := MapPatchExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner)

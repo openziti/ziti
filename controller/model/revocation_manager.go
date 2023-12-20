@@ -17,20 +17,20 @@
 package model
 
 import (
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
 
 func NewRevocationManager(env Env) *RevocationManager {
 	manager := &RevocationManager{
-		baseEntityManager: newBaseEntityManager[*Revocation, *persistence.Revocation](env, env.GetStores().Revocation),
+		baseEntityManager: newBaseEntityManager[*Revocation, *db.Revocation](env, env.GetStores().Revocation),
 	}
 	manager.impl = manager
 
@@ -40,7 +40,7 @@ func NewRevocationManager(env Env) *RevocationManager {
 }
 
 type RevocationManager struct {
-	baseEntityManager[*Revocation, *persistence.Revocation]
+	baseEntityManager[*Revocation, *db.Revocation]
 }
 
 func (self *RevocationManager) ApplyUpdate(_ *command.UpdateEntityCommand[*Revocation], ctx boltz.MutateContext) error {

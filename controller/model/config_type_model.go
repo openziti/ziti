@@ -18,10 +18,10 @@ package model
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
@@ -42,7 +42,7 @@ func (entity *ConfigType) GetCompiledSchema() (*gojsonschema.Schema, error) {
 	return schemaLoader.Compile(entitySchemaLoader)
 }
 
-func (entity *ConfigType) toBoltEntity() (*persistence.ConfigType, error) {
+func (entity *ConfigType) toBoltEntity() (*db.ConfigType, error) {
 	if entity.Name == ConfigTypeAll {
 		return nil, errorz.NewFieldError(fmt.Sprintf("%v is a keyword and may not be used as a config type name", entity.Name), "name", entity.Name)
 	}
@@ -55,22 +55,22 @@ func (entity *ConfigType) toBoltEntity() (*persistence.ConfigType, error) {
 			return nil, errorz.NewFieldError("invalid config type schema, root type must be object", "schema", entity.Schema)
 		}
 	}
-	return &persistence.ConfigType{
+	return &db.ConfigType{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
 		Schema:        entity.Schema,
 	}, nil
 }
 
-func (entity *ConfigType) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.ConfigType, error) {
+func (entity *ConfigType) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.ConfigType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ConfigType) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.ConfigType, error) {
+func (entity *ConfigType) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.ConfigType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ConfigType) fillFrom(_ Env, _ *bbolt.Tx, boltConfigType *persistence.ConfigType) error {
+func (entity *ConfigType) fillFrom(_ Env, _ *bbolt.Tx, boltConfigType *db.ConfigType) error {
 	entity.FillCommon(boltConfigType)
 	entity.Name = boltConfigType.Name
 	entity.Schema = boltConfigType.Schema

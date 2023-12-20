@@ -19,7 +19,7 @@ package model
 import (
 	"fmt"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -33,7 +33,7 @@ type PostureCheckDomains struct {
 }
 
 func (p *PostureCheckDomains) TypeId() string {
-	return persistence.PostureCheckTypeDomain
+	return db.PostureCheckTypeDomain
 }
 
 func (p *PostureCheckDomains) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
@@ -102,8 +102,8 @@ func newPostureCheckWindowsDomains() PostureCheckSubType {
 	return &PostureCheckDomains{}
 }
 
-func (p *PostureCheckDomains) fillFrom(_ Env, _ *bbolt.Tx, _ *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
-	subCheck := subType.(*persistence.PostureCheckWindowsDomains)
+func (p *PostureCheckDomains) fillFrom(_ Env, _ *bbolt.Tx, _ *db.PostureCheck, subType db.PostureCheckSubType) error {
+	subCheck := subType.(*db.PostureCheckWindowsDomains)
 
 	if subCheck == nil {
 		return fmt.Errorf("could not covert domain check to bolt type")
@@ -113,8 +113,8 @@ func (p *PostureCheckDomains) fillFrom(_ Env, _ *bbolt.Tx, _ *persistence.Postur
 	return nil
 }
 
-func (p *PostureCheckDomains) toBoltEntityForCreate(*bbolt.Tx, Env) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckWindowsDomains{
+func (p *PostureCheckDomains) toBoltEntityForCreate(*bbolt.Tx, Env) (db.PostureCheckSubType, error) {
+	return &db.PostureCheckWindowsDomains{
 		Domains: p.Domains,
 	}, nil
 }

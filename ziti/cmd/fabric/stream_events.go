@@ -35,12 +35,14 @@ type streamEventsAction struct {
 	all          bool
 	apiSessions  bool
 	circuits     bool
+	entityChange bool
 	entityCounts bool
 	links        bool
 	metrics      bool
 	routers      bool
 	services     bool
 	sessions     bool
+	terminators  bool
 	usage        bool
 
 	metricsSourceFilter  string
@@ -68,12 +70,14 @@ func NewStreamEventsCmd(p common.OptionsProvider) *cobra.Command {
 	streamEventsCmd.Flags().BoolVar(&action.all, "all", false, "Include all events")
 	streamEventsCmd.Flags().BoolVar(&action.apiSessions, "api-sessions", false, "Include api-session events")
 	streamEventsCmd.Flags().BoolVar(&action.circuits, "circuits", false, "Include circuit events")
+	streamEventsCmd.Flags().BoolVar(&action.entityChange, "entity-change", false, "Include entity change events")
 	streamEventsCmd.Flags().BoolVar(&action.entityCounts, "entity-counts", false, "Include entity count events")
 	streamEventsCmd.Flags().BoolVar(&action.links, "links", false, "Include link events")
 	streamEventsCmd.Flags().BoolVar(&action.metrics, "metrics", false, "Include metrics events")
 	streamEventsCmd.Flags().BoolVar(&action.routers, "routers", false, "Include router events")
 	streamEventsCmd.Flags().BoolVar(&action.services, "services", false, "Include service events")
 	streamEventsCmd.Flags().BoolVar(&action.sessions, "sessions", false, "Include session events")
+	streamEventsCmd.Flags().BoolVar(&action.terminators, "terminators", false, "Include terminators events")
 	streamEventsCmd.Flags().BoolVar(&action.usage, "usage", false, "Include usage events")
 	streamEventsCmd.Flags().DurationVar(&action.entityCountsInterval, "entity-counts-interval", 5*time.Minute, "Specify the entity count event interval")
 	streamEventsCmd.Flags().StringVar(&action.metricsSourceFilter, "metrics-source-filter", "", "Specify which sources to stream metrics from")
@@ -95,6 +99,13 @@ func (self *streamEventsAction) buildSubscriptions(cmd *cobra.Command) []*event.
 		subscriptions = append(subscriptions, &event.Subscription{
 			Type: "fabric.circuits",
 		})
+	}
+
+	if self.entityChange || (self.all && !cmd.Flags().Changed("entity-change")) {
+		subscription := &event.Subscription{
+			Type: "entityChange",
+		}
+		subscriptions = append(subscriptions, subscription)
 	}
 
 	if self.entityCounts || (self.all && !cmd.Flags().Changed("entity-counts")) {
@@ -147,6 +158,12 @@ func (self *streamEventsAction) buildSubscriptions(cmd *cobra.Command) []*event.
 	if self.sessions || (self.all && !cmd.Flags().Changed("sessions")) {
 		subscriptions = append(subscriptions, &event.Subscription{
 			Type: "edge.sessions",
+		})
+	}
+
+	if self.terminators || (self.all && !cmd.Flags().Changed("terminators")) {
+		subscriptions = append(subscriptions, &event.Subscription{
+			Type: "fabric.terminators",
 		})
 	}
 

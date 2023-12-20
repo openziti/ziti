@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/pkg/errors"
 	"reflect"
 	"time"
@@ -43,12 +43,12 @@ func (self *Dispatcher) RemoveApiSessionEventHandler(handler event.ApiSessionEve
 	})
 }
 
-func (self *Dispatcher) initApiSessionEvents(stores *persistence.Stores) {
+func (self *Dispatcher) initApiSessionEvents(stores *db.Stores) {
 	stores.ApiSession.AddEntityEventListenerF(self.apiSessionCreated, boltz.EntityCreated)
 	stores.ApiSession.AddEntityEventListenerF(self.apiSessionDeleted, boltz.EntityDeleted)
 }
 
-func (self *Dispatcher) apiSessionCreated(apiSession *persistence.ApiSession) {
+func (self *Dispatcher) apiSessionCreated(apiSession *db.ApiSession) {
 	event := &event.ApiSessionEvent{
 		Namespace:  event.ApiSessionEventNS,
 		EventType:  event.ApiSessionEventTypeCreated,
@@ -64,7 +64,7 @@ func (self *Dispatcher) apiSessionCreated(apiSession *persistence.ApiSession) {
 	}
 }
 
-func (self *Dispatcher) apiSessionDeleted(apiSession *persistence.ApiSession) {
+func (self *Dispatcher) apiSessionDeleted(apiSession *db.ApiSession) {
 	event := &event.ApiSessionEvent{
 		Namespace:  event.ApiSessionEventNS,
 		EventType:  event.ApiSessionEventTypeDeleted,

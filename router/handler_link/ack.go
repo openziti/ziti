@@ -17,43 +17,23 @@
 package handler_link
 
 import (
-	"github.com/ef-ds/deque"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
-	"sync/atomic"
 )
 
 type ackHandler struct {
-	link          xlink.Xlink
-	forwarder     *forwarder.Forwarder
-	acks          *deque.Deque
-	ackIngest     chan *xgress.Acknowledgement
-	ackForward    chan *xgress.Acknowledgement
-	acksQueueSize int64
-	closeNotify   <-chan struct{}
+	link      xlink.Xlink
+	forwarder *forwarder.Forwarder
 }
 
-func newAckHandler(link xlink.Xlink, forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *ackHandler {
-	result := &ackHandler{
-		link:        link,
-		forwarder:   forwarder,
-		acks:        deque.New(),
-		ackIngest:   make(chan *xgress.Acknowledgement, 16),
-		ackForward:  make(chan *xgress.Acknowledgement, 1),
-		closeNotify: closeNotify,
+func newAckHandler(link xlink.Xlink, forwarder *forwarder.Forwarder) *ackHandler {
+	return &ackHandler{
+		link:      link,
+		forwarder: forwarder,
 	}
-
-	go result.ackIngester()
-	go result.ackForwarder()
-
-	forwarder.MetricsRegistry().FuncGauge("xgress.acks.queue_size", func() int64 {
-		return atomic.LoadInt64(&result.acksQueueSize)
-	})
-
-	return result
 }
 
 func (self *ackHandler) ContentType() int32 {
@@ -61,63 +41,19 @@ func (self *ackHandler) ContentType() int32 {
 }
 
 func (self *ackHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	if ack, err := xgress.UnmarshallAcknowledgement(msg); err == nil {
-		select {
-		case self.ackIngest <- ack:
-		case <-self.closeNotify:
-		}
-	} else {
+	ack, err := xgress.UnmarshallAcknowledgement(msg)
+	if err != nil {
 		pfxlog.ContextLogger(ch.Label()).
 			WithField("linkId", self.link.Id()).
 			WithField("routerId", self.link.DestinationId()).
-			WithError(err).
-			Error("error unmarshalling ack")
+			WithError(err).Error("error unmarshalling ack")
+		return
 	}
-}
 
-func (self *ackHandler) ackIngester() {
-	var next *xgress.Acknowledgement
-	for {
-		if next == nil {
-			if val, _ := self.acks.PopFront(); val != nil {
-				next = val.(*xgress.Acknowledgement)
-			}
-		}
-
-		if next == nil {
-			select {
-			case ack := <-self.ackIngest:
-				self.acks.PushBack(ack)
-			case <-self.closeNotify:
-				return
-			}
-		} else {
-			select {
-			case ack := <-self.ackIngest:
-				self.acks.PushBack(ack)
-			case self.ackForward <- next:
-				next = nil
-			case <-self.closeNotify:
-				return
-			}
-		}
-		atomic.StoreInt64(&self.acksQueueSize, int64(self.acks.Len()))
-	}
-}
-
-func (self *ackHandler) ackForwarder() {
-	logger := pfxlog.Logger()
-	for {
-		select {
-		case ack := <-self.ackForward:
-			if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id()), ack); err != nil {
-				logger.WithField("linkId", self.link.Id()).
-					WithField("routerId", self.link.DestinationId()).
-					WithError(err).
-					Debug("unable to forward acknowledgement")
-			}
-		case <-self.closeNotify:
-			return
-		}
+	if err = self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id()), ack); err != nil {
+		pfxlog.ContextLogger(ch.Label()).
+			WithField("linkId", self.link.Id()).
+			WithField("routerId", self.link.DestinationId()).
+			WithError(err).Debug("unable to forward acknowledgement")
 	}
 }

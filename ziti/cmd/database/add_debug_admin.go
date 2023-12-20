@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/spf13/cobra"
 )
 
@@ -84,7 +83,7 @@ func (action *addDebugAdminAction) run(dbFile, username, password string) {
 		managers: controllers,
 	}
 
-	stores, err := persistence.NewBoltStores(dbProvider)
+	stores, err := db.InitStores(boltDb)
 	action.noError(err)
 
 	id := "debug-admin"
@@ -100,10 +99,10 @@ func (action *addDebugAdminAction) run(dbFile, username, password string) {
 			fmt.Printf("removing existing identity with id '%v'\n", id)
 		}
 
-		identity = &persistence.Identity{
+		identity = &db.Identity{
 			BaseExtEntity:  boltz.BaseExtEntity{Id: id},
 			Name:           name,
-			IdentityTypeId: persistence.DefaultIdentityType,
+			IdentityTypeId: db.DefaultIdentityType,
 			IsDefaultAdmin: false,
 			IsAdmin:        true,
 		}
@@ -113,8 +112,8 @@ func (action *addDebugAdminAction) run(dbFile, username, password string) {
 
 		authHandler := model.AuthenticatorManager{}
 		result := authHandler.HashPassword(password)
-		authenticator := &persistence.AuthenticatorUpdb{
-			Authenticator: persistence.Authenticator{
+		authenticator := &db.AuthenticatorUpdb{
+			Authenticator: db.Authenticator{
 				BaseExtEntity: boltz.BaseExtEntity{
 					Id: eid.New(),
 				},

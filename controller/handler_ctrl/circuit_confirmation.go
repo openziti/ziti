@@ -19,10 +19,11 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
+	"time"
 )
 
 type circuitConfirmationHandler struct {
@@ -45,13 +46,52 @@ func (self *circuitConfirmationHandler) HandleReceive(msg *channel.Message, _ ch
 		log.WithField("circuitCount", len(confirm.CircuitIds)).Info("received circuit confirmation request")
 		for _, circuitId := range confirm.CircuitIds {
 			if circuit, found := self.n.GetCircuit(circuitId); found && circuit.HasRouter(self.r.Id) {
-				log.WithField("circuitId", circuitId).Debug("circuit found, ignoring")
+				self.checkCircuitMaxIdle(circuit, confirm)
 			} else {
 				go self.sendUnroute(circuitId)
 			}
 		}
 	} else {
 		log.WithError(err).Error("error unmarshalling circuit confirmation")
+	}
+}
+
+func (self *circuitConfirmationHandler) checkCircuitMaxIdle(circuit *network.Circuit, confirm *ctrl_pb.CircuitConfirmation) {
+	log := logrus.WithField("routerId", self.r.Id).WithField("circuitId", circuit.Id)
+
+	service, _ := self.n.Services.Read(circuit.ServiceId)
+	if service == nil {
+		log.Info("service for circuit gone, removing idle circuit")
+		if err := self.n.RemoveCircuit(circuit.Id, true); err != nil {
+			log.WithError(err).Error("error removing idle circuit with no service")
+		}
+		return
+	}
+
+	idleTime, hasIdleTime := confirm.IdleTimes[circuit.Id]
+	if !hasIdleTime {
+		log.Debug("circuit found, no idle time reported, ignoring")
+		return
+	}
+
+	log = log.WithField("idleTime", time.Duration(idleTime).String()).
+		WithField("maxIdleTime", service.MaxIdleTime.String())
+
+	if service.MaxIdleTime == 0 || time.Duration(idleTime) < service.MaxIdleTime {
+		log.Debug("circuit found, max idle time not exceeded, ignoring")
+		return
+	}
+
+	if !circuit.IsEndpointRouter(self.r.Id) {
+		log.Debug("circuit found, max idle time exceeded, but not reported by initiating or terminating router")
+		return
+	}
+
+	log.Infof("removing idle circuit, idle time of %s exceedes max idle time of %s",
+		time.Duration(idleTime).String(), service.MaxIdleTime.String())
+
+	if err := self.n.RemoveCircuit(circuit.Id, true); err != nil {
+		log.WithError(err).Error("error removing idle circuit which has exceeded max idle time")
 	}
 }
 

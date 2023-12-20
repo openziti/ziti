@@ -28,13 +28,13 @@ import (
 	client_well_known "github.com/openziti/edge-api/rest_client_api_server/operations/well_known"
 	management_well_known "github.com/openziti/edge-api/rest_management_api_server/operations/well_known"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
 	cert2 "github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 	"strings"
 )
@@ -169,7 +169,7 @@ func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContex
 
 	// for non ott enrollment, always return JSON
 	//prefer JSON if explicitly acceptable
-	if enrollContext.GetMethod() != persistence.MethodEnrollOtt || explicitJsonAccept {
+	if enrollContext.GetMethod() != db.MethodEnrollOtt || explicitJsonAccept {
 		rc.SetProducer(runtime.JSONProducer())
 	}
 
