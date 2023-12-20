@@ -483,13 +483,11 @@ jobs:
             exit 1
           elif [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main$) ]]; then
             # Set output parameters for release branches
-            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
-            echo ZITI_VERSION="${ZITI_VERSION}" >> $GITHUB_OUTPUT
+            echo ZITI_VERSION="${ZITI_VERSION}" | tee -a $GITHUB_OUTPUT
           else
             # Append build / run number for non-release refs
             ZITI_VERSION="${ZITI_VERSION}-${GITHUB_RUN_ID}"
-            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
-            echo ZITI_VERSION="${ZITI_VERSION}" >> $GITHUB_OUTPUT
+            echo ZITI_VERSION="${ZITI_VERSION}" | tee -a $GITHUB_OUTPUT
           fi
 
       - name: Publish to Artifactory
