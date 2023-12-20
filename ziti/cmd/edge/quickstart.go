@@ -75,8 +75,7 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "Username to use when creating the Ziti Edge Controller. default: admin")
 	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "Password to use for authenticating to the Ziti Edge Controller. default: admin")
 
-	cmd.Flags().BoolVar(&options.AlreadyInitialized, "already-initialized", false, "deprecated and implied by --home on subsequent runs")
-	cmd.Flags().StringVar(&options.Home, "home", "", "Sets the directory the environment should be installed into. Defaults to a temporary directory. If specified, the environment will not be removed on exit.")
+	cmd.Flags().StringVar(&options.Home, "home", "", "persistent state directory")
 
 	cmd.Flags().StringVar(&options.ControllerAddress, "ctrl-address", "", "Sets the advertised address for the control plane and API. current: "+currentCtrlAddy)
 	cmd.Flags().Int16Var(&options.ControllerPort, "ctrl-port", int16(defautlCtrlPort), "Sets the port to use for the control plane and API. current: "+currentCtrlPort)
@@ -100,6 +99,8 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		tmpDir, _ := os.MkdirTemp("", "quickstart")
 		o.Home = tmpDir
 		o.cleanOnExit = true
+	} else {
+		logrus.Infof("persistent state dir '%s' will not be removed on exit", o.Home)
 	}
 	if o.ControllerAddress != "" {
 		_ = os.Setenv(constants.CtrlAdvertisedAddressVarName, o.ControllerAddress)
@@ -121,7 +122,6 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 	}
 	if o.Password == "" {
 		o.Password = "admin"
-		logrus.Warn("using default password")
 	}
 
 	ctrlYaml := o.Home + "/ctrl.yaml"
@@ -139,10 +139,6 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 	routerNameFromEnv := os.Getenv(constants.ZitiEdgeRouterNameVarName)
 	if routerNameFromEnv != "" {
 		routerName = routerNameFromEnv
-	}
-
-	if o.AlreadyInitialized {
-		logrus.Warn("deprecated option --already-initialized has no effect and is internally implied by --home on subsequent runs")
 	}
 
 	dbDir := o.Home + "/db"
