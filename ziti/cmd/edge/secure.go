@@ -29,37 +29,34 @@ import (
 )
 
 const (
-	optionAddress     = "address"
-	optionServiceName = "serviceName"
+	optionEndpoint = "endpoint"
 )
 
-// ShareOptions the options for the share command
-type ShareOptions struct {
+// SecureOptions the options for the secure command
+type SecureOptions struct {
 	common.CommonOptions
 
-	Address     string
-	ServiceName string
+	Endpoint string
 }
 
-// newSecureCmd consolidates network configuration steps for sharing a service.
+// newSecureCmd consolidates network configuration steps for securing a service.
 func newSecureCmd(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &ShareOptions{}
+	options := &SecureOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "share <service_name> <protocol>:<address>:<port>",
+		Use:   "secure <service_name> <protocol>:<address>:<port>",
 		Short: "creates a service, configs, and policies for a resource",
 		Long:  "creates a service, configs, and policies for a resource",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runShare(options)
+			err := runSecure(options)
 			cmdhelper.CheckErr(err)
 		},
 	}
 
-	cmd.Flags().StringVar(&options.ServiceName, optionServiceName, "random", "The name of the service you'd like to share")
-	cmd.Flags().StringVar(&options.Address, optionAddress, "", "location of the database file")
+	cmd.Flags().StringVar(&options.Endpoint, optionEndpoint, "", "the custom endpoint name for your service")
 	options.AddCommonFlags(cmd)
 
 	cmd.AddCommand(newShowConfigTypeAction(out, errOut))
@@ -67,8 +64,8 @@ func newSecureCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-// runShare implements the command to share a resource
-func runShare(o *ShareOptions) (err error) {
+// runSecure implements the command to secure a resource
+func runSecure(o *SecureOptions) (err error) {
 
 	svcName := o.Args[0]
 	address := o.Args[1]
@@ -112,8 +109,12 @@ func runShare(o *ShareOptions) (err error) {
 	}
 
 	// Create a dial config
+	endpoint := svcName + ".ziti"
+	if o.Endpoint != "" {
+		endpoint = o.Endpoint
+	}
 	dialCfgName := svcName + ".intercept.v1"
-	jsonStr = fmt.Sprintf(`{"protocols":["%s"], "addresses":["%s"], "portRanges":[{"low":%s, "high":%s}]}`, protocol, hostname, port, port)
+	jsonStr = fmt.Sprintf(`{"protocols":["%s"], "addresses":["%s"], "portRanges":[{"low":%s, "high":%s}]}`, protocol, endpoint, port, port)
 	fmt.Printf("jsonStr: %s\n", jsonStr)
 
 	cmd = newCreateConfigCmd(os.Stdout, os.Stderr)
@@ -129,6 +130,7 @@ func runShare(o *ShareOptions) (err error) {
 	// Create service
 	cmd = newCreateServiceCmd(os.Stdout, os.Stderr)
 	args = []string{svcName, "--configs", bindCfgName + "," + dialCfgName}
+	cmd.SetArgs(args)
 	fmt.Printf("Creating service with args: %v\n", args)
 
 	// Run the command
@@ -152,7 +154,7 @@ func runShare(o *ShareOptions) (err error) {
 		fmt.Println("Error:", err)
 	}
 
-	bindSvcPolName := svcName + ".dial"
+	bindSvcPolName := svcName + ".bind"
 	bindIdRole := "#" + svcName + ".servers"
 	cmd = newCreateServicePolicyCmd(os.Stdout, os.Stderr)
 	args = []string{bindSvcPolName, db.PolicyTypeBindName, "--service-roles", svcRole, "--identity-roles", bindIdRole}
