@@ -25,19 +25,6 @@ import (
 	"time"
 )
 
-// configResource is a variable of type embed.FS used to store the configuration resources.
-// Example usage:
-// To access the configuration resources, you can use the configResource variable like this:
-// configPath := "configs/myconfig.json"
-// configFile, err := configResource.Open(configPath)
-//
-//	if err != nil {
-//	    // handle error
-//	}
-//
-// defer configFile.Close()
-// Note: The exact usage and behavior of the configResource variable depend on the context in which it is used, and the specific methods and functions that interact
-//
 //go:embed configs
 var configResource embed.FS
 
@@ -202,8 +189,8 @@ func main() {
 	})
 	m.AddOperatingStage(circuitMetricsStage)
 
-	// Add the InfluxMetricsReporter2 stage to the FabLab Model
-	influxMetricsReporterStage := fablib_5_operation.InfluxMetricsReporter2()
+	// Add the Influx2MetricsReporter stage to the FabLab Model
+	influxMetricsReporterStage := fablib_5_operation.Influx2MetricsReporter()
 	m.AddOperatingStage(influxMetricsReporterStage)
 
 	var iPerfServerEndpoint = func(m *model.Model) string {
