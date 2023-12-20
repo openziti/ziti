@@ -65,7 +65,7 @@ func newUpdateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the edge router")
 	cmd.Flags().BoolVarP(&options.isTunnelerEnabled, "tunneler-enabled", "t", false, "Can this edge router be used as a tunneler")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
-		"Set role attributes of the edge router. Use --role-attributes '' to set an empty list")
+		"comma-separated role attributes for the router. Use '' to unset.")
 	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
 	cmd.Flags().BoolVar(&options.usePut, "use-put", false, "Use PUT to when making the request")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
