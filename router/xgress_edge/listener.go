@@ -40,6 +40,13 @@ import (
 	"github.com/openziti/ziti/router/xgress_common"
 )
 
+var peerHeaders = []uint32{
+	edge.PublicKeyHeader,
+	edge.CallerIdHeader,
+	edge.AppDataHeader,
+	edge.ConnectionMarkerHeader,
+}
+
 type listener struct {
 	id               *identity.TokenId
 	factory          *Factory
@@ -152,7 +159,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	log.Debug("dialing fabric")
 	peerData := make(map[uint32][]byte)
 
-	for _, key := range []uint32{edge.PublicKeyHeader, edge.CallerIdHeader, edge.AppDataHeader} {
+	for _, key := range peerHeaders {
 		if pk, found := req.Headers[int32(key)]; found {
 			peerData[key] = pk
 		}
