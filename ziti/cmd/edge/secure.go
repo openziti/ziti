@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/ziti/tunnel/entities"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
 	"net/url"
@@ -73,7 +74,7 @@ func runSecure(o *SecureOptions) (err error) {
 	// Parse the url argument
 	u, err := url.Parse(address)
 	if err != nil {
-		fmt.Println("Error parsing URL:", err)
+		logrus.Fatal("Error parsing URL:", err)
 		return
 	}
 	protocol := u.Scheme
@@ -81,13 +82,13 @@ func runSecure(o *SecureOptions) (err error) {
 	port := u.Port()
 
 	if protocol == "" {
-		fmt.Println("Protocol is missing")
+		logrus.Fatal("Protocol is missing")
 	}
 	if hostname == "" {
-		fmt.Println("Hostname is missing")
+		logrus.Fatal("Hostname is missing")
 	}
 	if port == "" {
-		fmt.Println("Port is missing")
+		logrus.Fatal("Port is missing")
 	}
 
 	// Create a bind config
@@ -101,7 +102,7 @@ func runSecure(o *SecureOptions) (err error) {
 	// Run the command
 	err = cmd.Execute()
 	if err != nil {
-		fmt.Println("Error:", err)
+		logrus.Fatal("Error:", err)
 	}
 
 	// Create a dial config
@@ -111,7 +112,6 @@ func runSecure(o *SecureOptions) (err error) {
 	}
 	dialCfgName := svcName + ".intercept.v1"
 	jsonStr = fmt.Sprintf(`{"protocols":["%s"], "addresses":["%s"], "portRanges":[{"low":%s, "high":%s}]}`, protocol, endpoint, port, port)
-	fmt.Printf("jsonStr: %s\n", jsonStr)
 
 	cmd = newCreateConfigCmd(os.Stdout, os.Stderr)
 	args = []string{dialCfgName, entities.InterceptV1, jsonStr}
@@ -120,19 +120,18 @@ func runSecure(o *SecureOptions) (err error) {
 	// Run the command
 	err = cmd.Execute()
 	if err != nil {
-		fmt.Println("Error:", err)
+		logrus.Fatal("Error:", err)
 	}
 
 	// Create service
 	cmd = newCreateServiceCmd(os.Stdout, os.Stderr)
 	args = []string{svcName, "--configs", bindCfgName + "," + dialCfgName}
 	cmd.SetArgs(args)
-	fmt.Printf("Creating service with args: %v\n", args)
 
 	// Run the command
 	err = cmd.Execute()
 	if err != nil {
-		fmt.Println("Error:", err)
+		logrus.Fatal("Error:", err)
 	}
 
 	// Create service policies
@@ -147,7 +146,7 @@ func runSecure(o *SecureOptions) (err error) {
 	// Run the command
 	err = cmd.Execute()
 	if err != nil {
-		fmt.Println("Error:", err)
+		logrus.Fatal("Error:", err)
 	}
 
 	bindSvcPolName := svcName + ".bind"
@@ -159,7 +158,7 @@ func runSecure(o *SecureOptions) (err error) {
 	// Run the command
 	err = cmd.Execute()
 	if err != nil {
-		fmt.Println("Error:", err)
+		logrus.Fatal("Error:", err)
 	}
 
 	return
