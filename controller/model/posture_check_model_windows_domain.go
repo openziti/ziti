@@ -18,12 +18,13 @@ package model
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"strings"
-	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckDomains{}
@@ -106,7 +107,7 @@ func (p *PostureCheckDomains) fillFrom(_ Env, _ *bbolt.Tx, _ *db.PostureCheck, s
 	subCheck := subType.(*db.PostureCheckWindowsDomains)
 
 	if subCheck == nil {
-		return fmt.Errorf("could not covert domain check to bolt type")
+		return fmt.Errorf("could not convert domain check to bolt type")
 	}
 
 	p.Domains = subCheck.Domains

@@ -21,16 +21,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/go-openapi/runtime"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/debugz"
-	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 	"path"
 	goruntime "runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-openapi/runtime"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/foundation/v2/errorz"
 )
 
 // TimeoutHandler will create a http.Handler that wraps the given http.Handler. If the given timeout is reached, the
@@ -70,7 +71,7 @@ func (h *timeoutHandler) errorBody(w http.ResponseWriter, r *http.Request) error
 
 		return err
 	}
-	return errors.New("no timout api error specified")
+	return errors.New("no timeout api error specified")
 }
 
 func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

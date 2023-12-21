@@ -19,12 +19,13 @@
 package tests
 
 import (
+	"net/http"
+	"testing"
+
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/common/eid"
-	"net/http"
-	"testing"
 )
 
 func Test_PostureChecks_ProcessMulti(t *testing.T) {
@@ -435,7 +436,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 						IsRunning: true,
 						Path:      process03Path,
 						SignerFingerprints: []string{
-							signerFingerprints[3], //no signers on 03's check shoudln't matter
+							signerFingerprints[3], //no signers on 03's check shouldn't matter
 						},
 					}
 
@@ -640,7 +641,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 						IsRunning: true,
 						Path:      process03Path,
 						SignerFingerprints: []string{
-							signerFingerprints[3], //no signers on 03's check shoudln't matter
+							signerFingerprints[3], //no signers on 03's check shouldn't matter
 						},
 					}
 

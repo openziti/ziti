@@ -24,7 +24,7 @@ contents:
 replaces:
   - ziti-cli
 
-# packager-neutral scripts may be overriden by packager-specific scripts
+# packager-neutral scripts may be overridden by packager-specific scripts
 # scripts:
   # preinstall: ./scripts/preinstall.sh
   # postinstall: ./scripts/postinstall.sh

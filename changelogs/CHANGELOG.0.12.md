@@ -30,7 +30,7 @@ This release does not yet include a terminator strategy API. Strategies can be s
 service, but if a service has multiple terminators the first one will be used. The terminator
 strategy API along with some implementations will be added in a follow-up release. This release also
 does not include strategy inputs on terminators as discussed in the above design document. If
-strategy inputs end up being useful, they may be added in the furure.
+strategy inputs end up being useful, they may be added in the future.
 
 ### Terminator related API changes
 

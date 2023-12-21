@@ -19,6 +19,9 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
+	"math/big"
+	"time"
+
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/cert"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
@@ -27,8 +30,6 @@ import (
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"math/big"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
@@ -342,7 +343,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 			terminatorId = terminator.terminatorId.Load()
 			log = log.WithField("terminatorId", terminatorId)
 
-			// everything is the same, we can re-use the terminator
+			// everything is the same, we can reuse the terminator
 			if terminator.edgeClientConn == self && terminator.token == token {
 				log.Info("duplicate create terminator request")
 				self.sendStateConnectedReply(req, nil)

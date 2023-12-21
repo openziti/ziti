@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 )
@@ -14,7 +15,7 @@ func (m *Migrations) removeAllSessions(step *boltz.MigrationStep) {
 		currentSessionId := string(current)
 
 		if err := m.stores.Session.DeleteById(step.Ctx, currentSessionId); err != nil {
-			step.SetError(fmt.Errorf("error cleaing up sessions for migration: %v", err))
+			step.SetError(fmt.Errorf("error cleaning up sessions for migration: %v", err))
 			return
 		}
 	}
@@ -24,7 +25,7 @@ func (m *Migrations) removeAllSessions(step *boltz.MigrationStep) {
 		currentApiSessionId := string(current)
 
 		if err := m.stores.ApiSession.DeleteById(step.Ctx, currentApiSessionId); err != nil {
-			step.SetError(fmt.Errorf("error cleaing up api sessions for migration: %v", err))
+			step.SetError(fmt.Errorf("error cleaning up api sessions for migration: %v", err))
 			return
 		}
 	}

@@ -219,7 +219,7 @@ To this end, terminators now have two new fields:
 Notes
 
 1. Identity here may be related to the concept of the Edge Identity, but is not required to be.
-2. How IdentitySecret is used to validate a terminator is up to the terminator valiator for the
+2. How IdentitySecret is used to validate a terminator is up to the terminator validator for the
    binding. The edge has a terminator validator which uses the client's certs to ensure that all
    terminators for a given terminator identity belong to the same edge identity.
 

@@ -20,9 +20,10 @@
 package tests
 
 import (
-	"github.com/google/uuid"
 	"net/http"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func Test_Api_Errors(t *testing.T) {
@@ -89,7 +90,7 @@ func Test_Api_Errors(t *testing.T) {
 		madeUpToken := uuid.New().String()
 
 		resp, err := ctx.newAnonymousClientApiRequest().
-			SetHeader("accept", "appliaction/x-pem-file, application/json").
+			SetHeader("accept", "application/x-pem-file, application/json").
 			Post("enroll?token=" + madeUpToken)
 
 		ctx.Req.NoError(err)

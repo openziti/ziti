@@ -17,9 +17,10 @@
 package model
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestPostureCheckModelOs_Evaluate(t *testing.T) {
@@ -33,7 +34,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		req.True(result)
 	})
 
-	t.Run("returns true for valid os type and is higer than the min and lower than max", func(t *testing.T) {
+	t.Run("returns true for valid os type and is higher than the min and lower than max", func(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		osCheck.OperatingSystems[0].OsVersions[0] = ">=10.5.0 <=10.6.0"
 
@@ -42,7 +43,6 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		req := require.New(t)
 		req.True(result)
 	})
-
 
 	t.Run("returns true for valid os type and is the min and lower than max", func(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
@@ -54,7 +54,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		req.True(result)
 	})
 
-	t.Run("returns true for valid os type and higer than min and is the max", func(t *testing.T) {
+	t.Run("returns true for valid os type and higher than min and is the max", func(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		osCheck.OperatingSystems[0].OsVersions[0] = ">=10.0.0 <=10.5.19041"
 
@@ -63,7 +63,6 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		req := require.New(t)
 		req.True(result)
 	})
-
 
 	t.Run("returns false for valid os type and lower than min", func(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
@@ -335,7 +334,7 @@ func newMatchingOsCheckAndData() (*PostureCheckOperatingSystem, *PostureData) {
 	postureResponseOs.PostureResponse = postureResponse
 
 	validPostureData := &PostureData{
-		Os:        *postureResponseOs,
+		Os: *postureResponseOs,
 	}
 
 	processCheck := &PostureCheckOperatingSystem{
