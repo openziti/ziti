@@ -11,6 +11,6 @@ This is a manually run test that will, with the default values except the admin 
 ziti network is running as expected. The values can be edited to confirm other ziti networks but will require an http
 server on the back end.
 */
-func TestSimpleWebService(t *testing.T) {
+func TestEdgeQuickstartManual(t *testing.T) {
 	performQuickstartTest(t)
 }
