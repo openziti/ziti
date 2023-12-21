@@ -25,7 +25,7 @@ require (
 	github.com/go-openapi/swag v0.22.5
 	github.com/go-openapi/validate v0.22.4
 	github.com/go-resty/resty/v2 v2.10.0
-	github.com/golang-jwt/jwt/v5 v5.0.0
+	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.5.0
