@@ -17,12 +17,13 @@
 package routes
 
 import (
+	"time"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"time"
 )
 
 func MapPostureDataToRestModel(_ *env.AppEnv, postureData *model.PostureData) *rest_model.PostureData {
@@ -54,7 +55,7 @@ func MapPostureDataProcessesToRestModel(postureData *model.PostureData) []*rest_
 			process.SignerFingerprints = pdProcess.SignerFingerprints
 			process.BinaryHash = pdProcess.BinaryHash
 		} else {
-			pfxlog.Logger().Errorf("could not convery posture data process (%s) to subtype, got %T", genericProcess.PostureCheckId, genericProcess.SubType)
+			pfxlog.Logger().Errorf("could not convert posture data process (%s) to subtype, got %T", genericProcess.PostureCheckId, genericProcess.SubType)
 		}
 
 		processes = append(processes, process)
@@ -75,7 +76,7 @@ func MapPostureDataDomainToRestModel(domain *model.PostureResponseDomain) *rest_
 	if pdDomain, ok := domain.SubType.(*model.PostureResponseDomain); ok {
 		ret.Domain = &pdDomain.Name
 	} else {
-		pfxlog.Logger().Errorf("could not convery posture data domain to subtype, got %T", domain.SubType)
+		pfxlog.Logger().Errorf("could not convert posture data domain to subtype, got %T", domain.SubType)
 	}
 
 	return ret
@@ -93,7 +94,7 @@ func MapPostureDataMacToRestModel(mac *model.PostureResponseMac) *rest_model.Pos
 	if pdMac, ok := mac.SubType.(*model.PostureResponseMac); ok {
 		ret.Addresses = pdMac.Addresses
 	} else {
-		pfxlog.Logger().Errorf("could not convery posture data mac to subtype, got %T", mac.SubType)
+		pfxlog.Logger().Errorf("could not convert posture data mac to subtype, got %T", mac.SubType)
 	}
 
 	return ret
@@ -112,7 +113,7 @@ func MapPostureDataOsToRestModel(os *model.PostureResponseOs) *rest_model.Postur
 		ret.Type = &pdOs.Type
 		ret.Version = &pdOs.Version
 	} else {
-		pfxlog.Logger().Errorf("could not convery posture data mac to subtype, got %T", os.SubType)
+		pfxlog.Logger().Errorf("could not convert posture data mac to subtype, got %T", os.SubType)
 	}
 
 	return ret

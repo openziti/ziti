@@ -106,7 +106,7 @@ func newUpdatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
-		"Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
+		"comma-separated role attributes for the posture check. Use '' to unset.")
 	cmd.Flags().StringSliceVarP(&options.addresses, "mac-addresses", "m", nil,
 		"Set MAC addresses of the posture check")
 
@@ -178,7 +178,7 @@ func newUpdatePostureCheckDomainCmd(out io.Writer, errOut io.Writer) *cobra.Comm
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
-		"Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
+		"comma-separated role attributes for the posture check. Use '' to unset.")
 	cmd.Flags().StringSliceVarP(&options.domains, "domains", "d", nil,
 		"Set the domains of the posture check")
 	return cmd
@@ -223,7 +223,7 @@ func newUpdatePostureCheckMfaCmd(out io.Writer, errOut io.Writer) *cobra.Command
 	cmd.Flags().BoolVar(&options.ignoreLegacyEndpoints, "ignore-legacy", false, "Ignore prompts and timeout for endpoints that do not support MFA timeout/prompts")
 	cmd.Flags().BoolVarP(&options.ignoreLegacyEndpoints, "no-ignore-legacy", "l", false, "Do not ignore prompts and timeout for endpoints that do not support MFA timeout/prompts")
 
-	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
+	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "comma-separated role attributes for the posture check. Use '' to unset.")
 	return cmd
 }
 
@@ -316,7 +316,7 @@ func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
 
 	if o.Cmd.Flags().Changed("domains") {
 		if len(o.domains) == 0 {
-			return fmt.Errorf("must specify at least one domain, multiple values may be separated by commas")
+			return fmt.Errorf("comma-separated domain names")
 		}
 
 		api.SetJSONValue(entityData, o.domains, "domains")
@@ -369,7 +369,7 @@ func newUpdatePostureCheckProcessCmd(out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
-		"Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
+		"comma-separated role attributes for the posture check. Use '' to unset.")
 	cmd.Flags().StringVarP(&options.path, "path", "p", "", "set the path of the posture check")
 	cmd.Flags().StringSliceVarP(&options.hashes, "hash-sigs", "s", nil, "set the valid hashes of the posture check")
 	cmd.Flags().StringVarP(&options.signer, "signer-fingerprint", "f", "", "set the signer fingerprint of the posture check")
@@ -476,7 +476,7 @@ func newUpdatePostureCheckOsCmd(out io.Writer, errOut io.Writer) *cobra.Command 
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
-		"Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
+		"comma-separated role attributes for the posture check. Use '' to unset.")
 	cmd.Flags().StringSliceVarP(&options.os, "os", "o", nil,
 		"Set OS(es) of the posture check, should be in the format of '<os>:<version>:<version>:...', multiple may be specified via CSV or multiple flags")
 	return cmd

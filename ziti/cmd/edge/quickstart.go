@@ -146,13 +146,13 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 
 	o.createMinimalPki()
 
-	ctrl := create.NewCmdCreateConfigController()
-	ctrl.SetArgs([]string{
-		fmt.Sprintf("--output=%s", ctrlYaml),
-	})
-	_ = ctrl.Execute()
-
 	if !o.AlreadyInitialized {
+		ctrl := create.NewCmdCreateConfigController()
+		ctrl.SetArgs([]string{
+			fmt.Sprintf("--output=%s", ctrlYaml),
+		})
+		_ = ctrl.Execute()
+
 		initCmd := edgeSubCmd.NewEdgeInitializeCmd(version.GetCmdBuildInfo())
 		initCmd.SetArgs([]string{
 			fmt.Sprintf("--username=%s", o.Username),
@@ -335,12 +335,18 @@ func (o *QuickstartOpts) createMinimalPki() {
 
 		//ziti pki create server --pki-root="${ZITI_HOME}/pki" --ca-name "intermediate-ca" --server-name "server" --server-file "server" --dns "localhost,${ZITI_HOSTNAME}"
 		svr := pki.NewCmdPKICreateServer(o.out, o.errOut)
+		var ips = "127.0.0.1,::1"
+		ip_override := os.Getenv("ZITI_CTRL_EDGE_IP_OVERRIDE")
+		if ip_override != "" {
+			ips = ips + "," + ip_override
+		}
 		svr.SetArgs([]string{
 			fmt.Sprintf("--pki-root=%s", where),
 			fmt.Sprintf("--ca-name=%s", "intermediate-ca"),
 			fmt.Sprintf("--server-name=%s", "server"),
 			fmt.Sprintf("--server-file=%s", "server"),
 			fmt.Sprintf("--dns=%s,%s", "localhost", helpers.GetCtrlAdvertisedAddress()),
+			fmt.Sprintf("--ip=%s", ips),
 		})
 		svrErr := svr.Execute()
 		if svrErr != nil {

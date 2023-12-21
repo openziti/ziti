@@ -1,4 +1,5 @@
-# this is a list of shortcut routes at get.openziti.io for raw.githubusercontent.com
+# this is a list of shortcut routes at get.openziti.io for raw.githubusercontent.com and is documented in
+# https://github.com/openziti/ziti/tree/main/quickstart#github-raw-reverse-proxy
 
 # these are file shortcuts, so the shortcut is the test file
 - get: /ziti-cli-functions.sh
@@ -6,6 +7,11 @@
 
 - get: /miniziti.bash
   raw: /openziti/ziti/{{GITHUB_SHA}}/quickstart/kubernetes/
+
+  # Linux package install script for ziti, zrok CLI, and metapackages that are in the main release repo for generic,
+  # portable Linux packages, not ziti-edge-tunnel
+- get: /install.bash
+  raw: /openziti/ziti/{{GITHUB_SHA}}/dist/dist-packages/linux/
 
 # these are directory shortcuts, so you must supply a test file
 - get: /quick/
@@ -28,3 +34,7 @@
 - get: /pack/
   raw: /openziti/ziti-tunnel-sdk-c/main/
   file: package-repos.gpg
+  
+- get: /zdew/
+  raw: /openziti/desktop-edge-win/main/release-streams/
+  file: latest.json

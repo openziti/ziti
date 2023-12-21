@@ -18,12 +18,13 @@ package model
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/blang/semver"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckMfa{}
@@ -44,7 +45,7 @@ type PostureCheckMfa struct {
 }
 
 func (p *PostureCheckMfa) TypeId() string {
-	return persistence.PostureCheckTypeMFA
+	return db.PostureCheckTypeMFA
 }
 
 func (p *PostureCheckMfa) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
@@ -316,11 +317,11 @@ func newPostureCheckMfa() PostureCheckSubType {
 	return &PostureCheckMfa{}
 }
 
-func (p *PostureCheckMfa) fillFrom(_ Env, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
-	subCheck := subType.(*persistence.PostureCheckMfa)
+func (p *PostureCheckMfa) fillFrom(_ Env, tx *bbolt.Tx, check *db.PostureCheck, subType db.PostureCheckSubType) error {
+	subCheck := subType.(*db.PostureCheckMfa)
 
 	if subCheck == nil {
-		return fmt.Errorf("could not covert mfa check to bolt type")
+		return fmt.Errorf("could not convert mfa check to bolt type")
 	}
 
 	p.TimeoutSeconds = subCheck.TimeoutSeconds
@@ -331,8 +332,8 @@ func (p *PostureCheckMfa) fillFrom(_ Env, tx *bbolt.Tx, check *persistence.Postu
 	return nil
 }
 
-func (p *PostureCheckMfa) toBoltEntityForCreate(*bbolt.Tx, Env) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckMfa{
+func (p *PostureCheckMfa) toBoltEntityForCreate(*bbolt.Tx, Env) (db.PostureCheckSubType, error) {
+	return &db.PostureCheckMfa{
 		TimeoutSeconds:        p.TimeoutSeconds,
 		PromptOnWake:          p.PromptOnWake,
 		PromptOnUnlock:        p.PromptOnUnlock,

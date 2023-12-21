@@ -20,31 +20,31 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"time"
 )
 
 type EnrollmentManager struct {
-	baseEntityManager[*Enrollment, *persistence.Enrollment]
-	enrollmentStore persistence.EnrollmentStore
+	baseEntityManager[*Enrollment, *db.Enrollment]
+	enrollmentStore db.EnrollmentStore
 }
 
 func NewEnrollmentManager(env Env) *EnrollmentManager {
 	manager := &EnrollmentManager{
-		baseEntityManager: newBaseEntityManager[*Enrollment, *persistence.Enrollment](env, env.GetStores().Enrollment),
+		baseEntityManager: newBaseEntityManager[*Enrollment, *db.Enrollment](env, env.GetStores().Enrollment),
 		enrollmentStore:   env.GetStores().Enrollment,
 	}
 
@@ -86,7 +86,7 @@ func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enr
 	model.ExpiresAt = &expiresAt
 
 	switch model.Method {
-	case persistence.MethodEnrollOttCa:
+	case db.MethodEnrollOttCa:
 		if model.CaId == nil {
 			return apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
 		}
@@ -96,11 +96,11 @@ func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enr
 		if err != nil || ca == nil {
 			return apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
 		}
-	case persistence.MethodAuthenticatorUpdb:
+	case db.MethodAuthenticatorUpdb:
 		if model.Username == nil || *model.Username == "" {
 			return apierror.NewBadRequestFieldError(*errorz.NewFieldError("username not provided", "username", model.Username))
 		}
-	case persistence.MethodEnrollOtt:
+	case db.MethodEnrollOtt:
 	default:
 		return apierror.NewBadRequestFieldError(*errorz.NewFieldError("unsupported enrollment method", "method", model.Method))
 	}
@@ -140,7 +140,7 @@ func (self *EnrollmentManager) newModelEntity() *Enrollment {
 func (self *EnrollmentManager) getEnrollmentMethod(ctx EnrollmentContext) (string, error) {
 	method := ctx.GetMethod()
 
-	if method == persistence.MethodEnrollCa {
+	if method == db.MethodEnrollCa {
 		return method, nil
 	}
 
@@ -284,9 +284,9 @@ func (self *EnrollmentManager) RefreshJwt(id string, expiresAt time.Time, ctx *c
 	}
 
 	return self.Update(enrollment, fields.UpdatedFieldsMap{
-		persistence.FieldEnrollmentJwt:       struct{}{},
-		persistence.FieldEnrollmentExpiresAt: struct{}{},
-		persistence.FieldEnrollmentIssuedAt:  struct{}{},
+		db.FieldEnrollmentJwt:       struct{}{},
+		db.FieldEnrollmentExpiresAt: struct{}{},
+		db.FieldEnrollmentIssuedAt:  struct{}{},
 	}, ctx)
 }
 

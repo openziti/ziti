@@ -1,12 +1,12 @@
 # Purpose
 
-This script sets up an echo service which is hosted by two SDK applications and
-is accessed by another sdk application.
+This script sets up an echo service which is hosted by two SDK applications and is accessed by
+another sdk application.
 
 # Prerequisites
 
-You need at least one controller and an edge router running. for this to work.
-You can use the quick-start script found [here](https://github.com/openziti/ziti/tree/release-next/quickstart).
+You need at least one controller and an edge router running. for this to work. You can use the
+quick-start script found [here](https://github.com/openziti/ziti/tree/release-next/quickstart).
 
 # Setup
 
@@ -40,10 +40,10 @@ ziti edge create service echo -a echo
 ## Create and enroll the hosting identities
 
 ```action:ziti
-ziti edge create identity service echo-host-1 -a echo,echo-host -o echo-host-1.jwt
+ziti edge create identity echo-host-1 -a echo,echo-host -o echo-host-1.jwt
 ziti edge enroll --rm echo-host-1.jwt
 
-ziti edge create identity service echo-host-2 -a echo,echo-host -o echo-host-2.jwt
+ziti edge create identity echo-host-2 -a echo,echo-host -o echo-host-2.jwt
 ziti edge enroll --rm echo-host-2.jwt
 ```
 
@@ -62,8 +62,7 @@ ziti demo echo-server -i echo-host-1.json
 ziti demo echo-server -i echo-host-2.json
 ```
 
-and
-the zcat client using
+and the zcat client using
 
 ```
 ziti demo zcat -i zcat.json ziti:echo

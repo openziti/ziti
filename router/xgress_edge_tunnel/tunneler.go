@@ -19,12 +19,12 @@ package xgress_edge_tunnel
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/router/fabric"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/intercept"
 	"github.com/openziti/ziti/tunnel/intercept/host"
 	"github.com/openziti/ziti/tunnel/intercept/proxy"
 	"github.com/openziti/ziti/tunnel/intercept/tproxy"
-	"github.com/openziti/ziti/router/xgress"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"math"
@@ -96,7 +96,11 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 		return errors.Errorf("unsupported tunnel mode '%v'", self.listenOptions.mode)
 	}
 
-	resolver := dns.NewResolver(self.listenOptions.resolver)
+	resolver, err := dns.NewResolver(self.listenOptions.resolver)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to start DNS resolver")
+	}
+
 	if err = intercept.SetDnsInterceptIpRange(self.listenOptions.dnsSvcIpRange); err != nil {
 		pfxlog.Logger().Errorf("invalid dns service IP range %s: %v", self.listenOptions.dnsSvcIpRange, err)
 		return err
@@ -171,6 +175,8 @@ func (self *tunneler) ReestablishmentRunner() {
 func (self *tunneler) ReestablishTerminators() {
 	log := pfxlog.Logger()
 	terminators := self.terminators.Items()
+
+	time.Sleep(10 * time.Second) // wait for validate terminator messages to come in first
 
 	if len(terminators) > 0 {
 		pfxlog.Logger().Debugf("reestablishing %v terminators", len(terminators))

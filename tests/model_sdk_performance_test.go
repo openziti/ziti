@@ -10,14 +10,14 @@ import (
 	service2 "github.com/openziti/edge-api/rest_client_api_client/service"
 	apiClientSession "github.com/openziti/edge-api/rest_client_api_client/session"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	idloader "github.com/openziti/identity"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/rcrowley/go-metrics"
 	"io"
 	"net/url"
@@ -274,7 +274,7 @@ func (ctx *modelPerf) createIdentities(spec *perfScenarioSpec) {
 		enrollments := []*model.Enrollment{
 			{
 				BaseEntity: models.BaseEntity{},
-				Method:     persistence.MethodEnrollOtt,
+				Method:     db.MethodEnrollOtt,
 				Token:      uuid.New().String(),
 			},
 		}
@@ -358,7 +358,7 @@ func (ctx *modelPerf) createServicePolicy(policyType string, identityRoles, serv
 		PolicyType:    policyType,
 		IdentityRoles: identityRoles,
 		ServiceRoles:  serviceRoles,
-		Semantic:      persistence.SemanticAnyOf,
+		Semantic:      db.SemanticAnyOf,
 	}
 	ctx.Req.NoError(policyHandler.Create(policy))
 }
@@ -371,7 +371,7 @@ func (ctx *modelPerf) createEdgeRouterPolicy(identityRoles, edgeRouterRoles []st
 		Name:            id,
 		IdentityRoles:   identityRoles,
 		EdgeRouterRoles: edgeRouterRoles,
-		Semantic:        persistence.SemanticAnyOf,
+		Semantic:        db.SemanticAnyOf,
 	}
 	ctx.NoError(policyHandler.Create(policy))
 }
@@ -384,7 +384,7 @@ func (ctx *modelPerf) createServiceEdgeRouterPolicy(edgeRouterRoles, serviceRole
 		Name:            id,
 		EdgeRouterRoles: edgeRouterRoles,
 		ServiceRoles:    serviceRoles,
-		Semantic:        persistence.SemanticAnyOf,
+		Semantic:        db.SemanticAnyOf,
 	}
 	ctx.NoError(policyHandler.Create(policy))
 }

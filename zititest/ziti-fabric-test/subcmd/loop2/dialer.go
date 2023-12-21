@@ -18,17 +18,18 @@ package loop2
 
 import (
 	"fmt"
+	"net"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/router/xgress_transport"
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/loop2/pb"
+	"github.com/openziti/ziti/router/xgress_transport"
+	loop2_pb "github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/loop2/pb"
 	"github.com/spf13/cobra"
-	"net"
-	"strings"
-	"time"
 )
 
 func init() {
@@ -168,7 +169,7 @@ func (cmd *dialerCmd) connect() net.Conn {
 
 			context, err = ziti.NewContext(zitiCfg)
 			if err != nil {
-				log.Fatalf("failed to load ziti context fromt configuration: %v", err)
+				log.Fatalf("failed to load ziti context from configuration: %v", err)
 			}
 		} else {
 			log.Fatal("no configuration file provided")

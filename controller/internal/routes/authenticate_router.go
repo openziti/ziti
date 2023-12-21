@@ -24,13 +24,14 @@ import (
 	clientApiAuthentication "github.com/openziti/edge-api/rest_client_api_server/operations/authentication"
 	managementApiAuthentication "github.com/openziti/edge-api/rest_management_api_server/operations/authentication"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/metrics"
 	"net"
 	"net/http"
 	"time"
@@ -178,12 +179,20 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		sessionCerts = append(sessionCerts, sessionCert)
 	}
 
-	sessionId, err := ae.Managers.ApiSession.Create(changeCtx.NewMutateContext(), newApiSession, sessionCerts)
+	var sessionIdHolder concurrenz.AtomicValue[string]
+
+	ctrl, err := ae.AuthRateLimiter.RunRateLimited(func() error {
+		sessionId, err := ae.Managers.ApiSession.Create(changeCtx.NewMutateContext(), newApiSession, sessionCerts)
+		sessionIdHolder.Store(sessionId)
+		return err
+	})
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
+
+	sessionId := sessionIdHolder.Load()
 
 	filledApiSession, err := ae.Managers.ApiSession.Read(sessionId)
 
@@ -210,7 +219,12 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 
 	ro.createTimer.UpdateSince(start)
 
-	rc.Respond(envelope, http.StatusOK)
+	writeOk := rc.RespondWithProducer(rc.GetProducer(), envelope, http.StatusOK)
+	if writeOk {
+		ctrl.Success()
+	} else {
+		ctrl.Timeout()
+	}
 }
 
 func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, mfaCode *rest_model.MfaCode) {

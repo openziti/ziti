@@ -20,24 +20,24 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/router"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/fabric"
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/internal/apiproxy"
 	"github.com/openziti/ziti/router/internal/edgerouter"
-	"github.com/openziti/ziti/router"
-	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
-	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
 )
 
 type Factory struct {
-	id               *identity.TokenId
 	ctrls            env.NetworkControllers
 	enabled          bool
 	routerConfig     *router.Config
@@ -47,6 +47,7 @@ type Factory struct {
 	versionProvider  versions.VersionProvider
 	certChecker      *CertExpirationChecker
 	metricsRegistry  metrics.Registry
+	env              env.RouterEnv
 }
 
 func (factory *Factory) GetNetworkControllers() env.NetworkControllers {
@@ -57,10 +58,6 @@ func (factory *Factory) Enabled() bool {
 	return factory.enabled
 }
 
-const (
-	WsType = "ws"
-)
-
 func (factory *Factory) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewHelloHandler(factory.stateManager, factory.edgeRouterConfig.EdgeListeners))
 
@@ -70,14 +67,18 @@ func (factory *Factory) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionRemovedHandler(factory.stateManager))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionUpdatedHandler(factory.stateManager))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewSigningCertAddedHandler(factory.stateManager))
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.routerConfig.Id, func() {
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.env.GetRouterId(), func() {
 		factory.certChecker.CertsUpdated()
 	}))
+	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTerminatorV2ResponseType), factory.hostedServices.HandleCreateTerminatorResponse)
 
 	return nil
 }
 
 func (factory *Factory) NotifyOfReconnect(ch channel.Channel) {
+	pfxlog.Logger().Info("control channel reconnected, re-establishing hosted services")
+	factory.hostedServices.HandleReconnect()
+
 	go factory.stateManager.ValidateSessions(ch, factory.edgeRouterConfig.SessionValidateChunkSize, factory.edgeRouterConfig.SessionValidateMinInterval, factory.edgeRouterConfig.SessionValidateMaxInterval)
 }
 
@@ -86,11 +87,8 @@ func (factory *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
 }
 
 func (factory *Factory) Run(env env.RouterEnv) error {
-	factory.ctrls = env.GetNetworkControllers()
-
 	factory.stateManager.StartHeartbeat(env, factory.edgeRouterConfig.HeartbeatIntervalSeconds, env.GetCloseNotify())
-
-	factory.certChecker = NewCertExpirationChecker(factory.routerConfig.Id, factory.edgeRouterConfig, env.GetNetworkControllers(), env.GetCloseNotify())
+	factory.certChecker = NewCertExpirationChecker(factory.env.GetRouterId(), factory.edgeRouterConfig, env.GetNetworkControllers(), env.GetCloseNotify())
 
 	go func() {
 		if err := factory.certChecker.Run(); err != nil {
@@ -118,8 +116,6 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	}
 	config.Tcfg["protocol"] = append(config.Tcfg.Protocols(), "ziti-edge", "")
 
-	factory.id = config.RouterConfig.Id
-
 	factory.edgeRouterConfig = config
 	go apiproxy.Start(config)
 
@@ -127,13 +123,15 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 }
 
 // NewFactory constructs a new Edge Xgress Factory instance
-func NewFactory(routerConfig *router.Config, versionProvider versions.VersionProvider, stateManager fabric.StateManager, metricsRegistry metrics.Registry) *Factory {
+func NewFactory(routerConfig *router.Config, env env.RouterEnv, stateManager fabric.StateManager) *Factory {
 	factory := &Factory{
-		hostedServices:  NewHostedServicesRegistry(),
+		ctrls:           env.GetNetworkControllers(),
+		hostedServices:  newHostedServicesRegistry(env),
 		stateManager:    stateManager,
-		versionProvider: versionProvider,
+		versionProvider: env.GetVersionInfo(),
 		routerConfig:    routerConfig,
-		metricsRegistry: metricsRegistry,
+		metricsRegistry: env.GetMetricsRegistry(),
+		env:             env,
 	}
 	return factory
 }
@@ -159,10 +157,11 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 	}
 
 	headers := map[int32][]byte{
-		channel.HelloVersionHeader: versionHeader,
+		channel.HelloVersionHeader:     versionHeader,
+		edge.SupportsBindSuccessHeader: {1},
 	}
 
-	return newListener(factory.id, factory, options, headers), nil
+	return newListener(factory.env.GetRouterId(), factory, options, headers), nil
 }
 
 // CreateDialer creates a new Edge Xgress dialer

@@ -30,6 +30,7 @@ type UpdatedFields interface {
 	RemoveFields(fields ...string) UpdatedFields
 	ConcatNestedNames() UpdatedFields
 	FilterMaps(mapNames ...string) UpdatedFields
+	MapField(old, new string) UpdatedFields
 }
 
 var _ UpdatedFields = (UpdatedFieldsMap)(nil)
@@ -92,6 +93,14 @@ func (self UpdatedFieldsMap) FilterMaps(mapNames ...string) UpdatedFields {
 				break
 			}
 		}
+	}
+	return self
+}
+
+func (self UpdatedFieldsMap) MapField(old, new string) UpdatedFields {
+	if _, ok := self[old]; ok {
+		delete(self, old)
+		self[new] = struct{}{}
 	}
 	return self
 }

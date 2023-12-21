@@ -99,7 +99,7 @@ type createPostureCheckProcessMultiOptions struct {
 func (options *createPostureCheckOptions) addPostureFlags(cmd *cobra.Command) {
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new service")
+	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "comma-separated role attributes for the new service")
 }
 
 func newCreatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -226,7 +226,7 @@ func newCreatePostureCheckProcessMultiCmd(out io.Writer, errOut io.Writer) *cobr
 
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("process-multi <name> <semantic=AllOf|AnyOf> <os csv=%s|%s|%s|%s> <absolutePath csv>", OsLinux, OsMacOs, OsWindows, OsWindowsServer),
-		Short: "creates a posture check multi for an OS specific process. Provide os and paths as comma separated values",
+		Short: "Create a posture check requiring multiple executables and OSs. Provide CSVs of OS names and executable paths.",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if err := cobra.ExactArgs(4)(cmd, args); err != nil {
 				return err

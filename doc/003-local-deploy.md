@@ -66,7 +66,7 @@ You will need a new terminal with current directory set to the top-level of this
 ziti edge login -u ADMIN_NAME -p ADMIN_PW
 ```
 
-Subsequent `ziti` CLI commands will automatically re-use this session token. You'll need to perform this login step again when the token expires.
+Subsequent `ziti` CLI commands will automatically reuse this session token. You'll need to perform this login step again when the token expires.
 
 ## Initialize an Edge Router
 

@@ -22,12 +22,12 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/jwks"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/db"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -76,7 +76,7 @@ type signerRecord struct {
 
 	kidToPubKey       map[string]pubKey
 	jwksResponse      *jwks.Response
-	externalJwtSigner *persistence.ExternalJwtSigner
+	externalJwtSigner *db.ExternalJwtSigner
 
 	jwksResolver jwks.Resolver
 }
@@ -268,7 +268,7 @@ func (a *AuthModuleExtJwt) ProcessSecondary(context AuthContext) (AuthResult, er
 type AuthResultJwt struct {
 	AuthResultBase
 	externalJwtSignerId string
-	externalJwtSigner   *persistence.ExternalJwtSigner
+	externalJwtSigner   *db.ExternalJwtSigner
 }
 
 func (a *AuthResultJwt) IsSuccessful() bool {
@@ -312,7 +312,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 
 	if err == nil && jwtToken.Valid {
 		mapClaims := jwtToken.Claims.(jwt.MapClaims)
-		extJwt := mapClaims[ExtJwtInternalClaim].(*persistence.ExternalJwtSigner)
+		extJwt := mapClaims[ExtJwtInternalClaim].(*db.ExternalJwtSigner)
 
 		if extJwt == nil {
 			logger.Error("no external jwt signer found for internal claims")
@@ -489,7 +489,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 }
 
 func (a *AuthModuleExtJwt) onExternalSignerCreate(args ...interface{}) {
-	signer, ok := args[0].(*persistence.ExternalJwtSigner)
+	signer, ok := args[0].(*db.ExternalJwtSigner)
 
 	if !ok {
 		pfxlog.Logger().Errorf("error on external signature create for authentication module %T: expected %T got %T", a, signer, args[0])
@@ -499,7 +499,7 @@ func (a *AuthModuleExtJwt) onExternalSignerCreate(args ...interface{}) {
 	a.addSigner(signer)
 }
 
-func (a *AuthModuleExtJwt) onExternalSignerUpdate(signer *persistence.ExternalJwtSigner) {
+func (a *AuthModuleExtJwt) onExternalSignerUpdate(signer *db.ExternalJwtSigner) {
 	//read on update because patches can pass partial data
 	err := a.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
@@ -514,7 +514,7 @@ func (a *AuthModuleExtJwt) onExternalSignerUpdate(signer *persistence.ExternalJw
 	a.addSigner(signer)
 }
 
-func (a *AuthModuleExtJwt) addSigner(signer *persistence.ExternalJwtSigner) {
+func (a *AuthModuleExtJwt) addSigner(signer *db.ExternalJwtSigner) {
 	logger := pfxlog.Logger().WithFields(map[string]interface{}{
 		"id":           signer.Id,
 		"name":         signer.Name,
@@ -541,7 +541,7 @@ func (a *AuthModuleExtJwt) addSigner(signer *persistence.ExternalJwtSigner) {
 
 }
 
-func (a *AuthModuleExtJwt) onExternalSignerDelete(signer *persistence.ExternalJwtSigner) {
+func (a *AuthModuleExtJwt) onExternalSignerDelete(signer *db.ExternalJwtSigner) {
 	logger := pfxlog.Logger().WithFields(map[string]interface{}{
 		"id":           signer.Id,
 		"name":         signer.Name,

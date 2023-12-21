@@ -17,13 +17,13 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
 )
 
 func NewIdentityTypeManager(env Env) *IdentityTypeManager {
 	manager := &IdentityTypeManager{
-		baseEntityManager: newBaseEntityManager[*IdentityType, *persistence.IdentityType](env, env.GetStores().IdentityType),
+		baseEntityManager: newBaseEntityManager[*IdentityType, *db.IdentityType](env, env.GetStores().IdentityType),
 	}
 	manager.impl = manager
 
@@ -31,7 +31,7 @@ func NewIdentityTypeManager(env Env) *IdentityTypeManager {
 }
 
 type IdentityTypeManager struct {
-	baseEntityManager[*IdentityType, *persistence.IdentityType]
+	baseEntityManager[*IdentityType, *db.IdentityType]
 }
 
 func (self *IdentityTypeManager) newModelEntity() *IdentityType {

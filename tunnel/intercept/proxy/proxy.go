@@ -17,15 +17,14 @@
 package proxy
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/foundation/v2/mempool"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/entities"
 	"github.com/openziti/ziti/tunnel/intercept"
 	"github.com/openziti/ziti/tunnel/udp_vconn"
-	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/foundation/v2/mempool"
 	"github.com/pkg/errors"
 	"io"
 	"net"
@@ -61,7 +60,6 @@ func (self *Service) Stop() error {
 type interceptor struct {
 	interceptIP net.IP
 	services    map[string]*Service
-	closeCh     chan interface{}
 }
 
 func New(ip net.IP, serviceList []string) (intercept.Interceptor, error) {
@@ -98,7 +96,6 @@ func New(ip net.IP, serviceList []string) (intercept.Interceptor, error) {
 	p := interceptor{
 		interceptIP: ip,
 		services:    services,
-		closeCh:     make(chan interface{}),
 	}
 	return &p, nil
 }
@@ -117,27 +114,23 @@ func (p *interceptor) Intercept(service *entities.Service, _ dns.Resolver, _ int
 	// pre-fetch network session todo move this to service poller?
 	service.FabricProvider.PrepForUse(*service.ID)
 
-	go p.runServiceListener(proxiedService)
-	return nil
+	return p.runServiceListener(proxiedService)
 }
 
-func (p *interceptor) runServiceListener(service *Service) {
+func (p *interceptor) runServiceListener(service *Service) error {
 	if service.Protocol == intercept.TCP {
-		p.handleTCP(service)
-	} else {
-		p.handleUDP(service)
+		return p.handleTCP(service)
 	}
+	return p.handleUDP(service)
 }
 
-func (p *interceptor) handleTCP(service *Service) {
+func (p *interceptor) handleTCP(service *Service) error {
 	log := pfxlog.Logger().WithField("service", service.Name)
 
 	listenAddr := net.TCPAddr{IP: p.interceptIP, Port: service.Port}
 	server, err := net.Listen("tcp4", listenAddr.String())
 	if err != nil {
-		log.Fatalln(err)
-		p.closeCh <- err
-		return
+		return err
 	}
 	service.setCloser(server)
 
@@ -145,33 +138,31 @@ func (p *interceptor) handleTCP(service *Service) {
 
 	log.Info("service is listening")
 	defer log.Info("service stopped")
-	defer func() {
-		p.closeCh <- fmt.Sprintf("service listener %s exited", service.Name)
+
+	go func() {
+		for {
+			conn, err := server.Accept()
+			if err != nil {
+				log.WithError(err).Error("accept failed")
+				return
+			}
+			sourceAddr := service.TunnelService.GetSourceAddr(conn.RemoteAddr(), conn.LocalAddr())
+			appInfo := tunnel.GetAppInfo("tcp", "", p.interceptIP.String(), strconv.Itoa(service.Port), sourceAddr)
+			identity := service.TunnelService.GetDialIdentity(conn.RemoteAddr(), conn.LocalAddr())
+			go tunnel.DialAndRun(service.TunnelService, identity, conn, appInfo, true)
+		}
 	}()
 
-	for {
-		conn, err := server.Accept()
-		if err != nil {
-			log.WithError(err).Error("accept failed")
-			p.closeCh <- err
-			return
-		}
-		sourceAddr := service.TunnelService.GetSourceAddr(conn.RemoteAddr(), conn.LocalAddr())
-		appInfo := tunnel.GetAppInfo("tcp", "", p.interceptIP.String(), strconv.Itoa(service.Port), sourceAddr)
-		identity := service.TunnelService.GetDialIdentity(conn.RemoteAddr(), conn.LocalAddr())
-		go tunnel.DialAndRun(service.TunnelService, identity, conn, appInfo, true)
-	}
+	return nil
 }
 
-func (p *interceptor) handleUDP(service *Service) {
+func (p *interceptor) handleUDP(service *Service) error {
 	log := pfxlog.Logger().WithField("service", service.Name)
 
 	listenAddr := &net.UDPAddr{IP: p.interceptIP, Port: service.Port}
 	udpPacketConn, err := net.ListenUDP("udp", listenAddr)
 	if err != nil {
-		log.Fatalln(err)
-		p.closeCh <- err
-		return
+		return err
 	}
 
 	service.setCloser(udpPacketConn)
@@ -185,6 +176,7 @@ func (p *interceptor) handleUDP(service *Service) {
 	}
 	vconnManager := udp_vconn.NewManager(service.TunnelService.FabricProvider, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
 	go reader.generateReadEvents(vconnManager)
+	return nil
 }
 
 func (p *interceptor) Stop() {

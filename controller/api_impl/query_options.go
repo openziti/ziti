@@ -43,18 +43,21 @@ func (qo *PublicQueryOptions) String() string {
 	return fmt.Sprintf("[QueryOption Predicate: '%v', Sort: '%v', Paging: '%v']", qo.Predicate, qo.Sort, qo.Paging)
 }
 
-func (qo *PublicQueryOptions) getFullQuery(store boltz.Store) (ast.Query, error) {
+func (qo *PublicQueryOptions) getFullQuery(symbolTypes ast.SymbolTypes) (ast.Query, error) {
 	if qo.Predicate == "" {
 		qo.Predicate = "true"
 	}
 
-	query, err := ast.Parse(store, qo.Predicate)
+	query, err := ast.Parse(symbolTypes, qo.Predicate)
 	if err != nil {
 		return nil, errorz.NewInvalidFilter(err)
 	}
 
-	if err = boltz.ValidateSymbolsArePublic(query, store); err != nil {
-		return nil, errorz.NewInvalidFilter(err)
+	store, isStore := symbolTypes.(boltz.Store)
+	if isStore {
+		if err = boltz.ValidateSymbolsArePublic(query, store); err != nil {
+			return nil, errorz.NewInvalidFilter(err)
+		}
 	}
 
 	pfxlog.Logger().Debugf("query: %v", qo)
@@ -78,13 +81,15 @@ func (qo *PublicQueryOptions) getFullQuery(store boltz.Store) (ast.Query, error)
 	if len(sortFields) == 0 && qo.Sort != "" {
 		sortQueryString := "true sort by " + qo.Sort
 
-		sortQuery, err := ast.Parse(store, sortQueryString)
+		sortQuery, err := ast.Parse(symbolTypes, sortQueryString)
 		if err != nil {
 			return nil, errorz.NewInvalidSort(err)
 		}
 
-		if err = boltz.ValidateSymbolsArePublic(sortQuery, store); err != nil {
-			return nil, errorz.NewInvalidSort(err)
+		if isStore {
+			if err = boltz.ValidateSymbolsArePublic(sortQuery, store); err != nil {
+				return nil, errorz.NewInvalidSort(err)
+			}
 		}
 
 		if err = query.AdoptSortFields(sortQuery); err != nil {

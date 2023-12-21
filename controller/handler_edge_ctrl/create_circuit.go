@@ -20,8 +20,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/persistence"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -82,7 +82,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 		return
 	}
 	ctx.loadSession(ctx.req.SessionToken)
-	ctx.checkSessionType(persistence.SessionTypeDial)
+	ctx.checkSessionType(db.SessionTypeDial)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	ctx.verifyEdgeRouterAccess()
 	ctx.loadService()

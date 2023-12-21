@@ -24,18 +24,18 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/identity"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/response"
 	"github.com/sirupsen/logrus"
 	"time"
 )
@@ -193,7 +193,7 @@ func (r *IdentityRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 func getIdentityTypeId(ae *env.AppEnv, identityType rest_model.IdentityType) string {
 	//todo: Remove this, should be identityTypeId coming in through the API so we can defer this lookup and subsequent checks to the handlers
 	if identityType == rest_model.IdentityTypeDevice || identityType == rest_model.IdentityTypeService || identityType == rest_model.IdentityTypeUser {
-		return persistence.DefaultIdentityType
+		return db.DefaultIdentityType
 	}
 	identityTypeId := ""
 	if identityType, err := ae.Managers.IdentityType.ReadByName(string(identityType)); identityType != nil && err == nil {
@@ -226,7 +226,7 @@ func (r *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext, par
 
 func (r *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params identity.PatchIdentityParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		fields = fields.FilterMaps(boltz.FieldTags, persistence.FieldIdentityAppData, persistence.FieldIdentityServiceHostingCosts, persistence.FieldIdentityServiceHostingPrecedences)
+		fields = fields.FilterMaps(boltz.FieldTags, db.FieldIdentityAppData, db.FieldIdentityServiceHostingCosts, db.FieldIdentityServiceHostingPrecedences)
 		return ae.Managers.Identity.Update(MapPatchIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, params.Identity.Type)), fields, rc.NewChangeContext())
 	})
 }

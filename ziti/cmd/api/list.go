@@ -18,16 +18,17 @@ package api
 
 import (
 	"fmt"
-	"github.com/Jeffail/gabs"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/ziti/util"
-	"github.com/pkg/errors"
 	"io"
 	"net/url"
 	"os"
 	"reflect"
 	"strings"
+
+	"github.com/Jeffail/gabs"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/ziti/util"
+	"github.com/pkg/errors"
 )
 
 // ListEntitiesOfType queries the Ziti Controller for entities of the given type
@@ -137,7 +138,7 @@ func MapNamesToIDs(api util.API, entityType string, o *Options, list ...string) 
 
 			if len(list) > 1 {
 				fmt.Printf("Found multiple %v matching %v. Please specify which you want by prefixing with id: or name:\n", entityType, val)
-				return nil, errors.Errorf("ambigous if %v is id or name", val)
+				return nil, errors.Errorf("ambiguous if %v is id or name", val)
 			}
 
 			for _, entity := range list {

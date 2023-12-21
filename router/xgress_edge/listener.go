@@ -19,6 +19,9 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
+	"math/big"
+	"time"
+
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/cert"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
@@ -27,8 +30,6 @@ import (
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"math/big"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
@@ -39,6 +40,13 @@ import (
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 )
+
+var peerHeaders = []uint32{
+	edge.PublicKeyHeader,
+	edge.CallerIdHeader,
+	edge.AppDataHeader,
+	edge.ConnectionMarkerHeader,
+}
 
 type listener struct {
 	id               *identity.TokenId
@@ -152,7 +160,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	log.Debug("dialing fabric")
 	peerData := make(map[uint32][]byte)
 
-	for _, key := range []uint32{edge.PublicKeyHeader, edge.CallerIdHeader, edge.AppDataHeader} {
+	for _, key := range peerHeaders {
 		if pk, found := req.Headers[int32(key)]; found {
 			peerData[key] = pk
 		}
@@ -208,7 +216,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 	}
 
 	if supportsCreateTerminatorV2 {
-		self.processBindV2(req, ch, ctrlCh)
+		self.processBindV2(req, ch)
 	} else {
 		self.processBindV1(req, ch, ctrlCh)
 	}
@@ -312,7 +320,7 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 	log.Info("created terminator")
 }
 
-func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
+func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Channel) {
 	token := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).
@@ -326,33 +334,41 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		return
 	}
 
+	var terminatorId string
+
+	listenerId, _ := req.GetStringHeader(edge.ListenerId)
+	if listenerId != "" {
+		log = log.WithField("listenerId", listenerId)
+		if terminator := self.listener.factory.hostedServices.GetTerminatorForListener(listenerId); terminator != nil {
+			terminatorId = terminator.terminatorId.Load()
+			log = log.WithField("terminatorId", terminatorId)
+
+			// everything is the same, we can reuse the terminator
+			if terminator.edgeClientConn == self && terminator.token == token {
+				log.Info("duplicate create terminator request")
+				self.sendStateConnectedReply(req, nil)
+				return
+			}
+
+			if terminator.terminatorId.CompareAndSwap(terminatorId, "") {
+				log.Info("replacing existing terminator")
+				self.listener.factory.hostedServices.Delete(terminatorId)
+			} else {
+				terminatorId = idgen.NewUUIDString()
+				log.Infof("unable to replace existing terminator, as it's being shut down, creating new one with id %s", terminatorId)
+			}
+		}
+	}
+
+	if terminatorId == "" {
+		terminatorId = idgen.NewUUIDString()
+	}
+
+	log = log.WithField("bindConnId", connId).WithField("terminatorId", terminatorId)
 	terminatorInstance, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
 
 	assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId)
 	log.Debugf("client requested router provided connection ids: %v", assignIds)
-
-	terminatorId := idgen.NewUUIDString()
-
-	terminator := &edgeTerminator{
-		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
-		edgeClientConn: self,
-		token:          token,
-		instance:       terminatorInstance,
-		assignIds:      assignIds,
-		v2:             true,
-	}
-
-	log = log.WithField("bindConnId", terminator.MsgChannel.Id())
-	terminator.terminatorId.Store(terminatorId)
-
-	log = log.WithField("terminatorId", terminatorId)
-	log.Debug("binding service")
-
-	hostData := make(map[uint32][]byte)
-	pubKey, hasKey := req.Headers[edge.PublicKeyHeader]
-	if hasKey {
-		hostData[edge.PublicKeyHeader] = pubKey
-	}
 
 	cost := uint16(0)
 	if costBytes, hasCost := req.Headers[edge.CostHeader]; hasCost {
@@ -369,67 +385,61 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		}
 	}
 
-	log.Debug("establishing listener")
+	var terminatorInstanceSecret []byte
+	if terminatorInstance != "" {
+		terminatorInstanceSecret = req.Headers[edge.TerminatorIdentitySecretHeader]
+	}
+
+	hostData := make(map[uint32][]byte)
+	if pubKey, hasKey := req.Headers[edge.PublicKeyHeader]; hasKey {
+		hostData[edge.PublicKeyHeader] = pubKey
+	}
+
+	postValidate, _ := req.GetBoolHeader(edge.SupportsInspectHeader)
+	notifyEstablished, _ := req.GetBoolHeader(edge.SupportsBindSuccessHeader)
+
+	terminator := &edgeTerminator{
+		MsgChannel:        *edge.NewEdgeMsgChannel(self.ch, connId),
+		edgeClientConn:    self,
+		token:             token,
+		cost:              cost,
+		precedence:        precedence,
+		instance:          terminatorInstance,
+		instanceSecret:    terminatorInstanceSecret,
+		hostData:          hostData,
+		assignIds:         assignIds,
+		v2:                true,
+		postValidate:      postValidate,
+		notifyEstablished: notifyEstablished,
+	}
+	terminator.terminatorId.Store(terminatorId)
+
+	log.Info("establishing terminator")
 
 	// need to remove session remove listener on close
 	terminator.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
 		terminator.close(true, "session ended")
 	})
 
-	self.listener.factory.hostedServices.Put(terminatorId, terminator)
-
-	var terminatorInstanceSecret []byte
-	if terminatorInstance != "" {
-		terminatorInstanceSecret = req.Headers[edge.TerminatorIdentitySecretHeader]
-	}
-
-	request := &edge_ctrl_pb.CreateTerminatorV2Request{
-		Address:        terminatorId,
-		SessionToken:   token,
-		Fingerprints:   self.fingerprints.Prints(),
-		PeerData:       hostData,
-		Cost:           uint32(cost),
-		Precedence:     precedence,
-		InstanceId:     terminatorInstance,
-		InstanceSecret: terminatorInstanceSecret,
-	}
-
-	timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
-	resp := &edge_ctrl_pb.CreateTerminatorV2Response{}
-	err = protobufs.TypedResponse(resp).Unmarshall(responseMsg, err)
-	if err == nil && resp.Result != edge_ctrl_pb.CreateTerminatorResult_Success {
-		err = errors.Errorf("terminator create failed: %s", resp.Msg)
-	}
-
-	if err != nil {
-		log.WithError(err).Warn("error creating terminator")
-		terminator.close(false, "") // don't notify here, as we're notifying next line with a response
-		self.sendStateClosedReply(err.Error(), req)
-		return
-	}
-
-	if terminator.MsgChannel.IsClosed() {
-		log.Warn("edge channel closed while setting up terminator. cleaning up terminator now")
-		terminator.close(false, "edge channel closed")
-		return
-	}
-
-	log.Debug("registered listener for terminator")
-	log.Debug("returning connection state CONNECTED to client")
 	self.sendStateConnectedReply(req, nil)
 
-	self.listener.factory.hostedServices.cleanupDuplicates(terminator)
-
-	log.Info("created terminator")
+	self.listener.factory.hostedServices.EstablishTerminator(terminator)
+	if listenerId == "" {
+		// only removed dupes with a scan if we don't have an sdk provided key
+		self.listener.factory.hostedServices.cleanupDuplicates(terminator)
+	}
 }
 
 func (self *edgeClientConn) processUnbind(req *channel.Message, _ channel.Channel) {
+	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	token := string(req.Body)
-	atLeastOneTerminatorRemoved := self.listener.factory.hostedServices.unbindSession(token, self)
+	atLeastOneTerminatorRemoved := self.listener.factory.hostedServices.unbindSession(connId, token, self)
 
 	if !atLeastOneTerminatorRemoved {
-		self.sendStateClosedReply(fmt.Sprintf("no terminator found for token '%s'", token), req)
+		pfxlog.Logger().
+			WithField("connId", connId).
+			WithField("sessionToken", token).
+			Info("no terminator found to unbind for token")
 	}
 }
 

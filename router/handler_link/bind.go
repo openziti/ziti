@@ -5,15 +5,15 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/latency"
 	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/foundation/v2/concurrenz"
+	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/trace"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	metrics2 "github.com/openziti/ziti/router/metrics"
 	"github.com/openziti/ziti/router/xlink"
-	"github.com/openziti/foundation/v2/concurrenz"
-	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/metrics"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -74,7 +74,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddCloseHandler(newCloseHandler(self.xlink, self.ctrl, self.forwarder, closeNotify, self.xlinkRegistry))
 	binding.AddErrorHandler(newErrorHandler(self.xlink, self.ctrl))
 	binding.AddTypedReceiveHandler(newPayloadHandler(self.xlink, self.forwarder))
-	binding.AddTypedReceiveHandler(newAckHandler(self.xlink, self.forwarder, closeNotify))
+	binding.AddTypedReceiveHandler(newAckHandler(self.xlink, self.forwarder))
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 	binding.AddTypedReceiveHandler(newControlHandler(self.xlink, self.forwarder))
 	binding.AddPeekHandler(metrics2.NewChannelPeekHandler(self.xlink.Id(), self.forwarder.MetricsRegistry()))

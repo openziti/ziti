@@ -20,20 +20,21 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"net/http"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/certificate_authority"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 func init() {
@@ -176,7 +177,7 @@ func (r *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext, param
 
 	if der.Type != "CERTIFICATE" {
 		apiErr := apierror.NewExpectedPemBlockCertificate()
-		apiErr.Cause = fmt.Errorf("ecountered PEM block type %s", der.Type)
+		apiErr.Cause = fmt.Errorf("encountered PEM block type %s", der.Type)
 		rc.RespondWithApiError(apiErr)
 		return
 	}

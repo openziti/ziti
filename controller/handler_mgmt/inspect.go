@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -38,35 +38,33 @@ func (*inspectHandler) ContentType() int32 {
 }
 
 func (handler *inspectHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	go func() {
-		response := &mgmt_pb.InspectResponse{}
-		request := &mgmt_pb.InspectRequest{}
-		if err := proto.Unmarshal(msg.Body, request); err != nil {
-			response.Success = false
-			response.Errors = append(response.Errors, fmt.Sprintf("%v: %v", handler.network.GetAppId(), err))
-		} else {
-			result := handler.network.Managers.Inspections.Inspect(request.AppRegex, request.RequestedValues)
-			response.Success = result.Success
-			response.Errors = result.Errors
-			for _, val := range result.Results {
-				response.Values = append(response.Values, &mgmt_pb.InspectResponse_InspectValue{
-					AppId: val.AppId,
-					Name:  val.Name,
-					Value: val.Value,
-				})
-			}
+	response := &mgmt_pb.InspectResponse{}
+	request := &mgmt_pb.InspectRequest{}
+	if err := proto.Unmarshal(msg.Body, request); err != nil {
+		response.Success = false
+		response.Errors = append(response.Errors, fmt.Sprintf("%v: %v", handler.network.GetAppId(), err))
+	} else {
+		result := handler.network.Managers.Inspections.Inspect(request.AppRegex, request.RequestedValues)
+		response.Success = result.Success
+		response.Errors = result.Errors
+		for _, val := range result.Results {
+			response.Values = append(response.Values, &mgmt_pb.InspectResponse_InspectValue{
+				AppId: val.AppId,
+				Name:  val.Name,
+				Value: val.Value,
+			})
 		}
+	}
 
-		body, err := proto.Marshal(response)
-		if err != nil {
-			pfxlog.Logger().Errorf("unexpected error serializing InspectResponse (%s)", err)
-			return
-		}
+	body, err := proto.Marshal(response)
+	if err != nil {
+		pfxlog.Logger().Errorf("unexpected error serializing InspectResponse (%s)", err)
+		return
+	}
 
-		responseMsg := channel.NewMessage(int32(mgmt_pb.ContentType_InspectResponseType), body)
-		responseMsg.ReplyTo(msg)
-		if err := ch.Send(responseMsg); err != nil {
-			pfxlog.Logger().Errorf("unexpected error sending InspectResponse (%s)", err)
-		}
-	}()
+	responseMsg := channel.NewMessage(int32(mgmt_pb.ContentType_InspectResponseType), body)
+	responseMsg.ReplyTo(msg)
+	if err = ch.Send(responseMsg); err != nil {
+		pfxlog.Logger().Errorf("unexpected error sending InspectResponse (%s)", err)
+	}
 }

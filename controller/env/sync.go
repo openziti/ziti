@@ -18,11 +18,11 @@ package env
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/network"
 	"sync"
 )
 
@@ -74,11 +74,11 @@ type RouterConnectionHandler interface {
 
 // RouterSynchronizerEventHandler is responsible for keeping Edge Routers up to date on API Sessions
 type RouterSynchronizerEventHandler interface {
-	ApiSessionAdded(apiSession *persistence.ApiSession)
-	ApiSessionUpdated(apiSession *persistence.ApiSession, apiSessionCert *persistence.ApiSessionCertificate)
-	ApiSessionDeleted(apiSession *persistence.ApiSession)
+	ApiSessionAdded(apiSession *db.ApiSession)
+	ApiSessionUpdated(apiSession *db.ApiSession, apiSessionCert *db.ApiSessionCertificate)
+	ApiSessionDeleted(apiSession *db.ApiSession)
 
-	SessionDeleted(session *persistence.Session)
+	SessionDeleted(session *db.Session)
 }
 
 // RouterState provides a thread save mechanism to access and set router status information that may be influx

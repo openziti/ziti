@@ -17,11 +17,11 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
 )
@@ -33,12 +33,12 @@ type Config struct {
 	Data   map[string]interface{}
 }
 
-func (entity *Config) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.Config, error) {
+func (entity *Config) toBoltEntity(tx *bbolt.Tx, env Env) (*db.Config, error) {
 	if entity.TypeId != "" {
 		providedType := entity.TypeId
 		configTypeStore := env.GetStores().ConfigType
 		if !configTypeStore.IsEntityPresent(tx, entity.TypeId) {
-			return nil, errorz.NewFieldError("invalid config type", persistence.FieldConfigType, providedType)
+			return nil, errorz.NewFieldError("invalid config type", db.FieldConfigType, providedType)
 		}
 	}
 
@@ -65,7 +65,7 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.Config, 
 		}
 	}
 
-	return &persistence.Config{
+	return &db.Config{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
 		Type:          entity.TypeId,
@@ -73,18 +73,18 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.Config, 
 	}, nil
 }
 
-func (entity *Config) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persistence.Config, error) {
+func (entity *Config) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.Config, error) {
 	if entity.TypeId == "" {
-		return nil, errorz.NewFieldError("config type must be specified", persistence.FieldConfigType, entity.TypeId)
+		return nil, errorz.NewFieldError("config type must be specified", db.FieldConfigType, entity.TypeId)
 	}
 	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *Config) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.Config, error) {
+func (entity *Config) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.Config, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *Config) fillFrom(_ Env, _ *bbolt.Tx, boltConfig *persistence.Config) error {
+func (entity *Config) fillFrom(_ Env, _ *bbolt.Tx, boltConfig *db.Config) error {
 	entity.FillCommon(boltConfig)
 	entity.Name = boltConfig.Name
 	entity.TypeId = boltConfig.Type

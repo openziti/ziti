@@ -30,7 +30,7 @@ type Provider interface {
 	Get() any
 }
 
-// ProviderF is a function implemenation of the Provider interface
+// ProviderF is a function implementation of the Provider interface
 type ProviderF func() any
 
 func (f ProviderF) Get() any {

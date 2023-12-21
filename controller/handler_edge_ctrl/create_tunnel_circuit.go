@@ -20,8 +20,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/persistence"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -89,7 +89,7 @@ func (self *createCircuitForServiceHandler) CreateCircuit(ctx *CreateCircuitForS
 	ctx.loadIdentity()
 	newApiSession := ctx.ensureApiSession(nil)
 	ctx.loadServiceForName(ctx.req.ServiceName)
-	ctx.ensureSessionForService(ctx.req.SessionId, persistence.SessionTypeDial)
+	ctx.ensureSessionForService(ctx.req.SessionId, db.SessionTypeDial)
 	ctx.verifyEdgeRouterAccess()
 	circuitInfo, peerData := ctx.createCircuit(ctx.req.TerminatorInstanceId, ctx.req.PeerData)
 

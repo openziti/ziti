@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -81,7 +81,7 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 	return nil
 }
 
-func (entity *Enrollment) fillFrom(_ Env, _ *bbolt.Tx, boltEnrollment *persistence.Enrollment) error {
+func (entity *Enrollment) fillFrom(_ Env, _ *bbolt.Tx, boltEnrollment *db.Enrollment) error {
 	entity.FillCommon(boltEnrollment)
 	entity.Method = boltEnrollment.Method
 	entity.IdentityId = boltEnrollment.IdentityId
@@ -97,8 +97,8 @@ func (entity *Enrollment) fillFrom(_ Env, _ *bbolt.Tx, boltEnrollment *persisten
 	return nil
 }
 
-func (entity *Enrollment) toBoltEntity(env Env) (*persistence.Enrollment, error) {
-	if entity.Method == persistence.MethodEnrollOttCa {
+func (entity *Enrollment) toBoltEntity(env Env) (*db.Enrollment, error) {
+	if entity.Method == db.MethodEnrollOttCa {
 		if entity.CaId == nil || *entity.CaId == "" {
 			apiErr := errorz.NewNotFound()
 			apiErr.Cause = errorz.NewFieldError("ca not found", "caId", *entity.CaId)
@@ -116,7 +116,7 @@ func (entity *Enrollment) toBoltEntity(env Env) (*persistence.Enrollment, error)
 		}
 	}
 
-	boltEntity := &persistence.Enrollment{
+	boltEntity := &db.Enrollment{
 		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Method:          entity.Method,
 		IdentityId:      entity.IdentityId,
@@ -133,10 +133,10 @@ func (entity *Enrollment) toBoltEntity(env Env) (*persistence.Enrollment, error)
 	return boltEntity, nil
 }
 
-func (entity *Enrollment) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*persistence.Enrollment, error) {
+func (entity *Enrollment) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*db.Enrollment, error) {
 	return entity.toBoltEntity(env)
 }
 
-func (entity *Enrollment) toBoltEntityForUpdate(_ *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.Enrollment, error) {
+func (entity *Enrollment) toBoltEntityForUpdate(_ *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.Enrollment, error) {
 	return entity.toBoltEntity(env)
 }

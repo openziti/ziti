@@ -18,6 +18,8 @@ package demo
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
@@ -25,7 +27,6 @@ import (
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"time"
 )
 
 type AgentEchoServerUpdateTerminatorAction struct {
@@ -95,7 +96,7 @@ func (self *AgentEchoServerUpdateTerminatorAction) makeRequest(ch channel.Channe
 			fmt.Printf("error: %v\n", result.Message)
 		}
 	} else {
-		return errors.Errorf("unexpected reponse type: %v", reply.ContentType)
+		return errors.Errorf("unexpected response type: %v", reply.ContentType)
 	}
 	return nil
 }

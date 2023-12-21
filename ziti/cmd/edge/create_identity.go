@@ -18,7 +18,7 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
@@ -89,7 +89,7 @@ func newCreateIdentityOfTypeCmd(name string, options *createIdentityOptions) *co
 	cmd.Flags().BoolVarP(&options.isAdmin, "admin", "A", false, "Give the new identity admin privileges")
 	cmd.Flags().StringVar(&options.username, "updb", "", "username to give the identity, will create a UPDB enrollment")
 	cmd.Flags().StringVar(&options.externalId, "external-id", "", "an external id to give to the identity")
-	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new identity")
+	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "comma-separated role attributes for the new identity")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the identity")
 	cmd.Flags().StringVarP(&options.defaultHostingPrecedence, "default-hosting-precedence", "p", "", "Default precedence to use when hosting services using this identity [default,required,failed]")
 	cmd.Flags().Uint16VarP(&options.defaultHostingCost, "default-hosting-cost", "c", 0, "Default cost to use when hosting services using this identity")
@@ -110,9 +110,9 @@ func runCreateIdentity(o *createIdentityOptions) error {
 
 	o.username = strings.TrimSpace(o.username)
 	if o.username != "" {
-		api.SetJSONValue(entityData, o.username, "enrollment", persistence.MethodEnrollUpdb)
+		api.SetJSONValue(entityData, o.username, "enrollment", db.MethodEnrollUpdb)
 	} else {
-		api.SetJSONValue(entityData, true, "enrollment", persistence.MethodEnrollOtt)
+		api.SetJSONValue(entityData, true, "enrollment", db.MethodEnrollOtt)
 	}
 	api.SetJSONValue(entityData, o.isAdmin, "isAdmin")
 	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
@@ -184,9 +184,9 @@ func runCreateIdentity(o *createIdentityOptions) error {
 
 	if o.jwtOutputFile != "" {
 		id := result.S("data", "id").Data().(string)
-		enrollmentType := persistence.MethodEnrollOtt
+		enrollmentType := db.MethodEnrollOtt
 		if o.username != "" {
-			enrollmentType = persistence.MethodEnrollUpdb
+			enrollmentType = db.MethodEnrollUpdb
 		}
 		if err = getIdentityJwt(&o.Options, id, o.jwtOutputFile, enrollmentType, o.Options.Timeout, o.Options.Verbose); err != nil {
 			return err
@@ -206,9 +206,9 @@ func getIdentityJwt(o *api.Options, id string, outputFile string, enrollmentType
 	}
 
 	var dataContainer *gabs.Container
-	if enrollmentType == persistence.MethodEnrollUpdb {
+	if enrollmentType == db.MethodEnrollUpdb {
 		dataContainer = newIdentity.Path("enrollment.updb.jwt")
-	} else if enrollmentType == persistence.MethodEnrollOtt {
+	} else if enrollmentType == db.MethodEnrollOtt {
 		dataContainer = newIdentity.Path("enrollment.ott.jwt")
 	} else {
 		return errors.Errorf("unsupported enrollment type '%s'", enrollmentType)

@@ -85,7 +85,7 @@ func loadInfoFile(file string) string {
 		if os.IsNotExist(err) {
 			return ""
 		}
-		logrus.WithError(err).Info("unable to read cert info file '%s'", file)
+		logrus.WithError(err).Infof("unable to read cert info file '%s'", file)
 	}
 	return string(data)
 }

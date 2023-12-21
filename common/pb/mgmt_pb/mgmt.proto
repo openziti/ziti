@@ -33,8 +33,9 @@ enum ContentType {
   RouterDebugDumpForwarderTablesRequestType = 10074;
   RouterDebugDumpLinksRequestType = 10075;
   RouterDebugUnrouteRequestType = 10076;
-  RouterQuiesce = 10077;
-  RouterDequiesce = 10078;
+  RouterQuiesceRequestType = 10077;
+  RouterDequiesceRequestType = 10078;
+  RouterDecommissionRequestType = 10079;
 
   // Raft
   RaftListMembersRequestType = 10080;
@@ -43,6 +44,11 @@ enum ContentType {
   RaftRemovePeerRequestType = 10083;
   RaftTransferLeadershipRequestType = 10084;
   RaftInitFromDb = 10085;
+
+  // Validate
+  ValidateTerminatorsRequestType = 10100;
+  ValidateTerminatorResponseType = 10101;
+  ValidateTerminatorResultType = 10102;
 }
 
 enum Header {
@@ -156,4 +162,38 @@ message RaftMember  {
 
 message RaftMemberListResponse {
   repeated RaftMember members = 1;
+}
+
+message ValidateTerminatorsRequest {
+  string filter = 1;
+  bool fixInvalid = 2;
+}
+
+message ValidateTerminatorsResponse {
+  bool success = 1;
+  string message = 2;
+  uint64 terminatorCount = 3;
+}
+
+enum TerminatorState {
+  Valid = 0;
+  Unknown = 1;
+  InvalidUnknownBinding = 2;
+  InvalidUnknownTerminator = 3;
+  InvalidBadState = 4;
+}
+
+message TerminatorDetail {
+  string terminatorId = 1;
+  string serviceId = 2;
+  string serviceName = 3;
+  string routerId = 4;
+  string routerName = 5;
+  string binding = 6;
+  string address = 7;
+  string hostId = 8;
+  string createDate = 9;
+  TerminatorState state = 10;
+  bool fixed = 11;
+  string detail = 12;
 }

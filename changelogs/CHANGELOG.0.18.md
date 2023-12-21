@@ -412,7 +412,7 @@ listeners:
 * Improve service list time by using indexes get related posture data
 * Improved service polling
 * Improved service policy enforcement - instead of polling this is now event based, which should
-  result in slower cpu utlization on the controller
+  result in slower cpu utilization on the controller
 * Fixed a bug in service policy PATCH which would trigger when the policy type wasn't sent
 * Support agent utilitiles (`ziti ps`) in ziti-tunnel
 * Cleanup ack handler goroutines when links shut down
@@ -429,7 +429,7 @@ listeners:
 * A new metric has been added for timing service list requests `services.list`
 * A bug was fixed in the tunneler which may have lead to leaked connections
 * Ziti Edge API configurable HTTP Timeouts
-* Add `ziti log-format` or `ziti lf` for short, for formating JSON log output as something more
+* Add `ziti log-format` or `ziti lf` for short, for formatting JSON log output as something more
   human readable
 * [fabric#151](https://github.com/openziti/fabric/issues/151) Add two timeout settings to the
   controller to configure how long route and dial should wait before timeout
@@ -472,7 +472,7 @@ edge:
       readHeaderTimeoutMs: 0
       # (optional, default 10000) writeTimeoutMs is the maximum duration before timing out writes of the response.
       writeTimeoutMs: 100000
-      # (optional, default 5000) idleTimeoutMs is the maximum amount of time to wait for the next request when keep-alives are enabled
+      # (optional, default 5000) idleTimeoutMs is the maximum amount of time to wait for the next request when keepalives are enabled
       idleTimeoutMs: 5000
 ```
 
@@ -926,11 +926,11 @@ dropping data for a client if the client isn't handling incoming traffic quickly
 payloads will be retransmitted. The new xgress implementation uses similar windowing and
 retransmission strategies to the upcoming transwarp work.
 
-### Backwards Compatability
+### Backwards Compatibility
 
 0.18+ routers will probably work with older router versions, but probably not well. 0.18+ xgress
 instances expect to get round trip times and receive buffer sizes on ack messages. If they don't get
-them then retransmission will likely be either too agressive or not aggressive enough.
+them then retransmission will likely be either too aggressive or not aggressive enough.
 
 Mixing 0.18+ routers with older router versions is not recommended without doing more testing first.
 
@@ -942,7 +942,7 @@ Mixing 0.18+ routers with older router versions is not recommended without doing
 * txPortalStartSize - Initial size of send window. Default value: 16Kb
 * txPortalMinSize - Smallest allowed send window size. Default value: 16Kb
 * txPortalMaxSize - Largest allowed send window size. Default value: 4MB
-* txPortalIncreaseThresh - Number of successful aks after which to increase send portal size:
+* txPortalIncreaseThresh - Number of successful acks after which to increase send portal size:
   Default value: 224
 * txPortalIncreaseScale - Send portal will be increased by amount of data sent since last
   retransmission. This controls how much to scale that amount by. Default value: 1.0
@@ -1020,12 +1020,12 @@ The new metrics include:
     * Times how long it takes to process xgress payloads coming off the link (mostly getting them
       into the receive buffer)
 * xgress.payload_relay_time
-    * Times how long it takes to get xgress payloads out of the recieve buffer and queued to be sent
+    * Times how long it takes to get xgress payloads out of the receive buffer and queued to be sent
 
 **New Gauges**
 
 * xgress.blocked_by_local_window
-    * Count of how many xgress instances are blocked because the local tranmit buffer size equals or
+    * Count of how many xgress instances are blocked because the local transmit buffer size equals or
       exceeds the window size
 * xgress.blocked_by_local_window
     * Count of how many xgress instances are blocked because the remote receive buffer size equals
@@ -1096,7 +1096,7 @@ If the connection id could be established on the router, we could simplify thing
 
 We didn't do this previously because the sdk controls ids for outbound connection. To enable this we
 have split the 32 bit id range in half. The top half is now reserved for hosted connection ids. This
-behavior is controlled by the SDK, which requests it when it binds uisng a boolean flag. The new
+behavior is controlled by the SDK, which requests it when it binds using a boolean flag. The new
 flag is:
 
 ```

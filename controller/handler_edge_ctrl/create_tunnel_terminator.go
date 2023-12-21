@@ -22,8 +22,8 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
@@ -89,7 +89,7 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 	ctx.loadIdentity()
 	newApiSession := ctx.ensureApiSession(nil)
 	ctx.loadServiceForName(ctx.req.ServiceName)
-	ctx.ensureSessionForService(ctx.req.SessionId, persistence.SessionTypeBind)
+	ctx.ensureSessionForService(ctx.req.SessionId, db.SessionTypeBind)
 	ctx.verifyEdgeRouterAccess()
 
 	if ctx.err != nil {

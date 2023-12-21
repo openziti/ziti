@@ -21,12 +21,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/foundation/v2/debugz"
-	"github.com/openziti/foundation/v2/goroutines"
-	"github.com/openziti/xweb/v2"
-	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/ziti/router/link"
-	metrics2 "github.com/rcrowley/go-metrics"
 	"io/fs"
 	"os"
 	"path"
@@ -34,6 +28,13 @@ import (
 	"runtime/debug"
 	"sync/atomic"
 	"time"
+
+	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/common/config"
+	"github.com/openziti/ziti/router/link"
+	metrics2 "github.com/rcrowley/go-metrics"
 
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
@@ -72,7 +73,6 @@ type Router struct {
 	ctrls           env.NetworkControllers
 	ctrlBindhandler channel.BindHandler
 	faulter         *forwarder.Faulter
-	scanner         *forwarder.Scanner
 	forwarder       *forwarder.Forwarder
 	xrctrls         []env.Xrctrl
 	xlinkFactories  map[string]xlink.Factory
@@ -196,8 +196,8 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	router.ctrls = env.NewNetworkControllers(config.Ctrl.DefaultRequestTimeout, router.connectToController, &config.Ctrl.Heartbeats)
 	router.xlinkRegistry = link.NewLinkRegistry(router)
 	router.faulter = forwarder.NewFaulter(router.ctrls, config.Forwarder.FaultTxInterval, closeNotify)
-	router.scanner = forwarder.NewScanner(router.ctrls, config.Forwarder, closeNotify)
-	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, router.scanner, config.Forwarder, closeNotify)
+	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, config.Forwarder, closeNotify)
+	router.forwarder.StartScanner(router.ctrls)
 
 	xgress.InitPayloadIngester(closeNotify)
 	xgress.InitAcker(router.forwarder, metricsRegistry, closeNotify)
@@ -364,7 +364,7 @@ func (self *Router) initRateLimiterPool() error {
 
 	rateLimiterPool, err := goroutines.NewPool(linkDialerPoolConfig)
 	if err != nil {
-		return errors.Wrap(err, "error creating rate limted pool")
+		return errors.Wrap(err, "error creating rate limited pool")
 	}
 
 	self.rateLimiterPool = rateLimiterPool

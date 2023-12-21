@@ -17,9 +17,10 @@
 package network
 
 import (
+	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/storage/objectz"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
-	"github.com/openziti/foundation/v2/info"
 	"github.com/orcaman/concurrent-map/v2"
 	"math"
 	"sync"
@@ -31,6 +32,7 @@ type linkController struct {
 	idGenerator    idgen.Generator
 	lock           sync.Mutex
 	initialLatency time.Duration
+	store          *objectz.ObjectStore[*Link]
 }
 
 func newLinkController(options *Options) *linkController {
@@ -38,11 +40,57 @@ func newLinkController(options *Options) *linkController {
 	if options != nil {
 		initialLatency = options.InitialLinkLatency
 	}
-	return &linkController{
+
+	result := &linkController{
 		linkTable:      newLinkTable(),
 		idGenerator:    idgen.NewGenerator(),
 		initialLatency: initialLatency,
 	}
+
+	result.store = objectz.NewObjectStore[*Link](func() objectz.ObjectIterator[*Link] {
+		return IterateCMap[*Link](result.linkTable.links)
+	})
+
+	result.store.AddStringSymbol("id", func(entity *Link) *string {
+		return &entity.Id
+	})
+	result.store.AddStringSymbol("protocol", func(entity *Link) *string {
+		return &entity.Protocol
+	})
+	result.store.AddStringSymbol("dialAddress", func(entity *Link) *string {
+		return &entity.DialAddress
+	})
+	result.store.AddStringSymbol("sourceRouter", func(entity *Link) *string {
+		return &entity.Src.Id
+	})
+	result.store.AddStringSymbol("destRouter", func(entity *Link) *string {
+		return &entity.Dst.Id
+	})
+	result.store.AddInt64Symbol("cost", func(entity *Link) *int64 {
+		val := entity.GetCost()
+		return &val
+	})
+	result.store.AddInt64Symbol("staticCost", func(entity *Link) *int64 {
+		val := int64(entity.GetStaticCost())
+		return &val
+	})
+	result.store.AddInt64Symbol("destLatency", func(entity *Link) *int64 {
+		val := entity.GetDstLatency()
+		return &val
+	})
+	result.store.AddInt64Symbol("sourceLatency", func(entity *Link) *int64 {
+		val := entity.GetSrcLatency()
+		return &val
+	})
+	result.store.AddStringSymbol("state", func(entity *Link) *string {
+		if state := entity.CurrentState(); state != nil {
+			val := state.Mode.String()
+			return &val
+		}
+		return nil
+	})
+
+	return result
 }
 
 func (linkController *linkController) add(link *Link) {

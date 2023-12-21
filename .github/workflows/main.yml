@@ -46,7 +46,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20.x'
+          go-version: '1.21.x'
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -79,7 +79,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20.x'
+          go-version: '1.21.x'
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -110,7 +110,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20.x'
+          go-version: '1.21.x'
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -146,7 +146,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20.x'
+          go-version: '1.21.x'
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -177,7 +177,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20.x'
+          go-version: '1.21.x'
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -401,7 +401,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20.x'
+          go-version: '1.21.x'
 
       - name: Install Python
         uses: actions/setup-python@v4
@@ -483,13 +483,11 @@ jobs:
             exit 1
           elif [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main$) ]]; then
             # Set output parameters for release branches
-            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
-            echo ZITI_VERSION="${ZITI_VERSION}" >> $GITHUB_OUTPUT
+            echo ZITI_VERSION="${ZITI_VERSION}" | tee -a $GITHUB_OUTPUT
           else
             # Append build / run number for non-release refs
             ZITI_VERSION="${ZITI_VERSION}-${GITHUB_RUN_ID}"
-            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
-            echo ZITI_VERSION="${ZITI_VERSION}" >> $GITHUB_OUTPUT
+            echo ZITI_VERSION="${ZITI_VERSION}" | tee -a $GITHUB_OUTPUT
           fi
 
       - name: Publish to Artifactory

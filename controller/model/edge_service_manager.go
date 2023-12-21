@@ -27,14 +27,14 @@ import (
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/persistence"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
+	"time"
 )
 
 func NewEdgeServiceManager(env Env) *EdgeServiceManager {
 	manager := &EdgeServiceManager{
-		baseEntityManager: newBaseEntityManager[*Service, *persistence.EdgeService](env, env.GetStores().EdgeService),
+		baseEntityManager: newBaseEntityManager[*Service, *db.EdgeService](env, env.GetStores().EdgeService),
 		detailLister:      &ServiceDetailLister{},
 	}
 	manager.impl = manager
@@ -46,7 +46,7 @@ func NewEdgeServiceManager(env Env) *EdgeServiceManager {
 }
 
 type EdgeServiceManager struct {
-	baseEntityManager[*Service, *persistence.EdgeService]
+	baseEntityManager[*Service, *db.EdgeService]
 	detailLister *ServiceDetailLister
 }
 
@@ -129,7 +129,7 @@ func (self *EdgeServiceManager) ReadForIdentityInTx(tx *bbolt.Tx, id string, ide
 	if identity.IsAdmin {
 		service, err = self.readInTx(tx, id)
 		if err == nil && service != nil {
-			service.Permissions = []string{persistence.PolicyTypeBindName, persistence.PolicyTypeDialName}
+			service.Permissions = []string{db.PolicyTypeBindName, db.PolicyTypeDialName}
 		}
 	} else {
 		service, err = self.ReadForNonAdminIdentityInTx(tx, id, identityId)
@@ -158,10 +158,10 @@ func (self *EdgeServiceManager) ReadForNonAdminIdentityInTx(tx *bbolt.Tx, id str
 		return nil, boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", id)
 	}
 	if isBindable {
-		result.Permissions = append(result.Permissions, persistence.PolicyTypeBindName)
+		result.Permissions = append(result.Permissions, db.PolicyTypeBindName)
 	}
 	if isDialable {
-		result.Permissions = append(result.Permissions, persistence.PolicyTypeDialName)
+		result.Permissions = append(result.Permissions, db.PolicyTypeDialName)
 	}
 	return result, nil
 }
@@ -211,6 +211,7 @@ func (self *EdgeServiceManager) Marshall(entity *Service) ([]byte, error) {
 	msg := &edge_cmd_pb.Service{
 		Id:                 entity.Id,
 		Name:               entity.Name,
+		MaxIdleTime:        int64(entity.MaxIdleTime),
 		Tags:               tags,
 		TerminatorStrategy: entity.TerminatorStrategy,
 		RoleAttributes:     entity.RoleAttributes,
@@ -233,6 +234,7 @@ func (self *EdgeServiceManager) Unmarshall(bytes []byte) (*Service, error) {
 			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
 		},
 		Name:               msg.Name,
+		MaxIdleTime:        time.Duration(msg.MaxIdleTime),
 		TerminatorStrategy: msg.TerminatorStrategy,
 		RoleAttributes:     msg.RoleAttributes,
 		Configs:            msg.Configs,
@@ -262,7 +264,7 @@ func (result *ServiceListResult) collect(tx *bbolt.Tx, ids []string, queryMetaDa
 		} else {
 			service, err = result.manager.readInTx(tx, key)
 			if service != nil && result.isAdmin {
-				service.Permissions = []string{persistence.PolicyTypeBindName, persistence.PolicyTypeDialName}
+				service.Permissions = []string{db.PolicyTypeBindName, db.PolicyTypeDialName}
 			}
 		}
 		if err != nil {
@@ -321,23 +323,24 @@ func (self *EdgeServiceManager) mergeConfigs(tx *bbolt.Tx, configTypes map[strin
 
 type PolicyPostureChecks struct {
 	PostureChecks []*PostureCheck
-	PolicyType    persistence.PolicyType
+	PolicyType    db.PolicyType
 	PolicyName    string
 }
 
 func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId string) map[string]*PolicyPostureChecks {
 	policyIdToChecks := map[string]*PolicyPostureChecks{}
+
 	postureCheckCache := map[string]*PostureCheck{}
 
 	servicePolicyStore := self.env.GetStores().ServicePolicy
-	postureCheckLinks := servicePolicyStore.GetLinkCollection(persistence.EntityTypePostureChecks)
+	postureCheckLinks := servicePolicyStore.GetLinkCollection(db.EntityTypePostureChecks)
 	serviceLinks := servicePolicyStore.GetLinkCollection(db.EntityTypeServices)
 
-	policyNameSymbol := self.env.GetStores().ServicePolicy.GetSymbol(persistence.FieldName)
-	policyTypeSymbol := self.env.GetStores().ServicePolicy.GetSymbol(persistence.FieldServicePolicyType)
+	policyNameSymbol := self.env.GetStores().ServicePolicy.GetSymbol(db.FieldName)
+	policyTypeSymbol := self.env.GetStores().ServicePolicy.GetSymbol(db.FieldServicePolicyType)
 
 	_ = self.GetDb().View(func(tx *bbolt.Tx) error {
-		policyCursor := self.env.GetStores().Identity.GetRelatedEntitiesCursor(tx, identityId, persistence.EntityTypeServicePolicies, true)
+		policyCursor := self.env.GetStores().Identity.GetRelatedEntitiesCursor(tx, identityId, db.EntityTypeServicePolicies, true)
 		policyCursor = ast.NewFilteredCursor(policyCursor, func(policyId []byte) bool {
 			return serviceLinks.IsLinked(tx, policyId, []byte(serviceId))
 		})
@@ -348,9 +351,9 @@ func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId str
 			policyCursor.Next()
 
 			policyName := boltz.FieldToString(policyNameSymbol.Eval(tx, policyIdBytes))
-			policyType := persistence.PolicyTypeDial
+			policyType := db.PolicyTypeDial
 			if fieldType, policyTypeValue := policyTypeSymbol.Eval(tx, policyIdBytes); fieldType == boltz.TypeInt32 {
-				policyType = persistence.GetPolicyTypeForId(*boltz.BytesToInt32(policyTypeValue))
+				policyType = db.GetPolicyTypeForId(*boltz.BytesToInt32(policyTypeValue))
 			}
 
 			//required to provide an entry for policies w/ no checks

@@ -4,7 +4,7 @@
 
 Ziti 0.6.0 moves the back-end persistence model of Ziti Edge and Ziti Fabric into the same
 repository based on Bbolt (an in memory data store that is backed by a memory mapped file). The
-changes remove the requirement for PostgresSQL.
+changes remove the requirement for PostgreSQL.
 
 ## UPDB Enrollment JWTs
 
