@@ -19,6 +19,9 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
+	"math/big"
+	"time"
+
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/cert"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
@@ -27,8 +30,6 @@ import (
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"math/big"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
@@ -39,6 +40,13 @@ import (
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 )
+
+var peerHeaders = []uint32{
+	edge.PublicKeyHeader,
+	edge.CallerIdHeader,
+	edge.AppDataHeader,
+	edge.ConnectionMarkerHeader,
+}
 
 type listener struct {
 	id               *identity.TokenId
@@ -152,7 +160,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	log.Debug("dialing fabric")
 	peerData := make(map[uint32][]byte)
 
-	for _, key := range []uint32{edge.PublicKeyHeader, edge.CallerIdHeader, edge.AppDataHeader} {
+	for _, key := range peerHeaders {
 		if pk, found := req.Headers[int32(key)]; found {
 			peerData[key] = pk
 		}
@@ -335,7 +343,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 			terminatorId = terminator.terminatorId.Load()
 			log = log.WithField("terminatorId", terminatorId)
 
-			// everything is the same, we can re-use the terminator
+			// everything is the same, we can reuse the terminator
 			if terminator.edgeClientConn == self && terminator.token == token {
 				log.Info("duplicate create terminator request")
 				self.sendStateConnectedReply(req, nil)
@@ -387,23 +395,22 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		hostData[edge.PublicKeyHeader] = pubKey
 	}
 
-	postValidate := false
-	if supportsInspect, _ := req.GetBoolHeader(edge.SupportsInspectHeader); supportsInspect {
-		postValidate = true
-	}
+	postValidate, _ := req.GetBoolHeader(edge.SupportsInspectHeader)
+	notifyEstablished, _ := req.GetBoolHeader(edge.SupportsBindSuccessHeader)
 
 	terminator := &edgeTerminator{
-		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
-		edgeClientConn: self,
-		token:          token,
-		cost:           cost,
-		precedence:     precedence,
-		instance:       terminatorInstance,
-		instanceSecret: terminatorInstanceSecret,
-		hostData:       hostData,
-		assignIds:      assignIds,
-		v2:             true,
-		postValidate:   postValidate,
+		MsgChannel:        *edge.NewEdgeMsgChannel(self.ch, connId),
+		edgeClientConn:    self,
+		token:             token,
+		cost:              cost,
+		precedence:        precedence,
+		instance:          terminatorInstance,
+		instanceSecret:    terminatorInstanceSecret,
+		hostData:          hostData,
+		assignIds:         assignIds,
+		v2:                true,
+		postValidate:      postValidate,
+		notifyEstablished: notifyEstablished,
 	}
 	terminator.terminatorId.Store(terminatorId)
 

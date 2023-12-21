@@ -35,7 +35,7 @@ if [ ! -f ${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt ]; then
 
 
   # If we have override variables then override the base variable
-  # This is required as the .bashrc loads the env file which clobbers passed in varibles
+  # This is required as the .bashrc loads the env file which clobbers passed in variables
   if [[ "${ZITI_ROUTER_RAWNAME_OVERRIDE}" == "" ]]; then echo "ERROR: Missing ZITI_ROUTER_RAWNAME_OVERRIDE definition" >&2; exit; fi
     # May have been a bad attempt before, so lets clean up
   rm -f ${ZITI_HOME}/${ZITI_ROUTER_NAME}*

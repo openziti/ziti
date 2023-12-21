@@ -251,7 +251,7 @@ $ dilithium influx load /home/michael/.fablab/instances/transwarp/forensics/1616
 [   0.142]    INFO main.main: finished
 ```
 
-`dilithium influx load` is designed to take the root of the filesystem tree where the directory structure created by the metrics intrument is located. It will automatically traverse the tree and load any metrics it finds into the analyzer database.
+`dilithium influx load` is designed to take the root of the filesystem tree where the directory structure created by the metrics instrument is located. It will automatically traverse the tree and load any metrics it finds into the analyzer database.
 
 ### Analyze
 
@@ -418,7 +418,7 @@ Transwarp is the integration of `westworld3` into Ziti's `transport` framework, 
 
 ## Transwarp vs TranswarpTLS
 
-The `transport` integration means that Ziti now has support for the `transwarp:` and `transwarptls:` transports. These `transwarp:` is analagous to `tcp:` and `transwarptls:` is conceptually similar to `tls:`. `transwarptls:` wraps the `westworld3` protocol in a TLS wrapper, providing the same privacy and authentication mechanisms as `tls:`.
+The `transport` integration means that Ziti now has support for the `transwarp:` and `transwarptls:` transports. These `transwarp:` is analogous to `tcp:` and `transwarptls:` is conceptually similar to `tls:`. `transwarptls:` wraps the `westworld3` protocol in a TLS wrapper, providing the same privacy and authentication mechanisms as `tls:`.
 
 ## Link Listener
 

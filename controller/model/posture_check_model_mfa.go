@@ -18,12 +18,13 @@ package model
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/blang/semver"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckMfa{}
@@ -320,7 +321,7 @@ func (p *PostureCheckMfa) fillFrom(_ Env, tx *bbolt.Tx, check *db.PostureCheck, 
 	subCheck := subType.(*db.PostureCheckMfa)
 
 	if subCheck == nil {
-		return fmt.Errorf("could not covert mfa check to bolt type")
+		return fmt.Errorf("could not convert mfa check to bolt type")
 	}
 
 	p.TimeoutSeconds = subCheck.TimeoutSeconds

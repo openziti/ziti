@@ -81,7 +81,7 @@ from a pre-0.9 version you should first update to 0.14.12, then to new versions.
 
 ## Database Snapshots
 
-Database snapshots can now be triggered in a variety of ways to cause the creation of a dabase
+Database snapshots can now be triggered in a variety of ways to cause the creation of a database
 backup/snapshot. This can be done from the ziti-fabric CLI, the ziti CLI and the REST API
 
     $ ziti-fabric snapshot-db
@@ -97,7 +97,7 @@ will have the data and time appended to it. Snapshotting can be done at most onc
 
 Previously edge routers and fabric routers were closely related, but weren't actually the same
 entity. When an edge router was created, there was no corresponding fabric router until the edge
-router had been succesfully enrolled.
+router had been successfully enrolled.
 
 Now, edge routers are a type of fabric router. When an edge router is created, it will be visible as
 a fabric router with no fingerprint. This means that the corresponding router application won't be

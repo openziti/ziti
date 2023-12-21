@@ -1,16 +1,17 @@
 package testutil
 
 import (
+	"sync"
+	"time"
+
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
-	"sync"
-	"time"
 )
 
 type TestLink struct {
@@ -71,7 +72,7 @@ func (self *LinkStateChecker) HandleFault(msg *channel.Message, _ channel.Channe
 }
 
 func (self *LinkStateChecker) HandleOther(msg *channel.Message, _ channel.Channel) {
-	//  -33 = reconenct ping
+	//  -33 = reconnect ping
 	//    5 = heartbeat
 	// 1007 = metrics message
 	if msg.ContentType == -33 || msg.ContentType == 5 || msg.ContentType == 1007 {

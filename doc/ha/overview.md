@@ -61,7 +61,7 @@ Note that `bootstrapMembers` can only be used when setting the cluster up for th
 should only be used on a single node. It cannot be used later to add additional nodes to an existing
 cluster.
 
-**Agent Comands**
+**Agent Commands**
 
 There are now three new agent commands specific to the controller.
 

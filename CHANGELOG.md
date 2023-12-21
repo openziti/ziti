@@ -1,3 +1,129 @@
+# Release 0.32.0
+
+## What's New
+
+* Auth Rate Limiter
+
+## Backwards compatibility
+
+This release includes new response types from the REST authentication APIS. They are now able to return 
+`429` (server too busy) responses to auth requests. As this is an API change, the version number is 
+being bumped to 0.32.
+
+## Auth Rate Limiter
+
+In order to prevent clients from overwhelming the server with auth requests, an auth rate limiter has been introduced.
+The rate limiter is adaptive, in that it will react to auth attempts timing out by shrinking the number of allowed
+queued auth attempts. The number will slowly recover over time.
+
+Example configuration:
+
+```
+edge:
+  # This section allows configurating the rate limiter for auth attempts
+  authRateLimiter:
+    # if disabled, no auth rate limiting with be enforced
+    enabled: true
+    # the smallest window size for auth attempts
+    minSize: 5
+    # the largest allowed window size for auth attempts
+    maxSize: 250
+```
+
+New metrics:
+
+* `auth.limiter.queued_count` - current number of queued auth attempts
+* `auth.limiter.window_size`  - current size at which new auth attempts will be rejected
+* `auth.limiter.work_timer`   - tracks the rate at which api sessions are being created and how long it's taking to create them
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge-api: [v0.26.6 -> v0.26.7](https://github.com/openziti/edge-api/compare/v0.26.6...v0.26.7)
+* github.com/openziti/sdk-golang: [v0.22.0 -> v0.22.1](https://github.com/openziti/sdk-golang/compare/v0.22.0...v0.22.1)
+* github.com/openziti/ziti: [v0.31.4 -> v0.32.0](https://github.com/openziti/ziti/compare/v0.31.4...v0.32.0)
+    * [Issue #1657](https://github.com/openziti/ziti/issues/1657) - Add api session rate limiter
+
+
+# Release 0.31.4
+
+## What's New
+
+* Bug fix for a data flow stall which is especially likely to happen on circuits with single router paths
+
+## Thanks
+
+* @marvkis - for providing high quality debug data which made tracking down a couple of flow control stall issues much easier
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/metrics: [v1.2.40 -> v1.2.41](https://github.com/openziti/metrics/compare/v1.2.40...v1.2.41)
+* github.com/openziti/sdk-golang: [v0.21.2 -> v0.22.0](https://github.com/openziti/sdk-golang/compare/v0.21.2...v0.22.0)
+    * [Issue #468](https://github.com/openziti/sdk-golang/issues/468) - SDK does an unnecessary number of session refreshes
+
+* github.com/openziti/storage: [v0.2.26 -> v0.2.27](https://github.com/openziti/storage/compare/v0.2.26...v0.2.27)
+* github.com/openziti/ziti: [v0.31.3 -> v0.31.4](https://github.com/openziti/ziti/compare/v0.31.3...v0.31.4)
+    * [Issue #1645](https://github.com/openziti/ziti/issues/1645) - Once routers share a link id, we can't use the link id to decide which duplicate link to discard
+    * [Issue #1642](https://github.com/openziti/ziti/issues/1642) - Revert posture check optimization
+    * [Issue #1586](https://github.com/openziti/ziti/issues/1586) - If ack is received before payload is processed by link send buffer, a stall can result
+
+
+# Release 0.31.3
+
+## What's New
+
+* Services Max Idle Time
+* Add/Remove Peer and Transfer Leadership via REST
+
+## Service Max Idle Time
+
+A max idle time can now be configured on services. The default value of 0 indicates that no maximum will 
+be enforced. A circuit is considered idle when no traffic is flowing across through the initiating or
+terminating router. 
+
+```
+ziti edge create service test-service --max-idle-time 5m
+```
+
+Note that the idle time calculation is done on the router, so if max idle time on a service is less 
+than the configured scan interval on the router, it make take longer than expected for idle circuits
+to be removed.
+
+## Raft Cluster Management via REST
+
+The controller now allows some Raft cluster management operations to be performed via REST. 
+
+NOTE: If your cluster is not bootstrapped yet, the REST API won't be available. These will only work on a bootstrapped cluster! 
+
+The following operations are now supported:
+
+* Add member
+* Remove member
+* Transfer leadership
+
+```
+ziti fabric raft add-member tls:localhost:6363
+ziti fabric raft add-member tls:localhost:6464
+ziti fabric raft transfer-leadership 
+ziti fabric raft transfer-leadership ctrl3
+ziti fabric raft remove-member ctrl2
+ziti fabric raft remove-member ctrl3
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge-api: [v0.26.1 -> v0.26.6](https://github.com/openziti/edge-api/compare/v0.26.1...v0.26.6)
+* github.com/openziti/sdk-golang: [v0.20.139 -> v0.21.2](https://github.com/openziti/sdk-golang/compare/v0.20.139...v0.21.2)
+    * [Issue #465](https://github.com/openziti/sdk-golang/issues/465) - Allow listen options to specify how many listeners need to be established before returning
+    * [Issue #462](https://github.com/openziti/sdk-golang/issues/462) - Allow refreshing a single service
+
+* github.com/openziti/ziti: [v0.31.2 -> v0.31.3](https://github.com/openziti/ziti/compare/v0.31.2...v0.31.3)
+    * [Issue #1583](https://github.com/openziti/ziti/issues/1583) - xgress: Potential data stall due when processing acks after checking window size 
+    * [Issue #1578](https://github.com/openziti/ziti/issues/1578) - Send BindSuccess notifications to SDK if supported
+    * [Issue #1544](https://github.com/openziti/ziti/issues/1544) - Support transfer raft leadership via REST
+    * [Issue #1543](https://github.com/openziti/ziti/issues/1543) - Support add/remove raft peer via REST
+    * [Issue #1496](https://github.com/openziti/ziti/issues/1496) - Configurable Timer needed to close idle circuits
+    * [Issue #1402](https://github.com/openziti/ziti/issues/1402) - Allow router to decomission itself
+
 # Release 0.31.2
 
 ## What's New
@@ -17,7 +143,7 @@
 * Terminator validation utility
 * Circuit/Link query support
 
-## SDK Hosting Improvments
+## SDK Hosting Improvements
 
 In previous versions of OpenZiti, if many SDK clients were attempting to establish hosting, the controller could get overwhelmed. 
 In this release, routers will use the rate limiter pool introduced in 0.27.6 when creating terminators on behalf of sdk clients
@@ -87,7 +213,7 @@ When the rate limit is hit, an error will be returned. If the request came in fr
 the REST API, the response will use HTTP status code 429 (too many requests). 
 
 The OpenAPI specs have been updated, so if you're using a generated client to make
-REST calls, it's recommened that you regenerate your client.
+REST calls, it's recommended that you regenerate your client.
 
 
 ```
@@ -98,7 +224,7 @@ commandRateLimiter:
 
 If the rate limiter is enabled, the following metrics will be produced:
 
-* `command.limiter.queued_count` - guage of the current number of queued operations
+* `command.limiter.queued_count` - gauge of the current number of queued operations
 * `command.limiter.work_timer` - timer for operations. Includes the following:
     * A histogram of how long operations take to complete 
     * A meter showing that rate at which operations are executed
@@ -114,7 +240,7 @@ If the rate limiter is enabled, the following metrics will be produced:
 * github.com/openziti/identity: [v1.0.64 -> v1.0.66](https://github.com/openziti/identity/compare/v1.0.64...v1.0.66)
 * github.com/openziti/metrics: [v1.2.36 -> v1.2.37](https://github.com/openziti/metrics/compare/v1.2.36...v1.2.37)
 * github.com/openziti/sdk-golang: [v0.20.122 -> v0.20.129](https://github.com/openziti/sdk-golang/compare/v0.20.122...v0.20.129)
-    * [Issue #443](https://github.com/openziti/sdk-golang/issues/443) - Don't send close in reponse to a close on a listener
+    * [Issue #443](https://github.com/openziti/sdk-golang/issues/443) - Don't send close in response to a close on a listener
 
 * github.com/openziti/secretstream: [v0.1.12 -> v0.1.13](https://github.com/openziti/secretstream/compare/v0.1.12...v0.1.13)
 * github.com/openziti/storage: [v0.2.20 -> v0.2.23](https://github.com/openziti/storage/compare/v0.2.20...v0.2.23)
@@ -171,7 +297,7 @@ Currently only HTTP Connect proxies which don't require authentication are suppo
 * github.com/openziti/ziti: [v0.30.4 -> v0.30.5](https://github.com/openziti/ziti/compare/v0.30.4...v0.30.5)
     * [Issue #1336](https://github.com/openziti/ziti/issues/1336) - `ziti edge quickstart` did
       not create the usual edge router/service edge router policy.
-    * [Issue #1397](https://github.com/openziti/ziti/issues/1397) - HTTP Proxy suport for host.v1/host.v2 config types
+    * [Issue #1397](https://github.com/openziti/ziti/issues/1397) - HTTP Proxy support for host.v1/host.v2 config types
     * [Issue #1423](https://github.com/openziti/ziti/issues/1423) - Controller crashes when edge router reconnects (Client Hello)
     * [Issue #1414](https://github.com/openziti/ziti/issues/1414) - Race condition in xgress_edge_tunnel tunneller at start but not seen in pre-compiled binary
     * [Issue #1406](https://github.com/openziti/ziti/issues/1406) - Entity change event dispatcher isn't shutting down properly when controller shuts down
@@ -204,7 +330,7 @@ Currently only HTTP Connect proxies which don't require authentication are suppo
   ziti edge quickstart \
     --ctrl-address potato \
     --ctrl-port 12345 \
-    --router-address avacado \
+    --router-address avocado \
     --router-port 23456 \
     --home $HOME/.ziti/pet-ziti \
     --already-initialized \
@@ -253,7 +379,7 @@ Prior to this release there were four identity types:
 
 Of these four types, only Router has any functional purpose. Given that, the other three have been merged into
 a single `Default` identity type. Since Router identities can only be created by the system, it's no longer
-necesary to specify the identity type when creating identities.
+necessary to specify the identity type when creating identities.
 
 The identity type may still be provided, but a deprecation warning will be emitted.
 
@@ -266,7 +392,7 @@ code may have issues with the new identity type being returned.
 
 ## HTTP Connect Proxy support
 
-Routers may now specify a proxy configuation which will be used when establishing connections to controllers
+Routers may now specify a proxy configuration which will be used when establishing connections to controllers
 and data links to other routers. At this point only HTTP Connect Proxies with no authentication required are
 supported.
 
@@ -607,7 +733,7 @@ Bug fix
 
 * github.com/openziti/channel/v2: [v2.0.80 -> v2.0.81](https://github.com/openziti/channel/compare/v2.0.80...v2.0.81)
 * github.com/openziti/edge: [v0.24.326 -> v0.24.345](https://github.com/openziti/edge/compare/v0.24.326...v0.24.345)
-  * [Issue #1528](https://github.com/openziti/edge/issues/1528) - edge unbind returns incorect message if token is not suplied or invalid
+  * [Issue #1528](https://github.com/openziti/edge/issues/1528) - edge unbind returns incorrect message if token is not supplied or invalid
   * [Issue #1416](https://github.com/openziti/edge/issues/1416) - Allow MFA token name to be configured
 
 * github.com/openziti/edge-api: [v0.25.25 -> v0.25.29](https://github.com/openziti/edge-api/compare/v0.25.25...v0.25.29)
@@ -741,7 +867,7 @@ events:
 ## What's New
 
 * Event changes
-  * Added AMQP event writter for events
+  * Added AMQP event writer for events
   * Add entity change events for auditing or external integration
   * Add usage event filtering
   * Add annotations to circuit events
@@ -948,7 +1074,7 @@ listeners:
   * [Issue #1471](https://github.com/openziti/edge/issues/1471) - UDP intercept connections report incorrect local/remote addresses, making confusing events
   * [Issue #629](https://github.com/openziti/edge/issues/629) - emit entity change events
   * [Issue #1295](https://github.com/openziti/edge/issues/1295) - Ensure DB migrations work properly in a clustered setup (edge)
-  * [Issue #1418](https://github.com/openziti/edge/issues/1418) - Checks for session edge router availablility are inefficient
+  * [Issue #1418](https://github.com/openziti/edge/issues/1418) - Checks for session edge router availability are inefficient
 
 * github.com/openziti/edge-api: [v0.25.11 -> v0.25.24](https://github.com/openziti/edge-api/compare/v0.25.11...v0.25.24)
 * github.com/openziti/fabric: [v0.22.87 -> v0.23.29](https://github.com/openziti/fabric/compare/v0.22.87...v0.23.29)

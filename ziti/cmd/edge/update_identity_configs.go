@@ -18,10 +18,11 @@ package edge
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"io"
 
 	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
@@ -56,7 +57,7 @@ func newUpdateIdentityConfigsCmd(out io.Writer, errOut io.Writer) *cobra.Command
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVarP(&options.remove, "remove", "r", false, "Remove the sevice config override")
+	cmd.Flags().BoolVarP(&options.remove, "remove", "r", false, "Remove the service config override")
 
 	return cmd
 }

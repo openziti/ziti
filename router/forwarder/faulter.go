@@ -35,6 +35,11 @@ type Faulter struct {
 	closeNotify chan struct{}
 }
 
+type FaultReceiver interface {
+	Report(circuitId string, ctrlId string)
+	NotifyInvalidLink(linkId string)
+}
+
 func NewFaulter(ctrls env.NetworkControllers, interval time.Duration, closeNotify chan struct{}) *Faulter {
 	f := &Faulter{
 		ctrls:       ctrls,
@@ -50,13 +55,13 @@ func NewFaulter(ctrls env.NetworkControllers, interval time.Duration, closeNotif
 	return f
 }
 
-func (self *Faulter) report(circuitId string, ctrlId string) {
+func (self *Faulter) Report(circuitId string, ctrlId string) {
 	if self.interval > 0 {
 		self.circuitIds.Set(circuitId, ctrlId)
 	}
 }
 
-func (self *Faulter) notifyInvalidLink(linkId string) {
+func (self *Faulter) NotifyInvalidLink(linkId string) {
 	log := pfxlog.Logger()
 	self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
 		fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId}

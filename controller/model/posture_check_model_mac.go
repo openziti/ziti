@@ -18,11 +18,12 @@ package model
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckMacAddresses{}
@@ -100,7 +101,7 @@ func (p *PostureCheckMacAddresses) fillFrom(_ Env, tx *bbolt.Tx, check *db.Postu
 	subCheck := subType.(*db.PostureCheckMacAddresses)
 
 	if subCheck == nil {
-		return fmt.Errorf("could not covert mac address check to bolt type")
+		return fmt.Errorf("could not convert mac address check to bolt type")
 	}
 
 	p.MacAddresses = subCheck.MacAddresses

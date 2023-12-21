@@ -329,6 +329,7 @@ type PolicyPostureChecks struct {
 
 func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId string) map[string]*PolicyPostureChecks {
 	policyIdToChecks := map[string]*PolicyPostureChecks{}
+
 	postureCheckCache := map[string]*PostureCheck{}
 
 	servicePolicyStore := self.env.GetStores().ServicePolicy

@@ -223,7 +223,7 @@ Currently each section of the dial logic has its own timeouts. It can easily hap
 an early stage timeout expires while a later one doesn't, causing work to be done whose
 results will be ignored. A first pass has been completed at threading timeouts/deadline
 through the dial logic, spanning controller and routers, so that we use approximately
-the same timeout througout the dial process.
+the same timeout throughout the dial process.
 
 ### Link Initial Latency
 Previously links would start with a latency of 0, which they would keep until the latency
@@ -242,7 +242,7 @@ network:
 ```
 
 ### Link Verification changes
-In previous releases when a router recieved a link dial from another router, it would verify
+In previous releases when a router received a link dial from another router, it would verify
 that the link was known to the controller and the dialing router was valid. Router validity
 was checked by making sure the fingerprints of the certs used to establish the link matched
 the fingerprints on record for the router.
@@ -387,7 +387,7 @@ The `ziti-probe` tool will no longer be built and published as part of Ziti rele
 * Enhancement: `ziti edge update config-type` is now available
 * Enhancement: `ziti edge create|update identity` now supports `--external-id`
 * Bug fix: Fixes an issue where the router config would use hostname instead of the DNS name
-* Bug fix: When establishing links, a link could be closed while being registered, leading the controlller and router to get out of sync
+* Bug fix: When establishing links, a link could be closed while being registered, leading the controller and router to get out of sync
 * Enhancement: Add min router cost. Helps to minimize unnecessary hops.
     * Defaults to 10, configurable in the controller config with the minRouterCost value under `network:`
 * Enhancement: Can now see xgress instance and link send buffer pointer values in circuit inspections. This allows correlating to stackdumps
@@ -609,7 +609,7 @@ Example Create:
 
 ## JWT Primary/Secondary Authentication
 
-A new primary authentication mechanism is available in addition to `cert` and `passsword` (UPDB). The internal
+A new primary authentication mechanism is available in addition to `cert` and `password` (UPDB). The internal
 method name is `ext-jwt` and it allows authentication by providing a bearer token by a known external JWT signer.
 A new entity `External JWT Singer` has been introduced and is defined in subsequent sections.
 

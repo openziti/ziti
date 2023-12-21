@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router"
@@ -156,7 +157,8 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 	}
 
 	headers := map[int32][]byte{
-		channel.HelloVersionHeader: versionHeader,
+		channel.HelloVersionHeader:     versionHeader,
+		edge.SupportsBindSuccessHeader: {1},
 	}
 
 	return newListener(factory.env.GetRouterId(), factory, options, headers), nil

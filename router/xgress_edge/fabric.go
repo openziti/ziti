@@ -66,20 +66,21 @@ func (self terminatorState) String() string {
 
 type edgeTerminator struct {
 	edge.MsgChannel
-	edgeClientConn *edgeClientConn
-	terminatorId   concurrenz.AtomicValue[string]
-	listenerId     string
-	token          string
-	instance       string
-	instanceSecret []byte
-	cost           uint16
-	precedence     edge_ctrl_pb.TerminatorPrecedence
-	hostData       map[uint32][]byte
-	assignIds      bool
-	onClose        func()
-	v2             bool
-	state          concurrenz.AtomicValue[terminatorState]
-	postValidate   bool
+	edgeClientConn    *edgeClientConn
+	terminatorId      concurrenz.AtomicValue[string]
+	listenerId        string
+	token             string
+	instance          string
+	instanceSecret    []byte
+	cost              uint16
+	precedence        edge_ctrl_pb.TerminatorPrecedence
+	hostData          map[uint32][]byte
+	assignIds         bool
+	onClose           func()
+	v2                bool
+	state             concurrenz.AtomicValue[terminatorState]
+	postValidate      bool
+	notifyEstablished bool
 }
 
 func (self *edgeTerminator) inspect(fixInvalidTerminators bool) (*edge.InspectResult, error) {

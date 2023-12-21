@@ -18,6 +18,9 @@ package model
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/blang/semver"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
@@ -25,8 +28,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"strings"
-	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckOperatingSystem{}
@@ -152,7 +153,7 @@ func (p *PostureCheckOperatingSystem) fillFrom(_ Env, tx *bbolt.Tx, check *db.Po
 	subCheck := subType.(*db.PostureCheckOperatingSystem)
 
 	if subCheck == nil {
-		return fmt.Errorf("could not covert os check to bolt type")
+		return fmt.Errorf("could not convert os check to bolt type")
 	}
 
 	for _, osMatch := range subCheck.OperatingSystems {

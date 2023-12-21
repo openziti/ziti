@@ -239,8 +239,8 @@ Linux distributions typically manage the contents of /etc/resolv.conf, so simply
 will only work for a short time until /etc/resolv.conf is overwritten by the managing process.
 
 Resolver configuration changes must survive restarts of the Linux name resolution manager. Linux
-distrubutions use one of several name resolution managers. The simplest way to determine which name
-resolution manager is being used by your Linux distrubtion is to look at /etc/resolv.conf:
+distributions use one of several name resolution managers. The simplest way to determine which name
+resolution manager is being used by your Linux distribution is to look at /etc/resolv.conf:
 
     $ ls -l /etc/resolv.conf
 
@@ -256,7 +256,7 @@ ziti-tunnel's internal DNS server first by adding the following to /etc/dhcp/dhc
     prepend domain-name-servers 127.0.0.1;
 
 Then restart network manager. Unless you know the name of the NetworkManager systemd
-service on your Linux distrubtion, it's probably easiest to reboot the host.
+service on your Linux distribution, it's probably easiest to reboot the host.
 
 #### systemd-resolved
 

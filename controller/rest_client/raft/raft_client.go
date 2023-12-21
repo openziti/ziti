@@ -56,6 +56,12 @@ type ClientOption func(*runtime.ClientOperation)
 type ClientService interface {
 	RaftListMembers(params *RaftListMembersParams, opts ...ClientOption) (*RaftListMembersOK, error)
 
+	RaftMemberAdd(params *RaftMemberAddParams, opts ...ClientOption) (*RaftMemberAddOK, error)
+
+	RaftMemberRemove(params *RaftMemberRemoveParams, opts ...ClientOption) (*RaftMemberRemoveOK, error)
+
+	RaftTranferLeadership(params *RaftTranferLeadershipParams, opts ...ClientOption) (*RaftTranferLeadershipOK, error)
+
 	SetTransport(transport runtime.ClientTransport)
 }
 
@@ -96,6 +102,126 @@ func (a *Client) RaftListMembers(params *RaftListMembersParams, opts ...ClientOp
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for raftListMembers: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  RaftMemberAdd adds a member to the raft cluster
+
+  Add a member to the raft cluster. Requires admin access.
+*/
+func (a *Client) RaftMemberAdd(params *RaftMemberAddParams, opts ...ClientOption) (*RaftMemberAddOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRaftMemberAddParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "raftMemberAdd",
+		Method:             "POST",
+		PathPattern:        "/raft/add-member",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &RaftMemberAddReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RaftMemberAddOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for raftMemberAdd: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  RaftMemberRemove removes a member from the raft cluster
+
+  Remove a member from the raft cluster. Requires admin access.
+*/
+func (a *Client) RaftMemberRemove(params *RaftMemberRemoveParams, opts ...ClientOption) (*RaftMemberRemoveOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRaftMemberRemoveParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "raftMemberRemove",
+		Method:             "POST",
+		PathPattern:        "/raft/remove-member",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &RaftMemberRemoveReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RaftMemberRemoveOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for raftMemberRemove: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  RaftTranferLeadership attempts to transfer leadership to a different member of the cluster
+
+  Attempts to transfer leadership to a different member of the cluster. Requires admin access.
+*/
+func (a *Client) RaftTranferLeadership(params *RaftTranferLeadershipParams, opts ...ClientOption) (*RaftTranferLeadershipOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRaftTranferLeadershipParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "raftTranferLeadership",
+		Method:             "POST",
+		PathPattern:        "/raft/transfer-leadership",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &RaftTranferLeadershipReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RaftTranferLeadershipOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for raftTranferLeadership: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
