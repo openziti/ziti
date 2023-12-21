@@ -1,3 +1,49 @@
+# Release 0.32.0
+
+## What's New
+
+* Auth Rate Limiter
+
+## Backwards compatibility
+
+This release includes new response types from the REST authentication APIS. They are now able to return 
+`429` (server too busy) responses to auth requests. As this is an API change, the version number is 
+being bumped to 0.32.
+
+## Auth Rate Limiter
+
+In order to prevent clients from overwhelming the server with auth requests, an auth rate limiter has been introduced.
+The rate limiter is adaptive, in that it will react to auth attempts timing out by shrinking the number of allowed
+queued auth attempts. The number will slowly recover over time.
+
+Example configuration:
+
+```
+edge:
+  # This section allows configurating the rate limiter for auth attempts
+  authRateLimiter:
+    # if disabled, no auth rate limiting with be enforced
+    enabled: true
+    # the smallest window size for auth attempts
+    minSize: 5
+    # the largest allowed window size for auth attempts
+    maxSize: 250
+```
+
+New metrics:
+
+* `auth.limiter.queued_count` - current number of queued auth attempts
+* `auth.limiter.window_size`  - current size at which new auth attempts will be rejected
+* `auth.limiter.work_timer`   - tracks the rate at which api sessions are being created and how long it's taking to create them
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge-api: [v0.26.6 -> v0.26.7](https://github.com/openziti/edge-api/compare/v0.26.6...v0.26.7)
+* github.com/openziti/sdk-golang: [v0.22.0 -> v0.22.1](https://github.com/openziti/sdk-golang/compare/v0.22.0...v0.22.1)
+* github.com/openziti/ziti: [v0.31.4 -> v0.32.0](https://github.com/openziti/ziti/compare/v0.31.4...v0.32.0)
+    * [Issue #1657](https://github.com/openziti/ziti/issues/1657) - Add api session rate limiter
+
+
 # Release 0.31.4
 
 ## What's New

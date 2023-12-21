@@ -48,6 +48,7 @@ import (
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/command"
 	edgeConfig "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
@@ -74,6 +75,12 @@ var _ model.Env = &AppEnv{}
 
 const ZitiSession = "zt-session"
 
+const (
+	metricAuthLimiterCurrentQueuedCount = "auth.limiter.queued_count"
+	metricAuthLimiterCurrentWindowSize  = "auth.limiter.window_size"
+	metricAuthLimiterWorkTimer          = "auth.limiter.work_timer"
+)
+
 type AppEnv struct {
 	Managers *model.Managers
 	Config   *edgeConfig.Config
@@ -99,6 +106,7 @@ type AppEnv struct {
 	TraceManager            *TraceManager
 	ServerCert              *tls.Certificate
 	ServerCertSigningMethod jwt.SigningMethod
+	AuthRateLimiter         command.AdaptiveRateLimiter
 }
 
 // JwtSignerKeyFunc is used in combination with jwt.Parse or jwt.ParseWithClaims to
@@ -537,6 +545,14 @@ func NewAppEnv(c *edgeConfig.Config, host HostController) *AppEnv {
 		ClientApi:          clientApi,
 		IdentityRefreshMap: cmap.New[time.Time](),
 		StartupTime:        time.Now().UTC(),
+		AuthRateLimiter: command.NewAdaptiveRateLimiter(command.AdaptiveRateLimiterConfig{
+			Enabled:          c.AuthRateLimiter.Enabled,
+			MinSize:          c.AuthRateLimiter.MinSize,
+			MaxSize:          c.AuthRateLimiter.MaxSize,
+			WorkTimerMetric:  metricAuthLimiterWorkTimer,
+			QueueSizeMetric:  metricAuthLimiterCurrentQueuedCount,
+			WindowSizeMetric: metricAuthLimiterCurrentWindowSize,
+		}, host.GetNetwork().GetMetricsRegistry(), host.GetCloseNotifyChannel()),
 	}
 
 	ae.identityRefreshMeter = ae.GetHostController().GetNetwork().GetMetricsRegistry().Meter("identity.refresh")

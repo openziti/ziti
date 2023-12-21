@@ -18,15 +18,15 @@ package api
 
 import (
 	"github.com/go-openapi/runtime"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 )
 
 type Responder interface {
 	Respond(data interface{}, httpStatus int)
-	RespondWithProducer(producer runtime.Producer, data interface{}, httpStatus int)
+	RespondWithProducer(producer runtime.Producer, data interface{}, httpStatus int) bool
 	RespondWithEmptyOk()
 	RespondWithError(err error)
 	RespondWithApiError(err *errorz.ApiError)

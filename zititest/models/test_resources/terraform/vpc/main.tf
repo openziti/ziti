@@ -88,26 +88,14 @@ resource "aws_security_group" "fablab" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
-    from_port   = 6262
-    to_port     = 6262
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    from_port   = 6262
-    to_port     = 6262
-    protocol    = "udp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
     from_port   = 6000
-    to_port     = 6009
+    to_port     = 6400
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
     from_port   = 6000
-    to_port     = 6009
+    to_port     = 6400
     protocol    = "udp"
     cidr_blocks = ["0.0.0.0/0"]
   }
