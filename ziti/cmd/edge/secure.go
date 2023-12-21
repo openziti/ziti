@@ -70,9 +70,6 @@ func runSecure(o *SecureOptions) (err error) {
 	svcName := o.Args[0]
 	address := o.Args[1]
 
-	// TODO: Remove when done
-	fmt.Printf("Executing command with (%s) and (%s)\n", svcName, address)
-
 	// Parse the url argument
 	u, err := url.Parse(address)
 	if err != nil {
@@ -96,7 +93,6 @@ func runSecure(o *SecureOptions) (err error) {
 	// Create a bind config
 	bindCfgName := svcName + ".host.v1"
 	jsonStr := fmt.Sprintf(`{"protocol":"%s", "address":"%s", "port":%s}`, protocol, hostname, port)
-	fmt.Printf("jsonStr: %s\n", jsonStr)
 
 	cmd := newCreateConfigCmd(os.Stdout, os.Stderr)
 	args := []string{bindCfgName, entities.HostConfigV1, jsonStr}
