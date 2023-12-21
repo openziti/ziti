@@ -23,21 +23,14 @@ services:
         # this allows other containers to use the external DNS name to reach the quickstart container inside the docker
         # network
         aliases:
-          - ${EXTERNAL_DNS}
+          - ${EXTERNAL_DNS:-null}
     entrypoint:
     - bash
     - -euc
     - |
-      if [[ -d /persistent/db ]]
-      then
-        echo "INFO: not initializing. Delete state directory ./persistent/ to reset quickstart."
-        ZITI_CMD+=" --already-initialized"
-      else
-        echo "INFO: initializing quickstart in state directory ./persistent/"
-        ZITI_CMD+=" --ctrl-address ${EXTERNAL_DNS:-127.0.0.1}"\
+      ZITI_CMD+=" --ctrl-address ${EXTERNAL_DNS:-127.0.0.1}"\
       " --router-address ${EXTERNAL_DNS:-127.0.0.1}"\
       " --password ${ZITI_PWD:-admin}"
-      fi
       echo "DEBUG: run command is: ziti $${@} $${ZITI_CMD}"
       exec ziti "$${@}" $${ZITI_CMD}
     command: -- edge quickstart --home /persistent
