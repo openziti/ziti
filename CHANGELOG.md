@@ -4,6 +4,11 @@
 
 * Go version updated from 1.20 to 1.21
 
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v0.31.1 -> v0.31.2](https://github.com/openziti/ziti/compare/v0.31.1...v0.31.2)
+  * [Issue #1663](https://github.com/openziti/ziti/issues/1663) - Create a single command to create a service
+
 # Release 0.31.1
 
 ## What's New
