@@ -20,13 +20,14 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	fabricMetrics "github.com/openziti/ziti/common/metrics"
-	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
+	fabricMetrics "github.com/openziti/ziti/common/metrics"
+	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"io"
 	"sync"
 	"time"
 )
@@ -34,7 +35,7 @@ import (
 type listener struct {
 	id                 *identity.TokenId
 	config             *listenerConfig
-	listener           channel.UnderlayListener
+	listener           io.Closer
 	accepter           xlink.Acceptor
 	bindHandlerFactory BindHandlerFactory
 	tcfg               transport.Configuration
@@ -46,18 +47,17 @@ type listener struct {
 
 func (self *listener) Listen() error {
 	config := channel.ListenerConfig{
-		ConnectOptions:   self.config.options.ConnectOptions,
-		TransportConfig:  self.tcfg,
-		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(self.metricsRegistry, "pool.listener.link"),
+		ConnectOptions:     self.config.options.ConnectOptions,
+		TransportConfig:    self.tcfg,
+		PoolConfigurator:   fabricMetrics.GoroutinesPoolMetricsConfigF(self.metricsRegistry, "pool.listener.link"),
+		ConnectionHandlers: []channel.ConnectionHandler{&ConnectionHandler{self.id}},
 	}
-	listener := channel.NewClassicListener(self.id, self.config.bind, config)
 
-	self.listener = listener
-	connectionHandler := &ConnectionHandler{self.id}
-	if err := self.listener.Listen(connectionHandler); err != nil {
+	var err error
+	if self.listener, err = channel.NewClassicListenerF(self.id, self.config.bind, config, self.acceptNewUnderlay); err != nil {
 		return fmt.Errorf("error listening (%w)", err)
 	}
-	go self.acceptLoop()
+
 	go self.cleanupExpiredPartialLinks()
 	return nil
 }
@@ -86,16 +86,9 @@ func (self *listener) GetLocalBinding() string {
 	return self.config.bindInterface
 }
 
-func (self *listener) acceptLoop() {
-	for {
-		_, err := channel.NewChannelWithTransportConfiguration("link", self.listener, self, self.config.options, self.tcfg)
-		if err != nil && errors.Is(err, channel.ListenerClosedError) {
-			logrus.Errorf("link underlay acceptor closed")
-			return
-		} else if err != nil {
-			logrus.Errorf("error creating link underlay (%v)", err)
-			continue
-		}
+func (self *listener) acceptNewUnderlay(underlay channel.Underlay) {
+	if _, err := channel.NewChannelWithUnderlay("link", underlay, self, self.config.options); err != nil {
+		logrus.WithError(err).Error("error creating link channel")
 	}
 }
 

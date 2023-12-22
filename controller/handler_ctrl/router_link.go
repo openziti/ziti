@@ -19,8 +19,8 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -46,23 +46,11 @@ func (h *routerLinkHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 		return
 	}
 
-	go h.HandleLinks(ch, link)
+	go h.HandleLinks(link)
 }
 
-func (h *routerLinkHandler) HandleLinks(ch channel.Channel, links *ctrl_pb.RouterLinks) {
-	log := pfxlog.ContextLogger(ch.Label()).WithField("routerId", ch.Id())
-
+func (h *routerLinkHandler) HandleLinks(links *ctrl_pb.RouterLinks) {
 	for _, link := range links.Links {
-		linkLog := log.WithField("linkId", link.Id).
-			WithField("destRouterId", link.DestRouterId)
-
-		created, err := h.network.NotifyExistingLink(link.Id, link.LinkProtocol, link.DialAddress, h.r, link.DestRouterId)
-		if err != nil {
-			linkLog.WithError(err).Error("unexpected error adding router reported link")
-		} else if created {
-			linkLog.Info("router reported link added")
-		} else {
-			linkLog.Info("router reported link already known")
-		}
+		h.network.NotifyExistingLink(link.Id, link.LinkProtocol, link.DialAddress, h.r, link.DestRouterId)
 	}
 }

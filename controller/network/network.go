@@ -381,19 +381,27 @@ func (network *Network) DisconnectRouter(r *Router) {
 	network.routerChanged <- r
 }
 
-func (network *Network) NotifyExistingLink(id, linkProtocol, dialAddress string, srcRouter *Router, dstRouterId string) (bool, error) {
+func (network *Network) NotifyExistingLink(id, linkProtocol, dialAddress string, srcRouter *Router, dstRouterId string) {
+	log := pfxlog.Logger().
+		WithField("routerId", srcRouter.Id).
+		WithField("linkId", id).
+		WithField("destRouterId", dstRouterId)
+
 	dst := network.Routers.getConnected(dstRouterId)
 	if dst == nil {
 		network.NotifyLinkIdEvent(id, event.LinkFromRouterDisconnectedDest)
-		return false, errors.New("destination router not connected")
+		log.Error("destination router not connected")
+		return
 	}
+
 	link, created := network.linkController.routerReportedLink(id, linkProtocol, dialAddress, srcRouter, dst)
 	if created {
 		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
+		log.Info("router reported link added")
 	} else {
 		network.NotifyLinkEvent(link, event.LinkFromRouterKnown)
+		log.Info("router reported link already known")
 	}
-	return created, nil
 }
 
 func (network *Network) LinkConnected(msg *ctrl_pb.LinkConnected) error {

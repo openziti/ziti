@@ -11,11 +11,11 @@ require (
 	github.com/google/uuid v1.5.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.111
+	github.com/openziti/channel/v2 v2.0.113
 	github.com/openziti/fablab v0.5.32
 	github.com/openziti/foundation/v2 v2.0.35
 	github.com/openziti/identity v1.0.68
-	github.com/openziti/sdk-golang v0.22.1
+	github.com/openziti/sdk-golang v0.22.5
 	github.com/openziti/storage v0.2.27
 	github.com/openziti/transport/v2 v2.0.119
 	github.com/openziti/ziti v0.28.3
@@ -26,7 +26,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	go.etcd.io/bbolt v1.3.8
 	golang.org/x/net v0.19.0
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -133,7 +133,7 @@ require (
 	github.com/openziti/jwks v1.0.3 // indirect
 	github.com/openziti/metrics v1.2.41 // indirect
 	github.com/openziti/runzmd v1.0.36 // indirect
-	github.com/openziti/secretstream v0.1.14 // indirect
+	github.com/openziti/secretstream v0.1.15 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.1.0 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
