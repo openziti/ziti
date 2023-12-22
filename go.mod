@@ -20,9 +20,9 @@ require (
 	github.com/go-openapi/errors v0.21.0
 	github.com/go-openapi/loads v0.21.3
 	github.com/go-openapi/runtime v0.26.2
-	github.com/go-openapi/spec v0.20.12
+	github.com/go-openapi/spec v0.20.13
 	github.com/go-openapi/strfmt v0.21.10
-	github.com/go-openapi/swag v0.22.5
+	github.com/go-openapi/swag v0.22.6
 	github.com/go-openapi/validate v0.22.4
 	github.com/go-resty/resty/v2 v2.10.0
 	github.com/golang-jwt/jwt/v5 v5.0.0
@@ -116,8 +116,8 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.21.5 // indirect
-	github.com/go-openapi/jsonpointer v0.20.1 // indirect
-	github.com/go-openapi/jsonreference v0.20.3 // indirect
+	github.com/go-openapi/jsonpointer v0.20.2 // indirect
+	github.com/go-openapi/jsonreference v0.20.4 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
 	github.com/gorilla/schema v1.2.0 // indirect
