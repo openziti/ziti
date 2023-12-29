@@ -18,10 +18,11 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/pkg/errors"
 	"os"
 	"strings"
+
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/pkg/errors"
 )
 
 func mapNameToID(entityType string, val string, o api.Options) (string, error) {
@@ -97,7 +98,7 @@ func mapNamesToIDs(entityType string, o api.Options, skipNotFound bool, list ...
 
 			if len(list) > 1 {
 				fmt.Printf("Found multiple %v matching %v. Please specify which you want by prefixing with id: or name:\n", entityType, val)
-				return nil, errors.Errorf("ambigous if %v is id or name", val)
+				return nil, errors.Errorf("ambiguous if %v is id or name", val)
 			}
 
 			entityId, _ := list[0].Path("id").Data().(string)

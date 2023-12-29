@@ -15,7 +15,7 @@
 * Security: Router link listeners weren't properly validating certs against the server cert chain
 * Security: Link listeners now validate incoming links to ensure that the link was requested by the controller and the
   correct router dialed
-* Security: Don't allow link forwarding entries to be overriden, as link ids should be unique
+* Security: Don't allow link forwarding entries to be overridden, as link ids should be unique
 * Security: Validate ctrl channel clients against controller cert chain in addition to checking cert fingerprint
 
 ## Breaking Changes

@@ -27,7 +27,7 @@ OpenZiti represents the next generation of secure, open-source networking for yo
 
 ## What is OpenZiti?
 
-* The OpenZiti fabric provides a scalable, plugable, networking mesh with built in smart routing
+* The OpenZiti fabric provides a scalable, pluggable, networking mesh with built in smart routing
 * The OpenZiti edge components provide a secure, Zero Trust entry point into your network
 * The OpenZiti SDKs allow you to integrate OpenZiti directly into your applications
 * The OpenZiti tunnelers and proxies allow existing applications and networks to take advantage of a OpenZiti deployment

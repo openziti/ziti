@@ -64,7 +64,7 @@ Output responses include:
 
 - `200 OK` w/ empty object payloads: `{}`
 - `401 UNAUTHORIZED` w/ standard error messaging
-- `400 BAD REQUESET` w/ standard error messaging for field errors or CSR processing errors
+- `400 BAD REQUEST` w/ standard error messaging for field errors or CSR processing errors
 
 # Release 0.22.9
 
@@ -174,7 +174,7 @@ plorenz@carrot:~/work/nf$ ziti edge traceroute simple -c ./simple-client.json
 
 ## What's New
 
-* Bug fix: Fix panic in listener close if the socket hadn't been initalized yet
+* Bug fix: Fix panic in listener close if the socket hadn't been initialized yet
 * Bug fix: Fix panic in posture bulk create if mfa wasn't set
 * Bug fix: Fix panic in circuit creation on race condition when circuits are add/removed concurrently
 
@@ -291,7 +291,7 @@ Fabric sessions renamed to circuits. External integrators may be impacted by cha
 
 ### Ziti CLI
 
-Commands under `ziti edge` now reserve the `-i` flag for specifying client identity. Any command line argumet which
+Commands under `ziti edge` now reserve the `-i` flag for specifying client identity. Any command line argument which
 previously had a `-i` short version now only has a long version.
 
 For consistency, policy roles parameters must all be specified in long form
@@ -307,7 +307,7 @@ This includes the following flags:
 * ziti edge create posture-check mfa --ignore-legacy
 * ziti edge update posture-check mfa --ignore-legacy
 * ziti edge update authenticator updb --identity
-* ziti egde update ca --identity-atributes (now -a)
+* ziti edge update ca --identity-atributes (now -a)
 
 The `ziti edge` commands now store session credentials in a new location and new format. Existing sessions will be
 ignored.
@@ -355,7 +355,7 @@ field, which is set to 2.
 
 # Pending Link Timeout
 
-Previously whenever a router connected we'd look for new links possiblities and create new links between routers where
+Previously whenever a router connected we'd look for new links possibilities and create new links between routers where
 any were missing. If lots of routers connected at the same time, we might create duplicate links because the links
 hadn't been reported as established yet. Now we'll checking for links in Pending state, and if they haven't hit a
 configurable timeout, we won't create another link.
@@ -384,7 +384,7 @@ provided and the server's well known certs will not be downloaded.
 
 ### Identities
 
-The Ziti CLI now suports multiple identities. An identity can be specified using `--cli-identity` or `-i`.
+The Ziti CLI now supports multiple identities. An identity can be specified using `--cli-identity` or `-i`.
 
 Example commands:
 
@@ -410,7 +410,7 @@ The above example could also be accomplished as follows:
 
 ```
 $ ziti edge use dev
-Settting identity 'dev' as default in ~/.config/ziti/ziti-cli.json
+Setting identity 'dev' as default in ~/.config/ziti/ziti-cli.json
 
 $ ziti edge login localhost:1280
 Enter username: admin
@@ -423,7 +423,7 @@ id: -JucPW0kGR    name: ssh    encryption required: true    terminator strategy:
 results: 1-1 of 1
 
 $ ziti edge use default
-Settting identity 'default' as default in ~/.config/ziti/ziti-cli.json
+Setting identity 'default' as default in ~/.config/ziti/ziti-cli.json
 ```
 
 `ziti edge use` without an argument will list logins you have made.

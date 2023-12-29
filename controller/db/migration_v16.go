@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
@@ -17,7 +18,7 @@ func (m *Migrations) removeOrphanedOttCaEnrollments(step *boltz.MigrationStep) {
 		enrollment, err := m.stores.Enrollment.LoadOneById(step.Ctx.Tx(), currentEnrollmentId)
 
 		if err != nil {
-			step.SetError(fmt.Errorf("error interating ids of enrollments, enrollment [%s]: %v", currentEnrollmentId, err))
+			step.SetError(fmt.Errorf("error iterating ids of enrollments, enrollment [%s]: %v", currentEnrollmentId, err))
 			return
 		}
 

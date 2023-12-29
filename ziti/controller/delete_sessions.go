@@ -18,10 +18,10 @@ package controller
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller"
-	fabricdb "github.com/openziti/ziti/controller/db"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/version"
+	"github.com/openziti/ziti/controller"
+	fabricdb "github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -178,7 +178,7 @@ func deleteSessions(db boltz.Db) {
 	})
 
 	if err != nil {
-		pfxlog.Logger().Errorf("could not read databse stats: %v", err)
+		pfxlog.Logger().Errorf("could not read database stats: %v", err)
 	}
 
 	err = db.Update(nil, func(ctx boltz.MutateContext) error {

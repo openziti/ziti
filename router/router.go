@@ -21,12 +21,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/foundation/v2/debugz"
-	"github.com/openziti/foundation/v2/goroutines"
-	"github.com/openziti/xweb/v2"
-	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/ziti/router/link"
-	metrics2 "github.com/rcrowley/go-metrics"
 	"io/fs"
 	"os"
 	"path"
@@ -34,6 +28,13 @@ import (
 	"runtime/debug"
 	"sync/atomic"
 	"time"
+
+	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/common/config"
+	"github.com/openziti/ziti/router/link"
+	metrics2 "github.com/rcrowley/go-metrics"
 
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
@@ -363,7 +364,7 @@ func (self *Router) initRateLimiterPool() error {
 
 	rateLimiterPool, err := goroutines.NewPool(linkDialerPoolConfig)
 	if err != nil {
-		return errors.Wrap(err, "error creating rate limted pool")
+		return errors.Wrap(err, "error creating rate limited pool")
 	}
 
 	self.rateLimiterPool = rateLimiterPool

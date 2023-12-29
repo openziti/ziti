@@ -5,14 +5,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	httptransport "github.com/go-openapi/runtime/client"
-	"github.com/openziti/edge-api/rest_management_api_client"
-	"github.com/openziti/ziti/controller/env"
-	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
-	"github.com/openziti/identity"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/pkg/errors"
-	"gopkg.in/resty.v1"
 	"io"
 	"net"
 	"net/http"
@@ -21,6 +13,15 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/openziti/edge-api/rest_management_api_client"
+	"github.com/openziti/identity"
+	"github.com/openziti/ziti/controller/env"
+	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/pkg/errors"
+	"gopkg.in/resty.v1"
 )
 
 type API string
@@ -128,7 +129,7 @@ func (self *RestClientEdgeIdentity) GetBaseUrlForApi(api API) (string, error) {
 		}
 		return u.Scheme + "://" + u.Host + "/fabric/v1", nil
 	}
-	return "", errors.Errorf("unsupport api %v", api)
+	return "", errors.Errorf("unsupported api %v", api)
 }
 
 func (self *RestClientEdgeIdentity) NewEdgeManagementClient(clientOpts ClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error) {
@@ -217,7 +218,7 @@ func (self *RestClientFabricIdentity) GetBaseUrlForApi(api API) (string, error) 
 		}
 		return u.Scheme + "://" + u.Host + "/fabric/v1", nil
 	}
-	return "", errors.Errorf("unsupport api %v", api)
+	return "", errors.Errorf("unsupported api %v", api)
 }
 
 func (self *RestClientFabricIdentity) IsReadOnly() bool {

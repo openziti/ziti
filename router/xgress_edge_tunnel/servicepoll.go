@@ -17,16 +17,17 @@ limitations under the License.
 */
 
 import (
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/tunnel/intercept"
-	"github.com/openziti/sdk-golang/ziti"
-	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/sirupsen/logrus"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/tunnel/intercept"
+	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/sirupsen/logrus"
 )
 
 func newServicePoller(fabricProvider *fabricProvider) *servicePoller {
@@ -57,7 +58,7 @@ func (self *servicePoller) handleServiceListUpdate(ch channel.Channel, lastUpdat
 		return
 	}
 
-	logrus.Debugf("procesing service updates with %v services", len(services))
+	logrus.Debugf("processing service updates with %v services", len(services))
 
 	self.servicesLastUpdateToken.Set(ch.Id(), lastUpdateToken)
 

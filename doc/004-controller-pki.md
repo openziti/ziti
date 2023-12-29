@@ -45,7 +45,7 @@ hosts.
 
 ## Establish Environment Variables
 
-The environment variables ZITI_HOME and ZITI_NETWORK will be used to boostrap an environment configuration file and directory structure to hold the various certificate, private keys, configuration files, and enrollment tokens that will be generated in this guide. This will help keep them separated on your file system for easy deletion later.
+The environment variables ZITI_HOME and ZITI_NETWORK will be used to bootstrap an environment configuration file and directory structure to hold the various certificate, private keys, configuration files, and enrollment tokens that will be generated in this guide. This will help keep them separated on your file system for easy deletion later.
 
 After these are defined an environment folder and 'env' file will be generated that can easily reset these values.
 

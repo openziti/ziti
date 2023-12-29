@@ -44,7 +44,7 @@ ziti create config router edge --routerName myRouter --tunnelerMode tproxy --lan
 * github.com/openziti/sdk-golang: [v0.16.135 -> v0.16.146](https://github.com/openziti/sdk-golang/compare/v0.16.135...v0.16.146)
     * [Issue #328](https://github.com/openziti/sdk-golang/issues/328) - enrollment has no 'verbose' option for debugging
     * [Issue #314](https://github.com/openziti/sdk-golang/issues/314) - Incorrect documentation for grpc-example
-    * [Issue #317](https://github.com/openziti/sdk-golang/issues/317) - No documenation for call example
+    * [Issue #317](https://github.com/openziti/sdk-golang/issues/317) - No documentation for call example
     * [Issue #311](https://github.com/openziti/sdk-golang/issues/311) - Chat Client and Server needs documentation
 
 * github.com/openziti/storage: [v0.1.25 -> v0.1.26](https://github.com/openziti/storage/compare/v0.1.25...v0.1.26)
@@ -232,7 +232,7 @@ events:
       - type: fabric.usage
         version: 2
       - type: fabric.usage
-        versin: 3
+        version: 3
 ```
 If no version is provided for usage, then v2 events will still be outputted by default.
 
@@ -410,7 +410,7 @@ The only change in this release is updating from Golang 1.18 to 1.19
 
 Previously if a router had multiple links and one of them was slow or blocked, it could prevent other traffic from moving. Now, if a link is unable to keep up with incoming traffic, payloads will be dropped. The end-to-end flow control and retransmission logic will handle re-sending the packet. 
 
-Links have a 64 message queue for incoming messages. Up to 64 messages are taken off the queue, sorted in priority order and then sent. Once the sorted list of messages has been sent, the next set of messages are dequeue, sorted and sent. If the queue fills while the current set of sorted messges is being sent, message will now be dropped instead of waiting for queue space to open up.
+Links have a 64 message queue for incoming messages. Up to 64 messages are taken off the queue, sorted in priority order and then sent. Once the sorted list of messages has been sent, the next set of messages are dequeue, sorted and sent. If the queue fills while the current set of sorted messages is being sent, message will now be dropped instead of waiting for queue space to open up.
 
 There is now a new per-link `link.dropped_msgs` metric to track how often links are dropping messages.
 
@@ -566,7 +566,7 @@ events:
 * `dialed` : Generated when the controller sends a link dial message to a router
 * `connected` : Generated when a router sends a link connected message to the controller
 * `fault` : Generated when a router sends a link fault to the controller
-* `routerLinkNew` : Generated when a router sends a router link message to the controler and the link is new to the controller
+* `routerLinkNew` : Generated when a router sends a router link message to the controller and the link is new to the controller
 * `routerLinkKnown` : Generated when a router sends a router link message to the controller and the link is known
 * `routerLinkDisconnectedDest` : Generated when a router sends a route link message to the controller and the router on the other side of the link is not currently connected.
 
@@ -983,7 +983,7 @@ The `mgmt:` stanza in configuration files, which used to be required, will now b
 
 ### Old Metrics Subsystem removed
 
-Formerly metrics could be exported to file via the `metrics:` configuration stanza. This was superceded by
+Formerly metrics could be exported to file via the `metrics:` configuration stanza. This was superseded by
 the events subsystem, which contains metrics as well as other events. 
 
 This also means that we no longer support pushing metrics directly to InfluxDB. However, we now have a 

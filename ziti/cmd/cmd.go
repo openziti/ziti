@@ -19,6 +19,11 @@ package cmd
 import (
 	goflag "flag"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/create"
@@ -35,10 +40,6 @@ import (
 	"github.com/openziti/ziti/ziti/router"
 	"github.com/openziti/ziti/ziti/tunnel"
 	"github.com/openziti/ziti/ziti/util"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/openziti/ziti/common/version"
 	"github.com/spf13/cobra"
@@ -232,7 +233,7 @@ func initConfig() {
 }
 
 func NewRootCommand(in io.Reader, out, err io.Writer) *cobra.Command {
-	//need to make new CMD everytime because the flags are not thread safe...
+	//need to make new CMD every time because the flags are not thread safe...
 	ret := &cobra.Command{
 		Use:   "ziti",
 		Short: "ziti is a CLI for working with Ziti",
