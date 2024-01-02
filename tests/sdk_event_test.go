@@ -31,7 +31,7 @@ func Test_SDK_Events(t *testing.T) {
 	ctx.Req.NoError(err)
 
 	adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
-	adminClient := edge_apis.NewManagementApiClient(managementApiUrl, ctx.ControllerConfig.Id.CA())
+	adminClient := edge_apis.NewManagementApiClient(managementApiUrl, ctx.ControllerConfig.Id.CA(), nil)
 	apiSession, err := adminClient.Authenticate(adminCreds, nil)
 	ctx.NoError(err)
 	ctx.NotNil(apiSession)
@@ -205,7 +205,7 @@ func Test_SDK_Events(t *testing.T) {
 					defer removeUnauthedListener()
 
 					implZtx := ztxPostMfa.(*ziti.ContextImpl)
-					apiSessionId := *implZtx.CtrlClt.CurrentAPISessionDetail.Load().ID
+					apiSessionId := *implZtx.CtrlClt.ApiSession.Load().ID
 
 					deleteParams := api_session.NewDeleteAPISessionsParams()
 					deleteParams.ID = apiSessionId
