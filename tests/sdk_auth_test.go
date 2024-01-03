@@ -94,6 +94,8 @@ func TestSdkAuth(t *testing.T) {
 		client := edge_apis.NewManagementApiClient(managementApiUrl, nil, nil)
 		apiSession, err := client.Authenticate(creds, nil)
 
+		err = rest_util.WrapErr(err)
+
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(client)
 		ctx.Req.NotNil(apiSession)
@@ -107,6 +109,8 @@ func TestSdkAuth(t *testing.T) {
 
 		client := edge_apis.NewClientApiClient(clientApiUrl, ctx.ControllerConfig.Id.CA(), nil)
 		apiSession, err := client.Authenticate(creds, nil)
+
+		err = rest_util.WrapErr(err)
 
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(client)
@@ -122,6 +126,8 @@ func TestSdkAuth(t *testing.T) {
 
 		client := edge_apis.NewClientApiClient(clientApiUrl, nil, nil)
 		apiSession, err := client.Authenticate(creds, nil)
+
+		err = rest_util.WrapErr(err)
 
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(client)

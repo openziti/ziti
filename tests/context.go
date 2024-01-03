@@ -350,7 +350,14 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 	if clean {
 		err := os.Remove(testDb)
 		if !os.IsNotExist(err) {
-			ctx.Req.NoError(err)
+
+			//try again after a small wait
+			time.Sleep(100 * time.Millisecond)
+
+			err := os.Remove(testDb)
+			if !os.IsNotExist(err) {
+				ctx.Req.NoError(err)
+			}
 		}
 	}
 

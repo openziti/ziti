@@ -60,9 +60,9 @@ func Test_SDK_Events(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(ztx)
 
-		called := make(chan *rest_model.CurrentAPISessionDetail, 1)
+		called := make(chan *edge_apis.ApiSession, 1)
 
-		removeFullListener := ztx.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail *rest_model.CurrentAPISessionDetail) {
+		removeFullListener := ztx.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail *edge_apis.ApiSession) {
 			ctx.Req.NotNil(ztx)
 			called <- detail
 		})
@@ -76,7 +76,7 @@ func Test_SDK_Events(t *testing.T) {
 		select {
 		case newApiSession := <-called:
 			ctx.Req.NotNil(newApiSession)
-			ctx.Req.NotEmpty(newApiSession.Token)
+			ctx.Req.NotEmpty(newApiSession.GetToken())
 			ctx.Req.Empty(newApiSession.AuthQueries, "expected 0 auth queries")
 		case <-time.After(time.Second * 5):
 			ctx.Req.Fail("time out, full auth event never encountered")
@@ -128,9 +128,9 @@ func Test_SDK_Events(t *testing.T) {
 				ztxPostMfa.Close()
 			}()
 
-			partialChan := make(chan *rest_model.CurrentAPISessionDetail, 1)
+			partialChan := make(chan *edge_apis.ApiSession, 1)
 
-			removePartialListener := ztxPostMfa.Events().AddAuthenticationStatePartialListener(func(ztx ziti.Context, detail *rest_model.CurrentAPISessionDetail) {
+			removePartialListener := ztxPostMfa.Events().AddAuthenticationStatePartialListener(func(ztx ziti.Context, detail *edge_apis.ApiSession) {
 				ctx.Req.NotNil(ztx)
 				partialChan <- detail
 			})
@@ -159,9 +159,9 @@ func Test_SDK_Events(t *testing.T) {
 			t.Run("EventAuthenticationStateFull emitted after providing MFA TOTP Code", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				fullChan := make(chan *rest_model.CurrentAPISessionDetail, 1)
+				fullChan := make(chan *edge_apis.ApiSession, 1)
 
-				fullListenerRemover := ztxPostMfa.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail *rest_model.CurrentAPISessionDetail) {
+				fullListenerRemover := ztxPostMfa.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail *edge_apis.ApiSession) {
 					ctx.Req.NotNil(ztx)
 					fullChan <- detail
 				})
@@ -184,7 +184,7 @@ func Test_SDK_Events(t *testing.T) {
 				select {
 				case newApiSession := <-fullChan:
 					ctx.Req.NotNil(newApiSession)
-					ctx.Req.NotEmpty(newApiSession.Token)
+					ctx.Req.NotEmpty(newApiSession.GetToken())
 					ctx.Req.Empty(newApiSession.AuthQueries, "expected 0 auth queries")
 				case <-time.After(time.Second * 5):
 					ctx.Req.Fail("time out")
@@ -193,9 +193,9 @@ func Test_SDK_Events(t *testing.T) {
 				t.Run("EventAuthenticationStateUnauthenticated emitted if the current API Session is deleted", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
-					unauthCalled := make(chan *rest_model.CurrentAPISessionDetail, 1)
+					unauthCalled := make(chan *edge_apis.ApiSession, 1)
 
-					removeUnauthedListener := ztxPostMfa.Events().AddAuthenticationStateUnauthenticatedListener(func(ztx ziti.Context, detail *rest_model.CurrentAPISessionDetail) {
+					removeUnauthedListener := ztxPostMfa.Events().AddAuthenticationStateUnauthenticatedListener(func(ztx ziti.Context, detail *edge_apis.ApiSession) {
 						ctx.Req.NotNil(ztx)
 						ctx.Req.NotNil(detail)
 
@@ -220,7 +220,7 @@ func Test_SDK_Events(t *testing.T) {
 					select {
 					case apiSession := <-unauthCalled:
 						ctx.Req.NotNil(apiSession)
-						ctx.Req.NotEmpty(apiSession.Token)
+						ctx.Req.NotEmpty(apiSession.GetToken())
 					case <-time.After(time.Second * 5):
 						ctx.Req.Fail("time out")
 					}
