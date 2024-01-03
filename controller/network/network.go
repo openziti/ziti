@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/storage/objectz"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/event"
 	"os"
 	"path/filepath"
@@ -363,6 +364,28 @@ func (network *Network) ValidateTerminators(r *Router) {
 	if err = protobufs.MarshalTyped(req).Send(r.Control); err != nil {
 		logger.WithError(err).Error("unexpected error sending ValidateTerminatorsRequest")
 	}
+}
+
+type LinkValidationCallback func(detail *mgmt_pb.RouterLinkDetails)
+
+func (n *Network) ValidateLinks(filter string, cb LinkValidationCallback) (int64, func(), error) {
+	result, err := n.Routers.BaseList(filter)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	evalF := func() {
+		for _, router := range result.Entities {
+			connectedRouter := n.GetConnectedRouter(router.Id)
+			if connectedRouter != nil {
+				go n.linkController.ValidateRouterLinks(n, connectedRouter, cb)
+			} else {
+				n.linkController.reportRouterLinksError(router, errors.New("router not connected"), cb)
+			}
+		}
+	}
+
+	return result.Count, evalF, nil
 }
 
 func (network *Network) DisconnectRouter(r *Router) {

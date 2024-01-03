@@ -49,6 +49,11 @@ enum ContentType {
   ValidateTerminatorsRequestType = 10100;
   ValidateTerminatorResponseType = 10101;
   ValidateTerminatorResultType = 10102;
+
+  ValidateRouterLinksRequestType = 10103;
+  ValidateRouterLinksResponseType = 10104;
+  ValidateRouterLinksResultType = 10105;
+
 }
 
 enum Header {
@@ -196,4 +201,37 @@ message TerminatorDetail {
   TerminatorState state = 10;
   bool fixed = 11;
   string detail = 12;
+}
+
+message ValidateRouterLinksRequest {
+  string filter = 1;
+}
+
+message ValidateRouterLinksResponse {
+  bool success = 1;
+  string message = 2;
+  uint64 routerCount = 3;
+}
+
+message RouterLinkDetails {
+  string routerId = 1;
+  string routerName = 2;
+  bool validateSuccess = 3;
+  string message = 4;
+  repeated RouterLinkDetail linkDetails = 5;
+}
+
+enum LinkState {
+  LinkUnknown = 0;
+  LinkEstablished = 1;
+  LinkPending = 2;
+  LinkDialing = 3;
+}
+
+message RouterLinkDetail {
+  string linkId = 1;
+  LinkState ctrlState = 2;
+  LinkState routerState = 3;
+  bool destConnected = 4;
+  bool isValid = 5;
 }
