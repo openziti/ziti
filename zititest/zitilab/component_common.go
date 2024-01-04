@@ -46,7 +46,7 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 		useSudo = "sudo"
 	}
 
-	serviceCmd := fmt.Sprintf("nohup %s %s %s run -v --log-formatter pfxlog %s --cli-agent-alias %s > %s 2>&1 &",
+	serviceCmd := fmt.Sprintf("nohup %s %s %s run --log-formatter pfxlog %s --cli-agent-alias %s > %s 2>&1 &",
 		useSudo, binaryPath, zitiType, configPath, c.Id, logsPath)
 	logrus.Info(serviceCmd)
 	value, err := c.GetHost().ExecLogged(serviceCmd)
