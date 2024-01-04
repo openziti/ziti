@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/binding"
@@ -15,11 +16,13 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
+	"github.com/openziti/ziti/router/xgress"
 	cmActions "github.com/openziti/ziti/zititest/models/circuit-metrics/actions"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	zitilib_5_operation "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
+	"github.com/sirupsen/logrus"
 	"os"
 	"strings"
 	"time"
@@ -28,10 +31,12 @@ import (
 //go:embed configs
 var configResource embed.FS
 
-const zitiVersion = "latest"
+const ZitiVersion = "latest"
+const ZitiEdgeTunnelVersion = "v0.22.19"
 
 type StartIPerfTestAction struct{}
 
+// Execute executes the StartIPerfTestAction for the given run.
 func (a *StartIPerfTestAction) Execute(run model.Run) error {
 	m := run.GetModel()
 	hosts := m.SelectHosts("*") // modify to select correct hosts
@@ -40,7 +45,28 @@ func (a *StartIPerfTestAction) Execute(run model.Run) error {
 			if iperfComponent, ok := c.Type.(*zitilab.IPerfServerType); ok {
 				err := iperfComponent.Start(run, c)
 				if err != nil {
-					return err
+					logrus.Printf("underlying error: %v", err)
+					return fmt.Errorf("error starting Iperf component %w", err)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+type StartZitiEdgeTunnelAction struct{}
+
+func (a *StartZitiEdgeTunnelAction) Execute(run model.Run) error {
+	m := run.GetModel()
+	hosts := m.SelectHosts("*") // modify to select correct hosts
+	for _, host := range hosts {
+		for _, c := range host.Components {
+			if zitiEdgeTunnelComponent, ok := c.Type.(*zitilab.ZitiEdgeTunnelType); ok {
+				err := zitiEdgeTunnelComponent.Start(run, c)
+				if err != nil {
+					logrus.Printf("underlying error: %v", err)
+					return fmt.Errorf("error starting ziti-edge-tunnel %w", err)
 				}
 			}
 		}
@@ -63,8 +89,6 @@ var m = &model.Model{
 					"password": "admin",
 				},
 				"influxdb": model.Variables{
-					//"username": os.Getenv("INFLUX_USERNAME"), // These env variables are local to your machine
-					//"password": os.Getenv("INFLUX_PASSWORD"), // These env variables are local to your machine
 					"token": os.Getenv("INFLUX_TOKEN"), // These env variables are local to your machine
 				},
 				"aws": model.Variables{
@@ -87,8 +111,7 @@ var m = &model.Model{
 	StructureFactories: []model.Factory{},
 	Factories:          []model.Factory{},
 	Resources: model.Resources{
-		resources.Configs: resources.SubFolder(configResource, "configs"),
-		//resources.Binaries:  os.DirFS(path.Join(os.Getenv("GOPATH"), "bin")),
+		resources.Configs:   resources.SubFolder(configResource, "configs"),
 		resources.Terraform: test_resources.TerraformResources(),
 	},
 	Regions: model.Regions{
@@ -105,7 +128,7 @@ var m = &model.Model{
 								ConfigSourceFS: nil,
 								ConfigSource:   "",
 								ConfigName:     "",
-								Version:        zitiVersion,
+								Version:        ZitiVersion,
 								LocalPath:      "",
 								DNSNames:       nil,
 							},
@@ -116,12 +139,37 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"edge-router-us": {
-							Scope: model.Scope{Tags: model.Tags{"terminator", "tunneler", "edge-router", "iperf-server"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
-							Type:  &zitilab.RouterType{Version: zitiVersion},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "terminator", "iperf-server"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
+							Type:  &zitilab.RouterType{Version: ZitiVersion},
 						},
 						"iperf-server": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "iperf-server", "sdk-app"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "iperf-server"}},
 							Type:  &zitilab.IPerfServerType{},
+						},
+					},
+				},
+				"ziti-edge-tunnel-host": {
+					InstanceType: "c5.large",
+					Components: model.Components{
+						"ziti-edge-tunnel-host": {
+							Scope: model.Scope{Tags: model.Tags{"terminator", "sdk-app"}},
+							Type: &zitilab.ZitiEdgeTunnelType{
+								Version:   ZitiEdgeTunnelVersion,
+								LocalPath: "/home/pete/.fablab/instances/flow-control/kit/bin/ziti-edge-tunnel-" + ZitiEdgeTunnelVersion,
+							},
+						},
+					},
+				},
+				"ziti-edge-tunnel-server": {
+					InstanceType: "c5.large",
+					Scope:        model.Scope{Tags: model.Tags{"zet-server"}},
+					Components: model.Components{
+						"ziti-edge-tunnel-client": {
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "server"}},
+							Type: &zitilab.ZitiEdgeTunnelType{
+								Version:   ZitiEdgeTunnelVersion,
+								LocalPath: "/home/pete/.fablab/instances/flow-control/kit/bin/ziti-edge-tunnel-" + ZitiEdgeTunnelVersion,
+							},
 						},
 					},
 				},
@@ -135,11 +183,11 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"edge-router-eu": {
-							Scope: model.Scope{Tags: model.Tags{"terminator", "tunneler", "edge-router", "iperf-client"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
-							Type:  &zitilab.RouterType{Version: zitiVersion},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "iperf-client", "terminator", "tunneler"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
+							Type:  &zitilab.RouterType{Version: ZitiVersion},
 						},
 						"iperf-client": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "iperf-client", "sdk-app"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "iperf-client"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 					},
@@ -149,12 +197,13 @@ var m = &model.Model{
 	},
 
 	Actions: model.ActionBinders{
-		"bootstrap":          cmActions.NewBootstrapAction(),
-		"start":              cmActions.NewStartAction(),
-		"stop":               model.Bind(component.StopInParallel("*", 15)),
-		"login":              model.Bind(edge.Login("#ctrl")),
-		"syncModelEdgeState": model.Bind(edge.SyncModelEdgeState(".terminator")),
-		"start-iperf-tests":  model.Bind(&StartIPerfTestAction{}),
+		"bootstrap":              cmActions.NewBootstrapAction(),
+		"start":                  cmActions.NewStartAction(),
+		"start-ziti-edge-tunnel": model.Bind(&StartZitiEdgeTunnelAction{}),
+		"stop":                   model.Bind(component.StopInParallel("*", 15)),
+		"login":                  model.Bind(edge.Login("#ctrl")),
+		"syncModelEdgeState":     model.Bind(edge.SyncModelEdgeState(".terminator")),
+		"start-iperf-tests":      model.Bind(&StartIPerfTestAction{}),
 	},
 
 	Infrastructure: model.Stages{
@@ -178,9 +227,13 @@ var m = &model.Model{
 func main() {
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
-	m.AddActivationActions("stop", "bootstrap", "start")
+	m.Actions["start-ziti-edge-tunnel"] = model.Bind(&StartZitiEdgeTunnelAction{})
+	m.AddActivationActions("stop", "bootstrap", "start", "start-ziti-edge-tunnel")
 	m.AddOperatingActions("login", "syncModelEdgeState", "start-iperf-tests")
 	runPhase := fablib_5_operation.NewPhase()
+	options := xgress.Options{}
+	txPortalStartSize := options.TxPortalStartSize
+	logrus.Debugf("txPortalStartSize = %d", txPortalStartSize)
 
 	// Add the CircuitMetrics stage to the FabLab Model - the func/last arguments is needed to map the router name to lookup expression that will return a host.
 	circuitMetricsStage := zitilib_5_operation.CircuitMetrics(5*time.Second, runPhase.GetCloser(), func(id string) string {
@@ -193,11 +246,12 @@ func main() {
 	influxMetricsReporterStage := fablib_5_operation.Influx2MetricsReporter()
 	m.AddOperatingStage(influxMetricsReporterStage)
 
+	// Setup and run an Iperf test
 	var iPerfServerEndpoint = func(m *model.Model) string {
 		//return m.MustSelectHost("component.iperf-server").PublicIp
 		return "iperf.service"
 	}
-	m.AddOperatingStage(fablib_5_operation.Iperf("Ziti_Overlay", iPerfServerEndpoint, "component.iperf-server", "component.iperf-client", 60))
+	m.AddOperatingStage(fablib_5_operation.Iperf("Flow-Control", iPerfServerEndpoint, "component.iperf-server", "component.iperf-client", 60))
 
 	m.AddOperatingStage(runPhase)
 	m.AddOperatingStage(fablib_5_operation.Persist())
