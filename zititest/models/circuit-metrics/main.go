@@ -32,7 +32,7 @@ import (
 var configResource embed.FS
 
 const ZitiVersion = "latest"
-const ZitiEdgeTunnelVersion = "v0.22.19"
+const ZitiEdgeTunnelVersion = "0.22.19"
 
 type StartIPerfTestAction struct{}
 
