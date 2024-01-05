@@ -34,17 +34,25 @@ txPortalStartSize_values=("16384" "32768" "65536" "131072" "262144" "524288" "10
 # Iterate per config
 for txPortalIncreaseThresh_value in "${txPortalIncreaseThresh_values[@]}"; do
   for txPortalStartSize_value in "${txPortalStartSize_values[@]}"; do
-    # update the yaml files
-    ./circuit_metrics sshexec "*" "sudo yq e '.listeners[1].options.txPortalIncreaseThresh = $txPortalIncreaseThresh_value' -i /home/ubuntu/fablab/cfg/edge-router-eu.yml"
-    ./circuit_metrics sshexec "*" "sudo yq e '.listeners[1].options.txPortalIncreaseThresh = $txPortalIncreaseThresh_value' -i /home/ubuntu/fablab/cfg/edge-router-us.yml"
-    ./circuit_metrics sshexec "*" "sudo yq e '.listeners[1].options.txPortalStartSize = $txPortalStartSize_value' -i /home/ubuntu/fablab/cfg/edge-router-eu.yml"
-    ./circuit_metrics sshexec "*" "sudo yq e '.listeners[1].options.txPortalStartSize = $txPortalStartSize_value' -i /home/ubuntu/fablab/cfg/edge-router-us.yml"
-    ./circuit_metrics sshexec "*" "sudo yq e '.dialers[0].binding = \"edge\"' -i /home/ubuntu/fablab/cfg/edge-router-eu.yml"
-    ./circuit_metrics sshexec "*" "sudo yq e '.dialers[0].binding = \"edge\"' -i /home/ubuntu/fablab/cfg/edge-router-us.yml"
-    ./circuit_metrics sshexec "*" "sudo yq e '.dialers[0].options.txPortalIncreaseThresh = $txPortalIncreaseThresh_value' -i /home/ubuntu/fablab/cfg/edge-router-eu.yml"
-    ./circuit_metrics sshexec "*" "sudo yq e '.dialers[0].options.txPortalIncreaseThresh = $txPortalIncreaseThresh_value' -i /home/ubuntu/fablab/cfg/edge-router-us.yml"
-    ./circuit_metrics sshexec "*" "sudo yq e '.dialers[0].options.txPortalStartSize = $txPortalStartSize_value' -i /home/ubuntu/fablab/cfg/edge-router-eu.yml"
-    ./circuit_metrics sshexec "*" "sudo yq e '.dialers[0].options.txPortalStartSize = $txPortalStartSize_value' -i /home/ubuntu/fablab/cfg/edge-router-us.yml"
+    # YAML file paths
+    yml_files=("/home/ubuntu/fablab/cfg/edge-router-eu.yml" "/home/ubuntu/fablab/cfg/edge-router-us.yml")
+
+    # YAML paths and values
+    declare -A yq_commands=(
+        [".listeners[1].options.txPortalIncreaseThresh"]=$txPortalIncreaseThresh_value
+        [".listeners[1].options.txPortalStartSize"]=$txPortalStartSize_value
+        [".dialers[0].binding"]='"edge"'
+        [".dialers[0].options.txPortalIncreaseThresh"]=$txPortalIncreaseThresh_value
+        [".dialers[0].options.txPortalStartSize"]=$txPortalStartSize_value
+    )
+
+    # Update the yaml files
+    for yml_file in "${yml_files[@]}"; do
+        for yq_command in "${!yq_commands[@]}"; do
+            yq_value="${yq_commands[$yq_command]}"
+            ./circuit_metrics sshexec "*" "sudo yq e '${yq_command} = ${yq_value}' -i ${yml_file}"
+        done
+    done
     # Bounce Edge Routers
     ./circuit_metrics stop 'edge-router-eu, edge-router-us'; sleep 1; ./circuit_metrics start 'edge-router-eu, edge-router-us'; sleep 1; ./circuit_metrics  verify-up 'edge-router-eu, edge-router-us'
     # Test Execution
