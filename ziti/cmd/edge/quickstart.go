@@ -65,17 +65,17 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	cmd := &cobra.Command{
 		Use:   "quickstart",
 		Short: "runs a Controller and Router in quickstart mode",
-		Long:  "runs a Controller and Router in quickstart mode with a temporary Ziti home directory; suitable for testing and development",
+		Long:  "runs a Controller and Router in quickstart mode with a temporary directory; suitable for testing and development",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.out = out
 			options.errOut = errOut
 			options.run(context)
 		},
 	}
-	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "Username to use when creating the Ziti Edge Controller. default: admin")
-	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "Password to use for authenticating to the Ziti Edge Controller. default: admin")
+	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "Admin username, default: admin")
+	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "Admin password, default: admin")
 
-	cmd.Flags().StringVar(&options.Home, "home", "", "permanent Ziti home directory")
+	cmd.Flags().StringVar(&options.Home, "home", "", "permanent directory")
 
 	cmd.Flags().StringVar(&options.ControllerAddress, "ctrl-address", "", "Sets the advertised address for the control plane and API. current: "+currentCtrlAddy)
 	cmd.Flags().Int16Var(&options.ControllerPort, "ctrl-port", int16(defautlCtrlPort), "Sets the port to use for the control plane and API. current: "+currentCtrlPort)
@@ -100,7 +100,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		o.Home = tmpDir
 		o.cleanOnExit = true
 	} else {
-		logrus.Infof("permanent Ziti --home '%s' will not be removed on exit", o.Home)
+		logrus.Infof("permanent --home '%s' will not be removed on exit", o.Home)
 	}
 	if o.ControllerAddress != "" {
 		_ = os.Setenv(constants.CtrlAdvertisedAddressVarName, o.ControllerAddress)
