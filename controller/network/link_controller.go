@@ -17,12 +17,18 @@
 package network
 
 import (
+	"encoding/json"
+	"errors"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/storage/objectz"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/orcaman/concurrent-map/v2"
 	"math"
+	"strings"
 	"sync"
 	"time"
 )
@@ -248,6 +254,100 @@ func (linkController *linkController) hasDirectedLink(a, b *Router, linkProtocol
 
 func (linkController *linkController) linksInMode(mode LinkMode) []*Link {
 	return linkController.linkTable.allInMode(mode)
+}
+
+func (self *linkController) ValidateRouterLinks(n *Network, router *Router, cb LinkValidationCallback) {
+	request := &ctrl_pb.InspectRequest{RequestedValues: []string{"links"}}
+	resp := &ctrl_pb.InspectResponse{}
+	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
+	if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
+		self.reportRouterLinksError(router, err, cb)
+		return
+	}
+
+	var linkDetails *inspect.LinksInspectResult
+	for _, val := range resp.Values {
+		if val.Name == "links" {
+			if err = json.Unmarshal([]byte(val.Value), &linkDetails); err != nil {
+				self.reportRouterLinksError(router, err, cb)
+				return
+			}
+		}
+	}
+
+	if linkDetails == nil {
+		if len(resp.Errors) > 0 {
+			err = errors.New(strings.Join(resp.Errors, ","))
+			self.reportRouterLinksError(router, err, cb)
+			return
+		}
+		self.reportRouterLinksError(router, errors.New("no link details returned from router"), cb)
+		return
+	}
+
+	linkMap := map[string]*Link{}
+
+	for entry := range self.linkTable.links.IterBuffered() {
+		linkMap[entry.Key] = entry.Val
+	}
+
+	result := &mgmt_pb.RouterLinkDetails{
+		RouterId:        router.Id,
+		RouterName:      router.Name,
+		ValidateSuccess: true,
+	}
+
+	for _, link := range linkDetails.Links {
+		detail := &mgmt_pb.RouterLinkDetail{
+			LinkId:      link.Id,
+			RouterState: mgmt_pb.LinkState_LinkEstablished,
+		}
+		detail.DestConnected = n.ConnectedRouter(link.Dest)
+		if _, found := linkMap[link.Id]; found {
+			detail.CtrlState = mgmt_pb.LinkState_LinkEstablished
+			detail.IsValid = detail.DestConnected
+		} else {
+			detail.CtrlState = mgmt_pb.LinkState_LinkUnknown
+			detail.IsValid = !detail.DestConnected
+		}
+		delete(linkMap, link.Id)
+		result.LinkDetails = append(result.LinkDetails, detail)
+	}
+
+	for _, link := range linkMap {
+		related := false
+		dest := ""
+		if link.Src.Id == router.Id {
+			related = true
+			dest = link.Dst.Id
+		} else if link.Dst.Id == router.Id {
+			related = true
+			dest = link.Src.Id
+		}
+
+		if related {
+			detail := &mgmt_pb.RouterLinkDetail{
+				LinkId:        link.Id,
+				CtrlState:     mgmt_pb.LinkState_LinkEstablished,
+				DestConnected: n.ConnectedRouter(dest),
+				RouterState:   mgmt_pb.LinkState_LinkUnknown,
+				IsValid:       false,
+			}
+			result.LinkDetails = append(result.LinkDetails, detail)
+		}
+	}
+
+	cb(result)
+}
+
+func (self *linkController) reportRouterLinksError(router *Router, err error, cb LinkValidationCallback) {
+	result := &mgmt_pb.RouterLinkDetails{
+		RouterId:        router.Id,
+		RouterName:      router.Name,
+		ValidateSuccess: false,
+		Message:         err.Error(),
+	}
+	cb(result)
 }
 
 /*

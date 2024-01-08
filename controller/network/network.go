@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/storage/objectz"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/event"
 	"os"
 	"path/filepath"
@@ -365,6 +366,28 @@ func (network *Network) ValidateTerminators(r *Router) {
 	}
 }
 
+type LinkValidationCallback func(detail *mgmt_pb.RouterLinkDetails)
+
+func (n *Network) ValidateLinks(filter string, cb LinkValidationCallback) (int64, func(), error) {
+	result, err := n.Routers.BaseList(filter)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	evalF := func() {
+		for _, router := range result.Entities {
+			connectedRouter := n.GetConnectedRouter(router.Id)
+			if connectedRouter != nil {
+				go n.linkController.ValidateRouterLinks(n, connectedRouter, cb)
+			} else {
+				n.linkController.reportRouterLinksError(router, errors.New("router not connected"), cb)
+			}
+		}
+	}
+
+	return result.Count, evalF, nil
+}
+
 func (network *Network) DisconnectRouter(r *Router) {
 	// 1: remove Links for Router
 	for _, l := range r.routerLinks.GetLinks() {
@@ -381,19 +404,27 @@ func (network *Network) DisconnectRouter(r *Router) {
 	network.routerChanged <- r
 }
 
-func (network *Network) NotifyExistingLink(id, linkProtocol, dialAddress string, srcRouter *Router, dstRouterId string) (bool, error) {
+func (network *Network) NotifyExistingLink(id, linkProtocol, dialAddress string, srcRouter *Router, dstRouterId string) {
+	log := pfxlog.Logger().
+		WithField("routerId", srcRouter.Id).
+		WithField("linkId", id).
+		WithField("destRouterId", dstRouterId)
+
 	dst := network.Routers.getConnected(dstRouterId)
 	if dst == nil {
 		network.NotifyLinkIdEvent(id, event.LinkFromRouterDisconnectedDest)
-		return false, errors.New("destination router not connected")
+		log.Error("destination router not connected")
+		return
 	}
+
 	link, created := network.linkController.routerReportedLink(id, linkProtocol, dialAddress, srcRouter, dst)
 	if created {
 		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
+		log.Info("router reported link added")
 	} else {
 		network.NotifyLinkEvent(link, event.LinkFromRouterKnown)
+		log.Info("router reported link already known")
 	}
-	return created, nil
 }
 
 func (network *Network) LinkConnected(msg *ctrl_pb.LinkConnected) error {
