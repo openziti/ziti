@@ -15,7 +15,7 @@ require (
 	github.com/openziti/fablab v0.5.32
 	github.com/openziti/foundation/v2 v2.0.35
 	github.com/openziti/identity v1.0.68
-	github.com/openziti/sdk-golang v0.22.5
+	github.com/openziti/sdk-golang v0.22.6
 	github.com/openziti/storage v0.2.27
 	github.com/openziti/transport/v2 v2.0.119
 	github.com/openziti/ziti v0.28.3
@@ -73,7 +73,7 @@ require (
 	github.com/go-openapi/runtime v0.26.2 // indirect
 	github.com/go-openapi/spec v0.20.12 // indirect
 	github.com/go-openapi/strfmt v0.21.10 // indirect
-	github.com/go-openapi/swag v0.22.5 // indirect
+	github.com/go-openapi/swag v0.22.7 // indirect
 	github.com/go-openapi/validate v0.22.4 // indirect
 	github.com/go-resty/resty/v2 v2.10.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
@@ -123,6 +123,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
+	github.com/muhlemmer/httpforwarded v0.1.0 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible // indirect
 	github.com/natefinch/npipe v0.0.0-20160621034901-c1b8fa8bdcce // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
@@ -147,7 +148,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.8.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
-	github.com/rs/cors v1.9.0 // indirect
+	github.com/rs/cors v1.10.1 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
@@ -170,7 +171,7 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	github.com/zitadel/oidc/v2 v2.7.0 // indirect
+	github.com/zitadel/oidc/v2 v2.12.0 // indirect
 	go.mongodb.org/mongo-driver v1.13.1 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.21.0 // indirect

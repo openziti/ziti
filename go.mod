@@ -22,7 +22,7 @@ require (
 	github.com/go-openapi/runtime v0.26.2
 	github.com/go-openapi/spec v0.20.12
 	github.com/go-openapi/strfmt v0.21.10
-	github.com/go-openapi/swag v0.22.5
+	github.com/go-openapi/swag v0.22.7
 	github.com/go-openapi/validate v0.22.4
 	github.com/go-resty/resty/v2 v2.10.0
 	github.com/golang-jwt/jwt/v5 v5.0.0
@@ -156,7 +156,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
-	github.com/rs/cors v1.9.0 // indirect
+	github.com/rs/cors v1.10.1 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
