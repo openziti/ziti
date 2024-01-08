@@ -1,3 +1,9 @@
+# Release 0.31.5
+
+## What's New
+
+* ziti edge quickstart command deprecates redundant --already-initialized flag. The identical behavior is implied by --home.
+
 # Release 0.31.4
 
 ## What's New
