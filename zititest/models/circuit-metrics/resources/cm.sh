@@ -64,6 +64,7 @@ for txPortalIncreaseThresh_value in "${txPortalIncreaseThresh_values[@]}"; do
         (( success_counter++ ))
         echo "Successful test run. Total successful runs: $success_counter"
       else
+        ./circuit_metrics sshexec "*" 'ps ax | grep "tcpdump" | grep -v grep | awk "{ print \$1 }" | xargs sudo kill -TERM'
         echo "The test run was unsuccessful, retrying..."
       fi
       set -e  # enable exit on error
