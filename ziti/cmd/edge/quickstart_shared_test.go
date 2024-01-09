@@ -1,4 +1,4 @@
-//go:build quickstart && (automated || manual)
+// TODO: uncomment this //go:build quickstart && (automated || manual)
 
 package edge
 
