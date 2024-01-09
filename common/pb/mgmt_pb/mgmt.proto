@@ -234,4 +234,6 @@ message RouterLinkDetail {
   LinkState routerState = 3;
   bool destConnected = 4;
   bool isValid = 5;
+  string destRouterId = 6;
+  bool dialed = 7;
 }

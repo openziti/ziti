@@ -21,9 +21,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"strings"
@@ -55,7 +55,7 @@ func (h *faultHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 }
 
 func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault *ctrl_pb.Fault) {
-	log := pfxlog.ContextLogger(ch.Label()).Entry
+	log := pfxlog.ContextLogger(ch.Label()).WithField("routerId", h.r.Id)
 
 	switch fault.Subject {
 	case ctrl_pb.FaultSubject_LinkFault:
@@ -110,17 +110,25 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 
 func (h *faultHandler) handleFaultedLink(log *logrus.Entry, fault *ctrl_pb.Fault) {
 	linkId := fault.Id
+	log = log.WithField("linkId", linkId).WithField("fault.iteration", fault.Iteration)
+
 	if link, found := h.network.GetLink(linkId); found {
-		log = log.WithField("linkId", linkId)
+		log = log.WithField("link.iteration", link.Iteration)
+
+		if fault.Iteration != 0 && link.Iteration != 0 && fault.Iteration < link.Iteration {
+			log.Info("fault reported, but iteration is older than current link, ignoring")
+			return
+		}
+
 		wasConnected := link.IsUsable()
 		if err := h.network.LinkFaulted(linkId, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate); err == nil {
 			h.network.LinkChanged(link)
 			otherRouter := link.Src
 			if link.Src.Id == h.r.Id {
-				otherRouter = link.Dst
+				otherRouter = link.GetDest()
 			}
 
-			if wasConnected {
+			if wasConnected && otherRouter != nil {
 				fault.Subject = ctrl_pb.FaultSubject_LinkFault
 				if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Load() {
 					if err := protobufs.MarshalTyped(fault).Send(ctrl); err != nil {
@@ -135,7 +143,7 @@ func (h *faultHandler) handleFaultedLink(log *logrus.Entry, fault *ctrl_pb.Fault
 			log.WithError(err).Error("error handling link fault")
 		}
 	} else {
+		log.Info("link fault for unknown link")
 		h.network.NotifyLinkIdEvent(linkId, event.LinkFault)
 	}
-
 }

@@ -27,7 +27,7 @@ import (
 const (
 	DefaultOptionsCreateCircuitRetries      = 2
 	DefaultOptionsCycleSeconds              = 60
-	DefaultOptionsEnableLegacyLinkMgmt      = true
+	DefaultOptionsEnableLegacyLinkMgmt      = false
 	DefaultOptionsInitialLinkLatency        = 65 * time.Second
 	DefaultOptionsPendingLinkTimeout        = 10 * time.Second
 	DefaultOptionsMetricsReportInterval     = time.Minute

@@ -19,6 +19,7 @@ package router
 import (
 	"bytes"
 	"fmt"
+	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/router/env"
 	"io"
 	"os"
@@ -27,13 +28,13 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/identity"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/identity"
-	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
@@ -740,6 +741,18 @@ func LoadConfig(path string) (*Config, error) {
 			cfg.Proxy = proxyConfig
 		} else {
 			pfxlog.Logger().Warn("invalid proxy configuration, must be map")
+		}
+	}
+
+	if value, found := cfgmap["tls"]; found {
+		if tlsMap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := tlsMap["handshakeTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					tls.SetSharedListenerHandshakeTimeout(val)
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse tls.handshakeTimeout value '%v", value)
+				}
+			}
 		}
 	}
 

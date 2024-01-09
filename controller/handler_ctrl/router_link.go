@@ -51,6 +51,6 @@ func (h *routerLinkHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 
 func (h *routerLinkHandler) HandleLinks(links *ctrl_pb.RouterLinks) {
 	for _, link := range links.Links {
-		h.network.NotifyExistingLink(link.Id, link.LinkProtocol, link.DialAddress, h.r, link.DestRouterId)
+		h.network.NotifyExistingLink(link.Id, link.Iteration, link.LinkProtocol, link.DialAddress, h.r, link.DestRouterId)
 	}
 }

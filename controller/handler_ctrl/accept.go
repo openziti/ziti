@@ -87,10 +87,10 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		}
 
 		r.Listeners = nil
-		if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ContentType_ListenersHeader)]; found {
+		if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
 			listeners := &ctrl_pb.Listeners{}
 			if err = proto.Unmarshal(val, listeners); err != nil {
-				log.WithError(err).Error("unable to unmarshall listeners value")
+				log.WithError(err).Error("unable to unmarshall listHners value")
 			} else {
 				r.SetLinkListeners(listeners.Listeners)
 				for _, listener := range listeners.Listeners {
@@ -104,7 +104,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 			log.Debug("no advertised listeners")
 		}
 
-		if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ContentType_RouterMetadataHeader)]; found {
+		if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_RouterMetadataHeader)]; found {
 			routerMetadata := &ctrl_pb.RouterMetadata{}
 			if err = proto.Unmarshal(val, routerMetadata); err != nil {
 				log.WithError(err).Error("unable to unmarshall router metadata value")

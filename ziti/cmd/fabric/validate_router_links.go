@@ -31,8 +31,7 @@ import (
 
 type validateRouterLinksAction struct {
 	api.Options
-	filter          string
-	showOnlyInvalid bool
+	includeValid bool
 
 	eventNotify chan *mgmt_pb.RouterLinkDetails
 }
@@ -45,20 +44,19 @@ func NewValidateRouterLinksCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	validateLinksCmd := &cobra.Command{
-		Use:     "router-links",
+		Use:     "router-links <router filter>",
 		Short:   "Validate router links",
-		Example: "ziti fabric validate router-links --filter 'name=\"my-router\"' --show-only-invalid",
-		Args:    cobra.ExactArgs(0),
+		Example: "ziti fabric validate router-links --filter 'name=\"my-router\"' --include-valid",
+		Args:    cobra.MaximumNArgs(1),
 		RunE:    action.validateRouterLinks,
 	}
 
 	action.AddCommonFlags(validateLinksCmd)
-	validateLinksCmd.Flags().BoolVar(&action.showOnlyInvalid, "show-only-invalid", false, "Hide results for valid Links")
-	validateLinksCmd.Flags().StringVar(&action.filter, "filter", "", "Specify for which routers to validate links")
+	validateLinksCmd.Flags().BoolVar(&action.includeValid, "include-valid", false, "Don't hide results for valid links")
 	return validateLinksCmd
 }
 
-func (self *validateRouterLinksAction) validateRouterLinks(cmd *cobra.Command, _ []string) error {
+func (self *validateRouterLinksAction) validateRouterLinks(cmd *cobra.Command, args []string) error {
 	closeNotify := make(chan struct{})
 	self.eventNotify = make(chan *mgmt_pb.RouterLinkDetails, 1)
 
@@ -75,8 +73,13 @@ func (self *validateRouterLinksAction) validateRouterLinks(cmd *cobra.Command, _
 		return err
 	}
 
+	filter := ""
+	if len(args) > 0 {
+		filter = args[0]
+	}
+
 	request := &mgmt_pb.ValidateRouterLinksRequest{
-		Filter: self.filter,
+		Filter: filter,
 	}
 
 	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Duration(self.Timeout) * time.Second).SendForReply(ch)
@@ -108,9 +111,10 @@ func (self *validateRouterLinksAction) validateRouterLinks(cmd *cobra.Command, _
 				routerDetail.RouterId, routerDetail.RouterName, len(routerDetail.LinkDetails), result)
 
 			for _, linkDetail := range routerDetail.LinkDetails {
-				if !self.showOnlyInvalid || !linkDetail.IsValid {
-					fmt.Printf("\tlinkId: %s, destConnected: %v, ctrlState: %v, routerState: %v\n",
-						linkDetail.LinkId, linkDetail.DestConnected, linkDetail.CtrlState, linkDetail.RouterState.String())
+				if self.includeValid || !linkDetail.IsValid {
+					fmt.Printf("\tlinkId: %s, destConnected: %v, ctrlState: %v, routerState: %v, dest: %v, dialed: %v \n",
+						linkDetail.LinkId, linkDetail.DestConnected, linkDetail.CtrlState, linkDetail.RouterState.String(),
+						linkDetail.DestRouterId, linkDetail.Dialed)
 				}
 			}
 			expected--

@@ -46,7 +46,7 @@ func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
 	delete(registry.destinations, self.id)
 	if dest != nil {
 		for _, state := range dest.linkMap {
-			state.status = StatusDestRemoved
+			state.updateStatus(StatusDestRemoved)
 			if link, _ := registry.GetLink(state.linkId); link != nil {
 				if err := link.Close(); err != nil {
 					pfxlog.Logger().
@@ -171,7 +171,7 @@ func (self *dialRequest) Handle(registry *linkRegistryImpl) {
 				WithField("address", self.dial.Address).
 				WithField("linkKey", linkKey)
 
-			if link, found := registry.linkMap[linkKey]; found {
+			if link, found := registry.GetLink(linkKey); found {
 				registry.SendRouterLinkMessage(link, self.ctrlCh)
 				continue
 			}
@@ -214,7 +214,9 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 	log := pfxlog.Logger().WithField("linkKey", link.Key()).WithField("linkId", link.Id())
 	dest, found := registry.destinations[link.DestinationId()]
 	if !found {
-		log.WithField("linkDest", link.DestinationId()).Warnf("unable to mark link as %s, link destination not present in registry", self.status)
+		if link.IsDialed() { // if link was created by listener, rather than dialer we may not have an entry for it
+			log.WithField("linkDest", link.DestinationId()).Warnf("unable to mark link as %s, link destination not present in registry", self.status)
+		}
 		return
 	}
 
@@ -230,33 +232,55 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 		return
 	}
 
-	state.status = self.status
+	state.updateStatus(self.status)
 	if state.status == StatusEstablished {
 		state.connectedCount++
 		state.retryDelay = time.Duration(0)
+		state.ctrlsNotified = false
 	}
 
 	if state.status == StatusLinkFailed {
 		state.retryDelay = time.Duration(0)
 		state.nextDial = time.Now()
 		registry.evaluateLinkState(state)
+		state.addPendingLinkFault(link.Id(), link.Iteration())
 	}
 }
 
-type updateLinkState struct {
-	linkState *linkState
-	status    linkStatus
+type addLinkFaultForReplacedLink struct {
+	link xlink.Xlink
 }
 
-func (self *updateLinkState) Handle(registry *linkRegistryImpl) {
-	state := self.linkState
-	if state.status == StatusDestRemoved {
+func (self *addLinkFaultForReplacedLink) Handle(registry *linkRegistryImpl) {
+	link := self.link
+	log := pfxlog.Logger().WithField("linkKey", link.Key()).WithField("linkId", link.Id())
+	dest, found := registry.destinations[link.DestinationId()]
+	if !found {
+		if link.IsDialed() { // if link was created by listener, rather than dialer we may not have an entry for it
+			log.WithField("linkDest", link.DestinationId()).Info("link destination not present in registry")
+		}
 		return
 	}
 
-	state.status = self.status
-	if state.status == StatusDialFailed {
-		state.dialFailed(registry)
+	state, found := dest.linkMap[link.Key()]
+	if !found {
+		if link.IsDialed() { // if link was created by listener, rather than dialer we may not have an entry for it
+			log.WithField("linkDest", link.DestinationId()).Info("link state not present in registry")
+		}
+		return
+	}
+
+	state.addPendingLinkFault(link.Id(), link.Iteration())
+}
+
+type updateLinkStatusToDialFailed struct {
+	linkState *linkState
+}
+
+func (self *updateLinkStatusToDialFailed) Handle(registry *linkRegistryImpl) {
+	if self.linkState.status == StatusDialing {
+		self.linkState.updateStatus(StatusDialFailed)
+		self.linkState.dialFailed(registry)
 	}
 }
 
@@ -283,7 +307,7 @@ func (self *inspectLinkStatesEvent) Handle(registry *linkRegistryImpl) {
 				Id:             state.linkId,
 				Key:            state.linkKey,
 				Status:         state.status.String(),
-				DialAttempts:   state.dialAttempts,
+				DialAttempts:   state.dialAttempts.Load(),
 				ConnectedCount: state.connectedCount,
 				RetryDelay:     state.retryDelay.String(),
 				NextDial:       state.nextDial.Format(time.RFC3339),
@@ -292,6 +316,7 @@ func (self *inspectLinkStatesEvent) Handle(registry *linkRegistryImpl) {
 				TargetBinding:  state.listener.LocalBinding,
 				DialerGroups:   state.dialer.GetGroups(),
 				DialerBinding:  state.dialer.GetBinding(),
+				CtrlsNotified:  state.ctrlsNotified,
 			}
 			if inspectLinkState.TargetBinding == "" {
 				inspectLinkState.TargetBinding = "default"
@@ -314,5 +339,30 @@ func (self *inspectLinkStatesEvent) GetResults(timeout time.Duration) ([]*inspec
 		return *self.result.Load(), nil
 	case <-time.After(timeout):
 		return nil, errors.New("timed out waiting for result")
+	}
+}
+
+type markNewLinksNotified struct {
+	links []stateAndLink
+}
+
+func (self *markNewLinksNotified) Handle(*linkRegistryImpl) {
+	for _, pair := range self.links {
+		if pair.state.status == StatusEstablished {
+			pair.state.ctrlsNotified = true
+		}
+	}
+}
+
+type markFaultedLinksNotified struct {
+	successfullySent []stateAndFaults
+}
+
+func (self *markFaultedLinksNotified) Handle(*linkRegistryImpl) {
+	for _, pair := range self.successfullySent {
+		state := pair.state
+		for _, fault := range pair.faults {
+			state.clearFault(fault)
+		}
 	}
 }

@@ -17,6 +17,7 @@
 package network
 
 import (
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/info"
 	"sync"
 	"sync/atomic"
@@ -28,8 +29,10 @@ type Link struct {
 	DstLatency  int64
 	Cost        int64
 	Id          string
+	Iteration   uint32
 	Src         *Router
-	Dst         *Router
+	DstId       string
+	Dst         concurrenz.AtomicValue[*Router]
 	Protocol    string
 	DialAddress string
 	state       []*LinkState
@@ -57,6 +60,10 @@ func newLink(id string, linkProtocol string, dialAddress string, initialLatency 
 
 func (link *Link) GetId() string {
 	return link.Id
+}
+
+func (link *Link) GetDest() *Router {
+	return link.Dst.Load()
 }
 
 func (link *Link) CurrentState() *LinkState {

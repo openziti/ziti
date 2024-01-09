@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"os"
-	"os/exec"
 	"path"
 	"time"
 )
@@ -219,7 +218,6 @@ var m = &model.Model{
 
 			return workflow
 		}),
-		"stop": model.Bind(component.StopInParallelHostExclusive("*", 15)),
 		"clean": model.Bind(actions.Workflow(
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
@@ -227,17 +225,6 @@ var m = &model.Model{
 		"login":  model.Bind(edge.Login("#ctrl1")),
 		"login2": model.Bind(edge.Login("#ctrl2")),
 		"login3": model.Bind(edge.Login("#ctrl3")),
-		"refreshCtrlZiti": model.ActionBinder(func(m *model.Model) model.Action {
-			return model.ActionFunc(func(run model.Run) error {
-				zitiPath, err := exec.LookPath("ziti")
-				if err != nil {
-					return err
-				}
-
-				deferred := rsync.NewRsyncHost("ctrl", zitiPath, "/home/ubuntu/fablab/bin/ziti")
-				return deferred.Execute(run)
-			})
-		}),
 	},
 
 	Infrastructure: model.Stages{

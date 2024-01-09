@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/storage/objectz"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
@@ -315,15 +316,12 @@ func (network *Network) GetCloseNotify() <-chan struct{} {
 	return network.closeNotify
 }
 
-func (network *Network) RouterChanged(r *Router) {
-	network.routerChanged <- r
-}
-
 func (network *Network) ConnectedRouter(id string) bool {
 	return network.Routers.IsConnected(id)
 }
 
 func (network *Network) ConnectRouter(r *Router) {
+	network.linkController.buildRouterLinks(r)
 	network.Routers.markConnected(r)
 
 	time.AfterFunc(250*time.Millisecond, func() { network.routerChanged <- r })
@@ -374,24 +372,32 @@ func (n *Network) ValidateLinks(filter string, cb LinkValidationCallback) (int64
 		return 0, nil, err
 	}
 
+	sem := concurrenz.NewSemaphore(10)
+
 	evalF := func() {
 		for _, router := range result.Entities {
 			connectedRouter := n.GetConnectedRouter(router.Id)
 			if connectedRouter != nil {
-				go n.linkController.ValidateRouterLinks(n, connectedRouter, cb)
+				sem.Acquire()
+				go func() {
+					defer sem.Release()
+					n.linkController.ValidateRouterLinks(n, connectedRouter, cb)
+				}()
 			} else {
 				n.linkController.reportRouterLinksError(router, errors.New("router not connected"), cb)
 			}
 		}
 	}
 
-	return result.Count, evalF, nil
+	return int64(len(result.Entities)), evalF, nil
 }
 
 func (network *Network) DisconnectRouter(r *Router) {
 	// 1: remove Links for Router
 	for _, l := range r.routerLinks.GetLinks() {
-		network.linkController.remove(l)
+		if l.Src == r {
+			network.linkController.remove(l)
+		}
 		network.LinkChanged(l)
 	}
 	// 2: remove Router
@@ -404,20 +410,19 @@ func (network *Network) DisconnectRouter(r *Router) {
 	network.routerChanged <- r
 }
 
-func (network *Network) NotifyExistingLink(id, linkProtocol, dialAddress string, srcRouter *Router, dstRouterId string) {
+func (network *Network) NotifyExistingLink(id string, iteration uint32, linkProtocol, dialAddress string, srcRouter *Router, dstRouterId string) {
 	log := pfxlog.Logger().
 		WithField("routerId", srcRouter.Id).
 		WithField("linkId", id).
-		WithField("destRouterId", dstRouterId)
+		WithField("destRouterId", dstRouterId).
+		WithField("iteration", iteration)
 
 	dst := network.Routers.getConnected(dstRouterId)
 	if dst == nil {
 		network.NotifyLinkIdEvent(id, event.LinkFromRouterDisconnectedDest)
-		log.Error("destination router not connected")
-		return
 	}
 
-	link, created := network.linkController.routerReportedLink(id, linkProtocol, dialAddress, srcRouter, dst)
+	link, created := network.linkController.routerReportedLink(id, iteration, linkProtocol, dialAddress, srcRouter, dst, dstRouterId)
 	if created {
 		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
 		log.Info("router reported link added")
@@ -453,30 +458,6 @@ func (network *Network) LinkFaulted(id string, dupe bool) error {
 		return nil
 	}
 	return errors.Errorf("no such link [l/%s]", id)
-}
-
-func (network *Network) VerifyLinkSource(targetRouter *Router, linkId string, fingerprints []string) error {
-	l, found := network.linkController.get(linkId)
-	if !found {
-		return errors.Errorf("invalid link %v", linkId)
-	}
-
-	if l.Dst.Id != targetRouter.Id {
-		return errors.Errorf("incorrect link target router. link=%v, expected router=%v, actual router=%v", l.Id, l.Dst.Id, targetRouter.Id)
-	}
-
-	routerFingerprint := l.Src.Fingerprint
-	if routerFingerprint == nil {
-		return errors.Errorf("invalid source router %v for link %v, not yet enrolled", l.Src.Id, l.Id)
-	}
-
-	for _, fp := range fingerprints {
-		if fp == *routerFingerprint {
-			return nil
-		}
-	}
-
-	return errors.Errorf("could not verify fingerprint for router %v on link %v", l.Src.Id, l.Id)
 }
 
 func (network *Network) VerifyRouter(routerId string, fingerprints []string) error {
@@ -1004,8 +985,11 @@ func (network *Network) RemoveLink(linkId string) {
 
 	var routerList []*Router
 	if link != nil {
-		routerList = []*Router{link.Src, link.Dst}
-		log = log.WithField("srcRouterId", link.Src.Id).WithField("dstRouterId", link.Dst.Id)
+		routerList = []*Router{link.Src}
+		if dst := link.GetDest(); dst != nil {
+			routerList = append(routerList, dst)
+		}
+		log = log.WithField("srcRouterId", link.Src.Id).WithField("dstRouterId", link.DstId)
 		log.Info("deleting known link")
 	} else {
 		routerList = network.AllConnectedRouters()
@@ -1158,7 +1142,7 @@ func (network *Network) AcceptMetricsMsg(metrics *metrics_pb.MetricsMessage) {
 		if found {
 			if link.Src.Id == router.Id {
 				link.SetSrcLatency(latencyCost) // latency is in nanoseconds
-			} else if link.Dst.Id == router.Id {
+			} else if link.DstId == router.Id {
 				link.SetDstLatency(latencyCost) // latency is in nanoseconds
 			} else {
 				log.Warnf("link not for router")

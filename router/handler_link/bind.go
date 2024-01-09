@@ -67,11 +67,9 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		"routerVersion": self.xlink.DestVersion(),
 	})
 
-	closeNotify := make(chan struct{})
-
 	binding.GetChannel().SetLogicalName("l/" + self.xlink.Id())
 	binding.SetUserData(self.xlink.Id())
-	binding.AddCloseHandler(newCloseHandler(self.xlink, self.ctrl, self.forwarder, closeNotify, self.xlinkRegistry))
+	binding.AddCloseHandler(newCloseHandler(self.xlink, self.forwarder, self.xlinkRegistry))
 	binding.AddErrorHandler(newErrorHandler(self.xlink, self.ctrl))
 	binding.AddTypedReceiveHandler(newPayloadHandler(self.xlink, self.forwarder))
 	binding.AddTypedReceiveHandler(newAckHandler(self.xlink, self.forwarder))

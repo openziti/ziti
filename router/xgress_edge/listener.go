@@ -19,13 +19,11 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/cert"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/pkg/errors"
@@ -207,14 +205,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 		return
 	}
 
-	supportsCreateTerminatorV2 := false
-	headers := ctrlCh.Underlay().Headers()
-	if val, found := headers[int32(ctrl_pb.ContentType_CapabilitiesHeader)]; found {
-		capabilitiesMask := &big.Int{}
-		capabilitiesMask.SetBytes(val)
-		supportsCreateTerminatorV2 = capabilitiesMask.Bit(capabilities.ControllerCreateTerminatorV2) == 1
-	}
-
+	supportsCreateTerminatorV2 := capabilities.IsCapable(ctrlCh, capabilities.ControllerCreateTerminatorV2)
 	if supportsCreateTerminatorV2 {
 		self.processBindV2(req, ch)
 	} else {
