@@ -23,13 +23,13 @@ services:
         # this allows other containers to use the external DNS name to reach the quickstart container inside the docker
         # network
         aliases:
-          - ${EXTERNAL_DNS:-null}
+          - ${EXTERNAL_DNS:-${EXTERNAL_IP:-null}}
     entrypoint:
     - bash
     - -euc
     - |
-      ZITI_CMD+=" --ctrl-address ${EXTERNAL_DNS:-127.0.0.1}"\
-      " --router-address ${EXTERNAL_DNS:-127.0.0.1}"\
+      ZITI_CMD+=" --ctrl-address ${EXTERNAL_DNS:-${EXTERNAL_IP:-127.0.0.1}}"\
+      " --router-address ${EXTERNAL_DNS:-${EXTERNAL_IP:-127.0.0.1}}"\
       " --password ${ZITI_PWD:-admin}"
       echo "DEBUG: run command is: ziti $${@} $${ZITI_CMD}"
       exec ziti "$${@}" $${ZITI_CMD}
@@ -48,3 +48,7 @@ services:
 networks:
   quickstart:
     driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.bridge.hairpin_mode: "true"
