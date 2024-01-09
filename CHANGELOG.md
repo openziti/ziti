@@ -3,6 +3,7 @@
 ## What's New
 
 * Auth Rate Limiter
+* ziti edge quickstart command deprecates redundant --already-initialized flag. The identical behavior is implied by --home.
 
 ## Backwards compatibility
 
