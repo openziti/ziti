@@ -375,9 +375,9 @@ func (self *TerminatorManager) Unmarshall(bytes []byte) (*Terminator, error) {
 	return result, nil
 }
 
-type ValidationCallback func(detail *mgmt_pb.TerminatorDetail)
+type TerminatorValidationCallback func(detail *mgmt_pb.TerminatorDetail)
 
-func (self *TerminatorManager) ValidateTerminators(filter string, fixInvalid bool, cb ValidationCallback) (uint64, error) {
+func (self *TerminatorManager) ValidateTerminators(filter string, fixInvalid bool, cb TerminatorValidationCallback) (uint64, error) {
 	if filter == "" {
 		filter = "true limit none"
 	}
@@ -407,7 +407,7 @@ func (self *TerminatorManager) ValidateTerminators(filter string, fixInvalid boo
 	return uint64(len(result.Entities)), nil
 }
 
-func (self *TerminatorManager) validateTerminatorBatch(fixInvalid bool, routerId string, batch []*Terminator, cb ValidationCallback) {
+func (self *TerminatorManager) validateTerminatorBatch(fixInvalid bool, routerId string, batch []*Terminator, cb TerminatorValidationCallback) {
 	router := self.Managers.Routers.getConnected(routerId)
 	if router == nil {
 		self.reportError(router, batch, cb, "router off-line")
@@ -448,7 +448,7 @@ func (self *TerminatorManager) validateTerminatorBatch(fixInvalid bool, routerId
 	}
 }
 
-func (self *TerminatorManager) reportError(router *Router, batch []*Terminator, cb ValidationCallback, err string) {
+func (self *TerminatorManager) reportError(router *Router, batch []*Terminator, cb TerminatorValidationCallback, err string) {
 	for _, terminator := range batch {
 		detail := self.newTerminatorDetail(router, terminator)
 		detail.State = mgmt_pb.TerminatorState_Unknown
@@ -546,7 +546,7 @@ type ValidateTerminatorRequestSendable struct {
 	mgr         *TerminatorManager
 	router      *Router
 	terminators []*Terminator
-	cb          ValidationCallback
+	cb          TerminatorValidationCallback
 	ctx         context.Context
 	cancelF     func()
 }

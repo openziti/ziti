@@ -3,6 +3,7 @@
 ## What's New
 
 * Auth Rate Limiter
+* ziti edge quickstart command deprecates redundant --already-initialized flag. The identical behavior is implied by --home.
 
 ## Backwards compatibility
 
@@ -38,11 +39,16 @@ New metrics:
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/edge-api: [v0.26.6 -> v0.26.7](https://github.com/openziti/edge-api/compare/v0.26.6...v0.26.7)
-* github.com/openziti/sdk-golang: [v0.22.0 -> v0.22.1](https://github.com/openziti/sdk-golang/compare/v0.22.0...v0.22.1)
-* github.com/openziti/ziti: [v0.31.4 -> v0.32.0](https://github.com/openziti/ziti/compare/v0.31.4...v0.32.0)
-    * [Issue #1657](https://github.com/openziti/ziti/issues/1657) - Add api session rate limiter
+* github.com/openziti/channel/v2: [v2.0.111 -> v2.0.113](https://github.com/openziti/channel/compare/v2.0.111...v2.0.113)
+    * [Issue #120](https://github.com/openziti/channel/issues/120) - Allow handling new underlay instances with function instead of channel 
 
+* github.com/openziti/edge-api: [v0.26.6 -> v0.26.7](https://github.com/openziti/edge-api/compare/v0.26.6...v0.26.7)
+* github.com/openziti/sdk-golang: [v0.22.0 -> v0.22.5](https://github.com/openziti/sdk-golang/compare/v0.22.0...v0.22.5)
+* github.com/openziti/secretstream: [v0.1.14 -> v0.1.15](https://github.com/openziti/secretstream/compare/v0.1.14...v0.1.15)
+* github.com/openziti/ziti: [v0.31.4 -> v0.32.0](https://github.com/openziti/ziti/compare/v0.31.4...v0.32.0)
+    * [Issue #1678](https://github.com/openziti/ziti/issues/1678) - Add link validation utility
+    * [Issue #1669](https://github.com/openziti/ziti/issues/1669) - Make sure link accepts are not single threaded
+    * [Issue #1657](https://github.com/openziti/ziti/issues/1657) - Add api session rate limiter
 
 # Release 0.31.4
 

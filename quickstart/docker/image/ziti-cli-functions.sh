@@ -75,7 +75,7 @@ function _setup_ziti_env_path {
 
 function _setup_ziti_network {
   if [[ "ran" != "${_setup_ziti_network_run}" ]]; then
-    if [[ "${ZITI_NETWORK-}" == "" ]]; then ZITI_NETWORK="$(hostname -s)"; export ZITI_NETWORK; else echo "ZITI_NETWORK overridden: ${ZITI_NETWORK}"; fi
+    if [[ "${ZITI_NETWORK-}" == "" ]]; then ZITI_NETWORK="$(hostname)"; export ZITI_NETWORK; else echo "ZITI_NETWORK overridden: ${ZITI_NETWORK}"; fi
     _setup_ziti_network_run="ran"
   fi
 }

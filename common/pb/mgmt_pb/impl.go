@@ -23,3 +23,15 @@ func (request *ValidateTerminatorsResponse) GetContentType() int32 {
 func (request *TerminatorDetail) GetContentType() int32 {
 	return int32(ContentType_ValidateTerminatorResultType)
 }
+
+func (request *ValidateRouterLinksRequest) GetContentType() int32 {
+	return int32(ContentType_ValidateRouterLinksRequestType)
+}
+
+func (request *ValidateRouterLinksResponse) GetContentType() int32 {
+	return int32(ContentType_ValidateRouterLinksResponseType)
+}
+
+func (request *RouterLinkDetails) GetContentType() int32 {
+	return int32(ContentType_ValidateRouterLinksResultType)
+}
