@@ -25,8 +25,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
-	"net/url"
 	"os"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -67,33 +68,23 @@ func newSecureCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 // runSecure implements the command to secure a resource
 func runSecure(o *SecureOptions) (err error) {
+	// Ensure there are at least two arguments (service name and the url details)
+	if len(o.Args) < 2 {
+		logrus.Fatal("Insufficient arguments: Service name and, at minimum, port are required")
+	}
 
 	svcName := o.Args[0]
-	address := o.Args[1]
+	input := o.Args[1]
 
 	// Parse the url argument
-	u, err := url.Parse(address)
+	protocol, address, port, err := parseInput(input)
 	if err != nil {
-		logrus.Fatal("Error parsing URL:", err)
-		return
-	}
-	protocol := u.Scheme
-	hostname := u.Hostname()
-	port := u.Port()
-
-	if protocol == "" {
-		logrus.Fatal("Protocol is missing")
-	}
-	if hostname == "" {
-		logrus.Fatal("Hostname is missing")
-	}
-	if port == "" {
-		logrus.Fatal("Port is missing")
+		logrus.Fatal("Error:", err)
 	}
 
 	// Create a bind config
 	bindCfgName := svcName + ".host.v1"
-	jsonStr := fmt.Sprintf(`{"protocol":"%s", "address":"%s", "port":%s}`, protocol, hostname, port)
+	jsonStr := fmt.Sprintf(`{"forwardProtocol":true, "forwardPort":true, "allowedProtocols":["%s"], "address":"%s", "allowedPortRanges":[{"low":%d, "high":%d}]}`, protocol, address, port, port)
 
 	cmd := newCreateConfigCmd(os.Stdout, os.Stderr)
 	args := []string{bindCfgName, entities.HostConfigV1, jsonStr}
@@ -111,7 +102,7 @@ func runSecure(o *SecureOptions) (err error) {
 		endpoint = o.Endpoint
 	}
 	dialCfgName := svcName + ".intercept.v1"
-	jsonStr = fmt.Sprintf(`{"protocols":["%s"], "addresses":["%s"], "portRanges":[{"low":%s, "high":%s}]}`, protocol, endpoint, port, port)
+	jsonStr = fmt.Sprintf(`{"protocols":["%s"], "addresses":["%s"], "portRanges":[{"low":%d, "high":%d}]}`, protocol, endpoint, port, port)
 
 	cmd = newCreateConfigCmd(os.Stdout, os.Stderr)
 	args = []string{dialCfgName, entities.InterceptV1, jsonStr}
@@ -162,4 +153,43 @@ func runSecure(o *SecureOptions) (err error) {
 	}
 
 	return
+}
+
+func parseInput(input string) (string, string, int, error) {
+	parts := strings.Split(input, ":")
+
+	// Check if there is at least one part (the port should be provided)
+	if len(parts) < 1 {
+		return "", "", 0, fmt.Errorf("could not find a port provided in input (%s)", input)
+	}
+
+	// Initialize the default values (port is always provided)
+	defaultProtocol := "tcp\", \"udp"
+	protocol := defaultProtocol
+	address := "127.0.0.1"
+	portStr := parts[len(parts)-1]
+
+	// Check if the input contains two parts (address, port)
+	if len(parts) == 2 {
+		address = parts[0]
+	}
+
+	// Check if the input contains three parts (protocol, address, port)
+	if len(parts) == 3 {
+		protocol = parts[0]
+		address = parts[1]
+	}
+
+	// Validate protocol
+	if protocol != "tcp" && protocol != "udp" && protocol != defaultProtocol {
+		return "", "", 0, fmt.Errorf("invalid protocol detected, tcp and udp are supported")
+	}
+
+	// Parse the port
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("port was not detected in input (%s)", portStr)
+	}
+
+	return protocol, address, port, nil
 }
