@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
+	"os"
 	"time"
 )
 
@@ -56,7 +57,7 @@ func NewValidateRouterLinksCmd(p common.OptionsProvider) *cobra.Command {
 	return validateLinksCmd
 }
 
-func (self *validateRouterLinksAction) validateRouterLinks(cmd *cobra.Command, args []string) error {
+func (self *validateRouterLinksAction) validateRouterLinks(_ *cobra.Command, args []string) error {
 	closeNotify := make(chan struct{})
 	self.eventNotify = make(chan *mgmt_pb.RouterLinkDetails, 1)
 
@@ -97,6 +98,7 @@ func (self *validateRouterLinksAction) validateRouterLinks(cmd *cobra.Command, a
 
 	expected := response.RouterCount
 
+	errCount := 0
 	for expected > 0 {
 		select {
 		case <-closeNotify:
@@ -106,6 +108,7 @@ func (self *validateRouterLinksAction) validateRouterLinks(cmd *cobra.Command, a
 			result := "validation successful"
 			if !routerDetail.ValidateSuccess {
 				result = fmt.Sprintf("error: unable to validation (%s)", routerDetail.Message)
+				errCount++
 			}
 			fmt.Printf("routerId: %s, routerName: %v, links: %v, %s\n",
 				routerDetail.RouterId, routerDetail.RouterName, len(routerDetail.LinkDetails), result)
@@ -116,9 +119,16 @@ func (self *validateRouterLinksAction) validateRouterLinks(cmd *cobra.Command, a
 						linkDetail.LinkId, linkDetail.DestConnected, linkDetail.CtrlState, linkDetail.RouterState.String(),
 						linkDetail.DestRouterId, linkDetail.Dialed)
 				}
+				if !linkDetail.IsValid {
+					errCount++
+				}
 			}
 			expected--
 		}
+	}
+	fmt.Printf("%v errors found\n", errCount)
+	if errCount > 0 {
+		os.Exit(1)
 	}
 	return nil
 }

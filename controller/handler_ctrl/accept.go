@@ -90,7 +90,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
 			listeners := &ctrl_pb.Listeners{}
 			if err = proto.Unmarshal(val, listeners); err != nil {
-				log.WithError(err).Error("unable to unmarshall listHners value")
+				log.WithError(err).Error("unable to unmarshall listeners value")
 			} else {
 				r.SetLinkListeners(listeners.Listeners)
 				for _, listener := range listeners.Listeners {

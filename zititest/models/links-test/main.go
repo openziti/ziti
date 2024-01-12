@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	_ "embed"
+	"fmt"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -21,6 +22,7 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
+	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"os"
 	"path"
@@ -201,7 +203,7 @@ var m = &model.Model{
 			workflow := actions.Workflow()
 
 			workflow.AddAction(component.Stop(".ctrl"))
-			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
+			workflow.AddAction(host.GroupExec("*", 50, "rm -f logs/*"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
 			workflow.AddAction(component.Start(".ctrl"))
@@ -213,7 +215,7 @@ var m = &model.Model{
 
 			workflow.AddAction(edge.Login("#ctrl1"))
 
-			workflow.AddAction(component.StopInParallel(models.RouterTag, 25))
+			workflow.AddAction(component.StopInParallel(models.RouterTag, 50))
 			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 2))
 
 			return workflow
@@ -222,9 +224,10 @@ var m = &model.Model{
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
-		"login":  model.Bind(edge.Login("#ctrl1")),
-		"login2": model.Bind(edge.Login("#ctrl2")),
-		"login3": model.Bind(edge.Login("#ctrl3")),
+		"login":    model.Bind(edge.Login("#ctrl1")),
+		"login2":   model.Bind(edge.Login("#ctrl2")),
+		"login3":   model.Bind(edge.Login("#ctrl3")),
+		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
 	},
 
 	Infrastructure: model.Stages{
@@ -246,6 +249,20 @@ var m = &model.Model{
 		terraform.Dispose(),
 		aws_ssh_key2.Dispose(),
 	},
+}
+
+func sowChaos(run model.Run) error {
+	controllers, err := chaos.SelectRandom(run, ".ctrl", chaos.RandomOfTotal())
+	if err != nil {
+		return err
+	}
+	routers, err := chaos.SelectRandom(run, ".router", chaos.Percentage(15))
+	if err != nil {
+		return err
+	}
+	toRestart := append(routers, controllers...)
+	fmt.Printf("restarting %v controllers and %v routers\n", len(controllers), len(routers))
+	return chaos.RestartSelected(run, toRestart, 50)
 }
 
 func main() {

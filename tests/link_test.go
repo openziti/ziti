@@ -75,6 +75,10 @@ func (self *testRegistryEnv) GetLinkDialerPool() goroutines.Pool {
 	panic("implement me")
 }
 
+func (self *testRegistryEnv) GetRateLimiterPool() goroutines.Pool {
+	panic("implement me")
+}
+
 type testDial struct {
 	Key           string
 	LinkId        string
@@ -106,6 +110,10 @@ func (self *testDial) GetLinkProtocol() string {
 
 func (self *testDial) GetRouterVersion() string {
 	return self.RouterVersion
+}
+
+func (self *testDial) GetIteration() uint32 {
+	return 1
 }
 
 func setupEnv() link.Env {
@@ -218,7 +226,7 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	router1cc, linkCheck1 := testutil.StartLinkTest("router-1", ctrlListener, ctx.Req)
 
 	router1Listeners := &ctrl_pb.Listeners{}
-	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ContentType_ListenersHeader)]; found {
+	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
 		ctx.Req.NoError(proto.Unmarshal(val, router1Listeners))
 	}
 
@@ -226,7 +234,7 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	router2cc, linkCheck2 := testutil.StartLinkTest("router-2", ctrlListener, ctx.Req)
 
 	router2Listeners := &ctrl_pb.Listeners{}
-	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ContentType_ListenersHeader)]; found {
+	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
 		ctx.Req.NoError(proto.Unmarshal(val, router1Listeners))
 	}
 
