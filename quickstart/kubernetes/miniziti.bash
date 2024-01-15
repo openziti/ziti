@@ -283,7 +283,7 @@ minizitiLogin() {
             --password
 
     logInfo "Setting default ziti identity to: $MINIKUBE_PROFILE"
-    zitiWrapper edge use "$MINIKUBE_PROFILE" >&3
+    ziti edge use "$MINIKUBE_PROFILE" >&3
 }
 
 minizitiConsole() {
