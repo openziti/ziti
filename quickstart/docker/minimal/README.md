@@ -1,8 +1,11 @@
-# minimal Docker quickstart
+# minimal Ziti Docker quickstart
 
-Run `ziti edge quickstart` in a container while persisting configs, PKI, database, etc. in the same directory `./persistent/`.
+This Docker Compose project runs `ziti edge quickstart` in a container while persisting configs, PKI, database, etc. in the same directory `./persistent/`.
 
 ## Run Ziti
+
+This is the primary use case for this project: running the `ziti edge quickstart` command in the official
+`openziti/ziti-cli` container image.
 
 1. In this "minimal" sub-directory, pull the container images.
 
@@ -46,7 +49,8 @@ Run `ziti edge quickstart` in a container while persisting configs, PKI, databas
 
 ## Develop Ziti
 
-This replaces the `ziti` binary that's running the quickstart.
+This is a secondary use case for this Docker Compose project that replaces the `ziti` binary in the container image with
+the one you build locally with `go build` before running the `ziti edge quickstart` command.
 
 1. In the top-level directory of the `ziti` project, build the binary.
 
