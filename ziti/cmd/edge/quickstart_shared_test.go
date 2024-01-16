@@ -1,4 +1,4 @@
-// TODO: uncomment this //go:build quickstart && (automated || manual)
+//go:build quickstart && (automated || manual)
 
 package edge
 
@@ -32,6 +32,12 @@ import (
 	"testing"
 	"time"
 )
+
+type SetupFunction func(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string)
+
+func defaultSetupFunction(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string) {
+	setupBasicBind(client, dialAddress, dialPort, advPort, advAddy, serviceName, hostingRouterName, testerUsername)
+}
 
 func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, identityID string) *ziti.Config {
 	// Get the identity object
@@ -366,7 +372,12 @@ func deleteServicePolicyByID(client *rest_management_api_client.ZitiEdgeManageme
 
 // in order to share test code between quickstart_test.go and quickstart_test_manual.go, this function had to be
 // created. I couldn't find a way to share the code any other way. Happy to learn a better way!
-func performQuickstartTest(t *testing.T) {
+func performQuickstartTest(t *testing.T, setupFunc SetupFunction) {
+	if setupFunc == nil {
+		setupFunc = defaultSetupFunction
+	}
+	dialAddress := "web.test.ziti"
+
 	// Wait for the controller to become available
 	zitiAdminUsername := os.Getenv("ZITI_USER")
 	if zitiAdminUsername == "" {
@@ -396,8 +407,7 @@ func performQuickstartTest(t *testing.T) {
 	//	bindHostAddress = ctrlAddress
 	//}
 	hostingRouterName := erName
-	dialAddress := "simple.web.smoke.test"
-	dialPort := 80
+	dialPort := 1280
 	serviceName := "basic.web.smoke.test.service"
 	wd, _ := os.Getwd()
 
@@ -478,31 +488,7 @@ func performQuickstartTest(t *testing.T) {
 	}
 	defer func() { _ = deleteEdgeRouterPolicyById(client, erp.Payload.Data.ID) }()
 
-	// Allow dialing the service using an intercept config (intercept because we'll be using the SDK)
-	dialSvcConfig := createInterceptV1ServiceConfig(client, "basic.smoke.dial", []string{"tcp"}, []string{dialAddress}, dialPort, dialPort)
-	defer func() { _ = deleteServiceConfigByID(client, dialSvcConfig.ID) }()
-
-	// Provide host config for the hostname
-	bindPort, _ := strconv.Atoi(advPort)
-	bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", advAddy, bindPort)
-	defer func() { _ = deleteServiceConfigByID(client, bindSvcConfig.ID) }()
-
-	// Create a service that "links" the dial and bind configs
-	createService(client, serviceName, []string{bindSvcConfig.ID, dialSvcConfig.ID})
-
-	// Create a service policy to allow the router to host the web test service
-	fmt.Println("finding hostingRouterName: ", hostingRouterName)
-	hostRouterIdent := getIdentityByName(client, hostingRouterName)
-	webTestService := getServiceByName(client, serviceName)
-	defer func() { _ = deleteServiceByID(client, *webTestService.ID) }()
-	bindSP := createServicePolicy(client, "basic.web.smoke.test.service.bind", rest_model.DialBindBind, rest_model.Roles{"@" + *hostRouterIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
-	defer func() { _ = deleteServicePolicyByID(client, bindSP.ID) }()
-
-	// Create a service policy to allow tester to dial the service
-	fmt.Println("finding testerUsername: ", testerUsername)
-	testerIdent := getIdentityByName(client, testerUsername)
-	dialSP := createServicePolicy(client, "basic.web.smoke.test.service.dial", rest_model.DialBindDial, rest_model.Roles{"@" + *testerIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
-	defer func() { _ = deleteServicePolicyByID(client, dialSP.ID) }()
+	setupFunc(client, dialAddress, dialPort, advPort, advAddy, serviceName, hostingRouterName, testerUsername)
 
 	// Test connectivity with private edge router, wait some time for the terminator to be created
 	currentCount := getTerminatorCountByRouterName(client, hostingRouterName)
@@ -522,6 +508,30 @@ func performQuickstartTest(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode, fmt.Sprintf("Expected successful HTTP status code 200, received %d instead", resp.StatusCode))
 	body, _ := io.ReadAll(resp.Body)
 	fmt.Println(string(body))
+}
+
+func setupBasicBind(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string) {
+
+	// Allow dialing the service using an intercept config (intercept because we'll be using the SDK)
+	dialSvcConfig := createInterceptV1ServiceConfig(client, "basic.smoke.dial", []string{"tcp"}, []string{dialAddress}, dialPort, dialPort)
+
+	// Provide host config for the hostname
+	bindPort, _ := strconv.Atoi(advPort)
+	bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", advAddy, bindPort)
+
+	// Create a service that "links" the dial and bind configs
+	createService(client, serviceName, []string{bindSvcConfig.ID, dialSvcConfig.ID})
+
+	// Create a service policy to allow the router to host the web test service
+	fmt.Println("finding hostingRouterName: ", hostingRouterName)
+	hostRouterIdent := getIdentityByName(client, hostingRouterName)
+	webTestService := getServiceByName(client, serviceName)
+	createServicePolicy(client, "basic.web.smoke.test.service.bind", rest_model.DialBindBind, rest_model.Roles{"@" + *hostRouterIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
+
+	// Create a service policy to allow tester to dial the service
+	fmt.Println("finding testerUsername: ", testerUsername)
+	testerIdent := getIdentityByName(client, testerUsername)
+	createServicePolicy(client, "basic.web.smoke.test.service.dial", rest_model.DialBindDial, rest_model.Roles{"@" + *testerIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
 }
 
 func toPtr[T any](in T) *T {
