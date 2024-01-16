@@ -4,7 +4,6 @@ FROM ubuntu:rolling as fetch-ziti-bins
 ARG ZITI_VERSION_OVERRIDE
 ARG DEBIAN_FRONTEND=noninteractive
 
-COPY . /docker.build.context
 RUN apt-get update \
     && apt-get --yes install \
         jq \
@@ -19,6 +18,7 @@ RUN apt-get update \
     #   just build the Dockerfile \
     # to use a specific version of ziti, specify ZITI_VERSION_OVERRIDE then  \
     #   build the Dockerfile
+COPY . /docker.build.context
 RUN bash /docker.build.context/fetch-ziti-bins.sh /ziti-bin
 
 FROM ubuntu:rolling

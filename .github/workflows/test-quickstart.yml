@@ -19,15 +19,71 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  compose-test:
-    name: Test Compose Quickstart
+  expressInstallTest:
+    name: Test expressInstall() Quickstart
     runs-on: ubuntu-latest
     steps:
       - name: Shallow checkout
         uses: actions/checkout@v3
+
       - name: Install zsh
         shell: bash
         run: sudo apt-get update && sudo apt-get install --yes zsh
+
+      - name: Install Go
+        id: setup-go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: ./go.mod
+
       - name: Build and run a quickstart container image
         shell: bash
+        env:
+          ZITI_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
         run: ./quickstart/test/compose-test.zsh
+
+  allInOneTest:
+    name: Test all-in-one Quickstart
+    runs-on: ubuntu-latest
+    env:
+      ZITI_QUICK_TAG: local  # override default :latest since we're not pulling from registry
+      ARTIFACTS_DIR: ${{ github.workspace }}/build  # output dir for `go build`, input dir for `compose up --build`
+      ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
+    steps:
+      - name: Shallow checkout
+        uses: actions/checkout@v3
+
+      - name: Install Go
+        id: setup-go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: ./go.mod
+
+      - name: Build ziti executable
+        shell: bash
+        run: |
+          mkdir -pv ${ARTIFACTS_DIR}
+          go build -o ${ARTIFACTS_DIR} ${GITHUB_WORKSPACE}/...
+
+      - name: Run the all-in-one quickstart with locally-built ziti executable
+        shell: bash
+        working-directory: ./quickstart/docker/all-in-one
+        run: docker compose up --build --detach
+
+      - name: Wait for all-in-one quickstart controller then run quickstart tests
+        shell: bash
+        working-directory: ./quickstart/docker/all-in-one
+        env:
+          ZITI_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
+        run: docker compose --profile test run --rm quickstart-test
+
+      - name: Print debug info
+        if: always()
+        shell: bash
+        working-directory: ./quickstart/docker/all-in-one
+        run: |
+          set +e
+          set -x
+          id runner
+          ls -lAn ${GOCACHE:-${HOME}/.cache/go-build}/ ${GOPATH:-${HOME}/go}/pkg/mod/
+          docker compose --profile test logs

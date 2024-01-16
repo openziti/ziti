@@ -1,0 +1,56 @@
+services:
+  quickstart-test:
+    profiles:
+      - test
+    depends_on:
+      wait-for-login:
+        condition: service_completed_successfully
+    image: golang:${ZITI_GO_VERSION:-noop}-alpine
+    networks:
+      - quickstart
+    # run as the same user as the host, so we can use the host's GOCACHE
+    user: ${ZIGGY_UID:-1000}
+    volumes:
+      # mount the parent dir of the quickstart, which is the top-level of the ziti repo working copy, as /mnt, so we can
+      # run the tests in the "edge" Go package
+      - ../../../:/mnt
+      # re-run tests if significant changes from last result in GOCACHE
+      - ${GOCACHE:-${HOME}/.cache/go-build}:/.cache/go-build
+      # re-download dep packages if significant changes from last download in GOPATH
+      - ${GOPATH:-${HOME}/go}:/go
+    working_dir: /mnt
+    environment:
+      # verbose, tests tagged 'quickstart && manual', manual means test an existing network, don't run a network inside
+      # the test process
+      GOFLAGS: "-tags=quickstart,manual"
+      GOCACHE: /.cache/go-build
+      GOPATH: /go
+      ZITI_PWD:
+      ZITI_CTRL_EDGE_ADVERTISED_ADDRESS: ${EXTERNAL_DNS:-quickstart}
+      ZITI_ROUTER_ADVERTISED_ADDRESS: ${EXTERNAL_DNS:-quickstart}
+      ZITI_CTRL_EDGE_ADVERTISED_PORT:
+      ZITI_ROUTER_PORT:
+    command: go test -v ./ziti/cmd/edge/...
+      
+  wait-for-login:
+    profiles:
+      - test
+    image: ${ZITI_QUICK_IMAGE:-docker.io/openziti/ziti-cli}:${ZITI_QUICK_TAG:-latest}
+    networks:
+      - quickstart
+    entrypoint:
+      - bash
+      - -euxc
+      - |
+        ATTEMPTS=10
+        DELAY=3
+        until !((ATTEMPTS)) || ziti $${@} &>/dev/null; do
+          (( ATTEMPTS-- ))
+          echo "Waiting for controller to start"
+          sleep $${DELAY}
+        done
+        ziti $${@}
+    command: >
+      -- edge login
+      ${EXTERNAL_DNS:-quickstart}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
+      -u admin -p ${ZITI_PWD:-admin} -y

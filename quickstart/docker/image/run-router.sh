@@ -72,5 +72,5 @@ fi
 unset ZITI_USER
 unset ZITI_PWD
 
-"${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME}/${ZITI_ROUTER_NAME}.yaml" > "${ZITI_HOME}/${ZITI_ROUTER_NAME}.log"
+"${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME}/${ZITI_ROUTER_NAME}.yaml"
 

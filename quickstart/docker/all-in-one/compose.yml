@@ -3,9 +3,13 @@ services:
     image: ${ZITI_QUICK_IMAGE:-docker.io/openziti/ziti-cli}:${ZITI_QUICK_TAG:-latest}
     restart: unless-stopped
     build:
-      context: ${ZITI_SRC_ROOT:-../../../} 
+      # the build context is the root of the ziti repo so that BuildKit can access the built ziti executable in /build
+      # and the Dockerfile
+      context: ../../../ 
       dockerfile: ./quickstart/docker/all-in-one/Dockerfile
-      args: {}
+      args:
+        # path of the directory containing the locally-built ziti executable; relative to the build context
+        ARTIFACTS_DIR: ./build
     networks:
       quickstart:
         # this allows other containers to use the same external DNS name to reach the quickstart container from within the
@@ -16,9 +20,9 @@ services:
     - bash
     - -euc
     - |
-      ZITI_CMD+=" --ctrl-address ${EXTERNAL_DNS:-127.0.0.1}"\
+      ZITI_CMD+=" --ctrl-address ${EXTERNAL_DNS:-quickstart}"\
       " --ctrl-port ${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}"\
-      " --router-address ${EXTERNAL_DNS:-127.0.0.1}"\
+      " --router-address ${EXTERNAL_DNS:-quickstart}"\
       " --router-port ${ZITI_ROUTER_PORT:-3022}"\
       " --password ${ZITI_PWD:-admin}"
       echo "DEBUG: run command is: ziti $${@} $${ZITI_CMD}"
@@ -29,11 +33,9 @@ services:
       HOME: /persistent
       PFXLOG_NO_JSON: "${PFXLOG_NO_JSON:-true}"
     volumes:
-    # store the quickstart state in a named volume; "initialize" service's mount must remain aligned to set the owner on
-    # "up"
-    - persistent:/persistent
-    # store the quickstart state on the Docker host in the same directory as this compose.yml file
-    # - ./persistent:/persistent
+    # store the quickstart state in a named volume "persistent" or store the quickstart state on the Docker host in a
+    # directory, ZITI_HOME 
+    - ${ZITI_HOME:-persistent}:/persistent
     ports:
     - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
     - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
@@ -48,12 +50,10 @@ services:
     user: root
     environment:
       HOME: /persistent
-      # PFXLOG_NO_JSON: "true"
     volumes:
-    # store the quickstart state in a named volume; this mount must align with the "quickstart" service's mount
-    - persistent:/persistent
-    # store the quickstart state on the Docker host in the same directory as this compose.yml file
-    # - ./persistent:/persistent
+    # store the quickstart state in a named volume "persistent" or store the quickstart state on the Docker host in a
+    # directory, ZITI_HOME 
+    - ${ZITI_HOME:-persistent}:/persistent
 
 # define a custom network so that we can also define a DNS alias for the quickstart container
 networks:

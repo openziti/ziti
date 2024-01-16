@@ -15,7 +15,6 @@ import (
 func TestEdgeQuickstartAutomated(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = os.Setenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS", "localhost") //force localhost
-	_ = os.Setenv("ZITI_ROUTER_NAME", "quickstart-router")
 	cmdComplete := make(chan bool)
 	qs := NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
 	go func() {

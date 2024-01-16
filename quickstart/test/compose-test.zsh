@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh 
+#!/usr/bin/env zsh
 #
 # this script tests the quickstart's ziti-cli-functions.sh, container image creation process, and Compose project by
 # gathering files from a particular GitHub repo ref or a filesystem path and running the quickstart's Go test suite
@@ -39,9 +39,9 @@ TESTDIR="$(mktemp -d -t "${BASENAME%.*}.${DATESTAMP}.XXX")"
 if [[ -z "${ZITI_QUICK_DIR:-}" ]]; then
     ZITI_QUICK_DIR="$(realpath "${DIRNAME}/..")"
 fi
-# if unset, set ZITI_QUICK_IMAGE_TAG to this run's dirname
-if [[ -z "${ZITI_QUICK_IMAGE_TAG:-}" ]]; then
-    ZITI_QUICK_IMAGE_TAG=$(basename "${TESTDIR}")
+# if unset, set ZITI_QUICK_TAG to this run's dirname
+if [[ -z "${ZITI_QUICK_TAG:-}" ]]; then
+    ZITI_QUICK_TAG=$(basename "${TESTDIR}")
 fi
 
 # case "${1:-}" in
@@ -68,23 +68,23 @@ if [[ -n "${ZITI_QUICK_DIR:-}" ]]; then
     for FILE in "${QUICK_FILES[@]}"; do
         cp "${ZITI_QUICK_DIR}/${FILE}" .
     done
-    if [[ -n "${ZITI_QUICK_IMAGE_TAG:-}" ]]; then
+    if [[ -n "${ZITI_QUICK_TAG:-}" ]]; then
         if [[ -x "${ZITI_QUICK_DIR:-}/docker/createLocalImage.sh" ]]; then
             (
                 cd "${ZITI_QUICK_DIR}/docker"
                 unset ZITI_VERSION ZITI_OVERRIDE_VERSION  # always build the local source
-                ./createLocalImage.sh --build "${ZITI_QUICK_IMAGE_TAG}"
+                ./createLocalImage.sh --build "${ZITI_QUICK_TAG}"
             )
         else
-            echo "ERROR: ZITI_QUICK_IMAGE_TAG is set but ZITI_QUICK_DIR/docker/createLocalImage.sh is not executable" >&2
+            echo "ERROR: ZITI_QUICK_TAG is set but ZITI_QUICK_DIR/docker/createLocalImage.sh is not executable" >&2
             exit 1
         fi
     fi
-elif [[ -n "${ZITI_QUICK_IMAGE_TAG:-}" ]]; then
-    echo "ERROR: ZITI_QUICK_IMAGE_TAG is set but ZITI_QUICK_DIR is not set" >&2
+elif [[ -n "${ZITI_QUICK_TAG:-}" ]]; then
+    echo "ERROR: ZITI_QUICK_TAG is set but ZITI_QUICK_DIR is not set" >&2
     exit 1
 else
-    echo "ERROR: ZITI_QUICK_IMAGE_TAG is not set, try running with --local" >&2
+    echo "ERROR: ZITI_QUICK_TAG is not set, try running with --local" >&2
     exit 1
 fi
 
@@ -92,11 +92,13 @@ fi
 mv ./simplified-docker-compose.yml ./compose.yml
 
 # learn the expected Go version from the Go mod file so we can pull the correct container image
-ZITI_GO_VERSION="$(awk '/^go[[:space:]]+/ {print $2}' ./go.mod)"
+: ${ZITI_GO_VERSION:="$(awk '/^go[[:space:]]+/ {print $2}' ./go.mod)"}
 # make this var available in the Compose project
 sed -E \
-    -e  "s/^(#[[:space:]]+)?(ZITI_PWD)=.*/\2=${ZITI_PWD}/" \
-    -e  "s/^(#[[:space:]]+)?(ZITI_INTERFACE)=.*/\2=${ZITI_INTERFACE:-127.0.0.1}/" ./.env > ./.env.tmp
+    -e  "s/^(#[[:space:]]*)?(ZITI_PWD)=.*/\2=${ZITI_PWD}/" \
+    -e  "s/^(#[[:space:]]*)?(ZITI_ROUTER_NAME)=.*/\2=${ZITI_ROUTER_NAME:=quickstart-router}/" \
+    -e  "s/^(#[[:space:]]*)?(ZITI_ROUTER_ADVERTISED_ADDRESS)=.*/\2=${ZITI_ROUTER_ADVERTISED_ADDRESS:=ziti-edge-router}/" \
+    -e  "s/^(#[[:space:]]*)?(ZITI_INTERFACE)=.*/\2=${ZITI_INTERFACE:-127.0.0.1}/" ./.env > ./.env.tmp
 mv ./.env.tmp ./.env
 
 # pull images preemptively that we never build locally because pull=never when using a local quickstart image
@@ -116,13 +118,13 @@ echo -e "ZITI_GO_VERSION=${ZITI_GO_VERSION}"\
         "\nZITI_QUICK_DIR=${ZITI_QUICK_DIR}" \
         >> ./.env
 
-# if ZITI_QUICK_IMAGE_TAG is set then run the locally-built image
-if [[ -n "${ZITI_QUICK_IMAGE_TAG:-}" ]]; then
-    sed -Ee "s/^(#[[:space:]]+)?(ZITI_VERSION)=.*/\2=${ZITI_QUICK_IMAGE_TAG}/" ./.env > ./.env.tmp
+# if ZITI_QUICK_TAG is set then run the locally-built image
+if [[ -n "${ZITI_QUICK_TAG:-}" ]]; then
+    sed -Ee "s/^(#[[:space:]]*)?(ZITI_VERSION)=.*/\2=${ZITI_QUICK_TAG}/" ./.env > ./.env.tmp
     mv ./.env.tmp ./.env
     docker compose up --detach --pull=never &>/dev/null # no pull because local quickstart image
 else
-    echo "ERROR: ZITI_QUICK_IMAGE_TAG is not set" >&2
+    echo "ERROR: ZITI_QUICK_TAG is not set" >&2
     exit 1
 fi
 
@@ -153,7 +155,6 @@ docker compose exec ziti-controller \
     '
         # TODO: re-add cert checks to above test suite after https://github.com/openziti/ziti/pull/1278
         # zsh /persistent/check-cert-chains.zsh;
-docker compose run quickstart-test
+docker compose --profile test run --rm quickstart-test
 
 echo -e "\nINFO: Test completed successfully."
-
