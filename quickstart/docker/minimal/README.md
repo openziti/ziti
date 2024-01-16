@@ -66,6 +66,11 @@ This replaces the `ziti` binary that's running the quickstart.
     docker compose up --detach --build
     ```
 
+    By adding this `--build` option to the `up` command, the container image is built from the Dockerfile with your
+    locally built `ziti` binary instead of pulling the default `openziti/ziti-cli` container image from Docker Hub. In
+    the `compose.yml`, the Docker build context is defined with environment variable `ZITI_SRC_ROOT` which defaults to
+    `../../../` (three levels up from this directory at the top level of a Git working copy of the source repo).
+
 ### Troubleshooting
 
 #### Changing File Locations

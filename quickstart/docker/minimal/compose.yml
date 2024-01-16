@@ -37,9 +37,14 @@ services:
     user: ${ZIGGY_UID:-1000}
     environment:
       HOME: /persistent
-      PFXLOG_NO_JSON: "true"
+      PFXLOG_NO_JSON: "${PFXLOG_NO_JSON:-true}"
     volumes:
+    # store the quickstart state on the Docker host in the same directory as this compose.yml file
     - ./persistent:/persistent
+    # store the quickstart state in a named volume; you must comment the bind mount above, uncomment the named mount
+    # below, and set permissions on the named volume if you choose this alternative, e.g.:
+    #       docker compose run --entrypoint='' --user=0 quickstart chmod -Rc 1777 /persistent
+    # - persistent:/persistent
     ports:
     - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
     - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
@@ -48,3 +53,8 @@ services:
 networks:
   quickstart:
     driver: bridge
+
+volumes:
+  # unused unless you choose to store the quickstart state in a named volume; see comment in quickstart service above
+  persistent:
+    driver: local
