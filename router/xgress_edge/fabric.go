@@ -125,9 +125,10 @@ func (self *edgeTerminator) close(notify bool, reason string) {
 		if terminatorId := self.terminatorId.Load(); terminatorId != "" {
 			if self.terminatorId.CompareAndSwap(terminatorId, "") {
 				logger.Debug("removing terminator on router")
-				self.edgeClientConn.listener.factory.hostedServices.Delete(terminatorId)
 
 				self.state.Store(TerminatorStateDeleting)
+				self.edgeClientConn.listener.factory.hostedServices.Delete(terminatorId)
+
 				logger.Info("removing terminator on controller")
 				ctrlCh := self.edgeClientConn.listener.factory.ctrls.AnyCtrlChannel()
 				if ctrlCh == nil {

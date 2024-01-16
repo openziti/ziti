@@ -80,6 +80,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 	if !ctx.loadRouter() {
 		return
 	}
+	ctx.verifyTerminatorId(ctx.req.Address)
 	ctx.loadSession(ctx.req.SessionToken)
 	ctx.checkSessionType(db.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
