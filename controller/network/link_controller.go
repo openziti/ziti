@@ -19,6 +19,7 @@ package network
 import (
 	"encoding/json"
 	"errors"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/storage/objectz"
@@ -129,11 +130,24 @@ func (linkController *linkController) routerReportedLink(linkId string, iteratio
 	linkController.lock.Lock()
 	defer linkController.lock.Unlock()
 
-	if link, found := linkController.get(linkId); found {
+	link, _ := linkController.get(linkId)
+	if link != nil && link.Iteration >= iteration {
 		return link, false
 	}
 
-	link := newLink(linkId, linkProtocol, dialAddress, linkController.initialLatency)
+	// remove the older link before adding the new one
+	if link != nil {
+		log := pfxlog.Logger().
+			WithField("routerId", src.Id).
+			WithField("linkId", linkId).
+			WithField("destRouterId", dstId).
+			WithField("iteration", iteration)
+
+		linkController.remove(link)
+		log.Infof("replaced link with newer iteration %v => %v", link.Iteration, iteration)
+	}
+
+	link = newLink(linkId, linkProtocol, dialAddress, linkController.initialLatency)
 	link.Iteration = iteration
 	link.Src = src
 	link.Dst.Store(dst)
@@ -152,10 +166,11 @@ func (linkController *linkController) all() []*Link {
 }
 
 func (linkController *linkController) remove(link *Link) {
-	linkController.linkTable.remove(link)
-	link.Src.routerLinks.Remove(link, link.DstId)
-	if dest := link.GetDest(); dest != nil {
-		dest.routerLinks.Remove(link, link.Src.Id)
+	if linkController.linkTable.remove(link) {
+		link.Src.routerLinks.Remove(link, link.DstId)
+		if dest := link.GetDest(); dest != nil {
+			dest.routerLinks.Remove(link, link.Src.Id)
+		}
 	}
 }
 
@@ -432,6 +447,8 @@ func (lt *linkTable) matching(f func(*Link) bool) []*Link {
 	return links
 }
 
-func (lt *linkTable) remove(link *Link) {
-	lt.links.Remove(link.Id)
+func (lt *linkTable) remove(link *Link) bool {
+	return lt.links.RemoveCb(link.Id, func(key string, v *Link, exists bool) bool {
+		return v != nil && v.Iteration == link.Iteration
+	})
 }

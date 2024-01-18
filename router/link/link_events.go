@@ -237,6 +237,7 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 		state.connectedCount++
 		state.retryDelay = time.Duration(0)
 		state.ctrlsNotified = false
+		registry.triggerNotify()
 	}
 
 	if state.status == StatusLinkFailed {

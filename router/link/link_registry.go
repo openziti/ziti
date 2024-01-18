@@ -53,6 +53,7 @@ func NewLinkRegistry(routerEnv Env) xlink.Registry {
 		env:            routerEnv,
 		destinations:   map[string]*linkDest{},
 		linkStateQueue: &linkStateHeap{},
+		triggerNotifyC: make(chan struct{}, 1),
 	}
 
 	go result.run()
@@ -71,6 +72,7 @@ type linkRegistryImpl struct {
 	destinations     map[string]*linkDest
 	linkStateQueue   *linkStateHeap
 	events           chan event
+	triggerNotifyC   chan struct{}
 	notifyInProgress atomic.Bool
 }
 
@@ -365,6 +367,8 @@ func (self *linkRegistryImpl) run() {
 		select {
 		case evt := <-self.events:
 			evt.Handle(self)
+		case <-self.triggerNotifyC:
+			self.notifyControllersOfLinks()
 		case <-queueCheckTicker.C:
 			self.evaluateLinkStateQueue()
 			self.notifyControllersOfLinks()
@@ -373,6 +377,13 @@ func (self *linkRegistryImpl) run() {
 		case <-self.env.GetCloseNotify():
 			return
 		}
+	}
+}
+
+func (self *linkRegistryImpl) triggerNotify() {
+	select {
+	case self.triggerNotifyC <- struct{}{}:
+	default:
 	}
 }
 

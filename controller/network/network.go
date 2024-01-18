@@ -445,19 +445,16 @@ func (network *Network) LinkConnected(msg *ctrl_pb.LinkConnected) error {
 	return errors.Errorf("no such link [l/%s]", msg.Id)
 }
 
-func (network *Network) LinkFaulted(id string, dupe bool) error {
-	if l, found := network.linkController.get(id); found {
-		l.addState(newLinkState(Failed))
-		if dupe {
-			network.NotifyLinkEvent(l, event.LinkDuplicate)
-		} else {
-			network.NotifyLinkEvent(l, event.LinkFault)
-		}
-		pfxlog.Logger().WithField("linkId", id).Info("removing failed link")
-		network.linkController.remove(l)
-		return nil
+func (network *Network) LinkFaulted(l *Link, dupe bool) error {
+	l.addState(newLinkState(Failed))
+	if dupe {
+		network.NotifyLinkEvent(l, event.LinkDuplicate)
+	} else {
+		network.NotifyLinkEvent(l, event.LinkFault)
 	}
-	return errors.Errorf("no such link [l/%s]", id)
+	pfxlog.Logger().WithField("linkId", l.Id).Info("removing failed link")
+	network.linkController.remove(l)
+	return nil
 }
 
 func (network *Network) VerifyRouter(routerId string, fingerprints []string) error {
@@ -982,14 +979,18 @@ func (network *Network) RemoveLink(linkId string) {
 	log := pfxlog.Logger().WithField("linkId", linkId)
 
 	link, _ := network.linkController.get(linkId)
+	var iteration uint32
 
 	var routerList []*Router
 	if link != nil {
+		iteration = link.Iteration
 		routerList = []*Router{link.Src}
 		if dst := link.GetDest(); dst != nil {
 			routerList = append(routerList, dst)
 		}
-		log = log.WithField("srcRouterId", link.Src.Id).WithField("dstRouterId", link.DstId)
+		log = log.WithField("srcRouterId", link.Src.Id).
+			WithField("dstRouterId", link.DstId).
+			WithField("iteration", iteration)
 		log.Info("deleting known link")
 	} else {
 		routerList = network.AllConnectedRouters()
@@ -997,7 +998,12 @@ func (network *Network) RemoveLink(linkId string) {
 	}
 
 	for _, router := range routerList {
-		fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId}
+		fault := &ctrl_pb.Fault{
+			Subject:   ctrl_pb.FaultSubject_LinkFault,
+			Id:        linkId,
+			Iteration: iteration,
+		}
+
 		if ctrl := router.Control; ctrl != nil {
 			if err := protobufs.MarshalTyped(fault).WithTimeout(15 * time.Second).Send(ctrl); err != nil {
 				log.WithField("faultDestRouterId", router.Id).WithError(err).

@@ -202,6 +202,7 @@ var m = &model.Model{
 		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
 
+			workflow.AddAction(host.GroupExec("*", 50, "touch .hushlogin"))
 			workflow.AddAction(component.Stop(".ctrl"))
 			workflow.AddAction(host.GroupExec("*", 50, "rm -f logs/*"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))

@@ -52,10 +52,10 @@ require (
 	github.com/openziti/foundation/v2 v2.0.36
 	github.com/openziti/identity v1.0.69
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.42
+	github.com/openziti/metrics v1.2.43
 	github.com/openziti/runzmd v1.0.37
-	github.com/openziti/sdk-golang v0.22.11
-	github.com/openziti/secretstream v0.1.15
+	github.com/openziti/sdk-golang v0.22.17
+	github.com/openziti/secretstream v0.1.16
 	github.com/openziti/storage v0.2.28
 	github.com/openziti/transport/v2 v2.0.121
 	github.com/openziti/x509-claims v1.0.3
@@ -183,7 +183,7 @@ require (
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/image v0.13.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/oauth2 v0.15.0 // indirect
+	golang.org/x/oauth2 v0.16.0 // indirect
 	golang.org/x/term v0.16.0 // indirect
 	golang.org/x/tools v0.16.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect

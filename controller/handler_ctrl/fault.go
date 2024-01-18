@@ -121,7 +121,7 @@ func (h *faultHandler) handleFaultedLink(log *logrus.Entry, fault *ctrl_pb.Fault
 		}
 
 		wasConnected := link.IsUsable()
-		if err := h.network.LinkFaulted(linkId, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate); err == nil {
+		if err := h.network.LinkFaulted(link, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate); err == nil {
 			h.network.LinkChanged(link)
 			otherRouter := link.Src
 			if link.Src.Id == h.r.Id {

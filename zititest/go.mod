@@ -15,7 +15,7 @@ require (
 	github.com/openziti/fablab v0.5.38
 	github.com/openziti/foundation/v2 v2.0.36
 	github.com/openziti/identity v1.0.69
-	github.com/openziti/sdk-golang v0.22.11
+	github.com/openziti/sdk-golang v0.22.17
 	github.com/openziti/storage v0.2.28
 	github.com/openziti/transport/v2 v2.0.121
 	github.com/openziti/ziti v0.28.3
@@ -136,9 +136,9 @@ require (
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/edge-api v0.26.8 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.42 // indirect
+	github.com/openziti/metrics v1.2.43 // indirect
 	github.com/openziti/runzmd v1.0.37 // indirect
-	github.com/openziti/secretstream v0.1.15 // indirect
+	github.com/openziti/secretstream v0.1.16 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.1.0 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
@@ -188,7 +188,7 @@ require (
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/image v0.13.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/oauth2 v0.15.0 // indirect
+	golang.org/x/oauth2 v0.16.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/term v0.16.0 // indirect
