@@ -47,17 +47,17 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.113
-	github.com/openziti/edge-api v0.26.7
-	github.com/openziti/foundation/v2 v2.0.35
-	github.com/openziti/identity v1.0.68
+	github.com/openziti/channel/v2 v2.0.116
+	github.com/openziti/edge-api v0.26.8
+	github.com/openziti/foundation/v2 v2.0.36
+	github.com/openziti/identity v1.0.69
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.41
-	github.com/openziti/runzmd v1.0.36
-	github.com/openziti/sdk-golang v0.22.6
-	github.com/openziti/secretstream v0.1.15
-	github.com/openziti/storage v0.2.27
-	github.com/openziti/transport/v2 v2.0.119
+	github.com/openziti/metrics v1.2.43
+	github.com/openziti/runzmd v1.0.37
+	github.com/openziti/sdk-golang v0.22.17
+	github.com/openziti/secretstream v0.1.16
+	github.com/openziti/storage v0.2.28
+	github.com/openziti/transport/v2 v2.0.121
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -78,8 +78,8 @@ require (
 	github.com/zitadel/oidc/v2 v2.12.0
 	go.etcd.io/bbolt v1.3.8
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.17.0
-	golang.org/x/net v0.19.0
+	golang.org/x/crypto v0.18.0
+	golang.org/x/net v0.20.0
 	golang.org/x/sync v0.5.0
 	golang.org/x/sys v0.16.0
 	golang.org/x/text v0.14.0
@@ -115,13 +115,13 @@ require (
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-openapi/analysis v0.22.1 // indirect
+	github.com/go-openapi/analysis v0.22.2 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/jsonreference v0.20.4 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
-	github.com/gorilla/schema v1.2.1 // indirect
-	github.com/gorilla/securecookie v1.1.2 // indirect
+	github.com/gorilla/schema v1.2.0 // indirect
+	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.1 // indirect
@@ -166,8 +166,8 @@ require (
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/tklauser/go-sysconf v0.3.13 // indirect
-	github.com/tklauser/numcpus v0.7.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.12 // indirect
+	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
@@ -180,10 +180,10 @@ require (
 	go.opentelemetry.io/otel/trace v1.21.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/exp v0.0.0-20240103183307-be819d1f06fc // indirect
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/image v0.13.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/oauth2 v0.15.0 // indirect
+	golang.org/x/oauth2 v0.16.0 // indirect
 	golang.org/x/term v0.16.0 // indirect
 	golang.org/x/tools v0.16.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect

@@ -19,38 +19,30 @@ package handler_link
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xlink"
-	"sync/atomic"
 )
 
 type closeHandler struct {
 	link          xlink.Xlink
-	ctrl          env.NetworkControllers
 	forwarder     *forwarder.Forwarder
-	closeNotify   chan struct{}
-	closed        atomic.Bool
 	xlinkRegistry xlink.Registry
 }
 
-func newCloseHandler(link xlink.Xlink, ctrl env.NetworkControllers, forwarder *forwarder.Forwarder, closeNotify chan struct{}, registry xlink.Registry) *closeHandler {
+func newCloseHandler(link xlink.Xlink, forwarder *forwarder.Forwarder, registry xlink.Registry) *closeHandler {
 	return &closeHandler{
 		link:          link,
-		ctrl:          ctrl,
 		forwarder:     forwarder,
-		closeNotify:   closeNotify,
 		xlinkRegistry: registry,
 	}
 }
 
 func (self *closeHandler) HandleClose(ch channel.Channel) {
-	if self.closed.CompareAndSwap(false, true) {
+	self.link.CloseOnce(func() {
 		log := pfxlog.ContextLogger(ch.Label()).
 			WithField("linkId", self.link.Id()).
-			WithField("routerId", self.link.DestinationId())
+			WithField("routerId", self.link.DestinationId()).
+			WithField("iteration", self.link.Iteration())
 
 		self.forwarder.UnregisterLink(self.link)
 
@@ -62,18 +54,5 @@ func (self *closeHandler) HandleClose(ch channel.Channel) {
 		}()
 
 		log.Info("link closed")
-
-		self.link.HandleCloseNotification(func() {
-			self.ctrl.ForEach(func(controllerId string, ch channel.Channel) {
-				fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: self.link.Id()}
-				if err := protobufs.MarshalTyped(fault).Send(ch); err == nil {
-					log.WithField("ctrlId", controllerId).Debug("transmitted link fault")
-				} else {
-					log.WithField("ctrlId", controllerId).WithError(err).Error("unexpected error transmitting link fault")
-				}
-			})
-		})
-
-		close(self.closeNotify)
-	}
+	})
 }

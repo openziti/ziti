@@ -16,7 +16,18 @@
 
 package capabilities
 
-const (
-	ControllerCreateTerminatorV2     int = 1
-	ControllerSingleRouterLinkSource int = 2
+import (
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"math/big"
 )
+
+func IsCapable(ch channel.Channel, capability int) bool {
+	headers := ch.Underlay().Headers()
+	if val, found := headers[int32(ctrl_pb.ControlHeaders_CapabilitiesHeader)]; found {
+		capabilitiesMask := &big.Int{}
+		capabilitiesMask.SetBytes(val)
+		return capabilitiesMask.Bit(capability) == 1
+	}
+	return false
+}

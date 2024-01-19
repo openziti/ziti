@@ -116,7 +116,15 @@ func (self *RouterType) IsRunning(_ model.Run, c *model.Component) (bool, error)
 	return len(pids) > 0, nil
 }
 
-func (self *RouterType) Start(_ model.Run, c *model.Component) error {
+func (self *RouterType) Start(r model.Run, c *model.Component) error {
+	isRunninng, err := self.IsRunning(r, c)
+	if err != nil {
+		return err
+	}
+	if isRunninng {
+		fmt.Printf("router %s already started\n", c.Id)
+		return nil
+	}
 	return startZitiComponent(c, "router", self.Version, self.getConfigName(c))
 }
 

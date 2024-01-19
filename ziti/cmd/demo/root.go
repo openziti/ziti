@@ -72,6 +72,10 @@ func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
 
 	demoCmd.AddCommand(newEchoServerCmd())
 	demoCmd.AddCommand(newZcatCmd())
+
+	zcatCloseTestCmd := newZcatCloseTestCmd()
+	zcatCloseTestCmd.Hidden = true
+	demoCmd.AddCommand(zcatCloseTestCmd)
 	demoCmd.AddCommand(agentCmd)
 
 	demoCmd.AddCommand(setupCmd)

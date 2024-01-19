@@ -63,6 +63,10 @@ func (r *CircuitRouter) ListCircuits(n *network.Network, rc api.RequestContext) 
 			return nil, err
 		}
 
+		if query.GetLimit() == nil {
+			query.SetLimit(10)
+		}
+
 		circuits, count, err := n.GetCircuitStore().QueryEntitiesC(query)
 		if err != nil {
 			return nil, err

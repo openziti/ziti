@@ -97,12 +97,13 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 		WithField("linkProtocol", self.GetLinkProtocol()).
 		WithField("linkId", binding.GetChannel().Id())
 
-	headers := binding.GetChannel().Underlay().Headers()
+	headers := channel.Headers(binding.GetChannel().Underlay().Headers())
 	var chanType channelType
 
 	routerId := ""
 	routerVersion := ""
 	dialerBinding := ""
+	var iteration uint32
 
 	if headers != nil {
 		if v, ok := headers[LinkHeaderRouterId]; ok {
@@ -121,12 +122,17 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 			dialerBinding = string(val)
 			log = log.WithField("dialerBinding", dialerBinding)
 		}
+		if val, ok := headers.GetUint32Header(LinkHeaderIteration); ok {
+			iteration = val
+			log = log.WithField("iteration", iteration)
+		}
 	}
 
 	linkMeta := &linkMetadata{
 		routerId:      routerId,
 		routerVersion: routerVersion,
 		dialerBinding: dialerBinding,
+		iteration:     iteration,
 	}
 
 	if chanType != 0 {
@@ -196,6 +202,7 @@ func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, bi
 				routerVersion: linkMeta.routerVersion,
 				linkProtocol:  self.GetLinkProtocol(),
 				dialAddress:   self.GetAdvertisement(),
+				iteration:     linkMeta.iteration,
 				dialed:        false,
 			},
 			eventTime: time.Now(),
@@ -232,6 +239,7 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *lin
 		routerVersion: linkMeta.routerVersion,
 		linkProtocol:  self.GetLinkProtocol(),
 		dialAddress:   self.GetAdvertisement(),
+		iteration:     linkMeta.iteration,
 		dialed:        false,
 	}
 
@@ -288,4 +296,5 @@ type linkMetadata struct {
 	routerId      string
 	routerVersion string
 	dialerBinding string
+	iteration     uint32
 }

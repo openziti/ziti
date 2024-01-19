@@ -18,8 +18,10 @@ package link
 
 import (
 	"container/heap"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/xlink"
+	"sync/atomic"
 	"time"
 )
 
@@ -59,18 +61,36 @@ func (self *linkDest) update(update *linkDestUpdate) {
 	}
 }
 
+type linkFault struct {
+	linkId    string
+	iteration uint32
+}
+
 type linkState struct {
 	linkKey        string
 	linkId         string
 	status         linkStatus
-	dialAttempts   uint
-	connectedCount uint
+	dialAttempts   atomic.Uint64
+	connectedCount uint64
 	retryDelay     time.Duration
 	nextDial       time.Time
 	dest           *linkDest
 	listener       *ctrl_pb.Listener
 	dialer         xlink.Dialer
-	allowedDials   int
+	allowedDials   int64
+	ctrlsNotified  bool
+	linkFaults     []linkFault
+}
+
+func (self *linkState) updateStatus(status linkStatus) {
+	log := pfxlog.Logger().
+		WithField("key", self.linkKey).
+		WithField("oldState", self.status).
+		WithField("newState", status).
+		WithField("linkId", self.linkId).
+		WithField("iteration", self.dialAttempts.Load())
+	self.status = status
+	log.Info("status updated")
 }
 
 func (self *linkState) GetLinkKey() string {
@@ -95,6 +115,47 @@ func (self *linkState) GetLinkProtocol() string {
 
 func (self *linkState) GetRouterVersion() string {
 	return self.dest.version
+}
+
+func (self *linkState) GetIteration() uint32 {
+	return uint32(self.dialAttempts.Load())
+}
+
+func (self *linkState) addPendingLinkFault(linkId string, iteration uint32) {
+	for _, fault := range self.linkFaults {
+		if fault.linkId == linkId {
+			if fault.iteration < iteration {
+				fault.iteration = iteration
+			}
+			return
+		}
+	}
+	self.linkFaults = append(self.linkFaults, linkFault{
+		linkId:    linkId,
+		iteration: iteration,
+	})
+}
+
+func (self *linkState) clearFaultsForLinkId(linkId string) {
+	faults := self.linkFaults
+	self.linkFaults = nil
+
+	for _, fault := range faults {
+		if fault.linkId != linkId {
+			self.linkFaults = append(self.linkFaults, fault)
+		}
+	}
+}
+
+func (self *linkState) clearFault(toClear linkFault) {
+	faults := self.linkFaults
+	self.linkFaults = nil
+
+	for _, fault := range faults {
+		if fault.linkId != toClear.linkId || fault.iteration > toClear.iteration {
+			self.linkFaults = append(self.linkFaults, fault)
+		}
+	}
 }
 
 func (self *linkState) dialFailed(registry *linkRegistryImpl) {
