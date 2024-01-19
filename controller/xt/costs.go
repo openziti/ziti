@@ -17,8 +17,9 @@
 package xt
 
 import (
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"math"
+
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 const (
@@ -81,7 +82,7 @@ func (p *precedence) GetBiasedCost(cost uint32) uint32 {
 // Precedences define the precedence levels
 var Precedences = struct {
 	// Required terminators should always be used in preference to non-required terminators
-	// Example: The current active node in an active/passive setup. If the strategy determintes
+	// Example: The current active node in an active/passive setup. If the strategy determines
 	//          that the current active has failed, it will drop the precedence and mark some other
 	//          terminator as Required
 	Required Precedence

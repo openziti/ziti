@@ -4,6 +4,8 @@ release/
 # Binaries for programs and plugins
 *.exe
 *.exe~
+*.rpm
+*.deb
 *.dll
 *.so
 *.dylib

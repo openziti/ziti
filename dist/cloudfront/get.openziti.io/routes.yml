@@ -1,4 +1,5 @@
-# this is a list of shortcut routes at get.openziti.io for raw.githubusercontent.com
+# this is a list of shortcut routes at get.openziti.io for raw.githubusercontent.com and is documented in
+# https://github.com/openziti/ziti/tree/main/quickstart#github-raw-reverse-proxy
 
 # these are file shortcuts, so the shortcut is the test file
 - get: /ziti-cli-functions.sh

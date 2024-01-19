@@ -68,6 +68,10 @@ func (r *LinkRouter) ListLinks(n *network.Network, rc api.RequestContext) {
 			return nil, err
 		}
 
+		if query.GetLimit() == nil {
+			query.SetLimit(10)
+		}
+
 		links, count, err := n.GetLinkStore().QueryEntitiesC(query)
 		if err != nil {
 			return nil, err

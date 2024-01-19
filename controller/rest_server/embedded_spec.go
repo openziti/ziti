@@ -1729,7 +1729,8 @@ func init() {
         "sourceLatency",
         "destLatency",
         "cost",
-        "down"
+        "down",
+        "iteration"
       ],
       "properties": {
         "cost": {
@@ -1746,6 +1747,9 @@ func init() {
         },
         "id": {
           "type": "string"
+        },
+        "iteration": {
+          "type": "integer"
         },
         "protocol": {
           "type": "string"
@@ -7320,7 +7324,8 @@ func init() {
         "sourceLatency",
         "destLatency",
         "cost",
-        "down"
+        "down",
+        "iteration"
       ],
       "properties": {
         "cost": {
@@ -7337,6 +7342,9 @@ func init() {
         },
         "id": {
           "type": "string"
+        },
+        "iteration": {
+          "type": "integer"
         },
         "protocol": {
           "type": "string"

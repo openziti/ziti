@@ -1,0 +1,66 @@
+services:
+  quickstart:
+    image: ${ZITI_QUICK_IMAGE:-docker.io/openziti/ziti-cli}:${ZITI_QUICK_TAG:-latest}
+    restart: unless-stopped
+    build:
+      context: ${ZITI_SRC_ROOT:-../../../} 
+      dockerfile: ./quickstart/docker/all-in-one/Dockerfile
+      args: {}
+    networks:
+      quickstart:
+        # this allows other containers to use the same external DNS name to reach the quickstart container from within the
+        # Docker network that clients outside the Docker network use to reach the quickstart container via port forwarding
+        aliases:
+          - ${EXTERNAL_DNS:-null}
+    entrypoint:
+    - bash
+    - -euc
+    - |
+      ZITI_CMD+=" --ctrl-address ${EXTERNAL_DNS:-127.0.0.1}"\
+      " --ctrl-port ${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}"\
+      " --router-address ${EXTERNAL_DNS:-127.0.0.1}"\
+      " --router-port ${ZITI_ROUTER_PORT:-3022}"\
+      " --password ${ZITI_PWD:-admin}"
+      echo "DEBUG: run command is: ziti $${@} $${ZITI_CMD}"
+      exec ziti "$${@}" $${ZITI_CMD}
+    command: -- edge quickstart --home /persistent
+    user: ${ZIGGY_UID:-1000}
+    environment:
+      HOME: /persistent
+      PFXLOG_NO_JSON: "${PFXLOG_NO_JSON:-true}"
+    volumes:
+    # store the quickstart state in a named volume; "initialize" service's mount must remain aligned to set the owner on
+    # "up"
+    - persistent:/persistent
+    # store the quickstart state on the Docker host in the same directory as this compose.yml file
+    # - ./persistent:/persistent
+    ports:
+    - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
+    - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
+    depends_on:
+      initialize:
+        condition: service_completed_successfully
+  # this service is used to initialize the persistent volume by setting the owner to the UID of the user running the
+  # quickstart container
+  initialize:
+    image: busybox
+    command: chown -Rc ${ZIGGY_UID:-1000} /persistent
+    user: root
+    environment:
+      HOME: /persistent
+      # PFXLOG_NO_JSON: "true"
+    volumes:
+    # store the quickstart state in a named volume; this mount must align with the "quickstart" service's mount
+    - persistent:/persistent
+    # store the quickstart state on the Docker host in the same directory as this compose.yml file
+    # - ./persistent:/persistent
+
+# define a custom network so that we can also define a DNS alias for the quickstart container
+networks:
+  quickstart:
+    driver: bridge
+
+volumes:
+  # this will not be used if you switch from named volume to bind mount volume
+  persistent:
+    driver: local

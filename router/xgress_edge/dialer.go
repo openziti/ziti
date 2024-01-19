@@ -99,6 +99,10 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		dialRequest.Headers[edge.PublicKeyHeader] = pk
 	}
 
+	if marker, ok := circuitId.Data[edge.ConnectionMarkerHeader]; ok {
+		dialRequest.Headers[edge.ConnectionMarkerHeader] = marker
+	}
+
 	appData, hasAppData := circuitId.Data[edge.AppDataHeader]
 	if hasAppData {
 		dialRequest.Headers[edge.AppDataHeader] = appData

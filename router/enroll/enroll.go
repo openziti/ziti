@@ -24,6 +24,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
@@ -32,10 +37,6 @@ import (
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/internal/edgerouter"
-	"net/http"
-	"net/url"
-	"os"
-	"strings"
 )
 
 type apiPost struct {
@@ -225,7 +226,7 @@ func (re *RestEnroller) Send(client *resty.Client, enrollUrl string, e *apiPost)
 		return nil, err
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("enrollment failed recieved HTTP status [%s]: %s", resp.Status(), resp.Body())
+		return nil, fmt.Errorf("enrollment failed received HTTP status [%s]: %s", resp.Status(), resp.Body())
 	}
 
 	return &envelope, nil

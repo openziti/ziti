@@ -264,9 +264,10 @@ func (c *Controller) Run() error {
 
 	capabilityMask := &big.Int{}
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateTerminatorV2, 1)
+	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSingleRouterLinkSource, 1)
 	headers := map[int32][]byte{
-		channel.HelloVersionHeader:                    versionHeader,
-		int32(ctrl_pb.ContentType_CapabilitiesHeader): capabilityMask.Bytes(),
+		channel.HelloVersionHeader:                       versionHeader,
+		int32(ctrl_pb.ControlHeaders_CapabilitiesHeader): capabilityMask.Bytes(),
 	}
 
 	if c.raftController != nil {

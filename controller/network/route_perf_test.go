@@ -58,12 +58,10 @@ func TestShortestPathAgainstEstablished(t *testing.T) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
+			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), srcRouter, dstRouter)
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
-			link.Src = srcRouter
-			link.Dst = dstRouter
 			link.addState(newLinkState(Connected))
 			network.linkController.add(link)
 			linkIdx++
@@ -184,12 +182,10 @@ func BenchmarkShortestPathPerfWithRouterChanges(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
+			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), srcRouter, dstRouter)
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
-			link.Src = srcRouter
-			link.Dst = dstRouter
 			link.addState(newLinkState(Connected))
 			network.linkController.add(link)
 			linkIdx++
@@ -278,12 +274,10 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
+			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), srcRouter, dstRouter)
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
-			link.Src = srcRouter
-			link.Dst = dstRouter
 			link.addState(newLinkState(Connected))
 			network.linkController.add(link)
 			linkIdx++
@@ -352,12 +346,10 @@ func BenchmarkMoreRealisticShortestPathPerf(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
+			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), srcRouter, dstRouter)
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
-			link.Src = srcRouter
-			link.Dst = dstRouter
 			link.addState(newLinkState(Connected))
 			network.linkController.add(link)
 			linkIdx++

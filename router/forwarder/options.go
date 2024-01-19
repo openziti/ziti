@@ -44,7 +44,7 @@ const (
 	DefaultRateLimiterQueueLength   = 5000
 	MinRateLimiterWorkerQueueLength = 1
 	MaxRateLimiterWorkerQueueLength = 50000
-	DefaultRateLimiterWorkerCount   = 5
+	DefaultRateLimiterWorkerCount   = 15
 	MinRateLimiterWorkerCount       = 1
 	MaxRateLimiterWorkerCount       = 10000
 

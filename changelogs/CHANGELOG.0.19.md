@@ -96,7 +96,7 @@ Example JSON output:
 
   Caveats:
     * Any existing host.v1 configurations that use will become invalid.
-    * ziti-tunnel and the converged router/tunneler creates local routes that are establised for `allowedSourceAddresses`, but the routes are not consistently cleaned up when `ziti-tunnel` exits. This issue will be addressed in a future release.
+    * ziti-tunnel and the converged router/tunneler creates local routes that are established for `allowedSourceAddresses`, but the routes are not consistently cleaned up when `ziti-tunnel` exits. This issue will be addressed in a future release.
 
 # Release 0.19.10
 
@@ -114,9 +114,9 @@ Example JSON output:
 * Converged Tunneler/Router (Beta 2)
     * intercept.v1 support (also in ziti-tunnel)
     * support for setting per-service hosting cost/precedence on identity
-* Identites and edge routers now support appData, which is tag data consumable by sdks
+* Identities and edge routers now support appData, which is tag data consumable by sdks
 * Edge Router Policies now expose the `isSystem` flag for system managed policies
-* ziti-tunnel no longer supports tun mode. It has been superceded by tproxy mode
+* ziti-tunnel no longer supports tun mode. It has been superseded by tproxy mode
 
 ## Fixes
 
@@ -209,7 +209,7 @@ ziti-router can now run with the tunneler embedded. It has the same capabilities
 
 This is a beta release. It should be relatively feature complete and bug-free for hosting services but intercept support is still nascent. Some features are likely to be changed based on user feedback.
 
-### Os Compatibilty
+### Os Compatibility
 
 Like ziti-tunnel, `tproxy` mode will only work on linux. `proxy` and `host` modes should work on all operating systems.
 
@@ -373,7 +373,7 @@ See here: https://github.com/openziti/edge/blob/v0.19.54/tunnel/entities/host.v1
 
 ### host.v2
 
-There is a new host configuration, `host.v2`, which should supercede `host.v1`. The primary difference from `host.v1` is that it supports multiple terminators. This means that when a service is hosted by a router, it can connect to multiple service instances if the service is horizontally scaled, or in a primary/failover setup.
+There is a new host configuration, `host.v2`, which should supersede `host.v1`. The primary difference from `host.v1` is that it supports multiple terminators. This means that when a service is hosted by a router, it can connect to multiple service instances if the service is horizontally scaled, or in a primary/failover setup.
 
 Each terminator definition is the same as a `host.v1` configuration, which one exception: `listOptions.connectTimeoutSeconds` is now `listenOptions.connectTimeout` and is specified as a duration (`5s`, `2500ms`, etc).
 

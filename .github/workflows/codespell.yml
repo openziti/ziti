@@ -1,0 +1,18 @@
+name: codespell
+
+on: pull_request
+
+jobs:
+  codespell:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run code spelling check
+        uses: codespell-project/actions-codespell@v2
+        with:
+          ignore_words_list: allos,ans,dne,noe,referr,ssudo,te,tranfer,ue
+          skip: go.*,zititest/go.*

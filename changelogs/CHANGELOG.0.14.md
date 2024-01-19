@@ -347,7 +347,7 @@ can react to terminator changes, such when a terminator is added to or removed f
 service is also notified via `NotifyEvent` whenever a session dial succeeds or fails and when a
 session for the service is ended.
 
-The fabric currently provides four strategy implementions.
+The fabric currently provides four strategy implementations.
 
 ##### `smartrouting`
 
@@ -383,6 +383,6 @@ The terminator endpoint now supports setting the static terminator cost and term
     * Endpoint: /terminators
         * Operations: PUT/POST/PATCH now take 
             * cost, type uint16, default 0
-            * prededence, type string, default 'default', valid values: required, default, failed
+            * precedence, type string, default 'default', valid values: required, default, failed
         * Operation: GET now returns staticCost, dynamicCost
 

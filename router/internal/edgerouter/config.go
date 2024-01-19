@@ -18,20 +18,21 @@ package edgerouter
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/mitchellh/mapstructure"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router"
-	"github.com/openziti/identity"
-	"github.com/openziti/transport/v2"
-	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 	"net"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/mitchellh/mapstructure"
+	"github.com/openziti/identity"
+	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/router"
+	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
 )
 
 const (
@@ -256,7 +257,7 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 					edgeListener, err := parseEdgeListenerOptions(i, address, submap)
 
 					if err != nil {
-						return fmt.Errorf("error parsing edge listner[%d]: %v", i, err)
+						return fmt.Errorf("error parsing edge listener[%d]: %v", i, err)
 					}
 
 					config.EdgeListeners = append(config.EdgeListeners, edgeListener)
@@ -310,7 +311,7 @@ func parseEdgeListenerOptions(index int, address string, edgeListenerMap map[int
 			}
 
 			if advertisePort != addressPort {
-				pfxlog.Logger().Warnf("port in [listeners[%d].options.advertise] must equal port in [listeners[%d].address] for edge binding but did not. Got [%d] [%d]", index, index, advertisePort, addressPort)
+				pfxlog.Logger().Infof("advertised port [%d] in [listeners[%d].options.advertise] does not match the listening port [%d] in [listeners[%d].address].", index, advertisePort, index, addressPort)
 			}
 
 			return &edge_ctrl_pb.Listener{
@@ -365,7 +366,7 @@ func (config *Config) loadCsr(configMap map[interface{}]interface{}, pathPrefix 
 	for _, uristr := range config.Csr.Sans.UriAddresses {
 		parsedUrl, err := url.Parse(uristr)
 		if err != nil {
-			return fmt.Errorf("invalid SAN URI ecountered in configuration file: %s", uristr)
+			return fmt.Errorf("invalid SAN URI encountered in configuration file: %s", uristr)
 		}
 		config.Csr.Sans.UriAddressesParsed = append(config.Csr.Sans.UriAddressesParsed, parsedUrl)
 	}
@@ -373,7 +374,7 @@ func (config *Config) loadCsr(configMap map[interface{}]interface{}, pathPrefix 
 	for _, ipstr := range config.Csr.Sans.IpAddresses {
 		ip := net.ParseIP(ipstr)
 		if ip == nil {
-			return fmt.Errorf("invalid SAN IP address ecountered in configuration file: %s", ipstr)
+			return fmt.Errorf("invalid SAN IP address encountered in configuration file: %s", ipstr)
 		}
 		config.Csr.Sans.IpAddressesParsed = append(config.Csr.Sans.IpAddressesParsed, ip)
 	}

@@ -17,5 +17,6 @@
 package capabilities
 
 const (
-	ControllerCreateTerminatorV2 int = 1
+	ControllerCreateTerminatorV2     int = 1
+	ControllerSingleRouterLinkSource int = 2
 )

@@ -77,14 +77,14 @@ func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
 		xli, err = self.dialSingle(linkId, address, connId, dial)
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "error dialing outgoing link [l/%s]", linkId.Token)
+		return nil, errors.Wrapf(err, "error dialing outgoing link [l/%s@%v]", linkId.Token, dial.GetIteration())
 	}
 
 	if err = self.acceptor.Accept(xli); err != nil {
 		if closeErr := xli.Close(); closeErr != nil {
 			pfxlog.Logger().WithError(closeErr).WithField("acceptErr", err).Error("error closing link after accept error")
 		}
-		return nil, errors.Wrapf(err, "error accepting link [l/%s]", linkId.Token)
+		return nil, errors.Wrapf(err, "error accepting link [l/%s@%v]", linkId.Token, dial.GetIteration())
 	}
 
 	return xli, nil
@@ -94,13 +94,16 @@ func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
 func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
 	logrus.Debugf("dialing link with split payload/ack channels [l/%s]", linkId.Token)
 
-	payloadDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, map[int32][]byte{
+	headers := channel.Headers{
 		LinkHeaderRouterId:      []byte(self.id.Token),
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderType:          {byte(PayloadChannel)},
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 		LinkHeaderBinding:       []byte(self.GetBinding()),
-	})
+	}
+	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
+
+	payloadDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, headers)
 
 	logrus.Debugf("dialing payload channel for [l/%s]", linkId.Token)
 
@@ -113,6 +116,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 			routerVersion: dial.GetRouterVersion(),
 			linkProtocol:  dial.GetLinkProtocol(),
 			dialAddress:   dial.GetAddress(),
+			iteration:     dial.GetIteration(),
 			dialed:        true,
 		},
 	}
@@ -124,13 +128,16 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 
 	logrus.Debugf("dialing ack channel for [l/%s]", linkId.Token)
 
-	ackDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, map[int32][]byte{
+	headers = channel.Headers{
 		LinkHeaderRouterId:      []byte(self.id.Token),
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderType:          {byte(AckChannel)},
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 		LinkHeaderBinding:       []byte(self.GetBinding()),
-	})
+	}
+	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
+
+	ackDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, headers)
 
 	_, err = channel.NewChannelWithTransportConfiguration("l/"+linkId.Token, ackDialer, channel.BindHandlerF(bindHandler.bindAckChannel), self.config.options, self.transportConfig)
 	if err != nil {
@@ -144,12 +151,15 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
 	logrus.Debugf("dialing link with single channel [l/%s]", linkId.Token)
 
-	payloadDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, map[int32][]byte{
+	headers := channel.Headers{
 		LinkHeaderRouterId:      []byte(self.id.Token),
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 		LinkHeaderBinding:       []byte(self.GetBinding()),
-	})
+	}
+	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
+
+	payloadDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, headers)
 
 	bindHandler := &dialBindHandler{
 		dialer: self,
@@ -160,6 +170,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 			linkProtocol:  dial.GetLinkProtocol(),
 			routerVersion: dial.GetRouterVersion(),
 			dialAddress:   dial.GetAddress(),
+			iteration:     dial.GetIteration(),
 			dialed:        true,
 		},
 	}

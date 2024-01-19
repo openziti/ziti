@@ -1811,6 +1811,7 @@ definitions:
       - destLatency
       - cost
       - down
+      - iteration
     properties:
       id:
         type: string
@@ -1831,6 +1832,8 @@ definitions:
       destLatency:
         type: integer
       cost:
+        type: integer
+      iteration:
         type: integer
   linkPatch:
     type: object

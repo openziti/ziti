@@ -17,9 +17,10 @@
 package raft
 
 import (
+	"time"
+
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"time"
 
 	"github.com/hashicorp/raft"
 	"github.com/pkg/errors"
@@ -182,7 +183,7 @@ func (self *Controller) HandleTransferLeadershipAsLeader(req *cmd_pb.TransferLea
 	}
 
 	if err := future.Error(); err != nil {
-		return errors.Wrapf(err, "error transfering leadership")
+		return errors.Wrapf(err, "error transferring leadership")
 	}
 	return nil
 }

@@ -18,6 +18,8 @@ package model
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/ast"
@@ -27,7 +29,6 @@ import (
 	"github.com/openziti/ziti/controller/models"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 func NewApiSessionManager(env Env) *ApiSessionManager {
@@ -210,7 +211,7 @@ func (self *ApiSessionManager) Stream(query string, collect func(*ApiSession, er
 	filter, err := ast.Parse(self.Store, query)
 
 	if err != nil {
-		return fmt.Errorf("could not parse query for streaming api sesions: %v", err)
+		return fmt.Errorf("could not parse query for streaming api sessions: %v", err)
 	}
 
 	return self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
@@ -230,7 +231,7 @@ func (self *ApiSessionManager) StreamIds(query string, collect func(string, erro
 	filter, err := ast.Parse(self.Store, query)
 
 	if err != nil {
-		return fmt.Errorf("could not parse query for streaming api sesions ids: %v", err)
+		return fmt.Errorf("could not parse query for streaming api sessions ids: %v", err)
 	}
 
 	return self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
