@@ -43,10 +43,12 @@ New metrics:
     * [Issue #120](https://github.com/openziti/channel/issues/120) - Allow handling new underlay instances with function instead of channel 
 
 * github.com/openziti/edge-api: [v0.26.6 -> v0.26.7](https://github.com/openziti/edge-api/compare/v0.26.6...v0.26.7)
-* github.com/openziti/sdk-golang: [v0.22.0 -> v0.22.5](https://github.com/openziti/sdk-golang/compare/v0.22.0...v0.22.5)
+* github.com/openziti/sdk-golang: [v0.22.0 -> v0.22.6](https://github.com/openziti/sdk-golang/compare/v0.22.0...v0.22.6)
 * github.com/openziti/secretstream: [v0.1.14 -> v0.1.15](https://github.com/openziti/secretstream/compare/v0.1.14...v0.1.15)
 * github.com/openziti/ziti: [v0.31.4 -> v0.32.0](https://github.com/openziti/ziti/compare/v0.31.4...v0.32.0)
+    * [Issue #1685](https://github.com/openziti/ziti/issues/1685) - Race condition where we try to create terminator after client connection is closed
     * [Issue #1678](https://github.com/openziti/ziti/issues/1678) - Add link validation utility
+    * [Issue #1673](https://github.com/openziti/ziti/issues/1673) - xgress dialers not getting passed xgress config
     * [Issue #1669](https://github.com/openziti/ziti/issues/1669) - Make sure link accepts are not single threaded
     * [Issue #1657](https://github.com/openziti/ziti/issues/1657) - Add api session rate limiter
 

@@ -112,13 +112,20 @@ func (self *hostedServiceRegistry) scanForRetries() {
 }
 
 func (self *hostedServiceRegistry) tryEstablish(terminator *edgeTerminator) {
-	terminator.state.Store(TerminatorStateEstablishing)
+	log := pfxlog.Logger().WithField("terminatorId", terminator.Id()).
+		WithField("token", terminator.token).
+		WithField("state", terminator.state.Load().String())
+
+	if !terminator.state.CompareAndSwap(TerminatorStatePendingEstablishment, TerminatorStateEstablishing) {
+		log.Info("terminator not pending, not going to try to establish")
+		return
+	}
+
 	err := self.env.GetRateLimiterPool().QueueOrError(func() {
 		self.establishTerminatorWithRetry(terminator)
 	})
 	if err != nil {
-		terminator.state.Store(TerminatorStatePendingEstablishment)
-		pfxlog.Logger().WithField("terminatorId", terminator.Id()).Info("rate limited: unable to queue to establish")
+		log.Info("rate limited: unable to queue to establish")
 		self.retriesPending = true
 	}
 }
@@ -171,7 +178,7 @@ func (self *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
 			terminator.close(false, "duplicate terminator") // don't notify, channel is already closed, we can't send messages
 			self.services.Delete(key)
 			pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
-				WithField("sessionToken", terminator.token).
+				WithField("token", terminator.token).
 				WithField("instance", terminator.instance).
 				WithField("terminatorId", terminator.terminatorId.Load()).
 				WithField("duplicateOf", newest.terminatorId.Load()).
@@ -189,7 +196,7 @@ func (self *hostedServiceRegistry) unbindSession(connId uint32, sessionToken str
 			terminator.close(false, "unbind successful") // don't notify, sdk asked us to unbind
 			self.services.Delete(key)
 			pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
-				WithField("sessionToken", sessionToken).
+				WithField("token", sessionToken).
 				WithField("terminatorId", terminator.terminatorId.Load()).
 				Info("terminator removed")
 			atLeastOneRemoved = true
@@ -212,7 +219,9 @@ func (self *hostedServiceRegistry) getRelatedTerminators(sessionToken string, pr
 }
 
 func (self *hostedServiceRegistry) establishTerminatorWithRetry(terminator *edgeTerminator) {
-	log := logrus.WithField("terminatorId", terminator.terminatorId.Load())
+	log := logrus.
+		WithField("terminatorId", terminator.terminatorId.Load()).
+		WithField("token", terminator.token)
 
 	if state := terminator.state.Load(); state != TerminatorStateEstablishing {
 		log.WithField("state", state.String()).Info("not attempting to establish terminator, not in establishing state")
@@ -228,10 +237,11 @@ func (self *hostedServiceRegistry) establishTerminatorWithRetry(terminator *edge
 			return backoff.Permanent(fmt.Errorf("terminator state is %v, stopping terminator creation for terminator %s",
 				state.String(), terminator.terminatorId.Load()))
 		}
+		if terminator.terminatorId.Load() == "" {
+			return backoff.Permanent(fmt.Errorf("terminator has been closed, stopping terminator creation"))
+		}
 
-		var err error
-		log.Info("attempting to establish terminator")
-		err = self.establishTerminator(terminator)
+		err := self.establishTerminator(terminator)
 		if err != nil && terminator.state.Load() != TerminatorStateEstablishing {
 			return backoff.Permanent(err)
 		}
@@ -260,10 +270,16 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 
 	log := pfxlog.Logger().
 		WithField("routerId", factory.env.GetRouterId().Token).
-		WithField("terminatorId", terminator.terminatorId.Load())
+		WithField("terminatorId", terminator.terminatorId.Load()).
+		WithField("token", terminator.token)
+
+	terminatorId := terminator.terminatorId.Load()
+	if terminatorId == "" {
+		return fmt.Errorf("edge link is closed, stopping terminator creation for terminator %s", terminatorId)
+	}
 
 	request := &edge_ctrl_pb.CreateTerminatorV2Request{
-		Address:        terminator.terminatorId.Load(),
+		Address:        terminatorId,
 		SessionToken:   terminator.token,
 		Fingerprints:   terminator.edgeClientConn.fingerprints.Prints(),
 		PeerData:       terminator.hostData,
@@ -281,12 +297,14 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 		return errors.New(errStr)
 	}
 
+	log.Info("sending create terminator v2 request")
+
 	err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendAndWaitForWire(ctrlCh)
 	if err != nil {
 		return err
 	}
 
-	if self.waitForTerminatorCreated(terminator.terminatorId.Load(), 10*time.Second) {
+	if self.waitForTerminatorCreated(terminatorId, 10*time.Second) {
 		return nil
 	}
 
@@ -295,7 +313,7 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 	return errors.Errorf("timeout waiting for response to create terminator request for terminator %v", terminator.terminatorId.Load())
 }
 
-func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.Message, ctrlCh channel.Channel) {
+func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.Message, _ channel.Channel) {
 	log := pfxlog.Logger().WithField("routerId", self.env.GetRouterId().Token)
 
 	response := &edge_ctrl_pb.CreateTerminatorV2Response{}
@@ -310,6 +328,11 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 	terminator, found := self.Get(response.TerminatorId)
 	if !found {
 		log.Error("no terminator found for id")
+		return
+	}
+
+	if response.Result != edge_ctrl_pb.CreateTerminatorResult_Success {
+		terminator.close(true, response.Msg)
 		return
 	}
 
