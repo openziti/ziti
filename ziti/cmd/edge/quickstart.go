@@ -31,6 +31,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -65,7 +66,7 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	cmd := &cobra.Command{
 		Use:   "quickstart",
 		Short: "runs a Controller and Router in quickstart mode",
-		Long: `runs a Controller and Router in quickstart mode. By default, this will create a totally ephemeral network, only valid while running.`,
+		Long:  `runs a Controller and Router in quickstart mode. By default, this will create a totally ephemeral network, only valid while running.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			options.out = out
 			options.errOut = errOut
@@ -381,4 +382,19 @@ func waitForController(ctrlUrl string, done chan struct{}) {
 		}
 	}
 	done <- struct{}{}
+}
+
+func IsPortListening(host string, port int, timeout time.Duration) bool {
+	// Construct the address string
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	// Attempt to establish a connection to the address
+	conn, err := net.DialTimeout("tcp", addr, timeout)
+	if err != nil {
+		return false
+	}
+
+	// Close the connection if successful and return true
+	defer conn.Close()
+	return true
 }

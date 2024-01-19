@@ -70,7 +70,7 @@ func HostnameOrNetworkName() string {
 	if val == "" {
 		h, err := os.Hostname()
 		if err != nil {
-			return "localhost"
+			return "127.0.0.1"
 		}
 		return h
 	}

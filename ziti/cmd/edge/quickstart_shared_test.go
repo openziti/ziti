@@ -74,8 +74,19 @@ func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, ident
 var zitiContext ziti.Context
 
 func Dial(_ context.Context, _ string, addr string) (net.Conn, error) {
-	service := strings.Split(addr, ":")[0] // will always get passed host:port
-	return zitiContext.Dial(service)
+	servicePort := strings.Split(addr, ":") // will always get passed host:port
+
+	// Create an options map
+	dialAppData := map[string]interface{}{
+		"dst_protocol": "tcp",
+		"dst_port":     servicePort[1],
+	}
+	jsonData, _ := json.Marshal(dialAppData)
+	options := &ziti.DialOptions{
+		AppData: jsonData,
+	}
+
+	return zitiContext.DialWithOptions(servicePort[0], options)
 }
 
 func createZitifiedHttpClient(idFile string) http.Client {

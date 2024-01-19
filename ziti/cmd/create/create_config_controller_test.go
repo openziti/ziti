@@ -974,7 +974,7 @@ func execCreateConfigControllerCommand(args []string, keys map[string]string) (C
 	// Create and run the CLI command (capture output to convert to a template struct)
 	cmd := NewCmdCreateConfigController()
 	cmd.SetArgs(args)
-	configOutput := captureOutput(func() {
+	configOutput := CaptureOutput(func() {
 		_ = cmd.Execute()
 	})
 

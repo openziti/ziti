@@ -53,15 +53,24 @@ func TestEdgeQuickstart(t *testing.T) {
 	}
 }
 
-// ziti edge secure 8080
-// ziti edge secure localhost:8080
-// ziti edge secure tcp:localhost:8080
-// ziti edge secure udp:localhost:8080
-// ziti edge secure udp:127.0.0.1:8080
-// ...
-// Protocol defaults to ["udp","tcp"] if not set
-// default address to 127.0.0.1 if not provided
-func TestZitiEdgeSecure(t *testing.T) {
+func TestZESFullParams(t *testing.T) {
+	ctrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
+	ctrlPort := helpers.GetCtrlEdgeAdvertisedPort()
+	RunZitiEdgeSecureTest(t, createZESSetup(fmt.Sprintf("tcp:%s:%s", ctrlAddy, ctrlPort)))
+}
+
+func TestZESOnlyPort(t *testing.T) {
+	ctrlPort := helpers.GetCtrlEdgeAdvertisedPort()
+	RunZitiEdgeSecureTest(t, createZESSetup(ctrlPort))
+}
+
+func TestZESNoProtocol(t *testing.T) {
+	ctrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
+	ctrlPort := helpers.GetCtrlEdgeAdvertisedPort()
+	RunZitiEdgeSecureTest(t, createZESSetup(fmt.Sprintf("%s:%s", ctrlAddy, ctrlPort)))
+}
+
+func RunZitiEdgeSecureTest(t *testing.T, setupFunc SetupFunction) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = os.Setenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS", "localhost") //force localhost
@@ -92,13 +101,130 @@ func TestZitiEdgeSecure(t *testing.T) {
 		panic("timed out waiting for controller")
 	}
 
-	// Declare an outer function
-	setupFunction := func(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string) {
+	performQuickstartTest(t, setupFunc)
+
+	cancel() //terminate the running ctrl/router
+
+	select { //wait for quickstart to clean up
+	case <-cmdComplete:
+		fmt.Println("Operation completed")
+	}
+}
+
+func TestMultipleZitiEdgeSecure(t *testing.T) {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	_ = os.Setenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS", "localhost") //force localhost
+	_ = os.Setenv("ZITI_ROUTER_NAME", "quickstart-router")
+	cmdComplete := make(chan bool)
+	qs := NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
+	go func() {
+		err := qs.Execute()
+		if err != nil {
+			log.Fatal(err)
+		}
+		cmdComplete <- true
+	}()
+
+	ctrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
+	ctrlPort := helpers.GetCtrlEdgeAdvertisedPort()
+	ctrlUrl := fmt.Sprintf("https://%s:%s", ctrlAddy, ctrlPort)
+
+	service1Name := "service1"
+	service2Name := "service2"
+	dialAddress1 := "dialAddress1"
+	dialAddress2 := "dialAddress2"
+	params := fmt.Sprintf("tcp:%s:%s", ctrlAddy, ctrlPort)
+
+	c := make(chan struct{})
+	go waitForController(ctrlUrl, c)
+	timeout, _ := time.ParseDuration("60s")
+	select {
+	case <-c:
+		//completed normally
+		log.Info("controller online")
+	case <-time.After(timeout):
+		cancel()
+		panic("timed out waiting for controller")
+	}
+
+	// Wait for the controller to become available
+	zitiAdminUsername := os.Getenv("ZITI_USER")
+	if zitiAdminUsername == "" {
+		zitiAdminUsername = "admin"
+	}
+	zitiAdminPassword := os.Getenv("ZITI_PWD")
+	if zitiAdminPassword == "" {
+		zitiAdminPassword = "admin"
+	}
+
+	// Authenticate with the controller
+	zel := NewLoginCmd(os.Stdout, os.Stderr)
+	zel.SetArgs([]string{
+		"https://127.0.0.1:1280/edge/management/v1",
+		"--username=admin",
+		"--password=admin",
+		"-y",
+	})
+	err := zel.Execute()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Run ZES once
+	zes := newSecureCmd(os.Stdout, os.Stderr)
+	zes.SetArgs([]string{
+		service1Name,
+		params,
+		fmt.Sprintf("--endpoint=%s", dialAddress1),
+	})
+	err = zes.Execute()
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+	}
+
+	// Run ZES twice
+	zes = newSecureCmd(os.Stdout, os.Stderr)
+	zes.SetArgs([]string{
+		service2Name,
+		params,
+		fmt.Sprintf("--endpoint=%s", dialAddress2),
+	})
+	err = zes.Execute()
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+	}
+
+	// Check network components for validity
+	zelc := newListCmd(os.Stdout, os.Stderr)
+	zelc.SetArgs([]string{
+		"configs",
+		"service1.host.v1",
+	})
+	//output := create.CaptureOutput(func() {
+	//	_ = zelc.Execute()
+	//})
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+	}
+
+	time.Sleep(10 * time.Minute)
+
+	cancel() //terminate the running ctrl/router
+
+	select { //wait for quickstart to clean up
+	case <-cmdComplete:
+		fmt.Println("Operation completed")
+	}
+}
+
+func createZESSetup(params string) SetupFunction {
+	return func(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string) {
 		// Run ziti edge secure with the controller edge details
 		zes := newSecureCmd(os.Stdout, os.Stderr)
 		zes.SetArgs([]string{
 			serviceName,
-			fmt.Sprintf("tcp:%s:%s", ctrlAddy, ctrlPort),
+			params,
 			fmt.Sprintf("--endpoint=%s", dialAddress),
 		})
 		err := zes.Execute()
@@ -126,75 +252,5 @@ func TestZitiEdgeSecure(t *testing.T) {
 		if err != nil {
 			fmt.Printf("Error: %s", err)
 		}
-
-	}
-
-	performQuickstartTest(t, setupFunction)
-
-	//
-	//routerName := "quickstart-router"
-	//ctx, cancel := context.WithCancel(context.Background())
-	//_ = os.Setenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS", "localhost") //force localhost
-	//_ = os.Setenv("ZITI_ROUTER_NAME", routerName)
-	//cmdComplete := make(chan bool)
-	//qs := NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
-	//go func() {
-	//	err := qs.Execute()
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//	cmdComplete <- true
-	//}()
-	//
-	//wd, _ := os.Getwd()
-	//testerName := "gotester"
-	//ctrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
-	//ctrlPort := helpers.GetCtrlEdgeAdvertisedPort()
-	//ctrlUrl := fmt.Sprintf("https://%s:%s", ctrlAddy, ctrlPort)
-	//
-	//c := make(chan struct{})
-	//go waitForController(ctrlUrl, c)
-	//timeout, _ := time.ParseDuration("60s")
-	//select {
-	//case <-c:
-	//	//completed normally
-	//	log.Info("controller online")
-	//case <-time.After(timeout):
-	//	cancel()
-	//	panic("timed out waiting for controller")
-	//}
-	//
-	//routerPort, _ := strconv.Atoi(helpers.GetZitiEdgeRouterPort())
-	//for {
-	//	t := IsPortListening("localhost", routerPort, 10*time.Second)
-	//	fmt.Printf("Waiting for router on port %d\n", routerPort)
-	//	if t {
-	//		break
-	//	}
-	//	time.Sleep(time.Second)
-	//}
-	//
-	//// Log into the controller
-	//loginCmd := NewLoginCmd(os.Stdout, os.Stderr)
-	//loginCmd.SetArgs([]string{
-	//	ctrlUrl,
-	//	fmt.Sprintf("--username=%s", "admin"),
-	//	fmt.Sprintf("--password=%s", "admin"),
-	//	"-y",
-	//})
-	//loginErr := loginCmd.Execute()
-	//if loginErr != nil {
-	//	fmt.Printf("Login error: %s", loginErr)
-	//}
-	//
-	//
-
-	// test the connection
-
-	cancel() //terminate the running ctrl/router
-
-	select { //wait for quickstart to clean up
-	case <-cmdComplete:
-		fmt.Println("Operation completed")
 	}
 }

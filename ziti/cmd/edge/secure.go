@@ -169,9 +169,18 @@ func parseInput(input string) (string, string, int, error) {
 	address := "127.0.0.1"
 	portStr := parts[len(parts)-1]
 
-	// Check if the input contains two parts (address, port)
+	// Check if the input contains two parts (address or protocol, and port)
 	if len(parts) == 2 {
-		address = parts[0]
+		// Check if the last part is a valid port
+		if _, err := strconv.Atoi(portStr); err != nil {
+			return "", "", 0, fmt.Errorf("port was not detected in input (%s)", portStr)
+		}
+		// Check if the first part is the protocol. If not, assume it's the address
+		if parts[0] == "tcp" || parts[0] == "udp" {
+			protocol = parts[0]
+		} else {
+			address = parts[0]
+		}
 	}
 
 	// Check if the input contains three parts (protocol, address, port)

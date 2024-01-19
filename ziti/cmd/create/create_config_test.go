@@ -89,7 +89,7 @@ func TestNoUnknownOutputEnvVariablesExist(t *testing.T) {
 	// Run the environment options command and capture stdout
 	cmd := NewCmdCreateConfigEnvironment()
 	cmd.SetArgs([]string{"-o", "stdout"})
-	output := captureOutput(func() {
+	output := CaptureOutput(func() {
 		_ = cmd.Execute()
 	})
 
@@ -130,7 +130,7 @@ func TestAllKnownEnvVariablesAreFoundInOutput(t *testing.T) {
 	// Run the environment options command and capture stdout
 	cmd := NewCmdCreateConfigEnvironment()
 	cmd.SetArgs([]string{"-o", "stdout"})
-	output := captureOutput(func() {
+	output := CaptureOutput(func() {
 		_ = cmd.Execute()
 	})
 
@@ -167,7 +167,7 @@ func TestAllKnownEnvVariablesAreFoundInHelpOutput(t *testing.T) {
 	// Run the environment options command and capture stdout from help
 	cmd := NewCmdCreateConfigEnvironment()
 	cmd.SetArgs([]string{"-h"})
-	output := captureOutput(func() {
+	output := CaptureOutput(func() {
 		_ = cmd.Execute()
 	})
 
@@ -203,7 +203,7 @@ func TestNoUnknownHelpEnvVariablesExist(t *testing.T) {
 	// Run the environment options command and capture stdout from help
 	cmd := NewCmdCreateConfigEnvironment()
 	cmd.SetArgs([]string{"-h"})
-	output := captureOutput(func() {
+	output := CaptureOutput(func() {
 		_ = cmd.Execute()
 	})
 
@@ -246,11 +246,11 @@ func contains(s []string, str string) bool {
 	return false
 }
 
-// captureOutput hot-swaps os.Stdout in order to redirect all output to a memory buffer. Where possible, do not use
+// CaptureOutput hot-swaps os.Stdout in order to redirect all output to a memory buffer. Where possible, do not use
 // this function and instead create optional arguments/configuration to redirect output to io.Writer instances. This
 // should only be used for functionality that we do not control. Many instances of its usage are unnecessary and should
 // be remedied with the aforementioned solution where possible.
-func captureOutput(function func()) string {
+func CaptureOutput(function func()) string {
 	oldStdOut := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w

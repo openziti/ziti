@@ -111,8 +111,8 @@ func createRouterConfig(args []string, routerOptions *CreateConfigRouterOptions,
 	setEnvByMap(keys)
 	cmd := NewCmdCreateConfigRouter(routerOptions)
 	cmd.SetArgs(args)
-	// captureOutput is used to consume output, otherwise config prints to stdout along with test results
-	output := captureOutput(func() {
+	// CaptureOutput is used to consume output, otherwise config prints to stdout along with test results
+	output := CaptureOutput(func() {
 		_ = cmd.Execute()
 	})
 
