@@ -1,9 +1,24 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package main
 
 import (
 	"embed"
 	_ "embed"
-	"fmt"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -217,7 +232,7 @@ var m = &model.Model{
 			workflow.AddAction(edge.Login("#ctrl1"))
 
 			workflow.AddAction(component.StopInParallel(models.RouterTag, 50))
-			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 2))
+			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 10))
 
 			return workflow
 		}),
@@ -229,6 +244,10 @@ var m = &model.Model{
 		"login2":   model.Bind(edge.Login("#ctrl2")),
 		"login3":   model.Bind(edge.Login("#ctrl3")),
 		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
+		"validateUp": model.Bind(model.ActionFunc(func(run model.Run) error {
+			return chaos.ValidateUp(run, "*", 50, 15*time.Second)
+		})),
+		"validateLinks": model.Bind(model.ActionFunc(validateLinks)),
 	},
 
 	Infrastructure: model.Stages{
@@ -252,22 +271,8 @@ var m = &model.Model{
 	},
 }
 
-func sowChaos(run model.Run) error {
-	controllers, err := chaos.SelectRandom(run, ".ctrl", chaos.RandomOfTotal())
-	if err != nil {
-		return err
-	}
-	routers, err := chaos.SelectRandom(run, ".router", chaos.Percentage(15))
-	if err != nil {
-		return err
-	}
-	toRestart := append(routers, controllers...)
-	fmt.Printf("restarting %v controllers and %v routers\n", len(controllers), len(routers))
-	return chaos.RestartSelected(run, toRestart, 50)
-}
-
 func main() {
-	m.AddActivationActions("stop", "bootstrap")
+	m.AddActivationActions("bootstrap")
 
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)

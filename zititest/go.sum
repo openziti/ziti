@@ -595,6 +595,8 @@ github.com/openziti/edge-api v0.26.8 h1:W1iHwVrb4hVKXWhfN8g/dl1d0RGdus6nOYbhM5ix
 github.com/openziti/edge-api v0.26.8/go.mod h1:Tm2Qn1BC0zF+F261Y8FTyPtS/UkeUtUBYoT6ueCjVbA=
 github.com/openziti/fablab v0.5.38 h1:G8ieax/d4LGeRPuMT2XHTOc18jtZTaXtPmjA+5CVO3U=
 github.com/openziti/fablab v0.5.38/go.mod h1:LstfQixYgv82aUBR8ranX2Hc9KHohFC1G5/AeaeTMwg=
+github.com/openziti/fablab v0.5.42 h1:vENJKfEba2T4sSLwlKDL/IzBYfY8iHnhc4umf6IESiY=
+github.com/openziti/fablab v0.5.42/go.mod h1:HDT06y1QX8kO8ZQrgHvZmJsvc8iRybESGtlDLDII4ks=
 github.com/openziti/foundation/v2 v2.0.36 h1:ogEIvsWur8/9mUzf9NOB4hRUyx372Uy6AmnHRcurIkY=
 github.com/openziti/foundation/v2 v2.0.36/go.mod h1:MdK2oAJSwo7iCfvVdG16ZGz47qP7nG97ovnqEdXW2kQ=
 github.com/openziti/identity v1.0.69 h1:wNgQomnv8ar2S1wge9jQK1jpqE2virOKKG8GyfTiHMQ=
@@ -1025,6 +1027,8 @@ golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4/go.mod h1:RxMgew5VJxzue5/jJ
 golang.org/x/sync v0.1.0/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.5.0 h1:60k92dhOjHxJkrqnwsfl8KuaHbn/5dl0lUPUklKo3qE=
 golang.org/x/sync v0.5.0/go.mod h1:Czt+wKu1gCyEFDUtn0jG5QVvpJ6rzVqr5aXyt9drQfk=
+golang.org/x/sync v0.6.0 h1:5BMeUDZ7vkXGfEr1x9B4bRcTH4lpkTkpdh0T/J+qjbQ=
+golang.org/x/sync v0.6.0/go.mod h1:Czt+wKu1gCyEFDUtn0jG5QVvpJ6rzVqr5aXyt9drQfk=
 golang.org/x/sys v0.0.0-20180606202747-9527bec2660b/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180823144017-11551d06cbcc/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180830151530-49385e6e1522/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
