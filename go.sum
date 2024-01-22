@@ -232,8 +232,8 @@ github.com/go-openapi/spec v0.20.14 h1:7CBlRnw+mtjFGlPDRZmAMnq35cRzI91xj03HVyUi/
 github.com/go-openapi/spec v0.20.14/go.mod h1:8EOhTpBoFiask8rrgwbLC3zmJfz4zsCUueRuPM6GNkw=
 github.com/go-openapi/strfmt v0.22.0 h1:Ew9PnEYc246TwrEspvBdDHS4BVKXy/AOVsfqGDgAcaI=
 github.com/go-openapi/strfmt v0.22.0/go.mod h1:HzJ9kokGIju3/K6ap8jL+OlGAbjpSv27135Yr9OivU4=
-github.com/go-openapi/swag v0.22.7 h1:JWrc1uc/P9cSomxfnsFSVWoE1FW6bNbrVPmpQYpCcR8=
-github.com/go-openapi/swag v0.22.7/go.mod h1:Gl91UqO+btAM0plGGxHqJcQZ1ZTy6jbmridBTsDy8A0=
+github.com/go-openapi/swag v0.22.8 h1:/9RjDSQ0vbFR+NyjGMkFTsA1IA0fmhKSThmfGZjicbw=
+github.com/go-openapi/swag v0.22.8/go.mod h1:6QT22icPLEqAM/z/TChgb4WAveCHF92+2gF0CNjHpPI=
 github.com/go-openapi/validate v0.22.6 h1:+NhuwcEYpWdO5Nm4bmvhGLW0rt1Fcc532Mu3wpypXfo=
 github.com/go-openapi/validate v0.22.6/go.mod h1:eaddXSqKeTg5XpSmj1dYyFTK/95n/XHwcOY+BMxKMyM=
 github.com/go-resty/resty/v2 v2.11.0 h1:i7jMfNOJYMp69lq7qozJP+bjgzfAzeOhuGlyDrqxT/8=
