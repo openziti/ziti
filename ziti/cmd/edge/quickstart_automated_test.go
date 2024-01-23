@@ -196,19 +196,6 @@ func TestMultipleZitiEdgeSecure(t *testing.T) {
 	}
 
 	// Check network components for validity
-	zelc := newListCmd(os.Stdout, os.Stderr)
-	zelc.SetArgs([]string{
-		"configs",
-		"service1.host.v1",
-	})
-	//output := create.CaptureOutput(func() {
-	//	_ = zelc.Execute()
-	//})
-	if err != nil {
-		fmt.Printf("Error: %s", err)
-	}
-
-	time.Sleep(10 * time.Minute)
 
 	cancel() //terminate the running ctrl/router
 
@@ -219,7 +206,7 @@ func TestMultipleZitiEdgeSecure(t *testing.T) {
 }
 
 func createZESSetup(params string) SetupFunction {
-	return func(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string) {
+	return func(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string) CleanupFunction {
 		// Run ziti edge secure with the controller edge details
 		zes := newSecureCmd(os.Stdout, os.Stderr)
 		zes.SetArgs([]string{
@@ -251,6 +238,10 @@ func createZESSetup(params string) SetupFunction {
 		err = zeui.Execute()
 		if err != nil {
 			fmt.Printf("Error: %s", err)
+		}
+
+		return func() {
+			// TODO: Cleanup
 		}
 	}
 }

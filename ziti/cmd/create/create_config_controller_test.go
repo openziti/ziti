@@ -3,6 +3,7 @@ package create
 import (
 	"fmt"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/testutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -974,7 +975,7 @@ func execCreateConfigControllerCommand(args []string, keys map[string]string) (C
 	// Create and run the CLI command (capture output to convert to a template struct)
 	cmd := NewCmdCreateConfigController()
 	cmd.SetArgs(args)
-	configOutput := CaptureOutput(func() {
+	configOutput := testutil.CaptureOutput(func() {
 		_ = cmd.Execute()
 	})
 

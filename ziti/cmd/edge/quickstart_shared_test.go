@@ -33,10 +33,11 @@ import (
 	"time"
 )
 
-type SetupFunction func(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string)
+type SetupFunction func(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string) CleanupFunction
+type CleanupFunction func()
 
-func defaultSetupFunction(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string) {
-	setupBasicBind(client, dialAddress, dialPort, advPort, advAddy, serviceName, hostingRouterName, testerUsername)
+func defaultSetupFunction(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string) CleanupFunction {
+	return setupBasicBind(client, dialAddress, dialPort, advPort, advAddy, serviceName, hostingRouterName, testerUsername)
 }
 
 func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, identityID string) *ziti.Config {
@@ -499,7 +500,8 @@ func performQuickstartTest(t *testing.T, setupFunc SetupFunction) {
 	}
 	defer func() { _ = deleteEdgeRouterPolicyById(client, erp.Payload.Data.ID) }()
 
-	setupFunc(client, dialAddress, dialPort, advPort, advAddy, serviceName, hostingRouterName, testerUsername)
+	cleanupFunc := setupFunc(client, dialAddress, dialPort, advPort, advAddy, serviceName, hostingRouterName, testerUsername)
+	defer cleanupFunc()
 
 	// Test connectivity with private edge router, wait some time for the terminator to be created
 	currentCount := getTerminatorCountByRouterName(client, hostingRouterName)
@@ -521,7 +523,7 @@ func performQuickstartTest(t *testing.T, setupFunc SetupFunction) {
 	fmt.Println(string(body))
 }
 
-func setupBasicBind(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string) {
+func setupBasicBind(client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, advPort string, advAddy string, serviceName string, hostingRouterName string, testerUsername string) CleanupFunction {
 
 	// Allow dialing the service using an intercept config (intercept because we'll be using the SDK)
 	dialSvcConfig := createInterceptV1ServiceConfig(client, "basic.smoke.dial", []string{"tcp"}, []string{dialAddress}, dialPort, dialPort)
@@ -537,12 +539,20 @@ func setupBasicBind(client *rest_management_api_client.ZitiEdgeManagement, dialA
 	fmt.Println("finding hostingRouterName: ", hostingRouterName)
 	hostRouterIdent := getIdentityByName(client, hostingRouterName)
 	webTestService := getServiceByName(client, serviceName)
-	createServicePolicy(client, "basic.web.smoke.test.service.bind", rest_model.DialBindBind, rest_model.Roles{"@" + *hostRouterIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
+	bindSP := createServicePolicy(client, "basic.web.smoke.test.service.bind", rest_model.DialBindBind, rest_model.Roles{"@" + *hostRouterIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
 
 	// Create a service policy to allow tester to dial the service
 	fmt.Println("finding testerUsername: ", testerUsername)
 	testerIdent := getIdentityByName(client, testerUsername)
-	createServicePolicy(client, "basic.web.smoke.test.service.dial", rest_model.DialBindDial, rest_model.Roles{"@" + *testerIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
+	dialSP := createServicePolicy(client, "basic.web.smoke.test.service.dial", rest_model.DialBindDial, rest_model.Roles{"@" + *testerIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
+
+	return func() {
+		_ = deleteServiceConfigByID(client, dialSvcConfig.ID)
+		_ = deleteServiceConfigByID(client, bindSvcConfig.ID)
+		_ = deleteServiceByID(client, *webTestService.ID)
+		_ = deleteServicePolicyByID(client, bindSP.ID)
+		_ = deleteServicePolicyByID(client, dialSP.ID)
+	}
 }
 
 func toPtr[T any](in T) *T {
