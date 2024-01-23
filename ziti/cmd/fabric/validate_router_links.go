@@ -107,7 +107,7 @@ func (self *validateRouterLinksAction) validateRouterLinks(_ *cobra.Command, arg
 		case routerDetail := <-self.eventNotify:
 			result := "validation successful"
 			if !routerDetail.ValidateSuccess {
-				result = fmt.Sprintf("error: unable to validation (%s)", routerDetail.Message)
+				result = fmt.Sprintf("error: unable to validate (%s)", routerDetail.Message)
 				errCount++
 			}
 			fmt.Printf("routerId: %s, routerName: %v, links: %v, %s\n",
