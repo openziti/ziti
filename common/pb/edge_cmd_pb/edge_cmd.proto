@@ -13,6 +13,7 @@ enum CommandType {
   CreateTransitRouterType = 1003;
   CreateIdentityWithEnrollmentsType = 1004;
   UpdateServiceConfigsType = 1005;
+  ReEnrollEdgeRouterType = 1006;
 }
 
 message ChangeContext {
@@ -181,6 +182,11 @@ message EdgeRouter {
   uint32 cost = 13;
   bool noTraversal = 14;
   bool disabled = 15;
+}
+
+message ReEnrollEdgeRouterCmd {
+  string edgeRouterId = 1;
+  ChangeContext ctx = 2;
 }
 
 message CreateEdgeRouterCmd {
