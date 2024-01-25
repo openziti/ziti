@@ -80,17 +80,24 @@ type linkState struct {
 	allowedDials   int64
 	ctrlsNotified  bool
 	linkFaults     []linkFault
+	dialActive     atomic.Bool
+	link           xlink.Xlink
 }
 
 func (self *linkState) updateStatus(status linkStatus) {
-	log := pfxlog.Logger().
-		WithField("key", self.linkKey).
-		WithField("oldState", self.status).
-		WithField("newState", status).
-		WithField("linkId", self.linkId).
-		WithField("iteration", self.dialAttempts.Load())
-	self.status = status
-	log.Info("status updated")
+	if self.status != status {
+		log := pfxlog.Logger().
+			WithField("key", self.linkKey).
+			WithField("oldState", self.status).
+			WithField("newState", status).
+			WithField("linkId", self.linkId).
+			WithField("iteration", self.dialAttempts.Load())
+		self.status = status
+		log.Info("status updated")
+		if self.status != StatusEstablished {
+			self.link = nil
+		}
+	}
 }
 
 func (self *linkState) GetLinkKey() string {

@@ -115,7 +115,7 @@ edge:
     # the smallest window size for auth attempts
     minSize: 5
     # the largest allowed window size for auth attempts
-    maxSize: 250
+    maxSize: 100
 
   # This section represents the configuration of the Edge API that is served over HTTPS
   api:

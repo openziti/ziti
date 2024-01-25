@@ -33,9 +33,12 @@ import (
 
 func Test_AdaptiveRateLimiter(t *testing.T) {
 	cfg := AdaptiveRateLimiterConfig{
-		Enabled: true,
-		MaxSize: 250,
-		MinSize: 5,
+		Enabled:          true,
+		MaxSize:          250,
+		MinSize:          5,
+		WorkTimerMetric:  "workTime",
+		QueueSizeMetric:  "queueSize",
+		WindowSizeMetric: "windowSize",
 	}
 
 	registry := metrics.NewRegistry("test", nil)

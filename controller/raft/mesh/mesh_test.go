@@ -1,8 +1,8 @@
 package mesh
 
 import (
-	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/controller/event"
 	"runtime"
 	"testing"
 	"time"
@@ -59,7 +59,7 @@ func Test_AddPeer_PassesReadonlyWhenVersionsMatch(t *testing.T) {
 
 	p := &Peer{Version: testVersion("1")}
 
-	m.PeerConnected(p)
+	assert.NoError(t, m.PeerConnected(p))
 	assert.Equal(t, false, m.readonly.Load(), "Expected readonly to be false, got ", m.readonly.Load())
 }
 
@@ -72,7 +72,7 @@ func Test_AddPeer_TurnsReadonlyWhenVersionsDoNotMatch(t *testing.T) {
 
 	p := &Peer{Version: testVersion("dne")}
 
-	m.PeerConnected(p)
+	assert.NoError(t, m.PeerConnected(p))
 	assert.Equal(t, true, m.readonly.Load(), "Expected readonly to be true, got ", m.readonly.Load())
 }
 

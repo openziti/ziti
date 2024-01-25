@@ -38,6 +38,10 @@ func (h *routerLinkHandler) ContentType() int32 {
 }
 
 func (h *routerLinkHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	if !h.r.Connected.Load() || ch.IsClosed() {
+		return
+	}
+
 	log := pfxlog.ContextLogger(ch.Label())
 
 	link := &ctrl_pb.RouterLinks{}
@@ -46,7 +50,7 @@ func (h *routerLinkHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 		return
 	}
 
-	go h.HandleLinks(link)
+	h.HandleLinks(link)
 }
 
 func (h *routerLinkHandler) HandleLinks(links *ctrl_pb.RouterLinks) {

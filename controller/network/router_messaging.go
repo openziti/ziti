@@ -19,8 +19,8 @@ package network
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	log "github.com/sirupsen/logrus"
 	"sync/atomic"
 	"time"
@@ -142,16 +142,26 @@ func (self *RouterMessaging) syncStates() {
 					State:     ctrl_pb.PeerState_Healthy,
 					Listeners: router.Listeners,
 				})
-			} else if router, _ = self.managers.Routers.Read(routerId); router != nil {
-				changes.Changes = append(changes.Changes, &ctrl_pb.PeerStateChange{
-					Id:    routerId,
-					State: ctrl_pb.PeerState_Unhealthy,
-				})
 			} else {
-				changes.Changes = append(changes.Changes, &ctrl_pb.PeerStateChange{
-					Id:    routerId,
-					State: ctrl_pb.PeerState_Removed,
-				})
+				exists, err := self.managers.Routers.Exists(routerId)
+				if exists && err == nil {
+					changes.Changes = append(changes.Changes, &ctrl_pb.PeerStateChange{
+						Id:    routerId,
+						State: ctrl_pb.PeerState_Unhealthy,
+					})
+				} else if err != nil {
+					pfxlog.Logger().WithError(err).
+						WithField("notifyRouterId", notifyRouter).
+						WithField("routerId", routerId).
+						Error("failed to check if router exists")
+				}
+
+				if !exists && err == nil {
+					changes.Changes = append(changes.Changes, &ctrl_pb.PeerStateChange{
+						Id:    routerId,
+						State: ctrl_pb.PeerState_Removed,
+					})
+				}
 			}
 		}
 

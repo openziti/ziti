@@ -47,17 +47,18 @@ type LinkDest struct {
 }
 
 type LinkState struct {
-	Id             string   `json:"id"`
-	Key            string   `json:"key"`
-	Status         string   `json:"status"`
-	DialAttempts   uint64   `json:"dialAttempts"`
-	ConnectedCount uint64   `json:"connectedCount"`
-	RetryDelay     string   `json:"retryDelay"`
-	NextDial       string   `json:"nextDial"`
-	TargetAddress  string   `json:"targetAddress"`
-	TargetGroups   []string `json:"targetGroups"`
-	TargetBinding  string   `json:"targetBinding"`
-	DialerGroups   []string `json:"dialerGroups"`
-	DialerBinding  string   `json:"dialerBinding"`
-	CtrlsNotified  bool     `json:"ctrlsNotified"`
+	Id                string   `json:"id"`
+	Key               string   `json:"key"`
+	Status            string   `json:"status"`
+	DialAttempts      uint64   `json:"dialAttempts"`
+	ConnectedCount    uint64   `json:"connectedCount"`
+	RetryDelay        string   `json:"retryDelay"`
+	NextDial          string   `json:"nextDial"`
+	TargetAddress     string   `json:"targetAddress"`
+	TargetGroups      []string `json:"targetGroups"`
+	TargetBinding     string   `json:"targetBinding"`
+	DialerGroups      []string `json:"dialerGroups"`
+	DialerBinding     string   `json:"dialerBinding"`
+	CtrlsNotified     bool     `json:"ctrlsNotified"`
+	EstablishedLinkId string   `json:"establishedLinkId"`
 }

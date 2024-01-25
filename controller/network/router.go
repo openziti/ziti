@@ -197,7 +197,7 @@ func (self *RouterManager) ApplyCreate(cmd *command.CreateEntityCommand[*Router]
 	err := self.db.Update(ctx, func(ctx boltz.MutateContext) error {
 		return self.store.Create(ctx, router.toBolt())
 	})
-	if err != nil {
+	if err == nil {
 		self.cache.Set(router.Id, router)
 	}
 	return err
@@ -214,6 +214,15 @@ func (self *RouterManager) Read(id string) (entity *Router, err error) {
 	return entity, err
 }
 
+func (self *RouterManager) Exists(id string) (bool, error) {
+	exists := false
+	err := self.db.View(func(tx *bbolt.Tx) error {
+		exists = self.store.IsEntityPresent(tx, id)
+		return nil
+	})
+	return exists, err
+}
+
 func (self *RouterManager) readUncached(id string) (*Router, error) {
 	entity := &Router{}
 	err := self.db.View(func(tx *bbolt.Tx) error {
@@ -226,7 +235,7 @@ func (self *RouterManager) readUncached(id string) (*Router, error) {
 }
 
 func (self *RouterManager) readInTx(tx *bbolt.Tx, id string) (*Router, error) {
-	if router, found := self.cache.Get(id); found {
+	if router, _ := self.cache.Get(id); router != nil {
 		return router, nil
 	}
 
@@ -345,7 +354,7 @@ func (self *RouterManager) UpdateTerminators(router *Router, ctx boltz.MutateCon
 
 func (self *RouterManager) HandleRouterDelete(id string) {
 	log := pfxlog.Logger().WithField("routerId", id)
-	log.Debug("processing router delete")
+	log.Info("processing router delete")
 	self.cache.Remove(id)
 
 	// if we close the control channel, the router will get removed from the connected cache. We don't do it

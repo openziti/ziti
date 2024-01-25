@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
@@ -36,13 +37,14 @@ func sowChaos(run model.Run) error {
 	if err != nil {
 		return err
 	}
-	routers, err := chaos.SelectRandom(run, ".router", chaos.Percentage(15))
+	time.Sleep(5 * time.Second)
+	routers, err := chaos.SelectRandom(run, ".router", chaos.PercentageRange(10, 75))
 	if err != nil {
 		return err
 	}
 	toRestart := append(routers, controllers...)
 	fmt.Printf("restarting %v controllers and %v routers\n", len(controllers), len(routers))
-	return chaos.RestartSelected(run, toRestart, 50)
+	return chaos.RestartSelected(run, toRestart, 100)
 }
 
 func validateLinks(run model.Run) error {
@@ -108,7 +110,19 @@ func validateLinksForCtrl(c *model.Component, deadline time.Time) error {
 		return fmt.Errorf("fail to reach expected link count of 79800 on controller %v", c.Id)
 	}
 
-	return validateRouterLinks(c.Id, clients)
+	for {
+		count, err := validateRouterLinks(c.Id, clients)
+		if err == nil {
+			return nil
+		}
+
+		if time.Now().After(deadline) {
+			return err
+		}
+
+		logger.Infof("current link errors: %v, elapsed time: %v", count, time.Since(start))
+		time.Sleep(15 * time.Second)
+	}
 }
 
 func getLinkCount(clients *zitirest.Clients) (int64, error) {
@@ -128,7 +142,7 @@ func getLinkCount(clients *zitirest.Clients) (int64, error) {
 	return linkCount, nil
 }
 
-func validateRouterLinks(id string, clients *zitirest.Clients) error {
+func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
 	logger := pfxlog.Logger().WithField("ctrl", id)
 
 	closeNotify := make(chan struct{})
@@ -153,8 +167,12 @@ func validateRouterLinks(id string, clients *zitirest.Clients) error {
 
 	ch, err := clients.NewWsMgmtChannel(channel.BindHandlerF(bindHandler))
 	if err != nil {
-		return err
+		return 0, err
 	}
+
+	defer func() {
+		_ = ch.Close()
+	}()
 
 	request := &mgmt_pb.ValidateRouterLinksRequest{
 		Filter: "limit none",
@@ -163,42 +181,38 @@ func validateRouterLinks(id string, clients *zitirest.Clients) error {
 
 	response := &mgmt_pb.ValidateRouterLinksResponse{}
 	if err = protobufs.TypedResponse(response).Unmarshall(responseMsg, err); err != nil {
-		return err
+		return 0, err
 	}
 
 	if !response.Success {
-		return fmt.Errorf("failed to start link validation: %s", response.Message)
+		return 0, fmt.Errorf("failed to start link validation: %s", response.Message)
 	}
 
 	logger.Infof("started validation of %v routers", response.RouterCount)
 
 	expected := response.RouterCount
 
+	invalid := 0
 	for expected > 0 {
 		select {
 		case <-closeNotify:
 			fmt.Printf("channel closed, exiting")
-			return nil
+			return 0, errors.New("unexpected close of mgmt channel")
 		case routerDetail := <-eventNotify:
-			result := "validation successful"
 			if !routerDetail.ValidateSuccess {
-				return fmt.Errorf("error: unable to validate on controller %s (%s)", routerDetail.Message, id)
+				return invalid, fmt.Errorf("error: unable to validate on controller %s (%s)", routerDetail.Message, id)
 			}
-
 			for _, linkDetail := range routerDetail.LinkDetails {
-
 				if !linkDetail.IsValid {
-					fmt.Printf("routerId: %s, routerName: %v, links: %v, %s\n",
-						routerDetail.RouterId, routerDetail.RouterName, len(routerDetail.LinkDetails), result)
-					fmt.Printf("\tlinkId: %s, destConnected: %v, ctrlState: %v, routerState: %v, dest: %v, dialed: %v \n",
-						linkDetail.LinkId, linkDetail.DestConnected, linkDetail.CtrlState, linkDetail.RouterState.String(),
-						linkDetail.DestRouterId, linkDetail.Dialed)
-					return fmt.Errorf("router link validation error on %s", id)
+					invalid++
 				}
 			}
 			expected--
 		}
 	}
-	logger.Infof("link validation of %v routers successful", response.RouterCount)
-	return nil
+	if invalid == 0 {
+		logger.Infof("link validation of %v routers successful", response.RouterCount)
+		return invalid, nil
+	}
+	return invalid, fmt.Errorf("invalid links found")
 }

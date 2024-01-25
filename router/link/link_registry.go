@@ -22,6 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/capabilities"
@@ -119,18 +120,28 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	log := logrus.WithField("dest", link.DestinationId()).
 		WithField("linkProtocol", link.LinkProtocol()).
 		WithField("newLinkId", link.Id()).
-		WithField("newLinkIteration", link.Iteration())
+		WithField("newLinkIteration", link.Iteration()).
+		WithField("dialed", link.IsDialed())
 
 	if link.IsClosed() {
 		log.Info("link being registered, but is already closed, skipping registration")
 		return nil, false
 	}
+
 	if existing, _ := self.GetLink(link.Key()); existing != nil {
-		log = log.WithField("currentLinkId", existing.Id())
-		log = log.WithField("currentLinkIteration", existing.Iteration())
+		log = log.WithField("currentLinkId", existing.Id()).
+			WithField("currentLinkIteration", existing.Iteration())
+
+		if existing == link {
+			log.Warn("link was re-applied, should not happen, not making any changes")
+			debugz.DumpLocalStack()
+			return nil, true
+		}
 
 		// if the id is the same we want to throw away the older one, since the new one is a replacement
 		if existing.Id() < link.Id() {
+			log.Info("duplicate link detected. closing other link (current link id is < than new link id)")
+
 			// give the other side a chance to close the link first and report it as a duplicate
 			time.AfterFunc(30*time.Second, func() {
 				if err := link.Close(); err != nil {
@@ -165,7 +176,7 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 				}
 			})
 
-			time.AfterFunc(5*time.Minute, func() {
+			time.AfterFunc(time.Minute, func() {
 				_ = existing.Close()
 			})
 		}()
@@ -177,6 +188,9 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.linkMapLocks.Unlock()
 
 	self.updateLinkStateEstablished(link)
+
+	log.Info("link registered")
+
 	return nil, true
 }
 
@@ -263,7 +277,10 @@ func (self *linkRegistryImpl) Run(env.RouterEnv) error {
 }
 
 func (self *linkRegistryImpl) Iter() <-chan xlink.Xlink {
+	self.linkMapLocks.RLock()
 	result := make(chan xlink.Xlink, len(self.linkMap))
+	self.linkMapLocks.RUnlock()
+
 	go func() {
 		self.linkMapLocks.RLock()
 		defer self.linkMapLocks.RUnlock()
@@ -276,6 +293,7 @@ func (self *linkRegistryImpl) Iter() <-chan xlink.Xlink {
 		}
 		close(result)
 	}()
+
 	return result
 }
 
@@ -283,6 +301,7 @@ func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 	self.Lock()
 	defer self.Unlock()
 
+	pfxlog.Logger().WithField("ctrlId", ch.Id()).Info("resending link states after reconnect")
 	alwaysSend := !capabilities.IsCapable(ch, capabilities.ControllerSingleRouterLinkSource)
 
 	routerLinks := &ctrl_pb.RouterLinks{}
@@ -435,13 +454,15 @@ func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 
 	couldDial := state.status != StatusEstablished && state.status != StatusDialing && state.nextDial.Before(time.Now())
 
-	if couldDial {
+	if couldDial && state.dialActive.CompareAndSwap(false, true) {
 		state.updateStatus(StatusDialing)
 		iteration := state.dialAttempts.Add(1)
 		log = log.WithField("linkId", state.linkId).WithField("iteration", iteration)
 		log.Info("queuing link to dial")
 
 		err := self.env.GetLinkDialerPool().QueueOrError(func() {
+			defer state.dialActive.Store(false)
+
 			link, _ := self.GetLink(state.linkKey)
 			if link != nil {
 				log.Info("link already present, attempting to mark established")
@@ -458,15 +479,12 @@ func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 			}
 
 			existing, success := self.DialSucceeded(link)
-			if !success {
-				if existing != nil {
-					self.updateLinkStateEstablished(link)
-				} else {
-					self.dialFailed(state)
-				}
+			if !success && existing == nil {
+				self.dialFailed(state)
 			}
 		})
 		if err != nil {
+			state.dialActive.Store(false)
 			log.WithError(err).Error("unable to queue link dial, see pool error")
 			state.updateStatus(StatusQueueFailed)
 			state.dialFailed(self)
@@ -637,7 +655,8 @@ func (self *linkRegistryImpl) sendNewLinks(links []stateAndLink) {
 				allSent = false
 
 				for _, pair := range links {
-					log.WithField("linkId", pair.link.Id()).
+					log.WithError(err).
+						WithField("linkId", pair.link.Id()).
 						WithField("iteration", pair.link.Iteration()).
 						Info("failed to notify controller of new link")
 				}
@@ -686,6 +705,9 @@ func (self *linkRegistryImpl) sendLinkFaults(list []stateAndFaults) {
 					} else {
 						log.Info("notified controller of link fault")
 					}
+				} else if ctrl.TimeSinceLastContact() < 2*time.Minute {
+					// if this is a brief outage, need to keep trying, otherwise there are potential race conditions
+					allSent = false
 				}
 			}
 			if allSent {
