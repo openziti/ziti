@@ -30,7 +30,7 @@ func New() intercept.Interceptor {
 	return &interceptor{}
 }
 
-func (p interceptor) Intercept(*entities.Service, dns.Resolver, intercept.AddressTracker) error {
+func (p interceptor) Intercept(*entities.Service, dns.Resolver, intercept.AddressTracker, intercept.TopTracker, intercept.AddressStack) error {
 	return errors.New("can not intercept services in host mode")
 }
 
@@ -38,6 +38,6 @@ func (p interceptor) Stop() {
 	pfxlog.Logger().Info("stopping host interceptor")
 }
 
-func (p interceptor) StopIntercepting(string, intercept.AddressTracker) error {
+func (p interceptor) StopIntercepting(string, intercept.AddressTracker, intercept.AddressStack) error {
 	return errors.New("StopIntercepting not implemented by host interceptor")
 }

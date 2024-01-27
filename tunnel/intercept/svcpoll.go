@@ -50,6 +50,8 @@ func NewServiceListenerGroup(interceptor Interceptor, resolver dns.Resolver) *Se
 		resolver:       resolver,
 		healthCheckMgr: health.NewManager(),
 		addrTracker:    addrTracker{},
+		topTracker:     topTracker{},
+		addrStack:      &addrStack{},
 	}
 }
 
@@ -58,6 +60,8 @@ type ServiceListenerGroup struct {
 	resolver       dns.Resolver
 	healthCheckMgr health.Manager
 	addrTracker    AddressTracker
+	topTracker     TopTracker
+	addrStack      AddressStack
 	listener       []*ServiceListener
 	sync.Mutex
 }
@@ -68,6 +72,8 @@ func (self *ServiceListenerGroup) NewServiceListener() *ServiceListener {
 		resolver:       self.resolver,
 		healthCheckMgr: self.healthCheckMgr,
 		addrTracker:    self.addrTracker,
+		topTracker:     self.topTracker,
+		addrStack:      self.addrStack,
 		services:       map[string]*entities.Service{},
 		Mutex:          &self.Mutex,
 	}
@@ -84,6 +90,9 @@ func (self *ServiceListenerGroup) WaitForShutdown() {
 		break
 	}
 
+	self.Lock()
+	defer self.Unlock()
+
 	for _, listener := range self.listener {
 		listener.stop()
 	}
@@ -97,6 +106,8 @@ func NewServiceListener(interceptor Interceptor, resolver dns.Resolver) *Service
 		resolver:       resolver,
 		healthCheckMgr: health.NewManager(),
 		addrTracker:    addrTracker{},
+		topTracker:     topTracker{},
+		addrStack:      &addrStack{},
 		services:       map[string]*entities.Service{},
 		Mutex:          &sync.Mutex{},
 	}
@@ -109,6 +120,8 @@ type ServiceListener struct {
 	healthCheckMgr health.Manager
 	services       map[string]*entities.Service
 	addrTracker    AddressTracker
+	topTracker     TopTracker
+	addrStack      AddressStack
 	*sync.Mutex
 }
 
@@ -214,7 +227,7 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 
 		// not all interceptors need a config, specifically proxy doesn't need one
 		log.Infof("starting tunnel for newly available service %s", *svc.Name)
-		if err := self.interceptor.Intercept(svc, self.resolver, self.addrTracker); err != nil {
+		if err := self.interceptor.Intercept(svc, self.resolver, self.addrTracker, self.topTracker, self.addrStack); err != nil {
 			log.Errorf("failed to intercept service: %v", err)
 		}
 	}
@@ -266,7 +279,7 @@ func (self *ServiceListener) removeService(svc *entities.Service) {
 	if previousService != nil {
 		if previousService.InterceptV1Config != nil {
 			log.Infof("stopping tunnel for unavailable service: %s", *previousService.Name)
-			err := self.interceptor.StopIntercepting(*previousService.Name, self.addrTracker)
+			err := self.interceptor.StopIntercepting(*previousService.Name, self.addrTracker, self.addrStack)
 			if err != nil {
 				log.WithError(err).Errorf("failed to stop intercepting service: %v", *previousService.Name)
 			}
@@ -404,9 +417,62 @@ func replaceTemplatized(input string, currentIdentity *rest_model.IdentityDetail
 	}
 }
 
+type AddressStack interface {
+	Push(addr string)
+	Pop() string
+}
+
+type addrStack struct {
+	addresses []string
+}
+
+func (s *addrStack) Push(address string) {
+	s.addresses = append(s.addresses, address)
+}
+
+func (s *addrStack) Pop() string {
+	length := len(s.addresses)
+	if length == 0 {
+		return "0.0.0.0"
+	} else {
+		address := s.addresses[length-1]
+		s.addresses = s.addresses[:length-1]
+		return address
+	}
+}
+
+type TopTracker interface {
+	AddAddress(key string, addr string)
+	RemoveAddress(key string) bool
+	GetAddress(key string) string
+}
+
+type topTracker map[string]string
+
+func (self topTracker) AddAddress(key string, addr string) {
+	logrus.Debugf("adding %v from address tracker: %+v", addr, self)
+	self[key] = addr
+}
+
+func (self topTracker) GetAddress(key string) string {
+	address, found := self[key]
+	if !found {
+		return ""
+	} else {
+		return address
+	}
+}
+
+func (self topTracker) RemoveAddress(key string) bool {
+	logrus.Debugf("trying to remove %v from  top tracker: %+v", key, self)
+	delete(self, key)
+	return true
+}
+
 type AddressTracker interface {
 	AddAddress(addr string)
 	RemoveAddress(addr string) bool
+	IsKey(addr string) bool
 }
 
 type addrTracker map[string]int
@@ -427,4 +493,10 @@ func (self addrTracker) RemoveAddress(addr string) bool {
 
 	self[addr] = useCnt - 1
 	return false
+}
+
+func (self addrTracker) IsKey(addr string) bool {
+	_, exists := self[addr]
+	logrus.Debugf("check if %v is allready being tracked: %+v", addr, exists)
+	return exists
 }

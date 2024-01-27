@@ -33,8 +33,8 @@ const (
 
 type Interceptor interface {
 	Stop()
-	Intercept(service *entities.Service, resolver dns.Resolver, tracker AddressTracker) error
-	StopIntercepting(serviceName string, tracker AddressTracker) error
+	Intercept(service *entities.Service, resolver dns.Resolver, tracker AddressTracker, topTracker TopTracker, addrStack AddressStack) error
+	StopIntercepting(serviceName string, tracker AddressTracker, addrStack AddressStack) error
 }
 
 // Interceptors need to maintain state for services that are being intercepted.
@@ -80,9 +80,9 @@ type InterceptAddrCB interface {
 	Apply(*InterceptAddress)
 }
 
-func GetInterceptAddresses(service *entities.Service, protocols []string, resolver dns.Resolver, addressCB InterceptAddrCB) error {
+func GetInterceptAddresses(service *entities.Service, protocols []string, resolver dns.Resolver, topTracker TopTracker, addrStack AddressStack, addressCB InterceptAddrCB) error {
 	for _, addr := range service.InterceptV1Config.Addresses {
-		err := getInterceptIP(service, addr, resolver, func(ip net.IP, ipNet *net.IPNet) {
+		err := getInterceptIP(service, addr, resolver, topTracker, addrStack, func(ip net.IP, ipNet *net.IPNet) {
 			for _, protocol := range protocols {
 				for _, portRange := range service.InterceptV1Config.PortRanges {
 					addr := &InterceptAddress{

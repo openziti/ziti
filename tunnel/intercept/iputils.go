@@ -61,9 +61,8 @@ func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
 	return f
 }
 
-func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver, addrCB func(net.IP, *net.IPNet)) error {
+func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver, topTracker TopTracker, addrStack AddressStack, addrCB func(net.IP, *net.IPNet)) error {
 	logger := pfxlog.Logger()
-
 	if hostname[0] == '*' {
 		err := resolver.AddDomain(hostname, func(host string) (net.IP, error) {
 			var ip net.IP
@@ -84,8 +83,22 @@ func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolve
 		addrCB(ip, ipNet)
 		return err
 	}
-
-	ip, _ = utils.NextIP(dnsIpLow, dnsIpHigh)
+	ip = net.ParseIP(addrStack.Pop())
+	if ip.String() == "0.0.0.0" {
+		if topTracker.GetAddress("topIP") == "" {
+			ip = net.ParseIP(dnsIpLow.String())
+		} else if topTracker.GetAddress("topIP") == dnsIpHigh.String() {
+			return fmt.Errorf("next address is outside of configured dns range: %s", hostname)
+		} else {
+			topIP := net.ParseIP(topTracker.GetAddress("topIP"))
+			utils.IncIP(topIP)
+			ip = topIP
+		}
+		topTracker.AddAddress("topIP", ip.String())
+		pfxlog.Logger().Debug("top-assigned-ip=%s", topTracker)
+	} else {
+		pfxlog.Logger().Infof("Popped=%v from addrStack", ip.String())
+	}
 	if ip == nil {
 		return fmt.Errorf("invalid IP address or unresolvable hostname: %s", hostname)
 	}

@@ -19,12 +19,6 @@ package tproxy
 import (
 	"context"
 	"fmt"
-	"net"
-	"os/exec"
-	"strings"
-	"syscall"
-	"time"
-
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
@@ -41,6 +35,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+	"net"
+	"os/exec"
+	"strings"
+	"syscall"
+	"time"
 )
 
 const (
@@ -140,11 +139,23 @@ func New(config Config) (intercept.Interceptor, error) {
 	return self, nil
 }
 
+type alwaysRemoveAddressStack struct{}
+
+func (a alwaysRemoveAddressStack) Push(string) {}
+
+func (a alwaysRemoveAddressStack) Pop() string {
+	return ""
+}
+
 type alwaysRemoveAddressTracker struct{}
 
 func (a alwaysRemoveAddressTracker) AddAddress(string) {}
 
 func (a alwaysRemoveAddressTracker) RemoveAddress(string) bool {
+	return true
+}
+
+func (a alwaysRemoveAddressTracker) IsKey(string) bool {
 	return true
 }
 
@@ -160,14 +171,14 @@ type interceptor struct {
 
 func (self *interceptor) Stop() {
 	self.serviceProxies.IterCb(func(key string, proxy *tProxy) {
-		proxy.Stop(alwaysRemoveAddressTracker{})
+		proxy.Stop(alwaysRemoveAddressTracker{}, alwaysRemoveAddressStack{})
 	})
 	self.serviceProxies.Clear()
 	self.cleanupChains()
 }
 
-func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker) error {
-	tproxy, err := self.newTproxy(service, resolver, tracker)
+func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker, topTracker intercept.TopTracker, addrStack intercept.AddressStack) error {
+	tproxy, err := self.newTproxy(service, resolver, tracker, topTracker, addrStack)
 	if err != nil {
 		return err
 	}
@@ -175,9 +186,9 @@ func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resol
 	return nil
 }
 
-func (self *interceptor) StopIntercepting(serviceName string, tracker intercept.AddressTracker) error {
+func (self *interceptor) StopIntercepting(serviceName string, tracker intercept.AddressTracker, addrStack intercept.AddressStack) error {
 	if proxy, found := self.serviceProxies.Get(serviceName); found {
-		proxy.Stop(tracker)
+		proxy.Stop(tracker, addrStack)
 		self.serviceProxies.Remove(serviceName)
 	}
 	return nil
@@ -195,11 +206,13 @@ func (self *interceptor) cleanupChains() {
 	}
 }
 
-func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker) (*tProxy, error) {
+func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker, topTracker intercept.TopTracker, addrStack intercept.AddressStack) (*tProxy, error) {
 	t := &tProxy{
 		interceptor: self,
 		service:     service,
 		tracker:     tracker,
+		topTracker:  topTracker,
+		addrStack:   addrStack,
 		resolver:    resolver,
 	}
 
@@ -232,7 +245,7 @@ func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resol
 	}
 
 	if t.tcpLn == nil && t.udpLn == nil {
-		return nil, errors.Errorf("service %v has no supported protocols (tcp, udp). Service protocols: %+v", *service.Name, config.Protocols)
+		return nil, errors.Errorf("service %v has no supported protocols (tcp, udp). Serivce protocols: %+v", *service.Name, config.Protocols)
 	}
 
 	if t.tcpLn != nil {
@@ -243,7 +256,7 @@ func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resol
 		go t.acceptUDP()
 	}
 
-	return t, t.Intercept(resolver, tracker)
+	return t, t.Intercept(resolver, tracker, topTracker, addrStack)
 }
 
 func (self *interceptor) addIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain string) error {
@@ -276,6 +289,8 @@ type tProxy struct {
 	tcpLn       net.Listener
 	udpLn       *net.UDPConn
 	tracker     intercept.AddressTracker
+	topTracker  intercept.TopTracker
+	addrStack   intercept.AddressStack
 	resolver    dns.Resolver
 }
 
@@ -409,7 +424,7 @@ func deleteIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain strin
 	}
 }
 
-func (self *tProxy) Stop(tracker intercept.AddressTracker) {
+func (self *tProxy) Stop(tracker intercept.AddressTracker, addrStack intercept.AddressStack) {
 	log := pfxlog.Logger().WithField("service", *self.service.Name)
 	if self.tcpLn != nil {
 		if err := self.tcpLn.Close(); err != nil {
@@ -423,7 +438,7 @@ func (self *tProxy) Stop(tracker intercept.AddressTracker) {
 		}
 	}
 
-	err := self.StopIntercepting(tracker)
+	err := self.StopIntercepting(tracker, addrStack)
 	if err != nil {
 		log.WithError(err).Error("failed to clean up intercept configuration")
 	}
@@ -446,7 +461,7 @@ func (self *tProxy) udpPort() IPPortAddr {
 	return nil
 }
 
-func (self *tProxy) Intercept(resolver dns.Resolver, tracker intercept.AddressTracker) error {
+func (self *tProxy) Intercept(resolver dns.Resolver, tracker intercept.AddressTracker, topTracker intercept.TopTracker, addrStack intercept.AddressStack) error {
 	service := self.service
 	if service.InterceptV1Config == nil {
 		return errors.Errorf("no client configuration for service %v", *service.Name)
@@ -465,7 +480,7 @@ func (self *tProxy) Intercept(resolver dns.Resolver, tracker intercept.AddressTr
 		}
 	}
 
-	return self.intercept(service, resolver, ports, tracker)
+	return self.intercept(service, resolver, ports, topTracker, addrStack)
 }
 
 func (self *tProxy) Apply(addr *intercept.InterceptAddress) {
@@ -489,13 +504,13 @@ func (self *tProxy) Apply(addr *intercept.InterceptAddress) {
 	}
 }
 
-func (self *tProxy) intercept(service *entities.Service, resolver dns.Resolver, ports []IPPortAddr, tracker intercept.AddressTracker) error {
+func (self *tProxy) intercept(service *entities.Service, resolver dns.Resolver, ports []IPPortAddr, topTracker intercept.TopTracker, addrStack intercept.AddressStack) error {
 	var protocols []string
 	for _, p := range ports {
 		protocols = append(protocols, p.GetProtocol())
 	}
 
-	err := intercept.GetInterceptAddresses(service, protocols, resolver, self)
+	err := intercept.GetInterceptAddresses(service, protocols, resolver, topTracker, addrStack, self)
 	if err != nil {
 		return err
 	}
@@ -505,10 +520,12 @@ func (self *tProxy) intercept(service *entities.Service, resolver dns.Resolver, 
 
 func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, service *entities.Service, port IPPortAddr, tracker intercept.AddressTracker) error {
 	ipNet := interceptAddr.IpNet()
-	if err := router.AddLocalAddress(ipNet, "lo"); err != nil {
-		return errors.Wrapf(err, "failed to add local route %v", ipNet)
+	if !tracker.IsKey(ipNet.String()) {
+		if err := router.AddLocalAddress(ipNet, "lo"); err != nil {
+			return errors.Wrapf(err, "failed to add local route %v", ipNet)
+		}
+		tracker.AddAddress(ipNet.String())
 	}
-	tracker.AddAddress(ipNet.String())
 	self.addresses = append(self.addresses, interceptAddr)
 
 	if self.interceptor.diverter != "" {
@@ -544,7 +561,6 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 		if err := self.interceptor.ipt.Insert(mangleTable, dstChain, 1, interceptAddr.TproxySpec...); err != nil {
 			return errors.Wrap(err, "failed to insert rule")
 		}
-
 		if self.interceptor.lanIf != "" {
 			interceptAddr.AcceptSpec = []string{
 				"-i", self.interceptor.lanIf,
@@ -564,7 +580,7 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 	return nil
 }
 
-func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
+func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker, addrStack intercept.AddressStack) error {
 	var errorList []error
 
 	log := pfxlog.Logger().WithField("service", *self.service.Name)
@@ -613,6 +629,12 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 			if err != nil {
 				errorList = append(errorList, err)
 				log.WithError(err).Errorf("failed to remove route %v for service %s", ipNet, *self.service.Name)
+			} else {
+				host, hosterr := self.resolver.Lookup(ipNet.IP)
+				if hosterr == nil {
+					addrStack.Push(ipNet.IP.String())
+					pfxlog.Logger().Debug("Adding IP to addrStack %v %v %v", host, ipNet.IP.String(), addrStack)
+				}
 			}
 		}
 	}

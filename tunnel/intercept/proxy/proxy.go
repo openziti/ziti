@@ -100,7 +100,7 @@ func New(ip net.IP, serviceList []string) (intercept.Interceptor, error) {
 	return &p, nil
 }
 
-func (p *interceptor) Intercept(service *entities.Service, _ dns.Resolver, _ intercept.AddressTracker) error {
+func (p *interceptor) Intercept(service *entities.Service, _ dns.Resolver, _ intercept.AddressTracker, _ intercept.TopTracker, _ intercept.AddressStack) error {
 	log := pfxlog.Logger().WithField("service", service.Name)
 
 	proxiedService, ok := p.services[*service.Name]
@@ -187,7 +187,7 @@ func (p *interceptor) Stop() {
 	}
 }
 
-func (p *interceptor) StopIntercepting(serviceName string, _ intercept.AddressTracker) error {
+func (p *interceptor) StopIntercepting(serviceName string, _ intercept.AddressTracker, _ intercept.AddressStack) error {
 	if service, ok := p.services[serviceName]; ok {
 		return service.Stop()
 	}
