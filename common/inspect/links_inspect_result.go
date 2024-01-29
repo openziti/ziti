@@ -28,6 +28,7 @@ type LinksInspectResult struct {
 
 type LinkInspectDetail struct {
 	Id          string `json:"id"`
+	Iteration   uint32 `json:"iteration"`
 	Key         string `json:"key"`
 	Split       bool   `json:"split"`
 	Protocol    string `json:"protocol"`
@@ -49,8 +50,8 @@ type LinkState struct {
 	Id             string   `json:"id"`
 	Key            string   `json:"key"`
 	Status         string   `json:"status"`
-	DialAttempts   uint     `json:"dialAttempts"`
-	ConnectedCount uint     `json:"connectedCount"`
+	DialAttempts   uint64   `json:"dialAttempts"`
+	ConnectedCount uint64   `json:"connectedCount"`
 	RetryDelay     string   `json:"retryDelay"`
 	NextDial       string   `json:"nextDial"`
 	TargetAddress  string   `json:"targetAddress"`
@@ -58,4 +59,5 @@ type LinkState struct {
 	TargetBinding  string   `json:"targetBinding"`
 	DialerGroups   []string `json:"dialerGroups"`
 	DialerBinding  string   `json:"dialerBinding"`
+	CtrlsNotified  bool     `json:"ctrlsNotified"`
 }

@@ -19,9 +19,9 @@ package network
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/event"
 	"time"
 )
 
@@ -43,23 +43,23 @@ func (network *Network) assemble() {
 				dial := &ctrl_pb.Dial{
 					LinkId:       missingLink.Id,
 					Address:      missingLink.DialAddress,
-					RouterId:     missingLink.Dst.Id,
+					RouterId:     missingLink.DstId,
 					LinkProtocol: missingLink.Protocol,
 				}
 
-				if versionInfo := missingLink.Dst.VersionInfo; versionInfo != nil {
-					dial.RouterVersion = missingLink.Dst.VersionInfo.Version
+				if versionInfo := missingLink.GetDest().VersionInfo; versionInfo != nil {
+					dial.RouterVersion = missingLink.GetDest().VersionInfo.Version
 				}
 
 				if err = protobufs.MarshalTyped(dial).Send(missingLink.Src.Control); err != nil {
 					log.WithField("linkId", missingLink.Id).
 						WithField("srcRouterId", missingLink.Src.Id).
-						WithField("dstRouterId", missingLink.Dst.Id).
+						WithField("dstRouterId", missingLink.DstId).
 						WithError(err).Error("unexpected error sending dial")
 				} else {
 					log.WithField("linkId", missingLink.Id).
 						WithField("srcRouterId", missingLink.Src.Id).
-						WithField("dstRouterId", missingLink.Dst.Id).
+						WithField("dstRouterId", missingLink.DstId).
 						Info("sending link dial")
 					network.NotifyLinkEvent(missingLink, event.LinkDialed)
 				}
@@ -79,7 +79,7 @@ func (network *Network) NotifyLinkEvent(link *Link, eventType event.LinkEventTyp
 		Timestamp:   time.Now(),
 		LinkId:      link.Id,
 		SrcRouterId: link.Src.Id,
-		DstRouterId: link.Dst.Id,
+		DstRouterId: link.DstId,
 		Protocol:    link.Protocol,
 		Cost:        link.GetStaticCost(),
 		DialAddress: link.DialAddress,
@@ -94,7 +94,7 @@ func (network *Network) NotifyLinkConnected(link *Link, msg *ctrl_pb.LinkConnect
 		Timestamp:   time.Now(),
 		LinkId:      link.Id,
 		SrcRouterId: link.Src.Id,
-		DstRouterId: link.Dst.Id,
+		DstRouterId: link.DstId,
 		Protocol:    link.Protocol,
 		Cost:        link.GetStaticCost(),
 		DialAddress: link.DialAddress,

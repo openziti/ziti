@@ -1,3 +1,19 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package main
 
 import (
@@ -21,9 +37,9 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
+	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"os"
-	"os/exec"
 	"path"
 	"time"
 )
@@ -201,8 +217,9 @@ var m = &model.Model{
 		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
 
+			workflow.AddAction(host.GroupExec("*", 50, "touch .hushlogin"))
 			workflow.AddAction(component.Stop(".ctrl"))
-			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
+			workflow.AddAction(host.GroupExec("*", 50, "rm -f logs/*"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
 			workflow.AddAction(component.Start(".ctrl"))
@@ -214,30 +231,23 @@ var m = &model.Model{
 
 			workflow.AddAction(edge.Login("#ctrl1"))
 
-			workflow.AddAction(component.StopInParallel(models.RouterTag, 25))
-			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 2))
+			workflow.AddAction(component.StopInParallel(models.RouterTag, 50))
+			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 10))
 
 			return workflow
 		}),
-		"stop": model.Bind(component.StopInParallelHostExclusive("*", 15)),
 		"clean": model.Bind(actions.Workflow(
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
-		"login":  model.Bind(edge.Login("#ctrl1")),
-		"login2": model.Bind(edge.Login("#ctrl2")),
-		"login3": model.Bind(edge.Login("#ctrl3")),
-		"refreshCtrlZiti": model.ActionBinder(func(m *model.Model) model.Action {
-			return model.ActionFunc(func(run model.Run) error {
-				zitiPath, err := exec.LookPath("ziti")
-				if err != nil {
-					return err
-				}
-
-				deferred := rsync.NewRsyncHost("ctrl", zitiPath, "/home/ubuntu/fablab/bin/ziti")
-				return deferred.Execute(run)
-			})
-		}),
+		"login":    model.Bind(edge.Login("#ctrl1")),
+		"login2":   model.Bind(edge.Login("#ctrl2")),
+		"login3":   model.Bind(edge.Login("#ctrl3")),
+		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
+		"validateUp": model.Bind(model.ActionFunc(func(run model.Run) error {
+			return chaos.ValidateUp(run, "*", 50, 15*time.Second)
+		})),
+		"validateLinks": model.Bind(model.ActionFunc(validateLinks)),
 	},
 
 	Infrastructure: model.Stages{
@@ -262,7 +272,7 @@ var m = &model.Model{
 }
 
 func main() {
-	m.AddActivationActions("stop", "bootstrap")
+	m.AddActivationActions("bootstrap")
 
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)

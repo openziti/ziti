@@ -19,13 +19,11 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/cert"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/pkg/errors"
@@ -199,7 +197,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 	if ctrlCh == nil {
 		errStr := "no controller available, cannot create terminator"
 		pfxlog.ContextLogger(ch.Label()).
-			WithField("sessionToken", string(req.Body)).
+			WithField("token", string(req.Body)).
 			WithFields(edge.GetLoggerFields(req)).
 			WithField("routerId", self.listener.id.Token).
 			Error(errStr)
@@ -207,14 +205,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 		return
 	}
 
-	supportsCreateTerminatorV2 := false
-	headers := ctrlCh.Underlay().Headers()
-	if val, found := headers[int32(ctrl_pb.ContentType_CapabilitiesHeader)]; found {
-		capabilitiesMask := &big.Int{}
-		capabilitiesMask.SetBytes(val)
-		supportsCreateTerminatorV2 = capabilitiesMask.Bit(capabilities.ControllerCreateTerminatorV2) == 1
-	}
-
+	supportsCreateTerminatorV2 := capabilities.IsCapable(ctrlCh, capabilities.ControllerCreateTerminatorV2)
 	if supportsCreateTerminatorV2 {
 		self.processBindV2(req, ch)
 	} else {
@@ -226,7 +217,7 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 	token := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("sessionToken", token).
+		WithField("token", token).
 		WithFields(edge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
 
@@ -324,7 +315,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 	token := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("sessionToken", token).
+		WithField("token", token).
 		WithFields(edge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
 
@@ -413,20 +404,27 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		notifyEstablished: notifyEstablished,
 	}
 	terminator.terminatorId.Store(terminatorId)
-
-	log.Info("establishing terminator")
+	terminator.state.Store(TerminatorStatePendingEstablishment)
 
 	// need to remove session remove listener on close
 	terminator.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
 		terminator.close(true, "session ended")
 	})
 
-	self.sendStateConnectedReply(req, nil)
+	// If the session was recently removed, the call to AddEdgeSessionRemovedListener will have asynchronously closed
+	// the terminator
+	if self.listener.factory.stateManager.WasSessionRecentlyRemoved(token) {
+		log.Info("invalid session, not establishing terminator")
+	} else {
+		log.Info("establishing terminator")
 
-	self.listener.factory.hostedServices.EstablishTerminator(terminator)
-	if listenerId == "" {
-		// only removed dupes with a scan if we don't have an sdk provided key
-		self.listener.factory.hostedServices.cleanupDuplicates(terminator)
+		self.sendStateConnectedReply(req, nil)
+
+		self.listener.factory.hostedServices.EstablishTerminator(terminator)
+		if listenerId == "" {
+			// only removed dupes with a scan if we don't have an sdk provided key
+			self.listener.factory.hostedServices.cleanupDuplicates(terminator)
+		}
 	}
 }
 
@@ -438,7 +436,7 @@ func (self *edgeClientConn) processUnbind(req *channel.Message, _ channel.Channe
 	if !atLeastOneTerminatorRemoved {
 		pfxlog.Logger().
 			WithField("connId", connId).
-			WithField("sessionToken", token).
+			WithField("token", token).
 			Info("no terminator found to unbind for token")
 	}
 }
@@ -458,7 +456,7 @@ func (self *edgeClientConn) removeTerminator(ctrlCh channel.Channel, token, term
 func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.Channel) {
 	token := string(req.Body)
 
-	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionToken", token).WithFields(edge.GetLoggerFields(req))
+	log := pfxlog.ContextLogger(ch.Label()).WithField("token", token).WithFields(edge.GetLoggerFields(req))
 	terminators := self.listener.factory.hostedServices.getRelatedTerminators(token, self)
 
 	if len(terminators) == 0 {

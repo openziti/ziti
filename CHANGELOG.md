@@ -3,12 +3,17 @@
 ## What's New
 
 * Auth Rate Limiter
+* Link Management Fixes
+* ziti edge quickstart command deprecates redundant --already-initialized flag. The identical behavior is implied by --home.
 
 ## Backwards compatibility
 
 This release includes new response types from the REST authentication APIS. They are now able to return 
 `429` (server too busy) responses to auth requests. As this is an API change, the version number is 
 being bumped to 0.32.
+
+If controller and router are both v0.32 or later, only the router which dialed a link will report it to the controller. 
+If the controller is older, newer routers will report links from both the dialing and listening side of the link.
 
 ## Auth Rate Limiter
 
@@ -36,13 +41,51 @@ New metrics:
 * `auth.limiter.window_size`  - current size at which new auth attempts will be rejected
 * `auth.limiter.work_timer`   - tracks the rate at which api sessions are being created and how long it's taking to create them
 
+## Link Management Fixes
+
+With long lived link ids, there was potential for link control message to be ambiguous, as the link id wasn't enough to identify
+a specific iteration of that link. An iteration field has been added to links so that messaging is unambiguous. 
+Links will also only be reported from the dialing router now to reduce ambiguouity and race condition in link control channel
+messaging.
+
+## Router SSL Handshake Timeout Config
+
+There is a new router config setting which allows setting the SSL handshake timeout for TLS connections, when using ALPN for listeners.
+
+```
+tls:
+  handshakeTimeout: 15s
+```
+
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/edge-api: [v0.26.6 -> v0.26.7](https://github.com/openziti/edge-api/compare/v0.26.6...v0.26.7)
-* github.com/openziti/sdk-golang: [v0.22.0 -> v0.22.1](https://github.com/openziti/sdk-golang/compare/v0.22.0...v0.22.1)
-* github.com/openziti/ziti: [v0.31.4 -> v0.32.0](https://github.com/openziti/ziti/compare/v0.31.4...v0.32.0)
-    * [Issue #1657](https://github.com/openziti/ziti/issues/1657) - Add api session rate limiter
+* github.com/openziti/channel/v2: [v2.0.111 -> v2.0.116](https://github.com/openziti/channel/compare/v2.0.111...v2.0.116)
+    * [Issue #123](https://github.com/openziti/channel/issues/123) - Ensure hello messages respect connect timeout
+    * [Issue #120](https://github.com/openziti/channel/issues/120) - Allow handling new underlay instances with function instead of channel 
 
+* github.com/openziti/edge-api: [v0.26.6 -> v0.26.8](https://github.com/openziti/edge-api/compare/v0.26.6...v0.26.8)
+* github.com/openziti/foundation/v2: [v2.0.35 -> v2.0.36](https://github.com/openziti/foundation/compare/v2.0.35...v2.0.36)
+    * [Issue #391](https://github.com/openziti/foundation/issues/391) - goroutine pool can stall if configured for 0 min workers and with single producer
+
+* github.com/openziti/identity: [v1.0.68 -> v1.0.69](https://github.com/openziti/identity/compare/v1.0.68...v1.0.69)
+* github.com/openziti/metrics: [v1.2.41 -> v1.2.43](https://github.com/openziti/metrics/compare/v1.2.41...v1.2.43)
+* github.com/openziti/runzmd: [v1.0.36 -> v1.0.37](https://github.com/openziti/runzmd/compare/v1.0.36...v1.0.37)
+* github.com/openziti/sdk-golang: [v0.22.0 -> v0.22.17](https://github.com/openziti/sdk-golang/compare/v0.22.0...v0.22.17)
+    * [Issue #482](https://github.com/openziti/sdk-golang/issues/482) - Deprecate ListenOptions.MaxConnections in favor of MaxTerminators
+
+* github.com/openziti/secretstream: [v0.1.14 -> v0.1.16](https://github.com/openziti/secretstream/compare/v0.1.14...v0.1.16)
+* github.com/openziti/storage: [v0.2.27 -> v0.2.28](https://github.com/openziti/storage/compare/v0.2.27...v0.2.28)
+* github.com/openziti/transport/v2: [v2.0.119 -> v2.0.121](https://github.com/openziti/transport/compare/v2.0.119...v2.0.121)
+    * [Issue #73](https://github.com/openziti/transport/issues/73) - Allow overriding shared TLS/ALPN listener SSL handshake timeout
+
+* github.com/openziti/ziti: [v0.31.4 -> v0.32.0](https://github.com/openziti/ziti/compare/v0.31.4...v0.32.0)
+    * [Issue #1692](https://github.com/openziti/ziti/issues/1692) - Improve link stability with long lived link ids
+    * [Issue #1693](https://github.com/openziti/ziti/issues/1693) - Make links owned by the dialing router
+    * [Issue #1685](https://github.com/openziti/ziti/issues/1685) - Race condition where we try to create terminator after client connection is closed
+    * [Issue #1678](https://github.com/openziti/ziti/issues/1678) - Add link validation utility
+    * [Issue #1673](https://github.com/openziti/ziti/issues/1673) - xgress dialers not getting passed xgress config
+    * [Issue #1669](https://github.com/openziti/ziti/issues/1669) - Make sure link accepts are not single threaded
+    * [Issue #1657](https://github.com/openziti/ziti/issues/1657) - Add api session rate limiter
 
 # Release 0.31.4
 

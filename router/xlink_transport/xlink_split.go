@@ -18,10 +18,10 @@ package xlink_transport
 
 import (
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/metrics"
 	"github.com/pkg/errors"
 	"sync/atomic"
 )
@@ -35,9 +35,11 @@ type splitImpl struct {
 	routerVersion   string
 	linkProtocol    string
 	dialAddress     string
-	closeNotified   atomic.Bool
+	closed          atomic.Bool
+	faultsSent      atomic.Bool
 	droppedMsgMeter metrics.Meter
 	dialed          bool
+	iteration       uint32
 }
 
 func (self *splitImpl) Id() string {
@@ -46,6 +48,10 @@ func (self *splitImpl) Id() string {
 
 func (self *splitImpl) Key() string {
 	return self.key
+}
+
+func (self *splitImpl) Iteration() uint32 {
+	return self.iteration
 }
 
 func (self *splitImpl) Init(metricsRegistry metrics.Registry) error {
@@ -80,8 +86,12 @@ func (self *splitImpl) SendControl(msg *xgress.Control) error {
 }
 
 func (self *splitImpl) CloseNotified() error {
-	self.closeNotified.Store(true)
+	self.faultsSent.Store(true)
 	return self.Close()
+}
+
+func (self *splitImpl) AreFaultsSent() bool {
+	return self.faultsSent.Load()
 }
 
 func (self *splitImpl) Close() error {
@@ -121,8 +131,8 @@ func (self *splitImpl) DialAddress() string {
 	return self.dialAddress
 }
 
-func (self *splitImpl) HandleCloseNotification(f func()) {
-	if self.closeNotified.CompareAndSwap(false, true) {
+func (self *splitImpl) CloseOnce(f func()) {
+	if self.closed.CompareAndSwap(false, true) {
 		f()
 	}
 }
@@ -142,6 +152,7 @@ func (self *splitImpl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 func (self *splitImpl) InspectLink() *inspect.LinkInspectDetail {
 	return &inspect.LinkInspectDetail{
 		Id:          self.Id(),
+		Iteration:   self.Iteration(),
 		Key:         self.key,
 		Split:       true,
 		Protocol:    self.LinkProtocol(),
