@@ -65,11 +65,25 @@ func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolve
 	logger := pfxlog.Logger()
 	if hostname[0] == '*' {
 		err := resolver.AddDomain(hostname, func(host string) (net.IP, error) {
-			var ip net.IP
+			ip := net.ParseIP(addrStack.Pop())
 			var err error
-			ip, err = utils.NextIP(dnsIpLow, dnsIpHigh)
+			if ip.String() == "0.0.0.0" {
+				if topTracker.GetAddress("topIP") == "" {
+					ip = net.ParseIP(dnsIpLow.String())
+				} else if topTracker.GetAddress("topIP") == dnsIpHigh.String() {
+					return nil, fmt.Errorf("next address is outside of configured dns range: %s", hostname)
+				} else {
+					topIP := net.ParseIP(topTracker.GetAddress("topIP"))
+					utils.IncIP(topIP)
+					ip = topIP
+				}
+				topTracker.AddAddress("topIP", ip.String())
+				pfxlog.Logger().Debug("top-assigned-ip=%s", topTracker)
+			} else {
+				pfxlog.Logger().Infof("Popped=%v from addrStack", ip.String())
+			}
 
-			if err == nil {
+			if ip != nil {
 				addrCB(ip, utils.Ip2IPnet(ip))
 				svc.AddCleanupAction(cleanUpFunc(host, resolver))
 			}
