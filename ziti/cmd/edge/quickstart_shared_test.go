@@ -154,7 +154,7 @@ func getConfigTypeByName(client *rest_management_api_client.ZitiEdgeManagement, 
 	return interceptCTResp.GetPayload().Data[0]
 }
 
-func getConfigByName(client *rest_management_api_client.ZitiEdgeManagement, name string) *rest_model.ConfigDetail {
+func getServiceConfigByName(client *rest_management_api_client.ZitiEdgeManagement, name string) *rest_model.ConfigDetail {
 	filter := "name=\"" + name + "\""
 	configParams := &api_client_config.ListConfigsParams{
 		Filter:  &filter,
@@ -597,10 +597,10 @@ func performQuickstartTest(t *testing.T) {
 
 		// Check network components for validity
 		// Confirm the four configs exist
-		service1BindConf := getConfigByName(client, service1BindConfName)
-		service2BindConf := getConfigByName(client, service2BindConfName)
-		service1DialConf := getConfigByName(client, service1DialConfName)
-		service2DialConf := getConfigByName(client, service2DialConfName)
+		service1BindConf := getServiceConfigByName(client, service1BindConfName)
+		service2BindConf := getServiceConfigByName(client, service2BindConfName)
+		service1DialConf := getServiceConfigByName(client, service1DialConfName)
+		service2DialConf := getServiceConfigByName(client, service2DialConfName)
 
 		assert.Equal(t, service1BindConfName, *service1BindConf.Name)
 		assert.Equal(t, service2BindConfName, *service2BindConf.Name)
@@ -624,6 +624,18 @@ func performQuickstartTest(t *testing.T) {
 		assert.Equal(t, service2BindSPName, *service2BindPol.Name)
 		assert.Equal(t, service1DialSPName, *service1DialPol.Name)
 		assert.Equal(t, service2DialSPName, *service2DialPol.Name)
+
+		// Cleanup
+		deleteServiceConfigByID(client, *service1BindConf.ID)
+		deleteServiceConfigByID(client, *service2BindConf.ID)
+		deleteServiceConfigByID(client, *service1DialConf.ID)
+		deleteServiceConfigByID(client, *service2DialConf.ID)
+		deleteServiceByID(client, *service1.ID)
+		deleteServiceByID(client, *service2.ID)
+		deleteServicePolicyByID(client, *service1BindPol.ID)
+		deleteServicePolicyByID(client, *service2BindPol.ID)
+		deleteServicePolicyByID(client, *service1DialPol.ID)
+		deleteServicePolicyByID(client, *service2DialPol.ID)
 	})
 }
 
@@ -665,7 +677,15 @@ func createZESTestFunc(t *testing.T, params string, client *rest_management_api_
 		testServiceEndpoint(t, client, hostingRouterName, serviceName, dialPort, testerUsername)
 
 		// Cleanup
-
+		serviceBindConfName := serviceName + ".host.v1"
+		serviceDialConfName := serviceName + ".intercept.v1"
+		serviceBindSPName := serviceName + ".bind"
+		serviceDialSPName := serviceName + ".dial"
+		deleteServiceConfigByID(client, *getServiceConfigByName(client, serviceBindConfName).ID)
+		deleteServiceConfigByID(client, *getServiceConfigByName(client, serviceDialConfName).ID)
+		deleteServiceByID(client, *getServiceByName(client, serviceName).ID)
+		deleteServicePolicyByID(client, *getServicePolicyByName(client, serviceBindSPName).ID)
+		deleteServicePolicyByID(client, *getServicePolicyByName(client, serviceDialSPName).ID)
 	}
 }
 
