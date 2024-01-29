@@ -1,8 +1,10 @@
 package testutil
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"time"
 )
 
 // CaptureOutput hot-swaps os.Stdout in order to redirect all output to a memory buffer. Where possible, do not use
@@ -60,4 +62,9 @@ func CaptureOutput(function func()) string {
 	}
 
 	return string(result.out)
+}
+
+func GenerateRandomName(baseName string) string {
+	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
+	return fmt.Sprintf("%s_%d", baseName, timestamp)
 }
