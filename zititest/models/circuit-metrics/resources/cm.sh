@@ -28,7 +28,7 @@ moveCommand="sudo mv yq_linux_amd64 /usr/bin/yq"
 ./circuit_metrics sshexec "*" "$moveCommand"
 
 # Set Config
-txPortalIncreaseThresh_values=("224" "112" "56" "28" "14" "7" "6" "5" "4" "3" "2" "1")
+txPortalIncreaseThresh_values=("224" "112" "56" "28" "14" "7")
 txPortalStartSize_values=("16384" "32768" "65536" "131072" "262144" "524288" "1048576" "2097152" "4194304" "8388608" "16777216" "33554432" "67108864")
 
 # Iterate per config

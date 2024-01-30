@@ -243,7 +243,8 @@ func main() {
 	m.AddOperatingStage(circuitMetricsStage)
 
 	// Add the Influx2MetricsReporter stage to the FabLab Model
-	influxMetricsReporterStage := fablib_5_operation.Influx2MetricsReporter()
+	influxMetricsReporterStage := fablib_5_operation.InfluxMetricsReporter2()
+
 	m.AddOperatingStage(influxMetricsReporterStage)
 
 	// Setup and run an Iperf test
