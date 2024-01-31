@@ -1,3 +1,35 @@
+# Release 0.32.1
+
+## What's New
+
+* Bugfixes
+* New router setting to control startup timeout
+
+## Router startup timeout
+
+The router now has a configuration setting to control how long it wait on startup to be able to 
+connect to a controller, before it gives up and exits.
+
+```
+ctrl:
+  endpoints: 
+    - tls:localhost:1280
+  startupTimeout: 5m 
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.116 -> v2.0.117](https://github.com/openziti/channel/compare/v2.0.116...v2.0.117)
+    * [Issue #125](https://github.com/openziti/channel/issues/125) - Ensure reconnecting channel is marked as connected before calling reconnect callback
+
+* github.com/openziti/edge-api: [v0.26.8 -> v0.26.10](https://github.com/openziti/edge-api/compare/v0.26.8...v0.26.10)
+* github.com/openziti/sdk-golang: [v0.22.17 -> v0.22.21](https://github.com/openziti/sdk-golang/compare/v0.22.17...v0.22.21)
+* github.com/openziti/ziti: [v0.32.0 -> v0.32.1](https://github.com/openziti/ziti/compare/v0.32.0...v0.32.1)
+    * [Issue #1709](https://github.com/openziti/ziti/issues/1709) - Fix link management race conditions found by chaos testing
+    * [Issue #1715](https://github.com/openziti/ziti/issues/1715) - Ensure controller raft peers don't end up with duplicate connections 
+    * [Issue #1702](https://github.com/openziti/ziti/issues/1702) - Add link management chaos test
+    * [Issue #1691](https://github.com/openziti/ziti/issues/1691) multiple er re-enrolls creates multiple enrollments
+
 # Release 0.32.0
 
 ## What's New
