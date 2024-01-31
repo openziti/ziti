@@ -106,20 +106,17 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 	var iteration uint32
 
 	if headers != nil {
-		if v, ok := headers[LinkHeaderRouterId]; ok {
-			routerId = string(v)
+		var ok bool
+		if routerId, ok = headers.GetStringHeader(LinkHeaderRouterId); ok {
 			log = log.WithField("routerId", routerId)
-			log.Info("accepting link")
 		}
-		if val, ok := headers[LinkHeaderType]; ok {
-			chanType = channelType(val[0])
+		if val, ok := headers.GetByteHeader(LinkHeaderType); ok {
+			chanType = channelType(val)
 		}
-		if val, ok := headers[LinkHeaderRouterVersion]; ok {
-			routerVersion = string(val)
+		if routerVersion, ok = headers.GetStringHeader(LinkHeaderRouterVersion); ok {
 			log = log.WithField("routerVersion", routerVersion)
 		}
-		if val, ok := headers[LinkHeaderBinding]; ok {
-			dialerBinding = string(val)
+		if dialerBinding, ok = headers.GetStringHeader(LinkHeaderBinding); ok {
 			log = log.WithField("dialerBinding", dialerBinding)
 		}
 		if val, ok := headers.GetUint32Header(LinkHeaderIteration); ok {
@@ -127,6 +124,8 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 			log = log.WithField("iteration", iteration)
 		}
 	}
+
+	log.Info("binding link channel")
 
 	linkMeta := &linkMetadata{
 		routerId:      routerId,
@@ -145,14 +144,15 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 
 func (self *listener) bindSplitChannel(binding channel.Binding, chanType channelType, linkMeta *linkMetadata, log *logrus.Entry) error {
 	headers := binding.GetChannel().Underlay().Headers()
-	id, ok := headers[LinkHeaderConnId]
+	connId, ok := channel.Headers(headers).GetStringHeader(LinkHeaderConnId)
 	if !ok {
 		return errors.New("split conn received but missing connection id. closing")
 	}
 
+	log = log.WithField("connId", connId)
 	log.Info("accepted part of split conn")
 
-	complete, xli, err := self.getOrCreateSplitLink(string(id), linkMeta, binding, chanType)
+	complete, xli, err := self.getOrCreateSplitLink(connId, linkMeta, binding, chanType)
 	if err != nil {
 		log.WithError(err).Error("error binding link channel")
 		return err
@@ -160,7 +160,7 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 
 	latencyPing := chanType == PayloadChannel
 	if err = self.bindHandlerFactory.NewBindHandler(xli, latencyPing, true).BindChannel(binding); err != nil {
-		self.cleanupDeadPartialLink(xli.id)
+		self.cleanupDeadPartialLink(connId)
 		if closeErr := xli.Close(); closeErr != nil {
 			log.WithError(closeErr).Error("error closing partial split link")
 		}
@@ -168,7 +168,7 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 	}
 
 	if complete && xli.payloadCh != nil && xli.ackCh != nil {
-		if err := self.accepter.Accept(xli); err != nil {
+		if err = self.accepter.Accept(xli); err != nil {
 			log.WithError(err).Error("error accepting incoming Xlink")
 
 			if err := xli.Close(); err != nil {
@@ -195,15 +195,15 @@ func (self *listener) cleanupDeadPartialLink(id string) {
 	delete(self.pendingLinks, id)
 }
 
-func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, binding channel.Binding, chanType channelType) (bool, *splitImpl, error) {
+func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata, binding channel.Binding, chanType channelType) (bool, *splitImpl, error) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
 	complete := false
 	var link *splitImpl
 
-	if pending, found := self.pendingLinks[id]; found {
-		delete(self.pendingLinks, id)
+	if pending, found := self.pendingLinks[connId]; found {
+		delete(self.pendingLinks, connId)
 		link = pending.link
 		complete = true
 	} else {
@@ -220,7 +220,7 @@ func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, bi
 			},
 			eventTime: time.Now(),
 		}
-		self.pendingLinks[id] = pending
+		self.pendingLinks[connId] = pending
 		link = pending.link
 	}
 

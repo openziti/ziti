@@ -18,7 +18,6 @@ tls:
 ctrl:
   endpoints: {{ range $host := .Model.MustSelectHosts "component.ctrl" 1 }}
     - tls:{{ $host.PublicIp }}:6262{{end}}
-  startupTimeout: 5m
 
 healthChecks:
   ctrlPingCheck:
@@ -30,7 +29,7 @@ healthChecks:
     initialDelay: 15s
 
 metrics:
-  reportInterval: 15s
+  reportInterval: 5s
   messageQueueSize: 10
 
 link:

@@ -65,7 +65,7 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 	return nil
 }
 
-func canonicalizeZitiVersion(version *string) {
+func canonicalizeGoAppVersion(version *string) {
 	if version != nil {
 		if *version != "" && *version != "latest" && !strings.HasPrefix(*version, "v") {
 			*version = "v" + *version
@@ -74,13 +74,14 @@ func canonicalizeZitiVersion(version *string) {
 }
 
 func getZitiBinaryPath(c *model.Component, version string) string {
-	binaryName := "ziti"
+	return getBinaryPath(c, "ziti", version)
+}
+
+func getBinaryPath(c *model.Component, binaryName string, version string) string {
 	if version != "" {
 		binaryName += "-" + version
 	}
-
 	user := c.GetHost().GetSshUser()
-
 	return fmt.Sprintf("/home/%s/fablab/bin/%s", user, binaryName)
 }
 

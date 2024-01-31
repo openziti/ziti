@@ -114,6 +114,7 @@ type Config struct {
 		Options               *channel.Options
 		DataDir               string
 		Heartbeats            env.HeartbeatOptions
+		StartupTimeout        time.Duration
 	}
 	Link struct {
 		Listeners  []map[interface{}]interface{}
@@ -447,6 +448,7 @@ func LoadConfig(path string) (*Config, error) {
 	cfg.Ctrl.DefaultRequestTimeout = 5 * time.Second
 	cfg.Ctrl.Options = channel.DefaultOptions()
 	cfg.Ctrl.Heartbeats = *env.NewDefaultHeartbeatOptions()
+	cfg.Ctrl.StartupTimeout = 30 * time.Second
 
 	if value, found := cfgmap[CtrlMapKey]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
@@ -512,6 +514,12 @@ func LoadConfig(path string) (*Config, error) {
 				var err error
 				if cfg.Ctrl.DefaultRequestTimeout, err = time.ParseDuration(value.(string)); err != nil {
 					return nil, errors.Wrap(err, "invalid value for ctrl.defaultRequestTimeout")
+				}
+			}
+			if value, found := submap["startupTimeout"]; found {
+				var err error
+				if cfg.Ctrl.StartupTimeout, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for ctrl.startupTimeout")
 				}
 			}
 			if value, found := submap["dataDir"]; found {
