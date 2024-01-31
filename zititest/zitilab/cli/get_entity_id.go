@@ -1,15 +1,14 @@
-package edge
+package cli
 
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/pkg/errors"
 )
 
 func GetEntityId(m *model.Model, entityType string, name string) (string, error) {
-	output, err := cli.Exec(m, "edge", "list", entityType, "--output-json",
+	output, err := Exec(m, "edge", "list", entityType, "--output-json",
 		fmt.Sprintf(`name="%v" limit none`, name))
 	if err != nil {
 		return "", err

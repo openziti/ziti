@@ -46,7 +46,7 @@ type RouterType struct {
 }
 
 func (self *RouterType) InitType(*model.Component) {
-	canonicalizeZitiVersion(&self.Version)
+	canonicalizeGoAppVersion(&self.Version)
 }
 
 func (self *RouterType) GetActions() map[string]model.ComponentAction {
