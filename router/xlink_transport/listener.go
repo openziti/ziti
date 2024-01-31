@@ -152,18 +152,22 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 
 	log.Info("accepted part of split conn")
 
-	xli, err := self.getOrCreateSplitLink(string(id), linkMeta, binding, chanType)
+	complete, xli, err := self.getOrCreateSplitLink(string(id), linkMeta, binding, chanType)
 	if err != nil {
 		log.WithError(err).Error("error binding link channel")
 		return err
 	}
 
 	latencyPing := chanType == PayloadChannel
-	if err := self.bindHandlerFactory.NewBindHandler(xli, latencyPing, true).BindChannel(binding); err != nil {
+	if err = self.bindHandlerFactory.NewBindHandler(xli, latencyPing, true).BindChannel(binding); err != nil {
+		self.cleanupDeadPartialLink(xli.id)
+		if closeErr := xli.Close(); closeErr != nil {
+			log.WithError(closeErr).Error("error closing partial split link")
+		}
 		return err
 	}
 
-	if xli.payloadCh != nil && xli.ackCh != nil {
+	if complete && xli.payloadCh != nil && xli.ackCh != nil {
 		if err := self.accepter.Accept(xli); err != nil {
 			log.WithError(err).Error("error accepting incoming Xlink")
 
@@ -184,15 +188,24 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 	return nil
 }
 
-func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, binding channel.Binding, chanType channelType) (*splitImpl, error) {
+func (self *listener) cleanupDeadPartialLink(id string) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
+	delete(self.pendingLinks, id)
+}
+
+func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, binding channel.Binding, chanType channelType) (bool, *splitImpl, error) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	complete := false
 	var link *splitImpl
 
 	if pending, found := self.pendingLinks[id]; found {
 		delete(self.pendingLinks, id)
 		link = pending.link
+		complete = true
 	} else {
 		pending = &pendingLink{
 			link: &splitImpl{
@@ -215,19 +228,19 @@ func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, bi
 		if link.payloadCh == nil {
 			link.payloadCh = binding.GetChannel()
 		} else {
-			return nil, errors.Errorf("got two payload channels for link %v", binding.GetChannel().Id())
+			return false, nil, errors.Errorf("got two payload channels for link %v", binding.GetChannel().Id())
 		}
 	} else if chanType == AckChannel {
 		if link.ackCh == nil {
 			link.ackCh = binding.GetChannel()
 		} else {
-			return nil, errors.Errorf("got two ack channels for link %v", binding.GetChannel().Id())
+			return false, nil, errors.Errorf("got two ack channels for link %v", binding.GetChannel().Id())
 		}
 	} else {
-		return nil, errors.Errorf("invalid channel type %v", chanType)
+		return false, nil, errors.Errorf("invalid channel type %v", chanType)
 	}
 
-	return link, nil
+	return complete, link, nil
 }
 
 func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *linkMetadata, log *logrus.Entry) error {

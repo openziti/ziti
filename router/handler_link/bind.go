@@ -65,6 +65,8 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		"linkId":        self.xlink.Id(),
 		"routerId":      self.xlink.DestinationId(),
 		"routerVersion": self.xlink.DestVersion(),
+		"iteration":     self.xlink.Iteration(),
+		"dialed":        self.xlink.IsDialed(),
 	})
 
 	binding.GetChannel().SetLogicalName("l/" + self.xlink.Id())

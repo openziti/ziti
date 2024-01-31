@@ -126,6 +126,15 @@ func (linkController *linkController) has(link *Link) bool {
 	return linkController.linkTable.has(link)
 }
 
+func (linkController *linkController) scanForDeadLinks() {
+	for entry := range linkController.linkTable.links.IterBuffered() {
+		link := entry.Val
+		if !link.Src.Connected.Load() {
+			linkController.remove(link)
+		}
+	}
+}
+
 func (linkController *linkController) routerReportedLink(linkId string, iteration uint32, linkProtocol, dialAddress string, src, dst *Router, dstId string) (*Link, bool) {
 	linkController.lock.Lock()
 	defer linkController.lock.Unlock()
@@ -211,7 +220,7 @@ func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, b
 					selected = link
 					cost = linkCost
 				}
-			} else if link.Src == b {
+			} else if link.Src.Id == b.Id {
 				if linkCost < cost {
 					selected = link
 					cost = linkCost

@@ -48,7 +48,11 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 
 	serviceCmd := fmt.Sprintf("nohup %s %s %s run --cli-agent-alias %s --log-formatter pfxlog %s > %s 2>&1 &",
 		useSudo, binaryPath, zitiType, c.Id, configPath, logsPath)
-	logrus.Info(serviceCmd)
+
+	if quiet, _ := c.GetBoolVariable("quiet_startup"); !quiet {
+		logrus.Info(serviceCmd)
+	}
+
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {
 		return err

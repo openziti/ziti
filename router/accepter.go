@@ -19,6 +19,7 @@ func (self *xlinkAccepter) Accept(xlink xlink.Xlink) error {
 	logrus.WithField("linkId", xlink.Id()).
 		WithField("destId", xlink.DestinationId()).
 		WithField("iteration", xlink.Iteration()).
+		WithField("dialed", xlink.IsDialed()).
 		Info("accepted new link")
 	return nil
 }

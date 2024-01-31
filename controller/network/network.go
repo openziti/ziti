@@ -395,7 +395,7 @@ func (n *Network) ValidateLinks(filter string, cb LinkValidationCallback) (int64
 func (network *Network) DisconnectRouter(r *Router) {
 	// 1: remove Links for Router
 	for _, l := range r.routerLinks.GetLinks() {
-		if l.Src == r {
+		if l.Src.Id == r.Id {
 			network.linkController.remove(l)
 		}
 		network.LinkChanged(l)
@@ -416,6 +416,17 @@ func (network *Network) NotifyExistingLink(id string, iteration uint32, linkProt
 		WithField("linkId", id).
 		WithField("destRouterId", dstRouterId).
 		WithField("iteration", iteration)
+
+	src := network.Routers.getConnected(srcRouter.Id)
+	if src == nil {
+		log.Info("ignoring links message processed after router disconnected")
+		return
+	}
+
+	if src != srcRouter || !srcRouter.Connected.Load() {
+		log.Info("ignoring links message processed from old router connection")
+		return
+	}
 
 	dst := network.Routers.getConnected(dstRouterId)
 	if dst == nil {
@@ -909,6 +920,7 @@ func (network *Network) Run() {
 			network.assemble()
 			network.clean()
 			network.smart()
+			network.linkController.scanForDeadLinks()
 
 		case <-network.closeNotify:
 			network.eventDispatcher.RemoveMetricsMessageHandler(network)

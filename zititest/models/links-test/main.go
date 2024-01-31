@@ -19,6 +19,7 @@ package main
 import (
 	"embed"
 	_ "embed"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -232,7 +233,7 @@ var m = &model.Model{
 			workflow.AddAction(edge.Login("#ctrl1"))
 
 			workflow.AddAction(component.StopInParallel(models.RouterTag, 50))
-			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 10))
+			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 50))
 
 			return workflow
 		}),
@@ -245,7 +246,14 @@ var m = &model.Model{
 		"login3":   model.Bind(edge.Login("#ctrl3")),
 		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
 		"validateUp": model.Bind(model.ActionFunc(func(run model.Run) error {
-			return chaos.ValidateUp(run, "*", 50, 15*time.Second)
+			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
+				return err
+			}
+			if err := chaos.ValidateUp(run, ".router", 100, time.Minute); err != nil {
+				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
+				return component.StartInParallel(".router", 100).Execute(run)
+			}
+			return nil
 		})),
 		"validateLinks": model.Bind(model.ActionFunc(validateLinks)),
 	},
