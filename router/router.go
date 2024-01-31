@@ -534,14 +534,16 @@ func (self *Router) startControlPlane() error {
 	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
-	time.AfterFunc(time.Second*15, func() {
-		if !self.isShutdown.Load() && len(self.ctrls.GetAll()) == 0 {
-			if os.Getenv("STACKDUMP_ON_FAILED_STARTUP") == "true" {
-				debugz.DumpStack()
+	if self.config.Ctrl.StartupTimeout > 0 {
+		time.AfterFunc(self.config.Ctrl.StartupTimeout, func() {
+			if !self.isShutdown.Load() && len(self.ctrls.GetAll()) == 0 {
+				if os.Getenv("STACKDUMP_ON_FAILED_STARTUP") == "true" {
+					debugz.DumpStack()
+				}
+				pfxlog.Logger().Fatal("unable to connect to any controllers before timeout")
 			}
-			pfxlog.Logger().Fatal("unable to connect to any controllers before timeout")
-		}
-	})
+		})
+	}
 
 	_ = self.ctrls.AnyValidCtrlChannel()
 	for _, x := range self.xrctrls {

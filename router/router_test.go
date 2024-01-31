@@ -49,6 +49,7 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 				Options               *channel.Options
 				DataDir               string
 				Heartbeats            env.HeartbeatOptions
+				StartupTimeout        time.Duration
 			}{
 				DataDir:          tmpDir,
 				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr)},
@@ -89,6 +90,7 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 				Options               *channel.Options
 				DataDir               string
 				Heartbeats            env.HeartbeatOptions
+				StartupTimeout        time.Duration
 			}{
 				DataDir:          tmpDir,
 				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr), NewUpdatableAddress(addr2)},
