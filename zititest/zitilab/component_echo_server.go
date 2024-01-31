@@ -18,7 +18,7 @@ type EchoServerType struct {
 }
 
 func (self *EchoServerType) InitType(*model.Component) {
-	canonicalizeZitiVersion(&self.Version)
+	canonicalizeGoAppVersion(&self.Version)
 }
 
 func (self *EchoServerType) Dump() any {

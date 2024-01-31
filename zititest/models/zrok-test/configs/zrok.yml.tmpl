@@ -1,0 +1,29 @@
+#    _____ __ ___ | | __
+#   |_  / '__/ _ \| |/ /
+#    / /| | | (_) |   <
+#   /___|_|  \___/|_|\_\
+# controller configuration
+
+v:                  3
+
+admin:
+  # generate these admin tokens from a source of randomness, e.g.
+  #  LC_ALL=C tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c32
+  secrets:
+    -               {{ .Model.MustVariable "credentials.zrok.secret" }}  # be sure to change this!
+
+endpoint:
+  host:             0.0.0.0
+  port:             1280
+
+invites:
+  invites_open:    true
+
+store:
+  path:              /home/{{ .Model.MustVariable "credentials.ssh.username" }}/zrok.db
+  type:             sqlite3
+
+ziti:
+  api_endpoint:     "https://{{ publicIp "component#ctrl1" }}:1280"
+  username:         {{ .Model.MustVariable "credentials.edge.username" }}
+  password:         {{ .Model.MustVariable "credentials.edge.password" }}

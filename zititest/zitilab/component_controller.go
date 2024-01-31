@@ -46,7 +46,7 @@ type ControllerType struct {
 }
 
 func (self *ControllerType) InitType(*model.Component) {
-	canonicalizeZitiVersion(&self.Version)
+	canonicalizeGoAppVersion(&self.Version)
 }
 
 func (self *ControllerType) GetActions() map[string]model.ComponentAction {

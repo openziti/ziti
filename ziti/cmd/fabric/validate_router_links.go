@@ -32,7 +32,8 @@ import (
 
 type validateRouterLinksAction struct {
 	api.Options
-	includeValid bool
+	includeValidLinks   bool
+	includeValidRouters bool
 
 	eventNotify chan *mgmt_pb.RouterLinkDetails
 }
@@ -53,7 +54,8 @@ func NewValidateRouterLinksCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	action.AddCommonFlags(validateLinksCmd)
-	validateLinksCmd.Flags().BoolVar(&action.includeValid, "include-valid", false, "Don't hide results for valid links")
+	validateLinksCmd.Flags().BoolVar(&action.includeValidLinks, "include-valid-links", false, "Don't hide results for valid links")
+	validateLinksCmd.Flags().BoolVar(&action.includeValidRouters, "include-valid-routers", false, "Don't hide results for valid routers")
 	return validateLinksCmd
 }
 
@@ -107,14 +109,26 @@ func (self *validateRouterLinksAction) validateRouterLinks(_ *cobra.Command, arg
 		case routerDetail := <-self.eventNotify:
 			result := "validation successful"
 			if !routerDetail.ValidateSuccess {
-				result = fmt.Sprintf("error: unable to validation (%s)", routerDetail.Message)
+				result = fmt.Sprintf("error: unable to validate (%s)", routerDetail.Message)
 				errCount++
 			}
-			fmt.Printf("routerId: %s, routerName: %v, links: %v, %s\n",
-				routerDetail.RouterId, routerDetail.RouterName, len(routerDetail.LinkDetails), result)
+
+			routerHeaderDone := false
+			outputRouterHeader := func() {
+				fmt.Printf("routerId: %s, routerName: %v, links: %v, %s\n",
+					routerDetail.RouterId, routerDetail.RouterName, len(routerDetail.LinkDetails), result)
+				routerHeaderDone = true
+			}
+
+			if self.includeValidRouters {
+				outputRouterHeader()
+			}
 
 			for _, linkDetail := range routerDetail.LinkDetails {
-				if self.includeValid || !linkDetail.IsValid {
+				if self.includeValidLinks || !linkDetail.IsValid {
+					if !routerHeaderDone {
+						outputRouterHeader()
+					}
 					fmt.Printf("\tlinkId: %s, destConnected: %v, ctrlState: %v, routerState: %v, dest: %v, dialed: %v \n",
 						linkDetail.LinkId, linkDetail.DestConnected, linkDetail.CtrlState, linkDetail.RouterState.String(),
 						linkDetail.DestRouterId, linkDetail.Dialed)

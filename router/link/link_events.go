@@ -191,13 +191,18 @@ func (self *dialRequest) Handle(registry *linkRegistryImpl) {
 					dialer:       dialer,
 					allowedDials: 1,
 				}
+				log = log.WithField("linkId", newLinkState.linkId)
 				dest.linkMap[linkKey] = newLinkState
 				log.Info("new potential link")
 				registry.evaluateLinkState(newLinkState)
 			} else if existingLinkState.status != StatusEstablished {
+				log = log.WithField("linkId", existingLinkState.linkId)
+
 				existingLinkState.retryDelay = time.Duration(0)
 				existingLinkState.nextDial = time.Now()
 				existingLinkState.allowedDials = 1
+
+				log.Info("dial request received for existing link, re-evaluating")
 				registry.evaluateLinkState(existingLinkState)
 			}
 		}
@@ -237,6 +242,7 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 		state.connectedCount++
 		state.retryDelay = time.Duration(0)
 		state.ctrlsNotified = false
+		state.link = self.link
 		registry.triggerNotify()
 	}
 
@@ -245,6 +251,7 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 		state.nextDial = time.Now()
 		registry.evaluateLinkState(state)
 		state.addPendingLinkFault(link.Id(), link.Iteration())
+		state.link = nil
 	}
 }
 
@@ -304,20 +311,25 @@ func (self *inspectLinkStatesEvent) Handle(registry *linkRegistryImpl) {
 		}
 
 		for _, state := range dest.linkMap {
+			establishedLinkId := ""
+			if link := state.link; link != nil {
+				establishedLinkId = link.Id()
+			}
 			inspectLinkState := &inspect.LinkState{
-				Id:             state.linkId,
-				Key:            state.linkKey,
-				Status:         state.status.String(),
-				DialAttempts:   state.dialAttempts.Load(),
-				ConnectedCount: state.connectedCount,
-				RetryDelay:     state.retryDelay.String(),
-				NextDial:       state.nextDial.Format(time.RFC3339),
-				TargetAddress:  state.listener.Address,
-				TargetGroups:   state.listener.Groups,
-				TargetBinding:  state.listener.LocalBinding,
-				DialerGroups:   state.dialer.GetGroups(),
-				DialerBinding:  state.dialer.GetBinding(),
-				CtrlsNotified:  state.ctrlsNotified,
+				Id:                state.linkId,
+				Key:               state.linkKey,
+				Status:            state.status.String(),
+				DialAttempts:      state.dialAttempts.Load(),
+				ConnectedCount:    state.connectedCount,
+				RetryDelay:        state.retryDelay.String(),
+				NextDial:          state.nextDial.Format(time.RFC3339),
+				TargetAddress:     state.listener.Address,
+				TargetGroups:      state.listener.Groups,
+				TargetBinding:     state.listener.LocalBinding,
+				DialerGroups:      state.dialer.GetGroups(),
+				DialerBinding:     state.dialer.GetBinding(),
+				CtrlsNotified:     state.ctrlsNotified,
+				EstablishedLinkId: establishedLinkId,
 			}
 			if inspectLinkState.TargetBinding == "" {
 				inspectLinkState.TargetBinding = "default"
@@ -349,7 +361,7 @@ type markNewLinksNotified struct {
 
 func (self *markNewLinksNotified) Handle(*linkRegistryImpl) {
 	for _, pair := range self.links {
-		if pair.state.status == StatusEstablished {
+		if pair.state.status == StatusEstablished && pair.link == pair.state.link {
 			pair.state.ctrlsNotified = true
 		}
 	}

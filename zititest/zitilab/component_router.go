@@ -18,7 +18,6 @@ package zitilab
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
@@ -26,7 +25,9 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"io/fs"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 var _ model.ComponentType = (*RouterType)(nil)
@@ -45,7 +46,7 @@ type RouterType struct {
 }
 
 func (self *RouterType) InitType(*model.Component) {
-	canonicalizeZitiVersion(&self.Version)
+	canonicalizeGoAppVersion(&self.Version)
 }
 
 func (self *RouterType) GetActions() map[string]model.ComponentAction {
@@ -128,23 +129,25 @@ func (self *RouterType) Start(r model.Run, c *model.Component) error {
 	return startZitiComponent(c, "router", self.Version, self.getConfigName(c))
 }
 
-func (self *RouterType) Stop(_ model.Run, c *model.Component) error {
-	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c))
+func (self *RouterType) Stop(run model.Run, c *model.Component) error {
+	if err := c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c)); err != nil {
+		return err
+	}
+	for i := 0; i < 10; i++ {
+		if isRunning, err := self.IsRunning(run, c); err == nil && !isRunning {
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return c.GetHost().KillProcesses("-KILL", self.getProcessFilter(c))
 }
 
 func (self *RouterType) CreateAndEnroll(run model.Run, c *model.Component) error {
-	if err := zitilib_actions.EdgeExec(c.GetModel(), "delete", "edge-router", c.Id); err != nil {
-		pfxlog.Logger().
-			WithError(err).
-			WithField("router", c.Id).
-			Warn("unable to delete router (may not be present")
-	}
-
 	jwtFileName := filepath.Join(run.GetTmpDir(), c.Id+".jwt")
 
 	attributes := strings.Join(c.Tags, ",")
 
-	args := []string{"create", "edge-router", c.Id, "-j", "--jwt-output-file", jwtFileName, "-a", attributes}
+	args := []string{"create", "edge-router", c.Id, "--timeout", strconv.Itoa(60), "-j", "--jwt-output-file", jwtFileName, "-a", attributes}
 
 	isTunneler := c.HasLocalOrAncestralTag("tunneler")
 	if isTunneler {
