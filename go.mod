@@ -80,7 +80,7 @@ require (
 	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/crypto v0.18.0
 	golang.org/x/net v0.20.0
-	golang.org/x/sync v0.5.0
+	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.16.0
 	golang.org/x/text v0.14.0
 	google.golang.org/protobuf v1.32.0
