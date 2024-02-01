@@ -243,10 +243,9 @@ func (r *resolver) AddDomain(name string, ipCB func(string) (net.IP, error)) err
 	r.domainsMtx.Lock()
 	defer r.domainsMtx.Unlock()
 	if _, found := r.domains[domainSfx]; found {
-		log.Warnf("domain[%v] is already registered", name)
-	} else {
-		r.domains[domainSfx] = entry
+		log.Warnf("domain[%v] is overwriting registered domain", name)
 	}
+	r.domains[domainSfx] = entry
 
 	return nil
 }
