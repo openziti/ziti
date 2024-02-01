@@ -82,7 +82,7 @@ type InterceptAddrCB interface {
 
 func GetInterceptAddresses(service *entities.Service, protocols []string, resolver dns.Resolver, addressCB InterceptAddrCB) error {
 	for _, addr := range service.InterceptV1Config.Addresses {
-		err := getInterceptIP(service, addr, resolver, func(ip net.IP, ipNet *net.IPNet) {
+		err := getInterceptIP(service, addr, resolver, func(ipNet *net.IPNet) {
 			for _, protocol := range protocols {
 				for _, portRange := range service.InterceptV1Config.PortRanges {
 					addr := &InterceptAddress{

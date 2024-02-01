@@ -18,37 +18,35 @@ package intercept
 
 import (
 	"fmt"
+	"github.com/gaissmai/extnetip"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/entities"
 	"github.com/openziti/ziti/tunnel/utils"
 	"net"
+	"net/netip"
+	"sync"
 )
 
-var dnsIpLow, dnsIpHigh net.IP
+var dnsPrefix netip.Prefix
+var dnsCurrentIp netip.Addr
+var dnsCurrentIpMtx sync.Mutex
 
 func SetDnsInterceptIpRange(cidr string) error {
-	ip, ipnet, err := net.ParseCIDR(cidr)
+	prefix, err := netip.ParsePrefix(cidr)
 	if err != nil {
 		return fmt.Errorf("invalid cidr %s: %v", cidr, err)
 	}
 
-	var ips []net.IP
-	for ip = ip.Mask(ipnet.Mask); ipnet.Contains(ip); utils.IncIP(ip) {
-		a := make(net.IP, len(ip))
-		copy(a, ip)
-		ips = append(ips, a)
-	}
+	dnsPrefix = prefix
+	// get last ip in range for logging
+	_, dnsIpHigh := extnetip.Range(dnsPrefix)
 
-	// remove network address and broadcast address
-	dnsIpLow = ips[1]
-	dnsIpHigh = ips[len(ips)-2]
-
-	if len(dnsIpLow) != len(dnsIpHigh) {
-		return fmt.Errorf("lower dns IP length %d differs from upper dns IP length %d", len(dnsIpLow), len(dnsIpHigh))
-	}
-
-	pfxlog.Logger().Infof("dns intercept IP range: %s - %s", dnsIpLow.String(), dnsIpHigh.String())
+	// skip network address
+	dnsCurrentIpMtx.Lock()
+	dnsCurrentIp = dnsPrefix.Addr().Next()
+	dnsCurrentIpMtx.Unlock()
+	pfxlog.Logger().Infof("dns intercept IP range: %v - %v", dnsCurrentIp, dnsIpHigh)
 	return nil
 }
 
@@ -61,41 +59,56 @@ func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
 	return f
 }
 
-func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver, addrCB func(net.IP, *net.IPNet)) error {
+func incDnsIp() (err error) {
+	dnsCurrentIpMtx.Lock()
+	defer dnsCurrentIpMtx.Unlock()
+	ip := dnsCurrentIp.Next()
+	if ip.IsValid() && dnsPrefix.Contains(ip) {
+		dnsCurrentIp = ip
+	} else {
+		err = fmt.Errorf("cannot allocate ip addrress: ip range exhausted")
+	}
+	return
+}
+
+func getDnsIp(host string, addrCB func(*net.IPNet), svc *entities.Service, resolver dns.Resolver) (net.IP, error) {
+	err := incDnsIp()
+	if err == nil {
+		addrCB(&net.IPNet{
+			IP:   dnsCurrentIp.AsSlice(),
+			Mask: net.CIDRMask(dnsCurrentIp.BitLen(), dnsCurrentIp.BitLen()),
+		})
+		svc.AddCleanupAction(cleanUpFunc(host, resolver))
+	}
+	return dnsCurrentIp.AsSlice(), err
+}
+
+func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver, addrCB func(ipNet *net.IPNet)) error {
 	logger := pfxlog.Logger()
 
+	// handle wildcard domain - IPs will be allocated when matching hostnames are queried
 	if hostname[0] == '*' {
 		err := resolver.AddDomain(hostname, func(host string) (net.IP, error) {
-			var ip net.IP
-			var err error
-			ip, err = utils.NextIP(dnsIpLow, dnsIpHigh)
-
-			if err == nil {
-				addrCB(ip, utils.Ip2IPnet(ip))
-				svc.AddCleanupAction(cleanUpFunc(host, resolver))
-			}
-			return ip, err
+			return getDnsIp(hostname, addrCB, svc, resolver)
 		})
 		return err
 	}
 
-	ip, ipNet, err := utils.GetDialIP(hostname)
+	// handle IP or CIDR
+	ipNet, err := utils.GetCidr(hostname)
 	if err == nil {
-		addrCB(ip, ipNet)
+		addrCB(ipNet)
 		return err
 	}
 
-	ip, _ = utils.NextIP(dnsIpLow, dnsIpHigh)
-	if ip == nil {
+	// handle hostnames
+	ip, err := getDnsIp(hostname, addrCB, svc, resolver)
+	if err != nil {
 		return fmt.Errorf("invalid IP address or unresolvable hostname: %s", hostname)
 	}
 	if err = resolver.AddHostname(hostname, ip); err != nil {
 		logger.WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", hostname, ip)
 	}
 
-	svc.AddCleanupAction(cleanUpFunc(hostname, resolver))
-
-	ipNet = utils.Ip2IPnet(ip)
-	addrCB(ip, ipNet)
 	return nil
 }
