@@ -112,7 +112,7 @@ func (self *hostedServiceRegistry) scanForRetries() {
 }
 
 func (self *hostedServiceRegistry) tryEstablish(terminator *edgeTerminator) {
-	log := pfxlog.Logger().WithField("terminatorId", terminator.Id()).
+	log := pfxlog.Logger().WithField("terminatorId", terminator.terminatorId.Load()).
 		WithField("token", terminator.token).
 		WithField("state", terminator.state.Load().String())
 
@@ -233,10 +233,17 @@ func (self *hostedServiceRegistry) establishTerminatorWithRetry(terminator *edge
 			return backoff.Permanent(fmt.Errorf("edge link is closed, stopping terminator creation for terminator %s",
 				terminator.terminatorId.Load()))
 		}
-		if state := terminator.state.Load(); state != TerminatorStateEstablishing {
+
+		state := terminator.state.Load()
+		if state == TerminatorStateEstablished { // terminator already established
+			return nil
+		}
+
+		if state != TerminatorStateEstablishing {
 			return backoff.Permanent(fmt.Errorf("terminator state is %v, stopping terminator creation for terminator %s",
 				state.String(), terminator.terminatorId.Load()))
 		}
+
 		if terminator.terminatorId.Load() == "" {
 			return backoff.Permanent(fmt.Errorf("terminator has been closed, stopping terminator creation"))
 		}
