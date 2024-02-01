@@ -22,7 +22,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/entities"
-	"github.com/openziti/ziti/tunnel/router"
 	"github.com/openziti/ziti/tunnel/utils"
 	"net"
 	"net/netip"
@@ -47,25 +46,13 @@ func SetDnsInterceptIpRange(cidr string) error {
 	dnsCurrentIp = dnsPrefix.Addr()
 	dnsCurrentIpMtx.Unlock()
 	pfxlog.Logger().Infof("dns intercept IP range: %v - %v", dnsCurrentIp, dnsIpHigh)
-	dnsNet := &net.IPNet{
-		IP:   dnsPrefix.Addr().AsSlice(),
-		Mask: net.CIDRMask(dnsPrefix.Bits(), dnsPrefix.Addr().BitLen()),
-	}
-	err = router.AddLocalAddress(dnsNet, "lo")
-	if err != nil {
-		pfxlog.Logger().WithError(err).Errorf("failed assigning dns cidr to loopback interface")
-	}
-	return err
+	return nil
 }
 
-func ClearDnsInterceptIpRange() {
-	dnsNet := &net.IPNet{
+func GetDnsInterceptIpRange() *net.IPNet {
+	return &net.IPNet{
 		IP:   dnsPrefix.Addr().AsSlice(),
 		Mask: net.CIDRMask(dnsPrefix.Bits(), dnsPrefix.Addr().BitLen()),
-	}
-	err := router.RemoveLocalAddress(dnsNet, "lo")
-	if err != nil {
-		pfxlog.Logger().Errorf("failed to remove route for DNS IPs from lo")
 	}
 }
 

@@ -137,7 +137,9 @@ func New(config Config) (intercept.Interceptor, error) {
 		logrus.Infof("no lan interface specified with '-lanIf'. please ensure firewall accepts intercepted service addresses")
 	}
 
-	return self, nil
+	dnsNet := intercept.GetDnsInterceptIpRange()
+	err = router.AddLocalAddress(dnsNet, "lo")
+	return self, err
 }
 
 type alwaysRemoveAddressTracker struct{}
@@ -426,6 +428,12 @@ func (self *tProxy) Stop(tracker intercept.AddressTracker) {
 	err := self.StopIntercepting(tracker)
 	if err != nil {
 		log.WithError(err).Error("failed to clean up intercept configuration")
+	}
+
+	dnsNet := intercept.GetDnsInterceptIpRange()
+	err = router.RemoveLocalAddress(dnsNet, "lo")
+	if err != nil {
+		logrus.WithError(err).Errorf("failed to remove route %v", dnsNet)
 	}
 }
 
