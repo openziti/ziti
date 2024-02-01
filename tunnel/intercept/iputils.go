@@ -42,9 +42,8 @@ func SetDnsInterceptIpRange(cidr string) error {
 	// get last ip in range for logging
 	_, dnsIpHigh := extnetip.Range(dnsPrefix)
 
-	// skip network address
 	dnsCurrentIpMtx.Lock()
-	dnsCurrentIp = dnsPrefix.Addr().Next()
+	dnsCurrentIp = dnsPrefix.Addr()
 	dnsCurrentIpMtx.Unlock()
 	pfxlog.Logger().Infof("dns intercept IP range: %v - %v", dnsCurrentIp, dnsIpHigh)
 	return nil
