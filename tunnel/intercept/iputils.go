@@ -63,7 +63,10 @@ func ClearDnsInterceptIpRange() {
 		IP:   dnsPrefix.Addr().AsSlice(),
 		Mask: net.CIDRMask(dnsPrefix.Bits(), dnsPrefix.Addr().BitLen()),
 	}
-	router.RemoveLocalAddress(dnsNet, "lo")
+	err := router.RemoveLocalAddress(dnsNet, "lo")
+	if err != nil {
+		pfxlog.Logger().Errorf("failed to remove route for DNS IPs from lo")
+	}
 }
 
 func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
@@ -82,7 +85,7 @@ func incDnsIp() (err error) {
 	if ip.IsValid() && dnsPrefix.Contains(ip) {
 		dnsCurrentIp = ip
 	} else {
-		err = fmt.Errorf("cannot allocate ip addrress: ip range exhausted")
+		err = fmt.Errorf("cannot allocate ip address: ip range exhausted")
 	}
 	return
 }
