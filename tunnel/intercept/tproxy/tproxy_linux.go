@@ -505,10 +505,11 @@ func (self *tProxy) intercept(service *entities.Service, resolver dns.Resolver, 
 
 func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, service *entities.Service, port IPPortAddr, tracker intercept.AddressTracker) error {
 	ipNet := interceptAddr.IpNet()
-	if err := router.AddLocalAddress(ipNet, "lo"); err != nil {
-		return errors.Wrapf(err, "failed to add local route %v", ipNet)
+	if interceptAddr.RouteRequired() {
+		if err := router.AddLocalAddress(ipNet, "lo"); err != nil {
+			return errors.Wrapf(err, "failed to add local route %v", ipNet)
+		}
 	}
-	tracker.AddAddress(ipNet.String())
 	self.addresses = append(self.addresses, interceptAddr)
 
 	if self.interceptor.diverter != "" {
@@ -608,7 +609,7 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 		}
 
 		ipNet := addr.IpNet()
-		if tracker.RemoveAddress(ipNet.String()) {
+		if tracker.RemoveAddress(ipNet.String()) && addr.RouteRequired() {
 			err := router.RemoveLocalAddress(ipNet, "lo")
 			if err != nil {
 				errorList = append(errorList, err)

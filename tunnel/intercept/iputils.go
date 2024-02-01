@@ -22,6 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/entities"
+	"github.com/openziti/ziti/tunnel/router"
 	"github.com/openziti/ziti/tunnel/utils"
 	"net"
 	"net/netip"
@@ -46,7 +47,23 @@ func SetDnsInterceptIpRange(cidr string) error {
 	dnsCurrentIp = dnsPrefix.Addr()
 	dnsCurrentIpMtx.Unlock()
 	pfxlog.Logger().Infof("dns intercept IP range: %v - %v", dnsCurrentIp, dnsIpHigh)
-	return nil
+	dnsNet := &net.IPNet{
+		IP:   dnsPrefix.Addr().AsSlice(),
+		Mask: net.CIDRMask(dnsPrefix.Bits(), dnsPrefix.Addr().BitLen()),
+	}
+	err = router.AddLocalAddress(dnsNet, "lo")
+	if err != nil {
+		pfxlog.Logger().WithError(err).Errorf("failed assigning dns cidr to loopback interface")
+	}
+	return err
+}
+
+func ClearDnsInterceptIpRange() {
+	dnsNet := &net.IPNet{
+		IP:   dnsPrefix.Addr().AsSlice(),
+		Mask: net.CIDRMask(dnsPrefix.Bits(), dnsPrefix.Addr().BitLen()),
+	}
+	router.RemoveLocalAddress(dnsNet, "lo")
 }
 
 func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
@@ -70,19 +87,20 @@ func incDnsIp() (err error) {
 	return
 }
 
-func getDnsIp(host string, addrCB func(*net.IPNet), svc *entities.Service, resolver dns.Resolver) (net.IP, error) {
+func getDnsIp(host string, addrCB func(*net.IPNet, bool), svc *entities.Service, resolver dns.Resolver) (net.IP, error) {
 	err := incDnsIp()
 	if err == nil {
-		addrCB(&net.IPNet{
+		addr := &net.IPNet{
 			IP:   dnsCurrentIp.AsSlice(),
 			Mask: net.CIDRMask(dnsCurrentIp.BitLen(), dnsCurrentIp.BitLen()),
-		})
+		}
+		addrCB(addr, false)
 		svc.AddCleanupAction(cleanUpFunc(host, resolver))
 	}
 	return dnsCurrentIp.AsSlice(), err
 }
 
-func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver, addrCB func(ipNet *net.IPNet)) error {
+func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver, addrCB func(*net.IPNet, bool)) error {
 	logger := pfxlog.Logger()
 
 	// handle wildcard domain - IPs will be allocated when matching hostnames are queried
@@ -96,7 +114,7 @@ func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolve
 	// handle IP or CIDR
 	ipNet, err := utils.GetCidr(hostname)
 	if err == nil {
-		addrCB(ipNet)
+		addrCB(ipNet, true)
 		return err
 	}
 

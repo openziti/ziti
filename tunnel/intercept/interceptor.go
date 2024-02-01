@@ -43,12 +43,13 @@ type Interceptor interface {
 // - service name - when a service is removed (e.g. from an appwan)
 
 type InterceptAddress struct {
-	cidr       *net.IPNet
-	lowPort    uint16
-	highPort   uint16
-	protocol   string
-	TproxySpec []string
-	AcceptSpec []string
+	cidr          *net.IPNet
+	routeRequired bool
+	lowPort       uint16
+	highPort      uint16
+	protocol      string
+	TproxySpec    []string
+	AcceptSpec    []string
 }
 
 func (addr *InterceptAddress) Proto() string {
@@ -57,6 +58,10 @@ func (addr *InterceptAddress) Proto() string {
 
 func (addr *InterceptAddress) IpNet() *net.IPNet {
 	return addr.cidr
+}
+
+func (addr *InterceptAddress) RouteRequired() bool {
+	return addr.routeRequired
 }
 
 func (addr *InterceptAddress) LowPort() uint16 {
@@ -82,14 +87,15 @@ type InterceptAddrCB interface {
 
 func GetInterceptAddresses(service *entities.Service, protocols []string, resolver dns.Resolver, addressCB InterceptAddrCB) error {
 	for _, addr := range service.InterceptV1Config.Addresses {
-		err := getInterceptIP(service, addr, resolver, func(ipNet *net.IPNet) {
+		err := getInterceptIP(service, addr, resolver, func(ipNet *net.IPNet, routeRequired bool) {
 			for _, protocol := range protocols {
 				for _, portRange := range service.InterceptV1Config.PortRanges {
 					addr := &InterceptAddress{
-						cidr:     ipNet,
-						lowPort:  portRange.Low,
-						highPort: portRange.High,
-						protocol: protocol}
+						cidr:          ipNet,
+						routeRequired: routeRequired,
+						lowPort:       portRange.Low,
+						highPort:      portRange.High,
+						protocol:      protocol}
 					addressCB.Apply(addr)
 				}
 			}

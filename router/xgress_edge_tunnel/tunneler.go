@@ -150,6 +150,7 @@ func (self *tunneler) Listen(_ string, bindHandler xgress.BindHandler) error {
 
 func (self *tunneler) Close() error {
 	self.interceptor.Stop()
+	intercept.ClearDnsInterceptIpRange()
 	return nil
 }
 
