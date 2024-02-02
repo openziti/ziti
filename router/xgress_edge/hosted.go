@@ -17,15 +17,14 @@
 package xgress_edge
 
 import (
+	"container/heap"
 	"fmt"
-	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	routerEnv "github.com/openziti/ziti/router/env"
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -35,22 +34,22 @@ import (
 
 func newHostedServicesRegistry(env routerEnv.RouterEnv) *hostedServiceRegistry {
 	result := &hostedServiceRegistry{
-		services:       sync.Map{},
-		events:         make(chan terminatorEvent),
-		env:            env,
-		retriesPending: false,
-		waits:          cmap.New[chan struct{}](),
+		services:        sync.Map{},
+		events:          make(chan terminatorEvent),
+		env:             env,
+		retriesPending:  false,
+		terminatorQueue: &terminatorHeap{},
 	}
 	go result.run()
 	return result
 }
 
 type hostedServiceRegistry struct {
-	services       sync.Map
-	events         chan terminatorEvent
-	env            routerEnv.RouterEnv
-	retriesPending bool
-	waits          cmap.ConcurrentMap[string, chan struct{}]
+	services        sync.Map
+	events          chan terminatorEvent
+	env             routerEnv.RouterEnv
+	retriesPending  bool
+	terminatorQueue *terminatorHeap
 }
 
 type terminatorEvent interface {
@@ -58,13 +57,16 @@ type terminatorEvent interface {
 }
 
 func (self *hostedServiceRegistry) run() {
-	retryTicker := time.NewTicker(50 * time.Millisecond)
-	defer retryTicker.Stop()
+	queueCheckTicker := time.NewTicker(100 * time.Millisecond)
+	defer queueCheckTicker.Stop()
+
+	longQueueCheckTicker := time.NewTicker(time.Second)
+	defer longQueueCheckTicker.Stop()
 
 	for {
 		var retryChan <-chan time.Time
 		if self.retriesPending {
-			retryChan = retryTicker.C
+			retryChan = queueCheckTicker.C
 		}
 
 		select {
@@ -73,9 +75,24 @@ func (self *hostedServiceRegistry) run() {
 		case event := <-self.events:
 			event.handle(self)
 		case <-retryChan:
+			self.evaluateLinkStateQueue()
+		case <-longQueueCheckTicker.C:
 			self.scanForRetries()
 		}
 	}
+}
+
+func (self *hostedServiceRegistry) evaluateLinkStateQueue() {
+	now := time.Now()
+	for len(*self.terminatorQueue) > 0 {
+		next := (*self.terminatorQueue)[0]
+		if now.Before(next.nextAttempt) {
+			return
+		}
+		heap.Pop(self.terminatorQueue)
+		self.evaluateTerminator(next)
+	}
+	self.retriesPending = false
 }
 
 type establishTerminatorEvent struct {
@@ -83,21 +100,41 @@ type establishTerminatorEvent struct {
 }
 
 func (self *establishTerminatorEvent) handle(registry *hostedServiceRegistry) {
-	registry.tryEstablish(self.terminator)
+	registry.evaluateTerminator(self.terminator)
+}
+
+type calculateRetry struct {
+	terminator  *edgeTerminator
+	queueFailed bool
+}
+
+func (self *calculateRetry) handle(registry *hostedServiceRegistry) {
+	self.terminator.calculateRetry(self.queueFailed)
+	registry.retriesPending = true
 }
 
 func (self *hostedServiceRegistry) EstablishTerminator(terminator *edgeTerminator) {
-	event := &establishTerminatorEvent{
-		terminator: terminator,
-	}
-
 	self.Put(terminator.terminatorId.Load(), terminator)
+	self.queue(&establishTerminatorEvent{
+		terminator: terminator,
+	})
+}
 
+func (self *hostedServiceRegistry) queue(event terminatorEvent) {
 	select {
-	case <-self.env.GetCloseNotify():
-		pfxlog.Logger().WithField("terminatorId", terminator.terminatorId.Load()).
-			Error("unable to establish terminator, hosted service registry has been shutdown")
 	case self.events <- event:
+	case <-self.env.GetCloseNotify():
+		pfxlog.Logger().Error("unable to queue terminator event, hosted service registry has been shutdown")
+	}
+}
+
+func (self *hostedServiceRegistry) scheduleRetry(terminator *edgeTerminator, queueFailed bool) {
+	terminator.establishActive.Store(false)
+	if terminator.state.CompareAndSwap(TerminatorStateEstablished, TerminatorStatePendingEstablishment) {
+		self.queue(&calculateRetry{
+			terminator:  terminator,
+			queueFailed: queueFailed,
+		})
 	}
 }
 
@@ -105,29 +142,10 @@ func (self *hostedServiceRegistry) scanForRetries() {
 	self.services.Range(func(key, value any) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator.state.Load() == TerminatorStatePendingEstablishment {
-			self.tryEstablish(terminator)
+			self.evaluateTerminator(terminator)
 		}
 		return true
 	})
-}
-
-func (self *hostedServiceRegistry) tryEstablish(terminator *edgeTerminator) {
-	log := pfxlog.Logger().WithField("terminatorId", terminator.terminatorId.Load()).
-		WithField("token", terminator.token).
-		WithField("state", terminator.state.Load().String())
-
-	if !terminator.state.CompareAndSwap(TerminatorStatePendingEstablishment, TerminatorStateEstablishing) {
-		log.Info("terminator not pending, not going to try to establish")
-		return
-	}
-
-	err := self.env.GetRateLimiterPool().QueueOrError(func() {
-		self.establishTerminatorWithRetry(terminator)
-	})
-	if err != nil {
-		log.Info("rate limited: unable to queue to establish")
-		self.retriesPending = true
-	}
 }
 
 func (self *hostedServiceRegistry) Put(hostId string, conn *edgeTerminator) {
@@ -218,56 +236,45 @@ func (self *hostedServiceRegistry) getRelatedTerminators(sessionToken string, pr
 	return result
 }
 
-func (self *hostedServiceRegistry) establishTerminatorWithRetry(terminator *edgeTerminator) {
+func (self *hostedServiceRegistry) evaluateTerminator(terminator *edgeTerminator) {
 	log := logrus.
 		WithField("terminatorId", terminator.terminatorId.Load()).
+		WithField("state", terminator.state.Load()).
 		WithField("token", terminator.token)
 
-	if state := terminator.state.Load(); state != TerminatorStateEstablishing {
-		log.WithField("state", state.String()).Info("not attempting to establish terminator, not in establishing state")
+	if terminator.edgeClientConn.ch.IsClosed() {
+		log.Info("terminator sdk channel closed, not trying to establish")
 		return
 	}
 
-	operation := func() error {
-		if terminator.edgeClientConn.ch.IsClosed() {
-			return backoff.Permanent(fmt.Errorf("edge link is closed, stopping terminator creation for terminator %s",
-				terminator.terminatorId.Load()))
-		}
-
-		state := terminator.state.Load()
-		if state == TerminatorStateEstablished { // terminator already established
-			return nil
-		}
-
-		if state != TerminatorStateEstablishing {
-			return backoff.Permanent(fmt.Errorf("terminator state is %v, stopping terminator creation for terminator %s",
-				state.String(), terminator.terminatorId.Load()))
-		}
-
-		if terminator.terminatorId.Load() == "" {
-			return backoff.Permanent(fmt.Errorf("terminator has been closed, stopping terminator creation"))
-		}
-
-		err := self.establishTerminator(terminator)
-		if err != nil && terminator.state.Load() != TerminatorStateEstablishing {
-			return backoff.Permanent(err)
-		}
-		return err
+	if terminator.terminatorId.Load() == "" {
+		log.Info("terminator has been closed, not trying to establish")
+		return
 	}
 
-	expBackoff := backoff.NewExponentialBackOff()
-	expBackoff.InitialInterval = 5 * time.Second
-	expBackoff.MaxInterval = 5 * time.Minute
+	tryEstablish := terminator.state.Load() == TerminatorStatePendingEstablishment && terminator.nextAttempt.Before(time.Now())
 
-	if err := backoff.Retry(operation, expBackoff); err != nil {
-		log.WithError(err).Error("stopping attempts to establish terminator, see error")
-	} else if terminator.postValidate {
-		if result, err := terminator.inspect(true); err != nil {
-			log.WithError(err).Error("error validating terminator after create")
-		} else if result.Type != edge.ConnTypeBind {
-			log.WithError(err).Error("terminator invalid in sdk after create, closed")
-		} else {
-			log.Info("terminator validated successfully")
+	if tryEstablish && terminator.establishActive.CompareAndSwap(false, true) {
+		if !terminator.state.CompareAndSwap(TerminatorStatePendingEstablishment, TerminatorStateEstablishing) {
+			log.Infof("terminator in state %s, not pending establishment, not queueing", terminator.state.Load())
+			return
+		}
+
+		log.Info("queuing terminator to send create")
+
+		err := self.env.GetRateLimiterPool().QueueOrError(func() {
+			defer func() {
+				self.scheduleRetry(terminator, false)
+			}()
+
+			if err := self.establishTerminator(terminator); err != nil {
+				log.WithError(err).Error("error establishing terminator")
+			}
+		})
+
+		if err != nil {
+			log.Info("rate limited: unable to queue to establish")
+			self.scheduleRetry(terminator, true)
 		}
 	}
 }
@@ -306,18 +313,7 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 
 	log.Info("sending create terminator v2 request")
 
-	err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendAndWaitForWire(ctrlCh)
-	if err != nil {
-		return err
-	}
-
-	if self.waitForTerminatorCreated(terminatorId, 10*time.Second) {
-		return nil
-	}
-
-	// return an error to indicate that we need to check if a response has come back after the next interval,
-	// and if not, re-send
-	return errors.Errorf("timeout waiting for response to create terminator request for terminator %v", terminator.terminatorId.Load())
+	return protobufs.MarshalTyped(request).WithTimeout(timeout).SendAndWaitForWire(ctrlCh)
 }
 
 func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.Message, _ channel.Channel) {
@@ -338,47 +334,43 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 		return
 	}
 
+	log = log.WithField("lifetime", time.Since(terminator.createTime))
+
+	if response.Result == edge_ctrl_pb.CreateTerminatorResult_FailedBusy {
+		log.Info("controller too busy to handle create terminator, retrying later")
+		return
+	}
+
 	if response.Result != edge_ctrl_pb.CreateTerminatorResult_Success {
 		terminator.close(true, response.Msg)
 		return
 	}
 
 	if terminator.state.CompareAndSwap(TerminatorStateEstablishing, TerminatorStateEstablished) {
-		self.notifyTerminatorCreated(response.TerminatorId)
 		log.Info("received terminator created notification")
 	} else {
 		log.Info("received additional terminator created notification")
 	}
 
-	if terminator.notifyEstablished {
-		go func() {
-			notifyMsg := channel.NewMessage(edge.ContentTypeBindSuccess, nil)
-			notifyMsg.PutUint32Header(edge.ConnIdHeader, terminator.MsgChannel.Id())
-
-			if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.Channel); err != nil {
-				log.WithError(err).Error("failed to send bind success")
-			}
-		}()
+	isValid := true
+	if terminator.postValidate {
+		if result, err := terminator.inspect(true); err != nil {
+			log.WithError(err).Error("error validating terminator after create")
+		} else if result.Type != edge.ConnTypeBind {
+			log.WithError(err).Error("terminator invalid in sdk after create, closed")
+			isValid = false
+		} else {
+			log.Info("terminator validated successfully")
+		}
 	}
-}
 
-func (self *hostedServiceRegistry) waitForTerminatorCreated(id string, timeout time.Duration) bool {
-	notifyC := make(chan struct{})
-	defer self.waits.Remove(id)
+	if isValid && terminator.notifyEstablished {
+		notifyMsg := channel.NewMessage(edge.ContentTypeBindSuccess, nil)
+		notifyMsg.PutUint32Header(edge.ConnIdHeader, terminator.MsgChannel.Id())
 
-	self.waits.Set(id, notifyC)
-	select {
-	case <-notifyC:
-		return true
-	case <-time.After(timeout):
-		return false
-	}
-}
-
-func (self *hostedServiceRegistry) notifyTerminatorCreated(id string) {
-	notifyC, _ := self.waits.Get(id)
-	if notifyC != nil {
-		close(notifyC)
+		if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.Channel); err != nil {
+			log.WithError(err).Error("failed to send bind success")
+		}
 	}
 }
 

@@ -40,6 +40,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -53,6 +54,7 @@ const TargetZrokVersion = ""
 
 const iterations = 100_000
 const pacing = 10 * time.Millisecond
+const loopers = 2
 
 //go:embed configs
 var configResource embed.FS
@@ -66,9 +68,15 @@ func (self scaleStrategy) IsScaled(entity model.Entity) bool {
 func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 	if entity.GetType() == model.EntityTypeHost {
 		if entity.GetScope().HasTag("router") {
-			return 2
+			if strings.Contains(entity.GetId(), "us-east") {
+				return 1
+			}
+			return 0
 		} else if entity.GetScope().HasTag("client") {
-			return 3
+			if strings.Contains(entity.GetId(), "us-east") {
+				return 3
+			}
+			return 0
 		}
 	}
 
@@ -194,6 +202,7 @@ var m = &model.Model{
 								Version:    TargetZrokVersion,
 								Pacing:     pacing,
 								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -225,6 +234,7 @@ var m = &model.Model{
 								Version:    TargetZrokVersion,
 								Pacing:     pacing,
 								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -256,6 +266,7 @@ var m = &model.Model{
 								Version:    TargetZrokVersion,
 								Pacing:     pacing,
 								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -288,6 +299,7 @@ var m = &model.Model{
 								Version:    TargetZrokVersion,
 								Pacing:     pacing,
 								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -323,7 +335,7 @@ var m = &model.Model{
 			workflow.AddAction(component.Start("#zrokFront"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
-			workflow.AddAction(component.ExecInParallelF(".client", 200, (*zitilab.ZrokLoopTestType).Init))
+			workflow.AddAction(component.ExecInParallelF(".client", 10, (*zitilab.ZrokLoopTestType).Init))
 			return workflow
 		}),
 		"clean": model.Bind(actions.Workflow(

@@ -260,6 +260,7 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 		edgeClientConn: self,
 		token:          token,
 		assignIds:      assignIds,
+		createTime:     time.Now(),
 	}
 
 	// need to remove session remove listener on close
@@ -402,6 +403,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		v2:                true,
 		postValidate:      postValidate,
 		notifyEstablished: notifyEstablished,
+		createTime:        time.Now(),
 	}
 	terminator.terminatorId.Store(terminatorId)
 	terminator.state.Store(TerminatorStatePendingEstablishment)

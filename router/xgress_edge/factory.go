@@ -70,7 +70,10 @@ func (factory *Factory) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.env.GetRouterId(), func() {
 		factory.certChecker.CertsUpdated()
 	}))
-	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTerminatorV2ResponseType), factory.hostedServices.HandleCreateTerminatorResponse)
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type:    int32(edge_ctrl_pb.ContentType_CreateTerminatorV2ResponseType),
+		Handler: factory.hostedServices.HandleCreateTerminatorResponse,
+	})
 
 	return nil
 }

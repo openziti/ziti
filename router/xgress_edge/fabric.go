@@ -27,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"io"
 	"math"
+	"math/rand"
 	"sync/atomic"
 	"time"
 )
@@ -80,7 +81,29 @@ type edgeTerminator struct {
 	v2                bool
 	state             concurrenz.AtomicValue[terminatorState]
 	postValidate      bool
-	notifyEstablished bool
+	nextAttempt       time.Time
+	retryDelay        time.Duration
+	establishActive   atomic.Bool
+	createTime        time.Time
+}
+
+func (self *edgeTerminator) calculateRetry(queueFailed bool) {
+	retryDelay := time.Second
+
+	if !queueFailed {
+		if self.retryDelay < time.Second {
+			self.retryDelay = time.Second
+		} else {
+			self.retryDelay = self.retryDelay * 2
+			if self.retryDelay > 30*time.Second {
+				self.retryDelay = 30 * time.Second
+			}
+		}
+		retryDelay = self.retryDelay
+	}
+
+	actualDelay := (float64(retryDelay.Milliseconds()) * 1.5) - float64(rand.Intn(int(retryDelay.Milliseconds())))
+	self.nextAttempt = time.Now().Add(time.Millisecond * time.Duration(actualDelay))
 }
 
 func (self *edgeTerminator) inspect(fixInvalidTerminators bool) (*edge.InspectResult, error) {

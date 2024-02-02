@@ -30,11 +30,6 @@ import (
 var _ model.ComponentType = (*ZrokLoopTestType)(nil)
 var _ model.ServerComponent = (*ZrokLoopTestType)(nil)
 var _ model.FileStagingComponent = (*ZrokLoopTestType)(nil)
-var _ model.ActionsComponent = (*ZrokLoopTestType)(nil)
-
-const (
-	ZrokLoopTestActionInit = "init"
-)
 
 type ZrokLoopTestType struct {
 	Version    string
@@ -51,12 +46,6 @@ func (self *ZrokLoopTestType) InitType(*model.Component) {
 	}
 	if self.Loopers == 0 {
 		self.Loopers = 1
-	}
-}
-
-func (self *ZrokLoopTestType) GetActions() map[string]model.ComponentAction {
-	return map[string]model.ComponentAction{
-		ZrokFrontendActionInit: model.ComponentActionF(self.Init),
 	}
 }
 
@@ -122,14 +111,21 @@ func (self *ZrokLoopTestType) getUnixUser(c *model.Component) string {
 	return fmt.Sprintf("zrok%v", c.ScaleIndex)
 }
 
-func (self *ZrokLoopTestType) Init(run model.Run, c *model.Component) error {
+func (self *ZrokLoopTestType) InitializeHost(_ model.Run, c *model.Component) error {
 	userId := self.getUnixUser(c)
 
-	// this will error on first run
-	_ = c.GetHost().ExecLogOnlyOnError(fmt.Sprintf("sudo deluser %s --remove-home", userId))
-	if err := c.GetHost().ExecLogOnlyOnError(fmt.Sprintf("sudo useradd %s -m -g ubuntu ", userId)); err != nil {
-		return err
+	if _, err := c.GetHost().ExecLogged(fmt.Sprintf("id -u %s", userId)); err != nil {
+		cmd := fmt.Sprintf("sudo useradd %s -m -g ubuntu ", userId)
+		pfxlog.Logger().Info(cmd)
+		if err = c.GetHost().ExecLogOnlyOnError(fmt.Sprintf("sudo useradd %s -m -g ubuntu ", userId)); err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+func (self *ZrokLoopTestType) Init(run model.Run, c *model.Component) error {
+	userId := self.getUnixUser(c)
 
 	binaryPath := getBinaryPath(c, constants.ZROK, self.Version)
 	val, ok := c.Data["token"]
@@ -138,8 +134,8 @@ func (self *ZrokLoopTestType) Init(run model.Run, c *model.Component) error {
 	}
 	token := fmt.Sprintf("%v", val)
 	zrokApiEndpoint := run.GetModel().MustSelectHost("zrokCtrl").PublicIp + ":1280"
-	tmpl := "set -o pipefail; sudo -u %s ZROK_API_ENDPOINT=http://%s %s enable %s"
-	cmd := fmt.Sprintf(tmpl, userId, zrokApiEndpoint, binaryPath, token)
+	tmpl := "set -o pipefail; sudo -u %s rm -rf /home/%s/.zrok && sudo -u %s ZROK_API_ENDPOINT=http://%s %s enable %s"
+	cmd := fmt.Sprintf(tmpl, userId, userId, userId, zrokApiEndpoint, binaryPath, token)
 	pfxlog.Logger().Info(cmd)
 	return c.GetHost().ExecLogOnlyOnError(cmd)
 }
