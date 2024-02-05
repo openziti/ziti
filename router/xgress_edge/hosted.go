@@ -182,7 +182,7 @@ func (self *hostedServiceRegistry) cleanupServices(proxy *edgeClientConn) {
 	self.services.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator.edgeClientConn == proxy {
-			terminator.close(false, "") // don't notify, channel is already closed, we can't send messages
+			terminator.close(false, true, "channel closed") // don't notify, channel is already closed, we can't send messages
 			self.services.Delete(key)
 		}
 		return true
@@ -193,7 +193,7 @@ func (self *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
 	self.services.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator != newest && newest.token == terminator.token && newest.instance == terminator.instance {
-			terminator.close(false, "duplicate terminator") // don't notify, channel is already closed, we can't send messages
+			terminator.close(false, true, "duplicate terminator") // don't notify, channel is already closed, we can't send messages
 			self.services.Delete(key)
 			pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
 				WithField("token", terminator.token).
@@ -211,7 +211,7 @@ func (self *hostedServiceRegistry) unbindSession(connId uint32, sessionToken str
 	self.services.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator.MsgChannel.Id() == connId && terminator.token == sessionToken && terminator.edgeClientConn == proxy {
-			terminator.close(false, "unbind successful") // don't notify, sdk asked us to unbind
+			terminator.close(false, true, "unbind successful") // don't notify, sdk asked us to unbind
 			self.services.Delete(key)
 			pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
 				WithField("token", sessionToken).
@@ -342,7 +342,10 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 	}
 
 	if response.Result != edge_ctrl_pb.CreateTerminatorResult_Success {
-		terminator.close(true, response.Msg)
+		if terminator.establishCallback != nil {
+			terminator.establishCallback(false, response.Msg)
+		}
+		terminator.close(true, false, response.Msg)
 		return
 	}
 
@@ -364,13 +367,8 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 		}
 	}
 
-	if isValid && terminator.notifyEstablished {
-		notifyMsg := channel.NewMessage(edge.ContentTypeBindSuccess, nil)
-		notifyMsg.PutUint32Header(edge.ConnIdHeader, terminator.MsgChannel.Id())
-
-		if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.Channel); err != nil {
-			log.WithError(err).Error("failed to send bind success")
-		}
+	if isValid && terminator.establishCallback != nil {
+		terminator.establishCallback(true, "terminator established")
 	}
 }
 

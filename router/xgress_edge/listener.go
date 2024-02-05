@@ -265,7 +265,7 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 
 	// need to remove session remove listener on close
 	messageSink.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
-		messageSink.close(true, "session ended")
+		messageSink.close(true, true, "session ended")
 	})
 
 	self.listener.factory.hostedServices.Put(token, messageSink)
@@ -290,7 +290,7 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
 	if err = xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_CreateTerminatorResponseType); err != nil {
 		log.WithError(err).Warn("error creating terminator")
-		messageSink.close(false, "") // don't notify here, as we're notifying next line with a response
+		messageSink.close(false, false, "") // don't notify here, as we're notifying next line with a response
 		self.sendStateClosedReply(err.Error(), req)
 		return
 	}
@@ -301,7 +301,7 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 
 	if messageSink.MsgChannel.IsClosed() {
 		log.Warn("edge channel closed while setting up terminator. cleaning up terminator now")
-		messageSink.close(false, "edge channel closed")
+		messageSink.close(false, true, "edge channel closed")
 		return
 	}
 
@@ -391,43 +391,59 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 	notifyEstablished, _ := req.GetBoolHeader(edge.SupportsBindSuccessHeader)
 
 	terminator := &edgeTerminator{
-		MsgChannel:        *edge.NewEdgeMsgChannel(self.ch, connId),
-		edgeClientConn:    self,
-		token:             token,
-		cost:              cost,
-		precedence:        precedence,
-		instance:          terminatorInstance,
-		instanceSecret:    terminatorInstanceSecret,
-		hostData:          hostData,
-		assignIds:         assignIds,
-		v2:                true,
-		postValidate:      postValidate,
-		notifyEstablished: notifyEstablished,
-		createTime:        time.Now(),
+		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
+		edgeClientConn: self,
+		token:          token,
+		cost:           cost,
+		precedence:     precedence,
+		instance:       terminatorInstance,
+		instanceSecret: terminatorInstanceSecret,
+		hostData:       hostData,
+		assignIds:      assignIds,
+		v2:             true,
+		postValidate:   postValidate,
+		createTime:     time.Now(),
 	}
+
+	terminator.establishCallback = func(ok bool, msg string) {
+		if ok {
+			self.sendStateConnectedReply(req, nil)
+
+			if notifyEstablished {
+				notifyMsg := channel.NewMessage(edge.ContentTypeBindSuccess, nil)
+				notifyMsg.PutUint32Header(edge.ConnIdHeader, terminator.MsgChannel.Id())
+
+				if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.Channel); err != nil {
+					log.WithError(err).Error("failed to send bind success")
+				}
+			}
+		} else {
+			self.sendStateClosedReply(msg, req)
+		}
+	}
+
 	terminator.terminatorId.Store(terminatorId)
 	terminator.state.Store(TerminatorStatePendingEstablishment)
 
-	// need to remove session remove listener on close
-	terminator.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
-		terminator.close(true, "session ended")
-	})
-
-	// If the session was recently removed, the call to AddEdgeSessionRemovedListener will have asynchronously closed
-	// the terminator
 	if self.listener.factory.stateManager.WasSessionRecentlyRemoved(token) {
 		log.Info("invalid session, not establishing terminator")
-	} else {
-		log.Info("establishing terminator")
-
-		self.sendStateConnectedReply(req, nil)
-
-		self.listener.factory.hostedServices.EstablishTerminator(terminator)
-		if listenerId == "" {
-			// only removed dupes with a scan if we don't have an sdk provided key
-			self.listener.factory.hostedServices.cleanupDuplicates(terminator)
-		}
+		terminator.establishCallback(false, "invalid session")
+		return
 	}
+
+	// need to remove session remove listener on close
+	terminator.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
+		terminator.close(true, true, "session ended")
+	})
+
+	log.Info("establishing terminator")
+
+	self.listener.factory.hostedServices.EstablishTerminator(terminator)
+	if listenerId == "" {
+		// only removed dupes with a scan if we don't have an sdk provided key
+		self.listener.factory.hostedServices.cleanupDuplicates(terminator)
+	}
+
 }
 
 func (self *edgeClientConn) processUnbind(req *channel.Message, _ channel.Channel) {
