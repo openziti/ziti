@@ -1,3 +1,31 @@
+# Release 0.32.2
+
+## What's New
+
+* Terminator performance improvements
+* API Rate Limiter enabled by default
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.117 -> v2.0.119](https://github.com/openziti/channel/compare/v2.0.117...v2.0.119)
+    * [Issue #127](https://github.com/openziti/channel/issues/127) - Support some additional types in message headers
+
+* github.com/openziti/foundation/v2: [v2.0.36 -> v2.0.37](https://github.com/openziti/foundation/compare/v2.0.36...v2.0.37)
+* github.com/openziti/identity: [v1.0.69 -> v1.0.70](https://github.com/openziti/identity/compare/v1.0.69...v1.0.70)
+* github.com/openziti/metrics: [v1.2.43 -> v1.2.45](https://github.com/openziti/metrics/compare/v1.2.43...v1.2.45)
+* github.com/openziti/runzmd: [v1.0.37 -> v1.0.38](https://github.com/openziti/runzmd/compare/v1.0.37...v1.0.38)
+* github.com/openziti/sdk-golang: [v0.22.21 -> v0.22.28](https://github.com/openziti/sdk-golang/compare/v0.22.21...v0.22.28)
+    * [Issue #495](https://github.com/openziti/sdk-golang/issues/495) - Refresh edge session if listen attempt fails, to ensure that session is still valid
+
+* github.com/openziti/storage: [v0.2.28 -> v0.2.30](https://github.com/openziti/storage/compare/v0.2.28...v0.2.30)
+* github.com/openziti/transport/v2: [v2.0.121 -> v2.0.122](https://github.com/openziti/transport/compare/v2.0.121...v2.0.122)
+* github.com/openziti/ziti: [v0.32.1 -> v0.32.2](https://github.com/openziti/ziti/compare/v0.32.1...v0.32.2)
+    * [Issue #1736](https://github.com/openziti/ziti/issues/1736) - controller crashes generating create circuit responses
+    * [Issue #1733](https://github.com/openziti/ziti/issues/1733) - Improve terminator creation performance
+    * [Issue #1734](https://github.com/openziti/ziti/issues/1734) - Make API rate limiter enabled by default
+    * [Issue #1726](https://github.com/openziti/ziti/issues/1726) - Fix some sdk hosting logging
+    * [Issue #1725](https://github.com/openziti/ziti/issues/1725) - Fix panic in entity event processing
+
 # Release 0.32.1
 
 ## What's New
