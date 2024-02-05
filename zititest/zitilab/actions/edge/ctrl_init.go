@@ -43,10 +43,13 @@ func (init *raftInit) Execute(run model.Run) error {
 	}
 
 	for _, c := range m.SelectComponents(init.componentSpec) {
-		sshConfigFactory := c.GetHost().NewSshConfigFactory()
+		ctrlType, ok := c.Type.(*zitilab.ControllerType)
+		if !ok {
+			return errors.Errorf("component %s is not a controller", c.Id)
+		}
 
-		tmpl := "set -o pipefail; /home/%s/fablab/bin/ziti agent controller init %s %s default.admin 2>&1 | tee logs/controller.edge.init.log"
-		if err := host.Exec(c.GetHost(), fmt.Sprintf(tmpl, sshConfigFactory.User(), username, password)).Execute(run); err != nil {
+		tmpl := "set -o pipefail; %s agent controller init %s %s default.admin 2>&1 | tee logs/controller.edge.init.log"
+		if err := host.Exec(c.GetHost(), fmt.Sprintf(tmpl, ctrlType.GetBinaryPath(c), username, password)).Execute(run); err != nil {
 			return err
 		}
 	}

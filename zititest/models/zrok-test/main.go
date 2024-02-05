@@ -40,7 +40,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"os"
 	"path"
-	"strings"
 	"time"
 )
 
@@ -68,15 +67,9 @@ func (self scaleStrategy) IsScaled(entity model.Entity) bool {
 func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 	if entity.GetType() == model.EntityTypeHost {
 		if entity.GetScope().HasTag("router") {
-			if strings.Contains(entity.GetId(), "us-east") {
-				return 1
-			}
-			return 0
+			return 1
 		} else if entity.GetScope().HasTag("client") {
-			if strings.Contains(entity.GetId(), "us-east") {
-				return 3
-			}
-			return 0
+			return 3
 		}
 	}
 
@@ -119,7 +112,7 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
-					host.InstanceType = "c5.large"
+					host.InstanceType = "c5.2xlarge"
 				}
 				return nil
 			})

@@ -224,6 +224,7 @@ var m = &model.Model{
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
 			workflow.AddAction(component.Start(".ctrl"))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(edge.RaftJoin(".ctrl"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(edge.InitRaftController("#ctrl1"))

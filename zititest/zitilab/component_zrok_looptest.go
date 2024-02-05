@@ -134,7 +134,7 @@ func (self *ZrokLoopTestType) Init(run model.Run, c *model.Component) error {
 	}
 	token := fmt.Sprintf("%v", val)
 	zrokApiEndpoint := run.GetModel().MustSelectHost("zrokCtrl").PublicIp + ":1280"
-	tmpl := "set -o pipefail; sudo -u %s rm -rf /home/%s/.zrok && sudo -u %s ZROK_API_ENDPOINT=http://%s %s enable %s"
+	tmpl := "set -o pipefail; sudo -u %s rm -rf /home/%s/.zrok && sudo -u %s ZROK_API_ENDPOINT=http://%s %s enable --headless %s"
 	cmd := fmt.Sprintf(tmpl, userId, userId, userId, zrokApiEndpoint, binaryPath, token)
 	pfxlog.Logger().Info(cmd)
 	return c.GetHost().ExecLogOnlyOnError(cmd)
