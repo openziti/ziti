@@ -166,6 +166,11 @@ func (self *interceptor) Stop() {
 	})
 	self.serviceProxies.Clear()
 	self.cleanupChains()
+	dnsNet := intercept.GetDnsInterceptIpRange()
+	err := router.RemoveLocalAddress(dnsNet, "lo")
+	if err != nil {
+		logrus.WithError(err).Errorf("failed to remove route for dns IP range '%v' on 'lo'", dnsNet)
+	}
 }
 
 func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker) error {
@@ -429,12 +434,6 @@ func (self *tProxy) Stop(tracker intercept.AddressTracker) {
 	if err != nil {
 		log.WithError(err).Error("failed to clean up intercept configuration")
 	}
-
-	dnsNet := intercept.GetDnsInterceptIpRange()
-	err = router.RemoveLocalAddress(dnsNet, "lo")
-	if err != nil {
-		logrus.WithError(err).Errorf("failed to remove route %v", dnsNet)
-	}
 }
 
 func (self *tProxy) tcpPort() IPPortAddr {
@@ -617,26 +616,28 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 		}
 
 		ipNet := addr.IpNet()
-		if tracker.RemoveAddress(ipNet.String()) && addr.RouteRequired() {
-			err := router.RemoveLocalAddress(ipNet, "lo")
-			if err != nil {
-				errorList = append(errorList, err)
-				log.WithError(err).Errorf("failed to remove route %v for service %s", ipNet, *self.service.Name)
-			} else {
-				host, hostErr := self.resolver.Lookup(ipNet.IP)
-				if hostErr == nil {
-					hostErr = self.resolver.RemoveHostname(host)
-					if hostErr == nil {
-						log.Debugf("Removed hostname: %v from Resolver", host)
-					} else {
-						log.Debugf("Could not remove hostname: %v from Resolver", host)
-					}
-				} else {
-					log.Debugf("failed to find resolver entry for %v in service %s",
-						ipNet, *self.service.Name)
+		if addr.RouteRequired() {
+			if tracker.RemoveAddress(ipNet.String()) {
+				err := router.RemoveLocalAddress(ipNet, "lo")
+				if err != nil {
+					errorList = append(errorList, err)
+					log.WithError(err).Errorf("failed to remove route %v for service %s", ipNet, *self.service.Name)
 				}
 			}
 		}
+		host, hostErr := self.resolver.Lookup(ipNet.IP)
+		if hostErr == nil {
+			hostErr = self.resolver.RemoveHostname(host)
+			if hostErr == nil {
+				log.Debugf("Removed hostname: %v from Resolver", host)
+			} else {
+				log.Debugf("Could not remove hostname: %v from Resolver", host)
+			}
+		} else {
+			log.Debugf("failed to find resolver entry for %v in service %s",
+				ipNet, *self.service.Name)
+		}
+
 	}
 
 	if len(errorList) == 0 {
