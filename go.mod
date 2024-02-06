@@ -28,7 +28,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.1
@@ -56,7 +56,7 @@ require (
 	github.com/openziti/runzmd v1.0.37
 	github.com/openziti/sdk-golang v0.22.21
 	github.com/openziti/secretstream v0.1.16
-	github.com/openziti/storage v0.2.28
+	github.com/openziti/storage v0.2.29
 	github.com/openziti/transport/v2 v2.0.121
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0

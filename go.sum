@@ -324,8 +324,8 @@ github.com/google/pprof v0.0.0-20210122040257-d980be63207e/go.mod h1:kpwsk12EmLe
 github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5/go.mod h1:kpwsk12EmLew5upagYY7GY0pfYCcupk39gWOCRROcvE=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/google/uuid v1.5.0 h1:1p67kYwdtXjb0gL0BPiP1Av9wiZPo5A8z2cWkTZ+eyU=
-github.com/google/uuid v1.5.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gax-go v2.0.0+incompatible/go.mod h1:SFVmujtThgffbyetf+mdk2eWhX2bMyUtNHzFKcPA9HY=
 github.com/googleapis/gax-go/v2 v2.0.3/go.mod h1:LLvjysVCY1JZeum8Z6l8qUty8fiNwE08qbEPm1M08qg=
 github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+vpHVxEJEs9eg=
@@ -585,8 +585,8 @@ github.com/openziti/sdk-golang v0.22.21 h1:rj8gCq9SPcRpStPX0GUL8X2vkCQNUn+nk2Wby
 github.com/openziti/sdk-golang v0.22.21/go.mod h1:w3M9yAVnW7IAU1dpYtiFB/mIYLiU7l4tB+c4coqWRwo=
 github.com/openziti/secretstream v0.1.16 h1:tVanF7OpJL1MJ1gvWaRlR2i+kAbrGsxr3q6EXFOS08U=
 github.com/openziti/secretstream v0.1.16/go.mod h1:bvjGBUW/0e5MzD5S3FW3rhGASRNWAi+kTkTENZ9qRDE=
-github.com/openziti/storage v0.2.28 h1:qHnsSF4RgQpT23hOXlwkAvJ0gO5PLmvTqyBy13dm3Rc=
-github.com/openziti/storage v0.2.28/go.mod h1:ahdvsmmdQWFsZXeExvXeA8MHUXPLrwuDFBJDTztLY5E=
+github.com/openziti/storage v0.2.29 h1:Wr/7bHJmmhG8Utfgfvi9MzL29lmOkEj8o+5Qsmw0YHU=
+github.com/openziti/storage v0.2.29/go.mod h1:NcJQfKSyQcr5KH8b6UQfemKiubuf68BZL0iQ1yrpLUQ=
 github.com/openziti/transport/v2 v2.0.121 h1:9WB1/9YMFed2UuefqZq+odUYYkoFOr+8aBIAZEC1MNE=
 github.com/openziti/transport/v2 v2.0.121/go.mod h1:hS7TzoyTIwm4lVEsGyjQkoEg+vA+6dAOR8S4FZmWIj4=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
