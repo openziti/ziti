@@ -17,17 +17,18 @@
 package xgress_edge_tunnel
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router/fabric"
-	"github.com/openziti/ziti/router/handler_edge_ctrl"
-	"github.com/openziti/ziti/router"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/router"
+	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/fabric"
+	"github.com/openziti/ziti/router/handler_edge_ctrl"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
@@ -107,6 +108,9 @@ func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.List
 		return nil, err
 	}
 	self.tunneler.listenOptions = options
+
+	pfxlog.Logger().Debugf("xgress edge tunnel options: %v", options.ToLoggableString())
+
 	return self.tunneler, nil
 }
 
@@ -233,4 +237,29 @@ func (options *Options) load(data xgress.OptionsData) error {
 	}
 
 	return nil
+}
+
+func (options *Options) ToLoggableString() string {
+	buf := strings.Builder{}
+	buf.WriteString(fmt.Sprintf("mtu=%v\n", options.Mtu))
+	buf.WriteString(fmt.Sprintf("randomDrops=%v\n", options.RandomDrops))
+	buf.WriteString(fmt.Sprintf("drop1InN=%v\n", options.Drop1InN))
+	buf.WriteString(fmt.Sprintf("txQueueSize=%v\n", options.TxQueueSize))
+	buf.WriteString(fmt.Sprintf("txPortalStartSize=%v\n", options.TxPortalStartSize))
+	buf.WriteString(fmt.Sprintf("txPortalMaxSize=%v\n", options.TxPortalMaxSize))
+	buf.WriteString(fmt.Sprintf("txPortalMinSize=%v\n", options.TxPortalMinSize))
+	buf.WriteString(fmt.Sprintf("txPortalIncreaseThresh=%v\n", options.TxPortalIncreaseThresh))
+	buf.WriteString(fmt.Sprintf("txPortalIncreaseScale=%v\n", options.TxPortalIncreaseScale))
+	buf.WriteString(fmt.Sprintf("txPortalRetxThresh=%v\n", options.TxPortalRetxThresh))
+	buf.WriteString(fmt.Sprintf("txPortalRetxScale=%v\n", options.TxPortalRetxScale))
+	buf.WriteString(fmt.Sprintf("txPortalDupAckThresh=%v\n", options.TxPortalDupAckThresh))
+	buf.WriteString(fmt.Sprintf("txPortalDupAckScale=%v\n", options.TxPortalDupAckScale))
+	buf.WriteString(fmt.Sprintf("rxBufferSize=%v\n", options.RxBufferSize))
+	buf.WriteString(fmt.Sprintf("retxStartMs=%v\n", options.RetxStartMs))
+	buf.WriteString(fmt.Sprintf("retxScale=%v\n", options.RetxScale))
+	buf.WriteString(fmt.Sprintf("retxAddMs=%v\n", options.RetxAddMs))
+	buf.WriteString(fmt.Sprintf("maxCloseWait=%v\n", options.MaxCloseWait))
+	buf.WriteString(fmt.Sprintf("getCircuitTimeout=%v\n", options.GetCircuitTimeout))
+
+	return buf.String()
 }

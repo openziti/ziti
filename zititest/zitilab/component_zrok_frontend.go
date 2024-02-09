@@ -35,11 +35,6 @@ import (
 var _ model.ComponentType = (*ZrokFrontendType)(nil)
 var _ model.ServerComponent = (*ZrokFrontendType)(nil)
 var _ model.FileStagingComponent = (*ZrokFrontendType)(nil)
-var _ model.ActionsComponent = (*ZrokFrontendType)(nil)
-
-const (
-	ZrokFrontendActionInit = "init"
-)
 
 type ZrokFrontendType struct {
 	ConfigSourceFS   fs.FS
@@ -55,12 +50,6 @@ func (self *ZrokFrontendType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 	if self.ZrokCtrlSelector == "" {
 		self.ZrokCtrlSelector = "zrokCtrl"
-	}
-}
-
-func (self *ZrokFrontendType) GetActions() map[string]model.ComponentAction {
-	return map[string]model.ComponentAction{
-		ZrokFrontendActionInit: model.ComponentActionF(self.Init),
 	}
 }
 

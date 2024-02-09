@@ -53,6 +53,7 @@ const TargetZrokVersion = ""
 
 const iterations = 100_000
 const pacing = 10 * time.Millisecond
+const loopers = 2
 
 //go:embed configs
 var configResource embed.FS
@@ -66,7 +67,7 @@ func (self scaleStrategy) IsScaled(entity model.Entity) bool {
 func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 	if entity.GetType() == model.EntityTypeHost {
 		if entity.GetScope().HasTag("router") {
-			return 2
+			return 1
 		} else if entity.GetScope().HasTag("client") {
 			return 3
 		}
@@ -111,7 +112,7 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
-					host.InstanceType = "c5.large"
+					host.InstanceType = "c5.2xlarge"
 				}
 				return nil
 			})
@@ -194,6 +195,7 @@ var m = &model.Model{
 								Version:    TargetZrokVersion,
 								Pacing:     pacing,
 								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -225,6 +227,7 @@ var m = &model.Model{
 								Version:    TargetZrokVersion,
 								Pacing:     pacing,
 								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -256,6 +259,7 @@ var m = &model.Model{
 								Version:    TargetZrokVersion,
 								Pacing:     pacing,
 								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -288,6 +292,7 @@ var m = &model.Model{
 								Version:    TargetZrokVersion,
 								Pacing:     pacing,
 								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -323,12 +328,27 @@ var m = &model.Model{
 			workflow.AddAction(component.Start("#zrokFront"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
-			workflow.AddAction(component.ExecInParallelF(".client", 200, (*zitilab.ZrokLoopTestType).Init))
+			workflow.AddAction(component.ExecInParallelF(".client", 10, (*zitilab.ZrokLoopTestType).Init))
 			return workflow
 		}),
 		"clean": model.Bind(actions.Workflow(
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
+		)),
+		"startServers": model.Bind(actions.Workflow(
+			component.StopInParallelHostExclusive("*", 200),
+			component.Start(".ctrl"),
+			component.Start(".router"),
+			component.Start(".zrokCtrl"),
+			component.Start(".zrokFront"),
+		)),
+		"restartServers": model.Bind(actions.Workflow(
+			host.GroupExec("*", 50, "find fablab -type d -exec chmod 755 {} \\;"),
+			component.StopInParallelHostExclusive("*", 200),
+			component.Start(".ctrl"),
+			component.Start(".router"),
+			component.Start(".zrokCtrl"),
+			component.Start(".zrokFront"),
 		)),
 		"login": model.Bind(edge.Login("#ctrl1")),
 	},

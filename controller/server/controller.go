@@ -21,9 +21,9 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	runner2 "github.com/openziti/ziti/common/runner"
+	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/handler_edge_mgmt"
 	sync2 "github.com/openziti/ziti/controller/sync_strats"
-	"github.com/openziti/ziti/controller/api_impl"
 	"os"
 	"sync"
 	"time"
@@ -31,13 +31,13 @@ import (
 	"github.com/openziti/ziti/controller/internal/policy"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/config"
 	edgeconfig "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/handler_edge_ctrl"
 	_ "github.com/openziti/ziti/controller/internal/routes"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/storage/boltz"
 )
 
 type Controller struct {
@@ -153,6 +153,7 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 	result := []channel.TypedReceiveHandler{
 		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),
 		handler_edge_ctrl.NewCreateCircuitHandler(c.AppEnv, ch),
+		handler_edge_ctrl.NewCreateCircuitV2Handler(c.AppEnv, ch),
 		handler_edge_ctrl.NewCreateTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewCreateTerminatorV2Handler(c.AppEnv, ch),
 		handler_edge_ctrl.NewUpdateTerminatorHandler(c.AppEnv, ch),

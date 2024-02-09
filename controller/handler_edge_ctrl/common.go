@@ -27,7 +27,6 @@ type requestHandler interface {
 	getAppEnv() *env.AppEnv
 	getNetwork() *network.Network
 	getChannel() channel.Channel
-	ContentType() int32
 	Label() string
 }
 
