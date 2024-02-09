@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/fields"
@@ -153,6 +154,10 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 					return
 				}
 			} else {
+				if command.WasRateLimited(err) {
+					self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedBusy, err, logger)
+					return
+				}
 				self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
 				return
 			}

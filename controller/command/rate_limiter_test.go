@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/controller/apierror"
+	"github.com/stretchr/testify/assert"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -33,9 +34,12 @@ import (
 
 func Test_AdaptiveRateLimiter(t *testing.T) {
 	cfg := AdaptiveRateLimiterConfig{
-		Enabled: true,
-		MaxSize: 250,
-		MinSize: 5,
+		Enabled:          true,
+		MaxSize:          250,
+		MinSize:          5,
+		WorkTimerMetric:  "workTime",
+		QueueSizeMetric:  "queueSize",
+		WindowSizeMetric: "windowSize",
 	}
 
 	registry := metrics.NewRegistry("test", nil)
@@ -142,4 +146,12 @@ func Test_AuthFlood(t *testing.T) {
 	}
 
 	countdown.Wait()
+}
+
+func Test_WasApiRateLimited(t *testing.T) {
+	err := errors.New("hello")
+	assert.False(t, WasRateLimited(err))
+
+	err = apierror.NewTooManyUpdatesError()
+	assert.True(t, WasRateLimited(err))
 }

@@ -265,6 +265,7 @@ func (c *Controller) Run() error {
 	capabilityMask := &big.Int{}
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateTerminatorV2, 1)
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSingleRouterLinkSource, 1)
+	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateCircuitV2, 1)
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader:                       versionHeader,
 		int32(ctrl_pb.ControlHeaders_CapabilitiesHeader): capabilityMask.Bytes(),

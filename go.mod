@@ -19,16 +19,16 @@ require (
 	github.com/go-acme/lego/v4 v4.14.2
 	github.com/go-openapi/errors v0.21.0
 	github.com/go-openapi/loads v0.21.5
-	github.com/go-openapi/runtime v0.26.2
+	github.com/go-openapi/runtime v0.27.1
 	github.com/go-openapi/spec v0.20.14
 	github.com/go-openapi/strfmt v0.22.0
-	github.com/go-openapi/swag v0.22.7
+	github.com/go-openapi/swag v0.22.9
 	github.com/go-openapi/validate v0.22.6
 	github.com/go-resty/resty/v2 v2.11.0
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.1
@@ -47,17 +47,17 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.116
-	github.com/openziti/edge-api v0.26.8
-	github.com/openziti/foundation/v2 v2.0.36
-	github.com/openziti/identity v1.0.69
+	github.com/openziti/channel/v2 v2.0.119
+	github.com/openziti/edge-api v0.26.10
+	github.com/openziti/foundation/v2 v2.0.37
+	github.com/openziti/identity v1.0.70
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.43
-	github.com/openziti/runzmd v1.0.37
-	github.com/openziti/sdk-golang v0.22.17
+	github.com/openziti/metrics v1.2.45
+	github.com/openziti/runzmd v1.0.38
+	github.com/openziti/sdk-golang v0.22.28
 	github.com/openziti/secretstream v0.1.16
-	github.com/openziti/storage v0.2.28
-	github.com/openziti/transport/v2 v2.0.121
+	github.com/openziti/storage v0.2.30
+	github.com/openziti/transport/v2 v2.0.122
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -66,7 +66,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.8.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/russross/blackfriday v1.6.0
-	github.com/shirou/gopsutil/v3 v3.23.12
+	github.com/shirou/gopsutil/v3 v3.24.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.8.0
@@ -80,8 +80,8 @@ require (
 	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/crypto v0.18.0
 	golang.org/x/net v0.20.0
-	golang.org/x/sync v0.5.0
-	golang.org/x/sys v0.16.0
+	golang.org/x/sync v0.6.0
+	golang.org/x/sys v0.17.0
 	golang.org/x/text v0.14.0
 	google.golang.org/protobuf v1.32.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
@@ -184,7 +184,7 @@ require (
 	golang.org/x/image v0.13.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/oauth2 v0.16.0 // indirect
-	golang.org/x/term v0.16.0 // indirect
+	golang.org/x/term v0.17.0 // indirect
 	golang.org/x/tools v0.16.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

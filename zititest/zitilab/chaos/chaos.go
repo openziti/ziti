@@ -18,6 +18,7 @@ package chaos
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/model"
 	"math/rand"
 	"time"
@@ -37,6 +38,20 @@ func RandomOfTotal() func(count int) int {
 func Percentage(pct uint8) func(count int) int {
 	adjustedPct := float64(pct) / 100
 	return func(count int) int {
+		return int(float64(count) * adjustedPct)
+	}
+}
+
+func PercentageRange(a uint8, b uint8) func(count int) int {
+	minVal := min(a, b)
+	maxVal := max(a, b)
+	delta := maxVal - minVal
+	if delta == 0 {
+		return Percentage(minVal)
+	}
+	return func(count int) int {
+		pct := minVal + uint8(rand.Int31n(int32(delta)))
+		adjustedPct := float64(pct) / 100
 		return int(float64(count) * adjustedPct)
 	}
 }
@@ -69,6 +84,19 @@ func RestartSelected(run model.Run, list []*model.Component, concurrency int) er
 			if err := c.Type.Stop(run, c); err != nil {
 				return err
 			}
+
+			for {
+				isRunning, err := c.IsRunning(run)
+				if err != nil {
+					return err
+				}
+				if !isRunning {
+					break
+				} else {
+					time.Sleep(250 * time.Millisecond)
+				}
+			}
+			time.Sleep(time.Second)
 			return sc.Start(run, c)
 		}
 		return fmt.Errorf("component %v isn't of ServerComponent type, is of type %T", c, c.Type)
@@ -77,7 +105,9 @@ func RestartSelected(run model.Run, list []*model.Component, concurrency int) er
 
 func ValidateUp(run model.Run, spec string, concurrency int, timeout time.Duration) error {
 	start := time.Now()
-	return run.GetModel().ForEachComponent(spec, concurrency, func(c *model.Component) error {
+	components := run.GetModel().SelectComponents(spec)
+	pfxlog.Logger().Infof("checking if all %v components for spec '%s' are running", len(components), spec)
+	err := run.GetModel().ForEachComponentIn(components, concurrency, func(c *model.Component) error {
 		for {
 			isRunning, err := c.IsRunning(run)
 			if err != nil {
@@ -92,4 +122,8 @@ func ValidateUp(run model.Run, spec string, concurrency int, timeout time.Durati
 			time.Sleep(time.Second)
 		}
 	})
+	if err == nil {
+		pfxlog.Logger().Infof("all %v components for spec '%s' are running", len(components), spec)
+	}
+	return err
 }

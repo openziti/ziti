@@ -63,7 +63,7 @@ func (self *ZitiTunnelType) GetActions() map[string]model.ComponentAction {
 }
 
 func (self *ZitiTunnelType) InitType(*model.Component) {
-	canonicalizeZitiVersion(&self.Version)
+	canonicalizeGoAppVersion(&self.Version)
 }
 
 func (self *ZitiTunnelType) Dump() any {

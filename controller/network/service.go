@@ -152,7 +152,7 @@ func (self *ServiceManager) GetIdForName(id string) (string, error) {
 }
 
 func (self *ServiceManager) readInTx(tx *bbolt.Tx, id string) (*Service, error) {
-	if service, found := self.cache.Get(id); found {
+	if service, _ := self.cache.Get(id); service != nil {
 		return service, nil
 	}
 

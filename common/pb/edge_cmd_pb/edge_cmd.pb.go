@@ -31,6 +31,7 @@ const (
 	CommandType_CreateTransitRouterType                CommandType = 1003
 	CommandType_CreateIdentityWithEnrollmentsType      CommandType = 1004
 	CommandType_UpdateServiceConfigsType               CommandType = 1005
+	CommandType_ReEnrollEdgeRouterType                 CommandType = 1006
 )
 
 // Enum value maps for CommandType.
@@ -43,6 +44,7 @@ var (
 		1003: "CreateTransitRouterType",
 		1004: "CreateIdentityWithEnrollmentsType",
 		1005: "UpdateServiceConfigsType",
+		1006: "ReEnrollEdgeRouterType",
 	}
 	CommandType_value = map[string]int32{
 		"Zero":                                   0,
@@ -52,6 +54,7 @@ var (
 		"CreateTransitRouterType":                1003,
 		"CreateIdentityWithEnrollmentsType":      1004,
 		"UpdateServiceConfigsType":               1005,
+		"ReEnrollEdgeRouterType":                 1006,
 	}
 )
 
@@ -1188,6 +1191,61 @@ func (x *EdgeRouter) GetDisabled() bool {
 	return false
 }
 
+type ReEnrollEdgeRouterCmd struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	EdgeRouterId string         `protobuf:"bytes,1,opt,name=edgeRouterId,proto3" json:"edgeRouterId,omitempty"`
+	Ctx          *ChangeContext `protobuf:"bytes,2,opt,name=ctx,proto3" json:"ctx,omitempty"`
+}
+
+func (x *ReEnrollEdgeRouterCmd) Reset() {
+	*x = ReEnrollEdgeRouterCmd{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_edge_cmd_proto_msgTypes[12]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ReEnrollEdgeRouterCmd) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReEnrollEdgeRouterCmd) ProtoMessage() {}
+
+func (x *ReEnrollEdgeRouterCmd) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_cmd_proto_msgTypes[12]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReEnrollEdgeRouterCmd.ProtoReflect.Descriptor instead.
+func (*ReEnrollEdgeRouterCmd) Descriptor() ([]byte, []int) {
+	return file_edge_cmd_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ReEnrollEdgeRouterCmd) GetEdgeRouterId() string {
+	if x != nil {
+		return x.EdgeRouterId
+	}
+	return ""
+}
+
+func (x *ReEnrollEdgeRouterCmd) GetCtx() *ChangeContext {
+	if x != nil {
+		return x.Ctx
+	}
+	return nil
+}
+
 type CreateEdgeRouterCmd struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1201,7 +1259,7 @@ type CreateEdgeRouterCmd struct {
 func (x *CreateEdgeRouterCmd) Reset() {
 	*x = CreateEdgeRouterCmd{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[12]
+		mi := &file_edge_cmd_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1214,7 +1272,7 @@ func (x *CreateEdgeRouterCmd) String() string {
 func (*CreateEdgeRouterCmd) ProtoMessage() {}
 
 func (x *CreateEdgeRouterCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[12]
+	mi := &file_edge_cmd_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1227,7 +1285,7 @@ func (x *CreateEdgeRouterCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateEdgeRouterCmd.ProtoReflect.Descriptor instead.
 func (*CreateEdgeRouterCmd) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{12}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *CreateEdgeRouterCmd) GetEdgeRouter() *EdgeRouter {
@@ -1268,7 +1326,7 @@ type EdgeRouterPolicy struct {
 func (x *EdgeRouterPolicy) Reset() {
 	*x = EdgeRouterPolicy{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[13]
+		mi := &file_edge_cmd_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1281,7 +1339,7 @@ func (x *EdgeRouterPolicy) String() string {
 func (*EdgeRouterPolicy) ProtoMessage() {}
 
 func (x *EdgeRouterPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[13]
+	mi := &file_edge_cmd_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1294,7 +1352,7 @@ func (x *EdgeRouterPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EdgeRouterPolicy.ProtoReflect.Descriptor instead.
 func (*EdgeRouterPolicy) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{13}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *EdgeRouterPolicy) GetId() string {
@@ -1362,7 +1420,7 @@ type Enrollment struct {
 func (x *Enrollment) Reset() {
 	*x = Enrollment{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[14]
+		mi := &file_edge_cmd_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1375,7 +1433,7 @@ func (x *Enrollment) String() string {
 func (*Enrollment) ProtoMessage() {}
 
 func (x *Enrollment) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[14]
+	mi := &file_edge_cmd_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1388,7 +1446,7 @@ func (x *Enrollment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Enrollment.ProtoReflect.Descriptor instead.
 func (*Enrollment) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{14}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Enrollment) GetId() string {
@@ -1488,7 +1546,7 @@ type ReplaceEnrollmentWithAuthenticatorCmd struct {
 func (x *ReplaceEnrollmentWithAuthenticatorCmd) Reset() {
 	*x = ReplaceEnrollmentWithAuthenticatorCmd{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[15]
+		mi := &file_edge_cmd_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1501,7 +1559,7 @@ func (x *ReplaceEnrollmentWithAuthenticatorCmd) String() string {
 func (*ReplaceEnrollmentWithAuthenticatorCmd) ProtoMessage() {}
 
 func (x *ReplaceEnrollmentWithAuthenticatorCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[15]
+	mi := &file_edge_cmd_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1514,7 +1572,7 @@ func (x *ReplaceEnrollmentWithAuthenticatorCmd) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use ReplaceEnrollmentWithAuthenticatorCmd.ProtoReflect.Descriptor instead.
 func (*ReplaceEnrollmentWithAuthenticatorCmd) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{15}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ReplaceEnrollmentWithAuthenticatorCmd) GetEnrollmentId() string {
@@ -1565,7 +1623,7 @@ type ExternalJwtSigner struct {
 func (x *ExternalJwtSigner) Reset() {
 	*x = ExternalJwtSigner{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[16]
+		mi := &file_edge_cmd_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1578,7 +1636,7 @@ func (x *ExternalJwtSigner) String() string {
 func (*ExternalJwtSigner) ProtoMessage() {}
 
 func (x *ExternalJwtSigner) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[16]
+	mi := &file_edge_cmd_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1591,7 +1649,7 @@ func (x *ExternalJwtSigner) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExternalJwtSigner.ProtoReflect.Descriptor instead.
 func (*ExternalJwtSigner) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{16}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ExternalJwtSigner) GetId() string {
@@ -1736,7 +1794,7 @@ type Identity struct {
 func (x *Identity) Reset() {
 	*x = Identity{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[17]
+		mi := &file_edge_cmd_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1749,7 +1807,7 @@ func (x *Identity) String() string {
 func (*Identity) ProtoMessage() {}
 
 func (x *Identity) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[17]
+	mi := &file_edge_cmd_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1762,7 +1820,7 @@ func (x *Identity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Identity.ProtoReflect.Descriptor instead.
 func (*Identity) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{17}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *Identity) GetId() string {
@@ -1911,7 +1969,7 @@ type CreateIdentityWithEnrollmentsCmd struct {
 func (x *CreateIdentityWithEnrollmentsCmd) Reset() {
 	*x = CreateIdentityWithEnrollmentsCmd{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[18]
+		mi := &file_edge_cmd_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1924,7 +1982,7 @@ func (x *CreateIdentityWithEnrollmentsCmd) String() string {
 func (*CreateIdentityWithEnrollmentsCmd) ProtoMessage() {}
 
 func (x *CreateIdentityWithEnrollmentsCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[18]
+	mi := &file_edge_cmd_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1937,7 +1995,7 @@ func (x *CreateIdentityWithEnrollmentsCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateIdentityWithEnrollmentsCmd.ProtoReflect.Descriptor instead.
 func (*CreateIdentityWithEnrollmentsCmd) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{18}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CreateIdentityWithEnrollmentsCmd) GetIdentity() *Identity {
@@ -1978,7 +2036,7 @@ type Mfa struct {
 func (x *Mfa) Reset() {
 	*x = Mfa{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[19]
+		mi := &file_edge_cmd_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1991,7 +2049,7 @@ func (x *Mfa) String() string {
 func (*Mfa) ProtoMessage() {}
 
 func (x *Mfa) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[19]
+	mi := &file_edge_cmd_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2004,7 +2062,7 @@ func (x *Mfa) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Mfa.ProtoReflect.Descriptor instead.
 func (*Mfa) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{19}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Mfa) GetId() string {
@@ -2074,7 +2132,7 @@ type PostureCheck struct {
 func (x *PostureCheck) Reset() {
 	*x = PostureCheck{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[20]
+		mi := &file_edge_cmd_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2087,7 +2145,7 @@ func (x *PostureCheck) String() string {
 func (*PostureCheck) ProtoMessage() {}
 
 func (x *PostureCheck) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[20]
+	mi := &file_edge_cmd_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2100,7 +2158,7 @@ func (x *PostureCheck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostureCheck.ProtoReflect.Descriptor instead.
 func (*PostureCheck) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{20}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *PostureCheck) GetId() string {
@@ -2247,7 +2305,7 @@ type Revocation struct {
 func (x *Revocation) Reset() {
 	*x = Revocation{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[21]
+		mi := &file_edge_cmd_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2260,7 +2318,7 @@ func (x *Revocation) String() string {
 func (*Revocation) ProtoMessage() {}
 
 func (x *Revocation) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[21]
+	mi := &file_edge_cmd_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2273,7 +2331,7 @@ func (x *Revocation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Revocation.ProtoReflect.Descriptor instead.
 func (*Revocation) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{21}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *Revocation) GetId() string {
@@ -2316,7 +2374,7 @@ type Service struct {
 func (x *Service) Reset() {
 	*x = Service{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[22]
+		mi := &file_edge_cmd_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2329,7 +2387,7 @@ func (x *Service) String() string {
 func (*Service) ProtoMessage() {}
 
 func (x *Service) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[22]
+	mi := &file_edge_cmd_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2342,7 +2400,7 @@ func (x *Service) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Service.ProtoReflect.Descriptor instead.
 func (*Service) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{22}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *Service) GetId() string {
@@ -2418,7 +2476,7 @@ type ServiceEdgeRouterPolicy struct {
 func (x *ServiceEdgeRouterPolicy) Reset() {
 	*x = ServiceEdgeRouterPolicy{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[23]
+		mi := &file_edge_cmd_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2431,7 +2489,7 @@ func (x *ServiceEdgeRouterPolicy) String() string {
 func (*ServiceEdgeRouterPolicy) ProtoMessage() {}
 
 func (x *ServiceEdgeRouterPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[23]
+	mi := &file_edge_cmd_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2444,7 +2502,7 @@ func (x *ServiceEdgeRouterPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceEdgeRouterPolicy.ProtoReflect.Descriptor instead.
 func (*ServiceEdgeRouterPolicy) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{23}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ServiceEdgeRouterPolicy) GetId() string {
@@ -2508,7 +2566,7 @@ type ServicePolicy struct {
 func (x *ServicePolicy) Reset() {
 	*x = ServicePolicy{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[24]
+		mi := &file_edge_cmd_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2521,7 +2579,7 @@ func (x *ServicePolicy) String() string {
 func (*ServicePolicy) ProtoMessage() {}
 
 func (x *ServicePolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[24]
+	mi := &file_edge_cmd_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2534,7 +2592,7 @@ func (x *ServicePolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServicePolicy.ProtoReflect.Descriptor instead.
 func (*ServicePolicy) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{24}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ServicePolicy) GetId() string {
@@ -2614,7 +2672,7 @@ type TransitRouter struct {
 func (x *TransitRouter) Reset() {
 	*x = TransitRouter{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[25]
+		mi := &file_edge_cmd_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2627,7 +2685,7 @@ func (x *TransitRouter) String() string {
 func (*TransitRouter) ProtoMessage() {}
 
 func (x *TransitRouter) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[25]
+	mi := &file_edge_cmd_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2640,7 +2698,7 @@ func (x *TransitRouter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransitRouter.ProtoReflect.Descriptor instead.
 func (*TransitRouter) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{25}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *TransitRouter) GetId() string {
@@ -2726,7 +2784,7 @@ type CreateTransitRouterCmd struct {
 func (x *CreateTransitRouterCmd) Reset() {
 	*x = CreateTransitRouterCmd{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[26]
+		mi := &file_edge_cmd_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2739,7 +2797,7 @@ func (x *CreateTransitRouterCmd) String() string {
 func (*CreateTransitRouterCmd) ProtoMessage() {}
 
 func (x *CreateTransitRouterCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[26]
+	mi := &file_edge_cmd_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2752,7 +2810,7 @@ func (x *CreateTransitRouterCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTransitRouterCmd.ProtoReflect.Descriptor instead.
 func (*CreateTransitRouterCmd) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{26}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *CreateTransitRouterCmd) GetRouter() *TransitRouter {
@@ -2790,7 +2848,7 @@ type UpdateServiceConfigsCmd struct {
 func (x *UpdateServiceConfigsCmd) Reset() {
 	*x = UpdateServiceConfigsCmd{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[27]
+		mi := &file_edge_cmd_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2803,7 +2861,7 @@ func (x *UpdateServiceConfigsCmd) String() string {
 func (*UpdateServiceConfigsCmd) ProtoMessage() {}
 
 func (x *UpdateServiceConfigsCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[27]
+	mi := &file_edge_cmd_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2816,7 +2874,7 @@ func (x *UpdateServiceConfigsCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateServiceConfigsCmd.ProtoReflect.Descriptor instead.
 func (*UpdateServiceConfigsCmd) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{27}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *UpdateServiceConfigsCmd) GetIdentityId() string {
@@ -2861,7 +2919,7 @@ type Authenticator_Cert struct {
 func (x *Authenticator_Cert) Reset() {
 	*x = Authenticator_Cert{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[30]
+		mi := &file_edge_cmd_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2874,7 +2932,7 @@ func (x *Authenticator_Cert) String() string {
 func (*Authenticator_Cert) ProtoMessage() {}
 
 func (x *Authenticator_Cert) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[30]
+	mi := &file_edge_cmd_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2931,7 +2989,7 @@ type Authenticator_Updb struct {
 func (x *Authenticator_Updb) Reset() {
 	*x = Authenticator_Updb{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[31]
+		mi := &file_edge_cmd_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2944,7 +3002,7 @@ func (x *Authenticator_Updb) String() string {
 func (*Authenticator_Updb) ProtoMessage() {}
 
 func (x *Authenticator_Updb) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[31]
+	mi := &file_edge_cmd_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2994,7 +3052,7 @@ type AuthPolicy_Primary struct {
 func (x *AuthPolicy_Primary) Reset() {
 	*x = AuthPolicy_Primary{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[33]
+		mi := &file_edge_cmd_proto_msgTypes[34]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3007,7 +3065,7 @@ func (x *AuthPolicy_Primary) String() string {
 func (*AuthPolicy_Primary) ProtoMessage() {}
 
 func (x *AuthPolicy_Primary) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[33]
+	mi := &file_edge_cmd_proto_msgTypes[34]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3056,7 +3114,7 @@ type AuthPolicy_Secondary struct {
 func (x *AuthPolicy_Secondary) Reset() {
 	*x = AuthPolicy_Secondary{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[34]
+		mi := &file_edge_cmd_proto_msgTypes[35]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3069,7 +3127,7 @@ func (x *AuthPolicy_Secondary) String() string {
 func (*AuthPolicy_Secondary) ProtoMessage() {}
 
 func (x *AuthPolicy_Secondary) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[34]
+	mi := &file_edge_cmd_proto_msgTypes[35]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3111,7 +3169,7 @@ type AuthPolicy_Primary_Cert struct {
 func (x *AuthPolicy_Primary_Cert) Reset() {
 	*x = AuthPolicy_Primary_Cert{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[36]
+		mi := &file_edge_cmd_proto_msgTypes[37]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3124,7 +3182,7 @@ func (x *AuthPolicy_Primary_Cert) String() string {
 func (*AuthPolicy_Primary_Cert) ProtoMessage() {}
 
 func (x *AuthPolicy_Primary_Cert) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[36]
+	mi := &file_edge_cmd_proto_msgTypes[37]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3171,7 +3229,7 @@ type AuthPolicy_Primary_Updb struct {
 func (x *AuthPolicy_Primary_Updb) Reset() {
 	*x = AuthPolicy_Primary_Updb{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[37]
+		mi := &file_edge_cmd_proto_msgTypes[38]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3184,7 +3242,7 @@ func (x *AuthPolicy_Primary_Updb) String() string {
 func (*AuthPolicy_Primary_Updb) ProtoMessage() {}
 
 func (x *AuthPolicy_Primary_Updb) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[37]
+	mi := &file_edge_cmd_proto_msgTypes[38]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3262,7 +3320,7 @@ type AuthPolicy_Primary_ExtJwt struct {
 func (x *AuthPolicy_Primary_ExtJwt) Reset() {
 	*x = AuthPolicy_Primary_ExtJwt{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[38]
+		mi := &file_edge_cmd_proto_msgTypes[39]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3275,7 +3333,7 @@ func (x *AuthPolicy_Primary_ExtJwt) String() string {
 func (*AuthPolicy_Primary_ExtJwt) ProtoMessage() {}
 
 func (x *AuthPolicy_Primary_ExtJwt) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[38]
+	mi := &file_edge_cmd_proto_msgTypes[39]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3328,7 +3386,7 @@ type Ca_ExternalIdClaim struct {
 func (x *Ca_ExternalIdClaim) Reset() {
 	*x = Ca_ExternalIdClaim{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[39]
+		mi := &file_edge_cmd_proto_msgTypes[40]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3341,7 +3399,7 @@ func (x *Ca_ExternalIdClaim) String() string {
 func (*Ca_ExternalIdClaim) ProtoMessage() {}
 
 func (x *Ca_ExternalIdClaim) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[39]
+	mi := &file_edge_cmd_proto_msgTypes[40]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3413,7 +3471,7 @@ type Identity_EnvInfo struct {
 func (x *Identity_EnvInfo) Reset() {
 	*x = Identity_EnvInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[47]
+		mi := &file_edge_cmd_proto_msgTypes[48]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3426,7 +3484,7 @@ func (x *Identity_EnvInfo) String() string {
 func (*Identity_EnvInfo) ProtoMessage() {}
 
 func (x *Identity_EnvInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[47]
+	mi := &file_edge_cmd_proto_msgTypes[48]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3439,7 +3497,7 @@ func (x *Identity_EnvInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Identity_EnvInfo.ProtoReflect.Descriptor instead.
 func (*Identity_EnvInfo) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{17, 0}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{18, 0}
 }
 
 func (x *Identity_EnvInfo) GetArch() string {
@@ -3486,7 +3544,7 @@ type Identity_SdkInfo struct {
 func (x *Identity_SdkInfo) Reset() {
 	*x = Identity_SdkInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[48]
+		mi := &file_edge_cmd_proto_msgTypes[49]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3499,7 +3557,7 @@ func (x *Identity_SdkInfo) String() string {
 func (*Identity_SdkInfo) ProtoMessage() {}
 
 func (x *Identity_SdkInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[48]
+	mi := &file_edge_cmd_proto_msgTypes[49]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3512,7 +3570,7 @@ func (x *Identity_SdkInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Identity_SdkInfo.ProtoReflect.Descriptor instead.
 func (*Identity_SdkInfo) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{17, 1}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{18, 1}
 }
 
 func (x *Identity_SdkInfo) GetAppId() string {
@@ -3568,7 +3626,7 @@ type PostureCheck_Mac struct {
 func (x *PostureCheck_Mac) Reset() {
 	*x = PostureCheck_Mac{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[53]
+		mi := &file_edge_cmd_proto_msgTypes[54]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3581,7 +3639,7 @@ func (x *PostureCheck_Mac) String() string {
 func (*PostureCheck_Mac) ProtoMessage() {}
 
 func (x *PostureCheck_Mac) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[53]
+	mi := &file_edge_cmd_proto_msgTypes[54]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3594,7 +3652,7 @@ func (x *PostureCheck_Mac) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostureCheck_Mac.ProtoReflect.Descriptor instead.
 func (*PostureCheck_Mac) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{20, 0}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{21, 0}
 }
 
 func (x *PostureCheck_Mac) GetMacAddresses() []string {
@@ -3618,7 +3676,7 @@ type PostureCheck_Mfa struct {
 func (x *PostureCheck_Mfa) Reset() {
 	*x = PostureCheck_Mfa{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[54]
+		mi := &file_edge_cmd_proto_msgTypes[55]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3631,7 +3689,7 @@ func (x *PostureCheck_Mfa) String() string {
 func (*PostureCheck_Mfa) ProtoMessage() {}
 
 func (x *PostureCheck_Mfa) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[54]
+	mi := &file_edge_cmd_proto_msgTypes[55]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3644,7 +3702,7 @@ func (x *PostureCheck_Mfa) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostureCheck_Mfa.ProtoReflect.Descriptor instead.
 func (*PostureCheck_Mfa) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{20, 1}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{21, 1}
 }
 
 func (x *PostureCheck_Mfa) GetTimeoutSeconds() int64 {
@@ -3687,7 +3745,7 @@ type PostureCheck_Os struct {
 func (x *PostureCheck_Os) Reset() {
 	*x = PostureCheck_Os{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[55]
+		mi := &file_edge_cmd_proto_msgTypes[56]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3700,7 +3758,7 @@ func (x *PostureCheck_Os) String() string {
 func (*PostureCheck_Os) ProtoMessage() {}
 
 func (x *PostureCheck_Os) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[55]
+	mi := &file_edge_cmd_proto_msgTypes[56]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3713,7 +3771,7 @@ func (x *PostureCheck_Os) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostureCheck_Os.ProtoReflect.Descriptor instead.
 func (*PostureCheck_Os) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{20, 2}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{21, 2}
 }
 
 func (x *PostureCheck_Os) GetOsType() string {
@@ -3741,7 +3799,7 @@ type PostureCheck_OsList struct {
 func (x *PostureCheck_OsList) Reset() {
 	*x = PostureCheck_OsList{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[56]
+		mi := &file_edge_cmd_proto_msgTypes[57]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3754,7 +3812,7 @@ func (x *PostureCheck_OsList) String() string {
 func (*PostureCheck_OsList) ProtoMessage() {}
 
 func (x *PostureCheck_OsList) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[56]
+	mi := &file_edge_cmd_proto_msgTypes[57]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3767,7 +3825,7 @@ func (x *PostureCheck_OsList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostureCheck_OsList.ProtoReflect.Descriptor instead.
 func (*PostureCheck_OsList) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{20, 3}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{21, 3}
 }
 
 func (x *PostureCheck_OsList) GetOsList() []*PostureCheck_Os {
@@ -3791,7 +3849,7 @@ type PostureCheck_Process struct {
 func (x *PostureCheck_Process) Reset() {
 	*x = PostureCheck_Process{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[57]
+		mi := &file_edge_cmd_proto_msgTypes[58]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3804,7 +3862,7 @@ func (x *PostureCheck_Process) String() string {
 func (*PostureCheck_Process) ProtoMessage() {}
 
 func (x *PostureCheck_Process) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[57]
+	mi := &file_edge_cmd_proto_msgTypes[58]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3817,7 +3875,7 @@ func (x *PostureCheck_Process) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostureCheck_Process.ProtoReflect.Descriptor instead.
 func (*PostureCheck_Process) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{20, 4}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{21, 4}
 }
 
 func (x *PostureCheck_Process) GetOsType() string {
@@ -3860,7 +3918,7 @@ type PostureCheck_ProcessMulti struct {
 func (x *PostureCheck_ProcessMulti) Reset() {
 	*x = PostureCheck_ProcessMulti{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[58]
+		mi := &file_edge_cmd_proto_msgTypes[59]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3873,7 +3931,7 @@ func (x *PostureCheck_ProcessMulti) String() string {
 func (*PostureCheck_ProcessMulti) ProtoMessage() {}
 
 func (x *PostureCheck_ProcessMulti) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[58]
+	mi := &file_edge_cmd_proto_msgTypes[59]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3886,7 +3944,7 @@ func (x *PostureCheck_ProcessMulti) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostureCheck_ProcessMulti.ProtoReflect.Descriptor instead.
 func (*PostureCheck_ProcessMulti) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{20, 5}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{21, 5}
 }
 
 func (x *PostureCheck_ProcessMulti) GetSemantic() string {
@@ -3914,7 +3972,7 @@ type PostureCheck_Domains struct {
 func (x *PostureCheck_Domains) Reset() {
 	*x = PostureCheck_Domains{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[59]
+		mi := &file_edge_cmd_proto_msgTypes[60]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3927,7 +3985,7 @@ func (x *PostureCheck_Domains) String() string {
 func (*PostureCheck_Domains) ProtoMessage() {}
 
 func (x *PostureCheck_Domains) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[59]
+	mi := &file_edge_cmd_proto_msgTypes[60]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3940,7 +3998,7 @@ func (x *PostureCheck_Domains) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostureCheck_Domains.ProtoReflect.Descriptor instead.
 func (*PostureCheck_Domains) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{20, 6}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{21, 6}
 }
 
 func (x *PostureCheck_Domains) GetDomains() []string {
@@ -3962,7 +4020,7 @@ type UpdateServiceConfigsCmd_ServiceConfig struct {
 func (x *UpdateServiceConfigsCmd_ServiceConfig) Reset() {
 	*x = UpdateServiceConfigsCmd_ServiceConfig{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[66]
+		mi := &file_edge_cmd_proto_msgTypes[67]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3975,7 +4033,7 @@ func (x *UpdateServiceConfigsCmd_ServiceConfig) String() string {
 func (*UpdateServiceConfigsCmd_ServiceConfig) ProtoMessage() {}
 
 func (x *UpdateServiceConfigsCmd_ServiceConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[66]
+	mi := &file_edge_cmd_proto_msgTypes[67]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3988,7 +4046,7 @@ func (x *UpdateServiceConfigsCmd_ServiceConfig) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use UpdateServiceConfigsCmd_ServiceConfig.ProtoReflect.Descriptor instead.
 func (*UpdateServiceConfigsCmd_ServiceConfig) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{27, 0}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{28, 0}
 }
 
 func (x *UpdateServiceConfigsCmd_ServiceConfig) GetServiceId() string {
@@ -4312,7 +4370,14 @@ var file_edge_cmd_proto_rawDesc = []byte{
 	0x6d, 0x42, 0x0b, 0x0a, 0x09, 0x5f, 0x68, 0x6f, 0x73, 0x74, 0x6e, 0x61, 0x6d, 0x65, 0x42, 0x18,
 	0x0a, 0x16, 0x5f, 0x75, 0x6e, 0x76, 0x65, 0x72, 0x69, 0x66, 0x69, 0x65, 0x64, 0x46, 0x69, 0x6e,
 	0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74, 0x42, 0x14, 0x0a, 0x12, 0x5f, 0x75, 0x6e, 0x76,
-	0x65, 0x72, 0x69, 0x66, 0x69, 0x65, 0x64, 0x43, 0x65, 0x72, 0x74, 0x50, 0x65, 0x6d, 0x22, 0xc4,
+	0x65, 0x72, 0x69, 0x66, 0x69, 0x65, 0x64, 0x43, 0x65, 0x72, 0x74, 0x50, 0x65, 0x6d, 0x22, 0x6e,
+	0x0a, 0x15, 0x52, 0x65, 0x45, 0x6e, 0x72, 0x6f, 0x6c, 0x6c, 0x45, 0x64, 0x67, 0x65, 0x52, 0x6f,
+	0x75, 0x74, 0x65, 0x72, 0x43, 0x6d, 0x64, 0x12, 0x22, 0x0a, 0x0c, 0x65, 0x64, 0x67, 0x65, 0x52,
+	0x6f, 0x75, 0x74, 0x65, 0x72, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x65,
+	0x64, 0x67, 0x65, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x49, 0x64, 0x12, 0x31, 0x0a, 0x03, 0x63,
+	0x74, 0x78, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1f, 0x2e, 0x7a, 0x69, 0x74, 0x69, 0x2e,
+	0x65, 0x64, 0x67, 0x65, 0x5f, 0x63, 0x6d, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x68, 0x61, 0x6e,
+	0x67, 0x65, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x78, 0x74, 0x52, 0x03, 0x63, 0x74, 0x78, 0x22, 0xc4,
 	0x01, 0x0a, 0x13, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x45, 0x64, 0x67, 0x65, 0x52, 0x6f, 0x75,
 	0x74, 0x65, 0x72, 0x43, 0x6d, 0x64, 0x12, 0x3c, 0x0a, 0x0a, 0x65, 0x64, 0x67, 0x65, 0x52, 0x6f,
 	0x75, 0x74, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x7a, 0x69, 0x74,
@@ -4805,7 +4870,7 @@ var file_edge_cmd_proto_rawDesc = []byte{
 	0x72, 0x76, 0x69, 0x63, 0x65, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73,
 	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x63, 0x6f, 0x6e, 0x66,
 	0x69, 0x67, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x63, 0x6f, 0x6e, 0x66,
-	0x69, 0x67, 0x49, 0x64, 0x2a, 0xe3, 0x01, 0x0a, 0x0b, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64,
+	0x69, 0x67, 0x49, 0x64, 0x2a, 0x80, 0x02, 0x0a, 0x0b, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64,
 	0x54, 0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x5a, 0x65, 0x72, 0x6f, 0x10, 0x00, 0x12, 0x1d,
 	0x0a, 0x18, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x45, 0x64, 0x67, 0x65, 0x54, 0x65, 0x72, 0x6d,
 	0x69, 0x6e, 0x61, 0x74, 0x6f, 0x72, 0x54, 0x79, 0x70, 0x65, 0x10, 0xe8, 0x07, 0x12, 0x2b, 0x0a,
@@ -4819,10 +4884,12 @@ var file_edge_cmd_proto_rawDesc = []byte{
 	0x6e, 0x74, 0x69, 0x74, 0x79, 0x57, 0x69, 0x74, 0x68, 0x45, 0x6e, 0x72, 0x6f, 0x6c, 0x6c, 0x6d,
 	0x65, 0x6e, 0x74, 0x73, 0x54, 0x79, 0x70, 0x65, 0x10, 0xec, 0x07, 0x12, 0x1d, 0x0a, 0x18, 0x55,
 	0x70, 0x64, 0x61, 0x74, 0x65, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x43, 0x6f, 0x6e, 0x66,
-	0x69, 0x67, 0x73, 0x54, 0x79, 0x70, 0x65, 0x10, 0xed, 0x07, 0x42, 0x29, 0x5a, 0x27, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x7a, 0x69, 0x74,
-	0x69, 0x2f, 0x65, 0x64, 0x67, 0x65, 0x2f, 0x70, 0x62, 0x2f, 0x65, 0x64, 0x67, 0x65, 0x5f, 0x63,
-	0x6d, 0x64, 0x5f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x69, 0x67, 0x73, 0x54, 0x79, 0x70, 0x65, 0x10, 0xed, 0x07, 0x12, 0x1b, 0x0a, 0x16, 0x52, 0x65,
+	0x45, 0x6e, 0x72, 0x6f, 0x6c, 0x6c, 0x45, 0x64, 0x67, 0x65, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72,
+	0x54, 0x79, 0x70, 0x65, 0x10, 0xee, 0x07, 0x42, 0x29, 0x5a, 0x27, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x7a, 0x69, 0x74, 0x69, 0x2f, 0x65,
+	0x64, 0x67, 0x65, 0x2f, 0x70, 0x62, 0x2f, 0x65, 0x64, 0x67, 0x65, 0x5f, 0x63, 0x6d, 0x64, 0x5f,
+	0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -4838,7 +4905,7 @@ func file_edge_cmd_proto_rawDescGZIP() []byte {
 }
 
 var file_edge_cmd_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_edge_cmd_proto_msgTypes = make([]protoimpl.MessageInfo, 67)
+var file_edge_cmd_proto_msgTypes = make([]protoimpl.MessageInfo, 68)
 var file_edge_cmd_proto_goTypes = []interface{}{
 	(CommandType)(0),                              // 0: ziti.edge_cmd.pb.CommandType
 	(*ChangeContext)(nil),                         // 1: ziti.edge_cmd.pb.ChangeContext
@@ -4853,150 +4920,152 @@ var file_edge_cmd_proto_goTypes = []interface{}{
 	(*Config)(nil),                                // 10: ziti.edge_cmd.pb.Config
 	(*ConfigType)(nil),                            // 11: ziti.edge_cmd.pb.ConfigType
 	(*EdgeRouter)(nil),                            // 12: ziti.edge_cmd.pb.EdgeRouter
-	(*CreateEdgeRouterCmd)(nil),                   // 13: ziti.edge_cmd.pb.CreateEdgeRouterCmd
-	(*EdgeRouterPolicy)(nil),                      // 14: ziti.edge_cmd.pb.EdgeRouterPolicy
-	(*Enrollment)(nil),                            // 15: ziti.edge_cmd.pb.Enrollment
-	(*ReplaceEnrollmentWithAuthenticatorCmd)(nil), // 16: ziti.edge_cmd.pb.ReplaceEnrollmentWithAuthenticatorCmd
-	(*ExternalJwtSigner)(nil),                     // 17: ziti.edge_cmd.pb.ExternalJwtSigner
-	(*Identity)(nil),                              // 18: ziti.edge_cmd.pb.Identity
-	(*CreateIdentityWithEnrollmentsCmd)(nil),      // 19: ziti.edge_cmd.pb.CreateIdentityWithEnrollmentsCmd
-	(*Mfa)(nil),                                   // 20: ziti.edge_cmd.pb.Mfa
-	(*PostureCheck)(nil),                          // 21: ziti.edge_cmd.pb.PostureCheck
-	(*Revocation)(nil),                            // 22: ziti.edge_cmd.pb.Revocation
-	(*Service)(nil),                               // 23: ziti.edge_cmd.pb.Service
-	(*ServiceEdgeRouterPolicy)(nil),               // 24: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy
-	(*ServicePolicy)(nil),                         // 25: ziti.edge_cmd.pb.ServicePolicy
-	(*TransitRouter)(nil),                         // 26: ziti.edge_cmd.pb.TransitRouter
-	(*CreateTransitRouterCmd)(nil),                // 27: ziti.edge_cmd.pb.CreateTransitRouterCmd
-	(*UpdateServiceConfigsCmd)(nil),               // 28: ziti.edge_cmd.pb.UpdateServiceConfigsCmd
-	nil,                                           // 29: ziti.edge_cmd.pb.ChangeContext.AttributesEntry
-	nil,                                           // 30: ziti.edge_cmd.pb.JsonMap.ValueEntry
-	(*Authenticator_Cert)(nil),                    // 31: ziti.edge_cmd.pb.Authenticator.Cert
-	(*Authenticator_Updb)(nil),                    // 32: ziti.edge_cmd.pb.Authenticator.Updb
-	nil,                                           // 33: ziti.edge_cmd.pb.Authenticator.TagsEntry
-	(*AuthPolicy_Primary)(nil),                    // 34: ziti.edge_cmd.pb.AuthPolicy.Primary
-	(*AuthPolicy_Secondary)(nil),                  // 35: ziti.edge_cmd.pb.AuthPolicy.Secondary
-	nil,                                           // 36: ziti.edge_cmd.pb.AuthPolicy.TagsEntry
-	(*AuthPolicy_Primary_Cert)(nil),               // 37: ziti.edge_cmd.pb.AuthPolicy.Primary.Cert
-	(*AuthPolicy_Primary_Updb)(nil),               // 38: ziti.edge_cmd.pb.AuthPolicy.Primary.Updb
-	(*AuthPolicy_Primary_ExtJwt)(nil),             // 39: ziti.edge_cmd.pb.AuthPolicy.Primary.ExtJwt
-	(*Ca_ExternalIdClaim)(nil),                    // 40: ziti.edge_cmd.pb.Ca.ExternalIdClaim
-	nil,                                           // 41: ziti.edge_cmd.pb.Ca.TagsEntry
-	nil,                                           // 42: ziti.edge_cmd.pb.Config.TagsEntry
-	nil,                                           // 43: ziti.edge_cmd.pb.ConfigType.TagsEntry
-	nil,                                           // 44: ziti.edge_cmd.pb.EdgeRouter.TagsEntry
-	nil,                                           // 45: ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry
-	nil,                                           // 46: ziti.edge_cmd.pb.Enrollment.TagsEntry
-	nil,                                           // 47: ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry
-	(*Identity_EnvInfo)(nil),                      // 48: ziti.edge_cmd.pb.Identity.EnvInfo
-	(*Identity_SdkInfo)(nil),                      // 49: ziti.edge_cmd.pb.Identity.SdkInfo
-	nil,                                           // 50: ziti.edge_cmd.pb.Identity.TagsEntry
-	nil,                                           // 51: ziti.edge_cmd.pb.Identity.ServiceHostingPrecedencesEntry
-	nil,                                           // 52: ziti.edge_cmd.pb.Identity.ServiceHostingCostsEntry
-	nil,                                           // 53: ziti.edge_cmd.pb.Mfa.TagsEntry
-	(*PostureCheck_Mac)(nil),                      // 54: ziti.edge_cmd.pb.PostureCheck.Mac
-	(*PostureCheck_Mfa)(nil),                      // 55: ziti.edge_cmd.pb.PostureCheck.Mfa
-	(*PostureCheck_Os)(nil),                       // 56: ziti.edge_cmd.pb.PostureCheck.Os
-	(*PostureCheck_OsList)(nil),                   // 57: ziti.edge_cmd.pb.PostureCheck.OsList
-	(*PostureCheck_Process)(nil),                  // 58: ziti.edge_cmd.pb.PostureCheck.Process
-	(*PostureCheck_ProcessMulti)(nil),             // 59: ziti.edge_cmd.pb.PostureCheck.ProcessMulti
-	(*PostureCheck_Domains)(nil),                  // 60: ziti.edge_cmd.pb.PostureCheck.Domains
-	nil,                                           // 61: ziti.edge_cmd.pb.PostureCheck.TagsEntry
-	nil,                                           // 62: ziti.edge_cmd.pb.Revocation.TagsEntry
-	nil,                                           // 63: ziti.edge_cmd.pb.Service.TagsEntry
-	nil,                                           // 64: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry
-	nil,                                           // 65: ziti.edge_cmd.pb.ServicePolicy.TagsEntry
-	nil,                                           // 66: ziti.edge_cmd.pb.TransitRouter.TagsEntry
-	(*UpdateServiceConfigsCmd_ServiceConfig)(nil), // 67: ziti.edge_cmd.pb.UpdateServiceConfigsCmd.ServiceConfig
-	(*timestamppb.Timestamp)(nil),                 // 68: google.protobuf.Timestamp
+	(*ReEnrollEdgeRouterCmd)(nil),                 // 13: ziti.edge_cmd.pb.ReEnrollEdgeRouterCmd
+	(*CreateEdgeRouterCmd)(nil),                   // 14: ziti.edge_cmd.pb.CreateEdgeRouterCmd
+	(*EdgeRouterPolicy)(nil),                      // 15: ziti.edge_cmd.pb.EdgeRouterPolicy
+	(*Enrollment)(nil),                            // 16: ziti.edge_cmd.pb.Enrollment
+	(*ReplaceEnrollmentWithAuthenticatorCmd)(nil), // 17: ziti.edge_cmd.pb.ReplaceEnrollmentWithAuthenticatorCmd
+	(*ExternalJwtSigner)(nil),                     // 18: ziti.edge_cmd.pb.ExternalJwtSigner
+	(*Identity)(nil),                              // 19: ziti.edge_cmd.pb.Identity
+	(*CreateIdentityWithEnrollmentsCmd)(nil),      // 20: ziti.edge_cmd.pb.CreateIdentityWithEnrollmentsCmd
+	(*Mfa)(nil),                                   // 21: ziti.edge_cmd.pb.Mfa
+	(*PostureCheck)(nil),                          // 22: ziti.edge_cmd.pb.PostureCheck
+	(*Revocation)(nil),                            // 23: ziti.edge_cmd.pb.Revocation
+	(*Service)(nil),                               // 24: ziti.edge_cmd.pb.Service
+	(*ServiceEdgeRouterPolicy)(nil),               // 25: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy
+	(*ServicePolicy)(nil),                         // 26: ziti.edge_cmd.pb.ServicePolicy
+	(*TransitRouter)(nil),                         // 27: ziti.edge_cmd.pb.TransitRouter
+	(*CreateTransitRouterCmd)(nil),                // 28: ziti.edge_cmd.pb.CreateTransitRouterCmd
+	(*UpdateServiceConfigsCmd)(nil),               // 29: ziti.edge_cmd.pb.UpdateServiceConfigsCmd
+	nil,                                           // 30: ziti.edge_cmd.pb.ChangeContext.AttributesEntry
+	nil,                                           // 31: ziti.edge_cmd.pb.JsonMap.ValueEntry
+	(*Authenticator_Cert)(nil),                    // 32: ziti.edge_cmd.pb.Authenticator.Cert
+	(*Authenticator_Updb)(nil),                    // 33: ziti.edge_cmd.pb.Authenticator.Updb
+	nil,                                           // 34: ziti.edge_cmd.pb.Authenticator.TagsEntry
+	(*AuthPolicy_Primary)(nil),                    // 35: ziti.edge_cmd.pb.AuthPolicy.Primary
+	(*AuthPolicy_Secondary)(nil),                  // 36: ziti.edge_cmd.pb.AuthPolicy.Secondary
+	nil,                                           // 37: ziti.edge_cmd.pb.AuthPolicy.TagsEntry
+	(*AuthPolicy_Primary_Cert)(nil),               // 38: ziti.edge_cmd.pb.AuthPolicy.Primary.Cert
+	(*AuthPolicy_Primary_Updb)(nil),               // 39: ziti.edge_cmd.pb.AuthPolicy.Primary.Updb
+	(*AuthPolicy_Primary_ExtJwt)(nil),             // 40: ziti.edge_cmd.pb.AuthPolicy.Primary.ExtJwt
+	(*Ca_ExternalIdClaim)(nil),                    // 41: ziti.edge_cmd.pb.Ca.ExternalIdClaim
+	nil,                                           // 42: ziti.edge_cmd.pb.Ca.TagsEntry
+	nil,                                           // 43: ziti.edge_cmd.pb.Config.TagsEntry
+	nil,                                           // 44: ziti.edge_cmd.pb.ConfigType.TagsEntry
+	nil,                                           // 45: ziti.edge_cmd.pb.EdgeRouter.TagsEntry
+	nil,                                           // 46: ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry
+	nil,                                           // 47: ziti.edge_cmd.pb.Enrollment.TagsEntry
+	nil,                                           // 48: ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry
+	(*Identity_EnvInfo)(nil),                      // 49: ziti.edge_cmd.pb.Identity.EnvInfo
+	(*Identity_SdkInfo)(nil),                      // 50: ziti.edge_cmd.pb.Identity.SdkInfo
+	nil,                                           // 51: ziti.edge_cmd.pb.Identity.TagsEntry
+	nil,                                           // 52: ziti.edge_cmd.pb.Identity.ServiceHostingPrecedencesEntry
+	nil,                                           // 53: ziti.edge_cmd.pb.Identity.ServiceHostingCostsEntry
+	nil,                                           // 54: ziti.edge_cmd.pb.Mfa.TagsEntry
+	(*PostureCheck_Mac)(nil),                      // 55: ziti.edge_cmd.pb.PostureCheck.Mac
+	(*PostureCheck_Mfa)(nil),                      // 56: ziti.edge_cmd.pb.PostureCheck.Mfa
+	(*PostureCheck_Os)(nil),                       // 57: ziti.edge_cmd.pb.PostureCheck.Os
+	(*PostureCheck_OsList)(nil),                   // 58: ziti.edge_cmd.pb.PostureCheck.OsList
+	(*PostureCheck_Process)(nil),                  // 59: ziti.edge_cmd.pb.PostureCheck.Process
+	(*PostureCheck_ProcessMulti)(nil),             // 60: ziti.edge_cmd.pb.PostureCheck.ProcessMulti
+	(*PostureCheck_Domains)(nil),                  // 61: ziti.edge_cmd.pb.PostureCheck.Domains
+	nil,                                           // 62: ziti.edge_cmd.pb.PostureCheck.TagsEntry
+	nil,                                           // 63: ziti.edge_cmd.pb.Revocation.TagsEntry
+	nil,                                           // 64: ziti.edge_cmd.pb.Service.TagsEntry
+	nil,                                           // 65: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry
+	nil,                                           // 66: ziti.edge_cmd.pb.ServicePolicy.TagsEntry
+	nil,                                           // 67: ziti.edge_cmd.pb.TransitRouter.TagsEntry
+	(*UpdateServiceConfigsCmd_ServiceConfig)(nil), // 68: ziti.edge_cmd.pb.UpdateServiceConfigsCmd.ServiceConfig
+	(*timestamppb.Timestamp)(nil),                 // 69: google.protobuf.Timestamp
 }
 var file_edge_cmd_proto_depIdxs = []int32{
-	29, // 0: ziti.edge_cmd.pb.ChangeContext.attributes:type_name -> ziti.edge_cmd.pb.ChangeContext.AttributesEntry
+	30, // 0: ziti.edge_cmd.pb.ChangeContext.attributes:type_name -> ziti.edge_cmd.pb.ChangeContext.AttributesEntry
 	1,  // 1: ziti.edge_cmd.pb.CreateEdgeTerminatorCommand.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
-	30, // 2: ziti.edge_cmd.pb.JsonMap.value:type_name -> ziti.edge_cmd.pb.JsonMap.ValueEntry
+	31, // 2: ziti.edge_cmd.pb.JsonMap.value:type_name -> ziti.edge_cmd.pb.JsonMap.ValueEntry
 	6,  // 3: ziti.edge_cmd.pb.JsonList.value:type_name -> ziti.edge_cmd.pb.JsonValue
 	4,  // 4: ziti.edge_cmd.pb.JsonValue.mapValue:type_name -> ziti.edge_cmd.pb.JsonMap
 	5,  // 5: ziti.edge_cmd.pb.JsonValue.listValue:type_name -> ziti.edge_cmd.pb.JsonList
-	33, // 6: ziti.edge_cmd.pb.Authenticator.tags:type_name -> ziti.edge_cmd.pb.Authenticator.TagsEntry
-	31, // 7: ziti.edge_cmd.pb.Authenticator.cert:type_name -> ziti.edge_cmd.pb.Authenticator.Cert
-	32, // 8: ziti.edge_cmd.pb.Authenticator.updb:type_name -> ziti.edge_cmd.pb.Authenticator.Updb
-	34, // 9: ziti.edge_cmd.pb.AuthPolicy.primary:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary
-	35, // 10: ziti.edge_cmd.pb.AuthPolicy.secondary:type_name -> ziti.edge_cmd.pb.AuthPolicy.Secondary
-	36, // 11: ziti.edge_cmd.pb.AuthPolicy.tags:type_name -> ziti.edge_cmd.pb.AuthPolicy.TagsEntry
-	41, // 12: ziti.edge_cmd.pb.Ca.tags:type_name -> ziti.edge_cmd.pb.Ca.TagsEntry
-	40, // 13: ziti.edge_cmd.pb.Ca.externalIdClaim:type_name -> ziti.edge_cmd.pb.Ca.ExternalIdClaim
-	42, // 14: ziti.edge_cmd.pb.Config.tags:type_name -> ziti.edge_cmd.pb.Config.TagsEntry
-	43, // 15: ziti.edge_cmd.pb.ConfigType.tags:type_name -> ziti.edge_cmd.pb.ConfigType.TagsEntry
-	44, // 16: ziti.edge_cmd.pb.EdgeRouter.tags:type_name -> ziti.edge_cmd.pb.EdgeRouter.TagsEntry
-	12, // 17: ziti.edge_cmd.pb.CreateEdgeRouterCmd.edgeRouter:type_name -> ziti.edge_cmd.pb.EdgeRouter
-	15, // 18: ziti.edge_cmd.pb.CreateEdgeRouterCmd.enrollment:type_name -> ziti.edge_cmd.pb.Enrollment
-	1,  // 19: ziti.edge_cmd.pb.CreateEdgeRouterCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
-	45, // 20: ziti.edge_cmd.pb.EdgeRouterPolicy.tags:type_name -> ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry
-	46, // 21: ziti.edge_cmd.pb.Enrollment.tags:type_name -> ziti.edge_cmd.pb.Enrollment.TagsEntry
-	68, // 22: ziti.edge_cmd.pb.Enrollment.issuedAt:type_name -> google.protobuf.Timestamp
-	68, // 23: ziti.edge_cmd.pb.Enrollment.expiresAt:type_name -> google.protobuf.Timestamp
-	7,  // 24: ziti.edge_cmd.pb.ReplaceEnrollmentWithAuthenticatorCmd.authenticator:type_name -> ziti.edge_cmd.pb.Authenticator
-	1,  // 25: ziti.edge_cmd.pb.ReplaceEnrollmentWithAuthenticatorCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
-	47, // 26: ziti.edge_cmd.pb.ExternalJwtSigner.tags:type_name -> ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry
-	68, // 27: ziti.edge_cmd.pb.ExternalJwtSigner.notAfter:type_name -> google.protobuf.Timestamp
-	68, // 28: ziti.edge_cmd.pb.ExternalJwtSigner.notBefore:type_name -> google.protobuf.Timestamp
-	50, // 29: ziti.edge_cmd.pb.Identity.tags:type_name -> ziti.edge_cmd.pb.Identity.TagsEntry
-	48, // 30: ziti.edge_cmd.pb.Identity.envInfo:type_name -> ziti.edge_cmd.pb.Identity.EnvInfo
-	49, // 31: ziti.edge_cmd.pb.Identity.sdkInfo:type_name -> ziti.edge_cmd.pb.Identity.SdkInfo
-	51, // 32: ziti.edge_cmd.pb.Identity.serviceHostingPrecedences:type_name -> ziti.edge_cmd.pb.Identity.ServiceHostingPrecedencesEntry
-	52, // 33: ziti.edge_cmd.pb.Identity.serviceHostingCosts:type_name -> ziti.edge_cmd.pb.Identity.ServiceHostingCostsEntry
-	68, // 34: ziti.edge_cmd.pb.Identity.disabledAt:type_name -> google.protobuf.Timestamp
-	68, // 35: ziti.edge_cmd.pb.Identity.disabledUntil:type_name -> google.protobuf.Timestamp
-	18, // 36: ziti.edge_cmd.pb.CreateIdentityWithEnrollmentsCmd.identity:type_name -> ziti.edge_cmd.pb.Identity
-	15, // 37: ziti.edge_cmd.pb.CreateIdentityWithEnrollmentsCmd.enrollments:type_name -> ziti.edge_cmd.pb.Enrollment
-	1,  // 38: ziti.edge_cmd.pb.CreateIdentityWithEnrollmentsCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
-	53, // 39: ziti.edge_cmd.pb.Mfa.tags:type_name -> ziti.edge_cmd.pb.Mfa.TagsEntry
-	61, // 40: ziti.edge_cmd.pb.PostureCheck.tags:type_name -> ziti.edge_cmd.pb.PostureCheck.TagsEntry
-	54, // 41: ziti.edge_cmd.pb.PostureCheck.mac:type_name -> ziti.edge_cmd.pb.PostureCheck.Mac
-	55, // 42: ziti.edge_cmd.pb.PostureCheck.mfa:type_name -> ziti.edge_cmd.pb.PostureCheck.Mfa
-	57, // 43: ziti.edge_cmd.pb.PostureCheck.osList:type_name -> ziti.edge_cmd.pb.PostureCheck.OsList
-	58, // 44: ziti.edge_cmd.pb.PostureCheck.process:type_name -> ziti.edge_cmd.pb.PostureCheck.Process
-	59, // 45: ziti.edge_cmd.pb.PostureCheck.processMulti:type_name -> ziti.edge_cmd.pb.PostureCheck.ProcessMulti
-	60, // 46: ziti.edge_cmd.pb.PostureCheck.domains:type_name -> ziti.edge_cmd.pb.PostureCheck.Domains
-	68, // 47: ziti.edge_cmd.pb.Revocation.expiresAt:type_name -> google.protobuf.Timestamp
-	62, // 48: ziti.edge_cmd.pb.Revocation.tags:type_name -> ziti.edge_cmd.pb.Revocation.TagsEntry
-	63, // 49: ziti.edge_cmd.pb.Service.tags:type_name -> ziti.edge_cmd.pb.Service.TagsEntry
-	64, // 50: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.tags:type_name -> ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry
-	65, // 51: ziti.edge_cmd.pb.ServicePolicy.tags:type_name -> ziti.edge_cmd.pb.ServicePolicy.TagsEntry
-	66, // 52: ziti.edge_cmd.pb.TransitRouter.tags:type_name -> ziti.edge_cmd.pb.TransitRouter.TagsEntry
-	26, // 53: ziti.edge_cmd.pb.CreateTransitRouterCmd.router:type_name -> ziti.edge_cmd.pb.TransitRouter
-	15, // 54: ziti.edge_cmd.pb.CreateTransitRouterCmd.enrollment:type_name -> ziti.edge_cmd.pb.Enrollment
-	1,  // 55: ziti.edge_cmd.pb.CreateTransitRouterCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
-	67, // 56: ziti.edge_cmd.pb.UpdateServiceConfigsCmd.serviceConfigs:type_name -> ziti.edge_cmd.pb.UpdateServiceConfigsCmd.ServiceConfig
-	1,  // 57: ziti.edge_cmd.pb.UpdateServiceConfigsCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
-	6,  // 58: ziti.edge_cmd.pb.JsonMap.ValueEntry.value:type_name -> ziti.edge_cmd.pb.JsonValue
-	3,  // 59: ziti.edge_cmd.pb.Authenticator.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	37, // 60: ziti.edge_cmd.pb.AuthPolicy.Primary.cert:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Cert
-	38, // 61: ziti.edge_cmd.pb.AuthPolicy.Primary.updb:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Updb
-	39, // 62: ziti.edge_cmd.pb.AuthPolicy.Primary.extJwt:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.ExtJwt
-	3,  // 63: ziti.edge_cmd.pb.AuthPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 64: ziti.edge_cmd.pb.Ca.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 65: ziti.edge_cmd.pb.Config.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 66: ziti.edge_cmd.pb.ConfigType.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 67: ziti.edge_cmd.pb.EdgeRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 68: ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 69: ziti.edge_cmd.pb.Enrollment.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 70: ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 71: ziti.edge_cmd.pb.Identity.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 72: ziti.edge_cmd.pb.Mfa.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	56, // 73: ziti.edge_cmd.pb.PostureCheck.OsList.osList:type_name -> ziti.edge_cmd.pb.PostureCheck.Os
-	58, // 74: ziti.edge_cmd.pb.PostureCheck.ProcessMulti.processes:type_name -> ziti.edge_cmd.pb.PostureCheck.Process
-	3,  // 75: ziti.edge_cmd.pb.PostureCheck.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 76: ziti.edge_cmd.pb.Revocation.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 77: ziti.edge_cmd.pb.Service.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 78: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 79: ziti.edge_cmd.pb.ServicePolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,  // 80: ziti.edge_cmd.pb.TransitRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	81, // [81:81] is the sub-list for method output_type
-	81, // [81:81] is the sub-list for method input_type
-	81, // [81:81] is the sub-list for extension type_name
-	81, // [81:81] is the sub-list for extension extendee
-	0,  // [0:81] is the sub-list for field type_name
+	34, // 6: ziti.edge_cmd.pb.Authenticator.tags:type_name -> ziti.edge_cmd.pb.Authenticator.TagsEntry
+	32, // 7: ziti.edge_cmd.pb.Authenticator.cert:type_name -> ziti.edge_cmd.pb.Authenticator.Cert
+	33, // 8: ziti.edge_cmd.pb.Authenticator.updb:type_name -> ziti.edge_cmd.pb.Authenticator.Updb
+	35, // 9: ziti.edge_cmd.pb.AuthPolicy.primary:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary
+	36, // 10: ziti.edge_cmd.pb.AuthPolicy.secondary:type_name -> ziti.edge_cmd.pb.AuthPolicy.Secondary
+	37, // 11: ziti.edge_cmd.pb.AuthPolicy.tags:type_name -> ziti.edge_cmd.pb.AuthPolicy.TagsEntry
+	42, // 12: ziti.edge_cmd.pb.Ca.tags:type_name -> ziti.edge_cmd.pb.Ca.TagsEntry
+	41, // 13: ziti.edge_cmd.pb.Ca.externalIdClaim:type_name -> ziti.edge_cmd.pb.Ca.ExternalIdClaim
+	43, // 14: ziti.edge_cmd.pb.Config.tags:type_name -> ziti.edge_cmd.pb.Config.TagsEntry
+	44, // 15: ziti.edge_cmd.pb.ConfigType.tags:type_name -> ziti.edge_cmd.pb.ConfigType.TagsEntry
+	45, // 16: ziti.edge_cmd.pb.EdgeRouter.tags:type_name -> ziti.edge_cmd.pb.EdgeRouter.TagsEntry
+	1,  // 17: ziti.edge_cmd.pb.ReEnrollEdgeRouterCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
+	12, // 18: ziti.edge_cmd.pb.CreateEdgeRouterCmd.edgeRouter:type_name -> ziti.edge_cmd.pb.EdgeRouter
+	16, // 19: ziti.edge_cmd.pb.CreateEdgeRouterCmd.enrollment:type_name -> ziti.edge_cmd.pb.Enrollment
+	1,  // 20: ziti.edge_cmd.pb.CreateEdgeRouterCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
+	46, // 21: ziti.edge_cmd.pb.EdgeRouterPolicy.tags:type_name -> ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry
+	47, // 22: ziti.edge_cmd.pb.Enrollment.tags:type_name -> ziti.edge_cmd.pb.Enrollment.TagsEntry
+	69, // 23: ziti.edge_cmd.pb.Enrollment.issuedAt:type_name -> google.protobuf.Timestamp
+	69, // 24: ziti.edge_cmd.pb.Enrollment.expiresAt:type_name -> google.protobuf.Timestamp
+	7,  // 25: ziti.edge_cmd.pb.ReplaceEnrollmentWithAuthenticatorCmd.authenticator:type_name -> ziti.edge_cmd.pb.Authenticator
+	1,  // 26: ziti.edge_cmd.pb.ReplaceEnrollmentWithAuthenticatorCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
+	48, // 27: ziti.edge_cmd.pb.ExternalJwtSigner.tags:type_name -> ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry
+	69, // 28: ziti.edge_cmd.pb.ExternalJwtSigner.notAfter:type_name -> google.protobuf.Timestamp
+	69, // 29: ziti.edge_cmd.pb.ExternalJwtSigner.notBefore:type_name -> google.protobuf.Timestamp
+	51, // 30: ziti.edge_cmd.pb.Identity.tags:type_name -> ziti.edge_cmd.pb.Identity.TagsEntry
+	49, // 31: ziti.edge_cmd.pb.Identity.envInfo:type_name -> ziti.edge_cmd.pb.Identity.EnvInfo
+	50, // 32: ziti.edge_cmd.pb.Identity.sdkInfo:type_name -> ziti.edge_cmd.pb.Identity.SdkInfo
+	52, // 33: ziti.edge_cmd.pb.Identity.serviceHostingPrecedences:type_name -> ziti.edge_cmd.pb.Identity.ServiceHostingPrecedencesEntry
+	53, // 34: ziti.edge_cmd.pb.Identity.serviceHostingCosts:type_name -> ziti.edge_cmd.pb.Identity.ServiceHostingCostsEntry
+	69, // 35: ziti.edge_cmd.pb.Identity.disabledAt:type_name -> google.protobuf.Timestamp
+	69, // 36: ziti.edge_cmd.pb.Identity.disabledUntil:type_name -> google.protobuf.Timestamp
+	19, // 37: ziti.edge_cmd.pb.CreateIdentityWithEnrollmentsCmd.identity:type_name -> ziti.edge_cmd.pb.Identity
+	16, // 38: ziti.edge_cmd.pb.CreateIdentityWithEnrollmentsCmd.enrollments:type_name -> ziti.edge_cmd.pb.Enrollment
+	1,  // 39: ziti.edge_cmd.pb.CreateIdentityWithEnrollmentsCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
+	54, // 40: ziti.edge_cmd.pb.Mfa.tags:type_name -> ziti.edge_cmd.pb.Mfa.TagsEntry
+	62, // 41: ziti.edge_cmd.pb.PostureCheck.tags:type_name -> ziti.edge_cmd.pb.PostureCheck.TagsEntry
+	55, // 42: ziti.edge_cmd.pb.PostureCheck.mac:type_name -> ziti.edge_cmd.pb.PostureCheck.Mac
+	56, // 43: ziti.edge_cmd.pb.PostureCheck.mfa:type_name -> ziti.edge_cmd.pb.PostureCheck.Mfa
+	58, // 44: ziti.edge_cmd.pb.PostureCheck.osList:type_name -> ziti.edge_cmd.pb.PostureCheck.OsList
+	59, // 45: ziti.edge_cmd.pb.PostureCheck.process:type_name -> ziti.edge_cmd.pb.PostureCheck.Process
+	60, // 46: ziti.edge_cmd.pb.PostureCheck.processMulti:type_name -> ziti.edge_cmd.pb.PostureCheck.ProcessMulti
+	61, // 47: ziti.edge_cmd.pb.PostureCheck.domains:type_name -> ziti.edge_cmd.pb.PostureCheck.Domains
+	69, // 48: ziti.edge_cmd.pb.Revocation.expiresAt:type_name -> google.protobuf.Timestamp
+	63, // 49: ziti.edge_cmd.pb.Revocation.tags:type_name -> ziti.edge_cmd.pb.Revocation.TagsEntry
+	64, // 50: ziti.edge_cmd.pb.Service.tags:type_name -> ziti.edge_cmd.pb.Service.TagsEntry
+	65, // 51: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.tags:type_name -> ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry
+	66, // 52: ziti.edge_cmd.pb.ServicePolicy.tags:type_name -> ziti.edge_cmd.pb.ServicePolicy.TagsEntry
+	67, // 53: ziti.edge_cmd.pb.TransitRouter.tags:type_name -> ziti.edge_cmd.pb.TransitRouter.TagsEntry
+	27, // 54: ziti.edge_cmd.pb.CreateTransitRouterCmd.router:type_name -> ziti.edge_cmd.pb.TransitRouter
+	16, // 55: ziti.edge_cmd.pb.CreateTransitRouterCmd.enrollment:type_name -> ziti.edge_cmd.pb.Enrollment
+	1,  // 56: ziti.edge_cmd.pb.CreateTransitRouterCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
+	68, // 57: ziti.edge_cmd.pb.UpdateServiceConfigsCmd.serviceConfigs:type_name -> ziti.edge_cmd.pb.UpdateServiceConfigsCmd.ServiceConfig
+	1,  // 58: ziti.edge_cmd.pb.UpdateServiceConfigsCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
+	6,  // 59: ziti.edge_cmd.pb.JsonMap.ValueEntry.value:type_name -> ziti.edge_cmd.pb.JsonValue
+	3,  // 60: ziti.edge_cmd.pb.Authenticator.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	38, // 61: ziti.edge_cmd.pb.AuthPolicy.Primary.cert:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Cert
+	39, // 62: ziti.edge_cmd.pb.AuthPolicy.Primary.updb:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Updb
+	40, // 63: ziti.edge_cmd.pb.AuthPolicy.Primary.extJwt:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.ExtJwt
+	3,  // 64: ziti.edge_cmd.pb.AuthPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 65: ziti.edge_cmd.pb.Ca.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 66: ziti.edge_cmd.pb.Config.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 67: ziti.edge_cmd.pb.ConfigType.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 68: ziti.edge_cmd.pb.EdgeRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 69: ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 70: ziti.edge_cmd.pb.Enrollment.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 71: ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 72: ziti.edge_cmd.pb.Identity.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 73: ziti.edge_cmd.pb.Mfa.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	57, // 74: ziti.edge_cmd.pb.PostureCheck.OsList.osList:type_name -> ziti.edge_cmd.pb.PostureCheck.Os
+	59, // 75: ziti.edge_cmd.pb.PostureCheck.ProcessMulti.processes:type_name -> ziti.edge_cmd.pb.PostureCheck.Process
+	3,  // 76: ziti.edge_cmd.pb.PostureCheck.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 77: ziti.edge_cmd.pb.Revocation.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 78: ziti.edge_cmd.pb.Service.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 79: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 80: ziti.edge_cmd.pb.ServicePolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,  // 81: ziti.edge_cmd.pb.TransitRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	82, // [82:82] is the sub-list for method output_type
+	82, // [82:82] is the sub-list for method input_type
+	82, // [82:82] is the sub-list for extension type_name
+	82, // [82:82] is the sub-list for extension extendee
+	0,  // [0:82] is the sub-list for field type_name
 }
 
 func init() { file_edge_cmd_proto_init() }
@@ -5150,7 +5219,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateEdgeRouterCmd); i {
+			switch v := v.(*ReEnrollEdgeRouterCmd); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5162,7 +5231,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EdgeRouterPolicy); i {
+			switch v := v.(*CreateEdgeRouterCmd); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5174,7 +5243,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Enrollment); i {
+			switch v := v.(*EdgeRouterPolicy); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5186,7 +5255,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ReplaceEnrollmentWithAuthenticatorCmd); i {
+			switch v := v.(*Enrollment); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5198,7 +5267,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExternalJwtSigner); i {
+			switch v := v.(*ReplaceEnrollmentWithAuthenticatorCmd); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5210,7 +5279,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Identity); i {
+			switch v := v.(*ExternalJwtSigner); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5222,7 +5291,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateIdentityWithEnrollmentsCmd); i {
+			switch v := v.(*Identity); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5234,7 +5303,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Mfa); i {
+			switch v := v.(*CreateIdentityWithEnrollmentsCmd); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5246,7 +5315,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PostureCheck); i {
+			switch v := v.(*Mfa); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5258,7 +5327,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Revocation); i {
+			switch v := v.(*PostureCheck); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5270,7 +5339,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Service); i {
+			switch v := v.(*Revocation); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5282,7 +5351,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ServiceEdgeRouterPolicy); i {
+			switch v := v.(*Service); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5294,7 +5363,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ServicePolicy); i {
+			switch v := v.(*ServiceEdgeRouterPolicy); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5306,7 +5375,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TransitRouter); i {
+			switch v := v.(*ServicePolicy); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5318,7 +5387,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateTransitRouterCmd); i {
+			switch v := v.(*TransitRouter); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5330,6 +5399,18 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*CreateTransitRouterCmd); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_edge_cmd_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UpdateServiceConfigsCmd); i {
 			case 0:
 				return &v.state
@@ -5341,7 +5422,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Authenticator_Cert); i {
 			case 0:
 				return &v.state
@@ -5353,7 +5434,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Authenticator_Updb); i {
 			case 0:
 				return &v.state
@@ -5365,7 +5446,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AuthPolicy_Primary); i {
 			case 0:
 				return &v.state
@@ -5377,7 +5458,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[35].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AuthPolicy_Secondary); i {
 			case 0:
 				return &v.state
@@ -5389,7 +5470,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[36].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[37].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AuthPolicy_Primary_Cert); i {
 			case 0:
 				return &v.state
@@ -5401,7 +5482,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[37].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[38].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AuthPolicy_Primary_Updb); i {
 			case 0:
 				return &v.state
@@ -5413,7 +5494,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[38].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[39].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AuthPolicy_Primary_ExtJwt); i {
 			case 0:
 				return &v.state
@@ -5425,7 +5506,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[39].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[40].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Ca_ExternalIdClaim); i {
 			case 0:
 				return &v.state
@@ -5437,7 +5518,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[47].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[48].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Identity_EnvInfo); i {
 			case 0:
 				return &v.state
@@ -5449,7 +5530,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[48].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[49].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Identity_SdkInfo); i {
 			case 0:
 				return &v.state
@@ -5461,7 +5542,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[53].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[54].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PostureCheck_Mac); i {
 			case 0:
 				return &v.state
@@ -5473,7 +5554,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[54].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[55].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PostureCheck_Mfa); i {
 			case 0:
 				return &v.state
@@ -5485,7 +5566,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[55].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[56].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PostureCheck_Os); i {
 			case 0:
 				return &v.state
@@ -5497,7 +5578,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[56].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[57].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PostureCheck_OsList); i {
 			case 0:
 				return &v.state
@@ -5509,7 +5590,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[57].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[58].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PostureCheck_Process); i {
 			case 0:
 				return &v.state
@@ -5521,7 +5602,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[58].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[59].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PostureCheck_ProcessMulti); i {
 			case 0:
 				return &v.state
@@ -5533,7 +5614,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[59].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[60].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PostureCheck_Domains); i {
 			case 0:
 				return &v.state
@@ -5545,7 +5626,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[66].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[67].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UpdateServiceConfigsCmd_ServiceConfig); i {
 			case 0:
 				return &v.state
@@ -5579,10 +5660,10 @@ func file_edge_cmd_proto_init() {
 	}
 	file_edge_cmd_proto_msgTypes[8].OneofWrappers = []interface{}{}
 	file_edge_cmd_proto_msgTypes[11].OneofWrappers = []interface{}{}
-	file_edge_cmd_proto_msgTypes[14].OneofWrappers = []interface{}{}
-	file_edge_cmd_proto_msgTypes[16].OneofWrappers = []interface{}{}
+	file_edge_cmd_proto_msgTypes[15].OneofWrappers = []interface{}{}
 	file_edge_cmd_proto_msgTypes[17].OneofWrappers = []interface{}{}
-	file_edge_cmd_proto_msgTypes[20].OneofWrappers = []interface{}{
+	file_edge_cmd_proto_msgTypes[18].OneofWrappers = []interface{}{}
+	file_edge_cmd_proto_msgTypes[21].OneofWrappers = []interface{}{
 		(*PostureCheck_Mac_)(nil),
 		(*PostureCheck_Mfa_)(nil),
 		(*PostureCheck_OsList_)(nil),
@@ -5590,15 +5671,15 @@ func file_edge_cmd_proto_init() {
 		(*PostureCheck_ProcessMulti_)(nil),
 		(*PostureCheck_Domains_)(nil),
 	}
-	file_edge_cmd_proto_msgTypes[25].OneofWrappers = []interface{}{}
-	file_edge_cmd_proto_msgTypes[34].OneofWrappers = []interface{}{}
+	file_edge_cmd_proto_msgTypes[26].OneofWrappers = []interface{}{}
+	file_edge_cmd_proto_msgTypes[35].OneofWrappers = []interface{}{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_edge_cmd_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   67,
+			NumMessages:   68,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

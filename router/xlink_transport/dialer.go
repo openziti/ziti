@@ -68,7 +68,7 @@ func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
 	}
 
 	linkId := self.id.ShallowCloneWithNewToken(dial.GetLinkId())
-	connId := uuid.New().String()
+	connId := uuid.NewString()
 
 	var xli xlink.Xlink
 	if self.config.split {
@@ -92,7 +92,12 @@ func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
 }
 
 func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
-	logrus.Debugf("dialing link with split payload/ack channels [l/%s]", linkId.Token)
+	log := pfxlog.Logger().WithFields(logrus.Fields{
+		"linkId": linkId.Token,
+		"connId": connId,
+	})
+
+	log.Info("dialing link with split payload/ack channels")
 
 	headers := channel.Headers{
 		LinkHeaderRouterId:      []byte(self.id.Token),
@@ -105,7 +110,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 
 	payloadDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, headers)
 
-	logrus.Debugf("dialing payload channel for [l/%s]", linkId.Token)
+	log.Info("dialing payload channel")
 
 	bindHandler := &splitDialBindHandler{
 		dialer: self,
@@ -126,7 +131,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		return nil, errors.Wrapf(err, "error dialing payload channel for [l/%s]", linkId.Token)
 	}
 
-	logrus.Debugf("dialing ack channel for [l/%s]", linkId.Token)
+	log.Info("dialing ack channel")
 
 	headers = channel.Headers{
 		LinkHeaderRouterId:      []byte(self.id.Token),
@@ -149,7 +154,12 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 }
 
 func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
-	logrus.Debugf("dialing link with single channel [l/%s]", linkId.Token)
+	log := pfxlog.Logger().WithFields(logrus.Fields{
+		"linkId": linkId.Token,
+		"connId": connId,
+	})
+
+	log.Info("dialing link with single channel")
 
 	headers := channel.Headers{
 		LinkHeaderRouterId:      []byte(self.id.Token),

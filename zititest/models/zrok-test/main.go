@@ -19,7 +19,6 @@ package main
 import (
 	"embed"
 	_ "embed"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -38,7 +37,6 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"os"
 	"path"
@@ -46,6 +44,16 @@ import (
 )
 
 const TargetZitiVersion = ""
+
+// const TargetZitiVersion = "v0.32.0"
+
+const TargetZrokVersion = ""
+
+//const TargetZrokVersion = "v0.4.22"
+
+const iterations = 100_000
+const pacing = 10 * time.Millisecond
+const loopers = 2
 
 //go:embed configs
 var configResource embed.FS
@@ -57,17 +65,28 @@ func (self scaleStrategy) IsScaled(entity model.Entity) bool {
 }
 
 func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
-	if entity.GetType() == model.EntityTypeComponent {
-		return 20
+	if entity.GetType() == model.EntityTypeHost {
+		if entity.GetScope().HasTag("router") {
+			return 1
+		} else if entity.GetScope().HasTag("client") {
+			return 3
+		}
 	}
-	return 5
+
+	if entity.GetType() == model.EntityTypeComponent {
+		if entity.GetScope().HasTag("client") {
+			return 50
+		}
+	}
+
+	return 1
 }
 
 var m = &model.Model{
-	Id: "links-test",
+	Id: "zrok-test",
 	Scope: model.Scope{
 		Defaults: model.Variables{
-			"environment": "links-test",
+			"environment": "zrok-test",
 			"credentials": model.Variables{
 				"aws": model.Variables{
 					"managed_key": true,
@@ -93,14 +112,21 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
-					host.InstanceType = "t3.medium"
+					host.InstanceType = "c5.2xlarge"
 				}
 				return nil
 			})
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.router", 1, func(host *model.Host) error {
-				host.InstanceType = "c5.xlarge"
+				host.InstanceType = "c5.large"
+				return nil
+			})
+		}),
+
+		model.FactoryFunc(func(m *model.Model) error {
+			return m.ForEachHost("component.client", 1, func(host *model.Host) error {
+				host.InstanceType = "c5.large"
 				return nil
 			})
 		}),
@@ -116,7 +142,6 @@ var m = &model.Model{
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
 				"ctrl1": {
-					InstanceType: "t3.medium",
 					Components: model.Components{
 						"ctrl1": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
@@ -126,13 +151,51 @@ var m = &model.Model{
 						},
 					},
 				},
-				"router-us-east-{{.ScaleIndex}}": {
-					Scope: model.Scope{Tags: model.Tags{"scaled"}},
+				"zrokCtrl": {
+					InstanceType: "c5.large",
 					Components: model.Components{
-						"router-us-east-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
-							Scope: model.Scope{Tags: model.Tags{"router", "scaled"}},
+						"zrokCtrl": {
+							Scope: model.Scope{Tags: model.Tags{"zrokCtrl"}},
+							Type: &zitilab.ZrokControllerType{
+								Version:          TargetZrokVersion,
+								PreCreateClients: ".client",
+							},
+						},
+					},
+				},
+				"zrokFront": {
+					InstanceType: "c5.large",
+					Components: model.Components{
+						"zrokFront": {
+							Scope: model.Scope{Tags: model.Tags{"zrokFront"}},
+							Type: &zitilab.ZrokFrontendType{
+								Version: TargetZrokVersion,
+								DNS:     "paul.demo.openziti.org",
+							},
+						},
+					},
+				},
+				"router-us-east-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"scaled", "router"}},
+					Components: model.Components{
+						"router-us-east-{{ .Host.ScaleIndex }}": {
+							Scope: model.Scope{Tags: model.Tags{"router"}},
 							Type: &zitilab.RouterType{
 								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
+				"zrok-us-east-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"client", "scaled"}},
+					Components: model.Components{
+						"zrok-us-east-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
+							Scope: model.Scope{Tags: model.Tags{"client", "scaled"}},
+							Type: &zitilab.ZrokLoopTestType{
+								Version:    TargetZrokVersion,
+								Pacing:     pacing,
+								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -143,23 +206,28 @@ var m = &model.Model{
 			Region: "us-west-2",
 			Site:   "us-west-2b",
 			Hosts: model.Hosts{
-				"ctrl2": {
+				"router-us-west-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"scaled", "router"}},
 					Components: model.Components{
-						"ctrl2": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
-							Type: &zitilab.ControllerType{
+						"router-us-west-{{ .Host.ScaleIndex }}": {
+							Scope: model.Scope{Tags: model.Tags{"router"}},
+							Type: &zitilab.RouterType{
 								Version: TargetZitiVersion,
 							},
 						},
 					},
 				},
-				"router-us-west-{{.ScaleIndex}}": {
-					Scope: model.Scope{Tags: model.Tags{"scaled"}},
+
+				"zrok-us-west-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"client", "scaled"}},
 					Components: model.Components{
-						"router-us-west-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
-							Scope: model.Scope{Tags: model.Tags{"router", "scaled"}},
-							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
+						"zrok-us-west-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
+							Scope: model.Scope{Tags: model.Tags{"client", "scaled"}},
+							Type: &zitilab.ZrokLoopTestType{
+								Version:    TargetZrokVersion,
+								Pacing:     pacing,
+								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -170,24 +238,28 @@ var m = &model.Model{
 			Region: "eu-west-2",
 			Site:   "eu-west-2a",
 			Hosts: model.Hosts{
-				"ctrl3": {
-					InstanceType: "c5.large",
+				"router-eu-west-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"scaled", "router"}},
 					Components: model.Components{
-						"ctrl3": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
-							Type: &zitilab.ControllerType{
+						"router-eu-west-{{ .Host.ScaleIndex }}": {
+							Scope: model.Scope{Tags: model.Tags{"router"}},
+							Type: &zitilab.RouterType{
 								Version: TargetZitiVersion,
 							},
 						},
 					},
 				},
-				"router-eu-west-{{.ScaleIndex}}": {
-					Scope: model.Scope{Tags: model.Tags{"scaled"}},
+
+				"zrok-eu-west-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"client", "scaled"}},
 					Components: model.Components{
-						"router-eu-west-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
-							Scope: model.Scope{Tags: model.Tags{"router", "scaled"}},
-							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
+						"zrok-eu-west-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
+							Scope: model.Scope{Tags: model.Tags{"client", "scaled"}},
+							Type: &zitilab.ZrokLoopTestType{
+								Version:    TargetZrokVersion,
+								Pacing:     pacing,
+								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -200,12 +272,27 @@ var m = &model.Model{
 			Site:   "eu-central-1a",
 			Hosts: model.Hosts{
 				"router-eu-central-{{.ScaleIndex}}": {
-					Scope: model.Scope{Tags: model.Tags{"scaled"}},
+					Scope: model.Scope{Tags: model.Tags{"scaled", "router"}},
 					Components: model.Components{
-						"router-eu-central-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
-							Scope: model.Scope{Tags: model.Tags{"router", "scaled"}},
+						"router-eu-central-{{ .Host.ScaleIndex }}": {
+							Scope: model.Scope{Tags: model.Tags{"router"}},
 							Type: &zitilab.RouterType{
 								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
+
+				"zrok-eu-central-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"client", "scaled"}},
+					Components: model.Components{
+						"zrok-eu-central-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
+							Scope: model.Scope{Tags: model.Tags{"client", "scaled"}},
+							Type: &zitilab.ZrokLoopTestType{
+								Version:    TargetZrokVersion,
+								Pacing:     pacing,
+								Iterations: iterations,
+								Loopers:    loopers,
 							},
 						},
 					},
@@ -219,44 +306,51 @@ var m = &model.Model{
 			workflow := actions.Workflow()
 
 			workflow.AddAction(host.GroupExec("*", 50, "touch .hushlogin"))
-			workflow.AddAction(component.Stop(".ctrl"))
-			workflow.AddAction(host.GroupExec("*", 50, "rm -f logs/*"))
-			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
-
+			workflow.AddAction(component.StopInParallel("*", 100))
+			workflow.AddAction(host.GroupExec("*", 50, "rm -rf logs/* .zrok/"))
+			workflow.AddAction(host.GroupExec("*", 50, "find fablab -type d -exec chmod 755 {} \\;"))
+			workflow.AddAction(edge.InitController("#ctrl1"))
 			workflow.AddAction(component.Start(".ctrl"))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(edge.RaftJoin(".ctrl"))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(edge.InitRaftController("#ctrl1"))
 			workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 			workflow.AddAction(edge.Login("#ctrl1"))
 
 			workflow.AddAction(component.StopInParallel(models.RouterTag, 50))
 			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 50))
+			workflow.AddAction(component.StartInParallel(models.RouterTag, 50))
 
+			workflow.AddAction(component.ExecF("#zrokCtrl", (*zitilab.ZrokControllerType).Init))
+			workflow.AddAction(component.ExecF("#zrokCtrl", (*zitilab.ZrokControllerType).PreCreateAccounts))
+			workflow.AddAction(component.Start("#zrokCtrl"))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+
+			workflow.AddAction(component.ExecF("#zrokFront", (*zitilab.ZrokFrontendType).Init))
+			workflow.AddAction(component.Start("#zrokFront"))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+
+			workflow.AddAction(component.ExecInParallelF(".client", 10, (*zitilab.ZrokLoopTestType).Init))
 			return workflow
 		}),
 		"clean": model.Bind(actions.Workflow(
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
-		"login":    model.Bind(edge.Login("#ctrl1")),
-		"login2":   model.Bind(edge.Login("#ctrl2")),
-		"login3":   model.Bind(edge.Login("#ctrl3")),
-		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
-		"validateUp": model.Bind(model.ActionFunc(func(run model.Run) error {
-			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
-				return err
-			}
-			if err := chaos.ValidateUp(run, ".router", 100, time.Minute); err != nil {
-				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
-				return component.StartInParallel(".router", 100).Execute(run)
-			}
-			return nil
-		})),
-		"validateLinks": model.Bind(model.ActionFunc(validateLinks)),
+		"startServers": model.Bind(actions.Workflow(
+			component.StopInParallelHostExclusive("*", 200),
+			component.Start(".ctrl"),
+			component.Start(".router"),
+			component.Start(".zrokCtrl"),
+			component.Start(".zrokFront"),
+		)),
+		"restartServers": model.Bind(actions.Workflow(
+			host.GroupExec("*", 50, "find fablab -type d -exec chmod 755 {} \\;"),
+			component.StopInParallelHostExclusive("*", 200),
+			component.Start(".ctrl"),
+			component.Start(".router"),
+			component.Start(".zrokCtrl"),
+			component.Start(".zrokFront"),
+		)),
+		"login": model.Bind(edge.Login("#ctrl1")),
 	},
 
 	Infrastructure: model.Stages{
