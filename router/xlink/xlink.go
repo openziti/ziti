@@ -137,6 +137,7 @@ type Xlink interface {
 	IsDialed() bool
 	Iteration() uint32
 	AreFaultsSent() bool
+	DuplicatesRejected() uint32
 }
 
 type Forwarder interface {

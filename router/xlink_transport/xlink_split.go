@@ -40,6 +40,7 @@ type splitImpl struct {
 	droppedMsgMeter metrics.Meter
 	dialed          bool
 	iteration       uint32
+	dupsRejected    uint32
 }
 
 func (self *splitImpl) Id() string {
@@ -182,4 +183,8 @@ func (self *splitImpl) GetAddresses() []*ctrl_pb.LinkConn {
 			RemoteAddr: plRemoteAddr.Network() + ":" + plRemoteAddr.String(),
 		},
 	}
+}
+
+func (self *splitImpl) DuplicatesRejected() uint32 {
+	return atomic.AddUint32(&self.dupsRejected, 1)
 }

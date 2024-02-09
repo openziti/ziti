@@ -139,7 +139,9 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		}
 
 		// if the id is the same we want to throw away the older one, since the new one is a replacement
-		if existing.Id() < link.Id() {
+		// If 5 duplicates have already come in, then clearly the other side is not happy with the
+		// existing link, so try the new one instead
+		if existing.Id() < link.Id() && existing.DuplicatesRejected() <= 5 {
 			log.Info("duplicate link detected. closing other link (current link id is < than new link id)")
 
 			// give the other side a chance to close the link first and report it as a duplicate
