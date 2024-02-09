@@ -20,6 +20,7 @@
 * github.com/openziti/storage: [v0.2.28 -> v0.2.30](https://github.com/openziti/storage/compare/v0.2.28...v0.2.30)
 * github.com/openziti/transport/v2: [v2.0.121 -> v2.0.122](https://github.com/openziti/transport/compare/v2.0.121...v2.0.122)
 * github.com/openziti/ziti: [v0.32.1 -> v0.32.2](https://github.com/openziti/ziti/compare/v0.32.1...v0.32.2)
+    * [Issue #1741](https://github.com/openziti/ziti/issues/1741) - Prevent stuck links
     * [Issue #1736](https://github.com/openziti/ziti/issues/1736) - controller crashes generating create circuit responses
     * [Issue #1733](https://github.com/openziti/ziti/issues/1733) - Improve terminator creation performance
     * [Issue #1734](https://github.com/openziti/ziti/issues/1734) - Make API rate limiter enabled by default
