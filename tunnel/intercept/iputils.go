@@ -17,6 +17,7 @@
 package intercept
 
 import (
+	"container/list"
 	"fmt"
 	"github.com/gaissmai/extnetip"
 	"github.com/michaelquigley/pfxlog"
@@ -31,6 +32,7 @@ import (
 var dnsPrefix netip.Prefix
 var dnsCurrentIp netip.Addr
 var dnsCurrentIpMtx sync.Mutex
+var dnsRecycledIps *list.List
 
 func SetDnsInterceptIpRange(cidr string) error {
 	prefix, err := netip.ParsePrefix(cidr)
@@ -44,6 +46,7 @@ func SetDnsInterceptIpRange(cidr string) error {
 
 	dnsCurrentIpMtx.Lock()
 	dnsCurrentIp = dnsPrefix.Addr()
+	dnsRecycledIps = list.New()
 	dnsCurrentIpMtx.Unlock()
 	pfxlog.Logger().Infof("dns intercept IP range: %v - %v", dnsCurrentIp, dnsIpHigh)
 	return nil
@@ -57,37 +60,41 @@ func GetDnsInterceptIpRange() *net.IPNet {
 }
 
 func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
+	pfxlog.Logger().Debugf("will clean up dns hostname %s when service is removed", hostname)
 	f := func() {
-		if err := resolver.RemoveHostname(hostname); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("failed to remove host mapping from resolver: %v ", hostname)
-		}
+		ip := resolver.RemoveHostname(hostname)
+		dnsCurrentIpMtx.Lock()
+		defer dnsCurrentIpMtx.Unlock()
+		addr, _ := netip.AddrFromSlice(ip)
+		dnsRecycledIps.PushBack(addr)
 	}
 	return f
 }
 
-func incDnsIp() (err error) {
+func getDnsIp(host string, addrCB func(*net.IPNet, bool), svc *entities.Service, resolver dns.Resolver) (net.IP, error) {
 	dnsCurrentIpMtx.Lock()
 	defer dnsCurrentIpMtx.Unlock()
-	ip := dnsCurrentIp.Next()
-	if ip.IsValid() && dnsPrefix.Contains(ip) {
-		dnsCurrentIp = ip
-	} else {
-		err = fmt.Errorf("cannot allocate ip address: ip range exhausted")
-	}
-	return
-}
+	var ip netip.Addr
 
-func getDnsIp(host string, addrCB func(*net.IPNet, bool), svc *entities.Service, resolver dns.Resolver) (net.IP, error) {
-	err := incDnsIp()
-	if err == nil {
-		addr := &net.IPNet{
-			IP:   dnsCurrentIp.AsSlice(),
-			Mask: net.CIDRMask(dnsCurrentIp.BitLen(), dnsCurrentIp.BitLen()),
+	// look for returned IPs first
+	if dnsRecycledIps.Len() > 0 {
+		e := dnsRecycledIps.Front()
+		ip = e.Value.(netip.Addr)
+		dnsRecycledIps.Remove(e)
+		pfxlog.Logger().Debugf("using recycled ip %v for hostname %s", ip, host)
+	} else {
+		ip = dnsCurrentIp.Next()
+		if ip.IsValid() && dnsPrefix.Contains(ip) {
+			dnsCurrentIp = ip
+		} else {
+			return nil, fmt.Errorf("cannot allocate ip address: ip range exhausted")
 		}
-		addrCB(addr, false)
-		svc.AddCleanupAction(cleanUpFunc(host, resolver))
 	}
-	return dnsCurrentIp.AsSlice(), err
+
+	addr := &net.IPNet{IP: ip.AsSlice(), Mask: net.CIDRMask(ip.BitLen(), ip.BitLen())}
+	addrCB(addr, false) // no route is needed because the dns cidr was added to "lo" at startup
+	svc.AddCleanupAction(cleanUpFunc(host, resolver))
+	return ip.AsSlice(), nil
 }
 
 func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver, addrCB func(*net.IPNet, bool)) error {
@@ -96,7 +103,7 @@ func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolve
 	// handle wildcard domain - IPs will be allocated when matching hostnames are queried
 	if hostname[0] == '*' {
 		err := resolver.AddDomain(hostname, func(host string) (net.IP, error) {
-			return getDnsIp(hostname, addrCB, svc, resolver)
+			return getDnsIp(host, addrCB, svc, resolver)
 		})
 		return err
 	}

@@ -81,7 +81,7 @@ func (h *hostFile) AddHostname(hostname string, ip net.IP) error {
 	return nil
 }
 
-func (h *hostFile) RemoveHostname(_ string) error {
+func (h *hostFile) RemoveHostname(_ string) net.IP {
 	return nil
 }
 

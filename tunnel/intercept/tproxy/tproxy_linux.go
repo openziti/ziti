@@ -625,19 +625,6 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 				}
 			}
 		}
-		host, hostErr := self.resolver.Lookup(ipNet.IP)
-		if hostErr == nil {
-			hostErr = self.resolver.RemoveHostname(host)
-			if hostErr == nil {
-				log.Debugf("Removed hostname: %v from Resolver", host)
-			} else {
-				log.Debugf("Could not remove hostname: %v from Resolver", host)
-			}
-		} else {
-			log.Debugf("failed to find resolver entry for %v in service %s",
-				ipNet, *self.service.Name)
-		}
-
 	}
 
 	if len(errorList) == 0 {
