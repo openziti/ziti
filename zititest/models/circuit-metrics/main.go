@@ -220,7 +220,6 @@ var m = &model.Model{
 		"stop":               model.Bind(component.StopInParallel("*", 15)),
 		"login":              model.Bind(edge.Login("#ctrl")),
 		"syncModelEdgeState": model.Bind(edge.SyncModelEdgeState(".terminator")),
-		"start-iperf-tests":  model.Bind(&StartIPerfTestAction{}),
 	},
 
 	Infrastructure: model.Stages{
@@ -246,7 +245,8 @@ func main() {
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
 	//m.Actions["start-ziti-edge-tunnel"] = model.Bind(&StartZitiEdgeTunnelAction{})
 	m.AddActivationActions("stop", "bootstrap", "start")
-	m.AddOperatingActions("login", "syncModelEdgeState", "start-iperf-tests")
+	m.AddOperatingActions("login", "syncModelEdgeState")
+	m.AddOperatingStage(&StartTCPDumpStage{})
 	runPhase := fablib_5_operation.NewPhase()
 	circuitMetricsStage := zitilib_5_operation.CircuitMetrics(1*time.Second, runPhase.GetCloser(), func(id string) string {
 		id = strings.ReplaceAll(id, ".", ":")
