@@ -30,6 +30,8 @@ enum ContentType {
   SigningCertAddedType = 20215;
   CreateTerminatorV2RequestType = 20216;
   CreateTerminatorV2ResponseType = 20217;
+  CreateCircuitV2RequestType = 20218;
+  CreateCircuitV2ResponseType = 20219;
 
   EnrollType = 20300;
   EnrollmentCertsResponseType = 20301;

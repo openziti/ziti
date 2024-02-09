@@ -19,6 +19,7 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/openziti/ziti/common/ctrl_msg"
 	"time"
 
 	"github.com/openziti/ziti/common/capabilities"
@@ -166,18 +167,15 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 
 	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
 
-	request := &edge_ctrl_pb.CreateCircuitRequest{
+	request := &ctrl_msg.CreateCircuitRequest{
 		SessionToken:         token,
 		Fingerprints:         self.fingerprints.Prints(),
 		TerminatorInstanceId: terminatorIdentity,
 		PeerData:             peerData,
 	}
 
-	response := &edge_ctrl_pb.CreateCircuitResponse{}
-	timeout := self.listener.options.Options.GetCircuitTimeout
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
-
-	if err = getResultOrFailure(responseMsg, err, response); err != nil {
+	response, err := self.sendCreateCircuitRequest(request, ctrlCh)
+	if err != nil {
 		log.WithError(err).Warn("failed to dial fabric")
 		self.sendStateClosedReply(err.Error(), req)
 		conn.close(false, "failed to dial fabric")
@@ -190,6 +188,58 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
 	self.sendStateConnectedReply(req, response.PeerData)
 	x.Start()
+}
+
+func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
+	if capabilities.IsCapable(ctrlCh, capabilities.ControllerCreateCircuitV2) {
+		return self.sendCreateCircuitRequestV2(req, ctrlCh)
+	}
+	return self.sendCreateCircuitRequestV1(req, ctrlCh)
+}
+
+func (self *edgeClientConn) sendCreateCircuitRequestV1(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
+	request := &edge_ctrl_pb.CreateCircuitRequest{
+		SessionToken:         req.SessionToken,
+		Fingerprints:         req.Fingerprints,
+		TerminatorInstanceId: req.TerminatorInstanceId,
+		PeerData:             req.PeerData,
+	}
+
+	response := &edge_ctrl_pb.CreateCircuitResponse{}
+	timeout := self.listener.options.Options.GetCircuitTimeout
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
+	if err = getResultOrFailure(responseMsg, err, response); err != nil {
+		return nil, err
+	}
+
+	return &ctrl_msg.CreateCircuitResponse{
+		CircuitId: response.CircuitId,
+		Address:   response.Address,
+		PeerData:  response.PeerData,
+		Tags:      response.Tags,
+	}, nil
+}
+
+func (self *edgeClientConn) sendCreateCircuitRequestV2(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
+	timeout := self.listener.options.Options.GetCircuitTimeout
+	msg, err := req.ToMessage().WithTimeout(timeout).SendForReply(ctrlCh)
+	if err != nil {
+		return nil, err
+	}
+	if msg.ContentType == int32(edge_ctrl_pb.ContentType_ErrorType) {
+		msg := string(msg.Body)
+		if msg == "" {
+			msg = "error state returned from controller with no message"
+		}
+		return nil, errors.New(msg)
+	}
+
+	if msg.ContentType != int32(edge_ctrl_pb.ContentType_CreateCircuitV2ResponseType) {
+		return nil, errors.Errorf("unexpected response type %v to request. expected %v",
+			msg.ContentType, edge_ctrl_pb.ContentType_CreateCircuitV2ResponseType)
+	}
+
+	return ctrl_msg.DecodeCreateCircuitResponse(msg)
 }
 
 func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel) {

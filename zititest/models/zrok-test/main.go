@@ -335,6 +335,21 @@ var m = &model.Model{
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
+		"startServers": model.Bind(actions.Workflow(
+			component.StopInParallelHostExclusive("*", 200),
+			component.Start(".ctrl"),
+			component.Start(".router"),
+			component.Start(".zrokCtrl"),
+			component.Start(".zrokFront"),
+		)),
+		"restartServers": model.Bind(actions.Workflow(
+			host.GroupExec("*", 50, "find fablab -type d -exec chmod 755 {} \\;"),
+			component.StopInParallelHostExclusive("*", 200),
+			component.Start(".ctrl"),
+			component.Start(".router"),
+			component.Start(".zrokCtrl"),
+			component.Start(".zrokFront"),
+		)),
 		"login": model.Bind(edge.Login("#ctrl1")),
 	},
 

@@ -61,16 +61,17 @@ func (self *ZrokLoopTestType) StageFiles(r model.Run, c *model.Component) error 
 	return stageziti.StageZrokOnce(r, c, self.Version, self.LocalPath)
 }
 
-func (self *ZrokLoopTestType) getProcessFilter() func(string) bool {
+func (self *ZrokLoopTestType) getProcessFilter(c *model.Component) func(string) bool {
 	return func(s string) bool {
 		return strings.Contains(s, "zrok") &&
 			strings.Contains(s, " test loop public") &&
-			!strings.Contains(s, "sudo")
+			!strings.Contains(s, "sudo") &&
+			strings.Contains(s, fmt.Sprintf("--max-dwell-ms %d", 1000+c.ScaleIndex))
 	}
 }
 
 func (self *ZrokLoopTestType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
-	pids, err := c.GetHost().FindProcesses(self.getProcessFilter())
+	pids, err := c.GetHost().FindProcesses(self.getProcessFilter(c))
 	if err != nil {
 		return false, err
 	}
@@ -84,8 +85,10 @@ func (self *ZrokLoopTestType) Start(_ model.Run, c *model.Component) error {
 	binaryPath := getBinaryPath(c, constants.ZROK, self.Version)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
-	serviceCmd := fmt.Sprintf("nohup sudo -u %s %s test loop public --iterations %v --loopers %v --min-pacing-ms %v --max-pacing-ms %v 2>&1 &> %s &",
-		userId, binaryPath, self.Iterations, self.Loopers, self.Pacing.Milliseconds(), self.Pacing.Milliseconds(), logsPath)
+	maxDwell := 1000 + c.ScaleIndex
+	serviceCmd := fmt.Sprintf("nohup sudo -u %s %s test loop public --iterations %v --loopers %v --min-pacing-ms %v --max-pacing-ms %v "+
+		"--max-dwell-ms %d 2>&1 &> %s &",
+		userId, binaryPath, self.Iterations, self.Loopers, self.Pacing.Milliseconds(), self.Pacing.Milliseconds(), maxDwell, logsPath)
 
 	if quiet, _ := c.GetBoolVariable("quiet_startup"); !quiet {
 		logrus.Info(serviceCmd)
@@ -104,7 +107,7 @@ func (self *ZrokLoopTestType) Start(_ model.Run, c *model.Component) error {
 }
 
 func (self *ZrokLoopTestType) Stop(_ model.Run, c *model.Component) error {
-	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter())
+	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c))
 }
 
 func (self *ZrokLoopTestType) getUnixUser(c *model.Component) string {
