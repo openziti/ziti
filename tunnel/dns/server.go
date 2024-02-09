@@ -251,6 +251,18 @@ func (r *resolver) AddDomain(name string, ipCB func(string) (net.IP, error)) err
 	return nil
 }
 
+func (r *resolver) RemoveDomain(name string) {
+	if name[0] != '*' {
+		log.Warnf("invalid wildcard domain '%s'", name)
+		return
+	}
+	domainSfx := name[1:] + "."
+	r.domainsMtx.Lock()
+	defer r.domainsMtx.Unlock()
+	log.Infof("removing domain %s from resolver", domainSfx)
+	delete(r.domains, domainSfx)
+}
+
 func (r *resolver) AddHostname(hostname string, ip net.IP) error {
 	r.namesMtx.Lock()
 	defer r.namesMtx.Unlock()

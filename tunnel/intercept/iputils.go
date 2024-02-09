@@ -60,13 +60,14 @@ func GetDnsInterceptIpRange() *net.IPNet {
 }
 
 func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
-	pfxlog.Logger().Debugf("will clean up dns hostname %s when service is removed", hostname)
 	f := func() {
 		ip := resolver.RemoveHostname(hostname)
-		dnsCurrentIpMtx.Lock()
-		defer dnsCurrentIpMtx.Unlock()
-		addr, _ := netip.AddrFromSlice(ip)
-		dnsRecycledIps.PushBack(addr)
+		if ip != nil {
+			dnsCurrentIpMtx.Lock()
+			defer dnsCurrentIpMtx.Unlock()
+			addr, _ := netip.AddrFromSlice(ip)
+			dnsRecycledIps.PushBack(addr)
+		}
 	}
 	return f
 }
@@ -105,6 +106,9 @@ func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolve
 		err := resolver.AddDomain(hostname, func(host string) (net.IP, error) {
 			return getDnsIp(host, addrCB, svc, resolver)
 		})
+		if err == nil {
+			svc.AddCleanupAction(func() { resolver.RemoveDomain(hostname) })
+		}
 		return err
 	}
 

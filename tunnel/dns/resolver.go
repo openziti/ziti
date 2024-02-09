@@ -23,6 +23,7 @@ type Resolver interface {
 	AddDomain(string, func(string) (net.IP, error)) error
 	Lookup(net.IP) (string, error)
 	RemoveHostname(string) net.IP
+	RemoveDomain(string)
 	Cleanup() error
 }
 

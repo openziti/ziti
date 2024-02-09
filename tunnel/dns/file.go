@@ -54,6 +54,8 @@ func (h *hostFile) AddDomain(name string, _ func(string) (net.IP, error)) error 
 	return fmt.Errorf("cannot add wildcard domain[%s] to hostfile resolver", name)
 }
 
+func (h *hostFile) RemoveDomain(string) {}
+
 func (h *hostFile) Lookup(_ net.IP) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
