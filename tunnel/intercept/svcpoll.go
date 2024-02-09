@@ -43,6 +43,7 @@ var sourceIpVar = "$" + tunnel.SourceIpKey
 var sourcePortVar = "$" + tunnel.SourcePortKey
 var dstIpVar = "$" + tunnel.DestinationIpKey
 var destPortVar = "$" + tunnel.DestinationPortKey
+var destHostnameVar = "$" + tunnel.DestinationHostname
 
 func NewServiceListenerGroup(interceptor Interceptor, resolver dns.Resolver) *ServiceListenerGroup {
 	return &ServiceListenerGroup{
@@ -370,6 +371,9 @@ func (self *ServiceListener) getTemplatingProvider(template string) (entities.Te
 		result = strings.ReplaceAll(result, sourcePortVar, sourceAddrPort)
 		result = strings.ReplaceAll(result, dstIpVar, destAddrIp)
 		result = strings.ReplaceAll(result, destPortVar, destAddrPort)
+		if destHostname, err := self.resolver.Lookup(net.ParseIP(destAddrIp)); err == nil {
+			result = strings.ReplaceAll(result, destHostnameVar, destHostname)
+		}
 		return result
 	}, nil
 }
