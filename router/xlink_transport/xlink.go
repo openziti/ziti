@@ -38,6 +38,7 @@ type impl struct {
 	droppedMsgMeter metrics.Meter
 	dialed          bool
 	iteration       uint32
+	dupsRejected    uint32
 }
 
 func (self *impl) Id() string {
@@ -155,4 +156,8 @@ func (self *impl) GetAddresses() []*ctrl_pb.LinkConn {
 			RemoteAddr: remoteAddr.Network() + ":" + remoteAddr.String(),
 		},
 	}
+}
+
+func (self *impl) DuplicatesRejected() uint32 {
+	return atomic.AddUint32(&self.dupsRejected, 1)
 }
