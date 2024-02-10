@@ -613,6 +613,19 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 			if err != nil {
 				errorList = append(errorList, err)
 				log.WithError(err).Errorf("failed to remove route %v for service %s", ipNet, *self.service.Name)
+			} else {
+				host, hostErr := self.resolver.Lookup(ipNet.IP)
+				if hostErr == nil {
+					hostErr = self.resolver.RemoveHostname(host)
+					if hostErr == nil {
+						log.Debugf("Removed hostname: %v from Resolver", host)
+					} else {
+						log.Debugf("Could not remove hostname: %v from Resolver", host)
+					}
+				} else {
+					log.Debugf("failed to find resolver entry for %v in service %s",
+						ipNet, *self.service.Name)
+				}
 			}
 		}
 	}

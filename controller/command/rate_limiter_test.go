@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/controller/apierror"
+	"github.com/stretchr/testify/assert"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -145,4 +146,12 @@ func Test_AuthFlood(t *testing.T) {
 	}
 
 	countdown.Wait()
+}
+
+func Test_WasApiRateLimited(t *testing.T) {
+	err := errors.New("hello")
+	assert.False(t, WasRateLimited(err))
+
+	err = apierror.NewTooManyUpdatesError()
+	assert.True(t, WasRateLimited(err))
 }

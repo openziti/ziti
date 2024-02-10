@@ -35,7 +35,6 @@ var _ model.FileStagingComponent = (*ZrokControllerType)(nil)
 var _ model.ActionsComponent = (*ZrokControllerType)(nil)
 
 const (
-	ZrokControllerActionInit              = "init"
 	ZrokControllerActionPreCreateAccounts = "preCreateAccounts"
 )
 
@@ -54,7 +53,6 @@ func (self *ZrokControllerType) InitType(*model.Component) {
 
 func (self *ZrokControllerType) GetActions() map[string]model.ComponentAction {
 	return map[string]model.ComponentAction{
-		ZrokControllerActionInit:              model.ComponentActionF(self.Init),
 		ZrokControllerActionPreCreateAccounts: model.ComponentActionF(self.PreCreateAccounts),
 	}
 }

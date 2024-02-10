@@ -112,6 +112,10 @@ func (self *ControllerType) Stop(_ model.Run, c *model.Component) error {
 	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c))
 }
 
+func (self *ControllerType) GetBinaryPath(c *model.Component) string {
+	return getZitiBinaryPath(c, self.Version)
+}
+
 func (self *ControllerType) InitStandalone(run model.Run, c *model.Component) error {
 	username := c.MustStringVariable("credentials.edge.username")
 	password := c.MustStringVariable("credentials.edge.password")
@@ -126,15 +130,34 @@ func (self *ControllerType) InitStandalone(run model.Run, c *model.Component) er
 
 	factory := c.GetHost().NewSshConfigFactory()
 
-	binaryName := "ziti"
-	if self.Version != "" {
-		binaryName += "-" + self.Version
-	}
-
 	binaryPath := getZitiBinaryPath(c, self.Version)
 	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s", factory.User(), self.getConfigName(c))
 
 	tmpl := "rm -f /home/%v/fablab/ctrl.db && set -o pipefail; %s controller --log-formatter pfxlog edge init %s -u %s -p %s 2>&1 | tee logs/controller.edge.init.log"
 	cmd := fmt.Sprintf(tmpl, factory.User(), binaryPath, configPath, username, password)
 	return host.Exec(c.GetHost(), cmd).Execute(run)
+}
+
+func (self *ControllerType) InitRaft(run model.Run, c *model.Component) error {
+	count := 0
+	err := run.GetModel().ForEachComponent("*", 1, func(other *model.Component) error {
+		if _, ok := c.Type.(*ControllerType); ok {
+			binaryPath := getZitiBinaryPath(c, self.Version)
+			tmpl := "%s agent cluster add %v --id %v"
+			cmd := fmt.Sprintf(tmpl, binaryPath, "tls:"+other.Host.PublicIp+":6262", other.Id)
+			count++
+			return c.GetHost().ExecLogOnlyOnError(cmd)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if count < 1 {
+		return errors.New("no other controllers found")
+	}
+
+	return nil
 }
