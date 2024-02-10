@@ -103,6 +103,13 @@ func New(config Config) (intercept.Interceptor, error) {
 	log.Infof("tproxy config: udpIdleTimeout   =  [%s]", self.udpIdleTimeout.String())
 	log.Infof("tproxy config: udpCheckInterval =  [%s]", self.udpCheckInterval.String())
 
+	dnsNet := intercept.GetDnsInterceptIpRange()
+	err := router.AddLocalAddress(dnsNet, "lo")
+	if err != nil {
+		log.WithError(err).Errorf("unable to add %v to lo", dnsNet)
+		return nil, err
+	}
+
 	if self.diverter != "" {
 		cmd := exec.Command(self.diverter, "-V")
 		out, err := cmd.CombinedOutput()
@@ -137,8 +144,6 @@ func New(config Config) (intercept.Interceptor, error) {
 		logrus.Infof("no lan interface specified with '-lanIf'. please ensure firewall accepts intercepted service addresses")
 	}
 
-	dnsNet := intercept.GetDnsInterceptIpRange()
-	err = router.AddLocalAddress(dnsNet, "lo")
 	return self, err
 }
 
