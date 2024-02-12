@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package zac
+package spa_handler
 
 import (
 	"github.com/openziti/xweb/v2"
@@ -55,34 +55,34 @@ func (factory ZitiAdminConsoleFactory) New(_ *xweb.ServerConfig, options map[int
 	if indexFile == nil || indexFile == "" {
 		indexFile = "index.html"
 	}
-	zac := &ZitiAdminConsoleHandler{
+	zac := &SPAHTTPHandler{
 		httpHandler: SpaHandler(loc.(string), "/"+Binding, indexFile.(string)),
 	}
 
 	return zac, nil
 }
 
-type ZitiAdminConsoleHandler struct {
+type SPAHTTPHandler struct {
 	httpHandler http.Handler
 }
 
-func (self *ZitiAdminConsoleHandler) Binding() string {
+func (self *SPAHTTPHandler) Binding() string {
 	return Binding
 }
 
-func (self *ZitiAdminConsoleHandler) Options() map[interface{}]interface{} {
+func (self *SPAHTTPHandler) Options() map[interface{}]interface{} {
 	return nil
 }
 
-func (self *ZitiAdminConsoleHandler) RootPath() string {
+func (self *SPAHTTPHandler) RootPath() string {
 	return "/" + Binding
 }
 
-func (self *ZitiAdminConsoleHandler) IsHandler(r *http.Request) bool {
+func (self *SPAHTTPHandler) IsHandler(r *http.Request) bool {
 	return strings.HasPrefix(r.URL.Path, self.RootPath()) || strings.HasPrefix(r.URL.Path, "/assets")
 }
 
-func (self *ZitiAdminConsoleHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (self *SPAHTTPHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	self.httpHandler.ServeHTTP(writer, request)
 }
 
@@ -99,8 +99,10 @@ type spaHandler struct {
 // (2) Request path is a directory
 // Otherwise serves the requested file.
 func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Debugf("incoming r.URL.Path: %s", r.URL.Path)
 	r.URL.Path = strings.TrimPrefix(r.URL.Path, h.contextRoot)
 	p := filepath.Join(h.content, filepath.Clean(r.URL.Path))
+	log.Debugf("outgoing r.URL.Path: %s", p)
 
 	if info, err := os.Stat(p); err != nil {
 		http.ServeFile(w, r, filepath.Join(h.content, h.indexFile))

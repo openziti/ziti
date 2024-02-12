@@ -215,3 +215,5 @@ web:
         options: { }
       - binding: fabric
         options: { }
+      - binding: zac
+        options: { }
