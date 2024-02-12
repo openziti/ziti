@@ -371,8 +371,11 @@ func (self *ServiceListener) getTemplatingProvider(template string) (entities.Te
 		result = strings.ReplaceAll(result, sourcePortVar, sourceAddrPort)
 		result = strings.ReplaceAll(result, dstIpVar, destAddrIp)
 		result = strings.ReplaceAll(result, destPortVar, destAddrPort)
-		if destHostname, err := self.resolver.Lookup(net.ParseIP(destAddrIp)); err == nil {
-			result = strings.ReplaceAll(result, destHostnameVar, destHostname)
+		if self.resolver != nil {
+			destHostname, err := self.resolver.Lookup(net.ParseIP(destAddrIp))
+			if err == nil {
+				result = strings.ReplaceAll(result, destHostnameVar, destHostname)
+			}
 		}
 		return result
 	}, nil
