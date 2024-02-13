@@ -15,28 +15,26 @@ tags_iterator = iter(tags)
 def extract_values_from_json(path):
     with open(path, 'r') as json_file:
         data = json.load(json_file)
-
     host_data = data['regions']['eu-west-2']['hosts']
     extracted_data = {}
-
+    index = 0  # Initialize counter
     for host_key, host in host_data.items():
         metrics = host['scope']['data'].get('iperf_Flow-Control_metrics')
-
         if metrics:
             timeslices = metrics['timeslices'][:20]
             bits_per_second_values = [int(slice['bits_per_second'])
                                       for slice in timeslices]
             tag = next(tags_iterator, None)
-
-            new_key = (f"txPortalIncreaseThresh_{tag[0]}-"
+            if tag is None:
+                tag = tags[index % len(tags)]  # Repeat tags in a cyclic manner
+                index += 1  # Increase counter
+            new_key = (f"{index}-txPortalIncreaseThresh_{tag[0]}-"
                        f"txPortalStartSize_{tag[1]}") if tag else host_key
-
             extracted_data[new_key] = {
                 'bytes': metrics.get('bytes', None),
                 'bits_per_second': int(metrics.get('bits_per_second', 0)),
                 'timeslice_bits_per_second': bits_per_second_values
             }
-
     return extracted_data
 
 
