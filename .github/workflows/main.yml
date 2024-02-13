@@ -56,7 +56,8 @@ jobs:
         run: |
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=amd64,arm64 -output=$GOX_OUTPUT ./...
+          $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
+          $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=arm64 -output=$GOX_OUTPUT ./...
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
