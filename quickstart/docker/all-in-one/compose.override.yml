@@ -29,6 +29,7 @@ services:
       ZITI_CTRL_EDGE_ADVERTISED_ADDRESS: ${EXTERNAL_DNS:-quickstart}
       ZITI_ROUTER_ADVERTISED_ADDRESS: ${EXTERNAL_DNS:-quickstart}
       ZITI_CTRL_EDGE_ADVERTISED_PORT:
+      ZITI_ROUTER_NAME: ${ZITI_ROUTER_NAME:-quickstart-router}
       ZITI_ROUTER_PORT:
     command: go test -v ./ziti/cmd/edge/...
       
