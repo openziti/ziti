@@ -54,7 +54,9 @@ func SetDnsInterceptIpRange(cidr string) error {
 
 func GetDnsInterceptIpRange() *net.IPNet {
 	if !dnsPrefix.IsValid() {
-		SetDnsInterceptIpRange("100.64.0.1/10")
+		if err := SetDnsInterceptIpRange("100.64.0.1/10"); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("Failed to set DNS intercept range")
+		}
 	}
 	return &net.IPNet{
 		IP:   dnsPrefix.Addr().AsSlice(),
