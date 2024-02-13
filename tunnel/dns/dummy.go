@@ -1,18 +1,24 @@
 package dns
 
-import "net"
+import (
+	"github.com/michaelquigley/pfxlog"
+	"net"
+)
 
 type dummy struct{}
 
 func (d dummy) AddHostname(_ string, _ net.IP) error {
+	pfxlog.Logger().Warnf("dummy resolver does not store hostname/ip mappings")
 	return nil
 }
 
 func (d dummy) AddDomain(_ string, _ func(string) (net.IP, error)) error {
+	pfxlog.Logger().Warnf("dummy resolver does not store hostname/ip mappings")
 	return nil
 }
 
 func (d dummy) Lookup(_ net.IP) (string, error) {
+	pfxlog.Logger().Warnf("dummy resolver does not store hostname/ip mappings")
 	return "", nil
 }
 
@@ -28,5 +34,6 @@ func (d dummy) Cleanup() error {
 }
 
 func NewDummyResolver() Resolver {
+	pfxlog.Logger().Warnf("dummy resolver does not store hostname/ip mappings")
 	return &dummy{}
 }
