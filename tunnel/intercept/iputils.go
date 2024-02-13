@@ -53,6 +53,9 @@ func SetDnsInterceptIpRange(cidr string) error {
 }
 
 func GetDnsInterceptIpRange() *net.IPNet {
+	if !dnsPrefix.IsValid() {
+		SetDnsInterceptIpRange("100.64.0.1/10")
+	}
 	return &net.IPNet{
 		IP:   dnsPrefix.Addr().AsSlice(),
 		Mask: net.CIDRMask(dnsPrefix.Bits(), dnsPrefix.Addr().BitLen()),
