@@ -72,7 +72,8 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 
 	resolver, err := dns.NewResolver(self.listenOptions.resolver)
 	if err != nil {
-		pfxlog.Logger().WithError(err).Error("failed to start DNS resolver")
+		pfxlog.Logger().WithError(err).Error("failed to start DNS resolver. using dummy resolver")
+		resolver = dns.NewDummyResolver()
 	}
 
 	if err = intercept.SetDnsInterceptIpRange(self.listenOptions.dnsSvcIpRange); err != nil {
