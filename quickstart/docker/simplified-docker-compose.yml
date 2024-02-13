@@ -2,7 +2,7 @@ services:
   ziti-controller:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     healthcheck:
-      test: curl -m 1 -s -k -f https://${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-edge-controller}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}/edge/client/v1/version
+      test: curl -m 1 -s -k https://${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-edge-controller}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}/edge/client/v1/version
       interval: 1s
       timeout: 3s
       retries: 30

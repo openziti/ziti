@@ -60,4 +60,4 @@ unset ZITI_PWD
 # create a place for the internal db
 mkdir -p $ZITI_HOME/db
 
-"${ZITI_BIN_DIR}/ziti" controller run ${ZITI_VERBOSE:+--verbose} "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml"
+"${ZITI_BIN_DIR}/ziti" controller run "${ZITI_HOME}/${ZITI_CTRL_NAME}.yaml"

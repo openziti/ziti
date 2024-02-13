@@ -1,3 +1,4 @@
+version: '2.4'
 services:
   ziti-controller:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
