@@ -385,12 +385,9 @@ func performQuickstartTest(t *testing.T) {
 	if advPort == "" {
 		advPort = "1280"
 	}
-	// friendly name of the edge router entity in the controller (not a domain name, not an address)
 	erName := os.Getenv("ZITI_ROUTER_NAME")
 	if erName == "" {
-		// this default value is set to match the default value used by "go test" --tags="quickstart automated"
-		// and the default value of the router entity name used by the "ziti edge quickstart" command
-		erName = "quickstart-router"
+		erName = "ziti-edge-router"
 	}
 
 	ctrlAddress := "https://" + advAddy + ":" + advPort

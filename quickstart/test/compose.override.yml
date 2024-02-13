@@ -15,6 +15,7 @@ services:
       GOCACHE: /.cache/go-build
       GOPATH: /go
       GOFLAGS: "-tags=quickstart,manual"
+      ZITI_ROUTER_NAME:
       ZITI_PWD:
     networks:
       - ziti
