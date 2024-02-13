@@ -12,7 +12,11 @@ tar xzvf $binary
 # Move yq binary to /usr/bin directory
 sudo mv yq_linux_amd64 /usr/bin/yq
 
+# Clean up some things and pull baseline config files from remote machines
 ./circuit_metrics sshexec "*" "rm -f logs/*"
+./circuit_metrics get files 'router-eu' '/home/pete/Documents/GHActionsWork/executables/cfg/' '/home/ubuntu/fablab/cfg/edge-router-eu.yml'
+./circuit_metrics get files 'router-us' '/home/pete/Documents/GHActionsWork/executables/cfg/' '/home/ubuntu/fablab/cfg/edge-router-us.yml'
+
 
 downloadCommand="wget -O $binary $(wget -qO- https://api.github.com/repos/mikefarah/yq/releases/latest | grep browser_download_url | grep $binary | cut -d '"' -f 4)"
 extractCommand="tar xzvf $binary"
