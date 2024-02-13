@@ -38,6 +38,8 @@ services:
     image: ${ZITI_QUICK_IMAGE:-docker.io/openziti/ziti-cli}:${ZITI_QUICK_TAG:-latest}
     networks:
       - quickstart
+    volumes:
+      - ${ZITI_HOME:-persistent}:/persistent
     entrypoint:
       - bash
       - -euxc
@@ -53,4 +55,5 @@ services:
     command: >
       -- edge login
       ${EXTERNAL_DNS:-quickstart}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
-      -u admin -p ${ZITI_PWD:-admin} -y
+      -u ${ZITI_USER:-admin} -p ${ZITI_PWD:-admin}
+      --ca /persistent/pki/root-ca/certs/root-ca.cert
