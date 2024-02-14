@@ -614,11 +614,8 @@ function _detect_architecture {
   _detect_OS
   ZITI_ARCH="amd64"
   detected_arch="$(uname -m)"
-  # Apple M1 silicon
-  if [[ "${detected_arch}" == *"arm"* ]] && [[ "${ZITI_OSTYPE}" == "darwin" ]]; then
-    echo -e "$(YELLOW "WARN: It has been detected that you are using an Apple computer with ARM architecture. Deployment of Apple ARM architecture distributions is currently unsupported through git, the installer will pull darwin amd distribution instead.")"
   # LLVM 64 bit backends have merged so some versions of *nix use aarch64 while others use arm64 for parity with Apple
-  elif [[ "${detected_arch}" == *"aarch64"* ]] || [[ "${detected_arch}" == *"arm64"* ]]; then
+  if [[ "${detected_arch}" == *"aarch64"* ]] || [[ "${detected_arch}" == *"arm64"* ]]; then
     ZITI_ARCH="arm64"
   elif [[ "${detected_arch}" == *"arm"* ]]; then
     ZITI_ARCH="arm"
