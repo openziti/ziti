@@ -26,6 +26,7 @@
     * [Issue #1734](https://github.com/openziti/ziti/issues/1734) - Make API rate limiter enabled by default
     * [Issue #1726](https://github.com/openziti/ziti/issues/1726) - Fix some sdk hosting logging
     * [Issue #1725](https://github.com/openziti/ziti/issues/1725) - Fix panic in entity event processing
+    * [Issue #652](https://github.com/openziti/ziti/issues/652) - CI support for MacOS arm64
 
 # Release 0.32.1
 
