@@ -40,12 +40,12 @@ function _wait_for_controller {
 }
 
 function _wait_for_public_router {
-  local advertised_host_port="${ZITI_ROUTER_NAME}:${ZITI_ROUTER_PORT}"
+  local advertised_host_port="${ZITI_ROUTER_ADVERTISED_ADDRESS}:${ZITI_ROUTER_PORT}"
   local COUNTDOWN=10
   until [[ -s "${ZITI_HOME}/${ZITI_ROUTER_NAME}.cert" ]] \
     && openssl s_client \
       -connect "${advertised_host_port}" \
-      -servername "${ZITI_ROUTER_NAME}" \
+      -servername "${ZITI_ROUTER_ADVERTISED_ADDRESS}" \
       -alpn "ziti-edge,h2,http/1.1" \
       -cert "${ZITI_HOME}/${ZITI_ROUTER_NAME}.cert" \
       -key "${ZITI_HOME}/${ZITI_ROUTER_NAME}.key" \

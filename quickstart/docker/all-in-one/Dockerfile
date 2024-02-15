@@ -1,5 +1,8 @@
+# use a more recent debian image so it can run the ziti binary built with the Docker host's glibc
 FROM debian:bookworm-slim
 
-COPY ./build/ziti /usr/local/bin/
+ARG ARTIFACTS_DIR=./build
+
+COPY ${ARTIFACTS_DIR}/ziti /usr/local/bin/
 
 CMD ["ziti"]

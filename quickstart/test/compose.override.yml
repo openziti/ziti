@@ -1,14 +1,22 @@
 services:
   quickstart-test:
+    profiles:
+      - test
     image: golang:${ZITI_GO_VERSION:-noop}-alpine
     volumes:
       # mount the parent dir of the quickstart, which is the top-level of the ziti repo working copy, as /mnt
       - ${ZITI_QUICK_DIR:-noop}/..:/mnt
-      - ${GOPATH:-noop}:/go
+      # re-run tests if significant changes from last result in GOCACHE
+      - ${GOCACHE:-${HOME}/.cache/go-build}:/.cache/go-build
+      # re-download dep packages if significant changes from last download in GOPATH
+      - ${GOPATH:-${HOME}/go}:/go
     working_dir: /mnt
     environment:
-      - ZITI_PWD
+      GOCACHE: /.cache/go-build
+      GOPATH: /go
+      GOFLAGS: "-tags=quickstart,manual"
+      ZITI_ROUTER_NAME:
+      ZITI_PWD:
     networks:
       - ziti
-    command: >
-      go test -v -tags "quickstart manual" ./ziti/cmd/edge/...
+    command: go test -v ./ziti/cmd/edge/...
