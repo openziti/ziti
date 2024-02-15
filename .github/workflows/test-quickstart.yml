@@ -30,16 +30,8 @@ jobs:
         shell: bash
         run: sudo apt-get update && sudo apt-get install --yes zsh
 
-      - name: Install Go
-        id: setup-go
-        uses: actions/setup-go@v4
-        with:
-          go-version-file: ./go.mod
-
       - name: Build and run a quickstart container image
         shell: bash
-        env:
-          ZITI_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
         run: ./quickstart/test/compose-test.zsh
 
   allInOneTest:

@@ -40,11 +40,12 @@ services:
     networks:
       - quickstart
     volumes:
-      - ${ZITI_HOME:-persistent}:/persistent
+      - ${ZITI_HOME:-ziti_home}:/home/ziggy
     entrypoint:
       - bash
       - -euxc
       - |
+        set -o pipefail
         ATTEMPTS=10
         DELAY=3
         until !((ATTEMPTS)) || ziti $${@} &>/dev/null; do
@@ -57,4 +58,4 @@ services:
       -- edge login
       ${EXTERNAL_DNS:-quickstart}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
       -u ${ZITI_USER:-admin} -p ${ZITI_PWD:-admin}
-      --ca /persistent/pki/root-ca/certs/root-ca.cert
+      --ca /home/ziggy/quickstart/pki/root-ca/certs/root-ca.cert

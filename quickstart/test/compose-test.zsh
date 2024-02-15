@@ -91,8 +91,14 @@ fi
 # rename the simplified Compose file to the default Compose project file name
 mv ./simplified-docker-compose.yml ./compose.yml
 
-# learn the expected Go version from the Go mod file so we can pull the correct container image
-: ${ZITI_GO_VERSION:="$(awk '/^go[[:space:]]+/ {print $2}' ./go.mod)"}
+if [[ -n "${ZITI_GO_VERSION:-}" ]]; then
+    echo "INFO: Using Go version from environment variable ZITI_GO_VERSION=${ZITI_GO_VERSION}"
+else
+    # learn the expected Go version from the Go mod file so we can pull the correct container image
+    ZITI_GO_VERSION="$(awk '/^go[[:space:]]+/ {print $2}' ./go.mod)"
+    echo "INFO: Using Go version from go.mod: ${ZITI_GO_VERSION}"
+fi
+
 # make this var available in the Compose project
 sed -E \
     -e  "s/^(#[[:space:]]*)?(ZITI_PWD)=.*/\2=${ZITI_PWD}/" \

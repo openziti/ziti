@@ -16,18 +16,15 @@ This is the primary use case for this project: running the `ziti edge quickstart
     docker compose pull
     ```
 
-2. Run the project.
+2. Run the project and store the PKI, DB, and YAML configs in a sub-directory.
 
     ```bash
-    docker compose up
+    ZITI_HOME=./quickstart docker compose up
     ```
 
 3. Modify configuration and bounce the container.
 
-    If you set `ZITI_HOME=./persistent`, then you would modify the configs in `./persistent/` on the Docker host.
-    Otherwise, you would modify the configs in the Docker named volume that's mounted on `/persistent`. For example,
-    `docker compose exec quickstart bash` will get you a shell in the container where you can `cd /persistent` edit the
-    configs with `vi`.
+    Modify the configs in the `./quickstart/` sub-directory adjacent to the `compose.yml` file.
 
     ```bash
     docker compose up --force-recreate
@@ -104,7 +101,7 @@ Change `Dockerfile` like this, and run `ZITI_QUICK_TAG=local docker compose up -
 checked-out source tree and run the quickstart with the build.
 
 ```dockerfile
-FROM golang:1.20-bookworm AS builder
+FROM golang:1.21-bookworm AS builder
 ARG ARTIFACTS_DIR=./build
 WORKDIR /app
 COPY go.mod go.sum ./

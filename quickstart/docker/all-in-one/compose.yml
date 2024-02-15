@@ -27,33 +27,33 @@ services:
         " --password ${ZITI_PWD:-admin}"
         echo "DEBUG: run command is: ziti $${@} $${ZITI_CMD}"
         exec ziti "$${@}" $${ZITI_CMD}
-    command: -- edge quickstart --home /persistent
+    command: -- edge quickstart --home /home/ziggy/quickstart
     user: ${ZIGGY_UID:-1000}
     environment:
-      HOME: /persistent
+      HOME: /home/ziggy
       PFXLOG_NO_JSON: "${PFXLOG_NO_JSON:-true}"
     volumes:
-      # store the quickstart state in a named volume "persistent" or store the quickstart state on the Docker host in a
+      # store the quickstart state in a named volume "ziti_home" or store the quickstart state on the Docker host in a
       # directory, ZITI_HOME 
-      - ${ZITI_HOME:-persistent}:/persistent
+      - ${ZITI_HOME:-ziti_home}:/home/ziggy
     ports:
       - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
       - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
     depends_on:
       initialize:
         condition: service_completed_successfully
-  # this service is used to initialize the persistent volume by setting the owner to the UID of the user running the
+  # this service is used to initialize the ziti_home volume by setting the owner to the UID of the user running the
   # quickstart container
   initialize:
     image: busybox
-    command: chown -Rc ${ZIGGY_UID:-1000} /persistent
+    command: chown -Rc ${ZIGGY_UID:-1000} /home/ziggy
     user: root
     environment:
-      HOME: /persistent
+      HOME: /home/ziggy
     volumes:
-      # store the quickstart state in a named volume "persistent" or store the quickstart state on the Docker host in a
+      # store the quickstart state in a named volume "ziti_home" or store the quickstart state on the Docker host in a
       # directory, ZITI_HOME 
-      - ${ZITI_HOME:-persistent}:/persistent
+      - ${ZITI_HOME:-ziti_home}:/home/ziggy
 
 # define a custom network so that we can also define a DNS alias for the quickstart container
 networks:
@@ -62,5 +62,5 @@ networks:
 
 volumes:
   # this will not be used if you switch from named volume to bind mount volume
-  persistent:
+  ziti_home:
     driver: local
