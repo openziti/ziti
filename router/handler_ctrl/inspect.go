@@ -18,12 +18,14 @@ package handler_ctrl
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
-	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"strings"
@@ -87,6 +89,29 @@ func (context *inspectRequestContext) processLocal() {
 			js, err := json.Marshal(result)
 			if err != nil {
 				context.appendError(errors.Wrap(err, "failed to marshal links to json").Error())
+			} else {
+				context.appendValue(requested, string(js))
+			}
+		} else if lc == "edge-terminators" {
+			factory, _ := xgress.GlobalRegistry().Factory("edge")
+			if factory == nil {
+				context.appendError("no xgress factory configured for edge binding")
+				continue
+			}
+			dialer, err := factory.CreateDialer(context.handler.env.GetDialerCfg()["edge"])
+			if err != nil {
+				context.appendError(fmt.Sprintf("could not create edge dialer: (%s)", err.Error()))
+				continue
+			}
+			inspectable, ok := dialer.(xgress.Inspectable)
+			if !ok {
+				context.appendError("edge dialer is not inspectable")
+				continue
+			}
+			result := inspectable.Inspect(lc, time.Second)
+			js, err := json.Marshal(result)
+			if err != nil {
+				context.appendError(errors.Wrap(err, "failed to marshal sdk terminators to json").Error())
 			} else {
 				context.appendValue(requested, string(js))
 			}

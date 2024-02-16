@@ -44,3 +44,44 @@ func Exec(m *model.Model, args ...string) (string, error) {
 
 	return cliOut.String(), nil
 }
+
+func NewSeq() *Seq {
+	return &Seq{}
+}
+
+type Seq struct {
+	err error
+}
+
+func (self *Seq) Error() error {
+	return self.err
+}
+
+func (self *Seq) Args(args ...string) []string {
+	return args
+}
+
+func (self *Seq) Exec(args ...string) {
+	self.ExecF(args, nil)
+}
+
+func (self *Seq) ExecF(args []string, f func(string) error) {
+	if self.err != nil {
+		return
+	}
+
+	var cliOut bytes.Buffer
+	var cliErr bytes.Buffer
+
+	ziticli := cmd.NewRootCommand(os.Stdin, &cliOut, &cliErr)
+	ziticli.SetArgs(args)
+	logrus.Infof("executing: %s", strings.Join(args, " "))
+	if err := ziticli.Execute(); err != nil {
+		logrus.Errorf("err executing command, err:[%e]", err)
+		self.err = err
+	}
+
+	if self.err == nil && f != nil {
+		self.err = f(cliOut.String())
+	}
+}

@@ -85,7 +85,7 @@ type edgeTerminator struct {
 	retryDelay        time.Duration
 	establishActive   atomic.Bool
 	createTime        time.Time
-	establishCallback func(ok bool, msg string)
+	establishCallback func(result edge_ctrl_pb.CreateTerminatorResult)
 }
 
 func (self *edgeTerminator) calculateRetry(queueFailed bool) {

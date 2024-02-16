@@ -187,3 +187,10 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		return nil, terminator.SendState(start)
 	}
 }
+
+func (dialer *dialer) Inspect(key string, timeout time.Duration) any {
+	if key == "edge-terminators" {
+		return dialer.factory.hostedServices.Inspect(timeout)
+	}
+	return nil
+}

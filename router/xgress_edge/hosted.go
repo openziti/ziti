@@ -23,18 +23,20 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	routerEnv "github.com/openziti/ziti/router/env"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 func newHostedServicesRegistry(env routerEnv.RouterEnv) *hostedServiceRegistry {
 	result := &hostedServiceRegistry{
-		services:        sync.Map{},
+		terminators:     sync.Map{},
 		events:          make(chan terminatorEvent),
 		env:             env,
 		retriesPending:  false,
@@ -45,7 +47,7 @@ func newHostedServicesRegistry(env routerEnv.RouterEnv) *hostedServiceRegistry {
 }
 
 type hostedServiceRegistry struct {
-	services        sync.Map
+	terminators     sync.Map
 	events          chan terminatorEvent
 	env             routerEnv.RouterEnv
 	retriesPending  bool
@@ -75,14 +77,14 @@ func (self *hostedServiceRegistry) run() {
 		case event := <-self.events:
 			event.handle(self)
 		case <-retryChan:
-			self.evaluateLinkStateQueue()
+			self.evaluateTerminatorQueue()
 		case <-longQueueCheckTicker.C:
 			self.scanForRetries()
 		}
 	}
 }
 
-func (self *hostedServiceRegistry) evaluateLinkStateQueue() {
+func (self *hostedServiceRegistry) evaluateTerminatorQueue() {
 	now := time.Now()
 	for len(*self.terminatorQueue) > 0 {
 		next := (*self.terminatorQueue)[0]
@@ -111,6 +113,7 @@ type calculateRetry struct {
 func (self *calculateRetry) handle(registry *hostedServiceRegistry) {
 	self.terminator.calculateRetry(self.queueFailed)
 	registry.retriesPending = true
+	registry.terminatorQueue.Push(self.terminator)
 }
 
 func (self *hostedServiceRegistry) EstablishTerminator(terminator *edgeTerminator) {
@@ -130,7 +133,7 @@ func (self *hostedServiceRegistry) queue(event terminatorEvent) {
 
 func (self *hostedServiceRegistry) scheduleRetry(terminator *edgeTerminator, queueFailed bool) {
 	terminator.establishActive.Store(false)
-	if terminator.state.CompareAndSwap(TerminatorStateEstablished, TerminatorStatePendingEstablishment) {
+	if terminator.state.CompareAndSwap(TerminatorStateEstablishing, TerminatorStatePendingEstablishment) {
 		self.queue(&calculateRetry{
 			terminator:  terminator,
 			queueFailed: queueFailed,
@@ -139,21 +142,21 @@ func (self *hostedServiceRegistry) scheduleRetry(terminator *edgeTerminator, que
 }
 
 func (self *hostedServiceRegistry) scanForRetries() {
-	self.services.Range(func(key, value any) bool {
+	self.terminators.Range(func(key, value any) bool {
 		terminator := value.(*edgeTerminator)
-		if terminator.state.Load() == TerminatorStatePendingEstablishment {
+		if terminator.state.Load() == TerminatorStatePendingEstablishment && time.Now().After(terminator.nextAttempt) {
 			self.evaluateTerminator(terminator)
 		}
 		return true
 	})
 }
 
-func (self *hostedServiceRegistry) Put(hostId string, conn *edgeTerminator) {
-	self.services.Store(hostId, conn)
+func (self *hostedServiceRegistry) Put(terminatorId string, conn *edgeTerminator) {
+	self.terminators.Store(terminatorId, conn)
 }
 
 func (self *hostedServiceRegistry) Get(hostId string) (*edgeTerminator, bool) {
-	val, ok := self.services.Load(hostId)
+	val, ok := self.terminators.Load(hostId)
 	if !ok {
 		return nil, false
 	}
@@ -163,7 +166,7 @@ func (self *hostedServiceRegistry) Get(hostId string) (*edgeTerminator, bool) {
 
 func (self *hostedServiceRegistry) GetTerminatorForListener(listenerId string) *edgeTerminator {
 	var result *edgeTerminator
-	self.services.Range(func(key, value interface{}) bool {
+	self.terminators.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator.listenerId == listenerId {
 			result = terminator
@@ -175,26 +178,26 @@ func (self *hostedServiceRegistry) GetTerminatorForListener(listenerId string) *
 }
 
 func (self *hostedServiceRegistry) Delete(hostId string) {
-	self.services.Delete(hostId)
+	self.terminators.Delete(hostId)
 }
 
 func (self *hostedServiceRegistry) cleanupServices(proxy *edgeClientConn) {
-	self.services.Range(func(key, value interface{}) bool {
+	self.terminators.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator.edgeClientConn == proxy {
 			terminator.close(false, true, "channel closed") // don't notify, channel is already closed, we can't send messages
-			self.services.Delete(key)
+			self.terminators.Delete(key)
 		}
 		return true
 	})
 }
 
 func (self *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
-	self.services.Range(func(key, value interface{}) bool {
+	self.terminators.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator != newest && newest.token == terminator.token && newest.instance == terminator.instance {
 			terminator.close(false, true, "duplicate terminator") // don't notify, channel is already closed, we can't send messages
-			self.services.Delete(key)
+			self.terminators.Delete(key)
 			pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
 				WithField("token", terminator.token).
 				WithField("instance", terminator.instance).
@@ -208,11 +211,11 @@ func (self *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
 
 func (self *hostedServiceRegistry) unbindSession(connId uint32, sessionToken string, proxy *edgeClientConn) bool {
 	atLeastOneRemoved := false
-	self.services.Range(func(key, value interface{}) bool {
+	self.terminators.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator.MsgChannel.Id() == connId && terminator.token == sessionToken && terminator.edgeClientConn == proxy {
 			terminator.close(false, true, "unbind successful") // don't notify, sdk asked us to unbind
-			self.services.Delete(key)
+			self.terminators.Delete(key)
 			pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
 				WithField("token", sessionToken).
 				WithField("terminatorId", terminator.terminatorId.Load()).
@@ -226,7 +229,7 @@ func (self *hostedServiceRegistry) unbindSession(connId uint32, sessionToken str
 
 func (self *hostedServiceRegistry) getRelatedTerminators(sessionToken string, proxy *edgeClientConn) []*edgeTerminator {
 	var result []*edgeTerminator
-	self.services.Range(func(key, value interface{}) bool {
+	self.terminators.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator.token == sessionToken && terminator.edgeClientConn == proxy {
 			result = append(result, terminator)
@@ -338,12 +341,13 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 
 	if response.Result == edge_ctrl_pb.CreateTerminatorResult_FailedBusy {
 		log.Info("controller too busy to handle create terminator, retrying later")
+		self.scheduleRetry(terminator, false)
 		return
 	}
 
 	if response.Result != edge_ctrl_pb.CreateTerminatorResult_Success {
 		if terminator.establishCallback != nil {
-			terminator.establishCallback(false, response.Msg)
+			terminator.establishCallback(response.Result)
 		}
 		terminator.close(true, false, response.Msg)
 		return
@@ -367,14 +371,14 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 		}
 	}
 
-	if isValid && terminator.establishCallback != nil {
-		terminator.establishCallback(true, "terminator established")
+	if isValid {
+		terminator.establishCallback(response.Result)
 	}
 }
 
 func (self *hostedServiceRegistry) HandleReconnect() {
 	var restablishList []*edgeTerminator
-	self.services.Range(func(key, value interface{}) bool {
+	self.terminators.Range(func(key, value interface{}) bool {
 		terminator := value.(*edgeTerminator)
 		if terminator.state.CompareAndSwap(TerminatorStateEstablished, TerminatorStatePendingEstablishment) {
 			restablishList = append(restablishList, terminator)
@@ -389,5 +393,66 @@ func (self *hostedServiceRegistry) HandleReconnect() {
 		if terminator.state.Load() == TerminatorStatePendingEstablishment {
 			self.EstablishTerminator(terminator)
 		}
+	}
+}
+
+func (self *hostedServiceRegistry) Inspect(timeout time.Duration) *inspect.SdkTerminatorInspectResult {
+	evt := &inspectTerminatorsEvent{
+		result: atomic.Pointer[[]*inspect.SdkTerminatorInspectDetail]{},
+		done:   make(chan struct{}),
+	}
+	self.queue(evt)
+
+	result := &inspect.SdkTerminatorInspectResult{}
+
+	var err error
+	result.Entries, err = evt.GetResults(timeout)
+	if err != nil {
+		result.Errors = append(result.Errors, err.Error())
+	}
+	return result
+}
+
+type inspectTerminatorsEvent struct {
+	result atomic.Pointer[[]*inspect.SdkTerminatorInspectDetail]
+	done   chan struct{}
+}
+
+func (self *inspectTerminatorsEvent) handle(registry *hostedServiceRegistry) {
+	var result []*inspect.SdkTerminatorInspectDetail
+	registry.terminators.Range(func(key, value any) bool {
+		id := key.(string)
+		terminator := value.(*edgeTerminator)
+
+		detail := &inspect.SdkTerminatorInspectDetail{
+			Id:              id,
+			State:           terminator.state.Load().String(),
+			Token:           terminator.token,
+			ListenerId:      terminator.listenerId,
+			Instance:        terminator.instance,
+			Cost:            terminator.cost,
+			Precedence:      terminator.precedence.String(),
+			AssignIds:       terminator.assignIds,
+			V2:              terminator.v2,
+			PostValidate:    terminator.postValidate,
+			NextAttempt:     terminator.nextAttempt,
+			RetryDelay:      terminator.retryDelay,
+			EstablishActive: terminator.establishActive.Load(),
+			CreateTime:      terminator.createTime,
+		}
+		result = append(result, detail)
+		return true
+	})
+
+	self.result.Store(&result)
+	close(self.done)
+}
+
+func (self *inspectTerminatorsEvent) GetResults(timeout time.Duration) ([]*inspect.SdkTerminatorInspectDetail, error) {
+	select {
+	case <-self.done:
+		return *self.result.Load(), nil
+	case <-time.After(timeout):
+		return nil, errors.New("timed out waiting for result")
 	}
 }

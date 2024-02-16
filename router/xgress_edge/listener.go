@@ -455,20 +455,16 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		createTime:     time.Now(),
 	}
 
-	terminator.establishCallback = func(ok bool, msg string) {
-		if ok {
-			self.sendStateConnectedReply(req, nil)
+	terminator.establishCallback = func(result edge_ctrl_pb.CreateTerminatorResult) {
+		if result == edge_ctrl_pb.CreateTerminatorResult_Success && notifyEstablished {
+			notifyMsg := channel.NewMessage(edge.ContentTypeBindSuccess, nil)
+			notifyMsg.PutUint32Header(edge.ConnIdHeader, terminator.MsgChannel.Id())
 
-			if notifyEstablished {
-				notifyMsg := channel.NewMessage(edge.ContentTypeBindSuccess, nil)
-				notifyMsg.PutUint32Header(edge.ConnIdHeader, terminator.MsgChannel.Id())
-
-				if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.Channel); err != nil {
-					log.WithError(err).Error("failed to send bind success")
-				}
+			if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.Channel); err != nil {
+				log.WithError(err).Error("failed to send bind success")
 			}
-		} else {
-			self.sendStateClosedReply(msg, req)
+		} else if result == edge_ctrl_pb.CreateTerminatorResult_FailedInvalidSession {
+
 		}
 	}
 
@@ -477,7 +473,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 
 	if self.listener.factory.stateManager.WasSessionRecentlyRemoved(token) {
 		log.Info("invalid session, not establishing terminator")
-		terminator.establishCallback(false, "invalid session")
+		self.sendStateClosedReply("invalid session", req)
 		return
 	}
 
@@ -487,13 +483,13 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 	})
 
 	log.Info("establishing terminator")
+	self.sendStateConnectedReply(req, nil)
 
 	self.listener.factory.hostedServices.EstablishTerminator(terminator)
 	if listenerId == "" {
 		// only removed dupes with a scan if we don't have an sdk provided key
 		self.listener.factory.hostedServices.cleanupDuplicates(terminator)
 	}
-
 }
 
 func (self *edgeClientConn) processUnbind(req *channel.Message, _ channel.Channel) {

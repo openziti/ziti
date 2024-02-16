@@ -14,19 +14,17 @@
 	limitations under the License.
 */
 
-package handler_ctrl
+package handler_edge_ctrl
 
 import (
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
+	"testing"
 )
 
-type baseHandler struct {
-	router  *network.Router
-	network *network.Network
-}
-
-func (self *baseHandler) newChangeContext(ch channel.Channel, method string) *change.Context {
-	return change.NewControlChannelChange(self.router.Id, self.router.Name, method, ch)
+func Test_ErrorsIs(t *testing.T) {
+	var err error
+	err = InvalidSessionError{}
+	req := require.New(t)
+	req.True(errors.Is(err, InvalidSessionError{}))
 }

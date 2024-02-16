@@ -345,23 +345,7 @@ func (network *Network) ValidateTerminators(r *Router) {
 		return
 	}
 
-	var terminators []*ctrl_pb.Terminator
-
-	for _, terminator := range result.Entities {
-		terminators = append(terminators, &ctrl_pb.Terminator{
-			Id:      terminator.Id,
-			Binding: terminator.Binding,
-			Address: terminator.Address,
-		})
-	}
-
-	req := &ctrl_pb.ValidateTerminatorsRequest{
-		Terminators: terminators,
-	}
-
-	if err = protobufs.MarshalTyped(req).Send(r.Control); err != nil {
-		logger.WithError(err).Error("unexpected error sending ValidateTerminatorsRequest")
-	}
+	network.Managers.RouterMessaging.ValidateRouterTerminators(r, result.Entities)
 }
 
 type LinkValidationCallback func(detail *mgmt_pb.RouterLinkDetails)

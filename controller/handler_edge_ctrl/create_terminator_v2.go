@@ -89,7 +89,11 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 	ctx.loadService()
 
 	if ctx.err != nil {
-		self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, ctx.err, logger)
+		errCode := edge_ctrl_pb.CreateTerminatorResult_FailedOther
+		if errors.Is(ctx.err, InvalidSessionError{}) {
+			errCode = edge_ctrl_pb.CreateTerminatorResult_FailedInvalidSession
+		}
+		self.returnError(ctx, errCode, ctx.err, logger)
 		return
 	}
 

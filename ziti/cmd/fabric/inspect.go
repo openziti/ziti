@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/openziti/ziti/controller/rest_client/inspect"
-	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/rest_client/inspect"
+	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/util"
@@ -30,6 +30,7 @@ func newInspectCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.AddCommand(action.newInspectSubCmd(p, "cluster-config", "gets a subset of cluster configuration from the requested nodes"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "connected-routers", "gets information about which routers are connected to which controllers"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "links", "gets information from routers about their view of links"))
+	cmd.AddCommand(action.newInspectSubCmd(p, "edge-terminators", "gets information from routers about their view of edge terminators"))
 
 	inspectCircuitsAction := &InspectCircuitsAction{InspectAction: *newInspectAction(p)}
 	cmd.AddCommand(inspectCircuitsAction.newCobraCmd())
