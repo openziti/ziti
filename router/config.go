@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/router/env"
 	"io"
 	"os"
@@ -61,6 +62,23 @@ const (
 
 	// CtrlEndpointBindMapKey is the string key for the ctrl.bind section
 	CtrlEndpointBindMapKey = "bind"
+
+	// CtrlRateLimiterMinSizeValue is the minimum size that can be configured for the control channel rate limiter
+	// window range
+	CtrlRateLimiterMinSizeValue = 5
+
+	// CtrlRateLimiterMaxSizeValue is the maximum size that can be configured for the control channel rate limiter
+	// window range
+	CtrlRateLimiterMaxSizeValue = 1000
+
+	// CtrlRateLimiterMetricOutstandingCount is the name of the metric tracking how many tasks are in process
+	CtrlRateLimiterMetricOutstandingCount = "ctrl.limiter.in_process"
+
+	// CtrlRateLimiterMetricCurrentWindowSize is the name of the metric tracking the current window size
+	CtrlRateLimiterMetricCurrentWindowSize = "ctrl.limiter.window_size"
+
+	// CtrlRateLimiterMetricWorkTimer is the name of the metric tracking how long successful tasks are taking to complete
+	CtrlRateLimiterMetricWorkTimer = "ctrl.limiter.work_timer"
 )
 
 // internalConfigKeys is used to distinguish internally defined configuration vs file configuration
@@ -115,6 +133,7 @@ type Config struct {
 		DataDir               string
 		Heartbeats            env.HeartbeatOptions
 		StartupTimeout        time.Duration
+		RateLimit             command.AdaptiveRateLimiterConfig
 	}
 	Link struct {
 		Listeners  []map[interface{}]interface{}
@@ -527,6 +546,9 @@ func LoadConfig(path string) (*Config, error) {
 			} else {
 				cfg.Ctrl.DataDir = filepath.Dir(cfg.path)
 			}
+			if err = cfg.loadCtrlRateLimiterConfig(submap); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -765,6 +787,43 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func (c *Config) loadCtrlRateLimiterConfig(cfgmap map[interface{}]interface{}) error {
+	rateLimitConfig := &c.Ctrl.RateLimit
+	rateLimitConfig.SetDefaults()
+	rateLimitConfig.QueueSizeMetric = CtrlRateLimiterMetricOutstandingCount
+	rateLimitConfig.WindowSizeMetric = CtrlRateLimiterMetricCurrentWindowSize
+	rateLimitConfig.WorkTimerMetric = CtrlRateLimiterMetricWorkTimer
+
+	if value, found := cfgmap["rateLimiter"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if err := command.LoadAdaptiveRateLimiterConfig(rateLimitConfig, submap); err != nil {
+				return err
+			}
+			if rateLimitConfig.MaxSize < CtrlRateLimiterMinSizeValue {
+				return errors.Errorf("invalid value %v for ctrl.rateLimiter.maxSize, must be at least %v",
+					rateLimitConfig.MaxSize, CtrlRateLimiterMinSizeValue)
+			}
+			if rateLimitConfig.MaxSize > CtrlRateLimiterMaxSizeValue {
+				return errors.Errorf("invalid value %v for ctrl.rateLimiter.maxSize, must be at most %v",
+					rateLimitConfig.MaxSize, CtrlRateLimiterMaxSizeValue)
+			}
+
+			if rateLimitConfig.MinSize < CtrlRateLimiterMinSizeValue {
+				return errors.Errorf("invalid value %v for ctrl.rateLimiter.minSize, must be at least %v",
+					rateLimitConfig.MinSize, CtrlRateLimiterMinSizeValue)
+			}
+			if rateLimitConfig.MinSize > CtrlRateLimiterMaxSizeValue {
+				return errors.Errorf("invalid value %v for ctrl.rateLimiter.minSize, must be at most %v",
+					rateLimitConfig.MinSize, CtrlRateLimiterMaxSizeValue)
+			}
+		} else {
+			return errors.Errorf("invalid type for ctrl.rateLimiter, should be map instead of %T", value)
+		}
+	}
+
+	return nil
 }
 
 func LoadIdentityConfigFromMap(cfgmap map[interface{}]interface{}) (*identity.Config, error) {

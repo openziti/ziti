@@ -55,6 +55,7 @@ type StateManager interface {
 	RemoveEdgeSession(token string)
 	AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener
 	WasSessionRecentlyRemoved(token string) bool
+	MarkSessionRecentlyRemoved(token string)
 
 	//ApiSessions
 	GetApiSession(token string) *ApiSession
@@ -289,6 +290,10 @@ func (sm *StateManagerImpl) WasSessionRecentlyRemoved(token string) bool {
 	return sm.recentlyRemovedSessions.Has(token)
 }
 
+func (sm *StateManagerImpl) MarkSessionRecentlyRemoved(token string) {
+	sm.recentlyRemovedSessions.Set(token, time.Now())
+}
+
 func (sm *StateManagerImpl) AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
 	if sm.recentlyRemovedSessions.Has(token) {
 		go callBack(token) // callback can be long process with network traffic. Don't block event processing
@@ -444,7 +449,7 @@ func (sm *StateManagerImpl) flushRecentlyRemoved() {
 	sm.recentlyRemovedSessions.IterCb(func(key string, t time.Time) {
 		remove := false
 
-		if now.Sub(t) >= time.Minute {
+		if now.Sub(t) >= 5*time.Minute {
 			remove = true
 		}
 

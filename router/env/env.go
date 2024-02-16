@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
 )
@@ -39,5 +40,6 @@ type RouterEnv interface {
 	RenderJsonConfig() (string, error)
 	GetHeartbeatOptions() HeartbeatOptions
 	GetRateLimiterPool() goroutines.Pool
+	GetCtrlRateLimiter() command.AdaptiveRateLimitTracker
 	GetVersionInfo() versions.VersionProvider
 }

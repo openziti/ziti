@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/ziti/controller/command"
 	"io/fs"
 	"os"
 	"path"
@@ -82,6 +83,7 @@ type Router struct {
 	xgressListeners []xgress.Listener
 	linkDialerPool  goroutines.Pool
 	rateLimiterPool goroutines.Pool
+	ctrlRateLimiter command.AdaptiveRateLimitTracker
 	metricsRegistry metrics.UsageRegistry
 	shutdownC       chan struct{}
 	shutdownDoneC   chan struct{}
@@ -191,6 +193,7 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
 		linkDialerPool:      linkDialerPool,
+		ctrlRateLimiter:     command.NewAdaptiveRateLimitTracker(config.Ctrl.RateLimit, metricsRegistry, closeNotify),
 	}
 
 	router.ctrls = env.NewNetworkControllers(config.Ctrl.DefaultRequestTimeout, router.connectToController, &config.Ctrl.Heartbeats)
@@ -377,6 +380,10 @@ func (self *Router) GetLinkDialerPool() goroutines.Pool {
 
 func (self *Router) GetRateLimiterPool() goroutines.Pool {
 	return self.rateLimiterPool
+}
+
+func (self *Router) GetCtrlRateLimiter() command.AdaptiveRateLimitTracker {
+	return self.ctrlRateLimiter
 }
 
 func (self *Router) registerComponents() error {

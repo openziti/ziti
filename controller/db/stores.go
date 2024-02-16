@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
 	"go.etcd.io/bbolt"
 	"go4.org/sort"
 	"reflect"
@@ -219,6 +220,8 @@ type stores struct {
 	postureCheckType        *postureCheckTypeStoreImpl
 	apiSessionCertificate   *ApiSessionCertificateStoreImpl
 	mfa                     *MfaStoreImpl
+
+	rateLimiter command.RateLimiter
 }
 
 type DbProvider interface {
@@ -231,13 +234,15 @@ func (f DbProviderF) GetDb() boltz.Db {
 	return f()
 }
 
-func InitStores(db boltz.Db) (*Stores, error) {
+func InitStores(db boltz.Db, rateLimiter command.RateLimiter) (*Stores, error) {
 	dbProvider := DbProviderF(func() boltz.Db {
 		return db
 	})
 	errorHolder := &errorz.ErrorHolderImpl{}
 
-	internalStores := &stores{}
+	internalStores := &stores{
+		rateLimiter: rateLimiter,
+	}
 
 	internalStores.eventualEvent = newEventualEventStore(internalStores)
 	internalStores.EventualEventer = NewEventualEventerBbolt(dbProvider, internalStores.eventualEvent, 2*time.Second, 1000)

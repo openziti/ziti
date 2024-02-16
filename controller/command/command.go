@@ -51,6 +51,7 @@ type Dispatcher interface {
 	Dispatch(command Command) error
 	IsLeaderOrLeaderless() bool
 	GetPeers() map[string]channel.Channel
+	GetRateLimiter() RateLimiter
 }
 
 // LocalDispatcher should be used when running a non-clustered system
@@ -65,6 +66,10 @@ func (self *LocalDispatcher) IsLeaderOrLeaderless() bool {
 
 func (self *LocalDispatcher) GetPeers() map[string]channel.Channel {
 	return nil
+}
+
+func (self *LocalDispatcher) GetRateLimiter() RateLimiter {
+	return self.Limiter
 }
 
 func (self *LocalDispatcher) Dispatch(command Command) error {

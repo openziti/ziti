@@ -31,9 +31,9 @@ import (
 
 type validateTerminatorsAction struct {
 	api.Options
-	filter          string
-	fixInvalid      bool
-	showOnlyInvalid bool
+	filter       string
+	fixInvalid   bool
+	includeValid bool
 
 	eventNotify chan *mgmt_pb.TerminatorDetail
 }
@@ -55,7 +55,7 @@ func NewValidateTerminatorsCmd(p common.OptionsProvider) *cobra.Command {
 
 	action.AddCommonFlags(validateTerminatorsCmd)
 	validateTerminatorsCmd.Flags().BoolVar(&action.fixInvalid, "fix-invalid", false, "Fix invalid terminators. Usually this means deleting them.")
-	validateTerminatorsCmd.Flags().BoolVar(&action.showOnlyInvalid, "show-only-invalid", false, "Hide results for valid terminators")
+	validateTerminatorsCmd.Flags().BoolVar(&action.includeValid, "include-valid", false, "Show results for valid terminators as well")
 	validateTerminatorsCmd.Flags().StringVar(&action.filter, "filter", "", "Specify which terminators to validate")
 	return validateTerminatorsCmd
 }
@@ -103,7 +103,7 @@ func (self *validateTerminatorsAction) validateTerminators(cmd *cobra.Command, _
 			fmt.Printf("channel closed, exiting")
 			return nil
 		case detail := <-self.eventNotify:
-			if !self.showOnlyInvalid || detail.State != mgmt_pb.TerminatorState_Valid {
+			if self.includeValid || detail.State != mgmt_pb.TerminatorState_Valid {
 				fmt.Printf("id: %s, binding: %s, hostId: %s, routerId: %s, state: %s, fixed: %v, detail: %s\n",
 					detail.TerminatorId, detail.Binding, detail.HostId, detail.RouterId, detail.State.String(), detail.Fixed, detail.Detail)
 			}

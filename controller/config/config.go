@@ -401,53 +401,40 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 	return nil
 }
 
-func (c *Config) loadAuthRateLimiter(cfgmap map[interface{}]interface{}) error {
+func (c *Config) loadAuthRateLimiterConfig(cfgmap map[interface{}]interface{}) error {
+	c.AuthRateLimiter.SetDefaults()
+
 	c.AuthRateLimiter.Enabled = DefaultAuthRateLimiterEnabled
 	c.AuthRateLimiter.MaxSize = DefaultAuthRateLimiterMaxSize
 	c.AuthRateLimiter.MinSize = DefaultAuthRateLimiterMinSize
 
 	if value, found := cfgmap["authRateLimiter"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if value, found := submap["enabled"]; found {
-				c.AuthRateLimiter.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
+			if err := command.LoadAdaptiveRateLimiterConfig(&c.AuthRateLimiter, submap); err != nil {
+				return err
+			}
+			if c.AuthRateLimiter.MaxSize < AuthRateLimiterMinSizeValue {
+				return errors.Errorf("invalid value %v for authRateLimiter.maxSize, must be at least %v",
+					c.AuthRateLimiter.MaxSize, AuthRateLimiterMinSizeValue)
+			}
+			if c.AuthRateLimiter.MaxSize > AuthRateLimiterMaxSizeValue {
+				return errors.Errorf("invalid value %v for authRateLimiter.maxSize, must be at most %v",
+					c.AuthRateLimiter.MaxSize, AuthRateLimiterMaxSizeValue)
 			}
 
-			if value, found := submap["maxSize"]; found {
-				if intVal, ok := value.(int); ok {
-					v := int64(intVal)
-					if v < AuthRateLimiterMinSizeValue {
-						return errors.Errorf("invalid value %v for authRateLimiter.maxSize, must be at least %v", value, AuthRateLimiterMinSizeValue)
-					}
-					if v > AuthRateLimiterMaxSizeValue {
-						return errors.Errorf("invalid value %v for authRateLimiter.maxSize, must be at most %v", value, AuthRateLimiterMaxSizeValue)
-					}
-					c.AuthRateLimiter.MaxSize = uint32(v)
-				} else {
-					return errors.Errorf("invalid value %v for authRateLimiter.maxSize, must be integer value", value)
-				}
+			if c.AuthRateLimiter.MinSize < AuthRateLimiterMinSizeValue {
+				return errors.Errorf("invalid value %v for authRateLimiter.minSize, must be at least %v",
+					c.AuthRateLimiter.MinSize, AuthRateLimiterMinSizeValue)
 			}
-
-			if value, found := submap["minSize"]; found {
-				if intVal, ok := value.(int); ok {
-					v := int64(intVal)
-					if v < AuthRateLimiterMinSizeValue {
-						return errors.Errorf("invalid value %v for authRateLimiter.minSize, must be at least %v", value, AuthRateLimiterMinSizeValue)
-					}
-					if v > AuthRateLimiterMaxSizeValue {
-						return errors.Errorf("invalid value %v for authRateLimiter.minSize, must be at most %v", value, AuthRateLimiterMaxSizeValue)
-					}
-					c.AuthRateLimiter.MinSize = uint32(v)
-				} else {
-					return errors.Errorf("invalid value %v for authRateLimiter.minSize, must be integer value", value)
-				}
+			if c.AuthRateLimiter.MinSize > AuthRateLimiterMaxSizeValue {
+				return errors.Errorf("invalid value %v for authRateLimiter.minSize, must be at most %v",
+					c.AuthRateLimiter.MinSize, AuthRateLimiterMaxSizeValue)
 			}
-
-			if c.AuthRateLimiter.MinSize > c.AuthRateLimiter.MaxSize {
-				return errors.Errorf("invalid values, %v, %v for authRateLimiter minSize and maxSize, min must be <= max",
-					c.AuthRateLimiter.MinSize, c.AuthRateLimiter.MaxSize)
-			}
+		} else {
+			return errors.Errorf("invalid type for authRateLimiter, should be map instead of %T", value)
 		}
 	}
+
 	return nil
 }
 
@@ -484,7 +471,7 @@ func LoadFromMap(configMap map[interface{}]interface{}) (*Config, error) {
 		return nil, err
 	}
 
-	if err = edgeConfig.loadAuthRateLimiter(edgeConfigMap); err != nil {
+	if err = edgeConfig.loadAuthRateLimiterConfig(edgeConfigMap); err != nil {
 		return nil, err
 	}
 

@@ -7,6 +7,7 @@ import (
 	"github.com/openziti/storage/boltztest"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/pkg/errors"
@@ -40,7 +41,7 @@ func (ctx *TestContext) Init() {
 	ctx.InitDb(Open)
 
 	var err error
-	ctx.stores, err = InitStores(ctx.GetDb())
+	ctx.stores, err = InitStores(ctx.GetDb(), command.NoOpRateLimiter{})
 	ctx.NoError(err)
 
 	ctx.NoError(RunMigrations(ctx.GetDb(), ctx.stores))

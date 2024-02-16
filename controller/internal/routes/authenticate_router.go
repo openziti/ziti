@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
@@ -43,7 +44,8 @@ func init() {
 }
 
 type AuthRouter struct {
-	createTimer metrics.Timer
+	createTimer   metrics.Timer
+	lastAdminAuth concurrenz.AtomicValue[time.Time]
 }
 
 func NewAuthRouter() *AuthRouter {
@@ -181,11 +183,23 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 
 	var sessionIdHolder concurrenz.AtomicValue[string]
 
-	ctrl, err := ae.AuthRateLimiter.RunRateLimited(func() error {
-		sessionId, err := ae.Managers.ApiSession.Create(changeCtx.NewMutateContext(), newApiSession, sessionCerts)
+	lastAdminAuth := ro.lastAdminAuth.Load()
+	allowAdminBypass := identity.IsAdmin && time.Since(lastAdminAuth) > 10*time.Second &&
+		ro.lastAdminAuth.CompareAndSwap(lastAdminAuth, time.Now())
+
+	var ctrl command.RateLimitControl
+	if allowAdminBypass {
+		var sessionId string
+		sessionId, err = ae.Managers.ApiSession.Create(changeCtx.NewMutateContext(), newApiSession, sessionCerts)
 		sessionIdHolder.Store(sessionId)
-		return err
-	})
+		ctrl = command.NoOpRateLimitControl()
+	} else {
+		ctrl, err = ae.AuthRateLimiter.RunRateLimited(func() error {
+			sessionId, err := ae.Managers.ApiSession.Create(changeCtx.NewMutateContext(), newApiSession, sessionCerts)
+			sessionIdHolder.Store(sessionId)
+			return err
+		})
+	}
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -223,7 +237,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	if writeOk {
 		ctrl.Success()
 	} else {
-		ctrl.Timeout()
+		ctrl.Backoff()
 	}
 }
 

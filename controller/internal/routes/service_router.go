@@ -17,12 +17,14 @@
 package routes
 
 import (
+	"fmt"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	clientService "github.com/openziti/edge-api/rest_client_api_server/operations/service"
 	managementService "github.com/openziti/edge-api/rest_management_api_server/operations/service"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
@@ -105,7 +107,9 @@ func (r *ServiceRouter) Register(ae *env.AppEnv) {
 	})
 
 	ae.ManagementApi.ServiceListServiceIdentitiesHandler = managementService.ListServiceIdentitiesHandlerFunc(func(params managementService.ListServiceIdentitiesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listIdentities, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.listIdentities(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
 	ae.ManagementApi.ServiceListServiceConfigHandler = managementService.ListServiceConfigHandlerFunc(func(params managementService.ListServiceConfigParams, _ interface{}) middleware.Responder {
@@ -292,8 +296,19 @@ func (r *ServiceRouter) listClientTerminators(ae *env.AppEnv, rc *response.Reque
 	ListTerminatorAssociations(ae, rc, ae.Managers.EdgeService, ae.Managers.Terminator, MapClientTerminatorToRestEntity)
 }
 
-func (r *ServiceRouter) listIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	filterTemplate := `not isEmpty(from servicePolicies where anyOf(services) = "%v")`
+func (r *ServiceRouter) listIdentities(ae *env.AppEnv, rc *response.RequestContext, params managementService.ListServiceIdentitiesParams) {
+	typeFilter := ""
+	if params.PolicyType != nil {
+		if strings.EqualFold(*params.PolicyType, db.PolicyTypeBind.String()) {
+			typeFilter = fmt.Sprintf(` and type = %d`, db.PolicyTypeBind.Id())
+		}
+
+		if strings.EqualFold(*params.PolicyType, db.PolicyTypeDial.String()) {
+			typeFilter = fmt.Sprintf(` and type = %d`, db.PolicyTypeDial.Id())
+		}
+	}
+
+	filterTemplate := `not isEmpty(from servicePolicies where anyOf(services) = "%v"` + typeFilter + ")"
 	ListAssociationsWithFilter[*model.Identity](ae, rc, filterTemplate, ae.Managers.Identity, MapIdentityToRestEntity)
 }
 

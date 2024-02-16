@@ -53,17 +53,26 @@ func MapCircuitToRestModel(n *network.Network, _ api.RequestContext, circuit *ne
 		path.Links = append(path.Links, ToEntityRef(link.Id, link, LinkLinkFactory))
 	}
 
-	svc, err := n.Services.Read(circuit.ServiceId)
-	if err != nil {
-		return nil, err
+	var svcEntityRef *rest_model.EntityRef
+	if svc, _ := n.Services.Read(circuit.ServiceId); svc != nil {
+		svcEntityRef = ToEntityRef(svc.Name, svc, ServiceLinkFactory)
+	} else {
+		svcEntityRef = ToEntityRef("<deleted>", deletedEntity(circuit.ServiceId), ServiceLinkFactory)
 	}
+
 	ret := &rest_model.CircuitDetail{
 		BaseEntity: BaseEntityToRestModel(circuit, CircuitLinkFactory),
 		ClientID:   circuit.ClientId,
 		Path:       path,
-		Service:    ToEntityRef(svc.Name, svc, ServiceLinkFactory),
+		Service:    svcEntityRef,
 		Terminator: ToEntityRef(circuit.Terminator.GetId(), circuit.Terminator, TerminatorLinkFactory),
 	}
 
 	return ret, nil
+}
+
+type deletedEntity string
+
+func (self deletedEntity) GetId() string {
+	return string(self)
 }
