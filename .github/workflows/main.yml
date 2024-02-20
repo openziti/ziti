@@ -463,7 +463,7 @@ jobs:
             | xargs -0 chmod -c +x
 
       - name: Install Jfrog CLI
-        uses: jfrog/setup-jfrog-cli@v3
+        uses: jfrog/setup-jfrog-cli@v4
         with:
           version: 1.51.1
 
