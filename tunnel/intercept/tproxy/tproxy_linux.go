@@ -103,6 +103,13 @@ func New(config Config) (intercept.Interceptor, error) {
 	log.Infof("tproxy config: udpIdleTimeout   =  [%s]", self.udpIdleTimeout.String())
 	log.Infof("tproxy config: udpCheckInterval =  [%s]", self.udpCheckInterval.String())
 
+	dnsNet := intercept.GetDnsInterceptIpRange()
+	err := router.AddLocalAddress(dnsNet, "lo")
+	if err != nil {
+		log.WithError(err).Errorf("unable to add %v to lo", dnsNet)
+		return nil, err
+	}
+
 	if self.diverter != "" {
 		cmd := exec.Command(self.diverter, "-V")
 		out, err := cmd.CombinedOutput()
@@ -137,7 +144,7 @@ func New(config Config) (intercept.Interceptor, error) {
 		logrus.Infof("no lan interface specified with '-lanIf'. please ensure firewall accepts intercepted service addresses")
 	}
 
-	return self, nil
+	return self, err
 }
 
 type alwaysRemoveAddressTracker struct{}
@@ -164,6 +171,11 @@ func (self *interceptor) Stop() {
 	})
 	self.serviceProxies.Clear()
 	self.cleanupChains()
+	dnsNet := intercept.GetDnsInterceptIpRange()
+	err := router.RemoveLocalAddress(dnsNet, "lo")
+	if err != nil {
+		logrus.WithError(err).Errorf("failed to remove route for dns IP range '%v' on 'lo'", dnsNet)
+	}
 }
 
 func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker) error {
@@ -505,10 +517,11 @@ func (self *tProxy) intercept(service *entities.Service, resolver dns.Resolver, 
 
 func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, service *entities.Service, port IPPortAddr, tracker intercept.AddressTracker) error {
 	ipNet := interceptAddr.IpNet()
-	if err := router.AddLocalAddress(ipNet, "lo"); err != nil {
-		return errors.Wrapf(err, "failed to add local route %v", ipNet)
+	if interceptAddr.RouteRequired() {
+		if err := router.AddLocalAddress(ipNet, "lo"); err != nil {
+			return errors.Wrapf(err, "failed to add local route %v", ipNet)
+		}
 	}
-	tracker.AddAddress(ipNet.String())
 	self.addresses = append(self.addresses, interceptAddr)
 
 	if self.interceptor.diverter != "" {
@@ -608,23 +621,12 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 		}
 
 		ipNet := addr.IpNet()
-		if tracker.RemoveAddress(ipNet.String()) {
-			err := router.RemoveLocalAddress(ipNet, "lo")
-			if err != nil {
-				errorList = append(errorList, err)
-				log.WithError(err).Errorf("failed to remove route %v for service %s", ipNet, *self.service.Name)
-			} else {
-				host, hostErr := self.resolver.Lookup(ipNet.IP)
-				if hostErr == nil {
-					hostErr = self.resolver.RemoveHostname(host)
-					if hostErr == nil {
-						log.Debugf("Removed hostname: %v from Resolver", host)
-					} else {
-						log.Debugf("Could not remove hostname: %v from Resolver", host)
-					}
-				} else {
-					log.Debugf("failed to find resolver entry for %v in service %s",
-						ipNet, *self.service.Name)
+		if addr.RouteRequired() {
+			if tracker.RemoveAddress(ipNet.String()) {
+				err := router.RemoveLocalAddress(ipNet, "lo")
+				if err != nil {
+					errorList = append(errorList, err)
+					log.WithError(err).Errorf("failed to remove route %v for service %s", ipNet, *self.service.Name)
 				}
 			}
 		}
