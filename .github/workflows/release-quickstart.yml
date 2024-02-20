@@ -31,7 +31,7 @@ jobs:
       GITHUB_SHA:            ${{ github.sha }}
     steps:
       - name: Debug action
-        uses: hmarr/debug-action@v2.1.0
+        uses: hmarr/debug-action@v3.0.0
 
       - name: Wait for other builds to complete
         uses: lewagon/wait-on-check-action@v1.3.1
