@@ -50,7 +50,7 @@ jobs:
         uses: openziti/ziti-ci@v1
 
       - name: Set Up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
         with:
           platforms: amd64,arm64
 
