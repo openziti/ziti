@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/tunnel/entities"
+	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/sirupsen/logrus"
@@ -37,13 +38,20 @@ const (
 // SecureOptions the options for the secure command
 type SecureOptions struct {
 	common.CommonOptions
+	api.EntityOptions
 
 	Endpoint string
 }
 
 // newSecureCmd consolidates network configuration steps for securing a service.
 func newSecureCmd(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &SecureOptions{}
+	options := &SecureOptions{
+		EntityOptions: api.NewEntityOptions(out, errOut),
+		CommonOptions: common.CommonOptions{
+			Out: out,
+			Err: errOut,
+		},
+	}
 
 	cmd := &cobra.Command{
 		Use:   "secure <service_name> <protocol>:<address>:<port>",
@@ -59,10 +67,8 @@ func newSecureCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&options.Endpoint, optionEndpoint, "", "the custom endpoint name for your service")
-	options.AddCommonFlags(cmd)
+	options.CommonOptions.AddCommonFlags(cmd)
 
-	cmd.AddCommand(newShowConfigTypeAction(out, errOut))
-	cmd.AddCommand(newShowConfigAction(out, errOut))
 	return cmd
 }
 
