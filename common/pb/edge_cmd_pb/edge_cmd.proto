@@ -256,6 +256,8 @@ message Identity {
     string Os = 2;
     string OsRelease = 3;
     string OsVersion = 4;
+    string Domain = 5;
+    string Hostname = 6;
   }
 
   message SdkInfo {
