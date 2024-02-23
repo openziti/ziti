@@ -284,6 +284,8 @@ message EnvInfo  {
   string Os = 2;
   string OsRelease = 3;
   string OsVersion = 4;
+  string Hostname = 5;
+  string Domain = 6;
 }
 
 message SdkInfo {
