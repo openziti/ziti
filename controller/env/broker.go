@@ -35,7 +35,8 @@ const (
 	ApiSessionAddedType     = int32(edge_ctrl_pb.ContentType_ApiSessionAddedType)
 	ApiSessionUpdatedType   = int32(edge_ctrl_pb.ContentType_ApiSessionUpdatedType)
 	RequestClientReSyncType = int32(edge_ctrl_pb.ContentType_RequestClientReSyncType)
-	SigningCertAdded        = int32(edge_ctrl_pb.ContentType_SigningCertAddedType)
+	DataStateType           = int32(edge_ctrl_pb.ContentType_DataStateType)
+	DataStateEventType      = int32(edge_ctrl_pb.ContentType_DataStateEventType)
 
 	ServerHelloType = int32(edge_ctrl_pb.ContentType_ServerHelloType)
 	ClientHelloType = int32(edge_ctrl_pb.ContentType_ClientHelloType)
@@ -44,6 +45,9 @@ const (
 	EnrollmentExtendRouterRequestType       = int32(edge_ctrl_pb.ContentType_EnrollmentExtendRouterRequestType)
 	EnrollmentExtendRouterVerifyRequestType = int32(edge_ctrl_pb.ContentType_EnrollmentExtendRouterVerifyRequestType)
 )
+
+type RouterSyncCache struct {
+}
 
 // The Broker delegates Ziti Edge events to a RouterSyncStrategy. Handling the details of which events to watch
 // and dealing with casting arguments to their proper concrete types.
@@ -69,6 +73,8 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 	broker.ae.GetStores().ApiSession.GetEventsEmitter().AddListener(db.EventFullyAuthenticated, broker.apiSessionFullyAuthenticated)
 	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateCreated, boltz.EntityCreatedAsync)
 	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateDeleted, boltz.EntityDeletedAsync)
+	broker.ae.GetStores().Controller.AddEntityEventListenerF(broker.controllerAdded, boltz.EntityCreated)
+	broker.ae.GetStores().Controller.AddEntityEventListenerF(broker.controllerAdded, boltz.EntityUpdated)
 
 	ae.HostController.GetNetwork().AddRouterPresenceHandler(broker)
 	ae.HostController.GetEventDispatcher().AddClusterEventHandler(broker)
@@ -77,8 +83,14 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 }
 
 func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {
-	if clusterEvent.EventType == event.ClusterPeerConnected && len(clusterEvent.Peers) > 0 {
-		broker.routerSyncStrategy.PeerAdded(clusterEvent.Peers)
+	if broker.ae.HostController.IsRaftLeader() {
+		if clusterEvent.EventType == event.ClusterPeerConnected {
+			broker.ae.Managers.Controller.PeersConnected(clusterEvent.Peers)
+		}
+
+		if clusterEvent.EventType == event.ClusterPeerDisconnected {
+			broker.ae.Managers.Controller.PeersDisconnected(clusterEvent.Peers)
+		}
 	}
 }
 
@@ -171,4 +183,8 @@ func (broker *Broker) GetEdgeRouterState(id string) RouterStateValues {
 
 func (broker *Broker) Stop() {
 	broker.routerSyncStrategy.Stop()
+}
+
+func (broker *Broker) controllerAdded(controller *db.Controller) {
+	broker.routerSyncStrategy.PeerAdded(controller)
 }

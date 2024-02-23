@@ -21,15 +21,15 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/router/fabric"
+	"github.com/openziti/ziti/router/state"
 	"google.golang.org/protobuf/proto"
 )
 
 type apiSessionUpdatedHandler struct {
-	sm fabric.StateManager
+	sm state.Manager
 }
 
-func NewApiSessionUpdatedHandler(sm fabric.StateManager) *apiSessionUpdatedHandler {
+func NewApiSessionUpdatedHandler(sm state.Manager) *apiSessionUpdatedHandler {
 	return &apiSessionUpdatedHandler{
 		sm: sm,
 	}

@@ -40,7 +40,7 @@ func (self *listTunnelServicesHandler) HandleReceive(msg *channel.Message, _ cha
 
 	ctx := &listTunnelServicesRequestContext{
 		baseTunnelRequestContext: baseTunnelRequestContext{
-			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		},
 	}
 

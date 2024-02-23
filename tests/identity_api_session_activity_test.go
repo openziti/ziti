@@ -42,7 +42,9 @@ func Test_Identity_HasErConnection(t *testing.T) {
 	caPool, err := ziti.GetControllerWellKnownCaPool("https://" + ctx.ApiHost)
 	ctx.Req.NoError(err)
 
-	managementClient := edge_apis.NewManagementApiClient(managementUrl, caPool, nil)
+	managementClient := edge_apis.NewManagementApiClient(managementUrl, caPool, func(strings chan string) {
+		strings <- "123"
+	})
 
 	curSession, err := managementClient.Authenticate(creds, nil)
 	ctx.Req.NoError(err)

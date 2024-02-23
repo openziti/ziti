@@ -83,10 +83,15 @@ func NewRouteResultFailedMessage(sessionId string, attempt int, rerr string) *ch
 }
 
 type CreateCircuitRequest struct {
+	ApiSessionToken      string
 	SessionToken         string
 	Fingerprints         []string
 	TerminatorInstanceId string
 	PeerData             map[uint32][]byte
+}
+
+func (self *CreateCircuitRequest) GetApiSessionToken() string {
+	return self.ApiSessionToken
 }
 
 func (self *CreateCircuitRequest) GetSessionToken() string {

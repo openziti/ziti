@@ -266,11 +266,13 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 	claims := &ziti.EnrollmentClaims{
 		EnrollmentMethod: method,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer: fmt.Sprintf(`https://%s/`, ae.Config.Api.Address),
+			Issuer:  fmt.Sprintf(`https://%s/`, ae.Config.Api.Address),
+			Subject: ca.Id,
+			ID:      ca.Id,
 		},
 	}
 
-	jwtStr, genErr := ae.GetJwtSigner().Generate(ca.Id, ca.Id, claims)
+	jwtStr, genErr := ae.GetServerJwtSigner().Generate(claims)
 
 	if genErr != nil {
 		rc.RespondWithError(errors.New("could not generate claims"))

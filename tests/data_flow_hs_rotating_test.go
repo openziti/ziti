@@ -270,7 +270,7 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 
 	clientContext, err := ziti.NewContext(clientConfig)
 	ctx.Req.NoError(err)
-
+	
 	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
 

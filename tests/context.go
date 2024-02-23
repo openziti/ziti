@@ -17,38 +17,6 @@
 package tests
 
 import (
-	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	cryptoTls "crypto/tls"
-	"crypto/x509"
-	"encoding/json"
-	"encoding/pem"
-	"fmt"
-	"github.com/go-openapi/strfmt"
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/websockets"
-	"github.com/openziti/edge-api/rest_model"
-	nfPem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/identity/certtools"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/edge"
-	sdkEnroll "github.com/openziti/sdk-golang/ziti/enroll"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
-	"github.com/openziti/ziti/router"
-	"github.com/openziti/ziti/router/enroll"
-	"github.com/openziti/ziti/router/fabric"
-	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/ziti/router/xgress_edge"
-	"github.com/openziti/ziti/router/xgress_edge_tunnel"
-	"github.com/pkg/errors"
 	"io"
 	"net"
 	"net/http"
@@ -62,18 +30,50 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/resty.v1"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	cryptoTls "crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
+	"fmt"
 
 	"github.com/Jeffail/gabs"
+	"github.com/go-openapi/strfmt"
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/websockets"
+	"github.com/openziti/edge-api/rest_model"
+	nfPem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/foundation/v2/versions"
 	idlib "github.com/openziti/identity"
+	"github.com/openziti/identity/certtools"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	sdkEnroll "github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/server"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
+	"github.com/openziti/ziti/router"
+	"github.com/openziti/ziti/router/enroll"
+	"github.com/openziti/ziti/router/state"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_edge"
+	"github.com/openziti/ziti/router/xgress_edge_tunnel"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/resty.v1"
 )
 
 const (
@@ -228,7 +228,7 @@ func (ctx *TestContext) NewTransportWithClientCert(cert *x509.Certificate, priva
 }
 
 func (ctx *TestContext) NewHttpClient(transport *http.Transport) *http.Client {
-	jar, err := cookiejar.New(&cookiejar.Options{})
+	jar, err := cookiejar.New(nil)
 	ctx.Req.NoError(err)
 
 	return &http.Client{
@@ -503,7 +503,7 @@ func (ctx *TestContext) startEdgeRouter() {
 	ctx.Req.NoError(err)
 	ctx.router = router.Create(config, NewVersionProviderTest())
 
-	stateManager := fabric.NewStateManager()
+	stateManager := state.NewManager(config)
 	xgressEdgeFactory := xgress_edge.NewFactory(config, ctx.router, stateManager)
 	xgress.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
 

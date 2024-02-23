@@ -508,7 +508,7 @@ func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
 			if block.Type != "CERTIFICATE" {
 				pfxlog.Logger().
 					WithField("type", block.Type).
-					WithField("block", pem.EncodeToMemory(block)).
+					WithField("block", string(pem.EncodeToMemory(block))).
 					Warn("encountered an invalid PEM block type loading configured CAs, block will be ignored")
 				continue
 			}
@@ -518,7 +518,7 @@ func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
 			if err != nil {
 				pfxlog.Logger().
 					WithField("type", block.Type).
-					WithField("block", pem.EncodeToMemory(block)).
+					WithField("block", string(pem.EncodeToMemory(block))).
 					WithError(err).
 					Warn("block could not be parsed as a certificate, block will be ignored")
 				continue
@@ -527,7 +527,7 @@ func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
 			if !cert.IsCA {
 				pfxlog.Logger().
 					WithField("type", block.Type).
-					WithField("block", pem.EncodeToMemory(block)).
+					WithField("block", string(pem.EncodeToMemory(block))).
 					Warn("block is not a CA, block will be ignored")
 				continue
 			}

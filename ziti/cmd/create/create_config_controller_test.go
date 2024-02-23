@@ -119,8 +119,7 @@ func TestControllerOutputPathDoesNotExist(t *testing.T) {
 
 	err := options.run(&ConfigTemplateValues{})
 
-	//check wrapped error type and not internal strings as they vary between operating systems
-	assert.Error(t, err)
+	//check for system errors instead of error msgs as paths and error msg formatting differs between os
 	assert.Equal(t, errors.Unwrap(err), syscall.ENOENT)
 }
 

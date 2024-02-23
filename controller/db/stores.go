@@ -102,6 +102,7 @@ type Stores struct {
 	Ca                      CaStore
 	Config                  ConfigStore
 	ConfigType              ConfigTypeStore
+	Controller              ControllerStore
 	EdgeRouter              EdgeRouterStore
 	EdgeRouterPolicy        EdgeRouterPolicyStore
 	EdgeService             EdgeServiceStore
@@ -202,6 +203,7 @@ type stores struct {
 	ca                      *caStoreImpl
 	config                  *configStoreImpl
 	configType              *configTypeStoreImpl
+	controller              *controllerStoreImpl
 	edgeRouter              *edgeRouterStoreImpl
 	edgeRouterPolicy        *edgeRouterPolicyStoreImpl
 	edgeService             *edgeServiceStoreImpl
@@ -253,6 +255,7 @@ func InitStores(db boltz.Db) (*Stores, error) {
 	internalStores.ca = newCaStore(internalStores)
 	internalStores.config = newConfigsStore(internalStores)
 	internalStores.configType = newConfigTypesStore(internalStores)
+	internalStores.controller = newControllerStore(internalStores)
 	internalStores.edgeRouter = newEdgeRouterStore(internalStores)
 	internalStores.edgeRouterPolicy = newEdgeRouterPolicyStore(internalStores)
 	internalStores.edgeService = newEdgeServiceStore(internalStores)
@@ -283,6 +286,7 @@ func InitStores(db boltz.Db) (*Stores, error) {
 		Ca:                      internalStores.ca,
 		Config:                  internalStores.config,
 		ConfigType:              internalStores.configType,
+		Controller:              internalStores.controller,
 		EdgeRouter:              internalStores.edgeRouter,
 		EdgeRouterPolicy:        internalStores.edgeRouterPolicy,
 		EdgeService:             internalStores.edgeService,

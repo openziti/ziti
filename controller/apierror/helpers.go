@@ -304,6 +304,14 @@ func NewMfaExistsError() *errorz.ApiError {
 	}
 }
 
+func NewMfaEnrollmentNotStarted() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    MfaEnrollmentNotStartedCode,
+		Message: MfaEnrollmentNotStartedMessage,
+		Status:  MfaEnrollmentNotStartedStatus,
+	}
+}
+
 func NewMfaNotEnrolledError() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    MfaNotEnrolledCode,

@@ -22,6 +22,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
@@ -33,7 +34,6 @@ import (
 type Env interface {
 	GetManagers() *Managers
 	GetConfig() *config.Config
-	GetJwtSigner() jwtsigner.Signer
 	GetDbProvider() network.DbProvider
 	GetStores() *db.Stores
 	GetAuthRegistry() AuthRegistry
@@ -46,8 +46,17 @@ type Env interface {
 	GetMetricsRegistry() metrics.Registry
 	GetFingerprintGenerator() cert.FingerprintGenerator
 	HandleServiceUpdatedEventForIdentityId(identityId string)
+
+	GetServerJwtSigner() jwtsigner.Signer
 	GetServerCert() (*tls.Certificate, string, jwt.SigningMethod)
 	JwtSignerKeyFunc(token *jwt.Token) (interface{}, error)
+	GetPeerControllerAddresses() []string
+
+	ValidateAccessToken(token string) (*common.AccessClaims, error)
+	ValidateServiceAccessToken(token string, apiSessionId *string) (*common.ServiceAccessClaims, error)
+
+	OidcIssuer() string
+	RootIssuer() string
 }
 
 type HostController interface {
@@ -57,6 +66,7 @@ type HostController interface {
 	IsRaftEnabled() bool
 	Identity() identity.Identity
 	GetPeerSigners() []*x509.Certificate
+	GetRaftIndex() uint64
 }
 
 type Schemas interface {

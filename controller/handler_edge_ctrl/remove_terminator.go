@@ -65,7 +65,7 @@ func (self *removeTerminatorHandler) HandleReceive(msg *channel.Message, ch chan
 	}
 
 	ctx := &RemoveTerminatorRequestContext{
-		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		req:                       req,
 	}
 

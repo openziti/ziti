@@ -61,7 +61,7 @@ func (self *healthEventHandler) HandleReceive(msg *channel.Message, ch channel.C
 	}
 
 	ctx := &HealthEventRequestContext{
-		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		req:                       req,
 	}
 
@@ -73,7 +73,7 @@ func (self *healthEventHandler) handleHealthEvent(ctx *HealthEventRequestContext
 		return
 	}
 
-	ctx.loadSession(ctx.req.SessionToken)
+	ctx.loadSession(ctx.req.SessionToken, ctx.req.ApiSessionToken)
 	ctx.checkSessionType(db.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 

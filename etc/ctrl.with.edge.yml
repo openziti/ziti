@@ -241,6 +241,12 @@ web:
         options: { }
       - binding: edge-client
         options: { }
+      - binding: edge-oidc
+        options:
+          redirectURIs:
+            - "http://localhost:*/auth/callback"
+            - "http://127.0.0.1:*/auth/callback"
+            - "https://oauth.pstmn.io/v1/callback"
 
 commandRateLimiter:
     enabled: true

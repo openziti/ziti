@@ -7,7 +7,18 @@ v: 3
 #  memory:
 #    path: ctrl.memprof
 
+
+{{ if .Controller.Ctrl.MinClusterSize }}
+raft:
+  dataDir:         "{{ .ZitiHome }}/raft"
+  minClusterSize:  {{ .Controller.Ctrl.MinClusterSize }}
+{{ else }}
 db:                     "{{ .ZitiHome }}/db/ctrl.db"
+# uncomment and configure to enable HA
+# raft:
+#   dataDir:         "{{ .ZitiHome }}/raft"
+#   minClusterSize:  1
+{{ end }}
 
 identity:
   cert:        "{{ .Controller.Identity.Cert }}"
@@ -70,7 +81,8 @@ identity:
 
 # the endpoint that routers will connect to the controller over.
 ctrl:
-  #options:
+  options:
+    advertiseAddress: tls:{{ .Controller.EdgeApi.Address }}:{{ .Controller.Ctrl.AdvertisedPort }}
   # (optional) settings
   # set the maximum number of connect requests that are buffered and waiting to be acknowledged ({{ .Controller.Ctrl.MinQueuedConnects }} to {{ .Controller.Ctrl.MaxQueuedConnects }}, default {{ .Controller.Ctrl.DefaultQueuedConnects }})
   #maxQueuedConnects:      {{ .Controller.Ctrl.DefaultQueuedConnects }}
@@ -210,6 +222,8 @@ web:
         # This section is used to define values that are specified by the API they are associated with.
         # These settings are per API. The example below is for the 'edge-api' and contains both optional values and
         # required values.
+        options: { }
+      - binding: edge-oidc
         options: { }
       - binding: edge-client
         options: { }

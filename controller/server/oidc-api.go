@@ -18,11 +18,12 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/api"
@@ -108,22 +109,26 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 	cert := serverCert[0].Leaf
 	key := serverCert[0].PrivateKey
 
-	issuer := "https://" + ae.Config.Api.Address + "/oidc"
+	issuer := ae.OidcIssuer()
 	oidcConfig := oidc_auth.NewConfig(issuer, cert, key)
 
 	if secretVal, ok := options["secret"]; ok {
 		if secret, ok := secretVal.(string); ok {
 			secret = strings.TrimSpace(secret)
-			if secret == "" {
-				return nil, fmt.Errorf("[edge-oidc.options.secret] must not be empty")
+			if secret != "" {
+				oidcConfig.TokenSecret = secret
 			}
-
-			oidcConfig.TokenSecret = secret
-		} else {
-			return nil, fmt.Errorf("[edge-oidc.options.secret] must be a string")
 		}
-	} else {
-		return nil, fmt.Errorf("[edge-oidc.options.secret] must be defined")
+	}
+
+	if oidcConfig.TokenSecret == "" {
+		bytes := make([]byte, 32)
+		_, err := rand.Read(bytes)
+		if err != nil {
+			return nil, fmt.Errorf("could not genreate random secret: %w", err)
+		}
+
+		oidcConfig.TokenSecret = hex.EncodeToString(bytes)
 	}
 
 	if redirectVal, ok := options["redirectURIs"]; ok {
@@ -146,12 +151,21 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 		}
 	}
 
-	if !stringz.Contains(oidcConfig.RedirectURIs, "openziti://auth/callback") {
+	// add defaults
+	if len(oidcConfig.RedirectURIs) == 0 {
 		oidcConfig.RedirectURIs = append(oidcConfig.RedirectURIs, "openziti://auth/callback")
+		oidcConfig.RedirectURIs = append(oidcConfig.RedirectURIs, "https://127.0.0.1:*/auth/callback")
+		oidcConfig.RedirectURIs = append(oidcConfig.RedirectURIs, "http://127.0.0.1:*/auth/callback")
+		oidcConfig.RedirectURIs = append(oidcConfig.RedirectURIs, "https://localhost:*/auth/callback")
+		oidcConfig.RedirectURIs = append(oidcConfig.RedirectURIs, "http://localhost:*/auth/callback")
 	}
 
-	if !stringz.Contains(oidcConfig.PostLogoutURIs, "openziti://auth/logout") {
+	if len(oidcConfig.PostLogoutURIs) == 0 {
 		oidcConfig.PostLogoutURIs = append(oidcConfig.PostLogoutURIs, "openziti://auth/logout")
+		oidcConfig.PostLogoutURIs = append(oidcConfig.PostLogoutURIs, "https://127.0.0.1:*/auth/logout")
+		oidcConfig.PostLogoutURIs = append(oidcConfig.PostLogoutURIs, "http://127.0.0.1:*/auth/logout")
+		oidcConfig.PostLogoutURIs = append(oidcConfig.PostLogoutURIs, "https://localhost:*/auth/logout")
+		oidcConfig.PostLogoutURIs = append(oidcConfig.PostLogoutURIs, "http://localhost:*/auth/logout")
 	}
 
 	var err error

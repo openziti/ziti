@@ -21,6 +21,7 @@ import (
 	"encoding/base32"
 	"fmt"
 	"github.com/dgryski/dgoogauth"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
@@ -59,6 +60,16 @@ type MfaManager struct {
 
 func (self *MfaManager) newModelEntity() *Mfa {
 	return &Mfa{}
+}
+
+func (self *MfaManager) CreateForIdentityId(identityId string, ctx *change.Context) (string, error) {
+	identity, err := self.env.GetManagers().Identity.Read(identityId)
+
+	if err != nil {
+		return "", err
+	}
+
+	return self.CreateForIdentity(identity, ctx)
 }
 
 func (self *MfaManager) CreateForIdentity(identity *Identity, ctx *change.Context) (string, error) {
@@ -301,6 +312,37 @@ func (self *MfaManager) DeleteAllForIdentity(id string, ctx *change.Context) err
 	return self.GetDb().Update(ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		return self.Store.DeleteWhere(ctx, fmt.Sprintf("identity = \"%s\"", id))
 	})
+}
+
+func (self *MfaManager) CompleteTotpEnrollment(identityId string, code string, changeCtx *change.Context) error {
+	mfa, err := self.ReadOneByIdentityId(identityId)
+
+	if err != nil {
+		return err
+	}
+
+	if mfa == nil || mfa.IsVerified {
+		return errorz.NewNotFound()
+	}
+
+	ok, err := self.VerifyTOTP(mfa, code)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("could not verify TOTP code")
+		return apierror.NewInvalidMfaTokenError()
+	}
+
+	if !ok {
+		return apierror.NewInvalidMfaTokenError()
+	}
+
+	mfa.IsVerified = true
+	if err := self.Update(mfa, nil, changeCtx); err != nil {
+		pfxlog.Logger().Errorf("could not update MFA with new MFA status: %v", err)
+		return errors.New("could not update MFA status")
+	}
+
+	return nil
 }
 
 type MfaListResult struct {

@@ -17,6 +17,10 @@
 package sync_strats
 
 import (
+	"context"
+	"crypto/sha1"
+	"crypto/tls"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"github.com/lucsky/cuid"
@@ -24,24 +28,33 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/genext"
+	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/handler_edge_ctrl"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"reflect"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
 const (
 	RouterSyncStrategyInstant env.RouterSyncStrategyType = "instant"
+	ZdbIndexKey               string                     = "index"
+	ZdbKey                    string                     = "zdb"
 )
 
 var _ env.RouterSyncStrategy = &InstantStrategy{}
@@ -89,8 +102,107 @@ type InstantStrategy struct {
 	routerConnectedQueue     chan *RouterSender
 	receivedClientHelloQueue chan *RouterSender
 
+	indexProvider IndexProvider
+
 	stopNotify chan struct{}
 	stopped    atomic.Bool
+	*common.RouterDataModel
+	servicePolicyHandler *constraintToIndexedEvents[*db.ServicePolicy]
+	identityHandler      *constraintToIndexedEvents[*db.Identity]
+	postureCheckHandler  *constraintToIndexedEvents[*db.PostureCheck]
+	serviceHandler       *constraintToIndexedEvents[*db.EdgeService]
+	caHandler            *constraintToIndexedEvents[*db.Ca]
+	revocationHandler    *constraintToIndexedEvents[*db.Revocation]
+}
+
+func (strategy *InstantStrategy) AddPublicKey(cert *tls.Certificate) {
+	publicKey := newPublicKey(cert.Certificate[0], edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation, edge_ctrl_pb.DataState_PublicKey_JWTValidation})
+	newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
+	newEvent := &edge_ctrl_pb.DataState_Event{
+		Action: edge_ctrl_pb.DataState_Create,
+		Model:  newModel,
+	}
+
+	strategy.HandlePublicKeyEvent(newEvent, newModel)
+}
+
+// Initialize implements RouterDataModelCache
+func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) error {
+	strategy.RouterDataModel = common.NewSenderRouterDataModel(logSize, bufferSize)
+
+	if strategy.ae.HostController.IsRaftEnabled() {
+		strategy.indexProvider = &RaftIndexProvider{
+			index: strategy.ae.GetHostController().GetRaftIndex(),
+		}
+	} else {
+		strategy.indexProvider = &NonHaIndexProvider{
+			ae: strategy.ae,
+		}
+	}
+
+	err := strategy.BuildAll()
+
+	if err != nil {
+		return err
+	}
+
+	go strategy.handleRouterModelEvents(strategy.RouterDataModel.NewListener())
+
+	//policy create/delete/update
+	strategy.servicePolicyHandler = &constraintToIndexedEvents[*db.ServicePolicy]{
+		indexProvider: strategy.indexProvider,
+		createHandler: strategy.ServicePolicyCreate,
+		updateHandler: strategy.ServicePolicyUpdate,
+		deleteHandler: strategy.ServicePolicyDelete,
+	}
+	strategy.ae.GetStores().ServicePolicy.AddEntityConstraint(strategy.servicePolicyHandler)
+
+	//identity create/delete/update
+	strategy.identityHandler = &constraintToIndexedEvents[*db.Identity]{
+		indexProvider: strategy.indexProvider,
+		createHandler: strategy.IdentityCreate,
+		updateHandler: strategy.IdentityUpdate,
+		deleteHandler: strategy.IdentityDelete,
+	}
+	strategy.ae.GetStores().Identity.AddEntityConstraint(strategy.identityHandler)
+
+	//posture check create/delete/update
+	strategy.postureCheckHandler = &constraintToIndexedEvents[*db.PostureCheck]{
+		indexProvider: strategy.indexProvider,
+		createHandler: strategy.PostureCheckCreate,
+		updateHandler: strategy.PostureCheckUpdate,
+		deleteHandler: strategy.PostureCheckDelete,
+	}
+	strategy.ae.GetStores().PostureCheck.AddEntityConstraint(strategy.postureCheckHandler)
+
+	//service create/delete/update
+	strategy.serviceHandler = &constraintToIndexedEvents[*db.EdgeService]{
+		indexProvider: strategy.indexProvider,
+		createHandler: strategy.ServiceCreate,
+		updateHandler: strategy.ServiceUpdate,
+		deleteHandler: strategy.ServiceDelete,
+	}
+	strategy.ae.GetStores().EdgeService.AddEntityConstraint(strategy.serviceHandler)
+
+	//ca create/delete/update
+	strategy.caHandler = &constraintToIndexedEvents[*db.Ca]{
+		indexProvider: strategy.indexProvider,
+		createHandler: strategy.CaCreate,
+		updateHandler: strategy.CaUpdate,
+		deleteHandler: strategy.CaDelete,
+	}
+	strategy.ae.GetStores().Ca.AddEntityConstraint(strategy.caHandler)
+
+	//ca create/delete/update
+	strategy.revocationHandler = &constraintToIndexedEvents[*db.Revocation]{
+		indexProvider: strategy.indexProvider,
+		createHandler: strategy.RevocationCreate,
+		updateHandler: strategy.RevocationUpdate,
+		deleteHandler: strategy.RevocationDelete,
+	}
+	strategy.ae.GetStores().Ca.AddEntityConstraint(strategy.caHandler)
+
+	return nil
 }
 
 func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *InstantStrategy {
@@ -126,8 +238,14 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 		ae:                       ae,
 		routerConnectedQueue:     make(chan *RouterSender, options.MaxQueuedRouterConnects),
 		receivedClientHelloQueue: make(chan *RouterSender, options.MaxQueuedClientHellos),
+		RouterDataModel:          common.NewSenderRouterDataModel(10000, 10000),
+		stopNotify:               make(chan struct{}),
+	}
 
-		stopNotify: make(chan struct{}),
+	err := strategy.Initialize(10000, 1000)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Fatal("could not build initial data model for router synchronization")
 	}
 
 	strategy.helloHandler = handler_edge_ctrl.NewHelloHandler(ae, strategy.ReceiveClientHello)
@@ -221,29 +339,6 @@ func (strategy *InstantStrategy) GetReceiveHandlers() []channel.TypedReceiveHand
 		result = append(result, strategy.resyncHandler)
 	}
 	return result
-}
-
-func (strategy *InstantStrategy) PeerAdded(peers []*event.ClusterPeer) {
-	logger := pfxlog.Logger().WithField("strategy", strategy.Type())
-
-	logger.WithField("peerCount", len(peers)).Info("new signing certificates from peers")
-
-	keys := &edge_ctrl_pb.SignerCerts{}
-
-	var addrs []string
-
-	for _, peer := range peers {
-		addrs = append(addrs, peer.Addr)
-		for _, cert := range peer.ServerCert {
-			keys.Keys = append(keys.Keys, cert.Raw)
-		}
-	}
-
-	strategy.rtxMap.Range(func(rtx *RouterSender) {
-		_ = strategy.sendSigningCerts(rtx, keys)
-	})
-
-	logger.WithField("addrs", addrs).Info("done sending new signing certificates")
 }
 
 func (strategy *InstantStrategy) ApiSessionAdded(apiSession *db.ApiSession) {
@@ -376,39 +471,16 @@ func (strategy *InstantStrategy) hello(rtx *RouterSender) {
 	strategy.sendHello(rtx)
 }
 
-func (strategy *InstantStrategy) getSignerKeys() *edge_ctrl_pb.SignerCerts {
-	signers := strategy.ae.HostController.GetPeerSigners()
-
-	var keys [][]byte
-	for _, signer := range signers {
-		keys = append(keys, signer.Raw)
-	}
-
-	serverCert, _, _ := strategy.ae.GetServerCert()
-
-	keys = append(keys, serverCert.Certificate[0])
-
-	signerKeys := &edge_ctrl_pb.SignerCerts{
-		Keys: keys,
-	}
-
-	return signerKeys
-}
-
 func (strategy *InstantStrategy) sendHello(rtx *RouterSender) {
 	logger := rtx.logger().WithField("strategy", strategy.Type())
 	serverVersion := build.GetBuildInfo().Version()
 	serverHello := &edge_ctrl_pb.ServerHello{
-		Version:  serverVersion,
+		Version: serverVersion,
+		Data: map[string]string{
+			"instant":     "true",
+			"routerModel": "true",
+		},
 		ByteData: map[string][]byte{},
-	}
-
-	signerKeysBuf, err := proto.Marshal(strategy.getSignerKeys())
-
-	if err != nil {
-		logger.WithError(err).Error("could not create signer keys on edge router connect")
-	} else {
-		serverHello.ByteData[edge_ctrl_pb.SignerPublicCertsHeader] = signerKeysBuf
 	}
 
 	buf, err := proto.Marshal(serverHello)
@@ -416,8 +488,11 @@ func (strategy *InstantStrategy) sendHello(rtx *RouterSender) {
 		logger.WithError(err).Error("could not marshal serverHello")
 		return
 	}
+	msg := channel.NewMessage(env.ServerHelloType, buf)
 
-	if err = channel.NewMessage(env.ServerHelloType, buf).WithTimeout(strategy.HelloSendTimeout).Send(rtx.Router.Control); err != nil {
+	msg.PutBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel), true)
+
+	if err = msg.WithTimeout(strategy.HelloSendTimeout).Send(rtx.Router.Control); err != nil {
 		if rtx.Router.Control.IsClosed() {
 			rtx.SetSyncStatus(env.RouterSyncDisconnected)
 			rtx.logger().WithError(err).Error("timed out sending serverHello message for edge router, connection closed, giving up")
@@ -451,10 +526,12 @@ func (strategy *InstantStrategy) ReceiveResync(routerId string, _ *edge_ctrl_pb.
 
 	rtx.logger().WithField("strategy", strategy.Type()).Info("received resync from router, queuing")
 
+	rtx.RouterModelIndex = nil
+
 	strategy.receivedClientHelloQueue <- rtx
 }
 
-func (strategy *InstantStrategy) ReceiveClientHello(routerId string, respHello *edge_ctrl_pb.ClientHello) {
+func (strategy *InstantStrategy) ReceiveClientHello(routerId string, msg *channel.Message, respHello *edge_ctrl_pb.ClientHello) {
 	rtx := strategy.rtxMap.Get(routerId)
 
 	if rtx == nil {
@@ -481,6 +558,14 @@ func (strategy *InstantStrategy) ReceiveClientHello(routerId string, respHello *
 		WithField("buildDate", rtx.Router.VersionInfo.BuildDate).
 		WithField("os", rtx.Router.VersionInfo.OS).
 		WithField("arch", rtx.Router.VersionInfo.Arch)
+
+	if supported, ok := msg.Headers.GetBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel)); ok && supported {
+		rtx.SupportsRouterModel = true
+
+		if index, ok := msg.Headers.GetUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex)); ok {
+			rtx.RouterModelIndex = &index
+		}
+	}
 
 	protocols := map[string]string{}
 
@@ -509,16 +594,16 @@ func (strategy *InstantStrategy) ReceiveClientHello(routerId string, respHello *
 
 func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 	defer func() {
-		rtx.logger().WithField("strategy", strategy.Type()).Infof("exiting synchronization, final status: %s", rtx.SyncStatus())
+		rtx.logger().WithField("strategy", strategy.Type()).WithField("SupportsRouterModel", rtx.SupportsRouterModel).Infof("exiting synchronization, final status: %s", rtx.SyncStatus())
 	}()
 
 	if rtx.Router.Control.IsClosed() {
 		rtx.SetSyncStatus(env.RouterSyncDisconnected)
-		rtx.logger().WithField("strategy", strategy.Type()).Error("attempting to start synchronization with edge router, but it has disconnected")
+		rtx.logger().WithField("strategy", strategy.Type()).WithField("SupportsRouterModel", rtx.SupportsRouterModel).Error("attempting to start synchronization with edge router, but it has disconnected")
 	}
 
 	rtx.SetSyncStatus(env.RouterSynInProgress)
-	logger := rtx.logger().WithField("strategy", strategy.Type())
+	logger := rtx.logger().WithField("strategy", strategy.Type()).WithField("SupportsRouterModel", rtx.SupportsRouterModel)
 	logger.Info("started synchronizing edge router")
 
 	chunkSize := 100
@@ -573,9 +658,77 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 	if err != nil {
 		logger.WithError(err).Error("failure synchronizing api sessions")
 		rtx.SetSyncStatus(env.RouterSyncError)
-	} else {
-		rtx.SetSyncStatus(env.RouterSyncDone)
+		return
 	}
+
+	if rtx.SupportsRouterModel {
+		replayFrom := rtx.RouterModelIndex
+
+		if replayFrom != nil {
+			rtx.RouterModelIndex = nil
+			events, ok := strategy.RouterDataModel.ReplayFrom(*replayFrom)
+
+			if ok {
+				var err error
+				for _, curEvent := range events {
+					err = strategy.sendDataStatEvent(rtx, curEvent)
+					if err != nil {
+						pfxlog.Logger().WithError(err).
+							WithField("eventIndex", curEvent.Index).
+							WithField("evenType", reflect.TypeOf(curEvent).String()).
+							WithField("eventAction", curEvent.Action).
+							WithField("eventIsSynthetic", curEvent.IsSynthetic).
+							Error("could not send data state event")
+					}
+				}
+
+				for tuple := range strategy.RouterDataModel.PublicKeys.IterBuffered() {
+					peerEvent := &edge_ctrl_pb.DataState_Event{
+						IsSynthetic: true,
+						Action:      edge_ctrl_pb.DataState_Create,
+						Model: &edge_ctrl_pb.DataState_Event_PublicKey{
+							PublicKey: newPublicKey(tuple.Val.Data, tuple.Val.Format, tuple.Val.Usages),
+						},
+					}
+
+					err = strategy.sendDataStatEvent(rtx, peerEvent)
+
+					if err != nil {
+						pfxlog.Logger().WithError(err).
+							WithField("eventIndex", peerEvent.Index).
+							WithField("evenType", reflect.TypeOf(peerEvent).String()).
+							WithField("eventAction", peerEvent.Action).
+							WithField("eventIsSynthetic", peerEvent.IsSynthetic).
+							Error("could not send data state event for peers")
+					}
+				}
+			}
+
+			// no error sync is done, if err try full state
+			if err == nil {
+				rtx.SetSyncStatus(env.RouterSyncDone)
+				return
+			}
+
+			pfxlog.Logger().WithError(err).Error("could not send events for router sync, attempting full state")
+		}
+
+		//full sync
+		dataState := strategy.RouterDataModel.GetDataState()
+
+		if dataState == nil {
+			return
+		}
+		dataState.EndIndex = strategy.indexProvider.CurrentIndex()
+
+		if err := strategy.sendDataState(rtx, dataState); err != nil {
+			logger.WithError(err).Error("failure sending full data state")
+			rtx.SetSyncStatus(env.RouterSyncError)
+			return
+		}
+	}
+
+	rtx.SetSyncStatus(env.RouterSyncDone)
 }
 
 func (strategy *InstantStrategy) sendApiSessionAdded(rtx *RouterSender, isFullState bool, state *InstantSyncState, apiSessions []*edge_ctrl_pb.ApiSession) error {
@@ -596,16 +749,742 @@ func (strategy *InstantStrategy) sendApiSessionAdded(rtx *RouterSender, isFullSt
 	return rtx.Send(msg)
 }
 
-func (strategy *InstantStrategy) sendSigningCerts(rtx *RouterSender, keys *edge_ctrl_pb.SignerCerts) interface{} {
-	msgContentBytes, _ := proto.Marshal(keys)
+func (strategy *InstantStrategy) handleRouterModelEvents(eventChannel <-chan *edge_ctrl_pb.DataState_Event) {
+	for {
+		select {
+		case newEvent := <-eventChannel:
+			strategy.rtxMap.Range(func(rtx *RouterSender) {
 
-	msg := channel.NewMessage(env.SigningCertAdded, msgContentBytes)
+				if !rtx.SupportsRouterModel {
+					return
+				}
 
-	return rtx.Send(msg)
+				err := strategy.sendDataStatEvent(rtx, newEvent)
+
+				if err != nil {
+					pfxlog.Logger().WithError(err).WithField("routerId", rtx.Router.Id).Error("error sending data state to router")
+				}
+			})
+		case <-strategy.ae.HostController.GetCloseNotifyChannel():
+			return
+		}
+	}
 }
 
 type InstantSyncState struct {
 	Id       string `json:"id"`       //unique id for the sync attempt
 	IsLast   bool   `json:"isLast"`   //
 	Sequence int    `json:"sequence"` //increasing id from 0 per id for the
+}
+
+func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
+	for cursor := strategy.ae.GetStores().ServicePolicy.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		currentBytes := cursor.Current()
+		currentId := string(currentBytes)
+
+		storeModel, err := strategy.ae.GetStores().ServicePolicy.LoadOneById(tx, currentId)
+
+		if err != nil {
+			return err
+		}
+
+		servicePolicy := newServicePolicy(tx, strategy.ae, storeModel)
+
+		newModel := &edge_ctrl_pb.DataState_Event_ServicePolicy{ServicePolicy: servicePolicy}
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model:  newModel,
+		}
+		strategy.HandleServicePolicyEvent(newEvent, newModel)
+	}
+
+	return nil
+}
+
+func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
+	for _, x509Cert := range strategy.ae.HostController.GetPeerSigners() {
+		publicKey := newPublicKey(x509Cert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation, edge_ctrl_pb.DataState_PublicKey_JWTValidation})
+		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model:  newModel,
+		}
+
+		strategy.HandlePublicKeyEvent(newEvent, newModel)
+	}
+
+	caPEMs := strategy.ae.Config.CaPems()
+	caCerts := nfPem.PemBytesToCertificates(caPEMs)
+
+	for _, caCert := range caCerts {
+		publicKey := newPublicKey(caCert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})
+		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model:  newModel,
+		}
+
+		strategy.HandlePublicKeyEvent(newEvent, newModel)
+	}
+
+	for cursor := strategy.ae.GetStores().Ca.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		currentBytes := cursor.Current()
+		currentId := string(currentBytes)
+
+		ca, err := strategy.ae.GetStores().Ca.LoadOneById(tx, currentId)
+
+		if err != nil {
+			return err
+		}
+
+		certs := nfPem.PemStringToCertificates(ca.CertPem)
+
+		if len(certs) == 0 {
+			continue
+		}
+
+		publicKey := newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})
+
+		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model:  newModel,
+		}
+		strategy.HandlePublicKeyEvent(newEvent, newModel)
+	}
+
+	return nil
+}
+
+func (strategy *InstantStrategy) BuildAll() error {
+	err := strategy.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		if err := strategy.BuildIdentities(tx); err != nil {
+			return err
+		}
+
+		if err := strategy.BuildServices(tx); err != nil {
+			return err
+		}
+
+		if err := strategy.BuildPostureChecks(tx); err != nil {
+			return err
+		}
+
+		if err := strategy.BuildServicePolicies(tx); err != nil {
+			return err
+		}
+
+		if err := strategy.BuildPublicKeys(tx); err != nil {
+			return err
+		}
+
+		strategy.SetCurrentIndex(strategy.indexProvider.CurrentIndex())
+
+		return nil
+	})
+
+	return err
+}
+
+func (strategy *InstantStrategy) BuildIdentities(tx *bbolt.Tx) error {
+	for cursor := strategy.ae.GetStores().Identity.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		currentBytes := cursor.Current()
+		currentId := string(currentBytes)
+
+		identity, err := newIdentityById(tx, strategy.ae, currentId)
+
+		if err != nil {
+			return err
+
+		}
+
+		newModel := &edge_ctrl_pb.DataState_Event_Identity{Identity: identity}
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model:  newModel,
+		}
+		strategy.HandleIdentityEvent(newEvent, newModel)
+	}
+
+	return nil
+}
+
+func (strategy *InstantStrategy) BuildServices(tx *bbolt.Tx) error {
+	for cursor := strategy.ae.GetStores().EdgeService.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		currentBytes := cursor.Current()
+		currentId := string(currentBytes)
+
+		service, err := newServiceById(tx, strategy.ae, currentId)
+
+		if err != nil {
+			return err
+		}
+
+		newModel := &edge_ctrl_pb.DataState_Event_Service{Service: service}
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model:  newModel,
+		}
+		strategy.HandleServiceEvent(newEvent, newModel)
+	}
+
+	return nil
+}
+
+func (strategy *InstantStrategy) BuildPostureChecks(tx *bbolt.Tx) error {
+	for cursor := strategy.ae.GetStores().PostureCheck.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		currentBytes := cursor.Current()
+		currentId := string(currentBytes)
+
+		postureCheck, err := newPostureCheckById(tx, strategy.ae, currentId)
+
+		if err != nil {
+			return err
+		}
+
+		newModel := &edge_ctrl_pb.DataState_Event_PostureCheck{PostureCheck: postureCheck}
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model:  newModel,
+		}
+		strategy.HandlePostureCheckEvent(newEvent, newModel)
+	}
+	return nil
+}
+
+func newIdentityById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_Identity, error) {
+	identityModel, err := ae.GetStores().Identity.LoadOneById(tx, id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return newIdentity(identityModel), nil
+}
+
+func newIdentity(identityModel *db.Identity) *edge_ctrl_pb.DataState_Identity {
+	return &edge_ctrl_pb.DataState_Identity{
+		Id:   identityModel.Id,
+		Name: identityModel.Name,
+	}
+}
+
+func newServicePolicy(tx *bbolt.Tx, env *env.AppEnv, storeModel *db.ServicePolicy) *edge_ctrl_pb.DataState_ServicePolicy {
+	servicePolicy := &edge_ctrl_pb.DataState_ServicePolicy{
+		Id:   storeModel.Id,
+		Name: storeModel.Name,
+	}
+
+	result := env.GetManagers().ServicePolicy.ListAssociatedIds(tx, storeModel.Id)
+
+	servicePolicy.PostureCheckIds = result.PostureCheckIds
+	servicePolicy.ServiceIds = result.ServiceIds
+	servicePolicy.IdentityIds = result.IdentityIds
+
+	return servicePolicy
+}
+
+func newServiceById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_Service, error) {
+	storeModel, err := ae.GetStores().EdgeService.LoadOneById(tx, id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return newService(storeModel), nil
+}
+
+func newService(storeModel *db.EdgeService) *edge_ctrl_pb.DataState_Service {
+	return &edge_ctrl_pb.DataState_Service{
+		Id:   storeModel.Id,
+		Name: storeModel.Name,
+	}
+}
+
+func newPublicKey(data []byte, format edge_ctrl_pb.DataState_PublicKey_Format, usages []edge_ctrl_pb.DataState_PublicKey_Usage) *edge_ctrl_pb.DataState_PublicKey {
+	return &edge_ctrl_pb.DataState_PublicKey{
+		Data:   data,
+		Kid:    fmt.Sprintf("%x", sha1.Sum(data)),
+		Usages: usages,
+		Format: format,
+	}
+}
+
+func newPostureCheckById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_PostureCheck, error) {
+	postureModel, err := ae.GetStores().PostureCheck.LoadOneById(tx, id)
+
+	if err != nil {
+		return nil, err
+	}
+	return newPostureCheck(postureModel), nil
+}
+
+func newPostureCheck(postureModel *db.PostureCheck) *edge_ctrl_pb.DataState_PostureCheck {
+	newVal := &edge_ctrl_pb.DataState_PostureCheck{
+		Id:     postureModel.Id,
+		Name:   postureModel.Name,
+		TypeId: postureModel.TypeId,
+	}
+
+	switch subType := postureModel.SubType.(type) {
+	case *db.PostureCheckProcess:
+		newVal.Subtype = &edge_ctrl_pb.DataState_PostureCheck_Process_{
+			Process: &edge_ctrl_pb.DataState_PostureCheck_Process{
+				OsType:       subType.OperatingSystem,
+				Path:         subType.Path,
+				Hashes:       subType.Hashes,
+				Fingerprints: []string{subType.Fingerprint},
+			},
+		}
+	case *db.PostureCheckProcessMulti:
+		processList := &edge_ctrl_pb.DataState_PostureCheck_ProcessMulti_{
+			ProcessMulti: &edge_ctrl_pb.DataState_PostureCheck_ProcessMulti{
+				Semantic: subType.Semantic,
+			},
+		}
+
+		for _, process := range subType.Processes {
+			newProc := &edge_ctrl_pb.DataState_PostureCheck_Process{
+				OsType:       process.OsType,
+				Path:         process.Path,
+				Hashes:       process.Hashes,
+				Fingerprints: process.SignerFingerprints,
+			}
+
+			processList.ProcessMulti.Processes = append(processList.ProcessMulti.Processes, newProc)
+		}
+
+		newVal.Subtype = processList
+	case *db.PostureCheckMfa:
+		newVal.Subtype = &edge_ctrl_pb.DataState_PostureCheck_Mfa_{
+			Mfa: &edge_ctrl_pb.DataState_PostureCheck_Mfa{
+				TimeoutSeconds:        subType.TimeoutSeconds,
+				PromptOnWake:          subType.PromptOnWake,
+				PromptOnUnlock:        subType.PromptOnUnlock,
+				IgnoreLegacyEndpoints: subType.IgnoreLegacyEndpoints,
+			},
+		}
+
+	case *db.PostureCheckWindowsDomains:
+		newVal.Subtype = &edge_ctrl_pb.DataState_PostureCheck_Domains_{
+			Domains: &edge_ctrl_pb.DataState_PostureCheck_Domains{
+				Domains: subType.Domains,
+			},
+		}
+	case *db.PostureCheckMacAddresses:
+		newVal.Subtype = &edge_ctrl_pb.DataState_PostureCheck_Mac_{
+			Mac: &edge_ctrl_pb.DataState_PostureCheck_Mac{
+				MacAddresses: subType.MacAddresses,
+			},
+		}
+	case *db.PostureCheckOperatingSystem:
+
+		osList := &edge_ctrl_pb.DataState_PostureCheck_OsList{}
+
+		for _, os := range subType.OperatingSystems {
+			newOs := &edge_ctrl_pb.DataState_PostureCheck_Os{
+				OsType:     os.OsType,
+				OsVersions: os.OsVersions,
+			}
+
+			osList.OsList = append(osList.OsList, newOs)
+		}
+
+		newVal.Subtype = &edge_ctrl_pb.DataState_PostureCheck_OsList_{
+			OsList: osList,
+		}
+	}
+
+	return newVal
+}
+
+func actionToName(action edge_ctrl_pb.DataState_Action) string {
+	switch action {
+	case edge_ctrl_pb.DataState_Create:
+		return "CREATE"
+	case edge_ctrl_pb.DataState_Update:
+		return "UPDATE"
+	case edge_ctrl_pb.DataState_Delete:
+		return "DELETE"
+	}
+
+	return "UNKNOWN"
+}
+
+func (strategy *InstantStrategy) ServicePolicyCreate(index uint64, servicePolicy *db.ServicePolicy) {
+	strategy.handleServicePolicy(index, edge_ctrl_pb.DataState_Create, servicePolicy)
+}
+
+func (strategy *InstantStrategy) ServicePolicyUpdate(index uint64, servicePolicy *db.ServicePolicy) {
+	strategy.handleServicePolicy(index, edge_ctrl_pb.DataState_Update, servicePolicy)
+}
+
+func (strategy *InstantStrategy) ServicePolicyDelete(index uint64, servicePolicy *db.ServicePolicy) {
+	strategy.handleServicePolicy(index, edge_ctrl_pb.DataState_Delete, servicePolicy)
+}
+
+func (strategy *InstantStrategy) handleServicePolicy(index uint64, action edge_ctrl_pb.DataState_Action, servicePolicy *db.ServicePolicy) {
+	var sp *edge_ctrl_pb.DataState_ServicePolicy
+
+	err := strategy.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		sp = newServicePolicy(tx, strategy.ae, servicePolicy)
+		return nil
+	})
+
+	if err != nil {
+		pfxlog.Logger().WithField("id", servicePolicy.Id).WithError(err).Errorf("could not handle %s for %T", actionToName(action), servicePolicy)
+		return
+	}
+
+	strategy.Apply(&edge_ctrl_pb.DataState_Event{
+		Index:  index,
+		Action: action,
+		Model: &edge_ctrl_pb.DataState_Event_ServicePolicy{
+			ServicePolicy: sp,
+		},
+	})
+}
+
+func (strategy *InstantStrategy) IdentityCreate(index uint64, identity *db.Identity) {
+	strategy.handleIdentity(index, edge_ctrl_pb.DataState_Create, identity)
+}
+
+func (strategy *InstantStrategy) IdentityUpdate(index uint64, identity *db.Identity) {
+	strategy.handleIdentity(index, edge_ctrl_pb.DataState_Update, identity)
+}
+
+func (strategy *InstantStrategy) IdentityDelete(index uint64, identity *db.Identity) {
+	strategy.handleIdentity(index, edge_ctrl_pb.DataState_Delete, identity)
+}
+
+func (strategy *InstantStrategy) handleIdentity(index uint64, action edge_ctrl_pb.DataState_Action, identity *db.Identity) {
+	id := newIdentity(identity)
+
+	strategy.Apply(&edge_ctrl_pb.DataState_Event{
+		Index:  index,
+		Action: action,
+		Model: &edge_ctrl_pb.DataState_Event_Identity{
+			Identity: id,
+		},
+	})
+}
+
+func (strategy *InstantStrategy) ServiceCreate(index uint64, service *db.EdgeService) {
+	strategy.handleService(index, edge_ctrl_pb.DataState_Create, service)
+}
+
+func (strategy *InstantStrategy) ServiceUpdate(index uint64, service *db.EdgeService) {
+	strategy.handleService(index, edge_ctrl_pb.DataState_Update, service)
+}
+
+func (strategy *InstantStrategy) ServiceDelete(index uint64, service *db.EdgeService) {
+	strategy.handleService(index, edge_ctrl_pb.DataState_Delete, service)
+}
+
+func (strategy *InstantStrategy) handleService(index uint64, action edge_ctrl_pb.DataState_Action, service *db.EdgeService) {
+	svc := newService(service)
+
+	strategy.Apply(&edge_ctrl_pb.DataState_Event{
+		Index:  index,
+		Action: action,
+		Model: &edge_ctrl_pb.DataState_Event_Service{
+			Service: svc,
+		},
+	})
+}
+
+func (strategy *InstantStrategy) handlePostureCheck(index uint64, action edge_ctrl_pb.DataState_Action, postureCheck *db.PostureCheck) {
+	pc := newPostureCheck(postureCheck)
+
+	strategy.Apply(&edge_ctrl_pb.DataState_Event{
+		Index:  index,
+		Action: action,
+		Model: &edge_ctrl_pb.DataState_Event_PostureCheck{
+			PostureCheck: pc,
+		},
+	})
+}
+
+func (strategy *InstantStrategy) PostureCheckCreate(index uint64, postureCheck *db.PostureCheck) {
+	strategy.handlePostureCheck(index, edge_ctrl_pb.DataState_Create, postureCheck)
+}
+
+func (strategy *InstantStrategy) PostureCheckUpdate(index uint64, postureCheck *db.PostureCheck) {
+	strategy.handlePostureCheck(index, edge_ctrl_pb.DataState_Update, postureCheck)
+}
+
+func (strategy *InstantStrategy) PostureCheckDelete(index uint64, postureCheck *db.PostureCheck) {
+	strategy.handlePostureCheck(index, edge_ctrl_pb.DataState_Delete, postureCheck)
+}
+
+func (strategy *InstantStrategy) PeerAdded(peer *db.Controller) {
+	if len(peer.CertPem) > 0 {
+		certs := nfPem.PemBytesToCertificates([]byte(peer.CertPem))
+
+		if len(certs) > 0 {
+			strategy.Apply(&edge_ctrl_pb.DataState_Event{
+				IsSynthetic: true,
+				Action:      edge_ctrl_pb.DataState_Create,
+				Model: &edge_ctrl_pb.DataState_Event_PublicKey{
+					PublicKey: newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation, edge_ctrl_pb.DataState_PublicKey_JWTValidation}),
+				},
+			})
+		} else {
+			pfxlog.Logger().Warn("peer added event, certificate pem did not parse to at least one certificate")
+		}
+	} else {
+		pfxlog.Logger().Warn("peer added event without certificate pem")
+	}
+}
+
+func (strategy *InstantStrategy) CaCreate(index uint64, ca *db.Ca) {
+	certs := nfPem.PemBytesToCertificates([]byte(ca.CertPem))
+
+	if len(certs) > 0 {
+		strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation}))
+	}
+}
+
+func (strategy *InstantStrategy) CaUpdate(index uint64, ca *db.Ca) {
+	certs := nfPem.PemBytesToCertificates([]byte(ca.CertPem))
+
+	if len(certs) > 0 {
+		strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Update, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation}))
+	}
+}
+
+func (strategy *InstantStrategy) CaDelete(index uint64, ca *db.Ca) {
+	certs := nfPem.PemBytesToCertificates([]byte(ca.CertPem))
+
+	if len(certs) > 0 {
+		strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Delete, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation}))
+	}
+}
+
+func (strategy *InstantStrategy) RevocationCreate(index uint64, revocation *db.Revocation) {
+	strategy.handleRevocation(index, edge_ctrl_pb.DataState_Create, revocation)
+}
+
+func (strategy *InstantStrategy) RevocationUpdate(index uint64, revocation *db.Revocation) {
+	strategy.handleRevocation(index, edge_ctrl_pb.DataState_Create, revocation)
+}
+
+func (strategy *InstantStrategy) RevocationDelete(index uint64, revocation *db.Revocation) {
+	strategy.handleRevocation(index, edge_ctrl_pb.DataState_Create, revocation)
+}
+
+func (strategy *InstantStrategy) handlePublicKey(index uint64, action edge_ctrl_pb.DataState_Action, publicKey *edge_ctrl_pb.DataState_PublicKey) {
+	strategy.Apply(&edge_ctrl_pb.DataState_Event{
+		Index:  index,
+		Action: action,
+		Model: &edge_ctrl_pb.DataState_Event_PublicKey{
+			PublicKey: publicKey,
+		},
+	})
+}
+
+func (strategy *InstantStrategy) sendDataStatEvent(rtx *RouterSender, stateEvent *edge_ctrl_pb.DataState_Event) error {
+	content, err := proto.Marshal(stateEvent)
+
+	if err != nil {
+		return err
+	}
+
+	msg := channel.NewMessage(env.DataStateEventType, content)
+
+	return rtx.Send(msg)
+
+}
+
+func (strategy *InstantStrategy) sendDataState(rtx *RouterSender, state *edge_ctrl_pb.DataState) error {
+	content, err := proto.Marshal(state)
+
+	if err != nil {
+		return err
+	}
+
+	msg := channel.NewMessage(env.DataStateType, content)
+
+	return rtx.Send(msg)
+}
+
+func (strategy *InstantStrategy) handleRevocation(index uint64, action edge_ctrl_pb.DataState_Action, revocation *db.Revocation) {
+	strategy.Apply(&edge_ctrl_pb.DataState_Event{
+		Index:  index,
+		Action: action,
+		Model: &edge_ctrl_pb.DataState_Event_Revocation{
+			Revocation: &edge_ctrl_pb.DataState_Revocation{
+				Id:        revocation.Id,
+				ExpiresAt: timestamppb.New(revocation.ExpiresAt),
+			},
+		},
+	})
+}
+
+type IndexProvider interface {
+	// NextIndex provides an index for the supplied MutateContext.
+	NextIndex(ctx boltz.MutateContext) (uint64, error)
+
+	// CurrentIndex provides the current index
+	CurrentIndex() uint64
+}
+
+type NonHaIndexProvider struct {
+	ae          *env.AppEnv
+	initialLoad sync.Once
+	index       uint64
+
+	lock sync.Mutex
+}
+
+func (p *NonHaIndexProvider) load() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	ctx := boltz.NewMutateContext(context.Background())
+	err := p.ae.GetDbProvider().GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		zdb, err := ctx.Tx().CreateBucketIfNotExists([]byte(ZdbKey))
+
+		if err != nil {
+			return err
+		}
+
+		indexBytes := zdb.Get([]byte(ZdbIndexKey))
+
+		if len(indexBytes) == 8 {
+			p.index = binary.BigEndian.Uint64(indexBytes)
+		} else {
+			p.index = 0
+			indexBytes = make([]byte, 8)
+			binary.BigEndian.PutUint64(indexBytes, p.index)
+			_ = zdb.Put([]byte(ZdbIndexKey), indexBytes)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Fatal("could not load initial index")
+	}
+}
+
+func (p *NonHaIndexProvider) NextIndex(_ boltz.MutateContext) (uint64, error) {
+	p.initialLoad.Do(p.load)
+
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	ctx := boltz.NewMutateContext(context.Background())
+	err := p.ae.GetDbProvider().GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		zdb := ctx.Tx().Bucket([]byte(ZdbKey))
+
+		newIndex := p.index + 1
+
+		indexBytes := make([]byte, 8) // Create a byte slice with 8 bytes
+		binary.BigEndian.PutUint64(indexBytes, newIndex)
+		err := zdb.Put([]byte(ZdbIndexKey), indexBytes)
+
+		if err != nil {
+			return err
+		}
+
+		p.index = newIndex
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return p.index, nil
+}
+
+func (p *NonHaIndexProvider) CurrentIndex() uint64 {
+	p.initialLoad.Do(p.load)
+
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	return p.index
+}
+
+type RaftIndexProvider struct {
+	index uint64
+	lock  sync.Mutex
+}
+
+func (p *RaftIndexProvider) NextIndex(ctx boltz.MutateContext) (uint64, error) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	changeCtx := change.FromContext(ctx.Context())
+	if changeCtx != nil {
+		p.index = changeCtx.RaftIndex
+		return changeCtx.RaftIndex, nil
+	}
+
+	return 0, errors.New("could not locate raft index from MutateContext")
+}
+
+func (p *RaftIndexProvider) CurrentIndex() uint64 {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	return p.index
+}
+
+// constraintToIndexedEvents allows constraint events to be converted to events that provide the end state of an
+// entity and the index it was modified on. In non-HA scenarios, the index should be a locally tracked integer.
+// In HA scenarios, it should be the index from the event store. Constraint events are used as they provide
+// access to the HA raft index.
+type constraintToIndexedEvents[E boltz.Entity] struct {
+	indexProvider IndexProvider
+
+	createHandler func(uint64, E)
+	updateHandler func(uint64, E)
+	deleteHandler func(uint64, E)
+}
+
+// ProcessPreCommit is a pass through to satisfy interface requirements.
+func (h *constraintToIndexedEvents[E]) ProcessPreCommit(_ *boltz.EntityChangeState[E]) error {
+	return nil
+}
+
+func (h *constraintToIndexedEvents[E]) ProcessPostCommit(state *boltz.EntityChangeState[E]) {
+	switch state.ChangeType {
+	case boltz.EntityCreated:
+		if h.createHandler != nil {
+			index, err := h.indexProvider.NextIndex(state.Ctx)
+
+			if err != nil {
+				pfxlog.Logger().WithError(err).Errorf("could not process post commit create for %T, could not aquire index", state.FinalState)
+				return
+			}
+
+			h.createHandler(index, state.FinalState)
+		}
+	case boltz.EntityUpdated:
+		if h.updateHandler != nil {
+			index, err := h.indexProvider.NextIndex(state.Ctx)
+
+			if err != nil {
+				pfxlog.Logger().WithError(err).Errorf("could not process post commit update for %T, could not aquire index", state.FinalState)
+				return
+			}
+
+			h.updateHandler(index, state.FinalState)
+		}
+	case boltz.EntityDeleted:
+		if h.deleteHandler != nil {
+			index, err := h.indexProvider.NextIndex(state.Ctx)
+
+			if err != nil {
+				pfxlog.Logger().WithError(err).Errorf("could not process post commit delete for %T, could not aquire index", state.FinalState)
+				return
+			}
+
+			//initial state for delete has the actual value, final state is nil
+			h.deleteHandler(index, state.InitialState)
+		}
+	}
 }

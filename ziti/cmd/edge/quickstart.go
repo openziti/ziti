@@ -194,7 +194,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		//completed normally
 		logrus.Info("Controller online. Continuing...")
 	case <-time.After(timeout):
-		fmt.Println("timed out waiting for controller")
+		fmt.Println("timed out waiting for controller:", ctrlUrl)
 		o.cleanupHome()
 		return
 	}

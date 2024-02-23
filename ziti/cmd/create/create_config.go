@@ -24,11 +24,11 @@ import (
 	"time"
 
 	"github.com/openziti/channel/v2"
-	edge "github.com/openziti/ziti/controller/config"
-	fabCtrl "github.com/openziti/ziti/controller"
-	fabForwarder "github.com/openziti/ziti/router/forwarder"
 	foundation "github.com/openziti/transport/v2"
 	fabXweb "github.com/openziti/xweb/v2"
+	fabCtrl "github.com/openziti/ziti/controller"
+	edge "github.com/openziti/ziti/controller/config"
+	fabForwarder "github.com/openziti/ziti/router/forwarder"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -72,6 +72,7 @@ type CtrlValues struct {
 	AdvertisedPort             string
 	BindAddress                string
 	AltAdvertisedAddress       string
+	MinClusterSize             int
 }
 
 type HealthChecksValues struct {
