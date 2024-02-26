@@ -48,13 +48,13 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
 	github.com/openziti/channel/v2 v2.0.119
-	github.com/openziti/edge-api v0.26.10
+	github.com/openziti/edge-api v0.26.11
 	github.com/openziti/foundation/v2 v2.0.37
 	github.com/openziti/identity v1.0.70
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.45
 	github.com/openziti/runzmd v1.0.38
-	github.com/openziti/sdk-golang v0.22.28
+	github.com/openziti/sdk-golang v0.22.31
 	github.com/openziti/secretstream v0.1.16
 	github.com/openziti/storage v0.2.30
 	github.com/openziti/transport/v2 v2.0.122
@@ -173,11 +173,11 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	go.mongodb.org/mongo-driver v1.13.1 // indirect
+	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	go.opentelemetry.io/otel v1.21.0 // indirect
-	go.opentelemetry.io/otel/metric v1.21.0 // indirect
-	go.opentelemetry.io/otel/trace v1.21.0 // indirect
+	go.opentelemetry.io/otel v1.23.1 // indirect
+	go.opentelemetry.io/otel/metric v1.23.1 // indirect
+	go.opentelemetry.io/otel/trace v1.23.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect

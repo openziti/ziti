@@ -54,6 +54,10 @@ enum ContentType {
   ValidateRouterLinksResponseType = 10104;
   ValidateRouterLinksResultType = 10105;
 
+  ValidateRouterSdkTerminatorsRequestType = 10106;
+  ValidateRouterSdkTerminatorsResponseType = 10107;
+  ValidateRouterSdkTerminatorsResultType = 10108;
+
 }
 
 enum Header {
@@ -236,4 +240,32 @@ message RouterLinkDetail {
   bool isValid = 5;
   string destRouterId = 6;
   bool dialed = 7;
+}
+
+message ValidateRouterSdkTerminatorsRequest {
+  string filter = 1;
+}
+
+message ValidateRouterSdkTerminatorsResponse {
+  bool success = 1;
+  string message = 2;
+  uint64 routerCount = 3;
+}
+
+message RouterSdkTerminatorsDetails {
+  string routerId = 1;
+  string routerName = 2;
+  bool validateSuccess = 3;
+  string message = 4;
+  repeated RouterSdkTerminatorDetail details = 5;
+}
+
+message RouterSdkTerminatorDetail {
+  string terminatorId = 1;
+  TerminatorState ctrlState = 2;
+  string routerState = 3;
+  bool isValid = 4;
+  bool operaationActive = 5;
+  string createTime = 6;
+  string lastAttempt = 7;
 }

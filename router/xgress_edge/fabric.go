@@ -22,12 +22,13 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/pkg/errors"
 	"io"
 	"math"
-	"math/rand"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -44,16 +45,13 @@ var headersFromFabric = map[uint8]int32{
 type terminatorState int
 
 const (
-	TerminatorStatePendingEstablishment terminatorState = 0
-	TerminatorStateEstablishing         terminatorState = 1
-	TerminatorStateEstablished          terminatorState = 2
-	TerminatorStateDeleting             terminatorState = 3
+	TerminatorStateEstablishing terminatorState = 1
+	TerminatorStateEstablished  terminatorState = 2
+	TerminatorStateDeleting     terminatorState = 3
 )
 
 func (self terminatorState) String() string {
 	switch self {
-	case TerminatorStatePendingEstablishment:
-		return "pending-establishment"
 	case TerminatorStateEstablishing:
 		return "establishing"
 	case TerminatorStateEstablished:
@@ -62,6 +60,19 @@ func (self terminatorState) String() string {
 		return "deleting"
 	default:
 		return "unknown"
+	}
+}
+
+func (self terminatorState) IsWorkRequired() bool {
+	switch self {
+	case TerminatorStateEstablishing:
+		return true
+	case TerminatorStateDeleting:
+		return true
+	case TerminatorStateEstablished:
+		return false
+	default:
+		return false
 	}
 }
 
@@ -81,33 +92,23 @@ type edgeTerminator struct {
 	v2                bool
 	state             concurrenz.AtomicValue[terminatorState]
 	postValidate      bool
-	nextAttempt       time.Time
-	retryDelay        time.Duration
-	establishActive   atomic.Bool
+	operationActive   atomic.Bool
 	createTime        time.Time
+	lastAttempt       time.Time
 	establishCallback func(result edge_ctrl_pb.CreateTerminatorResult)
+	lock              sync.Mutex
+	rateLimitCallback command.RateLimitControl
 }
 
-func (self *edgeTerminator) calculateRetry(queueFailed bool) {
-	retryDelay := time.Second
-
-	if !queueFailed {
-		if self.retryDelay < time.Second {
-			self.retryDelay = time.Second
-		} else {
-			self.retryDelay = self.retryDelay * 2
-			if self.retryDelay > 30*time.Second {
-				self.retryDelay = 30 * time.Second
-			}
-		}
-		retryDelay = self.retryDelay
-	}
-
-	actualDelay := (float64(retryDelay.Milliseconds()) * 1.5) - float64(rand.Intn(int(retryDelay.Milliseconds())))
-	self.nextAttempt = time.Now().Add(time.Millisecond * time.Duration(actualDelay))
+func (self *edgeTerminator) IsEstablishing() bool {
+	return self.state.Load() == TerminatorStateEstablishing
 }
 
-func (self *edgeTerminator) inspect(fixInvalidTerminators bool) (*edge.InspectResult, error) {
+func (self *edgeTerminator) IsDeleting() bool {
+	return self.state.Load() == TerminatorStateDeleting
+}
+
+func (self *edgeTerminator) inspect(registry *hostedServiceRegistry, fixInvalidTerminators bool) (*edge.InspectResult, error) {
 	msg := channel.NewMessage(edge.ContentTypeConnInspectRequest, nil)
 	msg.PutUint32Header(edge.ConnIdHeader, self.Id())
 	resp, err := msg.WithTimeout(10 * time.Second).SendForReply(self.Channel)
@@ -116,7 +117,7 @@ func (self *edgeTerminator) inspect(fixInvalidTerminators bool) (*edge.InspectRe
 	}
 	result, err := edge.UnmarshalInspectResult(resp)
 	if result != nil && result.Type != edge.ConnTypeBind && fixInvalidTerminators {
-		self.close(true, true, "terminator invalid")
+		self.close(registry, true, true, "terminator invalid")
 	}
 	return result, err
 }
@@ -130,7 +131,7 @@ func (self *edgeTerminator) nextDialConnId() uint32 {
 	return nextId
 }
 
-func (self *edgeTerminator) close(notifySdk bool, notifyCtrl bool, reason string) {
+func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifySdk bool, notifyCtrl bool, reason string) {
 	logger := pfxlog.Logger().
 		WithField("terminatorId", self.terminatorId.Load()).
 		WithField("token", self.token).
@@ -146,27 +147,10 @@ func (self *edgeTerminator) close(notifySdk bool, notifyCtrl bool, reason string
 	}
 
 	if self.v2 {
-		if terminatorId := self.terminatorId.Load(); terminatorId != "" {
-			if self.terminatorId.CompareAndSwap(terminatorId, "") {
-				logger.Debug("removing terminator on router")
-
-				self.state.Store(TerminatorStateDeleting)
-				self.edgeClientConn.listener.factory.hostedServices.Delete(terminatorId)
-
-				if notifyCtrl {
-					logger.Info("removing terminator on controller")
-					ctrlCh := self.edgeClientConn.listener.factory.ctrls.AnyCtrlChannel()
-					if ctrlCh == nil {
-						logger.Error("no controller available, unable to remove terminator")
-					} else if err := self.edgeClientConn.removeTerminator(ctrlCh, self.token, terminatorId); err != nil {
-						logger.WithError(err).Error("failed to remove terminator")
-					} else {
-						logger.Info("Successfully removed terminator")
-					}
-				}
-			} else {
-				logger.Warn("edge terminator closing, but no terminator id set, so can't remove on controller")
-			}
+		if notifyCtrl {
+			registry.queueRemoveTerminatorAsync(self)
+		} else if terminatorId := self.terminatorId.Load(); terminatorId != "" {
+			self.edgeClientConn.listener.factory.hostedServices.Delete(self.terminatorId.Load())
 		}
 	} else {
 		if notifyCtrl {
@@ -207,6 +191,20 @@ func (self *edgeTerminator) newConnection(connId uint32) (*edgeXgressConn, error
 	}
 
 	return result, nil
+}
+
+func (self *edgeTerminator) SetRatLimitCallback(control command.RateLimitControl) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.rateLimitCallback = control
+}
+
+func (self *edgeTerminator) GetAndClearRateLimitCallback() command.RateLimitControl {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	result := self.rateLimitCallback
+	self.rateLimitCallback = nil
+	return result
 }
 
 type edgeXgressConn struct {

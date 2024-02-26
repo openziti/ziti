@@ -16,26 +16,23 @@
 
 package inspect
 
-import "time"
-
 type SdkTerminatorInspectResult struct {
 	Entries []*SdkTerminatorInspectDetail `json:"entries"`
 	Errors  []string                      `json:"errors"`
 }
 
 type SdkTerminatorInspectDetail struct {
-	Id              string        `json:"id"`
-	State           string        `json:"state"`
-	Token           string        `json:"token"`
-	ListenerId      string        `json:"listenerId"`
-	Instance        string        `json:"instance"`
-	Cost            uint16        `json:"cost"`
-	Precedence      string        `json:"precedence"`
-	AssignIds       bool          `json:"assignIds"`
-	V2              bool          `json:"v2"`
-	PostValidate    bool          `json:"postValidate"`
-	NextAttempt     time.Time     `json:"nextAttempt"`
-	RetryDelay      time.Duration `json:"retryDelay"`
-	EstablishActive bool          `json:"establishActive"`
-	CreateTime      time.Time     `json:"createTime"`
+	Id              string `json:"id"`
+	State           string `json:"state"`
+	Token           string `json:"token"`
+	ListenerId      string `json:"listenerId"`
+	Instance        string `json:"instance"`
+	Cost            uint16 `json:"cost"`
+	Precedence      string `json:"precedence"`
+	AssignIds       bool   `json:"assignIds"`
+	V2              bool   `json:"v2"`
+	PostValidate    bool   `json:"postValidate"`
+	OperationActive bool   `json:"establishActive"`
+	CreateTime      string `json:"createTime"`
+	LastAttempt     string `json:"lastAttempt"`
 }

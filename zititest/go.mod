@@ -14,11 +14,11 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.16
 	github.com/openziti/channel/v2 v2.0.119
-	github.com/openziti/edge-api v0.26.10
+	github.com/openziti/edge-api v0.26.11
 	github.com/openziti/fablab v0.5.42
 	github.com/openziti/foundation/v2 v2.0.37
 	github.com/openziti/identity v1.0.70
-	github.com/openziti/sdk-golang v0.22.28
+	github.com/openziti/sdk-golang v0.22.31
 	github.com/openziti/storage v0.2.30
 	github.com/openziti/transport/v2 v2.0.122
 	github.com/openziti/ziti v0.28.3
@@ -176,11 +176,11 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	github.com/zitadel/oidc/v2 v2.12.0 // indirect
-	go.mongodb.org/mongo-driver v1.13.1 // indirect
+	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	go.opentelemetry.io/otel v1.21.0 // indirect
-	go.opentelemetry.io/otel/metric v1.21.0 // indirect
-	go.opentelemetry.io/otel/trace v1.21.0 // indirect
+	go.opentelemetry.io/otel v1.23.1 // indirect
+	go.opentelemetry.io/otel/metric v1.23.1 // indirect
+	go.opentelemetry.io/otel/trace v1.23.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	go4.org v0.0.0-20180809161055-417644f6feb5 // indirect

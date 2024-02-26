@@ -21,6 +21,7 @@ package command
 import (
 	"errors"
 	"fmt"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
@@ -88,7 +89,7 @@ func Test_AdaptiveRateLimiter(t *testing.T) {
 					elapsed := time.Since(start)
 					if elapsed > time.Second*5 {
 						timedOut.Add(1)
-						ctrl.Timeout()
+						ctrl.Backoff()
 					} else {
 						count++
 						completed.Add(1)
@@ -101,6 +102,90 @@ func Test_AdaptiveRateLimiter(t *testing.T) {
 					} else {
 						panic(err)
 					}
+				}
+			}
+		}()
+	}
+
+	countdown.Wait()
+	close(closeNotify)
+	logStats()
+}
+
+func Test_AdaptiveRateLimiterTracker(t *testing.T) {
+	cfg := AdaptiveRateLimiterConfig{
+		Enabled:          true,
+		MaxSize:          250,
+		MinSize:          5,
+		WorkTimerMetric:  "workTime",
+		QueueSizeMetric:  "queueSize",
+		WindowSizeMetric: "windowSize",
+		Timeout:          time.Second,
+	}
+
+	registry := metrics.NewRegistry("test", nil)
+	closeNotify := make(chan struct{})
+	limiter := NewAdaptiveRateLimitTracker(cfg, registry, closeNotify).(*adaptiveRateLimitTracker)
+
+	var queueFull atomic.Uint32
+	var timedOut atomic.Uint32
+	var completed atomic.Uint32
+
+	countdown := &sync.WaitGroup{}
+
+	logStats := func() {
+		fmt.Printf("queueFulls: %v\n", queueFull.Load())
+		fmt.Printf("timedOut: %v\n", timedOut.Load())
+		fmt.Printf("completed: %v\n", completed.Load())
+		fmt.Printf("queueSize: %v\n", limiter.currentSize.Load())
+		fmt.Printf("windowSize: %v\n", limiter.currentWindow.Load())
+	}
+
+	go func() {
+		for {
+			select {
+			case <-closeNotify:
+				return
+			case <-time.After(time.Second):
+				logStats()
+			}
+		}
+	}()
+
+	sem := concurrenz.NewSemaphore(25)
+
+	for i := 0; i < 300; i++ {
+		countdown.Add(1)
+
+		go func() {
+			defer countdown.Done()
+			count := 0
+			for count < 1000 {
+				// start := time.Now()
+				err := limiter.RunRateLimitedF(func(control RateLimitControl) error {
+					if sem.TryAcquire() {
+						time.Sleep(25 * time.Millisecond)
+						control.Success()
+						sem.Release()
+						completed.Add(1)
+					} else {
+						time.Sleep(5 * time.Millisecond)
+						control.Backoff()
+						timedOut.Add(1)
+					}
+					return nil
+				})
+
+				if err != nil {
+					apiError := &errorz.ApiError{}
+					if errors.As(err, &apiError) && apiError.Code == apierror.ServerTooManyRequestsCode {
+						queueFull.Add(1)
+						time.Sleep(time.Millisecond)
+					} else {
+						panic(err)
+					}
+				} else {
+					count++
 				}
 			}
 		}()

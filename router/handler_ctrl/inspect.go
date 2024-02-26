@@ -92,7 +92,7 @@ func (context *inspectRequestContext) processLocal() {
 			} else {
 				context.appendValue(requested, string(js))
 			}
-		} else if lc == "edge-terminators" {
+		} else if lc == "sdk-terminators" {
 			factory, _ := xgress.GlobalRegistry().Factory("edge")
 			if factory == nil {
 				context.appendError("no xgress factory configured for edge binding")
@@ -105,7 +105,7 @@ func (context *inspectRequestContext) processLocal() {
 			}
 			inspectable, ok := dialer.(xgress.Inspectable)
 			if !ok {
-				context.appendError("edge dialer is not inspectable")
+				context.appendError("edge dialer is not of type Inspectable")
 				continue
 			}
 			result := inspectable.Inspect(lc, time.Second)

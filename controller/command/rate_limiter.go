@@ -18,10 +18,12 @@ package command
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/pkg/errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -33,6 +35,11 @@ const (
 
 	DefaultLimiterSize = 100
 	MinLimiterSize     = 10
+
+	DefaultAdaptiveRateLimiterEnabled       = true
+	DefaultAdaptiveRateLimiterMinWindowSize = 5
+	DefaultAdaptiveRateLimiterMaxWindowSize = 250
+	DefaultAdaptiveRateLimiterTimeout       = 30 * time.Second
 )
 
 type RateLimiterConfig struct {
@@ -96,6 +103,16 @@ type AdaptiveRateLimiter interface {
 	RunRateLimited(f func() error) (RateLimitControl, error)
 }
 
+// An AdaptiveRateLimitTracker works similarly to an AdaptiveRateLimiter, except it just manages the rate
+// limiting without actually running the work. Because it doesn't run the work itself, it has to account
+// for the possibility that some work may never report as complete or failed. It thus has a configurable
+// timeout at which point outstanding work will be marked as failed.
+type AdaptiveRateLimitTracker interface {
+	RunRateLimited() (RateLimitControl, error)
+	RunRateLimitedF(f func(control RateLimitControl) error) error
+	IsRateLimited() bool
+}
+
 type NoOpRateLimiter struct{}
 
 func (self NoOpRateLimiter) RunRateLimited(f func() error) error {
@@ -106,6 +123,20 @@ type NoOpAdaptiveRateLimiter struct{}
 
 func (self NoOpAdaptiveRateLimiter) RunRateLimited(f func() error) (RateLimitControl, error) {
 	return noOpRateLimitControl{}, f()
+}
+
+type NoOpAdaptiveRateLimitTracker struct{}
+
+func (n NoOpAdaptiveRateLimitTracker) RunRateLimited() (RateLimitControl, error) {
+	return noOpRateLimitControl{}, nil
+}
+
+func (n NoOpAdaptiveRateLimitTracker) RunRateLimitedF(f func(control RateLimitControl) error) error {
+	return f(noOpRateLimitControl{})
+}
+
+func (n NoOpAdaptiveRateLimitTracker) IsRateLimited() bool {
+	return false
 }
 
 type rateLimitedWork struct {
@@ -180,19 +211,58 @@ type AdaptiveRateLimiterConfig struct {
 
 	// WindowSizeMetric - the name of the metric show the current window size
 	WindowSizeMetric string
+
+	// Timeout - only used for AdaptiveRateLimitTracker, sets when a piece of outstanding work will be assumed to
+	//           have failed if it hasn't been marked completed yet, so that work slots aren't lost
+	Timeout time.Duration
 }
 
-func (self *AdaptiveRateLimiterConfig) Validate() error {
-	if !self.Enabled {
-		return nil
+func (self *AdaptiveRateLimiterConfig) SetDefaults() {
+	self.Enabled = DefaultAdaptiveRateLimiterEnabled
+	self.MinSize = DefaultAdaptiveRateLimiterMinWindowSize
+	self.MaxSize = DefaultAdaptiveRateLimiterMaxWindowSize
+	self.Timeout = DefaultAdaptiveRateLimiterTimeout
+}
+
+func LoadAdaptiveRateLimiterConfig(cfg *AdaptiveRateLimiterConfig, cfgmap map[interface{}]interface{}) error {
+	if value, found := cfgmap["enabled"]; found {
+		cfg.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
 	}
 
-	if self.MinSize < 1 {
-		return errors.New("adaptive rate limiter min size is 1")
+	if value, found := cfgmap["maxSize"]; found {
+		if intVal, ok := value.(int); ok {
+			v := int64(intVal)
+			cfg.MaxSize = uint32(v)
+		} else {
+			return errors.Errorf("invalid value %d for adaptive rate limiter max size, must be integer value", value)
+		}
 	}
-	if self.MinSize > self.MaxSize {
-		return fmt.Errorf("adaptive rate limiter min size must be <- max size. min: %v, max: %v", self.MinSize, self.MaxSize)
+
+	if value, found := cfgmap["minSize"]; found {
+		if intVal, ok := value.(int); ok {
+			v := int64(intVal)
+			cfg.MinSize = uint32(v)
+		} else {
+			return errors.Errorf("invalid value %d for adaptive rate limiter min size, must be integer value", value)
+		}
 	}
+
+	if cfg.MinSize < 1 {
+		return errors.Errorf("invalid value %d for adaptive rate limiter min size, must be at least", cfg.MinSize)
+	}
+
+	if cfg.MinSize > cfg.MaxSize {
+		return errors.Errorf("invalid values, %d, %d for adaptive rate limiter min size and max size, min must be <= max",
+			cfg.MinSize, cfg.MaxSize)
+	}
+
+	if value, found := cfgmap["timeout"]; found {
+		var err error
+		if cfg.Timeout, err = time.ParseDuration(fmt.Sprintf("%v", value)); err != nil {
+			return fmt.Errorf("invalid value %v for adaptive rate limiter timeout (%w)", value, err)
+		}
+	}
+
 	return nil
 }
 
@@ -202,12 +272,11 @@ func NewAdaptiveRateLimiter(config AdaptiveRateLimiterConfig, registry metrics.R
 	}
 
 	result := &adaptiveRateLimiter{
-		currentWindow: atomic.Int32{},
-		minWindow:     int32(config.MinSize),
-		maxWindow:     int32(config.MaxSize),
-		queue:         make(chan *adaptiveRateLimitedWork, config.MaxSize),
-		closeNotify:   closeNotify,
-		workRate:      registry.Timer(config.WorkTimerMetric),
+		minWindow:   int32(config.MinSize),
+		maxWindow:   int32(config.MaxSize),
+		queue:       make(chan *adaptiveRateLimitedWork, config.MaxSize),
+		closeNotify: closeNotify,
+		workRate:    registry.Timer(config.WorkTimerMetric),
 	}
 
 	if existing := registry.GetGauge(config.QueueSizeMetric); existing != nil {
@@ -267,7 +336,7 @@ func (self *adaptiveRateLimiter) success() {
 	}
 }
 
-func (self *adaptiveRateLimiter) failure(queuePosition int32) {
+func (self *adaptiveRateLimiter) backoff(queuePosition int32) {
 	if self.currentWindow.Load() <= self.minWindow {
 		return
 	}
@@ -351,8 +420,14 @@ func (self *adaptiveRateLimiter) run() {
 }
 
 type RateLimitControl interface {
+	// Success indicats the operation was a success
 	Success()
-	Timeout()
+
+	// Backoff indicates that we need to backoff
+	Backoff()
+
+	// Failed indicates the operation was not a success, but a backoff isn't required
+	Failed()
 }
 
 type rateLimitControl struct {
@@ -364,15 +439,25 @@ func (r rateLimitControl) Success() {
 	r.limiter.success()
 }
 
-func (r rateLimitControl) Timeout() {
-	r.limiter.failure(r.queuePosition)
+func (r rateLimitControl) Backoff() {
+	r.limiter.backoff(r.queuePosition)
+}
+
+func (r rateLimitControl) Failed() {
+	// no-op for this type
+}
+
+func NoOpRateLimitControl() RateLimitControl {
+	return noOpRateLimitControl{}
 }
 
 type noOpRateLimitControl struct{}
 
 func (noOpRateLimitControl) Success() {}
 
-func (noOpRateLimitControl) Timeout() {}
+func (noOpRateLimitControl) Backoff() {}
+
+func (noOpRateLimitControl) Failed() {}
 
 func WasRateLimited(err error) bool {
 	var apiErr *errorz.ApiError
@@ -380,4 +465,192 @@ func WasRateLimited(err error) bool {
 		return apiErr.Code == apierror.ServerTooManyRequestsCode
 	}
 	return false
+}
+
+func NewAdaptiveRateLimitTracker(config AdaptiveRateLimiterConfig, registry metrics.Registry, closeNotify <-chan struct{}) AdaptiveRateLimitTracker {
+	if !config.Enabled {
+		return NoOpAdaptiveRateLimitTracker{}
+	}
+
+	result := &adaptiveRateLimitTracker{
+		minWindow:       int32(config.MinSize),
+		maxWindow:       int32(config.MaxSize),
+		timeout:         config.Timeout,
+		workRate:        registry.Timer(config.WorkTimerMetric),
+		outstandingWork: map[string]*adaptiveRateLimitTrackerWork{},
+		closeNotify:     closeNotify,
+	}
+
+	if existing := registry.GetGauge(config.QueueSizeMetric); existing != nil {
+		existing.Dispose()
+	}
+
+	registry.FuncGauge(config.QueueSizeMetric, func() int64 {
+		return int64(result.currentSize.Load())
+	})
+
+	if existing := registry.GetGauge(config.WindowSizeMetric); existing != nil {
+		existing.Dispose()
+	}
+
+	registry.FuncGauge(config.WindowSizeMetric, func() int64 {
+		return int64(result.currentWindow.Load())
+	})
+
+	result.currentWindow.Store(int32(config.MaxSize))
+
+	go result.run()
+
+	return result
+}
+
+type adaptiveRateLimitTracker struct {
+	currentWindow  atomic.Int32
+	minWindow      int32
+	maxWindow      int32
+	timeout        time.Duration
+	lock           sync.Mutex
+	successCounter atomic.Uint32
+
+	currentSize     atomic.Int32
+	workRate        metrics.Timer
+	outstandingWork map[string]*adaptiveRateLimitTrackerWork
+	closeNotify     <-chan struct{}
+}
+
+func (self *adaptiveRateLimitTracker) IsRateLimited() bool {
+	return self.currentSize.Load() >= self.currentWindow.Load()
+}
+
+func (self *adaptiveRateLimitTracker) success(work *adaptiveRateLimitTrackerWork) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	self.currentSize.Add(-1)
+	delete(self.outstandingWork, work.id)
+	self.workRate.UpdateSince(work.createTime)
+	if self.currentWindow.Load() >= self.maxWindow {
+		return
+	}
+
+	if self.successCounter.Add(1)%10 == 0 {
+		if nextVal := self.currentWindow.Add(1); nextVal > self.maxWindow {
+			self.currentWindow.Store(self.maxWindow)
+		}
+	}
+}
+
+func (self *adaptiveRateLimitTracker) backoff(work *adaptiveRateLimitTrackerWork) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	self.currentSize.Add(-1)
+	delete(self.outstandingWork, work.id)
+
+	if self.currentWindow.Load() <= self.minWindow {
+		return
+	}
+
+	current := self.currentWindow.Load()
+	nextWindow := work.queuePosition - 10
+	if nextWindow < current {
+		if nextWindow < self.minWindow {
+			nextWindow = self.minWindow
+		}
+		self.currentWindow.Store(nextWindow)
+	}
+}
+
+func (self *adaptiveRateLimitTracker) complete(work *adaptiveRateLimitTrackerWork) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.currentSize.Add(-1)
+	delete(self.outstandingWork, work.id)
+}
+
+func (self *adaptiveRateLimitTracker) RunRateLimited() (RateLimitControl, error) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	queuePosition := self.currentSize.Add(1)
+	if queuePosition > self.currentWindow.Load() {
+		self.currentSize.Add(-1)
+		return noOpRateLimitControl{}, apierror.NewTooManyUpdatesError()
+	}
+
+	work := &adaptiveRateLimitTrackerWork{
+		id:            uuid.NewString(),
+		limiter:       self,
+		queuePosition: queuePosition,
+		createTime:    time.Now(),
+	}
+
+	return work, nil
+}
+
+func (self *adaptiveRateLimitTracker) RunRateLimitedF(f func(control RateLimitControl) error) error {
+	ctrl, err := self.RunRateLimited()
+	if err != nil {
+		return err
+	}
+	return f(ctrl)
+}
+
+func (self *adaptiveRateLimitTracker) run() {
+	defer self.workRate.Dispose()
+
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			self.cleanExpired()
+		case <-self.closeNotify:
+			return
+		}
+	}
+}
+
+func (self *adaptiveRateLimitTracker) cleanExpired() {
+	self.lock.Lock()
+
+	var toRemove []*adaptiveRateLimitTrackerWork
+
+	for _, v := range self.outstandingWork {
+		if time.Since(v.createTime) > self.timeout {
+			toRemove = append(toRemove, v)
+		}
+	}
+
+	self.lock.Unlock()
+
+	for _, work := range toRemove {
+		work.Backoff()
+	}
+}
+
+type adaptiveRateLimitTrackerWork struct {
+	id            string
+	limiter       *adaptiveRateLimitTracker
+	queuePosition int32
+	createTime    time.Time
+	completed     atomic.Bool
+}
+
+func (self *adaptiveRateLimitTrackerWork) Success() {
+	if self.completed.CompareAndSwap(false, true) {
+		self.limiter.success(self)
+	}
+}
+
+func (self *adaptiveRateLimitTrackerWork) Backoff() {
+	if self.completed.CompareAndSwap(false, true) {
+		self.limiter.backoff(self)
+	}
+}
+
+func (self *adaptiveRateLimitTrackerWork) Failed() {
+	if self.completed.CompareAndSwap(false, true) {
+		self.limiter.complete(self)
+	}
 }

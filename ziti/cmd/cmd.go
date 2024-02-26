@@ -131,7 +131,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	agentCommands := agentcli.NewAgentCmd(p)
 	pkiCommands := pki.NewCmdPKI(out, err)
 	fabricCommand := fabric.NewFabricCmd(p)
-	edgeCommand := edge.NewCmdEdge(out, err)
+	edgeCommand := edge.NewCmdEdge(out, err, p)
 	demoCmd := demo.NewDemoCmd(p)
 
 	opsCommands := &cobra.Command{

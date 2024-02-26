@@ -30,7 +30,7 @@ func newInspectCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.AddCommand(action.newInspectSubCmd(p, "cluster-config", "gets a subset of cluster configuration from the requested nodes"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "connected-routers", "gets information about which routers are connected to which controllers"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "links", "gets information from routers about their view of links"))
-	cmd.AddCommand(action.newInspectSubCmd(p, "edge-terminators", "gets information from routers about their view of edge terminators"))
+	cmd.AddCommand(action.newInspectSubCmd(p, "sdk-terminators", "gets information from routers about their view of sdk terminators"))
 
 	inspectCircuitsAction := &InspectCircuitsAction{InspectAction: *newInspectAction(p)}
 	cmd.AddCommand(inspectCircuitsAction.newCobraCmd())

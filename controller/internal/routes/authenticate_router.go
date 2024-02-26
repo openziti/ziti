@@ -223,7 +223,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	if writeOk {
 		ctrl.Success()
 	} else {
-		ctrl.Timeout()
+		ctrl.Backoff()
 	}
 }
 

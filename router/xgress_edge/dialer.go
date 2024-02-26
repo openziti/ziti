@@ -45,7 +45,7 @@ func (dialer *dialer) InspectTerminator(id string, destination string, fixInvali
 	pfxlog.Logger().Debug("looking up hosted service conn")
 	terminator, found := dialer.factory.hostedServices.Get(terminatorAddress)
 	if found && terminator.terminatorId.Load() == id {
-		result, err := terminator.inspect(fixInvalid)
+		result, err := terminator.inspect(dialer.factory.hostedServices, fixInvalid)
 		if err != nil {
 			return true, err.Error()
 		}
@@ -189,7 +189,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 }
 
 func (dialer *dialer) Inspect(key string, timeout time.Duration) any {
-	if key == "edge-terminators" {
+	if key == "sdk-terminators" {
 		return dialer.factory.hostedServices.Inspect(timeout)
 	}
 	return nil

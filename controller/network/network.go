@@ -376,6 +376,34 @@ func (n *Network) ValidateLinks(filter string, cb LinkValidationCallback) (int64
 	return int64(len(result.Entities)), evalF, nil
 }
 
+type SdkTerminatorValidationCallback func(detail *mgmt_pb.RouterSdkTerminatorsDetails)
+
+func (n *Network) ValidateRouterSdkTerminators(filter string, cb SdkTerminatorValidationCallback) (int64, func(), error) {
+	result, err := n.Routers.BaseList(filter)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	sem := concurrenz.NewSemaphore(10)
+
+	evalF := func() {
+		for _, router := range result.Entities {
+			connectedRouter := n.GetConnectedRouter(router.Id)
+			if connectedRouter != nil {
+				sem.Acquire()
+				go func() {
+					defer sem.Release()
+					n.Routers.ValidateRouterSdkTerminators(connectedRouter, cb)
+				}()
+			} else {
+				n.Routers.reportRouterSdkTerminatorsError(router, errors.New("router not connected"), cb)
+			}
+		}
+	}
+
+	return int64(len(result.Entities)), evalF, nil
+}
+
 func (network *Network) DisconnectRouter(r *Router) {
 	// 1: remove Links for Router
 	for _, l := range r.routerLinks.GetLinks() {

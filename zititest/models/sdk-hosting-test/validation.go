@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/controller/rest_client/link"
+	"github.com/openziti/ziti/controller/rest_client/terminator"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/zitirest"
 	"google.golang.org/protobuf/proto"
@@ -36,7 +36,11 @@ import (
 func sowChaos(run model.Run) error {
 	var controllers []*model.Component
 	var err error
-	if rand.Intn(2) == 0 {
+
+	// generate 3 bits of randomness, making sure that all three aren't zero
+	scenario := rand.Intn(7) + 1
+
+	if scenario&0b001 > 0 {
 		controllers, err = chaos.SelectRandom(run, ".ctrl", chaos.RandomOfTotal())
 		if err != nil {
 			return err
@@ -45,7 +49,7 @@ func sowChaos(run model.Run) error {
 	}
 
 	var routers []*model.Component
-	if rand.Intn(2) == 0 {
+	if scenario&0b010 > 0 {
 		routers, err = chaos.SelectRandom(run, ".router", chaos.PercentageRange(10, 75))
 		if err != nil {
 			return err
@@ -53,7 +57,7 @@ func sowChaos(run model.Run) error {
 	}
 
 	var hosts []*model.Component
-	if rand.Intn(2) == 0 {
+	if scenario&0b100 > 0 {
 		hosts, err = chaos.SelectRandom(run, ".host", chaos.PercentageRange(10, 75))
 		if err != nil {
 			return err
@@ -91,6 +95,7 @@ func validateTerminatorsForCtrlWithChan(c *model.Component, deadline time.Time, 
 }
 
 func validateTerminatorsForCtrl(c *model.Component, deadline time.Time) error {
+	expectedTerminatorCount := int64(6000)
 	username := c.MustStringVariable("credentials.edge.username")
 	password := c.MustStringVariable("credentials.edge.password")
 	edgeApiBaseUrl := c.Host.PublicIp + ":1280"
@@ -103,35 +108,35 @@ func validateTerminatorsForCtrl(c *model.Component, deadline time.Time) error {
 		return err
 	}
 
-	allLinksPresent := false
+	terminatorsPresent := false
 	start := time.Now()
 
 	logger := pfxlog.Logger().WithField("ctrl", c.Id)
 	var lastLog time.Time
-	for time.Now().Before(deadline) && !allLinksPresent {
+	for time.Now().Before(deadline) && !terminatorsPresent {
 		terminatorCount, err := getTerminatorCount(clients)
 		if err != nil {
 			return nil
 		}
-		if terminatorCount == 79800 {
-			allLinksPresent = true
+		if terminatorCount == expectedTerminatorCount {
+			terminatorsPresent = true
 		} else {
 			time.Sleep(5 * time.Second)
 		}
 		if time.Since(lastLog) > time.Minute {
-			logger.Infof("current link count: %v, elapsed time: %v", terminatorCount, time.Since(start))
+			logger.Infof("current terminator count: %v, elapsed time: %v", terminatorCount, time.Since(start))
 			lastLog = time.Now()
 		}
 	}
 
-	if allLinksPresent {
-		logger.Infof("all links present, elapsed time: %v", time.Since(start))
+	if terminatorsPresent {
+		logger.Infof("all terminators present, elapsed time: %v", time.Since(start))
 	} else {
-		return fmt.Errorf("fail to reach expected link count of 79800 on controller %v", c.Id)
+		return fmt.Errorf("fail to reach expected link count of %v on controller %v", expectedTerminatorCount, c.Id)
 	}
 
 	for {
-		count, err := validateRouterLinks(c.Id, clients)
+		count, err := validateRouterSdkTerminators(c.Id, clients)
 		if err == nil {
 			return nil
 		}
@@ -140,7 +145,7 @@ func validateTerminatorsForCtrl(c *model.Component, deadline time.Time) error {
 			return err
 		}
 
-		logger.Infof("current link errors: %v, elapsed time: %v", count, time.Since(start))
+		logger.Infof("current count of invalid sdk terminators: %v, elapsed time: %v", count, time.Since(start))
 		time.Sleep(15 * time.Second)
 	}
 }
@@ -150,7 +155,7 @@ func getTerminatorCount(clients *zitirest.Clients) (int64, error) {
 	defer cancelF()
 
 	filter := "limit 1"
-	result, err := clients.Fabric.Link.ListLinks(&link.ListLinksParams{
+	result, err := clients.Fabric.Terminator.ListTerminators(&terminator.ListTerminatorsParams{
 		Filter:  &filter,
 		Context: ctx,
 	})
@@ -158,27 +163,27 @@ func getTerminatorCount(clients *zitirest.Clients) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	linkCount := *result.Payload.Meta.Pagination.TotalCount
-	return linkCount, nil
+	count := *result.Payload.Meta.Pagination.TotalCount
+	return count, nil
 }
 
-func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
+func validateRouterSdkTerminators(id string, clients *zitirest.Clients) (int, error) {
 	logger := pfxlog.Logger().WithField("ctrl", id)
 
 	closeNotify := make(chan struct{})
-	eventNotify := make(chan *mgmt_pb.RouterLinkDetails, 1)
+	eventNotify := make(chan *mgmt_pb.RouterSdkTerminatorsDetails, 1)
 
-	handleLinkResults := func(msg *channel.Message, _ channel.Channel) {
-		detail := &mgmt_pb.RouterLinkDetails{}
+	handleSdkTerminatorResults := func(msg *channel.Message, _ channel.Channel) {
+		detail := &mgmt_pb.RouterSdkTerminatorsDetails{}
 		if err := proto.Unmarshal(msg.Body, detail); err != nil {
-			pfxlog.Logger().WithError(err).Error("unable to unmarshal router link details")
+			pfxlog.Logger().WithError(err).Error("unable to unmarshal router sdk terminator details")
 			return
 		}
 		eventNotify <- detail
 	}
 
 	bindHandler := func(binding channel.Binding) error {
-		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_ValidateRouterLinksResultType), handleLinkResults)
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_ValidateRouterSdkTerminatorsResultType), handleSdkTerminatorResults)
 		binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 			close(closeNotify)
 		}))
@@ -194,18 +199,18 @@ func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
 		_ = ch.Close()
 	}()
 
-	request := &mgmt_pb.ValidateRouterLinksRequest{
+	request := &mgmt_pb.ValidateRouterSdkTerminatorsRequest{
 		Filter: "limit none",
 	}
 	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(10 * time.Second).SendForReply(ch)
 
-	response := &mgmt_pb.ValidateRouterLinksResponse{}
+	response := &mgmt_pb.ValidateRouterSdkTerminatorsResponse{}
 	if err = protobufs.TypedResponse(response).Unmarshall(responseMsg, err); err != nil {
 		return 0, err
 	}
 
 	if !response.Success {
-		return 0, fmt.Errorf("failed to start link validation: %s", response.Message)
+		return 0, fmt.Errorf("failed to start sdk terminator validation: %s", response.Message)
 	}
 
 	logger.Infof("started validation of %v routers", response.RouterCount)
@@ -222,7 +227,7 @@ func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
 			if !routerDetail.ValidateSuccess {
 				return invalid, fmt.Errorf("error: unable to validate on controller %s (%s)", routerDetail.Message, id)
 			}
-			for _, linkDetail := range routerDetail.LinkDetails {
+			for _, linkDetail := range routerDetail.Details {
 				if !linkDetail.IsValid {
 					invalid++
 				}
@@ -231,8 +236,8 @@ func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
 		}
 	}
 	if invalid == 0 {
-		logger.Infof("link validation of %v routers successful", response.RouterCount)
+		logger.Infof("sdk terminator validation of %v routers successful", response.RouterCount)
 		return invalid, nil
 	}
-	return invalid, fmt.Errorf("invalid links found")
+	return invalid, fmt.Errorf("invalid sdk terminators found")
 }

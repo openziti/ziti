@@ -289,7 +289,7 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 			return
 		}
 
-		if req != nil && self.managers.Dispatcher.IsLeaderOrLeaderless() {
+		if self.managers.Dispatcher.IsLeaderOrLeaderless() {
 			if err := protobufs.MarshalTyped(req).WithTimeout(time.Second * 1).SendAndWaitForWire(ch); err != nil {
 				pfxlog.Logger().WithError(err).WithField("routerId", notifyRouter.Id).Error("failed to send validate terminators request to router")
 			}

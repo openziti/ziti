@@ -4,6 +4,7 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -24,6 +25,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
+	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"os"
@@ -287,14 +289,14 @@ var m = &model.Model{
 					name := fmt.Sprintf("service-policy-%03d", i)
 					identityRoles := fmt.Sprintf("@%s", identity)
 					servicesRoles := ""
-					for j := 0; j < 30; j++ {
-						idx := (serviceIdx + j) % 2000
+					for j := 0; j < 10; j++ {
+						idx := serviceIdx % 2000
 						if j > 0 {
 							servicesRoles += ","
 						}
 						servicesRoles += fmt.Sprintf("@service-%04d", idx)
+						serviceIdx++
 					}
-					serviceIdx++
 					tasks = append(tasks, func() error {
 						_, err := cli.Exec(run.GetModel(), "edge", "create", "service-policy", name, "Bind",
 							"--identity-roles", identityRoles, "--service-roles", servicesRoles)
@@ -311,17 +313,29 @@ var m = &model.Model{
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
-		"login": model.Bind(edge.Login("#ctrl")),
+		"login": model.Bind(edge.Login("#ctrl1")),
 		"restart": model.ActionBinder(func(run *model.Model) model.Action {
 			workflow := actions.Workflow()
 			workflow.AddAction(component.StopInParallel("*", 100))
 			workflow.AddAction(component.Start(".ctrl"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(component.StartInParallel(".edge-router", 10))
+			workflow.AddAction(component.StartInParallel(".router", 10))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(component.StartInParallel(".client", 50))
+			workflow.AddAction(component.StartInParallel(".host", 50))
 			return workflow
 		}),
+		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
+		"validateUp": model.Bind(model.ActionFunc(func(run model.Run) error {
+			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
+				return err
+			}
+			if err := chaos.ValidateUp(run, ".router", 100, time.Minute); err != nil {
+				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
+				return component.StartInParallel(".router", 100).Execute(run)
+			}
+			return nil
+		})),
+		"validate": model.Bind(model.ActionFunc(validateTerminators)),
 	},
 
 	Infrastructure: model.Stages{
