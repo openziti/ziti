@@ -43,8 +43,8 @@ type SecureOptions struct {
 	Endpoint string
 }
 
-// newSecureCmd consolidates network configuration steps for securing a service.
-func newSecureCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+// NewSecureCmd consolidates network configuration steps for securing a service.
+func NewSecureCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &SecureOptions{
 		EntityOptions: api.NewEntityOptions(out, errOut),
 		CommonOptions: common.CommonOptions{
@@ -83,7 +83,7 @@ func runSecure(o *SecureOptions) (err error) {
 	input := o.Args[1]
 
 	// Parse the url argument
-	protocol, address, port, err := parseInput(input)
+	protocol, address, port, err := ParseInput(input)
 	if err != nil {
 		logrus.Fatal("Error:", err)
 	}
@@ -161,7 +161,7 @@ func runSecure(o *SecureOptions) (err error) {
 	return
 }
 
-func parseInput(input string) (string, string, int, error) {
+func ParseInput(input string) (string, string, int, error) {
 	parts := strings.Split(input, ":")
 
 	// Check if there is at least one part (the port should be provided)

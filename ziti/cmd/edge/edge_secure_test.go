@@ -17,7 +17,7 @@ func TestInputParser(t *testing.T) {
 
 	t.Run("TestFullInput", func(t *testing.T) {
 		inputValue := fmt.Sprintf("%s:%s:%d", inputProtocol, inputAddress, inputPort)
-		actProtocol, actAddress, actPort, err := parseInput(inputValue)
+		actProtocol, actAddress, actPort, err := ParseInput(inputValue)
 		assert.Equal(t, inputProtocol, actProtocol)
 		assert.Equal(t, inputAddress, actAddress)
 		assert.Equal(t, inputPort, actPort)
@@ -25,7 +25,7 @@ func TestInputParser(t *testing.T) {
 	})
 	t.Run("TestNoAddr", func(t *testing.T) {
 		inputValue := fmt.Sprintf("%s:%d", inputProtocol, inputPort)
-		actProtocol, actAddress, actPort, err := parseInput(inputValue)
+		actProtocol, actAddress, actPort, err := ParseInput(inputValue)
 		assert.Equal(t, inputProtocol, actProtocol)
 		assert.Equal(t, defaultAddress, actAddress)
 		assert.Equal(t, inputPort, actPort)
@@ -33,7 +33,7 @@ func TestInputParser(t *testing.T) {
 	})
 	t.Run("TestNoProt", func(t *testing.T) {
 		inputValue := fmt.Sprintf("%s:%d", inputAddress, inputPort)
-		actProtocol, actAddress, actPort, err := parseInput(inputValue)
+		actProtocol, actAddress, actPort, err := ParseInput(inputValue)
 		assert.Equal(t, defaultProtocol, actProtocol)
 		assert.Equal(t, inputAddress, actAddress)
 		assert.Equal(t, inputPort, actPort)
@@ -41,7 +41,7 @@ func TestInputParser(t *testing.T) {
 	})
 	t.Run("TestNoAddrNoProt", func(t *testing.T) {
 		inputValue := fmt.Sprintf("%d", inputPort)
-		actProtocol, actAddress, actPort, err := parseInput(inputValue)
+		actProtocol, actAddress, actPort, err := ParseInput(inputValue)
 		assert.Equal(t, defaultProtocol, actProtocol)
 		assert.Equal(t, defaultAddress, actAddress)
 		assert.Equal(t, inputPort, actPort)
@@ -49,7 +49,7 @@ func TestInputParser(t *testing.T) {
 	})
 	t.Run("TestProtAddrNoPortFails", func(t *testing.T) {
 		inputValue := fmt.Sprintf("%s:%s", inputProtocol, inputAddress)
-		actProtocol, actAddress, actPort, err := parseInput(inputValue)
+		actProtocol, actAddress, actPort, err := ParseInput(inputValue)
 		assert.Equal(t, errorProtOrAddr, actProtocol)
 		assert.Equal(t, errorProtOrAddr, actAddress)
 		assert.Equal(t, errorPort, actPort)
@@ -57,7 +57,7 @@ func TestInputParser(t *testing.T) {
 	})
 	t.Run("TestOnlyProtFails", func(t *testing.T) {
 		inputValue := fmt.Sprintf("%s", inputProtocol)
-		actProtocol, actAddress, actPort, err := parseInput(inputValue)
+		actProtocol, actAddress, actPort, err := ParseInput(inputValue)
 		assert.Equal(t, errorProtOrAddr, actProtocol)
 		assert.Equal(t, errorProtOrAddr, actAddress)
 		assert.Equal(t, errorPort, actPort)
@@ -65,7 +65,7 @@ func TestInputParser(t *testing.T) {
 	})
 	t.Run("TestOnlyAddrFails", func(t *testing.T) {
 		inputValue := fmt.Sprintf("%s", inputProtocol)
-		actProtocol, actAddress, actPort, err := parseInput(inputValue)
+		actProtocol, actAddress, actPort, err := ParseInput(inputValue)
 		assert.Equal(t, errorProtOrAddr, actProtocol)
 		assert.Equal(t, errorProtOrAddr, actAddress)
 		assert.Equal(t, errorPort, actPort)

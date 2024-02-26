@@ -142,6 +142,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	opsCommands.AddCommand(database.NewCmdDb(out, err))
 	opsCommands.AddCommand(NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
+	opsCommands.AddCommand(NewVerifyNetworkCmd(out, err))
 
 	installCommands := []*cobra.Command{
 		install.NewCmdInstall(out, err),

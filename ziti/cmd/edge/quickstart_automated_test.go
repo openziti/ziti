@@ -113,7 +113,7 @@ func TestMultipleZitiEdgeSecure(t *testing.T) {
 	}
 
 	// Run ZES once
-	zes := newSecureCmd(os.Stdout, os.Stderr)
+	zes := NewSecureCmd(os.Stdout, os.Stderr)
 	zes.SetArgs([]string{
 		service1Name,
 		params,
@@ -125,7 +125,7 @@ func TestMultipleZitiEdgeSecure(t *testing.T) {
 	}
 
 	// Run ZES twice
-	zes = newSecureCmd(os.Stdout, os.Stderr)
+	zes = NewSecureCmd(os.Stdout, os.Stderr)
 	zes.SetArgs([]string{
 		service2Name,
 		params,
