@@ -77,7 +77,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zitadel/oidc/v2 v2.12.0
-	go.etcd.io/bbolt v1.3.8
+	go.etcd.io/bbolt v1.3.9
 	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/crypto v0.19.0
 	golang.org/x/net v0.21.0
