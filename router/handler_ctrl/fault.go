@@ -56,6 +56,12 @@ func (self *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fa
 		linkId := fault.Id
 		log = log.WithField("linkId", linkId)
 		if link, _ := self.xlinkRegistry.GetLinkById(linkId); link != nil {
+			if fault.Iteration > 0 && fault.Iteration < link.Iteration() {
+				log.WithField("fault.iteration", fault.Iteration).
+					WithField("link.iteration", link.Iteration()).
+					Info("link fault reported, but fault iteration < link iteration, ignoring")
+				return
+			}
 			log.Info("link fault reported, closing")
 			if err := link.CloseNotified(); err != nil {
 				log.WithError(err).Error("failure closing link")

@@ -16,7 +16,7 @@ type ZCatType struct {
 }
 
 func (self *ZCatType) InitType(*model.Component) {
-	canonicalizeZitiVersion(&self.Version)
+	canonicalizeGoAppVersion(&self.Version)
 }
 
 func (self *ZCatType) Dump() any {

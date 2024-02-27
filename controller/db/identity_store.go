@@ -41,6 +41,8 @@ const (
 	FieldIdentityEnvInfoOs         = "envInfoOs"
 	FieldIdentityEnvInfoOsRelease  = "envInfoRelease"
 	FieldIdentityEnvInfoOsVersion  = "envInfoVersion"
+	FieldIdentityEnvInfoDomain     = "envInfoDomain"
+	FieldIdentityEnvInfoHostname   = "envInfoHostname"
 	FieldIdentitySdkInfoBranch     = "sdkInfoBranch"
 	FieldIdentitySdkInfoRevision   = "sdkInfoRevision"
 	FieldIdentitySdkInfoType       = "sdkInfoType"
@@ -75,6 +77,8 @@ type EnvInfo struct {
 	Os        string `json:"os"`
 	OsRelease string `json:"osRelease"`
 	OsVersion string `json:"osVersion"`
+	Domain    string `json:"domain"`
+	Hostname  string `json:"hostname"`
 }
 
 type SdkInfo struct {
@@ -256,6 +260,8 @@ func (store *identityStoreImpl) FillEntity(entity *Identity, bucket *boltz.Typed
 		Os:        bucket.GetStringWithDefault(FieldIdentityEnvInfoOs, ""),
 		OsRelease: bucket.GetStringWithDefault(FieldIdentityEnvInfoOsRelease, ""),
 		OsVersion: bucket.GetStringWithDefault(FieldIdentityEnvInfoOsVersion, ""),
+		Domain:    bucket.GetStringWithDefault(FieldIdentityEnvInfoDomain, ""),
+		Hostname:  bucket.GetStringWithDefault(FieldIdentityEnvInfoHostname, ""),
 	}
 
 	entity.ServiceHostingPrecedences = map[string]ziti.Precedence{}
@@ -306,6 +312,8 @@ func (store *identityStoreImpl) PersistEntity(entity *Identity, ctx *boltz.Persi
 		ctx.SetString(FieldIdentityEnvInfoOs, entity.EnvInfo.Os)
 		ctx.SetString(FieldIdentityEnvInfoOsRelease, entity.EnvInfo.OsRelease)
 		ctx.SetString(FieldIdentityEnvInfoOsVersion, entity.EnvInfo.OsVersion)
+		ctx.SetString(FieldIdentityEnvInfoDomain, entity.EnvInfo.Domain)
+		ctx.SetString(FieldIdentityEnvInfoHostname, entity.EnvInfo.Hostname)
 	}
 
 	if entity.SdkInfo != nil {

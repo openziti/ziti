@@ -22,7 +22,7 @@ the [HA PKI Guide](./dev-setup-ha-pki.md)
     5. The ctrl1.yml config file has the other two controllers as bootstrap members, so when it
        starts the first controller will start trying form the raft cluster.
 3. Initialize the edge using the agent
-    1. `ziti agent controller init <pid of any controller> admin admin 'Default Admin'`
+    1. `ziti agent controller init -p <pid of any controller> admin admin 'Default Admin'`
     2. You can of course use different values if you desire
 
 You should now have a three node cluster running. You can log into each controller individually.

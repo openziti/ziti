@@ -29,7 +29,7 @@ func getZitiProcessFilter(c *model.Component, zitiType string) func(string) bool
 	return func(s string) bool {
 		return strings.Contains(s, "ziti") &&
 			strings.Contains(s, zitiType) &&
-			strings.Contains(s, fmt.Sprintf("--cli-agent-alias %s", c.Id)) &&
+			strings.Contains(s, fmt.Sprintf("--cli-agent-alias %s ", c.Id)) &&
 			!strings.Contains(s, "sudo ")
 	}
 }
@@ -46,9 +46,13 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 		useSudo = "sudo"
 	}
 
-	serviceCmd := fmt.Sprintf("nohup %s %s %s run --log-formatter pfxlog %s --cli-agent-alias %s > %s 2>&1 &",
-		useSudo, binaryPath, zitiType, configPath, c.Id, logsPath)
-	logrus.Info(serviceCmd)
+	serviceCmd := fmt.Sprintf("nohup %s %s %s run --cli-agent-alias %s --log-formatter pfxlog %s > %s 2>&1 &",
+		useSudo, binaryPath, zitiType, c.Id, configPath, logsPath)
+
+	if quiet, _ := c.GetBoolVariable("quiet_startup"); !quiet {
+		logrus.Info(serviceCmd)
+	}
+
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {
 		return err
@@ -61,7 +65,7 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 	return nil
 }
 
-func canonicalizeZitiVersion(version *string) {
+func canonicalizeGoAppVersion(version *string) {
 	if version != nil {
 		if *version != "" && *version != "latest" && !strings.HasPrefix(*version, "v") {
 			*version = "v" + *version
@@ -70,13 +74,14 @@ func canonicalizeZitiVersion(version *string) {
 }
 
 func getZitiBinaryPath(c *model.Component, version string) string {
-	binaryName := "ziti"
+	return getBinaryPath(c, "ziti", version)
+}
+
+func getBinaryPath(c *model.Component, binaryName string, version string) string {
 	if version != "" {
 		binaryName += "-" + version
 	}
-
 	user := c.GetHost().GetSshUser()
-
 	return fmt.Sprintf("/home/%s/fablab/bin/%s", user, binaryName)
 }
 

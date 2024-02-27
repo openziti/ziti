@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -15,9 +16,11 @@ import (
 )
 
 type TestLink struct {
-	Id     string
-	Dest   string
-	Failed bool
+	Id         string
+	Src        string
+	Dest       string
+	FaultCount int
+	Valid      bool
 }
 
 type LinkStateChecker struct {
@@ -34,7 +37,7 @@ func (self *LinkStateChecker) reportError(err error) {
 	}
 }
 
-func (self *LinkStateChecker) HandleLink(msg *channel.Message, _ channel.Channel) {
+func (self *LinkStateChecker) HandleLink(msg *channel.Message, ch channel.Channel) {
 	self.Lock()
 	defer self.Unlock()
 
@@ -44,8 +47,22 @@ func (self *LinkStateChecker) HandleLink(msg *channel.Message, _ channel.Channel
 	}
 
 	for _, link := range routerLinks.Links {
-		self.links[link.Id] = &TestLink{
-			Id: link.Id,
+		testLink, ok := self.links[link.Id]
+		if !ok {
+			self.links[link.Id] = &TestLink{
+				Id:    link.Id,
+				Src:   ch.Id(),
+				Dest:  link.DestRouterId,
+				Valid: true,
+			}
+		} else {
+			if testLink.Src != ch.Id() {
+				self.reportError(fmt.Errorf("source router change for link %v => %v", testLink.Src, ch.Id()))
+			}
+			if testLink.Dest != link.DestRouterId {
+				self.reportError(fmt.Errorf("dest router change for link %v => %v", testLink.Dest, link.DestRouterId))
+			}
+			testLink.Valid = true
 		}
 	}
 }
@@ -64,7 +81,8 @@ func (self *LinkStateChecker) HandleFault(msg *channel.Message, _ channel.Channe
 
 	if fault.Subject == ctrl_pb.FaultSubject_LinkFault || fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate {
 		if link, found := self.links[fault.Id]; found {
-			link.Failed = true
+			link.FaultCount++
+			link.Valid = false
 		} else {
 			self.reportError(errors.Errorf("no link with Id %s found", fault.Id))
 		}
@@ -108,7 +126,7 @@ func (self *LinkStateChecker) RequireOneActiveLink() *TestLink {
 	var activeLink *TestLink
 
 	for _, link := range self.links {
-		if !link.Failed {
+		if link.Valid {
 			self.req.Nil(activeLink, "more than one active link found")
 			activeLink = link
 		}
@@ -117,13 +135,16 @@ func (self *LinkStateChecker) RequireOneActiveLink() *TestLink {
 	return activeLink
 }
 
-func StartLinkTest(id string, uf channel.UnderlayFactory, assertions *require.Assertions) (channel.Channel, *LinkStateChecker) {
+func NewLinkChecker(assertions *require.Assertions) *LinkStateChecker {
 	checker := &LinkStateChecker{
 		errorC: make(chan error, 4),
 		links:  map[string]*TestLink{},
 		req:    assertions,
 	}
+	return checker
+}
 
+func StartLinkTest(checker *LinkStateChecker, id string, uf channel.UnderlayFactory, assertions *require.Assertions) channel.Channel {
 	bindHandler := func(binding channel.Binding) error {
 		binding.AddReceiveHandlerF(channel.AnyContentType, checker.HandleOther)
 		binding.AddReceiveHandlerF(int32(ctrl_pb.ContentType_VerifyRouterType), func(msg *channel.Message, ch channel.Channel) {
@@ -137,5 +158,5 @@ func StartLinkTest(id string, uf channel.UnderlayFactory, assertions *require.As
 	timeoutUF := NewTimeoutUnderlayFactory(uf, 2*time.Second)
 	ch, err := channel.NewChannel(id, timeoutUF, channel.BindHandlerF(bindHandler), channel.DefaultOptions())
 	assertions.NoError(err)
-	return ch, checker
+	return ch
 }

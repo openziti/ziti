@@ -375,6 +375,8 @@ func fillInfo(identity *rest_model.IdentityDetail, envInfo *model.EnvInfo, sdkIn
 			Os:        envInfo.Os,
 			OsRelease: envInfo.OsRelease,
 			OsVersion: envInfo.OsVersion,
+			Domain:    envInfo.Domain,
+			Hostname:  envInfo.Hostname,
 		}
 	} else {
 		identity.EnvInfo = &rest_model.EnvInfo{}

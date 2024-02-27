@@ -29,12 +29,12 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge-api/rest_model"
+	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/change"
-	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"reflect"
@@ -190,7 +190,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 	transport.TLSClientConfig.Certificates = test.certAuthenticator.TLSCertificates()
 
 	bodyJson := `{
-  "envInfo": {"os": "windows", "arch": "amd64", "osRelease": "6.2.9200", "osVersion": "6.2.9200"},
+  "envInfo": {"os": "windows", "arch": "amd64", "osRelease": "6.2.9200", "osVersion": "6.2.9200", "domain": "domain1", "hostname": "hostname1"},
   "sdkInfo": {"type": "ziti-sdk-golang", "branch": "unknown", "version": "0.0.0", "revision": "unknown"}
 }`
 	resp, err := testClient.NewRequest().
@@ -287,7 +287,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 		r := test.ctx.Req
 
 		secondInfo := `{
-  "envInfo": {"os": "updatedValueOs", "arch": "updatedValueArch", "osRelease": "updatedValueRelease", "osVersion": "updatedValueOsRelease"},
+  "envInfo": {"os": "updatedValueOs", "arch": "updatedValueArch", "osRelease": "updatedValueRelease", "osVersion": "updatedValueOsRelease", "domain": "updatedDomain", "hostname": "updatedHostname"},
   "sdkInfo": {"type": "updatedValueType", "branch": "updatedValueBranch", "version": "updatedValueVersion", "revision": "updatedValueRevision"}
 }`
 		authResp, err := testClient.NewRequest().

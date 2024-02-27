@@ -63,6 +63,10 @@ type LinkDetail struct {
 	// Required: true
 	ID *string `json:"id"`
 
+	// iteration
+	// Required: true
+	Iteration *int64 `json:"iteration"`
+
 	// protocol
 	// Required: true
 	Protocol *string `json:"protocol"`
@@ -105,6 +109,10 @@ func (m *LinkDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateID(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIteration(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -184,6 +192,15 @@ func (m *LinkDetail) validateDown(formats strfmt.Registry) error {
 func (m *LinkDetail) validateID(formats strfmt.Registry) error {
 
 	if err := validate.Required("id", "body", m.ID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *LinkDetail) validateIteration(formats strfmt.Registry) error {
+
+	if err := validate.Required("iteration", "body", m.Iteration); err != nil {
 		return err
 	}
 

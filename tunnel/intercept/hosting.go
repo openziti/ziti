@@ -193,7 +193,7 @@ func (self *hostingContext) SetCloseCallback(f func()) {
 func (self *hostingContext) OnClose() {
 	log := pfxlog.Logger().WithField("service", self.service.Name)
 	for _, addr := range self.config.AllowedSourceAddresses {
-		_, ipNet, err := utils.GetDialIP(addr)
+		ipNet, err := utils.GetCidr(addr)
 		if err != nil {
 			log.WithError(err).Error("failed to get dial IP")
 		} else if self.addrTracker.RemoveAddress(ipNet.String()) {

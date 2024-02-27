@@ -2,8 +2,8 @@ package edge_ctrl_pb
 
 import (
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/controller/xt"
 )
 
 func (m *ClientHello) GetContentType() int32 {

@@ -18,6 +18,7 @@ package command
 
 import (
 	"fmt"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/pkg/errors"
@@ -372,3 +373,11 @@ type noOpRateLimitControl struct{}
 func (noOpRateLimitControl) Success() {}
 
 func (noOpRateLimitControl) Timeout() {}
+
+func WasRateLimited(err error) bool {
+	var apiErr *errorz.ApiError
+	if errors.As(err, &apiErr) {
+		return apiErr.Code == apierror.ServerTooManyRequestsCode
+	}
+	return false
+}

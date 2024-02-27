@@ -54,6 +54,7 @@ type StateManager interface {
 	//"Network" Sessions
 	RemoveEdgeSession(token string)
 	AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener
+	WasSessionRecentlyRemoved(token string) bool
 
 	//ApiSessions
 	GetApiSession(token string) *ApiSession
@@ -282,6 +283,10 @@ func (sm *StateManagerImpl) GetApiSession(token string) *ApiSession {
 		}
 	}
 	return nil
+}
+
+func (sm *StateManagerImpl) WasSessionRecentlyRemoved(token string) bool {
+	return sm.recentlyRemovedSessions.Has(token)
 }
 
 func (sm *StateManagerImpl) AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener {

@@ -19,6 +19,7 @@ package router
 import (
 	"bytes"
 	"fmt"
+	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/router/env"
 	"io"
 	"os"
@@ -27,13 +28,13 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/identity"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/identity"
-	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
@@ -113,6 +114,7 @@ type Config struct {
 		Options               *channel.Options
 		DataDir               string
 		Heartbeats            env.HeartbeatOptions
+		StartupTimeout        time.Duration
 	}
 	Link struct {
 		Listeners  []map[interface{}]interface{}
@@ -446,6 +448,7 @@ func LoadConfig(path string) (*Config, error) {
 	cfg.Ctrl.DefaultRequestTimeout = 5 * time.Second
 	cfg.Ctrl.Options = channel.DefaultOptions()
 	cfg.Ctrl.Heartbeats = *env.NewDefaultHeartbeatOptions()
+	cfg.Ctrl.StartupTimeout = 30 * time.Second
 
 	if value, found := cfgmap[CtrlMapKey]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
@@ -511,6 +514,12 @@ func LoadConfig(path string) (*Config, error) {
 				var err error
 				if cfg.Ctrl.DefaultRequestTimeout, err = time.ParseDuration(value.(string)); err != nil {
 					return nil, errors.Wrap(err, "invalid value for ctrl.defaultRequestTimeout")
+				}
+			}
+			if value, found := submap["startupTimeout"]; found {
+				var err error
+				if cfg.Ctrl.StartupTimeout, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for ctrl.startupTimeout")
 				}
 			}
 			if value, found := submap["dataDir"]; found {
@@ -740,6 +749,18 @@ func LoadConfig(path string) (*Config, error) {
 			cfg.Proxy = proxyConfig
 		} else {
 			pfxlog.Logger().Warn("invalid proxy configuration, must be map")
+		}
+	}
+
+	if value, found := cfgmap["tls"]; found {
+		if tlsMap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := tlsMap["handshakeTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					tls.SetSharedListenerHandshakeTimeout(val)
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse tls.handshakeTimeout value '%v", value)
+				}
+			}
 		}
 	}
 

@@ -20,6 +20,7 @@ import "time"
 
 const (
 	ZITI                    = "ziti"
+	ZROK                    = "zrok"
 	ZITI_CONTROLLER         = "ziti-controller"
 	ZITI_ROUTER             = "ziti-router"
 	ZITI_TUNNEL             = "ziti-tunnel"

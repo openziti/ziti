@@ -25,6 +25,10 @@ func (self *RefCountingResolver) AddDomain(name string, cb func(string) (net.IP,
 	return self.wrapped.AddDomain(name, cb)
 }
 
+func (self *RefCountingResolver) RemoveDomain(name string) {
+	self.wrapped.RemoveDomain(name)
+}
+
 func (self *RefCountingResolver) AddHostname(s string, ip net.IP) error {
 	err := self.wrapped.AddHostname(s, ip)
 	if err != nil {
@@ -38,7 +42,7 @@ func (self *RefCountingResolver) AddHostname(s string, ip net.IP) error {
 	return err
 }
 
-func (self *RefCountingResolver) RemoveHostname(s string) error {
+func (self *RefCountingResolver) RemoveHostname(s string) net.IP {
 	val := self.names.Upsert(s, 1, func(exist bool, valueInMap int, newValue int) int {
 		if exist {
 			return valueInMap - 1

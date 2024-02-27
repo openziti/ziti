@@ -15,3 +15,4 @@ jobs:
         uses: codespell-project/actions-codespell@v2
         with:
           ignore_words_list: allos,ans,dne,noe,referr,ssudo,te,tranfer,ue
+          skip: go.*,zititest/go.*

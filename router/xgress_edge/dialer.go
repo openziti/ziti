@@ -45,13 +45,6 @@ func (dialer *dialer) InspectTerminator(id string, destination string, fixInvali
 	pfxlog.Logger().Debug("looking up hosted service conn")
 	terminator, found := dialer.factory.hostedServices.Get(terminatorAddress)
 	if found && terminator.terminatorId.Load() == id {
-		updated := terminator.state.CompareAndSwap(TerminatorStateEstablishing, TerminatorStateEstablished) ||
-			terminator.state.CompareAndSwap(TerminatorStatePendingEstablishment, TerminatorStateEstablished)
-
-		if updated {
-			dialer.factory.hostedServices.notifyTerminatorCreated(id)
-		}
-
 		result, err := terminator.inspect(fixInvalid)
 		if err != nil {
 			return true, err.Error()

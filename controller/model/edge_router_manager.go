@@ -291,51 +291,12 @@ func (self *EdgeRouterManager) collectEnrollmentsInTx(tx *bbolt.Tx, id string, c
 // with a JWT, a new JWT is created. If the edge router was already enrolled, all record of the enrollment is
 // reset and the edge router is disconnected forcing the edge router to complete enrollment before connecting.
 func (self *EdgeRouterManager) ReEnroll(router *EdgeRouter, ctx *change.Context) error {
-	log := pfxlog.Logger().WithField("routerId", router.Id)
-
-	log.Info("attempting to set edge router state to unenrolled")
-	enrollment := &Enrollment{
-		BaseEntity: models.BaseEntity{
-			Id: eid.New(),
-		},
-		Method:       MethodEnrollEdgeRouterOtt,
-		EdgeRouterId: &router.Id,
+	cmd := &ReEnrollEdgeRouterCmd{
+		ctx:          ctx,
+		manager:      self.env.GetManagers().Enrollment,
+		edgeRouterId: router.Id,
 	}
-
-	if err := enrollment.FillJwtInfo(self.env, router.Id); err != nil {
-		return fmt.Errorf("unable to fill jwt info for re-enrolling edge router: %v", err)
-	}
-
-	if err := self.env.GetManagers().Enrollment.Create(enrollment, ctx); err != nil {
-		return errors.Wrap(err, "could not create enrollment for re-enrolling edge router")
-	} else {
-		log.WithField("enrollmentId", enrollment.Id).Infof("edge router re-enrollment entity created")
-	}
-
-	router.Fingerprint = nil
-	router.CertPem = nil
-	router.IsVerified = false
-
-	if err := self.Update(router, true, fields.UpdatedFieldsMap{
-		db.FieldRouterFingerprint:    struct{}{},
-		db.FieldEdgeRouterCertPEM:    struct{}{},
-		db.FieldEdgeRouterIsVerified: struct{}{},
-	}, ctx); err != nil {
-		log.WithError(err).Error("unable to patch re-enrolling edge router")
-		return errors.Wrap(err, "unable to patch re-enrolling edge router")
-	}
-
-	log.Info("closing existing connections for re-enrolling edge router")
-	connectedRouter := self.env.GetHostController().GetNetwork().GetConnectedRouter(router.Id)
-	if connectedRouter != nil && connectedRouter.Control != nil && !connectedRouter.Control.IsClosed() {
-		log = log.WithField("channel", connectedRouter.Control.Id())
-		log.Info("closing channel, router is flagged for re-enrollment and an existing open channel was found")
-		if err := connectedRouter.Control.Close(); err != nil {
-			log.Warnf("unexpected error closing channel for router flagged for re-enrollment: %v", err)
-		}
-	}
-
-	return nil
+	return self.Dispatch(cmd)
 }
 
 type ExtendedCerts struct {

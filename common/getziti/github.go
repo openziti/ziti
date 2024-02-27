@@ -119,7 +119,7 @@ func GetLatestGitHubReleaseAsset(appName string, appGitHub string, version strin
 			version = strings.TrimPrefix(version, "v")
 		}
 
-		if appName == "ziti" || appName == "ziti-edge-tunnel" {
+		if appName == "ziti" || appName == "ziti-edge-tunnel" || appName == "zrok" {
 			if !strings.HasPrefix(version, "v") {
 				version = "v" + version
 			}
@@ -280,6 +280,29 @@ func InstallGitHubRelease(zitiApp string, release *GitHubReleasesData, binDir st
 
 			if count != 1 {
 				return errors.Errorf("didn't find ziti executable in release archive. count: %v", count)
+			}
+
+			pfxlog.Logger().Infof("Successfully installed '%s' version '%s' to %s", zitiApp, release.Version, filepath.Join(binDir, zitiFileName))
+			return nil
+		} else if zitiApp == c.ZROK {
+			count := 0
+			zitiFileName := "zrok-" + version
+			expectedPath := "zrok"
+
+			err = UnTarGz(fullPath, binDir, func(path string) (string, bool) {
+				if path == expectedPath {
+					count++
+					return zitiFileName, true
+				}
+				return "", false
+			})
+
+			if err != nil {
+				return err
+			}
+
+			if count != 1 {
+				return errors.Errorf("didn't find zrok executable in release archive. count: %v", count)
 			}
 
 			pfxlog.Logger().Infof("Successfully installed '%s' version '%s' to %s", zitiApp, release.Version, filepath.Join(binDir, zitiFileName))

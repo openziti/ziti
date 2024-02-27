@@ -13,6 +13,7 @@ enum CommandType {
   CreateTransitRouterType = 1003;
   CreateIdentityWithEnrollmentsType = 1004;
   UpdateServiceConfigsType = 1005;
+  ReEnrollEdgeRouterType = 1006;
 }
 
 message ChangeContext {
@@ -183,6 +184,11 @@ message EdgeRouter {
   bool disabled = 15;
 }
 
+message ReEnrollEdgeRouterCmd {
+  string edgeRouterId = 1;
+  ChangeContext ctx = 2;
+}
+
 message CreateEdgeRouterCmd {
   EdgeRouter edgeRouter = 1;
   Enrollment enrollment = 2;
@@ -250,6 +256,8 @@ message Identity {
     string Os = 2;
     string OsRelease = 3;
     string OsVersion = 4;
+    string Domain = 5;
+    string Hostname = 6;
   }
 
   message SdkInfo {

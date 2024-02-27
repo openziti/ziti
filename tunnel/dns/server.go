@@ -186,12 +186,13 @@ func (r *resolver) getAddress(name string) (net.IP, error) {
 		de, ok := r.domains[canonical]
 
 		if ok {
+			name = name[:len(name)-1]
 			ip, err := de.getIP(name)
 			if err != nil {
 				return nil, err
 			}
 			log.Debugf("assigned %v => %v", name, ip)
-			_ = r.AddHostname(name[:len(name)-1], ip) // this resolver impl never returns an error
+			_ = r.AddHostname(name, ip) // this resolver impl never returns an error
 			return ip, err
 		}
 	}
@@ -243,12 +244,23 @@ func (r *resolver) AddDomain(name string, ipCB func(string) (net.IP, error)) err
 	r.domainsMtx.Lock()
 	defer r.domainsMtx.Unlock()
 	if _, found := r.domains[domainSfx]; found {
-		log.Warnf("domain[%v] is already registered", name)
-	} else {
-		r.domains[domainSfx] = entry
+		log.Warnf("domain[%v] is overwriting registered domain", name)
 	}
+	r.domains[domainSfx] = entry
 
 	return nil
+}
+
+func (r *resolver) RemoveDomain(name string) {
+	if name[0] != '*' {
+		log.Warnf("invalid wildcard domain '%s'", name)
+		return
+	}
+	domainSfx := name[1:] + "."
+	r.domainsMtx.Lock()
+	defer r.domainsMtx.Unlock()
+	log.Infof("removing domain %s from resolver", domainSfx)
+	delete(r.domains, domainSfx)
 }
 
 func (r *resolver) AddHostname(hostname string, ip net.IP) error {
@@ -278,18 +290,20 @@ func (r *resolver) Lookup(ip net.IP) (string, error) {
 	return "", errors.New("not found")
 }
 
-func (r *resolver) RemoveHostname(hostname string) error {
+func (r *resolver) RemoveHostname(hostname string) net.IP {
 	r.namesMtx.Lock()
 	defer r.namesMtx.Unlock()
 
 	key := strings.ToLower(hostname) + "."
-	if ip, ok := r.names[key]; ok {
+	var ip net.IP
+	var ok bool
+	if ip, ok = r.names[key]; ok {
 		log.Infof("removing %s from resolver", hostname)
 		delete(r.ips, ip.String())
 		delete(r.names, key)
 	}
 
-	return nil
+	return ip
 }
 
 func (r *resolver) Cleanup() error {

@@ -349,10 +349,10 @@ func (self *Router) startProfiling() {
 }
 
 func (self *Router) initRateLimiterPool() error {
-	linkDialerPoolConfig := goroutines.PoolConfig{
+	rateLimiterPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(self.forwarder.Options.RateLimiter.QueueLength),
 		MinWorkers:  0,
-		MaxWorkers:  uint32(self.forwarder.Options.LinkDial.WorkerCount),
+		MaxWorkers:  uint32(self.forwarder.Options.RateLimiter.WorkerCount),
 		IdleTime:    30 * time.Second,
 		CloseNotify: self.GetCloseNotify(),
 		PanicHandler: func(err interface{}) {
@@ -360,9 +360,9 @@ func (self *Router) initRateLimiterPool() error {
 		},
 	}
 
-	fabricMetrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, self.GetMetricsRegistry(), "pool.link.dialer")
+	fabricMetrics.ConfigureGoroutinesPoolMetrics(&rateLimiterPoolConfig, self.GetMetricsRegistry(), "pool.rate_limiter")
 
-	rateLimiterPool, err := goroutines.NewPool(linkDialerPoolConfig)
+	rateLimiterPool, err := goroutines.NewPool(rateLimiterPoolConfig)
 	if err != nil {
 		return errors.Wrap(err, "error creating rate limited pool")
 	}
@@ -534,14 +534,16 @@ func (self *Router) startControlPlane() error {
 	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
-	time.AfterFunc(time.Second*15, func() {
-		if !self.isShutdown.Load() && len(self.ctrls.GetAll()) == 0 {
-			if os.Getenv("STACKDUMP_ON_FAILED_STARTUP") == "true" {
-				debugz.DumpStack()
+	if self.config.Ctrl.StartupTimeout > 0 {
+		time.AfterFunc(self.config.Ctrl.StartupTimeout, func() {
+			if !self.isShutdown.Load() && len(self.ctrls.GetAll()) == 0 {
+				if os.Getenv("STACKDUMP_ON_FAILED_STARTUP") == "true" {
+					debugz.DumpStack()
+				}
+				pfxlog.Logger().Fatal("unable to connect to any controllers before timeout")
 			}
-			pfxlog.Logger().Fatal("unable to connect to any controllers before timeout")
-		}
-	})
+		})
+	}
 
 	_ = self.ctrls.AnyValidCtrlChannel()
 	for _, x := range self.xrctrls {
@@ -579,7 +581,7 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 		if buf, err := proto.Marshal(listeners); err != nil {
 			return errors.Wrap(err, "unable to marshal Listeners")
 		} else {
-			attributes[int32(ctrl_pb.ContentType_ListenersHeader)] = buf
+			attributes[int32(ctrl_pb.ControlHeaders_ListenersHeader)] = buf
 		}
 	}
 
@@ -592,7 +594,7 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 	if buf, err := proto.Marshal(routerMeta); err != nil {
 		return errors.Wrap(err, "unable to router metadata")
 	} else {
-		attributes[int32(ctrl_pb.ContentType_RouterMetadataHeader)] = buf
+		attributes[int32(ctrl_pb.ControlHeaders_RouterMetadataHeader)] = buf
 	}
 
 	var channelRef concurrenz.AtomicValue[channel.Channel]
@@ -619,6 +621,11 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
 	channelRef.Store(ch)
+
+	// If there are multiple controllers we may have to catch up the controllers that connected later
+	// with things that have already happened because we had state from other controllers, such as
+	// links
+	reconnectHandler()
 
 	return nil
 }
