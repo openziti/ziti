@@ -248,7 +248,7 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create metrics api factory")
 	}
 
-	if err := c.spaHandler.GetRegistry().Add(spa_handler.NewZitiAdminConsoleFactory()); err != nil {
+	if err := c.spaHandler.GetRegistry().Add(spa_handler.NewSinglePageAppFactory()); err != nil {
 		logrus.WithError(err).Fatalf("failed to create single page application factory")
 	}
 
