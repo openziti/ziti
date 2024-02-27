@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
 )
@@ -89,9 +89,9 @@ func (self *EntityOptions) AddCommonFlags(cmd *cobra.Command) {
 
 func (self *EntityOptions) GetTags() map[string]interface{} {
 	result := map[string]interface{}{}
-	if len(self.Tags) > 0 {
+	if len(self.TagsJson) > 0 {
 		if err := json.Unmarshal([]byte(self.TagsJson), &result); err != nil {
-			panic(errors.Wrap(err, "invalid tags JSON"))
+			logrus.Fatalf("invalid tags JSON: '%s'", self.TagsJson)
 		}
 	}
 	for k, v := range self.Tags {
