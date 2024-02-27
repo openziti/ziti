@@ -49,7 +49,7 @@ func (factory ZitiAdminConsoleFactory) Binding() string {
 func (factory ZitiAdminConsoleFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
 	loc := options["location"]
 	if loc == nil || loc == "" {
-		log.Panic("location must be supplied in zac options")
+		log.Fatal("location must be supplied in zac options")
 	}
 	indexFile := options["indexFile"]
 	if indexFile == nil || indexFile == "" {
