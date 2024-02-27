@@ -22,12 +22,12 @@ import (
 	clientInformational "github.com/openziti/edge-api/rest_client_api_server/operations/informational"
 	managementInformational "github.com/openziti/edge-api/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/common/build"
-	"github.com/openziti/xweb/v2"
 	"runtime"
 	"sync"
 )
@@ -118,7 +118,7 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 
 		oidcEnabled := false
 
-		for _, serverConfig := range ae.HostController.GetXWebInstance().GetConfig().ServerConfigs {
+		for _, serverConfig := range ae.HostController.GetSPAInstance().GetConfig().ServerConfigs {
 			for _, api := range serverConfig.APIs {
 				if api.Binding() == controller.OidcApiBinding {
 					oidcEnabled = true
