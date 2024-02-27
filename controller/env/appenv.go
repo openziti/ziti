@@ -201,7 +201,7 @@ type HostController interface {
 	RegisterAgentBindHandler(bindHandler channel.BindHandler)
 	RegisterXctrl(x xctrl.Xctrl) error
 	RegisterXmgmt(x xmgmt.Xmgmt) error
-	GetSPAInstance() xweb.Instance
+	GetXWebInstance() xweb.Instance
 	GetNetwork() *network.Network
 	GetCloseNotifyChannel() <-chan struct{}
 	Shutdown()

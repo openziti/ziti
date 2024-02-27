@@ -291,15 +291,15 @@ func (c *Controller) Run() {
 	clientApiFactory := NewClientApiFactory(c.AppEnv)
 	oidcApiFactory := NewOidcApiFactory(c.AppEnv)
 
-	if err := c.AppEnv.HostController.GetSPAInstance().GetRegistry().Add(managementApiFactory); err != nil {
+	if err := c.AppEnv.HostController.GetXWebInstance().GetRegistry().Add(managementApiFactory); err != nil {
 		pfxlog.Logger().Fatalf("failed to create Edge Management API factory: %v", err)
 	}
 
-	if err := c.AppEnv.HostController.GetSPAInstance().GetRegistry().Add(clientApiFactory); err != nil {
+	if err := c.AppEnv.HostController.GetXWebInstance().GetRegistry().Add(clientApiFactory); err != nil {
 		pfxlog.Logger().Fatalf("failed to create Edge Client API factory: %v", err)
 	}
 
-	if err := c.AppEnv.HostController.GetSPAInstance().GetRegistry().Add(oidcApiFactory); err != nil {
+	if err := c.AppEnv.HostController.GetXWebInstance().GetRegistry().Add(oidcApiFactory); err != nil {
 		pfxlog.Logger().Fatalf("failed to create OIDC API factory: %v", err)
 	}
 

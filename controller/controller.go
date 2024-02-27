@@ -436,7 +436,7 @@ func (c *Controller) RegisterXmgmt(x xmgmt.Xmgmt) error {
 	return nil
 }
 
-func (c *Controller) GetSPAInstance() xweb.Instance {
+func (c *Controller) GetXWebInstance() xweb.Instance {
 	return c.spaHandler
 }
 

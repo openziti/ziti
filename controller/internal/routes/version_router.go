@@ -118,7 +118,7 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 
 		oidcEnabled := false
 
-		for _, serverConfig := range ae.HostController.GetSPAInstance().GetConfig().ServerConfigs {
+		for _, serverConfig := range ae.HostController.GetXWebInstance().GetConfig().ServerConfigs {
 			for _, api := range serverConfig.APIs {
 				if api.Binding() == controller.OidcApiBinding {
 					oidcEnabled = true
