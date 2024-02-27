@@ -31,7 +31,6 @@ package rest_model
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -43,22 +42,14 @@ import (
 //
 // swagger:model circuitDetail
 type CircuitDetail struct {
+	BaseEntity
 
 	// client Id
 	ClientID string `json:"clientId,omitempty"`
 
-	// created at
-	// Required: true
-	// Format: date-time
-	CreatedAt *strfmt.DateTime `json:"createdAt"`
-
-	// id
-	// Required: true
-	ID *string `json:"id"`
-
 	// path
 	// Required: true
-	Path *CircuitDetailPath `json:"path"`
+	Path *Path `json:"path"`
 
 	// service
 	// Required: true
@@ -69,15 +60,81 @@ type CircuitDetail struct {
 	Terminator *EntityRef `json:"terminator"`
 }
 
+// UnmarshalJSON unmarshals this object from a JSON structure
+func (m *CircuitDetail) UnmarshalJSON(raw []byte) error {
+	// AO0
+	var aO0 BaseEntity
+	if err := swag.ReadJSON(raw, &aO0); err != nil {
+		return err
+	}
+	m.BaseEntity = aO0
+
+	// AO1
+	var dataAO1 struct {
+		ClientID string `json:"clientId,omitempty"`
+
+		Path *Path `json:"path"`
+
+		Service *EntityRef `json:"service"`
+
+		Terminator *EntityRef `json:"terminator"`
+	}
+	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
+		return err
+	}
+
+	m.ClientID = dataAO1.ClientID
+
+	m.Path = dataAO1.Path
+
+	m.Service = dataAO1.Service
+
+	m.Terminator = dataAO1.Terminator
+
+	return nil
+}
+
+// MarshalJSON marshals this object to a JSON structure
+func (m CircuitDetail) MarshalJSON() ([]byte, error) {
+	_parts := make([][]byte, 0, 2)
+
+	aO0, err := swag.WriteJSON(m.BaseEntity)
+	if err != nil {
+		return nil, err
+	}
+	_parts = append(_parts, aO0)
+	var dataAO1 struct {
+		ClientID string `json:"clientId,omitempty"`
+
+		Path *Path `json:"path"`
+
+		Service *EntityRef `json:"service"`
+
+		Terminator *EntityRef `json:"terminator"`
+	}
+
+	dataAO1.ClientID = m.ClientID
+
+	dataAO1.Path = m.Path
+
+	dataAO1.Service = m.Service
+
+	dataAO1.Terminator = m.Terminator
+
+	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
+	if errAO1 != nil {
+		return nil, errAO1
+	}
+	_parts = append(_parts, jsonDataAO1)
+	return swag.ConcatJSON(_parts...), nil
+}
+
 // Validate validates this circuit detail
 func (m *CircuitDetail) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateCreatedAt(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateID(formats); err != nil {
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.Validate(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -96,28 +153,6 @@ func (m *CircuitDetail) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *CircuitDetail) validateCreatedAt(formats strfmt.Registry) error {
-
-	if err := validate.Required("createdAt", "body", m.CreatedAt); err != nil {
-		return err
-	}
-
-	if err := validate.FormatOf("createdAt", "body", "date-time", m.CreatedAt.String(), formats); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *CircuitDetail) validateID(formats strfmt.Registry) error {
-
-	if err := validate.Required("id", "body", m.ID); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -184,6 +219,11 @@ func (m *CircuitDetail) validateTerminator(formats strfmt.Registry) error {
 // ContextValidate validate this circuit detail based on the context it is used
 func (m *CircuitDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
 
 	if err := m.contextValidatePath(ctx, formats); err != nil {
 		res = append(res, err)
@@ -262,164 +302,6 @@ func (m *CircuitDetail) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary interface implementation
 func (m *CircuitDetail) UnmarshalBinary(b []byte) error {
 	var res CircuitDetail
-	if err := swag.ReadJSON(b, &res); err != nil {
-		return err
-	}
-	*m = res
-	return nil
-}
-
-// CircuitDetailPath circuit detail path
-//
-// swagger:model CircuitDetailPath
-type CircuitDetailPath struct {
-
-	// links
-	Links []*EntityRef `json:"links"`
-
-	// nodes
-	Nodes []*EntityRef `json:"nodes"`
-}
-
-// Validate validates this circuit detail path
-func (m *CircuitDetailPath) Validate(formats strfmt.Registry) error {
-	var res []error
-
-	if err := m.validateLinks(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateNodes(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *CircuitDetailPath) validateLinks(formats strfmt.Registry) error {
-	if swag.IsZero(m.Links) { // not required
-		return nil
-	}
-
-	for i := 0; i < len(m.Links); i++ {
-		if swag.IsZero(m.Links[i]) { // not required
-			continue
-		}
-
-		if m.Links[i] != nil {
-			if err := m.Links[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("path" + "." + "links" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("path" + "." + "links" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
-
-func (m *CircuitDetailPath) validateNodes(formats strfmt.Registry) error {
-	if swag.IsZero(m.Nodes) { // not required
-		return nil
-	}
-
-	for i := 0; i < len(m.Nodes); i++ {
-		if swag.IsZero(m.Nodes[i]) { // not required
-			continue
-		}
-
-		if m.Nodes[i] != nil {
-			if err := m.Nodes[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("path" + "." + "nodes" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("path" + "." + "nodes" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
-
-// ContextValidate validate this circuit detail path based on the context it is used
-func (m *CircuitDetailPath) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
-	var res []error
-
-	if err := m.contextValidateLinks(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.contextValidateNodes(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *CircuitDetailPath) contextValidateLinks(ctx context.Context, formats strfmt.Registry) error {
-
-	for i := 0; i < len(m.Links); i++ {
-
-		if m.Links[i] != nil {
-			if err := m.Links[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("path" + "." + "links" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("path" + "." + "links" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
-
-func (m *CircuitDetailPath) contextValidateNodes(ctx context.Context, formats strfmt.Registry) error {
-
-	for i := 0; i < len(m.Nodes); i++ {
-
-		if m.Nodes[i] != nil {
-			if err := m.Nodes[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("path" + "." + "nodes" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("path" + "." + "nodes" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
-
-// MarshalBinary interface implementation
-func (m *CircuitDetailPath) MarshalBinary() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	return swag.WriteJSON(m)
-}
-
-// UnmarshalBinary interface implementation
-func (m *CircuitDetailPath) UnmarshalBinary(b []byte) error {
-	var res CircuitDetailPath
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

@@ -53,6 +53,12 @@ type testRegistryEnv struct {
 	closeNotify chan struct{}
 }
 
+func (self *testRegistryEnv) GetRouterId() *id.TokenId {
+	return &id.TokenId{
+		Token: "test-router",
+	}
+}
+
 func (self *testRegistryEnv) GetNetworkControllers() env.NetworkControllers {
 	return self.ctrls
 }
@@ -66,6 +72,10 @@ func (self *testRegistryEnv) GetCloseNotify() <-chan struct{} {
 }
 
 func (self *testRegistryEnv) GetLinkDialerPool() goroutines.Pool {
+	panic("implement me")
+}
+
+func (self *testRegistryEnv) GetRateLimiterPool() goroutines.Pool {
 	panic("implement me")
 }
 
@@ -100,6 +110,10 @@ func (self *testDial) GetLinkProtocol() string {
 
 func (self *testDial) GetRouterVersion() string {
 	return self.RouterVersion
+}
+
+func (self *testDial) GetIteration() uint32 {
+	return 1
 }
 
 func setupEnv() link.Env {
@@ -209,18 +223,19 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	ctrlListener := ctx.NewControlChannelListener()
 	router1 := ctx.startRouter(1)
 
-	router1cc, linkCheck1 := testutil.StartLinkTest("router-1", ctrlListener, ctx.Req)
+	linkChecker := testutil.NewLinkChecker(ctx.Req)
+	router1cc := testutil.StartLinkTest(linkChecker, "router-1", ctrlListener, ctx.Req)
 
 	router1Listeners := &ctrl_pb.Listeners{}
-	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ContentType_ListenersHeader)]; found {
+	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
 		ctx.Req.NoError(proto.Unmarshal(val, router1Listeners))
 	}
 
 	router2 := ctx.startRouter(2)
-	router2cc, linkCheck2 := testutil.StartLinkTest("router-2", ctrlListener, ctx.Req)
+	router2cc := testutil.StartLinkTest(linkChecker, "router-2", ctrlListener, ctx.Req)
 
 	router2Listeners := &ctrl_pb.Listeners{}
-	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ContentType_ListenersHeader)]; found {
+	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
 		ctx.Req.NoError(proto.Unmarshal(val, router1Listeners))
 	}
 
@@ -252,32 +267,31 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	linkCheck1.RequireNoErrors()
-	link1 := linkCheck1.RequireOneActiveLink()
+	linkChecker.RequireNoErrors()
+	link1 := linkChecker.RequireOneActiveLink()
 
-	linkCheck2.RequireNoErrors()
-	link2 := linkCheck1.RequireOneActiveLink()
+	linkChecker.RequireNoErrors()
+	link2 := linkChecker.RequireOneActiveLink()
 
 	ctx.Req.Equal(link1.Id, link2.Id)
 
 	// Test closing control ch to router 1. On reconnect the existing link should get reported
 	ctx.Req.NoError(router1cc.Close())
-	_, linkCheck1 = testutil.StartLinkTest("router-1", ctrlListener, ctx.Req)
+	_ = testutil.StartLinkTest(linkChecker, "router-1", ctrlListener, ctx.Req)
 
 	time.Sleep(time.Second)
-
-	linkCheck1.RequireNoErrors()
-	link1 = linkCheck1.RequireOneActiveLink()
+	linkChecker.RequireNoErrors()
+	link1 = linkChecker.RequireOneActiveLink()
 	ctx.Req.Equal(link1.Id, link2.Id)
 
 	// Test closing control ch to router 2. On reconnect the existing link should get reported
 	ctx.Req.NoError(router2cc.Close())
-	_, linkCheck2 = testutil.StartLinkTest("router-2", ctrlListener, ctx.Req)
+	_ = testutil.StartLinkTest(linkChecker, "router-2", ctrlListener, ctx.Req)
 
 	time.Sleep(time.Second)
 
-	linkCheck2.RequireNoErrors()
-	link2 = linkCheck2.RequireOneActiveLink()
+	linkChecker.RequireNoErrors()
+	link2 = linkChecker.RequireOneActiveLink()
 	ctx.Req.Equal(link1.Id, link2.Id)
 
 	// restart router 1
@@ -288,10 +302,10 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 		ctx.Req.NoError(router1.Shutdown())
 	}()
 
-	router1cc, linkCheck1 = testutil.StartLinkTest("router-1", ctrlListener, ctx.Req)
+	router1cc = testutil.StartLinkTest(linkChecker, "router-1", ctrlListener, ctx.Req)
 	ctx.Req.NoError(protobufs.MarshalTyped(peerUpdates2).WithTimeout(time.Second).SendAndWaitForWire(router1cc))
 
-	linkCheck1.RequireNoErrors()
+	linkChecker.RequireNoErrors()
 
 	//time.Sleep(time.Minute)
 	//

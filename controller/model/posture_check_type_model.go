@@ -17,9 +17,9 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 )
 
@@ -29,32 +29,32 @@ type PostureCheckType struct {
 	OperatingSystems []OperatingSystem
 }
 
-func (entity *PostureCheckType) toBoltEntity() (*persistence.PostureCheckType, error) {
-	var operatingSystems []persistence.OperatingSystem
+func (entity *PostureCheckType) toBoltEntity() (*db.PostureCheckType, error) {
+	var operatingSystems []db.OperatingSystem
 
 	for _, os := range entity.OperatingSystems {
-		operatingSystems = append(operatingSystems, persistence.OperatingSystem{
+		operatingSystems = append(operatingSystems, db.OperatingSystem{
 			OsType:     os.OsType,
 			OsVersions: os.OsVersions,
 		})
 	}
 
-	return &persistence.PostureCheckType{
+	return &db.PostureCheckType{
 		Name:             entity.Name,
 		OperatingSystems: operatingSystems,
 		BaseExtEntity:    *boltz.NewExtEntity(entity.Id, entity.Tags),
 	}, nil
 }
 
-func (entity *PostureCheckType) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.PostureCheckType, error) {
+func (entity *PostureCheckType) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.PostureCheckType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *PostureCheckType) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.PostureCheckType, error) {
+func (entity *PostureCheckType) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.PostureCheckType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *PostureCheckType) fillFrom(_ Env, _ *bbolt.Tx, boltPostureCheckType *persistence.PostureCheckType) error {
+func (entity *PostureCheckType) fillFrom(_ Env, _ *bbolt.Tx, boltPostureCheckType *db.PostureCheckType) error {
 	var operatingSystems []OperatingSystem
 
 	for _, os := range boltPostureCheckType.OperatingSystems {

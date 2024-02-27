@@ -18,9 +18,7 @@ type EchoServerType struct {
 }
 
 func (self *EchoServerType) InitType(*model.Component) {
-	if self.Version != "" && self.Version != "latest" && !strings.HasPrefix(self.Version, "v") {
-		self.Version = "v" + self.Version
-	}
+	canonicalizeGoAppVersion(&self.Version)
 }
 
 func (self *EchoServerType) Dump() any {
@@ -48,14 +46,9 @@ func (self *EchoServerType) IsRunning(_ model.Run, c *model.Component) (bool, er
 }
 
 func (self *EchoServerType) Start(_ model.Run, c *model.Component) error {
-	binaryName := "ziti"
-	if self.Version != "" {
-		binaryName += "-" + self.Version
-	}
-
 	user := c.GetHost().GetSshUser()
 
-	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", user, binaryName)
+	binaryPath := getZitiBinaryPath(c, self.Version)
 	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s.json", user, c.Id)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 

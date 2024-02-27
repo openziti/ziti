@@ -359,7 +359,7 @@ func login(o *LoginOptions, url string, authentication string) (*gabs.Container,
 	}
 
 	resp, err := client.
-		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetTimeout(time.Duration(timeout)*time.Second).
 		SetDebug(verbose).
 		R().
 		SetQueryParam("method", method).

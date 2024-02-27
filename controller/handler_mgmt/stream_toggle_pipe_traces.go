@@ -18,16 +18,17 @@ package handler_mgmt
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/trace/pb"
+	trace_pb "github.com/openziti/channel/v2/trace/pb"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/common/trace"
+	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
-	"sync"
-	"time"
 )
 
 type traceTogglePipeHandler struct {
@@ -124,7 +125,7 @@ func checkMatch(appId string, matchers *trace.PipeToggleMatchers, verbosity trac
 }
 
 func getApplyResults(resultChan chan trace.ToggleApplyResult, verbosity trace.ToggleVerbosity, result *trace.ToggleResult) {
-	timout := time.After(time.Second * 5)
+	timeout := time.After(time.Second * 5)
 	for {
 		select {
 		case applyResult, chanOpen := <-resultChan:
@@ -132,7 +133,7 @@ func getApplyResults(resultChan chan trace.ToggleApplyResult, verbosity trace.To
 				return
 			}
 			applyResult.Append(result, verbosity)
-		case <-timout:
+		case <-timeout:
 			result.Success = false
 			result.Append("Timed out waiting for toggle to be applied to controller")
 			return

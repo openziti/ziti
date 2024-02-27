@@ -17,11 +17,14 @@
 package handler_edge_ctrl
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -30,39 +33,36 @@ type createCircuitHandler struct {
 }
 
 func NewCreateCircuitHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
-	return &createCircuitHandler{
+	handler := &createCircuitHandler{
 		baseRequestHandler: baseRequestHandler{
 			ch:     ch,
 			appEnv: appEnv,
 		},
 	}
+	return &channel.AsyncFunctionReceiveAdapter{
+		Type:    int32(edge_ctrl_pb.ContentType_CreateCircuitRequestType),
+		Handler: handler.HandleReceiveCreateCircuitV1,
+	}
 }
 
-func (self *createCircuitHandler) ContentType() int32 {
-	return int32(edge_ctrl_pb.ContentType_CreateCircuitRequestType)
+func NewCreateCircuitV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+	handler := &createCircuitHandler{
+		baseRequestHandler: baseRequestHandler{
+			ch:     ch,
+			appEnv: appEnv,
+		},
+	}
+	return &channel.AsyncFunctionReceiveAdapter{
+		Type:    int32(edge_ctrl_pb.ContentType_CreateCircuitV2RequestType),
+		Handler: handler.HandleReceiveCreateCircuitV2,
+	}
 }
 
 func (self *createCircuitHandler) Label() string {
 	return "create.circuit"
 }
 
-func (self *createCircuitHandler) sendResponse(ctx *CreateCircuitRequestContext, response *edge_ctrl_pb.CreateCircuitResponse) {
-	log := pfxlog.ContextLogger(self.ch.Label())
-
-	body, err := proto.Marshal(response)
-	if err != nil {
-		log.WithError(err).WithField("token", ctx.req.SessionToken).Error("failed to marshal create circuit response")
-		return
-	}
-
-	responseMsg := channel.NewMessage(response.GetContentType(), body)
-	responseMsg.ReplyTo(ctx.msg)
-	if err = self.ch.Send(responseMsg); err != nil {
-		log.WithError(err).WithField("token", ctx.req.SessionToken).Error("failed to send create circuit response")
-	}
-}
-
-func (self *createCircuitHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (self *createCircuitHandler) HandleReceiveCreateCircuitV1(msg *channel.Message, ch channel.Channel) {
 	req := &edge_ctrl_pb.CreateCircuitRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal CreateCircuitRequest")
@@ -74,27 +74,10 @@ func (self *createCircuitHandler) HandleReceive(msg *channel.Message, ch channel
 		req:                       req,
 	}
 
-	go self.CreateCircuit(ctx)
+	self.CreateCircuit(ctx, self.CreateCircuitV1Response)
 }
 
-func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext) {
-	if !ctx.loadRouter() {
-		return
-	}
-	ctx.loadSession(ctx.req.SessionToken)
-	ctx.checkSessionType(persistence.SessionTypeDial)
-	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
-	ctx.verifyEdgeRouterAccess()
-	ctx.loadService()
-	circuitInfo, peerData := ctx.createCircuit(ctx.req.TerminatorInstanceId, ctx.req.PeerData)
-
-	if ctx.err != nil {
-		self.returnError(ctx, ctx.err)
-		return
-	}
-
-	log := pfxlog.ContextLogger(self.ch.Label()).WithField("token", ctx.req.SessionToken)
-
+func (self *createCircuitHandler) CreateCircuitV1Response(circuitInfo *network.Circuit, peerData map[uint32][]byte) (*channel.Message, error) {
 	response := &edge_ctrl_pb.CreateCircuitResponse{
 		CircuitId: circuitInfo.Id,
 		Address:   circuitInfo.Path.IngressId,
@@ -102,15 +85,85 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 		Tags:      circuitInfo.Tags,
 	}
 
+	body, err := proto.Marshal(response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal protobuf create circuit response (%w)", err)
+	}
+	responseMsg := channel.NewMessage(response.GetContentType(), body)
+	return responseMsg, nil
+}
+
+func (self *createCircuitHandler) HandleReceiveCreateCircuitV2(msg *channel.Message, ch channel.Channel) {
+	req, err := ctrl_msg.DecodeCreateCircuitRequest(msg)
+	if err != nil {
+		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not decode CreateCircuitRequest")
+		return
+	}
+
+	ctx := &CreateCircuitRequestContext{
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		req:                       req,
+	}
+
+	self.CreateCircuit(ctx, self.CreateCircuitV2Response)
+}
+
+func (self *createCircuitHandler) CreateCircuitV2Response(circuitInfo *network.Circuit, peerData map[uint32][]byte) (*channel.Message, error) {
+	response := &ctrl_msg.CreateCircuitResponse{
+		CircuitId: circuitInfo.Id,
+		Address:   circuitInfo.Path.IngressId,
+		PeerData:  peerData,
+		Tags:      circuitInfo.Tags,
+	}
+
+	return response.ToMessage(), nil
+}
+
+func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext, f createCircuitResponseFactory) {
+	if !ctx.loadRouter() {
+		return
+	}
+	ctx.loadSession(ctx.req.GetSessionToken())
+	ctx.checkSessionType(db.SessionTypeDial)
+	ctx.checkSessionFingerprints(ctx.req.GetFingerprints())
+	ctx.verifyEdgeRouterAccess()
+	ctx.loadService()
+	circuitInfo, peerData := ctx.createCircuit(ctx.req.GetTerminatorInstanceId(), ctx.req.GetPeerData())
+
+	if ctx.err != nil {
+		self.returnError(ctx, ctx.err)
+		return
+	}
+
+	log := pfxlog.ContextLogger(self.ch.Label()).WithField("token", ctx.req.GetSessionToken())
+	responseMsg, err := f(circuitInfo, peerData)
+	if err != nil {
+		log.WithError(err).Error("error generating create circuit response")
+	}
 	log.Debugf("responding with successful circuit setup")
-	self.sendResponse(ctx, response)
+
+	responseMsg.ReplyTo(ctx.msg)
+	if err = self.ch.Send(responseMsg); err != nil {
+		log.WithError(err).WithField("token", ctx.req.GetSessionToken()).Error("failed to send create circuit response")
+	}
+}
+
+type createCircuitResponseFactory func(*network.Circuit, map[uint32][]byte) (*channel.Message, error)
+
+var _ CreateCircuitRequest = (*edge_ctrl_pb.CreateCircuitRequest)(nil)
+
+type CreateCircuitRequest interface {
+	GetSessionToken() string
+	GetFingerprints() []string
+	GetTerminatorInstanceId() string
+	GetPeerData() map[uint32][]byte
 }
 
 type CreateCircuitRequestContext struct {
 	baseSessionRequestContext
-	req *edge_ctrl_pb.CreateCircuitRequest
+	req CreateCircuitRequest
 }
 
 func (self *CreateCircuitRequestContext) GetSessionToken() string {
-	return self.req.SessionToken
+	return self.req.GetSessionToken()
 }

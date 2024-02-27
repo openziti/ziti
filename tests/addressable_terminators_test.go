@@ -56,10 +56,10 @@ func Test_AddressableTerminators(t *testing.T) {
 		defer host.context.Close()
 
 		host.listener, err = host.context.ListenWithOptions(service.Name, &ziti.ListenOptions{
-			BindUsingEdgeIdentity: true,
+			BindUsingEdgeIdentity:        true,
+			WaitForNEstablishedListeners: 1,
 		})
 		ctx.Req.NoError(err)
-		ctx.requireNListener(1, host.listener, 5*time.Second)
 	}
 
 	type client struct {

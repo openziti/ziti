@@ -19,13 +19,14 @@ package routes
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/response"
 	"strings"
+	"time"
 )
 
 const EntityNameService = "services"
@@ -58,6 +59,7 @@ func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
 			Tags: TagsOrDefault(service.Tags),
 		},
 		Name:               stringz.OrEmpty(service.Name),
+		MaxIdleTime:        time.Duration(service.MaxIdleTimeMillis) * time.Millisecond,
 		TerminatorStrategy: service.TerminatorStrategy,
 		RoleAttributes:     service.RoleAttributes,
 		Configs:            service.Configs,
@@ -74,6 +76,7 @@ func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *mode
 			Id:   id,
 		},
 		Name:               stringz.OrEmpty(service.Name),
+		MaxIdleTime:        time.Duration(service.MaxIdleTimeMillis) * time.Millisecond,
 		TerminatorStrategy: service.TerminatorStrategy,
 		RoleAttributes:     service.RoleAttributes,
 		Configs:            service.Configs,
@@ -90,6 +93,7 @@ func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.
 			Id:   id,
 		},
 		Name:               service.Name,
+		MaxIdleTime:        time.Duration(service.MaxIdleTimeMillis) * time.Millisecond,
 		TerminatorStrategy: service.TerminatorStrategy,
 		RoleAttributes:     service.RoleAttributes,
 		Configs:            service.Configs,
@@ -123,9 +127,11 @@ func MapServicesToRestEntity(ae *env.AppEnv, rc *response.RequestContext, es []*
 func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service *model.ServiceDetail) (*rest_model.ServiceDetail, error) {
 	roleAttributes := rest_model.Attributes(service.RoleAttributes)
 
+	maxIdleTime := service.MaxIdleTime.Milliseconds()
 	ret := &rest_model.ServiceDetail{
 		BaseEntity:         BaseEntityToRestModel(service, ServiceLinkFactory),
 		Name:               &service.Name,
+		MaxIdleTimeMillis:  &maxIdleTime,
 		TerminatorStrategy: &service.TerminatorStrategy,
 		RoleAttributes:     &roleAttributes,
 		Configs:            service.Configs,
@@ -151,9 +157,9 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 			PostureQueries: []*rest_model.PostureQuery{},
 		}
 
-		if policyPostureChecks.PolicyType == persistence.PolicyTypeBind {
+		if policyPostureChecks.PolicyType == db.PolicyTypeBind {
 			querySet.PolicyType = rest_model.DialBindBind
-		} else if policyPostureChecks.PolicyType == persistence.PolicyTypeDial {
+		} else if policyPostureChecks.PolicyType == db.PolicyTypeDial {
 			querySet.PolicyType = rest_model.DialBindDial
 		} else {
 			pfxlog.Logger().Errorf("attempting to render API response for policy type [%s] for policy id [%s], unknown type expected dial/bind", policyPostureChecks.PolicyType, policyId)

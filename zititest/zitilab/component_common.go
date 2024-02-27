@@ -29,20 +29,15 @@ func getZitiProcessFilter(c *model.Component, zitiType string) func(string) bool
 	return func(s string) bool {
 		return strings.Contains(s, "ziti") &&
 			strings.Contains(s, zitiType) &&
-			strings.Contains(s, fmt.Sprintf("--cli-agent-alias %s", c.Id)) &&
+			strings.Contains(s, fmt.Sprintf("--cli-agent-alias %s ", c.Id)) &&
 			!strings.Contains(s, "sudo ")
 	}
 }
 
 func startZitiComponent(c *model.Component, zitiType string, version string, configName string) error {
-	binaryName := "ziti"
-	if version != "" {
-		binaryName += "-" + version
-	}
-
 	user := c.GetHost().GetSshUser()
 
-	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", user, binaryName)
+	binaryPath := getZitiBinaryPath(c, version)
 	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s", user, configName)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
@@ -51,8 +46,12 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 		useSudo = "sudo"
 	}
 
-	serviceCmd := fmt.Sprintf("nohup %s %s %s run --log-formatter pfxlog %s --cli-agent-alias %s > %s 2>&1 &",
-		useSudo, binaryPath, zitiType, configPath, c.Id, logsPath)
+	serviceCmd := fmt.Sprintf("nohup %s %s %s run --cli-agent-alias %s --log-formatter pfxlog %s > %s 2>&1 &",
+		useSudo, binaryPath, zitiType, c.Id, configPath, logsPath)
+
+	if quiet, _ := c.GetBoolVariable("quiet_startup"); !quiet {
+		logrus.Info(serviceCmd)
+	}
 
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {
@@ -66,14 +65,27 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 	return nil
 }
 
-func getPrefixVersion(version string) string {
-	if version == "" || strings.HasPrefix(version, "v") {
-		return version
+func canonicalizeGoAppVersion(version *string) {
+	if version != nil {
+		if *version != "" && *version != "latest" && !strings.HasPrefix(*version, "v") {
+			*version = "v" + *version
+		}
 	}
-	return "v" + version
 }
 
-func reEnrollIdentity(run model.Run, c *model.Component, binaryName string, configName string) error {
+func getZitiBinaryPath(c *model.Component, version string) string {
+	return getBinaryPath(c, "ziti", version)
+}
+
+func getBinaryPath(c *model.Component, binaryName string, version string) string {
+	if version != "" {
+		binaryName += "-" + version
+	}
+	user := c.GetHost().GetSshUser()
+	return fmt.Sprintf("/home/%s/fablab/bin/%s", user, binaryName)
+}
+
+func reEnrollIdentity(run model.Run, c *model.Component, zitiBinaryPath string, configPath string) error {
 	if err := zitilib_actions.EdgeExec(run.GetModel(), "delete", "authenticator", "where", fmt.Sprintf("identity=\"%v\"", c.Id)); err != nil {
 		return err
 	}
@@ -90,13 +102,14 @@ func reEnrollIdentity(run model.Run, c *model.Component, binaryName string, conf
 		return err
 	}
 
-	remoteJwt := "/home/ubuntu/fablab/cfg/" + c.Id + ".jwt"
+	configDir := filepath.Dir(configPath)
+	remoteJwt := configDir + c.Id + ".jwt"
 	if err := c.GetHost().SendFile(jwtFileName, remoteJwt); err != nil {
 		return err
 	}
 
-	tmpl := "set -o pipefail; /home/ubuntu/fablab/bin/%s edge enroll %s 2>&1 | tee /home/ubuntu/logs/%s.identity.enroll.log "
-	cmd := fmt.Sprintf(tmpl, binaryName, remoteJwt, c.Id)
+	tmpl := "set -o pipefail; mkdir -p %s; %s edge enroll %s -o %s 2>&1 | tee /home/ubuntu/logs/%s.identity.enroll.log "
+	cmd := fmt.Sprintf(tmpl, configDir, zitiBinaryPath, remoteJwt, configPath, c.Id)
 
 	return c.GetHost().ExecLogOnlyOnError(cmd)
 }

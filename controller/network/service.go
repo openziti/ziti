@@ -18,18 +18,19 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/storage/boltz"
 	"github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"reflect"
+	"time"
 )
 
 type Service struct {
@@ -37,6 +38,7 @@ type Service struct {
 	Name               string
 	TerminatorStrategy string
 	Terminators        []*Terminator
+	MaxIdleTime        time.Duration
 }
 
 func (self *Service) GetName() string {
@@ -47,6 +49,7 @@ func (entity *Service) toBolt() *db.Service {
 	return &db.Service{
 		BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
+		MaxIdleTime:        entity.MaxIdleTime,
 		TerminatorStrategy: entity.TerminatorStrategy,
 	}
 }
@@ -149,7 +152,7 @@ func (self *ServiceManager) GetIdForName(id string) (string, error) {
 }
 
 func (self *ServiceManager) readInTx(tx *bbolt.Tx, id string) (*Service, error) {
-	if service, found := self.cache.Get(id); found {
+	if service, _ := self.cache.Get(id); service != nil {
 		return service, nil
 	}
 
@@ -168,6 +171,7 @@ func (self *ServiceManager) populateService(entity *Service, tx *bbolt.Tx, boltE
 		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
 	}
 	entity.Name = boltService.Name
+	entity.MaxIdleTime = boltService.MaxIdleTime
 	entity.TerminatorStrategy = boltService.TerminatorStrategy
 	entity.FillCommon(boltService)
 
@@ -207,6 +211,7 @@ func (self *ServiceManager) Marshall(entity *Service) ([]byte, error) {
 	msg := &cmd_pb.Service{
 		Id:                 entity.Id,
 		Name:               entity.Name,
+		MaxIdleTime:        int64(entity.MaxIdleTime),
 		TerminatorStrategy: entity.TerminatorStrategy,
 		Tags:               tags,
 	}
@@ -226,6 +231,7 @@ func (self *ServiceManager) Unmarshall(bytes []byte) (*Service, error) {
 			Tags: cmd_pb.DecodeTags(msg.Tags),
 		},
 		Name:               msg.Name,
+		MaxIdleTime:        time.Duration(msg.MaxIdleTime),
 		TerminatorStrategy: msg.TerminatorStrategy,
 	}, nil
 }

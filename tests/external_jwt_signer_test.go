@@ -22,8 +22,8 @@ package tests
 import (
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/persistence"
 	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/ziti/controller/db"
 	"net/http"
 	"testing"
 	"time"
@@ -199,7 +199,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				ctx.Req.Equal(jwtSignerCert.NotAfter, time.Time(*jwtSignerDetail.NotAfter))
 				ctx.Req.Equal(fingerprint, *jwtSignerDetail.Fingerprint)
 				ctx.Req.False(*jwtSignerDetail.UseExternalID)
-				ctx.Req.Equal(persistence.DefaultClaimsProperty, *jwtSignerDetail.ClaimsProperty)
+				ctx.Req.Equal(db.DefaultClaimsProperty, *jwtSignerDetail.ClaimsProperty)
 				ctx.Req.Nil(jwtSignerDetail.ExternalAuthURL)
 				ctx.Req.Equal(*jwtSigner.Issuer, *jwtSignerDetail.Issuer)
 				ctx.Req.Equal(*jwtSigner.Audience, *jwtSignerDetail.Audience)

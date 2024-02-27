@@ -21,7 +21,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"github.com/openziti/ziti/ziti/pki/certificate"
 	"io"
 	"math/big"
 	"os"
@@ -30,10 +29,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openziti/ziti/ziti/pki/certificate"
+
 	"crypto/x509"
 )
 
-// Predifined directory names.
+// Predefined directory names.
 const (
 	LocalCertsDir = "certs"
 	LocalKeysDir  = "keys"
@@ -95,7 +96,7 @@ func (l *Local) Fetch(caName, name string) ([]byte, []byte, error) {
 	return k, c, nil
 }
 
-// FetchKeyBytes fetchs the private key and certificate for a given name signed by caName.
+// FetchKeyBytes fetches the private key and certificate for a given name signed by caName.
 func (l *Local) FetchKeyBytes(caName, name string) ([]byte, error) {
 	filepath.Join(l.Root, caName)
 
@@ -379,7 +380,7 @@ func (l *Local) Update(caName string, sn *big.Int, st certificate.State) error {
 	for scanner.Scan() {
 		matches := indexRegexp.FindStringSubmatch(scanner.Text())
 		if len(matches) != 7 {
-			return fmt.Errorf("line [%v] is incorrectly formated", scanner.Text())
+			return fmt.Errorf("line [%v] is incorrectly formatted", scanner.Text())
 		}
 
 		matchedSerial := big.NewInt(0)
@@ -434,7 +435,7 @@ func (l *Local) Revoked(caName string) ([]pkix.RevokedCertificate, error) {
 	for scanner.Scan() {
 		matches := indexRegexp.FindStringSubmatch(scanner.Text())
 		if len(matches) != 7 {
-			return nil, fmt.Errorf("line [%v] is incorrectly formated", scanner.Text())
+			return nil, fmt.Errorf("line [%v] is incorrectly formatted", scanner.Text())
 		}
 		if matches[1] != "R" {
 			continue

@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	lru "github.com/hashicorp/golang-lru/v2"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/sirupsen/logrus"
 	"sync"
 	"time"
@@ -70,7 +70,7 @@ func (self *baseTunnelRequestContext) loadIdentity() {
 			return
 		}
 
-		if self.identity.IdentityTypeId != persistence.RouterIdentityType {
+		if self.identity.IdentityTypeId != db.RouterIdentityType {
 			self.err = TunnelingNotEnabledError{}
 			return
 		}
@@ -348,6 +348,8 @@ func (self *baseTunnelRequestContext) updateIdentityInfo(envInfo *edge_ctrl_pb.E
 				Os:        envInfo.Os,
 				OsRelease: envInfo.OsRelease,
 				OsVersion: envInfo.OsVersion,
+				Domain:    envInfo.Domain,
+				Hostname:  envInfo.Hostname,
 			}
 			if !self.identity.EnvInfo.Equals(newEnvInfo) {
 				self.identity.EnvInfo = newEnvInfo

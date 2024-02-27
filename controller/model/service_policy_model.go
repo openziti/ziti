@@ -18,10 +18,10 @@ package model
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"strings"
 )
@@ -37,28 +37,28 @@ type ServicePolicy struct {
 }
 
 func (entity *ServicePolicy) validatePolicyType() error {
-	if !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeDialName) && !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeBindName) {
-		msg := fmt.Sprintf("invalid policy type. valid types are '%v' and '%v'", persistence.PolicyTypeDialName, persistence.PolicyTypeBindName)
+	if !strings.EqualFold(entity.PolicyType, db.PolicyTypeDialName) && !strings.EqualFold(entity.PolicyType, db.PolicyTypeBindName) {
+		msg := fmt.Sprintf("invalid policy type. valid types are '%v' and '%v'", db.PolicyTypeDialName, db.PolicyTypeBindName)
 		return errorz.NewFieldError(msg, "policyType", entity.PolicyType)
 	}
 	return nil
 }
 
-func (entity *ServicePolicy) toBoltEntity(checker boltz.FieldChecker) (*persistence.ServicePolicy, error) {
-	if checker == nil || checker.IsUpdated(persistence.FieldServicePolicyType) {
+func (entity *ServicePolicy) toBoltEntity(checker boltz.FieldChecker) (*db.ServicePolicy, error) {
+	if checker == nil || checker.IsUpdated(db.FieldServicePolicyType) {
 		if err := entity.validatePolicyType(); err != nil {
 			return nil, err
 		}
 	}
 
-	policyType := persistence.PolicyTypeInvalid
-	if strings.EqualFold(entity.PolicyType, persistence.PolicyTypeDialName) {
-		policyType = persistence.PolicyTypeDial
-	} else if strings.EqualFold(entity.PolicyType, persistence.PolicyTypeBindName) {
-		policyType = persistence.PolicyTypeBind
+	policyType := db.PolicyTypeInvalid
+	if strings.EqualFold(entity.PolicyType, db.PolicyTypeDialName) {
+		policyType = db.PolicyTypeDial
+	} else if strings.EqualFold(entity.PolicyType, db.PolicyTypeBindName) {
+		policyType = db.PolicyTypeBind
 	}
 
-	return &persistence.ServicePolicy{
+	return &db.ServicePolicy{
 		BaseExtEntity:     *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:              entity.Name,
 		PolicyType:        policyType,
@@ -69,15 +69,15 @@ func (entity *ServicePolicy) toBoltEntity(checker boltz.FieldChecker) (*persiste
 	}, nil
 }
 
-func (entity *ServicePolicy) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.ServicePolicy, error) {
+func (entity *ServicePolicy) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.ServicePolicy, error) {
 	return entity.toBoltEntity(nil)
 }
 
-func (entity *ServicePolicy) toBoltEntityForUpdate(_ *bbolt.Tx, _ Env, checker boltz.FieldChecker) (*persistence.ServicePolicy, error) {
+func (entity *ServicePolicy) toBoltEntityForUpdate(_ *bbolt.Tx, _ Env, checker boltz.FieldChecker) (*db.ServicePolicy, error) {
 	return entity.toBoltEntity(checker)
 }
 
-func (entity *ServicePolicy) fillFrom(_ Env, _ *bbolt.Tx, boltServicePolicy *persistence.ServicePolicy) error {
+func (entity *ServicePolicy) fillFrom(_ Env, _ *bbolt.Tx, boltServicePolicy *db.ServicePolicy) error {
 	entity.FillCommon(boltServicePolicy)
 	entity.Name = boltServicePolicy.Name
 	entity.PolicyType = string(boltServicePolicy.PolicyType)

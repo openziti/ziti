@@ -4,8 +4,8 @@ Gets the latest ziti from github and adds it to your path
 
 .DESCRIPTION
 This script will:
-    - detect the lastest version of ziti
-    - download the latest versio of ziti into the folder of your choice, defaulting to $env:userprofile.ziti\bin)
+    - detect the latest version of ziti
+    - download the latest version of ziti into the folder of your choice, defaulting to $env:userprofile.ziti\bin)
     - unzip the downloaded file
     - optionally add the extracted path to your path if executed with a "dot" as in: . getLatestZiti.ps1
 

@@ -28,22 +28,26 @@ import (
 	"fmt"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/websockets"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/router/enroll"
-	"github.com/openziti/ziti/router/fabric"
-	"github.com/openziti/ziti/router/xgress_edge"
-	"github.com/openziti/ziti/router/xgress_edge_tunnel"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
-	"github.com/openziti/ziti/router"
-	"github.com/openziti/ziti/router/xgress"
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity/certtools"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	sdkEnroll "github.com/openziti/sdk-golang/ziti/enroll"
+	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
+	"github.com/openziti/ziti/router"
+	"github.com/openziti/ziti/router/enroll"
+	"github.com/openziti/ziti/router/fabric"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_edge"
+	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	"github.com/pkg/errors"
 	"io"
 	"net"
@@ -62,12 +66,12 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/server"
-	"github.com/openziti/ziti/controller"
 	idlib "github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/server"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -283,6 +287,42 @@ func (ctx *TestContext) NewClientComponents(apiPath string) (*resty.Client, *htt
 	return client, httpClient, clientTransport
 }
 
+func (ctx *TestContext) NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.Channel, error) {
+	log := pfxlog.Logger()
+
+	wsUrl := "wss://" + ctx.ApiHost + "/fabric/v1/ws-api"
+
+	dialer := &websocket.Dialer{
+		Proxy:            http.ProxyFromEnvironment,
+		TLSClientConfig:  ctx.DefaultClientApiClient().GetClient().Transport.(*http.Transport).TLSClientConfig,
+		HandshakeTimeout: 5 * time.Second,
+	}
+
+	authHeader := http.Header{}
+	authHeader.Set(env.ZitiSession, *ctx.AdminManagementSession.AuthResponse.Token)
+
+	conn, resp, err := dialer.Dial(wsUrl, authHeader)
+	if err != nil {
+		if resp != nil {
+			if body, rerr := io.ReadAll(resp.Body); rerr == nil {
+				log.WithError(err).Errorf("response body [%v]", string(body))
+			}
+		} else {
+			log.WithError(err).Error("no response from websocket dial")
+		}
+		return nil, err
+	}
+
+	id := &idlib.TokenId{Token: "mgmt"}
+	underlayFactory := websockets.NewUnderlayFactory(id, conn, nil)
+
+	ch, err := channel.NewChannel("mgmt", underlayFactory, bindHandler, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ch, nil
+}
+
 func (ctx *TestContext) NewClientComponentsWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) (*resty.Client, *http.Client, *http.Transport) {
 	clientTransport := ctx.NewTransportWithClientCert(cert, privateKey)
 	httpClient := ctx.NewHttpClient(clientTransport)
@@ -310,7 +350,14 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 	if clean {
 		err := os.Remove(testDb)
 		if !os.IsNotExist(err) {
-			ctx.Req.NoError(err)
+
+			//try again after a small wait
+			time.Sleep(100 * time.Millisecond)
+
+			err := os.Remove(testDb)
+			if !os.IsNotExist(err) {
+				ctx.Req.NoError(err)
+			}
 		}
 	}
 
@@ -457,7 +504,7 @@ func (ctx *TestContext) startEdgeRouter() {
 	ctx.router = router.Create(config, NewVersionProviderTest())
 
 	stateManager := fabric.NewStateManager()
-	xgressEdgeFactory := xgress_edge.NewFactory(config, NewVersionProviderTest(), stateManager, ctx.router.GetMetricsRegistry())
+	xgressEdgeFactory := xgress_edge.NewFactory(config, ctx.router, stateManager)
 	xgress.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
 
 	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(ctx.router, config, stateManager)
@@ -816,32 +863,6 @@ func (ctx *TestContext) requireEntityEnrolled(name string, entity *gabs.Containe
 
 	expiresAt := entity.Path("enrollmentExpiresAt").Data()
 	ctx.Req.Nil(expiresAt, "expected "+name+" with isVerified=true to have an nil enrollment expires at date")
-}
-
-func (ctx *TestContext) requireNListener(count int, l edge.Listener, timeout time.Duration) {
-	sl, ok := l.(edge.SessionListener)
-	ctx.Req.True(ok, "must be session listener")
-
-	c := make(chan []edge.Listener, 5)
-	sl.SetConnectionChangeHandler(func(conn []edge.Listener) {
-		select {
-		case c <- conn:
-		default:
-		}
-	})
-
-	t := time.After(timeout)
-
-	for {
-		select {
-		case state := <-c:
-			if len(state) >= count {
-				return
-			}
-		case <-t:
-			ctx.Req.Failf("timeout", "listener did not have %v connections within %v", count, timeout)
-		}
-	}
 }
 
 func (ctx *TestContext) WrapNetConn(conn edge.Conn, err error) *TestConn {

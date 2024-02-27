@@ -1,10 +1,10 @@
 package model
 
 import (
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/storage/boltztest"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
@@ -26,26 +26,26 @@ func (ctx *TestContext) testSessionIdempotency(t *testing.T) {
 	service.RoleAttributes = []string{eid.New()}
 	ctx.NoError(ctx.managers.EdgeService.Update(service, nil, change.New()))
 
-	ctx.requireNewServicePolicy(persistence.PolicyTypeDialName, ss("#all"), ss("#all"))
-	ctx.requireNewServicePolicy(persistence.PolicyTypeBindName, ss("#all"), ss("#all"))
+	ctx.requireNewServicePolicy(db.PolicyTypeDialName, ss("#all"), ss("#all"))
+	ctx.requireNewServicePolicy(db.PolicyTypeBindName, ss("#all"), ss("#all"))
 	ctx.requireNewEdgeRouterPolicy(ss("#all"), ss("#all"))
 	ctx.requireNewServiceNewEdgeRouterPolicy(ss("#all"), ss("#all"))
 
 	apiSession := ctx.requireNewApiSession(identity)
-	sessSvc1Dial := ctx.requireNewSession(apiSession, service.Id, persistence.SessionTypeDial)
-	sessSvc1Bind := ctx.requireNewSession(apiSession, service.Id, persistence.SessionTypeBind)
+	sessSvc1Dial := ctx.requireNewSession(apiSession, service.Id, db.SessionTypeDial)
+	sessSvc1Bind := ctx.requireNewSession(apiSession, service.Id, db.SessionTypeBind)
 
 	req := require.New(t)
 	req.NotEqual(sessSvc1Dial.Id, sessSvc1Bind.Id)
 
-	sessSvc1Dial2 := ctx.requireNewSession(apiSession, service.Id, persistence.SessionTypeDial)
-	sessSvc1Bind2 := ctx.requireNewSession(apiSession, service.Id, persistence.SessionTypeBind)
+	sessSvc1Dial2 := ctx.requireNewSession(apiSession, service.Id, db.SessionTypeDial)
+	sessSvc1Bind2 := ctx.requireNewSession(apiSession, service.Id, db.SessionTypeBind)
 
 	req.Equal(sessSvc1Dial.Id, sessSvc1Dial2.Id)
 	req.Equal(sessSvc1Bind.Id, sessSvc1Bind2.Id)
 
-	sessSvc2Dial1 := ctx.requireNewSession(apiSession, service2.Id, persistence.SessionTypeDial)
-	sessSvc2Bind1 := ctx.requireNewSession(apiSession, service2.Id, persistence.SessionTypeBind)
+	sessSvc2Dial1 := ctx.requireNewSession(apiSession, service2.Id, db.SessionTypeDial)
+	sessSvc2Bind1 := ctx.requireNewSession(apiSession, service2.Id, db.SessionTypeBind)
 
 	req.NotEqual(sessSvc1Dial2.Id, sessSvc1Bind2.Id)
 	req.NotEqual(sessSvc1Dial.Id, sessSvc2Dial1.Id)
@@ -57,14 +57,14 @@ func (ctx *TestContext) testSessionIdempotency(t *testing.T) {
 	req.NotEqual(sessSvc1Bind2.Id, sessSvc2Dial1.Id)
 	req.NotEqual(sessSvc1Bind2.Id, sessSvc2Bind1.Id)
 
-	sessSvc2Dial2 := ctx.requireNewSession(apiSession, service2.Id, persistence.SessionTypeDial)
-	sessSvc2Bind2 := ctx.requireNewSession(apiSession, service2.Id, persistence.SessionTypeBind)
+	sessSvc2Dial2 := ctx.requireNewSession(apiSession, service2.Id, db.SessionTypeDial)
+	sessSvc2Bind2 := ctx.requireNewSession(apiSession, service2.Id, db.SessionTypeBind)
 
 	req.Equal(sessSvc2Dial1.Id, sessSvc2Dial2.Id)
 	req.Equal(sessSvc2Bind1.Id, sessSvc2Bind2.Id)
 
-	sessSvc1Dial3 := ctx.requireNewSession(apiSession, service.Id, persistence.SessionTypeDial)
-	sessSvc1Bind3 := ctx.requireNewSession(apiSession, service.Id, persistence.SessionTypeBind)
+	sessSvc1Dial3 := ctx.requireNewSession(apiSession, service.Id, db.SessionTypeDial)
+	sessSvc1Bind3 := ctx.requireNewSession(apiSession, service.Id, db.SessionTypeBind)
 
 	req.Equal(sessSvc1Dial.Id, sessSvc1Dial3.Id)
 	req.Equal(sessSvc1Bind.Id, sessSvc1Bind3.Id)

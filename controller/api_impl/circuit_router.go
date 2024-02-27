@@ -18,14 +18,13 @@ package api_impl
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/rest_server/operations/circuit"
-	"github.com/openziti/storage/boltz"
-	"sort"
 )
 
 func init() {
@@ -59,10 +58,20 @@ func (r *CircuitRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Re
 
 func (r *CircuitRouter) ListCircuits(n *network.Network, rc api.RequestContext) {
 	ListWithEnvelopeFactory(rc, defaultToListEnvelope, func(rc api.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
-		circuits := n.GetAllCircuits()
-		sort.Slice(circuits, func(i, j int) bool {
-			return circuits[i].Id < circuits[j].Id
-		})
+		query, err := queryOptions.getFullQuery(n.GetCircuitStore())
+		if err != nil {
+			return nil, err
+		}
+
+		if query.GetLimit() == nil {
+			query.SetLimit(10)
+		}
+
+		circuits, count, err := n.GetCircuitStore().QueryEntitiesC(query)
+		if err != nil {
+			return nil, err
+		}
+
 		apiCircuits := make([]*rest_model.CircuitDetail, 0, len(circuits))
 		for _, modelCircuit := range circuits {
 			apiCircuit, err := MapCircuitToRestModel(n, rc, modelCircuit)
@@ -73,9 +82,9 @@ func (r *CircuitRouter) ListCircuits(n *network.Network, rc api.RequestContext) 
 		}
 		result := &QueryResult{
 			Result:           apiCircuits,
-			Count:            int64(len(circuits)),
-			Limit:            -1,
-			Offset:           0,
+			Count:            count,
+			Limit:            *query.GetLimit(),
+			Offset:           *query.GetSkip(),
 			FilterableFields: nil,
 		}
 		return result, nil

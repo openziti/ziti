@@ -36,9 +36,15 @@ enum ContentType {
   RemoveTerminatorsRequestType = 1038;
   QuiesceRouterRequestType = 1039;
   DequiesceRouterRequestType = 1040;
+  ValidateTerminatorsV2RequestType = 1041;
+  ValidateTerminatorsV2ResponseType = 1042;
+  DecommissionRouterRequestType = 1043;
 
   PeerStateChangeRequestType = 1050;
+}
 
+enum ControlHeaders {
+  NoneHeader = 0;
   ListenersHeader = 10;
   RouterMetadataHeader = 11;
   CapabilitiesHeader = 12;
@@ -71,6 +77,7 @@ message CircuitRequest {
 
 message CircuitConfirmation {
   repeated string circuitIds = 1;
+  map<string, int64> idleTimes = 2;
 }
 
 enum TerminatorPrecedence {
@@ -108,6 +115,27 @@ message ValidateTerminatorsRequest {
   repeated Terminator terminators = 1;
 }
 
+message ValidateTerminatorsV2Request {
+  repeated Terminator terminators = 1;
+  bool fixInvalid = 2;
+}
+
+enum TerminatorInvalidReason {
+  UnknownBinding = 0;
+  UnknownTerminator = 1;
+  BadState = 2;
+}
+
+message RouterTerminatorState {
+  bool valid = 1;
+  TerminatorInvalidReason reason = 2;
+  string detail = 3; // inspect info if valid
+}
+
+message ValidateTerminatorsV2Response {
+  map<string, RouterTerminatorState> states = 1;
+}
+
 message UpdateTerminatorRequest {
   string terminatorId = 1;
   bool updatePrecedence = 2;
@@ -142,6 +170,7 @@ message RouterLinks {
     string linkProtocol = 3;
     repeated string linkCostTags = 4;
     string dialAddress = 5;
+    uint32 iteration = 6;
   }
 
   repeated RouterLink links = 1;
@@ -159,6 +188,7 @@ enum FaultSubject {
 message Fault {
   FaultSubject subject = 1;
   string id = 2;
+  uint32 iteration = 3;
 }
 
 message Context {

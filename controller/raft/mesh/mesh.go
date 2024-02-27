@@ -18,9 +18,11 @@ package mesh
 
 import (
 	"crypto/x509"
-	"github.com/openziti/ziti/controller/event"
+	"fmt"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/controller/event"
+	"math/rand"
 	"net"
 	"strings"
 	"sync"
@@ -299,7 +301,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		binding.AddTypedReceiveHandler(peer.RaftConn)
 		binding.AddCloseHandler(peer)
 
-		return nil
+		return self.PeerConnected(peer)
 	})
 
 	transportCfg := transport.Configuration{
@@ -307,10 +309,11 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 
 	if _, err = channel.NewChannelWithTransportConfiguration(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions(), transportCfg); err != nil {
-		return nil, errors.Wrapf(err, "unable to dial %v", address)
+		// introduce random delay in case ctrls are dialing each other and closing each other's connections
+		time.Sleep(time.Duration(rand.Intn(250)+1) * time.Millisecond)
+		return nil, errors.Wrapf(err, "error dialing peer %v", address)
 	}
 
-	self.PeerConnected(peer)
 	return peer, nil
 }
 
@@ -386,12 +389,18 @@ func ExtractSpiffeId(certs []*x509.Certificate) (string, error) {
 	return "", errors.New("invalid controller certificate, no controller SPIFFE ID in cert")
 }
 
-func (self *impl) PeerConnected(peer *Peer) {
+func (self *impl) PeerConnected(peer *Peer) error {
 	self.lock.Lock()
 	defer self.lock.Unlock()
+	if self.Peers[peer.Address] != nil {
+		return fmt.Errorf("connection from peer %v @ %v already present", peer.Id, peer.Address)
+	}
+
 	self.Peers[peer.Address] = peer
 	self.updateClusterState()
-	logrus.Infof("added peer at %v", peer.Address)
+	pfxlog.Logger().WithField("peerId", peer.Id).
+		WithField("peerAddr", peer.Address).
+		Info("peer connected")
 
 	evt := event.NewClusterEvent(event.ClusterPeerConnected)
 	evt.Peers = append(evt.Peers, &event.ClusterPeer{
@@ -402,6 +411,7 @@ func (self *impl) PeerConnected(peer *Peer) {
 	})
 
 	self.eventDispatcher.AcceptClusterEvent(evt)
+	return nil
 }
 
 func (self *impl) GetPeer(addr raft.ServerAddress) *Peer {
@@ -413,8 +423,17 @@ func (self *impl) GetPeer(addr raft.ServerAddress) *Peer {
 func (self *impl) PeerDisconnected(peer *Peer) {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
+	currentPeer := self.Peers[peer.Address]
+	if currentPeer == nil || currentPeer != peer {
+		return
+	}
+
 	delete(self.Peers, peer.Address)
 	self.updateClusterState()
+
+	pfxlog.Logger().WithField("peerId", peer.Id).
+		WithField("peerAddr", peer.Address).
+		Info("peer disconnected")
 
 	evt := event.NewClusterEvent(event.ClusterPeerDisconnected)
 	evt.Peers = append(evt.Peers, &event.ClusterPeer{
@@ -509,15 +528,17 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		binding.AddTypedReceiveHandler(peer)
 		binding.AddTypedReceiveHandler(peer.RaftConn)
 		binding.AddCloseHandler(peer)
-		return nil
+		return self.PeerConnected(peer)
 	})
 
 	_, err := channel.NewChannelWithUnderlay(ChannelTypeMesh, underlay, bindHandler, channel.DefaultOptions())
 	if err != nil {
+		// introduce random delay in case ctrls are dialing each other and closing each other's connections
+		time.Sleep(time.Duration(rand.Intn(250)+1) * time.Millisecond)
+
 		return err
 	}
 
-	self.PeerConnected(peer)
 	logrus.Infof("connected peer %v at %v", peer.Id, peer.Address)
 
 	return nil

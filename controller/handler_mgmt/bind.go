@@ -18,9 +18,9 @@ package handler_mgmt
 
 import (
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/ziti/common/trace"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/xmgmt"
-	"github.com/openziti/ziti/common/trace"
 )
 
 type BindHandler struct {
@@ -33,7 +33,23 @@ func NewBindHandler(network *network.Network, xmgmts []xmgmt.Xmgmt) channel.Bind
 }
 
 func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(newInspectHandler(bindHandler.network))
+	inspectRequestHandler := newInspectHandler(bindHandler.network)
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type:    inspectRequestHandler.ContentType(),
+		Handler: inspectRequestHandler.HandleReceive,
+	})
+
+	validateTerminatorsRequestHandler := newValidateTerminatorsHandler(bindHandler.network)
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type:    validateTerminatorsRequestHandler.ContentType(),
+		Handler: validateTerminatorsRequestHandler.HandleReceive,
+	})
+
+	validateLinksRequestHandler := newValidateRouterLinksHandler(bindHandler.network)
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type:    validateLinksRequestHandler.ContentType(),
+		Handler: validateLinksRequestHandler.HandleReceive,
+	})
 
 	tracesHandler := newStreamTracesHandler(bindHandler.network)
 	binding.AddTypedReceiveHandler(tracesHandler)

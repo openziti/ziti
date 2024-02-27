@@ -20,31 +20,33 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/storage/boltz"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"time"
 )
 
 type EnrollmentManager struct {
-	baseEntityManager[*Enrollment, *persistence.Enrollment]
-	enrollmentStore persistence.EnrollmentStore
+	baseEntityManager[*Enrollment, *db.Enrollment]
+	enrollmentStore db.EnrollmentStore
 }
 
 func NewEnrollmentManager(env Env) *EnrollmentManager {
 	manager := &EnrollmentManager{
-		baseEntityManager: newBaseEntityManager[*Enrollment, *persistence.Enrollment](env, env.GetStores().Enrollment),
+		baseEntityManager: newBaseEntityManager[*Enrollment, *db.Enrollment](env, env.GetStores().Enrollment),
 		enrollmentStore:   env.GetStores().Enrollment,
 	}
 
@@ -52,6 +54,7 @@ func NewEnrollmentManager(env Env) *EnrollmentManager {
 
 	network.RegisterManagerDecoder[*Enrollment](env.GetHostController().GetNetwork().GetManagers(), manager)
 	RegisterCommand(env, &ReplaceEnrollmentWithAuthenticatorCmd{}, &edge_cmd_pb.ReplaceEnrollmentWithAuthenticatorCmd{})
+	RegisterCommand(env, &ReEnrollEdgeRouterCmd{}, &edge_cmd_pb.ReEnrollEdgeRouterCmd{})
 
 	return manager
 }
@@ -86,7 +89,7 @@ func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enr
 	model.ExpiresAt = &expiresAt
 
 	switch model.Method {
-	case persistence.MethodEnrollOttCa:
+	case db.MethodEnrollOttCa:
 		if model.CaId == nil {
 			return apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
 		}
@@ -96,11 +99,11 @@ func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enr
 		if err != nil || ca == nil {
 			return apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
 		}
-	case persistence.MethodAuthenticatorUpdb:
+	case db.MethodAuthenticatorUpdb:
 		if model.Username == nil || *model.Username == "" {
 			return apierror.NewBadRequestFieldError(*errorz.NewFieldError("username not provided", "username", model.Username))
 		}
-	case persistence.MethodEnrollOtt:
+	case db.MethodEnrollOtt:
 	default:
 		return apierror.NewBadRequestFieldError(*errorz.NewFieldError("unsupported enrollment method", "method", model.Method))
 	}
@@ -140,7 +143,7 @@ func (self *EnrollmentManager) newModelEntity() *Enrollment {
 func (self *EnrollmentManager) getEnrollmentMethod(ctx EnrollmentContext) (string, error) {
 	method := ctx.GetMethod()
 
-	if method == persistence.MethodEnrollCa {
+	if method == db.MethodEnrollCa {
 		return method, nil
 	}
 
@@ -284,9 +287,9 @@ func (self *EnrollmentManager) RefreshJwt(id string, expiresAt time.Time, ctx *c
 	}
 
 	return self.Update(enrollment, fields.UpdatedFieldsMap{
-		persistence.FieldEnrollmentJwt:       struct{}{},
-		persistence.FieldEnrollmentExpiresAt: struct{}{},
-		persistence.FieldEnrollmentIssuedAt:  struct{}{},
+		db.FieldEnrollmentJwt:       struct{}{},
+		db.FieldEnrollmentExpiresAt: struct{}{},
+		db.FieldEnrollmentIssuedAt:  struct{}{},
 	}, ctx)
 }
 
@@ -366,6 +369,107 @@ func (self *EnrollmentManager) Unmarshall(bytes []byte) (*Enrollment, error) {
 		return nil, err
 	}
 	return self.ProtobufToEnrollment(msg)
+}
+
+type ReEnrollEdgeRouterCmd struct {
+	ctx          *change.Context
+	manager      *EnrollmentManager
+	edgeRouterId string
+}
+
+func (d *ReEnrollEdgeRouterCmd) Decode(env Env, msg *edge_cmd_pb.ReEnrollEdgeRouterCmd) error {
+	d.edgeRouterId = msg.EdgeRouterId
+	d.ctx = ProtobufToContext(msg.Ctx)
+	d.manager = env.GetManagers().Enrollment
+
+	return nil
+}
+
+func (d *ReEnrollEdgeRouterCmd) Apply(ctx boltz.MutateContext) error {
+	return d.manager.ApplyReEnrollEdgeRouter(d, ctx)
+}
+
+func (d *ReEnrollEdgeRouterCmd) GetChangeContext() *change.Context {
+	return d.ctx
+}
+
+func (d *ReEnrollEdgeRouterCmd) Encode() ([]byte, error) {
+	msg := &edge_cmd_pb.ReEnrollEdgeRouterCmd{
+		EdgeRouterId: d.edgeRouterId,
+	}
+
+	return cmd_pb.EncodeProtobuf(msg)
+}
+
+func (self *EnrollmentManager) ApplyReEnrollEdgeRouter(cmd *ReEnrollEdgeRouterCmd, ctx boltz.MutateContext) error {
+	log := pfxlog.Logger().WithField("routerId", cmd.edgeRouterId)
+
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		log.Info("re-enrolling edge router, removing existing enrollments, creating a new one")
+
+		edgeRouter, _, err := self.env.GetStores().EdgeRouter.FindById(ctx.Tx(), cmd.edgeRouterId)
+
+		if err != nil {
+			return err
+		}
+
+		if edgeRouter == nil {
+			return fmt.Errorf("could not find edge router with id %s", cmd.edgeRouterId)
+		}
+
+		enrollmentIds, _, err := self.GetEnv().GetStores().Enrollment.QueryIds(ctx.Tx(), fmt.Sprintf(`%s = "%s"`, db.FieldEnrollEdgeRouter, cmd.edgeRouterId))
+
+		if err != nil {
+			return err
+		}
+
+		for _, enrollmentId := range enrollmentIds {
+			err := self.GetEnv().GetStores().Enrollment.DeleteById(ctx, enrollmentId)
+
+			if err != nil {
+				return err
+			}
+		}
+
+		enrollment := &Enrollment{
+			BaseEntity: models.BaseEntity{
+				Id: eid.New(),
+			},
+			Method:       MethodEnrollEdgeRouterOtt,
+			EdgeRouterId: &cmd.edgeRouterId,
+		}
+
+		if err := enrollment.FillJwtInfo(self.env, cmd.edgeRouterId); err != nil {
+			return fmt.Errorf("unable to fill jwt info for re-enrolling edge router: %v", err)
+		}
+
+		dbEnrollment, err := enrollment.toBoltEntityForCreate(ctx.Tx(), self.env)
+
+		if err != nil {
+			return errors.Wrap(err, "could not convert to bolt entity for create")
+		}
+
+		if err := self.env.GetStores().Enrollment.Create(ctx, dbEnrollment); err != nil {
+			return errors.Wrap(err, "could not create enrollment for re-enrolling edge router")
+		} else {
+			log.WithField("enrollmentId", enrollment.Id).Infof("edge router re-enrollment entity created")
+		}
+
+		edgeRouter.Fingerprint = nil
+		edgeRouter.CertPem = nil
+		edgeRouter.IsVerified = false
+
+		if err := self.env.GetStores().EdgeRouter.Update(ctx, edgeRouter, fields.UpdatedFieldsMap{
+			db.FieldRouterFingerprint:    struct{}{},
+			db.FieldEdgeRouterCertPEM:    struct{}{},
+			db.FieldEdgeRouterIsVerified: struct{}{},
+		}); err != nil {
+			log.WithError(err).Error("unable to update re-enrolling edge router")
+			return errors.Wrap(err, "unable to update re-enrolling edge router")
+		}
+
+		return nil
+	})
 }
 
 type ReplaceEnrollmentWithAuthenticatorCmd struct {

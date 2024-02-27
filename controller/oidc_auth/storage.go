@@ -6,18 +6,19 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/foundation/v2/stringz"
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/models"
+	cmap "github.com/orcaman/concurrent-map/v2"
 
 	"github.com/google/uuid"
 	"gopkg.in/square/go-jose.v2"
@@ -534,7 +535,7 @@ func (s *HybridStorage) RevokeToken(_ context.Context, tokenIDOrToken string, _ 
 		_, claims, err := s.parseRefreshToken(tokenIDOrToken)
 
 		if err != nil {
-			return nil //not a valid toke ignore
+			return nil //not a valid token ignore
 		}
 		revocation := NewRevocation(claims.JWTID, claims.Expiration.AsTime())
 		if err := s.saveRevocation(revocation); err != nil {

@@ -20,6 +20,10 @@ func (x *CreateIdentityWithEnrollmentsCmd) GetCommandType() int32 {
 	return int32(CommandType_CreateIdentityWithEnrollmentsType)
 }
 
+func (x *ReEnrollEdgeRouterCmd) GetCommandType() int32 {
+	return int32(CommandType_ReEnrollEdgeRouterType)
+}
+
 func (x *UpdateServiceConfigsCmd) GetCommandType() int32 {
 	return int32(CommandType_UpdateServiceConfigsType)
 }

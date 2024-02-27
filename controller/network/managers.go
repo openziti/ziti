@@ -18,6 +18,11 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
@@ -25,11 +30,6 @@ import (
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/controller/ioc"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/foundation/v2/goroutines"
-	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 

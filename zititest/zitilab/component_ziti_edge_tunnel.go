@@ -27,8 +27,17 @@ import (
 var _ model.ComponentType = (*ZitiEdgeTunnelType)(nil)
 
 type ZitiEdgeTunnelType struct {
-	Version   string
-	LocalPath string
+	Version     string
+	ZitiVersion string
+	LocalPath   string
+	LogConfig   string
+	ConfigPathF func(c *model.Component) string
+}
+
+func (self *ZitiEdgeTunnelType) GetActions() map[string]model.ComponentAction {
+	return map[string]model.ComponentAction{
+		ZitiTunnelActionsReEnroll: model.ComponentActionF(self.ReEnroll),
+	}
 }
 
 func (self *ZitiEdgeTunnelType) Dump() any {
@@ -43,6 +52,7 @@ func (self *ZitiEdgeTunnelType) InitType(*model.Component) {
 	if strings.HasPrefix(self.Version, "v") {
 		self.Version = self.Version[1:]
 	}
+	canonicalizeGoAppVersion(&self.ZitiVersion)
 }
 
 func (self *ZitiEdgeTunnelType) getBinaryName() string {
@@ -55,7 +65,10 @@ func (self *ZitiEdgeTunnelType) getBinaryName() string {
 }
 
 func (self *ZitiEdgeTunnelType) StageFiles(r model.Run, c *model.Component) error {
-	return stageziti.StageZitiEdgeTunnelOnce(r, c, self.Version, self.LocalPath)
+	if err := stageziti.StageZitiEdgeTunnelOnce(r, c, self.Version, self.LocalPath); err != nil {
+		return err
+	}
+	return stageziti.StageZitiOnce(r, c, self.ZitiVersion, self.LocalPath)
 }
 
 func (self *ZitiEdgeTunnelType) getProcessFilter(c *model.Component) func(string) bool {
@@ -74,15 +87,27 @@ func (self *ZitiEdgeTunnelType) IsRunning(_ model.Run, c *model.Component) (bool
 	return len(pids) > 0, nil
 }
 
+func (self *ZitiEdgeTunnelType) GetConfigPath(c *model.Component) string {
+	if self.ConfigPathF != nil {
+		return self.ConfigPathF(c)
+	}
+	return fmt.Sprintf("/home/%s/fablab/cfg/%s.json", c.GetHost().GetSshUser(), c.Id)
+}
+
 func (self *ZitiEdgeTunnelType) Start(_ model.Run, c *model.Component) error {
 	user := c.GetHost().GetSshUser()
 
 	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", user, self.getBinaryName())
-	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s.json", user, c.Id)
+	configPath := self.GetConfigPath(c)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
-	serviceCmd := fmt.Sprintf("sudo %s run -i %s > %s 2>&1 &", binaryPath, configPath, logsPath)
+	logging := ""
+	if self.LogConfig != "" {
+		logging = "ZITI_LOG=" + self.LogConfig + " "
+	}
 
+	serviceCmd := fmt.Sprintf("%ssudo %s run -i %s > %s 2>&1 &", logging, binaryPath, configPath, logsPath)
+	logrus.Infof("starting: %s", serviceCmd)
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {
 		return err
@@ -97,4 +122,8 @@ func (self *ZitiEdgeTunnelType) Start(_ model.Run, c *model.Component) error {
 
 func (self *ZitiEdgeTunnelType) Stop(_ model.Run, c *model.Component) error {
 	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c))
+}
+
+func (self *ZitiEdgeTunnelType) ReEnroll(run model.Run, c *model.Component) error {
+	return reEnrollIdentity(run, c, getZitiBinaryPath(c, self.ZitiVersion), self.GetConfigPath(c))
 }

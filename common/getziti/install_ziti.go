@@ -10,3 +10,9 @@ func InstallZiti(targetVersion, targetOS, targetArch, binDir string, verbose boo
 	return FindVersionAndInstallGitHubRelease(
 		c.ZITI, c.ZITI, targetOS, targetArch, binDir, targetVersion, verbose)
 }
+
+func InstallZrok(targetVersion, targetOS, targetArch, binDir string, verbose bool) error {
+	fmt.Println("Attempting to install '" + c.ZROK + "' version: " + targetVersion)
+	return FindVersionAndInstallGitHubRelease(
+		c.ZROK, c.ZROK, targetOS, targetArch, binDir, targetVersion, verbose)
+}

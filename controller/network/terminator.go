@@ -14,21 +14,28 @@
 package network
 
 import (
+	"context"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"reflect"
 	"strings"
+	"time"
 )
 
 type Terminator struct {
@@ -368,6 +375,117 @@ func (self *TerminatorManager) Unmarshall(bytes []byte) (*Terminator, error) {
 	return result, nil
 }
 
+type TerminatorValidationCallback func(detail *mgmt_pb.TerminatorDetail)
+
+func (self *TerminatorManager) ValidateTerminators(filter string, fixInvalid bool, cb TerminatorValidationCallback) (uint64, error) {
+	if filter == "" {
+		filter = "true limit none"
+	}
+	result, err := self.BaseList(filter)
+	if err != nil {
+		return 0, err
+	}
+
+	go func() {
+		batches := map[string][]*Terminator{}
+
+		for _, terminator := range result.Entities {
+			routerId := terminator.Router
+			batch := append(batches[routerId], terminator)
+			batches[routerId] = batch
+			if len(batch) == 50 {
+				self.validateTerminatorBatch(fixInvalid, routerId, batch, cb)
+				delete(batches, routerId)
+			}
+		}
+
+		for routerId, batch := range batches {
+			self.validateTerminatorBatch(fixInvalid, routerId, batch, cb)
+		}
+	}()
+
+	return uint64(len(result.Entities)), nil
+}
+
+func (self *TerminatorManager) validateTerminatorBatch(fixInvalid bool, routerId string, batch []*Terminator, cb TerminatorValidationCallback) {
+	router := self.Managers.Routers.getConnected(routerId)
+	if router == nil {
+		self.reportError(router, batch, cb, "router off-line")
+		return
+	}
+
+	request := &ctrl_pb.ValidateTerminatorsV2Request{
+		FixInvalid: fixInvalid,
+	}
+	for _, terminator := range batch {
+		request.Terminators = append(request.Terminators, &ctrl_pb.Terminator{
+			Id:      terminator.Id,
+			Binding: terminator.Binding,
+			Address: terminator.Address,
+		})
+	}
+
+	b, err := proto.Marshal(request)
+	if err != nil {
+		self.reportError(router, batch, cb, fmt.Sprintf("failed to marshal %s: %s", reflect.TypeOf(request), err.Error()))
+		return
+	}
+
+	msg := channel.NewMessage(int32(ctrl_pb.ContentType_ValidateTerminatorsV2RequestType), b)
+	envelope := &ValidateTerminatorRequestSendable{
+		Message:     msg,
+		fixInvalid:  fixInvalid,
+		cb:          cb,
+		mgr:         self,
+		router:      router,
+		terminators: batch,
+	}
+	envelope.ctx, envelope.cancelF = context.WithTimeout(context.Background(), time.Minute)
+
+	if err = router.Control.Send(envelope); err != nil {
+		self.reportError(router, batch, cb, fmt.Sprintf("failed to send %s: %s", reflect.TypeOf(request), err.Error()))
+		return
+	}
+}
+
+func (self *TerminatorManager) reportError(router *Router, batch []*Terminator, cb TerminatorValidationCallback, err string) {
+	for _, terminator := range batch {
+		detail := self.newTerminatorDetail(router, terminator)
+		detail.State = mgmt_pb.TerminatorState_Unknown
+		detail.Detail = err
+		cb(detail)
+	}
+}
+
+func (self *TerminatorManager) newTerminatorDetail(router *Router, terminator *Terminator) *mgmt_pb.TerminatorDetail {
+	detail := &mgmt_pb.TerminatorDetail{
+		TerminatorId: terminator.Id,
+		ServiceId:    terminator.Service,
+		ServiceName:  "unable to retrieve",
+		RouterId:     terminator.Router,
+		RouterName:   "unable to retrieve",
+		Binding:      terminator.Binding,
+		Address:      terminator.Address,
+		HostId:       terminator.HostId,
+		CreateDate:   terminator.CreatedAt.Format(time.RFC3339),
+	}
+
+	service, _ := self.Services.Read(terminator.Service)
+	if service != nil {
+		detail.ServiceName = service.Name
+	}
+
+	if router == nil {
+		router, _ = self.Routers.Read(terminator.Router)
+	}
+
+	if router != nil {
+		detail.RouterName = router.Name
+	}
+
+	return detail
+}
+
 type TerminatorListResult struct {
 	controller *TerminatorManager
 	Entities   []*Terminator
@@ -419,4 +537,84 @@ func (self *DeleteTerminatorsBatchCommand) Decode(n *Network, msg *cmd_pb.Delete
 
 func (self *DeleteTerminatorsBatchCommand) GetChangeContext() *change.Context {
 	return self.Context
+}
+
+type ValidateTerminatorRequestSendable struct {
+	channel.BaseSendListener
+	*channel.Message
+	fixInvalid  bool
+	mgr         *TerminatorManager
+	router      *Router
+	terminators []*Terminator
+	cb          TerminatorValidationCallback
+	ctx         context.Context
+	cancelF     func()
+}
+
+func (self *ValidateTerminatorRequestSendable) AcceptReply(message *channel.Message) {
+	self.cancelF()
+
+	response := &ctrl_pb.ValidateTerminatorsV2Response{}
+	if err := protobufs.TypedResponse(response).Unmarshall(message, nil); err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to unmarshall validate terminators v2 response")
+		return
+	}
+
+	var invalidIds []string
+
+	for _, terminator := range self.terminators {
+		if status := response.States[terminator.Id]; status != nil && !status.Valid {
+			invalidIds = append(invalidIds, terminator.Id)
+		}
+	}
+
+	fixed := false
+
+	if self.fixInvalid && len(invalidIds) > 0 {
+		// todo: figure out how to inject change context from outside of websocket context
+		changeCtx := change.New().SetSourceType(change.SourceTypeWebSocket).SetChangeAuthorId(change.AuthorTypeUnattributed)
+		err := self.mgr.DeleteBatch(invalidIds, changeCtx)
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("unable to batch delete invalid terminators")
+		} else {
+			fixed = true
+		}
+	}
+
+	for _, terminator := range self.terminators {
+		detail := self.mgr.newTerminatorDetail(self.router, terminator)
+		if status := response.States[terminator.Id]; status != nil {
+			if status.Valid {
+				detail.State = mgmt_pb.TerminatorState_Valid
+			} else if status.Reason == ctrl_pb.TerminatorInvalidReason_UnknownBinding {
+				detail.State = mgmt_pb.TerminatorState_InvalidUnknownBinding
+			} else if status.Reason == ctrl_pb.TerminatorInvalidReason_UnknownTerminator {
+				detail.State = mgmt_pb.TerminatorState_InvalidUnknownTerminator
+			} else if status.Reason == ctrl_pb.TerminatorInvalidReason_BadState {
+				detail.State = mgmt_pb.TerminatorState_InvalidBadState
+			} else {
+				detail.State = mgmt_pb.TerminatorState_Unknown
+			}
+
+			if !status.Valid {
+				detail.Fixed = fixed
+			}
+			detail.Detail = status.Detail
+		} else {
+			detail.State = mgmt_pb.TerminatorState_Unknown
+		}
+		self.cb(detail)
+	}
+}
+
+func (self *ValidateTerminatorRequestSendable) Context() context.Context {
+	return self.ctx
+}
+
+func (self *ValidateTerminatorRequestSendable) SendListener() channel.SendListener {
+	return self
+}
+
+func (self *ValidateTerminatorRequestSendable) ReplyReceiver() channel.ReplyReceiver {
+	return self
 }

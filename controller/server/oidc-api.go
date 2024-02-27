@@ -19,14 +19,15 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/openziti/ziti/controller"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/oidc_auth"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/xweb/v2"
 	"net/http"
 	"strings"
+
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/oidc_auth"
 )
 
 var _ xweb.ApiHandlerFactory = &OidcApiFactory{}
@@ -122,7 +123,7 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 			return nil, fmt.Errorf("[edge-oidc.options.secret] must be a string")
 		}
 	} else {
-		return nil, fmt.Errorf("[edge-oidc.options.secret] must be definded")
+		return nil, fmt.Errorf("[edge-oidc.options.secret] must be defined")
 	}
 
 	if redirectVal, ok := options["redirectURIs"]; ok {

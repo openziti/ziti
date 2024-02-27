@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"github.com/go-openapi/runtime"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/controller/apierror"
 	"net/http"
 	"strconv"
 	"strings"
@@ -84,7 +84,7 @@ func (responder *ResponderImpl) Respond(data interface{}, httpStatus int) {
 	responder.RespondWithProducer(responder.GetProducer(), data, httpStatus)
 }
 
-func (responder *ResponderImpl) RespondWithProducer(producer runtime.Producer, data interface{}, httpStatus int) {
+func (responder *ResponderImpl) RespondWithProducer(producer runtime.Producer, data interface{}, httpStatus int) bool {
 	w := responder.rc.GetResponseWriter()
 	buff := &bytes.Buffer{}
 	err := producer.Produce(buff, data)
@@ -106,9 +106,10 @@ func (responder *ResponderImpl) RespondWithProducer(producer runtime.Producer, d
 				WithField("path", responder.rc.GetRequest().URL.Path).
 				WithError(err).
 				Error("could not respond with producer error")
+			return false
 		}
 
-		return
+		return true
 	}
 
 	w.Header().Set("Content-Length", strconv.Itoa(buff.Len()))
@@ -123,6 +124,7 @@ func (responder *ResponderImpl) RespondWithProducer(producer runtime.Producer, d
 			WithError(err).
 			Error("could not respond, writing to response failed")
 	}
+	return err == nil
 }
 
 func (responder *ResponderImpl) RespondWithError(err error) {

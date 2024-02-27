@@ -10,16 +10,16 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,7 +27,6 @@ type requestHandler interface {
 	getAppEnv() *env.AppEnv
 	getNetwork() *network.Network
 	getChannel() channel.Channel
-	ContentType() int32
 	Label() string
 }
 
@@ -365,6 +364,14 @@ func (self *baseSessionRequestContext) verifyTerminator(terminatorId string, bin
 		return terminator
 	}
 	return nil
+}
+
+func (self *baseSessionRequestContext) verifyTerminatorId(id string) {
+	if self.err == nil {
+		if id == "" {
+			self.err = invalidTerminator("provided terminator id is blank")
+		}
+	}
 }
 
 func (self *baseSessionRequestContext) updateTerminator(terminator *network.Terminator, request UpdateTerminatorRequest, ctx *change.Context) {

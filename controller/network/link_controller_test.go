@@ -44,10 +44,11 @@ func TestLifecycle(t *testing.T) {
 	r0 := NewRouter("r0", "", "", 0, true)
 	r1 := NewRouter("r1", "", "", 0, true)
 	l0 := &Link{
-		Id:  "l0",
-		Src: r0,
-		Dst: r1,
+		Id:    "l0",
+		Src:   r0,
+		DstId: r1.Id,
 	}
+	l0.Dst.Store(r1)
 
 	linkController.add(l0)
 	assert.True(t, linkController.has(l0))
@@ -75,11 +76,7 @@ func TestNeighbors(t *testing.T) {
 
 	r0 := newRouterForTest("r0", "", nil, nil, 0, true)
 	r1 := newRouterForTest("r1", "", nil, nil, 0, true)
-	l0 := &Link{
-		Id:  "l0",
-		Src: r0,
-		Dst: r1,
-	}
+	l0 := newTestLink("l0", r0, r1)
 	l0.addState(newLinkState(Connected))
 	linkController.add(l0)
 
@@ -88,6 +85,12 @@ func TestNeighbors(t *testing.T) {
 	assert.Equal(t, r1, neighbors[0])
 }
 
-func newTestLink(id string, linkProtocol string) *Link {
-	return newLink(id, linkProtocol, "tcp:localhost:1234", 0)
+func newTestLink(id string, src, dst *Router) *Link {
+	l := newLink(id, "tls", "tcp:localhost:1234", 0)
+	l.Src = src
+	l.DstId = dst.Id
+	l.Dst.Store(dst)
+	src.Connected.Store(true)
+	dst.Connected.Store(true)
+	return l
 }

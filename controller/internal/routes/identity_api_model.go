@@ -22,13 +22,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/response"
 	"strings"
 )
 
@@ -118,7 +118,7 @@ func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeI
 			Tags: TagsOrDefault(identity.Tags),
 		},
 		Name:                      stringz.OrEmpty(identity.Name),
-		IdentityTypeId:            persistence.DefaultIdentityType,
+		IdentityTypeId:            db.DefaultIdentityType,
 		IsDefaultAdmin:            false,
 		IsAdmin:                   *identity.IsAdmin,
 		RoleAttributes:            AttributesOrDefault(identity.RoleAttributes),
@@ -135,14 +135,14 @@ func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeI
 		if identity.Enrollment.Ott {
 			enrollments = append(enrollments, &model.Enrollment{
 				BaseEntity: models.BaseEntity{},
-				Method:     persistence.MethodEnrollOtt,
+				Method:     db.MethodEnrollOtt,
 				Token:      uuid.New().String(),
 			})
 		} else if identity.Enrollment.Ottca != "" {
 			caId := identity.Enrollment.Ottca
 			enrollments = append(enrollments, &model.Enrollment{
 				BaseEntity: models.BaseEntity{},
-				Method:     persistence.MethodEnrollOttCa,
+				Method:     db.MethodEnrollOttCa,
 				Token:      uuid.New().String(),
 				CaId:       &caId,
 			})
@@ -150,7 +150,7 @@ func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeI
 			username := identity.Enrollment.Updb
 			enrollments = append(enrollments, &model.Enrollment{
 				BaseEntity: models.BaseEntity{},
-				Method:     persistence.MethodEnrollUpdb,
+				Method:     db.MethodEnrollUpdb,
 				Token:      uuid.New().String(),
 				Username:   &username,
 			})
@@ -301,14 +301,14 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 
 	ret.Authenticators = &rest_model.IdentityAuthenticators{}
 	if err = ae.GetManagers().Identity.CollectAuthenticators(identity.Id, func(entity *model.Authenticator) error {
-		if entity.Method == persistence.MethodAuthenticatorUpdb {
+		if entity.Method == db.MethodAuthenticatorUpdb {
 			ret.Authenticators.Updb = &rest_model.IdentityAuthenticatorsUpdb{
 				ID:       entity.Id,
 				Username: entity.ToUpdb().Username,
 			}
 		}
 
-		if entity.Method == persistence.MethodAuthenticatorCert {
+		if entity.Method == db.MethodAuthenticatorCert {
 			ret.Authenticators.Cert = &rest_model.IdentityAuthenticatorsCert{
 				ID:          entity.Id,
 				Fingerprint: entity.ToCert().Fingerprint,
@@ -326,7 +326,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 			expiresAt = strfmt.DateTime(*entity.ExpiresAt)
 		}
 
-		if entity.Method == persistence.MethodEnrollUpdb {
+		if entity.Method == db.MethodEnrollUpdb {
 
 			ret.Enrollment.Updb = &rest_model.IdentityEnrollmentsUpdb{
 				ID:        entity.Id,
@@ -336,7 +336,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 			}
 		}
 
-		if entity.Method == persistence.MethodEnrollOtt {
+		if entity.Method == db.MethodEnrollOtt {
 			ret.Enrollment.Ott = &rest_model.IdentityEnrollmentsOtt{
 				ID:        entity.Id,
 				JWT:       entity.Jwt,
@@ -345,7 +345,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 			}
 		}
 
-		if entity.Method == persistence.MethodEnrollOttCa {
+		if entity.Method == db.MethodEnrollOttCa {
 			if ca, err := ae.Managers.Ca.Read(*entity.CaId); err == nil {
 				ret.Enrollment.Ottca = &rest_model.IdentityEnrollmentsOttca{
 					ID:        entity.Id,
@@ -375,6 +375,8 @@ func fillInfo(identity *rest_model.IdentityDetail, envInfo *model.EnvInfo, sdkIn
 			Os:        envInfo.Os,
 			OsRelease: envInfo.OsRelease,
 			OsVersion: envInfo.OsVersion,
+			Domain:    envInfo.Domain,
+			Hostname:  envInfo.Hostname,
 		}
 	} else {
 		identity.EnvInfo = &rest_model.EnvInfo{}

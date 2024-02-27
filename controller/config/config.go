@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/pkg/errors"
 	"net"
 	"net/url"
@@ -55,6 +56,13 @@ const (
 	DefaultHttpWriteTimeout      = 100000 * time.Millisecond
 
 	DefaultTotpDomain = "openziti.io"
+
+	DefaultAuthRateLimiterEnabled = true
+	DefaultAuthRateLimiterMaxSize = 250
+	DefaultAuthRateLimiterMinSize = 5
+
+	AuthRateLimiterMinSizeValue = 5
+	AuthRateLimiterMaxSizeValue = 1000
 )
 
 type Enrollment struct {
@@ -89,9 +97,10 @@ type Config struct {
 	Api        Api
 	Enrollment Enrollment
 
-	caPems     *bytes.Buffer
-	caPemsOnce sync.Once
-	Totp       Totp
+	caPems          *bytes.Buffer
+	caPemsOnce      sync.Once
+	Totp            Totp
+	AuthRateLimiter command.AdaptiveRateLimiterConfig
 }
 
 type HttpTimeouts struct {
@@ -392,6 +401,56 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 	return nil
 }
 
+func (c *Config) loadAuthRateLimiter(cfgmap map[interface{}]interface{}) error {
+	c.AuthRateLimiter.Enabled = DefaultAuthRateLimiterEnabled
+	c.AuthRateLimiter.MaxSize = DefaultAuthRateLimiterMaxSize
+	c.AuthRateLimiter.MinSize = DefaultAuthRateLimiterMinSize
+
+	if value, found := cfgmap["authRateLimiter"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["enabled"]; found {
+				c.AuthRateLimiter.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
+			}
+
+			if value, found := submap["maxSize"]; found {
+				if intVal, ok := value.(int); ok {
+					v := int64(intVal)
+					if v < AuthRateLimiterMinSizeValue {
+						return errors.Errorf("invalid value %v for authRateLimiter.maxSize, must be at least %v", value, AuthRateLimiterMinSizeValue)
+					}
+					if v > AuthRateLimiterMaxSizeValue {
+						return errors.Errorf("invalid value %v for authRateLimiter.maxSize, must be at most %v", value, AuthRateLimiterMaxSizeValue)
+					}
+					c.AuthRateLimiter.MaxSize = uint32(v)
+				} else {
+					return errors.Errorf("invalid value %v for authRateLimiter.maxSize, must be integer value", value)
+				}
+			}
+
+			if value, found := submap["minSize"]; found {
+				if intVal, ok := value.(int); ok {
+					v := int64(intVal)
+					if v < AuthRateLimiterMinSizeValue {
+						return errors.Errorf("invalid value %v for authRateLimiter.minSize, must be at least %v", value, AuthRateLimiterMinSizeValue)
+					}
+					if v > AuthRateLimiterMaxSizeValue {
+						return errors.Errorf("invalid value %v for authRateLimiter.minSize, must be at most %v", value, AuthRateLimiterMaxSizeValue)
+					}
+					c.AuthRateLimiter.MinSize = uint32(v)
+				} else {
+					return errors.Errorf("invalid value %v for authRateLimiter.minSize, must be integer value", value)
+				}
+			}
+
+			if c.AuthRateLimiter.MinSize > c.AuthRateLimiter.MaxSize {
+				return errors.Errorf("invalid values, %v, %v for authRateLimiter minSize and maxSize, min must be <= max",
+					c.AuthRateLimiter.MinSize, c.AuthRateLimiter.MaxSize)
+			}
+		}
+	}
+	return nil
+}
+
 func LoadFromMap(configMap map[interface{}]interface{}) (*Config, error) {
 	edgeConfig := NewConfig()
 
@@ -422,6 +481,10 @@ func LoadFromMap(configMap map[interface{}]interface{}) (*Config, error) {
 	}
 
 	if err = edgeConfig.loadEnrollmentSection(edgeConfigMap); err != nil {
+		return nil, err
+	}
+
+	if err = edgeConfig.loadAuthRateLimiter(edgeConfigMap); err != nil {
 		return nil, err
 	}
 

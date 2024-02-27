@@ -18,14 +18,15 @@ package fabric
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/trace/pb"
+	trace_pb "github.com/openziti/channel/v2/trace/pb"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type streamTogglePipeTracesAction struct {
@@ -87,7 +88,7 @@ func (self *streamTogglePipeTracesAction) togglePipeTraces(_ *cobra.Command, arg
 				fmt.Printf("\ntracing enabled successfully\n\n")
 				fmt.Println(result.Message)
 			} else {
-				fmt.Printf("\ntracing enable failured [%s]\n\n", result.Message)
+				fmt.Printf("\ntracing enable failed [%s]\n\n", result.Message)
 			}
 		} else {
 			panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))

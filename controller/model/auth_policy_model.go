@@ -17,9 +17,9 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 )
 
@@ -62,7 +62,7 @@ type AuthPolicyUpdb struct {
 	LockoutDurationMinutes int64
 }
 
-func (entity *AuthPolicy) fillFrom(_ Env, _ *bbolt.Tx, boltAuthPolicy *persistence.AuthPolicy) error {
+func (entity *AuthPolicy) fillFrom(_ Env, _ *bbolt.Tx, boltAuthPolicy *db.AuthPolicy) error {
 	entity.FillCommon(boltAuthPolicy)
 	entity.Name = boltAuthPolicy.Name
 	entity.Primary = AuthPolicyPrimary{
@@ -92,16 +92,16 @@ func (entity *AuthPolicy) fillFrom(_ Env, _ *bbolt.Tx, boltAuthPolicy *persisten
 	return nil
 }
 
-func (entity *AuthPolicy) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.AuthPolicy, error) {
-	boltEntity := &persistence.AuthPolicy{
+func (entity *AuthPolicy) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.AuthPolicy, error) {
+	boltEntity := &db.AuthPolicy{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
-		Primary: persistence.AuthPolicyPrimary{
-			Cert: persistence.AuthPolicyCert{
+		Primary: db.AuthPolicyPrimary{
+			Cert: db.AuthPolicyCert{
 				Allowed:           entity.Primary.Cert.Allowed,
 				AllowExpiredCerts: entity.Primary.Cert.AllowExpiredCerts,
 			},
-			Updb: persistence.AuthPolicyUpdb{
+			Updb: db.AuthPolicyUpdb{
 				Allowed:                entity.Primary.Updb.Allowed,
 				MinPasswordLength:      entity.Primary.Updb.MinPasswordLength,
 				RequireSpecialChar:     entity.Primary.Updb.RequireSpecialChar,
@@ -110,12 +110,12 @@ func (entity *AuthPolicy) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.Au
 				MaxAttempts:            entity.Primary.Updb.MaxAttempts,
 				LockoutDurationMinutes: entity.Primary.Updb.LockoutDurationMinutes,
 			},
-			ExtJwt: persistence.AuthPolicyExtJwt{
+			ExtJwt: db.AuthPolicyExtJwt{
 				Allowed:              entity.Primary.ExtJwt.Allowed,
 				AllowedExtJwtSigners: entity.Primary.ExtJwt.AllowedExtJwtSigners,
 			},
 		},
-		Secondary: persistence.AuthPolicySecondary{
+		Secondary: db.AuthPolicySecondary{
 			RequireTotp:          entity.Secondary.RequireTotp,
 			RequiredExtJwtSigner: entity.Secondary.RequiredExtJwtSigner,
 		},
@@ -124,6 +124,6 @@ func (entity *AuthPolicy) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.Au
 	return boltEntity, nil
 }
 
-func (entity *AuthPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.AuthPolicy, error) {
+func (entity *AuthPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.AuthPolicy, error) {
 	return entity.toBoltEntityForCreate(tx, env)
 }

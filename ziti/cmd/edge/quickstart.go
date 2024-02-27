@@ -65,18 +65,17 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	cmd := &cobra.Command{
 		Use:   "quickstart",
 		Short: "runs a Controller and Router in quickstart mode",
-		Long: `runs a Controller and Router in quickstart mode. By default, this will create a totally ephemeral network, only valid while running.`,
+		Long:  "runs a Controller and Router in quickstart mode with a temporary directory; suitable for testing and development",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.out = out
 			options.errOut = errOut
 			options.run(context)
 		},
 	}
-	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "Username to use when creating the Ziti Edge Controller. default: admin")
-	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "Password to use for authenticating to the Ziti Edge Controller. default: admin")
+	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "Admin username, default: admin")
+	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "Admin password, default: admin")
 
-	cmd.Flags().BoolVar(&options.AlreadyInitialized, "already-initialized", false, "Specifies the PKI does not need to be created and the db does not need to be initialized. Recommended to be combined with --home. If --home is not specified the environment will be destroyed on shutdown! default: false")
-	cmd.Flags().StringVar(&options.Home, "home", "", "Sets the directory the environment should be installed into. Defaults to a temporary directory. If specified, the environment will not be removed on exit.")
+	cmd.Flags().StringVar(&options.Home, "home", "", "permanent directory")
 
 	cmd.Flags().StringVar(&options.ControllerAddress, "ctrl-address", "", "Sets the advertised address for the control plane and API. current: "+currentCtrlAddy)
 	cmd.Flags().Int16Var(&options.ControllerPort, "ctrl-port", int16(defautlCtrlPort), "Sets the port to use for the control plane and API. current: "+currentCtrlPort)
@@ -100,6 +99,8 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		tmpDir, _ := os.MkdirTemp("", "quickstart")
 		o.Home = tmpDir
 		o.cleanOnExit = true
+	} else {
+		logrus.Infof("permanent --home '%s' will not be removed on exit", o.Home)
 	}
 	if o.ControllerAddress != "" {
 		_ = os.Setenv(constants.CtrlAdvertisedAddressVarName, o.ControllerAddress)
@@ -141,12 +142,14 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 	}
 
 	dbDir := o.Home + "/db"
-	_, _ = fmt.Fprintf(os.Stdout, "creating the tmp dir [%v] for the database.\n\n", dbDir)
-	_ = os.MkdirAll(dbDir, 0o777)
+	if _, err := os.Stat(dbDir); !os.IsNotExist(err) {
+		o.AlreadyInitialized = true
+	} else {
+		_ = os.MkdirAll(dbDir, 0o777)
+		logrus.Debugf("made directory '%s'", dbDir)
 
-	o.createMinimalPki()
+		o.createMinimalPki()
 
-	if !o.AlreadyInitialized {
 		ctrl := create.NewCmdCreateConfigController()
 		ctrl.SetArgs([]string{
 			fmt.Sprintf("--output=%s", ctrlYaml),
@@ -303,69 +306,67 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 }
 
 func (o *QuickstartOpts) createMinimalPki() {
-	if !o.AlreadyInitialized {
-		where := o.Home + "/pki"
-		fmt.Println("emitting a minimal PKI")
+	where := o.Home + "/pki"
+	fmt.Println("emitting a minimal PKI")
 
-		//ziti pki create ca --pki-root="$pkiDir" --ca-file="root-ca" --ca-name="root-ca"
-		ca := pki.NewCmdPKICreateCA(o.out, o.errOut)
-		ca.SetArgs([]string{
-			fmt.Sprintf("--pki-root=%s", where),
-			fmt.Sprintf("--ca-file=%s", "root-ca"),
-			fmt.Sprintf("--ca-name=%s", "root-ca"),
-		})
-		pkiErr := ca.Execute()
-		if pkiErr != nil {
-			logrus.Fatal(pkiErr)
-		}
+	//ziti pki create ca --pki-root="$pkiDir" --ca-file="root-ca" --ca-name="root-ca"
+	ca := pki.NewCmdPKICreateCA(o.out, o.errOut)
+	ca.SetArgs([]string{
+		fmt.Sprintf("--pki-root=%s", where),
+		fmt.Sprintf("--ca-file=%s", "root-ca"),
+		fmt.Sprintf("--ca-name=%s", "root-ca"),
+	})
+	pkiErr := ca.Execute()
+	if pkiErr != nil {
+		logrus.Fatal(pkiErr)
+	}
 
-		//ziti pki create intermediate --pki-root "$pkiDir" --ca-name "root-ca" --intermediate-name "intermediate-ca" --intermediate-file "intermediate-ca" --max-path-len "1"
-		intermediate := pki.NewCmdPKICreateIntermediate(o.out, o.errOut)
-		intermediate.SetArgs([]string{
-			fmt.Sprintf("--pki-root=%s", where),
-			fmt.Sprintf("--ca-name=%s", "root-ca"),
-			fmt.Sprintf("--intermediate-name=%s", "intermediate-ca"),
-			fmt.Sprintf("--intermediate-file=%s", "intermediate-ca"),
-			"--max-path-len=1",
-		})
-		intErr := intermediate.Execute()
-		if intErr != nil {
-			logrus.Fatal(intErr)
-		}
+	//ziti pki create intermediate --pki-root "$pkiDir" --ca-name "root-ca" --intermediate-name "intermediate-ca" --intermediate-file "intermediate-ca" --max-path-len "1"
+	intermediate := pki.NewCmdPKICreateIntermediate(o.out, o.errOut)
+	intermediate.SetArgs([]string{
+		fmt.Sprintf("--pki-root=%s", where),
+		fmt.Sprintf("--ca-name=%s", "root-ca"),
+		fmt.Sprintf("--intermediate-name=%s", "intermediate-ca"),
+		fmt.Sprintf("--intermediate-file=%s", "intermediate-ca"),
+		"--max-path-len=1",
+	})
+	intErr := intermediate.Execute()
+	if intErr != nil {
+		logrus.Fatal(intErr)
+	}
 
-		//ziti pki create server --pki-root="${ZITI_HOME}/pki" --ca-name "intermediate-ca" --server-name "server" --server-file "server" --dns "localhost,${ZITI_HOSTNAME}"
-		svr := pki.NewCmdPKICreateServer(o.out, o.errOut)
-		var ips = "127.0.0.1,::1"
-		ip_override := os.Getenv("ZITI_CTRL_EDGE_IP_OVERRIDE")
-		if ip_override != "" {
-			ips = ips + "," + ip_override
-		}
-		svr.SetArgs([]string{
-			fmt.Sprintf("--pki-root=%s", where),
-			fmt.Sprintf("--ca-name=%s", "intermediate-ca"),
-			fmt.Sprintf("--server-name=%s", "server"),
-			fmt.Sprintf("--server-file=%s", "server"),
-			fmt.Sprintf("--dns=%s,%s", "localhost", helpers.GetCtrlAdvertisedAddress()),
-			fmt.Sprintf("--ip=%s", ips),
-		})
-		svrErr := svr.Execute()
-		if svrErr != nil {
-			logrus.Fatal(svrErr)
-		}
+	//ziti pki create server --pki-root="${ZITI_HOME}/pki" --ca-name "intermediate-ca" --server-name "server" --server-file "server" --dns "localhost,${ZITI_HOSTNAME}"
+	svr := pki.NewCmdPKICreateServer(o.out, o.errOut)
+	var ips = "127.0.0.1,::1"
+	ip_override := os.Getenv("ZITI_CTRL_EDGE_IP_OVERRIDE")
+	if ip_override != "" {
+		ips = ips + "," + ip_override
+	}
+	svr.SetArgs([]string{
+		fmt.Sprintf("--pki-root=%s", where),
+		fmt.Sprintf("--ca-name=%s", "intermediate-ca"),
+		fmt.Sprintf("--server-name=%s", "server"),
+		fmt.Sprintf("--server-file=%s", "server"),
+		fmt.Sprintf("--dns=%s,%s", "localhost", helpers.GetCtrlAdvertisedAddress()),
+		fmt.Sprintf("--ip=%s", ips),
+	})
+	svrErr := svr.Execute()
+	if svrErr != nil {
+		logrus.Fatal(svrErr)
+	}
 
-		//ziti pki create client --pki-root="${ZITI_HOME}/pki" --ca-name "intermediate-ca" --client-name "client" --client-file "client" --key-file "server"
-		client := pki.NewCmdPKICreateClient(o.out, o.errOut)
-		client.SetArgs([]string{
-			fmt.Sprintf("--pki-root=%s", where),
-			fmt.Sprintf("--ca-name=%s", "intermediate-ca"),
-			fmt.Sprintf("--client-name=%s", "client"),
-			fmt.Sprintf("--client-file=%s", "client"),
-			fmt.Sprintf("--key-file=%s", "server"),
-		})
-		clientErr := client.Execute()
-		if clientErr != nil {
-			logrus.Fatal(clientErr)
-		}
+	//ziti pki create client --pki-root="${ZITI_HOME}/pki" --ca-name "intermediate-ca" --client-name "client" --client-file "client" --key-file "server"
+	client := pki.NewCmdPKICreateClient(o.out, o.errOut)
+	client.SetArgs([]string{
+		fmt.Sprintf("--pki-root=%s", where),
+		fmt.Sprintf("--ca-name=%s", "intermediate-ca"),
+		fmt.Sprintf("--client-name=%s", "client"),
+		fmt.Sprintf("--client-file=%s", "client"),
+		fmt.Sprintf("--key-file=%s", "server"),
+	})
+	clientErr := client.Execute()
+	if clientErr != nil {
+		logrus.Fatal(clientErr)
 	}
 }
 

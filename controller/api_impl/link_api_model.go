@@ -41,7 +41,8 @@ func (factory *LinkLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
 	return links
 }
 
-func MapLinkToRestModel(_ *network.Network, _ api.RequestContext, link *network.Link) (*rest_model.LinkDetail, error) {
+func MapLinkToRestModel(n *network.Network, _ api.RequestContext, link *network.Link) (*rest_model.LinkDetail, error) {
+	iteration := int64(link.Iteration)
 	staticCost := int64(link.StaticCost)
 	linkState := link.CurrentState()
 	linkStateStr := ""
@@ -51,10 +52,19 @@ func MapLinkToRestModel(_ *network.Network, _ api.RequestContext, link *network.
 
 	down := link.IsDown()
 
+	destRouter := link.GetDest()
+	if destRouter == nil {
+		var err error
+		destRouter, err = n.Routers.Read(link.DstId)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	ret := &rest_model.LinkDetail{
 		Cost:          &link.Cost,
 		DestLatency:   &link.DstLatency,
-		DestRouter:    ToEntityRef(link.Dst.Name, link.Dst, RouterLinkFactory),
+		DestRouter:    ToEntityRef(destRouter.Name, destRouter, RouterLinkFactory),
 		Down:          &down,
 		ID:            &link.Id,
 		SourceLatency: &link.SrcLatency,
@@ -62,6 +72,7 @@ func MapLinkToRestModel(_ *network.Network, _ api.RequestContext, link *network.
 		State:         &linkStateStr,
 		StaticCost:    &staticCost,
 		Protocol:      &link.Protocol,
+		Iteration:     &iteration,
 	}
 	return ret, nil
 }

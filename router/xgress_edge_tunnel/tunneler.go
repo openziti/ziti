@@ -70,6 +70,17 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	log := pfxlog.Logger()
 	log.WithField("mode", self.listenOptions.mode).Info("creating interceptor")
 
+	resolver, err := dns.NewResolver(self.listenOptions.resolver)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to start DNS resolver. using dummy resolver")
+		resolver = dns.NewDummyResolver()
+	}
+
+	if err = intercept.SetDnsInterceptIpRange(self.listenOptions.dnsSvcIpRange); err != nil {
+		pfxlog.Logger().Errorf("invalid dns service IP range %s: %v", self.listenOptions.dnsSvcIpRange, err)
+		return err
+	}
+
 	if strings.HasPrefix(self.listenOptions.mode, "tproxy") {
 		tproxyConfig := tproxy.Config{
 			LanIf:            self.listenOptions.lanIf,
@@ -94,16 +105,6 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 		}
 	} else {
 		return errors.Errorf("unsupported tunnel mode '%v'", self.listenOptions.mode)
-	}
-
-	resolver, err := dns.NewResolver(self.listenOptions.resolver)
-	if err != nil {
-		pfxlog.Logger().WithError(err).Error("failed to start DNS resolver")
-	}
-
-	if err = intercept.SetDnsInterceptIpRange(self.listenOptions.dnsSvcIpRange); err != nil {
-		pfxlog.Logger().Errorf("invalid dns service IP range %s: %v", self.listenOptions.dnsSvcIpRange, err)
-		return err
 	}
 
 	self.servicePoller.serviceListener = intercept.NewServiceListener(self.interceptor, resolver)
@@ -175,6 +176,8 @@ func (self *tunneler) ReestablishmentRunner() {
 func (self *tunneler) ReestablishTerminators() {
 	log := pfxlog.Logger()
 	terminators := self.terminators.Items()
+
+	time.Sleep(10 * time.Second) // wait for validate terminator messages to come in first
 
 	if len(terminators) > 0 {
 		pfxlog.Logger().Debugf("reestablishing %v terminators", len(terminators))

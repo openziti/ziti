@@ -17,15 +17,16 @@
 package handler_edge_ctrl
 
 import (
+	"strconv"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/router/fabric"
-	"github.com/openziti/ziti/common/build"
 	"google.golang.org/protobuf/proto"
-	"strconv"
 )
 
 type helloHandler struct {
@@ -39,7 +40,7 @@ type helloHandler struct {
 }
 
 func NewHelloHandler(stateManager fabric.StateManager, listeners []*edge_ctrl_pb.Listener) *helloHandler {
-	//supportedProtocols, protocolPorts, and hostname is for backwards compatability with v0.26.3 and older controllers
+	//supportedProtocols, protocolPorts, and hostname is for backwards compatibility with v0.26.3 and older controllers
 	var supportedProtocols []string
 	var protocolPorts []string
 	hostname := ""
@@ -51,7 +52,7 @@ func NewHelloHandler(stateManager fabric.StateManager, listeners []*edge_ctrl_pb
 		protocolPorts = append(protocolPorts, strconv.Itoa(int(listener.Advertise.Port)))
 
 		if hostname != "" && hostname != listener.Advertise.Hostname {
-			pfxlog.Logger().Warnf("this router is configured to use different hostnames for different edge listeners. If the controller is v0.26.3 or earlier this is not supported. Advertise %s will be used for all protocls", listeners[0].Advertise.Value)
+			pfxlog.Logger().Warnf("this router is configured to use different hostnames for different edge listeners. If the controller is v0.26.3 or earlier this is not supported. Advertise %s will be used for all protocols", listeners[0].Advertise.Value)
 		}
 
 		hostname = listener.Advertise.Hostname

@@ -72,7 +72,7 @@ ca_id=$(echo $ca_registration_result | jq -r '.data.id')
 echo "CA ID set to: ${ca_id}"
 sleep 1 #trying to avoid edge race conditions?
 
-# fetch the verificationToken from the edge controller. this token needs to be put into a certifiate
+# fetch the verificationToken from the edge controller. this token needs to be put into a certificate
 # signed by the CA just registered
 verificationResponse=$(curl -X GET -sk -H "Content-Type: application/json" -H "zt-session: ${zt_session}" "${edge_controller_uri}/cas/${ca_id}")
 verificationToken=$(echo ${verificationResponse} | jq -r ".data.verificationToken")
@@ -99,7 +99,7 @@ the_ca=$(curl -X GET -sk -H "Content-Type: application/json" -H "zt-session: ${z
 sleep 1 #trying to avoid edge race conditions?
 echo "at this point the ca _*SHOULD*_ be verified. is ca verified? $(echo ${the_ca} | jq -r ".isVerified")"
 
-echo "acuiring the jwt from ${edge_controller_uri}/cas/${ca_id}/jwt into ${pki_root}/auto.jwt"
+echo "acquiring the jwt from ${edge_controller_uri}/cas/${ca_id}/jwt into ${pki_root}/auto.jwt"
 curl -X GET -sk -H "Content-Type: application/json" -H "zt-session: ${zt_session}" "${edge_controller_uri}/cas/${ca_id}/jwt" -o ${pki_root}/auto.jwt
 
 ###################################################

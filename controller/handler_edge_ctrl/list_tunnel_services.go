@@ -3,9 +3,9 @@ package handler_edge_ctrl
 import (
 	"encoding/json"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/storage/ast"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/storage/ast"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"time"
@@ -86,7 +86,7 @@ func (self *listTunnelServicesHandler) listServices(ctx *listTunnelServicesReque
 		return
 	}
 
-	query, err := ast.Parse(self.appEnv.BoltStores.EdgeService, "limit none")
+	query, err := ast.Parse(self.appEnv.GetStores().EdgeService, "limit none")
 	if err != nil {
 		logger.WithError(err).Error("could not create service list query")
 		return

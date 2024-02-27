@@ -18,13 +18,13 @@ package routes
 
 import (
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/response"
 )
 
 const EntityNameAuthenticator = "authenticators"
@@ -62,7 +62,7 @@ func MapCreateToAuthenticatorModel(in *rest_model.AuthenticatorCreate) (*model.A
 	var subType interface{}
 
 	switch result.Method {
-	case persistence.MethodAuthenticatorCert:
+	case db.MethodAuthenticatorCert:
 		if in.CertPem == "" {
 			return nil, errorz.NewFieldError("certPem is required", "certPem", in.CertPem)
 		}
@@ -70,7 +70,7 @@ func MapCreateToAuthenticatorModel(in *rest_model.AuthenticatorCreate) (*model.A
 		subType = &model.AuthenticatorCert{
 			Pem: in.CertPem,
 		}
-	case persistence.MethodAuthenticatorUpdb:
+	case db.MethodAuthenticatorUpdb:
 		if in.Username == "" {
 			return nil, errorz.NewFieldError("username is required", "username", in.Username)
 		}
@@ -100,7 +100,7 @@ func MapUpdateAuthenticatorToModel(id string, in *rest_model.AuthenticatorUpdate
 			Id:   id,
 			Tags: TagsOrDefault(in.Tags),
 		},
-		Method: persistence.MethodAuthenticatorUpdb,
+		Method: db.MethodAuthenticatorUpdb,
 	}
 
 	result.SubType = &model.AuthenticatorUpdb{
@@ -119,7 +119,7 @@ func MapPatchAuthenticatorToModel(id string, in *rest_model.AuthenticatorPatch) 
 			Id:   id,
 			Tags: TagsOrDefault(in.Tags),
 		},
-		Method: persistence.MethodAuthenticatorUpdb,
+		Method: db.MethodAuthenticatorUpdb,
 	}
 
 	subType := &model.AuthenticatorUpdb{
@@ -160,10 +160,10 @@ func MapAuthenticatorToRestModel(ae *env.AppEnv, i *model.Authenticator) (*rest_
 	}
 
 	switch i.Method {
-	case persistence.MethodAuthenticatorUpdb:
+	case db.MethodAuthenticatorUpdb:
 		subType := i.SubType.(*model.AuthenticatorUpdb)
 		result.Username = subType.Username
-	case persistence.MethodAuthenticatorCert:
+	case db.MethodAuthenticatorCert:
 		subType := i.SubType.(*model.AuthenticatorCert)
 		result.CertPem = subType.Pem
 		result.Fingerprint = subType.Fingerprint

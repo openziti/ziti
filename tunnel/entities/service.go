@@ -164,7 +164,7 @@ func makeAllowedAddress(addr string) (allowedAddress, error) {
 		return &domainAddress{domain: strings.ToLower(addr)}, nil
 	}
 
-	if _, cidr, err := utils.GetDialIP(addr); err == nil {
+	if cidr, err := utils.GetCidr(addr); err == nil {
 		return &cidrAddress{cidr: *cidr}, nil
 	}
 
@@ -291,7 +291,7 @@ func (self *HostV1Config) GetAllowedSourceAddressRoutes() ([]*net.IPNet, error) 
 	var routes []*net.IPNet
 	for _, addr := range self.AllowedSourceAddresses {
 		// need to get CIDR from address - iputils.getInterceptIp?
-		_, ipNet, err := utils.GetDialIP(addr)
+		ipNet, err := utils.GetCidr(addr)
 		if err != nil {
 			return nil, errors.Errorf("failed to parse allowed source address '%s': %v", addr, err)
 		}

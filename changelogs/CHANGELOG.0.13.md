@@ -297,17 +297,17 @@ When building UIs it may be useful to list entities which have role attributes b
 see what policy changes may look like.
 
      * Endpoint: /edge-routers
-     * Query: GET /edge-routers now supports two new query paramters
+     * Query: GET /edge-routers now supports two new query parameters
          * roleFilter. May be specified more than one. Should be an id or role specifier (ex: @38683097-2412-4335-b056-ae8747314dd3 or #sales)
          * roleSemantic. Optional. Defaults to AllOf if not specified. Indicates which semantic to use when evaluating role matches
  
      * Endpoint: /identities
-     * Query: GET /identities now supports two new query paramters
+     * Query: GET /identities now supports two new query parameters
          * roleFilter. May be specified more than one. Should be an id or role specifier (ex: @38683097-2412-4335-b056-ae8747314dd3 or #sales)
          * roleSemantic. Optional. Defaults to AllOf if not specified. Indicates which semantic to use when evaluating role matches
  
      * Endpoint: /services
-     * Query: GET /services now supports two new query paramters
+     * Query: GET /services now supports two new query parameters
          * roleFilter. May be specified more than one. Should be an id or role specifier (ex: @38683097-2412-4335-b056-ae8747314dd3 or #sales)
          * roleSemantic. Optional. Defaults to AllOf if not specified. Indicates which semantic to use when evaluating role matches
 

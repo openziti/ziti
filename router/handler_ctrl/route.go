@@ -23,15 +23,15 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/handler_xgress"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/foundation/v2/goroutines"
-	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -53,6 +53,7 @@ func newRouteHandler(ch channel.Channel, env env.RouterEnv, forwarder *forwarder
 		env:       env,
 		forwarder: forwarder,
 		pool:      pool,
+		dialerCfg: env.GetDialerCfg(),
 	}
 
 	return handler

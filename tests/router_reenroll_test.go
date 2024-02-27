@@ -19,6 +19,7 @@
 package tests
 
 import (
+	"fmt"
 	"github.com/openziti/edge-api/rest_model"
 	"net/http"
 	"testing"
@@ -107,6 +108,28 @@ func Test_Router_ReEnroll(t *testing.T) {
 			t.Run("router has no current fingerprint", func(t *testing.T) {
 				ctx.testContextChanged(t)
 				ctx.Req.Empty(edgeRouterDetail.Fingerprint)
+			})
+
+			t.Run("re-enrolling after re-enrolling does not create multiple enrollments", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(envelope).Get("edge-routers/" + enrolledRouter.id)
+
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(resp)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+				ctx.Req.NotNil(edgeRouterDetail.EnrollmentJWT)
+
+				listEnrollmentsEnv := &rest_model.ListEnrollmentsEnvelope{
+					Data: rest_model.EnrollmentList{},
+					Meta: &rest_model.Meta{},
+				}
+				resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(listEnrollmentsEnv).Get(fmt.Sprintf(`enrollments?filter=edgeRouter="%s"`, enrolledRouter.id))
+
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(resp)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+				ctx.Req.Len(listEnrollmentsEnv.Data, 1)
 			})
 
 			t.Run("router has a new enrollment JWT", func(t *testing.T) {

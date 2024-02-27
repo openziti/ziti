@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/sirupsen/logrus"
 )
@@ -38,7 +38,7 @@ type EnrollModuleCa struct {
 func NewEnrollModuleCa(env Env) *EnrollModuleCa {
 	return &EnrollModuleCa{
 		env:                  env,
-		method:               persistence.MethodEnrollCa,
+		method:               db.MethodEnrollCa,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 	}
 }
@@ -180,7 +180,7 @@ func (module *EnrollModuleCa) completeCertAuthenticatorEnrollment(log *logrus.En
 			Id: identityId,
 		},
 		Name:           identityName,
-		IdentityTypeId: persistence.DefaultIdentityType,
+		IdentityTypeId: db.DefaultIdentityType,
 		IsDefaultAdmin: false,
 		IsAdmin:        false,
 		RoleAttributes: ca.IdentityRoles,
@@ -188,7 +188,7 @@ func (module *EnrollModuleCa) completeCertAuthenticatorEnrollment(log *logrus.En
 
 	newAuthenticator := &Authenticator{
 		BaseEntity: models.BaseEntity{},
-		Method:     persistence.MethodAuthenticatorCert,
+		Method:     db.MethodAuthenticatorCert,
 		IdentityId: identity.Id,
 		SubType: &AuthenticatorCert{
 			Fingerprint: fingerprint,
@@ -246,7 +246,7 @@ func (module *EnrollModuleCa) completeExternalIdEnrollment(log *logrus.Entry, co
 			Id: identityId,
 		},
 		Name:           identityName,
-		IdentityTypeId: persistence.DefaultIdentityType,
+		IdentityTypeId: db.DefaultIdentityType,
 		IsDefaultAdmin: false,
 		IsAdmin:        false,
 		RoleAttributes: ca.IdentityRoles,
@@ -295,7 +295,7 @@ func (module *EnrollModuleCa) getIdentityName(ca *Ca, enrollmentCert *x509.Certi
 	suffixCount := 0
 	for !identityNameIsValid {
 		//check for name collisions append 4 digit incrementing number to end till ok
-		entity, _ := module.env.GetManagers().Identity.readEntityByQuery(fmt.Sprintf(`%s="%s"`, persistence.FieldName, identityName))
+		entity, _ := module.env.GetManagers().Identity.readEntityByQuery(fmt.Sprintf(`%s="%s"`, db.FieldName, identityName))
 
 		if entity != nil {
 			suffixCount = suffixCount + 1

@@ -17,9 +17,10 @@
 package raft
 
 import (
+	"time"
+
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"time"
 
 	"github.com/hashicorp/raft"
 	"github.com/pkg/errors"
@@ -72,20 +73,18 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 		})
 	}
 
-	if len(result) == 0 {
-		for addr, peer := range peers {
-			if _, exists := memberSet[addr]; exists {
-				continue
-			}
-			result = append(result, &Member{
-				Id:        string(peer.Id),
-				Addr:      peer.Address,
-				Voter:     false,
-				Leader:    peer.Address == string(leaderAddr),
-				Version:   peer.Version.Version,
-				Connected: true,
-			})
+	for addr, peer := range peers {
+		if _, exists := memberSet[addr]; exists {
+			continue
 		}
+		result = append(result, &Member{
+			Id:        string(peer.Id),
+			Addr:      peer.Address,
+			Voter:     false,
+			Leader:    peer.Address == string(leaderAddr),
+			Version:   peer.Version.Version,
+			Connected: true,
+		})
 	}
 
 	return result, nil
@@ -182,7 +181,7 @@ func (self *Controller) HandleTransferLeadershipAsLeader(req *cmd_pb.TransferLea
 	}
 
 	if err := future.Error(); err != nil {
-		return errors.Wrapf(err, "error transfering leadership")
+		return errors.Wrapf(err, "error transferring leadership")
 	}
 	return nil
 }

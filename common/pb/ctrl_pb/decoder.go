@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/ziti/common/ctrl_msg"
 	"google.golang.org/protobuf/proto"
 	"strconv"
 	"strings"
@@ -226,6 +226,7 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 			meta := channel.NewTraceMessageDecode(DECODER, "Fault")
 			meta["subject"] = fault.Subject.String()
 			meta["id"] = fault.Id
+			meta["iteration"] = fault.Iteration
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {

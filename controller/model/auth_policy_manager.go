@@ -18,22 +18,22 @@ package model
 
 import (
 	"fmt"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/persistence"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
 
 func NewAuthPolicyManager(env Env) *AuthPolicyManager {
 	manager := &AuthPolicyManager{
-		baseEntityManager: newBaseEntityManager[*AuthPolicy, *persistence.AuthPolicy](env, env.GetStores().AuthPolicy),
+		baseEntityManager: newBaseEntityManager[*AuthPolicy, *db.AuthPolicy](env, env.GetStores().AuthPolicy),
 	}
 	manager.impl = manager
 
@@ -43,7 +43,7 @@ func NewAuthPolicyManager(env Env) *AuthPolicyManager {
 }
 
 type AuthPolicyManager struct {
-	baseEntityManager[*AuthPolicy, *persistence.AuthPolicy]
+	baseEntityManager[*AuthPolicy, *db.AuthPolicy]
 }
 
 func (self *AuthPolicyManager) Create(entity *AuthPolicy, ctx *change.Context) error {

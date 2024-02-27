@@ -37,6 +37,7 @@ func NewFabricCmd(p common.OptionsProvider) *cobra.Command {
 	fabricCmd.AddCommand(newDbCmd(p))
 	fabricCmd.AddCommand(newStreamCommand(p))
 	fabricCmd.AddCommand(newRaftCmd(p))
+	fabricCmd.AddCommand(newValidateCommand(p))
 	return fabricCmd
 }
 
@@ -97,6 +98,20 @@ func newStreamCommand(p common.OptionsProvider) *cobra.Command {
 	toggleTracesCmd.AddCommand(NewStreamTogglePipeTracesCmd(p))
 
 	return streamCmd
+}
+
+func newValidateCommand(p common.OptionsProvider) *cobra.Command {
+	validateCmd := &cobra.Command{
+		Use:   "validate",
+		Short: "validate model data",
+		Run: func(cmd *cobra.Command, args []string) {
+			cmdhelper.CheckErr(cmd.Help())
+		},
+	}
+
+	validateCmd.AddCommand(NewValidateTerminatorsCmd(p))
+	validateCmd.AddCommand(NewValidateRouterLinksCmd(p))
+	return validateCmd
 }
 
 // createEntityOfType create an entity of the given type on the Ziti Controller

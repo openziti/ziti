@@ -21,13 +21,15 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/persistence"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -79,8 +81,9 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 	if !ctx.loadRouter() {
 		return
 	}
+	ctx.verifyTerminatorId(ctx.req.Address)
 	ctx.loadSession(ctx.req.SessionToken)
-	ctx.checkSessionType(persistence.SessionTypeBind)
+	ctx.checkSessionType(db.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	ctx.verifyEdgeRouterAccess()
 	ctx.loadService()
@@ -103,6 +106,21 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		if ctx.err = ctx.validateExistingTerminator(terminator, logger); ctx.err != nil {
 			self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedIdConflict, ctx.err, logger)
 			return
+		}
+
+		// if the precedence or cost has changed, update the terminator
+		if terminator.Precedence != ctx.req.GetXtPrecedence() || terminator.Cost != uint16(ctx.req.Cost) {
+			terminator.Precedence = ctx.req.GetXtPrecedence()
+			terminator.Cost = uint16(ctx.req.Cost)
+			err := self.appEnv.GetHostController().GetNetwork().Terminators.Update(terminator, fields.UpdatedFieldsMap{
+				db.FieldTerminatorPrecedence: struct{}{},
+				db.FieldTerminatorCost:       struct{}{},
+			}, ctx.newChangeContext())
+
+			if err != nil {
+				self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
+				return
+			}
 		}
 	} else {
 		terminator = &network.Terminator{
@@ -136,6 +154,10 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 					return
 				}
 			} else {
+				if command.WasRateLimited(err) {
+					self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedBusy, err, logger)
+					return
+				}
 				self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
 				return
 			}
@@ -161,7 +183,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		logger.WithError(err).Error("failed to send CreateTunnelTerminatorResponse")
 	}
 
-	logger.Info("completed create tunnel terminator operation")
+	logger.Info("completed create terminator v2 operation")
 }
 
 func (self *createTerminatorV2Handler) returnError(ctx *CreateTerminatorV2RequestContext, resultType edge_ctrl_pb.CreateTerminatorResult, err error, logger *logrus.Entry) {
