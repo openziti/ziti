@@ -28,24 +28,24 @@ type SinglePageAppHandler struct {
 	BindingKey  string
 }
 
-func (self *SinglePageAppHandler) Binding() string {
-	return self.BindingKey
+func (spa *SinglePageAppHandler) Binding() string {
+	return spa.BindingKey
 }
 
-func (self *SinglePageAppHandler) Options() map[interface{}]interface{} {
+func (spa *SinglePageAppHandler) Options() map[interface{}]interface{} {
 	return nil
 }
 
-func (self *SinglePageAppHandler) RootPath() string {
-	return "/" + self.BindingKey
+func (spa *SinglePageAppHandler) RootPath() string {
+	return "/" + spa.BindingKey
 }
 
-func (self *SinglePageAppHandler) IsHandler(r *http.Request) bool {
-	return strings.HasPrefix(r.URL.Path, self.RootPath()) || strings.HasPrefix(r.URL.Path, "/assets")
+func (spa *SinglePageAppHandler) IsHandler(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, spa.RootPath()) || strings.HasPrefix(r.URL.Path, "/assets")
 }
 
-func (self *SinglePageAppHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	self.HttpHandler.ServeHTTP(writer, request)
+func (spa *SinglePageAppHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	spa.HttpHandler.ServeHTTP(writer, request)
 }
 
 // Thanks to https://github.com/roberthodgen/spa-server
