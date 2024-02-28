@@ -20,9 +20,9 @@ package tests
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/common/eid"
 	"net/url"
 	"sort"
 	"testing"
@@ -50,7 +50,7 @@ func Test_Services(t *testing.T) {
 		ctx.testContextChanged(t)
 		now := time.Now()
 		service := ctx.AdminManagementSession.requireNewService(nil, nil)
-		service.permissions = []string{"Dial", "Bind"}
+		service.permissions = []string{"Invalid"}
 		entityJson := ctx.AdminManagementSession.validateEntityWithQuery(service)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 	})
@@ -58,11 +58,11 @@ func Test_Services(t *testing.T) {
 	t.Run("list as admin should return 3 services", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		service1 := ctx.AdminManagementSession.requireNewService(nil, nil)
-		service1.permissions = []string{"Dial", "Bind"}
+		service1.permissions = []string{"Invalid"}
 		service2 := ctx.AdminManagementSession.requireNewService(nil, nil)
-		service2.permissions = []string{"Dial", "Bind"}
+		service2.permissions = []string{"Invalid"}
 		service3 := ctx.AdminManagementSession.requireNewService(nil, nil)
-		service3.permissions = []string{"Dial", "Bind"}
+		service3.permissions = []string{"Invalid"}
 
 		ctx.AdminManagementSession.validateEntityWithLookup(service1)
 		ctx.AdminManagementSession.validateEntityWithQuery(service1)
@@ -108,7 +108,7 @@ func Test_Services(t *testing.T) {
 	t.Run("lookup as admin should pass", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		service := ctx.AdminManagementSession.requireNewService(nil, nil)
-		service.permissions = []string{"Dial", "Bind"}
+		service.permissions = []string{"Invalid"}
 		ctx.AdminManagementSession.validateEntityWithLookup(service)
 	})
 
@@ -163,7 +163,7 @@ func Test_Services(t *testing.T) {
 		ctx.testContextChanged(t)
 		now := time.Now()
 		service := ctx.AdminManagementSession.requireNewService(nil, nil)
-		service.permissions = []string{"Bind", "Dial"}
+		service.permissions = []string{"Invalid"}
 		entityJson := ctx.AdminManagementSession.validateEntityWithQuery(service)
 		createdAt := ctx.validateDateFieldsForCreate(now, entityJson)
 
