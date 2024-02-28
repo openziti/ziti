@@ -41,6 +41,6 @@ func (factory ZitiAdminConsoleFactory) New(_ *xweb.ServerConfig, options map[int
 		BindingKey:  Binding,
 	}
 
-	log.Infof("intializing ZAC SPA Handler from %s", loc)
+	log.Infof("initializing ZAC SPA Handler from %s", loc)
 	return spa, nil
 }
