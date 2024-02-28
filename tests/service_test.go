@@ -364,7 +364,7 @@ func Test_ServiceRoleAttributes(t *testing.T) {
 		role1 := eid.New()
 		role2 := eid.New()
 		service := ctx.AdminManagementSession.requireNewService(s(role1, role2), nil)
-		service.permissions = []string{"Dial", "Bind"}
+		service.permissions = []string{"Invalid"}
 
 		ctx.AdminManagementSession.validateEntityWithQuery(service)
 		ctx.AdminManagementSession.validateEntityWithLookup(service)
@@ -375,7 +375,7 @@ func Test_ServiceRoleAttributes(t *testing.T) {
 		role1 := eid.New()
 		role2 := eid.New()
 		service := ctx.AdminManagementSession.requireNewService(s(role1, role2), nil)
-		service.permissions = []string{"Dial", "Bind"}
+		service.permissions = []string{"Invalid"}
 
 		role3 := eid.New()
 		service.roleAttributes = []string{role2, role3}
@@ -423,7 +423,7 @@ func Test_ServiceRoleAttributes(t *testing.T) {
 		now := time.Now()
 
 		newService := ctx.AdminManagementSession.requireNewService(nil, nil)
-		newService.permissions = []string{"Dial", "Bind"}
+		newService.permissions = []string{"Invalid"}
 
 		entityJson := ctx.AdminManagementSession.validateEntityWithQuery(newService)
 
