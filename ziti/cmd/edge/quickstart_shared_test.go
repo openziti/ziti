@@ -542,7 +542,7 @@ func performQuickstartTest(t *testing.T) {
 		testerIdent := getIdentityByName(client, testerUsername)
 		dialSP := createServicePolicy(client, "basic.web.smoke.test.service.dial", rest_model.DialBindDial, rest_model.Roles{"@" + *testerIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
 
-		testServiceEndpoint(t, client, hostingRouterName, serviceName, dialPort, testerUsername)
+		testInterceptAddress(t, client, hostingRouterName, serviceName, dialPort, testerUsername)
 
 		// Cleanup
 		deleteServiceConfigByID(client, dialSvcConfig.ID)
@@ -576,7 +576,7 @@ func performQuickstartTest(t *testing.T) {
 		zes.SetArgs([]string{
 			service1Name,
 			params,
-			fmt.Sprintf("--endpoint=%s", dialAddress1),
+			fmt.Sprintf("--interceptAddress=%s", dialAddress1),
 		})
 		err := zes.Execute()
 		if err != nil {
@@ -588,7 +588,7 @@ func performQuickstartTest(t *testing.T) {
 		zes.SetArgs([]string{
 			service2Name,
 			params,
-			fmt.Sprintf("--endpoint=%s", dialAddress2),
+			fmt.Sprintf("--interceptAddress=%s", dialAddress2),
 		})
 		err = zes.Execute()
 		if err != nil {
@@ -646,7 +646,7 @@ func createZESTestFunc(t *testing.T, params string, client *rest_management_api_
 		zes.SetArgs([]string{
 			serviceName,
 			params,
-			fmt.Sprintf("--endpoint=%s", dialAddress),
+			fmt.Sprintf("--interceptAddress=%s", dialAddress),
 		})
 		err := zes.Execute()
 		if err != nil {
@@ -674,7 +674,7 @@ func createZESTestFunc(t *testing.T, params string, client *rest_management_api_
 			fmt.Printf("Error: %s", err)
 		}
 
-		testServiceEndpoint(t, client, hostingRouterName, serviceName, dialPort, testerUsername)
+		testInterceptAddress(t, client, hostingRouterName, serviceName, dialPort, testerUsername)
 
 		// Cleanup
 		serviceBindConfName := serviceName + ".host.v1"
@@ -689,7 +689,7 @@ func createZESTestFunc(t *testing.T, params string, client *rest_management_api_
 	}
 }
 
-func testServiceEndpoint(t *testing.T, client *rest_management_api_client.ZitiEdgeManagement, hostingRouterName string, serviceName string, dialPort int, testerUsername string) {
+func testInterceptAddress(t *testing.T, client *rest_management_api_client.ZitiEdgeManagement, hostingRouterName string, serviceName string, dialPort int, testerUsername string) {
 	// Test connectivity with private edge router, wait some time for the terminator to be created
 	currentCount := getTerminatorCountByRouterName(client, hostingRouterName)
 	termCntReached := waitForTerminatorCountByRouterName(client, hostingRouterName, currentCount+1, 30*time.Second)

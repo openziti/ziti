@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	optionEndpoint = "endpoint"
+	optionInterceptAddress = "interceptAddress"
 )
 
 // SecureOptions the options for the secure command
@@ -40,7 +40,7 @@ type SecureOptions struct {
 	common.CommonOptions
 	api.EntityOptions
 
-	Endpoint string
+	InterceptAddress string
 }
 
 // newSecureCmd consolidates network configuration steps for securing a service.
@@ -66,7 +66,7 @@ func newSecureCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&options.Endpoint, optionEndpoint, "", "the custom endpoint name for your service")
+	cmd.Flags().StringVar(&options.InterceptAddress, optionInterceptAddress, "", "the custom intercept address for your service")
 	options.CommonOptions.AddCommonFlags(cmd)
 
 	return cmd
@@ -103,12 +103,12 @@ func runSecure(o *SecureOptions) (err error) {
 	}
 
 	// Create a dial config
-	endpoint := svcName + ".ziti"
-	if o.Endpoint != "" {
-		endpoint = o.Endpoint
+	interceptAddress := svcName + ".ziti"
+	if o.InterceptAddress != "" {
+		interceptAddress = o.InterceptAddress
 	}
 	dialCfgName := svcName + ".intercept.v1"
-	jsonStr = fmt.Sprintf(`{"protocols":["%s"], "addresses":["%s"], "portRanges":[{"low":%d, "high":%d}]}`, protocol, endpoint, port, port)
+	jsonStr = fmt.Sprintf(`{"protocols":["%s"], "addresses":["%s"], "portRanges":[{"low":%d, "high":%d}]}`, protocol, interceptAddress, port, port)
 
 	cmd = newCreateConfigCmd(os.Stdout, os.Stderr)
 	args = []string{dialCfgName, entities.InterceptV1, jsonStr}
