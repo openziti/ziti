@@ -17,58 +17,19 @@
 package spa_handler
 
 import (
-	"github.com/openziti/xweb/v2"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-const (
-	Binding = "spa"
-)
-
-type SinglePageAppFactory struct {
-}
-
-var _ xweb.ApiHandlerFactory = &SinglePageAppFactory{}
-
-func NewSinglePageAppFactory() *SinglePageAppFactory {
-	return &SinglePageAppFactory{}
-}
-
-func (factory SinglePageAppFactory) Validate(*xweb.InstanceConfig) error {
-	return nil
-}
-
-func (factory SinglePageAppFactory) Binding() string {
-	return Binding
-}
-
-func (factory SinglePageAppFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
-	loc := options["location"]
-	if loc == nil || loc == "" {
-		log.Panic("location must be supplied in spa options")
-	}
-	indexFile := options["indexFile"]
-	if indexFile == nil || indexFile == "" {
-		indexFile = "index.html"
-	}
-	spa := &SinglePageAppHandler{
-		httpHandler: SpaHandler(loc.(string), "/"+Binding, indexFile.(string)),
-	}
-
-	log.Infof("intializing SPA Handler from %s", loc)
-	return spa, nil
-}
-
 type SinglePageAppHandler struct {
-	httpHandler http.Handler
+	HttpHandler http.Handler
+	BindingKey  string
 }
 
 func (self *SinglePageAppHandler) Binding() string {
-	return Binding
+	return self.BindingKey
 }
 
 func (self *SinglePageAppHandler) Options() map[interface{}]interface{} {
@@ -76,7 +37,7 @@ func (self *SinglePageAppHandler) Options() map[interface{}]interface{} {
 }
 
 func (self *SinglePageAppHandler) RootPath() string {
-	return "/" + Binding
+	return "/" + self.BindingKey
 }
 
 func (self *SinglePageAppHandler) IsHandler(r *http.Request) bool {
@@ -84,7 +45,7 @@ func (self *SinglePageAppHandler) IsHandler(r *http.Request) bool {
 }
 
 func (self *SinglePageAppHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	self.httpHandler.ServeHTTP(writer, request)
+	self.HttpHandler.ServeHTTP(writer, request)
 }
 
 // Thanks to https://github.com/roberthodgen/spa-server
@@ -114,7 +75,7 @@ func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, p)
 }
 
-// Returns a request handler (http.Handler) that serves a single
+// SpaHandler returns a request handler (http.Handler) that serves a single
 // page application from a given public directory (location).
 func SpaHandler(location string, contextRoot string, indexFile string) http.Handler {
 	return &spaHandler{location, contextRoot, indexFile}

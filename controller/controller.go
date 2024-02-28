@@ -25,10 +25,10 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/ziti/common/spa_handler"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/events"
 	"github.com/openziti/ziti/controller/handler_peer_ctrl"
+	"github.com/openziti/ziti/controller/zac"
 	"math/big"
 	"os"
 	"sync/atomic"
@@ -248,7 +248,7 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create metrics api factory")
 	}
 
-	if err := c.spaHandler.GetRegistry().Add(spa_handler.NewSinglePageAppFactory()); err != nil {
+	if err := c.spaHandler.GetRegistry().Add(zac.NewZitiAdminConsoleFactory()); err != nil {
 		logrus.WithError(err).Fatalf("failed to create single page application factory")
 	}
 
