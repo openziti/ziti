@@ -119,19 +119,6 @@ func (self *EdgeServiceManager) ReadForIdentity(id string, identityId string, co
 }
 
 func (self *EdgeServiceManager) ReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string, configTypes map[string]struct{}) (*ServiceDetail, error) {
-	var err error
-	var service *ServiceDetail
-
-	// service permissions for admin & non-admin identities will be set according to policies
-	service, err = self.ReadForNonAdminIdentityInTx(tx, id, identityId)
-	if err == nil && len(configTypes) > 0 {
-		identityServiceConfigs := self.env.GetStores().Identity.LoadServiceConfigsByServiceAndType(tx, identityId, configTypes)
-		self.mergeConfigs(tx, configTypes, service, identityServiceConfigs)
-	}
-	return service, err
-}
-
-func (self *EdgeServiceManager) ReadForNonAdminIdentityInTx(tx *bbolt.Tx, id string, identityId string) (*ServiceDetail, error) {
 	edgeServiceStore := self.env.GetStores().EdgeService
 	identity, err := self.GetEnv().GetManagers().Identity.readInTx(tx, identityId)
 	if err != nil {
@@ -161,7 +148,13 @@ func (self *EdgeServiceManager) ReadForNonAdminIdentityInTx(tx *bbolt.Tx, id str
 		// don't return results with no permissions, since some SDKs assume non-nil permissions
 		result.Permissions = []string{db.PolicyTypeInvalidName}
 	}
-	return result, nil
+
+	if len(configTypes) > 0 {
+		identityServiceConfigs := self.env.GetStores().Identity.LoadServiceConfigsByServiceAndType(tx, identityId, configTypes)
+		self.mergeConfigs(tx, configTypes, result, identityServiceConfigs)
+	}
+
+	return result, err
 }
 
 func (self *EdgeServiceManager) PublicQueryForIdentity(sessionIdentity *Identity, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
@@ -258,7 +251,7 @@ func (result *ServiceListResult) collect(tx *bbolt.Tx, ids []string, queryMetaDa
 
 	for _, key := range ids {
 		// service permissions for admin & non-admin identities will be set according to policies
-		service, err = result.manager.ReadForNonAdminIdentityInTx(tx, key, result.identityId)
+		service, err = result.manager.ReadForIdentityInTx(tx, key, result.identityId, result.configTypes)
 		if err != nil {
 			return err
 		}
