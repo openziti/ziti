@@ -73,8 +73,8 @@ type Controller struct {
 	xctrls             []xctrl.Xctrl
 	xmgmts             []xmgmt.Xmgmt
 
-	spaFactoryRegistry xweb.Registry
-	spaHandler         xweb.Instance
+	xwebFactoryRegistry xweb.Registry
+	xweb                xweb.Instance
 
 	ctrlListener channel.UnderlayListener
 	mgmtListener channel.UnderlayListener
@@ -170,12 +170,12 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	log := pfxlog.Logger()
 
 	c := &Controller{
-		config:             cfg,
-		shutdownC:          shutdownC,
-		spaFactoryRegistry: xweb.NewRegistryMap(),
-		metricsRegistry:    metricRegistry,
-		versionProvider:    versionProvider,
-		eventDispatcher:    events.NewDispatcher(shutdownC),
+		config:              cfg,
+		shutdownC:           shutdownC,
+		xwebFactoryRegistry: xweb.NewRegistryMap(),
+		metricsRegistry:     metricRegistry,
+		versionProvider:     versionProvider,
+		eventDispatcher:     events.NewDispatcher(shutdownC),
 	}
 
 	if cfg.Raft != nil {
@@ -234,21 +234,21 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create health checker")
 	}
 
-	c.spaHandler = xweb.NewDefaultInstance(c.spaFactoryRegistry, c.config.Id)
+	c.xweb = xweb.NewDefaultInstance(c.xwebFactoryRegistry, c.config.Id)
 
-	if err := c.spaHandler.GetRegistry().Add(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
+	if err := c.xweb.GetRegistry().Add(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
-	if err := c.spaHandler.GetRegistry().Add(api_impl.NewManagementApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
+	if err := c.xweb.GetRegistry().Add(api_impl.NewManagementApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create management api factory")
 	}
 
-	if err := c.spaHandler.GetRegistry().Add(api_impl.NewMetricsApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
+	if err := c.xweb.GetRegistry().Add(api_impl.NewMetricsApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create metrics api factory")
 	}
 
-	if err := c.spaHandler.GetRegistry().Add(zac.NewZitiAdminConsoleFactory()); err != nil {
+	if err := c.xweb.GetRegistry().Add(zac.NewZitiAdminConsoleFactory()); err != nil {
 		logrus.WithError(err).Fatalf("failed to create single page application factory")
 	}
 
@@ -313,11 +313,11 @@ func (c *Controller) Run() error {
 
 	go underlayDispatcher.Run()
 
-	if err := c.config.Configure(c.spaHandler); err != nil {
+	if err := c.config.Configure(c.xweb); err != nil {
 		panic(err)
 	}
 
-	go c.spaHandler.Run()
+	go c.xweb.Run()
 
 	// event handlers
 	if err := c.eventDispatcher.WireEventHandlers(c.getEventHandlerConfigs()); err != nil {
@@ -373,7 +373,7 @@ func (c *Controller) Shutdown() {
 			}
 		}
 
-		go c.spaHandler.Shutdown()
+		go c.xweb.Shutdown()
 	}
 }
 
@@ -437,7 +437,7 @@ func (c *Controller) RegisterXmgmt(x xmgmt.Xmgmt) error {
 }
 
 func (c *Controller) GetXWebInstance() xweb.Instance {
-	return c.spaHandler
+	return c.xweb
 }
 
 func (c *Controller) GetNetwork() *network.Network {
