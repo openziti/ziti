@@ -127,8 +127,7 @@ func NewDnsServer(addr string) (Resolver, error) {
 
 	err := r.testSystemResolver()
 	if err != nil {
-		_ = r.Cleanup()
-		return nil, fmt.Errorf("system resolver test failed: %s\n\n"+resolverConfigHelp, err, addr)
+		log.Errorf("system resolver test failed: %s\n\n"+resolverConfigHelp, err, addr)
 	}
 
 	return r, nil
