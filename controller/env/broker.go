@@ -79,6 +79,8 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 	ae.HostController.GetNetwork().AddRouterPresenceHandler(broker)
 	ae.HostController.GetEventDispatcher().AddClusterEventHandler(broker)
 
+	ae.GetHostController().GetPeerSigners()
+
 	return broker
 }
 

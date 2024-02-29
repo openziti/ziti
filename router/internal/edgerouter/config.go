@@ -151,7 +151,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 			pfxlog.Logger().Warn("the db property was not set, using default for cached data model: %s", config.Db)
 		}
 
-		pfxlog.Logger().Infof("cached data modile file set to: %s", config.Db)
+		pfxlog.Logger().Infof("cached data model file set to: %s", config.Db)
 	}
 
 	if val, found := edgeConfigMap["dbSaveIntervalSeconds"]; found {

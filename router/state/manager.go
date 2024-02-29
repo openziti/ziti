@@ -772,5 +772,5 @@ func (sm *ManagerImpl) parsePublicKey(publicKey *edge_ctrl_pb.DataState_PublicKe
 		return x509.ParsePKIXPublicKey(publicKey.Data)
 	}
 
-	return nil, fmt.Errorf("unsuported public key format: %s", publicKey.Format.String())
+	return nil, fmt.Errorf("unsupported public key format: %s", publicKey.Format.String())
 }

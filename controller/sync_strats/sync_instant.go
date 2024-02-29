@@ -1457,7 +1457,7 @@ func (h *constraintToIndexedEvents[E]) ProcessPostCommit(state *boltz.EntityChan
 			index, err := h.indexProvider.NextIndex(state.Ctx)
 
 			if err != nil {
-				pfxlog.Logger().WithError(err).Errorf("could not process post commit create for %T, could not aquire index", state.FinalState)
+				pfxlog.Logger().WithError(err).Errorf("could not process post commit create for %T, could not acquire index", state.FinalState)
 				return
 			}
 
@@ -1468,7 +1468,7 @@ func (h *constraintToIndexedEvents[E]) ProcessPostCommit(state *boltz.EntityChan
 			index, err := h.indexProvider.NextIndex(state.Ctx)
 
 			if err != nil {
-				pfxlog.Logger().WithError(err).Errorf("could not process post commit update for %T, could not aquire index", state.FinalState)
+				pfxlog.Logger().WithError(err).Errorf("could not process post commit update for %T, could not acquire index", state.FinalState)
 				return
 			}
 
@@ -1479,7 +1479,7 @@ func (h *constraintToIndexedEvents[E]) ProcessPostCommit(state *boltz.EntityChan
 			index, err := h.indexProvider.NextIndex(state.Ctx)
 
 			if err != nil {
-				pfxlog.Logger().WithError(err).Errorf("could not process post commit delete for %T, could not aquire index", state.FinalState)
+				pfxlog.Logger().WithError(err).Errorf("could not process post commit delete for %T, could not acquire index", state.FinalState)
 				return
 			}
 
