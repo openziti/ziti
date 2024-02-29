@@ -18,9 +18,9 @@ function describe_instances() {
         --arg region "$region" \
         --arg oldest "$oldest" '
         [
-          .[]
-          |.[]
+          .[][]
           |select(.LaunchTime < $oldest)
+          | select(.Tags[] | select(.Key=="Name").Value | test("flow-control\\.*") | not )
           |{InstanceId: .InstanceId, Region: $region, LaunchTime: .LaunchTime, State: .State, Tags: .Tags}
         ]
       ' \
