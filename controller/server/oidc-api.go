@@ -125,7 +125,7 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 		bytes := make([]byte, 32)
 		_, err := rand.Read(bytes)
 		if err != nil {
-			return nil, fmt.Errorf("could not genreate random secret: %w", err)
+			return nil, fmt.Errorf("could not generate random secret: %w", err)
 		}
 
 		oidcConfig.TokenSecret = hex.EncodeToString(bytes)
