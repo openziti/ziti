@@ -33,6 +33,13 @@ import (
 
 const (
 	optionInterceptAddress = "interceptAddress"
+	hostCfgSuffix          = ".host.v1"
+	interceptCfgSuffix     = ".intercept.v1"
+	dialPolSuffix          = ".dial"
+	bindPolSuffix          = ".bind"
+	interceptAddressSuffix = ".ziti"
+	dialRoleSuffix         = ".clients"
+	bindRoleSuffix         = ".servers"
 )
 
 // SecureOptions the options for the secure command
@@ -56,8 +63,17 @@ func newSecureCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "secure <service_name> <protocol>:<address>:<port>",
 		Short: "creates a service, configs, and policies for a resource",
-		Long:  "creates a service, configs, and policies for a resource",
-		Args:  cobra.MinimumNArgs(1),
+		Long: fmt.Sprintf("creates\n"+
+			"1. A host config with the name <servicename>%s \n"+
+			"2. An intercept config with the name <servicename>%s\n"+
+			"   - A default intercept address of <servicename>%s or customize with the --interceptAddress flag\n"+
+			"3. A service with the provided name\n"+
+			"4. A bind service policy with the name <servicename>%s\n"+
+			"   - A role attribute of <servicename>%s is applied\n"+
+			"5. A dial service policy with the name <servicename>%s\n"+
+			"   - A role attribute of <servicename>%s is applied\n\n"+
+			"Once successfully executed, apply the role attributes to your client and server identities.", hostCfgSuffix, interceptCfgSuffix, interceptAddressSuffix, bindPolSuffix, bindRoleSuffix, dialPolSuffix, dialRoleSuffix),
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -88,12 +104,12 @@ func runSecure(o *SecureOptions) (err error) {
 		logrus.Fatal("Error:", err)
 	}
 
-	// Create a bind config
-	bindCfgName := svcName + ".host.v1"
+	// Create a host config
+	hostCfgName := svcName + hostCfgSuffix
 	jsonStr := fmt.Sprintf(`{"forwardProtocol":true, "forwardPort":true, "allowedProtocols":["%s"], "address":"%s", "allowedPortRanges":[{"low":%d, "high":%d}]}`, protocol, address, port, port)
 
 	cmd := newCreateConfigCmd(os.Stdout, os.Stderr)
-	args := []string{bindCfgName, entities.HostConfigV1, jsonStr}
+	args := []string{hostCfgName, entities.HostConfigV1, jsonStr}
 	cmd.SetArgs(args)
 
 	// Run the command
@@ -102,16 +118,16 @@ func runSecure(o *SecureOptions) (err error) {
 		logrus.Fatal("Error:", err)
 	}
 
-	// Create a dial config
-	interceptAddress := svcName + ".ziti"
+	// Create a intercept config
+	interceptAddress := svcName + interceptAddressSuffix
 	if o.InterceptAddress != "" {
 		interceptAddress = o.InterceptAddress
 	}
-	dialCfgName := svcName + ".intercept.v1"
+	interceptCfgName := svcName + interceptCfgSuffix
 	jsonStr = fmt.Sprintf(`{"protocols":["%s"], "addresses":["%s"], "portRanges":[{"low":%d, "high":%d}]}`, protocol, interceptAddress, port, port)
 
 	cmd = newCreateConfigCmd(os.Stdout, os.Stderr)
-	args = []string{dialCfgName, entities.InterceptV1, jsonStr}
+	args = []string{interceptCfgName, entities.InterceptV1, jsonStr}
 	cmd.SetArgs(args)
 
 	// Run the command
@@ -122,7 +138,7 @@ func runSecure(o *SecureOptions) (err error) {
 
 	// Create service
 	cmd = newCreateServiceCmd(os.Stdout, os.Stderr)
-	args = []string{svcName, "--configs", bindCfgName + "," + dialCfgName}
+	args = []string{svcName, "--configs", hostCfgName + "," + interceptCfgName}
 	cmd.SetArgs(args)
 
 	// Run the command
@@ -134,8 +150,8 @@ func runSecure(o *SecureOptions) (err error) {
 	// Create service policies
 	svcRole := "@" + svcName
 
-	dialSvcPolName := svcName + ".dial"
-	dialIdRole := "#" + svcName + ".clients"
+	dialSvcPolName := svcName + dialPolSuffix
+	dialIdRole := "#" + svcName + dialRoleSuffix
 	cmd = newCreateServicePolicyCmd(os.Stdout, os.Stderr)
 	args = []string{dialSvcPolName, db.PolicyTypeDialName, "--service-roles", svcRole, "--identity-roles", dialIdRole}
 	cmd.SetArgs(args)
@@ -146,8 +162,8 @@ func runSecure(o *SecureOptions) (err error) {
 		logrus.Fatal("Error:", err)
 	}
 
-	bindSvcPolName := svcName + ".bind"
-	bindIdRole := "#" + svcName + ".servers"
+	bindSvcPolName := svcName + bindPolSuffix
+	bindIdRole := "#" + svcName + bindRoleSuffix
 	cmd = newCreateServicePolicyCmd(os.Stdout, os.Stderr)
 	args = []string{bindSvcPolName, db.PolicyTypeBindName, "--service-roles", svcRole, "--identity-roles", bindIdRole}
 	cmd.SetArgs(args)
@@ -156,6 +172,22 @@ func runSecure(o *SecureOptions) (err error) {
 	err = cmd.Execute()
 	if err != nil {
 		logrus.Fatal("Error:", err)
+	}
+
+	// Print summary of created entities
+	_, err = fmt.Fprintf(os.Stdout, "\nSecure command completed successfully.\n"+
+		" - Created a new host config: %s\n"+
+		" - Created a new intercept config: %s\n"+
+		"   - The intercept address is '%s:%d'\n"+
+		" - Created a new service: %s\n"+
+		" - Created a new bind service-policy: %s\n"+
+		"   - The role attribute for the bind policy is '%s'\n"+
+		" - Created a new dial service-policy: %s\n"+
+		"   - The role attribute for the dial policy is '%s'\n",
+		hostCfgName, interceptCfgName, interceptAddress, port, svcName, bindSvcPolName, bindIdRole, dialSvcPolName, dialIdRole)
+
+	if err != nil {
+		logrus.Fatalf("Failed to write `secure` summary: %v", err)
 	}
 
 	return
