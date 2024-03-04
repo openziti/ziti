@@ -39,6 +39,9 @@ services:
     ports:
       - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
       - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
+    expose:
+      - ${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
+      - ${ZITI_ROUTER_PORT:-3022}
     depends_on:
       quickstart-init:
         condition: service_completed_successfully

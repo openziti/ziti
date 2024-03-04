@@ -81,8 +81,13 @@ services:
     dns:
       - 127.0.0.1
     ports:
-      - "${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}"    # provide edge to dialing and binding identities
-      - "${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}:${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}"  # provide fabric links to other routers
+      # provide edge to dialing and binding identities
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
+      # provide fabric links to other routers
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}:${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}
+    expose:
+      - ${ZITI_ROUTER_PORT:-3022}
+      - ${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}
     healthcheck:
       test:
         - CMD

@@ -30,7 +30,9 @@ cat <<EOF >./compose.tproxy.yml
 services:
   # add a hello web server to use for a Ziti service target
   hello:
-    image: openziti/hello-world  # 8000/tcp
+    image: openziti/hello-world
+    expose:
+      - 8000
     networks:
       - quickstart
 
