@@ -1,0 +1,95 @@
+
+volumes:
+  ziti-router:
+    driver: local
+
+services:
+  chown-data:
+    image: busybox
+    command: chown -R 2171 /mnt
+    volumes:
+      - ziti-router:/mnt
+
+  config-ziti-router:
+    image: ${ZITI_ROUTER_IMAGE:-openziti/ziti-router}
+    depends_on:
+      chown-data:
+        condition: service_completed_successfully
+    volumes:
+      - ziti-router:/mnt
+    entrypoint:
+      - bash
+      - -euc
+      - |
+        if ! [ -s "/mnt/config.yml" ]; then
+          if [ -n "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]; then
+            exec ziti $${@} > "/mnt/config.yml"
+          else
+            echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS is undefined" >&2
+            exit 1
+          fi
+        fi
+    command: >
+      -- create config router edge
+      --routerName "ziti-router"
+      --tunnelerMode "${ZITI_ROUTER_MODE:-host}"
+    environment:
+      ZITI_ROUTER_ADVERTISED_ADDRESS:  # required: the router's edge.endpoint address
+      ZITI_CTRL_ADVERTISED_ADDRESS:    # required: the controller's ctrl.endpoint address
+      ZITI_CTRL_ADVERTISED_PORT:       # the controller's ctrl.endpoint port (default: 6262)
+      ZITI_ROUTER_PORT:                # container port for edge listener (default: 3022)
+      ZITI_ROUTER_LISTENER_BIND_PORT:  # container port for fabric listener (default: 10080)
+      ZITI_ROUTER_IP_OVERRIDE:         # alternative to ZITI_ROUTER_ADVERTISED_ADDRESS
+      ZITI_HOME: /mnt
+
+  enroll-ziti-router:
+    image: ${ZITI_ROUTER_IMAGE:-openziti/ziti-router}
+    depends_on:
+      config-ziti-router:
+        condition: service_completed_successfully
+    volumes:
+      - ziti-router:/mnt
+    entrypoint:
+      - bash
+      - -euxc
+      - |
+        if ! [ -s "/mnt/ziti-router.cert" ]; then
+          if [ -n "${ZITI_ROUTER_JWT:-}" ]; then
+            echo "${ZITI_ROUTER_JWT}" >| /tmp/ziti-router.jwt
+          else
+            echo "ERROR: ZITI_ROUTER_JWT is undefined" >&2
+            exit 1
+          fi
+          exec ziti $${@}
+        fi
+    command: -- router enroll /mnt/config.yml --jwt /tmp/ziti-router.jwt
+
+  run-ziti-router:
+    image: ${ZITI_ROUTER_IMAGE:-openziti/ziti-router}
+    depends_on:
+      enroll-ziti-router:
+        condition: service_completed_successfully
+    user: root
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    volumes:
+      - ziti-router:/mnt
+    environment:
+      - PFXLOG_NO_JSON=true
+    command: run /mnt/config.yml
+    dns:
+      - 127.0.0.1
+    ports:
+      - "${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}"    # provide edge to dialing and binding identities
+      - "${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}:${ZITI_ROUTER_LISTENER_BIND_PORT:-10080}"  # provide fabric links to other routers
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -sSf
+        - hello.internal:8000
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
