@@ -2,11 +2,11 @@ import csv
 import json
 import os
 
-directory = "/home/pete/Documents/dumps/"
-txPortalIncreaseThresh_values = ["224", "112", "56", "28", "14", "7"]
+sourceDirectory = "/home/pete/Documents/dumps/dumps5"  # path of the directory where your dumps are stored
+clientRegion = "us-east-1"  # where your iperf3 client is found
+txPortalIncreaseThresh_values = ["35", "28"]  # All the txPortalIncreaseThresh values you want to test
 txPortalStartSize_values = ["16384", "32768", "65536", "131072", "262144",
-                            "524288", "1048576", "2097152", "4194304",
-                            "8388608", "16777216", "33554432", "67108864"]
+                            "524288", "1048576", "2097152", "4194304"]  # All the txPortalStartSize values you want to test
 tags = [(i, j) for i in txPortalIncreaseThresh_values
         for j in txPortalStartSize_values]
 tags_iterator = iter(tags)
@@ -15,26 +15,27 @@ tags_iterator = iter(tags)
 def extract_values_from_json(path):
     with open(path, 'r') as json_file:
         data = json.load(json_file)
-    host_data = data['regions']['eu-west-2']['hosts']
+    host_data = data['regions'][clientRegion]['hosts']
     extracted_data = {}
     index = 0  # Initialize counter
     for host_key, host in host_data.items():
-        metrics = host['scope']['data'].get('iperf_Flow-Control_metrics')
-        if metrics:
-            timeslices = metrics['timeslices'][:20]
-            bits_per_second_values = [int(slice['bits_per_second'])
-                                      for slice in timeslices]
-            tag = next(tags_iterator, None)
-            if tag is None:
-                tag = tags[index % len(tags)]  # Repeat tags in a cyclic manner
+        if 'data' in host['scope']:
+            metrics = host['scope']['data'].get('iperf_Flow-Control_metrics')
+            if metrics:
+                timeslices = metrics['timeslices'][:20]
+                bits_per_second_values = [int(slice['bits_per_second'])
+                                          for slice in timeslices]
+                tag = next(tags_iterator, None)
+                if tag is None:
+                    tag = tags[index % len(tags)]  # Repeat combination of tags
+                new_key = (f"{index}-txPortalIncreaseThresh_{tag[0]}-"
+                           f"txPortalStartSize_{tag[1]}") if tag else host_key
+                extracted_data[new_key] = {
+                    'bytes': metrics.get('bytes', None),
+                    'bits_per_second': int(metrics.get('bits_per_second', 0)),
+                    'timeslice_bits_per_second': bits_per_second_values
+                }
                 index += 1  # Increase counter
-            new_key = (f"{index}-txPortalIncreaseThresh_{tag[0]}-"
-                       f"txPortalStartSize_{tag[1]}") if tag else host_key
-            extracted_data[new_key] = {
-                'bytes': metrics.get('bytes', None),
-                'bits_per_second': int(metrics.get('bits_per_second', 0)),
-                'timeslice_bits_per_second': bits_per_second_values
-            }
     return extracted_data
 
 
@@ -63,7 +64,7 @@ def count_and_process_json_files(d):
         return process_json_files(d)
 
 
-data_structures = count_and_process_json_files(directory)
+data_structures = count_and_process_json_files(sourceDirectory)
 
 with open('flow_control_data.csv', 'w', newline='') as csv_file:
     writer = csv.writer(csv_file)
@@ -73,7 +74,13 @@ with open('flow_control_data.csv', 'w', newline='') as csv_file:
     writer.writerow(column_names)
 
     for key, values in data_structures.items():
-        increase_thresh, start_size = key.split('-')
+        parts = key.split('-')
+        if len(parts) >= 3:
+            increase_thresh = parts[1].split('_')[-1]
+            start_size = parts[2].split('_')[-1]
+        else:
+            print(f"Unexpected key format: {key}")
+            continue
         row = [increase_thresh.split('_')[-1], start_size.split('_')[-1],
                values.get('bytes'), values.get('bits_per_second')]
         row.extend(values.get('timeslice_bits_per_second', []))
