@@ -795,6 +795,7 @@ main(){
     }
     helmWrapper upgrade --install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller" \
         --namespace "${ZITI_NAMESPACE}" --create-namespace \
+        --set ctrlPlane.advertisedHost="miniziti-controller-ctrl.${MINIZITI_INGRESS_ZONE}" \
         --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}" \
         --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}" \
         --set trust-manager.enabled=true \
