@@ -193,14 +193,14 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 	}
 	strategy.ae.GetStores().Ca.AddEntityConstraint(strategy.caHandler)
 
-	//ca create/delete/update
+	//revocation create/delete/update
 	strategy.revocationHandler = &constraintToIndexedEvents[*db.Revocation]{
 		indexProvider: strategy.indexProvider,
 		createHandler: strategy.RevocationCreate,
 		updateHandler: strategy.RevocationUpdate,
 		deleteHandler: strategy.RevocationDelete,
 	}
-	strategy.ae.GetStores().Ca.AddEntityConstraint(strategy.caHandler)
+	strategy.ae.GetStores().Revocation.AddEntityConstraint(strategy.revocationHandler)
 
 	return nil
 }

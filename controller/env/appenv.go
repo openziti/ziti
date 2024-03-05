@@ -82,9 +82,8 @@ const (
 )
 
 type AppEnv struct {
-	BoltStores *db.Stores
-	Managers   *model.Managers
-	Config     *config.Config
+	Managers *model.Managers
+	Config   *config.Config
 
 	Versions *ziti.Versions
 
