@@ -79,6 +79,7 @@ func (o *PKICreateClientOptions) addPKICreateClientFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the RSA private key, ignored if -curve is set")
 	cmd.Flags().StringVarP(&o.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521")
 	cmd.Flags().StringVar(&o.Flags.SpiffeID, "spiffe-id", "", "Optionally provide the path portion of a SPIFFE id. The trust domain will be taken from the signing certificate.")
+	cmd.Flags().BoolVar(&o.Flags.AllowOverwrite, "allow-overwrite", false, "Allow overwrite existing certs")
 }
 
 // Run implements this command
@@ -158,6 +159,7 @@ func (o *PKICreateClientOptions) Run() error {
 		Template:            template,
 		IsClientCertificate: true,
 		PrivateKeyOptions:   privateKeyOptions,
+		AllowOverwrite:      o.Flags.AllowOverwrite,
 	}
 
 	if err := o.Flags.PKI.Sign(signer, req); err != nil {

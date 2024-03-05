@@ -1,0 +1,42 @@
+#
+# this is a systemd env file allowing simple assignments for ziti-controller.service environment
+#
+
+#
+# for "ziti pki" and "ziti create config controller" commands in bootstrap.bash
+#
+
+# the advertised address of the controller is a fully-qualified domain name; if defined this overrides any value set in
+# /lib/systemd/system/ziti-controller.service
+#ZITI_CTRL_ADVERTISED_ADDRESS=
+# the advertised and listening port of the controller (default: 1280)
+ZITI_CTRL_ADVERTISED_PORT=1280
+# the interface address on which to listen (default: 0.0.0.0)
+ZITI_CTRL_BIND_ADDRESS=0.0.0.0
+
+#
+# for "ziti pki" commands in bootstrap.bash
+#
+
+# relative to systemd service WorkingDirectory; e.g., /var/lib/ziti-controller/pki
+ZITI_PKI_ROOT=pki
+# relative to ZITI_PKI_ROOT; root CA dir; e.g., /var/lib/ziti-controller/pki/root
+ZITI_CA_FILE=root
+# relative to ZITI_PKI_ROOT; intermediate CA dir; e.g., /var/lib/ziti-controller/pki/intermediate
+ZITI_INTERMEDIATE_FILE=intermediate
+# relative to intermediate CA "keys" and "certs" dirs
+ZITI_SERVER_FILE=server
+# relative to intermediate CA "keys" and "certs" dirs
+ZITI_CLIENT_FILE=client
+
+#
+# for "ziti controller edge init" command in bootstrap.bash
+#
+# path to BoltDB relative to working directory /var/lib/ziti-controller
+ZITI_CTRL_DATABASE_FILE=bbolt.db
+# must be 4 < 100 characters
+ZITI_USER=admin
+# for better security, leave this assignment empty and create a file readable only by root containing the
+# password and set "LoadCredential=ZITI_PWD:/opt/openziti/etc/controller/.pwd" in
+# /lib/systemd/system/ziti-controller.service
+ZITI_PWD=
