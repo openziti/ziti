@@ -100,9 +100,9 @@ type StartTCPDumpStage struct{}
 
 func (s *StartTCPDumpStage) Execute(run model.Run) error {
 	action := StartTCPDumpAction{
-		scenarioName: "Flow-Control", // replace with your scenario name
-		host:         "router-eu",    // replace with your host
-		snaplen:      128,            // replace with your actual snaplen value
+		scenarioName: "Flow-Control",     // replace with your scenario name
+		host:         "router-us-client", // replace with your host
+		snaplen:      128,                // replace with your actual snaplen value
 		joiner:       make(chan struct{}),
 	}
 	return action.Execute(run)
@@ -112,7 +112,7 @@ type StopTCPDumpStage struct{}
 
 func (s *StopTCPDumpStage) Execute(run model.Run) error {
 	action := StopTCPDumpAction{
-		host: "router-eu", // replace with your host
+		host: "router-us-client", // replace with your host
 	}
 	return action.Execute(run)
 }
@@ -177,34 +177,34 @@ var m = &model.Model{
 						},
 					},
 				},
-				"router-us": {
+				"router-us-client": {
 					InstanceType: "c5.large",
 					Components: model.Components{
-						"edge-router-us": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "terminator", "iperf-server"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
+						"edge-router-us-client": {
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "terminator", "iperf-client"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
 							Type:  &zitilab.RouterType{Version: ZitiVersion},
 						},
-						"iperf-server": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "iperf-server"}},
+						"iperf-client": {
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "iperf-client"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 					},
 				},
 			},
 		},
-		"eu-west-2": {
-			Region: "eu-west-2",
-			Site:   "eu-west-2a",
+		"us-east-2": {
+			Region: "us-east-2",
+			Site:   "us-east-2a",
 			Hosts: model.Hosts{
-				"router-eu": {
+				"router-us-server-2": {
 					InstanceType: "c5.large",
 					Components: model.Components{
-						"edge-router-eu": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "iperf-client", "terminator", "tunneler"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
+						"edge-router-us-server": {
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "terminator", "iperf-server"}}, // These are identity attributes the identity is created automatically based on the 'edge-router' tag/attribute
 							Type:  &zitilab.RouterType{Version: ZitiVersion},
 						},
-						"iperf-client": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "iperf-client"}},
+						"iperf-server": {
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "iperf-server"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 					},
