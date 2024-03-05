@@ -1,0 +1,2 @@
+ZITI_CONTROLLER_RUN_ARGS="config.yml --log-formatter text --verbose"
+#PFXLOG_NO_JSON=true

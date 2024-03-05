@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenZiti Controller
+After=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=ziti-controller
+UMask=0007
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+EnvironmentFile=/opt/openziti/etc/controller/env
+ExecStart=/opt/openziti/etc/controller/entrypoint.bash ${ZITI_CONTROLLER_RUN_ARGS}
+
+[Install]
+WantedBy=multi-user.target
