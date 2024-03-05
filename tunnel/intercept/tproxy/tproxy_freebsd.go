@@ -1,5 +1,3 @@
-//go:build windows
-
 /*
 	Copyright NetFoundry Inc.
 
@@ -16,17 +14,13 @@
 	limitations under the License.
 */
 
-package router
+package tproxy
 
 import (
-	"github.com/openziti/ziti/router/forwarder"
+	"github.com/openziti/ziti/tunnel/intercept"
+	"github.com/pkg/errors"
 )
 
-type routerMonitor struct{}
-
-func newRouterMonitor(forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *routerMonitor {
-	return &routerMonitor{}
-}
-
-func (routerMonitor *routerMonitor) Monitor() {
+func New(config Config) (intercept.Interceptor, error) {
+	return nil, errors.New("tproxy not supported on FreeBSD")
 }
