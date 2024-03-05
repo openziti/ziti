@@ -1,3 +1,5 @@
+//go:build windows
+
 /*
 	Copyright NetFoundry Inc.
 

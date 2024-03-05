@@ -22,5 +22,5 @@ import (
 )
 
 func New(config Config) (intercept.Interceptor, error) {
-	return nil, errors.New("tproxy not supported on darwin")
+	return nil, errors.New("tproxy not supported on FreeBSD")
 }
