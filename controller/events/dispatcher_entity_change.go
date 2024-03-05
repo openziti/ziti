@@ -354,7 +354,7 @@ func (self *entityChangeEventFilter) AcceptEntityChangeEvent(evt *event.EntityCh
 			return
 		}
 
-		if *evt.IsParentEvent && !self.includeParentEvents {
+		if evt.IsParentEvent != nil && *evt.IsParentEvent && !self.includeParentEvents {
 			return
 		}
 	}

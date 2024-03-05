@@ -41,7 +41,10 @@ enum ContentType {
   DecommissionRouterRequestType = 1043;
 
   PeerStateChangeRequestType = 1050;
+}
 
+enum ControlHeaders {
+  NoneHeader = 0;
   ListenersHeader = 10;
   RouterMetadataHeader = 11;
   CapabilitiesHeader = 12;
@@ -167,6 +170,7 @@ message RouterLinks {
     string linkProtocol = 3;
     repeated string linkCostTags = 4;
     string dialAddress = 5;
+    uint32 iteration = 6;
   }
 
   repeated RouterLink links = 1;
@@ -184,6 +188,7 @@ enum FaultSubject {
 message Fault {
   FaultSubject subject = 1;
   string id = 2;
+  uint32 iteration = 3;
 }
 
 message Context {

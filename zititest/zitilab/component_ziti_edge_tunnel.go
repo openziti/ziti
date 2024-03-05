@@ -52,7 +52,7 @@ func (self *ZitiEdgeTunnelType) InitType(*model.Component) {
 	if strings.HasPrefix(self.Version, "v") {
 		self.Version = self.Version[1:]
 	}
-	canonicalizeZitiVersion(&self.ZitiVersion)
+	canonicalizeGoAppVersion(&self.ZitiVersion)
 }
 
 func (self *ZitiEdgeTunnelType) getBinaryName() string {

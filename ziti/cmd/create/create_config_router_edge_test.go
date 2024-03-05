@@ -116,7 +116,7 @@ func TestTunnelerTproxyMode(t *testing.T) {
 func TestTunnelerInvalidMode(t *testing.T) {
 	invalidMode := "invalidMode"
 
-	expectedErrorMsg := "Unknown tunneler mode [" + invalidMode + "] provided, should be \"" + noneTunMode + "\", \"" + hostTunMode + "\", or \"" + tproxyTunMode + "\""
+	expectedErrorMsg := "Unknown tunneler mode [" + invalidMode + "] provided, should be \"" + noneTunMode + "\", \"" + hostTunMode + "\", \"" + proxyTunMode + "\", or \"" + tproxyTunMode + "\""
 
 	// Create the options with both flags set to true
 	routerOptions := clearEnvAndInitializeTestData()

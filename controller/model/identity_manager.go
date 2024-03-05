@@ -448,6 +448,8 @@ func (self *IdentityManager) PatchInfo(identity *Identity, changeCtx *change.Con
 		db.FieldIdentityEnvInfoOs:         struct{}{},
 		db.FieldIdentityEnvInfoOsRelease:  struct{}{},
 		db.FieldIdentityEnvInfoOsVersion:  struct{}{},
+		db.FieldIdentityEnvInfoDomain:     struct{}{},
+		db.FieldIdentityEnvInfoHostname:   struct{}{},
 		db.FieldIdentitySdkInfoBranch:     struct{}{},
 		db.FieldIdentitySdkInfoRevision:   struct{}{},
 		db.FieldIdentitySdkInfoType:       struct{}{},
@@ -571,6 +573,8 @@ func (self *IdentityManager) IdentityToProtobuf(entity *Identity) (*edge_cmd_pb.
 			Os:        entity.EnvInfo.Os,
 			OsRelease: entity.EnvInfo.OsRelease,
 			OsVersion: entity.EnvInfo.OsVersion,
+			Domain:    entity.EnvInfo.Domain,
+			Hostname:  entity.EnvInfo.Hostname,
 		}
 	}
 
@@ -642,6 +646,8 @@ func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Ide
 			Os:        msg.EnvInfo.Os,
 			OsRelease: msg.EnvInfo.OsRelease,
 			OsVersion: msg.EnvInfo.OsVersion,
+			Domain:    msg.EnvInfo.Domain,
+			Hostname:  msg.EnvInfo.Hostname,
 		}
 	}
 

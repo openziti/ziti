@@ -32,6 +32,7 @@ type NetworkController interface {
 	IsUnresponsive() bool
 	isMoreResponsive(other NetworkController) bool
 	GetVersion() *versions.VersionInfo
+	TimeSinceLastContact() time.Duration
 }
 
 type networkCtrl struct {
@@ -43,6 +44,11 @@ type networkCtrl struct {
 	latency          atomic.Int64
 	unresponsive     atomic.Bool
 	versionInfo      *versions.VersionInfo
+	lastContact      atomic.Int64
+}
+
+func (self *networkCtrl) TimeSinceLastContact() time.Duration {
+	return time.Millisecond * time.Duration(time.Now().UnixMilli()-self.lastContact.Load())
 }
 
 func (self *networkCtrl) HeartbeatCallback() channel.HeartbeatCallback {
@@ -82,6 +88,7 @@ func (self *networkCtrl) isMoreResponsive(other NetworkController) bool {
 
 func (self *networkCtrl) HeartbeatTx(int64) {
 	self.lastTx = time.Now().UnixMilli()
+	self.lastContact.Store(self.lastTx)
 }
 
 func (self *networkCtrl) HeartbeatRx(int64) {
@@ -94,6 +101,7 @@ func (self *networkCtrl) HeartbeatRespRx(ts int64) {
 	now := time.Now()
 	self.lastRx = now.UnixMilli()
 	self.latency.Store(now.UnixNano() - ts)
+	self.lastContact.Store(self.lastRx)
 }
 
 func (self *networkCtrl) CheckHeartBeat() {

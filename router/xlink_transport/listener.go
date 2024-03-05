@@ -20,13 +20,14 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	fabricMetrics "github.com/openziti/ziti/common/metrics"
-	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
+	fabricMetrics "github.com/openziti/ziti/common/metrics"
+	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"io"
 	"sync"
 	"time"
 )
@@ -34,7 +35,7 @@ import (
 type listener struct {
 	id                 *identity.TokenId
 	config             *listenerConfig
-	listener           channel.UnderlayListener
+	listener           io.Closer
 	accepter           xlink.Acceptor
 	bindHandlerFactory BindHandlerFactory
 	tcfg               transport.Configuration
@@ -46,18 +47,17 @@ type listener struct {
 
 func (self *listener) Listen() error {
 	config := channel.ListenerConfig{
-		ConnectOptions:   self.config.options.ConnectOptions,
-		TransportConfig:  self.tcfg,
-		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(self.metricsRegistry, "pool.listener.link"),
+		ConnectOptions:     self.config.options.ConnectOptions,
+		TransportConfig:    self.tcfg,
+		PoolConfigurator:   fabricMetrics.GoroutinesPoolMetricsConfigF(self.metricsRegistry, "pool.listener.link"),
+		ConnectionHandlers: []channel.ConnectionHandler{&ConnectionHandler{self.id}},
 	}
-	listener := channel.NewClassicListener(self.id, self.config.bind, config)
 
-	self.listener = listener
-	connectionHandler := &ConnectionHandler{self.id}
-	if err := self.listener.Listen(connectionHandler); err != nil {
+	var err error
+	if self.listener, err = channel.NewClassicListenerF(self.id, self.config.bind, config, self.acceptNewUnderlay); err != nil {
 		return fmt.Errorf("error listening (%w)", err)
 	}
-	go self.acceptLoop()
+
 	go self.cleanupExpiredPartialLinks()
 	return nil
 }
@@ -86,16 +86,9 @@ func (self *listener) GetLocalBinding() string {
 	return self.config.bindInterface
 }
 
-func (self *listener) acceptLoop() {
-	for {
-		_, err := channel.NewChannelWithTransportConfiguration("link", self.listener, self, self.config.options, self.tcfg)
-		if err != nil && errors.Is(err, channel.ListenerClosedError) {
-			logrus.Errorf("link underlay acceptor closed")
-			return
-		} else if err != nil {
-			logrus.Errorf("error creating link underlay (%v)", err)
-			continue
-		}
+func (self *listener) acceptNewUnderlay(underlay channel.Underlay) {
+	if _, err := channel.NewChannelWithUnderlay("link", underlay, self, self.config.options); err != nil {
+		logrus.WithError(err).Error("error creating link channel")
 	}
 }
 
@@ -104,36 +97,41 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 		WithField("linkProtocol", self.GetLinkProtocol()).
 		WithField("linkId", binding.GetChannel().Id())
 
-	headers := binding.GetChannel().Underlay().Headers()
+	headers := channel.Headers(binding.GetChannel().Underlay().Headers())
 	var chanType channelType
 
 	routerId := ""
 	routerVersion := ""
 	dialerBinding := ""
+	var iteration uint32
 
 	if headers != nil {
-		if v, ok := headers[LinkHeaderRouterId]; ok {
-			routerId = string(v)
+		var ok bool
+		if routerId, ok = headers.GetStringHeader(LinkHeaderRouterId); ok {
 			log = log.WithField("routerId", routerId)
-			log.Info("accepting link")
 		}
-		if val, ok := headers[LinkHeaderType]; ok {
-			chanType = channelType(val[0])
+		if val, ok := headers.GetByteHeader(LinkHeaderType); ok {
+			chanType = channelType(val)
 		}
-		if val, ok := headers[LinkHeaderRouterVersion]; ok {
-			routerVersion = string(val)
+		if routerVersion, ok = headers.GetStringHeader(LinkHeaderRouterVersion); ok {
 			log = log.WithField("routerVersion", routerVersion)
 		}
-		if val, ok := headers[LinkHeaderBinding]; ok {
-			dialerBinding = string(val)
+		if dialerBinding, ok = headers.GetStringHeader(LinkHeaderBinding); ok {
 			log = log.WithField("dialerBinding", dialerBinding)
 		}
+		if val, ok := headers.GetUint32Header(LinkHeaderIteration); ok {
+			iteration = val
+			log = log.WithField("iteration", iteration)
+		}
 	}
+
+	log.Info("binding link channel")
 
 	linkMeta := &linkMetadata{
 		routerId:      routerId,
 		routerVersion: routerVersion,
 		dialerBinding: dialerBinding,
+		iteration:     iteration,
 	}
 
 	if chanType != 0 {
@@ -146,26 +144,31 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 
 func (self *listener) bindSplitChannel(binding channel.Binding, chanType channelType, linkMeta *linkMetadata, log *logrus.Entry) error {
 	headers := binding.GetChannel().Underlay().Headers()
-	id, ok := headers[LinkHeaderConnId]
+	connId, ok := channel.Headers(headers).GetStringHeader(LinkHeaderConnId)
 	if !ok {
 		return errors.New("split conn received but missing connection id. closing")
 	}
 
+	log = log.WithField("connId", connId)
 	log.Info("accepted part of split conn")
 
-	xli, err := self.getOrCreateSplitLink(string(id), linkMeta, binding, chanType)
+	complete, xli, err := self.getOrCreateSplitLink(connId, linkMeta, binding, chanType)
 	if err != nil {
 		log.WithError(err).Error("error binding link channel")
 		return err
 	}
 
 	latencyPing := chanType == PayloadChannel
-	if err := self.bindHandlerFactory.NewBindHandler(xli, latencyPing, true).BindChannel(binding); err != nil {
+	if err = self.bindHandlerFactory.NewBindHandler(xli, latencyPing, true).BindChannel(binding); err != nil {
+		self.cleanupDeadPartialLink(connId)
+		if closeErr := xli.Close(); closeErr != nil {
+			log.WithError(closeErr).Error("error closing partial split link")
+		}
 		return err
 	}
 
-	if xli.payloadCh != nil && xli.ackCh != nil {
-		if err := self.accepter.Accept(xli); err != nil {
+	if complete && xli.payloadCh != nil && xli.ackCh != nil {
+		if err = self.accepter.Accept(xli); err != nil {
 			log.WithError(err).Error("error accepting incoming Xlink")
 
 			if err := xli.Close(); err != nil {
@@ -185,15 +188,24 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 	return nil
 }
 
-func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, binding channel.Binding, chanType channelType) (*splitImpl, error) {
+func (self *listener) cleanupDeadPartialLink(id string) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
+	delete(self.pendingLinks, id)
+}
+
+func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata, binding channel.Binding, chanType channelType) (bool, *splitImpl, error) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	complete := false
 	var link *splitImpl
 
-	if pending, found := self.pendingLinks[id]; found {
-		delete(self.pendingLinks, id)
+	if pending, found := self.pendingLinks[connId]; found {
+		delete(self.pendingLinks, connId)
 		link = pending.link
+		complete = true
 	} else {
 		pending = &pendingLink{
 			link: &splitImpl{
@@ -203,11 +215,12 @@ func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, bi
 				routerVersion: linkMeta.routerVersion,
 				linkProtocol:  self.GetLinkProtocol(),
 				dialAddress:   self.GetAdvertisement(),
+				iteration:     linkMeta.iteration,
 				dialed:        false,
 			},
 			eventTime: time.Now(),
 		}
-		self.pendingLinks[id] = pending
+		self.pendingLinks[connId] = pending
 		link = pending.link
 	}
 
@@ -215,19 +228,19 @@ func (self *listener) getOrCreateSplitLink(id string, linkMeta *linkMetadata, bi
 		if link.payloadCh == nil {
 			link.payloadCh = binding.GetChannel()
 		} else {
-			return nil, errors.Errorf("got two payload channels for link %v", binding.GetChannel().Id())
+			return false, nil, errors.Errorf("got two payload channels for link %v", binding.GetChannel().Id())
 		}
 	} else if chanType == AckChannel {
 		if link.ackCh == nil {
 			link.ackCh = binding.GetChannel()
 		} else {
-			return nil, errors.Errorf("got two ack channels for link %v", binding.GetChannel().Id())
+			return false, nil, errors.Errorf("got two ack channels for link %v", binding.GetChannel().Id())
 		}
 	} else {
-		return nil, errors.Errorf("invalid channel type %v", chanType)
+		return false, nil, errors.Errorf("invalid channel type %v", chanType)
 	}
 
-	return link, nil
+	return complete, link, nil
 }
 
 func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *linkMetadata, log *logrus.Entry) error {
@@ -239,6 +252,7 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *lin
 		routerVersion: linkMeta.routerVersion,
 		linkProtocol:  self.GetLinkProtocol(),
 		dialAddress:   self.GetAdvertisement(),
+		iteration:     linkMeta.iteration,
 		dialed:        false,
 	}
 
@@ -295,4 +309,5 @@ type linkMetadata struct {
 	routerId      string
 	routerVersion string
 	dialerBinding string
+	iteration     uint32
 }

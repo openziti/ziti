@@ -99,7 +99,9 @@ func (self *txPayload) isRetransmittable() bool {
 }
 
 func NewLinkSendBuffer(x *Xgress) *LinkSendBuffer {
-	logrus.Debugf("txPortalStartSize = %d", x.Options.TxPortalStartSize)
+	logrus.Debugf("txPortalStartSize = %d, txPortalMinSize = %d",
+		x.Options.TxPortalStartSize,
+		x.Options.TxPortalMinSize)
 
 	// newlyBuffered should be size 0, otherwise payloads can be sent and acks received before the payload is
 	// processed by the LinkSendBuffer

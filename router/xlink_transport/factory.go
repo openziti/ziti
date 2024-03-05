@@ -19,10 +19,10 @@ package xlink_transport
 import (
 	"fmt"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/xlink"
 )
 
 type channelType byte
@@ -33,6 +33,7 @@ const (
 	LinkHeaderRouterId      = 2
 	LinkHeaderRouterVersion = 3
 	LinkHeaderBinding       = 4
+	LinkHeaderIteration     = 5
 
 	PayloadChannel channelType = 1
 	AckChannel     channelType = 2

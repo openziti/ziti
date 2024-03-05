@@ -35,39 +35,38 @@ import (
 )
 
 var (
-	verifyNetworkLong = templates.LongDesc(`
+	verifyTrafficLong = templates.LongDesc(`
 		Sends traffic over a ziti network to test functionality
 `)
 
 	// TODO: Finish this
-	verifyNetworkExample = templates.Examples(`
-		ziti verifynetwork...
+	verifyTrafficExample = templates.Examples(`
+		ziti verifytraffic...
 	`)
 )
 
 const (
-	optionRouterName   = "routername"
 	optionIdentityName = "identity"
-	flagErrorMsg       = "An error occurred setting flags for verifynetwork"
+	flagErrorMsg       = "An error occurred setting flags for verifytraffic"
 )
 
-// VerifyNetworkOptions the options for the verifynetwork command
-type VerifyNetworkOptions struct {
+// VerifyTrafficOptions the options for the verifytraffic command
+type VerifyTrafficOptions struct {
 	common.CommonOptions
 	edge.LoginOptions
 	RouterName   string
 	IdentityFile string
 }
 
-// NewVerifyNetworkCmd creates a command object
-func NewVerifyNetworkCmd(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &VerifyNetworkOptions{}
+// NewVerifyTrafficCmd creates a command object
+func NewVerifyTrafficCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &VerifyTrafficOptions{}
 	cmd := &cobra.Command{
-		Use:     "verifynetwork -i <identity-file-path>",
+		Use:     "verifytraffic -i <identity-file-path>",
 		Short:   "verify basic network functionality",
 		Aliases: []string{"vn"},
-		Long:    verifyNetworkLong,
-		Example: verifyNetworkExample,
+		Long:    verifyTrafficLong,
+		Example: verifyTrafficExample,
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -76,14 +75,9 @@ func NewVerifyNetworkCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&options.RouterName, optionRouterName, "", "the name of the router used to verify traffic")
 	cmd.Flags().StringVarP(&options.IdentityFile, optionIdentityName, "", "", "the path to the identity file used to verify traffic")
 	options.CommonOptions.AddCommonFlags(cmd)
-	err := cmd.MarkFlagRequired(optionRouterName)
-	if err != nil {
-		logrus.Fatal(flagErrorMsg)
-	}
-	err = cmd.MarkFlagRequired(optionIdentityName)
+	err := cmd.MarkFlagRequired(optionIdentityName)
 	if err != nil {
 		logrus.Fatal(flagErrorMsg)
 	}
@@ -92,7 +86,7 @@ func NewVerifyNetworkCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 // run implements the command
-func run(o *VerifyNetworkOptions) error {
+func run(o *VerifyTrafficOptions) error {
 
 	protocol := "tcp"
 	address := "localhost"
@@ -103,13 +97,13 @@ func run(o *VerifyNetworkOptions) error {
 
 	params := fmt.Sprintf("%s:%s:%d", protocol, address, port)
 	cmd := edge.NewSecureCmd(o.CommonOptions.Out, o.CommonOptions.Err)
-	serviceName := testutil.GenerateRandomName("verifynetwork")
-	endpoint := testutil.GenerateRandomName("verifynetworkendpoint")
+	serviceName := testutil.GenerateRandomName("verifytraffic")
+	endpoint := testutil.GenerateRandomName("verifytrafficaddress")
 
 	cmd.SetArgs([]string{
 		serviceName,
 		params,
-		fmt.Sprintf("--endpoint=%s", endpoint),
+		fmt.Sprintf("--interceptAddress=%s", endpoint),
 	})
 
 	// Run Secure command

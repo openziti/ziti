@@ -17,14 +17,14 @@
 package network
 
 import (
+	"github.com/openziti/foundation/v2/genext"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/foundation/v2/genext"
-	"github.com/openziti/foundation/v2/versions"
 	"google.golang.org/protobuf/proto"
 	"reflect"
 	"sync"
@@ -33,9 +33,9 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -197,7 +197,7 @@ func (self *RouterManager) ApplyCreate(cmd *command.CreateEntityCommand[*Router]
 	err := self.db.Update(ctx, func(ctx boltz.MutateContext) error {
 		return self.store.Create(ctx, router.toBolt())
 	})
-	if err != nil {
+	if err == nil {
 		self.cache.Set(router.Id, router)
 	}
 	return err
@@ -214,6 +214,15 @@ func (self *RouterManager) Read(id string) (entity *Router, err error) {
 	return entity, err
 }
 
+func (self *RouterManager) Exists(id string) (bool, error) {
+	exists := false
+	err := self.db.View(func(tx *bbolt.Tx) error {
+		exists = self.store.IsEntityPresent(tx, id)
+		return nil
+	})
+	return exists, err
+}
+
 func (self *RouterManager) readUncached(id string) (*Router, error) {
 	entity := &Router{}
 	err := self.db.View(func(tx *bbolt.Tx) error {
@@ -226,7 +235,7 @@ func (self *RouterManager) readUncached(id string) (*Router, error) {
 }
 
 func (self *RouterManager) readInTx(tx *bbolt.Tx, id string) (*Router, error) {
-	if router, found := self.cache.Get(id); found {
+	if router, _ := self.cache.Get(id); router != nil {
 		return router, nil
 	}
 
@@ -345,7 +354,7 @@ func (self *RouterManager) UpdateTerminators(router *Router, ctx boltz.MutateCon
 
 func (self *RouterManager) HandleRouterDelete(id string) {
 	log := pfxlog.Logger().WithField("routerId", id)
-	log.Debug("processing router delete")
+	log.Info("processing router delete")
 	self.cache.Remove(id)
 
 	// if we close the control channel, the router will get removed from the connected cache. We don't do it
@@ -473,7 +482,7 @@ func (self *RouterLinks) GetLinksByRouter() map[string][]*Link {
 	return result.(map[string][]*Link)
 }
 
-func (self *RouterLinks) Add(link *Link, other *Router) {
+func (self *RouterLinks) Add(link *Link, otherRouterId string) {
 	self.Lock()
 	defer self.Unlock()
 	links := self.GetLinks()
@@ -487,13 +496,13 @@ func (self *RouterLinks) Add(link *Link, other *Router) {
 	for k, v := range byRouter {
 		newLinksByRouter[k] = v
 	}
-	forRouterList := newLinksByRouter[other.Id]
+	forRouterList := newLinksByRouter[otherRouterId]
 	newForRouterList := append([]*Link{link}, forRouterList...)
-	newLinksByRouter[other.Id] = newForRouterList
+	newLinksByRouter[otherRouterId] = newForRouterList
 	self.linkByRouter.Store(newLinksByRouter)
 }
 
-func (self *RouterLinks) Remove(link *Link, other *Router) {
+func (self *RouterLinks) Remove(link *Link, otherRouterId string) {
 	self.Lock()
 	defer self.Unlock()
 	links := self.GetLinks()
@@ -510,7 +519,7 @@ func (self *RouterLinks) Remove(link *Link, other *Router) {
 	for k, v := range byRouter {
 		newLinksByRouter[k] = v
 	}
-	forRouterList := newLinksByRouter[other.Id]
+	forRouterList := newLinksByRouter[otherRouterId]
 	var newForRouterList []*Link
 	for _, l := range forRouterList {
 		if l != link {
@@ -518,9 +527,9 @@ func (self *RouterLinks) Remove(link *Link, other *Router) {
 		}
 	}
 	if len(newForRouterList) == 0 {
-		delete(newLinksByRouter, other.Id)
+		delete(newLinksByRouter, otherRouterId)
 	} else {
-		newLinksByRouter[other.Id] = newForRouterList
+		newLinksByRouter[otherRouterId] = newForRouterList
 	}
 
 	self.linkByRouter.Store(newLinksByRouter)

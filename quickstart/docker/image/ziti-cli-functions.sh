@@ -40,12 +40,12 @@ function _wait_for_controller {
 }
 
 function _wait_for_public_router {
-  local advertised_host_port="${ZITI_ROUTER_NAME}:${ZITI_ROUTER_PORT}"
+  local advertised_host_port="${ZITI_ROUTER_ADVERTISED_ADDRESS}:${ZITI_ROUTER_PORT}"
   local COUNTDOWN=10
   until [[ -s "${ZITI_HOME}/${ZITI_ROUTER_NAME}.cert" ]] \
     && openssl s_client \
       -connect "${advertised_host_port}" \
-      -servername "${ZITI_ROUTER_NAME}" \
+      -servername "${ZITI_ROUTER_ADVERTISED_ADDRESS}" \
       -alpn "ziti-edge,h2,http/1.1" \
       -cert "${ZITI_HOME}/${ZITI_ROUTER_NAME}.cert" \
       -key "${ZITI_HOME}/${ZITI_ROUTER_NAME}.key" \
@@ -75,7 +75,7 @@ function _setup_ziti_env_path {
 
 function _setup_ziti_network {
   if [[ "ran" != "${_setup_ziti_network_run}" ]]; then
-    if [[ "${ZITI_NETWORK-}" == "" ]]; then ZITI_NETWORK="$(hostname -s)"; export ZITI_NETWORK; else echo "ZITI_NETWORK overridden: ${ZITI_NETWORK}"; fi
+    if [[ "${ZITI_NETWORK-}" == "" ]]; then ZITI_NETWORK="$(hostname)"; export ZITI_NETWORK; else echo "ZITI_NETWORK overridden: ${ZITI_NETWORK}"; fi
     _setup_ziti_network_run="ran"
   fi
 }

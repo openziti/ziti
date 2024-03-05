@@ -18,12 +18,12 @@ package xlink
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common/inspect"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/router/xgress"
 	"time"
 )
 
@@ -94,6 +94,7 @@ type Dial interface {
 	GetAddress() string
 	GetLinkProtocol() string
 	GetRouterVersion() string
+	GetIteration() uint32
 }
 
 type BackoffConfig interface {
@@ -129,11 +130,14 @@ type Xlink interface {
 	DestVersion() string
 	LinkProtocol() string
 	DialAddress() string
-	HandleCloseNotification(f func())
+	CloseOnce(f func())
 	IsClosed() bool
 	InspectLink() *inspect.LinkInspectDetail
 	GetAddresses() []*ctrl_pb.LinkConn
 	IsDialed() bool
+	Iteration() uint32
+	AreFaultsSent() bool
+	DuplicatesRejected() uint32
 }
 
 type Forwarder interface {

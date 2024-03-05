@@ -18,10 +18,10 @@ package xlink_transport
 
 import (
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/metrics"
 	"sync/atomic"
 )
 
@@ -33,9 +33,12 @@ type impl struct {
 	routerVersion   string
 	linkProtocol    string
 	dialAddress     string
-	closeNotified   atomic.Bool
+	closed          atomic.Bool
+	faultsSent      atomic.Bool
 	droppedMsgMeter metrics.Meter
 	dialed          bool
+	iteration       uint32
+	dupsRejected    uint32
 }
 
 func (self *impl) Id() string {
@@ -44,6 +47,10 @@ func (self *impl) Id() string {
 
 func (self *impl) Key() string {
 	return self.key
+}
+
+func (self *impl) Iteration() uint32 {
+	return self.iteration
 }
 
 func (self *impl) Init(metricsRegistry metrics.Registry) error {
@@ -83,8 +90,12 @@ func (self *impl) Close() error {
 }
 
 func (self *impl) CloseNotified() error {
-	self.closeNotified.Store(true)
+	self.faultsSent.Store(true)
 	return self.Close()
+}
+
+func (self *impl) AreFaultsSent() bool {
+	return self.faultsSent.Load()
 }
 
 func (self *impl) DestinationId() string {
@@ -107,8 +118,8 @@ func (self *impl) IsDialed() bool {
 	return self.dialed
 }
 
-func (self *impl) HandleCloseNotification(f func()) {
-	if self.closeNotified.CompareAndSwap(false, true) {
+func (self *impl) CloseOnce(f func()) {
+	if self.closed.CompareAndSwap(false, true) {
 		f()
 	}
 }
@@ -124,6 +135,7 @@ func (self *impl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 func (self *impl) InspectLink() *inspect.LinkInspectDetail {
 	return &inspect.LinkInspectDetail{
 		Id:          self.Id(),
+		Iteration:   self.Iteration(),
 		Key:         self.key,
 		Split:       false,
 		Protocol:    self.LinkProtocol(),
@@ -144,4 +156,8 @@ func (self *impl) GetAddresses() []*ctrl_pb.LinkConn {
 			RemoteAddr: remoteAddr.Network() + ":" + remoteAddr.String(),
 		},
 	}
+}
+
+func (self *impl) DuplicatesRejected() uint32 {
+	return atomic.AddUint32(&self.dupsRejected, 1)
 }

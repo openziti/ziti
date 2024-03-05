@@ -48,7 +48,7 @@ func NewValidateTerminatorsCmd(p common.OptionsProvider) *cobra.Command {
 	validateTerminatorsCmd := &cobra.Command{
 		Use:     "terminators",
 		Short:   "Validate terminators",
-		Example: "ziti fabric validate terminators --circuits --metrics --metrics-filter '.*'",
+		Example: "ziti fabric validate terminators --filter 'service.name=\"test\"' --show-only-invalid",
 		Args:    cobra.ExactArgs(0),
 		RunE:    action.validateTerminators,
 	}

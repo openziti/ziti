@@ -87,7 +87,7 @@ func (self *circuitConfirmationHandler) checkCircuitMaxIdle(circuit *network.Cir
 		return
 	}
 
-	log.Infof("removing idle circuit, idle time of %s exceedes max idle time of %s",
+	log.Infof("removing idle circuit, idle time of %s exceeds max idle time of %s",
 		time.Duration(idleTime).String(), service.MaxIdleTime.String())
 
 	if err := self.n.RemoveCircuit(circuit.Id, true); err != nil {

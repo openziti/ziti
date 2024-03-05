@@ -348,6 +348,8 @@ func (self *baseTunnelRequestContext) updateIdentityInfo(envInfo *edge_ctrl_pb.E
 				Os:        envInfo.Os,
 				OsRelease: envInfo.OsRelease,
 				OsVersion: envInfo.OsVersion,
+				Domain:    envInfo.Domain,
+				Hostname:  envInfo.Hostname,
 			}
 			if !self.identity.EnvInfo.Equals(newEnvInfo) {
 				self.identity.EnvInfo = newEnvInfo

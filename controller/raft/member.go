@@ -73,20 +73,18 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 		})
 	}
 
-	if len(result) == 0 {
-		for addr, peer := range peers {
-			if _, exists := memberSet[addr]; exists {
-				continue
-			}
-			result = append(result, &Member{
-				Id:        string(peer.Id),
-				Addr:      peer.Address,
-				Voter:     false,
-				Leader:    peer.Address == string(leaderAddr),
-				Version:   peer.Version.Version,
-				Connected: true,
-			})
+	for addr, peer := range peers {
+		if _, exists := memberSet[addr]; exists {
+			continue
 		}
+		result = append(result, &Member{
+			Id:        string(peer.Id),
+			Addr:      peer.Address,
+			Voter:     false,
+			Leader:    peer.Address == string(leaderAddr),
+			Version:   peer.Version.Version,
+			Connected: true,
+		})
 	}
 
 	return result, nil

@@ -31,6 +31,8 @@ type EnvInfo struct {
 	Os        string
 	OsRelease string
 	OsVersion string
+	Domain    string
+	Hostname  string
 }
 
 func (self *EnvInfo) Equals(other *EnvInfo) bool {
@@ -43,7 +45,9 @@ func (self *EnvInfo) Equals(other *EnvInfo) bool {
 	return self.Arch == other.Arch &&
 		self.Os == other.Os &&
 		self.OsRelease == other.OsRelease &&
-		self.OsVersion == other.OsVersion
+		self.OsVersion == other.OsVersion &&
+		self.Domain == other.Domain &&
+		self.Hostname == other.Hostname
 }
 
 type SdkInfo struct {
@@ -137,6 +141,8 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*db.Identit
 			Os:        entity.EnvInfo.Os,
 			OsRelease: entity.EnvInfo.OsRelease,
 			OsVersion: entity.EnvInfo.OsVersion,
+			Domain:    entity.EnvInfo.Domain,
+			Hostname:  entity.EnvInfo.Hostname,
 		}
 	}
 
@@ -162,6 +168,8 @@ func fillModelInfo(identity *Identity, envInfo *db.EnvInfo, sdkInfo *db.SdkInfo)
 			Os:        envInfo.Os,
 			OsRelease: envInfo.OsRelease,
 			OsVersion: envInfo.OsVersion,
+			Domain:    envInfo.Domain,
+			Hostname:  envInfo.Hostname,
 		}
 	}
 
@@ -184,6 +192,8 @@ func fillPersistenceInfo(identity *db.Identity, envInfo *EnvInfo, sdkInfo *SdkIn
 			Os:        envInfo.Os,
 			OsRelease: envInfo.OsRelease,
 			OsVersion: envInfo.OsVersion,
+			Domain:    envInfo.Domain,
+			Hostname:  envInfo.Hostname,
 		}
 	}
 

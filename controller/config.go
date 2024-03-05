@@ -462,6 +462,7 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
+	controllerConfig.CommandRateLimiter.Enabled = true
 	controllerConfig.CommandRateLimiter.QueueSize = command.DefaultLimiterSize
 
 	if value, found := cfgmap["commandRateLimiter"]; found {
