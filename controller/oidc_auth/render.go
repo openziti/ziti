@@ -3,7 +3,6 @@ package oidc_auth
 import (
 	"encoding"
 	"errors"
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
@@ -19,7 +18,7 @@ func render(w http.ResponseWriter, contentType string, status int, data encoding
 		pfxlog.Logger().WithError(err).Error("could not marshal data payload, attempting to respond with a marshalling error")
 		internalErr := &rest_model.APIError{
 			Code:    errorz.UnhandledCode,
-			Message: fmt.Sprintf("could not marhsal, see cause"),
+			Message: "could not marshal, see cause",
 			Cause: &rest_model.APIErrorCause{
 				APIError: rest_model.APIError{
 					Code:    "UNHANDLED",
@@ -43,6 +42,11 @@ func render(w http.ResponseWriter, contentType string, status int, data encoding
 		w.WriteHeader(http.StatusInternalServerError)
 
 		_, err = w.Write(internalErrPayload)
+
+		if err != nil {
+			pfxlog.Logger().WithError(err).WithField("internalErrPayload", internalErrPayload).Error("could not write the internal error payload, giving up")
+		}
+
 		return
 	}
 
@@ -58,11 +62,6 @@ func render(w http.ResponseWriter, contentType string, status int, data encoding
 // renderJson will attempt to render the provided data as JSON.
 func renderJson(w http.ResponseWriter, status int, data encoding.BinaryMarshaler) {
 	render(w, JsonContentType, status, data)
-}
-
-// renderJson will attempt to render the provided data as text/html.
-func renderHtml(w http.ResponseWriter, status int, data encoding.BinaryMarshaler) {
-	render(w, HtmlContentType, status, data)
 }
 
 func renderJsonError(w http.ResponseWriter, err error) {

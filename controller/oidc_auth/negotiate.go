@@ -26,13 +26,7 @@ func negotiateResponseContentType(r *http.Request) (string, *errorz.ApiError) {
 		}
 	}
 
-	return "", &errorz.ApiError{
-		Code:        "NOT_ACCEPTABLE",
-		Message:     fmt.Sprintf("unable to satisfy accept header provided: %s. Supported headers include %s and %s", acceptHeader, JsonContentType, HtmlContentType),
-		Status:      http.StatusNotAcceptable,
-		Cause:       nil,
-		AppendCause: false,
-	}
+	return "", newNotAcceptableError(acceptHeader)
 }
 
 func negotiateBodyContentType(r *http.Request) (string, *errorz.ApiError) {

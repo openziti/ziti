@@ -148,7 +148,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 			configPath = strings.TrimSpace(configPath)
 			config.Db = configPath + ".json.gzip"
 		} else {
-			pfxlog.Logger().Warn("the db property was not set, using default for cached data model: %s", config.Db)
+			pfxlog.Logger().Warnf("the db property was not set, using default for cached data model: %s", config.Db)
 		}
 
 		pfxlog.Logger().Infof("cached data model file set to: %s", config.Db)

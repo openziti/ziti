@@ -29,7 +29,6 @@ type Signer interface {
 
 type SignerImpl struct {
 	signingMethod jwt.SigningMethod
-	issuer        string
 	key           crypto.PrivateKey
 	keyId         string
 }

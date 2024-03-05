@@ -40,11 +40,11 @@ type AuthRequestBody struct {
 	AuthRequestId string `json:"id"`
 }
 
-func (a AuthRequestBody) SetAuthRequestId(id string) {
+func (a *AuthRequestBody) SetAuthRequestId(id string) {
 	a.AuthRequestId = id
 }
 
-func (a AuthRequestBody) GetAuthRequestId() string {
+func (a *AuthRequestBody) GetAuthRequestId() string {
 	return a.AuthRequestId
 }
 

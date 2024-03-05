@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/channel/v2/latency"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/router/state"
 	"math"
 )
 
@@ -32,7 +31,6 @@ type Acceptor struct {
 	listener           *listener
 	options            *channel.Options
 	sessionBindHandler channel.BindHandler
-	manager            state.Manager
 }
 
 func (self *Acceptor) BindChannel(binding channel.Binding) error {
