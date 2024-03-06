@@ -6,7 +6,6 @@
 set -o errexit
 set -o nounset
 set -o pipefail
-set -x  # for debugging
 
 # shellcheck disable=SC1090 # default path is set by the systemd service
 source "${ZITI_ROUTER_BOOTSTRAP_BASH:-/opt/openziti/etc/router/bootstrap.bash}"
