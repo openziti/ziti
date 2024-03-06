@@ -43,6 +43,8 @@ func NewForgetfulEventCache() *ForgetfulEventCache {
 }
 
 func (cache *ForgetfulEventCache) SetCurrentIndex(index uint64) {
+	cache.lock.Lock()
+	defer cache.lock.Unlock()
 	cache.index = &index
 }
 
