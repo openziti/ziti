@@ -69,10 +69,6 @@ func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding) er
 
 	apiSession := handler.stateManager.GetApiSessionWithTimeout(token, handler.options.lookupApiSessionTimeout)
 
-	if apiSession.Claims != nil {
-		token = apiSession.Claims.ApiSessionId
-	}
-
 	if apiSession == nil {
 		_ = ch.Close()
 
@@ -88,6 +84,10 @@ func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding) er
 		}
 
 		return fmt.Errorf("no api session found for token [%s], fingerprints: [%v], subjects [%v]", token, fingerprints, subjects)
+	}
+
+	if apiSession.Claims != nil {
+		token = apiSession.Claims.ApiSessionId
 	}
 
 	for _, fingerprint := range apiSession.CertFingerprints {
