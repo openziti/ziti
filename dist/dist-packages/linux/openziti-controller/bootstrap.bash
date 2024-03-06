@@ -161,8 +161,8 @@ function makeDatabase() {
       --username "${ZITI_USER}" \
       --password "${ZITI_PWD:-$(< "/run/credentials/${UNIT_NAME}/ZITI_PWD")}"
   else
-    echo  "ERROR: use SetCredential or LoadCredential in"\
-          " ziti-controller.service or set env var ZITI_PWD of at least 5 characters" >&2
+    echo  "ERROR: need admin password; use LoadCredential or SetCredential in"\
+          " /lib/systemd/system/ziti-controller.service or set env var ZITI_PWD with at least 5 characters" >&2
   fi
 
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# this thin wrapper script for the OpenZiti Controller evaluates arguments from the env file
+# this thin wrapper script for the OpenZiti Controller uses variable assignments from the systemd env file
 #
 
 set -o errexit

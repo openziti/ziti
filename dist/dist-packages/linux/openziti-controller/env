@@ -9,14 +9,14 @@ ZITI_CONTROLLER_RUN_ARGS="--log-formatter text"
 PFXLOG_NO_JSON=true
 
 #
-# for "ziti pki" and "ziti create config" commands in bootstrap.bash
+# for "ziti pki" and "ziti create config controller" commands in bootstrap.bash
 #
 
 # the advertised address of the controller is a domain name that can be resolved by all devices (default: hostname -f)
 ZITI_CONTROLLER_ADVERTISED_ADDRESS=
 # the advertised and listening port of the controller (default: 443)
 ZITI_CONTROLLER_ADVERTISED_PORT=443
-# the interface address to bind the controller to (default: 0.0.0.0)
+# the interface address on which to listen (default: 0.0.0.0)
 ZITI_CONTROLLER_BIND_ADDRESS=0.0.0.0
 
 #
@@ -39,9 +39,10 @@ ZITI_SERVER_FILE=controller-server-identity
 ZITI_CLIENT_FILE=controller-client-identity
 
 #
-# for "ziti create config" command in bootstrap.bash
+# for "ziti create config controller" command in bootstrap.bash
 #
-# create a config file unless it exists if "true", set "force" to overwrite
+# create a config file unless it exists if "true", set "force" to overwrite (changing the advertised URI will break
+# existing enrollments who will be unable to connect to the controller)
 ZITI_BOOTSTRAP_CONFIG=true
 # create a new config file relative to working directory unless it exists
 ZITI_CONTROLLER_CONFIG_FILE=config.yml
@@ -55,7 +56,7 @@ ZITI_CTRL_DATABASE_FILE=ctrl.db
 ZITI_BOOTSTRAP_DATABASE=true
 # must be 4 < 100 characters
 ZITI_USER=admin
-# for better security, leave this password assignment empty and create a file readable only by root containing the
-# password and set "LoadCredential=ZITI_PWD:/opt/openziti/etc/controller/.ziti_pwd" in the systemd
-# ziti-controller.service file
+# for better security, leave this assignment empty and create a file readable only by root containing the
+# password and set "LoadCredential=ZITI_PWD:/opt/openziti/etc/controller/.pwd" in
+# /lib/systemd/system/ziti-controller.service
 ZITI_PWD=
