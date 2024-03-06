@@ -121,6 +121,10 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 					data.Controller.EdgeEnrollment.EdgeRouterDuration = controllerOptions.EdgeRouterEnrollmentDuration
 				}
 
+				if controllerOptions.DatabaseFile != "" && controllerOptions.DatabaseFile != constants.DefaultCtrlDatabaseFile {
+					data.Controller.Database.DatabaseFile = controllerOptions.DatabaseFile
+				}
+
 				// process identity information
 				SetControllerIdentity(&data.Controller)
 				SetEdgeConfig(&data.Controller)
@@ -147,7 +151,7 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&options.CtrlPort, optionCtrlPort, constants.DefaultCtrlAdvertisedPort, "port used for the router to controller communication")
-	cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, "ctrl.db", "location of the database file")
+	cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, constants.DefaultCtrlDatabaseFile, "location of the database file")
 	cmd.Flags().DurationVar(&options.EdgeIdentityEnrollmentDuration, optionEdgeIdentityEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge identity enrollment duration, use 0h0m0s format")
 	cmd.Flags().DurationVar(&options.EdgeRouterEnrollmentDuration, optionEdgeRouterEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge router enrollment duration, use 0h0m0s format")
 }
@@ -194,6 +198,7 @@ func SetControllerIdentity(data *ControllerTemplateValues) {
 	SetControllerIdentityServerCert(data)
 	SetControllerIdentityKey(data)
 	SetControllerIdentityCA(data)
+	setDatabaseFile(data)
 }
 func SetControllerIdentityCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlCertVarName)
@@ -222,6 +227,18 @@ func SetControllerIdentityCA(c *ControllerTemplateValues) {
 		val = helpers.GetZitiHome() + "/" + helpers.HostnameOrNetworkName() + ".ca" // default
 	}
 	c.Identity.Ca = helpers.NormalizePath(val)
+}
+
+func setDatabaseFile(c *ControllerTemplateValues) {
+	if c.Database.DatabaseFile != "" {
+		c.Database.DatabaseFile = helpers.NormalizePath(c.Database.DatabaseFile)
+	} else {
+		val := os.Getenv(constants.CtrlDatabaseFileVarName)
+		if val == "" {
+			val = constants.DefaultCtrlDatabaseFile // default
+		}
+		c.Database.DatabaseFile = helpers.NormalizePath(val)
+	}
 }
 
 func SetEdgeConfig(data *ControllerTemplateValues) {

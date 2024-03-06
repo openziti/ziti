@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 #
-# this thin wrapper script for the OpenZiti Controller enables
-# - evaluating arguments from the env file
-# - future: bootstrapping a default run environment with PKI and initialized database
+# this thin wrapper script for the OpenZiti Controller evaluates arguments from the env file
 #
 
 set -o errexit
 set -o nounset
 set -o pipefail
 
-# shellcheck disable=SC2068 # because we want to word-split args
-exec /opt/openziti/bin/ziti controller run $@
+# shellcheck disable=SC2068 # because we must
+# shellcheck disable=SC2086 #  word-split args
+exec /opt/openziti/bin/ziti controller run ${ZITI_CONTROLLER_CONFIG_FILE} ${ZITI_CONTROLLER_RUN_ARGS} $@

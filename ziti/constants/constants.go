@@ -45,6 +45,8 @@ const (
 	DefaultCtrlBindAddress    = "0.0.0.0"
 	DefaultCtrlAdvertisedPort = "6262"
 
+	DefaultCtrlDatabaseFile = "db/ctrl.db"
+
 	DefaultCtrlEdgeBindAddress    = "0.0.0.0"
 	DefaultCtrlEdgeAdvertisedPort = "1280"
 
@@ -82,6 +84,8 @@ const (
 	CtrlEdgeAltAdvertisedAddressVarDescription       = "The publicly addressable, alternative controller address value. Overrides ZITI_CTRL_EDGE_ADVERTISED_ADDRESS"
 	CtrlEdgeAdvertisedPortVarName                    = "ZITI_CTRL_EDGE_ADVERTISED_PORT"
 	CtrlEdgeAdvertisedPortVarDescription             = "The publicly addressable controller port value"
+	CtrlDatabaseFileVarName                          = "ZITI_CTRL_DATABASE_FILE"
+	CtrlDatabaseFileVarDescription                   = "Path to the Ziti Controller Database File"
 	PkiSignerCertVarName                             = "ZITI_PKI_SIGNER_CERT"
 	PkiSignerCertVarDescription                      = "Path to the Ziti Signing Cert"
 	PkiSignerKeyVarName                              = "ZITI_PKI_SIGNER_KEY"

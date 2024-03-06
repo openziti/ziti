@@ -120,6 +120,10 @@ type IdentityValues struct {
 	AltCertsEnabled bool
 }
 
+type DatabaseValues struct {
+	DatabaseFile string
+}
+
 type WebOptionsValues struct {
 	IdleTimeout   time.Duration
 	ReadTimeout   time.Duration
@@ -130,6 +134,7 @@ type WebOptionsValues struct {
 
 type ControllerTemplateValues struct {
 	Identity       IdentityValues
+	Database       DatabaseValues
 	Ctrl           CtrlValues
 	HealthChecks   HealthChecksValues
 	EdgeApi        EdgeApiValues

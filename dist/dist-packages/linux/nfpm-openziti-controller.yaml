@@ -43,5 +43,8 @@ contents:
     type: config|noreplace
 
   - dst: /opt/openziti/etc/controller/
+    src: ./dist/dist-packages/linux/openziti-controller/bootstrap.bash
+
+  - dst: /opt/openziti/etc/controller/
     src: ./dist/dist-packages/linux/openziti-controller/entrypoint.bash
 

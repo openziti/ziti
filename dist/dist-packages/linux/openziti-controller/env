@@ -1,2 +1,54 @@
-ZITI_CONTROLLER_RUN_ARGS="config.yml --log-formatter text --verbose"
-#PFXLOG_NO_JSON=true
+#
+# this is a systemd env file allowing simple assignments for ziti-controller.service environment
+#
+
+ZITI_CONTROLLER_RUN_ARGS="--log-formatter text"
+# ZITI_CONTROLLER_RUN_ARGS="--log-formatter text --verbose"
+# PFXLOG_NO_JSON=true
+
+#
+# for "ziti pki" and "ziti create config" commands in bootstrap.bash
+#
+
+# the advertised address of the controller is a domain name that can be resolved by all devices (default: hostname -f)
+ZITI_CONTROLLER_ADVERTISED_ADDRESS=
+# the advertised and listening port of the controller (default: 443)
+ZITI_CONTROLLER_ADVERTISED_PORT=443
+# the interface address to bind the controller to (default: 0.0.0.0)
+ZITI_CONTROLLER_BIND_ADDRESS=0.0.0.0
+
+#
+# for "ziti pki" commands in bootstrap.bash
+#
+
+# create a new PKI unless it exists
+ZITI_BOOTSTRAP_PKI=true
+# renew server and client certificates every startup (invalidates unused enrollment tokens)
+ZITI_AUTO_RENEW_CERTS=true
+# relative to systemd service WorkingDirectory; e.g., /var/lib/ziti-controller/pki
+ZITI_PKI_ROOT=pki
+# relative to ZITI_PKI_ROOT; root CA dir; e.g., /var/lib/ziti-controller/pki/root
+ZITI_CA_FILE=root
+# relative to ZITI_PKI_ROOT; intermediate CA dir; e.g., /var/lib/ziti-controller/pki/intermediate
+ZITI_INTERMEDIATE_FILE=intermediate
+# relative to intermediate CA "keys" and "certs" dirs
+ZITI_SERVER_FILE=controller-server-identity
+# relative to intermediate CA "keys" and "certs" dirs
+ZITI_CLIENT_FILE=controller-client-identity
+
+#
+# for "ziti create config" command in bootstrap.bash
+#
+# create a config file unless it exists
+ZITI_BOOTSTRAP_CONFIG=true
+# create a new config file relative to working directory unless it exists
+ZITI_CONTROLLER_CONFIG_FILE=config.yml
+ZITI_CTRL_DATABASE_FILE=ctrl.db
+
+#
+# for "ziti controller edge init" command in bootstrap.bash
+#
+# create a database unless it exists
+ZITI_BOOTSTRAP_DATABASE=true
+# must be 4 < 100 characters
+ZITI_USER=admin

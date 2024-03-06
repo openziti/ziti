@@ -120,6 +120,10 @@ func GetCtrlEdgeAdvertisedPort() string {
 	return getFromEnv(constants.CtrlEdgeAdvertisedPortVarName, defaultValue(constants.DefaultCtrlEdgeAdvertisedPort))
 }
 
+func GetCtrlDatabaseFile() string {
+	return getFromEnv(constants.CtrlDatabaseFileVarName, defaultValue(constants.DefaultCtrlDatabaseFile))
+}
+
 func GetZitiEdgeRouterPort() string {
 	return getFromEnv(constants.ZitiEdgeRouterPortVarName, defaultValue(constants.DefaultZitiEdgeRouterPort))
 }
