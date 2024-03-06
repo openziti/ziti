@@ -45,7 +45,7 @@ func (entity *Controller) GetName() string {
 }
 
 func (entity *Controller) GetEntityType() string {
-	return EntityTypeCas
+	return EntityTypeControllers
 }
 
 var _ ControllerStore = (*controllerStoreImpl)(nil)
