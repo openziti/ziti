@@ -93,7 +93,7 @@ function makePki() {
   #   use the server key for both client and server certs until "ziti create config controller" supports separate keys for
   #   each
   ZITI_PKI_CTRL_CERT="./${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_CLIENT_FILE}.cert"
-  if [[ "${ZITI_CERT_AUTO_RENEW}" == true || ! -s "$ZITI_PKI_CTRL_CERT" ]]; then
+  if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_CERT" ]]; then
     ziti pki create client \
       --pki-root "./${ZITI_PKI_ROOT}" \
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
@@ -132,7 +132,7 @@ function makeConfig() {
           ZITI_PKI_SIGNER_CERT \
           ZITI_PKI_SIGNER_KEY
 
-  if [ ! -s "./${ZITI_CONTROLLER_CONFIG_FILE}" ]; then
+  if [[ ! -s "./${ZITI_CONTROLLER_CONFIG_FILE}" || "${1:-}" == --force ]]; then
     ziti create config controller \
       --output "./${ZITI_CONTROLLER_CONFIG_FILE}"
   fi
@@ -145,6 +145,10 @@ function makeDatabase() {
   # create default admin in database
   #
 
+  if [ -s "./${ZITI_CTRL_DATABASE_FILE}" ]; then
+    return 0
+  fi
+
   # if the database file is in a subdirectory, create the directory so that "ziti controller edge init" can load the
   # controller config.yml which contains a check to ensure the directory exists
   DB_DIR="$(dirname "${ZITI_CTRL_DATABASE_FILE}")"
@@ -152,10 +156,10 @@ function makeDatabase() {
     mkdir -p "./$DB_DIR"
   fi
 
-  if [[ $(wc -c <<< "${ZITI_PWD:-}") -gt 5 || -s /run/credentials/ZITI_PWD ]]; then
+  if [[ $(wc -c <<< "${ZITI_PWD:-}") -gt 5 || -s /run/credentials/${UNIT_NAME:=ziti-controller.service}/ZITI_PWD ]]; then
     ziti controller edge init "./${ZITI_CONTROLLER_CONFIG_FILE}" \
       --username "${ZITI_USER}" \
-      --password "${ZITI_PWD:-$(< /run/credentials/ZITI_PWD)}"
+      --password "${ZITI_PWD:-$(< "/run/credentials/${UNIT_NAME}/ZITI_PWD")}"
   else
     echo  "ERROR: use SetCredential or LoadCredential in"\
           " ziti-controller.service or set env var ZITI_PWD of at least 5 characters" >&2
@@ -163,6 +167,19 @@ function makeDatabase() {
 
 }
 
-if [ "${ZITI_BOOTSTRAP_PKI}"      == true ]; then makePki;      fi
-if [ "${ZITI_BOOTSTRAP_CONFIG}"   == true ]; then makeConfig;   fi
-if [ "${ZITI_BOOTSTRAP_DATABASE}" == true ]; then makeDatabase; fi
+# make PKI unless it exists if true
+if [ "${ZITI_BOOTSTRAP_PKI}"      == true ]; then
+  makePki
+fi
+
+# make config file unless it exists if true, set force to overwrite
+if [ "${ZITI_BOOTSTRAP_CONFIG}"   == true ]; then
+  makeConfig
+elif [ "${ZITI_BOOTSTRAP_CONFIG}" == force ]; then
+  makeConfig --force
+fi
+
+# make database unless it exists if true
+if [ "${ZITI_BOOTSTRAP_DATABASE}" == true ]; then
+  makeDatabase
+fi

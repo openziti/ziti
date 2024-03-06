@@ -4,7 +4,9 @@
 
 ZITI_CONTROLLER_RUN_ARGS="--log-formatter text"
 # ZITI_CONTROLLER_RUN_ARGS="--log-formatter text --verbose"
-# PFXLOG_NO_JSON=true
+
+# disable JSON logging during bootstrapping
+PFXLOG_NO_JSON=true
 
 #
 # for "ziti pki" and "ziti create config" commands in bootstrap.bash
@@ -39,16 +41,21 @@ ZITI_CLIENT_FILE=controller-client-identity
 #
 # for "ziti create config" command in bootstrap.bash
 #
-# create a config file unless it exists
+# create a config file unless it exists if "true", set "force" to overwrite
 ZITI_BOOTSTRAP_CONFIG=true
 # create a new config file relative to working directory unless it exists
 ZITI_CONTROLLER_CONFIG_FILE=config.yml
+# relative to systemd service WorkingDirectory; e.g., /var/lib/ziti-controller
 ZITI_CTRL_DATABASE_FILE=ctrl.db
 
 #
 # for "ziti controller edge init" command in bootstrap.bash
 #
-# create a database unless it exists
+# create a database unless it exists if "true"
 ZITI_BOOTSTRAP_DATABASE=true
 # must be 4 < 100 characters
 ZITI_USER=admin
+# for better security, leave this password assignment empty and create a file readable only by root containing the
+# password and set "LoadCredential=ZITI_PWD:/opt/openziti/etc/controller/.ziti_pwd" in the systemd
+# ziti-controller.service file
+ZITI_PWD=
