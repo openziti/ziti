@@ -88,22 +88,6 @@ func (cache *ForgetfulEventCache) ReplayFrom(_ uint64) ([]*edge_ctrl_pb.DataStat
 	return nil, false
 }
 
-func NewLoggingEventCache(logSize uint64) *LoggingEventCache {
-	return &LoggingEventCache{
-		HeadLogIndex: 0,
-		LogSize:      logSize,
-		Log:          make([]uint64, logSize),
-		Events:       map[uint64]*edge_ctrl_pb.DataState_Event{},
-	}
-}
-
-func (cache *LoggingEventCache) WhileLocked(callback func(uint64, bool)) {
-	cache.lock.Lock()
-	defer cache.lock.Unlock()
-
-	callback(cache.currentIndex())
-}
-
 func (cache *ForgetfulEventCache) CurrentIndex() (uint64, bool) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
@@ -128,6 +112,15 @@ type LoggingEventCache struct {
 	Events       map[uint64]*edge_ctrl_pb.DataState_Event
 }
 
+func NewLoggingEventCache(logSize uint64) *LoggingEventCache {
+	return &LoggingEventCache{
+		HeadLogIndex: 0,
+		LogSize:      logSize,
+		Log:          make([]uint64, logSize),
+		Events:       map[uint64]*edge_ctrl_pb.DataState_Event{},
+	}
+}
+
 func (cache *LoggingEventCache) SetCurrentIndex(index uint64) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
@@ -136,6 +129,13 @@ func (cache *LoggingEventCache) SetCurrentIndex(index uint64) {
 	cache.Log = make([]uint64, cache.LogSize)
 	cache.Log[0] = index
 	cache.Events = map[uint64]*edge_ctrl_pb.DataState_Event{}
+}
+
+func (cache *LoggingEventCache) WhileLocked(callback func(uint64, bool)) {
+	cache.lock.Lock()
+	defer cache.lock.Unlock()
+
+	callback(cache.currentIndex())
 }
 
 func (cache *LoggingEventCache) Store(event *edge_ctrl_pb.DataState_Event, onSuccess OnStoreSuccess) error {
