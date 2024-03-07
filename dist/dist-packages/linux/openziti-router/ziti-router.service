@@ -11,6 +11,9 @@ DynamicUser=yes
 
 # allow binding low ports, e.g., 443/tcp
 AmbientCapabilities=CAP_NET_BIND_SERVICE
+# required when ZITI_ROUTER_MODE=tproxy
+AmbientCapabilities=CAP_NET_ADMIN
+
 
 # load enrollment token from a file readable only by root for better security
 LoadCredential=ZITI_ENROLL_TOKEN:/opt/openziti/etc/router/.token
@@ -32,7 +35,7 @@ WorkingDirectory=/var/lib/ziti-router
 Environment=UNIT_NAME=ziti-router.service
 EnvironmentFile=/opt/openziti/etc/router/env
 
-ExecStart=/opt/openziti/etc/router/entrypoint.bash
+ExecStart=/opt/openziti/etc/router/entrypoint.bash run config.yml
 
 [Install]
 WantedBy=multi-user.target

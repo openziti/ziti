@@ -10,6 +10,7 @@ function makeConfig() {
 
   if [[ ! -s "./${ZITI_ROUTER_CONFIG_FILE}" || "${1:-}" == --force ]]; then
     ziti create config router "${ZITI_ROUTER_TYPE}" \
+      --tunnelerMode "${ZITI_ROUTER_MODE}" \
       --routerName "${ZITI_ROUTER_NAME}" \
       --output "./${ZITI_ROUTER_CONFIG_FILE}"
   fi
@@ -39,10 +40,11 @@ function enroll() {
 
 function bootstrap() {
   
-  if (( $# )); then
+  if [ -n "${1:-}" ]; then
     ZITI_ROUTER_CONFIG_FILE="${1}"
   else
-    : "${ZITI_ROUTER_CONFIG_FILE:=config.yml}"
+    echo "ERROR: no config file path provided" >&2
+    return 1
   fi
 
   # make config file unless it exists if true, set force to overwrite
@@ -67,7 +69,9 @@ function bootstrap() {
 # used by "ziti create config router" and "ziti create config environment" 
 : "${ZITI_ROUTER_ADVERTISED_ADDRESS:=${HOSTNAME:=$(hostname -f)}}"
 : "${ZITI_ROUTER_NAME:=${HOSTNAME%%.*}}"
+: "${ZITI_CTRL_ADVERTISED_PORT:=443}"
 export  ZITI_ROUTER_NAME \
         ZITI_ROUTER_ADVERTISED_ADDRESS \
+        ZITI_CTRL_ADVERTISED_PORT \
         ZITI_ROUTER_PORT="${ZITI_ROUTER_ADVERTISED_PORT}" \
         ZITI_ROUTER_LISTENER_BIND_PORT="${ZITI_ROUTER_ADVERTISED_PORT}"
