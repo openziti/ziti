@@ -29,7 +29,7 @@ StateDirectory=ziti-router
 WorkingDirectory=/var/lib/ziti-router
 
 # used by bootstrap.bash to look up /run/credentials/$UNIT_NAME/$CREDENTIAL_NAME
-Environment="UNIT_NAME=ziti-router.service"
+Environment=UNIT_NAME=ziti-router.service
 EnvironmentFile=/opt/openziti/etc/router/env
 
 ExecStart=/opt/openziti/etc/router/entrypoint.bash
