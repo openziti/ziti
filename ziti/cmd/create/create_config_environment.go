@@ -85,7 +85,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		PreRun: func(cmd *cobra.Command, args []string) {
 			data.PopulateConfigValues()
 			// Set router identities
-			SetZitiRouterIdentity(&data.Router, validateRouterName(""))
+			SetZitiRouterIdentity(&data.Router, validateRouterName(os.Getenv(constants.ZitiEdgeRouterNameVarName)))
 			// Set up other identity info
 			SetControllerIdentity(&data.Controller)
 			SetEdgeConfig(&data.Controller)

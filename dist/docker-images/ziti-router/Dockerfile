@@ -3,24 +3,27 @@ ARG ZITI_CLI_IMAGE="docker.io/openziti/ziti-cli"
 # this builds docker.io/openziti/ziti-router
 FROM ${ZITI_CLI_IMAGE}:${ZITI_CLI_TAG}
 
-# This build stage grabs artifacts that are copied into the final image.
-# It uses the same base as the final image to maximize docker cache hits.
-
-### Required OpenShift Labels 
+### Required OpenShift Labels
 LABEL name="openziti/ziti-router" \
       maintainer="developers@openziti.org" \
       vendor="NetFoundry" \
       summary="Run the OpenZiti Router" \
       description="Run the OpenZiti Router"
 
+# set up image as root, then drop privs to ziggy
 USER root
 
-RUN   INSTALL_PKGS="util-linux iptables" && \
+RUN INSTALL_PKGS="util-linux iptables" && \
       microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
       microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS}
 
-COPY ./entrypoint.sh /
-RUN chmod +x /entrypoint.sh
+# set a var for entrypoint.bash to find this script
+ENV ZITI_ROUTER_BOOTSTRAP_BASH=/bootstrap.bash
+COPY ./dist/dist-packages/linux/openziti-router/bootstrap.bash ${ZITI_ROUTER_BOOTSTRAP_BASH}
+
+COPY ./dist/dist-packages/linux/openziti-router/entrypoint.bash /
+
+# run as ziggy (2171:2171) by default, override run-as user with root when DOCKER_ROUTER_MODE=tproxy
 USER ziggy
-ENTRYPOINT [ "/entrypoint.sh" ]
-CMD [ "run" ]
+
+ENTRYPOINT [ "/entrypoint.bash" ]
