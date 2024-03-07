@@ -25,7 +25,7 @@ ZITI_CONTROLLER_BIND_ADDRESS=0.0.0.0
 
 # create a new PKI unless it exists
 ZITI_BOOTSTRAP_PKI=true
-# renew server and client certificates every startup (invalidates unused enrollment tokens)
+# renew server and client certificates every startup
 ZITI_AUTO_RENEW_CERTS=true
 # relative to systemd service WorkingDirectory; e.g., /var/lib/ziti-controller/pki
 ZITI_PKI_ROOT=pki
