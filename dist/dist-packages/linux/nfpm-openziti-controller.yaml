@@ -12,22 +12,6 @@ description: >
 vendor: ${ZITI_VENDOR}
 homepage: ${ZITI_HOMEPAGE}
 license: Apache-2.0
-
-# Umask to be used on files without explicit mode set. (overridable)
-umask: 0o002
-
-# Package version within this release version.
-release: 1
-
-# Section.
-section: default
-
-# Priority.
-priority: optional
-
-depends:
-  - openziti  # ziti CLI
-
 # Contents to add to the package.
 contents:
   - dst: /lib/systemd/system/
@@ -47,4 +31,5 @@ contents:
 
   - dst: /opt/openziti/etc/controller/
     src: ./dist/dist-packages/linux/openziti-controller/entrypoint.bash
-
+depends:
+  - openziti  # ziti CLI
