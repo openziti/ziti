@@ -65,10 +65,9 @@ function bootstrap() {
 #
 
 # used by "ziti create config router" and "ziti create config environment" 
-: "${ZITI_ROUTER_ADVERTISED_ADDRESS:=$(hostname -f)}"
-: "${ZITI_ROUTER_NAME:=${ZITI_ROUTER_TYPE}-router}"
+: "${ZITI_ROUTER_ADVERTISED_ADDRESS:=${HOSTNAME:=$(hostname -f)}}"
+: "${ZITI_ROUTER_NAME:=${HOSTNAME%%.*}}"
 export  ZITI_ROUTER_NAME \
         ZITI_ROUTER_ADVERTISED_ADDRESS \
         ZITI_ROUTER_PORT="${ZITI_ROUTER_ADVERTISED_PORT}" \
         ZITI_ROUTER_LISTENER_BIND_PORT="${ZITI_ROUTER_ADVERTISED_PORT}"
-

@@ -2,9 +2,6 @@
 # this is a systemd env file allowing simple assignments for ziti-controller.service environment
 #
 
-ZITI_ROUTER_RUN_ARGS="--log-formatter text"
-# ZITI_ROUTER_RUN_ARGS="--log-formatter text --verbose"
-
 # disable JSON logging
 PFXLOG_NO_JSON=true
 
@@ -12,11 +9,11 @@ PFXLOG_NO_JSON=true
 # for "ziti create config router edge" commands in bootstrap.bash
 #
 
-# set "ctrl.endpoint: {address}:{port}" in config.yml (required)
+# address and port of the controller (required)
 ZITI_CTRL_ADVERTISED_ADDRESS=
 ZITI_CTRL_ADVERTISED_PORT=
 
-# name this router (default: hostname -s)
+# set identity filenames (default: hostname -s)
 ZITI_ROUTER_NAME=
 # the advertised address of the router is a domain name that can be resolved by all devices (default: hostname -f)
 ZITI_ROUTER_ADVERTISED_ADDRESS=
@@ -34,8 +31,6 @@ ZITI_ROUTER_MODE=host
 
 # create a config file unless it exists if "true", set "force" to overwrite
 ZITI_BOOTSTRAP_CONFIG=true
-# relative to WorkingDirectory; e.g., /var/lib/ziti-router
-ZITI_ROUTER_CONFIG_FILE=config.yml
 
 # enroll unless already enrolled if "true", set "force" to overwrite key and cert (requires new enrollment token)
 ZITI_BOOTSTRAP_ENROLLMENT=true
