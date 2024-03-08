@@ -30,6 +30,8 @@ services:
       ZITI_ROUTER_MODE: ${ZITI_ROUTER_MODE:-host}                     # host, tproxy, tproxy (tproxy requires additional config below)
       # *** less relevant vars below ***
       ZITI_ROUTER_TYPE: edge           # edge, fabric
+      ZITI_ROUTER_NAME: ziti-router    # ensure the computed filenames based on this var are consistent, not based on
+                                       #  ephemeral container id
       ZITI_BOOTSTRAP_CONFIG: true      # make config file from env vars and defaults if "true," overwrite if "force"
       ZITI_BOOTSTRAP_ENROLLMENT: true  # enroll with controller if "true," overwrite if "force"
       PFXLOG_NO_JSON: true

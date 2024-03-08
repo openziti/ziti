@@ -23,7 +23,7 @@ services:
         ZITI_CMD+=" --ctrl-address ${EXTERNAL_DNS:-quickstart}"\
         " --ctrl-port ${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}"\
         " --router-address ${EXTERNAL_DNS:-quickstart}"\
-        " --router-port ${ZITI_ROUTER_PORT:-3022}"\
+        " --router-port ${ZITI_ROUTER_ADVERTISED_PORT:-3022}"\
         " --password ${ZITI_PWD:-admin}"
         echo "DEBUG: run command is: ziti $${@} $${ZITI_CMD}"
         exec ziti "$${@}" $${ZITI_CMD}
@@ -38,10 +38,10 @@ services:
       - ${ZITI_HOME:-ziti_home}:/home/ziggy
     ports:
       - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
-      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_ADVERTISED_PORT:-3022}:${ZITI_ROUTER_ADVERTISED_PORT:-3022}
     expose:
       - ${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
-      - ${ZITI_ROUTER_PORT:-3022}
+      - ${ZITI_ROUTER_ADVERTISED_PORT:-3022}
     depends_on:
       quickstart-init:
         condition: service_completed_successfully

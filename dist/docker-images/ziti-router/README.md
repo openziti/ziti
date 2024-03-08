@@ -39,17 +39,14 @@ services:
   # add a web client that waits for a healthy tproxy router
   tproxy-demo-client:
     image: busybox
-    network_mode: service:run-ziti-router
+    network_mode: service:ziti-router
     depends_on:
-      run-ziti-router:
+      ziti-router:
         condition: service_healthy
-    command: wget --output-document=- http://hello.internal:8000/
+    command: wget --output-document=- http://hello.internal/
 
   # link the router to the quickstart network so it can reach the Ziti controller
-  enroll-ziti-router:
-    networks:
-      - quickstart
-  run-ziti-router:
+  ziti-router:
     networks:
       - quickstart
 EOF
@@ -73,23 +70,23 @@ ziti edge update identity quickstart-router \
     --role-attributes=hello.servers
 
 # create a second Ziti router to use as a tproxy client
-ziti edge create edge-router "tproxyRouter" \
-   --jwt-output-file=/tmp/tproxyRouter.jwt \
+ziti edge create edge-router "tproxy-router" \
+   --jwt-output-file=./tproxy-router.jwt \
    --tunneler-enabled
 
 # grant the tproxy client permission to dial (consume) the hello service
-ziti edge update identity tproxyRouter \
+ziti edge update identity tproxy-router \
     --role-attributes=hello.clients
 
 # simulate policies to check for authorization problems
 ziti edge policy-advisor services -q
 
 # run the demo client which triggers the run of the tproxy router because it is a dependency
-ZITI_ROUTER_JWT="$(</tmp/tproxyRouter.jwt)" \
+ZITI_ROUTER_JWT="$(<./tproxyRouter.jwt)" \
 ZITI_ROUTER_MODE=tproxy \
 ZITI_CTRL_ADVERTISED_ADDRESS=quickstart \
 ZITI_CTRL_ADVERTISED_PORT=1280 \
 ZITI_ROUTER_PORT=3023 \
-ZITI_ROUTER_ADVERTISED_ADDRESS=run-ziti-router \
+ZITI_ROUTER_ADVERTISED_ADDRESS=ziti-router \
     docker compose up tproxy-demo-client
 ```
