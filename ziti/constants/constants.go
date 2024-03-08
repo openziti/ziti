@@ -124,6 +124,8 @@ const (
 	ZitiEdgeRouterAdvertisedAddressVarDescription    = "The advertised address of the router"
 	ZitiEdgeRouterListenerBindPortVarName            = "ZITI_ROUTER_LISTENER_BIND_PORT"
 	ZitiEdgeRouterListenerBindPortVarDescription     = "The port a public router will advertise on"
+	ZitiEdgeRouterResolverVarName                    = "ZITI_ROUTER_TPROXY_RESOLVER"
+	ZitiEdgeRouterResolverVarDescription             = "The bind URI to listen for DNS requests in tproxy mode"
 	ZitiEdgeRouterCsrCVarName                        = "ZITI_ROUTER_CSR_C"
 	ZitiEdgeRouterCsrCVarDescription                 = "The country (C) to use for router CSRs"
 	ZitiEdgeRouterCsrSTVarName                       = "ZITI_ROUTER_CSR_ST"
