@@ -31,6 +31,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -382,4 +383,19 @@ func waitForController(ctrlUrl string, done chan struct{}) {
 		}
 	}
 	done <- struct{}{}
+}
+
+func IsPortListening(host string, port int, timeout time.Duration) bool {
+	// Construct the address string
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	// Attempt to establish a connection to the address
+	conn, err := net.DialTimeout("tcp", addr, timeout)
+	if err != nil {
+		return false
+	}
+
+	// Close the connection if successful and return true
+	defer conn.Close()
+	return true
 }

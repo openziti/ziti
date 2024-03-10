@@ -3,6 +3,7 @@ package create
 import (
 	"fmt"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/testutil"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -111,8 +112,8 @@ func createRouterConfig(args []string, routerOptions *CreateConfigRouterOptions,
 	setEnvByMap(keys)
 	cmd := NewCmdCreateConfigRouter(routerOptions)
 	cmd.SetArgs(args)
-	// captureOutput is used to consume output, otherwise config prints to stdout along with test results
-	output := captureOutput(func() {
+	// CaptureOutput is used to consume output, otherwise config prints to stdout along with test results
+	output := testutil.CaptureOutput(func() {
 		_ = cmd.Execute()
 	})
 

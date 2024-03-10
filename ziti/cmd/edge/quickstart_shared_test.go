@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/enroll"
+	"github.com/openziti/ziti/ziti/cmd/testutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -68,8 +69,19 @@ func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, ident
 var zitiContext ziti.Context
 
 func Dial(_ context.Context, _ string, addr string) (net.Conn, error) {
-	service := strings.Split(addr, ":")[0] // will always get passed host:port
-	return zitiContext.Dial(service)
+	servicePort := strings.Split(addr, ":") // will always get passed host:port
+
+	// Create an options map
+	dialAppData := map[string]interface{}{
+		"dst_protocol": "tcp",
+		"dst_port":     servicePort[1],
+	}
+	jsonData, _ := json.Marshal(dialAppData)
+	options := &ziti.DialOptions{
+		AppData: jsonData,
+	}
+
+	return zitiContext.DialWithOptions(servicePort[0], options)
 }
 
 func createZitifiedHttpClient(idFile string) http.Client {
@@ -142,6 +154,20 @@ func getConfigTypeByName(client *rest_management_api_client.ZitiEdgeManagement, 
 	return interceptCTResp.GetPayload().Data[0]
 }
 
+func getServiceConfigByName(client *rest_management_api_client.ZitiEdgeManagement, name string) *rest_model.ConfigDetail {
+	filter := "name=\"" + name + "\""
+	configParams := &api_client_config.ListConfigsParams{
+		Filter:  &filter,
+		Context: context.Background(),
+	}
+	configResp, err := client.Config.ListConfigs(configParams, nil)
+	if err != nil {
+		log.Fatalf("Could not obtain a config named %s", name)
+		fmt.Println(err)
+	}
+	return configResp.GetPayload().Data[0]
+}
+
 func getIdentityByName(client *rest_management_api_client.ZitiEdgeManagement, name string) *rest_model.IdentityDetail {
 	filter := "name=\"" + name + "\""
 	params := &identity.ListIdentitiesParams{
@@ -168,6 +194,21 @@ func getServiceByName(client *rest_management_api_client.ZitiEdgeManagement, nam
 	resp, err := client.Service.ListServices(params, nil)
 	if err != nil {
 		log.Fatalf("Could not obtain an ID for the service named %s", name)
+		fmt.Println(err)
+	}
+	return resp.GetPayload().Data[0]
+}
+
+func getServicePolicyByName(client *rest_management_api_client.ZitiEdgeManagement, name string) *rest_model.ServicePolicyDetail {
+	filter := "name=\"" + name + "\""
+	params := &service_policy.ListServicePoliciesParams{
+		Filter:  &filter,
+		Context: context.Background(),
+	}
+	params.SetTimeout(30 * time.Second)
+	resp, err := client.ServicePolicy.ListServicePolicies(params, nil)
+	if err != nil {
+		log.Fatalf("Could not obtain an ID for the service policy named %s", name)
 		fmt.Println(err)
 	}
 	return resp.GetPayload().Data[0]
@@ -367,6 +408,8 @@ func deleteServicePolicyByID(client *rest_management_api_client.ZitiEdgeManageme
 // in order to share test code between quickstart_test.go and quickstart_test_manual.go, this function had to be
 // created. I couldn't find a way to share the code any other way. Happy to learn a better way!
 func performQuickstartTest(t *testing.T) {
+	dialAddress := "web.test.ziti"
+
 	// Wait for the controller to become available
 	zitiAdminUsername := os.Getenv("ZITI_USER")
 	if zitiAdminUsername == "" {
@@ -396,10 +439,7 @@ func performQuickstartTest(t *testing.T) {
 	//	bindHostAddress = ctrlAddress
 	//}
 	hostingRouterName := erName
-	dialAddress := "simple.web.smoke.test"
-	dialPort := 80
-	serviceName := "basic.web.smoke.test.service"
-	wd, _ := os.Getwd()
+	dialPort := 1280
 
 	log.Infof("connecting user: %s to %s", zitiAdminUsername, ctrlAddress)
 	// Authenticate with the controller
@@ -478,32 +518,178 @@ func performQuickstartTest(t *testing.T) {
 	}
 	defer func() { _ = deleteEdgeRouterPolicyById(client, erp.Payload.Data.ID) }()
 
-	// Allow dialing the service using an intercept config (intercept because we'll be using the SDK)
-	dialSvcConfig := createInterceptV1ServiceConfig(client, "basic.smoke.dial", []string{"tcp"}, []string{dialAddress}, dialPort, dialPort)
-	defer func() { _ = deleteServiceConfigByID(client, dialSvcConfig.ID) }()
+	t.Run("Basic Web Test", func(t *testing.T) {
+		serviceName := testutil.GenerateRandomName("basic.web.smoke.test.service")
 
-	// Provide host config for the hostname
-	bindPort, _ := strconv.Atoi(advPort)
-	bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", advAddy, bindPort)
-	defer func() { _ = deleteServiceConfigByID(client, bindSvcConfig.ID) }()
+		// Allow dialing the service using an intercept config (intercept because we'll be using the SDK)
+		dialSvcConfig := createInterceptV1ServiceConfig(client, "basic.smoke.dial", []string{"tcp"}, []string{dialAddress}, dialPort, dialPort)
 
-	// Create a service that "links" the dial and bind configs
-	createService(client, serviceName, []string{bindSvcConfig.ID, dialSvcConfig.ID})
+		// Provide host config for the hostname
+		bindPort, _ := strconv.Atoi(advPort)
+		bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", advAddy, bindPort)
 
-	// Create a service policy to allow the router to host the web test service
-	fmt.Println("finding hostingRouterName: ", hostingRouterName)
-	hostRouterIdent := getIdentityByName(client, hostingRouterName)
-	webTestService := getServiceByName(client, serviceName)
-	defer func() { _ = deleteServiceByID(client, *webTestService.ID) }()
-	bindSP := createServicePolicy(client, "basic.web.smoke.test.service.bind", rest_model.DialBindBind, rest_model.Roles{"@" + *hostRouterIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
-	defer func() { _ = deleteServicePolicyByID(client, bindSP.ID) }()
+		// Create a service that "links" the dial and bind configs
+		createService(client, serviceName, []string{bindSvcConfig.ID, dialSvcConfig.ID})
 
-	// Create a service policy to allow tester to dial the service
-	fmt.Println("finding testerUsername: ", testerUsername)
-	testerIdent := getIdentityByName(client, testerUsername)
-	dialSP := createServicePolicy(client, "basic.web.smoke.test.service.dial", rest_model.DialBindDial, rest_model.Roles{"@" + *testerIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
-	defer func() { _ = deleteServicePolicyByID(client, dialSP.ID) }()
+		// Create a service policy to allow the router to host the web test service
+		fmt.Println("finding hostingRouterName: ", hostingRouterName)
+		hostRouterIdent := getIdentityByName(client, hostingRouterName)
+		webTestService := getServiceByName(client, serviceName)
+		bindSP := createServicePolicy(client, "basic.web.smoke.test.service.bind", rest_model.DialBindBind, rest_model.Roles{"@" + *hostRouterIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
 
+		// Create a service policy to allow tester to dial the service
+		fmt.Println("finding testerUsername: ", testerUsername)
+		testerIdent := getIdentityByName(client, testerUsername)
+		dialSP := createServicePolicy(client, "basic.web.smoke.test.service.dial", rest_model.DialBindDial, rest_model.Roles{"@" + *testerIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
+
+		testInterceptAddress(t, client, hostingRouterName, serviceName, dialPort, testerUsername)
+
+		// Cleanup
+		deleteServiceConfigByID(client, dialSvcConfig.ID)
+		deleteServiceConfigByID(client, bindSvcConfig.ID)
+		deleteServiceByID(client, *webTestService.ID)
+		deleteServicePolicyByID(client, bindSP.ID)
+		deleteServicePolicyByID(client, dialSP.ID)
+	})
+
+	t.Run("ZES Full Input", createZESTestFunc(t, fmt.Sprintf("tcp:%s:%s", advAddy, advPort), client, dialAddress, dialPort, testutil.GenerateRandomName("ZESTest1"), hostingRouterName, testerUsername))
+	t.Run("ZES Only Port", createZESTestFunc(t, advPort, client, dialAddress, dialPort, testutil.GenerateRandomName("ZESTest2"), hostingRouterName, testerUsername))
+	t.Run("ZES No Protocol", createZESTestFunc(t, fmt.Sprintf("%s:%s", advAddy, advPort), client, dialAddress, dialPort, testutil.GenerateRandomName("ZESTest3"), hostingRouterName, testerUsername))
+
+	t.Run("ZES Multiple Calls", func(t *testing.T) {
+		service1Name := testutil.GenerateRandomName("ZESTestMultiple1")
+		service2Name := testutil.GenerateRandomName("ZESTestMultiple2")
+		service1BindConfName := service1Name + ".host.v1"
+		service2BindConfName := service2Name + ".host.v1"
+		service1DialConfName := service1Name + ".intercept.v1"
+		service2DialConfName := service2Name + ".intercept.v1"
+		service1BindSPName := service1Name + ".bind"
+		service2BindSPName := service2Name + ".bind"
+		service1DialSPName := service1Name + ".dial"
+		service2DialSPName := service2Name + ".dial"
+		dialAddress1 := "dialAddress1"
+		dialAddress2 := "dialAddress2"
+		params := fmt.Sprintf("tcp:%s:%s", advAddy, advPort)
+
+		// Run ZES once
+		zes := newSecureCmd(os.Stdout, os.Stderr)
+		zes.SetArgs([]string{
+			service1Name,
+			params,
+			fmt.Sprintf("--interceptAddress=%s", dialAddress1),
+		})
+		err := zes.Execute()
+		if err != nil {
+			fmt.Printf("Error: %s", err)
+		}
+
+		// Run ZES twice
+		zes = newSecureCmd(os.Stdout, os.Stderr)
+		zes.SetArgs([]string{
+			service2Name,
+			params,
+			fmt.Sprintf("--interceptAddress=%s", dialAddress2),
+		})
+		err = zes.Execute()
+		if err != nil {
+			fmt.Printf("Error: %s", err)
+		}
+
+		// Check network components for validity
+		// Confirm the four configs exist
+		service1BindConf := getServiceConfigByName(client, service1BindConfName)
+		service2BindConf := getServiceConfigByName(client, service2BindConfName)
+		service1DialConf := getServiceConfigByName(client, service1DialConfName)
+		service2DialConf := getServiceConfigByName(client, service2DialConfName)
+
+		assert.Equal(t, service1BindConfName, *service1BindConf.Name)
+		assert.Equal(t, service2BindConfName, *service2BindConf.Name)
+		assert.Equal(t, service1DialConfName, *service1DialConf.Name)
+		assert.Equal(t, service2DialConfName, *service2DialConf.Name)
+
+		// Confirm the two services exist
+		service1 := getServiceByName(client, service1Name)
+		service2 := getServiceByName(client, service2Name)
+
+		assert.Equal(t, service1Name, *service1.Name)
+		assert.Equal(t, service2Name, *service2.Name)
+
+		// Confirm the four service policies exist
+		service1BindPol := getServicePolicyByName(client, service1BindSPName)
+		service2BindPol := getServicePolicyByName(client, service2BindSPName)
+		service1DialPol := getServicePolicyByName(client, service1DialSPName)
+		service2DialPol := getServicePolicyByName(client, service2DialSPName)
+
+		assert.Equal(t, service1BindSPName, *service1BindPol.Name)
+		assert.Equal(t, service2BindSPName, *service2BindPol.Name)
+		assert.Equal(t, service1DialSPName, *service1DialPol.Name)
+		assert.Equal(t, service2DialSPName, *service2DialPol.Name)
+
+		// Cleanup
+		deleteServiceConfigByID(client, *service1BindConf.ID)
+		deleteServiceConfigByID(client, *service2BindConf.ID)
+		deleteServiceConfigByID(client, *service1DialConf.ID)
+		deleteServiceConfigByID(client, *service2DialConf.ID)
+		deleteServiceByID(client, *service1.ID)
+		deleteServiceByID(client, *service2.ID)
+		deleteServicePolicyByID(client, *service1BindPol.ID)
+		deleteServicePolicyByID(client, *service2BindPol.ID)
+		deleteServicePolicyByID(client, *service1DialPol.ID)
+		deleteServicePolicyByID(client, *service2DialPol.ID)
+	})
+}
+
+func createZESTestFunc(t *testing.T, params string, client *rest_management_api_client.ZitiEdgeManagement, dialAddress string, dialPort int, serviceName string, hostingRouterName string, testerUsername string) func(*testing.T) {
+	return func(t *testing.T) {
+		// Run ziti edge secure with the controller edge details
+		zes := newSecureCmd(os.Stdout, os.Stderr)
+		zes.SetArgs([]string{
+			serviceName,
+			params,
+			fmt.Sprintf("--interceptAddress=%s", dialAddress),
+		})
+		err := zes.Execute()
+		if err != nil {
+			fmt.Printf("Error: %s", err)
+		}
+
+		// Update the router and user with the appropriate attributes
+		zeui := newUpdateIdentityCmd(os.Stdout, os.Stderr)
+		zeui.SetArgs([]string{
+			hostingRouterName,
+			fmt.Sprintf("-a=%s.%s", serviceName, "servers"),
+		})
+		err = zeui.Execute()
+		if err != nil {
+			fmt.Printf("Error: %s", err)
+		}
+
+		zeui = newUpdateIdentityCmd(os.Stdout, os.Stderr)
+		zeui.SetArgs([]string{
+			testerUsername,
+			fmt.Sprintf("-a=%s.%s", serviceName, "clients"),
+		})
+		err = zeui.Execute()
+		if err != nil {
+			fmt.Printf("Error: %s", err)
+		}
+
+		testInterceptAddress(t, client, hostingRouterName, serviceName, dialPort, testerUsername)
+
+		// Cleanup
+		serviceBindConfName := serviceName + ".host.v1"
+		serviceDialConfName := serviceName + ".intercept.v1"
+		serviceBindSPName := serviceName + ".bind"
+		serviceDialSPName := serviceName + ".dial"
+		deleteServiceConfigByID(client, *getServiceConfigByName(client, serviceBindConfName).ID)
+		deleteServiceConfigByID(client, *getServiceConfigByName(client, serviceDialConfName).ID)
+		deleteServiceByID(client, *getServiceByName(client, serviceName).ID)
+		deleteServicePolicyByID(client, *getServicePolicyByName(client, serviceBindSPName).ID)
+		deleteServicePolicyByID(client, *getServicePolicyByName(client, serviceDialSPName).ID)
+	}
+}
+
+func testInterceptAddress(t *testing.T, client *rest_management_api_client.ZitiEdgeManagement, hostingRouterName string, serviceName string, dialPort int, testerUsername string) {
 	// Test connectivity with private edge router, wait some time for the terminator to be created
 	currentCount := getTerminatorCountByRouterName(client, hostingRouterName)
 	termCntReached := waitForTerminatorCountByRouterName(client, hostingRouterName, currentCount+1, 30*time.Second)
@@ -512,6 +698,7 @@ func performQuickstartTest(t *testing.T) {
 	}
 	helloUrl := fmt.Sprintf("https://%s:%d", serviceName, dialPort)
 	log.Infof("created url: %s", helloUrl)
+	wd, _ := os.Getwd()
 	httpClient := createZitifiedHttpClient(wd + "/" + testerUsername + ".json")
 
 	resp, e := httpClient.Get(helloUrl)
