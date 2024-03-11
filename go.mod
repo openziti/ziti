@@ -18,13 +18,13 @@ require (
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gaissmai/extnetip v0.4.0
 	github.com/go-acme/lego/v4 v4.15.0
-	github.com/go-openapi/errors v0.21.1
-	github.com/go-openapi/loads v0.21.6
-	github.com/go-openapi/runtime v0.27.2
-	github.com/go-openapi/spec v0.20.15
-	github.com/go-openapi/strfmt v0.22.2
-	github.com/go-openapi/swag v0.22.10
-	github.com/go-openapi/validate v0.23.2
+	github.com/go-openapi/errors v0.22.0
+	github.com/go-openapi/loads v0.22.0
+	github.com/go-openapi/runtime v0.28.0
+	github.com/go-openapi/spec v0.21.0
+	github.com/go-openapi/strfmt v0.23.0
+	github.com/go-openapi/swag v0.23.0
+	github.com/go-openapi/validate v0.24.0
 	github.com/go-resty/resty/v2 v2.11.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-cmp v0.6.0
@@ -49,13 +49,13 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
 	github.com/openziti/channel/v2 v2.0.119
-	github.com/openziti/edge-api v0.26.11
+	github.com/openziti/edge-api v0.26.12
 	github.com/openziti/foundation/v2 v2.0.37
 	github.com/openziti/identity v1.0.70
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.45
 	github.com/openziti/runzmd v1.0.38
-	github.com/openziti/sdk-golang v0.23.0
+	github.com/openziti/sdk-golang v0.23.3
 	github.com/openziti/secretstream v0.1.16
 	github.com/openziti/storage v0.2.30
 	github.com/openziti/transport/v2 v2.0.122
@@ -84,7 +84,7 @@ require (
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.18.0
 	golang.org/x/text v0.14.0
-	google.golang.org/protobuf v1.32.0
+	google.golang.org/protobuf v1.33.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/square/go-jose.v2 v2.6.0
@@ -116,10 +116,10 @@ require (
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-openapi/analysis v0.22.3 // indirect
-	github.com/go-openapi/jsonpointer v0.20.3 // indirect
-	github.com/go-openapi/jsonreference v0.20.5 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/go-openapi/analysis v0.23.0 // indirect
+	github.com/go-openapi/jsonpointer v0.21.0 // indirect
+	github.com/go-openapi/jsonreference v0.21.0 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
 	github.com/gorilla/schema v1.2.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect

@@ -57,7 +57,6 @@ web:
       - binding: edge-client
       - binding: edge-oidc
         options:
-          secret: "12312412421129102"
           redirectURIs:
             - "http://localhost:*/auth/callback"
             - "http://127.0.0.1:*/auth/callback"
