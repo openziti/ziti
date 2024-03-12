@@ -109,6 +109,7 @@ message Terminator {
   string id = 1;
   string binding = 2;
   string address = 3;
+  uint64 marker = 4;
 }
 
 message ValidateTerminatorsRequest {
@@ -130,6 +131,7 @@ message RouterTerminatorState {
   bool valid = 1;
   TerminatorInvalidReason reason = 2;
   string detail = 3; // inspect info if valid
+  uint64 marker = 4;
 }
 
 message ValidateTerminatorsV2Response {

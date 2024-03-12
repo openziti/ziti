@@ -38,11 +38,12 @@ const (
 	defaultPrivate          = false
 	privateDescription      = "Create a private router config"
 	tproxyTunMode           = "tproxy"
+	proxyTunMode            = "proxy"
 	hostTunMode             = "host"
 	noneTunMode             = "none"
 	optionTunnelerMode      = "tunnelerMode"
 	defaultTunnelerMode     = hostTunMode
-	tunnelerModeDescription = "Specify tunneler mode \"" + noneTunMode + "\", \"" + hostTunMode + "\", or \"" + tproxyTunMode + "\""
+	tunnelerModeDescription = "Specify tunneler mode \"" + noneTunMode + "\", \"" + hostTunMode + "\", \"" + tproxyTunMode + "\", or \"" + proxyTunMode + "\""
 	optionLanInterface      = "lanInterface"
 	defaultLanInterface     = ""
 	lanInterfaceDescription = "The interface on host of the router to insert iptables ingress filter rules"
@@ -110,8 +111,11 @@ func (options *CreateConfigRouterOptions) runEdgeRouter(data *ConfigTemplateValu
 	}
 
 	// Make sure the tunneler mode is valid
-	if options.TunnelerMode != hostTunMode && options.TunnelerMode != tproxyTunMode && options.TunnelerMode != noneTunMode {
-		return errors.New("Unknown tunneler mode [" + options.TunnelerMode + "] provided, should be \"" + noneTunMode + "\", \"" + hostTunMode + "\", or \"" + tproxyTunMode + "\"")
+	if options.TunnelerMode != hostTunMode &&
+		options.TunnelerMode != tproxyTunMode &&
+		options.TunnelerMode != proxyTunMode &&
+		options.TunnelerMode != noneTunMode {
+		return errors.New("Unknown tunneler mode [" + options.TunnelerMode + "] provided, should be \"" + noneTunMode + "\", \"" + hostTunMode + "\", \"" + proxyTunMode + "\", or \"" + tproxyTunMode + "\"")
 	}
 
 	tmpl, err := template.New("edge-router-config").Parse(routerConfigEdgeTemplate)

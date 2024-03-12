@@ -20,19 +20,23 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
 	"google.golang.org/protobuf/proto"
+	"time"
 )
 
 type validateTerminatorsV2Handler struct {
-	env env.RouterEnv
+	env  env.RouterEnv
+	pool goroutines.Pool
 }
 
-func newValidateTerminatorsV2Handler(env env.RouterEnv) *validateTerminatorsV2Handler {
+func newValidateTerminatorsV2Handler(env env.RouterEnv, pool goroutines.Pool) *validateTerminatorsV2Handler {
 	return &validateTerminatorsV2Handler{
-		env: env,
+		env:  env,
+		pool: pool,
 	}
 }
 
@@ -64,7 +68,11 @@ func (handler *validateTerminatorsV2Handler) validateTerminators(msg *channel.Me
 		States: map[string]*ctrl_pb.RouterTerminatorState{},
 	}
 
-	for _, terminator := range req.Terminators {
+	expected := 0
+	results := make(chan func(*ctrl_pb.ValidateTerminatorsV2Response), len(req.Terminators))
+
+	for _, val := range req.Terminators {
+		terminator := val
 		binding := terminator.Binding
 		dialer := dialers[binding]
 		if dialer == nil {
@@ -74,29 +82,39 @@ func (handler *validateTerminatorsV2Handler) validateTerminators(msg *channel.Me
 				}
 			}
 		}
-
+		log.WithField("terminatorId", terminator.Id).Debug("beginning terminator validation")
 		if dialer == nil {
 			response.States[terminator.Id] = &ctrl_pb.RouterTerminatorState{
 				Valid:  false,
 				Reason: ctrl_pb.TerminatorInvalidReason_UnknownBinding,
-			}
-		} else if inspectable, ok := dialer.(xgress.InspectableDialer); ok {
-			valid, state := inspectable.InspectTerminator(terminator.Id, terminator.Address, req.FixInvalid)
-			response.States[terminator.Id] = &ctrl_pb.RouterTerminatorState{
-				Valid:  valid,
-				Detail: state,
-				Reason: ctrl_pb.TerminatorInvalidReason_UnknownTerminator,
-			}
-		} else if !dialer.IsTerminatorValid(terminator.Id, terminator.Address) {
-			response.States[terminator.Id] = &ctrl_pb.RouterTerminatorState{
-				Valid:  false,
-				Reason: ctrl_pb.TerminatorInvalidReason_UnknownTerminator,
+				Marker: val.Marker,
 			}
 		} else {
-			response.States[terminator.Id] = &ctrl_pb.RouterTerminatorState{
-				Valid:  true,
-				Detail: "valid",
+			err := handler.pool.Queue(func() {
+				log.WithField("terminatorId", terminator.Id).Info("validating terminator")
+				result := handler.validateTerminator(dialer, terminator, req.FixInvalid)
+				results <- func(response *ctrl_pb.ValidateTerminatorsV2Response) {
+					response.States[terminator.Id] = result
+				}
+			})
+
+			if err != nil {
+				log.WithField("terminatorId", terminator.Id).WithError(err).Error("unable to queue inspect")
+			} else {
+				expected++
 			}
+		}
+	}
+
+	timeout := time.After(30 * time.Second)
+	timedOut := false
+	for i := 0; i < expected && !timedOut; i++ {
+		select {
+		case result := <-results:
+			result(response)
+		case <-timeout:
+			timedOut = true
+			log.Info("timed out waiting for terminator validations")
 		}
 	}
 
@@ -107,5 +125,31 @@ func (handler *validateTerminatorsV2Handler) validateTerminators(msg *channel.Me
 
 	if err != nil {
 		log.WithError(err).Error("failed to send validate terminators v2 response")
+	}
+}
+
+func (handler *validateTerminatorsV2Handler) validateTerminator(dialer xgress.Dialer, terminator *ctrl_pb.Terminator, fixInvalid bool) *ctrl_pb.RouterTerminatorState {
+	if inspectable, ok := dialer.(xgress.InspectableDialer); ok {
+		valid, state := inspectable.InspectTerminator(terminator.Id, terminator.Address, fixInvalid)
+		return &ctrl_pb.RouterTerminatorState{
+			Valid:  valid,
+			Detail: state,
+			Reason: ctrl_pb.TerminatorInvalidReason_UnknownTerminator,
+			Marker: terminator.Marker,
+		}
+	}
+
+	if !dialer.IsTerminatorValid(terminator.Id, terminator.Address) {
+		return &ctrl_pb.RouterTerminatorState{
+			Valid:  false,
+			Reason: ctrl_pb.TerminatorInvalidReason_UnknownTerminator,
+			Marker: terminator.Marker,
+		}
+	}
+
+	return &ctrl_pb.RouterTerminatorState{
+		Valid:  true,
+		Detail: "valid",
+		Marker: terminator.Marker,
 	}
 }

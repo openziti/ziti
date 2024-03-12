@@ -1,6 +1,7 @@
 package router
 
 import (
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/router/env"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -50,6 +51,7 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 				DataDir               string
 				Heartbeats            env.HeartbeatOptions
 				StartupTimeout        time.Duration
+				RateLimit             command.AdaptiveRateLimiterConfig
 			}{
 				DataDir:          tmpDir,
 				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr)},
@@ -91,6 +93,7 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 				DataDir               string
 				Heartbeats            env.HeartbeatOptions
 				StartupTimeout        time.Duration
+				RateLimit             command.AdaptiveRateLimiterConfig
 			}{
 				DataDir:          tmpDir,
 				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr), NewUpdatableAddress(addr2)},

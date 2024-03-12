@@ -3,14 +3,15 @@ package main
 import (
 	"embed"
 	_ "embed"
-	"errors"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/lib/binding"
+	"github.com/openziti/fablab/kernel/lib/parallel"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
@@ -20,16 +21,15 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
-	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
+	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
+	"github.com/openziti/ziti/zititest/zitilab/chaos"
+	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	"go.etcd.io/bbolt"
 	"os"
-	"os/exec"
 	"path"
-	"strings"
 	"time"
 )
 
@@ -45,157 +45,33 @@ var TunnelType = "!zet"
 //go:embed configs
 var configResource embed.FS
 
-type dbStrategy struct{}
+type scaleStrategy struct{}
 
-func (d dbStrategy) GetDbFile(m *model.Model) string {
-	return m.MustStringVariable("db_file")
+func (self scaleStrategy) IsScaled(entity model.Entity) bool {
+	if entity.GetType() == model.EntityTypeHost {
+		return entity.GetScope().HasTag("router") || entity.GetScope().HasTag("host")
+	}
+	return entity.GetType() == model.EntityTypeComponent && entity.GetScope().HasTag("host")
 }
 
-func (d dbStrategy) GetSite(router *db.EdgeRouter) (string, bool) {
-	if strings.Contains(strings.ToLower(router.Name), "london") {
-		return "eu-west-2a", true // london region
+func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
+	if entity.GetType() == model.EntityTypeHost {
+		if entity.GetScope().HasTag("router") {
+			return 2
+		}
+		if entity.GetScope().HasTag("host") {
+			h := entity.(*model.Host)
+			if h.Region.Id == "us-east-1" {
+				return 8
+			}
+			return 6
+		}
 	}
-	if strings.Contains(strings.ToLower(router.Name), "virginia") {
-		return "us-east-1a", true // london region
+	if entity.GetType() == model.EntityTypeComponent {
+		return 10
 	}
-	if strings.Contains(strings.ToLower(router.Name), "melbourne") {
-		return "ap-southeast-2a", true // sydney region
-	}
-
-	return "us-east-1a", true
+	return 1
 }
-
-func (d dbStrategy) PostProcess(router *db.EdgeRouter, c *model.Component) {
-	if router.IsTunnelerEnabled {
-		c.Scope.Tags = append(c.Scope.Tags, "tunneler")
-	}
-	c.Scope.Tags = append(c.Scope.Tags, "edge-router")
-	c.Scope.Tags = append(c.Scope.Tags, "pre-created")
-	c.Host.InstanceType = "c5.xlarge"
-	c.Type.(*zitilab.RouterType).Version = TargetZitiVersion
-}
-
-func (d dbStrategy) ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
-	if err := builder.CreateEdgeRouterHosts(tx, m); err != nil {
-		return err
-	}
-	return d.CreateIdentityHosts(tx, m, builder)
-}
-
-func (d dbStrategy) CreateIdentityHosts(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
-	stores := builder.GetStores()
-	ids, _, err := stores.Identity.QueryIds(tx, "true limit none")
-	if err != nil {
-		return err
-	}
-
-	servicesCount := 0
-	hostingIdentities := map[string]int{}
-
-	for _, identityId := range ids {
-		cursorProvider := stores.Identity.GetIdentityServicesCursorProvider(identityId)
-		cursor := cursorProvider(tx, true)
-		identityServiceCount := 0
-		for cursor.IsValid() {
-			serviceId := string(cursor.Current())
-			if stores.EdgeService.IsBindableByIdentity(tx, serviceId, identityId) {
-				identityServiceCount++
-			}
-			cursor.Next()
-		}
-		if identityServiceCount > 0 {
-			servicesCount += identityServiceCount
-			hostingIdentities[identityId] = identityServiceCount
-		}
-	}
-
-	fmt.Printf("service count: %v\n", servicesCount)
-
-	regionCount := len(m.Regions)
-
-	perRegion := servicesCount / regionCount
-	idIdx := 0
-
-	avgTunnelsPerHost := 15
-
-	m.RangeSortedRegions(func(regionId string, region *model.Region) {
-		regionServiceCount := 0
-
-		var regionIdentityIds []string
-
-		for {
-			if idIdx >= len(ids) {
-				break
-			}
-			identityId := ids[idIdx]
-			idIdx++
-
-			svcCount, found := hostingIdentities[identityId]
-			if !found {
-				continue
-			}
-			regionServiceCount += svcCount
-			regionIdentityIds = append(regionIdentityIds, identityId)
-			if regionServiceCount > perRegion {
-				break
-			}
-		}
-
-		hostCount := len(regionIdentityIds) / avgTunnelsPerHost
-		var hosts []*model.Host
-
-		for i := 0; i < hostCount; i++ {
-			tunnelsHost := &model.Host{
-				Scope:        model.Scope{Tags: model.Tags{}},
-				Region:       region,
-				Components:   model.Components{},
-				InstanceType: "t3.xlarge",
-			}
-			hostId := fmt.Sprintf("%s_svc_hosts_%v", regionId, i)
-			region.Hosts[hostId] = tunnelsHost
-			hosts = append(hosts, tunnelsHost)
-		}
-
-		hostIdx := 0
-		for _, identityId := range regionIdentityIds {
-			tunnelHost := hosts[hostIdx%len(hosts)]
-			hostIdx++
-
-			svcCount := hostingIdentities[identityId]
-
-			getConfigPath := func(c *model.Component) string {
-				user := c.GetHost().GetSshUser()
-				return fmt.Sprintf("/home/%s/etc/%s.json", user, c.Id)
-			}
-
-			var tunnelType model.ComponentType
-			if TunnelType == "zet" {
-				tunnelType = &zitilab.ZitiEdgeTunnelType{
-					Version:     TargetZitiEdgeTunnelVersion,
-					LogConfig:   "'2;bind.c=6'",
-					ConfigPathF: getConfigPath,
-				}
-			} else {
-				tunnelType = &zitilab.ZitiTunnelType{
-					Mode:        zitilab.ZitiTunnelModeHost,
-					Version:     TargetZitiVersion,
-					ConfigPathF: getConfigPath,
-				}
-			}
-
-			tunnelComponent := &model.Component{
-				Scope: model.Scope{Tags: model.Tags{"sdk-tunneler", "pre-created", fmt.Sprintf("serviceCount=%v", svcCount)}},
-				Type:  tunnelType,
-				Host:  tunnelHost,
-			}
-			tunnelHost.Components[identityId] = tunnelComponent
-		}
-	})
-
-	return nil
-}
-
-var dbStrategyInstance = dbStrategy{}
 
 var m = &model.Model{
 	Id: "sdk-hosting-test",
@@ -223,7 +99,31 @@ var m = &model.Model{
 		},
 	},
 	StructureFactories: []model.Factory{
-		&models.ZitiDbBuilder{Strategy: dbStrategyInstance},
+		model.FactoryFunc(func(m *model.Model) error {
+			err := m.ForEachHost("component.router", 1, func(host *model.Host) error {
+				host.InstanceType = "c5.xlarge"
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			err = m.ForEachComponent(".host", 1, func(c *model.Component) error {
+				c.Type.(*zitilab.ZitiTunnelType).Mode = zitilab.ZitiTunnelModeHost
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			return m.ForEachHost("component.host", 1, func(host *model.Host) error {
+				host.InstanceType = "c5.xlarge"
+				return nil
+			})
+		}),
+		model.NewScaleFactoryWithDefaultEntityFactory(&scaleStrategy{}),
 	},
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),
@@ -235,12 +135,90 @@ var m = &model.Model{
 			Region: "us-east-1",
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
-				"ctrl": {
+				"ctrl1": {
 					InstanceType: "c5.xlarge",
 					Components: model.Components{
-						"ctrl": {
+						"ctrl1": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
+				"router-us-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"router"}},
+					Components: model.Components{
+						"router-us-{{.Host.ScaleIndex}}": {
+							Scope: model.Scope{Tags: model.Tags{"router"}},
+							Type: &zitilab.RouterType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
+				"host-us-{{ .ScaleIndex }}": {
+					Scope: model.Scope{Tags: model.Tags{"host"}},
+					Components: model.Components{
+						"host-us-{{ .Host.ScaleIndex }}-{{ .ScaleIndex }}": {
+							Scope: model.Scope{Tags: model.Tags{"host"}},
+							Type: &zitilab.ZitiTunnelType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
+			},
+		},
+		"eu-west-2": {
+			Region: "us-west-2",
+			Site:   "us-west-2a",
+			Hosts: model.Hosts{
+				"router-eu-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"router"}},
+					Components: model.Components{
+						"router-eu-{{.Host.ScaleIndex}}": {
+							Scope: model.Scope{Tags: model.Tags{"router"}},
+							Type: &zitilab.RouterType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
+				"host-eu-{{ .ScaleIndex }}": {
+					Scope: model.Scope{Tags: model.Tags{"host"}},
+					Components: model.Components{
+						"host-eu-{{ .Host.ScaleIndex }}-{{ .ScaleIndex }}": {
+							Scope: model.Scope{Tags: model.Tags{"host"}},
+							Type: &zitilab.ZitiTunnelType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
+			},
+		},
+		"ap-southeast-2": {
+			Region: "ap-southeast-2",
+			Site:   "ap-southeast-2a",
+			Hosts: model.Hosts{
+				"router-ap-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"router", "scaled"}},
+					Components: model.Components{
+						"router-ap-{{.Host.ScaleIndex}}": {
+							Scope: model.Scope{Tags: model.Tags{"router"}},
+							Type: &zitilab.RouterType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
+				"host-ap-{{ .ScaleIndex }}": {
+					Scope: model.Scope{Tags: model.Tags{"host", "scaled"}},
+					Components: model.Components{
+						"host-ap-{{ .Host.ScaleIndex }}-{{ .ScaleIndex }}": {
+							Scope: model.Scope{Tags: model.Tags{"host"}},
+							Type: &zitilab.ZitiTunnelType{
 								Version: TargetZitiVersion,
 							},
 						},
@@ -254,15 +232,80 @@ var m = &model.Model{
 		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
 
-			workflow.AddAction(component.Start("#ctrl"))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			isHA := len(m.SelectComponents(".ctrl")) > 1
 
-			workflow.AddAction(edge.Login("#ctrl"))
+			workflow.AddAction(component.StopInParallel("*", 300))
+			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/* ctrl.db"))
+			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
-			workflow.AddAction(edge.ReEnrollEdgeRouters(".edge-router .pre-created", 2))
-			if quickRun, _ := m.GetBoolVariable("quick_run"); !quickRun {
-				workflow.AddAction(edge.ReEnrollIdentities(".sdk-tunneler .pre-created", 10))
+			if !isHA {
+				workflow.AddAction(component.Exec("#ctrl1", zitilab.ControllerActionInitStandalone))
 			}
+
+			workflow.AddAction(component.Start(".ctrl"))
+
+			if isHA {
+				workflow.AddAction(semaphore.Sleep(2 * time.Second))
+				workflow.AddAction(edge.RaftJoin(".ctrl"))
+				workflow.AddAction(semaphore.Sleep(2 * time.Second))
+				workflow.AddAction(edge.InitRaftController("#ctrl1"))
+			}
+
+			workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
+
+			workflow.AddAction(edge.Login("#ctrl1"))
+
+			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 25))
+			workflow.AddAction(edge.InitIdentities(".host", 25))
+
+			workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "all", "--edge-router-roles", "#all", "--identity-roles", "#all"))
+			workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "all", "--service-roles", "#all", "--edge-router-roles", "#all"))
+
+			workflow.AddAction(zitilib_actions.Edge("create", "config", "host-config", "host.v1", `
+				{
+					"address" : "localhost",
+					"port" : 8080,
+					"protocol" : "tcp"
+				}`))
+
+			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+				var tasks []parallel.Task
+				for i := 0; i < 2000; i++ {
+					name := fmt.Sprintf("service-%04d", i)
+					task := func() error {
+						_, err := cli.Exec(run.GetModel(), "edge", "create", "service", name, "-c", "host-config")
+						return err
+					}
+					tasks = append(tasks, task)
+				}
+				return parallel.Execute(tasks, 25)
+			}))
+
+			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+				identities := getHostNames()
+				serviceIdx := 0
+				var tasks []parallel.Task
+				for i, identity := range identities {
+					name := fmt.Sprintf("service-policy-%03d", i)
+					identityRoles := fmt.Sprintf("@%s", identity)
+					servicesRoles := ""
+					for j := 0; j < 10; j++ {
+						idx := serviceIdx % 2000
+						if j > 0 {
+							servicesRoles += ","
+						}
+						servicesRoles += fmt.Sprintf("@service-%04d", idx)
+						serviceIdx++
+					}
+					tasks = append(tasks, func() error {
+						_, err := cli.Exec(run.GetModel(), "edge", "create", "service-policy", name, "Bind",
+							"--identity-roles", identityRoles, "--service-roles", servicesRoles)
+						return err
+					})
+				}
+				return parallel.Execute(tasks, 25)
+			}))
+
 			return workflow
 		}),
 		"stop": model.Bind(component.StopInParallelHostExclusive("*", 15)),
@@ -270,45 +313,36 @@ var m = &model.Model{
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
-		"login": model.Bind(edge.Login("#ctrl")),
-		"refreshCtrlZiti": model.ActionBinder(func(m *model.Model) model.Action {
-			return model.ActionFunc(func(run model.Run) error {
-				zitiPath, err := exec.LookPath("ziti")
-				if err != nil {
-					return err
-				}
-
-				deferred := rsync.NewRsyncHost("ctrl", zitiPath, "/home/ubuntu/fablab/bin/ziti")
-				return deferred.Execute(run)
-			})
+		"login": model.Bind(edge.Login("#ctrl1")),
+		"restart": model.ActionBinder(func(run *model.Model) model.Action {
+			workflow := actions.Workflow()
+			workflow.AddAction(component.StopInParallel("*", 100))
+			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
+			workflow.AddAction(component.Start(".ctrl"))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(component.StartInParallel(".router", 10))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(component.StartInParallel(".host", 50))
+			return workflow
 		}),
-		"refreshRouterZiti": model.ActionBinder(func(m *model.Model) model.Action {
-			return model.ActionFunc(func(run model.Run) error {
-				zitiPath, err := exec.LookPath("ziti")
-				if err != nil {
-					return err
-				}
-
-				deferred := rsync.NewRsyncHost("component.edge-router", zitiPath, "/home/ubuntu/fablab/bin/ziti")
-				return deferred.Execute(run)
+		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
+		"validateUp": model.Bind(model.ActionFunc(func(run model.Run) error {
+			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
+				return err
+			}
+			err := run.GetModel().ForEachComponent(".ctrl", 3, func(c *model.Component) error {
+				return edge.ControllerAvailable(c.Id, 30*time.Second).Execute(run)
 			})
-		}),
-		"refreshZiti": model.ActionBinder(func(m *model.Model) model.Action {
-			return model.ActionFunc(func(run model.Run) error {
-				zitiPath, err := exec.LookPath("ziti")
-				if err != nil {
-					return err
-				}
-
-				hosts := os.Getenv("HOSTS")
-				if hosts == "" {
-					return errors.New("expected hosts to refresh in HOSTS env")
-				}
-
-				deferred := rsync.NewRsyncHost(hosts, zitiPath, "/home/ubuntu/fablab/bin/ziti")
-				return deferred.Execute(run)
-			})
-		}),
+			if err != nil {
+				return err
+			}
+			if err := chaos.ValidateUp(run, ".router", 100, time.Minute); err != nil {
+				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
+				return component.StartInParallel(".router", 100).Execute(run)
+			}
+			return nil
+		})),
+		"validate": model.Bind(model.ActionFunc(validateTerminators)),
 	},
 
 	Infrastructure: model.Stages{
@@ -324,20 +358,26 @@ var m = &model.Model{
 	Distribution: model.Stages{
 		distribution.DistributeSshKey("*"),
 		rsync.RsyncStaged(),
-		model.StageActionF(func(run model.Run) error {
-			if quickRun, _ := run.GetModel().GetBoolVariable("quick_run"); !quickRun {
-				dbFile := dbStrategyInstance.GetDbFile(run.GetModel())
-				deferred := rsync.NewRsyncHost("#ctrl", dbFile, "/home/ubuntu/ctrl.db")
-				return deferred.Execute(run)
-			}
-			return nil
-		}),
 	},
 
 	Disposal: model.Stages{
 		terraform.Dispose(),
 		aws_ssh_key2.Dispose(),
 	},
+}
+
+func getHostNames() []string {
+	var result []string
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 10; j++ {
+			result = append(result, fmt.Sprintf("host-us-%d-%d", i, j))
+			if i < 6 {
+				result = append(result, fmt.Sprintf("host-eu-%d-%d", i, j))
+				result = append(result, fmt.Sprintf("host-ap-%d-%d", i, j))
+			}
+		}
+	}
+	return result
 }
 
 func main() {

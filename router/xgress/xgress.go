@@ -77,6 +77,10 @@ type InspectableDialer interface {
 	InspectTerminator(id string, destination string, fixInvalid bool) (bool, string)
 }
 
+type Inspectable interface {
+	Inspect(key string, timeout time.Duration) any
+}
+
 type Factory interface {
 	CreateListener(optionsData OptionsData) (Listener, error)
 	CreateDialer(optionsData OptionsData) (Dialer, error)

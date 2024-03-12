@@ -129,18 +129,21 @@ func (h *apiSessionAddedHandler) syncFailed(err error) {
 	h.trackerLock.Lock()
 	defer h.trackerLock.Unlock()
 
-	logrus.WithError(err).Error("failed to synchronize api sessions")
+	// can be called twice, only notify the first time
+	if h.syncTracker != nil {
+		logrus.WithError(err).Error("failed to synchronize api sessions")
 
-	h.syncTracker.Stop()
-	h.sm.MarkSyncStopped(h.syncTracker.syncId)
+		h.syncTracker.Stop()
+		h.sm.MarkSyncStopped(h.syncTracker.syncId)
 
-	h.syncTracker = nil
+		h.syncTracker = nil
 
-	resync := &edge_ctrl_pb.RequestClientReSync{
-		Reason: fmt.Sprintf("error during api session sync: %v", err),
-	}
-	if err := protobufs.MarshalTyped(resync).Send(h.control); err != nil {
-		logrus.WithError(err).Error("failed to send request client re-sync message")
+		resync := &edge_ctrl_pb.RequestClientReSync{
+			Reason: fmt.Sprintf("error during api session sync: %v", err),
+		}
+		if err := protobufs.MarshalTyped(resync).Send(h.control); err != nil {
+			logrus.WithError(err).Error("failed to send request client re-sync message")
+		}
 	}
 }
 

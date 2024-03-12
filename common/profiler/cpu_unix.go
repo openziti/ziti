@@ -1,3 +1,5 @@
+//go:build linux || darwin || freebsd
+
 /*
 	Copyright NetFoundry Inc.
 
@@ -26,14 +28,14 @@ import (
 
 type CPU struct {
 	path      string
-	shutdownC chan struct{}
+	shutdownC <-chan struct{}
 }
 
 func NewCPU(path string) (*CPU, error) {
 	return NewCPUWithShutdown(path, nil)
 }
 
-func NewCPUWithShutdown(path string, shutdownC chan struct{}) (*CPU, error) {
+func NewCPUWithShutdown(path string, shutdownC <-chan struct{}) (*CPU, error) {
 	f, err := os.Create(path)
 	if err != nil {
 		return nil, err

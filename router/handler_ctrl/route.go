@@ -18,6 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/openziti/ziti/router/env"
+	"net"
 	"syscall"
 	"time"
 
@@ -178,7 +179,7 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 				switch {
 				case errors.Is(err, syscall.ECONNREFUSED):
 					errCode = ctrl_msg.ErrorTypeConnectionRefused
-				case errors.Is(err, syscall.ETIMEDOUT):
+				case isNetworkTimeout(err) || errors.Is(err, syscall.ETIMEDOUT):
 					errCode = ctrl_msg.ErrorTypeDialTimedOut
 				case errors.As(err, &xgress.MisconfiguredTerminatorError{}):
 					errCode = ctrl_msg.ErrorTypeMisconfiguredTerminator
@@ -198,6 +199,11 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 		var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
 		rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), errCode, log)
 	}
+}
+
+func isNetworkTimeout(err error) bool {
+	var netErr net.Error
+	return errors.As(err, &netErr)
 }
 
 func newDialParams(ctrlId string, route *ctrl_pb.Route, bindHandler xgress.BindHandler, logContext logcontext.Context, deadline time.Time) *dialParams {

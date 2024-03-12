@@ -35,3 +35,15 @@ func (request *ValidateRouterLinksResponse) GetContentType() int32 {
 func (request *RouterLinkDetails) GetContentType() int32 {
 	return int32(ContentType_ValidateRouterLinksResultType)
 }
+
+func (request *ValidateRouterSdkTerminatorsRequest) GetContentType() int32 {
+	return int32(ContentType_ValidateRouterSdkTerminatorsRequestType)
+}
+
+func (request *ValidateRouterSdkTerminatorsResponse) GetContentType() int32 {
+	return int32(ContentType_ValidateRouterSdkTerminatorsResponseType)
+}
+
+func (request *RouterSdkTerminatorsDetails) GetContentType() int32 {
+	return int32(ContentType_ValidateRouterSdkTerminatorsResultType)
+}

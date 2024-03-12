@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/events"
 	"github.com/openziti/ziti/controller/handler_peer_ctrl"
+	"github.com/openziti/ziti/controller/zac"
 	"math/big"
 	"os"
 	"sync/atomic"
@@ -245,6 +246,10 @@ func (c *Controller) initWeb() {
 
 	if err := c.xweb.GetRegistry().Add(api_impl.NewMetricsApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create metrics api factory")
+	}
+
+	if err := c.xweb.GetRegistry().Add(zac.NewZitiAdminConsoleFactory()); err != nil {
+		logrus.WithError(err).Fatalf("failed to create single page application factory")
 	}
 
 }

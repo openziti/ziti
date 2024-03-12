@@ -244,6 +244,7 @@ enum CreateTerminatorResult {
   FailedIdConflict = 1;
   FailedOther = 2;
   FailedBusy = 3;
+  FailedInvalidSession = 4;
 }
 
 message CreateTerminatorV2Response {
@@ -284,6 +285,8 @@ message EnvInfo  {
   string Os = 2;
   string OsRelease = 3;
   string OsVersion = 4;
+  string Hostname = 5;
+  string Domain = 6;
 }
 
 message SdkInfo {

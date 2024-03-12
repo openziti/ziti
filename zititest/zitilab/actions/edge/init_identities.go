@@ -31,7 +31,7 @@ func (action *initIdentitiesAction) createAndEnrollIdentity(run model.Run, c *mo
 
 	jwtFileName := filepath.Join(run.GetTmpDir(), c.Id+".jwt")
 
-	err := zitilib_actions.EdgeExec(c.GetModel(), "create", "identity", "service", c.Id,
+	err := zitilib_actions.EdgeExec(c.GetModel(), "create", "identity", c.Id,
 		"--jwt-output-file", jwtFileName,
 		"-a", strings.Join(c.Tags, ","))
 

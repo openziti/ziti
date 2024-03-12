@@ -80,11 +80,18 @@ func (self *ZitiTunnelType) StageFiles(r model.Run, c *model.Component) error {
 
 func (self *ZitiTunnelType) InitializeHost(_ model.Run, c *model.Component) error {
 	if self.Mode == ZitiTunnelModeTproxy {
-		cmds := []string{
-			"sudo sed -i 's/#DNS=/DNS=127.0.0.1/g' /etc/systemd/resolved.conf",
-			"sudo systemctl restart systemd-resolved",
+		key := "ziti_tunnel.resolve_setup_done"
+		if _, found := c.Host.Data[key]; !found {
+			cmds := []string{
+				"sudo sed -i 's/#DNS=/DNS=127.0.0.1/g' /etc/systemd/resolved.conf",
+				"sudo systemctl restart systemd-resolved",
+			}
+			if err := c.Host.ExecLogOnlyOnError(cmds...); err != nil {
+				return err
+			}
+			c.Host.Data[key] = true
+			return nil
 		}
-		return c.Host.ExecLogOnlyOnError(cmds...)
 	}
 	return nil
 }
@@ -122,8 +129,8 @@ func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
 		useSudo = "sudo"
 	}
 
-	serviceCmd := fmt.Sprintf("%s %s tunnel %s -v --log-formatter pfxlog -i %s --cli-agent-alias %s > %s 2>&1 &",
-		useSudo, binaryPath, mode.String(), configPath, c.Id, logsPath)
+	serviceCmd := fmt.Sprintf("%s %s tunnel %s -v --cli-agent-alias %s --log-formatter pfxlog -i %s > %s 2>&1 &",
+		useSudo, binaryPath, mode.String(), c.Id, configPath, logsPath)
 
 	value, err := c.Host.ExecLogged(
 		"rm -f "+logsPath,

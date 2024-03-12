@@ -86,7 +86,7 @@ func (self *ZrokLoopTestType) Start(_ model.Run, c *model.Component) error {
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
 	maxDwell := 1000 + c.ScaleIndex
-	serviceCmd := fmt.Sprintf("nohup sudo -u %s %s test loop public --iterations %v --loopers %v --min-pacing-ms %v --max-pacing-ms %v "+
+	serviceCmd := fmt.Sprintf("nohup sudo -u %s %s test loop public -v --iterations %v --loopers %v --min-pacing-ms %v --max-pacing-ms %v "+
 		"--max-dwell-ms %d 2>&1 &> %s &",
 		userId, binaryPath, self.Iterations, self.Loopers, self.Pacing.Milliseconds(), self.Pacing.Milliseconds(), maxDwell, logsPath)
 

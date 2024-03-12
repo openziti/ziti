@@ -39,7 +39,7 @@ jobs:
     runs-on: macos-11
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -57,6 +57,7 @@ jobs:
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
+          $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=arm64 -output=$GOX_OUTPUT ./...
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -72,7 +73,7 @@ jobs:
     runs-on: windows-2019
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -103,7 +104,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -139,7 +140,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -170,7 +171,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -293,7 +294,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -408,7 +409,7 @@ jobs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 

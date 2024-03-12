@@ -23,6 +23,8 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	"strings"
 	"time"
@@ -149,44 +151,43 @@ func (store *apiSessionStoreImpl) onEventualDelete(db boltz.Db, name string, api
 		}).Error("error querying for session associated to an api session during onEventualDelete")
 	}
 
-	for _, id := range idCollector.ids {
-		changeContext := change.New().SetSourceType("events.emitter").SetChangeAuthorType(change.AuthorTypeController)
-		err = db.Update(changeContext.NewMutateContext(), func(ctx boltz.MutateContext) error {
-			if err := store.stores.session.DeleteById(ctx, id); err != nil {
-				if boltz.IsErrNotFoundErr(err) {
-					return nil
-				}
-				return err
-			}
-			return nil
-		})
-
-		if err != nil {
-			pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
-				"eventName":    name,
-				"apiSessionId": string(apiSessionId),
-				"sessionId":    id,
-			}).Error("error deleting for session associated to an api session during onEventualDelete")
-		}
+	if store.stores.rateLimiter.GetQueueFillPct() > 0.5 {
+		time.Sleep(time.Second)
 	}
 
+	store.cleanupSessions(db, name, apiSessionId, idCollector.ids)
+}
+
+func (store *apiSessionStoreImpl) cleanupSessions(db boltz.Db, name string, apiSessionId []byte, sessionIds []string) {
+	logger := pfxlog.Logger().WithField("eventName", name).
+		WithField("apiSessionId", string(apiSessionId))
+
 	changeContext := change.New().SetSourceType("events.emitter").SetChangeAuthorType(change.AuthorTypeController)
-	err = db.Update(changeContext.NewMutateContext(), func(ctx boltz.MutateContext) error {
+	err := db.Update(changeContext.NewMutateContext(), func(ctx boltz.MutateContext) error {
+		indexPath := []string{RootBucket, boltz.IndexesBucket, EntityTypeApiSessions, EntityTypeSessions}
 		if bucket := boltz.Path(ctx.Tx(), indexPath...); bucket != nil {
 			if err := bucket.DeleteBucket(apiSessionId); err != nil {
-				if err != bbolt.ErrBucketNotFound {
-					return err
+				if !errors.Is(err, bbolt.ErrBucketNotFound) {
+					logger.WithError(err).
+						Error("error deleting for api session index associated to an api session during onEventualDelete")
 				}
 			}
 		}
+
+		for _, id := range sessionIds {
+			if err := store.stores.session.DeleteById(ctx, id); err != nil {
+				if !boltz.IsErrNotFoundErr(err) {
+					logger.WithError(err).WithField("sessionId", id).
+						Error("error deleting for session associated to an api session during onEventualDelete")
+				}
+			}
+		}
+
 		return nil
 	})
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
-			"eventName":    name,
-			"apiSessionId": string(apiSessionId),
-		}).Error("error deleting for api session index associated to an api session during onEventualDelete")
+		log.WithError(err).Error("error while cleanup after api-session delete")
 	}
 }
 

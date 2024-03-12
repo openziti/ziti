@@ -28,12 +28,5 @@ type baseHandler struct {
 }
 
 func (self *baseHandler) newChangeContext(ch channel.Channel, method string) *change.Context {
-	return change.New().
-		SetChangeAuthorId(self.router.Id).
-		SetChangeAuthorName(self.router.Name).
-		SetChangeAuthorType(change.AuthorTypeRouter).
-		SetSourceType(change.SourceTypeControlChannel).
-		SetSourceMethod(method).
-		SetSourceLocal(ch.Underlay().GetLocalAddr().String()).
-		SetSourceRemote(ch.Underlay().GetRemoteAddr().String())
+	return change.NewControlChannelChange(self.router.Id, self.router.Name, method, ch)
 }
