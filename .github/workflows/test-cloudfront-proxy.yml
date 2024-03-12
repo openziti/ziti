@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure Python
         shell: bash

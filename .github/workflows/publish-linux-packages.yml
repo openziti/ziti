@@ -46,7 +46,7 @@ jobs:
       ZITI_RPM_PROD_REPO: ${{ vars.ZITI_RPM_PROD_REPO || 'zitipax-openziti-rpm-stable' }}
     steps:
       - name: Checkout Workspace
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download Linux Release Artifacts
         uses: actions/download-artifact@v4

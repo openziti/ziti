@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install zsh
         shell: bash
@@ -43,7 +43,7 @@ jobs:
       ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Go
         id: setup-go
