@@ -124,6 +124,7 @@ func (self *ApiSessionManager) UpdateWithFieldChecker(apiSession *ApiSession, fi
 
 func (self *ApiSessionManager) MfaCompleted(apiSession *ApiSession, ctx *change.Context) error {
 	apiSession.MfaComplete = true
+
 	return self.updateEntity(apiSession, &OrFieldChecker{NewFieldChecker(db.FieldApiSessionMfaComplete), self}, ctx.NewMutateContext())
 }
 
