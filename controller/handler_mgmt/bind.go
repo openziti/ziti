@@ -51,6 +51,12 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 		Handler: validateLinksRequestHandler.HandleReceive,
 	})
 
+	validateSdkTerminatorsRequestHandler := newValidateRouterSdkTerminatorsHandler(bindHandler.network)
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type:    validateSdkTerminatorsRequestHandler.ContentType(),
+		Handler: validateSdkTerminatorsRequestHandler.HandleReceive,
+	})
+
 	tracesHandler := newStreamTracesHandler(bindHandler.network)
 	binding.AddTypedReceiveHandler(tracesHandler)
 	binding.AddCloseHandler(tracesHandler)

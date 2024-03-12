@@ -247,6 +247,10 @@ func (self *Controller) GetMesh() mesh.Mesh {
 	return self.Mesh
 }
 
+func (self *Controller) GetRateLimiter() command.RateLimiter {
+	return self.commandRateLimiter
+}
+
 func (self *Controller) ConfigureMeshHandlers(bindHandler channel.BindHandler) {
 	self.Mesh.Init(bindHandler)
 }

@@ -3,6 +3,7 @@ package handler_common
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/ziti/common/ctrl_msg"
 	"time"
 )
 
@@ -38,4 +39,21 @@ func SendOpResult(request *channel.Message, ch channel.Channel, op string, messa
 	if err := response.WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 		log.WithError(err).Error("failed to send result")
 	}
+}
+
+func SendServerBusy(request *channel.Message, ch channel.Channel, op string) {
+	log := pfxlog.ContextLogger(ch.Label()).WithField("operation", op)
+	log.Errorf("%v error performing %v: (%s)", ch.LogicalName(), op, "server too busy")
+
+	response := channel.NewResult(false, "server too busy")
+	response.ReplyTo(request)
+	response.Headers.PutUint32Header(ctrl_msg.HeaderResultErrorCode, ctrl_msg.ResultErrorRateLimited)
+	if err := response.WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
+		log.WithError(err).Error("failed to send result")
+	}
+}
+
+func WasRateLimited(msg *channel.Message) bool {
+	val, found := msg.GetUint32Header(ctrl_msg.HeaderResultErrorCode)
+	return found && val == ctrl_msg.ResultErrorRateLimited
 }

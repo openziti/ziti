@@ -14,19 +14,17 @@
 	limitations under the License.
 */
 
-package handler_ctrl
+package change
 
-import (
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/network"
-)
+import "github.com/openziti/channel/v2"
 
-type baseHandler struct {
-	router  *network.Router
-	network *network.Network
-}
-
-func (self *baseHandler) newChangeContext(ch channel.Channel, method string) *change.Context {
-	return change.NewControlChannelChange(self.router.Id, self.router.Name, method, ch)
+func NewControlChannelChange(routerId, routerName, method string, ch channel.Channel) *Context {
+	return New().
+		SetChangeAuthorId(routerId).
+		SetChangeAuthorName(routerName).
+		SetChangeAuthorType(AuthorTypeRouter).
+		SetSourceType(SourceTypeControlChannel).
+		SetSourceMethod(method).
+		SetSourceLocal(ch.Underlay().GetLocalAddr().String()).
+		SetSourceRemote(ch.Underlay().GetRemoteAddr().String())
 }

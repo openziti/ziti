@@ -19,9 +19,10 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -63,6 +64,8 @@ func (self *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Messa
 			WithField("terminatorIds", request.TerminatorIds).
 			Info("removed terminators")
 		handler_common.SendSuccess(msg, ch, "")
+	} else if command.WasRateLimited(err) {
+		handler_common.SendServerBusy(msg, ch, "remove.terminators")
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())
 	}

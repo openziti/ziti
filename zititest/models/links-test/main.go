@@ -116,7 +116,6 @@ var m = &model.Model{
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
 				"ctrl1": {
-					InstanceType: "t3.medium",
 					Components: model.Components{
 						"ctrl1": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},

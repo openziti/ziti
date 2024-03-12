@@ -19,6 +19,7 @@ package edge
 import (
 	"context"
 	"github.com/openziti/ziti/ziti/cmd/common"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"io"
 
@@ -29,13 +30,9 @@ import (
 var ExtraEdgeCommands []func(p common.OptionsProvider) *cobra.Command
 
 // NewCmdEdge creates a command object for the "controller" command
-func NewCmdEdge(out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdEdge(out io.Writer, errOut io.Writer, p common.OptionsProvider) *cobra.Command {
 	cmd := util.NewEmptyParentCmd("edge", "Manage the Edge components of a Ziti network using the Ziti Edge REST API")
-	populateEdgeCommands(out, errOut, cmd)
-	return cmd
-}
 
-func populateEdgeCommands(out io.Writer, errOut io.Writer, cmd *cobra.Command) *cobra.Command {
 	cmd.AddCommand(newCreateCmd(out, errOut))
 	cmd.AddCommand(newDeleteCmd(out, errOut))
 	cmd.AddCommand(NewLoginCmd(out, errOut))
@@ -52,12 +49,25 @@ func populateEdgeCommands(out io.Writer, errOut io.Writer, cmd *cobra.Command) *
 	cmd.AddCommand(newShowCmd(out, errOut))
 	cmd.AddCommand(newReEnrollCmd(out, errOut))
 	cmd.AddCommand(NewQuickStartCmd(out, errOut, context.Background()))
-
-	p := common.NewOptionsProvider(out, errOut)
+	cmd.AddCommand(newValidateCommand(p))
 	cmd.AddCommand(enrollment.NewEnrollCommand(p))
+
 	for _, cmdF := range ExtraEdgeCommands {
 		cmd.AddCommand(cmdF(p))
 	}
 
 	return cmd
+}
+
+func newValidateCommand(p common.OptionsProvider) *cobra.Command {
+	validateCmd := &cobra.Command{
+		Use:   "validate",
+		Short: "validate model data",
+		Run: func(cmd *cobra.Command, args []string) {
+			cmdhelper.CheckErr(cmd.Help())
+		},
+	}
+
+	validateCmd.AddCommand(NewValidateServiceHostingCmd(p))
+	return validateCmd
 }

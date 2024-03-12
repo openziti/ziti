@@ -244,6 +244,7 @@ enum CreateTerminatorResult {
   FailedIdConflict = 1;
   FailedOther = 2;
   FailedBusy = 3;
+  FailedInvalidSession = 4;
 }
 
 message CreateTerminatorV2Response {

@@ -32,10 +32,11 @@ import (
 )
 
 type bindHandler struct {
-	env                env.RouterEnv
-	forwarder          *forwarder.Forwarder
-	xgDialerPool       goroutines.Pool
-	ctrlAddressUpdater CtrlAddressUpdater
+	env                      env.RouterEnv
+	forwarder                *forwarder.Forwarder
+	xgDialerPool             goroutines.Pool
+	terminatorValidationPool goroutines.Pool
+	ctrlAddressUpdater       CtrlAddressUpdater
 }
 
 func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctrlAddressUpdater CtrlAddressUpdater) (channel.BindHandler, error) {
@@ -57,11 +58,30 @@ func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctr
 		return nil, errors.Wrap(err, "error creating xgress route handler pool")
 	}
 
+	terminatorValidatorPoolConfig := goroutines.PoolConfig{
+		QueueSize:   uint32(1),
+		MinWorkers:  0,
+		MaxWorkers:  uint32(50),
+		IdleTime:    30 * time.Second,
+		CloseNotify: routerEnv.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during terminator validation operation")
+		},
+	}
+
+	metrics.ConfigureGoroutinesPoolMetrics(&terminatorValidatorPoolConfig, routerEnv.GetMetricsRegistry(), "pool.terminator_validation")
+
+	terminatorValidationPool, err := goroutines.NewPool(terminatorValidatorPoolConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating terminator validation pool")
+	}
+
 	return &bindHandler{
-		env:                routerEnv,
-		forwarder:          forwarder,
-		xgDialerPool:       xgDialerPool,
-		ctrlAddressUpdater: ctrlAddressUpdater,
+		env:                      routerEnv,
+		forwarder:                forwarder,
+		xgDialerPool:             xgDialerPool,
+		terminatorValidationPool: terminatorValidationPool,
+		ctrlAddressUpdater:       ctrlAddressUpdater,
 	}, nil
 }
 
@@ -70,7 +90,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newDialHandler(self.env))
 	binding.AddTypedReceiveHandler(newRouteHandler(binding.GetChannel(), self.env, self.forwarder, self.xgDialerPool))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.env))
-	binding.AddTypedReceiveHandler(newValidateTerminatorsV2Handler(self.env))
+	binding.AddTypedReceiveHandler(newValidateTerminatorsV2Handler(self.env, self.terminatorValidationPool))
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
 	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
 	binding.AddTypedReceiveHandler(newInspectHandler(self.env, self.forwarder))

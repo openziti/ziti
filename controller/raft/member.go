@@ -28,12 +28,12 @@ import (
 )
 
 type Member struct {
-	Id        string
-	Addr      string
-	Voter     bool
-	Leader    bool
-	Version   string
-	Connected bool
+	Id        string `json:"id"`
+	Addr      string `json:"addr"`
+	Voter     bool   `json:"isVoter"`
+	Leader    bool   `json:"isLeader"`
+	Version   string `json:"version"`
+	Connected bool   `json:"isConnected"`
 }
 
 func (self *Controller) ListMembers() ([]*Member, error) {

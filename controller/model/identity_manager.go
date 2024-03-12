@@ -801,13 +801,13 @@ func (statusMap *identityStatusMap) HasEdgeRouterConnection(identityId string) b
 			WithField("identityId", identityId).
 			WithField("expiresAt", stat.expiresAt).
 			WithField("now", now).
-			Debugf("reporting identity from active ER conn pool: timedout")
+			Tracef("reporting identity from active ER conn pool: timedout")
 		return ret
 	}
 
 	pfxlog.Logger().
 		WithField("identityId", identityId).
-		Debugf("reporting identity from active ER conn pool: not found")
+		Tracef("reporting identity from active ER conn pool: not found")
 	return false
 }
 

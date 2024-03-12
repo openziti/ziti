@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/zititest/zitilab"
@@ -52,7 +53,7 @@ func (self *ZitiDbBuilder) Build(m *model.Model) error {
 		}
 	}()
 
-	self.stores, err = db.InitStores(self.zitiDb)
+	self.stores, err = db.InitStores(self.zitiDb, command.NoOpRateLimiter{})
 	if err != nil {
 		return errors.Wrapf(err, "unable to init fabric stores using db [%v]", dbFile)
 	}

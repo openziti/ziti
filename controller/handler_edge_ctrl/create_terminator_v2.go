@@ -34,6 +34,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"math"
+	"time"
 )
 
 type createTerminatorV2Handler struct {
@@ -73,6 +74,7 @@ func (self *createTerminatorV2Handler) HandleReceive(msg *channel.Message, ch ch
 }
 
 func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV2RequestContext) {
+	start := time.Now()
 	logger := pfxlog.ContextLogger(self.ch.Label()).
 		WithField("routerId", self.ch.Id()).
 		WithField("token", ctx.req.SessionToken).
@@ -89,7 +91,11 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 	ctx.loadService()
 
 	if ctx.err != nil {
-		self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, ctx.err, logger)
+		errCode := edge_ctrl_pb.CreateTerminatorResult_FailedOther
+		if errors.Is(ctx.err, InvalidSessionError{}) {
+			errCode = edge_ctrl_pb.CreateTerminatorResult_FailedInvalidSession
+		}
+		self.returnError(ctx, errCode, ctx.err, logger)
 		return
 	}
 
@@ -146,6 +152,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 			Context: ctx.newChangeContext(),
 		}
 
+		createStart := time.Now()
 		if err := self.appEnv.GetHostController().GetNetwork().Managers.Command.Dispatch(cmd); err != nil {
 			// terminator might have been created while we were trying to create.
 			if terminator, _ = self.getNetwork().Terminators.Read(ctx.req.Address); terminator != nil {
@@ -162,7 +169,9 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 				return
 			}
 		} else {
-			logger.WithField("terminator", terminator.Id).Info("created terminator")
+			logger.WithField("terminator", terminator.Id).
+				WithField("createTime", time.Since(createStart)).
+				Info("created terminator")
 		}
 	}
 
@@ -183,7 +192,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		logger.WithError(err).Error("failed to send CreateTunnelTerminatorResponse")
 	}
 
-	logger.Info("completed create terminator v2 operation")
+	logger.WithField("elapsed", time.Since(start)).Info("completed create terminator v2 operation")
 }
 
 func (self *createTerminatorV2Handler) returnError(ctx *CreateTerminatorV2RequestContext, resultType edge_ctrl_pb.CreateTerminatorResult, err error, logger *logrus.Entry) {
