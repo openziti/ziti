@@ -2,6 +2,7 @@ import csv
 import json
 import os
 
+perConfigIterationCount = 20  # number of iterations per config used for metric calculation
 sourceDirectory = "/home/pete/Documents/dumps/dumps5"  # path of the directory where your dumps are stored
 clientRegion = "us-east-1"  # where your iperf3 client is found
 txPortalIncreaseThresh_values = ["35", "28"]  # All the txPortalIncreaseThresh values you want to test
@@ -55,9 +56,9 @@ def count_and_process_json_files(d):
     json_files = [file for file in os.listdir(d) if file.endswith('.json')]
     json_count = len(json_files)
 
-    if json_count % 5 != 0:
+    if json_count % perConfigIterationCount != 0:
         print(f"Warning: Number of JSON files ({json_count}) "
-              f"not divisible by 5.")
+              f"not divisible by" + str(perConfigIterationCount) + ".")
         exit()
     else:
         print(f"There are {json_count} JSON files in the directory.")
