@@ -35,6 +35,7 @@ back to the routers when it's got too much work.
 * github.com/openziti/ziti: [v0.32.2 -> v0.33.0](https://github.com/openziti/ziti/compare/v0.32.2...v0.33.0)
     * [Issue #1815](https://github.com/openziti/ziti/issues/1815) - Panic if api session sync failed handler is called twice in the router
     * [Issue #1794](https://github.com/openziti/ziti/issues/1794) - Add SDK terminator chaos test and fix any bugs found as part of chaos testing
+    * [Issue #1781](https://github.com/openziti/ziti/issues/1781) - Improve performance when adding intercepted services
     * [Issue #1369](https://github.com/openziti/ziti/issues/1369) - Allow filtering by policy type when listing identities for service or services for identity
     * [Issue #1791](https://github.com/openziti/ziti/issues/1791) - route dial isn't checking for network timeouts correctly
     * [Issue #1204](https://github.com/openziti/ziti/issues/1204) - ziti cli identity tags related flags misbehaving
