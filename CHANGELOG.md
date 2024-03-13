@@ -1,3 +1,24 @@
+# Release 0.34.0
+
+## What's New
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.119 -> v2.0.121](https://github.com/openziti/channel/compare/v2.0.119...v2.0.121)
+* github.com/openziti/edge-api: [v0.26.12 -> v0.26.13](https://github.com/openziti/edge-api/compare/v0.26.12...v0.26.13)
+* github.com/openziti/foundation/v2: [v2.0.37 -> v2.0.39](https://github.com/openziti/foundation/compare/v2.0.37...v2.0.39)
+* github.com/openziti/identity: [v1.0.70 -> v1.0.72](https://github.com/openziti/identity/compare/v1.0.70...v1.0.72)
+* github.com/openziti/metrics: [v1.2.45 -> v1.2.47](https://github.com/openziti/metrics/compare/v1.2.45...v1.2.47)
+* github.com/openziti/runzmd: [v1.0.38 -> v1.0.40](https://github.com/openziti/runzmd/compare/v1.0.38...v1.0.40)
+* github.com/openziti/sdk-golang: [v0.22.28 -> v0.23.10](https://github.com/openziti/sdk-golang/compare/v0.22.28...v0.23.10)
+    * [Issue #515](https://github.com/openziti/sdk-golang/issues/515) - Service hosting improvements
+    * [Issue #501](https://github.com/openziti/sdk-golang/issues/501) - Improve hosting session management
+
+* github.com/openziti/secretstream: [v0.1.16 -> v0.1.17](https://github.com/openziti/secretstream/compare/v0.1.16...v0.1.17)
+* github.com/openziti/storage: [v0.2.30 -> v0.2.32](https://github.com/openziti/storage/compare/v0.2.30...v0.2.32)
+* github.com/openziti/transport/v2: [v2.0.122 -> v2.0.124](https://github.com/openziti/transport/compare/v2.0.122...v2.0.124)
+* github.com/openziti/ziti: [v0.33.1 -> v0.34.0](https://github.com/openziti/ziti/compare/v0.33.1...v0.34.0)
+
 # Release 0.33.1
 
 ## What's New
@@ -7,7 +28,6 @@
 ## Component Updates and Bug Fixes
 * github.com/openziti/ziti: [v0.33.0 -> v0.33.1](https://github.com/openziti/ziti/compare/v0.33.0...v0.33.1)
     * [Issue #1826](https://github.com/openziti/ziti/issues/1826) - 0.33.+ routers can cause panic in pre-0.33 controller with new metric
-
 
 # Release 0.33.0
 

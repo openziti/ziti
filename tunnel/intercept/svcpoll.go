@@ -282,7 +282,7 @@ func (self *ServiceListener) removeService(svc *entities.Service) {
 func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker) {
 	logger := pfxlog.Logger().WithField("service", *svc.Name)
 
-	currentIdentity, err := self.provider.GetCurrentIdentity()
+	currentIdentity, err := self.provider.GetCurrentIdentityWithBackoff()
 	if err != nil {
 		logger.WithError(err).Error("error getting current identity information")
 		return
