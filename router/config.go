@@ -72,13 +72,13 @@ const (
 	CtrlRateLimiterMaxSizeValue = 1000
 
 	// CtrlRateLimiterMetricOutstandingCount is the name of the metric tracking how many tasks are in process
-	CtrlRateLimiterMetricOutstandingCount = "ctrl.limiter.in_process"
+	CtrlRateLimiterMetricOutstandingCount = "ctrl_limiter.in_process"
 
 	// CtrlRateLimiterMetricCurrentWindowSize is the name of the metric tracking the current window size
-	CtrlRateLimiterMetricCurrentWindowSize = "ctrl.limiter.window_size"
+	CtrlRateLimiterMetricCurrentWindowSize = "ctrl_limiter.window_size"
 
 	// CtrlRateLimiterMetricWorkTimer is the name of the metric tracking how long successful tasks are taking to complete
-	CtrlRateLimiterMetricWorkTimer = "ctrl.limiter.work_timer"
+	CtrlRateLimiterMetricWorkTimer = "ctrl_limiter.work_timer"
 )
 
 // internalConfigKeys is used to distinguish internally defined configuration vs file configuration
