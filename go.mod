@@ -50,10 +50,10 @@ require (
 	github.com/openziti/agent v1.0.16
 	github.com/openziti/channel/v2 v2.0.119
 	github.com/openziti/edge-api v0.26.12
-	github.com/openziti/foundation/v2 v2.0.37
+	github.com/openziti/foundation/v2 v2.0.39
 	github.com/openziti/identity v1.0.70
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.45
+	github.com/openziti/metrics v1.2.47
 	github.com/openziti/runzmd v1.0.38
 	github.com/openziti/sdk-golang v0.22.28
 	github.com/openziti/secretstream v0.1.16
