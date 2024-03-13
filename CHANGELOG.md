@@ -1,6 +1,17 @@
+# Release 0.33.1
+
+## What's New
+
+* Backward compatibility router <-> controller fix to address metrics parsing panic
+
+## Component Updates and Bug Fixes
+* github.com/openziti/ziti: [v0.33.0 -> v0.33.1](https://github.com/openziti/ziti/compare/v0.33.0...v0.33.1)
+    * [Issue #1826](https://github.com/openziti/ziti/issues/1826) - 0.33.+ routers can cause panic in pre-0.33 controller with new metric
+
+
 # Release 0.33.0
 
-# What's New
+## What's New
 
 * SDK Terminator stability improvements
 * Minor feature updates and bug fixes
