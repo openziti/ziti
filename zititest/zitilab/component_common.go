@@ -27,10 +27,11 @@ import (
 
 func getZitiProcessFilter(c *model.Component, zitiType string) func(string) bool {
 	return func(s string) bool {
-		return strings.Contains(s, "ziti") &&
+		matches := strings.Contains(s, "ziti") &&
 			strings.Contains(s, zitiType) &&
 			strings.Contains(s, fmt.Sprintf("--cli-agent-alias %s ", c.Id)) &&
 			!strings.Contains(s, "sudo ")
+		return matches
 	}
 }
 

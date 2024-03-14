@@ -39,7 +39,7 @@ jobs:
     runs-on: macos-11
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -73,7 +73,7 @@ jobs:
     runs-on: windows-2019
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -104,7 +104,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -140,7 +140,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -171,7 +171,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -294,7 +294,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -409,7 +409,7 @@ jobs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 

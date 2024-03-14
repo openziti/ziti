@@ -37,6 +37,7 @@ import (
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/response"
 	"github.com/sirupsen/logrus"
+	"strings"
 	"time"
 )
 
@@ -109,7 +110,9 @@ func (r *IdentityRouter) Register(ae *env.AppEnv) {
 
 	// service list
 	ae.ManagementApi.IdentityListIdentityServicesHandler = identity.ListIdentityServicesHandlerFunc(func(params identity.ListIdentityServicesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listServices, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.listServices(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
 	// service configs crud
@@ -239,8 +242,19 @@ func (r *IdentityRouter) listServicePolicies(ae *env.AppEnv, rc *response.Reques
 	ListAssociationWithHandler[*model.Identity, *model.ServicePolicy](ae, rc, ae.Managers.Identity, ae.Managers.ServicePolicy, MapServicePolicyToRestEntity)
 }
 
-func (r *IdentityRouter) listServices(ae *env.AppEnv, rc *response.RequestContext) {
-	filterTemplate := `not isEmpty(from servicePolicies where anyOf(identities) = "%v")`
+func (r *IdentityRouter) listServices(ae *env.AppEnv, rc *response.RequestContext, params identity.ListIdentityServicesParams) {
+	typeFilter := ""
+	if params.PolicyType != nil {
+		if strings.EqualFold(*params.PolicyType, db.PolicyTypeBind.String()) {
+			typeFilter = fmt.Sprintf(` and type = %d`, db.PolicyTypeBind.Id())
+		}
+
+		if strings.EqualFold(*params.PolicyType, db.PolicyTypeDial.String()) {
+			typeFilter = fmt.Sprintf(` and type = %d`, db.PolicyTypeDial.Id())
+		}
+	}
+
+	filterTemplate := `not isEmpty(from servicePolicies where anyOf(identities) = "%v"` + typeFilter + ")"
 	ListAssociationsWithFilter[*model.ServiceDetail](ae, rc, filterTemplate, ae.Managers.EdgeService.GetDetailLister(), MapServiceToRestEntity)
 }
 

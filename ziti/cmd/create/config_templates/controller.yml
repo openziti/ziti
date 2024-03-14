@@ -229,3 +229,5 @@ web:
         options: { }
       - binding: fabric
         options: { }
+#      - binding: zac
+#        options: { "location": "./zac", "indexFile":"index.html" }

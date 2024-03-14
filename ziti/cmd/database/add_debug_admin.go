@@ -69,7 +69,7 @@ func (action *addDebugAdminAction) run(dbFile, username, password string) {
 	boltDb, err := db.Open(dbFile)
 	action.noError(err)
 
-	fabricStores, err := db.InitStores(boltDb)
+	fabricStores, err := db.InitStores(boltDb, command.NoOpRateLimiter{})
 	action.noError(err)
 
 	dispatcher := &command.LocalDispatcher{
@@ -83,7 +83,7 @@ func (action *addDebugAdminAction) run(dbFile, username, password string) {
 		managers: controllers,
 	}
 
-	stores, err := db.InitStores(boltDb)
+	stores, err := db.InitStores(boltDb, command.NoOpRateLimiter{})
 	action.noError(err)
 
 	id := "debug-admin"

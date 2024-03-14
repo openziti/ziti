@@ -27,6 +27,7 @@ import (
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/raft"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -110,7 +111,7 @@ type Network struct {
 }
 
 func NewNetwork(config Config) (*Network, error) {
-	stores, err := db.InitStores(config.GetDb())
+	stores, err := db.InitStores(config.GetDb(), config.GetCommandDispatcher().GetRateLimiter())
 	if err != nil {
 		return nil, err
 	}
@@ -345,23 +346,7 @@ func (network *Network) ValidateTerminators(r *Router) {
 		return
 	}
 
-	var terminators []*ctrl_pb.Terminator
-
-	for _, terminator := range result.Entities {
-		terminators = append(terminators, &ctrl_pb.Terminator{
-			Id:      terminator.Id,
-			Binding: terminator.Binding,
-			Address: terminator.Address,
-		})
-	}
-
-	req := &ctrl_pb.ValidateTerminatorsRequest{
-		Terminators: terminators,
-	}
-
-	if err = protobufs.MarshalTyped(req).Send(r.Control); err != nil {
-		logger.WithError(err).Error("unexpected error sending ValidateTerminatorsRequest")
-	}
+	network.Managers.RouterMessaging.ValidateRouterTerminators(result.Entities)
 }
 
 type LinkValidationCallback func(detail *mgmt_pb.RouterLinkDetails)
@@ -385,6 +370,34 @@ func (n *Network) ValidateLinks(filter string, cb LinkValidationCallback) (int64
 				}()
 			} else {
 				n.linkController.reportRouterLinksError(router, errors.New("router not connected"), cb)
+			}
+		}
+	}
+
+	return int64(len(result.Entities)), evalF, nil
+}
+
+type SdkTerminatorValidationCallback func(detail *mgmt_pb.RouterSdkTerminatorsDetails)
+
+func (n *Network) ValidateRouterSdkTerminators(filter string, cb SdkTerminatorValidationCallback) (int64, func(), error) {
+	result, err := n.Routers.BaseList(filter)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	sem := concurrenz.NewSemaphore(10)
+
+	evalF := func() {
+		for _, router := range result.Entities {
+			connectedRouter := n.GetConnectedRouter(router.Id)
+			if connectedRouter != nil {
+				sem.Acquire()
+				go func() {
+					defer sem.Release()
+					n.Routers.ValidateRouterSdkTerminators(connectedRouter, cb)
+				}()
+			} else {
+				n.Routers.reportRouterSdkTerminatorsError(router, errors.New("router not connected"), cb)
 			}
 		}
 	}
@@ -1263,6 +1276,30 @@ func (network *Network) Inspect(name string) (*string, error) {
 		val, err := json.Marshal(result)
 		strVal := string(val)
 		return &strVal, err
+	} else if lc == "connected-peers" {
+		if raftController, ok := network.Dispatcher.(*raft.Controller); ok {
+			members, err := raftController.ListMembers()
+			if err != nil {
+				return nil, err
+			}
+			result, err := json.Marshal(members)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshall cluster member list to json (%w)", err)
+			}
+			resultStr := string(result)
+			return &resultStr, nil
+		}
+	} else if lc == "router-messaging" {
+		routerMessagingState, err := network.Managers.RouterMessaging.Inspect()
+		if err != nil {
+			return nil, err
+		}
+		result, err := json.Marshal(routerMessagingState)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshall router messaging state to json (%w)", err)
+		}
+		resultStr := string(result)
+		return &resultStr, nil
 	}
 
 	return nil, nil

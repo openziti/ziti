@@ -17,16 +17,22 @@
 package network
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/xt"
 	"google.golang.org/protobuf/proto"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -458,6 +464,100 @@ func (self *RouterManager) Unmarshall(bytes []byte) (*Router, error) {
 		NoTraversal: msg.NoTraversal,
 		Disabled:    msg.Disabled,
 	}, nil
+}
+
+func (self *RouterManager) ValidateRouterSdkTerminators(router *Router, cb SdkTerminatorValidationCallback) {
+	request := &ctrl_pb.InspectRequest{RequestedValues: []string{"sdk-terminators"}}
+	resp := &ctrl_pb.InspectResponse{}
+	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
+	if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
+		self.reportRouterSdkTerminatorsError(router, err, cb)
+		return
+	}
+
+	var inspectResult *inspect.SdkTerminatorInspectResult
+	for _, val := range resp.Values {
+		if val.Name == "sdk-terminators" {
+			if err = json.Unmarshal([]byte(val.Value), &inspectResult); err != nil {
+				self.reportRouterSdkTerminatorsError(router, err, cb)
+				return
+			}
+		}
+	}
+
+	if inspectResult == nil {
+		if len(resp.Errors) > 0 {
+			err = errors.New(strings.Join(resp.Errors, ","))
+			self.reportRouterSdkTerminatorsError(router, err, cb)
+			return
+		}
+		self.reportRouterSdkTerminatorsError(router, errors.New("no terminator details returned from router"), cb)
+		return
+	}
+
+	listResult, err := self.Terminators.BaseList(fmt.Sprintf(`router="%s" and binding="edge" limit none`, router.Id))
+	if err != nil {
+		self.reportRouterSdkTerminatorsError(router, err, cb)
+		return
+	}
+
+	result := &mgmt_pb.RouterSdkTerminatorsDetails{
+		RouterId:        router.Id,
+		RouterName:      router.Name,
+		ValidateSuccess: true,
+	}
+
+	terminators := map[string]*Terminator{}
+
+	for _, terminator := range listResult.Entities {
+		terminators[terminator.Id] = terminator
+	}
+
+	for _, entry := range inspectResult.Entries {
+		detail := &mgmt_pb.RouterSdkTerminatorDetail{
+			TerminatorId:     entry.Id,
+			RouterState:      entry.State,
+			IsValid:          true,
+			OperaationActive: entry.OperationActive,
+			CreateTime:       entry.CreateTime,
+			LastAttempt:      entry.LastAttempt,
+		}
+		result.Details = append(result.Details, detail)
+
+		if entry.State != "established" {
+			detail.IsValid = false
+		}
+
+		if _, found := terminators[entry.Id]; found {
+			detail.CtrlState = mgmt_pb.TerminatorState_Valid
+			delete(terminators, entry.Id)
+		} else {
+			detail.CtrlState = mgmt_pb.TerminatorState_Unknown
+			detail.IsValid = false
+		}
+	}
+
+	for _, terminator := range terminators {
+		detail := &mgmt_pb.RouterSdkTerminatorDetail{
+			TerminatorId: terminator.Id,
+			CtrlState:    mgmt_pb.TerminatorState_Valid,
+			RouterState:  "unknown",
+			IsValid:      false,
+		}
+		result.Details = append(result.Details, detail)
+	}
+
+	cb(result)
+}
+
+func (self *RouterManager) reportRouterSdkTerminatorsError(router *Router, err error, cb SdkTerminatorValidationCallback) {
+	result := &mgmt_pb.RouterSdkTerminatorsDetails{
+		RouterId:        router.Id,
+		RouterName:      router.Name,
+		ValidateSuccess: false,
+		Message:         err.Error(),
+	}
+	cb(result)
 }
 
 type RouterLinks struct {

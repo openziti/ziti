@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/sirupsen/logrus"
 	"time"
 
@@ -72,6 +73,10 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newDequiesceRouterHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newDecommissionRouterHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newPingHandler())
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type:    int32(ctrl_pb.ContentType_ValidateTerminatorsV2ResponseType),
+		Handler: self.network.RouterMessaging.NewValidationResponseHandler(self.network, self.router),
+	})
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController()))
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
 

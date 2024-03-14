@@ -27,9 +27,10 @@ type ctrlChannelMetricsMapper struct{}
 
 func (ctrlChannelMetricsMapper) mapMetrics(_ *metrics_pb.MetricsMessage, event *event.MetricsEvent) {
 	if strings.HasPrefix(event.Metric, "ctrl.") {
-		parts := strings.Split(event.Metric, ":")
-		event.Metric = parts[0]
-		event.SourceEntityId = parts[1]
+		if parts := strings.Split(event.Metric, ":"); len(parts) > 1 {
+			event.Metric = parts[0]
+			event.SourceEntityId = parts[1]
+		}
 	}
 }
 

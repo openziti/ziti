@@ -55,6 +55,10 @@ const (
 	CreateCircuitRespCircuitId  = 11
 	CreateCircuitRespAddress    = 12
 	CreateCircuitRespTagsHeader = 13
+
+	HeaderResultErrorCode = 10
+
+	ResultErrorRateLimited = 1
 )
 
 func NewCircuitSuccessMsg(sessionId, address string) *channel.Message {
