@@ -397,7 +397,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 		WithFields(edge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
 
-	if self.listener.factory.stateManager.WasSessionRecentlyRemoved(token) {
+	if self.listener.factory.stateManager.WasSessionRecentlyRemoved(sessionToken) {
 		log.Info("invalid session, not establishing terminator")
 		self.sendStateClosedReply("invalid session", req)
 		return
@@ -480,7 +480,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 		return
 	}
 
-	if checkResult.previous == nil || checkResult.previous.token != token {
+	if checkResult.previous == nil || checkResult.previous.token != sessionToken {
 		// need to remove session remove listener on close
 		terminator.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(sessionToken, func(token string) {
 			terminator.close(self.listener.factory.hostedServices, true, true, "session ended")
@@ -556,9 +556,7 @@ func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channe
 
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionToken", sessionToken).WithFields(edge.GetLoggerFields(req))
-	terminators := self.listener.factory.hostedServices.getRelatedTerminators(sessionToken, self)
-
-	terminators := self.listener.factory.hostedServices.getRelatedTerminators(connId, token, self)
+	terminators := self.listener.factory.hostedServices.getRelatedTerminators(connId, sessionToken, self)
 
 	if len(terminators) == 0 {
 		log.Error("failed to update bind, no listener found")
@@ -650,7 +648,7 @@ func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *chann
 		request.ApiSessionToken = apiSession.Token
 	}
 
-	log = log.WithField("terminator", terminator.terminatorId.Load()).WithField("checkPassed", checkPassed)
+	log = log.WithField("terminator", terminator.terminatorId).WithField("checkPassed", checkPassed)
 	log.Debug("sending health event")
 
 	if err := protobufs.MarshalTyped(request).Send(ctrlCh); err != nil {
