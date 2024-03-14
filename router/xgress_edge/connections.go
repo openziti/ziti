@@ -21,20 +21,22 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/router/fabric"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/router/state"
 )
 
+const JwtTokenPrefix = "ey"
+
 type sessionConnectionHandler struct {
-	stateManager                     fabric.StateManager
+	stateManager                     state.Manager
 	options                          *Options
 	invalidApiSessionToken           metrics.Meter
 	invalidApiSessionTokenDuringSync metrics.Meter
 }
 
-func newSessionConnectHandler(stateManager fabric.StateManager, options *Options, metricsRegistry metrics.Registry) *sessionConnectionHandler {
+func newSessionConnectHandler(stateManager state.Manager, options *Options, metricsRegistry metrics.Registry) *sessionConnectionHandler {
 	return &sessionConnectionHandler{
 		stateManager:                     stateManager,
 		options:                          options,
@@ -47,57 +49,68 @@ func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding) er
 	ch := binding.GetChannel()
 	binding.AddCloseHandler(handler)
 
-	if byteToken, ok := ch.Underlay().Headers()[edge.SessionTokenHeader]; ok {
-		token := string(byteToken)
+	byteToken, ok := ch.Underlay().Headers()[edge.SessionTokenHeader]
 
-		certificates := ch.Certificates()
-
-		if len(certificates) == 0 {
-			return errors.New("no client certificates provided")
-		}
-
-		fpg := cert.NewFingerprintGenerator()
-		fingerprints := fpg.FromCerts(certificates)
-
-		apiSession := handler.stateManager.GetApiSessionWithTimeout(token, handler.options.lookupApiSessionTimeout)
-
-		if apiSession == nil {
-			_ = ch.Close()
-
-			var subjects []string
-
-			for _, cert := range certificates {
-				subjects = append(subjects, cert.Subject.String())
-			}
-
-			handler.invalidApiSessionToken.Mark(1)
-			if handler.stateManager.IsSyncInProgress() {
-				handler.invalidApiSessionTokenDuringSync.Mark(1)
-			}
-
-			return fmt.Errorf("no api session found for token [%s], fingerprints: [%v], subjects [%v]", token, fingerprints, subjects)
-		}
-
-		for _, fingerprint := range apiSession.CertFingerprints {
-			if fingerprints.Contains(fingerprint) {
-				removeListener := handler.stateManager.AddApiSessionRemovedListener(token, func(token string) {
-					if !ch.IsClosed() {
-						if err := ch.Close(); err != nil {
-							pfxlog.Logger().WithError(err).Error("could not close channel during api session removal")
-						}
-					}
-				})
-
-				handler.stateManager.AddConnectedApiSessionWithChannel(token, removeListener, ch)
-
-				return nil
-			}
-		}
+	if !ok {
 		_ = ch.Close()
-		return errors.New("invalid client certificate for api session")
+		return errors.New("no token attribute provided")
 	}
+
+	certificates := ch.Certificates()
+
+	if len(certificates) == 0 {
+		return errors.New("no client certificates provided")
+	}
+
+	fpg := cert.NewFingerprintGenerator()
+	fingerprints := fpg.FromCerts(certificates)
+
+	token := string(byteToken)
+
+	apiSession := handler.stateManager.GetApiSessionWithTimeout(token, handler.options.lookupApiSessionTimeout)
+
+	if apiSession == nil {
+		_ = ch.Close()
+
+		var subjects []string
+
+		for _, curCert := range certificates {
+			subjects = append(subjects, curCert.Subject.String())
+		}
+
+		handler.invalidApiSessionToken.Mark(1)
+		if handler.stateManager.IsSyncInProgress() {
+			handler.invalidApiSessionTokenDuringSync.Mark(1)
+		}
+
+		return fmt.Errorf("no api session found for token [%s], fingerprints: [%v], subjects [%v]", token, fingerprints, subjects)
+	}
+
+	if apiSession.Claims != nil {
+		token = apiSession.Claims.ApiSessionId
+	}
+
+	for _, fingerprint := range apiSession.CertFingerprints {
+		if fingerprints.Contains(fingerprint) {
+			removeListener := handler.stateManager.AddApiSessionRemovedListener(token, func(token string) {
+				if !ch.IsClosed() {
+					if err := ch.Close(); err != nil {
+						pfxlog.Logger().WithError(err).Error("could not close channel during api session removal")
+					}
+				}
+
+				handler.stateManager.RemoveActiveChannel(ch)
+			})
+
+			handler.stateManager.AddActiveChannel(ch, apiSession)
+			handler.stateManager.AddConnectedApiSessionWithChannel(token, removeListener, ch)
+
+			return nil
+		}
+	}
+
 	_ = ch.Close()
-	return errors.New("no token attribute provided")
+	return errors.New("invalid client certificate for api session")
 }
 
 func (handler *sessionConnectionHandler) HandleClose(ch channel.Channel) {

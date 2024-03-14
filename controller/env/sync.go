@@ -17,19 +17,19 @@
 package env
 
 import (
+	"crypto/tls"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 	"sync"
 )
 
-// Aliased type for router strategies
+// RouterSyncStrategyType aliased type for router strategies
 type RouterSyncStrategyType string
 
-// Aliased type for router sync status
+// RouterSyncStatus aliased type for router sync status
 type RouterSyncStatus string
 
 const (
@@ -50,6 +50,7 @@ const (
 	//msg headers
 	SyncStrategyTypeHeader  = 1013
 	SyncStrategyStateHeader = 1014
+	SyncStrategyLastIndex   = 1015
 )
 
 // RouterSyncStrategy handles the life cycle of an Edge Router connecting to the controller, synchronizing
@@ -60,7 +61,7 @@ type RouterSyncStrategy interface {
 	Stop()
 	RouterConnectionHandler
 	RouterSynchronizerEventHandler
-	PeerAdded(peers []*event.ClusterPeer)
+	AddPublicKey(cert *tls.Certificate)
 }
 
 // RouterConnectionHandler is responsible for handling router connect/disconnect for synchronizing state.
@@ -79,6 +80,8 @@ type RouterSynchronizerEventHandler interface {
 	ApiSessionDeleted(apiSession *db.ApiSession)
 
 	SessionDeleted(session *db.Session)
+
+	PeerAdded(*db.Controller)
 }
 
 // RouterState provides a thread save mechanism to access and set router status information that may be influx

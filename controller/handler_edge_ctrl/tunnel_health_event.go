@@ -18,10 +18,10 @@ package handler_edge_ctrl
 
 import (
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/metrics"
 	"time"
 )
 
@@ -56,7 +56,7 @@ func (self *tunnelHealthEventHandler) HandleReceive(msg *channel.Message, _ chan
 	checkPassed, _ := msg.GetBoolHeader(int32(edge_ctrl_pb.Header_CheckPassed))
 
 	ctx := &TunnelHealthEventRequestContext{
-		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		terminatorId:              terminatorId,
 		checkPassed:               checkPassed,
 	}

@@ -101,6 +101,21 @@ func (c *Controller) GetPeerSigners() []*x509.Certificate {
 	return certs
 }
 
+func (c *Controller) GetPeerAddresses() []string {
+	if c.raftController == nil || c.raftController.Mesh == nil {
+		return nil
+	}
+
+	var addresses []string
+
+	for _, peer := range c.raftController.Mesh.GetPeers() {
+		addresses = append(addresses, peer.Address)
+	}
+
+	return addresses
+
+}
+
 func (c *Controller) GetId() *identity.TokenId {
 	return c.config.Id
 }
@@ -131,6 +146,12 @@ func (c *Controller) GetCommandDispatcher() command.Dispatcher {
 
 func (c *Controller) IsRaftEnabled() bool {
 	return c.raftController != nil
+}
+
+func (c *Controller) IsRaftLeader() bool { return c.raftController.IsLeader() }
+
+func (c *Controller) GetRaftIndex() uint64 {
+	return c.raftController.Raft.LastIndex()
 }
 
 func (c *Controller) GetDb() boltz.Db {

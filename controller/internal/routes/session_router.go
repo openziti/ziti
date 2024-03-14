@@ -18,14 +18,16 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_client_api_server/operations/session"
 	clientSession "github.com/openziti/edge-api/rest_client_api_server/operations/session"
 	managementSession "github.com/openziti/edge-api/rest_management_api_server/operations/session"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/metrics"
+	"net/http"
 	"time"
 )
 
@@ -123,10 +125,45 @@ func (r *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params session.CreateSessionParams) {
 	start := time.Now()
-	responder := &SessionRequestResponder{ae: ae, Responder: rc}
-	CreateWithResponder(rc, responder, SessionLinkFactory, func() (string, error) {
-		return ae.Managers.Session.Create(MapCreateSessionToModel(rc.Identity.Id, rc.ApiSession.Id, params.Session), rc.NewChangeContext())
-	})
+	if rc.Claims != nil {
+		request := MapCreateSessionToModel(rc.Claims.Subject, rc.Claims.ApiSessionId, params.Session)
+		token, err := ae.Managers.Session.CreateJwt(request, rc.NewChangeContext())
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		edgeRouters, err := getSessionEdgeRouters(ae, request)
+		if err != nil {
+			pfxlog.Logger().Errorf("could not render edge routers for jwt session: %s", err)
+		}
+
+		sessionType := rest_model.DialBind(request.Type)
+
+		newSessionEnvelope := &rest_model.SessionCreateEnvelope{
+			Data: &rest_model.SessionDetail{
+				BaseEntity: rest_model.BaseEntity{
+					ID: &request.Id,
+				},
+				APISessionID: &rc.ApiSession.Id,
+				EdgeRouters:  edgeRouters,
+				IdentityID:   &rc.Identity.Id,
+				ServiceID:    &request.ServiceId,
+				Token:        &token,
+				Type:         &sessionType,
+			},
+			Meta: &rest_model.Meta{},
+		}
+
+		rc.Respond(newSessionEnvelope, http.StatusCreated)
+	} else {
+		responder := &SessionRequestResponder{ae: ae, Responder: rc}
+		CreateWithResponder(rc, responder, SessionLinkFactory, func() (string, error) {
+			return ae.Managers.Session.Create(MapCreateSessionToModel(rc.Identity.Id, rc.ApiSession.Id, params.Session), rc.NewChangeContext())
+		})
+	}
+
 	r.createTimer.UpdateSince(start)
 }
 

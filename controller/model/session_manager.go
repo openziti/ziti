@@ -18,11 +18,14 @@ package model
 
 import (
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/lucsky/cuid"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/apierror"
 	fabricApiError "github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
@@ -151,6 +154,61 @@ func (self *SessionManager) EvaluatePostureForService(identityId, apiSessionId, 
 	}
 }
 
+func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (string, error) {
+	entity.Id = uuid.New().String()
+
+	service, err := self.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, entity.IdentityId, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if entity.Type == "" {
+		entity.Type = db.SessionTypeDial
+	}
+
+	if db.SessionTypeDial == entity.Type && !stringz.Contains(service.Permissions, db.PolicyTypeDialName) {
+		return "", errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
+	}
+
+	if db.SessionTypeBind == entity.Type && !stringz.Contains(service.Permissions, db.PolicyTypeBindName) {
+		return "", errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
+	}
+
+	policyResult := self.EvaluatePostureForService(entity.IdentityId, entity.ApiSessionId, entity.Type, service.Id, service.Name)
+
+	if !policyResult.Passed {
+		self.env.GetManagers().PostureResponse.postureCache.AddSessionRequestFailure(entity.IdentityId, policyResult.Failure)
+		return "", apierror.NewInvalidPosture(policyResult.Cause)
+	}
+
+	edgeRouterAvailable, err := self.GetEnv().GetManagers().EdgeRouter.IsSharedEdgeRouterPresent(entity.IdentityId, entity.ServiceId)
+	if err != nil {
+		return "", err
+	}
+
+	if !edgeRouterAvailable {
+		return "", apierror.NewNoEdgeRoutersAvailable()
+	}
+	entity.ServicePolicies = policyResult.PassingPolicyIds
+
+	claims := common.ServiceAccessClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    self.env.RootIssuer(),
+			Subject:   entity.ServiceId,
+			Audience:  jwt.ClaimStrings{common.ClaimAudienceOpenZiti},
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+			ID:        entity.Id,
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().AddDate(1, 0, 0)}, //bound by API Session
+		},
+		ApiSessionId: entity.ApiSessionId,
+		IdentityId:   entity.IdentityId,
+		Type:         entity.Type,
+		TokenType:    common.TokenTypeServiceAccess,
+	}
+
+	return self.env.GetServerJwtSigner().Generate(claims)
+}
+
 func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string, error) {
 	if self.getExistingSessionEntity(entity) {
 		return entity.Id, nil
@@ -194,6 +252,7 @@ func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string
 	if err != nil {
 		return "", err
 	}
+
 	if !edgeRouterAvailable {
 		return "", apierror.NewNoEdgeRoutersAvailable()
 	}

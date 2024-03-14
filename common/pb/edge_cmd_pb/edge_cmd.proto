@@ -165,6 +165,18 @@ message ConfigType {
   map<string, TagValue> tags = 4;
 }
 
+// Controllers
+message Controller {
+  string id = 1;
+  string name = 2;
+  string address = 3;
+  string certPem = 4;
+  string fingerprint = 5;
+  bool isOnline = 6;
+  google.protobuf.Timestamp lastJoinedAt = 7;
+  map<string, TagValue> tags = 8;
+}
+
 // Edge Routers
 message EdgeRouter {
   string id = 1;

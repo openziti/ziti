@@ -36,6 +36,7 @@ type Managers struct {
 	Ca                      *CaManager
 	Config                  *ConfigManager
 	ConfigType              *ConfigTypeManager
+	Controller              *ControllerManager
 	EdgeRouter              *EdgeRouterManager
 	EdgeRouterPolicy        *EdgeRouterPolicyManager
 	EdgeService             *EdgeServiceManager
@@ -72,6 +73,7 @@ func InitEntityManagers(env Env) *Managers {
 	managers.Ca = NewCaManager(env)
 	managers.Config = NewConfigManager(env)
 	managers.ConfigType = NewConfigTypeManager(env)
+	managers.Controller = NewControllerManager(env)
 	managers.EdgeRouter = NewEdgeRouterManager(env)
 	managers.EdgeRouterPolicy = NewEdgeRouterPolicyManager(env)
 	managers.EdgeService = NewEdgeServiceManager(env)

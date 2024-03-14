@@ -42,7 +42,9 @@ func NewAgentCtrlInit(p common.OptionsProvider) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			return action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
+			err := action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
+
+			return err
 		},
 	}
 

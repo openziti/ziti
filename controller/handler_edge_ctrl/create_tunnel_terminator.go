@@ -59,7 +59,6 @@ func (self *createTunnelTerminatorHandler) Label() string {
 
 func (self *createTunnelTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	startTime := time.Now()
-
 	req := &edge_ctrl_pb.CreateTunnelTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal CreateTerminatorRequest")
@@ -68,7 +67,7 @@ func (self *createTunnelTerminatorHandler) HandleReceive(msg *channel.Message, c
 
 	ctx := &CreateTunnelTerminatorRequestContext{
 		baseTunnelRequestContext: baseTunnelRequestContext{
-			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 			apiSession:                nil,
 			identity:                  nil,
 		},

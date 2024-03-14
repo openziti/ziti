@@ -3,12 +3,15 @@ package oidc_auth
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/pkg/errors"
 	"github.com/zitadel/oidc/v2/pkg/op"
 	"html/template"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -27,9 +30,16 @@ const (
 	passwordLoginUrl = "/oidc/login/username?authRequestID="
 	certLoginUrl     = "/oidc/login/cert?authRequestID="
 	extJwtLoginUrl   = "/oidc/login/ext-jwt?authRequestID="
-)
 
-const ()
+	AuthRequestIdHeader = "auth-request-id"
+	AcceptHeader        = "accept"
+	TotpRequiredHeader  = "totp-required"
+	ContentTypeHeader   = "content-type"
+
+	FormContentType = "application/x-www-form-urlencoded"
+	JsonContentType = "application/json"
+	HtmlContentType = "text/html"
+)
 
 // embedded file/HTML resources
 var (
@@ -97,11 +107,33 @@ func newLogin(store Storage, callback func(context.Context, string) string, issu
 
 func (l *login) createRouter(issuerInterceptor *op.IssuerInterceptor) {
 	l.router = mux.NewRouter()
+	l.router.Path("/password").Methods("GET").HandlerFunc(l.loginHandler)
+	l.router.Path("/password").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.authenticate))
+
 	l.router.Path("/username").Methods("GET").HandlerFunc(l.loginHandler)
 	l.router.Path("/username").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.authenticate))
+
+	l.router.Path("/cert").Methods("GET").HandlerFunc(issuerInterceptor.HandlerFunc(l.genericHandler))
 	l.router.Path("/cert").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.authenticate))
+
+	l.router.Path("/ext-jwt").Methods("GET").HandlerFunc(issuerInterceptor.HandlerFunc(l.genericHandler))
 	l.router.Path("/ext-jwt").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.authenticate))
+
 	l.router.Path("/totp").Methods("POST").HandlerFunc(l.checkTotp)
+	l.router.Path("/totp/enroll").Methods("POST").HandlerFunc(l.startEnrollTotp)
+	l.router.Path("/totp/enroll/verify").Methods("POST").HandlerFunc(l.completeTotpEnrollment)
+}
+
+func (l *login) genericHandler(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("cannot parse form:%s", err), http.StatusInternalServerError)
+		return
+	}
+
+	id := r.FormValue(queryAuthRequestID)
+	w.Header().Set(AuthRequestIdHeader, id)
+	_, _ = w.Write([]byte("please POST to this URL"))
 }
 
 func (l *login) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +143,9 @@ func (l *login) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	renderLogin(w, r.FormValue(queryAuthRequestID), nil)
+	id := r.FormValue(queryAuthRequestID)
+	w.Header().Set(AuthRequestIdHeader, id)
+	renderLogin(w, id, nil)
 }
 
 func renderLogin(w http.ResponseWriter, id string, err error) {
@@ -146,18 +180,51 @@ func renderPage(w http.ResponseWriter, pageTemplate *template.Template, id strin
 }
 
 func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
+	responseType, err := negotiateResponseContentType(r)
+
 	if err != nil {
-		http.Error(w, fmt.Sprintf("cannot parse form:%s", err), http.StatusInternalServerError)
-		return
+		renderJsonApiError(w, err)
 	}
-	id := r.FormValue("id")
-	code := r.FormValue("code")
+
+	bodyContentType, err := negotiateBodyContentType(r)
+
+	if err != nil {
+		renderJsonApiError(w, err)
+	}
+
+	id := ""
+	code := ""
+	if bodyContentType == FormContentType {
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("cannot parse form:%s", err), http.StatusInternalServerError)
+			return
+		}
+		id = r.FormValue("id")
+		code = r.FormValue("code")
+	} else if bodyContentType == JsonContentType {
+		payload := &Totp{}
+		body, err := io.ReadAll(r.Body)
+
+		if err != nil {
+			renderJsonError(w, err)
+			return
+		}
+		err = json.Unmarshal(body, payload)
+
+		if err != nil {
+			renderJsonError(w, err)
+			return
+		}
+
+		id = payload.GetAuthRequestId()
+		code = payload.Code
+	}
 
 	ctx := NewHttpChangeCtx(r)
-	authRequest, err := l.store.VerifyTotp(ctx, code, id)
+	authRequest, verifyErr := l.store.VerifyTotp(ctx, code, id)
 
-	if err != nil {
+	if verifyErr != nil {
 		renderTotp(w, id, err)
 		return
 	}
@@ -166,24 +233,18 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 		renderTotp(w, id, errors.New("invalid TOTP code"))
 	}
 
-	http.Redirect(w, r, l.callback(r.Context(), id), http.StatusFound)
+	if responseType == HtmlContentType {
+		http.Redirect(w, r, l.callback(r.Context(), id), http.StatusFound)
+	}
+
+	renderJson(w, http.StatusOK, &rest_model.Empty{})
 }
 
 func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
+	responseType, err := negotiateResponseContentType(r)
+
 	if err != nil {
-		http.Error(w, fmt.Sprintf("cannot parse form:%s", err), http.StatusInternalServerError)
-		return
-	}
-
-	username := r.FormValue("username")
-	password := r.FormValue("password")
-	configTypes := r.Form["configTypes"]
-
-	id := r.FormValue("id")
-
-	if id == "" {
-		id = r.URL.Query().Get("id")
+		renderJsonError(w, err)
 	}
 
 	pathSplits := strings.Split(r.URL.Path, "/")
@@ -195,22 +256,27 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 
 	method := pathSplits[len(pathSplits)-1]
 
+	//patch username from standard OIDC auth URIs
 	if method == "username" {
 		method = AuthMethodPassword
 	}
 
-	authCtx := model.NewAuthContextHttp(r, method, map[string]any{
-		"username":    username,
-		"password":    password,
-		"configTypes": configTypes,
-	}, NewHttpChangeCtx(r))
+	credentials := &updbCreds{}
+	apiErr := parsePayload(r, credentials)
 
-	authRequest, err := l.store.Authenticate(authCtx, id, configTypes)
+	if apiErr != nil {
+		renderJsonError(w, err)
+		return
+	}
 
-	if err != nil {
+	authCtx := model.NewAuthContextHttp(r, method, credentials, NewHttpChangeCtx(r))
+
+	authRequest, apiErr := l.store.Authenticate(authCtx, credentials.AuthRequestId, credentials.ConfigTypes)
+
+	if apiErr != nil {
 		invalid := apierror.NewInvalidAuth()
 		if method == AuthMethodPassword {
-			renderLogin(w, id, invalid)
+			renderLogin(w, credentials.AuthRequestId, invalid)
 			return
 		}
 
@@ -219,11 +285,74 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if authRequest.SecondaryTotpRequired && !authRequest.HasAmr(AuthMethodSecondaryTotp) {
-		renderTotp(w, id, err)
+		w.Header().Set(TotpRequiredHeader, "true")
+		if responseType == HtmlContentType {
+			renderTotp(w, credentials.AuthRequestId, err)
+		} else if responseType == JsonContentType {
+			renderJson(w, http.StatusOK, &rest_model.Empty{})
+		}
+
 		return
 	}
 
 	authRequest.AuthTime = time.Now()
+	authRequest.SdkInfo = credentials.SdkInfo
+	authRequest.EnvInfo = credentials.EnvInfo
 
-	http.Redirect(w, r, l.callback(r.Context(), id), http.StatusFound)
+	callbackUrl := l.callback(r.Context(), credentials.AuthRequestId)
+	http.Redirect(w, r, callbackUrl, http.StatusFound)
+}
+
+func (l *login) startEnrollTotp(w http.ResponseWriter, r *http.Request) {
+	changeCtx := NewHttpChangeCtx(r)
+
+	_, err := negotiateResponseContentType(r)
+
+	if err != nil {
+		renderJsonError(w, err)
+		return
+	}
+
+	payload := &AuthRequestBody{}
+	apiErr := parsePayload(r, payload)
+
+	if apiErr != nil {
+		renderJsonError(w, apiErr)
+		return
+	}
+
+	_, apiErr = l.store.StartTotpEnrollment(changeCtx, payload.AuthRequestId)
+
+	if apiErr != nil {
+		renderJsonError(w, apiErr)
+	}
+
+	renderJson(w, http.StatusOK, &rest_model.Empty{})
+}
+
+func (l *login) completeTotpEnrollment(w http.ResponseWriter, r *http.Request) {
+	changeCtx := NewHttpChangeCtx(r)
+
+	_, err := negotiateResponseContentType(r)
+
+	if err != nil {
+		renderJsonError(w, err)
+		return
+	}
+
+	payload := &Totp{}
+	apiErr := parsePayload(r, payload)
+
+	if apiErr != nil {
+		renderJsonError(w, err)
+		return
+	}
+
+	apiErr = l.store.CompleteTotpEnrollment(changeCtx, payload.Code, payload.AuthRequestId)
+
+	if apiErr != nil {
+		renderJsonError(w, apiErr)
+	}
+
+	renderJson(w, http.StatusOK, &rest_model.Empty{})
 }

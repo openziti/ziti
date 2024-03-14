@@ -59,8 +59,15 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 		entity.Token = uuid.New().String()
 	}
 
+	peerControllers := env.GetPeerControllerAddresses()
+
+	for i, addr := range peerControllers {
+		peerControllers[i] = "https://" + addr
+	}
+
 	enrollmentClaims := &ziti.EnrollmentClaims{
 		EnrollmentMethod: entity.Method,
+		Controllers:      peerControllers,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Audience:  []string{""},
 			ExpiresAt: &jwt.NumericDate{Time: expiresAt},
@@ -70,7 +77,7 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 		},
 	}
 
-	signedJwt, err := env.GetJwtSigner().Generate(subject, entity.Id, enrollmentClaims)
+	signedJwt, err := env.GetServerJwtSigner().Generate(enrollmentClaims)
 
 	if err != nil {
 		return err

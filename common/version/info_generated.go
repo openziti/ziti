@@ -2,7 +2,7 @@
 
 package version
 
-const (
+var (
 	Version   = "v0.0.0"
 	Revision  = "local"
 	Branch    = "local"

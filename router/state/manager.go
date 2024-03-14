@@ -14,27 +14,31 @@
 	limitations under the License.
 */
 
-package fabric
+package state
 
 import (
 	"bufio"
-	"crypto/sha1"
+	"crypto"
 	"crypto/x509"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/oidc_auth"
+	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"math/rand"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -44,13 +48,15 @@ const (
 	EventAddedApiSession   = "AddedApiSession"
 	EventUpdatedApiSession = "UpdatedApiSession"
 	EventRemovedApiSession = "RemovedApiSession"
+
+	RouterDataModelListerBufferSize = 100
 )
 
 type RemoveListener func()
 
 type DisconnectCB func(token string)
 
-type StateManager interface {
+type Manager interface {
 	//"Network" Sessions
 	RemoveEdgeSession(token string)
 	AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener
@@ -70,7 +76,8 @@ type StateManager interface {
 	RemoveConnectedApiSessionWithChannel(token string, underlay channel.Channel)
 	AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener
 
-	AddSignerPublicCert(keys [][]byte)
+	RouterDataModel() *common.RouterDataModel
+	SetRouterDataModel(model *common.RouterDataModel)
 
 	StartHeartbeat(env env.RouterEnv, seconds int, closeNotify <-chan struct{})
 	ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration)
@@ -79,11 +86,41 @@ type StateManager interface {
 	MarkSyncInProgress(trackerId string)
 	MarkSyncStopped(trackerId string)
 	IsSyncInProgress() bool
+
+	VerifyClientCert(cert *x509.Certificate) error
+
+	StartRouterModelSave(routerEnv env.RouterEnv, path string, duration time.Duration)
+	LoadRouterModel(filePath string)
+
+	AddActiveChannel(ch channel.Channel, session *ApiSession)
+	RemoveActiveChannel(ch channel.Channel)
+	GetApiSessionFromCh(ch channel.Channel) *ApiSession
+
+	GetConfig() *router.Config
 }
 
-type StateManagerImpl struct {
-	apiSessionsByToken      cmap.ConcurrentMap[string, *edge_ctrl_pb.ApiSession]
-	activeApiSessions       cmap.ConcurrentMap[string, *MapWithMutex]
+var _ Manager = (*ManagerImpl)(nil)
+
+func NewManager(config *router.Config) Manager {
+	return &ManagerImpl{
+		EventEmmiter:            events.New(),
+		apiSessionsByToken:      cmap.New[*edge_ctrl_pb.ApiSession](),
+		activeApiSessions:       cmap.New[*MapWithMutex](),
+		sessions:                cmap.New[uint32](),
+		recentlyRemovedSessions: cmap.New[time.Time](),
+		certCache:               cmap.New[*x509.Certificate](),
+		activeChannels:          cmap.New[*ApiSession](),
+		config:                  config,
+	}
+}
+
+type ManagerImpl struct {
+	config             *router.Config
+	apiSessionsByToken cmap.ConcurrentMap[string, *edge_ctrl_pb.ApiSession]
+
+	activeApiSessions cmap.ConcurrentMap[string, *MapWithMutex]
+	activeChannels    cmap.ConcurrentMap[string, *ApiSession]
+
 	sessions                cmap.ConcurrentMap[string, uint32]
 	recentlyRemovedSessions cmap.ConcurrentMap[string, time.Time]
 
@@ -96,43 +133,181 @@ type StateManagerImpl struct {
 	heartbeatOperation *heartbeatOperation
 	currentSync        string
 	syncLock           sync.Mutex
-	signerPublicCerts  cmap.ConcurrentMap[string, *x509.Certificate]
+
+	certCache       cmap.ConcurrentMap[string, *x509.Certificate]
+	routerDataModel atomic.Pointer[common.RouterDataModel]
 }
 
-func (sm *StateManagerImpl) AddSignerPublicCert(keys [][]byte) {
-	added := 0
-	ignored := 0
+func (sm *ManagerImpl) GetConfig() *router.Config {
+	return sm.config
+}
 
-	for _, key := range keys {
-		cert, err := x509.ParseCertificate(key)
+func (sm *ManagerImpl) GetApiSessionFromCh(ch channel.Channel) *ApiSession {
+	apiSession, _ := sm.activeChannels.Get(ch.Id())
 
-		if err != nil {
-			pfxlog.Logger().WithError(err).Error("could not parse signer public key")
-			continue
-		}
+	return apiSession
+}
 
-		kid := fmt.Sprintf("%x", sha1.Sum(key))
-		sm.signerPublicCerts.Upsert(kid, cert, func(exist bool, valueInMap *x509.Certificate, newValue *x509.Certificate) *x509.Certificate {
-			if exist {
-				ignored = ignored + 1
-			} else {
-				added = added + 1
+func (sm *ManagerImpl) AddActiveChannel(ch channel.Channel, session *ApiSession) {
+	sm.activeChannels.Set(ch.Id(), session)
+}
+
+func (sm *ManagerImpl) RemoveActiveChannel(ch channel.Channel) {
+	sm.activeChannels.Remove(ch.Id())
+}
+
+func (sm *ManagerImpl) StartRouterModelSave(routerEnv env.RouterEnv, filePath string, duration time.Duration) {
+	go func() {
+		for {
+			select {
+			case <-routerEnv.GetCloseNotify():
+				return
+			case <-time.After(duration):
+				sm.RouterDataModel().Save(filePath)
 			}
-			return valueInMap
-		})
+		}
+	}()
+}
+
+func (sm *ManagerImpl) LoadRouterModel(filePath string) {
+	model, err := common.NewReceiverRouterDataModelFromFile(filePath, RouterDataModelListerBufferSize)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Errorf("could not load router model from file [%s]", filePath)
+		model = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
 	}
 
-	pfxlog.Logger().WithField("received", len(keys)).WithField("added", added).WithField("ignored", ignored).Info("received signer public certificates")
+	sm.SetRouterDataModel(model)
+}
+
+func contains[T comparable](values []T, element T) bool {
+	for _, val := range values {
+		if val == element {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (sm *ManagerImpl) getX509FromData(kid string, data []byte) (*x509.Certificate, error) {
+	if cert, found := sm.certCache.Get(kid); found {
+		return cert, nil
+	}
+
+	cert, err := x509.ParseCertificate(data)
+
+	if err != nil {
+		return nil, err
+	}
+
+	sm.certCache.Set(kid, cert)
+
+	return cert, nil
+}
+
+func (sm *ManagerImpl) VerifyClientCert(cert *x509.Certificate) error {
+
+	rootPool := x509.NewCertPool()
+
+	rdm := sm.routerDataModel.Load()
+
+	for keysTuple := range rdm.PublicKeys.IterBuffered() {
+		if contains(keysTuple.Val.Usages, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation) {
+			cert, err := sm.getX509FromData(keysTuple.Val.Kid, keysTuple.Val.GetData())
+
+			if err != nil {
+				pfxlog.Logger().WithField("kid", keysTuple.Val.Kid).WithError(err).Error("could not parse x509 certificate data")
+				continue
+			}
+
+			rootPool.AddCert(cert)
+		}
+	}
+
+	opts := x509.VerifyOptions{
+		Roots:         rootPool,
+		Intermediates: x509.NewCertPool(),
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		CurrentTime:   cert.NotBefore,
+	}
+
+	if _, err := cert.Verify(opts); err != nil {
+		return fmt.Errorf("could not verify client certificate %w", err)
+	}
+
+	return nil
+}
+
+func (sm *ManagerImpl) ParseJwt(jwtStr string) (*jwt.Token, *common.AccessClaims, error) {
+	//pubKeyLookup also handles extJwtSigner.enabled checking
+	accessClaims := &common.AccessClaims{}
+	jwtToken, err := jwt.ParseWithClaims(jwtStr, accessClaims, sm.pubKeyLookup)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if accessClaims.Type == common.TokenTypeAccess {
+		return jwtToken, accessClaims, nil
+	}
+
+	return nil, nil, fmt.Errorf("invalid access token type: %s", accessClaims.Type)
+}
+
+func (sm *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
+	kidVal, ok := token.Header["kid"]
+
+	if !ok {
+		return nil, errors.New("could not lookup JWT signer, kid header missing")
+	}
+
+	kid, ok := kidVal.(string)
+
+	if !ok {
+		return nil, fmt.Errorf("kid header value is not a string, got type %T", kidVal)
+	}
+
+	kid = strings.TrimSpace(kid)
+
+	rdm := sm.routerDataModel.Load()
+	publicKeys := rdm.PublicKeys.IterBuffered()
+	for keysTuple := range publicKeys {
+		if contains(keysTuple.Val.Usages, edge_ctrl_pb.DataState_PublicKey_JWTValidation) {
+
+			if kid == keysTuple.Val.Kid {
+				return sm.parsePublicKey(keysTuple.Val)
+			}
+		}
+	}
+
+	return nil, errors.New("public key not found")
+}
+
+func (sm *ManagerImpl) RouterDataModel() *common.RouterDataModel {
+	rdm := sm.routerDataModel.Load()
+	if rdm == nil {
+		rdm = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
+		sm.routerDataModel.Store(rdm)
+	}
+	return rdm
+}
+
+func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel) {
+	publicKeys := model.PublicKeys.Items()
+	pfxlog.Logger().Debugf("number of public keys in rdm: %d", len(publicKeys))
+
+	sm.routerDataModel.Store(model)
 
 }
 
-func (sm *StateManagerImpl) MarkSyncInProgress(trackerId string) {
+func (sm *ManagerImpl) MarkSyncInProgress(trackerId string) {
 	sm.syncLock.Lock()
 	defer sm.syncLock.Unlock()
 	sm.currentSync = trackerId
 }
 
-func (sm *StateManagerImpl) MarkSyncStopped(trackerId string) {
+func (sm *ManagerImpl) MarkSyncStopped(trackerId string) {
 	sm.syncLock.Lock()
 	defer sm.syncLock.Unlock()
 	if sm.currentSync == trackerId {
@@ -140,24 +315,13 @@ func (sm *StateManagerImpl) MarkSyncStopped(trackerId string) {
 	}
 }
 
-func (sm *StateManagerImpl) IsSyncInProgress() bool {
+func (sm *ManagerImpl) IsSyncInProgress() bool {
 	sm.syncLock.Lock()
 	defer sm.syncLock.Unlock()
 	return sm.currentSync == ""
 }
 
-func NewStateManager() StateManager {
-	return &StateManagerImpl{
-		EventEmmiter:            events.New(),
-		apiSessionsByToken:      cmap.New[*edge_ctrl_pb.ApiSession](),
-		activeApiSessions:       cmap.New[*MapWithMutex](),
-		sessions:                cmap.New[uint32](),
-		recentlyRemovedSessions: cmap.New[time.Time](),
-		signerPublicCerts:       cmap.New[*x509.Certificate](),
-	}
-}
-
-func (sm *StateManagerImpl) AddApiSession(apiSession *edge_ctrl_pb.ApiSession) {
+func (sm *ManagerImpl) AddApiSession(apiSession *edge_ctrl_pb.ApiSession) {
 	pfxlog.Logger().
 		WithField("apiSessionId", apiSession.Id).
 		WithField("apiSessionToken", apiSession.Token).
@@ -167,7 +331,7 @@ func (sm *StateManagerImpl) AddApiSession(apiSession *edge_ctrl_pb.ApiSession) {
 	sm.Emit(EventAddedApiSession, apiSession)
 }
 
-func (sm *StateManagerImpl) UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession) {
+func (sm *ManagerImpl) UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession) {
 	pfxlog.Logger().
 		WithField("apiSessionId", apiSession.Id).
 		WithField("apiSessionToken", apiSession.Token).
@@ -177,7 +341,7 @@ func (sm *StateManagerImpl) UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession
 	sm.Emit(EventUpdatedApiSession, apiSession)
 }
 
-func (sm *StateManagerImpl) RemoveApiSession(token string) {
+func (sm *ManagerImpl) RemoveApiSession(token string) {
 	if ns, ok := sm.apiSessionsByToken.Get(token); ok {
 		pfxlog.Logger().WithField("apiSessionToken", token).Debug("removing api session")
 		sm.apiSessionsByToken.Remove(token)
@@ -193,7 +357,7 @@ func (sm *StateManagerImpl) RemoveApiSession(token string) {
 // RemoveMissingApiSessions removes API Sessions not present in the knownApiSessions argument. If the beforeSessionId
 // value is not empty string, it will be used as a monotonic comparison between it and  API session ids. API session ids
 // later than the sync will be ignored.
-func (sm *StateManagerImpl) RemoveMissingApiSessions(knownApiSessions []*edge_ctrl_pb.ApiSession, beforeSessionId string) {
+func (sm *ManagerImpl) RemoveMissingApiSessions(knownApiSessions []*edge_ctrl_pb.ApiSession, beforeSessionId string) {
 	validTokens := map[string]bool{}
 	for _, apiSession := range knownApiSessions {
 		validTokens[apiSession.Token] = true
@@ -211,7 +375,7 @@ func (sm *StateManagerImpl) RemoveMissingApiSessions(knownApiSessions []*edge_ct
 	}
 }
 
-func (sm *StateManagerImpl) RemoveEdgeSession(token string) {
+func (sm *ManagerImpl) RemoveEdgeSession(token string) {
 	pfxlog.Logger().WithField("sessionToken", token).Debug("removing network session")
 	eventName := sm.getEdgeSessionRemovedEventName(token)
 	sm.Emit(eventName)
@@ -226,7 +390,7 @@ func (sm *StateManagerImpl) RemoveEdgeSession(token string) {
 
 }
 
-func (sm *StateManagerImpl) GetApiSessionWithTimeout(token string, timeout time.Duration) *ApiSession {
+func (sm *ManagerImpl) GetApiSessionWithTimeout(token string, timeout time.Duration) *ApiSession {
 	deadline := time.Now().Add(timeout)
 	session := sm.GetApiSession(token)
 
@@ -250,16 +414,20 @@ func (sm *StateManagerImpl) GetApiSessionWithTimeout(token string, timeout time.
 type ApiSession struct {
 	*edge_ctrl_pb.ApiSession
 	JwtToken *jwt.Token
-	Claims   *oidc_auth.AccessClaims
+	Claims   *common.AccessClaims
 }
 
-func (sm *StateManagerImpl) GetApiSession(token string) *ApiSession {
-	if strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
-		accessClaims := &oidc_auth.AccessClaims{}
-		jwtToken, err := jwt.ParseWithClaims(token, accessClaims, sm.keyFunc)
+func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
+	if sm.config.Ha.Enabled && strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
+		jwtToken, accessClaims, err := sm.ParseJwt(token)
 
 		if err == nil {
-			if accessClaims.Type != oidc_auth.TokenTypeAccess {
+			if !accessClaims.HasAudience(common.ClaimAudienceOpenZiti) {
+				pfxlog.Logger().Errorf("provided a token with invalid audience '%s', expected: %s", accessClaims.Audience, common.ClaimAudienceOpenZiti)
+				return nil
+			}
+
+			if accessClaims.Type != common.TokenTypeAccess {
 				pfxlog.Logger().Errorf("provided a token with invalid type '%s'", accessClaims.Type)
 				return nil
 			}
@@ -286,15 +454,15 @@ func (sm *StateManagerImpl) GetApiSession(token string) *ApiSession {
 	return nil
 }
 
-func (sm *StateManagerImpl) WasSessionRecentlyRemoved(token string) bool {
+func (sm *ManagerImpl) WasSessionRecentlyRemoved(token string) bool {
 	return sm.recentlyRemovedSessions.Has(token)
 }
 
-func (sm *StateManagerImpl) MarkSessionRecentlyRemoved(token string) {
+func (sm *ManagerImpl) MarkSessionRecentlyRemoved(token string) {
 	sm.recentlyRemovedSessions.Set(token, time.Now())
 }
 
-func (sm *StateManagerImpl) AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
+func (sm *ManagerImpl) AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
 	if sm.recentlyRemovedSessions.Has(token) {
 		go callBack(token) // callback can be long process with network traffic. Don't block event processing
 		return func() {}
@@ -323,7 +491,7 @@ func (sm *StateManagerImpl) AddEdgeSessionRemovedListener(token string, callBack
 	}
 }
 
-func (sm *StateManagerImpl) SessionConnectionClosed(token string) {
+func (sm *ManagerImpl) SessionConnectionClosed(token string) {
 	sm.sessions.Upsert(token, 0, func(exist bool, valueInMap uint32, newValue uint32) uint32 {
 		if !exist {
 			return uint32(0)
@@ -345,7 +513,7 @@ func (sm *StateManagerImpl) SessionConnectionClosed(token string) {
 	})
 }
 
-func (sm *StateManagerImpl) AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
+func (sm *ManagerImpl) AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
 	eventName := sm.getApiSessionRemovedEventName(token)
 	listener := func(args ...interface{}) {
 		callBack(token)
@@ -357,17 +525,17 @@ func (sm *StateManagerImpl) AddApiSessionRemovedListener(token string, callBack 
 	}
 }
 
-func (sm *StateManagerImpl) getEdgeSessionRemovedEventName(token string) events.EventName {
+func (sm *ManagerImpl) getEdgeSessionRemovedEventName(token string) events.EventName {
 	eventName := EventRemovedEdgeSession + "-" + token
 	return events.EventName(eventName)
 }
 
-func (sm *StateManagerImpl) getApiSessionRemovedEventName(token string) events.EventName {
+func (sm *ManagerImpl) getApiSessionRemovedEventName(token string) events.EventName {
 	eventName := EventRemovedApiSession + "-" + token
 	return events.EventName(eventName)
 }
 
-func (sm *StateManagerImpl) StartHeartbeat(env env.RouterEnv, intervalSeconds int, closeNotify <-chan struct{}) {
+func (sm *ManagerImpl) StartHeartbeat(env env.RouterEnv, intervalSeconds int, closeNotify <-chan struct{}) {
 	sm.heartbeatOperation = newHeartbeatOperation(env, time.Duration(intervalSeconds)*time.Second, sm)
 
 	var err error
@@ -390,7 +558,7 @@ func (sm *StateManagerImpl) StartHeartbeat(env env.RouterEnv, intervalSeconds in
 	pfxlog.Logger().Info("heartbeat starting")
 }
 
-func (sm *StateManagerImpl) AddConnectedApiSession(token string) {
+func (sm *ManagerImpl) AddConnectedApiSession(token string) {
 	sm.activeApiSessions.Upsert(token, nil, func(exist bool, valueInMap *MapWithMutex, newValue *MapWithMutex) *MapWithMutex {
 		if exist {
 			return valueInMap
@@ -399,11 +567,11 @@ func (sm *StateManagerImpl) AddConnectedApiSession(token string) {
 	})
 }
 
-func (sm *StateManagerImpl) RemoveConnectedApiSession(token string) {
+func (sm *ManagerImpl) RemoveConnectedApiSession(token string) {
 	sm.activeApiSessions.Remove(token)
 }
 
-func (sm *StateManagerImpl) AddConnectedApiSessionWithChannel(token string, removeCB func(), ch channel.Channel) {
+func (sm *ManagerImpl) AddConnectedApiSessionWithChannel(token string, removeCB func(), ch channel.Channel) {
 	var sessions *MapWithMutex
 
 	for sessions == nil {
@@ -419,7 +587,7 @@ func (sm *StateManagerImpl) AddConnectedApiSessionWithChannel(token string, remo
 	}
 }
 
-func (sm *StateManagerImpl) RemoveConnectedApiSessionWithChannel(token string, ch channel.Channel) {
+func (sm *ManagerImpl) RemoveConnectedApiSessionWithChannel(token string, ch channel.Channel) {
 	if sessions, ok := sm.activeApiSessions.Get(token); ok {
 		if !ok {
 			pfxlog.Logger().Panic("could not convert active sessions to map")
@@ -439,11 +607,28 @@ func (sm *StateManagerImpl) RemoveConnectedApiSessionWithChannel(token string, c
 	}
 }
 
-func (sm *StateManagerImpl) ActiveApiSessionTokens() []string {
-	return sm.activeApiSessions.Keys()
+func (sm *ManagerImpl) ActiveApiSessionTokens() []string {
+	var toClose []func()
+	var activeKeys []string
+	for i := range sm.activeApiSessions.IterBuffered() {
+		func() {
+			token := i.Key
+			chMutex := i.Val
+
+			chMutex.Visit(func(ch channel.Channel, closeCb func()) {
+				if ch.IsClosed() {
+					toClose = append(toClose, closeCb)
+				} else {
+					activeKeys = append(activeKeys, token)
+				}
+			})
+		}()
+	}
+
+	return activeKeys
 }
 
-func (sm *StateManagerImpl) flushRecentlyRemoved() {
+func (sm *ManagerImpl) flushRecentlyRemoved() {
 	now := time.Now()
 	var toRemove []string
 	sm.recentlyRemovedSessions.IterCb(func(key string, t time.Time) {
@@ -463,7 +648,7 @@ func (sm *StateManagerImpl) flushRecentlyRemoved() {
 	}
 }
 
-func (sm *StateManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
+func (sm *ManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
 	ch := make(chan string, 15)
 
 	go func() {
@@ -521,7 +706,16 @@ func (self *MapWithMutex) Put(ch channel.Channel, f func()) {
 	self.m[ch] = f
 }
 
-func (sm *StateManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration) {
+func (self *MapWithMutex) Visit(cb func(ch channel.Channel, closeCb func())) {
+	self.Lock()
+	defer self.Unlock()
+
+	for ch, closeCb := range self.m {
+		cb(ch, closeCb)
+	}
+}
+
+func (sm *ManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration) {
 	sessionTokens := sm.sessions.Keys()
 
 	for len(sessionTokens) > 0 {
@@ -566,30 +760,22 @@ func (sm *StateManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint3
 
 }
 
-func (sm *StateManagerImpl) keyFunc(token *jwt.Token) (interface{}, error) {
-	kidVal, kidHeaderFound := token.Header["kid"]
-
-	if !kidHeaderFound {
-		return nil, fmt.Errorf("token does not have kid header, unable to lookup")
-	}
-
-	kid := kidVal.(string)
-
-	key, keyFound := sm.signerPublicCerts.Get(kid)
-
-	if !keyFound {
-		sm.RefreshSigners()
-
-		key, keyFound = sm.signerPublicCerts.Get(kid)
-
-		if !keyFound {
-			return nil, fmt.Errorf("key for kid %s not found after refresh", kid)
+func (sm *ManagerImpl) parsePublicKey(publicKey *edge_ctrl_pb.DataState_PublicKey) (crypto.PublicKey, error) {
+	switch publicKey.Format {
+	case edge_ctrl_pb.DataState_PublicKey_X509CertDer:
+		certs, err := x509.ParseCertificates(publicKey.Data)
+		if err != nil {
+			return nil, err
 		}
+
+		if len(certs) == 0 {
+			return nil, errors.New("could not parse certificates, der was empty")
+		}
+
+		return certs[0].PublicKey, nil
+	case edge_ctrl_pb.DataState_PublicKey_PKIXPublicKey:
+		return x509.ParsePKIXPublicKey(publicKey.Data)
 	}
 
-	return key, nil
-}
-
-func (sm *StateManagerImpl) RefreshSigners() {
-	//nothing atm
+	return nil, fmt.Errorf("unsupported public key format: %s", publicKey.Format.String())
 }

@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/debugops"
-	"github.com/openziti/ziti/router/fabric"
+	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_edge"
 	"github.com/openziti/ziti/router/xgress_edge_transport"
@@ -73,7 +73,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	r := router.Create(config, version.GetCmdBuildInfo())
 
-	stateManager := fabric.NewStateManager()
+	stateManager := state.NewManager(config)
 
 	xgressEdgeFactory := xgress_edge.NewFactory(config, r, stateManager)
 	xgress.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)

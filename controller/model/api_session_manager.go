@@ -124,6 +124,7 @@ func (self *ApiSessionManager) UpdateWithFieldChecker(apiSession *ApiSession, fi
 
 func (self *ApiSessionManager) MfaCompleted(apiSession *ApiSession, ctx *change.Context) error {
 	apiSession.MfaComplete = true
+
 	return self.updateEntity(apiSession, &OrFieldChecker{NewFieldChecker(db.FieldApiSessionMfaComplete), self}, ctx.NewMutateContext())
 }
 
@@ -293,6 +294,20 @@ func (self *ApiSessionManager) DeleteByIdentityId(identityId string, changeCtx *
 		query := fmt.Sprintf(`%s = "%s"`, db.FieldApiSessionIdentity, identityId)
 		return self.Store.DeleteWhere(ctx, query)
 	})
+}
+
+func (self *ApiSessionManager) SetMfaPassed(apiSession *ApiSession, changeCtx *change.Context) error {
+	apiSession.MfaComplete = true
+	apiSession.MfaRequired = true
+
+	if err := self.UpdateWithFieldChecker(apiSession, boltz.MapFieldChecker{db.FieldApiSessionMfaComplete: struct{}{}, db.FieldApiSessionMfaRequired: struct{}{}}, changeCtx); err != nil {
+		pfxlog.Logger().Errorf("could not update API Session with new MFA status: %v", err)
+		return err
+	}
+
+	self.env.GetManagers().PostureResponse.SetMfaPosture(apiSession.IdentityId, apiSession.Id, true)
+
+	return nil
 }
 
 type ApiSessionListResult struct {

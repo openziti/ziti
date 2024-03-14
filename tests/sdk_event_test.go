@@ -31,7 +31,9 @@ func Test_SDK_Events(t *testing.T) {
 	ctx.Req.NoError(err)
 
 	adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
-	adminClient := edge_apis.NewManagementApiClient(managementApiUrl, ctx.ControllerConfig.Id.CA(), nil)
+	adminClient := edge_apis.NewManagementApiClient(managementApiUrl, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+		strings <- "123"
+	})
 	apiSession, err := adminClient.Authenticate(adminCreds, nil)
 	ctx.NoError(err)
 	ctx.NotNil(apiSession)
@@ -60,9 +62,9 @@ func Test_SDK_Events(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(ztx)
 
-		called := make(chan *edge_apis.ApiSession, 1)
+		called := make(chan edge_apis.ApiSession, 1)
 
-		removeFullListener := ztx.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail *edge_apis.ApiSession) {
+		removeFullListener := ztx.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail edge_apis.ApiSession) {
 			ctx.Req.NotNil(ztx)
 			called <- detail
 		})
@@ -77,7 +79,7 @@ func Test_SDK_Events(t *testing.T) {
 		case newApiSession := <-called:
 			ctx.Req.NotNil(newApiSession)
 			ctx.Req.NotEmpty(newApiSession.GetToken())
-			ctx.Req.Empty(newApiSession.AuthQueries, "expected 0 auth queries")
+			ctx.Req.Empty(newApiSession.GetAuthQueries(), "expected 0 auth queries")
 		case <-time.After(time.Second * 5):
 			ctx.Req.Fail("time out, full auth event never encountered")
 		}
@@ -128,9 +130,9 @@ func Test_SDK_Events(t *testing.T) {
 				ztxPostMfa.Close()
 			}()
 
-			partialChan := make(chan *edge_apis.ApiSession, 1)
+			partialChan := make(chan edge_apis.ApiSession, 1)
 
-			removePartialListener := ztxPostMfa.Events().AddAuthenticationStatePartialListener(func(ztx ziti.Context, detail *edge_apis.ApiSession) {
+			removePartialListener := ztxPostMfa.Events().AddAuthenticationStatePartialListener(func(ztx ziti.Context, detail edge_apis.ApiSession) {
 				ctx.Req.NotNil(ztx)
 				partialChan <- detail
 			})
@@ -140,7 +142,7 @@ func Test_SDK_Events(t *testing.T) {
 
 			select {
 			case newApiSession := <-partialChan:
-				ctx.Req.Len(newApiSession.AuthQueries, 1, "expected 1 auth query")
+				ctx.Req.Len(newApiSession.GetAuthQueries(), 1, "expected 1 auth query")
 			case <-time.After(5 * time.Second):
 				ctx.Req.Fail("time out, partial auth event not received")
 			}
@@ -159,9 +161,9 @@ func Test_SDK_Events(t *testing.T) {
 			t.Run("EventAuthenticationStateFull emitted after providing MFA TOTP Code", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				fullChan := make(chan *edge_apis.ApiSession, 1)
+				fullChan := make(chan edge_apis.ApiSession, 1)
 
-				fullListenerRemover := ztxPostMfa.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail *edge_apis.ApiSession) {
+				fullListenerRemover := ztxPostMfa.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail edge_apis.ApiSession) {
 					ctx.Req.NotNil(ztx)
 					fullChan <- detail
 				})
@@ -185,7 +187,7 @@ func Test_SDK_Events(t *testing.T) {
 				case newApiSession := <-fullChan:
 					ctx.Req.NotNil(newApiSession)
 					ctx.Req.NotEmpty(newApiSession.GetToken())
-					ctx.Req.Empty(newApiSession.AuthQueries, "expected 0 auth queries")
+					ctx.Req.Empty(newApiSession.GetAuthQueries(), "expected 0 auth queries")
 				case <-time.After(time.Second * 5):
 					ctx.Req.Fail("time out")
 				}
@@ -193,9 +195,9 @@ func Test_SDK_Events(t *testing.T) {
 				t.Run("EventAuthenticationStateUnauthenticated emitted if the current API Session is deleted", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
-					unauthCalled := make(chan *edge_apis.ApiSession, 1)
+					unauthCalled := make(chan edge_apis.ApiSession, 1)
 
-					removeUnauthedListener := ztxPostMfa.Events().AddAuthenticationStateUnauthenticatedListener(func(ztx ziti.Context, detail *edge_apis.ApiSession) {
+					removeUnauthedListener := ztxPostMfa.Events().AddAuthenticationStateUnauthenticatedListener(func(ztx ziti.Context, detail edge_apis.ApiSession) {
 						ctx.Req.NotNil(ztx)
 						ctx.Req.NotNil(detail)
 
@@ -205,7 +207,7 @@ func Test_SDK_Events(t *testing.T) {
 					defer removeUnauthedListener()
 
 					implZtx := ztxPostMfa.(*ziti.ContextImpl)
-					apiSessionId := *implZtx.CtrlClt.ApiSession.Load().ID
+					apiSessionId := implZtx.CtrlClt.GetCurrentApiSession().GetId()
 
 					deleteParams := api_session.NewDeleteAPISessionsParams()
 					deleteParams.ID = apiSessionId

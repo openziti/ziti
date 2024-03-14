@@ -27,10 +27,10 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/fabric"
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/internal/apiproxy"
 	"github.com/openziti/ziti/router/internal/edgerouter"
+	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 	"strings"
@@ -43,7 +43,7 @@ type Factory struct {
 	routerConfig     *router.Config
 	edgeRouterConfig *edgerouter.Config
 	hostedServices   *hostedServiceRegistry
-	stateManager     fabric.StateManager
+	stateManager     state.Manager
 	versionProvider  versions.VersionProvider
 	certChecker      *CertExpirationChecker
 	metricsRegistry  metrics.Registry
@@ -66,7 +66,6 @@ func (factory *Factory) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionAddedHandler(factory.stateManager, binding))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionRemovedHandler(factory.stateManager))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionUpdatedHandler(factory.stateManager))
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewSigningCertAddedHandler(factory.stateManager))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.env.GetRouterId(), func() {
 		factory.certChecker.CertsUpdated()
 	}))
@@ -74,6 +73,9 @@ func (factory *Factory) BindChannel(binding channel.Binding) error {
 		Type:    int32(edge_ctrl_pb.ContentType_CreateTerminatorV2ResponseType),
 		Handler: factory.hostedServices.HandleCreateTerminatorResponse,
 	})
+
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewDataStateHandler(factory.stateManager))
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewDataStateEventHandler(factory.stateManager))
 
 	return nil
 }
@@ -91,6 +93,9 @@ func (factory *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
 
 func (factory *Factory) Run(env env.RouterEnv) error {
 	factory.stateManager.StartHeartbeat(env, factory.edgeRouterConfig.HeartbeatIntervalSeconds, env.GetCloseNotify())
+
+	factory.stateManager.StartRouterModelSave(env, factory.edgeRouterConfig.Db, factory.edgeRouterConfig.DbSaveInterval)
+
 	factory.certChecker = NewCertExpirationChecker(factory.env.GetRouterId(), factory.edgeRouterConfig, env.GetNetworkControllers(), env.GetCloseNotify())
 
 	go func() {
@@ -120,13 +125,16 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	config.Tcfg["protocol"] = append(config.Tcfg.Protocols(), "ziti-edge", "")
 
 	factory.edgeRouterConfig = config
+
+	factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
+
 	go apiproxy.Start(config)
 
 	return nil
 }
 
 // NewFactory constructs a new Edge Xgress Factory instance
-func NewFactory(routerConfig *router.Config, env env.RouterEnv, stateManager fabric.StateManager) *Factory {
+func NewFactory(routerConfig *router.Config, env env.RouterEnv, stateManager state.Manager) *Factory {
 	factory := &Factory{
 		ctrls:           env.GetNetworkControllers(),
 		hostedServices:  newHostedServicesRegistry(env),

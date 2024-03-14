@@ -22,6 +22,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	clientService "github.com/openziti/edge-api/rest_client_api_server/operations/service"
 	managementService "github.com/openziti/edge-api/rest_management_api_server/operations/service"
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/db"
@@ -67,6 +69,12 @@ func (r *ServiceRouter) Register(ae *env.AppEnv) {
 
 	ae.ClientApi.ServiceListServiceTerminatorsHandler = clientService.ListServiceTerminatorsHandlerFunc(func(params clientService.ListServiceTerminatorsParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(r.listClientTerminators, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
+	ae.ClientApi.ServiceListServiceEdgeRoutersHandler = clientService.ListServiceEdgeRoutersHandlerFunc(func(params clientService.ListServiceEdgeRoutersParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.listClientEdgeRouters(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
 	//Management
@@ -315,4 +323,72 @@ func (r *ServiceRouter) listIdentities(ae *env.AppEnv, rc *response.RequestConte
 func (r *ServiceRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from serviceEdgeRouterPolicies where anyOf(services) = "%v")`
 	ListAssociationsWithFilter[*model.EdgeRouter](ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
+}
+
+func (r *ServiceRouter) listClientEdgeRouters(ae *env.AppEnv, rc *response.RequestContext, params clientService.ListServiceEdgeRoutersParams) {
+	serviceId, err := rc.GetEntityId()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if params.SessionToken != nil {
+		_, err := ae.ValidateServiceAccessToken(*params.SessionToken, &rc.ApiSession.Id)
+		if err != nil {
+			apiErr := errorz.NewUnauthorized()
+			apiErr.Cause = err
+			rc.RespondWithError(apiErr)
+			return
+		}
+	}
+
+	svc, err := ae.Managers.EdgeService.ReadForIdentity(serviceId, rc.Identity.Id, nil)
+
+	if err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			rc.RespondWithNotFound()
+		} else {
+			rc.RespondWithError(err)
+		}
+		return
+	}
+
+	if svc == nil {
+		rc.RespondWithNotFound()
+		return
+	}
+
+	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
+		return getServiceEdgeRouters(ae, rc, serviceId)
+	})
+}
+
+func getServiceEdgeRouters(ae *env.AppEnv, rc *response.RequestContext, serviceId string) (*rest_model.ServiceEdgeRouters, error) {
+	edgeRouters := &rest_model.ServiceEdgeRouters{}
+
+	edgeRoutersForSvc, err := ae.Managers.EdgeRouter.ListForIdentityAndService(rc.Identity.Id, serviceId, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, edgeRouter := range edgeRoutersForSvc.EdgeRouters {
+		state := ae.Broker.GetEdgeRouterState(edgeRouter.Id)
+
+		syncStatus := string(state.SyncStatus)
+		cost := int64(edgeRouter.Cost)
+		er := &rest_model.CommonEdgeRouterProperties{
+			Hostname:           &state.Hostname,
+			IsOnline:           &state.IsOnline,
+			Name:               &edgeRouter.Name,
+			SupportedProtocols: state.Protocols,
+			SyncStatus:         &syncStatus,
+			Cost:               &cost,
+			NoTraversal:        &edgeRouter.NoTraversal,
+			Disabled:           &edgeRouter.Disabled,
+		}
+		edgeRouters.EdgeRouters = append(edgeRouters.EdgeRouters, er)
+	}
+
+	return edgeRouters, nil
 }

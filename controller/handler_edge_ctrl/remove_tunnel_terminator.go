@@ -47,7 +47,7 @@ func (self *removeTunnelTerminatorHandler) Label() string {
 
 func (self *removeTunnelTerminatorHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	ctx := &RemoveTunnelTerminatorRequestContext{
-		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		terminatorId:              string(msg.Body),
 	}
 

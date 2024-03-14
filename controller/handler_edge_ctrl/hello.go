@@ -26,10 +26,10 @@ import (
 
 type helloHandler struct {
 	appEnv   *env.AppEnv
-	callback func(routerId string, respHello *edge_ctrl_pb.ClientHello)
+	callback func(routerId string, msg *channel.Message, respHello *edge_ctrl_pb.ClientHello)
 }
 
-func NewHelloHandler(appEnv *env.AppEnv, callback func(routerId string, respHello *edge_ctrl_pb.ClientHello)) *helloHandler {
+func NewHelloHandler(appEnv *env.AppEnv, callback func(routerId string, msg *channel.Message, respHello *edge_ctrl_pb.ClientHello)) *helloHandler {
 	return &helloHandler{
 		appEnv:   appEnv,
 		callback: callback,
@@ -47,5 +47,5 @@ func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 		return
 	}
 
-	h.callback(ch.Id(), respHello)
+	h.callback(ch.Id(), msg, respHello)
 }

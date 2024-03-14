@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
+	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -102,4 +103,18 @@ func (self *ServicePolicyManager) Unmarshall(bytes []byte) (*ServicePolicy, erro
 		PostureCheckRoles: msg.PostureCheckRoles,
 		PolicyType:        msg.PolicyType,
 	}, nil
+}
+
+type AssociatedIdsResult struct {
+	ServiceIds      []string
+	IdentityIds     []string
+	PostureCheckIds []string
+}
+
+func (self *ServicePolicyManager) ListAssociatedIds(tx *bbolt.Tx, id string) *AssociatedIdsResult {
+	return &AssociatedIdsResult{
+		IdentityIds:     self.env.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, id, db.EntityTypeIdentities),
+		ServiceIds:      self.env.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, id, db.EntityTypeServicePolicies),
+		PostureCheckIds: self.env.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, id, db.EntityTypePostureChecks),
+	}
 }
