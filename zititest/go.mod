@@ -19,7 +19,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.39
 	github.com/openziti/identity v1.0.72
 	github.com/openziti/sdk-golang v0.23.10
-	github.com/openziti/storage v0.2.30
+	github.com/openziti/storage v0.2.32
 	github.com/openziti/transport/v2 v2.0.124
 	github.com/openziti/ziti v0.28.3
 	github.com/pkg/errors v0.9.1
@@ -138,7 +138,7 @@ require (
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
 	github.com/openziti/metrics v1.2.47 // indirect
-	github.com/openziti/runzmd v1.0.38 // indirect
+	github.com/openziti/runzmd v1.0.40 // indirect
 	github.com/openziti/secretstream v0.1.17 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.1.0 // indirect

@@ -3,9 +3,9 @@ package tunnel
 import (
 	"encoding/json"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/tunnel/health"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/tunnel/health"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
@@ -32,6 +32,7 @@ type HostControl interface {
 type FabricProvider interface {
 	PrepForUse(serviceId string)
 	GetCurrentIdentity() (*rest_model.IdentityDetail, error)
+	GetCurrentIdentityWithBackoff() (*rest_model.IdentityDetail, error)
 	TunnelService(service Service, identity string, conn net.Conn, halfClose bool, appInfo []byte) error
 	HostService(hostCtx HostingContext) (HostControl, error)
 }

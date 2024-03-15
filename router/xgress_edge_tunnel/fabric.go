@@ -204,6 +204,10 @@ func (self *fabricProvider) GetCurrentIdentity() (*rest_model.IdentityDetail, er
 	return self.currentIdentity, nil
 }
 
+func (self *fabricProvider) GetCurrentIdentityWithBackoff() (*rest_model.IdentityDetail, error) {
+	return self.currentIdentity, nil
+}
+
 func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInstanceId string, conn net.Conn, halfClose bool, appData []byte) error {
 	keyPair, err := kx.NewKeyPair()
 	if err != nil {
