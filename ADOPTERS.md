@@ -22,6 +22,7 @@ open source that have embedded OpenZiti into the project, or use OpenZiti for se
 | Project Name | Project Link    | Source URL | Logo                                                                                           | How OpenZiti is used or why OpenZiti was chosen                                                                          |
 |-------------|-----------------|------------|------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
 | zrok        | https://zrok.io | https://github.com/openziti/zrok           | <img src="https://zrok.io/wp-content/uploads/2023/01/space3-1327x1536.png.webp" width="100px"> | An open source sharing solution built on OpenZiti, the zero trust networking platform. Available as SaaS or self-hosted. |
+| BlueBubbles  | https://bluebubbles.app  | https://github.com/BlueBubblesApp | <img src="https://raw.githubusercontent.com/BlueBubblesApp/bluebubbles-server/master/icons/regular/icon-256.png" width="100px"> | BlueBubbles is an open-source app ecosystem dedicated to bringing iMessage to Android, Windows, and Linux. Shock your iPhone friends by iMessaging them from nearly any platform!  |
 
 
 ## Other Adopters
