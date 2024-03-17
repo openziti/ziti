@@ -19,7 +19,6 @@ package xgress_edge_tunnel
 import (
 	"encoding/json"
 	"github.com/cenkalti/backoff/v4"
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
@@ -33,6 +32,7 @@ import (
 	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/tunnel"
@@ -289,7 +289,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 }
 
 func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.HostControl, error) {
-	id := uuid.NewString()
+	id := idgen.NewUUIDString()
 
 	terminator := &tunnelTerminator{
 		id:            id,

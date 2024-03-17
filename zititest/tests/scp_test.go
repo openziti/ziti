@@ -85,7 +85,7 @@ func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool)
 		encDesk = "unencrypted"
 	}
 
-	success := false
+	success := true
 
 	nameExtra := ""
 	if !encrypted {
@@ -107,6 +107,7 @@ func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool)
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("(%s%s%s)-%v", hostSelector, test.direction, hostType, encDesk), func(t *testing.T) {
+			success = false
 			host, err := model.GetModel().SelectHost("." + hostSelector + "-client")
 			req := require.New(t)
 			req.NoError(err)

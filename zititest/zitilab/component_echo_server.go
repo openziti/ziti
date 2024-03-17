@@ -45,15 +45,20 @@ func (self *EchoServerType) IsRunning(_ model.Run, c *model.Component) (bool, er
 	return len(pids) > 0, nil
 }
 
-func (self *EchoServerType) Start(_ model.Run, c *model.Component) error {
+func (self *EchoServerType) Start(run model.Run, c *model.Component) error {
 	user := c.GetHost().GetSshUser()
 
 	binaryPath := getZitiBinaryPath(c, self.Version)
 	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s.json", user, c.Id)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
-	serviceCmd := fmt.Sprintf("nohup %s demo echo-server -i %s --cli-agent-alias %s > %s 2>&1 &",
-		binaryPath, configPath, c.Id, logsPath)
+	ha := ""
+	if len(run.GetModel().SelectComponents(".ctrl")) > 1 {
+		ha = "--ha"
+	}
+
+	serviceCmd := fmt.Sprintf("nohup %s demo echo-server --cli-agent-alias %s %s -i %s > %s 2>&1 &",
+		binaryPath, c.Id, ha, configPath, logsPath)
 
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {

@@ -441,9 +441,10 @@ func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
 				JwtToken: jwtToken,
 				Claims:   accessClaims,
 			}
+		} else {
+			pfxlog.Logger().WithError(err).Error("JWT validation failed")
+			return nil
 		}
-
-		//fall through to check if the token is a zt-session
 	}
 
 	if apiSession, ok := sm.apiSessionsByToken.Get(token); ok {
