@@ -137,7 +137,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 func NewFactory(routerConfig *router.Config, env env.RouterEnv, stateManager state.Manager) *Factory {
 	factory := &Factory{
 		ctrls:           env.GetNetworkControllers(),
-		hostedServices:  newHostedServicesRegistry(env),
+		hostedServices:  newHostedServicesRegistry(env, stateManager),
 		stateManager:    stateManager,
 		versionProvider: env.GetVersionInfo(),
 		routerConfig:    routerConfig,

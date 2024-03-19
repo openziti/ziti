@@ -38,7 +38,7 @@ import (
 	"time"
 )
 
-const ZitiEdgeTunnelVersion = "v0.22.17"
+const ZitiEdgeTunnelVersion = "v0.22.25"
 
 //go:embed configs
 var configResource embed.FS

@@ -243,6 +243,7 @@ web:
         options: { }
       - binding: edge-oidc
         options:
+          secret: 38de0de7fa283e8c8ef2a7823a6d3e727681ade50b9eb7bee2424197fb22bf18
           redirectURIs:
             - "http://localhost:*/auth/callback"
             - "http://127.0.0.1:*/auth/callback"
