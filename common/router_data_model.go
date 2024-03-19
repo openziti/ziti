@@ -417,6 +417,10 @@ func (rdm *RouterDataModel) ApplyRevocationEvent(event *edge_ctrl_pb.DataState_E
 	rdm.sendEvent(event)
 }
 
+func (rdm *RouterDataModel) GetPublicKeys() map[string]*edge_ctrl_pb.DataState_PublicKey {
+	return rdm.PublicKeys.Items()
+}
+
 func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
 	var events []*edge_ctrl_pb.DataState_Event
 

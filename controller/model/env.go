@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/jwtsigner"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/xeipuuv/gojsonschema"
@@ -67,6 +68,8 @@ type HostController interface {
 	Identity() identity.Identity
 	GetPeerSigners() []*x509.Certificate
 	GetRaftIndex() uint64
+	GetRaftInfo() (string, string, string)
+	GetApiAddresses() (map[string][]event.ApiAddress, []byte)
 }
 
 type Schemas interface {

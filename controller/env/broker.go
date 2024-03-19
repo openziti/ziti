@@ -17,6 +17,8 @@
 package env
 
 import (
+	"crypto"
+	"crypto/x509"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/storage/boltz"
@@ -25,6 +27,7 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/network"
 	"go.etcd.io/bbolt"
+	"sync"
 )
 
 const (
@@ -57,6 +60,9 @@ type Broker struct {
 	apiSessionChunkSize int
 	routerMsgBufferSize int
 	routerSyncStrategy  RouterSyncStrategy
+
+	publicKeyLock sync.Mutex
+	publicKeys    map[string]crypto.PublicKey
 }
 
 func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
@@ -73,13 +79,11 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 	broker.ae.GetStores().ApiSession.GetEventsEmitter().AddListener(db.EventFullyAuthenticated, broker.apiSessionFullyAuthenticated)
 	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateCreated, boltz.EntityCreatedAsync)
 	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateDeleted, boltz.EntityDeletedAsync)
-	broker.ae.GetStores().Controller.AddEntityEventListenerF(broker.controllerAdded, boltz.EntityCreated)
-	broker.ae.GetStores().Controller.AddEntityEventListenerF(broker.controllerAdded, boltz.EntityUpdated)
 
 	ae.HostController.GetNetwork().AddRouterPresenceHandler(broker)
-	ae.HostController.GetEventDispatcher().AddClusterEventHandler(broker)
 
-	ae.GetHostController().GetPeerSigners()
+	//updates controller store on leader, store update trigger strategy in all controllers
+	ae.HostController.GetEventDispatcher().AddClusterEventHandler(broker)
 
 	return broker
 }
@@ -187,6 +191,47 @@ func (broker *Broker) Stop() {
 	broker.routerSyncStrategy.Stop()
 }
 
-func (broker *Broker) controllerAdded(controller *db.Controller) {
-	broker.routerSyncStrategy.PeerAdded(controller)
+func (broker *Broker) GetPublicKeys() map[string]crypto.PublicKey {
+	broker.publicKeyLock.Lock()
+	defer broker.publicKeyLock.Unlock()
+
+	if broker.publicKeys == nil {
+		broker.publicKeys = map[string]crypto.PublicKey{}
+	}
+
+	for kid, pubKey := range broker.routerSyncStrategy.GetPublicKeys() {
+		//don't reprocess the same kid
+		if _, exists := broker.publicKeys[kid]; exists {
+			continue
+		}
+		log := pfxlog.Logger().WithField("format", pubKey.Format).WithField("kid", kid)
+
+		switch pubKey.Format {
+		case edge_ctrl_pb.DataState_PublicKey_X509CertDer:
+			cert, err := x509.ParseCertificate(pubKey.GetData())
+			if err != nil {
+				log.WithError(err).Error("error parsing x509 certificate DER")
+				continue
+			}
+
+			broker.publicKeys[kid] = cert.PublicKey
+		case edge_ctrl_pb.DataState_PublicKey_PKIXPublicKey:
+			pub, err := x509.ParsePKIXPublicKey(pubKey.GetData())
+			if err != nil {
+				log.WithError(err).Error("error parsing PKIX public key DER")
+				continue
+			}
+			broker.publicKeys[kid] = pub
+		default:
+			log.Error("unknown public key format")
+		}
+	}
+
+	result := map[string]crypto.PublicKey{}
+
+	for k, v := range broker.publicKeys {
+		result[k] = v
+	}
+
+	return result
 }

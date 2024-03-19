@@ -113,6 +113,7 @@ type InstantStrategy struct {
 	serviceHandler       *constraintToIndexedEvents[*db.EdgeService]
 	caHandler            *constraintToIndexedEvents[*db.Ca]
 	revocationHandler    *constraintToIndexedEvents[*db.Revocation]
+	controllerHandler    *constraintToIndexedEvents[*db.Controller]
 }
 
 func (strategy *InstantStrategy) AddPublicKey(cert *tls.Certificate) {
@@ -201,6 +202,12 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 		deleteHandler: strategy.RevocationDelete,
 	}
 	strategy.ae.GetStores().Revocation.AddEntityConstraint(strategy.revocationHandler)
+
+	strategy.controllerHandler = &constraintToIndexedEvents[*db.Controller]{
+		indexProvider: strategy.indexProvider,
+		createHandler: strategy.ControllerCreate,
+		updateHandler: strategy.ControllerUpdate,
+	}
 
 	return nil
 }
@@ -829,14 +836,22 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
 }
 
 func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
-	for _, x509Cert := range strategy.ae.HostController.GetPeerSigners() {
-		publicKey := newPublicKey(x509Cert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation, edge_ctrl_pb.DataState_PublicKey_JWTValidation})
-		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
+	for cursor := strategy.ae.GetStores().Controller.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		currentBytes := cursor.Current()
+		currentId := string(currentBytes)
+
+		storeModel, err := strategy.ae.GetStores().Controller.LoadOneById(tx, currentId)
+
+		if err != nil {
+			return err
+		}
+		certs := nfPem.PemStringToCertificates(storeModel.CertPem)
+
+		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})}
 		newEvent := &edge_ctrl_pb.DataState_Event{
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-
 		strategy.HandlePublicKeyEvent(newEvent, newModel)
 	}
 
@@ -1244,24 +1259,16 @@ func (strategy *InstantStrategy) PostureCheckDelete(index uint64, postureCheck *
 	strategy.handlePostureCheck(index, edge_ctrl_pb.DataState_Delete, postureCheck)
 }
 
-func (strategy *InstantStrategy) PeerAdded(peer *db.Controller) {
-	if len(peer.CertPem) > 0 {
-		certs := nfPem.PemBytesToCertificates([]byte(peer.CertPem))
+func (strategy *InstantStrategy) ControllerCreate(index uint64, controller *db.Controller) {
+	certs := nfPem.PemStringToCertificates(controller.CertPem)
+	cert := certs[0]
+	strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, newPublicKey(cert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation, edge_ctrl_pb.DataState_PublicKey_JWTValidation}))
+}
 
-		if len(certs) > 0 {
-			strategy.Apply(&edge_ctrl_pb.DataState_Event{
-				IsSynthetic: true,
-				Action:      edge_ctrl_pb.DataState_Create,
-				Model: &edge_ctrl_pb.DataState_Event_PublicKey{
-					PublicKey: newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation, edge_ctrl_pb.DataState_PublicKey_JWTValidation}),
-				},
-			})
-		} else {
-			pfxlog.Logger().Warn("peer added event, certificate pem did not parse to at least one certificate")
-		}
-	} else {
-		pfxlog.Logger().Warn("peer added event without certificate pem")
-	}
+func (strategy *InstantStrategy) ControllerUpdate(index uint64, controller *db.Controller) {
+	certs := nfPem.PemStringToCertificates(controller.CertPem)
+	cert := certs[0]
+	strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, newPublicKey(cert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation, edge_ctrl_pb.DataState_PublicKey_JWTValidation}))
 }
 
 func (strategy *InstantStrategy) CaCreate(index uint64, ca *db.Ca) {

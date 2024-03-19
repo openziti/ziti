@@ -197,6 +197,7 @@ type Env interface {
 	GetMetricsRegistry() metrics.Registry
 	GetEventDispatcher() event.Dispatcher
 	GetCloseNotify() <-chan struct{}
+	GetHelloHeaderProviders() []mesh.HeaderProvider
 }
 
 func NewController(env Env, migrationMgr MigrationManager) *Controller {
@@ -540,7 +541,9 @@ func (self *Controller) Init() error {
 		return err
 	}
 
-	self.Mesh = mesh.New(self.env, localAddr)
+	helloHeaderProviders := self.env.GetHelloHeaderProviders()
+
+	self.Mesh = mesh.New(self.env, localAddr, helloHeaderProviders)
 	self.Mesh.RegisterClusterStateHandler(func(state mesh.ClusterState) {
 		obs := raft.Observation{
 			Raft: self.Raft,
