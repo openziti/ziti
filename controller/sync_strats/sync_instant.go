@@ -528,7 +528,34 @@ func (strategy *InstantStrategy) ReceiveResync(routerId string, _ *edge_ctrl_pb.
 
 	rtx.RouterModelIndex = nil
 
-	strategy.receivedClientHelloQueue <- rtx
+	strategy.queueClientHello(rtx)
+}
+
+func (strategy *InstantStrategy) queueClientHello(rtx *RouterSender) {
+	select {
+	case strategy.receivedClientHelloQueue <- rtx:
+		return
+	default:
+	}
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	go func() {
+		for {
+			if ch := rtx.Router.Control; ch == nil || ch.IsClosed() {
+				return
+			}
+
+			select {
+			case strategy.receivedClientHelloQueue <- rtx:
+				return
+			case <-strategy.stopNotify:
+				return
+			case <-ticker.C:
+			}
+		}
+	}()
 }
 
 func (strategy *InstantStrategy) ReceiveClientHello(routerId string, msg *channel.Message, respHello *edge_ctrl_pb.ClientHello) {
@@ -589,7 +616,7 @@ func (strategy *InstantStrategy) ReceiveClientHello(routerId string, msg *channe
 
 	serverVersion := build.GetBuildInfo().Version()
 	logger.Infof("edge router sent hello with version [%s] to controller with version [%s]", respHello.Version, serverVersion)
-	strategy.receivedClientHelloQueue <- rtx
+	strategy.queueClientHello(rtx)
 }
 
 func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
