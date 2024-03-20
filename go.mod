@@ -25,7 +25,7 @@ require (
 	github.com/go-openapi/strfmt v0.23.0
 	github.com/go-openapi/swag v0.23.0
 	github.com/go-openapi/validate v0.24.0
-	github.com/go-resty/resty/v2 v2.11.0
+	github.com/go-resty/resty/v2 v2.12.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
@@ -55,7 +55,7 @@ require (
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.47
 	github.com/openziti/runzmd v1.0.40
-	github.com/openziti/sdk-golang v0.23.10
+	github.com/openziti/sdk-golang v0.23.14
 	github.com/openziti/secretstream v0.1.17
 	github.com/openziti/storage v0.2.32
 	github.com/openziti/transport/v2 v2.0.124
