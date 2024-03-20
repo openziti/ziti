@@ -92,9 +92,10 @@ func newApiSessionStore(stores *stores) *apiSessionStoreImpl {
 type apiSessionStoreImpl struct {
 	*baseStore[*ApiSession]
 
-	indexToken     boltz.ReadIndex
-	symbolIdentity boltz.EntitySymbol
-	eventsEmitter  events.EventEmmiter
+	indexToken            boltz.ReadIndex
+	symbolIdentity        boltz.EntitySymbol
+	eventsEmitter         events.EventEmmiter
+	apiSessionCertsSymbol boltz.EntitySetSymbol
 }
 
 func (store *apiSessionStoreImpl) NewEntity() *ApiSession {
@@ -220,6 +221,12 @@ func (store *apiSessionStoreImpl) Update(ctx boltz.MutateContext, entity *ApiSes
 }
 
 func (store *apiSessionStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+	for _, apiSessionCertId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeApiSessionCertificates) {
+		if err := store.stores.apiSessionCertificate.DeleteById(ctx, apiSessionCertId); err != nil {
+			return err
+		}
+	}
+
 	err := store.baseStore.DeleteById(ctx, id)
 
 	if err == nil {
@@ -249,6 +256,7 @@ func (store *apiSessionStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldApiSessionLastActivityAt, ast.NodeTypeDatetime)
 
 	store.AddFkConstraint(store.symbolIdentity, false, boltz.CascadeDelete)
+	store.apiSessionCertsSymbol = store.AddFkSetSymbol(EntityTypeApiSessionCertificates, store.stores.apiSessionCertificate)
 }
 
 func (store *apiSessionStoreImpl) initializeLinked() {
