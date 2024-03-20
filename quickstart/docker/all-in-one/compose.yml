@@ -21,9 +21,9 @@ services:
       - -euc
       - |
         ZITI_CMD+=" --ctrl-address ${EXTERNAL_DNS:-quickstart}"\
-        " --ctrl-port ${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}"\
+        " --ctrl-port ${ZITI_CTRL_ADVERTISED_PORT:-1280}"\
         " --router-address ${EXTERNAL_DNS:-quickstart}"\
-        " --router-port ${ZITI_ROUTER_ADVERTISED_PORT:-3022}"\
+        " --router-port ${ZITI_ROUTER_PORT:-3022}"\
         " --password ${ZITI_PWD:-admin}"
         echo "DEBUG: run command is: ziti $${@} $${ZITI_CMD}"
         exec ziti "$${@}" $${ZITI_CMD}
@@ -32,16 +32,17 @@ services:
     environment:
       HOME: /home/ziggy
       PFXLOG_NO_JSON: "${PFXLOG_NO_JSON:-true}"
+      ZITI_ROUTER_NAME: ${ZITI_ROUTER_NAME:-quickstart-router}
     volumes:
       # store the quickstart state in a named volume "ziti_home" or store the quickstart state on the Docker host in a
       # directory, ZITI_HOME 
       - ${ZITI_HOME:-ziti_home}:/home/ziggy
     ports:
-      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
-      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_ADVERTISED_PORT:-3022}:${ZITI_ROUTER_ADVERTISED_PORT:-3022}
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL_ADVERTISED_PORT:-1280}:${ZITI_CTRL_ADVERTISED_PORT:-1280}
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
     expose:
-      - ${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
-      - ${ZITI_ROUTER_ADVERTISED_PORT:-3022}
+      - ${ZITI_CTRL_ADVERTISED_PORT:-1280}
+      - ${ZITI_ROUTER_PORT:-3022}
     depends_on:
       quickstart-init:
         condition: service_completed_successfully
