@@ -33,7 +33,7 @@ func (ctx *TestContext) testCreateServiceEdgeRouterPolicy(_ *testing.T) {
 		ctx.Equal(0, len(ctx.stores.ServiceEdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeRouters)))
 		ctx.Equal(0, len(ctx.stores.ServiceEdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeServices)))
 
-		testPolicy, err := ctx.stores.ServiceEdgeRouterPolicy.LoadOneById(tx, policy.Id)
+		testPolicy, err := ctx.stores.ServiceEdgeRouterPolicy.LoadById(tx, policy.Id)
 		ctx.NoError(err)
 		ctx.NotNil(testPolicy)
 		ctx.Equal(policy.Name, testPolicy.Name)

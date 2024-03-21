@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
@@ -311,24 +310,36 @@ type denormCheckCtx struct {
 
 func validatePolicyDenormalization(ctx *denormCheckCtx) error {
 	tx := ctx.mutateCtx.Tx()
+
+	links := map[string]map[string]int{}
+
+	for policyCursor := ctx.policyStore.IterateIds(tx, ast.BoolNodeTrue); policyCursor.IsValid(); policyCursor.Next() {
+		policyId := policyCursor.Current()
+		if ctx.policyFilter == nil || ctx.policyFilter(policyId) {
+			for sourceCursor := ctx.sourceCollection.IterateLinks(tx, policyId); sourceCursor.IsValid(); sourceCursor.Next() {
+				sourceId := string(sourceCursor.Current())
+				for destCursor := ctx.targetCollection.IterateLinks(tx, policyId); destCursor.IsValid(); destCursor.Next() {
+					destId := string(destCursor.Current())
+					destMap := links[sourceId]
+					if destMap == nil {
+						destMap = map[string]int{}
+						links[sourceId] = destMap
+					}
+					destMap[destId] = destMap[destId] + 1
+				}
+			}
+		}
+	}
+
 	for sourceCursor := ctx.sourceStore.IterateIds(tx, ast.BoolNodeTrue); sourceCursor.IsValid(); sourceCursor.Next() {
 		sourceEntityId := sourceCursor.Current()
 		for targetCursor := ctx.targetStore.IterateIds(tx, ast.BoolNodeTrue); targetCursor.IsValid(); targetCursor.Next() {
 			targetEntityId := targetCursor.Current()
 
-			var relatedPolicies []string
-
-			for policyCursor := ctx.policyStore.IterateIds(tx, ast.BoolNodeTrue); policyCursor.IsValid(); policyCursor.Next() {
-				policyId := policyCursor.Current()
-				if ctx.policyFilter == nil || ctx.policyFilter(policyId) {
-					sourceRelated := isRelatedByLinkCollection(tx, ctx.sourceCollection, policyId, sourceEntityId)
-					targetRelated := isRelatedByLinkCollection(tx, ctx.targetCollection, policyId, targetEntityId)
-					if sourceRelated && targetRelated {
-						relatedPolicies = append(relatedPolicies, string(policyId))
-					}
-				}
+			linkCount := 0
+			if destMap, ok := links[string(sourceEntityId)]; ok {
+				linkCount = destMap[string(targetEntityId)]
 			}
-			linkCount := len(relatedPolicies)
 			var sourceLinkCount, targetLinkCount *int32
 			var err error
 			if ctx.repair {
@@ -366,10 +377,4 @@ func logDiscrepencies(ctx *denormCheckCtx, count int, sourceId, targetId []byte,
 			sourceCount, count)
 		ctx.errorSink(err, ctx.repair)
 	}
-}
-
-func isRelatedByLinkCollection(tx *bbolt.Tx, linkCollection boltz.LinkCollection, entityId, relatedId []byte) bool {
-	cursor := linkCollection.IterateLinks(tx, entityId)
-	cursor.Seek(relatedId)
-	return bytes.Equal(cursor.Current(), relatedId)
 }

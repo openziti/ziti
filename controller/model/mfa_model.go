@@ -68,7 +68,7 @@ func (entity *Mfa) fillFrom(env Env, tx *bbolt.Tx, boltMfa *db.Mfa) error {
 	entity.IdentityId = boltMfa.IdentityId
 	entity.RecoveryCodes = boltMfa.RecoveryCodes
 	entity.Secret = boltMfa.Secret
-	boltIdentity, err := env.GetStores().Identity.LoadOneById(tx, boltMfa.IdentityId)
+	boltIdentity, err := env.GetStores().Identity.LoadById(tx, boltMfa.IdentityId)
 	if err != nil {
 		return err
 	}

@@ -83,7 +83,6 @@ func (entity *PostureCheck) GetEntityType() string {
 
 type PostureCheckStore interface {
 	Store[*PostureCheck]
-	LoadOneById(tx *bbolt.Tx, id string) (*PostureCheck, error)
 	GetRoleAttributesIndex() boltz.SetReadIndex
 	GetRoleAttributesCursorProvider(filters []string, semantic string) (ast.SetCursorProvider, error)
 }
@@ -180,7 +179,7 @@ func (store *postureCheckStoreImpl) GetNameIndex() boltz.ReadIndex {
 }
 
 func (store *postureCheckStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
-	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
+	if entity, _ := store.LoadById(ctx.Tx(), id); entity != nil {
 		// Remove entity from PostureCheckRoles in service policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolPostureCheckRoles); err != nil {
 			return err

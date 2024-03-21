@@ -178,11 +178,11 @@ func (ctx *TestContext) testUpdateApiSessions(t *testing.T) {
 	mutateCtx := change.New().NewMutateContext()
 	err := ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		tx := mutateCtx.Tx()
-		original, err := ctx.stores.ApiSession.LoadOneById(tx, entities.apiSession1.Id)
+		original, err := ctx.stores.ApiSession.LoadById(tx, entities.apiSession1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(original)
 
-		apiSession, err := ctx.stores.ApiSession.LoadOneById(tx, entities.apiSession1.Id)
+		apiSession, err := ctx.stores.ApiSession.LoadById(tx, entities.apiSession1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(apiSession)
 
@@ -196,7 +196,7 @@ func (ctx *TestContext) testUpdateApiSessions(t *testing.T) {
 
 		err = ctx.stores.ApiSession.Update(mutateCtx, apiSession, nil)
 		ctx.NoError(err)
-		loaded, err := ctx.stores.ApiSession.LoadOneById(tx, entities.apiSession1.Id)
+		loaded, err := ctx.stores.ApiSession.LoadById(tx, entities.apiSession1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(loaded)
 		ctx.EqualValues(original.CreatedAt, loaded.CreatedAt)

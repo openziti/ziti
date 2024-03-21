@@ -38,7 +38,7 @@ func (ctx *TestContext) testCreateEdgeRouterPolicy(t *testing.T) {
 		ctx.Equal(0, len(ctx.stores.EdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeRouters)))
 		ctx.Equal(0, len(ctx.stores.EdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeIdentities)))
 
-		testPolicy, err := ctx.stores.EdgeRouterPolicy.LoadOneById(tx, policy.Id)
+		testPolicy, err := ctx.stores.EdgeRouterPolicy.LoadById(tx, policy.Id)
 		ctx.NoError(err)
 		ctx.NotNil(testPolicy)
 		ctx.Equal(policy.Name, testPolicy.Name)

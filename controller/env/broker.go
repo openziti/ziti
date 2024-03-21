@@ -159,7 +159,7 @@ func (broker *Broker) apiSessionCertificateHandler(delete bool, apiSessionCert *
 	var apiSession *db.ApiSession
 	var err error
 	err = broker.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		apiSession, err = broker.ae.GetStores().ApiSession.LoadOneById(tx, apiSessionCert.ApiSessionId)
+		apiSession, err = broker.ae.GetStores().ApiSession.LoadById(tx, apiSessionCert.ApiSessionId)
 		return err
 	})
 

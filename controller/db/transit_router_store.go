@@ -133,7 +133,7 @@ func (store *transitRouterStoreImpl) PersistEntity(entity *TransitRouter, ctx *b
 }
 
 func (store *transitRouterStoreImpl) cleanupEnrollments(ctx boltz.MutateContext, id string) error {
-	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
+	if entity, _ := store.LoadById(ctx.Tx(), id); entity != nil {
 		// Remove outstanding enrollments
 		if err := store.stores.enrollment.DeleteWhere(ctx, fmt.Sprintf(`transitRouter="%s"`, entity.Id)); err != nil {
 			return err

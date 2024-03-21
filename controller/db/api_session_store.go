@@ -257,7 +257,7 @@ func (store *apiSessionStoreImpl) initializeLinked() {
 func (store *apiSessionStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*ApiSession, error) {
 	id := store.indexToken.Read(tx, []byte(token))
 	if id != nil {
-		return store.LoadOneById(tx, string(id))
+		return store.LoadById(tx, string(id))
 	}
 	return nil, boltz.NewNotFoundError(store.GetSingularEntityType(), "token", token)
 }

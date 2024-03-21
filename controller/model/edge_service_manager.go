@@ -287,7 +287,7 @@ func (self *EdgeServiceManager) mergeConfigs(tx *bbolt.Tx, configTypes map[strin
 	if len(configTypes) > 0 && len(service.Configs) > 0 {
 		configStore := self.env.GetStores().Config
 		for _, configId := range service.Configs {
-			config, _ := configStore.LoadOneById(tx, configId)
+			config, _ := configStore.LoadById(tx, configId)
 			if config != nil {
 				_, wantsConfig := configTypes[config.Type]
 				if wantsAll || wantsConfig {

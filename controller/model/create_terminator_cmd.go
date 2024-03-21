@@ -93,7 +93,7 @@ func (self *CreateEdgeTerminatorCmd) getTerminatorSession(tx *bbolt.Tx, terminat
 	}
 
 	if session.ApiSession == nil {
-		apiSession, err := self.Env.GetStores().ApiSession.LoadOneById(tx, session.ApiSessionId)
+		apiSession, err := self.Env.GetStores().ApiSession.LoadById(tx, session.ApiSessionId)
 		if err != nil {
 			return nil, err
 		}
