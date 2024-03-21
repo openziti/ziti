@@ -45,6 +45,14 @@ type ControllerType struct {
 	DNSNames       []string
 }
 
+func (self *ControllerType) Label() string {
+	return "ziti-controller"
+}
+
+func (self *ControllerType) GetVersion() string {
+	return self.Version
+}
+
 func (self *ControllerType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }
@@ -104,7 +112,15 @@ func (self *ControllerType) IsRunning(_ model.Run, c *model.Component) (bool, er
 	return len(pids) > 0, nil
 }
 
-func (self *ControllerType) Start(_ model.Run, c *model.Component) error {
+func (self *ControllerType) Start(r model.Run, c *model.Component) error {
+	isRunninng, err := self.IsRunning(r, c)
+	if err != nil {
+		return err
+	}
+	if isRunninng {
+		fmt.Printf("controller %s already started\n", c.Id)
+		return nil
+	}
 	return startZitiComponent(c, "controller", self.Version, self.getConfigName(c))
 }
 
@@ -113,7 +129,7 @@ func (self *ControllerType) Stop(_ model.Run, c *model.Component) error {
 }
 
 func (self *ControllerType) GetBinaryPath(c *model.Component) string {
-	return getZitiBinaryPath(c, self.Version)
+	return GetZitiBinaryPath(c, self.Version)
 }
 
 func (self *ControllerType) InitStandalone(run model.Run, c *model.Component) error {
@@ -130,7 +146,7 @@ func (self *ControllerType) InitStandalone(run model.Run, c *model.Component) er
 
 	factory := c.GetHost().NewSshConfigFactory()
 
-	binaryPath := getZitiBinaryPath(c, self.Version)
+	binaryPath := GetZitiBinaryPath(c, self.Version)
 	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s", factory.User(), self.getConfigName(c))
 
 	tmpl := "rm -f /home/%v/fablab/ctrl.db && set -o pipefail; %s controller --log-formatter pfxlog edge init %s -u %s -p %s 2>&1 | tee logs/controller.edge.init.log"
@@ -142,7 +158,7 @@ func (self *ControllerType) InitRaft(run model.Run, c *model.Component) error {
 	count := 0
 	err := run.GetModel().ForEachComponent("*", 1, func(other *model.Component) error {
 		if _, ok := c.Type.(*ControllerType); ok {
-			binaryPath := getZitiBinaryPath(c, self.Version)
+			binaryPath := GetZitiBinaryPath(c, self.Version)
 			tmpl := "%s agent cluster add %v --id %v"
 			cmd := fmt.Sprintf(tmpl, binaryPath, "tls:"+other.Host.PublicIp+":6262", other.Id)
 			count++
