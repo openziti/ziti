@@ -56,6 +56,14 @@ type ZitiTunnelType struct {
 	ConfigPathF func(c *model.Component) string
 }
 
+func (self *ZitiTunnelType) Label() string {
+	return "ziti-tunnel"
+}
+
+func (self *ZitiTunnelType) GetVersion() string {
+	return self.Version
+}
+
 func (self *ZitiTunnelType) GetActions() map[string]model.ComponentAction {
 	return map[string]model.ComponentAction{
 		ZitiTunnelActionsReEnroll: model.ComponentActionF(self.ReEnroll),
@@ -80,18 +88,7 @@ func (self *ZitiTunnelType) StageFiles(r model.Run, c *model.Component) error {
 
 func (self *ZitiTunnelType) InitializeHost(_ model.Run, c *model.Component) error {
 	if self.Mode == ZitiTunnelModeTproxy {
-		key := "ziti_tunnel.resolve_setup_done"
-		if _, found := c.Host.Data[key]; !found {
-			cmds := []string{
-				"sudo sed -i 's/#DNS=/DNS=127.0.0.1/g' /etc/systemd/resolved.conf",
-				"sudo systemctl restart systemd-resolved",
-			}
-			if err := c.Host.ExecLogOnlyOnError(cmds...); err != nil {
-				return err
-			}
-			c.Host.Data[key] = true
-			return nil
-		}
+		return setupDnsForTunneler(c)
 	}
 	return nil
 }
@@ -120,7 +117,7 @@ func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
 
 	user := c.GetHost().GetSshUser()
 
-	binaryPath := getZitiBinaryPath(c, self.Version)
+	binaryPath := GetZitiBinaryPath(c, self.Version)
 	configPath := self.GetConfigPath(c)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
@@ -151,5 +148,5 @@ func (self *ZitiTunnelType) Stop(_ model.Run, c *model.Component) error {
 }
 
 func (self *ZitiTunnelType) ReEnroll(run model.Run, c *model.Component) error {
-	return reEnrollIdentity(run, c, getZitiBinaryPath(c, self.Version), self.GetConfigPath(c))
+	return reEnrollIdentity(run, c, GetZitiBinaryPath(c, self.Version), self.GetConfigPath(c))
 }

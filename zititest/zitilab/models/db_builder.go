@@ -15,9 +15,12 @@ import (
 
 type ZitiDbBuilderStrategy interface {
 	GetDbFile(m *model.Model) string
+	ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *ZitiDbBuilder) error
+}
+
+type ZitiEdgeRouterStrategy interface {
 	GetSite(router *db.EdgeRouter) (string, bool)
 	PostProcess(router *db.EdgeRouter, c *model.Component)
-	ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *ZitiDbBuilder) error
 }
 
 type ZitiDbBuilder struct {
@@ -63,7 +66,7 @@ func (self *ZitiDbBuilder) Build(m *model.Model) error {
 	})
 }
 
-func (self *ZitiDbBuilder) CreateEdgeRouterHosts(tx *bbolt.Tx, m *model.Model) error {
+func (self *ZitiDbBuilder) CreateEdgeRouterHosts(tx *bbolt.Tx, m *model.Model, erStrategy ZitiEdgeRouterStrategy) error {
 	ids, _, err := self.stores.EdgeRouter.QueryIds(tx, "true limit none")
 	if err != nil {
 		return err
@@ -75,7 +78,7 @@ func (self *ZitiDbBuilder) CreateEdgeRouterHosts(tx *bbolt.Tx, m *model.Model) e
 			return err
 		}
 
-		if site, useEdgeRouter := self.Strategy.GetSite(er); useEdgeRouter {
+		if site, useEdgeRouter := erStrategy.GetSite(er); useEdgeRouter {
 			regionId := site[:len(site)-1]
 
 			var region *model.Region
@@ -114,7 +117,7 @@ func (self *ZitiDbBuilder) CreateEdgeRouterHosts(tx *bbolt.Tx, m *model.Model) e
 			}
 
 			host.Components[er.Id] = component
-			self.Strategy.PostProcess(er, component)
+			erStrategy.PostProcess(er, component)
 		}
 	}
 	return nil

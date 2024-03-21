@@ -38,7 +38,7 @@ func getZitiProcessFilter(c *model.Component, zitiType string) func(string) bool
 func startZitiComponent(c *model.Component, zitiType string, version string, configName string) error {
 	user := c.GetHost().GetSshUser()
 
-	binaryPath := getZitiBinaryPath(c, version)
+	binaryPath := GetZitiBinaryPath(c, version)
 	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s", user, configName)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
@@ -74,7 +74,7 @@ func canonicalizeGoAppVersion(version *string) {
 	}
 }
 
-func getZitiBinaryPath(c *model.Component, version string) string {
+func GetZitiBinaryPath(c *model.Component, version string) string {
 	return getBinaryPath(c, "ziti", version)
 }
 
@@ -113,4 +113,20 @@ func reEnrollIdentity(run model.Run, c *model.Component, zitiBinaryPath string, 
 	cmd := fmt.Sprintf(tmpl, configDir, zitiBinaryPath, remoteJwt, configPath, c.Id)
 
 	return c.GetHost().ExecLogOnlyOnError(cmd)
+}
+
+func setupDnsForTunneler(c *model.Component) error {
+	key := "ziti_tunnel.resolve_setup_done"
+	if _, found := c.Host.Data[key]; !found {
+		cmds := []string{
+			"sudo sed -i 's/#DNS=/DNS=127.0.0.1/g' /etc/systemd/resolved.conf",
+			"sudo systemctl restart systemd-resolved",
+		}
+		if err := c.Host.ExecLogOnlyOnError(cmds...); err != nil {
+			return err
+		}
+		c.Host.Data[key] = true
+		return nil
+	}
+	return nil
 }

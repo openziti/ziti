@@ -29,6 +29,14 @@ type IPerfServerType struct {
 	Port uint16
 }
 
+func (self *IPerfServerType) Label() string {
+	return "iperf-server"
+}
+
+func (self *IPerfServerType) GetVersion() string {
+	return "os-provided"
+}
+
 func (self *IPerfServerType) Dump() any {
 	return map[string]string{
 		"type_id": "iperf-server",
