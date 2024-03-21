@@ -18,7 +18,6 @@ package model
 
 import (
 	"crypto/x509"
-	"fmt"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
@@ -111,13 +110,18 @@ func (self *ApiSessionCertificateManager) Query(tx *bbolt.Tx, query string) (*Ap
 }
 
 func (self *ApiSessionCertificateManager) ReadByApiSessionId(tx *bbolt.Tx, apiSessionId string) ([]*ApiSessionCertificate, error) {
-	result, err := self.Query(tx, fmt.Sprintf(`apiSession = "%s"`, apiSessionId))
+	var result []*ApiSessionCertificate
 
-	if err != nil {
-		return nil, err
+	certIds := self.env.GetStores().ApiSession.GetRelatedEntitiesIdList(tx, apiSessionId, db.EntityTypeApiSessionCertificates)
+	for _, key := range certIds {
+		apiSessionCert, err := self.readInTx(tx, key)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, apiSessionCert)
 	}
 
-	return result.ApiSessionCertificates, nil
+	return result, nil
 }
 
 type ApiSessionCertificateListResult struct {
