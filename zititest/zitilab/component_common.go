@@ -114,3 +114,19 @@ func reEnrollIdentity(run model.Run, c *model.Component, zitiBinaryPath string, 
 
 	return c.GetHost().ExecLogOnlyOnError(cmd)
 }
+
+func setupDnsForTunneler(c *model.Component) error {
+	key := "ziti_tunnel.resolve_setup_done"
+	if _, found := c.Host.Data[key]; !found {
+		cmds := []string{
+			"sudo sed -i 's/#DNS=/DNS=127.0.0.1/g' /etc/systemd/resolved.conf",
+			"sudo systemctl restart systemd-resolved",
+		}
+		if err := c.Host.ExecLogOnlyOnError(cmds...); err != nil {
+			return err
+		}
+		c.Host.Data[key] = true
+		return nil
+	}
+	return nil
+}

@@ -34,6 +34,10 @@ type ZitiEdgeTunnelType struct {
 	ConfigPathF func(c *model.Component) string
 }
 
+func (self *ZitiEdgeTunnelType) Label() string {
+	return "ziti-edge-tunnel"
+}
+
 func (self *ZitiEdgeTunnelType) GetActions() map[string]model.ComponentAction {
 	return map[string]model.ComponentAction{
 		ZitiTunnelActionsReEnroll: model.ComponentActionF(self.ReEnroll),

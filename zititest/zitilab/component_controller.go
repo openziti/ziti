@@ -45,6 +45,10 @@ type ControllerType struct {
 	DNSNames       []string
 }
 
+func (self *ControllerType) Label() string {
+	return "ziti-controller"
+}
+
 func (self *ControllerType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }

@@ -39,6 +39,10 @@ type ZrokLoopTestType struct {
 	Pacing     time.Duration
 }
 
+func (self *ZrokLoopTestType) Label() string {
+	return "zrok-loop-test"
+}
+
 func (self *ZrokLoopTestType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 	if self.Iterations == 0 {

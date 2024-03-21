@@ -208,7 +208,9 @@ var Model = &model.Model{
 						},
 						"echo-server": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},
-							Type:  &zitilab.EchoServerType{},
+							Type: &zitilab.EchoServerType{
+								BindService: "echo",
+							},
 						},
 						"iperf-server-ert": {
 							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},

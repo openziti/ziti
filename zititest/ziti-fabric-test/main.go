@@ -19,8 +19,6 @@
 package main
 
 import (
-	"math/rand"
-
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
@@ -28,7 +26,6 @@ import (
 	"github.com/openziti/transport/v2/transwarp"
 	"github.com/openziti/transport/v2/transwarptls"
 	"github.com/openziti/transport/v2/wss"
-	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd"
 	_ "github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/client"
 	_ "github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/loop2"
@@ -46,6 +43,5 @@ func init() {
 }
 
 func main() {
-	rand.Seed(info.NowInMilliseconds())
 	subcmd.Execute()
 }

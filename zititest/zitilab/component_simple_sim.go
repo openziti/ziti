@@ -22,42 +22,36 @@ import (
 	"strings"
 )
 
-var _ model.ComponentType = (*ZCatType)(nil)
+var _ model.ComponentType = (*SimpleSimType)(nil)
 
-type ZCatMode int
+type SimpleSimMode int
 
-type ZCatType struct {
-	Version   string
+type SimpleSimType struct {
 	LocalPath string
 }
 
-func (self *ZCatType) Label() string {
-	return "zcat"
+func (self *SimpleSimType) Label() string {
+	return "simple-sim"
 }
 
-func (self *ZCatType) InitType(*model.Component) {
-	canonicalizeGoAppVersion(&self.Version)
-}
-
-func (self *ZCatType) Dump() any {
+func (self *SimpleSimType) Dump() any {
 	return map[string]string{
-		"type_id":    "zcat",
-		"version":    self.Version,
+		"type_id":    "SimpleSim",
 		"local_path": self.LocalPath,
 	}
 }
 
-func (self *ZCatType) StageFiles(r model.Run, c *model.Component) error {
-	return stageziti.StageZitiOnce(r, c, self.Version, self.LocalPath)
+func (self *SimpleSimType) StageFiles(r model.Run, c *model.Component) error {
+	return stageziti.StageLocalOnce(r, "simple-sim", c, self.LocalPath)
 }
 
-func (self *ZCatType) getProcessFilter() func(string) bool {
+func (self *SimpleSimType) getProcessFilter() func(string) bool {
 	return func(s string) bool {
-		return strings.Contains(s, "ziti") && strings.Contains(s, "zcat ")
+		return strings.Contains(s, "simple-sim")
 	}
 }
 
-func (self *ZCatType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
+func (self *SimpleSimType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
 	pids, err := c.GetHost().FindProcesses(self.getProcessFilter())
 	if err != nil {
 		return false, err
@@ -65,6 +59,6 @@ func (self *ZCatType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
 	return len(pids) > 0, nil
 }
 
-func (self *ZCatType) Stop(_ model.Run, c *model.Component) error {
+func (self *SimpleSimType) Stop(_ model.Run, c *model.Component) error {
 	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter())
 }

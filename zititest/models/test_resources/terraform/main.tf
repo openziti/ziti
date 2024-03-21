@@ -34,6 +34,11 @@ module "{{ $regionId }}_host_{{ $hostId }}" {
   spot_price        = "{{ $host.SpotPrice }}"
   spot_type         = "{{ $host.SpotType }}"
   name              = "{{ $region.Model.MustVariable "environment" }}.{{ $host.Id }}"
+  {{ if not (eq $host.EC2.Volume.Type "") }}
+  volume_type       = "{{ $host.EC2.Volume.Type }}"
+  volume_size       = "{{ $host.EC2.Volume.SizeGB }}"
+  volume_iops       = "{{ $host.EC2.Volume.IOPS }}"
+  {{ end }}
 }
 
 output "{{ $regionId }}_host_{{ $hostId }}_public_ip" { value = module.{{ $regionId }}_host_{{ $hostId }}.public_ip }

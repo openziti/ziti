@@ -19,7 +19,6 @@ package zitilab
 import (
 	"fmt"
 	"github.com/openziti/fablab/kernel/lib"
-	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
@@ -45,6 +44,10 @@ type RouterType struct {
 	LocalPath      string
 }
 
+func (self *RouterType) Label() string {
+	return "ziti-router"
+}
+
 func (self *RouterType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }
@@ -68,12 +71,7 @@ func (self *RouterType) Dump() any {
 
 func (self *RouterType) InitializeHost(run model.Run, c *model.Component) error {
 	if self.isTunneler(c) {
-		cmds := []string{
-			"sudo sed -i 's/#DNS=/DNS=127.0.0.1/g' /etc/systemd/resolved.conf",
-			"sudo systemctl restart systemd-resolved",
-			"mkdir -p /home/ubuntu/logs",
-		}
-		return host.Exec(c.GetHost(), cmds...).Execute(run)
+		return setupDnsForTunneler(c)
 	}
 	return nil
 }

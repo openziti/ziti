@@ -47,6 +47,10 @@ type ZrokControllerType struct {
 	PreCreateClients string
 }
 
+func (self *ZrokControllerType) Label() string {
+	return "zrok-controller"
+}
+
 func (self *ZrokControllerType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }

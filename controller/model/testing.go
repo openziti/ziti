@@ -383,29 +383,3 @@ func (self *testConfig) GetVersionProvider() versions.VersionProvider {
 func (self *testConfig) GetCloseNotify() <-chan struct{} {
 	return self.closeNotify
 }
-
-//
-//type testDbProvider struct {
-//	ctx *TestContext
-//}
-//
-//func (p *testDbProvider) GetDb() boltz.Db {
-//	return p.ctx.GetDb()
-//}
-//
-//func (p *testDbProvider) GetStores() *Stores {
-//	return p.ctx.n.GetStores()
-//}
-//
-//func (p *testDbProvider) GetServiceCache() network.Cache {
-//	return p
-//}
-//
-//func (p *testDbProvider) NotifyRouterRenamed(_, _ string) {}
-//
-//func (p *testDbProvider) RemoveFromCache(_ string) {
-//}
-//
-//func (p *testDbProvider) GetManagers() *network.Managers {
-//	return p.ctx.n.Managers
-//}

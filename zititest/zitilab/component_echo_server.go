@@ -1,3 +1,19 @@
+/*
+	Copyright 2019 NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package zitilab
 
 import (
@@ -13,8 +29,14 @@ var _ model.ComponentType = (*EchoServerType)(nil)
 type EchoServerMode int
 
 type EchoServerType struct {
-	Version   string
-	LocalPath string
+	Version     string
+	LocalPath   string
+	Port        uint16
+	BindService string
+}
+
+func (self *EchoServerType) Label() string {
+	return "echo-server"
 }
 
 func (self *EchoServerType) InitType(*model.Component) {
@@ -57,8 +79,18 @@ func (self *EchoServerType) Start(run model.Run, c *model.Component) error {
 		ha = "--ha"
 	}
 
-	serviceCmd := fmt.Sprintf("nohup %s demo echo-server --cli-agent-alias %s %s -i %s > %s 2>&1 &",
-		binaryPath, c.Id, ha, configPath, logsPath)
+	serviceHostingFlags := ""
+	if self.BindService != "" {
+		serviceHostingFlags = fmt.Sprintf("-i %s -s %s", configPath, self.BindService)
+	}
+
+	portFlag := ""
+	if self.Port > 0 {
+		portFlag = fmt.Sprintf("-p %d", self.Port)
+	}
+
+	serviceCmd := fmt.Sprintf("nohup %s demo echo-server --cli-agent-alias %s %s %s %s > %s 2>&1 &",
+		binaryPath, c.Id, ha, serviceHostingFlags, portFlag, logsPath)
 
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {

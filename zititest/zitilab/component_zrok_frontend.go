@@ -46,6 +46,10 @@ type ZrokFrontendType struct {
 	ZrokCtrlSelector string
 }
 
+func (self *ZrokFrontendType) Label() string {
+	return "zrok-frontend"
+}
+
 func (self *ZrokFrontendType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 	if self.ZrokCtrlSelector == "" {
