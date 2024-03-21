@@ -18,7 +18,9 @@ LABEL name="openziti/ziti-tunnel" \
 USER root
 RUN   INSTALL_PKGS="util-linux iptables" && \
       microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
-      microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS}
+      microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS} && \
+      microdnf clean all
+
 WORKDIR /netfoundry
 COPY ./entrypoint.sh /
 RUN chmod +x /entrypoint.sh
