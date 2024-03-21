@@ -251,7 +251,7 @@ func (store *edgeServiceStoreImpl) Update(ctx boltz.MutateContext, entity *EdgeS
 }
 
 func (store *edgeServiceStoreImpl) cleanupEdgeService(ctx boltz.MutateContext, id string) error {
-	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
+	if entity, _ := store.LoadById(ctx.Tx(), id); entity != nil {
 		// Remove entity from ServiceRoles in service policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolServiceRoles); err != nil {
 			return err

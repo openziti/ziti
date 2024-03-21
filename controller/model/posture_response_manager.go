@@ -289,7 +289,7 @@ func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeS
 				cursor := self.env.GetStores().PostureCheck.IterateIds(tx, query)
 
 				for cursor.IsValid() {
-					if check, err := self.env.GetStores().PostureCheck.LoadOneById(tx, string(cursor.Current())); err == nil {
+					if check, err := self.env.GetStores().PostureCheck.LoadById(tx, string(cursor.Current())); err == nil {
 						if mfaCheck, ok := check.SubType.(*db.PostureCheckMfa); ok {
 							if shouldPostureCheckTimeoutBeAltered(mfaCheck, timeSinceLastMfa, gracePeriod, onWake, onUnlock) {
 								affectedChecks[check.Id] = mfaCheck.TimeoutSeconds
@@ -321,7 +321,7 @@ func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeS
 
 					for serviceCursor.IsValid() {
 						if _, ok := services[string(serviceCursor.Current())]; !ok {
-							service, err := self.env.GetStores().EdgeService.LoadOneById(tx, string(serviceCursor.Current()))
+							service, err := self.env.GetStores().EdgeService.LoadById(tx, string(serviceCursor.Current()))
 							if err == nil {
 								modelService := &Service{}
 								if err := modelService.fillFrom(self.env, tx, service); err == nil {

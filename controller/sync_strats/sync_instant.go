@@ -646,7 +646,7 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 		for cursor := strategy.ae.GetStores().ApiSession.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 			current := cursor.Current()
 
-			apiSession, err := strategy.ae.GetStores().ApiSession.LoadOneById(tx, string(current))
+			apiSession, err := strategy.ae.GetStores().ApiSession.LoadById(tx, string(current))
 
 			if err != nil {
 				logger.WithError(err).WithField("apiSessionId", string(current)).Errorf("error querying api session [%s]: %v", string(current), err)
@@ -809,7 +809,7 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
 
-		storeModel, err := strategy.ae.GetStores().ServicePolicy.LoadOneById(tx, currentId)
+		storeModel, err := strategy.ae.GetStores().ServicePolicy.LoadById(tx, currentId)
 
 		if err != nil {
 			return err
@@ -858,7 +858,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
 
-		ca, err := strategy.ae.GetStores().Ca.LoadOneById(tx, currentId)
+		ca, err := strategy.ae.GetStores().Ca.LoadById(tx, currentId)
 
 		if err != nil {
 			return err
@@ -980,7 +980,7 @@ func (strategy *InstantStrategy) BuildPostureChecks(tx *bbolt.Tx) error {
 }
 
 func newIdentityById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_Identity, error) {
-	identityModel, err := ae.GetStores().Identity.LoadOneById(tx, id)
+	identityModel, err := ae.GetStores().Identity.LoadById(tx, id)
 
 	if err != nil {
 		return nil, err
@@ -1012,7 +1012,7 @@ func newServicePolicy(tx *bbolt.Tx, env *env.AppEnv, storeModel *db.ServicePolic
 }
 
 func newServiceById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_Service, error) {
-	storeModel, err := ae.GetStores().EdgeService.LoadOneById(tx, id)
+	storeModel, err := ae.GetStores().EdgeService.LoadById(tx, id)
 
 	if err != nil {
 		return nil, err
@@ -1038,7 +1038,7 @@ func newPublicKey(data []byte, format edge_ctrl_pb.DataState_PublicKey_Format, u
 }
 
 func newPostureCheckById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_PostureCheck, error) {
-	postureModel, err := ae.GetStores().PostureCheck.LoadOneById(tx, id)
+	postureModel, err := ae.GetStores().PostureCheck.LoadById(tx, id)
 
 	if err != nil {
 		return nil, err

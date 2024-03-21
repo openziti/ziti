@@ -231,7 +231,7 @@ func (store *edgeRouterStoreImpl) GetNameIndex() boltz.ReadIndex {
 }
 
 func (store *edgeRouterStoreImpl) cleanupEdgeRouter(ctx boltz.MutateContext, id string) error {
-	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
+	if entity, _ := store.LoadById(ctx.Tx(), id); entity != nil {
 		// Remove entity from EdgeRouterRoles in edge router policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.edgeRouterPolicy.symbolEdgeRouterRoles); err != nil {
 			return err
@@ -311,7 +311,7 @@ func (self *routerIdentityConstraint) ProcessAfterUpdate(ctx *boltz.IndexingCont
 	}
 
 	if !createEntities && currentTunnelerEnabled && oldName != name {
-		identity, err := self.stores.identity.LoadOneById(ctx.Tx(), routerId)
+		identity, err := self.stores.identity.LoadById(ctx.Tx(), routerId)
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
 				logrus.Errorf("identity for router with id %v not found", routerId)

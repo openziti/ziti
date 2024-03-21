@@ -82,7 +82,7 @@ func (advisor *PolicyAdvisor) getServicePermissions(identityId, serviceId string
 
 	servicePolicyStore := advisor.env.GetStores().ServicePolicy
 	servicePolicyIterator := func(tx *bbolt.Tx, servicePolicyId string) error {
-		servicePolicy, err := servicePolicyStore.LoadOneById(tx, servicePolicyId)
+		servicePolicy, err := servicePolicyStore.LoadById(tx, servicePolicyId)
 		if err != nil {
 			return err
 		}

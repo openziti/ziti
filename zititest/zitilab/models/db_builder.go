@@ -70,7 +70,7 @@ func (self *ZitiDbBuilder) CreateEdgeRouterHosts(tx *bbolt.Tx, m *model.Model) e
 	}
 
 	for _, id := range ids {
-		er, err := self.stores.EdgeRouter.LoadOneById(tx, id)
+		er, err := self.stores.EdgeRouter.LoadById(tx, id)
 		if err != nil {
 			return err
 		}

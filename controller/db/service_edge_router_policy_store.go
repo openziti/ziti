@@ -163,7 +163,7 @@ func (store *serviceEdgeRouterPolicyStoreImpl) serviceRolesUpdated(persistCtx *b
 }
 
 func (store *serviceEdgeRouterPolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
-	policy, err := store.LoadOneById(ctx.Tx(), id)
+	policy, err := store.LoadById(ctx.Tx(), id)
 	if err != nil {
 		return err
 	}

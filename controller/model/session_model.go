@@ -35,7 +35,7 @@ type Session struct {
 }
 
 func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.Session, error) {
-	apiSession, err := env.GetStores().ApiSession.LoadOneById(tx, entity.ApiSessionId)
+	apiSession, err := env.GetStores().ApiSession.LoadById(tx, entity.ApiSessionId)
 	if err != nil {
 		return nil, err
 	}

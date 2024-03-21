@@ -87,7 +87,7 @@ func (self *AuthenticatorManager) ReadFingerprints(authenticatorId string) ([]st
 
 	err := self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
-		authenticator, err = self.authStore.LoadOneById(tx, authenticatorId)
+		authenticator, err = self.authStore.LoadById(tx, authenticatorId)
 		return err
 	})
 
@@ -677,7 +677,7 @@ func getCaId(env Env, auth *AuthenticatorCert) string {
 	caId := ""
 	err := env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		for cursor := env.GetStores().Ca.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
-			ca, err := env.GetStores().Ca.LoadOneById(tx, string(cursor.Current()))
+			ca, err := env.GetStores().Ca.LoadById(tx, string(cursor.Current()))
 			if err != nil {
 				continue
 			}

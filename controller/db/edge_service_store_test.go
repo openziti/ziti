@@ -181,7 +181,7 @@ func (ctx *TestContext) testLoadQueryEdgeServices(_ *testing.T) {
 	entities := ctx.createEdgeServiceTestEntities()
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		service, err := ctx.stores.EdgeService.LoadOneById(tx, entities.service1.Id)
+		service, err := ctx.stores.EdgeService.LoadById(tx, entities.service1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(service)
 		ctx.EqualValues(entities.service1.Id, service.Id)
@@ -217,11 +217,11 @@ func (ctx *TestContext) testUpdateEdgeServices(_ *testing.T) {
 	mutateCtx := change.New().NewMutateContext()
 	err := ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		tx := mutateCtx.Tx()
-		original, err := ctx.stores.EdgeService.LoadOneById(tx, entities.service1.Id)
+		original, err := ctx.stores.EdgeService.LoadById(tx, entities.service1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(original)
 
-		service, err := ctx.stores.EdgeService.LoadOneById(tx, entities.service1.Id)
+		service, err := ctx.stores.EdgeService.LoadById(tx, entities.service1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(service)
 
@@ -234,7 +234,7 @@ func (ctx *TestContext) testUpdateEdgeServices(_ *testing.T) {
 
 		err = ctx.stores.EdgeService.Update(mutateCtx, service, nil)
 		ctx.NoError(err)
-		loaded, err := ctx.stores.EdgeService.LoadOneById(tx, entities.service1.Id)
+		loaded, err := ctx.stores.EdgeService.LoadById(tx, entities.service1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(loaded)
 		ctx.EqualValues(original.CreatedAt, loaded.CreatedAt)

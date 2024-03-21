@@ -400,7 +400,7 @@ func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) e
 		}
 	}
 
-	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
+	if entity, _ := store.LoadById(ctx.Tx(), id); entity != nil {
 		if entity.IsDefaultAdmin {
 			return errorz.NewEntityCanNotBeDeleted()
 		}
@@ -444,7 +444,7 @@ func (store *identityStoreImpl) AssignServiceConfigs(tx *bbolt.Tx, identityId st
 	}
 	configTypes := map[string]struct{}{}
 	for _, serviceConfig := range serviceConfigs {
-		config, err := store.stores.config.LoadOneById(tx, serviceConfig.ConfigId)
+		config, err := store.stores.config.LoadById(tx, serviceConfig.ConfigId)
 		if err != nil {
 			return err
 		}
@@ -625,7 +625,7 @@ func (store *identityStoreImpl) LoadServiceConfigsByServiceAndType(tx *bbolt.Tx,
 				_, wantsType = configTypes[configTypeId]
 			}
 			if wantsType {
-				if config, _ := store.stores.config.LoadOneById(tx, configId); config != nil {
+				if config, _ := store.stores.config.LoadById(tx, configId); config != nil {
 					serviceMap, ok := result[serviceId]
 					if !ok {
 						serviceMap = map[string]map[string]interface{}{}

@@ -78,7 +78,7 @@ func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *db.ServiceEvent
 	var sessionsToDelete []string
 
 	err := enforcer.appEnv.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		identity, err := enforcer.appEnv.GetStores().Identity.LoadOneById(tx, event.IdentityId)
+		identity, err := enforcer.appEnv.GetStores().Identity.LoadById(tx, event.IdentityId)
 		if err != nil {
 			return err
 		}
@@ -134,12 +134,12 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 	var sessionsToRemove []string
 	err = enforcer.appEnv.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		for _, session := range result.Sessions {
-			apiSession, err := enforcer.appEnv.GetStores().ApiSession.LoadOneById(tx, session.ApiSessionId)
+			apiSession, err := enforcer.appEnv.GetStores().ApiSession.LoadById(tx, session.ApiSessionId)
 			if err != nil {
 				return err
 			}
 
-			identity, err := enforcer.appEnv.GetStores().Identity.LoadOneById(tx, apiSession.IdentityId)
+			identity, err := enforcer.appEnv.GetStores().Identity.LoadById(tx, apiSession.IdentityId)
 			if err != nil {
 				return err
 			}

@@ -82,7 +82,7 @@ func (entity *ApiSession) fillFrom(env Env, tx *bbolt.Tx, boltApiSession *db.Api
 	entity.LastActivityAt = boltApiSession.LastActivityAt
 	entity.AuthenticatorId = boltApiSession.AuthenticatorId
 
-	boltIdentity, err := env.GetStores().Identity.LoadOneById(tx, boltApiSession.IdentityId)
+	boltIdentity, err := env.GetStores().Identity.LoadById(tx, boltApiSession.IdentityId)
 	if err != nil {
 		return err
 	}

@@ -122,7 +122,7 @@ func (pc *PostureCache) evaluate() {
 			}
 
 			for cursor.IsValid() && len(sessions) < maxScanPerTx {
-				if session, _ := pc.env.GetStores().Session.LoadOneById(tx, string(cursor.Current())); session != nil {
+				if session, _ := pc.env.GetStores().Session.LoadById(tx, string(cursor.Current())); session != nil {
 					sessions = append(sessions, session)
 				}
 				lastId = cursor.Current()

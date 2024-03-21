@@ -145,14 +145,14 @@ func (*sessionStoreImpl) PersistEntity(entity *Session, ctx *boltz.PersistContex
 	ctx.SetStringList(FieldSessionServicePolicies, entity.ServicePolicies)
 
 	if entity.ApiSession == nil {
-		entity.ApiSession, _ = ctx.Store.(*sessionStoreImpl).stores.apiSession.LoadOneById(ctx.Bucket.Tx(), entity.ApiSessionId)
+		entity.ApiSession, _ = ctx.Store.(*sessionStoreImpl).stores.apiSession.LoadById(ctx.Bucket.Tx(), entity.ApiSessionId)
 	}
 }
 
 func (store *sessionStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*Session, error) {
 	id := store.indexToken.Read(tx, []byte(token))
 	if id != nil {
-		return store.LoadOneById(tx, string(id))
+		return store.LoadById(tx, string(id))
 	}
 	return nil, boltz.NewNotFoundError(store.GetSingularEntityType(), "token", token)
 }

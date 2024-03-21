@@ -164,7 +164,7 @@ func (store *edgeRouterPolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.P
 }
 
 func (store *edgeRouterPolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
-	policy, err := store.LoadOneById(ctx.Tx(), id)
+	policy, err := store.LoadById(ctx.Tx(), id)
 	if err != nil {
 		return err
 	}

@@ -91,7 +91,7 @@ func (action *addDebugAdminAction) run(dbFile, username, password string) {
 	ctx := change.New().SetChangeAuthorType("cli.debug-db").NewMutateContext()
 	err = dbProvider.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		tx := ctx.Tx()
-		identity, _ := stores.Identity.LoadOneById(tx, id)
+		identity, _ := stores.Identity.LoadById(tx, id)
 		if identity != nil {
 			if err = stores.Identity.DeleteById(ctx, id); err != nil {
 				return err
