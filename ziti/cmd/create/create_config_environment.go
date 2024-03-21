@@ -69,11 +69,18 @@ var environmentOptions *CreateConfigEnvironmentOptions
 type CreateConfigEnvironmentOptions struct {
 	CreateConfigOptions
 	EnvVariableTemplateData
+
+	DisableOSVarDeclare bool
+}
+
+func (options *CreateConfigEnvironmentOptions) addFlags(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(&options.DisableOSVarDeclare, "no-shell", false, "Disable printing assignments prefixed with 'SET' (Windows) or 'export' (Unix)")
 }
 
 // NewCmdCreateConfigEnvironment creates a command object for the "environment" command
 func NewCmdCreateConfigEnvironment() *cobra.Command {
 	environmentOptions = &CreateConfigEnvironmentOptions{}
+	
 	data := &ConfigTemplateValues{}
 
 	cmd := &cobra.Command{
@@ -138,10 +145,14 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 			// Figure out the correct comment prefix and variable declaration command
 			if runtime.GOOS == "windows" {
 				environmentOptions.OSCommentPrefix = "rem"
-				environmentOptions.OSVarDeclare = "SET"
+				if ! environmentOptions.DisableOSVarDeclare {
+					environmentOptions.OSVarDeclare = "SET"
+				}
 			} else {
 				environmentOptions.OSCommentPrefix = "#"
-				environmentOptions.OSVarDeclare = "export"
+				if ! environmentOptions.DisableOSVarDeclare {
+					environmentOptions.OSVarDeclare = "export"
+				}
 			}
 			if environmentOptions.Verbose {
 				logrus.SetLevel(logrus.DebugLevel)
@@ -212,6 +223,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 
 	cmd.Long = sb.String()
 
+	environmentOptions.addFlags(cmd)
 	environmentOptions.addCreateFlags(cmd)
 
 	return cmd
