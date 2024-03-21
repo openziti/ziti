@@ -234,7 +234,7 @@ func (c *Controller) Initialize() {
 	//after InitPersistence
 	c.AppEnv.Broker = env.NewBroker(c.AppEnv, sync2.NewInstantStrategy(c.AppEnv, sync2.InstantStrategyOptions{
 		MaxQueuedRouterConnects:  100,
-		MaxQueuedClientHellos:    100,
+		MaxQueuedClientHellos:    1000,
 		RouterConnectWorkerCount: 10,
 		SyncWorkerCount:          10,
 		RouterTxBufferSize:       100,
