@@ -85,7 +85,7 @@ promptCtrlAdvertisedAddress() {
 
 promptRouterAdvertisedAddress() {
     if [ -z "${ZITI_ROUTER_ADVERTISED_ADDRESS:-}" ]; then
-        DEFAULT_ADDR="${HOSTNAME:=$(hostname -f)}}"
+        DEFAULT_ADDR="${HOSTNAME:=$(hostname -f)}"
         if ZITI_ROUTER_ADVERTISED_ADDRESS="$(prompt "Enter the advertised address for this router [$DEFAULT_ADDR]: " || echo "$DEFAULT_ADDR")"; then
             sed -Ei "s/^(ZITI_ROUTER_ADVERTISED_ADDRESS)=.*/\1=${ZITI_ROUTER_ADVERTISED_ADDRESS}/" /opt/openziti/etc/router/env
         fi
@@ -109,7 +109,7 @@ promptEnrollToken() {
         elif [[ -n "${ZITI_ENROLL_TOKEN:-}" ]]; then
             echo "INFO: ZITI_ENROLL_TOKEN is defined in /opt/openziti/etc/router/env and will be used to enroll during"\
                     "next startup"
-        elif grep -qE "^LoadCredential=ZITI_ENROLL_TOKEN=${ZITI_ENROLL_TOKEN_FILE}" \
+        elif grep -qE "^LoadCredential=ZITI_ENROLL_TOKEN:${ZITI_ENROLL_TOKEN_FILE}" \
                     /lib/systemd/system/ziti-router.service \
                 && [[ -s "${ZITI_ENROLL_TOKEN_FILE}" ]]; then
             echo "INFO: ZITI_ENROLL_TOKEN is defined in ${ZITI_ENROLL_TOKEN_FILE} and will be used to"\
@@ -137,8 +137,14 @@ promptRouterMode() {
             sed -Ei "s/^(ZITI_ROUTER_MODE)=.*/\1=${ZITI_ROUTER_MODE}/" /opt/openziti/etc/router/env
         fi
     fi
+    # grant kernel capability NET_ADMIN if tproxy mode
     if [[ "${ZITI_ROUTER_MODE}" == tproxy ]]; then
         grantNetAdmin
+        # also grant NET_BIND_SERVICE if resolver port is default 53 or defined <= 1024
+        RESOLVER_PORT="${ZITI_ROUTER_TPROXY_RESOLVER##*:}"
+        if [[ -z "${RESOLVER_PORT}" || "${RESOLVER_PORT}" -le 1024 ]]; then
+            grantNetBindService
+        fi
     fi
 }
 
