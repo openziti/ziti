@@ -17,6 +17,7 @@
 package helpers
 
 import (
+	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	edge "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
@@ -201,6 +202,9 @@ func NormalizePath(input string) string {
 
 func GetRouterAdvertisedAddress() string {
 	return getFromEnv(constants.ZitiEdgeRouterAdvertisedAddressVarName, HostnameOrNetworkName)
+}
+func GetZitiEdgeRouterResolver() string {
+	return getFromEnv(constants.ZitiEdgeRouterResolverVarName, defaultValue(xgress_edge_tunnel.DefaultDnsResolver))
 }
 func GetRouterSans() string {
 	return getFromEnv(constants.ZitiRouterCsrSansDnsVarName, GetRouterAdvertisedAddress)

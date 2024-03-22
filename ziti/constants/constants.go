@@ -61,6 +61,10 @@ const (
 const (
 	ZitiHomeVarName                                  = "ZITI_HOME"
 	ZitiHomeVarDescription                           = "base dirname used to construct paths"
+
+	ZitiNetworkNameVarName                           = "ZITI_NETWORK_NAME"
+	ZitiNetworkNameVarDescription                    = "base filename used to construct paths"
+
 	PkiCtrlCertVarName                               = "ZITI_PKI_CTRL_CERT"
 	PkiCtrlCertVarDescription                        = "Path to the controller's default identity client cert"
 	PkiCtrlServerCertVarName                         = "ZITI_PKI_CTRL_SERVER_CERT"
@@ -123,6 +127,8 @@ const (
 	ZitiEdgeRouterAdvertisedAddressVarDescription    = "The router's advertised address and DNS SAN"
 	ZitiEdgeRouterListenerBindPortVarName            = "ZITI_ROUTER_LISTENER_BIND_PORT"
 	ZitiEdgeRouterListenerBindPortVarDescription     = "TCP port where the router will listen for and advertise links to other routers"
+	ZitiEdgeRouterResolverVarName                    = "ZITI_ROUTER_TPROXY_RESOLVER"
+	ZitiEdgeRouterResolverVarDescription             = "The bind URI to listen for DNS requests in tproxy mode"
 	ZitiEdgeRouterCsrCVarName                        = "ZITI_ROUTER_CSR_C"
 	ZitiEdgeRouterCsrCVarDescription                 = "The country (C) to use for router CSRs"
 	ZitiEdgeRouterCsrSTVarName                       = "ZITI_ROUTER_CSR_ST"
