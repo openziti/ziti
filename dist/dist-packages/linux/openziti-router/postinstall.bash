@@ -133,7 +133,7 @@ promptEnrollToken() {
 promptRouterMode() {
     # if undefined or default value in env file, prompt for router mode, preserving default if no answer
     if [[ -z "${ZITI_ROUTER_MODE:-}" ]]; then
-        if ZITI_ROUTER_MODE="$(prompt 'Enter the router mode (eg. host, tproxy, proxy) [host]: ' || echo 'host')"; then
+        if ZITI_ROUTER_MODE="$(prompt 'Enter the router mode (eg. host, tproxy, proxy) [none]: ' || echo 'none')"; then
             sed -Ei "s/^(ZITI_ROUTER_MODE)=.*/\1=${ZITI_ROUTER_MODE}/" /opt/openziti/etc/router/env
         fi
     fi
