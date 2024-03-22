@@ -38,3 +38,7 @@
 - get: /zdew/
   raw: /openziti/desktop-edge-win/main/release-streams/
   file: latest.json
+
+- get: /dist/
+  raw: /openziti/ziti/{{GITHUB_SHA}}/dist/
+  file: /docker-images/ziti-router/compose.yml
