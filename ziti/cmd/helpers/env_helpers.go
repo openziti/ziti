@@ -206,6 +206,9 @@ func GetRouterAdvertisedAddress() string {
 func GetZitiEdgeRouterResolver() string {
 	return getFromEnv(constants.ZitiEdgeRouterResolverVarName, defaultValue(xgress_edge_tunnel.DefaultDnsResolver))
 }
+func GetZitiEdgeRouterDnsSvcIpRange() string {
+	return getFromEnv(constants.ZitiEdgeRouterDnsSvcIpRangeVarName, defaultValue(xgress_edge_tunnel.DefaultDnsServiceIpRange))
+}
 func GetRouterSans() string {
 	return getFromEnv(constants.ZitiRouterCsrSansDnsVarName, GetRouterAdvertisedAddress)
 }

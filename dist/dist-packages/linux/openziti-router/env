@@ -31,6 +31,8 @@ ZITI_ROUTER_PORT=
 ZITI_ROUTER_MODE=
 # where to listen for DNS requests in tproxy mode (default: udp://127.0.0.1:53)
 ZITI_ROUTER_TPROXY_RESOLVER=
+# CIDR range of IP addresses to assign to DNS clients in tproxy mode (default: 100.64.0.1/10)
+ZITI_ROUTER_DNS_IP_RANGE=
 
 # the interface address on which to listen (default: 0.0.0.0)
 ZITI_ROUTER_BIND_ADDRESS=

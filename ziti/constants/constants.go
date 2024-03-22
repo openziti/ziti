@@ -129,6 +129,8 @@ const (
 	ZitiEdgeRouterListenerBindPortVarDescription     = "TCP port where the router will listen for and advertise links to other routers"
 	ZitiEdgeRouterResolverVarName                    = "ZITI_ROUTER_TPROXY_RESOLVER"
 	ZitiEdgeRouterResolverVarDescription             = "The bind URI to listen for DNS requests in tproxy mode"
+	ZitiEdgeRouterDnsSvcIpRangeVarName               = "ZITI_ROUTER_DNS_IP_RANGE"
+	ZitiEdgeRouterDnsSvcIpRangeVarDescription        = "The CIDR range to use for Ziti DNS in tproxy mode"
 	ZitiEdgeRouterCsrCVarName                        = "ZITI_ROUTER_CSR_C"
 	ZitiEdgeRouterCsrCVarDescription                 = "The country (C) to use for router CSRs"
 	ZitiEdgeRouterCsrSTVarName                       = "ZITI_ROUTER_CSR_ST"

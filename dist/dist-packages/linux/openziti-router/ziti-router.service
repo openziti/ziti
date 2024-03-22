@@ -21,7 +21,7 @@ LoadCredential=ZITI_ENROLL_TOKEN:/opt/openziti/etc/router/.token
 ## extra permissions
 #
 
-# allow binding low ports, e.g., 443/tcp
+# allow binding low ports, e.g., 443/tcp; required when ZITI_ROUTER_MODE=tproxy or ZITI_ROUTER_PORT <= 1024
 # AmbientCapabilities=CAP_NET_BIND_SERVICE
 # allow adding IP routes and iptables rules; required when ZITI_ROUTER_MODE=tproxy
 # AmbientCapabilities=CAP_NET_ADMIN

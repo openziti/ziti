@@ -168,6 +168,7 @@ type EdgeRouterTemplateValues struct {
 	AdvertisedHost   string
 	LanInterface     string
 	Resolver         string
+	DnsSvcIpRange    string
 	ListenerBindPort string
 	CsrC             string
 	CsrST            string
@@ -284,6 +285,7 @@ func (data *ConfigTemplateValues) PopulateConfigValues() {
 	data.Router.Edge.Port = cmdHelper.GetZitiEdgeRouterPort()
 	data.Router.Edge.ListenerBindPort = cmdHelper.GetZitiEdgeRouterListenerBindPort()
 	data.Router.Edge.Resolver = cmdHelper.GetZitiEdgeRouterResolver()
+	data.Router.Edge.DnsSvcIpRange = cmdHelper.GetZitiEdgeRouterDnsSvcIpRange()
 	data.Router.Edge.CsrC = cmdHelper.GetZitiEdgeRouterC()
 	data.Router.Edge.CsrST = cmdHelper.GetZitiEdgeRouterST()
 	data.Router.Edge.CsrL = cmdHelper.GetZitiEdgeRouterL()
