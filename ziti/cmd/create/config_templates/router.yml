@@ -40,8 +40,13 @@ link:
 {{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#{{ end }}  - binding: tunnel
 {{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#{{ end }}    options:
 {{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#      mode: host #tproxy|host{{ else }}      mode: {{ .Router.TunnelerMode }} #tproxy|host{{ end }}
-{{ if and (not .Router.IsFabric) (eq .Router.TunnelerMode "tproxy") }}      resolver: udp://{{ .Router.Edge.AdvertisedHost }}:53{{ end }}
-{{ if and (not .Router.IsFabric) (eq .Router.TunnelerMode "tproxy") }}      lanIf: {{ .Router.Edge.LanInterface }}{{ end }}
+{{ if and (not .Router.IsFabric) (eq .Router.TunnelerMode "tproxy") }}      resolver: {{ .Router.Edge.Resolver }}{{ end }}
+{{- if and (not .Router.IsFabric) (eq .Router.TunnelerMode "tproxy") (.Router.Edge.LanInterface) }}
+      lanIf: {{ .Router.Edge.LanInterface }}
+{{- end }}
+{{- if and (not .Router.IsFabric) (eq .Router.TunnelerMode "tproxy") (.Router.Edge.DnsSvcIpRange ) }}
+      dnsSvcIpRange: {{ .Router.Edge.DnsSvcIpRange }}
+{{- end }}
 {{ if .Router.IsFabric -}}
 csr:
   country: US
@@ -53,7 +58,7 @@ csr:
     dns:
       - localhost
 {{ if .Router.Edge.CsrSans }}      - {{ .Router.Edge.CsrSans }}{{ end }}
-{{ if ne .Router.Edge.CsrSans .Hostname }}      - {{ .Hostname }}{{ end }}
+{{ if ne .Router.Edge.CsrSans .HostnameOrNetworkName }}      - {{ .HostnameOrNetworkName }}{{ end }}
     ip:
       - "127.0.0.1"
 {{ if .Router.Edge.IPOverride }}      - "{{ .Router.Edge.IPOverride }}"{{ end }}
@@ -69,7 +74,7 @@ edge:
       dns:
         - localhost
 {{ if .Router.Edge.CsrSans }}        - {{ .Router.Edge.CsrSans }}{{ end }}
-{{ if ne .Router.Edge.CsrSans .Hostname }}        - {{ .Hostname }}{{ end }}
+{{ if ne .Router.Edge.CsrSans .HostnameOrNetworkName }}        - {{ .HostnameOrNetworkName }}{{ end }}
       ip:
         - "127.0.0.1"
 {{ if .Router.Edge.IPOverride }}        - "{{ .Router.Edge.IPOverride }}"{{ end }}

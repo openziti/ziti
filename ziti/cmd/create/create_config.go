@@ -52,7 +52,7 @@ type CreateConfigOptions struct {
 
 type ConfigTemplateValues struct {
 	ZitiHome string
-	Hostname string
+	HostnameOrNetworkName string
 
 	Controller ControllerTemplateValues
 	Router     RouterTemplateValues
@@ -167,6 +167,8 @@ type EdgeRouterTemplateValues struct {
 	IPOverride       string
 	AdvertisedHost   string
 	LanInterface     string
+	Resolver         string
+	DnsSvcIpRange    string
 	ListenerBindPort string
 	CsrC             string
 	CsrST            string
@@ -230,7 +232,7 @@ func (options *CreateConfigOptions) addCreateFlags(cmd *cobra.Command) {
 func (data *ConfigTemplateValues) PopulateConfigValues() {
 
 	// Get and add hostname to the params
-	data.Hostname = cmdHelper.HostnameOrNetworkName()
+	data.HostnameOrNetworkName = cmdHelper.HostnameOrNetworkName()
 
 	// Get and add ziti home to the params
 	zitiHome := cmdHelper.GetZitiHome()
@@ -282,6 +284,8 @@ func (data *ConfigTemplateValues) PopulateConfigValues() {
 	// ************* Router Values ************
 	data.Router.Edge.Port = cmdHelper.GetZitiEdgeRouterPort()
 	data.Router.Edge.ListenerBindPort = cmdHelper.GetZitiEdgeRouterListenerBindPort()
+	data.Router.Edge.Resolver = cmdHelper.GetZitiEdgeRouterResolver()
+	data.Router.Edge.DnsSvcIpRange = cmdHelper.GetZitiEdgeRouterDnsSvcIpRange()
 	data.Router.Edge.CsrC = cmdHelper.GetZitiEdgeRouterC()
 	data.Router.Edge.CsrST = cmdHelper.GetZitiEdgeRouterST()
 	data.Router.Edge.CsrL = cmdHelper.GetZitiEdgeRouterL()

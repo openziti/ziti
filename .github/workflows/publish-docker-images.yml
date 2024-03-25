@@ -116,19 +116,20 @@ jobs:
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             DOCKER_TAGS+=",${IMAGE_REPO}:latest"
           fi
-          echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
-          echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+          echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
       - name: Build & Push Multi-Platform Router Container Image to Hub
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/dist/docker-images/ziti-router/
+          context: ${{ github.workspace }}/
+          file: ${{ github.workspace }}/dist/docker-images/ziti-router/Dockerfile
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_router.outputs.DOCKER_TAGS }}
           build-args: |
             ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}
             ZITI_CLI_IMAGE=${{ env.ZITI_CLI_IMAGE }}
+            DOCKER_BUILD_DIR=./dist/docker-images/ziti-router
           push: true
 
       - name: Set Up Container Image Tags for Go Tunneler Container

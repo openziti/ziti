@@ -1,0 +1,66 @@
+
+volumes:
+  ziti-router:
+    driver: local
+
+services:
+  chown-volume:
+    image: busybox
+    command: chown -R ${ZIGGY_UID:-2171} /mnt
+    volumes:
+      - ziti-router:/mnt
+
+  ziti-router:
+    image: ${ZITI_ROUTER_IMAGE:-openziti/ziti-router}
+    depends_on:
+      chown-volume:
+        condition: service_completed_successfully
+    volumes:
+      - ziti-router:/mnt
+    working_dir: /mnt
+    # these declared vars pass through to container and should be assigned in an .env file or exported from parent env
+    # to ensure consistency throughout the compose project
+    environment:
+      # *** these are the important vars to set ***
+      ZITI_CTRL_ADVERTISED_ADDRESS:                                   # domain name of the controller (required)
+      ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}   # exposed port of the controller
+      ZITI_ENROLL_TOKEN:                                              # enrollment token for this router (required)
+      ZITI_ROUTER_ADVERTISED_ADDRESS:                                 # domain name for this router (default: the container ID [hostname -f])
+      ZITI_ROUTER_PORT: ${ZITI_ROUTER_PORT-3022}                      # exposed port for this router
+      ZITI_ROUTER_MODE: ${ZITI_ROUTER_MODE:-host}                     # host, tproxy, tproxy (tproxy requires additional config below)
+      # *** less relevant vars below ***
+      ZITI_ROUTER_TYPE: edge           # edge, fabric
+      ZITI_ROUTER_NAME: ziti-router    # ensure the computed filenames based on this var are consistent, not based on
+                                       #  ephemeral container id
+      ZITI_BOOTSTRAP_CONFIG: true      # make config file from env vars and defaults if "true," overwrite if "force"
+      ZITI_BOOTSTRAP_ENROLLMENT: true  # enroll with controller if "true," overwrite if "force"
+      PFXLOG_NO_JSON: true
+      ZITI_TIME_FORMAT: utc
+    command: run config.yml
+    ports:
+      # ensure this port matches the value of ZITI_ROUTER_PORT in the container
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_ROUTER_PORT:-3022}:${ZITI_ROUTER_PORT:-3022}
+    expose:
+      - ${ZITI_ROUTER_PORT:-3022}
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - ziti
+        - agent
+        - stats
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+    # Additional config for other containers using this router as a transparent intercepting proxy sidecar and default
+    # nameserver - dns, user, cap_add are required when ZITI_ROUTER_MODE=tproxy (see adjacent README.md for TPROXY
+    # example)
+    #
+    # dns:
+    #   - 127.0.0.1  # this router's Ziti resolver
+    #   - 1.1.1.1    # any recursive resolver
+    # user: root     # required to create TPROXY routes in a container?
+    # cap_add:
+    #   - NET_ADMIN  # required to create TPROXY rules
