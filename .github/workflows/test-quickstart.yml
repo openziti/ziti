@@ -30,6 +30,11 @@ jobs:
         shell: bash
         run: sudo apt-get update && sudo apt-get install --yes zsh
 
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+
       - name: Build and run a quickstart container image
         shell: bash
         run: ./quickstart/test/compose-test.zsh
