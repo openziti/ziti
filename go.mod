@@ -17,7 +17,7 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gaissmai/extnetip v0.4.0
-	github.com/go-acme/lego/v4 v4.15.0
+	github.com/go-acme/lego/v4 v4.16.1
 	github.com/go-openapi/errors v0.22.0
 	github.com/go-openapi/loads v0.22.0
 	github.com/go-openapi/runtime v0.28.0
@@ -25,7 +25,7 @@ require (
 	github.com/go-openapi/strfmt v0.23.0
 	github.com/go-openapi/swag v0.23.0
 	github.com/go-openapi/validate v0.24.0
-	github.com/go-resty/resty/v2 v2.11.0
+	github.com/go-resty/resty/v2 v2.12.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
@@ -37,7 +37,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/raft v1.6.1
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0
-	github.com/jedib0t/go-pretty/v6 v6.5.4
+	github.com/jedib0t/go-pretty/v6 v6.5.6
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/kataras/go-events v0.0.3
@@ -48,17 +48,17 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.121
+	github.com/openziti/channel/v2 v2.0.122
 	github.com/openziti/edge-api v0.26.13
-	github.com/openziti/foundation/v2 v2.0.39
-	github.com/openziti/identity v1.0.72
+	github.com/openziti/foundation/v2 v2.0.40
+	github.com/openziti/identity v1.0.73
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.47
-	github.com/openziti/runzmd v1.0.40
-	github.com/openziti/sdk-golang v0.23.10
+	github.com/openziti/metrics v1.2.48
+	github.com/openziti/runzmd v1.0.41
+	github.com/openziti/sdk-golang v0.23.14
 	github.com/openziti/secretstream v0.1.17
-	github.com/openziti/storage v0.2.32
-	github.com/openziti/transport/v2 v2.0.124
+	github.com/openziti/storage v0.2.33
+	github.com/openziti/transport/v2 v2.0.125
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -112,7 +112,7 @@ require (
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
