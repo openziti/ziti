@@ -1,3 +1,10 @@
+# Release 0.34.1
+
+## What's New
+
+* Updates version of go to 1.22.x
+    * As usual when updating the go version, this is the only change in this release
+
 # Release 0.34.0
 
 ## What's New

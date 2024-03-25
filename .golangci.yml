@@ -1,12 +1,12 @@
 run:
   build-tags:
     - apitests
-  deadline: 8m
-  skip-files:
-    - ziti/cmd/edge/verify_ca.go
+  deadline: 10m
 
 # golangci gives false positives for implementations of methods using generics in generic interfaces
 issues:
+  exclude-files:
+   - ziti/cmd/edge/verify_ca.go
   exclude-rules:
     - path: 'controller/model/.*.go'
       linters:
