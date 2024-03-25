@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-set -euo pipefail
+
+set -o errexit
+set -o nounset
+set -o pipefail
+# set -o xtrace
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 ZITI_BIN="${SCRIPT_DIR}/image/ziti-bin"
