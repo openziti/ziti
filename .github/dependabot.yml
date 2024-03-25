@@ -11,15 +11,16 @@ updates:
       update-types:
         - "minor"
         - "patch"
-      include-patterns:
+      patterns:
         - "openziti"
 
-    non-major:
+    third-party:
       applies-to: version-updates
       update-types:
         - "minor"
         - "patch"
       exclude-patterns:
+        - "openziti"
         - "rabbitmq"
         - "blackfriday"
         - "zitadel"
@@ -32,3 +33,7 @@ updates:
   groups:
     all:
       applies-to: version-updates
+      update-types:
+        - "major"
+        - "minor"
+        - "patch"
