@@ -17,6 +17,7 @@
 package routes
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
@@ -148,8 +149,20 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 
 	policyPostureCheckMap := ae.GetManagers().EdgeService.GetPolicyPostureChecks(rc.Identity.Id, *ret.ID)
 
-	for policyId, policyPostureChecks := range policyPostureCheckMap {
+	if len(policyPostureCheckMap) == 0 {
+		for _, permission := range ret.Permissions {
+			passing := true
+			id := fmt.Sprintf("dummy %s policy: no posture checks defined", strings.ToLower(string(permission)))
+			ret.PostureQueries = append(ret.PostureQueries, &rest_model.PostureQueries{
+				PolicyID:       &id,
+				PostureQueries: []*rest_model.PostureQuery{},
+				PolicyType:     permission,
+				IsPassing:      &passing,
+			})
+		}
+	}
 
+	for policyId, policyPostureChecks := range policyPostureCheckMap {
 		isPolicyPassing := true
 		policyIdCopy := policyId
 		querySet := &rest_model.PostureQueries{
