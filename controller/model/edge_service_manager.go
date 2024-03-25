@@ -287,7 +287,7 @@ func (self *EdgeServiceManager) mergeConfigs(tx *bbolt.Tx, configTypes map[strin
 	if len(configTypes) > 0 && len(service.Configs) > 0 {
 		configStore := self.env.GetStores().Config
 		for _, configId := range service.Configs {
-			config, _ := configStore.LoadOneById(tx, configId)
+			config, _ := configStore.LoadById(tx, configId)
 			if config != nil {
 				_, wantsConfig := configTypes[config.Type]
 				if wantsAll || wantsConfig {
@@ -340,6 +340,10 @@ func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId str
 	policyTypeSymbol := self.env.GetStores().ServicePolicy.GetSymbol(db.FieldServicePolicyType)
 
 	_ = self.GetDb().View(func(tx *bbolt.Tx) error {
+		if !self.env.GetStores().PostureCheck.IterateIds(tx, ast.BoolNodeTrue).IsValid() {
+			return nil
+		}
+
 		policyCursor := self.env.GetStores().Identity.GetRelatedEntitiesCursor(tx, identityId, db.EntityTypeServicePolicies, true)
 		policyCursor = ast.NewFilteredCursor(policyCursor, func(policyId []byte) bool {
 			return serviceLinks.IsLinked(tx, policyId, []byte(serviceId))

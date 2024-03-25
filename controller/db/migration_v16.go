@@ -15,7 +15,7 @@ func (m *Migrations) removeOrphanedOttCaEnrollments(step *boltz.MigrationStep) {
 		current := cursor.Current()
 		currentEnrollmentId := string(current)
 
-		enrollment, err := m.stores.Enrollment.LoadOneById(step.Ctx.Tx(), currentEnrollmentId)
+		enrollment, err := m.stores.Enrollment.LoadById(step.Ctx.Tx(), currentEnrollmentId)
 
 		if err != nil {
 			step.SetError(fmt.Errorf("error iterating ids of enrollments, enrollment [%s]: %v", currentEnrollmentId, err))
@@ -23,7 +23,7 @@ func (m *Migrations) removeOrphanedOttCaEnrollments(step *boltz.MigrationStep) {
 		}
 
 		if enrollment.CaId != nil && *enrollment.CaId != "" {
-			_, err := m.stores.Ca.LoadOneById(step.Ctx.Tx(), *enrollment.CaId)
+			_, err := m.stores.Ca.LoadById(step.Ctx.Tx(), *enrollment.CaId)
 
 			if err != nil && boltz.IsErrNotFoundErr(err) {
 				enrollmentsToDelete = append(enrollmentsToDelete, currentEnrollmentId)

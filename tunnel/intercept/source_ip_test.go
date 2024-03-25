@@ -32,6 +32,10 @@ func (self *testProvider) GetCurrentIdentity() (*rest_model.IdentityDetail, erro
 	}, nil
 }
 
+func (self *testProvider) GetCurrentIdentityWithBackoff() (*rest_model.IdentityDetail, error) {
+	return self.GetCurrentIdentity()
+}
+
 func (self *testProvider) TunnelService(service tunnel.Service, identity string, conn net.Conn, halfClose bool, appInfo []byte) error {
 	panic("implement me")
 }

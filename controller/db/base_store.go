@@ -34,7 +34,6 @@ type initializableStore interface {
 type Store[E boltz.ExtEntity] interface {
 	boltz.EntityStore[E]
 	initializableStore
-	LoadOneById(tx *bbolt.Tx, id string) (E, error)
 }
 
 type baseStore[E boltz.ExtEntity] struct {
@@ -49,25 +48,6 @@ func (store *baseStore[E]) addUniqueNameField() boltz.ReadIndex {
 
 func (store *baseStore[E]) initializeIndexes(tx *bbolt.Tx, errorHolder errorz.ErrorHolder) {
 	store.InitializeIndexes(tx, errorHolder)
-}
-
-func (store *baseStore[E]) LoadOneById(tx *bbolt.Tx, id string) (E, error) {
-	entity := store.NewStoreEntity()
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return *new(E), err
-	}
-	return entity, nil
-}
-
-func (store *baseStore[E]) baseLoadOneById(tx *bbolt.Tx, id string, entity E) error {
-	found, err := store.LoadEntity(tx, id, entity)
-	if err != nil {
-		return err
-	}
-	if !found {
-		return boltz.NewNotFoundError(store.GetSingularEntityType(), "id", id)
-	}
-	return nil
 }
 
 func (store *baseStore[E]) deleteEntityReferences(tx *bbolt.Tx, entity boltz.NamedExtEntity, rolesSymbol boltz.EntitySetSymbol) error {

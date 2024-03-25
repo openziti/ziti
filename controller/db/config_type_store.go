@@ -120,7 +120,7 @@ func (store *configTypeStoreImpl) PersistEntity(entity *ConfigType, ctx *boltz.P
 func (store *configTypeStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*ConfigType, error) {
 	id := store.indexName.Read(tx, []byte(name))
 	if id != nil {
-		return store.LoadOneById(tx, string(id))
+		return store.LoadById(tx, string(id))
 	}
 	return nil, nil
 }

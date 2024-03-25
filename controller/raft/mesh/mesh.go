@@ -421,8 +421,8 @@ func (self *impl) GetPeer(addr raft.ServerAddress) *Peer {
 }
 
 func (self *impl) PeerDisconnected(peer *Peer) {
-	self.lock.RLock()
-	defer self.lock.RUnlock()
+	self.lock.Lock()
+	defer self.lock.Unlock()
 	currentPeer := self.Peers[peer.Address]
 	if currentPeer == nil || currentPeer != peer {
 		return

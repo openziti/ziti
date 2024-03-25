@@ -25,12 +25,14 @@ services:
       GOFLAGS: "-tags=quickstart,manual"
       GOCACHE: /.cache/go-build
       GOPATH: /go
-      ZITI_PWD:
-      ZITI_CTRL_EDGE_ADVERTISED_ADDRESS: ${EXTERNAL_DNS:-quickstart}
+      ZITI_PWD:  # default "admin"
+      ZITI_CTRL_ADVERTISED_ADDRESS: ${EXTERNAL_DNS:-quickstart}
+      ZITI_CTRL_EDGE_ADVERTISED_ADDRESS: ${EXTERNAL_DNS:-quickstart}  # deprecated by ZITI_CTRL_ADVERTISED_ADDRESS
+      ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}
+      ZITI_CTRL_EDGE_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}  # deprecated by ZITI_CTRL_ADVERTISED_PORT
       ZITI_ROUTER_ADVERTISED_ADDRESS: ${EXTERNAL_DNS:-quickstart}
-      ZITI_CTRL_EDGE_ADVERTISED_PORT:
+      ZITI_ROUTER_PORT: ${ZITI_ROUTER_PORT:-3022}
       ZITI_ROUTER_NAME: ${ZITI_ROUTER_NAME:-quickstart-router}
-      ZITI_ROUTER_PORT:
     command: go test -v ./ziti/cmd/edge/...
       
   wait-for-login:
@@ -39,6 +41,10 @@ services:
     image: ${ZITI_QUICK_IMAGE:-docker.io/openziti/ziti-cli}:${ZITI_QUICK_TAG:-latest}
     networks:
       - quickstart
+    # run as the same user as the host, so we can write in ~/.config/ziti
+    user: ${ZIGGY_UID:-1000}
+    environment:
+      HOME: /home/ziggy
     volumes:
       - ${ZITI_HOME:-ziti_home}:/home/ziggy
     entrypoint:
@@ -48,7 +54,7 @@ services:
         set -o pipefail
         ATTEMPTS=10
         DELAY=3
-        until !((ATTEMPTS)) || ziti $${@} &>/dev/null; do
+        until !((ATTEMPTS)) || ziti $${@}; do
           (( ATTEMPTS-- ))
           echo "Waiting for controller to start"
           sleep $${DELAY}
@@ -56,6 +62,6 @@ services:
         ziti $${@}
     command: >
       -- edge login
-      ${EXTERNAL_DNS:-quickstart}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
+      ${EXTERNAL_DNS:-quickstart}:${ZITI_CTRL_ADVERTISED_PORT:-1280}
       -u ${ZITI_USER:-admin} -p ${ZITI_PWD:-admin}
       --ca /home/ziggy/quickstart/pki/root-ca/certs/root-ca.cert

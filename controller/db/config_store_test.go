@@ -64,7 +64,7 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	boltztest.ValidateBaseline(ctx, config)
 
 	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		testConfig, err := ctx.stores.Config.LoadOneById(tx, config.Id)
+		testConfig, err := ctx.stores.Config.LoadById(tx, config.Id)
 		ctx.NoError(err)
 		ctx.NotNil(testConfig)
 		ctx.Equal(config.Name, testConfig.Name)

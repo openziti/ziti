@@ -19,23 +19,26 @@ package model
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"testing"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
+	edgeconfig "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/jwtsigner"
 	"github.com/openziti/ziti/controller/network"
-	"testing"
-	"time"
 )
 
 var _ Env = &TestContext{}
@@ -45,6 +48,10 @@ var _ HostController = &testHostController{}
 type testHostController struct {
 	closeNotify chan struct{}
 	ctx         *TestContext
+}
+
+func (self *testHostController) GetRaftIndex() uint64 {
+	return 0
 }
 
 func (self *testHostController) GetPeerSigners() []*x509.Certificate {
@@ -79,13 +86,45 @@ type TestContext struct {
 	*db.TestContext
 	n               *network.Network
 	managers        *Managers
-	config          *config.Config
+	config          *edgeconfig.Config
 	metricsRegistry metrics.Registry
 	hostController  *testHostController
 }
 
 func (ctx *TestContext) GetDbProvider() network.DbProvider {
 	return ctx.n
+}
+
+func (ctx *TestContext) ValidateAccessToken(token string) (*common.AccessClaims, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ctx *TestContext) ValidateServiceAccessToken(token string, apiSessionId *string) (*common.ServiceAccessClaims, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ctx *TestContext) OidcIssuer() string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ctx *TestContext) RootIssuer() string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ctx *TestContext) GetPeerControllerAddresses() []string {
+	return nil
+}
+
+func (ctx *TestContext) SigningMethod() jwt.SigningMethod {
+	return nil
+}
+
+func (ctx *TestContext) KeyId() string {
+	return "123-test-context"
 }
 
 func (ctx *TestContext) JwtSignerKeyFunc(*jwt.Token) (interface{}, error) {
@@ -99,7 +138,7 @@ func (ctx *TestContext) GetServerCert() (*tls.Certificate, string, jwt.SigningMe
 
 func (ctx *TestContext) HandleServiceUpdatedEventForIdentityId(string) {}
 
-func (ctx *TestContext) Generate(string, string, jwt.Claims) (string, error) {
+func (ctx *TestContext) Generate(jwt.Claims) (string, error) {
 	return "I'm a very legitimate claim", nil
 }
 
@@ -107,11 +146,11 @@ func (ctx *TestContext) GetManagers() *Managers {
 	return ctx.managers
 }
 
-func (ctx *TestContext) GetConfig() *config.Config {
+func (ctx *TestContext) GetConfig() *edgeconfig.Config {
 	return ctx.config
 }
 
-func (ctx *TestContext) GetJwtSigner() jwtsigner.Signer {
+func (ctx *TestContext) GetServerJwtSigner() jwtsigner.Signer {
 	return ctx
 }
 

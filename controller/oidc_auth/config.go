@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/sha256"
 	"crypto/x509"
+	"github.com/openziti/ziti/common"
 	"time"
 )
 
@@ -29,9 +30,9 @@ func NewConfig(issuer string, cert *x509.Certificate, key crypto.PrivateKey) Con
 		Issuer:               issuer,
 		Certificate:          cert,
 		PrivateKey:           key,
-		RefreshTokenDuration: DefaultRefreshTokenDuration,
-		AccessTokenDuration:  DefaultAccessTokenDuration,
-		IdTokenDuration:      DefaultIdTokenDuration,
+		RefreshTokenDuration: common.DefaultRefreshTokenDuration,
+		AccessTokenDuration:  common.DefaultAccessTokenDuration,
+		IdTokenDuration:      common.DefaultIdTokenDuration,
 	}
 }
 

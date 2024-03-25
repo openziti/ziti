@@ -86,7 +86,7 @@ func (entity *ApiSessionCertificate) fillFrom(env Env, tx *bbolt.Tx, boltApiSess
 	entity.PEM = boltApiSessionCertificate.PEM
 	entity.ApiSessionId = boltApiSessionCertificate.ApiSessionId
 
-	boltApiSession, err := env.GetStores().ApiSession.LoadOneById(tx, boltApiSessionCertificate.ApiSessionId)
+	boltApiSession, err := env.GetStores().ApiSession.LoadById(tx, boltApiSessionCertificate.ApiSessionId)
 	if err != nil {
 		return err
 	}

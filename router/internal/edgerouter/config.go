@@ -47,6 +47,7 @@ const (
 )
 
 type Config struct {
+	FilePath                   string
 	Enabled                    bool
 	ApiProxy                   ApiProxy
 	EdgeListeners              []*edge_ctrl_pb.Listener
@@ -60,6 +61,9 @@ type Config struct {
 
 	RouterConfig             *router.Config
 	EnrollmentIdentityConfig *identity.Config
+
+	Db             string
+	DbSaveInterval time.Duration
 }
 
 type Csr struct {
@@ -130,6 +134,33 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 
 	if err := config.ensureIdentity(configMap); err != nil {
 		return err
+	}
+
+	if val, found := edgeConfigMap["db"]; found {
+		config.Db = val.(string)
+	}
+
+	if config.Db == "" {
+		config.Db = "./db.json.gzip"
+
+		if value, found := configMap[router.PathMapKey]; found {
+			configPath := value.(string)
+			configPath = strings.TrimSpace(configPath)
+			config.Db = configPath + ".json.gzip"
+		} else {
+			pfxlog.Logger().Warnf("the db property was not set, using default for cached data model: %s", config.Db)
+		}
+
+		pfxlog.Logger().Infof("cached data model file set to: %s", config.Db)
+	}
+
+	if val, found := edgeConfigMap["dbSaveIntervalSeconds"]; found {
+		seconds := val.(int)
+		config.DbSaveInterval = time.Duration(seconds) * time.Second
+	}
+
+	if config.DbSaveInterval < 30*time.Second {
+		config.DbSaveInterval = 30 * time.Second
 	}
 
 	if val, found := edgeConfigMap["heartbeatIntervalSeconds"]; found {

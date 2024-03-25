@@ -21,12 +21,12 @@ import (
 	"github.com/openziti/edge-api/rest_client_api_client"
 	"github.com/openziti/edge-api/rest_client_api_server"
 	"github.com/openziti/edge-api/rest_management_api_server"
+	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/xweb/v2"
 	"github.com/pkg/errors"
 	"net/http"
 	"os"
@@ -59,8 +59,7 @@ func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 			if !clientApiFound && api.Binding() == controller.ClientApiBinding {
 				for _, bindPoint := range webListener.BindPoints {
 					if bindPoint.Address == factory.appEnv.Config.Api.Address {
-						factory.appEnv.SetEnrollmentSigningCert(webListener.Identity.ServerCert()[0])
-						factory.appEnv.SetServerIdentity(webListener.Identity.ServerCert()[0])
+						factory.appEnv.SetServerCert(webListener.Identity.ServerCert()[0])
 						clientApiFound = true
 						break
 					}

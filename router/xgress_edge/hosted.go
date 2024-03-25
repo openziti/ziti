@@ -28,19 +28,22 @@ import (
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/command"
 	routerEnv "github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/state"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
+	"strings"
 	"sync/atomic"
 	"time"
 )
 
-func newHostedServicesRegistry(env routerEnv.RouterEnv) *hostedServiceRegistry {
+func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manager) *hostedServiceRegistry {
 	result := &hostedServiceRegistry{
 		terminators:  cmap.New[*edgeTerminator](),
 		events:       make(chan terminatorEvent),
 		env:          env,
+		stateManager: stateManager,
 		triggerEvalC: make(chan struct{}, 1),
 		establishSet: map[string]*edgeTerminator{},
 		deleteSet:    map[string]*edgeTerminator{},
@@ -53,6 +56,7 @@ type hostedServiceRegistry struct {
 	terminators  cmap.ConcurrentMap[string, *edgeTerminator]
 	events       chan terminatorEvent
 	env          routerEnv.RouterEnv
+	stateManager state.Manager
 	establishSet map[string]*edgeTerminator
 	deleteSet    map[string]*edgeTerminator
 	triggerEvalC chan struct{}
@@ -544,6 +548,16 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 		Precedence:     terminator.precedence,
 		InstanceId:     terminator.instance,
 		InstanceSecret: terminator.instanceSecret,
+	}
+
+	if self.stateManager.GetConfig().Ha.Enabled && strings.HasPrefix(request.SessionToken, JwtTokenPrefix) {
+		apiSession := self.stateManager.GetApiSessionFromCh(terminator.Channel)
+
+		if apiSession == nil {
+			return errors.New("could not find api session for channel, unable to process bind message")
+		}
+
+		request.ApiSessionToken = apiSession.Token
 	}
 
 	ctrlCh := factory.ctrls.AnyCtrlChannel()

@@ -18,20 +18,15 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/michaelquigley/pfxlog"
 	clientCurrentIdentity "github.com/openziti/edge-api/rest_client_api_server/operations/current_identity"
 	managementCurrentIdentity "github.com/openziti/edge-api/rest_management_api_server/operations/current_identity"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/pkg/errors"
 	"net/http"
 )
 
@@ -141,54 +136,23 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestContext, body *rest_model.MfaCode) {
-	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
+	changeCtx := rc.NewChangeContext()
+	err := ae.Managers.Mfa.CompleteTotpEnrollment(rc.Identity.Id, *body.Code, changeCtx)
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	if mfa == nil {
-		rc.RespondWithNotFound()
-		return
-	}
-
-	if mfa.IsVerified {
-		rc.RespondWithNotFound()
-		return
-	}
-
-	ok, err := ae.Managers.Mfa.VerifyTOTP(mfa, *body.Code)
+	err = ae.Managers.ApiSession.SetMfaPassed(rc.ApiSession, changeCtx)
 
 	if err != nil {
-		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
+		rc.RespondWithError(err)
 		return
 	}
 
-	if ok {
-		changeCtx := rc.NewChangeContext()
-		mfa.IsVerified = true
-		if err := ae.Managers.Mfa.Update(mfa, nil, changeCtx); err != nil {
-			pfxlog.Logger().Errorf("could not update MFA with new MFA status: %v", err)
-			rc.RespondWithApiError(errorz.NewUnhandled(errors.New("could not update MFA status")))
-			return
-		}
+	rc.RespondWithEmptyOk()
 
-		rc.ApiSession.MfaComplete = true
-		rc.ApiSession.MfaRequired = true
-
-		if err := ae.Managers.ApiSession.UpdateWithFieldChecker(rc.ApiSession, boltz.MapFieldChecker{db.FieldApiSessionMfaComplete: struct{}{}, db.FieldApiSessionMfaRequired: struct{}{}}, changeCtx); err != nil {
-			pfxlog.Logger().Errorf("could not update API Session with new MFA status: %v", err)
-		}
-
-		ae.Managers.PostureResponse.SetMfaPosture(rc.Identity.Id, rc.ApiSession.Id, true)
-
-		rc.RespondWithEmptyOk()
-		return
-
-	}
-
-	rc.RespondWithError(apierror.NewInvalidMfaTokenError())
 }
 
 func (r *CurrentIdentityRouter) createMfa(ae *env.AppEnv, rc *response.RequestContext) {

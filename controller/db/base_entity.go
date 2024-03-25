@@ -29,6 +29,7 @@ const (
 	EntityTypeCas                       = "cas"
 	EntityTypeConfigs                   = "configs"
 	EntityTypeConfigTypes               = "configTypes"
+	EntityTypeControllers               = "controllers"
 	EntityTypeEdgeRouterPolicies        = "edgeRouterPolicies"
 	EntityTypeExternalJwtSigners        = "externalJwtSigners"
 	EntityTypeIdentities                = "identities"

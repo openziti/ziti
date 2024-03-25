@@ -79,6 +79,8 @@ const (
 
 	// CtrlRateLimiterMetricWorkTimer is the name of the metric tracking how long successful tasks are taking to complete
 	CtrlRateLimiterMetricWorkTimer = "ctrl_limiter.work_timer"
+
+	CtrlHaMapKey = "ha"
 )
 
 // internalConfigKeys is used to distinguish internally defined configuration vs file configuration
@@ -159,6 +161,9 @@ type Config struct {
 			Interval     time.Duration
 			InitialDelay time.Duration
 		}
+	}
+	Ha struct {
+		Enabled bool
 	}
 	Proxy   *transport.ProxyConfiguration
 	Plugins []string
@@ -781,6 +786,16 @@ func LoadConfig(path string) (*Config, error) {
 					tls.SetSharedListenerHandshakeTimeout(val)
 				} else {
 					return nil, errors.Wrapf(err, "failed to parse tls.handshakeTimeout value '%v", value)
+				}
+			}
+		}
+	}
+
+	if value, found := cfgmap[CtrlHaMapKey]; found {
+		if haMap, ok := value.(map[interface{}]interface{}); ok {
+			if enabledValue, found := haMap["enabled"]; found {
+				if enabled, ok := enabledValue.(bool); ok {
+					cfg.Ha.Enabled = enabled
 				}
 			}
 		}

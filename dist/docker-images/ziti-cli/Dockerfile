@@ -33,7 +33,8 @@ USER root
 ### install packages
 RUN   INSTALL_PKGS="python3.11 python3.11-pip tar bash-completion vim-minimal less shadow-utils jq findutils" && \
       microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
-      microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS}
+      microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS} && \
+      microdnf clean all
 
 ### install OpenShift CLI (oc)
 # FIXME: This repo requires terms acceptance and is only available on registry.redhat.io.

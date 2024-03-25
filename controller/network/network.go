@@ -594,14 +594,14 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 				// revert successful routes
 				logger.Warnf("circuit creation failed after [%d] attempts, sending cleanup unroutes", network.options.CreateCircuitRetries)
 				for cleanupRId := range allCleanups {
-					if r, err := network.GetRouter(cleanupRId); err == nil {
+					if r := network.GetConnectedRouter(cleanupRId); r != nil {
 						if err := sendUnroute(r, circuitId, true); err == nil {
 							logger.WithField("routerId", cleanupRId).Debug("sent cleanup unroute for circuit")
 						} else {
 							logger.WithField("routerId", cleanupRId).Error("error sending cleanup unroute for circuit")
 						}
 					} else {
-						logger.WithField("routerId", cleanupRId).Error("missing router for circuit cleanup")
+						logger.WithField("routerId", cleanupRId).Error("router for circuit cleanup not connected")
 					}
 				}
 
@@ -618,14 +618,14 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 		for cleanupRId := range allCleanups {
 			if _, found := usedRouters[cleanupRId]; !found {
 				cleanupCount++
-				if r, err := network.GetRouter(cleanupRId); err == nil {
+				if r := network.GetConnectedRouter(cleanupRId); r != nil {
 					if err := sendUnroute(r, circuitId, true); err == nil {
 						logger.WithField("routerId", cleanupRId).Debug("sent abandoned cleanup unroute for circuit to router")
 					} else {
 						logger.WithField("routerId", cleanupRId).WithError(err).Error("error sending abandoned cleanup unroute for circuit to router")
 					}
 				} else {
-					logger.WithField("routerId", cleanupRId).Error("missing router for circuit, abandoned cleanup")
+					logger.WithField("routerId", cleanupRId).Error("router not connected for circuit, abandoned cleanup")
 				}
 			}
 		}

@@ -1,9 +1,10 @@
-package oidc_auth
+package common
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/zitadel/oidc/v2/pkg/oidc"
 	"time"
 )
@@ -17,23 +18,51 @@ const (
 	CustomClaimsConfigTypes      = "z_ct"
 	CustomClaimsCertFingerprints = "z_cfs"
 
+	// CustomClaimsTokenType and other constants below may not appear as referenced, but are used in `json: ""` tags. Provided here for external use.
+	CustomClaimsTokenType    = "z_t"
+	CustomClaimServiceId     = "z_sid"
+	CustomClaimIdentityId    = "z_iid"
+	CustomClaimServiceType   = "z_st"
+	CustomClaimRemoteAddress = "z_ra"
+
 	DefaultAccessTokenDuration  = 30 * time.Minute
 	DefaultIdTokenDuration      = 30 * time.Minute
 	DefaultRefreshTokenDuration = 24 * time.Hour
 
-	TokenTypeAccess  = "a"
-	TokenTypeRefresh = "r"
+	TokenTypeAccess        = "a"
+	TokenTypeRefresh       = "r"
+	TokenTypeServiceAccess = "s"
 )
 
 type CustomClaims struct {
-	ApiSessionId     string   `json:"z_asid,omitempty"`
-	ExternalId       string   `json:"z_eid,omitempty"`
-	IsAdmin          bool     `json:"z_ia,omitempty"`
-	ConfigTypes      []string `json:"z_ct,omitempty"`
-	ApplicationId    string   `json:"z_aid,omitempty"`
-	Type             string   `json:"z_t"`
-	CertFingerprints []string `json:"z_cfs"`
-	Scopes           []string `json:"scopes,omitempty"`
+	ApiSessionId     string              `json:"z_asid,omitempty"`
+	ExternalId       string              `json:"z_eid,omitempty"`
+	IsAdmin          bool                `json:"z_ia,omitempty"`
+	ConfigTypes      []string            `json:"z_ct,omitempty"`
+	ApplicationId    string              `json:"z_aid,omitempty"`
+	Type             string              `json:"z_t"`
+	CertFingerprints []string            `json:"z_cfs"`
+	Scopes           []string            `json:"scopes,omitempty"`
+	SdkInfo          *rest_model.SdkInfo `json:"z_sdk"`
+	EnvInfo          *rest_model.EnvInfo `json:"z_env"`
+	RemoteAddress    string              `json:"z_ra"`
+}
+
+func (c *CustomClaims) ToMap() (map[string]any, error) {
+	out := map[string]any{}
+	str, err := json.Marshal(c)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(str, &out)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 type RefreshClaims struct {
@@ -99,9 +128,47 @@ func (c *RefreshClaims) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type ServiceAccessClaims struct {
+	jwt.RegisteredClaims
+	ApiSessionId string `json:"z_asid"`
+	IdentityId   string `json:"z_iid"`
+	TokenType    string `json:"z_t"`
+	Type         string `json:"z_st"`
+}
+
+func (c *ServiceAccessClaims) HasAudience(targetAud string) bool {
+	for _, aud := range c.Audience {
+		if aud == targetAud {
+			return true
+		}
+	}
+	return false
+}
+
 type AccessClaims struct {
 	oidc.AccessTokenClaims
 	CustomClaims
+}
+
+func (r *AccessClaims) ConfigTypesAsMap() map[string]struct{} {
+	result := map[string]struct{}{}
+
+	for _, configType := range r.ConfigTypes {
+		result[configType] = struct{}{}
+	}
+
+	return result
+}
+
+func (r *AccessClaims) UnmarshalJSON(raw []byte) error {
+	err := json.Unmarshal(raw, &r.AccessTokenClaims)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(raw, &r.CustomClaims)
+
+	return err
 }
 
 func (r *AccessClaims) GetExpirationTime() (*jwt.NumericDate, error) {
@@ -136,6 +203,15 @@ func (c *AccessClaims) TotpComplete() bool {
 		}
 	}
 
+	return false
+}
+
+func (c *AccessClaims) HasAudience(targetAud string) bool {
+	for _, aud := range c.Audience {
+		if aud == targetAud {
+			return true
+		}
+	}
 	return false
 }
 

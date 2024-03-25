@@ -35,7 +35,7 @@ func (m *Migrations) updateIdentityTypes(step *boltz.MigrationStep) {
 
 	for cursor := identityStore.IterateIds(step.Ctx.Tx(), ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		current := cursor.Current()
-		identity, err := identityStore.LoadOneById(step.Ctx.Tx(), string(current))
+		identity, err := identityStore.LoadById(step.Ctx.Tx(), string(current))
 		if step.SetError(err) {
 			return
 		}
@@ -64,7 +64,7 @@ func (m *Migrations) updateIdentityTypes(step *boltz.MigrationStep) {
 }
 
 func (m *Migrations) migrateIdentityType(step *boltz.MigrationStep, id string) {
-	idType, err := m.stores.IdentityType.LoadOneById(step.Ctx.Tx(), id)
+	idType, err := m.stores.IdentityType.LoadById(step.Ctx.Tx(), id)
 	if step.SetError(err) {
 		return
 	}

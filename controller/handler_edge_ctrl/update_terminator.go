@@ -56,7 +56,7 @@ func (self *updateTerminatorHandler) HandleReceive(msg *channel.Message, ch chan
 	}
 
 	ctx := &UpdateTerminatorRequestContext{
-		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		req:                       req,
 	}
 
@@ -79,7 +79,7 @@ func (self *updateTerminatorHandler) UpdateTerminator(ctx *UpdateTerminatorReque
 
 	logger.Debug("update request received")
 
-	ctx.loadSession(ctx.req.SessionToken)
+	ctx.loadSession(ctx.req.SessionToken, ctx.req.ApiSessionToken)
 	ctx.checkSessionType(db.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, common.EdgeBinding)

@@ -63,14 +63,14 @@ func (entity *Service) validateConfigs(tx *bbolt.Tx, env Env) error {
 	typeMap := map[string]*db.Config{}
 	configStore := env.GetStores().Config
 	for _, id := range entity.Configs {
-		config, _ := configStore.LoadOneById(tx, id)
+		config, _ := configStore.LoadById(tx, id)
 		if config == nil {
 			return boltz.NewNotFoundError(db.EntityTypeConfigs, "id", id)
 		}
 		conflictConfig, found := typeMap[config.Type]
 		if found {
 			configTypeName := "<not found>"
-			if configType, _ := env.GetStores().ConfigType.LoadOneById(tx, config.Type); configType != nil {
+			if configType, _ := env.GetStores().ConfigType.LoadById(tx, config.Type); configType != nil {
 				configTypeName = configType.Name
 			}
 			msg := fmt.Sprintf("duplicate configs named %v and %v found for config type %v. Only one config of a given typed is allowed per service ",

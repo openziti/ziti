@@ -60,6 +60,7 @@ type echoServer struct {
 	cliAgentEnabled bool
 	cliAgentAddr    string
 	cliAgentAlias   string
+	ha              bool
 }
 
 func newEchoServerCmd() *cobra.Command {
@@ -84,6 +85,7 @@ func newEchoServerCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&server.cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
 	cmd.Flags().StringVar(&server.cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	cmd.Flags().StringVar(&server.cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
+	cmd.Flags().BoolVar(&server.ha, "ha", false, "Enable HA controller compatibility")
 
 	return cmd
 }
@@ -157,6 +159,7 @@ func (self *echoServer) run(*cobra.Command, []string) {
 		if err != nil {
 			log.WithError(err).Fatalf("ziti: unable to load ziti identity from [%v]", self.configFile)
 		}
+		zitiConfig.EnableHa = self.ha
 		self.zitiIdentity, err = identity.LoadIdentity(zitiConfig.ID)
 		if err != nil {
 			log.WithError(err).Fatalf("ziti: unable to create ziti identity from [%v]", self.configFile)
@@ -166,6 +169,10 @@ func (self *echoServer) run(*cobra.Command, []string) {
 
 		if err != nil {
 			log.WithError(err).Fatal("unable to get create ziti context from config")
+		}
+
+		if self.ha {
+			zitiContext.(*ziti.ContextImpl).CtrlClt.SetUseOidc(true)
 		}
 
 		zitiIdentity, err := zitiContext.GetCurrentIdentity()

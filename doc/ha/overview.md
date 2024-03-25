@@ -292,3 +292,35 @@ distributed over time.
 ### Api Sessions, Sessions, Posture Data
 
 API Sessions and Sessions are moving to bearer tokens. Posture Data is TBD.
+
+## A New Authentication API
+
+A new API for authentication has been created. It is separate from the management, client, and
+fabric APIs. It is meant to become the single and only authentication API for OpenZiti networks.
+All new HA enabled SDKs make use of it going forward. The legacy authentication APIs will be
+considered deprecated.
+
+The new "Edge OIDC" API implements OpenID Connect - which is a subset of OAuth 2.0 specifically
+used for authentication. The API supports a native Code PKCE flow only. The result of authentication
+is now JWTs  that follow standard OIDC expiration and refresh patterns.
+
+Enabling the new authentication API is done by added the API's binding, `edge-oidc` to an existing `bindPoint`
+in the `web` section. In the following example, the last line enables the `edge-oidc` API.
+
+```
+web:
+  - name: all-apis-localhost
+    bindPoints:
+      - interface: 127.0.0.1:1280
+        address: 127.0.0.1:1280
+    options:
+      minTLSVersion: TLS1.2
+      maxTLSVersion: TLS1.3
+    apis:
+      - binding: health-checks
+      - binding: fabric
+      - binding: edge-management
+      - binding: edge-client
+      - binding: edge-oidc
+
+```

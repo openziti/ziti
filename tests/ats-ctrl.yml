@@ -55,3 +55,8 @@ web:
       - binding: fabric
       - binding: edge-management
       - binding: edge-client
+      - binding: edge-oidc
+        options:
+          redirectURIs:
+            - "http://localhost:*/auth/callback"
+            - "http://127.0.0.1:*/auth/callback"

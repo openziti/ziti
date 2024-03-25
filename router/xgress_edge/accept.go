@@ -38,6 +38,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	log.WithField("token", binding.GetChannel().Id()).Debug("accepting edge connection")
 
 	fpg := cert.NewFingerprintGenerator()
+
 	proxy := &edgeClientConn{
 		msgMux:       edge.NewCowMapMsgMux(),
 		listener:     self.listener,
@@ -49,28 +50,38 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	log.Debug("peer fingerprints ", proxy.fingerprints)
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type:    edge.ContentTypeConnect,
-		Handler: proxy.processConnect,
+		Type: edge.ContentTypeConnect,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			proxy.processConnect(self.listener.factory.stateManager, m, ch)
+		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type:    edge.ContentTypeBind,
-		Handler: proxy.processBind,
+		Type: edge.ContentTypeBind,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			proxy.processBind(self.listener.factory.stateManager, m, ch)
+		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type:    edge.ContentTypeUnbind,
-		Handler: proxy.processUnbind,
+		Type: edge.ContentTypeUnbind,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			proxy.processUnbind(self.listener.factory.stateManager, m, ch)
+		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type:    edge.ContentTypeUpdateBind,
-		Handler: proxy.processUpdateBind,
+		Type: edge.ContentTypeUpdateBind,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			proxy.processUpdateBind(self.listener.factory.stateManager, m, ch)
+		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type:    edge.ContentTypeHealthEvent,
-		Handler: proxy.processHealthEvent,
+		Type: edge.ContentTypeHealthEvent,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			proxy.processHealthEvent(self.listener.factory.stateManager, m, ch)
+		},
 	})
 
 	binding.AddReceiveHandlerF(edge.ContentTypeStateClosed, proxy.msgMux.HandleReceive)

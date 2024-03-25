@@ -34,6 +34,7 @@ type zcatAction struct {
 	verbose      bool
 	logFormatter string
 	configFile   string
+	ha           bool // todo: remove when ha flag is no longer needed
 }
 
 func newZcatCmd() *cobra.Command {
@@ -52,6 +53,7 @@ func newZcatCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&action.verbose, "verbose", "v", false, "Enable verbose logging")
 	cmd.Flags().StringVar(&action.logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 	cmd.Flags().StringVarP(&action.configFile, "identity", "i", "", "Specify the Ziti identity to use. If not specified the Ziti listener won't be started")
+	cmd.Flags().BoolVar(&action.ha, "ha", false, "Enable HA controller compatibility")
 	cmd.Flags().SetInterspersed(true)
 
 	return cmd
@@ -107,6 +109,7 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 			dialIdentifier = addr[:atIdx]
 			addr = addr[atIdx+1:]
 		}
+		zitiConfig.EnableHa = self.ha
 
 		zitiContext, ctxErr := ziti.NewContext(zitiConfig)
 		if ctxErr != nil {

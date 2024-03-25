@@ -49,7 +49,7 @@ func (ctx *TestContext) testCreateServicePolicy(_ *testing.T) {
 		ctx.Equal(0, len(ctx.stores.ServicePolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeServices)))
 		ctx.Equal(0, len(ctx.stores.ServicePolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeIdentities)))
 
-		testPolicy, err := ctx.stores.ServicePolicy.LoadOneById(tx, policy.Id)
+		testPolicy, err := ctx.stores.ServicePolicy.LoadById(tx, policy.Id)
 		ctx.NoError(err)
 		ctx.NotNil(testPolicy)
 		ctx.Equal(policy.Name, testPolicy.Name)

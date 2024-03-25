@@ -15,7 +15,7 @@ func (m *Migrations) addIdentityIdToSessions(step *boltz.MigrationStep) {
 
 	for cursor.IsValid() {
 		sessionId := string(cursor.Current())
-		session, err := m.stores.Session.LoadOneById(step.Ctx.Tx(), sessionId)
+		session, err := m.stores.Session.LoadById(step.Ctx.Tx(), sessionId)
 
 		if err != nil {
 			step.SetError(fmt.Errorf("could no load session by id [%s]: %v", sessionId, err))
@@ -28,7 +28,7 @@ func (m *Migrations) addIdentityIdToSessions(step *boltz.MigrationStep) {
 		}
 
 		if session.IdentityId == "" {
-			if apiSession, err := m.stores.ApiSession.LoadOneById(step.Ctx.Tx(), session.ApiSessionId); err == nil {
+			if apiSession, err := m.stores.ApiSession.LoadById(step.Ctx.Tx(), session.ApiSessionId); err == nil {
 				if apiSession != nil {
 					session.IdentityId = apiSession.IdentityId
 					if err = m.stores.Session.Update(step.Ctx, session, fieldChecker); err != nil {

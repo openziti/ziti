@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package ziti.edge_ctrl.pb;
 
-option go_package = "github.com/openziti/edge/pb/edge_ctrl_pb";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/openziti/ziti/common/pb/edge_ctrl_pb";
 
 enum ContentType {
   Zero = 0;
@@ -27,7 +29,6 @@ enum ContentType {
   RemoveTerminatorResponseType = 20212;
   ValidateSessionsRequestType = 20213;
   HealthEventType = 20214;
-  SigningCertAddedType = 20215;
   CreateTerminatorV2RequestType = 20216;
   CreateTerminatorV2ResponseType = 20217;
   CreateCircuitV2RequestType = 20218;
@@ -54,6 +55,10 @@ enum ContentType {
   RemoveTunnelTerminatorResponseType = 20411;
 
   TunnelHealthEventType = 20412;
+
+  DataStateType = 20500;
+  DataStateEventType = 20501;
+  UpdateTokenType = 20502;
 }
 
 enum SessionType {
@@ -65,6 +70,8 @@ enum Header {
   HeaderZero = 0;
   TerminatorId = 1022;
   CheckPassed = 1023;
+  RouterDataModel = 1024;
+  RouterDataModelIndex = 1025;
 }
 
 message ServerHello {
@@ -115,44 +122,124 @@ message Service {
   bool encryptionRequired = 3;
 }
 
-enum ConfigType {
-  Add = 0;
-  Remove = 1;
-  Replace = 2;
-}
+message DataState {
+  repeated Event events = 1;
+  uint64 endIndex  = 2;
 
+  enum Action {
+    Create = 0;
+    Update = 1;
+    Delete = 2;
+  }
 
-message Config {
-  string syncId = 1;
-  string id = 2;
-  ConfigType type = 3;
-  repeated bytes signerKeys = 4;
-  repeated Identity identities = 5;
-  repeated Service services = 6;
-  repeated PostureSet postureSet = 7;
-  repeated PostureCheck postureChecks = 8;
-}
+  message Identity {
+    string id = 1;
+    string name = 2;
+    repeated string servicePolicyIds = 3;
+  }
 
-message SignerCerts {
-  repeated bytes keys = 1;
-}
+  message Service {
+    string id = 1;
+    string name = 2;
+    bool encryptionRequired = 3;
+  }
 
-message Identity {
-  string id = 1;
-  string name = 2;
-  repeated string serviceIds = 3;
-}
+  message ServicePolicy {
+    string id = 1;
+    string name = 2;
+    repeated string serviceIds = 3;
+    repeated string postureCheckIds =4;
+    repeated string identityIds = 5;
+  }
 
-message PostureSet {
-  string id = 1;
-  string name = 2;
-  repeated string postureCheckIds = 3;
-}
+  message Revocation {
+    string id = 1;
+    google.protobuf.Timestamp ExpiresAt = 2;
+  }
 
-message PostureCheck {
-  string id = 1;
-  string type = 2;
-  map<string, bytes> data = 3;
+  message Event {
+    Action action = 1;
+    uint64 index = 2;
+    bool isSynthetic = 3;
+
+    oneof Model{
+      Identity identity = 10;
+      Service service = 11;
+      ServicePolicy servicePolicy = 12;
+      PostureCheck postureCheck = 13;
+      PublicKey publicKey = 14;
+      Revocation revocation = 15;
+    }
+  }
+
+  message PublicKey {
+    bytes data = 1; //public key
+    string kid = 2; //key id/fingerprint
+    repeated Usage usages = 3; // what the public key in data is used for
+    Format format = 4; //the format of the public key in data and chain
+
+    enum Usage {
+      JWTValidation = 0;
+      ClientX509CertValidation = 1;
+    }
+
+    enum Format {
+      X509CertDer = 0; //x509 cert
+      PKIXPublicKey = 1; //asn.1 public key
+      //JWK = 3; //JSON Web Key
+    }
+  }
+
+  message PostureCheck {
+    message Mac {
+      repeated string macAddresses = 1;
+    }
+
+    message Mfa {
+      int64 TimeoutSeconds = 1;
+      bool PromptOnWake = 2;
+      bool PromptOnUnlock = 3;
+      bool IgnoreLegacyEndpoints = 4;
+    }
+
+    message Os {
+      string OsType = 1;
+      repeated string OsVersions = 2;
+    }
+
+    message OsList {
+      repeated Os osList = 1;
+    }
+
+    message Process {
+      string OsType = 1;
+      string Path = 2;
+      repeated string Hashes = 3;
+      repeated string Fingerprints = 4;
+    }
+
+    message ProcessMulti {
+      string semantic = 1;
+      repeated Process processes = 2;
+    }
+
+    message Domains {
+      repeated string domains = 1;
+    }
+
+    string id = 1;
+    string name = 2;
+    string typeId = 4;
+
+    oneof subtype {
+      Mac mac = 7;
+      Mfa mfa = 8;
+      OsList osList = 9;
+      Process process = 10;
+      ProcessMulti processMulti = 11;
+      Domains domains = 12;
+    };
+  }
 }
 
 message Session {
@@ -203,6 +290,7 @@ message CreateCircuitRequest {
   repeated string fingerprints = 2;
   string terminatorInstanceId = 3;
   map<uint32, bytes> peerData = 4;
+  string apiSessionToken = 5;
 }
 
 message CreateCircuitResponse {
@@ -226,6 +314,7 @@ message CreateTerminatorRequest {
   TerminatorPrecedence precedence = 5;
   string instanceId = 6;
   bytes instanceSecret = 7;
+  string apiSessionToken = 8;
 }
 
 message CreateTerminatorV2Request {
@@ -237,6 +326,7 @@ message CreateTerminatorV2Request {
   TerminatorPrecedence precedence = 6;
   string instanceId = 7;
   bytes instanceSecret = 8;
+  string apiSessionToken = 9;
 }
 
 enum CreateTerminatorResult {
@@ -257,6 +347,7 @@ message RemoveTerminatorRequest {
   string sessionToken = 1;
   repeated string fingerprints = 2;
   string terminatorId = 3;
+  string apiSessionToken = 4;
 }
 
 message UpdateTerminatorRequest {
@@ -267,6 +358,7 @@ message UpdateTerminatorRequest {
   TerminatorPrecedence precedence = 5;
   bool updatePrecedence = 6;
   bool updateCost = 7;
+  string apiSessionToken = 8;
 }
 
 message HealthEventRequest {
@@ -274,6 +366,7 @@ message HealthEventRequest {
   repeated string fingerprints = 2;
   string terminatorId = 3;
   bool checkPassed = 4;
+  string apiSessionToken = 5;
 }
 
 message ValidateSessionsRequest {

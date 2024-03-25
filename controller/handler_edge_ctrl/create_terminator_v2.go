@@ -66,7 +66,7 @@ func (self *createTerminatorV2Handler) HandleReceive(msg *channel.Message, ch ch
 	}
 
 	ctx := &CreateTerminatorV2RequestContext{
-		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		req:                       req,
 	}
 
@@ -84,7 +84,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		return
 	}
 	ctx.verifyTerminatorId(ctx.req.Address)
-	ctx.loadSession(ctx.req.SessionToken)
+	ctx.loadSession(ctx.req.SessionToken, ctx.req.ApiSessionToken)
 	ctx.checkSessionType(db.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	ctx.verifyEdgeRouterAccess()

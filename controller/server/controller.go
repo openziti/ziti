@@ -18,26 +18,24 @@ package server
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	runner2 "github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/api_impl"
+	edgeconfig "github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/handler_edge_ctrl"
 	"github.com/openziti/ziti/controller/handler_edge_mgmt"
+	"github.com/openziti/ziti/controller/internal/policy"
+	_ "github.com/openziti/ziti/controller/internal/routes"
+	"github.com/openziti/ziti/controller/model"
 	sync2 "github.com/openziti/ziti/controller/sync_strats"
 	"os"
 	"sync"
 	"time"
-
-	"github.com/openziti/ziti/controller/internal/policy"
-
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common/config"
-	edgeconfig "github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/handler_edge_ctrl"
-	_ "github.com/openziti/ziti/controller/internal/routes"
-	"github.com/openziti/ziti/controller/model"
 )
 
 type Controller struct {
@@ -236,7 +234,7 @@ func (c *Controller) Initialize() {
 	//after InitPersistence
 	c.AppEnv.Broker = env.NewBroker(c.AppEnv, sync2.NewInstantStrategy(c.AppEnv, sync2.InstantStrategyOptions{
 		MaxQueuedRouterConnects:  100,
-		MaxQueuedClientHellos:    100,
+		MaxQueuedClientHellos:    1000,
 		RouterConnectWorkerCount: 10,
 		SyncWorkerCount:          10,
 		RouterTxBufferSize:       100,

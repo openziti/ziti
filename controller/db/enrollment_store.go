@@ -142,7 +142,7 @@ func (store *enrollmentStoreImpl) PersistEntity(entity *Enrollment, ctx *boltz.P
 func (store *enrollmentStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*Enrollment, error) {
 	id := store.tokenIndex.Read(tx, []byte(token))
 	if id != nil {
-		return store.LoadOneById(tx, string(id))
+		return store.LoadById(tx, string(id))
 	}
 	return nil, nil
 }

@@ -566,7 +566,7 @@ func (a *AuthModuleExtJwt) loadExistingSigners() {
 		}
 
 		for _, id := range ids {
-			signer, err := a.env.GetStores().ExternalJwtSigner.LoadOneById(tx, id)
+			signer, err := a.env.GetStores().ExternalJwtSigner.LoadById(tx, id)
 			if err != nil {
 				return err
 			}

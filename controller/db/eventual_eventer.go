@@ -489,7 +489,7 @@ func (a *EventualEventerBbolt) getEventualEvents() ([]string, []*EventualEvent, 
 		}
 
 		for _, id := range ids {
-			event, err := a.store.LoadOneById(tx, id)
+			event, err := a.store.LoadById(tx, id)
 
 			if err != nil {
 				pfxlog.Logger().WithField("id", id).WithError(err).Errorf("error could not load event id %s", id)

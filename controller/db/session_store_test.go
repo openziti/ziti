@@ -100,7 +100,7 @@ func (ctx *TestContext) testUpdateInvalidSessions(_ *testing.T) {
 	boltztest.RequireUpdate(ctx, session)
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		loaded, err := ctx.stores.Session.LoadOneById(tx, session.Id)
+		loaded, err := ctx.stores.Session.LoadById(tx, session.Id)
 		ctx.NoError(err)
 		ctx.NotNil(loaded)
 		ctx.Equal(apiSession.Id, loaded.ApiSessionId)
@@ -236,11 +236,11 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 	mutateCtx := change.New().NewMutateContext()
 	err := ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		tx := mutateCtx.Tx()
-		original, err := ctx.stores.Session.LoadOneById(tx, entities.session1.Id)
+		original, err := ctx.stores.Session.LoadById(tx, entities.session1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(original)
 
-		session, err := ctx.stores.Session.LoadOneById(tx, entities.session1.Id)
+		session, err := ctx.stores.Session.LoadById(tx, entities.session1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(session)
 
@@ -252,7 +252,7 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 
 		err = ctx.stores.Session.Update(mutateCtx, session, nil)
 		ctx.NoError(err)
-		loaded, err := ctx.stores.Session.LoadOneById(tx, entities.session1.Id)
+		loaded, err := ctx.stores.Session.LoadById(tx, entities.session1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(loaded)
 		ctx.EqualValues(original.CreatedAt, loaded.CreatedAt)
