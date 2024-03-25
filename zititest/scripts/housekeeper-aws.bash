@@ -25,7 +25,7 @@ function describe_instances() {
           |{InstanceId: .InstanceId, Region: $region, LaunchTime: .LaunchTime, State: .State, Tags: .Tags}
         ]
       ' \
-    | tee $old_file \
+    | tee "$old_file" \
     | jq 'length' | xargs -ILEN echo "Described LEN old instances in $region in $(realpath $old_file)"
   done
 }
@@ -38,15 +38,20 @@ function describe_vpcs {
     local old_file="old-fablab-vpcs-${region}.json"
     local odd_file="odd-fablab-vpcs-${region}.json"
     local -A vpc_create_events=() odd_vpcs=() old_vpcs=()
-    read -ra all_fablab_vpcs < <(
+    all_fablab_vpcs_json="$(
       # shellcheck disable=SC2016
       aws --region "$region" ec2 describe-vpcs \
-          --query 'Vpcs[?Tags[?Key==`source` && Value==`fablab`]].VpcId' \
-          --output text
-    )
-    if [[ ${#all_fablab_vpcs[@]} -ge 1 ]]
+          --query 'Vpcs[?Tags[?Key==`source` && Value==`fablab`]]' \
+          --output json
+    )"
+    local -a all_fablab_vpcs_ids=()
+    while read -r; do
+      all_fablab_vpcs_ids+=("$REPLY")
+    done < <(jq --raw-output '.[].VpcId' <<< "$all_fablab_vpcs_json")
+    # echo "DEBUG: found $(jq 'length' <<< "${all_fablab_vpcs_json}") fablab VPCs: ${all_fablab_vpcs_ids[*]}"
+    if [[ ${#all_fablab_vpcs_ids[@]} -ge 1 ]]
     then
-      for vpc_id in "${all_fablab_vpcs[@]}"
+      for vpc_id in "${all_fablab_vpcs_ids[@]}"
       do
         vpc_create_events["$vpc_id"]=$(
           # shellcheck disable=SC2016
@@ -57,7 +62,7 @@ function describe_vpcs {
         )
       done
 
-      for vpc_id in "${all_fablab_vpcs[@]}"
+      for vpc_id in "${all_fablab_vpcs_ids[@]}"
       do
         if [[ "$(jq 'length' <<< "${vpc_create_events[$vpc_id]}")" -ne 1 ]]
         then
@@ -84,6 +89,10 @@ function describe_vpcs {
       do
         if [[ "$(jq 'length' <<< "${old_vpcs[$vpc_id]}")" -eq 1 ]]
         then
+          # append the tags from describe all VPCs as a new key "tags" in the current VPC
+          local tags='{}'
+          tags="$(jq --arg vpc_id "${vpc_id}" '.[]|select(.VpcId == $vpc_id)|.Tags' <<< "${all_fablab_vpcs_json}")"
+          old_vpcs[$vpc_id]="$(jq --argjson tags "${tags}" '.[0] += {"tags": $tags}' <<< "${old_vpcs[$vpc_id]}")"
           old_vpcs_json=$(jq --argjson append "${old_vpcs[$vpc_id]}" '. += $append' <<< "${old_vpcs_json}")
         fi
       done
@@ -182,7 +191,8 @@ do
       fi
       ;;
     --help|\?|*)
-      echo "Usage: $BASENAME [--age DAYS|--state (running|stopped)|stop FILE|terminate FILE]"
+      echo "Usage: $BASENAME [describe instance --age DAYS --state (running|stopped) | describe vpc ] | stop FILE | terminate FILE]"\
+        "where FILE is a JSON file created by the describe command"
       exit 0
       ;;
   esac
