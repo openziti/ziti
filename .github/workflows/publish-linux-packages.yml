@@ -85,7 +85,7 @@ jobs:
           if-no-files-found: error
 
       - name: Configure jFrog CLI
-        uses: jfrog/setup-jfrog-cli@v3
+        uses: jfrog/setup-jfrog-cli@v4
         env:
           JF_ENV_1: ${{ secrets.ZITI_ARTIFACTORY_CLI_CONFIG_PACKAGE_UPLOAD }}
 
