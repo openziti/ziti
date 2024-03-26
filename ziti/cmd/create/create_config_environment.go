@@ -104,6 +104,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 				{constants.PkiCtrlServerCertVarName, constants.PkiCtrlServerCertVarDescription, data.Controller.Identity.ServerCert},
 				{constants.PkiCtrlKeyVarName, constants.PkiCtrlKeyVarDescription, data.Controller.Identity.Key},
 				{constants.PkiCtrlCAVarName, constants.PkiCtrlCAVarDescription, data.Controller.Identity.Ca},
+				{constants.CtrlDatabaseFileVarName, constants.CtrlDatabaseFileVarDescription, data.Controller.Database.DatabaseFile},
 				{constants.CtrlBindAddressVarName, constants.CtrlBindAddressVarDescription, data.Controller.Ctrl.BindAddress},
 				{constants.CtrlAdvertisedAddressVarName, constants.CtrlAdvertisedAddressVarDescription, data.Controller.Ctrl.AdvertisedAddress},
 				{constants.CtrlAdvertisedPortVarName, constants.CtrlAdvertisedPortVarDescription, data.Controller.Ctrl.AdvertisedPort},
@@ -188,6 +189,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiCtrlServerCertVarName, constants.PkiCtrlServerCertVarDescription, data.Controller.Identity.ServerCert))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiCtrlKeyVarName, constants.PkiCtrlKeyVarDescription, data.Controller.Identity.Key))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiCtrlCAVarName, constants.PkiCtrlCAVarDescription, data.Controller.Identity.Ca))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlDatabaseFileVarName, constants.CtrlDatabaseFileVarDescription, data.Controller.Database.DatabaseFile))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlBindAddressVarName, constants.CtrlBindAddressVarDescription, data.Controller.Ctrl.BindAddress))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlAdvertisedAddressVarName, constants.CtrlAdvertisedAddressVarDescription, data.Controller.Ctrl.AdvertisedAddress))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlEdgeAltAdvertisedAddressVarName, constants.CtrlEdgeAltAdvertisedAddressVarDescription, data.Controller.Ctrl.AdvertisedAddress))

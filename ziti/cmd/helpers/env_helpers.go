@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -102,6 +103,14 @@ func GetEdgeRouterIpOvderride() string {
 
 func GetCtrlAdvertisedPort() string {
 	return getFromEnv(constants.CtrlAdvertisedPortVarName, defaultValue(constants.DefaultCtrlAdvertisedPort))
+}
+
+func GetCtrlDatabaseFile() string {
+	path := getFromEnv(constants.CtrlDatabaseFileVarName, defaultValue(constants.DefaultCtrlDatabaseFile))
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(GetZitiHome(), path)
+	}
+	return NormalizePath(path)
 }
 
 func GetCtrlEdgeBindAddress() string {

@@ -3,10 +3,12 @@ package create
 import (
 	"fmt"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"os"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -138,6 +140,7 @@ func TestCreateConfigControllerTemplateValues(t *testing.T) {
 		".Controller.Ctrl.BindAddress",
 		".Controller.Ctrl.AdvertisedAddress",
 		".Controller.Ctrl.AdvertisedPort",
+		".Controller.Database.DatabaseFile",
 		".Controller.EdgeApi.Address",
 		".Controller.EdgeApi.Port",
 		".Controller.EdgeEnrollment.SigningCert",
@@ -162,6 +165,7 @@ func TestCreateConfigControllerTemplateValues(t *testing.T) {
 		&data.Controller.Ctrl.BindAddress,
 		&data.Controller.Ctrl.AdvertisedAddress,
 		&data.Controller.Ctrl.AdvertisedPort,
+		&data.Controller.Database.DatabaseFile,
 		&data.Controller.EdgeApi.Address,
 		&data.Controller.EdgeApi.Port,
 		&data.Controller.EdgeEnrollment.SigningCert,
@@ -275,6 +279,19 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Ca)
 	})
 
+	t.Run("TestDatabaseFileEnv", func(t *testing.T) {
+		expectedValue := cmdhelper.GetZitiHome() + "/" + constants.DefaultCtrlDatabaseFile
+
+		assert.Equal(t, expectedValue, data.Controller.Database.DatabaseFile)
+	})
+
+	// db:
+	t.Run("TestDatabaseFileConfig", func(t *testing.T) {
+		expectedValue := cmdhelper.GetZitiHome() + "/" + constants.DefaultCtrlDatabaseFile
+
+		assert.Equal(t, expectedValue, ctrlConfig.Db)
+	})
+
 	// ctrl:
 	t.Run("TestBindAddress", func(t *testing.T) {
 		expectedValue := testDefaultCtrlBindAddress
@@ -440,10 +457,11 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 	})
 }
 
-func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
+func TestCtrlConfigDefaultsWhenEmpty(t *testing.T) {
 	keys := map[string]string{
 		"ZITI_PKI_CTRL_CERT":                "",
 		"ZITI_CTRL_EDGE_ADVERTISED_ADDRESS": "",
+		"ZITI_CTRL_DATABASE_FILE":           "",
 		"ZITI_HOME":                         "",
 	}
 	// run the config
@@ -473,6 +491,19 @@ func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 
 		assert.Equal(t, expectedValue, data.Controller.Identity.Ca)
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Ca)
+	})
+
+	// db:
+	t.Run("TestDatabaseFileEnv", func(t *testing.T) {
+		expectedValue := cmdhelper.GetZitiHome() + "/" + constants.DefaultCtrlDatabaseFile
+
+		assert.Equal(t, expectedValue, data.Controller.Database.DatabaseFile)
+	})
+
+	t.Run("TestDatabaseFileConfig", func(t *testing.T) {
+		expectedValue := cmdhelper.GetZitiHome() + "/" + constants.DefaultCtrlDatabaseFile
+
+		assert.Equal(t, expectedValue, ctrlConfig.Db)
 	})
 
 	// ctrl:
@@ -638,6 +669,30 @@ func TestCtrlConfigDefaultsWhenBlank(t *testing.T) {
 		assert.Equal(t, expectedValue, data.Controller.Web.Options.MaxTLSVersion)
 		assert.Equal(t, expectedValue, ctrlConfig.Web[0].Options.MaxTLSVersion)
 	})
+}
+
+// ensure that a custom database file path is normalized with forward slashes
+func TestDatabaseFileNormalization(t *testing.T) {
+	var customValue string
+	if runtime.GOOS == "windows" {
+		customValue = "C:\\custom\\path\\file.db"
+	} else {
+		customValue = "/custom\\path/file.db"
+	}
+
+	keys := map[string]string{
+		"ZITI_CTRL_DATABASE_FILE": customValue,
+	}
+
+	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
+
+	if runtime.GOOS == "windows" {
+		assert.Equal(t, "C:/custom/path/file.db", data.Controller.Database.DatabaseFile)
+		assert.Equal(t, "C:/custom/path/file.db", ctrlConfig.Db)
+	} else {
+		assert.Equal(t, "/custom/path/file.db", data.Controller.Database.DatabaseFile)
+		assert.Equal(t, "/custom/path/file.db", ctrlConfig.Db)
+	}
 }
 
 func TestZitiCtrlIdentitySection(t *testing.T) {

@@ -20,6 +20,7 @@ jobs:
   build:
     name: Build and Run
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'openziti'
     steps:
       - name: Checkout ziti
         uses: actions/checkout@v4

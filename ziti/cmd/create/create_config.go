@@ -121,6 +121,10 @@ type IdentityValues struct {
 	AltCertsEnabled bool
 }
 
+type DatabaseValues struct {
+	DatabaseFile string
+}
+
 type WebOptionsValues struct {
 	IdleTimeout   time.Duration
 	ReadTimeout   time.Duration
@@ -131,6 +135,7 @@ type WebOptionsValues struct {
 
 type ControllerTemplateValues struct {
 	Identity       IdentityValues
+	Database       DatabaseValues
 	Ctrl           CtrlValues
 	HealthChecks   HealthChecksValues
 	EdgeApi        EdgeApiValues
@@ -247,6 +252,7 @@ func (data *ConfigTemplateValues) PopulateConfigValues() {
 	data.Controller.Ctrl.AltAdvertisedAddress = cmdHelper.GetCtrlEdgeAltAdvertisedAddress()
 	data.Controller.Ctrl.BindAddress = cmdHelper.GetCtrlBindAddress()
 	data.Controller.Ctrl.AdvertisedPort = cmdHelper.GetCtrlAdvertisedPort()
+	data.Controller.Database.DatabaseFile = cmdHelper.GetCtrlDatabaseFile()
 	// healthChecks:
 	data.Controller.HealthChecks.Interval = fabCtrl.DefaultHealthChecksBoltCheckInterval
 	data.Controller.HealthChecks.Timeout = fabCtrl.DefaultHealthChecksBoltCheckTimeout

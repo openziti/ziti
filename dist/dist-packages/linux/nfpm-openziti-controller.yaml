@@ -1,0 +1,35 @@
+# nfpm configuration file
+#
+# check https://nfpm.goreleaser.com/configuration for detailed usage
+#
+name: openziti-controller
+arch: ${GOARCH}
+platform: linux
+version: ${ZITI_VERSION}
+maintainer: ${ZITI_MAINTAINER}
+description: >
+  Provides a system service for running an OpenZiti Controller
+vendor: ${ZITI_VENDOR}
+homepage: ${ZITI_HOMEPAGE}
+license: Apache-2.0
+# Contents to add to the package.
+contents:
+  - dst: /lib/systemd/system/
+    src: ./dist/dist-packages/linux/openziti-controller/ziti-controller.service
+
+  - dst: /opt/openziti/etc/controller
+    type: dir
+    file_info:
+      mode: 0755
+
+  - dst: /opt/openziti/etc/controller/
+    src: ./dist/dist-packages/linux/openziti-controller/env
+    type: config|noreplace
+
+  - dst: /opt/openziti/etc/controller/
+    src: ./dist/dist-packages/linux/openziti-controller/bootstrap.bash
+
+  - dst: /opt/openziti/etc/controller/
+    src: ./dist/dist-packages/linux/openziti-controller/entrypoint.bash
+depends:
+  - openziti  # ziti CLI

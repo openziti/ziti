@@ -34,7 +34,6 @@ import (
 
 const (
 	optionCtrlPort                       = "ctrlPort"
-	optionDatabaseFile                   = "databaseFile"
 	optionEdgeIdentityEnrollmentDuration = "identityEnrollmentDuration"
 	optionEdgeRouterEnrollmentDuration   = "routerEnrollmentDuration"
 	optionMinCluster                     = "minCluster"
@@ -150,7 +149,6 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&options.CtrlPort, optionCtrlPort, constants.DefaultCtrlAdvertisedPort, "port used for the router to controller communication")
-	cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, "ctrl.db", "location of the database file")
 	cmd.Flags().DurationVar(&options.EdgeIdentityEnrollmentDuration, optionEdgeIdentityEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge identity enrollment duration, use 0h0m0s format")
 	cmd.Flags().DurationVar(&options.EdgeRouterEnrollmentDuration, optionEdgeRouterEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge router enrollment duration, use 0h0m0s format")
 	cmd.Flags().IntVar(&options.MinCluster, optionMinCluster, 0, "minimum cluster size. Enables HA mode if > 0")
