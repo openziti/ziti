@@ -26,10 +26,11 @@ jobs:
         with:
           path: ziti
 
-      - name: Set up Go
+      - name: Install Go
+        id: setup-go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
+          go-version-file: ./go.mod
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
