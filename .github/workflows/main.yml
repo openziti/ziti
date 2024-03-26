@@ -46,7 +46,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
+          go-version-file: ./go.mod
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -80,7 +80,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
+          go-version-file: ./go.mod
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -111,7 +111,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
+          go-version-file: ./go.mod
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -147,7 +147,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
+          go-version-file: ./go.mod
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -178,7 +178,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
+          go-version-file: ./go.mod
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -301,7 +301,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
+          go-version-file: ./go.mod
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -416,7 +416,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
+          go-version-file: ./go.mod
 
       - name: Install Python
         uses: actions/setup-python@v5
