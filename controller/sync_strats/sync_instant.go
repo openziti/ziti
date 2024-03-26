@@ -840,7 +840,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
 
-		storeModel, err := strategy.ae.GetStores().Controller.LoadOneById(tx, currentId)
+		storeModel, err := strategy.ae.GetStores().Controller.LoadById(tx, currentId)
 
 		if err != nil {
 			return err
