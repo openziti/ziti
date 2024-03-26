@@ -343,7 +343,14 @@ func (self *Service) GetConfigOfType(configType string, target interface{}) (boo
 		pfxlog.Logger().Debugf("no service config of type %v defined for service %v", configType, self.Name)
 		return false, nil
 	}
-	if err := mapstructure.Decode(configMap, target); err != nil {
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		DecodeHook: mapstructure.StringToTimeDurationHookFunc(),
+		Result:     target,
+	})
+	if err != nil {
+		return false, fmt.Errorf("unable construct decoder (%w)", err)
+	}
+	if err := decoder.Decode(configMap); err != nil {
 		pfxlog.Logger().WithError(err).Debugf("unable to decode service configuration for of type %v defined for service %v", configType, self.Name)
 		return true, fmt.Errorf("unable to decode service config structure: %w", err)
 	}
