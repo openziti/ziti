@@ -584,8 +584,8 @@ github.com/openziti/runzmd v1.0.41 h1:Iuwe91Lzq63ux2R6+VIWEvcEKhpKkPb1QVNwrJHOuD
 github.com/openziti/runzmd v1.0.41/go.mod h1:T79oGLLJNnAhHzcfnlrOR39S2XGkzwYZLZh62xee0wk=
 github.com/openziti/sdk-golang v0.23.14 h1:usGFwrc7jcGkvas5TVLWQgdWs/FBUZrORb6jV+KM2eY=
 github.com/openziti/sdk-golang v0.23.14/go.mod h1:mM7C6QMcEZwVhBLwmrq8PtBMyBbXXoKr186CDpTx5rI=
-github.com/openziti/secretstream v0.1.17 h1:bcaPGGpUl0+3GzfQkshKh5slUE7QDXxFq3vyDQgHkCA=
-github.com/openziti/secretstream v0.1.17/go.mod h1:gosi8ohW+dAHhz1h/MjZEcEVWO0jisWqWjEjmx7oAEs=
+github.com/openziti/secretstream v0.1.18 h1:bMHI4ez6pVSGFzHCHHn6imkaCYqd3o9Oa8gDObf8icI=
+github.com/openziti/secretstream v0.1.18/go.mod h1:gosi8ohW+dAHhz1h/MjZEcEVWO0jisWqWjEjmx7oAEs=
 github.com/openziti/storage v0.2.33 h1:15WKxJ0J1GCNOMmOkoosjoxKN2Hrm4p3g8p9WAiMS9Y=
 github.com/openziti/storage v0.2.33/go.mod h1:AbE5KkTVlXVFHRqpc7Ug3eFpNOc1HFBFwNIYn8Rtp+s=
 github.com/openziti/transport/v2 v2.0.125 h1:6kDfabGFIE2+UPyvJVtfI43CNKcMwNOrCRX602CbDU4=
