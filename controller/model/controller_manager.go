@@ -17,6 +17,7 @@
 package model
 
 import (
+	"crypto/x509"
 	"github.com/michaelquigley/pfxlog"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
@@ -117,11 +118,22 @@ func (self *ControllerManager) Marshall(entity *Controller) ([]byte, error) {
 	msg := &edge_cmd_pb.Controller{
 		Id:           entity.Id,
 		Name:         entity.Name,
-		Address:      entity.Address,
+		Address:      entity.CtrlAddress,
 		CertPem:      entity.CertPem,
 		Fingerprint:  entity.Fingerprint,
 		IsOnline:     entity.IsOnline,
 		LastJoinedAt: timePtrToPb(entity.LastJoinedAt),
+		ApiAddresses: map[string]*edge_cmd_pb.ApiAddressList{},
+	}
+
+	for apiKey, instances := range entity.ApiAddresses {
+		msg.ApiAddresses[apiKey] = &edge_cmd_pb.ApiAddressList{}
+		for _, instance := range instances {
+			msg.ApiAddresses[apiKey].Addresses = append(msg.ApiAddresses[apiKey].Addresses, &edge_cmd_pb.ApiAddress{
+				Url:     instance.Url,
+				Version: instance.Version,
+			})
+		}
 	}
 
 	return proto.Marshal(msg)
@@ -134,18 +146,57 @@ func (self *ControllerManager) Unmarshall(bytes []byte) (*Controller, error) {
 		return nil, err
 	}
 
-	return &Controller{
+	controller := &Controller{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
 			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
 		},
 		Name:         msg.Name,
-		Address:      msg.Address,
+		CtrlAddress:  msg.Address,
 		CertPem:      msg.CertPem,
 		Fingerprint:  msg.Fingerprint,
 		IsOnline:     msg.IsOnline,
 		LastJoinedAt: pbTimeToTimePtr(msg.LastJoinedAt),
-	}, nil
+		ApiAddresses: map[string][]ApiAddress{},
+	}
+
+	for apiKey, instanceList := range msg.ApiAddresses {
+		controller.ApiAddresses[apiKey] = nil
+		if instanceList != nil {
+			for _, instance := range instanceList.Addresses {
+				controller.ApiAddresses[apiKey] = append(controller.ApiAddresses[apiKey], ApiAddress{
+					Url:     instance.Url,
+					Version: instance.Version,
+				})
+			}
+		}
+	}
+
+	return controller, nil
+}
+
+func (self *ControllerManager) getCurrentAsClusterPeer() *event.ClusterPeer {
+	addr, id, version := self.env.GetHostController().GetRaftInfo()
+	tlsConfig, _, _ := self.env.GetServerCert()
+	var leaderCerts []*x509.Certificate
+
+	for _, certBytes := range tlsConfig.Certificate {
+		cert, err := x509.ParseCertificate(certBytes)
+
+		if err == nil {
+			leaderCerts = append(leaderCerts, cert)
+		}
+	}
+
+	apiAddresses, _ := self.env.GetHostController().GetApiAddresses()
+
+	return &event.ClusterPeer{
+		Id:           id,
+		Addr:         addr,
+		Version:      version,
+		ServerCert:   leaderCerts,
+		ApiAddresses: apiAddresses,
+	}
 }
 
 func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer) {
@@ -165,27 +216,58 @@ func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer) {
 	}
 
 	connectFields := fields.UpdatedFieldsMap{
-		db.FieldControllerLastJoinedAt: struct{}{},
-		db.FieldControllerCertPem:      struct{}{},
-		db.FieldControllerFingerprint:  struct{}{},
-		db.FieldControllerIsOnline:     struct{}{},
-		db.FieldControllerAddress:      struct{}{},
+		db.FieldControllerLastJoinedAt:      struct{}{},
+		db.FieldControllerCertPem:           struct{}{},
+		db.FieldControllerFingerprint:       struct{}{},
+		db.FieldControllerIsOnline:          struct{}{},
+		db.FieldControllerCtrlAddress:       struct{}{},
+		db.FieldControllerApiAddresses:      struct{}{},
+		db.FieldControllerApiAddressUrl:     struct{}{},
+		db.FieldControllerApiAddressVersion: struct{}{},
 	}
 
 	now := time.Now()
 
+	selfAsPeer := self.getCurrentAsClusterPeer()
+	peerFingerprints := ""
+	for _, peer := range peers {
+		fingerprint := nfpem.FingerprintFromCertificate(peer.ServerCert[0])
+
+		if peerFingerprints == "" {
+			peerFingerprints = fingerprint
+		} else {
+			peerFingerprints = peerFingerprints + ", " + fingerprint
+		}
+	}
+
+	pfxlog.Logger().Infof("acting as leader, updating controllers with peers, self: %s, peers: %s", nfpem.FingerprintFromCertificate(selfAsPeer.ServerCert[0]), peerFingerprints)
+
+	// always as this controller as a "peer" to add or update on the controller list
+	peers = append(peers, selfAsPeer)
+
 	for _, peer := range peers {
 		if stringz.Contains(controllerIds, peer.Id) {
 			existing, err := self.Read(peer.Id)
-
 			if err != nil {
 				pfxlog.Logger().WithError(err).Error("could not handle new peer(s) connection, existing controller could not be read")
 				continue
 			}
 
-			existing.Address = peer.Addr
+			existing.CtrlAddress = peer.Addr
 			existing.IsOnline = true
 			existing.LastJoinedAt = &now
+			existing.ApiAddresses = map[string][]ApiAddress{}
+
+			for apiKey, instances := range peer.ApiAddresses {
+				existing.ApiAddresses[apiKey] = nil
+
+				for _, instance := range instances {
+					existing.ApiAddresses[apiKey] = append(existing.ApiAddresses[apiKey], ApiAddress{
+						Url:     instance.Url,
+						Version: instance.Version,
+					})
+				}
+			}
 
 			if len(peer.ServerCert) > 0 {
 				existing.CertPem = nfpem.EncodeToString(peer.ServerCert[0])
@@ -205,9 +287,20 @@ func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer) {
 				BaseEntity: models.BaseEntity{
 					Id: peer.Id,
 				},
-				Address:      peer.Addr,
+				CtrlAddress:  peer.Addr,
 				IsOnline:     true,
 				LastJoinedAt: &now,
+			}
+
+			for apiKey, instances := range peer.ApiAddresses {
+				newController.ApiAddresses[apiKey] = nil
+
+				for _, instance := range instances {
+					newController.ApiAddresses[apiKey] = append(newController.ApiAddresses[apiKey], ApiAddress{
+						Url:     instance.Url,
+						Version: instance.Version,
+					})
+				}
 			}
 
 			newController.Name = peer.ServerCert[0].Subject.CommonName

@@ -27,22 +27,39 @@ import (
 type Controller struct {
 	models.BaseEntity
 	Name         string
-	Address      string
+	CtrlAddress  string
 	CertPem      string
 	Fingerprint  string
 	IsOnline     bool
 	LastJoinedAt *time.Time
+	ApiAddresses map[string][]ApiAddress
+}
+
+type ApiAddress struct {
+	Url     string `json:"url"`
+	Version string `json:"version"`
 }
 
 func (entity *Controller) toBoltEntity(tx *bbolt.Tx, env Env) (*db.Controller, error) {
 	boltEntity := &db.Controller{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
-		Address:       entity.Address,
+		CtrlAddress:   entity.CtrlAddress,
 		CertPem:       entity.CertPem,
 		Fingerprint:   entity.Fingerprint,
 		IsOnline:      entity.IsOnline,
 		LastJoinedAt:  entity.LastJoinedAt,
+		ApiAddresses:  map[string][]db.ApiAddress{},
+	}
+
+	for apiKey, instances := range entity.ApiAddresses {
+		boltEntity.ApiAddresses[apiKey] = nil
+		for _, instance := range instances {
+			boltEntity.ApiAddresses[apiKey] = append(boltEntity.ApiAddresses[apiKey], db.ApiAddress{
+				Url:     instance.Url,
+				Version: instance.Version,
+			})
+		}
 	}
 
 	return boltEntity, nil
@@ -59,11 +76,22 @@ func (entity *Controller) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.F
 func (entity *Controller) fillFrom(env Env, tx *bbolt.Tx, boltController *db.Controller) error {
 	entity.FillCommon(boltController)
 	entity.Name = boltController.Name
-	entity.Address = boltController.Address
+	entity.CtrlAddress = boltController.CtrlAddress
 	entity.CertPem = boltController.CertPem
 	entity.Fingerprint = boltController.Fingerprint
 	entity.IsOnline = boltController.IsOnline
 	entity.LastJoinedAt = boltController.LastJoinedAt
+	entity.ApiAddresses = map[string][]ApiAddress{}
+
+	for apiKey, instances := range boltController.ApiAddresses {
+		entity.ApiAddresses[apiKey] = nil
+		for _, instance := range instances {
+			entity.ApiAddresses[apiKey] = append(entity.ApiAddresses[apiKey], ApiAddress{
+				Url:     instance.Url,
+				Version: instance.Version,
+			})
+		}
+	}
 
 	return nil
 }

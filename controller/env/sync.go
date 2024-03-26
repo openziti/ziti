@@ -17,9 +17,9 @@
 package env
 
 import (
-	"crypto/tls"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
@@ -59,9 +59,9 @@ type RouterSyncStrategy interface {
 	Type() RouterSyncStrategyType
 	GetEdgeRouterState(id string) RouterStateValues
 	Stop()
+	GetPublicKeys() map[string]*edge_ctrl_pb.DataState_PublicKey
 	RouterConnectionHandler
 	RouterSynchronizerEventHandler
-	AddPublicKey(cert *tls.Certificate)
 }
 
 // RouterConnectionHandler is responsible for handling router connect/disconnect for synchronizing state.
@@ -78,10 +78,7 @@ type RouterSynchronizerEventHandler interface {
 	ApiSessionAdded(apiSession *db.ApiSession)
 	ApiSessionUpdated(apiSession *db.ApiSession, apiSessionCert *db.ApiSessionCertificate)
 	ApiSessionDeleted(apiSession *db.ApiSession)
-
 	SessionDeleted(session *db.Session)
-
-	PeerAdded(*db.Controller)
 }
 
 // RouterState provides a thread save mechanism to access and set router status information that may be influx

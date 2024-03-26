@@ -592,8 +592,8 @@ github.com/openziti/channel/v2 v2.0.122 h1:MPALuLUuTsW2QJzaoRkrP/wGqhIeWtSsrnxt2
 github.com/openziti/channel/v2 v2.0.122/go.mod h1:n4r/pWTFYJy98hEtf4ATYVHU70OePjoM8JJzrIvXvZg=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge-api v0.26.13 h1:lWAHu04nk7a0AEnJBjmwijUIEE+NvNAiOcdg11dxbIY=
-github.com/openziti/edge-api v0.26.13/go.mod h1:aTRqB9J/6ISbw9+YWjzD0tvWAXY98m8yWcbiGNqAQTU=
+github.com/openziti/edge-api v0.26.14 h1:BpxKavDVdykOY7GSdKXi7klv9Im4vw7bTMujz3wFE1Q=
+github.com/openziti/edge-api v0.26.14/go.mod h1:aTRqB9J/6ISbw9+YWjzD0tvWAXY98m8yWcbiGNqAQTU=
 github.com/openziti/fablab v0.5.42 h1:vENJKfEba2T4sSLwlKDL/IzBYfY8iHnhc4umf6IESiY=
 github.com/openziti/fablab v0.5.42/go.mod h1:HDT06y1QX8kO8ZQrgHvZmJsvc8iRybESGtlDLDII4ks=
 github.com/openziti/foundation/v2 v2.0.40 h1:8oXL77egZjnQuKuxPTHiBOh+X/I2mSJefIbnLSv8rFI=

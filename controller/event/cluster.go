@@ -37,10 +37,16 @@ const (
 )
 
 type ClusterPeer struct {
-	Id         string              `json:"id,omitempty"`
-	Addr       string              `json:"addr,omitempty"`
-	Version    string              `json:"version,omitempty"`
-	ServerCert []*x509.Certificate `json:"-"`
+	Id           string                  `json:"id,omitempty"`
+	Addr         string                  `json:"addr,omitempty"`
+	Version      string                  `json:"version,omitempty"`
+	ServerCert   []*x509.Certificate     `json:"-"`
+	ApiAddresses map[string][]ApiAddress `json:"apiAddresses"`
+}
+
+type ApiAddress struct {
+	Url     string `json:"url"`
+	Version string `json:"version"`
 }
 
 func (self *ClusterPeer) String() string {

@@ -18,6 +18,7 @@ package mesh
 
 import (
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
@@ -41,9 +42,10 @@ import (
 const (
 	PeerAddrHeader = 11
 
-	RaftConnectType   = 2048
-	RaftDataType      = 2049
-	SigningCertHeader = 2050
+	RaftConnectType    = 2048
+	RaftDataType       = 2049
+	SigningCertHeader  = 2050
+	ApiAddressesHeader = 2051
 
 	ChannelTypeMesh = "ctrl.mesh"
 )
@@ -56,6 +58,7 @@ type Peer struct {
 	RaftConn     *raftPeerConn
 	Version      *versions.VersionInfo
 	SigningCerts []*x509.Certificate
+	ApiAddresses map[string][]event.ApiAddress
 }
 
 func (self *Peer) HandleClose(channel.Channel) {
@@ -143,7 +146,7 @@ type Mesh interface {
 	Init(bindHandler channel.BindHandler)
 }
 
-func New(env Env, raftAddr raft.ServerAddress) Mesh {
+func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProvider) Mesh {
 	versionEncoded, err := env.GetVersionProvider().EncoderDecoder().Encode(env.GetVersionProvider().AsVersionInfo())
 	if err != nil {
 		panic(err)
@@ -156,12 +159,13 @@ func New(env Env, raftAddr raft.ServerAddress) Mesh {
 			network: "mesh",
 			addr:    string(raftAddr),
 		},
-		Peers:           map[string]*Peer{},
-		closeNotify:     make(chan struct{}),
-		raftAccepts:     make(chan net.Conn),
-		version:         env.GetVersionProvider(),
-		versionEncoded:  versionEncoded,
-		eventDispatcher: env.GetEventDispatcher(),
+		Peers:                map[string]*Peer{},
+		closeNotify:          make(chan struct{}),
+		raftAccepts:          make(chan net.Conn),
+		version:              env.GetVersionProvider(),
+		versionEncoded:       versionEncoded,
+		eventDispatcher:      env.GetEventDispatcher(),
+		helloHeaderProviders: helloHeaderProviders,
 	}
 }
 
@@ -180,6 +184,7 @@ type impl struct {
 	readonly             atomic.Bool
 	clusterStateHandlers concurrenz.CopyOnWriteSlice[func(state ClusterState)]
 	eventDispatcher      event.Dispatcher
+	helloHeaderProviders []HeaderProvider
 }
 
 func (self *impl) RegisterClusterStateHandler(f func(state ClusterState)) {
@@ -257,6 +262,10 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		SigningCertHeader:          serverCert,
 	}
 
+	for _, headerProvider := range self.helloHeaderProviders {
+		headerProvider.Apply(headers)
+	}
+
 	dialer := channel.NewClassicDialer(self.id, addr, headers)
 	dialOptions := channel.DefaultOptions()
 	dialOptions.ConnectOptions.ConnectTimeout = timeout
@@ -291,6 +300,13 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		versionInfo, err := self.version.EncoderDecoder().Decode(versionEncoded)
 		if err != nil {
 			return errors.Wrap(err, "can't decode version from returned from peer")
+		}
+
+		if apiAddressBytes, found := peer.Channel.Underlay().Headers()[ApiAddressesHeader]; found {
+			err := json.Unmarshal(apiAddressBytes, &peer.ApiAddresses)
+			if err != nil {
+				pfxlog.Logger().WithError(err).Error("could not unmarshal api address header")
+			}
 		}
 
 		peer.Version = versionInfo
@@ -329,6 +345,10 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		channel.HelloVersionHeader: self.versionEncoded,
 		channel.TypeHeader:         []byte(ChannelTypeMesh),
 		PeerAddrHeader:             []byte(self.raftAddr),
+	}
+
+	for _, headerProvider := range self.helloHeaderProviders {
+		headerProvider.Apply(headers)
 	}
 
 	dialer := channel.NewClassicDialer(self.id, addr, headers)
@@ -404,10 +424,11 @@ func (self *impl) PeerConnected(peer *Peer) error {
 
 	evt := event.NewClusterEvent(event.ClusterPeerConnected)
 	evt.Peers = append(evt.Peers, &event.ClusterPeer{
-		Id:         string(peer.Id),
-		Addr:       peer.Address,
-		Version:    peer.Version.Version,
-		ServerCert: peer.SigningCerts,
+		Id:           string(peer.Id),
+		Addr:         peer.Address,
+		Version:      peer.Version.Version,
+		ServerCert:   peer.SigningCerts,
+		ApiAddresses: peer.ApiAddresses,
 	})
 
 	self.eventDispatcher.AcceptClusterEvent(evt)
@@ -522,6 +543,13 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 			}
 		}
 
+		apiAddressesHeader, found := ch.Underlay().Headers()[ApiAddressesHeader]
+		if found {
+			if err := json.Unmarshal(apiAddressesHeader, &peer.ApiAddresses); err != nil {
+				pfxlog.Logger().WithError(err).Error("could not parse peer api addresses header")
+			}
+		}
+
 		peer.Version = versionInfo
 
 		peer.RaftConn = newRaftPeerConn(peer, self.netAddr)
@@ -559,4 +587,14 @@ func (self *impl) GetPeers() map[string]*Peer {
 
 func (self *impl) IsReadOnly() bool {
 	return self.readonly.Load()
+}
+
+type HeaderProvider interface {
+	Apply(map[int32][]byte)
+}
+
+type HeaderProviderFunc func(map[int32][]byte)
+
+func (self HeaderProviderFunc) Apply(headers map[int32][]byte) {
+	self(headers)
 }

@@ -50,6 +50,14 @@ type testHostController struct {
 	ctx         *TestContext
 }
 
+func (self *testHostController) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
+	return nil, nil
+}
+
+func (self *testHostController) GetRaftInfo() (string, string, string) {
+	return "testaddr", "testid", "testversion"
+}
+
 func (self *testHostController) GetRaftIndex() uint64 {
 	return 0
 }
@@ -171,7 +179,7 @@ func (ctx *TestContext) GetApiServerCsrSigner() cert.Signer {
 }
 
 func (ctx *TestContext) GetControlClientCsrSigner() cert.Signer {
-	panic("implement me")
+	return nil
 }
 
 func (ctx *TestContext) GetHostController() HostController {
