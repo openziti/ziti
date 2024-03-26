@@ -101,7 +101,7 @@ Change `Dockerfile` like this, and run `ZITI_QUICK_TAG=local docker compose up -
 checked-out source tree and run the quickstart with the build.
 
 ```dockerfile
-FROM golang:1.21-bookworm AS builder
+FROM golang:1.22-bookworm AS builder
 ARG ARTIFACTS_DIR=./build
 WORKDIR /app
 COPY go.mod go.sum ./

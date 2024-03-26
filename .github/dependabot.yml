@@ -12,7 +12,7 @@ updates:
         - "minor"
         - "patch"
       patterns:
-        - "openziti"
+        - "*openziti*"
 
     third-party:
       applies-to: version-updates
@@ -20,10 +20,10 @@ updates:
         - "minor"
         - "patch"
       exclude-patterns:
-        - "openziti"
-        - "rabbitmq"
-        - "blackfriday"
-        - "zitadel"
+        - "*openziti*"
+        - "*rabbitmq*"
+        - "*blackfriday*"
+        - "*zitadel*"
 
 - package-ecosystem: github-actions
   directory: "/"
