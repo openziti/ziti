@@ -3,6 +3,9 @@ ARG ZITI_CLI_IMAGE="docker.io/openziti/ziti-cli"
 # this builds docker.io/openziti/ziti-router
 FROM ${ZITI_CLI_IMAGE}:${ZITI_CLI_TAG}
 
+ARG ROUTER_PACKAGE=./dist/dist-packages/linux/openziti-router
+ARG DOCKER_BUILD_DIR=.
+
 ### Required OpenShift Labels
 LABEL name="openziti/ziti-router" \
       maintainer="developers@openziti.org" \
@@ -24,8 +27,8 @@ ENV ZITI_ROUTER_PORT=3022
 ENV ZITI_BOOTSTRAP_CONFIG=true
 ENV ZITI_BOOTSTRAP_ENROLLMENT=true
 ENV PFXLOG_NO_JSON=true
-COPY ./dist/dist-packages/linux/openziti-router/bootstrap.bash ${ZITI_ROUTER_BOOTSTRAP_BASH}
-COPY ./dist/dist-packages/linux/openziti-router/entrypoint.bash /
+COPY ${ROUTER_PACKAGE}/bootstrap.bash ${ZITI_ROUTER_BOOTSTRAP_BASH}
+COPY ${ROUTER_PACKAGE}/entrypoint.bash /
 
 WORKDIR /ziti-router
 RUN chown -R ziggy:ziggy /ziti-router

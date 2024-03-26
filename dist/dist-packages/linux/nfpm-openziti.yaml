@@ -6,6 +6,7 @@ name: openziti
 arch: ${GOARCH}
 platform: linux
 version: ${ZITI_VERSION}
+prerelease: ${ZITI_REV}
 maintainer: ${ZITI_MAINTAINER}
 description: >
   The openziti package provides the ziti executable binary as a command line
