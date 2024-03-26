@@ -6,6 +6,7 @@ name: openziti-router
 arch: ${GOARCH}
 platform: linux
 version: ${ZITI_VERSION}
+prerelease: ${ZITI_REV}
 maintainer: ${ZITI_MAINTAINER}
 description: >
   Provides a system service for running an OpenZiti Router
