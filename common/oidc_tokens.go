@@ -19,10 +19,11 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
-	"time"
 )
 
 const (
@@ -47,6 +48,7 @@ const (
 	CustomClaimRemoteAddress    = "z_ra"
 	CustomClaimIsCertExtendable = "z_ice"
 	CustomClaimImproperCert     = "z_iccc"
+	CustomClaimIsLegacy         = "z_leg"
 
 	DefaultAccessTokenDuration  = 30 * time.Minute
 	DefaultIdTokenDuration      = 30 * time.Minute
@@ -55,6 +57,9 @@ const (
 	TokenTypeAccess        = "a"
 	TokenTypeRefresh       = "r"
 	TokenTypeServiceAccess = "s"
+
+	ServiceSessionTypeBind = "Bind"
+	ServiceSessionTypeDial = "Dial"
 )
 
 type CustomClaims struct {
@@ -158,10 +163,23 @@ func (c *RefreshClaims) UnmarshalJSON(data []byte) error {
 
 type ServiceAccessClaims struct {
 	jwt.RegisteredClaims
+
+	// ApiSessionId is the id of the parent api session
 	ApiSessionId string `json:"z_asid"`
-	IdentityId   string `json:"z_iid"`
-	TokenType    string `json:"z_t"`
-	Type         string `json:"z_st"`
+
+	// IdentityId is the id of the associated identity
+	IdentityId string `json:"z_iid"`
+
+	// TokenType denotes the overall token type, which is a token that denotes access to a service for dial/bind
+	TokenType string `json:"z_t"`
+
+	// Type is either "Dial" or "Bind"
+	Type string `json:"z_st"`
+
+	// IsLegacy denotes that this token was generated from a legacy-authenticated API Session and thus has durable
+	// storage associated with it. This alters how systems interact with the token and ensures legacy considerations
+	// are taken into account (storage cleanup, token value interpretation, etc.)
+	IsLegacy bool `json:"z_leg"`
 }
 
 func (c *ServiceAccessClaims) HasAudience(targetAud string) bool {

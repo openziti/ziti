@@ -65,9 +65,9 @@ func (pae *PolicyAccessErrors) Error() string {
 	return fmt.Sprintf("%d policies failed: %s", len(*pae), subErr)
 }
 
-func EvaluatePostureCheck(postureCheck *edge_ctrl_pb.DataState_PostureCheck, cache *Cache) *CheckError {
+func EvaluatePostureCheck(postureCheck *edge_ctrl_pb.DataState_PostureCheck, data *InstanceData) *CheckError {
 	check := CtrlCheckToLogic(postureCheck)
-	return check.Evaluate(cache)
+	return check.Evaluate(data)
 }
 
 // FailedValueError represents a complex object comparison that failed. If a simple comparison failure is needed

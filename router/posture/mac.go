@@ -9,7 +9,7 @@ type MacCheck struct {
 	*edge_ctrl_pb.DataState_PostureCheck_Mac
 }
 
-func (m MacCheck) Evaluate(state *Cache) *CheckError {
+func (m MacCheck) Evaluate(state *InstanceData) *CheckError {
 	if state == nil {
 		return &CheckError{
 			Id:    m.Id,

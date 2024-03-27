@@ -156,8 +156,10 @@ func (self *SessionManager) EvaluatePostureForService(identityId, apiSessionId, 
 	}
 }
 
-func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (string, error) {
-	entity.Id = uuid.New().String()
+func (self *SessionManager) CreateJwt(entity *Session, isLegacy bool) (string, error) {
+	if entity.Id == "" {
+		entity.Id = uuid.New().String()
+	}
 
 	service, err := self.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, entity.IdentityId, nil)
 	if err != nil {
@@ -206,6 +208,7 @@ func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (str
 		IdentityId:   entity.IdentityId,
 		Type:         entity.Type,
 		TokenType:    common.TokenTypeServiceAccess,
+		IsLegacy:     isLegacy,
 	}
 
 	result, err := self.env.GetRootTlsJwtSigner().Generate(claims)
@@ -234,7 +237,9 @@ func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string
 		return entity.Id, nil
 	}
 
-	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
+	if entity.Id == "" {
+		entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
+	}
 
 	apiSession, err := self.GetEnv().GetManagers().ApiSession.Read(entity.ApiSessionId)
 	if err != nil {

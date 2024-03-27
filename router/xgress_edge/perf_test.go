@@ -115,11 +115,11 @@ func (link *mirrorLink) Close() error {
 }
 
 func Benchmark_CowMapWritePerf(b *testing.B) {
-	mux := edge.NewMapMsgMux()
+	mux := edge.NewChannelConnMapMux()
 	writePerf(b, mux)
 }
 
-func writePerf(b *testing.B, mux edge.MsgMux) {
+func writePerf(b *testing.B, mux edge.ConnMux) {
 	testChannel := &NoopTestChannel{}
 	sdkChannel := edge.NewSingleSdkChannel(testChannel)
 	listener := &listener{}
@@ -137,7 +137,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	}
 
 	req := require.New(b)
-	req.NoError(mux.AddMsgSink(conn))
+	req.NoError(mux.Add(conn))
 
 	registryConfig := metrics.DefaultUsageRegistryConfig("test", nil)
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)

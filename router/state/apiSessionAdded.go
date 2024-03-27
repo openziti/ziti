@@ -34,7 +34,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type apiSessionAddedHandler struct {
+// ApiSessionAddedHandler manages the reception and synchronization of API session
+// additions from controllers, implementing sync strategies to handle both legacy
+// sequential updates and modern chunked synchronization protocols.
+//
+// The handler maintains session consistency across controller failovers and
+// network partitions, ensuring routers have accurate session state during
+// multi-controller synchronization scenarios.
+type ApiSessionAddedHandler struct {
 	control     channel.Channel
 	sm          Manager
 	syncTracker *apiSessionSyncTracker
@@ -46,8 +53,11 @@ type apiSessionAddedHandler struct {
 	trackerLock sync.Mutex
 }
 
-func NewApiSessionAddedHandler(sm Manager, binding channel.Binding) *apiSessionAddedHandler {
-	handler := &apiSessionAddedHandler{
+// NewApiSessionAddedHandler creates a new handler for API session addition events,
+// establishing the necessary channels and goroutines for asynchronous session
+// synchronization processing.
+func NewApiSessionAddedHandler(sm Manager, binding channel.Binding) *ApiSessionAddedHandler {
+	handler := &ApiSessionAddedHandler{
 		control: binding.GetChannel(),
 		sm:      sm,
 		reqChan: make(chan *apiSessionAddedWithState, 100),
@@ -61,25 +71,23 @@ func NewApiSessionAddedHandler(sm Manager, binding channel.Binding) *apiSessionA
 	return handler
 }
 
-func (h *apiSessionAddedHandler) HandleClose(_ channel.Channel) {
+func (h *ApiSessionAddedHandler) HandleClose(_ channel.Channel) {
 	if h.stopped.CompareAndSwap(false, true) {
 		close(h.stop)
 	}
 }
 
-func (h *apiSessionAddedHandler) ContentType() int32 {
+func (h *ApiSessionAddedHandler) ContentType() int32 {
 	return env.ApiSessionAddedType
 }
 
-func (h *apiSessionAddedHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (h *ApiSessionAddedHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionAdded{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 			for _, session := range req.ApiSessions {
-				h.sm.AddApiSession(&ApiSession{
-					ApiSession:   session,
-					ControllerId: ch.Id(),
-				})
+				newApiSession := NewApiSessionTokenFromProtobuf(session, ch.Id())
+				h.sm.AddLegacyApiSession(newApiSession)
 			}
 
 			if req.IsFullState {
@@ -110,19 +118,21 @@ func (h *apiSessionAddedHandler) HandleReceive(msg *channel.Message, ch channel.
 	}()
 }
 
-func (h *apiSessionAddedHandler) applySync(tracker *apiSessionSyncTracker) {
+func (h *ApiSessionAddedHandler) applySync(tracker *apiSessionSyncTracker) {
 	h.trackerLock.Lock()
 	defer h.trackerLock.Unlock()
 
 	lastId := ""
 	apiSessions := tracker.all()
+	apiSessionTokens := make([]*ApiSessionToken, 0, len(apiSessions))
 	for _, apiSession := range apiSessions {
 		if lastId == "" || apiSession.Id > lastId {
 			lastId = apiSession.Id
 		}
+		apiSessionTokens = append(apiSessionTokens, NewApiSessionTokenFromProtobuf(apiSession, tracker.ctrlCh.Id()))
 	}
 
-	h.sm.RemoveMissingApiSessions(apiSessions, lastId)
+	h.sm.RemoveMissingApiSessions(apiSessionTokens, lastId)
 	h.sm.MarkSyncStopped(tracker.syncId)
 	h.syncTracker = nil
 
@@ -131,7 +141,7 @@ func (h *apiSessionAddedHandler) applySync(tracker *apiSessionSyncTracker) {
 	logrus.Infof("finished synchronizing api sessions [count: %d, syncId: %s, duration: %v]", len(apiSessions), tracker.syncId, duration)
 }
 
-func (h *apiSessionAddedHandler) syncFailed(err error) {
+func (h *ApiSessionAddedHandler) syncFailed(err error) {
 	h.trackerLock.Lock()
 	defer h.trackerLock.Unlock()
 
@@ -153,18 +163,19 @@ func (h *apiSessionAddedHandler) syncFailed(err error) {
 	}
 }
 
-func (h *apiSessionAddedHandler) legacySync(reqWithState *apiSessionAddedWithState) {
+func (h *ApiSessionAddedHandler) legacySync(reqWithState *apiSessionAddedWithState) {
 	pfxlog.Logger().Warn("using legacy sync logic some connections may be dropped")
+	apiSessionTokens := make([]*ApiSessionToken, 0, len(reqWithState.ApiSessions))
 	for _, apiSession := range reqWithState.ApiSessions {
-		h.sm.AddApiSession(&ApiSession{
-			ApiSession: apiSession,
-		})
+		apiSessionToken := NewApiSessionTokenFromProtobuf(apiSession, h.control.Id())
+		h.sm.AddLegacyApiSession(apiSessionToken)
+		apiSessionTokens = append(apiSessionTokens, apiSessionToken)
 	}
 
-	h.sm.RemoveMissingApiSessions(reqWithState.ApiSessions, "")
+	h.sm.RemoveMissingApiSessions(apiSessionTokens, "")
 }
 
-func (h *apiSessionAddedHandler) startReceiveSync() {
+func (h *ApiSessionAddedHandler) startReceiveSync() {
 	for {
 		select {
 		case <-h.stop:
@@ -184,7 +195,7 @@ func (h *apiSessionAddedHandler) startReceiveSync() {
 	}
 }
 
-func (h *apiSessionAddedHandler) instantSync(reqWithState *apiSessionAddedWithState) {
+func (h *ApiSessionAddedHandler) instantSync(reqWithState *apiSessionAddedWithState) {
 	h.trackerLock.Lock()
 	defer h.trackerLock.Unlock()
 
@@ -220,7 +231,7 @@ func (h *apiSessionAddedHandler) instantSync(reqWithState *apiSessionAddedWithSt
 			h.syncTracker.Stop()
 		}
 
-		h.syncTracker = newApiSessionSyncTracker(reqWithState.Id)
+		h.syncTracker = newApiSessionSyncTracker(reqWithState.Id, h.control)
 		h.sm.MarkSyncInProgress(h.syncTracker.syncId)
 		go h.syncTracker.StartDeadline(20*time.Second, h)
 	}
@@ -234,6 +245,12 @@ func (h *apiSessionAddedHandler) instantSync(reqWithState *apiSessionAddedWithSt
 	h.syncTracker.Add(reqWithState)
 }
 
+// apiSessionSyncTracker manages the collection and ordering of chunked API session
+// synchronization messages, ensuring all sequence numbers are received before
+// applying the complete session state update.
+//
+// The tracker handles out-of-order message delivery and provides timeout
+// mechanisms to prevent indefinite waiting for missing chunks.
 type apiSessionSyncTracker struct {
 	syncId        string
 	reqsWithState map[int]*apiSessionAddedWithState
@@ -244,14 +261,16 @@ type apiSessionSyncTracker struct {
 	lock          sync.Mutex
 	startTime     time.Time
 	endTime       time.Time
+	ctrlCh        channel.Channel
 }
 
-func newApiSessionSyncTracker(id string) *apiSessionSyncTracker {
+func newApiSessionSyncTracker(id string, ctrlCh channel.Channel) *apiSessionSyncTracker {
 	return &apiSessionSyncTracker{
 		syncId:        id,
 		reqsWithState: map[int]*apiSessionAddedWithState{},
 		stop:          make(chan struct{}),
 		startTime:     time.Now(),
+		ctrlCh:        ctrlCh,
 	}
 }
 
@@ -290,7 +309,7 @@ func (tracker *apiSessionSyncTracker) Stop() {
 	}
 }
 
-func (tracker *apiSessionSyncTracker) StartDeadline(timeout time.Duration, h *apiSessionAddedHandler) {
+func (tracker *apiSessionSyncTracker) StartDeadline(timeout time.Duration, h *ApiSessionAddedHandler) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
@@ -352,6 +371,9 @@ func (tracker *apiSessionSyncTracker) all() []*edge_ctrl_pb.ApiSession {
 	return result
 }
 
+// apiSessionAddedWithState combines API session data with synchronization
+// metadata, enabling the router to distinguish between different sync strategies
+// and handle both initial sync data and post-sync incremental updates.
 type apiSessionAddedWithState struct {
 	SyncStrategyType string
 	isPostSyncData   bool

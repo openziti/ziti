@@ -1,6 +1,7 @@
 package handler_edge_ctrl
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -23,7 +24,6 @@ import (
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/oidc_auth"
 	"github.com/openziti/ziti/controller/xt"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -189,10 +189,10 @@ func (self *baseSessionRequestContext) loadRouter() bool {
 }
 
 func (self *baseSessionRequestContext) loadSession(sessionToken string, apiSessionToken string) {
-	if strings.HasPrefix(sessionToken, oidc_auth.JwtTokenPrefix) {
+	if strings.HasPrefix(apiSessionToken, oidc_auth.JwtTokenPrefix) {
 		self.loadFromTokens(sessionToken, apiSessionToken)
 	} else {
-		self.loadFromBolt(sessionToken)
+		self.loadFromBolt(sessionToken, apiSessionToken)
 	}
 
 	if self.err != nil {
@@ -289,26 +289,14 @@ func (self *baseSessionRequestContext) loadFromTokens(sessionToken, apiSessionTo
 	}
 }
 
-func (self *baseSessionRequestContext) loadFromBolt(token string) {
+func (self *baseSessionRequestContext) loadFromBolt(sessionToken string, apiSessionToken string) {
 	if self.err != nil {
 		return
 	}
 
 	var err error
-	self.session, err = self.handler.getAppEnv().Managers.Session.ReadByToken(token)
-	if err != nil {
-		if boltz.IsErrNotFoundErr(err) {
-			self.err = InvalidSessionError{}
-		} else {
-			self.err = internalError(err)
-		}
-		logrus.
-			WithField("token", token).
-			WithField("operation", self.handler.Label()).
-			WithError(self.err).Errorf("invalid session")
-		return
-	}
-	apiSession, err := self.handler.getAppEnv().Managers.ApiSession.Read(self.session.ApiSessionId)
+	self.apiSession, err = self.handler.getAppEnv().Managers.ApiSession.ReadByToken(apiSessionToken)
+
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
 			self.err = InvalidApiSessionError{}
@@ -316,12 +304,36 @@ func (self *baseSessionRequestContext) loadFromBolt(token string) {
 			self.err = internalError(err)
 		}
 		logrus.
-			WithField("token", token).
 			WithField("operation", self.handler.Label()).
 			WithError(self.err).Errorf("invalid api-session")
 		return
 	}
-	self.apiSession = apiSession
+
+	serviceAccessClaims, err := self.env.ValidateServiceAccessToken(sessionToken, &self.apiSession.Id)
+
+	if err != nil {
+		self.err = internalError(err)
+		return
+	}
+
+	if !serviceAccessClaims.IsLegacy {
+		self.err = internalError(errors.New("legacy api session detected, but session token is not durable"))
+		return
+	}
+
+	self.session, err = self.handler.getAppEnv().Managers.Session.Read(serviceAccessClaims.ID)
+
+	if err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			self.err = InvalidSessionError{}
+		} else {
+			self.err = internalError(err)
+		}
+		logrus.
+			WithField("operation", self.handler.Label()).
+			WithError(self.err).Errorf("invalid session")
+		return
+	}
 }
 
 func (self *baseSessionRequestContext) checkSessionType(sessionType string) {

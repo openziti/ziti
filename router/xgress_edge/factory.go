@@ -140,6 +140,9 @@ func NewFactory(routerConfig *env.Config, env env.RouterEnv, stateManager state.
 		env:               env,
 		connectionTracker: newConnectionTracker(env),
 	}
+
+	factory.stateManager.SetConnectionTracker(factory.connectionTracker)
+
 	factory.addReconnectionHandler(factory.connectionTracker)
 	return factory
 }
@@ -184,7 +187,7 @@ func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress_rou
 	}
 
 	// CreateDialer is called for every egress route and for inspect and validations
-	// can't log this every time.
+	// can't Log this every time.
 	// pfxlog.Logger().Infof("xgress edge dialer options: %v", options.ToLoggableString())
 
 	return newDialer(factory, options), nil

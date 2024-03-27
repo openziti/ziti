@@ -86,7 +86,7 @@ OA==
 		token, _, err := jwtParser.ParseUnverified(clientJwtStr, accessClaims)
 		req.NoError(err)
 
-		apiSession := &state.ApiSession{
+		apiSession := &state.ApiSessionToken{
 			ApiSession: &edge_ctrl_pb.ApiSession{
 				Token:            clientJwtStr,
 				CertFingerprints: nil,
@@ -158,7 +158,7 @@ OA==
 		token, _, err := jwtParser.ParseUnverified(clientJwtStr, accessClaims)
 		req.NoError(err)
 
-		apiSession := &state.ApiSession{
+		apiSession := &state.ApiSessionToken{
 			ApiSession: &edge_ctrl_pb.ApiSession{
 				Token:            clientJwtStr,
 				CertFingerprints: nil,
