@@ -43,7 +43,7 @@ func (h *apiSessionUpdatedHandler) HandleReceive(msg *channel.Message, ch channe
 		req := &edge_ctrl_pb.ApiSessionUpdated{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 			for _, session := range req.ApiSessions {
-				h.sm.UpdateApiSession(&ApiSession{
+				h.sm.UpdateLegacyApiSession(&ApiSessionToken{
 					ApiSession:   session,
 					ControllerId: ch.Id(),
 				})

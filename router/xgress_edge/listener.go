@@ -20,35 +20,37 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/metrics"
-	sdkinspect "github.com/openziti/sdk-golang/inspect"
-	"github.com/openziti/ziti/common/ctrl_msg"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/controller/idgen"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress_router"
-	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/sirupsen/logrus"
-	"go.uber.org/atomic"
 	"time"
-
-	"github.com/openziti/ziti/common/capabilities"
-	"github.com/openziti/ziti/common/cert"
-	fabricMetrics "github.com/openziti/ziti/common/metrics"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/pkg/errors"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
+	sdkinspect "github.com/openziti/sdk-golang/inspect"
+	"github.com/openziti/sdk-golang/pb/edge_client_pb"
 	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	sdkedge "github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/capabilities"
+	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/common/ctrl_msg"
+	"github.com/openziti/ziti/common/inspect"
+	fabricMetrics "github.com/openziti/ziti/common/metrics"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress_common"
+	"github.com/openziti/ziti/router/xgress_router"
+	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"go.uber.org/atomic"
+	"google.golang.org/protobuf/proto"
 )
 
 var peerHeaderRequestMappings = map[uint32]uint32{
@@ -86,7 +88,7 @@ func (listener *listener) Inspect(key string, _ time.Duration) any {
 			v := entry.Val
 			v.Lock()
 			for _, ch := range v.connections {
-				if conn, ok := ch.GetUserData().(*edgeClientConn); ok {
+				if conn, ok := ch.GetUserData().(*EdgeClientConn); ok {
 					for xgCircuitEntry := range conn.xgCircuits.IterBuffered() {
 						xgCircuit := xgCircuitEntry.Val
 						result.Circuits[xgCircuit.circuitId+"/"+string(xgCircuit.address)] = xgCircuit.GetCircuitInspectDetail()
@@ -107,7 +109,7 @@ func (listener *listener) Inspect(key string, _ time.Duration) any {
 			v := entry.Val
 			v.Lock()
 			for _, ch := range v.connections {
-				if conn, ok := ch.GetUserData().(*edgeClientConn); ok {
+				if conn, ok := ch.GetUserData().(*EdgeClientConn); ok {
 					go listener.getSdkCircuits(conn, resultCh)
 					expected++
 				}
@@ -126,11 +128,11 @@ func (listener *listener) Inspect(key string, _ time.Duration) any {
 					result.Errors = append(result.Errors, next.err.Error())
 				}
 				if next.circuits != nil {
-					idBase := next.conn.apiSession.IdentityId + "/" +
+					idBase := next.conn.apiSessionToken.IdentityId + "/" +
 						next.conn.ch.GetChannel().ConnectionId()
 					for _, circuit := range next.circuits.Circuits {
 						detail := &inspect.SdkCircuitDetail{
-							IdentityId:    next.conn.apiSession.IdentityId,
+							IdentityId:    next.conn.apiSessionToken.IdentityId,
 							ChannelConnId: next.conn.ch.GetChannel().ConnectionId(),
 							CircuitDetail: circuit,
 						}
@@ -149,17 +151,17 @@ func (listener *listener) Inspect(key string, _ time.Duration) any {
 }
 
 type sdkCircuitResult struct {
-	conn     *edgeClientConn
+	conn     *EdgeClientConn
 	err      error
 	circuits *xgress.CircuitsDetail
 }
 
-func (listener *listener) getSdkCircuits(conn *edgeClientConn, resultCh chan *sdkCircuitResult) {
+func (listener *listener) getSdkCircuits(conn *EdgeClientConn, resultCh chan *sdkCircuitResult) {
 	msg := sdkedge.NewInspectRequest(nil, "circuits")
 	reply, err := msg.WithTimeout(4800 * time.Millisecond).SendForReply(conn.ch.GetControlSender())
 	if err != nil {
 		listener.submitErrResponse(conn, resultCh, fmt.Errorf("unable to get circuits from identity '%s' conn '%v' (%w)",
-			conn.apiSession.Id, conn.ch.GetChannel().ConnectionId(), err))
+			conn.apiSessionToken.Id, conn.ch.GetChannel().ConnectionId(), err))
 		return
 	}
 
@@ -167,7 +169,7 @@ func (listener *listener) getSdkCircuits(conn *edgeClientConn, resultCh chan *sd
 	err = json.Unmarshal(reply.Body, &resp)
 	if err != nil {
 		listener.submitErrResponse(conn, resultCh, fmt.Errorf("unable to unmarshal circuits from identity '%s' conn '%v' (%w)",
-			conn.apiSession.Id, conn.ch.GetChannel().ConnectionId(), err))
+			conn.apiSessionToken.Id, conn.ch.GetChannel().ConnectionId(), err))
 		return
 	}
 
@@ -175,13 +177,13 @@ func (listener *listener) getSdkCircuits(conn *edgeClientConn, resultCh chan *sd
 		jsonString, err := json.Marshal(v)
 		if err != nil {
 			listener.submitErrResponse(conn, resultCh, fmt.Errorf("failed to marshal sdk circuits from identity '%s' conn '%v' (%w)",
-				conn.apiSession.Id, conn.ch.GetChannel().ConnectionId(), err))
+				conn.apiSessionToken.Id, conn.ch.GetChannel().ConnectionId(), err))
 			return
 		}
 		circuitsDetails := &xgress.CircuitsDetail{}
 		if err = json.Unmarshal(jsonString, &circuitsDetails); err != nil {
 			listener.submitErrResponse(conn, resultCh, fmt.Errorf("failed to unmarshal sdk circuits from identity '%s' conn '%v' (%w)",
-				conn.apiSession.Id, conn.ch.GetChannel().ConnectionId(), err))
+				conn.apiSessionToken.Id, conn.ch.GetChannel().ConnectionId(), err))
 			return
 		}
 
@@ -192,11 +194,11 @@ func (listener *listener) getSdkCircuits(conn *edgeClientConn, resultCh chan *sd
 
 	} else {
 		listener.submitErrResponse(conn, resultCh, fmt.Errorf("sdk circuit details not returned from identity '%s' conn '%v' (%w)",
-			conn.apiSession.Id, conn.ch.GetChannel().ConnectionId(), err))
+			conn.apiSessionToken.Id, conn.ch.GetChannel().ConnectionId(), err))
 	}
 }
 
-func (listener *listener) submitErrResponse(conn *edgeClientConn, resultCh chan *sdkCircuitResult, err error) {
+func (listener *listener) submitErrResponse(conn *EdgeClientConn, resultCh chan *sdkCircuitResult, err error) {
 	listener.submitResponse(resultCh, &sdkCircuitResult{
 		conn: conn,
 		err:  err,
@@ -258,25 +260,52 @@ func (listener *listener) Close() error {
 	return listener.underlayListener.Close()
 }
 
-type edgeClientConn struct {
-	msgMux       sdkedge.MsgMux
-	listener     *listener
-	fingerprints cert.Fingerprints
-	ch           sdkedge.SdkChannel
-	idSeq        uint32
-	apiSession   *state.ApiSession
-	forwarder    env.Forwarder
-	xgCircuits   cmap.ConcurrentMap[string, *xgEdgeForwarder]
+type EdgeClientConn struct {
+	msgMux          sdkedge.ConnMux[*state.ConnState]
+	listener        *listener
+	fingerprints    cert.Fingerprints
+	ch              sdkedge.SdkChannel
+	idSeq           uint32
+	apiSessionToken *state.ApiSessionToken
+	forwarder       env.Forwarder
+	xgCircuits      cmap.ConcurrentMap[string, *xgEdgeForwarder]
 }
 
-func (self *edgeClientConn) getIdentityId() string {
-	if self.apiSession == nil {
+// getIdentityId safely retrieves the identity ID from the associated API session.
+// This method provides a nil-safe way to access the identity ID, which is used
+// for logging, security operations, and connection tracking. Returns empty string
+// if the API session is not yet established or has been cleared.
+//
+// Returns:
+//   - string: The identity ID if API session exists, empty string otherwise
+//
+// Usage: Used in security contexts where identity must be determined
+// for authorization checks, audit logging, and connection management.
+func (self *EdgeClientConn) getIdentityId() string {
+	if self.apiSessionToken == nil {
 		return ""
 	}
-	return self.apiSession.IdentityId
+	return self.apiSessionToken.IdentityId
 }
 
-func (self *edgeClientConn) HandleClose(ch channel.Channel) {
+// GetConns returns all active connections managed by this EdgeClientConn's message multiplexer.
+// Each connection is identified by a unique connection ID (connId) and represented as a message sink
+// that contains connection state information. This method is used by security enforcement systems
+// to iterate over all connections when applying policy changes, evaluating access permissions,
+// or performing connection-level operations such as forced termination.
+//
+// Returns:
+//   - map[uint32]edge.MsgSink[*state.ConnState]: Map of connection ID to message sink containing
+//     connection state. Each sink provides access to connection metadata and state information.
+func (self *EdgeClientConn) GetConnIdToSinks() map[uint32]edge.MsgSink[*state.ConnState] {
+	return self.msgMux.GetSinks()
+}
+
+func (self *EdgeClientConn) GetApiSessionToken() *state.ApiSessionToken {
+	return self.apiSessionToken
+}
+
+func (self *EdgeClientConn) HandleClose(ch channel.Channel) {
 	log := pfxlog.ContextLogger(self.ch.GetChannel().Label())
 	log.Debugf("closing")
 	self.listener.factory.hostedServices.cleanupServices(ch)
@@ -284,13 +313,57 @@ func (self *edgeClientConn) HandleClose(ch channel.Channel) {
 	self.cleanupXgressCircuits()
 }
 
-func (self *edgeClientConn) cleanupXgressCircuits() {
+func (self *EdgeClientConn) cleanupXgressCircuits() {
 	for entry := range self.xgCircuits.IterBuffered() {
 		self.cleanupXgressCircuit(entry.Val)
 	}
 }
 
-func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder) {
+// CloseConn closes a specific connection (connId) on this channel
+// Sends StateClosed message to SDK and cleans up any associated circuits
+func (self *EdgeClientConn) CloseConn(connId uint32, reason string) error {
+	log := pfxlog.ContextLogger(self.ch.GetChannel().Label()).WithField("connId", connId)
+
+	// Check if channel is still open
+	if self.ch.GetChannel().IsClosed() {
+		log.Debug("channel already closed, skipping connection close")
+		return nil
+	}
+
+	// Find and cleanup any circuits associated with this connId
+	var circuitsToCleanup []*xgEdgeForwarder
+	for entry := range self.xgCircuits.IterBuffered() {
+		edgeForwarder := entry.Val
+		if edgeForwarder.connId == connId {
+			circuitsToCleanup = append(circuitsToCleanup, edgeForwarder)
+		}
+	}
+
+	// Clean up circuits for this connection
+	for _, edgeForwarder := range circuitsToCleanup {
+		log.WithField("circuitId", edgeForwarder.circuitId).Debug("cleaning up circuit for connection")
+		self.cleanupXgressCircuit(edgeForwarder)
+	}
+
+	// Remove connection from message multiplexer
+	// The ConnMux tracks connections and their message handlers
+	self.msgMux.RemoveByConnId(connId)
+
+	// Send StateClosed message to SDK
+	closeMsg := edge.NewStateClosedMsg(connId, reason)
+	closeMsg.PutUint32Header(edge.ConnIdHeader, connId)
+
+	err := closeMsg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
+	if err != nil {
+		log.WithError(err).WithFields(edge.GetLoggerFields(closeMsg)).Error("failed to send state closed message")
+		return err
+	}
+
+	log.WithField("reason", reason).Debug("connection closed successfully")
+	return nil
+}
+
+func (self *EdgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder) {
 	circuitId := edgeForwarder.circuitId
 	log := pfxlog.Logger().WithField("circuitId", circuitId)
 
@@ -317,19 +390,24 @@ func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder)
 	}
 }
 
-func (self *edgeClientConn) ContentType() int32 {
+func (self *EdgeClientConn) ContentType() int32 {
 	return sdkedge.ContentTypeData
 }
 
-func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Channel) {
-	sessionToken := string(req.Body)
-	log := pfxlog.ContextLogger(ch.Label()).WithField("token", sessionToken).WithFields(sdkedge.GetLoggerFields(req))
+func (self *EdgeClientConn) processConnect(req *channel.Message, ch channel.Channel) {
+	serviceSessionTokenStr := string(req.Body)
+
+	log := pfxlog.ContextLogger(ch.Label()).WithFields(sdkedge.GetLoggerFields(req))
+
 	connId, found := req.GetUint32Header(sdkedge.ConnIdHeader)
 	if !found {
 		pfxlog.Logger().Errorf("connId not set. unable to process connect message")
+		errStr := "connId not set, required"
+		self.sendStateClosedReply(errStr, req)
 		return
 	}
-	ctrlCh := self.apiSession.SelectCtrlCh(self.listener.factory.ctrls)
+
+	ctrlCh := self.apiSessionToken.SelectCtrlCh(self.listener.factory.ctrls)
 
 	if ctrlCh == nil {
 		errStr := "no controller available, cannot create circuit"
@@ -338,20 +416,52 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 		return
 	}
 
-	connectCtx := &connectContext{
-		sdkConn:      self,
-		log:          log,
-		req:          req,
-		connId:       connId,
-		sessionToken: sessionToken,
-		ctrlCh:       ctrlCh,
+	connectCtx := &ConnectContext{
+		SdkConn: self,
+		Log:     log,
+		Req:     req,
+		ConnId:  connId,
+		CtrlCh:  ctrlCh,
+	}
+
+	serviceSessionToken, err := self.listener.factory.stateManager.GetServiceSessionToken(serviceSessionTokenStr, self.apiSessionToken)
+
+	if err != nil {
+		errStr := err.Error()
+		log.Error(err)
+		self.sendStateClosedReply(errStr, req)
+		return
+	}
+
+	if serviceSessionToken == nil {
+		errStr := "no such service session token"
+		log.Error(errStr)
+		self.sendStateClosedReply(errStr, req)
+		return
+	}
+
+	connectCtx.ServiceSessionToken = serviceSessionToken
+
+	grantingPolicy, err := self.listener.factory.stateManager.HasDialAccess(self.apiSessionToken.IdentityId, self.apiSessionToken.Id, serviceSessionToken.ServiceId)
+
+	if err != nil {
+		errStr := err.Error()
+		log.Error(err)
+		self.sendStateClosedReply(errStr, req)
+	}
+
+	if grantingPolicy == nil {
+		errStr := "no access to service, failed dial access check"
+		log.Error(errStr)
+		self.sendStateClosedReply(errStr, req)
+		return
 	}
 
 	var handler connectHandler
 	if useXgToSdk, _ := req.GetBoolHeader(sdkedge.UseXgressToSdkHeader); useXgToSdk {
 		log.Debug("use sdk xgress set, setting up sdk flow-control connection")
 		handler = &xgEdgeForwarder{
-			edgeClientConn: self,
+			EdgeClientConn: self,
 			ctrlId:         ctrlCh.Id(),
 			originator:     xgress.Initiator,
 			metrics:        self.listener.factory.env.GetXgressMetrics(),
@@ -377,30 +487,19 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	terminatorIdentity, _ := req.GetStringHeader(sdkedge.TerminatorIdentityHeader)
 
 	request := &ctrl_msg.CreateCircuitRequest{
-		ApiSessionToken:      self.apiSession.Token,
-		SessionToken:         sessionToken,
+		ApiSessionToken:      self.apiSessionToken.Token(),
+		SessionToken:         serviceSessionTokenStr,
 		Fingerprints:         self.fingerprints.Prints(),
 		TerminatorInstanceId: terminatorIdentity,
 		PeerData:             peerData,
 	}
 
-	if xgress_common.IsBearerToken(sessionToken) {
-		manager := self.listener.factory.stateManager
-		apiSession := manager.GetApiSessionFromCh(ch)
-
-		if apiSession == nil {
-			pfxlog.Logger().Errorf("could not find api session for channel, unable to process bind message")
-			return
-		}
-
-		request.ApiSessionToken = apiSession.Token
-	}
-
 	response, err := self.sendCreateCircuitRequest(request, ctrlCh)
+
 	handler.FinishConnect(connectCtx, response, err)
 }
 
-func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
+func (self *EdgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
 	for k, v := range peerHeaderRespMappings {
 		if val, ok := m[k]; ok {
 			delete(m, k)
@@ -409,14 +508,14 @@ func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
 	}
 }
 
-func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
+func (self *EdgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
 	if capabilities.IsCapable(ctrlCh, capabilities.ControllerCreateCircuitV2) {
 		return self.sendCreateCircuitRequestV2(req, ctrlCh)
 	}
 	return self.sendCreateCircuitRequestV1(req, ctrlCh)
 }
 
-func (self *edgeClientConn) sendCreateCircuitRequestV1(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
+func (self *EdgeClientConn) sendCreateCircuitRequestV1(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
 	request := &edge_ctrl_pb.CreateCircuitRequest{
 		SessionToken:         req.SessionToken,
 		ApiSessionToken:      req.ApiSessionToken,
@@ -440,7 +539,7 @@ func (self *edgeClientConn) sendCreateCircuitRequestV1(req *ctrl_msg.CreateCircu
 	}, nil
 }
 
-func (self *edgeClientConn) sendCreateCircuitRequestV2(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
+func (self *EdgeClientConn) sendCreateCircuitRequestV2(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
 	timeout := self.listener.options.Options.GetCircuitTimeout
 	msg, err := req.ToMessage().WithTimeout(timeout).SendForReply(ctrlCh)
 	if err != nil {
@@ -462,8 +561,8 @@ func (self *edgeClientConn) sendCreateCircuitRequestV2(req *ctrl_msg.CreateCircu
 	return ctrl_msg.DecodeCreateCircuitResponse(msg)
 }
 
-func (self *edgeClientConn) processBind(manager state.Manager, req *channel.Message, ch channel.Channel) {
-	ctrlCh := self.apiSession.SelectCtrlCh(self.listener.factory.ctrls)
+func (self *EdgeClientConn) processBind(req *channel.Message, ch channel.Channel) {
+	ctrlCh := self.apiSessionToken.SelectCtrlCh(self.listener.factory.ctrls)
 
 	if ctrlCh == nil {
 		errStr := "no controller available, cannot create terminator"
@@ -480,21 +579,38 @@ func (self *edgeClientConn) processBind(manager state.Manager, req *channel.Mess
 	if supportsCreateTerminatorV2 {
 		self.processBindV2(req, ch, ctrlCh)
 	} else {
-		self.processBindV1(manager, req, ch, ctrlCh)
+		self.processBindV1(req, ch, ctrlCh)
 	}
 }
 
-func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
-	sessionToken := string(req.Body)
+func (self *EdgeClientConn) processBindV1(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
+	sessionTokenStr := string(req.Body)
+
+	apiSessionToken := state.GetApiSessionTokenFromCh(ch)
 
 	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("sessionToken", sessionToken).
 		WithFields(sdkedge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
 
+	serviceSessionToken, err := self.listener.factory.stateManager.ParseServiceSessionJwt(sessionTokenStr, apiSessionToken)
+
+	if err != nil {
+		log.WithError(err).Warn("unable to verify service session token")
+		self.sendStateClosedReply(err.Error(), req)
+		return
+	}
+
+	if serviceSessionToken.Claims.Type != common.ServiceSessionTypeBind {
+		msg := fmt.Sprintf("rejecting bind, invalid session type. expected %v, got %v", common.ServiceSessionTypeBind, serviceSessionToken.Claims.Type)
+		log.Error(msg)
+		self.sendStateClosedReply(msg, req)
+		return
+	}
+
 	connId, found := req.GetUint32Header(sdkedge.ConnIdHeader)
 	if !found {
-		pfxlog.Logger().Errorf("connId not set. unable to process bind message")
+		pfxlog.Logger().Errorf("ConnId not set. unable to process bind message")
+		self.sendStateClosedReply("connId required", req)
 		return
 	}
 
@@ -529,20 +645,20 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 	log.Debug("establishing listener")
 
 	terminator := &edgeTerminator{
-		MsgChannel:     *sdkedge.NewEdgeMsgChannel(self.ch, connId),
-		edgeClientConn: self,
-		token:          sessionToken,
-		assignIds:      assignIds,
-		useSdkXgress:   useSdkXgress,
-		createTime:     time.Now(),
+		MsgChannel:          *sdkedge.NewEdgeMsgChannel(self.ch, connId),
+		edgeClientConn:      self,
+		serviceSessionToken: serviceSessionToken,
+		assignIds:           assignIds,
+		useSdkXgress:        useSdkXgress,
+		createTime:          time.Now(),
 	}
 
 	// need to remove session remove listener on close
-	terminator.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(sessionToken, func(token string) {
+	terminator.onClose = self.listener.factory.stateManager.AddLegacyServiceSessionRemovedListener(serviceSessionToken, func(_ *state.ServiceSessionToken) {
 		terminator.close(self.listener.factory.hostedServices, true, true, "session ended")
 	})
 
-	self.listener.factory.hostedServices.PutV1(sessionToken, terminator)
+	self.listener.factory.hostedServices.PutV1(serviceSessionToken, terminator)
 
 	terminatorIdentity, _ := req.GetStringHeader(sdkedge.TerminatorIdentityHeader)
 	var terminatorIdentitySecret []byte
@@ -551,7 +667,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 	}
 
 	request := &edge_ctrl_pb.CreateTerminatorRequest{
-		SessionToken:   sessionToken,
+		SessionToken:   serviceSessionToken.JwtToken.Raw,
 		Fingerprints:   self.fingerprints.Prints(),
 		PeerData:       hostData,
 		Cost:           uint32(cost),
@@ -560,16 +676,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 		InstanceSecret: terminatorIdentitySecret,
 	}
 
-	if xgress_common.IsBearerToken(sessionToken) {
-		apiSession := manager.GetApiSessionFromCh(ch)
-
-		if apiSession == nil {
-			pfxlog.Logger().Errorf("could not find api session for channel, unable to process bind message")
-			return
-		}
-
-		request.ApiSessionToken = apiSession.Token
-	}
+	request.ApiSessionToken = serviceSessionToken.ApiSessionToken.GetToken()
 
 	timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
 	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
@@ -612,15 +719,31 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 	log.Info("created terminator")
 }
 
-func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
-	sessionToken := string(req.Body)
+func (self *EdgeClientConn) processBindV2(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
+	sessionTokenStr := string(req.Body)
+
+	apiSessionToken := state.GetApiSessionTokenFromCh(ch)
 
 	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("sessionToken", sessionToken).
 		WithFields(sdkedge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
 
-	if self.listener.factory.stateManager.WasSessionRecentlyRemoved(sessionToken) {
+	serviceSessionToken, err := self.listener.factory.stateManager.ParseServiceSessionJwt(sessionTokenStr, apiSessionToken)
+
+	if err != nil {
+		log.WithError(err).Warn("unable to verify service session token")
+		self.sendStateClosedReply(err.Error(), req)
+		return
+	}
+
+	if serviceSessionToken.Claims.Type != common.ServiceSessionTypeBind {
+		msg := fmt.Sprintf("rejecting bind, invalid session type. expected %v, got %v", common.ServiceSessionTypeBind, serviceSessionToken.Claims.Type)
+		log.Error(msg)
+		self.sendStateClosedReply(msg, req)
+		return
+	}
+
+	if serviceSessionToken.Claims.IsLegacy && self.listener.factory.stateManager.WasLegacyServiceSessionRecentlyRemoved(serviceSessionToken.Token()) {
 		log.Info("invalid session, not establishing terminator")
 		self.sendStateClosedReply("invalid session", req)
 		return
@@ -628,7 +751,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 
 	connId, found := req.GetUint32Header(sdkedge.ConnIdHeader)
 	if !found {
-		pfxlog.Logger().Errorf("connId not set. unable to process bind message")
+		pfxlog.Logger().Errorf("ConnId not set. unable to process bind message")
 		return
 	}
 
@@ -675,21 +798,21 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 	useSdkXgress, _ := req.GetBoolHeader(sdkedge.UseXgressToSdkHeader)
 
 	terminator := &edgeTerminator{
-		terminatorId:    terminatorId,
-		MsgChannel:      *sdkedge.NewEdgeMsgChannel(self.ch, connId),
-		edgeClientConn:  self,
-		token:           sessionToken,
-		listenerId:      listenerId,
-		cost:            cost,
-		precedence:      precedence,
-		instance:        terminatorInstance,
-		instanceSecret:  terminatorInstanceSecret,
-		hostData:        hostData,
-		assignIds:       assignIds,
-		useSdkXgress:    useSdkXgress,
-		v2:              true,
-		supportsInspect: supportsInspect,
-		createTime:      time.Now(),
+		terminatorId:        terminatorId,
+		MsgChannel:          *sdkedge.NewEdgeMsgChannel(self.ch, connId),
+		edgeClientConn:      self,
+		serviceSessionToken: serviceSessionToken,
+		listenerId:          listenerId,
+		cost:                cost,
+		precedence:          precedence,
+		instance:            terminatorInstance,
+		instanceSecret:      terminatorInstanceSecret,
+		hostData:            hostData,
+		assignIds:           assignIds,
+		useSdkXgress:        useSdkXgress,
+		v2:                  true,
+		supportsInspect:     supportsInspect,
+		createTime:          time.Now(),
 	}
 
 	terminator.state.Store(xgress_common.TerminatorStateEstablishing)
@@ -705,9 +828,9 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		return
 	}
 
-	if checkResult.previous == nil || checkResult.previous.token != sessionToken {
+	if checkResult.previous == nil || checkResult.previous.serviceSessionToken != serviceSessionToken {
 		// need to remove session remove listener on close
-		terminator.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(sessionToken, func(token string) {
+		terminator.onClose = self.listener.factory.stateManager.AddLegacyServiceSessionRemovedListener(serviceSessionToken, func(_ *state.ServiceSessionToken) {
 			terminator.close(self.listener.factory.hostedServices, true, true, "session ended")
 		})
 	}
@@ -762,20 +885,43 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 	}
 }
 
-func (self *edgeClientConn) processUnbind(req *channel.Message, _ channel.Channel) {
+func (self *EdgeClientConn) processUnbind(req *channel.Message, ch channel.Channel) {
 	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
-	token := string(req.Body)
-	atLeastOneTerminatorRemoved := self.listener.factory.hostedServices.unbindSession(connId, token, self)
+	sessionTokenStr := string(req.Body)
+
+	apiSessionToken := state.GetApiSessionTokenFromCh(ch)
+
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithFields(sdkedge.GetLoggerFields(req)).
+		WithField("routerId", self.listener.id.Token)
+
+	serviceSessionToken, err := self.listener.factory.stateManager.ParseServiceSessionJwt(sessionTokenStr, apiSessionToken)
+
+	if err != nil {
+		log.WithError(err).Warn("unable to verify service session token")
+		self.sendStateClosedReply(err.Error(), req)
+		return
+	}
+
+	if serviceSessionToken.Claims.Type != common.ServiceSessionTypeBind {
+		msg := fmt.Sprintf("rejecting bind, invalid session type. expected %v, got %v", common.ServiceSessionTypeBind, serviceSessionToken.Claims.Type)
+		log.Error(msg)
+		self.sendStateClosedReply(msg, req)
+		return
+	}
+
+	log = serviceSessionToken.AddLoggingFields(log)
+
+	atLeastOneTerminatorRemoved := self.listener.factory.hostedServices.unbindSession(connId, serviceSessionToken, self)
 
 	if !atLeastOneTerminatorRemoved {
-		pfxlog.Logger().
-			WithField("connId", connId).
-			WithField("token", token).
+		log.
+			WithField("ConnId", connId).
 			Info("no terminator found to unbind for token")
 	}
 }
 
-func (self *edgeClientConn) removeTerminator(ctrlCh channel.Channel, token, terminatorId string) error {
+func (self *EdgeClientConn) removeTerminator(ctrlCh channel.Channel, token, terminatorId string) error {
 	request := &edge_ctrl_pb.RemoveTerminatorRequest{
 		SessionToken: token,
 		Fingerprints: self.fingerprints.Prints(),
@@ -787,18 +933,40 @@ func (self *edgeClientConn) removeTerminator(ctrlCh channel.Channel, token, term
 	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTerminatorResponseType)
 }
 
-func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channel.Message, ch channel.Channel) {
-	sessionToken := string(req.Body)
-
+func (self *EdgeClientConn) processUpdateBind(req *channel.Message, ch channel.Channel) {
 	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
-	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionToken", sessionToken).WithFields(sdkedge.GetLoggerFields(req))
-	terminators := self.listener.factory.hostedServices.getRelatedTerminators(connId, sessionToken, self)
+	sessionTokenStr := string(req.Body)
+
+	apiSessionToken := state.GetApiSessionTokenFromCh(ch)
+
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithFields(sdkedge.GetLoggerFields(req)).
+		WithField("routerId", self.listener.id.Token)
+
+	serviceSessionToken, err := self.listener.factory.stateManager.ParseServiceSessionJwt(sessionTokenStr, apiSessionToken)
+
+	if err != nil {
+		log.WithError(err).Warn("unable to verify service session token")
+		self.sendStateClosedReply(err.Error(), req)
+		return
+	}
+
+	if serviceSessionToken.Claims.Type != common.ServiceSessionTypeBind {
+		msg := fmt.Sprintf("rejecting bind, invalid session type. expected %v, got %v", common.ServiceSessionTypeBind, serviceSessionToken.Claims.Type)
+		log.Error(msg)
+		self.sendStateClosedReply(msg, req)
+		return
+	}
+
+	log = serviceSessionToken.AddLoggingFields(log)
+
+	terminators := self.listener.factory.hostedServices.getRelatedTerminators(connId, serviceSessionToken, self)
 
 	if len(terminators) == 0 {
 		log.Error("failed to update bind, no listener found")
 		return
 	}
-	ctrlCh := self.apiSession.SelectCtrlCh(self.listener.factory.ctrls)
+	ctrlCh := self.apiSessionToken.SelectCtrlCh(self.listener.factory.ctrls)
 
 	if ctrlCh == nil {
 		log.Error("no controller available, cannot update terminator")
@@ -807,14 +975,10 @@ func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channe
 
 	for _, terminator := range terminators {
 		request := &edge_ctrl_pb.UpdateTerminatorRequest{
-			SessionToken: sessionToken,
-			Fingerprints: self.fingerprints.Prints(),
-			TerminatorId: terminator.terminatorId,
-		}
-
-		if xgress_common.IsBearerToken(sessionToken) {
-			apiSession := manager.GetApiSessionFromCh(ch)
-			request.ApiSessionToken = apiSession.Token
+			SessionToken:    serviceSessionToken.Token(),
+			Fingerprints:    self.fingerprints.Prints(),
+			TerminatorId:    terminator.terminatorId,
+			ApiSessionToken: serviceSessionToken.ApiSessionToken.GetToken(),
 		}
 
 		if costVal, hasCost := req.GetUint16Header(sdkedge.CostHeader); hasCost {
@@ -851,9 +1015,24 @@ func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channe
 	}
 }
 
-func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *channel.Message, ch channel.Channel) {
-	sessionToken := string(req.Body)
-	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", sessionToken).WithFields(sdkedge.GetLoggerFields(req))
+func (self *EdgeClientConn) processHealthEvent(req *channel.Message, ch channel.Channel) {
+	sessionTokenStr := string(req.Body)
+
+	apiSessionToken := state.GetApiSessionTokenFromCh(ch)
+
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithFields(sdkedge.GetLoggerFields(req)).
+		WithField("routerId", self.listener.id.Token)
+
+	serviceSessionToken, err := self.listener.factory.stateManager.ParseServiceSessionJwt(sessionTokenStr, apiSessionToken)
+
+	if err != nil {
+		log.WithError(err).Warn("unable to verify service session token")
+		self.sendStateClosedReply(err.Error(), req)
+		return
+	}
+
+	log = serviceSessionToken.AddLoggingFields(log)
 
 	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
 	if ctrlCh == nil {
@@ -861,7 +1040,7 @@ func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *chann
 		return
 	}
 
-	terminator, ok := self.listener.factory.hostedServices.Get(sessionToken)
+	terminator, ok := self.listener.factory.hostedServices.Get(serviceSessionToken.TokenId())
 
 	if !ok {
 		log.Error("failed to update bind, no listener found")
@@ -871,17 +1050,11 @@ func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *chann
 	checkPassed, _ := req.GetBoolHeader(sdkedge.HealthStatusHeader)
 
 	request := &edge_ctrl_pb.HealthEventRequest{
-		SessionToken: sessionToken,
-		Fingerprints: self.fingerprints.Prints(),
-		TerminatorId: terminator.terminatorId,
-		CheckPassed:  checkPassed,
-	}
-
-	log = log.WithField("terminator", terminator.terminatorId).WithField("checkPassed", checkPassed)
-
-	if xgress_common.IsBearerToken(sessionToken) {
-		apiSession := manager.GetApiSessionFromCh(ch)
-		request.ApiSessionToken = apiSession.Token
+		SessionToken:    serviceSessionToken.Token(),
+		ApiSessionToken: serviceSessionToken.ApiSessionToken.GetToken(),
+		Fingerprints:    self.fingerprints.Prints(),
+		TerminatorId:    terminator.terminatorId,
+		CheckPassed:     checkPassed,
 	}
 
 	log = log.WithField("terminator", terminator.terminatorId).WithField("checkPassed", checkPassed)
@@ -892,7 +1065,7 @@ func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *chann
 	}
 }
 
-func (self *edgeClientConn) processTraceRoute(msg *channel.Message, ch channel.Channel) {
+func (self *EdgeClientConn) processTraceRoute(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label()).WithFields(sdkedge.GetLoggerFields(msg))
 
 	hops, _ := msg.GetUint32Header(sdkedge.TraceHopCountHeader)
@@ -919,7 +1092,7 @@ func (self *edgeClientConn) processTraceRoute(msg *channel.Message, ch channel.C
 	}
 }
 
-func (self *edgeClientConn) sendConnectedReply(req *channel.Message, response *ctrl_msg.CreateCircuitResponse) {
+func (self *EdgeClientConn) sendConnectedReply(req *channel.Message, response *ctrl_msg.CreateCircuitResponse) {
 	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
 
 	msg := sdkedge.NewStateConnectedMsg(connId)
@@ -944,7 +1117,7 @@ func (self *edgeClientConn) sendConnectedReply(req *channel.Message, response *c
 	}
 }
 
-func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Message) {
+func (self *EdgeClientConn) sendStateClosedReply(message string, req *channel.Message) {
 	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
 	msg := sdkedge.NewStateClosedMsg(connId, message)
 	msg.ReplyTo(req)
@@ -959,8 +1132,21 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Me
 	}
 }
 
-func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.Channel) {
-	currentApiSession := self.listener.factory.stateManager.GetApiSessionFromCh(ch)
+func (self *EdgeClientConn) processPostureResponse(msg *channel.Message, ch channel.Channel) {
+	if msg.ContentType == int32(edge_client_pb.ContentType_PostureResponseType) {
+		postureResponse := &edge_client_pb.PostureResponse{}
+
+		if err := proto.Unmarshal(msg.Body, postureResponse); err != nil {
+			pfxlog.Logger().WithError(err).Error("failed to unmarshal posture response")
+		}
+
+		go self.listener.factory.stateManager.ProcessPostureResponse(ch, postureResponse)
+
+	}
+}
+
+func (self *EdgeClientConn) processTokenUpdate(req *channel.Message, ch channel.Channel) {
+	currentApiSession := state.GetApiSessionTokenFromCh(ch)
 
 	if currentApiSession == nil || currentApiSession.JwtToken == nil {
 		msg := sdkedge.NewUpdateTokenFailedMsg(errors.New("current connection isn't authenticated via JWT beater tokens, unable to switch to them"))
@@ -976,10 +1162,10 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 		return
 	}
 
-	newToken, newClaims, err := self.listener.factory.stateManager.ParseJwt(newTokenStr)
+	newApiSessionToken, err := self.listener.factory.stateManager.ParseApiSessionJwt(newTokenStr)
 
 	if err != nil {
-		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "JWT bearer token failed to validate"))
+		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "api session JWT bearer token failed to parse or validate"))
 		reply.ReplyTo(req)
 		if err := ch.Send(reply); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with validation failure")
@@ -987,18 +1173,7 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 		return
 	}
 
-	newApiSession, err := state.NewApiSessionFromToken(newToken, newClaims)
-	if err != nil {
-		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
-		reply.ReplyTo(req)
-
-		if err := ch.Send(reply); err != nil {
-			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with update failure")
-		}
-		return
-	}
-
-	if err := self.listener.factory.stateManager.UpdateChApiSession(ch, newApiSession); err != nil {
+	if err := self.listener.factory.stateManager.HandleClientApiSessionTokenUpdate(newApiSessionToken); err != nil {
 		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
 		reply.ReplyTo(req)
 
@@ -1016,7 +1191,7 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 	}
 }
 
-func (self *edgeClientConn) handleXgClose(msg *channel.Message, _ channel.Channel) {
+func (self *EdgeClientConn) handleXgClose(msg *channel.Message, _ channel.Channel) {
 	circuitId := string(msg.Body)
 	log := pfxlog.Logger().WithField("circuitId", circuitId)
 	if edgeForwarder, ok := self.xgCircuits.Get(circuitId); ok {
@@ -1027,7 +1202,7 @@ func (self *edgeClientConn) handleXgClose(msg *channel.Message, _ channel.Channe
 	}
 }
 
-func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Channel) {
+func (self *EdgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Channel) {
 	payload, err := xgress.UnmarshallPayload(msg)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Error("failed to unmarshal xgress payload")
@@ -1055,7 +1230,7 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Cha
 	}
 }
 
-func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, ch channel.Channel) {
+func (self *EdgeClientConn) handleXgAcknowledgement(req *channel.Message, ch channel.Channel) {
 	ack, err := xgress.UnmarshallAcknowledgement(req)
 	if err != nil {
 		// pfxlog.Logger().WithError(err).Error("failed to unmarshal xgress acknowledgement")
@@ -1101,69 +1276,77 @@ func getResultOrFailure(msg *channel.Message, err error, result protobufs.TypedM
 }
 
 type connectHandler interface {
-	Init(ctx *connectContext) bool
-	FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error)
+	Init(ctx *ConnectContext) bool
+	FinishConnect(ctx *ConnectContext, response *ctrl_msg.CreateCircuitResponse, err error)
 }
 
-type connectContext struct {
-	sdkConn      *edgeClientConn
-	log          *logrus.Entry
-	req          *channel.Message
-	connId       uint32
-	sessionToken string
-	ctrlCh       channel.Channel
+type ConnectContext struct {
+	SdkConn             *EdgeClientConn
+	Log                 *logrus.Entry
+	Req                 *channel.Message
+	ConnId              uint32
+	CtrlCh              channel.Channel
+	PolicyType          edge_ctrl_pb.PolicyType
+	ServiceSessionToken *state.ServiceSessionToken
 }
 
 type nonXgConnectHandler struct {
 	conn *edgeXgressConn
 }
 
-func (self *nonXgConnectHandler) Init(ctx *connectContext) bool {
+func (self *nonXgConnectHandler) Init(ctx *ConnectContext) bool {
 	self.conn = &edgeXgressConn{
-		mux:        ctx.sdkConn.msgMux,
-		MsgChannel: *sdkedge.NewEdgeMsgChannel(ctx.sdkConn.ch, ctx.connId),
+		mux:        ctx.SdkConn.msgMux,
+		MsgChannel: *sdkedge.NewEdgeMsgChannel(ctx.SdkConn.ch, ctx.ConnId),
 		seq:        NewMsgQueue(4),
 	}
 
+	self.conn.SetData(&state.ConnState{
+		ServiceSessionToken: ctx.ServiceSessionToken,
+		ApiSessionToken:     ctx.SdkConn.apiSessionToken,
+		PolicyType:          edge_ctrl_pb.PolicyType_DialPolicy,
+	})
+
 	// need to remove session remove listener on close
-	stateManager := ctx.sdkConn.listener.factory.stateManager
-	self.conn.onClose = stateManager.AddEdgeSessionRemovedListener(ctx.sessionToken, func(token string) {
+	stateManager := ctx.SdkConn.listener.factory.stateManager
+
+	self.conn.onClose = stateManager.AddLegacyServiceSessionRemovedListener(ctx.ServiceSessionToken, func(_ *state.ServiceSessionToken) {
 		self.conn.close(true, "session closed")
 	})
 
 	// We can't fix conn id, since it's provided by the client
-	if err := ctx.sdkConn.msgMux.AddMsgSink(self.conn); err != nil {
-		ctx.log.WithError(err).WithField("token", ctx.sessionToken).Error("error adding to msg mux")
-		ctx.sdkConn.sendStateClosedReply(err.Error(), ctx.req)
+	if err := ctx.SdkConn.msgMux.Add(self.conn); err != nil {
+		ctx.Log.WithError(err).Error("error adding to msg mux")
+		ctx.SdkConn.sendStateClosedReply(err.Error(), ctx.Req)
 		return false
 	}
 
 	return true
 }
 
-func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
+func (self *nonXgConnectHandler) FinishConnect(ctx *ConnectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
 	if err != nil {
-		ctx.log.WithError(err).Warn("failed to dial fabric")
-		ctx.sdkConn.sendStateClosedReply(err.Error(), ctx.req)
+		ctx.Log.WithError(err).Warn("failed to dial fabric")
+		ctx.SdkConn.sendStateClosedReply(err.Error(), ctx.Req)
 		self.conn.close(false, "failed to dial fabric")
 		return
 	}
 
-	ctx.sdkConn.mapResponsePeerData(response.PeerData)
+	ctx.SdkConn.mapResponsePeerData(response.PeerData)
 
-	xgOptions := &ctx.sdkConn.listener.options.Options
-	x := xgress.NewXgress(response.CircuitId, ctx.ctrlCh.Id(), xgress.Address(response.Address), self.conn, xgress.Initiator, xgOptions, response.Tags)
-	ctx.sdkConn.listener.bindHandler.HandleXgressBind(x)
+	xgOptions := &ctx.SdkConn.listener.options.Options
+	x := xgress.NewXgress(response.CircuitId, ctx.CtrlCh.Id(), xgress.Address(response.Address), self.conn, xgress.Initiator, xgOptions, response.Tags)
+	ctx.SdkConn.listener.bindHandler.HandleXgressBind(x)
 	self.conn.ctrlRx = x
 
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
-	ctx.sdkConn.sendConnectedReply(ctx.req, response)
+	ctx.SdkConn.sendConnectedReply(ctx.Req, response)
 
 	x.Start()
 }
 
 type xgEdgeForwarder struct {
-	*edgeClientConn
+	*EdgeClientConn
 	circuitId  string
 	originator xgress.Originator
 	ctrlId     string
@@ -1242,8 +1425,8 @@ func (self *xgEdgeForwarder) SendControl(ctrl *xgress.Control) error {
 	return err
 }
 
-func (self *xgEdgeForwarder) Init(ctx *connectContext) bool {
-	self.connId = ctx.connId
+func (self *xgEdgeForwarder) Init(ctx *ConnectContext) bool {
+	self.connId = ctx.ConnId
 	// TODO: figure out how to handle session removed
 	return true
 }
@@ -1260,10 +1443,10 @@ func (self *xgEdgeForwarder) UnregisterRouting() {
 	self.xgCircuits.Set(self.circuitId, self)
 }
 
-func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
+func (self *xgEdgeForwarder) FinishConnect(ctx *ConnectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
 	if err != nil {
-		ctx.log.WithError(err).Warn("failed to dial fabric")
-		ctx.sdkConn.sendStateClosedReply(err.Error(), ctx.req)
+		ctx.Log.WithError(err).Warn("failed to dial fabric")
+		ctx.SdkConn.sendStateClosedReply(err.Error(), ctx.Req)
 		return
 	}
 
@@ -1272,18 +1455,18 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 	self.tags = response.Tags
 	self.RegisterRouting()
 
-	connId, _ := ctx.req.GetUint32Header(sdkedge.ConnIdHeader)
+	connId, _ := ctx.Req.GetUint32Header(sdkedge.ConnIdHeader)
 
 	msg := sdkedge.NewStateConnectedMsg(connId)
-	msg.ReplyTo(ctx.req)
+	msg.ReplyTo(ctx.Req)
 
-	if assignIds, _ := ctx.req.GetBoolHeader(sdkedge.RouterProvidedConnId); assignIds {
-		msg.PutBoolHeader(sdkedge.RouterProvidedConnId, true)
+	if assignIds, _ := ctx.Req.GetBoolHeader(sdkedge.RouterProvidedConnId); assignIds {
+		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
 	}
 
 	msg.PutStringHeader(sdkedge.CircuitIdHeader, self.circuitId)
 	msg.PutBoolHeader(sdkedge.UseXgressToSdkHeader, true)
-	msg.PutStringHeader(sdkedge.XgressCtrlIdHeader, ctx.ctrlCh.Id())
+	msg.PutStringHeader(sdkedge.XgressCtrlIdHeader, ctx.CtrlCh.Id())
 	msg.PutStringHeader(sdkedge.XgressAddressHeader, response.Address)
 
 	self.mapResponsePeerData(response.PeerData)
@@ -1356,7 +1539,7 @@ func (self *xgEdgeForwarder) InspectCircuit(detail *xgress.CircuitInspectDetail)
 func (self *xgEdgeForwarder) GetCircuitInspectDetail() *inspect.EdgeXgFwdInspectDetail {
 	return &inspect.EdgeXgFwdInspectDetail{
 		ChannelConnId:       self.ch.GetChannel().ConnectionId(),
-		IdentityId:          self.apiSession.IdentityId,
+		IdentityId:          self.apiSessionToken.IdentityId,
 		CircuitId:           self.circuitId,
 		EdgeConnId:          self.connId,
 		CtrlId:              self.ctrlId,

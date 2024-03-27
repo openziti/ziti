@@ -140,7 +140,7 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 						break
 					}
 
-					time.Sleep(250 * time.Millisecond)
+					time.Sleep(100 * time.Millisecond)
 					count = count + 1
 				}
 
@@ -169,5 +169,6 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 		})
 	})
 
-	testServer.waitForDone(ctx, 5*time.Second)
+	ctx.testContextChanged(t)
+	testServer.waitForDone(ctx, 1*time.Second)
 }

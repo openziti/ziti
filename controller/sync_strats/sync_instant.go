@@ -441,12 +441,13 @@ func (strategy *InstantStrategy) ApiSessionDeleted(apiSession *db.ApiSession) {
 
 func (strategy *InstantStrategy) SessionDeleted(session *db.Session) {
 	sessionRemoved := &edge_ctrl_pb.SessionRemoved{
+		Ids:    []string{session.Id},
 		Tokens: []string{session.Token},
 	}
 
 	strategy.rtxMap.Range(func(rtx *RouterSender) {
 		content, _ := proto.Marshal(sessionRemoved)
-		msg := channel.NewMessage(env.SessionRemovedType, content)
+		msg := channel.NewMessage(env.ServiceSessionRemovedType, content)
 		_ = rtx.Send(msg)
 	})
 }
