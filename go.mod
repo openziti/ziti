@@ -8,7 +8,7 @@ require (
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/cenkalti/backoff/v4 v4.2.1
+	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/coreos/go-iptables v0.7.0
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
 	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663
@@ -67,7 +67,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.8.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/russross/blackfriday v1.6.0
-	github.com/shirou/gopsutil/v3 v3.24.2
+	github.com/shirou/gopsutil/v3 v3.24.3
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.8.0
@@ -85,7 +85,7 @@ require (
 	golang.org/x/sys v0.18.0
 	golang.org/x/text v0.14.0
 	google.golang.org/protobuf v1.33.0
-	gopkg.in/AlecAivazis/survey.v1 v1.8.7
+	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/square/go-jose.v2 v2.6.0
 	gopkg.in/yaml.v2 v2.4.0
