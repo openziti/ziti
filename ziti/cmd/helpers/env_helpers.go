@@ -17,10 +17,12 @@
 package helpers
 
 import (
+	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	edge "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -102,6 +104,14 @@ func GetEdgeRouterIpOvderride() string {
 
 func GetCtrlAdvertisedPort() string {
 	return getFromEnv(constants.CtrlAdvertisedPortVarName, defaultValue(constants.DefaultCtrlAdvertisedPort))
+}
+
+func GetCtrlDatabaseFile() string {
+	path := getFromEnv(constants.CtrlDatabaseFileVarName, defaultValue(constants.DefaultCtrlDatabaseFile))
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(GetZitiHome(), path)
+	}
+	return NormalizePath(path)
 }
 
 func GetCtrlEdgeBindAddress() string {
@@ -192,6 +202,12 @@ func NormalizePath(input string) string {
 
 func GetRouterAdvertisedAddress() string {
 	return getFromEnv(constants.ZitiEdgeRouterAdvertisedAddressVarName, HostnameOrNetworkName)
+}
+func GetZitiEdgeRouterResolver() string {
+	return getFromEnv(constants.ZitiEdgeRouterResolverVarName, defaultValue(xgress_edge_tunnel.DefaultDnsResolver))
+}
+func GetZitiEdgeRouterDnsSvcIpRange() string {
+	return getFromEnv(constants.ZitiEdgeRouterDnsSvcIpRangeVarName, defaultValue(xgress_edge_tunnel.DefaultDnsServiceIpRange))
 }
 func GetRouterSans() string {
 	return getFromEnv(constants.ZitiRouterCsrSansDnsVarName, GetRouterAdvertisedAddress)
