@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/transport/v2"
+	transporttls "github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
@@ -50,6 +51,26 @@ const (
 	DefaultHealthChecksBoltCheckInitialDelay = 30 * time.Second
 
 	DefaultRaftCommandHandlerMaxQueueSize = 1000
+
+	// TlsHandshakeRateLimiterMinSizeValue is the minimum size that can be configured for the tls handshake rate limiter
+	// window range
+	TlsHandshakeRateLimiterMinSizeValue = 5
+
+	// TlsHandshakeRateLimiterMaxSizeValue is the maximum size that can be configured for the tls handshake rate limiter
+	// window range
+	TlsHandshakeRateLimiterMaxSizeValue = 5000
+
+	// TlsHandshakeRateLimiterMetricOutstandingCount is the name of the metric tracking how many tasks are in process
+	TlsHandshakeRateLimiterMetricOutstandingCount = "tls_handshake_limiter.in_process"
+
+	// TlsHandshakeRateLimiterMetricCurrentWindowSize is the name of the metric tracking the current window size
+	TlsHandshakeRateLimiterMetricCurrentWindowSize = "tls_handshake_limiter.window_size"
+
+	// TlsHandshakeRateLimiterMetricWorkTimer is the name of the metric tracking how long successful tasks are taking to complete
+	TlsHandshakeRateLimiterMetricWorkTimer = "tls_handshake_limiter.work_timer"
+
+	// DefaultTlsHandshakeRateLimiterMaxWindow is the default max size for the tls handshake rate limiter
+	DefaultTlsHandshakeRateLimiterMaxWindow = 500
 )
 
 type Config struct {
@@ -80,8 +101,9 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
-	CommandRateLimiter command.RateLimiterConfig
-	src                map[interface{}]interface{}
+	CommandRateLimiter      command.RateLimiterConfig
+	TlsHandshakeRateLimiter command.AdaptiveRateLimiterConfig
+	src                     map[interface{}]interface{}
 }
 
 // CtrlOptions extends channel.Options to include support for additional, non-channel specific options
@@ -488,7 +510,59 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
+	controllerConfig.TlsHandshakeRateLimiter.SetDefaults()
+	controllerConfig.TlsHandshakeRateLimiter.MaxSize = DefaultTlsHandshakeRateLimiterMaxWindow
+	controllerConfig.TlsHandshakeRateLimiter.QueueSizeMetric = TlsHandshakeRateLimiterMetricOutstandingCount
+	controllerConfig.TlsHandshakeRateLimiter.WindowSizeMetric = TlsHandshakeRateLimiterMetricCurrentWindowSize
+	controllerConfig.TlsHandshakeRateLimiter.WorkTimerMetric = TlsHandshakeRateLimiterMetricWorkTimer
+
+	if value, found := cfgmap["tls"]; found {
+		if tlsMap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := tlsMap["handshakeTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					transporttls.SetSharedListenerHandshakeTimeout(val)
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse tls.handshakeTimeout value '%v", value)
+				}
+			}
+			if err = loadTlsHandshakeRateLimiterConfig(&controllerConfig.TlsHandshakeRateLimiter, tlsMap); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	return controllerConfig, nil
+}
+
+func loadTlsHandshakeRateLimiterConfig(rateLimitConfig *command.AdaptiveRateLimiterConfig, cfgmap map[interface{}]interface{}) error {
+	if value, found := cfgmap["rateLimiter"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if err := command.LoadAdaptiveRateLimiterConfig(rateLimitConfig, submap); err != nil {
+				return err
+			}
+			if rateLimitConfig.MaxSize < TlsHandshakeRateLimiterMinSizeValue {
+				return errors.Errorf("invalid value %v for tls.rateLimiter.maxSize, must be at least %v",
+					rateLimitConfig.MaxSize, TlsHandshakeRateLimiterMinSizeValue)
+			}
+			if rateLimitConfig.MaxSize > TlsHandshakeRateLimiterMaxSizeValue {
+				return errors.Errorf("invalid value %v for tls.rateLimiter.maxSize, must be at most %v",
+					rateLimitConfig.MaxSize, TlsHandshakeRateLimiterMaxSizeValue)
+			}
+
+			if rateLimitConfig.MinSize < TlsHandshakeRateLimiterMinSizeValue {
+				return errors.Errorf("invalid value %v for tls.rateLimiter.minSize, must be at least %v",
+					rateLimitConfig.MinSize, TlsHandshakeRateLimiterMinSizeValue)
+			}
+			if rateLimitConfig.MinSize > TlsHandshakeRateLimiterMaxSizeValue {
+				return errors.Errorf("invalid value %v for tls.rateLimiter.minSize, must be at most %v",
+					rateLimitConfig.MinSize, TlsHandshakeRateLimiterMaxSizeValue)
+			}
+		} else {
+			return errors.Errorf("invalid type for tls.rateLimiter, should be map instead of %T", value)
+		}
+	}
+
+	return nil
 }
 
 // verifyNewListenerInServerCert verifies that the hostname (ip/dns) for addr is present as an IP/DNS SAN in the first

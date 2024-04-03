@@ -614,8 +614,8 @@ github.com/openziti/secretstream v0.1.18 h1:bMHI4ez6pVSGFzHCHHn6imkaCYqd3o9Oa8gD
 github.com/openziti/secretstream v0.1.18/go.mod h1:gosi8ohW+dAHhz1h/MjZEcEVWO0jisWqWjEjmx7oAEs=
 github.com/openziti/storage v0.2.34 h1:s1FgYkLXNE4KglkiHznnpmGIWj+YvNp64eX8FWvEo5Y=
 github.com/openziti/storage v0.2.34/go.mod h1:oaShQMtacL6LjfPprJZY6HU7JqgI+Tm8U+bnIKjXtdY=
-github.com/openziti/transport/v2 v2.0.128 h1:N3yrefO7jD1YjCEmx8mqrTJzE30nxntqd9kVChIn43U=
-github.com/openziti/transport/v2 v2.0.128/go.mod h1:c/0QKR4dIp7LzVcyooEf+xmv87DvF8SMvK+MPFrhVbM=
+github.com/openziti/transport/v2 v2.0.129 h1:aghncyffzNfIz+s1pI5CAz3Q8FIIRUmZWJc8lPhUljQ=
+github.com/openziti/transport/v2 v2.0.129/go.mod h1:iFddh0Pdrkq3fLrFD80l+tZQQHDlB2rPp/8DRItGd/8=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
 github.com/openziti/x509-claims v1.0.3/go.mod h1:Z0WIpBm6c4ecrpRKrou6Gk2wrLWxJO/+tuUwKh8VewE=
 github.com/openziti/xweb/v2 v2.1.0 h1:Xhh3C2pZkq/Prr65V+SfFSibLDYteoc4f62KQCcTZF4=

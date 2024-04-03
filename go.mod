@@ -58,7 +58,7 @@ require (
 	github.com/openziti/sdk-golang v0.23.15
 	github.com/openziti/secretstream v0.1.18
 	github.com/openziti/storage v0.2.34
-	github.com/openziti/transport/v2 v2.0.128
+	github.com/openziti/transport/v2 v2.0.129
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.3

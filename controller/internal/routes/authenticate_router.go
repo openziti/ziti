@@ -26,9 +26,9 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
@@ -187,12 +187,12 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	allowAdminBypass := identity.IsAdmin && time.Since(lastAdminAuth) > 10*time.Second &&
 		ro.lastAdminAuth.CompareAndSwap(lastAdminAuth, time.Now())
 
-	var ctrl command.RateLimitControl
+	var ctrl rate.RateLimitControl
 	if allowAdminBypass {
 		var sessionId string
 		sessionId, err = ae.Managers.ApiSession.Create(changeCtx.NewMutateContext(), newApiSession, sessionCerts)
 		sessionIdHolder.Store(sessionId)
-		ctrl = command.NoOpRateLimitControl()
+		ctrl = rate.NoOpRateLimitControl()
 	} else {
 		ctrl, err = ae.AuthRateLimiter.RunRateLimited(func() error {
 			sessionId, err := ae.Managers.ApiSession.Create(changeCtx.NewMutateContext(), newApiSession, sessionCerts)
