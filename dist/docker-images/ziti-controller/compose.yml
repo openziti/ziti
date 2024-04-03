@@ -1,0 +1,54 @@
+
+volumes:
+  ziti-controller:
+    driver: local
+
+services:
+  chown-controller:
+    image: busybox
+    command: chown -R ${ZIGGY_UID:-2171} /mnt
+    volumes:
+      - ziti-controller:/mnt
+
+  ziti-controller:
+    image: ${ZITI_CONTROLLER_IMAGE:-openziti/ziti-controller}
+    depends_on:
+      chown-controller:
+        condition: service_completed_successfully
+    volumes:
+      - ziti-controller:/mnt
+    working_dir: /mnt
+    # assign override vars in an .env file or export from parent env to ensure consistency throughout the compose
+    # project
+    environment:
+      # *** these are the important vars to set to bootstrap the configuration during first run***
+      ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-ziti-controller}  # FQDN of the controller
+      ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}                   # TCP port of the controller
+      ZITI_PWD: ${ZITI_PWD:-}                                                         # password for the default admin user
+
+      # *** less relevant vars below ***
+      ZITI_BOOTSTRAP: true             # bootstrap the controller if "true"
+      ZITI_BOOTSTRAP_PKI: true         # make the default PKI if "true"; requires ZITI_BOOTSTRAP=true
+      ZITI_BOOTSTRAP_CONFIG: true      # make config file from env vars and defaults if "true," overwrite if "force"; requires ZITI_BOOTSTRAP=true
+      ZITI_BOOTSTRAP_DATABASE: true    # make the default admin user if "true"; requires ZITI_BOOTSTRAP=true
+      ZITI_AUTO_RENEW_CERTS: true      # renew certs automatically every startup; requires ZITI_BOOTSTRAP_PKI=true
+      ZITI_NETWORK_NAME: ctrl          # identity files basename
+      PFXLOG_NO_JSON: true             # disable JSON logging
+      ZITI_TIME_FORMAT: utc            # time format for logs
+    command: run config.yml
+    ports:
+      # ensure this port matches the value of ZITI_CTRL_PORT in the container
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL_ADVERTISED_PORT:-1280}:${ZITI_CTRL_ADVERTISED_PORT:-1280}
+    expose:
+      - ${ZITI_CTRL_ADVERTISED_PORT:-1280}
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - ziti
+        - agent
+        - stats
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 15s

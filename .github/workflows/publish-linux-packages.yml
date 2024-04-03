@@ -16,6 +16,8 @@ jobs:
       matrix:
         package_name:
           - openziti
+          - openziti-controller
+          - openziti-router
         arch:
           - goreleaser: amd64
             gox: amd64
