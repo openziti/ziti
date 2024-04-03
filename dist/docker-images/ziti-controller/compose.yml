@@ -30,6 +30,7 @@ services:
       ZITI_BOOTSTRAP_PKI: true
       ZITI_BOOTSTRAP_CONFIG: true      # make config file from env vars and defaults if "true," overwrite if "force"
       ZITI_BOOTSTRAP_DATABASE: true    # make the default admin user if "true"
+      ZITI_AUTO_RENEW_CERTS: true      # renew certs automatically every startup
     command: run config.yml
     ports:
       # ensure this port matches the value of ZITI_CTRL_PORT in the container

@@ -49,6 +49,8 @@ Environment=ZITI_BOOTSTRAP_PKI=true
 Environment=ZITI_BOOTSTRAP_CONFIG=true
 # create a new database unless it exists
 Environment=ZITI_BOOTSTRAP_DATABASE=true
+# renew server and client certificates every startup
+Environment=ZITI_AUTO_RENEW_CERTS=true
 # basename of identity files to generate in state dir
 Environment=ZITI_NETWORK_NAME=ctrl
 # create a new config file relative to working directory unless it exists

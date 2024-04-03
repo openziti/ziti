@@ -83,25 +83,27 @@ function makePki() {
 
   # server cert
   ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_SERVER_FILE}.chain.pem"
-  if [[ ! -s "$ZITI_PKI_CTRL_SERVER_CERT" ]]; then
+  if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_SERVER_CERT" ]]; then
     ziti pki create server \
       --pki-root "${ZITI_PKI_ROOT}" \
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
       --server-file "${ZITI_SERVER_FILE}" \
-      --dns "${ZITI_CTRL_ADVERTISED_ADDRESS}"
+      --dns "${ZITI_CTRL_ADVERTISED_ADDRESS}" \
+      --allow-overwrite
   fi
 
   # client cert
   #   use the server key for both client and server certs until "ziti create config controller" supports separate keys for
   #   each
   ZITI_PKI_CTRL_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_CLIENT_FILE}.cert"
-  if [[ ! -s "$ZITI_PKI_CTRL_CERT" ]]; then
+  if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_CERT" ]]; then
     ziti pki create client \
       --pki-root "${ZITI_PKI_ROOT}" \
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
-      --client-file "${ZITI_CLIENT_FILE}"
+      --client-file "${ZITI_CLIENT_FILE}" \
+      --allow-overwrite
   fi
 
 }
