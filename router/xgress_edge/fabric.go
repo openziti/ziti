@@ -21,9 +21,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/pkg/errors"
@@ -98,7 +98,7 @@ type edgeTerminator struct {
 	lastAttempt       time.Time
 	establishCallback func(result edge_ctrl_pb.CreateTerminatorResult)
 	lock              sync.Mutex
-	rateLimitCallback command.RateLimitControl
+	rateLimitCallback rate.RateLimitControl
 }
 
 func (self *edgeTerminator) replace(other *edgeTerminator) {
@@ -273,13 +273,13 @@ func (self *edgeTerminator) newConnection(connId uint32) (*edgeXgressConn, error
 	return result, nil
 }
 
-func (self *edgeTerminator) SetRateLimitCallback(control command.RateLimitControl) {
+func (self *edgeTerminator) SetRateLimitCallback(control rate.RateLimitControl) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	self.rateLimitCallback = control
 }
 
-func (self *edgeTerminator) GetAndClearRateLimitCallback() command.RateLimitControl {
+func (self *edgeTerminator) GetAndClearRateLimitCallback() rate.RateLimitControl {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	result := self.rateLimitCallback

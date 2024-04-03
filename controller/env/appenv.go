@@ -39,6 +39,7 @@ import (
 	managementOperations "github.com/openziti/edge-api/rest_management_api_server/operations"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -102,7 +103,7 @@ type AppEnv struct {
 	identityRefreshMeter metrics.Meter
 	StartupTime          time.Time
 	InstanceId           string
-	AuthRateLimiter      command.AdaptiveRateLimiter
+	AuthRateLimiter      rate.AdaptiveRateLimiter
 
 	serverSigner jwtsigner.Signer
 	ServerCert   *tls.Certificate

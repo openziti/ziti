@@ -20,7 +20,7 @@ require (
 	github.com/openziti/identity v1.0.74
 	github.com/openziti/sdk-golang v0.23.15
 	github.com/openziti/storage v0.2.34
-	github.com/openziti/transport/v2 v2.0.128
+	github.com/openziti/transport/v2 v2.0.129
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
