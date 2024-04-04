@@ -129,10 +129,10 @@ func (network *Network) clean() {
 	failedLinks = append(failedLinks, duplicateLinks...)
 
 	now := info.NowInMilliseconds()
-	lRemove := make(map[string]*Link)
+	var lRemove []*Link
 	for _, l := range failedLinks {
 		if now-l.CurrentState().Timestamp >= 30000 {
-			lRemove[l.Id] = l
+			lRemove = append(lRemove, l)
 		}
 	}
 	for _, lr := range lRemove {

@@ -44,11 +44,7 @@ func (factory *LinkLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
 func MapLinkToRestModel(n *network.Network, _ api.RequestContext, link *network.Link) (*rest_model.LinkDetail, error) {
 	iteration := int64(link.Iteration)
 	staticCost := int64(link.StaticCost)
-	linkState := link.CurrentState()
-	linkStateStr := ""
-	if linkState != nil {
-		linkStateStr = linkState.Mode.String()
-	}
+	linkStateStr := link.CurrentState().Mode.String()
 
 	down := link.IsDown()
 
