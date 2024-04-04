@@ -122,7 +122,7 @@ func (r *LinkRouter) Patch(n *network.Network, rc api.RequestContext, params lin
 		if fields.IsUpdated("down") {
 			l.SetDown(params.Link.Down)
 		}
-		n.LinkChanged(l)
+		n.RerouteLink(l)
 		return nil
 	})
 }
