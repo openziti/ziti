@@ -188,7 +188,12 @@ func (self *RouterMessaging) syncStates() {
 		}
 
 		if v.sendInProgress.Load() {
+			continue
+		}
 
+		if !notifyRouter.SupportsRouterLinkMgmt() {
+			// if the router doesn't support router based link mgmt, don't send these messages
+			delete(self.routerUpdates, k)
 			continue
 		}
 
@@ -277,6 +282,12 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 		}
 	}
 
+	supportsVerifyV2, err := notifyRouter.VersionInfo.HasMinimumVersion("0.31.1")
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error(`version check of "0.31.1" failed`)
+		supportsVerifyV2 = true
+	}
+
 	var terminators []*ctrl_pb.Terminator
 
 	for _, terminator := range updates.terminators {
@@ -295,9 +306,16 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 		return
 	}
 
-	req := &ctrl_pb.ValidateTerminatorsV2Request{
-		Terminators: terminators,
-		FixInvalid:  true,
+	var req protobufs.TypedMessage
+	if !supportsVerifyV2 {
+		req = &ctrl_pb.ValidateTerminatorsRequest{
+			Terminators: terminators,
+		}
+	} else {
+		req = &ctrl_pb.ValidateTerminatorsV2Request{
+			Terminators: terminators,
+			FixInvalid:  true,
+		}
 	}
 
 	queueErr := self.routerCommPool.QueueOrError(func() {
@@ -309,6 +327,11 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 		if self.managers.Dispatcher.IsLeaderOrLeaderless() {
 			if err := protobufs.MarshalTyped(req).WithTimeout(time.Second * 1).SendAndWaitForWire(ch); err != nil {
 				pfxlog.Logger().WithError(err).WithField("routerId", notifyRouter.Id).Error("failed to send validate terminators request to router")
+			} else if !supportsVerifyV2 {
+				// V1 doesn't send responses, it will just send deletes if the terminator is invalid.
+				// we're going to mark these ok. If they're not, we should get a delete message. Older
+				// routers can still fail to delete, if the delete gets lost for some reason.
+				self.generateMockResponseForV1(notifyRouter, updates)
 			}
 		}
 	})
@@ -318,6 +341,25 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 	} else {
 		updates.lastSend = time.Now()
 	}
+}
+
+func (self *RouterMessaging) generateMockResponseForV1(r *Router, validations *terminatorValidations) {
+	handler := &terminatorValidationRespReceived{
+		router:    r,
+		changeCtx: change.New(), // won't be used since we're marking things valid
+		resp: &ctrl_pb.ValidateTerminatorsV2Response{
+			States: map[string]*ctrl_pb.RouterTerminatorState{},
+		},
+	}
+
+	for id, t := range validations.terminators {
+		handler.resp.States[id] = &ctrl_pb.RouterTerminatorState{
+			Valid:  true,
+			Marker: t.marker,
+		}
+	}
+
+	self.queueEvent(handler)
 }
 
 func (self *RouterMessaging) NewValidationResponseHandler(n *Network, r *Router) channel.ReceiveHandlerF {

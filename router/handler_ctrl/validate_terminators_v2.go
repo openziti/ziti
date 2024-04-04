@@ -131,8 +131,15 @@ func (handler *validateTerminatorsV2Handler) validateTerminators(msg *channel.Me
 func (handler *validateTerminatorsV2Handler) validateTerminator(dialer xgress.Dialer, terminator *ctrl_pb.Terminator, fixInvalid bool) *ctrl_pb.RouterTerminatorState {
 	if inspectable, ok := dialer.(xgress.InspectableDialer); ok {
 		valid, state := inspectable.InspectTerminator(terminator.Id, terminator.Address, fixInvalid)
+		if valid {
+			return &ctrl_pb.RouterTerminatorState{
+				Valid:  true,
+				Detail: state,
+				Marker: terminator.Marker,
+			}
+		}
 		return &ctrl_pb.RouterTerminatorState{
-			Valid:  valid,
+			Valid:  false,
 			Detail: state,
 			Reason: ctrl_pb.TerminatorInvalidReason_UnknownTerminator,
 			Marker: terminator.Marker,
