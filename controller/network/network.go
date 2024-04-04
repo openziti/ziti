@@ -77,9 +77,8 @@ type Network struct {
 	*Managers
 	nodeId                 string
 	options                *Options
-	routerChanged          chan *Router
+	assembleAndCleanC      chan struct{}
 	linkController         *linkController
-	linkChanged            chan *Link
 	forwardingFaults       chan struct{}
 	circuitController      *circuitController
 	routeSenderController  *routeSenderController
@@ -125,9 +124,8 @@ func NewNetwork(config Config) (*Network, error) {
 	network := &Network{
 		nodeId:                config.GetId().Token,
 		options:               config.GetOptions(),
-		routerChanged:         make(chan *Router, 16),
+		assembleAndCleanC:     make(chan struct{}, 1),
 		linkController:        newLinkController(config.GetOptions()),
-		linkChanged:           make(chan *Link, 16),
 		forwardingFaults:      make(chan struct{}, 1),
 		circuitController:     newCircuitController(),
 		routeSenderController: newRouteSenderController(),
@@ -325,7 +323,7 @@ func (network *Network) ConnectRouter(r *Router) {
 	network.linkController.buildRouterLinks(r)
 	network.Routers.markConnected(r)
 
-	time.AfterFunc(250*time.Millisecond, func() { network.routerChanged <- r })
+	time.AfterFunc(250*time.Millisecond, network.notifyAssembleAndClean)
 
 	for _, h := range network.routerPresenceHandlers {
 		go h.RouterConnected(r)
@@ -408,10 +406,13 @@ func (n *Network) ValidateRouterSdkTerminators(filter string, cb SdkTerminatorVa
 func (network *Network) DisconnectRouter(r *Router) {
 	// 1: remove Links for Router
 	for _, l := range r.routerLinks.GetLinks() {
+		wasConnected := l.CurrentState().Mode == Connected
 		if l.Src.Id == r.Id {
 			network.linkController.remove(l)
 		}
-		network.LinkChanged(l)
+		if wasConnected {
+			network.RerouteLink(l)
+		}
 	}
 	// 2: remove Router
 	network.Routers.markDisconnected(r)
@@ -420,7 +421,14 @@ func (network *Network) DisconnectRouter(r *Router) {
 		h.RouterDisconnected(r)
 	}
 
-	network.routerChanged <- r
+	network.notifyAssembleAndClean()
+}
+
+func (network *Network) notifyAssembleAndClean() {
+	select {
+	case network.assembleAndCleanC <- struct{}{}:
+	default:
+	}
 }
 
 func (network *Network) NotifyExistingLink(id string, iteration uint32, linkProtocol, dialAddress string, srcRouter *Router, dstRouterId string) {
@@ -501,10 +509,10 @@ func (network *Network) VerifyRouter(routerId string, fingerprints []string) err
 	return errors.Errorf("could not verify fingerprint for router %v", routerId)
 }
 
-func (network *Network) LinkChanged(l *Link) {
+func (network *Network) RerouteLink(l *Link) {
 	// This is called from Channel.rxer() and thus may not block
 	go func() {
-		network.linkChanged <- l
+		network.handleRerouteLink(l)
 	}()
 }
 
@@ -916,20 +924,19 @@ func (network *Network) Run() {
 
 	go network.watchdog()
 
+	ticker := time.NewTicker(time.Duration(network.options.CycleSeconds) * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case r := <-network.routerChanged:
-			logrus.WithField("routerId", r.Id).Info("changed router")
+		case <-network.assembleAndCleanC:
 			network.assemble()
 			network.clean()
-
-		case l := <-network.linkChanged:
-			go network.handleLinkChanged(l)
 
 		case <-network.forwardingFaults:
 			network.clean()
 
-		case <-time.After(time.Duration(network.options.CycleSeconds) * time.Second):
+		case <-ticker.C:
 			network.assemble()
 			network.clean()
 			network.smart()
@@ -976,7 +983,7 @@ func (network *Network) watchdog() {
 	}
 }
 
-func (network *Network) handleLinkChanged(l *Link) {
+func (network *Network) handleRerouteLink(l *Link) {
 	log := logrus.WithField("linkId", l.Id)
 	log.Info("changed link")
 	if err := network.rerouteLink(l, time.Now().Add(DefaultOptionsRouteTimeout)); err != nil {
@@ -1042,7 +1049,7 @@ func (network *Network) RemoveLink(linkId string) {
 
 	if link != nil {
 		network.linkController.remove(link)
-		network.linkChanged <- link
+		network.RerouteLink(link)
 	}
 }
 
