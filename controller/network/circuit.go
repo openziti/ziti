@@ -143,10 +143,10 @@ func (self *circuitController) get(id string) (*Circuit, bool) {
 }
 
 func (self *circuitController) all() []*Circuit {
-	circuits := make([]*Circuit, 0)
-	for tuple := range self.circuits.IterBuffered() {
-		circuits = append(circuits, tuple.Val)
-	}
+	var circuits []*Circuit
+	self.circuits.IterCb(func(_ string, circuit *Circuit) {
+		circuits = append(circuits, circuit)
+	})
 	return circuits
 }
 

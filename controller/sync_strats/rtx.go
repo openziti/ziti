@@ -160,7 +160,11 @@ func (m *routerTxMap) Remove(r *network.Router) {
 // Range creates a snapshot of the rtx's to loop over and will execute callback
 // with each rtx.
 func (m *routerTxMap) Range(callback func(entries *RouterSender)) {
-	for entry := range m.internalMap.IterBuffered() {
-		callback(entry.Val)
+	var routerSenders []*RouterSender
+	m.internalMap.IterCb(func(_ string, v *RouterSender) {
+		routerSenders = append(routerSenders, v)
+	})
+	for _, routerSender := range routerSenders {
+		callback(routerSender)
 	}
 }

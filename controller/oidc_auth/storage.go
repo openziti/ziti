@@ -359,12 +359,17 @@ func (s *HybridStorage) SaveAuthCode(_ context.Context, id string, code string) 
 
 // DeleteAuthRequest implements the op.Storage interface
 func (s *HybridStorage) DeleteAuthRequest(_ context.Context, id string) error {
-
 	s.authRequests.Remove(id)
-	for entry := range s.codes.IterBuffered() {
-		if entry.Val == id {
-			s.codes.Remove(entry.Key)
+
+	var toRemove []string
+	s.codes.IterCb(func(key string, v string) {
+		if v == id {
+			toRemove = append(toRemove, key)
 		}
+	})
+
+	for _, mapKey := range toRemove {
+		s.codes.Remove(mapKey)
 	}
 
 	return nil
