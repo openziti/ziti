@@ -716,12 +716,17 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 					}
 				}
 
-				for tuple := range strategy.RouterDataModel.PublicKeys.IterBuffered() {
+				var pks []*edge_ctrl_pb.DataState_PublicKey
+				strategy.RouterDataModel.PublicKeys.IterCb(func(_ string, v *edge_ctrl_pb.DataState_PublicKey) {
+					pks = append(pks, v)
+				})
+
+				for _, pk := range pks {
 					peerEvent := &edge_ctrl_pb.DataState_Event{
 						IsSynthetic: true,
 						Action:      edge_ctrl_pb.DataState_Create,
 						Model: &edge_ctrl_pb.DataState_Event_PublicKey{
-							PublicKey: newPublicKey(tuple.Val.Data, tuple.Val.Format, tuple.Val.Usages),
+							PublicKey: newPublicKey(pk.Data, pk.Format, pk.Usages),
 						},
 					}
 

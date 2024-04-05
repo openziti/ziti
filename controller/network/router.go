@@ -193,9 +193,9 @@ func (self *RouterManager) getConnected(id string) *Router {
 
 func (self *RouterManager) allConnected() []*Router {
 	var routers []*Router
-	for v := range self.connected.IterBuffered() {
-		routers = append(routers, v.Val)
-	}
+	self.connected.IterCb(func(_ string, router *Router) {
+		routers = append(routers, router)
+	})
 	return routers
 }
 
