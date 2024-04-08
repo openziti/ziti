@@ -94,10 +94,14 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 
 	var conn net.Conn
 	var err error
+	var circuitId string
 
 	log.Debugf("dialing %v:%v", network, addr)
 	if network == "tcp" || network == "udp" {
 		conn, err = net.Dial(network, addr)
+		if err != nil {
+			log.WithError(err).Fatalf("unable to dial %v:%v", network, addr)
+		}
 	} else if network == "ziti" {
 		zitiConfig, cfgErr := ziti.NewConfigFromFile(self.configFile)
 		if cfgErr != nil {
@@ -121,15 +125,15 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 			Identity:       dialIdentifier,
 		}
 		conn, err = zitiContext.DialWithOptions(addr, dialOptions)
+		if err != nil {
+			log.WithError(err).Fatalf("unable to dial %v:%v", network, addr)
+		}
+		circuitId = conn.(edge.Conn).GetCircuitId()
 	} else {
 		log.Fatalf("invalid network '%v'. valid values are ['ziti', 'tcp', 'udp']", network)
 	}
 
-	if err != nil {
-		log.WithError(err).Fatalf("unable to dial %v:%v", network, addr)
-	}
-
-	log.Debugf("connected to %v:%v", network, addr)
+	log.WithField("circuitId", circuitId).Debugf("connected to %v:%v", network, addr)
 
 	go self.copy(conn, os.Stdin)
 	self.copy(os.Stdout, conn)
