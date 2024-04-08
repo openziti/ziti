@@ -122,7 +122,9 @@ func (h *faultHandler) handleFaultedLink(log *logrus.Entry, fault *ctrl_pb.Fault
 
 		wasConnected := link.IsUsable()
 		if err := h.network.LinkFaulted(link, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate); err == nil {
-			h.network.LinkChanged(link)
+			if wasConnected {
+				h.network.RerouteLink(link)
+			}
 			otherRouter := link.Src
 			if link.Src.Id == h.r.Id {
 				otherRouter = link.GetDest()
