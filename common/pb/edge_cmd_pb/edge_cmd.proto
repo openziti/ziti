@@ -175,6 +175,16 @@ message Controller {
   bool isOnline = 6;
   google.protobuf.Timestamp lastJoinedAt = 7;
   map<string, TagValue> tags = 8;
+  map<string,ApiAddressList> apiAddresses = 9;
+}
+
+message ApiAddressList {
+  repeated ApiAddress addresses = 1;
+}
+
+message ApiAddress {
+  string Url = 1;
+  string Version = 2;
 }
 
 // Edge Routers

@@ -46,6 +46,12 @@ jobs:
       - name: Checkout Workspace
         uses: actions/checkout@v4
 
+      - name: Install Go
+        id: setup-go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
 

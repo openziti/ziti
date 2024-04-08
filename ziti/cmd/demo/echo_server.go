@@ -245,7 +245,11 @@ func (self *echoServer) accept(connType string, listener net.Listener) {
 		if err != nil {
 			panic(err)
 		}
-		log.Infof("%v: connection received: %v", connType, conn)
+		circuitId := ""
+		if edgeConn, ok := conn.(edge.Conn); ok {
+			circuitId = edgeConn.GetCircuitId()
+		}
+		log.WithField("circuitId", circuitId).Infof("%v: connection received: %v", connType, conn)
 		go self.echo(connType, conn)
 	}
 }

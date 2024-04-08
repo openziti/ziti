@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/ziti/controller/zac"
 	"math/big"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -85,6 +86,10 @@ type Controller struct {
 	metricsRegistry   metrics.Registry
 	versionProvider   versions.VersionProvider
 	eventDispatcher   *events.Dispatcher
+
+	apiData      map[string][]event.ApiAddress
+	apiDataBytes []byte
+	apiDataOnce  sync.Once
 }
 
 func (c *Controller) GetPeerSigners() []*x509.Certificate {
@@ -152,6 +157,15 @@ func (c *Controller) IsRaftLeader() bool { return c.raftController.IsLeader() }
 
 func (c *Controller) GetRaftIndex() uint64 {
 	return c.raftController.Raft.LastIndex()
+}
+
+func (c *Controller) GetRaftInfo() (string, string, string) {
+	id := c.config.Id.Token
+	addr := c.raftController.Mesh.Addr().String()
+
+	version := c.GetVersionProvider().Version()
+
+	return string(addr), string(id), version
 }
 
 func (c *Controller) GetDb() boltz.Db {
@@ -338,7 +352,11 @@ func (c *Controller) Run() error {
 		panic(err)
 	}
 
-	go c.xweb.Run()
+	c.xweb.Run()
+
+	for _, helloHeader := range c.GetHelloHeaderProviders() {
+		helloHeader.Apply(headers)
+	}
 
 	// event handlers
 	if err := c.eventDispatcher.WireEventHandlers(c.getEventHandlerConfigs()); err != nil {
@@ -561,4 +579,56 @@ func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 	}
 
 	return c.raftController.Dispatch(cmd)
+}
+
+// TODO: this functions is a temporary hack and should be provided by xweb
+func getApiPath(binding string) string {
+	switch binding {
+	case "edge-client":
+		return "/edge/client/v1"
+	case "edge-management":
+		return "/edge/management/v1"
+	case "fabric":
+		return "/fabric/v1"
+	case "health-checks":
+		return "health-checks"
+	case "edge-oidc":
+		return "/oidc"
+	}
+
+	return ""
+}
+
+func (c *Controller) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
+	c.apiDataOnce.Do(func() {
+		xwebConfig := c.xweb.GetConfig()
+
+		apiData := map[string][]event.ApiAddress{}
+		for _, serverConfig := range xwebConfig.ServerConfigs {
+			for _, bindPoint := range serverConfig.BindPoints {
+				for _, api := range serverConfig.APIs {
+					apiData[api.Binding()] = append(apiData[api.Binding()], event.ApiAddress{
+						Url:     "https://" + bindPoint.Address + getApiPath(api.Binding()), //TODO: temp till xweb support reporting API paths
+						Version: "v1",                                                       //TODO: temp till xweb supports reporting versions via api.Version()
+					})
+				}
+			}
+		}
+
+		c.apiData = apiData
+		c.apiDataBytes, _ = json.Marshal(apiData)
+	})
+
+	return c.apiData, c.apiDataBytes
+}
+
+func (c *Controller) GetHelloHeaderProviders() []mesh.HeaderProvider {
+	providerFunc := func(headers map[int32][]byte) {
+		_, apiDataBytes := c.GetApiAddresses()
+
+		headers[mesh.ApiAddressesHeader] = apiDataBytes
+	}
+
+	provider := mesh.HeaderProviderFunc(providerFunc)
+	return []mesh.HeaderProvider{provider}
 }

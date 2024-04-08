@@ -43,14 +43,18 @@ func NewControllerRouter() *ControllerRouter {
 
 func (r *ControllerRouter) Register(ae *env.AppEnv) {
 	ae.ManagementApi.ControllersListControllersHandler = controllersMan.ListControllersHandlerFunc(func(params controllersMan.ListControllersParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+		return ae.IsAllowed(r.ListManagement, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
 	ae.ClientApi.ControllersListControllersHandler = controllersClient.ListControllersHandlerFunc(func(params controllersClient.ListControllersParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+		return ae.IsAllowed(r.ListClient, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 }
 
-func (r *ControllerRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler[*model.Controller](ae, rc, ae.Managers.Controller, MapControllerToRestEntity)
+func (r *ControllerRouter) ListManagement(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler[*model.Controller](ae, rc, ae.Managers.Controller, MapControllerToManagementRestEntity)
+}
+
+func (r *ControllerRouter) ListClient(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler[*model.Controller](ae, rc, ae.Managers.Controller, MapControllerToClientRestEntity)
 }

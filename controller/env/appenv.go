@@ -314,6 +314,8 @@ type HostController interface {
 	GetEventDispatcher() event.Dispatcher
 	GetRaftIndex() uint64
 	GetPeerAddresses() []string
+	GetRaftInfo() (string, string, string)
+	GetApiAddresses() (map[string][]event.ApiAddress, []byte)
 }
 
 type Schemes struct {
@@ -830,29 +832,19 @@ func (ae *AppEnv) ControllersKeyFunc(token *jwt.Token) (interface{}, error) {
 		return nil, nil
 	}
 
-	return ae.GetControllerPublicKey(kid), nil
+	key := ae.GetControllerPublicKey(kid)
+
+	if key == nil {
+		return nil, fmt.Errorf("key for kid %s, not found", kid)
+	}
+
+	return key, nil
 }
 
 func (ae *AppEnv) GetControllerPublicKey(kid string) crypto.PublicKey {
-	serverTlsCert, serverKid, _ := ae.GetServerCert()
-	signers := ae.GetHostController().GetPeerSigners()
-
-	kids := map[string]crypto.PublicKey{
-		serverKid: serverTlsCert.Leaf.PublicKey,
-	}
-
-	for _, signer := range signers {
-		signerKid := fmt.Sprintf("%s", sha1.Sum(signer.Raw))
-		kids[signerKid] = signer.PublicKey
-	}
-
-	for curKid, publicKey := range kids {
-		if curKid == kid {
-			return publicKey
-		}
-	}
-
-	return nil
+	signers := ae.Broker.GetPublicKeys()
+	pfxlog.Logger().Info("looking for signer: " + kid)
+	return signers[kid]
 }
 
 func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
@@ -967,8 +959,6 @@ func (ae *AppEnv) SetServerCert(serverCert *tls.Certificate) {
 	signMethod := getJwtSigningMethod(serverCert)
 	kid := fmt.Sprintf("%x", sha1.Sum(serverCert.Certificate[0]))
 	ae.serverSigner = jwtsigner.New(signMethod, serverCert.PrivateKey, kid)
-
-	ae.Broker.routerSyncStrategy.AddPublicKey(ae.ServerCert)
 }
 
 func (ae *AppEnv) OidcIssuer() string {

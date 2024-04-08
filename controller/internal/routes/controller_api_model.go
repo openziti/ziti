@@ -18,6 +18,7 @@ package routes
 
 import (
 	"github.com/openziti/edge-api/rest_model"
+	edgeController "github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
@@ -27,22 +28,55 @@ const EntityNameController = "controllers"
 
 var ControllerLinkFactory = NewBasicLinkFactory(EntityNameController)
 
-func MapControllerToRestEntity(_ *env.AppEnv, _ *response.RequestContext, Controller *model.Controller) (interface{}, error) {
-	return MapControllerToRestModel(Controller)
+func MapControllerToManagementRestEntity(_ *env.AppEnv, _ *response.RequestContext, Controller *model.Controller) (interface{}, error) {
+	return MapControllerToManagementRestModel(Controller)
 }
 
-func MapControllerToRestModel(controller *model.Controller) (*rest_model.ControllerDetail, error) {
+func MapControllerToClientRestEntity(_ *env.AppEnv, _ *response.RequestContext, Controller *model.Controller) (interface{}, error) {
+	return MapControllerToClientRestModel(Controller)
+}
+
+func MapControllerToManagementRestModel(controller *model.Controller) (*rest_model.ControllerDetail, error) {
 	ret := &rest_model.ControllerDetail{
-		BaseEntity:  BaseEntityToRestModel(controller, ControllerLinkFactory),
-		Name:        &controller.Name,
-		Address:     &controller.Address,
-		CertPem:     &controller.CertPem,
-		Fingerprint: &controller.Fingerprint,
-		IsOnline:    &controller.IsOnline,
+		BaseEntity:   BaseEntityToRestModel(controller, ControllerLinkFactory),
+		Name:         &controller.Name,
+		CtrlAddress:  &controller.CtrlAddress,
+		APIAddresses: rest_model.APIAddressList{},
+		CertPem:      &controller.CertPem,
+		Fingerprint:  &controller.Fingerprint,
+		IsOnline:     &controller.IsOnline,
 	}
 
 	if controller.LastJoinedAt != nil {
 		ret.LastJoinedAt = toStrFmtDateTimeP(*controller.LastJoinedAt)
+	}
+
+	for apiKey, instances := range controller.ApiAddresses {
+		ret.APIAddresses[apiKey] = rest_model.APIAddressArray{}
+
+		for _, instance := range instances {
+			ret.APIAddresses[apiKey] = append(ret.APIAddresses[apiKey], &rest_model.APIAddress{
+				URL:     instance.Url,
+				Version: instance.Version,
+			})
+		}
+	}
+	return ret, nil
+}
+
+func MapControllerToClientRestModel(controller *model.Controller) (*rest_model.ControllerDetail, error) {
+	ret, err := MapControllerToManagementRestModel(controller)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ret.CtrlAddress = nil
+
+	for apiKey := range ret.APIAddresses {
+		if apiKey != edgeController.ClientApiBinding && apiKey != edgeController.OidcApiBinding {
+			delete(ret.APIAddresses, apiKey)
+		}
 	}
 
 	return ret, nil
