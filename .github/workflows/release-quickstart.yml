@@ -34,7 +34,7 @@ jobs:
         uses: hmarr/debug-action@v3.0.0
 
       - name: Wait for other builds to complete
-        uses: lewagon/wait-on-check-action@v1.3.3
+        uses: lewagon/wait-on-check-action@v1.3.4
         with:
           ref: ${{ env.GITHUB_SHA }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
