@@ -89,6 +89,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 
 	log.Debug("dialing sdk client hosting service")
 	dialRequest := edge.NewDialMsg(terminator.Id(), terminator.token, callerId)
+	dialRequest.PutStringHeader(edge.CircuitIdHeader, params.GetCircuitId().Token)
 	if pk, ok := circuitId.Data[edge.PublicKeyHeader]; ok {
 		dialRequest.Headers[edge.PublicKeyHeader] = pk
 	}
