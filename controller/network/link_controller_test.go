@@ -77,7 +77,7 @@ func TestNeighbors(t *testing.T) {
 	r0 := newRouterForTest("r0", "", nil, nil, 0, true)
 	r1 := newRouterForTest("r1", "", nil, nil, 0, true)
 	l0 := newTestLink("l0", r0, r1)
-	l0.addState(newLinkState(Connected))
+	l0.SetState(Connected)
 	linkController.add(l0)
 
 	neighbors := linkController.connectedNeighborsOfRouter(r0)

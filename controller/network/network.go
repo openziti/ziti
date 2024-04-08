@@ -458,11 +458,11 @@ func (network *Network) NotifyExistingLink(id string, iteration uint32, linkProt
 
 func (network *Network) LinkConnected(msg *ctrl_pb.LinkConnected) error {
 	if l, found := network.linkController.get(msg.Id); found {
-		if state := l.CurrentState(); state != nil && state.Mode != Pending {
+		if state := l.CurrentState(); state.Mode != Pending {
 			return errors.Errorf("link [l/%v] state is %v, not pending, cannot mark connected", msg.Id, state.Mode)
 		}
 
-		l.addState(newLinkState(Connected))
+		l.SetState(Connected)
 		network.NotifyLinkConnected(l, msg)
 		return nil
 	}
@@ -470,7 +470,7 @@ func (network *Network) LinkConnected(msg *ctrl_pb.LinkConnected) error {
 }
 
 func (network *Network) LinkFaulted(l *Link, dupe bool) error {
-	l.addState(newLinkState(Failed))
+	l.SetState(Failed)
 	if dupe {
 		network.NotifyLinkEvent(l, event.LinkDuplicate)
 	} else {

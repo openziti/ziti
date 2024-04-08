@@ -62,7 +62,7 @@ func TestShortestPathAgainstEstablished(t *testing.T) {
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
-			link.addState(newLinkState(Connected))
+			link.SetState(Connected)
 			network.linkController.add(link)
 			linkIdx++
 		}
@@ -186,7 +186,7 @@ func BenchmarkShortestPathPerfWithRouterChanges(b *testing.B) {
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
-			link.addState(newLinkState(Connected))
+			link.SetState(Connected)
 			network.linkController.add(link)
 			linkIdx++
 		}
@@ -278,7 +278,7 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
-			link.addState(newLinkState(Connected))
+			link.SetState(Connected)
 			network.linkController.add(link)
 			linkIdx++
 		}
@@ -350,7 +350,7 @@ func BenchmarkMoreRealisticShortestPathPerf(b *testing.B) {
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
-			link.addState(newLinkState(Connected))
+			link.SetState(Connected)
 			network.linkController.add(link)
 			linkIdx++
 		}

@@ -51,7 +51,7 @@ func TestSimplePath2(t *testing.T) {
 	network.Routers.markConnected(r1)
 
 	l0 := newTestLink("l0", r0, r1)
-	l0.addState(newLinkState(Connected))
+	l0.SetState(Connected)
 	network.linkController.add(l0)
 
 	path, err := network.CreatePath(r0, r1)
@@ -115,11 +115,11 @@ func TestTransitPath2(t *testing.T) {
 	network.Routers.markConnected(r2)
 
 	l0 := newTestLink("l0", r0, r1)
-	l0.addState(newLinkState(Connected))
+	l0.SetState(Connected)
 	network.linkController.add(l0)
 
 	l1 := newTestLink("l1", r1, r2)
-	l1.addState(newLinkState(Connected))
+	l1.SetState(Connected)
 	network.linkController.add(l1)
 
 	path, err := network.CreatePath(r0, r2)
@@ -218,28 +218,28 @@ func TestShortestPath(t *testing.T) {
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	link = newTestLink("l1", r0, r2)
 	link.SetStaticCost(5)
 	link.SetDstLatency(15 * 1_000_000)
 	link.SetSrcLatency(16 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	link = newTestLink("l2", r1, r3)
 	link.SetStaticCost(9)
 	link.SetDstLatency(20 * 1_000_000)
 	link.SetSrcLatency(21 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	link = newTestLink("l3", r2, r3)
 	link.SetStaticCost(13)
 	link.SetDstLatency(25 * 1_000_000)
 	link.SetSrcLatency(26 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	path, cost, err := network.shortestPath(r0, r3)
@@ -286,28 +286,28 @@ func TestShortestPathWithUntraversableRouter(t *testing.T) {
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	link = newTestLink("l1", r0, r2)
 	link.SetStaticCost(5)
 	link.SetDstLatency(15 * 1_000_000)
 	link.SetSrcLatency(16 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	link = newTestLink("l2", r1, r3)
 	link.SetStaticCost(9)
 	link.SetDstLatency(20 * 1_000_000)
 	link.SetSrcLatency(21 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	link = newTestLink("l3", r2, r3)
 	link.SetStaticCost(13)
 	link.SetDstLatency(25 * 1_000_000)
 	link.SetSrcLatency(26 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	path, cost, err := network.shortestPath(r0, r3)
@@ -348,7 +348,7 @@ func TestShortestPathWithOnlyUntraversableRouter(t *testing.T) {
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	path, cost, err := network.shortestPath(r0, r1)
@@ -388,7 +388,7 @@ func TestShortestPathWithUntraversableEdgeRouters(t *testing.T) {
 	link.SetStaticCost(3)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	path, cost, err := network.shortestPath(r0, r1)
@@ -431,14 +431,14 @@ func TestShortestPathWithUntraversableEdgeRoutersAndTraversableMiddle(t *testing
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	link = newTestLink("l1", r1, r2)
 	link.SetStaticCost(3)
 	link.SetDstLatency(12 * 1_000_000)
 	link.SetSrcLatency(15 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	path, cost, err := network.shortestPath(r0, r2)
@@ -483,14 +483,14 @@ func TestShortestPathWithUntraversableEdgeRoutersAndUntraversableMiddle(t *testi
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	link = newTestLink("l2", r1, r2)
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	network.linkController.add(link)
 
 	path, cost, err := network.shortestPath(r0, r2)
@@ -619,7 +619,7 @@ func newPathTestLink(network *Network, id string, srcR, destR *Router) *Link {
 	l.SrcLatency = 0
 	l.DstLatency = 0
 	l.recalculateCost()
-	l.addState(newLinkState(Connected))
+	l.SetState(Connected)
 	network.linkController.add(l)
 	return l
 }

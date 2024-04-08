@@ -90,11 +90,8 @@ func newLinkController(options *Options) *linkController {
 		return &val
 	})
 	result.store.AddStringSymbol("state", func(entity *Link) *string {
-		if state := entity.CurrentState(); state != nil {
-			val := state.Mode.String()
-			return &val
-		}
-		return nil
+		val := entity.CurrentState().Mode.String()
+		return &val
 	})
 	result.store.AddInt64Symbol("iteration", func(entity *Link) *int64 {
 		val := int64(entity.Iteration)
@@ -161,7 +158,7 @@ func (linkController *linkController) routerReportedLink(linkId string, iteratio
 	link.Src = src
 	link.Dst.Store(dst)
 	link.DstId = dstId
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	linkController.add(link)
 	return link, true
 }
@@ -273,7 +270,7 @@ func (linkController *linkController) clearExpiredPending(pendingTimeout time.Du
 
 	toRemove := linkController.linkTable.matching(func(link *Link) bool {
 		state := link.CurrentState()
-		return state != nil && state.Mode == Pending && state.Timestamp < pendingLimit
+		return state.Mode == Pending && state.Timestamp < pendingLimit
 	})
 
 	for _, link := range toRemove {
@@ -289,7 +286,7 @@ func (linkController *linkController) hasDirectedLink(a, b *Router, linkProtocol
 	links := a.routerLinks.GetLinks()
 	for _, link := range links {
 		state := link.CurrentState()
-		if link.Src == a && link.DstId == b.Id && state != nil && link.Protocol == linkProtocol {
+		if link.Src == a && link.DstId == b.Id && link.Protocol == linkProtocol {
 			if state.Mode == Connected || (state.Mode == Pending && state.Timestamp > pendingLimit) {
 				return true
 			}
