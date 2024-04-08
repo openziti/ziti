@@ -199,7 +199,7 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 	self.listener.bindHandler.HandleXgressBind(x)
 	conn.ctrlRx = x
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
-	self.sendStateConnectedReply(req, response.PeerData)
+	self.sendStateConnectedReply(req, response.PeerData, response.CircuitId)
 	x.Start()
 }
 
@@ -384,7 +384,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 
 	log.Debug("registered listener for terminator")
 	log.Debug("returning connection state CONNECTED to client")
-	self.sendStateConnectedReply(req, nil)
+	self.sendStateConnectedReply(req, nil, "")
 
 	log.Info("created terminator")
 }
@@ -504,7 +504,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 		}
 	}
 
-	self.sendStateConnectedReply(req, nil)
+	self.sendStateConnectedReply(req, nil, "")
 
 	if checkResult.replaceExisting {
 		log.Info("sending replacement terminator success to sdk")
@@ -683,12 +683,16 @@ func (self *edgeClientConn) processTraceRoute(msg *channel.Message, ch channel.C
 	}
 }
 
-func (self *edgeClientConn) sendStateConnectedReply(req *channel.Message, hostData map[uint32][]byte) {
+func (self *edgeClientConn) sendStateConnectedReply(req *channel.Message, hostData map[uint32][]byte, circuitId string) {
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	msg := edge.NewStateConnectedMsg(connId)
 
 	if assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId); assignIds {
 		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
+	}
+
+	if circuitId != "" {
+		msg.PutStringHeader(edge.CircuitIdHeader, circuitId)
 	}
 
 	for k, v := range hostData {
