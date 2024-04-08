@@ -1,3 +1,23 @@
+# Release 0.34.2
+
+## What's New
+
+* The circuit id is now available in the SDK on the client and hosting side
+   * Requires 0.34.2+ routers
+   * Requests SDK support. Currently supported in the Go SDK 0.23.11+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+* github.com/openziti/edge-api: [v0.26.13 -> v0.26.14](https://github.com/openziti/edge-api/compare/v0.26.13...v0.26.14)
+* github.com/openziti/sdk-golang: [v0.23.14 -> v0.23.15](https://github.com/openziti/sdk-golang/compare/v0.23.14...v0.23.15)
+* github.com/openziti/secretstream: [v0.1.17 -> v0.1.18](https://github.com/openziti/secretstream/compare/v0.1.17...v0.1.18)
+    * [Issue #24](https://github.com/openziti/secretstream/issues/24) - Potential side channel issue
+    * [Issue #25](https://github.com/openziti/secretstream/issues/25) - Reads from crypto/rand not checked for errors
+
+* github.com/openziti/ziti: [v0.34.1 -> v0.34.2](https://github.com/openziti/ziti/compare/v0.34.1...v0.34.2)
+    * [Issue #1831](https://github.com/openziti/ziti/issues/1831) - Circuit ID should be returned in the response to a Dial request
+    * [Issue #1873](https://github.com/openziti/ziti/issues/1873) - host.v1 health check time.Duration unconvertible
+
 # Release 0.34.1
 
 ## What's New
