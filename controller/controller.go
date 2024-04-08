@@ -230,6 +230,8 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 		return nil, err
 	}
 
+	c.initWeb() // need to init web before bootstrapping, so we can provide our endpoints to peers
+
 	if c.raftController != nil {
 		if err := c.raftController.Bootstrap(); err != nil {
 			log.WithError(err).Panic("error bootstrapping raft")
@@ -257,8 +259,6 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	if err := c.showOptions(); err != nil {
 		return nil, err
 	}
-
-	c.initWeb()
 
 	return c, nil
 }
