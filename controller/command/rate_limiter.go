@@ -581,7 +581,7 @@ func (self *adaptiveRateLimitTracker) cleanExpired() {
 	for _, work := range toRemove {
 		pfxlog.Logger().WithField("label", work.label).
 			WithField("duration", time.Since(work.createTime)).
-			Error("rate limit work expired")
+			Info("rate limit work expired")
 		work.Backoff()
 	}
 }
@@ -599,7 +599,7 @@ func (self *adaptiveRateLimitTrackerWork) Success() {
 	if self.completed.CompareAndSwap(false, true) {
 		pfxlog.Logger().WithField("label", self.label).
 			WithField("duration", time.Since(self.createTime)).
-			Info("success")
+			Debug("success")
 		self.limiter.success(self)
 	}
 }
@@ -608,7 +608,7 @@ func (self *adaptiveRateLimitTrackerWork) Backoff() {
 	if self.completed.CompareAndSwap(false, true) {
 		pfxlog.Logger().WithField("label", self.label).
 			WithField("duration", time.Since(self.createTime)).
-			Info("backoff")
+			Debug("backoff")
 		self.limiter.backoff(self)
 	}
 }
@@ -617,7 +617,7 @@ func (self *adaptiveRateLimitTrackerWork) Failed() {
 	if self.completed.CompareAndSwap(false, true) {
 		pfxlog.Logger().WithField("label", self.label).
 			WithField("duration", time.Since(self.createTime)).
-			Info("failed")
+			Debug("failed")
 		self.limiter.complete(self)
 	}
 }
