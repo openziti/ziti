@@ -119,15 +119,34 @@ func (self *EdgeServiceManager) ReadForIdentity(id string, identityId string, co
 }
 
 func (self *EdgeServiceManager) ReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string, configTypes map[string]struct{}) (*ServiceDetail, error) {
-	edgeServiceStore := self.env.GetStores().EdgeService
 	identity, err := self.GetEnv().GetManagers().Identity.readInTx(tx, identityId)
 	if err != nil {
 		return nil, err
 	}
+
+	var service *ServiceDetail
+
+	if identity.IsAdmin {
+		service, err = self.readInTx(tx, id)
+		if err == nil && service != nil {
+			service.Permissions = []string{db.PolicyTypeBindName, db.PolicyTypeDialName}
+		}
+	} else {
+		service, err = self.ReadForNonAdminIdentityInTx(tx, id, identityId)
+	}
+	if err == nil && len(configTypes) > 0 {
+		identityServiceConfigs := self.env.GetStores().Identity.LoadServiceConfigsByServiceAndType(tx, identityId, configTypes)
+		self.mergeConfigs(tx, configTypes, service, identityServiceConfigs)
+	}
+	return service, err
+}
+
+func (self *EdgeServiceManager) ReadForNonAdminIdentityInTx(tx *bbolt.Tx, id string, identityId string) (*ServiceDetail, error) {
+	edgeServiceStore := self.env.GetStores().EdgeService
 	isBindable := edgeServiceStore.IsBindableByIdentity(tx, id, identityId)
 	isDialable := edgeServiceStore.IsDialableByIdentity(tx, id, identityId)
 
-	if !isBindable && !isDialable && !identity.IsAdmin { // admin can view services even if policies don't permit bind/dial
+	if !isBindable && !isDialable {
 		return nil, boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", id)
 	}
 
@@ -144,17 +163,7 @@ func (self *EdgeServiceManager) ReadForIdentityInTx(tx *bbolt.Tx, id string, ide
 	if isDialable {
 		result.Permissions = append(result.Permissions, db.PolicyTypeDialName)
 	}
-	if result.Permissions == nil {
-		// don't return results with no permissions, since some SDKs assume non-nil permissions
-		result.Permissions = []string{db.PolicyTypeInvalidName}
-	}
-
-	if len(configTypes) > 0 {
-		identityServiceConfigs := self.env.GetStores().Identity.LoadServiceConfigsByServiceAndType(tx, identityId, configTypes)
-		self.mergeConfigs(tx, configTypes, result, identityServiceConfigs)
-	}
-
-	return result, err
+	return result, nil
 }
 
 func (self *EdgeServiceManager) PublicQueryForIdentity(sessionIdentity *Identity, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
@@ -250,8 +259,14 @@ func (result *ServiceListResult) collect(tx *bbolt.Tx, ids []string, queryMetaDa
 	identityServiceConfigs := result.manager.env.GetStores().Identity.LoadServiceConfigsByServiceAndType(tx, result.identityId, result.configTypes)
 
 	for _, key := range ids {
-		// service permissions for admin & non-admin identities will be set according to policies
-		service, err = result.manager.ReadForIdentityInTx(tx, key, result.identityId, result.configTypes)
+		if !result.isAdmin && result.identityId != "" {
+			service, err = result.manager.ReadForNonAdminIdentityInTx(tx, key, result.identityId)
+		} else {
+			service, err = result.manager.readInTx(tx, key)
+			if service != nil && result.isAdmin {
+				service.Permissions = []string{db.PolicyTypeBindName, db.PolicyTypeDialName}
+			}
+		}
 		if err != nil {
 			return err
 		}
@@ -272,7 +287,7 @@ func (self *EdgeServiceManager) mergeConfigs(tx *bbolt.Tx, configTypes map[strin
 	if len(configTypes) > 0 && len(service.Configs) > 0 {
 		configStore := self.env.GetStores().Config
 		for _, configId := range service.Configs {
-			config, _ := configStore.LoadOneById(tx, configId)
+			config, _ := configStore.LoadById(tx, configId)
 			if config != nil {
 				_, wantsConfig := configTypes[config.Type]
 				if wantsAll || wantsConfig {
@@ -325,6 +340,10 @@ func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId str
 	policyTypeSymbol := self.env.GetStores().ServicePolicy.GetSymbol(db.FieldServicePolicyType)
 
 	_ = self.GetDb().View(func(tx *bbolt.Tx) error {
+		if !self.env.GetStores().PostureCheck.IterateIds(tx, ast.BoolNodeTrue).IsValid() {
+			return nil
+		}
+
 		policyCursor := self.env.GetStores().Identity.GetRelatedEntitiesCursor(tx, identityId, db.EntityTypeServicePolicies, true)
 		policyCursor = ast.NewFilteredCursor(policyCursor, func(policyId []byte) bool {
 			return serviceLinks.IsLinked(tx, policyId, []byte(serviceId))
