@@ -19,10 +19,10 @@ package env
 import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
 )
@@ -40,6 +40,6 @@ type RouterEnv interface {
 	RenderJsonConfig() (string, error)
 	GetHeartbeatOptions() HeartbeatOptions
 	GetRateLimiterPool() goroutines.Pool
-	GetCtrlRateLimiter() command.AdaptiveRateLimitTracker
+	GetCtrlRateLimiter() rate.AdaptiveRateLimitTracker
 	GetVersionInfo() versions.VersionProvider
 }

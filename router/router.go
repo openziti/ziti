@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/ziti/controller/command"
 	"io/fs"
 	"os"
@@ -83,7 +84,7 @@ type Router struct {
 	xgressListeners []xgress.Listener
 	linkDialerPool  goroutines.Pool
 	rateLimiterPool goroutines.Pool
-	ctrlRateLimiter command.AdaptiveRateLimitTracker
+	ctrlRateLimiter rate.AdaptiveRateLimitTracker
 	metricsRegistry metrics.UsageRegistry
 	shutdownC       chan struct{}
 	shutdownDoneC   chan struct{}
@@ -382,7 +383,7 @@ func (self *Router) GetRateLimiterPool() goroutines.Pool {
 	return self.rateLimiterPool
 }
 
-func (self *Router) GetCtrlRateLimiter() command.AdaptiveRateLimitTracker {
+func (self *Router) GetCtrlRateLimiter() rate.AdaptiveRateLimitTracker {
 	return self.ctrlRateLimiter
 }
 

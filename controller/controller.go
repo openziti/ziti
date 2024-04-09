@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/controller/event"
@@ -201,6 +202,9 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	metricRegistry := metrics.NewRegistry(cfg.Id.Token, nil)
 
 	shutdownC := make(chan struct{})
+
+	tlsHandshakeRateLimiter := command.NewAdaptiveRateLimitTracker(cfg.TlsHandshakeRateLimiter, metricRegistry, shutdownC)
+	tls.SetSharedListenerRateLimiter(tlsHandshakeRateLimiter)
 
 	log := pfxlog.Logger()
 

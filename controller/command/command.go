@@ -20,6 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/sirupsen/logrus"
@@ -51,13 +52,13 @@ type Dispatcher interface {
 	Dispatch(command Command) error
 	IsLeaderOrLeaderless() bool
 	GetPeers() map[string]channel.Channel
-	GetRateLimiter() RateLimiter
+	GetRateLimiter() rate.RateLimiter
 }
 
 // LocalDispatcher should be used when running a non-clustered system
 type LocalDispatcher struct {
 	EncodeDecodeCommands bool
-	Limiter              RateLimiter
+	Limiter              rate.RateLimiter
 }
 
 func (self *LocalDispatcher) IsLeaderOrLeaderless() bool {
@@ -68,7 +69,7 @@ func (self *LocalDispatcher) GetPeers() map[string]channel.Channel {
 	return nil
 }
 
-func (self *LocalDispatcher) GetRateLimiter() RateLimiter {
+func (self *LocalDispatcher) GetRateLimiter() rate.RateLimiter {
 	return self.Limiter
 }
 

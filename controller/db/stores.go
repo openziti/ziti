@@ -21,10 +21,10 @@ import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/command"
 	"go.etcd.io/bbolt"
 	"go4.org/sort"
 	"reflect"
@@ -223,7 +223,7 @@ type stores struct {
 	apiSessionCertificate   *ApiSessionCertificateStoreImpl
 	mfa                     *MfaStoreImpl
 
-	rateLimiter command.RateLimiter
+	rateLimiter rate.RateLimiter
 }
 
 type DbProvider interface {
@@ -236,7 +236,7 @@ func (f DbProviderF) GetDb() boltz.Db {
 	return f()
 }
 
-func InitStores(db boltz.Db, rateLimiter command.RateLimiter) (*Stores, error) {
+func InitStores(db boltz.Db, rateLimiter rate.RateLimiter) (*Stores, error) {
 	dbProvider := DbProviderF(func() boltz.Db {
 		return db
 	})
