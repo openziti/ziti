@@ -242,7 +242,7 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 
 	missingLinks := make([]*Link, 0)
 	for _, srcR := range routers {
-		if srcR.HasCapability(ctrl_pb.RouterCapability_LinkManagement) {
+		if srcR.SupportsRouterLinkMgmt() {
 			continue
 		}
 
