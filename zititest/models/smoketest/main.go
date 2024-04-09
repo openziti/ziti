@@ -18,11 +18,11 @@ package main
 
 import (
 	"github.com/openziti/fablab"
-	"github.com/openziti/ziti/zititest/models/simple"
+	"github.com/openziti/ziti/zititest/models/smoke"
 )
 
 func main() {
-	simple.InitBootstrapExtensions()
-	fablab.InitModel(simple.Model)
+	smoke.InitBootstrapExtensions()
+	fablab.InitModel(smoke.Model)
 	fablab.Run()
 }
