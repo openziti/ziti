@@ -18,22 +18,10 @@ package util
 
 import (
 	"github.com/spf13/cobra"
-	"os"
 )
-
-const (
-	CONFIGFILENAME = "config"
-)
-
-func PathWithBinary() string {
-	path := os.Getenv("PATH")
-	binDir, _ := BinaryLocation()
-	return binDir + string(os.PathListSeparator) + path
-}
 
 // NewEmptyParentCmd creates a new cobra command with no parent
 func NewEmptyParentCmd(name string, description string) *cobra.Command {
-
 	return &cobra.Command{
 		Use:   name,
 		Short: description,

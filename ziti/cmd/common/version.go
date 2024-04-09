@@ -14,11 +14,20 @@
 	limitations under the License.
 */
 
-package util
+package common
 
-import "github.com/fatih/color"
+import (
+	"fmt"
+	"github.com/openziti/ziti/common/version"
+	"github.com/spf13/cobra"
+)
 
-var ColorInfo = color.New(color.FgGreen).SprintFunc()
-var ColorStatus = color.New(color.FgBlue).SprintFunc()
-var ColorWarning = color.New(color.FgYellow).SprintFunc()
-var ColorError = color.New(color.FgRed).SprintFunc()
+func NewVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Show component version",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println(version.GetVersion())
+		},
+	}
+}
