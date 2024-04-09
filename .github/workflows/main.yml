@@ -200,8 +200,8 @@ jobs:
         shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/simple-transfer create -d simple-transfer-${GITHUB_RUN_NUMBER} -n simple-transfer-${GITHUB_RUN_NUMBER} -l environment=gh-fablab-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
-          $(go env GOPATH)/bin/simple-transfer up
+          $(go env GOPATH)/bin/smoketest create -d smoketest-${GITHUB_RUN_NUMBER} -n smoketest-${GITHUB_RUN_NUMBER} -l environment=gh-fablab-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
+          $(go env GOPATH)/bin/smoketest up
 
       - name: Test Ziti Command
         shell: bash
@@ -217,15 +217,15 @@ jobs:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         shell: bash
         run: |
-          cp $(go env GOPATH)/bin/simple-transfer simple-transfer-${GITHUB_RUN_NUMBER}
-          cp ~/.fablab/config.yml simple-transfer-${GITHUB_RUN_NUMBER}/
-          tar --exclude *terraform-provider-aws* -czvf - simple-transfer-${GITHUB_RUN_NUMBER}/ | gpg --symmetric --cipher-algo aes256 --batch --quiet --passphrase ${FABLAB_PASSPHRASE} -o simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg
-          aws s3 cp ./simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg s3://ziti-smoketest-fablab-instances/
+          cp $(go env GOPATH)/bin/smoketest smoketest-${GITHUB_RUN_NUMBER}
+          cp ~/.fablab/config.yml smoketest-${GITHUB_RUN_NUMBER}/
+          tar --exclude *terraform-provider-aws* -czvf - smoketest-${GITHUB_RUN_NUMBER}/ | gpg --symmetric --cipher-algo aes256 --batch --quiet --passphrase ${FABLAB_PASSPHRASE} -o smoketest-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+          aws s3 cp ./smoketest-${GITHUB_RUN_NUMBER}.tar.gz.gpg s3://ziti-smoketest-fablab-instances/
 
       - name: Create Logs Archive
         if: always()
         run: |
-          $(go env GOPATH)/bin/simple-transfer get files '*' "./logs/{{ .Id }}/" ./logs
+          $(go env GOPATH)/bin/smoketest get files '*' "./logs/{{ .Id }}/" ./logs
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -275,16 +275,16 @@ jobs:
         run: |
           if aws s3api head-object \
             --bucket ziti-smoketest-fablab-instances \
-            --key simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+            --key smoketest-${GITHUB_RUN_NUMBER}.tar.gz.gpg
           then
-            aws s3 cp s3://ziti-smoketest-fablab-instances/simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg .
-            gpg --quiet --batch --yes --decrypt --passphrase=${FABLAB_PASSPHRASE} --output simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg
-            tar -xzf simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz 
-            ./simple-transfer-${GITHUB_RUN_NUMBER}/simple-transfer import simple-transfer-${GITHUB_RUN_NUMBER}
-            ./simple-transfer-${GITHUB_RUN_NUMBER}/simple-transfer dispose
-            aws s3 rm s3://ziti-smoketest-fablab-instances/simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+            aws s3 cp s3://ziti-smoketest-fablab-instances/smoketest-${GITHUB_RUN_NUMBER}.tar.gz.gpg .
+            gpg --quiet --batch --yes --decrypt --passphrase=${FABLAB_PASSPHRASE} --output smoketest-${GITHUB_RUN_NUMBER}.tar.gz smoketest-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+            tar -xzf smoketest-${GITHUB_RUN_NUMBER}.tar.gz 
+            ./smoketest-${GITHUB_RUN_NUMBER}/smoketest import smoketest-${GITHUB_RUN_NUMBER}
+            ./smoketest-${GITHUB_RUN_NUMBER}/smoketest dispose
+            aws s3 rm s3://ziti-smoketest-fablab-instances/smoketest-${GITHUB_RUN_NUMBER}.tar.gz.gpg
           else
-            echo "WARN: No instance archive found for simple-transfer-${GITHUB_RUN_NUMBER}.tar.gz.gpg" >&2
+            echo "WARN: No instance archive found for smoketest-${GITHUB_RUN_NUMBER}.tar.gz.gpg" >&2
           fi
 
   fablab-ha-smoketest:
@@ -322,8 +322,8 @@ jobs:
         shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/simple-transfer create -d simple-transfer-ha-${GITHUB_RUN_NUMBER} -n simple-transfer-ha-${GITHUB_RUN_NUMBER} -l ha=true,environment=gh-fablab-ha-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
-          $(go env GOPATH)/bin/simple-transfer up
+          $(go env GOPATH)/bin/smoketest create -d smoketest-ha-${GITHUB_RUN_NUMBER} -n smoketest-ha-${GITHUB_RUN_NUMBER} -l ha=true,environment=gh-fablab-ha-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
+          $(go env GOPATH)/bin/smoketest up
 
       #      - name: Test Ziti Command
       #        shell: bash
@@ -337,10 +337,10 @@ jobs:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         shell: bash
         run: |
-          cp $(go env GOPATH)/bin/simple-transfer simple-transfer-ha-${GITHUB_RUN_NUMBER}
-          cp ~/.fablab/config.yml simple-transfer-ha-${GITHUB_RUN_NUMBER}/
-          tar --exclude *terraform-provider-aws* -czvf - simple-transfer-ha-${GITHUB_RUN_NUMBER}/ | gpg --symmetric --cipher-algo aes256 --batch --quiet --passphrase ${FABLAB_PASSPHRASE} -o simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
-          aws s3 cp ./simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg s3://ziti-smoketest-fablab-instances/
+          cp $(go env GOPATH)/bin/smoketest smoketest-ha-${GITHUB_RUN_NUMBER}
+          cp ~/.fablab/config.yml smoketest-ha-${GITHUB_RUN_NUMBER}/
+          tar --exclude *terraform-provider-aws* -czvf - smoketest-ha-${GITHUB_RUN_NUMBER}/ | gpg --symmetric --cipher-algo aes256 --batch --quiet --passphrase ${FABLAB_PASSPHRASE} -o smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+          aws s3 cp ./smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg s3://ziti-smoketest-fablab-instances/
           
           #      - name: Test Report Generation
           #        if: always()
@@ -381,16 +381,16 @@ jobs:
         run: |
           if aws s3api head-object \
             --bucket ziti-smoketest-fablab-instances \
-            --key simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+            --key smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
           then
-            aws s3 cp s3://ziti-smoketest-fablab-instances/simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg .
-            gpg --quiet --batch --yes --decrypt --passphrase=${FABLAB_PASSPHRASE} --output simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
-            tar -xzf simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz 
-            ./simple-transfer-ha-${GITHUB_RUN_NUMBER}/simple-transfer import simple-transfer-ha-${GITHUB_RUN_NUMBER}
-            ./simple-transfer-ha-${GITHUB_RUN_NUMBER}/simple-transfer dispose
-            aws s3 rm s3://ziti-smoketest-fablab-instances/simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+            aws s3 cp s3://ziti-smoketest-fablab-instances/smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg .
+            gpg --quiet --batch --yes --decrypt --passphrase=${FABLAB_PASSPHRASE} --output smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
+            tar -xzf smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz 
+            ./smoketest-ha-${GITHUB_RUN_NUMBER}/smoketest import smoketest-ha-${GITHUB_RUN_NUMBER}
+            ./smoketest-ha-${GITHUB_RUN_NUMBER}/smoketest dispose
+            aws s3 rm s3://ziti-smoketest-fablab-instances/smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
           else
-            echo "WARN: No instance archive found for simple-transfer-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg" >&2
+            echo "WARN: No instance archive found for smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg" >&2
           fi
 
   publish:

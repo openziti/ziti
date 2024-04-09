@@ -19,7 +19,7 @@ package tests
 import (
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/zititest/models/simple"
+	"github.com/openziti/ziti/zititest/models/smoke"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -33,9 +33,9 @@ func init() {
 		panic(errors.Errorf("no instance found for current instance id %v", cfg.GetSelectedInstanceId()))
 	}
 
-	if instance.Model == simple.Model.Id {
-		simple.InitBootstrapExtensions()
-		fablab.InitModel(simple.Model)
+	if instance.Model == smoke.Model.Id {
+		smoke.InitBootstrapExtensions()
+		fablab.InitModel(smoke.Model)
 	} else {
 		panic(errors.Errorf("unsupported model for network tests [%v]", instance.Model))
 	}
