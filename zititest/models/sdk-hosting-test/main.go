@@ -306,6 +306,11 @@ var m = &model.Model{
 				return parallel.Execute(tasks, 25)
 			}))
 
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(component.StartInParallel(".router", 10))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(component.StartInParallel(".host", 50))
+
 			return workflow
 		}),
 		"stop": model.Bind(component.StopInParallelHostExclusive("*", 15)),
