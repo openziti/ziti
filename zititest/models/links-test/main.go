@@ -100,7 +100,7 @@ var m = &model.Model{
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.router", 1, func(host *model.Host) error {
-				host.InstanceType = "c5.xlarge"
+				host.InstanceType = "t3.large"
 				return nil
 			})
 		}),

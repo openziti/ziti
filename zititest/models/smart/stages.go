@@ -68,7 +68,7 @@ func (self *stageFactory) Build(m *model.Model) error {
 		distribution.Locations(models.HasRouterComponent, "logs"),
 		distribution.Locations(models.LoopListenerTag, "logs"),
 		distribution.Locations(models.LoopDialerTag, "logs"),
-		rsync.Rsync(1),
+		rsync.RsyncStaged(),
 	}
 
 	// Run the bootstrap and start actions

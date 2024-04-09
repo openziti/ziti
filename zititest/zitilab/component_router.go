@@ -19,7 +19,6 @@ package zitilab
 import (
 	"fmt"
 	"github.com/openziti/fablab/kernel/lib"
-	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
@@ -45,6 +44,14 @@ type RouterType struct {
 	LocalPath      string
 }
 
+func (self *RouterType) Label() string {
+	return "ziti-router"
+}
+
+func (self *RouterType) GetVersion() string {
+	return self.Version
+}
+
 func (self *RouterType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }
@@ -68,12 +75,7 @@ func (self *RouterType) Dump() any {
 
 func (self *RouterType) InitializeHost(run model.Run, c *model.Component) error {
 	if self.isTunneler(c) {
-		cmds := []string{
-			"sudo sed -i 's/#DNS=/DNS=127.0.0.1/g' /etc/systemd/resolved.conf",
-			"sudo systemctl restart systemd-resolved",
-			"mkdir -p /home/ubuntu/logs",
-		}
-		return host.Exec(c.GetHost(), cmds...).Execute(run)
+		return setupDnsForTunneler(c)
 	}
 	return nil
 }
@@ -84,7 +86,7 @@ func (self *RouterType) StageFiles(r model.Run, c *model.Component) error {
 		configSource = "router.yml.tmpl"
 	}
 
-	configName := self.getConfigName(c)
+	configName := self.GetConfigName(c)
 
 	if err := lib.GenerateConfigForComponent(c, self.ConfigSourceFS, configSource, configName, r); err != nil {
 		return err
@@ -97,7 +99,7 @@ func (self *RouterType) isTunneler(c *model.Component) bool {
 	return c.HasLocalOrAncestralTag("tunneler")
 }
 
-func (self *RouterType) getConfigName(c *model.Component) string {
+func (self *RouterType) GetConfigName(c *model.Component) string {
 	configName := self.ConfigName
 	if configName == "" {
 		configName = c.Id + ".yml"
@@ -126,7 +128,7 @@ func (self *RouterType) Start(r model.Run, c *model.Component) error {
 		fmt.Printf("router %s already started\n", c.Id)
 		return nil
 	}
-	return startZitiComponent(c, "router", self.Version, self.getConfigName(c))
+	return startZitiComponent(c, "router", self.Version, self.GetConfigName(c))
 }
 
 func (self *RouterType) Stop(run model.Run, c *model.Component) error {
@@ -174,15 +176,15 @@ func (self *RouterType) CreateAndEnroll(run model.Run, c *model.Component) error
 	}
 
 	tmpl := "set -o pipefail; %s router enroll /home/ubuntu/fablab/cfg/%s -j %s 2>&1 | tee /home/ubuntu/logs/%s.router.enroll.log "
-	cmd := fmt.Sprintf(tmpl, getZitiBinaryPath(c, self.Version), self.getConfigName(c), remoteJwt, c.Id)
+	cmd := fmt.Sprintf(tmpl, GetZitiBinaryPath(c, self.Version), self.GetConfigName(c), remoteJwt, c.Id)
 
 	return c.GetHost().ExecLogOnlyOnError(cmd)
 }
 
-func (self *RouterType) ReEnroll(_ model.Run, c *model.Component) error {
+func (self *RouterType) ReEnroll(run model.Run, c *model.Component) error {
 	jwtFileName := filepath.Join(model.ConfigBuild(), c.Id+".jwt")
 
-	args := []string{"re-enroll", "edge-router", c.Id, "-j", "--jwt-output-file", jwtFileName}
+	args := []string{"re-enroll", "edge-router", "-j", "--jwt-output-file", jwtFileName, "--", c.Id}
 
 	if err := zitilib_actions.EdgeExec(c.GetModel(), args...); err != nil {
 		return err
@@ -193,8 +195,18 @@ func (self *RouterType) ReEnroll(_ model.Run, c *model.Component) error {
 		return err
 	}
 
+	zitiVersion := self.Version
+
+	ctrls := run.GetModel().SelectComponents(".ctrl")
+	for _, ctrl := range ctrls {
+		if ctrl.Type != nil {
+			zitiVersion = ctrl.Type.GetVersion()
+			break
+		}
+	}
+
 	tmpl := "set -o pipefail; %s router enroll /home/ubuntu/fablab/cfg/%s -j %s 2>&1 | tee /home/ubuntu/logs/%s.router.enroll.log "
-	cmd := fmt.Sprintf(tmpl, getZitiBinaryPath(c, self.Version), self.getConfigName(c), remoteJwt, c.Id)
+	cmd := fmt.Sprintf(tmpl, GetZitiBinaryPath(c, zitiVersion), self.GetConfigName(c), remoteJwt, c.Id)
 
 	return c.GetHost().ExecLogOnlyOnError(cmd)
 }

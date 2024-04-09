@@ -39,7 +39,7 @@ func Exec(m *model.Model, args ...string) (string, error) {
 	ziticli.SetArgs(args)
 	logrus.Infof("executing: %s", strings.Join(args, " "))
 	if err := ziticli.Execute(); err != nil {
-		logrus.Errorf("err executing command, err:[%e]", err)
+		logrus.WithError(err).Error("err executing command")
 	}
 
 	return cliOut.String(), nil

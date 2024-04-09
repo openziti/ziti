@@ -64,6 +64,15 @@ func StageZrok(run model.Run, component *model.Component, version string, source
 	})
 }
 
+func StageLocalOnce(run model.Run, executable string, component *model.Component, source string) error {
+	op := fmt.Sprintf("install.%s-local", executable)
+	return run.DoOnce(op, func() error {
+		return StageExecutable(run, executable, component, "", source, func() error {
+			return fmt.Errorf("unable to fetch %s, as it a local-only application", executable)
+		})
+	})
+}
+
 func StageExecutable(run model.Run, executable string, component *model.Component, version string, source string, fallbackF func() error) error {
 	fileName := executable
 	if version != "" {

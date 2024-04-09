@@ -58,7 +58,7 @@ func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 type dbStrategy struct{}
 
 func (d dbStrategy) ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
-	return builder.CreateEdgeRouterHosts(tx, m)
+	return builder.CreateEdgeRouterHosts(tx, m, d)
 }
 
 func (d dbStrategy) GetDbFile(*model.Model) string {
