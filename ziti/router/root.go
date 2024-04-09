@@ -19,6 +19,7 @@ package router
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/sirupsen/logrus"
@@ -58,7 +59,11 @@ func NewRouterCmd() *cobra.Command {
 
 	routerCmd.AddCommand(NewRunCmd())
 	routerCmd.AddCommand(NewEnrollGwCmd())
-	routerCmd.AddCommand(NewVersionCmd())
+
+	versionCmd := common.NewVersionCmd()
+	versionCmd.Hidden = true
+	versionCmd.Deprecated = "use 'ziti version' instead of 'ziti router version'"
+	routerCmd.AddCommand(versionCmd)
 
 	return routerCmd
 }

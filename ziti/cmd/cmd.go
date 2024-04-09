@@ -31,7 +31,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/demo"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/cmd/fabric"
-	"github.com/openziti/ziti/ziti/cmd/install"
 	"github.com/openziti/ziti/ziti/cmd/pki"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/constants"
@@ -143,18 +142,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	opsCommands.AddCommand(NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
 
-	installCommands := []*cobra.Command{
-		install.NewCmdInstall(out, err),
-		install.NewCmdUpgrade(out, err),
-		install.NewCmdUse(out, err),
-		install.NewCmdVersion(out, err),
-	}
-
 	groups := templates.CommandGroups{
-		{
-			Message:  "Installing Ziti components:",
-			Commands: installCommands,
-		},
 		{
 			Message: "Working with Ziti resources:",
 			Commands: []*cobra.Command{
@@ -197,6 +185,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	cmd.Version = version.GetVersion()
 	cmd.SetVersionTemplate("{{printf .Version}}\n")
 	cmd.AddCommand(NewCmdArt(out, err))
+	cmd.AddCommand(common.NewVersionCmd())
 
 	return cmd
 }

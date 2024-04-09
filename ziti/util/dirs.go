@@ -17,8 +17,6 @@
 package util
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -54,57 +52,12 @@ func ConfigDir() (string, error) {
 	return path, nil
 }
 
-func ZitiAppConfigDir(zitiApp string) (string, error) {
-	h, err := ConfigDir()
-	if err != nil {
-		return "", err
-	}
-	path := filepath.Join(h, zitiApp)
-	err = os.MkdirAll(path, DefaultWritePermissions)
-	if err != nil {
-		return "", err
-	}
-	return path, nil
-}
-
-func CacheDir() (string, error) {
-	h, err := ConfigDir()
-	if err != nil {
-		return "", err
-	}
-	path := filepath.Join(h, "cache")
-	err = os.MkdirAll(path, DefaultWritePermissions)
-	if err != nil {
-		return "", err
-	}
-	return path, nil
-}
-
 func EnvironmentsDir() (string, error) {
 	h, err := ConfigDir()
 	if err != nil {
 		return "", err
 	}
 	path := filepath.Join(h, "environments")
-	err = os.MkdirAll(path, DefaultWritePermissions)
-	if err != nil {
-		return "", err
-	}
-	return path, nil
-}
-
-func NewEnvironmentDir(envName string) (string, error) {
-	h, err := EnvironmentsDir()
-	if err != nil {
-		return "", err
-	}
-	path := filepath.Join(h, envName)
-
-	_, err = os.Stat(path)
-	if err == nil {
-		return "", fmt.Errorf("Environment dir (%s) already exists", envName)
-	}
-
 	err = os.MkdirAll(path, DefaultWritePermissions)
 	if err != nil {
 		return "", err
@@ -131,83 +84,4 @@ func PKIRootDir() (string, error) {
 		return "", err
 	}
 	return path, nil
-}
-
-func BinaryLocation() (string, error) {
-	h, err := ConfigDir()
-	if err != nil {
-		return "", err
-	}
-	path := filepath.Join(h, "bin")
-	err = os.MkdirAll(path, DefaultWritePermissions)
-	if err != nil {
-		return "", err
-	}
-	return path, nil
-}
-
-// TerraformProviderBinaryLocation provides the proper location to place a Terraform provider based on the currently running OS.
-// In Mac/Linux, it's `~/.terraform.d/plugins` and on Windows it's `%APPDATA%\terraform.d\plugins`
-func TerraformProviderBinaryLocation() (string, error) {
-	var path string
-	h := HomeDir()
-	if runtime.GOOS == "windows" {
-		h = os.Getenv("APPDATA")
-		if h == "" {
-			return "", fmt.Errorf("APPDATA env var missing; install of Terraform provider cannot proceed")
-		}
-		path = filepath.Join(h, "terraform.d/plugins")
-	} else {
-		path = filepath.Join(h, ".terraform.d/plugins")
-	}
-	err := os.MkdirAll(path, DefaultWritePermissions)
-	if err != nil {
-		return "", err
-	}
-	return path, nil
-}
-
-// WriteZitiAppConfigFile writes out the config file data for the given Ziti application to the appropriate config file
-func WriteZitiAppConfigFile(zitiApp string, configData interface{}) error {
-	return WriteZitiAppFile(zitiApp, "config", configData)
-}
-
-// WriteZitiAppFile writes application data (config, session, preferences, etc) to an appropriate location
-func WriteZitiAppFile(zitiApp string, fileType string, appData interface{}) error {
-	configDir, err := ZitiAppConfigDir(zitiApp)
-	if err != nil {
-		return err
-	}
-	filePath := filepath.Join(configDir, fileType+".json")
-
-	data, err := json.MarshalIndent(appData, "", "    ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(filePath, data, 0600)
-}
-
-// ReadZitiAppConfigFile reads in the config file data for the given Ziti application from an appropriate location
-func ReadZitiAppConfigFile(zitiApp string, configData interface{}) error {
-	return ReadZitiAppFile(zitiApp, "config", configData)
-}
-
-// ReadZitiAppFile reads application data (config, session, preferences, etc) for the given Ziti application from an appropriate location
-func ReadZitiAppFile(zitiApp string, fileType string, configData interface{}) error {
-	configDir, err := ZitiAppConfigDir(zitiApp)
-	if err != nil {
-		return err
-	}
-
-	filePath := filepath.Join(configDir, fileType+".json")
-
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(data, configData)
-
-	return err
 }

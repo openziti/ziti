@@ -34,24 +34,12 @@ func Infoln(msg string) {
 	fmt.Println(msg)
 }
 
-func Blank() {
-	fmt.Println()
-}
-
 func Warnf(msg string, args ...interface{}) {
 	Warn(fmt.Sprintf(msg, args...))
 }
 
 func Warn(msg string) {
 	color.Yellow(msg)
-}
-
-func Errorf(msg string, args ...interface{}) {
-	Error(fmt.Sprintf(msg, args...))
-}
-
-func Error(msg string) {
-	color.Red(msg)
 }
 
 func Fatalf(msg string, args ...interface{}) {

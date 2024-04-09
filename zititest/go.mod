@@ -13,14 +13,14 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.122
+	github.com/openziti/channel/v2 v2.0.125
 	github.com/openziti/edge-api v0.26.14
 	github.com/openziti/fablab v0.5.42
-	github.com/openziti/foundation/v2 v2.0.40
-	github.com/openziti/identity v1.0.73
+	github.com/openziti/foundation/v2 v2.0.42
+	github.com/openziti/identity v1.0.74
 	github.com/openziti/sdk-golang v0.23.15
-	github.com/openziti/storage v0.2.33
-	github.com/openziti/transport/v2 v2.0.125
+	github.com/openziti/storage v0.2.34
+	github.com/openziti/transport/v2 v2.0.128
 	github.com/openziti/ziti v0.28.3
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
@@ -137,8 +137,8 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.48 // indirect
-	github.com/openziti/runzmd v1.0.41 // indirect
+	github.com/openziti/metrics v1.2.49 // indirect
+	github.com/openziti/runzmd v1.0.42 // indirect
 	github.com/openziti/secretstream v0.1.18 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.1.0 // indirect

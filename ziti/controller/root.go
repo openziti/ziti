@@ -19,8 +19,9 @@ package controller
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/common/version"
+	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/sirupsen/logrus"
@@ -60,7 +61,11 @@ func NewControllerCmd() *cobra.Command {
 	cmd.AddCommand(NewRunCmd())
 	cmd.AddCommand(NewDeleteSessionsFromConfigCmd())
 	cmd.AddCommand(NewDeleteSessionsFromDbCmd())
-	cmd.AddCommand(NewVersionCmd())
+
+	versionCmd := common.NewVersionCmd()
+	versionCmd.Hidden = true
+	versionCmd.Deprecated = "use 'ziti version' instead of 'ziti controller version'"
+	cmd.AddCommand(versionCmd)
 
 	edgeSubCmd.AddCommands(cmd, version.GetCmdBuildInfo())
 
