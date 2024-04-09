@@ -1,3 +1,23 @@
+# Release 1.0.0
+
+## What's New
+
+* Bugfixes
+
+## DEFAULT Bind/Dial SERVICE PERMISSIONS FOR Admin IDENTITIES HAVE CHANGED
+
+Admin identities were able to Dial and Bind all services regardless of the effective service policies
+prior to this release. This could lead to a confusing situation where a tunneler that was assuming an Admin
+identity would put itself into an infinite connect-loop when a service's host.v1 address overlapped with
+any addresses in its intercept configuration.
+
+Please create service policies to grant Bind or Dial permissions to Admin identities as needed.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v0.34.2 -> v1.0.0](https://github.com/openziti/ziti/compare/v0.34.2...v1.0.0)
+  * [Issue #1781](https://github.com/openziti/ziti/issues/1781) - Admin identities have bind and dial permissions to services
+
 # Release 0.34.2
 
 ## What's New
