@@ -48,17 +48,17 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.125
-	github.com/openziti/edge-api v0.26.14
+	github.com/openziti/channel/v2 v2.0.128
+	github.com/openziti/edge-api v0.26.16
 	github.com/openziti/foundation/v2 v2.0.42
-	github.com/openziti/identity v1.0.74
+	github.com/openziti/identity v1.0.75
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.49
-	github.com/openziti/runzmd v1.0.42
-	github.com/openziti/sdk-golang v0.23.15
-	github.com/openziti/secretstream v0.1.18
-	github.com/openziti/storage v0.2.34
-	github.com/openziti/transport/v2 v2.0.129
+	github.com/openziti/metrics v1.2.51
+	github.com/openziti/runzmd v1.0.43
+	github.com/openziti/sdk-golang v0.23.19
+	github.com/openziti/secretstream v0.1.19
+	github.com/openziti/storage v0.2.36
+	github.com/openziti/transport/v2 v2.0.131
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -189,5 +189,5 @@ require (
 	golang.org/x/tools v0.18.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
-	nhooyr.io/websocket v1.8.10 // indirect
+	nhooyr.io/websocket v1.8.11 // indirect
 )
