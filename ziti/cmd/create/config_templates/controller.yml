@@ -223,8 +223,6 @@ web:
         # These settings are per API. The example below is for the 'edge-api' and contains both optional values and
         # required values.
         options: { }
-      - binding: edge-oidc
-        options: { }
       - binding: edge-client
         options: { }
       - binding: fabric
