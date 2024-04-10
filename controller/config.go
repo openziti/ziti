@@ -52,13 +52,16 @@ const (
 
 	DefaultRaftCommandHandlerMaxQueueSize = 1000
 
+	// DefaultTlsHandshakeRateLimiterEnabled is whether the tls handshake rate limiter is enabled by default
+	DefaultTlsHandshakeRateLimiterEnabled = false
+
 	// TlsHandshakeRateLimiterMinSizeValue is the minimum size that can be configured for the tls handshake rate limiter
 	// window range
 	TlsHandshakeRateLimiterMinSizeValue = 5
 
 	// TlsHandshakeRateLimiterMaxSizeValue is the maximum size that can be configured for the tls handshake rate limiter
 	// window range
-	TlsHandshakeRateLimiterMaxSizeValue = 5000
+	TlsHandshakeRateLimiterMaxSizeValue = 10000
 
 	// TlsHandshakeRateLimiterMetricOutstandingCount is the name of the metric tracking how many tasks are in process
 	TlsHandshakeRateLimiterMetricOutstandingCount = "tls_handshake_limiter.in_process"
@@ -70,7 +73,7 @@ const (
 	TlsHandshakeRateLimiterMetricWorkTimer = "tls_handshake_limiter.work_timer"
 
 	// DefaultTlsHandshakeRateLimiterMaxWindow is the default max size for the tls handshake rate limiter
-	DefaultTlsHandshakeRateLimiterMaxWindow = 500
+	DefaultTlsHandshakeRateLimiterMaxWindow = 1000
 )
 
 type Config struct {
@@ -511,6 +514,7 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	controllerConfig.TlsHandshakeRateLimiter.SetDefaults()
+	controllerConfig.TlsHandshakeRateLimiter.Enabled = DefaultTlsHandshakeRateLimiterEnabled
 	controllerConfig.TlsHandshakeRateLimiter.MaxSize = DefaultTlsHandshakeRateLimiterMaxWindow
 	controllerConfig.TlsHandshakeRateLimiter.QueueSizeMetric = TlsHandshakeRateLimiterMetricOutstandingCount
 	controllerConfig.TlsHandshakeRateLimiter.WindowSizeMetric = TlsHandshakeRateLimiterMetricCurrentWindowSize

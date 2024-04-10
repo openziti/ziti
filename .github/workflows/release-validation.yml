@@ -1,7 +1,6 @@
 name: release-validation
 
 on:
-  pull_request:
   workflow_dispatch:
 
 # cancel older, redundant runs of same workflow on same branch

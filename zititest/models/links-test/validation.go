@@ -75,12 +75,29 @@ func validateLinksForCtrl(c *model.Component, deadline time.Time) error {
 	password := c.MustStringVariable("credentials.edge.password")
 	edgeApiBaseUrl := c.Host.PublicIp + ":1280"
 
-	clients, err := zitirest.NewManagementClients(edgeApiBaseUrl)
-	if err != nil {
-		return err
-	}
-	if err = clients.Authenticate(username, password); err != nil {
-		return err
+	var clients *zitirest.Clients
+	loginStart := time.Now()
+	for {
+		var err error
+		clients, err = zitirest.NewManagementClients(edgeApiBaseUrl)
+		if err != nil {
+			if time.Since(loginStart) > time.Minute {
+				return err
+			}
+			pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("failed to initialize mgmt client, trying again in 1s")
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if err = clients.Authenticate(username, password); err != nil {
+			if time.Since(loginStart) > time.Minute {
+				return err
+			}
+			pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("failed to authenticate, trying again in 1s")
+			time.Sleep(time.Second)
+		} else {
+			break
+		}
 	}
 
 	allLinksPresent := false
