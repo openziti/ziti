@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package simple
+package smoke
 
 import (
 	"embed"
@@ -30,7 +30,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
-	"github.com/openziti/ziti/zititest/models/simple/actions"
+	"github.com/openziti/ziti/zititest/models/smoke/actions"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
@@ -208,7 +208,9 @@ var Model = &model.Model{
 						},
 						"echo-server": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},
-							Type:  &zitilab.EchoServerType{},
+							Type: &zitilab.EchoServerType{
+								BindService: "echo",
+							},
 						},
 						"iperf-server-ert": {
 							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},

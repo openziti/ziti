@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry Inc.
+	(c) Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -14,11 +14,15 @@
 	limitations under the License.
 */
 
-package util
+package main
 
-import "github.com/fatih/color"
+import (
+	"github.com/openziti/fablab"
+	"github.com/openziti/ziti/zititest/models/smoke"
+)
 
-var ColorInfo = color.New(color.FgGreen).SprintFunc()
-var ColorStatus = color.New(color.FgBlue).SprintFunc()
-var ColorWarning = color.New(color.FgYellow).SprintFunc()
-var ColorError = color.New(color.FgRed).SprintFunc()
+func main() {
+	smoke.InitBootstrapExtensions()
+	fablab.InitModel(smoke.Model)
+	fablab.Run()
+}

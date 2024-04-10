@@ -14,34 +14,20 @@
 	limitations under the License.
 */
 
-package install
+package common
 
 import (
+	"fmt"
 	"github.com/openziti/ziti/common/version"
-	c "github.com/openziti/ziti/ziti/constants"
+	"github.com/spf13/cobra"
 )
 
-// UpgradeZitiTunnelOptions the options for the upgrade ziti-tunnel command
-type UpgradeZitiTunnelOptions struct {
-	InstallOptions
-
-	Version string
-}
-
-// Run implements the command
-func (o *UpgradeZitiTunnelOptions) Run() error {
-	newVersion, err := o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_TUNNEL)
-	if err != nil {
-		return err
+func NewVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Show component version",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println(version.GetVersion())
+		},
 	}
-
-	newVersionStr := newVersion.String()
-
-	if o.Version != "" {
-		newVersionStr = o.Version
-	}
-
-	o.deleteInstalledBinary(c.ZITI_TUNNEL)
-
-	return o.installZitiApp(version.GetBranch(), c.ZITI_TUNNEL, true, newVersionStr)
 }

@@ -74,7 +74,7 @@ func (d dbStrategy) PostProcess(router *db.EdgeRouter, c *model.Component) {
 }
 
 func (d dbStrategy) ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
-	if err := builder.CreateEdgeRouterHosts(tx, m); err != nil {
+	if err := builder.CreateEdgeRouterHosts(tx, m, d); err != nil {
 		return err
 	}
 	return d.CreateIdentityHosts(tx, m, builder)

@@ -34,6 +34,14 @@ type ZitiEdgeTunnelType struct {
 	ConfigPathF func(c *model.Component) string
 }
 
+func (self *ZitiEdgeTunnelType) Label() string {
+	return "ziti-edge-tunnel"
+}
+
+func (self *ZitiEdgeTunnelType) GetVersion() string {
+	return self.Version
+}
+
 func (self *ZitiEdgeTunnelType) GetActions() map[string]model.ComponentAction {
 	return map[string]model.ComponentAction{
 		ZitiTunnelActionsReEnroll: model.ComponentActionF(self.ReEnroll),
@@ -125,5 +133,5 @@ func (self *ZitiEdgeTunnelType) Stop(_ model.Run, c *model.Component) error {
 }
 
 func (self *ZitiEdgeTunnelType) ReEnroll(run model.Run, c *model.Component) error {
-	return reEnrollIdentity(run, c, getZitiBinaryPath(c, self.ZitiVersion), self.GetConfigPath(c))
+	return reEnrollIdentity(run, c, GetZitiBinaryPath(c, self.ZitiVersion), self.GetConfigPath(c))
 }

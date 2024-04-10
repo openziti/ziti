@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/xt"
 	"google.golang.org/protobuf/proto"
+	"maps"
 	"reflect"
 	"strings"
 	"sync"
@@ -104,6 +105,14 @@ func (entity *Router) SetMetadata(metadata *ctrl_pb.RouterMetadata) {
 
 func (entity *Router) HasCapability(capability ctrl_pb.RouterCapability) bool {
 	return entity.Metadata != nil && genext.Contains(entity.Metadata.Capabilities, capability)
+}
+
+func (entity *Router) SupportsRouterLinkMgmt() bool {
+	if entity.VersionInfo == nil {
+		return true
+	}
+	supportsLinkMgmt, err := entity.VersionInfo.HasMinimumVersion("0.32.1")
+	return err != nil || supportsLinkMgmt
 }
 
 func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Router {
@@ -184,9 +193,9 @@ func (self *RouterManager) getConnected(id string) *Router {
 
 func (self *RouterManager) allConnected() []*Router {
 	var routers []*Router
-	for v := range self.connected.IterBuffered() {
-		routers = append(routers, v.Val)
-	}
+	self.connected.IterCb(func(_ string, router *Router) {
+		routers = append(routers, router)
+	})
 	return routers
 }
 
@@ -593,9 +602,7 @@ func (self *RouterLinks) Add(link *Link, otherRouterId string) {
 
 	byRouter := self.GetLinksByRouter()
 	newLinksByRouter := map[string][]*Link{}
-	for k, v := range byRouter {
-		newLinksByRouter[k] = v
-	}
+	maps.Copy(newLinksByRouter, byRouter)
 	forRouterList := newLinksByRouter[otherRouterId]
 	newForRouterList := append([]*Link{link}, forRouterList...)
 	newLinksByRouter[otherRouterId] = newForRouterList
@@ -606,7 +613,7 @@ func (self *RouterLinks) Remove(link *Link, otherRouterId string) {
 	self.Lock()
 	defer self.Unlock()
 	links := self.GetLinks()
-	newLinks := make([]*Link, 0, len(links)+1)
+	newLinks := make([]*Link, 0, len(links))
 	for _, l := range links {
 		if link != l {
 			newLinks = append(newLinks, l)
@@ -616,9 +623,7 @@ func (self *RouterLinks) Remove(link *Link, otherRouterId string) {
 
 	byRouter := self.GetLinksByRouter()
 	newLinksByRouter := map[string][]*Link{}
-	for k, v := range byRouter {
-		newLinksByRouter[k] = v
-	}
+	maps.Copy(newLinksByRouter, byRouter)
 	forRouterList := newLinksByRouter[otherRouterId]
 	var newForRouterList []*Link
 	for _, l := range forRouterList {
@@ -633,7 +638,6 @@ func (self *RouterLinks) Remove(link *Link, otherRouterId string) {
 	}
 
 	self.linkByRouter.Store(newLinksByRouter)
-
 }
 
 func (self *RouterLinks) Clear() {

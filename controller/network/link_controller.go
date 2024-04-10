@@ -90,11 +90,8 @@ func newLinkController(options *Options) *linkController {
 		return &val
 	})
 	result.store.AddStringSymbol("state", func(entity *Link) *string {
-		if state := entity.CurrentState(); state != nil {
-			val := state.Mode.String()
-			return &val
-		}
-		return nil
+		val := entity.CurrentState().Mode.String()
+		return &val
 	})
 	result.store.AddInt64Symbol("iteration", func(entity *Link) *int64 {
 		val := int64(entity.Iteration)
@@ -105,13 +102,12 @@ func newLinkController(options *Options) *linkController {
 }
 
 func (linkController *linkController) buildRouterLinks(router *Router) {
-	for entry := range linkController.linkTable.links.IterBuffered() {
-		link := entry.Val
+	linkController.linkTable.links.IterCb(func(_ string, link *Link) {
 		if link.DstId == router.Id {
 			router.routerLinks.Add(link, link.Src.Id)
 			link.Dst.Store(router)
 		}
-	}
+	})
 }
 
 func (linkController *linkController) add(link *Link) {
@@ -127,11 +123,15 @@ func (linkController *linkController) has(link *Link) bool {
 }
 
 func (linkController *linkController) scanForDeadLinks() {
-	for entry := range linkController.linkTable.links.IterBuffered() {
-		link := entry.Val
+	var toRemove []*Link
+	linkController.linkTable.links.IterCb(func(_ string, link *Link) {
 		if !link.Src.Connected.Load() {
-			linkController.remove(link)
+			toRemove = append(toRemove, link)
 		}
+	})
+
+	for _, link := range toRemove {
+		linkController.remove(link)
 	}
 }
 
@@ -161,7 +161,7 @@ func (linkController *linkController) routerReportedLink(linkId string, iteratio
 	link.Src = src
 	link.Dst.Store(dst)
 	link.DstId = dstId
-	link.addState(newLinkState(Connected))
+	link.SetState(Connected)
 	linkController.add(link)
 	return link, true
 }
@@ -245,7 +245,7 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 
 	missingLinks := make([]*Link, 0)
 	for _, srcR := range routers {
-		if srcR.HasCapability(ctrl_pb.RouterCapability_LinkManagement) {
+		if srcR.SupportsRouterLinkMgmt() {
 			continue
 		}
 
@@ -273,7 +273,7 @@ func (linkController *linkController) clearExpiredPending(pendingTimeout time.Du
 
 	toRemove := linkController.linkTable.matching(func(link *Link) bool {
 		state := link.CurrentState()
-		return state != nil && state.Mode == Pending && state.Timestamp < pendingLimit
+		return state.Mode == Pending && state.Timestamp < pendingLimit
 	})
 
 	for _, link := range toRemove {
@@ -289,7 +289,7 @@ func (linkController *linkController) hasDirectedLink(a, b *Router, linkProtocol
 	links := a.routerLinks.GetLinks()
 	for _, link := range links {
 		state := link.CurrentState()
-		if link.Src == a && link.DstId == b.Id && state != nil && link.Protocol == linkProtocol {
+		if link.Src == a && link.DstId == b.Id && link.Protocol == linkProtocol {
 			if state.Mode == Connected || (state.Mode == Pending && state.Timestamp > pendingLimit) {
 				return true
 			}
@@ -333,9 +333,9 @@ func (self *linkController) ValidateRouterLinks(n *Network, router *Router, cb L
 
 	linkMap := map[string]*Link{}
 
-	for entry := range self.linkTable.links.IterBuffered() {
-		linkMap[entry.Key] = entry.Val
-	}
+	self.linkTable.links.IterCb(func(key string, link *Link) {
+		linkMap[key] = link
+	})
 
 	result := &mgmt_pb.RouterLinkDetails{
 		RouterId:        router.Id,
@@ -429,30 +429,29 @@ func (lt *linkTable) has(link *Link) bool {
 
 func (lt *linkTable) all() []*Link {
 	links := make([]*Link, 0, lt.links.Count())
-	for tuple := range lt.links.IterBuffered() {
-		links = append(links, tuple.Val)
-	}
+	lt.links.IterCb(func(_ string, link *Link) {
+		links = append(links, link)
+	})
 	return links
 }
 
 func (lt *linkTable) allInMode(mode LinkMode) []*Link {
 	links := make([]*Link, 0)
-	for tuple := range lt.links.IterBuffered() {
-		link := tuple.Val
+	lt.links.IterCb(func(_ string, link *Link) {
 		if link.CurrentState().Mode == mode {
 			links = append(links, link)
 		}
-	}
+	})
 	return links
 }
 
 func (lt *linkTable) matching(f func(*Link) bool) []*Link {
 	var links []*Link
-	for tuple := range lt.links.IterBuffered() {
-		if f(tuple.Val) {
-			links = append(links, tuple.Val)
+	lt.links.IterCb(func(key string, link *Link) {
+		if f(link) {
+			links = append(links, link)
 		}
-	}
+	})
 	return links
 }
 

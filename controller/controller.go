@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/controller/event"
@@ -202,6 +203,9 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 
 	shutdownC := make(chan struct{})
 
+	tlsHandshakeRateLimiter := command.NewAdaptiveRateLimitTracker(cfg.TlsHandshakeRateLimiter, metricRegistry, shutdownC)
+	tls.SetSharedListenerRateLimiter(tlsHandshakeRateLimiter)
+
 	log := pfxlog.Logger()
 
 	c := &Controller{
@@ -230,6 +234,8 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 		return nil, err
 	}
 
+	c.initWeb() // need to init web before bootstrapping, so we can provide our endpoints to peers
+
 	if c.raftController != nil {
 		if err := c.raftController.Bootstrap(); err != nil {
 			log.WithError(err).Panic("error bootstrapping raft")
@@ -257,8 +263,6 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	if err := c.showOptions(); err != nil {
 		return nil, err
 	}
-
-	c.initWeb()
 
 	return c, nil
 }

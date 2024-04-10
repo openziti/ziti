@@ -19,7 +19,6 @@ package templates
 import (
 	"bytes"
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/table"
 	"io"
 	"strings"
 	"text/template"
@@ -168,12 +167,20 @@ func (t *templater) cmdGroupsString(c *cobra.Command) string {
 			if cmd.Runnable() {
 				path := t.groupPath(cmd)
 				//cmds = append(cmds, "  "+rpad(path, maxLen - len(path))+" "+cmd.Short)
-				cmds = append(cmds, "  "+table.PadRight(path, " ", maxLen)+" "+cmd.Short)
+				cmds = append(cmds, "  "+padRight(path, " ", maxLen)+" "+cmd.Short)
 			}
 		}
 		groups = append(groups, strings.Join(cmds, "\n"))
 	}
 	return strings.Join(groups, "\n\n")
+}
+
+func padRight(s, pad string, width int) string {
+	gap := width - len(s)
+	if gap > 0 {
+		return s + strings.Repeat(pad, gap)
+	}
+	return s
 }
 
 func (t *templater) rootCmdName(c *cobra.Command) string {

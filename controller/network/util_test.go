@@ -22,9 +22,9 @@ import (
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 
-	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
+	"github.com/openziti/ziti/controller/db"
 )
 
 func newTestEntityHelper(ctx *db.TestContext, network *Network) *testEntityHelper {
@@ -88,8 +88,7 @@ func (self *testEntityHelper) addTestService(serviceName string) *Service {
 func (self *testEntityHelper) discardControllerEvents() {
 	for {
 		select {
-		case <-self.network.routerChanged:
-		case <-self.network.linkChanged:
+		case <-self.network.assembleAndCleanC:
 		default:
 			return
 		}

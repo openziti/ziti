@@ -109,6 +109,7 @@ type edgeClientConn struct {
 	fingerprints cert.Fingerprints
 	ch           channel.Channel
 	idSeq        uint32
+	apiSession   *state.ApiSession
 }
 
 func (self *edgeClientConn) HandleClose(ch channel.Channel) {
@@ -170,6 +171,7 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
 
 	request := &ctrl_msg.CreateCircuitRequest{
+		ApiSessionToken:      self.apiSession.Token,
 		SessionToken:         sessionToken,
 		Fingerprints:         self.fingerprints.Prints(),
 		TerminatorInstanceId: terminatorIdentity,
@@ -213,6 +215,7 @@ func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuit
 func (self *edgeClientConn) sendCreateCircuitRequestV1(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
 	request := &edge_ctrl_pb.CreateCircuitRequest{
 		SessionToken:         req.SessionToken,
+		ApiSessionToken:      req.ApiSessionToken,
 		Fingerprints:         req.Fingerprints,
 		TerminatorInstanceId: req.TerminatorInstanceId,
 		PeerData:             req.PeerData,

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-hclog"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
@@ -228,7 +229,7 @@ type Controller struct {
 	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState)]
 	isLeader                   atomic.Bool
 	clusterEvents              chan raft.Observation
-	commandRateLimiter         command.RateLimiter
+	commandRateLimiter         rate.RateLimiter
 }
 
 func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, state ClusterState)) {
@@ -248,7 +249,7 @@ func (self *Controller) GetMesh() mesh.Mesh {
 	return self.Mesh
 }
 
-func (self *Controller) GetRateLimiter() command.RateLimiter {
+func (self *Controller) GetRateLimiter() rate.RateLimiter {
 	return self.commandRateLimiter
 }
 

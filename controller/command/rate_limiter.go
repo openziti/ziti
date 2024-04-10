@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/pkg/errors"
@@ -48,7 +49,7 @@ type RateLimiterConfig struct {
 	QueueSize uint32
 }
 
-func NewRateLimiter(config RateLimiterConfig, registry metrics.Registry, closeNotify <-chan struct{}) RateLimiter {
+func NewRateLimiter(config RateLimiterConfig, registry metrics.Registry, closeNotify <-chan struct{}) rate.RateLimiter {
 	if !config.Enabled {
 		return NoOpRateLimiter{}
 	}
@@ -77,45 +78,6 @@ func NewRateLimiter(config RateLimiterConfig, registry metrics.Registry, closeNo
 	return result
 }
 
-// A RateLimiter allows running arbitrary, sequential operations with a limiter, so that only N operations
-// can be queued to run at any given time. If the system is too busy, the rate limiter will return
-// an ApiError indicating that the server is too busy
-type RateLimiter interface {
-	RunRateLimited(func() error) error
-	GetQueueFillPct() float64
-}
-
-// An AdaptiveRateLimiter allows running arbitrary, sequential operations with a limiter, so that only N operations
-// can be queued to run at any given time. If the system is too busy, the rate limiter will return
-// an ApiError indicating that the server is too busy.
-//
-// The rate limiter returns a RateLimitControl, allow the calling code to indicate if the operation finished in
-// time. If operations are timing out before the results are available, the rate limiter should allow fewer
-// operations in, as they will likely time out before the results can be used.
-//
-// The rate limiter doesn't have a set queue size, it has a window which can grow and shrink. When
-// a timeout is signaled, using the RateLimitControl, it shrinks the window based on queue position
-// of the timed out operation. For example, if an operation was queued at position 200, but the times
-// out, we assume that we need to limit the queue size to something less than 200 for now.
-//
-// The limiter will also reject already queued operations if the window size changes and the operation
-// was queued at a position larger than the current window size.
-//
-// The window size will slowly grow back towards the max as successes are noted in the RateLimitControl.
-type AdaptiveRateLimiter interface {
-	RunRateLimited(f func() error) (RateLimitControl, error)
-}
-
-// An AdaptiveRateLimitTracker works similarly to an AdaptiveRateLimiter, except it just manages the rate
-// limiting without actually running the work. Because it doesn't run the work itself, it has to account
-// for the possibility that some work may never report as complete or failed. It thus has a configurable
-// timeout at which point outstanding work will be marked as failed.
-type AdaptiveRateLimitTracker interface {
-	RunRateLimited(label string) (RateLimitControl, error)
-	RunRateLimitedF(label string, f func(control RateLimitControl) error) error
-	IsRateLimited() bool
-}
-
 type NoOpRateLimiter struct{}
 
 func (self NoOpRateLimiter) RunRateLimited(f func() error) error {
@@ -128,18 +90,18 @@ func (self NoOpRateLimiter) GetQueueFillPct() float64 {
 
 type NoOpAdaptiveRateLimiter struct{}
 
-func (self NoOpAdaptiveRateLimiter) RunRateLimited(f func() error) (RateLimitControl, error) {
-	return noOpRateLimitControl{}, f()
+func (self NoOpAdaptiveRateLimiter) RunRateLimited(f func() error) (rate.RateLimitControl, error) {
+	return rate.NoOpRateLimitControl(), f()
 }
 
 type NoOpAdaptiveRateLimitTracker struct{}
 
-func (n NoOpAdaptiveRateLimitTracker) RunRateLimited(string) (RateLimitControl, error) {
-	return noOpRateLimitControl{}, nil
+func (n NoOpAdaptiveRateLimitTracker) RunRateLimited(string) (rate.RateLimitControl, error) {
+	return rate.NoOpRateLimitControl(), nil
 }
 
-func (n NoOpAdaptiveRateLimitTracker) RunRateLimitedF(_ string, f func(control RateLimitControl) error) error {
-	return f(noOpRateLimitControl{})
+func (n NoOpAdaptiveRateLimitTracker) RunRateLimitedF(_ string, f func(control rate.RateLimitControl) error) error {
+	return f(rate.NoOpRateLimitControl())
 }
 
 func (n NoOpAdaptiveRateLimitTracker) IsRateLimited() bool {
@@ -278,7 +240,7 @@ func LoadAdaptiveRateLimiterConfig(cfg *AdaptiveRateLimiterConfig, cfgmap map[in
 	return nil
 }
 
-func NewAdaptiveRateLimiter(config AdaptiveRateLimiterConfig, registry metrics.Registry, closeNotify <-chan struct{}) AdaptiveRateLimiter {
+func NewAdaptiveRateLimiter(config AdaptiveRateLimiterConfig, registry metrics.Registry, closeNotify <-chan struct{}) rate.AdaptiveRateLimiter {
 	if !config.Enabled {
 		return NoOpAdaptiveRateLimiter{}
 	}
@@ -366,7 +328,7 @@ func (self *adaptiveRateLimiter) backoff(queuePosition int32) {
 	}
 }
 
-func (self *adaptiveRateLimiter) RunRateLimited(f func() error) (RateLimitControl, error) {
+func (self *adaptiveRateLimiter) RunRateLimited(f func() error) (rate.RateLimitControl, error) {
 	work := &adaptiveRateLimitedWork{
 		wrapped: f,
 		result:  make(chan error, 1),
@@ -381,7 +343,7 @@ func (self *adaptiveRateLimiter) RunRateLimited(f func() error) (RateLimitContro
 	self.lock.Unlock()
 
 	if !hasRoom {
-		return noOpRateLimitControl{}, apierror.NewTooManyUpdatesError()
+		return rate.NoOpRateLimitControl(), apierror.NewTooManyUpdatesError()
 	}
 
 	work.queuePosition = queuePosition
@@ -394,12 +356,12 @@ func (self *adaptiveRateLimiter) RunRateLimited(f func() error) (RateLimitContro
 		case result := <-work.result:
 			return rateLimitControl{limiter: self, queuePosition: work.queuePosition}, result
 		case <-self.closeNotify:
-			return noOpRateLimitControl{}, errors.New("rate limiter shutting down")
+			return rate.NoOpRateLimitControl(), errors.New("rate limiter shutting down")
 		}
 	case <-self.closeNotify:
-		return noOpRateLimitControl{}, errors.New("rate limiter shutting down")
+		return rate.NoOpRateLimitControl(), errors.New("rate limiter shutting down")
 	default:
-		return noOpRateLimitControl{}, apierror.NewTooManyUpdatesError()
+		return rate.NoOpRateLimitControl(), apierror.NewTooManyUpdatesError()
 	}
 }
 
@@ -431,17 +393,6 @@ func (self *adaptiveRateLimiter) run() {
 	}
 }
 
-type RateLimitControl interface {
-	// Success indicates the operation was a success
-	Success()
-
-	// Backoff indicates that we need to backoff
-	Backoff()
-
-	// Failed indicates the operation was not a success, but a backoff isn't required
-	Failed()
-}
-
 type rateLimitControl struct {
 	limiter       *adaptiveRateLimiter
 	queuePosition int32
@@ -459,18 +410,6 @@ func (r rateLimitControl) Failed() {
 	// no-op for this type
 }
 
-func NoOpRateLimitControl() RateLimitControl {
-	return noOpRateLimitControl{}
-}
-
-type noOpRateLimitControl struct{}
-
-func (noOpRateLimitControl) Success() {}
-
-func (noOpRateLimitControl) Backoff() {}
-
-func (noOpRateLimitControl) Failed() {}
-
 func WasRateLimited(err error) bool {
 	var apiErr *errorz.ApiError
 	if errors.As(err, &apiErr) {
@@ -479,7 +418,7 @@ func WasRateLimited(err error) bool {
 	return false
 }
 
-func NewAdaptiveRateLimitTracker(config AdaptiveRateLimiterConfig, registry metrics.Registry, closeNotify <-chan struct{}) AdaptiveRateLimitTracker {
+func NewAdaptiveRateLimitTracker(config AdaptiveRateLimiterConfig, registry metrics.Registry, closeNotify <-chan struct{}) rate.AdaptiveRateLimitTracker {
 	if !config.Enabled {
 		return NoOpAdaptiveRateLimitTracker{}
 	}
@@ -580,13 +519,13 @@ func (self *adaptiveRateLimitTracker) complete(work *adaptiveRateLimitTrackerWor
 	delete(self.outstandingWork, work.id)
 }
 
-func (self *adaptiveRateLimitTracker) RunRateLimited(label string) (RateLimitControl, error) {
+func (self *adaptiveRateLimitTracker) RunRateLimited(label string) (rate.RateLimitControl, error) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	queuePosition := self.currentSize.Add(1)
 	if queuePosition > self.currentWindow.Load() {
 		self.currentSize.Add(-1)
-		return noOpRateLimitControl{}, apierror.NewTooManyUpdatesError()
+		return rate.NoOpRateLimitControl(), apierror.NewTooManyUpdatesError()
 	}
 
 	work := &adaptiveRateLimitTrackerWork{
@@ -602,7 +541,7 @@ func (self *adaptiveRateLimitTracker) RunRateLimited(label string) (RateLimitCon
 	return work, nil
 }
 
-func (self *adaptiveRateLimitTracker) RunRateLimitedF(label string, f func(control RateLimitControl) error) error {
+func (self *adaptiveRateLimitTracker) RunRateLimitedF(label string, f func(control rate.RateLimitControl) error) error {
 	ctrl, err := self.RunRateLimited(label)
 	if err != nil {
 		return err
@@ -642,7 +581,7 @@ func (self *adaptiveRateLimitTracker) cleanExpired() {
 	for _, work := range toRemove {
 		pfxlog.Logger().WithField("label", work.label).
 			WithField("duration", time.Since(work.createTime)).
-			Error("rate limit work expired")
+			Info("rate limit work expired")
 		work.Backoff()
 	}
 }
@@ -660,7 +599,7 @@ func (self *adaptiveRateLimitTrackerWork) Success() {
 	if self.completed.CompareAndSwap(false, true) {
 		pfxlog.Logger().WithField("label", self.label).
 			WithField("duration", time.Since(self.createTime)).
-			Info("success")
+			Debug("success")
 		self.limiter.success(self)
 	}
 }
@@ -669,7 +608,7 @@ func (self *adaptiveRateLimitTrackerWork) Backoff() {
 	if self.completed.CompareAndSwap(false, true) {
 		pfxlog.Logger().WithField("label", self.label).
 			WithField("duration", time.Since(self.createTime)).
-			Info("backoff")
+			Debug("backoff")
 		self.limiter.backoff(self)
 	}
 }
@@ -678,7 +617,7 @@ func (self *adaptiveRateLimitTrackerWork) Failed() {
 	if self.completed.CompareAndSwap(false, true) {
 		pfxlog.Logger().WithField("label", self.label).
 			WithField("duration", time.Since(self.createTime)).
-			Info("failed")
+			Debug("failed")
 		self.limiter.complete(self)
 	}
 }

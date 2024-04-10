@@ -13,22 +13,23 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.122
-	github.com/openziti/edge-api v0.26.14
-	github.com/openziti/fablab v0.5.42
-	github.com/openziti/foundation/v2 v2.0.40
-	github.com/openziti/identity v1.0.73
-	github.com/openziti/sdk-golang v0.23.15
-	github.com/openziti/storage v0.2.33
-	github.com/openziti/transport/v2 v2.0.125
+	github.com/openziti/channel/v2 v2.0.128
+	github.com/openziti/edge-api v0.26.16
+	github.com/openziti/fablab v0.5.49
+	github.com/openziti/foundation/v2 v2.0.42
+	github.com/openziti/identity v1.0.75
+	github.com/openziti/sdk-golang v0.23.19
+	github.com/openziti/storage v0.2.36
+	github.com/openziti/transport/v2 v2.0.131
 	github.com/openziti/ziti v0.28.3
+	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.9.0
 	go.etcd.io/bbolt v1.3.9
-	golang.org/x/net v0.22.0
+	golang.org/x/net v0.24.0
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -87,7 +88,7 @@ require (
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/schema v1.2.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
-	github.com/hashicorp/go-hclog v1.6.2 // indirect
+	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.1 // indirect
@@ -100,7 +101,7 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d // indirect
 	github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 // indirect
-	github.com/jedib0t/go-pretty/v6 v6.5.6 // indirect
+	github.com/jedib0t/go-pretty/v6 v6.5.8 // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -137,13 +138,12 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.48 // indirect
-	github.com/openziti/runzmd v1.0.41 // indirect
-	github.com/openziti/secretstream v0.1.18 // indirect
+	github.com/openziti/metrics v1.2.51 // indirect
+	github.com/openziti/runzmd v1.0.43 // indirect
+	github.com/openziti/secretstream v0.1.19 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.1.0 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
-	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/pkg/sftp v1.13.6 // indirect
@@ -185,21 +185,21 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	go4.org v0.0.0-20180809161055-417644f6feb5 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
+	golang.org/x/crypto v0.22.0 // indirect
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
 	golang.org/x/image v0.13.0 // indirect
 	golang.org/x/mod v0.15.0 // indirect
 	golang.org/x/oauth2 v0.19.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/term v0.18.0 // indirect
+	golang.org/x/term v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
-	gopkg.in/AlecAivazis/survey.v1 v1.8.7 // indirect
+	gopkg.in/AlecAivazis/survey.v1 v1.8.8 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/resty.v1 v1.12.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	nhooyr.io/websocket v1.8.10 // indirect
+	nhooyr.io/websocket v1.8.11 // indirect
 	rsc.io/goversion v1.2.0 // indirect
 )

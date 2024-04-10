@@ -290,6 +290,7 @@ func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer) {
 				CtrlAddress:  peer.Addr,
 				IsOnline:     true,
 				LastJoinedAt: &now,
+				ApiAddresses: map[string][]ApiAddress{},
 			}
 
 			for apiKey, instances := range peer.ApiAddresses {

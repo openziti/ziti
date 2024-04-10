@@ -30,7 +30,7 @@ type Acceptor struct {
 	uListener          channel.UnderlayListener
 	listener           *listener
 	options            *channel.Options
-	sessionBindHandler channel.BindHandler
+	sessionBindHandler *sessionConnectionHandler
 }
 
 func (self *Acceptor) BindChannel(binding channel.Binding) error {
@@ -95,7 +95,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(proxy.msgMux)
 	binding.AddCloseHandler(proxy)
 
-	return self.sessionBindHandler.BindChannel(binding)
+	return self.sessionBindHandler.BindChannel(binding, proxy)
 }
 
 func NewAcceptor(listener *listener, uListener channel.UnderlayListener, options *channel.Options) *Acceptor {

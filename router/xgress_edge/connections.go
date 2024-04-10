@@ -45,7 +45,7 @@ func newSessionConnectHandler(stateManager state.Manager, options *Options, metr
 	}
 }
 
-func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding) error {
+func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding, edgeConn *edgeClientConn) error {
 	ch := binding.GetChannel()
 	binding.AddCloseHandler(handler)
 
@@ -85,6 +85,8 @@ func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding) er
 
 		return fmt.Errorf("no api session found for token [%s], fingerprints: [%v], subjects [%v]", token, fingerprints, subjects)
 	}
+
+	edgeConn.apiSession = apiSession
 
 	if apiSession.Claims != nil {
 		token = apiSession.Claims.ApiSessionId

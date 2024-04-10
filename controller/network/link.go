@@ -18,7 +18,6 @@ package network
 
 import (
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/foundation/v2/info"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -35,7 +34,7 @@ type Link struct {
 	Dst         concurrenz.AtomicValue[*Router]
 	Protocol    string
 	DialAddress string
-	state       []*LinkState
+	state       LinkState
 	down        bool
 	StaticCost  int32
 	usable      atomic.Bool
@@ -47,14 +46,17 @@ func newLink(id string, linkProtocol string, dialAddress string, initialLatency 
 		Id:          id,
 		Protocol:    linkProtocol,
 		DialAddress: dialAddress,
-		state:       make([]*LinkState, 0),
-		down:        false,
-		StaticCost:  1,
-		SrcLatency:  initialLatency.Nanoseconds(),
-		DstLatency:  initialLatency.Nanoseconds(),
+		state: LinkState{
+			Mode:      Pending,
+			Timestamp: time.Now().UnixMilli(),
+		},
+		down:       false,
+		StaticCost: 1,
+		SrcLatency: initialLatency.Nanoseconds(),
+		DstLatency: initialLatency.Nanoseconds(),
 	}
 	l.recalculateCost()
-	l.addState(&LinkState{Mode: Pending, Timestamp: info.NowInMilliseconds()})
+	l.recalculateUsable()
 	return l
 }
 
@@ -66,23 +68,18 @@ func (link *Link) GetDest() *Router {
 	return link.Dst.Load()
 }
 
-func (link *Link) CurrentState() *LinkState {
+func (link *Link) CurrentState() LinkState {
 	link.lock.Lock()
 	defer link.lock.Unlock()
-	if link.state == nil || len(link.state) < 1 {
-		return nil
-	}
-	return link.state[0]
+	return link.state
 }
 
-func (link *Link) addState(s *LinkState) {
+func (link *Link) SetState(m LinkMode) {
 	link.lock.Lock()
 	defer link.lock.Unlock()
 
-	if link.state == nil {
-		link.state = make([]*LinkState, 0)
-	}
-	link.state = append([]*LinkState{s}, link.state...)
+	link.state.Mode = m
+	link.state.Timestamp = time.Now().UnixMilli()
 	link.recalculateUsable()
 }
 
@@ -102,7 +99,7 @@ func (link *Link) IsDown() bool {
 func (link *Link) recalculateUsable() {
 	if link.down {
 		link.usable.Store(false)
-	} else if len(link.state) < 1 || link.state[0].Mode != Connected {
+	} else if link.state.Mode != Connected {
 		link.usable.Store(false)
 	} else {
 		link.usable.Store(true)
@@ -175,11 +172,4 @@ func (t LinkMode) String() string {
 type LinkState struct {
 	Mode      LinkMode
 	Timestamp int64
-}
-
-func newLinkState(mode LinkMode) *LinkState {
-	return &LinkState{
-		Mode:      mode,
-		Timestamp: info.NowInMilliseconds(),
-	}
 }

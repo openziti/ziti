@@ -29,7 +29,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/common/enrollment"
 	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/openziti/ziti/tunnel/dns"
@@ -70,12 +69,14 @@ func NewTunnelCmd(standalone bool) *cobra.Command {
 	root.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	root.PersistentFlags().StringVar(&cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 
-	p := common.NewOptionsProvider(os.Stdout, os.Stderr)
-	root.AddCommand(enrollment.NewEnrollCommand(p))
 	root.AddCommand(NewHostCmd())
 	root.AddCommand(NewProxyCmd())
 	root.AddCommand(hostSpecificCmds...)
-	root.AddCommand(NewVersionCmd())
+
+	versionCmd := common.NewVersionCmd()
+	versionCmd.Hidden = true
+	versionCmd.Deprecated = "use 'ziti version' instead of 'ziti router version'"
+	root.AddCommand(versionCmd)
 
 	return root
 }
@@ -85,13 +86,6 @@ var logFormatter string
 var cliAgentEnabled bool
 var cliAgentAddr string
 var cliAgentAlias string
-
-func Execute() {
-	if err := NewTunnelCmd(true).Execute(); err != nil {
-		pfxlog.Logger().Errorf("error: %s", err)
-		os.Exit(1)
-	}
-}
 
 func rootPreRun(cmd *cobra.Command, _ []string) {
 	verbose, err := cmd.Flags().GetBool("verbose")
