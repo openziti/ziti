@@ -19,10 +19,10 @@ package model
 import (
 	"fmt"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -107,14 +107,12 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, apiError
 	}
 
-	serverCertPem, err := cert.RawToPem(serverCertRaw)
-
+	serverCertPem, err := module.env.GetManagers().Enrollment.GetCertChainPem(serverCertRaw)
 	if err != nil {
 		return nil, err
 	}
 
 	clientCertPem, err := cert.RawToPem(clientCertRaw)
-
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +123,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 
 	clientCertFingerprint := module.fingerprintGenerator.FromRaw(clientCertRaw)
 
-	clientChainPem, err := module.env.GetManagers().Enrollment.GetClientCertChain(clientCertRaw)
+	clientChainPem, err := module.env.GetManagers().Enrollment.GetCertChainPem(clientCertRaw)
 	if err != nil {
 		return nil, err
 	}

@@ -215,10 +215,12 @@ func (self *EnrollmentManager) ReplaceWithAuthenticator(enrollmentId string, aut
 	})
 }
 
-func (self *EnrollmentManager) GetClientCertChain(certRaw []byte) (string, error) {
+// GetCertChainPem parses a given certificate in raw DER and attempt to provide string in PEM format of the
+// original certificate followed by each signing intermediate up to but not including the root CA.
+func (self *EnrollmentManager) GetCertChainPem(certRaw []byte) (string, error) {
 	clientCert, err := x509.ParseCertificate(certRaw)
 	if err != nil {
-		pfxlog.Logger().WithError(err).Error("error parsing client cert raw during enrollment")
+		pfxlog.Logger().WithError(err).Error("error parsing cert raw during enrollment, attempting to assemble chain")
 		return "", err
 	}
 
