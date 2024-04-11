@@ -118,9 +118,7 @@ func (ae *AppEnv) GetPeerControllerAddresses() []string {
 // JwtSignerKeyFunc is used in combination with jwt.Parse or jwt.ParseWithClaims to
 // facilitate verifying JWTs from the current controller or any peer controllers.
 func (ae *AppEnv) JwtSignerKeyFunc(token *jwt.Token) (interface{}, error) {
-	certs := ae.HostController.GetPeerSigners()
-
-	certs = append(certs, ae.ServerCert.Leaf)
+	kidToPubKey := ae.Broker.GetPublicKeys()
 
 	val := token.Header["kid"]
 	targetKid := val.(string)
@@ -129,17 +127,13 @@ func (ae *AppEnv) JwtSignerKeyFunc(token *jwt.Token) (interface{}, error) {
 		return nil, errors.New("missing kid in token")
 	}
 
-	for _, curCert := range certs {
-		//might want to create a cache of these if this becomes a CPU throughput problem
-		//would best be done in fabric's mesh peer collections
-		kid := fmt.Sprintf("%x", sha1.Sum(curCert.Raw))
+	pubKey, ok := kidToPubKey[targetKid]
 
-		if kid == targetKid {
-			return curCert.PublicKey, nil
-		}
+	if !ok {
+		return nil, errors.New("invalid kid: " + targetKid)
 	}
 
-	return nil, errors.New("invalid kid: " + targetKid)
+	return pubKey, nil
 }
 
 func (ae *AppEnv) ValidateAccessToken(token string) (*common.AccessClaims, error) {
