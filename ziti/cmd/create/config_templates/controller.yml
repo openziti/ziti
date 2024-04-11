@@ -13,7 +13,7 @@ raft:
   dataDir:         "{{ .ZitiHome }}/raft"
   minClusterSize:  {{ .Controller.Ctrl.MinClusterSize }}
 {{ else }}
-db:                     "{{ .ZitiHome }}/db/ctrl.db"
+db:                     "{{ .Controller.Database.DatabaseFile }}"
 # uncomment and configure to enable HA
 # raft:
 #   dataDir:         "{{ .ZitiHome }}/raft"

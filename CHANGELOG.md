@@ -1,3 +1,14 @@
+# Release 1.0.1
+
+## What's New
+
+* Deployments Alpha
+    * Linux packages provide systemd services for controller and router. Both depend on existing package `openziti` which provides the `ziti` command line tool.
+        * `openziti-controller` provides `ziti-controller.service`
+        * `openziti-router` provides `ziti-router.service`
+    * Container images for controller and router now share the bootstrapping logic with the packages, so they
+      support the same configuration options.
+
 # Release 1.0.0
 
 ## About 1.0

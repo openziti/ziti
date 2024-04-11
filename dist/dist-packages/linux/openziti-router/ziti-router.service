@@ -1,0 +1,59 @@
+[Unit]
+Description=OpenZiti Router
+After=network-online.target
+
+[Service]
+
+# you must provide an enrollment token to enroll the router at first startup
+LoadCredential=ZITI_ENROLL_TOKEN:/opt/openziti/etc/router/.token
+
+#
+## extra permissions
+#
+
+# allow binding low ports, e.g., 443/tcp; required when ZITI_ROUTER_MODE=tproxy or ZITI_ROUTER_PORT <= 1024
+# AmbientCapabilities=CAP_NET_BIND_SERVICE
+# allow adding IP routes and iptables rules; required when ZITI_ROUTER_MODE=tproxy
+# AmbientCapabilities=CAP_NET_ADMIN
+
+#
+## options
+#
+
+# additional environment variables used by ziti commands in bootstrap.bash
+EnvironmentFile=/opt/openziti/etc/router/env
+# used by bootstrap.bash to look up /run/credentials/$UNIT_NAME/$CREDENTIAL_NAME
+Environment=UNIT_NAME=ziti-router.service
+# disable JSON logging
+Environment=PFXLOG_NO_JSON=true
+# set "false" to disable bootstrapping
+Environment=ZITI_BOOTSTRAP=
+# create a config file unless it exists if "true", set "force" to overwrite
+Environment=ZITI_BOOTSTRAP_CONFIG=true
+# enroll unless already enrolled if "true", set "force" to overwrite key and cert (requires new enrollment token)
+Environment=ZITI_BOOTSTRAP_ENROLLMENT=true
+# set the bootstrap function definitions for entrypoint.bash to source
+Environment=ZITI_ROUTER_BOOTSTRAP_BASH=/opt/openziti/etc/router/bootstrap.bash
+# renew server and client certificates every startup
+Environment=ZITI_AUTO_RENEW_CERTS=true
+
+#
+## misc
+#
+
+# manage the user and permissions for the service automatically
+DynamicUser=yes
+# relative to /var/lib
+StateDirectory=ziti-router
+# absolute path where service will be run
+WorkingDirectory=/var/lib/ziti-router
+# "ziti router run" is the main process managed by this service and replaces entrypoint.bash
+Type=simple
+UMask=0007
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+ExecStart=/opt/openziti/etc/router/entrypoint.bash run config.yml
+
+[Install]
+WantedBy=multi-user.target
