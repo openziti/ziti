@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/ziti/controller/oidc_auth"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress_common"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -464,6 +465,10 @@ func (sm *ManagerImpl) MarkSessionRecentlyRemoved(token string) {
 }
 
 func (sm *ManagerImpl) AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
+	if xgress_common.IsBearerToken(token) {
+		return func() {}
+	}
+
 	if sm.recentlyRemovedSessions.Has(token) {
 		go callBack(token) // callback can be long process with network traffic. Don't block event processing
 		return func() {}
