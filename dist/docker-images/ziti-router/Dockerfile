@@ -16,7 +16,7 @@ LABEL name="openziti/ziti-router" \
 # set up image as root, then drop privs to ziggy
 USER root
 
-RUN INSTALL_PKGS="util-linux iptables" && \
+RUN INSTALL_PKGS="util-linux iptables libbpf iproute" && \
       microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
       microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS}
 
