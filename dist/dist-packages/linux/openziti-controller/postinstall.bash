@@ -139,7 +139,7 @@ promptPwd() {
 promptBootstrap() {
     # if undefined, check previous answer in service unit or prompt for bootstrap, preserving default if no answer
     if [[ -z "${ZITI_BOOTSTRAP:-}" ]]; then
-        if ZITI_BOOTSTRAP="$(prompt 'Bootstrap the controller config [Y/n]: ' || echo 'true')"; then
+        if ZITI_BOOTSTRAP="$(prompt 'Generate a default config [y/N]: ' || echo 'false')"; then
             if [[ "${ZITI_BOOTSTRAP}" =~ ^[yY]([eE][sS])?$ ]]; then
                 ZITI_BOOTSTRAP=true
             elif [[ "${ZITI_BOOTSTRAP}" =~ ^[nN][oO]?$ ]]; then
