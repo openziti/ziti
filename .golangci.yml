@@ -1,7 +1,8 @@
 run:
   build-tags:
     - apitests
-  deadline: 8m
+  # Default: 1m
+  timeout: 8m
 
 # golangci gives false positives for implementations of methods using generics in generic interfaces
 issues:
