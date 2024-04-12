@@ -7,7 +7,7 @@ FROM bitnami/kubectl as bitnami-kubectl
 # FIXME: This repo requires terms acceptance and is only available on registry.redhat.io.
 # FROM registry.access.redhat.com/openshift4/ose-cli as openshift-cli  
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal
+FROM registry.access.redhat.com/ubi9/ubi-minimal
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.
 
