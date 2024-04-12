@@ -72,10 +72,12 @@ loadEnvStdin() {
             key=$(awk -F= '{print $1}' <<< "${line}")
             value=$(awk -F= '{print $2}' <<< "${line}")
             if [[ -n "${key}" && -n "${value}" ]]; then
-                if grep -qE "^${key}=" "${ZITI_CTRL_ENV_FILE}"; then
-                    sed -Ei "s/^(${key})=.*/\1=${value}/" "${ZITI_CTRL_ENV_FILE}"
+                if grep -qE "^${key}=" "${ZITI_CTRL_BOOT_ENV_FILE}"; then
+                    sed -Ei "s/^(${key})=.*/\1=${value}/" "${ZITI_CTRL_BOOT_ENV_FILE}"
+                elif grep -qE "^${key}=" "${ZITI_CTRL_SVC_ENV_FILE}"; then
+                    sed -Ei "s/^(${key})=.*/\1=${value}/" "${ZITI_CTRL_SVC_ENV_FILE}"
                 else
-                    echo "${key}=${value}" >> "${ZITI_CTRL_ENV_FILE}"
+                    echo "${key}=${value}" >> "${ZITI_CTRL_BOOT_ENV_FILE}"
                 fi
             fi
         done
@@ -84,17 +86,19 @@ loadEnvStdin() {
 
 loadEnvFile() {
     # shellcheck disable=SC1090
-    source "${ZITI_CTRL_ENV_FILE}"
+    source "${ZITI_CTRL_SVC_ENV_FILE}"
+    # shellcheck disable=SC1090
+    source "${ZITI_CTRL_BOOT_ENV_FILE}"
 }
 
 promptCtrlAdvertisedAddress() {
     if [ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]; then
         if ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter the advertised address for the controller (FQDN) [$DEFAULT_ADDR]: " || echo "$DEFAULT_ADDR")"; then
             if [ -n "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]; then
-                sed -Ei "s/^(ZITI_CTRL_ADVERTISED_ADDRESS)=.*/\1=${ZITI_CTRL_ADVERTISED_ADDRESS}/" "${ZITI_CTRL_ENV_FILE}"
+                sed -Ei "s/^(ZITI_CTRL_ADVERTISED_ADDRESS)=.*/\1=${ZITI_CTRL_ADVERTISED_ADDRESS}/" "${ZITI_CTRL_BOOT_ENV_FILE}"
             fi
         else
-            echo "WARN: missing ZITI_CTRL_ADVERTISED_ADDRESS in ${ZITI_CTRL_ENV_FILE}" >&2
+            echo "WARN: missing ZITI_CTRL_ADVERTISED_ADDRESS in ${ZITI_CTRL_BOOT_ENV_FILE}" >&2
         fi
     fi
 }
@@ -109,12 +113,11 @@ promptPwd() {
         echo "INFO: database exists in ${ZITI_CTRL_DATABASE_FILE}"
     # prompt for password token if interactive, unless already answered
     else
-        ZITI_BOOTSTRAP_DATABASE=$(awk -F= '/^Environment=ZITI_BOOTSTRAP_DATABASE=/ {print $3}' "${ZITI_CTRL_SVC_FILE}")
         if ! [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
             echo "INFO: ZITI_BOOTSTRAP_DATABASE is not true in ${ZITI_CTRL_SVC_FILE}" >&2
         # do nothing if enrollment token is already defined in env file
         elif [[ -n "${ZITI_PWD:-}" ]]; then
-            echo "INFO: ZITI_PWD is defined in ${ZITI_CTRL_ENV_FILE} and will be used to init db during"\
+            echo "INFO: ZITI_PWD is defined in ${ZITI_CTRL_BOOT_ENV_FILE} and will be used to init db during"\
                     "next startup"
         elif    grep -qE "^LoadCredential=ZITI_PWD:${ZITI_PWD_FILE}" "${ZITI_CTRL_SVC_FILE}" \
                 && [[ -s "${ZITI_PWD_FILE}" ]]; then
@@ -127,7 +130,7 @@ promptPwd() {
                 fi
             else
                 echo "WARN: missing ZITI_PWD; use LoadCredential in"\
-                        "${ZITI_CTRL_SVC_FILE} or set in ${ZITI_CTRL_ENV_FILE}" >&2
+                        "${ZITI_CTRL_SVC_FILE} or set in ${ZITI_CTRL_BOOT_ENV_FILE}" >&2
             fi
         fi
     fi
@@ -136,19 +139,14 @@ promptPwd() {
 promptBootstrap() {
     # if undefined, check previous answer in service unit or prompt for bootstrap, preserving default if no answer
     if [[ -z "${ZITI_BOOTSTRAP:-}" ]]; then
-        ZITI_BOOTSTRAP="$(awk -F= '/^Environment=ZITI_BOOTSTRAP=/ {print $3}' "${ZITI_CTRL_SVC_FILE}")"
-        if [[ -z "${ZITI_BOOTSTRAP}" ]]; then
-            if ZITI_BOOTSTRAP="$(prompt 'Bootstrap the controller config [Y/n]: ' || echo 'true')"; then
-                if [[ "${ZITI_BOOTSTRAP}" =~ ^[yY]([eE][sS])?$ ]]; then
-                    ZITI_BOOTSTRAP=true
-                elif [[ "${ZITI_BOOTSTRAP}" =~ ^[nN][oO]?$ ]]; then
-                    ZITI_BOOTSTRAP=false
-                fi
-                sed -Ei "s/^(ZITI_BOOTSTRAP)=.*/\1=${ZITI_BOOTSTRAP}/" "${ZITI_CTRL_ENV_FILE}"
+        if ZITI_BOOTSTRAP="$(prompt 'Bootstrap the controller config [Y/n]: ' || echo 'true')"; then
+            if [[ "${ZITI_BOOTSTRAP}" =~ ^[yY]([eE][sS])?$ ]]; then
+                ZITI_BOOTSTRAP=true
+            elif [[ "${ZITI_BOOTSTRAP}" =~ ^[nN][oO]?$ ]]; then
+                ZITI_BOOTSTRAP=false
             fi
-            sed -Ei 's/^(Environment=ZITI_BOOTSTRAP=).*/\1'"${ZITI_BOOTSTRAP}"'/' "${ZITI_CTRL_SVC_FILE}"
-            systemctl daemon-reload
         fi
+        sed -Ei "s/^(ZITI_BOOTSTRAP)=.*/\1=${ZITI_BOOTSTRAP}/" "${ZITI_CTRL_SVC_ENV_FILE}"
     fi
     if [[ "${ZITI_BOOTSTRAP}" != true ]]; then
         exit 0
@@ -159,7 +157,7 @@ promptCtrlPort() {
     # if undefined or default value in env file, prompt for router port, preserving default if no answer
     if [[ -z "${ZITI_CTRL_ADVERTISED_PORT:-}" ]]; then
         if ZITI_CTRL_ADVERTISED_PORT="$(prompt 'Enter the controller port [1280]: ' || echo '1280')"; then
-            sed -Ei "s/^(ZITI_CTRL_ADVERTISED_PORT)=.*/\1=${ZITI_CTRL_ADVERTISED_PORT}/" "${ZITI_CTRL_ENV_FILE}"
+            sed -Ei "s/^(ZITI_CTRL_ADVERTISED_PORT)=.*/\1=${ZITI_CTRL_ADVERTISED_PORT}/" "${ZITI_CTRL_BOOT_ENV_FILE}"
         fi
     fi
     if [[ "${ZITI_CTRL_ADVERTISED_PORT}" -le 1024 ]]; then
@@ -190,7 +188,8 @@ exportZitiVars() {
 : "${MINIMUM_SYSTEMD_VERSION:=232}"
 DEFAULT_ADDR=localhost
 ZITI_PWD_FILE=/opt/openziti/etc/controller/.pwd
-ZITI_CTRL_ENV_FILE=/opt/openziti/etc/controller/env
+ZITI_CTRL_SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
+ZITI_CTRL_BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
 ZITI_CTRL_SVC_FILE=/lib/systemd/system/ziti-controller.service
 
 # initialize a file descriptor for debug output

@@ -24,7 +24,11 @@ contents:
       mode: 0755
 
   - dst: /opt/openziti/etc/router/
-    src: ./dist/dist-packages/linux/openziti-router/env
+    src: ./dist/dist-packages/linux/openziti-router/service.env
+    type: config|noreplace
+
+  - dst: /opt/openziti/etc/router/
+    src: ./dist/dist-packages/linux/openziti-router/bootstrap.env
     type: config|noreplace
 
   - dst: /opt/openziti/etc/router/

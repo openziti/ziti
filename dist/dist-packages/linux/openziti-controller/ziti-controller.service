@@ -7,7 +7,7 @@ After=network-online.target
 # you must set the admin password to bootstrap the database; the bootstrapping script will initialize the default admin
 # username and password by loading the password from a file or env var; for security, set permissions to allow read only
 # by root only and remove the file after the bootstrapping that occurs on the first run or set ZITI_PWD in
-# /opt/openziti/etc/controller/env
+# /opt/openziti/etc/controller/bootstrap.env
 #
 LoadCredential=ZITI_PWD:/opt/openziti/etc/controller/.pwd
 
@@ -23,26 +23,15 @@ LoadCredential=ZITI_PWD:/opt/openziti/etc/controller/.pwd
 ##
 #
 
+# this env file configures the service, including whether or not to perform bootstrapping
+EnvironmentFile=/opt/openziti/etc/controller/service.env
+# this answer file provides input values for bootstrapping during first startup
+EnvironmentFile=/opt/openziti/etc/controller/bootstrap.env
 # manage the user and permissions for the service automatically
+
 DynamicUser=yes
-EnvironmentFile=/opt/openziti/etc/controller/env
 # used by bootstrap.bash to look up /run/credentials/$UNIT_NAME/$CREDENTIAL_NAME
 Environment=UNIT_NAME=ziti-controller.service
-# BASH script that defines function bootstrap()
-Environment=ZITI_CTRL_BOOTSTRAP_BASH=/opt/openziti/etc/controller/bootstrap.bash
-# disable JSON logging during bootstrapping
-Environment=PFXLOG_NO_JSON=true
-# set "false" to disable bootstrapping
-Environment=ZITI_BOOTSTRAP=
-# create a new PKI unless it exists
-Environment=ZITI_BOOTSTRAP_PKI=true
-# create a config file unless it exists if "true", set "force" to overwrite (changing the advertised URI will break
-# existing enrollments who will be unable to connect to the controller)
-Environment=ZITI_BOOTSTRAP_CONFIG=true
-# create a new database unless it exists
-Environment=ZITI_BOOTSTRAP_DATABASE=true
-# renew server and client certificates every startup
-Environment=ZITI_AUTO_RENEW_CERTS=true
 # create a new config file relative to working directory unless it exists
 # absolute path where service will be run
 ExecStart=/opt/openziti/etc/controller/entrypoint.bash run config.yml

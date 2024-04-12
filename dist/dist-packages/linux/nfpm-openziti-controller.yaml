@@ -24,7 +24,11 @@ contents:
       mode: 0755
 
   - dst: /opt/openziti/etc/controller/
-    src: ./dist/dist-packages/linux/openziti-controller/env
+    src: ./dist/dist-packages/linux/openziti-controller/service.env
+    type: config|noreplace
+
+  - dst: /opt/openziti/etc/controller/
+    src: ./dist/dist-packages/linux/openziti-controller/bootstrap.env
     type: config|noreplace
 
   - dst: /opt/openziti/etc/controller/

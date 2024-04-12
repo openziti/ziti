@@ -20,7 +20,7 @@ fi
 source "${ZITI_CTRL_BOOTSTRAP_BASH:-/opt/openziti/etc/controller/bootstrap.bash}"
 
 # if first arg is "run", bootstrap the controller with the config file
-if [ "${1}" == run ]; then
+if [[ "${1}" == run && "${ZITI_BOOTSTRAP:-}" == true ]]; then
     bootstrap "${2}"
 fi
 
