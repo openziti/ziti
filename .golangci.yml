@@ -1,9 +1,8 @@
 run:
   build-tags:
     - apitests
-  deadline: 8m
-  skip-files:
-    - ziti/cmd/edge/verify_ca.go
+  # Default: 1m
+  timeout: 8m
 
 # golangci gives false positives for implementations of methods using generics in generic interfaces
 issues:
@@ -11,3 +10,6 @@ issues:
     - path: 'controller/model/.*.go'
       linters:
         - unused
+    - path: 'ziti/cmd/edge/verify_ca.go'
+      linters:
+        - staticcheck
