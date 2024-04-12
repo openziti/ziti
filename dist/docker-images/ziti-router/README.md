@@ -1,22 +1,43 @@
 
 # Run Ziti Router in Docker
 
-You can use this container image to run Ziti Router in a Docker container.
+You can use this container image to run a Ziti Router in a Docker container.
 
 ## Container Image
 
 The `openziti/ziti-router` image is thin and is based on the `openziti/ziti-cli` image, which only provides the `ziti`
-CLI. The `ziti-router` image simply adds the `ziti router` subcommand to prefix the args you supply.
+CLI. This `ziti-router` image adds an entrypoint that provides router bootstrapping when `ZITI_BOOTSTRAP=true` and uses
+the same defaults and options as the Linux package.
 
 ## Docker Compose
 
-The included `compose.yml` demonstrates how to bootstrap a router and assumes you have the enrollment token and know the
-address of the controller, i.e., the `ctrl.endpoint` of the control plane listener provided by the OpenZiti controller.
+The included `compose.yml` demonstrates how to bootstrap a router and documents the most relevant environment variables
+that influence bootstrapping.
 
-### TPROXY Example
+### Standalone Example
 
-This demonstrates how to use the `openziti/ziti-router` image to run a Ziti Router in a Docker container to configure
-the network namespace of another container to use the Ziti network.
+```bash
+# create the router, saving the enrollment token to a file
+ziti edge create edge-router "router1" \
+   --jwt-output-file=./router1.jwt
+
+# fetch the compose file for the ziti-router image
+wget https://get.openziti.io/dist/docker-images/ziti-router/compose.yml
+
+ZITI_ENROLL_TOKEN="$(<./router1.jwt)" \
+ZITI_CTRL_ADVERTISED_ADDRESS=ctrl.127.21.71.0.sslip.io \
+ZITI_CTRL_ADVERTISED_PORT=1280 \
+ZITI_ROUTER_ADVERTISED_ADDRESS=router1.127.0.0.1.sslip.io \
+ZITI_ROUTER_PORT=3022 \
+    docker compose up
+```
+
+### Sidecar Example
+
+You can use this image as a sidecar container that provides Ziti DNS and TPROXY interception to another container. This
+contrived example provides a web server that listens on port 8000 and a client that waits for the webserver to be
+available. The client container shares a network interface with the router container and waits for the router to be
+healthy before running.
 
 ```bash
 # fetch the compose file for the ziti-router image
@@ -62,8 +83,21 @@ docker compose up hello --detach
 ziti edge login 127.0.0.1:1280 -y -u admin -p admin
 
 # create a Ziti service for the hello web server
-ziti edge secure hello tcp:hello:8000 \
-    --interceptAddress=hello.internal
+ziti edge create config "hello-intercept-config" intercept.v1 \
+  '{"portRanges":[{"high":80,"low":80}],"addresses":["hello.internal"],"protocols":["tcp"]}'
+ziti edge create config "hello-host-config" host.v1 \
+  '{"address":"hello","port":8000,"forwardProtocol":true,"allowedProtocols":["tcp"]}'
+ziti edge create service "hello" \
+  --configs 'intercept.v1,host.v1' \
+  --role-attributes 'hello.services'
+ziti edge create service-policy "hello-dial-policy" Dial \
+  --semantic AnyOf \
+  --service-roles '#hello.services' \
+  --identity-roles '#hello.clients'
+ziti edge create service-policy "hello-bind-policy" Bind \
+  --semantic AnyOf \
+  --service-roles '#hello.services' \
+  --identity-roles '#hello.servers'
 
 # grant the quickstart router permission to bind (provide) the hello service
 ziti edge update identity quickstart-router \
@@ -82,7 +116,7 @@ ziti edge update identity tproxy-router \
 ziti edge policy-advisor services -q
 
 # run the demo client which triggers the run of the tproxy router because it is a dependency
-ZITI_ROUTER_JWT="$(<./tproxyRouter.jwt)" \
+ZITI_ENROLL_TOKEN="$(<./tproxyRouter.jwt)" \
 ZITI_ROUTER_MODE=tproxy \
 ZITI_CTRL_ADVERTISED_ADDRESS=quickstart \
 ZITI_CTRL_ADVERTISED_PORT=1280 \
