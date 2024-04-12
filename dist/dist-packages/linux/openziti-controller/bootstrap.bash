@@ -128,7 +128,7 @@ function makeConfig() {
 
   # set the URI of the edge-client API (uses same TCP port); e.g., ztAPI: ziti.example.com:1280
   export  ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}" \
-          ZITI_CTRL_EDGE_ADVERTISED_PORT="${ZITI_CTRL_ADVERTISED_PORT}"
+          ZITI_CTRL_EDGE_ADVERTISED_PORT="${ZITI_CTRL_ADVERTISED_PORT:=1280}"
 
   # export the vars that were assigned inside this script to set the path to the server and client certs and their common
   # private key, and the intermediate (signer) CA cert and key
@@ -173,7 +173,7 @@ function makeDatabase() {
       --password "${ZITI_PWD}"
   else
     echo  "ERROR: need admin password; use LoadCredential in"\
-          " /lib/systemd/system/ziti-controller.service or set env var ZITI_PWD with at least 5 characters" >&2
+          " /lib/systemd/system/ziti-controller.service or set env var ZITI_PWD" >&2
     return 1
   fi
 
