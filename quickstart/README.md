@@ -6,27 +6,27 @@ simple networks. As with any solution it is common for additional changes to the
 after expanding beyond the initial setup.
 
 There are three different modes contained in these folders. One mode allows you very quickly get setup and
-run the two main components  of a OpenZiti network: ziti-controller and ziti-router. The [Express](#express)
+run the two main components of a OpenZiti network: ziti-controller and ziti-router. The [Express](#express)
 configuration will guide you here.
 
 The remaining two modes all use [docker](https://docs.docker.com/get-started/) to establish environments.
 The first of the docker-based quickstarts uses [docker-compose](https://docs.docker.com/compose/). 
 You will find a fully defined OpenZiti Network in a compose file which should allow you to understand better
 and learn how multiple routers can be linked to form a mesh network or serve as an initial
-template to build your own compose file from.
+template to build your own compose file.
 
 Lastly, you can choose to run [docker](https://docs.docker.com/get-started/) directly. This mode is necessarily
 more verbose but should you prefer to not use docker-compose it can also illustrate how to establish
-a OpenZiti Network piece by piece.
+an OpenZiti Network piece by piece.
 
 ## Prerequisites
 
 ### Bash
 
-All of these quickstarts will use bash. On MacOS/linux this will be natural however on Windows you'll want
+All of these quickstarts will use bash. On MacOS/Linux this will be natural however on Windows you'll want
 to ensure you have a suitable shell. There are numerous shells available but perhaps the simplest will be
-to use [Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-us/windows/wsl/install-win10). You 
-might also use git-bash, cygwin, or any other bash shell you fancy.
+to use [Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-us/windows/wsl/install-win10). You
+might also use git-bash, Cygwin, or any other bash shell you fancy.
 
 ### Docker/Docker Compose
 
@@ -51,40 +51,39 @@ The express install script will do quite a few things to get you bootstrapped.  
     1. create a full suite of PKI
     1. create a config file for the controller
     1. create a config file for an edge router
-1. download the latest distribution of ziti from github.com/openziti/ziti/releases
+1. download the latest distribution of Ziti from github.com/openziti/ziti/releases
 1. unzip the distribution
-1. start the `ziti-controller` and `ziti-router` executables
-1. the `ziti-controller` should now be exposed on https://$(hostname):1280
+1. start the controller and router in the background
+1. expose the controller on https://$(hostname):1280
 
 ## Docker - Compose
 
-The [docker-compose](https://docs.docker.com/compose/) based example will create numerous `ziti-router`s 
+The [docker-compose](https://docs.docker.com/compose/) based example will create numerous `ziti-router`s
 as well as spooling up a `ziti-controller` and expose the controller on port 1280. This configuration is intended to
 look and feel like the following image:
 ![image info](./docker-compose-nw.svg)
 
 Here, a simple OpenZiti Network is shown which contains two public OpenZiti Edge Routers, one router without the "edge" enabled
 and usable only for transit, and two private edge routers: one blue, one red. The goal with this setup is to attempt to
-have a single isolated service that is not accessible from outside of the blue network (as best as possible with 
+have a single isolated service that is not accessible from outside of the blue network (as best as possible with
 only docker).
 
 ## Docker - No Compose
 
-You can still startup a dev environment easily with [docker](https://docs.docker.com/get-started/) only. In this example
-you will start a OpenZiti Controller as well as a single OpenZiti Edge Router.
+You can still start up a dev environment easily with [docker](https://docs.docker.com/get-started/) only. In this example,
+you will start an OpenZiti Controller as well as a single OpenZiti Edge Router.
 
 ### Prerequisite
 
-Since the openziti project is all about creating overlay networks - it's important for the docker containers to be
-able to communicate to one another. This is accomplished using a docker network and setting the alias of the container
-on that docker network.
+The Docker containers must be able to communicate with one another. This is accomplished using a Docker network and
+setting the alias of the container on that Docker network.
 
 Before running the commands below please do the following:
   
       #declare a variable that defines the 'network'
       zitinw="myZitiNetwork"
       
-      #declare a fully qualified path to the location you want your shared files to go and create it
+      #declare a fully qualified path to the location that you want your shared files to go and create it
       zitinw_shared="${HOME}/.ziti/dockerenvs/${zitinw}"
       mkdir -p "${zitinw_shared}"
 

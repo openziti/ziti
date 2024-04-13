@@ -12,7 +12,7 @@ grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' go.mod
 
 ## Build and Install All Applications
 
-This repo contains several Go applications, e.g. ziti-controller, ziti-router. These applications were reorganized as subcommands of the `ziti` CLI application, so it's no longer necessary to build the discrete binaries. Only the `ziti` CLI is necessary. The easiest way to build and install `ziti` in `${GOPATH}/bin` is:
+This repo contains one main Go application, i.e. `ziti` with many subcommands. The easiest way to build and install `ziti` in `${GOPATH}/bin` is:
 
 ```bash
 # build and install ziti CLI
@@ -23,20 +23,15 @@ If you add `${GOPATH}/bin` to your executable search `${PATH}` then you may imme
 
 ```bash
 $ ziti version
-NAME             VERSION
-ziti             v0.0.0
-ziti-controller  not installed
-ziti-prox-c      not installed
-ziti-router      not installed
-ziti-tunnel      not installed
-ziti-edge-tunnel v0.20.18-local
+v0.0.0
 ```
 
-## Build ziti CLI
+## Save Build Artifact Elsewhere
 
 ```bash
 # build the binary without installing in GOPATH
 go build -o ./build/ziti ./ziti/
+
 # execute the binary
 ./build/ziti version
 ```

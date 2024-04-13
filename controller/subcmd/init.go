@@ -63,10 +63,10 @@ func NewEdgeInitializeCmd(versionProvider versions.VersionProvider) *cobra.Comma
 	cmd := &cobra.Command{
 		Use:     "init <config> [-p]",
 		Aliases: []string{"initialize"},
-		Example: "ziti-controller edge init controller.yml -u admin -p o93wjh5n",
+		Example: "ziti controller edge init controller.yml -u admin -p o93wjh5n",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {
-				return errors.New("config file not specified: ziti-controller edge init <config>")
+				return errors.New("config file not specified: ziti controller edge init <config>")
 			}
 
 			return nil
