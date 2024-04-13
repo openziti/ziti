@@ -168,9 +168,15 @@ function makeDatabase() {
 
   : "${ZITI_PWD:=$(< "/run/credentials/${UNIT_NAME:-ziti-controller.service}/ZITI_PWD")}"
   if [ -n "${ZITI_PWD}" ]; then
-    ziti controller edge init "${ZITI_CTRL_CONFIG_FILE}" \
+    if ! ziti controller edge init "${ZITI_CTRL_CONFIG_FILE}" \
       --username "${ZITI_USER}" \
       --password "${ZITI_PWD}"
+    then
+      echo "ERROR: failed to create default admin in database" >&2
+      # do not leave behind a partially-initialized database file because it prevents us from trying again
+      rm -f "${ZITI_CTRL_DATABASE_FILE}"
+      return 1
+    fi
   else
     echo  "ERROR: need admin password; use LoadCredential in"\
           " /lib/systemd/system/ziti-controller.service or set env var ZITI_PWD" >&2
