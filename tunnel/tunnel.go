@@ -34,6 +34,7 @@ var log = logrus.StandardLogger()
 type Service interface {
 	GetFabricProvider() FabricProvider
 	GetName() string
+	GetId() string
 	GetDialTimeout() time.Duration
 	IsEncryptionRequired() bool
 }

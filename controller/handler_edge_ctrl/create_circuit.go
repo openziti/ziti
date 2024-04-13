@@ -126,9 +126,9 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 	ctx.loadSession(ctx.req.GetSessionToken(), ctx.req.GetApiSessionToken())
 	ctx.checkSessionType(db.SessionTypeDial)
 	ctx.checkSessionFingerprints(ctx.req.GetFingerprints())
-	ctx.verifyEdgeRouterAccess()
+	ctx.verifyIdentityEdgeRouterAccess()
 	ctx.loadService()
-	circuitInfo, peerData := ctx.createCircuit(ctx.req.GetTerminatorInstanceId(), ctx.req.GetPeerData())
+	circuitInfo, peerData := ctx.createCircuit(ctx.req.GetTerminatorInstanceId(), ctx.req.GetPeerData(), ctx.newCircuitCreateParms)
 
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)

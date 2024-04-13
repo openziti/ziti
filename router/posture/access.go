@@ -30,7 +30,7 @@ func HasAccess(rdm *common.RouterDataModel, identityId string, serviceId string,
 	}
 
 	log.Debugf("access provided via policy %s [%s]", grantingPolicy.Name, grantingPolicy.Id)
-	return grantingPolicy, errs
+	return grantingPolicy, nil
 }
 
 func IsPassing(accessPolicies *common.AccessPolicies, cache *Cache) (*edge_ctrl_pb.DataState_ServicePolicy, *PolicyAccessErrors) {
