@@ -69,6 +69,7 @@ function bootstrap() {
 : "${ZITI_ROUTER_ADVERTISED_ADDRESS:=localhost}"
 : "${ZITI_ROUTER_NAME:=router}"
 : "${ZITI_CTRL_ADVERTISED_PORT:=1280}"
+: "${ZITI_ROUTER_PORT:=3022}"
 : "${ZITI_ROUTER_MODE:=none}"
 export  ZITI_ROUTER_NAME \
         ZITI_ROUTER_ADVERTISED_ADDRESS \
