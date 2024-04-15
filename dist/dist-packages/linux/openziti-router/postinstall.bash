@@ -222,7 +222,7 @@ DEFAULT_ADDR=localhost
 ZITI_ENROLL_TOKEN_FILE=/opt/openziti/etc/router/.token
 ZITI_ROUTER_BOOT_ENV_FILE=/opt/openziti/etc/router/bootstrap.env
 ZITI_ROUTER_SVC_ENV_FILE=/opt/openziti/etc/router/service.env
-ZITI_ROUTER_SVC_FILE=/lib/systemd/system/ziti-router.service
+ZITI_ROUTER_SVC_FILE=/etc/systemd/system/ziti-router.service.d/override.conf
 
 # initialize a file descriptor for debug output
 : "${DEBUG:=0}"

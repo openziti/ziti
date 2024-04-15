@@ -98,7 +98,7 @@ promptPwd() {
     # prompt for password token if interactive, unless already answered
     else
         if ! [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
-            echo "INFO: ZITI_BOOTSTRAP_DATABASE is not true in ${ZITI_CTRL_SVC_FILE}" >&2
+            echo "INFO: ZITI_BOOTSTRAP_DATABASE is not true in ${ZITI_CTRL_SVC_ENV_FILE}" >&2
         # do nothing if enrollment token is already defined in env file
         elif [[ -n "${ZITI_PWD:-}" ]]; then
             echo "INFO: ZITI_PWD is defined in ${ZITI_CTRL_BOOT_ENV_FILE} and will be used to init db during"\
@@ -173,7 +173,7 @@ DEFAULT_ADDR=localhost
 ZITI_PWD_FILE=/opt/openziti/etc/controller/.pwd
 ZITI_CTRL_SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
 ZITI_CTRL_BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
-ZITI_CTRL_SVC_FILE=/lib/systemd/system/ziti-controller.service
+ZITI_CTRL_SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
 
 # initialize a file descriptor for debug output
 : "${DEBUG:=0}"
