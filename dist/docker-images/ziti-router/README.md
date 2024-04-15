@@ -42,13 +42,20 @@ healthy before running.
 ```bash
 # fetch the compose file for the ziti-router image
 wget -O ./compose.router.yml https://get.openziti.io/dist/docker-images/ziti-router/compose.yml
-
-# run the quickstart network in the background to provide the ctrl.endpoint at quickstart:1280
+# fetch the router tproxy compose overrides files
+wget -O ./compose.tproxy.yml https://get.openziti.io/dist/docker-images/ziti-router/compose.override.yml
+# fetch the all-in-one quickstart compose file
 wget -O ./compose.quickstart.yml https://get.openziti.io/dock/all-in-one/compose.yml
+```
 
-# patch the Compose project to use the quickstart network and provide a web server to test the hello service
-cat <<EOF >./compose.tproxy.yml
-services:
+Patch the Compose project to use the quickstart network and provide a web server to test the hello service.
+
+```bash
+cat <<EOF >>./compose.tproxy.yml
+    # link the router to the quickstart network so it can reach the Ziti controller
+    networks:
+      - quickstart
+
   # add a hello web server to use for a Ziti service target
   hello:
     image: openziti/hello-world
@@ -65,24 +72,66 @@ services:
       ziti-router:
         condition: service_healthy
     command: wget --output-document=- http://hello.internal/
+EOF
+```
 
-  # link the router to the quickstart network so it can reach the Ziti controller
+Your `compose.tproxy.yml` should look like this.
+
+```yaml
+services:
   ziti-router:
+    dns:
+      - 127.0.0.1
+      - 1.1.1.1
+    user: root
+    cap_add:
+      - NET_ADMIN
     networks:
       - quickstart
-EOF
-export COMPOSE_FILE=compose.router.yml:compose.quickstart.yml:compose.tproxy.yml
 
-# run the Ziti controller in the background with the all-in-one quickstart container
+  hello:
+    image: openziti/hello-world
+    expose:
+      - 8000
+    networks:
+      - quickstart
+
+  tproxy-demo-client:
+    image: busybox
+    network_mode: service:ziti-router
+    depends_on:
+      ziti-router:
+        condition: service_healthy
+    command: wget --output-document=- http://hello.internal/
+```
+
+Define the Compose project files.
+
+```bash
+export COMPOSE_FILE=compose.router.yml:compose.tproxy.yml:compose.quickstart.yml
+```
+
+Run the Ziti controller in the background with the all-in-one quickstart container.
+
+```bash
 docker compose up quickstart-check
+```
 
-# start the hello web server listening on 8000
+Start the hello web server listening on 8000.
+
+```bash
 docker compose up hello --detach
+```
 
-# log in to the Ziti controller
+Log in to the Ziti controller
+
+```bash
 ziti edge login 127.0.0.1:1280 -y -u admin -p admin
+```
 
-# create a Ziti service for the hello web server
+Create a Ziti service for the hello web server.
+
+```bash
 ziti edge create config "hello-intercept-config" intercept.v1 \
   '{"portRanges":[{"high":80,"low":80}],"addresses":["hello.internal"],"protocols":["tcp"]}'
 ziti edge create config "hello-host-config" host.v1 \
@@ -98,24 +147,39 @@ ziti edge create service-policy "hello-bind-policy" Bind \
   --semantic AnyOf \
   --service-roles '#hello.services' \
   --identity-roles '#hello.servers'
+```
 
-# grant the quickstart router permission to bind (provide) the hello service
+Grant the quickstart router permission to bind (provide) the hello service.
+
+```bash
 ziti edge update identity quickstart-router \
     --role-attributes=hello.servers
+```
 
-# create a second Ziti router to use as a tproxy client
+Create a second Ziti router to use as a tproxy client.
+
+```bash
 ziti edge create edge-router "tproxy-router" \
    --jwt-output-file=./tproxy-router.jwt \
    --tunneler-enabled
+```
 
-# grant the tproxy client permission to dial (consume) the hello service
+Grant the tproxy client permission to dial (consume) the hello service
+
+```bash
 ziti edge update identity tproxy-router \
     --role-attributes=hello.clients
+```
 
-# simulate policies to check for authorization problems
+Simulate policies to check for authorization problems
+
+```bash
 ziti edge policy-advisor services -q
+```
 
-# run the demo client which triggers the run of the tproxy router because it is a dependency
+Run the demo client which triggers the run of the tproxy router because it is a dependency.
+
+```bash
 ZITI_ENROLL_TOKEN="$(<./tproxyRouter.jwt)" \
 ZITI_ROUTER_MODE=tproxy \
 ZITI_CTRL_ADVERTISED_ADDRESS=quickstart \
