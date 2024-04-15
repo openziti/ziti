@@ -19,16 +19,18 @@
 package profiler
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
 type CPU struct {
 	path      string
 	shutdownC <-chan struct{}
+	profile   *os.File
 }
 
 func NewCPU(path string) (*CPU, error) {
@@ -44,7 +46,7 @@ func NewCPUWithShutdown(path string, shutdownC <-chan struct{}) (*CPU, error) {
 		return nil, err
 	}
 	pfxlog.Logger().Infof("cpu profiling to [%s]", path)
-	return &CPU{path: path, shutdownC: shutdownC}, nil
+	return &CPU{path: path, shutdownC: shutdownC, profile: f}, nil
 }
 
 func (cpu *CPU) Run() {
@@ -55,7 +57,7 @@ func (cpu *CPU) Run() {
 	case <-signalChan:
 	case <-cpu.shutdownC:
 	}
-
+	defer cpu.profile.Close()
 	pprof.StopCPUProfile()
 	pfxlog.Logger().Info("stopped profiling cpu")
 }
