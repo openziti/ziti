@@ -6,7 +6,6 @@ set -o pipefail
 # set -o xtrace
 
 install() {
-    checkSystemdVersion $MINIMUM_SYSTEMD_VERSION
     commonActions
 
 }
@@ -28,21 +27,6 @@ commonActions() {
     promptRouterPort
     promptEnrollToken
     promptRouterMode
-}
-
-checkSystemdVersion() {
-    # Step 2 (clean install), enable the service in the proper way for this platform
-    if ! command -V systemctl &>/dev/null; then
-        echo "ERROR: required command 'systemctl' is missing" >&2
-        return 1
-    else
-        systemd_version=$(systemctl --version | awk '/^systemd/ {print $2}')
-    fi
-
-    if [ "${systemd_version}" -lt "$1" ]; then
-        printf "\033[31m systemd version %s is less than %d , aborting \033[0m\n" "${systemd_version}" "$1"
-        return 1
-    fi
 }
 
 makeEmptyRestrictedFile() {
@@ -234,7 +218,6 @@ exportZitiVars() {
     done
 }
 
-: "${MINIMUM_SYSTEMD_VERSION:=232}"
 DEFAULT_ADDR=localhost
 ZITI_ENROLL_TOKEN_FILE=/opt/openziti/etc/router/.token
 ZITI_ROUTER_BOOT_ENV_FILE=/opt/openziti/etc/router/bootstrap.env

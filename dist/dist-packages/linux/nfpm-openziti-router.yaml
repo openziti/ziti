@@ -43,3 +43,4 @@ scripts:
 
 depends:
   - openziti  # ziti CLI
+  - systemd (>= ${MINIMUM_SYSTEMD_VERSION})

@@ -38,6 +38,7 @@ contents:
     src: ./dist/dist-packages/linux/openziti-controller/entrypoint.bash
 depends:
   - openziti  # ziti CLI
+  - systemd (>= ${MINIMUM_SYSTEMD_VERSION})
 
 scripts:
   postinstall: ./dist/dist-packages/linux/openziti-controller/postinstall.bash

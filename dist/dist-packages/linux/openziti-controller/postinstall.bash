@@ -5,7 +5,6 @@ set -o nounset
 set -o pipefail
 
 install() {
-    checkSystemdVersion "${MINIMUM_SYSTEMD_VERSION}"
     commonActions
 
 }
@@ -24,21 +23,6 @@ commonActions() {
     promptCtrlAdvertisedAddress
     promptCtrlPort
     promptPwd
-}
-
-checkSystemdVersion() {
-    # Step 2 (clean install), enable the service in the proper way for this platform
-    if ! command -V systemctl &>/dev/null; then
-        echo "ERROR: required command 'systemctl' is missing" >&2
-        return 1
-    else
-        systemd_version=$(systemctl --version | awk '/^systemd/ {print $2}')
-    fi
-
-    if [ "${systemd_version}" -lt "$1" ]; then
-        printf "\033[31m systemd version %s is less than %d , aborting \033[0m\n" "${systemd_version}" "$1"
-        return 1
-    fi
 }
 
 makeEmptyRestrictedFile() {
@@ -185,7 +169,6 @@ exportZitiVars() {
     done
 }
 
-: "${MINIMUM_SYSTEMD_VERSION:=232}"
 DEFAULT_ADDR=localhost
 ZITI_PWD_FILE=/opt/openziti/etc/controller/.pwd
 ZITI_CTRL_SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
