@@ -1,0 +1,49 @@
+# nfpm configuration file
+#
+# check https://nfpm.goreleaser.com/configuration for detailed usage
+#
+name: openziti-router
+arch: ${GOARCH}
+platform: linux
+version: ${ZITI_VERSION}
+prerelease: ${ZITI_REV}
+maintainer: ${ZITI_MAINTAINER}
+description: >
+  Provides a system service for running an OpenZiti Router
+vendor: ${ZITI_VENDOR}
+homepage: ${ZITI_HOMEPAGE}
+license: Apache-2.0
+# Contents to add to the package.
+contents:
+  - dst: /lib/systemd/system/
+    src: ./dist/dist-packages/linux/openziti-router/ziti-router.service
+
+  - dst: /etc/systemd/system/ziti-router.service.d/override.conf
+    src: ./dist/dist-packages/linux/openziti-router/ziti-router.service.override.conf
+
+  - dst: /opt/openziti/etc/router
+    type: dir
+    file_info:
+      mode: 0755
+
+  - dst: /opt/openziti/etc/router/
+    src: ./dist/dist-packages/linux/openziti-router/service.env
+    type: config|noreplace
+
+  - dst: /opt/openziti/etc/router/
+    src: ./dist/dist-packages/linux/openziti-router/bootstrap.env
+    type: config|noreplace
+
+  - dst: /opt/openziti/etc/router/
+    src: ./dist/dist-packages/linux/openziti-router/bootstrap.bash
+
+  - dst: /opt/openziti/etc/router/
+    src: ./dist/dist-packages/linux/openziti-router/entrypoint.bash
+
+scripts:
+  postinstall: ./dist/dist-packages/linux/openziti-router/postinstall.bash
+  preremove: ./dist/dist-packages/linux/openziti-router/preremove.bash
+
+depends:
+  - openziti  # ziti CLI
+  - systemd (>= ${MINIMUM_SYSTEMD_VERSION})

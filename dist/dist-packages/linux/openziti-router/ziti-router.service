@@ -1,0 +1,37 @@
+[Unit]
+Description=OpenZiti Router
+After=network-online.target
+
+[Service]
+
+#
+## options
+#
+
+# this env file configures the service, including whether or not to perform bootstrapping
+EnvironmentFile=/opt/openziti/etc/router/service.env
+# this answer file provides input values for bootstrapping during first startup
+EnvironmentFile=/opt/openziti/etc/router/bootstrap.env
+# used by bootstrap.bash to look up /run/credentials/$UNIT_NAME/$CREDENTIAL_NAME
+Environment=UNIT_NAME=ziti-router.service
+
+#
+## misc
+#
+
+# manage the user and permissions for the service automatically
+DynamicUser=yes
+# relative to /var/lib
+StateDirectory=ziti-router
+# absolute path where service will be run
+WorkingDirectory=/var/lib/ziti-router
+# "ziti router run" is the main process managed by this service and replaces entrypoint.bash
+Type=simple
+UMask=0007
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+ExecStart=/opt/openziti/etc/router/entrypoint.bash run config.yml
+
+[Install]
+WantedBy=multi-user.target

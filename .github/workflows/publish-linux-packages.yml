@@ -16,6 +16,8 @@ jobs:
       matrix:
         package_name:
           - openziti
+          - openziti-controller
+          - openziti-router
         arch:
           - goreleaser: amd64
             gox: amd64
@@ -40,6 +42,7 @@ jobs:
       ZITI_HOMEPAGE: "https://openziti.io"
       ZITI_VENDOR: "NetFoundry"
       GOARCH: ${{ matrix.arch.goreleaser }}
+      MINIMUM_SYSTEMD_VERSION: 232
       ZITI_DEB_TEST_REPO: ${{ vars.ZITI_DEB_TEST_REPO || 'zitipax-openziti-deb-test' }}
       ZITI_DEB_PROD_REPO: ${{ vars.ZITI_DEB_PROD_REPO || 'zitipax-openziti-deb-stable' }}
       ZITI_RPM_TEST_REPO: ${{ vars.ZITI_RPM_TEST_REPO || 'zitipax-openziti-rpm-test' }}
