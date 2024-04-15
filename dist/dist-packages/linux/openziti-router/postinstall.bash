@@ -168,9 +168,9 @@ promptRouterMode() {
     # grant kernel capability NET_ADMIN if tproxy mode
     if [[ "${ZITI_ROUTER_MODE}" == tproxy ]]; then
         grantNetAdmin
-        # also grant NET_BIND_SERVICE if resolver port is default 53 or defined <= 1024
+        # also grant NET_BIND_SERVICE if resolver port is default 53 or defined < 1024
         RESOLVER_PORT="${ZITI_ROUTER_TPROXY_RESOLVER##*:}"
-        if [[ -z "${RESOLVER_PORT}" || "${RESOLVER_PORT}" -le 1024 ]]; then
+        if [[ -z "${RESOLVER_PORT}" || "${RESOLVER_PORT}" -lt 1024 ]]; then
             grantNetBindService
         fi
     fi
@@ -209,7 +209,7 @@ promptRouterPort() {
             sed -Ei "s/^(ZITI_ROUTER_PORT)=.*/\1=${ZITI_ROUTER_PORT}/" "${ZITI_ROUTER_BOOT_ENV_FILE}"
         fi
     fi
-    if [[ "${ZITI_ROUTER_PORT}" -le 1024 ]]; then
+    if [[ "${ZITI_ROUTER_PORT}" -lt 1024 ]]; then
         grantNetBindService
     fi
 }

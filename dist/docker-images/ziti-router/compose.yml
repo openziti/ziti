@@ -26,7 +26,7 @@ services:
       ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}                   # exposed port of the controller
       ZITI_ENROLL_TOKEN: ${ZITI_ENROLL_TOKEN:-}                                       # enrollment token for this router (required)
       ZITI_ROUTER_ADVERTISED_ADDRESS: ${ZITI_ROUTER_ADVERTISED_ADDRESS:-ziti-router}  # domain name for this router (default: the container ID [hostname -f])
-      ZITI_ROUTER_PORT: ${ZITI_ROUTER_PORT:-3022}                                      # exposed port for this router
+      ZITI_ROUTER_PORT: ${ZITI_ROUTER_PORT:-3022}                                     # exposed port for this router
       ZITI_ROUTER_MODE: ${ZITI_ROUTER_MODE:-none}                                     # none, host, tproxy, tproxy (default: none, tproxy requires additional config below)
 
       # *** less relevant vars below ***

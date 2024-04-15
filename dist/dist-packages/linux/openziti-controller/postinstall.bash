@@ -160,7 +160,7 @@ promptCtrlPort() {
             sed -Ei "s/^(ZITI_CTRL_ADVERTISED_PORT)=.*/\1=${ZITI_CTRL_ADVERTISED_PORT}/" "${ZITI_CTRL_BOOT_ENV_FILE}"
         fi
     fi
-    if [[ "${ZITI_CTRL_ADVERTISED_PORT}" -le 1024 ]]; then
+    if [[ "${ZITI_CTRL_ADVERTISED_PORT}" -lt 1024 ]]; then
         grantNetBindService
     fi
 }
