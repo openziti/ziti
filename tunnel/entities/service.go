@@ -340,7 +340,7 @@ type Service struct {
 func (self *Service) GetConfigOfType(configType string, target interface{}) (bool, error) {
 	configMap, found := self.Config[configType]
 	if !found {
-		pfxlog.Logger().Debugf("no service config of type %v defined for service %v", configType, self.Name)
+		pfxlog.Logger().Debugf("no service config of type %v defined for service %v", configType, *self.Name)
 		return false, nil
 	}
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{

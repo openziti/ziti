@@ -27,8 +27,6 @@ import (
 	"github.com/openziti/ziti/router/state"
 )
 
-const JwtTokenPrefix = "ey"
-
 type sessionConnectionHandler struct {
 	stateManager                     state.Manager
 	options                          *Options

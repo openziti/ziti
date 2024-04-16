@@ -29,11 +29,11 @@ import (
 	"github.com/openziti/ziti/controller/command"
 	routerEnv "github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/state"
+	"github.com/openziti/ziti/router/xgress_common"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -550,7 +550,7 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 		InstanceSecret: terminator.instanceSecret,
 	}
 
-	if self.stateManager.GetConfig().Ha.Enabled && strings.HasPrefix(request.SessionToken, JwtTokenPrefix) {
+	if self.stateManager.GetConfig().Ha.Enabled && xgress_common.IsBearerToken(request.SessionToken) {
 		apiSession := self.stateManager.GetApiSessionFromCh(terminator.Channel)
 
 		if apiSession == nil {

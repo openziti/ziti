@@ -51,10 +51,10 @@ func getUniqueId() string {
 }
 
 var Model = &model.Model{
-	Id: "simple-transfer",
+	Id: "smoketest",
 	Scope: model.Scope{
 		Defaults: model.Variables{
-			"environment": "simple-transfer-smoketest" + getUniqueId(),
+			"environment": "smoketest" + getUniqueId(),
 			"credentials": model.Variables{
 				"aws": model.Variables{
 					"managed_key": true,
@@ -75,6 +75,12 @@ var Model = &model.Model{
 			if val, _ := m.GetBoolVariable("ha"); !val {
 				for _, host := range m.SelectHosts("component.ha") {
 					delete(host.Region.Hosts, host.Id)
+				}
+			} else {
+				for _, component := range m.SelectComponents("*") {
+					if ztType, ok := component.Type.(*zitilab.ZitiTunnelType); ok {
+						ztType.HA = true
+					}
 				}
 			}
 			return nil
@@ -255,6 +261,8 @@ var Model = &model.Model{
 		"start":     actions.NewStartAction(),
 		"stop":      model.Bind(component.StopInParallel("*", 15)),
 		"login":     model.Bind(edge.Login("#ctrl1")),
+		"login2":    model.Bind(edge.Login("#ctrl2")),
+		"login3":    model.Bind(edge.Login("#ctrl3")),
 	},
 
 	Infrastructure: model.Stages{

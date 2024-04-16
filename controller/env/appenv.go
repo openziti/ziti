@@ -838,7 +838,6 @@ func (ae *AppEnv) ControllersKeyFunc(token *jwt.Token) (interface{}, error) {
 
 func (ae *AppEnv) GetControllerPublicKey(kid string) crypto.PublicKey {
 	signers := ae.Broker.GetPublicKeys()
-	pfxlog.Logger().Info("looking for signer: " + kid)
 	return signers[kid]
 }
 

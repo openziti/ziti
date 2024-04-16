@@ -54,6 +54,7 @@ type ZitiTunnelType struct {
 	Version     string
 	LocalPath   string
 	ConfigPathF func(c *model.Component) string
+	HA          bool
 }
 
 func (self *ZitiTunnelType) Label() string {
@@ -126,8 +127,13 @@ func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
 		useSudo = "sudo"
 	}
 
-	serviceCmd := fmt.Sprintf("%s %s tunnel %s -v --cli-agent-alias %s --log-formatter pfxlog -i %s > %s 2>&1 &",
-		useSudo, binaryPath, mode.String(), c.Id, configPath, logsPath)
+	ha := ""
+	if self.HA {
+		ha = "--ha"
+	}
+
+	serviceCmd := fmt.Sprintf("%s %s tunnel %s -v %s --cli-agent-alias %s --log-formatter pfxlog -i %s > %s 2>&1 &",
+		useSudo, binaryPath, mode.String(), ha, c.Id, configPath, logsPath)
 
 	value, err := c.Host.ExecLogged(
 		"rm -f "+logsPath,

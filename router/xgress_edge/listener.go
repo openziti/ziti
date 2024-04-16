@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/controller/idgen"
-	"strings"
 	"time"
 
 	"github.com/openziti/ziti/common/capabilities"
@@ -178,7 +177,7 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 		PeerData:             peerData,
 	}
 
-	if manager.GetConfig().Ha.Enabled && strings.HasPrefix(sessionToken, JwtTokenPrefix) {
+	if manager.GetConfig().Ha.Enabled && xgress_common.IsBearerToken(sessionToken) {
 		apiSession := manager.GetApiSessionFromCh(ch)
 
 		if apiSession == nil {
@@ -352,7 +351,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 		InstanceSecret: terminatorIdentitySecret,
 	}
 
-	if manager.GetConfig().Ha.Enabled && strings.HasPrefix(sessionToken, JwtTokenPrefix) {
+	if manager.GetConfig().Ha.Enabled && xgress_common.IsBearerToken(sessionToken) {
 		apiSession := manager.GetApiSessionFromCh(ch)
 
 		if apiSession == nil {
@@ -579,7 +578,7 @@ func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channe
 			TerminatorId: terminator.terminatorId,
 		}
 
-		if manager.GetConfig().Ha.Enabled && strings.HasPrefix(sessionToken, JwtTokenPrefix) {
+		if manager.GetConfig().Ha.Enabled && xgress_common.IsBearerToken(sessionToken) {
 			apiSession := manager.GetApiSessionFromCh(ch)
 			request.ApiSessionToken = apiSession.Token
 		}
@@ -646,7 +645,7 @@ func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *chann
 
 	log = log.WithField("terminator", terminator.terminatorId).WithField("checkPassed", checkPassed)
 
-	if manager.GetConfig().Ha.Enabled && strings.HasPrefix(sessionToken, JwtTokenPrefix) {
+	if manager.GetConfig().Ha.Enabled && xgress_common.IsBearerToken(sessionToken) {
 		apiSession := manager.GetApiSessionFromCh(ch)
 		request.ApiSessionToken = apiSession.Token
 	}

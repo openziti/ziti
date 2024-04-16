@@ -22,8 +22,8 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/response"
 )
 
 const EntityNameSession = "sessions"
@@ -172,7 +172,7 @@ func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*rest_model.Ses
 			Urls: state.Protocols,
 		}
 
-		pfxlog.Logger().Debugf("Returning %+v to %+v, with urls: %+v", edgeRouter, restModel, restModel.Urls)
+		pfxlog.Logger().Debugf("Returning %+v to %+v, with urls: %+v", edgeRouter, restModel, restModel.SupportedProtocols)
 		edgeRouters = append(edgeRouters, restModel)
 	}
 
