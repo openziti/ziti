@@ -137,7 +137,7 @@ ziti edge create config "hello-intercept-config" intercept.v1 \
 ziti edge create config "hello-host-config" host.v1 \
   '{"address":"hello","port":8000,"forwardProtocol":true,"allowedProtocols":["tcp"]}'
 ziti edge create service "hello" \
-  --configs 'intercept.v1,host.v1' \
+  --configs "hello-intercept-config,hello-host-config" \
   --role-attributes 'hello.services'
 ziti edge create service-policy "hello-dial-policy" Dial \
   --semantic AnyOf \
@@ -180,7 +180,7 @@ ziti edge policy-advisor services -q
 Run the demo client which triggers the run of the tproxy router because it is a dependency.
 
 ```bash
-ZITI_ENROLL_TOKEN="$(<./tproxyRouter.jwt)" \
+ZITI_ENROLL_TOKEN="$(<./tproxy-router.jwt)" \
 ZITI_ROUTER_MODE=tproxy \
 ZITI_CTRL_ADVERTISED_ADDRESS=quickstart \
 ZITI_CTRL_ADVERTISED_PORT=1280 \
