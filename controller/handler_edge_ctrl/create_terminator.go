@@ -77,7 +77,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 	ctx.loadSession(ctx.req.SessionToken, ctx.req.ApiSessionToken)
 	ctx.checkSessionType(db.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
-	ctx.verifyEdgeRouterAccess()
+	ctx.verifyIdentityEdgeRouterAccess()
 	ctx.loadService()
 
 	if ctx.err != nil {

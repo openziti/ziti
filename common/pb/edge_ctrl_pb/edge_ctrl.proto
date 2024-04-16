@@ -33,6 +33,8 @@ enum ContentType {
   CreateTerminatorV2ResponseType = 20217;
   CreateCircuitV2RequestType = 20218;
   CreateCircuitV2ResponseType = 20219;
+  CreateTunnelCircuitV2RequestType = 20220;
+  CreateTunnelCircuitV2ResponseType = 20221;
 
   EnrollType = 20300;
   EnrollmentCertsResponseType = 20301;
@@ -124,7 +126,7 @@ message Service {
 
 message DataState {
   repeated Event events = 1;
-  uint64 endIndex  = 2;
+  uint64 endIndex = 2;
 
   enum Action {
     Create = 0;
@@ -148,7 +150,7 @@ message DataState {
     string id = 1;
     string name = 2;
     repeated string serviceIds = 3;
-    repeated string postureCheckIds =4;
+    repeated string postureCheckIds = 4;
     repeated string identityIds = 5;
   }
 
@@ -429,6 +431,19 @@ message CreateCircuitForServiceResponse {
   string address = 4;
   map<uint32, bytes> peerData = 5;
   map<string, string> tags = 6;
+}
+
+message CreateTunnelCircuitV2Request {
+  string serviceName = 1;
+  string terminatorInstanceId = 2;
+  map<uint32, bytes> peerData = 3;
+}
+
+message CreateTunnelCircuitV2Response {
+  string circuitId = 1;
+  string address = 2;
+  map<uint32, bytes> peerData = 3;
+  map<string, string> tags = 4;
 }
 
 message ServicesList {

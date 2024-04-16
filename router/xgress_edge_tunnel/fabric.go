@@ -18,6 +18,7 @@ package xgress_edge_tunnel
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
@@ -33,6 +34,7 @@ import (
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/ziti/router/posture"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/tunnel"
@@ -227,19 +229,37 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 	peerData[uint32(ctrl_msg.InitiatorLocalAddressHeader)] = []byte(conn.LocalAddr().String())
 	peerData[uint32(ctrl_msg.InitiatorRemoteAddressHeader)] = []byte(conn.RemoteAddr().String())
 
+	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		errStr := "no controller available, cannot create circuit"
+		log.Error(errStr)
+		return errors.New(errStr)
+	}
+
+	if self.factory.routerConfig.Ha.Enabled {
+		return self.tunnelServiceV2(service, terminatorInstanceId, conn, halfClose, ctrlCh, peerData, keyPair)
+	}
+
+	return self.tunnelServiceV1(service, terminatorInstanceId, conn, halfClose, ctrlCh, peerData, keyPair)
+}
+
+func (self *fabricProvider) tunnelServiceV1(
+	service tunnel.Service,
+	terminatorInstanceId string,
+	conn net.Conn,
+	halfClose bool,
+	ctrlCh channel.Channel,
+	peerData map[uint32][]byte,
+	keyPair *kx.KeyPair) error {
+
+	log := logrus.WithField("service", service.GetName())
+
 	sessionId := self.getDialSession(service.GetName())
 	request := &edge_ctrl_pb.CreateCircuitForServiceRequest{
 		SessionId:            sessionId,
 		ServiceName:          service.GetName(),
 		TerminatorInstanceId: terminatorInstanceId,
 		PeerData:             peerData,
-	}
-
-	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
-	if ctrlCh == nil {
-		errStr := "no controller available, cannot create circuit"
-		log.Error(errStr)
-		return errors.New(errStr)
 	}
 
 	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(service.GetDialTimeout()).SendForReply(ctrlCh)
@@ -283,6 +303,56 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 	x := xgress.NewXgress(response.CircuitId, ctrlCh.Id(), xgress.Address(response.Address), xgConn, xgress.Initiator, self.tunneler.listenOptions.Options, response.Tags)
 	self.tunneler.bindHandler.HandleXgressBind(x)
 	x.AddCloseHandler(xgress.CloseHandlerF(func(x *xgress.Xgress) { cleanupCallback() }))
+	x.Start()
+
+	return nil
+}
+
+func (self *fabricProvider) tunnelServiceV2(
+	service tunnel.Service,
+	terminatorInstanceId string,
+	conn net.Conn,
+	halfClose bool,
+	ctrlCh channel.Channel,
+	peerData map[uint32][]byte,
+	keyPair *kx.KeyPair) error {
+
+	log := logrus.WithField("service", service.GetName())
+
+	rdm := self.factory.stateManager.RouterDataModel()
+	if policy, err := posture.HasAccess(rdm, self.factory.routerConfig.Id.Token, service.GetId(), nil); err != nil && policy != nil {
+		return fmt.Errorf("router does not have access to service '%s' (%w)", service.GetName(), err)
+	}
+
+	request := &edge_ctrl_pb.CreateTunnelCircuitV2Request{
+		ServiceName:          service.GetName(),
+		TerminatorInstanceId: terminatorInstanceId,
+		PeerData:             peerData,
+	}
+
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(service.GetDialTimeout()).SendForReply(ctrlCh)
+
+	response := &edge_ctrl_pb.CreateTunnelCircuitV2Response{}
+	if err = xgress_common.GetResultOrFailure(responseMsg, err, response); err != nil {
+		log.WithError(err).Warn("failed to dial fabric")
+		return err
+	}
+
+	peerKey, peerKeyFound := response.PeerData[edge.PublicKeyHeader]
+	if service.IsEncryptionRequired() && !peerKeyFound {
+		return errors.New("service requires encryption, but public key header not returned")
+	}
+
+	xgConn := xgress_common.NewXgressConn(conn, halfClose, false)
+
+	if peerKeyFound {
+		if err = xgConn.SetupClientCrypto(keyPair, peerKey); err != nil {
+			return err
+		}
+	}
+
+	x := xgress.NewXgress(response.CircuitId, ctrlCh.Id(), xgress.Address(response.Address), xgConn, xgress.Initiator, self.tunneler.listenOptions.Options, response.Tags)
+	self.tunneler.bindHandler.HandleXgressBind(x)
 	x.Start()
 
 	return nil

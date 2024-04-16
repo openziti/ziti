@@ -351,7 +351,7 @@ func (self *Service) GetConfigOfType(configType string, target interface{}) (boo
 		return false, fmt.Errorf("unable construct decoder (%w)", err)
 	}
 	if err := decoder.Decode(configMap); err != nil {
-		pfxlog.Logger().WithError(err).Debugf("unable to decode service configuration for of type %v defined for service %v", configType, self.Name)
+		pfxlog.Logger().WithError(err).Debugf("unable to decode service configuration for of type %v defined for service %v", configType, *self.Name)
 		return true, fmt.Errorf("unable to decode service config structure: %w", err)
 	}
 	return true, nil
@@ -387,6 +387,10 @@ func (self *Service) GetSourceAddr(sourceAddr net.Addr, destAddr net.Addr) strin
 
 func (self *Service) GetName() string {
 	return *self.ServiceDetail.Name
+}
+
+func (self *Service) GetId() string {
+	return *self.ServiceDetail.ID
 }
 
 func (self *Service) GetDialTimeout() time.Duration {

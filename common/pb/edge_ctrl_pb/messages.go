@@ -94,6 +94,14 @@ func (m *CreateCircuitForServiceResponse) GetContentType() int32 {
 	return int32(ContentType_CreateCircuitForServiceResponseType)
 }
 
+func (m *CreateTunnelCircuitV2Request) GetContentType() int32 {
+	return int32(ContentType_CreateTunnelCircuitV2RequestType)
+}
+
+func (m *CreateTunnelCircuitV2Response) GetContentType() int32 {
+	return int32(ContentType_CreateTunnelCircuitV2ResponseType)
+}
+
 func (m *ServicesList) GetContentType() int32 {
 	return int32(ContentType_ServiceListType)
 }
