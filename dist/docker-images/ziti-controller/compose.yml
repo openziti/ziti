@@ -6,9 +6,9 @@ volumes:
 services:
   chown-controller:
     image: busybox
-    command: chown -R ${ZIGGY_UID:-2171} /mnt
+    command: chown -R ${ZIGGY_UID:-2171} /ziti-controller
     volumes:
-      - ziti-controller:/mnt
+      - ziti-controller:/ziti-controller
 
   ziti-controller:
     image: ${ZITI_CONTROLLER_IMAGE:-openziti/ziti-controller}
@@ -16,8 +16,7 @@ services:
       chown-controller:
         condition: service_completed_successfully
     volumes:
-      - ziti-controller:/mnt
-    working_dir: /mnt
+      - ziti-controller:/ziti-controller
     # assign override vars in an .env file or export from parent env to ensure consistency throughout the compose
     # project
     environment:
@@ -32,9 +31,6 @@ services:
       ZITI_BOOTSTRAP_CONFIG: true      # make config file from env vars and defaults if "true," overwrite if "force"; requires ZITI_BOOTSTRAP=true
       ZITI_BOOTSTRAP_DATABASE: true    # make the default admin user if "true"; requires ZITI_BOOTSTRAP=true
       ZITI_AUTO_RENEW_CERTS: true      # renew certs automatically every startup; requires ZITI_BOOTSTRAP_PKI=true
-      ZITI_NETWORK_NAME: ctrl          # identity files basename
-      PFXLOG_NO_JSON: true             # disable JSON logging
-      ZITI_TIME_FORMAT: utc            # time format for logs
     command: run config.yml
     ports:
       # ensure this port matches the value of ZITI_CTRL_PORT in the container

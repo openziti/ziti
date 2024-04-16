@@ -22,12 +22,7 @@ RUN INSTALL_PKGS="util-linux iptables libbpf iproute" && \
 
 # set a var for entrypoint.bash to find this script
 ENV ZITI_ROUTER_BOOTSTRAP_BASH=/bootstrap.bash
-ENV ZITI_ROUTER_TYPE=edge
-ENV ZITI_ROUTER_PORT=3022
-ENV ZITI_BOOTSTRAP=true
-ENV ZITI_BOOTSTRAP_CONFIG=true
-ENV ZITI_BOOTSTRAP_ENROLLMENT=true
-ENV PFXLOG_NO_JSON=true
+
 COPY ${ROUTER_PACKAGE}/bootstrap.bash ${ZITI_ROUTER_BOOTSTRAP_BASH}
 COPY ${ROUTER_PACKAGE}/entrypoint.bash /
 
@@ -36,5 +31,26 @@ RUN chown -R ziggy:ziggy /ziti-router
 
 # run as ziggy (2171:2171) by default, override run-as user with root when DOCKER_ROUTER_MODE=tproxy
 USER ziggy
+
+# configure logging
+ENV PFXLOG_NO_JSON=true
+ENV ZITI_TIME_FORMAT=utc
+
+# globally toggle bootstrapping; false preserves "thin" behavior for existing deployments like K8s
+ENV ZITI_BOOTSTRAP=false
+
+# selectively toggle bootstrapping steps
+ENV ZITI_BOOTSTRAP_CONFIG=true
+ENV ZITI_BOOTSTRAP_ENROLLMENT=true
+
+# defaults for bootstrapping
+ENV ZITI_ROUTER_NAME=router
+ENV ZITI_ROUTER_TYPE=edge
+ENV ZITI_ROUTER_PORT=3022
+ENV ZITI_ROUTER_MODE=none
+
+# renew router certs at startup with run --extend
+ENV ZITI_AUTO_RENEW_CERTS=true
+
 
 ENTRYPOINT [ "/entrypoint.bash" ]
