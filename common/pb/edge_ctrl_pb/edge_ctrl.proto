@@ -124,6 +124,12 @@ message Service {
   bool encryptionRequired = 3;
 }
 
+enum PolicyType {
+  InvalidPolicy = 0;
+  DialPolicy = 1;
+  BindPolicy = 2;
+}
+
 message DataState {
   repeated Event events = 1;
   uint64 endIndex = 2;
@@ -138,6 +144,11 @@ message DataState {
     string id = 1;
     string name = 2;
     repeated string servicePolicyIds = 3;
+    TerminatorPrecedence defaultHostingPrecedence = 4;
+    uint32 defaultHostingCost = 5;
+    map<string, TerminatorPrecedence> serviceHostingPrecedences = 6;
+    map<string, uint32> serviceHostingCosts = 7;
+    bytes appDataJson = 8;
   }
 
   message Service {
@@ -149,9 +160,10 @@ message DataState {
   message ServicePolicy {
     string id = 1;
     string name = 2;
-    repeated string serviceIds = 3;
-    repeated string postureCheckIds = 4;
-    repeated string identityIds = 5;
+    PolicyType policyType = 3;
+    repeated string serviceIds = 4;
+    repeated string postureCheckIds = 5;
+    repeated string identityIds = 6;
   }
 
   message Revocation {

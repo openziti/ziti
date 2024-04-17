@@ -25,6 +25,14 @@ func (self PolicyType) Id() int32 {
 	return 0
 }
 
+func (self PolicyType) IsDial() bool {
+	return self == PolicyTypeDial
+}
+
+func (self PolicyType) IsBind() bool {
+	return self == PolicyTypeBind
+}
+
 func GetPolicyTypeForId(policyTypeId int32) PolicyType {
 	policyType := PolicyTypeInvalid
 	if policyTypeId == PolicyTypeDial.Id() {
