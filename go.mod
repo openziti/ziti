@@ -49,13 +49,13 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
 	github.com/openziti/channel/v2 v2.0.128
-	github.com/openziti/edge-api v0.26.16
+	github.com/openziti/edge-api v0.26.17
 	github.com/openziti/foundation/v2 v2.0.42
 	github.com/openziti/identity v1.0.75
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.51
 	github.com/openziti/runzmd v1.0.43
-	github.com/openziti/sdk-golang v0.23.19
+	github.com/openziti/sdk-golang v0.23.23
 	github.com/openziti/secretstream v0.1.19
 	github.com/openziti/storage v0.2.36
 	github.com/openziti/transport/v2 v2.0.131
@@ -176,9 +176,9 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	go.opentelemetry.io/otel v1.24.0 // indirect
-	go.opentelemetry.io/otel/metric v1.24.0 // indirect
-	go.opentelemetry.io/otel/trace v1.24.0 // indirect
+	go.opentelemetry.io/otel v1.25.0 // indirect
+	go.opentelemetry.io/otel/metric v1.25.0 // indirect
+	go.opentelemetry.io/otel/trace v1.25.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
