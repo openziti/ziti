@@ -16,7 +16,6 @@ import (
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/openziti/edge-api/rest_management_api_client"
-	"github.com/openziti/identity"
 	"github.com/openziti/ziti/controller/env"
 	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/cmd/common"
@@ -32,9 +31,8 @@ const (
 )
 
 type RestClientConfig struct {
-	EdgeIdentities   map[string]*RestClientEdgeIdentity   `json:"edgeIdentities"`
-	FabricIdentities map[string]*RestClientFabricIdentity `json:"fabricIdentities"`
-	Default          string                               `json:"default"`
+	EdgeIdentities map[string]*RestClientEdgeIdentity `json:"edgeIdentities"`
+	Default        string                             `json:"default"`
 }
 
 func (self *RestClientConfig) GetIdentity() string {
@@ -178,77 +176,6 @@ func (self *RestClientEdgeIdentity) NewWsHeader() http.Header {
 	return result
 }
 
-type RestClientFabricIdentity struct {
-	Url        string `json:"url"`
-	CaCert     string `json:"caCert,omitempty"`
-	ClientCert string `json:"clientCert,omitempty"`
-	ClientKey  string `json:"clientKey,omitempty"`
-	ReadOnly   bool   `json:"readOnly"`
-}
-
-func (self *RestClientFabricIdentity) NewTlsClientConfig() (*tls.Config, error) {
-	id, err := identity.LoadClientIdentity(self.ClientCert, self.ClientKey, self.CaCert)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to load identity")
-	}
-	return id.ClientTLSConfig(), nil
-}
-
-func (self *RestClientFabricIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
-	id, err := identity.LoadClientIdentity(self.ClientCert, self.ClientKey, self.CaCert)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to load identity")
-	}
-	client := NewClient()
-	client.SetTLSClientConfig(id.ClientTLSConfig())
-	client.SetTimeout(timeout)
-	client.SetDebug(verbose)
-	return client, nil
-}
-
-func (self *RestClientFabricIdentity) NewRequest(client *resty.Client) *resty.Request {
-	return client.R()
-}
-
-func (self *RestClientFabricIdentity) GetBaseUrlForApi(api API) (string, error) {
-	if api == FabricAPI {
-		u, err := url.Parse(self.Url)
-		if err != nil {
-			return "", err
-		}
-		return u.Scheme + "://" + u.Host + "/fabric/v1", nil
-	}
-	return "", errors.Errorf("unsupported api %v", api)
-}
-
-func (self *RestClientFabricIdentity) IsReadOnly() bool {
-	return self.ReadOnly
-}
-
-func (self *RestClientFabricIdentity) NewEdgeManagementClient(ClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error) {
-	return nil, errors.New("fabric identities cannot be used to connect to the edge management API")
-}
-
-func (self *RestClientFabricIdentity) NewFabricManagementClient(clientOpts ClientOpts) (*fabric_rest_client.ZitiFabric, error) {
-	httpClient, err := newRestClientTransport(clientOpts, self)
-	if err != nil {
-		return nil, err
-	}
-
-	parsedHost, err := url.Parse(self.Url)
-	if err != nil {
-		return nil, err
-	}
-
-	clientRuntime := httptransport.NewWithClient(parsedHost.Host, fabric_rest_client.DefaultBasePath, fabric_rest_client.DefaultSchemes, httpClient)
-
-	return fabric_rest_client.New(clientRuntime, nil), nil
-}
-
-func (self *RestClientFabricIdentity) NewWsHeader() http.Header {
-	return http.Header{}
-}
-
 func LoadRestClientConfig() (*RestClientConfig, string, error) {
 	config := &RestClientConfig{}
 
@@ -261,7 +188,6 @@ func LoadRestClientConfig() (*RestClientConfig, string, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			config.EdgeIdentities = map[string]*RestClientEdgeIdentity{}
-			config.FabricIdentities = map[string]*RestClientFabricIdentity{}
 			return config, configFile, nil
 		}
 		return nil, "", errors.Wrapf(err, "error while statting config file %v", configFile)
@@ -277,10 +203,6 @@ func LoadRestClientConfig() (*RestClientConfig, string, error) {
 
 	if config.EdgeIdentities == nil {
 		config.EdgeIdentities = map[string]*RestClientEdgeIdentity{}
-	}
-
-	if config.FabricIdentities == nil {
-		config.FabricIdentities = map[string]*RestClientFabricIdentity{}
 	}
 
 	return config, configFile, nil
@@ -334,45 +256,6 @@ func LoadSelectedIdentity() (RestClientIdentity, error) {
 
 func LoadSelectedRWIdentity() (RestClientIdentity, error) {
 	id, err := LoadSelectedIdentity()
-	if err != nil {
-		return nil, err
-	}
-	if id.IsReadOnly() {
-		return nil, errors.New("this login is marked read-only, only GET operations are allowed")
-	}
-	return id, nil
-}
-
-func LoadSelectedIdentityForApi(api API) (RestClientIdentity, error) {
-	if api == EdgeAPI {
-		return LoadSelectedIdentity()
-	}
-
-	if api == FabricAPI {
-		if selectedIdentity == nil {
-			config, configFile, err := LoadRestClientConfig()
-			if err != nil {
-				return nil, err
-			}
-			id := config.GetIdentity()
-			var clientIdentity RestClientIdentity
-			var found bool
-			clientIdentity, found = config.EdgeIdentities[id]
-			if !found {
-				clientIdentity, found = config.FabricIdentities[id]
-				if !found {
-					return nil, errors.Errorf("no identity '%v' found in cli config %v", id, configFile)
-				}
-			}
-			selectedIdentity = clientIdentity
-		}
-		return selectedIdentity, nil
-	}
-	return nil, errors.Errorf("unsupported API: '%v'", api)
-}
-
-func LoadSelectedRWIdentityForApi(api API) (RestClientIdentity, error) {
-	id, err := LoadSelectedIdentityForApi(api)
 	if err != nil {
 		return nil, err
 	}

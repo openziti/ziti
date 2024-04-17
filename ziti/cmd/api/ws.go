@@ -31,7 +31,7 @@ import (
 
 func NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.Channel, error) {
 	log := pfxlog.Logger()
-	restClientIdentity, err := util.LoadSelectedIdentityForApi(util.FabricAPI)
+	restClientIdentity, err := util.LoadSelectedIdentity()
 	if err != nil {
 		return nil, err
 	}
