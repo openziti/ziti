@@ -30,7 +30,7 @@ More information can be found on the [HA Project Board](https://github.com/orgs/
 * github.com/openziti/edge-api: [v0.26.16 -> v0.26.17](https://github.com/openziti/edge-api/compare/v0.26.16...v0.26.17)
     * [Issue #107](https://github.com/openziti/edge-api/issues/107) - Add configTypes param to service list
 
-* github.com/openziti/sdk-golang: [v0.23.19 -> v0.23.25](https://github.com/openziti/sdk-golang/compare/v0.23.19...v0.23.25)
+* github.com/openziti/sdk-golang: [v0.23.19 -> v0.23.27](https://github.com/openziti/sdk-golang/compare/v0.23.19...v0.23.27)
     * [Issue #545](https://github.com/openziti/sdk-golang/issues/545) - Set config types on query when listing services
     * [Issue #541](https://github.com/openziti/sdk-golang/issues/541) - Token exchange in Go SDK not working
     * [Issue #540](https://github.com/openziti/sdk-golang/issues/540) - Switch to EdgeRouter.SupportedProtocols from deprecated URLs map
