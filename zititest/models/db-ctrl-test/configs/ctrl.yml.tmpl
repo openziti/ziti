@@ -12,6 +12,8 @@ network:
 
 tls:
   handshakeTimeout: 30s
+  rateLimiter:
+    enabled: true
 
 # the endpoint that routers will connect to the controller over.
 ctrl:
