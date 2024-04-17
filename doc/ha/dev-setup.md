@@ -110,4 +110,4 @@ Within an SDK configuration ensure the field `EnableHA` is included and set to `
 	ztx, _ := ziti.NewContext(ztxCfg)
 ```
 Enabling HA support allows routers to detect
-controller support for a distributed data model that is sychronized with the control plan.
+controller support for a distributed data model that is synchronized with the control plan.
