@@ -543,7 +543,7 @@ func (rdm *RouterDataModel) Save(path string) {
 }
 
 // GetServiceAccessPolicies returns an AccessPolicies instance for an identity attempting to access a service.
-func (rdm *RouterDataModel) GetServiceAccessPolicies(identityId string, serviceId string) (*AccessPolicies, error) {
+func (rdm *RouterDataModel) GetServiceAccessPolicies(identityId string, serviceId string, policyType edge_ctrl_pb.PolicyType) (*AccessPolicies, error) {
 	identity, ok := rdm.Identities.Get(identityId)
 
 	if !ok {
@@ -564,6 +564,10 @@ func (rdm *RouterDataModel) GetServiceAccessPolicies(identityId string, serviceI
 		servicePolicy, ok := rdm.ServicePolicies.Get(servicePolicyId)
 
 		if !ok {
+			continue
+		}
+
+		if servicePolicy.PolicyType != policyType {
 			continue
 		}
 

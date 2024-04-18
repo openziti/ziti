@@ -320,6 +320,10 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 		return err
 	}
 
+	if self.GetLeaderAddr() == "" {
+		return errors.New("unable to execute command, cluster has no leader")
+	}
+
 	log.WithField("cmd", reflect.TypeOf(cmd)).WithField("dest", self.GetLeaderAddr()).Info("forwarding command")
 
 	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)

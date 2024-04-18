@@ -371,15 +371,29 @@ func (self *baseSessionRequestContext) checkSessionFingerprints(fingerprints []s
 
 }
 
-func (self *baseSessionRequestContext) verifyEdgeRouterAccess() {
+func (self *baseSessionRequestContext) verifyIdentityEdgeRouterAccess() {
+	if self.err == nil {
+		self.verifyEdgeRouterAccess(self.session.IdentityId, self.session.ServiceId)
+	}
+}
+
+func (self *baseSessionRequestContext) verifyRouterEdgeRouterAccess() {
+	if self.err == nil {
+		self.verifyEdgeRouterAccess(self.sourceRouter.Id, self.service.Id)
+	}
+}
+
+func (self *baseSessionRequestContext) verifyEdgeRouterAccess(identityId string, serviceId string) {
 	if self.err == nil {
 		// validate edge router
 		erMgr := self.handler.getAppEnv().Managers.EdgeRouter
-		edgeRouterAllowed, err := erMgr.IsAccessToEdgeRouterAllowed(self.session.IdentityId, self.session.ServiceId, self.sourceRouter.Id)
+		edgeRouterAllowed, err := erMgr.IsAccessToEdgeRouterAllowed(identityId, serviceId, self.sourceRouter.Id)
 		if err != nil {
 			self.err = internalError(err)
 			logrus.
-				WithField("sessionId", self.session.Id).
+				WithField("routerId", self.sourceRouter.Id).
+				WithField("identityId", identityId).
+				WithField("serviceId", serviceId).
 				WithField("operation", self.handler.Label()).
 				WithError(err).Error("unable to verify edge router access")
 			return
@@ -517,7 +531,7 @@ func (self *baseSessionRequestContext) updateTerminator(terminator *network.Term
 }
 
 func (self *baseSessionRequestContext) newCircuitCreateParms(serviceId string, peerData map[uint32][]byte) network.CreateCircuitParams {
-	return &circuitParams{
+	return &sessionCircuitParams{
 		serviceId:    serviceId,
 		sourceRouter: self.sourceRouter,
 		clientId:     &identity.TokenId{Token: self.session.Id, Data: peerData},
@@ -527,7 +541,20 @@ func (self *baseSessionRequestContext) newCircuitCreateParms(serviceId string, p
 	}
 }
 
-func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string, peerData map[uint32][]byte) (*network.Circuit, map[uint32][]byte) {
+func (self *baseSessionRequestContext) newTunnelCircuitCreateParms(serviceId string, peerData map[uint32][]byte) network.CreateCircuitParams {
+	return &tunnelCircuitParams{
+		serviceId:    serviceId,
+		sourceRouter: self.sourceRouter,
+		clientId:     &identity.TokenId{Token: self.sourceRouter.Id, Data: peerData},
+		logCtx:       self.logContext,
+		deadline:     time.Now().Add(self.handler.getAppEnv().GetHostController().GetNetwork().GetOptions().RouteTimeout),
+		reqCtx:       self,
+	}
+}
+
+type circuitParamsFactory = func(serviceId string, peerData map[uint32][]byte) network.CreateCircuitParams
+
+func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string, peerData map[uint32][]byte, paramsFactory circuitParamsFactory) (*network.Circuit, map[uint32][]byte) {
 	var circuit *network.Circuit
 	returnPeerData := map[uint32][]byte{}
 
@@ -537,13 +564,13 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 			return nil, nil
 		}
 
-		serviceId := self.session.ServiceId
+		serviceId := self.service.Id
 		if terminatorInstanceId != "" {
 			serviceId = terminatorInstanceId + "@" + serviceId
 		}
 
 		n := self.handler.getAppEnv().GetHostController().GetNetwork()
-		params := self.newCircuitCreateParms(serviceId, peerData)
+		params := paramsFactory(serviceId, peerData)
 		var err error
 		circuit, err = n.CreateCircuit(params)
 		if err != nil {
@@ -577,7 +604,7 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 	return circuit, returnPeerData
 }
 
-type circuitParams struct {
+type sessionCircuitParams struct {
 	serviceId    string
 	sourceRouter *network.Router
 	clientId     *identity.TokenId
@@ -586,38 +613,83 @@ type circuitParams struct {
 	reqCtx       *baseSessionRequestContext
 }
 
-func (self *circuitParams) GetServiceId() string {
+func (self *sessionCircuitParams) GetServiceId() string {
 	return self.serviceId
 }
 
-func (self *circuitParams) GetSourceRouter() *network.Router {
+func (self *sessionCircuitParams) GetSourceRouter() *network.Router {
 	return self.sourceRouter
 }
 
-func (self *circuitParams) GetClientId() *identity.TokenId {
+func (self *sessionCircuitParams) GetClientId() *identity.TokenId {
 	return self.clientId
 }
 
-func (self *circuitParams) GetCircuitTags(t xt.CostedTerminator) map[string]string {
+func (self *sessionCircuitParams) GetCircuitTags(t xt.CostedTerminator) map[string]string {
 	if t == nil {
 		return map[string]string{
-			"serviceId": self.reqCtx.session.ServiceId,
+			"serviceId": self.serviceId,
 			"clientId":  self.reqCtx.session.IdentityId,
 		}
 	}
 
 	hostId := t.GetHostId()
 	return map[string]string{
-		"serviceId": self.reqCtx.session.ServiceId,
+		"serviceId": self.serviceId,
 		"clientId":  self.reqCtx.session.IdentityId,
 		"hostId":    hostId,
 	}
 }
 
-func (self *circuitParams) GetLogContext() logcontext.Context {
+func (self *sessionCircuitParams) GetLogContext() logcontext.Context {
 	return self.logCtx
 }
 
-func (self *circuitParams) GetDeadline() time.Time {
+func (self *sessionCircuitParams) GetDeadline() time.Time {
+	return self.deadline
+}
+
+type tunnelCircuitParams struct {
+	serviceId    string
+	sourceRouter *network.Router
+	clientId     *identity.TokenId
+	logCtx       logcontext.Context
+	deadline     time.Time
+	reqCtx       *baseSessionRequestContext
+}
+
+func (self *tunnelCircuitParams) GetServiceId() string {
+	return self.serviceId
+}
+
+func (self *tunnelCircuitParams) GetSourceRouter() *network.Router {
+	return self.sourceRouter
+}
+
+func (self *tunnelCircuitParams) GetClientId() *identity.TokenId {
+	return self.clientId
+}
+
+func (self *tunnelCircuitParams) GetCircuitTags(t xt.CostedTerminator) map[string]string {
+	if t == nil {
+		return map[string]string{
+			"serviceId": self.serviceId,
+			"clientId":  self.sourceRouter.Id,
+		}
+	}
+
+	hostId := t.GetHostId()
+	return map[string]string{
+		"serviceId": self.serviceId,
+		"clientId":  self.sourceRouter.Id,
+		"hostId":    hostId,
+	}
+}
+
+func (self *tunnelCircuitParams) GetLogContext() logcontext.Context {
+	return self.logCtx
+}
+
+func (self *tunnelCircuitParams) GetDeadline() time.Time {
 	return self.deadline
 }

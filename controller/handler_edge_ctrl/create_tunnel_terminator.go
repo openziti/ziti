@@ -89,7 +89,7 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 	newApiSession := ctx.ensureApiSession(nil)
 	ctx.loadServiceForName(ctx.req.ServiceName)
 	ctx.ensureSessionForService(ctx.req.SessionId, db.SessionTypeBind)
-	ctx.verifyEdgeRouterAccess()
+	ctx.verifyRouterEdgeRouterAccess()
 
 	if ctx.err != nil {
 		self.logResult(ctx, ctx.err)

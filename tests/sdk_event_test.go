@@ -31,7 +31,7 @@ func Test_SDK_Events(t *testing.T) {
 	ctx.Req.NoError(err)
 
 	adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
-	adminClient := edge_apis.NewManagementApiClient(managementApiUrl, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+	adminClient := edge_apis.NewManagementApiClient([]*url.URL{managementApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
 		strings <- "123"
 	})
 	apiSession, err := adminClient.Authenticate(adminCreds, nil)

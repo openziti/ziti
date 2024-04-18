@@ -161,6 +161,7 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 
 		handler_edge_ctrl.NewCreateApiSessionHandler(c.AppEnv, ch, tunnelState),
 		handler_edge_ctrl.NewCreateCircuitForTunnelHandler(c.AppEnv, ch, tunnelState),
+		handler_edge_ctrl.NewCreateTunnelCircuitV2Handler(c.AppEnv, ch),
 		handler_edge_ctrl.NewCreateTunnelTerminatorHandler(c.AppEnv, ch, tunnelState),
 		handler_edge_ctrl.NewUpdateTunnelTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewRemoveTunnelTerminatorHandler(c.AppEnv, ch),

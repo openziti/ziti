@@ -53,3 +53,61 @@ ziti edge -i ctrl2 ls services
 ziti edge login -i ctrl3 localhost:1480
 ziti edge -i ctrl3 ls services
 ```
+
+## Running HA Go SDKs & Edge Routers (Temp Feature Flags)
+
+Both the Go SDK and Edge Routers have temporary feature flags gating HA support. To use either with HA deployed 
+controllers they must be configured to detect the HA status of the network as well as associated capabilities that
+will exist in non-HA deployments.
+
+These feature flags exist to prevent background processing in controllers, routers, and SDKs from impacting existing
+networks. Some of these features enable HA, but also provide benefits for improvements that may be delivered before
+a general HA release.
+
+### Edge Routers
+
+Edge Router configuration files must be augmented to have a top level field `ha` with a subfield of `enabled` set 
+to `true`.
+
+```
+ha:
+  enabled: true
+```
+
+### Go SDK
+
+The Go SDK can be configured either through code or a file. If using a file, edit the file to have the field `enableHa`
+set to `true`.
+
+#### Example (file):
+
+```
+{
+  "ztAPI": "https://127.0.0.1:1280/edge/client/v1",
+  "ztAPIs": null,
+  "configTypes": [
+    "test-config-1"
+  ],
+  "id": {
+    "key": "pem:-----BEGIN RSA PRIVATE KEY-----\nMI...0=\n-----END RSA PRIVATE KEY-----\n",
+    "cert": "pem:-----BEGIN CERTIFICATE-----\nMI...g==\n-----END CERTIFICATE-----\n",
+    "ca": "pem:-----BEGIN CERTIFICATE-----\nMI...=\n-----END CERTIFICATE-----\n"
+  },
+  "enableHa": true
+}
+```
+
+Within an SDK configuration ensure the field `EnableHA` is included and set to `true`
+
+#### Example (go code):
+```
+    idConfig := &identity.Config{
+		// ...config
+	}
+
+	ztxCfg := ziti.NewConfig("https://localhost:1280", idConfig)
+	ztxCfg.EnableHa = true
+	ztx, _ := ziti.NewContext(ztxCfg)
+```
+Enabling HA support allows routers to detect
+controller support for a distributed data model that is synchronized with the control plan.

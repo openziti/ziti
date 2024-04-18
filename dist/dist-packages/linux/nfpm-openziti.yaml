@@ -6,6 +6,7 @@ name: openziti
 arch: ${GOARCH}
 platform: linux
 version: ${ZITI_VERSION}
+prerelease: ${ZITI_REV}
 maintainer: ${ZITI_MAINTAINER}
 description: >
   The openziti package provides the ziti executable binary as a command line
@@ -23,10 +24,3 @@ contents:
     type: symlink
 replaces:
   - ziti-cli
-
-# packager-neutral scripts may be overridden by packager-specific scripts
-# scripts:
-  # preinstall: ./scripts/preinstall.sh
-  # postinstall: ./scripts/postinstall.sh
-  # preremove: ./scripts/preremove.sh
-  # postremove: ./scripts/postremove.sh

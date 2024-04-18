@@ -8,10 +8,10 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 )
 
-func HasAccess(rdm *common.RouterDataModel, identityId string, serviceId string, cache *Cache) (*edge_ctrl_pb.DataState_ServicePolicy, error) {
+func HasAccess(rdm *common.RouterDataModel, identityId string, serviceId string, cache *Cache, policyType edge_ctrl_pb.PolicyType) (*edge_ctrl_pb.DataState_ServicePolicy, error) {
 	log := pfxlog.Logger().WithField("instance", eid.New()).WithField("identityId", identityId).WithField("serviceId", serviceId)
 
-	accessPolicies, err := rdm.GetServiceAccessPolicies(identityId, serviceId)
+	accessPolicies, err := rdm.GetServiceAccessPolicies(identityId, serviceId, policyType)
 
 	if err != nil {
 		log.WithError(err).Debug("could not find access path for authorization checks")
@@ -30,7 +30,7 @@ func HasAccess(rdm *common.RouterDataModel, identityId string, serviceId string,
 	}
 
 	log.Debugf("access provided via policy %s [%s]", grantingPolicy.Name, grantingPolicy.Id)
-	return grantingPolicy, errs
+	return grantingPolicy, nil
 }
 
 func IsPassing(accessPolicies *common.AccessPolicies, cache *Cache) (*edge_ctrl_pb.DataState_ServicePolicy, *PolicyAccessErrors) {

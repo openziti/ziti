@@ -3,6 +3,7 @@ package edge_ctrl_pb
 import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/xt"
 )
 
@@ -94,6 +95,14 @@ func (m *CreateCircuitForServiceResponse) GetContentType() int32 {
 	return int32(ContentType_CreateCircuitForServiceResponseType)
 }
 
+func (m *CreateTunnelCircuitV2Request) GetContentType() int32 {
+	return int32(ContentType_CreateTunnelCircuitV2RequestType)
+}
+
+func (m *CreateTunnelCircuitV2Response) GetContentType() int32 {
+	return int32(ContentType_CreateTunnelCircuitV2ResponseType)
+}
+
 func (m *ServicesList) GetContentType() int32 {
 	return int32(ContentType_ServiceListType)
 }
@@ -148,4 +157,8 @@ func (self TerminatorPrecedence) GetZitiLabel() rest_model.TerminatorPrecedence 
 	}
 
 	return rest_model.TerminatorPrecedenceDefault
+}
+
+func GetPolicyType(p db.PolicyType) PolicyType {
+	return PolicyType(p.Id())
 }

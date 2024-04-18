@@ -33,6 +33,8 @@ enum ContentType {
   CreateTerminatorV2ResponseType = 20217;
   CreateCircuitV2RequestType = 20218;
   CreateCircuitV2ResponseType = 20219;
+  CreateTunnelCircuitV2RequestType = 20220;
+  CreateTunnelCircuitV2ResponseType = 20221;
 
   EnrollType = 20300;
   EnrollmentCertsResponseType = 20301;
@@ -122,9 +124,15 @@ message Service {
   bool encryptionRequired = 3;
 }
 
+enum PolicyType {
+  InvalidPolicy = 0;
+  DialPolicy = 1;
+  BindPolicy = 2;
+}
+
 message DataState {
   repeated Event events = 1;
-  uint64 endIndex  = 2;
+  uint64 endIndex = 2;
 
   enum Action {
     Create = 0;
@@ -136,6 +144,11 @@ message DataState {
     string id = 1;
     string name = 2;
     repeated string servicePolicyIds = 3;
+    TerminatorPrecedence defaultHostingPrecedence = 4;
+    uint32 defaultHostingCost = 5;
+    map<string, TerminatorPrecedence> serviceHostingPrecedences = 6;
+    map<string, uint32> serviceHostingCosts = 7;
+    bytes appDataJson = 8;
   }
 
   message Service {
@@ -147,9 +160,10 @@ message DataState {
   message ServicePolicy {
     string id = 1;
     string name = 2;
-    repeated string serviceIds = 3;
-    repeated string postureCheckIds =4;
-    repeated string identityIds = 5;
+    PolicyType policyType = 3;
+    repeated string serviceIds = 4;
+    repeated string postureCheckIds = 5;
+    repeated string identityIds = 6;
   }
 
   message Revocation {
@@ -429,6 +443,19 @@ message CreateCircuitForServiceResponse {
   string address = 4;
   map<uint32, bytes> peerData = 5;
   map<string, string> tags = 6;
+}
+
+message CreateTunnelCircuitV2Request {
+  string serviceName = 1;
+  string terminatorInstanceId = 2;
+  map<uint32, bytes> peerData = 3;
+}
+
+message CreateTunnelCircuitV2Response {
+  string circuitId = 1;
+  string address = 2;
+  map<uint32, bytes> peerData = 3;
+  map<string, string> tags = 4;
 }
 
 message ServicesList {

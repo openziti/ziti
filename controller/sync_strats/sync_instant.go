@@ -1010,16 +1010,47 @@ func newIdentityById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.Dat
 }
 
 func newIdentity(identityModel *db.Identity) *edge_ctrl_pb.DataState_Identity {
+	var hostingPrecedences map[string]edge_ctrl_pb.TerminatorPrecedence
+	if identityModel.ServiceHostingPrecedences != nil {
+		hostingPrecedences = map[string]edge_ctrl_pb.TerminatorPrecedence{}
+		for k, v := range identityModel.ServiceHostingPrecedences {
+			hostingPrecedences[k] = edge_ctrl_pb.GetPrecedence(v)
+		}
+	}
+
+	var hostingCosts map[string]uint32
+	if identityModel.ServiceHostingCosts != nil {
+		hostingCosts = map[string]uint32{}
+		for k, v := range identityModel.ServiceHostingCosts {
+			hostingCosts[k] = uint32(v)
+		}
+	}
+
+	var appDataJson []byte
+	if identityModel.AppData != nil {
+		var err error
+		appDataJson, err = json.Marshal(identityModel.AppData)
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("Failed to marshal app data")
+		}
+	}
+
 	return &edge_ctrl_pb.DataState_Identity{
-		Id:   identityModel.Id,
-		Name: identityModel.Name,
+		Id:                        identityModel.Id,
+		Name:                      identityModel.Name,
+		DefaultHostingPrecedence:  edge_ctrl_pb.GetPrecedence(identityModel.DefaultHostingPrecedence),
+		DefaultHostingCost:        uint32(identityModel.DefaultHostingCost),
+		ServiceHostingPrecedences: hostingPrecedences,
+		ServiceHostingCosts:       hostingCosts,
+		AppDataJson:               appDataJson,
 	}
 }
 
 func newServicePolicy(tx *bbolt.Tx, env *env.AppEnv, storeModel *db.ServicePolicy) *edge_ctrl_pb.DataState_ServicePolicy {
 	servicePolicy := &edge_ctrl_pb.DataState_ServicePolicy{
-		Id:   storeModel.Id,
-		Name: storeModel.Name,
+		Id:         storeModel.Id,
+		Name:       storeModel.Name,
+		PolicyType: edge_ctrl_pb.GetPolicyType(storeModel.PolicyType),
 	}
 
 	result := env.GetManagers().ServicePolicy.ListAssociatedIds(tx, storeModel.Id)

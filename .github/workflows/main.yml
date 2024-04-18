@@ -462,11 +462,6 @@ jobs:
                 -path "./release/*/linux/ziti" \
             | xargs -0 chmod -c +x
 
-      - name: Install Jfrog CLI
-        uses: jfrog/setup-jfrog-cli@v4
-        with:
-          version: 1.51.1
-
       - name: Publish GitHub Release
         # forks need to run this step with their own GPG key because ziti-ci creates the GH release 
         if: env.ziti_ci_gpg_key_id != null && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
@@ -478,7 +473,7 @@ jobs:
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
-          $(go env GOPATH)/bin/ziti-ci publish-to-github --archive-base ""
+          $(go env GOPATH)/bin/ziti-ci publish-to-github --prerelease --archive-base ""
 
       # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
       - name: Compute the Ziti Version String for CI Jobs
@@ -504,15 +499,6 @@ jobs:
             ZITI_VERSION="${ZITI_VERSION}-${GITHUB_RUN_ID}"
             echo ZITI_VERSION="${ZITI_VERSION}" | tee -a $GITHUB_OUTPUT
           fi
-
-      - name: Publish to Artifactory
-        if: ${{ env.JFROG_API_KEY != null && github.repository == 'openziti/ziti' }}
-        shell: bash
-        run: |
-          $(go env GOPATH)/bin/ziti-ci publish-to-artifactory
-        env:
-          JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   call-publish-prerelease-docker-images:
     # - !cancelled() allows evaluating further conditional expressions even if

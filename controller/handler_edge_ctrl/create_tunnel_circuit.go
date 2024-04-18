@@ -90,8 +90,8 @@ func (self *createCircuitForServiceHandler) CreateCircuit(ctx *CreateCircuitForS
 	newApiSession := ctx.ensureApiSession(nil)
 	ctx.loadServiceForName(ctx.req.ServiceName)
 	ctx.ensureSessionForService(ctx.req.SessionId, db.SessionTypeDial)
-	ctx.verifyEdgeRouterAccess()
-	circuitInfo, peerData := ctx.createCircuit(ctx.req.TerminatorInstanceId, ctx.req.PeerData)
+	ctx.verifyRouterEdgeRouterAccess()
+	circuitInfo, peerData := ctx.createCircuit(ctx.req.TerminatorInstanceId, ctx.req.PeerData, ctx.newCircuitCreateParms)
 
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)

@@ -7,7 +7,7 @@ FROM bitnami/kubectl as bitnami-kubectl
 # FIXME: This repo requires terms acceptance and is only available on registry.redhat.io.
 # FROM registry.access.redhat.com/openshift4/ose-cli as openshift-cli  
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal
+FROM registry.access.redhat.com/ubi9/ubi-minimal
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.
 
@@ -31,7 +31,7 @@ LABEL name="openziti/ziti-cli" \
 USER root
 
 ### install packages
-RUN   INSTALL_PKGS="python3.11 python3.11-pip tar bash-completion vim-minimal less shadow-utils jq findutils" && \
+RUN   INSTALL_PKGS="python3.11 python3.11-pip tar bash-completion vim-minimal less shadow-utils jq findutils hostname" && \
       microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
       microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS} && \
       microdnf clean all
@@ -58,9 +58,6 @@ RUN chmod 0755 /usr/local/bin/ziti
 
 RUN /usr/local/bin/ziti completion bash > /etc/bash_completion.d/ziti_cli
 
-COPY ${DOCKER_BUILD_DIR}/entrypoint.sh /
-RUN chmod +x /entrypoint.sh
 USER ziggy
 COPY ${DOCKER_BUILD_DIR}/bashrc /home/ziggy/.bashrc
-ENTRYPOINT [ "/entrypoint.sh" ]
-CMD [ "ziti" ]
+ENTRYPOINT [ "ziti" ]

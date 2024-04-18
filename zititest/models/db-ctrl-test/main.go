@@ -53,7 +53,8 @@ const (
 )
 
 const (
-	useLatestZitiOnRouters = true
+	useLatestZitiOnRouters       = false
+	useLatestZitiOnPublicRouters = true
 )
 
 //go:embed configs
@@ -210,7 +211,9 @@ func (self *dbStrategy) ProcessEdgeRouters(tx *bbolt.Tx, m *model.Model, builder
 		siteIdx++
 
 		version := ""
-		if !useLatestZitiOnRouters {
+		isPublicRouter := stringz.Contains(er.RoleAttributes, "public")
+		useLatestVersion := useLatestZitiOnRouters || (useLatestZitiOnPublicRouters && isPublicRouter)
+		if !useLatestVersion {
 			version = self.routerMappings[id]
 			if replacement, found := versionMapping[version]; found {
 				version = replacement
@@ -233,7 +236,7 @@ func (self *dbStrategy) ProcessEdgeRouters(tx *bbolt.Tx, m *model.Model, builder
 			routerComponent.Scope.Tags = append(routerComponent.Scope.Tags, "tunneler")
 		}
 
-		if stringz.Contains(er.RoleAttributes, "public") {
+		if isPublicRouter {
 			routerComponent.Scope.Tags = append(routerComponent.Scope.Tags, "public")
 		}
 	}

@@ -1,0 +1,14 @@
+# include this Compose file in your project to grant elevated permissions to the ziti-router container that are
+# necessary when ZITI_ROUTER_MODE=tproxy
+services:
+  ziti-router:
+    # Additional config for other containers using this router as a transparent intercepting proxy sidecar and default
+    # nameserver - dns, user, cap_add are required when ZITI_ROUTER_MODE=tproxy (see adjacent README.md for TPROXY
+    # example)
+    #
+    dns:
+      - 127.0.0.1  # this router's Ziti resolver
+      - 1.1.1.1    # any recursive resolver
+    user: root     # required to create TPROXY routes in a container?
+    cap_add:
+      - NET_ADMIN  # required to create TPROXY rules

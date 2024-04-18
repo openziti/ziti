@@ -47,8 +47,20 @@ const (
 )
 
 func TestDownloadFiles(t *testing.T) {
+	zetHostsTested := 0
+	zetClientsTest := 0
+
 	allZetHostedFailed := true
 	allZetClientsFailed := true
+
+	checkZetHost := func(hostType string, success bool) {
+		if hostType == "zet" {
+			zetHostsTested++
+			if success {
+				allZetHostedFailed = false
+			}
+		}
+	}
 
 	t.Run("download-tests", func(t *testing.T) {
 		t.Run("test-ert-downloads", func(t *testing.T) {
@@ -59,9 +71,7 @@ func TestDownloadFiles(t *testing.T) {
 					for _, client := range []httpClient{ClientCurl, ClientWget} {
 						for _, encrypted := range []bool{true, false} {
 							success := testFileDownload(t, "ert", client, hostType, encrypted, size)
-							if hostType == "zet" && success {
-								allZetHostedFailed = false
-							}
+							checkZetHost(hostType, success)
 						}
 					}
 				}
@@ -76,12 +86,11 @@ func TestDownloadFiles(t *testing.T) {
 					for _, client := range []httpClient{ClientCurl, ClientWget} {
 						for _, encrypted := range []bool{true, false} {
 							success := testFileDownload(t, "zet", client, hostType, encrypted, size)
-							if hostType == "zet" && success {
-								allZetHostedFailed = false
-							}
+							checkZetHost(hostType, success)
 							if success {
 								allZetClientsFailed = false
 							}
+							zetClientsTest++
 						}
 					}
 				}
@@ -96,9 +105,7 @@ func TestDownloadFiles(t *testing.T) {
 					for _, client := range []httpClient{ClientCurl, ClientWget} {
 						for _, encrypted := range []bool{true, false} {
 							success := testFileDownload(t, "ziti-tunnel", client, hostType, encrypted, size)
-							if hostType == "zet" && success {
-								allZetHostedFailed = false
-							}
+							checkZetHost(hostType, success)
 						}
 					}
 				}
@@ -107,8 +114,13 @@ func TestDownloadFiles(t *testing.T) {
 	})
 
 	req := require.New(t)
-	req.False(allZetHostedFailed, "all zet hosted file transfer should not failed, indicates bigger issue")
-	req.False(allZetClientsFailed, "all zet client file transfers should not failed, indicates bigger issue")
+	if zetHostsTested > 0 {
+		req.False(allZetHostedFailed, "all zet hosted file transfer should not failed, indicates bigger issue")
+	}
+
+	if zetClientsTest > 0 {
+		req.False(allZetClientsFailed, "all zet client file transfers should not failed, indicates bigger issue")
+	}
 }
 
 func testFileDownload(t *testing.T, hostSelector string, client httpClient, hostType string, encrypted bool, fileSize string) bool {
