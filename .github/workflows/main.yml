@@ -473,7 +473,7 @@ jobs:
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
-          $(go env GOPATH)/bin/ziti-ci publish-to-github --archive-base ""
+          $(go env GOPATH)/bin/ziti-ci publish-to-github --prerelease --archive-base ""
 
       # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
       - name: Compute the Ziti Version String for CI Jobs
