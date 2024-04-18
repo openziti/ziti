@@ -320,7 +320,7 @@ func (self *fabricProvider) tunnelServiceV2(
 	log := logrus.WithField("service", service.GetName())
 
 	rdm := self.factory.stateManager.RouterDataModel()
-	if policy, err := posture.HasAccess(rdm, self.factory.routerConfig.Id.Token, service.GetId(), nil); err != nil && policy != nil {
+	if policy, err := posture.HasAccess(rdm, self.factory.routerConfig.Id.Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {
 		return fmt.Errorf("router does not have access to service '%s' (%w)", service.GetName(), err)
 	}
 

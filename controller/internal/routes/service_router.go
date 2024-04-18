@@ -59,7 +59,9 @@ func (r *ServiceRouter) Register(ae *env.AppEnv) {
 
 	//Client
 	ae.ClientApi.ServiceListServicesHandler = clientService.ListServicesHandlerFunc(func(params clientService.ListServicesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.ListClientServices, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.ListClientServices(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
 	ae.ClientApi.ServiceDetailServiceHandler = clientService.DetailServiceHandlerFunc(func(params clientService.DetailServiceParams, _ interface{}) middleware.Responder {
@@ -195,7 +197,7 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 	})
 }
 
-func (r *ServiceRouter) ListClientServices(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *ServiceRouter) ListClientServices(ae *env.AppEnv, rc *response.RequestContext, params clientService.ListServicesParams) {
 	//never in an admin capacity
 	start := time.Now()
 	// ListWithHandler won't do search limiting by logged in user
@@ -203,8 +205,8 @@ func (r *ServiceRouter) ListClientServices(ae *env.AppEnv, rc *response.RequestC
 
 		// allow overriding config types
 		configTypes := rc.ApiSession.ConfigTypes
-		if requestedConfigTypes := rc.Request.URL.Query().Get("configTypes"); requestedConfigTypes != "" {
-			configTypes = ae.Managers.ConfigType.MapConfigTypeNamesToIds(strings.Split(requestedConfigTypes, ","), rc.Identity.Id)
+		if len(params.ConfigTypes) > 0 {
+			configTypes = ae.Managers.ConfigType.MapConfigTypeNamesToIds(params.ConfigTypes, rc.Identity.Id)
 		}
 
 		query, err := queryOptions.getFullQuery(ae.Managers.EdgeService.GetStore())

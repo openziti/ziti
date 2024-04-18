@@ -1,13 +1,48 @@
-# Release 1.0.1
+# Release 1.1.0
 
 ## What's New
 
+* HA Alpha2
 * Deployments Alpha
     * Linux packages provide systemd services for controller and router. Both depend on existing package `openziti` which provides the `ziti` command line tool.
         * `openziti-controller` provides `ziti-controller.service`
         * `openziti-router` provides `ziti-router.service`
     * Container images for controller and router now share the bootstrapping logic with the packages, so they
       support the same configuration options.
+
+## HA Alpha2
+
+This release can be run in HA mode. The code is still alpha, so there are still some bugs and missing features,
+however basic functionality work with the exceptions noted. See the [HA Documementation](https://github.com/openziti/ziti/tree/release-next/doc/ha)
+for instructions on setting up an HA cluster.
+
+### Known Issues
+
+* JWT Session exchange isn't working with Go SDK clients
+    * This means Go clients will need to be restarted once their sessions expire
+* Service/service policy changes might not be reflected in routers
+    * Changes to policy may not yet properly sync to the routers, causing unexpected behavior with ER/Ts running in HA mode
+
+More information can be found on the [HA Project Board](https://github.com/orgs/openziti/projects/9/views/1)
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge-api: [v0.26.16 -> v0.26.17](https://github.com/openziti/edge-api/compare/v0.26.16...v0.26.17)
+    * [Issue #107](https://github.com/openziti/edge-api/issues/107) - Add configTypes param to service list
+
+* github.com/openziti/sdk-golang: [v0.23.19 -> v0.23.27](https://github.com/openziti/sdk-golang/compare/v0.23.19...v0.23.27)
+    * [Issue #545](https://github.com/openziti/sdk-golang/issues/545) - Set config types on query when listing services
+    * [Issue #541](https://github.com/openziti/sdk-golang/issues/541) - Token exchange in Go SDK not working
+    * [Issue #540](https://github.com/openziti/sdk-golang/issues/540) - Switch to EdgeRouter.SupportedProtocols from deprecated URLs map
+
+* github.com/openziti/ziti: [v1.0.0 -> v1.1.0](https://github.com/openziti/ziti/compare/v1.0.0...v1.1.0)
+    * [Issue #1952](https://github.com/openziti/ziti/issues/1952) - Remove support for fabric only identities in CLI
+    * [Issue #1950](https://github.com/openziti/ziti/issues/1950) - Add policy type to service policy router events
+    * [Issue #1951](https://github.com/openziti/ziti/issues/1951) - Add more attributes to route data model Identity
+    * [Issue #1942](https://github.com/openziti/ziti/issues/1942) - Rework ER/T intercept code to be sessionless or use JWT sessions
+    * [Issue #1936](https://github.com/openziti/ziti/issues/1936) - SDK Hosted HA sessions are getting removed when they shouldn't be
+    * [Issue #1934](https://github.com/openziti/ziti/issues/1934) - Don't publish binary builds to artifactory
+    * [Issue #1931](https://github.com/openziti/ziti/issues/1931) - "invalid kid: <kid>" randomly occurs in HA mode
 
 # Release 1.0.0
 

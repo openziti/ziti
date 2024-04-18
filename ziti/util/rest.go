@@ -66,7 +66,7 @@ func OutputJson(out io.Writer, data []byte) {
 }
 
 func ControllerDetailEntity(api API, entityType, entityId string, logJSON bool, out io.Writer, timeout int, verbose bool) (*gabs.Container, error) {
-	restClientIdentity, err := LoadSelectedIdentityForApi(api)
+	restClientIdentity, err := LoadSelectedIdentity()
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Wri
 
 // ControllerList will list entities of the given type in the given Edge Controller
 func ControllerList(api API, path string, params url.Values, logJSON bool, out io.Writer, timeout int, verbose bool) (*gabs.Container, error) {
-	restClientIdentity, err := LoadSelectedIdentityForApi(api)
+	restClientIdentity, err := LoadSelectedIdentity()
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +270,7 @@ func (e EdgeManagementAuth) AuthenticateRequest(request openApiRuntime.ClientReq
 
 // ControllerCreate will create entities of the given type in the given Edge Controller
 func ControllerCreate(api API, entityType string, body string, out io.Writer, logRequestJson, logResponseJson bool, timeout int, verbose bool) (*gabs.Container, error) {
-	restClientIdentity, err := LoadSelectedRWIdentityForApi(api)
+	restClientIdentity, err := LoadSelectedRWIdentity()
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +318,7 @@ func ControllerCreate(api API, entityType string, body string, out io.Writer, lo
 
 // ControllerDelete will delete entities of the given type in the given Controller
 func ControllerDelete(api API, entityType string, id string, body string, out io.Writer, logRequestJson bool, logResponseJson bool, timeout int, verbose bool) (error, *int) {
-	restClientIdentity, err := LoadSelectedRWIdentityForApi(api)
+	restClientIdentity, err := LoadSelectedRWIdentity()
 	if err != nil {
 		return err, nil
 	}
@@ -367,7 +367,7 @@ func ControllerDelete(api API, entityType string, id string, body string, out io
 
 // ControllerUpdate will update entities of the given type in the given Edge Controller
 func ControllerUpdate(api API, entityType string, body string, out io.Writer, method string, logRequestJson, logResponseJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
-	restClientIdentity, err := LoadSelectedRWIdentityForApi(api)
+	restClientIdentity, err := LoadSelectedRWIdentity()
 	if err != nil {
 		return nil, err
 	}
