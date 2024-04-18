@@ -444,13 +444,19 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 			val, ok = claims[common.CustomClaimsConfigTypes]
 
 			if ok {
-				configTypes = val.([]string)
+				valArr := val.([]any)
+				for _, i := range valArr {
+					configTypes = append(configTypes, i.(string))
+				}
 			}
 
 			val, ok = claims[common.CustomClaimsCertFingerprints]
 
 			if ok {
-				certsFingerprints = val.([]string)
+				valArr := val.([]any)
+				for _, i := range valArr {
+					certsFingerprints = append(certsFingerprints, i.(string))
+				}
 			}
 
 			val, ok = claims[common.CustomClaimRemoteAddress]
@@ -780,7 +786,7 @@ func (s *HybridStorage) GetKeyByIDAndClientID(_ context.Context, keyID, _ string
 func (s *HybridStorage) ValidateJWTProfileScopes(_ context.Context, _ string, scopes []string) ([]string, error) {
 	allowedScopes := make([]string, 0)
 	for _, scope := range scopes {
-		if scope == oidc.ScopeOpenID {
+		if scope == oidc.ScopeOpenID || scope == oidc.ScopeOfflineAccess {
 			allowedScopes = append(allowedScopes, scope)
 		}
 	}
@@ -865,24 +871,50 @@ func (s *HybridStorage) setInfo(userInfo *oidc.UserInfo, identityId string, scop
 	return nil
 }
 
+func tokenTypeToName(oidcType oidc.TokenType) string {
+	switch oidcType {
+	case oidc.AccessTokenType:
+		return "access_token"
+	case oidc.IDTokenType:
+		return "id_token"
+	case oidc.RefreshTokenType:
+		return "refresh_token"
+	}
+
+	return "unknown_token"
+
+}
+
 // ValidateTokenExchangeRequest implements the op.TokenExchangeStorage interface
 func (s *HybridStorage) ValidateTokenExchangeRequest(_ context.Context, request op.TokenExchangeRequest) error {
 	if request.GetRequestedTokenType() == "" {
 		request.SetRequestedTokenType(oidc.RefreshTokenType)
 	}
 
-	// Just an example, some use cases might need this use case
-	if request.GetExchangeSubjectTokenType() == oidc.IDTokenType && request.GetRequestedTokenType() == oidc.RefreshTokenType {
-		return errors.New("exchanging id_token to refresh_token is not supported")
+	requestedType := request.GetExchangeSubjectTokenType()
+	proofType := request.GetExchangeSubjectTokenType()
+
+	switch proofType {
+	case oidc.AccessTokenType:
+		if requestedType != oidc.AccessTokenType {
+			return fmt.Errorf("exchanging %s for %s is not supported", tokenTypeToName(proofType), tokenTypeToName(requestedType))
+		}
+	case oidc.IDTokenType:
+		return fmt.Errorf("exchanging %s for any token type is not supported", tokenTypeToName(proofType))
+	case oidc.RefreshTokenType:
+		if requestedType != oidc.AccessTokenType && requestedType != oidc.RefreshTokenType {
+			return fmt.Errorf("exchanging %s for %s is not supported", tokenTypeToName(proofType), tokenTypeToName(requestedType))
+		}
+	default:
+		return fmt.Errorf("exchange subject type (%s) is not supported", proofType)
 	}
 
-	allowedScopes := make([]string, 0)
-	for _, scope := range request.GetScopes() {
-		if scope == oidc.ScopeAddress {
-			continue
-		}
+	allowedScopes := []string{oidc.ScopeOpenID}
 
-		allowedScopes = append(allowedScopes, scope)
+	for _, scope := range request.GetScopes() {
+		if scope == oidc.ScopeOfflineAccess {
+			allowedScopes = append(allowedScopes, scope)
+		}
 	}
 
 	request.SetCurrentScopes(allowedScopes)
@@ -890,8 +922,8 @@ func (s *HybridStorage) ValidateTokenExchangeRequest(_ context.Context, request 
 	return nil
 }
 
-func (s *HybridStorage) CreateTokenExchangeRequest(_ context.Context, _ op.TokenExchangeRequest) error {
-	return fmt.Errorf("unsupported")
+func (s *HybridStorage) CreateTokenExchangeRequest(_ context.Context, req op.TokenExchangeRequest) error {
+	return nil
 }
 
 // GetPrivateClaimsFromTokenExchangeRequest implements the op.TokenExchangeStorage interface

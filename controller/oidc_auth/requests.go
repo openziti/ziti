@@ -11,11 +11,6 @@ import (
 	"github.com/zitadel/oidc/v2/pkg/oidc"
 )
 
-const (
-	ScopeTokenId      = "tid-"
-	ScopeApiSessionId = "asid-"
-)
-
 // AuthRequest represents an OIDC authentication request and implements op.AuthRequest
 type AuthRequest struct {
 	oidc.AuthRequest
@@ -134,13 +129,8 @@ func (a *AuthRequest) GetResponseMode() oidc.ResponseMode {
 }
 
 // GetScopes returns the current scopes and implements op.AuthRequest
-// Scopes are also used to transport custom claims into access tokens.
-// The zitadel oidc framework does not provide a method for accessing the request object during JWT signing time,
-// and any claims supplied are overwritten.
 func (a *AuthRequest) GetScopes() []string {
-	result := append(a.Scopes, ScopeApiSessionId+a.ApiSessionId)
-	result = append(result, ScopeTokenId+a.Id)
-	return result
+	return a.Scopes
 }
 
 // GetState returns the rp provided state and implements op.AuthRequest
