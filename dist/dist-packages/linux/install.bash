@@ -134,7 +134,7 @@ main(){
     elif [ -f /etc/debian_version ]; then
         installDebian "$@"
     else
-        echo "ERROR: Unsupported Linux distribution family. The zrok-share package is available as a Debian or Red Hat package." >&2
+        echo "ERROR: Unsupported Linux distribution family. Ziti and zrok packages are available for Debian and Red Hat family of distros." >&2
         exit 1
     fi
 }
