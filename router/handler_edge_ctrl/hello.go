@@ -92,7 +92,7 @@ func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 
 			outMsg := protobufs.MarshalTyped(clientHello).ToSendable().Msg()
 
-			if h.stateManager.GetConfig().Ha.Enabled {
+			if h.stateManager.GetEnv().IsHaEnabled() {
 				if supported, ok := msg.Headers.GetBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel)); ok && supported {
 
 					outMsg.Headers.PutBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel), true)

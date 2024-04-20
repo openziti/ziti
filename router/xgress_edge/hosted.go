@@ -550,7 +550,7 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 		InstanceSecret: terminator.instanceSecret,
 	}
 
-	if self.stateManager.GetConfig().Ha.Enabled && xgress_common.IsBearerToken(request.SessionToken) {
+	if self.stateManager.GetEnv().IsHaEnabled() && xgress_common.IsBearerToken(request.SessionToken) {
 		apiSession := self.stateManager.GetApiSessionFromCh(terminator.Channel)
 
 		if apiSession == nil {

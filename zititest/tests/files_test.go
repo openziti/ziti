@@ -66,7 +66,7 @@ func TestDownloadFiles(t *testing.T) {
 		t.Run("test-ert-downloads", func(t *testing.T) {
 			t.Parallel()
 
-			for _, size := range []string{"1KB" /* "100KB", "20MB"*/} {
+			for _, size := range []string{"1KB", "100KB", "20MB"} {
 				for _, hostType := range []string{"ert", "zet", "ziti-tunnel"} {
 					for _, client := range []httpClient{ClientCurl, ClientWget} {
 						for _, encrypted := range []bool{true, false} {

@@ -3,7 +3,6 @@ package edge_ctrl_pb
 import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/xt"
 )
 
@@ -157,8 +156,4 @@ func (self TerminatorPrecedence) GetZitiLabel() rest_model.TerminatorPrecedence 
 	}
 
 	return rest_model.TerminatorPrecedenceDefault
-}
-
-func GetPolicyType(p db.PolicyType) PolicyType {
-	return PolicyType(p.Id())
 }

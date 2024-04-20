@@ -39,7 +39,7 @@ const (
 	ApiSessionUpdatedType   = int32(edge_ctrl_pb.ContentType_ApiSessionUpdatedType)
 	RequestClientReSyncType = int32(edge_ctrl_pb.ContentType_RequestClientReSyncType)
 	DataStateType           = int32(edge_ctrl_pb.ContentType_DataStateType)
-	DataStateEventType      = int32(edge_ctrl_pb.ContentType_DataStateEventType)
+	DataStateChangeSetType  = int32(edge_ctrl_pb.ContentType_DataStateChangeSetType)
 
 	ServerHelloType = int32(edge_ctrl_pb.ContentType_ServerHelloType)
 	ClientHelloType = int32(edge_ctrl_pb.ContentType_ClientHelloType)

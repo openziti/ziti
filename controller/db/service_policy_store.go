@@ -6,6 +6,7 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"sort"
 )
 
@@ -76,6 +77,8 @@ func (entity *ServicePolicy) GetSemantic() string {
 func (entity *ServicePolicy) GetEntityType() string {
 	return EntityTypeServicePolicies
 }
+
+type ServicePolicyChangeEventListener func(event *edge_ctrl_pb.DataState_ServicePolicyChange)
 
 var _ ServicePolicyStore = (*servicePolicyStoreImpl)(nil)
 
@@ -215,7 +218,7 @@ Optimizations
 */
 func (store *servicePolicyStoreImpl) serviceRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
 	ctx := &roleAttributeChangeContext{
-		tx:                    persistCtx.Bucket.Tx(),
+		mutateCtx:             persistCtx.MutateContext,
 		rolesSymbol:           store.symbolServiceRoles,
 		linkCollection:        store.serviceCollection,
 		relatedLinkCollection: store.identityCollection,
@@ -223,21 +226,26 @@ func (store *servicePolicyStoreImpl) serviceRolesUpdated(persistCtx *boltz.Persi
 	}
 	if policy.PolicyType == PolicyTypeDial {
 		ctx.denormLinkCollection = store.stores.edgeService.dialIdentitiesCollection
-		ctx.changeHandler = func(fromId, toId []byte, add bool) {
+		ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
 			ctx.addServicePolicyEvent(toId, fromId, PolicyTypeDial, add)
 		}
 	} else {
 		ctx.denormLinkCollection = store.stores.edgeService.bindIdentitiesCollection
-		ctx.changeHandler = func(fromId, toId []byte, add bool) {
+		ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
 			ctx.addServicePolicyEvent(toId, fromId, PolicyTypeBind, add)
 		}
 	}
+
+	ctx.changeHandler = func(policyId []byte, relatedId []byte, add bool) {
+		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedService, add)
+	}
+
 	EvaluatePolicy(ctx, policy, store.stores.edgeService.symbolRoleAttributes)
 }
 
 func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
 	ctx := &roleAttributeChangeContext{
-		tx:                    persistCtx.Bucket.Tx(),
+		mutateCtx:             persistCtx.MutateContext,
 		rolesSymbol:           store.symbolIdentityRoles,
 		linkCollection:        store.identityCollection,
 		relatedLinkCollection: store.serviceCollection,
@@ -246,14 +254,18 @@ func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.Pers
 
 	if policy.PolicyType == PolicyTypeDial {
 		ctx.denormLinkCollection = store.stores.identity.dialServicesCollection
-		ctx.changeHandler = func(fromId, toId []byte, add bool) {
+		ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
 			ctx.addServicePolicyEvent(fromId, toId, PolicyTypeDial, add)
 		}
 	} else {
 		ctx.denormLinkCollection = store.stores.identity.bindServicesCollection
-		ctx.changeHandler = func(fromId, toId []byte, add bool) {
+		ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
 			ctx.addServicePolicyEvent(fromId, toId, PolicyTypeBind, add)
 		}
+	}
+
+	ctx.changeHandler = func(policyId []byte, relatedId []byte, add bool) {
+		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedIdentity, add)
 	}
 
 	EvaluatePolicy(ctx, policy, store.stores.identity.symbolRoleAttributes)
@@ -261,21 +273,25 @@ func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.Pers
 
 func (store *servicePolicyStoreImpl) postureCheckRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
 	ctx := &roleAttributeChangeContext{
-		tx:                    persistCtx.Bucket.Tx(),
+		mutateCtx:             persistCtx.MutateContext,
 		rolesSymbol:           store.symbolPostureCheckRoles,
 		linkCollection:        store.postureCheckCollection,
 		relatedLinkCollection: store.serviceCollection,
 		ErrorHolder:           persistCtx.Bucket,
 	}
 
-	ctx.changeHandler = func(fromId, toId []byte, add bool) {
-		ctx.addServiceUpdatedEvent(store.stores, ctx.tx, toId)
+	ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
+		ctx.addServiceUpdatedEvent(store.stores, ctx.tx(), toId)
 	}
 
 	if policy.PolicyType == PolicyTypeDial {
 		ctx.denormLinkCollection = store.stores.postureCheck.dialServicesCollection
 	} else {
 		ctx.denormLinkCollection = store.stores.postureCheck.bindServicesCollection
+	}
+
+	ctx.changeHandler = func(policyId []byte, relatedId []byte, add bool) {
+		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedPostureCheck, add)
 	}
 
 	EvaluatePolicy(ctx, policy, store.stores.postureCheck.symbolRoleAttributes)

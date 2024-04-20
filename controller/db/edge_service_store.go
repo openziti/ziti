@@ -186,7 +186,7 @@ func (store *edgeServiceStoreImpl) PersistEntity(entity *EdgeService, ctx *boltz
 func (store *edgeServiceStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	// Recalculate service policy links
 	ctx := &roleAttributeChangeContext{
-		tx:                    mutateCtx.Tx(),
+		mutateCtx:             mutateCtx,
 		rolesSymbol:           store.stores.servicePolicy.symbolServiceRoles,
 		linkCollection:        store.stores.servicePolicy.serviceCollection,
 		relatedLinkCollection: store.stores.servicePolicy.identityCollection,
@@ -196,7 +196,7 @@ func (store *edgeServiceStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, r
 
 	// Recalculate service edge router policy links
 	ctx = &roleAttributeChangeContext{
-		tx:                    mutateCtx.Tx(),
+		mutateCtx:             mutateCtx,
 		rolesSymbol:           store.stores.serviceEdgeRouterPolicy.symbolServiceRoles,
 		linkCollection:        store.stores.serviceEdgeRouterPolicy.serviceCollection,
 		relatedLinkCollection: store.stores.serviceEdgeRouterPolicy.edgeRouterCollection,

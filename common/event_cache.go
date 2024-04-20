@@ -6,12 +6,12 @@ import (
 	"sync"
 )
 
-type OnStoreSuccess func(index uint64, event *edge_ctrl_pb.DataState_Event)
+type OnStoreSuccess func(index uint64, event *edge_ctrl_pb.DataState_ChangeSet)
 
 type EventCache interface {
 	// Store allows storage of an event and execution of an onSuccess callback while the event cache remains locked.
 	// onSuccess may be nil. This function is blocking.
-	Store(event *edge_ctrl_pb.DataState_Event, onSuccess OnStoreSuccess) error
+	Store(event *edge_ctrl_pb.DataState_ChangeSet, onSuccess OnStoreSuccess) error
 
 	// CurrentIndex returns the latest event index applied. This function is blocking.
 	CurrentIndex() (uint64, bool)
@@ -20,7 +20,7 @@ type EventCache interface {
 	// An empty slice and true is returned in cases where the requested startIndex is the current index.
 	// An empty slice and false is returned in cases where the replay cannot be facilitated.
 	// This function is blocking.
-	ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.DataState_Event, bool)
+	ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.DataState_ChangeSet, bool)
 
 	// WhileLocked allows the execution of arbitrary functionality while the event cache is locked. This function
 	// is blocking.
@@ -55,7 +55,7 @@ func (cache *ForgetfulEventCache) WhileLocked(callback func(uint64, bool)) {
 	callback(cache.currentIndex())
 }
 
-func (cache *ForgetfulEventCache) Store(event *edge_ctrl_pb.DataState_Event, onSuccess OnStoreSuccess) error {
+func (cache *ForgetfulEventCache) Store(event *edge_ctrl_pb.DataState_ChangeSet, onSuccess OnStoreSuccess) error {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
@@ -81,7 +81,7 @@ func (cache *ForgetfulEventCache) Store(event *edge_ctrl_pb.DataState_Event, onS
 	return nil
 }
 
-func (cache *ForgetfulEventCache) ReplayFrom(_ uint64) ([]*edge_ctrl_pb.DataState_Event, bool) {
+func (cache *ForgetfulEventCache) ReplayFrom(_ uint64) ([]*edge_ctrl_pb.DataState_ChangeSet, bool) {
 	return nil, false
 }
 
@@ -103,10 +103,10 @@ func (cache *ForgetfulEventCache) currentIndex() (uint64, bool) {
 // LoggingEventCache stores events in order to support replaying (i.e. in controllers).
 type LoggingEventCache struct {
 	lock         sync.Mutex
-	HeadLogIndex uint64
-	LogSize      uint64
-	Log          []uint64
-	Events       map[uint64]*edge_ctrl_pb.DataState_Event
+	HeadLogIndex uint64                                       `json:"-"`
+	LogSize      uint64                                       `json:"-"`
+	Log          []uint64                                     `json:"-"`
+	Events       map[uint64]*edge_ctrl_pb.DataState_ChangeSet `json:"-"`
 }
 
 func NewLoggingEventCache(logSize uint64) *LoggingEventCache {
@@ -114,7 +114,7 @@ func NewLoggingEventCache(logSize uint64) *LoggingEventCache {
 		HeadLogIndex: 0,
 		LogSize:      logSize,
 		Log:          make([]uint64, logSize),
-		Events:       map[uint64]*edge_ctrl_pb.DataState_Event{},
+		Events:       map[uint64]*edge_ctrl_pb.DataState_ChangeSet{},
 	}
 }
 
@@ -125,7 +125,7 @@ func (cache *LoggingEventCache) SetCurrentIndex(index uint64) {
 	cache.HeadLogIndex = 0
 	cache.Log = make([]uint64, cache.LogSize)
 	cache.Log[0] = index
-	cache.Events = map[uint64]*edge_ctrl_pb.DataState_Event{}
+	cache.Events = map[uint64]*edge_ctrl_pb.DataState_ChangeSet{}
 }
 
 func (cache *LoggingEventCache) WhileLocked(callback func(uint64, bool)) {
@@ -135,7 +135,7 @@ func (cache *LoggingEventCache) WhileLocked(callback func(uint64, bool)) {
 	callback(cache.currentIndex())
 }
 
-func (cache *LoggingEventCache) Store(event *edge_ctrl_pb.DataState_Event, onSuccess OnStoreSuccess) error {
+func (cache *LoggingEventCache) Store(event *edge_ctrl_pb.DataState_ChangeSet, onSuccess OnStoreSuccess) error {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
@@ -149,7 +149,7 @@ func (cache *LoggingEventCache) Store(event *edge_ctrl_pb.DataState_Event, onSuc
 	currentIndex, ok := cache.currentIndex()
 
 	if ok && currentIndex >= event.Index {
-		return fmt.Errorf("out of order event detected, currentIndex: %d, recievedIndex: %d, type :%T", currentIndex, event.Index, cache)
+		return fmt.Errorf("out of order event detected, currentIndex: %d, receivedIndex: %d, type :%T", currentIndex, event.Index, cache)
 	}
 
 	targetLogIndex := uint64(0)
@@ -188,7 +188,7 @@ func (cache *LoggingEventCache) currentIndex() (uint64, bool) {
 	return cache.Log[cache.HeadLogIndex], true
 }
 
-func (cache *LoggingEventCache) ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.DataState_Event, bool) {
+func (cache *LoggingEventCache) ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.DataState_ChangeSet, bool) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
@@ -219,7 +219,7 @@ func (cache *LoggingEventCache) ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.D
 
 	// ez replay
 	if *startLogIndex < cache.HeadLogIndex {
-		var result []*edge_ctrl_pb.DataState_Event
+		var result []*edge_ctrl_pb.DataState_ChangeSet
 		for _, key := range cache.Log[*startLogIndex:cache.HeadLogIndex] {
 			result = append(result, cache.Events[key])
 		}
@@ -227,7 +227,7 @@ func (cache *LoggingEventCache) ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.D
 	}
 
 	//looping replay
-	var result []*edge_ctrl_pb.DataState_Event
+	var result []*edge_ctrl_pb.DataState_ChangeSet
 	for _, key := range cache.Log[*startLogIndex:] {
 		result = append(result, cache.Events[key])
 	}

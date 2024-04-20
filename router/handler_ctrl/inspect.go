@@ -152,6 +152,14 @@ func (context *inspectRequestContext) processLocal() {
 			} else {
 				context.appendValue(requested, js)
 			}
+		} else if lc == "router-data-model" {
+			rdm := context.handler.env.GetRouterDataModel()
+			js, err := json.Marshal(rdm)
+			if err != nil {
+				context.appendError(errors.Wrap(err, "failed to router data model to json").Error())
+			} else {
+				context.appendValue(requested, string(js))
+			}
 		}
 	}
 }

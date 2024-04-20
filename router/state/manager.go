@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/oidc_auth"
-	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress_common"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -56,6 +55,11 @@ const (
 type RemoveListener func()
 
 type DisconnectCB func(token string)
+
+type Env interface {
+	IsHaEnabled() bool
+	GetCloseNotify() <-chan struct{}
+}
 
 type Manager interface {
 	//"Network" Sessions
@@ -91,20 +95,22 @@ type Manager interface {
 
 	VerifyClientCert(cert *x509.Certificate) error
 
-	StartRouterModelSave(routerEnv env.RouterEnv, path string, duration time.Duration)
+	StartRouterModelSave(path string, duration time.Duration)
 	LoadRouterModel(filePath string)
 
 	AddActiveChannel(ch channel.Channel, session *ApiSession)
 	RemoveActiveChannel(ch channel.Channel)
 	GetApiSessionFromCh(ch channel.Channel) *ApiSession
 
-	GetConfig() *router.Config
+	GetEnv() Env
 	UpdateChApiSession(channel.Channel, *ApiSession) error
+
+	env.Xrctrl
 }
 
 var _ Manager = (*ManagerImpl)(nil)
 
-func NewManager(config *router.Config) Manager {
+func NewManager(env Env) Manager {
 	return &ManagerImpl{
 		EventEmmiter:            events.New(),
 		apiSessionsByToken:      cmap.New[*edge_ctrl_pb.ApiSession](),
@@ -113,12 +119,12 @@ func NewManager(config *router.Config) Manager {
 		recentlyRemovedSessions: cmap.New[time.Time](),
 		certCache:               cmap.New[*x509.Certificate](),
 		activeChannels:          cmap.New[*ApiSession](),
-		config:                  config,
+		env:                     env,
 	}
 }
 
 type ManagerImpl struct {
-	config             *router.Config
+	env                Env
 	apiSessionsByToken cmap.ConcurrentMap[string, *edge_ctrl_pb.ApiSession]
 
 	activeApiSessions cmap.ConcurrentMap[string, *MapWithMutex]
@@ -169,8 +175,8 @@ func (sm *ManagerImpl) UpdateChApiSession(ch channel.Channel, newApiSession *Api
 	return nil
 }
 
-func (sm *ManagerImpl) GetConfig() *router.Config {
-	return sm.config
+func (sm *ManagerImpl) GetEnv() Env {
+	return sm.env
 }
 
 func (sm *ManagerImpl) GetApiSessionFromCh(ch channel.Channel) *ApiSession {
@@ -187,11 +193,11 @@ func (sm *ManagerImpl) RemoveActiveChannel(ch channel.Channel) {
 	sm.activeChannels.Remove(ch.Id())
 }
 
-func (sm *ManagerImpl) StartRouterModelSave(routerEnv env.RouterEnv, filePath string, duration time.Duration) {
+func (sm *ManagerImpl) StartRouterModelSave(filePath string, duration time.Duration) {
 	go func() {
 		for {
 			select {
-			case <-routerEnv.GetCloseNotify():
+			case <-sm.env.GetCloseNotify():
 				return
 			case <-time.After(duration):
 				sm.RouterDataModel().Save(filePath)
@@ -461,7 +467,7 @@ func NewApiSessionFromToken(jwtToken *jwt.Token, accessClaims *common.AccessClai
 }
 
 func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
-	if sm.config.Ha.Enabled && strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
+	if sm.env.IsHaEnabled() && strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
 		jwtToken, accessClaims, err := sm.ParseJwt(token)
 
 		if err == nil {
@@ -818,4 +824,33 @@ func (sm *ManagerImpl) parsePublicKey(publicKey *edge_ctrl_pb.DataState_PublicKe
 	}
 
 	return nil, fmt.Errorf("unsupported public key format: %s", publicKey.Format.String())
+}
+
+func (sm *ManagerImpl) LoadConfig(cfgmap map[interface{}]interface{}) error {
+	return nil
+}
+
+func (sm *ManagerImpl) BindChannel(binding channel.Binding) error {
+	binding.AddTypedReceiveHandler(NewSessionRemovedHandler(sm))
+	binding.AddTypedReceiveHandler(NewApiSessionAddedHandler(sm, binding))
+	binding.AddTypedReceiveHandler(NewApiSessionRemovedHandler(sm))
+	binding.AddTypedReceiveHandler(NewApiSessionUpdatedHandler(sm))
+	binding.AddTypedReceiveHandler(NewDataStateHandler(sm))
+	binding.AddTypedReceiveHandler(NewDataStateEventHandler(sm))
+	return nil
+}
+
+func (sm *ManagerImpl) Enabled() bool {
+	return true
+}
+
+func (sm *ManagerImpl) Run(env.RouterEnv) error {
+	return nil
+}
+
+func (sm *ManagerImpl) NotifyOfReconnect(ch channel.Channel) {
+}
+
+func (sm *ManagerImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
+	return nil
 }
