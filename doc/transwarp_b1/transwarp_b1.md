@@ -515,10 +515,10 @@ Here's the relevant logging output from the `ziti router` process:
 Here's the relevant log output when starting the second `ziti router`, configured without a link listener. This output represents it dialing the `transwarptls:` link connection to the first router:
 
 ```
-[   0.630]    INFO fabric/router/handler_ctrl.(*dialHandler).andle: received link connect request
-[   0.630]    INFO fabric/router/xlink_transport.(*dialer).Dil: dialing link with split payload/ack channels [l/ZoLq]
-[   0.631]    INFO fabric/router/xlink_transport.(*dialer).Dil: dialing payload channel for link [l/ZoLq]
-[   0.631]    INFO foundation/transport/transwarptls.Dial: wetworld3 profile = [
+[   0.630]    INFO fabric/router/handler_ctrl.(*dialHandler).handle: received link connect request
+[   0.630]    INFO fabric/router/xlink_transport.(*dialer).Dial: dialing link with split payload/ack channels [l/ZoLq]
+[   0.631]    INFO fabric/router/xlink_transport.(*dialer).Dial: dialing payload channel for link [l/ZoLq]
+[   0.631]    INFO foundation/transport/transwarptls.Dial: westworld3 profile = [
 *westworld3.Profile {
 	...
 }
