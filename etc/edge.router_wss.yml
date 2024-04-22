@@ -37,12 +37,12 @@ link:
     - binding:          transport
 
 # By having an 'edge' section defined, the ziti router will attempt to parse the edge configuration. Removing this
-# section, commenting out, or altering the nameof the section will cause the router to no longer operate as an Edge
+# section, commenting out, or altering the name of the section will cause the router to no longer operate as an Edge
 # Router.
 edge:
   # (required to engage this router for WSS)
   underlay_type: wss
-  # (required) Information used to generate theinitial registration CSR. For documentation on these fields please
+  # (required) Information used to generate the initial registration CSR. For documentation on these fields please
   # refer to the openssl documentation. These values MUST be supplied and have no defaults.
   csr:
     country: US
