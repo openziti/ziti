@@ -32,13 +32,13 @@ connectivity, and endpoint enrollment.
 
 ## Ziti Router
 
- The Ziti Router binary (ziti-router) is deployed multiple times to stand up multiple ingress and egress
- points for a Ziti overlay network. Each router has its own identity and must be enrolled with the controller.
- A Ziti environment requires one or more routers.
+The Ziti Router is deployed multiple times to stand up multiple ingress and egress points for a Ziti overlay network.
+Each router has its own identity and must be enrolled with the controller.  A Ziti environment requires one or more
+routers.
 
- If the Ziti Edge features are enabled, routers may optionally be enrolled as an "edge router". Edge routers allow Ziti
- SDK enabled applications, Ziti Applications, to access services or host services that have been configured within Ziti
- as overlay services.
+If the Ziti Edge features are enabled, routers may optionally be enrolled as an "edge router". Edge routers allow Ziti
+SDK enabled applications, Ziti Applications, to access services or host services that have been configured within Ziti
+as overlay services.
 
 ## Ziti Applications
 

@@ -63,13 +63,13 @@ func run(cmd *cobra.Command, args []string) {
 
 	config, err := router.LoadConfig(args[0])
 	if err != nil {
-		startLogger.WithError(err).Error("error loading ziti-router config")
+		startLogger.WithError(err).Error("error loading ziti router config")
 		panic(err)
 	}
 	config.SetFlags(getFlags(cmd))
 
 	startLogger = startLogger.WithField("routerId", config.Id.Token)
-	startLogger.Info("starting ziti-router")
+	startLogger.Info("starting ziti router")
 
 	r := router.Create(config, version.GetCmdBuildInfo())
 
@@ -141,7 +141,7 @@ func waitForShutdown(r *router.Router) {
 		fmt.Println("=== STACK DUMP CLOSE ===")
 	}
 
-	pfxlog.Logger().Info("shutting down ziti-router")
+	pfxlog.Logger().Info("shutting down ziti router")
 
 	if err := r.Shutdown(); err != nil {
 		pfxlog.Logger().WithError(err).Info("error encountered during shutdown")
