@@ -69,13 +69,18 @@ type Db interface {
 
 	// AddRestoreListener adds a callback which will be invoked asynchronously when a snapshot is restored
 	AddRestoreListener(listener func())
+
+	// AddTxCompleteListener adds a listener which is called all tx processing is complete, including
+	// post-commit hooks
+	AddTxCompleteListener(listener func(ctx MutateContext))
 }
 
 type DbImpl struct {
-	rootBucket       string
-	reloadLock       sync.RWMutex
-	db               *bbolt.DB
-	restoreListeners concurrenz.CopyOnWriteSlice[func()]
+	rootBucket          string
+	reloadLock          sync.RWMutex
+	db                  *bbolt.DB
+	restoreListeners    concurrenz.CopyOnWriteSlice[func()]
+	txCompleteListeners concurrenz.CopyOnWriteSlice[func(ctx MutateContext)]
 }
 
 func Open(path string, rootBucket string) (*DbImpl, error) {
@@ -106,6 +111,10 @@ func (self *DbImpl) Close() error {
 	return self.db.Close()
 }
 
+func (self *DbImpl) AddTxCompleteListener(listener func(ctx MutateContext)) {
+	self.txCompleteListeners.Append(listener)
+}
+
 func (self *DbImpl) Update(ctx MutateContext, fn func(ctx MutateContext) error) error {
 	if ctx == nil {
 		ctx = NewMutateContext(context.Background())
@@ -122,7 +131,20 @@ func (self *DbImpl) Update(ctx MutateContext, fn func(ctx MutateContext) error) 
 			if err := fn(ctx); err != nil {
 				return err
 			}
-			return ctx.runPreCommitActions()
+			if err := ctx.runPreCommitActions(); err != nil {
+				return err
+			}
+
+			txCompleteListeners := self.txCompleteListeners.Value()
+			if txCompleteListeners != nil {
+				tx.OnCommit(func() {
+					for _, listener := range txCompleteListeners {
+						listener(ctx)
+					}
+				})
+			}
+
+			return nil
 		})
 	}
 
