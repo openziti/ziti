@@ -1,3 +1,0 @@
-services:
-  ziti-controller:
-    network_mode: host
