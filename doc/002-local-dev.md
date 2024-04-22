@@ -26,16 +26,6 @@ $ ziti version
 v0.0.0
 ```
 
-## Save Build Artifact Elsewhere
-
-```bash
-# build the binary without installing in GOPATH
-go build -o ./build/ziti ./ziti/
-
-# execute the binary
-./build/ziti version
-```
-
 ## Run a Local Ziti Stack
 
 Let's get a local Ziti stack up and running now that you have built and installed all the Ziti apps in this repo.

@@ -49,7 +49,7 @@ Below is an outline of all the applications that are generated from this reposit
 The following binaries are used to deploy long running servers that route traffic and manage the
 configuration of a Ziti environment.
 
-| Command           | Description|
+| Subcommand           | Description|
 |-------------------| -----------|
 | ziti controller   | Runs a central server necessary for Ziti environments|
 | ziti router       | Runs a server capable of ingress'ing and egress'ing Ziti traffic standalone or as a mesh|
@@ -58,7 +58,7 @@ configuration of a Ziti environment.
 
 The following commands provide utility or testing functionality.
 
-| Command           | Description|
+| Subcommand           | Description|
 |-------------------| -----------|
 | ziti edge enroll  | Provides enrollment processing features for executables that do not directly support enrollment|
 | ziti fabric inspect | Observe Ziti Fabric runtime values                       |
@@ -67,7 +67,7 @@ The following commands provide utility or testing functionality.
 
 The following binaries are used to configure and manage a Ziti environment via command line interactions.
 
-| Command           | Description|
+| Subcommand           | Description|
 |-------------------| -----------|
 | ziti fabric       | Provides command line access to Ziti Fabric management features|
 | ziti edge         | Provides command line access to Ziti management features|
@@ -78,7 +78,7 @@ The following binaries are Ziti endpoint clients which have the Ziti SDK built i
 edge router. Endpoint clients can be application specific or act as a bridge to other applications, hosts, or underlay
 networks.
 
-| Command           | Description|
+| Subcommand           | Description|
 |-------------------| -----------|
 | ziti tunnel       | Provides the ability to intercept traffic to route traffic across Ziti|
 

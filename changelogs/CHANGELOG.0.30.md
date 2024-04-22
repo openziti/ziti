@@ -43,7 +43,7 @@ Currently only HTTP Connect proxies which don't require authentication are suppo
       not create the usual edge router/service edge router policy.
     * [Issue #1397](https://github.com/openziti/ziti/issues/1397) - HTTP Proxy support for host.v1/host.v2 config types
     * [Issue #1423](https://github.com/openziti/ziti/issues/1423) - Controller crashes when edge router reconnects (Client Hello)
-    * [Issue #1414](https://github.com/openziti/ziti/issues/1414) - Race condition in xgress_edge_tunnel tunneller at start but not seen in pre-compiled binary
+    * [Issue #1414](https://github.com/openziti/ziti/issues/1414) - Race condition in xgress_edge_tunnel tunneler at start but not seen in pre-compiled binary
     * [Issue #1406](https://github.com/openziti/ziti/issues/1406) - Entity change event dispatcher isn't shutting down properly when controller shuts down
     * [Issue #1382](https://github.com/openziti/ziti/issues/1382) - service failure costs are not shrinking over time
 
