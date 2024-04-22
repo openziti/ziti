@@ -771,8 +771,6 @@ func (self *edgeClientConn) processTokenUpdate(manager state.Manager, req *chann
 	if err := ch.Send(reply); err != nil {
 		logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with success")
 	}
-	return
-
 }
 
 func getResultOrFailure(msg *channel.Message, err error, result protobufs.TypedMessage) error {
