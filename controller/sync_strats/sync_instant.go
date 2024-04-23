@@ -57,7 +57,7 @@ const (
 	ZdbKey                    string                     = "zdb"
 )
 
-var _ env.RouterSyncStrategy = &InstantStrategy{}
+var _ env.RouterSyncStrategy = (*InstantStrategy)(nil)
 
 // InstantStrategyOptions is the options for the instant strategy.
 // - MaxQueuedRouterConnects    - max number of router connected events to buffer
@@ -114,6 +114,9 @@ type InstantStrategy struct {
 	caHandler            *constraintToIndexedEvents[*db.Ca]
 	revocationHandler    *constraintToIndexedEvents[*db.Revocation]
 	controllerHandler    *constraintToIndexedEvents[*db.Controller]
+
+	changeSetLock sync.Mutex
+	changeSets    map[uint64]*edge_ctrl_pb.DataState_ChangeSet
 }
 
 func (strategy *InstantStrategy) AddPublicKey(cert *tls.Certificate) {
@@ -209,6 +212,8 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 		updateHandler: strategy.ControllerUpdate,
 	}
 
+	strategy.ae.GetDbProvider().GetDb().AddTxCompleteListener(strategy.completeChangeSet)
+
 	return nil
 }
 
@@ -247,6 +252,7 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 		receivedClientHelloQueue: make(chan *RouterSender, options.MaxQueuedClientHellos),
 		RouterDataModel:          common.NewSenderRouterDataModel(10000, 10000),
 		stopNotify:               make(chan struct{}),
+		changeSets:               map[uint64]*edge_ctrl_pb.DataState_ChangeSet{},
 	}
 
 	err := strategy.Initialize(10000, 1000)
@@ -265,6 +271,8 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 	for i := int32(0); i < options.SyncWorkerCount; i++ {
 		go strategy.startSynchronizeWorker()
 	}
+
+	ae.GetHostController().GetNetwork().AddInspectTarget(strategy.inspect)
 
 	return strategy
 }
@@ -705,12 +713,11 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 			if ok {
 				var err error
 				for _, curEvent := range events {
-					err = strategy.sendDataStatEvent(rtx, curEvent)
+					err = strategy.sendDataStateChangeSet(rtx, curEvent)
 					if err != nil {
 						pfxlog.Logger().WithError(err).
 							WithField("eventIndex", curEvent.Index).
 							WithField("evenType", reflect.TypeOf(curEvent).String()).
-							WithField("eventAction", curEvent.Action).
 							WithField("eventIsSynthetic", curEvent.IsSynthetic).
 							Error("could not send data state event")
 					}
@@ -730,11 +737,14 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 						},
 					}
 
-					err = strategy.sendDataStatEvent(rtx, peerEvent)
+					changeSet := &edge_ctrl_pb.DataState_ChangeSet{
+						Changes: []*edge_ctrl_pb.DataState_Event{peerEvent},
+					}
+
+					err = strategy.sendDataStateChangeSet(rtx, changeSet)
 
 					if err != nil {
 						pfxlog.Logger().WithError(err).
-							WithField("eventIndex", peerEvent.Index).
 							WithField("evenType", reflect.TypeOf(peerEvent).String()).
 							WithField("eventAction", peerEvent.Action).
 							WithField("eventIsSynthetic", peerEvent.IsSynthetic).
@@ -788,7 +798,7 @@ func (strategy *InstantStrategy) sendApiSessionAdded(rtx *RouterSender, isFullSt
 	return rtx.Send(msg)
 }
 
-func (strategy *InstantStrategy) handleRouterModelEvents(eventChannel <-chan *edge_ctrl_pb.DataState_Event) {
+func (strategy *InstantStrategy) handleRouterModelEvents(eventChannel <-chan *edge_ctrl_pb.DataState_ChangeSet) {
 	for {
 		select {
 		case newEvent := <-eventChannel:
@@ -798,7 +808,7 @@ func (strategy *InstantStrategy) handleRouterModelEvents(eventChannel <-chan *ed
 					return
 				}
 
-				err := strategy.sendDataStatEvent(rtx, newEvent)
+				err := strategy.sendDataStateChangeSet(rtx, newEvent)
 
 				if err != nil {
 					pfxlog.Logger().WithError(err).WithField("routerId", rtx.Router.Id).Error("error sending data state to router")
@@ -827,7 +837,7 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
 			return err
 		}
 
-		servicePolicy := newServicePolicy(tx, strategy.ae, storeModel)
+		servicePolicy := newServicePolicy(storeModel)
 
 		newModel := &edge_ctrl_pb.DataState_Event_ServicePolicy{ServicePolicy: servicePolicy}
 		newEvent := &edge_ctrl_pb.DataState_Event{
@@ -835,6 +845,33 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
 			Model:  newModel,
 		}
 		strategy.HandleServicePolicyEvent(newEvent, newModel)
+
+		result := strategy.ae.GetManagers().ServicePolicy.ListAssociatedIds(tx, storeModel.Id)
+
+		addServicesEvent := &edge_ctrl_pb.DataState_ServicePolicyChange{
+			PolicyId:          currentId,
+			RelatedEntityIds:  result.ServiceIds,
+			RelatedEntityType: edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedService,
+			Add:               true,
+		}
+
+		strategy.HandleServicePolicyChange(addServicesEvent)
+
+		addIdentitiesEvent := &edge_ctrl_pb.DataState_ServicePolicyChange{
+			PolicyId:          currentId,
+			RelatedEntityIds:  result.IdentityIds,
+			RelatedEntityType: edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedIdentity,
+			Add:               true,
+		}
+		strategy.HandleServicePolicyChange(addIdentitiesEvent)
+
+		addPostureChecksEvent := &edge_ctrl_pb.DataState_ServicePolicyChange{
+			PolicyId:          currentId,
+			RelatedEntityIds:  result.PostureCheckIds,
+			RelatedEntityType: edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedPostureCheck,
+			Add:               true,
+		}
+		strategy.HandleServicePolicyChange(addPostureChecksEvent)
 	}
 
 	return nil
@@ -1046,18 +1083,12 @@ func newIdentity(identityModel *db.Identity) *edge_ctrl_pb.DataState_Identity {
 	}
 }
 
-func newServicePolicy(tx *bbolt.Tx, env *env.AppEnv, storeModel *db.ServicePolicy) *edge_ctrl_pb.DataState_ServicePolicy {
+func newServicePolicy(storeModel *db.ServicePolicy) *edge_ctrl_pb.DataState_ServicePolicy {
 	servicePolicy := &edge_ctrl_pb.DataState_ServicePolicy{
 		Id:         storeModel.Id,
 		Name:       storeModel.Name,
-		PolicyType: edge_ctrl_pb.GetPolicyType(storeModel.PolicyType),
+		PolicyType: edge_ctrl_pb.PolicyType(storeModel.PolicyType.Id()),
 	}
-
-	result := env.GetManagers().ServicePolicy.ListAssociatedIds(tx, storeModel.Id)
-
-	servicePolicy.PostureCheckIds = result.PostureCheckIds
-	servicePolicy.ServiceIds = result.ServiceIds
-	servicePolicy.IdentityIds = result.IdentityIds
 
 	return servicePolicy
 }
@@ -1176,19 +1207,6 @@ func newPostureCheck(postureModel *db.PostureCheck) *edge_ctrl_pb.DataState_Post
 	return newVal
 }
 
-func actionToName(action edge_ctrl_pb.DataState_Action) string {
-	switch action {
-	case edge_ctrl_pb.DataState_Create:
-		return "CREATE"
-	case edge_ctrl_pb.DataState_Update:
-		return "UPDATE"
-	case edge_ctrl_pb.DataState_Delete:
-		return "DELETE"
-	}
-
-	return "UNKNOWN"
-}
-
 func (strategy *InstantStrategy) ServicePolicyCreate(index uint64, servicePolicy *db.ServicePolicy) {
 	strategy.handleServicePolicy(index, edge_ctrl_pb.DataState_Create, servicePolicy)
 }
@@ -1202,20 +1220,9 @@ func (strategy *InstantStrategy) ServicePolicyDelete(index uint64, servicePolicy
 }
 
 func (strategy *InstantStrategy) handleServicePolicy(index uint64, action edge_ctrl_pb.DataState_Action, servicePolicy *db.ServicePolicy) {
-	var sp *edge_ctrl_pb.DataState_ServicePolicy
+	sp := newServicePolicy(servicePolicy)
 
-	err := strategy.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		sp = newServicePolicy(tx, strategy.ae, servicePolicy)
-		return nil
-	})
-
-	if err != nil {
-		pfxlog.Logger().WithField("id", servicePolicy.Id).WithError(err).Errorf("could not handle %s for %T", actionToName(action), servicePolicy)
-		return
-	}
-
-	strategy.Apply(&edge_ctrl_pb.DataState_Event{
-		Index:  index,
+	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
 		Action: action,
 		Model: &edge_ctrl_pb.DataState_Event_ServicePolicy{
 			ServicePolicy: sp,
@@ -1238,8 +1245,7 @@ func (strategy *InstantStrategy) IdentityDelete(index uint64, identity *db.Ident
 func (strategy *InstantStrategy) handleIdentity(index uint64, action edge_ctrl_pb.DataState_Action, identity *db.Identity) {
 	id := newIdentity(identity)
 
-	strategy.Apply(&edge_ctrl_pb.DataState_Event{
-		Index:  index,
+	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
 		Action: action,
 		Model: &edge_ctrl_pb.DataState_Event_Identity{
 			Identity: id,
@@ -1262,8 +1268,7 @@ func (strategy *InstantStrategy) ServiceDelete(index uint64, service *db.EdgeSer
 func (strategy *InstantStrategy) handleService(index uint64, action edge_ctrl_pb.DataState_Action, service *db.EdgeService) {
 	svc := newService(service)
 
-	strategy.Apply(&edge_ctrl_pb.DataState_Event{
-		Index:  index,
+	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
 		Action: action,
 		Model: &edge_ctrl_pb.DataState_Event_Service{
 			Service: svc,
@@ -1274,8 +1279,7 @@ func (strategy *InstantStrategy) handleService(index uint64, action edge_ctrl_pb
 func (strategy *InstantStrategy) handlePostureCheck(index uint64, action edge_ctrl_pb.DataState_Action, postureCheck *db.PostureCheck) {
 	pc := newPostureCheck(postureCheck)
 
-	strategy.Apply(&edge_ctrl_pb.DataState_Event{
-		Index:  index,
+	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
 		Action: action,
 		Model: &edge_ctrl_pb.DataState_Event_PostureCheck{
 			PostureCheck: pc,
@@ -1344,8 +1348,7 @@ func (strategy *InstantStrategy) RevocationDelete(index uint64, revocation *db.R
 }
 
 func (strategy *InstantStrategy) handlePublicKey(index uint64, action edge_ctrl_pb.DataState_Action, publicKey *edge_ctrl_pb.DataState_PublicKey) {
-	strategy.Apply(&edge_ctrl_pb.DataState_Event{
-		Index:  index,
+	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
 		Action: action,
 		Model: &edge_ctrl_pb.DataState_Event_PublicKey{
 			PublicKey: publicKey,
@@ -1353,14 +1356,14 @@ func (strategy *InstantStrategy) handlePublicKey(index uint64, action edge_ctrl_
 	})
 }
 
-func (strategy *InstantStrategy) sendDataStatEvent(rtx *RouterSender, stateEvent *edge_ctrl_pb.DataState_Event) error {
+func (strategy *InstantStrategy) sendDataStateChangeSet(rtx *RouterSender, stateEvent *edge_ctrl_pb.DataState_ChangeSet) error {
 	content, err := proto.Marshal(stateEvent)
 
 	if err != nil {
 		return err
 	}
 
-	msg := channel.NewMessage(env.DataStateEventType, content)
+	msg := channel.NewMessage(env.DataStateChangeSetType, content)
 
 	return rtx.Send(msg)
 
@@ -1379,8 +1382,7 @@ func (strategy *InstantStrategy) sendDataState(rtx *RouterSender, state *edge_ct
 }
 
 func (strategy *InstantStrategy) handleRevocation(index uint64, action edge_ctrl_pb.DataState_Action, revocation *db.Revocation) {
-	strategy.Apply(&edge_ctrl_pb.DataState_Event{
-		Index:  index,
+	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
 		Action: action,
 		Model: &edge_ctrl_pb.DataState_Event_Revocation{
 			Revocation: &edge_ctrl_pb.DataState_Revocation{
@@ -1391,13 +1393,88 @@ func (strategy *InstantStrategy) handleRevocation(index uint64, action edge_ctrl
 	})
 }
 
+func (strategy *InstantStrategy) addToChangeSet(index uint64, event *edge_ctrl_pb.DataState_Event) {
+	strategy.changeSetLock.Lock()
+	defer strategy.changeSetLock.Unlock()
+
+	changeSet, found := strategy.changeSets[index]
+	if !found {
+		changeSet = &edge_ctrl_pb.DataState_ChangeSet{
+			Index: index,
+		}
+		strategy.changeSets[index] = changeSet
+	}
+	changeSet.Changes = append(changeSet.Changes, event)
+}
+
+func (strategy *InstantStrategy) completeChangeSet(ctx boltz.MutateContext) {
+	strategy.changeSetLock.Lock()
+	defer strategy.changeSetLock.Unlock()
+
+	indexPtr := strategy.indexProvider.ContextIndex(ctx)
+	if indexPtr == nil {
+		return
+	}
+	index := *indexPtr
+	changeSet := strategy.changeSets[index]
+
+	for k := range strategy.changeSets {
+		if k <= index {
+			delete(strategy.changeSets, k)
+		}
+	}
+
+	v := ctx.Context().Value(db.ServicePolicyEventsKey)
+	if v != nil {
+		policyEvents := v.([]*edge_ctrl_pb.DataState_ServicePolicyChange)
+		if len(policyEvents) > 0 {
+			if changeSet == nil {
+				changeSet = &edge_ctrl_pb.DataState_ChangeSet{
+					Index: index,
+				}
+			}
+			for _, policyEvent := range policyEvents {
+				changeSet.Changes = append(changeSet.Changes, &edge_ctrl_pb.DataState_Event{
+					Action: 0,
+					Model: &edge_ctrl_pb.DataState_Event_ServicePolicyChange{
+						ServicePolicyChange: policyEvent,
+					},
+				})
+			}
+		}
+	}
+
+	if changeSet != nil {
+		strategy.ApplyChangeSet(changeSet)
+	}
+}
+
+func (strategy *InstantStrategy) inspect(val string) (bool, *string, error) {
+	if val == "router-data-model" {
+		rdm := strategy.RouterDataModel
+		js, err := json.Marshal(rdm)
+		if err != nil {
+			return true, nil, err
+		}
+		result := string(js)
+		return true, &result, nil
+	}
+	return false, nil, nil
+}
+
 type IndexProvider interface {
 	// NextIndex provides an index for the supplied MutateContext.
 	NextIndex(ctx boltz.MutateContext) (uint64, error)
 
 	// CurrentIndex provides the current index
 	CurrentIndex() uint64
+
+	ContextIndex(ctx boltz.MutateContext) *uint64
 }
+
+type nonHahIndexKeyType string
+
+const nonHaIndexKey = nonHahIndexKeyType("non-ha.index")
 
 type NonHaIndexProvider struct {
 	ae          *env.AppEnv
@@ -1438,15 +1515,19 @@ func (p *NonHaIndexProvider) load() {
 	}
 }
 
-func (p *NonHaIndexProvider) NextIndex(_ boltz.MutateContext) (uint64, error) {
+func (p *NonHaIndexProvider) NextIndex(ctx boltz.MutateContext) (uint64, error) {
 	p.initialLoad.Do(p.load)
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	ctx := boltz.NewMutateContext(context.Background())
-	err := p.ae.GetDbProvider().GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
-		zdb := ctx.Tx().Bucket([]byte(ZdbKey))
+	if val := ctx.Context().Value(nonHaIndexKey); val != nil {
+		return val.(uint64), nil
+	}
+
+	updateCtx := boltz.NewMutateContext(context.Background())
+	err := p.ae.GetDbProvider().GetDb().Update(updateCtx, func(updateCtx boltz.MutateContext) error {
+		zdb := updateCtx.Tx().Bucket([]byte(ZdbKey))
 
 		newIndex := p.index + 1
 
@@ -1466,6 +1547,10 @@ func (p *NonHaIndexProvider) NextIndex(_ boltz.MutateContext) (uint64, error) {
 		return 0, err
 	}
 
+	ctx.UpdateContext(func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, nonHaIndexKey, p.index)
+	})
+
 	return p.index, nil
 }
 
@@ -1476,6 +1561,16 @@ func (p *NonHaIndexProvider) CurrentIndex() uint64 {
 	defer p.lock.Unlock()
 
 	return p.index
+}
+
+func (p *NonHaIndexProvider) ContextIndex(ctx boltz.MutateContext) *uint64 {
+	if val := ctx.Context().Value(nonHaIndexKey); val != nil {
+		result, ok := val.(uint64)
+		if ok {
+			return &result
+		}
+	}
+	return nil
 }
 
 type RaftIndexProvider struct {
@@ -1501,6 +1596,14 @@ func (p *RaftIndexProvider) CurrentIndex() uint64 {
 	defer p.lock.Unlock()
 
 	return p.index
+}
+
+func (p *RaftIndexProvider) ContextIndex(ctx boltz.MutateContext) *uint64 {
+	changeCtx := change.FromContext(ctx.Context())
+	if changeCtx != nil {
+		return &changeCtx.RaftIndex
+	}
+	return nil
 }
 
 // constraintToIndexedEvents allows constraint events to be converted to events that provide the end state of an

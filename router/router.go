@@ -22,7 +22,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/foundation/v2/rate"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/router/state"
 	"io/fs"
 	"os"
 	"path"
@@ -92,6 +94,7 @@ type Router struct {
 	metricsReporter metrics.Handler
 	versionProvider versions.VersionProvider
 	debugOperations map[byte]func(c *bufio.ReadWriter) error
+	stateManager    state.Manager
 
 	xwebs               []xweb.Instance
 	xwebFactoryRegistry xweb.Registry
@@ -156,6 +159,18 @@ func (self *Router) GetHeartbeatOptions() env.HeartbeatOptions {
 	return self.config.Ctrl.Heartbeats
 }
 
+func (self *Router) GetStateManager() state.Manager {
+	return self.stateManager
+}
+
+func (self *Router) GetRouterDataModel() *common.RouterDataModel {
+	return self.stateManager.RouterDataModel()
+}
+
+func (self *Router) IsHaEnabled() bool {
+	return self.config.Ha.Enabled
+}
+
 func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
@@ -196,6 +211,8 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 		linkDialerPool:      linkDialerPool,
 		ctrlRateLimiter:     command.NewAdaptiveRateLimitTracker(config.Ctrl.RateLimit, metricsRegistry, closeNotify),
 	}
+
+	router.stateManager = state.NewManager(router)
 
 	router.ctrls = env.NewNetworkControllers(config.Ctrl.DefaultRequestTimeout, router.connectToController, &config.Ctrl.Heartbeats)
 	router.xlinkRegistry = link.NewLinkRegistry(router)

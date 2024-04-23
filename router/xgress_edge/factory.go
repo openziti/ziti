@@ -61,11 +61,6 @@ func (factory *Factory) Enabled() bool {
 func (factory *Factory) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewHelloHandler(factory.stateManager, factory.edgeRouterConfig.EdgeListeners))
 
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewSessionRemovedHandler(factory.stateManager))
-
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionAddedHandler(factory.stateManager, binding))
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionRemovedHandler(factory.stateManager))
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionUpdatedHandler(factory.stateManager))
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.env.GetRouterId(), func() {
 		factory.certChecker.CertsUpdated()
 	}))
@@ -73,9 +68,6 @@ func (factory *Factory) BindChannel(binding channel.Binding) error {
 		Type:    int32(edge_ctrl_pb.ContentType_CreateTerminatorV2ResponseType),
 		Handler: factory.hostedServices.HandleCreateTerminatorResponse,
 	})
-
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewDataStateHandler(factory.stateManager))
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewDataStateEventHandler(factory.stateManager))
 
 	return nil
 }
@@ -94,7 +86,7 @@ func (factory *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
 func (factory *Factory) Run(env env.RouterEnv) error {
 	factory.stateManager.StartHeartbeat(env, factory.edgeRouterConfig.HeartbeatIntervalSeconds, env.GetCloseNotify())
 
-	factory.stateManager.StartRouterModelSave(env, factory.edgeRouterConfig.Db, factory.edgeRouterConfig.DbSaveInterval)
+	factory.stateManager.StartRouterModelSave(factory.edgeRouterConfig.Db, factory.edgeRouterConfig.DbSaveInterval)
 
 	factory.certChecker = NewCertExpirationChecker(factory.env.GetRouterId(), factory.edgeRouterConfig, env.GetNetworkControllers(), env.GetCloseNotify())
 

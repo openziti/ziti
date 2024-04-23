@@ -66,7 +66,6 @@ import (
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/enroll"
-	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_edge"
 	"github.com/openziti/ziti/router/xgress_edge_tunnel"
@@ -503,15 +502,15 @@ func (ctx *TestContext) startEdgeRouter() {
 	ctx.Req.NoError(err)
 	ctx.router = router.Create(config, NewVersionProviderTest())
 
-	stateManager := state.NewManager(config)
-	xgressEdgeFactory := xgress_edge.NewFactory(config, ctx.router, stateManager)
+	xgressEdgeFactory := xgress_edge.NewFactory(config, ctx.router, ctx.router.GetStateManager())
 	xgress.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
 
-	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(ctx.router, config, stateManager)
+	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(ctx.router, config, ctx.router.GetStateManager())
 	xgress.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
 
 	ctx.Req.NoError(ctx.router.RegisterXrctrl(xgressEdgeFactory))
 	ctx.Req.NoError(ctx.router.RegisterXrctrl(xgressEdgeTunnelFactory))
+	ctx.Req.NoError(ctx.router.RegisterXrctrl(ctx.router.GetStateManager()))
 	ctx.Req.NoError(ctx.router.Start())
 }
 

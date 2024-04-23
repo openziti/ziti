@@ -59,7 +59,7 @@ enum ContentType {
   TunnelHealthEventType = 20412;
 
   DataStateType = 20500;
-  DataStateEventType = 20501;
+  DataStateChangeSetType = 20501;
   UpdateTokenType = 20502;
 }
 
@@ -130,6 +130,13 @@ enum PolicyType {
   BindPolicy = 2;
 }
 
+enum ServicePolicyRelatedEntityType {
+  InvalidRelatedType = 0;
+  RelatedService = 1;
+  RelatedIdentity = 2;
+  RelatedPostureCheck = 3;
+}
+
 message DataState {
   repeated Event events = 1;
   uint64 endIndex = 2;
@@ -143,12 +150,11 @@ message DataState {
   message Identity {
     string id = 1;
     string name = 2;
-    repeated string servicePolicyIds = 3;
-    TerminatorPrecedence defaultHostingPrecedence = 4;
-    uint32 defaultHostingCost = 5;
-    map<string, TerminatorPrecedence> serviceHostingPrecedences = 6;
-    map<string, uint32> serviceHostingCosts = 7;
-    bytes appDataJson = 8;
+    TerminatorPrecedence defaultHostingPrecedence = 3;
+    uint32 defaultHostingCost = 4;
+    map<string, TerminatorPrecedence> serviceHostingPrecedences = 5;
+    map<string, uint32> serviceHostingCosts = 6;
+    bytes appDataJson = 7;
   }
 
   message Service {
@@ -161,9 +167,6 @@ message DataState {
     string id = 1;
     string name = 2;
     PolicyType policyType = 3;
-    repeated string serviceIds = 4;
-    repeated string postureCheckIds = 5;
-    repeated string identityIds = 6;
   }
 
   message Revocation {
@@ -171,9 +174,22 @@ message DataState {
     google.protobuf.Timestamp ExpiresAt = 2;
   }
 
+  message ServicePolicyChange {
+    string policyId = 1;
+    repeated string relatedEntityIds = 2;
+    ServicePolicyRelatedEntityType relatedEntityType = 3;
+    bool add = 4;
+  }
+
+  message ChangeSet {
+    uint64 index = 1;
+    bool isSynthetic = 2;
+    repeated Event changes = 3;
+  }
+
   message Event {
     Action action = 1;
-    uint64 index = 2;
+    //uint64 index = 2;
     bool isSynthetic = 3;
 
     oneof Model{
@@ -183,6 +199,7 @@ message DataState {
       PostureCheck postureCheck = 13;
       PublicKey publicKey = 14;
       Revocation revocation = 15;
+      ServicePolicyChange servicePolicyChange = 16;
     }
   }
 

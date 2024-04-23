@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
 )
@@ -42,4 +43,5 @@ type RouterEnv interface {
 	GetRateLimiterPool() goroutines.Pool
 	GetCtrlRateLimiter() rate.AdaptiveRateLimitTracker
 	GetVersionInfo() versions.VersionProvider
+	GetRouterDataModel() *common.RouterDataModel
 }
