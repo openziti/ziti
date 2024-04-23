@@ -220,6 +220,31 @@ type IdTokenClaims struct {
 	CustomClaims
 }
 
+func (r *IdTokenClaims) GetExpirationTime() (*jwt.NumericDate, error) {
+	return &jwt.NumericDate{Time: r.TokenClaims.GetExpiration()}, nil
+}
+
+func (r *IdTokenClaims) GetNotBefore() (*jwt.NumericDate, error) {
+	notBefore := r.TokenClaims.NotBefore.AsTime()
+	return &jwt.NumericDate{Time: notBefore}, nil
+}
+
+func (r *IdTokenClaims) GetIssuedAt() (*jwt.NumericDate, error) {
+	return &jwt.NumericDate{Time: r.TokenClaims.GetIssuedAt()}, nil
+}
+
+func (r *IdTokenClaims) GetIssuer() (string, error) {
+	return r.TokenClaims.Issuer, nil
+}
+
+func (r *IdTokenClaims) GetSubject() (string, error) {
+	return r.TokenClaims.Issuer, nil
+}
+
+func (r *IdTokenClaims) GetAudience() (jwt.ClaimStrings, error) {
+	return jwt.ClaimStrings(r.TokenClaims.Audience), nil
+}
+
 func (c *IdTokenClaims) TotpComplete() bool {
 	for _, amr := range c.AuthenticationMethodsReferences {
 		if amr == "totp" {

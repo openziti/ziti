@@ -76,6 +76,7 @@ type Manager interface {
 	AddConnectedApiSessionWithChannel(token string, removeCB func(), ch channel.Channel)
 	RemoveConnectedApiSessionWithChannel(token string, underlay channel.Channel)
 	AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener
+	ParseJwt(jwtStr string) (*jwt.Token, *common.AccessClaims, error)
 
 	RouterDataModel() *common.RouterDataModel
 	SetRouterDataModel(model *common.RouterDataModel)
@@ -98,6 +99,7 @@ type Manager interface {
 	GetApiSessionFromCh(ch channel.Channel) *ApiSession
 
 	GetConfig() *router.Config
+	UpdateChApiSession(channel.Channel, *ApiSession) error
 }
 
 var _ Manager = (*ManagerImpl)(nil)
@@ -137,6 +139,34 @@ type ManagerImpl struct {
 
 	certCache       cmap.ConcurrentMap[string, *x509.Certificate]
 	routerDataModel atomic.Pointer[common.RouterDataModel]
+}
+
+func (sm *ManagerImpl) UpdateChApiSession(ch channel.Channel, newApiSession *ApiSession) error {
+	if newApiSession == nil {
+		return errors.New("nil api session")
+	}
+
+	if newApiSession.Claims == nil {
+		return errors.New("nil api session claims")
+	}
+
+	if newApiSession.Claims.Type != common.TokenTypeAccess {
+		return fmt.Errorf("bearer token is of invalid type: expected %s, got: %s", common.TokenTypeAccess, newApiSession.Claims.Type)
+	}
+
+	currentApiSession := sm.GetApiSessionFromCh(ch)
+
+	if newApiSession.Claims.Subject != currentApiSession.Claims.Subject {
+		return fmt.Errorf("bearer token subjects did not match, current: %s, new: %s", currentApiSession.Claims.Subject, newApiSession.Claims.Subject)
+	}
+
+	if newApiSession.Claims.ApiSessionId != currentApiSession.Claims.ApiSessionId {
+		return fmt.Errorf("bearer token api session ids did not match, current: %s, new: %s", currentApiSession.Claims.ApiSessionId, newApiSession.Claims.ApiSessionId)
+	}
+
+	sm.activeChannels.Set(ch.Id(), newApiSession)
+
+	return nil
 }
 
 func (sm *ManagerImpl) GetConfig() *router.Config {
@@ -418,6 +448,18 @@ type ApiSession struct {
 	Claims   *common.AccessClaims
 }
 
+func NewApiSessionFromToken(jwtToken *jwt.Token, accessClaims *common.AccessClaims) *ApiSession {
+	return &ApiSession{
+		ApiSession: &edge_ctrl_pb.ApiSession{
+			Token:            jwtToken.Raw,
+			CertFingerprints: accessClaims.CertFingerprints,
+			Id:               accessClaims.JWTID,
+		},
+		JwtToken: jwtToken,
+		Claims:   accessClaims,
+	}
+}
+
 func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
 	if sm.config.Ha.Enabled && strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
 		jwtToken, accessClaims, err := sm.ParseJwt(token)
@@ -433,15 +475,7 @@ func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
 				return nil
 			}
 
-			return &ApiSession{
-				ApiSession: &edge_ctrl_pb.ApiSession{
-					Token:            token,
-					CertFingerprints: accessClaims.CertFingerprints,
-					Id:               accessClaims.JWTID,
-				},
-				JwtToken: jwtToken,
-				Claims:   accessClaims,
-			}
+			return NewApiSessionFromToken(jwtToken, accessClaims)
 		} else {
 			pfxlog.Logger().WithError(err).Error("JWT validation failed")
 			return nil
