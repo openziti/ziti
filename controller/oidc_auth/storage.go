@@ -213,7 +213,7 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 
 	configTypeIds := s.env.GetManagers().ConfigType.MapConfigTypeNamesToIds(configTypes, authRequest.IdentityId)
 
-	for configId, _ := range configTypeIds {
+	for configId := range configTypeIds {
 		authRequest.ConfigTypes = append(authRequest.ConfigTypes, configId)
 	}
 
@@ -321,7 +321,7 @@ func (s *HybridStorage) CreateAuthRequest(ctx context.Context, authReq *oidc.Aut
 
 	configTypeIds := s.env.GetManagers().ConfigType.MapConfigTypeNamesToIds(configTypeNames, identityId)
 
-	for configId, _ := range configTypeIds {
+	for configId := range configTypeIds {
 		request.ConfigTypes = append(request.ConfigTypes, configId)
 	}
 
