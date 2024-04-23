@@ -247,7 +247,11 @@ func LoadSelectedIdentity() (RestClientIdentity, error) {
 		id := config.GetIdentity()
 		clientIdentity, found := config.EdgeIdentities[id]
 		if !found {
-			return nil, errors.Errorf("no identity '%v' found in cli config %v", id, configFile)
+			if len(config.EdgeIdentities) == 0 {
+				return nil, errors.New("no identities found in CLI config. Please log in using 'ziti edge login' command")
+			} else {
+				return nil, errors.Errorf("no identity '%v' found in CLI config %v. You can select an existing identity using 'ziti edge use <identity_name>'", id, configFile)
+			}
 		}
 		selectedIdentity = clientIdentity
 	}
