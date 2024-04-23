@@ -179,7 +179,7 @@ function makeDatabase() {
     fi
   else
     echo  "ERROR: need admin password; use LoadCredential in"\
-          " /lib/systemd/system/ziti-controller.service or set env var ZITI_PWD" >&2
+          "/etc/systemd/system/ziti-controller.service.d/override.conf or set env var ZITI_PWD" >&2
     return 1
   fi
 
