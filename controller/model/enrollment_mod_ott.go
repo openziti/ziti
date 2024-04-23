@@ -97,7 +97,7 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 		Bytes: certRaw,
 	})
 
-	clientChainPem, err := module.env.GetManagers().Enrollment.GetClientCertChain(certRaw)
+	clientChainPem, err := module.env.GetManagers().Enrollment.GetCertChainPem(certRaw)
 	if err != nil {
 		return nil, err
 	}

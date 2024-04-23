@@ -237,7 +237,7 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 			return
 		}
 
-		clientChainPem, err := ae.Managers.Enrollment.GetClientCertChain(certs.RawClientCert)
+		clientChainPem, err := ae.Managers.Enrollment.GetCertChainPem(certs.RawClientCert)
 		if err != nil {
 			rc.RespondWithError(err)
 			return
@@ -266,7 +266,7 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 			return
 		}
 
-		clientChainPem, err := ae.Managers.Enrollment.GetClientCertChain(certs.RawClientCert)
+		clientChainPem, err := ae.Managers.Enrollment.GetCertChainPem(certs.RawClientCert)
 
 		if err != nil {
 			rc.RespondWithError(err)
