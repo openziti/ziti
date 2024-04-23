@@ -210,7 +210,12 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 
 	authRequest.IdentityId = result.IdentityId()
 	authRequest.AddAmr(authCtx.GetMethod())
-	authRequest.ConfigTypes = append(authRequest.ConfigTypes, configTypes...)
+
+	configTypeIds := s.env.GetManagers().ConfigType.MapConfigTypeNamesToIds(configTypes, authRequest.IdentityId)
+
+	for configId := range configTypeIds {
+		authRequest.ConfigTypes = append(authRequest.ConfigTypes, configId)
+	}
 
 	mfa, err := s.env.GetManagers().Mfa.ReadOneByIdentityId(authRequest.IdentityId)
 
@@ -312,7 +317,13 @@ func (s *HybridStorage) CreateAuthRequest(ctx context.Context, authReq *oidc.Aut
 
 	request.RequestedMethod = httpRequest.URL.Query().Get("method")
 
-	request.ConfigTypes = httpRequest.URL.Query()["configTypes"]
+	configTypeNames := httpRequest.URL.Query()["configTypes"]
+
+	configTypeIds := s.env.GetManagers().ConfigType.MapConfigTypeNamesToIds(configTypeNames, identityId)
+
+	for configId := range configTypeIds {
+		request.ConfigTypes = append(request.ConfigTypes, configId)
+	}
 
 	if len(authReq.Prompt) == 1 && authReq.Prompt[0] == "none" {
 		return nil, oidc.ErrLoginRequired()
