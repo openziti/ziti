@@ -42,3 +42,8 @@
 - get: /dist/
   raw: /openziti/ziti/{{GITHUB_SHA}}/dist/
   file: /docker-images/ziti-router/compose.yml
+
+# https://get.openziti.io/zrok-docker/compose.yml
+- get: /zrok-docker/
+  raw: /openziti/zrok/main/docker/compose/zrok-instance/
+  file: compose.yml
