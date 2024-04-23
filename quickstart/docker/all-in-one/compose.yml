@@ -1,6 +1,6 @@
 services:
   quickstart:
-    image: ${ZITI_QUICK_IMAGE:-docker.io/openziti/ziti-cli}:${ZITI_QUICK_TAG:-latest}
+    image: ${ZITI_CLI_IMAGE:-docker.io/openziti/ziti-cli}:${ZITI_CLI_TAG:-latest}
     restart: unless-stopped
     build:
       # the build context is the root of the ziti repo so that BuildKit can access the built ziti executable in /build
@@ -15,14 +15,15 @@ services:
         # this allows other containers to use the same external DNS name to reach the quickstart container from within the
         # Docker network that clients outside the Docker network use to reach the quickstart container via port forwarding
         aliases:
-          - ${EXTERNAL_DNS:-null}
+          - ${ZITI_CTRL_ADVERTISED_ADDRESS:-ziti-controller}
+          - ${ZITI_ROUTER_ADVERTISED_ADDRESS:-ziti-router}
     entrypoint:
       - bash
       - -euc
       - |
-        ZITI_CMD+=" --ctrl-address ${EXTERNAL_DNS:-quickstart}"\
+        ZITI_CMD+=" --ctrl-address ${ZITI_CTRL_ADVERTISED_ADDRESS:-quickstart}"\
         " --ctrl-port ${ZITI_CTRL_ADVERTISED_PORT:-1280}"\
-        " --router-address ${EXTERNAL_DNS:-quickstart}"\
+        " --router-address ${ZITI_ROUTER_ADVERTISED_ADDRESS:-${ZITI_CTRL_ADVERTISED_ADDRESS:-quickstart}}"\
         " --router-port ${ZITI_ROUTER_PORT:-3022}"\
         " --password ${ZITI_PWD:-admin}"
         echo "DEBUG: run command is: ziti $${@} $${ZITI_CMD}"
