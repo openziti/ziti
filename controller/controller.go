@@ -515,21 +515,34 @@ func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
 	}
 }
 
-func (c *Controller) TryInitializeRaftFromBoltDb() error {
+func (c *Controller) getMigrationDb() (*string, error) {
 	val, found := c.config.src["db"]
 	if !found {
-		return nil
+		return nil, nil
 	}
 
 	path := fmt.Sprintf("%v", val)
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return errors.Wrapf(err, "source db not found at [%v], either remove 'db' config setting or fix path ", path)
+			return nil, errors.Wrapf(err, "source db not found at [%v], either remove 'db' config setting or fix path ", path)
 		}
-		return errors.Wrapf(err, "invalid db path [%v]", path)
+		return nil, errors.Wrapf(err, "invalid db path [%v]", path)
 	}
 
-	return c.InitializeRaftFromBoltDb(path)
+	return &path, nil
+}
+
+func (c *Controller) ValidateMigrationEnvironment() error {
+	_, err := c.getMigrationDb()
+	return err
+}
+
+func (c *Controller) TryInitializeRaftFromBoltDb() error {
+	path, err := c.getMigrationDb()
+	if err != nil || path == nil {
+		return err
+	}
+	return c.InitializeRaftFromBoltDb(*path)
 }
 
 func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
