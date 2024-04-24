@@ -114,7 +114,7 @@ func (self *ZitiEdgeTunnelType) Start(_ model.Run, c *model.Component) error {
 		logging = "ZITI_LOG=" + self.LogConfig + " "
 	}
 
-	serviceCmd := fmt.Sprintf("%ssudo %s run -i %s > %s 2>&1 &", logging, binaryPath, configPath, logsPath)
+	serviceCmd := fmt.Sprintf("%ssudo %s run -v 4  -i %s > %s 2>&1 &", logging, binaryPath, configPath, logsPath)
 	logrus.Infof("starting: %s", serviceCmd)
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {

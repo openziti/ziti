@@ -177,7 +177,8 @@ var Model = &model.Model{
 						"ziti-edge-tunnel-client": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								Version: ZitiEdgeTunnelVersion,
+								//Version:   ZitiEdgeTunnelVersion,
+								LogConfig: "'4'",
 							},
 						},
 					},
@@ -263,6 +264,11 @@ var Model = &model.Model{
 		"login":     model.Bind(edge.Login("#ctrl1")),
 		"login2":    model.Bind(edge.Login("#ctrl2")),
 		"login3":    model.Bind(edge.Login("#ctrl3")),
+		"testZet": model.Bind(model.ActionFunc(func(run model.Run) error {
+			out, err := TestFileDownload("zet", ClientCurl, "zet", true, FileSizes[0])
+			pfxlog.Logger().WithField("test output", out).Info("test completed")
+			return err
+		})),
 	},
 
 	Infrastructure: model.Stages{
