@@ -125,6 +125,9 @@ func (self *IdentityManager) ApplyCreateWithEnrollments(cmd *CreateIdentityWithE
 		for _, enrollment := range enrollmentsModels {
 			enrollment.IdentityId = &identityModel.Id
 
+			enrollment.FillApiInfo(self.env)
+			enrollment.CtrlAddresses = nil
+
 			if err = enrollment.FillJwtInfo(self.env, identityModel.Id); err != nil {
 				return err
 			}

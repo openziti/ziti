@@ -338,3 +338,30 @@ func (self *ControllerManager) PeersDisconnected(peers []*event.ClusterPeer) {
 		}
 	}
 }
+
+func (self *ControllerManager) ListAll() ([]*Controller, error) {
+	handler := &ControllerListResult{}
+	if err := self.ListWithHandler("", handler.collect); err != nil {
+		return nil, err
+	}
+
+	return handler.Controllers, nil
+}
+
+type ControllerListResult struct {
+	manager     *ControllerManager
+	Controllers []*Controller
+	models.QueryMetaData
+}
+
+func (result *ControllerListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
+	result.QueryMetaData = *queryMetaData
+	for _, key := range ids {
+		entity, err := result.manager.readInTx(tx, key)
+		if err != nil {
+			return err
+		}
+		result.Controllers = append(result.Controllers, entity)
+	}
+	return nil
+}

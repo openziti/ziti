@@ -115,6 +115,8 @@ func (self *EdgeRouterManager) ApplyCreate(cmd *CreateEdgeRouterCmd, ctx boltz.M
 			return err
 		}
 
+		enrollment.FillApiInfo(self.env)
+
 		if err = enrollment.FillJwtInfo(self.env, edgeRouter.Id); err != nil {
 			return err
 		}

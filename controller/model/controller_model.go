@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
@@ -94,4 +95,16 @@ func (entity *Controller) fillFrom(env Env, tx *bbolt.Tx, boltController *db.Con
 	}
 
 	return nil
+}
+
+func (entity *Controller) GetClientApi() string {
+	if curApis, ok := entity.ApiAddresses[controller.ClientApiBinding]; ok {
+		for _, curApi := range curApis {
+			if curApi.Version == controller.VersionV1 {
+				return curApi.Url
+			}
+		}
+	}
+
+	return ""
 }

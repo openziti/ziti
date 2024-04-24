@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
@@ -41,11 +42,61 @@ type Enrollment struct {
 	Jwt             string
 	CaId            *string
 	Username        *string
+	CtrlAddresses   []string
+	ClientApis      []string
 }
 
 func (entity *Enrollment) FillJwtInfo(env Env, subject string) error {
 	expiresAt := time.Now().Add(env.GetConfig().Enrollment.EdgeIdentity.Duration).UTC()
 	return entity.FillJwtInfoWithExpiresAt(env, subject, expiresAt)
+}
+
+func (entity *Enrollment) FillApiInfo(env Env) {
+	controllers, err := env.GetManagers().Controller.ListAll()
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("could not list controllers for router enrollment creation")
+	}
+
+	thisControllerId := ""
+	if thisControllerCert, _, _ := env.GetServerCert(); thisControllerCert != nil {
+		if thisControllerCert.Leaf != nil {
+			thisControllerId = thisControllerCert.Leaf.Subject.CommonName
+		}
+	}
+
+	curControllerIdx := -1
+	for i, curController := range controllers {
+		if curController.Id == thisControllerId {
+			entity.CtrlAddresses = append(entity.CtrlAddresses, curController.CtrlAddress)
+
+			if clientApi := curController.GetClientApi(); clientApi != "" {
+				entity.ClientApis = append(entity.ClientApis, clientApi)
+			}
+
+			curControllerIdx = i
+
+			break
+		}
+	}
+
+	for i, curController := range controllers {
+		if i == curControllerIdx {
+			continue
+		}
+
+		if curController.IsOnline {
+			if len(entity.CtrlAddresses) < 3 && curController.CtrlAddress != "" {
+				entity.CtrlAddresses = append(entity.CtrlAddresses, curController.CtrlAddress)
+			}
+
+			if len(entity.ClientApis) < 3 {
+				if clientApi := curController.GetClientApi(); clientApi != "" {
+					entity.ClientApis = append(entity.ClientApis, clientApi)
+				}
+			}
+		}
+	}
 }
 
 func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expiresAt time.Time) error {
@@ -59,15 +110,10 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 		entity.Token = uuid.New().String()
 	}
 
-	peerControllers := env.GetPeerControllerAddresses()
-
-	for i, addr := range peerControllers {
-		peerControllers[i] = "https://" + addr
-	}
-
 	enrollmentClaims := &ziti.EnrollmentClaims{
 		EnrollmentMethod: entity.Method,
-		Controllers:      peerControllers,
+		ClientApis:       entity.ClientApis,
+		CtrlAddresses:    entity.CtrlAddresses,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Audience:  []string{""},
 			ExpiresAt: &jwt.NumericDate{Time: expiresAt},
