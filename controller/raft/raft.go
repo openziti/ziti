@@ -657,6 +657,10 @@ func (self *Controller) Bootstrap() error {
 		logrus.Info("raft already bootstrapped")
 		self.bootstrapped.Store(true)
 	} else {
+		if err := self.migrationMgr.ValidateMigrationEnvironment(); err != nil {
+			return err
+		}
+
 		if err := self.addConfiguredBootstrapMembers(); err != nil {
 			return err
 		}
@@ -834,6 +838,7 @@ func (self *Controller) addEventsHandlers() {
 }
 
 type MigrationManager interface {
+	ValidateMigrationEnvironment() error
 	TryInitializeRaftFromBoltDb() error
 	InitializeRaftFromBoltDb(srcDb string) error
 }
