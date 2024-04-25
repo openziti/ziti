@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/go-hclog"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
@@ -209,7 +210,9 @@ func NewController(env Env, migrationMgr MigrationManager) *Controller {
 		migrationMgr:       migrationMgr,
 		clusterEvents:      make(chan raft.Observation, 16),
 		commandRateLimiter: command.NewRateLimiter(env.GetCommandRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
+		errorMappers:       map[string]func(map[string]any) error{},
 	}
+	result.initErrorMappers()
 	return result
 }
 
@@ -230,6 +233,12 @@ type Controller struct {
 	isLeader                   atomic.Bool
 	clusterEvents              chan raft.Observation
 	commandRateLimiter         rate.RateLimiter
+	errorMappers               map[string]func(map[string]any) error
+}
+
+func (self *Controller) initErrorMappers() {
+	self.errorMappers[fmt.Sprintf("%T", &boltz.RecordNotFoundError{})] = self.parseBoltzNotFoundError
+	self.errorMappers[fmt.Sprintf("%T", &errorz.FieldError{})] = self.parseFieldError
 }
 
 func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, state ClusterState)) {
@@ -408,14 +417,16 @@ func (self *Controller) decodeApiError(data []byte) error {
 	if cause, ok := m["cause"]; ok {
 		if strCause, ok := cause.(string); ok {
 			apiErr.Cause = errors.New(strCause)
-		} else if objCause, ok := cause.(map[string]interface{}); ok {
-			apiErr.Cause = self.parseFieldError(objCause)
+		} else if objCause, ok := cause.(map[string]any); ok {
+			if parser := self.getErrorParser(m); parser != nil {
+				pfxlog.Logger().Info("parser found for cause type")
+				apiErr.Cause = parser(objCause)
+			} else {
+				pfxlog.Logger().Info("no parser found for cause type")
+			}
+
 			if apiErr.Cause == nil {
-				if b, err := json.Marshal(objCause); err == nil {
-					apiErr.Cause = errors.New(string(b))
-				} else {
-					apiErr.Cause = errors.New(fmt.Sprintf("%+v", objCause))
-				}
+				apiErr.Cause = self.fallbackMarshallError(objCause)
 			}
 		} else {
 			pfxlog.Logger().Warnf("invalid api error encoding, no cause: %v", string(data))
@@ -426,7 +437,7 @@ func (self *Controller) decodeApiError(data []byte) error {
 	return apiErr
 }
 
-func (self *Controller) parseFieldError(m map[string]any) *errorz.FieldError {
+func (self *Controller) parseFieldError(m map[string]any) error {
 	var fieldError *errorz.FieldError
 	field, ok := m["field"]
 	if !ok {
@@ -454,6 +465,43 @@ func (self *Controller) parseFieldError(m map[string]any) *errorz.FieldError {
 	}
 
 	return fieldError
+}
+
+func (self *Controller) parseBoltzNotFoundError(m map[string]any) error {
+	result := &boltz.RecordNotFoundError{}
+	err := mapstructure.Decode(m, result)
+	if err != nil {
+		multi := errorz.MultipleErrors{}
+		multi = append(multi, fmt.Errorf("unable to decode RecordNotFoundError (%w)", err))
+		multi = append(multi, self.fallbackMarshallError(m))
+		return multi
+	}
+	return result
+}
+
+func (self *Controller) fallbackMarshallError(m map[string]any) error {
+	if b, err := json.Marshal(m); err == nil {
+		return errors.New(string(b))
+	}
+	return errors.New(fmt.Sprintf("%+v", m))
+}
+
+func (self *Controller) getErrorParser(m map[string]any) func(map[string]any) error {
+	causeType, ok := m["causeType"]
+	if !ok {
+		pfxlog.Logger().Info("no causetype defined for error parser")
+		return nil
+	}
+
+	causeTypeStr, ok := causeType.(string)
+	if !ok {
+		pfxlog.Logger().Info("causetype not string")
+		return nil
+	}
+
+	pfxlog.Logger().Infof("causetype %s", causeTypeStr)
+
+	return self.errorMappers[causeTypeStr]
 }
 
 // applyCommand encodes the command and passes it to ApplyEncodedCommand
