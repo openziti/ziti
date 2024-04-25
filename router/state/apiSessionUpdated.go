@@ -14,50 +14,39 @@
 	limitations under the License.
 */
 
-package handler_edge_ctrl
+package state
 
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/router/state"
 	"google.golang.org/protobuf/proto"
 )
 
-type sessionRemovedHandler struct {
-	sm state.Manager
+type apiSessionUpdatedHandler struct {
+	sm Manager
 }
 
-func NewSessionRemovedHandler(sm state.Manager) *sessionRemovedHandler {
-	return &sessionRemovedHandler{
+func NewApiSessionUpdatedHandler(sm Manager) *apiSessionUpdatedHandler {
+	return &apiSessionUpdatedHandler{
 		sm: sm,
 	}
 }
 
-func (h *sessionRemovedHandler) ContentType() int32 {
-	return env.SessionRemovedType
+func (h *apiSessionUpdatedHandler) ContentType() int32 {
+	return env.ApiSessionUpdatedType
 }
 
-func (h *sessionRemovedHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
+func (h *apiSessionUpdatedHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	go func() {
-		req := &edge_ctrl_pb.SessionRemoved{}
+		req := &edge_ctrl_pb.ApiSessionUpdated{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
-			hasIds := len(req.Ids) == len(req.Tokens)
-
-			for i, token := range req.Tokens {
-				id := "unknown"
-				if hasIds {
-					id = req.Ids[i]
-				}
-				pfxlog.Logger().
-					WithField("sessionToken", token).
-					WithField("sessionId", id).
-					Debugf("removing session [token: %s] [id: %s]", token, id)
-				h.sm.RemoveEdgeSession(token)
+			for _, session := range req.ApiSessions {
+				h.sm.UpdateApiSession(session)
 			}
 		} else {
-			pfxlog.Logger().Panic("could not convert message as network session removed")
+			pfxlog.Logger().Panic("could not convert message as network session updated")
 		}
 	}()
 }

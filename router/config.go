@@ -183,6 +183,10 @@ func (config *Config) SetFlags(flags map[string]*pflag.Flag) {
 	SetConfigMapFlags(config.src, flags)
 }
 
+func (config *Config) IsHaEnabled() bool {
+	return config.Ha.Enabled
+}
+
 const (
 	TimeFormatYear    = "2006"
 	TimeFormatMonth   = "01"

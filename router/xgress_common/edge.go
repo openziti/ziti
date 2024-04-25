@@ -19,7 +19,23 @@ package xgress_common
 import "strings"
 
 const JwtTokenPrefix = "ey"
+const JwtExpectedDelimCount = 2
 
+// IsBearerToken checks to see if a string has the basic structure required of a JWT.
 func IsBearerToken(s string) bool {
-	return strings.HasPrefix(s, JwtTokenPrefix)
+	if strings.HasPrefix(s, JwtTokenPrefix) {
+		sectionCount := 0
+		for _, ch := range s {
+			if ch == '.' {
+				sectionCount++
+				if sectionCount > 3 {
+					return false
+				}
+			}
+		}
+
+		return sectionCount == JwtExpectedDelimCount
+	}
+
+	return false
 }

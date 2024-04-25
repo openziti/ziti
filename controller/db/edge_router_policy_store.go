@@ -141,7 +141,7 @@ Optimizations
 */
 func (store *edgeRouterPolicyStoreImpl) edgeRouterRolesUpdated(persistCtx *boltz.PersistContext, policy *EdgeRouterPolicy) {
 	ctx := &roleAttributeChangeContext{
-		tx:                    persistCtx.Bucket.Tx(),
+		mutateCtx:             persistCtx.MutateContext,
 		rolesSymbol:           store.symbolEdgeRouterRoles,
 		linkCollection:        store.edgeRouterCollection,
 		relatedLinkCollection: store.identityCollection,
@@ -153,7 +153,7 @@ func (store *edgeRouterPolicyStoreImpl) edgeRouterRolesUpdated(persistCtx *boltz
 
 func (store *edgeRouterPolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.PersistContext, policy *EdgeRouterPolicy) {
 	ctx := &roleAttributeChangeContext{
-		tx:                    persistCtx.Bucket.Tx(),
+		mutateCtx:             persistCtx.MutateContext,
 		rolesSymbol:           store.symbolIdentityRoles,
 		linkCollection:        store.identityCollection,
 		relatedLinkCollection: store.edgeRouterCollection,

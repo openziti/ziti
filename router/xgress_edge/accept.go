@@ -84,6 +84,13 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		},
 	})
 
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type: edge.ContentTypeUpdateToken,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			proxy.processTokenUpdate(self.listener.factory.stateManager, m, ch)
+		},
+	})
+
 	binding.AddReceiveHandlerF(edge.ContentTypeStateClosed, proxy.msgMux.HandleReceive)
 
 	binding.AddReceiveHandlerF(edge.ContentTypeTraceRoute, proxy.processTraceRoute)

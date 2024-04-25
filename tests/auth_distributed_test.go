@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
-	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/oidc_auth"
 	"github.com/zitadel/oidc/v2/pkg/client/rp"
 	httphelper "github.com/zitadel/oidc/v2/pkg/http"
@@ -22,7 +21,7 @@ type testRpServer struct {
 	Server       *http.Server
 	Port         string
 	Listener     net.Listener
-	TokenChan    <-chan *oidc.Tokens[*common.IdTokenClaims]
+	TokenChan    <-chan *oidc.Tokens[*oidc.IDTokenClaims]
 	CallbackPath string
 	CallbackUri  string
 	LoginUri     string
@@ -42,7 +41,7 @@ func (t *testRpServer) Start() {
 }
 
 func newOidcTestRp(apiHost string) (*testRpServer, error) {
-	tokenOutChan := make(chan *oidc.Tokens[*common.IdTokenClaims], 1)
+	tokenOutChan := make(chan *oidc.Tokens[*oidc.IDTokenClaims], 1)
 	result := &testRpServer{
 		CallbackPath: "/auth/callback",
 		TokenChan:    tokenOutChan,
@@ -111,7 +110,7 @@ func newOidcTestRp(apiHost string) (*testRpServer, error) {
 
 	serverMux.Handle("/login", loginHandler)
 
-	marshalToken := func(w http.ResponseWriter, r *http.Request, tokens *oidc.Tokens[*common.IdTokenClaims], state string, relyingParty rp.RelyingParty) {
+	marshalToken := func(w http.ResponseWriter, r *http.Request, tokens *oidc.Tokens[*oidc.IDTokenClaims], state string, relyingParty rp.RelyingParty) {
 		tokenOutChan <- tokens
 		_, _ = w.Write([]byte("done!"))
 	}
@@ -160,7 +159,7 @@ func Test_Authenticate_Distributed_Auth(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-		var outTokens *oidc.Tokens[*common.IdTokenClaims]
+		var outTokens *oidc.Tokens[*oidc.IDTokenClaims]
 
 		select {
 		case tokens := <-rpServer.TokenChan:
@@ -200,7 +199,7 @@ func Test_Authenticate_Distributed_Auth(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-		var outTokens *oidc.Tokens[*common.IdTokenClaims]
+		var outTokens *oidc.Tokens[*oidc.IDTokenClaims]
 
 		select {
 		case tokens := <-rpServer.TokenChan:

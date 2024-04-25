@@ -295,7 +295,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				serverCertPem := enrollmentContainer.Path("data.serverCert").Data().(string)
 				serverCerts, err := parsePEMBundle([]byte(serverCertPem))
 				ctx.Req.NoError(err)
-				ctx.Req.Len(serverCerts, 1)
+				ctx.Req.Len(serverCerts, 2)
 
 				ctx.Req.True(enrollmentContainer.ExistsP("data.ca"))
 				caCertPem := enrollmentContainer.Path("data.ca").Data().(string)

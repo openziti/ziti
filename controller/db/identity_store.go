@@ -364,7 +364,7 @@ func (store *identityStoreImpl) PersistEntity(entity *Identity, ctx *boltz.Persi
 
 func (store *identityStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ctx := &roleAttributeChangeContext{
-		tx:                    mutateCtx.Tx(),
+		mutateCtx:             mutateCtx,
 		rolesSymbol:           store.stores.edgeRouterPolicy.symbolIdentityRoles,
 		linkCollection:        store.stores.edgeRouterPolicy.identityCollection,
 		relatedLinkCollection: store.stores.edgeRouterPolicy.edgeRouterCollection,
@@ -374,7 +374,7 @@ func (store *identityStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowI
 	UpdateRelatedRoles(ctx, rowId, new, store.stores.edgeRouterPolicy.symbolSemantic)
 
 	ctx = &roleAttributeChangeContext{
-		tx:                    mutateCtx.Tx(),
+		mutateCtx:             mutateCtx,
 		rolesSymbol:           store.stores.servicePolicy.symbolIdentityRoles,
 		linkCollection:        store.stores.servicePolicy.identityCollection,
 		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,

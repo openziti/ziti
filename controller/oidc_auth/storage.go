@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/sha1"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/openziti/foundation/v2/errorz"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/apierror"
@@ -210,7 +210,12 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 
 	authRequest.IdentityId = result.IdentityId()
 	authRequest.AddAmr(authCtx.GetMethod())
-	authRequest.ConfigTypes = append(authRequest.ConfigTypes, configTypes...)
+
+	configTypeIds := s.env.GetManagers().ConfigType.MapConfigTypeNamesToIds(configTypes, authRequest.IdentityId)
+
+	for configId := range configTypeIds {
+		authRequest.ConfigTypes = append(authRequest.ConfigTypes, configId)
+	}
 
 	mfa, err := s.env.GetManagers().Mfa.ReadOneByIdentityId(authRequest.IdentityId)
 
@@ -312,7 +317,13 @@ func (s *HybridStorage) CreateAuthRequest(ctx context.Context, authReq *oidc.Aut
 
 	request.RequestedMethod = httpRequest.URL.Query().Get("method")
 
-	request.ConfigTypes = httpRequest.URL.Query()["configTypes"]
+	configTypeNames := httpRequest.URL.Query()["configTypes"]
+
+	configTypeIds := s.env.GetManagers().ConfigType.MapConfigTypeNamesToIds(configTypeNames, identityId)
+
+	for configId := range configTypeIds {
+		request.ConfigTypes = append(request.ConfigTypes, configId)
+	}
 
 	if len(authReq.Prompt) == 1 && authReq.Prompt[0] == "none" {
 		return nil, oidc.ErrLoginRequired()
@@ -396,70 +407,74 @@ func (s *HybridStorage) CreateAccessToken(ctx context.Context, request op.TokenR
 
 // createAccessToken converts an op.TokenRequest into an access token
 func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *common.AccessClaims, error) {
-	var applicationID string
-	var apiSessionID string
-	var amr []string
-	var configTypes []string
-	var remoteAddr string
-	var certsFingerprints []string
-	var envInfo *rest_model.EnvInfo
-	var sdkInfo *rest_model.SdkInfo
-
 	now := time.Now()
-	authTime := oidc.Time(now.Unix())
+
+	claims := &common.AccessClaims{
+		AccessTokenClaims: oidc.AccessTokenClaims{
+			TokenClaims: oidc.TokenClaims{
+				JWTID:      uuid.NewString(),
+				Issuer:     s.config.Issuer,
+				Subject:    request.GetSubject(),
+				Audience:   []string{common.ClaimAudienceOpenZiti},
+				Expiration: oidc.Time(now.Add(s.config.AccessTokenDuration).Unix()),
+				IssuedAt:   oidc.Time(now.Unix()),
+				AuthTime:   oidc.Time(now.Unix()),
+				NotBefore:  oidc.Time(now.Unix()),
+			},
+		},
+		CustomClaims: common.CustomClaims{},
+	}
 
 	switch req := request.(type) {
 	case *AuthRequest:
-		apiSessionID = req.ApiSessionId
-		applicationID = req.ClientID
-		configTypes = req.ConfigTypes
-		amr = req.GetAMR()
-		certsFingerprints = req.GetCertFingerprints()
-		envInfo = req.EnvInfo
-		sdkInfo = req.SdkInfo
-		remoteAddr = req.RemoteAddress
+		claims.CustomClaims.ApiSessionId = req.ApiSessionId
+		claims.CustomClaims.ApplicationId = req.ClientID
+		claims.CustomClaims.ConfigTypes = req.ConfigTypes
+		claims.AuthenticationMethodsReferences = req.GetAMR()
+		claims.CustomClaims.CertFingerprints = req.GetCertFingerprints()
+		claims.CustomClaims.EnvInfo = req.EnvInfo
+		claims.CustomClaims.SdkInfo = req.SdkInfo
+		claims.CustomClaims.RemoteAddress = req.RemoteAddress
+		claims.AuthTime = oidc.Time(req.AuthTime.Unix())
+		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
 	case *RefreshTokenRequest:
-		applicationID = req.ApplicationId
-		amr = req.AuthenticationMethodsReferences
-		authTime = req.AuthTime
-		configTypes = req.ConfigTypes
-		certsFingerprints = req.GetCertFingerprints()
-		envInfo = req.EnvInfo
-		sdkInfo = req.SdkInfo
-		remoteAddr = req.RemoteAddress
+		claims.CustomClaims = req.CustomClaims
+		claims.AuthTime = req.AuthTime
+		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
 	case op.TokenExchangeRequest:
-		applicationID = req.GetClientID()
-		claims := req.GetExchangeSubjectTokenClaims()
-		amr = req.GetAMR()
+		mapClaims := req.GetExchangeSubjectTokenClaims()
+		subjectClaims := &common.AccessClaims{}
+		if mapClaims != nil {
+			jsonStr, err := json.Marshal(mapClaims)
 
-		if claims != nil {
-			val, ok := claims[common.CustomClaimApiSessionId]
+			if err != nil {
+				return "", nil, err
+			}
+			err = json.Unmarshal(jsonStr, subjectClaims)
 
-			if !ok {
-				return "", nil, errors.New("invalid token exchange request claims: no api session id")
+			if err != nil {
+				return "", nil, err
+			}
+		} else {
+			var err error
+			subjectTokenStr := req.GetExchangeSubjectTokenIDOrToken()
+			_, subjectClaims, err = s.parseAccessToken(subjectTokenStr)
+
+			if err != nil {
+				return "", nil, err
 			}
 
-			apiSessionID = val.(string)
-
-			val, ok = claims[common.CustomClaimsConfigTypes]
-
-			if ok {
-				configTypes = val.([]string)
-			}
-
-			val, ok = claims[common.CustomClaimsCertFingerprints]
-
-			if ok {
-				certsFingerprints = val.([]string)
-			}
-
-			val, ok = claims[common.CustomClaimRemoteAddress]
-
-			if ok {
-				remoteAddr = val.(string)
+			if subjectClaims.CustomClaims.Type != common.TokenTypeAccess && subjectClaims.CustomClaims.Type != common.TokenTypeRefresh {
+				return "", nil, fmt.Errorf("invalid token type: %s", claims.CustomClaims.Type)
 			}
 		}
+		claims.CustomClaims = subjectClaims.CustomClaims
+		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
 	}
+
+	claims.AccessTokenClaims.Scopes = request.GetScopes()
+	claims.CustomClaims.Scopes = request.GetScopes()
+	claims.CustomClaims.Type = common.TokenTypeAccess
 
 	identity, err := s.env.GetManagers().Identity.Read(request.GetSubject())
 
@@ -467,39 +482,12 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 		return "", nil, err
 	}
 
-	claims := &common.AccessClaims{
-		AccessTokenClaims: oidc.AccessTokenClaims{
-			TokenClaims: oidc.TokenClaims{
-				JWTID:                           uuid.NewString(),
-				Issuer:                          s.config.Issuer,
-				Subject:                         request.GetSubject(),
-				Audience:                        []string{common.ClaimAudienceOpenZiti},
-				Expiration:                      oidc.Time(now.Add(s.config.AccessTokenDuration).Unix()),
-				IssuedAt:                        oidc.Time(now.Unix()),
-				AuthTime:                        authTime,
-				NotBefore:                       oidc.Time(now.Unix()),
-				AuthenticationMethodsReferences: amr,
-				ClientID:                        applicationID,
-			},
-		},
-		CustomClaims: common.CustomClaims{
-			ApiSessionId:     apiSessionID,
-			ExternalId:       stringz.OrEmpty(identity.ExternalId),
-			IsAdmin:          identity.IsAdmin,
-			ConfigTypes:      configTypes,
-			ApplicationId:    applicationID,
-			Scopes:           request.GetScopes(),
-			Type:             common.TokenTypeAccess,
-			CertFingerprints: certsFingerprints,
-			EnvInfo:          envInfo,
-			SdkInfo:          sdkInfo,
-			RemoteAddress:    remoteAddr,
-		},
+	if identity == nil {
+		return "", nil, fmt.Errorf("identity not found: %s", request.GetSubject())
 	}
 
-	if err != nil {
-		return "", nil, err
-	}
+	claims.CustomClaims.IsAdmin = identity.IsAdmin
+	claims.CustomClaims.ExternalId = stringz.OrEmpty(identity.ExternalId)
 
 	return claims.JWTID, claims, nil
 }
@@ -780,7 +768,7 @@ func (s *HybridStorage) GetKeyByIDAndClientID(_ context.Context, keyID, _ string
 func (s *HybridStorage) ValidateJWTProfileScopes(_ context.Context, _ string, scopes []string) ([]string, error) {
 	allowedScopes := make([]string, 0)
 	for _, scope := range scopes {
-		if scope == oidc.ScopeOpenID {
+		if scope == oidc.ScopeOpenID || scope == oidc.ScopeOfflineAccess {
 			allowedScopes = append(allowedScopes, scope)
 		}
 	}
@@ -865,24 +853,50 @@ func (s *HybridStorage) setInfo(userInfo *oidc.UserInfo, identityId string, scop
 	return nil
 }
 
+func tokenTypeToName(oidcType oidc.TokenType) string {
+	switch oidcType {
+	case oidc.AccessTokenType:
+		return "access_token"
+	case oidc.IDTokenType:
+		return "id_token"
+	case oidc.RefreshTokenType:
+		return "refresh_token"
+	}
+
+	return "unknown_token"
+
+}
+
 // ValidateTokenExchangeRequest implements the op.TokenExchangeStorage interface
 func (s *HybridStorage) ValidateTokenExchangeRequest(_ context.Context, request op.TokenExchangeRequest) error {
 	if request.GetRequestedTokenType() == "" {
 		request.SetRequestedTokenType(oidc.RefreshTokenType)
 	}
 
-	// Just an example, some use cases might need this use case
-	if request.GetExchangeSubjectTokenType() == oidc.IDTokenType && request.GetRequestedTokenType() == oidc.RefreshTokenType {
-		return errors.New("exchanging id_token to refresh_token is not supported")
+	requestedType := request.GetExchangeSubjectTokenType()
+	proofType := request.GetExchangeSubjectTokenType()
+
+	switch proofType {
+	case oidc.AccessTokenType:
+		if requestedType != oidc.AccessTokenType {
+			return fmt.Errorf("exchanging %s for %s is not supported", tokenTypeToName(proofType), tokenTypeToName(requestedType))
+		}
+	case oidc.IDTokenType:
+		return fmt.Errorf("exchanging %s for any token type is not supported", tokenTypeToName(proofType))
+	case oidc.RefreshTokenType:
+		if requestedType != oidc.AccessTokenType && requestedType != oidc.RefreshTokenType {
+			return fmt.Errorf("exchanging %s for %s is not supported", tokenTypeToName(proofType), tokenTypeToName(requestedType))
+		}
+	default:
+		return fmt.Errorf("exchange subject type (%s) is not supported", proofType)
 	}
 
-	allowedScopes := make([]string, 0)
-	for _, scope := range request.GetScopes() {
-		if scope == oidc.ScopeAddress {
-			continue
-		}
+	allowedScopes := []string{oidc.ScopeOpenID}
 
-		allowedScopes = append(allowedScopes, scope)
+	for _, scope := range request.GetScopes() {
+		if scope == oidc.ScopeOfflineAccess {
+			allowedScopes = append(allowedScopes, scope)
+		}
 	}
 
 	request.SetCurrentScopes(allowedScopes)
@@ -890,8 +904,8 @@ func (s *HybridStorage) ValidateTokenExchangeRequest(_ context.Context, request 
 	return nil
 }
 
-func (s *HybridStorage) CreateTokenExchangeRequest(_ context.Context, _ op.TokenExchangeRequest) error {
-	return fmt.Errorf("unsupported")
+func (s *HybridStorage) CreateTokenExchangeRequest(_ context.Context, req op.TokenExchangeRequest) error {
+	return nil
 }
 
 // GetPrivateClaimsFromTokenExchangeRequest implements the op.TokenExchangeStorage interface

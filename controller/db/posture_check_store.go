@@ -213,7 +213,7 @@ func (store *postureCheckStoreImpl) createServiceChangeEvents(tx *bbolt.Tx, id s
 
 func (store *postureCheckStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ctx := &roleAttributeChangeContext{
-		tx:                    mutateCtx.Tx(),
+		mutateCtx:             mutateCtx,
 		rolesSymbol:           store.stores.servicePolicy.symbolPostureCheckRoles,
 		linkCollection:        store.stores.servicePolicy.postureCheckCollection,
 		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,
@@ -221,6 +221,7 @@ func (store *postureCheckStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, 
 	}
 	store.updateServicePolicyRelatedRoles(ctx, rowId, new)
 }
+
 func (store *postureCheckStoreImpl) GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error) {
 	return store.getRoleAttributesCursorProvider(store.indexRoleAttributes, values, semantic)
 }

@@ -1,3 +1,42 @@
+# Release 1.1.1
+
+## What's New
+
+* HA Alpha-3
+* Bug fixes and minor enhancements
+
+## HA Alpha 3
+
+This release can be run in HA mode. The code is still alpha, as we're still finding and fixing bugs. 
+
+For more information:
+
+* HA overview/getting started/migration: [HA Documementation](https://github.com/openziti/ziti/tree/release-next/doc/ha)
+* Open Issues: [HA Project Board](https://github.com/orgs/openziti/projects/9/views/1) 
+
+## New Contributors
+
+Thanks to new contributors
+
+* @Vrashabh-Sontakke
+
+## Component Updates and Bug Fixes
+* github.com/openziti/edge-api: [v0.26.17 -> v0.26.18](https://github.com/openziti/edge-api/compare/v0.26.17...v0.26.18)
+* github.com/openziti/sdk-golang: [v0.23.27 -> v0.23.32](https://github.com/openziti/sdk-golang/compare/v0.23.27...v0.23.32)
+    * [Issue #554](https://github.com/openziti/sdk-golang/issues/554) - Passing in config types on service list breaks on older controller
+
+* github.com/openziti/storage: [v0.2.36 -> v0.2.37](https://github.com/openziti/storage/compare/v0.2.36...v0.2.37)
+    * [Issue #64](https://github.com/openziti/storage/issues/64) - Add support for transaction complete listeners
+
+* github.com/openziti/ziti: [v1.1.0 -> v1.1.1](https://github.com/openziti/ziti/compare/v1.1.0...v1.1.1)
+    * [Issue #1973](https://github.com/openziti/ziti/issues/1973) - Raft should not initialize if db is misconfigured
+    * [Issue #1971](https://github.com/openziti/ziti/issues/1971) - BUG: OIDC authentication does not convert config type names to ids
+    * [Issue #1966](https://github.com/openziti/ziti/issues/1966) - Handle multi-entity updates in router data model
+    * [Issue #1772](https://github.com/openziti/ziti/issues/1772) - provide a better error when the user is not logged in
+    * [Issue #1964](https://github.com/openziti/ziti/issues/1964) - Add API Session Token Update Messaging
+    * [Issue #1960](https://github.com/openziti/ziti/issues/1960) - JWT Session exchange isn't working
+    * [Issue #1962](https://github.com/openziti/ziti/issues/1962) - permissions enum doesn't contain "Invalid"
+
 # Release 1.1.0
 
 ## What's New

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/controller/idgen"
+	"github.com/sirupsen/logrus"
 	"time"
 
 	"github.com/openziti/ziti/common/capabilities"
@@ -177,7 +178,7 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 		PeerData:             peerData,
 	}
 
-	if manager.GetConfig().Ha.Enabled && xgress_common.IsBearerToken(sessionToken) {
+	if manager.GetEnv().IsHaEnabled() && xgress_common.IsBearerToken(sessionToken) {
 		apiSession := manager.GetApiSessionFromCh(ch)
 
 		if apiSession == nil {
@@ -351,7 +352,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 		InstanceSecret: terminatorIdentitySecret,
 	}
 
-	if manager.GetConfig().Ha.Enabled && xgress_common.IsBearerToken(sessionToken) {
+	if manager.GetEnv().IsHaEnabled() && xgress_common.IsBearerToken(sessionToken) {
 		apiSession := manager.GetApiSessionFromCh(ch)
 
 		if apiSession == nil {
@@ -578,7 +579,7 @@ func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channe
 			TerminatorId: terminator.terminatorId,
 		}
 
-		if manager.GetConfig().Ha.Enabled && xgress_common.IsBearerToken(sessionToken) {
+		if manager.GetEnv().IsHaEnabled() && xgress_common.IsBearerToken(sessionToken) {
 			apiSession := manager.GetApiSessionFromCh(ch)
 			request.ApiSessionToken = apiSession.Token
 		}
@@ -645,7 +646,7 @@ func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *chann
 
 	log = log.WithField("terminator", terminator.terminatorId).WithField("checkPassed", checkPassed)
 
-	if manager.GetConfig().Ha.Enabled && xgress_common.IsBearerToken(sessionToken) {
+	if manager.GetEnv().IsHaEnabled() && xgress_common.IsBearerToken(sessionToken) {
 		apiSession := manager.GetApiSessionFromCh(ch)
 		request.ApiSessionToken = apiSession.Token
 	}
@@ -721,6 +722,54 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Me
 	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch)
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
+	}
+}
+
+func (self *edgeClientConn) processTokenUpdate(manager state.Manager, req *channel.Message, ch channel.Channel) {
+	currentApiSession := self.listener.factory.stateManager.GetApiSessionFromCh(ch)
+
+	if currentApiSession == nil || currentApiSession.JwtToken == nil {
+		msg := edge.NewUpdateTokenFailedMsg(errors.New("current connection isn't authenticated via JWT beater tokens, unable to switch to them"))
+		msg.ReplyTo(req)
+		return
+	}
+
+	newTokenStr := string(req.Body)
+
+	if !xgress_common.IsBearerToken(newTokenStr) {
+		msg := edge.NewUpdateTokenFailedMsg(errors.New("message did not contain a valid JWT bearer token"))
+		msg.ReplyTo(req)
+		return
+	}
+
+	newToken, newClaims, err := self.listener.factory.stateManager.ParseJwt(newTokenStr)
+
+	if err != nil {
+		reply := edge.NewUpdateTokenFailedMsg(errors.Wrap(err, "JWT bearer token failed to validate"))
+		reply.ReplyTo(req)
+		if err := ch.Send(reply); err != nil {
+			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with validation failure")
+		}
+		return
+	}
+
+	newApiSession := state.NewApiSessionFromToken(newToken, newClaims)
+
+	if err := self.listener.factory.stateManager.UpdateChApiSession(ch, newApiSession); err != nil {
+		reply := edge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
+		reply.ReplyTo(req)
+
+		if err := ch.Send(reply); err != nil {
+			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with update failure")
+		}
+		return
+	}
+
+	reply := edge.NewUpdateTokenSuccessMsg()
+	reply.ReplyTo(req)
+
+	if err := ch.Send(reply); err != nil {
+		logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with success")
 	}
 }
 

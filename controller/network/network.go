@@ -73,6 +73,8 @@ type Config interface {
 	GetCloseNotify() <-chan struct{}
 }
 
+type InspectTarget func(string) (bool, *string, error)
+
 type Network struct {
 	*Managers
 	nodeId                 string
@@ -107,6 +109,8 @@ type Network struct {
 	serviceMisconfiguredTerminatorCounter     metrics.IntervalCounter
 
 	config Config
+
+	inspectionTargets concurrenz.CopyOnWriteSlice[InspectTarget]
 }
 
 func NewNetwork(config Config) (*Network, error) {
@@ -1307,6 +1311,12 @@ func (network *Network) Inspect(name string) (*string, error) {
 		}
 		resultStr := string(result)
 		return &resultStr, nil
+	} else {
+		for _, inspectTarget := range network.inspectionTargets.Value() {
+			if handled, val, err := inspectTarget(lc); handled {
+				return val, err
+			}
+		}
 	}
 
 	return nil, nil
@@ -1453,6 +1463,10 @@ func (network *Network) SnapshotToRaft() error {
 	}
 
 	return network.Dispatch(cmd)
+}
+
+func (network *Network) AddInspectTarget(target InspectTarget) {
+	network.inspectionTargets.Append(target)
 }
 
 type Cache interface {

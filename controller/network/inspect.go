@@ -21,8 +21,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"regexp"
 	"sync"
 	"time"
@@ -144,7 +144,7 @@ func (ctx *inspectRequestContext) inspectRouter(router *Router) {
 		WithField("values", ctx.requestedValues).
 		WithField("timeout", ctx.timeout)
 
-	if ctx.regex.MatchString(router.Id) {
+	if ctx.regex.MatchString(router.Id) || ctx.regex.MatchString(router.Name) {
 		log.Debug("inspect matched")
 		notifier := make(chan struct{})
 		ctx.waitGroup.AddNotifier(notifier)

@@ -16,6 +16,10 @@ LABEL name="openziti/ziti-controller" \
 # set up image as root, then drop privs to ziggy
 USER root
 
+RUN INSTALL_PKGS="util-linux libbpf" && \
+      microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
+      microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS}
+
 # used by entrypoint.bash to source the bootstrapping script in this image
 ENV ZITI_CTRL_BOOTSTRAP_BASH=/bootstrap.bash
 

@@ -114,7 +114,7 @@ type AssociatedIdsResult struct {
 func (self *ServicePolicyManager) ListAssociatedIds(tx *bbolt.Tx, id string) *AssociatedIdsResult {
 	return &AssociatedIdsResult{
 		IdentityIds:     self.env.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, id, db.EntityTypeIdentities),
-		ServiceIds:      self.env.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, id, db.EntityTypeServicePolicies),
+		ServiceIds:      self.env.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, id, db.EntityTypeServices),
 		PostureCheckIds: self.env.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, id, db.EntityTypePostureChecks),
 	}
 }

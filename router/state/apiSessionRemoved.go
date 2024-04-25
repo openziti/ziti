@@ -14,22 +14,21 @@
 	limitations under the License.
 */
 
-package handler_edge_ctrl
+package state
 
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/router/state"
 	"google.golang.org/protobuf/proto"
 )
 
 type apiSessionRemovedHandler struct {
-	sm state.Manager
+	sm Manager
 }
 
-func NewApiSessionRemovedHandler(sm state.Manager) *apiSessionRemovedHandler {
+func NewApiSessionRemovedHandler(sm Manager) *apiSessionRemovedHandler {
 	return &apiSessionRemovedHandler{
 		sm: sm,
 	}
