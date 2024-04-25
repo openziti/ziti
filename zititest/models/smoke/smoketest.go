@@ -177,8 +177,8 @@ var Model = &model.Model{
 						"ziti-edge-tunnel-client": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								//Version:   ZitiEdgeTunnelVersion,
-								LogConfig: "'4'",
+								Version:        ZitiEdgeTunnelVersion,
+								VerbosityLevel: 4,
 							},
 						},
 					},
@@ -230,7 +230,8 @@ var Model = &model.Model{
 						"ziti-edge-tunnel-host": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								Version: ZitiEdgeTunnelVersion,
+								Version:        ZitiEdgeTunnelVersion,
+								VerbosityLevel: 4,
 							},
 						},
 						"iperf-server-zet": {
