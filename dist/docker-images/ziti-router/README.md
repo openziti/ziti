@@ -16,7 +16,7 @@ that influence bootstrapping.
 
 ### Standalone Example
 
-```bash
+```text
 # create the router, saving the enrollment token to a file
 ziti edge create edge-router "router1" \
    --jwt-output-file=./router1.jwt
@@ -39,7 +39,7 @@ contrived example provides a web server that listens on port 8000 and a client t
 available. The client container shares a network interface with the router container and waits for the router to be
 healthy before running.
 
-```bash
+```text
 # fetch the compose file for the ziti-router image
 wget -O ./compose.router.yml https://get.openziti.io/dist/docker-images/ziti-router/compose.yml
 # fetch the router tproxy compose overrides files
@@ -50,7 +50,7 @@ wget -O ./compose.quickstart.yml https://get.openziti.io/dock/all-in-one/compose
 
 Patch the Compose project to use the quickstart network and provide a web server to test the hello service.
 
-```bash
+```text
 cat <<EOF >>./compose.tproxy.yml
     # link the router to the quickstart network so it can reach the Ziti controller
     networks:
@@ -77,7 +77,7 @@ EOF
 
 Your `compose.tproxy.yml` should look like this.
 
-```yaml
+```text
 services:
   ziti-router:
     dns:
@@ -107,31 +107,31 @@ services:
 
 Define the Compose project files.
 
-```bash
+```text
 export COMPOSE_FILE=compose.router.yml:compose.tproxy.yml:compose.quickstart.yml
 ```
 
 Run the Ziti controller in the background with the all-in-one quickstart container.
 
-```bash
+```text
 docker compose up quickstart-check
 ```
 
 Start the hello web server listening on 8000.
 
-```bash
+```text
 docker compose up hello --detach
 ```
 
 Log in to the Ziti controller
 
-```bash
+```text
 ziti edge login 127.0.0.1:1280 -y -u admin -p admin
 ```
 
 Create a Ziti service for the hello web server.
 
-```bash
+```text
 ziti edge create config "hello-intercept-config" intercept.v1 \
   '{"portRanges":[{"high":80,"low":80}],"addresses":["hello.internal"],"protocols":["tcp"]}'
 ziti edge create config "hello-host-config" host.v1 \
@@ -151,14 +151,14 @@ ziti edge create service-policy "hello-bind-policy" Bind \
 
 Grant the quickstart router permission to bind (provide) the hello service.
 
-```bash
+```text
 ziti edge update identity quickstart-router \
     --role-attributes=hello.servers
 ```
 
 Create a second Ziti router to use as a tproxy client.
 
-```bash
+```text
 ziti edge create edge-router "tproxy-router" \
    --jwt-output-file=./tproxy-router.jwt \
    --tunneler-enabled
@@ -166,20 +166,20 @@ ziti edge create edge-router "tproxy-router" \
 
 Grant the tproxy client permission to dial (consume) the hello service
 
-```bash
+```text
 ziti edge update identity tproxy-router \
     --role-attributes=hello.clients
 ```
 
 Simulate policies to check for authorization problems
 
-```bash
+```text
 ziti edge policy-advisor services -q
 ```
 
 Run the demo client which triggers the run of the tproxy router because it is a dependency.
 
-```bash
+```text
 ZITI_ENROLL_TOKEN="$(<./tproxy-router.jwt)" \
 ZITI_ROUTER_MODE=tproxy \
 ZITI_CTRL_ADVERTISED_ADDRESS=quickstart \
