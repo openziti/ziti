@@ -18,12 +18,13 @@ package handler_peer_ctrl
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/hashicorp/raft"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/peermsg"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -52,6 +53,9 @@ func sendApiErrorResponse(m *channel.Message, ch channel.Channel, err *errorz.Ap
 	encodingMap["message"] = err.Message
 	encodingMap["status"] = err.Status
 	encodingMap["cause"] = err.Cause
+	if err.Cause != nil {
+		encodingMap["causeType"] = fmt.Sprintf("%T", err.Cause)
+	}
 
 	buf, encodeErr := json.Marshal(encodingMap)
 	if encodeErr != nil {
