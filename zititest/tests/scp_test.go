@@ -19,8 +19,6 @@ package tests
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/openziti/fablab/kernel/lib"
-	"github.com/openziti/fablab/kernel/libssh"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -112,9 +110,7 @@ func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool)
 			req := require.New(t)
 			req.NoError(err)
 
-			sshConfigFactory := lib.NewSshConfigFactory(host)
-
-			o, err := libssh.RemoteExecAllWithTimeout(sshConfigFactory, 50*time.Second, test.cmd)
+			o, err := host.ExecLoggedWithTimeout(50*time.Second, test.cmd)
 			if hostType == "zet" && err != nil {
 				t.Skipf("zet hosted ssh failed [%v]", err.Error())
 			} else if hostSelector == "zet" && err != nil {

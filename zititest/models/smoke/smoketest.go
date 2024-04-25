@@ -177,7 +177,8 @@ var Model = &model.Model{
 						"ziti-edge-tunnel-client": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								Version: ZitiEdgeTunnelVersion,
+								Version:        ZitiEdgeTunnelVersion,
+								VerbosityLevel: 4,
 							},
 						},
 					},
@@ -229,7 +230,8 @@ var Model = &model.Model{
 						"ziti-edge-tunnel-host": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								Version: ZitiEdgeTunnelVersion,
+								Version:        ZitiEdgeTunnelVersion,
+								VerbosityLevel: 4,
 							},
 						},
 						"iperf-server-zet": {
@@ -263,6 +265,16 @@ var Model = &model.Model{
 		"login":     model.Bind(edge.Login("#ctrl1")),
 		"login2":    model.Bind(edge.Login("#ctrl2")),
 		"login3":    model.Bind(edge.Login("#ctrl3")),
+		"testZet": model.Bind(model.ActionFunc(func(run model.Run) error {
+			out, err := TestFileDownload("zet", ClientCurl, "zet", true, FileSizes[0])
+			pfxlog.Logger().WithField("test output", out).Info("test completed")
+			return err
+		})),
+		"testZitiTunnel": model.Bind(model.ActionFunc(func(run model.Run) error {
+			out, err := TestFileDownload("ziti-tunnel", ClientCurl, "ziti-tunnel", true, FileSizes[0])
+			pfxlog.Logger().WithField("test output", out).Info("test completed")
+			return err
+		})),
 	},
 
 	Infrastructure: model.Stages{
