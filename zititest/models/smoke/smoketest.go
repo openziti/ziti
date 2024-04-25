@@ -269,6 +269,11 @@ var Model = &model.Model{
 			pfxlog.Logger().WithField("test output", out).Info("test completed")
 			return err
 		})),
+		"testZitiTunnel": model.Bind(model.ActionFunc(func(run model.Run) error {
+			out, err := TestFileDownload("ziti-tunnel", ClientCurl, "ziti-tunnel", true, FileSizes[0])
+			pfxlog.Logger().WithField("test output", out).Info("test completed")
+			return err
+		})),
 	},
 
 	Infrastructure: model.Stages{
