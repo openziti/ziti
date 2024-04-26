@@ -72,13 +72,13 @@ the one you build locally with `go build`.
 2. In the "all-in-one" sub-directory, with `Dockerfile` present:
 
     ```bash
-    ZITI_QUICK_TAG=local docker compose up --build
+    ZITI_CLI_TAG=local docker compose up --build
     ```
 
     By adding this `--build` option to the `up` command, the container image is built from the Dockerfile with your
     locally built `ziti` binary instead of pulling the default `openziti/ziti-cli` container image from Docker Hub. In
     the `compose.yml`, the Docker build context is hard-coded to `../../../` (three levels up from this directory at the
-    top level of a Git working copy of the source repo). Setting `ZITI_QUICK_TAG=local` tags the locally-built container
+    top level of a Git working copy of the source repo). Setting `ZITI_CLI_TAG=local` tags the locally-built container
     image differently from the official release image's `:latest` tag so you can tell them apart.
 
 ### Troubleshooting
@@ -95,9 +95,9 @@ location where the container image build looks for the locally-built `ziti` bina
 
 If the binary you build on the Docker host doesn't run in the container due to an environment issue, such as a GLIBC
 version mismatch, you have the option to build `ziti` in the container every time you run
-`ZITI_QUICK_TAG=local docker compose up --build`.
+`ZITI_CLI_TAG=local docker compose up --build`.
 
-Change `Dockerfile` like this, and run `ZITI_QUICK_TAG=local docker compose up --build` to build the
+Change `Dockerfile` like this, and run `ZITI_CLI_TAG=local docker compose up --build` to build the
 checked-out source tree and run the quickstart with the build.
 
 ```dockerfile
@@ -119,8 +119,8 @@ CMD ["ziti"]
 
 With `docker compose up --build`, the downloaded container image specified in `image` is replaced locally with the one
 built from the Dockerfile.  This clobbers any image you may have pulled from the registry, which can lead to confusion.
-You can prevent this by setting environment variable like `ZITI_QUICK_TAG=local docker compose up --build` to avoid
+You can prevent this by setting environment variable like `ZITI_CLI_TAG=local docker compose up --build` to avoid
 clobbering the default `:latest` tag.
 
-If you already clobbered `:latest` just run `ZITI_QUICK_TAG=latest docker compose pull` to refresh your local copy from
+If you already clobbered `:latest` just run `ZITI_CLI_TAG=latest docker compose pull` to refresh your local copy from
 the registry.
