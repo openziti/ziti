@@ -4,6 +4,7 @@
 
 * HA Alpha-3
 * Bug fixes and minor enhancements
+* [The all-in-one quickstart compose project](./quickstart/docker/all-in-one/README.md) now uses the same environment variable to configure the controller's address as the ziti command line tool
 
 ## HA Alpha 3
 
