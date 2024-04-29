@@ -120,7 +120,7 @@ func (self *ZitiEdgeTunnelType) Start(_ model.Run, c *model.Component) error {
 		verbosity = fmt.Sprintf("-v %v", self.VerbosityLevel)
 	}
 
-	serviceCmd := fmt.Sprintf("%ssudo %s run %s  -i %s > %s 2>&1 &", logging, binaryPath, verbosity, configPath, logsPath)
+	serviceCmd := fmt.Sprintf("ZITI_TIME_FORMAT=utc %ssudo -E %s run %s -i %s > %s 2>&1 &", logging, binaryPath, verbosity, configPath, logsPath)
 	logrus.Infof("starting: %s", serviceCmd)
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {
