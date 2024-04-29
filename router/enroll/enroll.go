@@ -171,7 +171,7 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 
 	client.SetTLSClientConfig(tc)
 
-	envelope, err := re.Send(client, ec.EnrolmentUrl(), er)
+	envelope, err := re.Send(client, ec.EnrolmentUrls()[0], er)
 
 	if err != nil {
 		return err
