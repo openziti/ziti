@@ -91,11 +91,10 @@ if [ ! -f ${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt ]; then
     "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_ROUTER_ADVERTISED_ADDRESS}" -o "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt" -t -a "${ZITI_ROUTER_ROLES}"
     sleep 1
     echo "---------- Enrolling edge-router ${ZITI_ROUTER_ADVERTISED_ADDRESS}...."
-  "${ZITI_BIN_DIR}/ziti-router" enroll "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.yaml" --jwt "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt"
+  "${ZITI_BIN_DIR}/ziti" router enroll "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.yaml" --jwt "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.jwt"
     echo ""
   fi
 fi
 
 # Run the router
-"${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.yaml" > "${ZITI_HOME}/ziti-${ZITI_ROUTER_ADVERTISED_ADDRESS}.log"
-
+"${ZITI_BIN_DIR}/ziti" router run "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.yaml" > "${ZITI_HOME}/ziti-${ZITI_ROUTER_ADVERTISED_ADDRESS}.log"

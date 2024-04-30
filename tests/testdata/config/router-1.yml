@@ -11,7 +11,7 @@ v: 3
 #
 # The 'cert', 'server_cert', and 'ca' files will be overwritten with the results of the enrollment process.
 #
-# When running the ziti-router the files/values in this section will be read and used. The 'cert' value will be used
+# When running the ziti router the files/values in this section will be read and used. The 'cert' value will be used
 # as the client certificate to connect to the controller. The 'server_cert' is used for all servers/listeners. The
 # 'ca' value is used to populate an internally Trusted CA pool.
 identity:
