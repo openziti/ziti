@@ -322,7 +322,7 @@ func (c *Controller) checkEdgeInitialized() {
 
 		if admin == nil {
 			if !c.AppEnv.GetHostController().IsRaftEnabled() {
-				log.Fatal("the Ziti Edge has not been initialized via 'ziti-controller edge init', no default admin exists")
+				log.Fatal("the Ziti Edge has not been initialized via 'ziti controller edge init', no default admin exists")
 			}
 
 			if first {
