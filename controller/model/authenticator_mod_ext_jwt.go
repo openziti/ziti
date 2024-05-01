@@ -41,6 +41,7 @@ var _ AuthProcessor = &AuthModuleExtJwt{}
 const (
 	AuthMethodExtJwt    = "ext-jwt"
 	ExtJwtInternalClaim = "-internal-ext-jwt"
+	JwksQueryTimeout    = 1 * time.Second
 )
 
 type AuthModuleExtJwt struct {
@@ -120,7 +121,7 @@ func (r *signerRecord) Resolve(force bool) error {
 			return nil
 		}
 
-		if !r.jwksLastRequest.IsZero() && time.Since(r.jwksLastRequest) < time.Second*5 {
+		if !r.jwksLastRequest.IsZero() && time.Since(r.jwksLastRequest) < JwksQueryTimeout {
 			return nil
 		}
 
@@ -241,7 +242,7 @@ func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 	key, ok := signerRecord.kidToPubKey[kid]
 
 	if !ok {
-		if err := signerRecord.Resolve(false); err != nil {
+		if err := signerRecord.Resolve(true); err != nil {
 			logger.WithError(err).Error("error attempting to resolve extJwtSigner certificate used for signing")
 		}
 
