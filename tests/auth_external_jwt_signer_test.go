@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -106,7 +105,9 @@ func (js *jwksServer) Start() error {
 	js.listener = listener
 	js.port = listener.Addr().(*net.TCPAddr).Port
 	js.mutex.Unlock()
-	go js.server.Serve(listener)
+	go func() {
+		_ = js.server.Serve(listener)
+	}()
 
 	return nil
 }
@@ -115,7 +116,7 @@ func (js *jwksServer) Stop() error {
 	return js.server.Close()
 }
 
-func (js *jwksServer) handleJWKS(w http.ResponseWriter, r *http.Request) {
+func (js *jwksServer) handleJWKS(w http.ResponseWriter, _ *http.Request) {
 	js.mutex.Lock()
 	defer js.mutex.Unlock()
 
@@ -127,7 +128,7 @@ func (js *jwksServer) handleJWKS(w http.ResponseWriter, r *http.Request) {
 		certBase64 := base64.StdEncoding.EncodeToString(cert.Raw)
 		key := jsonWebKey{
 			Kid: cert.Subject.CommonName,
-			X5C: []string{string(certBase64)},
+			X5C: []string{certBase64},
 		}
 		keys = append(keys, key)
 	}
@@ -135,7 +136,7 @@ func (js *jwksServer) handleJWKS(w http.ResponseWriter, r *http.Request) {
 	response := jsonWebKeysResponse{Keys: keys}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func Test_Authenticate_External_Jwt(t *testing.T) {
@@ -149,7 +150,9 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	jwksServer := newJwksServer(nil)
 	err := jwksServer.Start()
 	ctx.Req.NoError(err)
-	defer jwksServer.Stop()
+	defer func() {
+		_ = jwksServer.Stop()
+	}()
 
 	// create a bunch of signers to use
 
