@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -20,14 +19,125 @@
 package tests
 
 import (
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"github.com/go-openapi/strfmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/ziti/controller/model"
+	"net"
 	"net/http"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
+
+type jsonWebKey struct {
+	Kid string   `json:"kid"`
+	X5C []string `json:"x5c"`
+}
+
+type jsonWebKeysResponse struct {
+	Keys []jsonWebKey `json:"keys"`
+}
+
+type jwksServer struct {
+	server       *http.Server
+	port         int
+	certificates []*x509.Certificate
+	mutex        sync.Mutex
+	requestCount int
+	listener     net.Listener
+}
+
+func newJwksServer(certificates []*x509.Certificate) *jwksServer {
+	srv := &jwksServer{
+		certificates: certificates,
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/jwks", srv.handleJWKS)
+	srv.server = &http.Server{
+		Handler: mux,
+	}
+	return srv
+}
+
+func (js *jwksServer) AddCertificate(certificate *x509.Certificate) {
+	js.mutex.Lock()
+	defer js.mutex.Unlock()
+
+	js.certificates = append(js.certificates, certificate)
+}
+
+func (js *jwksServer) RemoveCertificate(certificate *x509.Certificate) {
+	js.mutex.Lock()
+	defer js.mutex.Unlock()
+
+	for i, cert := range js.certificates {
+		if cert.Equal(certificate) {
+			js.certificates = append(js.certificates[:i], js.certificates[i+1:]...)
+			break
+		}
+	}
+}
+
+func (js *jwksServer) GetJwksUrl() string {
+	return "http://localhost:" + strconv.Itoa(js.port) + "/jwks"
+}
+
+func (js *jwksServer) GetRequestCount() int {
+	js.mutex.Lock()
+	defer js.mutex.Unlock()
+
+	return js.requestCount
+}
+
+func (js *jwksServer) Start() error {
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return err
+	}
+	js.mutex.Lock()
+	js.listener = listener
+	js.port = listener.Addr().(*net.TCPAddr).Port
+	js.mutex.Unlock()
+	go func() {
+		_ = js.server.Serve(listener)
+	}()
+
+	return nil
+}
+
+func (js *jwksServer) Stop() error {
+	return js.server.Close()
+}
+
+func (js *jwksServer) handleJWKS(w http.ResponseWriter, _ *http.Request) {
+	js.mutex.Lock()
+	defer js.mutex.Unlock()
+
+	js.requestCount = js.requestCount + 1
+
+	var keys []jsonWebKey
+	for _, cert := range js.certificates {
+
+		certBase64 := base64.StdEncoding.EncodeToString(cert.Raw)
+		key := jsonWebKey{
+			Kid: cert.Subject.CommonName,
+			X5C: []string{certBase64},
+		}
+		keys = append(keys, key)
+	}
+
+	response := jsonWebKeysResponse{Keys: keys}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(response)
+}
 
 func Test_Authenticate_External_Jwt(t *testing.T) {
 	ctx := NewTestContext(t)
@@ -37,7 +147,37 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 
 	var signerIds []string
 
+	jwksServer := newJwksServer(nil)
+	err := jwksServer.Start()
+	ctx.Req.NoError(err)
+	defer func() {
+		_ = jwksServer.Stop()
+	}()
+
 	// create a bunch of signers to use
+
+	// valid signer using a jwks endpoint
+	validJwksSignerCert1, validJwksSignerPrivateKey1 := newSelfSignedCert("valid jwks signer 1")
+	validJwksSignerCert2, validJwksSignerPrivateKey2 := newSelfSignedCert("valid jwks signer 2")
+	jwksEndpoint := strfmt.URI(jwksServer.GetJwksUrl())
+
+	jwksServer.AddCertificate(validJwksSignerCert1)
+
+	validJwksSigner := &rest_model.ExternalJWTSignerCreate{
+		JwksEndpoint: &jwksEndpoint,
+		Enabled:      B(true),
+		Name:         S("Test JWT Signer - JWKS - Enabled"),
+		Issuer:       S("the-very-best-iss-jwks"),
+		Audience:     S("the-very-best-aud-jwks"),
+	}
+
+	createResponseEnv := &rest_model.CreateEnvelope{}
+
+	resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(validJwksSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
+	ctx.Req.NoError(err)
+	ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+
+	signerIds = append(signerIds, createResponseEnv.Data.ID)
 
 	//valid signer with issuer and audience
 	validJwtSignerCert, validJwtSignerPrivateKey := newSelfSignedCert("valid signer")
@@ -52,9 +192,9 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		Audience: S("the-very-best-aud"),
 	}
 
-	createResponseEnv := &rest_model.CreateEnvelope{}
+	createResponseEnv = &rest_model.CreateEnvelope{}
 
-	resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(validJwtSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
+	resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(validJwtSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
 	ctx.Req.NoError(err)
 	ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
 
@@ -139,6 +279,103 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyPatch).Patch("/auth-policies/default")
 	ctx.NoError(err)
 	ctx.Equal(http.StatusOK, resp.StatusCode())
+
+	t.Run("authenticating with a signer with keys from JWKS", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		t.Run("succeeds with a known key", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			jwtToken := jwt.New(jwt.SigningMethodES256)
+			jwtToken.Claims = jwt.RegisteredClaims{
+				Audience:  []string{*validJwksSigner.Audience},
+				ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+				ID:        time.Now().String(),
+				IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+				Issuer:    *validJwksSigner.Issuer,
+				NotBefore: &jwt.NumericDate{Time: time.Now()},
+				Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
+			}
+
+			jwtToken.Header["kid"] = validJwksSignerCert1.Subject.CommonName
+
+			jwtStrSigned, err := jwtToken.SignedString(validJwksSignerPrivateKey1)
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(jwtStrSigned)
+
+			result := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+			resp, err := ctx.newAnonymousClientApiRequest().SetResult(result).SetHeader("Authorization", "Bearer "+jwtStrSigned).Post("/authenticate?method=ext-jwt")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+			ctx.Req.NotNil(result)
+			ctx.Req.NotNil(result.Data)
+			ctx.Req.NotNil(result.Data.Token)
+		})
+
+		t.Run("fails with an unknown key", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			jwtToken := jwt.New(jwt.SigningMethodES256)
+			jwtToken.Claims = jwt.RegisteredClaims{
+				Audience:  []string{*validJwksSigner.Audience},
+				ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+				ID:        time.Now().String(),
+				IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+				Issuer:    *validJwksSigner.Issuer,
+				NotBefore: &jwt.NumericDate{Time: time.Now()},
+				Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
+			}
+
+			jwtToken.Header["kid"] = validJwksSignerCert2.Subject.CommonName
+
+			jwtStrSigned, err := jwtToken.SignedString(validJwksSignerPrivateKey2)
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(jwtStrSigned)
+
+			result := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+			resp, err := ctx.newAnonymousClientApiRequest().SetResult(result).SetHeader("Authorization", "Bearer "+jwtStrSigned).Post("/authenticate?method=ext-jwt")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode())
+		})
+
+		t.Run("succeeds with a newly added key", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			jwksServer.AddCertificate(validJwksSignerCert2)
+			defer jwksServer.RemoveCertificate(validJwksSignerCert2)
+
+			// allow jwks query timeout to pass (1 request / second)
+			time.Sleep(model.JwksQueryTimeout + 500*time.Millisecond)
+
+			jwtToken := jwt.New(jwt.SigningMethodES256)
+			jwtToken.Claims = jwt.RegisteredClaims{
+				Audience:  []string{*validJwksSigner.Audience},
+				ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+				ID:        time.Now().String(),
+				IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+				Issuer:    *validJwksSigner.Issuer,
+				NotBefore: &jwt.NumericDate{Time: time.Now()},
+				Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
+			}
+
+			jwtToken.Header["kid"] = validJwksSignerCert2.Subject.CommonName
+
+			jwtStrSigned, err := jwtToken.SignedString(validJwksSignerPrivateKey2)
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(jwtStrSigned)
+
+			result := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+			resp, err := ctx.newAnonymousClientApiRequest().SetResult(result).SetHeader("Authorization", "Bearer "+jwtStrSigned).Post("/authenticate?method=ext-jwt")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+			ctx.Req.NotNil(result)
+			ctx.Req.NotNil(result.Data)
+			ctx.Req.NotNil(result.Data.Token)
+		})
+	})
 
 	t.Run("authenticating with a valid jwt succeeds", func(t *testing.T) {
 		ctx.testContextChanged(t)
