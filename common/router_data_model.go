@@ -1,3 +1,19 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package common
 
 import (
@@ -7,8 +23,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/sirupsen/logrus"
 	"io"
 	"os"
+	"sync/atomic"
 )
 
 // AccessPolicies represents the Identity's access to a Service through many Policies. The PostureChecks provided
@@ -16,7 +34,7 @@ import (
 // a valid policy and posture access path.
 type AccessPolicies struct {
 	Identity      *Identity
-	Service       *edge_ctrl_pb.DataState_Service
+	Service       *Service
 	Policies      []*ServicePolicy
 	PostureChecks map[string]*edge_ctrl_pb.DataState_PostureCheck
 }
@@ -26,6 +44,36 @@ type DataStateIdentity = edge_ctrl_pb.DataState_Identity
 type Identity struct {
 	*DataStateIdentity
 	ServicePolicies map[string]struct{} `json:"servicePolicies"`
+	IdentityIndex   uint64
+	ServiceSetIndex uint64
+}
+
+type DataStateConfigType = edge_ctrl_pb.DataState_ConfigType
+
+type ConfigType struct {
+	*DataStateConfigType
+	Index uint64
+}
+
+type DataStateConfig = edge_ctrl_pb.DataState_Config
+
+type Config struct {
+	*DataStateConfig
+	Index uint64
+}
+
+type DataStateService = edge_ctrl_pb.DataState_Service
+
+type Service struct {
+	*DataStateService
+	Index uint64
+}
+
+type DataStatePostureCheck = edge_ctrl_pb.DataState_PostureCheck
+
+type PostureCheck struct {
+	*DataStatePostureCheck
+	Index uint64
 }
 
 type DataStateServicePolicy = edge_ctrl_pb.DataState_ServicePolicy
@@ -45,15 +93,23 @@ type RouterDataModel struct {
 	EventCache
 	listeners map[chan *edge_ctrl_pb.DataState_ChangeSet]struct{}
 
-	Identities      cmap.ConcurrentMap[string, *Identity]                            `json:"identities"`
-	Services        cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Service]      `json:"services"`
-	ServicePolicies cmap.ConcurrentMap[string, *ServicePolicy]                       `json:"servicePolicies"`
-	PostureChecks   cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_PostureCheck] `json:"postureChecks"`
-	PublicKeys      cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_PublicKey]    `json:"publicKeys"`
-	Revocations     cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Revocation]   `json:"revocations"`
+	ConfigTypes     cmap.ConcurrentMap[string, *ConfigType]                        `json:"configTypes"`
+	Configs         cmap.ConcurrentMap[string, *Config]                            `json:"configs"`
+	Identities      cmap.ConcurrentMap[string, *Identity]                          `json:"identities"`
+	Services        cmap.ConcurrentMap[string, *Service]                           `json:"services"`
+	ServicePolicies cmap.ConcurrentMap[string, *ServicePolicy]                     `json:"servicePolicies"`
+	PostureChecks   cmap.ConcurrentMap[string, *PostureCheck]                      `json:"postureChecks"`
+	PublicKeys      cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_PublicKey]  `json:"publicKeys"`
+	Revocations     cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Revocation] `json:"revocations"`
 
 	listenerBufferSize uint
 	lastSaveIndex      *uint64
+
+	subscriptions cmap.ConcurrentMap[string, *IdentitySubscription]
+	events        chan subscriberEvent
+	closeNotify   <-chan struct{}
+	stopNotify    chan struct{}
+	stopped       atomic.Bool
 }
 
 // NewSenderRouterDataModel creates a new RouterDataModel that will store events in a circular buffer of
@@ -61,10 +117,12 @@ type RouterDataModel struct {
 func NewSenderRouterDataModel(logSize uint64, listenerBufferSize uint) *RouterDataModel {
 	return &RouterDataModel{
 		EventCache:         NewLoggingEventCache(logSize),
+		ConfigTypes:        cmap.New[*ConfigType](),
+		Configs:            cmap.New[*Config](),
 		Identities:         cmap.New[*Identity](),
-		Services:           cmap.New[*edge_ctrl_pb.DataState_Service](),
+		Services:           cmap.New[*Service](),
 		ServicePolicies:    cmap.New[*ServicePolicy](),
-		PostureChecks:      cmap.New[*edge_ctrl_pb.DataState_PostureCheck](),
+		PostureChecks:      cmap.New[*PostureCheck](),
 		PublicKeys:         cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
 		Revocations:        cmap.New[*edge_ctrl_pb.DataState_Revocation](),
 		listenerBufferSize: listenerBufferSize,
@@ -73,22 +131,30 @@ func NewSenderRouterDataModel(logSize uint64, listenerBufferSize uint) *RouterDa
 
 // NewReceiverRouterDataModel creates a new RouterDataModel that does not store events. listenerBufferSize affects the
 // buffer size of channels returned to listeners of the data model.
-func NewReceiverRouterDataModel(listenerBufferSize uint) *RouterDataModel {
-	return &RouterDataModel{
+func NewReceiverRouterDataModel(listenerBufferSize uint, closeNotify <-chan struct{}) *RouterDataModel {
+	result := &RouterDataModel{
 		EventCache:         NewForgetfulEventCache(),
+		ConfigTypes:        cmap.New[*ConfigType](),
+		Configs:            cmap.New[*Config](),
 		Identities:         cmap.New[*Identity](),
-		Services:           cmap.New[*edge_ctrl_pb.DataState_Service](),
+		Services:           cmap.New[*Service](),
 		ServicePolicies:    cmap.New[*ServicePolicy](),
-		PostureChecks:      cmap.New[*edge_ctrl_pb.DataState_PostureCheck](),
+		PostureChecks:      cmap.New[*PostureCheck](),
 		PublicKeys:         cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
 		Revocations:        cmap.New[*edge_ctrl_pb.DataState_Revocation](),
 		listenerBufferSize: listenerBufferSize,
+		subscriptions:      cmap.New[*IdentitySubscription](),
+		events:             make(chan subscriberEvent),
+		closeNotify:        closeNotify,
+		stopNotify:         make(chan struct{}),
 	}
+	go result.processSubscriberEvents()
+	return result
 }
 
 // NewReceiverRouterDataModelFromFile creates a new RouterDataModel that does not store events and is initialized from
 // a file backup. listenerBufferSize affects the buffer size of channels returned to listeners of the data model.
-func NewReceiverRouterDataModelFromFile(path string, listenerBufferSize uint) (*RouterDataModel, error) {
+func NewReceiverRouterDataModelFromFile(path string, listenerBufferSize uint, closeNotify <-chan struct{}) (*RouterDataModel, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -107,7 +173,7 @@ func NewReceiverRouterDataModelFromFile(path string, listenerBufferSize uint) (*
 	}
 
 	rdmContents := &rdmDb{
-		RouterDataModel: NewReceiverRouterDataModel(listenerBufferSize),
+		RouterDataModel: NewReceiverRouterDataModel(listenerBufferSize, closeNotify),
 	}
 
 	err = json.Unmarshal(data, rdmContents)
@@ -118,6 +184,25 @@ func NewReceiverRouterDataModelFromFile(path string, listenerBufferSize uint) (*
 	rdmContents.RouterDataModel.lastSaveIndex = &rdmContents.Index
 
 	return rdmContents.RouterDataModel, nil
+}
+
+func (rdm *RouterDataModel) processSubscriberEvents() {
+	for !rdm.stopped.Load() {
+		select {
+		case <-rdm.closeNotify:
+			return
+		case <-rdm.stopNotify:
+			return
+		case evt := <-rdm.events:
+			evt.process(rdm)
+		}
+	}
+}
+
+func (rdm *RouterDataModel) Stop() {
+	if rdm.stopped.CompareAndSwap(false, true) {
+		close(rdm.stopNotify)
+	}
 }
 
 // NewListener returns a channel that will receive the events applied to this data model.
@@ -138,12 +223,24 @@ func (rdm *RouterDataModel) sendEvent(event *edge_ctrl_pb.DataState_ChangeSet) {
 	}
 }
 
-// Apply applies the given even to the router data model.
+// ApplyChangeSet applies the given even to the router data model.
 func (rdm *RouterDataModel) ApplyChangeSet(change *edge_ctrl_pb.DataState_ChangeSet) {
 	changeAccepted := false
 	err := rdm.EventCache.Store(change, func(index uint64, change *edge_ctrl_pb.DataState_ChangeSet) {
-		for _, event := range change.Changes {
-			rdm.Handle(event)
+		syncSubscribers := false
+		for idx, event := range change.Changes {
+			pfxlog.Logger().
+				WithField("index", index).
+				WithField("entry", idx).
+				WithField("action", event.Action).
+				WithField("type", fmt.Sprintf("%T", event.Model)).
+				Debug("handling change set entry")
+			if rdm.Handle(index, event) {
+				syncSubscribers = true
+			}
+		}
+		if syncSubscribers {
+			rdm.SyncAllSubscribers()
 		}
 		changeAccepted = true
 	})
@@ -159,53 +256,117 @@ func (rdm *RouterDataModel) ApplyChangeSet(change *edge_ctrl_pb.DataState_Change
 	}
 }
 
-func (rdm *RouterDataModel) Handle(event *edge_ctrl_pb.DataState_Event) {
+func (rdm *RouterDataModel) Handle(index uint64, event *edge_ctrl_pb.DataState_Event) bool {
 	switch typedModel := event.Model.(type) {
+	case *edge_ctrl_pb.DataState_Event_ConfigType:
+		rdm.HandleConfigTypeEvent(index, event, typedModel)
+	case *edge_ctrl_pb.DataState_Event_Config:
+		rdm.HandleConfigEvent(index, event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_Identity:
-		rdm.HandleIdentityEvent(event, typedModel)
+		rdm.HandleIdentityEvent(index, event, typedModel)
+		return false
 	case *edge_ctrl_pb.DataState_Event_Service:
-		rdm.HandleServiceEvent(event, typedModel)
+		rdm.HandleServiceEvent(index, event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_ServicePolicy:
 		rdm.HandleServicePolicyEvent(event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_PostureCheck:
-		rdm.HandlePostureCheckEvent(event, typedModel)
+		rdm.HandlePostureCheckEvent(index, event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_PublicKey:
 		rdm.HandlePublicKeyEvent(event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_Revocation:
 		rdm.HandleRevocationEvent(event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_ServicePolicyChange:
-		rdm.HandleServicePolicyChange(typedModel.ServicePolicyChange)
+		rdm.HandleServicePolicyChange(index, typedModel.ServicePolicyChange)
+	}
+	return true
+}
+
+func (rdm *RouterDataModel) queueEvent(event subscriberEvent) {
+	if rdm.events != nil {
+		rdm.events <- event
+	}
+}
+
+func (rdm *RouterDataModel) SyncAllSubscribers() {
+	if rdm.events != nil {
+		rdm.events <- syncAllSubscribersEvent{}
 	}
 }
 
 // HandleIdentityEvent will apply the delta event to the router data model. It is not restricted by index calculations.
 // Use ApplyIdentityEvent for event logged event handling. This method is generally meant for bulk loading of data
 // during startup.
-func (rdm *RouterDataModel) HandleIdentityEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Identity) {
+func (rdm *RouterDataModel) HandleIdentityEvent(index uint64, event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Identity) {
 	if event.Action == edge_ctrl_pb.DataState_Delete {
 		rdm.Identities.Remove(model.Identity.Id)
+		rdm.queueEvent(identityRemoveEvent{identityId: model.Identity.Id})
 	} else {
+		var identity *Identity
 		rdm.Identities.Upsert(model.Identity.Id, nil, func(exist bool, valueInMap *Identity, newValue *Identity) *Identity {
 			if valueInMap == nil {
-				return &Identity{
+				identity = &Identity{
 					DataStateIdentity: model.Identity,
 					ServicePolicies:   map[string]struct{}{},
+					IdentityIndex:     index,
+				}
+			} else {
+				identity = &Identity{
+					DataStateIdentity: model.Identity,
+					ServicePolicies:   valueInMap.ServicePolicies,
+					IdentityIndex:     index,
+					ServiceSetIndex:   valueInMap.ServiceSetIndex,
 				}
 			}
-			valueInMap.DataStateIdentity = model.Identity
-			return valueInMap
+			return identity
 		})
+
+		if event.Action == edge_ctrl_pb.DataState_Create {
+			rdm.queueEvent(identityCreatedEvent{identity: identity})
+		} else if event.Action == edge_ctrl_pb.DataState_Update {
+			rdm.queueEvent(identityUpdatedEvent{identity: identity})
+		}
 	}
 }
 
 // HandleServiceEvent will apply the delta event to the router data model. It is not restricted by index calculations.
 // Use ApplyServiceEvent for event logged event handling. This method is generally meant for bulk loading of data
 // during startup.
-func (rdm *RouterDataModel) HandleServiceEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Service) {
+func (rdm *RouterDataModel) HandleServiceEvent(index uint64, event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Service) {
 	if event.Action == edge_ctrl_pb.DataState_Delete {
 		rdm.Services.Remove(model.Service.Id)
 	} else {
-		rdm.Services.Set(model.Service.Id, model.Service)
+		rdm.Services.Set(model.Service.Id, &Service{
+			DataStateService: model.Service,
+			Index:            index,
+		})
+	}
+}
+
+// HandleConfigTypeEvent will apply the delta event to the router data model. It is not restricted by index calculations.
+// Use ApplyConfigTypeEvent for event logged event handling. This method is generally meant for bulk loading of data
+// during startup.
+func (rdm *RouterDataModel) HandleConfigTypeEvent(index uint64, event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_ConfigType) {
+	if event.Action == edge_ctrl_pb.DataState_Delete {
+		rdm.ConfigTypes.Remove(model.ConfigType.Id)
+	} else {
+		rdm.ConfigTypes.Set(model.ConfigType.Id, &ConfigType{
+			DataStateConfigType: model.ConfigType,
+			Index:               index,
+		})
+	}
+}
+
+// HandleConfigEvent will apply the delta event to the router data model. It is not restricted by index calculations.
+// Use ApplyConfigEvent for event logged event handling. This method is generally meant for bulk loading of data
+// during startup.
+func (rdm *RouterDataModel) HandleConfigEvent(index uint64, event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Config) {
+	if event.Action == edge_ctrl_pb.DataState_Delete {
+		rdm.Configs.Remove(model.Config.Id)
+	} else {
+		rdm.Configs.Set(model.Config.Id, &Config{
+			DataStateConfig: model.Config,
+			Index:           index,
+		})
 	}
 }
 
@@ -218,9 +379,13 @@ func (rdm *RouterDataModel) applyUpdateServicePolicyEvent(event *edge_ctrl_pb.Da
 				Services:               map[string]struct{}{},
 				PostureChecks:          map[string]struct{}{},
 			}
+		} else {
+			return &ServicePolicy{
+				DataStateServicePolicy: servicePolicy,
+				Services:               valueInMap.Services,
+				PostureChecks:          valueInMap.PostureChecks,
+			}
 		}
-		valueInMap.DataStateServicePolicy = servicePolicy
-		return valueInMap
 	})
 }
 
@@ -232,6 +397,7 @@ func (rdm *RouterDataModel) applyDeleteServicePolicyEvent(_ *edge_ctrl_pb.DataSt
 // Use ApplyServicePolicyEvent for event logged event handling. This method is generally meant for bulk loading of data
 // during startup.
 func (rdm *RouterDataModel) HandleServicePolicyEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
+	pfxlog.Logger().WithField("policyId", model.ServicePolicy.Id).WithField("action", event.Action).Debug("applying service policy event")
 	switch event.Action {
 	case edge_ctrl_pb.DataState_Create:
 		rdm.applyUpdateServicePolicyEvent(event, model)
@@ -245,11 +411,14 @@ func (rdm *RouterDataModel) HandleServicePolicyEvent(event *edge_ctrl_pb.DataSta
 // HandlePostureCheckEvent will apply the delta event to the router data model. It is not restricted by index calculations.
 // Use ApplyPostureCheckEvent for event logged event handling. This method is generally meant for bulk loading of data
 // during startup.
-func (rdm *RouterDataModel) HandlePostureCheckEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_PostureCheck) {
+func (rdm *RouterDataModel) HandlePostureCheckEvent(index uint64, event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_PostureCheck) {
 	if event.Action == edge_ctrl_pb.DataState_Delete {
 		rdm.PostureChecks.Remove(model.PostureCheck.Id)
 	} else {
-		rdm.PostureChecks.Set(model.PostureCheck.Id, model.PostureCheck)
+		rdm.PostureChecks.Set(model.PostureCheck.Id, &PostureCheck{
+			DataStatePostureCheck: model.PostureCheck,
+			Index:                 index,
+		})
 	}
 }
 
@@ -275,7 +444,14 @@ func (rdm *RouterDataModel) HandleRevocationEvent(event *edge_ctrl_pb.DataState_
 	}
 }
 
-func (rdm *RouterDataModel) HandleServicePolicyChange(model *edge_ctrl_pb.DataState_ServicePolicyChange) {
+func (rdm *RouterDataModel) HandleServicePolicyChange(index uint64, model *edge_ctrl_pb.DataState_ServicePolicyChange) {
+	pfxlog.Logger().
+		WithField("policyId", model.PolicyId).
+		WithField("isAdd", model.Add).
+		WithField("relatedEntityType", model.RelatedEntityType).
+		WithField("relatedEntityIds", model.RelatedEntityIds).
+		Debug("applying service policy change event")
+
 	if model.RelatedEntityType == edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedIdentity {
 		for _, identityId := range model.RelatedEntityIds {
 			rdm.Identities.Upsert(identityId, nil, func(exist bool, valueInMap *Identity, newValue *Identity) *Identity {
@@ -285,10 +461,15 @@ func (rdm *RouterDataModel) HandleServicePolicyChange(model *edge_ctrl_pb.DataSt
 					} else {
 						delete(valueInMap.ServicePolicies, model.PolicyId)
 					}
+					valueInMap.ServiceSetIndex = index
 				}
 				return valueInMap
 			})
 		}
+		return
+	}
+
+	if !rdm.ServicePolicies.Has(model.PolicyId) {
 		return
 	}
 
@@ -322,7 +503,6 @@ func (rdm *RouterDataModel) HandleServicePolicyChange(model *edge_ctrl_pb.DataSt
 
 		return valueInMap
 	})
-
 }
 
 func (rdm *RouterDataModel) GetPublicKeys() map[string]*edge_ctrl_pb.DataState_PublicKey {
@@ -333,6 +513,26 @@ func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
 	var events []*edge_ctrl_pb.DataState_Event
 
 	rdm.EventCache.WhileLocked(func(_ uint64, _ bool) {
+		rdm.ConfigTypes.IterCb(func(key string, v *ConfigType) {
+			newEvent := &edge_ctrl_pb.DataState_Event{
+				Action: edge_ctrl_pb.DataState_Create,
+				Model: &edge_ctrl_pb.DataState_Event_ConfigType{
+					ConfigType: v.DataStateConfigType,
+				},
+			}
+			events = append(events, newEvent)
+		})
+
+		rdm.Configs.IterCb(func(key string, v *Config) {
+			newEvent := &edge_ctrl_pb.DataState_Event{
+				Action: edge_ctrl_pb.DataState_Create,
+				Model: &edge_ctrl_pb.DataState_Event_Config{
+					Config: v.DataStateConfig,
+				},
+			}
+			events = append(events, newEvent)
+		})
+
 		servicePolicyIdentities := map[string]*edge_ctrl_pb.DataState_ServicePolicyChange{}
 
 		rdm.Identities.IterCb(func(key string, v *Identity) {
@@ -358,21 +558,21 @@ func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
 			}
 		})
 
-		rdm.Services.IterCb(func(key string, v *edge_ctrl_pb.DataState_Service) {
+		rdm.Services.IterCb(func(key string, v *Service) {
 			newEvent := &edge_ctrl_pb.DataState_Event{
 				Action: edge_ctrl_pb.DataState_Create,
 				Model: &edge_ctrl_pb.DataState_Event_Service{
-					Service: v,
+					Service: v.DataStateService,
 				},
 			}
 			events = append(events, newEvent)
 		})
 
-		rdm.PostureChecks.IterCb(func(key string, v *edge_ctrl_pb.DataState_PostureCheck) {
+		rdm.PostureChecks.IterCb(func(key string, v *PostureCheck) {
 			newEvent := &edge_ctrl_pb.DataState_Event{
 				Action: edge_ctrl_pb.DataState_Create,
 				Model: &edge_ctrl_pb.DataState_Event_PostureCheck{
-					PostureCheck: v,
+					PostureCheck: v.DataStatePostureCheck,
 				},
 			}
 			events = append(events, newEvent)
@@ -531,7 +731,7 @@ func (rdm *RouterDataModel) GetServiceAccessPolicies(identityId string, serviceI
 				//ignore ok, if !ok postureCheck == nil which will trigger
 				//failure during evaluation
 				postureCheck, _ := rdm.PostureChecks.Get(postureCheckId)
-				postureChecks[postureCheckId] = postureCheck
+				postureChecks[postureCheckId] = postureCheck.DataStatePostureCheck
 			}
 		}
 	}
@@ -542,4 +742,153 @@ func (rdm *RouterDataModel) GetServiceAccessPolicies(identityId string, serviceI
 		Policies:      policies,
 		PostureChecks: postureChecks,
 	}, nil
+}
+
+func CloneMap[V any](m cmap.ConcurrentMap[string, V]) cmap.ConcurrentMap[string, V] {
+	result := cmap.New[V]()
+	m.IterCb(func(key string, v V) {
+		result.Set(key, v)
+	})
+	return result
+}
+
+func (rdm *RouterDataModel) SubscribeToIdentityChanges(identityId string, subscriber IdentityEventSubscriber, validOnly bool) error {
+	pfxlog.Logger().WithField("identityId", identityId).Debug("subscribing to changes for identity")
+	identity, ok := rdm.Identities.Get(identityId)
+	if !ok && validOnly {
+		return fmt.Errorf("identity %s not found", identityId)
+	}
+
+	subscription := rdm.subscriptions.Upsert(identityId, nil, func(exist bool, valueInMap *IdentitySubscription, newValue *IdentitySubscription) *IdentitySubscription {
+		if exist {
+			valueInMap.Listeners.Append(subscriber)
+			return valueInMap
+		}
+		result := &IdentitySubscription{
+			IdentityId: identityId,
+		}
+		result.Listeners.Append(subscriber)
+		return result
+	})
+
+	if identity != nil {
+		state := subscription.initialize(rdm, identity)
+		subscriber.NotifyIdentityEvent(state, EventFullState)
+	}
+
+	return nil
+}
+
+func (rdm *RouterDataModel) InheritSubscribers(other *RouterDataModel) {
+	other.subscriptions.IterCb(func(key string, v *IdentitySubscription) {
+		rdm.subscriptions.Set(key, v)
+	})
+}
+
+func (rdm *RouterDataModel) buildServiceList(sub *IdentitySubscription) (map[string]*IdentityService, map[string]*PostureCheck) {
+	log := pfxlog.Logger().WithField("identityId", sub.IdentityId)
+	services := map[string]*IdentityService{}
+	postureChecks := map[string]*PostureCheck{}
+
+	for policyId := range sub.Identity.ServicePolicies {
+		policy, ok := rdm.ServicePolicies.Get(policyId)
+		if !ok {
+			log.WithField("policyId", policyId).Error("could not find service policy")
+			continue
+		}
+
+		for serviceId := range policy.Services {
+			service, ok := rdm.Services.Get(serviceId)
+			if !ok {
+				log.WithField("policyId", policyId).
+					WithField("serviceId", serviceId).
+					Error("could not find service")
+				continue
+			}
+
+			identityService, ok := services[serviceId]
+			if !ok {
+				identityService = &IdentityService{
+					Service: service,
+					Configs: map[string]*IdentityConfig{},
+					Checks:  map[string]struct{}{},
+				}
+				services[serviceId] = identityService
+				rdm.loadServiceConfigs(sub.Identity, identityService)
+				rdm.loadServicePostureChecks(sub.Identity, policy, identityService, postureChecks)
+			}
+
+			if policy.PolicyType == edge_ctrl_pb.PolicyType_BindPolicy {
+				identityService.BindAllowed = true
+			} else if policy.PolicyType == edge_ctrl_pb.PolicyType_DialPolicy {
+				identityService.DialAllowed = true
+			}
+		}
+	}
+
+	return services, postureChecks
+}
+
+func (rdm *RouterDataModel) loadServicePostureChecks(identity *Identity, policy *ServicePolicy, svc *IdentityService, checks map[string]*PostureCheck) {
+	log := pfxlog.Logger().
+		WithField("identityId", identity.Id).
+		WithField("serviceId", svc.Service.Id).
+		WithField("policyId", policy.Id)
+
+	for postureCheckId := range policy.PostureChecks {
+		check, ok := rdm.PostureChecks.Get(postureCheckId)
+		if !ok {
+			log.WithField("postureCheckId", postureCheckId).Error("could not find posture check")
+		} else {
+			svc.Checks[postureCheckId] = struct{}{}
+			checks[postureCheckId] = check
+		}
+	}
+}
+
+func (rdm *RouterDataModel) loadServiceConfigs(identity *Identity, svc *IdentityService) {
+	log := pfxlog.Logger().
+		WithField("identityId", identity.Id).
+		WithField("serviceId", svc.Service.Id)
+
+	result := map[string]*IdentityConfig{}
+
+	for _, configId := range svc.Service.Configs {
+		identityConfig := rdm.loadIdentityConfig(configId, log)
+		if identityConfig != nil {
+			result[identityConfig.ConfigType.Name] = identityConfig
+		}
+	}
+
+	if serviceConfigs, hasOverride := identity.ServiceConfigs[svc.Service.Id]; hasOverride {
+		for _, configId := range serviceConfigs.Configs {
+			identityConfig := rdm.loadIdentityConfig(configId, log)
+			if identityConfig != nil {
+				result[identityConfig.ConfigType.Name] = identityConfig
+			}
+		}
+	}
+
+	svc.Configs = result
+}
+
+func (rdm *RouterDataModel) loadIdentityConfig(configId string, log *logrus.Entry) *IdentityConfig {
+	config, ok := rdm.Configs.Get(configId)
+	if !ok {
+		log.WithField("configId", configId).Error("could not find config")
+		return nil
+	}
+
+	configType, ok := rdm.ConfigTypes.Get(config.TypeId)
+	if !ok {
+		log.WithField("configId", configId).
+			WithField("configTypeId", config.TypeId).
+			Error("could not find config type")
+		return nil
+	}
+
+	return &IdentityConfig{
+		Config:     config,
+		ConfigType: configType,
+	}
 }

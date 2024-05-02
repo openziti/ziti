@@ -122,7 +122,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	if factory.routerConfig.Ha.Enabled {
 		factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
 	} else {
-		factory.stateManager.SetRouterDataModel(common.NewReceiverRouterDataModel(state.RouterDataModelListerBufferSize))
+		factory.stateManager.SetRouterDataModel(common.NewReceiverRouterDataModel(state.RouterDataModelListerBufferSize, factory.env.GetCloseNotify()))
 	}
 
 	go apiproxy.Start(config)

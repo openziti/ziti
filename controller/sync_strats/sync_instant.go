@@ -106,13 +106,6 @@ type InstantStrategy struct {
 	stopNotify chan struct{}
 	stopped    atomic.Bool
 	*common.RouterDataModel
-	servicePolicyHandler *constraintToIndexedEvents[*db.ServicePolicy]
-	identityHandler      *constraintToIndexedEvents[*db.Identity]
-	postureCheckHandler  *constraintToIndexedEvents[*db.PostureCheck]
-	serviceHandler       *constraintToIndexedEvents[*db.EdgeService]
-	caHandler            *constraintToIndexedEvents[*db.Ca]
-	revocationHandler    *constraintToIndexedEvents[*db.Revocation]
-	controllerHandler    *constraintToIndexedEvents[*db.Controller]
 
 	changeSetLock sync.Mutex
 	changeSets    map[uint64]*edge_ctrl_pb.DataState_ChangeSet
@@ -143,7 +136,7 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 		}
 	}
 
-	err := strategy.BuildAll()
+	err := strategy.BuildAll(strategy.RouterDataModel)
 
 	if err != nil {
 		return err
@@ -152,65 +145,84 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 	go strategy.handleRouterModelEvents(strategy.RouterDataModel.NewListener())
 
 	//policy create/delete/update
-	strategy.servicePolicyHandler = &constraintToIndexedEvents[*db.ServicePolicy]{
+	servicePolicyHandler := &constraintToIndexedEvents[*db.ServicePolicy]{
 		indexProvider: strategy.indexProvider,
 		createHandler: strategy.ServicePolicyCreate,
 		updateHandler: strategy.ServicePolicyUpdate,
 		deleteHandler: strategy.ServicePolicyDelete,
 	}
-	strategy.ae.GetStores().ServicePolicy.AddEntityConstraint(strategy.servicePolicyHandler)
+	strategy.ae.GetStores().ServicePolicy.AddEntityConstraint(servicePolicyHandler)
 
 	//identity create/delete/update
-	strategy.identityHandler = &constraintToIndexedEvents[*db.Identity]{
+	identityHandler := &constraintToIndexedEvents[*db.Identity]{
 		indexProvider: strategy.indexProvider,
 		createHandler: strategy.IdentityCreate,
 		updateHandler: strategy.IdentityUpdate,
 		deleteHandler: strategy.IdentityDelete,
 	}
-	strategy.ae.GetStores().Identity.AddEntityConstraint(strategy.identityHandler)
+	strategy.ae.GetStores().Identity.AddEntityConstraint(identityHandler)
 
 	//posture check create/delete/update
-	strategy.postureCheckHandler = &constraintToIndexedEvents[*db.PostureCheck]{
+	postureCheckHandler := &constraintToIndexedEvents[*db.PostureCheck]{
 		indexProvider: strategy.indexProvider,
 		createHandler: strategy.PostureCheckCreate,
 		updateHandler: strategy.PostureCheckUpdate,
 		deleteHandler: strategy.PostureCheckDelete,
 	}
-	strategy.ae.GetStores().PostureCheck.AddEntityConstraint(strategy.postureCheckHandler)
+	strategy.ae.GetStores().PostureCheck.AddEntityConstraint(postureCheckHandler)
+
+	//configType create/delete/update
+	configTypeHandler := &constraintToIndexedEvents[*db.ConfigType]{
+		indexProvider: strategy.indexProvider,
+		createHandler: strategy.ConfigTypeCreate,
+		updateHandler: strategy.ConfigTypeUpdate,
+		deleteHandler: strategy.ConfigTypeDelete,
+	}
+	strategy.ae.GetStores().ConfigType.AddEntityConstraint(configTypeHandler)
+
+	//config create/delete/update
+	configHandler := &constraintToIndexedEvents[*db.Config]{
+		indexProvider: strategy.indexProvider,
+		createHandler: strategy.ConfigCreate,
+		updateHandler: strategy.ConfigUpdate,
+		deleteHandler: strategy.ConfigDelete,
+	}
+	strategy.ae.GetStores().Config.AddEntityConstraint(configHandler)
 
 	//service create/delete/update
-	strategy.serviceHandler = &constraintToIndexedEvents[*db.EdgeService]{
+	serviceHandler := &constraintToIndexedEvents[*db.EdgeService]{
 		indexProvider: strategy.indexProvider,
 		createHandler: strategy.ServiceCreate,
 		updateHandler: strategy.ServiceUpdate,
 		deleteHandler: strategy.ServiceDelete,
 	}
-	strategy.ae.GetStores().EdgeService.AddEntityConstraint(strategy.serviceHandler)
+	strategy.ae.GetStores().EdgeService.AddEntityConstraint(serviceHandler)
 
 	//ca create/delete/update
-	strategy.caHandler = &constraintToIndexedEvents[*db.Ca]{
+	caHandler := &constraintToIndexedEvents[*db.Ca]{
 		indexProvider: strategy.indexProvider,
 		createHandler: strategy.CaCreate,
 		updateHandler: strategy.CaUpdate,
 		deleteHandler: strategy.CaDelete,
 	}
-	strategy.ae.GetStores().Ca.AddEntityConstraint(strategy.caHandler)
+	strategy.ae.GetStores().Ca.AddEntityConstraint(caHandler)
 
 	//revocation create/delete/update
-	strategy.revocationHandler = &constraintToIndexedEvents[*db.Revocation]{
+	revocationHandler := &constraintToIndexedEvents[*db.Revocation]{
 		indexProvider: strategy.indexProvider,
 		createHandler: strategy.RevocationCreate,
 		updateHandler: strategy.RevocationUpdate,
 		deleteHandler: strategy.RevocationDelete,
 	}
-	strategy.ae.GetStores().Revocation.AddEntityConstraint(strategy.revocationHandler)
+	strategy.ae.GetStores().Revocation.AddEntityConstraint(revocationHandler)
 
-	strategy.controllerHandler = &constraintToIndexedEvents[*db.Controller]{
+	controllerHandler := &constraintToIndexedEvents[*db.Controller]{
 		indexProvider: strategy.indexProvider,
 		createHandler: strategy.ControllerCreate,
 		updateHandler: strategy.ControllerUpdate,
 	}
 
+	strategy.ae.GetStores().Controller.AddEntityConstraint(controllerHandler)
 	strategy.ae.GetDb().AddTxCompleteListener(strategy.completeChangeSet)
 
 	return nil
@@ -825,7 +837,7 @@ type InstantSyncState struct {
 	Sequence int    `json:"sequence"` //increasing id from 0 per id for the
 }
 
-func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
+func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx, rdm *common.RouterDataModel) error {
 	for cursor := strategy.ae.GetStores().ServicePolicy.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
@@ -843,7 +855,7 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		strategy.HandleServicePolicyEvent(newEvent, newModel)
+		rdm.HandleServicePolicyEvent(newEvent, newModel)
 
 		result := strategy.ae.GetManagers().ServicePolicy.ListAssociatedIds(tx, storeModel.Id)
 
@@ -854,7 +866,7 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
 			Add:               true,
 		}
 
-		strategy.HandleServicePolicyChange(addServicesEvent)
+		rdm.HandleServicePolicyChange(strategy.indexProvider.CurrentIndex(), addServicesEvent)
 
 		addIdentitiesEvent := &edge_ctrl_pb.DataState_ServicePolicyChange{
 			PolicyId:          currentId,
@@ -862,7 +874,7 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
 			RelatedEntityType: edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedIdentity,
 			Add:               true,
 		}
-		strategy.HandleServicePolicyChange(addIdentitiesEvent)
+		rdm.HandleServicePolicyChange(strategy.indexProvider.CurrentIndex(), addIdentitiesEvent)
 
 		addPostureChecksEvent := &edge_ctrl_pb.DataState_ServicePolicyChange{
 			PolicyId:          currentId,
@@ -870,13 +882,13 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
 			RelatedEntityType: edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedPostureCheck,
 			Add:               true,
 		}
-		strategy.HandleServicePolicyChange(addPostureChecksEvent)
+		rdm.HandleServicePolicyChange(strategy.indexProvider.CurrentIndex(), addPostureChecksEvent)
 	}
 
 	return nil
 }
 
-func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
+func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.RouterDataModel) error {
 	serverTls := strategy.ae.HostController.Identity().ServerCert()
 
 	newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(serverTls[0].Certificate[0], edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})}
@@ -942,35 +954,44 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		strategy.HandlePublicKeyEvent(newEvent, newModel)
+		rdm.HandlePublicKeyEvent(newEvent, newModel)
 	}
 
 	return nil
 }
 
-func (strategy *InstantStrategy) BuildAll() error {
+func (strategy *InstantStrategy) BuildAll(rdm *common.RouterDataModel) error {
 	err := strategy.ae.GetDb().View(func(tx *bbolt.Tx) error {
-		if err := strategy.BuildIdentities(tx); err != nil {
+		index := strategy.indexProvider.CurrentIndex()
+		if err := strategy.BuildConfigTypes(index, tx, rdm); err != nil {
 			return err
 		}
 
-		if err := strategy.BuildServices(tx); err != nil {
+		if err := strategy.BuildConfigs(index, tx, rdm); err != nil {
 			return err
 		}
 
-		if err := strategy.BuildPostureChecks(tx); err != nil {
+		if err := strategy.BuildIdentities(index, tx, rdm); err != nil {
 			return err
 		}
 
-		if err := strategy.BuildServicePolicies(tx); err != nil {
+		if err := strategy.BuildServices(index, tx, rdm); err != nil {
 			return err
 		}
 
-		if err := strategy.BuildPublicKeys(tx); err != nil {
+		if err := strategy.BuildPostureChecks(index, tx, rdm); err != nil {
 			return err
 		}
 
-		strategy.SetCurrentIndex(strategy.indexProvider.CurrentIndex())
+		if err := strategy.BuildServicePolicies(tx, rdm); err != nil {
+			return err
+		}
+
+		if err := strategy.BuildPublicKeys(tx, rdm); err != nil {
+			return err
+		}
+
+		rdm.SetCurrentIndex(strategy.indexProvider.CurrentIndex())
 
 		return nil
 	})
@@ -978,7 +999,279 @@ func (strategy *InstantStrategy) BuildAll() error {
 	return err
 }
 
-func (strategy *InstantStrategy) BuildIdentities(tx *bbolt.Tx) error {
+func (strategy *InstantStrategy) BuildConfigTypes(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModel) error {
+	for cursor := strategy.ae.GetStores().ConfigType.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		currentBytes := cursor.Current()
+		currentId := string(currentBytes)
+
+		configType, err := newConfigTypeById(tx, strategy.ae, currentId)
+
+		if err != nil {
+			return err
+		}
+
+		newModel := &edge_ctrl_pb.DataState_Event_ConfigType{ConfigType: configType}
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model:  newModel,
+		}
+		rdm.HandleConfigTypeEvent(index, newEvent, newModel)
+	}
+
+	return nil
+}
+
+func (strategy *InstantStrategy) ValidateConfigTypes(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
+	return ValidateType(tx, strategy.ae.GetStores().ConfigType, rdm.ConfigTypes, func(t *db.ConfigType, v *common.ConfigType) []error {
+		var result []error
+		result = diffVals("config type", t.Id, "name", t.Name, v.Name, result)
+		return result
+	})
+}
+
+func (strategy *InstantStrategy) ValidateConfigs(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
+	return ValidateType(tx, strategy.ae.GetStores().Config, rdm.Configs, func(t *db.Config, v *common.Config) []error {
+		var result []error
+		result = diffVals("config", t.Id, "name", t.Name, v.Name, result)
+
+		dataJson, err := json.Marshal(t.Data)
+		if err != nil {
+			result = append(result, err)
+			return result
+		}
+		result = diffVals("config", t.Id, "data", string(dataJson), v.DataJson, result)
+		return result
+	})
+}
+
+func (strategy *InstantStrategy) ValidateIdentities(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
+	return ValidateType(tx, strategy.ae.GetStores().Identity, rdm.Identities, func(t *db.Identity, v *common.Identity) []error {
+		var result []error
+
+		serviceConfigs := v.GetServiceConfigsAsMap()
+
+		result = diffVals("identity", t.Id, "name", t.Name, v.Name, result)
+		result = diffVals("identity", t.Id, "default hosting precedence", byte(t.DefaultHostingPrecedence), byte(v.DefaultHostingPrecedence), result)
+		result = diffVals("identity", t.Id, "default hosting cost", uint32(t.DefaultHostingCost), v.DefaultHostingCost, result)
+		result = diffJson("identity", t.Id, "service configs", t.ServiceConfigs, serviceConfigs, result)
+		result = diffJson("identity", t.Id, "app data", t.AppData, v.AppDataJson, result)
+		result = diffJson("identity", t.Id, "service hosting costs", t.ServiceHostingCosts, v.ServiceHostingCosts, result)
+		result = diffJson("identity", t.Id, "service hosting precedences", t.ServiceHostingPrecedences, v.ServiceHostingPrecedences, result)
+
+		policyList := strategy.ae.GetStores().Identity.GetRelatedEntitiesIdList(tx, t.Id, db.EntityTypeServicePolicies)
+		policySet := genext.SliceToSet(policyList)
+		result = diffSets("identity", t.Id, "service policy", policySet, v.ServicePolicies, result)
+
+		return result
+	})
+}
+
+func (strategy *InstantStrategy) ValidateServices(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
+	return ValidateType(tx, strategy.ae.GetStores().EdgeService, rdm.Services, func(t *db.EdgeService, v *common.Service) []error {
+		var result []error
+		result = diffVals("service", t.Id, "name", t.Name, v.Name, result)
+		result = diffVals("service", t.Id, "encryption required", t.EncryptionRequired, v.EncryptionRequired, result)
+		result = diffJson("service", t.Id, "configs", t.Configs, v.Configs, result)
+		return result
+	})
+}
+
+func (strategy *InstantStrategy) ValidatePostureChecks(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
+	return ValidateType(tx, strategy.ae.GetStores().PostureCheck, rdm.PostureChecks, func(t *db.PostureCheck, v *common.PostureCheck) []error {
+		var result []error
+		result = diffVals("posture check", t.Id, "name", t.Name, v.Name, result)
+		result = diffVals("posture check", t.Id, "type", t.TypeId, v.TypeId, result)
+
+		strToList := func(v string) []string {
+			if v == "" {
+				return nil
+			}
+			return []string{v}
+		}
+
+		switch subType := t.SubType.(type) {
+		case *db.PostureCheckMacAddresses:
+			if rdmSubType, ok := v.Subtype.(*edge_ctrl_pb.DataState_PostureCheck_Mac_); ok && rdmSubType.Mac != nil {
+				result = diffJson("posture check", t.Id, "mac addresses", subType.MacAddresses, rdmSubType.Mac.MacAddresses, result)
+			} else {
+				result = append(result, fmt.Errorf("for posture check %s, sub type not mac address, rather: %T", t.Id, v.Subtype))
+			}
+		case *db.PostureCheckMfa:
+			if rdmSubType, ok := v.Subtype.(*edge_ctrl_pb.DataState_PostureCheck_Mfa_); ok && rdmSubType.Mfa != nil {
+				result = diffVals("posture check", t.Id, "mfa ignore legacy endpoints", subType.IgnoreLegacyEndpoints, rdmSubType.Mfa.IgnoreLegacyEndpoints, result)
+				result = diffVals("posture check", t.Id, "mfa prompt on wake", subType.PromptOnWake, rdmSubType.Mfa.PromptOnWake, result)
+				result = diffVals("posture check", t.Id, "mfa prompt on unlock", subType.PromptOnUnlock, rdmSubType.Mfa.PromptOnUnlock, result)
+				result = diffVals("posture check", t.Id, "mfa timeout seconds", subType.TimeoutSeconds, rdmSubType.Mfa.TimeoutSeconds, result)
+			} else {
+				result = append(result, fmt.Errorf("for posture check %s, sub type not mfa, rather: %T", t.Id, v.Subtype))
+			}
+		case *db.PostureCheckOperatingSystem:
+			if rdmSubType, ok := v.Subtype.(*edge_ctrl_pb.DataState_PostureCheck_OsList_); ok && rdmSubType.OsList != nil {
+				result = diffVals("posture check", t.Id, "os list len", len(subType.OperatingSystems), len(rdmSubType.OsList.OsList), result)
+				if len(subType.OperatingSystems) == len(rdmSubType.OsList.OsList) {
+					for idx, os := range subType.OperatingSystems {
+						rdmOs := rdmSubType.OsList.OsList[idx]
+						if os.OsType != rdmOs.OsType {
+							result = append(result, fmt.Errorf("for posture check %s, os type at %d doesn't match rather: %s != %xs", t.Id, idx, os.OsType, rdmOs.OsType))
+						}
+						result = diffJson("posture check", t.Id, fmt.Sprintf("os %d versions", idx), os.OsVersions, rdmOs.OsVersions, result)
+					}
+				}
+			} else {
+				result = append(result, fmt.Errorf("for posture check %s, sub type not os list, rather: %T", t.Id, v.Subtype))
+			}
+		case *db.PostureCheckProcess:
+			if rdmSubType, ok := v.Subtype.(*edge_ctrl_pb.DataState_PostureCheck_Process_); ok && rdmSubType.Process != nil {
+				result = diffJson("posture check", t.Id, "process fingerprints", strToList(subType.Fingerprint), rdmSubType.Process.Fingerprints, result)
+				result = diffJson("posture check", t.Id, "process hashes", subType.Hashes, rdmSubType.Process.Hashes, result)
+				result = diffVals("posture check", t.Id, "process path", subType.Path, rdmSubType.Process.Path, result)
+				result = diffVals("posture check", t.Id, "process operating system", subType.OperatingSystem, rdmSubType.Process.OsType, result)
+			} else {
+				result = append(result, fmt.Errorf("for posture check %s, sub type not process, rather: %T", t.Id, v.Subtype))
+			}
+		case *db.PostureCheckProcessMulti:
+			if rdmSubType, ok := v.Subtype.(*edge_ctrl_pb.DataState_PostureCheck_ProcessMulti_); ok && rdmSubType.ProcessMulti != nil {
+				result = diffVals("posture check", t.Id, "process multi semantic", subType.Semantic, rdmSubType.ProcessMulti.Semantic, result)
+				result = diffVals("posture check", t.Id, "process multi list len", len(subType.Processes), len(rdmSubType.ProcessMulti.Processes), result)
+				if len(subType.Processes) == len(rdmSubType.ProcessMulti.Processes) {
+					for idx, process := range subType.Processes {
+						rdmProcess := rdmSubType.ProcessMulti.Processes[idx]
+						result = diffJson("posture check", t.Id, fmt.Sprintf("process %d fingerprint", idx), process.SignerFingerprints, rdmProcess.Fingerprints, result)
+						result = diffJson("posture check", t.Id, fmt.Sprintf("process %d hashes", idx), process.Hashes, rdmProcess.Hashes, result)
+						result = diffVals("posture check", t.Id, fmt.Sprintf("process %d path", idx), process.Path, rdmProcess.Path, result)
+						result = diffVals("posture check", t.Id, fmt.Sprintf("process %d os type", idx), process.OsType, rdmProcess.OsType, result)
+					}
+				}
+			} else {
+				result = append(result, fmt.Errorf("for posture check %s, sub type not process multi, rather: %T", t.Id, v.Subtype))
+			}
+		}
+
+		return result
+	})
+}
+
+func (strategy *InstantStrategy) ValidateServicePolicies(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
+	return ValidateType(tx, strategy.ae.GetStores().ServicePolicy, rdm.ServicePolicies, func(t *db.ServicePolicy, v *common.ServicePolicy) []error {
+		var result []error
+
+		result = diffVals("service policy", t.Id, "name", t.Name, v.Name, result)
+		result = diffVals("service policy", t.Id, "policy type", t.PolicyType.Id(), int32(v.PolicyType), result)
+
+		policyList := strategy.ae.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, t.Id, db.EntityTypeServices)
+		policySet := genext.SliceToSet(policyList)
+		result = diffSets("service policy", t.Id, "service", policySet, v.Services, result)
+
+		policyList = strategy.ae.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, t.Id, db.EntityTypePostureChecks)
+		policySet = genext.SliceToSet(policyList)
+		result = diffSets("service policy", t.Id, "posture check", policySet, v.PostureChecks, result)
+
+		return result
+	})
+}
+
+func diffVals[T comparable](entityType, id, field string, a, b T, errors []error) []error {
+	if a != b {
+		return append(errors, fmt.Errorf("for %s %s: %s %v do not match rdm value: %v", entityType, id, field, a, b))
+	}
+	return errors
+}
+
+func diffJson(entityType, id, field string, a interface{}, b interface{}, errors []error) []error {
+	orig := ""
+	rdm := ""
+
+	if a != nil {
+		origBytes, err := json.Marshal(a)
+		if err != nil {
+			return append(errors, err)
+		}
+		orig = string(origBytes)
+	}
+
+	if b != nil {
+		if bytes, ok := b.([]byte); ok {
+			rdm = string(bytes)
+		} else {
+			rdmBytes, err := json.Marshal(b)
+			if err != nil {
+				return append(errors, err)
+			}
+			rdm = string(rdmBytes)
+		}
+	}
+
+	if orig != rdm {
+		return append(errors, fmt.Errorf("for %s %s: %s %s do not match rdm value: %s", entityType, id, field, orig, rdm))
+	}
+	return errors
+}
+
+func diffSets(entityType, id, field string, a, b map[string]struct{}, result []error) []error {
+	result = diffVals(entityType, id, field+" count", len(a), len(b), result)
+
+	for entityId := range a {
+		_, found := b[entityId]
+		result = diffVals(entityType, id, fmt.Sprintf("has %s %s", field, entityId), true, found, result)
+	}
+
+	for entityId := range b {
+		_, found := a[entityId]
+		result = diffVals(entityType, id, fmt.Sprintf("has %s %s", field, entityId), found, true, result)
+	}
+
+	return result
+}
+
+func ValidateType[T boltz.ExtEntity, V any](tx *bbolt.Tx, store db.Store[T], m cmap.ConcurrentMap[string, V], checkF func(T, V) []error) []error {
+	var result []error
+	entities := common.CloneMap(m)
+	for cursor := store.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		entity, err := store.LoadById(tx, string(cursor.Current()))
+		if err != nil {
+			result = append(result, err)
+			continue
+		}
+		rdmEntity, found := entities.Get(entity.GetId())
+		if !found {
+			result = append(result, fmt.Errorf("no %s found with id: %s",
+				entity.GetEntityType(), entity.GetId()))
+			continue
+		}
+
+		entities.Remove(entity.GetId())
+
+		if errs := checkF(entity, rdmEntity); len(errs) > 0 {
+			result = append(result, errs...)
+		}
+	}
+
+	return result
+}
+
+func (strategy *InstantStrategy) BuildConfigs(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModel) error {
+	for cursor := strategy.ae.GetStores().Config.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		currentBytes := cursor.Current()
+		currentId := string(currentBytes)
+
+		config, err := newConfigById(tx, strategy.ae, currentId)
+
+		if err != nil {
+			return err
+		}
+
+		newModel := &edge_ctrl_pb.DataState_Event_Config{Config: config}
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model:  newModel,
+		}
+		rdm.HandleConfigEvent(index, newEvent, newModel)
+	}
+
+	return nil
+}
+
+func (strategy *InstantStrategy) BuildIdentities(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModel) error {
 	for cursor := strategy.ae.GetStores().Identity.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
@@ -995,13 +1288,13 @@ func (strategy *InstantStrategy) BuildIdentities(tx *bbolt.Tx) error {
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		strategy.HandleIdentityEvent(newEvent, newModel)
+		rdm.HandleIdentityEvent(index, newEvent, newModel)
 	}
 
 	return nil
 }
 
-func (strategy *InstantStrategy) BuildServices(tx *bbolt.Tx) error {
+func (strategy *InstantStrategy) BuildServices(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModel) error {
 	for cursor := strategy.ae.GetStores().EdgeService.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
@@ -1017,13 +1310,13 @@ func (strategy *InstantStrategy) BuildServices(tx *bbolt.Tx) error {
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		strategy.HandleServiceEvent(newEvent, newModel)
+		rdm.HandleServiceEvent(index, newEvent, newModel)
 	}
 
 	return nil
 }
 
-func (strategy *InstantStrategy) BuildPostureChecks(tx *bbolt.Tx) error {
+func (strategy *InstantStrategy) BuildPostureChecks(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModel) error {
 	for cursor := strategy.ae.GetStores().PostureCheck.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
@@ -1039,9 +1332,52 @@ func (strategy *InstantStrategy) BuildPostureChecks(tx *bbolt.Tx) error {
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		strategy.HandlePostureCheckEvent(newEvent, newModel)
+		rdm.HandlePostureCheckEvent(index, newEvent, newModel)
 	}
 	return nil
+}
+
+func (strategy *InstantStrategy) Validate() []error {
+	return strategy.ValidateAll(strategy.RouterDataModel)
+}
+
+func (strategy *InstantStrategy) ValidateAll(rdm *common.RouterDataModel) []error {
+	var result []error
+	err := strategy.ae.GetDb().View(func(tx *bbolt.Tx) error {
+		if errs := strategy.ValidateConfigTypes(tx, rdm); len(errs) > 0 {
+			result = append(result, errs...)
+		}
+
+		if errs := strategy.ValidateConfigs(tx, rdm); len(errs) > 0 {
+			result = append(result, errs...)
+		}
+
+		if errs := strategy.ValidateIdentities(tx, rdm); len(errs) > 0 {
+			result = append(result, errs...)
+		}
+
+		if errs := strategy.ValidateServices(tx, rdm); len(errs) > 0 {
+			result = append(result, errs...)
+		}
+
+		if errs := strategy.ValidatePostureChecks(tx, rdm); len(errs) != 0 {
+			result = append(result, errs...)
+		}
+
+		if errs := strategy.ValidateServicePolicies(tx, rdm); len(errs) != 0 {
+			result = append(result, errs...)
+		}
+
+		// TODO: validate public keys
+
+		return nil
+	})
+
+	if err != nil {
+		result = append(result, err)
+	}
+
+	return result
 }
 
 func newIdentityById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_Identity, error) {
@@ -1080,6 +1416,18 @@ func newIdentity(identityModel *db.Identity) *edge_ctrl_pb.DataState_Identity {
 		}
 	}
 
+	var serviceConfigsMap map[string]*edge_ctrl_pb.DataState_ServiceConfigs
+
+	if len(identityModel.ServiceConfigs) > 0 {
+		serviceConfigsMap = map[string]*edge_ctrl_pb.DataState_ServiceConfigs{}
+	}
+
+	for serviceId, configInfo := range identityModel.ServiceConfigs {
+		serviceConfigs := &edge_ctrl_pb.DataState_ServiceConfigs{}
+		serviceConfigs.Configs = configInfo
+		serviceConfigsMap[serviceId] = serviceConfigs
+	}
+
 	return &edge_ctrl_pb.DataState_Identity{
 		Id:                        identityModel.Id,
 		Name:                      identityModel.Name,
@@ -1088,6 +1436,7 @@ func newIdentity(identityModel *db.Identity) *edge_ctrl_pb.DataState_Identity {
 		ServiceHostingPrecedences: hostingPrecedences,
 		ServiceHostingCosts:       hostingCosts,
 		AppDataJson:               appDataJson,
+		ServiceConfigs:            serviceConfigsMap,
 	}
 }
 
@@ -1099,6 +1448,47 @@ func newServicePolicy(storeModel *db.ServicePolicy) *edge_ctrl_pb.DataState_Serv
 	}
 
 	return servicePolicy
+}
+
+func newConfigTypeById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_ConfigType, error) {
+	storeModel, err := ae.GetStores().ConfigType.LoadById(tx, id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return newConfigType(storeModel), nil
+}
+
+func newConfigType(storeModel *db.ConfigType) *edge_ctrl_pb.DataState_ConfigType {
+	return &edge_ctrl_pb.DataState_ConfigType{
+		Id:   storeModel.Id,
+		Name: storeModel.Name,
+	}
+}
+
+func newConfigById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_Config, error) {
+	storeModel, err := ae.GetStores().Config.LoadById(tx, id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return newConfig(storeModel)
+}
+
+func newConfig(entity *db.Config) (*edge_ctrl_pb.DataState_Config, error) {
+	jsonData, err := json.Marshal(entity.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &edge_ctrl_pb.DataState_Config{
+		Id:       entity.Id,
+		TypeId:   entity.Type,
+		Name:     entity.Name,
+		DataJson: string(jsonData),
+	}, nil
 }
 
 func newServiceById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_Service, error) {
@@ -1113,8 +1503,10 @@ func newServiceById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.Data
 
 func newService(storeModel *db.EdgeService) *edge_ctrl_pb.DataState_Service {
 	return &edge_ctrl_pb.DataState_Service{
-		Id:   storeModel.Id,
-		Name: storeModel.Name,
+		Id:                 storeModel.Id,
+		Name:               storeModel.Name,
+		EncryptionRequired: storeModel.EncryptionRequired,
+		Configs:            storeModel.Configs,
 	}
 }
 
@@ -1261,6 +1653,30 @@ func (strategy *InstantStrategy) handleIdentity(index uint64, action edge_ctrl_p
 	})
 }
 
+func (strategy *InstantStrategy) ConfigTypeCreate(index uint64, entity *db.ConfigType) {
+	strategy.handleConfigType(index, edge_ctrl_pb.DataState_Create, entity)
+}
+
+func (strategy *InstantStrategy) ConfigTypeUpdate(index uint64, entity *db.ConfigType) {
+	strategy.handleConfigType(index, edge_ctrl_pb.DataState_Update, entity)
+}
+
+func (strategy *InstantStrategy) ConfigTypeDelete(index uint64, entity *db.ConfigType) {
+	strategy.handleConfigType(index, edge_ctrl_pb.DataState_Delete, entity)
+}
+
+func (strategy *InstantStrategy) ConfigCreate(index uint64, entity *db.Config) {
+	strategy.handleConfig(index, edge_ctrl_pb.DataState_Create, entity)
+}
+
+func (strategy *InstantStrategy) ConfigUpdate(index uint64, entity *db.Config) {
+	strategy.handleConfig(index, edge_ctrl_pb.DataState_Update, entity)
+}
+
+func (strategy *InstantStrategy) ConfigDelete(index uint64, entity *db.Config) {
+	strategy.handleConfig(index, edge_ctrl_pb.DataState_Delete, entity)
+}
+
 func (strategy *InstantStrategy) ServiceCreate(index uint64, service *db.EdgeService) {
 	strategy.handleService(index, edge_ctrl_pb.DataState_Create, service)
 }
@@ -1271,6 +1687,33 @@ func (strategy *InstantStrategy) ServiceUpdate(index uint64, service *db.EdgeSer
 
 func (strategy *InstantStrategy) ServiceDelete(index uint64, service *db.EdgeService) {
 	strategy.handleService(index, edge_ctrl_pb.DataState_Delete, service)
+}
+
+func (strategy *InstantStrategy) handleConfigType(index uint64, action edge_ctrl_pb.DataState_Action, entity *db.ConfigType) {
+	configType := newConfigType(entity)
+
+	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
+		Action: action,
+		Model: &edge_ctrl_pb.DataState_Event_ConfigType{
+			ConfigType: configType,
+		},
+	})
+}
+
+func (strategy *InstantStrategy) handleConfig(index uint64, action edge_ctrl_pb.DataState_Action, entity *db.Config) {
+	config, err := newConfig(entity)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).WithField("configId", entity.Id).Error("unable to marshal config json")
+		return
+	}
+
+	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
+		Action: action,
+		Model: &edge_ctrl_pb.DataState_Event_Config{
+			Config: config,
+		},
+	})
 }
 
 func (strategy *InstantStrategy) handleService(index uint64, action edge_ctrl_pb.DataState_Action, service *db.EdgeService) {

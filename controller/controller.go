@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/common/capabilities"
@@ -76,7 +77,7 @@ type Controller struct {
 	localDispatcher    *command.LocalDispatcher
 	ctrlConnectHandler *handler_ctrl.ConnectHandler
 	xctrls             []xctrl.Xctrl
-	xmgmts             []xmgmt.Xmgmt
+	xmgmts             concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
 
 	xwebFactoryRegistry xweb.Registry
 	xweb                xweb.Instance
@@ -292,11 +293,11 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
-	if err := c.xweb.GetRegistry().Add(api_impl.NewManagementApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
+	if err := c.xweb.GetRegistry().Add(api_impl.NewManagementApiFactory(c.config.Id, c.network, &c.xmgmts)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create management api factory")
 	}
 
-	if err := c.xweb.GetRegistry().Add(api_impl.NewMetricsApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
+	if err := c.xweb.GetRegistry().Add(api_impl.NewMetricsApiFactory(c.config.Id, c.network)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create metrics api factory")
 	}
 
@@ -487,8 +488,9 @@ func (c *Controller) RegisterXmgmt(x xmgmt.Xmgmt) error {
 	if err := c.config.Configure(x); err != nil {
 		return err
 	}
+	pfxlog.Logger().Infof("adding xmgmt %T, enabled? %v", x, x.Enabled())
 	if x.Enabled() {
-		c.xmgmts = append(c.xmgmts, x)
+		c.xmgmts.Append(x)
 	}
 	return nil
 }

@@ -83,8 +83,13 @@ func (self *Clients) Authenticate(user, password string) error {
 		}
 		return err
 	}
-	self.token = *result.Payload.Data.Token
 	pfxlog.Logger().WithField("token", self.token).Info("authenticated successfully")
+	self.SetSessionToken(*result.Payload.Data.Token)
+	return nil
+}
+
+func (self *Clients) SetSessionToken(token string) {
+	self.token = token
 	self.FabricRuntime.DefaultAuthentication = &util.EdgeManagementAuth{
 		Token: self.token,
 	}
@@ -93,7 +98,6 @@ func (self *Clients) Authenticate(user, password string) error {
 		Token: self.token,
 	}
 
-	return nil
 }
 
 func (self *Clients) NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.Channel, error) {

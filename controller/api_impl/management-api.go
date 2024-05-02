@@ -24,14 +24,15 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/websockets"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/identity"
+	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/controller/handler_mgmt"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/xmgmt"
 	"github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/controller/rest_server"
 	"github.com/openziti/ziti/controller/rest_server/operations"
-	"github.com/openziti/identity"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/controller/xmgmt"
 	"net/http"
 	"strings"
 )
@@ -46,14 +47,15 @@ type ManagementApiFactory struct {
 	InitFunc func(managementApi *ManagementApiHandler) error
 	network  *network.Network
 	nodeId   identity.Identity
-	xmgmts   []xmgmt.Xmgmt
+	xmgmts   *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
 }
 
 func (factory *ManagementApiFactory) Validate(_ *xweb.InstanceConfig) error {
 	return nil
 }
 
-func NewManagementApiFactory(nodeId identity.Identity, network *network.Network, xmgmts []xmgmt.Xmgmt) *ManagementApiFactory {
+func NewManagementApiFactory(nodeId identity.Identity, network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) *ManagementApiFactory {
+	pfxlog.Logger().Infof("initializing management api factory with %d xmgmt instances", len(xmgmts.Value()))
 	return &ManagementApiFactory{
 		network: network,
 		nodeId:  nodeId,

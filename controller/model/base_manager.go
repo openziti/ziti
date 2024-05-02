@@ -425,3 +425,10 @@ func NewFieldChecker(fields ...string) boltz.FieldChecker {
 	}
 	return result
 }
+
+type NotFieldChecker map[string]struct{}
+
+func (checker NotFieldChecker) IsUpdated(field string) bool {
+	_, ok := checker[field]
+	return !ok
+}

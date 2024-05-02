@@ -558,7 +558,7 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 	// 1: Allocate Circuit Identifier
 	circuitId, err := network.circuitIdGenerator.NextAlphaNumericPrefixedId()
 	if err != nil {
-		network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, CircuitFailureInvalidService)
+		network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, CircuitFailureIdGenerationError)
 		return nil, err
 	}
 	ctx.WithFields(map[string]interface{}{

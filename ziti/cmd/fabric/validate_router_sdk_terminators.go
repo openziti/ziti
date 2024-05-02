@@ -131,7 +131,7 @@ func (self *validateRouterSdkTerminatorsAction) validateRouterSdkTerminators(_ *
 					}
 					fmt.Printf("\tid: %s, ctrlState: %v, routerState: %s, created: %s, lastAttempt: %s, reqOutstanding: %v\n",
 						detail.TerminatorId, detail.CtrlState, detail.RouterState,
-						detail.CreateTime, detail.LastAttempt, detail.OperaationActive)
+						detail.CreateTime, detail.LastAttempt, detail.OperationActive)
 				}
 				if !detail.IsValid {
 					errCount++

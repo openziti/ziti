@@ -152,6 +152,7 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 func (c *Controller) GetMgmtHandlers() []channel.TypedReceiveHandler {
 	return []channel.TypedReceiveHandler{
 		handler_edge_mgmt.NewInitEdgeHandler(c.AppEnv),
+		handler_edge_mgmt.NewValidateRouterDataModelHandler(c.AppEnv),
 	}
 }
 

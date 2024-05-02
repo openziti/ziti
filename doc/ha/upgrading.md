@@ -2,6 +2,18 @@
 
 ## Controller Changes
 
+### Updating Certificates
+
+The controller client certificate (or server certificate if it's also used as the client), must have
+a SPIFFE ID in it. This is how controllers present their identity to other controllers.
+
+You may need to regenerate the controller's client and/or server certificate. As long as you use the
+same root certificate, there shouldn't be any client/router connection issues. There is no need to
+regenerate intermediate certificates using for signing client/router certificates.
+
+Outstanding enrollments will need to be re-issued as they are signed by the controller's server
+certificate.
+
 ### Updating Configuration
 
 Add a `raft` stanza to the configuration. See the
@@ -11,6 +23,16 @@ for information on other fields.
 ```yaml
 raft:
   dataDir: /path/to/data/dir
+```
+
+Add `advertiseAddress` to the `ctrl` stanza. Note that the `advertiseAddress` should have the
+hostname or IP at which other controllers can reach this controller.
+
+```yaml
+ctrl:
+  listener: tls:127.0.0.1:6262
+  options:
+    advertiseAddress: tls:192.168.1.100:6262
 ```
 
 The `dataDir` will be used to store the following:

@@ -118,12 +118,6 @@ message Error {
   string cause = 3;
 }
 
-message Service {
-  string id = 1;
-  string name = 2;
-  bool encryptionRequired = 3;
-}
-
 enum PolicyType {
   InvalidPolicy = 0;
   DialPolicy = 1;
@@ -147,6 +141,22 @@ message DataState {
     Delete = 2;
   }
 
+  message ConfigType {
+    string id = 1;
+    string name = 2;
+  }
+
+  message Config {
+    string id = 1;
+    string typeId = 2;
+    string name = 3;
+    string dataJson = 4;
+  }
+
+  message ServiceConfigs {
+    map<string, string> configs = 1;
+  }
+
   message Identity {
     string id = 1;
     string name = 2;
@@ -155,12 +165,14 @@ message DataState {
     map<string, TerminatorPrecedence> serviceHostingPrecedences = 5;
     map<string, uint32> serviceHostingCosts = 6;
     bytes appDataJson = 7;
+    map<string, ServiceConfigs> serviceConfigs = 8;
   }
 
   message Service {
     string id = 1;
     string name = 2;
     bool encryptionRequired = 3;
+    repeated string configs = 4;
   }
 
   message ServicePolicy {
@@ -200,6 +212,8 @@ message DataState {
       PublicKey publicKey = 14;
       Revocation revocation = 15;
       ServicePolicyChange servicePolicyChange = 16;
+      ConfigType configType = 17;
+      Config config = 18;
     }
   }
 
@@ -271,16 +285,6 @@ message DataState {
       Domains domains = 12;
     };
   }
-}
-
-message Session {
-  string token = 1;
-  SessionType type = 2;
-  repeated string certFingerprints = 3;
-  repeated string urls = 4;
-  Service service = 5;
-  string id = 7;
-  string apiSessionId = 8;
 }
 
 message ApiSession {
