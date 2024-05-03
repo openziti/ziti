@@ -8,6 +8,10 @@ function makeConfig() {
   #
 
   if [[ ! -s "${ZITI_ROUTER_CONFIG_FILE}" || "${1:-}" == --force ]]; then
+    if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
+      echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS is not set" >&2
+      return 1
+    fi
     ziti create config router "${ZITI_ROUTER_TYPE}" \
       --tunnelerMode "${ZITI_ROUTER_MODE}" \
       --routerName "${ZITI_ROUTER_NAME}" \
