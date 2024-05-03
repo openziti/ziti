@@ -20,11 +20,10 @@ jobs:
   build:
     name: Build and Run
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'openziti'
     steps:
       - name: Checkout ziti
         uses: actions/checkout@v4
-        with:
-          path: ziti
 
       - name: Install Go
         id: setup-go
@@ -37,19 +36,17 @@ jobs:
 
       - name: Configure Git
         run: |
-          cd ziti
           $(go env GOPATH)/bin/ziti-ci configure-git
 
       - name: Pull ZITI_VERSION and set as $GITHUB_ENV for use with fablab
         run: |
-          cd ziti
           version="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
           echo "Ziti Version: $version"
           echo "ZITI_VERSION=$version" >> $GITHUB_ENV
 
       - name: Build and Run
         run: |
-          cd ziti/zititest/models/db-creation
+          cd ./zititest/models/db-creation
           go build -o db-creation main.go
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           ./db-creation create db-creation
@@ -58,5 +55,5 @@ jobs:
       - name: Teardown
         if: always()
         run: |
-          cd ziti/zititest/models/db-creation          
+          cd ./zititest/models/db-creation          
           ./db-creation dispose

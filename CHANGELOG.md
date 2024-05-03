@@ -1,5 +1,8 @@
 # Release 1.0.0
 
+This is a re-release of v1.0 as v0.34.x, to address an issue with docker containers which 
+don't correctly parse the major version
+
 ## About 1.0
 
 What does marking OpenZiti as 1.0 mean?
