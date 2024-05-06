@@ -2,14 +2,6 @@ services:
   quickstart:
     image: ${ZITI_CLI_IMAGE:-docker.io/openziti/ziti-cli}:${ZITI_CLI_TAG:-latest}
     restart: unless-stopped
-    build:
-      # the build context is the root of the ziti repo so that BuildKit can access the built ziti executable in /build
-      # and the Dockerfile
-      context: ../../../ 
-      dockerfile: ./quickstart/docker/all-in-one/Dockerfile
-      args:
-        # path of the directory containing the locally-built ziti executable; relative to the build context
-        ARTIFACTS_DIR: ./build
     networks:
       quickstart:
         # this allows other containers to use the same external DNS name to reach the quickstart container from within the
