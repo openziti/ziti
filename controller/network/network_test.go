@@ -140,7 +140,8 @@ func TestCreateCircuit(t *testing.T) {
 		},
 	*/
 	lc := logcontext.NewContext()
-	_, _, _, cerr := network.selectPath(r0, svc, "", lc)
+	params := newCircuitParams(svc, r0)
+	_, _, _, _, cerr := network.selectPath(params, svc, "", lc)
 	assert.Error(t, cerr)
 	assert.Equal(t, CircuitFailureNoTerminators, cerr.Cause())
 
@@ -156,15 +157,15 @@ func TestCreateCircuit(t *testing.T) {
 		},
 	}
 
-	_, _, _, cerr = network.selectPath(r0, svc, "", lc)
+	_, _, _, _, cerr = network.selectPath(params, svc, "", lc)
 	assert.Error(t, cerr)
 	assert.Equal(t, CircuitFailureNoOnlineTerminators, cerr.Cause())
 
 	network.Routers.markConnected(r0)
-	_, _, _, cerr = network.selectPath(r0, svc, "", lc)
+	_, _, _, _, cerr = network.selectPath(params, svc, "", lc)
 	assert.NoError(t, cerr)
 
-	_, _, _, cerr = network.selectPath(r0, svc, "test", lc)
+	_, _, _, _, cerr = network.selectPath(params, svc, "test", lc)
 	assert.Error(t, cerr)
 	assert.Equal(t, CircuitFailureNoTerminators, cerr.Cause())
 }
@@ -204,4 +205,40 @@ func (v VersionProviderTest) AsVersionInfo() *versions.VersionInfo {
 
 func NewVersionProviderTest() versions.VersionProvider {
 	return &VersionProviderTest{}
+}
+
+func newCircuitParams(service *Service, router *Router) CreateCircuitParams {
+	return testCreateCircuitParams{
+		svc:    service,
+		router: router,
+	}
+}
+
+type testCreateCircuitParams struct {
+	svc    *Service
+	router *Router
+}
+
+func (t testCreateCircuitParams) GetServiceId() string {
+	return t.svc.Id
+}
+
+func (t testCreateCircuitParams) GetSourceRouter() *Router {
+	return t.router
+}
+
+func (t testCreateCircuitParams) GetClientId() *identity.TokenId {
+	return nil
+}
+
+func (t testCreateCircuitParams) GetCircuitTags(terminator xt.CostedTerminator) map[string]string {
+	return nil
+}
+
+func (t testCreateCircuitParams) GetLogContext() logcontext.Context {
+	return logcontext.NewContext()
+}
+
+func (t testCreateCircuitParams) GetDeadline() time.Time {
+	return time.Now().Add(time.Second)
 }

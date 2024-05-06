@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/events"
 	"github.com/openziti/ziti/controller/handler_peer_ctrl"
+	"github.com/openziti/ziti/controller/xt_sticky"
 	"github.com/openziti/ziti/controller/zac"
 	"math/big"
 	"os"
@@ -446,6 +447,7 @@ func (c *Controller) registerXts() {
 	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
 	xt.GlobalRegistry().RegisterFactory(xt_random.NewFactory())
 	xt.GlobalRegistry().RegisterFactory(xt_weighted.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_sticky.NewFactory())
 }
 
 func (c *Controller) registerComponents() error {

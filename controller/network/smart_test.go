@@ -66,7 +66,8 @@ func TestSmartRerouteMinCostDelta(t *testing.T) {
 		},
 	}
 
-	_, terminator, pathNodes, cerr := network.selectPath(r0, svc, "", lc)
+	params := newCircuitParams(svc, r0)
+	_, terminator, pathNodes, _, cerr := network.selectPath(params, svc, "", lc)
 	assert.NoError(t, cerr)
 
 	path, pathErr := network.CreatePathWithNodes(pathNodes)

@@ -13,14 +13,14 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.128
-	github.com/openziti/edge-api v0.26.18
+	github.com/openziti/channel/v2 v2.0.130
+	github.com/openziti/edge-api v0.26.19
 	github.com/openziti/fablab v0.5.60
-	github.com/openziti/foundation/v2 v2.0.42
-	github.com/openziti/identity v1.0.75
-	github.com/openziti/sdk-golang v0.23.35
-	github.com/openziti/storage v0.2.37
-	github.com/openziti/transport/v2 v2.0.131
+	github.com/openziti/foundation/v2 v2.0.45
+	github.com/openziti/identity v1.0.77
+	github.com/openziti/sdk-golang v0.23.37
+	github.com/openziti/storage v0.2.41
+	github.com/openziti/transport/v2 v2.0.133
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -61,7 +61,7 @@ require (
 	github.com/ef-ds/deque v1.0.4 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/fatih/color v1.16.0 // indirect
+	github.com/fatih/color v1.17.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
@@ -80,7 +80,7 @@ require (
 	github.com/go-openapi/strfmt v0.23.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-openapi/validate v0.24.0 // indirect
-	github.com/go-resty/resty/v2 v2.13.0 // indirect
+	github.com/go-resty/resty/v2 v2.13.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
@@ -138,9 +138,9 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.51 // indirect
-	github.com/openziti/runzmd v1.0.43 // indirect
-	github.com/openziti/secretstream v0.1.19 // indirect
+	github.com/openziti/metrics v1.2.54 // indirect
+	github.com/openziti/runzmd v1.0.47 // indirect
+	github.com/openziti/secretstream v0.1.20 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.1.0 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect

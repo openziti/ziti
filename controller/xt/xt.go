@@ -18,6 +18,8 @@ package xt
 
 import (
 	"fmt"
+	"github.com/openziti/identity"
+	"github.com/openziti/ziti/common/logcontext"
 	"time"
 )
 
@@ -60,16 +62,21 @@ type StrategyChangeEvent interface {
 	GetRemoved() []Terminator
 }
 
+type CreateCircuitParams interface {
+	GetServiceId() string
+	GetClientId() *identity.TokenId
+	GetLogContext() logcontext.Context
+}
+
 type Strategy interface {
-	Select(terminators []CostedTerminator) (CostedTerminator, error)
+	Select(param CreateCircuitParams, terminators []CostedTerminator) (CostedTerminator, PeerData, error)
 	HandleTerminatorChange(event StrategyChangeEvent) error
 	NotifyEvent(event TerminatorEvent)
 }
 
 type Precedence interface {
 	fmt.Stringer
-	getMinCost() uint32
-	getMaxCost() uint32
+	GetBaseCost() uint32
 	IsFailed() bool
 	IsDefault() bool
 	IsRequired() bool
