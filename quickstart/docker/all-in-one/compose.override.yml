@@ -1,4 +1,13 @@
 services:
+  quickstart:
+    build:
+      # the build context is the root of the ziti repo so that BuildKit can access the built ziti executable in /build
+      # and the Dockerfile
+      context: ../../../ 
+      dockerfile: ./quickstart/docker/all-in-one/Dockerfile
+      args:
+        # path of the directory containing the locally-built ziti executable; relative to the build context
+        ARTIFACTS_DIR: ./build
   quickstart-test:
     profiles:
       - test
