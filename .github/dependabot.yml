@@ -37,3 +37,17 @@ updates:
         - "major"
         - "minor"
         - "patch"
+
+# bump the console SPA version that is built in to the controller image
+- package-ecosystem: docker
+  directory: "/dist/docker-images/ziti-controller"
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+  groups:
+    all:
+      applies-to: version-updates
+      update-types:
+        - "major"
+        - "minor"
+        - "patch"

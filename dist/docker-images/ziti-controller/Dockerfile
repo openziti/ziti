@@ -1,6 +1,11 @@
+# this Dockerfile builds docker.io/openziti/ziti-controller
+
 ARG ZITI_CLI_TAG="latest"
 ARG ZITI_CLI_IMAGE="docker.io/openziti/ziti-cli"
-# this builds docker.io/openziti/ziti-controller
+
+# dependabot bumps this version based on release to Hub
+FROM openziti/ziti-console:3.1.0 as ziti-console
+
 FROM ${ZITI_CLI_IMAGE}:${ZITI_CLI_TAG}
 
 ARG CONTROLLER_PACKAGE=./dist/dist-packages/linux/openziti-controller
@@ -26,8 +31,12 @@ ENV ZITI_CTRL_BOOTSTRAP_BASH=/bootstrap.bash
 COPY ${CONTROLLER_PACKAGE}/bootstrap.bash ${ZITI_CTRL_BOOTSTRAP_BASH}
 COPY ${CONTROLLER_PACKAGE}/entrypoint.bash /
 
+# copy the console SPA build files
+COPY --from=ziti-console /usr/src/app/dist/app-ziti-console /ziti-console
+
+RUN mkdir -p /ziti-controller
+RUN chown -R ziggy:ziggy /ziti-controller /ziti-console
 WORKDIR /ziti-controller
-RUN chown -R ziggy:ziggy /ziti-controller
 
 # configure logging
 ENV PFXLOG_NO_JSON=true
