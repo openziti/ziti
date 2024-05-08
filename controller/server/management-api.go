@@ -20,18 +20,22 @@ import (
 	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_server"
+	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/xweb/v2"
 	"net/http"
 	"strings"
 	"time"
 )
 
-const WellKnownEstCaCerts = "/.well-known/est/cacerts"
+const (
+	WellKnownEstCaCerts = "/.well-known/est/cacerts"
+	VersionPath         = "/version"
+	RootPath            = "/"
+)
 
 var _ xweb.ApiHandlerFactory = &ManagementApiFactory{}
 
@@ -89,7 +93,7 @@ func (managementApi ManagementApiHandler) RootPath() string {
 }
 
 func (managementApi ManagementApiHandler) IsHandler(r *http.Request) bool {
-	return strings.HasPrefix(r.URL.Path, managementApi.RootPath()) || r.URL.Path == WellKnownEstCaCerts
+	return strings.HasPrefix(r.URL.Path, managementApi.RootPath()) || r.URL.Path == WellKnownEstCaCerts || r.URL.Path == VersionPath || r.URL.Path == RootPath
 }
 
 func (managementApi ManagementApiHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -123,6 +127,10 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 		// the prefixed path for route resolution
 		if r.URL.Path == WellKnownEstCaCerts {
 			r.URL.Path = controller.ManagementRestApiBaseUrlLatest + WellKnownEstCaCerts
+		}
+
+		if r.URL.Path == VersionPath || r.URL.Path == RootPath {
+			r.URL.Path = controller.ManagementRestApiBaseUrlLatest + VersionPath
 		}
 
 		rc := ae.CreateRequestContext(rw, r)

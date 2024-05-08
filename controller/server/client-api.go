@@ -122,7 +122,7 @@ func (clientApi ClientApiHandler) RootPath() string {
 }
 
 func (clientApi ClientApiHandler) IsHandler(r *http.Request) bool {
-	return strings.HasPrefix(r.URL.Path, clientApi.RootPath()) || r.URL.Path == WellKnownEstCaCerts
+	return strings.HasPrefix(r.URL.Path, clientApi.RootPath()) || r.URL.Path == WellKnownEstCaCerts || r.URL.Path == VersionPath || r.URL.Path == RootPath
 }
 
 func (clientApi ClientApiHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -164,6 +164,10 @@ func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 		// the prefixed path for route resolution.
 		if r.URL.Path == WellKnownEstCaCerts {
 			r.URL.Path = controller.ClientRestApiBaseUrlLatest + WellKnownEstCaCerts
+		}
+
+		if r.URL.Path == VersionPath || r.URL.Path == RootPath {
+			r.URL.Path = controller.ClientRestApiBaseUrlLatest + VersionPath
 		}
 
 		if r.URL.Path == controller.ClientRestApiSpecUrl {
