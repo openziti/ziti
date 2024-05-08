@@ -229,5 +229,5 @@ web:
         options: { }
       #- binding: zac
       #  options:
-      #    location: ./zac
+      #    location: /ziti-console
       #    indexFile: index.html
