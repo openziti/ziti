@@ -59,5 +59,6 @@ RUN chmod 0755 /usr/local/bin/ziti
 RUN /usr/local/bin/ziti completion bash > /etc/bash_completion.d/ziti_cli
 
 USER ziggy
+ENV PFXLOG_NO_JSON=true
 COPY ${DOCKER_BUILD_DIR}/bashrc /home/ziggy/.bashrc
 ENTRYPOINT [ "ziti" ]
