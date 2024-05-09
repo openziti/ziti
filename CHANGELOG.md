@@ -1,4 +1,4 @@
-# Releaase 1.1.2
+# Release 1.1.2
 
 ## What's New
 
