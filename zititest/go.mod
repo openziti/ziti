@@ -11,7 +11,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.1
-	github.com/michaelquigley/pfxlog v1.0.0
+	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.16
 	github.com/openziti/channel/v2 v2.0.128
 	github.com/openziti/edge-api v0.26.18
