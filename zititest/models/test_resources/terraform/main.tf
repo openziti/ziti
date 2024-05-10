@@ -9,7 +9,7 @@ variable "public_cidr"        { default = "10.0.0.0/24" }
 
 {{ range $regionId, $region := .Model.Regions }}
 module "{{ $regionId }}_region" {
-  source          = "{{ $.TerraformLib }}/vpc"
+  source          = "{{ $.TerraformLib }}{{ $.PathSeparator }}vpc"
   access_key      = var.aws_access_key
   secret_key      = var.aws_secret_key
   region          = "{{ $region.Region }}"
@@ -21,7 +21,7 @@ module "{{ $regionId }}_region" {
 
 {{ range $hostId, $host := $region.Hosts }}
 module "{{ $regionId }}_host_{{ $hostId }}" {
-  source            = "{{ $.TerraformLib }}/{{ instanceTemplate $host }}_instance"
+  source            = "{{ $.TerraformLib }}{{ $.PathSeparator }}{{ instanceTemplate $host }}_instance"
   access_key        = var.aws_access_key
   secret_key        = var.aws_secret_key
   environment_tag   = var.environment_tag
