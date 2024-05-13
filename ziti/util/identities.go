@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	httptransport "github.com/go-openapi/runtime/client"
@@ -237,8 +238,19 @@ func PersistRestClientConfig(config *RestClientConfig) error {
 }
 
 var selectedIdentity RestClientIdentity
+var selectIdentityLock sync.Mutex
+
+func ReloadConfig() {
+	selectIdentityLock.Lock()
+	defer selectIdentityLock.Unlock()
+
+	selectedIdentity = nil
+}
 
 func LoadSelectedIdentity() (RestClientIdentity, error) {
+	selectIdentityLock.Lock()
+	defer selectIdentityLock.Unlock()
+
 	if selectedIdentity == nil {
 		config, configFile, err := LoadRestClientConfig()
 		if err != nil {
