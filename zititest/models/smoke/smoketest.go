@@ -155,7 +155,9 @@ var Model = &model.Model{
 					Components: model.Components{
 						"router-east-1": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client"}},
-							Type:  &zitilab.RouterType{},
+							Type: &zitilab.RouterType{
+								Debug: true,
+							},
 						},
 						"zcat": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
@@ -167,7 +169,9 @@ var Model = &model.Model{
 					Components: model.Components{
 						"router-east-2": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator"}},
-							Type:  &zitilab.RouterType{},
+							Type: &zitilab.RouterType{
+								Debug: true,
+							},
 						},
 					},
 				},
@@ -211,7 +215,9 @@ var Model = &model.Model{
 					Components: model.Components{
 						"router-west": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host"}},
-							Type:  &zitilab.RouterType{},
+							Type: &zitilab.RouterType{
+								Debug: true,
+							},
 						},
 						"echo-server": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},

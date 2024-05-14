@@ -42,6 +42,7 @@ type RouterType struct {
 	ConfigName     string
 	Version        string
 	LocalPath      string
+	Debug          bool
 }
 
 func (self *RouterType) Label() string {
@@ -128,7 +129,11 @@ func (self *RouterType) Start(r model.Run, c *model.Component) error {
 		fmt.Printf("router %s already started\n", c.Id)
 		return nil
 	}
-	return startZitiComponent(c, "router", self.Version, self.GetConfigName(c))
+	extraArgs := ""
+	if self.Debug {
+		extraArgs = " -v "
+	}
+	return startZitiComponent(c, "router", self.Version, self.GetConfigName(c), extraArgs)
 }
 
 func (self *RouterType) Stop(run model.Run, c *model.Component) error {

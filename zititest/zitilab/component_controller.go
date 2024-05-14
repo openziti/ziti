@@ -43,6 +43,7 @@ type ControllerType struct {
 	Version        string
 	LocalPath      string
 	DNSNames       []string
+	Debug          bool
 }
 
 func (self *ControllerType) Label() string {
@@ -121,7 +122,11 @@ func (self *ControllerType) Start(r model.Run, c *model.Component) error {
 		fmt.Printf("controller %s already started\n", c.Id)
 		return nil
 	}
-	return startZitiComponent(c, "controller", self.Version, self.getConfigName(c))
+	extraArgs := ""
+	if self.Debug {
+		extraArgs = " -v "
+	}
+	return startZitiComponent(c, "controller", self.Version, self.getConfigName(c), extraArgs)
 }
 
 func (self *ControllerType) Stop(_ model.Run, c *model.Component) error {

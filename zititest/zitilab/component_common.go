@@ -35,7 +35,7 @@ func getZitiProcessFilter(c *model.Component, zitiType string) func(string) bool
 	}
 }
 
-func startZitiComponent(c *model.Component, zitiType string, version string, configName string) error {
+func startZitiComponent(c *model.Component, zitiType string, version string, configName string, extraArgs string) error {
 	user := c.GetHost().GetSshUser()
 
 	binaryPath := GetZitiBinaryPath(c, version)
@@ -47,8 +47,8 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 		useSudo = "sudo"
 	}
 
-	serviceCmd := fmt.Sprintf("nohup %s %s %s run --cli-agent-alias %s --log-formatter pfxlog %s > %s 2>&1 &",
-		useSudo, binaryPath, zitiType, c.Id, configPath, logsPath)
+	serviceCmd := fmt.Sprintf("nohup %s %s %s run %s --cli-agent-alias %s --log-formatter json %s > %s 2>&1 &",
+		useSudo, binaryPath, zitiType, extraArgs, c.Id, configPath, logsPath)
 
 	if quiet, _ := c.GetBoolVariable("quiet_startup"); !quiet {
 		logrus.Info(serviceCmd)
