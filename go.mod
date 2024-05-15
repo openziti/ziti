@@ -14,7 +14,7 @@ require (
 	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663
 	github.com/ef-ds/deque v1.0.4
 	github.com/emirpasic/gods v1.18.1
-	github.com/fatih/color v1.16.0
+	github.com/fatih/color v1.17.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gaissmai/extnetip v0.4.0
 	github.com/go-acme/lego/v4 v4.16.1
@@ -25,7 +25,7 @@ require (
 	github.com/go-openapi/strfmt v0.23.0
 	github.com/go-openapi/swag v0.23.0
 	github.com/go-openapi/validate v0.24.0
-	github.com/go-resty/resty/v2 v2.13.0
+	github.com/go-resty/resty/v2 v2.13.1
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
@@ -48,17 +48,17 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.128
+	github.com/openziti/channel/v2 v2.0.130
 	github.com/openziti/edge-api v0.26.18
-	github.com/openziti/foundation/v2 v2.0.42
-	github.com/openziti/identity v1.0.75
+	github.com/openziti/foundation/v2 v2.0.45
+	github.com/openziti/identity v1.0.77
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.51
-	github.com/openziti/runzmd v1.0.43
-	github.com/openziti/sdk-golang v0.23.35
-	github.com/openziti/secretstream v0.1.19
-	github.com/openziti/storage v0.2.37
-	github.com/openziti/transport/v2 v2.0.131
+	github.com/openziti/metrics v1.2.54
+	github.com/openziti/runzmd v1.0.47
+	github.com/openziti/sdk-golang v0.23.36
+	github.com/openziti/secretstream v0.1.20
+	github.com/openziti/storage v0.2.40
+	github.com/openziti/transport/v2 v2.0.133
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.3
