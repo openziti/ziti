@@ -156,7 +156,7 @@ var Model = &model.Model{
 						"router-east-1": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client"}},
 							Type: &zitilab.RouterType{
-								Debug: true,
+								Debug: false,
 							},
 						},
 						"zcat": {
@@ -170,7 +170,7 @@ var Model = &model.Model{
 						"router-east-2": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator"}},
 							Type: &zitilab.RouterType{
-								Debug: true,
+								Debug: false,
 							},
 						},
 					},
@@ -216,7 +216,7 @@ var Model = &model.Model{
 						"router-west": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host"}},
 							Type: &zitilab.RouterType{
-								Debug: true,
+								Debug: false,
 							},
 						},
 						"echo-server": {
@@ -228,6 +228,12 @@ var Model = &model.Model{
 						"iperf-server-ert": {
 							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
 							Type:  &zitilab.IPerfServerType{},
+						},
+						"caddy-ert": {
+							Scope: model.Scope{Tags: model.Tags{"caddy", "service"}},
+							Type: &zitilab.CaddyType{
+								Version: "v2.7.6",
+							},
 						},
 					},
 				},
@@ -244,6 +250,12 @@ var Model = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
+						"caddy-zet": {
+							Scope: model.Scope{Tags: model.Tags{"caddy", "service"}},
+							Type: &zitilab.CaddyType{
+								Version: "v2.7.6",
+							},
+						},
 					},
 				},
 				"ziti-tunnel-host": {
@@ -257,6 +269,12 @@ var Model = &model.Model{
 						"iperf-server-zt": {
 							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
 							Type:  &zitilab.IPerfServerType{},
+						},
+						"caddy-zt": {
+							Scope: model.Scope{Tags: model.Tags{"caddy", "service"}},
+							Type: &zitilab.CaddyType{
+								Version: "v2.7.6",
+							},
 						},
 					},
 				},

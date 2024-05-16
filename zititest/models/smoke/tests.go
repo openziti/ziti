@@ -37,7 +37,7 @@ func TestFileDownload(hostSelector string, client HttpClient, hostType string, e
 		urlExtra = "-unencrypted"
 	}
 
-	url := fmt.Sprintf("https://files-%s%s.s3-us-west-1.amazonaws.ziti/%s.zip", hostType, urlExtra, fileSize)
+	url := fmt.Sprintf("http://files-%s%s.ziti/%s.zip", hostType, urlExtra, fileSize)
 
 	filename := uuid.NewString()
 
@@ -46,9 +46,9 @@ func TestFileDownload(hostSelector string, client HttpClient, hostType string, e
 
 	var cmd string
 	if client == ClientCurl {
-		cmd = fmt.Sprintf(`set -o pipefail; curl -k --header "Host: ziti-smoketest-files.s3-us-west-1.amazonaws.com" --fail-early --fail-with-body -SL -o %s %s 2>&1`, filename, url)
+		cmd = fmt.Sprintf(`set -o pipefail; curl -k --fail-early --fail-with-body -SL -o %s %s 2>&1`, filename, url)
 	} else if client == ClientWget {
-		cmd = fmt.Sprintf(`set -o pipefail; wget --no-check-certificate --header "Host: ziti-smoketest-files.s3-us-west-1.amazonaws.com" -O %s -t 5 -T 5 %s 2>&1`, filename, url)
+		cmd = fmt.Sprintf(`set -o pipefail; wget --no-check-certificate -O %s -t 5 -T 5 %s 2>&1`, filename, url)
 	}
 	cmds = append(cmds, cmd)
 	cmds = append(cmds, "md5sum -c checksums")
