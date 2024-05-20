@@ -532,7 +532,7 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 		cmd := exec.Command(self.interceptor.diverter, "-I",
 			"-c", cidr[0], "-m", cidr[1], "-p", interceptAddr.Proto(),
 			"-l", fmt.Sprintf("%d", interceptAddr.LowPort()), "-h", fmt.Sprintf("%d", interceptAddr.HighPort()),
-			"-t", fmt.Sprintf("%d", port.GetPort()))
+			"-t", fmt.Sprintf("%d", port.GetPort()), "-s", *service.ID)
 		cmdLogger := pfxlog.Logger().WithField("command", cmd.String())
 		cmdLogger.Debug("running external diverter")
 		out, err := cmd.CombinedOutput()
