@@ -56,3 +56,26 @@ func TestFileDownload(hostSelector string, client HttpClient, hostType string, e
 	timeout := timeouts[fileSize]
 	return host.ExecLoggedWithTimeout(timeout, cmds...)
 }
+
+func TestIperf(hostSelector, hostType string, encrypted, reversed bool) (string, error) {
+	host, err := model.GetModel().SelectHost("." + hostSelector + "-client")
+	if err != nil {
+		return "", err
+	}
+
+	urlExtra := ""
+	if !encrypted {
+		urlExtra = "-unencrypted"
+	}
+
+	addr := fmt.Sprintf("iperf-%s%s.ziti", hostType, urlExtra)
+
+	extraOptions := ""
+	if reversed {
+		extraOptions += " -R"
+	}
+
+	cmd := fmt.Sprintf(`set -o pipefail; iperf3 -c %s -P 1 -t 10 %s`, addr, extraOptions)
+
+	return host.ExecLoggedWithTimeout(40*time.Second, cmd)
+}
