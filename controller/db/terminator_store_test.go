@@ -19,10 +19,10 @@ package db
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltztest"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/xt"
 	"go.etcd.io/bbolt"
 	"math"
 	"testing"
@@ -339,8 +339,8 @@ func (t testStrategyFactory) NewStrategy() xt.Strategy {
 
 type testStrategy struct{}
 
-func (t testStrategy) Select(terminators []xt.CostedTerminator) (xt.CostedTerminator, error) {
-	return terminators[0], nil
+func (t testStrategy) Select(param xt.CreateCircuitParams, terminators []xt.CostedTerminator) (xt.CostedTerminator, xt.PeerData, error) {
+	return terminators[0], nil, nil
 }
 
 func (t testStrategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {

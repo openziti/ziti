@@ -14,9 +14,10 @@
 	limitations under the License.
 */
 
-package xt_smartrouting
+package xt_sticky
 
 import (
+	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/controller/xt_common"
 	"math"
@@ -24,14 +25,14 @@ import (
 )
 
 const (
-	Name = "smartrouting"
+	Name = "sticky"
 )
 
 /**
-The smart routing strategy relies purely on manipulating costs and lets the smart routing algorithm pick the terminator.
-It increases costs by a small amount when a new circuit uses the terminator and drops it back down when the circuit
-closes. It also increases the cost whenever a dial fails and decreases it whenever a dial succeeds. Dial successes
-will only reduce costs by the amount that failures have previously increased it.
+The sticky strategy uses the smart routing strategy to select an initial terminator for a client. It also
+returns a token to the client which can be passed back in on subsequent dials. If the token is passed
+back in, then strategy will try to use the same terminator. If it's not available a different terminator
+will be selected and a different token will be returned.
 */
 
 func NewFactory() xt.Factory {
@@ -59,8 +60,31 @@ type strategy struct {
 	xt_common.CostVisitor
 }
 
-func (self *strategy) Select(_ xt.CreateCircuitParams, terminators []xt.CostedTerminator) (xt.CostedTerminator, xt.PeerData, error) {
-	return terminators[0], nil, nil
+func (self *strategy) Select(params xt.CreateCircuitParams, terminators []xt.CostedTerminator) (xt.CostedTerminator, xt.PeerData, error) {
+	id := params.GetClientId()
+	var result xt.CostedTerminator
+
+	terminators = xt.GetRelatedTerminators(terminators)
+
+	if id != nil {
+		if terminatorId, ok := id.Data[ctrl_msg.XtStickinessToken]; ok {
+			strId := string(terminatorId)
+			for _, terminator := range terminators {
+				if terminator.GetId() == strId {
+					result = terminator
+					break
+				}
+			}
+		}
+	}
+
+	if result == nil {
+		result = terminators[0]
+	}
+
+	return result, xt.PeerData{
+		ctrl_msg.XtStickinessToken: []byte(result.GetId()),
+	}, nil
 }
 
 func (self *strategy) NotifyEvent(event xt.TerminatorEvent) {

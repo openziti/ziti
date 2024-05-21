@@ -63,16 +63,12 @@ func (p *precedence) IsRequired() bool {
 	return p.minCost == requireMinCost
 }
 
-func (p *precedence) getMinCost() uint32 {
+func (p *precedence) GetBaseCost() uint32 {
 	return p.minCost
 }
 
-func (p *precedence) getMaxCost() uint32 {
-	return p.maxCost
-}
-
 func (p *precedence) GetBiasedCost(cost uint32) uint32 {
-	result := p.getMinCost() + cost
+	result := p.minCost + cost
 	if result > p.maxCost {
 		return p.maxCost
 	}

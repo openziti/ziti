@@ -40,6 +40,8 @@ const (
 	InitiatorLocalAddressHeader  = 1112
 	InitiatorRemoteAddressHeader = 1113
 
+	XtStickinessToken = 1114
+
 	ErrorTypeGeneric                 = 0
 	ErrorTypeInvalidTerminator       = 1
 	ErrorTypeMisconfiguredTerminator = 2

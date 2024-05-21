@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/util"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"path/filepath"
 )
@@ -44,6 +45,8 @@ func (l *login) Execute(run model.Run) error {
 	}
 
 	common.CliIdentity = model.ActiveInstanceId()
+	util.ReloadConfig()
+
 	return nil
 }
 
