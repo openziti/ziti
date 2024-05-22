@@ -29,6 +29,7 @@ env:
   CONSUL_ENDPOINT: ${{ secrets.CONSUL_ENDPOINT }}
   CONSUL_AGENT_CERT: ${{ secrets.CONSUL_AGENT_CERT }}
   BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
+  ZITI_BASE_VERSION: ${{ vars.ZITI_BASE_VERSION || null }}
 
 
 jobs:
@@ -55,7 +56,7 @@ jobs:
         shell: bash
         run: |
           go install github.com/mitchellh/gox@latest
-          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION}
           $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
           $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=arm64 -output=$GOX_OUTPUT ./...
 
@@ -89,7 +90,7 @@ jobs:
         shell: bash
         run: |
           go install github.com/mitchellh/gox@latest
-          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION}
           $(go env GOPATH)/bin/gox -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
 
       - name: Upload artifacts
@@ -122,7 +123,7 @@ jobs:
           sudo apt-get update
           sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
           $(go env GOPATH)/bin/ziti-ci configure-git
-          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION}
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
@@ -314,7 +315,7 @@ jobs:
         shell: bash
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
-          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION}
           pushd zititest && go install ./... && popd
           go install -tags=all,tests ./...
 
@@ -472,11 +473,11 @@ jobs:
         shell: bash
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
-          $(go env GOPATH)/bin/ziti-ci tag -v -f version
+          $(go env GOPATH)/bin/ziti-ci tag -v -f version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION}
           $(go env GOPATH)/bin/ziti-ci publish-to-github --prerelease --archive-base ""
 
       # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
-      - name: Compute the Ziti Version String for CI Jobs
+      - name: Compute the Ziti Version String used for Linux Packages and Container Image Tags
         id: get_version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -484,21 +485,35 @@ jobs:
           GITHUB_RUN_ID: ${{ github.run_id }}
         shell: bash
         run: |
-          ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
-          # drop the leading 'v', if any
-          ZITI_VERSION=${ZITI_VERSION#v}
-          if ! [[ "${ZITI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            # fail the job because we could not obtain the current version from ziti-ci
-            echo "ERROR: ZITI_VERSION=${ZITI_VERSION} is not a semver"
-            exit 1
-          elif [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main$) ]]; then
-            # Set output parameters for release branches
-            echo ZITI_VERSION="${ZITI_VERSION}" | tee -a $GITHUB_OUTPUT
+          function validateSemver() {
+            if ! [[ "${1}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "ERROR: ${1} is not a release semver" >&2
+              return 1
+            fi
+          }
+
+          echo "DEBUG: GITHUB_REPOSITORY=${GITHUB_REPOSITORY} GITHUB_REF=${GITHUB_REF} GITHUB_RUN_ID=${GITHUB_RUN_ID}"
+          (set -x; git remote -v show;)
+
+          if [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main$) ]]; then
+            # Set current tag as semver for release branches
+            ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
+
+            validateSemver "${ZITI_VERSION}"
+
+            # drop the leading 'v', if any
+            ZITI_VERSION=${ZITI_VERSION#v}
           else
-            # Append build / run number for non-release refs
-            ZITI_VERSION="${ZITI_VERSION}-${GITHUB_RUN_ID}"
-            echo ZITI_VERSION="${ZITI_VERSION}" | tee -a $GITHUB_OUTPUT
+            # compute next patch level for non-release branches
+            ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-next-version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION})"
+
+            validateSemver "${ZITI_VERSION}"
+
+            # drop the leading 'v', if any, and append run id
+            ZITI_VERSION=${ZITI_VERSION#v}-${GITHUB_RUN_ID}
           fi
+
+          echo ZITI_VERSION="${ZITI_VERSION}" | tee -a $GITHUB_OUTPUT
 
   call-publish-prerelease-docker-images:
     # - !cancelled() allows evaluating further conditional expressions even if
