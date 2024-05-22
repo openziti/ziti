@@ -77,6 +77,11 @@ func (self *Controller) agentOpSnapshotDb(m *channel.Message, ch channel.Channel
 }
 
 func (self *Controller) agentOpRaftList(m *channel.Message, ch channel.Channel) {
+	if self.raftController == nil {
+		handler_common.SendOpResult(m, ch, "raft.list", "controller not running in clustered mode", false)
+		return
+	}
+
 	members, err := self.raftController.ListMembers()
 	if err != nil {
 		handler_common.SendOpResult(m, ch, "raft.list", err.Error(), false)
@@ -100,6 +105,11 @@ func (self *Controller) agentOpRaftList(m *channel.Message, ch channel.Channel) 
 }
 
 func (self *Controller) agentOpRaftAddPeer(m *channel.Message, ch channel.Channel) {
+	if self.raftController == nil {
+		handler_common.SendOpResult(m, ch, "raft.list", "controller not running in clustered mode", false)
+		return
+	}
+
 	addr, found := m.GetStringHeader(AgentAddrHeader)
 	if !found {
 		handler_common.SendOpResult(m, ch, "raft.join", "address not supplied", false)
@@ -137,6 +147,11 @@ func (self *Controller) agentOpRaftAddPeer(m *channel.Message, ch channel.Channe
 }
 
 func (self *Controller) agentOpRaftRemovePeer(m *channel.Message, ch channel.Channel) {
+	if self.raftController == nil {
+		handler_common.SendOpResult(m, ch, "raft.list", "controller not running in clustered mode", false)
+		return
+	}
+
 	id, found := m.GetStringHeader(AgentIdHeader)
 	if !found {
 		handler_common.SendOpResult(m, ch, "cluster.remove-peer", "id not supplied", false)
@@ -155,6 +170,11 @@ func (self *Controller) agentOpRaftRemovePeer(m *channel.Message, ch channel.Cha
 }
 
 func (self *Controller) agentOpRaftTransferLeadership(m *channel.Message, ch channel.Channel) {
+	if self.raftController == nil {
+		handler_common.SendOpResult(m, ch, "raft.list", "controller not running in clustered mode", false)
+		return
+	}
+
 	id, _ := m.GetStringHeader(AgentIdHeader)
 	req := &cmd_pb.TransferLeadershipRequest{
 		Id: id,
@@ -168,6 +188,11 @@ func (self *Controller) agentOpRaftTransferLeadership(m *channel.Message, ch cha
 }
 
 func (self *Controller) agentOpInitFromDb(m *channel.Message, ch channel.Channel) {
+	if self.raftController == nil {
+		handler_common.SendOpResult(m, ch, "raft.list", "controller not running in clustered mode", false)
+		return
+	}
+
 	sourceDbPath := string(m.Body)
 	if len(sourceDbPath) == 0 {
 		handler_common.SendOpResult(m, ch, "raft.initFromDb", "source db not supplied", false)
