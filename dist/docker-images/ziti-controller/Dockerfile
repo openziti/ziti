@@ -40,7 +40,6 @@ RUN chown -R ziggy:ziggy /ziti-controller /ziti-console
 WORKDIR /ziti-controller
 
 # configure logging
-ENV PFXLOG_NO_JSON=true
 ENV ZITI_TIME_FORMAT=utc
 
 # globally toggle bootstrapping; false preserves "thin" behavior for existing deployments like K8s

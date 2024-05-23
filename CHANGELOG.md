@@ -3,6 +3,8 @@
 ## What's New
 
 * Sticky Terminator Selection
+* Linux and Docker deployments log formats no longer default to the simplified format option and now use logging library
+  defaults: `json` for non-interactive, `text` for interactive.
 
 ## Stick Terminator Strategy
 
