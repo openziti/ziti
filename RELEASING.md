@@ -140,7 +140,7 @@ The first step is to ensure the GitHub release is not marked "latest," and the h
     (set -euxopipefail
       GOOD_VERSION=1.0.0
 
-      for REPO in ziti-{cli,controller,router}; do
+      for REPO in ziti-{cli,controller,router,tunnel}; do
           docker buildx imagetools create --tag openziti/${REPO}:latest openziti/${REPO}:${GOOD_VERSION}
       done
     )
