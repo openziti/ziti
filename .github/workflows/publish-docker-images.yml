@@ -53,9 +53,6 @@ jobs:
         run: |
           DOCKER_TAGS=""
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            DOCKER_TAGS+=",${IMAGE_REPO}:latest"
-          fi
           echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
           echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
 
@@ -83,9 +80,6 @@ jobs:
         run: |
           DOCKER_TAGS=""
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            DOCKER_TAGS+=",${IMAGE_REPO}:latest"
-          fi
           echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
           echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
 
@@ -115,9 +109,6 @@ jobs:
         run: |
           DOCKER_TAGS=""
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            DOCKER_TAGS+=",${IMAGE_REPO}:latest"
-          fi
           echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
       - name: Build & Push Multi-Platform Router Container Image to Hub
@@ -145,9 +136,6 @@ jobs:
           DOCKER_TAGS=""
           for REPO in ${LEGACY_REPO} ${IMAGE_REPO}; do
             DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-            if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-              DOCKER_TAGS+=",${IMAGE_REPO}:latest"
-            fi
           done
           DOCKER_TAGS=${DOCKER_TAGS#,} # drop leading comma char
           echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
