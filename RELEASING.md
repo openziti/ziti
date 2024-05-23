@@ -92,3 +92,56 @@ The downstream artifacts are named and handled as follows.
 - GitHub pre-release is marked "latest"
   - Linux packages for the release are copied from the "test" repos to the "stable" repos.
   - Container images' semver release tags are re-tagged as `:latest`.
+
+### Rolling Back Downstreams
+
+If a release is found to be faulty, the downstream artifacts can be rolled back as follows.
+
+The first step is to ensure the GitHub release is not marked "latest," and the highest good release is marked "latest." Do not delete the faulty release (assets) or Git tag.
+
+- Linux packages - The released semver is removed from the stable repo and must not be re-used. To arm this script, uncomment the `DELETE="--quiet"` line and set `BAD_VERSION`.
+
+    ```bash
+    (set -euxopipefail
+
+      ARTIFACTORY_REPO='zitipax-openziti-(rpm|deb)-stable'
+      DELETE="--dry-run"
+      : DELETE="--quiet"
+      BAD_VERSION=0.0.1
+
+      declare -a ARTIFACTS=(openziti{,-controller,-router})
+
+      if [[ $DELETE =~ quiet ]] && {
+        echo "WARNING: permanently deleting" >&2;
+        sleep 9;
+      }
+
+      for META in rpm.metadata deb;
+      do
+        for ARTIFACT in ${ARTIFACTS[@]};
+        do
+          while read;
+          do
+            jf rt search --props "${META}.name=${ARTIFACT};${META}.version=${BAD_VERSION}" "${REPLY}/*" \
+            | jq '.[].path' \
+            | xargs -rl jf rt del $DELETE;
+          done< <(
+            jf rt cl -sS /api/repositories \
+            | jq --raw-output --arg artifactory "${ARTIFACTORY_REPO}" '.[]|select(.key|match($artifactory))|.key'
+          )
+        done
+      done
+    )
+    ```
+
+- Container images - The `:latest` tag is moved to the last good release semver. To ready the script, set `GOOD_VERSION`.
+
+    ```bash
+    (set -euxopipefail
+      GOOD_VERSION=1.0.0
+
+      for REPO in ziti-{cli,controller,router}; do
+          docker buildx imagetools create --tag openziti/${REPO}:latest openziti/${REPO}:${GOOD_VERSION}
+      done
+    )
+    ```
