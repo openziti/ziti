@@ -225,16 +225,24 @@ func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata
 	}
 
 	if chanType == PayloadChannel {
-		if link.payloadCh == nil {
-			link.payloadCh = binding.GetChannel()
-		} else {
-			return false, nil, errors.Errorf("got two payload channels for link %v", binding.GetChannel().Id())
+		if err := link.syncInit(func() error {
+			if link.payloadCh == nil {
+				link.payloadCh = binding.GetChannel()
+				return nil
+			}
+			return errors.Errorf("got two payload channels for link %v", binding.GetChannel().Id())
+		}); err != nil {
+			return false, nil, err
 		}
 	} else if chanType == AckChannel {
-		if link.ackCh == nil {
-			link.ackCh = binding.GetChannel()
-		} else {
-			return false, nil, errors.Errorf("got two ack channels for link %v", binding.GetChannel().Id())
+		if err := link.syncInit(func() error {
+			if link.ackCh == nil {
+				link.ackCh = binding.GetChannel()
+				return nil
+			}
+			return errors.Errorf("got two ack channels for link %v", binding.GetChannel().Id())
+		}); err != nil {
+			return false, nil, err
 		}
 	} else {
 		return false, nil, errors.Errorf("invalid channel type %v", chanType)

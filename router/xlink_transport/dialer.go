@@ -210,19 +210,24 @@ type splitDialBindHandler struct {
 }
 
 func (self *splitDialBindHandler) bindPayloadChannel(binding channel.Binding) error {
-	self.link.payloadCh = binding.GetChannel()
-	bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, true, false)
-	if err := bindHandler.BindChannel(binding); err != nil {
-		return errors.Wrapf(err, "error accepting outgoing payload channel for [l/%s]", self.link.id)
-	}
-	return nil
+	return self.link.syncInit(func() error {
+		self.link.payloadCh = binding.GetChannel()
+		bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, true, false)
+		if err := bindHandler.BindChannel(binding); err != nil {
+			return errors.Wrapf(err, "error accepting outgoing payload channel for [l/%s]", self.link.id)
+		}
+		return nil
+	})
 }
 
 func (self *splitDialBindHandler) bindAckChannel(binding channel.Binding) error {
-	self.link.ackCh = binding.GetChannel()
-	bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, false, false)
-	if err := bindHandler.BindChannel(binding); err != nil {
-		return errors.Wrapf(err, "error accepting outgoing ack channel for [l/%s]", self.link.id)
-	}
-	return nil
+	return self.link.syncInit(func() error {
+
+		self.link.ackCh = binding.GetChannel()
+		bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, false, false)
+		if err := bindHandler.BindChannel(binding); err != nil {
+			return errors.Wrapf(err, "error accepting outgoing ack channel for [l/%s]", self.link.id)
+		}
+		return nil
+	})
 }
