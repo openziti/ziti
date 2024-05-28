@@ -108,7 +108,7 @@ earlier bbolt database, the following will be done:
 3. If a service belongs to 1 or more clusters it will get a role attribute corresponding to the
    first cluster. Any edge routers assigned to additional clusters will be added to edge router
    roles field by ID.
-    1. Noe: If we were to add additional role clusters for the other clusts we'd get the
+    1. Note: If we were to add additional role clusters for the other clusters we'd get the
        intersection, not the union and would end up with access to 0 edge routers
 
 ## Session changes

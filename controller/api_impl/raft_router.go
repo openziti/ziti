@@ -62,7 +62,7 @@ func (r *RaftRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Reque
 		}, params.HTTPRequest, "", "")
 	})
 
-	fabricApi.RaftRaftTranferLeadershipHandler = raft.RaftTranferLeadershipHandlerFunc(func(params raft.RaftTranferLeadershipParams) middleware.Responder {
+	fabricApi.RaftRaftTransferLeadershipHandler = raft.RaftTransferLeadershipHandlerFunc(func(params raft.RaftTransferLeadershipParams) middleware.Responder {
 		return wrapper.WrapRequest(func(network *network.Network, rc api.RequestContext) {
 			r.transferLeadership(network, rc, params)
 		}, params.HTTPRequest, "", "")
@@ -162,7 +162,7 @@ func (r *RaftRouter) removeMember(n *network.Network, rc api.RequestContext, par
 	}
 }
 
-func (r *RaftRouter) transferLeadership(n *network.Network, rc api.RequestContext, params raft.RaftTranferLeadershipParams) {
+func (r *RaftRouter) transferLeadership(n *network.Network, rc api.RequestContext, params raft.RaftTransferLeadershipParams) {
 	raftController := r.getRaftController(n)
 	if raftController != nil {
 		req := &cmd_pb.TransferLeadershipRequest{

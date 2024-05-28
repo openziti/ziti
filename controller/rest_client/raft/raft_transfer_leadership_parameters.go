@@ -42,48 +42,48 @@ import (
 	"github.com/openziti/ziti/controller/rest_model"
 )
 
-// NewRaftTranferLeadershipParams creates a new RaftTranferLeadershipParams object,
+// NewRaftTransferLeadershipParams creates a new RaftTransferLeadershipParams object,
 // with the default timeout for this client.
 //
 // Default values are not hydrated, since defaults are normally applied by the API server side.
 //
 // To enforce default values in parameter, use SetDefaults or WithDefaults.
-func NewRaftTranferLeadershipParams() *RaftTranferLeadershipParams {
-	return &RaftTranferLeadershipParams{
+func NewRaftTransferLeadershipParams() *RaftTransferLeadershipParams {
+	return &RaftTransferLeadershipParams{
 		timeout: cr.DefaultTimeout,
 	}
 }
 
-// NewRaftTranferLeadershipParamsWithTimeout creates a new RaftTranferLeadershipParams object
+// NewRaftTransferLeadershipParamsWithTimeout creates a new RaftTransferLeadershipParams object
 // with the ability to set a timeout on a request.
-func NewRaftTranferLeadershipParamsWithTimeout(timeout time.Duration) *RaftTranferLeadershipParams {
-	return &RaftTranferLeadershipParams{
+func NewRaftTransferLeadershipParamsWithTimeout(timeout time.Duration) *RaftTransferLeadershipParams {
+	return &RaftTransferLeadershipParams{
 		timeout: timeout,
 	}
 }
 
-// NewRaftTranferLeadershipParamsWithContext creates a new RaftTranferLeadershipParams object
+// NewRaftTransferLeadershipParamsWithContext creates a new RaftTransferLeadershipParams object
 // with the ability to set a context for a request.
-func NewRaftTranferLeadershipParamsWithContext(ctx context.Context) *RaftTranferLeadershipParams {
-	return &RaftTranferLeadershipParams{
+func NewRaftTransferLeadershipParamsWithContext(ctx context.Context) *RaftTransferLeadershipParams {
+	return &RaftTransferLeadershipParams{
 		Context: ctx,
 	}
 }
 
-// NewRaftTranferLeadershipParamsWithHTTPClient creates a new RaftTranferLeadershipParams object
+// NewRaftTransferLeadershipParamsWithHTTPClient creates a new RaftTransferLeadershipParams object
 // with the ability to set a custom HTTPClient for a request.
-func NewRaftTranferLeadershipParamsWithHTTPClient(client *http.Client) *RaftTranferLeadershipParams {
-	return &RaftTranferLeadershipParams{
+func NewRaftTransferLeadershipParamsWithHTTPClient(client *http.Client) *RaftTransferLeadershipParams {
+	return &RaftTransferLeadershipParams{
 		HTTPClient: client,
 	}
 }
 
-/* RaftTranferLeadershipParams contains all the parameters to send to the API endpoint
-   for the raft tranfer leadership operation.
+/* RaftTransferLeadershipParams contains all the parameters to send to the API endpoint
+   for the raft transfer leadership operation.
 
    Typically these are written to a http.Request.
 */
-type RaftTranferLeadershipParams struct {
+type RaftTransferLeadershipParams struct {
 
 	/* Member.
 
@@ -96,67 +96,67 @@ type RaftTranferLeadershipParams struct {
 	HTTPClient *http.Client
 }
 
-// WithDefaults hydrates default values in the raft tranfer leadership params (not the query body).
+// WithDefaults hydrates default values in the raft transfer leadership params (not the query body).
 //
 // All values with no default are reset to their zero value.
-func (o *RaftTranferLeadershipParams) WithDefaults() *RaftTranferLeadershipParams {
+func (o *RaftTransferLeadershipParams) WithDefaults() *RaftTransferLeadershipParams {
 	o.SetDefaults()
 	return o
 }
 
-// SetDefaults hydrates default values in the raft tranfer leadership params (not the query body).
+// SetDefaults hydrates default values in the raft transfer leadership params (not the query body).
 //
 // All values with no default are reset to their zero value.
-func (o *RaftTranferLeadershipParams) SetDefaults() {
+func (o *RaftTransferLeadershipParams) SetDefaults() {
 	// no default values defined for this parameter
 }
 
-// WithTimeout adds the timeout to the raft tranfer leadership params
-func (o *RaftTranferLeadershipParams) WithTimeout(timeout time.Duration) *RaftTranferLeadershipParams {
+// WithTimeout adds the timeout to the raft transfer leadership params
+func (o *RaftTransferLeadershipParams) WithTimeout(timeout time.Duration) *RaftTransferLeadershipParams {
 	o.SetTimeout(timeout)
 	return o
 }
 
-// SetTimeout adds the timeout to the raft tranfer leadership params
-func (o *RaftTranferLeadershipParams) SetTimeout(timeout time.Duration) {
+// SetTimeout adds the timeout to the raft transfer leadership params
+func (o *RaftTransferLeadershipParams) SetTimeout(timeout time.Duration) {
 	o.timeout = timeout
 }
 
-// WithContext adds the context to the raft tranfer leadership params
-func (o *RaftTranferLeadershipParams) WithContext(ctx context.Context) *RaftTranferLeadershipParams {
+// WithContext adds the context to the raft transfer leadership params
+func (o *RaftTransferLeadershipParams) WithContext(ctx context.Context) *RaftTransferLeadershipParams {
 	o.SetContext(ctx)
 	return o
 }
 
-// SetContext adds the context to the raft tranfer leadership params
-func (o *RaftTranferLeadershipParams) SetContext(ctx context.Context) {
+// SetContext adds the context to the raft transfer leadership params
+func (o *RaftTransferLeadershipParams) SetContext(ctx context.Context) {
 	o.Context = ctx
 }
 
-// WithHTTPClient adds the HTTPClient to the raft tranfer leadership params
-func (o *RaftTranferLeadershipParams) WithHTTPClient(client *http.Client) *RaftTranferLeadershipParams {
+// WithHTTPClient adds the HTTPClient to the raft transfer leadership params
+func (o *RaftTransferLeadershipParams) WithHTTPClient(client *http.Client) *RaftTransferLeadershipParams {
 	o.SetHTTPClient(client)
 	return o
 }
 
-// SetHTTPClient adds the HTTPClient to the raft tranfer leadership params
-func (o *RaftTranferLeadershipParams) SetHTTPClient(client *http.Client) {
+// SetHTTPClient adds the HTTPClient to the raft transfer leadership params
+func (o *RaftTransferLeadershipParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithMember adds the member to the raft tranfer leadership params
-func (o *RaftTranferLeadershipParams) WithMember(member *rest_model.RaftTransferLeadership) *RaftTranferLeadershipParams {
+// WithMember adds the member to the raft transfer leadership params
+func (o *RaftTransferLeadershipParams) WithMember(member *rest_model.RaftTransferLeadership) *RaftTransferLeadershipParams {
 	o.SetMember(member)
 	return o
 }
 
-// SetMember adds the member to the raft tranfer leadership params
-func (o *RaftTranferLeadershipParams) SetMember(member *rest_model.RaftTransferLeadership) {
+// SetMember adds the member to the raft transfer leadership params
+func (o *RaftTransferLeadershipParams) SetMember(member *rest_model.RaftTransferLeadership) {
 	o.Member = member
 }
 
 // WriteToRequest writes these params to a swagger request
-func (o *RaftTranferLeadershipParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
+func (o *RaftTransferLeadershipParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
 	if err := r.SetTimeout(o.timeout); err != nil {
 		return err

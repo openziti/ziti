@@ -556,7 +556,7 @@ func init() {
           "Raft"
         ],
         "summary": "Attempts to transfer leadership to a different member of the cluster",
-        "operationId": "raftTranferLeadership",
+        "operationId": "raftTransferLeadership",
         "parameters": [
           {
             "description": "transfer operation parameters",
@@ -4337,7 +4337,7 @@ func init() {
           "Raft"
         ],
         "summary": "Attempts to transfer leadership to a different member of the cluster",
-        "operationId": "raftTranferLeadership",
+        "operationId": "raftTransferLeadership",
         "parameters": [
           {
             "description": "transfer operation parameters",
