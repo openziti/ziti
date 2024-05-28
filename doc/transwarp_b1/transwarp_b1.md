@@ -399,7 +399,7 @@ From there, you can zoom in on the dataset in detail:
 
 ### Comparing Against TCP
 
-We can run the scenerio again, swapping in the `tcp` protocol instead of the `westworld3` protocol by invoking the `dilithium tunnel server` and `client` like this:
+We can run the scenario again, swapping in the `tcp` protocol instead of the `westworld3` protocol by invoking the `dilithium tunnel server` and `client` like this:
 
 ```
 [fedora@ip-10-0-0-217 ~]$ fablab/bin/dilithium tunnel server 0.0.0.0:6262 127.0.0.1:22 -p tcp

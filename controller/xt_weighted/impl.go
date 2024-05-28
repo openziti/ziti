@@ -26,7 +26,7 @@ import (
 
 /**
 The weighted strategy does random selection of available strategies in proportion to the terminator costs. So if a
-given terminator has twice the fully evaluated cost as another terminator it should idealy be selected roughly half
+given terminator has twice the fully evaluated cost as another terminator it should ideally be selected roughly half
 as often.
 */
 

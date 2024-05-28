@@ -709,7 +709,7 @@ as dialing entities.
 When an edge router creates an API session, the ip:port of the edge router control channel will be captured.
 
 ### Report high link latency when heartbeats time out
-Previously when latency probes/heatbeats timed out, we wouldn't update the link latency. 
+Previously when latency probes/heartbeats timed out, we wouldn't update the link latency. 
 Now, link latency will be set to 88888888888ns (or ~88seconds). This will help keep
 these links from being used. The use of this marker value will also let timeouts be 
 identitied.
