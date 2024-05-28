@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
+	"sync"
 	"sync/atomic"
 )
 
@@ -41,6 +42,7 @@ type splitImpl struct {
 	dialed          bool
 	iteration       uint32
 	dupsRejected    uint32
+	lock            sync.Mutex
 }
 
 func (self *splitImpl) Id() string {
@@ -60,6 +62,12 @@ func (self *splitImpl) Init(metricsRegistry metrics.Registry) error {
 		self.droppedMsgMeter = metricsRegistry.Meter("link.dropped_msgs:" + self.id)
 	}
 	return nil
+}
+
+func (self *splitImpl) syncInit(f func() error) error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return f()
 }
 
 func (self *splitImpl) SendPayload(msg *xgress.Payload) error {
@@ -96,6 +104,9 @@ func (self *splitImpl) AreFaultsSent() bool {
 }
 
 func (self *splitImpl) Close() error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
 	if self.droppedMsgMeter != nil {
 		self.droppedMsgMeter.Dispose()
 	}

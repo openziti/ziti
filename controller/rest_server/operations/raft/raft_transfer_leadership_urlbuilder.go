@@ -35,15 +35,15 @@ import (
 	golangswaggerpaths "path"
 )
 
-// RaftTranferLeadershipURL generates an URL for the raft tranfer leadership operation
-type RaftTranferLeadershipURL struct {
+// RaftTransferLeadershipURL generates an URL for the raft transfer leadership operation
+type RaftTransferLeadershipURL struct {
 	_basePath string
 }
 
 // WithBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *RaftTranferLeadershipURL) WithBasePath(bp string) *RaftTranferLeadershipURL {
+func (o *RaftTransferLeadershipURL) WithBasePath(bp string) *RaftTransferLeadershipURL {
 	o.SetBasePath(bp)
 	return o
 }
@@ -51,12 +51,12 @@ func (o *RaftTranferLeadershipURL) WithBasePath(bp string) *RaftTranferLeadershi
 // SetBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *RaftTranferLeadershipURL) SetBasePath(bp string) {
+func (o *RaftTransferLeadershipURL) SetBasePath(bp string) {
 	o._basePath = bp
 }
 
 // Build a url path and query string
-func (o *RaftTranferLeadershipURL) Build() (*url.URL, error) {
+func (o *RaftTransferLeadershipURL) Build() (*url.URL, error) {
 	var _result url.URL
 
 	var _path = "/raft/transfer-leadership"
@@ -71,7 +71,7 @@ func (o *RaftTranferLeadershipURL) Build() (*url.URL, error) {
 }
 
 // Must is a helper function to panic when the url builder returns an error
-func (o *RaftTranferLeadershipURL) Must(u *url.URL, err error) *url.URL {
+func (o *RaftTransferLeadershipURL) Must(u *url.URL, err error) *url.URL {
 	if err != nil {
 		panic(err)
 	}
@@ -82,17 +82,17 @@ func (o *RaftTranferLeadershipURL) Must(u *url.URL, err error) *url.URL {
 }
 
 // String returns the string representation of the path with query string
-func (o *RaftTranferLeadershipURL) String() string {
+func (o *RaftTransferLeadershipURL) String() string {
 	return o.Must(o.Build()).String()
 }
 
 // BuildFull builds a full url with scheme, host, path and query string
-func (o *RaftTranferLeadershipURL) BuildFull(scheme, host string) (*url.URL, error) {
+func (o *RaftTransferLeadershipURL) BuildFull(scheme, host string) (*url.URL, error) {
 	if scheme == "" {
-		return nil, errors.New("scheme is required for a full url on RaftTranferLeadershipURL")
+		return nil, errors.New("scheme is required for a full url on RaftTransferLeadershipURL")
 	}
 	if host == "" {
-		return nil, errors.New("host is required for a full url on RaftTranferLeadershipURL")
+		return nil, errors.New("host is required for a full url on RaftTransferLeadershipURL")
 	}
 
 	base, err := o.Build()
@@ -106,6 +106,6 @@ func (o *RaftTranferLeadershipURL) BuildFull(scheme, host string) (*url.URL, err
 }
 
 // StringFull returns the string representation of a complete url
-func (o *RaftTranferLeadershipURL) StringFull(scheme, host string) string {
+func (o *RaftTransferLeadershipURL) StringFull(scheme, host string) string {
 	return o.Must(o.BuildFull(scheme, host)).String()
 }

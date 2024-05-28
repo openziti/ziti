@@ -817,7 +817,7 @@ paths:
       description: Attempts to transfer leadership to a different member of the cluster. Requires admin access.
       tags:
         - Raft
-      operationId: raftTranferLeadership
+      operationId: raftTransferLeadership
       parameters:
         - name: member
           in: body

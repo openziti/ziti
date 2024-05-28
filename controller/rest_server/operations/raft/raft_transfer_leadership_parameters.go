@@ -42,19 +42,19 @@ import (
 	"github.com/openziti/ziti/controller/rest_model"
 )
 
-// NewRaftTranferLeadershipParams creates a new RaftTranferLeadershipParams object
+// NewRaftTransferLeadershipParams creates a new RaftTransferLeadershipParams object
 //
 // There are no default values defined in the spec.
-func NewRaftTranferLeadershipParams() RaftTranferLeadershipParams {
+func NewRaftTransferLeadershipParams() RaftTransferLeadershipParams {
 
-	return RaftTranferLeadershipParams{}
+	return RaftTransferLeadershipParams{}
 }
 
-// RaftTranferLeadershipParams contains all the bound params for the raft tranfer leadership operation
+// RaftTransferLeadershipParams contains all the bound params for the raft transfer leadership operation
 // typically these are obtained from a http.Request
 //
-// swagger:parameters raftTranferLeadership
-type RaftTranferLeadershipParams struct {
+// swagger:parameters raftTransferLeadership
+type RaftTransferLeadershipParams struct {
 
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
@@ -69,8 +69,8 @@ type RaftTranferLeadershipParams struct {
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
 // for simple values it will use straight method calls.
 //
-// To ensure default values, the struct must have been initialized with NewRaftTranferLeadershipParams() beforehand.
-func (o *RaftTranferLeadershipParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
+// To ensure default values, the struct must have been initialized with NewRaftTransferLeadershipParams() beforehand.
+func (o *RaftTransferLeadershipParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
 	var res []error
 
 	o.HTTPRequest = r

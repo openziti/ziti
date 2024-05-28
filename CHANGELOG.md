@@ -51,6 +51,8 @@ ziti edge create service test --terminator-strategy sticky
 * github.com/openziti/storage: [v0.2.37 -> v0.2.41](https://github.com/openziti/storage/compare/v0.2.37...v0.2.41)
 * github.com/openziti/transport/v2: [v2.0.131 -> v2.0.133](https://github.com/openziti/transport/compare/v2.0.131...v2.0.133)
 * github.com/openziti/ziti: [v1.1.2 -> v1.1.3](https://github.com/openziti/ziti/compare/v1.1.2...v1.1.3)
+    * [Issue #2064](https://github.com/openziti/ziti/issues/2064) - Fix panic on link close
+    * [Issue #2062](https://github.com/openziti/ziti/issues/2062) - Link connection retry delays should contain some randomization 
     * [Issue #2055](https://github.com/openziti/ziti/issues/2055) - Controller panics on 'ziti agent cluster list'
     * [Issue #2019](https://github.com/openziti/ziti/issues/2019) - Support mechanism for sticky dials
 
