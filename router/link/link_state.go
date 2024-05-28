@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/xlink"
+	"math/rand"
 	"sync/atomic"
 	"time"
 )
@@ -180,7 +181,12 @@ func (self *linkState) dialFailed(registry *linkRegistryImpl) {
 		backoffConfig = self.dialer.GetUnhealthyBackoffConfig()
 	}
 
-	self.retryDelay = time.Duration(float64(self.retryDelay) * backoffConfig.GetRetryBackoffFactor())
+	factor := backoffConfig.GetRetryBackoffFactor() + (rand.Float64() - 0.5)
+	if factor < 1 {
+		factor = 1
+	}
+
+	self.retryDelay = time.Duration(float64(self.retryDelay) * factor)
 	if self.retryDelay < backoffConfig.GetMinRetryInterval() {
 		self.retryDelay = backoffConfig.GetMinRetryInterval()
 	}
