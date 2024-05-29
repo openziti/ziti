@@ -540,7 +540,7 @@ func (c *Controller) GetEventDispatcher() event.Dispatcher {
 }
 
 func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
-	if evt.EventType == event.ClusterMembersChanged {
+	if evt.EventType == event.ClusterMembersChanged || evt.EventType == event.ClusterLeadershipGained {
 		var endpoints []string
 		for _, peer := range evt.Peers {
 			endpoints = append(endpoints, peer.Addr)

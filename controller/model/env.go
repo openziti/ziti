@@ -66,4 +66,6 @@ type Env interface {
 	GetCloseNotifyChannel() <-chan struct{}
 	GetPeerSigners() []*x509.Certificate
 	AddRouterPresenceHandler(h RouterPresenceHandler)
+
+	GetId() string
 }

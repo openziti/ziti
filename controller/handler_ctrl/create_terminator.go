@@ -71,6 +71,7 @@ func (self *createTerminatorHandler) handleCreateTerminator(msg *channel.Message
 		PeerData:       request.PeerData,
 		Precedence:     request.GetXtPrecedence(),
 		Cost:           uint16(request.Cost),
+		SourceCtrl:     self.network.GetAppId(),
 	}
 
 	if err := self.network.Terminator.Create(terminator, self.newChangeContext(ch, "fabric.create.terminator")); err == nil {

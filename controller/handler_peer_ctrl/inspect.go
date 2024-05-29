@@ -39,26 +39,28 @@ func (*inspectHandler) ContentType() int32 {
 }
 
 func (handler *inspectHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	context := &inspectRequestContext{
-		handler:  handler,
-		msg:      msg,
-		ch:       ch,
-		request:  &ctrl_pb.InspectRequest{},
-		response: &ctrl_pb.InspectResponse{Success: true},
-	}
+	go func() {
+		context := &inspectRequestContext{
+			handler:  handler,
+			msg:      msg,
+			ch:       ch,
+			request:  &ctrl_pb.InspectRequest{},
+			response: &ctrl_pb.InspectResponse{Success: true},
+		}
 
-	var err error
-	if err = proto.Unmarshal(msg.Body, context.request); err != nil {
-		context.appendError(err.Error())
-	}
+		var err error
+		if err = proto.Unmarshal(msg.Body, context.request); err != nil {
+			context.appendError(err.Error())
+		}
 
-	if !context.response.Success {
+		if !context.response.Success {
+			context.sendResponse()
+			return
+		}
+
+		context.processLocal()
 		context.sendResponse()
-		return
-	}
-
-	context.processLocal()
-	context.sendResponse()
+	}()
 }
 
 type inspectRequestContext struct {

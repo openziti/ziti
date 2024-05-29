@@ -47,70 +47,109 @@ const (
 	SigningCertHeader  = 2050
 	ApiAddressesHeader = 2051
 	RaftDisconnectType = 2052
+	RaftConnId         = 2053
 	ChannelTypeMesh    = "ctrl.mesh"
 )
 
 type Peer struct {
-	mesh         *impl
-	Id           raft.ServerID
-	Address      string
-	Channel      channel.Channel
-	RaftConn     atomic.Pointer[raftPeerConn]
-	Version      *versions.VersionInfo
-	SigningCerts []*x509.Certificate
-	ApiAddresses map[string][]event.ApiAddress
+	mesh          *impl
+	Id            raft.ServerID
+	Address       string
+	Channel       channel.Channel
+	RaftConns     concurrenz.CopyOnWriteMap[uint32, *raftPeerConn]
+	Version       *versions.VersionInfo
+	SigningCerts  []*x509.Certificate
+	ApiAddresses  map[string][]event.ApiAddress
+	raftPeerIdGen uint32
 }
 
-func (self *Peer) initRaftConn() *raftPeerConn {
-	self.mesh.lock.Lock()
-	defer self.mesh.lock.Unlock()
-	conn := self.RaftConn.Load()
-	if conn == nil {
-		conn = newRaftPeerConn(self, self.mesh.netAddr)
-		self.RaftConn.Store(conn)
+func (self *Peer) nextRaftPeerId() uint32 {
+	// dialing peers use odd ids, dialed peers use even, so we
+	// shouldn't get any conflict
+	return atomic.AddUint32(&self.raftPeerIdGen, 2)
+}
+
+func (self *Peer) newRaftPeerConn(id uint32) *raftPeerConn {
+	result := &raftPeerConn{
+		id:          id,
+		peer:        self,
+		localAddr:   self.mesh.netAddr,
+		readTimeout: newDeadline(),
+		readC:       make(chan []byte, 16),
+		closeNotify: make(chan struct{}),
 	}
-	return conn
+	self.RaftConns.Put(id, result)
+	return result
 }
 
 func (self *Peer) HandleClose(channel.Channel) {
-	self.mesh.lock.Lock()
-	conn := self.RaftConn.Swap(nil)
-	if conn != nil {
-		conn.close()
+	conns := self.RaftConns.AsMap()
+	self.RaftConns.Clear()
+	for _, v := range conns {
+		v.close()
 	}
-	self.mesh.lock.Unlock()
-
 	self.mesh.PeerDisconnected(self)
 }
 
-func (self *Peer) ContentType() int32 {
-	return RaftConnectType
-}
-
-func (self *Peer) HandleReceive(m *channel.Message, _ channel.Channel) {
+func (self *Peer) handleReceiveConnect(m *channel.Message, ch channel.Channel) {
 	go func() {
+		log := pfxlog.Logger().WithField("peerId", ch.Id())
+		log.Info("received connect request from raft peer")
+
+		id, ok := m.GetUint32Header(RaftConnId)
+		if !ok {
+			response := channel.NewResult(false, "no conn id in connect request")
+			response.ReplyTo(m)
+
+			if err := response.WithTimeout(5 * time.Second).Send(self.Channel); err != nil {
+				log.WithError(err).Error("failed to send raft peer connect error response")
+			}
+			return
+		}
+
+		if peerConn := self.RaftConns.Get(id); peerConn != nil {
+			response := channel.NewResult(false, "duplicate conn id in connect request")
+			response.ReplyTo(m)
+
+			if err := response.WithTimeout(5 * time.Second).Send(self.Channel); err != nil {
+				log.WithError(err).Error("failed to send raft peer connect error response")
+			}
+			return
+		}
+
 		response := channel.NewResult(true, "")
 		response.ReplyTo(m)
 
 		if err := response.WithTimeout(5 * time.Second).Send(self.Channel); err != nil {
-			logrus.WithError(err).Error("failed to send connect response")
+			log.WithError(err).Error("failed to send raft peer connect response")
 		} else {
-			conn := self.initRaftConn()
+			conn := self.newRaftPeerConn(id)
 			select {
 			case self.mesh.raftAccepts <- conn:
+				log.Info("raft peer connection sent to listener")
 			case <-self.mesh.closeNotify:
+				log.Info("unable to send raft peer connection to listener, listener closed")
 			}
 		}
 	}()
 }
 
-func (self *Peer) handleReceiveDisconnect(m *channel.Message, _ channel.Channel) {
+func (self *Peer) handleReceiveDisconnect(m *channel.Message, ch channel.Channel) {
 	go func() {
-		self.mesh.lock.Lock()
-		conn := self.RaftConn.Swap(nil)
-		self.mesh.lock.Unlock()
+		log := pfxlog.ContextLogger(ch.Label())
 
-		if conn != nil {
+		id, ok := m.GetUint32Header(RaftConnId)
+		if !ok {
+			response := channel.NewResult(false, "no conn id in disconnect request")
+			response.ReplyTo(m)
+
+			if err := response.WithTimeout(5 * time.Second).Send(self.Channel); err != nil {
+				log.WithError(err).Error("failed to send raft peer connect error response")
+			}
+			return
+		}
+
+		if conn := self.RaftConns.Get(id); conn != nil {
 			conn.close()
 		}
 
@@ -118,51 +157,96 @@ func (self *Peer) handleReceiveDisconnect(m *channel.Message, _ channel.Channel)
 		response.ReplyTo(m)
 
 		if err := response.WithTimeout(5 * time.Second).Send(self.Channel); err != nil {
-			logrus.WithError(err).Error("failed to send close response")
+			log.WithError(err).Error("failed to send close response, closing channel")
+			if closeErr := self.Channel.Close(); closeErr != nil {
+				pfxlog.Logger().WithError(closeErr).WithField("ch", self.Channel.Label()).Error("failed to close channel")
+			}
 		}
+
+		log.Infof("received disconnect, disconnected peer %v at %v", self.Id, self.Address)
 	}()
 }
 
 func (self *Peer) handleReceiveData(m *channel.Message, ch channel.Channel) {
-	if conn := self.RaftConn.Load(); conn != nil {
-		conn.HandleReceive(m, ch)
+	id, ok := m.GetUint32Header(RaftConnId)
+	if !ok {
+		pfxlog.Logger().WithField("peerId", ch.Id()).Error("no conn id in data request")
+		return
 	}
+
+	conn := self.RaftConns.Get(id)
+	if conn == nil {
+		pfxlog.Logger().WithField("peerId", ch.Id()).
+			WithField("connId", id).Error("invalid conn id in data request")
+		return
+	}
+
+	conn.HandleReceive(m, ch)
 }
 
 func (self *Peer) Connect(timeout time.Duration) (net.Conn, error) {
+	log := pfxlog.Logger().WithField("peerId", string(self.Id)).WithField("address", self.Address)
+	log.Info("sending connect msg to raft peer")
+
+	id := self.nextRaftPeerId()
 	msg := channel.NewMessage(RaftConnectType, nil)
+	msg.Headers.PutUint32Header(RaftConnId, id)
+
 	response, err := msg.WithTimeout(timeout).SendForReply(self.Channel)
 	if err != nil {
+		log.WithError(err).Error("failed to send connect message to raft peer, closing channel")
+		if closeErr := self.Channel.Close(); closeErr != nil {
+			log.WithError(closeErr).Error("failed to close raft peer channel")
+		}
 		return nil, err
 	}
 	result := channel.UnmarshalResult(response)
 	if !result.Success {
-		return nil, errors.Errorf("connect failed: %v", result.Message)
+		log.WithError(err).Error("non-success response to raft peer connect message, closing channel")
+		if closeErr := self.Channel.Close(); closeErr != nil {
+			log.WithError(closeErr).Error("failed to close raft peer channel")
+		}
+		return nil, errors.Errorf("raft peer connect failed: %v", result.Message)
 	}
 
-	logrus.Infof("connected peer %v at %v", self.Id, self.Address)
+	log.Info("raft peer connected")
 
-	return self.initRaftConn(), nil
+	return self.newRaftPeerConn(id), nil
 }
 
-func (self *Peer) closeRaftConn(timeout time.Duration) error {
-	self.mesh.lock.Lock()
-	conn := self.RaftConn.Swap(nil)
-	defer self.mesh.lock.Unlock()
-	if conn == nil {
+func (self *Peer) closeRaftConn(peerConn *raftPeerConn, timeout time.Duration) error {
+	isCurrentPeer := self.RaftConns.DeleteIf(func(key uint32, val *raftPeerConn) bool {
+		return key == peerConn.id && val == peerConn
+	})
+
+	peerConn.close()
+
+	log := pfxlog.Logger().WithField("peerId", self.Id)
+	if !isCurrentPeer {
+		log.Info("closed peer connection is not current connection, not sending disconnect message")
 		return nil
 	}
 
-	conn.close()
+	log.Info("closed peer connection is current connection, sending disconnect message")
 
 	msg := channel.NewMessage(RaftDisconnectType, nil)
+	msg.Headers.PutUint32Header(RaftConnId, peerConn.id)
+
 	response, err := msg.WithTimeout(timeout).SendForReply(self.Channel)
 	if err != nil {
+		log.WithError(err).Error("failed to send disconnect msg response, closing channel")
+		if closeErr := self.Channel.Close(); closeErr != nil {
+			log.WithError(closeErr).Error("failed to close channel")
+		}
 		return err
 	}
 	result := channel.UnmarshalResult(response)
 	if !result.Success {
-		return errors.Errorf("connect failed: %v", result.Message)
+		log.WithError(err).Error("result from disconnect was not success, closing channel")
+		if closeErr := self.Channel.Close(); closeErr != nil {
+			log.WithError(closeErr).Error("failed to close channel")
+		}
+		return errors.Errorf("close failed: %v", result.Message)
 	}
 
 	logrus.Infof("disconnected peer %v at %v", self.Id, self.Address)
@@ -213,6 +297,7 @@ type Mesh interface {
 
 	RegisterClusterStateHandler(f func(state ClusterState))
 	Init(bindHandler channel.BindHandler)
+	GetAllPeersForEvent() []*event.ClusterPeer
 }
 
 func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProvider) Mesh {
@@ -230,7 +315,7 @@ func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProv
 		},
 		Peers:                map[string]*Peer{},
 		closeNotify:          make(chan struct{}),
-		raftAccepts:          make(chan net.Conn),
+		raftAccepts:          make(chan *raftPeerConn),
 		version:              env.GetVersionProvider(),
 		versionEncoded:       versionEncoded,
 		eventDispatcher:      env.GetEventDispatcher(),
@@ -246,7 +331,7 @@ type impl struct {
 	lock                 sync.RWMutex
 	closeNotify          chan struct{}
 	closed               atomic.Bool
-	raftAccepts          chan net.Conn
+	raftAccepts          chan *raftPeerConn
 	bindHandler          concurrenz.AtomicValue[channel.BindHandler]
 	version              versions.VersionProvider
 	versionEncoded       []byte
@@ -284,39 +369,44 @@ func (self *impl) Addr() net.Addr {
 func (self *impl) Accept() (net.Conn, error) {
 	select {
 	case conn := <-self.raftAccepts:
+		pfxlog.Logger().WithField("peerId", conn.peer.Id).Info("new raft peer connection return to raft layer")
 		return conn, nil
 	case <-self.closeNotify:
-		return nil, errors.New("closed")
+		pfxlog.Logger().Error("return error from raft peer mesh listener accept, listener closed")
+		return nil, errors.New("raft peer listener closed")
 	}
 }
 
 func (self *impl) Dial(address raft.ServerAddress, timeout time.Duration) (net.Conn, error) {
-	logrus.Infof("dialing %v", address)
+	log := pfxlog.Logger().WithField("address", address)
+	log.Info("dialing raft peer channel")
 	peer, err := self.GetOrConnectPeer(string(address), timeout)
 	if err != nil {
+		log.WithError(err).Error("unable to get or connect raft peer channel")
 		return nil, err
 	}
 
-	if peerConn := peer.RaftConn.Load(); peerConn != nil {
-		return peerConn, nil
-	}
+	log.WithField("peerId", peer.Id).Info("invoking raft connect on established peer channel")
 
 	return peer.Connect(timeout)
 }
 
 func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer, error) {
+	log := pfxlog.Logger().WithField("address", address)
+
 	if address == "" {
-		return nil, errors.New("cannot get peer for empty address")
+		return nil, errors.New("cannot get raft peer for empty address")
 	}
+
 	if peer := self.GetPeer(raft.ServerAddress(address)); peer != nil {
-		logrus.Debugf("existing peer found for %v, returning", address)
+		log.Debug("existing new raft peer channel found for address")
 		return peer, nil
 	}
-	logrus.Infof("creating new peer for %v, returning", address)
+
+	log.Info("establishing new raft peer channel")
 
 	addr, err := transport.ParseAddress(address)
 	if err != nil {
-		logrus.WithError(err).WithField("address", address).Error("failed to parse address")
 		return nil, err
 	}
 
@@ -349,8 +439,9 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	dialOptions.ConnectOptions.ConnectTimeout = timeout
 
 	peer := &Peer{
-		mesh:    self,
-		Address: address,
+		mesh:          self,
+		Address:       address,
+		raftPeerIdGen: 1,
 	}
 
 	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
@@ -390,8 +481,8 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		peer.Version = versionInfo
 		peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
 
-		binding.AddTypedReceiveHandler(peer)
 		binding.AddReceiveHandlerF(RaftDataType, peer.handleReceiveData)
+		binding.AddReceiveHandlerF(RaftConnectType, peer.handleReceiveConnect)
 		binding.AddReceiveHandlerF(RaftDisconnectType, peer.handleReceiveDisconnect)
 		binding.AddCloseHandler(peer)
 
@@ -403,6 +494,8 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		time.Sleep(time.Duration(rand.Intn(250)+1) * time.Millisecond)
 		return nil, errors.Wrapf(err, "error dialing peer %v", address)
 	}
+
+	log.WithField("peerId", peer.Id).Info("established new raft peer channel")
 
 	return peer, nil
 }
@@ -488,25 +581,21 @@ func ExtractSpiffeId(certs []*x509.Certificate) (string, error) {
 
 func (self *impl) PeerConnected(peer *Peer, dial bool) error {
 	self.lock.Lock()
-	defer self.lock.Unlock()
 	if self.Peers[peer.Address] != nil {
+		defer self.lock.Unlock()
 		return fmt.Errorf("connection from peer %v @ %v already present", peer.Id, peer.Address)
 	}
 
 	self.Peers[peer.Address] = peer
 	self.updateClusterState()
+	self.lock.Unlock()
+
 	pfxlog.Logger().WithField("peerId", peer.Id).
 		WithField("peerAddr", peer.Address).
 		Info("peer connected")
 
 	evt := event.NewClusterEvent(event.ClusterPeerConnected)
-	evt.Peers = append(evt.Peers, &event.ClusterPeer{
-		Id:           string(peer.Id),
-		Addr:         peer.Address,
-		Version:      peer.Version.Version,
-		ServerCert:   peer.SigningCerts,
-		ApiAddresses: peer.ApiAddresses,
-	})
+	evt.Peers = self.GetEventPeerList(peer)
 
 	self.eventDispatcher.AcceptClusterEvent(evt)
 
@@ -534,6 +623,38 @@ func (self *impl) PeerConnected(peer *Peer, dial bool) error {
 	return nil
 }
 
+func (self *impl) GetEventPeerList(peers ...*Peer) []*event.ClusterPeer {
+	if len(peers) == 0 {
+		return nil
+	}
+	var result []*event.ClusterPeer
+	for _, peer := range peers {
+		result = append(result, &event.ClusterPeer{
+			Id:           string(peer.Id),
+			Addr:         peer.Address,
+			Version:      peer.Version.Version,
+			ServerCert:   peer.SigningCerts,
+			ApiAddresses: peer.ApiAddresses,
+		})
+	}
+	return result
+}
+
+func (self *impl) GetAllPeersForEvent() []*event.ClusterPeer {
+	peers := self.GetPeers()
+	var peerList []*Peer
+	for _, peer := range peers {
+		peerList = append(peerList, peer)
+	}
+	peerList = append(peerList, &Peer{
+		mesh:    self,
+		Id:      raft.ServerID(self.id.Token),
+		Address: string(self.raftAddr),
+		Version: self.version.AsVersionInfo(),
+	})
+	return self.GetEventPeerList(peerList...)
+}
+
 func (self *impl) GetPeer(addr raft.ServerAddress) *Peer {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
@@ -542,25 +663,22 @@ func (self *impl) GetPeer(addr raft.ServerAddress) *Peer {
 
 func (self *impl) PeerDisconnected(peer *Peer) {
 	self.lock.Lock()
-	defer self.lock.Unlock()
 	currentPeer := self.Peers[peer.Address]
 	if currentPeer == nil || currentPeer != peer {
+		self.lock.Unlock()
 		return
 	}
 
 	delete(self.Peers, peer.Address)
 	self.updateClusterState()
+	self.lock.Unlock()
 
 	pfxlog.Logger().WithField("peerId", peer.Id).
 		WithField("peerAddr", peer.Address).
 		Info("peer disconnected")
 
 	evt := event.NewClusterEvent(event.ClusterPeerDisconnected)
-	evt.Peers = append(evt.Peers, &event.ClusterPeer{
-		Id:      string(peer.Id),
-		Addr:    peer.Address,
-		Version: peer.Version.Version,
-	})
+	evt.Peers = self.GetEventPeerList(peer)
 
 	self.eventDispatcher.AcceptClusterEvent(evt)
 }
@@ -655,8 +773,8 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 
 		peer.Version = versionInfo
 
-		binding.AddTypedReceiveHandler(peer)
 		binding.AddReceiveHandlerF(RaftDataType, peer.handleReceiveData)
+		binding.AddReceiveHandlerF(RaftConnectType, peer.handleReceiveConnect)
 		binding.AddReceiveHandlerF(RaftDisconnectType, peer.handleReceiveDisconnect)
 		binding.AddCloseHandler(peer)
 		return self.PeerConnected(peer, false)
@@ -676,8 +794,8 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 }
 
 func (self *impl) GetPeers() map[string]*Peer {
-	self.lock.Lock()
-	defer self.lock.Unlock()
+	self.lock.RLock()
+	defer self.lock.RUnlock()
 
 	result := map[string]*Peer{}
 

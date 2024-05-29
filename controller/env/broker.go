@@ -18,7 +18,6 @@ package env
 
 import (
 	"crypto"
-	"crypto/x509"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/storage/boltz"
@@ -27,7 +26,6 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/model"
 	"go.etcd.io/bbolt"
-	"sync"
 )
 
 const (
@@ -60,9 +58,6 @@ type Broker struct {
 	apiSessionChunkSize int
 	routerMsgBufferSize int
 	routerSyncStrategy  RouterSyncStrategy
-
-	publicKeyLock sync.Mutex
-	publicKeys    map[string]crypto.PublicKey
 }
 
 func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
@@ -93,9 +88,13 @@ func (broker *Broker) ValidateRouterDataModel() []error {
 }
 
 func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {
+	if clusterEvent.EventType == event.ClusterLeadershipGained {
+		broker.ae.Managers.Controller.PeersConnected(clusterEvent.Peers, false)
+	}
+
 	if broker.ae.HostController.IsRaftLeader() {
 		if clusterEvent.EventType == event.ClusterPeerConnected {
-			broker.ae.Managers.Controller.PeersConnected(clusterEvent.Peers)
+			broker.ae.Managers.Controller.PeersConnected(clusterEvent.Peers, true)
 		}
 
 		if clusterEvent.EventType == event.ClusterPeerDisconnected {
@@ -196,46 +195,5 @@ func (broker *Broker) Stop() {
 }
 
 func (broker *Broker) GetPublicKeys() map[string]crypto.PublicKey {
-	broker.publicKeyLock.Lock()
-	defer broker.publicKeyLock.Unlock()
-
-	if broker.publicKeys == nil {
-		broker.publicKeys = map[string]crypto.PublicKey{}
-	}
-
-	for kid, pubKey := range broker.routerSyncStrategy.GetPublicKeys() {
-		//don't reprocess the same kid
-		if _, exists := broker.publicKeys[kid]; exists {
-			continue
-		}
-		log := pfxlog.Logger().WithField("format", pubKey.Format).WithField("kid", kid)
-
-		switch pubKey.Format {
-		case edge_ctrl_pb.DataState_PublicKey_X509CertDer:
-			cert, err := x509.ParseCertificate(pubKey.GetData())
-			if err != nil {
-				log.WithError(err).Error("error parsing x509 certificate DER")
-				continue
-			}
-
-			broker.publicKeys[kid] = cert.PublicKey
-		case edge_ctrl_pb.DataState_PublicKey_PKIXPublicKey:
-			pub, err := x509.ParsePKIXPublicKey(pubKey.GetData())
-			if err != nil {
-				log.WithError(err).Error("error parsing PKIX public key DER")
-				continue
-			}
-			broker.publicKeys[kid] = pub
-		default:
-			log.Error("unknown public key format")
-		}
-	}
-
-	result := map[string]crypto.PublicKey{}
-
-	for k, v := range broker.publicKeys {
-		result[k] = v
-	}
-
-	return result
+	return broker.routerSyncStrategy.GetPublicKeys()
 }

@@ -45,10 +45,7 @@ func MapControllerToManagementRestModel(controller *model.Controller) (*rest_mod
 		CertPem:      &controller.CertPem,
 		Fingerprint:  &controller.Fingerprint,
 		IsOnline:     &controller.IsOnline,
-	}
-
-	if controller.LastJoinedAt != nil {
-		ret.LastJoinedAt = toStrFmtDateTimeP(*controller.LastJoinedAt)
+		LastJoinedAt: toStrFmtDateTimeP(controller.LastJoinedAt),
 	}
 
 	for apiKey, instances := range controller.ApiAddresses {

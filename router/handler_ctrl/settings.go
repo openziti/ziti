@@ -44,7 +44,7 @@ func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.C
 			switch settingType {
 			case int32(ctrl_pb.SettingTypes_NewCtrlAddress):
 				newAddress := string(settingValue)
-				handler.updater.UpdateCtrlEndpoints([]string{newAddress})
+				handler.updater.UpdateCtrlEndpoints([]string{newAddress}, "")
 			default:
 				log.Error("unknown setting type, ignored")
 			}

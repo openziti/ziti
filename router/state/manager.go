@@ -471,6 +471,18 @@ func (a *ApiSession) SelectCtrlCh(ctrls env.NetworkControllers) channel.Channel 
 	return ctrls.AnyCtrlChannel()
 }
 
+func (a *ApiSession) SelectModelUpdateCtrlCh(ctrls env.NetworkControllers) channel.Channel {
+	if a == nil {
+		return nil
+	}
+
+	if a.ControllerId != "" {
+		return ctrls.GetCtrlChannel(a.ControllerId)
+	}
+
+	return ctrls.GetModelUpdateCtrlChannel()
+}
+
 func NewApiSessionFromToken(jwtToken *jwt.Token, accessClaims *common.AccessClaims) (*ApiSession, error) {
 	subj, err := jwtToken.Claims.GetSubject()
 	if err != nil {

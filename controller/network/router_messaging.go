@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/protobufs"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/inspect"
@@ -48,6 +49,7 @@ type terminatorInfo struct {
 	xt.Terminator
 	marker uint64
 }
+
 type terminatorValidations struct {
 	terminators     map[string]terminatorInfo
 	checkInProgress atomic.Bool
@@ -60,12 +62,13 @@ type routerEvent interface {
 
 func NewRouterMessaging(env model.Env, routerCommPool goroutines.Pool) *RouterMessaging {
 	result := &RouterMessaging{
-		env:                   env,
-		managers:              env.GetManagers(),
-		eventsC:               make(chan routerEvent, 16),
-		routerUpdates:         map[string]*routerUpdates{},
-		terminatorValidations: map[string]*terminatorValidations{},
-		routerCommPool:        routerCommPool,
+		env:                     env,
+		managers:                env.GetManagers(),
+		eventsC:                 make(chan routerEvent, 16),
+		routerUpdates:           map[string]*routerUpdates{},
+		terminatorValidations:   map[string]*terminatorValidations{},
+		routerCommPool:          routerCommPool,
+		queuedTerminatorDeletes: map[string]struct{}{},
 	}
 
 	env.GetManagers().Terminator.GetStore().AddEntityEventListenerF(result.TerminatorCreated, boltz.EntityCreated)
@@ -74,13 +77,16 @@ func NewRouterMessaging(env model.Env, routerCommPool goroutines.Pool) *RouterMe
 }
 
 type RouterMessaging struct {
-	env                   model.Env
-	managers              *model.Managers
-	eventsC               chan routerEvent
-	routerUpdates         map[string]*routerUpdates
-	terminatorValidations map[string]*terminatorValidations
-	routerCommPool        goroutines.Pool
-	markerCounter         atomic.Uint64
+	env                     model.Env
+	managers                *model.Managers
+	eventsC                 chan routerEvent
+	routerUpdates           map[string]*routerUpdates
+	terminatorValidations   map[string]*terminatorValidations
+	queuedTerminatorDeletes map[string]struct{}
+	routerCommPool          goroutines.Pool
+	markerCounter           atomic.Uint64
+	deleteInProgress        atomic.Bool
+	deleteStarted           concurrenz.AtomicValue[time.Time]
 }
 
 func (self *RouterMessaging) getNextMarker() uint64 {
@@ -150,8 +156,11 @@ func (self *RouterMessaging) run() {
 			self.syncStates()
 		}
 
-		if !self.env.GetManagers().Dispatcher.IsLeaderless() && len(self.terminatorValidations) > 0 {
-			self.sendTerminatorValidationRequests()
+		if !self.env.GetManagers().Dispatcher.IsLeaderless() {
+			if len(self.terminatorValidations) > 0 {
+				self.sendTerminatorValidationRequests()
+			}
+			self.processQueuedDeletes()
 		}
 	}
 }
@@ -293,8 +302,13 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 
 	var terminators []*ctrl_pb.Terminator
 
+	localCtrlId := self.env.GetId()
+
+	var toRemove []string
 	for _, terminator := range updates.terminators {
-		if time.Since(terminator.GetCreatedAt()) > 5*time.Second {
+		if localCtrlId != terminator.GetSourceCtrl() && !self.managers.Dispatcher.IsLeader() {
+			toRemove = append(toRemove, terminator.GetId())
+		} else if time.Since(terminator.GetCreatedAt()) > 5*time.Second {
 			pfxlog.Logger().WithField("terminatorId", terminator.GetId()).Info("queuing validate of terminator")
 			terminators = append(terminators, &ctrl_pb.Terminator{
 				Id:      terminator.GetId(),
@@ -305,15 +319,17 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 		}
 	}
 
+	for _, terminatorId := range toRemove {
+		delete(updates.terminators, terminatorId)
+	}
+
 	if len(terminators) == 0 || !updates.checkInProgress.CompareAndSwap(false, true) {
 		return
 	}
 
-	var req protobufs.TypedMessage
+	var req ctrl_pb.FilterableValidateTerminatorsRequest
 	if !supportsVerifyV2 {
-		req = &ctrl_pb.ValidateTerminatorsRequest{
-			Terminators: terminators,
-		}
+		req = &ctrl_pb.ValidateTerminatorsRequest{Terminators: terminators}
 	} else {
 		req = &ctrl_pb.ValidateTerminatorsV2Request{
 			Terminators: terminators,
@@ -323,23 +339,22 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 
 	queueErr := self.routerCommPool.QueueOrError(func() {
 		ch := notifyRouter.Control
-		if ch == nil {
+		if ch == nil || self.managers.Dispatcher.IsLeaderless() {
+			updates.checkInProgress.Store(false)
 			return
 		}
 
-		if self.managers.Dispatcher.IsLeaderOrLeaderless() {
-			if err := protobufs.MarshalTyped(req).WithTimeout(time.Second * 1).SendAndWaitForWire(ch); err != nil {
-				pfxlog.Logger().WithError(err).WithField("routerId", notifyRouter.Id).Error("failed to send validate terminators request to router")
-			} else if !supportsVerifyV2 {
-				// V1 doesn't send responses, it will just send deletes if the terminator is invalid.
-				// we're going to mark these ok. If they're not, we should get a delete message. Older
-				// routers can still fail to delete, if the delete gets lost for some reason.
-				self.generateMockTerminatorValidationResponse(notifyRouter, updates)
-			}
-		} else if !self.managers.Dispatcher.IsLeaderless() {
-			// If there's a leader, and we're not it, let the leader worry about sending the validation requests
-			// otherwise we're generating a bunch of extra load on the routers
-			self.generateMockTerminatorValidationResponse(notifyRouter, updates)
+		for _, terminator := range req.GetTerminators() {
+			pfxlog.Logger().WithField("terminatorId", terminator.GetId()).Debug("queuing validate of terminator")
+		}
+
+		if err = protobufs.MarshalTyped(req).WithTimeout(time.Second * 1).SendAndWaitForWire(ch); err != nil {
+			pfxlog.Logger().WithError(err).WithField("routerId", notifyRouter.Id).Error("failed to send validate terminators request to router")
+		} else if !supportsVerifyV2 {
+			// V1 doesn't send responses, it will just send deletes if the terminator is invalid.
+			// we're going to mark these ok. If they're not, we should get a delete message. Older
+			// routers can still fail to delete, if the delete gets lost for some reason.
+			self.generateMockTerminatorValidationResponse(notifyRouter, updates, false)
 		}
 	})
 
@@ -350,23 +365,85 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 	}
 }
 
-func (self *RouterMessaging) generateMockTerminatorValidationResponse(r *model.Router, validations *terminatorValidations) {
+func (self *RouterMessaging) generateMockTerminatorValidationResponse(r *model.Router, validations *terminatorValidations, onlyNonLocal bool) {
 	handler := &terminatorValidationRespReceived{
-		router:    r,
-		changeCtx: change.New(), // won't be used since we're marking things valid
+		router: r,
 		resp: &ctrl_pb.ValidateTerminatorsV2Response{
 			States: map[string]*ctrl_pb.RouterTerminatorState{},
 		},
 	}
 
+	localCtrlId := self.env.GetId()
+
 	for id, t := range validations.terminators {
-		handler.resp.States[id] = &ctrl_pb.RouterTerminatorState{
-			Valid:  true,
-			Marker: t.marker,
+		if !onlyNonLocal || t.GetSourceCtrl() != localCtrlId {
+			handler.resp.States[id] = &ctrl_pb.RouterTerminatorState{
+				Valid:  true,
+				Marker: t.marker,
+			}
 		}
 	}
 
 	self.queueEvent(handler)
+}
+
+func (self *RouterMessaging) processQueuedDeletes() {
+	if len(self.queuedTerminatorDeletes) == 0 {
+		return
+	}
+
+	if self.deleteInProgress.Load() {
+		if time.Since(self.deleteStarted.Load()) < 30*time.Second {
+			return
+		}
+	}
+
+	self.deleteInProgress.Store(false)
+
+	log := pfxlog.Logger()
+
+	var toDelete []string
+	count := 0
+	for terminatorId := range self.queuedTerminatorDeletes {
+		if present, _ := self.env.GetManagers().Terminator.IsEntityPresent(terminatorId); present {
+			toDelete = append(toDelete, terminatorId)
+			count++
+			if count >= 100 {
+				break
+			}
+		} else {
+			delete(self.queuedTerminatorDeletes, terminatorId)
+		}
+	}
+
+	if len(toDelete) == 0 {
+		return
+	}
+
+	self.deleteInProgress.Store(true)
+	self.deleteStarted.Store(time.Now())
+
+	err := self.routerCommPool.QueueOrError(func() {
+		changeCtx := change.New().SetChangeAuthorName(self.env.GetId()).
+			SetChangeAuthorType(change.AuthorTypeController)
+		if err := self.env.GetManagers().Terminator.DeleteBatch(toDelete, changeCtx); err != nil {
+			for _, terminatorId := range toDelete {
+				log.WithField("terminatorId", terminatorId).
+					WithError(err).
+					Info("batch delete failed")
+			}
+		} else {
+			self.queueEvent(&terminatorBatchDeleteCompleted{
+				deletedTerminatorIds: toDelete,
+			})
+		}
+		self.deleteInProgress.Store(false)
+	})
+
+	if err != nil {
+		log.WithError(err).Error("unable to queue terminator deletes")
+		self.deleteInProgress.Store(false)
+	}
 }
 
 func (self *RouterMessaging) NewValidationResponseHandler(n *Network, r *model.Router) channel.ReceiveHandlerF {
@@ -378,14 +455,11 @@ func (self *RouterMessaging) NewValidationResponseHandler(n *Network, r *model.R
 			return
 		}
 
-		changeCtx := change.NewControlChannelChange(r.Id, r.Name, "fabric.validate.terminator", ch)
-
 		handler := &terminatorValidationRespReceived{
-			router:    r,
-			changeCtx: changeCtx,
-			resp:      resp,
+			router: r,
+			resp:   resp,
 		}
-		handler.DeleteInvalid(n)
+
 		self.queueEvent(handler)
 	}
 }
@@ -498,36 +572,8 @@ func (self *validateTerminators) handle(c *RouterMessaging) {
 }
 
 type terminatorValidationRespReceived struct {
-	router    *model.Router
-	changeCtx *change.Context
-	resp      *ctrl_pb.ValidateTerminatorsV2Response
-	success   bool
-}
-
-func (self *terminatorValidationRespReceived) DeleteInvalid(n *Network) {
-	log := pfxlog.Logger().WithField("routerId", self.router.Id)
-
-	var toDelete []string
-	for terminatorId, state := range self.resp.States {
-		if !state.Valid {
-			toDelete = append(toDelete, terminatorId)
-			log.WithField("terminatorId", terminatorId).
-				WithField("reason", state.Reason.String()).
-				Info("queuing terminator for delete")
-		}
-	}
-
-	if len(toDelete) > 0 {
-		if err := n.Managers.Terminator.DeleteBatch(toDelete, self.changeCtx); err != nil {
-			for _, terminatorId := range toDelete {
-				log.WithField("terminatorId", terminatorId).
-					WithError(err).
-					Info("batch delete failed")
-			}
-		} else {
-			self.success = true
-		}
-	}
+	router *model.Router
+	resp   *ctrl_pb.ValidateTerminatorsV2Response
 }
 
 func (self *terminatorValidationRespReceived) handle(c *RouterMessaging) {
@@ -536,7 +582,10 @@ func (self *terminatorValidationRespReceived) handle(c *RouterMessaging) {
 
 	for terminatorId, state := range self.resp.States {
 		if terminator, ok := states.terminators[terminatorId]; ok {
-			if (state.Valid && (state.Marker == 0 || state.Marker == terminator.marker)) || self.success {
+			if state.Marker == 0 || state.Marker == terminator.marker {
+				if !state.Valid {
+					c.queuedTerminatorDeletes[terminatorId] = struct{}{}
+				}
 				delete(states.terminators, terminatorId)
 			}
 		}
@@ -544,6 +593,16 @@ func (self *terminatorValidationRespReceived) handle(c *RouterMessaging) {
 
 	if len(states.terminators) == 0 {
 		delete(c.terminatorValidations, self.router.Id)
+	}
+}
+
+type terminatorBatchDeleteCompleted struct {
+	deletedTerminatorIds []string
+}
+
+func (self *terminatorBatchDeleteCompleted) handle(c *RouterMessaging) {
+	for _, terminatorId := range self.deletedTerminatorIds {
+		delete(c.queuedTerminatorDeletes, terminatorId)
 	}
 }
 

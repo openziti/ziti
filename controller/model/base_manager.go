@@ -244,6 +244,15 @@ func (self *baseEntityManager[ME, PE]) readInTx(tx *bbolt.Tx, id string) (ME, er
 	return modelEntity, nil
 }
 
+func (self *baseEntityManager[ME, PE]) IsEntityPresent(id string) (bool, error) {
+	result := false
+	err := self.GetDb().View(func(tx *bbolt.Tx) error {
+		result = self.Store.IsEntityPresent(tx, id)
+		return nil
+	})
+	return result, err
+}
+
 func (self *baseEntityManager[ME, PE]) readEntity(id string, modelEntity ME) error {
 	return self.GetDb().View(func(tx *bbolt.Tx) error {
 		return self.readEntityInTx(tx, id, modelEntity)

@@ -6,15 +6,24 @@ v: 3
 
 enableDebugOps: true
 
+{{if .Component.GetFlag "ha"}}
+ha:
+  enabled: true
+{{end}}
+
 identity:
   cert:                 /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-client.cert
   server_cert:          /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-server.cert
   key:                  /home/{{$ssh_username}}/fablab/cfg/{{$identity}}.key
   ca:                   /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-server.chain.pem
 
+tls:
+  handshakeTimeout: 30s
+
 ctrl:
   endpoints: {{ range $host := .Model.MustSelectHosts "component.ctrl" 1 }}
     - tls:{{ $host.PublicIp }}:6262{{end}}
+  startupTimeout: 5m
 
 healthChecks:
   ctrlPingCheck:
@@ -36,6 +45,8 @@ link:
       advertise:        tls:{{$router_ip}}:6000
   dialers:
     - binding:          transport
+      options:
+        connectTimeout: 30s
 
 listeners:
 {{if .Component.HasTag "tunneler"}}

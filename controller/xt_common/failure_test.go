@@ -56,6 +56,10 @@ func (m mockTerminator) GetHostId() string {
 	panic("implement me")
 }
 
+func (m mockTerminator) GetSourceCtrl() string {
+	panic("implement me")
+}
+
 func TestFailures(t *testing.T) {
 	//t.SkipNow()
 	costVisitor := &CostVisitor{

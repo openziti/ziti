@@ -19,10 +19,10 @@ package db
 import (
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/foundation/v2/sequence"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/xt"
 	"go.etcd.io/bbolt"
 )
 
@@ -39,6 +39,7 @@ const (
 	FieldServerPeerData            = "peerData"
 	FieldTerminatorHostId          = "hostId"
 	FieldTerminatorSavedPrecedence = "savedPrecedence"
+	FieldTerminatorsSourceCtrl     = "sourceCtrl"
 )
 
 type Terminator struct {
@@ -54,6 +55,7 @@ type Terminator struct {
 	PeerData        xt.PeerData `json:"peerData"`
 	HostId          string      `json:"hostId"`
 	SavedPrecedence *string     `json:"savedPrecedence"`
+	SourceCtrl      string      `json:"sourceCtrl"`
 }
 
 func (entity *Terminator) GetCost() uint16 {
@@ -100,6 +102,10 @@ func (entity *Terminator) GetEntityType() string {
 	return EntityTypeTerminators
 }
 
+func (entity *Terminator) GetSourceCtrl() string {
+	return entity.SourceCtrl
+}
+
 type TerminatorStore interface {
 	boltz.EntityStore[*Terminator]
 	GetTerminatorsInIdentityGroup(tx *bbolt.Tx, terminatorId string) ([]*Terminator, error)
@@ -133,6 +139,7 @@ func (store *terminatorStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldTerminatorAddress, ast.NodeTypeString)
 	store.AddSymbol(FieldTerminatorInstanceId, ast.NodeTypeString)
 	store.AddSymbol(FieldTerminatorHostId, ast.NodeTypeString)
+	store.AddSymbol(FieldTerminatorsSourceCtrl, ast.NodeTypeString)
 
 	store.serviceSymbol = store.AddFkSymbol(FieldTerminatorService, store.stores.service)
 	store.routerSymbol = store.AddFkSymbol(FieldTerminatorRouter, store.stores.router)
@@ -164,6 +171,7 @@ func (store *terminatorStoreImpl) FillEntity(entity *Terminator, bucket *boltz.T
 	entity.Precedence = bucket.GetStringWithDefault(FieldTerminatorPrecedence, xt.Precedences.Default.String())
 	entity.HostId = bucket.GetStringWithDefault(FieldTerminatorHostId, "")
 	entity.SavedPrecedence = bucket.GetString(FieldTerminatorSavedPrecedence)
+	entity.SourceCtrl = bucket.GetStringWithDefault(FieldTerminatorsSourceCtrl, "")
 
 	data := bucket.GetBucket(FieldServerPeerData)
 	if data != nil {
@@ -201,6 +209,7 @@ func (store *terminatorStoreImpl) PersistEntity(entity *Terminator, ctx *boltz.P
 	ctx.SetRequiredString(FieldTerminatorPrecedence, entity.Precedence)
 	ctx.SetString(FieldTerminatorHostId, entity.HostId)
 	ctx.SetStringP(FieldTerminatorSavedPrecedence, entity.SavedPrecedence)
+	ctx.SetString(FieldTerminatorsSourceCtrl, entity.SourceCtrl)
 
 	if ctx.ProceedWithSet(FieldServerPeerData) {
 		_ = ctx.Bucket.DeleteBucket([]byte(FieldServerPeerData))

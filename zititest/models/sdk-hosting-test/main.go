@@ -17,13 +17,13 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
-	aws_ssh_key2 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
+	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
-	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
+	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
@@ -33,14 +33,7 @@ import (
 	"time"
 )
 
-// const TargetZitiVersion = "v0.31.0"
-
 const TargetZitiVersion = ""
-const TargetZitiEdgeTunnelVersion = ""
-
-//const TargetZitiEdgeTunnelVersion = "0.22.12"
-
-var TunnelType = "!zet"
 
 //go:embed configs
 var configResource embed.FS
@@ -100,7 +93,16 @@ var m = &model.Model{
 	},
 	StructureFactories: []model.Factory{
 		model.FactoryFunc(func(m *model.Model) error {
-			err := m.ForEachHost("component.router", 1, func(host *model.Host) error {
+			err := m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
+				host.InstanceType = "c5.xlarge"
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			err = m.ForEachHost("component.router", 1, func(host *model.Host) error {
 				host.InstanceType = "c5.xlarge"
 				return nil
 			})
@@ -123,6 +125,20 @@ var m = &model.Model{
 				return nil
 			})
 		}),
+		model.FactoryFunc(func(m *model.Model) error {
+			if val, _ := m.GetBoolVariable("ha"); !val {
+				for _, host := range m.SelectHosts("component.ha") {
+					delete(host.Region.Hosts, host.Id)
+				}
+			} else {
+				for _, component := range m.SelectComponents("*") {
+					if ztType, ok := component.Type.(*zitilab.ZitiTunnelType); ok {
+						ztType.HA = true
+					}
+				}
+			}
+			return nil
+		}),
 		model.NewScaleFactoryWithDefaultEntityFactory(&scaleStrategy{}),
 	},
 	Resources: model.Resources{
@@ -136,7 +152,6 @@ var m = &model.Model{
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
 				"ctrl1": {
-					InstanceType: "c5.xlarge",
 					Components: model.Components{
 						"ctrl1": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
@@ -171,9 +186,19 @@ var m = &model.Model{
 			},
 		},
 		"eu-west-2": {
-			Region: "us-west-2",
-			Site:   "us-west-2a",
+			Region: "eu-west-2",
+			Site:   "eu-west-2a",
 			Hosts: model.Hosts{
+				"ctrl2": {
+					Components: model.Components{
+						"ctrl2": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
+							Type: &zitilab.ControllerType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
 				"router-eu-{{.ScaleIndex}}": {
 					Scope: model.Scope{Tags: model.Tags{"router"}},
 					Components: model.Components{
@@ -202,6 +227,16 @@ var m = &model.Model{
 			Region: "ap-southeast-2",
 			Site:   "ap-southeast-2a",
 			Hosts: model.Hosts{
+				"ctrl3": {
+					Components: model.Components{
+						"ctrl3": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
+							Type: &zitilab.ControllerType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
 				"router-ap-{{.ScaleIndex}}": {
 					Scope: model.Scope{Tags: model.Tags{"router", "scaled"}},
 					Components: model.Components{
@@ -220,6 +255,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
 								Version: TargetZitiVersion,
+								HA:      true,
 							},
 						},
 					},
@@ -246,8 +282,6 @@ var m = &model.Model{
 
 			if isHA {
 				workflow.AddAction(semaphore.Sleep(2 * time.Second))
-				workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
-				workflow.AddAction(semaphore.Sleep(2 * time.Second))
 				workflow.AddAction(edge.InitRaftController("#ctrl1"))
 			}
 
@@ -258,10 +292,10 @@ var m = &model.Model{
 			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 25))
 			workflow.AddAction(edge.InitIdentities(".host", 25))
 
-			workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "all", "--edge-router-roles", "#all", "--identity-roles", "#all"))
-			workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "all", "--service-roles", "#all", "--edge-router-roles", "#all"))
+			workflow.AddAction(zitilibActions.Edge("create", "edge-router-policy", "all", "--edge-router-roles", "#all", "--identity-roles", "#all"))
+			workflow.AddAction(zitilibActions.Edge("create", "service-edge-router-policy", "all", "--service-roles", "#all", "--edge-router-roles", "#all"))
 
-			workflow.AddAction(zitilib_actions.Edge("create", "config", "host-config", "host.v1", `
+			workflow.AddAction(zitilibActions.Edge("create", "config", "host-config", "host.v1", `
 				{
 					"address" : "localhost",
 					"port" : 8080,
@@ -273,7 +307,7 @@ var m = &model.Model{
 				for i := 0; i < 2000; i++ {
 					name := fmt.Sprintf("service-%04d", i)
 					task := func() error {
-						_, err := cli.Exec(run.GetModel(), "edge", "create", "service", name, "-c", "host-config")
+						_, err := cli.Exec(run.GetModel(), "edge", "create", "service", name, "-c", "host-config", "--timeout", "15")
 						return err
 					}
 					tasks = append(tasks, task)
@@ -299,7 +333,7 @@ var m = &model.Model{
 					}
 					tasks = append(tasks, func() error {
 						_, err := cli.Exec(run.GetModel(), "edge", "create", "service-policy", name, "Bind",
-							"--identity-roles", identityRoles, "--service-roles", servicesRoles)
+							"--identity-roles", identityRoles, "--service-roles", servicesRoles, "--timeout", "15")
 						return err
 					})
 				}
@@ -307,6 +341,9 @@ var m = &model.Model{
 			}))
 
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
+			workflow.AddAction(semaphore.Sleep(5 * time.Second))
+
 			workflow.AddAction(component.StartInParallel(".router", 10))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(component.StartInParallel(".host", 50))
@@ -318,7 +355,9 @@ var m = &model.Model{
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
-		"login": model.Bind(edge.Login("#ctrl1")),
+		"login":  model.Bind(edge.Login("#ctrl1")),
+		"login2": model.Bind(edge.Login("#ctrl2")),
+		"login3": model.Bind(edge.Login("#ctrl3")),
 		"restart": model.ActionBinder(func(run *model.Model) model.Action {
 			workflow := actions.Workflow()
 			workflow.AddAction(component.StopInParallel("*", 100))
@@ -348,6 +387,13 @@ var m = &model.Model{
 			return nil
 		})),
 		"validate": model.Bind(model.ActionFunc(validateTerminators)),
+		"testIteration": model.Bind(model.ActionFunc(func(run model.Run) error {
+			return run.GetModel().Exec(run,
+				"sowChaos",
+				"validateUp",
+				"validate",
+			)
+		})),
 	},
 
 	Infrastructure: model.Stages{
@@ -367,7 +413,7 @@ var m = &model.Model{
 
 	Disposal: model.Stages{
 		terraform.Dispose(),
-		aws_ssh_key2.Dispose(),
+		awsSshKeyDispose.Dispose(),
 	},
 }
 

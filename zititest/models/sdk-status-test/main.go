@@ -280,9 +280,8 @@ var m = &model.Model{
 
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(semaphore.Sleep(5 * time.Second))
 
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(component.StartInParallel(".router", 10))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(component.StartInParallel(".host", 50))

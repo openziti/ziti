@@ -80,7 +80,7 @@ func validateTerminators(run model.Run) error {
 	deadline := time.Now().Add(15 * time.Minute)
 	for _, ctrl := range ctrls {
 		ctrlComponent := ctrl
-		go validateTerminatorsForCtrlWithChan(ctrlComponent, deadline, errC)
+		go validateTerminatorsForCtrlWithChan(run, ctrlComponent, deadline, errC)
 	}
 
 	for i := 0; i < len(ctrls); i++ {
@@ -93,39 +93,15 @@ func validateTerminators(run model.Run) error {
 	return nil
 }
 
-func validateTerminatorsForCtrlWithChan(c *model.Component, deadline time.Time, errC chan<- error) {
-	errC <- validateTerminatorsForCtrl(c, deadline)
+func validateTerminatorsForCtrlWithChan(run model.Run, c *model.Component, deadline time.Time, errC chan<- error) {
+	errC <- validateTerminatorsForCtrl(run, c, deadline)
 }
 
-func validateTerminatorsForCtrl(c *model.Component, deadline time.Time) error {
+func validateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time.Time) error {
 	expectedTerminatorCount := int64(6000)
-	username := c.MustStringVariable("credentials.edge.username")
-	password := c.MustStringVariable("credentials.edge.password")
-	edgeApiBaseUrl := c.Host.PublicIp + ":1280"
-
-	var clients *zitirest.Clients
-	loginStart := time.Now()
-	for {
-		var err error
-		clients, err = zitirest.NewManagementClients(edgeApiBaseUrl)
-		if err != nil {
-			if time.Since(loginStart) > time.Minute {
-				return err
-			}
-			pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("failed to initialize mgmt client, trying again in 1s")
-			time.Sleep(time.Second)
-			continue
-		}
-
-		if err = clients.Authenticate(username, password); err != nil {
-			if time.Since(loginStart) > time.Minute {
-				return err
-			}
-			pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("failed to authenticate, trying again in 1s")
-			time.Sleep(time.Second)
-		} else {
-			break
-		}
+	clients, err := chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
+	if err != nil {
+		return err
 	}
 
 	terminatorsPresent := false
@@ -142,6 +118,10 @@ func validateTerminatorsForCtrl(c *model.Component, deadline time.Time) error {
 			terminatorsPresent = true
 		} else {
 			time.Sleep(5 * time.Second)
+			clients, err = chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
+			if err != nil {
+				return err
+			}
 		}
 		if time.Since(lastLog) > time.Minute {
 			logger.Infof("current terminator count: %v, elapsed time: %v", terminatorCount, time.Since(start))
@@ -167,6 +147,11 @@ func validateTerminatorsForCtrl(c *model.Component, deadline time.Time) error {
 
 		logger.Infof("current count of invalid sdk terminators: %v, elapsed time: %v", count, time.Since(start))
 		time.Sleep(15 * time.Second)
+
+		clients, err = chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
+		if err != nil {
+			return err
+		}
 	}
 }
 

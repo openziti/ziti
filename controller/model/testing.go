@@ -52,6 +52,10 @@ type TestContext struct {
 	eventDispatcher event.Dispatcher
 }
 
+func (ctx *TestContext) GetId() string {
+	return ctx.config.Id.Token
+}
+
 func (ctx *TestContext) GetEnrollmentJwtSigner() (jwtsigner.Signer, error) {
 	return ctx, nil
 }
@@ -197,6 +201,9 @@ func NewTestContext(t testing.TB) *TestContext {
 	ctx.TestContext.Init()
 
 	ctx.config = &config.Config{
+		Id: &identity.TokenId{
+			Token: "test",
+		},
 		Network: config.DefaultNetworkConfig(),
 		Edge: &config.EdgeConfig{
 			Enrollment: config.Enrollment{

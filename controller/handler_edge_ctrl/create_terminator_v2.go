@@ -76,7 +76,6 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 	start := time.Now()
 	logger := pfxlog.ContextLogger(self.ch.Label()).
 		WithField("routerId", self.ch.Id()).
-		WithField("token", ctx.req.SessionToken).
 		WithField("terminatorId", ctx.req.Address)
 
 	if !ctx.loadRouter() {
@@ -143,6 +142,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 			Precedence:     ctx.req.GetXtPrecedence(),
 			Cost:           uint16(ctx.req.Cost),
 			HostId:         ctx.session.IdentityId,
+			SourceCtrl:     self.appEnv.GetId(),
 		}
 
 		cmd := &model.CreateEdgeTerminatorCmd{

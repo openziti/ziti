@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
+	"sort"
 	"time"
 )
 
@@ -31,8 +32,57 @@ type Controller struct {
 	CertPem      string
 	Fingerprint  string
 	IsOnline     bool
-	LastJoinedAt *time.Time
+	LastJoinedAt time.Time
 	ApiAddresses map[string][]ApiAddress
+}
+
+func (entity *Controller) sortApiAddresses() {
+	for _, v := range entity.ApiAddresses {
+		sort.Slice(v, func(i, j int) bool {
+			if v[i].Version < v[j].Version {
+				return true
+			}
+			if v[i].Version > v[j].Version {
+				return false
+			}
+			return v[i].Url < v[j].Url
+		})
+	}
+}
+
+func (entity *Controller) IsChanged(other *Controller) bool {
+	if entity.Name != other.Name ||
+		entity.CtrlAddress != other.CtrlAddress ||
+		entity.CertPem != other.CertPem ||
+		entity.Fingerprint != other.Fingerprint ||
+		entity.IsOnline != other.IsOnline {
+		return true
+	}
+
+	if len(entity.ApiAddresses) != len(other.ApiAddresses) {
+		return true
+	}
+
+	entity.sortApiAddresses()
+	other.sortApiAddresses()
+
+	for k, v := range entity.ApiAddresses {
+		v2, ok := other.ApiAddresses[k]
+		if !ok {
+			return true
+		}
+		if len(v) != len(v2) {
+			return true
+		}
+		for idx, addr := range v {
+			addr2 := v2[idx]
+			if addr.Version != addr2.Version || addr.Url != addr2.Url {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 type ApiAddress struct {
