@@ -28,7 +28,7 @@ const (
 )
 
 /**
-The smartrouting strategy relies purely on maninpulating costs and lets the smart routing algorithm pick the terminator.
+The smart routing strategy relies purely on manipulating costs and lets the smart routing algorithm pick the terminator.
 It increases costs by a small amount when a new circuit uses the terminator and drops it back down when the circuit
 closes. It also increases the cost whenever a dial fails and decreases it whenever a dial succeeds. Dial successes
 will only reduce costs by the amount that failures have previously increased it.
@@ -59,8 +59,8 @@ type strategy struct {
 	xt_common.CostVisitor
 }
 
-func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.CostedTerminator, error) {
-	return terminators[0], nil
+func (self *strategy) Select(_ xt.CreateCircuitParams, terminators []xt.CostedTerminator) (xt.CostedTerminator, xt.PeerData, error) {
+	return terminators[0], nil, nil
 }
 
 func (self *strategy) NotifyEvent(event xt.TerminatorEvent) {

@@ -17,11 +17,11 @@ and management of endpoints that make use of the Ziti SDK. The Ziti SDK can be b
 ingress and egress to the Ziti overlay network as well as to provide application specific networking to an individual
 application. Enabling the Edge features is optional.
 
-Both the Fabric and Edge features are built into the ziti-controller and ziti-router binaries.
+Both the Fabric and Edge features are built into the ziti binary.
 
 ## Ziti Controller
 
-The Ziti Controller (ziti-controller) is the main server component of a Ziti environment. It is the first piece of Ziti
+The Ziti Controller is the main server component of a Ziti environment. It is the first piece of Ziti
 that must be setup and configured. The controller houses all the router, service, and management data necessary
 to run a Ziti environment. There is one, and only one, controller per Ziti environment.
 
@@ -32,13 +32,13 @@ connectivity, and endpoint enrollment.
 
 ## Ziti Router
 
- The Ziti Router binary (ziti-router) is deployed multiple times to stand up multiple ingress and egress
- points for a Ziti overlay network. Each router has its own identity and must be enrolled with the controller.
- A Ziti environment requires one or more routers.
+The Ziti Router is deployed multiple times to stand up multiple ingress and egress points for a Ziti overlay network.
+Each router has its own identity and must be enrolled with the controller.  A Ziti environment requires one or more
+routers.
 
- If the Ziti Edge features are enabled, routers may optionally be enrolled as an "edge router". Edge routers allow Ziti
- SDK enabled applications, Ziti Applications, to access services or host services that have been configured within Ziti
- as overlay services.
+If the Ziti Edge features are enabled, routers may optionally be enrolled as an "edge router". Edge routers allow Ziti
+SDK enabled applications, Ziti Applications, to access services or host services that have been configured within Ziti
+as overlay services.
 
 ## Ziti Applications
 
@@ -49,29 +49,28 @@ Below is an outline of all the applications that are generated from this reposit
 The following binaries are used to deploy long running servers that route traffic and manage the
 configuration of a Ziti environment.
 
-| Binary Name       | Description|
+| Subcommand           | Description|
 |-------------------| -----------|
-| ziti-controller   | Runs a central server necessary for Ziti environments|
-| ziti-router       | Runs a server capable of ingress'ing and egress'ing Ziti traffic standalone or as a mesh|
+| ziti controller   | Runs a central server necessary for Ziti environments|
+| ziti router       | Runs a server capable of ingress'ing and egress'ing Ziti traffic standalone or as a mesh|
 
 ### Tools
 
-The following binaries provide utility or testing functionality.
+The following commands provide utility or testing functionality.
 
-| Binary Name       | Description|
+| Subcommand           | Description|
 |-------------------| -----------|
-| ziti-enroller     | Provides enrollment processing features for executables that do not directly support enrollment
-| ziti-fabric-gw    | Provides JSON RCP web service access to Ziti fabric management features
-| ziti-fabric-test  | The Ziti Fabric Toolbox which is used to test deployed fabric components|
+| ziti edge enroll  | Provides enrollment processing features for executables that do not directly support enrollment|
+| ziti fabric inspect | Observe Ziti Fabric runtime values                       |
 
 ### Management
 
 The following binaries are used to configure and manage a Ziti environment via command line interactions.
 
-| Binary Name       | Description|
+| Subcommand           | Description|
 |-------------------| -----------|
-| ziti-fabric       | Provides command line access to Ziti Fabric management features|
-| ziti              | Provides command line access to Ziti management features|
+| ziti fabric       | Provides command line access to Ziti Fabric management features|
+| ziti edge         | Provides command line access to Ziti management features|
 
 ## Endpoint Clients
 
@@ -79,12 +78,13 @@ The following binaries are Ziti endpoint clients which have the Ziti SDK built i
 edge router. Endpoint clients can be application specific or act as a bridge to other applications, hosts, or underlay
 networks.
 
-| Binary Name       | Description|
+| Subcommand           | Description|
 |-------------------| -----------|
-| ziti-tunnel       | Provides the ability to intercept traffic to route traffic across Ziti|
+| ziti tunnel       | Provides the ability to intercept traffic to route traffic across Ziti|
 
-All of the above binaries are cross platform compatible, except ziti-tunnel which is currently Linux only.
+All of the above binaries are cross platform compatible, except `ziti tunnel` which is currently Linux-only.
 
 ## Further Exploration
 
-Continue your OpenZiti exploration in [the next article about getting set up for local development](./002-local-dev.md) and building the apps from source.
+Continue your OpenZiti exploration in [the next article about getting set up for local development](./002-local-dev.md)
+and building the apps from source.

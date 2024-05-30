@@ -1,4 +1,13 @@
 services:
+  quickstart:
+    build:
+      # the build context is the root of the ziti repo so that BuildKit can access the built ziti executable in /build
+      # and the Dockerfile
+      context: ../../../ 
+      dockerfile: ./quickstart/docker/all-in-one/Dockerfile
+      args:
+        # path of the directory containing the locally-built ziti executable; relative to the build context
+        ARTIFACTS_DIR: ./build
   quickstart-test:
     profiles:
       - test
@@ -26,11 +35,11 @@ services:
       GOCACHE: /.cache/go-build
       GOPATH: /go
       ZITI_PWD:  # default "admin"
-      ZITI_CTRL_ADVERTISED_ADDRESS: ${EXTERNAL_DNS:-quickstart}
-      ZITI_CTRL_EDGE_ADVERTISED_ADDRESS: ${EXTERNAL_DNS:-quickstart}  # deprecated by ZITI_CTRL_ADVERTISED_ADDRESS
+      ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-quickstart}
+      ZITI_CTRL_EDGE_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-quickstart}  # deprecated by ZITI_CTRL_ADVERTISED_ADDRESS
       ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}
       ZITI_CTRL_EDGE_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}  # deprecated by ZITI_CTRL_ADVERTISED_PORT
-      ZITI_ROUTER_ADVERTISED_ADDRESS: ${EXTERNAL_DNS:-quickstart}
+      ZITI_ROUTER_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-quickstart}
       ZITI_ROUTER_PORT: ${ZITI_ROUTER_PORT:-3022}
       ZITI_ROUTER_NAME: ${ZITI_ROUTER_NAME:-quickstart-router}
     command: go test -v ./ziti/cmd/edge/...
@@ -38,7 +47,7 @@ services:
   wait-for-login:
     profiles:
       - test
-    image: ${ZITI_QUICK_IMAGE:-docker.io/openziti/ziti-cli}:${ZITI_QUICK_TAG:-latest}
+    image: ${ZITI_CLI_IMAGE:-docker.io/openziti/ziti-cli}:${ZITI_CLI_TAG:-latest}
     networks:
       - quickstart
     # run as the same user as the host, so we can write in ~/.config/ziti
@@ -62,6 +71,6 @@ services:
         ziti $${@}
     command: >
       -- edge login
-      ${EXTERNAL_DNS:-quickstart}:${ZITI_CTRL_ADVERTISED_PORT:-1280}
+      ${ZITI_CTRL_ADVERTISED_ADDRESS:-quickstart}:${ZITI_CTRL_ADVERTISED_PORT:-1280}
       -u ${ZITI_USER:-admin} -p ${ZITI_PWD:-admin}
       --ca /home/ziggy/quickstart/pki/root-ca/certs/root-ca.cert

@@ -82,7 +82,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	routerCmd := &cobra.Command{
 		Use:     "router",
 		Aliases: []string{"r"},
-		Short:   "Interact with a ziti-router process using the IPC agent",
+		Short:   "Interact with a ziti router process using the IPC agent",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdhelper.CheckErr(cmd.Help())
 		},

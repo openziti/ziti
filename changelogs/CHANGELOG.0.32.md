@@ -87,7 +87,7 @@ Example configuration:
 
 ```
 edge:
-  # This section allows configurating the rate limiter for auth attempts
+  # This section allows configuring the rate limiter for auth attempts
   authRateLimiter:
     # if disabled, no auth rate limiting with be enforced
     enabled: true

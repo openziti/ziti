@@ -1,0 +1,15 @@
+{
+    http_port 8090
+	log default {
+		output file /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/{{ .Component.Id }}.log
+		format json
+		level debug
+	}
+}
+
+
+http://localhost http://files-ert.ziti http://files-ert-unencrypted.ziti http://files-ziti-tunnel.ziti http://files-ziti-tunnel-unencrypted.ziti http://files-zet.ziti http://files-zet-unencrypted.ziti {
+    file_server {
+        root /home/{{ .Model.MustVariable "credentials.ssh.username" }}/www
+    }
+}

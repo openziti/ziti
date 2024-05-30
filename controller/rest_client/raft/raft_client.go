@@ -60,7 +60,7 @@ type ClientService interface {
 
 	RaftMemberRemove(params *RaftMemberRemoveParams, opts ...ClientOption) (*RaftMemberRemoveOK, error)
 
-	RaftTranferLeadership(params *RaftTranferLeadershipParams, opts ...ClientOption) (*RaftTranferLeadershipOK, error)
+	RaftTransferLeadership(params *RaftTransferLeadershipParams, opts ...ClientOption) (*RaftTransferLeadershipOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
@@ -186,24 +186,24 @@ func (a *Client) RaftMemberRemove(params *RaftMemberRemoveParams, opts ...Client
 }
 
 /*
-  RaftTranferLeadership attempts to transfer leadership to a different member of the cluster
+  RaftTransferLeadership attempts to transfer leadership to a different member of the cluster
 
   Attempts to transfer leadership to a different member of the cluster. Requires admin access.
 */
-func (a *Client) RaftTranferLeadership(params *RaftTranferLeadershipParams, opts ...ClientOption) (*RaftTranferLeadershipOK, error) {
+func (a *Client) RaftTransferLeadership(params *RaftTransferLeadershipParams, opts ...ClientOption) (*RaftTransferLeadershipOK, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
-		params = NewRaftTranferLeadershipParams()
+		params = NewRaftTransferLeadershipParams()
 	}
 	op := &runtime.ClientOperation{
-		ID:                 "raftTranferLeadership",
+		ID:                 "raftTransferLeadership",
 		Method:             "POST",
 		PathPattern:        "/raft/transfer-leadership",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"https"},
 		Params:             params,
-		Reader:             &RaftTranferLeadershipReader{formats: a.formats},
+		Reader:             &RaftTransferLeadershipReader{formats: a.formats},
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
@@ -215,13 +215,13 @@ func (a *Client) RaftTranferLeadership(params *RaftTranferLeadershipParams, opts
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*RaftTranferLeadershipOK)
+	success, ok := result.(*RaftTransferLeadershipOK)
 	if ok {
 		return success, nil
 	}
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for raftTranferLeadership: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	msg := fmt.Sprintf("unexpected success response for raftTransferLeadership: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

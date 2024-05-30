@@ -35,6 +35,7 @@ func NewStartAction() model.ActionBinder {
 
 func (a *startAction) bind(m *model.Model) model.Action {
 	workflow := actions.Workflow()
+	workflow.AddAction(component.StartInParallel(".caddy", 5))
 	workflow.AddAction(component.Start(".ctrl"))
 	workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
 	workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 25))
@@ -44,6 +45,7 @@ func (a *startAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(component.StartInParallel(".sdk-app", 5))
 
 	workflow.AddAction(semaphore.Sleep(5 * time.Second))
+	workflow.AddAction(edge.Login("#ctrl1"))
 	workflow.AddAction(zitilib_actions.Edge("list", "edge-routers", "limit none"))
 	workflow.AddAction(zitilib_actions.Edge("list", "terminators", "limit none"))
 

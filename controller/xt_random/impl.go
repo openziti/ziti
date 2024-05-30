@@ -42,14 +42,14 @@ func (self *factory) NewStrategy() xt.Strategy {
 
 type strategy struct{}
 
-func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.CostedTerminator, error) {
+func (self *strategy) Select(_ xt.CreateCircuitParams, terminators []xt.CostedTerminator) (xt.CostedTerminator, xt.PeerData, error) {
 	terminators = xt.GetRelatedTerminators(terminators)
 	count := len(terminators)
 	if count == 1 {
-		return terminators[0], nil
+		return terminators[0], nil, nil
 	}
 	selected := rand.Intn(count)
-	return terminators[selected], nil
+	return terminators[selected], nil, nil
 }
 
 func (self *strategy) NotifyEvent(xt.TerminatorEvent) {}

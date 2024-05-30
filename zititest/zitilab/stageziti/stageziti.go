@@ -39,6 +39,19 @@ func StageZrokOnce(run model.Run, component *model.Component, version string, so
 	})
 }
 
+func StageCaddyOnce(run model.Run, component *model.Component, version string, source string) error {
+	op := "install.caddy-"
+	if version == "" {
+		op += "local"
+	} else {
+		op += version
+	}
+
+	return run.DoOnce(op, func() error {
+		return StageCaddy(run, component, version, source)
+	})
+}
+
 func StageZitiEdgeTunnelOnce(run model.Run, component *model.Component, version string, source string) error {
 	op := "install.ziti-edge-tunnel-"
 	if version == "" {
@@ -61,6 +74,12 @@ func StageZiti(run model.Run, component *model.Component, version string, source
 func StageZrok(run model.Run, component *model.Component, version string, source string) error {
 	return StageExecutable(run, "zrok", component, version, source, func() error {
 		return getziti.InstallZrok(version, "linux", "amd64", run.GetBinDir(), false)
+	})
+}
+
+func StageCaddy(run model.Run, component *model.Component, version string, source string) error {
+	return StageExecutable(run, "caddy", component, version, source, func() error {
+		return getziti.InstallCaddy(version, "linux", "amd64", run.GetBinDir(), false)
 	})
 }
 

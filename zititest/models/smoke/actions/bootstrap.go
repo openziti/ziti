@@ -80,8 +80,8 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-host", "host.v1", `
 		{
-			"address" : "ziti-smoketest-files.s3-us-west-1.amazonaws.com",
-			"port" : 443,
+			"address" : "localhost",
+			"port" : 8090,
 			"protocol" : "tcp"
 		}`))
 
@@ -119,8 +119,8 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 			filesConfigName := fmt.Sprintf("files-intercept-%s%s", hostType, suffix)
 			filesConfigDef := fmt.Sprintf(`
 				{
-					"addresses": ["files-%s%s.s3-us-west-1.amazonaws.ziti"],
-					"portRanges" : [ { "low": 443, "high": 443 } ],
+					"addresses": ["files-%s%s.ziti"],
+					"portRanges" : [ { "low": 80, "high": 80 } ],
 					"protocols": ["tcp"]
 				}`, hostType, suffix)
 

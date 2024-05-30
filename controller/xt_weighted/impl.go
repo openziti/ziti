@@ -26,7 +26,7 @@ import (
 
 /**
 The weighted strategy does random selection of available strategies in proportion to the terminator costs. So if a
-given terminator has twice the fully evaluated cost as another terminator it should idealy be selected roughly half
+given terminator has twice the fully evaluated cost as another terminator it should ideally be selected roughly half
 as often.
 */
 
@@ -55,10 +55,10 @@ type strategy struct {
 	xt_common.CostVisitor
 }
 
-func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.CostedTerminator, error) {
+func (self *strategy) Select(_ xt.CreateCircuitParams, terminators []xt.CostedTerminator) (xt.CostedTerminator, xt.PeerData, error) {
 	terminators = xt.GetRelatedTerminators(terminators)
 	if len(terminators) == 1 {
-		return terminators[0], nil
+		return terminators[0], nil, nil
 	}
 
 	var costIdx []float32
@@ -81,11 +81,11 @@ func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.CostedTermin
 	selected := rand.Float32()
 	for idx, cost := range costIdx {
 		if selected < cost {
-			return terminators[idx], nil
+			return terminators[idx], nil, nil
 		}
 	}
 
-	return terminators[0], nil
+	return terminators[0], nil, nil
 }
 
 func (self *strategy) NotifyEvent(event xt.TerminatorEvent) {

@@ -38,7 +38,7 @@ import (
 	"time"
 )
 
-const ZitiEdgeTunnelVersion = "v0.22.28"
+const ZitiEdgeTunnelVersion = "v0.22.30"
 
 //go:embed configs
 var configResource embed.FS
@@ -155,7 +155,9 @@ var Model = &model.Model{
 					Components: model.Components{
 						"router-east-1": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client"}},
-							Type:  &zitilab.RouterType{},
+							Type: &zitilab.RouterType{
+								Debug: false,
+							},
 						},
 						"zcat": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
@@ -167,7 +169,9 @@ var Model = &model.Model{
 					Components: model.Components{
 						"router-east-2": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator"}},
-							Type:  &zitilab.RouterType{},
+							Type: &zitilab.RouterType{
+								Debug: false,
+							},
 						},
 					},
 				},
@@ -177,7 +181,8 @@ var Model = &model.Model{
 						"ziti-edge-tunnel-client": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								Version: ZitiEdgeTunnelVersion,
+								Version:        ZitiEdgeTunnelVersion,
+								VerbosityLevel: 6,
 							},
 						},
 					},
@@ -210,7 +215,9 @@ var Model = &model.Model{
 					Components: model.Components{
 						"router-west": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host"}},
-							Type:  &zitilab.RouterType{},
+							Type: &zitilab.RouterType{
+								Debug: false,
+							},
 						},
 						"echo-server": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},
@@ -222,6 +229,12 @@ var Model = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
+						"caddy-ert": {
+							Scope: model.Scope{Tags: model.Tags{"caddy", "service"}},
+							Type: &zitilab.CaddyType{
+								Version: "v2.7.6",
+							},
+						},
 					},
 				},
 				"ziti-edge-tunnel-host": {
@@ -229,12 +242,19 @@ var Model = &model.Model{
 						"ziti-edge-tunnel-host": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								Version: ZitiEdgeTunnelVersion,
+								Version:        ZitiEdgeTunnelVersion,
+								VerbosityLevel: 6,
 							},
 						},
 						"iperf-server-zet": {
 							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
 							Type:  &zitilab.IPerfServerType{},
+						},
+						"caddy-zet": {
+							Scope: model.Scope{Tags: model.Tags{"caddy", "service"}},
+							Type: &zitilab.CaddyType{
+								Version: "v2.7.6",
+							},
 						},
 					},
 				},
@@ -250,6 +270,12 @@ var Model = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
+						"caddy-zt": {
+							Scope: model.Scope{Tags: model.Tags{"caddy", "service"}},
+							Type: &zitilab.CaddyType{
+								Version: "v2.7.6",
+							},
+						},
 					},
 				},
 			},
@@ -263,6 +289,21 @@ var Model = &model.Model{
 		"login":     model.Bind(edge.Login("#ctrl1")),
 		"login2":    model.Bind(edge.Login("#ctrl2")),
 		"login3":    model.Bind(edge.Login("#ctrl3")),
+		"testZet": model.Bind(model.ActionFunc(func(run model.Run) error {
+			out, err := TestFileDownload("zet", ClientCurl, "zet", true, FileSizes[0])
+			pfxlog.Logger().WithField("test output", out).Info("test completed")
+			return err
+		})),
+		"testZitiTunnel": model.Bind(model.ActionFunc(func(run model.Run) error {
+			out, err := TestFileDownload("ziti-tunnel", ClientCurl, "ziti-tunnel", true, FileSizes[0])
+			pfxlog.Logger().WithField("test output", out).Info("test completed")
+			return err
+		})),
+		"testScenario3": model.Bind(model.ActionFunc(func(run model.Run) error {
+			out, err := TestFileDownload("ert", ClientCurl, "ziti-tunnel", false, FileSizes[2])
+			pfxlog.Logger().WithField("test output", out).Info("test completed")
+			return err
+		})),
 	},
 
 	Infrastructure: model.Stages{

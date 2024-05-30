@@ -521,7 +521,6 @@ func (network *Network) RerouteLink(l *Link) {
 }
 
 func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, error) {
-	srcR := params.GetSourceRouter()
 	clientId := params.GetClientId()
 	service := params.GetServiceId()
 	ctx := params.GetLogContext()
@@ -559,7 +558,7 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 		logger = logger.WithField("serviceName", svc.Name)
 
 		// 3: select terminator
-		strategy, terminator, pathNodes, circuitErr := network.selectPath(srcR, svc, instanceId, ctx)
+		strategy, terminator, pathNodes, strategyData, circuitErr := network.selectPath(params, svc, instanceId, ctx)
 		if circuitErr != nil {
 			network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, circuitErr.Cause())
 			network.ServiceDialOtherError(serviceId)
@@ -653,6 +652,10 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 		delete(peerData, uint32(ctrl_msg.TerminatorLocalAddressHeader))
 		delete(peerData, uint32(ctrl_msg.TerminatorRemoteAddressHeader))
 
+		for k, v := range strategyData {
+			peerData[k] = v
+		}
+
 		now := time.Now()
 		// 6: Create Circuit Object
 		circuit := &Circuit{
@@ -697,7 +700,7 @@ func parseInstanceIdAndService(service string) (string, string) {
 	return identityId, serviceId
 }
 
-func (network *Network) selectPath(srcR *Router, svc *Service, instanceId string, ctx logcontext.Context) (xt.Strategy, xt.CostedTerminator, []*Router, CircuitError) {
+func (network *Network) selectPath(params CreateCircuitParams, svc *Service, instanceId string, ctx logcontext.Context) (xt.Strategy, xt.CostedTerminator, []*Router, xt.PeerData, CircuitError) {
 	paths := map[string]*PathAndCost{}
 	var weightedTerminators []xt.CostedTerminator
 	var errList []error
@@ -725,7 +728,7 @@ func (network *Network) selectPath(srcR *Router, svc *Service, instanceId string
 				continue
 			}
 
-			path, cost, err := network.shortestPath(srcR, dstR)
+			path, cost, err := network.shortestPath(params.GetSourceRouter(), dstR)
 			if err != nil {
 				log.Debugf("error while calculating path for service %v: %v", svc.Id, err)
 				errList = append(errList, err)
@@ -748,38 +751,38 @@ func (network *Network) selectPath(srcR *Router, svc *Service, instanceId string
 	}
 
 	if len(svc.Terminators) == 0 {
-		return nil, nil, nil, newCircuitErrorf(CircuitFailureNoTerminators, "service %v has no terminators", svc.Id)
+		return nil, nil, nil, nil, newCircuitErrorf(CircuitFailureNoTerminators, "service %v has no terminators", svc.Id)
 	}
 
 	if len(weightedTerminators) == 0 {
 		if pathError {
-			return nil, nil, nil, newCircuitErrWrap(CircuitFailureNoPath, errorz.MultipleErrors(errList))
+			return nil, nil, nil, nil, newCircuitErrWrap(CircuitFailureNoPath, errorz.MultipleErrors(errList))
 		}
 
 		if hasOfflineRouters {
-			return nil, nil, nil, newCircuitErrorf(CircuitFailureNoOnlineTerminators, "service %v has no online terminators for instanceId %v", svc.Id, instanceId)
+			return nil, nil, nil, nil, newCircuitErrorf(CircuitFailureNoOnlineTerminators, "service %v has no online terminators for instanceId %v", svc.Id, instanceId)
 		}
 
-		return nil, nil, nil, newCircuitErrorf(CircuitFailureNoTerminators, "service %v has no terminators for instanceId %v", svc.Id, instanceId)
+		return nil, nil, nil, nil, newCircuitErrorf(CircuitFailureNoTerminators, "service %v has no terminators for instanceId %v", svc.Id, instanceId)
 	}
 
 	strategy, err := network.strategyRegistry.GetStrategy(svc.TerminatorStrategy)
 	if err != nil {
-		return nil, nil, nil, newCircuitErrWrap(CircuitFailureInvalidStrategy, err)
+		return nil, nil, nil, nil, newCircuitErrWrap(CircuitFailureInvalidStrategy, err)
 	}
 
 	sort.Slice(weightedTerminators, func(i, j int) bool {
 		return weightedTerminators[i].GetRouteCost() < weightedTerminators[j].GetRouteCost()
 	})
 
-	terminator, err := strategy.Select(weightedTerminators)
+	terminator, peerData, err := strategy.Select(params, weightedTerminators)
 
 	if err != nil {
-		return nil, nil, nil, newCircuitErrorf(CircuitFailureStrategyError, "strategy %v errored selecting terminator for service %v: %v", svc.TerminatorStrategy, svc.Id, err)
+		return nil, nil, nil, nil, newCircuitErrorf(CircuitFailureStrategyError, "strategy %v errored selecting terminator for service %v: %v", svc.TerminatorStrategy, svc.Id, err)
 	}
 
 	if terminator == nil {
-		return nil, nil, nil, newCircuitErrorf(CircuitFailureStrategyError, "strategy %v did not select terminator for service %v", svc.TerminatorStrategy, svc.Id)
+		return nil, nil, nil, nil, newCircuitErrorf(CircuitFailureStrategyError, "strategy %v did not select terminator for service %v", svc.TerminatorStrategy, svc.Id)
 	}
 
 	path := paths[terminator.GetRouterId()].path
@@ -803,7 +806,7 @@ func (network *Network) selectPath(srcR *Router, svc *Service, instanceId string
 		log.Debugf("selected terminator %v for path %v from %v", terminator.GetId(), pathStr, buf.String())
 	}
 
-	return strategy, terminator, path, nil
+	return strategy, terminator, path, peerData, nil
 }
 
 func (network *Network) RemoveCircuit(circuitId string, now bool) error {

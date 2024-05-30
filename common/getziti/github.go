@@ -34,6 +34,10 @@ func (self *GitHubReleasesData) GetDownloadUrl(appName string, targetOS, targetA
 	}
 
 	for _, asset := range self.Assets {
+		if !strings.HasSuffix(asset.BrowserDownloadURL, ".zip") &&
+			!strings.HasSuffix(asset.BrowserDownloadURL, ".tar.gz") {
+			continue
+		}
 		ok := false
 		for _, arch := range arches {
 			if strings.Contains(strings.ToLower(asset.BrowserDownloadURL), arch) {
@@ -65,21 +69,21 @@ func getRequest(verbose bool) *resty.Request {
 		R()
 }
 
-func GetLatestGitHubReleaseVersion(zitiApp string, verbose bool) (semver.Version, error) {
+func GetLatestGitHubReleaseVersion(org, zitiApp string, verbose bool) (semver.Version, error) {
 	var result semver.Version
-	release, err := GetHighestVersionGitHubReleaseInfo(zitiApp, verbose)
+	release, err := GetHighestVersionGitHubReleaseInfo(org, zitiApp, verbose)
 	if release != nil {
 		result = release.SemVer
 	}
 	return result, err
 }
 
-func GetHighestVersionGitHubReleaseInfo(appName string, verbose bool) (*GitHubReleasesData, error) {
+func GetHighestVersionGitHubReleaseInfo(org, appName string, verbose bool) (*GitHubReleasesData, error) {
 	resp, err := getRequest(verbose).
 		SetQueryParams(map[string]string{}).
 		SetHeader("Accept", "application/vnd.github.v3+json").
 		SetResult([]*GitHubReleasesData{}).
-		Get("https://api.github.com/repos/openziti/" + appName + "/releases")
+		Get(fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", org, appName))
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to get latest version for '%s'", appName)
@@ -113,13 +117,13 @@ func GetHighestVersionRelease(appName string, releases []*GitHubReleasesData) (*
 	return releases[0], nil
 }
 
-func GetLatestGitHubReleaseAsset(appName string, appGitHub string, version string, verbose bool) (*GitHubReleasesData, error) {
+func GetLatestGitHubReleaseAsset(org, appName string, appGitHub string, version string, verbose bool) (*GitHubReleasesData, error) {
 	if version != "latest" {
 		if appName == "ziti-prox-c" {
 			version = strings.TrimPrefix(version, "v")
 		}
 
-		if appName == "ziti" || appName == "ziti-edge-tunnel" || appName == "zrok" {
+		if appName == "ziti" || appName == "ziti-edge-tunnel" || appName == "zrok" || appName == "caddy" {
 			if !strings.HasPrefix(version, "v") {
 				version = "v" + version
 			}
@@ -138,7 +142,7 @@ func GetLatestGitHubReleaseAsset(appName string, appGitHub string, version strin
 		SetQueryParams(map[string]string{}).
 		SetHeader("Accept", "application/vnd.github.v3+json").
 		SetResult(&GitHubReleasesData{}).
-		Get("https://api.github.com/repos/openziti/" + appGitHub + "/releases/" + version)
+		Get(fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/%s", org, appGitHub, version))
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get latest version for '%s'; %s", appName, err)
@@ -177,7 +181,7 @@ func DownloadGitHubReleaseAsset(fullUrl string, filepath string) (err error) {
 	return nil
 }
 
-func FindVersionAndInstallGitHubRelease(zitiApp string, zitiAppGitHub string, targetOS, targetArch string, binDir string, version string, verbose bool) error {
+func FindVersionAndInstallGitHubRelease(org, app string, zitiAppGitHub string, targetOS, targetArch string, binDir string, version string, verbose bool) error {
 	releaseVersion := version
 	if version != "" && version != "latest" {
 		if _, err := semver.Make(strings.TrimPrefix(version, "v")); err != nil {
@@ -185,18 +189,18 @@ func FindVersionAndInstallGitHubRelease(zitiApp string, zitiAppGitHub string, ta
 		}
 	} else {
 		version = "latest"
-		v, err := GetLatestGitHubReleaseVersion(zitiApp, verbose)
+		v, err := GetLatestGitHubReleaseVersion(org, app, verbose)
 		if err != nil {
 			return err
 		}
 		releaseVersion = v.String()
 	}
 
-	release, err := GetLatestGitHubReleaseAsset(zitiApp, zitiAppGitHub, releaseVersion, verbose)
+	release, err := GetLatestGitHubReleaseAsset(org, app, zitiAppGitHub, releaseVersion, verbose)
 	if err != nil {
 		return err
 	}
-	return InstallGitHubRelease(zitiApp, release, binDir, targetOS, targetArch, version)
+	return InstallGitHubRelease(app, release, binDir, targetOS, targetArch, version)
 }
 
 func InstallGitHubRelease(zitiApp string, release *GitHubReleasesData, binDir string, targetOS, targetArch, version string) error {
@@ -303,6 +307,29 @@ func InstallGitHubRelease(zitiApp string, release *GitHubReleasesData, binDir st
 
 			if count != 1 {
 				return errors.Errorf("didn't find zrok executable in release archive. count: %v", count)
+			}
+
+			pfxlog.Logger().Infof("Successfully installed '%s' version '%s' to %s", zitiApp, release.Version, filepath.Join(binDir, zitiFileName))
+			return nil
+		} else if zitiApp == c.Caddy {
+			count := 0
+			zitiFileName := "caddy-" + version
+			expectedPath := "caddy"
+
+			err = UnTarGz(fullPath, binDir, func(path string) (string, bool) {
+				if path == expectedPath {
+					count++
+					return zitiFileName, true
+				}
+				return "", false
+			})
+
+			if err != nil {
+				return err
+			}
+
+			if count != 1 {
+				return errors.Errorf("didn't find caddy executable in release archive. count: %v", count)
 			}
 
 			pfxlog.Logger().Infof("Successfully installed '%s' version '%s' to %s", zitiApp, release.Version, filepath.Join(binDir, zitiFileName))

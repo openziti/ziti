@@ -18,12 +18,9 @@ package tests
 
 import (
 	"fmt"
-	"github.com/openziti/fablab/kernel/lib"
-	"github.com/openziti/fablab/kernel/libssh"
-	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/ziti/zititest/models/smoke"
 	"github.com/stretchr/testify/require"
 	"testing"
-	"time"
 )
 
 func TestIPerf(t *testing.T) {
@@ -80,26 +77,7 @@ func testIPerf(t *testing.T, hostSelector string, hostType string, encrypted boo
 	success := false
 
 	t.Run(fmt.Sprintf("(%s%s%s)-%v", hostSelector, direction, hostType, encDesk), func(t *testing.T) {
-		host, err := model.GetModel().SelectHost("." + hostSelector + "-client")
-		req := require.New(t)
-		req.NoError(err)
-
-		urlExtra := ""
-		if !encrypted {
-			urlExtra = "-unencrypted"
-		}
-
-		addr := fmt.Sprintf("iperf-%s%s.ziti", hostType, urlExtra)
-
-		extraOptions := ""
-		if reversed {
-			extraOptions += " -R"
-		}
-
-		cmd := fmt.Sprintf(`set -o pipefail; iperf3 -c %s -P 1 -t 10 %s`, addr, extraOptions)
-
-		sshConfigFactory := lib.NewSshConfigFactory(host)
-		o, err := libssh.RemoteExecAllWithTimeout(sshConfigFactory, 20*time.Second, cmd)
+		o, err := smoke.TestIperf(hostSelector, hostType, encrypted, reversed)
 		if hostType == "zet" && err != nil {
 			t.Skipf("zet hosted iperf test failed [%v]", err.Error())
 			return
@@ -121,7 +99,7 @@ func testIPerf(t *testing.T, hostSelector string, hostType string, encrypted boo
 		}
 
 		t.Log(o)
-		req.NoError(err)
+		require.NoError(t, err)
 		success = true
 	})
 	return success

@@ -1,0 +1,26 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: OpenZiti
+message: >-
+  Thanks for using OpenZiti. Please cite it using this
+  metadata.
+type: software
+authors:
+  - name: NetFoundry Inc.
+    address: 101 S Tryon St UNIT 2700
+    city: Charlotte
+    country: US
+    post-code: '28280'
+repository-code: 'https://github.com/openziti/ziti'
+url: 'https://openziti.io'
+abstract: >-
+  OpenZiti is a free and open source project focused on
+  bringing zero trust networking principles directly into
+  applications.
+keywords:
+  - open source
+  - zero trust
+  - secure networking
+license: Apache-2.0

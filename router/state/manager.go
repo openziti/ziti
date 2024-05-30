@@ -605,12 +605,7 @@ func (sm *ManagerImpl) StartHeartbeat(env env.RouterEnv, intervalSeconds int, cl
 }
 
 func (sm *ManagerImpl) AddConnectedApiSession(token string) {
-	sm.activeApiSessions.Upsert(token, nil, func(exist bool, valueInMap *MapWithMutex, newValue *MapWithMutex) *MapWithMutex {
-		if exist {
-			return valueInMap
-		}
-		return newMapWithMutex()
-	})
+	sm.activeApiSessions.Set(token, nil)
 }
 
 func (sm *ManagerImpl) RemoveConnectedApiSession(token string) {
@@ -657,10 +652,12 @@ func (sm *ManagerImpl) ActiveApiSessionTokens() []string {
 	var toClose []func()
 	var activeKeys []string
 	for i := range sm.activeApiSessions.IterBuffered() {
-		func() {
-			token := i.Key
-			chMutex := i.Val
-
+		token := i.Key
+		chMutex := i.Val
+		if chMutex == nil {
+			// An xgress_edge_tunnel api-session won't have associated channels
+			activeKeys = append(activeKeys, token)
+		} else {
 			chMutex.Visit(func(ch channel.Channel, closeCb func()) {
 				if ch.IsClosed() {
 					toClose = append(toClose, closeCb)
@@ -668,7 +665,11 @@ func (sm *ManagerImpl) ActiveApiSessionTokens() []string {
 					activeKeys = append(activeKeys, token)
 				}
 			})
-		}()
+		}
+	}
+
+	for _, f := range toClose {
+		f()
 	}
 
 	return activeKeys

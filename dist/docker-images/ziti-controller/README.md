@@ -17,7 +17,7 @@ The included `compose.yml` demonstrates how to bootstrap a controller container.
 
 At a minimum, you must set the address and password options in the parent env or set every recurrence in the compose file.
 
-```bash
+```text
 # fetch the compose file for the ziti-router image
 wget https://get.openziti.io/dist/docker-images/ziti-controller/compose.yml
 
@@ -30,6 +30,6 @@ After a few seconds, `docker compose ps` will show a "healthy" status for the co
 
 Then, you may log in to the controller using the `ziti` CLI.
 
-```bash
+```text
 ziti edge login ctrl.127.21.71.0.sslip.io:1280 -u admin -p mypass
 ```

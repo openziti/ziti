@@ -43,7 +43,7 @@ jobs:
     name: Test all-in-one Quickstart
     runs-on: ubuntu-latest
     env:
-      ZITI_QUICK_TAG: local  # override default :latest since we're not pulling from registry
+      ZITI_CLI_TAG: local  # override default :latest since we're not pulling from registry
       ARTIFACTS_DIR: ${{ github.workspace }}/build  # output dir for `go build`, input dir for `compose up --build`
       ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
     steps:

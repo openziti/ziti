@@ -204,8 +204,8 @@ func (self *testFailoverStrategy) VisitDialSucceeded(xt.TerminatorEvent) {
 	atomic.StoreInt32(&self.failCount, 0)
 }
 
-func (self *testFailoverStrategy) Select(terminators []xt.CostedTerminator) (xt.CostedTerminator, error) {
-	return terminators[0], nil
+func (self *testFailoverStrategy) Select(_ xt.CreateCircuitParams, terminators []xt.CostedTerminator) (xt.CostedTerminator, xt.PeerData, error) {
+	return terminators[0], nil, nil
 }
 
 func (self *testFailoverStrategy) NotifyEvent(event xt.TerminatorEvent) {

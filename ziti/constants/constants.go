@@ -19,20 +19,16 @@ package constants
 import "time"
 
 const (
+	OpenZitiOrg             = "openziti"
 	ZITI                    = "ziti"
 	ZROK                    = "zrok"
+	CaddyOrg                = "caddyserver"
+	Caddy                   = "caddy"
 	ZITI_CONTROLLER         = "ziti-controller"
 	ZITI_ROUTER             = "ziti-router"
 	ZITI_TUNNEL             = "ziti-tunnel"
 	ZITI_EDGE_TUNNEL        = "ziti-edge-tunnel"
 	ZITI_EDGE_TUNNEL_GITHUB = "ziti-tunnel-sdk-c"
-	ZITI_PROX_C             = "ziti-prox-c"
-	ZITI_SDK_C_GITHUB       = "ziti-sdk-c"
-
-	TERRAFORM_PROVIDER_PREFIX          = "terraform-provider-"
-	TERRAFORM_PROVIDER_EDGE_CONTROLLER = "edgecontroller"
-
-	CONFIGFILENAME = "config"
 )
 
 // Config Template Constants
@@ -59,11 +55,11 @@ const (
 
 // Env Var Constants
 const (
-	ZitiHomeVarName                                  = "ZITI_HOME"
-	ZitiHomeVarDescription                           = "base dirname used to construct paths"
+	ZitiHomeVarName        = "ZITI_HOME"
+	ZitiHomeVarDescription = "base dirname used to construct paths"
 
-	ZitiNetworkNameVarName                           = "ZITI_NETWORK_NAME"
-	ZitiNetworkNameVarDescription                    = "base filename used to construct paths"
+	ZitiNetworkNameVarName        = "ZITI_NETWORK_NAME"
+	ZitiNetworkNameVarDescription = "base filename used to construct paths"
 
 	PkiCtrlCertVarName                               = "ZITI_PKI_CTRL_CERT"
 	PkiCtrlCertVarDescription                        = "Path to the controller's default identity client cert"

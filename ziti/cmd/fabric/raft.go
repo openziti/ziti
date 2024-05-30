@@ -203,7 +203,7 @@ func (self *raftTransferLeadershipAction) run(cmd *cobra.Command, args []string)
 		newLeader = args[0]
 	}
 
-	_, err = client.Raft.RaftTranferLeadership(&raft.RaftTranferLeadershipParams{
+	_, err = client.Raft.RaftTransferLeadership(&raft.RaftTransferLeadershipParams{
 		Context: context.Background(),
 		Member: &rest_model.RaftTransferLeadership{
 			NewLeaderID: newLeader,

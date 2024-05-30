@@ -35,42 +35,42 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-// RaftTranferLeadershipHandlerFunc turns a function with the right signature into a raft tranfer leadership handler
-type RaftTranferLeadershipHandlerFunc func(RaftTranferLeadershipParams) middleware.Responder
+// RaftTransferLeadershipHandlerFunc turns a function with the right signature into a raft transfer leadership handler
+type RaftTransferLeadershipHandlerFunc func(RaftTransferLeadershipParams) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn RaftTranferLeadershipHandlerFunc) Handle(params RaftTranferLeadershipParams) middleware.Responder {
+func (fn RaftTransferLeadershipHandlerFunc) Handle(params RaftTransferLeadershipParams) middleware.Responder {
 	return fn(params)
 }
 
-// RaftTranferLeadershipHandler interface for that can handle valid raft tranfer leadership params
-type RaftTranferLeadershipHandler interface {
-	Handle(RaftTranferLeadershipParams) middleware.Responder
+// RaftTransferLeadershipHandler interface for that can handle valid raft transfer leadership params
+type RaftTransferLeadershipHandler interface {
+	Handle(RaftTransferLeadershipParams) middleware.Responder
 }
 
-// NewRaftTranferLeadership creates a new http.Handler for the raft tranfer leadership operation
-func NewRaftTranferLeadership(ctx *middleware.Context, handler RaftTranferLeadershipHandler) *RaftTranferLeadership {
-	return &RaftTranferLeadership{Context: ctx, Handler: handler}
+// NewRaftTransferLeadership creates a new http.Handler for the raft transfer leadership operation
+func NewRaftTransferLeadership(ctx *middleware.Context, handler RaftTransferLeadershipHandler) *RaftTransferLeadership {
+	return &RaftTransferLeadership{Context: ctx, Handler: handler}
 }
 
-/* RaftTranferLeadership swagger:route POST /raft/transfer-leadership Raft raftTranferLeadership
+/* RaftTransferLeadership swagger:route POST /raft/transfer-leadership Raft raftTransferLeadership
 
 Attempts to transfer leadership to a different member of the cluster
 
 Attempts to transfer leadership to a different member of the cluster. Requires admin access.
 
 */
-type RaftTranferLeadership struct {
+type RaftTransferLeadership struct {
 	Context *middleware.Context
-	Handler RaftTranferLeadershipHandler
+	Handler RaftTransferLeadershipHandler
 }
 
-func (o *RaftTranferLeadership) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (o *RaftTransferLeadership) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	route, rCtx, _ := o.Context.RouteInfo(r)
 	if rCtx != nil {
 		*r = *rCtx
 	}
-	var Params = NewRaftTranferLeadershipParams()
+	var Params = NewRaftTransferLeadershipParams()
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return

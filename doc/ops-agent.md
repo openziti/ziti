@@ -64,8 +64,8 @@ Use unix sockets to limit security risk. Only the user on the machine who starte
 
 Examples:
 
-1. `ziti-controller --cli-agent-addr unix:/tmp/my-special-agent-file.sock`
-2. `ziti-controller --cli-agent-addr tcp:127.0.0.1:10001`
+1. `ziti controller --cli-agent-addr unix:/tmp/my-special-agent-file.sock`
+2. `ziti controller --cli-agent-addr tcp:127.0.0.1:10001`
 
 ### Disabling the Agent
 

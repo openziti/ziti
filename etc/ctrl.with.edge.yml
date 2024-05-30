@@ -108,7 +108,7 @@ healthChecks:
 # By having an 'edge' section defined, the ziti-controller will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the edge to not run.
 edge:
-  # This section allows configurating the rate limiter for auth attempts
+  # This section allows configuring the rate limiter for auth attempts
   authRateLimiter:
     # if disabled, no auth rate limiting with be enforced
     enabled: true

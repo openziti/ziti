@@ -27,11 +27,12 @@ import (
 var _ model.ComponentType = (*ZitiEdgeTunnelType)(nil)
 
 type ZitiEdgeTunnelType struct {
-	Version     string
-	ZitiVersion string
-	LocalPath   string
-	LogConfig   string
-	ConfigPathF func(c *model.Component) string
+	Version        string
+	ZitiVersion    string
+	LocalPath      string
+	LogConfig      string
+	VerbosityLevel uint16
+	ConfigPathF    func(c *model.Component) string
 }
 
 func (self *ZitiEdgeTunnelType) Label() string {
@@ -114,7 +115,12 @@ func (self *ZitiEdgeTunnelType) Start(_ model.Run, c *model.Component) error {
 		logging = "ZITI_LOG=" + self.LogConfig + " "
 	}
 
-	serviceCmd := fmt.Sprintf("%ssudo %s run -i %s > %s 2>&1 &", logging, binaryPath, configPath, logsPath)
+	verbosity := ""
+	if self.VerbosityLevel > 0 {
+		verbosity = fmt.Sprintf("-v %v", self.VerbosityLevel)
+	}
+
+	serviceCmd := fmt.Sprintf("ZITI_TIME_FORMAT=utc %ssudo -E %s run %s -i %s > %s 2>&1 &", logging, binaryPath, verbosity, configPath, logsPath)
 	logrus.Infof("starting: %s", serviceCmd)
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {

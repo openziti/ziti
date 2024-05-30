@@ -42,11 +42,16 @@ import (
 	"github.com/openziti/ziti/router/xgress_common"
 )
 
-var peerHeaders = []uint32{
-	edge.PublicKeyHeader,
-	edge.CallerIdHeader,
-	edge.AppDataHeader,
-	edge.ConnectionMarkerHeader,
+var peerHeaderRequestMappings = map[uint32]uint32{
+	edge.PublicKeyHeader:        edge.PublicKeyHeader,
+	edge.CallerIdHeader:         edge.CallerIdHeader,
+	edge.AppDataHeader:          edge.AppDataHeader,
+	edge.ConnectionMarkerHeader: edge.ConnectionMarkerHeader,
+	edge.StickinessTokenHeader:  ctrl_msg.XtStickinessToken,
+}
+
+var peerHeaderRespMappings = map[uint32]uint32{
+	ctrl_msg.XtStickinessToken: edge.StickinessTokenHeader,
 }
 
 type listener struct {
@@ -162,9 +167,9 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 	log.Debug("dialing fabric")
 	peerData := make(map[uint32][]byte)
 
-	for _, key := range peerHeaders {
-		if pk, found := req.Headers[int32(key)]; found {
-			peerData[key] = pk
+	for k, v := range peerHeaderRequestMappings {
+		if pk, found := req.Headers[int32(k)]; found {
+			peerData[v] = pk
 		}
 	}
 
@@ -197,12 +202,23 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 		return
 	}
 
+	self.mapResponsePeerData(response.PeerData)
+
 	x := xgress.NewXgress(response.CircuitId, ctrlCh.Id(), xgress.Address(response.Address), conn, xgress.Initiator, &self.listener.options.Options, response.Tags)
 	self.listener.bindHandler.HandleXgressBind(x)
 	conn.ctrlRx = x
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
 	self.sendStateConnectedReply(req, response.PeerData, response.CircuitId)
 	x.Start()
+}
+
+func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
+	for k, v := range peerHeaderRespMappings {
+		if val, ok := m[k]; ok {
+			delete(m, k)
+			m[v] = val
+		}
+	}
 }
 
 func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {

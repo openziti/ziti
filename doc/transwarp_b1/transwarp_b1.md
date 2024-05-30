@@ -399,7 +399,7 @@ From there, you can zoom in on the dataset in detail:
 
 ### Comparing Against TCP
 
-We can run the scenerio again, swapping in the `tcp` protocol instead of the `westworld3` protocol by invoking the `dilithium tunnel server` and `client` like this:
+We can run the scenario again, swapping in the `tcp` protocol instead of the `westworld3` protocol by invoking the `dilithium tunnel server` and `client` like this:
 
 ```
 [fedora@ip-10-0-0-217 ~]$ fablab/bin/dilithium tunnel server 0.0.0.0:6262 127.0.0.1:22 -p tcp
@@ -461,7 +461,7 @@ The metrics instrument (and the other `dilithium` instruments) can be used with 
 
 This example will be configured similarly to the pure Dilithium example above. There are two routers, each in an AWS VPC in different regions separated by geography. One of the routers provides a link listener, configured to use `transwarptls:`.
 
-Here's the relevant logging output from the `ziti-router` process:
+Here's the relevant logging output from the `ziti router` process:
 
 ```
 [   0.002]    INFO foundation/transport/transwarptls.Listen: westworld3 profile = [
@@ -512,7 +512,7 @@ Here's the relevant logging output from the `ziti-router` process:
 [   0.002]    INFO fabric/router.(*Router).startXlinkListeners: started Xlink listener with binding [transport] advertising [transwarptls:54.167.243.24:6000]
 ```
 
-Here's the relevant log output when starting the second `ziti-router`, configured without a link listener. This output represents it dialing the `transwarptls:` link connection to the first router:
+Here's the relevant log output when starting the second `ziti router`, configured without a link listener. This output represents it dialing the `transwarptls:` link connection to the first router:
 
 ```
 [   0.630]    INFO fabric/router/handler_ctrl.(*dialHandler).handle: received link connect request

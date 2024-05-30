@@ -1,9 +1,87 @@
+# Release 1.1.3
+
+## What's New
+
+* Sticky Terminator Selection
+* Linux and Docker deployments log formats no longer default to the simplified format option and now use logging library
+  defaults: `json` for non-interactive, `text` for interactive.
+
+NOTE: This release is the first since 1.0.0 to be marked promoted from pre-release. Be sure to check the release notes
+      for the rest of the post-1.0.0 releases to get the full set of changes.
+
+## Stick Terminator Strategy
+
+This release introduces a new terminator selection strategy `sticky`. On every dial it will return a token to the 
+dialer, which represents the terminator used in the dial. This token maybe passed in on subsequent dials. If no token
+is passed in, the strategy will work the same as the `smartrouting` strategy. If a token is passed in, and the 
+terminator is still valid, the same terminator will be used for the dial. A terminator will be consideder valid if
+it still exists and there are no terminators with a higher precedence. 
+
+This is currently only supported in the Go SDK.
+
+### Go SDK Example
+
+```
+ziti edge create service test --terminator-strategy sticky
+```
+
+```
+	conn := clientContext.Dial("test")
+	token := conn.Conn.GetStickinessToken()
+	_ = conn.Close()
+
+	dialOptions := &ziti.DialOptions{
+		ConnectTimeout:  time.Second,
+		StickinessToken: token,
+	}
+	conn = clientContext.DialWithOptions("test", dialOptions))
+	nextToken := conn.Conn.GetStickinessToken()
+	_ = conn.Close()
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.128 -> v2.0.130](https://github.com/openziti/channel/compare/v2.0.128...v2.0.130)
+* github.com/openziti/edge-api: [v0.26.18 -> v0.26.19](https://github.com/openziti/edge-api/compare/v0.26.18...v0.26.19)
+* github.com/openziti/foundation/v2: [v2.0.42 -> v2.0.45](https://github.com/openziti/foundation/compare/v2.0.42...v2.0.45)
+* github.com/openziti/identity: [v1.0.75 -> v1.0.77](https://github.com/openziti/identity/compare/v1.0.75...v1.0.77)
+* github.com/openziti/metrics: [v1.2.51 -> v1.2.54](https://github.com/openziti/metrics/compare/v1.2.51...v1.2.54)
+* github.com/openziti/runzmd: [v1.0.43 -> v1.0.47](https://github.com/openziti/runzmd/compare/v1.0.43...v1.0.47)
+* github.com/openziti/sdk-golang: [v0.23.35 -> v0.23.37](https://github.com/openziti/sdk-golang/compare/v0.23.35...v0.23.37)
+    * [Issue #562](https://github.com/openziti/sdk-golang/issues/562) - Support sticky dials
+
+* github.com/openziti/secretstream: [v0.1.19 -> v0.1.20](https://github.com/openziti/secretstream/compare/v0.1.19...v0.1.20)
+* github.com/openziti/storage: [v0.2.37 -> v0.2.41](https://github.com/openziti/storage/compare/v0.2.37...v0.2.41)
+* github.com/openziti/transport/v2: [v2.0.131 -> v2.0.133](https://github.com/openziti/transport/compare/v2.0.131...v2.0.133)
+* github.com/openziti/ziti: [v1.1.2 -> v1.1.3](https://github.com/openziti/ziti/compare/v1.1.2...v1.1.3)
+    * [Issue #2064](https://github.com/openziti/ziti/issues/2064) - Fix panic on link close
+    * [Issue #2062](https://github.com/openziti/ziti/issues/2062) - Link connection retry delays should contain some randomization 
+    * [Issue #2055](https://github.com/openziti/ziti/issues/2055) - Controller panics on 'ziti agent cluster list'
+    * [Issue #2019](https://github.com/openziti/ziti/issues/2019) - Support mechanism for sticky dials
+
+# Release 1.1.2
+
+## What's New
+
+* Bug fixes and minor enhancements
+
+## Component Updates and Bug Fixes
+* github.com/openziti/sdk-golang: [v0.23.32 -> v0.23.35](https://github.com/openziti/sdk-golang/compare/v0.23.32...v0.23.35)
+* github.com/openziti/ziti: [v1.1.1 -> v1.1.2](https://github.com/openziti/ziti/compare/v1.1.1...v1.1.2)
+  * [Issue #2032](https://github.com/openziti/ziti/issues/2032) - Auto CA Enrollment Fails w/ 400 Bad Request
+  * [Issue #2026](https://github.com/openziti/ziti/issues/2026) - Root Version Endpoint Handling 404s
+  * [Issue #2002](https://github.com/openziti/ziti/issues/2002) - JWKS endpoints may not refresh on new KID
+  * [Issue #2007](https://github.com/openziti/ziti/issues/2007) - Identities for edge routers with tunneling enabled sometimes show hasEdgeRouterConnection=false even though everything is OK
+  * [Issue #1983](https://github.com/openziti/ziti/issues/1983) - delete of non-existent entity causes panic when run on follower controller
+
+
 # Release 1.1.1
 
 ## What's New
 
 * HA Alpha-3
 * Bug fixes and minor enhancements
+* [The all-in-one quickstart compose project](./quickstart/docker/all-in-one/README.md) now uses the same environment variable to configure the controller's address as the ziti command line tool
 
 ## HA Alpha 3
 
