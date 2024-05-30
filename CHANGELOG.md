@@ -6,6 +6,9 @@
 * Linux and Docker deployments log formats no longer default to the simplified format option and now use logging library
   defaults: `json` for non-interactive, `text` for interactive.
 
+NOTE: This release is the first since 1.0.0 to be marked promoted from pre-release. Be sure to check the release notes
+      for the rest of the post-1.0.0 releases to get the full set of changes.
+
 ## Stick Terminator Strategy
 
 This release introduces a new terminator selection strategy `sticky`. On every dial it will return a token to the 
