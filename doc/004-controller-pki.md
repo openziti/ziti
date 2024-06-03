@@ -390,11 +390,11 @@ Ensure that the `env` file is sourced if you are using a new terminal.
     
     listeners:
         - binding: edge
-        address: tls:0.0.0.0:3022
-        options:
+          address: tls:0.0.0.0:3022
+          options:
             advertise: ${ZITI_NETWORK}-er01.ziti.netfoundry.io:3022
         - binding: transport
-        address: tls:0.0.0.0:7099    
+          address: tls:0.0.0.0:7099
     YAML
     ```
 
