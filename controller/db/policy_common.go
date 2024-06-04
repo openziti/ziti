@@ -106,6 +106,21 @@ func (self *roleAttributeChangeContext) notifyOfPolicyChangeEvent(
 	})
 }
 
+func (self *roleAttributeChangeContext) processServicePolicyEvents() {
+	if len(self.servicePolicyEvents) > 0 {
+		self.mutateCtx.UpdateContext(func(stateCtx context.Context) context.Context {
+			eventSlice := self.servicePolicyEvents
+			currentValue := stateCtx.Value(ServicePolicyEventsKey)
+			if currentValue != nil {
+				currentSlice := currentValue.([]*edge_ctrl_pb.DataState_ServicePolicyChange)
+				eventSlice = append(eventSlice, currentSlice...)
+			}
+			return context.WithValue(stateCtx, ServicePolicyEventsKey, eventSlice)
+		})
+		self.servicePolicyEvents = nil
+	}
+}
+
 func (store *baseStore[E]) validateRoleAttributes(attributes []string, holder errorz.ErrorHolder) {
 	for _, attr := range attributes {
 		if strings.HasPrefix(attr, "#") {
@@ -194,20 +209,17 @@ func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeCha
 				ctx.addServiceUpdatedEvent(store.stores, ctx.tx(), toId)
 			}
 		}
-		evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoles)
+
+		log := pfxlog.ChannelLogger("policyEval", ctx.rolesSymbol.GetStore().GetSingularEntityType()+"Eval").
+			WithFields(logrus.Fields{
+				"id":       string(policyId),
+				"semantic": semantic,
+				"symbol":   ctx.rolesSymbol.GetName(),
+			})
+		evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoles, log)
 	}
 
-	if len(ctx.servicePolicyEvents) > 0 {
-		ctx.mutateCtx.UpdateContext(func(stateCtx context.Context) context.Context {
-			eventSlice := ctx.servicePolicyEvents
-			currentValue := stateCtx.Value(ServicePolicyEventsKey)
-			if currentValue != nil {
-				currentSlice := currentValue.([]*edge_ctrl_pb.DataState_ServicePolicyChange)
-				eventSlice = append(eventSlice, currentSlice...)
-			}
-			return context.WithValue(stateCtx, ServicePolicyEventsKey, eventSlice)
-		})
-	}
+	ctx.processServicePolicyEvents()
 }
 
 func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttributesSymbol boltz.EntitySetSymbol) {
@@ -221,7 +233,7 @@ func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttribut
 
 	log := pfxlog.ChannelLogger("policyEval", ctx.rolesSymbol.GetStore().GetSingularEntityType()+"Eval").
 		WithFields(logrus.Fields{
-			"id":       policyId,
+			"id":       policy.GetId(),
 			"semantic": semantic,
 			"symbol":   ctx.rolesSymbol.GetName(),
 		})
@@ -245,9 +257,10 @@ func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttribut
 	for ; cursor.IsValid(); cursor.Next() {
 		entityId := cursor.Current()
 		entityRoleAttributes := roleAttributesSymbol.EvalStringList(ctx.tx(), entityId)
-		match, change := evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoleAttributes)
+		match, change := evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoleAttributes, log)
 		log.Tracef("evaluating %v match: %v, change: %v", string(entityId), match, change)
 	}
+	ctx.processServicePolicyEvents()
 }
 
 func validateEntityIds(tx *bbolt.Tx, store boltz.Store, field string, ids []string) error {
@@ -281,26 +294,40 @@ func UpdateRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRol
 		if _, semanticValue := semanticSymbol.Eval(ctx.tx(), policyId); semanticValue != nil {
 			semantic = string(semanticValue)
 		}
-		evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoles)
+
+		log := pfxlog.ChannelLogger("policyEval", ctx.rolesSymbol.GetStore().GetSingularEntityType()+"Eval").
+			WithFields(logrus.Fields{
+				"id":       string(policyId),
+				"semantic": semantic,
+				"symbol":   ctx.rolesSymbol.GetName(),
+			})
+		evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoles, log)
 	}
+
+	ctx.processServicePolicyEvents()
 }
 
-func evaluatePolicyAgainstEntity(ctx *roleAttributeChangeContext, semantic string, entityId, policyId []byte, ids, roles, roleAttributes []string) (bool, bool) {
+func evaluatePolicyAgainstEntity(ctx *roleAttributeChangeContext, semantic string, entityId, policyId []byte, ids, roles, roleAttributes []string, log *logrus.Entry) (bool, bool) {
 	if stringz.Contains(ids, string(entityId)) || stringz.Contains(roles, "all") ||
 		(strings.EqualFold(semantic, SemanticAllOf) && len(roles) > 0 && stringz.ContainsAll(roleAttributes, roles...)) ||
 		(strings.EqualFold(semantic, SemanticAnyOf) && len(roles) > 0 && stringz.ContainsAny(roleAttributes, roles...)) {
-		return true, ProcessEntityPolicyMatched(ctx, entityId, policyId)
+		return true, ProcessEntityPolicyMatched(ctx, entityId, policyId, log)
 	} else {
-		return false, ProcessEntityPolicyUnmatched(ctx, entityId, policyId)
+		return false, ProcessEntityPolicyUnmatched(ctx, entityId, policyId, log)
 	}
 }
 
-func ProcessEntityPolicyMatched(ctx *roleAttributeChangeContext, entityId, policyId []byte) bool {
+func ProcessEntityPolicyMatched(ctx *roleAttributeChangeContext, entityId, policyId []byte, log *logrus.Entry) bool {
 	// first add it to the denormalize link table from the policy to the entity (ex: service policy -> identity)
 	// If it's already there (in other words, this policy didn't change in relation to the entity,
 	// we don't have any further work to do
 	if added, err := ctx.linkCollection.AddLink(ctx.tx(), policyId, entityId); ctx.SetError(err) || !added {
 		return false
+	}
+
+	if ctx.changeHandler != nil {
+		log.Tracef("change add handler called for entity %s", entityId)
+		ctx.changeHandler(policyId, entityId, true)
 	}
 
 	// next iterate over the denormalized link tables going from entity to entity (ex: service -> identity)
@@ -315,20 +342,23 @@ func ProcessEntityPolicyMatched(ctx *roleAttributeChangeContext, entityId, polic
 			return false
 		}
 		if ctx.denormChangeHandler != nil && newCount == 1 {
+			log.Tracef("denorm change add handler called for entity %s -> related entity %s", entityId, relatedEntityId)
 			ctx.denormChangeHandler(entityId, relatedEntityId, true)
-		}
-		if ctx.changeHandler != nil {
-			ctx.changeHandler(policyId, entityId, true)
 		}
 	}
 	return true
 }
 
-func ProcessEntityPolicyUnmatched(ctx *roleAttributeChangeContext, entityId, policyId []byte) bool {
+func ProcessEntityPolicyUnmatched(ctx *roleAttributeChangeContext, entityId, policyId []byte, log *logrus.Entry) bool {
 	// first remove it from the denormalize link table from the policy to the entity (ex: service policy -> identity)
 	// If wasn't there (in other words, this policy didn't change in relation to the entity, we don't have any further work to do
 	if removed, err := ctx.linkCollection.RemoveLink(ctx.tx(), policyId, entityId); ctx.SetError(err) || !removed {
 		return false
+	}
+
+	if ctx.changeHandler != nil {
+		log.Tracef("change remove handler called for entity %s", entityId)
+		ctx.changeHandler(policyId, entityId, false)
 	}
 
 	// next iterate over the denormalized link tables going from entity to entity (ex: service -> identity)
@@ -343,10 +373,8 @@ func ProcessEntityPolicyUnmatched(ctx *roleAttributeChangeContext, entityId, pol
 			return false
 		}
 		if ctx.denormChangeHandler != nil && newCount == 0 {
+			log.Tracef("denorm change remove handler called for entity %s -> related entity %s", entityId, relatedEntityId)
 			ctx.denormChangeHandler(entityId, relatedEntityId, false)
-		}
-		if ctx.changeHandler != nil {
-			ctx.changeHandler(policyId, entityId, false)
 		}
 	}
 	return true

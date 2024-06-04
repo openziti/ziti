@@ -18,12 +18,12 @@ package model
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -424,4 +424,11 @@ func NewFieldChecker(fields ...string) boltz.FieldChecker {
 		result[field] = struct{}{}
 	}
 	return result
+}
+
+type NotFieldChecker map[string]struct{}
+
+func (checker NotFieldChecker) IsUpdated(field string) bool {
+	_, ok := checker[field]
+	return !ok
 }

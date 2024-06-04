@@ -58,6 +58,9 @@ enum ContentType {
   ValidateRouterSdkTerminatorsResponseType = 10107;
   ValidateRouterSdkTerminatorsResultType = 10108;
 
+  ValidateRouterDataModelRequestType = 10109;
+  ValidateRouterDataModelResponseType = 10110;
+  ValidateRouterDataModelResultType = 10111;
 }
 
 enum Header {
@@ -265,7 +268,26 @@ message RouterSdkTerminatorDetail {
   TerminatorState ctrlState = 2;
   string routerState = 3;
   bool isValid = 4;
-  bool operaationActive = 5;
+  bool operationActive = 5;
   string createTime = 6;
   string lastAttempt = 7;
+}
+
+message ValidateRouterDataModelRequest {
+  string routerFilter = 1;
+  bool validateCtrl = 2;
+}
+
+message ValidateRouterDataModelResponse {
+  bool success = 1;
+  string message = 2;
+  uint64 componentCount = 3;
+}
+
+message RouterDataModelDetails {
+  string componentType = 1;
+  string componentId = 2;
+  string componentName = 3;
+  bool validateSuccess = 4;
+  repeated string errors = 5;
 }

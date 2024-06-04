@@ -5,7 +5,5 @@ package version
 var (
 	Version   = "v0.0.0"
 	Revision  = "local"
-	Branch    = "local"
-	BuildUser = "local"
 	BuildDate = "2020-01-01 01:01:01"
 )

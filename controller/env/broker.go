@@ -88,6 +88,10 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 	return broker
 }
 
+func (broker *Broker) ValidateRouterDataModel() []error {
+	return broker.routerSyncStrategy.Validate()
+}
+
 func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {
 	if broker.ae.HostController.IsRaftLeader() {
 		if clusterEvent.EventType == event.ClusterPeerConnected {

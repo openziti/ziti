@@ -285,7 +285,7 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 	}
 	sort.Sort(sortableServiceConfigSlice(checkConfigs))
 	currentConfigs = ctx.AdminManagementSession.listIdentityServiceConfigs(*session.AuthResponse.IdentityID)
-	ctx.Req.Equal(checkConfigs, currentConfigs)
+	ctx.Req.Equal(checkConfigs, currentConfigs, "configs don't match for id %s", *session.AuthResponse.IdentityID)
 
 	service1V.configs[configType3.Name] = config5
 	service3V.configs[configType1.Name] = config1
@@ -317,7 +317,10 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 		service.configs = map[string]*Config{}
 	}
 
-	ctx.AdminManagementSession.requireRemoveIdentityServiceConfigs(*session.AuthResponse.IdentityID)
+	ctx.AdminManagementSession.requireRemoveIdentityServiceConfigs(*session.AuthResponse.IdentityID,
+		serviceConfig{ServiceId: service4.Id, ConfigId: config1.Id},
+		serviceConfig{ServiceId: service4.Id, ConfigId: config5.Id},
+		serviceConfig{ServiceId: service3.Id, ConfigId: config4.Id})
 	currentConfigs = ctx.AdminManagementSession.listIdentityServiceConfigs(*session.AuthResponse.IdentityID)
 	ctx.Req.Equal(0, len(currentConfigs))
 

@@ -62,6 +62,7 @@ type RouterSyncStrategy interface {
 	GetPublicKeys() map[string]*edge_ctrl_pb.DataState_PublicKey
 	RouterConnectionHandler
 	RouterSynchronizerEventHandler
+	Validate() []error
 }
 
 // RouterConnectionHandler is responsible for handling router connect/disconnect for synchronizing state.

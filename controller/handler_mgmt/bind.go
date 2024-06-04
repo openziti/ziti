@@ -18,6 +18,7 @@ package handler_mgmt
 
 import (
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/common/trace"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/xmgmt"
@@ -25,10 +26,10 @@ import (
 
 type BindHandler struct {
 	network *network.Network
-	xmgmts  []xmgmt.Xmgmt
+	xmgmts  *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
 }
 
-func NewBindHandler(network *network.Network, xmgmts []xmgmt.Xmgmt) channel.BindHandler {
+func NewBindHandler(network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) channel.BindHandler {
 	return &BindHandler{network: network, xmgmts: xmgmts}
 }
 
@@ -70,7 +71,7 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(bindHandler.network.GetAppId(), binding.GetChannel(), bindHandler.network.GetTraceController()))
 
 	xmgmtDone := make(chan struct{})
-	for _, x := range bindHandler.xmgmts {
+	for _, x := range bindHandler.xmgmts.Value() {
 		if err := binding.Bind(x); err != nil {
 			return err
 		}
@@ -78,7 +79,7 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 			return err
 		}
 	}
-	if len(bindHandler.xmgmts) > 0 {
+	if len(bindHandler.xmgmts.Value()) > 0 {
 		binding.AddCloseHandler(newXmgmtCloseHandler(xmgmtDone))
 	}
 

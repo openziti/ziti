@@ -23,10 +23,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/xmgmt"
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/controller/network"
 	"net/http"
 	"os"
 	"strings"
@@ -37,18 +36,16 @@ var _ xweb.ApiHandlerFactory = &MetricsApiFactory{}
 type MetricsApiFactory struct {
 	network *network.Network
 	nodeId  identity.Identity
-	xmgmts  []xmgmt.Xmgmt
 }
 
 func (factory *MetricsApiFactory) Validate(_ *xweb.InstanceConfig) error {
 	return nil
 }
 
-func NewMetricsApiFactory(nodeId identity.Identity, network *network.Network, xmgmts []xmgmt.Xmgmt) *MetricsApiFactory {
+func NewMetricsApiFactory(nodeId identity.Identity, network *network.Network) *MetricsApiFactory {
 	return &MetricsApiFactory{
 		network: network,
 		nodeId:  nodeId,
-		xmgmts:  xmgmts,
 	}
 }
 

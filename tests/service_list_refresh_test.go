@@ -316,8 +316,18 @@ func Test_ServiceListRefresh(t *testing.T) {
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
 
-		ctx.AdminManagementSession.requireDeleteEntity(config)
+		time.Sleep(time.Millisecond)
+		ctx.AdminManagementSession.requireRemoveIdentityServiceConfigs(identity.Id, serviceConfig{
+			ServiceId: service.Id,
+			ConfigId:  config.Id,
+		})
+
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
+		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
+
+		time.Sleep(time.Millisecond)
+		ctx.AdminManagementSession.requireDeleteEntity(config)
+		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
 	})
 
 	t.Run("test identity config removed", func(t *testing.T) {

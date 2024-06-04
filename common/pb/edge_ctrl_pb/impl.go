@@ -14,22 +14,21 @@
 	limitations under the License.
 */
 
-package subcmd
+package edge_ctrl_pb
 
-import (
-	"fmt"
-	"github.com/openziti/ziti/common/version"
-	"github.com/spf13/cobra"
-)
+func (x *DataState_Identity) GetServiceConfigsAsMap() map[string]map[string]string {
+	if x.ServiceConfigs == nil {
+		return nil
+	}
 
-func init() {
-	Root.AddCommand(versionCmd)
-}
+	result := map[string]map[string]string{}
+	for k, v := range x.ServiceConfigs {
+		m := map[string]string{}
+		for configType, configId := range v.Configs {
+			m[configType] = configId
+		}
+		result[k] = m
+	}
 
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show component version",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(version.GetVersion())
-	},
+	return result
 }

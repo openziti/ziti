@@ -17,6 +17,7 @@
 package db
 
 import (
+	"fmt"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
@@ -139,13 +140,7 @@ func (store *configStoreImpl) DeleteById(ctx boltz.MutateContext, id string) err
 		}
 		identityId := keys[0]
 		serviceId := keys[1]
-		err = store.stores.identity.removeServiceConfigs(ctx.Tx(), identityId, func(identityServiceId, _, configId string) bool {
-			return identityServiceId == serviceId && configId == id
-		})
-		if err != nil {
-			mapCtx.SetError(err)
-			return
-		}
+		mapCtx.SetError(fmt.Errorf("config is in use by identity %s for service %s", identityId, serviceId))
 	})
 	if err != nil {
 		return err

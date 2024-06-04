@@ -1,3 +1,19 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package common
 
 import (
@@ -45,6 +61,8 @@ type RouterDataModel struct {
 	EventCache
 	listeners map[chan *edge_ctrl_pb.DataState_ChangeSet]struct{}
 
+	ConfigTypes     cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_ConfigType]   `json:"configTypes"`
+	Configs         cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Config]       `json:"configs"`
 	Identities      cmap.ConcurrentMap[string, *Identity]                            `json:"identities"`
 	Services        cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Service]      `json:"services"`
 	ServicePolicies cmap.ConcurrentMap[string, *ServicePolicy]                       `json:"servicePolicies"`
@@ -61,6 +79,8 @@ type RouterDataModel struct {
 func NewSenderRouterDataModel(logSize uint64, listenerBufferSize uint) *RouterDataModel {
 	return &RouterDataModel{
 		EventCache:         NewLoggingEventCache(logSize),
+		ConfigTypes:        cmap.New[*edge_ctrl_pb.DataState_ConfigType](),
+		Configs:            cmap.New[*edge_ctrl_pb.DataState_Config](),
 		Identities:         cmap.New[*Identity](),
 		Services:           cmap.New[*edge_ctrl_pb.DataState_Service](),
 		ServicePolicies:    cmap.New[*ServicePolicy](),
@@ -76,6 +96,8 @@ func NewSenderRouterDataModel(logSize uint64, listenerBufferSize uint) *RouterDa
 func NewReceiverRouterDataModel(listenerBufferSize uint) *RouterDataModel {
 	return &RouterDataModel{
 		EventCache:         NewForgetfulEventCache(),
+		ConfigTypes:        cmap.New[*edge_ctrl_pb.DataState_ConfigType](),
+		Configs:            cmap.New[*edge_ctrl_pb.DataState_Config](),
 		Identities:         cmap.New[*Identity](),
 		Services:           cmap.New[*edge_ctrl_pb.DataState_Service](),
 		ServicePolicies:    cmap.New[*ServicePolicy](),
@@ -138,7 +160,7 @@ func (rdm *RouterDataModel) sendEvent(event *edge_ctrl_pb.DataState_ChangeSet) {
 	}
 }
 
-// Apply applies the given even to the router data model.
+// ApplyChangeSet applies the given even to the router data model.
 func (rdm *RouterDataModel) ApplyChangeSet(change *edge_ctrl_pb.DataState_ChangeSet) {
 	changeAccepted := false
 	err := rdm.EventCache.Store(change, func(index uint64, change *edge_ctrl_pb.DataState_ChangeSet) {
@@ -161,6 +183,10 @@ func (rdm *RouterDataModel) ApplyChangeSet(change *edge_ctrl_pb.DataState_Change
 
 func (rdm *RouterDataModel) Handle(event *edge_ctrl_pb.DataState_Event) {
 	switch typedModel := event.Model.(type) {
+	case *edge_ctrl_pb.DataState_Event_ConfigType:
+		rdm.HandleConfigTypeEvent(event, typedModel)
+	case *edge_ctrl_pb.DataState_Event_Config:
+		rdm.HandleConfigEvent(event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_Identity:
 		rdm.HandleIdentityEvent(event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_Service:
@@ -206,6 +232,28 @@ func (rdm *RouterDataModel) HandleServiceEvent(event *edge_ctrl_pb.DataState_Eve
 		rdm.Services.Remove(model.Service.Id)
 	} else {
 		rdm.Services.Set(model.Service.Id, model.Service)
+	}
+}
+
+// HandleConfigTypeEvent will apply the delta event to the router data model. It is not restricted by index calculations.
+// Use ApplyConfigTypeEvent for event logged event handling. This method is generally meant for bulk loading of data
+// during startup.
+func (rdm *RouterDataModel) HandleConfigTypeEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_ConfigType) {
+	if event.Action == edge_ctrl_pb.DataState_Delete {
+		rdm.ConfigTypes.Remove(model.ConfigType.Id)
+	} else {
+		rdm.ConfigTypes.Set(model.ConfigType.Id, model.ConfigType)
+	}
+}
+
+// HandleConfigEvent will apply the delta event to the router data model. It is not restricted by index calculations.
+// Use ApplyConfigEvent for event logged event handling. This method is generally meant for bulk loading of data
+// during startup.
+func (rdm *RouterDataModel) HandleConfigEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Config) {
+	if event.Action == edge_ctrl_pb.DataState_Delete {
+		rdm.Configs.Remove(model.Config.Id)
+	} else {
+		rdm.Configs.Set(model.Config.Id, model.Config)
 	}
 }
 
@@ -333,6 +381,26 @@ func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
 	var events []*edge_ctrl_pb.DataState_Event
 
 	rdm.EventCache.WhileLocked(func(_ uint64, _ bool) {
+		rdm.ConfigTypes.IterCb(func(key string, v *edge_ctrl_pb.DataState_ConfigType) {
+			newEvent := &edge_ctrl_pb.DataState_Event{
+				Action: edge_ctrl_pb.DataState_Create,
+				Model: &edge_ctrl_pb.DataState_Event_ConfigType{
+					ConfigType: v,
+				},
+			}
+			events = append(events, newEvent)
+		})
+
+		rdm.Configs.IterCb(func(key string, v *edge_ctrl_pb.DataState_Config) {
+			newEvent := &edge_ctrl_pb.DataState_Event{
+				Action: edge_ctrl_pb.DataState_Create,
+				Model: &edge_ctrl_pb.DataState_Event_Config{
+					Config: v,
+				},
+			}
+			events = append(events, newEvent)
+		})
+
 		servicePolicyIdentities := map[string]*edge_ctrl_pb.DataState_ServicePolicyChange{}
 
 		rdm.Identities.IterCb(func(key string, v *Identity) {
@@ -542,4 +610,12 @@ func (rdm *RouterDataModel) GetServiceAccessPolicies(identityId string, serviceI
 		Policies:      policies,
 		PostureChecks: postureChecks,
 	}, nil
+}
+
+func CloneMap[V any](m cmap.ConcurrentMap[string, V]) cmap.ConcurrentMap[string, V] {
+	result := cmap.New[V]()
+	m.IterCb(func(key string, v V) {
+		result.Set(key, v)
+	})
+	return result
 }

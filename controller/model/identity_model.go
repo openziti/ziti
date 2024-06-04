@@ -94,6 +94,7 @@ type Identity struct {
 	Disabled                  bool
 	DisabledAt                *time.Time
 	DisabledUntil             *time.Time
+	ServiceConfigs            map[string]map[string]string
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*db.Identity, error) {
@@ -133,6 +134,7 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*db.Identit
 		ExternalId:                entity.ExternalId,
 		DisabledAt:                entity.DisabledAt,
 		DisabledUntil:             entity.DisabledUntil,
+		ServiceConfigs:            entity.ServiceConfigs,
 	}
 
 	if entity.EnvInfo != nil {
@@ -242,6 +244,7 @@ func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker bol
 		DisabledAt:                entity.DisabledAt,
 		DisabledUntil:             entity.DisabledUntil,
 		IsAdmin:                   entity.IsAdmin,
+		ServiceConfigs:            entity.ServiceConfigs,
 	}
 
 	identityStore := env.GetManagers().Identity.GetStore()
@@ -285,6 +288,7 @@ func (entity *Identity) fillFrom(env Env, _ *bbolt.Tx, boltIdentity *db.Identity
 	entity.DisabledUntil = boltIdentity.DisabledUntil
 	entity.DisabledAt = boltIdentity.DisabledAt
 	entity.Disabled = boltIdentity.Disabled
+	entity.ServiceConfigs = boltIdentity.ServiceConfigs
 	fillModelInfo(entity, boltIdentity.EnvInfo, boltIdentity.SdkInfo)
 
 	return nil
@@ -293,26 +297,4 @@ func (entity *Identity) fillFrom(env Env, _ *bbolt.Tx, boltIdentity *db.Identity
 type ServiceConfig struct {
 	Service string
 	Config  string
-}
-
-func toBoltServiceConfigs(tx *bbolt.Tx, env Env, serviceConfigs []ServiceConfig) ([]db.ServiceConfig, error) {
-	serviceStore := env.GetStores().EdgeService
-	configStore := env.GetStores().Config
-
-	var boltServiceConfigs []db.ServiceConfig
-	for _, serviceConfig := range serviceConfigs {
-		if !serviceStore.IsEntityPresent(tx, serviceConfig.Service) {
-			return nil, boltz.NewNotFoundError(serviceStore.GetSingularEntityType(), "id or name", serviceConfig.Service)
-		}
-
-		if !configStore.IsEntityPresent(tx, serviceConfig.Config) {
-			return nil, boltz.NewNotFoundError(configStore.GetSingularEntityType(), "id or name", serviceConfig.Config)
-		}
-
-		boltServiceConfigs = append(boltServiceConfigs, db.ServiceConfig{
-			ServiceId: serviceConfig.Service,
-			ConfigId:  serviceConfig.Config,
-		})
-	}
-	return boltServiceConfigs, nil
 }

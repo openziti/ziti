@@ -13,14 +13,14 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.130
+	github.com/openziti/channel/v2 v2.0.131
 	github.com/openziti/edge-api v0.26.19
 	github.com/openziti/fablab v0.5.60
-	github.com/openziti/foundation/v2 v2.0.45
-	github.com/openziti/identity v1.0.77
+	github.com/openziti/foundation/v2 v2.0.46
+	github.com/openziti/identity v1.0.78
 	github.com/openziti/sdk-golang v0.23.37
 	github.com/openziti/storage v0.2.41
-	github.com/openziti/transport/v2 v2.0.133
+	github.com/openziti/transport/v2 v2.0.134
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -28,7 +28,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.9.0
-	go.etcd.io/bbolt v1.3.9
+	go.etcd.io/bbolt v1.3.10
 	golang.org/x/net v0.25.0
 	google.golang.org/protobuf v1.34.1
 	gopkg.in/yaml.v2 v2.4.0
@@ -62,11 +62,11 @@ require (
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/color v1.17.0 // indirect
-	github.com/felixge/httpsnoop v1.0.3 // indirect
+	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
 	github.com/gaissmai/extnetip v0.4.0 // indirect
-	github.com/go-acme/lego/v4 v4.16.1 // indirect
+	github.com/go-acme/lego/v4 v4.17.3 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -135,11 +135,11 @@ require (
 	github.com/oapi-codegen/runtime v1.0.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
-	github.com/opentracing/opentracing-go v1.2.0 // indirect
+	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.54 // indirect
-	github.com/openziti/runzmd v1.0.47 // indirect
+	github.com/openziti/metrics v1.2.55 // indirect
+	github.com/openziti/runzmd v1.0.48 // indirect
 	github.com/openziti/secretstream v0.1.20 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.1.0 // indirect

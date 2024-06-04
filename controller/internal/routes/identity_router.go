@@ -275,30 +275,32 @@ func (r *IdentityRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestCon
 
 func (r *IdentityRouter) listServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
 	listWithId(rc, func(id string) ([]interface{}, error) {
-		serviceConfigs, err := ae.Managers.Identity.GetServiceConfigs(id)
+		modelIdentity, err := ae.Managers.Identity.Read(id)
 		if err != nil {
 			return nil, err
 		}
 		result := make([]interface{}, 0)
-		for _, serviceConfig := range serviceConfigs {
-			service, err := ae.Managers.EdgeService.Read(serviceConfig.Service)
+		for serviceId, configData := range modelIdentity.ServiceConfigs {
+			service, err := ae.Managers.EdgeService.Read(serviceId)
 			if err != nil {
-				pfxlog.Logger().Debugf("listing service configs for identity [%s] could not find service [%s]: %v", id, serviceConfig.Service, err)
+				pfxlog.Logger().Debugf("listing service configs for identity [%s] could not find service [%s]: %v", id, serviceId, err)
 				continue
 			}
 
-			config, err := ae.Managers.Config.Read(serviceConfig.Config)
-			if err != nil {
-				pfxlog.Logger().Debugf("listing service configs for identity [%s] could not find config [%s]: %v", id, serviceConfig.Config, err)
-				continue
-			}
+			for _, configId := range configData {
+				config, err := ae.Managers.Config.Read(configId)
+				if err != nil {
+					pfxlog.Logger().Debugf("listing service configs for identity [%s] could not find config [%s]: %v", id, configId, err)
+					continue
+				}
 
-			result = append(result, rest_model.ServiceConfigDetail{
-				Config:    ToEntityRef(config.Name, config, ConfigLinkFactory),
-				ConfigID:  &config.Id,
-				Service:   ToEntityRef(service.Name, service, ServiceLinkFactory),
-				ServiceID: &service.Id,
-			})
+				result = append(result, rest_model.ServiceConfigDetail{
+					Config:    ToEntityRef(config.Name, config, ConfigLinkFactory),
+					ConfigID:  &config.Id,
+					Service:   ToEntityRef(service.Name, service, ServiceLinkFactory),
+					ServiceID: &service.Id,
+				})
+			}
 		}
 		return result, nil
 	})
