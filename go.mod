@@ -48,17 +48,17 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.130
-	github.com/openziti/edge-api v0.26.19
-	github.com/openziti/foundation/v2 v2.0.45
-	github.com/openziti/identity v1.0.77
+	github.com/openziti/channel/v2 v2.0.131
+	github.com/openziti/edge-api v0.26.20
+	github.com/openziti/foundation/v2 v2.0.46
+	github.com/openziti/identity v1.0.78
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.54
-	github.com/openziti/runzmd v1.0.47
+	github.com/openziti/metrics v1.2.55
+	github.com/openziti/runzmd v1.0.48
 	github.com/openziti/sdk-golang v0.23.37
 	github.com/openziti/secretstream v0.1.20
 	github.com/openziti/storage v0.2.41
-	github.com/openziti/transport/v2 v2.0.133
+	github.com/openziti/transport/v2 v2.0.134
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -79,11 +79,11 @@ require (
 	github.com/zitadel/oidc/v2 v2.12.0
 	go.etcd.io/bbolt v1.3.10
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.23.0
-	golang.org/x/net v0.25.0
+	golang.org/x/crypto v0.24.0
+	golang.org/x/net v0.26.0
 	golang.org/x/sync v0.7.0
-	golang.org/x/sys v0.20.0
-	golang.org/x/text v0.15.0
+	golang.org/x/sys v0.21.0
+	golang.org/x/text v0.16.0
 	google.golang.org/protobuf v1.34.1
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/resty.v1 v1.12.0
@@ -113,7 +113,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
-	github.com/go-logr/logr v1.4.1 // indirect
+	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.23.0 // indirect
@@ -176,17 +176,17 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.mongodb.org/mongo-driver v1.15.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	go.opentelemetry.io/otel v1.26.0 // indirect
-	go.opentelemetry.io/otel/metric v1.26.0 // indirect
-	go.opentelemetry.io/otel/trace v1.26.0 // indirect
+	go.opentelemetry.io/otel v1.27.0 // indirect
+	go.opentelemetry.io/otel/metric v1.27.0 // indirect
+	go.opentelemetry.io/otel/trace v1.27.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
 	golang.org/x/image v0.13.0 // indirect
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/oauth2 v0.20.0 // indirect
-	golang.org/x/term v0.20.0 // indirect
-	golang.org/x/tools v0.21.0 // indirect
+	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	nhooyr.io/websocket v1.8.11 // indirect
