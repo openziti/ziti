@@ -14,10 +14,10 @@ function makeConfig() {
     fi
 
     # build config command
-    command=("ziti create config router ${ZITI_ROUTER_TYPE}
-             --tunnelerMode ${ZITI_ROUTER_MODE}
-             --routerName ${ZITI_ROUTER_NAME}
-             --output ${ZITI_ROUTER_CONFIG_FILE}")
+    command=("ziti create config router ${ZITI_ROUTER_TYPE}" \
+             "--tunnelerMode ${ZITI_ROUTER_MODE}" \
+             "--routerName ${ZITI_ROUTER_NAME}" \
+             "--output ${ZITI_ROUTER_CONFIG_FILE}")
 
     # check if ZITI_ROUTER_LAN_INTERFACE is specified and add --lanInterface flag accordingly
     if [[ -n "${ZITI_ROUTER_LAN_INTERFACE}" ]]; then
@@ -25,6 +25,7 @@ function makeConfig() {
     fi
 
     # execute config command
+    # shellcheck disable=SC2068
     ${command[@]}
 
   fi
