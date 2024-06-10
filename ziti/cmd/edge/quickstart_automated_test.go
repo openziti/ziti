@@ -39,7 +39,7 @@ func TestEdgeQuickstartAutomated(t *testing.T) {
 		log.Info("controller online")
 	case <-time.After(timeout):
 		cancel()
-		panic("timed out waiting for controller")
+		t.Fatal("timed out waiting for controller")
 	}
 
 	performQuickstartTest(t)

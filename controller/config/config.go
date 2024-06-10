@@ -159,7 +159,7 @@ func (c *Config) AddCaPems(caPems []byte) {
 
 func (c *Config) RefreshCas() {
 	c.caPems = CalculateCaPems(c.caPems)
-	c.caCerts = nfpem.PemBytesToCertificates(c.CaPems())
+	c.caCerts = nfpem.PemBytesToCertificates(c.caPems.Bytes())
 }
 
 func (c *Config) loadTotpSection(edgeConfigMap map[any]any) error {
