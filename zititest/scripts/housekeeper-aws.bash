@@ -4,7 +4,7 @@ set -euo pipefail
 BASENAME=$(basename "$0")
 
 function describe_instances() {
-  cd "$(mktemp -d)"
+  cd "${TMPDIR:-$(mktemp -d)}"
   local oldest=$1
   local state=$2
   for region in us-east-1 us-west-2
@@ -31,7 +31,7 @@ function describe_instances() {
 }
 
 function describe_vpcs {
-  cd "$(mktemp -d)"
+  cd "${TMPDIR:-$(mktemp -d)}"
   local oldest=$1
   for region in us-east-1 us-west-2
   do
