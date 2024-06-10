@@ -1,3 +1,25 @@
+# Release 1.1.4
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes 
+
+* github.com/openziti/channel/v2: [v2.0.130 -> v2.0.131](https://github.com/openziti/channel/compare/v2.0.130...v2.0.131)
+* github.com/openziti/edge-api: [v0.26.19 -> v0.26.20](https://github.com/openziti/edge-api/compare/v0.26.19...v0.26.20)
+    * [Issue #113](https://github.com/openziti/edge-api/issues/113) - RecoveryCodesEnvelope is wrong
+
+* github.com/openziti/foundation/v2: [v2.0.45 -> v2.0.46](https://github.com/openziti/foundation/compare/v2.0.45...v2.0.46)
+    * [Issue #407](https://github.com/openziti/foundation/issues/407) - Remove Branch from build info
+
+* github.com/openziti/identity: [v1.0.77 -> v1.0.78](https://github.com/openziti/identity/compare/v1.0.77...v1.0.78)
+* github.com/openziti/metrics: [v1.2.54 -> v1.2.55](https://github.com/openziti/metrics/compare/v1.2.54...v1.2.55)
+* github.com/openziti/runzmd: [v1.0.47 -> v1.0.48](https://github.com/openziti/runzmd/compare/v1.0.47...v1.0.48)
+* github.com/openziti/transport/v2: [v2.0.133 -> v2.0.134](https://github.com/openziti/transport/compare/v2.0.133...v2.0.134)
+* github.com/openziti/ziti: [v1.1.3 -> v1.1.4](https://github.com/openziti/ziti/compare/v1.1.3...v1.1.4)
+    * [Issue #2124](https://github.com/openziti/ziti/issues/2124) - api session certs should be deleted when related api sessions are deleted
+
 # Release 1.1.3
 
 ## What's New

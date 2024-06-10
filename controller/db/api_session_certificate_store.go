@@ -68,11 +68,11 @@ func (store *ApiSessionCertificateStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldApiSessionCertificateApiSession, ast.NodeTypeString)
 	store.AddSymbol(FieldApiSessionCertificateSubject, ast.NodeTypeString)
 	store.AddSymbol(FieldApiSessionCertificateFingerprint, ast.NodeTypeString)
-	store.symbolApiSession = store.AddFkSymbol(FieldApiSessionCertificateApiSession, store.stores.apiSession)
+	store.symbolApiSession = store.AddSymbol(FieldApiSessionCertificateApiSession, ast.NodeTypeString)
 }
 
 func (store *ApiSessionCertificateStoreImpl) initializeLinked() {
-	store.AddFkIndex(store.symbolApiSession, store.stores.apiSession.apiSessionCertsSymbol)
+	store.AddFkIndexCascadeDelete(store.symbolApiSession, store.stores.apiSession.apiSessionCertsSymbol)
 }
 
 func (store *ApiSessionCertificateStoreImpl) NewEntity() *ApiSessionCertificate {
