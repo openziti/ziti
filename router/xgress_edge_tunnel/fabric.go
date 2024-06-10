@@ -155,7 +155,6 @@ func (self *fabricProvider) authenticate() error {
 		SdkInfo: &edge_ctrl_pb.SdkInfo{
 			AppId:      "ziti-router",
 			AppVersion: buildInfo.Version(),
-			Branch:     buildInfo.Branch(),
 			Revision:   buildInfo.Revision(),
 			Type:       "ziti-router:tunnel",
 			Version:    buildInfo.Version(),
