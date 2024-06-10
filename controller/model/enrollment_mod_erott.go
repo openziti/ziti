@@ -142,7 +142,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 	content := &rest_model.EnrollmentCerts{
 		Ca:         string(module.env.GetConfig().CaPems()),
 		Cert:       clientChainPem,
-		ServerCert: string(serverCertPem),
+		ServerCert: serverCertPem,
 	}
 
 	return &EnrollmentResult{

@@ -23,6 +23,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/pkg/errors"
@@ -101,6 +102,7 @@ type Config struct {
 	caPemsOnce      sync.Once
 	Totp            Totp
 	AuthRateLimiter command.AdaptiveRateLimiterConfig
+	caCerts         []*x509.Certificate
 }
 
 type HttpTimeouts struct {
@@ -133,22 +135,31 @@ func (c *Config) SessionTimeoutDuration() time.Duration {
 
 func (c *Config) CaPems() []byte {
 	c.caPemsOnce.Do(func() {
-		c.RefreshCaPems()
+		c.RefreshCas()
 	})
 
 	return c.caPems.Bytes()
 }
 
+func (c *Config) CaCerts() []*x509.Certificate {
+	c.caPemsOnce.Do(func() {
+		c.RefreshCas()
+	})
+
+	return c.caCerts
+}
+
 // AddCaPems adds a byte array of certificates to the current buffered list of CAs. The certificates
-// should be in PEM format separated by new lines. RefreshCaPems should be called after all
+// should be in PEM format separated by new lines. RefreshCas should be called after all
 // calls to AddCaPems are completed.
 func (c *Config) AddCaPems(caPems []byte) {
 	c.caPems.WriteString("\n")
 	c.caPems.Write(caPems)
 }
 
-func (c *Config) RefreshCaPems() {
+func (c *Config) RefreshCas() {
 	c.caPems = CalculateCaPems(c.caPems)
+	c.caCerts = nfpem.PemBytesToCertificates(c.CaPems())
 }
 
 func (c *Config) loadTotpSection(edgeConfigMap map[any]any) error {

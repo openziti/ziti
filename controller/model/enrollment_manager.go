@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/identity"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
@@ -225,7 +226,10 @@ func (self *EnrollmentManager) GetCertChainPem(certRaw []byte) (string, error) {
 	}
 
 	var clientChainPem []byte
-	clientChain := self.env.GetHostController().Identity().CaPool().GetChainMinusRoot(clientCert)
+
+	pool := identity.NewCaPool(self.env.GetConfig().CaCerts())
+
+	clientChain := pool.GetChainMinusRoot(clientCert)
 	for _, c := range clientChain {
 		pemData, err := cert.RawToPem(c.Raw)
 		if err != nil {
