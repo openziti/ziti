@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/identity"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
@@ -218,23 +219,26 @@ func (self *EnrollmentManager) ReplaceWithAuthenticator(enrollmentId string, aut
 // GetCertChainPem parses a given certificate in raw DER and attempt to provide string in PEM format of the
 // original certificate followed by each signing intermediate up to but not including the root CA.
 func (self *EnrollmentManager) GetCertChainPem(certRaw []byte) (string, error) {
-	clientCert, err := x509.ParseCertificate(certRaw)
+	targetCert, err := x509.ParseCertificate(certRaw)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Error("error parsing cert raw during enrollment, attempting to assemble chain")
 		return "", err
 	}
 
-	var clientChainPem []byte
-	clientChain := self.env.GetHostController().Identity().CaPool().GetChainMinusRoot(clientCert)
-	for _, c := range clientChain {
+	var targetChainPem []byte
+
+	pool := identity.NewCaPool(self.env.GetConfig().CaCerts())
+	targetChain := pool.GetChainMinusRoot(targetCert)
+
+	for _, c := range targetChain {
 		pemData, err := cert.RawToPem(c.Raw)
 		if err != nil {
 			return "", err
 		}
-		clientChainPem = append(clientChainPem, pemData...)
+		targetChainPem = append(targetChainPem, pemData...)
 	}
 
-	return string(clientChainPem), nil
+	return string(targetChainPem), nil
 }
 
 func (self *EnrollmentManager) ApplyReplaceEncoderWithAuthenticatorCommand(cmd *ReplaceEnrollmentWithAuthenticatorCmd, ctx boltz.MutateContext) error {
