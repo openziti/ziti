@@ -127,6 +127,26 @@ func (indexer *Indexer) AddFkIndex(symbol EntitySymbol, fkSymbol EntitySetSymbol
 	indexer.addFkIndex(symbol, fkSymbol, false)
 }
 
+func (indexer *Indexer) AddFkIndexCascadeDelete(symbol EntitySymbol, fkSymbol EntitySetSymbol) {
+	index := &fkIndex{
+		symbol:   symbol,
+		nullable: false,
+		fkSymbol: fkSymbol,
+	}
+
+	indexer.AddConstraint(index)
+	fkStore := fkSymbol.GetStore()
+	if baseStore, ok := fkStore.(Constrained); ok {
+		baseStore.AddConstraint(&fkDeleteCascadeConstraint{
+			symbol:      symbol,
+			cascadeType: CascadeDelete,
+		})
+	} else {
+		panic(errors.Errorf("linked store %v is not constrained, can't enforce validity of constraint on delete",
+			fkSymbol.GetStore().GetEntityType()))
+	}
+}
+
 func (indexer *Indexer) AddNullableFkIndex(symbol EntitySymbol, fkSymbol EntitySetSymbol) {
 	indexer.addFkIndex(symbol, fkSymbol, true)
 }
