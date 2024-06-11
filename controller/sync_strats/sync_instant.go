@@ -878,6 +878,15 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx) error {
 }
 
 func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
+	serverTls := strategy.ae.HostController.Identity().ServerCert()
+
+	newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(serverTls[0].Certificate[0], edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})}
+	newEvent := &edge_ctrl_pb.DataState_Event{
+		Action: edge_ctrl_pb.DataState_Create,
+		Model:  newModel,
+	}
+	strategy.HandlePublicKeyEvent(newEvent, newModel)
+
 	for cursor := strategy.ae.GetStores().Controller.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
