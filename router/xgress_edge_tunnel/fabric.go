@@ -251,7 +251,8 @@ func (self *fabricProvider) tunnelServiceV1(
 	peerData map[uint32][]byte,
 	keyPair *kx.KeyPair) error {
 
-	log := logrus.WithField("service", service.GetName())
+	log := logrus.WithField("service", service.GetName()).
+		WithField("ctrlId", ctrlCh.Id())
 
 	sessionId := self.getDialSession(service.GetName())
 	request := &edge_ctrl_pb.CreateCircuitForServiceRequest{
@@ -316,7 +317,8 @@ func (self *fabricProvider) tunnelServiceV2(
 	peerData map[uint32][]byte,
 	keyPair *kx.KeyPair) error {
 
-	log := logrus.WithField("service", service.GetName())
+	log := logrus.WithField("service", service.GetName()).
+		WithField("ctrlId", ctrlCh.Id())
 
 	rdm := self.factory.stateManager.RouterDataModel()
 	if policy, err := posture.HasAccess(rdm, self.factory.routerConfig.Id.Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {

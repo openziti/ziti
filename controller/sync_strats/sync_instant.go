@@ -972,7 +972,7 @@ func (strategy *InstantStrategy) BuildAll(rdm *common.RouterDataModel) error {
 			return err
 		}
 
-		if err := strategy.BuildPostureChecks(tx, rdm); err != nil {
+		if err := strategy.BuildPostureChecks(index, tx, rdm); err != nil {
 			return err
 		}
 
@@ -1070,7 +1070,7 @@ func (strategy *InstantStrategy) ValidateServices(tx *bbolt.Tx, rdm *common.Rout
 }
 
 func (strategy *InstantStrategy) ValidatePostureChecks(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
-	return ValidateType(tx, strategy.ae.GetStores().PostureCheck, rdm.PostureChecks, func(t *db.PostureCheck, v *edge_ctrl_pb.DataState_PostureCheck) []error {
+	return ValidateType(tx, strategy.ae.GetStores().PostureCheck, rdm.PostureChecks, func(t *db.PostureCheck, v *common.PostureCheck) []error {
 		var result []error
 		result = diffVals("posture check", t.Id, "name", t.Name, v.Name, result)
 		result = diffVals("posture check", t.Id, "type", t.TypeId, v.TypeId, result)
@@ -1309,7 +1309,7 @@ func (strategy *InstantStrategy) BuildServices(index uint64, tx *bbolt.Tx, rdm *
 	return nil
 }
 
-func (strategy *InstantStrategy) BuildPostureChecks(tx *bbolt.Tx, rdm *common.RouterDataModel) error {
+func (strategy *InstantStrategy) BuildPostureChecks(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModel) error {
 	for cursor := strategy.ae.GetStores().PostureCheck.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
@@ -1325,7 +1325,7 @@ func (strategy *InstantStrategy) BuildPostureChecks(tx *bbolt.Tx, rdm *common.Ro
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		rdm.HandlePostureCheckEvent(newEvent, newModel)
+		rdm.HandlePostureCheckEvent(index, newEvent, newModel)
 	}
 	return nil
 }
