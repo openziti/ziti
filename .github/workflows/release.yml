@@ -1,0 +1,219 @@
+name: release
+
+on:
+  push:
+    tags:
+      - v*
+  workflow_dispatch:
+
+env:
+  GOFLAGS: "-trimpath"
+  GOX_OUTPUT: "release/{{.Arch}}/{{.OS}}/{{.Dir}}"
+  GOX_TEST_OUTPUT: "test/{{.Arch}}/{{.OS}}/bin/{{.Dir}}"
+  gh_ci_key: ${{ secrets.GH_CI_KEY }}
+  BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
+  ZITI_BASE_VERSION: ${{ vars.ZITI_BASE_VERSION || null }}
+
+jobs:
+  mac-os-build:
+    name: Build Mac OS binaries
+    # allow fors to opt-out of time-consuming macOS builds
+    if: vars.ZITI_SKIP_MACOS_BUILD != 'true'
+    runs-on: macos-11
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Build and Test
+        shell: bash
+        run: |
+          go install github.com/mitchellh/gox@latest
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=darwin -arch=arm64 -output=$GOX_OUTPUT ./...
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: darwin-release-${{ github.run_id }}
+          path: release/
+          retention-days: 5
+
+  windows-build:
+    name: Build Windows binaries
+    # allow fors to opt-out of time-consuming Windows builds
+    if: vars.ZITI_SKIP_WINDOWS_BUILD != 'true'
+    runs-on: windows-2019
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Build and Test
+        shell: bash
+        run: |
+          go install github.com/mitchellh/gox@latest
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-${{ github.run_id }}
+          path: release/
+          retention-days: 5
+
+  linux-build:
+    name: Build Linux binaries
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Build and Test
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          go install github.com/mitchellh/gox@latest
+          $(go env GOPATH)/bin/ziti-ci -t go-build-flags
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
+          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
+          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release-${{ github.run_id }}
+          path: release/
+          retention-days: 5
+
+  tests:
+    name: Run Unit and Integration Tests
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Run Go Quickstart Test
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
+
+      - name: Run Unit and Integration Tests
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          go test ./... --tags apitests
+
+  publish:
+    name: Publish Binaries
+    runs-on: ubuntu-20.04
+    needs: [ tests, linux-build, mac-os-build, windows-build ]
+    outputs:
+      ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.7'
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Download linux release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-release-${{ github.run_id }}
+          path: release/
+
+      - name: Download darwin release artifact
+        if: needs.mac-os-build.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: darwin-release-${{ github.run_id }}
+          path: release/
+
+      - name: Download windows release artifact
+        if: needs.windows-build.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release-${{ github.run_id }}
+          path: release/
+
+      - name: List downloaded release artifacts
+        shell: bash
+        run: |
+          ls -lAhR release/
+
+      - name: Restore execute filemode on macOS and Linux release artifacts before publishing
+        shell: bash
+        run: |
+          find  ./release \
+                -type f \
+                -print0 \
+                -path "./release/*/darwin/ziti" \
+                -o \
+                -path "./release/*/linux/ziti" \
+            | xargs -0 chmod -c +x
+
+      - name: Publish GitHub Release
+        # forks need to run this step with their own GPG key because ziti-ci creates the GH release 
+        if: env.ziti_ci_gpg_key_id != null && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci publish-to-github -t --prerelease --archive-base ""
