@@ -409,6 +409,14 @@ func (s *HybridStorage) CreateAccessToken(ctx context.Context, request op.TokenR
 func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *common.AccessClaims, error) {
 	now := time.Now()
 
+	cltId := ""
+	if authReq, ok := request.(*AuthRequest); ok {
+		cltId = authReq.ClientID
+	}
+	if refreshReq, ok := request.(*RefreshTokenRequest); ok {
+		cltId = refreshReq.ClientID
+	}
+
 	claims := &common.AccessClaims{
 		AccessTokenClaims: oidc.AccessTokenClaims{
 			TokenClaims: oidc.TokenClaims{
@@ -420,6 +428,7 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 				IssuedAt:   oidc.Time(now.Unix()),
 				AuthTime:   oidc.Time(now.Unix()),
 				NotBefore:  oidc.Time(now.Unix()),
+				ClientID:   cltId,
 			},
 		},
 		CustomClaims: common.CustomClaims{},
