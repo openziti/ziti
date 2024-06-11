@@ -1,0 +1,87 @@
+name: validation-sdk-terminators
+
+on:
+  workflow_dispatch:
+
+# cancel older, redundant runs of same workflow on same branch
+concurrency:
+  group: ${{ github.workflow }}-${{github.event_name}}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  GOFLAGS: "-trimpath"
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: "us-east-2"
+  gh_ci_key: ${{ secrets.GH_CI_KEY }}
+  BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
+
+
+jobs:
+  sdk-terminator-validation:
+    name: SDK Terminator Validation
+    # not applicable to forks. shouldn't run on release build
+    if: github.repository_owner == 'openziti'
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Build and Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          pushd zititest && go install ./... && popd
+          go install -tags=all,tests ./...
+
+      - name: Create Test Environment
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          $(go env GOPATH)/bin/sdk-hosting-test create -d sdk-hosting-test-${GITHUB_RUN_NUMBER} -n sdk-hosting-test-${GITHUB_RUN_NUMBER} -l environment=gh-fablab-sdk-hosting-test,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
+          $(go env GOPATH)/bin/sdk-hosting-test up
+          $(go env GOPATH)/bin/sdk-hosting-test exec validateUp
+
+      - name: Run SDK Terminator Validation
+        shell: bash
+        timeout-minutes: 380
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          $(go env GOPATH)/bin/sdk-hosting-test exec-loop 4h sowChaos validateUp validate
+
+      - name: Create Logs Archive
+        if: always()
+        run: |
+          $(go env GOPATH)/bin/sdk-hosting-test get files '*' "./logs/{{ .Id }}/" ./logs
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sdk-hosting-test-logs-${{ github.run_id }}
+          path: logs/
+          compression-level: 7
+          retention-days: 5
+
+      - name: Tear down Test Environment
+        timeout-minutes: 30
+        if: always()
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/sdk-hosting-test dispose
+
