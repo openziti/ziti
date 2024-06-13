@@ -461,21 +461,8 @@ jobs:
                 -path "./release/*/linux/ziti" \
             | xargs -0 chmod -c +x
 
-      - name: Publish GitHub Release
-        # forks need to run this step with their own GPG key because ziti-ci creates the GH release 
-        if: env.ziti_ci_gpg_key_id != null && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
-          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
-        shell: bash
-        run: |
-          $(go env GOPATH)/bin/ziti-ci configure-git
-          $(go env GOPATH)/bin/ziti-ci tag -v -f version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION}
-          $(go env GOPATH)/bin/ziti-ci publish-to-github --prerelease --archive-base ""
-
       # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
-      - name: Compute the Ziti Version String used for Linux Packages and Container Image Tags
+      - name: Get next version for downstream release candidates
         id: get_version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -493,27 +480,17 @@ jobs:
           echo "DEBUG: GITHUB_REPOSITORY=${GITHUB_REPOSITORY} GITHUB_REF=${GITHUB_REF} GITHUB_RUN_ID=${GITHUB_RUN_ID}"
           (set -x; git remote -v show;)
 
-          if [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main$) ]]; then
-            # Set current tag as semver for release branches
-            ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
+          # compute next patch level for non-release branches
+          ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-next-version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION})"
 
-            validateSemver "${ZITI_VERSION}"
+          validateSemver "${ZITI_VERSION}"
 
-            # drop the leading 'v', if any
-            ZITI_VERSION=${ZITI_VERSION#v}
-          else
-            # compute next patch level for non-release branches
-            ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-next-version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION})"
-
-            validateSemver "${ZITI_VERSION}"
-
-            # drop the leading 'v', if any, and append run id
-            ZITI_VERSION=${ZITI_VERSION#v}-${GITHUB_RUN_ID}
-          fi
+          # drop the leading 'v', if any, and append run id
+          ZITI_VERSION=${ZITI_VERSION#v}-${GITHUB_RUN_ID}
 
           echo ZITI_VERSION="${ZITI_VERSION}" | tee -a $GITHUB_OUTPUT
 
-  call-publish-prerelease-docker-images:
+  call-publish-docker-images:
     # - !cancelled() allows evaluating further conditional expressions even if
     #   needed jobs were skipped
     if: ${{
@@ -521,30 +498,12 @@ jobs:
       && needs.publish.result == 'success'
       && github.ref == 'refs/heads/release-next'
       }}
-    name: Publish Pre-Release Docker Images
+    name: Publish Release Next Docker Images
     needs: publish
     uses: ./.github/workflows/publish-docker-images.yml
     secrets: inherit
     with:
       ziti-tag: release-next
-
-  call-publish-release-docker-images:
-    # - !cancelled() allows evaluating further conditional expressions even if
-    #   needed jobs were skipped
-    if: ${{
-      !cancelled()
-      && needs.publish.result == 'success'
-      && (
-      github.ref == 'refs/heads/main'
-      || startsWith(github.ref, 'refs/heads/release-v')
-      )
-      }}
-    name: Publish Release Docker Images
-    needs: publish
-    uses: ./.github/workflows/publish-docker-images.yml
-    secrets: inherit
-    with:
-      ziti-tag: ${{ needs.publish.outputs.ZITI_VERSION }}
 
   # call on release-next and release branches to publish linux packages to
   # "testing" and "release" package repos in Artifactory
@@ -554,13 +513,9 @@ jobs:
     if: ${{
       !cancelled()
       && needs.publish.result == 'success'
-      && (
-      github.ref == 'refs/heads/main'
-      || startsWith(github.ref, 'refs/heads/release-v')
-      || github.ref == 'refs/heads/release-next'
-      )
+      && github.ref == 'refs/heads/release-next'
       }}
-    name: Publish Linux Packages
+    name: Publish Release Next Linux Packages
     needs: publish
     uses: ./.github/workflows/publish-linux-packages.yml
     secrets: inherit
