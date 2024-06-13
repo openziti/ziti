@@ -768,7 +768,7 @@ main(){
     kubectlWrapper apply \
         --filename https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml >&3
     kubectlWrapper apply \
-        --filename https://raw.githubusercontent.com/cert-manager/trust-manager/v0.9.0/deploy/crds/trust.cert-manager.io_bundles.yaml >&3
+        --filename https://raw.githubusercontent.com/cert-manager/trust-manager/v0.7.0/deploy/crds/trust.cert-manager.io_bundles.yaml >&3
 
     declare -A HELM_REPOS
     HELM_REPOS[openziti]="openziti.io/helm-charts"
