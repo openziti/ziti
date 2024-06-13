@@ -63,8 +63,10 @@ Perform these steps in PR branches based on release-next (trunk).
 
 Perform these steps in the release-next (trunk) branch which is based on main to release Ziti.
 
-1. Create a PR to merge release-next to main. Release happens by merging from the release-next branch to main.
-2. Ensure PR checks succeed.
+1. Create a PR to merge release-next to main.
+1. Ensure PR checks succeed.
+1. PreRelease happens by pushing a tag like v* on the HEAD of main.
+1. After burn-in, mark the release as "latest" in GitHub to promote downstreams.
 
 ## Downstreams
 
