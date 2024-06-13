@@ -74,8 +74,7 @@ Pre-releases are releases, but they're not promoted as "latest" in GitHub or aut
 release as not a prerelease makes it a stable release. There can be one stable release that's also marked "latest"
 (`isLatest: true`).
 
-1. After an arbitrary burn-in period, unmark "prerelease" in GitHub Releases (`isPrerelease: false`) to stop
-   discouraging users from consuming the now-stable release. This will automatically promote and advertise the downstreams.
+1. After an arbitrary burn-in period, unmark "prerelease" in GitHub Releases (`isPrerelease: false`). This will automatically promote and advertise the downstreams.
    Note: the downstreams workflow trigger ignores `isLatest`, can only be triggered once for a release, and will never run
    if any checks failed.
 
