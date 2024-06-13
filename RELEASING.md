@@ -64,8 +64,8 @@ a candidate for release.
 
 Perform these steps in "release-next" (the default branch based on "main") to create a pre-release Ziti.
 
-1. Create a PR to merge release-next to default branch.
-1. Ensure default branch PR checks succeed. Downstreams will not be released if any checks fail on same revision.
+1. Create a PR to merge "release-next" to "main."
+1. Ensure "main" checks succeed. Downstreams will not be released if any checks fail on same revision where a release is created.
 1. Push a tag like v*, typically on default branch HEAD to trigger the pre-release workflow named `release.yml`.
 
 ## Stable and Latest Release
