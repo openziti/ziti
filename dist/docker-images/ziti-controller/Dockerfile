@@ -17,7 +17,9 @@ LABEL name="openziti/ziti-controller" \
       maintainer="developers@openziti.org" \
       vendor="NetFoundry" \
       summary="Run the OpenZiti Controller" \
-      description="Run the OpenZiti Controller"
+      description="Run the OpenZiti Controller" \
+      org.opencontainers.image.description="Run the OpenZiti Controller" \
+      org.opencontainers.image.source="https://github.com/openziti/ziti"
 
 # set up image as root, then drop privs to ziggy
 USER root
