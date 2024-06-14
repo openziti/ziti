@@ -62,6 +62,7 @@ fi
 
 ZITI_CTRL_SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
 ZITI_CTRL_BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
+ZITI_PWD_FILE=/opt/openziti/etc/controller/.pwd
 
 case "$action" in
   "install")

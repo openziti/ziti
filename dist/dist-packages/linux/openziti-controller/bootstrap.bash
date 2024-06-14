@@ -1,10 +1,7 @@
+#!/usr/bin/env bash
+
 #
 # bootstrap the OpenZiti Controller with PKI, config file, and database
-#
-
-
-#
-# defaults
 #
 
 makePki() {
@@ -112,54 +109,6 @@ renewClientCert() {
     --allow-overwrite
 }
 
-makeConfig() {
-  #
-  # create config file
-  #
-
-  # enforce first argument is a non-empty string that does not begin with "--" (long option prefix)
-  if [[ -n "${1:-}" && ! "${1}" =~ ^-- ]]; then
-    local ZITI_CTRL_CONFIG_FILE="${1}"
-    shift
-  else
-    echo "ERROR: no config file path provided" >&2
-    return 1
-  fi
-  shopt -u nocasematch  # toggle on case-sensitive comparison
-
-  # used by "ziti create config controller" as advertised address
-  if [ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]; then
-    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set, i.e., the FQDN by which all devices will reach the"\
-    " controller and verify the server certificate" >&2
-    return 1
-  fi
-
-  # set the path to the root CA cert
-  export ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
-
-  # set the URI of the edge-client API (uses same TCP port); e.g., ztAPI: ziti.example.com:1280
-  export  ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}" \
-          ZITI_CTRL_EDGE_ADVERTISED_PORT="${ZITI_CTRL_ADVERTISED_PORT:=1280}"
-
-  # export the vars that were assigned inside this script to set the path to the server and client certs and their common
-  # private key, and the intermediate (signer) CA cert and key
-  export  ZITI_PKI_CTRL_SERVER_CERT \
-          ZITI_PKI_CTRL_CERT \
-          ZITI_PKI_CTRL_KEY \
-          ZITI_PKI_SIGNER_CERT \
-          ZITI_PKI_SIGNER_KEY \
-          ZITI_CTRL_ADVERTISED_ADDRESS \
-          ZITI_CTRL_ADVERTISED_PORT \
-          ZITI_CTRL_BIND_ADDRESS \
-          ZITI_CTRL_EDGE_BIND_ADDRESS
-
-  if [[ ! -s "${ZITI_CTRL_CONFIG_FILE}" || "${1:-}" == --force ]]; then
-    ziti create config controller \
-      --output "${ZITI_CTRL_CONFIG_FILE}"
-  fi
-
-}
-
 makeDatabase() {
 
   #
@@ -177,7 +126,7 @@ makeDatabase() {
     mkdir -p "$DB_DIR"
   fi
 
-  : "${ZITI_PWD:=$(< "/run/credentials/${UNIT_NAME:-ziti-controller.service}/ZITI_PWD")}"
+  : "${ZITI_PWD:=$(< "${ZITI_PWD_FILE}")}"
   if [ -n "${ZITI_PWD}" ]; then
     if ! ziti controller edge init "${ZITI_CTRL_CONFIG_FILE}" \
       --username "${ZITI_USER}" \
@@ -189,8 +138,7 @@ makeDatabase() {
       return 1
     fi
   else
-    echo  "ERROR: need admin password; use LoadCredential in"\
-          "/etc/systemd/system/ziti-controller.service.d/override.conf or set env var ZITI_PWD" >&2
+    echo  "ERROR: need admin password in ${ZITI_PWD_FILE} or env var ZITI_PWD" >&2
     return 1
   fi
 
@@ -232,7 +180,7 @@ loadEnvStdin() {
   fi
 }
 
-loadEnvFile() {
+loadEnvFiles() {
   # shellcheck disable=SC1090
   source "${ZITI_CTRL_SVC_ENV_FILE}"
   # shellcheck disable=SC1090
@@ -252,11 +200,7 @@ promptCtrlAdvertisedAddress() {
 }
 
 promptPwd() {
-  # make vars available to "ziti create config environment"
-  exportZitiVars
-  # shellcheck disable=SC1090 # compute the path to the identity file
-  source <(ZITI_HOME=/var/lib/ziti-controller ziti create config environment)
-  # do nothing if identity file has stuff in it
+  # do nothing if database file has stuff in it
   if [ -s "${ZITI_CTRL_DATABASE_FILE}" ]; then
       echo "INFO: database exists in ${ZITI_CTRL_DATABASE_FILE}"
   # prompt for password token if interactive, unless already answered
@@ -322,15 +266,64 @@ exportZitiVars() {
   done
 }
 
-bootstrap() {
+makeConfig() {
+  #
+  # create config file
+  #
 
-  if [ -n "${1:-}" ]; then
+  # enforce first argument is a non-empty string that does not begin with "--" (long option prefix)
+  if [[ -n "${1:-}" && ! "${1}" =~ ^-- ]]; then
     local ZITI_CTRL_CONFIG_FILE="${1}"
-    echo "DEBUG: using config file path: $(realpath "${ZITI_CTRL_CONFIG_FILE}")" >&2
+    shift
   else
     echo "ERROR: no config file path provided" >&2
     return 1
   fi
+  shopt -u nocasematch  # toggle on case-sensitive comparison
+
+  # used by "ziti create config controller" as advertised address
+  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]] || ! printenv | grep -q ZITI_CTRL_ADVERTISED_ADDRESS &>/dev/null ; then
+    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set and exported, i.e., the FQDN by which all devices will reach the"\
+    " controller and verify the server certificate" >&2
+    return 1
+  else
+    echo "DEBUG: ZITI_CTRL_ADVERTISED_ADDRESS is set to ${ZITI_CTRL_ADVERTISED_ADDRESS}" >&3
+  fi
+
+  # set the path to the root CA cert
+  export  ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
+
+  # set the URI of the edge-client API (uses same TCP port); e.g., ztAPI: ziti.example.com:1280
+  export  ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}" \
+          ZITI_CTRL_EDGE_ADVERTISED_PORT="${ZITI_CTRL_ADVERTISED_PORT:=1280}"
+
+  # export the vars that were assigned inside this script to set the path to the server and client certs and their common
+  # private key, and the intermediate (signer) CA cert and key
+  export  ZITI_PKI_EDGE_SERVER_CERT="${ZITI_PKI_CTRL_SERVER_CERT}" \
+          ZITI_PKI_EDGE_CERT="${ZITI_PKI_CTRL_CERT}" \
+          ZITI_PKI_EDGE_KEY="${ZITI_PKI_CTRL_KEY}" \
+          ZITI_PKI_EDGE_CA="${ZITI_PKI_CTRL_CA}"
+
+  if [[ ! -s "${ZITI_CTRL_CONFIG_FILE}" || "${1:-}" == --force ]]; then
+    ziti create config controller \
+      --output "${ZITI_CTRL_CONFIG_FILE}"
+  fi
+
+}
+
+bootstrap() {
+
+  if [ -n "${1:-}" ]; then
+    local ZITI_CTRL_CONFIG_FILE="${1}"
+    local ZITI_CTRL_CONFIG_DIR="$(dirname "${ZITI_CTRL_CONFIG_FILE}")"
+    echo "DEBUG: using config file path: $(realpath "${ZITI_CTRL_CONFIG_FILE}")" >&3
+  else
+    echo "ERROR: no config file path provided" >&2
+    return 1
+  fi
+
+  mkdir -pm0700 "${ZITI_CTRL_CONFIG_DIR}"
+  cd "${ZITI_CTRL_CONFIG_DIR}"
 
   # make PKI unless explicitly disabled or it already exists
   if [ "${ZITI_BOOTSTRAP_PKI}"      == true ]; then
@@ -348,12 +341,20 @@ bootstrap() {
   if [ "${ZITI_BOOTSTRAP_DATABASE}" == true ]; then
     makeDatabase
   fi
+
+  # disown root to allow systemd to manage the working directory as dynamic user
+  chown -R "${ZIGGY_UID:-nobody}:${ZIGGY_GID:-nogroup}" "${ZITI_CTRL_CONFIG_DIR}/"
+  chmod -R u=rwX,go-rwx "${ZITI_CTRL_CONFIG_DIR}/"
 }
 
 # BEGIN
 
 # run the bootstrap function if this script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+
+  set -o errexit
+  set -o nounset
+  set -o pipefail
 
   # initialize a file descriptor for debug output
   : "${DEBUG:=0}"
@@ -368,13 +369,24 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   ZITI_CTRL_SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
   ZITI_CTRL_BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
   ZITI_CTRL_SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
+  ZITI_PWD_FILE=/opt/openziti/etc/controller/.pwd
+  : "${ZITI_HOME:=/var/lib/ziti-controller}"; export ZITI_HOME
 
-  loadEnvStdin
-  loadEnvFile
-  promptCtrlAdvertisedAddress
-  promptCtrlPort
-  promptPwd
+  loadEnvStdin                  # if stdin is a terminal, load env from it
+  loadEnvFiles                  # override stdin with ZITI_CTRL_SVC_ENV_FILE then ZITI_CTRL_BOOT_ENV_FILE
+  promptCtrlAdvertisedAddress   # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
+  promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
+  exportZitiVars                # export all ZITI_ vars to be used in ziti create config
+  # shellcheck disable=SC1090 # compute the path to the database file
+  source <(ziti create config environment) # ensure database file path is set before asking for password to init db
+  promptPwd                     # prompt for ZITI_PWD if not already set
+  loadEnvFiles                  # reload env files to source new answers from prompts
+  exportZitiVars                # export all ZITI_ vars to be used in bootstrap
 
+  if ! (( $# ))
+  then
+    set -- "${ZITI_HOME}/config.yml"
+  fi
   bootstrap "${@}"
 
   # unless bootstrapping is explicitly disabled, ensure the toggle reflects the configuration is managed by this script
