@@ -13,14 +13,14 @@ require (
 	github.com/gorilla/websocket v1.5.2
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.132
+	github.com/openziti/channel/v2 v2.0.133
 	github.com/openziti/edge-api v0.26.20
 	github.com/openziti/fablab v0.5.60
-	github.com/openziti/foundation/v2 v2.0.46
-	github.com/openziti/identity v1.0.79
-	github.com/openziti/sdk-golang v0.23.37
-	github.com/openziti/storage v0.2.42
-	github.com/openziti/transport/v2 v2.0.135
+	github.com/openziti/foundation/v2 v2.0.47
+	github.com/openziti/identity v1.0.80
+	github.com/openziti/sdk-golang v0.23.38
+	github.com/openziti/storage v0.2.45
+	github.com/openziti/transport/v2 v2.0.136
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -41,7 +41,7 @@ require (
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/andybalholm/brotli v1.0.6 // indirect
-	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
@@ -138,9 +138,9 @@ require (
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.55 // indirect
-	github.com/openziti/runzmd v1.0.48 // indirect
-	github.com/openziti/secretstream v0.1.20 // indirect
+	github.com/openziti/metrics v1.2.56 // indirect
+	github.com/openziti/runzmd v1.0.49 // indirect
+	github.com/openziti/secretstream v0.1.21 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.1.0 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect

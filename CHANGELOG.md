@@ -3,6 +3,21 @@
 ## What's New
 
 * Bug fixes
+* Controller HA Beta 1
+
+## Controler HA Beta 1
+
+This release can be run in HA mode. The code is still beta, as we're still finding and fixing bugs. Several bugs 
+have been fixed since Alpha 3 and c-based SDKs and tunnelers now work in HA mode. The smoketest can now be run
+with HA controllers and clients.
+
+* Initial ZET release support HA control: https://github.com/openziti/ziti-tunnel-sdk-c/releases/tag/v2.0.0-alpha1
+* Windows, Mac and Mobile clients are in the process of being updated
+
+For more information:
+
+* HA overview/getting started/migration: [HA Documementation](https://github.com/openziti/ziti/tree/release-next/doc/ha)
+* Open Issues: [HA Project Board](https://github.com/orgs/openziti/projects/9/views/1)
 
 ## Component Updates and Bug Fixes 
 
