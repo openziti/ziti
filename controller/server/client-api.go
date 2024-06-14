@@ -68,7 +68,7 @@ func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 		}
 	}
 
-	factory.appEnv.Config.RefreshCaPems()
+	factory.appEnv.Config.RefreshCas()
 
 	if !clientApiFound {
 		return errors.Errorf("could not find [edge.api.address] value [%s] as a bind point any instance of ApiConfig [%s]", factory.appEnv.Config.Api.Address, controller.ClientApiBinding)
