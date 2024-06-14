@@ -2,7 +2,8 @@
 
 ## Release-next Pre-requisites
 
-Perform these steps in PR branches based on release-next (trunk).
+Perform these steps in PR branches based on "release-next." This is the default branch and represents a revision that is
+a candidate for release.
 
 1. Tidy dependencies.
     1. Ensure you have downloaded the `@latest` artifact from the dependency(ies) you are updating in the main Ziti project, e.g.,
@@ -59,14 +60,22 @@ Perform these steps in PR branches based on release-next (trunk).
 )
 ```
 
-## Release Pre-requisites
+## Pre-Release
 
-Perform these steps in the release-next (trunk) branch which is based on main to release Ziti.
+Perform these steps in "release-next" (the default branch based on "main") to create a pre-release Ziti.
 
-1. Create a PR to merge release-next to main.
-1. Ensure PR checks succeed.
-1. PreRelease happens by pushing a tag like v* on the HEAD of main.
-1. After burn-in, mark the release as "latest" in GitHub to promote downstreams.
+1. Create a PR to merge "release-next" to "main."
+1. Ensure "main" checks succeed. Downstreams will not be released if any checks fail on same revision where a release is created.
+1. Push a tag like v*, typically on default branch HEAD to trigger the pre-release workflow named `release.yml`.
+
+## Stable and Latest Release
+
+Pre-releases are releases, but they're not promoted as "latest" in GitHub or automatically shipped downstream. Marking a
+release as not a prerelease makes it a stable release. There can be one stable release that's also marked "latest"
+(`isLatest: true`).
+
+1. After an arbitrary burn-in period, unmark "prerelease" in GitHub Releases (`isPrerelease: false`). This will automatically promote and advertise the downstreams.
+   Note: the downstreams workflow trigger ignores `isLatest`, can only be triggered once for a release, and waits for all other checks on the same revision.
 
 ## Downstreams
 
@@ -147,3 +156,9 @@ The first step is to ensure the GitHub release is not marked "latest," and the h
       done
     )
     ```
+
+### Manually Promoting Downstreams
+
+If downstream promotion failed for any reason, e.g., a check failure on the same Git revision blocked promotion, then it
+is best to create a new release that fixes the problem. Manually promoting downstreams is hypothetically possible, has
+never been attempted, is error prone and tedious, and should probably be avoided.

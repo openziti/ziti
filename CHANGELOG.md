@@ -5,7 +5,7 @@
 * Bug fixes
 * Controller HA Beta 1
 
-## Controler HA Beta 1
+## Controller HA Beta 1
 
 This release can be run in HA mode. The code is still beta, as we're still finding and fixing bugs. Several bugs 
 have been fixed since Alpha 3 and c-based SDKs and tunnelers now work in HA mode. The smoketest can now be run
