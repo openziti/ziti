@@ -391,7 +391,14 @@ func (index *uniqueIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink 
 
 	for entityCursor := index.symbol.GetStore().IterateValidIds(tx, ast.BoolNodeTrue); entityCursor.IsValid(); entityCursor.Next() {
 		id := entityCursor.Current()
-		_, fieldVal := index.symbol.Eval(tx, id)
+		fieldType, fieldVal := index.symbol.Eval(tx, id)
+		if fieldType == TypeNil {
+			if !index.nullable {
+				errorSink(errors.Errorf("entity with id %s has non-nillable unique index %v.%v, but field has nil value, unable to fix",
+					string(id), store.GetEntityType(), index.symbol.GetName()), false)
+			}
+			continue
+		}
 		idxId := index.Read(tx, fieldVal)
 
 		if idxId == nil {
