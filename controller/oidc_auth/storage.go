@@ -437,10 +437,12 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 		claims.CustomClaims.RemoteAddress = req.RemoteAddress
 		claims.AuthTime = oidc.Time(req.AuthTime.Unix())
 		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
+		claims.ClientID = req.ClientID
 	case *RefreshTokenRequest:
 		claims.CustomClaims = req.CustomClaims
 		claims.AuthTime = req.AuthTime
 		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
+		claims.ClientID = req.ClientID
 	case op.TokenExchangeRequest:
 		mapClaims := req.GetExchangeSubjectTokenClaims()
 		subjectClaims := &common.AccessClaims{}
@@ -470,6 +472,7 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 		}
 		claims.CustomClaims = subjectClaims.CustomClaims
 		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
+		claims.ClientID = req.GetClientID()
 	}
 
 	claims.AccessTokenClaims.Scopes = request.GetScopes()
