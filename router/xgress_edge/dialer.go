@@ -128,6 +128,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		if timeToDeadline > 0 && timeToDeadline < to {
 			to = timeToDeadline
 		}
+		log.Info("sending dial request to sdk")
 		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(to).SendForReply(terminator.Channel)
 		if err != nil {
 			conn.close(false, err.Error())
@@ -144,6 +145,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 
 		if !result.Success {
 			msg := fmt.Sprintf("failed to establish connection with terminator address %v. error: (%v)", terminatorAddress, result.Message)
+			log.Info(msg)
 			conn.close(false, msg)
 			x.Close()
 			return nil, fmt.Errorf(msg)

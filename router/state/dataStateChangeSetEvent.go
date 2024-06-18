@@ -26,7 +26,7 @@ func (eventHandler *dataStateChangeSetHandler) HandleReceive(msg *channel.Messag
 	}
 
 	model := eventHandler.state.RouterDataModel()
-	pfxlog.Logger().WithField("index", newEvent.Index).Debug("received data state change set")
+	pfxlog.Logger().WithField("index", newEvent.Index).Info("received data state change set")
 	model.ApplyChangeSet(newEvent)
 }
 

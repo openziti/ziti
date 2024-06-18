@@ -30,7 +30,7 @@ func (dsh *DataStateHandler) HandleReceive(msg *channel.Message, ch channel.Chan
 		return
 	}
 
-	model := common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
+	model := common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize, dsh.state.GetEnv().GetCloseNotify())
 
 	pfxlog.Logger().WithField("endIndex", newState.EndIndex).Debug("received full router data model state")
 	for _, event := range newState.Events {

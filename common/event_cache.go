@@ -84,7 +84,7 @@ func (cache *ForgetfulEventCache) Store(event *edge_ctrl_pb.DataState_ChangeSet,
 
 	if cache.index != nil {
 		if *cache.index >= event.Index {
-			return fmt.Errorf("out of order event detected, currentIndex: %d, recievedIndex: %d, type :%T", *cache.index, event.Index, cache)
+			return fmt.Errorf("out of order event detected, currentIndex: %d, receivedIndex: %d, type :%T", *cache.index, event.Index, cache)
 		}
 	}
 
