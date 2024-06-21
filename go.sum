@@ -566,8 +566,8 @@ github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b/go.mo
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/openziti/agent v1.0.16 h1:9Saji+8hFE1NpzP2XzDhsVJbCrDlhixoLHfOpFt5Z+U=
 github.com/openziti/agent v1.0.16/go.mod h1:zfm53+PVWoGFzjGGgQdKby5749G6VRYHe+eQJmoVKy4=
-github.com/openziti/channel/v2 v2.0.133 h1:/YuJnnmX6A1f+tdf33pi2c2GdzWYn7Sb4GP8S2zqXpI=
-github.com/openziti/channel/v2 v2.0.133/go.mod h1:D8MLoG3UHKtIGSwqk5GJi/y6IirNk5XaK8RW78nbOKc=
+github.com/openziti/channel/v2 v2.0.134 h1:QWIrOcubjFB0Y5O1MLTsQN+tXECgpU7xzkubmJasWP4=
+github.com/openziti/channel/v2 v2.0.134/go.mod h1:D8MLoG3UHKtIGSwqk5GJi/y6IirNk5XaK8RW78nbOKc=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
 github.com/openziti/edge-api v0.26.20 h1:r/61qDzU475mTXjZV/t3oGNN5szndzAR4OyhKjXb2jk=
