@@ -74,7 +74,14 @@ makePki() {
   # server cert
   ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_SERVER_FILE}.chain.pem"
   if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_SERVER_CERT" ]]; then
-    renewServerCert
+    # server cert
+    ziti pki create server \
+      --pki-root "${ZITI_PKI_ROOT}" \
+      --ca-name "${ZITI_INTERMEDIATE_FILE}" \
+      --key-file "${ZITI_SERVER_FILE}" \
+      --server-file "${ZITI_SERVER_FILE}" \
+      --dns "${ZITI_CTRL_ADVERTISED_ADDRESS}" \
+      --allow-overwrite
   fi
 
   # client cert
@@ -82,31 +89,14 @@ makePki() {
   #   each
   ZITI_PKI_CTRL_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_CLIENT_FILE}.cert"
   if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_CERT" ]]; then
-    renewClientCert
+    ziti pki create client \
+      --pki-root "${ZITI_PKI_ROOT}" \
+      --ca-name "${ZITI_INTERMEDIATE_FILE}" \
+      --key-file "${ZITI_SERVER_FILE}" \
+      --client-file "${ZITI_CLIENT_FILE}" \
+      --allow-overwrite
   fi
 
-}
-
-# called by makePki and entrypoint.bash
-renewServerCert() {
-  # server cert
-  ziti pki create server \
-    --pki-root "${ZITI_PKI_ROOT}" \
-    --ca-name "${ZITI_INTERMEDIATE_FILE}" \
-    --key-file "${ZITI_SERVER_FILE}" \
-    --server-file "${ZITI_SERVER_FILE}" \
-    --dns "${ZITI_CTRL_ADVERTISED_ADDRESS}" \
-    --allow-overwrite
-}
-
-# called by makePki and entrypoint.bash
-renewClientCert() {
-  ziti pki create client \
-    --pki-root "${ZITI_PKI_ROOT}" \
-    --ca-name "${ZITI_INTERMEDIATE_FILE}" \
-    --key-file "${ZITI_SERVER_FILE}" \
-    --client-file "${ZITI_CLIENT_FILE}" \
-    --allow-overwrite
 }
 
 makeDatabase() {
@@ -256,7 +246,7 @@ grantNetBindService() {
 }
 
 exportZitiVars() {
-  # make ziti vars available in forks like "ziti create config environment"
+  # make ziti vars available in forks like "ziti create config controller"
   for line in $(set | grep -e "^ZITI_" | sort); do
     # shellcheck disable=SC2013
     for var in $(awk -F= '{print $1}' <<< "$line"); do
@@ -376,9 +366,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   loadEnvFiles                  # override stdin with ZITI_CTRL_SVC_ENV_FILE then ZITI_CTRL_BOOT_ENV_FILE
   promptCtrlAdvertisedAddress   # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
   promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
-  exportZitiVars                # export all ZITI_ vars to be used in ziti create config
-  # shellcheck disable=SC1090 # compute the path to the database file
-  source <(ziti create config environment) # ensure database file path is set before asking for password to init db
   promptPwd                     # prompt for ZITI_PWD if not already set
   loadEnvFiles                  # reload env files to source new answers from prompts
   exportZitiVars                # export all ZITI_ vars to be used in bootstrap
