@@ -577,9 +577,11 @@ func NewAuthQueryZitiMfa() *rest_model.AuthQueryDetail {
 }
 
 func NewAuthQueryExtJwt(url string) *rest_model.AuthQueryDetail {
+	provider := rest_model.MfaProvidersURL
 	return &rest_model.AuthQueryDetail{
-		HTTPURL: url,
-		TypeID:  "EXT-JWT",
+		HTTPURL:  url,
+		TypeID:   "EXT-JWT",
+		Provider: &provider,
 	}
 }
 
