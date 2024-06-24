@@ -48,7 +48,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.133
+	github.com/openziti/channel/v2 v2.0.134
 	github.com/openziti/edge-api v0.26.20
 	github.com/openziti/foundation/v2 v2.0.47
 	github.com/openziti/identity v1.0.80
@@ -60,7 +60,7 @@ require (
 	github.com/openziti/storage v0.2.45
 	github.com/openziti/transport/v2 v2.0.136
 	github.com/openziti/x509-claims v1.0.3
-	github.com/openziti/xweb/v2 v2.1.0
+	github.com/openziti/xweb/v2 v2.1.1
 	github.com/openziti/ziti-db-explorer v1.1.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -81,6 +81,7 @@ require (
 	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/crypto v0.24.0
 	golang.org/x/net v0.26.0
+	golang.org/x/oauth2 v0.21.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/sys v0.21.0
 	golang.org/x/text v0.16.0
@@ -184,7 +185,6 @@ require (
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
 	golang.org/x/image v0.13.0 // indirect
 	golang.org/x/mod v0.18.0 // indirect
-	golang.org/x/oauth2 v0.21.0 // indirect
 	golang.org/x/term v0.21.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
