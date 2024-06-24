@@ -272,9 +272,9 @@ makeConfig() {
   shopt -u nocasematch  # toggle on case-sensitive comparison
 
   # used by "ziti create config controller" as advertised address
-  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]] || ! printenv | grep -q ZITI_CTRL_ADVERTISED_ADDRESS &>/dev/null ; then
-    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set and exported, i.e., the FQDN by which all devices will reach the"\
-    " controller and verify the server certificate" >&2
+  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
+    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set; i.e., the FQDN by which all devices will reach the"\
+    "controller and verify the server certificate" >&2
     return 1
   else
     echo "DEBUG: ZITI_CTRL_ADVERTISED_ADDRESS is set to ${ZITI_CTRL_ADVERTISED_ADDRESS}" >&3
@@ -294,6 +294,7 @@ makeConfig() {
           ZITI_PKI_EDGE_KEY="${ZITI_PKI_CTRL_KEY}" \
           ZITI_PKI_EDGE_CA="${ZITI_PKI_CTRL_CA}"
 
+  exportZitiVars                # export all ZITI_ vars to be used in bootstrap
   if [[ ! -s "${ZITI_CTRL_CONFIG_FILE}" || "${1:-}" == --force ]]; then
     ziti create config controller \
       --output "${ZITI_CTRL_CONFIG_FILE}"
@@ -368,7 +369,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
   promptPwd                     # prompt for ZITI_PWD if not already set
   loadEnvFiles                  # reload env files to source new answers from prompts
-  exportZitiVars                # export all ZITI_ vars to be used in bootstrap
 
   if ! (( $# ))
   then
