@@ -410,6 +410,10 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("unable to load identity (%w)", err)
 	} else {
 		cfg.Id = identity.NewIdentity(id)
+
+		if err := cfg.Id.WatchFiles(); err != nil {
+			pfxlog.Logger().Warn("could not enable file watching on identity: %w", err)
+		}
 	}
 
 	if value, found := cfgmap[PathMapKey]; found {
