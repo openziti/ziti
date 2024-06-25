@@ -354,6 +354,9 @@ prepareWorkingDir() {
 
 # BEGIN
 
+# discard debug unless this script is executed directly with DEBUG=1
+exec 3>/dev/null
+
 # run the bootstrap function if this script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 
@@ -366,8 +369,12 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if (( DEBUG )); then
     exec 3>&1
     set -o xtrace
-  else
-    exec 3>/dev/null
+  fi
+
+  if [[ $UID != 0 ]]; then
+    echo "ERROR: must be run as root; when executed directly, this script prepares the working directory for"\
+          "ziti-controller.service and generates a configuration" >&2
+    exit 1
   fi
 
   DEFAULT_ADDR=localhost
