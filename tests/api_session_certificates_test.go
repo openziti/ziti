@@ -25,11 +25,18 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/identity/certtools"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/ziti/common/spiffehlp"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -38,7 +45,7 @@ func Test_Api_Session_Certs(t *testing.T) {
 	defer ctx.Teardown()
 	ctx.StartServer()
 
-	t.Run("as the default admin, session certs", func(t *testing.T) {
+	t.Run("as the default admin, session certs, using legacy authentication", func(t *testing.T) {
 		var createdResponseBody *gabs.Container //used across multiple subtests, set in first
 		var createdId string                    //used across multiple subtests, set in first
 
@@ -172,6 +179,86 @@ func Test_Api_Session_Certs(t *testing.T) {
 			ctx.Req.NoError(err)
 
 			standardJsonResponseTests(resp, http.StatusOK, t)
+		})
+	})
+
+	t.Run("as admin using oidc authentication", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+
+		clientApiUrl, err := url.Parse("https://" + ctx.ApiHost + EdgeClientApiPath)
+		ctx.Req.NoError(err)
+
+		adminClientClient := edge_apis.NewClientApiClient([]*url.URL{clientApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+			strings <- "123"
+		})
+
+		adminClientClient.SetUseOidc(true)
+		adminClientApiSession, err := adminClientClient.Authenticate(adminCreds, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(adminClientApiSession)
+
+		managementApiUrl, err := url.Parse("https://" + ctx.ApiHost + EdgeManagementApiPath)
+		ctx.Req.NoError(err)
+
+		adminManagementClient := edge_apis.NewManagementApiClient([]*url.URL{managementApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+			strings <- "123"
+		})
+
+		adminManagementClient.SetUseOidc(true)
+		adminManagementApiSession, err := adminManagementClient.Authenticate(adminCreds, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(adminManagementApiSession)
+
+		t.Run("can create a new session certificate", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			csrBytes, privateKey, err := generateCsr()
+
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(privateKey)
+			ctx.Req.NotEmpty(csrBytes)
+
+			csrPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+			ctx.Req.NotEmpty(csrPem)
+
+			csr := string(csrPem)
+
+			params := &current_api_session.CreateCurrentAPISessionCertificateParams{
+				SessionCertificate: &rest_model.CurrentAPISessionCertificateCreate{
+					Csr: &csr,
+				},
+			}
+
+			resp, err := adminClientClient.API.CurrentAPISession.CreateCurrentAPISessionCertificate(params, nil)
+
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(resp)
+			ctx.Req.NotNil(resp.Payload)
+			ctx.Req.NotNil(resp.Payload.Data)
+			ctx.Req.NotNil(resp.Payload.Data.Certificate)
+
+			t.Run("the certificate contains the proper SPIFFE id", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				certs, err := parsePEMBundle([]byte(*resp.Payload.Data.Certificate))
+
+				ctx.Req.NoError(err)
+				ctx.Req.Len(certs, 1)
+
+				spiffeId, err := spiffehlp.GetSpiffeIdFromCert(certs[0])
+
+				ctx.Req.NoError(err)
+				ctx.Req.NotEmpty(spiffeId)
+
+				apiSession := *adminClientClient.ApiSession.Load()
+				apiSessionId := apiSession.GetId()
+				identityId := apiSession.GetIdentityId()
+				expectedId := fmt.Sprintf("%s/identity/%s/apiSession/%s/apiSessionCertificate/", ctx.ControllerConfig.SpiffeIdTrustDomain, identityId, apiSessionId)
+				ctx.Req.True(strings.HasPrefix(spiffeId.String(), expectedId), "expected the spiffe id to have the prefix %s, but got %s", expectedId, spiffeId)
+
+			})
 		})
 	})
 }

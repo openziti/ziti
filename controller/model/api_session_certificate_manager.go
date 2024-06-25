@@ -18,12 +18,15 @@ package model
 
 import (
 	"crypto/x509"
+	"fmt"
 	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
+	"net/url"
 	"time"
 )
 
@@ -48,7 +51,7 @@ func (self *ApiSessionCertificateManager) Create(entity *ApiSessionCertificate, 
 	return self.createEntity(entity, ctx.NewMutateContext())
 }
 
-func (self *ApiSessionCertificateManager) CreateFromCSR(apiSessionId string, lifespan time.Duration, csrPem []byte, ctx *change.Context) (string, error) {
+func (self *ApiSessionCertificateManager) CreateFromCSR(identity *Identity, apiSession *ApiSession, isJwt bool, lifespan time.Duration, csrPem []byte, ctx *change.Context) (*ApiSessionCertificate, error) {
 	notBefore := time.Now()
 	notAfter := time.Now().Add(lifespan)
 
@@ -58,38 +61,59 @@ func (self *ApiSessionCertificateManager) CreateFromCSR(apiSessionId string, lif
 		apiErr := apierror.NewCouldNotProcessCsr()
 		apiErr.Cause = err
 		apiErr.AppendCause = true
-		return "", apiErr
+		return nil, apiErr
+	}
+
+	newId := eid.New()
+
+	trustDomain := self.env.GetConfig().SpiffeIdTrustDomain.Hostname()
+	spiffeId := &url.URL{
+		Scheme: "spiffe",
+		Host:   trustDomain,
+		Path:   fmt.Sprintf("identity/%s/apiSession/%s/apiSessionCertificate/%s", identity.Id, apiSession.Id, newId),
 	}
 
 	certRaw, err := self.env.GetApiClientCsrSigner().SignCsr(csr, &cert.SigningOpts{
 		NotAfter:  &notAfter,
 		NotBefore: &notBefore,
+		URIs: []*url.URL{
+			spiffeId,
+		},
 	})
 
 	if err != nil {
 		apiErr := apierror.NewCouldNotProcessCsr()
 		apiErr.Cause = err
 		apiErr.AppendCause = true
-		return "", apiErr
+		return nil, apiErr
 	}
 
 	fp := self.env.GetFingerprintGenerator().FromRaw(certRaw)
 
 	certPem, _ := cert.RawToPem(certRaw)
 
-	cert, _ := x509.ParseCertificate(certRaw)
+	newCert, _ := x509.ParseCertificate(certRaw)
 
 	entity := &ApiSessionCertificate{
-		BaseEntity:   models.BaseEntity{},
-		ApiSessionId: apiSessionId,
-		Subject:      cert.Subject.String(),
+		BaseEntity: models.BaseEntity{
+			Id: newId,
+		},
+		ApiSessionId: apiSession.Id,
+		Subject:      newCert.Subject.String(),
 		Fingerprint:  fp,
 		ValidAfter:   &notBefore,
 		ValidBefore:  &notAfter,
 		PEM:          string(certPem),
 	}
 
-	return self.Create(entity, ctx)
+	if isJwt {
+		// can't create if using bearer tokens, the API Session will not exist
+		return entity, nil
+	}
+
+	entity.Id, err = self.Create(entity, ctx)
+
+	return entity, err
 }
 
 func (self *ApiSessionCertificateManager) IsUpdated(_ string) bool {
