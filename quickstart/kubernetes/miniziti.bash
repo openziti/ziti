@@ -223,7 +223,6 @@ installHosts() {
     hosts=(
         "miniziti-controller.$MINIZITI_INGRESS_ZONE"
         "miniziti-router.$MINIZITI_INGRESS_ZONE"
-        "miniziti-console.$MINIZITI_INGRESS_ZONE"
     )
 
     hosts_line="$MINIKUBE_NODE_EXTERNAL ${hosts[*]}"
@@ -288,7 +287,7 @@ minizitiLogin() {
 
 minizitiConsole() {
     ingress_zone="$(getIngressZone)"
-    console_url="https://miniziti-console.$ingress_zone"
+    console_url="https://miniziti-controller.${ingress_zone}/zac/"
     case "$DETECTED_OS" in
         "Windows")
             checkCommand wslview
@@ -370,7 +369,7 @@ getPodStatus() {
 }
 
 showStatus() {
-    COMPONENTS=("ziti-controller" "ziti-router" "ziti-console")
+    COMPONENTS=("ziti-controller" "ziti-router")
     for component in "${COMPONENTS[@]}"; do
         status="$(getPodStatus "$component")"
         if [[ -z "$status" ]]; then
@@ -982,27 +981,6 @@ EOF
         exit 1
     fi
 
-    #
-    ## Ensure OpenZiti Console is Configured and Ready
-    #
-
-    logDebug "installing console chart as 'ziti-console'"
-    (( ZITI_CHARTS_ALT )) && {
-        logDebug "building ${ZITI_CHARTS_REF}/ziti-console Helm Chart dependencies"
-        helmWrapper dependency build "${ZITI_CHARTS_REF}/ziti-console" >&3
-    }
-    helmWrapper upgrade --install "ziti-console" "${ZITI_CHARTS_REF}/ziti-console" \
-        --namespace "${ZITI_NAMESPACE}" \
-        --set ingress.advertisedHost="miniziti-console.${MINIZITI_INGRESS_ZONE}" \
-        --set "settings.edgeControllers[0].url=https://ziti-controller-client.${ZITI_NAMESPACE}.svc:443" \
-        --values "${ZITI_CHARTS_URL}/ziti-console/values-ingress-nginx.yaml" >&3
-
-    logInfo "waiting for ziti-console to be ready"
-    kubectlWrapper wait deployments "ziti-console" \
-        --namespace "${ZITI_NAMESPACE}" \
-        --for condition=Available=True \
-        --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
-
     logDebug "setting default namespace to '${ZITI_NAMESPACE}' in kubeconfig context '${MINIKUBE_PROFILE}'"
         kubectlWrapper config set-context "${MINIKUBE_PROFILE}" \
             --namespace "${ZITI_NAMESPACE}" >&3
@@ -1118,7 +1096,7 @@ EOF
     fi
 
     echo -e "\n\n"
-    logInfo "Your OpenZiti Console is here: https://miniziti-console.${MINIZITI_INGRESS_ZONE}"
+    logInfo "Your OpenZiti Console is here: https://miniziti-controller.${MINIZITI_INGRESS_ZONE}/zac/"
     showAdminCreds
     echo -e "\n\n"
 
