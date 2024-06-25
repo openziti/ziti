@@ -16,7 +16,7 @@ makePki() {
     return 1
   fi
 
-  if [ "$ZITI_CA_FILE" == "$ZITI_INTERMEDIATE_FILE" ]; then
+  if [ "${ZITI_CA_FILE}" == "${ZITI_INTERMEDIATE_FILE}" ]; then
     echo "ERROR: ZITI_CA_FILE and ZITI_INTERMEDIATE_FILE must be different" >&2
     return 1
   fi
@@ -35,18 +35,18 @@ makePki() {
       --pki-root "${ZITI_PKI_ROOT}" \
       --ca-name "${ZITI_CA_FILE}" \
       --intermediate-file "${ZITI_INTERMEDIATE_FILE}"
-  elif [[ ! -s "$ZITI_PKI_SIGNER_CERT" || ! -s "$ZITI_PKI_SIGNER_KEY" ]]; then
-    echo "ERROR: $ZITI_PKI_SIGNER_CERT and $ZITI_PKI_SIGNER_KEY must both exist or neither exist as non-empty files" >&2
+  elif [[ ! -s "${ZITI_PKI_SIGNER_CERT}" || ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
+    echo "ERROR: ${ZITI_PKI_SIGNER_CERT} and ${ZITI_PKI_SIGNER_KEY} must both exist or neither exist as non-empty files" >&2
     return 1
   else
-    echo "INFO: edge signer CA exists in $(realpath "$ZITI_PKI_SIGNER_CERT")"
+    echo "INFO: edge signer CA exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")"
   fi
 
   #
   # create server and client keys
   #
 
-  if [ "$ZITI_SERVER_FILE" == "$ZITI_CLIENT_FILE" ]; then
+  if [ "${ZITI_SERVER_FILE}" == "${ZITI_CLIENT_FILE}" ]; then
     echo "ERROR: ZITI_SERVER_FILE and ZITI_CLIENT_FILE must be different" >&2
     return 1
   fi
@@ -224,7 +224,7 @@ promptPwd() {
       echo "INFO: ZITI_PWD is defined in ${ZITI_PWD_FILE} and will be used to"\
             "init db during next startup "
     else
-      GEN_PWD=$(LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^&*()_+~' < /dev/urandom | head -c12)
+      GEN_PWD=$(head -c1024 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^&*()_+~' | cut -c 1-12)
       if ZITI_PWD="$(prompt "Enter the admin password [${GEN_PWD}]: " || echo "${GEN_PWD}")"; then
         if [ -n "${ZITI_PWD:-}" ]; then
           echo "$ZITI_PWD" >| "${ZITI_PWD_FILE}"
@@ -372,7 +372,24 @@ prepareWorkingDir() {
 # BEGIN
 
 # discard debug unless this script is executed directly with DEBUG=1
-exec 3>/dev/null
+# initialize a file descriptor for debug output
+: "${DEBUG:=0}"
+if (( DEBUG )); then
+  exec 3>&1
+  set -o xtrace
+else
+  exec 3>/dev/null
+fi
+
+
+# set global defaults applicable to bootstrapping and normal operation
+: "${ZITI_HOME:=/var/lib/ziti-controller}"; export ZITI_HOME
+: "${ZITI_PKI_ROOT:=pki}"  # relative to systemd service WorkingDirectory; e.g., /var/lib/ziti-controller/pki
+: "${ZITI_CA_FILE:=root}"  # relative to ZITI_PKI_ROOT; root CA dir; e.g., /var/lib/ziti-controller/pki/root
+: "${ZITI_INTERMEDIATE_FILE:=intermediate}"  # intermediate CA dir; e.g., /var/lib/ziti-controller/pki/intermediate
+: "${ZITI_SERVER_FILE:=server}"  # relative to intermediate CA "keys" and "certs" dirs
+: "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
+: "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
 
 # run the bootstrap function if this script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -380,13 +397,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   set -o errexit
   set -o nounset
   set -o pipefail
-
-  # initialize a file descriptor for debug output
-  : "${DEBUG:=0}"
-  if (( DEBUG )); then
-    exec 3>&1
-    set -o xtrace
-  fi
 
   if [[ $UID != 0 ]]; then
     echo "ERROR: must be run as root; when executed directly, this script prepares the working directory for"\
@@ -399,14 +409,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   ZITI_CTRL_BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
   ZITI_CTRL_SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
   ZITI_PWD_FILE=/opt/openziti/etc/controller/.pwd
-  : "${ZITI_HOME:=/var/lib/ziti-controller}"; export ZITI_HOME
-  : "${ZITI_PKI_ROOT:=pki}"  # relative to systemd service WorkingDirectory; e.g., /var/lib/ziti-controller/pki
-  : "${ZITI_CA_FILE:=root}"  # relative to ZITI_PKI_ROOT; root CA dir; e.g., /var/lib/ziti-controller/pki/root
-  : "${ZITI_INTERMEDIATE_FILE:=intermediate}"  # intermediate CA dir; e.g., /var/lib/ziti-controller/pki/intermediate
-  : "${ZITI_SERVER_FILE:=server}"  # relative to intermediate CA "keys" and "certs" dirs
-  : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
-  : "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
-
 
   prepareWorkingDir "${ZITI_HOME}"
   loadEnvStdin                  # if stdin is a terminal, load env from it
