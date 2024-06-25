@@ -40,7 +40,7 @@ require (
 	github.com/MichaelMure/go-term-markdown v0.1.4 // indirect
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
-	github.com/andybalholm/brotli v1.0.6 // indirect
+	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
@@ -142,7 +142,7 @@ require (
 	github.com/openziti/runzmd v1.0.49 // indirect
 	github.com/openziti/secretstream v0.1.21 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
-	github.com/openziti/xweb/v2 v2.1.0 // indirect
+	github.com/openziti/xweb/v2 v2.1.1 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect

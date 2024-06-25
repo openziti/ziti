@@ -169,6 +169,10 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("unable to load identity (%s)", err)
 	} else {
 		controllerConfig.Id = identity.NewIdentity(id)
+
+		if err := controllerConfig.Id.WatchFiles(); err != nil {
+			pfxlog.Logger().Warn("could not enable file watching on identity: %w", err)
+		}
 	}
 
 	if value, found := cfgmap["network"]; found {
