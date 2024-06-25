@@ -37,7 +37,7 @@ jobs:
     name: Build Mac OS binaries
     # allow fors to opt-out of time-consuming macOS builds
     if: vars.ZITI_SKIP_MACOS_BUILD != 'true'
-    runs-on: macos-11
+    runs-on: macos-latest
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
