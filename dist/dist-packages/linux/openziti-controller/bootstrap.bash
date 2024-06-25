@@ -120,10 +120,20 @@ makeDatabase() {
 
   : "${ZITI_PWD:=$(< "${ZITI_PWD_FILE}")}"
   if [ -n "${ZITI_PWD}" ]; then
-    if ! ziti controller edge init "${ZITI_CTRL_CONFIG_FILE}" \
+    if ziti controller edge init "${ZITI_CTRL_CONFIG_FILE}" \
       --username "${ZITI_USER}" \
       --password "${ZITI_PWD}"
     then
+      # scrub the admin password
+      if [[ -s "${ZITI_PWD_FILE}" ]]
+      then
+        rm "${ZITI_PWD_FILE}"
+      fi
+      for ENV_FILE in "${ZITI_CTRL_BOOT_ENV_FILE}" "${ZITI_CTRL_SVC_ENV_FILE}"
+      do
+          sed -Ei "s/^(ZITI_PWD)=.*/\1=/" "${ENV_FILE}"
+      done
+    else
       echo "ERROR: failed to create default admin in database" >&2
       # do not leave behind a partially-initialized database file because it prevents us from trying again
       rm -f "${ZITI_CTRL_DATABASE_FILE}"
@@ -173,10 +183,16 @@ loadEnvStdin() {
 }
 
 loadEnvFiles() {
-  # shellcheck disable=SC1090
-  source "${ZITI_CTRL_SVC_ENV_FILE}"
-  # shellcheck disable=SC1090
-  source "${ZITI_CTRL_BOOT_ENV_FILE}"
+  for ENV_FILE in "${ZITI_CTRL_BOOT_ENV_FILE}" "${ZITI_CTRL_SVC_ENV_FILE}"
+  do
+    if [[ -s "${ENV_FILE}" ]]
+    then
+      # shellcheck disable=SC1090
+      source "${ENV_FILE}"
+    else
+      echo "WARN: missing env file '${ENV_FILE}'"
+    fi 
+  done
 }
 
 promptCtrlAdvertisedAddress() {
@@ -193,7 +209,7 @@ promptCtrlAdvertisedAddress() {
 
 promptPwd() {
   # do nothing if database file has stuff in it
-  if [ -s "${ZITI_CTRL_DATABASE_FILE}" ]; then
+  if [[ -s "${ZITI_CTRL_DATABASE_FILE}" ]]; then
       echo "INFO: database exists in $(realpath "${ZITI_CTRL_DATABASE_FILE}")"
   # prompt for password token if interactive, unless already answered
   else
@@ -208,13 +224,14 @@ promptPwd() {
       echo "INFO: ZITI_PWD is defined in ${ZITI_PWD_FILE} and will be used to"\
             "init db during next startup "
     else
-      if ZITI_PWD="$(prompt "Enter the admin password: ")"; then
+      GEN_PWD=$(LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^&*()_+~' < /dev/urandom | head -c12)
+      if ZITI_PWD="$(prompt "Enter the admin password [${GEN_PWD}]: " || echo "${GEN_PWD}")"; then
         if [ -n "${ZITI_PWD:-}" ]; then
           echo "$ZITI_PWD" >| "${ZITI_PWD_FILE}"
         fi
       else
-        echo "WARN: missing ZITI_PWD; use LoadCredential in"\
-              "${ZITI_CTRL_SVC_FILE} or set in ${ZITI_CTRL_BOOT_ENV_FILE}" >&2
+        echo "WARN: missing ZITI_PWD; set in"\
+              "${ZITI_PWD_FILE} or set in ${ZITI_CTRL_BOOT_ENV_FILE}" >&2
       fi
     fi
 fi
@@ -383,6 +400,13 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   ZITI_CTRL_SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
   ZITI_PWD_FILE=/opt/openziti/etc/controller/.pwd
   : "${ZITI_HOME:=/var/lib/ziti-controller}"; export ZITI_HOME
+  : "${ZITI_PKI_ROOT:=pki}"  # relative to systemd service WorkingDirectory; e.g., /var/lib/ziti-controller/pki
+  : "${ZITI_CA_FILE:=root}"  # relative to ZITI_PKI_ROOT; root CA dir; e.g., /var/lib/ziti-controller/pki/root
+  : "${ZITI_INTERMEDIATE_FILE:=intermediate}"  # intermediate CA dir; e.g., /var/lib/ziti-controller/pki/intermediate
+  : "${ZITI_SERVER_FILE:=server}"  # relative to intermediate CA "keys" and "certs" dirs
+  : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
+  : "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
+
 
   prepareWorkingDir "${ZITI_HOME}"
   loadEnvStdin                  # if stdin is a terminal, load env from it
