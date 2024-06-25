@@ -38,6 +38,8 @@ makePki() {
   elif [[ ! -s "$ZITI_PKI_SIGNER_CERT" || ! -s "$ZITI_PKI_SIGNER_KEY" ]]; then
     echo "ERROR: $ZITI_PKI_SIGNER_CERT and $ZITI_PKI_SIGNER_KEY must both exist or neither exist as non-empty files" >&2
     return 1
+  else
+    echo "INFO: edge signer CA exists in $(realpath "$ZITI_PKI_SIGNER_CERT")"
   fi
 
   #
@@ -81,7 +83,7 @@ makePki() {
       --key-file "${ZITI_SERVER_FILE}" \
       --server-file "${ZITI_SERVER_FILE}" \
       --dns "${ZITI_CTRL_ADVERTISED_ADDRESS}" \
-      --allow-overwrite
+      --allow-overwrite >&3  # write to debug fd because this runs every startup
   fi
 
   # client cert
@@ -94,7 +96,7 @@ makePki() {
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
       --client-file "${ZITI_CLIENT_FILE}" \
-      --allow-overwrite
+      --allow-overwrite >&3  # write to debug fd because this runs every startup
   fi
 
 }
@@ -192,29 +194,29 @@ promptCtrlAdvertisedAddress() {
 promptPwd() {
   # do nothing if database file has stuff in it
   if [ -s "${ZITI_CTRL_DATABASE_FILE}" ]; then
-      echo "INFO: database exists in ${ZITI_CTRL_DATABASE_FILE}"
+      echo "INFO: database exists in $(realpath "${ZITI_CTRL_DATABASE_FILE}")"
   # prompt for password token if interactive, unless already answered
   else
-  if ! [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
-    echo "INFO: ZITI_BOOTSTRAP_DATABASE is not true in ${ZITI_CTRL_SVC_ENV_FILE}" >&2
-  # do nothing if enrollment token is already defined in env file
-  elif [[ -n "${ZITI_PWD:-}" ]]; then
-    echo "INFO: ZITI_PWD is defined in ${ZITI_CTRL_BOOT_ENV_FILE} and will be used to init db during"\
-          "next startup"
-  elif    grep -qE "^LoadCredential=ZITI_PWD:${ZITI_PWD_FILE}" "${ZITI_CTRL_SVC_FILE}" \
-          && [[ -s "${ZITI_PWD_FILE}" ]]; then
-    echo "INFO: ZITI_PWD is defined in ${ZITI_PWD_FILE} and will be used to"\
-          "init db during next startup "
-  else
-    if ZITI_PWD="$(prompt "Enter the admin password: ")"; then
-      if [ -n "${ZITI_PWD:-}" ]; then
-        echo "$ZITI_PWD" >| "${ZITI_PWD_FILE}"
-      fi
+    if ! [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
+      echo "INFO: ZITI_BOOTSTRAP_DATABASE is not true in ${ZITI_CTRL_SVC_ENV_FILE}" >&2
+    # do nothing if enrollment token is already defined in env file
+    elif [[ -n "${ZITI_PWD:-}" ]]; then
+      echo "INFO: ZITI_PWD is defined in ${ZITI_CTRL_BOOT_ENV_FILE} and will be used to init db during"\
+            "next startup"
+    elif    grep -qE "^LoadCredential=ZITI_PWD:${ZITI_PWD_FILE}" "${ZITI_CTRL_SVC_FILE}" \
+            && [[ -s "${ZITI_PWD_FILE}" ]]; then
+      echo "INFO: ZITI_PWD is defined in ${ZITI_PWD_FILE} and will be used to"\
+            "init db during next startup "
     else
-      echo "WARN: missing ZITI_PWD; use LoadCredential in"\
-            "${ZITI_CTRL_SVC_FILE} or set in ${ZITI_CTRL_BOOT_ENV_FILE}" >&2
+      if ZITI_PWD="$(prompt "Enter the admin password: ")"; then
+        if [ -n "${ZITI_PWD:-}" ]; then
+          echo "$ZITI_PWD" >| "${ZITI_PWD_FILE}"
+        fi
+      else
+        echo "WARN: missing ZITI_PWD; use LoadCredential in"\
+              "${ZITI_CTRL_SVC_FILE} or set in ${ZITI_CTRL_BOOT_ENV_FILE}" >&2
+      fi
     fi
-  fi
 fi
 }
 
@@ -298,6 +300,8 @@ makeConfig() {
   if [[ ! -s "${ZITI_CTRL_CONFIG_FILE}" || "${1:-}" == --force ]]; then
     ziti create config controller \
       --output "${ZITI_CTRL_CONFIG_FILE}"
+  else
+    echo "INFO: config file exists in $(realpath "${ZITI_CTRL_CONFIG_FILE}")"
   fi
 
 }
@@ -306,15 +310,11 @@ bootstrap() {
 
   if [ -n "${1:-}" ]; then
     local ZITI_CTRL_CONFIG_FILE="${1}"
-    local ZITI_CTRL_CONFIG_DIR="$(dirname "${ZITI_CTRL_CONFIG_FILE}")"
-    echo "DEBUG: using config file path: $(realpath "${ZITI_CTRL_CONFIG_FILE}")" >&3
+    echo "DEBUG: using config: $(realpath "${ZITI_CTRL_CONFIG_FILE}")" >&3
   else
     echo "ERROR: no config file path provided" >&2
     return 1
   fi
-
-  mkdir -pm0700 "${ZITI_CTRL_CONFIG_DIR}"
-  cd "${ZITI_CTRL_CONFIG_DIR}"
 
   # make PKI unless explicitly disabled or it already exists
   if [ "${ZITI_BOOTSTRAP_PKI}"      == true ]; then
@@ -333,9 +333,23 @@ bootstrap() {
     makeDatabase
   fi
 
+}
+
+prepareWorkingDir() {
+  if [ -n "${1:-}" ]; then
+    local ZITI_CTRL_CONFIG_DIR="$1"
+    echo "DEBUG: preparing working directory: $(realpath "${ZITI_CTRL_CONFIG_DIR}")" >&3
+  else
+    echo "ERROR: no working dir path provided" >&2
+    return 1
+  fi
+
+  mkdir -pm0700 "${ZITI_CTRL_CONFIG_DIR}"
   # disown root to allow systemd to manage the working directory as dynamic user
-  chown -R "${ZIGGY_UID:-nobody}:${ZIGGY_GID:-nogroup}" "${ZITI_CTRL_CONFIG_DIR}/"
+  chown -R "${ZIGGY_UID:-65534}:${ZIGGY_GID:-65534}" "${ZITI_CTRL_CONFIG_DIR}/"
   chmod -R u=rwX,go-rwx "${ZITI_CTRL_CONFIG_DIR}/"
+  # set pwd for subesquent bootstrap command
+  cd "${ZITI_CTRL_CONFIG_DIR}"
 }
 
 # BEGIN
@@ -363,6 +377,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   ZITI_PWD_FILE=/opt/openziti/etc/controller/.pwd
   : "${ZITI_HOME:=/var/lib/ziti-controller}"; export ZITI_HOME
 
+  prepareWorkingDir "${ZITI_HOME}"
   loadEnvStdin                  # if stdin is a terminal, load env from it
   loadEnvFiles                  # override stdin with ZITI_CTRL_SVC_ENV_FILE then ZITI_CTRL_BOOT_ENV_FILE
   promptCtrlAdvertisedAddress   # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
