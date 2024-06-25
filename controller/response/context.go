@@ -50,6 +50,7 @@ type RequestContext struct {
 	ActivePermissions []string
 	ResponseWriter    http.ResponseWriter
 	Request           *http.Request
+	IsJwtToken        bool
 
 	entityId    string
 	entitySubId string

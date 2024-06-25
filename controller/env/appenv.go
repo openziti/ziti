@@ -557,6 +557,7 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 	token := ae.getJwtTokenFromRequest(rc.Request)
 
 	if token != nil {
+		rc.IsJwtToken = true
 		return ae.ProcessJwt(rc, token)
 	}
 
