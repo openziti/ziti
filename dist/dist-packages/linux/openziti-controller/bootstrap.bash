@@ -101,6 +101,54 @@ makePki() {
 
 }
 
+makeConfig() {
+  #
+  # create config file
+  #
+
+  # enforce first argument is a non-empty string that does not begin with "--" (long option prefix)
+  if [[ -n "${1:-}" && ! "${1}" =~ ^-- ]]; then
+    local ZITI_CTRL_CONFIG_FILE="${1}"
+    shift
+  else
+    echo "ERROR: no config file path provided" >&2
+    return 1
+  fi
+  shopt -u nocasematch  # toggle on case-sensitive comparison
+
+  # used by "ziti create config controller" as advertised address
+  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
+    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set; i.e., the FQDN by which all devices will reach the"\
+    "controller and verify the server certificate" >&2
+    return 1
+  else
+    echo "DEBUG: ZITI_CTRL_ADVERTISED_ADDRESS is set to ${ZITI_CTRL_ADVERTISED_ADDRESS}" >&3
+  fi
+
+  # set the path to the root CA cert
+  export  ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
+
+  # set the URI of the edge-client API (uses same TCP port); e.g., ztAPI: ziti.example.com:1280
+  export  ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}" \
+          ZITI_CTRL_EDGE_ADVERTISED_PORT="${ZITI_CTRL_ADVERTISED_PORT:=1280}"
+
+  # export the vars that were assigned inside this script to set the path to the server and client certs and their common
+  # private key, and the intermediate (signer) CA cert and key
+  export  ZITI_PKI_EDGE_SERVER_CERT="${ZITI_PKI_CTRL_SERVER_CERT}" \
+          ZITI_PKI_EDGE_CERT="${ZITI_PKI_CTRL_CERT}" \
+          ZITI_PKI_EDGE_KEY="${ZITI_PKI_CTRL_KEY}" \
+          ZITI_PKI_EDGE_CA="${ZITI_PKI_CTRL_CA}"
+
+  exportZitiVars                # export all ZITI_ vars to be used in bootstrap
+  if [[ ! -s "${ZITI_CTRL_CONFIG_FILE}" || "${1:-}" == --force ]]; then
+    ziti create config controller \
+      --output "${ZITI_CTRL_CONFIG_FILE}"
+  else
+    echo "INFO: config file exists in $(realpath "${ZITI_CTRL_CONFIG_FILE}")"
+  fi
+
+}
+
 makeDatabase() {
 
   #
@@ -273,54 +321,6 @@ exportZitiVars() {
       export "$var"
     done
   done
-}
-
-makeConfig() {
-  #
-  # create config file
-  #
-
-  # enforce first argument is a non-empty string that does not begin with "--" (long option prefix)
-  if [[ -n "${1:-}" && ! "${1}" =~ ^-- ]]; then
-    local ZITI_CTRL_CONFIG_FILE="${1}"
-    shift
-  else
-    echo "ERROR: no config file path provided" >&2
-    return 1
-  fi
-  shopt -u nocasematch  # toggle on case-sensitive comparison
-
-  # used by "ziti create config controller" as advertised address
-  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
-    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set; i.e., the FQDN by which all devices will reach the"\
-    "controller and verify the server certificate" >&2
-    return 1
-  else
-    echo "DEBUG: ZITI_CTRL_ADVERTISED_ADDRESS is set to ${ZITI_CTRL_ADVERTISED_ADDRESS}" >&3
-  fi
-
-  # set the path to the root CA cert
-  export  ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
-
-  # set the URI of the edge-client API (uses same TCP port); e.g., ztAPI: ziti.example.com:1280
-  export  ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}" \
-          ZITI_CTRL_EDGE_ADVERTISED_PORT="${ZITI_CTRL_ADVERTISED_PORT:=1280}"
-
-  # export the vars that were assigned inside this script to set the path to the server and client certs and their common
-  # private key, and the intermediate (signer) CA cert and key
-  export  ZITI_PKI_EDGE_SERVER_CERT="${ZITI_PKI_CTRL_SERVER_CERT}" \
-          ZITI_PKI_EDGE_CERT="${ZITI_PKI_CTRL_CERT}" \
-          ZITI_PKI_EDGE_KEY="${ZITI_PKI_CTRL_KEY}" \
-          ZITI_PKI_EDGE_CA="${ZITI_PKI_CTRL_CA}"
-
-  exportZitiVars                # export all ZITI_ vars to be used in bootstrap
-  if [[ ! -s "${ZITI_CTRL_CONFIG_FILE}" || "${1:-}" == --force ]]; then
-    ziti create config controller \
-      --output "${ZITI_CTRL_CONFIG_FILE}"
-  else
-    echo "INFO: config file exists in $(realpath "${ZITI_CTRL_CONFIG_FILE}")"
-  fi
-
 }
 
 bootstrap() {
