@@ -183,7 +183,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
-	golang.org/x/image v0.13.0 // indirect
+	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/mod v0.18.0 // indirect
 	golang.org/x/term v0.21.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
