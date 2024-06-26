@@ -15,12 +15,16 @@ function makeConfig() {
 
     # build config command
     command=("ziti create config router ${ZITI_ROUTER_TYPE}" \
-             "--tunnelerMode ${ZITI_ROUTER_MODE}" \
-             "--routerName ${ZITI_ROUTER_NAME}" \
-             "--output ${ZITI_ROUTER_CONFIG_FILE}")
+              "--routerName ${ZITI_ROUTER_NAME}" \
+              "--output ${ZITI_ROUTER_CONFIG_FILE}")
+
+    # mode flag not present in fabric command
+    if [[ "${ZITI_ROUTER_TYPE}" == edge ]]; then
+      command+=("--tunnelerMode ${ZITI_ROUTER_MODE}")
+    fi
 
     # check if ZITI_ROUTER_LAN_INTERFACE is specified and add --lanInterface flag accordingly
-    if [[ -n "${ZITI_ROUTER_LAN_INTERFACE}" ]]; then
+    if [[ -n "${ZITI_ROUTER_LAN_INTERFACE:-}" ]]; then
       command+=("--lanInterface ${ZITI_ROUTER_LAN_INTERFACE}")
     fi
 
