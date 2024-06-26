@@ -345,7 +345,7 @@ bootstrap() {
     makeConfig "${ZITI_CTRL_CONFIG_FILE}" --force
   fi
 
-  # make database unless explicityly disabled or it exists
+  # make database unless explicitly disabled or it exists
   if [ "${ZITI_BOOTSTRAP_DATABASE}" == true ]; then
     makeDatabase
   fi
