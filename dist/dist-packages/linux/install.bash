@@ -119,7 +119,7 @@ installDebian(){
     apt-get update
     apt-get install --yes "$@"
     for PKG in "$@"; do
-        apt-cache show "$PKG=$(dpkg-query -W -f='${Version}' $PKG)"
+        apt-cache show "${PKG%=*}=$(dpkg-query -W -f='${Version}' "${PKG%=*}")"
     done
 }
 
