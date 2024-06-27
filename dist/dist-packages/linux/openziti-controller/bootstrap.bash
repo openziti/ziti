@@ -215,7 +215,14 @@ loadEnvStdin() {
   # assignments like ZITI_PWD=abcd1234, one per line
   if [[ ! -t 0 ]]; then
     while read -r line; do
-      setAnswer "${_key}=${_value}" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
+      if [[ "${line:-}" =~ ^ZITI_.*= ]]; then
+        setAnswer "${line}" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
+      # ignore comments
+      elif [[ "${line:-}" =~ ^# ]]; then
+        continue
+      else
+        echo "WARN: ignoring '${line}'; not a ZITI_* env var assignment" >&2
+      fi
     done
   fi
 }
