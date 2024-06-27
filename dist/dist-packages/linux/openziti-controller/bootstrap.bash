@@ -82,7 +82,8 @@ makePki() {
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
       --server-file "${ZITI_SERVER_FILE}" \
-      --dns "${ZITI_CTRL_ADVERTISED_ADDRESS}" \
+      --dns "localhost,${ZITI_CTRL_ADVERTISED_ADDRESS}" \
+      --ip "127.0.0.1,::1" \
       --allow-overwrite >&3  # write to debug fd because this runs every startup
   fi
 
