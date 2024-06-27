@@ -172,8 +172,7 @@ makeDatabase() {
       --username "${ZITI_USER}" \
       --password "${ZITI_PWD}"
     then
-      # scrub the admin password
-      setAnswer "ZITI_PWD=" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
+      echo "DEBUG: created default admin in database" >&3
     else
       echo "ERROR: failed to create default admin in database" >&2
       # do not leave behind a partially-initialized database file because it prevents us from trying again
@@ -468,9 +467,16 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   then
     set -- "${ZITI_HOME}/config.yml"
   fi
-  bootstrap "${@}"
 
-  # unless bootstrapping is explicitly disabled, ensure the toggle reflects the configuration is managed by this script
-  # because bootstrapping was invoked directly and completed without error
-  setBootstrapEnabled
+  if bootstrap "${@}"
+  then
+    setAnswer "ZITI_PWD=" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
+
+    # unless bootstrapping is explicitly disabled, ensure the toggle reflects the configuration is managed by this script
+    # because bootstrapping was invoked directly and completed without error
+    setBootstrapEnabled
+  else
+    echo "ERROR: something went wrong during bootstrapping; set DEBUG=1 for verbose output" >&2
+  fi
+
 fi
