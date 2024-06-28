@@ -6,7 +6,15 @@
 set -o errexit
 set -o nounset
 set -o pipefail
-# set -o xtrace  # debug startup
+
+# discard debug unless DEBUG
+: "${DEBUG:=0}"
+if (( DEBUG )); then
+  exec 3>&1
+  set -o xtrace
+else
+  exec 3>/dev/null
+fi
 
 if ! (( $# )); then
   # if no args, run the controller with the default config file
@@ -20,17 +28,19 @@ fi
 source "${ZITI_CTRL_BOOTSTRAP_BASH:-/opt/openziti/etc/controller/bootstrap.bash}"
 
 # if first arg is "run", bootstrap the controller with the config file
-if [[ "${1}" == run && ! -s "${2}" ]]; then
+if [[ "${1}" =~ run|boot && ! -s "${2}" ]]; then
   echo "ERROR: ${2} does not exist" >&2
   hintBootstrap "${PWD}"
   exit 1
-elif [[ "${1}" == run && ! -w "$(dbFile "${2}")" ]]; then
+elif [[ "${1}" =~ run|boot && ! -w "$(dbFile "${2}")" ]]; then
   echo "ERROR: database file '$(dbFile "${2}")' is not writable" >&2
   hintBootstrap "${PWD}"
   exit 1
-elif [[ "${1}" == run && "${ZITI_BOOTSTRAP:-}" == true ]]; then
+elif [[ "${1}" =~ run|boot && "${ZITI_BOOTSTRAP:-}" == true ]]; then
   bootstrap "${2}"
 fi
 
-# shellcheck disable=SC2068
-exec ziti controller ${@}
+if [[ "${1}" == run ]]; then
+  # shellcheck disable=SC2068
+  exec ziti controller ${@}
+fi

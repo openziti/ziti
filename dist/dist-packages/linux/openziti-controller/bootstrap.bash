@@ -229,9 +229,11 @@ loadEnvStdin() {
   if [[ ! -t 0 ]]; then
     while read -r line; do
       if [[ "${line:-}" =~ ^ZITI_.*= ]]; then
+        eval "${line}"
         setAnswer "${line}" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
-      # ignore comments
-      elif [[ "${line:-}" =~ ^# ]]; then
+      # ignore lines beginning with # and lines containing only zero or more whitespace chars
+      elif [[ "${line:-}" =~ ^(#|\\s*?$) ]]; then
+        echo "DEBUG: ignoring '${line}'" >&3
         continue
       else
         echo "WARN: ignoring '${line}'; not a ZITI_* env var assignment" >&2
@@ -253,9 +255,9 @@ loadEnvFiles() {
   done
 }
 
-promptCtrlAdvertisedAddress() {
+promptCtrlAddress() {
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
-    if ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter the advertised address for the controller (FQDN) [$DEFAULT_ADDR]: " || echo "$DEFAULT_ADDR")"; then
+    if ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter DNS name of the controller [$DEFAULT_ADDR]: " || echo "$DEFAULT_ADDR")"; then
       if [[ -n "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
         setAnswer "ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}" "${BOOT_ENV_FILE}"
       fi
@@ -299,7 +301,7 @@ promptPwd() {
             "next startup" >&3
     else
       GEN_PWD=$(head -c1024 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^*_+~' | cut -c 1-12)
-      if isInteractive && ZITI_PWD="$(prompt "Enter the admin password [${GEN_PWD}]: " || echo "${GEN_PWD}")"; then
+      if isInteractive && ZITI_PWD="$(prompt "Set password for '${ZITI_USER}' [${GEN_PWD}]: " || echo "${GEN_PWD}")"; then
         if [[ -n "${ZITI_PWD:-}" ]]; then
           # temporarily set password in env file, then scrub after db init
           setAnswer "ZITI_PWD=${ZITI_PWD}" "${BOOT_ENV_FILE}"
@@ -312,6 +314,30 @@ promptPwd() {
 fi
 }
 
+promptBindAddress() {
+  if [[ -z "${ZITI_CTRL_BIND_ADDRESS:-}" ]]; then
+    if ZITI_CTRL_BIND_ADDRESS="$(prompt "Enter the bind address for the controller [0.0.0.0]: " || echo '0.0.0.0')"; then
+      if [[ -n "${ZITI_CTRL_BIND_ADDRESS:-}" ]]; then
+        setAnswer "ZITI_CTRL_BIND_ADDRESS=${ZITI_CTRL_BIND_ADDRESS}" "${BOOT_ENV_FILE}"
+      fi
+    else
+      echo "WARN: missing ZITI_CTRL_BIND_ADDRESS in ${BOOT_ENV_FILE}" >&2
+    fi
+  fi
+}
+
+promptUser() {
+  if [[ -z "${ZITI_USER:-}" ]]; then
+    if ZITI_USER="$(prompt "Enter the name of the default user [admin]: " || echo 'admin')"; then
+      if [[ -n "${ZITI_USER:-}" ]]; then
+        setAnswer "ZITI_USER=${ZITI_USER}" "${BOOT_ENV_FILE}"
+      fi
+    else
+      echo "WARN: missing ZITI_USER in ${BOOT_ENV_FILE}" >&2
+    fi
+  fi
+}
+
 setBootstrapEnabled() {
   if [[ -z "${ZITI_BOOTSTRAP:-}" ]]; then
     setAnswer "ZITI_BOOTSTRAP=true" "${SVC_ENV_FILE}"
@@ -322,6 +348,9 @@ setAnswer() {
   if [[ "${#}" -ge 2 ]]; then
     local _key=${1%=*}
     local _value=${1#*=}
+    # strip quotes
+    _value="${_value//\"}"
+    _value="${_value//\'}"
     shift
     local -a _env_files=("${@}")  # ordered list of files to seek a matching key to assign value
     for _env_file in "${_env_files[@]}"; do
@@ -335,7 +364,7 @@ setAnswer() {
       fi
     done
     # append to last file if none matched the key
-    echo "${_key}=${_value}" >> "${_env_files[${#_env_files[@]}-1]}"
+    echo -e "\n${_key}='${_value}'" >> "${_env_files[${#_env_files[@]}-1]}"
   else
     echo "ERROR: setAnswer() requires at least two arguments, e.g., setAnswer 'ZITI_PWD=abcd1234' ./some1.env ./some2.env" >&2
     return 1
@@ -478,13 +507,15 @@ else
 fi
 
 
-# set global defaults applicable to bootstrapping and normal operation
-: "${ZITI_PKI_ROOT:=pki}"  # relative to systemd service WorkingDirectory; e.g., /var/lib/ziti-controller/pki
-: "${ZITI_CA_FILE:=root}"  # relative to ZITI_PKI_ROOT; root CA dir; e.g., /var/lib/ziti-controller/pki/root
-: "${ZITI_INTERMEDIATE_FILE:=intermediate}"  # intermediate CA dir; e.g., /var/lib/ziti-controller/pki/intermediate
+# set defaults
+: "${ZITI_PKI_ROOT:=pki}"  # relative to working directory
+: "${ZITI_CA_FILE:=root}"  # relative to ZITI_PKI_ROOT
+: "${ZITI_INTERMEDIATE_FILE:=intermediate}"  # relative to ZITI_PKI_ROOT
 : "${ZITI_SERVER_FILE:=server}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
+: "${ZITI_CTRL_DATABASE_FILE:=bbolt.db}"  # relative path to working directory
+
 
 # run the bootstrap function if this script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -506,12 +537,14 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
 
   prepareWorkingDir "${ZITI_HOME}"
-  importZitiVars                # get ZITI_* vars from environment and set in answer file
-  loadEnvStdin                  # if stdin is a terminal, load env from it
-  loadEnvFiles                  # override stdin with SVC_ENV_FILE then BOOT_ENV_FILE
-  promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled
-  promptCtrlAdvertisedAddress   # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
+  loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
+  importZitiVars                # get ZITI_* vars from environment and set in BOOT_ENV_FILE
+  loadEnvStdin                  # slurp answers from stdin if it's not a tty
+  promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
+  promptCtrlAddress             # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
   promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
+  promptBindAddress             # prompt for ZITI_CTRL_BIND_ADDRESS if not already set
+  promptUser                    # prompt for ZITI_USER if not already set
   promptPwd                     # prompt for ZITI_PWD if not already set
   loadEnvFiles                  # reload env files to source new answers from prompts
 
@@ -525,11 +558,9 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     finalizeWorkingDir "${ZITI_HOME}"
     setAnswer "ZITI_PWD=" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
 
-    # unless bootstrapping is explicitly disabled, ensure the toggle reflects the configuration is managed by this script
-    # because bootstrapping was invoked directly and completed without error
+    # successfully running this script directly means bootstrapping was enabled
     setBootstrapEnabled
   else
     echo "ERROR: something went wrong during bootstrapping; set DEBUG=1 for verbose output" >&2
   fi
-
 fi
