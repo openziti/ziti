@@ -5,7 +5,7 @@ ARG ZITI_CLI_IMAGE="docker.io/openziti/ziti-cli"
 
 # dependabot bumps this version based on release to Hub
 # only amd64 is available because only static assets are copied, not executables
-FROM --platform=linux/amd64 openziti/ziti-console-assets:3.1.0 as ziti-console
+FROM --platform=linux/amd64 openziti/ziti-console-assets:3.2.2 as ziti-console
 
 FROM ${ZITI_CLI_IMAGE}:${ZITI_CLI_TAG}
 

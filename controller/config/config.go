@@ -351,6 +351,10 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 
 			if c.Enrollment.SigningCert, err = identity.LoadIdentity(c.Enrollment.SigningCertConfig); err != nil {
 				return fmt.Errorf("error loading [edge.enrollment.signingCert]: %s", err)
+			} else {
+				if err := c.Enrollment.SigningCert.WatchFiles(); err != nil {
+					pfxlog.Logger().Warn("could not enable file watching on enrollment signing cert: %w", err)
+				}
 			}
 
 		} else {

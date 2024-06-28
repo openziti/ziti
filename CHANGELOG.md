@@ -3,21 +3,46 @@
 ## What's New
 
 * Bug fixes
+* Controller HA Beta 1
+
+## Controller HA Beta 1
+
+This release can be run in HA mode. The code is still beta, as we're still finding and fixing bugs. Several bugs 
+have been fixed since Alpha 3 and c-based SDKs and tunnelers now work in HA mode. The smoketest can now be run
+with HA controllers and clients.
+
+* Initial ZET release support HA control: https://github.com/openziti/ziti-tunnel-sdk-c/releases/tag/v2.0.0-alpha1
+* Windows, Mac and Mobile clients are in the process of being updated
+
+For more information:
+
+* HA overview/getting started/migration: [HA Documementation](https://github.com/openziti/ziti/tree/release-next/doc/ha)
+* Open Issues: [HA Project Board](https://github.com/orgs/openziti/projects/9/views/1)
 
 ## Component Updates and Bug Fixes 
 
-* github.com/openziti/channel/v2: [v2.0.130 -> v2.0.131](https://github.com/openziti/channel/compare/v2.0.130...v2.0.131)
+* github.com/openziti/channel/v2: [v2.0.130 -> v2.0.133](https://github.com/openziti/channel/compare/v2.0.130...v2.0.133)
 * github.com/openziti/edge-api: [v0.26.19 -> v0.26.20](https://github.com/openziti/edge-api/compare/v0.26.19...v0.26.20)
     * [Issue #113](https://github.com/openziti/edge-api/issues/113) - RecoveryCodesEnvelope is wrong
 
-* github.com/openziti/foundation/v2: [v2.0.45 -> v2.0.46](https://github.com/openziti/foundation/compare/v2.0.45...v2.0.46)
+* github.com/openziti/foundation/v2: [v2.0.45 -> v2.0.47](https://github.com/openziti/foundation/compare/v2.0.45...v2.0.47)
     * [Issue #407](https://github.com/openziti/foundation/issues/407) - Remove Branch from build info
 
-* github.com/openziti/identity: [v1.0.77 -> v1.0.78](https://github.com/openziti/identity/compare/v1.0.77...v1.0.78)
-* github.com/openziti/metrics: [v1.2.54 -> v1.2.55](https://github.com/openziti/metrics/compare/v1.2.54...v1.2.55)
-* github.com/openziti/runzmd: [v1.0.47 -> v1.0.48](https://github.com/openziti/runzmd/compare/v1.0.47...v1.0.48)
-* github.com/openziti/transport/v2: [v2.0.133 -> v2.0.134](https://github.com/openziti/transport/compare/v2.0.133...v2.0.134)
+* github.com/openziti/identity: [v1.0.77 -> v1.0.80](https://github.com/openziti/identity/compare/v1.0.77...v1.0.80)
+* github.com/openziti/metrics: [v1.2.54 -> v1.2.56](https://github.com/openziti/metrics/compare/v1.2.54...v1.2.56)
+* github.com/openziti/runzmd: [v1.0.47 -> v1.0.49](https://github.com/openziti/runzmd/compare/v1.0.47...v1.0.49)
+* github.com/openziti/sdk-golang: [v0.23.37 -> v0.23.38](https://github.com/openziti/sdk-golang/compare/v0.23.37...v0.23.38)
+    * [Issue #573](https://github.com/openziti/sdk-golang/issues/573) - api session refresh spins in a tight loop if there is no current api session
+    * [Issue #562](https://github.com/openziti/sdk-golang/issues/562) - Support sticky dials
+
+* github.com/openziti/secretstream: [v0.1.20 -> v0.1.21](https://github.com/openziti/secretstream/compare/v0.1.20...v0.1.21)
+* github.com/openziti/storage: [v0.2.41 -> v0.2.45](https://github.com/openziti/storage/compare/v0.2.41...v0.2.45)
+    * [Issue #73](https://github.com/openziti/storage/issues/73) - db integrity checker doesn't take nullable flag into account when checking unique indices
+    * [Issue #71](https://github.com/openziti/storage/issues/71) - Add AddFkIndexCascadeDelete
+
+* github.com/openziti/transport/v2: [v2.0.133 -> v2.0.136](https://github.com/openziti/transport/compare/v2.0.133...v2.0.136)
 * github.com/openziti/ziti: [v1.1.3 -> v1.1.4](https://github.com/openziti/ziti/compare/v1.1.3...v1.1.4)
+    * [Issue #2084](https://github.com/openziti/ziti/issues/2084) - Bug: Router enrollment is missing its server chain
     * [Issue #2124](https://github.com/openziti/ziti/issues/2124) - api session certs should be deleted when related api sessions are deleted
 
 # Release 1.1.3

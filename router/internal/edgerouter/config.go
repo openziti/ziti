@@ -438,6 +438,10 @@ func (config *Config) ensureIdentity(rootConfigMap map[interface{}]interface{}) 
 
 	config.RouterConfig.Id = identity.NewIdentity(id)
 
+	if err := config.RouterConfig.Id.WatchFiles(); err != nil {
+		pfxlog.Logger().Warn("could not enable file watching on edge router identity: %w", err)
+	}
+
 	return nil
 }
 
