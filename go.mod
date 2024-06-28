@@ -48,7 +48,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.16
-	github.com/openziti/channel/v2 v2.0.133
+	github.com/openziti/channel/v2 v2.0.135
 	github.com/openziti/edge-api v0.26.20
 	github.com/openziti/foundation/v2 v2.0.47
 	github.com/openziti/identity v1.0.80
@@ -58,7 +58,7 @@ require (
 	github.com/openziti/sdk-golang v0.23.38
 	github.com/openziti/secretstream v0.1.21
 	github.com/openziti/storage v0.2.45
-	github.com/openziti/transport/v2 v2.0.136
+	github.com/openziti/transport/v2 v2.0.137
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.1
 	github.com/openziti/ziti-db-explorer v1.1.3
