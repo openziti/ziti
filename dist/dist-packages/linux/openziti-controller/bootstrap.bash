@@ -150,14 +150,6 @@ makeConfig() {
 
 }
 
-dbFile() {
-  if ! (( "${#}" )); then
-    echo "ERROR: no config file path provided" >&2
-    return 1
-  fi
-  local _config_file="${1}"
-  awk -F: '/^db:/ {print $2}' "${_config_file}"|xargs realpath
-}
 makeDatabase() {
 
   #
@@ -464,6 +456,14 @@ hintBootstrap() {
           "\n"
 }
 
+dbFile() {
+  if ! (( "${#}" )); then
+    echo "ERROR: no config file path provided" >&2
+    return 1
+  fi
+  local _config_file="${1}"
+  awk -F: '/^db:/ {print $2}' "${_config_file}"|xargs realpath
+}
 
 # BEGIN
 
