@@ -298,7 +298,7 @@ promptPwd() {
       echo "DEBUG: ZITI_PWD is defined in ${BOOT_ENV_FILE} and will be used to init db during"\
             "next startup" >&3
     else
-      GEN_PWD=$(head -c1024 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^&*_+~' | cut -c 1-12)
+      GEN_PWD=$(head -c1024 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^*_+~' | cut -c 1-12)
       if isInteractive && ZITI_PWD="$(prompt "Enter the admin password [${GEN_PWD}]: " || echo "${GEN_PWD}")"; then
         if [[ -n "${ZITI_PWD:-}" ]]; then
           # temporarily set password in env file, then scrub after db init
