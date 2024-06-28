@@ -434,7 +434,7 @@ prepareWorkingDir() {
 finalizeWorkingDir() {
   if [[ -n "${1:-}" ]]; then
     local _config_dir="$1"
-    echo "DEBUG: preparing working directory: $(realpath "${_config_dir}")" >&3
+    echo "DEBUG: finalizing working directory: $(realpath "${_config_dir}")" >&3
   else
     echo "ERROR: no working dir path provided" >&2
     return 1
@@ -449,7 +449,7 @@ hintBootstrap() {
 
   local _work_dir="${1:-${PWD}}"
 
-  echo -e "\nProvide a configuration in '${_work_dir}' with these steps:"\
+  echo -e "\nProvide a configuration in '${_work_dir}' or generate with:"\
           "\n* Set vars in'/opt/openziti/etc/controller/bootstrap.env'"\
           "\n* Run '/opt/openziti/etc/controller/bootstrap.bash'"\
           "\n* Run 'systemctl enable --now ziti-controller.service'"\
@@ -499,7 +499,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 1
   fi
 
-  export ZITI_HOME=/var/lib/ziti-controller  # TODO: why did we export?
+  export ZITI_HOME=/var/lib/ziti-controller
   DEFAULT_ADDR=localhost
   SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
   BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
