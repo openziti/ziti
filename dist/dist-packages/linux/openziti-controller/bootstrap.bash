@@ -4,17 +4,6 @@
 # bootstrap the OpenZiti Controller with PKI, config file, and database
 #
 
-hintBootstrap() {
-
-  local _work_dir="${1:-${PWD}}"
-
-  echo -e "\nProvide a configuration in '${_work_dir}' with these steps:"\
-          "\n* Set vars in'/opt/openziti/etc/controller/bootstrap.env'"\
-          "\n* Run '/opt/openziti/etc/controller/bootstrap.bash'"\
-          "\n* Run 'systemctl enable --now ziti-controller.service'"\
-          "\n"
-}
-
 makePki() {
   #
   # create root and intermediate CA
@@ -463,6 +452,18 @@ finalizeWorkingDir() {
   chown -R "${ZIGGY_UID:-65534}:${ZIGGY_GID:-65534}" "${_config_dir}/"
   chmod -R u=rwX,go-rwx "${_config_dir}/"
 }
+
+hintBootstrap() {
+
+  local _work_dir="${1:-${PWD}}"
+
+  echo -e "\nProvide a configuration in '${_work_dir}' with these steps:"\
+          "\n* Set vars in'/opt/openziti/etc/controller/bootstrap.env'"\
+          "\n* Run '/opt/openziti/etc/controller/bootstrap.bash'"\
+          "\n* Run 'systemctl enable --now ziti-controller.service'"\
+          "\n"
+}
+
 
 # BEGIN
 
