@@ -66,11 +66,11 @@ ZITI_PWD_FILE=/opt/openziti/etc/controller/.pwd
 
 case "$action" in
   "install")
-    printf "\033[32m Post Install of an clean install\033[0m\n"
+    printf "\033[32m completed clean install of openziti-controller\033[0m\n"
     install
     ;;
   "upgrade")
-    printf "\033[32m Post Install of an upgrade\033[0m\n"
+    printf "\033[32m completed upgrade of openziti-controller\033[0m\n"
     upgrade
     ;;
 esac

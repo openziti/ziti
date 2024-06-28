@@ -4,6 +4,17 @@
 # bootstrap the OpenZiti Controller with PKI, config file, and database
 #
 
+hintBootstrap() {
+
+  local _work_dir="${1:-${PWD}}"
+
+  echo -e "\nProvide a configuration in '${_work_dir}' with these steps:"\
+          "\n* Set vars in'/opt/openziti/etc/controller/bootstrap.env'"\
+          "\n* Run '/opt/openziti/etc/controller/bootstrap.bash'"\
+          "\n* Run 'systemctl enable --now ziti-controller.service'"\
+          "\n"
+}
+
 makePki() {
   #
   # create root and intermediate CA
@@ -13,6 +24,7 @@ makePki() {
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
     echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set, i.e., the FQDN by which all devices will reach the"\
     "controller and verify the server certificate" >&2
+    hintBootstrap "${PWD}"
     return 1
   fi
 
@@ -109,7 +121,7 @@ makeConfig() {
 
   # enforce first argument is a non-empty string that does not begin with "--" (long option prefix)
   if [[ -n "${1:-}" && ! "${1}" =~ ^-- ]]; then
-    local _ctrl_config_file="${1}"
+    local _config_file="${1}"
     shift
   else
     echo "ERROR: no config file path provided" >&2
@@ -121,6 +133,7 @@ makeConfig() {
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
     echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set; i.e., the FQDN by which all devices will reach the"\
     "controller and verify the server certificate" >&2
+    hintBootstrap "${PWD}"
     return 1
   else
     echo "DEBUG: ZITI_CTRL_ADVERTISED_ADDRESS is set to ${ZITI_CTRL_ADVERTISED_ADDRESS}" >&3
@@ -141,23 +154,41 @@ makeConfig() {
           ZITI_PKI_EDGE_CA="${ZITI_PKI_CTRL_CA}"
 
   exportZitiVars                # export all ZITI_ vars to be used in bootstrap
-  if [[ ! -s "${_ctrl_config_file}" || "${1:-}" == --force ]]; then
+  if [[ ! -s "${_config_file}" || "${1:-}" == --force ]]; then
     ziti create config controller \
-      --output "${_ctrl_config_file}"
-  else
-    echo "INFO: config file exists in $(realpath "${_ctrl_config_file}")"
+      --output "${_config_file}"
   fi
 
 }
 
+dbFile() {
+  if ! (( "${#}" )); then
+    echo "ERROR: no config file path provided" >&2
+    return 1
+  fi
+  local _config_file="${1}"
+  awk -F: '/^db:/ {print $2}' "${_config_file}"|xargs realpath
+}
 makeDatabase() {
 
   #
   # create default admin in database
   #
 
-  if [[ -s "${ZITI_CTRL_DATABASE_FILE}" ]]; then
+  if [[ -n "${1:-}" ]]; then
+    local _config_file="${1}"
+  else
+    echo "ERROR: no config file path provided" >&2
+    return 1
+  fi
+
+  local _db_file
+  _db_file=$(dbFile "${_config_file}")
+  if [[ -s "${_db_file}" ]]; then
+    echo "DEBUG: database file already exists: ${_db_file}" >&3
     return 0
+  else
+    echo "DEBUG: creating database file: ${_db_file}" >&3
   fi
 
   # if the database file is in a subdirectory, create the directory so that "ziti controller edge init" can load the
@@ -167,8 +198,8 @@ makeDatabase() {
     mkdir -p "$DB_DIR"
   fi
 
-  if [[ -n "${ZITI_PWD}" ]]; then
-    if ziti controller edge init "${_ctrl_config_file}" \
+  if [[ -n "${ZITI_USER:-}" && -n "${ZITI_PWD:-}" ]]; then
+    if ziti controller edge init "${_config_file}" \
       --username "${ZITI_USER}" \
       --password "${ZITI_PWD}"
     then
@@ -180,7 +211,8 @@ makeDatabase() {
       return 1
     fi
   else
-    echo  "ERROR: unable to create default admin in database because ZITI_PWD is not set" >&2
+    echo  "ERROR: unable to create default admin in database because ZITI_USER and ZITI_PWD must both be set" >&2
+    hintBootstrap "${PWD}"
     return 1
   fi
 
@@ -310,19 +342,19 @@ setAnswer() {
     local _key=${1%=*}
     local _value=${1#*=}
     shift
-    local -a _files=(${@})  # ordered list of files to seek a matching key to assign value
-    for _file in "${_files[@]}"; do
+    local -a _env_files=("${@}")  # ordered list of files to seek a matching key to assign value
+    for _env_file in "${_env_files[@]}"; do
       # do nothing if already set
-      if grep -qE "^${_key}=['\"]?${_value}['\"]?[\s$]" "${_file}"; then
+      if grep -qE "^${_key}=['\"]?${_value}['\"]?[\s$]" "${_env_file}"; then
         return 0
       # set if unset
-      elif grep -qE "^${_key}=" "${_file}"; then
-        sed -Ei "s|^${_key}=.*|${_key}='${_value}'|g" "${_file}"
+      elif grep -qE "^${_key}=" "${_env_file}"; then
+        sed -Ei "s|^${_key}=.*|${_key}='${_value}'|g" "${_env_file}"
         return 0
       fi
     done
     # append to last file if none matched the key
-    echo "${_key}=${_value}" >> "${_files[${#_files[@]}-1]}"
+    echo "${_key}=${_value}" >> "${_env_files[${#_env_files[@]}-1]}"
   else
     echo "ERROR: setAnswer() requires at least two arguments, e.g., setAnswer 'ZITI_PWD=abcd1234' ./some1.env ./some2.env" >&2
     return 1
@@ -378,39 +410,58 @@ bootstrap() {
 
   # make PKI unless explicitly disabled or it already exists
   if [[ "${ZITI_BOOTSTRAP_PKI}"      == true ]]; then
-    makePki
+    if ! [[ -s "${_ctrl_config_file}" ]]; then
+      # make PKI unless explicitly disabled or a configuration already exists
+      makePki
+    fi
   fi
 
   # make config file unless explicitly disabled or it exists, set "force" to overwrite
-  if [[ "${ZITI_BOOTSTRAP_CONFIG}"   == true ]]; then
+  if [[ -s "${_ctrl_config_file}" && "${ZITI_BOOTSTRAP_CONFIG}"   != force ]]; then
+    echo "INFO: config file exists in $(realpath "${_ctrl_config_file}")"
+  elif [[ "${ZITI_BOOTSTRAP_CONFIG}" == true ]]; then
     makeConfig "${_ctrl_config_file}"
   elif [[ "${ZITI_BOOTSTRAP_CONFIG}" == force ]]; then
     makeConfig "${_ctrl_config_file}" --force
+  else
+    echo "ERROR: unexpected value in ZITI_BOOTSTRAP_CONFIG=${ZITI_BOOTSTRAP_CONFIG}" >&2
+    return 1
   fi
 
   # make database unless explicitly disabled or it exists
   if [[ "${ZITI_BOOTSTRAP_DATABASE}" == true ]]; then
-    makeDatabase
+    makeDatabase "${_ctrl_config_file}"
   fi
 
 }
 
 prepareWorkingDir() {
   if [[ -n "${1:-}" ]]; then
-    local _ctrl_config_dir="$1"
-    echo "DEBUG: preparing working directory: $(realpath "${_ctrl_config_dir}")" >&3
+    local _config_dir="$1"
+    echo "DEBUG: preparing working directory: $(realpath "${_config_dir}")" >&3
   else
     echo "ERROR: no working dir path provided" >&2
     return 1
   fi
 
   # shellcheck disable=SC2174
-  mkdir -pm0700 "${_ctrl_config_dir}"
-  # disown root to allow systemd to manage the working directory as dynamic user
-  chown -R "${ZIGGY_UID:-65534}:${ZIGGY_GID:-65534}" "${_ctrl_config_dir}/"
-  chmod -R u=rwX,go-rwx "${_ctrl_config_dir}/"
+  mkdir -pm0700 "${_config_dir}"
   # set pwd for subesquent bootstrap command
-  cd "${_ctrl_config_dir}"
+  cd "${_config_dir}"
+}
+
+finalizeWorkingDir() {
+  if [[ -n "${1:-}" ]]; then
+    local _config_dir="$1"
+    echo "DEBUG: preparing working directory: $(realpath "${_config_dir}")" >&3
+  else
+    echo "ERROR: no working dir path provided" >&2
+    return 1
+  fi
+
+  # disown root to allow systemd to manage the working directory as dynamic user
+  chown -R "${ZIGGY_UID:-65534}:${ZIGGY_GID:-65534}" "${_config_dir}/"
+  chmod -R u=rwX,go-rwx "${_config_dir}/"
 }
 
 # BEGIN
@@ -470,6 +521,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 
   if bootstrap "${@}"
   then
+    finalizeWorkingDir "${ZITI_HOME}"
     setAnswer "ZITI_PWD=" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
 
     # unless bootstrapping is explicitly disabled, ensure the toggle reflects the configuration is managed by this script

@@ -20,7 +20,15 @@ fi
 source "${ZITI_CTRL_BOOTSTRAP_BASH:-/opt/openziti/etc/controller/bootstrap.bash}"
 
 # if first arg is "run", bootstrap the controller with the config file
-if [[ "${1}" == run && "${ZITI_BOOTSTRAP:-}" == true ]]; then
+if [[ "${1}" == run && ! -s "${2}" ]]; then
+  echo "ERROR: ${2} does not exist" >&2
+  hintBootstrap "${PWD}"
+  exit 1
+elif [[ "${1}" == run && ! -w "$(dbFile "${2}")" ]]; then
+  echo "ERROR: database file '$(dbFile "${2}")' is not writable" >&2
+  hintBootstrap "${PWD}"
+  exit 1
+elif [[ "${1}" == run && "${ZITI_BOOTSTRAP:-}" == true ]]; then
   bootstrap "${2}"
 fi
 

@@ -6,14 +6,12 @@ After=network-online.target
 
 # this env file configures the service, including whether or not to perform bootstrapping
 EnvironmentFile=/opt/openziti/etc/controller/service.env
-# this answer file provides input values for bootstrapping during first startup
-EnvironmentFile=/opt/openziti/etc/controller/bootstrap.env
-# manage the user and permissions for the service automatically
 
 #
 ## misc
 #
 
+# manage the user and permissions for the service automatically
 DynamicUser=yes
 # used by bootstrap.bash to look up /run/credentials/$UNIT_NAME/$CREDENTIAL_NAME
 Environment=UNIT_NAME=ziti-controller.service
