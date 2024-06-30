@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
-# this thin wrapper script for the OpenZiti Controller uses variable assignments from the systemd env file
+# This thin wrapper for the OpenZiti Controller is used by the systemd service and Docker container to call the bootstrap() function before invoking ziti. The bootstrap() function will exit 0 immediately if ZITI_BOOTSTRAP is not set to true. Otherwise,  it will 
 #
+# usage:
+#   entrypoint.bash run config.yml
 
 set -o errexit
 set -o nounset

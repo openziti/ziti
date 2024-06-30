@@ -410,6 +410,11 @@ exportZitiVars() {
 
 bootstrap() {
 
+  if [[ "${ZITI_BOOTSTRAP:-}" != true ]]; then
+    echo "WARN: not checking or generating a config because ZITI_BOOTSTRAP is not set to 'true'" >&2
+    return 0
+  fi
+
   if [[ -n "${1:-}" ]]; then
     local _ctrl_config_file="${1}"
     echo "DEBUG: using config: $(realpath "${_ctrl_config_file}")" >&3
@@ -553,7 +558,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     set -- "${ZITI_HOME}/config.yml"
   fi
 
-  if bootstrap "${@}"
+  if ZITI_BOOTSTRAP=true bootstrap "${@}"
   then
     finalizeWorkingDir "${ZITI_HOME}"
     setAnswer "ZITI_PWD=" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
