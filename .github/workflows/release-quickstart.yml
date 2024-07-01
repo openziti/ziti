@@ -120,7 +120,7 @@ jobs:
           echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
 
       - name: Build & Push Multi-Platform Quickstart Container Image to Hub
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/quickstart/docker/image
