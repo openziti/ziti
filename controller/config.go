@@ -18,6 +18,7 @@ package controller
 
 import (
 	"bytes"
+	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -39,6 +40,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	"math"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -77,7 +79,10 @@ const (
 )
 
 type Config struct {
-	Id      *identity.TokenId
+	Id                     *identity.TokenId
+	SpiffeIdTrustDomain    *url.URL
+	AdditionalTrustDomains []*url.URL
+
 	Raft    *raft.Config
 	Network *network.Options
 	Db      boltz.Db
@@ -313,6 +318,107 @@ func LoadConfig(path string) (*Config, error) {
 		panic("controllerConfig must provide [db] or [raft]")
 	}
 
+	//SPIFFE Trust Domain
+	var spiffeId *url.URL
+	if controllerConfig.Raft != nil {
+		//HA setup, SPIFFE ID must come from certs
+		var err error
+		spiffeId, err = GetSpiffeIdFromIdentity(controllerConfig.Id.Identity)
+		if err != nil {
+			panic("error determining a trust domain from a SPIFFE id in the root identity for HA configuration, must have a spiffe:// URI SANs in the server certificate or along the signing CAs chain: " + err.Error())
+		}
+
+		if spiffeId == nil {
+			panic("unable to determine a trust domain from a SPIFFE id in the root identity for HA configuration, must have a spiffe:// URI SANs in the server certificate or along the signing CAs chain")
+		}
+	} else {
+		// Non-HA/legacy system, prefer SPIFFE id from certs, but fall back to configuration if necessary
+		spiffeId, _ = GetSpiffeIdFromIdentity(controllerConfig.Id.Identity)
+
+		if spiffeId == nil {
+			//for non HA setups allow the trust domain to come from the configuration root value `trustDomain`
+			if value, found := cfgmap["trustDomain"]; found {
+				trustDomain, ok := value.(string)
+
+				if !ok {
+					panic(fmt.Sprintf("could not parse [trustDomain], expected a string got [%T]", value))
+				}
+
+				if trustDomain != "" {
+					if !strings.HasPrefix("spiffe://", trustDomain) {
+						trustDomain = "spiffe://" + trustDomain
+					}
+
+					spiffeId, err = url.Parse(trustDomain)
+
+					if err != nil {
+						panic("could not parse [trustDomain] when used in a SPIFFE id URI [" + trustDomain + "], please make sure it is a valid URI hostname: " + err.Error())
+					}
+
+					if spiffeId == nil {
+						panic("could not parse [trustDomain] when used in a SPIFFE id URI [" + trustDomain + "]: spiffeId is nil and no error returned")
+					}
+
+					if spiffeId.Scheme != "spiffe" {
+						panic("[trustDomain] does not have a spiffe scheme (spiffe://) has: " + spiffeId.Scheme)
+					}
+				}
+			}
+		}
+
+		//default a generated trust domain and spiffe id from the sha1 of the root ca
+		if spiffeId == nil {
+			spiffeId, err = generateDefaultSpiffeId(controllerConfig.Id.Identity)
+
+			if err != nil {
+				panic("could not generate default trust domain: " + err.Error())
+			}
+
+			pfxlog.Logger().Warnf("this environment is using a default generated trust domain [%s], it is recomended that a trust domain is speficied in configuration via URI SANs or the 'trustDomain' field", spiffeId.String())
+			pfxlog.Logger().Warnf("this environment is using a default generated trust domain [%s], it is recomended that if network components have enrolled that the generated trust domain be added to the configuration field 'additionalTrustDomains' array when configuring a explicit trust domain", spiffeId.String())
+		}
+	}
+
+	if spiffeId == nil {
+		panic("unable to determine trust domain from SPIFFE id (spiffe:// URI SANs in server cert or signing CAs) or from configuration [trustDomain], controllers must have a trust domain")
+	}
+
+	if spiffeId.Hostname() == "" {
+		panic("unable to determine trust domain from SPIFFE id: hostname was empty")
+	}
+
+	//only preserve trust domain
+	spiffeId.Path = ""
+	controllerConfig.SpiffeIdTrustDomain = spiffeId
+
+	if value, found := cfgmap["additionalTrustDomains"]; found {
+		if valArr, ok := value.([]any); ok {
+			var trustDomains []*url.URL
+			for _, trustDomain := range valArr {
+				if strTrustDomain, ok := trustDomain.(string); ok {
+
+					if !strings.HasPrefix("spiffe://", strTrustDomain) {
+						strTrustDomain = "spiffe://" + strTrustDomain
+					}
+
+					spiffeId, err = url.Parse(strTrustDomain)
+
+					if err != nil {
+						panic(fmt.Sprintf("invalid entry in 'additionalTrustDomains', could not be parsed as a URI: %v", trustDomain))
+					}
+					//only preserve trust domain
+					spiffeId.Path = ""
+
+					trustDomains = append(trustDomains, spiffeId)
+				} else {
+					panic(fmt.Sprintf("invalid entry in 'additionalTrustDomains' expected a string: %v", trustDomain))
+				}
+			}
+
+			controllerConfig.AdditionalTrustDomains = trustDomains
+		}
+	}
+
 	if value, found := cfgmap["trace"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap["path"]; found {
@@ -540,6 +646,155 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	return controllerConfig, nil
+}
+
+// isSelfSigned checks if the given certificate is self-signed.
+func isSelfSigned(cert *x509.Certificate) (bool, error) {
+	// Check if the Issuer and Subject fields are equal
+	if cert.Issuer.String() != cert.Subject.String() {
+		return false, nil
+	}
+
+	// Attempt to verify the certificate's signature with its own public key
+	err := cert.CheckSignatureFrom(cert)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func generateDefaultSpiffeId(id identity.Identity) (*url.URL, error) {
+	chain := id.CaPool().GetChain(id.Cert().Leaf)
+
+	// chain is 0 or 1, no root possible
+	if len(chain) <= 1 {
+		return nil, fmt.Errorf("error generating defualt trust domain from root CA: no root CA detected after chain assembly from the root identity server cert and ca bundle")
+	}
+
+	candidateRoot := chain[len(chain)-1]
+
+	if candidateRoot == nil {
+		return nil, fmt.Errorf("encountered nil candidate root ca during default trust domain generation")
+	}
+
+	if !candidateRoot.IsCA {
+		return nil, fmt.Errorf("candidate root CA is not flagged with the x509 CA flag")
+	}
+
+	if selfSigned, _ := isSelfSigned(candidateRoot); !selfSigned {
+		return nil, errors.New("candidate root CA is not self signed")
+	}
+
+	rawHash := sha1.Sum(candidateRoot.Raw)
+
+	fingerprint := fmt.Sprintf("%x", rawHash)
+	idStr := "spiffe://" + fingerprint
+
+	spiffeId, err := url.Parse(idStr)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not parse generated SPIFFE id [%s] as a URI: %w", idStr, err)
+	}
+
+	return spiffeId, nil
+}
+
+// GetSpiffeIdFromIdentity will search an Identity for a trust domain encoded as a spiffe:// URI SAN starting
+// from the server cert and up its signing chain. Each certificate must contain 0 or 1 spiffe:// URI SAN. The first
+// SPIFFE id looking up the chain back to the root CA is returned. If no SPIFFE id is encountered, nil is returned.
+// Errors are returned for parsing and processing errors only.
+func GetSpiffeIdFromIdentity(id identity.Identity) (*url.URL, error) {
+	tlsCerts := id.ServerCert()
+
+	spiffeId, err := GetSpiffeIdFromTlsCertChain(tlsCerts)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to acquire SPIFFE id from server certs: %w", err)
+	}
+
+	if spiffeId != nil {
+		return spiffeId, nil
+	}
+
+	if len(tlsCerts) > 0 {
+		chain := id.CaPool().GetChain(tlsCerts[0].Leaf)
+
+		if len(chain) > 0 {
+			spiffeId, _ = GetSpiffeIdFromCertChain(chain)
+		}
+	}
+
+	if spiffeId == nil {
+		return nil, errors.Errorf("SPIFFE id not found in identity")
+	}
+
+	return spiffeId, nil
+}
+
+// GetSpiffeIdFromCertChain cycles through a slice of certificates that goes from leaf up CAs. Each certificate
+// must contain 0 or 1 spiffe:// URI SAN. The first encountered SPIFFE id looking up the chain back to the root CA is returned.
+// If no SPIFFE id is encountered, nil is returned. Errors are returned for parsing and processing errors only.
+func GetSpiffeIdFromCertChain(certs []*x509.Certificate) (*url.URL, error) {
+	var spiffeId *url.URL
+	for _, cert := range certs {
+		var err error
+		spiffeId, err = GetSpiffeIdFromCert(cert)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to determine SPIFFE ID from x509 certificate chain: %w", err)
+		}
+
+		if spiffeId != nil {
+			return spiffeId, nil
+		}
+	}
+
+	return nil, errors.New("failed to determine SPIFFE ID, no spiffe:// URI SANs found in x509 certificate chain")
+}
+
+// GetSpiffeIdFromTlsCertChain will search a tls certificate chain for a trust domain encoded as a spiffe:// URI SAN.
+// Each certificate must contain 0 or 1 spiffe:// URI SAN. The first SPIFFE id looking up the chain is returned. If
+// no SPIFFE id is encountered, nil is returned. Errors are returned for parsing and processing errors only.
+func GetSpiffeIdFromTlsCertChain(tlsCerts []*tls.Certificate) (*url.URL, error) {
+	for _, tlsCert := range tlsCerts {
+		for i, rawCert := range tlsCert.Certificate {
+			cert, err := x509.ParseCertificate(rawCert)
+
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse TLS cert at index [%d]: %w", i, err)
+			}
+
+			spiffeId, err := GetSpiffeIdFromCert(cert)
+
+			if err != nil {
+				return nil, fmt.Errorf("failed to determine SPIFFE ID from TLS cert at index [%d]: %w", i, err)
+			}
+
+			if spiffeId != nil {
+				return spiffeId, nil
+			}
+		}
+	}
+
+	return nil, nil
+}
+
+// GetSpiffeIdFromCert will search a x509 certificate for a trust domain encoded as a spiffe:// URI SAN.
+// Each certificate must contain 0 or 1 spiffe:// URI SAN. The first SPIFFE id looking up the chain is returned. If
+// no SPIFFE id is encountered, nil is returned. Errors are returned for parsing and processing errors only.
+func GetSpiffeIdFromCert(cert *x509.Certificate) (*url.URL, error) {
+	var spiffeId *url.URL
+	for _, uriSan := range cert.URIs {
+		if uriSan.Scheme == "spiffe" {
+			if spiffeId != nil {
+				return nil, fmt.Errorf("multiple URI SAN spiffe:// ids encountered, must only have one, encountered at least two: [%s] and [%s]", spiffeId.String(), uriSan.String())
+			}
+			spiffeId = uriSan
+		}
+	}
+
+	return spiffeId, nil
 }
 
 func loadTlsHandshakeRateLimiterConfig(rateLimitConfig *command.AdaptiveRateLimiterConfig, cfgmap map[interface{}]interface{}) error {
