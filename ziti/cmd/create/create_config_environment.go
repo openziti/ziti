@@ -19,15 +19,16 @@ package create
 import (
 	_ "embed"
 	"fmt"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/templates"
-	"github.com/openziti/ziti/ziti/constants"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"text/template"
+
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/templates"
+	"github.com/openziti/ziti/ziti/constants"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -115,8 +116,8 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 				{constants.CtrlEdgeBindAddressVarName, constants.CtrlEdgeBindAddressVarDescription, data.Controller.EdgeApi.Address},
 				{constants.PkiSignerCertVarName, constants.PkiSignerCertVarDescription, data.Controller.EdgeEnrollment.SigningCert},
 				{constants.PkiSignerKeyVarName, constants.PkiSignerKeyVarDescription, data.Controller.EdgeEnrollment.SigningCertKey},
-				{constants.CtrlEdgeIdentityEnrollmentDurationVarName, constants.CtrlEdgeIdentityEnrollmentDurationVarDescription, strconv.FormatInt(int64(data.Controller.EdgeEnrollment.EdgeIdentityDuration), 10)},
-				{constants.CtrlEdgeRouterEnrollmentDurationVarName, constants.CtrlEdgeRouterEnrollmentDurationVarDescription, strconv.FormatInt(int64(data.Controller.EdgeEnrollment.EdgeRouterDuration), 10)},
+				{constants.CtrlEdgeIdentityEnrollmentDurationVarName, constants.CtrlEdgeIdentityEnrollmentDurationVarDescription, strconv.FormatInt(int64(data.Controller.EdgeEnrollment.EdgeIdentityDuration.Minutes()), 10)},
+				{constants.CtrlEdgeRouterEnrollmentDurationVarName, constants.CtrlEdgeRouterEnrollmentDurationVarDescription, strconv.FormatInt(int64(data.Controller.EdgeEnrollment.EdgeRouterDuration.Minutes()), 10)},
 				{constants.CtrlEdgeAdvertisedAddressVarName, constants.CtrlEdgeAdvertisedAddressVarDescription, data.Controller.Web.BindPoints.AddressAddress},
 				{constants.CtrlEdgeAdvertisedPortVarName, constants.CtrlEdgeAdvertisedPortVarDescription, data.Controller.Web.BindPoints.AddressPort},
 				{constants.CtrlPkiEdgeCertVarName, constants.CtrlPkiEdgeCertVarDescription, data.Controller.Web.Identity.Cert},
@@ -183,51 +184,49 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 
 	var sb strings.Builder
 
-	sb.WriteString("Creates a config file for specified component. Instead of numerous flags to be set " +
-		"environment variables are used. All settings have default values but can be manually set to override " +
-		"the config output.\n\nThe following environment variables can be set to override config values " +
-		"(current value is displayed):\n")
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiNetworkNameVarName, constants.ZitiNetworkNameVarDescription, data.HostnameOrNetworkName))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiCtrlCertVarName, constants.PkiCtrlCertVarDescription, data.Controller.Identity.Cert))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiCtrlServerCertVarName, constants.PkiCtrlServerCertVarDescription, data.Controller.Identity.ServerCert))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiCtrlKeyVarName, constants.PkiCtrlKeyVarDescription, data.Controller.Identity.Key))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiCtrlCAVarName, constants.PkiCtrlCAVarDescription, data.Controller.Identity.Ca))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlDatabaseFileVarName, constants.CtrlDatabaseFileVarDescription, data.Controller.Database.DatabaseFile))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlBindAddressVarName, constants.CtrlBindAddressVarDescription, data.Controller.Ctrl.BindAddress))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlAdvertisedAddressVarName, constants.CtrlAdvertisedAddressVarDescription, data.Controller.Ctrl.AdvertisedAddress))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlEdgeAltAdvertisedAddressVarName, constants.CtrlEdgeAltAdvertisedAddressVarDescription, data.Controller.Ctrl.AdvertisedAddress))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlAdvertisedPortVarName, constants.CtrlAdvertisedPortVarDescription, data.Controller.Ctrl.AdvertisedPort))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlEdgeBindAddressVarName, constants.CtrlEdgeBindAddressVarDescription, data.Controller.EdgeApi.Address))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlEdgeAdvertisedPortVarName, constants.CtrlEdgeAdvertisedPortVarDescription, data.Controller.EdgeApi.Port))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiSignerCertVarName, constants.PkiSignerCertVarDescription, data.Controller.EdgeEnrollment.SigningCert))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiSignerKeyVarName, constants.PkiSignerKeyVarDescription, data.Controller.EdgeEnrollment.SigningCertKey))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlEdgeIdentityEnrollmentDurationVarName, constants.CtrlEdgeIdentityEnrollmentDurationVarDescription, strconv.FormatInt(int64(data.Controller.EdgeEnrollment.EdgeIdentityDuration), 10)))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlEdgeRouterEnrollmentDurationVarName, constants.CtrlEdgeRouterEnrollmentDurationVarDescription, strconv.FormatInt(int64(data.Controller.EdgeEnrollment.EdgeRouterDuration), 10)))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlEdgeAdvertisedAddressVarName, constants.CtrlEdgeAdvertisedAddressVarDescription, data.Controller.Web.BindPoints.AddressAddress))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlPkiEdgeCertVarName, constants.CtrlPkiEdgeCertVarDescription, data.Controller.Web.Identity.Cert))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlPkiEdgeServerCertVarName, constants.CtrlPkiEdgeServerCertVarDescription, data.Controller.Web.Identity.ServerCert))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlPkiEdgeKeyVarName, constants.CtrlPkiEdgeKeyVarDescription, data.Controller.Web.Identity.Key))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.CtrlPkiEdgeCAVarName, constants.CtrlPkiEdgeCAVarDescription, data.Controller.Web.Identity.Ca))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiAltServerCertVarName, constants.PkiAltServerCertVarDescription, data.Controller.Web.Identity.AltServerCert))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.PkiAltServerKeyVarName, constants.PkiAltServerKeyVarDescription, data.Controller.Web.Identity.AltServerKey))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterNameVarName, constants.ZitiEdgeRouterNameVarDescription, data.Router.Name))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterPortVarName, constants.ZitiEdgeRouterPortVarDescription, data.Router.Edge.Port))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterListenerBindPortVarName, constants.ZitiEdgeRouterListenerBindPortVarDescription, data.Router.Edge.ListenerBindPort))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiRouterIdentityCertVarName, constants.ZitiRouterIdentityCertVarDescription, data.Router.IdentityCert))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiRouterIdentityServerCertVarName, constants.ZitiRouterIdentityServerCertVarDescription, data.Router.IdentityServerCert))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiRouterIdentityKeyVarName, constants.ZitiRouterIdentityKeyVarDescription, data.Router.IdentityKey))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiRouterIdentityCAVarName, constants.ZitiRouterIdentityCAVarDescription, data.Router.IdentityCA))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterIPOverrideVarName, constants.ZitiEdgeRouterIPOverrideVarDescription, data.Router.Edge.IPOverride))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterAdvertisedAddressVarName, constants.ZitiEdgeRouterAdvertisedAddressVarDescription, data.Router.Edge.AdvertisedHost))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterResolverVarName, constants.ZitiEdgeRouterResolverVarDescription, data.Router.Edge.Resolver))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterDnsSvcIpRangeVarName, constants.ZitiEdgeRouterDnsSvcIpRangeVarDescription, data.Router.Edge.DnsSvcIpRange))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterCsrCVarName, constants.ZitiEdgeRouterCsrCVarDescription, data.Router.Edge.CsrC))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterCsrSTVarName, constants.ZitiEdgeRouterCsrSTVarDescription, data.Router.Edge.CsrST))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterCsrLVarName, constants.ZitiEdgeRouterCsrLVarDescription, data.Router.Edge.CsrL))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterCsrOVarName, constants.ZitiEdgeRouterCsrOVarDescription, data.Router.Edge.CsrO))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiEdgeRouterCsrOUVarName, constants.ZitiEdgeRouterCsrOUVarDescription, data.Router.Edge.CsrOU))
-	sb.WriteString(fmt.Sprintf("%-40s %-50s %s\n", constants.ZitiRouterCsrSansDnsVarName, constants.ZitiRouterCsrSansDnsVarDescription, data.Router.Edge.CsrSans))
+	sb.WriteString("Creates an env file for generating a controller or router config YAML." +
+		"\nThe following can be set to override defaults:\n")
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiHomeVarName, constants.ZitiHomeVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiNetworkNameVarName, constants.ZitiNetworkNameVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.PkiCtrlCertVarName, constants.PkiCtrlCertVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.PkiCtrlServerCertVarName, constants.PkiCtrlServerCertVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.PkiCtrlKeyVarName, constants.PkiCtrlKeyVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.PkiCtrlCAVarName, constants.PkiCtrlCAVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlDatabaseFileVarName, constants.CtrlDatabaseFileVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlBindAddressVarName, constants.CtrlBindAddressVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlAdvertisedAddressVarName, constants.CtrlAdvertisedAddressVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeAltAdvertisedAddressVarName, constants.CtrlEdgeAltAdvertisedAddressVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlAdvertisedPortVarName, constants.CtrlAdvertisedPortVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeBindAddressVarName, constants.CtrlEdgeBindAddressVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeAdvertisedPortVarName, constants.CtrlEdgeAdvertisedPortVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.PkiSignerCertVarName, constants.PkiSignerCertVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.PkiSignerKeyVarName, constants.PkiSignerKeyVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeIdentityEnrollmentDurationVarName, constants.CtrlEdgeIdentityEnrollmentDurationVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeRouterEnrollmentDurationVarName, constants.CtrlEdgeRouterEnrollmentDurationVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeAdvertisedAddressVarName, constants.CtrlEdgeAdvertisedAddressVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlPkiEdgeCertVarName, constants.CtrlPkiEdgeCertVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlPkiEdgeServerCertVarName, constants.CtrlPkiEdgeServerCertVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlPkiEdgeKeyVarName, constants.CtrlPkiEdgeKeyVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlPkiEdgeCAVarName, constants.CtrlPkiEdgeCAVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.PkiAltServerCertVarName, constants.PkiAltServerCertVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.PkiAltServerKeyVarName, constants.PkiAltServerKeyVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterNameVarName, constants.ZitiEdgeRouterNameVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterPortVarName, constants.ZitiEdgeRouterPortVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterListenerBindPortVarName, constants.ZitiEdgeRouterListenerBindPortVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiRouterIdentityCertVarName, constants.ZitiRouterIdentityCertVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiRouterIdentityServerCertVarName, constants.ZitiRouterIdentityServerCertVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiRouterIdentityKeyVarName, constants.ZitiRouterIdentityKeyVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiRouterIdentityCAVarName, constants.ZitiRouterIdentityCAVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterIPOverrideVarName, constants.ZitiEdgeRouterIPOverrideVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterAdvertisedAddressVarName, constants.ZitiEdgeRouterAdvertisedAddressVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterResolverVarName, constants.ZitiEdgeRouterResolverVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterDnsSvcIpRangeVarName, constants.ZitiEdgeRouterDnsSvcIpRangeVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterCsrCVarName, constants.ZitiEdgeRouterCsrCVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterCsrSTVarName, constants.ZitiEdgeRouterCsrSTVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterCsrLVarName, constants.ZitiEdgeRouterCsrLVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterCsrOVarName, constants.ZitiEdgeRouterCsrOVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiEdgeRouterCsrOUVarName, constants.ZitiEdgeRouterCsrOUVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiRouterCsrSansDnsVarName, constants.ZitiRouterCsrSansDnsVarDescription))
 
 	cmd.Long = sb.String()
 
