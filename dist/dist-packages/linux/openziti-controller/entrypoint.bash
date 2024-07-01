@@ -30,7 +30,7 @@ source "${ZITI_CTRL_BOOTSTRAP_BASH:-/opt/openziti/etc/controller/bootstrap.bash}
 
 # * Linux service ExecStartPre uses 'check' to pre-flight the config and renew certs
 # * Container uses 'run' to call bootstrap() and ziti
-if [[ "${1}" =~ run && "${ZITI_BOOTSTRAP:-}" == true ]]; then
+if [[ "${ZITI_BOOTSTRAP:-}" == true && "${1}" =~ run ]]; then
   bootstrap "${2}"
 elif [[ "${1}" =~ check ]]; then
   if [[ ! -s "${2}" ]]; then
@@ -41,10 +41,12 @@ elif [[ "${1}" =~ check ]]; then
     echo "ERROR: database file '$(dbFile "${2}")' is not writable" >&2
     hintLinuxBootstrap "${PWD}"
     exit 1
-  elif [[ "${ZITI_BOOTSTRAP_PKI:-}" == true ]]; then
+  elif [[ "${ZITI_BOOTSTRAP:-}" == true && "${ZITI_BOOTSTRAP_PKI:-}" == true ]]; then
     loadEnvFiles /opt/openziti/etc/controller/bootstrap.env
     issueLeafCerts
-    exit 0
+    exit
+  else
+    exit
   fi
 fi
 
