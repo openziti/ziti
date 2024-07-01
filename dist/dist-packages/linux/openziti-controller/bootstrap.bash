@@ -13,7 +13,7 @@ makePki() {
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
     echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set, i.e., the FQDN by which all devices will reach the"\
     "controller and verify the server certificate" >&2
-    hintBootstrap "${PWD}"
+    hintLinuxBootstrap "${PWD}"
     return 1
   fi
 
@@ -43,6 +43,10 @@ makePki() {
     echo "INFO: edge signer CA exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")"
   fi
 
+  issueLeafCerts
+}
+
+issueLeafCerts() {
   #
   # create server and client keys
   #
@@ -122,7 +126,7 @@ makeConfig() {
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
     echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set; i.e., the FQDN by which all devices will reach the"\
     "controller and verify the server certificate" >&2
-    hintBootstrap "${PWD}"
+    hintLinuxBootstrap "${PWD}"
     return 1
   else
     echo "DEBUG: ZITI_CTRL_ADVERTISED_ADDRESS is set to ${ZITI_CTRL_ADVERTISED_ADDRESS}" >&3
@@ -193,7 +197,7 @@ makeDatabase() {
     fi
   else
     echo  "ERROR: unable to create default admin in database because ZITI_USER and ZITI_PWD must both be set" >&2
-    hintBootstrap "${PWD}"
+    hintLinuxBootstrap "${PWD}"
     return 1
   fi
 
@@ -242,15 +246,22 @@ loadEnvStdin() {
   fi
 }
 
+# shellcheck disable=SC2120
 loadEnvFiles() {
-  for ENV_FILE in "${BOOT_ENV_FILE}" "${SVC_ENV_FILE}"
+  if (( $#))
+  then
+    local -a _env_files=("${@}")
+  else
+    local -a _env_files=("${BOOT_ENV_FILE}" "${SVC_ENV_FILE}")
+  fi
+  for _env_file in "${_env_files[@]}"
   do
-    if [[ -s "${ENV_FILE}" ]]
+    if [[ -s "${_env_file}" ]]
     then
       # shellcheck disable=SC1090
-      source "${ENV_FILE}"
+      source "${_env_file}"
     else
-      echo "WARN: missing env file '${ENV_FILE}'"
+      echo "WARN: missing env file '${_env_file}'" >&2
     fi 
   done
 }
@@ -410,11 +421,6 @@ exportZitiVars() {
 
 bootstrap() {
 
-  if [[ "${ZITI_BOOTSTRAP:-}" != true ]]; then
-    echo "WARN: not checking or generating a config because ZITI_BOOTSTRAP is not set to 'true'" >&2
-    return 0
-  fi
-
   if [[ -n "${1:-}" ]]; then
     local _ctrl_config_file="${1}"
     echo "DEBUG: using config: $(realpath "${_ctrl_config_file}")" >&3
@@ -479,7 +485,7 @@ finalizeWorkingDir() {
   chmod -R u=rwX,go-rwx "${_config_dir}/"
 }
 
-hintBootstrap() {
+hintLinuxBootstrap() {
 
   local _work_dir="${1:-${PWD}}"
 
@@ -530,17 +536,36 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   set -o nounset
   set -o pipefail
 
-  if [[ $UID != 0 ]]; then
-    echo "ERROR: must be run as root; when executed directly, this script prepares the working directory for"\
-          "ziti-controller.service and generates a configuration" >&2
-    exit 1
-  fi
-
   export ZITI_HOME=/var/lib/ziti-controller
   DEFAULT_ADDR=localhost
   SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
   BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
   SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
+
+  if [[ "${1:-}" =~ ^[-] ]]
+  then
+    echo -e "\nUsage:"\
+            "\n\t$0 [CONFIG_FILE]"\
+            "\n" \
+            "\nOPTIONS" \
+            "\n" \
+            "\nVERBOSE=1\tprint INFO" \
+            "\nDEBUG=1\t\tprint DEBUG" \
+            "\n" >&2
+    hintLinuxBootstrap "${ZITI_HOME}"
+    exit 1
+  elif (( $# ))
+  then
+    set -- "${ZITI_HOME}/$(basename "$1")"
+  else
+    set -- "${ZITI_HOME}/config.yml"
+  fi
+  echo "DEBUG: using config file: $*" >&3
+
+  if [[ $UID != 0 ]]; then
+    echo "ERROR: must be run as root" >&2
+    exit 1
+  fi
 
   prepareWorkingDir "${ZITI_HOME}"
   loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
@@ -554,17 +579,14 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   promptPwd                     # prompt for ZITI_PWD if not already set
   loadEnvFiles                  # reload env files to source new answers from prompts
 
-  if ! (( $# ))
-  then
-    set -- "${ZITI_HOME}/config.yml"
-  fi
-
   # suppress normal output during bootstrapping unless VERBOSE
   exec 4>&1; exec 1>/dev/null
   if (( VERBOSE )); then
     exec 1>&4
   fi
-  if ZITI_BOOTSTRAP=true bootstrap "${@}"
+  
+  # run bootstrap(), set filemodes, and scrub ZITI_PWD
+  if bootstrap "${@}"
   then
     finalizeWorkingDir "${ZITI_HOME}"
     setAnswer "ZITI_PWD=" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
@@ -572,6 +594,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     # successfully running this script directly means bootstrapping was enabled
     setBootstrapEnabled
   else
-    echo "ERROR: something went wrong during bootstrapping; set DEBUG=1 for verbose output" >&2
+    echo "ERROR: something went wrong during bootstrapping; set DEBUG=1" >&2
   fi
 fi

@@ -17,7 +17,7 @@ DynamicUser=yes
 Environment=UNIT_NAME=ziti-controller.service
 # create a new config file relative to working directory unless it exists
 # absolute path where service will be run
-ExecStartPre=/opt/openziti/etc/controller/entrypoint.bash boot config.yml
+ExecStartPre=/opt/openziti/etc/controller/entrypoint.bash check config.yml
 ExecStart=/opt/openziti/bin/ziti controller run config.yml ${ZITI_ARGS}
 LimitNOFILE=65535
 Restart=always
