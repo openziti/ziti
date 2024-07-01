@@ -7,8 +7,8 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -177,7 +177,7 @@ func (self *circuitMetrics) ingestCircuitMetrics(sourceId string, circuitDetail 
 		host, err := self.model.SelectHost(hostSelector)
 		if err == nil {
 			self.model.AcceptHostMetrics(host, modelEvent)
-			log.Infof("<$= [%s/%v]", sourceId, circuitId)
+			//log.Infof("<$= [%s/%v]", sourceId, circuitId)
 		} else {
 			log.WithError(err).Error("circuitMetrics: unable to find host")
 		}

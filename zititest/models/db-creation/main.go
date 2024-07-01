@@ -110,12 +110,12 @@ var m = &model.Model{
 	},
 
 	Disposal: model.Stages{
+		terraform.Dispose(),
 		model.StageActionF(func(run model.Run) error {
 			m := run.GetModel()
 			s := actions.Route53StringCreator(m, actions.Delete)
 			return host.Exec(m.MustSelectHost("#ctrl"), s).Execute(run)
 		}),
-		terraform.Dispose(),
 		aws_ssh_key2.Dispose(),
 	},
 }
