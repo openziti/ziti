@@ -131,7 +131,7 @@ makeConfig() {
   # set the path to the root CA cert
   export  ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
 
-  # set the URI of the edge-client API (uses same TCP port); e.g., ztAPI: ziti.example.com:1280
+  # set the URI of the edge-client API (uses same TCP port); e.g., ztAPI: ctrl.ziti.example.com:1280
   export  ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}" \
           ZITI_CTRL_EDGE_ADVERTISED_PORT="${ZITI_CTRL_ADVERTISED_PORT:=1280}"
 
@@ -182,7 +182,7 @@ makeDatabase() {
   if [[ -n "${ZITI_USER:-}" && -n "${ZITI_PWD:-}" ]]; then
     if ziti controller edge init "${_config_file}" \
       --username "${ZITI_USER}" \
-      --password "${ZITI_PWD}"
+      --password "${ZITI_PWD}" 2>&1  # set VERBOSE=1 or DEBUG=1 to see the output
     then
       echo "DEBUG: created default admin in database" >&3
     else
@@ -290,7 +290,7 @@ promptBootstrap() {
 promptPwd() {
   # do nothing if database file has stuff in it
   if [[ -s "${ZITI_CTRL_DATABASE_FILE}" ]]; then
-      echo "INFO: database exists in $(realpath "${ZITI_CTRL_DATABASE_FILE}")"
+      echo "DEBUG: database exists in $(realpath "${ZITI_CTRL_DATABASE_FILE}")" >&3
   # prompt for password token if interactive, unless already answered
   else
     if ! [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
@@ -504,6 +504,7 @@ dbFile() {
 # discard debug unless this script is executed directly with DEBUG=1
 # initialize a file descriptor for debug output
 : "${DEBUG:=0}"
+: "${VERBOSE:=${DEBUG}}"
 if (( DEBUG )); then
   exec 3>&1
   set -o xtrace
@@ -558,6 +559,11 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     set -- "${ZITI_HOME}/config.yml"
   fi
 
+  # suppress normal output during bootstrapping unless VERBOSE
+  exec 4>&1; exec 1>/dev/null
+  if (( VERBOSE )); then
+    exec 1>&4
+  fi
   if ZITI_BOOTSTRAP=true bootstrap "${@}"
   then
     finalizeWorkingDir "${ZITI_HOME}"
