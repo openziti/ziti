@@ -184,10 +184,8 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 
 	var sb strings.Builder
 
-	sb.WriteString("Creates a config file for specified component. Instead of numerous flags to be set " +
-		"environment variables are used. All settings have default values but can be manually set to override " +
-		"the config output.\n\nThe following environment variables can be set to override config values " +
-		"(current value is displayed):\n")
+	sb.WriteString("Creates an env file for generating a controller or router config YAML." +
+		"\nThe following can be set to override defaults:\n")
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiHomeVarName, constants.ZitiHomeVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.ZitiNetworkNameVarName, constants.ZitiNetworkNameVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.PkiCtrlCertVarName, constants.PkiCtrlCertVarDescription))
