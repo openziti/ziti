@@ -536,7 +536,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   set -o nounset
   set -o pipefail
 
-  export ZITI_HOME=/var/lib/ziti-controller
+  export ZITI_HOME=/var/lib/private/ziti-controller
   DEFAULT_ADDR=localhost
   SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
   BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
