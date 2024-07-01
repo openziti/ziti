@@ -51,7 +51,7 @@ require (
 	github.com/openziti/channel/v2 v2.0.133
 	github.com/openziti/edge-api v0.26.20
 	github.com/openziti/foundation/v2 v2.0.47
-	github.com/openziti/identity v1.0.80
+	github.com/openziti/identity v1.0.81
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.56
 	github.com/openziti/runzmd v1.0.49

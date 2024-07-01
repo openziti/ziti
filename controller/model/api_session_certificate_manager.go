@@ -89,6 +89,8 @@ func (self *ApiSessionCertificateManager) CreateFromCSR(apiSessionId string, lif
 		PEM:          string(certPem),
 	}
 
+	self.env.GetHostController().GetConfig()
+
 	return self.Create(entity, ctx)
 }
 

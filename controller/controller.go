@@ -94,6 +94,10 @@ type Controller struct {
 	apiDataOnce  sync.Once
 }
 
+func (c *Controller) GetConfig() *Config {
+	return c.config
+}
+
 func (c *Controller) GetPeerSigners() []*x509.Certificate {
 	if c.raftController == nil || c.raftController.Mesh == nil {
 		return nil
