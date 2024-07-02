@@ -593,7 +593,7 @@ func GetSpiffeIdFromIdentity(id identity.Identity) (*url.URL, error) {
 	spiffeId, err := GetSpiffeIdFromTlsCertChain(tlsCerts)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to aquire SPIFFE id from server certs: %w", err)
+		return nil, fmt.Errorf("failed to acquire SPIFFE id from server certs: %w", err)
 	}
 
 	if spiffeId != nil {
