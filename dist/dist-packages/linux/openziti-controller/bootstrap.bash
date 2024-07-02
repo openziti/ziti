@@ -11,8 +11,7 @@ makePki() {
 
   # used by "ziti pki create server" as DNS SAN
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
-    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set, i.e., the FQDN by which all devices will reach the"\
-    "controller and verify the server certificate" >&2
+    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set" >&2
     hintLinuxBootstrap "${PWD}"
     return 1
   fi
@@ -63,16 +62,6 @@ issueLeafCerts() {
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}"
   fi
-
-  # use the server key for both client and server certs until "ziti create config controller" supports separate keys for
-  # each
-  # CLIENT_KEY_FILE="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_CLIENT_FILE}.key"
-  # if ! [[ -s "$CLIENT_KEY_FILE" ]]; then
-  #   ziti pki create key \
-  #     --pki-root "${ZITI_PKI_ROOT}" \
-  #     --ca-name "${ZITI_INTERMEDIATE_FILE}" \
-  #     --key-file "${ZITI_CLIENT_FILE}"
-  # fi
 
   #
   # create server and client certs
@@ -133,7 +122,10 @@ makeConfig() {
   fi
 
   # set the path to the root CA cert
-  export  ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
+  export  ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_SERVER_FILE}.chain.pem" \
+          ZITI_PKI_CTRL_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_CLIENT_FILE}.cert" \
+          ZITI_PKI_CTRL_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_SERVER_FILE}.key" \
+          ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
 
   # set the URI of the edge-client API (uses same TCP port); e.g., ztAPI: ctrl.ziti.example.com:1280
   export  ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}" \
@@ -146,7 +138,7 @@ makeConfig() {
           ZITI_PKI_EDGE_KEY="${ZITI_PKI_CTRL_KEY}" \
           ZITI_PKI_EDGE_CA="${ZITI_PKI_CTRL_CA}"
 
-  exportZitiVars                # export all ZITI_ vars to be used in bootstrap
+  exportZitiVars
   if [[ ! -s "${_config_file}" || "${1:-}" == --force ]]; then
     ziti create config controller \
       --output "${_config_file}"
@@ -305,11 +297,10 @@ promptPwd() {
   # prompt for password token if interactive, unless already answered
   else
     if ! [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
-      echo "INFO: ZITI_BOOTSTRAP_DATABASE is not true in ${SVC_ENV_FILE}" >&2
+      echo "WARN: ZITI_BOOTSTRAP_DATABASE is not true in ${SVC_ENV_FILE}" >&2
     # do nothing if enrollment token is already defined in env file
     elif [[ -n "${ZITI_PWD:-}" ]]; then
-      echo "DEBUG: ZITI_PWD is defined in ${BOOT_ENV_FILE} and will be used to init db during"\
-            "next startup" >&3
+      echo "DEBUG: ZITI_PWD is defined in ${BOOT_ENV_FILE}" >&3
     else
       GEN_PWD=$(head -c1024 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^*_+~' | cut -c 1-12)
       if isInteractive && ZITI_PWD="$(prompt "Set password for '${ZITI_USER}' [${GEN_PWD}]: " || echo "${GEN_PWD}")"; then
@@ -346,12 +337,6 @@ promptUser() {
     else
       echo "WARN: missing ZITI_USER in ${BOOT_ENV_FILE}" >&2
     fi
-  fi
-}
-
-setBootstrapEnabled() {
-  if [[ -z "${ZITI_BOOTSTRAP:-}" ]]; then
-    setAnswer "ZITI_BOOTSTRAP=true" "${SVC_ENV_FILE}"
   fi
 }
 
@@ -412,7 +397,7 @@ importZitiVars() {
 }
 
 exportZitiVars() {
-  # make ziti vars available in forks like "ziti create config controller"
+  # make ziti vars available in forks
   for line in $(set | grep -e "^ZITI_" | sort); do
     # shellcheck disable=SC2013
     export "${line%=*}"
@@ -505,6 +490,16 @@ dbFile() {
   awk -F: '/^db:/ {print $2}' "${_config_file}"|xargs realpath
 }
 
+exitHandler() {
+  echo "WARN: set VERBOSE=1 or DEBUG=1 for more output" >&2
+  if [[ -s "${INFO_LOG_FILE:-}" || -s "${DEBUG_LOG_FILE:-}" ]]; then
+    local _log_file
+    _log_file="$(mktemp)"
+    cat "${INFO_LOG_FILE:-/dev/null}" "${DEBUG_LOG_FILE:-/dev/null}" >| "${_log_file}"
+    echo "WARN: see output in '${_log_file}'" >&2
+  fi
+}
+
 # BEGIN
 
 # discard debug unless this script is executed directly with DEBUG=1
@@ -515,9 +510,10 @@ if (( DEBUG )); then
   exec 3>&1
   set -o xtrace
 else
-  exec 3>/dev/null
+  exec 3>>"${DEBUG_LOG_FILE:=$(mktemp)}"
 fi
 
+trap exitHandler EXIT SIGINT SIGTERM
 
 # set defaults
 : "${ZITI_PKI_ROOT:=pki}"  # relative to working directory
@@ -580,7 +576,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   loadEnvFiles                  # reload env files to source new answers from prompts
 
   # suppress normal output during bootstrapping unless VERBOSE
-  exec 4>&1; exec 1>/dev/null
+  exec 4>&1; exec 1>>"${INFO_LOG_FILE:=$(mktemp)}"
   if (( VERBOSE )); then
     exec 1>&4
   fi
@@ -588,12 +584,14 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   # run bootstrap(), set filemodes, and scrub ZITI_PWD
   if bootstrap "${@}"
   then
+    echo "DEBUG: bootstrap complete" >&3
     finalizeWorkingDir "${ZITI_HOME}"
     setAnswer "ZITI_PWD=" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
 
     # successfully running this script directly means bootstrapping was enabled
-    setBootstrapEnabled
+    setAnswer "ZITI_BOOTSTRAP=true" "${SVC_ENV_FILE}"
+    trap - EXIT  # remove exit trap
   else
-    echo "ERROR: something went wrong during bootstrapping; set DEBUG=1" >&2
+    echo "ERROR: something went wrong during bootstrapping" >&2
   fi
 fi
