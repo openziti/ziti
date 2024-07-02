@@ -1,3 +1,25 @@
+# Release 1.1.5
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.133 -> v2.0.136](https://github.com/openziti/channel/compare/v2.0.133...v2.0.136)
+    * [Issue #132](https://github.com/openziti/channel/issues/132) - reconnecting dialer doesn't take local binding into account when reconnecting
+
+* github.com/openziti/identity: [v1.0.80 -> v1.0.81](https://github.com/openziti/identity/compare/v1.0.80...v1.0.81)
+* github.com/openziti/transport/v2: [v2.0.136 -> v2.0.138](https://github.com/openziti/transport/compare/v2.0.136...v2.0.138)
+    * [Issue #83](https://github.com/openziti/transport/issues/83) - tls.Dial should use proxy configuration if provided
+
+* github.com/openziti/xweb/v2: [v2.1.0 -> v2.1.1](https://github.com/openziti/xweb/compare/v2.1.0...v2.1.1)
+* github.com/openziti/ziti: [v1.1.4 -> v1.1.5](https://github.com/openziti/ziti/compare/v1.1.4...v1.1.5)
+    * [Issue #2173](https://github.com/openziti/ziti/issues/2173) - panic on HA peer connect
+    * [Issue #2171](https://github.com/openziti/ziti/issues/2171) - Routers should consider control channels unresponsive if they are not connected
+    * [Issue #2086](https://github.com/openziti/ziti/issues/2086) - Enable File Watching for Router/Controller Identities
+    * [Issue #2087](https://github.com/openziti/ziti/issues/2087) - Ext JWT not setting provider value in auth query
+
 # Release 1.1.4
 
 ## What's New

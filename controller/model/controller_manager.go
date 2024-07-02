@@ -231,12 +231,14 @@ func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer) {
 	selfAsPeer := self.getCurrentAsClusterPeer()
 	peerFingerprints := ""
 	for _, peer := range peers {
-		fingerprint := nfpem.FingerprintFromCertificate(peer.ServerCert[0])
+		if len(peer.ServerCert) > 0 {
+			fingerprint := nfpem.FingerprintFromCertificate(peer.ServerCert[0])
 
-		if peerFingerprints == "" {
-			peerFingerprints = fingerprint
-		} else {
-			peerFingerprints = peerFingerprints + ", " + fingerprint
+			if peerFingerprints == "" {
+				peerFingerprints = fingerprint
+			} else {
+				peerFingerprints = peerFingerprints + ", " + fingerprint
+			}
 		}
 	}
 
