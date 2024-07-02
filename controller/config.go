@@ -616,7 +616,7 @@ func GetSpiffeIdFromIdentity(id identity.Identity) (*url.URL, error) {
 		chain := id.CaPool().GetChain(tlsCerts[0].Leaf)
 
 		if len(chain) > 0 {
-			spiffeId, err = GetSpiffeIdFromCertChain(chain)
+			spiffeId, _ = GetSpiffeIdFromCertChain(chain)
 		}
 	}
 
@@ -683,7 +683,7 @@ func GetSpiffeIdFromCert(cert *x509.Certificate) (*url.URL, error) {
 	for _, uriSan := range cert.URIs {
 		if uriSan.Scheme == "spiffe" {
 			if spiffeId != nil {
-				return nil, fmt.Errorf("multiple URI SAN spiffe:// ids encountered, must only have one")
+				return nil, fmt.Errorf("multiple URI SAN spiffe:// ids encountered, must only have one, encountered at least two: [%s] and [%s]", spiffeId.String(), uriSan.String())
 			}
 			spiffeId = uriSan
 		}
