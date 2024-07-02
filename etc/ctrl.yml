@@ -17,6 +17,8 @@ identity:
   key:                  etc/ca/intermediate/private/ctrl.key.pem
   ca:                   etc/ca/intermediate/certs/ca-chain.cert.pem
 
+trustDomain: usedForLegacyNonHaNetworksWithoutSpiffeIdsInCerts
+
 raft:
   minClusterSize: 1
   advertiseAddress: tcp:localhost:1380

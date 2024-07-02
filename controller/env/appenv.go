@@ -49,6 +49,7 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
@@ -311,6 +312,7 @@ type HostController interface {
 	GetPeerAddresses() []string
 	GetRaftInfo() (string, string, string)
 	GetApiAddresses() (map[string][]event.ApiAddress, []byte)
+	GetConfig() *controller.Config
 }
 
 type Schemes struct {
@@ -557,6 +559,7 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 	token := ae.getJwtTokenFromRequest(rc.Request)
 
 	if token != nil {
+		rc.IsJwtToken = true
 		return ae.ProcessJwt(rc, token)
 	}
 

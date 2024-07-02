@@ -19,6 +19,7 @@ package model
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/openziti/ziti/controller"
 	"testing"
 	"time"
 
@@ -48,6 +49,10 @@ var _ HostController = &testHostController{}
 type testHostController struct {
 	closeNotify chan struct{}
 	ctx         *TestContext
+}
+
+func (self *testHostController) GetConfig() *controller.Config {
+	return nil
 }
 
 func (self *testHostController) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {

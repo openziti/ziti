@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
@@ -70,6 +71,7 @@ type HostController interface {
 	GetRaftIndex() uint64
 	GetRaftInfo() (string, string, string)
 	GetApiAddresses() (map[string][]event.ApiAddress, []byte)
+	GetConfig() *controller.Config
 }
 
 type Schemas interface {

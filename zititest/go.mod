@@ -17,7 +17,7 @@ require (
 	github.com/openziti/edge-api v0.26.20
 	github.com/openziti/fablab v0.5.60
 	github.com/openziti/foundation/v2 v2.0.47
-	github.com/openziti/identity v1.0.80
+	github.com/openziti/identity v1.0.81
 	github.com/openziti/sdk-golang v0.23.38
 	github.com/openziti/storage v0.2.45
 	github.com/openziti/transport/v2 v2.0.136

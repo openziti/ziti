@@ -55,6 +55,7 @@ type RequestContext struct {
 	entitySubId string
 	Body        []byte
 	StartTime   time.Time
+	IsJwtToken  bool
 }
 
 func (rc *RequestContext) GetId() string {

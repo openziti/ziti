@@ -1,9 +1,37 @@
+# Release 1.1.5
+
+* Trust Domain Configuration
+
+## Trust Domain Configuration
+
+OpenZiti networks from this release forward will now require a `trust domain` to be configured. High Availability (HA)
+controllers already have this requirement. HA Controllers configure their trust domain via SPIFF ids that are embedded
+in x509 certificates.
+
+For feature parity, non-HA controllers will now have this same requirement. However, as re-issuing certificates is not
+always easily done. To help with the transition, non-HA controllers will have the ability to have their trust domain
+sourced from the controller configuration file through the root configuration value `trustDomain`. The configuration
+field which takes a string that must be URI hostname compatible (see: https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE-ID.md).
+After this value is set it should not be changed.
+
+For networks that will be deployed after this change, it is highly suggested that a SPIFFE id is added to certificates.
+The `ziti pki create ...` tooling supports the `--spiffe-id` option to help handle this scenario.
+
+### Trust domain resolution:
+
+- Non-HA controllers
+  - Prefers SPIFFE ids in x509 certificate URI SANs, looking at the leaf up the signing chain
+  - Regresses to `trustDomain` in the controller configuration file if not found
+- HA Controllers
+  - Requires x509 SPIFFE ids in x509 certificate URI SANs, looking at the leaf up the signing chain
+
+
 # Release 1.1.4
 
 ## What's New
 
-* Bug fixes
 * Controller HA Beta 1
+* Bug fixes
 
 ## Controller HA Beta 1
 
