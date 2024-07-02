@@ -7,6 +7,8 @@ identity:
   key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/ctrl/keys/{{ .Component.PublicIdentity }}-server.key
   ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/ctrl/certs/{{ .Component.PublicIdentity }}-server.chain.pem
 
+trustDomain: router-test
+
 # the endpoint that routers will connect to the controller over.
 ctrl:
   listener: tls:0.0.0.0:6262
