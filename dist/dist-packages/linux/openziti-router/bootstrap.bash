@@ -171,7 +171,7 @@ loadEnvFiles() {
 }
 
 promptRouterAddress() {
-    if [ -z "${ZITI_ROUTER_ADVERTISED_ADDRESS:-}" ]; then
+    if [[ -z "${ZITI_ROUTER_ADVERTISED_ADDRESS:-}" ]]; then
         if ZITI_ROUTER_ADVERTISED_ADDRESS="$(prompt "Enter the DNS name of this router [${DEFAULT_ADDR}]: " || echo "${DEFAULT_ADDR}")"; then
             setAnswer "ZITI_ROUTER_ADVERTISED_ADDRESS=${ZITI_ROUTER_ADVERTISED_ADDRESS}" "${BOOT_ENV_FILE}"
         else
@@ -183,8 +183,7 @@ promptRouterAddress() {
 
 promptEnrollToken() {
     # do nothing if identity file has stuff in it
-    ZITI_ROUTER_IDENTITY_CERT="${ZITI_HOME}/${ZITI_ROUTER_NAME}.cert"
-    if [ -s "${ZITI_ROUTER_IDENTITY_CERT}" ]; then
+    if [[ -s "${ZITI_ROUTER_IDENTITY_CERT}" ]]; then
         echo "DEBUG: enrolled identity exists in ${ZITI_ROUTER_IDENTITY_CERT}" >&3
     # prompt for enrollment token if interactive, unless already answered
     else
@@ -446,6 +445,7 @@ trap exitHandler EXIT SIGINT SIGTERM
 : "${ZITI_ROUTER_PORT:=3022}"
 : "${ZITI_ROUTER_MODE:=none}"
 : "${ZITI_ROUTER_NAME:=router}"  # basename of identity files
+: "${ZITI_ROUTER_IDENTITY_CERT:=${ZITI_ROUTER_NAME}.cert}"
 
 # run the bootstrap function if this script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
