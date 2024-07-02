@@ -42,7 +42,6 @@ contents:
 
 scripts:
   postinstall: ./dist/dist-packages/linux/openziti-router/postinstall.bash
-  preremove: ./dist/dist-packages/linux/openziti-router/preremove.bash
 
 depends:
   - openziti  # ziti CLI
