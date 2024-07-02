@@ -26,29 +26,26 @@ if ! (( $# )) || [[ "${1}" == run && -z "${2:-}" ]]; then
 fi
 
 # shellcheck disable=SC1090 # path is set by the systemd service and Dockerfile
-source "${ZITI_CTRL_BOOTSTRAP_BASH:-/opt/openziti/etc/controller/bootstrap.bash}"
+source "${ZITI_ROUTER_BOOTSTRAP_BASH:-/opt/openziti/etc/router/bootstrap.bash}"
 
 # * Linux service ExecStartPre uses 'check' to pre-flight the config and renew certs
 # * Container uses 'run' to call bootstrap() and ziti
 if [[ "${ZITI_BOOTSTRAP:-}" == true && "${1}" =~ run ]]; then
   bootstrap "${2}"
+  if [[ "${ZITI_AUTO_RENEW_CERTS:-}" == true && ! "$*" =~ --extend ]]; then
+    # shellcheck disable=SC2068
+    set -- ${@} --extend
+  fi
 elif [[ "${1}" =~ check ]]; then
   if [[ ! -s "${2}" ]]; then
-    echo "ERROR: ${2} does not exist" >&2
+    echo "ERROR: ${2} is empty or missing" >&2
     hintLinuxBootstrap "${PWD}"
     exit 1
-  elif [[ ! -w "$(dbFile "${2}")" ]]; then
-    echo "ERROR: database file '$(dbFile "${2}")' is not writable" >&2
-    hintLinuxBootstrap "${PWD}"
-    exit 1
-  elif [[ "${ZITI_BOOTSTRAP:-}" == true && "${ZITI_BOOTSTRAP_PKI:-}" == true ]]; then
-    loadEnvFiles /opt/openziti/etc/controller/bootstrap.env
-    issueLeafCerts
-    exit
   else
+    echo "DEBUG: ${2} exists and is not empty" >&3
     exit
   fi
 fi
 
 # shellcheck disable=SC2068
-exec ziti controller ${@}
+exec ziti router ${@}
