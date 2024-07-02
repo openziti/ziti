@@ -343,6 +343,14 @@ func LoadConfig(path string) (*Config, error) {
 					if err != nil {
 						panic("could not parse [trustDomain] when used in a SPIFFE id URI [" + trustDomain + "], please make sure it is a valid URI hostname: " + err.Error())
 					}
+
+					if spiffeId == nil {
+						panic("could not parse [trustDomain] when used in a SPIFFE id URI [" + trustDomain + "]: spiffeId is nil and no error returned")
+					}
+
+					if spiffeId.Scheme != "spiffe" {
+						panic("[trustDomain] does not have a spiffe scheme (spiffe://) has: " + spiffeId.Scheme)
+					}
 				}
 			}
 		}
@@ -350,6 +358,10 @@ func LoadConfig(path string) (*Config, error) {
 
 	if spiffeId == nil {
 		panic("unable to determine trust domain from SPIFFE id (spiffe:// URI SANs in server cert or signing CAs) or from configuration [trustDomain], controllers must have a trust domain")
+	}
+
+	if spiffeId.Hostname() == "" {
+		panic("unable to determine trust domain from SPIFFE id: hostname was empty")
 	}
 
 	controllerConfig.SpiffeId = spiffeId
