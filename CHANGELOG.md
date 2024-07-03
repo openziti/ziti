@@ -25,10 +25,10 @@ The following log messages are examples of warnings produced when a controller i
 
 ```
 WARNING this environment is using a default generated trust domain [spiffe://d561decf63d229d66b07de627dbbde9e93228925], 
-  it is recomended that a trust domain is speficied in configuration via URI SANs or the 'trustDomain' field
+  it is recommended that a trust domain is speficied in configuration via URI SANs or the 'trustDomain' field
 
 WARNING this environment is using a default generated trust domain [spiffe://d561decf63d229d66b07de627dbbde9e93228925], 
-  it is recomended that if network components have enrolled that the generated trust domain be added to the 
+  it is recommended that if network components have enrolled that the generated trust domain be added to the 
   configuration field 'additionalTrustDomains'
 ```
 

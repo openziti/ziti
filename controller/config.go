@@ -374,8 +374,8 @@ func LoadConfig(path string) (*Config, error) {
 				panic("could not generate default trust domain: " + err.Error())
 			}
 
-			pfxlog.Logger().Warnf("this environment is using a default generated trust domain [%s], it is recomended that a trust domain is speficied in configuration via URI SANs or the 'trustDomain' field", spiffeId.String())
-			pfxlog.Logger().Warnf("this environment is using a default generated trust domain [%s], it is recomended that if network components have enrolled that the generated trust domain be added to the configuration field 'additionalTrustDomains' array when configuring a explicit trust domain", spiffeId.String())
+			pfxlog.Logger().Warnf("this environment is using a default generated trust domain [%s], it is recommended that a trust domain is specified in configuration via URI SANs or the 'trustDomain' field", spiffeId.String())
+			pfxlog.Logger().Warnf("this environment is using a default generated trust domain [%s], it is recommended that if network components have enrolled that the generated trust domain be added to the configuration field 'additionalTrustDomains' array when configuring a explicit trust domain", spiffeId.String())
 		}
 	}
 
@@ -669,7 +669,7 @@ func generateDefaultSpiffeId(id identity.Identity) (*url.URL, error) {
 
 	// chain is 0 or 1, no root possible
 	if len(chain) <= 1 {
-		return nil, fmt.Errorf("error generating defualt trust domain from root CA: no root CA detected after chain assembly from the root identity server cert and ca bundle")
+		return nil, fmt.Errorf("error generating default trust domain from root CA: no root CA detected after chain assembly from the root identity server cert and ca bundle")
 	}
 
 	candidateRoot := chain[len(chain)-1]
