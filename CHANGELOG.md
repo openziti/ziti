@@ -7,7 +7,7 @@
 ## Trust Domain Configuration
 
 OpenZiti controllers from this release forward will now require a `trust domain` to be configured. 
-High Availability (HA) controllers already have this requirement. HA Controllers configure their trust domain via SPIFF 
+High Availability (HA) controllers already have this requirement. HA Controllers configure their trust domain via SPIFFE 
 ids that are embedded in x509 certificates.
 
 For feature parity, non-HA controllers will now have this same requirement. However, as re-issuing certificates is not
