@@ -502,7 +502,7 @@ func (a *AuthModuleExtJwt) onExternalSignerCreate(args ...interface{}) {
 
 func (a *AuthModuleExtJwt) onExternalSignerUpdate(signer *db.ExternalJwtSigner) {
 	//read on update because patches can pass partial data
-	err := a.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := a.env.GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
 		signer, _, err = a.env.GetStores().ExternalJwtSigner.FindById(tx, signer.Id)
 		return err
@@ -559,7 +559,7 @@ func (a *AuthModuleExtJwt) onExternalSignerDelete(signer *db.ExternalJwtSigner) 
 }
 
 func (a *AuthModuleExtJwt) loadExistingSigners() {
-	err := a.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := a.env.GetDb().View(func(tx *bbolt.Tx) error {
 		ids, _, err := a.env.GetStores().ExternalJwtSigner.QueryIds(tx, "")
 
 		if err != nil {

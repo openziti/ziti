@@ -6,12 +6,12 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/config"
 	"math/big"
 )
 
 func (ctx *FabricTestContext) NewControlChannelListener() channel.UnderlayListener {
-	config, err := controller.LoadConfig(FabricControllerConfFile)
+	config, err := config.LoadConfig(FabricControllerConfFile)
 	ctx.Req.NoError(err)
 	ctx.Req.NoError(config.Db.Close())
 

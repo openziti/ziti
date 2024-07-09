@@ -49,7 +49,6 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
@@ -84,8 +83,8 @@ const (
 )
 
 type AppEnv struct {
+	Stores   *db.Stores
 	Managers *model.Managers
-	Config   *config.Config
 
 	Versions *ziti.Versions
 
@@ -228,7 +227,7 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 		return nil, err
 	}
 
-	if revocation != nil && tokenRevocation.CreatedAt.After(serviceAccessClaims.IssuedAt.Time) {
+	if revocation != nil && revocation.CreatedAt.After(serviceAccessClaims.IssuedAt.Time) {
 		return nil, errors.New("service access token has been revoked by identity")
 	}
 
@@ -251,7 +250,7 @@ func (ae *AppEnv) GetApiClientCsrSigner() cert.Signer {
 	return ae.ApiClientCsrSigner
 }
 
-func (ae *AppEnv) GetHostController() model.HostController {
+func (ae *AppEnv) GetHostController() HostController {
 	return ae.HostController
 }
 
@@ -260,19 +259,19 @@ func (ae *AppEnv) GetManagers() *model.Managers {
 }
 
 func (ae *AppEnv) GetConfig() *config.Config {
-	return ae.Config
+	return ae.HostController.GetConfig()
 }
 
 func (ae *AppEnv) GetServerJwtSigner() jwtsigner.Signer {
 	return ae.serverSigner
 }
 
-func (ae *AppEnv) GetDbProvider() network.DbProvider {
-	return ae.HostController.GetNetwork()
+func (ae *AppEnv) GetDb() boltz.Db {
+	return ae.HostController.GetDb()
 }
 
 func (ae *AppEnv) GetStores() *db.Stores {
-	return ae.HostController.GetNetwork().GetStores()
+	return ae.Stores
 }
 
 func (ae *AppEnv) GetAuthRegistry() model.AuthRegistry {
@@ -288,14 +287,36 @@ func (ae *AppEnv) IsEdgeRouterOnline(id string) bool {
 }
 
 func (ae *AppEnv) GetMetricsRegistry() metrics.Registry {
-	return ae.HostController.GetNetwork().GetMetricsRegistry()
+	return ae.HostController.GetMetricsRegistry()
 }
 
 func (ae *AppEnv) GetFingerprintGenerator() cert.FingerprintGenerator {
 	return ae.FingerprintGenerator
 }
 
+func (ae *AppEnv) GetRaftInfo() (string, string, string) {
+	return ae.HostController.GetRaftInfo()
+}
+
+func (ae *AppEnv) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
+	return ae.HostController.GetApiAddresses()
+}
+
+func (ae *AppEnv) GetCloseNotifyChannel() <-chan struct{} {
+	return ae.HostController.GetCloseNotifyChannel()
+}
+
+func (ae *AppEnv) GetPeerSigners() []*x509.Certificate {
+	return ae.HostController.GetPeerSigners()
+}
+
+func (ae *AppEnv) GetCommandDispatcher() command.Dispatcher {
+	return ae.HostController.GetCommandDispatcher()
+}
+
 type HostController interface {
+	GetConfig() *config.Config
+	GetEnv() *AppEnv
 	RegisterAgentBindHandler(bindHandler channel.BindHandler)
 	RegisterXctrl(x xctrl.Xctrl) error
 	RegisterXmgmt(x xmgmt.Xmgmt) error
@@ -306,13 +327,15 @@ type HostController interface {
 	Identity() identity.Identity
 	IsRaftEnabled() bool
 	IsRaftLeader() bool
+	GetDb() boltz.Db
+	GetCommandDispatcher() command.Dispatcher
 	GetPeerSigners() []*x509.Certificate
 	GetEventDispatcher() event.Dispatcher
 	GetRaftIndex() uint64
 	GetPeerAddresses() []string
 	GetRaftInfo() (string, string, string)
 	GetApiAddresses() (map[string][]event.ApiAddress, []byte)
-	GetConfig() *controller.Config
+	GetMetricsRegistry() metrics.Registry
 }
 
 type Schemes struct {
@@ -621,7 +644,12 @@ func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
 	}
 }
 
-func NewAppEnv(c *config.Config, host HostController) *AppEnv {
+func NewAppEnv(host HostController) (*AppEnv, error) {
+	stores, err := db.InitStores(host.GetDb(), host.GetCommandDispatcher().GetRateLimiter())
+	if err != nil {
+		return nil, err
+	}
+
 	clientSpec, err := loads.Embedded(clientServer.SwaggerJSON, clientServer.FlatSwaggerJSON)
 	if err != nil {
 		pfxlog.Logger().Fatalln(err)
@@ -638,8 +666,10 @@ func NewAppEnv(c *config.Config, host HostController) *AppEnv {
 	managementApi := managementOperations.NewZitiEdgeManagementAPI(managementSpec)
 	managementApi.ServeError = ServeError
 
+	c := host.GetConfig().Edge
+
 	ae := &AppEnv{
-		Config: c,
+		Stores: stores,
 		Versions: &ziti.Versions{
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
@@ -659,10 +689,11 @@ func NewAppEnv(c *config.Config, host HostController) *AppEnv {
 			WorkTimerMetric:  metricAuthLimiterWorkTimer,
 			QueueSizeMetric:  metricAuthLimiterCurrentQueuedCount,
 			WindowSizeMetric: metricAuthLimiterCurrentWindowSize,
-		}, host.GetNetwork().GetMetricsRegistry(), host.GetCloseNotifyChannel()),
+		}, host.GetMetricsRegistry(), host.GetCloseNotifyChannel()),
+		TraceManager: NewTraceManager(host.GetCloseNotifyChannel()),
 	}
 
-	ae.identityRefreshMeter = ae.GetHostController().GetNetwork().GetMetricsRegistry().Meter("identity.refresh")
+	ae.identityRefreshMeter = host.GetMetricsRegistry().Meter("identity.refresh")
 
 	clientApi.APIAuthorizer = authorizer{}
 	managementApi.APIAuthorizer = authorizer{}
@@ -711,9 +742,12 @@ func NewAppEnv(c *config.Config, host HostController) *AppEnv {
 	managementApi.ZtSessionAuth = clientApi.ZtSessionAuth
 	managementApi.Oauth2Auth = clientApi.Oauth2Auth
 
-	ae.ApiClientCsrSigner = cert.NewClientSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
-	ae.ApiServerCsrSigner = cert.NewServerSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
-	ae.ControlClientCsrSigner = cert.NewClientSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
+	if host.GetConfig().Edge.Enabled {
+		enrollmentCert := host.GetConfig().Edge.Enrollment.SigningCert.Cert()
+		ae.ApiClientCsrSigner = cert.NewClientSigner(enrollmentCert.Leaf, enrollmentCert.PrivateKey)
+		ae.ApiServerCsrSigner = cert.NewServerSigner(enrollmentCert.Leaf, enrollmentCert.PrivateKey)
+		ae.ControlClientCsrSigner = cert.NewClientSigner(enrollmentCert.Leaf, enrollmentCert.PrivateKey)
+	}
 
 	ae.FingerprintGenerator = cert.NewFingerprintGenerator()
 
@@ -722,13 +756,16 @@ func NewAppEnv(c *config.Config, host HostController) *AppEnv {
 		log.WithField("cause", err).Fatal("could not load schemas")
 	}
 
-	return ae
+	ae.Managers = model.NewManagers()
+	ae.Managers.Init(ae)
+
+	return ae, nil
 }
 
 func (ae *AppEnv) InitPersistence() error {
 	var err error
 
-	stores := ae.HostController.GetNetwork().GetStores()
+	stores := ae.GetStores()
 
 	stores.EventualEventer.AddListener(db.EventualEventAddedName, func(i ...interface{}) {
 		if len(i) == 0 {
@@ -737,7 +774,7 @@ func (ae *AppEnv) InitPersistence() error {
 		}
 
 		if event, ok := i[0].(*db.EventualEventAdded); ok {
-			gauge := ae.GetHostController().GetNetwork().GetMetricsRegistry().Gauge(EventualEventsGauge)
+			gauge := ae.GetHostController().GetMetricsRegistry().Gauge(EventualEventsGauge)
 			gauge.Update(event.Total)
 		} else {
 			pfxlog.Logger().Errorf("could not update metrics for %s gauge on add, event argument was %T expected *EventualEventAdded", EventualEventsGauge, i[0])
@@ -750,15 +787,14 @@ func (ae *AppEnv) InitPersistence() error {
 		}
 
 		if event, ok := i[0].(*db.EventualEventRemoved); ok {
-			gauge := ae.GetHostController().GetNetwork().GetMetricsRegistry().Gauge(EventualEventsGauge)
+			gauge := ae.GetHostController().GetMetricsRegistry().Gauge(EventualEventsGauge)
 			gauge.Update(event.Total)
 		} else {
 			pfxlog.Logger().Errorf("could not update metrics for %s gauge on remove, event argument was %T expected *EventualEventRemoved", EventualEventsGauge, i[0])
 		}
 	})
 
-	ae.Managers = model.InitEntityManagers(ae)
-	ae.GetHostController().GetNetwork().GetEventDispatcher().(*events.Dispatcher).InitializeEdgeEvents(stores)
+	ae.GetHostController().GetEventDispatcher().(*events.Dispatcher).InitializeEdgeEvents(stores)
 
 	db.ServiceEvents.AddServiceEventHandler(ae.HandleServiceEvent)
 	stores.Identity.AddEntityIdListener(ae.IdentityRefreshMap.Remove, boltz.EntityDeletedAsync)
@@ -933,7 +969,7 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 		responderFunc(ae, rc)
 
 		if !rc.StartTime.IsZero() {
-			timer := ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer(getMetricTimerName(rc.Request))
+			timer := ae.GetHostController().GetMetricsRegistry().Timer(getMetricTimerName(rc.Request))
 			timer.UpdateSince(rc.StartTime)
 		} else {
 			pfxlog.Logger().WithFields(map[string]interface{}{
@@ -965,5 +1001,5 @@ func (ae *AppEnv) OidcIssuer() string {
 }
 
 func (ae *AppEnv) RootIssuer() string {
-	return "https://" + ae.Config.Api.Address
+	return "https://" + ae.GetConfig().Edge.Api.Address
 }

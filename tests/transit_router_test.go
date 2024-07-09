@@ -21,8 +21,8 @@ package tests
 
 import (
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"testing"
 	"time"
 )
@@ -41,8 +41,7 @@ func Test_TransitRouters(t *testing.T) {
 	t.Run("transit routers can be created, enrolled, and started", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		ctx.createEnrollAndStartTransitRouter()
-
-		ctx.Req.NoError(ctx.router.Shutdown())
+		ctx.shutdownRouters()
 	})
 
 	t.Run("transit routers can be created, enrolled, and listed", func(t *testing.T) {
@@ -106,7 +105,7 @@ func Test_TransitRouters(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		fp := "f6fc1c03175f674f1f0b505a9ff930e5"
-		fabTxRouter := &network.Router{
+		fabTxRouter := &model.Router{
 			BaseEntity: models.BaseEntity{
 				Id:        "uMvqq",
 				CreatedAt: time.Now(),
@@ -116,7 +115,7 @@ func Test_TransitRouters(t *testing.T) {
 			Name:        "uMvqq",
 			Fingerprint: &fp,
 		}
-		err := ctx.fabricController.GetNetwork().Routers.Create(fabTxRouter, change.New())
+		err := ctx.fabricController.GetNetwork().Router.Create(fabTxRouter, change.New())
 		ctx.Req.NoError(err, "could not create router at fabric level")
 
 		body := ctx.AdminManagementSession.requireQuery("transit-routers")

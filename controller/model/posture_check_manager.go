@@ -27,7 +27,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"strings"
@@ -47,7 +46,7 @@ func NewPostureCheckManager(env Env) *PostureCheckManager {
 		cache:             cache,
 	}
 	manager.impl = manager
-	network.RegisterManagerDecoder[*PostureCheck](env.GetHostController().GetNetwork().GetManagers(), manager)
+	RegisterManagerDecoder[*PostureCheck](env, manager)
 
 	evictF := func(postureCheckId string) {
 		manager.cache.Remove(postureCheckId)
@@ -68,7 +67,7 @@ func (self *PostureCheckManager) newModelEntity() *PostureCheck {
 }
 
 func (self *PostureCheckManager) Create(entity *PostureCheck, ctx *change.Context) error {
-	return network.DispatchCreate[*PostureCheck](self, entity, ctx)
+	return DispatchCreate[*PostureCheck](self, entity, ctx)
 }
 
 func (self *PostureCheckManager) ApplyCreate(cmd *command.CreateEntityCommand[*PostureCheck], ctx boltz.MutateContext) error {
@@ -77,7 +76,7 @@ func (self *PostureCheckManager) ApplyCreate(cmd *command.CreateEntityCommand[*P
 }
 
 func (self *PostureCheckManager) Update(entity *PostureCheck, checker fields.UpdatedFields, ctx *change.Context) error {
-	return network.DispatchUpdate[*PostureCheck](self, entity, checker, ctx)
+	return DispatchUpdate[*PostureCheck](self, entity, checker, ctx)
 }
 
 func (self *PostureCheckManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*PostureCheck], ctx boltz.MutateContext) error {

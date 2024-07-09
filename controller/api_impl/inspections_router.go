@@ -18,12 +18,12 @@ package api_impl
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/rest_server/operations/inspect"
-	"github.com/openziti/foundation/v2/stringz"
 	"net/http"
 )
 
@@ -49,7 +49,7 @@ func (r *InspectRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Re
 }
 
 func (r *InspectRouter) Inspect(n *network.Network, rc api.RequestContext, request *rest_model.InspectRequest) {
-	result := n.Managers.Inspections.Inspect(stringz.OrEmpty(request.AppRegex), request.RequestedValues)
+	result := n.Inspections.Inspect(stringz.OrEmpty(request.AppRegex), request.RequestedValues)
 	resp := MapInspectResultToRestModel(n, result)
 	rc.Respond(resp, http.StatusOK)
 }

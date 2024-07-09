@@ -27,7 +27,6 @@ import (
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 	"math"
 )
@@ -94,7 +93,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 
 	id := idgen.NewUUIDString()
 
-	terminator := &network.Terminator{
+	terminator := &model.Terminator{
 		BaseEntity: models.BaseEntity{
 			Id:       id,
 			IsSystem: true,
@@ -116,7 +115,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 		Entity:  terminator,
 		Context: ctx.newChangeContext(),
 	}
-	if err := self.appEnv.GetHostController().GetNetwork().Managers.Command.Dispatch(cmd); err != nil {
+	if err := self.appEnv.GetHostController().GetNetwork().Managers.Dispatcher.Dispatch(cmd); err != nil {
 		self.returnError(ctx, internalError(err))
 		return
 	}

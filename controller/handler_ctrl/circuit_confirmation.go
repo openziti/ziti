@@ -20,6 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -28,10 +29,10 @@ import (
 
 type circuitConfirmationHandler struct {
 	n *network.Network
-	r *network.Router
+	r *model.Router
 }
 
-func newCircuitConfirmationHandler(n *network.Network, r *network.Router) *circuitConfirmationHandler {
+func newCircuitConfirmationHandler(n *network.Network, r *model.Router) *circuitConfirmationHandler {
 	return &circuitConfirmationHandler{n, r}
 }
 
@@ -56,10 +57,10 @@ func (self *circuitConfirmationHandler) HandleReceive(msg *channel.Message, _ ch
 	}
 }
 
-func (self *circuitConfirmationHandler) checkCircuitMaxIdle(circuit *network.Circuit, confirm *ctrl_pb.CircuitConfirmation) {
+func (self *circuitConfirmationHandler) checkCircuitMaxIdle(circuit *model.Circuit, confirm *ctrl_pb.CircuitConfirmation) {
 	log := logrus.WithField("routerId", self.r.Id).WithField("circuitId", circuit.Id)
 
-	service, _ := self.n.Services.Read(circuit.ServiceId)
+	service, _ := self.n.Service.Read(circuit.ServiceId)
 	if service == nil {
 		log.Info("service for circuit gone, removing idle circuit")
 		if err := self.n.RemoveCircuit(circuit.Id, true); err != nil {

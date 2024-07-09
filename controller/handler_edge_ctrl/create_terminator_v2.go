@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -107,7 +106,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		return
 	}
 
-	terminator, _ := self.getNetwork().Terminators.Read(ctx.req.Address)
+	terminator, _ := self.getNetwork().Terminator.Read(ctx.req.Address)
 	if terminator != nil {
 		if ctx.err = ctx.validateExistingTerminator(terminator, logger); ctx.err != nil {
 			self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedIdConflict, ctx.err, logger)
@@ -118,7 +117,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		if terminator.Precedence != ctx.req.GetXtPrecedence() || terminator.Cost != uint16(ctx.req.Cost) {
 			terminator.Precedence = ctx.req.GetXtPrecedence()
 			terminator.Cost = uint16(ctx.req.Cost)
-			err := self.appEnv.GetHostController().GetNetwork().Terminators.Update(terminator, fields.UpdatedFieldsMap{
+			err := self.appEnv.GetManagers().Terminator.Update(terminator, fields.UpdatedFieldsMap{
 				db.FieldTerminatorPrecedence: struct{}{},
 				db.FieldTerminatorCost:       struct{}{},
 			}, ctx.newChangeContext())
@@ -129,7 +128,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 			}
 		}
 	} else {
-		terminator = &network.Terminator{
+		terminator = &model.Terminator{
 			BaseEntity: models.BaseEntity{
 				Id:       ctx.req.Address,
 				IsSystem: true,
@@ -153,9 +152,9 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		}
 
 		createStart := time.Now()
-		if err := self.appEnv.GetHostController().GetNetwork().Managers.Command.Dispatch(cmd); err != nil {
+		if err := self.appEnv.GetHostController().GetNetwork().Managers.Dispatcher.Dispatch(cmd); err != nil {
 			// terminator might have been created while we were trying to create.
-			if terminator, _ = self.getNetwork().Terminators.Read(ctx.req.Address); terminator != nil {
+			if terminator, _ = self.getNetwork().Terminator.Read(ctx.req.Address); terminator != nil {
 				if validateError := ctx.validateExistingTerminator(terminator, logger); validateError != nil {
 					self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedIdConflict, validateError, logger)
 					return
@@ -218,7 +217,7 @@ func (self *CreateTerminatorV2RequestContext) GetSessionToken() string {
 	return self.req.SessionToken
 }
 
-func (self *CreateTerminatorV2RequestContext) validateExistingTerminator(terminator *network.Terminator, log *logrus.Entry) controllerError {
+func (self *CreateTerminatorV2RequestContext) validateExistingTerminator(terminator *model.Terminator, log *logrus.Entry) controllerError {
 	if terminator.Binding != common.EdgeBinding {
 		log.WithField("binding", common.EdgeBinding).
 			WithField("conflictingBinding", terminator.Binding).

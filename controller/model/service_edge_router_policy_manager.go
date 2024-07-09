@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -34,7 +33,7 @@ func NewServiceEdgeRouterPolicyManager(env Env) *ServiceEdgeRouterPolicyManager 
 	}
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*ServiceEdgeRouterPolicy](env.GetHostController().GetNetwork().Managers, manager)
+	RegisterManagerDecoder[*ServiceEdgeRouterPolicy](env, manager)
 
 	return manager
 }
@@ -48,7 +47,7 @@ func (self *ServiceEdgeRouterPolicyManager) newModelEntity() *ServiceEdgeRouterP
 }
 
 func (self *ServiceEdgeRouterPolicyManager) Create(entity *ServiceEdgeRouterPolicy, ctx *change.Context) error {
-	return network.DispatchCreate[*ServiceEdgeRouterPolicy](self, entity, ctx)
+	return DispatchCreate[*ServiceEdgeRouterPolicy](self, entity, ctx)
 }
 
 func (self *ServiceEdgeRouterPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*ServiceEdgeRouterPolicy], ctx boltz.MutateContext) error {
@@ -57,7 +56,7 @@ func (self *ServiceEdgeRouterPolicyManager) ApplyCreate(cmd *command.CreateEntit
 }
 
 func (self *ServiceEdgeRouterPolicyManager) Update(entity *ServiceEdgeRouterPolicy, checker fields.UpdatedFields, ctx *change.Context) error {
-	return network.DispatchUpdate[*ServiceEdgeRouterPolicy](self, entity, checker, ctx)
+	return DispatchUpdate[*ServiceEdgeRouterPolicy](self, entity, checker, ctx)
 }
 
 func (self *ServiceEdgeRouterPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ServiceEdgeRouterPolicy], ctx boltz.MutateContext) error {

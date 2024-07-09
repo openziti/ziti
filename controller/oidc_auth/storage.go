@@ -147,7 +147,7 @@ func NewStorage(kid string, publicKey crypto.PublicKey, privateKey crypto.Privat
 // start will run Clean every 10 seconds
 func (s *HybridStorage) start() {
 	s.startOnce.Do(func() {
-		closeNotify := s.env.GetHostController().GetCloseNotifyChannel()
+		closeNotify := s.env.GetCloseNotifyChannel()
 		ticker := time.NewTicker(10 * time.Second)
 		go func() {
 			for {
@@ -624,7 +624,7 @@ func (s *HybridStorage) SignatureAlgorithms(context.Context) ([]jose.SignatureAl
 
 // KeySet implements the op.Storage interface
 func (s *HybridStorage) KeySet(_ context.Context) ([]op.Key, error) {
-	signers := s.env.GetHostController().GetPeerSigners()
+	signers := s.env.GetPeerSigners()
 
 	for _, cert := range signers {
 		kid := fmt.Sprintf("%s", sha1.Sum(cert.Raw))

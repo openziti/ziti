@@ -17,42 +17,40 @@
 package network
 
 import (
+	config2 "github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/model"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/models"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSimplePath2(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	assert.Nil(t, err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 0, false)
-	network.Routers.markConnected(r0)
+	r0 := model.NewRouterForTest("r0", "", transportAddr, nil, 0, false)
+	network.Router.MarkConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 0, false)
-	network.Routers.markConnected(r1)
+	r1 := model.NewRouterForTest("r1", "", transportAddr, nil, 0, false)
+	network.Router.MarkConnected(r1)
 
-	l0 := newTestLink("l0", r0, r1)
-	l0.SetState(Connected)
-	network.linkController.add(l0)
+	l0 := model.NewTestLink("l0", r0, r1)
+	l0.SetState(model.Connected)
+	network.Link.Add(l0)
 
 	path, err := network.CreatePath(r0, r1)
 	assert.NotNil(t, path)
@@ -64,8 +62,8 @@ func TestSimplePath2(t *testing.T) {
 	assert.Equal(t, l0, path.Links[0])
 	assert.Equal(t, r1, path.EgressRouter())
 
-	terminator := &Terminator{Address: addr, Binding: "transport"}
-	routeMessages := path.CreateRouteMessages(0, "s0", terminator, time.Now().Add(DefaultOptionsRouteTimeout))
+	terminator := &model.Terminator{Address: addr, Binding: "transport"}
+	routeMessages := network.CreateRouteMessages(path, 0, "s0", terminator, time.Now().Add(config2.DefaultOptionsRouteTimeout))
 	assert.NotNil(t, routeMessages)
 	assert.Equal(t, 2, len(routeMessages))
 
@@ -92,35 +90,35 @@ func TestSimplePath2(t *testing.T) {
 }
 
 func TestTransitPath2(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	assert.Nil(t, err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 0, false)
-	network.Routers.markConnected(r0)
+	r0 := model.NewRouterForTest("r0", "", transportAddr, nil, 0, false)
+	network.Router.MarkConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 0, false)
-	network.Routers.markConnected(r1)
+	r1 := model.NewRouterForTest("r1", "", transportAddr, nil, 0, false)
+	network.Router.MarkConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 0, false)
-	network.Routers.markConnected(r2)
+	r2 := model.NewRouterForTest("r2", "", transportAddr, nil, 0, false)
+	network.Router.MarkConnected(r2)
 
-	l0 := newTestLink("l0", r0, r1)
-	l0.SetState(Connected)
-	network.linkController.add(l0)
+	l0 := model.NewTestLink("l0", r0, r1)
+	l0.SetState(model.Connected)
+	network.Link.Add(l0)
 
-	l1 := newTestLink("l1", r1, r2)
-	l1.SetState(Connected)
-	network.linkController.add(l1)
+	l1 := model.NewTestLink("l1", r1, r2)
+	l1.SetState(model.Connected)
+	network.Link.Add(l1)
 
 	path, err := network.CreatePath(r0, r2)
 	assert.NotNil(t, path)
@@ -134,8 +132,8 @@ func TestTransitPath2(t *testing.T) {
 	assert.Equal(t, l1, path.Links[1])
 	assert.Equal(t, r2, path.EgressRouter())
 
-	terminator := &Terminator{Address: addr, Binding: "transport"}
-	routeMessages := path.CreateRouteMessages(0, "s0", terminator, time.Now().Add(DefaultOptionsRouteTimeout))
+	terminator := &model.Terminator{Address: addr, Binding: "transport"}
+	routeMessages := network.CreateRouteMessages(path, 0, "s0", terminator, time.Now().Add(config2.DefaultOptionsRouteTimeout))
 	assert.NotNil(t, routeMessages)
 	assert.Equal(t, 3, len(routeMessages))
 
@@ -171,23 +169,8 @@ func TestTransitPath2(t *testing.T) {
 	assert.Equal(t, path.EgressId, rm2.Forwards[1].DstAddress)
 }
 
-func newRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel.Channel, cost uint16, noTraversal bool) *Router {
-	r := &Router{
-		BaseEntity:  models.BaseEntity{Id: id},
-		Name:        id,
-		Fingerprint: &fingerprint,
-		Control:     ctrl,
-		Cost:        cost,
-		NoTraversal: noTraversal,
-	}
-	if advLstnr != nil {
-		r.AddLinkListener(advLstnr.String(), advLstnr.Type(), []string{"Cost Tag"}, []string{"default"})
-	}
-	return r
-}
-
 func TestShortestPath(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	req := assert.New(t)
@@ -195,52 +178,52 @@ func TestShortestPath(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
-	network.Routers.markConnected(r0)
+	r0 := model.NewRouterForTest("r0", "", transportAddr, nil, 1, false)
+	network.Router.MarkConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, false)
-	network.Routers.markConnected(r1)
+	r1 := model.NewRouterForTest("r1", "", transportAddr, nil, 2, false)
+	network.Router.MarkConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, false)
-	network.Routers.markConnected(r2)
+	r2 := model.NewRouterForTest("r2", "", transportAddr, nil, 3, false)
+	network.Router.MarkConnected(r2)
 
-	r3 := newRouterForTest("r3", "", transportAddr, nil, 4, false)
-	network.Routers.markConnected(r3)
+	r3 := model.NewRouterForTest("r3", "", transportAddr, nil, 4, false)
+	network.Router.MarkConnected(r3)
 
-	link := newTestLink("l0", r0, r1)
+	link := model.NewTestLink("l0", r0, r1)
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
-	link = newTestLink("l1", r0, r2)
+	link = model.NewTestLink("l1", r0, r2)
 	link.SetStaticCost(5)
 	link.SetDstLatency(15 * 1_000_000)
 	link.SetSrcLatency(16 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
-	link = newTestLink("l2", r1, r3)
+	link = model.NewTestLink("l2", r1, r3)
 	link.SetStaticCost(9)
 	link.SetDstLatency(20 * 1_000_000)
 	link.SetSrcLatency(21 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
-	link = newTestLink("l3", r2, r3)
+	link = model.NewTestLink("l3", r2, r3)
 	link.SetStaticCost(13)
 	link.SetDstLatency(25 * 1_000_000)
 	link.SetSrcLatency(26 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
 	path, cost, err := network.shortestPath(r0, r3)
 	req.NoError(err)
@@ -255,7 +238,7 @@ func TestShortestPath(t *testing.T) {
 }
 
 func TestShortestPathWithUntraversableRouter(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	req := assert.New(t)
@@ -263,52 +246,52 @@ func TestShortestPathWithUntraversableRouter(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
-	network.Routers.markConnected(r0)
+	r0 := model.NewRouterForTest("r0", "", transportAddr, nil, 1, false)
+	network.Router.MarkConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
-	network.Routers.markConnected(r1)
+	r1 := model.NewRouterForTest("r1", "", transportAddr, nil, 2, true)
+	network.Router.MarkConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, false)
-	network.Routers.markConnected(r2)
+	r2 := model.NewRouterForTest("r2", "", transportAddr, nil, 3, false)
+	network.Router.MarkConnected(r2)
 
-	r3 := newRouterForTest("r3", "", transportAddr, nil, 4, false)
-	network.Routers.markConnected(r3)
+	r3 := model.NewRouterForTest("r3", "", transportAddr, nil, 4, false)
+	network.Router.MarkConnected(r3)
 
-	link := newTestLink("l0", r0, r1)
+	link := model.NewTestLink("l0", r0, r1)
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
-	link = newTestLink("l1", r0, r2)
+	link = model.NewTestLink("l1", r0, r2)
 	link.SetStaticCost(5)
 	link.SetDstLatency(15 * 1_000_000)
 	link.SetSrcLatency(16 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
-	link = newTestLink("l2", r1, r3)
+	link = model.NewTestLink("l2", r1, r3)
 	link.SetStaticCost(9)
 	link.SetDstLatency(20 * 1_000_000)
 	link.SetSrcLatency(21 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
-	link = newTestLink("l3", r2, r3)
+	link = model.NewTestLink("l3", r2, r3)
 	link.SetStaticCost(13)
 	link.SetDstLatency(25 * 1_000_000)
 	link.SetSrcLatency(26 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
 	path, cost, err := network.shortestPath(r0, r3)
 	req.NoError(err)
@@ -323,7 +306,7 @@ func TestShortestPathWithUntraversableRouter(t *testing.T) {
 }
 
 func TestShortestPathWithOnlyUntraversableRouter(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	req := assert.New(t)
@@ -331,25 +314,25 @@ func TestShortestPathWithOnlyUntraversableRouter(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
-	network.Routers.markConnected(r0)
+	r0 := model.NewRouterForTest("r0", "", transportAddr, nil, 1, false)
+	network.Router.MarkConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
-	network.Routers.markConnected(r1)
+	r1 := model.NewRouterForTest("r1", "", transportAddr, nil, 2, true)
+	network.Router.MarkConnected(r1)
 
-	link := newTestLink("l0", r0, r1)
+	link := model.NewTestLink("l0", r0, r1)
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
 	path, cost, err := network.shortestPath(r0, r1)
 	req.NoError(err)
@@ -363,7 +346,7 @@ func TestShortestPathWithOnlyUntraversableRouter(t *testing.T) {
 }
 
 func TestShortestPathWithUntraversableEdgeRouters(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	req := assert.New(t)
@@ -371,25 +354,25 @@ func TestShortestPathWithUntraversableEdgeRouters(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
-	network.Routers.markConnected(r0)
+	r0 := model.NewRouterForTest("r0", "", transportAddr, nil, 1, true)
+	network.Router.MarkConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
-	network.Routers.markConnected(r1)
+	r1 := model.NewRouterForTest("r1", "", transportAddr, nil, 2, true)
+	network.Router.MarkConnected(r1)
 
-	link := newTestLink("l0", r0, r1)
+	link := model.NewTestLink("l0", r0, r1)
 	link.SetStaticCost(3)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
 	path, cost, err := network.shortestPath(r0, r1)
 	req.NoError(err)
@@ -403,7 +386,7 @@ func TestShortestPathWithUntraversableEdgeRouters(t *testing.T) {
 }
 
 func TestShortestPathWithUntraversableEdgeRoutersAndTraversableMiddle(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	req := assert.New(t)
@@ -411,35 +394,35 @@ func TestShortestPathWithUntraversableEdgeRoutersAndTraversableMiddle(t *testing
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
-	network.Routers.markConnected(r0)
+	r0 := model.NewRouterForTest("r0", "", transportAddr, nil, 1, true)
+	network.Router.MarkConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, false)
-	network.Routers.markConnected(r1)
+	r1 := model.NewRouterForTest("r1", "", transportAddr, nil, 2, false)
+	network.Router.MarkConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, true)
-	network.Routers.markConnected(r2)
+	r2 := model.NewRouterForTest("r2", "", transportAddr, nil, 3, true)
+	network.Router.MarkConnected(r2)
 
-	link := newTestLink("l0", r0, r1)
+	link := model.NewTestLink("l0", r0, r1)
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
-	link = newTestLink("l1", r1, r2)
+	link = model.NewTestLink("l1", r1, r2)
 	link.SetStaticCost(3)
 	link.SetDstLatency(12 * 1_000_000)
 	link.SetSrcLatency(15 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
 	path, cost, err := network.shortestPath(r0, r2)
 	req.NoError(err)
@@ -455,7 +438,7 @@ func TestShortestPathWithUntraversableEdgeRoutersAndTraversableMiddle(t *testing
 }
 
 func TestShortestPathWithUntraversableEdgeRoutersAndUntraversableMiddle(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	req := assert.New(t)
@@ -463,35 +446,35 @@ func TestShortestPathWithUntraversableEdgeRoutersAndUntraversableMiddle(t *testi
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
-	network.Routers.markConnected(r0)
+	r0 := model.NewRouterForTest("r0", "", transportAddr, nil, 1, true)
+	network.Router.MarkConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
-	network.Routers.markConnected(r1)
+	r1 := model.NewRouterForTest("r1", "", transportAddr, nil, 2, true)
+	network.Router.MarkConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 2, true)
-	network.Routers.markConnected(r2)
+	r2 := model.NewRouterForTest("r2", "", transportAddr, nil, 2, true)
+	network.Router.MarkConnected(r2)
 
-	link := newTestLink("l0", r0, r1)
+	link := model.NewTestLink("l0", r0, r1)
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
-	link = newTestLink("l2", r1, r2)
+	link = model.NewTestLink("l2", r1, r2)
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
-	link.SetState(Connected)
-	network.linkController.add(link)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
 
 	path, cost, err := network.shortestPath(r0, r2)
 	req.Error(err)
@@ -502,7 +485,7 @@ func TestShortestPathWithUntraversableEdgeRoutersAndUntraversableMiddle(t *testi
 }
 
 func TestRouterCost(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	req := require.New(t)
@@ -510,24 +493,24 @@ func TestRouterCost(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 10, true)
-	network.Routers.markConnected(r0)
+	r0 := model.NewRouterForTest("r0", "", transportAddr, nil, 10, true)
+	network.Router.MarkConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 100, false)
-	network.Routers.markConnected(r1)
+	r1 := model.NewRouterForTest("r1", "", transportAddr, nil, 100, false)
+	network.Router.MarkConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 200, false)
-	network.Routers.markConnected(r2)
+	r2 := model.NewRouterForTest("r2", "", transportAddr, nil, 200, false)
+	network.Router.MarkConnected(r2)
 
-	r3 := newRouterForTest("r3", "", transportAddr, nil, 20, true)
-	network.Routers.markConnected(r3)
+	r3 := model.NewRouterForTest("r3", "", transportAddr, nil, 20, true)
+	network.Router.MarkConnected(r3)
 
 	newPathTestLink(network, "l0", r0, r1)
 	newPathTestLink(network, "l1", r0, r2)
@@ -558,7 +541,7 @@ func TestRouterCost(t *testing.T) {
 }
 
 func TestMinRouterCost(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	req := require.New(t)
@@ -567,24 +550,24 @@ func TestMinRouterCost(t *testing.T) {
 	defer close(config.closeNotify)
 
 	config.options.MinRouterCost = 10
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 0, true)
-	network.Routers.markConnected(r0)
+	r0 := model.NewRouterForTest("r0", "", transportAddr, nil, 0, true)
+	network.Router.MarkConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 7, false)
-	network.Routers.markConnected(r1)
+	r1 := model.NewRouterForTest("r1", "", transportAddr, nil, 7, false)
+	network.Router.MarkConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 200, false)
-	network.Routers.markConnected(r2)
+	r2 := model.NewRouterForTest("r2", "", transportAddr, nil, 200, false)
+	network.Router.MarkConnected(r2)
 
-	r3 := newRouterForTest("r3", "", transportAddr, nil, 20, true)
-	network.Routers.markConnected(r3)
+	r3 := model.NewRouterForTest("r3", "", transportAddr, nil, 20, true)
+	network.Router.MarkConnected(r3)
 
 	newPathTestLink(network, "l0", r0, r1)
 	newPathTestLink(network, "l1", r0, r2)
@@ -614,12 +597,12 @@ func TestMinRouterCost(t *testing.T) {
 	req.Equal(int64(222), cost)
 }
 
-func newPathTestLink(network *Network, id string, srcR, destR *Router) *Link {
-	l := newTestLink(id, srcR, destR)
+func newPathTestLink(network *Network, id string, srcR, destR *model.Router) *model.Link {
+	l := model.NewTestLink(id, srcR, destR)
 	l.SrcLatency = 0
 	l.DstLatency = 0
-	l.recalculateCost()
-	l.SetState(Connected)
-	network.linkController.add(l)
+	l.RecalculateCost()
+	l.SetState(model.Connected)
+	network.Link.Add(l)
 	return l
 }

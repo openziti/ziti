@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/xt"
 	"sync/atomic"
 	"time"
@@ -57,22 +58,24 @@ type routerEvent interface {
 	handle(c *RouterMessaging)
 }
 
-func NewRouterMessaging(managers *Managers, routerCommPool goroutines.Pool) *RouterMessaging {
+func NewRouterMessaging(env model.Env, routerCommPool goroutines.Pool) *RouterMessaging {
 	result := &RouterMessaging{
-		managers:              managers,
+		env:                   env,
+		managers:              env.GetManagers(),
 		eventsC:               make(chan routerEvent, 16),
 		routerUpdates:         map[string]*routerUpdates{},
 		terminatorValidations: map[string]*terminatorValidations{},
 		routerCommPool:        routerCommPool,
 	}
 
-	managers.stores.Terminator.AddEntityEventListenerF(result.TerminatorCreated, boltz.EntityCreated)
+	env.GetManagers().Terminator.GetStore().AddEntityEventListenerF(result.TerminatorCreated, boltz.EntityCreated)
 
 	return result
 }
 
 type RouterMessaging struct {
-	managers              *Managers
+	env                   model.Env
+	managers              *model.Managers
 	eventsC               chan routerEvent
 	routerUpdates         map[string]*routerUpdates
 	terminatorValidations map[string]*terminatorValidations
@@ -88,11 +91,11 @@ func (self *RouterMessaging) getNextMarker() uint64 {
 	return result
 }
 
-func (self *RouterMessaging) RouterConnected(r *Router) {
+func (self *RouterMessaging) RouterConnected(r *model.Router) {
 	self.routerChanged(r.Id, true)
 }
 
-func (self *RouterMessaging) RouterDisconnected(r *Router) {
+func (self *RouterMessaging) RouterDisconnected(r *model.Router) {
 	self.routerChanged(r.Id, false)
 }
 
@@ -116,7 +119,7 @@ func (self *RouterMessaging) routerChanged(routerId string, connected bool) {
 func (self *RouterMessaging) queueEvent(evt routerEvent) {
 	select {
 	case self.eventsC <- evt:
-	case <-self.managers.network.GetCloseNotify():
+	case <-self.env.GetCloseNotifyChannel():
 	}
 }
 
@@ -129,7 +132,7 @@ func (self *RouterMessaging) run() {
 		case evt := <-self.eventsC:
 			evt.handle(self)
 		case <-ticker.C:
-		case <-self.managers.network.GetCloseNotify():
+		case <-self.env.GetCloseNotifyChannel():
 			return
 		}
 
@@ -180,7 +183,7 @@ func (self *RouterMessaging) syncStates() {
 		notifyRouterId := k
 		updates := v
 		changes := &ctrl_pb.PeerStateChanges{}
-		notifyRouter := self.managers.Routers.getConnected(notifyRouterId)
+		notifyRouter := self.managers.Router.GetConnected(notifyRouterId)
 		if notifyRouter == nil {
 			// if the router disconnected, we're going to sync everything anyway, so clear anything pending here
 			delete(self.routerUpdates, k)
@@ -198,7 +201,7 @@ func (self *RouterMessaging) syncStates() {
 		}
 
 		for routerId := range updates.changedRouters {
-			router := self.managers.Routers.getConnected(routerId)
+			router := self.managers.Router.GetConnected(routerId)
 			if router != nil {
 				changes.Changes = append(changes.Changes, &ctrl_pb.PeerStateChange{
 					Id:        routerId,
@@ -207,7 +210,7 @@ func (self *RouterMessaging) syncStates() {
 					Listeners: router.Listeners,
 				})
 			} else {
-				exists, err := self.managers.Routers.Exists(routerId)
+				exists, err := self.managers.Router.Exists(routerId)
 				if exists && err == nil {
 					changes.Changes = append(changes.Changes, &ctrl_pb.PeerStateChange{
 						Id:    routerId,
@@ -267,7 +270,7 @@ func (self *RouterMessaging) sendTerminatorValidationRequests() {
 }
 
 func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, updates *terminatorValidations) {
-	notifyRouter := self.managers.Routers.getConnected(routerId)
+	notifyRouter := self.managers.Router.GetConnected(routerId)
 	if notifyRouter == nil {
 		// if the router disconnected, we're going to sync everything anyway, so clear anything pending here
 		delete(self.terminatorValidations, routerId)
@@ -343,7 +346,7 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 	}
 }
 
-func (self *RouterMessaging) generateMockResponseForV1(r *Router, validations *terminatorValidations) {
+func (self *RouterMessaging) generateMockResponseForV1(r *model.Router, validations *terminatorValidations) {
 	handler := &terminatorValidationRespReceived{
 		router:    r,
 		changeCtx: change.New(), // won't be used since we're marking things valid
@@ -362,7 +365,7 @@ func (self *RouterMessaging) generateMockResponseForV1(r *Router, validations *t
 	self.queueEvent(handler)
 }
 
-func (self *RouterMessaging) NewValidationResponseHandler(n *Network, r *Router) channel.ReceiveHandlerF {
+func (self *RouterMessaging) NewValidationResponseHandler(n *Network, r *model.Router) channel.ReceiveHandlerF {
 	return func(m *channel.Message, ch channel.Channel) {
 		log := pfxlog.Logger().WithField("routerId", r.Id)
 		resp := &ctrl_pb.ValidateTerminatorsV2Response{}
@@ -383,7 +386,7 @@ func (self *RouterMessaging) NewValidationResponseHandler(n *Network, r *Router)
 	}
 }
 
-func (self *RouterMessaging) ValidateRouterTerminators(terminators []*Terminator) {
+func (self *RouterMessaging) ValidateRouterTerminators(terminators []*model.Terminator) {
 	self.queueEvent(&validateTerminators{
 		terminators: terminators,
 	})
@@ -420,7 +423,7 @@ func (self *routerChangedEvent) handle(c *RouterMessaging) {
 		WithField("connected", self.connected).
 		Info("calculating router updates for router")
 
-	routers := c.managers.Routers.allConnected()
+	routers := c.managers.Router.AllConnected()
 
 	var sourceRouterState *routerUpdates
 	for _, router := range routers {
@@ -468,7 +471,7 @@ func (self *routerPeerChangesSendDone) handle(c *RouterMessaging) {
 }
 
 type validateTerminators struct {
-	terminators []*Terminator
+	terminators []*model.Terminator
 }
 
 func (self *validateTerminators) handle(c *RouterMessaging) {
@@ -491,7 +494,7 @@ func (self *validateTerminators) handle(c *RouterMessaging) {
 }
 
 type terminatorValidationRespReceived struct {
-	router    *Router
+	router    *model.Router
 	changeCtx *change.Context
 	resp      *ctrl_pb.ValidateTerminatorsV2Response
 	success   bool
@@ -511,7 +514,7 @@ func (self *terminatorValidationRespReceived) DeleteInvalid(n *Network) {
 	}
 
 	if len(toDelete) > 0 {
-		if err := n.Managers.Terminators.DeleteBatch(toDelete, self.changeCtx); err != nil {
+		if err := n.Managers.Terminator.DeleteBatch(toDelete, self.changeCtx); err != nil {
 			for _, terminatorId := range toDelete {
 				log.WithField("terminatorId", terminatorId).
 					WithError(err).
@@ -548,7 +551,7 @@ func (self *routerMessagingInspectEvent) handle(c *RouterMessaging) {
 	result := &inspect.RouterMessagingState{}
 
 	getRouterName := func(routerId string) string {
-		if router, _ := c.managers.Routers.Read(routerId); router != nil {
+		if router, _ := c.managers.Router.Read(routerId); router != nil {
 			return router.Name
 		}
 		return "<unknown>"

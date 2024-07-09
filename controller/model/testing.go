@@ -19,112 +19,55 @@ package model
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/openziti/ziti/controller"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/controller/models"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
-	edgeconfig "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/jwtsigner"
-	"github.com/openziti/ziti/controller/network"
 )
 
 var _ Env = &TestContext{}
 
-var _ HostController = &testHostController{}
-
-type testHostController struct {
-	closeNotify chan struct{}
-	ctx         *TestContext
+type TestContext struct {
+	*db.TestContext
+	managers        *Managers
+	config          *config.Config
+	metricsRegistry metrics.Registry
+	closeNotify     chan struct{}
+	dispatcher      command.Dispatcher
 }
 
-func (self *testHostController) GetConfig() *controller.Config {
-	return nil
-}
-
-func (self *testHostController) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
-	return nil, nil
-}
-
-func (self *testHostController) GetRaftInfo() (string, string, string) {
-	return "testaddr", "testid", "testversion"
-}
-
-func (self *testHostController) GetRaftIndex() uint64 {
-	return 0
-}
-
-func (self *testHostController) GetPeerSigners() []*x509.Certificate {
-	return nil
-}
-
-func (self *testHostController) Identity() identity.Identity {
-	return &identity.TokenId{Token: "test"}
-}
-
-func (self *testHostController) GetNetwork() *network.Network {
-	return self.ctx.n
-}
-
-func (self *testHostController) Shutdown() {
-	close(self.closeNotify)
-}
-
-func (self *testHostController) GetCloseNotifyChannel() <-chan struct{} {
+func (self *TestContext) GetCloseNotifyChannel() <-chan struct{} {
 	return self.closeNotify
 }
 
-func (self *testHostController) Stop() {
-	close(self.closeNotify)
-}
-
-func (ctx *testHostController) IsRaftEnabled() bool {
-	return false
-}
-
-type TestContext struct {
-	*db.TestContext
-	n               *network.Network
-	managers        *Managers
-	config          *edgeconfig.Config
-	metricsRegistry metrics.Registry
-	hostController  *testHostController
-}
-
-func (ctx *TestContext) GetDbProvider() network.DbProvider {
-	return ctx.n
-}
-
 func (ctx *TestContext) ValidateAccessToken(token string) (*common.AccessClaims, error) {
-	//TODO implement me
 	panic("implement me")
 }
 
 func (ctx *TestContext) ValidateServiceAccessToken(token string, apiSessionId *string) (*common.ServiceAccessClaims, error) {
-	//TODO implement me
 	panic("implement me")
 }
 
 func (ctx *TestContext) OidcIssuer() string {
-	//TODO implement me
 	panic("implement me")
 }
 
 func (ctx *TestContext) RootIssuer() string {
-	//TODO implement me
 	panic("implement me")
 }
 
@@ -159,7 +102,7 @@ func (ctx *TestContext) GetManagers() *Managers {
 	return ctx.managers
 }
 
-func (ctx *TestContext) GetConfig() *edgeconfig.Config {
+func (ctx *TestContext) GetConfig() *config.Config {
 	return ctx.config
 }
 
@@ -187,14 +130,6 @@ func (ctx *TestContext) GetControlClientCsrSigner() cert.Signer {
 	return nil
 }
 
-func (ctx *TestContext) GetHostController() HostController {
-	return ctx.hostController
-}
-
-func (ctx *TestContext) GetSchemas() Schemas {
-	panic("implement me")
-}
-
 func (ctx *TestContext) IsEdgeRouterOnline(string) bool {
 	panic("implement me")
 }
@@ -207,41 +142,66 @@ func (ctx *TestContext) GetFingerprintGenerator() cert.FingerprintGenerator {
 	return nil
 }
 
-func NewTestContext(t *testing.T) *TestContext {
+func (self *TestContext) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
+	return nil, nil
+}
+
+func (self *TestContext) GetRaftInfo() (string, string, string) {
+	return "testaddr", "testid", "testversion"
+}
+
+func (self *TestContext) GetPeerSigners() []*x509.Certificate {
+	return nil
+}
+
+func (self *TestContext) Identity() identity.Identity {
+	return &identity.TokenId{Token: "test"}
+}
+
+func (self *TestContext) Shutdown() {
+	close(self.closeNotify)
+}
+
+func (self *TestContext) Stop() {
+	close(self.closeNotify)
+}
+
+func (self *TestContext) GetCommandDispatcher() command.Dispatcher {
+	return self.dispatcher
+}
+
+func NewTestContext(t testing.TB) *TestContext {
 	fabricTestContext := db.NewTestContext(t)
-	context := &TestContext{
+	ctx := &TestContext{
 		TestContext:     fabricTestContext,
 		metricsRegistry: metrics.NewRegistry("test", nil),
+		closeNotify:     make(chan struct{}),
+		dispatcher: &command.LocalDispatcher{
+			EncodeDecodeCommands: true,
+			Limiter:              command.NoOpRateLimiter{},
+		},
 	}
 
-	context.hostController = &testHostController{
-		ctx:         context,
-		closeNotify: make(chan struct{}),
-	}
-
-	return context
-}
-func (ctx *TestContext) Init() {
 	ctx.TestContext.Init()
-	cfg := newTestConfig(ctx.TestContext)
-	n, err := network.NewNetwork(cfg)
-	ctx.NoError(err)
-	ctx.n = n
 
 	ctx.config = &config.Config{
-		Enrollment: config.Enrollment{
-			EdgeRouter: config.EnrollmentOption{
-				Duration: 60 * time.Second,
+		Network: config.DefaultNetworkConfig(),
+		Edge: &config.EdgeConfig{
+			Enrollment: config.Enrollment{
+				EdgeRouter: config.EnrollmentOption{
+					Duration: 60 * time.Second,
+				},
 			},
 		},
 	}
-	ctx.managers = InitEntityManagers(ctx)
+	ctx.managers = NewManagers()
+	ctx.managers.Init(ctx)
+
+	return ctx
 }
 
 func (ctx *TestContext) Cleanup() {
-	if ctx.hostController != nil {
-		ctx.hostController.Stop()
-	}
+	ctx.Stop()
 	ctx.TestContext.Cleanup()
 }
 
@@ -255,8 +215,8 @@ func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
 	return newIdentity
 }
 
-func (ctx *TestContext) requireNewService() *Service {
-	service := &Service{
+func (ctx *TestContext) requireNewService() *EdgeService {
+	service := &EdgeService{
 		Name: eid.New(),
 	}
 	ctx.NoError(ctx.managers.EdgeService.Create(service, change.New()))
@@ -334,57 +294,27 @@ func ss(vals ...string) []string {
 	return vals
 }
 
-func newTestConfig(ctx *db.TestContext) *testConfig {
-	options := network.DefaultOptions()
-	options.MinRouterCost = 0
+func NewTestLink(id string, src, dst *Router) *Link {
+	l := newLink(id, "tls", "tcp:localhost:1234", 0)
+	l.Src = src
+	l.DstId = dst.Id
+	l.Dst.Store(dst)
+	src.Connected.Store(true)
+	dst.Connected.Store(true)
+	return l
+}
 
-	return &testConfig{
-		closeNotify:     make(chan struct{}),
-		ctx:             ctx,
-		options:         options,
-		metricsRegistry: metrics.NewRegistry("test", nil),
-		versionProvider: versions.NewDefaultVersionProvider(),
+func NewRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel.Channel, cost uint16, noTraversal bool) *Router {
+	r := &Router{
+		BaseEntity:  models.BaseEntity{Id: id},
+		Name:        id,
+		Fingerprint: &fingerprint,
+		Control:     ctrl,
+		Cost:        cost,
+		NoTraversal: noTraversal,
 	}
-}
-
-type testConfig struct {
-	closeNotify     chan struct{}
-	ctx             *db.TestContext
-	options         *network.Options
-	metricsRegistry metrics.Registry
-	versionProvider versions.VersionProvider
-}
-
-func (self *testConfig) GetEventDispatcher() event.Dispatcher {
-	return event.DispatcherMock{}
-}
-
-func (self *testConfig) GetId() *identity.TokenId {
-	return &identity.TokenId{Token: "test"}
-}
-
-func (self *testConfig) GetMetricsRegistry() metrics.Registry {
-	return self.metricsRegistry
-}
-
-func (self *testConfig) GetOptions() *network.Options {
-	return self.options
-}
-
-func (self *testConfig) GetCommandDispatcher() command.Dispatcher {
-	return &command.LocalDispatcher{
-		Limiter: command.NoOpRateLimiter{},
+	if advLstnr != nil {
+		r.AddLinkListener(advLstnr.String(), advLstnr.Type(), []string{"Cost Tag"}, []string{"default"})
 	}
-}
-
-func (self *testConfig) GetDb() boltz.Db {
-	return self.ctx.GetDb()
-}
-
-func (self *testConfig) GetVersionProvider() versions.VersionProvider {
-	return self.versionProvider
-}
-
-func (self *testConfig) GetCloseNotify() <-chan struct{} {
-	return self.closeNotify
+	return r
 }

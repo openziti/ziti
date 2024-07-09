@@ -20,6 +20,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/rest_server/operations/service"
@@ -71,17 +72,17 @@ func (r *ServiceRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Re
 }
 
 func (r *ServiceRouter) ListServices(n *network.Network, rc api.RequestContext) {
-	ListWithHandler[*network.Service](n, rc, n.Managers.Services, ServiceModelMapper{})
+	ListWithHandler[*model.Service](n, rc, n.Managers.Service, ServiceModelMapper{})
 }
 
 func (r *ServiceRouter) Detail(n *network.Network, rc api.RequestContext) {
-	DetailWithHandler[*network.Service](n, rc, n.Managers.Services, ServiceModelMapper{})
+	DetailWithHandler[*model.Service](n, rc, n.Managers.Service, ServiceModelMapper{})
 }
 
 func (r *ServiceRouter) Create(n *network.Network, rc api.RequestContext, params service.CreateServiceParams) {
 	Create(rc, ServiceLinkFactory, func() (string, error) {
 		svc := MapCreateServiceToModel(params.Service)
-		err := n.Services.Create(svc, rc.NewChangeContext())
+		err := n.Service.Create(svc, rc.NewChangeContext())
 		if err != nil {
 			return "", err
 		}
@@ -90,21 +91,21 @@ func (r *ServiceRouter) Create(n *network.Network, rc api.RequestContext, params
 }
 
 func (r *ServiceRouter) Delete(network *network.Network, rc api.RequestContext) {
-	DeleteWithHandler(rc, network.Managers.Services)
+	DeleteWithHandler(rc, network.Managers.Service)
 }
 
 func (r *ServiceRouter) Update(n *network.Network, rc api.RequestContext, params service.UpdateServiceParams) {
 	Update(rc, func(id string) error {
-		return n.Managers.Services.Update(MapUpdateServiceToModel(params.ID, params.Service), nil, rc.NewChangeContext())
+		return n.Managers.Service.Update(MapUpdateServiceToModel(params.ID, params.Service), nil, rc.NewChangeContext())
 	})
 }
 
 func (r *ServiceRouter) Patch(n *network.Network, rc api.RequestContext, params service.PatchServiceParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return n.Managers.Services.Update(MapPatchServiceToModel(params.ID, params.Service), fields.FilterMaps("tags"), rc.NewChangeContext())
+		return n.Managers.Service.Update(MapPatchServiceToModel(params.ID, params.Service), fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }
 
 func (r *ServiceRouter) listManagementTerminators(n *network.Network, rc api.RequestContext) {
-	ListAssociationWithHandler[*network.Service, *network.Terminator](n, rc, n.Managers.Services, n.Managers.Terminators, TerminatorModelMapper{})
+	ListAssociationWithHandler[*model.Service, *model.Terminator](n, rc, n.Managers.Service, n.Managers.Terminator, TerminatorModelMapper{})
 }

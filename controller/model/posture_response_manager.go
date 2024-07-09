@@ -139,7 +139,7 @@ func (self *PostureResponseManager) postureDataUpdated(env Env, identityId strin
 	// Only an issue when timeouts are being used - which aren't right now.
 	env.HandleServiceUpdatedEventForIdentityId(identityId)
 
-	err := self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := self.env.GetDb().View(func(tx *bbolt.Tx) error {
 		apiSessionIds, _, err := self.env.GetStores().ApiSession.QueryIds(tx, fmt.Sprintf(`identity = "%v"`, identityId))
 
 		if err != nil {
@@ -255,7 +255,7 @@ func (self *PostureResponseManager) SetSdkInfo(identityId, apiSessionId string, 
 }
 
 type ServiceWithTimeout struct {
-	Service *Service
+	Service *EdgeService
 	Timeout int64
 }
 
@@ -285,7 +285,7 @@ func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeS
 		if err != nil {
 			pfxlog.Logger().Errorf("error querying for onWake/onUnlock posture checks: %v", err)
 		} else {
-			err = self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+			err = self.env.GetDb().View(func(tx *bbolt.Tx) error {
 				cursor := self.env.GetStores().PostureCheck.IterateIds(tx, query)
 
 				for cursor.IsValid() {
@@ -312,7 +312,7 @@ func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeS
 	services := map[string]*ServiceWithTimeout{}
 
 	if len(affectedChecks) > 0 {
-		_ = self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		_ = self.env.GetDb().View(func(tx *bbolt.Tx) error {
 			for checkId, timeout := range affectedChecks {
 				policyCursor := self.env.GetStores().PostureCheck.GetRelatedEntitiesCursor(tx, checkId, db.EntityTypeServicePolicies, true)
 
@@ -323,7 +323,7 @@ func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeS
 						if _, ok := services[string(serviceCursor.Current())]; !ok {
 							service, err := self.env.GetStores().EdgeService.LoadById(tx, string(serviceCursor.Current()))
 							if err == nil {
-								modelService := &Service{}
+								modelService := &EdgeService{}
 								if err := modelService.fillFrom(self.env, tx, service); err == nil {
 									//use the lowest configured timeout (which is some timeout or no timeout)
 									if existingService, ok := services[service.Id]; !ok || timeout < existingService.Timeout {

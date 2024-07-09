@@ -47,7 +47,7 @@ func (handler *validateTerminatorsHandler) HandleReceive(msg *channel.Message, c
 	var terminatorCount uint64
 
 	if err = proto.Unmarshal(msg.Body, request); err == nil {
-		terminatorCount, err = handler.network.Managers.Terminators.ValidateTerminators(request.Filter, request.FixInvalid, func(detail *mgmt_pb.TerminatorDetail) {
+		terminatorCount, err = handler.network.Managers.Terminator.ValidateTerminators(request.Filter, request.FixInvalid, func(detail *mgmt_pb.TerminatorDetail) {
 			if !ch.IsClosed() {
 				if sendErr := protobufs.MarshalTyped(detail).WithTimeout(15 * time.Second).SendAndWaitForWire(ch); sendErr != nil {
 					log.WithError(sendErr).Error("send of terminator detail failed, closing channel")

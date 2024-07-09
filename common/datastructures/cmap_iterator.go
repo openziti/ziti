@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package network
+package datastructures
 
 import (
 	"github.com/openziti/storage/objectz"

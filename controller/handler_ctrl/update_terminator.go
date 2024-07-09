@@ -19,12 +19,13 @@ package handler_ctrl
 import (
 	"fmt"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/xt"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"math"
@@ -34,7 +35,7 @@ type updateTerminatorHandler struct {
 	baseHandler
 }
 
-func newUpdateTerminatorHandler(network *network.Network, router *network.Router) *updateTerminatorHandler {
+func newUpdateTerminatorHandler(network *network.Network, router *model.Router) *updateTerminatorHandler {
 	return &updateTerminatorHandler{
 		baseHandler: baseHandler{
 			router:  router,
@@ -58,7 +59,7 @@ func (self *updateTerminatorHandler) HandleReceive(msg *channel.Message, ch chan
 }
 
 func (self *updateTerminatorHandler) handleUpdateTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.UpdateTerminatorRequest) {
-	terminator, err := self.network.Terminators.Read(request.TerminatorId)
+	terminator, err := self.network.Terminator.Read(request.TerminatorId)
 	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
@@ -97,7 +98,7 @@ func (self *updateTerminatorHandler) handleUpdateTerminator(msg *channel.Message
 		checker[db.FieldTerminatorPrecedence] = struct{}{}
 	}
 
-	if err := self.network.Terminators.Update(terminator, checker, self.newChangeContext(ch, "fabric.update.terminator")); err != nil {
+	if err := self.network.Terminator.Update(terminator, checker, self.newChangeContext(ch, "fabric.update.terminator")); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}

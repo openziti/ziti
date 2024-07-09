@@ -6,7 +6,6 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -35,10 +34,6 @@ func (self *ZitiDbBuilder) GetDb() boltz.Db {
 
 func (self *ZitiDbBuilder) GetStores() *db.Stores {
 	return self.stores
-}
-
-func (self *ZitiDbBuilder) GetManagers() *network.Managers {
-	panic("should not be needed")
 }
 
 func (self *ZitiDbBuilder) Build(m *model.Model) error {

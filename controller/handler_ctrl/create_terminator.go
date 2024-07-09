@@ -20,9 +20,10 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 	"math"
 )
@@ -31,7 +32,7 @@ type createTerminatorHandler struct {
 	baseHandler
 }
 
-func newCreateTerminatorHandler(network *network.Network, router *network.Router) *createTerminatorHandler {
+func newCreateTerminatorHandler(network *network.Network, router *model.Router) *createTerminatorHandler {
 	return &createTerminatorHandler{
 		baseHandler: baseHandler{
 			network: network,
@@ -60,7 +61,7 @@ func (self *createTerminatorHandler) handleCreateTerminator(msg *channel.Message
 		return
 	}
 
-	terminator := &network.Terminator{
+	terminator := &model.Terminator{
 		Service:        request.ServiceId,
 		Router:         self.router.Id,
 		Binding:        request.Binding,
@@ -72,7 +73,7 @@ func (self *createTerminatorHandler) handleCreateTerminator(msg *channel.Message
 		Cost:           uint16(request.Cost),
 	}
 
-	if err := self.network.Terminators.Create(terminator, self.newChangeContext(ch, "fabric.create.terminator")); err == nil {
+	if err := self.network.Terminator.Create(terminator, self.newChangeContext(ch, "fabric.create.terminator")); err == nil {
 		pfxlog.Logger().Infof("created terminator [t/%s]", terminator.Id)
 		handler_common.SendSuccess(msg, ch, terminator.Id)
 	} else {

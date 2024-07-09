@@ -18,6 +18,7 @@ package api_impl
 
 import (
 	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 
 	"github.com/openziti/ziti/controller/rest_model"
@@ -44,7 +45,7 @@ func (factory *CircuitLinkFactoryIml) Links(entity LinkEntity) rest_model.Links 
 	return links
 }
 
-func MapCircuitToRestModel(n *network.Network, _ api.RequestContext, circuit *network.Circuit) (*rest_model.CircuitDetail, error) {
+func MapCircuitToRestModel(n *network.Network, _ api.RequestContext, circuit *model.Circuit) (*rest_model.CircuitDetail, error) {
 	path := &rest_model.Path{}
 	for _, node := range circuit.Path.Nodes {
 		path.Nodes = append(path.Nodes, ToEntityRef(node.Name, node, RouterLinkFactory))
@@ -54,7 +55,7 @@ func MapCircuitToRestModel(n *network.Network, _ api.RequestContext, circuit *ne
 	}
 
 	var svcEntityRef *rest_model.EntityRef
-	if svc, _ := n.Services.Read(circuit.ServiceId); svc != nil {
+	if svc, _ := n.Service.Read(circuit.ServiceId); svc != nil {
 		svcEntityRef = ToEntityRef(svc.Name, svc, ServiceLinkFactory)
 	} else {
 		svcEntityRef = ToEntityRef("<deleted>", deletedEntity(circuit.ServiceId), ServiceLinkFactory)

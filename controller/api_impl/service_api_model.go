@@ -19,12 +19,13 @@ package api_impl
 import (
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 
 	"github.com/openziti/ziti/controller/rest_model"
 
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/models"
 )
 
 const EntityNameService = "services"
@@ -47,8 +48,8 @@ func (factory *ServiceLinkFactoryIml) Links(entity LinkEntity) rest_model.Links 
 	return links
 }
 
-func MapCreateServiceToModel(service *rest_model.ServiceCreate) *network.Service {
-	ret := &network.Service{
+func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
+	ret := &model.Service{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(service.Tags),
 		},
@@ -67,8 +68,8 @@ func MapCreateServiceToModel(service *rest_model.ServiceCreate) *network.Service
 	return ret
 }
 
-func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *network.Service {
-	ret := &network.Service{
+func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *model.Service {
+	ret := &model.Service{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(service.Tags),
 			Id:   id,
@@ -80,8 +81,8 @@ func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *netw
 	return ret
 }
 
-func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *network.Service {
-	ret := &network.Service{
+func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.Service {
+	ret := &model.Service{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(service.Tags),
 			Id:   id,
@@ -95,7 +96,7 @@ func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *networ
 
 type ServiceModelMapper struct{}
 
-func (ServiceModelMapper) ToApi(_ *network.Network, _ api.RequestContext, service *network.Service) (interface{}, error) {
+func (ServiceModelMapper) ToApi(_ *network.Network, _ api.RequestContext, service *model.Service) (interface{}, error) {
 	return &rest_model.ServiceDetail{
 		BaseEntity:         BaseEntityToRestModel(service, ServiceLinkFactory),
 		Name:               &service.Name,

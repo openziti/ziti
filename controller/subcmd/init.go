@@ -19,10 +19,11 @@ package subcmd
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/server"
-	"github.com/openziti/ziti/controller"
 	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/server"
 	"github.com/spf13/cobra"
 	"strconv"
 	"strings"
@@ -143,7 +144,7 @@ func validatePasswordLength(password string) error {
 }
 
 func configureController(configPath string, versionProvider versions.VersionProvider) *server.Controller {
-	config, err := controller.LoadConfig(configPath)
+	config, err := config.LoadConfig(configPath)
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Fatalf("could not read configuration file [%s]", configPath)
@@ -154,7 +155,7 @@ func configureController(configPath string, versionProvider versions.VersionProv
 		panic(err)
 	}
 
-	edgeController, err := server.NewController(config, fabricController)
+	edgeController, err := server.NewController(fabricController)
 
 	if err != nil {
 		panic(err)

@@ -9,7 +9,6 @@ import (
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
@@ -18,12 +17,12 @@ import (
 
 type CreateEdgeTerminatorCmd struct {
 	Env     Env
-	Entity  *network.Terminator
+	Entity  *Terminator
 	Context *change.Context
 }
 
 func (self *CreateEdgeTerminatorCmd) Apply(ctx boltz.MutateContext) error {
-	createCmd := &command.CreateEntityCommand[*network.Terminator]{
+	createCmd := &command.CreateEntityCommand[*Terminator]{
 		Creator:        self.Env.GetManagers().Terminator,
 		Entity:         self.Entity,
 		PostCreateHook: self.validateTerminatorIdentity,
@@ -32,7 +31,7 @@ func (self *CreateEdgeTerminatorCmd) Apply(ctx boltz.MutateContext) error {
 	return self.Env.GetManagers().Terminator.ApplyCreate(createCmd, ctx)
 }
 
-func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(ctx boltz.MutateContext, terminator *network.Terminator) error {
+func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(ctx boltz.MutateContext, terminator *Terminator) error {
 	tx := ctx.Tx()
 
 	if terminator.GetInstanceId() == "" {

@@ -18,6 +18,7 @@ package api_impl
 
 import (
 	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/rest_model"
 )
@@ -41,7 +42,7 @@ func (factory *LinkLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
 	return links
 }
 
-func MapLinkToRestModel(n *network.Network, _ api.RequestContext, link *network.Link) (*rest_model.LinkDetail, error) {
+func MapLinkToRestModel(n *network.Network, _ api.RequestContext, link *model.Link) (*rest_model.LinkDetail, error) {
 	iteration := int64(link.Iteration)
 	staticCost := int64(link.StaticCost)
 	linkStateStr := link.CurrentState().Mode.String()
@@ -51,7 +52,7 @@ func MapLinkToRestModel(n *network.Network, _ api.RequestContext, link *network.
 	destRouter := link.GetDest()
 	if destRouter == nil {
 		var err error
-		destRouter, err = n.Routers.Read(link.DstId)
+		destRouter, err = n.Router.Read(link.DstId)
 		if err != nil {
 			return nil, err
 		}

@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"time"
@@ -41,7 +40,7 @@ func NewControllerManager(env Env) *ControllerManager {
 	}
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*Controller](env.GetHostController().GetNetwork().Managers, manager)
+	RegisterManagerDecoder[*Controller](env, manager)
 
 	return manager
 }
@@ -55,7 +54,7 @@ func (self *ControllerManager) newModelEntity() *Controller {
 }
 
 func (self *ControllerManager) Create(entity *Controller, ctx *change.Context) error {
-	return network.DispatchCreate[*Controller](self, entity, ctx)
+	return DispatchCreate[*Controller](self, entity, ctx)
 }
 
 func (self *ControllerManager) ApplyCreate(cmd *command.CreateEntityCommand[*Controller], ctx boltz.MutateContext) error {
@@ -64,7 +63,7 @@ func (self *ControllerManager) ApplyCreate(cmd *command.CreateEntityCommand[*Con
 }
 
 func (self *ControllerManager) Update(entity *Controller, checker fields.UpdatedFields, ctx *change.Context) error {
-	return network.DispatchUpdate[*Controller](self, entity, checker, ctx)
+	return DispatchUpdate[*Controller](self, entity, checker, ctx)
 }
 
 func (self *ControllerManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Controller], ctx boltz.MutateContext) error {
@@ -176,7 +175,7 @@ func (self *ControllerManager) Unmarshall(bytes []byte) (*Controller, error) {
 }
 
 func (self *ControllerManager) getCurrentAsClusterPeer() *event.ClusterPeer {
-	addr, id, version := self.env.GetHostController().GetRaftInfo()
+	addr, id, version := self.env.GetRaftInfo()
 	tlsConfig, _, _ := self.env.GetServerCert()
 	var leaderCerts []*x509.Certificate
 
@@ -188,7 +187,7 @@ func (self *ControllerManager) getCurrentAsClusterPeer() *event.ClusterPeer {
 		}
 	}
 
-	apiAddresses, _ := self.env.GetHostController().GetApiAddresses()
+	apiAddresses, _ := self.env.GetApiAddresses()
 
 	return &event.ClusterPeer{
 		Id:           id,

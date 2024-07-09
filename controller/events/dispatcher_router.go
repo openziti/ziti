@@ -18,6 +18,7 @@ package events
 
 import (
 	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"reflect"
@@ -70,15 +71,15 @@ type routerEventAdapter struct {
 	*Dispatcher
 }
 
-func (self *routerEventAdapter) RouterConnected(r *network.Router) {
+func (self *routerEventAdapter) RouterConnected(r *model.Router) {
 	self.routerChange(event.RouterOnline, r, true)
 }
 
-func (self *routerEventAdapter) RouterDisconnected(r *network.Router) {
+func (self *routerEventAdapter) RouterDisconnected(r *model.Router) {
 	self.routerChange(event.RouterOffline, r, false)
 }
 
-func (self *routerEventAdapter) routerChange(eventType event.RouterEventType, r *network.Router, online bool) {
+func (self *routerEventAdapter) routerChange(eventType event.RouterEventType, r *model.Router, online bool) {
 	evt := &event.RouterEvent{
 		Namespace:    event.RouterEventsNs,
 		EventType:    eventType,

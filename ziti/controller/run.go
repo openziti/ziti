@@ -18,6 +18,7 @@ package controller
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/controller/config"
 	"net"
 	"os"
 	"os/signal"
@@ -25,9 +26,9 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
-	"github.com/openziti/ziti/controller/server"
-	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/common/version"
+	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/server"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -50,7 +51,7 @@ func run(cmd *cobra.Command, args []string) {
 			WithField("build-date", version.GetBuildDate()).
 			WithField("revision", version.GetRevision())
 
-	config, err := controller.LoadConfig(args[0])
+	config, err := config.LoadConfig(args[0])
 	if err != nil {
 		startLogger.WithError(err).Error("error starting ziti-controller")
 		panic(err)
@@ -65,7 +66,7 @@ func run(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	edgeController, err := server.NewController(config, fabricController)
+	edgeController, err := server.NewController(fabricController)
 
 	if err != nil {
 		panic(err)
