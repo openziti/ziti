@@ -35,7 +35,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -59,7 +58,7 @@ func NewAuthenticatorManager(env Env) *AuthenticatorManager {
 
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*Authenticator](env.GetHostController().GetNetwork().GetManagers(), manager)
+	RegisterManagerDecoder[*Authenticator](env, manager)
 
 	return manager
 }
@@ -85,7 +84,7 @@ func (self *AuthenticatorManager) Authorize(authContext AuthContext) (AuthResult
 func (self *AuthenticatorManager) ReadFingerprints(authenticatorId string) ([]string, error) {
 	var authenticator *db.Authenticator
 
-	err := self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := self.env.GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
 		authenticator, err = self.authStore.LoadById(tx, authenticatorId)
 		return err
@@ -107,7 +106,7 @@ func (self *AuthenticatorManager) Read(id string) (*Authenticator, error) {
 }
 
 func (self *AuthenticatorManager) Create(entity *Authenticator, ctx *change.Context) error {
-	return network.DispatchCreate[*Authenticator](self, entity, ctx)
+	return DispatchCreate[*Authenticator](self, entity, ctx)
 }
 
 func (self *AuthenticatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Authenticator], ctx boltz.MutateContext) error {
@@ -214,7 +213,7 @@ func (self *AuthenticatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*
 func (self *AuthenticatorManager) getRootPool() *x509.CertPool {
 	roots := x509.NewCertPool()
 
-	roots.AppendCertsFromPEM(self.env.GetConfig().CaPems())
+	roots.AppendCertsFromPEM(self.env.GetConfig().Edge.CaPems())
 
 	err := self.env.GetManagers().Ca.Stream("isVerified = true", func(ca *Ca, err error) error {
 		if err != nil {
@@ -457,7 +456,7 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 	}
 
 	caPool := x509.NewCertPool()
-	config := self.env.GetConfig()
+	config := self.env.GetConfig().Edge
 	caPool.AddCert(config.Enrollment.SigningCert.Cert().Leaf)
 
 	validClientCert.NotBefore = time.Now().Add(-1 * time.Hour)
@@ -602,7 +601,7 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(apiSessionId, iden
 		PEM:          verifyCertPem,
 	}
 
-	return self.env.GetDbProvider().GetDb().Update(ctx.NewMutateContext(), func(mutateCtx boltz.MutateContext) error {
+	return self.env.GetDb().Update(ctx.NewMutateContext(), func(mutateCtx boltz.MutateContext) error {
 		if err = self.env.GetStores().ApiSessionCertificate.Create(mutateCtx, sessionCert); err != nil {
 			return err
 		}
@@ -675,7 +674,7 @@ func getCaId(env Env, auth *AuthenticatorCert) string {
 	cert := certs[0]
 
 	caId := ""
-	err := env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := env.GetDb().View(func(tx *bbolt.Tx) error {
 		for cursor := env.GetStores().Ca.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 			ca, err := env.GetStores().Ca.LoadById(tx, string(cursor.Current()))
 			if err != nil {

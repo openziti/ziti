@@ -49,7 +49,7 @@ func (router *ProtocolRouter) Register(ae *env.AppEnv) {
 func (router *ProtocolRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	data := rest_model.ListProtocols{
 		"https": rest_model.Protocol{
-			Address: &ae.Config.Api.Address,
+			Address: &ae.GetConfig().Edge.Api.Address,
 		},
 	}
 	rc.RespondWithOk(data, &rest_model.Meta{})

@@ -69,7 +69,7 @@ func (self *removeTunnelTerminatorHandler) RemoveTerminator(ctx *RemoveTunnelTer
 
 	logger = logger.WithField("serviceId", t.Service)
 
-	err := self.getNetwork().Terminators.Delete(ctx.terminatorId, ctx.newTunnelChangeContext())
+	err := self.getNetwork().Terminator.Delete(ctx.terminatorId, ctx.newTunnelChangeContext())
 	if err != nil {
 		self.returnError(ctx, internalError(err))
 		return

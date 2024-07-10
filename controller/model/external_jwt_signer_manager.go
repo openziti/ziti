@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -37,7 +36,7 @@ func NewExternalJwtSignerManager(env Env) *ExternalJwtSignerManager {
 	}
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*ExternalJwtSigner](env.GetHostController().GetNetwork().Managers, manager)
+	RegisterManagerDecoder[*ExternalJwtSigner](env, manager)
 
 	return manager
 }
@@ -51,7 +50,7 @@ func (self *ExternalJwtSignerManager) newModelEntity() *ExternalJwtSigner {
 }
 
 func (self *ExternalJwtSignerManager) Create(entity *ExternalJwtSigner, ctx *change.Context) error {
-	return network.DispatchCreate[*ExternalJwtSigner](self, entity, ctx)
+	return DispatchCreate[*ExternalJwtSigner](self, entity, ctx)
 }
 
 func (self *ExternalJwtSignerManager) ApplyCreate(cmd *command.CreateEntityCommand[*ExternalJwtSigner], ctx boltz.MutateContext) error {
@@ -60,7 +59,7 @@ func (self *ExternalJwtSignerManager) ApplyCreate(cmd *command.CreateEntityComma
 }
 
 func (self *ExternalJwtSignerManager) Update(entity *ExternalJwtSigner, checker fields.UpdatedFields, ctx *change.Context) error {
-	return network.DispatchUpdate[*ExternalJwtSigner](self, entity, checker, ctx)
+	return DispatchUpdate[*ExternalJwtSigner](self, entity, checker, ctx)
 }
 
 func (self *ExternalJwtSignerManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ExternalJwtSigner], ctx boltz.MutateContext) error {

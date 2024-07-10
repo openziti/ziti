@@ -20,7 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/version"
-	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/config"
 	fabricdb "github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -56,7 +56,7 @@ const (
 )
 
 func deleteSessionsFromConfig(_ *cobra.Command, args []string) {
-	if config, err := controller.LoadConfig(args[0]); err == nil {
+	if config, err := config.LoadConfig(args[0]); err == nil {
 		deleteSessions(config.Db)
 	} else {
 		panic(err)

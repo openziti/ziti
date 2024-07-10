@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"strings"
@@ -38,7 +37,7 @@ func NewCaManager(env Env) *CaManager {
 	}
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*Ca](env.GetHostController().GetNetwork().Managers, manager)
+	RegisterManagerDecoder[*Ca](env, manager)
 
 	return manager
 }
@@ -52,7 +51,7 @@ func (self *CaManager) newModelEntity() *Ca {
 }
 
 func (self *CaManager) Create(entity *Ca, ctx *change.Context) error {
-	return network.DispatchCreate[*Ca](self, entity, ctx)
+	return DispatchCreate[*Ca](self, entity, ctx)
 }
 
 func (self *CaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Ca], ctx boltz.MutateContext) error {
@@ -64,7 +63,7 @@ func (self *CaManager) Update(entity *Ca, checker fields.UpdatedFields, ctx *cha
 	if checker != nil {
 		checker.RemoveFields(db.FieldCaIsVerified)
 	}
-	return network.DispatchUpdate[*Ca](self, entity, checker, ctx)
+	return DispatchUpdate[*Ca](self, entity, checker, ctx)
 }
 
 func (self *CaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ca], ctx boltz.MutateContext) error {
@@ -115,7 +114,7 @@ func (self *CaManager) Verified(ca *Ca, ctx *change.Context) error {
 	checker := &fields.UpdatedFieldsMap{
 		db.FieldCaIsVerified: struct{}{},
 	}
-	return network.DispatchUpdate[*Ca](self, ca, checker, ctx)
+	return DispatchUpdate[*Ca](self, ca, checker, ctx)
 }
 
 func (self *CaManager) Query(query string) (*CaListResult, error) {
@@ -133,7 +132,7 @@ func (self *CaManager) Stream(query string, collect func(*Ca, error) error) erro
 		return fmt.Errorf("could not parse query for streaming cas: %v", err)
 	}
 
-	return self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	return self.env.GetDb().View(func(tx *bbolt.Tx) error {
 		for cursor := self.Store.IterateIds(tx, filter); cursor.IsValid(); cursor.Next() {
 			current := cursor.Current()
 

@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -46,8 +45,8 @@ func NewTransitRouterManager(env Env) *TransitRouterManager {
 	manager.impl = manager
 
 	RegisterCommand(env, &CreateTransitRouterCmd{}, &edge_cmd_pb.CreateTransitRouterCmd{})
-	network.RegisterUpdateDecoder[*TransitRouter](env.GetHostController().GetNetwork().Managers, manager)
-	network.RegisterDeleteDecoder(env.GetHostController().GetNetwork().Managers, manager)
+	RegisterUpdateDecoder[*TransitRouter](env, manager)
+	RegisterDeleteDecoder(env, manager)
 
 	return manager
 }

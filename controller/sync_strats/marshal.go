@@ -25,7 +25,7 @@ import (
 
 func apiSessionToProto(ae *env.AppEnv, token, identityId, apiSessionId string) (*edge_ctrl_pb.ApiSession, error) {
 	var result *edge_ctrl_pb.ApiSession
-	err := ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := ae.GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
 		result, err = apiSessionToProtoWithTx(tx, ae, token, identityId, apiSessionId)
 		return err

@@ -1,138 +1,58 @@
-/*
-	Copyright NetFoundry Inc.
-
-	Licensed under the Apache License, Version 2.0 (the "License");
-	you may not use this file except in compliance with the License.
-	You may obtain a copy of the License at
-
-	https://www.apache.org/licenses/LICENSE-2.0
-
-	Unless required by applicable law or agreed to in writing, software
-	distributed under the License is distributed on an "AS IS" BASIS,
-	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	See the License for the specific language governing permissions and
-	limitations under the License.
-*/
-
 package network
 
 import (
 	"fmt"
-	"math"
-	"time"
-
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/pkg/errors"
+	"math"
+	"time"
 )
 
-type Path struct {
-	Nodes                []*Router
-	Links                []*Link
-	IngressId            string
-	EgressId             string
-	InitiatorLocalAddr   string
-	InitiatorRemoteAddr  string
-	TerminatorLocalAddr  string
-	TerminatorRemoteAddr string
-}
-
-func (self *Path) cost(minRouterCost uint16) int64 {
-	var cost int64
-	for _, l := range self.Links {
-		cost += l.GetCost()
-	}
-	for _, r := range self.Nodes {
-		cost += int64(maxUint16(r.Cost, minRouterCost))
-	}
-	return cost
-}
-
-func (self *Path) String() string {
-	if len(self.Nodes) < 1 {
-		return "{}"
-	}
-	if len(self.Links) != len(self.Nodes)-1 {
-		return "{malformed}"
-	}
-	out := fmt.Sprintf("[r/%s]", self.Nodes[0].Id)
-	for i := 0; i < len(self.Links); i++ {
-		out += fmt.Sprintf("->[l/%s]", self.Links[i].Id)
-		out += fmt.Sprintf("->[r/%s]", self.Nodes[i+1].Id)
-	}
-	return out
-}
-
-func (self *Path) EqualPath(other *Path) bool {
-	if len(self.Nodes) != len(other.Nodes) {
-		return false
-	}
-	if len(self.Links) != len(other.Links) {
-		return false
-	}
-	for i := 0; i < len(self.Nodes); i++ {
-		if self.Nodes[i] != other.Nodes[i] {
-			return false
-		}
-	}
-	for i := 0; i < len(self.Links); i++ {
-		if self.Links[i] != other.Links[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func (self *Path) EgressRouter() *Router {
-	if len(self.Nodes) > 0 {
-		return self.Nodes[len(self.Nodes)-1]
-	}
-	return nil
-}
-
-func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminator xt.Terminator, deadline time.Time) []*ctrl_pb.Route {
+func (network *Network) CreateRouteMessages(path *model.Path, attempt uint32, circuitId string, terminator xt.Terminator, deadline time.Time) []*ctrl_pb.Route {
 	var routeMessages []*ctrl_pb.Route
 	remainingTime := time.Until(deadline)
-	if len(self.Links) == 0 {
+	if len(path.Links) == 0 {
 		// single router path
 		routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(remainingTime)}
 		routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-			SrcAddress: self.IngressId,
-			DstAddress: self.EgressId,
+			SrcAddress: path.IngressId,
+			DstAddress: path.EgressId,
 			DstType:    ctrl_pb.DestType_End,
 		})
 		routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-			SrcAddress: self.EgressId,
-			DstAddress: self.IngressId,
+			SrcAddress: path.EgressId,
+			DstAddress: path.IngressId,
 			DstType:    ctrl_pb.DestType_Start,
 		})
 		routeMessage.Egress = &ctrl_pb.Route_Egress{
 			Binding:     terminator.GetBinding(),
-			Address:     self.EgressId,
+			Address:     path.EgressId,
 			Destination: terminator.GetAddress(),
 		}
 		routeMessages = append(routeMessages, routeMessage)
 	}
 
-	for i, link := range self.Links {
+	for i, link := range path.Links {
 		if i == 0 {
 			// ingress
 			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(remainingTime)}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: self.IngressId,
+				SrcAddress: path.IngressId,
 				DstAddress: link.Id,
 				DstType:    ctrl_pb.DestType_Link,
 			})
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: link.Id,
-				DstAddress: self.IngressId,
+				DstAddress: path.IngressId,
 				DstType:    ctrl_pb.DestType_Start,
 			})
 			routeMessages = append(routeMessages, routeMessage)
 		}
-		if i >= 0 && i < len(self.Links)-1 {
+		if i >= 0 && i < len(path.Links)-1 {
 			// transit
-			nextLink := self.Links[i+1]
+			nextLink := path.Links[i+1]
 			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(remainingTime)}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: link.Id,
@@ -146,24 +66,24 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 			})
 			routeMessages = append(routeMessages, routeMessage)
 		}
-		if i == len(self.Links)-1 {
+		if i == len(path.Links)-1 {
 			// egress
 			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(remainingTime)}
 			if attempt != SmartRerouteAttempt {
 				routeMessage.Egress = &ctrl_pb.Route_Egress{
 					Binding:     terminator.GetBinding(),
-					Address:     self.EgressId,
+					Address:     path.EgressId,
 					Destination: terminator.GetAddress(),
 				}
 			}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: self.EgressId,
+				SrcAddress: path.EgressId,
 				DstAddress: link.Id,
 				DstType:    ctrl_pb.DestType_Link,
 			})
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: link.Id,
-				DstAddress: self.EgressId,
+				DstAddress: path.EgressId,
 				DstType:    ctrl_pb.DestType_End,
 			})
 			routeMessages = append(routeMessages, routeMessage)
@@ -172,31 +92,65 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 	return routeMessages
 }
 
-func (self *Path) usesLink(l *Link) bool {
-	if self.Links != nil {
-		for _, o := range self.Links {
-			if o == l {
-				return true
-			}
-		}
+func (network *Network) CreatePathWithNodes(nodes []*model.Router) (*model.Path, CircuitError) {
+	ingressId, err := network.sequence.NextHash()
+	if err != nil {
+		return nil, newCircuitErrWrap(CircuitFailureIdGenerationError, err)
 	}
-	return false
+
+	egressId, err := network.sequence.NextHash()
+	if err != nil {
+		return nil, newCircuitErrWrap(CircuitFailureIdGenerationError, err)
+	}
+
+	path := &model.Path{
+		Nodes:     nodes,
+		IngressId: ingressId,
+		EgressId:  egressId,
+	}
+	if err := network.setLinks(path); err != nil {
+		return nil, newCircuitErrWrap(CircuitFailurePathMissingLink, err)
+	}
+	return path, nil
 }
 
-func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int64, error) {
+func (network *Network) UpdatePath(path *model.Path) (*model.Path, error) {
+	srcR := path.Nodes[0]
+	dstR := path.Nodes[len(path.Nodes)-1]
+	nodes, _, err := network.shortestPath(srcR, dstR)
+	if err != nil {
+		return nil, err
+	}
+
+	path2 := &model.Path{
+		Nodes:                nodes,
+		IngressId:            path.IngressId,
+		EgressId:             path.EgressId,
+		InitiatorLocalAddr:   path.InitiatorLocalAddr,
+		InitiatorRemoteAddr:  path.InitiatorRemoteAddr,
+		TerminatorLocalAddr:  path.TerminatorLocalAddr,
+		TerminatorRemoteAddr: path.TerminatorRemoteAddr,
+	}
+	if err := network.setLinks(path2); err != nil {
+		return nil, err
+	}
+	return path2, nil
+}
+
+func (network *Network) shortestPath(srcR *model.Router, dstR *model.Router) ([]*model.Router, int64, error) {
 	if srcR == nil || dstR == nil {
 		return nil, 0, errors.New("not routable (!srcR||!dstR)")
 	}
 
 	if srcR == dstR {
-		return []*Router{srcR}, 0, nil
+		return []*model.Router{srcR}, 0, nil
 	}
 
-	dist := make(map[*Router]int64)
-	prev := make(map[*Router]*Router)
-	unvisited := make(map[*Router]bool)
+	dist := make(map[*model.Router]int64)
+	prev := make(map[*model.Router]*model.Router)
+	unvisited := make(map[*model.Router]bool)
 
-	for _, r := range network.Routers.allConnected() {
+	for _, r := range network.Router.AllConnected() {
 		dist[r] = math.MaxInt32
 		unvisited[r] = true
 	}
@@ -211,13 +165,13 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int
 		}
 		delete(unvisited, u)
 
-		neighbors := network.linkController.connectedNeighborsOfRouter(u)
+		neighbors := network.Link.ConnectedNeighborsOfRouter(u)
 		for _, r := range neighbors {
 			if _, found := unvisited[r]; found {
 				var cost int64 = math.MaxInt32 + 1
-				if l, found := network.linkController.leastExpensiveLink(r, u); found {
+				if l, found := network.Link.LeastExpensiveLink(r, u); found {
 					if !r.NoTraversal || r == srcR || r == dstR {
-						cost = l.GetCost() + int64(maxUint16(r.Cost, minRouterCost))
+						cost = l.GetCost() + int64(max(r.Cost, minRouterCost))
 					}
 				}
 
@@ -237,10 +191,10 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int
 	 *		r2 = 0 <- nil
 	 */
 
-	routerPath := make([]*Router, 0)
+	routerPath := make([]*model.Router, 0)
 	p := prev[dstR]
 	for p != nil {
-		routerPath = append([]*Router{p}, routerPath...)
+		routerPath = append([]*model.Router{p}, routerPath...)
 		p = prev[p]
 	}
 	routerPath = append(routerPath, dstR)
@@ -253,28 +207,4 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int
 	}
 
 	return routerPath, dist[dstR], nil
-}
-
-func minCost(q map[*Router]bool, dist map[*Router]int64) *Router {
-	if dist == nil || len(dist) < 1 {
-		return nil
-	}
-
-	min := int64(math.MaxInt64)
-	var selected *Router
-	for r := range q {
-		d := dist[r]
-		if d <= min {
-			selected = r
-			min = d
-		}
-	}
-	return selected
-}
-
-func maxUint16(v1, v2 uint16) uint16 {
-	if v1 > v2 {
-		return v1
-	}
-	return v2
 }

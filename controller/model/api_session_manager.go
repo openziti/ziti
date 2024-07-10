@@ -36,7 +36,11 @@ func NewApiSessionManager(env Env) *ApiSessionManager {
 		baseEntityManager: newBaseEntityManager[*ApiSession, *db.ApiSession](env, env.GetStores().ApiSession),
 	}
 
-	manager.HeartbeatCollector = NewHeartbeatCollector(env, env.GetConfig().Api.ActivityUpdateBatchSize, env.GetConfig().Api.ActivityUpdateInterval, manager.heartbeatFlush)
+	manager.HeartbeatCollector = NewHeartbeatCollector(
+		env,
+		env.GetConfig().Edge.Api.ActivityUpdateBatchSize,
+		env.GetConfig().Edge.Api.ActivityUpdateInterval,
+		manager.heartbeatFlush)
 
 	manager.impl = manager
 
@@ -54,7 +58,7 @@ func (self *ApiSessionManager) newModelEntity() *ApiSession {
 
 func (self *ApiSessionManager) Create(ctx boltz.MutateContext, entity *ApiSession, sessionCerts []*ApiSessionCertificate) (string, error) {
 	var apiSessionId string
-	err := self.env.GetDbProvider().GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+	err := self.env.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		var err error
 		apiSessionId, err = self.CreateInCtx(ctx, entity, sessionCerts)
 		return err
@@ -215,7 +219,7 @@ func (self *ApiSessionManager) Stream(query string, collect func(*ApiSession, er
 		return fmt.Errorf("could not parse query for streaming api sessions: %v", err)
 	}
 
-	return self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	return self.env.GetDb().View(func(tx *bbolt.Tx) error {
 		for cursor := self.Store.IterateIds(tx, filter); cursor.IsValid(); cursor.Next() {
 			current := cursor.Current()
 
@@ -235,7 +239,7 @@ func (self *ApiSessionManager) StreamIds(query string, collect func(string, erro
 		return fmt.Errorf("could not parse query for streaming api sessions ids: %v", err)
 	}
 
-	return self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	return self.env.GetDb().View(func(tx *bbolt.Tx) error {
 		for cursor := self.Store.IterateIds(tx, filter); cursor.IsValid(); cursor.Next() {
 			current := cursor.Current()
 			if err := collect(string(current), err); err != nil {
@@ -290,7 +294,7 @@ func (self *ApiSessionManager) VisitFingerprintsForApiSession(tx *bbolt.Tx, iden
 }
 
 func (self *ApiSessionManager) DeleteByIdentityId(identityId string, changeCtx *change.Context) error {
-	return self.GetEnv().GetDbProvider().GetDb().Update(changeCtx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+	return self.GetEnv().GetDb().Update(changeCtx.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		query := fmt.Sprintf(`%s = "%s"`, db.FieldApiSessionIdentity, identityId)
 		return self.Store.DeleteWhere(ctx, query)
 	})

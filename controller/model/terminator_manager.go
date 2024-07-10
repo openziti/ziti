@@ -11,7 +11,7 @@
 	limitations under the License.
 */
 
-package network
+package model
 
 import (
 	"context"
@@ -30,7 +30,6 @@ import (
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/xt"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"reflect"
@@ -38,106 +37,26 @@ import (
 	"time"
 )
 
-type Terminator struct {
-	models.BaseEntity
-	Service         string
-	Router          string
-	Binding         string
-	Address         string
-	InstanceId      string
-	InstanceSecret  []byte
-	Cost            uint16
-	Precedence      xt.Precedence
-	PeerData        map[uint32][]byte
-	HostId          string
-	SavedPrecedence xt.Precedence
-}
-
-func (entity *Terminator) GetServiceId() string {
-	return entity.Service
-}
-
-func (entity *Terminator) GetRouterId() string {
-	return entity.Router
-}
-
-func (entity *Terminator) GetBinding() string {
-	return entity.Binding
-}
-
-func (entity *Terminator) GetAddress() string {
-	return entity.Address
-}
-
-func (entity *Terminator) GetInstanceId() string {
-	return entity.InstanceId
-}
-
-func (entity *Terminator) GetInstanceSecret() []byte {
-	return entity.InstanceSecret
-}
-
-func (entity *Terminator) GetCost() uint16 {
-	return entity.Cost
-}
-
-func (entity *Terminator) GetPrecedence() xt.Precedence {
-	return entity.Precedence
-}
-
-func (entity *Terminator) GetPeerData() xt.PeerData {
-	return entity.PeerData
-}
-
-func (entity *Terminator) GetHostId() string {
-	return entity.HostId
-}
-
-func (entity *Terminator) toBolt() *db.Terminator {
-	precedence := xt.Precedences.Default.String()
-	if entity.Precedence != nil {
-		precedence = entity.Precedence.String()
-	}
-
-	var savedPrecedence *string
-	if entity.SavedPrecedence != nil {
-		precedenceStr := entity.SavedPrecedence.String()
-		savedPrecedence = &precedenceStr
-	}
-
-	return &db.Terminator{
-		BaseExtEntity:   *entity.ToBoltBaseExtEntity(),
-		Service:         entity.Service,
-		Router:          entity.Router,
-		Binding:         entity.Binding,
-		Address:         entity.Address,
-		InstanceId:      entity.InstanceId,
-		InstanceSecret:  entity.InstanceSecret,
-		Cost:            entity.Cost,
-		Precedence:      precedence,
-		PeerData:        entity.PeerData,
-		HostId:          entity.HostId,
-		SavedPrecedence: savedPrecedence,
-	}
-}
-
-func newTerminatorManager(managers *Managers) *TerminatorManager {
+func newTerminatorManager(env Env) *TerminatorManager {
 	result := &TerminatorManager{
-		baseEntityManager: newBaseEntityManager[*Terminator, *db.Terminator](managers, managers.stores.Terminator, func() *Terminator {
-			return &Terminator{}
-		}),
-		store: managers.stores.Terminator,
+		baseEntityManager: newBaseEntityManager[*Terminator, *db.Terminator](env, env.GetStores().Terminator),
 	}
-	result.populateEntity = result.populateTerminator
+	result.impl = result
 
-	managers.stores.Terminator.AddEntityIdListener(xt.GlobalCosts().ClearCost, boltz.EntityDeleted)
+	env.GetStores().Terminator.AddEntityIdListener(xt.GlobalCosts().ClearCost, boltz.EntityDeleted)
+
+	RegisterManagerDecoder[*Terminator](env, result)
+	RegisterCommand(env, &DeleteTerminatorsBatchCommand{}, &cmd_pb.DeleteTerminatorsBatchCommand{})
 
 	return result
 }
 
 type TerminatorManager struct {
 	baseEntityManager[*Terminator, *db.Terminator]
-	store db.TerminatorStore
+}
+
+func (self *TerminatorManager) newModelEntity() *Terminator {
+	return &Terminator{}
 }
 
 func (self *TerminatorManager) Create(entity *Terminator, ctx *change.Context) error {
@@ -145,14 +64,16 @@ func (self *TerminatorManager) Create(entity *Terminator, ctx *change.Context) e
 }
 
 func (self *TerminatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Terminator], ctx boltz.MutateContext) error {
-	return self.db.Update(ctx, func(ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		if cmd.Entity.IsSystemEntity() {
 			ctx = ctx.GetSystemContext()
 		}
 		self.checkBinding(cmd.Entity)
-		boltTerminator := cmd.Entity.toBolt()
-		err := self.GetStore().Create(ctx, boltTerminator)
+		boltTerminator, err := cmd.Entity.toBoltEntityForCreate(ctx.Tx(), self.env)
 		if err != nil {
+			return err
+		}
+		if err = self.GetStore().Create(ctx, boltTerminator); err != nil {
 			return err
 		}
 		if cmd.PostCreateHook != nil {
@@ -168,12 +89,12 @@ func (self *TerminatorManager) DeleteBatch(ids []string, ctx *change.Context) er
 		Manager: self,
 		Ids:     ids,
 	}
-	return self.Managers.Dispatch(cmd)
+	return self.Dispatch(cmd)
 }
 
 func (self *TerminatorManager) ApplyDeleteBatch(cmd *DeleteTerminatorsBatchCommand, ctx boltz.MutateContext) error {
 	var errorList errorz.MultipleErrors
-	err := self.db.Update(ctx, func(ctx boltz.MutateContext) error {
+	err := self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		for _, id := range cmd.Ids {
 			if self.Store.IsEntityPresent(ctx.Tx(), id) {
 				if err := self.Store.DeleteById(ctx, id); err != nil {
@@ -199,7 +120,7 @@ func (self *TerminatorManager) checkBinding(terminator *Terminator) {
 	}
 }
 
-func (self *TerminatorManager) handlePrecedenceChange(terminatorId string, precedence xt.Precedence) {
+func (self *TerminatorManager) HandlePrecedenceChange(terminatorId string, precedence xt.Precedence) {
 	terminator, err := self.Read(terminatorId)
 	if err != nil {
 		pfxlog.Logger().Errorf("unable to update precedence for terminator %v to %v (%v)",
@@ -223,34 +144,18 @@ func (self *TerminatorManager) Update(entity *Terminator, updatedFields fields.U
 
 func (self *TerminatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Terminator], ctx boltz.MutateContext) error {
 	terminator := cmd.Entity
-	return self.db.Update(ctx, func(ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		if cmd.Entity.IsSystemEntity() {
 			ctx = ctx.GetSystemContext()
 		}
 
 		self.checkBinding(terminator)
-		return self.GetStore().Update(ctx, terminator.toBolt(), cmd.UpdatedFields)
+		boltTerminator, err := terminator.toBoltEntityForUpdate(ctx.Tx(), self.env, cmd.UpdatedFields)
+		if err != nil {
+			return err
+		}
+		return self.GetStore().Update(ctx, boltTerminator, cmd.UpdatedFields)
 	})
-}
-
-func (self *TerminatorManager) Read(id string) (entity *Terminator, err error) {
-	err = self.db.View(func(tx *bbolt.Tx) error {
-		entity, err = self.readInTx(tx, id)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-	return entity, err
-}
-
-func (self *TerminatorManager) readInTx(tx *bbolt.Tx, id string) (*Terminator, error) {
-	entity := &Terminator{}
-	err := self.readEntityInTx(tx, id, entity)
-	if err != nil {
-		return nil, err
-	}
-	return entity, nil
 }
 
 func (self *TerminatorManager) Query(query string) (*TerminatorListResult, error) {
@@ -259,30 +164,6 @@ func (self *TerminatorManager) Query(query string) (*TerminatorListResult, error
 		return nil, err
 	}
 	return result, nil
-}
-
-func (self *TerminatorManager) populateTerminator(entity *Terminator, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltTerminator, ok := boltEntity.(*db.Terminator)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model terminator", reflect.TypeOf(boltEntity))
-	}
-	entity.Service = boltTerminator.Service
-	entity.Router = boltTerminator.Router
-	entity.Binding = boltTerminator.Binding
-	entity.Address = boltTerminator.Address
-	entity.InstanceId = boltTerminator.InstanceId
-	entity.InstanceSecret = boltTerminator.InstanceSecret
-	entity.PeerData = boltTerminator.PeerData
-	entity.Cost = boltTerminator.Cost
-	entity.Precedence = xt.GetPrecedenceForName(boltTerminator.Precedence)
-	entity.HostId = boltTerminator.HostId
-	entity.FillCommon(boltTerminator)
-
-	if boltTerminator.SavedPrecedence != nil {
-		entity.SavedPrecedence = xt.GetPrecedenceForName(*boltTerminator.SavedPrecedence)
-	}
-
-	return nil
 }
 
 func (self *TerminatorManager) Marshall(entity *Terminator) ([]byte, error) {
@@ -408,7 +289,7 @@ func (self *TerminatorManager) ValidateTerminators(filter string, fixInvalid boo
 }
 
 func (self *TerminatorManager) validateTerminatorBatch(fixInvalid bool, routerId string, batch []*Terminator, cb TerminatorValidationCallback) {
-	router := self.Managers.Routers.getConnected(routerId)
+	router := self.env.GetManagers().Router.GetConnected(routerId)
 	if router == nil {
 		self.reportError(router, batch, cb, "router off-line")
 		return
@@ -470,13 +351,13 @@ func (self *TerminatorManager) newTerminatorDetail(router *Router, terminator *T
 		CreateDate:   terminator.CreatedAt.Format(time.RFC3339),
 	}
 
-	service, _ := self.Services.Read(terminator.Service)
+	service, _ := self.env.GetManagers().Service.Read(terminator.Service)
 	if service != nil {
 		detail.ServiceName = service.Name
 	}
 
 	if router == nil {
-		router, _ = self.Routers.Read(terminator.Router)
+		router, _ = self.env.GetManagers().Router.Read(terminator.Router)
 	}
 
 	if router != nil {
@@ -529,8 +410,8 @@ func (self *DeleteTerminatorsBatchCommand) Encode() ([]byte, error) {
 	})
 }
 
-func (self *DeleteTerminatorsBatchCommand) Decode(n *Network, msg *cmd_pb.DeleteTerminatorsBatchCommand) error {
-	self.Manager = n.Terminators
+func (self *DeleteTerminatorsBatchCommand) Decode(env Env, msg *cmd_pb.DeleteTerminatorsBatchCommand) error {
+	self.Manager = env.GetManagers().Terminator
 	self.Ids = msg.EntityIds
 	return nil
 }

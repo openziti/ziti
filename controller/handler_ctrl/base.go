@@ -19,11 +19,12 @@ package handler_ctrl
 import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 )
 
 type baseHandler struct {
-	router  *network.Router
+	router  *model.Router
 	network *network.Network
 }
 

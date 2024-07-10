@@ -152,7 +152,7 @@ func (self *baseTunnelRequestContext) ensureApiSessionLocking(configTypes []stri
 			IPAddress:      self.handler.getChannel().Underlay().GetRemoteAddr().String(),
 		}
 
-		err := self.handler.getAppEnv().GetDbProvider().GetDb().Update(self.newTunnelChangeContext().NewMutateContext(), func(ctx boltz.MutateContext) error {
+		err := self.handler.getAppEnv().GetDb().Update(self.newTunnelChangeContext().NewMutateContext(), func(ctx boltz.MutateContext) error {
 			var err error
 			apiSession.Id, err = self.handler.getAppEnv().GetManagers().ApiSession.Create(ctx, apiSession, nil)
 			if err != nil {

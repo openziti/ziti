@@ -19,9 +19,10 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,7 +30,7 @@ type removeTerminatorHandler struct {
 	baseHandler
 }
 
-func newRemoveTerminatorHandler(network *network.Network, router *network.Router) *removeTerminatorHandler {
+func newRemoveTerminatorHandler(network *network.Network, router *model.Router) *removeTerminatorHandler {
 	return &removeTerminatorHandler{
 		baseHandler: baseHandler{
 			router:  router,
@@ -57,13 +58,13 @@ func (self *removeTerminatorHandler) HandleReceive(msg *channel.Message, ch chan
 func (self *removeTerminatorHandler) handleRemoveTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.RemoveTerminatorRequest) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	terminator, err := self.network.Terminators.Read(request.TerminatorId)
+	terminator, err := self.network.Terminator.Read(request.TerminatorId)
 	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
-	if err := self.network.Terminators.Delete(request.TerminatorId, self.newChangeContext(ch, "fabric.remove.terminator")); err == nil {
+	if err := self.network.Terminator.Delete(request.TerminatorId, self.newChangeContext(ch, "fabric.remove.terminator")); err == nil {
 		log.
 			WithField("routerId", ch.Id()).
 			WithField("serviceId", terminator.Service).

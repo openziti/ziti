@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/network"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -36,7 +35,7 @@ type RouterSender struct {
 	env.RouterState
 	Id          string
 	EdgeRouter  *model.EdgeRouter
-	Router      *network.Router
+	Router      *model.Router
 	send        chan *channel.Message
 	closeNotify chan struct{}
 	running     atomic.Bool
@@ -47,7 +46,7 @@ type RouterSender struct {
 	sync.Mutex
 }
 
-func newRouterSender(edgeRouter *model.EdgeRouter, router *network.Router, sendBufferSize int) *RouterSender {
+func newRouterSender(edgeRouter *model.EdgeRouter, router *model.Router, sendBufferSize int) *RouterSender {
 	rtx := &RouterSender{
 		Id:          eid.New(),
 		EdgeRouter:  edgeRouter,
@@ -139,7 +138,7 @@ func (m *routerTxMap) GetState(id string) env.RouterStateValues {
 	return rtx.GetState()
 }
 
-func (m *routerTxMap) Remove(r *network.Router) {
+func (m *routerTxMap) Remove(r *model.Router) {
 	var rtx *RouterSender
 	m.internalMap.RemoveCb(r.Id, func(key string, v *RouterSender, exists bool) bool {
 		if !exists {

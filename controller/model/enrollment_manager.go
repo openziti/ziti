@@ -33,7 +33,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -53,7 +52,7 @@ func NewEnrollmentManager(env Env) *EnrollmentManager {
 
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*Enrollment](env.GetHostController().GetNetwork().GetManagers(), manager)
+	RegisterManagerDecoder[*Enrollment](env, manager)
 	RegisterCommand(env, &ReplaceEnrollmentWithAuthenticatorCmd{}, &edge_cmd_pb.ReplaceEnrollmentWithAuthenticatorCmd{})
 	RegisterCommand(env, &ReEnrollEdgeRouterCmd{}, &edge_cmd_pb.ReEnrollEdgeRouterCmd{})
 
@@ -61,7 +60,7 @@ func NewEnrollmentManager(env Env) *EnrollmentManager {
 }
 
 func (self *EnrollmentManager) Create(entity *Enrollment, ctx *change.Context) error {
-	return network.DispatchCreate[*Enrollment](self, entity, ctx)
+	return DispatchCreate[*Enrollment](self, entity, ctx)
 }
 
 func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enrollment], ctx boltz.MutateContext) error {
@@ -130,7 +129,7 @@ func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enr
 }
 
 func (self *EnrollmentManager) Update(entity *Enrollment, checker fields.UpdatedFields, ctx *change.Context) error {
-	return network.DispatchUpdate[*Enrollment](self, entity, checker, ctx)
+	return DispatchUpdate[*Enrollment](self, entity, checker, ctx)
 }
 
 func (self *EnrollmentManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Enrollment], ctx boltz.MutateContext) error {
@@ -185,7 +184,7 @@ func (self *EnrollmentManager) Enroll(ctx EnrollmentContext) (*EnrollmentResult,
 func (self *EnrollmentManager) ReadByToken(token string) (*Enrollment, error) {
 	enrollment := &Enrollment{}
 
-	err := self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := self.env.GetDb().View(func(tx *bbolt.Tx) error {
 		boltEntity, err := self.env.GetStores().Enrollment.LoadOneByToken(tx, token)
 
 		if err != nil {
@@ -227,7 +226,7 @@ func (self *EnrollmentManager) GetCertChainPem(certRaw []byte) (string, error) {
 
 	var targetChainPem []byte
 
-	pool := identity.NewCaPool(self.env.GetConfig().CaCerts())
+	pool := identity.NewCaPool(self.env.GetConfig().Edge.CaCerts())
 	targetChain := pool.GetChainMinusRoot(targetCert)
 
 	for _, c := range targetChain {
@@ -242,7 +241,7 @@ func (self *EnrollmentManager) GetCertChainPem(certRaw []byte) (string, error) {
 }
 
 func (self *EnrollmentManager) ApplyReplaceEncoderWithAuthenticatorCommand(cmd *ReplaceEnrollmentWithAuthenticatorCmd, ctx boltz.MutateContext) error {
-	return self.env.GetDbProvider().GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+	return self.env.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		err := self.env.GetStores().Enrollment.DeleteById(ctx, cmd.enrollmentId)
 		if err != nil {
 			return err

@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package network
+package model
 
 import (
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -55,7 +55,7 @@ func newLink(id string, linkProtocol string, dialAddress string, initialLatency 
 		SrcLatency: initialLatency.Nanoseconds(),
 		DstLatency: initialLatency.Nanoseconds(),
 	}
-	l.recalculateCost()
+	l.RecalculateCost()
 	l.recalculateUsable()
 	return l
 }
@@ -116,7 +116,7 @@ func (link *Link) GetStaticCost() int32 {
 
 func (link *Link) SetStaticCost(cost int32) {
 	atomic.StoreInt32(&link.StaticCost, cost)
-	link.recalculateCost()
+	link.RecalculateCost()
 }
 
 func (link *Link) GetSrcLatency() int64 {
@@ -125,7 +125,7 @@ func (link *Link) GetSrcLatency() int64 {
 
 func (link *Link) SetSrcLatency(latency int64) {
 	atomic.StoreInt64(&link.SrcLatency, latency)
-	link.recalculateCost()
+	link.RecalculateCost()
 }
 
 func (link *Link) GetDstLatency() int64 {
@@ -134,10 +134,10 @@ func (link *Link) GetDstLatency() int64 {
 
 func (link *Link) SetDstLatency(latency int64) {
 	atomic.StoreInt64(&link.DstLatency, latency)
-	link.recalculateCost()
+	link.RecalculateCost()
 }
 
-func (link *Link) recalculateCost() {
+func (link *Link) RecalculateCost() {
 	cost := int64(link.GetStaticCost()) + link.GetSrcLatency()/1_000_000 + link.GetDstLatency()/1_000_000
 	atomic.StoreInt64(&link.Cost, cost)
 }

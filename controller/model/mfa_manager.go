@@ -31,7 +31,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"github.com/skip2/go-qrcode"
 	"go.etcd.io/bbolt"
@@ -49,7 +48,7 @@ func NewMfaManager(env Env) *MfaManager {
 	}
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*Mfa](env.GetHostController().GetNetwork().Managers, manager)
+	RegisterManagerDecoder[*Mfa](env, manager)
 
 	return manager
 }
@@ -99,7 +98,7 @@ func (self *MfaManager) CreateForIdentity(identity *Identity, ctx *change.Contex
 }
 
 func (self *MfaManager) Create(entity *Mfa, ctx *change.Context) error {
-	return network.DispatchCreate[*Mfa](self, entity, ctx)
+	return DispatchCreate[*Mfa](self, entity, ctx)
 }
 
 func (self *MfaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Mfa], ctx boltz.MutateContext) error {
@@ -122,7 +121,7 @@ func (self *MfaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Mfa], ctx 
 }
 
 func (self *MfaManager) Update(entity *Mfa, checker fields.UpdatedFields, ctx *change.Context) error {
-	return network.DispatchUpdate[*Mfa](self, entity, checker, ctx)
+	return DispatchUpdate[*Mfa](self, entity, checker, ctx)
 }
 
 func (self *MfaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Mfa], ctx boltz.MutateContext) error {
@@ -235,7 +234,7 @@ func (self *MfaManager) GetProvisioningUrl(mfa *Mfa) string {
 		WindowSize: WindowSizeTOTP,
 		UTC:        true,
 	}
-	return otcConfig.ProvisionURIWithIssuer(mfa.Identity.Name, self.env.GetConfig().Totp.Hostname)
+	return otcConfig.ProvisionURIWithIssuer(mfa.Identity.Name, self.env.GetConfig().Edge.Totp.Hostname)
 }
 
 func (self *MfaManager) RecreateRecoveryCodes(mfa *Mfa, ctx *change.Context) error {

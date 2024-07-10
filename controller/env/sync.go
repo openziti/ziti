@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/network"
 	"sync"
 )
 
@@ -68,8 +67,8 @@ type RouterSyncStrategy interface {
 // This is intended for API Session but additional state is possible. Implementations may bind additional
 // handlers to the channel.
 type RouterConnectionHandler interface {
-	RouterConnected(edgeRouter *model.EdgeRouter, router *network.Router)
-	RouterDisconnected(router *network.Router)
+	RouterConnected(edgeRouter *model.EdgeRouter, router *model.Router)
+	RouterDisconnected(router *model.Router)
 	GetReceiveHandlers() []channel.TypedReceiveHandler
 }
 

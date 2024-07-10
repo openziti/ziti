@@ -18,12 +18,13 @@ package network
 
 import (
 	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/pkg/errors"
 	"time"
 )
 
-func (network *Network) fillCircuitPath(e *event.CircuitEvent, path *Path) {
+func (network *Network) fillCircuitPath(e *event.CircuitEvent, path *model.Path) {
 	if path == nil {
 		return
 	}
@@ -42,7 +43,7 @@ func (network *Network) fillCircuitPath(e *event.CircuitEvent, path *Path) {
 	e.LinkCount = len(path.Links)
 }
 
-func (network *Network) CircuitEvent(eventType event.CircuitEventType, circuit *Circuit, creationTimespan *time.Duration) {
+func (network *Network) CircuitEvent(eventType event.CircuitEventType, circuit *model.Circuit, creationTimespan *time.Duration) {
 	var cost *uint32
 	var duration *time.Duration
 	if eventType == event.CircuitCreated {
@@ -126,9 +127,9 @@ func newCircuitErrWrap(cause CircuitFailureCause, err error) CircuitError {
 
 func (network *Network) CircuitFailedEvent(
 	circuitId string,
-	params CreateCircuitParams,
+	params model.CreateCircuitParams,
 	startTime time.Time,
-	path *Path,
+	path *model.Path,
 	t xt.CostedTerminator,
 	cause CircuitFailureCause) {
 	var failureCause *string

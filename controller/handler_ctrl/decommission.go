@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 )
 
@@ -28,7 +29,7 @@ type decommissionRouterHandler struct {
 	baseHandler
 }
 
-func newDecommissionRouterHandler(router *network.Router, network *network.Network) *decommissionRouterHandler {
+func newDecommissionRouterHandler(router *model.Router, network *network.Network) *decommissionRouterHandler {
 	return &decommissionRouterHandler{
 		baseHandler: baseHandler{
 			router:  router,
@@ -46,7 +47,7 @@ func (self *decommissionRouterHandler) HandleReceive(msg *channel.Message, ch ch
 	log = log.WithField("routerId", self.router.Id)
 
 	go func() {
-		if err := self.network.Routers.Delete(self.router.Id, self.newChangeContext(ch, "decommission.router")); err == nil {
+		if err := self.network.Router.Delete(self.router.Id, self.newChangeContext(ch, "decommission.router")); err == nil {
 			// we don't send success because deleting the router will close the router connection
 			log.Debug("router decommission successful")
 		} else {

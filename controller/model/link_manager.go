@@ -14,27 +14,22 @@
 	limitations under the License.
 */
 
-package network
+package model
 
 import (
-	"encoding/json"
-	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/storage/objectz"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/common/datastructures"
+	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/orcaman/concurrent-map/v2"
 	"math"
-	"strings"
 	"sync"
 	"time"
 )
 
-type linkController struct {
+type LinkManager struct {
 	linkTable      *linkTable
 	idGenerator    idgen.Generator
 	lock           sync.Mutex
@@ -42,20 +37,20 @@ type linkController struct {
 	store          *objectz.ObjectStore[*Link]
 }
 
-func newLinkController(options *Options) *linkController {
-	initialLatency := DefaultOptionsInitialLinkLatency
-	if options != nil {
-		initialLatency = options.InitialLinkLatency
+func NewLinkManager(env Env) *LinkManager {
+	initialLatency := config.DefaultOptionsInitialLinkLatency
+	if env != nil {
+		initialLatency = env.GetConfig().Network.InitialLinkLatency
 	}
 
-	result := &linkController{
+	result := &LinkManager{
 		linkTable:      newLinkTable(),
 		idGenerator:    idgen.NewGenerator(),
 		initialLatency: initialLatency,
 	}
 
 	result.store = objectz.NewObjectStore[*Link](func() objectz.ObjectIterator[*Link] {
-		return IterateCMap[*Link](result.linkTable.links)
+		return datastructures.IterateCMap[*Link](result.linkTable.links)
 	})
 
 	result.store.AddStringSymbol("id", func(entity *Link) *string {
@@ -101,8 +96,12 @@ func newLinkController(options *Options) *linkController {
 	return result
 }
 
-func (linkController *linkController) buildRouterLinks(router *Router) {
-	linkController.linkTable.links.IterCb(func(_ string, link *Link) {
+func (self *LinkManager) GetStore() *objectz.ObjectStore[*Link] {
+	return self.store
+}
+
+func (self *LinkManager) BuildRouterLinks(router *Router) {
+	self.linkTable.links.IterCb(func(_ string, link *Link) {
 		if link.DstId == router.Id {
 			router.routerLinks.Add(link, link.Src.Id)
 			link.Dst.Store(router)
@@ -110,36 +109,36 @@ func (linkController *linkController) buildRouterLinks(router *Router) {
 	})
 }
 
-func (linkController *linkController) add(link *Link) {
-	linkController.linkTable.add(link)
+func (self *LinkManager) Add(link *Link) {
+	self.linkTable.add(link)
 	link.Src.routerLinks.Add(link, link.DstId)
 	if dest := link.GetDest(); dest != nil {
 		dest.routerLinks.Add(link, link.Src.Id)
 	}
 }
 
-func (linkController *linkController) has(link *Link) bool {
-	return linkController.linkTable.has(link)
+func (self *LinkManager) has(link *Link) bool {
+	return self.linkTable.has(link)
 }
 
-func (linkController *linkController) scanForDeadLinks() {
+func (self *LinkManager) ScanForDeadLinks() {
 	var toRemove []*Link
-	linkController.linkTable.links.IterCb(func(_ string, link *Link) {
+	self.linkTable.links.IterCb(func(_ string, link *Link) {
 		if !link.Src.Connected.Load() {
 			toRemove = append(toRemove, link)
 		}
 	})
 
 	for _, link := range toRemove {
-		linkController.remove(link)
+		self.Remove(link)
 	}
 }
 
-func (linkController *linkController) routerReportedLink(linkId string, iteration uint32, linkProtocol, dialAddress string, src, dst *Router, dstId string) (*Link, bool) {
-	linkController.lock.Lock()
-	defer linkController.lock.Unlock()
+func (self *LinkManager) RouterReportedLink(linkId string, iteration uint32, linkProtocol, dialAddress string, src, dst *Router, dstId string) (*Link, bool) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 
-	link, _ := linkController.get(linkId)
+	link, _ := self.Get(linkId)
 	if link != nil && link.Iteration >= iteration {
 		return link, false
 	}
@@ -152,30 +151,38 @@ func (linkController *linkController) routerReportedLink(linkId string, iteratio
 			WithField("destRouterId", dstId).
 			WithField("iteration", iteration)
 
-		linkController.remove(link)
+		self.Remove(link)
 		log.Infof("replaced link with newer iteration %v => %v", link.Iteration, iteration)
 	}
 
-	link = newLink(linkId, linkProtocol, dialAddress, linkController.initialLatency)
+	link = newLink(linkId, linkProtocol, dialAddress, self.initialLatency)
 	link.Iteration = iteration
 	link.Src = src
 	link.Dst.Store(dst)
 	link.DstId = dstId
 	link.SetState(Connected)
-	linkController.add(link)
+	self.Add(link)
 	return link, true
 }
 
-func (linkController *linkController) get(linkId string) (*Link, bool) {
-	return linkController.linkTable.get(linkId)
+func (self *LinkManager) Get(linkId string) (*Link, bool) {
+	return self.linkTable.get(linkId)
 }
 
-func (linkController *linkController) all() []*Link {
-	return linkController.linkTable.all()
+func (self *LinkManager) All() []*Link {
+	return self.linkTable.all()
 }
 
-func (linkController *linkController) remove(link *Link) {
-	if linkController.linkTable.remove(link) {
+func (self *LinkManager) GetLinkMap() map[string]*Link {
+	linkMap := make(map[string]*Link)
+	self.linkTable.links.IterCb(func(key string, link *Link) {
+		linkMap[key] = link
+	})
+	return linkMap
+}
+
+func (self *LinkManager) Remove(link *Link) {
+	if self.linkTable.remove(link) {
 		link.Src.routerLinks.Remove(link, link.DstId)
 		if dest := link.GetDest(); dest != nil {
 			dest.routerLinks.Remove(link, link.Src.Id)
@@ -183,7 +190,7 @@ func (linkController *linkController) remove(link *Link) {
 	}
 }
 
-func (linkController *linkController) connectedNeighborsOfRouter(router *Router) []*Router {
+func (self *LinkManager) ConnectedNeighborsOfRouter(router *Router) []*Router {
 	neighborMap := make(map[string]*Router)
 
 	links := router.routerLinks.GetLinks()
@@ -206,7 +213,7 @@ func (linkController *linkController) connectedNeighborsOfRouter(router *Router)
 	return neighbors
 }
 
-func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, bool) {
+func (self *LinkManager) LeastExpensiveLink(a, b *Router) (*Link, bool) {
 	var selected *Link
 	var cost int64 = math.MaxInt64
 
@@ -236,7 +243,7 @@ func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, b
 	return nil, false
 }
 
-func (linkController *linkController) missingLinks(routers []*Router, pendingTimeout time.Duration) ([]*Link, error) {
+func (self *LinkManager) MissingLinks(routers []*Router, pendingTimeout time.Duration) ([]*Link, error) {
 	// When there's a flood of router connects at startup we can see the same link
 	// as missing multiple times as the new link will be marked as PENDING until it's
 	// connected. Give ourselves a little window to make the connection before we
@@ -252,9 +259,9 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 		for _, dstR := range routers {
 			if srcR != dstR && len(dstR.Listeners) > 0 {
 				for _, listener := range dstR.Listeners {
-					if !linkController.hasLink(srcR, dstR, listener.GetProtocol(), pendingLimit) {
+					if !self.hasLink(srcR, dstR, listener.GetProtocol(), pendingLimit) {
 						id := idgen.NewUUIDString()
-						link := newLink(id, listener.GetProtocol(), listener.GetAddress(), linkController.initialLatency)
+						link := newLink(id, listener.GetProtocol(), listener.GetAddress(), self.initialLatency)
 						link.Src = srcR
 						link.Dst.Store(dstR)
 						link.DstId = dstR.Id
@@ -268,24 +275,24 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 	return missingLinks, nil
 }
 
-func (linkController *linkController) clearExpiredPending(pendingTimeout time.Duration) {
+func (self *LinkManager) ClearExpiredPending(pendingTimeout time.Duration) {
 	pendingLimit := info.NowInMilliseconds() - pendingTimeout.Milliseconds()
 
-	toRemove := linkController.linkTable.matching(func(link *Link) bool {
+	toRemove := self.linkTable.matching(func(link *Link) bool {
 		state := link.CurrentState()
 		return state.Mode == Pending && state.Timestamp < pendingLimit
 	})
 
 	for _, link := range toRemove {
-		linkController.remove(link)
+		self.Remove(link)
 	}
 }
 
-func (linkController *linkController) hasLink(a, b *Router, linkProtocol string, pendingLimit int64) bool {
-	return linkController.hasDirectedLink(a, b, linkProtocol, pendingLimit) || linkController.hasDirectedLink(b, a, linkProtocol, pendingLimit)
+func (self *LinkManager) hasLink(a, b *Router, linkProtocol string, pendingLimit int64) bool {
+	return self.hasDirectedLink(a, b, linkProtocol, pendingLimit) || self.hasDirectedLink(b, a, linkProtocol, pendingLimit)
 }
 
-func (linkController *linkController) hasDirectedLink(a, b *Router, linkProtocol string, pendingLimit int64) bool {
+func (self *LinkManager) hasDirectedLink(a, b *Router, linkProtocol string, pendingLimit int64) bool {
 	links := a.routerLinks.GetLinks()
 	for _, link := range links {
 		state := link.CurrentState()
@@ -298,106 +305,8 @@ func (linkController *linkController) hasDirectedLink(a, b *Router, linkProtocol
 	return false
 }
 
-func (linkController *linkController) linksInMode(mode LinkMode) []*Link {
-	return linkController.linkTable.allInMode(mode)
-}
-
-func (self *linkController) ValidateRouterLinks(n *Network, router *Router, cb LinkValidationCallback) {
-	request := &ctrl_pb.InspectRequest{RequestedValues: []string{"links"}}
-	resp := &ctrl_pb.InspectResponse{}
-	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
-	if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
-		self.reportRouterLinksError(router, err, cb)
-		return
-	}
-
-	var linkDetails *inspect.LinksInspectResult
-	for _, val := range resp.Values {
-		if val.Name == "links" {
-			if err = json.Unmarshal([]byte(val.Value), &linkDetails); err != nil {
-				self.reportRouterLinksError(router, err, cb)
-				return
-			}
-		}
-	}
-
-	if linkDetails == nil {
-		if len(resp.Errors) > 0 {
-			err = errors.New(strings.Join(resp.Errors, ","))
-			self.reportRouterLinksError(router, err, cb)
-			return
-		}
-		self.reportRouterLinksError(router, errors.New("no link details returned from router"), cb)
-		return
-	}
-
-	linkMap := map[string]*Link{}
-
-	self.linkTable.links.IterCb(func(key string, link *Link) {
-		linkMap[key] = link
-	})
-
-	result := &mgmt_pb.RouterLinkDetails{
-		RouterId:        router.Id,
-		RouterName:      router.Name,
-		ValidateSuccess: true,
-	}
-
-	for _, link := range linkDetails.Links {
-		detail := &mgmt_pb.RouterLinkDetail{
-			LinkId:       link.Id,
-			RouterState:  mgmt_pb.LinkState_LinkEstablished,
-			DestRouterId: link.Dest,
-			Dialed:       link.Dialed,
-		}
-		detail.DestConnected = n.ConnectedRouter(link.Dest)
-		if _, found := linkMap[link.Id]; found {
-			detail.CtrlState = mgmt_pb.LinkState_LinkEstablished
-			detail.IsValid = detail.DestConnected
-		} else {
-			detail.CtrlState = mgmt_pb.LinkState_LinkUnknown
-			detail.IsValid = !detail.DestConnected
-		}
-		delete(linkMap, link.Id)
-		result.LinkDetails = append(result.LinkDetails, detail)
-	}
-
-	for _, link := range linkMap {
-		related := false
-		dest := ""
-		if link.Src.Id == router.Id {
-			related = true
-			dest = link.DstId
-		} else if link.DstId == router.Id {
-			related = true
-			dest = link.Src.Id
-		}
-
-		if related {
-			detail := &mgmt_pb.RouterLinkDetail{
-				LinkId:        link.Id,
-				CtrlState:     mgmt_pb.LinkState_LinkEstablished,
-				DestConnected: n.ConnectedRouter(dest),
-				RouterState:   mgmt_pb.LinkState_LinkUnknown,
-				IsValid:       false,
-				DestRouterId:  dest,
-				Dialed:        link.Src.Id == router.Id,
-			}
-			result.LinkDetails = append(result.LinkDetails, detail)
-		}
-	}
-
-	cb(result)
-}
-
-func (self *linkController) reportRouterLinksError(router *Router, err error, cb LinkValidationCallback) {
-	result := &mgmt_pb.RouterLinkDetails{
-		RouterId:        router.Id,
-		RouterName:      router.Name,
-		ValidateSuccess: false,
-		Message:         err.Error(),
-	}
-	cb(result)
+func (self *LinkManager) LinksInMode(mode LinkMode) []*Link {
+	return self.linkTable.allInMode(mode)
 }
 
 /*

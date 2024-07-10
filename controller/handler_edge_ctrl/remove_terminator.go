@@ -88,7 +88,7 @@ func (self *removeTerminatorHandler) RemoveTerminator(ctx *RemoveTerminatorReque
 	// to check the session again here. The session may already be deleted, and if it is, we don't
 	// currently have a way to verify that it's associated. Also, with idempotent terminators, a
 	// terminator may belong to a series of sessions.
-	err := self.getNetwork().Terminators.Delete(ctx.req.TerminatorId, ctx.newChangeContext())
+	err := self.getNetwork().Terminator.Delete(ctx.req.TerminatorId, ctx.newChangeContext())
 	if err != nil {
 		self.returnError(ctx, internalError(err))
 		return

@@ -17,6 +17,7 @@
 package tests
 
 import (
+	"github.com/openziti/ziti/controller/config"
 	"io"
 	"net"
 	"net/http"
@@ -133,10 +134,10 @@ type TestContext struct {
 
 	edgeRouterEntity    *edgeRouter
 	transitRouterEntity *transitRouter
-	router              *router.Router
+	routers             []*router.Router
 	testing             *testing.T
 	LogLevel            string
-	ControllerConfig    *controller.Config
+	ControllerConfig    *config.Config
 }
 
 var defaultTestContext = &TestContext{
@@ -364,7 +365,7 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 	ctx.Req.NoError(err)
 
 	log.Info("loading config")
-	config, err := controller.LoadConfig(ControllerConfFile)
+	config, err := config.LoadConfig(ControllerConfFile)
 	ctx.Req.NoError(err)
 
 	ctx.ControllerConfig = config
@@ -374,7 +375,7 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 	ctx.Req.NoError(err)
 
 	log.Info("creating edge controller")
-	ctx.EdgeController, err = server.NewController(config, ctx.fabricController)
+	ctx.EdgeController, err = server.NewController(ctx.fabricController)
 	ctx.Req.NoError(err)
 
 	ctx.EdgeController.Initialize()
@@ -469,28 +470,22 @@ func (ctx *TestContext) createEnrollAndStartTransitRouter() {
 func (ctx *TestContext) startTransitRouter() {
 	config, err := router.LoadConfig(TransitRouterConfFile)
 	ctx.Req.NoError(err)
-	ctx.router = router.Create(config, NewVersionProviderTest())
+	newRouter := router.Create(config, NewVersionProviderTest())
+	ctx.routers = append(ctx.routers, newRouter)
 
-	ctx.Req.NoError(ctx.router.Start())
+	ctx.Req.NoError(newRouter.Start())
 }
 
 func (ctx *TestContext) CreateEnrollAndStartTunnelerEdgeRouter(roleAttributes ...string) {
-	ctx.shutdownRouter()
+	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(true, roleAttributes...)
 	ctx.startEdgeRouter()
 }
 
 func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string) {
-	ctx.shutdownRouter()
+	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
 	ctx.startEdgeRouter()
-}
-
-func (ctx *TestContext) shutdownRouter() {
-	if ctx.router != nil {
-		ctx.Req.NoError(ctx.router.Shutdown())
-		ctx.router = nil
-	}
 }
 
 func (ctx *TestContext) startEdgeRouter() {
@@ -500,18 +495,19 @@ func (ctx *TestContext) startEdgeRouter() {
 	}
 	config, err := router.LoadConfig(configFile)
 	ctx.Req.NoError(err)
-	ctx.router = router.Create(config, NewVersionProviderTest())
+	newRouter := router.Create(config, NewVersionProviderTest())
+	ctx.routers = append(ctx.routers, newRouter)
 
-	xgressEdgeFactory := xgress_edge.NewFactory(config, ctx.router, ctx.router.GetStateManager())
+	xgressEdgeFactory := xgress_edge.NewFactory(config, newRouter, newRouter.GetStateManager())
 	xgress.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
 
-	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(ctx.router, config, ctx.router.GetStateManager())
+	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(newRouter, config, newRouter.GetStateManager())
 	xgress.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
 
-	ctx.Req.NoError(ctx.router.RegisterXrctrl(xgressEdgeFactory))
-	ctx.Req.NoError(ctx.router.RegisterXrctrl(xgressEdgeTunnelFactory))
-	ctx.Req.NoError(ctx.router.RegisterXrctrl(ctx.router.GetStateManager()))
-	ctx.Req.NoError(ctx.router.Start())
+	ctx.Req.NoError(newRouter.RegisterXrctrl(xgressEdgeFactory))
+	ctx.Req.NoError(newRouter.RegisterXrctrl(xgressEdgeTunnelFactory))
+	ctx.Req.NoError(newRouter.RegisterXrctrl(newRouter.GetStateManager()))
+	ctx.Req.NoError(newRouter.Start())
 }
 
 func (ctx *TestContext) EnrollIdentity(identityId string) *ziti.Config {
@@ -565,7 +561,7 @@ func (ctx *TestContext) RequireAdminClientApiLogin() {
 
 func (ctx *TestContext) Teardown() {
 	pfxlog.Logger().Info("tearing down test context")
-	ctx.shutdownRouter()
+	ctx.shutdownRouters()
 	if ctx.EdgeController != nil {
 		ctx.EdgeController.Shutdown()
 		ctx.EdgeController = nil
@@ -878,6 +874,13 @@ func (ctx *TestContext) WrapConn(conn edge.Conn, err error) *TestConn {
 		Conn: conn,
 		ctx:  ctx,
 	}
+}
+
+func (ctx *TestContext) shutdownRouters() {
+	for _, r := range ctx.routers {
+		ctx.Req.NoError(r.Shutdown())
+	}
+	ctx.routers = nil
 }
 
 type TestConn struct {

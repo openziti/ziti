@@ -77,8 +77,8 @@ func (entity *ApiSession) fillFrom(env Env, tx *bbolt.Tx, boltApiSession *db.Api
 	entity.IPAddress = boltApiSession.IPAddress
 	entity.MfaRequired = boltApiSession.MfaRequired
 	entity.MfaComplete = boltApiSession.MfaComplete
-	entity.ExpiresAt = entity.UpdatedAt.Add(env.GetConfig().Api.SessionTimeout)
-	entity.ExpirationDuration = env.GetConfig().Api.SessionTimeout
+	entity.ExpiresAt = entity.UpdatedAt.Add(env.GetConfig().Edge.Api.SessionTimeout)
+	entity.ExpirationDuration = env.GetConfig().Edge.Api.SessionTimeout
 	entity.LastActivityAt = boltApiSession.LastActivityAt
 	entity.AuthenticatorId = boltApiSession.AuthenticatorId
 

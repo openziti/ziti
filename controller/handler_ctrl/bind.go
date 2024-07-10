@@ -18,6 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/sirupsen/logrus"
 	"time"
 
@@ -34,12 +35,12 @@ import (
 
 type bindHandler struct {
 	heartbeatOptions *channel.HeartbeatOptions
-	router           *network.Router
+	router           *model.Router
 	network          *network.Network
 	xctrls           []xctrl.Xctrl
 }
 
-func newBindHandler(heartbeatOptions *channel.HeartbeatOptions, router *network.Router, network *network.Network, xctrls []xctrl.Xctrl) channel.BindHandler {
+func newBindHandler(heartbeatOptions *channel.HeartbeatOptions, router *model.Router, network *network.Network, xctrls []xctrl.Xctrl) channel.BindHandler {
 	return &bindHandler{
 		heartbeatOptions: heartbeatOptions,
 		router:           router,

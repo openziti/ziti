@@ -4,9 +4,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/raft"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	config2 "github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/raft"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -14,15 +15,15 @@ import (
 // Settings are a map of  int32 -> []byte data. The type should be used to determine how the setting's []byte
 // array is consumed.
 type OnConnectSettingsHandler struct {
-	config   *Config
+	config   *config2.Config
 	settings map[int32][]byte
 }
 
-func (o *OnConnectSettingsHandler) RouterDisconnected(r *network.Router) {
+func (o *OnConnectSettingsHandler) RouterDisconnected(r *model.Router) {
 	//do nothing, satisfy interface
 }
 
-func (o OnConnectSettingsHandler) RouterConnected(r *network.Router) {
+func (o OnConnectSettingsHandler) RouterConnected(r *model.Router) {
 	if len(o.settings) > 0 {
 		settingsMsg := &ctrl_pb.Settings{
 			Data: map[int32][]byte{},
@@ -62,11 +63,11 @@ func NewOnConnectCtrlAddressesUpdateHandler(ctrlAddress string, raft *raft.Contr
 	}
 }
 
-func (o *OnConnectCtrlAddressesUpdateHandler) RouterDisconnected(r *network.Router) {
+func (o *OnConnectCtrlAddressesUpdateHandler) RouterDisconnected(r *model.Router) {
 	//do nothing, satisfy interface
 }
 
-func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *network.Router) {
+func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *model.Router) {
 	log := pfxlog.Logger().WithFields(map[string]interface{}{
 		"routerId": r.Id,
 		"channel":  r.Control.LogicalName(),

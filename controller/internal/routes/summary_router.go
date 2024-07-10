@@ -48,7 +48,7 @@ func (r *SummaryRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *SummaryRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	data, err := ae.GetStores().GetEntityCounts(ae.GetDbProvider().GetDb())
+	data, err := ae.GetStores().GetEntityCounts(ae.GetDb())
 	if err != nil {
 		rc.RespondWithError(err)
 	} else {

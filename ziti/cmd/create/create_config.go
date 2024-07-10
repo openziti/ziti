@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/channel/v2"
 	foundation "github.com/openziti/transport/v2"
 	fabXweb "github.com/openziti/xweb/v2"
-	fabCtrl "github.com/openziti/ziti/controller"
 	edge "github.com/openziti/ziti/controller/config"
 	fabForwarder "github.com/openziti/ziti/router/forwarder"
 	"github.com/sirupsen/logrus"
@@ -51,7 +50,7 @@ type CreateConfigOptions struct {
 }
 
 type ConfigTemplateValues struct {
-	ZitiHome string
+	ZitiHome              string
 	HostnameOrNetworkName string
 
 	Controller ControllerTemplateValues
@@ -256,9 +255,9 @@ func (data *ConfigTemplateValues) PopulateConfigValues() {
 	data.Controller.Ctrl.AdvertisedPort = cmdHelper.GetCtrlAdvertisedPort()
 	data.Controller.Database.DatabaseFile = cmdHelper.GetCtrlDatabaseFile()
 	// healthChecks:
-	data.Controller.HealthChecks.Interval = fabCtrl.DefaultHealthChecksBoltCheckInterval
-	data.Controller.HealthChecks.Timeout = fabCtrl.DefaultHealthChecksBoltCheckTimeout
-	data.Controller.HealthChecks.InitialDelay = fabCtrl.DefaultHealthChecksBoltCheckInitialDelay
+	data.Controller.HealthChecks.Interval = edge.DefaultHealthChecksBoltCheckInterval
+	data.Controller.HealthChecks.Timeout = edge.DefaultHealthChecksBoltCheckTimeout
+	data.Controller.HealthChecks.InitialDelay = edge.DefaultHealthChecksBoltCheckInitialDelay
 	// edge:
 	data.Controller.EdgeApi.APIActivityUpdateBatchSize = edge.DefaultEdgeApiActivityUpdateBatchSize
 	data.Controller.EdgeApi.APIActivityUpdateInterval = edge.DefaultEdgeAPIActivityUpdateInterval

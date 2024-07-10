@@ -23,12 +23,12 @@ import (
 	clientCurrentApiSession "github.com/openziti/edge-api/rest_client_api_server/operations/current_api_session"
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_server/operations/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/response"
 )
 
 func init() {
@@ -214,7 +214,7 @@ func (r *CurrentIdentityAuthenticatorRouter) Extend(ae *env.AppEnv, rc *response
 	}
 
 	rc.RespondWithOk(&rest_model.IdentityExtendCerts{
-		Ca:         string(ae.Config.CaPems()),
+		Ca:         string(ae.GetConfig().Edge.CaPems()),
 		ClientCert: string(certPem),
 	}, &rest_model.Meta{})
 }

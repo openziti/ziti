@@ -25,8 +25,8 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/dgryski/dgoogauth"
 	"github.com/google/uuid"
-	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/controller/apierror"
 	"image/png"
 	"net/http"
 	"net/url"
@@ -213,7 +213,7 @@ func Test_MFA(t *testing.T) {
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(mfaUrl.Host, "totp")
 
-				ctx.Req.Equal(mfaUrl.Path, "/"+ctx.EdgeController.AppEnv.Config.Totp.Hostname+":"+mfaStartedIdentityName)
+				ctx.Req.Equal(mfaUrl.Path, "/"+ctx.EdgeController.AppEnv.GetConfig().Edge.Totp.Hostname+":"+mfaStartedIdentityName)
 				ctx.Req.Equal(mfaUrl.Scheme, "otpauth")
 			})
 		})

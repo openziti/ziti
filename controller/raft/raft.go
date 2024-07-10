@@ -20,13 +20,13 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-hclog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/peermsg"
 	"os"
@@ -50,92 +50,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
-
-type Config struct {
-	Recover               bool
-	DataDir               string
-	MinClusterSize        uint32
-	AdvertiseAddress      transport.Address
-	BootstrapMembers      []string
-	CommandHandlerOptions struct {
-		MaxQueueSize uint16
-	}
-
-	SnapshotInterval  *time.Duration
-	SnapshotThreshold *uint32
-	TrailingLogs      *uint32
-	MaxAppendEntries  *uint32
-
-	ElectionTimeout    *time.Duration
-	CommitTimeout      *time.Duration
-	HeartbeatTimeout   *time.Duration
-	LeaderLeaseTimeout *time.Duration
-
-	LogLevel *string
-	Logger   hclog.Logger
-}
-
-func (self *Config) Configure(conf *raft.Config) {
-	if self.SnapshotThreshold != nil {
-		conf.SnapshotThreshold = uint64(*self.SnapshotThreshold)
-	}
-
-	if self.SnapshotInterval != nil {
-		conf.SnapshotInterval = *self.SnapshotInterval
-	}
-
-	if self.TrailingLogs != nil {
-		conf.TrailingLogs = uint64(*self.TrailingLogs)
-	}
-
-	if self.MaxAppendEntries != nil {
-		conf.MaxAppendEntries = int(*self.MaxAppendEntries)
-	}
-
-	if self.CommitTimeout != nil {
-		conf.CommitTimeout = *self.CommitTimeout
-	}
-
-	if self.ElectionTimeout != nil {
-		conf.ElectionTimeout = *self.ElectionTimeout
-	}
-
-	if self.HeartbeatTimeout != nil {
-		conf.HeartbeatTimeout = *self.HeartbeatTimeout
-	}
-
-	if self.LeaderLeaseTimeout != nil {
-		conf.LeaderLeaseTimeout = *self.LeaderLeaseTimeout
-	}
-
-	if self.LogLevel != nil {
-		conf.LogLevel = *self.LogLevel
-	}
-
-	conf.Logger = self.Logger
-}
-
-func (self *Config) ConfigureReloadable(conf *raft.ReloadableConfig) {
-	if self.SnapshotThreshold != nil {
-		conf.SnapshotThreshold = uint64(*self.SnapshotThreshold)
-	}
-
-	if self.SnapshotInterval != nil {
-		conf.SnapshotInterval = *self.SnapshotInterval
-	}
-
-	if self.TrailingLogs != nil {
-		conf.TrailingLogs = uint64(*self.TrailingLogs)
-	}
-
-	if self.ElectionTimeout != nil {
-		conf.ElectionTimeout = *self.ElectionTimeout
-	}
-
-	if self.HeartbeatTimeout != nil {
-		conf.HeartbeatTimeout = *self.HeartbeatTimeout
-	}
-}
 
 type RouterDispatchCallback func(*raft.Configuration) error
 
@@ -195,7 +109,7 @@ type Env interface {
 	GetId() *identity.TokenId
 	GetVersionProvider() versions.VersionProvider
 	GetCommandRateLimiterConfig() command.RateLimiterConfig
-	GetRaftConfig() *Config
+	GetRaftConfig() *config.RaftConfig
 	GetMetricsRegistry() metrics.Registry
 	GetEventDispatcher() event.Dispatcher
 	GetCloseNotify() <-chan struct{}
@@ -219,7 +133,7 @@ func NewController(env Env, migrationMgr MigrationManager) *Controller {
 // Controller manages RAFT related state and operations
 type Controller struct {
 	env                        Env
-	Config                     *Config
+	Config                     *config.RaftConfig
 	Mesh                       mesh.Mesh
 	Raft                       *raft.Raft
 	Fsm                        *BoltDbFsm
@@ -577,7 +491,7 @@ func (self *Controller) Init() error {
 	conf := raft.DefaultConfig()
 	conf.LocalID = raft.ServerID(self.env.GetId().Token)
 	conf.NoSnapshotRestoreOnStart = true
-	raftConfig.Configure(conf)
+	self.Configure(raftConfig, conf)
 
 	// Create the log store and stable store.
 	raftBoltFile := path.Join(raftConfig.DataDir, "raft.db")
@@ -633,7 +547,7 @@ func (self *Controller) Init() error {
 	}
 
 	rc := r.ReloadableConfig()
-	raftConfig.ConfigureReloadable(&rc)
+	self.ConfigureReloadable(raftConfig, &rc)
 	if err = r.ReloadConfig(rc); err != nil {
 		return errors.Wrap(err, "error reloading raft configuration")
 	}
@@ -643,6 +557,68 @@ func (self *Controller) Init() error {
 	self.ObserveLeaderChanges()
 
 	return nil
+}
+
+func (self *Controller) Configure(ctrlConfig *config.RaftConfig, conf *raft.Config) {
+	if ctrlConfig.SnapshotThreshold != nil {
+		conf.SnapshotThreshold = uint64(*ctrlConfig.SnapshotThreshold)
+	}
+
+	if ctrlConfig.SnapshotInterval != nil {
+		conf.SnapshotInterval = *ctrlConfig.SnapshotInterval
+	}
+
+	if ctrlConfig.TrailingLogs != nil {
+		conf.TrailingLogs = uint64(*ctrlConfig.TrailingLogs)
+	}
+
+	if ctrlConfig.MaxAppendEntries != nil {
+		conf.MaxAppendEntries = int(*ctrlConfig.MaxAppendEntries)
+	}
+
+	if ctrlConfig.CommitTimeout != nil {
+		conf.CommitTimeout = *ctrlConfig.CommitTimeout
+	}
+
+	if ctrlConfig.ElectionTimeout != nil {
+		conf.ElectionTimeout = *ctrlConfig.ElectionTimeout
+	}
+
+	if ctrlConfig.HeartbeatTimeout != nil {
+		conf.HeartbeatTimeout = *ctrlConfig.HeartbeatTimeout
+	}
+
+	if ctrlConfig.LeaderLeaseTimeout != nil {
+		conf.LeaderLeaseTimeout = *ctrlConfig.LeaderLeaseTimeout
+	}
+
+	if ctrlConfig.LogLevel != nil {
+		conf.LogLevel = *ctrlConfig.LogLevel
+	}
+
+	conf.Logger = ctrlConfig.Logger
+}
+
+func (self *Controller) ConfigureReloadable(ctrlConfig *config.RaftConfig, conf *raft.ReloadableConfig) {
+	if ctrlConfig.SnapshotThreshold != nil {
+		conf.SnapshotThreshold = uint64(*ctrlConfig.SnapshotThreshold)
+	}
+
+	if ctrlConfig.SnapshotInterval != nil {
+		conf.SnapshotInterval = *ctrlConfig.SnapshotInterval
+	}
+
+	if ctrlConfig.TrailingLogs != nil {
+		conf.TrailingLogs = uint64(*ctrlConfig.TrailingLogs)
+	}
+
+	if ctrlConfig.ElectionTimeout != nil {
+		conf.ElectionTimeout = *ctrlConfig.ElectionTimeout
+	}
+
+	if ctrlConfig.HeartbeatTimeout != nil {
+		conf.HeartbeatTimeout = *ctrlConfig.HeartbeatTimeout
+	}
 }
 
 func (self *Controller) validateCert() {

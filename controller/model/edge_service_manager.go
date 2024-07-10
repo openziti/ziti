@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"time"
@@ -34,19 +33,19 @@ import (
 
 func NewEdgeServiceManager(env Env) *EdgeServiceManager {
 	manager := &EdgeServiceManager{
-		baseEntityManager: newBaseEntityManager[*Service, *db.EdgeService](env, env.GetStores().EdgeService),
+		baseEntityManager: newBaseEntityManager[*EdgeService, *db.EdgeService](env, env.GetStores().EdgeService),
 		detailLister:      &ServiceDetailLister{},
 	}
 	manager.impl = manager
 	manager.detailLister.manager = manager
 
-	network.RegisterManagerDecoder[*Service](env.GetHostController().GetNetwork().Managers, manager)
+	RegisterManagerDecoder[*EdgeService](env, manager)
 
 	return manager
 }
 
 type EdgeServiceManager struct {
-	baseEntityManager[*Service, *db.EdgeService]
+	baseEntityManager[*EdgeService, *db.EdgeService]
 	detailLister *ServiceDetailLister
 }
 
@@ -58,32 +57,32 @@ func (self *EdgeServiceManager) GetEntityTypeId() string {
 	return "edgeServices"
 }
 
-func (self *EdgeServiceManager) newModelEntity() *Service {
-	return &Service{}
+func (self *EdgeServiceManager) newModelEntity() *EdgeService {
+	return &EdgeService{}
 }
 
-func (self *EdgeServiceManager) Create(entity *Service, ctx *change.Context) error {
-	return network.DispatchCreate[*Service](self, entity, ctx)
+func (self *EdgeServiceManager) Create(entity *EdgeService, ctx *change.Context) error {
+	return DispatchCreate[*EdgeService](self, entity, ctx)
 }
 
-func (self *EdgeServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Service], ctx boltz.MutateContext) error {
+func (self *EdgeServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*EdgeService], ctx boltz.MutateContext) error {
 	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
-func (self *EdgeServiceManager) Update(entity *Service, checker fields.UpdatedFields, ctx *change.Context) error {
+func (self *EdgeServiceManager) Update(entity *EdgeService, checker fields.UpdatedFields, ctx *change.Context) error {
 	if checker != nil {
 		checker = checker.RemoveFields("encryptionRequired")
 	}
-	return network.DispatchUpdate[*Service](self, entity, checker, ctx)
+	return DispatchUpdate[*EdgeService](self, entity, checker, ctx)
 }
 
-func (self *EdgeServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service], ctx boltz.MutateContext) error {
+func (self *EdgeServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*EdgeService], ctx boltz.MutateContext) error {
 	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
-func (self *EdgeServiceManager) ReadByName(name string) (*Service, error) {
-	entity := &Service{}
+func (self *EdgeServiceManager) ReadByName(name string) (*EdgeService, error) {
+	entity := &EdgeService{}
 	nameIndex := self.env.GetStores().EdgeService.GetNameIndex()
 	if err := self.readEntityWithIndex("name", []byte(name), nameIndex, entity); err != nil {
 		return nil, err
@@ -193,7 +192,7 @@ func (self *EdgeServiceManager) QueryRoleAttributes(queryString string) ([]strin
 	return self.queryRoleAttributes(index, queryString)
 }
 
-func (self *EdgeServiceManager) Marshall(entity *Service) ([]byte, error) {
+func (self *EdgeServiceManager) Marshall(entity *EdgeService) ([]byte, error) {
 	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
 	if err != nil {
 		return nil, err
@@ -213,13 +212,13 @@ func (self *EdgeServiceManager) Marshall(entity *Service) ([]byte, error) {
 	return proto.Marshal(msg)
 }
 
-func (self *EdgeServiceManager) Unmarshall(bytes []byte) (*Service, error) {
+func (self *EdgeServiceManager) Unmarshall(bytes []byte) (*EdgeService, error) {
 	msg := &edge_cmd_pb.Service{}
 	if err := proto.Unmarshal(bytes, msg); err != nil {
 		return nil, err
 	}
 
-	return &Service{
+	return &EdgeService{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
 			Tags: edge_cmd_pb.DecodeTags(msg.Tags),

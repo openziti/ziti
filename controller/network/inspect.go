@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/model"
 	"regexp"
 	"sync"
 	"time"
@@ -137,7 +138,7 @@ func (ctx *inspectRequestContext) inspectLocal() {
 	}
 }
 
-func (ctx *inspectRequestContext) inspectRouter(router *Router) {
+func (ctx *inspectRequestContext) inspectRouter(router *model.Router) {
 	log := pfxlog.Logger().
 		WithField("appRegex", ctx.appRegex).
 		WithField("routerId", router.Id).

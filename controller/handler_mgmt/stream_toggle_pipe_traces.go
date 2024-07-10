@@ -18,6 +18,7 @@ package handler_mgmt
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/controller/model"
 	"sync"
 	"time"
 
@@ -141,7 +142,7 @@ func getApplyResults(resultChan chan trace.ToggleApplyResult, verbosity trace.To
 	}
 }
 
-func handleResponse(router *network.Router, mgmtReq *channel.Message, msgsCh chan<- *remoteToggleResult, waitGroup *sync.WaitGroup) {
+func handleResponse(router *model.Router, mgmtReq *channel.Message, msgsCh chan<- *remoteToggleResult, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 
 	msg := channel.NewMessage(int32(ctrl_pb.ContentType_TogglePipeTracesRequestType), mgmtReq.Body)

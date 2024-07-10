@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 	"strconv"
 
@@ -56,8 +55,8 @@ func NewEdgeRouterManager(env Env) *EdgeRouterManager {
 	manager.impl = manager
 
 	RegisterCommand(env, &CreateEdgeRouterCmd{}, &edge_cmd_pb.CreateEdgeRouterCmd{})
-	network.RegisterUpdateDecoder[*EdgeRouter](env.GetHostController().GetNetwork().Managers, manager)
-	network.RegisterDeleteDecoder(env.GetHostController().GetNetwork().Managers, manager)
+	RegisterUpdateDecoder[*EdgeRouter](env, manager)
+	RegisterDeleteDecoder(env, manager)
 
 	return manager
 }
@@ -192,7 +191,7 @@ func (self *EdgeRouterManager) Query(query string) (*EdgeRouterListResult, error
 func (self *EdgeRouterManager) ListForIdentityAndService(identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
 	var list *EdgeRouterListResult
 	var err error
-	if txErr := self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	if txErr := self.env.GetDb().View(func(tx *bbolt.Tx) error {
 		list, err = self.ListForIdentityAndServiceWithTx(tx, identityId, serviceId, limit)
 		return nil
 	}); txErr != nil {

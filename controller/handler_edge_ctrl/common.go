@@ -110,10 +110,10 @@ type baseSessionRequestContext struct {
 	handler      requestHandler
 	msg          *channel.Message
 	err          controllerError
-	sourceRouter *network.Router
+	sourceRouter *model.Router
 	session      *model.Session
 	apiSession   *model.ApiSession
-	service      *model.Service
+	service      *model.EdgeService
 	newSession   bool
 	logContext   logcontext.Context
 	env          model.Env
@@ -426,11 +426,11 @@ func (self *baseSessionRequestContext) loadService() {
 	}
 }
 
-func (self *baseSessionRequestContext) verifyTerminator(terminatorId string, binding string) *network.Terminator {
+func (self *baseSessionRequestContext) verifyTerminator(terminatorId string, binding string) *model.Terminator {
 	if self.err == nil {
-		var terminator *network.Terminator
+		var terminator *model.Terminator
 		var err error
-		terminator, err = self.handler.getNetwork().Terminators.Read(terminatorId)
+		terminator, err = self.handler.getNetwork().Terminator.Read(terminatorId)
 
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
@@ -498,7 +498,7 @@ func (self *baseSessionRequestContext) verifyTerminatorId(id string) {
 	}
 }
 
-func (self *baseSessionRequestContext) updateTerminator(terminator *network.Terminator, request UpdateTerminatorRequest, ctx *change.Context) {
+func (self *baseSessionRequestContext) updateTerminator(terminator *model.Terminator, request UpdateTerminatorRequest, ctx *change.Context) {
 	if self.err == nil {
 		checker := fields.UpdatedFieldsMap{}
 
@@ -526,11 +526,11 @@ func (self *baseSessionRequestContext) updateTerminator(terminator *network.Term
 			checker[db.FieldTerminatorPrecedence] = struct{}{}
 		}
 
-		self.err = internalError(self.handler.getNetwork().Terminators.Update(terminator, checker, ctx))
+		self.err = internalError(self.handler.getNetwork().Terminator.Update(terminator, checker, ctx))
 	}
 }
 
-func (self *baseSessionRequestContext) newCircuitCreateParms(serviceId string, peerData map[uint32][]byte) network.CreateCircuitParams {
+func (self *baseSessionRequestContext) newCircuitCreateParms(serviceId string, peerData map[uint32][]byte) model.CreateCircuitParams {
 	return &sessionCircuitParams{
 		serviceId:    serviceId,
 		sourceRouter: self.sourceRouter,
@@ -541,7 +541,7 @@ func (self *baseSessionRequestContext) newCircuitCreateParms(serviceId string, p
 	}
 }
 
-func (self *baseSessionRequestContext) newTunnelCircuitCreateParms(serviceId string, peerData map[uint32][]byte) network.CreateCircuitParams {
+func (self *baseSessionRequestContext) newTunnelCircuitCreateParms(serviceId string, peerData map[uint32][]byte) model.CreateCircuitParams {
 	return &tunnelCircuitParams{
 		serviceId:    serviceId,
 		sourceRouter: self.sourceRouter,
@@ -552,10 +552,10 @@ func (self *baseSessionRequestContext) newTunnelCircuitCreateParms(serviceId str
 	}
 }
 
-type circuitParamsFactory = func(serviceId string, peerData map[uint32][]byte) network.CreateCircuitParams
+type circuitParamsFactory = func(serviceId string, peerData map[uint32][]byte) model.CreateCircuitParams
 
-func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string, peerData map[uint32][]byte, paramsFactory circuitParamsFactory) (*network.Circuit, map[uint32][]byte) {
-	var circuit *network.Circuit
+func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string, peerData map[uint32][]byte, paramsFactory circuitParamsFactory) (*model.Circuit, map[uint32][]byte) {
+	var circuit *model.Circuit
 	returnPeerData := map[uint32][]byte{}
 
 	if self.err == nil {
@@ -606,7 +606,7 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 
 type sessionCircuitParams struct {
 	serviceId    string
-	sourceRouter *network.Router
+	sourceRouter *model.Router
 	clientId     *identity.TokenId
 	logCtx       logcontext.Context
 	deadline     time.Time
@@ -617,7 +617,7 @@ func (self *sessionCircuitParams) GetServiceId() string {
 	return self.serviceId
 }
 
-func (self *sessionCircuitParams) GetSourceRouter() *network.Router {
+func (self *sessionCircuitParams) GetSourceRouter() *model.Router {
 	return self.sourceRouter
 }
 
@@ -651,7 +651,7 @@ func (self *sessionCircuitParams) GetDeadline() time.Time {
 
 type tunnelCircuitParams struct {
 	serviceId    string
-	sourceRouter *network.Router
+	sourceRouter *model.Router
 	clientId     *identity.TokenId
 	logCtx       logcontext.Context
 	deadline     time.Time
@@ -662,7 +662,7 @@ func (self *tunnelCircuitParams) GetServiceId() string {
 	return self.serviceId
 }
 
-func (self *tunnelCircuitParams) GetSourceRouter() *network.Router {
+func (self *tunnelCircuitParams) GetSourceRouter() *model.Router {
 	return self.sourceRouter
 }
 

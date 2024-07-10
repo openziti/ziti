@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/model"
 	"time"
 )
 
@@ -32,13 +33,13 @@ func (network *Network) assemble() {
 
 	log := pfxlog.Logger()
 
-	if network.Routers.connectedCount() > 1 {
-		log.Tracef("assembling with [%d] routers", network.Routers.connectedCount())
+	if network.Router.ConnectedCount() > 1 {
+		log.Tracef("assembling with [%d] routers", network.Router.ConnectedCount())
 
-		missingLinks, err := network.linkController.missingLinks(network.Routers.allConnected(), network.options.PendingLinkTimeout)
+		missingLinks, err := network.Link.MissingLinks(network.Router.AllConnected(), network.options.PendingLinkTimeout)
 		if err == nil {
 			for _, missingLink := range missingLinks {
-				network.linkController.add(missingLink)
+				network.Link.Add(missingLink)
 
 				dial := &ctrl_pb.Dial{
 					LinkId:       missingLink.Id,
@@ -68,11 +69,11 @@ func (network *Network) assemble() {
 			log.WithField("err", err).Error("missing link enumeration failed")
 		}
 
-		network.linkController.clearExpiredPending(network.options.PendingLinkTimeout)
+		network.Link.ClearExpiredPending(network.options.PendingLinkTimeout)
 	}
 }
 
-func (network *Network) NotifyLinkEvent(link *Link, eventType event.LinkEventType) {
+func (network *Network) NotifyLinkEvent(link *model.Link, eventType event.LinkEventType) {
 	linkEvent := &event.LinkEvent{
 		Namespace:   event.LinkEventsNs,
 		EventType:   eventType,
@@ -87,7 +88,7 @@ func (network *Network) NotifyLinkEvent(link *Link, eventType event.LinkEventTyp
 	network.eventDispatcher.AcceptLinkEvent(linkEvent)
 }
 
-func (network *Network) NotifyLinkConnected(link *Link, msg *ctrl_pb.LinkConnected) {
+func (network *Network) NotifyLinkConnected(link *model.Link, msg *ctrl_pb.LinkConnected) {
 	linkEvent := &event.LinkEvent{
 		Namespace:   event.LinkEventsNs,
 		EventType:   event.LinkConnected,
@@ -124,12 +125,12 @@ func (network *Network) NotifyLinkIdEvent(linkId string, eventType event.LinkEve
 func (network *Network) clean() {
 	log := pfxlog.Logger()
 
-	failedLinks := network.linkController.linksInMode(Failed)
-	duplicateLinks := network.linkController.linksInMode(Duplicate)
+	failedLinks := network.Link.LinksInMode(model.Failed)
+	duplicateLinks := network.Link.LinksInMode(model.Duplicate)
 	failedLinks = append(failedLinks, duplicateLinks...)
 
 	now := info.NowInMilliseconds()
-	var lRemove []*Link
+	var lRemove []*model.Link
 	for _, l := range failedLinks {
 		if now-l.CurrentState().Timestamp >= 30000 {
 			lRemove = append(lRemove, l)
@@ -137,6 +138,6 @@ func (network *Network) clean() {
 	}
 	for _, lr := range lRemove {
 		log.WithField("linkId", lr.Id).Info("removing failed link")
-		network.linkController.remove(lr)
+		network.Link.Remove(lr)
 	}
 }
