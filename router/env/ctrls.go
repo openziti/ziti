@@ -22,6 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common/inspect"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"sync"
@@ -43,6 +44,7 @@ type NetworkControllers interface {
 	DefaultRequestTimeout() time.Duration
 	ForEach(f func(ctrlId string, ch channel.Channel))
 	Close() error
+	Inspect() *inspect.ControllerInspectDetails
 }
 
 type CtrlDialer func(address transport.Address, bindHandler channel.BindHandler) error
@@ -250,4 +252,28 @@ func (self *networkControllers) CloseAndRemoveByAddress(address string) {
 			}
 		}
 	}
+}
+
+func (self *networkControllers) Inspect() *inspect.ControllerInspectDetails {
+	result := &inspect.ControllerInspectDetails{
+		Controllers: map[string]*inspect.ControllerInspectDetail{},
+	}
+
+	for id, ctrl := range self.ctrls.AsMap() {
+		version := ""
+		if ctrl.GetVersion() != nil {
+			version = ctrl.GetVersion().Version
+		}
+		result.Controllers[id] = &inspect.ControllerInspectDetail{
+			ControllerId:         id,
+			IsConnected:          ctrl.IsConnected(),
+			IsResponsive:         !ctrl.IsUnresponsive(),
+			Address:              ctrl.Address(),
+			Latency:              ctrl.Latency().String(),
+			Version:              version,
+			TimeSinceLastContact: ctrl.TimeSinceLastContact().String(),
+		}
+	}
+
+	return result
 }

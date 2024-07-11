@@ -33,6 +33,7 @@ type NetworkController interface {
 	isMoreResponsive(other NetworkController) bool
 	GetVersion() *versions.VersionInfo
 	TimeSinceLastContact() time.Duration
+	IsConnected() bool
 }
 
 type networkCtrl struct {
@@ -111,11 +112,16 @@ func (self *networkCtrl) CheckHeartBeat() {
 	} else if self.lastTx > 0 && self.lastRx < self.lastTx && (time.Now().UnixMilli()-self.lastTx) > 5000 {
 		// if we've sent a heartbeat and not gotten a response in over 5s, consider ourselves unresponsive
 		self.unresponsive.Store(true)
-	} else if connectable, ok := self.ch.Underlay().(interface{ IsConnected() bool }); ok && !connectable.IsConnected() {
-		self.unresponsive.Store(false)
+	} else if !self.IsConnected() {
+		self.unresponsive.Store(true)
 	} else {
 		self.unresponsive.Store(false)
 	}
+}
+
+func (self *networkCtrl) IsConnected() bool {
+	connectable, ok := self.ch.Underlay().(interface{ IsConnected() bool })
+	return ok && connectable.IsConnected()
 }
 
 func NewDefaultHeartbeatOptions() *HeartbeatOptions {
