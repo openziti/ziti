@@ -82,9 +82,8 @@ type ApiProxy struct {
 }
 
 func NewConfig(routerConfig *router.Config) *Config {
-	cfg := *routerConfig
 	return &Config{
-		RouterConfig: &cfg,
+		RouterConfig: routerConfig,
 	}
 }
 
