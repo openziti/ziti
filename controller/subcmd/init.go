@@ -161,7 +161,6 @@ func configureController(configPath string, versionProvider versions.VersionProv
 		panic(err)
 	}
 
-	edgeController.SetHostController(fabricController)
 	edgeController.Initialize()
 
 	return edgeController
