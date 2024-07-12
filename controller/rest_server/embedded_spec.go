@@ -1943,9 +1943,6 @@ func init() {
         }
       }
     },
-    "raftMemberListRequest": {
-      "type": "object"
-    },
     "raftMemberListResponse": {
       "type": "object",
       "properties": {
@@ -1965,7 +1962,8 @@ func init() {
         "voter",
         "leader",
         "version",
-        "connected"
+        "connected",
+        "readOnly"
       ],
       "properties": {
         "address": {
@@ -1978,6 +1976,9 @@ func init() {
           "type": "string"
         },
         "leader": {
+          "type": "boolean"
+        },
+        "readOnly": {
           "type": "boolean"
         },
         "version": {
@@ -7538,9 +7539,6 @@ func init() {
         }
       }
     },
-    "raftMemberListRequest": {
-      "type": "object"
-    },
     "raftMemberListResponse": {
       "type": "object",
       "properties": {
@@ -7560,7 +7558,8 @@ func init() {
         "voter",
         "leader",
         "version",
-        "connected"
+        "connected",
+        "readOnly"
       ],
       "properties": {
         "address": {
@@ -7573,6 +7572,9 @@ func init() {
           "type": "string"
         },
         "leader": {
+          "type": "boolean"
+        },
+        "readOnly": {
           "type": "boolean"
         },
         "version": {
