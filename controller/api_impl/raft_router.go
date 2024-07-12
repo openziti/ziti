@@ -101,7 +101,7 @@ func (r *RaftRouter) listMembers(n *network.Network, rc api.RequestContext) {
 		}
 
 		rc.Respond(rest_model.RaftMemberListResponse{
-			Values: vals,
+			Data: vals,
 		}, http.StatusOK)
 
 	} else {

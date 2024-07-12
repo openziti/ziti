@@ -1949,7 +1949,7 @@ func init() {
     "raftMemberListResponse": {
       "type": "object",
       "properties": {
-        "values": {
+        "data": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/raftMemberListValue"
@@ -7544,7 +7544,7 @@ func init() {
     "raftMemberListResponse": {
       "type": "object",
       "properties": {
-        "values": {
+        "data": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/raftMemberListValue"
