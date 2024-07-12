@@ -44,7 +44,7 @@ type Enrollment struct {
 }
 
 func (entity *Enrollment) FillJwtInfo(env Env, subject string) error {
-	expiresAt := time.Now().Add(env.GetConfig().Enrollment.EdgeIdentity.Duration).UTC()
+	expiresAt := time.Now().Add(env.GetConfig().Edge.Enrollment.EdgeIdentity.Duration).UTC()
 	return entity.FillJwtInfoWithExpiresAt(env, subject, expiresAt)
 }
 
@@ -72,7 +72,7 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 			Audience:  []string{""},
 			ExpiresAt: &jwt.NumericDate{Time: expiresAt},
 			ID:        entity.Token,
-			Issuer:    fmt.Sprintf("https://%s", env.GetConfig().Api.Address),
+			Issuer:    fmt.Sprintf("https://%s", env.GetConfig().Edge.Api.Address),
 			Subject:   subject,
 		},
 	}

@@ -111,6 +111,8 @@ func (self *networkCtrl) CheckHeartBeat() {
 	} else if self.lastTx > 0 && self.lastRx < self.lastTx && (time.Now().UnixMilli()-self.lastTx) > 5000 {
 		// if we've sent a heartbeat and not gotten a response in over 5s, consider ourselves unresponsive
 		self.unresponsive.Store(true)
+	} else if connectable, ok := self.ch.Underlay().(interface{ IsConnected() bool }); ok && !connectable.IsConnected() {
+		self.unresponsive.Store(false)
 	} else {
 		self.unresponsive.Store(false)
 	}

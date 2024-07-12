@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package network
+package model
 
 import (
 	"github.com/michaelquigley/pfxlog"
@@ -26,45 +26,21 @@ import (
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/orcaman/concurrent-map/v2"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"reflect"
 	"time"
 )
 
-type Service struct {
-	models.BaseEntity
-	Name               string
-	TerminatorStrategy string
-	Terminators        []*Terminator
-	MaxIdleTime        time.Duration
-}
-
-func (self *Service) GetName() string {
-	return self.Name
-}
-
-func (entity *Service) toBolt() *db.Service {
-	return &db.Service{
-		BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Name:               entity.Name,
-		MaxIdleTime:        entity.MaxIdleTime,
-		TerminatorStrategy: entity.TerminatorStrategy,
-	}
-}
-
-func newServiceManager(managers *Managers) *ServiceManager {
+func newServiceManager(env Env) *ServiceManager {
 	result := &ServiceManager{
-		baseEntityManager: newBaseEntityManager[*Service, *db.Service](managers, managers.stores.Service, func() *Service {
-			return &Service{}
-		}),
-		cache: cmap.New[*Service](),
-		store: managers.stores.Service,
+		baseEntityManager: newBaseEntityManager[*Service, *db.Service](env, env.GetStores().Service),
+		cache:             cmap.New[*Service](),
 	}
-	result.populateEntity = result.populateService
+	result.impl = result
 
-	managers.stores.Service.AddEntityIdListener(result.RemoveFromCache, boltz.EntityUpdated, boltz.EntityDeleted)
+	env.GetStores().Service.AddEntityIdListener(result.RemoveFromCache, boltz.EntityUpdated, boltz.EntityDeleted)
+
+	RegisterManagerDecoder[*Service](env, result)
 
 	return result
 }
@@ -72,15 +48,18 @@ func newServiceManager(managers *Managers) *ServiceManager {
 type ServiceManager struct {
 	baseEntityManager[*Service, *db.Service]
 	cache cmap.ConcurrentMap[string, *Service]
-	store db.ServiceStore
+}
+
+func (self *ServiceManager) newModelEntity() *Service {
+	return &Service{}
 }
 
 func (self *ServiceManager) NotifyTerminatorChanged(terminator *db.Terminator) *db.Terminator {
 	// patched entities may not have all fields, if service is blank, load terminator
 	serviceId := terminator.Service
 	if serviceId == "" {
-		err := self.db.View(func(tx *bbolt.Tx) error {
-			t, _, err := self.stores.Terminator.FindById(tx, terminator.Id)
+		err := self.GetDb().View(func(tx *bbolt.Tx) error {
+			t, _, err := self.env.GetStores().Terminator.FindById(tx, terminator.Id)
 			if t != nil {
 				terminator = t
 			}
@@ -102,21 +81,8 @@ func (self *ServiceManager) Create(entity *Service, ctx *change.Context) error {
 }
 
 func (self *ServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Service], ctx boltz.MutateContext) error {
-	s := cmd.Entity
-	err := self.db.Update(ctx, func(ctx boltz.MutateContext) error {
-		if err := self.ValidateNameOnCreate(ctx.Tx(), s); err != nil {
-			return err
-		}
-		if err := self.store.Create(ctx, s.toBolt()); err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	// don't cache, wait for first read. entity may not match data store as data store may have set defaults
-	return nil
+	_, err := self.createEntity(cmd.Entity, ctx)
+	return err
 }
 
 func (self *ServiceManager) Update(entity *Service, updatedFields fields.UpdatedFields, ctx *change.Context) error {
@@ -124,7 +90,7 @@ func (self *ServiceManager) Update(entity *Service, updatedFields fields.Updated
 }
 
 func (self *ServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service], ctx boltz.MutateContext) error {
-	if err := self.updateGeneral(ctx, cmd.Entity, cmd.UpdatedFields); err != nil {
+	if err := self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx); err != nil {
 		return err
 	}
 	self.RemoveFromCache(cmd.Entity.Id)
@@ -132,7 +98,7 @@ func (self *ServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Servic
 }
 
 func (self *ServiceManager) Read(id string) (entity *Service, err error) {
-	err = self.db.View(func(tx *bbolt.Tx) error {
+	err = self.GetDb().View(func(tx *bbolt.Tx) error {
 		entity, err = self.readInTx(tx, id)
 		return err
 	})
@@ -144,8 +110,8 @@ func (self *ServiceManager) Read(id string) (entity *Service, err error) {
 
 func (self *ServiceManager) GetIdForName(id string) (string, error) {
 	var result []byte
-	err := self.db.View(func(tx *bbolt.Tx) error {
-		result = self.store.GetNameIndex().Read(tx, []byte(id))
+	err := self.GetDb().View(func(tx *bbolt.Tx) error {
+		result = self.env.GetStores().Service.GetNameIndex().Read(tx, []byte(id))
 		return nil
 	})
 	return string(result), err
@@ -163,26 +129,6 @@ func (self *ServiceManager) readInTx(tx *bbolt.Tx, id string) (*Service, error) 
 
 	self.cacheService(entity)
 	return entity, nil
-}
-
-func (self *ServiceManager) populateService(entity *Service, tx *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltService, ok := boltEntity.(*db.Service)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
-	}
-	entity.Name = boltService.Name
-	entity.MaxIdleTime = boltService.MaxIdleTime
-	entity.TerminatorStrategy = boltService.TerminatorStrategy
-	entity.FillCommon(boltService)
-
-	terminatorIds := self.store.GetRelatedEntitiesIdList(tx, entity.Id, db.EntityTypeTerminators)
-	for _, terminatorId := range terminatorIds {
-		if terminator, _ := self.Terminators.readInTx(tx, terminatorId); terminator != nil {
-			entity.Terminators = append(entity.Terminators, terminator)
-		}
-	}
-
-	return nil
 }
 
 func (self *ServiceManager) cacheService(service *Service) {

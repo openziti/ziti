@@ -85,7 +85,7 @@ func (router *CurrentSessionRouter) Register(ae *env.AppEnv) {
 }
 
 func (router *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	apiSession := MapToCurrentApiSessionRestModel(ae, rc, ae.Config.SessionTimeoutDuration())
+	apiSession := MapToCurrentApiSessionRestModel(ae, rc, ae.GetConfig().Edge.SessionTimeoutDuration())
 
 	rc.Respond(rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}, http.StatusOK)
 }
@@ -205,7 +205,7 @@ func (nsr *ApiSessionCertificateCreateResponder) RespondWithCreatedId(id string,
 				ID:    sessionCert.Id,
 			},
 			Certificate: &certString,
-			Cas:         string(nsr.ae.Config.CaPems()),
+			Cas:         string(nsr.ae.GetConfig().Edge.CaPems()),
 		},
 		Meta: &rest_model.Meta{},
 	}

@@ -28,6 +28,7 @@ import (
 	id "github.com/openziti/identity"
 	"github.com/openziti/identity/certtools"
 	"github.com/openziti/ziti/controller/api_impl"
+	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/rest_client"
 	restClientRouter "github.com/openziti/ziti/controller/rest_client/router"
 	"github.com/openziti/ziti/controller/rest_model"
@@ -77,7 +78,7 @@ type FabricTestContext struct {
 	routers          []*router.Router
 	testing          *testing.T
 	LogLevel         string
-	ControllerConfig *controller.Config
+	ControllerConfig *config.Config
 }
 
 func NewFabricTestContext(t *testing.T) *FabricTestContext {
@@ -179,7 +180,7 @@ func (ctx *FabricTestContext) StartServerFor(test string, clean bool) {
 	ctx.Req.NoError(err)
 
 	log.Info("loading config")
-	config, err := controller.LoadConfig(FabricControllerConfFile)
+	config, err := config.LoadConfig(FabricControllerConfFile)
 	ctx.Req.NoError(err)
 
 	ctx.ControllerConfig = config

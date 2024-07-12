@@ -89,6 +89,7 @@ func (r *RaftRouter) listMembers(n *network.Network, rc api.RequestContext) {
 		if err != nil {
 			rc.Respond(rest_model.RaftMemberListResponse{}, http.StatusInternalServerError)
 		}
+		readOnly := raftController.Mesh.IsReadOnly()
 		for _, member := range members {
 			vals = append(vals, &rest_model.RaftMemberListValue{
 				Address:   &member.Addr,
@@ -97,11 +98,12 @@ func (r *RaftRouter) listMembers(n *network.Network, rc api.RequestContext) {
 				Leader:    &member.Leader,
 				Version:   &member.Version,
 				Voter:     &member.Voter,
+				ReadOnly:  &readOnly,
 			})
 		}
 
 		rc.Respond(rest_model.RaftMemberListResponse{
-			Values: vals,
+			Data: vals,
 		}, http.StatusOK)
 
 	} else {

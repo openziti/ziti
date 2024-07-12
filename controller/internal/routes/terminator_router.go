@@ -19,12 +19,12 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/terminator"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/api_impl"
+	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/response"
 )
 
 func init() {
@@ -69,11 +69,11 @@ func (r *TerminatorRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *TerminatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	api_impl.ListWithHandler[*network.Terminator](ae.GetHostController().GetNetwork(), rc, ae.Managers.Terminator, TerminatorModelMapper{})
+	api_impl.ListWithHandler[*model.Terminator](ae.GetHostController().GetNetwork(), rc, ae.Managers.Terminator, TerminatorModelMapper{})
 }
 
 func (r *TerminatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	api_impl.DetailWithHandler[*network.Terminator](ae.GetHostController().GetNetwork(), rc, ae.Managers.Terminator, TerminatorModelMapper{})
+	api_impl.DetailWithHandler[*model.Terminator](ae.GetHostController().GetNetwork(), rc, ae.Managers.Terminator, TerminatorModelMapper{})
 }
 
 func (r *TerminatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params terminator.CreateTerminatorParams) {

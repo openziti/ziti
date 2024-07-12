@@ -39,7 +39,6 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/handler_edge_ctrl"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/network"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -212,7 +211,7 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 		updateHandler: strategy.ControllerUpdate,
 	}
 
-	strategy.ae.GetDbProvider().GetDb().AddTxCompleteListener(strategy.completeChangeSet)
+	strategy.ae.GetDb().AddTxCompleteListener(strategy.completeChangeSet)
 
 	return nil
 }
@@ -291,7 +290,7 @@ func (strategy *InstantStrategy) Stop() {
 	}
 }
 
-func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, router *network.Router) {
+func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, router *model.Router) {
 	log := pfxlog.Logger().WithField("sync_strategy", strategy.Type()).
 		WithField("routerId", router.Id).
 		WithField("routerName", router.Name).
@@ -322,7 +321,7 @@ func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, r
 	strategy.routerConnectedQueue <- rtx
 }
 
-func (strategy *InstantStrategy) RouterDisconnected(router *network.Router) {
+func (strategy *InstantStrategy) RouterDisconnected(router *model.Router) {
 	log := pfxlog.Logger().WithField("sync_strategy", strategy.Type()).
 		WithField("routerId", router.Id).
 		WithField("routerName", router.Name).
@@ -649,7 +648,7 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 	logger.Info("started synchronizing edge router")
 
 	chunkSize := 100
-	err := strategy.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := strategy.ae.GetDb().View(func(tx *bbolt.Tx) error {
 		var apiSessions []*edge_ctrl_pb.ApiSession
 
 		state := &InstantSyncState{
@@ -906,7 +905,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
 		strategy.HandlePublicKeyEvent(newEvent, newModel)
 	}
 
-	caPEMs := strategy.ae.Config.CaPems()
+	caPEMs := strategy.ae.GetConfig().Edge.CaPems()
 	caCerts := nfPem.PemBytesToCertificates(caPEMs)
 
 	for _, caCert := range caCerts {
@@ -950,7 +949,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx) error {
 }
 
 func (strategy *InstantStrategy) BuildAll() error {
-	err := strategy.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := strategy.ae.GetDb().View(func(tx *bbolt.Tx) error {
 		if err := strategy.BuildIdentities(tx); err != nil {
 			return err
 		}
@@ -1498,7 +1497,7 @@ func (p *NonHaIndexProvider) load() {
 	defer p.lock.Unlock()
 
 	ctx := boltz.NewMutateContext(context.Background())
-	err := p.ae.GetDbProvider().GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+	err := p.ae.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		zdb, err := ctx.Tx().CreateBucketIfNotExists([]byte(ZdbKey))
 
 		if err != nil {
@@ -1535,7 +1534,7 @@ func (p *NonHaIndexProvider) NextIndex(ctx boltz.MutateContext) (uint64, error) 
 	}
 
 	updateCtx := boltz.NewMutateContext(context.Background())
-	err := p.ae.GetDbProvider().GetDb().Update(updateCtx, func(updateCtx boltz.MutateContext) error {
+	err := p.ae.GetDb().Update(updateCtx, func(updateCtx boltz.MutateContext) error {
 		zdb := updateCtx.Tx().Bucket([]byte(ZdbKey))
 
 		newIndex := p.index + 1

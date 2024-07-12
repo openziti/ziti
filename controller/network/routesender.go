@@ -19,14 +19,15 @@ package network
 import (
 	"fmt"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/model"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/xt"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 )
@@ -63,10 +64,10 @@ type routeSender struct {
 	in              chan *RouteStatus
 	attendance      map[string]bool
 	serviceCounters ServiceCounters
-	terminators     *TerminatorManager
+	terminators     *model.TerminatorManager
 }
 
-func newRouteSender(circuitId string, timeout time.Duration, serviceCounters ServiceCounters, terminators *TerminatorManager) *routeSender {
+func newRouteSender(circuitId string, timeout time.Duration, serviceCounters ServiceCounters, terminators *model.TerminatorManager) *routeSender {
 	return &routeSender{
 		circuitId:       circuitId,
 		timeout:         timeout,
@@ -77,7 +78,7 @@ func newRouteSender(circuitId string, timeout time.Duration, serviceCounters Ser
 	}
 }
 
-func (self *routeSender) route(attempt uint32, path *Path, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator, ctx logcontext.Context) (peerData xt.PeerData, cleanups map[string]struct{}, err CircuitError) {
+func (self *routeSender) route(attempt uint32, path *model.Path, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator, ctx logcontext.Context) (peerData xt.PeerData, cleanups map[string]struct{}, err CircuitError) {
 	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx)
 
 	// send route messages
@@ -127,7 +128,7 @@ attendance:
 	return peerData, nil, nil
 }
 
-func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt.Strategy, status *RouteStatus, terminator xt.Terminator, logger *pfxlog.Builder) (peerData xt.PeerData, cleanups map[string]struct{}, err CircuitError) {
+func (self *routeSender) handleRouteSend(attempt uint32, path *model.Path, strategy xt.Strategy, status *RouteStatus, terminator xt.Terminator, logger *pfxlog.Builder) (peerData xt.PeerData, cleanups map[string]struct{}, err CircuitError) {
 	if status.Success == (status.ErrorCode != nil) {
 		logger.Errorf("route status success and error code differ. Success: %v ErrorCode: %v", status.Success, status.ErrorCode)
 	}
@@ -180,7 +181,7 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt
 				failureCause = CircuitFailureRouterErrInvalidTerminator
 			} else {
 				self.serviceCounters.ServiceMisconfiguredTerminator(terminator.GetServiceId(), terminator.GetId())
-				self.terminators.handlePrecedenceChange(terminator.GetId(), xt.Precedences.Failed)
+				self.terminators.HandlePrecedenceChange(terminator.GetId(), xt.Precedences.Failed)
 				failureCause = CircuitFailureRouterErrMisconfiguredTerminator
 			}
 		case ctrl_msg.ErrorTypeDialTimedOut:
@@ -208,7 +209,7 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt
 	return nil, nil, nil
 }
 
-func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route, ctx logcontext.Context) {
+func (self *routeSender) sendRoute(r *model.Router, routeMsg *ctrl_pb.Route, ctx logcontext.Context) {
 	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).WithField("routerId", r.Id)
 
 	envelope := protobufs.MarshalTyped(routeMsg).WithTimeout(3 * time.Second)
@@ -219,7 +220,7 @@ func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route, ctx logco
 	}
 }
 
-func (self *routeSender) cleanups(path *Path) map[string]struct{} {
+func (self *routeSender) cleanups(path *model.Path) map[string]struct{} {
 	cleanups := make(map[string]struct{})
 	for _, r := range path.Nodes {
 		success, found := self.attendance[r.Id]
@@ -231,7 +232,7 @@ func (self *routeSender) cleanups(path *Path) map[string]struct{} {
 }
 
 type RouteStatus struct {
-	Router    *Router
+	Router    *model.Router
 	CircuitId string
 	Attempt   uint32
 	Success   bool

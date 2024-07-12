@@ -94,11 +94,6 @@ edge:
 {{ if not .Router.IsWss }}#{{ end }}    readBufferSize: {{ .Router.Wss.ReadBufferSize }}
 {{ if not .Router.IsWss }}#{{ end }}    writeBufferSize: {{ .Router.Wss.WriteBufferSize }}
 {{ if not .Router.IsWss }}#{{ end }}    enableCompression: {{ .Router.Wss.EnableCompression }}
-{{ if not .Router.IsWss }}#{{ end }}    server_cert: {{ .Router.IdentityServerCert }}
-{{ if not .Router.IsWss }}#{{ end }}    key: {{ .Router.IdentityKey }}
-{{ if not .Router.AltCertsEnabled }}#{{ end }}alt_server_certs:
-{{ if not .Router.AltCertsEnabled }}#{{ end }}  - server_cert:  "{{ .Router.AltServerCert }}"
-{{ if not .Router.AltCertsEnabled }}#{{ end }}    server_key:   "{{ .Router.AltServerKey }}"
 
 forwarder:
   latencyProbeInterval: {{ .Router.Forwarder.LatencyProbeInterval.Seconds }}
@@ -106,4 +101,3 @@ forwarder:
   xgressDialWorkerCount: {{ .Router.Forwarder.XgressDialWorkerCount }}
   linkDialQueueLength: {{ .Router.Forwarder.LinkDialQueueLength }}
   linkDialWorkerCount: {{ .Router.Forwarder.LinkDialWorkerCount }}
-

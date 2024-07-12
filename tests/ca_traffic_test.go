@@ -282,7 +282,7 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 						ServerCert:     "",
 						ServerKey:      "",
 						AltServerCerts: nil,
-						CA:             id.StoragePem + ":" + string(ctx.EdgeController.AppEnv.Config.CaPems()),
+						CA:             id.StoragePem + ":" + string(ctx.EdgeController.AppEnv.GetConfig().Edge.CaPems()),
 					},
 					ConfigTypes: nil,
 				}
@@ -318,7 +318,7 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 						ServerCert:     "",
 						ServerKey:      "",
 						AltServerCerts: nil,
-						CA:             id.StoragePem + ":" + string(ctx.EdgeController.AppEnv.Config.CaPems()),
+						CA:             id.StoragePem + ":" + string(ctx.EdgeController.AppEnv.GetConfig().Edge.CaPems()),
 					},
 					ConfigTypes: nil,
 				}

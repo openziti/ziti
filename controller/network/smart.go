@@ -17,6 +17,8 @@
 package network
 
 import (
+	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/model"
 	log "github.com/sirupsen/logrus"
 	"sort"
 	"time"
@@ -31,8 +33,8 @@ func (network *Network) smart() {
 	candidates := network.getRerouteCandidates()
 
 	for _, update := range candidates {
-		if retry := network.smartReroute(update.circuit, update.path, time.Now().Add(DefaultOptionsRouteTimeout)); retry {
-			go network.rerouteCircuitWithTries(update.circuit, DefaultOptionsCreateCircuitRetries)
+		if retry := network.smartReroute(update.circuit, update.path, time.Now().Add(config.DefaultOptionsRouteTimeout)); retry {
+			go network.rerouteCircuitWithTries(update.circuit, config.DefaultOptionsCreateCircuitRetries)
 		}
 	}
 }
@@ -53,7 +55,7 @@ func (network *Network) getRerouteCandidates() []*newCircuitPath {
 	circuitLatencies := make(map[string]int64)
 	var orderedCircuits []string
 	for _, s := range circuits {
-		circuitLatencies[s.Id] = s.cost(minRouterCost)
+		circuitLatencies[s.Id] = s.Path.Cost(minRouterCost)
 		orderedCircuits = append(orderedCircuits, s.Id)
 	}
 
@@ -81,8 +83,8 @@ func (network *Network) getRerouteCandidates() []*newCircuitPath {
 		if circuit, found := network.GetCircuit(sId); found {
 			if updatedPath, err := network.UpdatePath(circuit.Path); err == nil {
 				pathChanged := !updatedPath.EqualPath(circuit.Path)
-				oldCost := circuit.Path.cost(minRouterCost)
-				newCost := updatedPath.cost(minRouterCost)
+				oldCost := circuit.Path.Cost(minRouterCost)
+				newCost := updatedPath.Cost(minRouterCost)
 				costDelta := oldCost - newCost
 				log.Tracef("old cost: %v, new cost: %v, delta: %v", oldCost, newCost, costDelta)
 				if count < ceiling && pathChanged && costDelta >= int64(network.options.Smart.MinCostDelta) {
@@ -101,6 +103,6 @@ func (network *Network) getRerouteCandidates() []*newCircuitPath {
 }
 
 type newCircuitPath struct {
-	circuit *Circuit
-	path    *Path
+	circuit *model.Circuit
+	path    *model.Path
 }

@@ -20,19 +20,18 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
-	edgeApiError "github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/apierror"
+	edgeApiError "github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/response"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"net/http"
@@ -490,9 +489,9 @@ func ListAssociationWithHandler[E models.Entity, A models.Entity](ae *env.AppEnv
 }
 
 func ListTerminatorAssociations(ae *env.AppEnv, rc *response.RequestContext,
-	lister models.EntityRetriever[*model.Service],
-	associationLoader *network.TerminatorManager,
-	mapper func(ae *env.AppEnv, _ *response.RequestContext, terminator *network.Terminator) (interface{}, error)) {
+	lister models.EntityRetriever[*model.EdgeService],
+	associationLoader *model.TerminatorManager,
+	mapper func(ae *env.AppEnv, _ *response.RequestContext, terminator *model.Terminator) (interface{}, error)) {
 	ListAssociations(rc, func(rc *response.RequestContext, id string, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
@@ -501,7 +500,7 @@ func ListTerminatorAssociations(ae *env.AppEnv, rc *response.RequestContext,
 			return nil, err
 		}
 
-		result := models.EntityListResult[*network.Terminator]{
+		result := models.EntityListResult[*model.Terminator]{
 			Loader: associationLoader,
 		}
 		err = lister.PreparedListAssociatedWithHandler(id, associationLoader.GetStore().GetEntityType(), query, result.Collect)

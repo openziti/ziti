@@ -17,18 +17,34 @@
 package model
 
 import (
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/ioc"
+	"github.com/openziti/ziti/controller/models"
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	CreateDecoder = "CreateDecoder"
+	UpdateDecoder = "UpdateDecoder"
+	DeleteDecoder = "DeleteDecoder"
+)
+
 type Managers struct {
+	// command
+	Registry   ioc.Registry
+	Dispatcher command.Dispatcher
+
 	// fabric
-	Router     *network.RouterManager
-	Service    *network.ServiceManager
-	Terminator *network.TerminatorManager
-	Command    *network.CommandManager
+	Circuit    *CircuitManager
+	Command    *CommandManager
+	Link       *LinkManager
+	Router     *RouterManager
+	Service    *ServiceManager
+	Terminator *TerminatorManager
 
 	// edge
 	ApiSession              *ApiSessionManager
@@ -58,13 +74,20 @@ type Managers struct {
 	AuthPolicy              *AuthPolicyManager
 }
 
-func InitEntityManagers(env Env) *Managers {
-	managers := &Managers{}
+func NewManagers() *Managers {
+	return &Managers{
+		Registry: ioc.NewRegistry(),
+	}
+}
 
-	managers.Command = env.GetDbProvider().GetManagers().Command
-	managers.Router = env.GetDbProvider().GetManagers().Routers
-	managers.Service = env.GetDbProvider().GetManagers().Services
-	managers.Terminator = env.GetDbProvider().GetManagers().Terminators
+func (managers *Managers) Init(env Env) *Managers {
+	managers.Dispatcher = env.GetCommandDispatcher()
+	managers.Circuit = NewCircuitController()
+	managers.Command = newCommandManager(env, managers.Registry)
+	managers.Link = NewLinkManager(env)
+	managers.Router = newRouterManager(env)
+	managers.Service = newServiceManager(env)
+	managers.Terminator = newTerminatorManager(env)
 
 	managers.ApiSession = NewApiSessionManager(env)
 	managers.ApiSessionCertificate = NewApiSessionCertificateManager(env)
@@ -93,6 +116,7 @@ func InitEntityManagers(env Env) *Managers {
 	managers.Mfa = NewMfaManager(env)
 
 	RegisterCommand(env, &CreateEdgeTerminatorCmd{}, &edge_cmd_pb.CreateEdgeTerminatorCommand{})
+	managers.Command.registerGenericCommands()
 
 	return managers
 }
@@ -116,7 +140,7 @@ type decodableCommand[T any, M any] interface {
 //
 // We only have both types specified so that we can enforce that each is a pointer type. If didn't
 // enforce that the instances were pointer types, we couldn't use new to instantiate new instances.
-func RegisterCommand[MT any, CT any, M network.CommandMsg[MT], C decodableCommand[CT, M]](env Env, _ C, _ M) {
+func RegisterCommand[MT any, CT any, M CommandMsg[MT], C decodableCommand[CT, M]](env Env, _ C, _ M) {
 	decoder := func(commandType int32, data []byte) (command.Command, error) {
 		var msg M = new(MT)
 		if err := proto.Unmarshal(data, msg); err != nil {
@@ -131,5 +155,61 @@ func RegisterCommand[MT any, CT any, M network.CommandMsg[MT], C decodableComman
 	}
 
 	var msg M = new(MT)
-	env.GetHostController().GetNetwork().Managers.Command.Decoders.RegisterF(msg.GetCommandType(), decoder)
+	env.GetManagers().Command.Decoders.RegisterF(msg.GetCommandType(), decoder)
+}
+
+type createDecoderF func(cmd *cmd_pb.CreateEntityCommand) (command.Command, error)
+
+func RegisterCreateDecoder[T models.Entity](env Env, creator command.EntityCreator[T]) {
+	entityType := creator.GetEntityTypeId()
+	env.GetManagers().Registry.RegisterSingleton(entityType+CreateDecoder, createDecoderF(func(cmd *cmd_pb.CreateEntityCommand) (command.Command, error) {
+		entity, err := creator.Unmarshall(cmd.EntityData)
+		if err != nil {
+			return nil, err
+		}
+		return &command.CreateEntityCommand[T]{
+			Context: change.FromProtoBuf(cmd.Ctx),
+			Entity:  entity,
+			Creator: creator,
+			Flags:   cmd.Flags,
+		}, nil
+	}))
+}
+
+type updateDecoderF func(cmd *cmd_pb.UpdateEntityCommand) (command.Command, error)
+
+func RegisterUpdateDecoder[T models.Entity](env Env, updater command.EntityUpdater[T]) {
+	entityType := updater.GetEntityTypeId()
+	env.GetManagers().Registry.RegisterSingleton(entityType+UpdateDecoder, updateDecoderF(func(cmd *cmd_pb.UpdateEntityCommand) (command.Command, error) {
+		entity, err := updater.Unmarshall(cmd.EntityData)
+		if err != nil {
+			return nil, err
+		}
+		return &command.UpdateEntityCommand[T]{
+			Context:       change.FromProtoBuf(cmd.Ctx),
+			Entity:        entity,
+			Updater:       updater,
+			UpdatedFields: fields.SliceToUpdatedFields(cmd.UpdatedFields),
+			Flags:         cmd.Flags,
+		}, nil
+	}))
+}
+
+type deleteDecoderF func(cmd *cmd_pb.DeleteEntityCommand) (command.Command, error)
+
+func RegisterDeleteDecoder(env Env, deleter command.EntityDeleter) {
+	entityType := deleter.GetEntityTypeId()
+	env.GetManagers().Registry.RegisterSingleton(entityType+DeleteDecoder, deleteDecoderF(func(cmd *cmd_pb.DeleteEntityCommand) (command.Command, error) {
+		return &command.DeleteEntityCommand{
+			Context: change.FromProtoBuf(cmd.Ctx),
+			Deleter: deleter,
+			Id:      cmd.EntityId,
+		}, nil
+	}))
+}
+
+func RegisterManagerDecoder[T models.Entity](env Env, ctrl command.EntityManager[T]) {
+	RegisterCreateDecoder[T](env, ctrl)
+	RegisterUpdateDecoder[T](env, ctrl)
+	RegisterDeleteDecoder(env, ctrl)
 }

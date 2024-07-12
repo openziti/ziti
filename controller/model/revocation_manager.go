@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
@@ -34,7 +33,7 @@ func NewRevocationManager(env Env) *RevocationManager {
 	}
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*Revocation](env.GetHostController().GetNetwork().Managers, manager)
+	RegisterManagerDecoder[*Revocation](env, manager)
 
 	return manager
 }
@@ -48,7 +47,7 @@ func (self *RevocationManager) ApplyUpdate(_ *command.UpdateEntityCommand[*Revoc
 }
 
 func (self *RevocationManager) Create(entity *Revocation, ctx *change.Context) error {
-	return network.DispatchCreate[*Revocation](self, entity, ctx)
+	return DispatchCreate[*Revocation](self, entity, ctx)
 }
 
 func (self *RevocationManager) ApplyCreate(cmd *command.CreateEntityCommand[*Revocation], ctx boltz.MutateContext) error {

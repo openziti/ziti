@@ -20,6 +20,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/rest_server/operations/terminator"
@@ -67,17 +68,17 @@ func (r *TerminatorRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper
 }
 
 func (r *TerminatorRouter) List(n *network.Network, rc api.RequestContext) {
-	ListWithHandler[*network.Terminator](n, rc, n.Managers.Terminators, TerminatorModelMapper{})
+	ListWithHandler[*model.Terminator](n, rc, n.Managers.Terminator, TerminatorModelMapper{})
 }
 
 func (r *TerminatorRouter) Detail(n *network.Network, rc api.RequestContext) {
-	DetailWithHandler[*network.Terminator](n, rc, n.Managers.Terminators, TerminatorModelMapper{})
+	DetailWithHandler[*model.Terminator](n, rc, n.Managers.Terminator, TerminatorModelMapper{})
 }
 
 func (r *TerminatorRouter) Create(n *network.Network, rc api.RequestContext, params terminator.CreateTerminatorParams) {
 	Create(rc, TerminatorLinkFactory, func() (string, error) {
 		entity := MapCreateTerminatorToModel(params.Terminator)
-		err := n.Terminators.Create(entity, rc.NewChangeContext())
+		err := n.Terminator.Create(entity, rc.NewChangeContext())
 		if err != nil {
 			return "", err
 		}
@@ -86,17 +87,17 @@ func (r *TerminatorRouter) Create(n *network.Network, rc api.RequestContext, par
 }
 
 func (r *TerminatorRouter) Delete(n *network.Network, rc api.RequestContext) {
-	DeleteWithHandler(rc, n.Managers.Terminators)
+	DeleteWithHandler(rc, n.Managers.Terminator)
 }
 
 func (r *TerminatorRouter) Update(n *network.Network, rc api.RequestContext, params terminator.UpdateTerminatorParams) {
 	Update(rc, func(id string) error {
-		return n.Managers.Terminators.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator), nil, rc.NewChangeContext())
+		return n.Managers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator), nil, rc.NewChangeContext())
 	})
 }
 
 func (r *TerminatorRouter) Patch(n *network.Network, rc api.RequestContext, params terminator.PatchTerminatorParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return n.Managers.Terminators.Update(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"), rc.NewChangeContext())
+		return n.Managers.Terminator.Update(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }

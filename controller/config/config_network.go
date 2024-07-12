@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package network
+package config
 
 import (
 	"github.com/pkg/errors"
@@ -45,7 +45,7 @@ const (
 	OptionsRouterCommMaxWorkers   = 10_000
 )
 
-type Options struct {
+type NetworkConfig struct {
 	CreateCircuitRetries    uint32
 	CycleSeconds            uint32
 	EnableLegacyLinkMgmt    bool
@@ -67,8 +67,8 @@ type Options struct {
 	}
 }
 
-func DefaultOptions() *Options {
-	options := &Options{
+func DefaultNetworkConfig() *NetworkConfig {
+	options := &NetworkConfig{
 		CreateCircuitRetries:  DefaultOptionsCreateCircuitRetries,
 		CycleSeconds:          DefaultOptionsCycleSeconds,
 		EnableLegacyLinkMgmt:  DefaultOptionsEnableLegacyLinkMgmt,
@@ -98,8 +98,8 @@ func DefaultOptions() *Options {
 	return options
 }
 
-func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
-	options := DefaultOptions()
+func LoadNetworkConfig(src map[interface{}]interface{}) (*NetworkConfig, error) {
+	options := DefaultNetworkConfig()
 
 	if value, found := src["cycleSeconds"]; found {
 		if cycleSeconds, ok := value.(int); ok {

@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/model"
 	"go.etcd.io/bbolt"
 	"sync"
 )
@@ -104,7 +104,7 @@ func (broker *Broker) GetReceiveHandlers() []channel.TypedReceiveHandler {
 	return broker.routerSyncStrategy.GetReceiveHandlers()
 }
 
-func (broker *Broker) RouterConnected(router *network.Router) {
+func (broker *Broker) RouterConnected(router *model.Router) {
 	go func() {
 		fingerprint := ""
 		if router != nil && router.Fingerprint != nil {
@@ -128,7 +128,7 @@ func (broker *Broker) RouterConnected(router *network.Router) {
 	}()
 }
 
-func (broker *Broker) RouterDisconnected(r *network.Router) {
+func (broker *Broker) RouterDisconnected(r *model.Router) {
 	go func() {
 		pfxlog.Logger().WithField("routerId", r.Id).
 			WithField("routerName", r.Name).
@@ -162,7 +162,7 @@ func (broker *Broker) apiSessionCertificateDeleted(entity *db.ApiSessionCertific
 func (broker *Broker) apiSessionCertificateHandler(delete bool, apiSessionCert *db.ApiSessionCertificate) {
 	var apiSession *db.ApiSession
 	var err error
-	err = broker.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err = broker.ae.GetDb().View(func(tx *bbolt.Tx) error {
 		apiSession, err = broker.ae.GetStores().ApiSession.LoadById(tx, apiSessionCert.ApiSessionId)
 		return err
 	})

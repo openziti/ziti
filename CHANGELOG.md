@@ -1,9 +1,86 @@
-# Release 1.1.4
+# Release 1.1.6
+
+## What's New
+
+* Trust Domain Configuration
+
+## Trust Domain Configuration
+
+OpenZiti controllers from this release forward will now require a `trust domain` to be configured. 
+High Availability (HA) controllers already have this requirement. HA Controllers configure their trust domain via SPIFFE 
+ids that are embedded in x509 certificates.
+
+For feature parity, non-HA controllers will now have this same requirement. However, as re-issuing certificates is not
+always easily done. To help with the transition, non-HA controllers will have the ability to have their trust domain
+sourced from the controller configuration file through the root configuration value `trustDomain`. The configuration
+field which takes a string that must be URI hostname compatible (see: https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE-ID.md).
+If this value is not defined, a trust domain will be generated from the root CA certificate of the controller. 
+
+For networks that will be deployed after this change, it is highly suggested that a SPIFFE id is added to certificates.
+The `ziti pki create ...` tooling supports the `--spiffe-id` option to help handle this scenario.
+
+### Generated Trust Domain Log Messages
+
+The following log messages are examples of warnings produced when a controller is using a generated trust domain:
+
+```
+WARNING this environment is using a default generated trust domain [spiffe://d561decf63d229d66b07de627dbbde9e93228925], 
+  it is recommended that a trust domain is specified in configuration via URI SANs or the 'trustDomain' field
+
+WARNING this environment is using a default generated trust domain [spiffe://d561decf63d229d66b07de627dbbde9e93228925], 
+  it is recommended that if network components have enrolled that the generated trust domain be added to the 
+  configuration field 'additionalTrustDomains'
+```
+
+### Trust domain resolution:
+
+- Non-HA controllers
+  - Prefers SPIFFE ids in x509 certificate URI SANs, looking at the leaf up the signing chain
+  - Regresses to `trustDomain` in the controller configuration file if not found
+  - Regress to generating a trust domain from the server certificates root CA, if the above do not resolve
+
+- HA Controllers
+  - Requires x509 SPIFFE ids in x509 certificate URI SANs
+
+### Additional Trust Domains
+
+When moving between trust domains (i.e. from the default generated to a new named one), the controller supports having
+other trust domains. The trust domains do not replace certificate chain validation, which is still checked and enforced.
+
+Additional trust domains are configured in the controller configuration file under the root field 
+`additionalTrustDomains`. This field is an array of hostname safe strings.
+
+The most common use case for this is field is if a network has issued certificates using the generated trust domain and 
+now wants to transition to a explicitly defined one.
+
+# Release 1.1.5
 
 ## What's New
 
 * Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.133 -> v2.0.136](https://github.com/openziti/channel/compare/v2.0.133...v2.0.136)
+    * [Issue #132](https://github.com/openziti/channel/issues/132) - reconnecting dialer doesn't take local binding into account when reconnecting
+
+* github.com/openziti/identity: [v1.0.80 -> v1.0.81](https://github.com/openziti/identity/compare/v1.0.80...v1.0.81)
+* github.com/openziti/transport/v2: [v2.0.136 -> v2.0.138](https://github.com/openziti/transport/compare/v2.0.136...v2.0.138)
+    * [Issue #83](https://github.com/openziti/transport/issues/83) - tls.Dial should use proxy configuration if provided
+
+* github.com/openziti/xweb/v2: [v2.1.0 -> v2.1.1](https://github.com/openziti/xweb/compare/v2.1.0...v2.1.1)
+* github.com/openziti/ziti: [v1.1.4 -> v1.1.5](https://github.com/openziti/ziti/compare/v1.1.4...v1.1.5)
+    * [Issue #2173](https://github.com/openziti/ziti/issues/2173) - panic on HA peer connect
+    * [Issue #2171](https://github.com/openziti/ziti/issues/2171) - Routers should consider control channels unresponsive if they are not connected
+    * [Issue #2086](https://github.com/openziti/ziti/issues/2086) - Enable File Watching for Router/Controller Identities
+    * [Issue #2087](https://github.com/openziti/ziti/issues/2087) - Ext JWT not setting provider value in auth query
+
+# Release 1.1.4
+
+## What's New
+
 * Controller HA Beta 1
+* Bug fixes
 
 ## Controller HA Beta 1
 

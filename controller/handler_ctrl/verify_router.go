@@ -19,18 +19,19 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 )
 
 type verifyRouterHandler struct {
-	r       *network.Router
+	r       *model.Router
 	network *network.Network
 }
 
-func newVerifyRouterHandler(r *network.Router, network *network.Network) *verifyRouterHandler {
+func newVerifyRouterHandler(r *model.Router, network *network.Network) *verifyRouterHandler {
 	return &verifyRouterHandler{r: r, network: network}
 }
 

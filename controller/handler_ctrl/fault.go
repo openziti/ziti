@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -30,11 +31,11 @@ import (
 )
 
 type faultHandler struct {
-	r       *network.Router
+	r       *model.Router
 	network *network.Network
 }
 
-func newFaultHandler(r *network.Router, network *network.Network) *faultHandler {
+func newFaultHandler(r *model.Router, network *network.Network) *faultHandler {
 	return &faultHandler{r: r, network: network}
 }
 

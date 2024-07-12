@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 )
@@ -30,7 +31,7 @@ type removeTerminatorsHandler struct {
 	baseHandler
 }
 
-func newRemoveTerminatorsHandler(network *network.Network, router *network.Router) *removeTerminatorsHandler {
+func newRemoveTerminatorsHandler(network *network.Network, router *model.Router) *removeTerminatorsHandler {
 	return &removeTerminatorsHandler{
 		baseHandler: baseHandler{
 			router:  router,
@@ -58,7 +59,7 @@ func (self *removeTerminatorsHandler) HandleReceive(msg *channel.Message, ch cha
 func (self *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Message, ch channel.Channel, request *ctrl_pb.RemoveTerminatorsRequest) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	if err := self.network.Terminators.DeleteBatch(request.TerminatorIds, self.newChangeContext(ch, "fabric.remove.terminators.batch")); err == nil {
+	if err := self.network.Terminator.DeleteBatch(request.TerminatorIds, self.newChangeContext(ch, "fabric.remove.terminators.batch")); err == nil {
 		log.
 			WithField("routerId", ch.Id()).
 			WithField("terminatorIds", request.TerminatorIds).

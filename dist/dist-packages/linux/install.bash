@@ -99,25 +99,35 @@ installDebian(){
     chmod a+r /usr/share/keyrings/openziti.gpg
 
     local REPOSRC="deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/${ZITIPAX_DEB:-zitipax-openziti-deb-stable} debian main"
+    local ESCAPED_REPOSRC="${REPOSRC//\[/\\\[}"
+    ESCAPED_REPOSRC="${ESCAPED_REPOSRC//\]/\\\]}"
 
-    local REPOFILE="/etc/apt/sources.list.d/openziti-release.list"
-    if [ -s $REPOFILE ]; then
-        local EXISTINGSUM
-        local REPOSUM
-        EXISTINGSUM=$(checkSum < $REPOFILE)
-        REPOSUM=$(checkSum <<< "$REPOSRC")
-        if [ "$EXISTINGSUM" != "$REPOSUM" ]; then
-            mv -v $REPOFILE{,".$(date -Iseconds)"}
-            echo "$REPOSRC" > $REPOFILE
+    local REPODIR="/etc/apt/sources.list.d"
+    # add the repo source if it doesn't already exist
+    if ! grep -qEr "^${ESCAPED_REPOSRC}\$" $REPODIR; then
+        local REPOFILE="${REPODIR}/openziti-release.list"
+        if [ -s $REPOFILE ]; then
+            local EXISTINGSUM
+            local REPOSUM
+            EXISTINGSUM=$(checkSum < $REPOFILE)
+            REPOSUM=$(checkSum <<< "$REPOSRC")
+            if [ "$EXISTINGSUM" != "$REPOSUM" ]; then
+                mv -v $REPOFILE{,".$(date -Iseconds)"}
+                echo "$REPOSRC" > $REPOFILE
+
+            fi
+        else
+            echo "$REPOSRC" >| $REPOFILE
 
         fi
-    else
-        echo "$REPOSRC" >| $REPOFILE
-
     fi
 
     apt-get update
-    apt-get install --yes "$@"
+    # allow downgrades if any versions are pinned with '='
+    if [[ "${*}" =~ = ]]; then
+        ALLOW_DOWNGRADES='--allow-downgrades'
+    fi
+    apt-get install --yes "${ALLOW_DOWNGRADES:-}" "$@"
     for PKG in "$@"; do
         apt-cache show "${PKG%=*}=$(dpkg-query -W -f='${Version}' "${PKG%=*}")"
     done

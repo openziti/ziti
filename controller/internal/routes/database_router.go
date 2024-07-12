@@ -26,8 +26,8 @@ import (
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/response"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -176,5 +176,5 @@ func (r *DatabaseRouter) runDataIntegrityCheck(ae *env.AppEnv, rc *response.Requ
 		}
 	}
 
-	r.integrityCheck.err = ae.GetDbProvider().GetStores().CheckIntegrity(ae.GetDbProvider().GetDb(), rc.NewChangeContext().GetContext(), fixErrors, errorHandler)
+	r.integrityCheck.err = ae.GetStores().CheckIntegrity(ae.GetDb(), rc.NewChangeContext().GetContext(), fixErrors, errorHandler)
 }

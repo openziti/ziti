@@ -18,11 +18,12 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/sirupsen/logrus"
 )
 
 type ForwardingFaultReport struct {
-	R            *Router
+	R            *model.Router
 	CircuitIds   []string
 	UnknownOwner bool
 }
@@ -31,7 +32,7 @@ func (network *Network) fault(ffr *ForwardingFaultReport) {
 	logrus.Infof("network fault processing for [%d] circuits", len(ffr.CircuitIds))
 	for _, circuitId := range ffr.CircuitIds {
 		log := pfxlog.Logger().WithField("circuitId", circuitId).WithField("routerId", ffr.R.Id)
-		s, found := network.circuitController.get(circuitId)
+		s, found := network.Circuit.Get(circuitId)
 		if found {
 			if success := network.rerouteCircuitWithTries(s, 2); success {
 				log.Info("rerouted circuit in response to forwarding fault from router")

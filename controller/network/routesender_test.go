@@ -1,23 +1,23 @@
 package network
 
 import (
+	"github.com/openziti/ziti/controller/model"
 	"testing"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
-	"github.com/openziti/ziti/common/ctrl_msg"
 )
 
 func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -25,8 +25,8 @@ func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(
 
 	router1 := entityHelper.addTestRouter()
 	router2 := entityHelper.addTestRouter()
-	path := &Path{
-		Nodes: []*Router{router1, router2},
+	path := &model.Path{
+		Nodes: []*model.Router{router1, router2},
 	}
 
 	svc := entityHelper.addTestService("svc")
@@ -40,7 +40,7 @@ func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(
 
 	rs := routeSender{
 		serviceCounters: network,
-		terminators:     network.Terminators,
+		terminators:     network.Terminator,
 		attendance:      make(map[string]bool),
 	}
 
@@ -58,19 +58,19 @@ func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(
 	ctx.Nil(peerData)
 	ctx.Empty(cleanup)
 
-	newTerm, err := network.Terminators.Read(term.Id)
+	newTerm, err := network.Terminator.Read(term.Id)
 	ctx.Error(err)
 	ctx.Nil(newTerm)
 }
 
 func TestRouteSender_SetPrecidenceToNilTerminatorWhenInvalidOnHandleRouteSendAndWeDontControl(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -78,8 +78,8 @@ func TestRouteSender_SetPrecidenceToNilTerminatorWhenInvalidOnHandleRouteSendAnd
 
 	router1 := entityHelper.addTestRouter()
 	router2 := entityHelper.addTestRouter()
-	path := &Path{
-		Nodes: []*Router{router1, router2},
+	path := &model.Path{
+		Nodes: []*model.Router{router1, router2},
 	}
 
 	svc := entityHelper.addTestService("svc")
@@ -93,7 +93,7 @@ func TestRouteSender_SetPrecidenceToNilTerminatorWhenInvalidOnHandleRouteSendAnd
 
 	rs := routeSender{
 		serviceCounters: network,
-		terminators:     network.Terminators,
+		terminators:     network.Terminator,
 		attendance:      make(map[string]bool),
 	}
 
@@ -111,7 +111,7 @@ func TestRouteSender_SetPrecidenceToNilTerminatorWhenInvalidOnHandleRouteSendAnd
 	ctx.Nil(peerData)
 	ctx.Empty(cleanup)
 
-	newTerm, err := network.Terminators.Read(term.Id)
+	newTerm, err := network.Terminator.Read(term.Id)
 	ctx.NoError(err)
 	ctx.NotNil(newTerm)
 

@@ -8,6 +8,9 @@ identity:
   key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/keys/{{ .Component.PublicIdentity }}.key
   ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-server.chain.pem
 
+trustDomain: stall-test
+
+
 #trace:
 #  path:                 ctrl.trace
 

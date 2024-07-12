@@ -27,7 +27,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
@@ -42,7 +41,7 @@ func NewConfigTypeManager(env Env) *ConfigTypeManager {
 	}
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*ConfigType](env.GetHostController().GetNetwork().Managers, manager)
+	RegisterManagerDecoder[*ConfigType](env, manager)
 
 	return manager
 }
@@ -56,7 +55,7 @@ func (self *ConfigTypeManager) newModelEntity() *ConfigType {
 }
 
 func (self *ConfigTypeManager) Create(entity *ConfigType, ctx *change.Context) error {
-	return network.DispatchCreate[*ConfigType](self, entity, ctx)
+	return DispatchCreate[*ConfigType](self, entity, ctx)
 }
 
 func (self *ConfigTypeManager) ApplyCreate(cmd *command.CreateEntityCommand[*ConfigType], ctx boltz.MutateContext) error {
@@ -65,7 +64,7 @@ func (self *ConfigTypeManager) ApplyCreate(cmd *command.CreateEntityCommand[*Con
 }
 
 func (self *ConfigTypeManager) Update(entity *ConfigType, checker fields.UpdatedFields, ctx *change.Context) error {
-	return network.DispatchUpdate[*ConfigType](self, entity, checker, ctx)
+	return DispatchUpdate[*ConfigType](self, entity, checker, ctx)
 }
 
 func (self *ConfigTypeManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ConfigType], ctx boltz.MutateContext) error {

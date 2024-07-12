@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -34,7 +33,7 @@ func NewEdgeRouterPolicyManager(env Env) *EdgeRouterPolicyManager {
 	}
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*EdgeRouterPolicy](env.GetHostController().GetNetwork().Managers, manager)
+	RegisterManagerDecoder[*EdgeRouterPolicy](env, manager)
 
 	return manager
 }
@@ -48,7 +47,7 @@ func (self *EdgeRouterPolicyManager) newModelEntity() *EdgeRouterPolicy {
 }
 
 func (self *EdgeRouterPolicyManager) Create(entity *EdgeRouterPolicy, ctx *change.Context) error {
-	return network.DispatchCreate[*EdgeRouterPolicy](self, entity, ctx)
+	return DispatchCreate[*EdgeRouterPolicy](self, entity, ctx)
 }
 
 func (self *EdgeRouterPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*EdgeRouterPolicy], ctx boltz.MutateContext) error {
@@ -57,7 +56,7 @@ func (self *EdgeRouterPolicyManager) ApplyCreate(cmd *command.CreateEntityComman
 }
 
 func (self *EdgeRouterPolicyManager) Update(entity *EdgeRouterPolicy, checker fields.UpdatedFields, ctx *change.Context) error {
-	return network.DispatchUpdate[*EdgeRouterPolicy](self, entity, checker, ctx)
+	return DispatchUpdate[*EdgeRouterPolicy](self, entity, checker, ctx)
 }
 
 func (self *EdgeRouterPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*EdgeRouterPolicy], ctx boltz.MutateContext) error {

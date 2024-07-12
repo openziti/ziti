@@ -29,6 +29,8 @@ identity:
   {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}  - server_cert:  "{{ .Controller.Web.Identity.AltServerCert }}"
   {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}    server_key:   "{{ .Controller.Web.Identity.AltServerKey }}"
 
+trustDomain: quickstart
+
 # Network Configuration
 #
 # Configure how the controller will establish and manage the overlay network, and routing operations on top of

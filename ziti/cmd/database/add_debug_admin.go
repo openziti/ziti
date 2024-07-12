@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/spf13/cobra"
 )
 
@@ -42,9 +41,8 @@ func NewAddDebugAdminAction() *cobra.Command {
 }
 
 type addDebugAdminAction struct {
-	db       boltz.Db
-	stores   *db.Stores
-	managers *network.Managers
+	db     boltz.Db
+	stores *db.Stores
 }
 
 func (action *addDebugAdminAction) GetDb() boltz.Db {
@@ -53,10 +51,6 @@ func (action *addDebugAdminAction) GetDb() boltz.Db {
 
 func (action *addDebugAdminAction) GetStores() *db.Stores {
 	return action.stores
-}
-
-func (action *addDebugAdminAction) GetManagers() *network.Managers {
-	return action.managers
 }
 
 func (action *addDebugAdminAction) noError(err error) {
@@ -69,22 +63,13 @@ func (action *addDebugAdminAction) run(dbFile, username, password string) {
 	boltDb, err := db.Open(dbFile)
 	action.noError(err)
 
-	fabricStores, err := db.InitStores(boltDb, command.NoOpRateLimiter{})
-	action.noError(err)
-
-	dispatcher := &command.LocalDispatcher{
-		EncodeDecodeCommands: false,
-	}
-	controllers := network.NewManagers(nil, dispatcher, boltDb, fabricStores, nil)
-
-	dbProvider := &addDebugAdminAction{
-		db:       boltDb,
-		stores:   fabricStores,
-		managers: controllers,
-	}
-
 	stores, err := db.InitStores(boltDb, command.NoOpRateLimiter{})
 	action.noError(err)
+
+	dbProvider := &addDebugAdminAction{
+		db:     boltDb,
+		stores: stores,
+	}
 
 	id := "debug-admin"
 	name := fmt.Sprintf("debug admin (%v)", uuid.NewString())
