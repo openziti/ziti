@@ -598,7 +598,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 
     # successfully running this script directly means bootstrapping was enabled
     setAnswer "ZITI_BOOTSTRAP=true" "${SVC_ENV_FILE}"
-    # if verbose then this was already done earlier, else allow stdout now to annouce completion
+    # if verbose then this was already done earlier, else allow stdout now to announce completion
     if ! (( VERBOSE )); then
       exec 1>&4
     fi
