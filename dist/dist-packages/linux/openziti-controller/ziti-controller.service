@@ -4,34 +4,21 @@ After=network-online.target
 
 [Service]
 
-#
-## Optional Permissions
-#
-
-# allow binding low ports, e.g., 443/tcp; NOTE: use TLS passthrough if fronting with a reverse proxy, i.e., "raw" TCP
-# proxy
-# AmbientCapabilities=CAP_NET_BIND_SERVICE
-
-#
-## options
-#
-
 # this env file configures the service, including whether or not to perform bootstrapping
 EnvironmentFile=/opt/openziti/etc/controller/service.env
-# this answer file provides input values for bootstrapping during first startup
-EnvironmentFile=/opt/openziti/etc/controller/bootstrap.env
-# manage the user and permissions for the service automatically
 
 #
 ## misc
 #
 
+# manage the user and permissions for the service automatically
 DynamicUser=yes
 # used by bootstrap.bash to look up /run/credentials/$UNIT_NAME/$CREDENTIAL_NAME
 Environment=UNIT_NAME=ziti-controller.service
 # create a new config file relative to working directory unless it exists
 # absolute path where service will be run
-ExecStart=/opt/openziti/etc/controller/entrypoint.bash run config.yml
+ExecStartPre=/opt/openziti/etc/controller/entrypoint.bash check config.yml
+ExecStart=/opt/openziti/bin/ziti controller run config.yml ${ZITI_ARGS}
 LimitNOFILE=65535
 Restart=always
 RestartSec=3
