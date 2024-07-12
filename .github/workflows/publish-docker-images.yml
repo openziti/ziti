@@ -60,7 +60,7 @@ jobs:
       # arch that was downloaded in ./release/, hence the need to specify the
       # Dockerfile and DOCKER_BUILD_DIR
       - name: Build & Push Multi-Platform CLI Container Image to Hub
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/
@@ -87,7 +87,7 @@ jobs:
       # ZITI_CLI_TAG env var so it can build from the versioned image that
       # we pushed in the prior step.
       - name: Build & Push Multi-Platform Controller Container Image to Hub
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/
@@ -112,7 +112,7 @@ jobs:
           echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
       - name: Build & Push Multi-Platform Router Container Image to Hub
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/
@@ -142,7 +142,7 @@ jobs:
           echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
 
       - name: Build & Push Multi-Platform Go Tunneler Container Image to Hub
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/dist/docker-images/ziti-tunnel/
