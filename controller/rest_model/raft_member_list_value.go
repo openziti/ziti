@@ -59,6 +59,10 @@ type RaftMemberListValue struct {
 	// Required: true
 	Leader *bool `json:"leader"`
 
+	// read only
+	// Required: true
+	ReadOnly *bool `json:"readOnly"`
+
 	// version
 	// Required: true
 	Version *string `json:"version"`
@@ -85,6 +89,10 @@ func (m *RaftMemberListValue) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateLeader(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateReadOnly(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -132,6 +140,15 @@ func (m *RaftMemberListValue) validateID(formats strfmt.Registry) error {
 func (m *RaftMemberListValue) validateLeader(formats strfmt.Registry) error {
 
 	if err := validate.Required("leader", "body", m.Leader); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RaftMemberListValue) validateReadOnly(formats strfmt.Registry) error {
+
+	if err := validate.Required("readOnly", "body", m.ReadOnly); err != nil {
 		return err
 	}
 
