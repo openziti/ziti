@@ -10,7 +10,6 @@ install() {
 }
 
 upgrade() {
-  # Step 2(upgrade), do what you need
   commonActions
 
 }
@@ -28,9 +27,9 @@ makeEmptyRestrictedFile() {
 
 loadEnvFile() {
   # shellcheck disable=SC1090
-  source "${ZITI_CTRL_SVC_ENV_FILE}"
+  source "${ZITI_ROUTER_SVC_ENV_FILE}"
   # shellcheck disable=SC1090
-  source "${ZITI_CTRL_BOOT_ENV_FILE}"
+  source "${ZITI_ROUTER_BOOT_ENV_FILE}"
 }
 
 # initialize a file descriptor for debug output
@@ -59,17 +58,16 @@ else
   exit 1
 fi
 
-ZITI_CTRL_SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
-ZITI_CTRL_BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
-ZITI_PWD_FILE=/opt/openziti/etc/controller/.pwd
+ZITI_ROUTER_SVC_ENV_FILE=/opt/openziti/etc/router/service.env
+ZITI_ROUTER_BOOT_ENV_FILE=/opt/openziti/etc/router/bootstrap.env
 
 case "$action" in
   "install")
-    printf "\033[32m completed clean install of openziti-controller\033[0m\n"
+    printf "\033[32m completed clean install of openziti-router\033[0m\n"
     install
     ;;
   "upgrade")
-    printf "\033[32m completed upgrade of openziti-controller\033[0m\n"
+    printf "\033[32m completed upgrade of openziti-router\033[0m\n"
     upgrade
     ;;
 esac
