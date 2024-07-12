@@ -173,6 +173,7 @@ type ConfigurableStore interface {
 	AddPublicSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
 	AddFkSetSymbol(name string, linkedType Store) EntitySetSymbol
 	NewEntitySymbol(name string, nodeType ast.NodeType) EntitySymbol
+	AddEntitySymbol(symbol EntitySymbol)
 
 	AddExtEntitySymbols()
 	MakeSymbolPublic(name string)
