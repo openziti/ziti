@@ -120,8 +120,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
-          $(go env GOPATH)/bin/ziti-ci configure-git
-          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION}
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
