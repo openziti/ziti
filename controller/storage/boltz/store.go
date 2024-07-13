@@ -58,7 +58,6 @@ func NewBaseStore[E Entity](definition StoreDefinition[E]) *BaseStore[E] {
 		entityStrategy:  definition.EntityStrategy,
 		parent:          definition.Parent,
 		parentMapper:    definition.ParentMapper,
-		symbols:         map[string]EntitySymbol{},
 		mapSymbols:      map[string]*entityMapSymbol{},
 		publicSymbols:   map[string]struct{}{},
 		Indexer:         *NewIndexer(append(indexPath, IndexesBucket)...),
@@ -204,7 +203,7 @@ type BaseStore[E Entity] struct {
 	parentMapper         func(childEntity Entity) Entity
 	entityType           string
 	entityPath           []string
-	symbols              map[string]EntitySymbol
+	symbols              concurrenz.CopyOnWriteMap[string, EntitySymbol]
 	publicSymbols        map[string]struct{}
 	mapSymbols           map[string]*entityMapSymbol
 	isExtended           bool
