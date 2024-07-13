@@ -23,6 +23,7 @@ import (
 	"time"
 )
 
+// TODO: Add CreateDate
 type Link struct {
 	SrcLatency  int64
 	DstLatency  int64

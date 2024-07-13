@@ -85,6 +85,17 @@ func newRouterManager(env Env) *RouterManager {
 
 	RegisterManagerDecoder[*Router](env, result)
 
+	isConnectedSymbol := boltz.NewBoolFuncSymbol(routerStore, "connected", func(id string) bool {
+		return result.connected.Has(id)
+	})
+
+	if store, ok := routerStore.(boltz.ConfigurableStore); ok {
+		store.AddEntitySymbol(isConnectedSymbol)
+		store.MakeSymbolPublic(isConnectedSymbol.GetName())
+	} else {
+		panic("router store is not boltz.ConfigurableStore")
+	}
+
 	return result
 }
 

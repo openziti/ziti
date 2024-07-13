@@ -19,23 +19,21 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/fields"
-	"google.golang.org/protobuf/proto"
-	"strconv"
-
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 )
 
 func NewEdgeRouterManager(env Env) *EdgeRouterManager {
@@ -53,6 +51,24 @@ func NewEdgeRouterManager(env Env) *EdgeRouterManager {
 	}
 
 	manager.impl = manager
+
+	isConnectedSymbol := boltz.NewBoolFuncSymbol(env.GetStores().EdgeRouter, "connected", func(id string) bool {
+		return env.GetManagers().Router.IsConnected(id)
+	})
+
+	isOnlineSymbol := boltz.NewBoolFuncSymbol(env.GetStores().EdgeRouter, "online", func(id string) bool {
+		return env.IsEdgeRouterOnline(id)
+	})
+
+	if store, ok := env.GetStores().EdgeRouter.(boltz.ConfigurableStore); ok {
+		store.AddEntitySymbol(isConnectedSymbol)
+		store.MakeSymbolPublic(isConnectedSymbol.GetName())
+
+		store.AddEntitySymbol(isOnlineSymbol)
+		store.MakeSymbolPublic(isOnlineSymbol.GetName())
+	} else {
+		panic("edge-router store is not boltz.ConfigurableStore")
+	}
 
 	RegisterCommand(env, &CreateEdgeRouterCmd{}, &edge_cmd_pb.CreateEdgeRouterCmd{})
 	RegisterUpdateDecoder[*EdgeRouter](env, manager)
@@ -188,31 +204,17 @@ func (self *EdgeRouterManager) Query(query string) (*EdgeRouterListResult, error
 	return result, nil
 }
 
-func (self *EdgeRouterManager) ListForIdentityAndService(identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
+func (self *EdgeRouterManager) ListForIdentityAndService(identityId, serviceId string) (*EdgeRouterListResult, error) {
 	var list *EdgeRouterListResult
 	var err error
 	if txErr := self.env.GetDb().View(func(tx *bbolt.Tx) error {
-		list, err = self.ListForIdentityAndServiceWithTx(tx, identityId, serviceId, limit)
+		list, err = self.ListForIdentityAndServiceWithTx(tx, identityId, serviceId)
 		return nil
 	}); txErr != nil {
 		return nil, txErr
 	}
 
 	return list, err
-}
-
-func (self *EdgeRouterManager) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
-	query := fmt.Sprintf(`anyOf(identities) = "%v" and anyOf(services) = "%v"`, identityId, serviceId)
-
-	if limit != nil {
-		query += " limit " + strconv.Itoa(*limit)
-	}
-
-	result := &EdgeRouterListResult{manager: self}
-	if err := self.ListWithTx(tx, query, result.collect); err != nil {
-		return nil, err
-	}
-	return result, nil
 }
 
 func (self *EdgeRouterManager) IsAccessToEdgeRouterAllowed(identityId, serviceId, edgeRouterId string) (bool, error) {
@@ -228,6 +230,16 @@ func (self *EdgeRouterManager) IsAccessToEdgeRouterAllowed(identityId, serviceId
 	})
 	if err != nil {
 		return false, err
+	}
+	return result, nil
+}
+
+func (self *EdgeRouterManager) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, identityId, serviceId string) (*EdgeRouterListResult, error) {
+	query := fmt.Sprintf(`anyOf(identities) = "%v" and anyOf(services) = "%v" SORT BY connected DESC LIMIT 25`, identityId, serviceId)
+
+	result := &EdgeRouterListResult{manager: self}
+	if err := self.ListWithTx(tx, query, result.collect); err != nil {
+		return nil, err
 	}
 	return result, nil
 }

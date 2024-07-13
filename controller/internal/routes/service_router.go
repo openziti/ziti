@@ -369,7 +369,7 @@ func (r *ServiceRouter) listClientEdgeRouters(ae *env.AppEnv, rc *response.Reque
 func getServiceEdgeRouters(ae *env.AppEnv, rc *response.RequestContext, serviceId string) (*rest_model.ServiceEdgeRouters, error) {
 	edgeRouters := &rest_model.ServiceEdgeRouters{}
 
-	edgeRoutersForSvc, err := ae.Managers.EdgeRouter.ListForIdentityAndService(rc.Identity.Id, serviceId, nil)
+	edgeRoutersForSvc, err := ae.Managers.EdgeRouter.ListForIdentityAndService(rc.Identity.Id, serviceId)
 	if err != nil {
 		return nil, err
 	}
