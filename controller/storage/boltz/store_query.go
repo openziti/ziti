@@ -86,7 +86,7 @@ func (store *BaseStore[E]) GetSymbol(name string) EntitySymbol {
 		4. Composite multi-value symbols (employee.directReports.phoneNumbers)
 		5. Maps (employee.tags.location, employee.manager.tags.location, employee.directReports.tags.location)
 	*/
-	if result := store.symbols[name]; result != nil {
+	if result := store.symbols.Get(name); result != nil {
 		// If it's a set symbol, make a runtime copy so we don't share cursor data. If we ever have a case where we
 		// are evaluating the same symbol in multiple context, this will still break, but since currently any given
 		// expression only involves a single symbol, this should not be a problem
@@ -178,7 +178,7 @@ func (store *BaseStore[E]) createCompositeEntitySymbol(name string, first linked
 }
 
 func (store *BaseStore[E]) addSymbol(name string, public bool, symbol EntitySymbol) EntitySymbol {
-	store.symbols[name] = symbol
+	store.symbols.Put(name, symbol)
 	if public {
 		store.publicSymbols[name] = struct{}{}
 	}
@@ -190,7 +190,7 @@ func (store *BaseStore[E]) inheritMapSymbol(symbol *entityMapSymbol) {
 }
 
 func (store *BaseStore[E]) GrantSymbols(child ConfigurableStore) {
-	for name, value := range store.symbols {
+	for name, value := range store.symbols.AsMap() {
 		child.addSymbol(name, store.IsPublicSymbol(name), value)
 	}
 	for name, value := range store.mapSymbols {
@@ -210,11 +210,11 @@ func (store *BaseStore[E]) AddIdSymbol(name string, nodeType ast.NodeType) Entit
 }
 
 func (store *BaseStore[E]) MapSymbol(name string, mapper SymbolMapper) {
-	if symbol, found := store.symbols[name]; found {
-		store.symbols[name] = &symbolMapWrapper{
+	if symbol := store.symbols.Get(name); symbol != nil {
+		store.symbols.Put(name, &symbolMapWrapper{
 			EntitySymbol: symbol,
 			SymbolMapper: mapper,
-		}
+		})
 	}
 }
 
@@ -240,6 +240,10 @@ func (store *BaseStore[E]) AddMapSymbol(name string, nodeType ast.NodeType, key 
 		symbolType: nodeType,
 		prefix:     prefix,
 	}
+}
+
+func (store *BaseStore[E]) AddEntitySymbol(symbol EntitySymbol) {
+	store.symbols.Put(symbol.GetName(), symbol)
 }
 
 func (store *BaseStore[E]) NewEntitySymbol(name string, nodeType ast.NodeType) EntitySymbol {
@@ -297,7 +301,7 @@ func (store *BaseStore[E]) addSetSymbol(name string, nodeType ast.NodeType, list
 	result := &entitySetSymbolImpl{
 		entitySymbol: entitySymbol,
 	}
-	store.symbols[name] = result
+	store.symbols.Put(name, result)
 	return result
 }
 
@@ -331,9 +335,9 @@ func (store *BaseStore[E]) newRowComparator(sort []ast.SortField) (RowComparator
 
 	var symbolsComparators []symbolComparator
 	for _, sortField := range sort {
-		symbol, found := store.symbols[sortField.Symbol()]
+		symbol := store.symbols.Get(sortField.Symbol())
 		forward := sortField.IsAscending()
-		if !found {
+		if symbol == nil {
 			return nil, errors.Errorf("no such sort field: %v", sortField.Symbol())
 		}
 		if symbol.IsSet() {
