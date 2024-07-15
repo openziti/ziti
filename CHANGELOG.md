@@ -1,3 +1,10 @@
+# Release 1.1.7
+
+## What's New
+
+* Release actions fixes
+* Fix for a flaky acceptance test
+
 # Release 1.1.6
 
 ## What's New
