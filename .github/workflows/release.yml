@@ -147,11 +147,16 @@ jobs:
 
   publish:
     name: Publish Binaries
+    # !cancelled() overrides default behavior, allowing this job to proceed if needed jobs failed, unless "if"
+    # expression specifies a required outcome
     if: ${{
       !cancelled()
       && (needs.mac-os-build.result == 'success' || needs.mac-os-build.result == 'skipped')
       && (needs.windows-build.result == 'success' || needs.windows-build.result == 'skipped')
+      && (needs.linux-build.result == 'success')
+      && (needs.tests.result == 'success')
       }}
+    # ensure required job outcomes are specified in "if" expression
     needs: [ tests, linux-build, mac-os-build, windows-build ]
     runs-on: ubuntu-20.04
     outputs:
