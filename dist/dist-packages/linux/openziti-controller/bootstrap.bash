@@ -11,8 +11,7 @@ makePki() {
 
   # used by "ziti pki create server" as DNS SAN
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
-    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set, i.e., the FQDN by which all devices will reach the"\
-    "controller and verify the server certificate" >&2
+    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set" >&2
     hintLinuxBootstrap "${PWD}"
     return 1
   fi
@@ -63,16 +62,6 @@ issueLeafCerts() {
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}"
   fi
-
-  # use the server key for both client and server certs until "ziti create config controller" supports separate keys for
-  # each
-  # CLIENT_KEY_FILE="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_CLIENT_FILE}.key"
-  # if ! [[ -s "$CLIENT_KEY_FILE" ]]; then
-  #   ziti pki create key \
-  #     --pki-root "${ZITI_PKI_ROOT}" \
-  #     --ca-name "${ZITI_INTERMEDIATE_FILE}" \
-  #     --key-file "${ZITI_CLIENT_FILE}"
-  # fi
 
   #
   # create server and client certs
@@ -133,7 +122,10 @@ makeConfig() {
   fi
 
   # set the path to the root CA cert
-  export  ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
+  export  ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_SERVER_FILE}.chain.pem" \
+          ZITI_PKI_CTRL_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_CLIENT_FILE}.cert" \
+          ZITI_PKI_CTRL_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_SERVER_FILE}.key" \
+          ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
 
   # set the URI of the edge-client API (uses same TCP port); e.g., ztAPI: ctrl.ziti.example.com:1280
   export  ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}" \
@@ -146,11 +138,13 @@ makeConfig() {
           ZITI_PKI_EDGE_KEY="${ZITI_PKI_CTRL_KEY}" \
           ZITI_PKI_EDGE_CA="${ZITI_PKI_CTRL_CA}"
 
-  exportZitiVars                # export all ZITI_ vars to be used in bootstrap
-  if [[ ! -s "${_config_file}" || "${1:-}" == --force ]]; then
-    ziti create config controller \
-      --output "${_config_file}"
+  exportZitiVars
+  if [[ -s "${_config_file}" && "${1:-}" == --force ]]; then
+    echo "INFO: recreating config file: ${_config_file}"
+    mv --no-clobber "${_config_file}"{,".${DATETIME}.old"}
   fi
+  ziti create config controller \
+    --output "${_config_file}"
 
 }
 
@@ -162,6 +156,7 @@ makeDatabase() {
 
   if [[ -n "${1:-}" ]]; then
     local _config_file="${1}"
+    shift
   else
     echo "ERROR: no config file path provided" >&2
     return 1
@@ -169,11 +164,14 @@ makeDatabase() {
 
   local _db_file
   _db_file=$(dbFile "${_config_file}")
-  if [[ -s "${_db_file}" ]]; then
-    echo "DEBUG: database file already exists: ${_db_file}" >&3
-    return 0
-  else
+  if [[ ! -s "${_db_file}" ]]; then
     echo "DEBUG: creating database file: ${_db_file}" >&3
+  elif [[ "${1:-}" == --force ]]; then
+    echo "INFO: recreating database file: ${_db_file}"
+    mv --no-clobber "${_db_file}"{,".${DATETIME}.old"}
+  else
+    echo "INFO: database file exists: ${_db_file}"
+    return 0
   fi
 
   # if the database file is in a subdirectory, create the directory so that "ziti controller edge init" can load the
@@ -267,13 +265,16 @@ loadEnvFiles() {
 }
 
 promptCtrlAddress() {
-  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
-    if ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter DNS name of the controller [$DEFAULT_ADDR]: " || echo "$DEFAULT_ADDR")"; then
-      if [[ -n "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
-        setAnswer "ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}" "${BOOT_ENV_FILE}"
-      fi
+  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" || "${ZITI_CTRL_ADVERTISED_ADDRESS}" =~ ^[:0-9] ]]; then
+    if ! ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter DNS name of the controller [required]: ")"; then
+      echo "ERROR: missing required DNS name ZITI_CTRL_ADVERTISED_ADDRESS in ${BOOT_ENV_FILE}" >&2
+      return 1
+      # if an IP address
+    elif [[ "${ZITI_CTRL_ADVERTISED_ADDRESS}" =~ ^[:0-9] ]]; then
+      echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be a DNS name" >&2
+      return 1
     else
-      echo "WARN: missing ZITI_CTRL_ADVERTISED_ADDRESS in ${BOOT_ENV_FILE}" >&2
+      setAnswer "ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}" "${BOOT_ENV_FILE}"
     fi
   fi
 }
@@ -305,18 +306,16 @@ promptPwd() {
   # prompt for password token if interactive, unless already answered
   else
     if ! [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
-      echo "INFO: ZITI_BOOTSTRAP_DATABASE is not true in ${SVC_ENV_FILE}" >&2
+      echo "WARN: ZITI_BOOTSTRAP_DATABASE is not true in ${SVC_ENV_FILE}" >&2
     # do nothing if enrollment token is already defined in env file
     elif [[ -n "${ZITI_PWD:-}" ]]; then
-      echo "DEBUG: ZITI_PWD is defined in ${BOOT_ENV_FILE} and will be used to init db during"\
-            "next startup" >&3
+      echo "DEBUG: ZITI_PWD is defined in ${BOOT_ENV_FILE}" >&3
     else
-      GEN_PWD=$(head -c1024 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^*_+~' | cut -c 1-12)
+      GEN_PWD=$(head -c128 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^*_+~' | cut -c 1-12)
+      # don't set a generated password if not interactive because it will be unknown
       if isInteractive && ZITI_PWD="$(prompt "Set password for '${ZITI_USER}' [${GEN_PWD}]: " || echo "${GEN_PWD}")"; then
-        if [[ -n "${ZITI_PWD:-}" ]]; then
-          # temporarily set password in env file, then scrub after db init
-          setAnswer "ZITI_PWD=${ZITI_PWD}" "${BOOT_ENV_FILE}"
-        fi
+        # temporarily set password in env file, then scrub after db init
+        setAnswer "ZITI_PWD=${ZITI_PWD}" "${BOOT_ENV_FILE}"
       else
         echo "ERROR: ZITI_PWD is required" >&2
         return 1
@@ -325,17 +324,17 @@ promptPwd() {
 fi
 }
 
-promptBindAddress() {
-  if [[ -z "${ZITI_CTRL_BIND_ADDRESS:-}" ]]; then
-    if ZITI_CTRL_BIND_ADDRESS="$(prompt "Enter the bind address for the controller [0.0.0.0]: " || echo '0.0.0.0')"; then
-      if [[ -n "${ZITI_CTRL_BIND_ADDRESS:-}" ]]; then
-        setAnswer "ZITI_CTRL_BIND_ADDRESS=${ZITI_CTRL_BIND_ADDRESS}" "${BOOT_ENV_FILE}"
-      fi
-    else
-      echo "WARN: missing ZITI_CTRL_BIND_ADDRESS in ${BOOT_ENV_FILE}" >&2
-    fi
-  fi
-}
+# promptBindAddress() {
+#   if [[ -z "${ZITI_CTRL_BIND_ADDRESS:-}" ]]; then
+#     if ZITI_CTRL_BIND_ADDRESS="$(prompt "Enter the bind address for the controller [0.0.0.0]: " || echo '0.0.0.0')"; then
+#       if [[ -n "${ZITI_CTRL_BIND_ADDRESS:-}" ]]; then
+#         setAnswer "ZITI_CTRL_BIND_ADDRESS=${ZITI_CTRL_BIND_ADDRESS}" "${BOOT_ENV_FILE}"
+#       fi
+#     else
+#       echo "WARN: missing ZITI_CTRL_BIND_ADDRESS in ${BOOT_ENV_FILE}" >&2
+#     fi
+#   fi
+# }
 
 promptUser() {
   if [[ -z "${ZITI_USER:-}" ]]; then
@@ -346,12 +345,6 @@ promptUser() {
     else
       echo "WARN: missing ZITI_USER in ${BOOT_ENV_FILE}" >&2
     fi
-  fi
-}
-
-setBootstrapEnabled() {
-  if [[ -z "${ZITI_BOOTSTRAP:-}" ]]; then
-    setAnswer "ZITI_BOOTSTRAP=true" "${SVC_ENV_FILE}"
   fi
 }
 
@@ -412,7 +405,7 @@ importZitiVars() {
 }
 
 exportZitiVars() {
-  # make ziti vars available in forks like "ziti create config controller"
+  # make ziti vars available in forks
   for line in $(set | grep -e "^ZITI_" | sort); do
     # shellcheck disable=SC2013
     export "${line%=*}"
@@ -452,6 +445,8 @@ bootstrap() {
   # make database unless explicitly disabled or it exists
   if [[ "${ZITI_BOOTSTRAP_DATABASE}" == true ]]; then
     makeDatabase "${_ctrl_config_file}"
+  elif [[ "${ZITI_BOOTSTRAP_DATABASE}" == force ]]; then
+    makeDatabase "${_ctrl_config_file}" --force
   fi
 
 }
@@ -505,6 +500,14 @@ dbFile() {
   awk -F: '/^db:/ {print $2}' "${_config_file}"|xargs realpath
 }
 
+exitHandler() {
+  echo "WARN: set VERBOSE=1 or DEBUG=1 for more output" >&2
+  if [[ -s "${INFO_LOG_FILE:-}" || -s "${DEBUG_LOG_FILE:-}" ]]; then
+    cat "${INFO_LOG_FILE:-/dev/null}" "${DEBUG_LOG_FILE:-/dev/null}" >> "${ZITI_BOOTSTRAP_LOG_FILE}"
+    echo "WARN: see output in '${ZITI_BOOTSTRAP_LOG_FILE}'" >&2
+  fi
+}
+
 # BEGIN
 
 # discard debug unless this script is executed directly with DEBUG=1
@@ -515,9 +518,10 @@ if (( DEBUG )); then
   exec 3>&1
   set -o xtrace
 else
-  exec 3>/dev/null
+  exec 3>>"${DEBUG_LOG_FILE:=$(mktemp)}"
 fi
 
+trap exitHandler EXIT SIGINT SIGTERM
 
 # set defaults
 : "${ZITI_PKI_ROOT:=pki}"  # relative to working directory
@@ -527,7 +531,8 @@ fi
 : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
 : "${ZITI_CTRL_DATABASE_FILE:=bbolt.db}"  # relative path to working directory
-
+: "${ZITI_CTRL_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
+: "${ZITI_BOOTSTRAP_LOG_FILE:=$(mktemp)}"  # where the exit handler should concatenate verbose and debug messages
 
 # run the bootstrap function if this script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -536,11 +541,11 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   set -o nounset
   set -o pipefail
 
-  export ZITI_HOME=/var/lib/ziti-controller
-  DEFAULT_ADDR=localhost
+  export ZITI_HOME=/var/lib/private/ziti-controller
   SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
   BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
   SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
+  DATETIME="$(date --utc --iso-8601=seconds)"
 
   if [[ "${1:-}" =~ ^[-] ]]
   then
@@ -574,13 +579,12 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
   promptCtrlAddress             # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
   promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
-  promptBindAddress             # prompt for ZITI_CTRL_BIND_ADDRESS if not already set
   promptUser                    # prompt for ZITI_USER if not already set
   promptPwd                     # prompt for ZITI_PWD if not already set
   loadEnvFiles                  # reload env files to source new answers from prompts
 
   # suppress normal output during bootstrapping unless VERBOSE
-  exec 4>&1; exec 1>/dev/null
+  exec 4>&1; exec 1>>"${INFO_LOG_FILE:=$(mktemp)}"
   if (( VERBOSE )); then
     exec 1>&4
   fi
@@ -588,12 +592,20 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   # run bootstrap(), set filemodes, and scrub ZITI_PWD
   if bootstrap "${@}"
   then
+    echo "DEBUG: bootstrap complete" >&3
     finalizeWorkingDir "${ZITI_HOME}"
     setAnswer "ZITI_PWD=" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
 
     # successfully running this script directly means bootstrapping was enabled
-    setBootstrapEnabled
+    setAnswer "ZITI_BOOTSTRAP=true" "${SVC_ENV_FILE}"
+    # if verbose then this was already done earlier, else allow stdout now to announce completion
+    if ! (( VERBOSE )); then
+      exec 1>&4
+    fi
+    echo -e "INFO: bootstrap completed successfully and will not run again."\
+            "Adjust ${ZITI_HOME}/config.yml to suit." >&2
+    trap - EXIT  # remove exit trap
   else
-    echo "ERROR: something went wrong during bootstrapping; set DEBUG=1" >&2
+    echo "ERROR: something went wrong during bootstrapping" >&2
   fi
 fi
