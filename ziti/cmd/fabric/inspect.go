@@ -34,6 +34,7 @@ func newInspectCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.AddCommand(action.newInspectSubCmd(p, "sdk-terminators", "gets information from routers about their view of sdk terminators"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "router-messaging", "gets information about pending router peer updates and terminator validations"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "router-data-model", "gets information about the router data model"))
+	cmd.AddCommand(action.newInspectSubCmd(p, "router-controllers", "gets information about the state of a router's connections to its controllers"))
 
 	inspectCircuitsAction := &InspectCircuitsAction{InspectAction: *newInspectAction(p)}
 	cmd.AddCommand(inspectCircuitsAction.newCobraCmd())

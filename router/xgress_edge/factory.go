@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
@@ -118,7 +119,11 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 
 	factory.edgeRouterConfig = config
 
-	factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
+	if factory.routerConfig.Ha.Enabled {
+		factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
+	} else {
+		factory.stateManager.SetRouterDataModel(common.NewReceiverRouterDataModel(state.RouterDataModelListerBufferSize))
+	}
 
 	go apiproxy.Start(config)
 
