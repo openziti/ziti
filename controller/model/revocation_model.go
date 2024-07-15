@@ -29,7 +29,7 @@ type Revocation struct {
 	ExpiresAt time.Time
 }
 
-func (entity *Revocation) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker boltz.FieldChecker) (*db.Revocation, error) {
+func (entity *Revocation) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.Revocation, error) {
 	return entity.toBoltEntityForCreate(tx, env)
 }
 

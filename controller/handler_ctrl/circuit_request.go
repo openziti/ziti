@@ -17,25 +17,26 @@
 package handler_ctrl
 
 import (
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/xt"
 	"google.golang.org/protobuf/proto"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/identity"
+	"github.com/openziti/ziti/controller/network"
 )
 
 type circuitRequestHandler struct {
-	r       *network.Router
+	r       *model.Router
 	network *network.Network
 }
 
-func newCircuitRequestHandler(r *network.Router, network *network.Network) *circuitRequestHandler {
+func newCircuitRequestHandler(r *model.Router, network *network.Network) *circuitRequestHandler {
 	return &circuitRequestHandler{r: r, network: network}
 }
 
@@ -55,8 +56,8 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 		go func() {
 			id := &identity.TokenId{Token: request.IngressId, Data: request.PeerData}
 			service := request.Service
-			if _, err := h.network.Managers.Services.Read(service); err != nil {
-				if id, _ := h.network.Managers.Services.GetIdForName(service); id != "" {
+			if _, err := h.network.Managers.Service.Read(service); err != nil {
+				if id, _ := h.network.Managers.Service.GetIdForName(service); id != "" {
 					service = id
 				}
 			}
@@ -96,7 +97,7 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 	}
 }
 
-func (h *circuitRequestHandler) newCircuitCreateParms(serviceId string, sourceRouter *network.Router, clientId *identity.TokenId) network.CreateCircuitParams {
+func (h *circuitRequestHandler) newCircuitCreateParms(serviceId string, sourceRouter *model.Router, clientId *identity.TokenId) model.CreateCircuitParams {
 	return &circuitParams{
 		serviceId:    serviceId,
 		sourceRouter: sourceRouter,
@@ -108,7 +109,7 @@ func (h *circuitRequestHandler) newCircuitCreateParms(serviceId string, sourceRo
 
 type circuitParams struct {
 	serviceId    string
-	sourceRouter *network.Router
+	sourceRouter *model.Router
 	clientId     *identity.TokenId
 	ctx          logcontext.Context
 	deadline     time.Time
@@ -118,7 +119,7 @@ func (self *circuitParams) GetServiceId() string {
 	return self.serviceId
 }
 
-func (self *circuitParams) GetSourceRouter() *network.Router {
+func (self *circuitParams) GetSourceRouter() *model.Router {
 	return self.sourceRouter
 }
 

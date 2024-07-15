@@ -24,8 +24,8 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -103,14 +103,14 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 		return
 	}
 
-	terminator, _ := self.getNetwork().Terminators.Read(ctx.req.Address)
+	terminator, _ := self.getNetwork().Terminator.Read(ctx.req.Address)
 	if terminator != nil {
 		if err := ctx.validateExistingTerminator(terminator, logger); err != nil {
 			self.returnError(ctx, err)
 			return
 		}
 	} else {
-		terminator = &network.Terminator{
+		terminator = &model.Terminator{
 			BaseEntity: models.BaseEntity{
 				Id:       ctx.req.Address,
 				IsSystem: true,
@@ -127,10 +127,9 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 			HostId:         ctx.session.IdentityId,
 		}
 
-		n := self.appEnv.GetHostController().GetNetwork()
-		if err := n.Terminators.Create(terminator, ctx.newTunnelChangeContext()); err != nil {
+		if err := self.appEnv.Managers.Terminator.Create(terminator, ctx.newTunnelChangeContext()); err != nil {
 			// terminator might have been created while we were trying to create.
-			if terminator, _ = self.getNetwork().Terminators.Read(ctx.req.Address); terminator != nil {
+			if terminator, _ = self.getNetwork().Terminator.Read(ctx.req.Address); terminator != nil {
 				if validateError := ctx.validateExistingTerminator(terminator, logger); validateError != nil {
 					self.returnError(ctx, validateError)
 					return
@@ -179,7 +178,7 @@ type CreateTunnelTerminatorRequestContext struct {
 	req *edge_ctrl_pb.CreateTunnelTerminatorRequest
 }
 
-func (self *CreateTunnelTerminatorRequestContext) validateExistingTerminator(terminator *network.Terminator, log *logrus.Entry) controllerError {
+func (self *CreateTunnelTerminatorRequestContext) validateExistingTerminator(terminator *model.Terminator, log *logrus.Entry) controllerError {
 	if terminator.Binding != common.TunnelBinding {
 		log.WithField("binding", common.TunnelBinding).
 			WithField("conflictingBinding", terminator.Binding).

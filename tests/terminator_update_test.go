@@ -54,7 +54,7 @@ func Test_UpdateTerminators(t *testing.T) {
 	err = listener.UpdateCost(999)
 	ctx.Req.NoError(err)
 
-	time.Sleep(25 * time.Millisecond) // update is async, so need to give a little time to process
+	time.Sleep(500 * time.Millisecond) // update is async, so need to give a little time to process
 
 	term.cost = 999
 	ctx.AdminManagementSession.validateEntityWithLookup(term)
@@ -62,7 +62,7 @@ func Test_UpdateTerminators(t *testing.T) {
 	err = listener.UpdatePrecedence(edge.PrecedenceRequired)
 	ctx.Req.NoError(err)
 
-	time.Sleep(25 * time.Millisecond) // update is async, so need to give a little time to process
+	time.Sleep(500 * time.Millisecond) // update is async, so need to give a little time to process
 
 	term.precedence = "required"
 	ctx.AdminManagementSession.validateEntityWithLookup(term)
@@ -70,7 +70,7 @@ func Test_UpdateTerminators(t *testing.T) {
 	err = listener.UpdateCostAndPrecedence(585, edge.PrecedenceFailed)
 	ctx.Req.NoError(err)
 
-	time.Sleep(25 * time.Millisecond) // update is async, so need to give a little time to process
+	time.Sleep(500 * time.Millisecond) // update is async, so need to give a little time to process
 
 	term.cost = 585
 	term.precedence = "failed"

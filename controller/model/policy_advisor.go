@@ -24,7 +24,7 @@ type AdvisorEdgeRouter struct {
 
 type AdvisorServiceReachability struct {
 	Identity            *Identity
-	Service             *Service
+	Service             *EdgeService
 	IsBindAllowed       bool
 	IsDialAllowed       bool
 	IdentityRouterCount int
@@ -204,7 +204,7 @@ func (advisor *PolicyAdvisor) getEdgeRouterPolicies(identityId, edgeRouterId str
 
 type AdvisorIdentityServiceLinks struct {
 	Identity *Identity
-	Service  *Service
+	Service  *EdgeService
 	Policies []*ServicePolicy
 }
 
@@ -256,7 +256,7 @@ func (advisor *PolicyAdvisor) getServicePolicies(identityId, serviceId string) (
 }
 
 type AdvisorServiceEdgeRouterLinks struct {
-	Service    *Service
+	Service    *EdgeService
 	EdgeRouter *EdgeRouter
 	Policies   []*ServiceEdgeRouterPolicy
 }

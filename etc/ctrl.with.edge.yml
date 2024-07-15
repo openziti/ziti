@@ -8,6 +8,38 @@ network:
   # Defaults to 1 minute
   routerConnectChurnLimit: 1m
 
+# `trustDomain` is used to name and uniquely identify a network. Its main use is as a trust domain in SPIFFE ids.
+# Defining it here is only for single controller environments that are not configured for high
+# availability. Deployments with high availability MUST be configured via x509 certificate URI SANs.
+#
+# For more information on SPIFFE IDs see: https://github.com/spiffe/spiffe/blob/main/standards/X509-SVID.md
+#
+# A trust domain is required, but where it is defined depends on how the network was deployed. The preference is for it
+# to come from SPIFFE ids embedded within x509 certificates. The trust domain is derived from the closest SPIFFE id
+# looking at server cert > intermediate CA > root CA.
+#
+# For non-HA environments, a trust domain will deterministically be generated for you from the root CA if it is not
+# specified. The controller log will have warnings with this value on startup.
+#
+# Trust Domain Resolution:
+# - Single Controllers Non-HA:
+#   - Preference for future continuity is that SPIFFE ids are defined on all CAs and leafs, sharing the same trust domain.
+#   - For pre-existing networks without SPIFFE ids, use of the `trustDomain` file configuration value.
+#   - In situations where `trustDomain` is defined within the configuration and in a SPIFFE id, the SPIFFE id take precedent.
+#   - If no SPIFFE ids are detected, a trust domain will be deterministically generated from the root CA and warnings
+#     will appear in the controller log on startup
+#
+# - High Availability Controllers:
+#  - Must have SPIFFE ids defined on all CAs and leafs for controllers.
+#  - The `trustDomain` configuration value is always ignored.
+#  - If a trust domain cannot be determined the controller will not start.
+trustDomain: ""
+
+# `additionalTrustDomains` is an array of string trust domains that should additionally be trusted. If certificates
+# have been issued through router/identity enrollment with the default generated trust domain or other trust domains
+# previously used, and they should continue to function, they should be added here.
+additionalTrustDomains: []
+
 #trace:
 #  path:                 ctrl.trace
 

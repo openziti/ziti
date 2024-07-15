@@ -21,7 +21,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	runner2 "github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/api_impl"
@@ -39,12 +38,11 @@ import (
 )
 
 type Controller struct {
-	config          *edgeconfig.Config
+	config          *edgeconfig.EdgeConfig
 	AppEnv          *env.AppEnv
 	xmgmt           *submgmt
 	xctrl           *subctrl
 	policyEngine    runner2.Runner
-	isLoaded        bool
 	initModulesOnce sync.Once
 	initialized     bool
 }
@@ -58,20 +56,16 @@ const (
 	ZitiInstanceId = "ziti-instance-id"
 )
 
-func NewController(cfg config.Configurable, host env.HostController) (*Controller, error) {
-	c := &Controller{}
-
-	if err := cfg.Configure(c); err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %s", err)
+func NewController(host env.HostController) (*Controller, error) {
+	c := &Controller{
+		config: host.GetConfig().Edge,
+		AppEnv: host.GetEnv(),
 	}
 
-	if !c.IsEnabled() {
+	if !c.Enabled() {
 		return c, nil
 	}
 
-	c.AppEnv = env.NewAppEnv(c.config, host)
-
-	c.AppEnv.TraceManager = env.NewTraceManager(host.GetCloseNotifyChannel())
 	c.AppEnv.HostController.GetNetwork().AddCapability("ziti.edge")
 
 	pfxlog.Logger().Infof("edge controller instance id: %s", c.AppEnv.InstanceId)
@@ -123,27 +117,6 @@ func NewController(cfg config.Configurable, host env.HostController) (*Controlle
 	return c, nil
 }
 
-func (c *Controller) IsEnabled() bool {
-	return c.config != nil && c.config.Enabled
-}
-
-func (c *Controller) SetHostController(h env.HostController) {
-	if !c.IsEnabled() {
-		return
-	}
-
-	c.AppEnv.HostController = h
-	c.AppEnv.TraceManager = env.NewTraceManager(h.GetCloseNotifyChannel())
-	c.AppEnv.HostController.GetNetwork().AddCapability("ziti.edge")
-	if err := h.RegisterXctrl(c.xctrl); err != nil {
-		panic(err)
-	}
-
-	if err := h.RegisterXmgmt(c.xmgmt); err != nil {
-		panic(err)
-	}
-}
-
 func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedReceiveHandler {
 	ch := binding.GetChannel()
 	tunnelState := handler_edge_ctrl.NewTunnelState()
@@ -182,29 +155,14 @@ func (c *Controller) GetMgmtHandlers() []channel.TypedReceiveHandler {
 	}
 }
 
-func (c *Controller) LoadConfig(cfgmap map[interface{}]interface{}) error {
-	if c.isLoaded {
-		return nil
-	}
-
-	parsedConfig, err := edgeconfig.LoadFromMap(cfgmap)
-	if err != nil {
-		return fmt.Errorf("error loading edge controller configuration: %s", err.Error())
-	}
-
-	c.config = parsedConfig
-
-	return nil
-}
-
 func (c *Controller) Enabled() bool {
-	return c.config.Enabled
+	return c.AppEnv.HostController.GetConfig().Edge.Enabled
 }
 
 func (c *Controller) initializeAuthModules() {
 	c.initModulesOnce.Do(func() {
 		c.AppEnv.AuthRegistry.Add(model.NewAuthModuleUpdb(c.AppEnv))
-		c.AppEnv.AuthRegistry.Add(model.NewAuthModuleCert(c.AppEnv, c.AppEnv.GetConfig().CaPems()))
+		c.AppEnv.AuthRegistry.Add(model.NewAuthModuleCert(c.AppEnv, c.AppEnv.GetConfig().Edge.CaPems()))
 		c.AppEnv.AuthRegistry.Add(model.NewAuthModuleExtJwt(c.AppEnv))
 
 		c.AppEnv.EnrollRegistry.Add(model.NewEnrollModuleCa(c.AppEnv))
@@ -217,7 +175,7 @@ func (c *Controller) initializeAuthModules() {
 }
 
 func (c *Controller) Initialize() {
-	if !c.config.Enabled {
+	if !c.Enabled() {
 		return
 	}
 
@@ -268,9 +226,10 @@ func (c *Controller) Initialize() {
 }
 
 func (c *Controller) Run() {
-	if !c.config.Enabled {
+	if !c.Enabled() {
 		return
 	}
+
 	log := pfxlog.Logger()
 
 	if !c.initialized {
@@ -344,7 +303,7 @@ func (c *Controller) checkEdgeInitialized() {
 }
 
 func (c *Controller) Shutdown() {
-	if c.config.Enabled {
+	if c.Enabled() {
 		log := pfxlog.Logger()
 
 		pfxlog.Logger().Info("edge controller: shutting down...")

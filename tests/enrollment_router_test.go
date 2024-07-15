@@ -73,7 +73,7 @@ func Test_RouterEnrollment(t *testing.T) {
 			ctx.Req.NotNil(cert)
 			ctx.Req.NotNil(pk)
 
-			caPems := ctx.EdgeController.AppEnv.Config.CaPems()
+			caPems := ctx.EdgeController.AppEnv.GetConfig().Edge.CaPems()
 
 			caCerts, err := parsePEMBundle(caPems)
 			ctx.Req.NoError(err)
@@ -97,7 +97,7 @@ func Test_RouterEnrollment(t *testing.T) {
 			ctx.Req.NotNil(cert)
 			ctx.Req.NotNil(pk)
 
-			caPems := ctx.EdgeController.AppEnv.Config.CaPems()
+			caPems := ctx.EdgeController.AppEnv.GetConfig().Edge.CaPems()
 
 			caCerts, err := parsePEMBundle(caPems)
 			ctx.Req.NoError(err)
@@ -324,7 +324,7 @@ func Test_RouterEnrollment(t *testing.T) {
 					ctx.Req.NotNil(cert)
 					ctx.Req.NotNil(pk)
 
-					caPems := ctx.EdgeController.AppEnv.Config.CaPems()
+					caPems := ctx.EdgeController.AppEnv.GetConfig().Edge.CaPems()
 
 					caCerts, err := parsePEMBundle(caPems)
 					ctx.Req.NoError(err)
@@ -348,7 +348,7 @@ func Test_RouterEnrollment(t *testing.T) {
 					ctx.Req.NotNil(cert)
 					ctx.Req.NotNil(pk)
 
-					caPems := ctx.EdgeController.AppEnv.Config.CaPems()
+					caPems := ctx.EdgeController.AppEnv.GetConfig().Edge.CaPems()
 
 					caCerts, err := parsePEMBundle(caPems)
 					ctx.Req.NoError(err)

@@ -33,10 +33,10 @@ import (
 const (
 	optionWSS               = "wss"
 	defaultWSS              = false
-	wssDescription          = "Create an edge router config with wss enabled"
+	wssDescription          = "Configure a WebSocket edge binding for BrowZer clients"
 	optionPrivate           = "private"
 	defaultPrivate          = false
-	privateDescription      = "Create a private router config"
+	privateDescription      = "Do not listen for router links"
 	tproxyTunMode           = "tproxy"
 	proxyTunMode            = "proxy"
 	hostTunMode             = "host"

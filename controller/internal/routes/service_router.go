@@ -264,15 +264,15 @@ func (r *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, param
 }
 
 func (r *ServiceRouter) listServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler[*model.Service, *model.ServiceEdgeRouterPolicy](ae, rc, ae.Managers.EdgeService, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
+	ListAssociationWithHandler[*model.EdgeService, *model.ServiceEdgeRouterPolicy](ae, rc, ae.Managers.EdgeService, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
 }
 
 func (r *ServiceRouter) listServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler[*model.Service, *model.ServicePolicy](ae, rc, ae.Managers.EdgeService, ae.Managers.ServicePolicy, MapServicePolicyToRestEntity)
+	ListAssociationWithHandler[*model.EdgeService, *model.ServicePolicy](ae, rc, ae.Managers.EdgeService, ae.Managers.ServicePolicy, MapServicePolicyToRestEntity)
 }
 
 func (r *ServiceRouter) listConfigs(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler[*model.Service, *model.Config](ae, rc, ae.Managers.EdgeService, ae.Managers.Config, MapConfigToRestEntity)
+	ListAssociationWithHandler[*model.EdgeService, *model.Config](ae, rc, ae.Managers.EdgeService, ae.Managers.Config, MapConfigToRestEntity)
 }
 
 func (r *ServiceRouter) listManagementTerminators(ae *env.AppEnv, rc *response.RequestContext) {
@@ -369,7 +369,7 @@ func (r *ServiceRouter) listClientEdgeRouters(ae *env.AppEnv, rc *response.Reque
 func getServiceEdgeRouters(ae *env.AppEnv, rc *response.RequestContext, serviceId string) (*rest_model.ServiceEdgeRouters, error) {
 	edgeRouters := &rest_model.ServiceEdgeRouters{}
 
-	edgeRoutersForSvc, err := ae.Managers.EdgeRouter.ListForIdentityAndService(rc.Identity.Id, serviceId, nil)
+	edgeRoutersForSvc, err := ae.Managers.EdgeRouter.ListForIdentityAndService(rc.Identity.Id, serviceId)
 	if err != nil {
 		return nil, err
 	}

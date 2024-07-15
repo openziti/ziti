@@ -19,546 +19,922 @@ package config
 import (
 	"bytes"
 	"crypto/sha1"
+	"crypto/tls"
 	"crypto/x509"
-	"encoding/pem"
+	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-hclog"
 	"github.com/michaelquigley/pfxlog"
-	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/identity"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/transport/v2"
+	transporttls "github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/common/config"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
-	"net"
+	"gopkg.in/yaml.v2"
+	"math"
 	"net/url"
 	"os"
-	"reflect"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
 const (
-	DefaultEdgeApiActivityUpdateBatchSize = 250
-	DefaultEdgeAPIActivityUpdateInterval  = 90 * time.Second
-	MaxEdgeAPIActivityUpdateBatchSize     = 10000
-	MinEdgeAPIActivityUpdateBatchSize     = 1
-	MaxEdgeAPIActivityUpdateInterval      = 10 * time.Minute
-	MinEdgeAPIActivityUpdateInterval      = time.Millisecond
+	DefaultProfileMemoryInterval             = 15 * time.Second
+	DefaultHealthChecksBoltCheckInterval     = 30 * time.Second
+	DefaultHealthChecksBoltCheckTimeout      = 20 * time.Second
+	DefaultHealthChecksBoltCheckInitialDelay = 30 * time.Second
 
-	DefaultEdgeSessionTimeout = 30 * time.Minute
-	MinEdgeSessionTimeout     = 1 * time.Minute
+	DefaultRaftCommandHandlerMaxQueueSize = 1000
 
-	MinEdgeEnrollmentDuration     = 5 * time.Minute
-	DefaultEdgeEnrollmentDuration = 180 * time.Minute
+	// DefaultTlsHandshakeRateLimiterEnabled is whether the tls handshake rate limiter is enabled by default
+	DefaultTlsHandshakeRateLimiterEnabled = false
 
-	DefaultHttpIdleTimeout       = 5000 * time.Millisecond
-	DefaultHttpReadTimeout       = 5000 * time.Millisecond
-	DefaultHttpReadHeaderTimeout = 5000 * time.Millisecond
-	DefaultHttpWriteTimeout      = 100000 * time.Millisecond
+	// TlsHandshakeRateLimiterMinSizeValue is the minimum size that can be configured for the tls handshake rate limiter
+	// window range
+	TlsHandshakeRateLimiterMinSizeValue = 5
 
-	DefaultTotpDomain = "openziti.io"
+	// TlsHandshakeRateLimiterMaxSizeValue is the maximum size that can be configured for the tls handshake rate limiter
+	// window range
+	TlsHandshakeRateLimiterMaxSizeValue = 10000
 
-	DefaultAuthRateLimiterEnabled = true
-	DefaultAuthRateLimiterMaxSize = 250
-	DefaultAuthRateLimiterMinSize = 5
+	// TlsHandshakeRateLimiterMetricOutstandingCount is the name of the metric tracking how many tasks are in process
+	TlsHandshakeRateLimiterMetricOutstandingCount = "tls_handshake_limiter.in_process"
 
-	AuthRateLimiterMinSizeValue = 5
-	AuthRateLimiterMaxSizeValue = 1000
+	// TlsHandshakeRateLimiterMetricCurrentWindowSize is the name of the metric tracking the current window size
+	TlsHandshakeRateLimiterMetricCurrentWindowSize = "tls_handshake_limiter.window_size"
+
+	// TlsHandshakeRateLimiterMetricWorkTimer is the name of the metric tracking how long successful tasks are taking to complete
+	TlsHandshakeRateLimiterMetricWorkTimer = "tls_handshake_limiter.work_timer"
+
+	// DefaultTlsHandshakeRateLimiterMaxWindow is the default max size for the tls handshake rate limiter
+	DefaultTlsHandshakeRateLimiterMaxWindow = 1000
 )
 
-type Enrollment struct {
-	SigningCert       identity.Identity
-	SigningCertConfig identity.Config
-	SigningCertCaPem  []byte
-	EdgeIdentity      EnrollmentOption
-	EdgeRouter        EnrollmentOption
-}
-
-type EnrollmentOption struct {
-	Duration time.Duration
-}
-
-type Totp struct {
-	Hostname string
-}
-
-type Api struct {
-	SessionTimeout          time.Duration
-	ActivityUpdateBatchSize int
-	ActivityUpdateInterval  time.Duration
-
-	Listener      string
-	Address       string
-	IdentityCaPem []byte
-	HttpTimeouts  HttpTimeouts
-}
-
 type Config struct {
-	Enabled    bool
-	Api        Api
-	Enrollment Enrollment
+	Id                     *identity.TokenId
+	SpiffeIdTrustDomain    *url.URL
+	AdditionalTrustDomains []*url.URL
 
-	caPems          *bytes.Buffer
-	caPemsOnce      sync.Once
-	Totp            Totp
-	AuthRateLimiter command.AdaptiveRateLimiterConfig
-	caCerts         []*x509.Certificate
-}
-
-type HttpTimeouts struct {
-	ReadTimeoutDuration       time.Duration
-	ReadHeaderTimeoutDuration time.Duration
-	WriteTimeoutDuration      time.Duration
-	IdleTimeoutsDuration      time.Duration
-}
-
-func DefaultHttpTimeouts() *HttpTimeouts {
-	httpTimeouts := &HttpTimeouts{
-		ReadTimeoutDuration:       DefaultHttpReadTimeout,
-		ReadHeaderTimeoutDuration: DefaultHttpReadHeaderTimeout,
-		WriteTimeoutDuration:      DefaultHttpWriteTimeout,
-		IdleTimeoutsDuration:      DefaultHttpIdleTimeout,
+	Raft    *RaftConfig
+	Network *NetworkConfig
+	Edge    *EdgeConfig
+	Db      boltz.Db
+	Trace   struct {
+		Handler *channel.TraceHandler
 	}
-	return httpTimeouts
-}
-
-func NewConfig() *Config {
-	return &Config{
-		Enabled: false,
-		caPems:  bytes.NewBuffer(nil),
+	Profile struct {
+		Memory struct {
+			Path     string
+			Interval time.Duration
+		}
+		CPU struct {
+			Path string
+		}
 	}
+	Ctrl struct {
+		Listener transport.Address
+		Options  *CtrlOptions
+	}
+	HealthChecks struct {
+		BoltCheck struct {
+			Interval     time.Duration
+			Timeout      time.Duration
+			InitialDelay time.Duration
+		}
+	}
+	CommandRateLimiter      command.RateLimiterConfig
+	TlsHandshakeRateLimiter command.AdaptiveRateLimiterConfig
+	Src                     map[interface{}]interface{}
 }
 
-func (c *Config) SessionTimeoutDuration() time.Duration {
-	return c.Api.SessionTimeout
+func (self *Config) ToJson() (string, error) {
+	jsonMap, err := config.ToJsonCompatibleMap(self.Src)
+	if err != nil {
+		return "", err
+	}
+	b, err := json.Marshal(jsonMap)
+	return string(b), err
 }
 
-func (c *Config) CaPems() []byte {
-	c.caPemsOnce.Do(func() {
-		c.RefreshCas()
-	})
-
-	return c.caPems.Bytes()
+// CtrlOptions extends channel.Options to include support for additional, non-channel specific options
+// (e.g. NewListener)
+type CtrlOptions struct {
+	*channel.Options
+	NewListener            *transport.Address
+	AdvertiseAddress       *transport.Address
+	RouterHeartbeatOptions *channel.HeartbeatOptions
+	PeerHeartbeatOptions   *channel.HeartbeatOptions
 }
 
-func (c *Config) CaCerts() []*x509.Certificate {
-	c.caPemsOnce.Do(func() {
-		c.RefreshCas()
-	})
-
-	return c.caCerts
+func (config *Config) Configure(sub config.Subconfig) error {
+	return sub.LoadConfig(config.Src)
 }
 
-// AddCaPems adds a byte array of certificates to the current buffered list of CAs. The certificates
-// should be in PEM format separated by new lines. RefreshCas should be called after all
-// calls to AddCaPems are completed.
-func (c *Config) AddCaPems(caPems []byte) {
-	c.caPems.WriteString("\n")
-	c.caPems.Write(caPems)
-}
+func LoadConfig(path string) (*Config, error) {
+	cfgBytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
 
-func (c *Config) RefreshCas() {
-	c.caPems = CalculateCaPems(c.caPems)
-	c.caCerts = nfpem.PemBytesToCertificates(c.caPems.Bytes())
-}
+	cfgmap := make(map[interface{}]interface{})
+	if err = yaml.NewDecoder(bytes.NewReader(cfgBytes)).Decode(&cfgmap); err != nil {
+		return nil, err
+	}
+	config.InjectEnv(cfgmap)
+	if value, found := cfgmap["v"]; found {
+		if value.(int) != 3 {
+			panic("config version mismatch: see docs for information on config updates")
+		}
+	} else {
+		panic("no config version: see docs for information on config")
+	}
 
-func (c *Config) loadTotpSection(edgeConfigMap map[any]any) error {
-	c.Totp = Totp{}
-	c.Totp.Hostname = DefaultTotpDomain
+	var identityConfig *identity.Config
 
-	if value, found := edgeConfigMap["totp"]; found {
-		if value == nil {
-			return nil
+	if value, found := cfgmap["identity"]; found {
+		subMap := value.(map[interface{}]interface{})
+		identityConfig, err = identity.NewConfigFromMapWithPathContext(subMap, "identity")
+
+		if err != nil {
+			return nil, fmt.Errorf("could not parse root identity: %v", err)
 		}
 
-		totpMap := value.(map[interface{}]interface{})
+		if identityConfig.ServerCert == "" && identityConfig.ServerKey == "" {
+			identityConfig.ServerCert = identityConfig.Cert
+			identityConfig.ServerKey = identityConfig.Key
+		}
+	} else {
+		return nil, fmt.Errorf("identity section not found")
+	}
 
-		if totpMap != nil {
-			if hostnameVal, found := totpMap["hostname"]; found {
+	controllerConfig := &Config{
+		Network: DefaultNetworkConfig(),
+		Src:     cfgmap,
+	}
 
-				if hostnameVal == nil {
-					return nil
+	if id, err := identity.LoadIdentity(*identityConfig); err != nil {
+		return nil, fmt.Errorf("unable to load identity (%s)", err)
+	} else {
+		controllerConfig.Id = identity.NewIdentity(id)
+
+		if err := controllerConfig.Id.WatchFiles(); err != nil {
+			pfxlog.Logger().Warn("could not enable file watching on identity: %w", err)
+		}
+	}
+
+	if value, found := cfgmap["network"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if options, err := LoadNetworkConfig(submap); err == nil {
+				controllerConfig.Network = options
+			} else {
+				return nil, fmt.Errorf("invalid 'network' stanza (%s)", err)
+			}
+		} else {
+			pfxlog.Logger().Warn("invalid or empty 'network' stanza")
+		}
+	}
+
+	if value, found := cfgmap["raft"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			controllerConfig.Raft = &RaftConfig{}
+			controllerConfig.Raft.CommandHandlerOptions.MaxQueueSize = DefaultRaftCommandHandlerMaxQueueSize
+
+			if value, found := submap["dataDir"]; found {
+				controllerConfig.Raft.DataDir = value.(string)
+			} else {
+				return nil, errors.Errorf("raft dataDir configuration missing")
+			}
+			if value, found := submap["minClusterSize"]; found {
+				controllerConfig.Raft.MinClusterSize = uint32(value.(int))
+			}
+			if value, found := submap["bootstrapMembers"]; found {
+				if lst, ok := value.([]interface{}); ok {
+					for idx, val := range lst {
+						if member, ok := val.(string); ok {
+							controllerConfig.Raft.BootstrapMembers = append(controllerConfig.Raft.BootstrapMembers, member)
+						} else {
+							return nil, errors.Errorf("invalid bootstrapMembers value '%v'at index %v, should be array", idx, val)
+						}
+					}
+				} else {
+					return nil, errors.New("invalid bootstrapMembers value, should be array")
+				}
+			}
+
+			if value, found := submap["snapshotInterval"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.SnapshotInterval = &val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.snapshotInterval value '%v", value)
+				}
+			}
+
+			if value, found := submap["commitTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.CommitTimeout = &val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.commitTimeout value '%v", value)
+				}
+			}
+
+			if value, found := submap["electionTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.ElectionTimeout = &val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.electionTimeout value '%v", value)
+				}
+			}
+
+			if value, found := submap["heartbeatTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.HeartbeatTimeout = &val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.heartbeatTimeout value '%v", value)
+				}
+			}
+
+			if value, found := submap["leaderLeaseTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.LeaderLeaseTimeout = &val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.leaderLeaseTimeout value '%v", value)
+				}
+			}
+
+			if value, found := submap["snapshotThreshold"]; found {
+				val := uint32(value.(int))
+				controllerConfig.Raft.SnapshotThreshold = &val
+			}
+
+			if value, found := submap["maxAppendEntries"]; found {
+				val := uint32(value.(int))
+				controllerConfig.Raft.MaxAppendEntries = &val
+			}
+
+			if value, found := submap["trailingLogs"]; found {
+				val := uint32(value.(int))
+				controllerConfig.Raft.TrailingLogs = &val
+			}
+
+			if value, found := submap["logLevel"]; found {
+				val := fmt.Sprintf("%v", value)
+				if hclog.LevelFromString(val) == hclog.NoLevel {
+					return nil, errors.Errorf("invalid value for raft.logLevel [%v]", val)
+				}
+				controllerConfig.Raft.LogLevel = &val
+			}
+
+			if value, found := submap["logFile"]; found {
+				val := fmt.Sprintf("%v", value)
+				options := *hclog.DefaultOptions
+				f, err := os.Create(val)
+				if err != nil {
+					return nil, errors.Wrapf(err, "unable to open raft log file [%v]", val)
+				}
+				options.Output = f
+				if controllerConfig.Raft.LogLevel != nil {
+					options.Level = hclog.LevelFromString(*controllerConfig.Raft.LogLevel)
+				}
+				controllerConfig.Raft.Logger = hclog.New(&options)
+			}
+
+			if value, found := cfgmap["commandHandler"]; found {
+				if chSubMap, ok := value.(map[interface{}]interface{}); ok {
+					if value, found := chSubMap["maxQueueSize"]; found {
+						controllerConfig.Raft.CommandHandlerOptions.MaxQueueSize = uint16(value.(int))
+					}
+				} else {
+					return nil, errors.New("invalid commandHandler value, should be map")
+				}
+			}
+		} else {
+			return nil, errors.Errorf("invalid raft configuration")
+		}
+	} else if value, found := cfgmap["db"]; found {
+		str, err := db.Open(value.(string))
+		if err != nil {
+			return nil, err
+		}
+		controllerConfig.Db = str
+	} else {
+		panic("controllerConfig must provide [db] or [raft]")
+	}
+
+	//SPIFFE Trust Domain
+	var spiffeId *url.URL
+	if controllerConfig.Raft != nil {
+		//HA setup, SPIFFE ID must come from certs
+		var err error
+		spiffeId, err = GetSpiffeIdFromIdentity(controllerConfig.Id.Identity)
+		if err != nil {
+			panic("error determining a trust domain from a SPIFFE id in the root identity for HA configuration, must have a spiffe:// URI SANs in the server certificate or along the signing CAs chain: " + err.Error())
+		}
+
+		if spiffeId == nil {
+			panic("unable to determine a trust domain from a SPIFFE id in the root identity for HA configuration, must have a spiffe:// URI SANs in the server certificate or along the signing CAs chain")
+		}
+	} else {
+		// Non-HA/legacy system, prefer SPIFFE id from certs, but fall back to configuration if necessary
+		spiffeId, _ = GetSpiffeIdFromIdentity(controllerConfig.Id.Identity)
+
+		if spiffeId == nil {
+			//for non HA setups allow the trust domain to come from the configuration root value `trustDomain`
+			if value, found := cfgmap["trustDomain"]; found {
+				trustDomain, ok := value.(string)
+
+				if !ok {
+					panic(fmt.Sprintf("could not parse [trustDomain], expected a string got [%T]", value))
 				}
 
-				if hostname, ok := hostnameVal.(string); ok {
-					testUrl := "https://" + hostname
-					parsedUrl, err := url.Parse(testUrl)
+				if trustDomain != "" {
+					if !strings.HasPrefix("spiffe://", trustDomain) {
+						trustDomain = "spiffe://" + trustDomain
+					}
+
+					spiffeId, err = url.Parse(trustDomain)
 
 					if err != nil {
-						return fmt.Errorf("could not parse URL: %w", err)
+						panic("could not parse [trustDomain] when used in a SPIFFE id URI [" + trustDomain + "], please make sure it is a valid URI hostname: " + err.Error())
 					}
 
-					if parsedUrl.Hostname() != hostname {
-						return fmt.Errorf("invalid hostname in [edge.totp.hostname]: %s", hostname)
+					if spiffeId == nil {
+						panic("could not parse [trustDomain] when used in a SPIFFE id URI [" + trustDomain + "]: spiffeId is nil and no error returned")
 					}
 
-					c.Totp.Hostname = hostname
+					if spiffeId.Scheme != "spiffe" {
+						panic("[trustDomain] does not have a spiffe scheme (spiffe://) has: " + spiffeId.Scheme)
+					}
+				}
+			}
+		}
+
+		//default a generated trust domain and spiffe id from the sha1 of the root ca
+		if spiffeId == nil {
+			spiffeId, err = generateDefaultSpiffeId(controllerConfig.Id.Identity)
+
+			if err != nil {
+				panic("could not generate default trust domain: " + err.Error())
+			}
+
+			pfxlog.Logger().Warnf("this environment is using a default generated trust domain [%s], it is recommended that a trust domain is specified in configuration via URI SANs or the 'trustDomain' field", spiffeId.String())
+			pfxlog.Logger().Warnf("this environment is using a default generated trust domain [%s], it is recommended that if network components have enrolled that the generated trust domain be added to the configuration field 'additionalTrustDomains' array when configuring a explicit trust domain", spiffeId.String())
+		}
+	}
+
+	if spiffeId == nil {
+		panic("unable to determine trust domain from SPIFFE id (spiffe:// URI SANs in server cert or signing CAs) or from configuration [trustDomain], controllers must have a trust domain")
+	}
+
+	if spiffeId.Hostname() == "" {
+		panic("unable to determine trust domain from SPIFFE id: hostname was empty")
+	}
+
+	//only preserve trust domain
+	spiffeId.Path = ""
+	controllerConfig.SpiffeIdTrustDomain = spiffeId
+
+	if value, found := cfgmap["additionalTrustDomains"]; found {
+		if valArr, ok := value.([]any); ok {
+			var trustDomains []*url.URL
+			for _, trustDomain := range valArr {
+				if strTrustDomain, ok := trustDomain.(string); ok {
+
+					if !strings.HasPrefix("spiffe://", strTrustDomain) {
+						strTrustDomain = "spiffe://" + strTrustDomain
+					}
+
+					spiffeId, err = url.Parse(strTrustDomain)
+
+					if err != nil {
+						panic(fmt.Sprintf("invalid entry in 'additionalTrustDomains', could not be parsed as a URI: %v", trustDomain))
+					}
+					//only preserve trust domain
+					spiffeId.Path = ""
+
+					trustDomains = append(trustDomains, spiffeId)
 				} else {
-					return fmt.Errorf("[edge.totp.hostname] must be a string")
+					panic(fmt.Sprintf("invalid entry in 'additionalTrustDomains' expected a string: %v", trustDomain))
+				}
+			}
+
+			controllerConfig.AdditionalTrustDomains = trustDomains
+		}
+	}
+
+	if value, found := cfgmap["trace"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["path"]; found {
+				handler, err := channel.NewTraceHandler(value.(string), controllerConfig.Id.Token)
+				if err != nil {
+					return nil, err
+				}
+				handler.AddDecoder(&channel.Decoder{})
+				handler.AddDecoder(&ctrl_pb.Decoder{})
+				handler.AddDecoder(&xgress.Decoder{})
+				handler.AddDecoder(&mgmt_pb.Decoder{})
+				controllerConfig.Trace.Handler = handler
+			}
+		}
+	}
+
+	if value, found := cfgmap["profile"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["memory"]; found {
+				if submap, ok := value.(map[interface{}]interface{}); ok {
+					if value, found := submap["path"]; found {
+						controllerConfig.Profile.Memory.Path = value.(string)
+					}
+					if value, found := submap["intervalMs"]; found {
+						controllerConfig.Profile.Memory.Interval = time.Duration(value.(int)) * time.Millisecond
+					} else {
+						controllerConfig.Profile.Memory.Interval = DefaultProfileMemoryInterval
+					}
+				}
+			}
+			if value, found := submap["cpu"]; found {
+				if submap, ok := value.(map[interface{}]interface{}); ok {
+					if value, found := submap["path"]; found {
+						controllerConfig.Profile.CPU.Path = value.(string)
+					}
 				}
 			}
 		}
 	}
 
-	return nil
-}
-
-func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error {
-	c.Api = Api{}
-	c.Api.HttpTimeouts = *DefaultHttpTimeouts()
-	var err error
-
-	c.Api.ActivityUpdateBatchSize = DefaultEdgeApiActivityUpdateBatchSize
-	c.Api.ActivityUpdateInterval = DefaultEdgeAPIActivityUpdateInterval
-
-	if value, found := edgeConfigMap["api"]; found {
-		apiSubMap := value.(map[interface{}]interface{})
-
-		if val, ok := apiSubMap["address"]; ok {
-			if c.Api.Address, ok = val.(string); !ok {
-				return errors.Errorf("invalid type %t for [edge.api.address], must be string", val)
+	if value, found := cfgmap["ctrl"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["listener"]; found {
+				listener, err := transport.ParseAddress(value.(string))
+				if err != nil {
+					return nil, err
+				}
+				controllerConfig.Ctrl.Listener = listener
+			} else {
+				panic("controllerConfig must provide [ctrl/listener]")
 			}
 
-			if c.Api.Address == "" {
-				return errors.Errorf("invalid type %t for [edge.api.address], must not be an empty string", val)
+			controllerConfig.Ctrl.Options = &CtrlOptions{
+				Options:                channel.DefaultOptions(),
+				PeerHeartbeatOptions:   channel.DefaultHeartbeatOptions(),
+				RouterHeartbeatOptions: channel.DefaultHeartbeatOptions(),
 			}
 
-			if err := validateHostPortString(c.Api.Address); err != nil {
-				return errors.Errorf("invalid value %s for [edge.api.address]: %v", c.Api.Address, err)
+			if value, found := submap["options"]; found {
+				if submap, ok := value.(map[interface{}]interface{}); ok {
+					options, err := channel.LoadOptions(submap)
+					if err != nil {
+						return nil, err
+					}
+
+					controllerConfig.Ctrl.Options.Options = options
+
+					if val, found := submap["newListener"]; found {
+						if newListener, ok := val.(string); ok {
+							if newListener != "" {
+								if addr, err := transport.ParseAddress(newListener); err == nil {
+									controllerConfig.Ctrl.Options.NewListener = &addr
+
+									if err := verifyNewListenerInServerCert(controllerConfig, addr); err != nil {
+										return nil, err
+									}
+
+								} else {
+									return nil, fmt.Errorf("error loading newListener for [ctrl/options] (%v)", err)
+								}
+							}
+						} else {
+							return nil, errors.New("error loading newAddress for [ctrl/options] (must be a string)")
+						}
+					}
+
+					if val, found := submap["advertiseAddress"]; found {
+						if advertiseAddr, ok := val.(string); ok {
+							if advertiseAddr != "" {
+								addr, err := transport.ParseAddress(advertiseAddr)
+								if err != nil {
+									return nil, errors.Wrapf(err, "error parsing value '%v' for [ctrl/options/advertiseAddress]", advertiseAddr)
+								}
+								controllerConfig.Ctrl.Options.AdvertiseAddress = &addr
+								if controllerConfig.Raft != nil {
+									controllerConfig.Raft.AdvertiseAddress = addr
+								}
+							}
+						} else {
+							return nil, errors.New("error loading advertiseAddress for [ctrl/options] (must be a string)")
+						}
+					}
+
+					if value, found := submap["routerHeartbeats"]; found {
+						if submap, ok := value.(map[interface{}]interface{}); ok {
+							options, err := channel.LoadHeartbeatOptions(submap)
+							if err != nil {
+								return nil, err
+							}
+							controllerConfig.Ctrl.Options.RouterHeartbeatOptions = options
+						}
+					}
+
+					if value, found := submap["peerHeartbeats"]; found {
+						if submap, ok := value.(map[interface{}]interface{}); ok {
+							options, err := channel.LoadHeartbeatOptions(submap)
+							if err != nil {
+								return nil, err
+							}
+							controllerConfig.Ctrl.Options.PeerHeartbeatOptions = options
+						}
+					}
+
+					if err := controllerConfig.Ctrl.Options.Validate(); err != nil {
+						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
+					}
+				}
+			}
+			if controllerConfig.Raft != nil && controllerConfig.Raft.AdvertiseAddress == nil {
+				return nil, errors.New("[ctrl/options/advertiseAddress] is required when raft is enabled")
 			}
 		} else {
-			return errors.New("required value [edge.api.address] is required")
+			panic("controllerConfig [ctrl] section in unexpected format")
 		}
+	} else {
+		panic("controllerConfig must provide [ctrl]")
+	}
 
-		var durationValue = 0 * time.Second
-		if value, found := apiSubMap["sessionTimeout"]; found {
-			strValue := value.(string)
-			durationValue, err = time.ParseDuration(strValue)
-			if err != nil {
-				return errors.Errorf("error parsing [edge.api.sessionTimeout], invalid duration string %s, cannot parse as duration (e.g. 1m): %v", strValue, err)
+	controllerConfig.HealthChecks.BoltCheck.Interval = DefaultHealthChecksBoltCheckInterval
+	controllerConfig.HealthChecks.BoltCheck.Timeout = DefaultHealthChecksBoltCheckTimeout
+	controllerConfig.HealthChecks.BoltCheck.InitialDelay = DefaultHealthChecksBoltCheckInitialDelay
+
+	if value, found := cfgmap["healthChecks"]; found {
+		if healthChecksMap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := healthChecksMap["boltCheck"]; found {
+				if boltMap, ok := value.(map[interface{}]interface{}); ok {
+					if value, found := boltMap["interval"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							controllerConfig.HealthChecks.BoltCheck.Interval = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.interval value '%v", value)
+						}
+					}
+
+					if value, found := boltMap["timeout"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							controllerConfig.HealthChecks.BoltCheck.Timeout = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.timeout value '%v", value)
+						}
+					}
+
+					if value, found := boltMap["initialDelay"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							controllerConfig.HealthChecks.BoltCheck.InitialDelay = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.initialDelay value '%v", value)
+						}
+					}
+				} else {
+					pfxlog.Logger().Warn("invalid [healthChecks.bolt] stanza")
+				}
 			}
+		} else {
+			pfxlog.Logger().Warn("invalid [healthChecks] stanza")
 		}
+	}
 
-		if durationValue < MinEdgeSessionTimeout {
-			durationValue = DefaultEdgeSessionTimeout
-			pfxlog.Logger().Warnf("[edge.api.sessionTimeout] defaulted to %v", durationValue)
-		}
+	controllerConfig.CommandRateLimiter.Enabled = true
+	controllerConfig.CommandRateLimiter.QueueSize = command.DefaultLimiterSize
 
-		c.Api.SessionTimeout = durationValue
-
-		if val, ok := apiSubMap["activityUpdateBatchSize"]; ok {
-			if c.Api.ActivityUpdateBatchSize, ok = val.(int); !ok {
-				return errors.Errorf("invalid type %v for apiSessions.activityUpdateBatchSize, must be int", reflect.TypeOf(val))
+	if value, found := cfgmap["commandRateLimiter"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["enabled"]; found {
+				controllerConfig.CommandRateLimiter.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
 			}
-		}
 
-		if val, ok := apiSubMap["activityUpdateInterval"]; ok {
-			if strVal, ok := val.(string); !ok {
-				return errors.Errorf("invalid type %v for apiSessions.activityUpdateInterval, must be string duration", reflect.TypeOf(val))
-			} else {
-				if c.Api.ActivityUpdateInterval, err = time.ParseDuration(strVal); err != nil {
-					return errors.Wrapf(err, "invalid value %v for apiSessions.activityUpdateInterval, must be string duration", val)
+			if value, found := submap["maxQueued"]; found {
+				if intVal, ok := value.(int); ok {
+					v := int64(intVal)
+					if v < command.MinLimiterSize {
+						return nil, errors.Errorf("invalid value %v for commandRateLimiter, must be at least %v", value, command.MinLimiterSize)
+					}
+					if v > math.MaxUint32 {
+						return nil, errors.Errorf("invalid value %v for commandRateLimiter, must be at most %v", value, int64(math.MaxUint32))
+					}
+					controllerConfig.CommandRateLimiter.QueueSize = uint32(v)
+				} else {
+					return nil, errors.Errorf("invalid value %v for commandRateLimiter, must be integer value", value)
 				}
 			}
 		}
-
-		if c.Api.ActivityUpdateBatchSize < MinEdgeAPIActivityUpdateBatchSize || c.Api.ActivityUpdateBatchSize > MaxEdgeAPIActivityUpdateBatchSize {
-			return errors.Errorf("invalid value %v for apiSessions.activityUpdateBatchSize, must be between %v and %v", c.Api.ActivityUpdateBatchSize, MinEdgeAPIActivityUpdateBatchSize, MaxEdgeAPIActivityUpdateBatchSize)
-		}
-
-		if c.Api.ActivityUpdateInterval < MinEdgeAPIActivityUpdateInterval || c.Api.ActivityUpdateInterval > MaxEdgeAPIActivityUpdateInterval {
-			return errors.Errorf("invalid value %v for apiSessions.activityUpdateInterval, must be between %vms and %vm", c.Api.ActivityUpdateInterval.String(), MinEdgeAPIActivityUpdateInterval.Milliseconds(), MaxEdgeAPIActivityUpdateInterval.Minutes())
-		}
-
-		return nil
-
-	} else {
-		return errors.New("required configuration section [edge.api] missing")
 	}
+
+	controllerConfig.TlsHandshakeRateLimiter.SetDefaults()
+	controllerConfig.TlsHandshakeRateLimiter.Enabled = DefaultTlsHandshakeRateLimiterEnabled
+	controllerConfig.TlsHandshakeRateLimiter.MaxSize = DefaultTlsHandshakeRateLimiterMaxWindow
+	controllerConfig.TlsHandshakeRateLimiter.QueueSizeMetric = TlsHandshakeRateLimiterMetricOutstandingCount
+	controllerConfig.TlsHandshakeRateLimiter.WindowSizeMetric = TlsHandshakeRateLimiterMetricCurrentWindowSize
+	controllerConfig.TlsHandshakeRateLimiter.WorkTimerMetric = TlsHandshakeRateLimiterMetricWorkTimer
+
+	if value, found := cfgmap["tls"]; found {
+		if tlsMap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := tlsMap["handshakeTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					transporttls.SetSharedListenerHandshakeTimeout(val)
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse tls.handshakeTimeout value '%v", value)
+				}
+			}
+			if err = loadTlsHandshakeRateLimiterConfig(&controllerConfig.TlsHandshakeRateLimiter, tlsMap); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	edgeConfig, err := LoadEdgeConfigFromMap(cfgmap)
+	if err != nil {
+		return nil, err
+	}
+	controllerConfig.Edge = edgeConfig
+
+	return controllerConfig, nil
 }
 
-func validateHostPortString(address string) error {
-	address = strings.TrimSpace(address)
-
-	if address == "" {
-		return errors.New("must not be an empty string or unspecified")
+// isSelfSigned checks if the given certificate is self-signed.
+func isSelfSigned(cert *x509.Certificate) (bool, error) {
+	// Check if the Issuer and Subject fields are equal
+	if cert.Issuer.String() != cert.Subject.String() {
+		return false, nil
 	}
 
-	host, port, err := net.SplitHostPort(address)
+	// Attempt to verify the certificate's signature with its own public key
+	err := cert.CheckSignatureFrom(cert)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func generateDefaultSpiffeId(id identity.Identity) (*url.URL, error) {
+	chain := id.CaPool().GetChain(id.Cert().Leaf)
+
+	// chain is 0 or 1, no root possible
+	if len(chain) <= 1 {
+		return nil, fmt.Errorf("error generating default trust domain from root CA: no root CA detected after chain assembly from the root identity server cert and ca bundle")
+	}
+
+	candidateRoot := chain[len(chain)-1]
+
+	if candidateRoot == nil {
+		return nil, fmt.Errorf("encountered nil candidate root ca during default trust domain generation")
+	}
+
+	if !candidateRoot.IsCA {
+		return nil, fmt.Errorf("candidate root CA is not flagged with the x509 CA flag")
+	}
+
+	if selfSigned, _ := isSelfSigned(candidateRoot); !selfSigned {
+		return nil, errors.New("candidate root CA is not self signed")
+	}
+
+	rawHash := sha1.Sum(candidateRoot.Raw)
+
+	fingerprint := fmt.Sprintf("%x", rawHash)
+	idStr := "spiffe://" + fingerprint
+
+	spiffeId, err := url.Parse(idStr)
 
 	if err != nil {
-		return errors.Errorf("could not split host and port: %v", err)
+		return nil, fmt.Errorf("could not parse generated SPIFFE id [%s] as a URI: %w", idStr, err)
 	}
 
-	if host == "" {
-		return errors.New("host must be specified")
-	}
-
-	if port == "" {
-		return errors.New("port must be specified")
-	}
-
-	if port, err := strconv.ParseInt(port, 10, 32); err != nil {
-		return errors.New("invalid port, must be a integer")
-	} else if port < 1 || port > 65535 {
-		return errors.New("invalid port, must 1-65535")
-	}
-
-	return nil
+	return spiffeId, nil
 }
 
-func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}) error {
-	c.Enrollment = Enrollment{}
-	var err error
+// GetSpiffeIdFromIdentity will search an Identity for a trust domain encoded as a spiffe:// URI SAN starting
+// from the server cert and up its signing chain. Each certificate must contain 0 or 1 spiffe:// URI SAN. The first
+// SPIFFE id looking up the chain back to the root CA is returned. If no SPIFFE id is encountered, nil is returned.
+// Errors are returned for parsing and processing errors only.
+func GetSpiffeIdFromIdentity(id identity.Identity) (*url.URL, error) {
+	tlsCerts := id.ServerCert()
 
-	if value, found := edgeConfigMap["enrollment"]; found {
-		enrollmentSubMap := value.(map[interface{}]interface{})
+	spiffeId, err := GetSpiffeIdFromTlsCertChain(tlsCerts)
 
-		if value, found := enrollmentSubMap["signingCert"]; found {
-			signingCertSubMap := value.(map[interface{}]interface{})
-			c.Enrollment.SigningCertConfig = identity.Config{}
-
-			if value, found := signingCertSubMap["cert"]; found {
-				c.Enrollment.SigningCertConfig.Cert = value.(string)
-				certPem, err := os.ReadFile(c.Enrollment.SigningCertConfig.Cert)
-				if err != nil {
-					pfxlog.Logger().WithError(err).Panic("unable to read [edge.enrollment.cert]")
-				}
-				//The signer is a valid trust anchor
-				_, _ = c.caPems.WriteString("\n")
-				_, _ = c.caPems.Write(certPem)
-
-			} else {
-				return fmt.Errorf("required configuration value [edge.enrollment.cert] is missing")
-			}
-
-			if value, found := signingCertSubMap["key"]; found {
-				c.Enrollment.SigningCertConfig.Key = value.(string)
-			} else {
-				return fmt.Errorf("required configuration value [edge.enrollment.key] is missing")
-			}
-
-			if value, found := signingCertSubMap["ca"]; found {
-				c.Enrollment.SigningCertConfig.CA = value.(string)
-
-				if c.Enrollment.SigningCertCaPem, err = os.ReadFile(c.Enrollment.SigningCertConfig.CA); err != nil {
-					return fmt.Errorf("could not read file CA file from [edge.enrollment.signingCert.ca]")
-				}
-
-				_, _ = c.caPems.WriteString("\n")
-				_, _ = c.caPems.Write(c.Enrollment.SigningCertCaPem)
-			} //not an error if the signing certificate's CA is already represented in the root [identity.ca]
-
-			if c.Enrollment.SigningCert, err = identity.LoadIdentity(c.Enrollment.SigningCertConfig); err != nil {
-				return fmt.Errorf("error loading [edge.enrollment.signingCert]: %s", err)
-			} else {
-				if err := c.Enrollment.SigningCert.WatchFiles(); err != nil {
-					pfxlog.Logger().Warn("could not enable file watching on enrollment signing cert: %w", err)
-				}
-			}
-
-		} else {
-			return errors.New("required configuration section [edge.enrollment.signingCert] missing")
-		}
-
-		if value, found := enrollmentSubMap["edgeIdentity"]; found {
-			edgeIdentitySubMap := value.(map[interface{}]interface{})
-
-			edgeIdentityDuration := 0 * time.Second
-			if value, found := edgeIdentitySubMap["duration"]; found {
-				strValue := value.(string)
-				var err error
-				edgeIdentityDuration, err = time.ParseDuration(strValue)
-
-				if err != nil {
-					return errors.Errorf("error parsing [edge.enrollment.edgeIdentity.duration], invalid duration string %s, cannot parse as duration (e.g. 1m): %v", strValue, err)
-				}
-			}
-
-			if edgeIdentityDuration < MinEdgeEnrollmentDuration {
-				edgeIdentityDuration = DefaultEdgeEnrollmentDuration
-			}
-
-			c.Enrollment.EdgeIdentity = EnrollmentOption{Duration: edgeIdentityDuration}
-
-		} else {
-			return errors.New("required configuration section [edge.enrollment.edgeIdentity] missing")
-		}
-
-		if value, found := enrollmentSubMap["edgeRouter"]; found {
-			edgeRouterSubMap := value.(map[interface{}]interface{})
-
-			edgeRouterDuration := 0 * time.Second
-			if value, found := edgeRouterSubMap["duration"]; found {
-				strValue := value.(string)
-				var err error
-				edgeRouterDuration, err = time.ParseDuration(strValue)
-
-				if err != nil {
-					return errors.Errorf("error parsing [edge.enrollment.edgeRouter.duration], invalid duration string %s, cannot parse as duration (e.g. 1m): %v", strValue, err)
-				}
-			}
-
-			if edgeRouterDuration < MinEdgeEnrollmentDuration {
-				edgeRouterDuration = DefaultEdgeEnrollmentDuration
-			}
-
-			c.Enrollment.EdgeRouter = EnrollmentOption{Duration: edgeRouterDuration}
-
-		} else {
-			return errors.New("required configuration section [edge.enrollment.edgeRouter] missing")
-		}
-
-	} else {
-		return errors.New("required configuration section [edge.enrollment] missing")
+	if err != nil {
+		return nil, fmt.Errorf("failed to acquire SPIFFE id from server certs: %w", err)
 	}
 
-	return nil
+	if spiffeId != nil {
+		return spiffeId, nil
+	}
+
+	if len(tlsCerts) > 0 {
+		chain := id.CaPool().GetChain(tlsCerts[0].Leaf)
+
+		if len(chain) > 0 {
+			spiffeId, _ = GetSpiffeIdFromCertChain(chain)
+		}
+	}
+
+	if spiffeId == nil {
+		return nil, errors.Errorf("SPIFFE id not found in identity")
+	}
+
+	return spiffeId, nil
 }
 
-func (c *Config) loadAuthRateLimiterConfig(cfgmap map[interface{}]interface{}) error {
-	c.AuthRateLimiter.SetDefaults()
+// GetSpiffeIdFromCertChain cycles through a slice of certificates that goes from leaf up CAs. Each certificate
+// must contain 0 or 1 spiffe:// URI SAN. The first encountered SPIFFE id looking up the chain back to the root CA is returned.
+// If no SPIFFE id is encountered, nil is returned. Errors are returned for parsing and processing errors only.
+func GetSpiffeIdFromCertChain(certs []*x509.Certificate) (*url.URL, error) {
+	var spiffeId *url.URL
+	for _, cert := range certs {
+		var err error
+		spiffeId, err = GetSpiffeIdFromCert(cert)
 
-	c.AuthRateLimiter.Enabled = DefaultAuthRateLimiterEnabled
-	c.AuthRateLimiter.MaxSize = DefaultAuthRateLimiterMaxSize
-	c.AuthRateLimiter.MinSize = DefaultAuthRateLimiterMinSize
+		if err != nil {
+			return nil, fmt.Errorf("failed to determine SPIFFE ID from x509 certificate chain: %w", err)
+		}
 
-	if value, found := cfgmap["authRateLimiter"]; found {
-		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if err := command.LoadAdaptiveRateLimiterConfig(&c.AuthRateLimiter, submap); err != nil {
-				return err
-			}
-			if c.AuthRateLimiter.MaxSize < AuthRateLimiterMinSizeValue {
-				return errors.Errorf("invalid value %v for authRateLimiter.maxSize, must be at least %v",
-					c.AuthRateLimiter.MaxSize, AuthRateLimiterMinSizeValue)
-			}
-			if c.AuthRateLimiter.MaxSize > AuthRateLimiterMaxSizeValue {
-				return errors.Errorf("invalid value %v for authRateLimiter.maxSize, must be at most %v",
-					c.AuthRateLimiter.MaxSize, AuthRateLimiterMaxSizeValue)
-			}
-
-			if c.AuthRateLimiter.MinSize < AuthRateLimiterMinSizeValue {
-				return errors.Errorf("invalid value %v for authRateLimiter.minSize, must be at least %v",
-					c.AuthRateLimiter.MinSize, AuthRateLimiterMinSizeValue)
-			}
-			if c.AuthRateLimiter.MinSize > AuthRateLimiterMaxSizeValue {
-				return errors.Errorf("invalid value %v for authRateLimiter.minSize, must be at most %v",
-					c.AuthRateLimiter.MinSize, AuthRateLimiterMaxSizeValue)
-			}
-		} else {
-			return errors.Errorf("invalid type for authRateLimiter, should be map instead of %T", value)
+		if spiffeId != nil {
+			return spiffeId, nil
 		}
 	}
 
-	return nil
+	return nil, errors.New("failed to determine SPIFFE ID, no spiffe:// URI SANs found in x509 certificate chain")
 }
 
-func LoadFromMap(configMap map[interface{}]interface{}) (*Config, error) {
-	edgeConfig := NewConfig()
-
-	var edgeConfigMap map[interface{}]interface{}
-
-	if val, ok := configMap["edge"]; ok && val != nil {
-		if edgeConfigMap, ok = val.(map[interface{}]interface{}); !ok {
-			return nil, fmt.Errorf("expected map as edge configuration")
-		}
-	} else {
-		return edgeConfig, nil
-	}
-
-	edgeConfig.Enabled = configMap != nil
-
-	if !edgeConfig.Enabled {
-		return edgeConfig, nil
-	}
-
-	var err error
-
-	if err = edgeConfig.loadApiSection(edgeConfigMap); err != nil {
-		return nil, err
-	}
-
-	if err = edgeConfig.loadTotpSection(edgeConfigMap); err != nil {
-		return nil, err
-	}
-
-	if err = edgeConfig.loadEnrollmentSection(edgeConfigMap); err != nil {
-		return nil, err
-	}
-
-	if err = edgeConfig.loadAuthRateLimiterConfig(edgeConfigMap); err != nil {
-		return nil, err
-	}
-
-	return edgeConfig, nil
-}
-
-// CalculateCaPems takes the supplied caPems buffer as a set of PEM Certificates separated by new lines. Duplicate
-// certificates are removed, and the result is returned as a bytes.Buffer of PEM Certificates separated by new lines.
-func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
-	caPemMap := map[string][]byte{}
-
-	newCaPems := bytes.Buffer{}
-	blocksToProcess := caPems.Bytes()
-
-	for len(blocksToProcess) != 0 {
-		var block *pem.Block
-		block, blocksToProcess = pem.Decode(blocksToProcess)
-
-		if block != nil {
-
-			if block.Type != "CERTIFICATE" {
-				pfxlog.Logger().
-					WithField("type", block.Type).
-					WithField("block", string(pem.EncodeToMemory(block))).
-					Warn("encountered an invalid PEM block type loading configured CAs, block will be ignored")
-				continue
-			}
-
-			cert, err := x509.ParseCertificate(block.Bytes)
+// GetSpiffeIdFromTlsCertChain will search a tls certificate chain for a trust domain encoded as a spiffe:// URI SAN.
+// Each certificate must contain 0 or 1 spiffe:// URI SAN. The first SPIFFE id looking up the chain is returned. If
+// no SPIFFE id is encountered, nil is returned. Errors are returned for parsing and processing errors only.
+func GetSpiffeIdFromTlsCertChain(tlsCerts []*tls.Certificate) (*url.URL, error) {
+	for _, tlsCert := range tlsCerts {
+		for i, rawCert := range tlsCert.Certificate {
+			cert, err := x509.ParseCertificate(rawCert)
 
 			if err != nil {
-				pfxlog.Logger().
-					WithField("type", block.Type).
-					WithField("block", string(pem.EncodeToMemory(block))).
-					WithError(err).
-					Warn("block could not be parsed as a certificate, block will be ignored")
-				continue
+				return nil, fmt.Errorf("failed to parse TLS cert at index [%d]: %w", i, err)
 			}
 
-			if !cert.IsCA {
-				pfxlog.Logger().
-					WithField("type", block.Type).
-					WithField("block", string(pem.EncodeToMemory(block))).
-					Warn("block is not a CA, block will be ignored")
-				continue
+			spiffeId, err := GetSpiffeIdFromCert(cert)
+
+			if err != nil {
+				return nil, fmt.Errorf("failed to determine SPIFFE ID from TLS cert at index [%d]: %w", i, err)
 			}
-			// #nosec
-			hash := sha1.Sum(block.Bytes)
-			fingerprint := toHex(hash[:])
-			newPem := pem.EncodeToMemory(block)
-			caPemMap[fingerprint] = newPem
-		} else {
-			blocksToProcess = nil
+
+			if spiffeId != nil {
+				return spiffeId, nil
+			}
 		}
 	}
 
-	for _, caPem := range caPemMap {
-		_, _ = newCaPems.WriteString("\n")
-		_, _ = newCaPems.Write(caPem)
-	}
-
-	return &newCaPems
+	return nil, nil
 }
 
-// toHex takes a byte array returns a hex formatted fingerprint
-func toHex(data []byte) string {
-	var buf bytes.Buffer
-	for i, b := range data {
-		if i > 0 {
-			_, _ = fmt.Fprintf(&buf, ":")
+// GetSpiffeIdFromCert will search a x509 certificate for a trust domain encoded as a spiffe:// URI SAN.
+// Each certificate must contain 0 or 1 spiffe:// URI SAN. The first SPIFFE id looking up the chain is returned. If
+// no SPIFFE id is encountered, nil is returned. Errors are returned for parsing and processing errors only.
+func GetSpiffeIdFromCert(cert *x509.Certificate) (*url.URL, error) {
+	var spiffeId *url.URL
+	for _, uriSan := range cert.URIs {
+		if uriSan.Scheme == "spiffe" {
+			if spiffeId != nil {
+				return nil, fmt.Errorf("multiple URI SAN spiffe:// ids encountered, must only have one, encountered at least two: [%s] and [%s]", spiffeId.String(), uriSan.String())
+			}
+			spiffeId = uriSan
 		}
-		_, _ = fmt.Fprintf(&buf, "%02x", b)
 	}
-	return strings.ToUpper(buf.String())
+
+	return spiffeId, nil
+}
+
+func loadTlsHandshakeRateLimiterConfig(rateLimitConfig *command.AdaptiveRateLimiterConfig, cfgmap map[interface{}]interface{}) error {
+	if value, found := cfgmap["rateLimiter"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if err := command.LoadAdaptiveRateLimiterConfig(rateLimitConfig, submap); err != nil {
+				return err
+			}
+			if rateLimitConfig.MaxSize < TlsHandshakeRateLimiterMinSizeValue {
+				return errors.Errorf("invalid value %v for tls.rateLimiter.maxSize, must be at least %v",
+					rateLimitConfig.MaxSize, TlsHandshakeRateLimiterMinSizeValue)
+			}
+			if rateLimitConfig.MaxSize > TlsHandshakeRateLimiterMaxSizeValue {
+				return errors.Errorf("invalid value %v for tls.rateLimiter.maxSize, must be at most %v",
+					rateLimitConfig.MaxSize, TlsHandshakeRateLimiterMaxSizeValue)
+			}
+
+			if rateLimitConfig.MinSize < TlsHandshakeRateLimiterMinSizeValue {
+				return errors.Errorf("invalid value %v for tls.rateLimiter.minSize, must be at least %v",
+					rateLimitConfig.MinSize, TlsHandshakeRateLimiterMinSizeValue)
+			}
+			if rateLimitConfig.MinSize > TlsHandshakeRateLimiterMaxSizeValue {
+				return errors.Errorf("invalid value %v for tls.rateLimiter.minSize, must be at most %v",
+					rateLimitConfig.MinSize, TlsHandshakeRateLimiterMaxSizeValue)
+			}
+		} else {
+			return errors.Errorf("invalid type for tls.rateLimiter, should be map instead of %T", value)
+		}
+	}
+
+	return nil
+}
+
+// verifyNewListenerInServerCert verifies that the hostname (ip/dns) for addr is present as an IP/DNS SAN in the first
+// certificate provided in the controller's identity server certificates. This is to avoid scenarios where
+// newListener propagated to routers who will never be able to verify the controller's certificates due to SAN issues.
+func verifyNewListenerInServerCert(controllerConfig *Config, addr transport.Address) error {
+	addrSplits := strings.Split(addr.String(), ":")
+	if len(addrSplits) < 3 {
+		return errors.New("could not determine newListener's host value, expected at least three segments")
+	}
+
+	host := addrSplits[1]
+
+	serverCerts := controllerConfig.Id.Identity.ServerCert()
+
+	if len(serverCerts) == 0 {
+		return errors.New("could not verify newListener value, server certificate for identity contains no certificates")
+	}
+
+	hostFound := false
+	for _, serverCert := range serverCerts {
+		for _, dnsName := range serverCert.Leaf.DNSNames {
+			if dnsName == host {
+				hostFound = true
+				break
+			}
+		}
+
+		if hostFound {
+			break
+		}
+
+		if !hostFound {
+			for _, ipAddresses := range serverCert.Leaf.IPAddresses {
+				if host == ipAddresses.String() {
+					hostFound = true
+					break
+				}
+			}
+		}
+
+		if hostFound {
+			break
+		}
+	}
+
+	if !hostFound {
+		return fmt.Errorf("could not find newListener [%s] host value [%s] in first certificate for controller identity", addr.String(), host)
+	}
+
+	return nil
+}
+
+type CertValidatingIdentity struct {
+	identity.Identity
+}
+
+func (self *CertValidatingIdentity) ClientTLSConfig() *tls.Config {
+	cfg := self.Identity.ClientTLSConfig()
+	cfg.VerifyConnection = self.VerifyConnection
+	return cfg
+}
+
+func (self *CertValidatingIdentity) ServerTLSConfig() *tls.Config {
+	cfg := self.Identity.ServerTLSConfig()
+	cfg.VerifyConnection = self.VerifyConnection
+	return cfg
+}
+
+func (self *CertValidatingIdentity) VerifyConnection(state tls.ConnectionState) error {
+	if len(state.PeerCertificates) == 0 {
+		return errors.New("no peer certificates provided")
+	}
+	log := pfxlog.Logger()
+	for _, cert := range state.PeerCertificates {
+		log.Infof("cert provided: CN: %v IsCA: %v", cert.Subject.CommonName, cert.IsCA)
+	}
+
+	options := x509.VerifyOptions{
+		Roots:         self.Identity.CA(),
+		Intermediates: x509.NewCertPool(),
+	}
+
+	for _, cert := range state.PeerCertificates[1:] {
+		options.Intermediates.AddCert(cert)
+	}
+
+	result, err := state.PeerCertificates[0].Verify(options)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("got error validating cert")
+		return err
+	}
+
+	log.Infof("got result: %v", result)
+	return nil
 }

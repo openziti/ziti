@@ -19,16 +19,17 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/network"
 )
 
 type dequiesceRouterHandler struct {
 	baseHandler
 }
 
-func newDequiesceRouterHandler(router *network.Router, network *network.Network) *dequiesceRouterHandler {
+func newDequiesceRouterHandler(router *model.Router, network *network.Network) *dequiesceRouterHandler {
 	return &dequiesceRouterHandler{
 		baseHandler: baseHandler{
 			router:  router,
@@ -46,7 +47,7 @@ func (self *dequiesceRouterHandler) HandleReceive(msg *channel.Message, ch chann
 	log = log.WithField("routerId", self.router.Id)
 
 	go func() {
-		if err := self.network.Routers.DequiesceRouter(self.router, self.newChangeContext(ch, "dequiesce.router")); err == nil {
+		if err := self.network.Router.DequiesceRouter(self.router, self.newChangeContext(ch, "dequiesce.router")); err == nil {
 			handler_common.SendSuccess(msg, ch, "router dequiesced")
 			log.Debug("router dequiesce successful")
 		} else {

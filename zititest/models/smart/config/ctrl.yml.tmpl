@@ -2,6 +2,8 @@ v: 3
 
 db:                     /home/{{ .Model.MustVariable "credentials.ssh.username" }}/ctrl.db
 
+trustDomain: smart-test
+
 identity:
   cert:                 /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-client.cert
   server_cert:          /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-server.cert

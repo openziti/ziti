@@ -69,9 +69,9 @@ func (self *raftListMembersAction) run(cmd *cobra.Command, _ []string) error {
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"Id", "Address", "Voter", "Leader", "Version", "Connected"})
-	for _, m := range members.Payload.Values {
-		t.AppendRow(table.Row{*m.ID, *m.Address, *m.Voter, *m.Leader, *m.Version, *m.Connected})
+	t.AppendHeader(table.Row{"Id", "Address", "Voter", "Leader", "Version", "Connected", "ReadOnly"})
+	for _, m := range members.Payload.Data {
+		t.AppendRow(table.Row{*m.ID, *m.Address, *m.Voter, *m.Leader, *m.Version, *m.Connected, m.ReadOnly != nil && *m.ReadOnly})
 	}
 	api.RenderTable(&api.Options{
 		CommonOptions: self.CommonOptions,

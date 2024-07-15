@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-type Service struct {
+type EdgeService struct {
 	models.BaseEntity
 	Name               string        `json:"name"`
 	MaxIdleTime        time.Duration `json:"maxIdleTime"`
@@ -36,7 +36,7 @@ type Service struct {
 	EncryptionRequired bool          `json:"encryptionRequired"`
 }
 
-func (entity *Service) toBoltEntity(tx *bbolt.Tx, env Env) (*db.EdgeService, error) {
+func (entity *EdgeService) toBoltEntity(tx *bbolt.Tx, env Env) (*db.EdgeService, error) {
 	if err := entity.validateConfigs(tx, env); err != nil {
 		return nil, err
 	}
@@ -55,11 +55,11 @@ func (entity *Service) toBoltEntity(tx *bbolt.Tx, env Env) (*db.EdgeService, err
 	return edgeService, nil
 }
 
-func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.EdgeService, error) {
+func (entity *EdgeService) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.EdgeService, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *Service) validateConfigs(tx *bbolt.Tx, env Env) error {
+func (entity *EdgeService) validateConfigs(tx *bbolt.Tx, env Env) error {
 	typeMap := map[string]*db.Config{}
 	configStore := env.GetStores().Config
 	for _, id := range entity.Configs {
@@ -82,11 +82,11 @@ func (entity *Service) validateConfigs(tx *bbolt.Tx, env Env) error {
 	return nil
 }
 
-func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.EdgeService, error) {
+func (entity *EdgeService) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.EdgeService, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *Service) fillFrom(_ Env, _ *bbolt.Tx, boltService *db.EdgeService) error {
+func (entity *EdgeService) fillFrom(_ Env, _ *bbolt.Tx, boltService *db.EdgeService) error {
 	entity.FillCommon(boltService)
 	entity.Name = boltService.Name
 	entity.TerminatorStrategy = boltService.TerminatorStrategy

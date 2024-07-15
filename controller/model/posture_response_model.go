@@ -55,7 +55,7 @@ func newPostureCache(env Env) *PostureCache {
 		env:                      env,
 	}
 
-	pc.run(env.GetHostController().GetCloseNotifyChannel())
+	pc.run(env.GetCloseNotifyChannel())
 
 	env.GetStores().ApiSession.AddEntityEventListenerF(pc.ApiSessionCreated, boltz.EntityCreatedAsync)
 	env.GetStores().ApiSession.AddEntityEventListenerF(pc.ApiSessionDeleted, boltz.EntityDeletedAsync)
@@ -108,7 +108,7 @@ func (pc *PostureCache) evaluate() {
 	// Requires tracking of which session was last evaluated, kept in lastId.
 	for !done {
 		var sessions []*db.Session
-		_ = pc.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		_ = pc.env.GetDb().View(func(tx *bbolt.Tx) error {
 			cursor := pc.env.GetStores().Session.IterateIds(tx, ast.BoolNodeTrue)
 
 			if len(lastId) != 0 {
@@ -313,7 +313,7 @@ func (pc *PostureCache) PostureCheckChanged(entity boltz.Entity) {
 
 	identitiesToNotify := map[string]struct{}{}
 
-	_ = pc.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	_ = pc.env.GetDb().View(func(tx *bbolt.Tx) error {
 		servicePolicyCursor := servicePolicyLinks.IterateLinks(tx, []byte(entity.GetId()))
 
 		for servicePolicyCursor.IsValid() {

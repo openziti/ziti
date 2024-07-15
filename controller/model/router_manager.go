@@ -14,14 +14,12 @@
 	limitations under the License.
 */
 
-package network
+package model
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/foundation/v2/genext"
-	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
@@ -32,14 +30,12 @@ import (
 	"github.com/openziti/ziti/controller/xt"
 	"google.golang.org/protobuf/proto"
 	"maps"
-	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
@@ -52,68 +48,6 @@ const (
 	RouterQuiesceFlag   uint32 = 1
 	RouterDequiesceFlag uint32 = 2
 )
-
-type Listener interface {
-	AdvertiseAddress() string
-	Protocol() string
-	Groups() []string
-}
-
-type Router struct {
-	models.BaseEntity
-	Name        string
-	Fingerprint *string
-	Listeners   []*ctrl_pb.Listener
-	Control     channel.Channel
-	Connected   atomic.Bool
-	ConnectTime time.Time
-	VersionInfo *versions.VersionInfo
-	routerLinks RouterLinks
-	Cost        uint16
-	NoTraversal bool
-	Disabled    bool
-	Metadata    *ctrl_pb.RouterMetadata
-}
-
-func (entity *Router) toBolt() *db.Router {
-	return &db.Router{
-		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Name:          entity.Name,
-		Fingerprint:   entity.Fingerprint,
-		Cost:          entity.Cost,
-		NoTraversal:   entity.NoTraversal,
-		Disabled:      entity.Disabled,
-	}
-}
-
-func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags []string, groups []string) {
-	entity.Listeners = append(entity.Listeners, &ctrl_pb.Listener{
-		Address:  addr,
-		Protocol: linkProtocol,
-		CostTags: linkCostTags,
-		Groups:   groups,
-	})
-}
-
-func (entity *Router) SetLinkListeners(listeners []*ctrl_pb.Listener) {
-	entity.Listeners = listeners
-}
-
-func (entity *Router) SetMetadata(metadata *ctrl_pb.RouterMetadata) {
-	entity.Metadata = metadata
-}
-
-func (entity *Router) HasCapability(capability ctrl_pb.RouterCapability) bool {
-	return entity.Metadata != nil && genext.Contains(entity.Metadata.Capabilities, capability)
-}
-
-func (entity *Router) SupportsRouterLinkMgmt() bool {
-	if entity.VersionInfo == nil {
-		return true
-	}
-	supportsLinkMgmt, err := entity.VersionInfo.HasMinimumVersion("0.32.1")
-	return err != nil || supportsLinkMgmt
-}
 
 func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Router {
 	if name == "" {
@@ -135,27 +69,41 @@ type RouterManager struct {
 	baseEntityManager[*Router, *db.Router]
 	cache     cmap.ConcurrentMap[string, *Router]
 	connected cmap.ConcurrentMap[string, *Router]
-	store     db.RouterStore
 }
 
-func newRouterManager(managers *Managers) *RouterManager {
+func newRouterManager(env Env) *RouterManager {
+	routerStore := env.GetStores().Router
 	result := &RouterManager{
-		baseEntityManager: newBaseEntityManager[*Router, *db.Router](managers, managers.stores.Router, func() *Router {
-			return &Router{}
-		}),
-		cache:     cmap.New[*Router](),
-		connected: cmap.New[*Router](),
-		store:     managers.stores.Router,
+		baseEntityManager: newBaseEntityManager[*Router, *db.Router](env, routerStore),
+		cache:             cmap.New[*Router](),
+		connected:         cmap.New[*Router](),
 	}
-	result.populateEntity = result.populateRouter
+	result.impl = result
 
-	managers.stores.Router.AddEntityIdListener(result.UpdateCachedRouter, boltz.EntityUpdated)
-	managers.stores.Router.AddEntityIdListener(result.HandleRouterDelete, boltz.EntityDeleted)
+	routerStore.AddEntityIdListener(result.UpdateCachedRouter, boltz.EntityUpdated)
+	routerStore.AddEntityIdListener(result.HandleRouterDelete, boltz.EntityDeleted)
+
+	RegisterManagerDecoder[*Router](env, result)
+
+	isConnectedSymbol := boltz.NewBoolFuncSymbol(routerStore, "connected", func(id string) bool {
+		return result.connected.Has(id)
+	})
+
+	if store, ok := routerStore.(boltz.ConfigurableStore); ok {
+		store.AddEntitySymbol(isConnectedSymbol)
+		store.MakeSymbolPublic(isConnectedSymbol.GetName())
+	} else {
+		panic("router store is not boltz.ConfigurableStore")
+	}
 
 	return result
 }
 
-func (self *RouterManager) markConnected(r *Router) {
+func (self *RouterManager) newModelEntity() *Router {
+	return &Router{}
+}
+
+func (self *RouterManager) MarkConnected(r *Router) {
 	if router, _ := self.connected.Get(r.Id); router != nil {
 		if ch := router.Control; ch != nil {
 			if err := ch.Close(); err != nil {
@@ -168,7 +116,7 @@ func (self *RouterManager) markConnected(r *Router) {
 	self.connected.Set(r.Id, r)
 }
 
-func (self *RouterManager) markDisconnected(r *Router) {
+func (self *RouterManager) MarkDisconnected(r *Router) {
 	r.Connected.Store(false)
 	self.connected.RemoveCb(r.Id, func(key string, v *Router, exists bool) bool {
 		if exists && v != r {
@@ -184,14 +132,14 @@ func (self *RouterManager) IsConnected(id string) bool {
 	return self.connected.Has(id)
 }
 
-func (self *RouterManager) getConnected(id string) *Router {
+func (self *RouterManager) GetConnected(id string) *Router {
 	if router, found := self.connected.Get(id); found {
 		return router
 	}
 	return nil
 }
 
-func (self *RouterManager) allConnected() []*Router {
+func (self *RouterManager) AllConnected() []*Router {
 	var routers []*Router
 	self.connected.IterCb(func(_ string, router *Router) {
 		routers = append(routers, router)
@@ -199,7 +147,7 @@ func (self *RouterManager) allConnected() []*Router {
 	return routers
 }
 
-func (self *RouterManager) connectedCount() int {
+func (self *RouterManager) ConnectedCount() int {
 	return self.connected.Count()
 }
 
@@ -209,17 +157,15 @@ func (self *RouterManager) Create(entity *Router, ctx *change.Context) error {
 
 func (self *RouterManager) ApplyCreate(cmd *command.CreateEntityCommand[*Router], ctx boltz.MutateContext) error {
 	router := cmd.Entity
-	err := self.db.Update(ctx, func(ctx boltz.MutateContext) error {
-		return self.store.Create(ctx, router.toBolt())
-	})
+	routerId, err := self.createEntity(router, ctx)
 	if err == nil {
-		self.cache.Set(router.Id, router)
+		self.cache.Set(routerId, router)
 	}
 	return err
 }
 
 func (self *RouterManager) Read(id string) (entity *Router, err error) {
-	err = self.db.View(func(tx *bbolt.Tx) error {
+	err = self.GetDb().View(func(tx *bbolt.Tx) error {
 		entity, err = self.readInTx(tx, id)
 		return err
 	})
@@ -231,8 +177,8 @@ func (self *RouterManager) Read(id string) (entity *Router, err error) {
 
 func (self *RouterManager) Exists(id string) (bool, error) {
 	exists := false
-	err := self.db.View(func(tx *bbolt.Tx) error {
-		exists = self.store.IsEntityPresent(tx, id)
+	err := self.GetDb().View(func(tx *bbolt.Tx) error {
+		exists = self.Store.IsEntityPresent(tx, id)
 		return nil
 	})
 	return exists, err
@@ -240,7 +186,7 @@ func (self *RouterManager) Exists(id string) (bool, error) {
 
 func (self *RouterManager) readUncached(id string) (*Router, error) {
 	entity := &Router{}
-	err := self.db.View(func(tx *bbolt.Tx) error {
+	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		return self.readEntityInTx(tx, id, entity)
 	})
 	if err != nil {
@@ -263,20 +209,6 @@ func (self *RouterManager) readInTx(tx *bbolt.Tx, id string) (*Router, error) {
 	return entity, nil
 }
 
-func (self *RouterManager) populateRouter(entity *Router, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltRouter, ok := boltEntity.(*db.Router)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model router", reflect.TypeOf(boltEntity))
-	}
-	entity.Name = boltRouter.Name
-	entity.Fingerprint = boltRouter.Fingerprint
-	entity.Cost = boltRouter.Cost
-	entity.NoTraversal = boltRouter.NoTraversal
-	entity.Disabled = boltRouter.Disabled
-	entity.FillCommon(boltRouter)
-	return nil
-}
-
 func (self *RouterManager) Update(entity *Router, updatedFields fields.UpdatedFields, ctx *change.Context) error {
 	return DispatchUpdate[*Router](self, entity, updatedFields, ctx)
 }
@@ -288,7 +220,7 @@ func (self *RouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router]
 		return self.ApplyDequiesce(cmd, ctx)
 	}
 
-	return self.updateGeneral(ctx, cmd.Entity, cmd.UpdatedFields)
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
 // QuiesceRouter marks all terminators on the router as failed, so that new traffic will avoid this router, if there's
@@ -328,7 +260,7 @@ func (self *RouterManager) ApplyQuiesce(cmd *command.UpdateEntityCommand[*Router
 		terminator.SavedPrecedence = &currentPrecedence
 		terminator.Precedence = xt.Precedences.Failed.String()
 
-		return self.Terminators.store.Update(ctx.GetSystemContext(), terminator, boltz.MapFieldChecker{
+		return self.env.GetStores().Terminator.Update(ctx.GetSystemContext(), terminator, boltz.MapFieldChecker{
 			db.FieldTerminatorPrecedence:      struct{}{},
 			db.FieldTerminatorSavedPrecedence: struct{}{},
 		})
@@ -344,7 +276,7 @@ func (self *RouterManager) ApplyDequiesce(cmd *command.UpdateEntityCommand[*Rout
 		terminator.Precedence = *terminator.SavedPrecedence
 		terminator.SavedPrecedence = nil
 
-		return self.Terminators.store.Update(ctx.GetSystemContext(), terminator, boltz.MapFieldChecker{
+		return self.env.GetStores().Terminator.Update(ctx.GetSystemContext(), terminator, boltz.MapFieldChecker{
 			db.FieldTerminatorPrecedence:      struct{}{},
 			db.FieldTerminatorSavedPrecedence: struct{}{},
 		})
@@ -352,10 +284,10 @@ func (self *RouterManager) ApplyDequiesce(cmd *command.UpdateEntityCommand[*Rout
 }
 
 func (self *RouterManager) UpdateTerminators(router *Router, ctx boltz.MutateContext, f func(terminator *db.Terminator) error) error {
-	return self.db.Update(ctx, func(ctx boltz.MutateContext) error {
-		terminatorIds := self.store.GetRelatedEntitiesIdList(ctx.Tx(), router.Id, db.EntityTypeTerminators)
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		terminatorIds := self.Store.GetRelatedEntitiesIdList(ctx.Tx(), router.Id, db.EntityTypeTerminators)
 		for _, terminatorId := range terminatorIds {
-			terminator, _, err := self.Terminators.store.FindById(ctx.Tx(), terminatorId)
+			terminator, _, err := self.env.GetStores().Terminator.FindById(ctx.Tx(), terminatorId)
 			if err != nil {
 				return err
 			}
@@ -384,11 +316,6 @@ func (self *RouterManager) HandleRouterDelete(id string) {
 	} else {
 		log.Debug("deleted router not connected, no further action required")
 	}
-
-	go func() {
-		self.network.routerDeleted(id)
-		self.Managers.RouterMessaging.RouterDeleted(id)
-	}()
 }
 
 func (self *RouterManager) UpdateCachedRouter(id string) {
@@ -475,12 +402,12 @@ func (self *RouterManager) Unmarshall(bytes []byte) (*Router, error) {
 	}, nil
 }
 
-func (self *RouterManager) ValidateRouterSdkTerminators(router *Router, cb SdkTerminatorValidationCallback) {
+func (self *RouterManager) ValidateRouterSdkTerminators(router *Router, cb func(detail *mgmt_pb.RouterSdkTerminatorsDetails)) {
 	request := &ctrl_pb.InspectRequest{RequestedValues: []string{"sdk-terminators"}}
 	resp := &ctrl_pb.InspectResponse{}
 	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
 	if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
-		self.reportRouterSdkTerminatorsError(router, err, cb)
+		self.ReportRouterSdkTerminatorsError(router, err, cb)
 		return
 	}
 
@@ -488,7 +415,7 @@ func (self *RouterManager) ValidateRouterSdkTerminators(router *Router, cb SdkTe
 	for _, val := range resp.Values {
 		if val.Name == "sdk-terminators" {
 			if err = json.Unmarshal([]byte(val.Value), &inspectResult); err != nil {
-				self.reportRouterSdkTerminatorsError(router, err, cb)
+				self.ReportRouterSdkTerminatorsError(router, err, cb)
 				return
 			}
 		}
@@ -497,16 +424,16 @@ func (self *RouterManager) ValidateRouterSdkTerminators(router *Router, cb SdkTe
 	if inspectResult == nil {
 		if len(resp.Errors) > 0 {
 			err = errors.New(strings.Join(resp.Errors, ","))
-			self.reportRouterSdkTerminatorsError(router, err, cb)
+			self.ReportRouterSdkTerminatorsError(router, err, cb)
 			return
 		}
-		self.reportRouterSdkTerminatorsError(router, errors.New("no terminator details returned from router"), cb)
+		self.ReportRouterSdkTerminatorsError(router, errors.New("no terminator details returned from router"), cb)
 		return
 	}
 
-	listResult, err := self.Terminators.BaseList(fmt.Sprintf(`router="%s" and binding="edge" limit none`, router.Id))
+	listResult, err := self.env.GetManagers().Terminator.BaseList(fmt.Sprintf(`router="%s" and binding="edge" limit none`, router.Id))
 	if err != nil {
-		self.reportRouterSdkTerminatorsError(router, err, cb)
+		self.ReportRouterSdkTerminatorsError(router, err, cb)
 		return
 	}
 
@@ -559,7 +486,7 @@ func (self *RouterManager) ValidateRouterSdkTerminators(router *Router, cb SdkTe
 	cb(result)
 }
 
-func (self *RouterManager) reportRouterSdkTerminatorsError(router *Router, err error, cb SdkTerminatorValidationCallback) {
+func (self *RouterManager) ReportRouterSdkTerminatorsError(router *Router, err error, cb func(detail *mgmt_pb.RouterSdkTerminatorsDetails)) {
 	result := &mgmt_pb.RouterSdkTerminatorsDetails{
 		RouterId:        router.Id,
 		RouterName:      router.Name,

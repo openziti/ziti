@@ -99,7 +99,7 @@ func (ro *EnrollRouter) getCaCerts(ae *env.AppEnv, rc *response.RequestContext) 
 	// Decode each PEM block in the input and append the ASN.1
 	// DER bytes for each certificate therein to the data slice.
 
-	input := ae.Config.CaPems()
+	input := ae.GetConfig().Edge.CaPems()
 	var data []byte
 
 	for len(input) > 0 {

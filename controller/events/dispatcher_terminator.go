@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/pkg/errors"
@@ -127,15 +128,15 @@ type terminatorEventAdapter struct {
 	Dispatcher *Dispatcher
 }
 
-func (self *terminatorEventAdapter) RouterConnected(r *network.Router) {
+func (self *terminatorEventAdapter) RouterConnected(r *model.Router) {
 	self.routerChange(event.TerminatorRouterOnline, r)
 }
 
-func (self *terminatorEventAdapter) RouterDisconnected(r *network.Router) {
+func (self *terminatorEventAdapter) RouterDisconnected(r *model.Router) {
 	self.routerChange(event.TerminatorRouterOffline, r)
 }
 
-func (self *terminatorEventAdapter) routerChange(eventType event.TerminatorEventType, r *network.Router) {
+func (self *terminatorEventAdapter) routerChange(eventType event.TerminatorEventType, r *model.Router) {
 	var terminators []*db.Terminator
 	err := self.Network.GetDb().View(func(tx *bbolt.Tx) error {
 		cursor := self.Network.GetStores().Router.GetRelatedEntitiesCursor(tx, r.Id, db.EntityTypeTerminators, true)
@@ -175,12 +176,12 @@ func (self *terminatorEventAdapter) terminatorDeleted(terminator *db.Terminator)
 }
 
 func (self *terminatorEventAdapter) terminatorChanged(eventType event.TerminatorEventType, terminator *db.Terminator) {
-	terminator = self.Network.Services.NotifyTerminatorChanged(terminator)
+	terminator = self.Network.Service.NotifyTerminatorChanged(terminator)
 	self.createTerminatorEvent(eventType, terminator)
 }
 
 func (self *terminatorEventAdapter) createTerminatorEvent(eventType event.TerminatorEventType, terminator *db.Terminator) {
-	service, _ := self.Network.Services.Read(terminator.Service)
+	service, _ := self.Network.Service.Read(terminator.Service)
 
 	totalTerminators := -1
 	usableDefaultTerminators := -1

@@ -1,7 +1,9 @@
 package network
 
 import (
+	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/pkg/errors"
 	"runtime"
 	"testing"
@@ -23,7 +25,7 @@ import (
 
 type testConfig struct {
 	ctx             *db.TestContext
-	options         *Options
+	options         *config.NetworkConfig
 	metricsRegistry metrics.Registry
 	versionProvider versions.VersionProvider
 	closeNotify     chan struct{}
@@ -33,13 +35,13 @@ func (self *testConfig) RenderJsonConfig() (string, error) {
 	panic(errors.New("not implemented"))
 }
 
-func newTestConfig(ctx *db.TestContext) *testConfig {
-	options := DefaultOptions()
+func newTestConfig(ctx *model.TestContext) *testConfig {
+	options := config.DefaultNetworkConfig()
 	options.MinRouterCost = 0
 
 	closeNotify := make(chan struct{})
 	return &testConfig{
-		ctx:             ctx,
+		ctx:             ctx.TestContext,
 		options:         options,
 		metricsRegistry: metrics.NewRegistry("test", nil),
 		versionProvider: NewVersionProviderTest(),
@@ -59,7 +61,7 @@ func (self *testConfig) GetMetricsRegistry() metrics.Registry {
 	return self.metricsRegistry
 }
 
-func (self *testConfig) GetOptions() *Options {
+func (self *testConfig) GetOptions() *config.NetworkConfig {
 	return self.options
 }
 
@@ -113,22 +115,22 @@ func TestNetwork_parseServiceAndIdentity(t *testing.T) {
 }
 
 func TestCreateCircuit(t *testing.T) {
-	ctx := db.NewTestContext(t)
+	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, ctx)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	assert.Nil(t, err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 0, false)
+	r0 := model.NewRouterForTest("r0", "", transportAddr, nil, 0, false)
 
-	svc := &Service{
+	svc := &model.Service{
 		BaseEntity:         models.BaseEntity{Id: "svc"},
 		Name:               "svc",
 		TerminatorStrategy: "smartrouting",
@@ -145,7 +147,7 @@ func TestCreateCircuit(t *testing.T) {
 	assert.Error(t, cerr)
 	assert.Equal(t, CircuitFailureNoTerminators, cerr.Cause())
 
-	svc.Terminators = []*Terminator{
+	svc.Terminators = []*model.Terminator{
 		{
 			BaseEntity: models.BaseEntity{Id: "t0"},
 			Service:    "svc",
@@ -161,7 +163,7 @@ func TestCreateCircuit(t *testing.T) {
 	assert.Error(t, cerr)
 	assert.Equal(t, CircuitFailureNoOnlineTerminators, cerr.Cause())
 
-	network.Routers.markConnected(r0)
+	network.Router.MarkConnected(r0)
 	_, _, _, _, cerr = network.selectPath(params, svc, "", lc)
 	assert.NoError(t, cerr)
 
@@ -207,7 +209,7 @@ func NewVersionProviderTest() versions.VersionProvider {
 	return &VersionProviderTest{}
 }
 
-func newCircuitParams(service *Service, router *Router) CreateCircuitParams {
+func newCircuitParams(service *model.Service, router *model.Router) model.CreateCircuitParams {
 	return testCreateCircuitParams{
 		svc:    service,
 		router: router,
@@ -215,15 +217,15 @@ func newCircuitParams(service *Service, router *Router) CreateCircuitParams {
 }
 
 type testCreateCircuitParams struct {
-	svc    *Service
-	router *Router
+	svc    *model.Service
+	router *model.Router
 }
 
 func (t testCreateCircuitParams) GetServiceId() string {
 	return t.svc.Id
 }
 
-func (t testCreateCircuitParams) GetSourceRouter() *Router {
+func (t testCreateCircuitParams) GetSourceRouter() *model.Router {
 	return t.router
 }
 

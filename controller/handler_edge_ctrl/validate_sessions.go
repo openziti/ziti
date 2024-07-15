@@ -62,7 +62,7 @@ func (self *validateSessionsHandler) validateSessions(req *edge_ctrl_pb.Validate
 
 	var invalidTokens []string
 
-	err := self.getAppEnv().GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := self.getAppEnv().GetDb().View(func(tx *bbolt.Tx) error {
 		for _, token := range req.SessionTokens {
 			if tokenIndex.Read(tx, []byte(token)) == nil {
 				invalidTokens = append(invalidTokens, token)

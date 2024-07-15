@@ -18,12 +18,12 @@ package model
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -55,7 +55,7 @@ type baseEntityManager[ME edgeEntity[PE], PE boltz.ExtEntity] struct {
 }
 
 func (self *baseEntityManager[ME, PE]) Dispatch(command command.Command) error {
-	return self.env.GetManagers().Command.Dispatch(command)
+	return self.env.GetManagers().Dispatcher.Dispatch(command)
 }
 
 func (self *baseEntityManager[ME, PE]) GetEntityTypeId() string {
@@ -69,7 +69,7 @@ func (self *baseEntityManager[ME, PE]) GetStore() boltz.EntityStore[PE] {
 }
 
 func (self *baseEntityManager[ME, PE]) GetDb() boltz.Db {
-	return self.env.GetDbProvider().GetDb()
+	return self.env.GetDb()
 }
 
 func (self *baseEntityManager[ME, PE]) GetEnv() Env {

@@ -19,20 +19,21 @@ package api_impl
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/controller/rest_model"
-	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/xt"
 )
 
 const EntityNameTerminator = "terminators"
 
 var TerminatorLinkFactory = NewBasicLinkFactory(EntityNameTerminator)
 
-func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *network.Terminator {
-	ret := &network.Terminator{
+func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *model.Terminator {
+	ret := &model.Terminator{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(terminator.Tags),
 		},
@@ -53,8 +54,8 @@ func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *networ
 	return ret
 }
 
-func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpdate) *network.Terminator {
-	ret := &network.Terminator{
+func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpdate) *model.Terminator {
+	ret := &model.Terminator{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(terminator.Tags),
 			Id:   id,
@@ -74,8 +75,8 @@ func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpda
 	return ret
 }
 
-func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch) *network.Terminator {
-	ret := &network.Terminator{
+func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch) *model.Terminator {
+	ret := &model.Terminator{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(terminator.Tags),
 			Id:   id,
@@ -97,7 +98,7 @@ func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch
 
 type TerminatorModelMapper struct{}
 
-func (TerminatorModelMapper) ToApi(n *network.Network, _ api.RequestContext, terminator *network.Terminator) (interface{}, error) {
+func (TerminatorModelMapper) ToApi(n *network.Network, _ api.RequestContext, terminator *model.Terminator) (interface{}, error) {
 	restModel, err := MapTerminatorToRestModel(n, terminator)
 
 	if err != nil {
@@ -109,13 +110,13 @@ func (TerminatorModelMapper) ToApi(n *network.Network, _ api.RequestContext, ter
 	return restModel, nil
 }
 
-func MapTerminatorToRestModel(n *network.Network, terminator *network.Terminator) (*rest_model.TerminatorDetail, error) {
-	service, err := n.Managers.Services.Read(terminator.Service)
+func MapTerminatorToRestModel(n *network.Network, terminator *model.Terminator) (*rest_model.TerminatorDetail, error) {
+	service, err := n.Managers.Service.Read(terminator.Service)
 	if err != nil {
 		return nil, err
 	}
 
-	router, err := n.Managers.Routers.Read(terminator.Router)
+	router, err := n.Managers.Router.Read(terminator.Router)
 	if err != nil {
 		return nil, err
 	}

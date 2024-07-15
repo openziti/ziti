@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/model"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -77,7 +77,7 @@ func (self *createCircuitHandler) HandleReceiveCreateCircuitV1(msg *channel.Mess
 	self.CreateCircuit(ctx, self.CreateCircuitV1Response)
 }
 
-func (self *createCircuitHandler) CreateCircuitV1Response(circuitInfo *network.Circuit, peerData map[uint32][]byte) (*channel.Message, error) {
+func (self *createCircuitHandler) CreateCircuitV1Response(circuitInfo *model.Circuit, peerData map[uint32][]byte) (*channel.Message, error) {
 	response := &edge_ctrl_pb.CreateCircuitResponse{
 		CircuitId: circuitInfo.Id,
 		Address:   circuitInfo.Path.IngressId,
@@ -108,7 +108,7 @@ func (self *createCircuitHandler) HandleReceiveCreateCircuitV2(msg *channel.Mess
 	self.CreateCircuit(ctx, self.CreateCircuitV2Response)
 }
 
-func (self *createCircuitHandler) CreateCircuitV2Response(circuitInfo *network.Circuit, peerData map[uint32][]byte) (*channel.Message, error) {
+func (self *createCircuitHandler) CreateCircuitV2Response(circuitInfo *model.Circuit, peerData map[uint32][]byte) (*channel.Message, error) {
 	response := &ctrl_msg.CreateCircuitResponse{
 		CircuitId: circuitInfo.Id,
 		Address:   circuitInfo.Path.IngressId,
@@ -148,7 +148,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 	}
 }
 
-type createCircuitResponseFactory func(*network.Circuit, map[uint32][]byte) (*channel.Message, error)
+type createCircuitResponseFactory func(*model.Circuit, map[uint32][]byte) (*channel.Message, error)
 
 var _ CreateCircuitRequest = (*edge_ctrl_pb.CreateCircuitRequest)(nil)
 

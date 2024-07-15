@@ -54,8 +54,8 @@ func (factory *ServiceLinkFactoryIml) Links(entity models.Entity) rest_model.Lin
 	return links
 }
 
-func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
-	ret := &model.Service{
+func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.EdgeService {
+	ret := &model.EdgeService{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(service.Tags),
 		},
@@ -70,8 +70,8 @@ func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
 	return ret
 }
 
-func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *model.Service {
-	ret := &model.Service{
+func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *model.EdgeService {
+	ret := &model.EdgeService{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(service.Tags),
 			Id:   id,
@@ -87,8 +87,8 @@ func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *mode
 	return ret
 }
 
-func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.Service {
-	ret := &model.Service{
+func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.EdgeService {
+	ret := &model.EdgeService{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(service.Tags),
 			Id:   id,

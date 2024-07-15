@@ -119,5 +119,10 @@ func convertNamesToIds(roles []string, entityType string, o api.Options) ([]stri
 			result = append(result, val)
 		}
 	}
+	// The REST endpoints treat an empty slice differently from a nil,
+	// and in this case it's important to pass in an empty slice
+	if result == nil {
+		return []string{}, nil
+	}
 	return result, nil
 }

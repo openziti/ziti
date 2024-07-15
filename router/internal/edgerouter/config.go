@@ -447,11 +447,14 @@ func (config *Config) ensureIdentity(rootConfigMap map[interface{}]interface{}) 
 
 func (config *Config) loadTransportConfig(rootConfigMap map[interface{}]interface{}) error {
 	if val, ok := rootConfigMap["transport"]; ok && val != nil {
-		var tcfg map[interface{}]interface{}
-		if tcfg, ok = val.(map[interface{}]interface{}); !ok {
+		config.Tcfg = make(transport.Configuration)
+		if tcfg, ok := val.(map[interface{}]interface{}); ok {
+			for k, v := range tcfg {
+				config.Tcfg[k] = v
+			}
+		} else {
 			return fmt.Errorf("expected map as transport configuration")
 		}
-		config.Tcfg = tcfg
 	}
 
 	return nil

@@ -14,13 +14,13 @@
 	limitations under the License.
 */
 
-package network
+package model
 
 import (
 	"github.com/openziti/identity"
 	"github.com/openziti/storage/objectz"
+	"github.com/openziti/ziti/common/datastructures"
 	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/orcaman/concurrent-map/v2"
 	"sync/atomic"
@@ -68,10 +68,6 @@ func (self *Circuit) IsSystemEntity() bool {
 	return false
 }
 
-func (self *Circuit) cost(minRouterCost uint16) int64 {
-	return self.Path.cost(minRouterCost)
-}
-
 func (self *Circuit) HasRouter(routerId string) bool {
 	if self == nil || self.Path == nil {
 		return false
@@ -91,19 +87,17 @@ func (self *Circuit) IsEndpointRouter(routerId string) bool {
 	return self.Path.Nodes[0].Id == routerId || self.Path.Nodes[len(self.Path.Nodes)-1].Id == routerId
 }
 
-type circuitController struct {
-	circuits    cmap.ConcurrentMap[string, *Circuit]
-	idGenerator idgen.Generator
-	store       *objectz.ObjectStore[*Circuit]
+type CircuitManager struct {
+	circuits cmap.ConcurrentMap[string, *Circuit]
+	store    *objectz.ObjectStore[*Circuit]
 }
 
-func newCircuitController() *circuitController {
-	result := &circuitController{
-		circuits:    cmap.New[*Circuit](),
-		idGenerator: idgen.NewGenerator(),
+func NewCircuitController() *CircuitManager {
+	result := &CircuitManager{
+		circuits: cmap.New[*Circuit](),
 	}
 	result.store = objectz.NewObjectStore[*Circuit](func() objectz.ObjectIterator[*Circuit] {
-		return IterateCMap(result.circuits)
+		return datastructures.IterateCMap(result.circuits)
 	})
 	result.store.AddStringSymbol("id", func(entity *Circuit) *string {
 		return &entity.Id
@@ -127,22 +121,22 @@ func newCircuitController() *circuitController {
 	return result
 }
 
-func (self *circuitController) nextCircuitId() (string, error) {
-	return self.idGenerator.NextAlphaNumericPrefixedId()
+func (self *CircuitManager) GetStore() *objectz.ObjectStore[*Circuit] {
+	return self.store
 }
 
-func (self *circuitController) add(circuit *Circuit) {
+func (self *CircuitManager) Add(circuit *Circuit) {
 	self.circuits.Set(circuit.Id, circuit)
 }
 
-func (self *circuitController) get(id string) (*Circuit, bool) {
+func (self *CircuitManager) Get(id string) (*Circuit, bool) {
 	if circuit, found := self.circuits.Get(id); found {
 		return circuit, true
 	}
 	return nil, false
 }
 
-func (self *circuitController) all() []*Circuit {
+func (self *CircuitManager) All() []*Circuit {
 	var circuits []*Circuit
 	self.circuits.IterCb(func(_ string, circuit *Circuit) {
 		circuits = append(circuits, circuit)
@@ -150,7 +144,7 @@ func (self *circuitController) all() []*Circuit {
 	return circuits
 }
 
-func (self *circuitController) remove(circuit *Circuit) {
+func (self *CircuitManager) Remove(circuit *Circuit) {
 	self.circuits.Remove(circuit.Id)
 }
 

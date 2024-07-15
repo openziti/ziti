@@ -47,6 +47,7 @@ link:
 {{- if and (not .Router.IsFabric) (eq .Router.TunnelerMode "tproxy") (.Router.Edge.DnsSvcIpRange ) }}
       dnsSvcIpRange: {{ .Router.Edge.DnsSvcIpRange }}
 {{- end }}
+
 {{ if .Router.IsFabric -}}
 csr:
   country: US
@@ -61,6 +62,7 @@ csr:
 {{ if ne .Router.Edge.CsrSans .HostnameOrNetworkName }}      - {{ .HostnameOrNetworkName }}{{ end }}
     ip:
       - "127.0.0.1"
+      - "::1"
 {{ if .Router.Edge.IPOverride }}      - "{{ .Router.Edge.IPOverride }}"{{ end }}
 {{ else }}
 edge:
@@ -77,8 +79,10 @@ edge:
 {{ if ne .Router.Edge.CsrSans .HostnameOrNetworkName }}        - {{ .HostnameOrNetworkName }}{{ end }}
       ip:
         - "127.0.0.1"
+        - "::1"
 {{ if .Router.Edge.IPOverride }}        - "{{ .Router.Edge.IPOverride }}"{{ end }}
 {{ end }}
+
 {{ if not .Router.IsWss }}#{{ end }}transport:
 {{ if not .Router.IsWss }}#{{ end }}  ws:
 {{ if not .Router.IsWss }}#{{ end }}    writeTimeout: {{ .Router.Wss.WriteTimeout.Seconds }}
@@ -90,15 +94,10 @@ edge:
 {{ if not .Router.IsWss }}#{{ end }}    readBufferSize: {{ .Router.Wss.ReadBufferSize }}
 {{ if not .Router.IsWss }}#{{ end }}    writeBufferSize: {{ .Router.Wss.WriteBufferSize }}
 {{ if not .Router.IsWss }}#{{ end }}    enableCompression: {{ .Router.Wss.EnableCompression }}
-{{ if not .Router.IsWss }}#{{ end }}    server_cert: {{ .Router.IdentityServerCert }}
-{{ if not .Router.IsWss }}#{{ end }}    key: {{ .Router.IdentityKey }}
-{{ if not .Router.AltCertsEnabled }}#{{ end }}alt_server_certs:
-{{ if not .Router.AltCertsEnabled }}#{{ end }}  - server_cert:  "{{ .Router.AltServerCert }}"
-{{ if not .Router.AltCertsEnabled }}#{{ end }}    server_key:   "{{ .Router.AltServerKey }}"
+
 forwarder:
   latencyProbeInterval: {{ .Router.Forwarder.LatencyProbeInterval.Seconds }}
   xgressDialQueueLength: {{ .Router.Forwarder.XgressDialQueueLength }}
   xgressDialWorkerCount: {{ .Router.Forwarder.XgressDialWorkerCount }}
   linkDialQueueLength: {{ .Router.Forwarder.LinkDialQueueLength }}
   linkDialWorkerCount: {{ .Router.Forwarder.LinkDialWorkerCount }}
-

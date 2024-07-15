@@ -86,12 +86,7 @@ func (context *inspectRequestContext) processLocal() {
 			context.appendValue(requested, debugz.GenerateStack())
 		} else if lc == "links" {
 			result := context.handler.env.GetXlinkRegistry().Inspect(time.Second)
-			js, err := json.Marshal(result)
-			if err != nil {
-				context.appendError(errors.Wrap(err, "failed to marshal links to json").Error())
-			} else {
-				context.appendValue(requested, string(js))
-			}
+			context.handleJsonResponse(requested, result)
 		} else if lc == "sdk-terminators" {
 			factory, _ := xgress.GlobalRegistry().Factory("edge")
 			if factory == nil {
@@ -109,42 +104,22 @@ func (context *inspectRequestContext) processLocal() {
 				continue
 			}
 			result := inspectable.Inspect(lc, time.Second)
-			js, err := json.Marshal(result)
-			if err != nil {
-				context.appendError(errors.Wrap(err, "failed to marshal sdk terminators to json").Error())
-			} else {
-				context.appendValue(requested, string(js))
-			}
+			context.handleJsonResponse(requested, result)
 		} else if strings.HasPrefix(lc, "circuit:") {
 			circuitId := requested[len("circuit:"):]
 			result := context.handler.fwd.InspectCircuit(circuitId, false)
 			if result != nil {
-				js, err := json.Marshal(result)
-				if err != nil {
-					context.appendError(errors.Wrap(err, "failed to marshal circuit report to json").Error())
-				} else {
-					context.appendValue(requested, string(js))
-				}
+				context.handleJsonResponse(requested, result)
 			}
 		} else if strings.HasPrefix(lc, "circuitandstacks:") {
 			circuitId := requested[len("circuitAndStacks:"):]
 			result := context.handler.fwd.InspectCircuit(circuitId, true)
 			if result != nil {
-				js, err := json.Marshal(result)
-				if err != nil {
-					context.appendError(errors.Wrap(err, "failed to marshal circuit report to json").Error())
-				} else {
-					context.appendValue(requested, string(js))
-				}
+				context.handleJsonResponse(requested, result)
 			}
 		} else if strings.HasPrefix(lc, "metrics") {
 			msg := context.handler.fwd.MetricsRegistry().PollWithoutUsageMetrics()
-			js, err := json.Marshal(msg)
-			if err != nil {
-				context.appendError(errors.Wrap(err, "failed to marshal metrics to json").Error())
-			} else {
-				context.appendValue(requested, string(js))
-			}
+			context.handleJsonResponse(requested, msg)
 		} else if lc == "config" {
 			js, err := context.handler.env.RenderJsonConfig()
 			if err != nil {
@@ -153,14 +128,21 @@ func (context *inspectRequestContext) processLocal() {
 				context.appendValue(requested, js)
 			}
 		} else if lc == "router-data-model" {
-			rdm := context.handler.env.GetRouterDataModel()
-			js, err := json.Marshal(rdm)
-			if err != nil {
-				context.appendError(errors.Wrap(err, "failed to router data model to json").Error())
-			} else {
-				context.appendValue(requested, string(js))
-			}
+			result := context.handler.env.GetRouterDataModel()
+			context.handleJsonResponse(requested, result)
+		} else if lc == "router-controllers" {
+			result := context.handler.env.GetNetworkControllers().Inspect()
+			context.handleJsonResponse(requested, result)
 		}
+	}
+}
+
+func (context *inspectRequestContext) handleJsonResponse(key string, val interface{}) {
+	js, err := json.Marshal(val)
+	if err != nil {
+		context.appendError(errors.Wrapf(err, "failed to marshall %s to json", key).Error())
+	} else {
+		context.appendValue(key, string(js))
 	}
 }
 

@@ -43,15 +43,15 @@ import (
 // swagger:model raftMemberListResponse
 type RaftMemberListResponse struct {
 
-	// values
-	Values []*RaftMemberListValue `json:"values"`
+	// data
+	Data []*RaftMemberListValue `json:"data"`
 }
 
 // Validate validates this raft member list response
 func (m *RaftMemberListResponse) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateValues(formats); err != nil {
+	if err := m.validateData(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -61,22 +61,22 @@ func (m *RaftMemberListResponse) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *RaftMemberListResponse) validateValues(formats strfmt.Registry) error {
-	if swag.IsZero(m.Values) { // not required
+func (m *RaftMemberListResponse) validateData(formats strfmt.Registry) error {
+	if swag.IsZero(m.Data) { // not required
 		return nil
 	}
 
-	for i := 0; i < len(m.Values); i++ {
-		if swag.IsZero(m.Values[i]) { // not required
+	for i := 0; i < len(m.Data); i++ {
+		if swag.IsZero(m.Data[i]) { // not required
 			continue
 		}
 
-		if m.Values[i] != nil {
-			if err := m.Values[i].Validate(formats); err != nil {
+		if m.Data[i] != nil {
+			if err := m.Data[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("values" + "." + strconv.Itoa(i))
+					return ve.ValidateName("data" + "." + strconv.Itoa(i))
 				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("values" + "." + strconv.Itoa(i))
+					return ce.ValidateName("data" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -91,7 +91,7 @@ func (m *RaftMemberListResponse) validateValues(formats strfmt.Registry) error {
 func (m *RaftMemberListResponse) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.contextValidateValues(ctx, formats); err != nil {
+	if err := m.contextValidateData(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -101,16 +101,16 @@ func (m *RaftMemberListResponse) ContextValidate(ctx context.Context, formats st
 	return nil
 }
 
-func (m *RaftMemberListResponse) contextValidateValues(ctx context.Context, formats strfmt.Registry) error {
+func (m *RaftMemberListResponse) contextValidateData(ctx context.Context, formats strfmt.Registry) error {
 
-	for i := 0; i < len(m.Values); i++ {
+	for i := 0; i < len(m.Data); i++ {
 
-		if m.Values[i] != nil {
-			if err := m.Values[i].ContextValidate(ctx, formats); err != nil {
+		if m.Data[i] != nil {
+			if err := m.Data[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("values" + "." + strconv.Itoa(i))
+					return ve.ValidateName("data" + "." + strconv.Itoa(i))
 				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("values" + "." + strconv.Itoa(i))
+					return ce.ValidateName("data" + "." + strconv.Itoa(i))
 				}
 				return err
 			}

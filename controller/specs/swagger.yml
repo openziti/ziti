@@ -1955,8 +1955,6 @@ definitions:
   ###################################################################
   # Raft
   ##################################################################
-  raftMemberListRequest:
-    type: object
   raftMemberListValue:
     type: object
     required:
@@ -1966,6 +1964,7 @@ definitions:
       - leader
       - version
       - connected
+      - readOnly
     properties:
       id:
         type: string
@@ -1979,13 +1978,16 @@ definitions:
         type: string
       connected:
         type: boolean
+      readOnly:
+        type: boolean
   raftMemberListResponse:
     type: object
     properties:
-      values:
+      data:
         type: array
         items:
           $ref: '#/definitions/raftMemberListValue'
+
 
 
 

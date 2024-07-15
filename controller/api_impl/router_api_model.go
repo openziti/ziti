@@ -18,12 +18,13 @@ package api_impl
 
 import (
 	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 
 	"github.com/openziti/ziti/controller/rest_model"
 
-	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/models"
 )
 
 const EntityNameRouter = "routers"
@@ -46,8 +47,8 @@ func (factory *RouterLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
 	return links
 }
 
-func MapCreateRouterToModel(router *rest_model.RouterCreate) *network.Router {
-	ret := &network.Router{
+func MapCreateRouterToModel(router *rest_model.RouterCreate) *model.Router {
+	ret := &model.Router{
 		BaseEntity: models.BaseEntity{
 			Id:   stringz.OrEmpty(router.ID),
 			Tags: TagsOrDefault(router.Tags),
@@ -62,8 +63,8 @@ func MapCreateRouterToModel(router *rest_model.RouterCreate) *network.Router {
 	return ret
 }
 
-func MapUpdateRouterToModel(id string, router *rest_model.RouterUpdate) *network.Router {
-	ret := &network.Router{
+func MapUpdateRouterToModel(id string, router *rest_model.RouterUpdate) *model.Router {
+	ret := &model.Router{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
@@ -78,8 +79,8 @@ func MapUpdateRouterToModel(id string, router *rest_model.RouterUpdate) *network
 	return ret
 }
 
-func MapPatchRouterToModel(id string, router *rest_model.RouterPatch) *network.Router {
-	ret := &network.Router{
+func MapPatchRouterToModel(id string, router *rest_model.RouterPatch) *model.Router {
+	ret := &model.Router{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
@@ -96,7 +97,7 @@ func MapPatchRouterToModel(id string, router *rest_model.RouterPatch) *network.R
 
 type RouterModelMapper struct{}
 
-func (RouterModelMapper) ToApi(n *network.Network, _ api.RequestContext, router *network.Router) (interface{}, error) {
+func (RouterModelMapper) ToApi(n *network.Network, _ api.RequestContext, router *model.Router) (interface{}, error) {
 	connected := n.GetConnectedRouter(router.Id)
 	var restVersionInfo *rest_model.VersionInfo
 	if connected != nil && connected.VersionInfo != nil {

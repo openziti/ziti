@@ -43,6 +43,7 @@ type ClientApiFactory struct {
 
 func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 	clientApiFound := false
+	edgeConfig := factory.appEnv.GetConfig().Edge
 	for _, webListener := range config.ServerConfigs {
 		for _, api := range webListener.APIs {
 
@@ -53,12 +54,12 @@ func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 					return errors.Errorf("could not read xweb web listener [%s]'s CA file [%s] to retrieve CA PEMs: %v", webListener.Name, webListener.Identity.GetConfig().CA, err)
 				}
 
-				factory.appEnv.Config.AddCaPems(caBytes)
+				edgeConfig.AddCaPems(caBytes)
 			}
 
 			if !clientApiFound && api.Binding() == controller.ClientApiBinding {
 				for _, bindPoint := range webListener.BindPoints {
-					if bindPoint.Address == factory.appEnv.Config.Api.Address {
+					if bindPoint.Address == edgeConfig.Api.Address {
 						factory.appEnv.SetServerCert(webListener.Identity.ServerCert()[0])
 						clientApiFound = true
 						break
@@ -68,10 +69,10 @@ func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 		}
 	}
 
-	factory.appEnv.Config.RefreshCas()
+	edgeConfig.RefreshCas()
 
 	if !clientApiFound {
-		return errors.Errorf("could not find [edge.api.address] value [%s] as a bind point any instance of ApiConfig [%s]", factory.appEnv.Config.Api.Address, controller.ClientApiBinding)
+		return errors.Errorf("could not find [edge.api.address] value [%s] as a bind point any instance of ApiConfig [%s]", edgeConfig.Api.Address, controller.ClientApiBinding)
 	}
 
 	return nil

@@ -33,7 +33,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -66,7 +65,7 @@ func NewIdentityManager(env Env) *IdentityManager {
 	}
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*Identity](env.GetHostController().GetNetwork().GetManagers(), manager)
+	RegisterManagerDecoder[*Identity](env, manager)
 	RegisterCommand(env, &CreateIdentityWithEnrollmentsCmd{}, &edge_cmd_pb.CreateIdentityWithEnrollmentsCmd{})
 	RegisterCommand(env, &UpdateServiceConfigsCmd{}, &edge_cmd_pb.UpdateServiceConfigsCmd{})
 
@@ -78,7 +77,7 @@ func (self *IdentityManager) newModelEntity() *Identity {
 }
 
 func (self *IdentityManager) Create(entity *Identity, ctx *change.Context) error {
-	return network.DispatchCreate[*Identity](self, entity, ctx)
+	return DispatchCreate[*Identity](self, entity, ctx)
 }
 
 func (self *IdentityManager) ApplyCreate(cmd *command.CreateEntityCommand[*Identity], ctx boltz.MutateContext) error {
@@ -138,7 +137,7 @@ func (self *IdentityManager) ApplyCreateWithEnrollments(cmd *CreateIdentityWithE
 }
 
 func (self *IdentityManager) Update(entity *Identity, checker fields.UpdatedFields, ctx *change.Context) error {
-	return network.DispatchUpdate[*Identity](self, entity, checker, ctx)
+	return DispatchUpdate[*Identity](self, entity, checker, ctx)
 }
 
 func (self *IdentityManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Identity], ctx boltz.MutateContext) error {
@@ -344,7 +343,7 @@ func (self *IdentityManager) CreateWithAuthenticator(identity *Identity, authent
 		return "", "", apiErr
 	}
 
-	err = self.env.GetDbProvider().GetDb().Update(ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+	err = self.env.GetDb().Update(ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		boltIdentity, err := identity.toBoltEntityForCreate(ctx.Tx(), self.env)
 
 		if err != nil {

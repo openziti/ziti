@@ -49,8 +49,8 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 
 func (ctx *TestContext) isEdgeRouterAccessible(edgeRouterId, identityId, serviceId string) bool {
 	found := false
-	err := ctx.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		result, err := ctx.managers.EdgeRouter.ListForIdentityAndServiceWithTx(tx, identityId, serviceId, nil)
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		result, err := ctx.managers.EdgeRouter.ListForIdentityAndServiceWithTx(tx, identityId, serviceId)
 		if err != nil {
 			return err
 		}

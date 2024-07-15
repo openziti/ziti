@@ -25,7 +25,8 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/common/capabilities"
-	"github.com/openziti/ziti/common/config"
+	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/events"
 	"github.com/openziti/ziti/controller/handler_peer_ctrl"
@@ -68,7 +69,8 @@ import (
 )
 
 type Controller struct {
-	config             *Config
+	config             *config.Config
+	env                *env.AppEnv
 	network            *network.Network
 	raftController     *raft.Controller
 	localDispatcher    *command.LocalDispatcher
@@ -127,11 +129,15 @@ func (c *Controller) GetId() *identity.TokenId {
 	return c.config.Id
 }
 
+func (c *Controller) GetConfig() *config.Config {
+	return c.config
+}
+
 func (c *Controller) GetMetricsRegistry() metrics.Registry {
 	return c.metricsRegistry
 }
 
-func (c *Controller) GetOptions() *network.Options {
+func (c *Controller) GetOptions() *config.NetworkConfig {
 	return c.config.Network
 }
 
@@ -182,7 +188,7 @@ func (c *Controller) GetCloseNotify() <-chan struct{} {
 	return c.shutdownC
 }
 
-func (c *Controller) GetRaftConfig() *raft.Config {
+func (c *Controller) GetRaftConfig() *config.RaftConfig {
 	return c.config.Raft
 }
 
@@ -191,15 +197,14 @@ func (c *Controller) GetCommandRateLimiterConfig() command.RateLimiterConfig {
 }
 
 func (c *Controller) RenderJsonConfig() (string, error) {
-	jsonMap, err := config.ToJsonCompatibleMap(c.config.src)
-	if err != nil {
-		return "", err
-	}
-	b, err := json.Marshal(jsonMap)
-	return string(b), err
+	return c.config.ToJson()
 }
 
-func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Controller, error) {
+func (c *Controller) GetEnv() *env.AppEnv {
+	return c.env
+}
+
+func NewController(cfg *config.Config, versionProvider versions.VersionProvider) (*Controller, error) {
 	metricRegistry := metrics.NewRegistry(cfg.Id.Token, nil)
 
 	shutdownC := make(chan struct{})
@@ -229,7 +234,14 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 
 	c.registerXts()
 
-	if n, err := network.NewNetwork(c); err == nil {
+	appEnv, err := env.NewAppEnv(c)
+	if err != nil {
+		return nil, err
+	}
+
+	c.env = appEnv
+
+	if n, err := network.NewNetwork(c, appEnv); err == nil {
 		c.network = n
 	} else {
 		return nil, err
@@ -376,7 +388,7 @@ func (c *Controller) Run() error {
 func (c *Controller) getEventHandlerConfigs() []*events.EventHandlerConfig {
 	var result []*events.EventHandlerConfig
 
-	if e, ok := c.config.src["events"]; ok {
+	if e, ok := c.config.Src["events"]; ok {
 		if em, ok := e.(map[interface{}]interface{}); ok {
 			for id, v := range em {
 				if config, ok := v.(map[interface{}]interface{}); ok {
@@ -518,7 +530,7 @@ func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
 }
 
 func (c *Controller) getMigrationDb() (*string, error) {
-	val, found := c.config.src["db"]
+	val, found := c.config.Src["db"]
 	if !found {
 		return nil, nil
 	}

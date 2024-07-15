@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
@@ -37,7 +36,7 @@ func NewAuthPolicyManager(env Env) *AuthPolicyManager {
 	}
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*AuthPolicy](env.GetHostController().GetNetwork().Managers, manager)
+	RegisterManagerDecoder[*AuthPolicy](env, manager)
 
 	return manager
 }
@@ -47,7 +46,7 @@ type AuthPolicyManager struct {
 }
 
 func (self *AuthPolicyManager) Create(entity *AuthPolicy, ctx *change.Context) error {
-	return network.DispatchCreate[*AuthPolicy](self, entity, ctx)
+	return DispatchCreate[*AuthPolicy](self, entity, ctx)
 }
 
 func (self *AuthPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*AuthPolicy], ctx boltz.MutateContext) error {
@@ -69,7 +68,7 @@ func (self *AuthPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*Aut
 }
 
 func (self *AuthPolicyManager) Update(entity *AuthPolicy, checker fields.UpdatedFields, ctx *change.Context) error {
-	return network.DispatchUpdate[*AuthPolicy](self, entity, checker, ctx)
+	return DispatchUpdate[*AuthPolicy](self, entity, checker, ctx)
 }
 
 func (self *AuthPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*AuthPolicy], ctx boltz.MutateContext) error {

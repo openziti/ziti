@@ -222,7 +222,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 
 	env.ProcessAuthQueries(ae, rc)
 
-	apiSession := MapToCurrentApiSessionRestModel(ae, rc, ae.Config.SessionTimeoutDuration())
+	apiSession := MapToCurrentApiSessionRestModel(ae, rc, ae.GetConfig().Edge.SessionTimeoutDuration())
 
 	//re-calc session headers as they were not set when ApiSession == NIL
 	response.AddSessionHeaders(rc)

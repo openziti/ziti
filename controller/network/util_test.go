@@ -19,6 +19,7 @@ package network
 import (
 	"fmt"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 
@@ -27,13 +28,13 @@ import (
 	"github.com/openziti/ziti/controller/db"
 )
 
-func newTestEntityHelper(ctx *db.TestContext, network *Network) *testEntityHelper {
+func newTestEntityHelper(ctx *model.TestContext, network *Network) *testEntityHelper {
 	addr := "tcp:0.0.0.0:0"
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	ctx.NoError(err)
 
 	return &testEntityHelper{
-		ctx:           ctx,
+		ctx:           ctx.TestContext,
 		network:       network,
 		transportAddr: transportAddr,
 	}
@@ -48,17 +49,17 @@ type testEntityHelper struct {
 	transportAddr transport.Address
 }
 
-func (self *testEntityHelper) addTestRouter() *Router {
-	router := newRouterForTest(fmt.Sprintf("router-%03d", self.routerIdx), "", self.transportAddr, nil, 0, false)
-	self.network.Routers.markConnected(router)
-	self.ctx.NoError(self.network.Routers.Create(router, change.New()))
+func (self *testEntityHelper) addTestRouter() *model.Router {
+	router := model.NewRouterForTest(fmt.Sprintf("router-%03d", self.routerIdx), "", self.transportAddr, nil, 0, false)
+	self.network.Router.MarkConnected(router)
+	self.ctx.NoError(self.network.Router.Create(router, change.New()))
 	self.routerIdx++
 	return router
 }
 
-func (self *testEntityHelper) addTestTerminator(serviceName string, routerName string, instanceId string, isSystem bool) *Terminator {
+func (self *testEntityHelper) addTestTerminator(serviceName string, routerName string, instanceId string, isSystem bool) *model.Terminator {
 	id := fmt.Sprintf("terminator-#%d", self.terminatorIdx)
-	term := &Terminator{
+	term := &model.Terminator{
 		BaseEntity: models.BaseEntity{
 			Id:       id,
 			IsSystem: isSystem,
@@ -68,20 +69,20 @@ func (self *testEntityHelper) addTestTerminator(serviceName string, routerName s
 		InstanceId: instanceId,
 		Address:    "ToDo",
 	}
-	self.ctx.NoError(self.network.Terminators.Create(term, change.New()))
+	self.ctx.NoError(self.network.Terminator.Create(term, change.New()))
 	self.terminatorIdx++
 	return term
 }
 
-func (self *testEntityHelper) addTestService(serviceName string) *Service {
+func (self *testEntityHelper) addTestService(serviceName string) *model.Service {
 	id := fmt.Sprintf("service-#%d", self.serviceIdx)
-	svc := &Service{
+	svc := &model.Service{
 		BaseEntity:         models.BaseEntity{Id: id},
 		Name:               serviceName,
 		TerminatorStrategy: xt_smartrouting.Name,
 	}
 	self.serviceIdx++
-	self.ctx.NoError(self.network.Services.Create(svc, change.New()))
+	self.ctx.NoError(self.network.Service.Create(svc, change.New()))
 	return svc
 }
 

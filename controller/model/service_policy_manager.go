@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
@@ -35,7 +34,7 @@ func NewServicePolicyManager(env Env) *ServicePolicyManager {
 	}
 	manager.impl = manager
 
-	network.RegisterManagerDecoder[*ServicePolicy](env.GetHostController().GetNetwork().Managers, manager)
+	RegisterManagerDecoder[*ServicePolicy](env, manager)
 
 	return manager
 }
@@ -49,7 +48,7 @@ func (self *ServicePolicyManager) newModelEntity() *ServicePolicy {
 }
 
 func (self *ServicePolicyManager) Create(entity *ServicePolicy, ctx *change.Context) error {
-	return network.DispatchCreate[*ServicePolicy](self, entity, ctx)
+	return DispatchCreate[*ServicePolicy](self, entity, ctx)
 }
 
 func (self *ServicePolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*ServicePolicy], ctx boltz.MutateContext) error {
@@ -58,7 +57,7 @@ func (self *ServicePolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*
 }
 
 func (self *ServicePolicyManager) Update(entity *ServicePolicy, checker fields.UpdatedFields, ctx *change.Context) error {
-	return network.DispatchUpdate[*ServicePolicy](self, entity, checker, ctx)
+	return DispatchUpdate[*ServicePolicy](self, entity, checker, ctx)
 }
 
 func (self *ServicePolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ServicePolicy], ctx boltz.MutateContext) error {

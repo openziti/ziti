@@ -210,7 +210,7 @@ func (sm *ManagerImpl) LoadRouterModel(filePath string) {
 	model, err := common.NewReceiverRouterDataModelFromFile(filePath, RouterDataModelListerBufferSize)
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).Errorf("could not load router model from file [%s]", filePath)
+		pfxlog.Logger().WithError(err).Infof("could not load router model from file [%s]", filePath)
 		model = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
 	}
 

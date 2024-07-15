@@ -20,20 +20,21 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
 
 type routeResultHandler struct {
 	network *network.Network
-	r       *network.Router
+	r       *model.Router
 }
 
-func newRouteResultHandler(network *network.Network, r *network.Router) *routeResultHandler {
+func newRouteResultHandler(network *network.Network, r *model.Router) *routeResultHandler {
 	return &routeResultHandler{
 		network: network,
 		r:       r,

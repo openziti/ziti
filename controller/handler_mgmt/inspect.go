@@ -44,7 +44,7 @@ func (handler *inspectHandler) HandleReceive(msg *channel.Message, ch channel.Ch
 		response.Success = false
 		response.Errors = append(response.Errors, fmt.Sprintf("%v: %v", handler.network.GetAppId(), err))
 	} else {
-		result := handler.network.Managers.Inspections.Inspect(request.AppRegex, request.RequestedValues)
+		result := handler.network.Inspections.Inspect(request.AppRegex, request.RequestedValues)
 		response.Success = result.Success
 		response.Errors = result.Errors
 		for _, val := range result.Results {

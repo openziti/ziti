@@ -1,3 +1,88 @@
+# Release 1.1.6
+
+## What's New
+
+* Trust Domain Configuration
+* Controller HA Beta 2
+
+## Trust Domain Configuration
+
+OpenZiti controllers from this release forward will now require a `trust domain` to be configured. 
+High Availability (HA) controllers already have this requirement. HA Controllers configure their trust domain via SPIFFE 
+ids that are embedded in x509 certificates.
+
+For feature parity, non-HA controllers will now have this same requirement. However, as re-issuing certificates is not
+always easily done. To help with the transition, non-HA controllers will have the ability to have their trust domain
+sourced from the controller configuration file through the root configuration value `trustDomain`. The configuration
+field which takes a string that must be URI hostname compatible (see: https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE-ID.md).
+If this value is not defined, a trust domain will be generated from the root CA certificate of the controller. 
+
+For networks that will be deployed after this change, it is highly suggested that a SPIFFE id is added to certificates.
+The `ziti pki create ...` tooling supports the `--spiffe-id` option to help handle this scenario.
+
+### Generated Trust Domain Log Messages
+
+The following log messages are examples of warnings produced when a controller is using a generated trust domain:
+
+```
+WARNING this environment is using a default generated trust domain [spiffe://d561decf63d229d66b07de627dbbde9e93228925], 
+  it is recommended that a trust domain is specified in configuration via URI SANs or the 'trustDomain' field
+
+WARNING this environment is using a default generated trust domain [spiffe://d561decf63d229d66b07de627dbbde9e93228925], 
+  it is recommended that if network components have enrolled that the generated trust domain be added to the 
+  configuration field 'additionalTrustDomains'
+```
+
+### Trust domain resolution:
+
+- Non-HA controllers
+  - Prefers SPIFFE ids in x509 certificate URI SANs, looking at the leaf up the signing chain
+  - Regresses to `trustDomain` in the controller configuration file if not found
+  - Regress to generating a trust domain from the server certificates root CA, if the above do not resolve
+
+- HA Controllers
+  - Requires x509 SPIFFE ids in x509 certificate URI SANs
+
+### Additional Trust Domains
+
+When moving between trust domains (i.e. from the default generated to a new named one), the controller supports having
+other trust domains. The trust domains do not replace certificate chain validation, which is still checked and enforced.
+
+Additional trust domains are configured in the controller configuration file under the root field 
+`additionalTrustDomains`. This field is an array of hostname safe strings.
+
+The most common use case for this is field is if a network has issued certificates using the generated trust domain and 
+now wants to transition to a explicitly defined one.
+
+## Controller HA Beta 2
+
+This release can be run in HA mode. The code is still beta, as we're still finding and fixing bugs. Several bugs
+have been fixed since Beta 1 and c-based SDKs and tunnelers now work in HA mode. The smoketest can now be run
+with HA controllers and clients.
+
+* Latest ZET release supporting HA control: https://github.com/openziti/ziti-tunnel-sdk-c/releases/tag/v2.0.0-alpha9
+* Windows, Mac and Mobile clients are in the process of being updated
+
+For more information:
+
+* HA overview/getting started/migration: [HA Documentation](https://github.com/openziti/ziti/tree/release-next/doc/ha)
+* Open Issues: [HA Project Board](https://github.com/orgs/openziti/projects/9/views/1)
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/storage: [v0.2.45 -> v0.2.46](https://github.com/openziti/storage/compare/v0.2.45...v0.2.46)
+    * [Issue #76](https://github.com/openziti/storage/issues/76) - Add support for non-boltz symbols to the the boltz stores
+
+* github.com/openziti/ziti: [v1.1.5 -> v1.1.6](https://github.com/openziti/ziti/compare/v1.1.5...v1.1.6)
+    * [Issue #2171](https://github.com/openziti/ziti/issues/2171) - Routers should consider control channels unresponsive if they are not connected
+    * [Issue #2219](https://github.com/openziti/ziti/issues/2219) - Add inspection for router connections
+    * [Issue #2195](https://github.com/openziti/ziti/issues/2195) - cached data model file set to
+    * [Issue #2222](https://github.com/openziti/ziti/issues/2222) - Add way to get read-only status from cluster nodes
+    * [Issue #2191](https://github.com/openziti/ziti/issues/2191) - Change raft list cluster members element name from values to data to match rest of REST api
+    * [Issue #785](https://github.com/openziti/ziti/issues/785) - ziti edge update service-policy to empty/no posture checks fails
+    * [Issue #2205](https://github.com/openziti/ziti/issues/2205) - Merge fabric and edge model code
+    * [Issue #2165](https://github.com/openziti/ziti/issues/2165) - Add network id
+
 # Release 1.1.5
 
 ## What's New
@@ -24,8 +109,8 @@
 
 ## What's New
 
-* Bug fixes
 * Controller HA Beta 1
+* Bug fixes
 
 ## Controller HA Beta 1
 
@@ -38,7 +123,7 @@ with HA controllers and clients.
 
 For more information:
 
-* HA overview/getting started/migration: [HA Documementation](https://github.com/openziti/ziti/tree/release-next/doc/ha)
+* HA overview/getting started/migration: [HA Documentation](https://github.com/openziti/ziti/tree/release-next/doc/ha)
 * Open Issues: [HA Project Board](https://github.com/orgs/openziti/projects/9/views/1)
 
 ## Component Updates and Bug Fixes 
