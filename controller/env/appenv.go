@@ -573,6 +573,11 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 }
 
 func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
+	// do no process auth headers on authenticate request
+	if strings.HasSuffix(rc.Request.URL.Path, "/v1/authenticate") && !strings.HasSuffix(rc.Request.URL.Path, "/authenticate/mfa") {
+		return nil
+	}
+
 	ztSession := ae.getZtSessionFromRequest(rc.Request)
 
 	if ztSession != "" {

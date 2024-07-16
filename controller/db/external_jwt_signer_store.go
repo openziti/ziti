@@ -74,6 +74,7 @@ func (entity *ExternalJwtSigner) GetEntityType() string {
 var _ ExternalJwtSignerStore = (*externalJwtSignerStoreImpl)(nil)
 
 type ExternalJwtSignerStore interface {
+	NameIndexed
 	Store[*ExternalJwtSigner]
 }
 
@@ -94,6 +95,10 @@ type externalJwtSignerStoreImpl struct {
 	kidIndex           boltz.ReadIndex
 	symbolIssuer       boltz.EntitySymbol
 	issuerIndex        boltz.ReadIndex
+}
+
+func (store *externalJwtSignerStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
 }
 
 func (store *externalJwtSignerStoreImpl) initializeLocal() {

@@ -275,7 +275,7 @@ func (ctrl *BaseEntityManager[E]) ValidateNameOnUpdate(ctx boltz.MutateContext, 
 					return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
 				}
 			} else {
-				pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(updatedEntity))
+				pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't implement the NamedIndexStore interface", reflect.TypeOf(updatedEntity))
 			}
 		}
 	}
@@ -299,7 +299,7 @@ func (handler *BaseEntityManager[E]) ValidateNameOnCreate(tx *bbolt.Tx, entity i
 				return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
 			}
 		} else {
-			pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(entity))
+			pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't implement the NamedIndexStore interface", reflect.TypeOf(entity))
 		}
 	}
 	return nil
