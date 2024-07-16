@@ -150,7 +150,6 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 
 	return &AuthResultBase{
 		identity:        identity,
-		identityId:      updb.IdentityId,
 		authenticator:   authenticator,
 		authenticatorId: authenticator.Id,
 		env:             module.env,
