@@ -922,8 +922,15 @@ func (request *authenticatedRequests) requireServiceUpdateTimeUnchanged() {
 }
 
 func (request *authenticatedRequests) requireServiceUpdateTimeAdvanced() {
-	time.Sleep(5 * time.Millisecond)
-	lastUpdated := request.getServiceUpdateTime()
+	start := time.Now()
+	var lastUpdated time.Time
+	for time.Since(start) < time.Minute {
+		time.Sleep(5 * time.Millisecond)
+		lastUpdated = request.getServiceUpdateTime()
+		if request.session.lastServiceUpdate.Before(lastUpdated) {
+			break
+		}
+	}
 	request.testContext.Req.True(request.session.lastServiceUpdate.Before(lastUpdated))
 	request.session.lastServiceUpdate = lastUpdated
 	time.Sleep(5 * time.Millisecond)
