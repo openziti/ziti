@@ -139,7 +139,7 @@ main(){
         exit 1
     fi
     # Detect the system's distribution family
-    if [ -f /etc/redhat-release ]; then
+    if [[ -f /etc/redhat-release || -f  /etc/amazon-linux-release ]]; then
         installRedHat "$@"
     elif [ -f /etc/debian_version ]; then
         installDebian "$@"
