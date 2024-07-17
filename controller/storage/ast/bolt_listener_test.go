@@ -421,6 +421,14 @@ func TestStringFilters(t *testing.T) {
 		{"string contains, result false", `s contains "lle"`, false},
 		{"string contains, result false", `s contains 0`, false},
 
+		{"string icontains, result true", `s icontains "HELLO"`, true},
+		{"string icontains, result true", `s icontains "eLLo"`, true},
+		{"string icontains, result true", `s icontains "hElL"`, true},
+		{"string icontains, result true", `s icontains "L"`, true},
+		{"string icontains, result false", `s icontains "heLLoo"`, false},
+		{"string icontains, result false", `s icontains "helLi"`, false},
+		{"string icontains, result false", `s icontains "llE"`, false},
+
 		{"string not contains, result false", `s not contains "hello"`, false},
 		{"string not contains, result false", `s not contains "ello"`, false},
 		{"string not contains, result false", `s not contains "hell"`, false},
@@ -429,6 +437,14 @@ func TestStringFilters(t *testing.T) {
 		{"string not contains, result true", `s not contains "helli"`, true},
 		{"string not contains, result true", `s not contains "lle"`, true},
 		{"string not contains, result true", `s not contains 0`, true},
+
+		{"string not icontains, result false", `s not icontains "HELLO"`, false},
+		{"string not icontains, result false", `s not icontains "Ello"`, false},
+		{"string not icontains, result false", `s not icontains "hEll"`, false},
+		{"string not icontains, result false", `s not icontains "l"`, false},
+		{"string not icontains, result true", `s not icontains "heLLoo"`, true},
+		{"string not icontains, result true", `s not icontains "HElli"`, true},
+		{"string not icontains, result true", `s not icontains "llE"`, true},
 
 		{"string contains, result true", `sn  contains 234`, true},
 		{"string contains, result false", `sn  contains 321`, false},
