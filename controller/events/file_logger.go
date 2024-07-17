@@ -56,7 +56,7 @@ func NewFileEventLogger(formatterFactory LoggingHandlerFactory, stdout bool, con
 		}
 	}
 
-	var output io.WriteCloser = os.Stdout
+	var output = &newlineWriter{out: os.Stdout}
 
 	if !stdout {
 		// allow config to override the max file size
