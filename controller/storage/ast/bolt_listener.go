@@ -267,6 +267,12 @@ func (bl *ToBoltListener) VisitTerminal(node antlr.TerminalNode) {
 		} else {
 			bl.pushStack(BinaryOpContains)
 		}
+	case zitiql.ZitiQlLexerICONTAINS:
+		if strings.Contains(strings.ToLower(node.GetText()), "not") {
+			bl.pushStack(BinaryOpNotIContains)
+		} else {
+			bl.pushStack(BinaryOpIContains)
+		}
 	case zitiql.ZitiQlLexerALL_OF:
 		bl.pushStack(SetFunctionAllOf)
 	case zitiql.ZitiQlLexerANY_OF:

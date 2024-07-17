@@ -164,7 +164,7 @@ func (node *StringConstNode) EvalString(_ Symbols) *string {
 }
 
 func (node *StringConstNode) String() string {
-	return fmt.Sprintf(`"%v"`, node.value)
+	return node.value
 }
 
 func (node *StringConstNode) IsConst() bool {

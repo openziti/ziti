@@ -64,25 +64,33 @@ const (
 	BinaryOpNotBetween
 	BinaryOpContains
 	BinaryOpNotContains
+	BinaryOpIContains
+	BinaryOpNotIContains
 )
+
+func (op BinaryOp) IsCaseInsensitiveOp() bool {
+	return op == BinaryOpIContains || op == BinaryOpNotIContains
+}
 
 func (op BinaryOp) String() string {
 	return binaryOpNames[op]
 }
 
 var binaryOpNames = map[BinaryOp]string{
-	BinaryOpEQ:          "=",
-	BinaryOpNEQ:         "!=",
-	BinaryOpLT:          "<",
-	BinaryOpLTE:         "<=",
-	BinaryOpGT:          ">",
-	BinaryOpGTE:         ">=",
-	BinaryOpIn:          "in",
-	BinaryOpNotIn:       "not in",
-	BinaryOpBetween:     "between",
-	BinaryOpNotBetween:  "not between",
-	BinaryOpContains:    "contains",
-	BinaryOpNotContains: "not contains",
+	BinaryOpEQ:           "=",
+	BinaryOpNEQ:          "!=",
+	BinaryOpLT:           "<",
+	BinaryOpLTE:          "<=",
+	BinaryOpGT:           ">",
+	BinaryOpGTE:          ">=",
+	BinaryOpIn:           "in",
+	BinaryOpNotIn:        "not in",
+	BinaryOpBetween:      "between",
+	BinaryOpNotBetween:   "not between",
+	BinaryOpContains:     "contains",
+	BinaryOpNotContains:  "not icontains",
+	BinaryOpIContains:    "contains",
+	BinaryOpNotIContains: "not icontains",
 }
 
 var binaryOpValues = map[string]BinaryOp{
