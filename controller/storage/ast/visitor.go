@@ -95,6 +95,8 @@ type Visitor interface {
 	// conversion
 	VisitInt64ToFloat64NodeStart(node *Int64ToFloat64Node)
 	VisitInt64ToFloat64NodeEnd(node *Int64ToFloat64Node)
+	VisitStringFuncNodeStart(node *StringFuncNode)
+	VisitStringFuncNodeEnd(node *StringFuncNode)
 
 	// sets
 	VisitAllOfSetExprNodeStart(node *AllOfSetExprNode)
@@ -127,6 +129,9 @@ var _ Visitor = (*DefaultVisitor)(nil)
 
 type DefaultVisitor struct {
 }
+
+func (d DefaultVisitor) VisitStringFuncNodeStart(node *StringFuncNode) {}
+func (d DefaultVisitor) VisitStringFuncNodeEnd(node *StringFuncNode)   {}
 
 func (d DefaultVisitor) VisitUntypedSubQueryNodeStart(*UntypedSubQueryNode) {}
 func (d DefaultVisitor) VisitUntypedSubQueryNodeEnd(*UntypedSubQueryNode)   {}

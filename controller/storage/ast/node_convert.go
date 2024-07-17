@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -240,6 +241,9 @@ func (node *BinaryExprNode) handleStringOps() (BoolNode, error) {
 	if ok {
 		right, ok := node.right.(StringNode)
 		if ok {
+			if node.op.IsCaseInsensitiveOp() {
+				return node.handleCaseInsensitive(left, right), nil
+			}
 			return &BinaryStringExprNode{
 				left:  left,
 				right: right,
@@ -248,6 +252,34 @@ func (node *BinaryExprNode) handleStringOps() (BoolNode, error) {
 		}
 	}
 	return node.invalidOpTypes()
+}
+
+func (node *BinaryExprNode) handleCaseInsensitive(left, right StringNode) BoolNode {
+	op := BinaryOpContains
+	if node.op == BinaryOpNotIContains {
+		op = BinaryOpNotContains
+	}
+
+	return &BinaryStringExprNode{
+		left:  node.toUpper(left),
+		right: node.toUpper(right),
+		op:    op,
+	}
+}
+
+func (node *BinaryExprNode) toUpper(stringNode StringNode) StringNode {
+	if stringNode.IsConst() {
+		return &StringConstNode{
+			value: strings.ToUpper(stringNode.String()),
+		}
+	}
+	return &StringFuncNode{
+		label: "toUpper",
+		f: func(s string) string {
+			return strings.ToUpper(s)
+		},
+		expr: stringNode,
+	}
 }
 
 func (node *BinaryExprNode) handleInt64Ops() (BoolNode, error) {
@@ -653,4 +685,37 @@ func (node *UntypedNotExprNode) TypeTransformBool(s SymbolTypes) (BoolNode, erro
 
 func (node *UntypedNotExprNode) IsConst() bool {
 	return node.expr.IsConst()
+}
+
+type StringFuncNode struct {
+	label string
+	f     func(string) string
+	expr  StringNode
+}
+
+func (self *StringFuncNode) String() string {
+	return fmt.Sprintf("%s(%s)", self.label, self.expr)
+}
+
+func (self *StringFuncNode) GetType() NodeType {
+	return NodeTypeString
+}
+
+func (self *StringFuncNode) Accept(visitor Visitor) {
+	visitor.VisitStringFuncNodeStart(self)
+	self.expr.Accept(visitor)
+	visitor.VisitStringFuncNodeEnd(self)
+}
+
+func (self *StringFuncNode) IsConst() bool {
+	return false
+}
+
+func (self *StringFuncNode) EvalString(s Symbols) *string {
+	result := self.expr.EvalString(s)
+	if s == nil {
+		return nil
+	}
+	val := self.f(*result)
+	return &val
 }
