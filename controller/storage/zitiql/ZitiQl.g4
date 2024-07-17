@@ -42,6 +42,7 @@ LT: '<' '='?;
 GT: '>' '='?;
 EQ: '!'? '=';
 CONTAINS: (N O T WS+)? C O N T A I N S;
+ICONTAINS: (N O T WS+)? I C O N T A I N S;
 
 
 IN: (N O T WS)? I N;
@@ -155,6 +156,7 @@ operation:
   | binaryLhs WS* EQ WS* BOOL #BinaryEqualToBoolOp
   | binaryLhs WS* EQ WS* NULL #BinaryEqualToNullOp
   | binaryLhs WS* CONTAINS WS+ (STRING|NUMBER) #BinaryContainsOp
+  | binaryLhs WS* ICONTAINS WS+ STRING #BinaryContainsOp
   ;
 
 binaryLhs: IDENTIFIER | setFunction;
