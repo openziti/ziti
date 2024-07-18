@@ -89,6 +89,9 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	configTypeListRootCmd := newEntityListRootCmd("config-type")
 	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-type", "configs", outputConfigs, newOptions()))
 
+	configListRootCmd := newEntityListRootCmd("config")
+	configListRootCmd.AddCommand(newSubListCmdForEntityType("configs", "services", outputServices, newOptions()))
+
 	edgeRouterListRootCmd := newEntityListRootCmd("edge-router", "er")
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "service-edge-router-policies", outputServiceEdgeRouterPolicies, newOptions()))
@@ -126,6 +129,7 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newListCmdForEntityType("summary", runListSummary, newOptions()))
 
 	cmd.AddCommand(configTypeListRootCmd,
+		configListRootCmd,
 		edgeRouterListRootCmd,
 		edgeRouterPolicyListRootCmd,
 		identityListRootCmd,
