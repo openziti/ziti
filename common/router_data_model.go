@@ -264,7 +264,7 @@ func (rdm *RouterDataModel) Handle(index uint64, event *edge_ctrl_pb.DataState_E
 		rdm.HandleConfigEvent(index, event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_Identity:
 		rdm.HandleIdentityEvent(index, event, typedModel)
-		return false
+		return false // identity events are handled individually, don't require a full subscriber sync
 	case *edge_ctrl_pb.DataState_Event_Service:
 		rdm.HandleServiceEvent(index, event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_ServicePolicy:
@@ -273,8 +273,10 @@ func (rdm *RouterDataModel) Handle(index uint64, event *edge_ctrl_pb.DataState_E
 		rdm.HandlePostureCheckEvent(index, event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_PublicKey:
 		rdm.HandlePublicKeyEvent(event, typedModel)
+		return false // don't affect identity subscribers, so don't require a sync
 	case *edge_ctrl_pb.DataState_Event_Revocation:
 		rdm.HandleRevocationEvent(event, typedModel)
+		return false // don't affect identity subscribers, so don't require a sync
 	case *edge_ctrl_pb.DataState_Event_ServicePolicyChange:
 		rdm.HandleServicePolicyChange(index, typedModel.ServicePolicyChange)
 	}
@@ -752,10 +754,10 @@ func CloneMap[V any](m cmap.ConcurrentMap[string, V]) cmap.ConcurrentMap[string,
 	return result
 }
 
-func (rdm *RouterDataModel) SubscribeToIdentityChanges(identityId string, subscriber IdentityEventSubscriber, validOnly bool) error {
+func (rdm *RouterDataModel) SubscribeToIdentityChanges(identityId string, subscriber IdentityEventSubscriber, isRouterIdentity bool) error {
 	pfxlog.Logger().WithField("identityId", identityId).Debug("subscribing to changes for identity")
 	identity, ok := rdm.Identities.Get(identityId)
-	if !ok && validOnly {
+	if !ok && !isRouterIdentity {
 		return fmt.Errorf("identity %s not found", identityId)
 	}
 

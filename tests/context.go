@@ -481,22 +481,33 @@ func (ctx *TestContext) startTransitRouter() {
 func (ctx *TestContext) CreateEnrollAndStartTunnelerEdgeRouter(roleAttributes ...string) {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(true, roleAttributes...)
-	ctx.startEdgeRouter()
+	ctx.startEdgeRouter(nil)
 }
 
 func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string) *router.Router {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
-	return ctx.startEdgeRouter()
+	return ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) startEdgeRouter() *router.Router {
+func (ctx *TestContext) CreateEnrollAndStartHAEdgeRouter(roleAttributes ...string) *router.Router {
+	ctx.shutdownRouters()
+	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
+	return ctx.startEdgeRouter(func(r *router.Config) {
+		r.Ha.Enabled = true
+	})
+}
+
+func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*router.Config)) *router.Router {
 	configFile := EdgeRouterConfFile
 	if ctx.edgeRouterEntity.isTunnelerEnabled {
 		configFile = TunnelerEdgeRouterConfFile
 	}
 	config, err := router.LoadConfig(configFile)
 	ctx.Req.NoError(err)
+	if cfgTweaks != nil {
+		cfgTweaks(config)
+	}
 	newRouter := router.Create(config, NewVersionProviderTest())
 	ctx.routers = append(ctx.routers, newRouter)
 

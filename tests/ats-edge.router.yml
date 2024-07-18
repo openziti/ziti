@@ -20,9 +20,6 @@ identity:
   key: testdata/edge-router/edge-router.key.pem
   ca: testdata/edge-router/edge-router-ca-chain.cert.pem
 
-ha:
-  enabled: true
-
 #trace:
 # path:                 001.trace
 

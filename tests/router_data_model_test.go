@@ -154,7 +154,7 @@ func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
-	router := ctx.CreateEnrollAndStartEdgeRouter()
+	router := ctx.CreateEnrollAndStartHAEdgeRouter()
 
 	sub := newTestSubscriber(ctx)
 
@@ -232,7 +232,7 @@ func Test_RouterDataModel_Configs(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
-	router := ctx.CreateEnrollAndStartEdgeRouter()
+	router := ctx.CreateEnrollAndStartHAEdgeRouter()
 
 	sub := newTestSubscriber(ctx)
 
@@ -355,7 +355,7 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
-	router := ctx.CreateEnrollAndStartEdgeRouter()
+	router := ctx.CreateEnrollAndStartHAEdgeRouter()
 
 	sub := newTestSubscriber(ctx)
 
