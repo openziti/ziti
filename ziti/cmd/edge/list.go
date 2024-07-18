@@ -81,6 +81,7 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newListCmdForEntityType("edge-router-role-attributes", runListEdgeRouterRoleAttributes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("identity-role-attributes", runListIdentityRoleAttributes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-role-attributes", runListServiceRoleAttributes, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("posture-check-role-attributes", runListPostureCheckRoleAttributes, newOptions()))
 
 	cmd.AddCommand(newListCmdForEntityType("posture-checks", runListPostureChecks, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("posture-check-types", runListPostureCheckTypes, newOptions()))
@@ -1528,6 +1529,10 @@ func runListIdentityRoleAttributes(o *api.Options) error {
 
 func runListServiceRoleAttributes(o *api.Options) error {
 	return runListRoleAttributes("service", o)
+}
+
+func runListPostureCheckRoleAttributes(o *api.Options) error {
+	return runListRoleAttributes("posture-check", o)
 }
 
 func runListRoleAttributes(entityType string, o *api.Options) error {
