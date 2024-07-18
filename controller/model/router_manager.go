@@ -451,12 +451,12 @@ func (self *RouterManager) ValidateRouterSdkTerminators(router *Router, cb func(
 
 	for _, entry := range inspectResult.Entries {
 		detail := &mgmt_pb.RouterSdkTerminatorDetail{
-			TerminatorId:     entry.Id,
-			RouterState:      entry.State,
-			IsValid:          true,
-			OperaationActive: entry.OperationActive,
-			CreateTime:       entry.CreateTime,
-			LastAttempt:      entry.LastAttempt,
+			TerminatorId:    entry.Id,
+			RouterState:     entry.State,
+			IsValid:         true,
+			OperationActive: entry.OperationActive,
+			CreateTime:      entry.CreateTime,
+			LastAttempt:     entry.LastAttempt,
 		}
 		result.Details = append(result.Details, detail)
 

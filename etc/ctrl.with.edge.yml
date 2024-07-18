@@ -263,16 +263,9 @@ web:
       #   - edge-client
       #   - fabric-management
       - binding: health-checks
-        options: { }
       - binding: fabric
       - binding: edge-management
-        # options - variable optional/required
-        # This section is used to define values that are specified by the API they are associated with.
-        # These settings are per API. The example below is for the `edge-api` and contains both optional values and
-        # required values.
-        options: { }
       - binding: edge-client
-        options: { }
       - binding: edge-oidc
         options:
           secret: 38de0de7fa283e8c8ef2a7823a6d3e727681ade50b9eb7bee2424197fb22bf18

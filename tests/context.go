@@ -18,6 +18,7 @@ package tests
 
 import (
 	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/zitirest"
 	"io"
 	"net"
 	"net/http"
@@ -125,6 +126,7 @@ type TestContext struct {
 	AdminAuthenticator     *updbAuthenticator
 	AdminManagementSession *session
 	AdminClientSession     *session
+	RestClients            *zitirest.Clients
 	fabricController       *controller.Controller
 	EdgeController         *server.Controller
 	Req                    *require.Assertions
@@ -479,22 +481,33 @@ func (ctx *TestContext) startTransitRouter() {
 func (ctx *TestContext) CreateEnrollAndStartTunnelerEdgeRouter(roleAttributes ...string) {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(true, roleAttributes...)
-	ctx.startEdgeRouter()
+	ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string) {
+func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string) *router.Router {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
-	ctx.startEdgeRouter()
+	return ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) startEdgeRouter() {
+func (ctx *TestContext) CreateEnrollAndStartHAEdgeRouter(roleAttributes ...string) *router.Router {
+	ctx.shutdownRouters()
+	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
+	return ctx.startEdgeRouter(func(r *router.Config) {
+		r.Ha.Enabled = true
+	})
+}
+
+func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*router.Config)) *router.Router {
 	configFile := EdgeRouterConfFile
 	if ctx.edgeRouterEntity.isTunnelerEnabled {
 		configFile = TunnelerEdgeRouterConfFile
 	}
 	config, err := router.LoadConfig(configFile)
 	ctx.Req.NoError(err)
+	if cfgTweaks != nil {
+		cfgTweaks(config)
+	}
 	newRouter := router.Create(config, NewVersionProviderTest())
 	ctx.routers = append(ctx.routers, newRouter)
 
@@ -508,6 +521,7 @@ func (ctx *TestContext) startEdgeRouter() {
 	ctx.Req.NoError(newRouter.RegisterXrctrl(xgressEdgeTunnelFactory))
 	ctx.Req.NoError(newRouter.RegisterXrctrl(newRouter.GetStateManager()))
 	ctx.Req.NoError(newRouter.Start())
+	return newRouter
 }
 
 func (ctx *TestContext) EnrollIdentity(identityId string) *ziti.Config {
@@ -551,6 +565,9 @@ func (ctx *TestContext) RequireAdminManagementApiLogin() {
 	var err error
 	ctx.AdminManagementSession, err = ctx.AdminAuthenticator.AuthenticateManagementApi(ctx)
 	ctx.Req.NoError(err)
+	ctx.RestClients, err = zitirest.NewManagementClients(ctx.ApiHost)
+	ctx.Req.NoError(err)
+	ctx.RestClients.SetSessionToken(*ctx.AdminManagementSession.AuthResponse.Token)
 }
 
 func (ctx *TestContext) RequireAdminClientApiLogin() {

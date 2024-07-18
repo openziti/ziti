@@ -175,10 +175,6 @@ func TestCreateCircuit(t *testing.T) {
 type VersionProviderTest struct {
 }
 
-func (v VersionProviderTest) Branch() string {
-	return "local"
-}
-
 func (v VersionProviderTest) EncoderDecoder() versions.VersionEncDec {
 	return &versions.StdVersionEncDec
 }

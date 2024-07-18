@@ -39,10 +39,6 @@ func (c cmdBuildInfo) BuildDate() string {
 	return BuildDate
 }
 
-func (c cmdBuildInfo) Branch() string {
-	return Branch
-}
-
 func (c cmdBuildInfo) AsVersionInfo() *versions.VersionInfo {
 	return &versions.VersionInfo{
 		Version:   c.Version(),
@@ -57,33 +53,12 @@ func GetCmdBuildInfo() versions.VersionProvider {
 	return cmdBuildInfo{}
 }
 
-func GetBuildMetadata(verbose bool) string {
-	if !verbose {
-		return GetVersion()
-	}
-	str :=
-		"\n\t" + "Version:    " + GetVersion() +
-			"\n\t" + "Build Date: " + GetBuildDate() +
-			"\n\t" + "Git Branch: " + GetBranch() +
-			"\n\t" + "Git SHA:    " + GetRevision() +
-			"\n\t" + "Go Version: " + GetGoVersion() +
-			"\n\t" + "OS:         " + GetOS() +
-			"\n\t" + "Arch:       " + GetArchitecture() +
-			"\n"
-
-	return str
-}
-
 func GetVersion() string {
 	return Version
 }
 
 func GetRevision() string {
 	return Revision
-}
-
-func GetBranch() string {
-	return Branch
 }
 
 func GetBuildDate() string {

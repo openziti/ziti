@@ -175,7 +175,7 @@ message Controller {
   bool isOnline = 6;
   google.protobuf.Timestamp lastJoinedAt = 7;
   map<string, TagValue> tags = 8;
-  map<string,ApiAddressList> apiAddresses = 9;
+  map<string, ApiAddressList> apiAddresses = 9;
 }
 
 message ApiAddressList {
@@ -291,6 +291,12 @@ message Identity {
     string Version = 6;
   }
 
+  message ServiceConfig {
+    string serviceId = 1;
+    string configTypeId = 2;
+    string configId = 3;
+  }
+
   string id = 1;
   string name = 2;
   map<string, TagValue> tags = 3;
@@ -310,6 +316,7 @@ message Identity {
   bool disabled = 17;
   optional google.protobuf.Timestamp disabledAt = 18;
   optional google.protobuf.Timestamp disabledUntil = 19;
+  repeated ServiceConfig serviceConfigs = 20;
 }
 
 message CreateIdentityWithEnrollmentsCmd {
