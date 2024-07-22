@@ -1,6 +1,7 @@
 package boltz
 
 import (
+	"fmt"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -15,6 +16,11 @@ func NewSystemEntityEnforcementConstraint(store Store) Constraint {
 
 type systemEntityConstraint struct {
 	systemFlagSymbol EntitySymbol
+}
+
+func (index *systemEntityConstraint) Label() string {
+	return fmt.Sprintf("system entity constraint %s.%s",
+		index.systemFlagSymbol.GetStore().GetEntityType(), index.systemFlagSymbol.GetName())
 }
 
 func (self *systemEntityConstraint) checkOperation(operation string, ctx *IndexingContext) error {
