@@ -594,6 +594,11 @@ func (ctx *TestContext) newAnonymousClientApiRequest() *resty.Request {
 		SetHeader("content-type", "application/json")
 }
 
+func (ctx *TestContext) newAnonymousManagementApiRequest() *resty.Request {
+	return ctx.DefaultManagementApiClient().R().
+		SetHeader("content-type", "application/json")
+}
+
 func (ctx *TestContext) newRequestWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) *resty.Request {
 	client, _, _ := ctx.NewClientComponentsWithClientCert(cert, privateKey)
 
