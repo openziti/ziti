@@ -260,6 +260,10 @@ type routerIdentityConstraint struct {
 	tunnelerEnabledSymbol boltz.EntitySymbol
 }
 
+func (index *routerIdentityConstraint) Label() string {
+	return "router identity constraint"
+}
+
 func (self *routerIdentityConstraint) ProcessBeforeUpdate(ctx *boltz.IndexingContext) {
 	if !ctx.IsCreate {
 		t, v := self.routerNameSymbol.Eval(ctx.Tx(), ctx.RowId)

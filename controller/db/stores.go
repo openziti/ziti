@@ -81,7 +81,9 @@ func (stores *Stores) CheckIntegrityInTx(db boltz.Db, ctx boltz.MutateContext, f
 	}
 
 	for _, checkable := range stores.checkables {
+		pfxlog.Logger().Infof("checking integrity of db store: %T", checkable)
 		if err := checkable.CheckIntegrity(ctx, fix, errorHandler); err != nil {
+			pfxlog.Logger().WithError(err).Infof("error checking integrity of db store: %T", checkable)
 			return err
 		}
 	}

@@ -164,6 +164,10 @@ type sessionApiSessionIndex struct {
 	apiSessionStore   boltz.Store
 }
 
+func (index *sessionApiSessionIndex) Label() string {
+	return "session -> api session index"
+}
+
 func (self *sessionApiSessionIndex) ProcessBeforeUpdate(*boltz.IndexingContext) {}
 
 func (self *sessionApiSessionIndex) ProcessAfterUpdate(ctx *boltz.IndexingContext) {
