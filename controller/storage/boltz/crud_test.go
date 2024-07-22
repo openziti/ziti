@@ -406,6 +406,16 @@ func TestSetIndex_CheckIntegrity(t *testing.T) {
 	err = test.db.Update(func(tx *bbolt.Tx) error {
 		index := test.empStore.indexRoles.(*setIndex)
 		indexBucket := Path(tx, index.indexPath...)
+		return indexBucket.GetOrCreateBucket(string("bash")).GetError()
+	})
+	test.NoError(err)
+
+	expectedMsg = "for index on employees.roleAttributes, index value bash has no referenced values"
+	test.requireIntegrityErrorAndFixResult(test.empStore, expectedMsg, true)
+
+	err = test.db.Update(func(tx *bbolt.Tx) error {
+		index := test.empStore.indexRoles.(*setIndex)
+		indexBucket := Path(tx, index.indexPath...)
 		return indexBucket.GetOrCreateBucket(string("bash")).SetListEntry(TypeString, []byte(employees[0].Id)).GetError()
 	})
 	test.NoError(err)

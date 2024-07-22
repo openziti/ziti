@@ -18,6 +18,7 @@ package boltz
 
 import (
 	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
@@ -545,12 +546,16 @@ func (*BaseStore[E]) IteratorMatchingAnyOf(readIndex SetReadIndex, values []stri
 func (store *BaseStore[E]) CheckIntegrity(ctx MutateContext, fix bool, errorSink func(err error, fixed bool)) error {
 	for _, linkCollection := range store.links {
 		if err := linkCollection.CheckIntegrity(ctx, fix, errorSink); err != nil {
+			pfxlog.Logger().WithError(err).Infof("error checking link collection %s.%s -> %s.%s",
+				linkCollection.GetFieldSymbol().GetStore().GetEntityType(), linkCollection.GetFieldSymbol().GetName(),
+				linkCollection.GetLinkedSymbol().GetStore().GetEntityType(), linkCollection.GetLinkedSymbol().GetName())
 			return err
 		}
 	}
 	for _, constraint := range store.Indexer.constraints {
 		if err := constraint.CheckIntegrity(ctx, fix, errorSink); err != nil {
-			return err
+			pfxlog.Logger().WithError(err).Infof("error checking link constraint: %s", constraint.Label())
+			return errors.Wrapf(err, "error checking constraint: %s", constraint.Label())
 		}
 	}
 	return nil
