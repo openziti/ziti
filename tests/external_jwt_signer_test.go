@@ -102,6 +102,8 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				ctx.Req.NotNil(jwtSignerListEnv)
 				ctx.Req.NotNil(jwtSignerListEnv.Data)
 				ctx.Req.Len(jwtSignerListEnv.Data, 1)
+				ctx.Req.Equal(*jwtSigner.Name, *jwtSignerListEnv.Data[0].Name)
+				ctx.Req.Equal(*jwtSigner.ExternalAuthURL, *jwtSignerListEnv.Data[0].ExternalAuthURL)
 			})
 		})
 
