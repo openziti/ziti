@@ -84,7 +84,7 @@ jobs:
             fi
           }
 
-          if [[ "${GITHUB_REF_NAME}" =~ ^v\d+\.\d+\.\d+$ ]]; then
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             # Set output parameters for release tags
             echo QUICKSTART_VERSION="${GITHUB_REF_NAME}" | tee -a $GITHUB_OUTPUT
 
