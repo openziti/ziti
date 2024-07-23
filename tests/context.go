@@ -262,7 +262,7 @@ func (ctx *TestContext) DefaultManagementApiClient() *resty.Client {
 		ctx.managementApiClient, _, _ = ctx.NewClientComponents(EdgeManagementApiPath)
 		ctx.managementApiClient.AllowGetMethodPayload = true
 	}
-	return ctx.clientApiClient
+	return ctx.managementApiClient
 }
 
 func (ctx *TestContext) NewClientComponents(apiPath string) (*resty.Client, *http.Client, *http.Transport) {
@@ -591,6 +591,11 @@ func (ctx *TestContext) Teardown() {
 
 func (ctx *TestContext) newAnonymousClientApiRequest() *resty.Request {
 	return ctx.DefaultClientApiClient().R().
+		SetHeader("content-type", "application/json")
+}
+
+func (ctx *TestContext) newAnonymousManagementApiRequest() *resty.Request {
+	return ctx.DefaultManagementApiClient().R().
 		SetHeader("content-type", "application/json")
 }
 

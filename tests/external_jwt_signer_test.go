@@ -63,7 +63,51 @@ func Test_ExternalJWTSigner(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
 
-		t.Run("get after create returns 200 Ok", func(t *testing.T) {
+		t.Run("list after create returns 200 OK and a list as an admin on the management api", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			jwtSignerListEnv := &rest_model.ListExternalJWTSignersEnvelope{}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(jwtSignerListEnv).Get("/external-jwt-signers/")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			t.Run("list response has 1 entry", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				ctx.Req.NotNil(jwtSignerListEnv)
+				ctx.Req.NotNil(jwtSignerListEnv.Data)
+				ctx.Req.Len(jwtSignerListEnv.Data, 1)
+			})
+		})
+
+		t.Run("list after create returns 401 as anonymous on the management api", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			resp, err := ctx.newAnonymousManagementApiRequest().Get("/external-jwt-signers")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode())
+		})
+
+		t.Run("list after create returns 200 OK and a list as anonymous on the client api", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			jwtSignerListEnv := &rest_model.ListExternalJWTSignersEnvelope{}
+
+			resp, err := ctx.newAnonymousClientApiRequest().SetResult(jwtSignerListEnv).Get("/external-jwt-signers/")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			t.Run("list response has 1 entry", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				ctx.Req.NotNil(jwtSignerListEnv)
+				ctx.Req.NotNil(jwtSignerListEnv.Data)
+				ctx.Req.Len(jwtSignerListEnv.Data, 1)
+				ctx.Req.Equal(*jwtSigner.Name, *jwtSignerListEnv.Data[0].Name)
+				ctx.Req.Equal(*jwtSigner.ExternalAuthURL, *jwtSignerListEnv.Data[0].ExternalAuthURL)
+			})
+		})
+
+		t.Run("detail after create returns 200 Ok", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			jwtSignerDetailEnv := &rest_model.DetailExternalJWTSignerEnvelope{}
