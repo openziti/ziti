@@ -82,9 +82,8 @@ func Test_ExternalJWTSigner(t *testing.T) {
 
 		t.Run("list after create returns 401 as anonymous on the management api", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			jwtSignerListEnv := &rest_model.ListExternalJWTSignersEnvelope{}
 
-			resp, err := ctx.newAnonymousClientApiRequest().SetResult(jwtSignerListEnv).Get("/external-jwt-signers/")
+			resp, err := ctx.newAnonymousManagementApiRequest().Get("/external-jwt-signers")
 			ctx.Req.NoError(err)
 			ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode())
 		})

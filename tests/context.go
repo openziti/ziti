@@ -262,7 +262,7 @@ func (ctx *TestContext) DefaultManagementApiClient() *resty.Client {
 		ctx.managementApiClient, _, _ = ctx.NewClientComponents(EdgeManagementApiPath)
 		ctx.managementApiClient.AllowGetMethodPayload = true
 	}
-	return ctx.clientApiClient
+	return ctx.managementApiClient
 }
 
 func (ctx *TestContext) NewClientComponents(apiPath string) (*resty.Client, *http.Client, *http.Transport) {
