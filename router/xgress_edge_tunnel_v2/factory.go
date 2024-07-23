@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package xgress_edge_tunnel
+package xgress_edge_tunnel_v2
 
 import (
 	"fmt"
@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/ziti/router/xgress_edge_tunnel_v2"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
@@ -67,9 +66,8 @@ func (self *Factory) Enabled() bool {
 }
 
 func (self *Factory) BindChannel(binding channel.Binding) error {
-	self.serviceListHandler = handler_edge_ctrl.NewServiceListHandler(self.tunneler.servicePoller.handleServiceListUpdate)
 	binding.AddTypedReceiveHandler(self.serviceListHandler)
-	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorResponseType), self.tunneler.fabricProvider.HandleTunnelResponse)
+	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorResponseV2Type), self.tunneler.fabricProvider.HandleTunnelResponse)
 	return nil
 }
 
@@ -89,17 +87,8 @@ func (self *Factory) DefaultRequestTimeout() time.Duration {
 	return self.routerConfig.Ctrl.DefaultRequestTimeout
 }
 
-type XrctrlFactory interface {
-	xgress.Factory
-	env.Xrctrl
-}
-
 // NewFactory constructs a new Edge Xgress Tunnel Factory instance
-func NewFactory(env env.RouterEnv, routerConfig *router.Config, stateManager state.Manager) XrctrlFactory {
-	if routerConfig.Ha.Enabled {
-		return xgress_edge_tunnel_v2.NewFactory(env, routerConfig, stateManager)
-	}
-
+func NewFactory(env env.RouterEnv, routerConfig *router.Config, stateManager state.Manager) *Factory {
 	factory := &Factory{
 		id:              env.GetRouterId(),
 		routerConfig:    routerConfig,
@@ -107,7 +96,7 @@ func NewFactory(env env.RouterEnv, routerConfig *router.Config, stateManager sta
 		metricsRegistry: env.GetMetricsRegistry(),
 		env:             env,
 	}
-	factory.tunneler = newTunneler(factory, stateManager)
+	factory.tunneler = newTunneler(factory)
 	return factory
 }
 

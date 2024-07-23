@@ -168,6 +168,15 @@ func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventTyp
 	}
 }
 
+func (self *ServiceListener) Reset() {
+	self.Lock()
+	defer self.Unlock()
+
+	for _, svc := range self.services {
+		self.removeService(svc)
+	}
+}
+
 func (self *ServiceListener) addService(svc *entities.Service) {
 	log := pfxlog.Logger().WithField("serviceId", *svc.ID).WithField("serviceName", *svc.Name)
 

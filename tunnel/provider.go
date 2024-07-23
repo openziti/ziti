@@ -12,6 +12,7 @@ import (
 )
 
 type HostingContext interface {
+	ServiceId() string
 	ServiceName() string
 	ListenOptions() *ziti.ListenOptions
 	Dial(options map[string]interface{}) (net.Conn, bool, error)

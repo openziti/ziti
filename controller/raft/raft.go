@@ -194,6 +194,10 @@ func (self *Controller) IsLeaderOrLeaderless() bool {
 	return self.IsLeader() || self.GetLeaderAddr() == ""
 }
 
+func (self *Controller) IsLeaderless() bool {
+	return self.GetLeaderAddr() == ""
+}
+
 func (self *Controller) IsReadOnlyMode() bool {
 	return self.Mesh.IsReadOnly()
 }

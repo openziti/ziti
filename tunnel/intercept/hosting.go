@@ -127,6 +127,10 @@ func (self *hostingContext) ServiceName() string {
 	return *self.service.Name
 }
 
+func (self *hostingContext) ServiceId() string {
+	return *self.service.ID
+}
+
 func (self *hostingContext) ListenOptions() *ziti.ListenOptions {
 	return self.options
 }

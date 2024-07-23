@@ -183,6 +183,29 @@ func (self *baseTunnelRequestContext) ensureApiSessionLocking(configTypes []stri
 	return false
 }
 
+func (self *baseTunnelRequestContext) loadServiceForId(id string) {
+	if self.err == nil {
+		var err error
+		self.service, err = self.handler.getAppEnv().Managers.EdgeService.Read(id)
+
+		if err != nil {
+			if boltz.IsErrNotFoundErr(err) {
+				self.err = InvalidServiceError{}
+			} else {
+				self.err = internalError(err)
+			}
+
+			logrus.
+				WithField("apiSessionId", self.apiSession.Id).
+				WithField("operation", self.handler.Label()).
+				WithField("router", self.sourceRouter.Name).
+				WithField("serviceId", id).
+				WithError(self.err).
+				Error("service not found")
+		}
+	}
+}
+
 func (self *baseTunnelRequestContext) loadServiceForName(name string) {
 	if self.err == nil {
 		var err error

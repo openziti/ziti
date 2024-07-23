@@ -1437,6 +1437,7 @@ func newIdentity(identityModel *db.Identity) *edge_ctrl_pb.DataState_Identity {
 		ServiceHostingCosts:       hostingCosts,
 		AppDataJson:               appDataJson,
 		ServiceConfigs:            serviceConfigsMap,
+		Disabled:                  identityModel.Disabled,
 	}
 }
 
