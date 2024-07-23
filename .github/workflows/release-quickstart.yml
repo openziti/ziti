@@ -5,21 +5,17 @@ on:
       - closed
     branches:
       - main
-      - release-v*
-      - release-next
+  push:
+    tags:
+      - 'v*.*.*'
 
 jobs:
   release-quickstart:
     name: Release Quickstart Job
-    # when the ref is release-next the label "quickstartrelease" must be present on the PR for this job to run, and when
-    # the ref is a release branch the label is not required
-    if: |
-      github.repository_owner == 'openziti'
-      && github.event.pull_request.merged == true
-      && (
-        github.ref != 'refs/heads/release-next'
-        || contains(github.event.pull_request.labels.*.name, 'quickstartrelease')
-      )
+    # this is only run on the official upstream repo when a PR is merged to the default branch "main" or a release tag
+    # is pushed; merges to main trigger a quickstart release with a commit SHA suffix featuring the next ziti release
+    # candidate version, whereas release tag pushes trigger a quickstart release with the tag name
+    if: github.repository_owner == 'openziti' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     env:
       ZITI_QUICKSTART_IMAGE: ${{ vars.ZITI_QUICKSTART_IMAGE || 'docker.io/openziti/quickstart' }}
@@ -76,33 +72,44 @@ jobs:
         id: get_version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
         shell: bash
         run: |
-          QUICKSTART_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
-          # drop the leading 'v', if any
-          QUICKSTART_VERSION=${QUICKSTART_VERSION#v}
-          if ! [[ "${QUICKSTART_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            # fail the job because we could not obtain the current version from ziti-ci
-            echo "ERROR: QUICKSTART_VERSION=${QUICKSTART_VERSION} is not a semver"
-            exit 1
-          elif [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main$) ]]; then
-            # Set output parameters for release branches
-            echo "DEBUG: QUICKSTART_VERSION=${QUICKSTART_VERSION}"
-            echo QUICKSTART_VERSION="${QUICKSTART_VERSION}" >> $GITHUB_OUTPUT
-          else
-            # Append short sha for non-Ziti-release refs to identify quickstart docker images
-            # shipped from release-next
+          function validateSemver() {
+            if ! [[ "${1}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "ERROR: ${1} is not a release semver" >&2
+              return 1
+            fi
+          }
+
+          if [[ "${GITHUB_REF_NAME}" =~ ^v\d+\.\d+\.\d+$ ]]; then
+            # Set output parameters for release tags
+            echo QUICKSTART_VERSION="${GITHUB_REF_NAME}" | tee -a $GITHUB_OUTPUT
+
+          elif [[ "${GITHUB_REF_NAME}" =~ ^main$ ]]; then
+            # compute the latest release version to install in the quickstart image
+            QUICKSTART_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION})"
+
+            # drop the leading 'v', if any
+            QUICKSTART_VERSION=${QUICKSTART_VERSION#v}
+
+            validateSemver "${QUICKSTART_VERSION}"
+
+            # Append short SHA to identify quickstart docker images shipped on merge to main
             QUICKSTART_VERSION="${QUICKSTART_VERSION}-$(git rev-parse --short ${GITHUB_SHA})"
-            echo "DEBUG: QUICKSTART_VERSION=${QUICKSTART_VERSION}"
-            echo QUICKSTART_VERSION="${QUICKSTART_VERSION}" >> $GITHUB_OUTPUT
+
+            echo QUICKSTART_VERSION="${QUICKSTART_VERSION}" | tee -a $GITHUB_OUTPUT
+
+          else
+            echo "ERROR: Unexpected GITHUB_REF_NAME=${GITHUB_REF_NAME}" >&2
+            exit 1
           fi
 
           # configure the env var used by the quickstart's Dockerfile to download the correct version of ziti for the
           # target architecture of each image build by trimming the hyphenated short sha suffix so that the preceding
           # release version of the ziti executable is installed in the quickstart container image
           ZITI_OVERRIDE_VERSION=${QUICKSTART_VERSION%-*}
-          echo "DEBUG: ZITI_OVERRIDE_VERSION=${ZITI_OVERRIDE_VERSION}"
-          echo ZITI_OVERRIDE_VERSION="${ZITI_OVERRIDE_VERSION}" >> $GITHUB_OUTPUT
+          echo ZITI_OVERRIDE_VERSION="${ZITI_OVERRIDE_VERSION}" | tee -a $GITHUB_OUTPUT
 
       # This container differs in that :latest is pushed from branch release-next in addition to main and hotfix
       # branches like releasev1.2.x. See https://github.com/openziti/ziti/issues/898
@@ -113,11 +120,9 @@ jobs:
         id: tagprep_qs
         shell: bash
         run: |
-          DOCKER_TAGS=""
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
           DOCKER_TAGS+=",${IMAGE_REPO}:latest"
-          echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
-          echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+          echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
       - name: Build & Push Multi-Platform Quickstart Container Image to Hub
         uses: docker/build-push-action@v6

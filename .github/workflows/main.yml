@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - release-v*
-      - release-next
   pull_request:
   workflow_dispatch:
 
@@ -480,7 +479,7 @@ jobs:
           echo "DEBUG: GITHUB_REPOSITORY=${GITHUB_REPOSITORY} GITHUB_REF=${GITHUB_REF} GITHUB_RUN_ID=${GITHUB_RUN_ID}"
           (set -x; git remote -v show;)
 
-          # compute next patch level for non-release branches
+          # compute next release candidate version on non-release branches
           ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-next-version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION})"
 
           validateSemver "${ZITI_VERSION}"
@@ -496,24 +495,23 @@ jobs:
     if: ${{
       !cancelled()
       && needs.publish.result == 'success'
-      && github.ref == 'refs/heads/release-next'
+      && github.ref == 'refs/heads/main'
       }}
     name: Publish Release Next Docker Images
     needs: publish
     uses: ./.github/workflows/publish-docker-images.yml
     secrets: inherit
     with:
-      ziti-tag: release-next
+      ziti-tag: main
 
-  # call on release-next and release branches to publish linux packages to
-  # "testing" and "release" package repos in Artifactory
+  # call on default branch "main" to publish linux packages to "testing" package repos in Artifactory
   call-publish-linux-packages:
     # - !cancelled() allows evaluating further conditional expressions even if
     #   needed jobs were skipped
     if: ${{
       !cancelled()
       && needs.publish.result == 'success'
-      && github.ref == 'refs/heads/release-next'
+      && github.ref == 'refs/heads/main'
       }}
     name: Publish Release Next Linux Packages
     needs: publish
