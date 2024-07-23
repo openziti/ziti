@@ -497,7 +497,7 @@ jobs:
       && needs.publish.result == 'success'
       && github.ref == 'refs/heads/main'
       }}
-    name: Publish Release Next Docker Images
+    name: Publish Release Candidate Docker Images
     needs: publish
     uses: ./.github/workflows/publish-docker-images.yml
     secrets: inherit
@@ -513,7 +513,7 @@ jobs:
       && needs.publish.result == 'success'
       && github.ref == 'refs/heads/main'
       }}
-    name: Publish Release Next Linux Packages
+    name: Publish Release Candidate Linux Packages
     needs: publish
     uses: ./.github/workflows/publish-linux-packages.yml
     secrets: inherit

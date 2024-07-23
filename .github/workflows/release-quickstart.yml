@@ -111,8 +111,7 @@ jobs:
           ZITI_OVERRIDE_VERSION=${QUICKSTART_VERSION%-*}
           echo ZITI_OVERRIDE_VERSION="${ZITI_OVERRIDE_VERSION}" | tee -a $GITHUB_OUTPUT
 
-      # This container differs in that :latest is pushed from branch release-next in addition to main and hotfix
-      # branches like releasev1.2.x. See https://github.com/openziti/ziti/issues/898
+      # container image tag :latest is published on merge to default branch "main" and on release tags
       - name: Configure Quickstart Container
         env:
           IMAGE_REPO: ${{ env.ZITI_QUICKSTART_IMAGE }}
