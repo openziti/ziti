@@ -15,7 +15,8 @@ jobs:
     # this is only run on the official upstream repo when a PR is merged to the default branch "main" or a release tag
     # is pushed; merges to main trigger a quickstart release with a commit SHA suffix featuring the next ziti release
     # candidate version, whereas release tag pushes trigger a quickstart release with the tag name
-    if: github.repository_owner == 'openziti' && github.event.pull_request.merged == true
+    if: github.repository_owner == 'openziti' 
+        && ( github.event.pull_request.merged == true || startsWith(github.ref_name, 'v') )
     runs-on: ubuntu-latest
     env:
       ZITI_QUICKSTART_IMAGE: ${{ vars.ZITI_QUICKSTART_IMAGE || 'docker.io/openziti/quickstart' }}
