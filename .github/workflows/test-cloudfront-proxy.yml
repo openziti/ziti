@@ -3,7 +3,6 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
-      - release-next
       - main
       - release-v*
     paths:

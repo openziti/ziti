@@ -3,7 +3,7 @@ name: release
 on:
   push:
     tags:
-      - v*
+      - 'v*.*.*'
   workflow_dispatch:
 
 env:
@@ -248,8 +248,7 @@ jobs:
     with:
       ziti-tag: ${{ needs.publish.outputs.ZITI_VERSION }}
 
-  # call on release-next and release branches to publish linux packages to
-  # "testing" and "release" package repos in Artifactory
+  # call on release tags to publish linux packages to "release" package repos in Artifactory
   call-publish-linux-packages:
     # - !cancelled() allows evaluating further conditional expressions even if
     #   needed jobs were skipped

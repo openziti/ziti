@@ -4,7 +4,6 @@ on:
   # test quickstart changes after merge
   push:
     branches:
-      - release-next
       - main
     paths:
       - 'quickstart/**'
