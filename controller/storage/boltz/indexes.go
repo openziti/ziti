@@ -269,6 +269,7 @@ type SetReadIndex interface {
 
 type Constraint interface {
 	Checkable
+	Label() string
 	ProcessBeforeUpdate(ctx *IndexingContext)
 	ProcessAfterUpdate(ctx *IndexingContext)
 	ProcessBeforeDelete(ctx *IndexingContext)
@@ -279,6 +280,10 @@ type uniqueIndex struct {
 	symbol    EntitySymbol
 	nullable  bool
 	indexPath []string
+}
+
+func (index *uniqueIndex) Label() string {
+	return fmt.Sprintf("unique index on %s.%s", index.symbol.GetStore().GetEntityType(), index.symbol.GetName())
 }
 
 func (index *uniqueIndex) Read(tx *bbolt.Tx, val []byte) []byte {
@@ -428,6 +433,10 @@ type setIndex struct {
 	listeners []SetChangeListener
 }
 
+func (index *setIndex) Label() string {
+	return fmt.Sprintf("set index on %s.%s", index.symbol.GetStore().GetEntityType(), index.symbol.GetName())
+}
+
 func (index *setIndex) AddListener(listener SetChangeListener) {
 	index.listeners = append(index.listeners, listener)
 }
@@ -560,6 +569,9 @@ func (index *setIndex) ProcessBeforeDelete(ctx *IndexingContext) {
 		for _, val := range values {
 			indexBucket := index.getIndexBucket(ctx.Tx(), val.Value)
 			ctx.ErrHolder.SetError(indexBucket.DeleteListEntry(TypeString, ctx.RowId).Err)
+			if k, _ := indexBucket.Cursor().First(); k == nil {
+				ctx.ErrHolder.SetError(index.deleteIndexKey(ctx.Tx(), val.Value))
+			}
 		}
 	}
 }
@@ -590,11 +602,16 @@ func (index *setIndex) deleteIndexKey(tx *bbolt.Tx, key []byte) error {
 func (index *setIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink func(error, bool)) error {
 	tx := ctx.Tx()
 	if indexBaseBucket := Path(tx, index.indexPath...); indexBaseBucket != nil {
+		var toDelete []string
 		cursor := indexBaseBucket.Cursor()
 		for key, _ := cursor.First(); key != nil; key, _ = cursor.Next() {
+			hadRefs := false
 			if indexBucket := indexBaseBucket.Bucket.Bucket(key); indexBucket != nil {
 				idsCursor := indexBucket.Cursor()
+				referenceCount := 0
 				for val, _ := idsCursor.First(); val != nil; val, _ = idsCursor.Next() {
+					hadRefs = true
+					referenceCount++
 					_, id := GetTypeAndValue(val)
 					if !index.symbol.GetStore().IsEntityPresent(tx, string(id)) {
 						// entry has been deleted, remove
@@ -602,6 +619,7 @@ func (index *setIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink fun
 							if err := idsCursor.Delete(); err != nil {
 								return err
 							}
+							referenceCount--
 						}
 						errorSink(errors.Errorf("for index on %v.%v, val %v references id %v, which doesn't exist",
 							index.symbol.GetStore().GetEntityType(), index.GetSymbol().GetName(),
@@ -621,6 +639,7 @@ func (index *setIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink fun
 								if err := idsCursor.Delete(); err != nil {
 									return err
 								}
+								referenceCount--
 							}
 							errorSink(errors.Errorf("for index on %v.%v, val %v references id %v, which doesn't contain the value",
 								index.symbol.GetStore().GetEntityType(), index.GetSymbol().GetName(),
@@ -628,11 +647,26 @@ func (index *setIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink fun
 						}
 					}
 				}
+				if referenceCount == 0 {
+					if fix {
+						toDelete = append(toDelete, string(key))
+					}
+					if !hadRefs {
+						errorSink(errors.Errorf("for index on %s.%s, index value %s has no referenced values",
+							index.symbol.GetStore().GetEntityType(), index.GetSymbol().GetName(), string(key)), fix)
+					}
+				}
 			} else {
 				// If key has no values, delete the key
 				if err := cursor.Delete(); err != nil {
 					return err
 				}
+			}
+		}
+
+		for _, deleteKey := range toDelete {
+			if err := indexBaseBucket.DeleteBucket([]byte(deleteKey)); err != nil {
+				return errors.Wrapf(err, "error deleting unused key %s from index %s", deleteKey, index.Label())
 			}
 		}
 	}
@@ -668,6 +702,12 @@ type fkIndex struct {
 	symbol   EntitySymbol
 	fkSymbol EntitySymbol
 	nullable bool
+}
+
+func (index *fkIndex) Label() string {
+	return fmt.Sprintf("fk index %s.%s -> %s.%s",
+		index.symbol.GetStore().GetEntityType(), index.symbol.GetName(),
+		index.fkSymbol.GetStore().GetEntityType(), index.fkSymbol.GetName())
 }
 
 func (index *fkIndex) ProcessBeforeUpdate(ctx *IndexingContext) {
@@ -828,6 +868,12 @@ type fkDeleteConstraint struct {
 	fkSymbol EntitySymbol
 }
 
+func (index *fkDeleteConstraint) Label() string {
+	return fmt.Sprintf("fk delete contraint %s.%s -> %s.%s",
+		index.symbol.GetStore().GetEntityType(), index.symbol.GetName(),
+		index.fkSymbol.GetStore().GetEntityType(), index.fkSymbol.GetName())
+}
+
 func (index *fkDeleteConstraint) ProcessBeforeUpdate(_ *IndexingContext) {
 }
 
@@ -868,6 +914,11 @@ const (
 type fkConstraint struct {
 	symbol   EntitySymbol
 	nullable bool
+}
+
+func (index *fkConstraint) Label() string {
+	return fmt.Sprintf("fk constraint %s.%s",
+		index.symbol.GetStore().GetEntityType(), index.symbol.GetName())
 }
 
 func (index *fkConstraint) ProcessBeforeUpdate(ctx *IndexingContext) {
@@ -942,6 +993,11 @@ func (index *fkConstraint) CheckIntegrity(ctx MutateContext, fix bool, errorSink
 type fkDeleteCascadeConstraint struct {
 	symbol      EntitySymbol
 	cascadeType CascadeType
+}
+
+func (index *fkDeleteCascadeConstraint) Label() string {
+	return fmt.Sprintf("fk delete cascade index %s.%s",
+		index.symbol.GetStore().GetEntityType(), index.symbol.GetName())
 }
 
 func (index *fkDeleteCascadeConstraint) ProcessBeforeUpdate(*IndexingContext) {
