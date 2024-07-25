@@ -101,8 +101,41 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	// Since data is most common type, it gets to dispatch directly
 	binding.AddTypedReceiveHandler(proxy.msgMux)
 	binding.AddCloseHandler(proxy)
-
+	binding.AddPeekHandler(debugPeekHandler{})
 	return self.sessionBindHandler.BindChannel(binding, proxy)
+}
+
+type debugPeekHandler struct{}
+
+func (d debugPeekHandler) Connect(ch channel.Channel, remoteAddress string) {
+}
+
+func (d debugPeekHandler) Rx(m *channel.Message, ch channel.Channel) {
+	if m.ContentType == edge.ContentTypeDialSuccess || m.ContentType == edge.ContentTypeDialFailed {
+		connId, _ := m.GetUint32Header(edge.ConnIdHeader)
+		result, err := edge.UnmarshalDialResult(m)
+		if err != nil {
+			pfxlog.Logger().WithError(err).Infof("err unmarshalling dial result, seq: %d , replyTo: %d, connId: %d",
+				m.Sequence(), m.ReplyFor(), connId)
+		} else {
+			pfxlog.Logger().Infof("received dial result: seq: %d , replyTo: %d, connId: %d, newConnId: %d, success: %v, msg: %s",
+				m.Sequence(), m.ReplyFor(), connId, result.NewConnId, result.Success, result.Message)
+		}
+	}
+}
+
+func (d debugPeekHandler) Tx(m *channel.Message, ch channel.Channel) {
+	if m.ContentType == edge.ContentTypeDial {
+		connId, _ := m.GetUint32Header(edge.ConnIdHeader)
+		newConnId, _ := m.GetUint32Header(edge.RouterProvidedConnId)
+		circuitId, _ := m.GetStringHeader(edge.CircuitIdHeader)
+
+		pfxlog.Logger().Infof("sending dial: seq: %d , connId: %d, newConnId: %d, circuitId: %s",
+			m.Sequence(), connId, newConnId, circuitId)
+	}
+}
+
+func (d debugPeekHandler) Close(ch channel.Channel) {
 }
 
 func NewAcceptor(listener *listener, uListener channel.UnderlayListener, options *channel.Options) *Acceptor {

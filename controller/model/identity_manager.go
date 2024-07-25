@@ -141,8 +141,16 @@ func (self *IdentityManager) Update(entity *Identity, checker fields.UpdatedFiel
 }
 
 func (self *IdentityManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Identity], ctx boltz.MutateContext) error {
-	var checker boltz.FieldChecker = self
-	if cmd.UpdatedFields != nil {
+	var checker boltz.FieldChecker
+
+	if cmd.UpdatedFields == nil {
+		checker = &AndFieldChecker{
+			first: self,
+			second: NotFieldChecker{
+				db.FieldIdentityServiceConfigs: struct{}{},
+			},
+		}
+	} else {
 		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
 	return self.updateEntity(cmd.Entity, checker, ctx)
@@ -374,24 +382,6 @@ func (self *IdentityManager) CreateWithAuthenticator(identity *Identity, authent
 	return identity.Id, authenticator.Id, nil
 }
 
-func (self *IdentityManager) GetServiceConfigs(id string) ([]ServiceConfig, error) {
-	var result []ServiceConfig
-	err := self.GetDb().View(func(tx *bbolt.Tx) error {
-		configs, err := self.env.GetStores().Identity.GetServiceConfigs(tx, id)
-		if err != nil {
-			return err
-		}
-		for _, config := range configs {
-			result = append(result, ServiceConfig{Service: config.ServiceId, Config: config.ConfigId})
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 func (self *IdentityManager) AssignServiceConfigs(id string, serviceConfigs []ServiceConfig, ctx *change.Context) error {
 	cmd := &UpdateServiceConfigsCmd{
 		manager:        self,
@@ -415,24 +405,39 @@ func (self *IdentityManager) RemoveServiceConfigs(id string, serviceConfigs []Se
 }
 
 func (self *IdentityManager) ApplyUpdateServiceConfigs(cmd *UpdateServiceConfigsCmd, ctx boltz.MutateContext) error {
-	if cmd.add {
-		return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
-			boltServiceConfigs, err := toBoltServiceConfigs(ctx.Tx(), self.env, cmd.serviceConfigs)
-			if err != nil {
-				return err
-			}
-			return self.env.GetStores().Identity.AssignServiceConfigs(ctx.Tx(), cmd.identityId, boltServiceConfigs...)
-		})
-	}
-
+	identityStore := self.env.GetStores().Identity
 	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
-		boltServiceConfigs, err := toBoltServiceConfigs(ctx.Tx(), self.env, cmd.serviceConfigs)
+		identity, err := identityStore.LoadById(ctx.Tx(), cmd.identityId)
 		if err != nil {
 			return err
 		}
-		return self.env.GetStores().Identity.RemoveServiceConfigs(ctx.Tx(), cmd.identityId, boltServiceConfigs...)
-	})
 
+		for _, serviceConfig := range cmd.serviceConfigs {
+			config, err := self.env.GetStores().Config.LoadById(ctx.Tx(), serviceConfig.Config)
+			if err != nil {
+				return err
+			}
+			if cmd.add {
+				if identity.ServiceConfigs == nil {
+					identity.ServiceConfigs = map[string]map[string]string{}
+				}
+				serviceMap, ok := identity.ServiceConfigs[serviceConfig.Service]
+				if !ok {
+					serviceMap = map[string]string{}
+					identity.ServiceConfigs[serviceConfig.Service] = serviceMap
+				}
+				serviceMap[config.Type] = config.Id
+			} else if identity.ServiceConfigs != nil {
+				if serviceMap, ok := identity.ServiceConfigs[serviceConfig.Service]; ok {
+					delete(serviceMap, config.Type)
+				}
+			}
+		}
+
+		return identityStore.Update(ctx, identity, boltz.MapFieldChecker{
+			db.FieldIdentityServiceConfigs: struct{}{},
+		})
+	})
 }
 
 func (self *IdentityManager) QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error) {
@@ -626,6 +631,16 @@ func (self *IdentityManager) IdentityToProtobuf(entity *Identity) (*edge_cmd_pb.
 		DisabledUntil:             timePtrToPb(entity.DisabledUntil),
 	}
 
+	for serviceId, configInfo := range entity.ServiceConfigs {
+		for configTypeId, configId := range configInfo {
+			msg.ServiceConfigs = append(msg.ServiceConfigs, &edge_cmd_pb.Identity_ServiceConfig{
+				ServiceId:    serviceId,
+				ConfigTypeId: configTypeId,
+				ConfigId:     configId,
+			})
+		}
+	}
+
 	return msg, nil
 }
 
@@ -677,6 +692,21 @@ func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Ide
 		return nil, err
 	}
 
+	var serviceConfigs map[string]map[string]string
+
+	for _, serviceConfig := range msg.ServiceConfigs {
+		if serviceConfigs == nil {
+			serviceConfigs = map[string]map[string]string{}
+		}
+
+		serviceMap, ok := serviceConfigs[serviceConfig.ServiceId]
+		if !ok {
+			serviceMap = map[string]string{}
+			serviceConfigs[serviceConfig.ServiceId] = serviceMap
+		}
+		serviceMap[serviceConfig.ConfigTypeId] = serviceConfig.ConfigId
+	}
+
 	return &Identity{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
@@ -699,6 +729,7 @@ func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Ide
 		Disabled:                  msg.Disabled,
 		DisabledAt:                pbTimeToTimePtr(msg.DisabledAt),
 		DisabledUntil:             pbTimeToTimePtr(msg.DisabledUntil),
+		ServiceConfigs:            serviceConfigs,
 	}, nil
 }
 

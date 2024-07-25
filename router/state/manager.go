@@ -36,6 +36,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"math/rand"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -207,11 +208,15 @@ func (sm *ManagerImpl) StartRouterModelSave(filePath string, duration time.Durat
 }
 
 func (sm *ManagerImpl) LoadRouterModel(filePath string) {
-	model, err := common.NewReceiverRouterDataModelFromFile(filePath, RouterDataModelListerBufferSize)
+	model, err := common.NewReceiverRouterDataModelFromFile(filePath, RouterDataModelListerBufferSize, sm.env.GetCloseNotify())
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).Infof("could not load router model from file [%s]", filePath)
-		model = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
+		if !os.IsNotExist(err) {
+			pfxlog.Logger().WithError(err).Errorf("could not load router model from file [%s]", filePath)
+		} else {
+			pfxlog.Logger().Infof("router data model file does not exist [%s]", filePath)
+		}
+		model = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize, sm.env.GetCloseNotify())
 	}
 
 	sm.SetRouterDataModel(model)
@@ -322,20 +327,19 @@ func (sm *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 }
 
 func (sm *ManagerImpl) RouterDataModel() *common.RouterDataModel {
-	rdm := sm.routerDataModel.Load()
-	if rdm == nil {
-		rdm = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize)
-		sm.routerDataModel.Store(rdm)
-	}
-	return rdm
+	return sm.routerDataModel.Load()
 }
 
 func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel) {
 	publicKeys := model.PublicKeys.Items()
 	pfxlog.Logger().Debugf("number of public keys in rdm: %d", len(publicKeys))
 
-	sm.routerDataModel.Store(model)
-
+	existing := sm.routerDataModel.Swap(model)
+	if existing != nil {
+		existing.Stop()
+		model.InheritSubscribers(existing)
+	}
+	model.SyncAllSubscribers()
 }
 
 func (sm *ManagerImpl) MarkSyncInProgress(trackerId string) {

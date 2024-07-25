@@ -24,14 +24,11 @@ import (
 )
 
 type AuthResult interface {
-	IdentityId() string
-	ExternalId() string
 	AuthenticatorId() string
 	SessionCerts() []*x509.Certificate
 	Identity() *Identity
 	Authenticator() *Authenticator
 	AuthPolicy() *AuthPolicy
-	AuthPolicyId() string
 	IsSuccessful() bool
 }
 
@@ -121,23 +118,12 @@ func (context *AuthContextHttp) GetChangeContext() *change.Context {
 var _ AuthResult = &AuthResultBase{}
 
 type AuthResultBase struct {
-	identityId      string
-	externalId      string
 	identity        *Identity
 	authenticatorId string
 	authenticator   *Authenticator
 	sessionCerts    []*x509.Certificate
-	authPolicyId    string
 	authPolicy      *AuthPolicy
 	env             Env
-}
-
-func (a *AuthResultBase) IdentityId() string {
-	return a.identityId
-}
-
-func (a *AuthResultBase) ExternalId() string {
-	return a.externalId
 }
 
 func (a *AuthResultBase) AuthenticatorId() string {
@@ -149,14 +135,6 @@ func (a *AuthResultBase) SessionCerts() []*x509.Certificate {
 }
 
 func (a *AuthResultBase) Identity() *Identity {
-	if a.identity == nil {
-		if a.identityId != "" {
-			a.identity, _ = a.env.GetManagers().Identity.Read(a.identityId)
-		} else if a.externalId != "" {
-			a.identity, _ = a.env.GetManagers().Identity.ReadByExternalId(a.externalId)
-		}
-
-	}
 	return a.identity
 }
 
@@ -168,17 +146,9 @@ func (a *AuthResultBase) Authenticator() *Authenticator {
 }
 
 func (a *AuthResultBase) AuthPolicy() *AuthPolicy {
-	if a.authPolicy == nil {
-		a.authPolicy, _ = a.env.GetManagers().AuthPolicy.Read(a.authPolicyId)
-	}
-
 	return a.authPolicy
 }
 
-func (a *AuthResultBase) AuthPolicyId() string {
-	return a.authPolicyId
-}
-
 func (a *AuthResultBase) IsSuccessful() bool {
-	return a.identityId != ""
+	return a.identity != nil
 }

@@ -53,7 +53,7 @@ const (
 )
 
 const (
-	useLatestZitiOnRouters       = false
+	useLatestZitiOnRouters       = true
 	useLatestZitiOnPublicRouters = true
 )
 

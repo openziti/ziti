@@ -208,7 +208,7 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	authRequest.IdentityId = result.IdentityId()
+	authRequest.IdentityId = result.Identity().Id
 	authRequest.AddAmr(authCtx.GetMethod())
 
 	configTypeIds := s.env.GetManagers().ConfigType.MapConfigTypeNamesToIds(configTypes, authRequest.IdentityId)

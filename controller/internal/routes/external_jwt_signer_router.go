@@ -19,6 +19,7 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
+	external_jwt_signer_client "github.com/openziti/edge-api/rest_client_api_server/operations/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/external_jwt_signer"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
@@ -45,7 +46,7 @@ func NewExternalJwtSignerRouter() *ExternalJwtSignerRouter {
 
 func (r *ExternalJwtSignerRouter) Register(ae *env.AppEnv) {
 	// client
-	ae.ManagementApi.ExternalJWTSignerListExternalJWTSignersHandler = external_jwt_signer.ListExternalJWTSignersHandlerFunc(func(params external_jwt_signer.ListExternalJWTSignersParams, _ interface{}) middleware.Responder {
+	ae.ClientApi.ExternalJWTSignerListExternalJWTSignersHandler = external_jwt_signer_client.ListExternalJWTSignersHandlerFunc(func(params external_jwt_signer_client.ListExternalJWTSignersParams) middleware.Responder {
 		return ae.IsAllowed(r.ListClient, params.HTTPRequest, "", "", permissions.Always())
 	})
 

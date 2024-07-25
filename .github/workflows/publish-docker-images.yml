@@ -51,10 +51,8 @@ jobs:
         id: tagprep_cli
         shell: bash
         run: |
-          DOCKER_TAGS=""
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
-          echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+          echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
       # this is the base image into which is stuffed the Linux binary for each
       # arch that was downloaded in ./release/, hence the need to specify the
@@ -78,10 +76,8 @@ jobs:
         id: tagprep_ctrl
         shell: bash
         run: |
-          DOCKER_TAGS=""
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
-          echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+          echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
       # This is a use-case image based on the minimal CLI image. It needs the
       # ZITI_CLI_TAG env var so it can build from the versioned image that
@@ -107,7 +103,6 @@ jobs:
         id: tagprep_router
         shell: bash
         run: |
-          DOCKER_TAGS=""
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
           echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
@@ -129,17 +124,11 @@ jobs:
         env:
           IMAGE_REPO: ${{ env.ZITI_TUNNEL_IMAGE }}
           IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}
-          LEGACY_REPO: netfoundry/ziti-tunnel
         id: tagprep_tun
         shell: bash
         run: |
-          DOCKER_TAGS=""
-          for REPO in ${LEGACY_REPO} ${IMAGE_REPO}; do
-            DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          done
-          DOCKER_TAGS=${DOCKER_TAGS#,} # drop leading comma char
-          echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
-          echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+          DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
+          echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
       - name: Build & Push Multi-Platform Go Tunneler Container Image to Hub
         uses: docker/build-push-action@v6

@@ -23,7 +23,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
@@ -225,13 +224,10 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	}
 
 	return &AuthResultBase{
-		identityId:      identity.Id,
-		externalId:      stringz.OrEmpty(identity.ExternalId),
 		identity:        identity,
 		authenticatorId: authenticator.Id,
 		authenticator:   authenticator,
 		sessionCerts:    []*x509.Certificate{clientCert},
-		authPolicyId:    authPolicy.Id,
 		authPolicy:      authPolicy,
 		env:             module.env,
 	}, nil

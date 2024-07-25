@@ -95,24 +95,6 @@ func (self *ControllerManager) ReadByName(name string) (*Controller, error) {
 	return modelEntity, nil
 }
 
-func (self *ControllerManager) MapControllerNamesToIds(values []string, identityId string) map[string]struct{} {
-	var result []string
-	if stringz.Contains(values, "all") {
-		result = []string{"all"}
-	} else {
-		for _, val := range values {
-			if Controller, _ := self.Read(val); Controller != nil {
-				result = append(result, val)
-			} else if Controller, _ := self.ReadByName(val); Controller != nil {
-				result = append(result, Controller.Id)
-			} else {
-				pfxlog.Logger().Debugf("user %v submitted %v as a config type of interest, but no matching records found", identityId, val)
-			}
-		}
-	}
-	return stringz.SliceToSet(result)
-}
-
 func (self *ControllerManager) Marshall(entity *Controller) ([]byte, error) {
 	msg := &edge_cmd_pb.Controller{
 		Id:           entity.Id,
