@@ -163,7 +163,7 @@ jobs:
   fablab-smoketest:
     name: Fablab Smoketest
     # not applicable to forks. shouldn't run on release build
-    if: github.repository_owner == 'openziti' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-v')
+    if: github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v')
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
@@ -286,7 +286,7 @@ jobs:
   fablab-ha-smoketest:
     name: Fablab HA Smoketest
     # not applicable to forks. shouldn't run on release build
-    if: false && github.repository_owner == 'openziti' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-v')
+    if: false && github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v')
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
@@ -495,7 +495,7 @@ jobs:
     if: ${{
       !cancelled()
       && needs.publish.result == 'success'
-      && github.ref == 'refs/heads/main'
+      && github.ref_name == 'main'
       }}
     name: Publish Release Candidate Docker Images
     needs: publish
@@ -511,7 +511,7 @@ jobs:
     if: ${{
       !cancelled()
       && needs.publish.result == 'success'
-      && github.ref == 'refs/heads/main'
+      && github.ref_name == 'main'
       }}
     name: Publish Release Candidate Linux Packages
     needs: publish
