@@ -17,7 +17,10 @@ jobs:
     # release version, whereas release tag pushes trigger a quickstart release with the same tag name and the same ziti
     # binary release version
     if: github.repository_owner == 'openziti' 
-        && ( github.event.pull_request.merged == true || startsWith(github.ref_name, 'v') )
+      && (
+        startsWith(github.ref_name, 'v')
+        || (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'quickstartrelease'))
+      )
     runs-on: ubuntu-latest
     env:
       ZITI_QUICKSTART_IMAGE: ${{ vars.ZITI_QUICKSTART_IMAGE || 'docker.io/openziti/quickstart' }}
