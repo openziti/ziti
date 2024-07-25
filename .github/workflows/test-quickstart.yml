@@ -72,7 +72,9 @@ jobs:
         working-directory: ./quickstart/docker/all-in-one
         env:
           ZITI_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
-        run: docker compose --profile test run --rm quickstart-test
+        run: |
+          sleep 9  # wait a moment for the :local image to build
+          docker compose --profile test run --rm quickstart-test
 
       - name: Print debug info
         if: always()
