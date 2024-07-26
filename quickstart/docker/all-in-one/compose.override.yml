@@ -47,7 +47,7 @@ services:
   wait-for-login:
     profiles:
       - test
-    image: ${ZITI_CLI_IMAGE:-docker.io/openziti/ziti-cli}:${ZITI_CLI_TAG:-latest}
+    image: ${ZITI_CLI_IMAGE:-docker.io/openziti/ziti-controller}:${ZITI_CLI_TAG:-latest}
     networks:
       - quickstart
     # run as the same user as the host, so we can write in ~/.config/ziti
