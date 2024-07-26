@@ -16,7 +16,7 @@ The enclosing project's GitHub releases are never updated and no Git tags are cr
 A quickstart release is created when either of the following conditions are met:
 
 1. OpenZiti, the enclosing project, is released by the OpenZiti team
-1. A pull request is merged into the trunk branch `release-next` with the label `quickstartrelease`
+1. A pull request is merged into the trunk branch `main` with the label `quickstartrelease`
 
 ### Release Machinery
 
