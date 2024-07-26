@@ -1,8 +1,8 @@
 # Releasing Ziti
 
-## Release-next Pre-requisites
+## Pre-requisites to Merge to Default Branch
 
-Perform these steps in PR branches based on "release-next." This is the default branch and represents a revision that is
+Perform these steps in PR branches based on **main**. This is the default branch and represents a revision that is
 a candidate for release.
 
 1. Tidy dependencies.
@@ -62,10 +62,9 @@ a candidate for release.
 
 ## Pre-Release
 
-Perform these steps in "release-next" (the default branch based on "main") to create a pre-release Ziti.
+Perform these steps on **main** (the default branch) to create a binary pre-release.
 
-1. Create a PR to merge "release-next" to "main."
-1. Ensure "main" checks succeed. Downstreams will not be released if any checks fail on same revision where a release is created.
+1. Ensure checks succeed on the default branch. Downstreams will not be released if any checks fail on same revision where a release is created.
 1. Push a tag like v*, typically on default branch HEAD to trigger the pre-release workflow named `release.yml`.
 
 ## Stable and Latest Release
@@ -79,7 +78,7 @@ release as not a prerelease makes it a stable release. There can be one stable r
 
 ## Downstreams
 
-These downstreams are built on push to GitHub branches: **release-next**, **release-v***, and **main**.
+These downstreams are built on push to the default branch **main** and release tags.
 
 - Linux packages
   - `openziti` - provides `/usr/bin/ziti`
@@ -87,20 +86,20 @@ These downstreams are built on push to GitHub branches: **release-next**, **rele
   - `openziti-router` - provides `ziti-router.service`
 - Container Images
   - `openziti/ziti-cli` - provides `/usr/local/bin/ziti`
-  - `openziti/ziti-controller` - built from `ziti-cli` and `ziti-console-assets` and executes `ziti controller run`
+  - `openziti/ziti-controller` - built from `ziti-cli` (`/usr/local/bin/ziti`) and `ziti-console-assets` (`/ziti-console`) and executes `ziti controller run`
   - `openziti/ziti-router` - built from `ziti-cli`and executes `ziti router run`
 
 ### Promoting Downstreams
 
 The downstream artifacts are named and handled as follows.
 
-- push to `release-next`
-  - Linux packages are published in the test repos with a release candidate semver, e.g. `1.0.1~123` where `1.0.0` is the highest semver tag in the repo and `123` is the build number. These release candidate semvers are higher versions than latest so that they are installed by default on devices subscribed to a test repo.
-  - Container images are pushed to the `:release-next` tag.
-- push to `release-v*` or `main`
+- push to **main**
+  - Linux packages are published in the test repos with a release candidate semver, e.g. `1.0.1~123` where `1.0.0` is the highest semver tag in the repo and `123` is the build number. These release candidate semvers are higher versions than latest release.
+  - Container images are pushed to the `:main` repo tag.
+- push to release tag
   - Linux packages are published in the test repos with a release semver, e.g. `1.0.1`.
   - Container images are pushed to a release semver tag, e.g. `:1.0.1`.
-- GitHub pre-release is marked "latest"
+- GitHub binary pre-release is marked "latest"
   - Linux packages for the release are copied from the "test" repos to the "stable" repos.
   - Container images' semver release tags are re-tagged as `:latest`.
 
@@ -162,3 +161,7 @@ The first step is to ensure the GitHub release is not marked "latest," and the h
 If downstream promotion failed for any reason, e.g., a check failure on the same Git revision blocked promotion, then it
 is best to create a new release that fixes the problem. Manually promoting downstreams is hypothetically possible, has
 never been attempted, is error prone and tedious, and should probably be avoided.
+
+## Quickstart Releases
+
+See [the quickstart release README](./quickstart/README.md).
