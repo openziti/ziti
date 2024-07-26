@@ -164,4 +164,4 @@ never been attempted, is error prone and tedious, and should probably be avoided
 
 ## Quickstart Releases
 
-See [the quickstart release README](quickstart/README.md).
+See [the quickstart release README](./quickstart/README.md).
