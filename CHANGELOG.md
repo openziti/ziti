@@ -1,3 +1,30 @@
+# Release 1.1.8
+
+## What's New
+
+* Bug fixes, enhancements and continuing progress on controller HA
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge-api: [v0.26.20 -> v0.26.22-0.20240719132447-6daf28ad09e7](https://github.com/openziti/edge-api/compare/v0.26.20...v0.26.22-0.20240719132447-6daf28ad09e7)
+    * [Issue #120](https://github.com/openziti/edge-api/issues/120) - Add API for retrieving services referencing a config
+    * [Issue #121](https://github.com/openziti/edge-api/issues/121) - Add API for retrieving the set of attribute roles used by posture checks
+
+* github.com/openziti/sdk-golang: [v0.23.38 -> v0.23.39](https://github.com/openziti/sdk-golang/compare/v0.23.38...v0.23.39)
+    * [Issue #596](https://github.com/openziti/sdk-golang/issues/596) - SDK should submit selected config types to auth and service list APIs
+    * [Issue #593](https://github.com/openziti/sdk-golang/issues/593) - SDK Golang OIDC Get API Session Returns Wrong Value
+
+* github.com/openziti/storage: [v0.2.47 -> v0.2.48](https://github.com/openziti/storage/compare/v0.2.47...v0.2.48)
+    * [Issue #78](https://github.com/openziti/storage/issues/78) - Allow searching for things without case sensitivity
+
+* github.com/openziti/ziti: [v1.1.7 -> v1.1.8](https://github.com/openziti/ziti/compare/v1.1.7...v1.1.8)
+    * [Issue #2245](https://github.com/openziti/ziti/issues/2245) - Add ability to retrieve a list of services that reference a config
+    * [Issue #2089](https://github.com/openziti/ziti/issues/2089) - Enhance Management API to list Posture Check Roles
+    * [Issue #2010](https://github.com/openziti/ziti/issues/2010) - Add config information to router data model
+    * [Issue #1990](https://github.com/openziti/ziti/issues/1990) - Implement subscriber model for identity/service events in router
+    * [Issue #2240](https://github.com/openziti/ziti/issues/2240) - Secondary ext-jwt Auth Policy check incorrectly requires primary ext-jwt auth to be enabled
+
+
 # Release 1.1.7
 
 ## What's New

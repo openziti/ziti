@@ -81,12 +81,16 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newListCmdForEntityType("edge-router-role-attributes", runListEdgeRouterRoleAttributes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("identity-role-attributes", runListIdentityRoleAttributes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-role-attributes", runListServiceRoleAttributes, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("posture-check-role-attributes", runListPostureCheckRoleAttributes, newOptions()))
 
 	cmd.AddCommand(newListCmdForEntityType("posture-checks", runListPostureChecks, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("posture-check-types", runListPostureCheckTypes, newOptions()))
 
 	configTypeListRootCmd := newEntityListRootCmd("config-type")
 	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-type", "configs", outputConfigs, newOptions()))
+
+	configListRootCmd := newEntityListRootCmd("config")
+	configListRootCmd.AddCommand(newSubListCmdForEntityType("configs", "services", outputServices, newOptions()))
 
 	edgeRouterListRootCmd := newEntityListRootCmd("edge-router", "er")
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
@@ -125,6 +129,7 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newListCmdForEntityType("summary", runListSummary, newOptions()))
 
 	cmd.AddCommand(configTypeListRootCmd,
+		configListRootCmd,
 		edgeRouterListRootCmd,
 		edgeRouterPolicyListRootCmd,
 		identityListRootCmd,
@@ -1528,6 +1533,10 @@ func runListIdentityRoleAttributes(o *api.Options) error {
 
 func runListServiceRoleAttributes(o *api.Options) error {
 	return runListRoleAttributes("service", o)
+}
+
+func runListPostureCheckRoleAttributes(o *api.Options) error {
+	return runListRoleAttributes("posture-check", o)
 }
 
 func runListRoleAttributes(entityType string, o *api.Options) error {

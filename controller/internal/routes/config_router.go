@@ -21,10 +21,10 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/config"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/fields"
 )
 
 func init() {
@@ -65,6 +65,11 @@ func (r *ConfigRouter) Register(ae *env.AppEnv) {
 
 	ae.ManagementApi.ConfigPatchConfigHandler = config.PatchConfigHandlerFunc(func(params config.PatchConfigParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	//Additional Lists
+	ae.ManagementApi.ConfigListConfigServicesHandler = config.ListConfigServicesHandlerFunc(func(params config.ListConfigServicesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.ListServices, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 }
 
@@ -121,4 +126,8 @@ func (r *ConfigRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params
 		}
 		return ae.Managers.Config.Update(model, fields.FilterMaps("tags", "data"), rc.NewChangeContext())
 	})
+}
+
+func (r *ConfigRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociationWithHandler[*model.Config, *model.ServiceDetail](ae, rc, ae.Managers.Config, ae.Managers.EdgeService.GetDetailLister(), MapServiceToRestEntity)
 }

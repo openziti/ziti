@@ -22,8 +22,8 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/response"
 )
 
 func init() {
@@ -49,6 +49,10 @@ func (r *RoleAttributesRouter) Register(ae *env.AppEnv) {
 	ae.ManagementApi.RoleAttributesListServiceRoleAttributesHandler = role_attributes.ListServiceRoleAttributesHandlerFunc(func(params role_attributes.ListServiceRoleAttributesParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.listServiceRoleAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
+
+	ae.ManagementApi.RoleAttributesListPostureCheckRoleAttributesHandler = role_attributes.ListPostureCheckRoleAttributesHandlerFunc(func(params role_attributes.ListPostureCheckRoleAttributesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listPostureCheckAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 }
 
 func (r *RoleAttributesRouter) listEdgeRouterRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
@@ -61,6 +65,10 @@ func (r *RoleAttributesRouter) listIdentityRoleAttributes(ae *env.AppEnv, rc *re
 
 func (r *RoleAttributesRouter) listServiceRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
 	r.listRoleAttributes(rc, ae.Managers.EdgeService)
+}
+
+func (r *RoleAttributesRouter) listPostureCheckAttributes(ae *env.AppEnv, rc *response.RequestContext) {
+	r.listRoleAttributes(rc, ae.Managers.PostureCheck)
 }
 
 func (r *RoleAttributesRouter) listRoleAttributes(rc *response.RequestContext, queryable roleAttributeQueryable) {

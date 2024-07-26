@@ -153,6 +153,11 @@ func (self *PostureCheckManager) QueryPostureChecks(query ast.Query) (*PostureCh
 	return result, nil
 }
 
+func (self *PostureCheckManager) QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error) {
+	index := self.env.GetStores().PostureCheck.GetRoleAttributesIndex()
+	return self.queryRoleAttributes(index, queryString)
+}
+
 func (self *PostureCheckManager) Marshall(entity *PostureCheck) ([]byte, error) {
 	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
 	if err != nil {
