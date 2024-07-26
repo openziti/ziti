@@ -196,7 +196,7 @@ promptEnrollToken() {
         elif [[ -n "${ZITI_ENROLL_TOKEN:-}" ]]; then
             echo "DEBUG: ZITI_ENROLL_TOKEN is defined in ${BOOT_ENV_FILE}" >&3
         else
-            if ZITI_ENROLL_TOKEN=$(prompt "Paste a router enrollment token: "); then
+            if ZITI_ENROLL_TOKEN=$(prompt "Router enrollment token as string or path [required]: "); then
                 if [[ -n "${ZITI_ENROLL_TOKEN:-}" ]]; then
                     setAnswer "ZITI_ENROLL_TOKEN=${ZITI_ENROLL_TOKEN}" "${BOOT_ENV_FILE}"
                 else
