@@ -45,8 +45,8 @@ dmitri.shuralyov.com/service/change v0.0.0-20181023043359-a85b471d5412/go.mod h1
 dmitri.shuralyov.com/state v0.0.0-20180228185332-28bcc343414c/go.mod h1:0PRwlb0D6DFvNNtx+9ybjezNCa8XF0xaYcETyp6rHWU=
 git.apache.org/thrift.git v0.0.0-20180902110319-2566ecd5d999/go.mod h1:fPE2ZNJGynbRyZ4dJvy6G277gSllfV2HJqblrnkyeyg=
 github.com/AlecAivazis/survey/v2 v2.0.5/go.mod h1:WYBhg6f0y/fNYUuesWQc0PKbJcEliGcYHB9sNT3Bg74=
-github.com/AppsFlyer/go-sundheit v0.5.1 h1:VLmM1/tbn3fAHHFdp7Ew75sc2+Sfy31ADA8TaMbN7No=
-github.com/AppsFlyer/go-sundheit v0.5.1/go.mod h1:LDdBHD6tQBtmHsdW+i1GwdTt6Wqc0qazf5ZEJVTbTME=
+github.com/AppsFlyer/go-sundheit v0.6.0 h1:d2hBvCjBSb2lUsEWGfPigr4MCOt04sxB+Rppl0yUMSk=
+github.com/AppsFlyer/go-sundheit v0.6.0/go.mod h1:LDdBHD6tQBtmHsdW+i1GwdTt6Wqc0qazf5ZEJVTbTME=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.4.0 h1:kuoIxZQy2WRRk1pttg9asf+WVv6tWQuBNVmK8+nqPr0=
 github.com/BurntSushi/toml v1.4.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
@@ -586,8 +586,6 @@ github.com/openziti/sdk-golang v0.23.39 h1:e+FJ8h0jxP1NaRZq4eIafMpxqe+UK0T43bKhd
 github.com/openziti/sdk-golang v0.23.39/go.mod h1:5wt3h/TCeC/YqNLfdTAMEEAJvQqCCJYKYXt4Dmbcj64=
 github.com/openziti/secretstream v0.1.21 h1:r4xN8/CzSEvxZFFYGSztrlhMtIvk3B+SQcq2zgZ4Tb4=
 github.com/openziti/secretstream v0.1.21/go.mod h1:1lfAnS8gBHsKZiPbRRK1sularbAsqizN6tWUEuZSfo0=
-github.com/openziti/storage v0.2.48 h1:RB5YGmkotgNuQkETybZrZohJYdvaUwGg4SPb9K667qw=
-github.com/openziti/storage v0.2.48/go.mod h1:1f6cGRKYLzwst5hwVY+qr8GCcUeO/U5jJftE8+qFqbk=
 github.com/openziti/storage v0.3.0 h1:DH2SN8GYy7rSlBZM9X5W1Dv2b2qZ8kSKyt0iivokVMw=
 github.com/openziti/storage v0.3.0/go.mod h1:1f6cGRKYLzwst5hwVY+qr8GCcUeO/U5jJftE8+qFqbk=
 github.com/openziti/transport/v2 v2.0.138 h1:F7TUv34BZ6x2BetYLtYbxSU/G15B+vkGRU4uPKwvRvU=

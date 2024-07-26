@@ -3,7 +3,7 @@ module github.com/openziti/ziti
 go 1.22
 
 require (
-	github.com/AppsFlyer/go-sundheit v0.5.1
+	github.com/AppsFlyer/go-sundheit v0.6.0
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/MakeNowJust/heredoc v1.0.0
