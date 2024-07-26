@@ -33,7 +33,7 @@ require (
 )
 
 require (
-	github.com/AppsFlyer/go-sundheit v0.5.1 // indirect
+	github.com/AppsFlyer/go-sundheit v0.6.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/MichaelMure/go-term-markdown v0.1.4 // indirect
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect

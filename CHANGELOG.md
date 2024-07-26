@@ -6,7 +6,7 @@
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/edge-api: [v0.26.20 -> v0.26.22-0.20240719132447-6daf28ad09e7](https://github.com/openziti/edge-api/compare/v0.26.20...v0.26.22-0.20240719132447-6daf28ad09e7)
+* github.com/openziti/edge-api: [v0.26.20 -> v0.26.23](https://github.com/openziti/edge-api/compare/v0.26.20...v0.26.23)
     * [Issue #120](https://github.com/openziti/edge-api/issues/120) - Add API for retrieving services referencing a config
     * [Issue #121](https://github.com/openziti/edge-api/issues/121) - Add API for retrieving the set of attribute roles used by posture checks
 
@@ -14,12 +14,15 @@
     * [Issue #596](https://github.com/openziti/sdk-golang/issues/596) - SDK should submit selected config types to auth and service list APIs
     * [Issue #593](https://github.com/openziti/sdk-golang/issues/593) - SDK Golang OIDC Get API Session Returns Wrong Value
 
-* github.com/openziti/storage: [v0.2.47 -> v0.2.48](https://github.com/openziti/storage/compare/v0.2.47...v0.2.48)
+* github.com/openziti/storage: [v0.2.47 -> v0.3.0](https://github.com/openziti/storage/compare/v0.2.47...v0.3.0)
+    * [Issue #80](https://github.com/openziti/storage/issues/80) - Set indexes aren't cleaned up when referenced entities are deleted, only when they change
     * [Issue #78](https://github.com/openziti/storage/issues/78) - Allow searching for things without case sensitivity
 
 * github.com/openziti/ziti: [v1.1.7 -> v1.1.8](https://github.com/openziti/ziti/compare/v1.1.7...v1.1.8)
+    * [Issue #2121](https://github.com/openziti/ziti/issues/2121) - Use router data model for edge router tunnel
     * [Issue #2245](https://github.com/openziti/ziti/issues/2245) - Add ability to retrieve a list of services that reference a config
     * [Issue #2089](https://github.com/openziti/ziti/issues/2089) - Enhance Management API to list Posture Check Roles
+    * [Issue #2209](https://github.com/openziti/ziti/issues/2209) - `/edge/v1/external-jwt-signers` needs to be open
     * [Issue #2010](https://github.com/openziti/ziti/issues/2010) - Add config information to router data model
     * [Issue #1990](https://github.com/openziti/ziti/issues/1990) - Implement subscriber model for identity/service events in router
     * [Issue #2240](https://github.com/openziti/ziti/issues/2240) - Secondary ext-jwt Auth Policy check incorrectly requires primary ext-jwt auth to be enabled
