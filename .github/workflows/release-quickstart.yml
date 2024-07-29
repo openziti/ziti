@@ -42,7 +42,7 @@ jobs:
           # seconds between polling the checks api for job statuses
           wait-interval: 20
           # confusingly, this means "pause this step until all jobs from all workflows in same run have completed"
-          running-workflow-name: release-quickstart
+          running-workflow-name: Release Quickstart Job
 
       - name: Checkout Workspace
         uses: actions/checkout@v4
