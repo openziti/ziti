@@ -51,6 +51,7 @@ type Validatable interface {
 type Dispatcher interface {
 	Dispatch(command Command) error
 	IsLeaderOrLeaderless() bool
+	IsLeaderless() bool
 	GetPeers() map[string]channel.Channel
 	GetRateLimiter() rate.RateLimiter
 }
@@ -63,6 +64,10 @@ type LocalDispatcher struct {
 
 func (self *LocalDispatcher) IsLeaderOrLeaderless() bool {
 	return true
+}
+
+func (self *LocalDispatcher) IsLeaderless() bool {
+	return false
 }
 
 func (self *LocalDispatcher) GetPeers() map[string]channel.Channel {

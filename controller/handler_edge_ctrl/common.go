@@ -377,6 +377,31 @@ func (self *baseSessionRequestContext) verifyIdentityEdgeRouterAccess() {
 	}
 }
 
+func (self *baseSessionRequestContext) verifyEdgeRouterServiceBindAccess() {
+	if self.err == nil {
+		self.verifyServiceBindAccess(self.sourceRouter.Id, self.service.Id)
+	}
+}
+
+func (self *baseSessionRequestContext) verifyServiceBindAccess(identityId string, serviceId string) {
+	if self.err == nil {
+		// validate edge router
+		result, err := self.handler.getAppEnv().Managers.EdgeService.IsBindableByIdentity(serviceId, identityId)
+		if err != nil {
+			self.err = internalError(err)
+			logrus.
+				WithField("routerId", self.sourceRouter.Id).
+				WithField("identityId", identityId).
+				WithField("serviceId", serviceId).
+				WithField("operation", self.handler.Label()).
+				WithError(err).Error("unable to verify edge router access to bind service")
+			return
+		} else if !result {
+			self.err = InvalidServiceError{}
+		}
+	}
+}
+
 func (self *baseSessionRequestContext) verifyRouterEdgeRouterAccess() {
 	if self.err == nil {
 		self.verifyEdgeRouterAccess(self.sourceRouter.Id, self.service.Id)

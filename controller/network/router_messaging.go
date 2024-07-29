@@ -150,7 +150,7 @@ func (self *RouterMessaging) run() {
 			self.syncStates()
 		}
 
-		if len(self.terminatorValidations) > 0 {
+		if !self.env.GetManagers().Dispatcher.IsLeaderless() && len(self.terminatorValidations) > 0 {
 			self.sendTerminatorValidationRequests()
 		}
 	}
@@ -334,8 +334,12 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 				// V1 doesn't send responses, it will just send deletes if the terminator is invalid.
 				// we're going to mark these ok. If they're not, we should get a delete message. Older
 				// routers can still fail to delete, if the delete gets lost for some reason.
-				self.generateMockResponseForV1(notifyRouter, updates)
+				self.generateMockTerminatorValidationResponse(notifyRouter, updates)
 			}
+		} else if !self.managers.Dispatcher.IsLeaderless() {
+			// If there's a leader, and we're not it, let the leader worry about sending the validation requests
+			// otherwise we're generating a bunch of extra load on the routers
+			self.generateMockTerminatorValidationResponse(notifyRouter, updates)
 		}
 	})
 
@@ -346,7 +350,7 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 	}
 }
 
-func (self *RouterMessaging) generateMockResponseForV1(r *model.Router, validations *terminatorValidations) {
+func (self *RouterMessaging) generateMockTerminatorValidationResponse(r *model.Router, validations *terminatorValidations) {
 	handler := &terminatorValidationRespReceived{
 		router:    r,
 		changeCtx: change.New(), // won't be used since we're marking things valid

@@ -136,6 +136,9 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
 	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
 	store.symbolPostureChecks = store.AddFkSetSymbol(EntityTypePostureChecks, store.stores.postureCheck)
+
+	store.MakeSymbolPublic(EntityTypeIdentities)
+	store.MakeSymbolPublic(EntityTypeServices)
 }
 
 func (store *servicePolicyStoreImpl) initializeLinked() {

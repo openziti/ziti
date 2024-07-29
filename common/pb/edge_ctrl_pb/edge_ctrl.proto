@@ -58,6 +58,9 @@ enum ContentType {
 
   TunnelHealthEventType = 20412;
 
+  CreateTunnelTerminatorRequestV2Type = 20413;
+  CreateTunnelTerminatorResponseV2Type = 20414;
+
   DataStateType = 20500;
   DataStateChangeSetType = 20501;
   UpdateTokenType = 20502;
@@ -166,6 +169,7 @@ message DataState {
     map<string, uint32> serviceHostingCosts = 6;
     bytes appDataJson = 7;
     map<string, ServiceConfigs> serviceConfigs = 8;
+    bool disabled = 9;
   }
 
   message Service {
@@ -510,6 +514,22 @@ message CreateTunnelTerminatorResponse {
   CreateSessionResponse session = 2;
   string terminatorId = 3;
   int64 startTime = 4;
+}
+
+message CreateTunnelTerminatorRequestV2 {
+  string serviceId = 1;
+  string address = 2;
+  map<uint32, bytes> peerData = 3;
+  uint32 cost = 4;
+  TerminatorPrecedence precedence = 5;
+  string instanceId = 6;
+  bytes instanceSecret = 7;
+  int64 startTime = 8;
+}
+
+message CreateTunnelTerminatorResponseV2 {
+  string terminatorId = 1;
+  int64 startTime = 2;
 }
 
 message UpdateTunnelTerminatorRequest {

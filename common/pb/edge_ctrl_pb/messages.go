@@ -110,6 +110,20 @@ func (request *CreateTunnelTerminatorRequest) GetContentType() int32 {
 	return int32(ContentType_CreateTunnelTerminatorRequestType)
 }
 
+func (request *CreateTunnelTerminatorRequestV2) GetContentType() int32 {
+	return int32(ContentType_CreateTunnelTerminatorRequestV2Type)
+}
+
+func (request *CreateTunnelTerminatorRequestV2) GetXtPrecedence() xt.Precedence {
+	if request.GetPrecedence() == TerminatorPrecedence_Failed {
+		return xt.Precedences.Failed
+	}
+	if request.GetPrecedence() == TerminatorPrecedence_Required {
+		return xt.Precedences.Required
+	}
+	return xt.Precedences.Default
+}
+
 func (request *EnrollmentExtendRouterVerifyRequest) GetContentType() int32 {
 	return int32(ContentType_EnrollmentExtendRouterVerifyRequestType)
 }
@@ -126,6 +140,10 @@ func (request *CreateTunnelTerminatorRequest) GetXtPrecedence() xt.Precedence {
 
 func (request *CreateTunnelTerminatorResponse) GetContentType() int32 {
 	return int32(ContentType_CreateTunnelTerminatorResponseType)
+}
+
+func (request *CreateTunnelTerminatorResponseV2) GetContentType() int32 {
+	return int32(ContentType_CreateTunnelTerminatorResponseV2Type)
 }
 
 func (request *UpdateTunnelTerminatorRequest) GetContentType() int32 {
