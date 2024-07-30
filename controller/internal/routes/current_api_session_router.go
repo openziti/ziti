@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
 	"net/http"
 	"time"
@@ -125,7 +126,15 @@ func (router *CurrentSessionRouter) ListCertificates(ae *env.AppEnv, rc *respons
 func (router *CurrentSessionRouter) CreateCertificate(ae *env.AppEnv, rc *response.RequestContext, params clientCurrentApiSession.CreateCurrentAPISessionCertificateParams) {
 	responder := &ApiSessionCertificateCreateResponder{ae: ae, Responder: rc}
 	CreateWithResponder(rc, responder, CurrentApiSessionCertificateLinkFactory, func() (string, error) {
-		return ae.GetManagers().ApiSessionCertificate.CreateFromCSR(rc.ApiSession.Id, 12*time.Hour, []byte(*params.SessionCertificate.Csr), rc.NewChangeContext())
+		newApiSessionCert, err := ae.GetManagers().ApiSessionCertificate.CreateFromCSR(rc.Identity, rc.ApiSession, rc.IsJwtToken, 12*time.Hour, []byte(*params.SessionCertificate.Csr), rc.NewChangeContext())
+
+		if err != nil {
+			return "", err
+		}
+
+		responder.ApiSessionCertificate = newApiSessionCert
+
+		return newApiSessionCert.Id, nil
 	})
 }
 
@@ -191,18 +200,18 @@ func (router *CurrentSessionRouter) ListServiceUpdates(ae *env.AppEnv, rc *respo
 
 type ApiSessionCertificateCreateResponder struct {
 	response.Responder
-	ae *env.AppEnv
+	ApiSessionCertificate *model.ApiSessionCertificate
+	ae                    *env.AppEnv
 }
 
 func (nsr *ApiSessionCertificateCreateResponder) RespondWithCreatedId(id string, _ rest_model.Link) {
-	sessionCert, _ := nsr.ae.GetManagers().ApiSessionCertificate.Read(id)
-	certString := sessionCert.PEM
+	certString := nsr.ApiSessionCertificate.PEM
 
 	newSessionEnvelope := &rest_model.CreateCurrentAPISessionCertificateEnvelope{
 		Data: &rest_model.CurrentAPISessionCertificateCreateResponse{
 			CreateLocation: rest_model.CreateLocation{
-				Links: CurrentApiSessionCertificateLinkFactory.Links(sessionCert),
-				ID:    sessionCert.Id,
+				Links: CurrentApiSessionCertificateLinkFactory.Links(nsr.ApiSessionCertificate),
+				ID:    nsr.ApiSessionCertificate.Id,
 			},
 			Certificate: &certString,
 			Cas:         string(nsr.ae.GetConfig().Edge.CaPems()),

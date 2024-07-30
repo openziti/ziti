@@ -352,6 +352,11 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 
 	var verifyResults []*candidateResult
 
+	if len(candidates) == 0 {
+		logger.Error("encountered 0 candidate JWTs, verification cannot occur")
+		return nil, apierror.NewInvalidAuth()
+	}
+
 	for i, candidate := range candidates {
 		verifyResult := a.verifyCandidate(context, isPrimary, candidate)
 
@@ -378,6 +383,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 	if isPrimary {
 		authType = "primary"
 	}
+
 	logger.Errorf("encountered %d candidate JWTs and all failed to validate for %s authentication, see the following log messages", len(verifyResults), authType)
 	for i, result := range verifyResults {
 		result.LogResult(logger, i)

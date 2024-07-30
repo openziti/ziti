@@ -17,6 +17,7 @@
 package xgress_edge
 
 import (
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
@@ -24,7 +25,9 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/common/spiffehlp"
 	"github.com/openziti/ziti/router/state"
+	"strings"
 )
 
 type sessionConnectionHandler struct {
@@ -61,7 +64,7 @@ func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding, ed
 	}
 
 	fpg := cert.NewFingerprintGenerator()
-	fingerprints := fpg.FromCerts(certificates)
+	fingerprint := fpg.FromCert(certificates[0])
 
 	token := string(byteToken)
 
@@ -81,36 +84,50 @@ func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding, ed
 			handler.invalidApiSessionTokenDuringSync.Mark(1)
 		}
 
-		return fmt.Errorf("no api session found for token [%s], fingerprints: [%v], subjects [%v]", token, fingerprints, subjects)
+		return fmt.Errorf("no api session found for token [%s], fingerprint: [%v], subjects [%v]", token, fingerprint, subjects)
 	}
 
 	edgeConn.apiSession = apiSession
 
-	if apiSession.Claims != nil {
-		token = apiSession.Claims.ApiSessionId
+	isValid := handler.validateBySpiffeId(apiSession, certificates[0])
+
+	if !isValid {
+		isValid = handler.validateByFingerprint(apiSession, fingerprint)
 	}
 
-	for _, fingerprint := range apiSession.CertFingerprints {
-		if fingerprints.Contains(fingerprint) {
-			removeListener := handler.stateManager.AddApiSessionRemovedListener(token, func(token string) {
-				if !ch.IsClosed() {
-					if err := ch.Close(); err != nil {
-						pfxlog.Logger().WithError(err).Error("could not close channel during api session removal")
-					}
-				}
-
-				handler.stateManager.RemoveActiveChannel(ch)
-			})
-
-			handler.stateManager.AddActiveChannel(ch, apiSession)
-			handler.stateManager.AddConnectedApiSessionWithChannel(token, removeListener, ch)
-
-			return nil
+	if isValid {
+		if apiSession.Claims != nil {
+			token = apiSession.Claims.ApiSessionId
 		}
+
+		removeListener := handler.stateManager.AddApiSessionRemovedListener(token, func(token string) {
+			if !ch.IsClosed() {
+				if err := ch.Close(); err != nil {
+					pfxlog.Logger().WithError(err).Error("could not close channel during api session removal")
+				}
+			}
+
+			handler.stateManager.RemoveActiveChannel(ch)
+		})
+
+		handler.stateManager.AddActiveChannel(ch, apiSession)
+		handler.stateManager.AddConnectedApiSessionWithChannel(token, removeListener, ch)
+
+		return nil
 	}
 
 	_ = ch.Close()
 	return errors.New("invalid client certificate for api session")
+}
+
+func (handler *sessionConnectionHandler) validateByFingerprint(apiSession *state.ApiSession, clientFingerprint string) bool {
+	for _, fingerprint := range apiSession.CertFingerprints {
+		if clientFingerprint == fingerprint {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (handler *sessionConnectionHandler) HandleClose(ch channel.Channel) {
@@ -124,4 +141,40 @@ func (handler *sessionConnectionHandler) HandleClose(ch channel.Channel) {
 			WithField("id", ch.Id()).
 			Error("session connection handler encountered a HandleClose that did not have a SessionTokenHeader")
 	}
+}
+
+func (handler *sessionConnectionHandler) validateBySpiffeId(apiSession *state.ApiSession, clientCert *x509.Certificate) bool {
+	spiffeId, err := spiffehlp.GetSpiffeIdFromCert(clientCert)
+
+	if err != nil {
+		return false
+	}
+
+	if spiffeId == nil {
+		return false
+	}
+
+	parts := strings.Split(spiffeId.Path, "/")
+
+	if len(parts) != 6 {
+		return false
+	}
+
+	if parts[0] != "identity" {
+		return false
+	}
+
+	if parts[2] != "apiSession" {
+		return false
+	}
+
+	if parts[4] != "apiSessionCertificate" {
+		return false
+	}
+
+	if apiSession.Id == parts[3] {
+		return true
+	}
+
+	return false
 }

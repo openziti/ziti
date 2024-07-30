@@ -4,9 +4,10 @@ import (
 	"crypto/x509"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
-	identity2 "github.com/openziti/edge-api/rest_management_api_client/identity"
+	management_identity "github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	nfpem "github.com/openziti/foundation/v2/pem"
@@ -78,7 +79,7 @@ func TestSdkAuth(t *testing.T) {
 		ctx.Req.NotNil(apiSession.GetToken())
 	})
 
-	t.Run("management cert, ca pool on  client can authenticate", func(t *testing.T) {
+	t.Run("management cert, ca pool on client can authenticate", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		creds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
@@ -236,7 +237,7 @@ func TestSdkAuth(t *testing.T) {
 			Type:         &identityType,
 		}
 
-		identityCreateParams := identity2.NewCreateIdentityParams()
+		identityCreateParams := management_identity.NewCreateIdentityParams()
 		identityCreateParams.Identity = idCreate
 
 		idCreateResp, err := adminClient.API.Identity.CreateIdentity(identityCreateParams, nil)
@@ -306,4 +307,126 @@ func TestSdkAuth(t *testing.T) {
 		})
 	})
 
+	t.Run("client cert + secondary JWT  can authenticate", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		certJwtId := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
+		certJwtCerts := ctx.completeOttEnrollment(certJwtId.Id)
+
+		//valid signer with issuer and audience
+		validJwtSignerCert, validJwtSignerPrivateKey := newSelfSignedCert("valid signer")
+		validJwtSignerCertPem := nfpem.EncodeToString(validJwtSignerCert)
+
+		validJwtSigner := &rest_model.ExternalJWTSignerCreate{
+			CertPem:       &validJwtSignerCertPem,
+			Enabled:       B(true),
+			Name:          S("Test Cert+JWT Signer - Enabled"),
+			Kid:           S(uuid.NewString()),
+			Issuer:        S("the-very-best-iss2"),
+			Audience:      S("the-very-best-aud2"),
+			UseExternalID: B(false),
+		}
+
+		//valid signed jwt
+		jwtToken := jwt.New(jwt.SigningMethodES256)
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{*validJwtSigner.Audience},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+			Issuer:    *validJwtSigner.Issuer,
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
+			Subject:   certJwtId.Id,
+		}
+
+		jwtToken.Header["kid"] = *validJwtSigner.Kid
+
+		jwtStrSigned, err := jwtToken.SignedString(validJwtSignerPrivateKey)
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(jwtStrSigned)
+
+		// ext jwt
+		createExtJwtParams := external_jwt_signer.NewCreateExternalJWTSignerParams()
+		createExtJwtParams.ExternalJWTSigner = validJwtSigner
+
+		createExtJwtSignerResp, err := adminClient.API.ExternalJWTSigner.CreateExternalJWTSigner(createExtJwtParams, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(createExtJwtSignerResp)
+		ctx.Req.NotEmpty(createExtJwtSignerResp.Payload.Data.ID)
+
+		//auth policy
+		authPolicyCreate := &rest_model.AuthPolicyCreate{
+			Name: S(uuid.NewString()),
+			Primary: &rest_model.AuthPolicyPrimary{
+				Cert:   &rest_model.AuthPolicyPrimaryCert{Allowed: B(true), AllowExpiredCerts: B(false)},
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{Allowed: B(false), AllowedSigners: make([]string, 0)},
+				Updb: &rest_model.AuthPolicyPrimaryUpdb{
+					Allowed:                B(false),
+					LockoutDurationMinutes: I(0),
+					MaxAttempts:            I(0),
+					MinPasswordLength:      I(5),
+					RequireMixedCase:       B(true),
+					RequireNumberChar:      B(true),
+					RequireSpecialChar:     B(true),
+				},
+			},
+			Secondary: &rest_model.AuthPolicySecondary{
+				RequireExtJWTSigner: ToPtr(createExtJwtSignerResp.Payload.Data.ID),
+				RequireTotp:         B(false),
+			},
+			Tags: &rest_model.Tags{SubTags: rest_model.SubTags{}},
+		}
+
+		authPolicyCreateParams := auth_policy.NewCreateAuthPolicyParams()
+		authPolicyCreateParams.AuthPolicy = authPolicyCreate
+
+		createAuthPolicyResp, err := adminClient.API.AuthPolicy.CreateAuthPolicy(authPolicyCreateParams, nil)
+		err = rest_util.WrapErr(err)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(createAuthPolicyResp)
+		ctx.Req.NotEmpty(createAuthPolicyResp.Payload.Data.ID)
+
+		//assign identity auth policy
+		identityPatchParams := &management_identity.PatchIdentityParams{
+			ID: certJwtId.Id,
+			Identity: &rest_model.IdentityPatch{
+				AuthPolicyID: S(createAuthPolicyResp.Payload.Data.ID),
+			},
+		}
+
+		identityPatchResp, err := adminClient.API.Identity.PatchIdentity(identityPatchParams, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(identityPatchResp)
+
+		t.Run("client cert + secondary JWT, ca pool on client", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			creds := edge_apis.NewCertCredentials([]*x509.Certificate{certJwtCerts.cert}, certJwtCerts.key)
+
+			creds.AddJWT(jwtStrSigned)
+
+			client := edge_apis.NewClientApiClient([]*url.URL{clientApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+				strings <- "123"
+			})
+			apiSession, err := client.Authenticate(creds, nil)
+
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(client)
+			ctx.Req.NotNil(apiSession)
+			ctx.Req.NotNil(apiSession.GetToken())
+
+			t.Run("can issue requests", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				getCurrentApiSessionparams := &current_api_session.GetCurrentAPISessionParams{}
+
+				resp, err := client.API.CurrentAPISession.GetCurrentAPISession(getCurrentApiSessionparams, nil)
+
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(resp)
+				ctx.Req.NotNil(resp.Payload)
+				ctx.Req.NotNil(resp.Payload.Data)
+				ctx.Req.NotEmpty(resp.Payload.Data.ID)
+			})
+		})
+	})
 }
