@@ -123,11 +123,13 @@ installDebian(){
     fi
 
     apt-get update
-    # allow downgrades if any versions are pinned with '='
+    typeset -a APT_ARGS=(install --yes)
+    # allow dangerous downgrades if a version is pinned with '='
     if [[ "${*}" =~ = ]]; then
-        ALLOW_DOWNGRADES='--allow-downgrades'
+        APT_ARGS+=(--allow-downgrades)
     fi
-    apt-get install --yes "${ALLOW_DOWNGRADES:-}" "$@"
+    # shellcheck disable=SC2068
+    apt-get ${APT_ARGS[@]} "$@"
     for PKG in "$@"; do
         apt-cache show "${PKG%=*}=$(dpkg-query -W -f='${Version}' "${PKG%=*}")"
     done
