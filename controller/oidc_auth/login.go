@@ -180,12 +180,6 @@ func renderPage(w http.ResponseWriter, pageTemplate *template.Template, id strin
 }
 
 func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
-	responseType, err := negotiateResponseContentType(r)
-
-	if err != nil {
-		renderJsonApiError(w, err)
-	}
-
 	bodyContentType, err := negotiateBodyContentType(r)
 
 	if err != nil {
@@ -233,11 +227,8 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 		renderTotp(w, id, errors.New("invalid TOTP code"))
 	}
 
-	if responseType == HtmlContentType {
-		http.Redirect(w, r, l.callback(r.Context(), id), http.StatusFound)
-	}
-
-	renderJson(w, http.StatusOK, &rest_model.Empty{})
+	callbackUrl := l.callback(r.Context(), id)
+	http.Redirect(w, r, callbackUrl, http.StatusFound)
 }
 
 func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
@@ -284,6 +275,10 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	authRequest.SdkInfo = credentials.SdkInfo
+	authRequest.EnvInfo = credentials.EnvInfo
+	authRequest.AuthTime = time.Now()
+
 	if authRequest.SecondaryTotpRequired && !authRequest.HasAmr(AuthMethodSecondaryTotp) {
 		w.Header().Set(TotpRequiredHeader, "true")
 		if responseType == HtmlContentType {
@@ -294,10 +289,6 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-
-	authRequest.AuthTime = time.Now()
-	authRequest.SdkInfo = credentials.SdkInfo
-	authRequest.EnvInfo = credentials.EnvInfo
 
 	callbackUrl := l.callback(r.Context(), credentials.AuthRequestId)
 	http.Redirect(w, r, callbackUrl, http.StatusFound)

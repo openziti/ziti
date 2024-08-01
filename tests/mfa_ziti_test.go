@@ -1077,7 +1077,7 @@ func Test_MFA(t *testing.T) {
 }
 
 func computeMFACode(secret string) string {
-	now := int64(time.Now().UTC().Unix() / 30)
+	now := time.Now().UTC().Unix() / 30
 	code := dgoogauth.ComputeCode(secret, now)
 
 	//pad leading 0s to 6 characters

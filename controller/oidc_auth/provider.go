@@ -48,6 +48,8 @@ func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Ha
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		r := request.WithContext(context.WithValue(request.Context(), contextKeyHttpRequest, request))
 		r = request.WithContext(context.WithValue(r.Context(), contextKeyTokenState, &TokenState{}))
+		r = request.WithContext(op.ContextWithIssuer(r.Context(), config.Issuer))
+
 		oidcHandler.ServeHTTP(writer, r)
 	}), nil
 

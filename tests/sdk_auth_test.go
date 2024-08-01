@@ -1,3 +1,5 @@
+//go:build apitests
+
 package tests
 
 import (
@@ -5,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
+	"github.com/openziti/edge-api/rest_client_api_client/current_identity"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	management_identity "github.com/openziti/edge-api/rest_management_api_client/identity"
@@ -60,6 +63,96 @@ func TestSdkAuth(t *testing.T) {
 		ctx.Req.NotNil(client)
 		ctx.Req.NotNil(apiSession)
 		ctx.Req.NotNil(apiSession.GetToken())
+	})
+
+	t.Run("oidc client cert + TOTP MFA, ca pool on client can authenticate", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		testIdMfa := ctx.AdminManagementSession.RequireNewIdentityWithOtt(true)
+		testIdMfaCerts := ctx.completeOttEnrollment(testIdMfa.Id)
+
+		certCreds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdMfaCerts.cert}, testIdMfaCerts.key)
+
+		client := edge_apis.NewClientApiClient([]*url.URL{clientApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+			strings <- ""
+		})
+		apiSession, err := client.Authenticate(certCreds, nil)
+
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(client)
+		ctx.Req.NotNil(apiSession)
+		ctx.Req.NotNil(apiSession.GetToken())
+
+		t.Run("can enroll in MFA TOTP", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			enrollMfaParams := &current_identity.EnrollMfaParams{}
+			enrollMfaResp, err := client.API.CurrentIdentity.EnrollMfa(enrollMfaParams, nil)
+
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(enrollMfaResp)
+			ctx.Req.NotNil(enrollMfaResp.Payload)
+			ctx.Req.NotNil(enrollMfaResp.Payload.Data)
+
+			detailMfaParams := &current_identity.DetailMfaParams{}
+			detailMfaResp, err := client.API.CurrentIdentity.DetailMfa(detailMfaParams, nil)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(detailMfaResp)
+			ctx.Req.NotNil(detailMfaResp.Payload)
+			ctx.Req.NotNil(detailMfaResp.Payload.Data)
+			ctx.Req.NotEmpty(detailMfaResp.Payload.Data.ProvisioningURL)
+
+			parsedUrl, err := url.Parse(detailMfaResp.Payload.Data.ProvisioningURL)
+			ctx.Req.NoError(err)
+
+			queryParams, err := url.ParseQuery(parsedUrl.RawQuery)
+			ctx.Req.NoError(err)
+			secrets := queryParams["secret"]
+			ctx.Req.NotNil(secrets)
+			ctx.Req.NotEmpty(secrets)
+
+			mfaSecret := secrets[0]
+
+			code := computeMFACode(mfaSecret)
+
+			verifyMfaParams := &current_identity.VerifyMfaParams{
+				MfaValidation: &rest_model.MfaCode{
+					Code: ToPtr(code),
+				},
+			}
+
+			verifyMfaResp, err := client.API.CurrentIdentity.VerifyMfa(verifyMfaParams, nil)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(verifyMfaResp)
+
+			t.Run("can authenticate with newly enrolled TOTP MFA", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				client := edge_apis.NewClientApiClient([]*url.URL{clientApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+					parsedUrl, err := url.Parse(detailMfaResp.Payload.Data.ProvisioningURL)
+					ctx.Req.NoError(err)
+
+					queryParams, err := url.ParseQuery(parsedUrl.RawQuery)
+					ctx.Req.NoError(err)
+					secrets := queryParams["secret"]
+					ctx.Req.NotNil(secrets)
+					ctx.Req.NotEmpty(secrets)
+
+					mfaSecret := secrets[0]
+
+					code := computeMFACode(mfaSecret)
+
+					strings <- code
+				})
+				client.SetUseOidc(true)
+				apiSession, err := client.Authenticate(certCreds, nil)
+
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(client)
+				ctx.Req.NotNil(apiSession)
+				ctx.Req.NotNil(apiSession.GetToken())
+			})
+		})
 	})
 
 	t.Run("client updb, ca pool on cert can authenticate", func(t *testing.T) {
