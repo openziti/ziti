@@ -34,6 +34,8 @@ services:
       ZITI_BOOTSTRAP_ENROLLMENT: true  # enroll with controller if "true," overwrite if "force"; requires ZITI_BOOTSTRAP=true
       ZITI_AUTO_RENEW_CERTS: true      # renew certs every startup
       ZITI_ROUTER_TYPE: ${ZITI_ROUTER_TYPE:-edge}  # edge or fabric
+      ZITI_BOOTSTRAP_CONFIG_ARGS:      # additional arguments to "ziti create config ${ZITI_ROUTER_TYPE:-edge} --tunnelerMode ${ZITI_ROUTER_MODE:-host}"
+
     command: run config.yml
     ports:
       # ensure this port matches the value of ZITI_ROUTER_PORT in the container
