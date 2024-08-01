@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package api_impl
+package webapis
 
 import (
 	"crypto/x509"
@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/handler_mgmt"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/rest_client"
@@ -41,40 +42,40 @@ const (
 	ServerHeader = "server"
 )
 
-var _ xweb.ApiHandlerFactory = &ManagementApiFactory{}
+var _ xweb.ApiHandlerFactory = &FabricManagementApiFactory{}
 
-type ManagementApiFactory struct {
-	InitFunc func(managementApi *ManagementApiHandler) error
+type FabricManagementApiFactory struct {
+	InitFunc func(managementApi *FabricManagementApiHandler) error
 	network  *network.Network
 	nodeId   identity.Identity
 	xmgmts   *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
 }
 
-func (factory *ManagementApiFactory) Validate(_ *xweb.InstanceConfig) error {
+func (factory *FabricManagementApiFactory) Validate(_ *xweb.InstanceConfig) error {
 	return nil
 }
 
-func NewManagementApiFactory(nodeId identity.Identity, network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) *ManagementApiFactory {
+func NewFabricManagementApiFactory(nodeId identity.Identity, network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) *FabricManagementApiFactory {
 	pfxlog.Logger().Infof("initializing management api factory with %d xmgmt instances", len(xmgmts.Value()))
-	return &ManagementApiFactory{
+	return &FabricManagementApiFactory{
 		network: network,
 		nodeId:  nodeId,
 		xmgmts:  xmgmts,
 	}
 }
 
-func (factory *ManagementApiFactory) Binding() string {
-	return FabricApiBinding
+func (factory *FabricManagementApiFactory) Binding() string {
+	return api_impl.FabricApiBinding
 }
 
-func (factory *ManagementApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
+func (factory *FabricManagementApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
 	managementSpec, err := loads.Embedded(rest_server.SwaggerJSON, rest_server.FlatSwaggerJSON)
 	if err != nil {
 		pfxlog.Logger().Fatalln(err)
 	}
 
 	fabricAPI := operations.NewZitiFabricAPI(managementSpec)
-	fabricAPI.ServeError = ServeError
+	fabricAPI.ServeError = api_impl.ServeError
 
 	if requestWrapper == nil {
 		requestWrapper = &FabricRequestWrapper{
@@ -83,11 +84,11 @@ func (factory *ManagementApiFactory) New(_ *xweb.ServerConfig, options map[inter
 		}
 	}
 
-	for _, router := range routers {
+	for _, router := range api_impl.Routers {
 		router.Register(fabricAPI, requestWrapper)
 	}
 
-	managementApiHandler, err := NewManagementApiHandler(fabricAPI, options)
+	managementApiHandler, err := NewFabricManagementApiHandler(fabricAPI, options)
 
 	if err != nil {
 		return nil, err
@@ -104,8 +105,8 @@ func (factory *ManagementApiFactory) New(_ *xweb.ServerConfig, options map[inter
 	return managementApiHandler, nil
 }
 
-func NewManagementApiHandler(fabricApi *operations.ZitiFabricAPI, options map[interface{}]interface{}) (*ManagementApiHandler, error) {
-	managementApi := &ManagementApiHandler{
+func NewFabricManagementApiHandler(fabricApi *operations.ZitiFabricAPI, options map[interface{}]interface{}) (*FabricManagementApiHandler, error) {
+	managementApi := &FabricManagementApiHandler{
 		fabricApi: fabricApi,
 		options:   options,
 	}
@@ -117,7 +118,7 @@ func NewManagementApiHandler(fabricApi *operations.ZitiFabricAPI, options map[in
 	return managementApi, nil
 }
 
-type ManagementApiHandler struct {
+type FabricManagementApiHandler struct {
 	fabricApi   *operations.ZitiFabricAPI
 	handler     http.Handler
 	wsHandler   http.Handler
@@ -126,23 +127,23 @@ type ManagementApiHandler struct {
 	bindHandler channel.BindHandler
 }
 
-func (managementApi *ManagementApiHandler) Binding() string {
-	return FabricApiBinding
+func (managementApi *FabricManagementApiHandler) Binding() string {
+	return api_impl.FabricApiBinding
 }
 
-func (managementApi *ManagementApiHandler) Options() map[interface{}]interface{} {
+func (managementApi *FabricManagementApiHandler) Options() map[interface{}]interface{} {
 	return managementApi.options
 }
 
-func (managementApi *ManagementApiHandler) RootPath() string {
+func (managementApi *FabricManagementApiHandler) RootPath() string {
 	return rest_client.DefaultBasePath
 }
 
-func (managementApi *ManagementApiHandler) IsHandler(r *http.Request) bool {
+func (managementApi *FabricManagementApiHandler) IsHandler(r *http.Request) bool {
 	return strings.HasPrefix(r.URL.Path, managementApi.RootPath())
 }
 
-func (managementApi *ManagementApiHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (managementApi *FabricManagementApiHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	if request.URL.Path == managementApi.wsUrl {
 		managementApi.wsHandler.ServeHTTP(writer, request)
 	} else {
@@ -150,12 +151,12 @@ func (managementApi *ManagementApiHandler) ServeHTTP(writer http.ResponseWriter,
 	}
 }
 
-func (managementApi *ManagementApiHandler) newHandler() http.Handler {
+func (managementApi *FabricManagementApiHandler) newHandler() http.Handler {
 	innerManagementHandler := managementApi.fabricApi.Serve(nil)
 	return requestWrapper.WrapHttpHandler(innerManagementHandler)
 }
 
-func (managementApi *ManagementApiHandler) handleWebSocket(writer http.ResponseWriter, request *http.Request) {
+func (managementApi *FabricManagementApiHandler) handleWebSocket(writer http.ResponseWriter, request *http.Request) {
 	log := pfxlog.Logger()
 	log.Debug("handling mgmt channel websocket upgrade")
 	upgrader := websocket.Upgrader{}

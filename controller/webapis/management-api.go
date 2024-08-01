@@ -14,14 +14,13 @@
 	limitations under the License.
 */
 
-package server
+package webapis
 
 import (
 	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_server"
 	"github.com/openziti/xweb/v2"
-	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
@@ -55,7 +54,7 @@ func NewManagementApiFactory(appEnv *env.AppEnv) *ManagementApiFactory {
 }
 
 func (factory ManagementApiFactory) Binding() string {
-	return controller.ManagementApiBinding
+	return ManagementApiBinding
 }
 
 func (factory ManagementApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
@@ -81,7 +80,7 @@ type ManagementApiHandler struct {
 }
 
 func (managementApi ManagementApiHandler) Binding() string {
-	return controller.ManagementApiBinding
+	return ManagementApiBinding
 }
 
 func (managementApi ManagementApiHandler) Options() map[interface{}]interface{} {
@@ -110,13 +109,14 @@ func NewManagementApiHandler(ae *env.AppEnv, options map[interface{}]interface{}
 
 	return managementApi, nil
 }
+
 func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 	innerManagementHandler := ae.ManagementApi.Serve(nil)
 
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set(ZitiInstanceId, ae.InstanceId)
 
-		if r.URL.Path == controller.ManagementRestApiSpecUrl {
+		if r.URL.Path == ManagementRestApiSpecUrl {
 			rw.Header().Set("content-type", "application/json")
 			rw.WriteHeader(http.StatusOK)
 			_, _ = rw.Write(rest_management_api_server.SwaggerJSON)
@@ -126,11 +126,11 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 		// .well-known/est/cacerts can be handled by the management API but the generated server requires
 		// the prefixed path for route resolution
 		if r.URL.Path == WellKnownEstCaCerts {
-			r.URL.Path = controller.ManagementRestApiBaseUrlLatest + WellKnownEstCaCerts
+			r.URL.Path = ManagementRestApiBaseUrlLatest + WellKnownEstCaCerts
 		}
 
 		if r.URL.Path == VersionPath || r.URL.Path == RootPath {
-			r.URL.Path = controller.ManagementRestApiBaseUrlLatest + VersionPath
+			r.URL.Path = ManagementRestApiBaseUrlLatest + VersionPath
 		}
 
 		rc := ae.CreateRequestContext(rw, r)

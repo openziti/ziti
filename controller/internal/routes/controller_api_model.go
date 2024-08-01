@@ -18,10 +18,10 @@ package routes
 
 import (
 	"github.com/openziti/edge-api/rest_model"
-	edgeController "github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
+	edgeController "github.com/openziti/ziti/controller/webapis"
 )
 
 const EntityNameController = "controllers"

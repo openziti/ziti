@@ -5,7 +5,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/webapis"
 	"net/url"
 	"testing"
 	"time"
@@ -33,7 +33,7 @@ func Test_Identity_HasErConnection(t *testing.T) {
 		isRunning = false
 		ctx.Req.NoError(listener.Close())
 	}()
-	managementStr := "https://" + ctx.ApiHost + controller.ManagementRestApiBaseUrlV1
+	managementStr := "https://" + ctx.ApiHost + webapis.ManagementRestApiBaseUrlV1
 	managementUrl, err := url.Parse(managementStr)
 	ctx.Req.NoError(err)
 

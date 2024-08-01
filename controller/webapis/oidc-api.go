@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package server
+package webapis
 
 import (
 	"context"
@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/openziti/xweb/v2"
-	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/oidc_auth"
@@ -49,7 +48,7 @@ func NewOidcApiFactory(appEnv *env.AppEnv) *OidcApiFactory {
 }
 
 func (factory OidcApiFactory) Binding() string {
-	return controller.OidcApiBinding
+	return OidcApiBinding
 }
 
 func (factory OidcApiFactory) New(serverConfig *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
@@ -75,7 +74,7 @@ type OidcApiHandler struct {
 }
 
 func (h OidcApiHandler) Binding() string {
-	return controller.OidcApiBinding
+	return OidcApiBinding
 }
 
 func (h OidcApiHandler) Options() map[interface{}]interface{} {

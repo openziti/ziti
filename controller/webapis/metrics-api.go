@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package api_impl
+package webapis
 
 import (
 	"bytes"
@@ -25,6 +25,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/network"
 	"net/http"
 	"os"
@@ -50,7 +51,7 @@ func NewMetricsApiFactory(nodeId identity.Identity, network *network.Network) *M
 }
 
 func (factory *MetricsApiFactory) Binding() string {
-	return MetricApiBinding
+	return api_impl.MetricApiBinding
 }
 
 func (factory *MetricsApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
@@ -104,7 +105,7 @@ func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{
 		}
 	}
 
-	metricsApi.modelMapper = NewMetricsModelMapper(n, "prometheus", includeTimestamps)
+	metricsApi.modelMapper = api_impl.NewMetricsModelMapper(n, "prometheus", includeTimestamps)
 	metricsApi.handler = metricsApi.newHandler()
 
 	return metricsApi, nil
@@ -115,12 +116,12 @@ type MetricsApiHandler struct {
 	handler     http.Handler
 	network     *network.Network
 	scrapeCert  *x509.Certificate
-	modelMapper MetricsModelMapper
+	modelMapper api_impl.MetricsModelMapper
 	options     map[interface{}]interface{}
 }
 
 func (metricsApi *MetricsApiHandler) Binding() string {
-	return MetricApiBinding
+	return api_impl.MetricApiBinding
 }
 
 func (metricsApi *MetricsApiHandler) Options() map[interface{}]interface{} {

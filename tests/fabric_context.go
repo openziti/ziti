@@ -27,12 +27,12 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	id "github.com/openziti/identity"
 	"github.com/openziti/identity/certtools"
-	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/rest_client"
 	restClientRouter "github.com/openziti/ziti/controller/rest_client/router"
 	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/controller/rest_util"
+	"github.com/openziti/ziti/controller/webapis"
 	"github.com/openziti/ziti/router"
 	"net"
 	"net/http"
@@ -154,7 +154,7 @@ func (ctx *FabricTestContext) StartServer() {
 }
 
 func (ctx *FabricTestContext) StartServerFor(test string, clean bool) {
-	api_impl.OverrideRequestWrapper(nil) // clear possible wrapper from another test
+	webapis.OverrideRequestWrapper(nil) // clear possible wrapper from another test
 	if ctx.LogLevel != "" {
 		if level, err := logrus.ParseLevel(ctx.LogLevel); err == nil {
 			logrus.StandardLogger().SetLevel(level)

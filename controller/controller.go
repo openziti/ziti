@@ -26,11 +26,13 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/common/capabilities"
+	"github.com/openziti/ziti/common/concurrency"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/events"
 	"github.com/openziti/ziti/controller/handler_peer_ctrl"
+	"github.com/openziti/ziti/controller/webapis"
 	"github.com/openziti/ziti/controller/xt_sticky"
 	"github.com/openziti/ziti/controller/zac"
 	"math/big"
@@ -54,7 +56,6 @@ import (
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/profiler"
-	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/handler_ctrl"
 	"github.com/openziti/ziti/controller/network"
@@ -95,6 +96,8 @@ type Controller struct {
 	apiData      map[string][]event.ApiAddress
 	apiDataBytes []byte
 	apiDataOnce  sync.Once
+
+	xwebInitialized concurrency.InitState
 }
 
 func (c *Controller) GetPeerSigners() []*x509.Certificate {
@@ -222,7 +225,10 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 		metricsRegistry:     metricRegistry,
 		versionProvider:     versionProvider,
 		eventDispatcher:     events.NewDispatcher(shutdownC),
+		xwebInitialized:     concurrency.NewInitState(),
 	}
+
+	c.xweb = xweb.NewDefaultInstance(c.xwebFactoryRegistry, c.config.Id)
 
 	if cfg.Raft != nil {
 		c.raftController = raft.NewController(c, c)
@@ -287,24 +293,46 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create health checker")
 	}
 
-	c.xweb = xweb.NewDefaultInstance(c.xwebFactoryRegistry, c.config.Id)
-
-	if err := c.xweb.GetRegistry().Add(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
+	if err = c.xweb.GetRegistry().Add(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
-	if err := c.xweb.GetRegistry().Add(api_impl.NewManagementApiFactory(c.config.Id, c.network, &c.xmgmts)); err != nil {
+	if err = c.xweb.GetRegistry().Add(webapis.NewFabricManagementApiFactory(c.config.Id, c.network, &c.xmgmts)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create management api factory")
 	}
 
-	if err := c.xweb.GetRegistry().Add(api_impl.NewMetricsApiFactory(c.config.Id, c.network)); err != nil {
+	if err = c.xweb.GetRegistry().Add(webapis.NewMetricsApiFactory(c.config.Id, c.network)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create metrics api factory")
 	}
 
-	if err := c.xweb.GetRegistry().Add(zac.NewZitiAdminConsoleFactory()); err != nil {
+	if err = c.xweb.GetRegistry().Add(zac.NewZitiAdminConsoleFactory()); err != nil {
 		logrus.WithError(err).Fatalf("failed to create single page application factory")
 	}
 
+	if c.IsEdgeEnabled() {
+		managementApiFactory := webapis.NewManagementApiFactory(c.env)
+		clientApiFactory := webapis.NewClientApiFactory(c.env)
+		oidcApiFactory := webapis.NewOidcApiFactory(c.env)
+
+		if err = c.xweb.GetRegistry().Add(managementApiFactory); err != nil {
+			pfxlog.Logger().Fatalf("failed to create Edge Management API factory: %v", err)
+		}
+
+		if err = c.xweb.GetRegistry().Add(clientApiFactory); err != nil {
+			pfxlog.Logger().Fatalf("failed to create Edge Client API factory: %v", err)
+		}
+
+		if err = c.xweb.GetRegistry().Add(oidcApiFactory); err != nil {
+			pfxlog.Logger().Fatalf("failed to create OIDC API factory: %v", err)
+		}
+
+		webapis.OverrideRequestWrapper(webapis.NewFabricApiWrapper(c.env))
+	}
+	c.xwebInitialized.MarkInitialized()
+}
+
+func (c *Controller) IsEdgeEnabled() bool {
+	return c.config.Edge.Enabled
 }
 
 func (c *Controller) Run() error {
@@ -366,7 +394,7 @@ func (c *Controller) Run() error {
 
 	go underlayDispatcher.Run()
 
-	if err := c.config.Configure(c.xweb); err != nil {
+	if err = c.config.Configure(c.xweb); err != nil {
 		panic(err)
 	}
 
@@ -634,6 +662,7 @@ func getApiPath(binding string) string {
 
 func (c *Controller) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
 	c.apiDataOnce.Do(func() {
+		c.xwebInitialized.WaitTillInitialized()
 		xwebConfig := c.xweb.GetConfig()
 
 		apiData := map[string][]event.ApiAddress{}
