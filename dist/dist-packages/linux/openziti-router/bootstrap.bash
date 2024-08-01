@@ -187,7 +187,7 @@ loadEnvFiles() {
 
 promptRouterAddress() {
     if [[ -z "${ZITI_ROUTER_ADVERTISED_ADDRESS:-}" ]]; then
-        if ZITI_ROUTER_ADVERTISED_ADDRESS="$(prompt "Enter the DNS name or IP address of this router [required]: ")"; then
+        if ZITI_ROUTER_ADVERTISED_ADDRESS="$(prompt "Enter the DNS name or IP address of this router [localhost]: " || echo "localhost")"; then
             setAnswer "ZITI_ROUTER_ADVERTISED_ADDRESS=${ZITI_ROUTER_ADVERTISED_ADDRESS}" "${BOOT_ENV_FILE}"
         else
             echo "WARN: missing ZITI_ROUTER_ADVERTISED_ADDRESS in ${BOOT_ENV_FILE}" >&2
@@ -240,37 +240,6 @@ promptRouterPort() {
     fi
 }
 
-# promptRouterType() {
-#     # if undefined or default value in env file, prompt for router type, preserving default if no answer
-#     if [[ -z "${ZITI_ROUTER_TYPE:-}" ]]; then
-#         if ZITI_ROUTER_TYPE="$(prompt 'Enter the router type (edge, fabric) [edge]: ' || echo 'edge')"; then
-#             setAnswer "ZITI_ROUTER_TYPE=${ZITI_ROUTER_TYPE}" "${BOOT_ENV_FILE}"
-#         fi
-#     fi
-# }
-
-# promptRouterMode() {
-#     if [[ "${ZITI_ROUTER_TYPE}" == fabric ]]; then
-#       # no need to set edge tunnel mode if type is fabric
-#       return 0
-#     fi
-#     # if undefined or default value in env file, prompt for router mode, preserving default if no answer
-#     if [[ -z "${ZITI_ROUTER_MODE:-}" ]]; then
-#         if ZITI_ROUTER_MODE="$(prompt 'Enter the router mode (eg. host, tproxy, proxy) [none]: ' || echo 'none')"; then
-#             setAnswer "ZITI_ROUTER_MODE=${ZITI_ROUTER_MODE}" "${BOOT_ENV_FILE}"
-#         fi
-#     fi
-#     # grant kernel capability NET_ADMIN if tproxy mode
-#     if [[ "${ZITI_ROUTER_MODE}" == tproxy ]]; then
-#         grantNetAdmin
-#         # also grant NET_BIND_SERVICE if resolver port is default 53 or defined < 1024
-#         RESOLVER_PORT="${ZITI_ROUTER_TPROXY_RESOLVER##*:}"
-#         if [[ -z "${RESOLVER_PORT}" || "${RESOLVER_PORT}" -lt 1024 ]]; then
-#             grantNetBindService
-#         fi
-#     fi
-# }
-
 promptCtrlAddress() {
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
     if ! ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter address of the controller [required]: ")"; then
@@ -300,18 +269,6 @@ promptBootstrap() {
         return 1
     fi
 }
-
-# promptBindAddress() {
-#   if [[ -z "${ZITI_ROUTER_BIND_ADDRESS:-}" ]]; then
-#     if ZITI_ROUTER_BIND_ADDRESS="$(prompt "Enter the bind address [0.0.0.0]: " || echo '0.0.0.0')"; then
-#       if [[ -n "${ZITI_ROUTER_BIND_ADDRESS:-}" ]]; then
-#         setAnswer "ZITI_ROUTER_BIND_ADDRESS=${ZITI_ROUTER_BIND_ADDRESS}" "${BOOT_ENV_FILE}"
-#       fi
-#     else
-#       echo "WARN: missing ZITI_ROUTER_BIND_ADDRESS in ${BOOT_ENV_FILE}" >&2
-#     fi
-#   fi
-# }
 
 setAnswer() {
   if [[ "${#}" -ge 2 ]]; then
