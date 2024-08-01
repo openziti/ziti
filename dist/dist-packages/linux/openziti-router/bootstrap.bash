@@ -46,6 +46,18 @@ makeConfig() {
     if [[ -n "${ZITI_ROUTER_LAN_INTERFACE:-}" ]]; then
       _command+=("--lanInterface ${ZITI_ROUTER_LAN_INTERFACE}")
     fi
+
+    # append args if ZITI_BOOTSTRAP_CONFIG_ARGS is not empty
+    if [[ -n "${ZITI_BOOTSTRAP_CONFIG_ARGS:-}" ]]; then
+      _command+=("${ZITI_BOOTSTRAP_CONFIG_ARGS}")
+    fi
+
+    if [[ -s "${_config_file}" && "${1:-}" == --force ]]; then
+      echo "INFO: recreating config file: ${_config_file}"
+      mv --no-clobber "${_config_file}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
+    fi
+
+
     exportZitiVars                # export all ZITI_ vars to be used in bootstrap
     # shellcheck disable=SC2068
     ${_command[@]}
@@ -175,7 +187,7 @@ loadEnvFiles() {
 
 promptRouterAddress() {
     if [[ -z "${ZITI_ROUTER_ADVERTISED_ADDRESS:-}" ]]; then
-        if ZITI_ROUTER_ADVERTISED_ADDRESS="$(prompt "Enter the DNS name or IP address of this router [required]: ")"; then
+        if ZITI_ROUTER_ADVERTISED_ADDRESS="$(prompt "Enter the DNS name or IP address of this router [localhost]: " || echo "localhost")"; then
             setAnswer "ZITI_ROUTER_ADVERTISED_ADDRESS=${ZITI_ROUTER_ADVERTISED_ADDRESS}" "${BOOT_ENV_FILE}"
         else
             echo "WARN: missing ZITI_ROUTER_ADVERTISED_ADDRESS in ${BOOT_ENV_FILE}" >&2
@@ -228,37 +240,6 @@ promptRouterPort() {
     fi
 }
 
-# promptRouterType() {
-#     # if undefined or default value in env file, prompt for router type, preserving default if no answer
-#     if [[ -z "${ZITI_ROUTER_TYPE:-}" ]]; then
-#         if ZITI_ROUTER_TYPE="$(prompt 'Enter the router type (edge, fabric) [edge]: ' || echo 'edge')"; then
-#             setAnswer "ZITI_ROUTER_TYPE=${ZITI_ROUTER_TYPE}" "${BOOT_ENV_FILE}"
-#         fi
-#     fi
-# }
-
-# promptRouterMode() {
-#     if [[ "${ZITI_ROUTER_TYPE}" == fabric ]]; then
-#       # no need to set edge tunnel mode if type is fabric
-#       return 0
-#     fi
-#     # if undefined or default value in env file, prompt for router mode, preserving default if no answer
-#     if [[ -z "${ZITI_ROUTER_MODE:-}" ]]; then
-#         if ZITI_ROUTER_MODE="$(prompt 'Enter the router mode (eg. host, tproxy, proxy) [none]: ' || echo 'none')"; then
-#             setAnswer "ZITI_ROUTER_MODE=${ZITI_ROUTER_MODE}" "${BOOT_ENV_FILE}"
-#         fi
-#     fi
-#     # grant kernel capability NET_ADMIN if tproxy mode
-#     if [[ "${ZITI_ROUTER_MODE}" == tproxy ]]; then
-#         grantNetAdmin
-#         # also grant NET_BIND_SERVICE if resolver port is default 53 or defined < 1024
-#         RESOLVER_PORT="${ZITI_ROUTER_TPROXY_RESOLVER##*:}"
-#         if [[ -z "${RESOLVER_PORT}" || "${RESOLVER_PORT}" -lt 1024 ]]; then
-#             grantNetBindService
-#         fi
-#     fi
-# }
-
 promptCtrlAddress() {
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
     if ! ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter address of the controller [required]: ")"; then
@@ -288,18 +269,6 @@ promptBootstrap() {
         return 1
     fi
 }
-
-# promptBindAddress() {
-#   if [[ -z "${ZITI_ROUTER_BIND_ADDRESS:-}" ]]; then
-#     if ZITI_ROUTER_BIND_ADDRESS="$(prompt "Enter the bind address [0.0.0.0]: " || echo '0.0.0.0')"; then
-#       if [[ -n "${ZITI_ROUTER_BIND_ADDRESS:-}" ]]; then
-#         setAnswer "ZITI_ROUTER_BIND_ADDRESS=${ZITI_ROUTER_BIND_ADDRESS}" "${BOOT_ENV_FILE}"
-#       fi
-#     else
-#       echo "WARN: missing ZITI_ROUTER_BIND_ADDRESS in ${BOOT_ENV_FILE}" >&2
-#     fi
-#   fi
-# }
 
 setAnswer() {
   if [[ "${#}" -ge 2 ]]; then
@@ -443,6 +412,7 @@ trap exitHandler EXIT SIGINT SIGTERM
 # : "${ZITI_SERVER_FILE:=server}"  # relative to intermediate CA "keys" and "certs" dirs
 # : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_CTRL_ADVERTISED_PORT:=1280}"
+: "${ZITI_ROUTER_ADVERTISED_ADDRESS:=localhost}"
 : "${ZITI_ROUTER_PORT:=3022}"
 : "${ZITI_ROUTER_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
 : "${ZITI_ROUTER_NAME:=router}"  # basename of identity files
@@ -451,6 +421,7 @@ trap exitHandler EXIT SIGINT SIGTERM
 : "${ZITI_ROUTER_MODE:=host}"  # router will panic if not tunneler-enabled in controller
 : "${ZITI_ROUTER_TPROXY_RESOLVER:=udp://127.0.0.1:53}"  # where to listen for DNS requests in tproxy mode
 : "${ZITI_ROUTER_DNS_IP_RANGE:=100.64.0.1/10}"  # CIDR range of IP addresses to assign to DNS clients in tproxy mode
+ZITI_BOOTSTRAP_NOW="$(date --utc --iso-8601=seconds)"
 
 # run the bootstrap function if this script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

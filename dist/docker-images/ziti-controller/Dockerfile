@@ -44,8 +44,8 @@ WORKDIR /ziti-controller
 # configure logging
 ENV ZITI_TIME_FORMAT=utc
 
-# globally toggle bootstrapping; false preserves "thin" behavior for existing deployments like K8s
-ENV ZITI_BOOTSTRAP=false
+# globally toggle bootstrapping
+ENV ZITI_BOOTSTRAP=true
 
 # selectively toggle bootstrapping steps
 ENV ZITI_BOOTSTRAP_PKI=true
