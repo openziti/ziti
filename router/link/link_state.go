@@ -42,6 +42,15 @@ func (self linkStatus) String() string {
 	return string(self)
 }
 
+func newLinkDest(destId string) *linkDest {
+	return &linkDest{
+		id:          destId,
+		healthy:     true,
+		unhealthyAt: time.Time{},
+		linkMap:     map[string]*linkState{},
+	}
+}
+
 type linkDest struct {
 	id          string
 	version     string

@@ -25,12 +25,14 @@ import (
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/sirupsen/logrus"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -43,6 +45,7 @@ type Env interface {
 	GetCloseNotify() <-chan struct{}
 	GetLinkDialerPool() goroutines.Pool
 	GetRateLimiterPool() goroutines.Pool
+	GetMetricsRegistry() metrics.UsageRegistry
 }
 
 func NewLinkRegistry(routerEnv Env) xlink.Registry {
@@ -58,6 +61,7 @@ func NewLinkRegistry(routerEnv Env) xlink.Registry {
 	}
 
 	go result.run()
+	go result.runGcLinkMetricsLoop()
 
 	return result
 }
@@ -75,6 +79,82 @@ type linkRegistryImpl struct {
 	events           chan event
 	triggerNotifyC   chan struct{}
 	notifyInProgress atomic.Bool
+}
+
+func (self *linkRegistryImpl) runGcLinkMetricsLoop() {
+	var lastRunResults map[string]metrics.Metric
+
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			lastRunResults = self.gcLinkMetrics(lastRunResults)
+		case <-self.env.GetCloseNotify():
+			return
+		}
+	}
+}
+
+func (self *linkRegistryImpl) gcLinkMetrics(lastRunResults map[string]metrics.Metric) map[string]metrics.Metric {
+	for linkId, metric := range lastRunResults {
+		// If the metrics we found last time are still tied to a non-existent link, dispose of them
+		if !self.IsKnownLinkId(linkId) {
+			metric.Dispose()
+		}
+	}
+	return self.getOrphanedLinkMetrics()
+}
+
+func (self *linkRegistryImpl) getOrphanedLinkMetrics() map[string]metrics.Metric {
+	result := map[string]metrics.Metric{}
+	self.env.GetMetricsRegistry().EachMetric(func(name string, metric metrics.Metric) {
+		if strings.HasPrefix(name, "link.") {
+			base := strings.TrimPrefix(name, "link.")
+			var linkId string
+			if strings.ContainsRune(base, ':') {
+				parts := strings.Split(base, ":")
+				if len(parts) != 2 {
+					return
+				}
+				linkId = parts[1]
+			} else {
+				linkId = strings.Split(base, ".")[0]
+			}
+
+			if !self.IsKnownLinkId(linkId) {
+				result[name] = metric
+			}
+		}
+	})
+
+	return result
+}
+
+func (self *linkRegistryImpl) IsKnownLinkId(linkId string) bool {
+	if _, found := self.GetLinkById(linkId); found {
+		return true
+	}
+
+	evt := &scanForLinkIdEvent{
+		linkId:  linkId,
+		resultC: make(chan bool, 1),
+	}
+	self.queueEvent(evt)
+
+	t := time.NewTicker(time.Second)
+	defer t.Stop()
+
+	// if we can't tell, defer to link known so we don't clear anything
+	select {
+	case result := <-evt.resultC:
+		return result
+	case <-self.env.GetCloseNotify():
+		return true
+	case <-t.C:
+		return true
+	}
 }
 
 func (self *linkRegistryImpl) GetLink(linkKey string) (xlink.Xlink, bool) {

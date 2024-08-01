@@ -73,12 +73,7 @@ func (self *linkDestUpdate) Handle(registry *linkRegistryImpl) {
 	becameHealthy := false
 
 	if dest == nil {
-		dest = &linkDest{
-			id:          self.id,
-			healthy:     true,
-			unhealthyAt: time.Time{},
-			linkMap:     map[string]*linkState{},
-		}
+		dest = newLinkDest(self.id)
 		registry.destinations[self.id] = dest
 	} else {
 		if !dest.healthy && self.healthy {
@@ -153,13 +148,8 @@ func (self *dialRequest) Handle(registry *linkRegistryImpl) {
 	dest := registry.destinations[self.dial.RouterId]
 
 	if dest == nil {
-		dest = &linkDest{
-			id:          self.dial.RouterId,
-			healthy:     true,
-			unhealthyAt: time.Time{},
-			linkMap:     map[string]*linkState{},
-			version:     self.dial.RouterVersion,
-		}
+		dest = newLinkDest(self.dial.RouterId)
+		dest.version = self.dial.RouterVersion
 		registry.destinations[self.dial.RouterId] = dest
 	}
 
@@ -378,4 +368,21 @@ func (self *markFaultedLinksNotified) Handle(*linkRegistryImpl) {
 			state.clearFault(fault)
 		}
 	}
+}
+
+type scanForLinkIdEvent struct {
+	linkId  string
+	resultC chan bool
+}
+
+func (self *scanForLinkIdEvent) Handle(r *linkRegistryImpl) {
+	for _, dest := range r.destinations {
+		for _, state := range dest.linkMap {
+			if state.linkId == self.linkId {
+				self.resultC <- true
+				return
+			}
+		}
+	}
+	self.resultC <- false
 }
