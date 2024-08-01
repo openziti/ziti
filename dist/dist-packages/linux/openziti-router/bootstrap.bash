@@ -46,6 +46,18 @@ makeConfig() {
     if [[ -n "${ZITI_ROUTER_LAN_INTERFACE:-}" ]]; then
       _command+=("--lanInterface ${ZITI_ROUTER_LAN_INTERFACE}")
     fi
+
+    # append args if ZITI_BOOTSTRAP_CONFIG_ARGS is not empty
+    if [[ -n "${ZITI_BOOTSTRAP_CONFIG_ARGS:-}" ]]; then
+      _command+=("${ZITI_BOOTSTRAP_CONFIG_ARGS}")
+    fi
+
+    if [[ -s "${_config_file}" && "${1:-}" == --force ]]; then
+      echo "INFO: recreating config file: ${_config_file}"
+      mv --no-clobber "${_config_file}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
+    fi
+
+
     exportZitiVars                # export all ZITI_ vars to be used in bootstrap
     # shellcheck disable=SC2068
     ${_command[@]}
@@ -451,6 +463,7 @@ trap exitHandler EXIT SIGINT SIGTERM
 : "${ZITI_ROUTER_MODE:=host}"  # router will panic if not tunneler-enabled in controller
 : "${ZITI_ROUTER_TPROXY_RESOLVER:=udp://127.0.0.1:53}"  # where to listen for DNS requests in tproxy mode
 : "${ZITI_ROUTER_DNS_IP_RANGE:=100.64.0.1/10}"  # CIDR range of IP addresses to assign to DNS clients in tproxy mode
+ZITI_BOOTSTRAP_NOW="$(date --utc --iso-8601=seconds)"
 
 # run the bootstrap function if this script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

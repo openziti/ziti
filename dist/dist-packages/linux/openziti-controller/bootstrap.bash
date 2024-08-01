@@ -138,14 +138,23 @@ makeConfig() {
           ZITI_PKI_EDGE_KEY="${ZITI_PKI_CTRL_KEY}" \
           ZITI_PKI_EDGE_CA="${ZITI_PKI_CTRL_CA}"
 
-  exportZitiVars
+  # build config command
+  local -a _command=("ziti create config controller" \
+            "--output ${_config_file}")
+
+  # append args if ZITI_BOOTSTRAP_CONFIG_ARGS is not empty
+  if [[ -n "${ZITI_BOOTSTRAP_CONFIG_ARGS:-}" ]]; then
+    _command+=("${ZITI_BOOTSTRAP_CONFIG_ARGS}")
+  fi
+
   if [[ -s "${_config_file}" && "${1:-}" == --force ]]; then
     echo "INFO: recreating config file: ${_config_file}"
-    mv --no-clobber "${_config_file}"{,".${DATETIME}.old"}
+    mv --no-clobber "${_config_file}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
   fi
-  ziti create config controller \
-    --output "${_config_file}"
 
+  exportZitiVars
+  # shellcheck disable=SC2068
+  ${_command[@]}
 }
 
 makeDatabase() {
@@ -168,7 +177,7 @@ makeDatabase() {
     echo "DEBUG: creating database file: ${_db_file}" >&3
   elif [[ "${1:-}" == --force ]]; then
     echo "INFO: recreating database file: ${_db_file}"
-    mv --no-clobber "${_db_file}"{,".${DATETIME}.old"}
+    mv --no-clobber "${_db_file}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
   else
     echo "INFO: database file exists: ${_db_file}"
     return 0
@@ -533,6 +542,7 @@ trap exitHandler EXIT SIGINT SIGTERM
 : "${ZITI_CTRL_DATABASE_FILE:=bbolt.db}"  # relative path to working directory
 : "${ZITI_CTRL_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
 : "${ZITI_BOOTSTRAP_LOG_FILE:=$(mktemp)}"  # where the exit handler should concatenate verbose and debug messages
+ZITI_BOOTSTRAP_NOW="$(date --utc --iso-8601=seconds)"
 
 # run the bootstrap function if this script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -545,7 +555,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
   BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
   SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
-  DATETIME="$(date --utc --iso-8601=seconds)"
 
   if [[ "${1:-}" =~ ^[-] ]]
   then
