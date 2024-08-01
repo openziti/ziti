@@ -412,6 +412,7 @@ trap exitHandler EXIT SIGINT SIGTERM
 # : "${ZITI_SERVER_FILE:=server}"  # relative to intermediate CA "keys" and "certs" dirs
 # : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_CTRL_ADVERTISED_PORT:=1280}"
+: "${ZITI_ROUTER_ADVERTISED_ADDRESS:=localhost}"
 : "${ZITI_ROUTER_PORT:=3022}"
 : "${ZITI_ROUTER_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
 : "${ZITI_ROUTER_NAME:=router}"  # basename of identity files
