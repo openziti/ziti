@@ -1,20 +1,24 @@
-package server
+package webapis
 
 import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_server"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
-	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/response"
 	"net/http"
 	"time"
 )
+
+func NewFabricApiWrapper(ae *env.AppEnv) api_impl.RequestWrapper {
+	return &fabricWrapper{ae: ae}
+}
 
 type fabricWrapper struct {
 	ae *env.AppEnv

@@ -1,11 +1,13 @@
 package api_impl
 
-import "github.com/openziti/ziti/controller/rest_server/operations"
+import (
+	"github.com/openziti/ziti/controller/rest_server/operations"
+)
 
-var routers []Router
+var Routers []Router
 
 func AddRouter(router Router) {
-	routers = append(routers, router)
+	Routers = append(Routers, router)
 }
 
 type Router interface {

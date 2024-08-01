@@ -14,30 +14,37 @@
 	limitations under the License.
 */
 
-package api_impl
+package concurrency
 
 import (
-	"bytes"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/ziti/controller/idgen"
-	"io"
-	"net/http"
+	"github.com/michaelquigley/pfxlog"
+	"sync/atomic"
 )
 
-func NewRequestContext(rw http.ResponseWriter, r *http.Request) api.RequestContext {
-	rid := idgen.New()
+type InitState interface {
+	WaitTillInitialized()
+	MarkInitialized()
+}
 
-	body, _ := io.ReadAll(r.Body)
-	r.Body = io.NopCloser(bytes.NewReader(body))
-
-	requestContext := &api.RequestContextImpl{
-		Id:             rid,
-		Body:           body,
-		ResponseWriter: rw,
-		Request:        r,
+func NewInitState() InitState {
+	return &channelInitState{
+		c: make(chan struct{}),
 	}
+}
 
-	requestContext.Responder = api.NewResponder(requestContext, FabricResponseMapper{})
+type channelInitState struct {
+	c           chan struct{}
+	initialized atomic.Bool
+}
 
-	return requestContext
+func (self *channelInitState) WaitTillInitialized() {
+	<-self.c
+}
+
+func (self *channelInitState) MarkInitialized() {
+	if self.initialized.CompareAndSwap(false, true) {
+		close(self.c)
+	} else {
+		pfxlog.Logger().Panic("initialized marked complete more than once")
+	}
 }

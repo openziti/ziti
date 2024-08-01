@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package server
+package webapis
 
 import (
 	"fmt"
@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/edge-api/rest_client_api_server"
 	"github.com/openziti/edge-api/rest_management_api_server"
 	"github.com/openziti/xweb/v2"
-	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
@@ -33,6 +32,8 @@ import (
 	"strings"
 	"time"
 )
+
+const ZitiInstanceId = "ziti-instance-id"
 
 var _ xweb.ApiHandlerFactory = &ClientApiFactory{}
 
@@ -47,7 +48,7 @@ func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 	for _, webListener := range config.ServerConfigs {
 		for _, api := range webListener.APIs {
 
-			if webListener.Identity != nil && (api.Binding() == controller.ClientApiBinding || api.Binding() == controller.ManagementApiBinding) {
+			if webListener.Identity != nil && (api.Binding() == ClientApiBinding || api.Binding() == ManagementApiBinding) {
 				caBytes, err := os.ReadFile(webListener.Identity.GetConfig().CA)
 
 				if err != nil {
@@ -57,7 +58,7 @@ func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 				edgeConfig.AddCaPems(caBytes)
 			}
 
-			if !clientApiFound && api.Binding() == controller.ClientApiBinding {
+			if !clientApiFound && api.Binding() == ClientApiBinding {
 				for _, bindPoint := range webListener.BindPoints {
 					if bindPoint.Address == edgeConfig.Api.Address {
 						factory.appEnv.SetServerCert(webListener.Identity.ServerCert()[0])
@@ -72,7 +73,7 @@ func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 	edgeConfig.RefreshCas()
 
 	if !clientApiFound {
-		return errors.Errorf("could not find [edge.api.address] value [%s] as a bind point any instance of ApiConfig [%s]", edgeConfig.Api.Address, controller.ClientApiBinding)
+		return errors.Errorf("could not find [edge.api.address] value [%s] as a bind point any instance of ApiConfig [%s]", edgeConfig.Api.Address, ClientApiBinding)
 	}
 
 	return nil
@@ -85,7 +86,7 @@ func NewClientApiFactory(appEnv *env.AppEnv) *ClientApiFactory {
 }
 
 func (factory ClientApiFactory) Binding() string {
-	return controller.ClientApiBinding
+	return ClientApiBinding
 }
 
 func (factory ClientApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
@@ -111,7 +112,7 @@ type ClientApiHandler struct {
 }
 
 func (clientApi ClientApiHandler) Binding() string {
-	return controller.ClientApiBinding
+	return ClientApiBinding
 }
 
 func (clientApi ClientApiHandler) Options() map[interface{}]interface{} {
@@ -154,28 +155,28 @@ func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 		//if not /edge prefix and not /fabric, translate to "/edge/client/v<latest>", this is a hack
 		//that should be removed once non-prefixed URLs are no longer used.
 		//This will affect older go-lang enrolled SDKs and the C-SDK.
-		if !strings.HasPrefix(r.URL.Path, controller.RestApiRootPath) && !strings.HasPrefix(r.URL.Path, "/fabric") && !strings.HasPrefix(r.URL.Path, "/.well-known") {
-			r.URL.Path = controller.ClientRestApiBaseUrlLatest + r.URL.Path
+		if !strings.HasPrefix(r.URL.Path, RestApiRootPath) && !strings.HasPrefix(r.URL.Path, "/fabric") && !strings.HasPrefix(r.URL.Path, "/.well-known") {
+			r.URL.Path = ClientRestApiBaseUrlLatest + r.URL.Path
 		}
 
 		//translate /edge/v1 to /edge/client/v1
-		r.URL.Path = strings.Replace(r.URL.Path, controller.LegacyClientRestApiBaseUrlV1, controller.ClientRestApiBaseUrlLatest, 1)
+		r.URL.Path = strings.Replace(r.URL.Path, LegacyClientRestApiBaseUrlV1, ClientRestApiBaseUrlLatest, 1)
 
 		// .well-known/est/cacerts can be handled by the client API but the generated server requires
 		// the prefixed path for route resolution.
 		if r.URL.Path == WellKnownEstCaCerts {
-			r.URL.Path = controller.ClientRestApiBaseUrlLatest + WellKnownEstCaCerts
+			r.URL.Path = ClientRestApiBaseUrlLatest + WellKnownEstCaCerts
 		}
 
 		if r.URL.Path == VersionPath || r.URL.Path == RootPath {
-			r.URL.Path = controller.ClientRestApiBaseUrlLatest + VersionPath
+			r.URL.Path = ClientRestApiBaseUrlLatest + VersionPath
 		}
 
-		if r.URL.Path == controller.ClientRestApiSpecUrl {
+		if r.URL.Path == ClientRestApiSpecUrl {
 
 			//work around for: https://github.com/go-openapi/runtime/issues/226
 			if referer := r.Header.Get("Referer"); referer != "" {
-				if strings.Contains(referer, controller.ManagementRestApiBaseUrlLatest) {
+				if strings.Contains(referer, ManagementRestApiBaseUrlLatest) {
 					rw.Header().Set("content-type", "application/json")
 					rw.WriteHeader(http.StatusOK)
 					_, _ = rw.Write(rest_management_api_server.SwaggerJSON)

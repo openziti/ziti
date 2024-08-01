@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	runner2 "github.com/openziti/ziti/common/runner"
-	"github.com/openziti/ziti/controller/api_impl"
 	edgeconfig "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/handler_edge_ctrl"
@@ -52,8 +51,6 @@ const (
 	policyMaxFreq     = 1 * time.Hour
 	policyAppWanFreq  = 1 * time.Second
 	policySessionFreq = 5 * time.Second
-
-	ZitiInstanceId = "ziti-instance-id"
 )
 
 func NewController(host env.HostController) (*Controller, error) {
@@ -111,8 +108,6 @@ func NewController(host env.HostController) (*Controller, error) {
 		binding.AddTypedReceiveHandler(handler_edge_mgmt.NewInitEdgeHandler(c.AppEnv))
 		return nil
 	}))
-
-	api_impl.OverrideRequestWrapper(&fabricWrapper{ae: c.AppEnv})
 
 	return c, nil
 }
@@ -246,22 +241,6 @@ func (c *Controller) Run() {
 	}
 
 	go c.checkEdgeInitialized()
-
-	managementApiFactory := NewManagementApiFactory(c.AppEnv)
-	clientApiFactory := NewClientApiFactory(c.AppEnv)
-	oidcApiFactory := NewOidcApiFactory(c.AppEnv)
-
-	if err := c.AppEnv.HostController.GetXWebInstance().GetRegistry().Add(managementApiFactory); err != nil {
-		pfxlog.Logger().Fatalf("failed to create Edge Management API factory: %v", err)
-	}
-
-	if err := c.AppEnv.HostController.GetXWebInstance().GetRegistry().Add(clientApiFactory); err != nil {
-		pfxlog.Logger().Fatalf("failed to create Edge Client API factory: %v", err)
-	}
-
-	if err := c.AppEnv.HostController.GetXWebInstance().GetRegistry().Add(oidcApiFactory); err != nil {
-		pfxlog.Logger().Fatalf("failed to create OIDC API factory: %v", err)
-	}
 
 	if err := c.policyEngine.Start(c.AppEnv.HostController.GetCloseNotifyChannel()); err != nil {
 		log.WithError(err).Fatalf("error starting policy engine")

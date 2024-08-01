@@ -79,6 +79,10 @@ func (self *testRegistryEnv) GetRateLimiterPool() goroutines.Pool {
 	panic("implement me")
 }
 
+func (self *testRegistryEnv) GetMetricsRegistry() metrics.UsageRegistry {
+	panic("implement me")
+}
+
 type testDial struct {
 	Key           string
 	LinkId        string

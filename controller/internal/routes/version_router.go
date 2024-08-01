@@ -24,10 +24,10 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/common/build"
-	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/ziti/controller/webapis"
 	"runtime"
 	"sync"
 )
@@ -85,13 +85,13 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 			RuntimeVersion: runtime.Version(),
 			Version:        buildInfo.Version(),
 			APIVersions: map[string]map[string]rest_model.APIVersion{
-				controller.ClientApiBinding:     {controller.VersionV1: mapApiVersionToRestModel(controller.ClientRestApiBaseUrlV1)},
-				controller.ManagementApiBinding: {controller.VersionV1: mapApiVersionToRestModel(controller.ManagementRestApiBaseUrlV1)},
+				webapis.ClientApiBinding:     {webapis.VersionV1: mapApiVersionToRestModel(webapis.ClientRestApiBaseUrlV1)},
+				webapis.ManagementApiBinding: {webapis.VersionV1: mapApiVersionToRestModel(webapis.ManagementRestApiBaseUrlV1)},
 			},
 			Capabilities: []string{},
 		}
 
-		for apiBinding, apiVersionToPathMap := range controller.AllApiBindingVersions {
+		for apiBinding, apiVersionToPathMap := range webapis.AllApiBindingVersions {
 			ir.cachedVersions.APIVersions[apiBinding] = map[string]rest_model.APIVersion{}
 
 			for apiVersion, apiPath := range apiVersionToPathMap {
@@ -120,7 +120,7 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 
 		for _, serverConfig := range ae.HostController.GetXWebInstance().GetConfig().ServerConfigs {
 			for _, api := range serverConfig.APIs {
-				if api.Binding() == controller.OidcApiBinding {
+				if api.Binding() == webapis.OidcApiBinding {
 					oidcEnabled = true
 					break
 				}
@@ -139,7 +139,7 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 			}
 		}
 
-		ir.cachedVersions.APIVersions[controller.LegacyClientApiBinding] = ir.cachedVersions.APIVersions[controller.ClientApiBinding]
+		ir.cachedVersions.APIVersions[webapis.LegacyClientApiBinding] = ir.cachedVersions.APIVersions[webapis.ClientApiBinding]
 
 		if oidcEnabled {
 			ir.cachedVersions.Capabilities = append(ir.cachedVersions.Capabilities, string(rest_model.CapabilitiesOIDCAUTH))
@@ -166,11 +166,11 @@ func (ir *VersionRouter) ListCapabilities(_ *env.AppEnv, rc *response.RequestCon
 func apiBindingToPath(binding string) string {
 	switch binding {
 	case "edge":
-		return controller.ClientRestApiBaseUrlV1
-	case controller.ClientApiBinding:
-		return controller.ClientRestApiBaseUrlV1
-	case controller.ManagementApiBinding:
-		return controller.ManagementRestApiBaseUrlV1
+		return webapis.ClientRestApiBaseUrlV1
+	case webapis.ClientApiBinding:
+		return webapis.ClientRestApiBaseUrlV1
+	case webapis.ManagementApiBinding:
+		return webapis.ManagementRestApiBaseUrlV1
 	}
 	return ""
 }

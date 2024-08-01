@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package controller
+package webapis
 
 const (
 	VersionV1 = "v1"

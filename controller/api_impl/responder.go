@@ -1,9 +1,9 @@
 package api_impl
 
 import (
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/rest_model"
-	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 )
 
@@ -28,16 +28,16 @@ func RespondWithOk(responder api.Responder, data interface{}, meta *rest_model.M
 	}, http.StatusOK)
 }
 
-type fabricResponseMapper struct{}
+type FabricResponseMapper struct{}
 
-func (self fabricResponseMapper) EmptyOkData() interface{} {
+func (self FabricResponseMapper) EmptyOkData() interface{} {
 	return &rest_model.Empty{
 		Data: map[string]interface{}{},
 		Meta: &rest_model.Meta{},
 	}
 }
 
-func (self fabricResponseMapper) MapApiError(requestId string, apiError *errorz.ApiError) interface{} {
+func (self FabricResponseMapper) MapApiError(requestId string, apiError *errorz.ApiError) interface{} {
 	return &rest_model.APIErrorEnvelope{
 		Error: ToRestModel(apiError, requestId),
 		Meta: &rest_model.Meta{
