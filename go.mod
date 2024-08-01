@@ -43,7 +43,7 @@ require (
 	github.com/kataras/go-events v0.0.3
 	github.com/lucsky/cuid v1.2.1
 	github.com/mdlayher/netlink v1.7.2
-	github.com/michaelquigley/pfxlog v0.6.10
+	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/miekg/dns v1.1.61
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
@@ -55,7 +55,7 @@ require (
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.56
 	github.com/openziti/runzmd v1.0.49
-	github.com/openziti/sdk-golang v0.23.39
+	github.com/openziti/sdk-golang v0.23.40
 	github.com/openziti/secretstream v0.1.21
 	github.com/openziti/storage v0.3.0
 	github.com/openziti/transport/v2 v2.0.138

@@ -9,14 +9,14 @@ require (
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
-	github.com/michaelquigley/pfxlog v0.6.10
+	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.16
 	github.com/openziti/channel/v2 v2.0.136
 	github.com/openziti/edge-api v0.26.23
 	github.com/openziti/fablab v0.5.60
 	github.com/openziti/foundation/v2 v2.0.47
 	github.com/openziti/identity v1.0.81
-	github.com/openziti/sdk-golang v0.23.39
+	github.com/openziti/sdk-golang v0.23.40
 	github.com/openziti/storage v0.3.0
 	github.com/openziti/transport/v2 v2.0.138
 	github.com/openziti/ziti v0.28.3
