@@ -2,7 +2,7 @@
 
 # get kubectl CLI from a source with Docker Content Trust (DCT)
 # FIXME: require DCT at build time
-FROM bitnami/kubectl as bitnami-kubectl
+FROM bitnami/kubectl AS bitnami-kubectl
 
 # FIXME: This repo requires terms acceptance and is only available on registry.redhat.io.
 # FROM registry.access.redhat.com/openshift4/ose-cli as openshift-cli  
@@ -20,6 +20,8 @@ ARG TARGETARCH
 
 ARG ZUID=2171
 ARG ZGID=2171
+
+ARG HOME=/home/ziggy
 
 ### Required OpenShift Labels 
 LABEL name="openziti/ziti-cli" \
@@ -48,10 +50,10 @@ RUN mkdir -p -m0755 /licenses
 COPY ./LICENSE /licenses/apache.txt
 
 RUN groupadd --gid ${ZGID} ziggy \
-      && adduser --uid ${ZUID} --gid ${ZGID} --system --home /home/ziggy --shell /bin/bash ziggy \
-      && mkdir -p /home/ziggy \
-      && chown -R ${ZUID}:${ZGID} /home/ziggy \
-      && chmod -R g+rwX /home/ziggy
+      && adduser --uid ${ZUID} --gid ${ZGID} --system --home ${HOME} --shell /bin/bash ziggy \
+      && mkdir -p ${HOME} \
+      && chown -R ${ZUID}:${ZGID} ${HOME} \
+      && chmod -R g+rwX ${HOME}
 RUN mkdir -p /usr/local/bin
 COPY ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti /usr/local/bin/
 RUN chmod 0755 /usr/local/bin/ziti
@@ -59,5 +61,7 @@ RUN chmod 0755 /usr/local/bin/ziti
 RUN /usr/local/bin/ziti completion bash > /etc/bash_completion.d/ziti_cli
 
 USER ziggy
-COPY ${DOCKER_BUILD_DIR}/bashrc /home/ziggy/.bashrc
+ENV HOME=${HOME}
+COPY ${DOCKER_BUILD_DIR}/bashrc ${HOME}/.bashrc
+
 ENTRYPOINT [ "ziti" ]

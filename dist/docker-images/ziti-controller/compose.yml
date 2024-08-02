@@ -3,6 +3,10 @@ volumes:
   ziti-controller:
     driver: local
 
+networks:
+  ziti:
+    driver: bridge
+
 services:
   chown-controller:
     image: busybox
@@ -15,8 +19,13 @@ services:
     depends_on:
       chown-controller:
         condition: service_completed_successfully
+    user: ${ZIGGY_UID:-2171}
     volumes:
       - ziti-controller:/ziti-controller
+    networks:
+      ziti:
+        aliases:
+          - ${ZITI_CTRL_ADVERTISED_ADDRESS:-ziti-controller}
     # assign override vars in an .env file or export from parent env to ensure consistency throughout the compose
     # project
     environment:

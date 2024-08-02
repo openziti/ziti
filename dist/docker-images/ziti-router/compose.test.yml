@@ -1,0 +1,7 @@
+services:
+  ziti-router:
+    network_mode: host
+    networks: !override []
+    ports: !override []
+    volumes:
+      - ziti-login:/home/ziggy/.config/ziti

@@ -544,8 +544,16 @@ trap exitHandler EXIT SIGINT SIGTERM
 : "${ZITI_BOOTSTRAP_LOG_FILE:=$(mktemp)}"  # where the exit handler should concatenate verbose and debug messages
 ZITI_BOOTSTRAP_NOW="$(date --utc --iso-8601=seconds)"
 
-# run the bootstrap function if this script is executed directly
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+# if sourced then only define vars and functions and change working directory; else if exec'd then run bootstrap()
+if ! [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+
+  # ensure ZITI_HOME is working dir to allow paths to be relative or absolute
+  cd "${ZITI_HOME:=${PWD}}" || {
+    echo "ERROR: failed to cd to '${ZITI_HOME}'" >&2
+    exit 1
+  }
+
+else
 
   set -o errexit
   set -o nounset
