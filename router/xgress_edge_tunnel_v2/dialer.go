@@ -20,12 +20,14 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/ctrl_msg"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/pkg/errors"
+	"time"
 )
 
 func (self *tunneler) IsTerminatorValid(_ string, destination string) bool {
@@ -81,4 +83,26 @@ func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
 	x.Start()
 
 	return peerData, nil
+}
+
+func (self *tunneler) Inspect(key string, _ time.Duration) any {
+	if key == "ert-terminators" {
+		var result []*inspect.ErtTerminatorInspectDetail
+		self.terminators.IterCb(func(key string, terminator *tunnelTerminator) {
+			state := "established"
+			if terminator.closed.Load() {
+				state = "closed"
+			} else if !terminator.created.Load() {
+				state = "pending"
+			}
+
+			detail := &inspect.ErtTerminatorInspectDetail{
+				Key:   key,
+				Id:    terminator.id,
+				State: state,
+			}
+			result = append(result, detail)
+		})
+	}
+	return nil
 }
