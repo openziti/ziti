@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/pkg/errors"
@@ -157,6 +158,7 @@ func renderTotp(w http.ResponseWriter, id string, err error) {
 }
 
 func renderPage(w http.ResponseWriter, pageTemplate *template.Template, id string, err error) {
+	w.Header().Set("content-type", "text/html; charset=utf-8")
 	var errMsg string
 	errDisplay := "none"
 	if err != nil {
@@ -180,10 +182,22 @@ func renderPage(w http.ResponseWriter, pageTemplate *template.Template, id strin
 }
 
 func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
-	bodyContentType, err := negotiateBodyContentType(r)
+	responseType, err := negotiateResponseContentType(r)
 
 	if err != nil {
 		renderJsonApiError(w, err)
+		return
+	}
+
+	bodyContentType, err := negotiateBodyContentType(r)
+
+	if err != nil {
+		if responseType == JsonContentType {
+			renderJsonApiError(w, err)
+			return
+		}
+		http.Error(w, fmt.Sprintf("cannot process body content type: %s", err), http.StatusBadRequest)
+		return
 	}
 
 	id := ""
@@ -191,7 +205,7 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 	if bodyContentType == FormContentType {
 		err := r.ParseForm()
 		if err != nil {
-			http.Error(w, fmt.Sprintf("cannot parse form:%s", err), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("cannot parse form:%s", err), http.StatusBadRequest)
 			return
 		}
 		id = r.FormValue("id")
@@ -219,12 +233,21 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 	authRequest, verifyErr := l.store.VerifyTotp(ctx, code, id)
 
 	if verifyErr != nil {
-		renderTotp(w, id, err)
-		return
+		if responseType == JsonContentType {
+			renderJsonApiError(w, &errorz.ApiError{
+				Code:    "INVALID TOTP CODE",
+				Message: "an invalid TOTP code was supplied",
+				Status:  http.StatusBadRequest,
+			})
+			return
+		} else {
+			renderTotp(w, id, verifyErr)
+			return
+		}
 	}
 
 	if !authRequest.HasAmr(AuthMethodSecondaryTotp) {
-		renderTotp(w, id, errors.New("invalid TOTP code"))
+		renderTotp(w, id, errors.New("TOTP supplied but not enabled or required on identity"))
 	}
 
 	callbackUrl := l.callback(r.Context(), id)

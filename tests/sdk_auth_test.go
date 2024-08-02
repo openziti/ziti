@@ -148,9 +148,22 @@ func TestSdkAuth(t *testing.T) {
 				apiSession, err := client.Authenticate(certCreds, nil)
 
 				ctx.Req.NoError(err)
-				ctx.Req.NotNil(client)
 				ctx.Req.NotNil(apiSession)
 				ctx.Req.NotNil(apiSession.GetToken())
+			})
+
+			t.Run("authenticating with invalid totp code returns an error", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				client := edge_apis.NewClientApiClient([]*url.URL{clientApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+					const invalidCode = "00000"
+					strings <- invalidCode
+				})
+				client.SetUseOidc(true)
+				apiSession, err := client.Authenticate(certCreds, nil)
+
+				ctx.Req.Error(err)
+				ctx.Req.Nil(apiSession)
 			})
 		})
 	})
