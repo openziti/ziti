@@ -48,3 +48,14 @@ type SdkTerminatorInspectDetail struct {
 	CreateTime      string `json:"createTime"`
 	LastAttempt     string `json:"lastAttempt"`
 }
+
+type ErtTerminatorInspectResult struct {
+	Entries []*ErtTerminatorInspectDetail `json:"entries"`
+	Errors  []string                      `json:"errors"`
+}
+
+type ErtTerminatorInspectDetail struct {
+	Key   string `json:"key"`
+	Id    string `json:"id"`
+	State string `json:"state"`
+}

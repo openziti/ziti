@@ -21,7 +21,6 @@ import (
 	"strconv"
 	"time"
 
-	//"github.com/openziti/ziti/tunnel/entities"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"io"

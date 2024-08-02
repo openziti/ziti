@@ -80,6 +80,29 @@ type inspectRequestContext struct {
 	response *ctrl_pb.InspectResponse
 }
 
+func (context *inspectRequestContext) inspectXgressDialer(binding string, requested string) {
+	factory, _ := xgress.GlobalRegistry().Factory("edge")
+	if factory == nil {
+		context.appendError("no xgress factory configured for edge binding")
+		return
+	}
+
+	dialer, err := factory.CreateDialer(context.handler.env.GetDialerCfg()[binding])
+	if err != nil {
+		context.appendError(fmt.Sprintf("could not create %s dialer: (%s)", binding, err.Error()))
+		return
+	}
+
+	inspectable, ok := dialer.(xgress.Inspectable)
+	if !ok {
+		context.appendError(fmt.Sprintf("%s dialer is not of type Inspectable", binding))
+		return
+	}
+
+	result := inspectable.Inspect(strings.ToLower(requested), time.Second)
+	context.handleJsonResponse(requested, result)
+}
+
 func (context *inspectRequestContext) processLocal() {
 	for _, requested := range context.request.RequestedValues {
 		lc := strings.ToLower(requested)
@@ -89,23 +112,9 @@ func (context *inspectRequestContext) processLocal() {
 			result := context.handler.env.GetXlinkRegistry().Inspect(time.Second)
 			context.handleJsonResponse(requested, result)
 		} else if lc == "sdk-terminators" {
-			factory, _ := xgress.GlobalRegistry().Factory("edge")
-			if factory == nil {
-				context.appendError("no xgress factory configured for edge binding")
-				continue
-			}
-			dialer, err := factory.CreateDialer(context.handler.env.GetDialerCfg()["edge"])
-			if err != nil {
-				context.appendError(fmt.Sprintf("could not create edge dialer: (%s)", err.Error()))
-				continue
-			}
-			inspectable, ok := dialer.(xgress.Inspectable)
-			if !ok {
-				context.appendError("edge dialer is not of type Inspectable")
-				continue
-			}
-			result := inspectable.Inspect(lc, time.Second)
-			context.handleJsonResponse(requested, result)
+			context.inspectXgressDialer("edge", requested)
+		} else if lc == "ert-terminators" {
+			context.inspectXgressDialer("tunnel", requested)
 		} else if strings.HasPrefix(lc, "circuit:") {
 			circuitId := requested[len("circuit:"):]
 			result := context.handler.fwd.InspectCircuit(circuitId, false)
