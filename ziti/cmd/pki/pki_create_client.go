@@ -166,6 +166,11 @@ func (o *PKICreateClientOptions) Run() error {
 		return errors.Wrap(err, "cannot sign")
 	}
 
+	// Concat the newly-created client cert with the intermediate cert to create a client.chain.pem file
+	if err := o.Flags.PKI.Chain(signer, req); err != nil {
+		return errors.Wrap(err, "unable to generate cert chain")
+	}
+
 	log.Infoln("Success")
 
 	return nil
