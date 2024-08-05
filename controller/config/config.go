@@ -680,7 +680,18 @@ func isSelfSigned(cert *x509.Certificate) (bool, error) {
 }
 
 func generateDefaultSpiffeId(id identity.Identity) (*url.URL, error) {
-	chain := id.CaPool().GetChain(id.Cert().Leaf)
+	rawCerts := id.Cert().Certificate
+	certs := make([]*x509.Certificate, len(rawCerts))
+
+	for i := range rawCerts {
+		cert, err := x509.ParseCertificate(rawCerts[i])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse certificate at index [%d]: %w", i, err)
+		}
+		certs[i] = cert
+	}
+
+	chain := id.CaPool().GetChain(id.Cert().Leaf, certs...)
 
 	// chain is 0 or 1, no root possible
 	if len(chain) <= 1 {
