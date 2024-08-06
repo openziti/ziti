@@ -94,6 +94,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 			data.PopulateConfigValues()
 			// Set router identities
 			SetZitiRouterIdentity(&data.Router, validateRouterName(os.Getenv(constants.ZitiEdgeRouterNameVarName)))
+			setControllerTrustDomains(&data.Controller)
 			// Set up other identity info
 			SetControllerIdentity(&data.Controller)
 			SetEdgeConfig(&data.Controller)
@@ -107,6 +108,9 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 				{constants.PkiCtrlKeyVarName, constants.PkiCtrlKeyVarDescription, data.Controller.Identity.Key},
 				{constants.PkiCtrlCAVarName, constants.PkiCtrlCAVarDescription, data.Controller.Identity.Ca},
 				{constants.CtrlDatabaseFileVarName, constants.CtrlDatabaseFileVarDescription, data.Controller.Database.DatabaseFile},
+				{constants.CtrlBindAddressVarName, constants.CtrlBindAddressVarDescription, data.Controller.Ctrl.BindAddress},
+				{constants.CtrlTrustDomainVarName, constants.CtrlTrustDomainVarDescription, data.Controller.TrustDomain},
+				{constants.CtrlAdditionalTrustDomainsVarName, constants.CtrlAdditionalTrustDomainsVarDescription, strings.Join(data.Controller.AdditionalTrustDomains, ",")},
 				{constants.CtrlBindAddressVarName, constants.CtrlBindAddressVarDescription, data.Controller.Ctrl.BindAddress},
 				{constants.CtrlAdvertisedAddressVarName, constants.CtrlAdvertisedAddressVarDescription, data.Controller.Ctrl.AdvertisedAddress},
 				{constants.CtrlAdvertisedPortVarName, constants.CtrlAdvertisedPortVarDescription, data.Controller.Ctrl.AdvertisedPort},
