@@ -130,7 +130,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 	_ = os.Setenv("ZITI_HOME", o.Home)
 	_ = os.Setenv("ZITI_PKI_CTRL_CA", o.Home+"/pki/root-ca/certs/root-ca.cert")
 	_ = os.Setenv("ZITI_PKI_CTRL_KEY", o.Home+"/pki/intermediate-ca/keys/server.key")
-	_ = os.Setenv("ZITI_PKI_CTRL_CERT", o.Home+"/pki/intermediate-ca/certs/client.cert")
+	_ = os.Setenv("ZITI_PKI_CTRL_CERT", o.Home+"/pki/intermediate-ca/certs/client.chain.pem")
 	_ = os.Setenv("ZITI_PKI_SIGNER_CERT", o.Home+"/pki/intermediate-ca/certs/intermediate-ca.cert")
 	_ = os.Setenv("ZITI_PKI_SIGNER_KEY", o.Home+"/pki/intermediate-ca/keys/intermediate-ca.key")
 	_ = os.Setenv("ZITI_PKI_CTRL_SERVER_CERT", o.Home+"/pki/intermediate-ca/certs/server.chain.pem")
