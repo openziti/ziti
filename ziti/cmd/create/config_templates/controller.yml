@@ -29,7 +29,7 @@ identity:
   {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}  - server_cert:  "{{ .Controller.Web.Identity.AltServerCert }}"
   {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}    server_key:   "{{ .Controller.Web.Identity.AltServerKey }}"
 
-# trust domains may be overriden by SPIFFE ID as URI SAN 
+# trust domains may be overridden by SPIFFE ID as URI SAN 
 {{- if .Controller.TrustDomain }}
 trustDomain: {{ .Controller.TrustDomain }}
 {{- else }}
