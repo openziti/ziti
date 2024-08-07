@@ -25,7 +25,8 @@ makePki() {
   if [[ ! -s "${ZITI_CA_CERT}" ]]; then
     ziti pki create ca \
       --pki-root "${ZITI_PKI_ROOT}" \
-      --ca-file "${ZITI_CA_FILE}"
+      --ca-file "${ZITI_CA_FILE}" \
+      --trust-domain "${ZITI_CTRL_ADVERTISED_ADDRESS}"
   fi
 
   ZITI_PKI_SIGNER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.cert"
@@ -78,6 +79,7 @@ issueLeafCerts() {
       --server-file "${ZITI_SERVER_FILE}" \
       --dns "localhost,${ZITI_CTRL_ADVERTISED_ADDRESS}" \
       --ip "127.0.0.1,::1" \
+      --spiffe-id "/controller/${ZITI_SERVER_FILE}" \
       --allow-overwrite >&3  # write to debug fd because this runs every startup
   fi
 
@@ -91,6 +93,7 @@ issueLeafCerts() {
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
       --client-file "${ZITI_CLIENT_FILE}" \
+      --spiffe-id "/controller/${ZITI_CLIENT_FILE}" \
       --allow-overwrite >&3  # write to debug fd because this runs every startup
   fi
 
