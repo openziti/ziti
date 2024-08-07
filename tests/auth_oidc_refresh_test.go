@@ -3,6 +3,7 @@ package tests
 import (
 	service2 "github.com/openziti/edge-api/rest_client_api_client/service"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/oidc_auth"
 	"github.com/zitadel/oidc/v2/pkg/oidc"
 	"golang.org/x/oauth2"
@@ -43,7 +44,7 @@ func Test_Authenticate_OIDC_Refresh(t *testing.T) {
 
 			req := &oidc.RefreshTokenRequest{
 				RefreshToken: oidcApiSession.OidcTokens.RefreshToken,
-				ClientID:     "native",
+				ClientID:     common.ClaimAudienceOpenZiti,
 				Scopes:       []string{"openid", "offline_access"},
 			}
 

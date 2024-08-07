@@ -26,7 +26,8 @@ import (
 )
 
 const (
-	ClaimAudienceOpenZiti = "openziti"
+	ClaimClientIdOpenZiti = "openziti"
+	ClaimAudienceOpenZiti = ClaimClientIdOpenZiti
 
 	CustomClaimApiSessionId      = "z_asid"
 	CustomClaimExternalId        = "z_eid"

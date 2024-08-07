@@ -894,6 +894,12 @@ func (s *HybridStorage) ValidateTokenExchangeRequest(_ context.Context, request 
 		return fmt.Errorf("exchange subject type (%s) is not supported", proofType)
 	}
 
+	for _, aud := range request.GetAudience() {
+		if aud != common.ClaimAudienceOpenZiti {
+			return fmt.Errorf("invalid audience: %s", aud)
+		}
+	}
+
 	allowedScopes := []string{oidc.ScopeOpenID}
 
 	for _, scope := range request.GetScopes() {
