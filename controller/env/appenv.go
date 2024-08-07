@@ -149,8 +149,8 @@ func (ae *AppEnv) ValidateAccessToken(token string) (*common.AccessClaims, error
 		return nil, errors.New("access token is invalid")
 	}
 
-	if !accessClaims.HasAudience(common.ClaimAudienceOpenZiti) {
-		return nil, fmt.Errorf("invalid audience, expected an instance of %s, got %v", common.ClaimAudienceOpenZiti, accessClaims.Audience)
+	if !accessClaims.HasAudience(common.ClaimAudienceOpenZiti) && !accessClaims.HasAudience(common.ClaimLegacyNative) {
+		return nil, fmt.Errorf("invalid audience, expected an instance of %s or %s, got %v", common.ClaimAudienceOpenZiti, common.ClaimLegacyNative, accessClaims.Audience)
 	}
 
 	if accessClaims.Type != common.TokenTypeAccess {
@@ -193,8 +193,8 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 		return nil, errors.New("service access token is invalid")
 	}
 
-	if !serviceAccessClaims.HasAudience(common.ClaimAudienceOpenZiti) {
-		return nil, fmt.Errorf("invalid audience, expected an instance of %s, got %v", common.ClaimAudienceOpenZiti, serviceAccessClaims.Audience)
+	if !serviceAccessClaims.HasAudience(common.ClaimAudienceOpenZiti) && !serviceAccessClaims.HasAudience(common.ClaimLegacyNative) {
+		return nil, fmt.Errorf("invalid audience, expected an instance of %s or %s, got %v", common.ClaimAudienceOpenZiti, common.ClaimLegacyNative, serviceAccessClaims.Audience)
 	}
 
 	if serviceAccessClaims.TokenType != common.TokenTypeServiceAccess {

@@ -35,7 +35,13 @@ func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Ha
 
 	oidcHandler, err := newHttpRouter(ctx, config)
 
-	nativeClient := NativeClient(common.ClaimClientIdOpenZiti, config.RedirectURIs, config.PostLogoutURIs)
+	openzitiClient := NativeClient(common.ClaimClientIdOpenZiti, config.RedirectURIs, config.PostLogoutURIs)
+	openzitiClient.idTokenDuration = config.IdTokenDuration
+	openzitiClient.loginURL = newLoginResolver(config.Storage)
+	config.Storage.AddClient(openzitiClient)
+
+	//backwards compatability client w/ early HA SDKs. Should be removed by the time HA is GA'ed.
+	nativeClient := NativeClient(common.ClaimLegacyNative, config.RedirectURIs, config.PostLogoutURIs)
 	nativeClient.idTokenDuration = config.IdTokenDuration
 	nativeClient.loginURL = newLoginResolver(config.Storage)
 	config.Storage.AddClient(nativeClient)

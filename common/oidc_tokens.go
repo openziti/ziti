@@ -27,7 +27,10 @@ import (
 
 const (
 	ClaimClientIdOpenZiti = "openziti"
-	ClaimAudienceOpenZiti = ClaimClientIdOpenZiti
+	ClaimAudienceOpenZiti = "openziti"
+
+	//ClaimLegacyNative - to remove after SDKs stop using this as a client id
+	ClaimLegacyNative = "native"
 
 	CustomClaimApiSessionId      = "z_asid"
 	CustomClaimExternalId        = "z_eid"

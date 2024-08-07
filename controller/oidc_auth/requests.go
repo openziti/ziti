@@ -87,7 +87,7 @@ func (a *AuthRequest) AddAmr(amr string) {
 
 // GetAudience returns all current audience targets and implements op.AuthRequest
 func (a *AuthRequest) GetAudience() []string {
-	return []string{a.ClientID, common.ClaimAudienceOpenZiti}
+	return []string{a.ClientID}
 }
 
 // GetAuthTime returns the time at which authentication has occurred and implements op.AuthRequest
