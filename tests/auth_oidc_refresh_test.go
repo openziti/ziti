@@ -4,6 +4,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	service2 "github.com/openziti/edge-api/rest_client_api_client/service"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/oidc_auth"
 	"github.com/zitadel/oidc/v2/pkg/oidc"
 	"golang.org/x/oauth2"
@@ -161,6 +162,91 @@ func Test_Authenticate_OIDC_Refresh(t *testing.T) {
 				ctx.Req.NoError(err)
 				ctx.NotNil(result)
 			})
+		})
+
+		t.Run("can not refresh the token backed API Session via Refresh Token Request with the wrong client id", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			oidcApiSession := apiSession.(*edge_apis.ApiSessionOidc)
+
+			req := &oidc.RefreshTokenRequest{
+				RefreshToken: oidcApiSession.OidcTokens.RefreshToken,
+				ClientID:     "123",
+				Scopes:       []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess},
+			}
+
+			enc := oidc.NewEncoder()
+			dst := map[string][]string{}
+			err := enc.Encode(req, dst)
+			ctx.Req.NoError(err)
+
+			dst["grant_type"] = []string{string(req.GrantType())}
+
+			newTokens := &oidc.TokenExchangeResponse{}
+			cReq := ctx.newAnonymousClientApiRequest().SetHeader("content-type", oidc_auth.FormContentType).SetMultiValueFormData(dst).SetResult(newTokens)
+
+			resp, err := cReq.Post("https://" + ctx.ApiHost + "/oidc/oauth/token")
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(resp)
+			ctx.Req.Equal(400, resp.StatusCode(), "expected status %d, got %d, request: %s", 200, resp.StatusCode(), resp.String())
+		})
+
+		t.Run("can not refresh the token backed API Session via Refresh Token Request by swapping client ids", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			oidcApiSession := apiSession.(*edge_apis.ApiSessionOidc)
+
+			clientId := common.ClaimAudienceOpenZiti
+			if oidcApiSession.OidcTokens.IDTokenClaims.ClientID == common.ClaimAudienceOpenZiti {
+				clientId = common.ClaimLegacyNative
+			}
+			req := &oidc.RefreshTokenRequest{
+				RefreshToken: oidcApiSession.OidcTokens.RefreshToken,
+				ClientID:     clientId,
+				Scopes:       []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess},
+			}
+
+			enc := oidc.NewEncoder()
+			dst := map[string][]string{}
+			err := enc.Encode(req, dst)
+			ctx.Req.NoError(err)
+
+			dst["grant_type"] = []string{string(req.GrantType())}
+
+			newTokens := &oidc.TokenExchangeResponse{}
+			cReq := ctx.newAnonymousClientApiRequest().SetHeader("content-type", oidc_auth.FormContentType).SetMultiValueFormData(dst).SetResult(newTokens)
+
+			resp, err := cReq.Post("https://" + ctx.ApiHost + "/oidc/oauth/token")
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(resp)
+			ctx.Req.Equal(400, resp.StatusCode(), "expected status %d, got %d, request: %s", 200, resp.StatusCode(), resp.String())
+		})
+
+		t.Run("can not refresh the token backed API Session via Refresh Token Request with invalid scopes", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			oidcApiSession := apiSession.(*edge_apis.ApiSessionOidc)
+
+			req := &oidc.RefreshTokenRequest{
+				RefreshToken: oidcApiSession.OidcTokens.RefreshToken,
+				ClientID:     oidcApiSession.OidcTokens.IDTokenClaims.ClientID,
+				Scopes:       []string{"myscope"},
+			}
+
+			enc := oidc.NewEncoder()
+			dst := map[string][]string{}
+			err := enc.Encode(req, dst)
+			ctx.Req.NoError(err)
+
+			dst["grant_type"] = []string{string(req.GrantType())}
+
+			newTokens := &oidc.TokenExchangeResponse{}
+			cReq := ctx.newAnonymousClientApiRequest().SetHeader("content-type", oidc_auth.FormContentType).SetMultiValueFormData(dst).SetResult(newTokens)
+
+			resp, err := cReq.Post("https://" + ctx.ApiHost + "/oidc/oauth/token")
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(resp)
+			ctx.Req.Equal(400, resp.StatusCode(), "expected status %d, got %d, request: %s", 200, resp.StatusCode(), resp.String())
 		})
 
 		t.Run("can refresh the token backed API Session via Token Exchange Request", func(t *testing.T) {
