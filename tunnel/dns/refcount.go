@@ -21,6 +21,10 @@ func (self *RefCountingResolver) Lookup(ip net.IP) (string, error) {
 	return self.wrapped.Lookup(ip)
 }
 
+func (self *RefCountingResolver) LookupIP(hostname string) (net.IP, bool) {
+	return self.wrapped.LookupIP(hostname)
+}
+
 func (self *RefCountingResolver) AddDomain(name string, cb func(string) (net.IP, error)) error {
 	return self.wrapped.AddDomain(name, cb)
 }

@@ -82,6 +82,11 @@ func getDnsIp(host string, addrCB func(*net.IPNet, bool), svc *entities.Service,
 	defer dnsCurrentIpMtx.Unlock()
 	var ip netip.Addr
 
+	foundIP, found := resolver.LookupIP(host + ".")
+	if found {
+		return foundIP, nil
+	}
+
 	// look for returned IPs first
 	if dnsRecycledIps.Len() > 0 {
 		e := dnsRecycledIps.Front()
