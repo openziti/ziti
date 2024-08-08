@@ -239,26 +239,68 @@ func Test_Api_Session_Certs(t *testing.T) {
 			ctx.Req.NotNil(resp.Payload.Data)
 			ctx.Req.NotNil(resp.Payload.Data.Certificate)
 
-			t.Run("the certificate contains the proper SPIFFE id", func(t *testing.T) {
+			t.Run("a parsable certificate chain is returned", func(t *testing.T) {
 				ctx.testContextChanged(t)
-
 				certs, err := parsePEMBundle([]byte(*resp.Payload.Data.Certificate))
 
 				ctx.Req.NoError(err)
-				ctx.Req.Len(certs, 1)
+				ctx.Req.True(len(certs) > 0, "no certificates found")
 
-				spiffeId, err := spiffehlp.GetSpiffeIdFromCert(certs[0])
+				t.Run("the first certificate is a leaf", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					ctx.False(certs[0].IsCA, "expected IsCA to be false and indicate a leaf certificate")
+				})
 
-				ctx.Req.NoError(err)
-				ctx.Req.NotEmpty(spiffeId)
+				t.Run("the first certificate has the client authentication usage", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					ctx.Req.True(certs[0].KeyUsage&x509.KeyUsageDigitalSignature > 0, "expected key usage digital signature")
+					ctx.Req.True(certs[0].KeyUsage&x509.KeyUsageKeyEncipherment > 0, "expected key usage key encipherment")
+					ctx.Req.Contains(certs[0].ExtKeyUsage, x509.ExtKeyUsageClientAuth)
+				})
 
-				apiSession := *adminClientClient.ApiSession.Load()
-				apiSessionId := apiSession.GetId()
-				identityId := apiSession.GetIdentityId()
-				expectedId := fmt.Sprintf("%s/identity/%s/apiSession/%s/apiSessionCertificate/", ctx.ControllerConfig.SpiffeIdTrustDomain, identityId, apiSessionId)
-				ctx.Req.True(strings.HasPrefix(spiffeId.String(), expectedId), "expected the spiffe id to have the prefix %s, but got %s", expectedId, spiffeId)
+				t.Run("the response includes a certificate chain", func(t *testing.T) {
+					ctx.testContextChanged(t)
 
+					ctx.Req.True(len(certs) > 1, "no certificate chain found, potentially a leaf only result")
+
+					t.Run("the chain is in signer order", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						var prevCert *x509.Certificate
+						for i, cert := range certs {
+							if prevCert != nil {
+								ctx.Req.True(cert.IsCA, "expected certificate at index %d to be a CA as it is not the first (leaf) certificate", i)
+								ctx.Req.Equal(cert.Subject.String(), prevCert.Subject.String(), "expected certificate subject to equal previous certificates issuer")
+								ctx.Req.NoError(prevCert.CheckSignatureFrom(cert), "expected the previous cert to be signed by the current cert, but got error: %v", err)
+							}
+						}
+					})
+
+					t.Run("the last certificate is not a root certificate", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						lastCert := certs[len(certs)-1]
+						ctx.Req.True(lastCert.IsCA, "expected the last certificate in the chain to be a CA")
+						ctx.Req.True(lastCert.Subject.String() != lastCert.Issuer.String(), "expected the last certificate subject to not equal the last certificate (indicates a root is present)")
+					})
+
+				})
+
+				t.Run("the certificate contains the proper SPIFFE id", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					spiffeId, err := spiffehlp.GetSpiffeIdFromCert(certs[0])
+
+					ctx.Req.NoError(err)
+					ctx.Req.NotEmpty(spiffeId)
+
+					apiSession := *adminClientClient.ApiSession.Load()
+					apiSessionId := apiSession.GetId()
+					identityId := apiSession.GetIdentityId()
+					expectedId := fmt.Sprintf("%s/identity/%s/apiSession/%s/apiSessionCertificate/", ctx.ControllerConfig.SpiffeIdTrustDomain, identityId, apiSessionId)
+					ctx.Req.True(strings.HasPrefix(spiffeId.String(), expectedId), "expected the spiffe id to have the prefix %s, but got %s", expectedId, spiffeId)
+
+				})
 			})
+
 		})
 	})
 }
