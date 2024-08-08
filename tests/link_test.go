@@ -49,8 +49,9 @@ func (t testBindHandlerFactory) NewBindHandler(l xlink.Xlink, _ bool, _ bool) ch
 }
 
 type testRegistryEnv struct {
-	ctrls       env.NetworkControllers
-	closeNotify chan struct{}
+	ctrls           env.NetworkControllers
+	closeNotify     chan struct{}
+	metricsRegistry metrics.UsageRegistry
 }
 
 func (self *testRegistryEnv) GetRouterId() *id.TokenId {
@@ -80,7 +81,7 @@ func (self *testRegistryEnv) GetRateLimiterPool() goroutines.Pool {
 }
 
 func (self *testRegistryEnv) GetMetricsRegistry() metrics.UsageRegistry {
-	panic("implement me")
+	return self.metricsRegistry
 }
 
 type testDial struct {
@@ -121,11 +122,13 @@ func (self *testDial) GetIteration() uint32 {
 }
 
 func setupEnv() link.Env {
+	closeNotify := make(chan struct{})
 	ctrls := env.NewNetworkControllers(time.Second, nil, env.NewDefaultHeartbeatOptions())
-
+	metricsRegistry := metrics.NewUsageRegistry("test", nil, closeNotify)
 	return &testRegistryEnv{
-		ctrls:       ctrls,
-		closeNotify: make(chan struct{}),
+		ctrls:           ctrls,
+		closeNotify:     closeNotify,
+		metricsRegistry: metricsRegistry,
 	}
 }
 
