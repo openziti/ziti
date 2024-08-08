@@ -36,6 +36,7 @@ COPY ${CONTROLLER_PACKAGE}/entrypoint.bash /
 
 # copy the console SPA build files
 COPY --from=ziti-console /usr/src/app/dist/app-ziti-console /ziti-console
+ENV ZITI_CTRL_CONSOLE_LOCATION=/ziti-console
 
 RUN mkdir -p /ziti-controller
 RUN chown -R ziggy:ziggy /ziti-controller /ziti-console
@@ -52,6 +53,7 @@ ENV ZITI_BOOTSTRAP=true
 ENV ZITI_BOOTSTRAP_PKI=true
 ENV ZITI_BOOTSTRAP_CONFIG=true
 ENV ZITI_BOOTSTRAP_DATABASE=true
+ENV ZITI_BOOTSTRAP_CONSOLE=true
 
 # defaults for bootstrapping PKI
 ENV ZITI_PKI_ROOT=pki

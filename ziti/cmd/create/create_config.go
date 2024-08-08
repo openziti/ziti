@@ -108,6 +108,12 @@ type BindPointsValues struct {
 	InterfacePort    string
 	AddressAddress   string
 	AddressPort      string
+	Console          ConsoleValues
+}
+
+type ConsoleValues struct {
+	Enabled       bool
+	Location      string
 }
 
 type IdentityValues struct {

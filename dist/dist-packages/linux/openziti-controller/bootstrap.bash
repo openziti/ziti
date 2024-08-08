@@ -147,6 +147,14 @@ makeConfig() {
     _command+=("${ZITI_BOOTSTRAP_CONFIG_ARGS}")
   fi
 
+  # don't configure the console if explicitly disabled or if the location is not set or console files are missing
+  if [[ "${ZITI_BOOTSTRAP_CONSOLE:-}" == true ]]; then
+    if [[ ! -s "${ZITI_CTRL_CONSOLE_LOCATION}/index.html" ]]; then
+      echo "WARN: ${ZITI_CTRL_CONSOLE_LOCATION}/index.html is missing; install 'openziti-console' to enable the console" >&2
+    fi
+    _command+=(--console-location "${ZITI_CTRL_CONSOLE_LOCATION}")
+  fi
+
   if [[ -s "${_config_file}" && "${1:-}" == --force ]]; then
     echo "INFO: recreating config file: ${_config_file}"
     mv --no-clobber "${_config_file}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
@@ -563,6 +571,7 @@ else
   SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
   BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
   SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
+  : "${ZITI_CTRL_CONSOLE_LOCATION:=/opt/openziti/share/console}"
 
   if [[ "${1:-}" =~ ^[-] ]]
   then
