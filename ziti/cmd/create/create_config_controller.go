@@ -123,6 +123,8 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 					data.Controller.EdgeEnrollment.EdgeRouterDuration = controllerOptions.EdgeRouterEnrollmentDuration
 				}
 
+				setControllerTrustDomains(&data.Controller)
+
 				// process identity information
 				SetControllerIdentity(&data.Controller)
 				SetEdgeConfig(&data.Controller)
@@ -189,6 +191,17 @@ func (options *CreateConfigControllerOptions) run(data *ConfigTemplateValues) er
 	logrus.Debugf("Controller configuration generated successfully and written to: %s", options.Output)
 
 	return nil
+}
+
+func setControllerTrustDomains(data *ControllerTemplateValues) {
+	trustDomain := os.Getenv(constants.CtrlTrustDomainVarName)
+	if trustDomain != "" {
+		data.TrustDomain = trustDomain
+	}
+	additionalTrustDomains := os.Getenv(constants.CtrlAdditionalTrustDomainsVarName)
+	if additionalTrustDomains != "" {
+		data.AdditionalTrustDomains = strings.Split(additionalTrustDomains, ",")
+	}
 }
 
 func SetControllerIdentity(data *ControllerTemplateValues) {
