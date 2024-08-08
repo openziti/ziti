@@ -415,7 +415,7 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 				JWTID:      uuid.NewString(),
 				Issuer:     s.config.Issuer,
 				Subject:    request.GetSubject(),
-				Audience:   []string{common.ClaimAudienceOpenZiti},
+				Audience:   request.GetAudience(),
 				Expiration: oidc.Time(now.Add(s.config.AccessTokenDuration).Unix()),
 				IssuedAt:   oidc.Time(now.Unix()),
 				AuthTime:   oidc.Time(now.Unix()),
@@ -469,6 +469,9 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 			if subjectClaims.CustomClaims.Type != common.TokenTypeAccess && subjectClaims.CustomClaims.Type != common.TokenTypeRefresh {
 				return "", nil, fmt.Errorf("invalid token type: %s", claims.CustomClaims.Type)
 			}
+
+			claims.Audience = subjectClaims.Audience
+			claims.AccessTokenClaims.Scopes = subjectClaims.CustomClaims.Scopes
 		}
 		claims.CustomClaims = subjectClaims.CustomClaims
 		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
@@ -736,11 +739,7 @@ func (s *HybridStorage) GetPrivateClaimsFromScopes(ctx context.Context, identity
 	return s.getPrivateClaims(ctx, identityId, clientID, scopes)
 }
 
-func (s *HybridStorage) getPrivateClaims(ctx context.Context, _, _ string, scopes []string) (claims map[string]interface{}, err error) {
-	if err != nil {
-		return nil, err
-	}
-
+func (s *HybridStorage) getPrivateClaims(ctx context.Context, _, clientId string, scopes []string) (claims map[string]interface{}, err error) {
 	tokenState, err := TokenStateFromContext(ctx)
 
 	if err != nil {
@@ -871,7 +870,7 @@ func tokenTypeToName(oidcType oidc.TokenType) string {
 }
 
 // ValidateTokenExchangeRequest implements the op.TokenExchangeStorage interface
-func (s *HybridStorage) ValidateTokenExchangeRequest(_ context.Context, request op.TokenExchangeRequest) error {
+func (s *HybridStorage) ValidateTokenExchangeRequest(ctx context.Context, request op.TokenExchangeRequest) error {
 	if request.GetRequestedTokenType() == "" {
 		request.SetRequestedTokenType(oidc.RefreshTokenType)
 	}
@@ -894,15 +893,23 @@ func (s *HybridStorage) ValidateTokenExchangeRequest(_ context.Context, request 
 		return fmt.Errorf("exchange subject type (%s) is not supported", proofType)
 	}
 
-	allowedScopes := []string{oidc.ScopeOpenID}
-
-	for _, scope := range request.GetScopes() {
-		if scope == oidc.ScopeOfflineAccess {
-			allowedScopes = append(allowedScopes, scope)
+	for _, aud := range request.GetAudience() {
+		if aud != common.ClaimAudienceOpenZiti && aud != common.ClaimLegacyNative {
+			return fmt.Errorf("invalid audience requested [%s]", aud)
 		}
 	}
 
-	request.SetCurrentScopes(allowedScopes)
+	scopes := request.GetScopes()
+
+	if len(scopes) == 1 && scopes[0] == "" {
+		//no scopes supplied, this is okay, do nothing, fill with defaults
+	} else {
+		for _, scope := range request.GetScopes() {
+			if scope != oidc.ScopeOfflineAccess && scope != oidc.ScopeOpenID {
+				return fmt.Errorf("invalid scope requested [%s]", scope)
+			}
+		}
+	}
 
 	return nil
 }

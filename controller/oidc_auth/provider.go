@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/pkg/errors"
@@ -25,8 +26,6 @@ const (
 
 	AuthMethodSecondaryTotp   = "totp"
 	AuthMethodSecondaryExtJwt = "ejs"
-
-	DefaultNativeClientId = "native"
 )
 
 // NewNativeOnlyOP creates an OIDC Provider that allows native clients and only the AutCode PKCE flow.
@@ -36,7 +35,13 @@ func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Ha
 
 	oidcHandler, err := newHttpRouter(ctx, config)
 
-	nativeClient := NativeClient(DefaultNativeClientId, config.RedirectURIs, config.PostLogoutURIs)
+	openzitiClient := NativeClient(common.ClaimClientIdOpenZiti, config.RedirectURIs, config.PostLogoutURIs)
+	openzitiClient.idTokenDuration = config.IdTokenDuration
+	openzitiClient.loginURL = newLoginResolver(config.Storage)
+	config.Storage.AddClient(openzitiClient)
+
+	//backwards compatibility client w/ early HA SDKs. Should be removed by the time HA is GA'ed.
+	nativeClient := NativeClient(common.ClaimLegacyNative, config.RedirectURIs, config.PostLogoutURIs)
 	nativeClient.idTokenDuration = config.IdTokenDuration
 	nativeClient.loginURL = newLoginResolver(config.Storage)
 	config.Storage.AddClient(nativeClient)

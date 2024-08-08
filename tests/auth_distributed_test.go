@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/oidc_auth"
 	"github.com/zitadel/oidc/v2/pkg/client/rp"
 	httphelper "github.com/zitadel/oidc/v2/pkg/http"
@@ -62,7 +63,7 @@ func newOidcTestRp(apiHost string) (*testRpServer, error) {
 	key := []byte("test1234test1234")
 	urlBase := "https://" + apiHost
 	issuer := urlBase + "/oidc"
-	clientID := "native"
+	clientID := common.ClaimClientIdOpenZiti
 	clientSecret := ""
 	scopes := []string{"openid", "offline_access"}
 	result.CallbackUri = "http://127.0.0.1:" + result.Port + result.CallbackPath
