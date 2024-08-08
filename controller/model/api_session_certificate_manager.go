@@ -88,11 +88,15 @@ func (self *ApiSessionCertificateManager) CreateFromCSR(identity *Identity, apiS
 		return nil, apiErr
 	}
 
-	fp := self.env.GetFingerprintGenerator().FromRaw(certRaw)
-
-	certPem, _ := cert.RawToPem(certRaw)
-
 	newCert, _ := x509.ParseCertificate(certRaw)
+
+	fp := self.env.GetFingerprintGenerator().FromCert(newCert)
+
+	chainPem, err := self.env.GetManagers().Enrollment.GetCertChainPem(certRaw)
+
+	if err != nil {
+		return nil, err
+	}
 
 	entity := &ApiSessionCertificate{
 		BaseEntity: models.BaseEntity{
@@ -103,7 +107,7 @@ func (self *ApiSessionCertificateManager) CreateFromCSR(identity *Identity, apiS
 		Fingerprint:  fp,
 		ValidAfter:   &notBefore,
 		ValidBefore:  &notAfter,
-		PEM:          string(certPem),
+		PEM:          chainPem,
 	}
 
 	if isJwt {
