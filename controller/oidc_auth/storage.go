@@ -902,12 +902,10 @@ func (s *HybridStorage) ValidateTokenExchangeRequest(ctx context.Context, reques
 	scopes := request.GetScopes()
 
 	if len(scopes) == 1 && scopes[0] == "" {
-		//no scopes supplied
+		//no scopes supplied, this is okay, do nothing, fill with defaults
 	} else {
 		for _, scope := range request.GetScopes() {
 			if scope != oidc.ScopeOfflineAccess && scope != oidc.ScopeOpenID {
-
-			} else {
 				return fmt.Errorf("invalid scope requested [%s]", scope)
 			}
 		}
