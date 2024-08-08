@@ -895,7 +895,7 @@ func (s *HybridStorage) ValidateTokenExchangeRequest(ctx context.Context, reques
 
 	for _, aud := range request.GetAudience() {
 		if aud != common.ClaimAudienceOpenZiti && aud != common.ClaimLegacyNative {
-			return fmt.Errorf("invalid audience reqeusted [%s]", aud)
+			return fmt.Errorf("invalid audience requested [%s]", aud)
 		}
 	}
 
