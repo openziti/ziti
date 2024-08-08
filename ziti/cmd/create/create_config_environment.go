@@ -81,6 +81,7 @@ func (options *CreateConfigEnvironmentOptions) addFlags(cmd *cobra.Command) {
 // NewCmdCreateConfigEnvironment creates a command object for the "environment" command
 func NewCmdCreateConfigEnvironment() *cobra.Command {
 	environmentOptions = &CreateConfigEnvironmentOptions{}
+	controllerOptions := &CreateConfigControllerOptions{}
 	
 	data := &ConfigTemplateValues{}
 
@@ -98,6 +99,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 			SetControllerIdentity(&data.Controller)
 			SetEdgeConfig(&data.Controller)
 			SetWebConfig(&data.Controller)
+			SetConsoleConfig(&data.Controller.Web.BindPoints.Console, &controllerOptions.Console)
 
 			environmentOptions.EnvVars = []EnvVar{
 				{constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome},
@@ -110,6 +112,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 				{constants.CtrlBindAddressVarName, constants.CtrlBindAddressVarDescription, data.Controller.Ctrl.BindAddress},
 				{constants.CtrlAdvertisedAddressVarName, constants.CtrlAdvertisedAddressVarDescription, data.Controller.Ctrl.AdvertisedAddress},
 				{constants.CtrlAdvertisedPortVarName, constants.CtrlAdvertisedPortVarDescription, data.Controller.Ctrl.AdvertisedPort},
+				{constants.CtrlConsoleLocationVarName, constants.CtrlConsoleLocationVarDescription, data.Controller.Web.BindPoints.Console.Location},
 				{constants.CtrlEdgeAdvertisedAddressVarName, constants.CtrlEdgeAdvertisedAddressVarDescription, data.Controller.EdgeApi.Address},
 				{constants.CtrlEdgeAltAdvertisedAddressVarName, constants.CtrlEdgeAltAdvertisedAddressVarDescription, data.Controller.EdgeApi.Address},
 				{constants.CtrlEdgeAdvertisedPortVarName, constants.CtrlEdgeAdvertisedPortVarDescription, data.Controller.EdgeApi.Port},
@@ -197,6 +200,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlAdvertisedAddressVarName, constants.CtrlAdvertisedAddressVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeAltAdvertisedAddressVarName, constants.CtrlEdgeAltAdvertisedAddressVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlAdvertisedPortVarName, constants.CtrlAdvertisedPortVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlConsoleLocationVarName, constants.CtrlConsoleLocationVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeBindAddressVarName, constants.CtrlEdgeBindAddressVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeAdvertisedPortVarName, constants.CtrlEdgeAdvertisedPortVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.PkiSignerCertVarName, constants.PkiSignerCertVarDescription))

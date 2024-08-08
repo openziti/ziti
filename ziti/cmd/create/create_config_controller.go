@@ -19,6 +19,7 @@ package create
 import (
 	_ "embed"
 	edge "github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/zac"
 	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/constants"
@@ -75,6 +76,12 @@ type CreateConfigControllerOptions struct {
 	EdgeIdentityEnrollmentDuration time.Duration
 	EdgeRouterEnrollmentDuration   time.Duration
 	MinCluster                     int
+	Console                        ConsoleOptions
+}
+
+type ConsoleOptions struct {
+	Disabled  bool
+	Location string
 }
 
 type CreateControllerConfigCmd struct {
@@ -127,6 +134,8 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 				SetControllerIdentity(&data.Controller)
 				SetEdgeConfig(&data.Controller)
 				SetWebConfig(&data.Controller)
+				// process console options
+				SetConsoleConfig(&data.Controller.Web.BindPoints.Console, &controllerOptions.Console)
 
 			},
 			Run: func(cmd *cobra.Command, args []string) {
@@ -152,6 +161,7 @@ func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().DurationVar(&options.EdgeIdentityEnrollmentDuration, optionEdgeIdentityEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge identity enrollment duration, use 0h0m0s format")
 	cmd.Flags().DurationVar(&options.EdgeRouterEnrollmentDuration, optionEdgeRouterEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge router enrollment duration, use 0h0m0s format")
 	cmd.Flags().IntVar(&options.MinCluster, optionMinCluster, 0, "minimum cluster size. Enables HA mode if > 0")
+	cmd.Flags().BoolVar(&options.Console.Disabled, "no-console", false, "disable console")
 }
 
 // run implements the command
@@ -197,6 +207,7 @@ func SetControllerIdentity(data *ControllerTemplateValues) {
 	SetControllerIdentityKey(data)
 	SetControllerIdentityCA(data)
 }
+
 func SetControllerIdentityCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlCertVarName)
 	if val == "" {
@@ -204,6 +215,7 @@ func SetControllerIdentityCert(c *ControllerTemplateValues) {
 	}
 	c.Identity.Cert = helpers.NormalizePath(val)
 }
+
 func SetControllerIdentityServerCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlServerCertVarName)
 	if val == "" {
@@ -211,6 +223,7 @@ func SetControllerIdentityServerCert(c *ControllerTemplateValues) {
 	}
 	c.Identity.ServerCert = helpers.NormalizePath(val)
 }
+
 func SetControllerIdentityKey(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlKeyVarName)
 	if val == "" {
@@ -218,6 +231,7 @@ func SetControllerIdentityKey(c *ControllerTemplateValues) {
 	}
 	c.Identity.Key = helpers.NormalizePath(val)
 }
+
 func SetControllerIdentityCA(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlCAVarName)
 	if val == "" {
@@ -230,6 +244,7 @@ func SetEdgeConfig(data *ControllerTemplateValues) {
 	SetEdgeSigningCert(data)
 	SetEdgeSigningKey(data)
 }
+
 func SetEdgeSigningCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiSignerCertVarName)
 	if val == "" {
@@ -238,6 +253,7 @@ func SetEdgeSigningCert(c *ControllerTemplateValues) {
 	c.EdgeEnrollment.SigningCert = helpers.NormalizePath(val)
 
 }
+
 func SetEdgeSigningKey(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiSignerKeyVarName)
 	if val == "" {
@@ -253,6 +269,17 @@ func SetWebConfig(data *ControllerTemplateValues) {
 	SetWebIdentityCA(data)
 	SetCtrlAltServerCerts(data)
 }
+
+func SetConsoleConfig(v *ConsoleValues, o *ConsoleOptions) {
+	v.Disabled = o.Disabled
+	location := os.Getenv(constants.CtrlConsoleLocationVarName)
+	if location == "" {
+		v.Location = zac.DefaultLocation
+	} else {
+		v.Location = helpers.NormalizePath(location)
+	}
+}
+
 func SetWebIdentityCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeCertVarName)
 	if val == "" {
@@ -260,6 +287,7 @@ func SetWebIdentityCert(c *ControllerTemplateValues) {
 	}
 	c.Web.Identity.Cert = helpers.NormalizePath(val)
 }
+
 func SetWebIdentityServerCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeServerCertVarName)
 	if val == "" {
@@ -267,6 +295,7 @@ func SetWebIdentityServerCert(c *ControllerTemplateValues) {
 	}
 	c.Web.Identity.ServerCert = helpers.NormalizePath(val)
 }
+
 func SetWebIdentityKey(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeKeyVarName)
 	if val == "" {
@@ -274,6 +303,7 @@ func SetWebIdentityKey(c *ControllerTemplateValues) {
 	}
 	c.Web.Identity.Key = helpers.NormalizePath(val)
 }
+
 func SetWebIdentityCA(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeCAVarName)
 	if val == "" {

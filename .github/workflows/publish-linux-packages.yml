@@ -66,7 +66,7 @@ jobs:
         uses: burningalchemist/action-gh-nfpm@v1
         # uses: netfoundry/action-gh-nfpm@main
         with:
-          nfpm_version: "2.32.0"
+          nfpm_version: "2.38.0"
           packager: ${{ matrix.nfpm_packager }}
           config: dist/dist-packages/linux/nfpm-${{ matrix.package_name }}.yaml
           target: release/

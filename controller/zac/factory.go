@@ -8,6 +8,7 @@ import (
 
 const (
 	Binding = "zac"
+	DefaultLocation = "/ziti-console"
 )
 
 type ZitiAdminConsoleFactory struct {

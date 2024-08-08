@@ -229,7 +229,14 @@ web:
         options: { }
       - binding: fabric
         options: { }
+      {{- if .Controller.Web.BindPoints.Console.Disabled }}
       #- binding: zac
       #  options:
-      #    location: /ziti-console
+      #    location: /path/to/zac/dir
       #    indexFile: index.html
+      {{- else }}
+      - binding: zac
+        options:
+          location: {{ .Controller.Web.BindPoints.Console.Location }}
+          indexFile: index.html
+      {{- end }}

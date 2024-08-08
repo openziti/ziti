@@ -75,6 +75,8 @@ const (
 	CtrlAdvertisedAddressVarDescription              = "The address routers will use to connect to the controller"
 	CtrlAdvertisedPortVarName                        = "ZITI_CTRL_ADVERTISED_PORT"
 	CtrlAdvertisedPortVarDescription                 = "TCP port routers will use to connect to the controller"
+	CtrlConsoleLocationVarName                       = "ZITI_CTRL_CONSOLE_LOCATION"
+	CtrlConsoleLocationVarDescription                = "The filesystem path of the controller's web console"
 	CtrlEdgeBindAddressVarName                       = "ZITI_CTRL_EDGE_BIND_ADDRESS"
 	CtrlEdgeBindAddressVarDescription                = "The address where the controller will listen for edge API connections"
 	CtrlEdgeAdvertisedAddressVarName                 = "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS"
