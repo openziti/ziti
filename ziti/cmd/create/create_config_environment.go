@@ -201,6 +201,8 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlAdvertisedAddressVarName, constants.CtrlAdvertisedAddressVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeAltAdvertisedAddressVarName, constants.CtrlEdgeAltAdvertisedAddressVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlAdvertisedPortVarName, constants.CtrlAdvertisedPortVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlTrustDomainVarName, constants.CtrlTrustDomainVarDescription))
+	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlAdditionalTrustDomainsVarName, constants.CtrlAdditionalTrustDomainsVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeBindAddressVarName, constants.CtrlEdgeBindAddressVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.CtrlEdgeAdvertisedPortVarName, constants.CtrlEdgeAdvertisedPortVarDescription))
 	sb.WriteString(fmt.Sprintf("%-40s %-50s\n", constants.PkiSignerCertVarName, constants.PkiSignerCertVarDescription))
