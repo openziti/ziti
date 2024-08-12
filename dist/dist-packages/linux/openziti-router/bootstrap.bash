@@ -75,7 +75,7 @@ enroll() {
     return 1
   fi
 
-  if [[ ! -s "${ZITI_ROUTER_IDENTITY_CERT}" || "${1:-}" == --force ]]; then
+  if [[ ! -s "${ZITI_HOME}/${ZITI_ROUTER_IDENTITY_CERT}" || "${1:-}" == --force ]]; then
     if [[ -n "${ZITI_ENROLL_TOKEN:-}" && ! -f "${ZITI_ENROLL_TOKEN}" ]]; then
       # shellcheck disable=SC2188
       ziti router enroll "${_config_file}" \
@@ -198,8 +198,8 @@ promptRouterAddress() {
 
 promptEnrollToken() {
     # do nothing if identity file has stuff in it
-    if [[ -s "${ZITI_ROUTER_IDENTITY_CERT}" ]]; then
-        echo "DEBUG: enrolled identity exists in ${ZITI_ROUTER_IDENTITY_CERT}" >&3
+    if [[ -s "${ZITI_HOME}/${ZITI_ROUTER_IDENTITY_CERT}" ]]; then
+        echo "DEBUG: not prompting for token because identity exists in ${ZITI_HOME}/${ZITI_ROUTER_IDENTITY_CERT}" >&3
     # prompt for enrollment token if interactive, unless already answered
     else
         if ! [[ "${ZITI_BOOTSTRAP_ENROLLMENT:-}" == true ]]; then
