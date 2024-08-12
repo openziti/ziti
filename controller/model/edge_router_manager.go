@@ -47,6 +47,7 @@ func NewEdgeRouterManager(env Env) *EdgeRouterManager {
 			db.FieldRouterCost:                  struct{}{},
 			db.FieldRouterNoTraversal:           struct{}{},
 			db.FieldRouterDisabled:              struct{}{},
+			db.FieldEdgeRouterAppData:           struct{}{},
 		},
 	}
 
