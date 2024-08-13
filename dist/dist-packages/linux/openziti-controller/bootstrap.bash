@@ -85,9 +85,9 @@ issueLeafCerts() {
 
     # fall back to renewing without SPIFFE ID if issuer cert lacks trust domain in URI SAN
     "${_create_server[@]}" --spiffe-id "/controller/${ZITI_SERVER_FILE}" >&3 || {
-      echo "DEBUG: renewing server cert without SPIFFE ID" >&3
+      echo "DEBUG: renewing server cert without SPIFFE ID"
       "${_create_server[@]}"
-    } >&3 # write to debug fd because this runs every startup
+    } >&3
   fi
 
   # client cert
@@ -105,10 +105,10 @@ issueLeafCerts() {
     )
 
     # fall back to renewing without SPIFFE ID if issuer cert lacks trust domain in URI SAN
-    "${_create_client[@]}" --spiffe-id "/controller/${ZITI_CLIENT_FILE}" || {
-      echo "DEBUG: renewing client cert without SPIFFE ID" >&3
+    "${_create_client[@]}" --spiffe-id "/controller/${ZITI_CLIENT_FILE}" >&3 || {
+      echo "DEBUG: renewing client cert without SPIFFE ID"
       "${_create_client[@]}"
-    } >&3 # write to debug fd because this runs every startup
+    } >&3
   fi
 
 }
