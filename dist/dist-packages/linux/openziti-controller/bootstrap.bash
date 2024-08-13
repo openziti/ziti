@@ -72,15 +72,24 @@ issueLeafCerts() {
   ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_SERVER_FILE}.chain.pem"
   if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_SERVER_CERT" ]]; then
     # server cert
-    ziti pki create server \
+    local -a _create_server=(
+      ziti pki create server \
       --pki-root "${ZITI_PKI_ROOT}" \
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
       --server-file "${ZITI_SERVER_FILE}" \
       --dns "localhost,${ZITI_CTRL_ADVERTISED_ADDRESS}" \
       --ip "127.0.0.1,::1" \
-      --spiffe-id "/controller/${ZITI_SERVER_FILE}" \
-      --allow-overwrite >&3  # write to debug fd because this runs every startup
+      --allow-overwrite
+    )
+    {
+      # fall back to renewing without SPIFFE ID if issuer cert lacks trust domain in URI SAN
+      "${_create_server[@]}" --spiffe-id "/controller/${ZITI_SERVER_FILE}" >&3 \
+      || {
+        echo "DEBUG: renewing server cert without SPIFFE ID" >&3
+        "${_create_server[@]}"
+      }
+    } >&3 # write to debug fd because this runs every startup
   fi
 
   # client cert
@@ -88,14 +97,21 @@ issueLeafCerts() {
   #   each
   ZITI_PKI_CTRL_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_CLIENT_FILE}.chain.pem"
   if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_CERT" ]]; then
-    ziti pki create client \
+    local -a _create_client=(
+      ziti pki create client \
       --pki-root "${ZITI_PKI_ROOT}" \
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
       --client-file "${ZITI_CLIENT_FILE}" \
-      --spiffe-id "/controller/${ZITI_CLIENT_FILE}" \
-      --allow-overwrite >&3  # write to debug fd because this runs every startup
+      --allow-overwrite
+    )
   fi
+      # fall back to renewing without SPIFFE ID if issuer cert lacks trust domain in URI SAN
+      "${_create_client[@]}" --spiffe-id "/controller/${ZITI_CLIENT_FILE}" || {
+        echo "DEBUG: renewing client cert without SPIFFE ID" >&3
+        "${_create_client[@]}"
+      }
+    } >&3 # write to debug fd because this runs every startup
 
 }
 
