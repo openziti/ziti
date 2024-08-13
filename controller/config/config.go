@@ -23,6 +23,12 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"math"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/go-hclog"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
@@ -38,11 +44,6 @@ import (
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
-	"math"
-	"net/url"
-	"os"
-	"strings"
-	"time"
 )
 
 const (
@@ -680,50 +681,62 @@ func isSelfSigned(cert *x509.Certificate) (bool, error) {
 }
 
 func generateDefaultSpiffeId(id identity.Identity) (*url.URL, error) {
-	rawCerts := id.Cert().Certificate
-	certs := make([]*x509.Certificate, len(rawCerts))
+	log := pfxlog.Logger()
+	// iterate over the slice of raw server cert chains and return a spiffeId for the first completed chain
+	for _, tlsCert := range id.ServerCert() {
 
-	for i := range rawCerts {
-		cert, err := x509.ParseCertificate(rawCerts[i])
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse certificate at index [%d]: %w", i, err)
+		// initialize a slice of extra certs to pass to GetChain to accompany the leaf for building the chain
+		extraCerts:= make([]*x509.Certificate, len(tlsCert.Certificate))
+
+		// for each raw cert in the chain, parse it and add it to the extraCerts slice
+		for i, cert := range tlsCert.Certificate {
+			parsed, err := x509.ParseCertificate(cert)
+			if err != nil {
+				log.Debugf("failed to parse certificate at index [%d]: %v", i, err)
+				continue
+			}
+			extraCerts[i] = parsed
 		}
-		certs[i] = cert
+
+		chain := id.CaPool().GetChain(tlsCert.Leaf, extraCerts...)
+
+		// chain is 0 or 1, no root possible
+		if len(chain) <= 1 {
+			log.Debugf("could not generate default trust domain: identity.server_cert contains %d certificates, need at least 2", len(chain))
+			continue
+		}
+
+		candidateRoot := chain[len(chain)-1]
+
+		if candidateRoot == nil {
+			log.Debug("encountered nil candidate root ca during default trust domain generation")
+			continue
+		}
+
+		if !candidateRoot.IsCA {
+			log.Debug("candidate root CA is not flagged with the x509 CA flag")
+			continue
+		}
+
+		if selfSigned, _ := isSelfSigned(candidateRoot); !selfSigned {
+			log.Debug("candidate root CA is not self signed")
+			continue
+		}
+
+		rawHash := sha1.Sum(candidateRoot.Raw)
+
+		fingerprint := fmt.Sprintf("%x", rawHash)
+		idStr := "spiffe://" + fingerprint
+
+		spiffeId, err := url.Parse(idStr)
+
+		if err != nil {
+			return nil, fmt.Errorf("could not parse generated SPIFFE id [%s] as a URI: %w", idStr, err)
+		}
+
+		return spiffeId, nil
 	}
-
-	chain := id.CaPool().GetChain(id.Cert().Leaf, certs...)
-
-	// chain is 0 or 1, no root possible
-	if len(chain) <= 1 {
-		return nil, fmt.Errorf("error generating default trust domain from root CA: no root CA detected after chain assembly from the root identity server cert and ca bundle")
-	}
-
-	candidateRoot := chain[len(chain)-1]
-
-	if candidateRoot == nil {
-		return nil, fmt.Errorf("encountered nil candidate root ca during default trust domain generation")
-	}
-
-	if !candidateRoot.IsCA {
-		return nil, fmt.Errorf("candidate root CA is not flagged with the x509 CA flag")
-	}
-
-	if selfSigned, _ := isSelfSigned(candidateRoot); !selfSigned {
-		return nil, errors.New("candidate root CA is not self signed")
-	}
-
-	rawHash := sha1.Sum(candidateRoot.Raw)
-
-	fingerprint := fmt.Sprintf("%x", rawHash)
-	idStr := "spiffe://" + fingerprint
-
-	spiffeId, err := url.Parse(idStr)
-
-	if err != nil {
-		return nil, fmt.Errorf("could not parse generated SPIFFE id [%s] as a URI: %w", idStr, err)
-	}
-
-	return spiffeId, nil
+	return nil, fmt.Errorf("error generating default trust domain: identity.server_cert is not a valid chain")
 }
 
 // GetSpiffeIdFromIdentity will search an Identity for a trust domain encoded as a spiffe:// URI SAN starting
