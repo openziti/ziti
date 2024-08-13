@@ -23,10 +23,17 @@ makePki() {
 
   ZITI_CA_CERT="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
   if [[ ! -s "${ZITI_CA_CERT}" ]]; then
-    ziti pki create ca \
-      --pki-root "${ZITI_PKI_ROOT}" \
-      --ca-file "${ZITI_CA_FILE}" \
-      --trust-domain "${ZITI_CTRL_ADVERTISED_ADDRESS}"
+    if [[ -n "${ZITI_TRUST_DOMAIN:-}" ]] || ZITI_TRUST_DOMAIN="spiffe://$(sha256sum <<< "${ZITI_NETWORK_NAME}.${ZITI_CTRL_ADVERTISED_ADDRESS}" | awk '{print $1}')"
+    then
+      ziti pki create ca \
+        --pki-root "${ZITI_PKI_ROOT}" \
+        --ca-file "${ZITI_CA_FILE}" \
+        --ca-name "${ZITI_NETWORK_NAME} Root CA" \
+        --trust-domain "${ZITI_TRUST_DOMAIN}"
+    else
+      echo "ERROR: trust domain could not be set; try setting ZITI_TRUST_DOMAIN in ${BOOT_ENV_FILE}" >&2
+      return 1
+    fi
   fi
 
   ZITI_PKI_SIGNER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.cert"
@@ -84,7 +91,7 @@ issueLeafCerts() {
     )
 
     # fall back to renewing without SPIFFE ID if issuer cert lacks trust domain in URI SAN
-    "${_create_server[@]}" --spiffe-id "/controller/${ZITI_SERVER_FILE}" >&3 || {
+    "${_create_server[@]}" --spiffe-id "/controller/${ZITI_NETWORK_NAME}" >&3 || {
       echo "DEBUG: renewing server cert without SPIFFE ID"
       "${_create_server[@]}"
     } >&3
@@ -105,7 +112,7 @@ issueLeafCerts() {
     )
 
     # fall back to renewing without SPIFFE ID if issuer cert lacks trust domain in URI SAN
-    "${_create_client[@]}" --spiffe-id "/controller/${ZITI_CLIENT_FILE}" >&3 || {
+    "${_create_client[@]}" --spiffe-id "/controller/${ZITI_NETWORK_NAME}" >&3 || {
       echo "DEBUG: renewing client cert without SPIFFE ID"
       "${_create_client[@]}"
     } >&3
