@@ -82,13 +82,11 @@ issueLeafCerts() {
       --ip "127.0.0.1,::1" \
       --allow-overwrite
     )
-    {
-      # fall back to renewing without SPIFFE ID if issuer cert lacks trust domain in URI SAN
-      "${_create_server[@]}" --spiffe-id "/controller/${ZITI_SERVER_FILE}" >&3 \
-      || {
-        echo "DEBUG: renewing server cert without SPIFFE ID" >&3
-        "${_create_server[@]}"
-      }
+
+    # fall back to renewing without SPIFFE ID if issuer cert lacks trust domain in URI SAN
+    "${_create_server[@]}" --spiffe-id "/controller/${ZITI_SERVER_FILE}" >&3 || {
+      echo "DEBUG: renewing server cert without SPIFFE ID" >&3
+      "${_create_server[@]}"
     } >&3 # write to debug fd because this runs every startup
   fi
 
@@ -105,13 +103,13 @@ issueLeafCerts() {
       --client-file "${ZITI_CLIENT_FILE}" \
       --allow-overwrite
     )
-  fi
-      # fall back to renewing without SPIFFE ID if issuer cert lacks trust domain in URI SAN
-      "${_create_client[@]}" --spiffe-id "/controller/${ZITI_CLIENT_FILE}" || {
-        echo "DEBUG: renewing client cert without SPIFFE ID" >&3
-        "${_create_client[@]}"
-      }
+
+    # fall back to renewing without SPIFFE ID if issuer cert lacks trust domain in URI SAN
+    "${_create_client[@]}" --spiffe-id "/controller/${ZITI_CLIENT_FILE}" || {
+      echo "DEBUG: renewing client cert without SPIFFE ID" >&3
+      "${_create_client[@]}"
     } >&3 # write to debug fd because this runs every startup
+  fi
 
 }
 
