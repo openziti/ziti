@@ -46,7 +46,8 @@ elif [[ "${1}" =~ check ]]; then
     issueLeafCerts
     exit
   else
-    exit
+    # if check mode and no bootstrap then noop
+    exit 0
   fi
 fi
 
