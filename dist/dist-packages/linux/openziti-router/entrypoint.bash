@@ -42,8 +42,9 @@ elif [[ "${1}" =~ check ]]; then
     hintLinuxBootstrap "${PWD}"
     exit 1
   else
+    # if check mode and config.yml exists then noop
     echo "DEBUG: ${2} exists and is not empty" >&3
-    exit
+    exit 0
   fi
 fi
 
