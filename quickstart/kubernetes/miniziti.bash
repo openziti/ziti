@@ -697,7 +697,7 @@ main(){
         logDebug "apiserver not running or got extra start args, running 'minikube start'"
         minikube start \
             --profile "${MINIKUBE_PROFILE}" \
-            "${MINIKUBE_START_ARGS[@]}" >&3
+            "${MINIKUBE_START_ARGS[*]}" >&3
     else
         logDebug "apiserver is running, not starting minikube"
     fi
