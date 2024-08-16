@@ -1,6 +1,7 @@
 run:
   build-tags:
     - apitests
+    - pkcs11
   # Default: 1m
   timeout: 8m
 
