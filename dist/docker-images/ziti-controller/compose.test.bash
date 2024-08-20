@@ -41,30 +41,27 @@ go build -o ./release/amd64/linux ./...
 ZITI_CLI_IMAGE="ziti-cli"
 ZITI_CLI_TAG="local"
 
-docker buildx build \
+docker build \
 --build-arg "DOCKER_BUILD_DIR=./dist/docker-images/ziti-cli" \
---platform "linux/amd64" \
 --tag "${ZITI_CLI_IMAGE}:${ZITI_CLI_TAG}" \
 --file "./dist/docker-images/ziti-cli/Dockerfile" \
---load "$PWD"
+"${PWD}"
 
-docker buildx build \
+docker build \
 --build-arg "DOCKER_BUILD_DIR=./dist/docker-images/ziti-controller" \
 --build-arg "ZITI_CLI_IMAGE=${ZITI_CLI_IMAGE}" \
 --build-arg "ZITI_CLI_TAG=${ZITI_CLI_TAG}" \
---platform "linux/amd64" \
 --tag "${ZITI_CONTROLLER_IMAGE}" \
 --file "./dist/docker-images/ziti-controller/Dockerfile" \
---load "$PWD"
+"${PWD}"
 
-docker buildx build \
+docker build \
 --build-arg "DOCKER_BUILD_DIR=./dist/docker-images/ziti-router" \
 --build-arg "ZITI_CLI_IMAGE=${ZITI_CLI_IMAGE}" \
 --build-arg "ZITI_CLI_TAG=${ZITI_CLI_TAG}" \
---platform "linux/amd64" \
 --tag "${ZITI_ROUTER_IMAGE}" \
 --file "./dist/docker-images/ziti-router/Dockerfile" \
---load "$PWD"
+"${PWD}"
 
 cleanup
 
