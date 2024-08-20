@@ -28,6 +28,7 @@ ZIGGY_UID \
 ZITI_GO_VERSION \
 ZITI_PWD="ziggypw" \
 ZITI_CTRL_ADVERTISED_ADDRESS="ctrl1.127.21.71.0.sslip.io" \
+ZITI_CTRL_ADVERTISED_PORT="1280" \
 ZITI_CONTROLLER_IMAGE="ziti-controller:local" \
 ZITI_ROUTER_IMAGE="ziti-router:local" \
 ZITI_ROUTER_NAME="router1"
@@ -65,13 +66,26 @@ docker build \
 
 cleanup
 
-docker compose up ziti-login
+docker compose up wait-for-controller
 
-docker compose run --rm --entrypoint=/bin/bash --env ZITI_ROUTER_NAME="${ZITI_ROUTER_NAME}" ziti-login \
--euxc 'ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to ~ziggy/.config/ziti/"${ZITI_ROUTER_NAME}.jwt"'
+docker compose run --rm --entrypoint=/bin/bash --env ZITI_ROUTER_NAME ziti-controller -euxc '
+
+ziti edge login \
+${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} \
+--ca=/ziti-controller/pki/root/certs/root.cert \
+--username=${ZITI_USER} \
+--password=${ZITI_PWD} \
+--timeout=1 \
+--verbose;
+
+ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to ~ziggy/.config/ziti/"${ZITI_ROUTER_NAME}.jwt";
+'
 
 docker compose up ziti-router --detach
 
-docker compose run --rm quickstart-test
+GOFLAGS="-tags=quickstart,manual" \
+ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS} \
+ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT} \
+go test -v ./ziti/cmd/edge/...
 
 cleanup

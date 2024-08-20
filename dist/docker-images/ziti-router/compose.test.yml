@@ -4,4 +4,4 @@ services:
     networks: !override []
     ports: !override []
     volumes:
-      - ziti-login:/home/ziggy/.config/ziti
+      - ziti-test:/home/ziggy/.config/ziti
