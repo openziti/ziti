@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# exec this script from the root directory of the repository to test the Docker deployment
+# exec this script to test the checked-out Docker controller and router deployments
 
 set -o errexit
 set -o nounset
@@ -10,6 +10,10 @@ set -o xtrace
 cleanup(){
 	docker compose --profile test down --volumes --remove-orphans
 }
+
+BASEDIR="$(cd "$(dirname "${0}")" && pwd)"
+REPOROOT="$(cd "${BASEDIR}/../../.." && pwd)"
+cd "${REPOROOT}"
 
 [[ -s ./go.work ]] && {
 	echo "ERROR: remove go.work before testing deployment" >&2
