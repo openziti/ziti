@@ -144,7 +144,7 @@ func LoadOptions(data OptionsData) (*Options, error) {
 
 func DefaultOptions() *Options {
 	return &Options{
-		Mtu:                    64 * 1024,
+		Mtu:                    0,
 		RandomDrops:            false,
 		Drop1InN:               100,
 		TxQueueSize:            1,

@@ -119,7 +119,7 @@ func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.List
 	}
 	self.tunneler.listenOptions = options
 
-	pfxlog.Logger().Debugf("xgress edge tunnel options: %v", options.ToLoggableString())
+	pfxlog.Logger().Infof("xgress edge tunnel listener options: %v", options.ToLoggableString())
 
 	return self.tunneler, nil
 }
@@ -130,6 +130,9 @@ func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer
 	if err := options.load(optionsData); err != nil {
 		return nil, err
 	}
+
+	pfxlog.Logger().Infof("xgress edge tunnel dialer options: %v", options.ToLoggableString())
+
 	self.tunneler.dialOptions = options
 	return self.tunneler, nil
 }

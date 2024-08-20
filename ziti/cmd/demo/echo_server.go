@@ -54,6 +54,7 @@ type echoServer struct {
 	configFile       string
 	service          string
 	bindWithIdentity bool
+	maxTerminators   uint8
 	zitiIdentity     identity.Identity
 	zitiListener     edge.Listener
 
@@ -86,7 +87,7 @@ func newEchoServerCmd() *cobra.Command {
 	cmd.Flags().StringVar(&server.cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	cmd.Flags().StringVar(&server.cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 	cmd.Flags().BoolVar(&server.ha, "ha", false, "Enable HA controller compatibility")
-
+	cmd.Flags().Uint8("max-terminators", 3, "max terminators to create")
 	return cmd
 }
 
@@ -184,6 +185,7 @@ func (self *echoServer) run(*cobra.Command, []string) {
 		listenOptions.BindUsingEdgeIdentity = self.bindWithIdentity
 		listenOptions.Cost = uint16(*zitiIdentity.DefaultHostingCost)
 		listenOptions.Precedence = ziti.GetPrecedenceForLabel(string(zitiIdentity.DefaultHostingPrecedence))
+		listenOptions.MaxTerminators = int(self.maxTerminators)
 
 		svc, found := zitiContext.GetService(self.service)
 		if !found {

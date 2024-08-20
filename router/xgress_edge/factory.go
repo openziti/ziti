@@ -155,7 +155,7 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 		return nil, err
 	}
 
-	pfxlog.Logger().Debugf("xgress edge listener options: %v", options.ToLoggableString())
+	pfxlog.Logger().Infof("xgress edge listener options: %v", options.ToLoggableString())
 
 	versionInfo := factory.versionProvider.AsVersionInfo()
 	versionHeader, err := factory.versionProvider.EncoderDecoder().Encode(versionInfo)
@@ -182,6 +182,8 @@ func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 	if err := options.load(optionsData); err != nil {
 		return nil, err
 	}
+
+	pfxlog.Logger().Infof("xgress edge dialer options: %v", options.ToLoggableString())
 
 	return newDialer(factory, options), nil
 }
