@@ -160,7 +160,7 @@ func runCreateExtJwtSigner(options *createExtJwtSignerOptions) (err error) {
 	var cleanedScopes []string
 
 	for _, curScope := range options.ExtJwtSigner.Scopes {
-		if strings.TrimSpace(curScope) == "" {
+		if strings.TrimSpace(curScope) != "" {
 			cleanedScopes = append(cleanedScopes, curScope)
 		}
 	}
