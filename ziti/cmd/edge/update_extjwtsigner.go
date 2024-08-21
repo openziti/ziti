@@ -55,6 +55,8 @@ func newUpdateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			Name:            Ptr(""),
 			Tags:            &rest_model.Tags{SubTags: map[string]interface{}{}},
 			UseExternalID:   Ptr(false),
+			Scopes:          []string{},
+			ClientID:        Ptr(""),
 		},
 		nameOrId:     "",
 		newName:      "",
@@ -62,7 +64,7 @@ func newUpdateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "ext-jwt-signer <id|name> [-u <jwksEndpoint>|-p <cert pem>|-f <cert file>] [-n <nameName> -a <audience> -c <claimProperty> -xe]",
+		Use:   "ext-jwt-signer <id|name> [-u <jwksEndpoint>|-p <cert pem>|-f <cert file>] [-n <nameName> -a <audience> -c <claimProperty> --client-id <clientId> --scope <scope1> --scope <scopeN> -xe]",
 		Short: "updates an external jwt signer managed by the Ziti Edge Controller",
 		Long:  "updates an external jwt signer managed by the Ziti Edge Controller",
 		Args: func(cmd *cobra.Command, args []string) error {
@@ -102,6 +104,8 @@ func newUpdateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(options.ExtJwtSigner.ExternalAuthURL, "external-auth-url", "y", "", "The URL that users are directed to obtain a JWT")
 	cmd.Flags().StringVarP(options.ExtJwtSigner.Kid, "kid", "k", "", "The KID for the signer, required if using -p or -f")
 	cmd.Flags().StringVarP(options.ExtJwtSigner.Issuer, "issuer", "l", "", "The issuer for the signer")
+	cmd.Flags().StringVarP(options.ExtJwtSigner.ClientID, "client-id", "", "", "The client id for OIDC that should be used")
+	cmd.Flags().StringSliceVarP(&options.ExtJwtSigner.Scopes, "scopes", "", nil, "The scopes for OIDC that should be used")
 	return cmd
 }
 
@@ -179,6 +183,18 @@ func runUpdateExtJwtSigner(options updateExtJwtOptions) error {
 		changed = true
 	} else {
 		options.ExtJwtSigner.Kid = nil
+	}
+
+	if options.Cmd.Flag("scopes").Changed {
+		changed = true
+	} else {
+		options.ExtJwtSigner.Scopes = nil
+	}
+
+	if options.Cmd.Flag("client-id").Changed {
+		changed = true
+	} else {
+		options.ExtJwtSigner.ClientID = nil
 	}
 
 	if options.TagsProvided() {

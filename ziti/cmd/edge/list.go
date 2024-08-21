@@ -633,6 +633,8 @@ func runListExtJwtSigners(options *api.Options) error {
 		claimsProperty := *entity.ClaimsProperty
 		useExternalId := *entity.UseExternalID
 		issuer := *entity.Issuer
+		clientId := stringz.OrEmpty(entity.ClientID)
+		scopes := strings.Join(entity.Scopes, ",")
 
 		if entity.JwksEndpoint != nil {
 			confType := "JWKS"
@@ -644,6 +646,8 @@ func runListExtJwtSigners(options *api.Options) error {
 			outTable.AppendRow(table.Row{id, name, "JWKS URL", urlStr}, rowConfigAutoMerge)
 			outTable.AppendRow(table.Row{id, name, "Type", confType}, rowConfigAutoMerge)
 			outTable.AppendRow(table.Row{id, name, "Use External Id", useExternalId}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "ClientId", clientId}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Scopes", scopes}, rowConfigAutoMerge)
 		} else {
 			confType := "CERT"
 			fingerprint := *entity.Fingerprint
@@ -654,6 +658,8 @@ func runListExtJwtSigners(options *api.Options) error {
 			outTable.AppendRow(table.Row{id, name, "Fingerprint", fingerprint}, rowConfigAutoMerge)
 			outTable.AppendRow(table.Row{id, name, "Type", confType}, rowConfigAutoMerge)
 			outTable.AppendRow(table.Row{id, name, "Use External Id", useExternalId}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "ClientId", clientId}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Scopes", scopes}, rowConfigAutoMerge)
 		}
 
 	}
