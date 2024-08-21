@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# exec this script to test the checked-out Docker controller and router deployments
+# exec this script with BASH v4+ on Linux to test the checked-out ziti repo's Docker controller and router deployments
 
 set -o errexit
 set -o nounset
@@ -11,14 +11,22 @@ cleanup(){
 	docker compose --profile test down --volumes --remove-orphans
 }
 
+portcheck(){
+	local _binds
+	_binds="$(ss -lntp | awk -v "port=${1}" '$4~ ":" port "$"')"
+	if [[ -z "${_binds}" ]]
+	then
+		return 0
+	else
+		echo -e "ERROR: Port ${1} is already bound"\
+		"\n${_binds}" >&2
+		return 1
+	fi
+}
+
 BASEDIR="$(cd "$(dirname "${0}")" && pwd)"
 REPOROOT="$(cd "${BASEDIR}/../../.." && pwd)"
 cd "${REPOROOT}"
-
-[[ -s ./go.work ]] && {
-	echo "ERROR: remove go.work before testing deployment" >&2
-	exit 1
-}
 
 : "${ZIGGY_UID:=$(id -u)}"
 : "${ZITI_GO_VERSION:=$(grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' ./go.mod)}"
@@ -32,13 +40,22 @@ ZIGGY_UID \
 ZITI_GO_VERSION \
 ZITI_PWD="ziggypw" \
 ZITI_CTRL_ADVERTISED_ADDRESS="ctrl1.127.21.71.0.sslip.io" \
-ZITI_CTRL_ADVERTISED_PORT="1280" \
+ZITI_CTRL_ADVERTISED_PORT="12800" \
+ZITI_ROUTER_PORT="30222" \
 ZITI_CONTROLLER_IMAGE="ziti-controller:local" \
 ZITI_ROUTER_IMAGE="ziti-router:local" \
 ZITI_ROUTER_NAME="router1"
 
 export ZITI_ROUTER_ADVERTISED_ADDRESS="${ZITI_ROUTER_NAME}.127.21.71.0.sslip.io" \
-ZITI_ENROLL_TOKEN="/home/ziggy/.config/ziti/${ZITI_ROUTER_NAME}.jwt"
+ZITI_ENROLL_TOKEN="/home/ziggy/.config/ziti/${ZITI_ROUTER_NAME}.jwt" \
+ZITI_ROUTER_LISTENER_BIND_PORT="${ZITI_ROUTER_PORT}"
+
+cleanup
+
+for PORT in "${ZITI_CTRL_ADVERTISED_PORT}" "${ZITI_ROUTER_PORT}"
+do
+	portcheck "${PORT}"
+done
 
 mkdir -p ./release/amd64/linux
 go build -o ./release/amd64/linux ./...
@@ -68,8 +85,6 @@ docker build \
 --file "./dist/docker-images/ziti-router/Dockerfile" \
 "${PWD}"
 
-cleanup
-
 docker compose up wait-for-controller
 
 docker compose run --rm --entrypoint=/bin/bash --env ZITI_ROUTER_NAME ziti-controller -euxc '
@@ -87,9 +102,8 @@ ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to ~ziggy/.config/ziti/"${ZI
 
 docker compose up ziti-router --detach
 
-GOFLAGS="-tags=quickstart,manual" \
 ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS} \
 ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT} \
-go test -v ./ziti/cmd/edge/...
+go test -v -count=1 -tags="quickstart manual" ./ziti/cmd/edge/...
 
 cleanup
