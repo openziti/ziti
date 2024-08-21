@@ -15,6 +15,7 @@ services:
     depends_on:
       chown-router:
         condition: service_completed_successfully
+    user: ${ZIGGY_UID:-2171}
     volumes:
       - ziti-router:/ziti-router
     # these declared vars pass through to container and should be assigned in an .env file or exported from parent env
@@ -26,7 +27,7 @@ services:
       ZITI_ENROLL_TOKEN: ${ZITI_ENROLL_TOKEN:-}                                       # enrollment token for this router (required)
       ZITI_ROUTER_ADVERTISED_ADDRESS: ${ZITI_ROUTER_ADVERTISED_ADDRESS:-ziti-router}  # domain name for this router (default: the container ID [hostname -f])
       ZITI_ROUTER_PORT: ${ZITI_ROUTER_PORT:-3022}                                     # exposed port for this router
-      ZITI_ROUTER_MODE: ${ZITI_ROUTER_MODE:-none}                                     # none, host, tproxy, tproxy (default: none, tproxy requires additional config below)
+      ZITI_ROUTER_MODE: ${ZITI_ROUTER_MODE:-host}                                     # none, host, tproxy, tproxy (default: host, tproxy requires additional config below)
 
       # *** less relevant vars below ***
       ZITI_BOOTSTRAP: true             # bootstrap the router if "true"

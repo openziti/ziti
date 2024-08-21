@@ -28,6 +28,7 @@ COPY ${ROUTER_PACKAGE}/entrypoint.bash /
 
 WORKDIR /ziti-router
 RUN chown -R ziggy:ziggy /ziti-router
+ENV ZITI_HOME=/ziti-router
 
 # run as ziggy (2171:2171) by default, override run-as user with root when DOCKER_ROUTER_MODE=tproxy
 USER ziggy
@@ -46,7 +47,7 @@ ENV ZITI_BOOTSTRAP_ENROLLMENT=true
 ENV ZITI_ROUTER_NAME=router
 ENV ZITI_ROUTER_TYPE=edge
 ENV ZITI_ROUTER_PORT=3022
-ENV ZITI_ROUTER_MODE=none
+ENV ZITI_ROUTER_MODE=host
 
 # renew router certs at startup with run --extend
 ENV ZITI_AUTO_RENEW_CERTS=true

@@ -1,0 +1,25 @@
+volumes:
+  ziti-test:
+
+services:
+  ziti-controller:
+    volumes:
+      - ziti-test:/home/ziggy/.config/ziti
+
+  wait-for-controller:
+    profiles:
+      - test
+    depends_on:
+      ziti-controller:
+        condition: service_healthy
+    image: busybox
+    networks:
+      - ziti
+    volumes:
+      - ziti-test:/mnt
+    command:
+      - /bin/sh
+      - -euxc
+      - |
+        chown -Rc ${ZIGGY_UID} /mnt
+        echo "Ziti is cooking"
