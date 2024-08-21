@@ -12,7 +12,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.17
 	github.com/openziti/channel/v2 v2.0.137
-	github.com/openziti/edge-api v0.26.23
+	github.com/openziti/edge-api v0.26.25
 	github.com/openziti/fablab v0.5.60
 	github.com/openziti/foundation/v2 v2.0.48
 	github.com/openziti/identity v1.0.82
@@ -177,7 +177,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zitadel/oidc/v2 v2.12.0 // indirect
-	go.mongodb.org/mongo-driver v1.16.0 // indirect
+	go.mongodb.org/mongo-driver v1.16.1 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
