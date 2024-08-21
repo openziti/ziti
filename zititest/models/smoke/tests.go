@@ -57,8 +57,20 @@ func TestFileDownload(hostSelector string, client HttpClient, hostType string, e
 	return host.ExecLoggedWithTimeout(timeout, cmds...)
 }
 
-func TestIperf(hostSelector, hostType string, encrypted, reversed bool) (string, error) {
-	host, err := model.GetModel().SelectHost("." + hostSelector + "-client")
+func TestIperf(clientHostSelector, hostType string, encrypted, reversed bool, run model.Run) (string, error) {
+	c, err := model.GetModel().SelectComponent(".iperf." + hostType)
+	if err != nil {
+		return "", err
+	}
+	if err = c.Type.Stop(run, c); err != nil {
+		return "", err
+	}
+	iperfServer := c.Type.(model.ServerComponent)
+	if err = iperfServer.Start(run, c); err != nil {
+		return "", err
+	}
+
+	host, err := model.GetModel().SelectHost("." + clientHostSelector + "-client")
 	if err != nil {
 		return "", err
 	}

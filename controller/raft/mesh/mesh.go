@@ -46,8 +46,8 @@ const (
 	RaftDataType       = 2049
 	SigningCertHeader  = 2050
 	ApiAddressesHeader = 2051
-
-	ChannelTypeMesh = "ctrl.mesh"
+	RaftDisconnectType = 2052
+	ChannelTypeMesh    = "ctrl.mesh"
 )
 
 type Peer struct {
@@ -55,13 +55,31 @@ type Peer struct {
 	Id           raft.ServerID
 	Address      string
 	Channel      channel.Channel
-	RaftConn     *raftPeerConn
+	RaftConn     atomic.Pointer[raftPeerConn]
 	Version      *versions.VersionInfo
 	SigningCerts []*x509.Certificate
 	ApiAddresses map[string][]event.ApiAddress
 }
 
+func (self *Peer) initRaftConn() *raftPeerConn {
+	self.mesh.lock.Lock()
+	defer self.mesh.lock.Unlock()
+	conn := self.RaftConn.Load()
+	if conn == nil {
+		conn = newRaftPeerConn(self, self.mesh.netAddr)
+		self.RaftConn.Store(conn)
+	}
+	return conn
+}
+
 func (self *Peer) HandleClose(channel.Channel) {
+	self.mesh.lock.Lock()
+	conn := self.RaftConn.Swap(nil)
+	if conn != nil {
+		conn.close()
+	}
+	self.mesh.lock.Unlock()
+
 	self.mesh.PeerDisconnected(self)
 }
 
@@ -77,16 +95,67 @@ func (self *Peer) HandleReceive(m *channel.Message, _ channel.Channel) {
 		if err := response.WithTimeout(5 * time.Second).Send(self.Channel); err != nil {
 			logrus.WithError(err).Error("failed to send connect response")
 		} else {
+			conn := self.initRaftConn()
 			select {
-			case self.mesh.raftAccepts <- self.RaftConn:
+			case self.mesh.raftAccepts <- conn:
 			case <-self.mesh.closeNotify:
 			}
 		}
 	}()
 }
 
-func (self *Peer) Connect(timeout time.Duration) error {
+func (self *Peer) handleReceiveDisconnect(m *channel.Message, _ channel.Channel) {
+	go func() {
+		self.mesh.lock.Lock()
+		conn := self.RaftConn.Swap(nil)
+		self.mesh.lock.Unlock()
+
+		if conn != nil {
+			conn.close()
+		}
+
+		response := channel.NewResult(true, "")
+		response.ReplyTo(m)
+
+		if err := response.WithTimeout(5 * time.Second).Send(self.Channel); err != nil {
+			logrus.WithError(err).Error("failed to send close response")
+		}
+	}()
+}
+
+func (self *Peer) handleReceiveData(m *channel.Message, ch channel.Channel) {
+	if conn := self.RaftConn.Load(); conn != nil {
+		conn.HandleReceive(m, ch)
+	}
+}
+
+func (self *Peer) Connect(timeout time.Duration) (net.Conn, error) {
 	msg := channel.NewMessage(RaftConnectType, nil)
+	response, err := msg.WithTimeout(timeout).SendForReply(self.Channel)
+	if err != nil {
+		return nil, err
+	}
+	result := channel.UnmarshalResult(response)
+	if !result.Success {
+		return nil, errors.Errorf("connect failed: %v", result.Message)
+	}
+
+	logrus.Infof("connected peer %v at %v", self.Id, self.Address)
+
+	return self.initRaftConn(), nil
+}
+
+func (self *Peer) closeRaftConn(timeout time.Duration) error {
+	self.mesh.lock.Lock()
+	conn := self.RaftConn.Swap(nil)
+	defer self.mesh.lock.Unlock()
+	if conn == nil {
+		return nil
+	}
+
+	conn.close()
+
+	msg := channel.NewMessage(RaftDisconnectType, nil)
 	response, err := msg.WithTimeout(timeout).SendForReply(self.Channel)
 	if err != nil {
 		return err
@@ -96,7 +165,7 @@ func (self *Peer) Connect(timeout time.Duration) error {
 		return errors.Errorf("connect failed: %v", result.Message)
 	}
 
-	logrus.Infof("connected peer %v at %v", self.Id, self.Address)
+	logrus.Infof("disconnected peer %v at %v", self.Id, self.Address)
 
 	return nil
 }
@@ -227,10 +296,12 @@ func (self *impl) Dial(address raft.ServerAddress, timeout time.Duration) (net.C
 	if err != nil {
 		return nil, err
 	}
-	if err := peer.Connect(timeout); err != nil {
-		return nil, err
+
+	if peerConn := peer.RaftConn.Load(); peerConn != nil {
+		return peerConn, nil
 	}
-	return peer.RaftConn, nil
+
+	return peer.Connect(timeout)
 }
 
 func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer, error) {
@@ -310,11 +381,11 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		}
 
 		peer.Version = versionInfo
-		peer.RaftConn = newRaftPeerConn(peer, self.netAddr)
 		peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
 
 		binding.AddTypedReceiveHandler(peer)
-		binding.AddTypedReceiveHandler(peer.RaftConn)
+		binding.AddReceiveHandlerF(RaftDataType, peer.handleReceiveData)
+		binding.AddReceiveHandlerF(RaftDisconnectType, peer.handleReceiveDisconnect)
 		binding.AddCloseHandler(peer)
 
 		return self.PeerConnected(peer)
@@ -552,9 +623,9 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 
 		peer.Version = versionInfo
 
-		peer.RaftConn = newRaftPeerConn(peer, self.netAddr)
 		binding.AddTypedReceiveHandler(peer)
-		binding.AddTypedReceiveHandler(peer.RaftConn)
+		binding.AddReceiveHandlerF(RaftDataType, peer.handleReceiveData)
+		binding.AddReceiveHandlerF(RaftDisconnectType, peer.handleReceiveDisconnect)
 		binding.AddCloseHandler(peer)
 		return self.PeerConnected(peer)
 	})
