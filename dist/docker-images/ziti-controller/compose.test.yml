@@ -3,9 +3,6 @@ volumes:
 
 services:
   ziti-controller:
-    network_mode: host
-    networks: !override []
-    ports: !override []
     volumes:
       - ziti-test:/home/ziggy/.config/ziti
 
@@ -16,7 +13,8 @@ services:
       ziti-controller:
         condition: service_healthy
     image: busybox
-    network_mode: host
+    networks:
+      - ziti
     volumes:
       - ziti-test:/mnt
     command:

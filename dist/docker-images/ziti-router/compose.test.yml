@@ -1,7 +1,6 @@
 services:
   ziti-router:
-    network_mode: host
-    networks: !override []
-    ports: !override []
+    networks:
+      - ziti
     volumes:
       - ziti-test:/home/ziggy/.config/ziti
