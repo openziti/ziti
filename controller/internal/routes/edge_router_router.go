@@ -19,14 +19,16 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/edge_router"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/storage/ast"
+	"github.com/openziti/ziti/controller/response"
 )
 
 func init() {
@@ -132,7 +134,8 @@ func (r *EdgeRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext, p
 
 func (r *EdgeRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params edge_router.PatchEdgeRouterParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.EdgeRouter.Update(MapPatchEdgeRouterToModel(params.ID, params.EdgeRouter), false, fields.FilterMaps("tags"), rc.NewChangeContext())
+		fieldChecker := fields.FilterMaps(boltz.FieldTags, db.FieldEdgeRouterAppData)
+		return ae.Managers.EdgeRouter.Update(MapPatchEdgeRouterToModel(params.ID, params.EdgeRouter), false, fieldChecker, rc.NewChangeContext())
 	})
 }
 
