@@ -64,7 +64,7 @@ func NewHelloHandler(stateManager state.Manager, listeners []*edge_ctrl_pb.Liste
 
 		//v0.26.3 and older used to check and ensure all advertise hostnames were the same which can't be done now
 		//with the ability to report multiple advertise protocols on different hostnames
-		hostname:           listeners[0].Advertise.Hostname,
+		hostname:           hostname,
 		supportedProtocols: supportedProtocols,
 		protocolPorts:      protocolPorts,
 	}

@@ -18,8 +18,8 @@ package main
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/transport/v2/dtls"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/transport/v2/transwarp"
@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/transport/v2/udp"
 	"github.com/openziti/transport/v2/ws"
 	"github.com/openziti/transport/v2/wss"
+	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/ziti/cmd"
 	"github.com/sirupsen/logrus"
@@ -37,6 +38,7 @@ func init() {
 	pfxlog.GlobalInit(logrus.InfoLevel, options)
 
 	transport.AddAddressParser(tls.AddressParser{})
+	transport.AddAddressParser(dtls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
 	transport.AddAddressParser(transwarp.AddressParser{})
 	transport.AddAddressParser(transwarptls.AddressParser{})

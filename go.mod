@@ -44,21 +44,21 @@ require (
 	github.com/lucsky/cuid v1.2.1
 	github.com/mdlayher/netlink v1.7.2
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/miekg/dns v1.1.61
+	github.com/miekg/dns v1.1.62
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.17
-	github.com/openziti/channel/v2 v2.0.137
-	github.com/openziti/edge-api v0.26.23
+	github.com/openziti/channel/v2 v2.0.143
+	github.com/openziti/edge-api v0.26.25
 	github.com/openziti/foundation/v2 v2.0.48
-	github.com/openziti/identity v1.0.82
+	github.com/openziti/identity v1.0.84
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.57
 	github.com/openziti/runzmd v1.0.50
 	github.com/openziti/sdk-golang v0.23.40
 	github.com/openziti/secretstream v0.1.21
 	github.com/openziti/storage v0.3.0
-	github.com/openziti/transport/v2 v2.0.139
+	github.com/openziti/transport/v2 v2.0.143
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.1
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -77,7 +77,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zitadel/oidc/v2 v2.12.0
-	go.etcd.io/bbolt v1.3.10
+	go.etcd.io/bbolt v1.3.11
 	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/crypto v0.26.0
 	golang.org/x/net v0.28.0
@@ -154,6 +154,9 @@ require (
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
+	github.com/pion/dtls/v3 v3.0.1 // indirect
+	github.com/pion/logging v0.2.2 // indirect
+	github.com/pion/transport/v3 v3.0.7 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
@@ -175,7 +178,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.mongodb.org/mongo-driver v1.16.0 // indirect
+	go.mongodb.org/mongo-driver v1.16.1 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect

@@ -626,7 +626,7 @@ func (strategy *InstantStrategy) ReceiveClientHello(routerId string, msg *channe
 		for _, listener := range respHello.Listeners {
 			protocols[listener.Advertise.Protocol] = fmt.Sprintf("%s://%s:%d", listener.Advertise.Protocol, listener.Advertise.Hostname, listener.Advertise.Port)
 		}
-	} else {
+	} else if respHello.Hostname != "" {
 		for idx, protocol := range respHello.Protocols {
 			if len(respHello.ProtocolPorts) > idx {
 				port := respHello.ProtocolPorts[idx]

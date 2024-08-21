@@ -11,14 +11,14 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.17
-	github.com/openziti/channel/v2 v2.0.137
-	github.com/openziti/edge-api v0.26.23
+	github.com/openziti/channel/v2 v2.0.143
+	github.com/openziti/edge-api v0.26.25
 	github.com/openziti/fablab v0.5.60
 	github.com/openziti/foundation/v2 v2.0.48
-	github.com/openziti/identity v1.0.82
+	github.com/openziti/identity v1.0.84
 	github.com/openziti/sdk-golang v0.23.40
 	github.com/openziti/storage v0.3.0
-	github.com/openziti/transport/v2 v2.0.139
+	github.com/openziti/transport/v2 v2.0.143
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -26,7 +26,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
-	go.etcd.io/bbolt v1.3.10
+	go.etcd.io/bbolt v1.3.11
 	golang.org/x/net v0.28.0
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/yaml.v2 v2.4.0
@@ -124,7 +124,7 @@ require (
 	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/michaelquigley/figlet v0.0.0-20191015203154-054d06db54b4 // indirect
-	github.com/miekg/dns v1.1.61 // indirect
+	github.com/miekg/dns v1.1.62 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -177,7 +177,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zitadel/oidc/v2 v2.12.0 // indirect
-	go.mongodb.org/mongo-driver v1.16.0 // indirect
+	go.mongodb.org/mongo-driver v1.16.1 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
