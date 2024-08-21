@@ -48,17 +48,17 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.17
-	github.com/openziti/channel/v2 v2.0.137
-	github.com/openziti/edge-api v0.26.23
+	github.com/openziti/channel/v2 v2.0.142
+	github.com/openziti/edge-api v0.26.25
 	github.com/openziti/foundation/v2 v2.0.48
-	github.com/openziti/identity v1.0.82
+	github.com/openziti/identity v1.0.84
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.57
 	github.com/openziti/runzmd v1.0.50
 	github.com/openziti/sdk-golang v0.23.40
 	github.com/openziti/secretstream v0.1.21
 	github.com/openziti/storage v0.3.0
-	github.com/openziti/transport/v2 v2.0.139
+	github.com/openziti/transport/v2 v2.0.143
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.1
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -175,7 +175,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.mongodb.org/mongo-driver v1.16.0 // indirect
+	go.mongodb.org/mongo-driver v1.16.1 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
