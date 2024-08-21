@@ -108,4 +108,4 @@ ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS} \
 ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT} \
 go test -v -count=1 -tags="quickstart manual" ./ziti/cmd/edge/...
 
-#cleanup
+cleanup
