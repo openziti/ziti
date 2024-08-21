@@ -1,0 +1,6 @@
+services:
+  ziti-router:
+    networks:
+      - ziti
+    volumes:
+      - ziti-test:/home/ziggy/.config/ziti

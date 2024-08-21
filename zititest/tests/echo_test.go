@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSdkEcho(t *testing.T) {
@@ -45,7 +46,7 @@ func TestSdkEcho(t *testing.T) {
 		echoClientCmd := fmt.Sprintf(`echo "%s" | /home/%s/fablab/bin/ziti demo zcat %s --identity %s ziti:echo 2>&1`,
 			data, c.GetHost().GetSshUser(), ha, remoteConfigFile)
 		t.Logf("running: %s", echoClientCmd)
-		output, err := c.GetHost().ExecLogged(echoClientCmd)
+		output, err := c.GetHost().ExecLoggedWithTimeout(10*time.Second, echoClientCmd)
 		t.Logf("test output:\n%s", output)
 		req.NoError(err)
 		//trim the newline ssh added

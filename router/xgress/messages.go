@@ -68,6 +68,7 @@ const (
 	PayloadFlagCircuitEnd   PayloadFlag = 1
 	PayloadFlagOriginator   PayloadFlag = 2
 	PayloadFlagCircuitStart PayloadFlag = 4
+	PayloadFlagChunk        PayloadFlag = 8
 )
 
 type Header struct {
@@ -81,8 +82,8 @@ func (header *Header) GetCircuitId() string {
 	return header.CircuitId
 }
 
-func (header *Header) GetFlags() string {
-	return header.CircuitId
+func (header *Header) GetFlags() uint32 {
+	return header.Flags
 }
 
 func (header *Header) GetOriginator() Originator {
@@ -255,6 +256,10 @@ func UnmarshallPayload(msg *channel.Message) (*Payload, error) {
 
 func isPayloadFlagSet(flags uint32, flag PayloadFlag) bool {
 	return PayloadFlag(flags)&flag == flag
+}
+
+func setPayloadFlag(flags uint32, flag PayloadFlag) uint32 {
+	return uint32(PayloadFlag(flags) | flag)
 }
 
 func (payload *Payload) IsCircuitEndFlagSet() bool {

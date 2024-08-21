@@ -179,7 +179,7 @@ func (store *edgeRouterStoreImpl) FillEntity(entity *EdgeRouter, bucket *boltz.T
 	entity.UnverifiedCertPem = bucket.GetString(FieldEdgeRouterUnverifiedCertPEM)
 
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
-	entity.AppData = bucket.GetMap(FieldIdentityAppData)
+	entity.AppData = bucket.GetMap(FieldEdgeRouterAppData)
 
 }
 

@@ -40,6 +40,7 @@ COPY --from=ziti-console /usr/src/app/dist/app-ziti-console /ziti-console
 RUN mkdir -p /ziti-controller
 RUN chown -R ziggy:ziggy /ziti-controller /ziti-console
 WORKDIR /ziti-controller
+ENV ZITI_HOME=/ziti-controller
 
 # configure logging
 ENV ZITI_TIME_FORMAT=utc

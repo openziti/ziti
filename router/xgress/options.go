@@ -144,14 +144,14 @@ func LoadOptions(data OptionsData) (*Options, error) {
 
 func DefaultOptions() *Options {
 	return &Options{
-		Mtu:                    64 * 1024,
+		Mtu:                    0,
 		RandomDrops:            false,
 		Drop1InN:               100,
 		TxQueueSize:            1,
-		TxPortalStartSize:      16 * 1024,
+		TxPortalStartSize:      4 * 1024 * 1024,
 		TxPortalMinSize:        16 * 1024,
 		TxPortalMaxSize:        4 * 1024 * 1024,
-		TxPortalIncreaseThresh: 224,
+		TxPortalIncreaseThresh: 28,
 		TxPortalIncreaseScale:  1.0,
 		TxPortalRetxThresh:     64,
 		TxPortalRetxScale:      0.75,

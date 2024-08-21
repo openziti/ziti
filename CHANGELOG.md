@@ -1,3 +1,42 @@
+# Release 1.1.9
+
+## What's New
+
+* Bug fixes, enhancements and continuing progress on controller HA
+* Includes a performance update ([Issue #2340](https://github.com/openziti/ziti/issues/2340)) which should improve
+  connection ramp times. Previously circuits would start with a relatively low window size and ramp slowly. Circuits
+  will now start with a large initial window size and scale back if they can't keep up
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.16 -> v1.0.17](https://github.com/openziti/agent/compare/v1.0.16...v1.0.17)
+* github.com/openziti/channel/v2: [v2.0.136 -> v2.0.143](https://github.com/openziti/channel/compare/v2.0.136...v2.0.143)
+    * [Issue #136](https://github.com/openziti/channel/issues/136) - Fix timeout on classic dialer 
+    * [Issue #134](https://github.com/openziti/channel/issues/134) - Support the dtls transport
+
+* github.com/openziti/edge-api: [v0.26.23 -> v0.26.25](https://github.com/openziti/edge-api/compare/v0.26.23...v0.26.25)
+* github.com/openziti/foundation/v2: [v2.0.47 -> v2.0.48](https://github.com/openziti/foundation/compare/v2.0.47...v2.0.48)
+* github.com/openziti/identity: [v1.0.81 -> v1.0.84](https://github.com/openziti/identity/compare/v1.0.81...v1.0.84)
+* github.com/openziti/metrics: [v1.2.56 -> v1.2.57](https://github.com/openziti/metrics/compare/v1.2.56...v1.2.57)
+* github.com/openziti/runzmd: [v1.0.49 -> v1.0.50](https://github.com/openziti/runzmd/compare/v1.0.49...v1.0.50)
+* github.com/openziti/sdk-golang: [v0.23.39 -> v0.23.40](https://github.com/openziti/sdk-golang/compare/v0.23.39...v0.23.40)
+    * [Issue #601](https://github.com/openziti/sdk-golang/issues/601) - Only send config types on service list if controller version supports it
+
+* github.com/openziti/transport/v2: [v2.0.138 -> v2.0.143](https://github.com/openziti/transport/compare/v2.0.138...v2.0.143)
+    * [Issue #85](https://github.com/openziti/transport/issues/85) - Update to latest dtls library
+
+* github.com/openziti/ziti: [v1.1.8 -> v1.1.9](https://github.com/openziti/ziti/compare/v1.1.8...v1.1.9)
+    * [Issue #2340](https://github.com/openziti/ziti/issues/2340) - Update xgress defaults
+    * [Issue #2336](https://github.com/openziti/ziti/issues/2336) - Re-enable optional xgress payload mtu, with message framing
+    * [Issue #2318](https://github.com/openziti/ziti/issues/2318) - Unable to update appData on existing edge routers using PATCH
+    * [Issue #2281](https://github.com/openziti/ziti/issues/2281) - Session Certificates Should Return a Chain
+    * [Issue #2285](https://github.com/openziti/ziti/issues/2285) - routers sometimes report link metrics for closed links 
+    * [Issue #2282](https://github.com/openziti/ziti/issues/2282) - Investigate OIDC TOTP Redirect w/ application/json
+    * [Issue #2279](https://github.com/openziti/ziti/issues/2279) - Ensure xweb initialized before RAFT
+    * [Issue #2277](https://github.com/openziti/ziti/issues/2277) - docker controller and router deployments - generate a config by default
+    * [Issue #2154](https://github.com/openziti/ziti/issues/2154) - HA MFA Enrollment returns 500
+    * [Issue #2159](https://github.com/openziti/ziti/issues/2159) - API Session in HA return 400
+
 # Release 1.1.8
 
 ## What's New

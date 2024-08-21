@@ -179,7 +179,7 @@ func (self *simpleSimAction) runSim(path string, ctx ziti.Context) {
 					} else {
 						result = result[:n]
 						if string(result) != randomString {
-							svcLog.WithError(err).Error("%s != %s", randomString, result)
+							svcLog.WithError(err).Errorf("%s != %s", randomString, result)
 						} else {
 							dialSuccesses++
 						}
