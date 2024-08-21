@@ -378,8 +378,8 @@ func Test_RouterEnrollment(t *testing.T) {
 						}
 					}()
 
-					ctx.Req.NotNil(ch)
 					ctx.Req.NoError(err)
+					ctx.Req.NotNil(ch)
 				})
 
 				t.Run("requesting enrollment extension with", func(t *testing.T) {
