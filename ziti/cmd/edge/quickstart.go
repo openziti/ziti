@@ -34,7 +34,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"os/user"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -100,6 +102,17 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		o.Home = tmpDir
 		o.cleanOnExit = true
 	} else {
+		//normalize path
+		if strings.HasPrefix(o.Home, "~") {
+			usr, err := user.Current()
+			if err != nil {
+				logrus.Fatalf("Could not find user's home directory?")
+				return
+			}
+			home := usr.HomeDir
+			// Replace only the first instance of ~ in case it appears later in the path
+			o.Home = strings.Replace(o.Home, "~", home, 1)
+		}
 		logrus.Infof("permanent --home '%s' will not be removed on exit", o.Home)
 	}
 	if o.ControllerAddress != "" {
