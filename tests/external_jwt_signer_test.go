@@ -55,6 +55,8 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			Kid:             S(uuid.New().String()),
 			Issuer:          S("i-am-the-issuer"),
 			Audience:        S("you-are-the-audience"),
+			ClientID:        S("you-are-the-client-id"),
+			Scopes:          []string{"scope1", "scope2"},
 		}
 
 		createResponseEnv := &rest_model.CreateEnvelope{}
@@ -104,6 +106,8 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				ctx.Req.Len(jwtSignerListEnv.Data, 1)
 				ctx.Req.Equal(*jwtSigner.Name, *jwtSignerListEnv.Data[0].Name)
 				ctx.Req.Equal(*jwtSigner.ExternalAuthURL, *jwtSignerListEnv.Data[0].ExternalAuthURL)
+				ctx.Req.Equal(*jwtSigner.ClientID, *jwtSignerListEnv.Data[0].ClientID)
+				ctx.Req.Equal(jwtSigner.Scopes, jwtSignerListEnv.Data[0].Scopes)
 			})
 		})
 
@@ -136,6 +140,8 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				ctx.Req.Equal(*jwtSigner.Kid, *jwtSignerDetail.Kid)
 				ctx.Req.Equal(*jwtSigner.Issuer, *jwtSignerDetail.Issuer)
 				ctx.Req.Equal(*jwtSigner.Audience, *jwtSignerDetail.Audience)
+				ctx.Req.Equal(*jwtSigner.ClientID, *jwtSignerDetail.ClientID)
+				ctx.Req.Equal(jwtSigner.Scopes, jwtSignerDetail.Scopes)
 			})
 		})
 
@@ -247,6 +253,8 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				ctx.Req.Nil(jwtSignerDetail.ExternalAuthURL)
 				ctx.Req.Equal(*jwtSigner.Issuer, *jwtSignerDetail.Issuer)
 				ctx.Req.Equal(*jwtSigner.Audience, *jwtSignerDetail.Audience)
+				ctx.Req.Nil(jwtSigner.ClientID)
+				ctx.Req.Nil(jwtSigner.Scopes)
 			})
 		})
 	})

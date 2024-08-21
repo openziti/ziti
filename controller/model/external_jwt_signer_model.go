@@ -38,6 +38,8 @@ type ExternalJwtSigner struct {
 	ClaimsProperty  *string
 	Issuer          *string
 	Audience        *string
+	ClientId        *string
+	Scopes          []string
 
 	CommonName  string
 	Fingerprint *string
@@ -58,6 +60,8 @@ func (entity *ExternalJwtSigner) toBoltEntity() (*db.ExternalJwtSigner, error) {
 		Kid:             entity.Kid,
 		Issuer:          entity.Issuer,
 		Audience:        entity.Audience,
+		ClientId:        entity.ClientId,
+		Scopes:          entity.Scopes,
 	}
 
 	if entity.CertPem != nil && *entity.CertPem != "" {
@@ -103,6 +107,8 @@ func (entity *ExternalJwtSigner) fillFrom(_ Env, _ *bbolt.Tx, boltExternalJwtSig
 	entity.Kid = boltExternalJwtSigner.Kid
 	entity.Issuer = boltExternalJwtSigner.Issuer
 	entity.Audience = boltExternalJwtSigner.Audience
+	entity.ClientId = boltExternalJwtSigner.ClientId
+	entity.Scopes = boltExternalJwtSigner.Scopes
 	return nil
 }
 
