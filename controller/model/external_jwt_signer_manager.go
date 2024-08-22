@@ -89,6 +89,8 @@ func (self *ExternalJwtSignerManager) Marshall(entity *ExternalJwtSigner) ([]byt
 		Fingerprint:     entity.Fingerprint,
 		NotAfter:        timestamppb.New(entity.NotAfter),
 		NotBefore:       timestamppb.New(entity.NotBefore),
+		Scopes:          entity.Scopes,
+		ClientId:        entity.ClientId,
 	}
 
 	return proto.Marshal(msg)
@@ -123,6 +125,8 @@ func (self *ExternalJwtSignerManager) Unmarshall(bytes []byte) (*ExternalJwtSign
 		Fingerprint:     msg.Fingerprint,
 		NotAfter:        msg.NotAfter.AsTime(),
 		NotBefore:       msg.NotBefore.AsTime(),
+		ClientId:        msg.ClientId,
+		Scopes:          msg.Scopes,
 	}, nil
 }
 

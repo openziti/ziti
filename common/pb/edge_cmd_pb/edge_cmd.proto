@@ -269,6 +269,8 @@ message ExternalJwtSigner {
   optional string fingerprint = 14;
   google.protobuf.Timestamp notAfter = 15;
   google.protobuf.Timestamp notBefore = 16;
+  optional string clientId = 17;
+  repeated string scopes = 18;
 }
 
 // Identities

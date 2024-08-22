@@ -19,11 +19,11 @@ package routes
 import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/response"
 )
 
 const EntityNameExternalJwtSigner = "external-jwt-signers"
@@ -49,6 +49,8 @@ func MapClientExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtS
 		BaseEntity:      BaseEntityToRestModel(externalJwtSigner, ExternalJwtSignerLinkFactory),
 		ExternalAuthURL: externalJwtSigner.ExternalAuthUrl,
 		Name:            &externalJwtSigner.Name,
+		ClientID:        externalJwtSigner.ClientId,
+		Scopes:          externalJwtSigner.Scopes,
 	}
 	return ret
 }
@@ -72,6 +74,8 @@ func MapExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner)
 		Issuer:          externalJwtSigner.Issuer,
 		Audience:        externalJwtSigner.Audience,
 		CertPem:         externalJwtSigner.CertPem,
+		ClientID:        externalJwtSigner.ClientId,
+		Scopes:          externalJwtSigner.Scopes,
 	}
 
 	if externalJwtSigner.JwksEndpoint != nil {
@@ -94,6 +98,8 @@ func MapCreateExternalJwtSignerToModel(signer *rest_model.ExternalJWTSignerCreat
 		Issuer:          signer.Issuer,
 		Audience:        signer.Audience,
 		CertPem:         signer.CertPem,
+		ClientId:        signer.ClientID,
+		Scopes:          signer.Scopes,
 	}
 
 	if signer.JwksEndpoint != nil {
@@ -125,6 +131,8 @@ func MapUpdateExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWT
 		Kid:             signer.Kid,
 		Issuer:          signer.Issuer,
 		Audience:        signer.Audience,
+		ClientId:        signer.ClientID,
+		Scopes:          signer.Scopes,
 	}
 
 	if signer.JwksEndpoint != nil {
@@ -156,6 +164,8 @@ func MapPatchExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWTS
 		Kid:             signer.Kid,
 		Issuer:          signer.Issuer,
 		Audience:        signer.Audience,
+		ClientId:        signer.ClientID,
+		Scopes:          signer.Scopes,
 	}
 
 	if signer.JwksEndpoint != nil {

@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 	"os"
+	"strings"
 )
 
 type createExtJwtSignerOptions struct {
@@ -54,11 +55,13 @@ func newCreateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			Name:            Ptr(""),
 			Tags:            &rest_model.Tags{SubTags: map[string]interface{}{}},
 			UseExternalID:   Ptr(false),
+			Scopes:          []string{},
+			ClientID:        Ptr(""),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:     "ext-jwt-signer <name> <issuer> (-u <jwksEndpoint>|-p <cert pem>|-f <cert file>) [-a <audience> -c <claimProperty> -xe]",
+		Use:     "ext-jwt-signer <name> <issuer> (-u <jwksEndpoint>|-p <cert pem>|-f <cert file>) [-a <audience> -c <claimProperty> --client-id <clientId> --scope <scope1> --scope <scopeN> -xe]",
 		Short:   "creates an external JWT signer managed by the Ziti Edge Controller",
 		Long:    "creates an external JWT signer managed by the Ziti Edge Controller",
 		Aliases: []string{"external-jwt-signer"},
@@ -94,6 +97,8 @@ func newCreateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&options.CertFilePath, "cert-file", "f", "", "A public certificate PEM file, not usable with -u, -p")
 	cmd.Flags().StringVarP(options.ExtJwtSigner.ExternalAuthURL, "external-auth-url", "y", "", "The URL that users are directed to obtain a JWT")
 	cmd.Flags().StringVarP(options.ExtJwtSigner.Kid, "kid", "k", "", "The KID for the signer, required if using -p or -f")
+	cmd.Flags().StringVarP(options.ExtJwtSigner.ClientID, "client-id", "", "", "The client id for OIDC that should be used")
+	cmd.Flags().StringSliceVarP(&options.ExtJwtSigner.Scopes, "scopes", "", nil, "The scopes for OIDC that should be used")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -143,6 +148,23 @@ func runCreateExtJwtSigner(options *createExtJwtSignerOptions) (err error) {
 	for k, v := range options.GetTags() {
 		options.ExtJwtSigner.Tags.SubTags[k] = v
 	}
+
+	if options.ExtJwtSigner.ClientID != nil && *options.ExtJwtSigner.ClientID == "" {
+		options.ExtJwtSigner.ClientID = nil
+	}
+
+	if options.ExtJwtSigner.Scopes != nil && len(options.ExtJwtSigner.Scopes) == 0 {
+		options.ExtJwtSigner.Scopes = nil
+	}
+
+	var cleanedScopes []string
+
+	for _, curScope := range options.ExtJwtSigner.Scopes {
+		if strings.TrimSpace(curScope) != "" {
+			cleanedScopes = append(cleanedScopes, curScope)
+		}
+	}
+	options.ExtJwtSigner.Scopes = cleanedScopes
 
 	params := external_jwt_signer.NewCreateExternalJWTSignerParams()
 	params.ExternalJWTSigner = &options.ExtJwtSigner
