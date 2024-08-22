@@ -77,7 +77,7 @@ func testIPerf(t *testing.T, hostSelector string, hostType string, encrypted boo
 	success := false
 
 	t.Run(fmt.Sprintf("(%s%s%s)-%v", hostSelector, direction, hostType, encDesk), func(t *testing.T) {
-		o, err := smoke.TestIperf(hostSelector, hostType, encrypted, reversed)
+		o, err := smoke.TestIperf(hostSelector, hostType, encrypted, reversed, run)
 		if hostType == "zet" && err != nil {
 			t.Skipf("zet hosted iperf test failed [%v]", err.Error())
 			return

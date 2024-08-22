@@ -226,7 +226,7 @@ var Model = &model.Model{
 							},
 						},
 						"iperf-server-ert": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "ert"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 						"caddy-ert": {
@@ -247,7 +247,7 @@ var Model = &model.Model{
 							},
 						},
 						"iperf-server-zet": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "zet"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 						"caddy-zet": {
@@ -267,7 +267,7 @@ var Model = &model.Model{
 							},
 						},
 						"iperf-server-zt": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "ziti-tunnel"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 						"caddy-zt": {

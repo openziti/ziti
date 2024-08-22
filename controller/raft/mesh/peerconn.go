@@ -129,11 +129,15 @@ func (self *raftPeerConn) Write(b []byte) (n int, err error) {
 }
 
 func (self *raftPeerConn) Close() error {
+	return self.peer.closeRaftConn(5 * time.Second)
+}
+
+func (self *raftPeerConn) close() bool {
 	if self.closed.CompareAndSwap(false, true) {
 		close(self.closeNotify)
-		return self.peer.Channel.Close()
+		return true
 	}
-	return nil
+	return false
 }
 
 func (self *raftPeerConn) LocalAddr() net.Addr {
