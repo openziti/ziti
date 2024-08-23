@@ -9,6 +9,7 @@ set -o xtrace
 
 cleanup(){
 	docker compose --profile test down --volumes --remove-orphans
+    echo "DEBUG: cleanup complete"
 }
 
 portcheck(){

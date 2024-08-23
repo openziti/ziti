@@ -32,6 +32,7 @@ cleanup(){
             fi
         )||true
     done
+    echo "DEBUG: cleanup complete"
 }
 
 portcheck(){
