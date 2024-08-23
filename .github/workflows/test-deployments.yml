@@ -31,6 +31,6 @@ jobs:
 
       - name: Run the Compose Test Script
         shell: bash
-        run: dist/docker-images/ziti-controller/compose.test.bash
+        run: dist/docker-images/compose.test.bash
         env:
           ZITI_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}

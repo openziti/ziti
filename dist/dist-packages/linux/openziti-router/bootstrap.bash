@@ -21,7 +21,7 @@ makeConfig() {
     hintLinuxBootstrap "${PWD}"
     return 1
   else
-    echo "DEBUG: controller address is '${ZITI_CTRL_ADVERTISED_ADDRESS}${ZITI_CTRL_ADVERTISED_PORT}'" >&3
+    echo "DEBUG: controller address is '${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}'" >&3
     echo "DEBUG: router address is '${ZITI_ROUTER_ADVERTISED_ADDRESS}:${ZITI_ROUTER_PORT}'" >&3
   fi
 
