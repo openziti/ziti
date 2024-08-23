@@ -376,8 +376,8 @@ func performQuickstartTest(t *testing.T) {
 		zitiAdminPassword = "admin"
 	}
 	testerUsername := "gotester"
-	advAddy := os.Getenv("ZITI_CTRL_ADVERTISED_ADDRESS")
-	advPort := os.Getenv("ZITI_CTRL_ADVERTISED_PORT")
+	advAddy := os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS")
+	advPort := os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_PORT")
 	if advAddy == "" {
 		advAddy = "ziti-edge-controller"
 	}
