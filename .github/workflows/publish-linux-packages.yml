@@ -40,7 +40,7 @@ jobs:
       ZITI_VERSION: ${{ inputs.ziti-version || github.event.inputs.ziti-version }}
       ZITI_MAINTAINER: "OpenZiti Maintainers <developers@openziti.org>"
       ZITI_HOMEPAGE: "https://openziti.io"
-      ZITI_VENDOR: "NetFoundry, Inc."
+      ZITI_VENDOR: "NetFoundry Inc."
       GOARCH: ${{ matrix.arch.goreleaser }}
       MINIMUM_SYSTEMD_VERSION: 232
       ZITI_DEB_TEST_REPO: ${{ vars.ZITI_DEB_TEST_REPO || 'zitipax-openziti-deb-test' }}
