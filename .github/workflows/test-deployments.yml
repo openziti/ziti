@@ -15,6 +15,7 @@ concurrency:
 
 env:
   NFPM_VERSION: "2.38.0"
+  I_AM_ROBOT: 1  # skip destruction warnings when running in CI
 
 jobs:
   build-linux-packages:
@@ -198,8 +199,6 @@ jobs:
 
       - name: Bootstrap & Run
         shell: bash
-        env:
-          I_AM_ROBOT: 1  # let CI runner skip destructive script warning
         run: ./dist/dist-packages/linux/linux.test.bash
 
       - name: Debug Info
@@ -257,4 +256,5 @@ jobs:
 
       - name: Run the Kubernetes Test Script
         shell: bash
-        run: ./dist/docker-images/k8s.test.bash
+        run: ./dist/docker-images/k8s.test.bash --cpus=2  # GitHub runners have 4 vCPUs
+

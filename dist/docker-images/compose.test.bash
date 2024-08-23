@@ -8,6 +8,11 @@ set -o pipefail
 set -o xtrace
 
 cleanup(){
+    if ! (( I_AM_ROBOT ))
+    then
+        echo "WARNING: destroying all controller and router state volumes in 30s; set I_AM_ROBOT=1 to suppress this message" >&2
+        sleep 30
+    fi
 	docker compose --profile test down --volumes --remove-orphans
     echo "DEBUG: cleanup complete"
 }

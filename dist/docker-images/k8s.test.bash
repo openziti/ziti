@@ -8,8 +8,18 @@ set -o pipefail
 set -o xtrace
 
 cleanup(){
-	bash ./quickstart/kubernetes/miniziti.bash delete --profile "${ZITI_NAMESPACE}" ${I_AM_ROBOT:+--now}
-    echo "DEBUG: cleanup complete"
+    if ! (( I_AM_ROBOT ))
+    then
+        echo "WARNING: destroying minikube profile ${ZITI_NAMESPACE} in 30s; set I_AM_ROBOT=1 to suppress this message" >&2
+        sleep 30
+    fi
+	if minikube --profile "${ZITI_NAMESPACE}" delete
+    then
+        echo "DEBUG: cleanup complete"
+    else
+        echo "WARNING: error during cleanup"
+    fi
+    return 0
 }
 
 portcheck(){
@@ -101,6 +111,7 @@ ROUTER
 ./quickstart/kubernetes/miniziti.bash start \
 --profile "${ZITI_NAMESPACE}" \
 --no-hosts \
+--debug \
 --values-dir "${EXTRA_VALUES_DIR}"
 
 MINIKUBE_IP="$(minikube --profile "${ZITI_NAMESPACE}" ip)"
@@ -124,7 +135,7 @@ ZITI_CTRL_ADVERTISED_ADDRESS="miniziti-controller.${MINIKUBE_IP}.sslip.io"
 
 ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS} \
 ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT} \
-ZITI_TEST_BIND_ADDRESS="ziti-controller-client.zititest.svc.cluster.local" \
+ZITI_TEST_BIND_ADDRESS="ziti-controller-client.${ZITI_NAMESPACE}.svc.cluster.local" \
 go test -v -count=1 -tags="quickstart manual" ./ziti/cmd/edge/...
 
 cleanup
