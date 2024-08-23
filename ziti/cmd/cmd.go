@@ -143,7 +143,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	opsCommands.AddCommand(NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
 	opsCommands.AddCommand(verify.NewVerifyNetwork())
-	opsCommands.AddCommand(verify.NewVerifyTraffic(out, err))
+	opsCommands.AddCommand(verify.NewVerifyTraffic())
 
 	groups := templates.CommandGroups{
 		{

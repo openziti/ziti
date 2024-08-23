@@ -21,7 +21,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/openziti/foundation/v2/term"
-	"io"
 	"net"
 	"os"
 	"strings"
@@ -60,7 +59,7 @@ type traffic struct {
 	dialSPName   string
 }
 
-func NewVerifyTraffic(_ io.Writer, _ io.Writer) *cobra.Command {
+func NewVerifyTraffic() *cobra.Command {
 	t := &traffic{}
 	cmd := &cobra.Command{
 		Use:   "verify-traffic",
