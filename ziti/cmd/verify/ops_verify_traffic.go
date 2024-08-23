@@ -73,6 +73,9 @@ func NewVerifyTraffic(_ io.Writer, _ io.Writer) *cobra.Command {
 			configureLogFormat()
 			timePrefix := time.Now().Format("2006-01-02-1504")
 			if t.prefix == "" {
+				if t.mode != "both" {
+					log.Warnf("no prefix and mode [%s] is not 'both'. default prefix of %s will be used", t.mode, timePrefix)
+				}
 				t.prefix = timePrefix
 			}
 			if t.mode == "" {
