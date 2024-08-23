@@ -19,7 +19,6 @@ package cmd
 import (
 	goflag "flag"
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/verify"
 	"io"
 	"os"
 	"path/filepath"
@@ -34,6 +33,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/fabric"
 	"github.com/openziti/ziti/ziti/cmd/pki"
 	"github.com/openziti/ziti/ziti/cmd/templates"
+	"github.com/openziti/ziti/ziti/cmd/verify"
 	c "github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/internal/log"
