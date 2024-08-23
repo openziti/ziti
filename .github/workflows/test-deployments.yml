@@ -239,37 +239,10 @@ jobs:
     name: Test Kubernetes Deployments
     runs-on: ubuntu-latest
     env:
-      ZITI_NAMESPACE: miniziti
+      ZITI_NAMESPACE: zititest
     steps:
       - name: Shallow checkout
         uses: actions/checkout@v4
-
-      - name: Start minikube
-        uses: medyagh/setup-minikube@v0.0.16
-        with:
-          start-args: --profile ${{ env.ZITI_NAMESPACE }}
-
-      - name: Find minikube IP address
-        id: minikube_ip
-        run: echo "minikube_ip=$(minikube --profile ${ZITI_NAMESPACE} ip)" >> $GITHUB_OUTPUT
-
-      - name: Run the Kubernetes Quickstart Script
-        shell: bash
-        run: ./quickstart/kubernetes/miniziti.bash --profile ${ZITI_NAMESPACE} --no-hosts --verbose
-
-      - name: Find the ziti admin password
-        id: get_ziti_pwd
-        run: |
-          miniziti kubectl get secrets "ziti-controller-admin-secret" \
-            --output go-template='{{index .data "admin-password" | base64decode }}' \
-            | xargs -Iadmin_password echo "ZITI_PWD=admin_password" >> $GITHUB_OUTPUT
-
-      - name: Verify the Console is Available
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null \
-          https://miniziti-controller.${{ steps.minikube_ip.outputs.minikube_ip }}.sslip.io/zac/
 
       - name: Install Go
         id: setup-go
@@ -277,34 +250,11 @@ jobs:
         with:
           go-version-file: ./go.mod
 
-      - name: Build ziti executable
-        shell: bash
-        run: |
-          mkdir -pv ${GITHUB_WORKSPACE}/release/
-          go build -o ${GITHUB_WORKSPACE}/release/ ${GITHUB_WORKSPACE}/...
+      - name: Install minikube
+        uses: medyagh/setup-minikube@v0.0.18
+        with:
+          start: false
 
-      - name: Run Go quickstart manual tests
+      - name: Run the Kubernetes Test Script
         shell: bash
-        run: go test -v -count=1 -tags="quickstart manual" ./ziti/cmd/edge/...
-        env:
-          ZITI_CTRL_ADVERTISED_ADDRESS: https://miniziti-controller.${{ steps.minikube_ip.outputs.minikube_ip }}.sslip.io
-          ZITI_CTRL_EDGE_ADVERTISED_ADDRESS: https://miniziti-controller.${{ steps.minikube_ip.outputs.minikube_ip }}.sslip.io
-          ZITI_CTRL_ADVERTISED_PORT: 443
-          ZITI_CTRL_EDGE_ADVERTISED_PORT: 443
-          ZITI_PWD: ${{ steps.get_ziti_pwd.outputs.ZITI_PWD }}
-          ZITI_ROUTER_NAME: miniziti-router
-
-      - name: Print debug info
-        if: always()
-        shell: bash
-        run: |
-          set +e
-          set -x
-          miniziti kubectl get pods -A
-          miniziti kubectl get services -A
-          miniziti kubectl get ingresses -A
-          miniziti kubectl logs --selector app.kubernetes.io/component=ziti-controller --tail=-1
-          miniziti kubectl logs --selector app.kubernetes.io/component=ziti-router --tail=-1
-          cat /tmp/miniziti-client.log
-          miniziti kubectl -n zrok logs job/zrok-test-job
-          exit 0
+        run: ./dist/docker-images/k8s.test.bash
