@@ -164,8 +164,7 @@ jobs:
           ROUTER
 
   test-linux-services:
-    needs: dry-run-linux-packages
-    name: Test Linux Services
+    name: Test Debian Linux Services
     runs-on: ubuntu-latest
     steps:
       - name: Shallow checkout
@@ -202,7 +201,7 @@ jobs:
           exit 0
 
   docker-deployments:
-    name: Test the Docker Deployments
+    name: Test Docker Deployments
     runs-on: ubuntu-latest
     env:
       ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
