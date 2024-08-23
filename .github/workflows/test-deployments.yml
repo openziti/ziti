@@ -14,14 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  ZITI_PWD: ziggypw
-  ZITI_CTRL_ADVERTISED_ADDRESS: linux-controller.127.21.71.0.sslip.io
-  ZITI_CTRL_ADVERTISED_PORT: 12800
-  ZITI_ROUTER_ADVERTISED_ADDRESS: linux-router.127.21.71.0.sslip.io
-  ZITI_ROUTER_PORT: 30222
-  ZITI_ROUTER_NAME: linux-router
   NFPM_VERSION: "2.38.0"
-  I_AM_ROBOT: 1
 
 jobs:
   build-linux-packages:
@@ -84,6 +77,13 @@ jobs:
     needs: build-linux-packages
     name: Dry Run ${{ format('{0}:{1}', matrix.distro.name, matrix.distro.version) }} ${{ matrix.arch.gox }}
     runs-on: ubuntu-latest
+    env:
+      ZITI_PWD: ziggypw
+      ZITI_CTRL_ADVERTISED_ADDRESS: linux-controller.127.21.71.0.sslip.io
+      ZITI_CTRL_ADVERTISED_PORT: 12800
+      ZITI_ROUTER_ADVERTISED_ADDRESS: linux-router.127.21.71.0.sslip.io
+      ZITI_ROUTER_PORT: 30222
+      ZITI_ROUTER_NAME: linux-router
     # iterate over an assortment of popular distribution images
     container:
       image: docker.io/library/${{ format('{0}:{1}', matrix.distro.name, matrix.distro.version) }}
@@ -186,6 +186,8 @@ jobs:
 
       - name: Bootstrap & Run
         shell: bash
+        env:
+          I_AM_ROBOT: 1  # let CI runner skip destructive script warning
         run: ./dist/dist-packages/linux/linux.test.bash
 
       - name: Debug Info
