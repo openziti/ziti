@@ -30,6 +30,7 @@ import (
 )
 
 type network struct {
+	controller
 	controllerConfig string
 	routerConfig     string
 	verbose bool

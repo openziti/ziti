@@ -20,6 +20,13 @@ import (
 	"runtime"
 )
 
+type controller struct {
+	user string
+	pass string
+	host string
+	port string
+}
+
 func configureLogFormat() {
 	log.SetFormatter(&log.TextFormatter{
 		ForceColors:               true,

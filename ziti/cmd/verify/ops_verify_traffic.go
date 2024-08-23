@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"github.com/openziti/foundation/v2/term"
 	"io"
 	"net"
 	"os"
@@ -44,8 +45,9 @@ import (
 
 
 type traffic struct {
+	controller
 	prefix               string
-	role                 string
+	mode                 string
 	cleanup              bool
 	verbose              bool
 	allowMultipleServers bool
@@ -73,8 +75,8 @@ func NewVerifyTraffic(_ io.Writer, _ io.Writer) *cobra.Command {
 			if t.prefix == "" {
 				t.prefix = timePrefix
 			}
-			if t.role == "" {
-				t.role = "both"
+			if t.mode == "" {
+				t.mode = "both"
 			}
 
 			t.svcName = t.prefix + ".verify-traffic"
@@ -88,9 +90,9 @@ func NewVerifyTraffic(_ io.Writer, _ io.Writer) *cobra.Command {
 			t.clientIdName = t.prefix + ".client"
 			t.bindSPName = t.prefix + ".bind"
 			t.dialSPName = t.prefix + ".dial"
-			client, err := newMgmtClient()
+			client, err := t.newMgmtClient()
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 			t.client = client
 			if t.cleanup {
@@ -100,24 +102,29 @@ func NewVerifyTraffic(_ io.Writer, _ io.Writer) *cobra.Command {
 				log.Info("cleanup complete. continuing")
 			}
 
-			if t.role == "both" {
+			if t.mode == "both" {
 				t.doBoth()
-			} else if t.role == "server" {
+			} else if t.mode == "server" {
 				t.doServer(context.Background(), true)
-			} else if t.role == "client" {
+			} else if t.mode == "client" {
 				_, c := context.WithCancel(context.Background())
 				t.doClient(c)
 			} else {
-				panic("no role supplied? should have defaulted to 'both'")
+				log.Fatal("no role supplied? should have defaulted to 'both'")
 			}
 		},
 	}
 
-	cmd.Flags().StringVarP(&t.prefix, "prefix", "p", "", "[optional] The prefix to apply to generated objects, necessary when not using the 'both' role.")
-	cmd.Flags().StringVarP(&t.role, "role", "r", "", "[optional, default 'both'] The role to perform: server, client, both.")
+	cmd.Flags().StringVarP(&t.prefix, "prefix", "x", "", "[optional] The prefix to apply to generated objects, necessary when not using the 'both' role.")
+	cmd.Flags().StringVarP(&t.mode, "mode", "m", "", "[optional, default 'both'] The mode to perform: server, client, both.")
 	cmd.Flags().BoolVar(&t.cleanup, "cleanup", false, "Whether to perform cleanup.")
 	cmd.Flags().BoolVar(&t.verbose, "verbose", false, "Show additional output.")
 	cmd.Flags().BoolVar(&t.allowMultipleServers, "allow-multiple-servers", false, "Whether to allows the same server multiple times.")
+
+	cmd.Flags().StringVarP(&t.user, "username", "u", "", "username to use for authenticating to the Ziti Edge Controller ")
+	cmd.Flags().StringVarP(&t.pass, "password", "p", "", "password to use for authenticating to the Ziti Edge Controller, if -u is supplied and -p is not, a value will be prompted for")
+	cmd.Flags().StringVar(&t.host, "host", "", "the controller host")
+	cmd.Flags().StringVar(&t.port, "port", "", "the controller port")
 
 	return cmd
 }
@@ -125,11 +132,11 @@ func NewVerifyTraffic(_ io.Writer, _ io.Writer) *cobra.Command {
 func startServer(ctx context.Context, serviceName string, zitiCfg *ziti.Config) error {
 	c, err := ziti.NewContext(zitiCfg)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	listener, err := c.Listen(serviceName)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	log.Infof("successfully bound service: %s.", serviceName)
 
@@ -171,7 +178,7 @@ func handleConnection(conn net.Conn) {
 
 	line, err := rw.ReadString('\n')
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	if strings.Contains(line, "verify-traffic test") {
 		log.Info("verify-traffic test successfully detected")
@@ -187,12 +194,12 @@ func startClient(client *rest_management_api_client.ZitiEdgeManagement, serviceN
 	waitForTerminator(client, serviceName, 10*time.Second)
 	c, err := ziti.NewContext(zitiCfg)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	foundSvc, ok := c.GetService(serviceName)
 	if !ok {
-		panic("error when retrieving all the services for the provided config")
+		log.Fatal("error when retrieving all the services for the provided config")
 	}
 	log.Infof("found service named: %s", *foundSvc.Name)
 
@@ -209,7 +216,7 @@ func startClient(client *rest_management_api_client.ZitiEdgeManagement, serviceN
 	bytesRead, err := zitiWriter.WriteString(text)
 	_ = zitiWriter.Flush()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	} else {
 		log.Debugf("wrote %d bytes", bytesRead)
 	}
@@ -232,7 +239,7 @@ func terminatorExists(client *rest_management_api_client.ZitiEdgeManagement, ser
 
 	resp, err := client.Terminator.ListTerminators(params, nil)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	return len(resp.Payload.Data) > 0
@@ -255,41 +262,53 @@ func waitForTerminator(client *rest_management_api_client.ZitiEdgeManagement, se
 	return false
 }
 
-func newMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	// Wait for the controller to become available
-	zitiAdminUsername := os.Getenv("ZITI_USER")
-	if zitiAdminUsername == "" {
-		zitiAdminUsername = "admin"
+func (t *traffic) newMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
+	if t.user == "" {
+		t.user = os.Getenv("ZITI_USER")
+		if t.user == "" {
+			log.Info("user not supplied nor ZITI_USER set. defaulting to admin")
+			t.user = "admin"
+		}
 	}
-	zitiAdminPassword := os.Getenv("ZITI_PWD")
-	if zitiAdminPassword == "" {
-		zitiAdminPassword = "admin"
+	if t.host == "" {
+		t.host = os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS")
+		if t.host == "" {
+			log.Info("host not supplied nor ZITI_CTRL_EDGE_ADVERTISED_ADDRESS set. defaulting to localhost")
+			t.host = "localhost"
+		}
 	}
-	advAddy := os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS")
-	advPort := os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_PORT")
-	if advAddy == "" {
-		advAddy = "ziti-edge-controller"
-	}
-	if advPort == "" {
-		advPort = "1280"
-	}
-	erName := os.Getenv("ZITI_ROUTER_NAME")
-	if erName == "" {
-		erName = "ziti-edge-router"
+	if t.port == "" {
+		t.port = os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_PORT")
+		if t.port == "" {
+			log.Info("port not supplied nor ZITI_CTRL_EDGE_ADVERTISED_PORT set. defaulting to 1280")
+			t.port = "1280"
+		}
 	}
 
-	ctrlAddress := "https://" + advAddy + ":" + advPort
+	if t.pass == "" {
+		p := os.Getenv("ZITI_PWD")
+		t.pass = p
+		if t.pass == "" {
+			pass, err := term.PromptPassword("Enter password: ", false)
+			if err != nil {
+				log.Fatal(err)
+			}
+			t.pass = pass
+		}
+	}
 
-	log.Infof("connecting with user %s to %s", zitiAdminUsername, ctrlAddress)
+	ctrlAddress := "https://" + t.host + ":" + t.port
+
+	log.Infof("connecting with user %s to %s", t.user, ctrlAddress)
 	caCerts, err := rest_util.GetControllerWellKnownCas(ctrlAddress)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	caPool := x509.NewCertPool()
 	for _, ca := range caCerts {
 		caPool.AddCert(ca)
 	}
-	return rest_util.NewEdgeManagementClientWithUpdb(zitiAdminUsername, zitiAdminPassword, ctrlAddress, caPool)
+	return rest_util.NewEdgeManagementClientWithUpdb(t.user, t.pass, ctrlAddress, caPool)
 }
 
 func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name string, roleAttributes rest_model.Attributes) *identity.CreateIdentityCreated {
@@ -544,7 +563,7 @@ func (t *traffic) doClient(cancel context.CancelFunc) {
 	clientCfg := t.configureClient()
 	defer t.cleanupClient()
 	if err := startClient(t.client, t.svcName, clientCfg); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	log.Debug("client received expected response. stopping server if it's running")
