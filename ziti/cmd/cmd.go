@@ -19,6 +19,7 @@ package cmd
 import (
 	goflag "flag"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/verify"
 	"io"
 	"os"
 	"path/filepath"
@@ -134,13 +135,15 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	demoCmd := demo.NewDemoCmd(p)
 
 	opsCommands := &cobra.Command{
-		Use:   "ops ",
+		Use: "ops",
 		Short: "Various utilities useful when operating a Ziti network",
 	}
 
 	opsCommands.AddCommand(database.NewCmdDb(out, err))
 	opsCommands.AddCommand(NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
+	opsCommands.AddCommand(verify.NewVerifyNetwork())
+	opsCommands.AddCommand(verify.NewVerifyTraffic(out, err))
 
 	groups := templates.CommandGroups{
 		{
