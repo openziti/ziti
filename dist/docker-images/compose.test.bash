@@ -13,17 +13,18 @@ cleanup(){
 
 portcheck(){
     PORT="${1}"
-    if [ "$(nc -zv -G 5 localhost "$PORT" 2>&1 | grep -c 'succeeded')" -lt 1 ]; then
-		echo "port $PORT is FREE"
-        return 0
-    else
-		echo "port $PORT is already allocated! cannot continue"
+    if nc -zv localhost "$PORT" &>/dev/null
+    then
+		echo "ERROR: port $PORT is already allocated" >&2
         return 1
+    else
+		echo "DEBUG: port $PORT is available"
+        return 0
     fi
 }
 
 BASEDIR="$(cd "$(dirname "${0}")" && pwd)"
-REPOROOT="$(cd "${BASEDIR}/../../.." && pwd)"
+REPOROOT="$(cd "${BASEDIR}/../.." && pwd)"
 cd "${REPOROOT}"
 
 : "${ZIGGY_UID:=$(id -u)}"
@@ -58,8 +59,8 @@ done
 export GOOS="linux"
 os="$(go env GOOS)"
 arch="$(go env GOARCH)" 
-mkdir -p ./release/$arch/$os
-go build -o ./release/$arch/$os ./...
+mkdir -p "./release/$arch/$os"
+go build -o "./release/$arch/$os" ./...
 
 ZITI_CLI_IMAGE="ziti-cli"
 ZITI_CLI_TAG="local"
