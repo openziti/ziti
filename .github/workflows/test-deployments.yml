@@ -102,6 +102,18 @@ jobs:
             version: "20.04"
             type: deb
           - name: fedora
+            version: "39"
+            type: rpm
+          - name: fedora
+            version: "38"
+            type: rpm
+          - name: fedora
+            version: "37"
+            type: rpm
+          - name: fedora
+            version: "36"
+            type: rpm
+          - name: fedora
             version: "35"
             type: rpm
           - name: rockylinux
