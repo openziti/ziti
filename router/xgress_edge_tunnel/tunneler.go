@@ -18,8 +18,8 @@ package xgress_edge_tunnel
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/state"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/intercept"
 	"github.com/openziti/ziti/tunnel/intercept/host"
@@ -150,7 +150,9 @@ func (self *tunneler) Listen(_ string, bindHandler xgress.BindHandler) error {
 }
 
 func (self *tunneler) Close() error {
-	self.interceptor.Stop()
+	if self.interceptor != nil {
+		self.interceptor.Stop()
+	}
 	return nil
 }
 

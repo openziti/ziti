@@ -39,11 +39,12 @@ const (
 	CustomClaimsCertFingerprints = "z_cfs"
 
 	// CustomClaimsTokenType and other constants below may not appear as referenced, but are used in `json: ""` tags. Provided here for external use.
-	CustomClaimsTokenType    = "z_t"
-	CustomClaimServiceId     = "z_sid"
-	CustomClaimIdentityId    = "z_iid"
-	CustomClaimServiceType   = "z_st"
-	CustomClaimRemoteAddress = "z_ra"
+	CustomClaimsTokenType       = "z_t"
+	CustomClaimServiceId        = "z_sid"
+	CustomClaimIdentityId       = "z_iid"
+	CustomClaimServiceType      = "z_st"
+	CustomClaimRemoteAddress    = "z_ra"
+	CustomClaimIsCertExtendable = "z_ice"
 
 	DefaultAccessTokenDuration  = 30 * time.Minute
 	DefaultIdTokenDuration      = 30 * time.Minute
@@ -66,6 +67,7 @@ type CustomClaims struct {
 	SdkInfo          *rest_model.SdkInfo `json:"z_sdk"`
 	EnvInfo          *rest_model.EnvInfo `json:"z_env"`
 	RemoteAddress    string              `json:"z_ra"`
+	IsCertExtendable bool                `json:"z_ice"`
 }
 
 func (c *CustomClaims) ToMap() (map[string]any, error) {

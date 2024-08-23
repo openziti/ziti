@@ -39,6 +39,7 @@ type ApiSession struct {
 	ExpirationDuration time.Duration
 	LastActivityAt     time.Time
 	AuthenticatorId    string
+	IsCertExtendable   bool
 }
 
 func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, env Env) (*db.ApiSession, error) {
@@ -47,15 +48,16 @@ func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, env Env) (*db.ApiSession, e
 	}
 
 	boltEntity := &db.ApiSession{
-		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Token:           entity.Token,
-		IdentityId:      entity.IdentityId,
-		ConfigTypes:     stringz.SetToSlice(entity.ConfigTypes),
-		IPAddress:       entity.IPAddress,
-		MfaComplete:     entity.MfaComplete,
-		MfaRequired:     entity.MfaRequired,
-		AuthenticatorId: entity.AuthenticatorId,
-		LastActivityAt:  entity.LastActivityAt,
+		BaseExtEntity:    *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Token:            entity.Token,
+		IdentityId:       entity.IdentityId,
+		ConfigTypes:      stringz.SetToSlice(entity.ConfigTypes),
+		IPAddress:        entity.IPAddress,
+		MfaComplete:      entity.MfaComplete,
+		MfaRequired:      entity.MfaRequired,
+		AuthenticatorId:  entity.AuthenticatorId,
+		LastActivityAt:   entity.LastActivityAt,
+		IsCertExtendable: entity.IsCertExtendable,
 	}
 
 	return boltEntity, nil
@@ -81,6 +83,7 @@ func (entity *ApiSession) fillFrom(env Env, tx *bbolt.Tx, boltApiSession *db.Api
 	entity.ExpirationDuration = env.GetConfig().Edge.Api.SessionTimeout
 	entity.LastActivityAt = boltApiSession.LastActivityAt
 	entity.AuthenticatorId = boltApiSession.AuthenticatorId
+	entity.IsCertExtendable = boltApiSession.IsCertExtendable
 
 	boltIdentity, err := env.GetStores().Identity.LoadById(tx, boltApiSession.IdentityId)
 	if err != nil {

@@ -259,6 +259,13 @@ func Test_CA(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.NotEmpty(enrolledSession)
 
+		t.Run("auth from CA should not be extendable", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ctx.Req.NotNil(enrolledSession.AuthResponse)
+			ctx.Req.NotNil(enrolledSession.AuthResponse.IsCertExtendable)
+			ctx.Req.False(*enrolledSession.AuthResponse.IsCertExtendable, "expected isCertExtendable on 3rd party CA certificate authentication to be false")
+		})
+
 		t.Run("CAs with auth disabled can no longer authenticate", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			ca.isAuthEnabled = false

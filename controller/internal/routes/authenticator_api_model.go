@@ -68,7 +68,8 @@ func MapCreateToAuthenticatorModel(in *rest_model.AuthenticatorCreate) (*model.A
 		}
 
 		subType = &model.AuthenticatorCert{
-			Pem: in.CertPem,
+			Pem:               in.CertPem,
+			IsIssuedByNetwork: false,
 		}
 	case db.MethodAuthenticatorUpdb:
 		if in.Username == "" {
@@ -167,6 +168,7 @@ func MapAuthenticatorToRestModel(ae *env.AppEnv, i *model.Authenticator) (*rest_
 		subType := i.SubType.(*model.AuthenticatorCert)
 		result.CertPem = subType.Pem
 		result.Fingerprint = subType.Fingerprint
+		result.IsIssuedByNetwork = subType.IsIssuedByNetwork
 	}
 
 	return result, nil

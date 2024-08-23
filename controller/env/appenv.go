@@ -548,6 +548,7 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 		ExpirationDuration: time.Until(rc.Claims.Expiration.AsTime()),
 		LastActivityAt:     time.Now(),
 		AuthenticatorId:    "oidc",
+		IsCertExtendable:   rc.Claims.IsCertExtendable,
 	}
 
 	rc.AuthPolicy, err = ae.GetManagers().AuthPolicy.Read(rc.Identity.AuthPolicyId)

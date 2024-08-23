@@ -31,6 +31,7 @@ type AuthRequest struct {
 	SdkInfo             *rest_model.SdkInfo
 	EnvInfo             *rest_model.EnvInfo
 	RemoteAddress       string
+	IsCertExtendable    bool
 }
 
 // GetID returns an AuthRequest's ID and implements op.AuthRequest

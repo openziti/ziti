@@ -68,9 +68,10 @@ func (entity *Authenticator) fillFrom(_ Env, _ *bbolt.Tx, boltAuthenticator *db.
 		}
 	case *db.AuthenticatorCert:
 		entity.SubType = &AuthenticatorCert{
-			Authenticator: entity,
-			Fingerprint:   boltAuth.Fingerprint,
-			Pem:           boltAuth.Pem,
+			Authenticator:     entity,
+			Fingerprint:       boltAuth.Fingerprint,
+			Pem:               boltAuth.Pem,
+			IsIssuedByNetwork: boltAuth.IsIssuedByNetwork,
 
 			UnverifiedPem:         boltAuth.UnverifiedPem,
 			UnverifiedFingerprint: boltAuth.UnverifiedFingerprint,
@@ -118,6 +119,7 @@ func (entity *Authenticator) toBoltEntity() (*db.Authenticator, error) {
 			Pem:                   certModel.Pem,
 			UnverifiedFingerprint: certModel.UnverifiedFingerprint,
 			UnverifiedPem:         certModel.UnverifiedPem,
+			IsIssuedByNetwork:     certModel.IsIssuedByNetwork,
 		}
 
 	default:
@@ -161,8 +163,9 @@ func (entity *Authenticator) ToUpdb() *AuthenticatorUpdb {
 
 type AuthenticatorCert struct {
 	*Authenticator
-	Fingerprint string
-	Pem         string
+	Fingerprint       string
+	Pem               string
+	IsIssuedByNetwork bool
 
 	UnverifiedFingerprint string
 	UnverifiedPem         string

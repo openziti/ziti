@@ -272,7 +272,7 @@ func (ctrl *BaseEntityManager[E]) ValidateNameOnUpdate(ctx boltz.MutateContext, 
 			}
 			if nameIndexStore, ok := ctrl.GetStore().(NameIndexedStore); ok {
 				if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
-					return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
+					return errorz.NewFieldError("name must be unique", "name", namedEntity.GetName())
 				}
 			} else {
 				pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't implement the NamedIndexStore interface", reflect.TypeOf(updatedEntity))
@@ -296,7 +296,7 @@ func (handler *BaseEntityManager[E]) ValidateNameOnCreate(tx *bbolt.Tx, entity i
 		}
 		if nameIndexStore, ok := handler.GetStore().(NameIndexedStore); ok {
 			if nameIndexStore.GetNameIndex().Read(tx, []byte(namedEntity.GetName())) != nil {
-				return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
+				return errorz.NewFieldError("name must be unique", "name", namedEntity.GetName())
 			}
 		} else {
 			pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't implement the NamedIndexStore interface", reflect.TypeOf(entity))

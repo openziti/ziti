@@ -31,14 +31,15 @@ import (
 )
 
 const (
-	FieldApiSessionIdentity       = "identity"
-	FieldApiSessionToken          = "token"
-	FieldApiSessionConfigTypes    = "configTypes"
-	FieldApiSessionIPAddress      = "ipAddress"
-	FieldApiSessionMfaComplete    = "mfaComplete"
-	FieldApiSessionMfaRequired    = "mfaRequired"
-	FieldApiSessionLastActivityAt = "lastActivityAt"
-	FieldApiSessionAuthenticator  = "authenticator"
+	FieldApiSessionIdentity         = "identity"
+	FieldApiSessionToken            = "token"
+	FieldApiSessionConfigTypes      = "configTypes"
+	FieldApiSessionIPAddress        = "ipAddress"
+	FieldApiSessionMfaComplete      = "mfaComplete"
+	FieldApiSessionMfaRequired      = "mfaRequired"
+	FieldApiSessionLastActivityAt   = "lastActivityAt"
+	FieldApiSessionAuthenticator    = "authenticator"
+	FieldApiSessionIsCertExtendable = "isCertExtendable"
 
 	EventFullyAuthenticated events.EventName = "FULLY_AUTHENTICATED"
 
@@ -47,14 +48,15 @@ const (
 
 type ApiSession struct {
 	boltz.BaseExtEntity
-	IdentityId      string    `json:"identityId"`
-	Token           string    `json:"-"`
-	IPAddress       string    `json:"ipAddress"`
-	ConfigTypes     []string  `json:"configTypes"`
-	MfaComplete     bool      `json:"mfaComplete"`
-	MfaRequired     bool      `json:"mfaRequired"`
-	LastActivityAt  time.Time `json:"lastActivityAt"`
-	AuthenticatorId string    `json:"authenticatorId"`
+	IdentityId       string    `json:"identityId"`
+	Token            string    `json:"-"`
+	IPAddress        string    `json:"ipAddress"`
+	ConfigTypes      []string  `json:"configTypes"`
+	MfaComplete      bool      `json:"mfaComplete"`
+	MfaRequired      bool      `json:"mfaRequired"`
+	LastActivityAt   time.Time `json:"lastActivityAt"`
+	AuthenticatorId  string    `json:"authenticatorId"`
+	IsCertExtendable bool      `json:"isCertExtendable"`
 }
 
 func NewApiSession(identityId string) *ApiSession {
@@ -111,6 +113,7 @@ func (store *apiSessionStoreImpl) FillEntity(entity *ApiSession, bucket *boltz.T
 	entity.MfaComplete = bucket.GetBoolWithDefault(FieldApiSessionMfaComplete, false)
 	entity.MfaRequired = bucket.GetBoolWithDefault(FieldApiSessionMfaRequired, false)
 	entity.AuthenticatorId = bucket.GetStringWithDefault(FieldApiSessionAuthenticator, "")
+	entity.IsCertExtendable = bucket.GetBoolWithDefault(FieldApiSessionIsCertExtendable, false)
 	lastActivityAt := bucket.GetTime(FieldApiSessionLastActivityAt) //not orError due to migration v18
 
 	if lastActivityAt != nil {
@@ -128,6 +131,7 @@ func (store *apiSessionStoreImpl) PersistEntity(entity *ApiSession, ctx *boltz.P
 	ctx.SetBool(FieldApiSessionMfaRequired, entity.MfaRequired)
 	ctx.SetString(FieldApiSessionAuthenticator, entity.AuthenticatorId)
 	ctx.SetTimeP(FieldApiSessionLastActivityAt, &entity.LastActivityAt)
+	ctx.SetBool(FieldApiSessionIsCertExtendable, entity.IsCertExtendable)
 }
 
 func (store *apiSessionStoreImpl) GetEventsEmitter() events.EventEmmiter {

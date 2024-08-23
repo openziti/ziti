@@ -64,6 +64,7 @@ message Authenticator {
     string pem = 2;
     string unverifiedFingerprint = 3;
     string unverifiedPem = 4;
+    bool isIssuedByNetwork = 5;
   }
 
   message Updb {
