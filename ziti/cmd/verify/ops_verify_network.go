@@ -17,24 +17,36 @@ package verify
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"net"
 	"os"
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/openziti/ziti/common"
 )
 
+var log = pfxlog.Logger()
+
 type network struct {
-	controller
 	controllerConfig string
 	routerConfig     string
 	verbose bool
 }
+
+type protoHostPort struct {
+	proto string
+	host  string
+	port  string
+}
+
+type stringMapList []interface{}
+
+type StringMap map[string]interface{}
 
 func NewVerifyNetwork() *cobra.Command {
 	n := &network{}
@@ -44,10 +56,14 @@ func NewVerifyNetwork() *cobra.Command {
 		Short: "Verifies the overlay is configured correctly",
 		Long:  "A tool to verify network configurations, checking controller and router ports or other common problems",
 		Run: func(cmd *cobra.Command, args []string) {
+			logLvl := logrus.InfoLevel
 			if n.verbose {
-				log.SetLevel(log.DebugLevel)
+				logLvl = logrus.DebugLevel
 			}
-			configureLogFormat()
+
+			pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
+			configureLogFormat(logLvl)
+
 			anyFailure := false
 			if n.controllerConfig != "" {
 				log.Infof("Verifying controller config: %s", n.controllerConfig)
@@ -74,8 +90,6 @@ func NewVerifyNetwork() *cobra.Command {
 	return cmd
 }
 
-type StringMap map[string]interface{}
-
 func (m StringMap) mapFromKey(key string) StringMap {
 	if v, ok := m[key]; ok {
 		return v.(StringMap)
@@ -84,9 +98,7 @@ func (m StringMap) mapFromKey(key string) StringMap {
 	return nil
 }
 
-type StringMapList []interface{}
-
-func (m StringMap) listFromKey(key string) StringMapList {
+func (m StringMap) listFromKey(key string) stringMapList {
 	if v, ok := m[key]; ok {
 		return v.([]interface{})
 	}
@@ -94,7 +106,7 @@ func (m StringMap) listFromKey(key string) StringMapList {
 	return nil
 }
 
-func (p ProtoHostPort) testPort(msg string) bool {
+func (p protoHostPort) testPort(msg string) bool {
 	conn, err := net.DialTimeout("tcp", p.address(), 3*time.Second)
 	if err != nil {
 		log.Errorf("%s at %s cannot be reached.", msg, p.address())
@@ -107,19 +119,13 @@ func (p ProtoHostPort) testPort(msg string) bool {
 	return false
 }
 
-type ProtoHostPort struct {
-	proto string
-	host  string
-	port  string
-}
-
-func (p ProtoHostPort) address() string {
+func (p protoHostPort) address() string {
 	return p.host + ":" + p.port
 }
 
-func fromString(input string) *ProtoHostPort {
+func fromString(input string) *protoHostPort {
 	// input is expected to be in either "proto:host:port" format or "host:port" format
-	r := new(ProtoHostPort)
+	r := new(protoHostPort)
 	parts := strings.Split(input, ":")
 	if len(parts) > 2 {
 		r.proto = parts[0]
@@ -149,7 +155,7 @@ func verifyControllerConfig(controllerConfigFile string) bool {
 	if err != nil {
 		panic(err)
 	}
-	advertiseAddress := stringOrNil(ctrlCfg.mapFromKey("ctrl").mapFromKey("options")["advertiseAddress"])
+	advertiseAddress := stringOrEmpty(ctrlCfg.mapFromKey("ctrl").mapFromKey("options")["advertiseAddress"])
 	host := fromString(advertiseAddress)
 	anyFailure := host.testPort("controller advertise address")
 
@@ -158,14 +164,14 @@ func verifyControllerConfig(controllerConfigFile string) bool {
 	log.Infof("verifying %d web entries", len(web))
 	for _, item := range web {
 		webEntry := item.(StringMap)
-		webName := stringOrNil(webEntry["name"])
+		webName := stringOrEmpty(webEntry["name"])
 		bps := webEntry.listFromKey("bindPoints")
 		log.Infof("verifying %d web bindPoints", len(bps))
 		bpPos := 0
 		for _, bpItem := range bps {
 			bp := bpItem.(StringMap)
-			bpInt := fromString(stringOrNil(bp["interface"]))
-			bpAddr := fromString(stringOrNil(bp["address"]))
+			bpInt := fromString(stringOrEmpty(bp["interface"]))
+			bpAddr := fromString(stringOrEmpty(bp["address"]))
 			if bpInt.port != bpAddr.port {
 				log.Warnf("web entry[%s], bindPoint[%d] ports differ. make sure this is intentional. interface port: %s, address port: %s", webName, bpPos, bpInt.port, bpAddr.port)
 			}
@@ -188,12 +194,16 @@ func verifyRouterConfig(routerConfigFile string) bool {
 	}
 	routerCfg := make(StringMap)
 	routerCfgBytes, err := os.ReadFile(routerConfigFile)
+	if err != nil {
+		panic(err)
+	}
+
 	err = yaml.Unmarshal(routerCfgBytes, &routerCfg)
 	if err != nil {
 		panic(err)
 	}
 
-	controllerEndpoint := stringOrNil(routerCfg.mapFromKey("ctrl")["endpoint"])
+	controllerEndpoint := stringOrEmpty(routerCfg.mapFromKey("ctrl")["endpoint"])
 	routerCtrl := fromString(controllerEndpoint)
 	anyFailure := routerCtrl.testPort("ctrl endpoint")
 
@@ -226,7 +236,7 @@ func verifyRouterConfig(routerConfigFile string) bool {
 	return anyFailure
 }
 
-func stringOrNil(input interface{}) string {
+func stringOrEmpty(input interface{}) string {
 	if str, ok := input.(string); ok {
 		return str
 	}
@@ -234,25 +244,25 @@ func stringOrNil(input interface{}) string {
 }
 
 func verifyLinkListener(which string, listener StringMap) bool {
-	bind := fromString(stringOrNil(listener["bind"]))
-	adv := fromString(stringOrNil(listener["advertise"]))
+	bind := fromString(stringOrEmpty(listener["bind"]))
+	adv := fromString(stringOrEmpty(listener["advertise"]))
 	if bind.port != adv.port {
-		log.Warnf("%s ports differ. make sure this is intentional. bind port: %s, advertise port: %s", which, bind.port, adv.port)
+		log.Warnf("%s ports differ. make sure this is intentionalog. bind port: %s, advertise port: %s", which, bind.port, adv.port)
 	}
 	return adv.testPort(which)
 }
 
 func verifyEdgeListener(which string, listener StringMap) bool {
-	binding := stringOrNil(listener["binding"])
+	binding := stringOrEmpty(listener["binding"])
 	if binding == common.EdgeBinding {
-		address := stringOrNil(listener["address"])
+		address := stringOrEmpty(listener["address"])
 		opts := listener.mapFromKey("options")
-		advertise := stringOrNil(opts["advertise"])
+		advertise := stringOrEmpty(opts["advertise"])
 
 		add := fromString(address)
 		adv := fromString(advertise)
 		if add.port != adv.port {
-			log.Warnf("%s ports differ. make sure this is intentional. address port: %s, advertise port: %s", which, add.port, adv.port)
+			log.Warnf("%s ports differ. make sure this is intentionalog. address port: %s, advertise port: %s", which, add.port, adv.port)
 		}
 		return adv.testPort(which)
 	} else {

@@ -16,7 +16,7 @@
 package verify
 
 import (
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"runtime"
 )
 
@@ -27,8 +27,9 @@ type controller struct {
 	port string
 }
 
-func configureLogFormat() {
-	log.SetFormatter(&log.TextFormatter{
+func configureLogFormat(level logrus.Level) {
+	logrus.SetLevel(level)
+	logrus.SetFormatter(&logrus.TextFormatter{
 		ForceColors:               true,
 		DisableColors:             false,
 		ForceQuote:                false,

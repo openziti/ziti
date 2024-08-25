@@ -20,14 +20,15 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/term"
+	"github.com/sirupsen/logrus"
 	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/openziti/edge-api/rest_management_api_client"
@@ -66,10 +67,14 @@ func NewVerifyTraffic() *cobra.Command {
 		Short: "Verifies traffic",
 		Long:  "A tool to verify traffic can flow over the overlay properly. You must be authenticated to use this tool.",
 		Run: func(cmd *cobra.Command, args []string) {
+			logLvl := logrus.InfoLevel
 			if t.verbose {
-				log.SetLevel(log.DebugLevel)
+				logLvl = logrus.DebugLevel
 			}
-			configureLogFormat()
+
+			pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
+			configureLogFormat(logLvl)
+			
 			timePrefix := time.Now().Format("2006-01-02-1504")
 			if t.prefix == "" {
 				if t.mode != "both" {
@@ -430,8 +435,6 @@ func deleteServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, 
 	if err != nil {
 		log.Errorf("Failed to delete the service policy: %s. %v", id, err)
 	}
-
-	return
 }
 
 func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, id string) *ziti.Config {
@@ -557,7 +560,7 @@ func (t *traffic) doServer(ctx context.Context, configureServices bool) {
 	serverCfg := t.configureServer()
 	defer t.cleanupServer()
 	if err := startServer(ctx, t.svcName, serverCfg); err != nil {
-		log.Fatal("unexpected error: %v", err)
+		log.Fatalf("unexpected error: %v", err)
 	}
 }
 

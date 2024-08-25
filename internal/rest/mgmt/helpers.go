@@ -79,5 +79,5 @@ func ServicePolicyFromFilter(client *rest_management_api_client.ZitiEdgeManageme
 }
 
 func NameFilter(name string) string {
-	return "name=\"" + name + "\""
+	return `name="` + name + `"`
 }
