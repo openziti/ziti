@@ -62,7 +62,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	agentCmd.AddCommand(ctrlCmd)
-	ctrlCmd.AddCommand(NewSimpleChAgentCustomCmd("snapshot-db", AgentAppController, int32(mgmt_pb.ContentType_SnapshotDbRequestType), p))
+	ctrlCmd.AddCommand(NewAgentSnapshotDb(p))
 	ctrlCmd.AddCommand(NewAgentCtrlInit(p))
 	ctrlCmd.AddCommand(NewAgentCtrlInitFromDb(p))
 
