@@ -22,6 +22,7 @@ services:
         exec ziti "$${@}" $${ZITI_CMD}
     command: -- edge quickstart --home /home/ziggy/quickstart
     user: ${ZIGGY_UID:-1000}
+    working_dir: /home/ziggy
     environment:
       HOME: /home/ziggy
       PFXLOG_NO_JSON: "${PFXLOG_NO_JSON:-true}"
