@@ -391,6 +391,9 @@ func performQuickstartTest(t *testing.T) {
 
 	ctrlAddress := "https://" + advAddy + ":" + advPort
 	bindHostAddress := os.Getenv("ZITI_TEST_BIND_ADDRESS")
+	// if bindHostAddress is not set, use the advertised address of the client API; this is useful if the client API is
+	// behind a load balancer that routes by SNI because the request's server name indication in the TLS ClientHello
+	// usually reflects the service's intercept address, not the address the load balancer is expecting
 	if bindHostAddress == "" {
 		bindHostAddress = advAddy
 	}
