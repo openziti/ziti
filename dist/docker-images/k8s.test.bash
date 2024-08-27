@@ -34,10 +34,24 @@ portcheck(){
     fi
 }
 
+checkCommand() {
+    if ! command -v "$1" &>/dev/null; then
+        logError "this script requires command '$1'. Please install on the search PATH and try again."
+        $1
+    fi
+}
+
 BASEDIR="$(cd "$(dirname "${0}")" && pwd)"
 REPOROOT="$(cd "${BASEDIR}/../.." && pwd)"
 cd "${REPOROOT}"
 
+declare -a BINS=(grep go nc docker minikube ./quickstart/kubernetes/miniziti.bash)
+for BIN in "${BINS[@]}"; do
+    checkCommand "$BIN"
+done
+
+
+: "${I_AM_ROBOT:=0}"
 : "${ZITI_GO_VERSION:=$(grep -E '^go \d+\.\d*' "./go.mod" | cut -d " " -f2)}"
 : "${ZITI_NAMESPACE:="zititest"}"
 
