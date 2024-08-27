@@ -10,7 +10,7 @@ on:
 
 jobs:
   publish-linux-packages:
-    name: ${{ matrix.package_name }} ${{ matrix.arch.rpm }} ${{ matrix.nfpm_packager }}
+    name: ${{ matrix.package_name }} ${{ matrix.arch.gox }} ${{ matrix.packager }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -31,7 +31,7 @@ jobs:
             gox: arm
             deb: armv7
             rpm: armv7
-        nfpm_packager:
+        packager:
           - rpm
           - deb
           # - archlinux #  (pacman)
@@ -40,11 +40,12 @@ jobs:
       ZITI_VERSION: ${{ inputs.ziti-version || github.event.inputs.ziti-version }}
       ZITI_MAINTAINER: "OpenZiti Maintainers <developers@openziti.org>"
       ZITI_HOMEPAGE: "https://openziti.io"
-      ZITI_VENDOR: "NetFoundry"
+      ZITI_VENDOR: "NetFoundry Inc."
       GOARCH: ${{ matrix.arch.goreleaser }}
       MINIMUM_SYSTEMD_VERSION: 232
       ZITI_DEB_TEST_REPO: ${{ vars.ZITI_DEB_TEST_REPO || 'zitipax-openziti-deb-test' }}
       ZITI_RPM_TEST_REPO: ${{ vars.ZITI_RPM_TEST_REPO || 'zitipax-openziti-rpm-test' }}
+      NFPM_VERSION: "2.38.0"
     steps:
       - name: Checkout Workspace
         uses: actions/checkout@v4
@@ -63,11 +64,11 @@ jobs:
 
       - name: Build Package
         id: nfpm
-        uses: burningalchemist/action-gh-nfpm@v1
+        uses: burningalchemist/action-gh-nfpm@eeac96f42da23d091eec0d0088bf05cac0ceb9f3
         # uses: netfoundry/action-gh-nfpm@main
         with:
-          nfpm_version: "2.32.0"
-          packager: ${{ matrix.nfpm_packager }}
+          nfpm_version: ${{ env.NFPM_VERSION }}
+          packager: ${{ matrix.packager }}
           config: dist/dist-packages/linux/nfpm-${{ matrix.package_name }}.yaml
           target: release/
 
@@ -81,8 +82,8 @@ jobs:
       - name: upload package artifact to build summary page
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.package_name }}-${{ matrix.arch.goreleaser }}-${{ matrix.nfpm_packager }}
-          path: ./release/${{ matrix.package_name }}*.${{ matrix.nfpm_packager }}
+          name: ${{ matrix.package_name }}-${{ matrix.arch.gox }}-${{ matrix.packager }}
+          path: ./release/${{ matrix.package_name }}*.${{ matrix.packager }}
           if-no-files-found: error
 
       - name: Configure jFrog CLI
@@ -91,7 +92,7 @@ jobs:
           JF_ENV_1: ${{ secrets.ZITI_ARTIFACTORY_CLI_CONFIG_PACKAGE_UPLOAD }}
 
       - name: Upload RPM to Artifactory testing repo
-        if: matrix.nfpm_packager == 'rpm'
+        if: matrix.packager == 'rpm'
         shell: bash
         run: >
           jf rt upload
@@ -101,7 +102,7 @@ jobs:
           --flat=true 
 
       - name: Upload DEB to Artifactory testing repo
-        if: matrix.nfpm_packager == 'deb'
+        if: matrix.packager == 'deb'
         shell: bash
         run: >
           jf rt upload

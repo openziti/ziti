@@ -1,0 +1,236 @@
+name: Test Deployments
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# cancel older, redundant runs of same workflow on same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  NFPM_VERSION: "2.38.0"
+
+jobs:
+  build-linux-packages:
+    name: Build ${{ matrix.package_name }} ${{ matrix.arch.gox }} ${{ matrix.packager }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package_name:
+          - openziti
+          - openziti-controller
+          - openziti-router
+        arch:
+          - goreleaser: amd64
+            gox: amd64
+            deb: amd64
+            rpm: x86_64
+        packager:
+          - rpm
+          - deb
+    steps:
+      - name: Shallow checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        id: setup-go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Build ziti executable
+        shell: bash
+        run: |
+          mkdir -pv ${GITHUB_WORKSPACE}/release/
+          go build -o ${GITHUB_WORKSPACE}/release/ ${GITHUB_WORKSPACE}/...
+
+      - name: Build Package
+        id: nfpm
+        uses: burningalchemist/action-gh-nfpm@eeac96f42da23d091eec0d0088bf05cac0ceb9f3
+        with:
+          nfpm_version: ${{ env.NFPM_VERSION }}
+          packager: ${{ matrix.packager }}
+          config: dist/dist-packages/linux/nfpm-${{ matrix.package_name }}.yaml
+          target: release/
+        env:
+          ZITI_VERSION: 0.0.0
+          ZITI_MAINTAINER: "OpenZiti Maintainers <developers@openziti.org>"
+          ZITI_HOMEPAGE: "https://openziti.io"
+          ZITI_VENDOR: "NetFoundry Inc."
+          GOARCH: ${{ matrix.arch.goreleaser }}
+          MINIMUM_SYSTEMD_VERSION: 232
+
+      - name: Upload Package to Build Summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package_name }}-${{ matrix.arch.gox }}-${{ matrix.packager }}
+          path: ./release/${{ matrix.package_name }}*.${{ matrix.packager }}
+          if-no-files-found: error
+
+  dry-run-linux-packages:
+    needs: build-linux-packages
+    name: Dry Run ${{ format('{0}:{1}', matrix.distro.name, matrix.distro.version) }} ${{ matrix.arch.gox }}
+    runs-on: ubuntu-latest
+    env:
+      ZITI_PWD: ziggypw
+      ZITI_CTRL_ADVERTISED_ADDRESS: linux-controller.127.21.71.0.sslip.io
+      ZITI_CTRL_ADVERTISED_PORT: 12800
+      ZITI_ROUTER_ADVERTISED_ADDRESS: linux-router.127.21.71.0.sslip.io
+      ZITI_ROUTER_PORT: 30222
+      ZITI_ROUTER_NAME: linux-router
+    # iterate over an assortment of popular distribution images
+    container:
+      image: docker.io/library/${{ format('{0}:{1}', matrix.distro.name, matrix.distro.version) }}
+      options: --user 0:0
+    strategy:
+      matrix:
+        distro:
+          - name: ubuntu
+            version: "24.04"
+            org:
+            type: deb
+          - name: ubuntu
+            version: "22.04"
+            type: deb
+          - name: ubuntu
+            version: "20.04"
+            type: deb
+          - name: fedora
+            version: "39"
+            type: rpm
+          - name: fedora
+            version: "38"
+            type: rpm
+          - name: fedora
+            version: "37"
+            type: rpm
+          - name: fedora
+            version: "36"
+            type: rpm
+          - name: fedora
+            version: "35"
+            type: rpm
+          - name: rockylinux
+            version: "9"
+            type: rpm
+        arch:
+          - goreleaser: amd64
+            gox: amd64
+            deb: amd64
+            rpm: x86_64
+    steps:
+      - name: Download Linux Release Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-${{ matrix.arch.gox }}-${{ matrix.distro.type }}"
+          merge-multiple: true
+          path: release/
+
+      - name: Install Packages
+        shell: bash
+        run: |
+          set -x
+          ls -lR ./release/
+          case "${{ matrix.distro.type }}" in
+            rpm)
+              dnf makecache --refresh
+              dnf install -y systemd                                                          # install as impotent dep (not PID 1)
+              dnf install -y ./release/openziti-${ZITI_VERSION}*.${{ matrix.distro.type }}    # install CLI
+              dnf install -y ./release/openziti-*-${ZITI_VERSION}*.${{ matrix.distro.type }}  # install controller, router
+              ;;
+            deb)
+              apt-get update
+              apt-get install -y systemd                                     # install as impotent dep (not PID 1)
+              dpkg --install ./release/openziti_*.${{ matrix.distro.type }}  # install CLI
+              dpkg --install ./release/openziti-*.${{ matrix.distro.type }}  # install controller, router
+              ;;
+          esac
+
+      - name: Bootstrapping - Dry Run
+        shell: bash
+        env:
+          DEBUG: 1
+        run: |
+          set -x
+          /opt/openziti/etc/controller/bootstrap.bash <<CTRL
+          ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}
+          ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}
+          ZITI_USER=admin
+          ZITI_PWD=${ZITI_PWD}
+          ZITI_ARGS="--verbose"
+          CTRL
+
+          /opt/openziti/etc/router/bootstrap.bash <<ROUTER
+          ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}
+          ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}
+          ZITI_ROUTER_ADVERTISED_ADDRESS=${ZITI_ROUTER_ADVERTISED_ADDRESS}
+          ZITI_ROUTER_PORT=${ZITI_ROUTER_PORT}
+          ZITI_BOOTSTRAP_ENROLLMENT=false
+          ZITI_ARGS="--verbose"
+          ROUTER
+
+  test-linux-services:
+    name: Test Debian Linux Services
+    runs-on: ubuntu-latest
+    steps:
+      - name: Shallow checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        id: setup-go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Install nfpm
+        shell: bash
+        run: |
+          echo ~/.local/bin >> $GITHUB_PATH
+          mkdir -p ~/.local/bin
+          wget -qO- https://github.com/goreleaser/nfpm/releases/download/v${{ env.NFPM_VERSION }}/nfpm_${{ env.NFPM_VERSION }}_Linux_x86_64.tar.gz | tar --directory ~/.local/bin -xz nfpm
+          nfpm --version
+
+      - name: Bootstrap & Run
+        shell: bash
+        env:
+          I_AM_ROBOT: 1  # let CI runner skip destructive script warning
+        run: ./dist/dist-packages/linux/linux.test.bash
+
+      - name: Debug Info
+        if: always()
+        shell: bash
+        run: |
+          set -x
+          set +e
+          sudo ss -lntp | grep -E ":(${ZITI_CTRL_ADVERTISED_PORT}|${ZITI_ROUTER_PORT})"
+          sudo journalctl --no-pager -o cat -u ziti-controller.service
+          sudo journalctl --no-pager -o cat -u ziti-router.service
+          cat /opt/openziti/etc/**/*.env /tmp/${ZITI_ROUTER_NAME}.jwt
+          exit 0
+
+  docker-deployments:
+    name: Test Docker Deployments
+    runs-on: ubuntu-latest
+    env:
+      ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
+    steps:
+      - name: Shallow checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        id: setup-go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Run the Compose Test Script
+        shell: bash
+        run: dist/docker-images/compose.test.bash
+        env:
+          ZITI_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}

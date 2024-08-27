@@ -85,3 +85,4 @@ jobs:
           id runner
           ls -lAn ${GOCACHE:-${HOME}/.cache/go-build}/ ${GOPATH:-${HOME}/go}/pkg/mod/
           docker compose --profile test logs
+          exit 0
