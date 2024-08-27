@@ -50,6 +50,7 @@ require (
 	github.com/c-bata/go-prompt v0.2.6 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/coreos/go-iptables v0.7.0 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3 // indirect
 	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663 // indirect
@@ -136,6 +137,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
+	github.com/openziti/cobra-to-md v0.0.0-20240827152831-dab4eaadf278 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
 	github.com/openziti/metrics v1.2.57 // indirect
@@ -155,6 +157,7 @@ require (
 	github.com/rodaine/table v1.0.1 // indirect
 	github.com/rs/cors v1.11.0 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
