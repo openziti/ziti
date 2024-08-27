@@ -569,6 +569,8 @@ github.com/openziti/agent v1.0.17 h1:CNBVWl8m4CWXz/pmdWjEhg1rvtUGinQNRAr3vgF90go
 github.com/openziti/agent v1.0.17/go.mod h1:GJVKVikwmvZ0U+hNP7Zi2P+xd/wTb6VZ9wz24/2WQ+U=
 github.com/openziti/channel/v2 v2.0.143 h1:GPbcITZX5+vfGq+i8GJ4WWfoMCuEuDlxd8gIvQGFaH8=
 github.com/openziti/channel/v2 v2.0.143/go.mod h1:SKka1yjVzBpz8Zy5wuTHHEjfArRo8aGBPs+2XZWheso=
+github.com/openziti/cobra-to-md v0.0.0-20240827122906-40d67b475e7d h1:cbCVE6ungpo8JhAdcpVZKGLZQaLch1r/6AXIA4YZKu0=
+github.com/openziti/cobra-to-md v0.0.0-20240827122906-40d67b475e7d/go.mod h1:3H80ogIihPo76CWyQGdxGHTzseNuNMekcA5wdFlQmak=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
 github.com/openziti/edge-api v0.26.25 h1:ueHfs4+dRuWkSFCbduYRsMre3udbUp7xlmjOVbdEX5k=

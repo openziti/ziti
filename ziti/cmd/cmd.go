@@ -19,12 +19,12 @@ package cmd
 import (
 	goflag "flag"
 	"fmt"
-	zssh "github.com/openziti/ziti/ziti/cmd/gendoc"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/openziti/cobra-to-md"
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/create"
@@ -188,7 +188,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	cmd.AddCommand(NewCmdArt(out, err))
 	cmd.AddCommand(common.NewVersionCmd())
 
-	cmd.AddCommand(zssh.NewGendocCmd(cmd))
+	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
 	return cmd
 }
 
