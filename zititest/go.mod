@@ -1,6 +1,6 @@
 module github.com/openziti/ziti/zititest
 
-go 1.22.5
+go 1.22
 
 replace github.com/openziti/ziti => ../
 
