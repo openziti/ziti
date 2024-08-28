@@ -145,10 +145,10 @@ volumes:
 
 YAML
 
-docker compose run --rm --entrypoint= --user=root ziti-ctrl chown -R "2171:2171" /home/ziggy/quickstart/
+docker compose run --rm --entrypoint= --user=root --no-TTY ziti-ctrl chown -R "2171:2171" /home/ziggy/quickstart/
 docker compose up wait-for-ziti-ctrl
 
-docker compose exec -T ziti-ctrl bash << BASH
+docker compose exec --no-TTY ziti-ctrl bash << BASH
 
 set -o errexit -o nounset -o pipefail -o xtrace
 
@@ -204,10 +204,10 @@ ziti edge policy-advisor services web-service --quiet
 
 BASH
 
-ZITI_ENROLL_TOKEN="$(docker compose exec -T ziti-ctrl cat /tmp/web-host-tunneler.ott.jwt)" \
+ZITI_ENROLL_TOKEN="$(docker compose exec --no-TTY ziti-ctrl cat /tmp/web-host-tunneler.ott.jwt)" \
 docker compose --profile=host up --detach
 
-ZITI_ENROLL_TOKEN="$(docker compose exec -T ziti-ctrl cat /tmp/web-client-router.erott.jwt)" \
+ZITI_ENROLL_TOKEN="$(docker compose exec --no-TTY ziti-ctrl cat /tmp/web-client-router.erott.jwt)" \
 docker compose --profile=client up --detach
 
 timeout 10s docker compose logs web-client --no-log-prefix --follow || true
