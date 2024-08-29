@@ -22,9 +22,7 @@ services:
         exec ziti "$${@}" $${ZITI_CMD}
     command: -- edge quickstart --home /home/ziggy/quickstart
     user: ${ZIGGY_UID:-1000}
-    working_dir: /home/ziggy
     environment:
-      HOME: /home/ziggy
       PFXLOG_NO_JSON: "${PFXLOG_NO_JSON:-true}"
       ZITI_ROUTER_NAME: ${ZITI_ROUTER_NAME:-quickstart-router}
     volumes:
@@ -57,8 +55,6 @@ services:
     image: busybox
     command: chown -Rc ${ZIGGY_UID:-1000} /home/ziggy
     user: root
-    environment:
-      HOME: /home/ziggy
     volumes:
       # store the quickstart state in a named volume "ziti_home" or store the quickstart state on the Docker host in a
       # directory, ZITI_HOME 
