@@ -66,8 +66,7 @@ jobs:
         shell: bash
         working-directory: ./quickstart/docker/all-in-one
         run: |
-          docker compose build --no-cache
-          docker compose up --detach
+          docker compose up --build --detach
 
       - name: Wait for all-in-one quickstart controller then run quickstart tests
         shell: bash
