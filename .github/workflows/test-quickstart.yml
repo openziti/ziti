@@ -58,8 +58,8 @@ jobs:
       - name: Build ziti executable
         shell: bash
         run: |
-          mkdir -pv ${ARTIFACTS_DIR}
-          go build -o ${ARTIFACTS_DIR} ${GITHUB_WORKSPACE}/...
+          mkdir -pv ${ARTIFACTS_DIR}/amd64/linux
+          go build -o ${ARTIFACTS_DIR}/amd64/linux ${GITHUB_WORKSPACE}/...
 
       - name: Run the all-in-one quickstart with locally-built ziti executable
         shell: bash
