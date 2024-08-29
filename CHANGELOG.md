@@ -6,6 +6,10 @@
 * Includes a performance update ([Issue #2340](https://github.com/openziti/ziti/issues/2340)) which should improve
   connection ramp times. Previously circuits would start with a relatively low window size and ramp slowly. Circuits
   will now start with a large initial window size and scale back if they can't keep up
+* Added `ziti ops verify-network`. A command to aid when configuring the overlay network, this command will check config
+  files for obvious mistakes
+* Added `ziti ops verify-traffic`. Another command to aid when configuring the overlay network, this command will ensure
+  the overlay network is able to pass traffic
 
 ## Component Updates and Bug Fixes
 

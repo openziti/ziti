@@ -9,7 +9,7 @@ a Docker named volume. You may instead persist the state in a filesystem directo
 This is the primary use case for this project: running the `ziti edge quickstart` command in the official
 `openziti/ziti-cli` container image.
 
-1.You need only the `compose.yml` file in this directory to run your own Ziti network.
+1. You need only the `compose.yml` file in this directory to run your own Ziti network.
 
     ```bash
     wget https://get.openziti.io/dock/all-in-one/compose.yml
