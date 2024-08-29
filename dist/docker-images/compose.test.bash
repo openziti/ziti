@@ -8,6 +8,11 @@ set -o pipefail
 set -o xtrace
 
 cleanup(){
+    if ! (( I_AM_ROBOT ))
+    then
+        echo "WARNING: destroying all controller and router state volumes in 30s; set I_AM_ROBOT=1 to suppress this message" >&2
+        sleep 30
+    fi
 	docker compose --profile test down --volumes --remove-orphans
     echo "DEBUG: cleanup complete"
 }
@@ -24,10 +29,23 @@ portcheck(){
     fi
 }
 
+checkCommand() {
+    if ! command -v "$1" &>/dev/null; then
+        logError "this script requires command '$1'. Please install on the search PATH and try again."
+        $1
+    fi
+}
+
 BASEDIR="$(cd "$(dirname "${0}")" && pwd)"
 REPOROOT="$(cd "${BASEDIR}/../.." && pwd)"
 cd "${REPOROOT}"
 
+declare -a BINS=(grep docker go nc)
+for BIN in "${BINS[@]}"; do
+    checkCommand "$BIN"
+done
+
+: "${I_AM_ROBOT:=0}"
 : "${ZIGGY_UID:=$(id -u)}"
 : "${ZITI_GO_VERSION:=$(grep -E '^go \d+\.\d*' "./go.mod" | cut -d " " -f2)}"
 

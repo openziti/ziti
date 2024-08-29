@@ -68,6 +68,7 @@ _usage(){
             "   --modify-hosts\tadd entries to local hosts database. Requires sudo if not running as root. Linux only.\n"\
             "\n Debug:\n"\
             "   --charts\t\tZITI_CHARTS_REF (openziti) alternative charts repo\n"\
+            "   --values-dir\tEXTRA_VALUES_DIR with Helm values files named ziti-controller.yaml or ziti-router.yaml\n"\
             "   --now\t\teliminate safety waits, e.g., before deleting miniziti\n"\
             "   --\t\t\tMINIKUBE_START_ARGS args after -- passed to minikube start\n"
 }
@@ -110,7 +111,7 @@ checkDns(){
 }
 
 deleteMiniziti(){
-    local WAIT=10
+    local WAIT=30
     if [[ $1 =~ ^[0-9]+$ ]]; then
         WAIT="$1"
         shift
@@ -118,7 +119,7 @@ deleteMiniziti(){
         logDebug "no integer param detected to deleteMiniziti(), using default wait time ${WAIT}s"
     fi
     (( SAFETY_WAIT )) && {
-        logWarn "deleting ${MINIKUBE_PROFILE} in ${WAIT}s" >&2
+        logWarn "deleting ${MINIKUBE_PROFILE} in ${WAIT}s, use --now to skip wait" >&2
         sleep "$WAIT"
     }
     logInfo "waiting for ${MINIKUBE_PROFILE} to be deleted"
@@ -457,6 +458,7 @@ main(){
             ZITI_CHARTS_ALT=0 \
             ZITI_CHARTS_REF="openziti" \
             ZITI_CHARTS_URL="https://openziti.io/helm-charts/charts" \
+            EXTRA_VALUES_DIR \
             ZITI_NAMESPACE
 
     # local arrays with defaults that never produce an error
@@ -563,6 +565,9 @@ main(){
             --charts)       ZITI_CHARTS_REF="$2"
                             ZITI_CHARTS_URL="$2"
                             ZITI_CHARTS_ALT=1
+                            shift 2
+            ;;
+            --values-dir)   EXTRA_VALUES_DIR="$2"
                             shift 2
             ;;
             -q|--quiet)     exec > /dev/null
@@ -695,7 +700,7 @@ main(){
         | grep -q "apiserver: Running" \
         || (( ${#MINIKUBE_START_ARGS[*]} )); then
         logDebug "apiserver not running or got extra start args, running 'minikube start'"
-        minikube start \
+        eval minikube start \
             --profile "${MINIKUBE_PROFILE}" \
             "${MINIKUBE_START_ARGS[*]}" >&3
     else
@@ -792,14 +797,19 @@ main(){
         logDebug "building ${ZITI_CHARTS_REF}/ziti-controller Helm Chart dependencies"
         helmWrapper dependency build "${ZITI_CHARTS_REF}/ziti-controller" >&3
     }
-    helmWrapper upgrade --install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller" \
-        --namespace "${ZITI_NAMESPACE}" --create-namespace \
-        --set ctrlPlane.advertisedHost="miniziti-controller-ctrl.${MINIZITI_INGRESS_ZONE}" \
-        --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}" \
-        --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}" \
-        --set trust-manager.enabled=true \
-        --set cert-manager.enabled=true \
-        --values "${ZITI_CHARTS_URL}/ziti-controller/values-ingress-nginx.yaml" >&3
+    local -a _controller_cmd=(upgrade --install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller"
+        --namespace "${ZITI_NAMESPACE}" --create-namespace
+        --set ctrlPlane.advertisedHost="miniziti-controller-ctrl.${MINIZITI_INGRESS_ZONE}"
+        --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}"
+        --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}"
+        --set trust-manager.enabled=true
+        --set cert-manager.enabled=true
+        --values "${ZITI_CHARTS_URL}/ziti-controller/values-ingress-nginx.yaml"
+    )
+    if [[ -n "${EXTRA_VALUES_DIR:-}" && -s "${EXTRA_VALUES_DIR}/ziti-controller.yaml" ]]; then
+        _controller_cmd+=(--values "${EXTRA_VALUES_DIR}/ziti-controller.yaml")
+    fi
+    helmWrapper "${_controller_cmd[@]}" >&3
 
     logDebug "setting default namespace '${ZITI_NAMESPACE}' in kubeconfig context '${MINIKUBE_PROFILE}'"
         kubectlWrapper config set-context "${MINIKUBE_PROFILE}" \
@@ -957,13 +967,19 @@ EOF
         logDebug "building ${ZITI_CHARTS_REF}/ziti-router Helm Chart dependencies"
         helmWrapper dependency build "${ZITI_CHARTS_REF}/ziti-router" >&3
     }
-    helmWrapper upgrade --install "ziti-router" "${ZITI_CHARTS_REF}/ziti-router" \
-        --namespace "${ZITI_NAMESPACE}" \
-        --set-file enrollmentJwt="$ROUTER_OTT" \
-        --set edge.advertisedHost="miniziti-router.${MINIZITI_INGRESS_ZONE}" \
-        --set linkListeners.transport.advertisedHost="miniziti-router-transport.${MINIZITI_INGRESS_ZONE}" \
-        --set "ctrl.endpoint=ziti-controller-ctrl.${ZITI_NAMESPACE}.svc:443" \
-        --values "${ZITI_CHARTS_URL}/ziti-router/values-ingress-nginx.yaml" >&3
+    local -a _router_cmd=(upgrade --install "ziti-router" "${ZITI_CHARTS_REF}/ziti-router"
+        --namespace "${ZITI_NAMESPACE}"
+        --set-file enrollmentJwt="$ROUTER_OTT"
+        --set edge.advertisedHost="miniziti-router.${MINIZITI_INGRESS_ZONE}"
+        --set linkListeners.transport.advertisedHost="miniziti-router-transport.${MINIZITI_INGRESS_ZONE}"
+        --set "ctrl.endpoint=ziti-controller-ctrl.${ZITI_NAMESPACE}.svc:443"
+        --set "tunnel.mode=host"
+        --values "${ZITI_CHARTS_URL}/ziti-router/values-ingress-nginx.yaml"
+    )
+    if [[ -n "${EXTRA_VALUES_DIR:-}" && -s "${EXTRA_VALUES_DIR}/ziti-router.yaml" ]]; then
+        _router_cmd+=(--values "${EXTRA_VALUES_DIR}/ziti-router.yaml")
+    fi
+    helmWrapper "${_router_cmd[@]}" >&3
 
     logInfo "waiting for ziti-router to be ready"
     kubectlWrapper wait deployments "ziti-router" \

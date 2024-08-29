@@ -15,6 +15,7 @@ concurrency:
 
 env:
   NFPM_VERSION: "2.38.0"
+  I_AM_ROBOT: 1  # skip destruction warnings when running in CI
 
 jobs:
   build-linux-packages:
@@ -198,8 +199,6 @@ jobs:
 
       - name: Bootstrap & Run
         shell: bash
-        env:
-          I_AM_ROBOT: 1  # let CI runner skip destructive script warning
         run: ./dist/dist-packages/linux/linux.test.bash
 
       - name: Debug Info
@@ -234,3 +233,28 @@ jobs:
         run: dist/docker-images/compose.test.bash
         env:
           ZITI_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
+
+  kubernetes-deployments:
+    name: Test Kubernetes Deployments
+    runs-on: ubuntu-latest
+    env:
+      ZITI_NAMESPACE: zititest
+    steps:
+      - name: Shallow checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        id: setup-go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Install minikube
+        uses: medyagh/setup-minikube@v0.0.18
+        with:
+          start: false
+
+      - name: Run the Kubernetes Test Script
+        shell: bash
+        run: ./dist/docker-images/k8s.test.bash --cpus=2  # GitHub runners have 4 vCPUs
+

@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	api_client_config "github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
@@ -391,10 +390,13 @@ func performQuickstartTest(t *testing.T) {
 	}
 
 	ctrlAddress := "https://" + advAddy + ":" + advPort
-	//bindHostAddress := os.Getenv("ZITI_QUICKSTART_TEST_ADDRESS")
-	//if bindHostAddress == "" {
-	//	bindHostAddress = ctrlAddress
-	//}
+	bindHostAddress := os.Getenv("ZITI_TEST_BIND_ADDRESS")
+	// if bindHostAddress is not set, use the advertised address of the client API; this is useful if the client API is
+	// behind a load balancer that routes by SNI because the request's server name indication in the TLS ClientHello
+	// usually reflects the service's intercept address, not the address the load balancer is expecting
+	if bindHostAddress == "" {
+		bindHostAddress = advAddy
+	}
 	hostingRouterName := erName
 	dialAddress := "simple.web.smoke.test"
 	dialPort := 80
@@ -451,7 +453,7 @@ func performQuickstartTest(t *testing.T) {
 	serpParams.Policy = &rest_model.ServiceEdgeRouterPolicyCreate{
 		ServiceRoles:    allIdRoles,
 		EdgeRouterRoles: allIdRoles,
-		Name:            toPtr(uuid.NewString()),
+		Name:            toPtr("all-serps"),
 		Semantic:        toPtr(rest_model.SemanticAnyOf),
 	}
 	serpParams.SetTimeout(30 * time.Second)
@@ -484,7 +486,7 @@ func performQuickstartTest(t *testing.T) {
 
 	// Provide host config for the hostname
 	bindPort, _ := strconv.Atoi(advPort)
-	bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", advAddy, bindPort)
+	bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", bindHostAddress, bindPort)
 	defer func() { _ = deleteServiceConfigByID(client, bindSvcConfig.ID) }()
 
 	// Create a service that "links" the dial and bind configs

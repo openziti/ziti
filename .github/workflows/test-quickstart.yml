@@ -43,7 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ZITI_CLI_TAG: local  # override default :latest since we're not pulling from registry
-      ARTIFACTS_DIR: ${{ github.workspace }}/build  # output dir for `go build`, input dir for `compose up --build`
+      ARTIFACTS_DIR: ./build  # output dir for `go build`, input dir for `compose up --build`
+      DOCKER_BUILD_DIR: ./dist/docker-images/ziti-cli
       ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
     steps:
       - name: Shallow checkout
@@ -58,13 +59,14 @@ jobs:
       - name: Build ziti executable
         shell: bash
         run: |
-          mkdir -pv ${ARTIFACTS_DIR}
-          go build -o ${ARTIFACTS_DIR} ${GITHUB_WORKSPACE}/...
+          mkdir -pv ${ARTIFACTS_DIR}/amd64/linux
+          go build -o ${ARTIFACTS_DIR}/amd64/linux ${GITHUB_WORKSPACE}/...
 
       - name: Run the all-in-one quickstart with locally-built ziti executable
         shell: bash
         working-directory: ./quickstart/docker/all-in-one
-        run: docker compose up --build --detach
+        run: |
+          docker compose up --build --detach
 
       - name: Wait for all-in-one quickstart controller then run quickstart tests
         shell: bash
