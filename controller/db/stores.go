@@ -18,6 +18,7 @@ package db
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
@@ -238,7 +239,7 @@ func (f DbProviderF) GetDb() boltz.Db {
 	return f()
 }
 
-func InitStores(db boltz.Db, rateLimiter rate.RateLimiter) (*Stores, error) {
+func InitStores(db boltz.Db, rateLimiter rate.RateLimiter, signingCert *x509.Certificate) (*Stores, error) {
 	dbProvider := DbProviderF(func() boltz.Db {
 		return db
 	})
@@ -360,7 +361,7 @@ func InitStores(db boltz.Db, rateLimiter rate.RateLimiter) (*Stores, error) {
 		return nil, errorHolder.GetError()
 	}
 
-	if err = RunMigrations(db, externalStores); err != nil {
+	if err = RunMigrations(db, externalStores, signingCert); err != nil {
 		return nil, err
 	}
 

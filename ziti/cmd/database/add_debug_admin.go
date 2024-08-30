@@ -63,7 +63,7 @@ func (action *addDebugAdminAction) run(dbFile, username, password string) {
 	boltDb, err := db.Open(dbFile)
 	action.noError(err)
 
-	stores, err := db.InitStores(boltDb, command.NoOpRateLimiter{})
+	stores, err := db.InitStores(boltDb, command.NoOpRateLimiter{}, nil)
 	action.noError(err)
 
 	dbProvider := &addDebugAdminAction{

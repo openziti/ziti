@@ -41,10 +41,10 @@ func (ctx *TestContext) Init() {
 	ctx.InitDb(Open)
 
 	var err error
-	ctx.stores, err = InitStores(ctx.GetDb(), command.NoOpRateLimiter{})
+	ctx.stores, err = InitStores(ctx.GetDb(), command.NoOpRateLimiter{}, nil)
 	ctx.NoError(err)
 
-	ctx.NoError(RunMigrations(ctx.GetDb(), ctx.stores))
+	ctx.NoError(RunMigrations(ctx.GetDb(), ctx.stores, nil))
 	ctx.NoError(ctx.stores.EventualEventer.Start(ctx.closeNotify))
 }
 

@@ -651,7 +651,7 @@ func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
 }
 
 func NewAppEnv(host HostController) (*AppEnv, error) {
-	stores, err := db.InitStores(host.GetDb(), host.GetCommandDispatcher().GetRateLimiter())
+	stores, err := db.InitStores(host.GetDb(), host.GetCommandDispatcher().GetRateLimiter(), host.GetConfig().Edge.Enrollment.SigningCert.Cert().Leaf)
 	if err != nil {
 		return nil, err
 	}

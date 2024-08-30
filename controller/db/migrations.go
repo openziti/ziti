@@ -17,23 +17,26 @@
 package db
 
 import (
+	"crypto/x509"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 )
 
 const (
-	CurrentDbVersion = 36
+	CurrentDbVersion = 37
 	FieldVersion     = "version"
 )
 
 type Migrations struct {
-	stores *Stores
+	stores      *Stores
+	signingCert *x509.Certificate
 }
 
-func RunMigrations(db boltz.Db, stores *Stores) error {
+func RunMigrations(db boltz.Db, stores *Stores, signingCert *x509.Certificate) error {
 	migrations := &Migrations{
-		stores: stores,
+		stores:      stores,
+		signingCert: signingCert,
 	}
 
 	mm := boltz.NewMigratorManager(db)
@@ -169,6 +172,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.dropEntity(step, EntityTypeSessions)
 		m.dropEntity(step, EntityTypeApiSessions)
 		m.dropEntity(step, EntityTypeApiSessionCertificates)
+	}
+
+	if step.CurrentVersion < 37 {
+		m.setAuthenticatorIsIssuedByNetwork(step)
 	}
 
 	// current version
