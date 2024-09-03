@@ -54,10 +54,10 @@ func getUniqueId() string {
 }
 
 var Model = &model.Model{
-	Id: "dtls",
+	Id: "dtls-west",
 	Scope: model.Scope{
 		Defaults: model.Variables{
-			"environment": "dtls" + getUniqueId(),
+			"environment": "dtls-west" + getUniqueId(),
 			"credentials": model.Variables{
 				"aws": model.Variables{
 					"managed_key": true,
@@ -93,7 +93,7 @@ var Model = &model.Model{
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.edge-router", 1, func(host *model.Host) error {
-				host.InstanceType = "c5.xlarge"
+				host.InstanceType = "c5.2xlarge"
 				return nil
 			})
 		}),
@@ -111,9 +111,9 @@ var Model = &model.Model{
 	},
 
 	Regions: model.Regions{
-		"us-east-1": {
-			Region: "us-east-1",
-			Site:   "us-east-1a",
+		"us-west-2a": {
+			Region: "us-west-2",
+			Site:   "us-west-2a",
 			Hosts: model.Hosts{
 				"ctrl": {
 					Components: model.Components{
@@ -134,9 +134,19 @@ var Model = &model.Model{
 						},
 					},
 				},
+				"router-fabric": {
+					Components: model.Components{
+						"router-fabric": {
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "link.listener"}},
+							Type: &zitilab.RouterType{
+								Debug: false,
+							},
+						},
+					},
+				},
 			},
 		},
-		"us-west-2": {
+		"us-west-2b": {
 			Region: "us-west-2",
 			Site:   "us-west-2b",
 			Hosts: model.Hosts{
@@ -192,7 +202,7 @@ var Model = &model.Model{
 			return "component.edgeId:" + id
 		}),
 
-		zitilib_5_operation.CircuitMetrics(5*time.Second, nil, func(id string) string {
+		zitilib_5_operation.CircuitMetrics(time.Second, nil, func(id string) string {
 			id = strings.ReplaceAll(id, ".", ":")
 			return "component.edgeId:" + id
 		}),

@@ -42,10 +42,12 @@ transport:
   #  maxBytesPerSecond: 500000
 
 link:
+{{if .Component.HasTag "link.listener"}}
   listeners:
     - binding:          transport
-      bind:             tls:0.0.0.0:6000
-      advertise:        tls:{{$router_ip}}:6000
+      bind:             dtls:0.0.0.0:6000
+      advertise:        dtls:{{$router_ip}}:6000
+{{end}}
   dialers:
     - binding:          transport
       split: false
@@ -53,7 +55,7 @@ link:
 dialers:
   - binding: tunnel
     options:
-      #mtu: 1435
+      mtu: 1435
       #txPortalStartSize: 4192000
       txPortalIncreaseThresh: 250
       txPortalIncreaseScale: 0.5
@@ -62,13 +64,14 @@ dialers:
       retxScale: 1.05
       #txPortalMinSize: 4192000
       txPortalIncreaseThresh: 256
+      txPortalDupAckThresh: 5
 
 listeners:
 {{if .Component.HasTag "tunneler"}}
   - binding: tunnel
     options:
       mode: tproxy
-      #mtu: 1435
+      mtu: 1435
       #txPortalStartSize: 4192000
       txPortalIncreaseThresh: 250
       txPortalIncreaseScale: 0.5
@@ -77,6 +80,7 @@ listeners:
       retxScale: 1.05
       #txPortalMinSize: 4192000
       txPortalIncreaseThresh: 256
+      txPortalDupAckThresh: 5
 
 {{end}}
   - binding: edge
