@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/openziti/foundation/v2/errorz"
+	"gopkg.in/go-jose/go-jose.v2"
 	"net/http"
 	"strings"
 	"sync"
@@ -24,7 +25,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 
 	"github.com/google/uuid"
-	"gopkg.in/square/go-jose.v2"
 
 	"github.com/zitadel/oidc/v2/pkg/oidc"
 	"github.com/zitadel/oidc/v2/pkg/op"
