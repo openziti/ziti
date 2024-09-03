@@ -49,7 +49,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.17
 	github.com/openziti/channel/v2 v2.0.143
-	github.com/openziti/cobra-to-md v0.0.0-20240827152831-dab4eaadf278
+	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.25
 	github.com/openziti/foundation/v2 v2.0.48
 	github.com/openziti/identity v1.0.84
