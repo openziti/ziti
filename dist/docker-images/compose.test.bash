@@ -8,24 +8,44 @@ set -o pipefail
 set -o xtrace
 
 cleanup(){
+    if ! (( I_AM_ROBOT ))
+    then
+        echo "WARNING: destroying all controller and router state volumes in 30s; set I_AM_ROBOT=1 to suppress this message" >&2
+        sleep 30
+    fi
 	docker compose --profile test down --volumes --remove-orphans
+    echo "DEBUG: cleanup complete"
 }
 
 portcheck(){
     PORT="${1}"
-    if [ "$(nc -zv -G 5 localhost "$PORT" 2>&1 | grep -c 'succeeded')" -lt 1 ]; then
-		echo "port $PORT is FREE"
-        return 0
-    else
-		echo "port $PORT is already allocated! cannot continue"
+    if nc -zv localhost "$PORT" &>/dev/null
+    then
+		echo "ERROR: port $PORT is already allocated" >&2
         return 1
+    else
+		echo "DEBUG: port $PORT is available"
+        return 0
+    fi
+}
+
+checkCommand() {
+    if ! command -v "$1" &>/dev/null; then
+        logError "this script requires command '$1'. Please install on the search PATH and try again."
+        $1
     fi
 }
 
 BASEDIR="$(cd "$(dirname "${0}")" && pwd)"
-REPOROOT="$(cd "${BASEDIR}/../../.." && pwd)"
+REPOROOT="$(cd "${BASEDIR}/../.." && pwd)"
 cd "${REPOROOT}"
 
+declare -a BINS=(grep docker go nc)
+for BIN in "${BINS[@]}"; do
+    checkCommand "$BIN"
+done
+
+: "${I_AM_ROBOT:=0}"
 : "${ZIGGY_UID:=$(id -u)}"
 : "${ZITI_GO_VERSION:=$(grep -E '^go \d+\.\d*' "./go.mod" | cut -d " " -f2)}"
 
@@ -58,8 +78,8 @@ done
 export GOOS="linux"
 os="$(go env GOOS)"
 arch="$(go env GOARCH)" 
-mkdir -p ./release/$arch/$os
-go build -o ./release/$arch/$os ./...
+mkdir -p "./release/$arch/$os"
+go build -o "./release/$arch/$os" ./...
 
 ZITI_CLI_IMAGE="ziti-cli"
 ZITI_CLI_TAG="local"

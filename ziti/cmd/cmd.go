@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/openziti/cobra-to-md"
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/create"
@@ -33,6 +34,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/fabric"
 	"github.com/openziti/ziti/ziti/cmd/pki"
 	"github.com/openziti/ziti/ziti/cmd/templates"
+	"github.com/openziti/ziti/ziti/cmd/verify"
 	c "github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/internal/log"
@@ -134,13 +136,15 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	demoCmd := demo.NewDemoCmd(p)
 
 	opsCommands := &cobra.Command{
-		Use:   "ops ",
+		Use: "ops",
 		Short: "Various utilities useful when operating a Ziti network",
 	}
 
 	opsCommands.AddCommand(database.NewCmdDb(out, err))
 	opsCommands.AddCommand(NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
+	opsCommands.AddCommand(verify.NewVerifyNetwork())
+	opsCommands.AddCommand(verify.NewVerifyTraffic())
 
 	groups := templates.CommandGroups{
 		{
@@ -187,6 +191,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	cmd.AddCommand(NewCmdArt(out, err))
 	cmd.AddCommand(common.NewVersionCmd())
 
+	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
 	return cmd
 }
 

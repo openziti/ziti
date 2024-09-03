@@ -62,6 +62,7 @@ RUN /usr/local/bin/ziti completion bash > /etc/bash_completion.d/ziti_cli
 
 USER ziggy
 ENV HOME=${HOME}
+WORKDIR ${HOME}
 COPY ${DOCKER_BUILD_DIR}/bashrc ${HOME}/.bashrc
 
 ENTRYPOINT [ "ziti" ]

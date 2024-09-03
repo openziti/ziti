@@ -80,7 +80,7 @@ jobs:
           ${{ matrix.image.repo }}:${{ needs.parse_version.outputs.version }}
 
   promote_artifactory:
-    name: Promote ${{ matrix.package_name }}-${{ matrix.arch.rpm }}.${{ matrix.nfpm_packager }}
+    name: Promote ${{ matrix.package_name }}-${{ matrix.arch.rpm }}.${{ matrix.packager }}
     needs: parse_version
     strategy:
       fail-fast: true
@@ -96,7 +96,7 @@ jobs:
             rpm: aarch64
           - deb: armv7
             rpm: armv7
-        nfpm_packager:
+        packager:
           - rpm
           - deb
     runs-on: ubuntu-latest
@@ -112,7 +112,7 @@ jobs:
           JF_ENV_1: ${{ secrets.ZITI_ARTIFACTORY_CLI_CONFIG_PACKAGE_UPLOAD }}
 
       - name: Copy RPM from test repo to stable repo with jFrog CLI
-        if: matrix.nfpm_packager == 'rpm'
+        if: matrix.packager == 'rpm'
         shell: bash
         run: >
           jf rt copy
@@ -122,7 +122,7 @@ jobs:
           ${{ env.ZITI_RPM_PROD_REPO }}/redhat/${{ matrix.arch.rpm }}/
 
       - name: Copy DEB from test repo to stable repo with jFrog CLI
-        if: matrix.nfpm_packager == 'deb'
+        if: matrix.packager == 'deb'
         shell: bash
         run: >
           jf rt copy

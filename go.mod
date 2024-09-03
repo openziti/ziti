@@ -49,6 +49,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.17
 	github.com/openziti/channel/v2 v2.0.143
+	github.com/openziti/cobra-to-md v0.0.0-20240827152831-dab4eaadf278
 	github.com/openziti/edge-api v0.26.28
 	github.com/openziti/foundation/v2 v2.0.48
 	github.com/openziti/identity v1.0.84
@@ -76,7 +77,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zitadel/oidc/v2 v2.12.0
+	github.com/zitadel/oidc/v2 v2.12.2
 	go.etcd.io/bbolt v1.3.11
 	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/crypto v0.26.0
@@ -87,8 +88,8 @@ require (
 	golang.org/x/text v0.17.0
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
+	gopkg.in/go-jose/go-jose.v2 v2.6.3
 	gopkg.in/resty.v1 v1.12.0
-	gopkg.in/square/go-jose.v2 v2.6.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	rsc.io/goversion v1.2.0
@@ -105,6 +106,7 @@ require (
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/c-bata/go-prompt v0.2.6 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
@@ -163,6 +165,7 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
 	github.com/rs/cors v1.11.0 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect

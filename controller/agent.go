@@ -19,9 +19,10 @@ import (
 const (
 	AgentAppId byte = 1
 
-	AgentIdHeader      = 10
-	AgentAddrHeader    = 11
-	AgentIsVoterHeader = 12
+	AgentIdHeader         = 10
+	AgentAddrHeader       = 11
+	AgentIsVoterHeader    = 12
+	AgentSnapshotFileName = 13
 )
 
 func (self *Controller) RegisterAgentBindHandler(bindHandler channel.BindHandler) {
@@ -67,12 +68,14 @@ func (self *Controller) HandleCustomAgentAsyncOp(conn net.Conn) error {
 }
 
 func (self *Controller) agentOpSnapshotDb(m *channel.Message, ch channel.Channel) {
+	fileName, _ := m.GetStringHeader(AgentSnapshotFileName)
+
 	log := pfxlog.Logger()
-	if err := self.network.SnapshotDatabase(); err != nil {
+	if path, err := self.network.SnapshotDatabaseToFile(fileName); err != nil {
 		log.WithError(err).Error("failed to snapshot db")
 		handler_common.SendOpResult(m, ch, "db.snapshot", err.Error(), false)
 	} else {
-		handler_common.SendOpResult(m, ch, "db.snapshot", "", true)
+		handler_common.SendOpResult(m, ch, "db.snapshot", path, true)
 	}
 }
 

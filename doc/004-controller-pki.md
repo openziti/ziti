@@ -31,7 +31,7 @@ This document assumes that the following hostnames will resolve on your local sy
 
 This means that temporarily adding these to your system hosts file (outlined below) is required for this guide.
 
-- Windows: `windows: %windir%\system32\drivers\etc\hosts`
+- Windows: `%windir%\system32\drivers\etc\hosts`
 - Linux: `/etc/hosts`
 
     127.0.0.1   up-and-running-ctrl.ziti.netfoundry.io
