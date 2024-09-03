@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -114,6 +115,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		LocalBinding:    self.config.localBinding,
 		Headers:         headers,
 		TransportConfig: self.transportConfig,
+		MessageStrategy: channel.DatagramMessageStrategy(xgress.UnmarshallPacketPayload),
 	}
 
 	payloadDialer := channel.NewClassicDialer(channelDialerConfig)
@@ -175,6 +177,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 		LocalBinding:    self.config.localBinding,
 		Headers:         headers,
 		TransportConfig: self.transportConfig,
+		MessageStrategy: channel.DatagramMessageStrategy(xgress.UnmarshallPacketPayload),
 	})
 
 	bindHandler := &dialBindHandler{

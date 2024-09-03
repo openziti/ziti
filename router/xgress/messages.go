@@ -36,6 +36,7 @@ const (
 	HeaderKeyFlags          = 2258
 	HeaderKeyRecvBufferSize = 2259
 	HeaderKeyRTT            = 2260
+	HeaderPayloadRaw        = 2261
 
 	ContentTypePayloadType         = 1100
 	ContentTypeAcknowledgementType = 1101
@@ -197,6 +198,7 @@ type Payload struct {
 	Sequence  int32
 	Headers   map[uint8][]byte
 	Data      []byte
+	raw       []byte
 }
 
 func (payload *Payload) GetSequence() int32 {
@@ -204,6 +206,17 @@ func (payload *Payload) GetSequence() int32 {
 }
 
 func (payload *Payload) Marshall() *channel.Message {
+	if payload.raw != nil {
+		if payload.raw[0]&RttFlagMask != 0 {
+			rtt := uint16(info.NowInMilliseconds())
+			b0 := byte(rtt)
+			b1 := byte(rtt >> 8)
+			payload.raw[2] = b0
+			payload.raw[3] = b1
+		}
+		return channel.NewMessage(channel.ContentTypeRaw, payload.raw)
+	}
+
 	msg := channel.NewMessage(ContentTypePayloadType, payload.Data)
 	addPayloadHeadersToMsg(msg, payload.Headers)
 	msg.Headers[HeaderKeyCircuitId] = []byte(payload.CircuitId)
@@ -259,6 +272,10 @@ func UnmarshallPayload(msg *channel.Message) (*Payload, error) {
 		return nil, fmt.Errorf("no sequence found in xgress payload message")
 	}
 	payload.Sequence = int32(sequence)
+
+	if raw, ok := msg.Headers[HeaderPayloadRaw]; ok {
+		payload.raw = raw
+	}
 
 	return payload, nil
 }

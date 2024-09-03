@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -145,7 +146,7 @@ type Xgress struct {
 	Options              *Options
 	txQueue              chan *Payload
 	closeNotify          chan struct{}
-	rxSequence           int32
+	rxSequence           uint64
 	rxSequenceLock       sync.Mutex
 	receiveHandler       ReceiveHandler
 	payloadBuffer        *LinkSendBuffer
@@ -266,7 +267,7 @@ func (self *Xgress) GetStartCircuit() *Payload {
 	startCircuit := &Payload{
 		CircuitId: self.circuitId,
 		Flags:     SetOriginatorFlag(uint32(PayloadFlagCircuitStart), self.originator),
-		Sequence:  self.nextReceiveSequence(),
+		Sequence:  int32(self.nextReceiveSequence()),
 		Data:      nil,
 	}
 	return startCircuit
@@ -276,7 +277,7 @@ func (self *Xgress) GetEndCircuit() *Payload {
 	endCircuit := &Payload{
 		CircuitId: self.circuitId,
 		Flags:     SetOriginatorFlag(uint32(PayloadFlagCircuitEnd), self.originator),
-		Sequence:  self.nextReceiveSequence(),
+		Sequence:  int32(self.nextReceiveSequence()),
 		Data:      nil,
 	}
 	return endCircuit
@@ -384,14 +385,11 @@ func (self *Xgress) HandleControlReceive(controlType ControlType, headers channe
 
 func (self *Xgress) payloadIngester(payload *Payload) {
 	if payload.IsCircuitStartFlagSet() && self.firstCircuitStartReceived() {
-		pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).Debug("received circuit start, starting xgress receiver")
 		go self.rx()
 	}
 
 	if !self.Options.RandomDrops || rand.Int31n(self.Options.Drop1InN) != 1 {
 		self.PayloadReceived(payload)
-	} else {
-		pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).Error("drop!")
 	}
 	self.queueSends()
 }
@@ -575,6 +573,64 @@ func (self *Xgress) flushSendThenClose() {
 	})
 }
 
+/**
+	Payload format
+
+	Field 1: 1 byte - version and flags
+      Masks
+      * 00000000 - Always 0 to indicate type. The standard channel header 4 byte protocol indicator has a 1 in bit 0 of the first byte
+      * 00000110 - Version, v0-v3. Assumption is that if we ever get to v4, we can roll back to 0, since everything
+                   should have upgraded past v0 by that point
+      * 00001000 - Terminator Flag - indicates the payload origin, initiator (0) or terminator (1)
+      * 00010000 - RTT Flag. Indicates if the payload contains an RTT. We don't need to send RTT on every payload.
+      * 00100000 - Chunk Flag. Indicates if this payload is chunked.
+      * 01000000 - Headers flag. Indicates this payload contains headers.
+      * 10000000 - Heartbeat Flag. Indicates the payload contains a heartbeat
+
+    Field 2: 1 byte, Circuit id size
+      Masks
+      * 00001111 - Number of bytes in circuit id. Supports circuit ids which take up to 15 bytes.
+                   Circuits ids are currently at 9 bytes.
+      * 11110000 - currently unused
+
+    Field 3: RTT (optional)
+      - 2 bytes
+
+    Field 4: CircuitId
+      - direct bytes representation of string encoded circuit id
+
+    Field 5: Sequence number
+      - Encoded using binary.PutUvarint
+
+    Field 6: Headers
+      - Presence indicated by headers flag in first field
+      length - encoded with binary.PutUvarint
+      for each key/value pair -
+         key - 1 byte
+         value length - encoded with binary.PutUvarint
+         value - byte array, directly appended
+
+
+    Field 7: Data
+
+    Field 8: Heartbeat
+      - 8 bytes
+      - only included if there's extra room
+*/
+
+const (
+	VersionMask        byte = 0b00000110
+	TerminatorFlagMask byte = 0b00001000
+	RttFlagMask        byte = 0b00010000
+	ChunkFlagMask      byte = 0b00100000
+	HeadersFlagMask    byte = 0b01000000
+	HeartbeatFlagMask  byte = 0b10000000
+
+	CircuitIdSizeMask     byte = 0b00001111
+	PayloadProtocolV1     byte = 1
+	PayloadProtocolOffset byte = 1
+)
+
 func (self *Xgress) rx() {
 	log := pfxlog.ContextLogger(self.Label())
 
@@ -610,7 +666,7 @@ func (self *Xgress) rx() {
 			return
 		}
 
-		if n < int(self.Options.Mtu) || self.Options.Mtu == 0 {
+		if self.Options.Mtu == 0 {
 			if !self.sendUnchunkedBuffer(buffer, headers) {
 				return
 			}
@@ -618,28 +674,91 @@ func (self *Xgress) rx() {
 		}
 
 		first := true
-		for len(buffer) > 0 {
+		chunked := false
+		for len(buffer) > 0 || (first && len(headers) > 0) {
+			seq := self.nextReceiveSequence()
+
 			chunk := make([]byte, self.Options.Mtu)
-			dataTarget := chunk
-			offset := 0
-			if first {
-				offset = binary.PutUvarint(chunk, uint64(n))
-				dataTarget = chunk[offset:]
+
+			flagsHeader := VersionMask & (PayloadProtocolV1 << PayloadProtocolOffset)
+			var sizesHeader byte
+			if self.originator == Terminator {
+				flagsHeader |= TerminatorFlagMask
 			}
 
-			written := copy(dataTarget, buffer)
-			buffer = buffer[written:]
+			written := 2
+			rest := chunk[2:]
+			includeRtt := seq%5 == 0
+			if includeRtt {
+				flagsHeader |= RttFlagMask
+				written += 2
+				rest = rest[2:]
+			}
+
+			size := copy(rest, self.circuitId)
+			sizesHeader |= CircuitIdSizeMask & uint8(size)
+			written += size
+			rest = rest[size:]
+			size = binary.PutUvarint(rest, seq)
+			rest = rest[size:]
+			written += size
+
+			if first && len(headers) > 0 {
+				flagsHeader |= HeadersFlagMask
+				size, err = writeU8ToBytesMap(headers, rest)
+				if err != nil {
+					log.WithError(err).Error("payload encoding error, closing")
+					return
+				}
+				rest = rest[size:]
+				written += size
+			}
+
+			data := rest
+			dataLen := 0
+			if first && len(rest) < len(buffer) {
+				chunked = true
+				size = binary.PutUvarint(rest, uint64(n))
+				dataLen += size
+				written += size
+				rest = rest[size:]
+			}
+
+			if chunked {
+				flagsHeader |= ChunkFlagMask
+			}
+
+			size = copy(rest, buffer)
+			written += size
+			dataLen += size
+
+			buffer = buffer[size:]
+
+			// check if there's room for a heartbeat
+			if written+8 <= len(chunk) {
+				flagsHeader |= HeartbeatFlagMask
+				written += 8
+			}
+
+			chunk[0] = flagsHeader
+			chunk[1] = sizesHeader
 
 			payload := &Payload{
 				CircuitId: self.circuitId,
-				Flags:     setPayloadFlag(SetOriginatorFlag(0, self.originator), PayloadFlagChunk),
-				Sequence:  self.nextReceiveSequence(),
-				Data:      chunk[:offset+written],
+				Flags:     SetOriginatorFlag(0, self.originator),
+				Sequence:  int32(seq),
+				Data:      data[:dataLen],
+				raw:       chunk[:written],
+			}
+
+			if chunked {
+				payload.Flags = setPayloadFlag(payload.Flags, PayloadFlagChunk)
 			}
 
 			if first {
 				payload.Headers = headers
 			}
+
 			log.Debugf("sending payload chunk. seq: %d, first: %v, chunk size: %d, payload size: %d, remainder: %d", payload.Sequence, first, len(payload.Data), n, len(buffer))
 			first = false
 
@@ -663,7 +782,7 @@ func (self *Xgress) sendUnchunkedBuffer(buf []byte, headers map[uint8][]byte) bo
 	payload := &Payload{
 		CircuitId: self.circuitId,
 		Flags:     SetOriginatorFlag(0, self.originator),
-		Sequence:  self.nextReceiveSequence(),
+		Sequence:  int32(self.nextReceiveSequence()),
 		Data:      buf,
 		Headers:   headers,
 	}
@@ -698,7 +817,7 @@ func (self *Xgress) forwardPayload(payload *Payload) bool {
 	return true
 }
 
-func (self *Xgress) nextReceiveSequence() int32 {
+func (self *Xgress) nextReceiveSequence() uint64 {
 	self.rxSequenceLock.Lock()
 	defer self.rxSequenceLock.Unlock()
 
@@ -737,10 +856,10 @@ func (self *Xgress) SendEmptyAck() {
 	acker.ack(ack, self.address)
 }
 
-func (self *Xgress) GetSequence() int32 {
+func (self *Xgress) GetSequence() uint64 {
 	self.rxSequenceLock.Lock()
 	defer self.rxSequenceLock.Unlock()
-	return self.rxSequence
+	return uint64(self.rxSequence)
 }
 
 func (self *Xgress) InspectCircuit(detail *inspect.CircuitInspectDetail) {
@@ -812,4 +931,130 @@ func (self *Xgress) addGoroutineIfRelated(buf *bytes.Buffer, xgressRelated bool,
 		}
 	}
 	return result
+}
+
+func UnmarshallPacketPayload(buf []byte) (*channel.Message, error) {
+	flagsField := buf[0]
+	if flagsField&1 != 0 {
+		return channel.ReadV2(bytes.NewBuffer(buf))
+	}
+	version := (flagsField & VersionMask) >> 1
+	if version != PayloadProtocolV1 {
+		return nil, fmt.Errorf("unsupported version: %d", version)
+	}
+	sizeField := buf[1]
+	circuitIdSize := CircuitIdSizeMask & sizeField
+	rest := buf[2:]
+
+	var rtt *uint16
+	if flagsField&RttFlagMask != 0 {
+		b0 := rest[0]
+		b1 := rest[1]
+		rest = rest[2:]
+		val := uint16(b0) | (uint16(b1) << 8)
+		rtt = &val
+	}
+
+	var heartbeat *uint64
+	if flagsField&HeartbeatFlagMask != 0 {
+		val := binary.BigEndian.Uint64(rest[len(rest)-8:])
+		heartbeat = &val
+		rest = rest[:len(rest)-8]
+	}
+
+	circuitId := string(rest[:circuitIdSize])
+	rest = rest[circuitIdSize:]
+	seq, read := binary.Uvarint(rest)
+	rest = rest[read:]
+
+	var headers map[uint8][]byte
+	if flagsField&HeadersFlagMask != 0 {
+		var err error
+		headers, rest, err = readU8ToBytesMap(rest)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	msg := channel.NewMessage(ContentTypePayloadType, rest)
+	addPayloadHeadersToMsg(msg, headers)
+	msg.PutStringHeader(HeaderKeyCircuitId, circuitId)
+	msg.PutUint64Header(HeaderKeySequence, seq)
+	if heartbeat != nil {
+		msg.PutUint64Header(channel.HeartbeatHeader, *heartbeat)
+	}
+	msg.Headers[HeaderPayloadRaw] = buf
+
+	flags := uint32(0)
+
+	if flagsField&ChunkFlagMask != 0 {
+		flags = setPayloadFlag(flags, PayloadFlagChunk)
+	}
+
+	if flagsField&TerminatorFlagMask != 0 {
+		flags = setPayloadFlag(flags, PayloadFlagOriginator)
+	}
+
+	if flags != 0 {
+		msg.PutUint32Header(HeaderKeyFlags, flags)
+	}
+
+	if rtt != nil {
+		msg.PutUint16Header(HeaderKeyRTT, *rtt)
+	}
+
+	return msg, nil
+}
+
+func writeU8ToBytesMap(m map[uint8][]byte, buf []byte) (int, error) {
+	written := binary.PutUvarint(buf, uint64(len(m)))
+	buf = buf[written:]
+	for k, v := range m {
+		if len(buf) < 10 {
+			return 0, fmt.Errorf("header too large, no space for header keys, payload has only %d bytes left", len(buf))
+		}
+		buf[0] = k
+		written++
+		buf = buf[1:]
+
+		fieldLen := binary.PutUvarint(buf, uint64(len(v)))
+		buf = buf[fieldLen:]
+		written += fieldLen
+		if len(buf) < len(v) {
+			return 0, fmt.Errorf("header too large, no space for header value of size %d, only %d bytes available", len(v), len(buf))
+		}
+
+		fieldLen = copy(buf, v)
+		buf = buf[fieldLen:]
+		written += fieldLen
+	}
+
+	return written, nil
+}
+
+func readU8ToBytesMap(buf []byte) (map[uint8][]byte, []byte, error) {
+	result := map[uint8][]byte{}
+	count, offset := binary.Uvarint(buf)
+	if offset < 1 {
+		return nil, nil, errors.New("error reading payload header map length")
+	}
+	buf = buf[offset:]
+	for i := range count {
+		if len(buf) < 2 {
+			return nil, nil, fmt.Errorf("payload header error, ran out of space reading header %d", i)
+		}
+		k := buf[0]
+		valSize, read := binary.Uvarint(buf[1:])
+		if read < 1 {
+			return nil, nil, fmt.Errorf("payload header error, ran out of space reading header %d", i)
+		}
+		buf = buf[read+1:]
+		if len(buf) < int(valSize) {
+			return nil, nil, fmt.Errorf("payload header error, ran out of space reading header %d", i)
+		}
+		result[k] = buf[:valSize]
+		buf = buf[valSize:]
+	}
+
+	return result, buf, nil
 }

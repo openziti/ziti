@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -51,6 +52,7 @@ func (self *listener) Listen() error {
 		TransportConfig:    self.tcfg,
 		PoolConfigurator:   fabricMetrics.GoroutinesPoolMetricsConfigF(self.metricsRegistry, "pool.listener.link"),
 		ConnectionHandlers: []channel.ConnectionHandler{&ConnectionHandler{self.id}},
+		MessageStrategy:    channel.DatagramMessageStrategy(xgress.UnmarshallPacketPayload),
 	}
 
 	var err error

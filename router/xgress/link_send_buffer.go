@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"math"
+	"slices"
 	"sync/atomic"
 	"time"
 )
@@ -161,7 +162,7 @@ func (buffer *LinkSendBuffer) Close() {
 func (buffer *LinkSendBuffer) isBlocked() bool {
 	blocked := false
 
-	if buffer.windowsSize < buffer.linkRecvBufferSize {
+	if buffer.x.Options.TxPortalMaxSize < buffer.linkRecvBufferSize {
 		blocked = true
 		if !buffer.blockedByRemoteWindow {
 			buffer.blockedByRemoteWindow = true
@@ -202,17 +203,13 @@ func (buffer *LinkSendBuffer) run() {
 
 	for {
 		// bias acks, process all pending, since that should not block
-		processingAcks := true
-		for processingAcks {
-			select {
-			case ack := <-buffer.newlyReceivedAcks:
-				buffer.receiveAcknowledgement(ack)
-			case <-buffer.closeNotify:
-				buffer.close()
-				return
-			default:
-				processingAcks = false
-			}
+		select {
+		case ack := <-buffer.newlyReceivedAcks:
+			buffer.receiveAcknowledgement(ack)
+		case <-buffer.closeNotify:
+			buffer.close()
+			return
+		default:
 		}
 
 		// don't block when we're closing, since the only thing that should still be coming in is end-of-circuit
@@ -221,6 +218,21 @@ func (buffer *LinkSendBuffer) run() {
 			buffered = nil
 		} else {
 			buffered = buffer.newlyBuffered
+
+			select {
+			case txPayload := <-buffered:
+				buffer.buffer[txPayload.payload.GetSequence()] = txPayload
+				payloadSize := len(txPayload.payload.Data)
+				buffer.linkSendBufferSize += uint32(payloadSize)
+				atomic.AddInt64(&outstandingPayloads, 1)
+				atomic.AddInt64(&outstandingPayloadBytes, int64(payloadSize))
+				log.Tracef("buffering payload %v with size %v. payload buffer size: %v",
+					txPayload.payload.Sequence, len(txPayload.payload.Data), buffer.linkSendBufferSize)
+			case <-buffer.closeNotify:
+				buffer.close()
+				return
+			default:
+			}
 		}
 
 		select {
@@ -288,7 +300,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 				if buffer.windowsSize > buffer.x.Options.TxPortalMaxSize {
 					buffer.windowsSize = buffer.x.Options.TxPortalMaxSize
 				}
-				buffer.retxScale -= 0.02
+				buffer.retxScale -= 0.01
 				if buffer.retxScale < buffer.x.Options.RetxScale {
 					buffer.retxScale = buffer.x.Options.RetxScale
 				}
@@ -320,17 +332,27 @@ func (buffer *LinkSendBuffer) retransmit() {
 		log := pfxlog.ContextLogger(buffer.x.Label())
 
 		retransmitted := 0
+		var rtxList []*txPayload
 		for _, v := range buffer.buffer {
-			if v.isRetransmittable() && uint32(now-v.getAge()) >= buffer.retxThreshold {
-				v.markQueued()
-				retransmitter.queue(v)
-				retransmitted++
-				buffer.retransmits++
-				if buffer.retransmits >= buffer.x.Options.TxPortalRetxThresh {
-					buffer.accumulator = 0
-					buffer.retransmits = 0
-					buffer.scale(buffer.x.Options.TxPortalRetxScale)
-				}
+			age := v.getAge()
+			if age != math.MaxInt64 && v.isRetransmittable() && uint32(now-age) >= buffer.retxThreshold {
+				rtxList = append(rtxList, v)
+			}
+		}
+
+		slices.SortFunc(rtxList, func(a, b *txPayload) int {
+			return int(a.payload.Sequence - b.payload.Sequence)
+		})
+
+		for _, v := range rtxList {
+			v.markQueued()
+			retransmitter.queue(v)
+			retransmitted++
+			buffer.retransmits++
+			if buffer.retransmits >= buffer.x.Options.TxPortalRetxThresh {
+				buffer.accumulator = 0
+				buffer.retransmits = 0
+				buffer.scale(buffer.x.Options.TxPortalRetxScale)
 			}
 		}
 
