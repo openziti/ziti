@@ -591,8 +591,8 @@ github.com/openziti/agent v1.0.17 h1:CNBVWl8m4CWXz/pmdWjEhg1rvtUGinQNRAr3vgF90go
 github.com/openziti/agent v1.0.17/go.mod h1:GJVKVikwmvZ0U+hNP7Zi2P+xd/wTb6VZ9wz24/2WQ+U=
 github.com/openziti/channel/v2 v2.0.143 h1:GPbcITZX5+vfGq+i8GJ4WWfoMCuEuDlxd8gIvQGFaH8=
 github.com/openziti/channel/v2 v2.0.143/go.mod h1:SKka1yjVzBpz8Zy5wuTHHEjfArRo8aGBPs+2XZWheso=
-github.com/openziti/cobra-to-md v0.0.0-20240827152831-dab4eaadf278 h1:v77wxCS4Y5uPy9XNXxJ4ercyRUEknt/3O4VmdbfPQ7c=
-github.com/openziti/cobra-to-md v0.0.0-20240827152831-dab4eaadf278/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
+github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQfVXxE=
+github.com/openziti/cobra-to-md v1.0.1/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
 github.com/openziti/edge-api v0.26.25 h1:ueHfs4+dRuWkSFCbduYRsMre3udbUp7xlmjOVbdEX5k=
@@ -1360,8 +1360,6 @@ gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce h1:+JknDZhAj8YMt7
 gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce/go.mod h1:5AcXVHNjg+BDxry382+8OKon8SEWiKktQR07RKPsv1c=
 gopkg.in/resty.v1 v1.12.0 h1:CuXP0Pjfw9rOuY6EP+UvtNvt5DSqHpIxILZKT/quCZI=
 gopkg.in/resty.v1 v1.12.0/go.mod h1:mDo4pnntr5jdWRML875a/NmxYqAlA73dVijT2AXvQQo=
-gopkg.in/square/go-jose.v2 v2.6.0 h1:NGk74WTnPKBNUhNzQX7PYcTLUjoq7mzKk2OKbvwk2iI=
-gopkg.in/square/go-jose.v2 v2.6.0/go.mod h1:M9dMgbHiYLoDGQrXy7OpJDJWiKiU//h+vD76mk0e1AI=
 gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 h1:uRGJdciOHaEIrze2W8Q3AKkepLTh2hOroT7a+7czfdQ=
 gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7/go.mod h1:dt/ZhP58zS4L8KSrWDmTeBkI65Dw0HsyUHuEVlX15mw=
 gopkg.in/yaml.v2 v2.0.0-20170812160011-eb3733d160e7/go.mod h1:JAlM8MvJe8wmxCU4Bli9HhUf9+ttbYbLASfIpnQbh74=
