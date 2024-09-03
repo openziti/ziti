@@ -475,7 +475,7 @@ func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
 		jwtToken, accessClaims, err := sm.ParseJwt(token)
 
 		if err == nil {
-			if !accessClaims.HasAudience(common.ClaimAudienceOpenZiti) || !accessClaims.HasAudience(common.ClaimLegacyNative) {
+			if !accessClaims.HasAudience(common.ClaimAudienceOpenZiti) && !accessClaims.HasAudience(common.ClaimLegacyNative) {
 				pfxlog.Logger().Errorf("provided a token with invalid audience '%s', expected: %s or %s", accessClaims.Audience, common.ClaimAudienceOpenZiti, common.ClaimLegacyNative)
 				return nil
 			}
