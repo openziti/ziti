@@ -12,7 +12,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.17
 	github.com/openziti/channel/v2 v2.0.143
-	github.com/openziti/edge-api v0.26.28
+	github.com/openziti/edge-api v0.26.29
 	github.com/openziti/fablab v0.5.60
 	github.com/openziti/foundation/v2 v2.0.48
 	github.com/openziti/identity v1.0.84
@@ -139,7 +139,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
-	github.com/openziti/jwks v1.0.3 // indirect
+	github.com/openziti/jwks v1.0.4 // indirect
 	github.com/openziti/metrics v1.2.57 // indirect
 	github.com/openziti/runzmd v1.0.50 // indirect
 	github.com/openziti/secretstream v0.1.21 // indirect
