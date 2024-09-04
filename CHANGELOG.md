@@ -1,3 +1,20 @@
+# Release 1.1.10
+
+## What's New
+
+* Bug fixes, enhancements and continuing progress on controller HA
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/cobra-to-md: v1.0.1 (new)
+* github.com/openziti/edge-api: [v0.26.25 -> v0.26.29](https://github.com/openziti/edge-api/compare/v0.26.25...v0.26.29)
+* github.com/openziti/jwks: [v1.0.3 -> v1.0.4](https://github.com/openziti/jwks/compare/v1.0.3...v1.0.4)
+* github.com/openziti/ziti: [v1.1.9 -> v1.1.10](https://github.com/openziti/ziti/compare/v1.1.9...v1.1.10)
+    * [Issue #2374](https://github.com/openziti/ziti/issues/2374) - Edge Routers Do Not Accept JWTs for `openziti`/`native` audiences
+    * [Issue #2353](https://github.com/openziti/ziti/issues/2353) - Update go-jose to avoid CVEs
+    * [Issue #2333](https://github.com/openziti/ziti/issues/2333) - Give zit agent controller snapshot-db same capabilities as ziti fabric db snapshot
+    * [Issue #2343](https://github.com/openziti/ziti/issues/2343) - Transferring leadership to another controller fails sometimes
+
 # Release 1.1.9
 
 ## What's New
