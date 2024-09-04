@@ -51,7 +51,7 @@ func (self *ZitiDbBuilder) Build(m *model.Model) error {
 		}
 	}()
 
-	self.stores, err = db.InitStores(self.zitiDb, command.NoOpRateLimiter{})
+	self.stores, err = db.InitStores(self.zitiDb, command.NoOpRateLimiter{}, nil)
 	if err != nil {
 		return errors.Wrapf(err, "unable to init fabric stores using db [%v]", dbFile)
 	}
