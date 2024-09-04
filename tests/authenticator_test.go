@@ -24,9 +24,9 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
@@ -40,7 +40,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 	ctx.RequireAdminManagementApiLogin()
 
 	_, _ = ctx.AdminManagementSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
-	_, _ = ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false)
+	ottIdentityId, _ := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false)
 
 	t.Run("can list authenticators", func(t *testing.T) {
 		req := require.New(t)
@@ -61,6 +61,33 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 			req.Equal(3, count, "expected three authenticators")
 		})
 
+		t.Run("ott listed authenticator has isIssuedByNetwork=true", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			count, err := authenticatorsBody.ArrayCount("data")
+			ctx.NoError(err)
+
+			found := false
+			for i := 0; i < count; i++ {
+				curAuth := authenticatorsBody.Path("data").Index(i)
+				ctx.Req.NotNil(curAuth)
+
+				identityId, ok := curAuth.Path("identityId").Data().(string)
+				ctx.Req.True(ok, "expected identityId to be a string)")
+				ctx.Req.NotEmpty(identityId)
+
+				if identityId == ottIdentityId {
+					found = true
+
+					isIssuedByNetwork, ok := curAuth.Path("isIssuedByNetwork").Data().(bool)
+					ctx.Req.True(ok, "expected isIssuedByNetwork to be a bool")
+					ctx.Req.True(isIssuedByNetwork, "expected isIssuedByNetwork to be true")
+					break
+				}
+			}
+
+			ctx.Req.True(found, "expected to find identity id %s for an authenticator, but no matching authenticator was found", ottIdentityId)
+		})
 	})
 	t.Run("can show details of an authenticator", func(t *testing.T) {
 		req := require.New(t)

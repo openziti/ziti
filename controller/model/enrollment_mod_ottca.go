@@ -135,8 +135,9 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 		Method:     db.MethodAuthenticatorCert,
 		IdentityId: identity.Id,
 		SubType: &AuthenticatorCert{
-			Fingerprint: fingerprint,
-			Pem:         string(certPem),
+			Fingerprint:       fingerprint,
+			Pem:               string(certPem),
+			IsIssuedByNetwork: false,
 		},
 	}
 

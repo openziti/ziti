@@ -476,7 +476,7 @@ func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
 
 		if err == nil {
 			if !accessClaims.HasAudience(common.ClaimAudienceOpenZiti) && !accessClaims.HasAudience(common.ClaimLegacyNative) {
-				pfxlog.Logger().Errorf("provided a token with invalid audience '%s', expected: %s or %s", accessClaims.Audience, common.ClaimAudienceOpenZiti, common.ClaimLegacyNative)
+				pfxlog.Logger().Errorf("provided a token with invalid audience '%s' of type [%T], expected: %s or %s", accessClaims.Audience, accessClaims.Audience, common.ClaimAudienceOpenZiti, common.ClaimLegacyNative)
 				return nil
 			}
 

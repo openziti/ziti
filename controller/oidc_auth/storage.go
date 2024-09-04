@@ -229,6 +229,11 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 		if len(authRequest.PeerCerts) == 0 {
 			authRequest.PeerCerts = authCtx.GetCerts()
 		}
+		certAuth := result.Authenticator().ToCert()
+
+		if certAuth != nil {
+			authRequest.IsCertExtendable = certAuth.IsIssuedByNetwork
+		}
 	}
 
 	return authRequest, nil
@@ -435,6 +440,7 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 		claims.CustomClaims.EnvInfo = req.EnvInfo
 		claims.CustomClaims.SdkInfo = req.SdkInfo
 		claims.CustomClaims.RemoteAddress = req.RemoteAddress
+		claims.CustomClaims.IsCertExtendable = req.IsCertExtendable
 		claims.AuthTime = oidc.Time(req.AuthTime.Unix())
 		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
 		claims.ClientID = req.ClientID

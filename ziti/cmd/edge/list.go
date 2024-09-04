@@ -460,7 +460,7 @@ func outputAuthenticators(o *api.Options, children []*gabs.Container, pagingInfo
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Method", "Identity Id", "Identity Name", "Username/Fingerprint", "Ca Id"})
+	t.AppendHeader(table.Row{"ID", "Method", "Identity Id", "Identity Name", "Username/Fingerprint", "Ca Id", "IsIssuedByNetwork"})
 
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
@@ -480,7 +480,17 @@ func outputAuthenticators(o *api.Options, children []*gabs.Container, pagingInfo
 			printOrName = entity.Path("fingerprint").Data().(string)
 		}
 
-		t.AppendRow(table.Row{id, method, identityId, identityName, printOrName, caId})
+		isIssuedByNetwork := "n/a"
+
+		if method == "cert" {
+			if entity.Path("isIssuedByNetwork").Data().(bool) {
+				isIssuedByNetwork = "true"
+			} else {
+				isIssuedByNetwork = "false"
+			}
+		}
+
+		t.AppendRow(table.Row{id, method, identityId, identityName, printOrName, caId, isIssuedByNetwork})
 	}
 	api.RenderTable(o, t, pagingInfo)
 	return nil

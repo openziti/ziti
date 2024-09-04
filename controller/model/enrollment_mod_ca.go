@@ -191,8 +191,9 @@ func (module *EnrollModuleCa) completeCertAuthenticatorEnrollment(log *logrus.En
 		Method:     db.MethodAuthenticatorCert,
 		IdentityId: identity.Id,
 		SubType: &AuthenticatorCert{
-			Fingerprint: fingerprint,
-			Pem:         string(certPem),
+			Fingerprint:       fingerprint,
+			Pem:               string(certPem),
+			IsIssuedByNetwork: false,
 		},
 	}
 

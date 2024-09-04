@@ -19,11 +19,11 @@ package routes
 import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/response"
 	"path"
 )
 
@@ -64,17 +64,18 @@ func MapApiSessionToRestModel(ae *env.AppEnv, apiSession *model.ApiSession) (*re
 	lastActivityAt := strfmt.DateTime(apiSession.LastActivityAt)
 
 	ret := &rest_model.APISessionDetail{
-		BaseEntity:      BaseEntityToRestModel(apiSession, ApiSessionLinkFactory),
-		IdentityID:      &apiSession.IdentityId,
-		Identity:        ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
-		Token:           &apiSession.Token,
-		IPAddress:       &apiSession.IPAddress,
-		ConfigTypes:     stringz.SetToSlice(apiSession.ConfigTypes),
-		AuthQueries:     rest_model.AuthQueryList{}, //not in a request context, can't fill
-		IsMfaComplete:   &apiSession.MfaComplete,
-		IsMfaRequired:   &apiSession.MfaRequired,
-		LastActivityAt:  lastActivityAt,
-		AuthenticatorID: &apiSession.AuthenticatorId,
+		BaseEntity:       BaseEntityToRestModel(apiSession, ApiSessionLinkFactory),
+		IdentityID:       &apiSession.IdentityId,
+		Identity:         ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
+		Token:            &apiSession.Token,
+		IPAddress:        &apiSession.IPAddress,
+		ConfigTypes:      stringz.SetToSlice(apiSession.ConfigTypes),
+		AuthQueries:      rest_model.AuthQueryList{}, //not in a request context, can't fill
+		IsMfaComplete:    &apiSession.MfaComplete,
+		IsMfaRequired:    &apiSession.MfaRequired,
+		LastActivityAt:   lastActivityAt,
+		AuthenticatorID:  &apiSession.AuthenticatorId,
+		IsCertExtendable: &apiSession.IsCertExtendable,
 	}
 
 	if ret.ConfigTypes == nil {

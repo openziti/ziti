@@ -50,7 +50,7 @@ require (
 	github.com/openziti/agent v1.0.17
 	github.com/openziti/channel/v2 v2.0.143
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.26.25
+	github.com/openziti/edge-api v0.26.28
 	github.com/openziti/foundation/v2 v2.0.48
 	github.com/openziti/identity v1.0.84
 	github.com/openziti/jwks v1.0.3
@@ -183,9 +183,9 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.mongodb.org/mongo-driver v1.16.1 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	go.opentelemetry.io/otel v1.28.0 // indirect
-	go.opentelemetry.io/otel/metric v1.28.0 // indirect
-	go.opentelemetry.io/otel/trace v1.28.0 // indirect
+	go.opentelemetry.io/otel v1.29.0 // indirect
+	go.opentelemetry.io/otel/metric v1.29.0 // indirect
+	go.opentelemetry.io/otel/trace v1.29.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect

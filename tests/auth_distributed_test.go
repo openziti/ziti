@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/go-resty/resty/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/oidc_auth"
@@ -214,5 +215,17 @@ func Test_Authenticate_Distributed_Auth(t *testing.T) {
 		ctx.Req.NotEmpty(outTokens.IDTokenClaims)
 		ctx.Req.NotEmpty(outTokens.AccessToken)
 		ctx.Req.NotEmpty(outTokens.RefreshToken)
+
+		t.Run("first party cert authentication should have isCertExtendable", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			accessClaims := &common.AccessClaims{}
+
+			parser := jwt.NewParser()
+			_, _, err := parser.ParseUnverified(outTokens.AccessToken, accessClaims)
+
+			ctx.Req.NoError(err)
+			ctx.Req.True(accessClaims.IsCertExtendable, "expected isCertExtendable to be true for first party cert auth")
+		})
 	})
 }

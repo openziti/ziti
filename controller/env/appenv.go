@@ -548,6 +548,7 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 		ExpirationDuration: time.Until(rc.Claims.Expiration.AsTime()),
 		LastActivityAt:     time.Now(),
 		AuthenticatorId:    "oidc",
+		IsCertExtendable:   rc.Claims.IsCertExtendable,
 	}
 
 	rc.AuthPolicy, err = ae.GetManagers().AuthPolicy.Read(rc.Identity.AuthPolicyId)
@@ -650,7 +651,14 @@ func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
 }
 
 func NewAppEnv(host HostController) (*AppEnv, error) {
-	stores, err := db.InitStores(host.GetDb(), host.GetCommandDispatcher().GetRateLimiter())
+	var signingCert *x509.Certificate
+	cfg := host.GetConfig()
+
+	if cfg.Edge != nil && cfg.Edge.Enrollment.SigningCert != nil {
+		signingCert = host.GetConfig().Edge.Enrollment.SigningCert.Cert().Leaf
+	}
+
+	stores, err := db.InitStores(host.GetDb(), host.GetCommandDispatcher().GetRateLimiter(), signingCert)
 	if err != nil {
 		return nil, err
 	}

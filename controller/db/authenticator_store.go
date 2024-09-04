@@ -28,8 +28,9 @@ const (
 	FieldAuthenticatorMethod   = "method"
 	FieldAuthenticatorIdentity = "identity"
 
-	FieldAuthenticatorCertFingerprint = "certFingerprint"
-	FieldAuthenticatorCertPem         = "certPem"
+	FieldAuthenticatorCertFingerprint       = "certFingerprint"
+	FieldAuthenticatorCertPem               = "certPem"
+	FieldAuthenticatorCertIsIssuedByNetwork = "isIssuedByNetwork"
 
 	FieldAuthenticatorUnverifiedCertPem         = "unverifiedCertPem"
 	FieldAuthenticatorUnverifiedCertFingerprint = "unverifiedCertFingerprint"
@@ -52,9 +53,10 @@ type AuthenticatorSubType interface {
 }
 
 type AuthenticatorCert struct {
-	Authenticator `json:"-"`
-	Fingerprint   string `json:"fingerprint"`
-	Pem           string `json:"pem"`
+	Authenticator     `json:"-"`
+	Fingerprint       string `json:"fingerprint"`
+	Pem               string `json:"pem"`
+	IsIssuedByNetwork bool   `json:"IsIssuedByNetwork"`
 
 	UnverifiedPem         string `json:"unverifiedPem"`
 	UnverifiedFingerprint string `json:"unverifiedFingerprint"`
@@ -145,6 +147,7 @@ func (store *authenticatorStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldAuthenticatorMethod, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorCertFingerprint, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorCertPem, ast.NodeTypeString)
+	store.AddSymbol(FieldAuthenticatorCertIsIssuedByNetwork, ast.NodeTypeBool)
 	store.AddSymbol(FieldAuthenticatorUpdbUsername, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorUpdbPassword, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorUpdbSalt, ast.NodeTypeString)
@@ -168,6 +171,7 @@ func (store *authenticatorStoreImpl) FillEntity(entity *Authenticator, bucket *b
 		authCert := &AuthenticatorCert{}
 		authCert.Fingerprint = bucket.GetStringWithDefault(FieldAuthenticatorCertFingerprint, "")
 		authCert.Pem = bucket.GetStringWithDefault(FieldAuthenticatorCertPem, "")
+		authCert.IsIssuedByNetwork = bucket.GetBoolWithDefault(FieldAuthenticatorCertIsIssuedByNetwork, false)
 
 		authCert.UnverifiedPem = bucket.GetStringWithDefault(FieldAuthenticatorUnverifiedCertPem, "")
 		authCert.UnverifiedFingerprint = bucket.GetStringWithDefault(FieldAuthenticatorUnverifiedCertFingerprint, "")
@@ -192,6 +196,7 @@ func (store *authenticatorStoreImpl) PersistEntity(entity *Authenticator, ctx *b
 		if authCert, ok := entity.SubType.(*AuthenticatorCert); ok {
 			ctx.SetString(FieldAuthenticatorCertFingerprint, authCert.Fingerprint)
 			ctx.SetString(FieldAuthenticatorCertPem, authCert.Pem)
+			ctx.SetBool(FieldAuthenticatorCertIsIssuedByNetwork, authCert.IsIssuedByNetwork)
 
 			ctx.SetString(FieldAuthenticatorUnverifiedCertFingerprint, authCert.UnverifiedFingerprint)
 			ctx.SetString(FieldAuthenticatorUnverifiedCertPem, authCert.UnverifiedPem)

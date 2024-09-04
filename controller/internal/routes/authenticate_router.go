@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
@@ -160,6 +161,14 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		IPAddress:       remoteIpStr,
 		AuthenticatorId: authResult.AuthenticatorId(),
 		LastActivityAt:  time.Now().UTC(),
+	}
+
+	if authResult.Authenticator() != nil && authResult.Authenticator().Method == db.MethodAuthenticatorCert {
+		cert := authResult.Authenticator().ToCert()
+
+		if cert != nil {
+			newApiSession.IsCertExtendable = cert.IsIssuedByNetwork
+		}
 	}
 
 	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(identity.Id)

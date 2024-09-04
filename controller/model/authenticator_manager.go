@@ -438,6 +438,10 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 		return nil, errorz.NewUnhandled(fmt.Errorf("%T is not a %T", authenticator, authenticatorCert))
 	}
 
+	if !authenticatorCert.IsIssuedByNetwork {
+		return nil, apierror.NewAuthenticatorCannotBeUpdated()
+	}
+
 	if authenticatorCert.Pem == "" {
 		return nil, apierror.NewAuthenticatorCannotBeUpdated()
 	}
@@ -724,6 +728,7 @@ func (self *AuthenticatorManager) AuthenticatorToProtobuf(entity *Authenticator)
 				Pem:                   cert.Pem,
 				UnverifiedFingerprint: cert.UnverifiedFingerprint,
 				UnverifiedPem:         cert.UnverifiedPem,
+				IsIssuedByNetwork:     cert.IsIssuedByNetwork,
 			},
 		}
 	} else if updb := entity.ToUpdb(); updb != nil {
@@ -778,6 +783,7 @@ func (self *AuthenticatorManager) ProtobufToAuthenticator(msg *edge_cmd_pb.Authe
 			Authenticator:         authenticator,
 			Fingerprint:           st.Cert.Fingerprint,
 			Pem:                   st.Cert.Pem,
+			IsIssuedByNetwork:     st.Cert.IsIssuedByNetwork,
 			UnverifiedFingerprint: st.Cert.UnverifiedFingerprint,
 			UnverifiedPem:         st.Cert.UnverifiedPem,
 		}

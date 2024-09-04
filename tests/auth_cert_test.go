@@ -158,6 +158,14 @@ func (test *authCertTests) testAuthenticateValidCertEmptyBody(t *testing.T) {
 
 		r.True(data.ExistsP("data.token"), "session token property in 'data.token' as not found")
 		r.NotEmpty(data.Path("data.token").String(), "session token property in 'data.token' is empty")
+
+		t.Run("the api session reports the cert is extendable", func(t *testing.T) {
+			r := require.New(t)
+
+			isCertExtendable, ok := data.Path("data.isCertExtendable").Data().(bool)
+			r.True(ok, "expected isCertExtendable to be a bool")
+			r.True(isCertExtendable, "expected isCertExtendable to be true")
+		})
 	})
 
 	t.Run("body session token matches HTTP header token", func(t *testing.T) {
