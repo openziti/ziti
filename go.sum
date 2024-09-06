@@ -573,8 +573,8 @@ github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQ
 github.com/openziti/cobra-to-md v1.0.1/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge-api v0.26.29 h1:Hw1a21zGC0HJQdiJU4eYq0OFWxhQMETH0MA0miCeQWM=
-github.com/openziti/edge-api v0.26.29/go.mod h1:7awnJ8YZqHgIIUxpPEHJGkMHg23oqdheQbSyCvK3EqM=
+github.com/openziti/edge-api v0.26.30 h1:Zeit+UJbMhL8aJkcHKsq7XyRX2b7p/hBWL3nzo60gS8=
+github.com/openziti/edge-api v0.26.30/go.mod h1:Ya4b6u+SmkqSU2HsWxahwhZ3g+aBqW8mzfm/OOSdCNM=
 github.com/openziti/foundation/v2 v2.0.48 h1:G0/P8XQS+xTAS3KYQ/PHjLFHLABZkLJeNDbPgPTaxU0=
 github.com/openziti/foundation/v2 v2.0.48/go.mod h1:pj5nPmVtAdF1QX+aRtALw69hxcsAzrWDpBUe+Zrc73Q=
 github.com/openziti/identity v1.0.84 h1:AxNS/KZb50rzJkZ+1IF1aoollObrelZBUoMlWtpw2Y4=
@@ -591,8 +591,8 @@ github.com/openziti/secretstream v0.1.21 h1:r4xN8/CzSEvxZFFYGSztrlhMtIvk3B+SQcq2
 github.com/openziti/secretstream v0.1.21/go.mod h1:1lfAnS8gBHsKZiPbRRK1sularbAsqizN6tWUEuZSfo0=
 github.com/openziti/storage v0.3.0 h1:DH2SN8GYy7rSlBZM9X5W1Dv2b2qZ8kSKyt0iivokVMw=
 github.com/openziti/storage v0.3.0/go.mod h1:1f6cGRKYLzwst5hwVY+qr8GCcUeO/U5jJftE8+qFqbk=
-github.com/openziti/transport/v2 v2.0.143 h1:qhqI/yEN4SvP8SBx7ERCt0x67Im+Icy/hGtJ7Dn/xOQ=
-github.com/openziti/transport/v2 v2.0.143/go.mod h1:3BxxlWa8fbhmZG1CmIOpeEHlCCY1G7DPx7v7+bAXYEQ=
+github.com/openziti/transport/v2 v2.0.144 h1:nRVJO1uIZtJAQ05cwA+ZSBjsOqxQ+BDU8bTcCJPkWX8=
+github.com/openziti/transport/v2 v2.0.144/go.mod h1:3BxxlWa8fbhmZG1CmIOpeEHlCCY1G7DPx7v7+bAXYEQ=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
 github.com/openziti/x509-claims v1.0.3/go.mod h1:Z0WIpBm6c4ecrpRKrou6Gk2wrLWxJO/+tuUwKh8VewE=
 github.com/openziti/xweb/v2 v2.1.1 h1:T6vbmG2189WWwq16wryM7RQEbT5wNARrVHNQs23jEPE=
