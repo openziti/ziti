@@ -18,7 +18,7 @@ require (
 	github.com/emirpasic/gods v1.18.1
 	github.com/fatih/color v1.17.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
-	github.com/gaissmai/extnetip v0.4.0
+	github.com/gaissmai/extnetip v1.1.0
 	github.com/go-acme/lego/v4 v4.18.0
 	github.com/go-openapi/errors v0.22.0
 	github.com/go-openapi/loads v0.22.0
