@@ -148,7 +148,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 			log.Info(msg)
 			conn.close(false, msg)
 			x.Close()
-			return nil, fmt.Errorf(msg)
+			return nil, errors.New(msg)
 		}
 		log.Debug("dial success")
 

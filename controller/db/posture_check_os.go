@@ -71,7 +71,7 @@ func (entity *PostureCheckOperatingSystem) SetValues(ctx *boltz.PersistContext, 
 			if _, found := osMap[string(key)]; !found {
 				err := bucket.DeleteBucket(key)
 				if err != nil {
-					pfxlog.Logger().Errorf(err.Error())
+					pfxlog.Logger().WithError(err).Errorf("error resetting posture check os values")
 				}
 			}
 		}
