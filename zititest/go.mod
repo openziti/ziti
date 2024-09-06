@@ -1,8 +1,8 @@
 module github.com/openziti/ziti/zititest
 
-go 1.22.0
+go 1.23.1
 
-toolchain go1.22.1
+toolchain go1.23.1
 
 replace github.com/openziti/ziti => ../
 

@@ -1,3 +1,9 @@
+# Release 1.1.11
+
+# What's New
+
+* This release updates to Go v1.23. No other changes are included in the release
+
 # Release 1.1.10
 
 ## What's New
