@@ -384,7 +384,9 @@ func (l *Local) Update(caName string, sn *big.Int, st certificate.State) error {
 		}
 
 		matchedSerial := big.NewInt(0)
-		fmt.Sscanf(matches[4], "%X", matchedSerial)
+		if _, err = fmt.Sscanf(matches[4], "%X", matchedSerial); err != nil {
+			return err
+		}
 		if matchedSerial.Cmp(sn) == 0 {
 			if matches[1] == state {
 				return nil
@@ -442,7 +444,9 @@ func (l *Local) Revoked(caName string) ([]pkix.RevokedCertificate, error) {
 		}
 
 		sn := big.NewInt(0)
-		fmt.Sscanf(matches[4], "%X", sn)
+		if _, err = fmt.Sscanf(matches[4], "%X", sn); err != nil {
+			return nil, err
+		}
 		t, err := time.Parse("060102150405", strings.TrimSuffix(matches[3], "Z"))
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing revocation time %v: %v", matches[3], err)

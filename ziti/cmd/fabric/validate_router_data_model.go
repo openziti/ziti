@@ -127,7 +127,7 @@ func (self *validateRouterDataModelAction) validateRouterDataModel(_ *cobra.Comm
 
 			for _, errDetail := range detail.Errors {
 				outputHeader()
-				fmt.Printf("\t" + errDetail + "\n")
+				fmt.Printf("\t%s\n", errDetail)
 				errCount++
 			}
 			expected--
