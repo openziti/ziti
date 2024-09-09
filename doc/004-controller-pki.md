@@ -231,30 +231,11 @@ and create a mesh to provide long-haul transport.
 To enroll a Ziti Router, the command line utility `ziti fabric` will be used that requires its own Ziti Identity in order
 to connect to and control the fabric.
 
-1. The `ziti fabric` command will be used to manage the fabric, a Ziti Identity must be generated to do that:
+1. Authenticate w/ the controller if not authenticated
 
     ```bash
-    ziti pki create client \
-        --pki-root="${ZITI_PKI}" \
-        --ca-name="${ZITI_CA_NAME}" \
-        --client-file="${ZITI_NETWORK}-dotzeet" \
-        --client-name "${ZITI_NETWORK} Management"
-    ```
-
-1. Generate a fabric identity that references the Ziti Identity:
-
-    ```bash
-    ziti fabric add-identity \
-        --cli-identity "${ZITI_NETWORK} Management" \
-        --ca-cert ${ZITI_PKI}/${ZITI_CA_NAME}/certs/${ZITI_NETWORK}.cert \
-        --client-cert ${ZITI_PKI}/${ZITI_CA_NAME}/certs/${ZITI_NETWORK}-dotzeet.cert \
-        --client-key ${ZITI_PKI}/${ZITI_CA_NAME}/keys/${ZITI_NETWORK}-dotzeet.key
-    ```
-
-1. Login
-
-    ```bash
-    ziti edge login --cli-identity "${ZITI_NETWORK} Management"
+    #update username / password if the default admin password has been updated
+    ziti edge login ${ZITI_EDGE_API_HOSTNAME} -u admin -p admin
     ```
 
 1. Verify the identity works:
