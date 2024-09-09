@@ -2,8 +2,8 @@ package controller
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	config2 "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/model"

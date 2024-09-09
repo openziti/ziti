@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"

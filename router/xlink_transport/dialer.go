@@ -19,7 +19,7 @@ package xlink_transport
 import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
@@ -108,7 +108,15 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 	}
 	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
 
-	payloadDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, headers)
+	channelDialerConfig := channel.DialerConfig{
+		Identity:        linkId,
+		Endpoint:        address,
+		LocalBinding:    self.config.localBinding,
+		Headers:         headers,
+		TransportConfig: self.transportConfig,
+	}
+
+	payloadDialer := channel.NewClassicDialer(channelDialerConfig)
 
 	log.Info("dialing payload channel")
 
@@ -126,25 +134,17 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		},
 	}
 
-	payloadCh, err := channel.NewChannelWithTransportConfiguration("l/"+linkId.Token, payloadDialer, channel.BindHandlerF(bindHandler.bindPayloadChannel), self.config.options, self.transportConfig)
+	payloadCh, err := channel.NewChannel("l/"+linkId.Token, payloadDialer, channel.BindHandlerF(bindHandler.bindPayloadChannel), self.config.options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error dialing payload channel for [l/%s]", linkId.Token)
 	}
 
 	log.Info("dialing ack channel")
 
-	headers = channel.Headers{
-		LinkHeaderRouterId:      []byte(self.id.Token),
-		LinkHeaderConnId:        []byte(connId),
-		LinkHeaderType:          {byte(AckChannel)},
-		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
-		LinkHeaderBinding:       []byte(self.GetBinding()),
-	}
-	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
+	headers.PutByteHeader(LinkHeaderType, byte(AckChannel))
+	ackDialer := channel.NewClassicDialer(channelDialerConfig)
 
-	ackDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, headers)
-
-	_, err = channel.NewChannelWithTransportConfiguration("l/"+linkId.Token, ackDialer, channel.BindHandlerF(bindHandler.bindAckChannel), self.config.options, self.transportConfig)
+	_, err = channel.NewChannel("l/"+linkId.Token, ackDialer, channel.BindHandlerF(bindHandler.bindAckChannel), self.config.options)
 	if err != nil {
 		_ = payloadCh.Close()
 		return nil, errors.Wrapf(err, "error dialing ack channel for [l/%s]", linkId.Token)
@@ -169,7 +169,13 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 	}
 	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
 
-	payloadDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, headers)
+	payloadDialer := channel.NewClassicDialer(channel.DialerConfig{
+		Identity:        linkId,
+		Endpoint:        address,
+		LocalBinding:    self.config.localBinding,
+		Headers:         headers,
+		TransportConfig: self.transportConfig,
+	})
 
 	bindHandler := &dialBindHandler{
 		dialer: self,
@@ -185,7 +191,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 		},
 	}
 
-	_, err := channel.NewChannelWithTransportConfiguration("l/"+linkId.Token, payloadDialer, bindHandler, self.config.options, self.transportConfig)
+	_, err := channel.NewChannel("l/"+linkId.Token, payloadDialer, bindHandler, self.config.options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error dialing link [l/%s]", linkId.Token)
 	}

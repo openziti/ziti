@@ -18,7 +18,7 @@ package sync_strats
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"

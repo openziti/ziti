@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
 	"github.com/stretchr/testify/assert"

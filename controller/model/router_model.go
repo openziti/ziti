@@ -17,7 +17,7 @@
 package model
 
 import (
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/storage/boltz"

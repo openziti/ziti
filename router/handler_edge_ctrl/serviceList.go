@@ -2,7 +2,7 @@ package handler_edge_ctrl
 
 import (
 	"encoding/json"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/sirupsen/logrus"

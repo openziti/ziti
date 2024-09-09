@@ -3,9 +3,8 @@ package xlink_transport
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/metrics"
-	"github.com/openziti/transport/v2"
 	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
@@ -77,7 +76,7 @@ type testUnderlayFactory struct {
 	underlay testUnderlay
 }
 
-func (t testUnderlayFactory) Create(time.Duration, transport.Configuration) (channel.Underlay, error) {
+func (t testUnderlayFactory) Create(time.Duration) (channel.Underlay, error) {
 	return t.underlay, nil
 }
 

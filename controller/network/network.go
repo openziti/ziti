@@ -47,7 +47,7 @@ import (
 	"github.com/openziti/ziti/controller/command"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/sequence"

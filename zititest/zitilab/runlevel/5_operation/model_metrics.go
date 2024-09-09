@@ -18,7 +18,7 @@ package zitilib_runlevel_5_operation
 
 import (
 	"encoding/json"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/event"

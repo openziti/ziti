@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 )
 
 type Decoder struct{}

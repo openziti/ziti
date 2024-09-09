@@ -3,8 +3,8 @@
 package tests
 
 import (
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/foundation/v2/goroutines"
 	id "github.com/openziti/identity"
 	"github.com/openziti/metrics"

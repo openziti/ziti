@@ -19,8 +19,8 @@ package xgress_edge
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/latency"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/latency"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/cert"
 	"math"
@@ -160,7 +160,7 @@ func (self *Acceptor) Run() {
 	defer log.Warn("exiting")
 
 	for {
-		if err := channel.AcceptNextChannel("edge", self.uListener, self, self.options, nil); err != nil {
+		if err := channel.AcceptNextChannel("edge", self.uListener, self, self.options); err != nil {
 			log.Errorf("error accepting (%v)", err)
 			if errors.Is(err, channel.ListenerClosedError) {
 				return

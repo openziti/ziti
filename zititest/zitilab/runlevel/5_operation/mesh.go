@@ -18,7 +18,7 @@ package zitilib_runlevel_5_operation
 
 import (
 	"fmt"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/transport/v2"
@@ -33,7 +33,7 @@ func Mesh(closer <-chan struct{}) model.Stage {
 func (mesh *mesh) Execute(run model.Run) error {
 	if endpoint, id, err := dotziti.LoadIdentity(model.ActiveInstanceId()); err == nil {
 		if address, err := transport.ParseAddress(endpoint); err == nil {
-			dialer := channel.NewClassicDialer(id, address, nil)
+			dialer := channel.NewClassicDialer(channel.DialerConfig{Identity: id, Endpoint: address})
 			if ch, err := channel.NewChannel("mesh", dialer, nil, nil); err == nil {
 				mesh.ch = ch
 			} else {

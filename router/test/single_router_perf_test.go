@@ -22,7 +22,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"

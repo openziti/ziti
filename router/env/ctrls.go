@@ -28,7 +28,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
 )

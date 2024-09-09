@@ -24,7 +24,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/runner"

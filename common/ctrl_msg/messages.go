@@ -19,7 +19,7 @@ package ctrl_msg
 import (
 	"errors"
 	"fmt"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 )
 

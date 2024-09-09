@@ -2,9 +2,9 @@ package handler_link
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/latency"
-	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/latency"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/metrics"
