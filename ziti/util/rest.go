@@ -18,6 +18,8 @@ package util
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
@@ -502,18 +504,23 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 	return jsonParsed, nil
 }
 
-// EdgeControllerGetManagementApiBasePath accepts host as `http://domain:port` and attempts to
-// determine the proper path that should be used to access the Edge Management API. Depending
-// on the version of the Edge Controller the API may be monolith on `/edge/<version>` and `/` or split into
-// `/edge/management/<version>` and `/edge/client/<version>`.
-func EdgeControllerGetManagementApiBasePath(host string, cert string) string {
+func EdgeControllerGetManagementApiBasePathWithPool(host string, caPool *x509.CertPool) string {
 	client := NewClient()
 
 	client.SetHostURL(host)
 
-	if cert != "" {
-		client.SetRootCertificate(cert)
+	if caPool != nil {
+		if client.GetClient().Transport.(*http.Transport).TLSClientConfig == nil {
+			client.GetClient().Transport.(*http.Transport).TLSClientConfig = &tls.Config{
+				RootCAs: caPool,
+			}
+		}
 	}
+
+	return getManagementApiBasePath(host, client)
+}
+
+func getManagementApiBasePath(host string, client *resty.Client) string {
 
 	// check v1 path first
 	resp, err := client.R().Get("/edge/client/v1/version")
@@ -535,12 +542,28 @@ func EdgeControllerGetManagementApiBasePath(host string, cert string) string {
 
 	// controller w/ APIs split
 	if data.ExistsP("data.apiVersions.edge-management") {
-		if path, ok := data.Path("data.apiVersions.edge-management.v1.path").Data().(string); !ok {
+		if respPath, ok := data.Path("data.apiVersions.edge-management.v1.path").Data().(string); !ok {
 			return host
 		} else {
-			return host + path
+			return host + respPath
 		}
 	}
 
 	return host
+}
+
+// EdgeControllerGetManagementApiBasePath accepts host as `http://domain:port` and attempts to
+// determine the proper path that should be used to access the Edge Management API. Depending
+// on the version of the Edge Controller the API may be monolith on `/edge/<version>` and `/` or split into
+// `/edge/management/<version>` and `/edge/client/<version>`.
+func EdgeControllerGetManagementApiBasePath(host string, cert string) string {
+	client := NewClient()
+
+	client.SetHostURL(host)
+
+	if cert != "" {
+		client.SetRootCertificate(cert)
+	}
+
+	return getManagementApiBasePath(host, client)
 }
