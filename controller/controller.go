@@ -45,8 +45,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -387,7 +387,6 @@ func (c *Controller) Run() error {
 	underlayDispatcher := channel.NewUnderlayDispatcher(channel.UnderlayDispatcherConfig{
 		Listener:        ctrlListener,
 		ConnectTimeout:  c.config.Ctrl.Options.ConnectTimeout,
-		TransportConfig: nil,
 		Acceptors:       ctrlAcceptors,
 		DefaultAcceptor: ctrlAccepter,
 	})

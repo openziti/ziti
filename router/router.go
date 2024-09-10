@@ -43,7 +43,7 @@ import (
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/versions"
@@ -634,14 +634,20 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 	if "" != self.config.Ctrl.LocalBinding {
 		logrus.Debugf("Using local interface %s to dial controller", self.config.Ctrl.LocalBinding)
 	}
-	dialer := channel.NewReconnectingDialerWithHandlerAndLocalBinding(self.config.Id, addr, self.config.Ctrl.LocalBinding, attributes, reconnectHandler)
+	dialer := channel.NewReconnectingDialer(channel.ReconnectingDialerConfig{
+		Identity:         self.config.Id,
+		Endpoint:         addr,
+		LocalBinding:     self.config.Ctrl.LocalBinding,
+		Headers:          attributes,
+		ReconnectHandler: reconnectHandler,
+		TransportConfig: transport.Configuration{
+			transport.KeyProtocol:                 "ziti-ctrl",
+			transport.KeyCachedProxyConfiguration: self.config.Proxy,
+		},
+	})
 
 	bindHandler = channel.BindHandlers(bindHandler, self.ctrlBindhandler)
-	tcfg := transport.Configuration{
-		transport.KeyProtocol:                 "ziti-ctrl",
-		transport.KeyCachedProxyConfiguration: self.config.Proxy,
-	}
-	ch, err := channel.NewChannelWithTransportConfiguration("ctrl", dialer, bindHandler, self.config.Ctrl.Options, tcfg)
+	ch, err := channel.NewChannel("ctrl", dialer, bindHandler, self.config.Ctrl.Options)
 	if err != nil {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}

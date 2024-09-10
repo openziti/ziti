@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti"

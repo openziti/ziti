@@ -19,7 +19,7 @@ package handler_peer_ctrl
 import (
 	raft2 "github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/ziti/controller/peermsg"
 	"github.com/openziti/ziti/controller/raft"
 	"github.com/openziti/ziti/common/pb/cmd_pb"

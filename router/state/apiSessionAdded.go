@@ -25,8 +25,8 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/sync_strats"

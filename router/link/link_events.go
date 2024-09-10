@@ -18,7 +18,7 @@ package link
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"

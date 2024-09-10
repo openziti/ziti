@@ -19,8 +19,8 @@ package network
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/inspect"

@@ -19,8 +19,8 @@ package xgress_edge
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"

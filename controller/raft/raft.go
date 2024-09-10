@@ -40,7 +40,7 @@ import (
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"

@@ -19,7 +19,7 @@ package server
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	runner2 "github.com/openziti/ziti/common/runner"

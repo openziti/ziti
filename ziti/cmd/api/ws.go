@@ -19,8 +19,8 @@ package api
 import (
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/websockets"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/websockets"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/util"
 	"io"

@@ -19,7 +19,7 @@ package edge_ctrl_pb
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"google.golang.org/protobuf/proto"
 	"strings"
 )

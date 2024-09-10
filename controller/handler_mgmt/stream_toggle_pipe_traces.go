@@ -22,8 +22,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openziti/channel/v2"
-	trace_pb "github.com/openziti/channel/v2/trace/pb"
+	"github.com/openziti/channel/v3"
+	trace_pb "github.com/openziti/channel/v3/trace/pb"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"

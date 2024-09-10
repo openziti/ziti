@@ -1,3 +1,32 @@
+# Release 1.1.12
+
+## What's New
+
+* Bug fixes, enhancements and continuing progress on controller HA
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.17 -> v1.0.18](https://github.com/openziti/agent/compare/v1.0.17...v1.0.18)
+* github.com/openziti/channel/v3: [v2.0.143 -> v3.0.3](https://github.com/openziti/channel/compare/v2.0.143...v3.0.3)
+    * [Issue #138](https://github.com/openziti/channel/issues/138) - Allow custom message serialization. Add support for a 'raw' message type.
+    * [Issue #82](https://github.com/openziti/channel/issues/82) - Remove transport.Configuration from UnderlayFactory.Create
+
+* github.com/openziti/edge-api: [v0.26.29 -> v0.26.30](https://github.com/openziti/edge-api/compare/v0.26.29...v0.26.30)
+* github.com/openziti/foundation/v2: [v2.0.48 -> v2.0.49](https://github.com/openziti/foundation/compare/v2.0.48...v2.0.49)
+* github.com/openziti/identity: [v1.0.84 -> v1.0.85](https://github.com/openziti/identity/compare/v1.0.84...v1.0.85)
+* github.com/openziti/metrics: [v1.2.57 -> v1.2.58](https://github.com/openziti/metrics/compare/v1.2.57...v1.2.58)
+* github.com/openziti/runzmd: [v1.0.50 -> v1.0.51](https://github.com/openziti/runzmd/compare/v1.0.50...v1.0.51)
+* github.com/openziti/sdk-golang: [v0.23.40 -> v0.23.41](https://github.com/openziti/sdk-golang/compare/v0.23.40...v0.23.41)
+* github.com/openziti/secretstream: [v0.1.21 -> v0.1.24](https://github.com/openziti/secretstream/compare/v0.1.21...v0.1.24)
+* github.com/openziti/storage: [v0.3.0 -> v0.3.1](https://github.com/openziti/storage/compare/v0.3.0...v0.3.1)
+* github.com/openziti/transport/v2: [v2.0.143 -> v2.0.146](https://github.com/openziti/transport/compare/v2.0.143...v2.0.146)
+    * [Issue #92](https://github.com/openziti/transport/issues/92) - Implement simple traffic shaper
+
+* github.com/openziti-incubator/cf: v0.0.3 (new)
+* github.com/openziti/dilithium: [v0.3.3 -> v0.3.5](https://github.com/openziti/dilithium/compare/v0.3.3...v0.3.5)
+* github.com/openziti/ziti: [v1.1.11 -> v1.1.12](https://github.com/openziti/ziti/compare/v1.1.11...v1.1.12)
+    * [Issue #2390](https://github.com/openziti/ziti/issues/2390) - Update to github.com/openziti/channel/v3
+
 # Release 1.1.11
 
 # What's New

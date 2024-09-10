@@ -2,8 +2,8 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/trace/pb"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/trace/pb"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/trace"
 	"google.golang.org/protobuf/proto"

@@ -18,7 +18,7 @@ package handler_link
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xlink"
 )

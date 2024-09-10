@@ -32,7 +32,7 @@ import (
 
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
@@ -337,7 +337,14 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		headerProvider.Apply(headers)
 	}
 
-	dialer := channel.NewClassicDialer(self.id, addr, headers)
+	dialer := channel.NewClassicDialer(channel.DialerConfig{
+		Identity: self.id,
+		Endpoint: addr,
+		Headers:  headers,
+		TransportConfig: transport.Configuration{
+			transport.KeyProtocol: "ziti-ctrl",
+		},
+	})
 	dialOptions := channel.DefaultOptions()
 	dialOptions.ConnectOptions.ConnectTimeout = timeout
 
@@ -391,11 +398,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		return self.PeerConnected(peer)
 	})
 
-	transportCfg := transport.Configuration{
-		transport.KeyProtocol: "ziti-ctrl",
-	}
-
-	if _, err = channel.NewChannelWithTransportConfiguration(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions(), transportCfg); err != nil {
+	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != nil {
 		// introduce random delay in case ctrls are dialing each other and closing each other's connections
 		time.Sleep(time.Duration(rand.Intn(250)+1) * time.Millisecond)
 		return nil, errors.Wrapf(err, "error dialing peer %v", address)
@@ -422,7 +425,14 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		headerProvider.Apply(headers)
 	}
 
-	dialer := channel.NewClassicDialer(self.id, addr, headers)
+	dialer := channel.NewClassicDialer(channel.DialerConfig{
+		Identity: self.id,
+		Endpoint: addr,
+		Headers:  headers,
+		TransportConfig: transport.Configuration{
+			transport.KeyProtocol: "ziti-ctrl",
+		},
+	})
 	dialOptions := channel.DefaultOptions()
 	dialOptions.ConnectOptions.ConnectTimeout = timeout
 
@@ -444,11 +454,7 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		return markerErr
 	})
 
-	transportCfg := transport.Configuration{
-		transport.KeyProtocol: "ziti-ctrl",
-	}
-
-	if _, err = channel.NewChannelWithTransportConfiguration(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions(), transportCfg); err != markerErr {
+	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != markerErr {
 		return "", "", errors.Wrapf(err, "unable to dial %v", address)
 	}
 

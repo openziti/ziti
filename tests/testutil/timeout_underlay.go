@@ -1,8 +1,7 @@
 package testutil
 
 import (
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/transport/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -19,11 +18,11 @@ type UnderlayFactoryWrapper struct {
 	wrapped channel.UnderlayFactory
 }
 
-func (self *UnderlayFactoryWrapper) Create(timeout time.Duration, tcfg transport.Configuration) (channel.Underlay, error) {
+func (self *UnderlayFactoryWrapper) Create(timeout time.Duration) (channel.Underlay, error) {
 	underlayC := make(chan channel.Underlay, 1)
 	errC := make(chan error, 1)
 	go func() {
-		u, err := self.wrapped.Create(timeout, tcfg)
+		u, err := self.wrapped.Create(timeout)
 		if err != nil {
 			errC <- err
 		} else {

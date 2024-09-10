@@ -21,7 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 )
 
 type NetworkController interface {

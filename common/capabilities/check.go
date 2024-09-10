@@ -17,7 +17,7 @@
 package capabilities
 
 import (
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"math/big"
 )

@@ -18,8 +18,8 @@ package handler_mgmt
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/trace/pb"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/trace/pb"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"

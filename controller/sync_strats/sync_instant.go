@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/genext"
 	nfPem "github.com/openziti/foundation/v2/pem"

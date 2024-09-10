@@ -3,7 +3,7 @@ package xgress_edge
 import (
 	"crypto/x509"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/inspect"

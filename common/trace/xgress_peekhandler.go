@@ -18,8 +18,8 @@ package trace
 
 import (
 	"fmt"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/trace/pb"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/trace/pb"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"

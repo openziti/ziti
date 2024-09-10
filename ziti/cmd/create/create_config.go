@@ -23,7 +23,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v3"
 	foundation "github.com/openziti/transport/v2"
 	fabXweb "github.com/openziti/xweb/v2"
 	edge "github.com/openziti/ziti/controller/config"

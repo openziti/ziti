@@ -32,8 +32,8 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
-	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
