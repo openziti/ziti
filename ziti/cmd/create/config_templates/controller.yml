@@ -29,7 +29,11 @@ identity:
   {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}  - server_cert:  "{{ .Controller.Web.Identity.AltServerCert }}"
   {{ if not .Controller.Web.Identity.AltCertsEnabled }}#{{ end }}    server_key:   "{{ .Controller.Web.Identity.AltServerKey }}"
 
-trustDomain: quickstart
+# trust domains may be overridden by SPIFFE ID as URI SAN 
+#trustDomain: ziti.example.com
+
+# additional trust domains allow for migrating to a new trust domain
+#additionalTrustDomains: []
 
 # Network Configuration
 #
