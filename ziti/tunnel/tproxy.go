@@ -21,6 +21,7 @@ package tunnel
 
 import (
 	"fmt"
+
 	"github.com/openziti/ziti/tunnel/intercept/tproxy"
 	"github.com/spf13/cobra"
 )
@@ -38,6 +39,7 @@ func NewTProxyCmd() *cobra.Command {
 		PostRun: rootPostRun,
 	}
 	runTProxyCmd.PersistentFlags().String("lanIf", "", "if specified, INPUT rules for intercepted service addresses are assigned to this interface ")
+	runTProxyCmd.PersistentFlags().String("diverter", "", "if specified, use external tproxy configuration utility instead of internal iptables implementation")
 	return runTProxyCmd
 }
 
@@ -47,8 +49,12 @@ func runTProxy(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	diverter, err := cmd.Flags().GetString("diverter")
+	if err != nil {
+		return err
+	}
 
-	interceptor, err = tproxy.New(tproxy.Config{LanIf: lanIf})
+	interceptor, err = tproxy.New(tproxy.Config{LanIf: lanIf, Diverter: diverter})
 	if err != nil {
 		return fmt.Errorf("failed to initialize tproxy interceptor: %v", err)
 	}
