@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/foundation/v2/term"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
@@ -49,6 +51,9 @@ type LoginOptions struct {
 	ClientCert   string
 	ClientKey    string
 	ExtJwt       string
+	File         string
+
+	FileCertCreds *edge_apis.IdentityCredentials
 }
 
 // NewLoginCmd creates the command
@@ -86,6 +91,7 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&options.ClientCert, "client-cert", "c", "", "A certificate used to authenticate")
 	cmd.Flags().StringVarP(&options.ClientKey, "client-key", "k", "", "The key to use with certificate authentication")
 	cmd.Flags().StringVarP(&options.ExtJwt, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
+	cmd.Flags().StringVarP(&options.File, "file", "f", "", "An identity file to use for authentication")
 
 	options.AddCommonFlags(cmd)
 
@@ -94,28 +100,47 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 // Run implements this command
 func (o *LoginOptions) Run() error {
+	var host string
+
 	config, configFile, err := util.LoadRestClientConfig()
 	if err != nil {
 		return err
 	}
 
+	if o.File != "" {
+		cfg, err := ziti.NewConfigFromFile(o.File)
+
+		if err != nil {
+			return fmt.Errorf("could not read file %s: %w", o.File, err)
+		}
+
+		idCredentials := edge_apis.NewIdentityCredentialsFromConfig(cfg.ID)
+		o.FileCertCreds = idCredentials
+		host = cfg.ZtAPI
+
+		if len(cfg.ZtAPIs) > 0 {
+			host = cfg.ZtAPIs[0]
+		}
+	}
+
 	id := config.GetIdentity()
 
-	var host string
-	if len(o.Args) == 0 {
-		if defaultId := config.EdgeIdentities[id]; defaultId != nil && !o.IgnoreConfig {
-			host = defaultId.Url
-			o.Printf("Using controller url: %v from identity '%v' in config file: %v\n", host, id, configFile)
+	if host == "" {
+		if len(o.Args) == 0 {
+			if defaultId := config.EdgeIdentities[id]; defaultId != nil && !o.IgnoreConfig {
+				host = defaultId.Url
+				o.Printf("Using controller url: %v from identity '%v' in config file: %v\n", host, id, configFile)
+			} else {
+				if host, err = term.Prompt("Enter controller host[:port] (default localhost:1280): "); err != nil {
+					return err
+				}
+				if host == "" {
+					host = "localhost:1280"
+				}
+			}
 		} else {
-			if host, err = term.Prompt("Enter controller host[:port] (default localhost:1280): "); err != nil {
-				return err
-			}
-			if host == "" {
-				host = "localhost:1280"
-			}
+			host = o.Args[0]
 		}
-	} else {
-		host = o.Args[0]
 	}
 
 	if !strings.HasPrefix(host, "http") {
@@ -140,7 +165,11 @@ func (o *LoginOptions) Run() error {
 	}
 
 	if ctrlUrl.Path == "" {
-		host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert)
+		if o.FileCertCreds != nil && o.FileCertCreds.CaPool != nil {
+			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, o.FileCertCreds.CaPool)
+		} else {
+			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert)
+		}
 	} else {
 		host = host + ctrlUrl.Path
 	}
@@ -151,7 +180,7 @@ func (o *LoginOptions) Run() error {
 	}
 
 	body := "{}"
-	if o.Token == "" && o.ClientCert == "" && o.ExtJwt == "" {
+	if o.Token == "" && o.ClientCert == "" && o.ExtJwt == "" && o.FileCertCreds == nil {
 		for o.Username == "" {
 			if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
 				o.Username = defaultId.Username
@@ -354,6 +383,10 @@ func login(o *LoginOptions, url string, authentication string) (*gabs.Container,
 				return nil, fmt.Errorf("can't load client certificate: %s with key %s: %v", o.ClientCert, o.ClientKey, err)
 			}
 			client.SetCertificates(clientCert)
+			method = "cert"
+		} else if o.FileCertCreds != nil {
+			tlsCert := o.FileCertCreds.TlsCerts()[0]
+			client.SetCertificates(tlsCert)
 			method = "cert"
 		}
 	}
