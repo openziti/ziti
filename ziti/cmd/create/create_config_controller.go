@@ -159,7 +159,7 @@ func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().DurationVar(&options.EdgeIdentityEnrollmentDuration, optionEdgeIdentityEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge identity enrollment duration, use 0h0m0s format")
 	cmd.Flags().DurationVar(&options.EdgeRouterEnrollmentDuration, optionEdgeRouterEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge router enrollment duration, use 0h0m0s format")
 	cmd.Flags().IntVar(&options.MinCluster, optionMinCluster, 0, "minimum cluster size. Enables HA mode if > 0")
-	cmd.Flags().StringVar(&options.Console.Location, "console-location", "DISABLED", "enable and set path to console static files")
+	cmd.Flags().StringVar(&options.Console.Location, "console-location", "", "enable and set path to console static files")
 }
 
 // run implements the command
@@ -269,15 +269,16 @@ func SetWebConfig(data *ControllerTemplateValues) {
 }
 
 func SetConsoleConfig(v *ConsoleValues, o *ConsoleOptions) {
-	if o.Location == "DISABLED" {
+	location := strings.TrimSpace(o.Location)
+	if location == "" {
 		v.Enabled = false
 		// if disabled, leave a comment demonstrating how to set the location of
 		// static console files using the path provided by openziti-console
 		// package as an example
-		v.Location = "/opt/openziti/share/console"
+		v.Location = "./console"
 	} else {
 		v.Enabled = true
-		v.Location = helpers.NormalizePath(o.Location)
+		v.Location = helpers.NormalizePath(location)
 	}
 }
 
