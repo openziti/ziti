@@ -152,6 +152,9 @@ makeConfig() {
     if [[ ! -s "${ZITI_CONSOLE_LOCATION}/index.html" ]]; then
       echo "WARN: ${ZITI_CONSOLE_LOCATION}/index.html is missing; install 'openziti-console' to enable the console" >&2
     fi
+  elif [[ "${ZITI_BOOTSTRAP_CONSOLE:-}" == false ]]; then
+    unset ZITI_CONSOLE_LOCATION
+    echo "DEBUG: ZITI_CONSOLE_LOCATION unset because ZITI_BOOTSTRAP_CONSOLE is false" >&3
   fi
 
   if [[ -s "${_config_file}" && "${1:-}" == --force ]]; then
