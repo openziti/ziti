@@ -58,7 +58,7 @@ BASEDIR="$(cd "$(dirname "${0}")" && pwd)"
 REPOROOT="$(cd "${BASEDIR}/../../.." && pwd)"
 cd "${REPOROOT}"
 
-declare -a BINS=(grep go nc nfpm curl)
+declare -a BINS=(grep go nc nfpm curl unzip)
 for BIN in "${BINS[@]}"; do
     checkCommand "$BIN"
 done
@@ -73,6 +73,7 @@ done
 : "${ZITI_ROUTER_NAME:="linux-router1"}"
 : "${ZITI_ROUTER_ADVERTISED_ADDRESS:="${ZITI_ROUTER_NAME}.127.0.0.1.sslip.io"}"
 : "${ZITI_ENROLL_TOKEN:="${TMPDIR}/${ZITI_ROUTER_NAME}.jwt"}"
+: "${ZITI_CONSOLE_LOCATION:="/opt/openziti/share/console"}"
 
 export \
 ZITI_GO_VERSION \
@@ -115,6 +116,7 @@ ZITI_ENROLL_TOKEN=/tmp/${ZITI_ROUTER_NAME}.jwt \
 sudo /opt/openziti/etc/controller/bootstrap.bash << CTRL
 ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}"
 ZITI_CTRL_ADVERTISED_PORT="${ZITI_CTRL_ADVERTISED_PORT}"
+ZITI_CONSOLE_LOCATION="${ZITI_CONSOLE_LOCATION}"
 ZITI_USER="admin"
 ZITI_PWD="${ZITI_PWD}"
 CTRL
@@ -140,6 +142,11 @@ do
     sleep ${DELAY}
 done
 ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to "${ZITI_ENROLL_TOKEN}"
+
+# fetch and install ziti console
+curl -sSfL https://github.com/openziti/ziti-console/releases/latest/download/ziti-console.zip -o "${TMPDIR}/ziti-console.zip"
+sudo unzip -fd "${ZITI_CONSOLE_LOCATION}" "${TMPDIR}/ziti-console.zip"
+sudo chmod -R +rX "${ZITI_CONSOLE_LOCATION}"
 
 sudo /opt/openziti/etc/router/bootstrap.bash << ROUTER
 ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}"
