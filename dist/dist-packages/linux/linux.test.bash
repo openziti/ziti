@@ -149,6 +149,7 @@ ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to "${ZITI_ENROLL_TOKEN}"
 
 # fetch and install ziti console
 curl -sSfL https://github.com/openziti/ziti-console/releases/latest/download/ziti-console.zip -o "${TMPDIR}/ziti-console.zip"
+sudo mkdir -p "${ZITI_CONSOLE_LOCATION}"
 sudo unzip -d "${ZITI_CONSOLE_LOCATION}" "${TMPDIR}/ziti-console.zip"
 sudo chmod -R +rX "${ZITI_CONSOLE_LOCATION}"
 
