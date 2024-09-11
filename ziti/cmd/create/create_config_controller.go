@@ -75,11 +75,6 @@ type CreateConfigControllerOptions struct {
 	EdgeIdentityEnrollmentDuration time.Duration
 	EdgeRouterEnrollmentDuration   time.Duration
 	MinCluster                     int
-	Console                        ConsoleOptions
-}
-
-type ConsoleOptions struct {
-	Location string
 }
 
 type CreateControllerConfigCmd struct {
@@ -133,7 +128,7 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 				SetEdgeConfig(&data.Controller)
 				SetWebConfig(&data.Controller)
 				// process console options
-				SetConsoleConfig(&data.Controller.Web.BindPoints.Console, &controllerOptions.Console)
+				SetConsoleConfig(&data.Controller.Web.BindPoints.Console)
 
 			},
 			Run: func(cmd *cobra.Command, args []string) {
@@ -159,7 +154,6 @@ func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().DurationVar(&options.EdgeIdentityEnrollmentDuration, optionEdgeIdentityEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge identity enrollment duration, use 0h0m0s format")
 	cmd.Flags().DurationVar(&options.EdgeRouterEnrollmentDuration, optionEdgeRouterEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge router enrollment duration, use 0h0m0s format")
 	cmd.Flags().IntVar(&options.MinCluster, optionMinCluster, 0, "minimum cluster size. Enables HA mode if > 0")
-	cmd.Flags().StringVar(&options.Console.Location, "console-location", "", "enable and set path to console static files")
 }
 
 // run implements the command
@@ -268,13 +262,10 @@ func SetWebConfig(data *ControllerTemplateValues) {
 	SetCtrlAltServerCerts(data)
 }
 
-func SetConsoleConfig(v *ConsoleValues, o *ConsoleOptions) {
-	location := strings.TrimSpace(o.Location)
+func SetConsoleConfig(v *ConsoleValues) {
+	location := strings.TrimSpace(os.Getenv(constants.CtrlConsoleLocationVarName))
 	if location == "" {
 		v.Enabled = false
-		// if disabled, leave a comment demonstrating how to set the location of
-		// static console files using the path provided by openziti-console
-		// package as an example
 		v.Location = "./console"
 	} else {
 		v.Enabled = true
