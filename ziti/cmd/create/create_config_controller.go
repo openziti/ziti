@@ -127,6 +127,8 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 				SetControllerIdentity(&data.Controller)
 				SetEdgeConfig(&data.Controller)
 				SetWebConfig(&data.Controller)
+				// process console options
+				SetConsoleConfig(&data.Controller.Web.BindPoints.Console)
 
 			},
 			Run: func(cmd *cobra.Command, args []string) {
@@ -197,6 +199,7 @@ func SetControllerIdentity(data *ControllerTemplateValues) {
 	SetControllerIdentityKey(data)
 	SetControllerIdentityCA(data)
 }
+
 func SetControllerIdentityCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlCertVarName)
 	if val == "" {
@@ -204,6 +207,7 @@ func SetControllerIdentityCert(c *ControllerTemplateValues) {
 	}
 	c.Identity.Cert = helpers.NormalizePath(val)
 }
+
 func SetControllerIdentityServerCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlServerCertVarName)
 	if val == "" {
@@ -211,6 +215,7 @@ func SetControllerIdentityServerCert(c *ControllerTemplateValues) {
 	}
 	c.Identity.ServerCert = helpers.NormalizePath(val)
 }
+
 func SetControllerIdentityKey(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlKeyVarName)
 	if val == "" {
@@ -218,6 +223,7 @@ func SetControllerIdentityKey(c *ControllerTemplateValues) {
 	}
 	c.Identity.Key = helpers.NormalizePath(val)
 }
+
 func SetControllerIdentityCA(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlCAVarName)
 	if val == "" {
@@ -230,6 +236,7 @@ func SetEdgeConfig(data *ControllerTemplateValues) {
 	SetEdgeSigningCert(data)
 	SetEdgeSigningKey(data)
 }
+
 func SetEdgeSigningCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiSignerCertVarName)
 	if val == "" {
@@ -238,6 +245,7 @@ func SetEdgeSigningCert(c *ControllerTemplateValues) {
 	c.EdgeEnrollment.SigningCert = helpers.NormalizePath(val)
 
 }
+
 func SetEdgeSigningKey(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiSignerKeyVarName)
 	if val == "" {
@@ -253,6 +261,18 @@ func SetWebConfig(data *ControllerTemplateValues) {
 	SetWebIdentityCA(data)
 	SetCtrlAltServerCerts(data)
 }
+
+func SetConsoleConfig(v *ConsoleValues) {
+	location := strings.TrimSpace(os.Getenv(constants.CtrlConsoleLocationVarName))
+	if location == "" {
+		v.Enabled = false
+		v.Location = "./console"
+	} else {
+		v.Enabled = true
+		v.Location = helpers.NormalizePath(location)
+	}
+}
+
 func SetWebIdentityCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeCertVarName)
 	if val == "" {
@@ -260,6 +280,7 @@ func SetWebIdentityCert(c *ControllerTemplateValues) {
 	}
 	c.Web.Identity.Cert = helpers.NormalizePath(val)
 }
+
 func SetWebIdentityServerCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeServerCertVarName)
 	if val == "" {
@@ -267,6 +288,7 @@ func SetWebIdentityServerCert(c *ControllerTemplateValues) {
 	}
 	c.Web.Identity.ServerCert = helpers.NormalizePath(val)
 }
+
 func SetWebIdentityKey(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeKeyVarName)
 	if val == "" {
@@ -274,6 +296,7 @@ func SetWebIdentityKey(c *ControllerTemplateValues) {
 	}
 	c.Web.Identity.Key = helpers.NormalizePath(val)
 }
+
 func SetWebIdentityCA(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.CtrlPkiEdgeCAVarName)
 	if val == "" {

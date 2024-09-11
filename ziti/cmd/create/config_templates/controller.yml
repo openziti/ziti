@@ -233,7 +233,7 @@ web:
         options: { }
       - binding: fabric
         options: { }
-      #- binding: zac
-      #  options:
-      #    location: /ziti-console
-      #    indexFile: index.html
+      {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}- binding: zac
+      {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}  options:
+      {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}    location: {{ .Controller.Web.BindPoints.Console.Location }}
+      {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}    indexFile: index.html
