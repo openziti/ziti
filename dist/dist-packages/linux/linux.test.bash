@@ -32,6 +32,10 @@ cleanup(){
             fi
         )||true
     done
+    if [[ -d "${ZITI_CONSOLE_LOCATION}" ]]
+    then
+        sudo rm -rf "${ZITI_CONSOLE_LOCATION}"
+    fi
     echo "DEBUG: cleanup complete"
 }
 
@@ -73,7 +77,7 @@ done
 : "${ZITI_ROUTER_NAME:="linux-router1"}"
 : "${ZITI_ROUTER_ADVERTISED_ADDRESS:="${ZITI_ROUTER_NAME}.127.0.0.1.sslip.io"}"
 : "${ZITI_ENROLL_TOKEN:="${TMPDIR}/${ZITI_ROUTER_NAME}.jwt"}"
-: "${ZITI_CONSOLE_LOCATION:="/opt/openziti/share/console"}"
+: "${ZITI_CONSOLE_LOCATION:="/opt/openziti/share/consoletest"}"
 
 export \
 ZITI_GO_VERSION \
@@ -145,7 +149,7 @@ ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to "${ZITI_ENROLL_TOKEN}"
 
 # fetch and install ziti console
 curl -sSfL https://github.com/openziti/ziti-console/releases/latest/download/ziti-console.zip -o "${TMPDIR}/ziti-console.zip"
-sudo unzip -fd "${ZITI_CONSOLE_LOCATION}" "${TMPDIR}/ziti-console.zip"
+sudo unzip -d "${ZITI_CONSOLE_LOCATION}" "${TMPDIR}/ziti-console.zip"
 sudo chmod -R +rX "${ZITI_CONSOLE_LOCATION}"
 
 sudo /opt/openziti/etc/router/bootstrap.bash << ROUTER
