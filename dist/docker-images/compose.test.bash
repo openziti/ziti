@@ -40,7 +40,7 @@ BASEDIR="$(cd "$(dirname "${0}")" && pwd)"
 REPOROOT="$(cd "${BASEDIR}/../.." && pwd)"
 cd "${REPOROOT}"
 
-declare -a BINS=(grep docker go nc)
+declare -a BINS=(grep docker go nc curl)
 for BIN in "${BINS[@]}"; do
     checkCommand "$BIN"
 done
@@ -127,5 +127,18 @@ unset GOOS
 ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS} \
 ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT} \
 go test -v -count=1 -tags="quickstart manual" ./ziti/cmd/edge/...
+
+ATTEMPTS=5
+DELAY=3
+
+# verify console is available
+curl_cmd="curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null \"https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/\""
+until ! ((ATTEMPTS)) || eval "${curl_cmd}" &> /dev/null
+do
+    (( ATTEMPTS-- ))
+    echo "Waiting for zac"
+    sleep ${DELAY}
+done
+eval "${curl_cmd}"
 
 cleanup

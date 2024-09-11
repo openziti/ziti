@@ -32,6 +32,10 @@ cleanup(){
             fi
         )||true
     done
+    if [[ -d "${ZITI_CONSOLE_LOCATION}" ]]
+    then
+        sudo rm -rf "${ZITI_CONSOLE_LOCATION}"
+    fi
     echo "DEBUG: cleanup complete"
 }
 
@@ -58,7 +62,7 @@ BASEDIR="$(cd "$(dirname "${0}")" && pwd)"
 REPOROOT="$(cd "${BASEDIR}/../../.." && pwd)"
 cd "${REPOROOT}"
 
-declare -a BINS=(grep go nc nfpm)
+declare -a BINS=(grep go nc nfpm curl unzip)
 for BIN in "${BINS[@]}"; do
     checkCommand "$BIN"
 done
@@ -73,6 +77,7 @@ done
 : "${ZITI_ROUTER_NAME:="linux-router1"}"
 : "${ZITI_ROUTER_ADVERTISED_ADDRESS:="${ZITI_ROUTER_NAME}.127.0.0.1.sslip.io"}"
 : "${ZITI_ENROLL_TOKEN:="${TMPDIR}/${ZITI_ROUTER_NAME}.jwt"}"
+: "${ZITI_CONSOLE_LOCATION:="/opt/openziti/share/consoletest"}"
 
 export \
 ZITI_GO_VERSION \
@@ -115,6 +120,7 @@ ZITI_ENROLL_TOKEN=/tmp/${ZITI_ROUTER_NAME}.jwt \
 sudo /opt/openziti/etc/controller/bootstrap.bash << CTRL
 ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}"
 ZITI_CTRL_ADVERTISED_PORT="${ZITI_CTRL_ADVERTISED_PORT}"
+ZITI_CONSOLE_LOCATION="${ZITI_CONSOLE_LOCATION}"
 ZITI_USER="admin"
 ZITI_PWD="${ZITI_PWD}"
 CTRL
@@ -140,6 +146,11 @@ do
     sleep ${DELAY}
 done
 ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to "${ZITI_ENROLL_TOKEN}"
+
+# fetch and install ziti console
+sudo mkdir -p "${ZITI_CONSOLE_LOCATION}"
+sudo tee "${ZITI_CONSOLE_LOCATION}/index.html" <<< "I am ZAC"
+sudo chmod -R +rX "${ZITI_CONSOLE_LOCATION}"
 
 sudo /opt/openziti/etc/router/bootstrap.bash << ROUTER
 ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}"
@@ -174,5 +185,18 @@ fi
 ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS} \
 ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT} \
 go test -v -count=1 -tags="quickstart manual" ./ziti/cmd/edge/...
+
+ATTEMPTS=5
+DELAY=3
+
+# verify console is available
+curl_cmd="curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null \"https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/\""
+until ! ((ATTEMPTS)) || eval "${curl_cmd}" &> /dev/null
+do
+    (( ATTEMPTS-- ))
+    echo "Waiting for zac"
+    sleep ${DELAY}
+done
+eval "${curl_cmd}"
 
 cleanup
