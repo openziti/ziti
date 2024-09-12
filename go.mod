@@ -55,7 +55,7 @@ require (
 	github.com/openziti/edge-api v0.26.30
 	github.com/openziti/foundation/v2 v2.0.49
 	github.com/openziti/identity v1.0.85
-	github.com/openziti/jwks v1.0.4
+	github.com/openziti/jwks v1.0.5
 	github.com/openziti/metrics v1.2.58
 	github.com/openziti/runzmd v1.0.51
 	github.com/openziti/sdk-golang v0.23.41

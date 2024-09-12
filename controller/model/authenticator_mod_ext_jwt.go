@@ -126,6 +126,15 @@ type signerRecord struct {
 	jwksResolver jwks.Resolver
 }
 
+func (r *signerRecord) PubKeyByKid(kid string) (pubKey, bool) {
+	r.Mutex.Lock()
+	defer r.Mutex.Unlock()
+
+	key, ok := r.kidToPubKey[kid]
+
+	return key, ok
+}
+
 func (r *signerRecord) Resolve(force bool) error {
 	r.Mutex.Lock()
 	defer r.Mutex.Unlock()
@@ -161,11 +170,7 @@ func (r *signerRecord) Resolve(force bool) error {
 		return nil
 
 	} else if r.externalJwtSigner.JwksEndpoint != nil {
-		if len(r.kidToPubKey) != 0 && !force {
-			return nil
-		}
-
-		if !r.jwksLastRequest.IsZero() && time.Since(r.jwksLastRequest) < JwksQueryTimeout {
+		if (!r.jwksLastRequest.IsZero() && time.Since(r.jwksLastRequest) < JwksQueryTimeout) && !force {
 			return nil
 		}
 
@@ -180,7 +185,7 @@ func (r *signerRecord) Resolve(force bool) error {
 		for _, key := range jwksResponse.Keys {
 			//if we have an x509chain the first must be the signing key
 			if len(key.X509Chain) != 0 {
-				x509Der, err := base64.StdEncoding.DecodeString(key.X509Chain[0])
+				x509Der, err := base64.RawURLEncoding.DecodeString(key.X509Chain[0])
 
 				if err != nil {
 					return fmt.Errorf("could not parse JWKS keys: %v", err)
@@ -283,14 +288,14 @@ func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	key, ok := signerRecord.kidToPubKey[kid]
+	key, ok := signerRecord.PubKeyByKid(kid)
 
 	if !ok {
-		if err := signerRecord.Resolve(true); err != nil {
+		if err := signerRecord.Resolve(false); err != nil {
 			logger.WithError(err).Error("error attempting to resolve extJwtSigner certificate used for signing")
 		}
 
-		key, ok = signerRecord.kidToPubKey[kid]
+		key, ok = signerRecord.PubKeyByKid(kid)
 
 		if !ok {
 			return nil, fmt.Errorf("kid [%s] not found for issuer [%s]", kid, issuer)

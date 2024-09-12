@@ -1,76 +1,46 @@
 package model
 
 import (
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
-	"github.com/Jeffail/gabs/v2"
+	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/jwks"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/stretchr/testify/require"
+	"math/big"
+	"net"
+	"strconv"
 	"testing"
 	"time"
 )
 
-var testJkws = `{
-    "keys": [
-        {
-            "alg": "RS256",
-            "kty": "RSA",
-            "use": "sig",
-            "n": "4SEOORSe1V6Ic-_LSbFJaERGxTwBhHt2zHluYO449sYEi7um4Q-ZodseaUw4R1uLvIG_Eh7mJwGi37-To8woYzCLz3fvdF7G5Pq-tm78A4VLC9_WrvBOgP9PXYaGzPcz60JTJb5Ee94jrWYVwLJUGX_AXnjKUAJXFhAVGlrpeCRMhJx625XIQEchNjdotMxe_kPwM9dgmG_zRe0IH98UbuqYTYUwdkH_INe7IL7jJF3tDm2571yAbH_unqdpTvrrb3CkU0f-AIwb-GlYxR2aQ8jNaGGJSx0EI_G89BHMZAGJpRlPXwjD5qrn2QC06XOG9JDrLyDen2Z2R-TYCfkkjw",
-            "e": "AQAB",
-            "kid": "nDNaLwW5uTxoHZ5vLiTui",
-            "x5t": "MMp-6VIvEYOnYoGjvky-Wxk_h0A",
-            "x5c": [
-                "MIIDDTCCAfWgAwIBAgIJZgHXXsVCojHCMA0GCSqGSIb3DQEBCwUAMCQxIjAgBgNVBAMTGWRldi1qYTI4b2p6ay51cy5hdXRoMC5jb20wHhcNMjIwMzAzMTgxNjM4WhcNMzUxMTEwMTgxNjM4WjAkMSIwIAYDVQQDExlkZXYtamEyOG9qemsudXMuYXV0aDAuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4SEOORSe1V6Ic+/LSbFJaERGxTwBhHt2zHluYO449sYEi7um4Q+ZodseaUw4R1uLvIG/Eh7mJwGi37+To8woYzCLz3fvdF7G5Pq+tm78A4VLC9/WrvBOgP9PXYaGzPcz60JTJb5Ee94jrWYVwLJUGX/AXnjKUAJXFhAVGlrpeCRMhJx625XIQEchNjdotMxe/kPwM9dgmG/zRe0IH98UbuqYTYUwdkH/INe7IL7jJF3tDm2571yAbH/unqdpTvrrb3CkU0f+AIwb+GlYxR2aQ8jNaGGJSx0EI/G89BHMZAGJpRlPXwjD5qrn2QC06XOG9JDrLyDen2Z2R+TYCfkkjwIDAQABo0IwQDAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBRrO/lcE6fRDss+WAroJw0I3sZQ1zAOBgNVHQ8BAf8EBAMCAoQwDQYJKoZIhvcNAQELBQADggEBAChrBHmfIbEOOKdtOs5zfLgZKjwXMQ3NydYHSCPrZKKNrR2JLYRy3KD3iLUZmqgb3kiWqO+aVABAHNi3H3oGTTIEklRH69NMpbmTs+W9suw/JaIrbj2HCPbTCGMvA5yTo3kABJbVapHCO8cd8FCZVCa5+CbdMBsjvnZvUNriX69VAHIzRIv/AGQbHXWQoU7igRm9nLnO/BKFhWPXiSuYpaBz5uqg+qB3gfyGUQjeAoYo5b3YtZt/GrwcQS5Ku4lhV7jPkAgEyQdHAC6RKw7Gf/p+u58gSMKXeZxW9FxgGNMsQPuKTyIEuikYinT70Y1IUsMAaqS5SrzglvPYgZpYTmc="
-            ]
-        },
-        {
-            "alg": "RS256",
-            "kty": "RSA",
-            "use": "sig",
-            "n": "-VLOzBGDO1mRgwz6ZWK4aTyebQI5blRifFrhjax-bH_hbFaNZ1LjFZNUJ7wR1GfrXUtI_2bZF-QBeGPD_rfwrPuAVktyysGWpyTeTUJSbdotWyhDN7v6_ySvQcLjQVajRslGiUUn9eBNDvQm8HyAgmUEOFZk5m0kdSh2sU3fB-Q71OGYHm_uTSENGgtnVp7pvXJVoD26-ZKf_6movrrQ8lPX_SBFL79JIGwcV-Q35PkwKpLDmfR5qsiruQcgAOrcU83UEujrHumgJFM2SV_7pP1lW83itYBizeShUXDkMnEsarenNwBs2ej4CHF4wlg8kvAuvM1etP9wTvQgR8pCTw",
-            "e": "AQAB",
-            "kid": "9OcLRMTskCwYepHJAgyc4",
-            "x5t": "AQFCuQ1CEs-mkKBan4LOQS0AsbM",
-            "x5c": [
-                "MIIDDTCCAfWgAwIBAgIJUE+YLL7UA3KIMA0GCSqGSIb3DQEBCwUAMCQxIjAgBgNVBAMTGWRldi1qYTI4b2p6ay51cy5hdXRoMC5jb20wHhcNMjIwMzAzMTgxNjM4WhcNMzUxMTEwMTgxNjM4WjAkMSIwIAYDVQQDExlkZXYtamEyOG9qemsudXMuYXV0aDAuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA+VLOzBGDO1mRgwz6ZWK4aTyebQI5blRifFrhjax+bH/hbFaNZ1LjFZNUJ7wR1GfrXUtI/2bZF+QBeGPD/rfwrPuAVktyysGWpyTeTUJSbdotWyhDN7v6/ySvQcLjQVajRslGiUUn9eBNDvQm8HyAgmUEOFZk5m0kdSh2sU3fB+Q71OGYHm/uTSENGgtnVp7pvXJVoD26+ZKf/6movrrQ8lPX/SBFL79JIGwcV+Q35PkwKpLDmfR5qsiruQcgAOrcU83UEujrHumgJFM2SV/7pP1lW83itYBizeShUXDkMnEsarenNwBs2ej4CHF4wlg8kvAuvM1etP9wTvQgR8pCTwIDAQABo0IwQDAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBSwhiE0zXOLZkCeCDIibq6gx1x9VzAOBgNVHQ8BAf8EBAMCAoQwDQYJKoZIhvcNAQELBQADggEBAMyRiIbglAop3eSX/DzS27OJe2vVMd9pCUBV/WeCSIt41Cv1ZHW15sklCyr5mGN27MrYK50h/vb4JcHRTLrUZ2L0Ib5ogcxeQTWzTpcK8VEKT4bUZhJeOoqWxjBEZi/mo8EqadY0NMzEy0mAUTJzOtfJv8eSoRE1ElwTb6AQiTFLHtcK2MLEDWNIXWVOVew5OTVRJLJd4r5jgL9DcuVFY/sWLn7LgV71P9bjZnvGx8FuWouYsnjMT/YhfUhs+n+JPCX7SEHn3rn5XXGN6KyEYzBLrouQHRu+y3x7aYCWwW1Hr94EbvGaD/dSzH+zAMmk635mrmM1JXXYGeIVp0xKP5s="
-            ]
-        }
-    ]
-}`
-
-type staticJwksResponder struct {
-	payload       string
-	called        bool
-	calledWithUrl string
-}
-
-func (s *staticJwksResponder) Get(url string) (*jwks.Response, []byte, error) {
-	s.called = true
-	s.calledWithUrl = url
-
-	jwksResponse := &jwks.Response{}
-	if err := json.Unmarshal([]byte(s.payload), jwksResponse); err != nil {
-		return nil, nil, err
-	}
-
-	return jwksResponse, []byte(testJkws), nil
-}
-
 func Test_signerRecord_Resolve(t *testing.T) {
-	jwksContainer, err := gabs.ParseJSON([]byte(testJkws))
-	require.NoError(t, err)
-	require.NotNil(t, jwksContainer)
-
 	t.Run("can resolve and parse a valid JWKS response", func(t *testing.T) {
 		req := require.New(t)
 
+		testRootCa := newRootCa()
+		leaf1KeyPair := testRootCa.NewLeafWithAKID()
+		leaf2KeyPair := testRootCa.NewLeafWithAKID()
+
 		jwksEndpoint := "https://example.com/.well-known/jwks"
 
-		jwksResolver := &staticJwksResponder{
-			payload: testJkws,
-		}
+		jwksResolver, err := newTestJwksResolver()
+		leaf1Key, err := newKey(leaf1KeyPair.cert, []*x509.Certificate{leaf1KeyPair.cert, testRootCa.cert})
+		req.NoError(err)
+
+		jwksResolver.AddKey(leaf1Key, leaf1KeyPair.key)
+
+		leaf2Key, err := newKey(leaf2KeyPair.cert, []*x509.Certificate{leaf2KeyPair.cert, testRootCa.cert})
+		req.NoError(err)
+
+		jwksResolver.AddKey(leaf2Key, leaf2KeyPair.key)
 
 		signerRec := &signerRecord{
 			kidToPubKey: map[string]pubKey{},
@@ -88,9 +58,403 @@ func Test_signerRecord_Resolve(t *testing.T) {
 		}
 
 		req.NoError(signerRec.Resolve(false))
-		req.True(jwksResolver.called)
-		req.Equal(jwksEndpoint, jwksResolver.calledWithUrl)
+		req.Equal(1, jwksResolver.callCount)
+		req.Equal(jwksEndpoint, jwksResolver.callUrls[0])
 		req.Len(signerRec.kidToPubKey, 2)
 
+		t.Run("adding a new key, trigger resolve, increases call count and keys available", func(t *testing.T) {
+			req := require.New(t)
+			leaf3KeyPair := testRootCa.NewLeafWithAKID()
+
+			leaf3Key, err := newKey(leaf3KeyPair.cert, []*x509.Certificate{leaf3KeyPair.cert, testRootCa.cert})
+			req.NoError(err)
+
+			jwksResolver.AddKey(leaf3Key, leaf3KeyPair.key)
+
+			time.Sleep(JwksQueryTimeout)
+
+			req.NoError(signerRec.Resolve(false))
+
+			req.Equal(2, jwksResolver.callCount)
+			req.Len(signerRec.kidToPubKey, 3)
+		})
+
+		t.Run("asking to resolve twice in succession w/o force does not trigger multiple calls", func(t *testing.T) {
+			req := require.New(t)
+
+			time.Sleep(JwksQueryTimeout)
+
+			existingCallCount := jwksResolver.callCount
+
+			req.NoError(signerRec.Resolve(false))
+			req.NoError(signerRec.Resolve(false))
+
+			req.Equal(existingCallCount+1, jwksResolver.callCount)
+		})
+
+		t.Run("asking to resolve twice in succession with force does trigger multiple calls", func(t *testing.T) {
+			req := require.New(t)
+
+			time.Sleep(JwksQueryTimeout)
+
+			existingCallCount := jwksResolver.callCount
+
+			req.NoError(signerRec.Resolve(true))
+			req.NoError(signerRec.Resolve(true))
+
+			req.Equal(existingCallCount+2, jwksResolver.callCount)
+		})
 	})
+}
+
+var currentSerial int64 = 1
+
+type certPair struct {
+	cert *x509.Certificate
+	key  any
+}
+
+type testCa struct {
+	certPair
+}
+
+func newRootCa() *testCa {
+	currentSerial++
+
+	rootKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		panic(err)
+	}
+
+	root := &x509.Certificate{
+		SerialNumber: big.NewInt(currentSerial),
+		Subject: pkix.Name{
+			CommonName:    "root-" + strconv.FormatInt(currentSerial, 10),
+			Organization:  []string{"FAKE, INC."},
+			Country:       []string{"US"},
+			Province:      []string{""},
+			Locality:      []string{"Nowhere"},
+			StreetAddress: []string{"Nowhere Road"},
+			PostalCode:    []string{"55555"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+		MaxPathLen:            -1,
+	}
+
+	rootBytes, err := x509.CreateCertificate(rand.Reader, root, root, &rootKey.PublicKey, rootKey)
+
+	if err != nil {
+		panic(err)
+	}
+
+	root, err = x509.ParseCertificate(rootBytes)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &testCa{
+		certPair{
+			cert: root,
+			key:  rootKey,
+		},
+	}
+}
+
+func (ca *testCa) NewIntermediateWithAKID() *testCa {
+	currentSerial++
+
+	intermediate := &x509.Certificate{
+		SerialNumber: big.NewInt(currentSerial),
+		Subject: pkix.Name{
+			CommonName:    "intermediate-" + strconv.FormatInt(currentSerial, 10),
+			Organization:  []string{"FAKE, INC."},
+			Country:       []string{"US"},
+			Province:      []string{""},
+			Locality:      []string{"Nowhere"},
+			StreetAddress: []string{"Nowhere Road"},
+			PostalCode:    []string{"55555"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+		AuthorityKeyId:        ca.cert.SubjectKeyId,
+		MaxPathLen:            5,
+	}
+
+	intermediateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		panic(err)
+	}
+
+	intermediateBytes, err := x509.CreateCertificate(rand.Reader, intermediate, ca.cert, &intermediateKey.PublicKey, ca.key)
+
+	if err != nil {
+		panic(err)
+	}
+
+	intermediate, err = x509.ParseCertificate(intermediateBytes)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &testCa{
+		certPair{
+			cert: intermediate,
+			key:  intermediateKey,
+		},
+	}
+}
+
+func (ca *testCa) NewIntermediateWithoutAKID() *testCa {
+	currentSerial++
+
+	intermediate := &x509.Certificate{
+		SerialNumber: big.NewInt(currentSerial),
+		Subject: pkix.Name{
+			CommonName:    "intermediate-" + strconv.FormatInt(currentSerial, 10),
+			Organization:  []string{"FAKE, INC."},
+			Country:       []string{"US"},
+			Province:      []string{""},
+			Locality:      []string{"Nowhere"},
+			StreetAddress: []string{"Nowhere Road"},
+			PostalCode:    []string{"55555"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+		MaxPathLen:            5,
+	}
+
+	intermediateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		panic(err)
+	}
+
+	intermediateBytes, err := x509.CreateCertificate(rand.Reader, intermediate, ca.cert, &intermediateKey.PublicKey, ca.key)
+
+	if err != nil {
+		panic(err)
+	}
+
+	intermediate, err = x509.ParseCertificate(intermediateBytes)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &testCa{
+		certPair{
+			cert: intermediate,
+			key:  intermediateKey,
+		},
+	}
+}
+
+func (ca *testCa) NewLeafWithAKID() *certPair {
+	currentSerial++
+
+	leaf := &x509.Certificate{
+		SerialNumber: big.NewInt(1658),
+		Subject: pkix.Name{
+			CommonName:    "leaf-" + strconv.FormatInt(currentSerial, 10),
+			Organization:  []string{"FAKE, INC."},
+			Country:       []string{"US"},
+			Province:      []string{""},
+			Locality:      []string{"Nowhere"},
+			StreetAddress: []string{"Nowhere Road"},
+			PostalCode:    []string{"55555"},
+		},
+		IPAddresses:    []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		NotBefore:      time.Now(),
+		NotAfter:       time.Now().AddDate(10, 0, 0),
+		ExtKeyUsage:    []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:       x509.KeyUsageDigitalSignature,
+		AuthorityKeyId: ca.cert.SubjectKeyId,
+	}
+
+	leafKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		panic(err)
+	}
+
+	leafBytes, err := x509.CreateCertificate(rand.Reader, leaf, ca.cert, &leafKey.PublicKey, ca.key)
+
+	if err != nil {
+		panic(err)
+	}
+
+	leaf, err = x509.ParseCertificate(leafBytes)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &certPair{
+		cert: leaf,
+		key:  leafKey,
+	}
+}
+
+func (ca *testCa) NewLeaf(leafKey *rsa.PrivateKey, alterCertFuncs ...func(certificate *x509.Certificate)) *certPair {
+	currentSerial++
+
+	leaf := &x509.Certificate{
+		SerialNumber: big.NewInt(1658),
+		Subject: pkix.Name{
+			CommonName:    "leaf-" + strconv.FormatInt(currentSerial, 10),
+			Organization:  []string{"FAKE, INC."},
+			Country:       []string{"US"},
+			Province:      []string{""},
+			Locality:      []string{"Nowhere"},
+			StreetAddress: []string{"Nowhere Road"},
+			PostalCode:    []string{"55555"},
+		},
+		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		NotBefore:   time.Now(),
+		NotAfter:    time.Now().AddDate(10, 0, 0),
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:    x509.KeyUsageDigitalSignature,
+	}
+
+	for _, f := range alterCertFuncs {
+		f(leaf)
+	}
+
+	leafBytes, err := x509.CreateCertificate(rand.Reader, leaf, ca.cert, &leafKey.PublicKey, ca.key)
+
+	if err != nil {
+		panic(err)
+	}
+
+	leaf, err = x509.ParseCertificate(leafBytes)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &certPair{
+		cert: leaf,
+		key:  leafKey,
+	}
+}
+func (ca *testCa) NewLeafWithoutAKID() *certPair {
+	currentSerial++
+
+	leaf := &x509.Certificate{
+		SerialNumber: big.NewInt(1658),
+		Subject: pkix.Name{
+			CommonName:    "leaf-" + strconv.FormatInt(currentSerial, 10),
+			Organization:  []string{"FAKE, INC."},
+			Country:       []string{"US"},
+			Province:      []string{""},
+			Locality:      []string{"Nowhere"},
+			StreetAddress: []string{"Nowhere Road"},
+			PostalCode:    []string{"55555"},
+		},
+		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		NotBefore:   time.Now(),
+		NotAfter:    time.Now().AddDate(10, 0, 0),
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:    x509.KeyUsageDigitalSignature,
+	}
+
+	leafKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		panic(err)
+	}
+
+	leafBytes, err := x509.CreateCertificate(rand.Reader, leaf, ca.cert, &leafKey.PublicKey, ca.key)
+
+	if err != nil {
+		panic(err)
+	}
+
+	leaf, err = x509.ParseCertificate(leafBytes)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &certPair{
+		cert: leaf,
+		key:  leafKey,
+	}
+}
+
+func newKey(cert *x509.Certificate, certChain []*x509.Certificate) (*jwks.Key, error) {
+	kid := eid.New()
+	key, err := jwks.NewKey(kid, cert, certChain)
+
+	if err != nil {
+		return nil, nil
+	}
+
+	return key, nil
+}
+
+type testJwksProvider struct {
+	callCount int
+	callUrls  []string
+
+	response    *jwks.Response
+	privateKeys map[string]any
+}
+
+func newTestJwksResolver() (*testJwksProvider, error) {
+	result := &testJwksProvider{
+		callUrls:    make([]string, 0),
+		privateKeys: make(map[string]any),
+		response: &jwks.Response{
+			Keys: []jwks.Key{},
+		},
+	}
+
+	return result, nil
+}
+
+func (s *testJwksProvider) Get(url string) (*jwks.Response, []byte, error) {
+	s.callCount = s.callCount + 1
+	s.callUrls = append(s.callUrls, url)
+
+	responseBytes, err := json.Marshal(s.response)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("error marshalling jwks response: %v", err)
+	}
+
+	return s.response, responseBytes, nil
+}
+
+func (s *testJwksProvider) AddKey(key *jwks.Key, privateKey crypto.PrivateKey) {
+	s.response.Keys = append(s.response.Keys, *key)
+	s.privateKeys[key.KeyId] = privateKey
+}
+
+func (s *testJwksProvider) SignJwt(kid string, claims jwt.Claims) (string, *jwt.Token, error) {
+	privateKey, ok := s.privateKeys[kid]
+
+	if !ok {
+		return "", nil, fmt.Errorf("could not find private key for kid %s", kid)
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	signedToken, err := token.SignedString(privateKey)
+
+	if err != nil {
+		return "", nil, fmt.Errorf("could not sign token using private key from kid %s: %w", kid, err)
+	}
+
+	return signedToken, token, nil
 }

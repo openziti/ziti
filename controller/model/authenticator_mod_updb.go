@@ -17,6 +17,7 @@
 package model
 
 import (
+	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
@@ -143,8 +144,7 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 
 	hr := module.env.GetManagers().Authenticator.ReHashPassword(password, salt)
 
-	if updb.Password != hr.Password {
-
+	if subtle.ConstantTimeCompare([]byte(updb.Password), []byte(hr.Password)) != 1 {
 		return nil, apierror.NewInvalidAuth()
 	}
 
