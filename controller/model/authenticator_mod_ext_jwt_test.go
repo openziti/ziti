@@ -32,6 +32,8 @@ func Test_signerRecord_Resolve(t *testing.T) {
 		jwksEndpoint := "https://example.com/.well-known/jwks"
 
 		jwksResolver, err := newTestJwksResolver()
+		req.NoError(err)
+		
 		leaf1Key, err := newKey(leaf1KeyPair.cert, []*x509.Certificate{leaf1KeyPair.cert, testRootCa.cert})
 		req.NoError(err)
 
