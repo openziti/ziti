@@ -17,6 +17,7 @@
 package xt
 
 import (
+	"github.com/openziti/ziti/common/inspect"
 	"math"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -30,7 +31,12 @@ const (
 )
 
 var globalCosts = &costs{
-	costMap: cmap.New[uint16](),
+	costMap: cmap.New[Cost](),
+}
+
+type Cost interface {
+	Get() uint16
+	Inspect(terminatorId string) *inspect.TerminatorCostDetail
 }
 
 func GlobalCosts() Costs {
@@ -126,32 +132,33 @@ func GetPrecedenceForName(name string) Precedence {
 }
 
 type costs struct {
-	costMap cmap.ConcurrentMap[string, uint16]
+	costMap cmap.ConcurrentMap[string, Cost]
 }
 
 func (self *costs) ClearCost(terminatorId string) {
 	self.costMap.Remove(terminatorId)
 }
 
-func (self *costs) SetDynamicCost(terminatorId string, cost uint16) {
-	self.costMap.Set(terminatorId, cost)
-}
-
-func (self *costs) UpdateDynamicCost(terminatorId string, updateF func(uint16) uint16) {
-	self.costMap.Upsert(terminatorId, 0, func(exist bool, valueInMap uint16, newValue uint16) uint16 {
-		if !exist {
-			return updateF(0)
-		}
-
-		return updateF(valueInMap)
-	})
+func (self *costs) SetDynamicCost(terminatorId string, c Cost) {
+	self.costMap.Set(terminatorId, c)
 }
 
 func (self *costs) GetDynamicCost(terminatorId string) uint16 {
 	if cost, found := self.costMap.Get(terminatorId); found {
-		return cost
+		return cost.Get()
 	}
 	return 0
+}
+
+func (self *costs) GetCost(terminatorId string) Cost {
+	if cost, found := self.costMap.Get(terminatorId); found {
+		return cost
+	}
+	return nil
+}
+
+func (self *costs) IterCosts(f func(string, Cost)) {
+	self.costMap.IterCb(f)
 }
 
 // In a list which is sorted by precedence, returns the terminators which have the

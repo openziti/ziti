@@ -1294,6 +1294,17 @@ func (network *Network) Inspect(name string) (*string, error) {
 		}
 		resultStr := string(result)
 		return &resultStr, nil
+	} else if strings.HasPrefix(lc, "terminator-costs") {
+		state := inspect.TerminatorCostDetails{}
+		xt.GlobalCosts().IterCosts(func(terminatorId string, cost xt.Cost) {
+			state.Terminators = append(state.Terminators, cost.Inspect(terminatorId))
+		})
+		result, err := json.Marshal(state)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshall terminator cost state to json (%w)", err)
+		}
+		resultStr := string(result)
+		return &resultStr, nil
 	} else {
 		for _, inspectTarget := range network.inspectionTargets.Value() {
 			if handled, val, err := inspectTarget(lc); handled {

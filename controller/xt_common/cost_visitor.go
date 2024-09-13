@@ -1,60 +1,181 @@
 package xt_common
 
 import (
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/controller/xt"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"math"
+	"sync/atomic"
+	"time"
 )
 
+type TerminatorCosts struct {
+	CircuitCount uint32
+	FailureCost  uint32
+	CachedCost   uint32
+}
+
+func (self *TerminatorCosts) cache(circuitCost uint32) {
+	cost := uint64(self.CircuitCount)*uint64(circuitCost) + uint64(self.FailureCost)
+	if cost > math.MaxUint32 {
+		cost = math.MaxUint32
+	}
+	atomic.StoreUint32(&self.CachedCost, uint32(cost))
+}
+
+func (self *TerminatorCosts) Get() uint16 {
+	val := atomic.LoadUint32(&self.CachedCost)
+	if val > math.MaxUint16 {
+		return math.MaxUint16
+	}
+	return uint16(val)
+}
+
+func (self *TerminatorCosts) Inspect(terminatorId string) *inspect.TerminatorCostDetail {
+	return &inspect.TerminatorCostDetail{
+		TerminatorId: terminatorId,
+		CircuitCount: self.CircuitCount,
+		FailureCost:  self.FailureCost,
+		CurrentCost:  self.CachedCost,
+	}
+}
+
+func NewCostVisitor(circuitCost, failureCost, successCredit uint16) *CostVisitor {
+	return &CostVisitor{
+		Costs:         cmap.New[*TerminatorCosts](),
+		CircuitCost:   uint32(circuitCost),
+		FailureCost:   uint32(failureCost),
+		SuccessCredit: uint32(successCredit),
+	}
+}
+
 type CostVisitor struct {
-	FailureCosts xt.FailureCosts
-	CircuitCost  uint16
+	Costs         cmap.ConcurrentMap[string, *TerminatorCosts]
+	CircuitCost   uint32
+	FailureCost   uint32
+	SuccessCredit uint32
 }
 
-func (visitor *CostVisitor) VisitDialFailed(event xt.TerminatorEvent) {
-	change := visitor.FailureCosts.Failure(event.GetTerminator().GetId())
-
-	if change > 0 {
-		xt.GlobalCosts().UpdateDynamicCost(event.GetTerminator().GetId(), func(cost uint16) uint16 {
-			if cost < (math.MaxUint16 - change) {
-				return cost + change
-			}
-			return math.MaxUint16
-		})
-	}
-}
-
-func (visitor *CostVisitor) VisitDialSucceeded(event xt.TerminatorEvent) {
-	credit := visitor.FailureCosts.Success(event.GetTerminator().GetId())
-	if credit != visitor.CircuitCost {
-		xt.GlobalCosts().UpdateDynamicCost(event.GetTerminator().GetId(), func(cost uint16) uint16 {
-			if visitor.CircuitCost > credit {
-				increase := visitor.CircuitCost - credit
-				if cost < (math.MaxUint16 - increase) {
-					// pfxlog.Logger().Infof("%v: dial+ %v -> %v", event.GetTerminator().GetId(), cost, cost+increase)
-					return cost + increase
-				}
-				// pfxlog.Logger().Infof("%v: dial+ %v -> %v", event.GetTerminator().GetId(), cost, math.MaxUint16)
-				return math.MaxUint16
-			}
-
-			decrease := credit - visitor.CircuitCost
-			if decrease > cost {
-				// pfxlog.Logger().Infof("%v: dial+ %v -> %v", event.GetTerminator().GetId(), cost, 0)
-				return 0
-			}
-			// pfxlog.Logger().Infof("%v: dial+ %v -> %v", event.GetTerminator().GetId(), cost, cost-decrease)
-			return cost - decrease
-		})
-	}
-}
-
-func (visitor *CostVisitor) VisitCircuitRemoved(event xt.TerminatorEvent) {
-	xt.GlobalCosts().UpdateDynamicCost(event.GetTerminator().GetId(), func(cost uint16) uint16 {
-		if cost > visitor.CircuitCost {
-			// pfxlog.Logger().Infof("%v: sess- %v -> %v", event.GetTerminator().GetId(), cost, cost-1)
-			return cost - visitor.CircuitCost
-		}
-		// pfxlog.Logger().Infof("%v: sess- %v -> %v", event.GetTerminator().GetId(), cost, 0)
+func (self *CostVisitor) GetFailureCost(terminatorId string) uint32 {
+	val, _ := self.Costs.Get(terminatorId)
+	if val == nil {
 		return 0
+	}
+	return val.FailureCost
+}
+
+func (self *CostVisitor) GetCircuitCount(terminatorId string) uint32 {
+	val, _ := self.Costs.Get(terminatorId)
+	if val == nil {
+		return 0
+	}
+	return val.CircuitCount
+}
+
+func (self *CostVisitor) GetCost(terminatorId string) uint32 {
+	val, _ := self.Costs.Get(terminatorId)
+	if val == nil {
+		return 0
+	}
+	return atomic.LoadUint32(&val.CachedCost)
+}
+
+func (self *CostVisitor) VisitDialFailed(event xt.TerminatorEvent) {
+	self.Costs.Upsert(event.GetTerminator().GetId(), nil, func(exist bool, valueInMap *TerminatorCosts, newValue *TerminatorCosts) *TerminatorCosts {
+		cost := valueInMap
+		if !exist {
+			cost = &TerminatorCosts{}
+			xt.GlobalCosts().SetDynamicCost(event.GetTerminator().GetId(), cost)
+		}
+
+		if math.MaxUint32-cost.FailureCost > self.FailureCost {
+			cost.FailureCost += self.FailureCost
+		} else {
+			cost.FailureCost = math.MaxUint32
+		}
+		cost.cache(self.CircuitCost)
+		return cost
 	})
+}
+
+func (self *CostVisitor) VisitDialSucceeded(event xt.TerminatorEvent) {
+	self.Costs.Upsert(event.GetTerminator().GetId(), nil, func(exist bool, valueInMap *TerminatorCosts, newValue *TerminatorCosts) *TerminatorCosts {
+		cost := valueInMap
+		if !exist {
+			cost = &TerminatorCosts{}
+			xt.GlobalCosts().SetDynamicCost(event.GetTerminator().GetId(), cost)
+		}
+
+		if cost.FailureCost > self.SuccessCredit {
+			cost.FailureCost -= self.SuccessCredit
+		} else {
+			cost.FailureCost = 0
+		}
+
+		if cost.CircuitCount < math.MaxUint32/self.CircuitCost {
+			cost.CircuitCount++
+		}
+		cost.cache(self.CircuitCost)
+		return cost
+	})
+}
+
+func (self *CostVisitor) VisitCircuitRemoved(event xt.TerminatorEvent) {
+	self.Costs.Upsert(event.GetTerminator().GetId(), nil, func(exist bool, valueInMap *TerminatorCosts, newValue *TerminatorCosts) *TerminatorCosts {
+		cost := valueInMap
+		if !exist {
+			cost = &TerminatorCosts{}
+			xt.GlobalCosts().SetDynamicCost(event.GetTerminator().GetId(), cost)
+		}
+
+		if cost.CircuitCount > 0 {
+			cost.CircuitCount--
+		}
+		cost.cache(self.CircuitCost)
+		return cost
+	})
+}
+
+func (self *CostVisitor) CreditOverTime(credit uint8, period time.Duration) *time.Ticker {
+	ticker := time.NewTicker(period)
+	go func() {
+		for range ticker.C {
+			self.CreditAll(credit)
+		}
+	}()
+	return ticker
+}
+
+func (self *CostVisitor) CreditAll(credit uint8) {
+	var keys []string
+	self.Costs.IterCb(func(key string, _ *TerminatorCosts) {
+		keys = append(keys, key)
+	})
+
+	for _, key := range keys {
+		self.Costs.Upsert(key, nil, func(exist bool, valueInMap *TerminatorCosts, newValue *TerminatorCosts) *TerminatorCosts {
+			cost := valueInMap
+			if !exist {
+				cost = &TerminatorCosts{}
+				xt.GlobalCosts().SetDynamicCost(key, cost)
+			}
+
+			if cost.FailureCost > uint32(credit) {
+				cost.FailureCost -= uint32(credit)
+			}
+			cost.cache(self.CircuitCost)
+			return cost
+		})
+	}
+}
+
+func (self *CostVisitor) NotifyEvent(event xt.TerminatorEvent) {
+	event.Accept(self)
+}
+
+func (self *CostVisitor) HandleTerminatorChange(event xt.StrategyChangeEvent) error {
+	for _, t := range event.GetRemoved() {
+		self.Costs.Remove(t.GetId())
+	}
+	return nil
 }
