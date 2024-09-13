@@ -60,7 +60,7 @@ require (
 	github.com/openziti/runzmd v1.0.51
 	github.com/openziti/sdk-golang v0.23.41
 	github.com/openziti/secretstream v0.1.24
-	github.com/openziti/storage v0.3.1
+	github.com/openziti/storage v0.3.2
 	github.com/openziti/transport/v2 v2.0.146
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.1
