@@ -94,7 +94,7 @@ func (h OidcApiHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 }
 
 func (h OidcApiHandler) IsDefault() bool {
-	return true
+	return false
 }
 
 func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options map[interface{}]interface{}) (*OidcApiHandler, error) {
