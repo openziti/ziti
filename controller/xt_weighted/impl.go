@@ -19,7 +19,6 @@ package xt_weighted
 import (
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/controller/xt_common"
-	"math"
 	"math/rand"
 	"time"
 )
@@ -42,12 +41,9 @@ func (self *factory) GetStrategyName() string {
 
 func (self *factory) NewStrategy() xt.Strategy {
 	strategy := &strategy{
-		CostVisitor: xt_common.CostVisitor{
-			FailureCosts: xt.NewFailureCosts(math.MaxUint16/4, 20, 2),
-			CircuitCost:  2,
-		},
+		CostVisitor: *xt_common.NewCostVisitor(2, 20, 2),
 	}
-	strategy.CostVisitor.FailureCosts.CreditOverTime(5, time.Minute)
+	strategy.CostVisitor.CreditOverTime(5, time.Minute)
 	return strategy
 }
 
@@ -86,12 +82,4 @@ func (self *strategy) Select(_ xt.CreateCircuitParams, terminators []xt.CostedTe
 	}
 
 	return terminators[0], nil, nil
-}
-
-func (self *strategy) NotifyEvent(event xt.TerminatorEvent) {
-	event.Accept(&self.CostVisitor)
-}
-
-func (self *strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
-	return nil
 }

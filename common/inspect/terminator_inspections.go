@@ -16,6 +16,17 @@
 
 package inspect
 
+type TerminatorCostDetails struct {
+	Terminators []*TerminatorCostDetail `json:"terminators"`
+}
+
+type TerminatorCostDetail struct {
+	TerminatorId string `json:"terminatorId"`
+	CircuitCount uint32 `json:"circuitCount"`
+	FailureCost  uint32 `json:"failureCost"`
+	CurrentCost  uint32 `json:"currentCost"`
+}
+
 type SdkTerminatorInspectResult struct {
 	Entries []*SdkTerminatorInspectDetail `json:"entries"`
 	Errors  []string                      `json:"errors"`

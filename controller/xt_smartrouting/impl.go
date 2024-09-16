@@ -19,7 +19,6 @@ package xt_smartrouting
 import (
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/controller/xt_common"
-	"math"
 	"time"
 )
 
@@ -46,12 +45,9 @@ func (self *factory) GetStrategyName() string {
 
 func (self *factory) NewStrategy() xt.Strategy {
 	strategy := strategy{
-		CostVisitor: xt_common.CostVisitor{
-			FailureCosts: xt.NewFailureCosts(math.MaxUint16/4, 20, 2),
-			CircuitCost:  2,
-		},
+		CostVisitor: *xt_common.NewCostVisitor(2, 20, 2),
 	}
-	strategy.CostVisitor.FailureCosts.CreditOverTime(5, time.Minute)
+	strategy.CreditOverTime(5, time.Minute)
 	return &strategy
 }
 
@@ -61,15 +57,4 @@ type strategy struct {
 
 func (self *strategy) Select(_ xt.CreateCircuitParams, terminators []xt.CostedTerminator) (xt.CostedTerminator, xt.PeerData, error) {
 	return terminators[0], nil, nil
-}
-
-func (self *strategy) NotifyEvent(event xt.TerminatorEvent) {
-	event.Accept(&self.CostVisitor)
-}
-
-func (self *strategy) HandleTerminatorChange(event xt.StrategyChangeEvent) error {
-	for _, t := range event.GetRemoved() {
-		self.FailureCosts.Clear(t.GetId())
-	}
-	return nil
 }

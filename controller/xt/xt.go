@@ -95,21 +95,10 @@ type EventVisitor interface {
 	VisitCircuitRemoved(event TerminatorEvent)
 }
 
-type Stats interface {
-	GetCost() uint32
-	GetPrecedence() Precedence
-}
-
 type Costs interface {
 	ClearCost(terminatorId string)
-	SetDynamicCost(terminatorId string, weight uint16)
-	UpdateDynamicCost(terminatorId string, updateF func(uint16) uint16)
+	SetDynamicCost(terminatorId string, c Cost)
 	GetDynamicCost(terminatorId string) uint16
-}
-
-type FailureCosts interface {
-	Failure(terminatorId string) uint16
-	Success(terminatorId string) uint16
-	Clear(terminatorId string)
-	CreditOverTime(credit uint8, period time.Duration) *time.Ticker
+	GetCost(terminatorId string) Cost
+	IterCosts(func(terminatorId string, cost Cost))
 }
