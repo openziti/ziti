@@ -14,6 +14,7 @@ EnvironmentFile=/opt/openziti/etc/controller/service.env
 # relative to /var/lib
 StateDirectory=ziti-controller
 WorkingDirectory=/var/lib/ziti-controller
+ReadOnlyPaths=/opt/openziti/share/console
 
 ExecStartPre=/opt/openziti/etc/controller/entrypoint.bash check config.yml
 ExecStart=/opt/openziti/bin/ziti controller run config.yml ${ZITI_ARGS}
