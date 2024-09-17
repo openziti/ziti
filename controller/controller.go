@@ -297,7 +297,8 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
-	if err = c.xweb.GetRegistry().Add(webapis.NewFabricManagementApiFactory(c.config.Id, c.network, &c.xmgmts)); err != nil {
+	fabricManagementFactory := webapis.NewFabricManagementApiFactory(c.config.Id, c.network, &c.xmgmts)
+	if err = c.xweb.GetRegistry().Add(fabricManagementFactory); err != nil {
 		logrus.WithError(err).Fatalf("failed to create management api factory")
 	}
 
@@ -327,6 +328,9 @@ func (c *Controller) initWeb() {
 		}
 
 		webapis.OverrideRequestWrapper(webapis.NewFabricApiWrapper(c.env))
+	} else {
+		// if no edge  we need 1 default API, make the fabric api the default
+		fabricManagementFactory.MakeDefault = true
 	}
 	c.xwebInitialized.MarkInitialized()
 }

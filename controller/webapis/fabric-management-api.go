@@ -45,10 +45,11 @@ const (
 var _ xweb.ApiHandlerFactory = &FabricManagementApiFactory{}
 
 type FabricManagementApiFactory struct {
-	InitFunc func(managementApi *FabricManagementApiHandler) error
-	network  *network.Network
-	nodeId   identity.Identity
-	xmgmts   *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
+	InitFunc    func(managementApi *FabricManagementApiHandler) error
+	network     *network.Network
+	nodeId      identity.Identity
+	xmgmts      *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
+	MakeDefault bool
 }
 
 func (factory *FabricManagementApiFactory) Validate(_ *xweb.InstanceConfig) error {
@@ -58,9 +59,10 @@ func (factory *FabricManagementApiFactory) Validate(_ *xweb.InstanceConfig) erro
 func NewFabricManagementApiFactory(nodeId identity.Identity, network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) *FabricManagementApiFactory {
 	pfxlog.Logger().Infof("initializing management api factory with %d xmgmt instances", len(xmgmts.Value()))
 	return &FabricManagementApiFactory{
-		network: network,
-		nodeId:  nodeId,
-		xmgmts:  xmgmts,
+		network:     network,
+		nodeId:      nodeId,
+		xmgmts:      xmgmts,
+		MakeDefault: false,
 	}
 }
 
@@ -88,7 +90,7 @@ func (factory *FabricManagementApiFactory) New(_ *xweb.ServerConfig, options map
 		router.Register(fabricAPI, requestWrapper)
 	}
 
-	managementApiHandler, err := NewFabricManagementApiHandler(fabricAPI, options)
+	managementApiHandler, err := NewFabricManagementApiHandler(fabricAPI, factory.MakeDefault, options)
 
 	if err != nil {
 		return nil, err
@@ -105,10 +107,11 @@ func (factory *FabricManagementApiFactory) New(_ *xweb.ServerConfig, options map
 	return managementApiHandler, nil
 }
 
-func NewFabricManagementApiHandler(fabricApi *operations.ZitiFabricAPI, options map[interface{}]interface{}) (*FabricManagementApiHandler, error) {
+func NewFabricManagementApiHandler(fabricApi *operations.ZitiFabricAPI, isDefault bool, options map[interface{}]interface{}) (*FabricManagementApiHandler, error) {
 	managementApi := &FabricManagementApiHandler{
 		fabricApi: fabricApi,
 		options:   options,
+		isDefault: isDefault,
 	}
 
 	managementApi.handler = managementApi.newHandler()
@@ -125,6 +128,7 @@ type FabricManagementApiHandler struct {
 	wsUrl       string
 	options     map[interface{}]interface{}
 	bindHandler channel.BindHandler
+	isDefault   bool
 }
 
 func (managementApi *FabricManagementApiHandler) Binding() string {
@@ -154,6 +158,10 @@ func (managementApi *FabricManagementApiHandler) ServeHTTP(writer http.ResponseW
 func (managementApi *FabricManagementApiHandler) newHandler() http.Handler {
 	innerManagementHandler := managementApi.fabricApi.Serve(nil)
 	return requestWrapper.WrapHttpHandler(innerManagementHandler)
+}
+
+func (managementApi *FabricManagementApiHandler) IsDefault() bool {
+	return managementApi.isDefault
 }
 
 func (managementApi *FabricManagementApiHandler) handleWebSocket(writer http.ResponseWriter, request *http.Request) {
