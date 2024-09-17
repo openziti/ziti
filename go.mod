@@ -58,12 +58,12 @@ require (
 	github.com/openziti/jwks v1.0.5
 	github.com/openziti/metrics v1.2.58
 	github.com/openziti/runzmd v1.0.51
-	github.com/openziti/sdk-golang v0.23.41
+	github.com/openziti/sdk-golang v0.23.42
 	github.com/openziti/secretstream v0.1.24
-	github.com/openziti/storage v0.3.1
+	github.com/openziti/storage v0.3.2
 	github.com/openziti/transport/v2 v2.0.146
 	github.com/openziti/x509-claims v1.0.3
-	github.com/openziti/xweb/v2 v2.1.1
+	github.com/openziti/xweb/v2 v2.1.2
 	github.com/openziti/ziti-db-explorer v1.1.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
