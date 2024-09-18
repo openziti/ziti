@@ -58,6 +58,7 @@ type LinkSendBuffer struct {
 	lastRetransmitTime    int64
 	closeWhenEmpty        atomic.Bool
 	inspectRequests       chan *sendBufferInspectEvent
+	minSeq                int32
 }
 
 type txPayload struct {
@@ -276,35 +277,9 @@ func (buffer *LinkSendBuffer) close() {
 
 func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 	log := pfxlog.ContextLogger(buffer.x.Label()).WithFields(ack.GetLoggerFields())
-
 	for _, sequence := range ack.Sequence {
-		if txPayload, found := buffer.buffer[sequence]; found {
-			if txPayload.markAcked() { // if it's been queued for retransmission, remove it from the queue
-				retransmitter.queue(txPayload)
-			}
-
-			payloadSize := uint32(len(txPayload.payload.Data))
-			buffer.accumulator += payloadSize
-			buffer.successfulAcks++
-			delete(buffer.buffer, sequence)
-			atomic.AddInt64(&outstandingPayloads, -1)
-			atomic.AddInt64(&outstandingPayloadBytes, -int64(payloadSize))
-			buffer.linkSendBufferSize -= payloadSize
-			log.Debugf("removing payload %v with size %v. payload buffer size: %v",
-				txPayload.payload.Sequence, len(txPayload.payload.Data), buffer.linkSendBufferSize)
-
-			if buffer.successfulAcks >= buffer.x.Options.TxPortalIncreaseThresh {
-				buffer.successfulAcks = 0
-				delta := uint32(float64(buffer.accumulator) * buffer.x.Options.TxPortalIncreaseScale)
-				buffer.windowsSize += delta
-				if buffer.windowsSize > buffer.x.Options.TxPortalMaxSize {
-					buffer.windowsSize = buffer.x.Options.TxPortalMaxSize
-				}
-				buffer.retxScale -= 0.01
-				if buffer.retxScale < buffer.x.Options.RetxScale {
-					buffer.retxScale = buffer.x.Options.RetxScale
-				}
-			}
+		if payload, found := buffer.buffer[sequence]; found {
+			buffer.markPayloadComplete(payload, sequence, log)
 		} else { // duplicate ack
 			duplicateAcksMeter.Mark(1)
 			buffer.duplicateAcks++
@@ -315,6 +290,10 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 		}
 	}
 
+	if ack.LowWaterMark > 0 {
+		buffer.processLowWatermark(ack, log)
+	}
+
 	buffer.linkRecvBufferSize = ack.RecvBufferSize
 	if ack.RTT > 0 {
 		rtt := uint16(info.NowInMilliseconds()) - ack.RTT
@@ -323,6 +302,51 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 		}
 		buffer.lastRtt = rtt
 		buffer.retxThreshold = uint32(float64(rtt)*buffer.retxScale) + buffer.x.Options.RetxAddMs
+	}
+}
+
+func (buffer *LinkSendBuffer) processLowWatermark(ack *Acknowledgement, log *logrus.Entry) {
+	//fmt.Printf("checking minseq: %d, lowWater: %d\n", buffer.minSeq, ack.LowWaterMark)
+	for sequence := buffer.minSeq; sequence <= ack.LowWaterMark; sequence++ {
+		//fmt.Printf("checking minseq: %d, lowWater: %d, seq: %d\n", buffer.minSeq, ack.LowWaterMark, sequence)
+		if payload, found := buffer.buffer[sequence]; found {
+			buffer.markPayloadComplete(payload, sequence, log)
+		}
+	}
+	if buffer.minSeq <= ack.LowWaterMark+1 {
+		buffer.minSeq = ack.LowWaterMark + 1
+	}
+}
+
+func (buffer *LinkSendBuffer) markPayloadComplete(payload *txPayload, sequence int32, log *logrus.Entry) {
+	if payload.markAcked() { // if it's been queued for retransmission, remove it from the queue
+		retransmitter.queue(payload)
+	}
+
+	payloadSize := uint32(len(payload.payload.Data))
+	buffer.accumulator += payloadSize
+	delete(buffer.buffer, sequence)
+	atomic.AddInt64(&outstandingPayloads, -1)
+	atomic.AddInt64(&outstandingPayloadBytes, -int64(payloadSize))
+	buffer.linkSendBufferSize -= payloadSize
+	log.Debugf("removing payload %v with size %v. payload buffer size: %v",
+		payload.payload.Sequence, len(payload.payload.Data), buffer.linkSendBufferSize)
+
+	if buffer.successfulAcks >= buffer.x.Options.TxPortalIncreaseThresh {
+		buffer.successfulAcks = 0
+		delta := uint32(float64(buffer.accumulator) * buffer.x.Options.TxPortalIncreaseScale)
+		buffer.windowsSize += delta
+		if buffer.windowsSize > buffer.x.Options.TxPortalMaxSize {
+			buffer.windowsSize = buffer.x.Options.TxPortalMaxSize
+		}
+		buffer.retxScale -= 0.01
+		if buffer.retxScale < buffer.x.Options.RetxScale {
+			buffer.retxScale = buffer.x.Options.RetxScale
+		}
+	}
+
+	if sequence == buffer.minSeq {
+		buffer.minSeq = buffer.minSeq + 1
 	}
 }
 
