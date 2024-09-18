@@ -3,6 +3,56 @@
 ## What's New
 
 * Bug fixes, enhancements and continuing progress on controller HA
+* Data corruption Fix
+
+## Data Corruption Fix
+
+Previous to version 1.1.12, the controller would not handle changes to the policy type of a service policy.
+Specifically if the type was changed from Bind -> Dial, or Dial -> Bind, a set of denormalized data would
+be left behind, leaving the permissions with the old policy type. 
+
+Example:
+
+1. Identity A has Bind access to service B via Bind service policy C. 
+2. The policy type of service policy C is changed from Bind to Dial.
+3. The service list would now likely show that Identity A has Dial and Bind access to service B, instead of
+  just Dial access.
+
+### Mitigation/Fixing Bad Data
+
+If you encounter this problem, the easiest and safest way to solve the problem is to to delete and recreate
+the affected service policy.
+
+If changing policy types is something you do on a regular basis, and can't upgrade to a version with the fix,
+you can work around the issue by deleting and recreating policies, instead of updating them. 
+
+If you're not sure if you have ever changed a policy type, there is a database integrity check tool which can
+ be run which looks for data integrity errors. It is run against a running system. 
+
+Start the check using:
+
+```
+ziti fabric db start-check-integrity
+```
+
+This kicks off the operation in the background. The status of the check can be seen using:
+
+```
+ziti fabric db check-integrity-status 
+```
+
+By default this is a read-only operation. If the read-only run reports errors, it can be run 
+with the `-f` flag, which will have it try to fix errors. The data integrity errors caused
+by this bug should all be fixable by the integrity checker.
+
+```
+ziti fabric db start-check-integrity -f
+```
+
+**WARNINGS**: 
+* Always make a database snapshot before running the integrity checker: `ziti db fabric snapshot <optional path`
+* The integrity checker can be very resource intensive, depending on the size of your data model. 
+  It is recommended that you run the integrity checker when the system is otherwise not busy.
 
 ## Component Updates and Bug Fixes
 
@@ -14,18 +64,30 @@
 * github.com/openziti/edge-api: [v0.26.29 -> v0.26.30](https://github.com/openziti/edge-api/compare/v0.26.29...v0.26.30)
 * github.com/openziti/foundation/v2: [v2.0.48 -> v2.0.49](https://github.com/openziti/foundation/compare/v2.0.48...v2.0.49)
 * github.com/openziti/identity: [v1.0.84 -> v1.0.85](https://github.com/openziti/identity/compare/v1.0.84...v1.0.85)
+* github.com/openziti/jwks: [v1.0.4 -> v1.0.5](https://github.com/openziti/jwks/compare/v1.0.4...v1.0.5)
+    * [Issue #9](https://github.com/openziti/jwks/issues/9) - Using NewKey w/ RSA key results in nil pointer exception
+
 * github.com/openziti/metrics: [v1.2.57 -> v1.2.58](https://github.com/openziti/metrics/compare/v1.2.57...v1.2.58)
 * github.com/openziti/runzmd: [v1.0.50 -> v1.0.51](https://github.com/openziti/runzmd/compare/v1.0.50...v1.0.51)
-* github.com/openziti/sdk-golang: [v0.23.40 -> v0.23.41](https://github.com/openziti/sdk-golang/compare/v0.23.40...v0.23.41)
+* github.com/openziti/sdk-golang: [v0.23.40 -> v0.23.42](https://github.com/openziti/sdk-golang/compare/v0.23.40...v0.23.42)
+    * [Issue #625](https://github.com/openziti/sdk-golang/issues/625) - traffic optimization: implement support for receiving multi-part edge payloads
+
 * github.com/openziti/secretstream: [v0.1.21 -> v0.1.24](https://github.com/openziti/secretstream/compare/v0.1.21...v0.1.24)
-* github.com/openziti/storage: [v0.3.0 -> v0.3.1](https://github.com/openziti/storage/compare/v0.3.0...v0.3.1)
+* github.com/openziti/storage: [v0.3.0 -> v0.3.2](https://github.com/openziti/storage/compare/v0.3.0...v0.3.2)
 * github.com/openziti/transport/v2: [v2.0.143 -> v2.0.146](https://github.com/openziti/transport/compare/v2.0.143...v2.0.146)
     * [Issue #92](https://github.com/openziti/transport/issues/92) - Implement simple traffic shaper
 
+* github.com/openziti/xweb/v2: [v2.1.1 -> v2.1.2](https://github.com/openziti/xweb/compare/v2.1.1...v2.1.2)
 * github.com/openziti-incubator/cf: v0.0.3 (new)
 * github.com/openziti/dilithium: [v0.3.3 -> v0.3.5](https://github.com/openziti/dilithium/compare/v0.3.3...v0.3.5)
 * github.com/openziti/ziti: [v1.1.11 -> v1.1.12](https://github.com/openziti/ziti/compare/v1.1.11...v1.1.12)
+    * [Issue #2415](https://github.com/openziti/ziti/issues/2415) - Fix policy denormalization when service policy type is changed
+    * [Issue #2406](https://github.com/openziti/ziti/issues/2406) - ziti agent controller snapshot-db exit code is always successful
+    * [Issue #2405](https://github.com/openziti/ziti/issues/2405) - Investigate Older SDKs Not Enrolling Not Connecting in HA
+    * [Issue #2403](https://github.com/openziti/ziti/issues/2403) - Fix terminator costing concurrency issue
+    * [Issue #2397](https://github.com/openziti/ziti/issues/2397) - JWKS endpoints w/ new keys do not get refreshed
     * [Issue #2390](https://github.com/openziti/ziti/issues/2390) - Update to github.com/openziti/channel/v3
+    * [Issue #2388](https://github.com/openziti/ziti/issues/2388) - Remove use of ziti fabric add-identity commands in 004-controller-pki.md
 
 # Release 1.1.11
 
