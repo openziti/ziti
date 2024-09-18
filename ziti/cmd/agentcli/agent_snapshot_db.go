@@ -17,6 +17,7 @@
 package agentcli
 
 import (
+	"errors"
 	"fmt"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
@@ -65,7 +66,7 @@ func (self *AgentSnapshoptDbAction) makeRequest(ch channel.Channel) error {
 	if result.Success {
 		fmt.Println(result.Message)
 	} else {
-		fmt.Printf("error: %v\n", result.Message)
+		return errors.New(result.Message)
 	}
 	return nil
 }
