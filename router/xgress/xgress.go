@@ -833,10 +833,10 @@ func (self *Xgress) PayloadReceived(payload *Payload) {
 	if self.originator == payload.GetOriginator() {
 		// a payload sent from this xgress has arrived back at this xgress, instead of the other end
 		log.Warn("ouroboros (circuit cycle) detected, dropping payload")
-	} else if self.linkRxBuffer.ReceiveUnordered(payload, self.Options.RxBufferSize) {
+	} else if ack, lowWaterMark := self.linkRxBuffer.ReceiveUnordered(payload, self.Options.RxBufferSize); ack {
 		log.Debug("ready to acknowledge")
-
 		ack := NewAcknowledgement(self.circuitId, self.originator)
+		ack.LowWaterMark = lowWaterMark
 		ack.RecvBufferSize = self.linkRxBuffer.Size()
 		ack.Sequence = append(ack.Sequence, payload.Sequence)
 		ack.RTT = payload.RTT

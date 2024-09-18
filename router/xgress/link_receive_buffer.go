@@ -29,6 +29,7 @@ import (
 type LinkReceiveBuffer struct {
 	tree               *btree.Tree
 	sequence           int32
+	lowWaterMark       int32
 	maxSequence        int32
 	size               uint32
 	lastBufferSizeSent uint32
@@ -45,15 +46,15 @@ func (buffer *LinkReceiveBuffer) Size() uint32 {
 	return atomic.LoadUint32(&buffer.size)
 }
 
-func (buffer *LinkReceiveBuffer) ReceiveUnordered(payload *Payload, maxSize uint32) bool {
+func (buffer *LinkReceiveBuffer) ReceiveUnordered(payload *Payload, maxSize uint32) (bool, int32) {
 	if payload.GetSequence() <= buffer.sequence {
 		duplicatePayloadsMeter.Mark(1)
-		return true
+		return true, buffer.lowWaterMark
 	}
 
 	if atomic.LoadUint32(&buffer.size) > maxSize && payload.Sequence > buffer.maxSequence {
 		droppedPayloadsMeter.Mark(1)
-		return false
+		return false, 0
 	}
 
 	treeSize := buffer.tree.Size()
@@ -68,7 +69,25 @@ func (buffer *LinkReceiveBuffer) ReceiveUnordered(payload *Payload, maxSize uint
 	} else {
 		duplicatePayloadsMeter.Mark(1)
 	}
-	return true
+
+	if payload.Sequence <= buffer.lowWaterMark {
+		return true, buffer.lowWaterMark
+	}
+
+	if payload.Sequence == buffer.lowWaterMark+1 {
+		buffer.lowWaterMark++
+		for buffer.canHighWaterMarkBeAdvanced() {
+			buffer.lowWaterMark++
+		}
+		return true, buffer.lowWaterMark
+	}
+
+	return true, buffer.lowWaterMark
+}
+
+func (buffer *LinkReceiveBuffer) canHighWaterMarkBeAdvanced() bool {
+	_, found := buffer.tree.Get(buffer.lowWaterMark + 1)
+	return found
 }
 
 func (buffer *LinkReceiveBuffer) PeekHead() *Payload {

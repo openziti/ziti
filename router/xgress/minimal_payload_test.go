@@ -22,6 +22,7 @@ func newTestXgConn(bufferSize int, targetSends uint32, targetReceives uint32) *t
 		targetSends:    targetSends,
 		targetReceives: targetReceives,
 		done:           make(chan struct{}),
+		closed:         make(chan struct{}),
 		errs:           make(chan error, 1),
 	}
 }
@@ -35,11 +36,13 @@ type testXgConn struct {
 	sendCounter    uint32
 	recvCounter    uint32
 	done           chan struct{}
+	closed         chan struct{}
 	errs           chan error
 	bufCounter     uint32
 }
 
 func (self *testXgConn) Close() error {
+	close(self.closed)
 	return nil
 }
 
@@ -302,8 +305,15 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	case err := <-dstTestConn.errs:
 		t.Fatal(err)
 	case <-time.After(time.Second):
-		t.Fatal("timeout")
+		t.Fatal("data timeout")
 	}
+
+	select {
+	case <-dstTestConn.closed:
+	case <-time.After(time.Second):
+		t.Fatal("close timeout")
+	}
+
 }
 
 func Test_PayloadSize(t *testing.T) {

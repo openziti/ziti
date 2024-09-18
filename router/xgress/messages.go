@@ -37,6 +37,7 @@ const (
 	HeaderKeyRecvBufferSize = 2259
 	HeaderKeyRTT            = 2260
 	HeaderPayloadRaw        = 2261
+	HeaderKeyLowWaterMark   = 2262
 
 	ContentTypePayloadType         = 1100
 	ContentTypeAcknowledgementType = 1101
@@ -85,6 +86,7 @@ type Acknowledgement struct {
 	RecvBufferSize uint32
 	RTT            uint16
 	Sequence       []int32
+	LowWaterMark   int32
 }
 
 func (ack *Acknowledgement) GetCircuitId() string {
@@ -145,6 +147,9 @@ func (ack *Acknowledgement) Marshall() *channel.Message {
 		msg.PutUint32Header(HeaderKeyFlags, ack.Flags)
 	}
 	msg.PutUint32Header(HeaderKeyRecvBufferSize, ack.RecvBufferSize)
+	if ack.LowWaterMark > 0 {
+		msg.PutUint32Header(HeaderKeyLowWaterMark, uint32(ack.LowWaterMark))
+	}
 	return msg
 }
 
@@ -170,6 +175,9 @@ func UnmarshallAcknowledgement(msg *channel.Message) (*Acknowledgement, error) {
 	if err := ack.unmarshallSequence(msg.Body); err != nil {
 		return nil, err
 	}
+
+	lowWaterMark, _ := msg.GetUint32Header(HeaderKeyLowWaterMark)
+	ack.LowWaterMark = int32(lowWaterMark)
 
 	return ack, nil
 }
