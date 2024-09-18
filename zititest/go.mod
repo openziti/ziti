@@ -16,8 +16,8 @@ require (
 	github.com/openziti/fablab v0.5.60
 	github.com/openziti/foundation/v2 v2.0.49
 	github.com/openziti/identity v1.0.85
-	github.com/openziti/sdk-golang v0.23.41
-	github.com/openziti/storage v0.3.1
+	github.com/openziti/sdk-golang v0.23.42
+	github.com/openziti/storage v0.3.2
 	github.com/openziti/transport/v2 v2.0.146
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -80,7 +80,7 @@ require (
 	github.com/go-openapi/strfmt v0.23.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-openapi/validate v0.24.0 // indirect
-	github.com/go-resty/resty/v2 v2.14.0 // indirect
+	github.com/go-resty/resty/v2 v2.15.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
