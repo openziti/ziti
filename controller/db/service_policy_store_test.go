@@ -190,6 +190,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	// add 5 new policies, check
 	// modify polices, add roles, check
 	// modify policies, remove roles, check
+	// change policy types, check
 
 	identityTypeId := ctx.getIdentityTypeId()
 
@@ -340,6 +341,16 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 		boltztest.RequireUpdate(ctx, policy)
 	}
 
+	ctx.validateServicePolicies(identities, services, policies)
+
+	for _, policy := range policies {
+		if policy.PolicyType == PolicyTypeDial {
+			policy.PolicyType = PolicyTypeBind
+		} else {
+			policy.PolicyType = PolicyTypeDial
+		}
+		boltztest.RequireUpdate(ctx, policy)
+	}
 	ctx.validateServicePolicies(identities, services, policies)
 }
 
