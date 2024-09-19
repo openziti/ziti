@@ -18,8 +18,10 @@ package handler_xgress
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xgress"
+	"time"
 )
 
 type receiveHandler struct {
@@ -33,9 +35,16 @@ func NewReceiveHandler(forwarder *forwarder.Forwarder) *receiveHandler {
 }
 
 func (xrh *receiveHandler) HandleXgressReceive(payload *xgress.Payload, x *xgress.Xgress) {
-	if err := xrh.forwarder.ForwardPayload(x.Address(), payload); err != nil {
-		pfxlog.ContextLogger(x.Label()).WithFields(payload.GetLoggerFields()).WithError(err).Error("unable to forward payload")
-		xrh.forwarder.ReportForwardingFault(payload.CircuitId, x.CtrlId())
+	for {
+		if err := xrh.forwarder.ForwardPayload(x.Address(), payload, time.Second); err != nil {
+			if !channel.IsTimeout(err) {
+				pfxlog.ContextLogger(x.Label()).WithFields(payload.GetLoggerFields()).WithError(err).Error("unable to forward payload")
+				xrh.forwarder.ReportForwardingFault(payload.CircuitId, x.CtrlId())
+				return
+			}
+		} else {
+			return
+		}
 	}
 }
 

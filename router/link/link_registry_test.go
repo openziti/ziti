@@ -80,7 +80,7 @@ func (self *testLink) Id() string {
 	return self.id
 }
 
-func (self *testLink) SendPayload(payload *xgress.Payload) error {
+func (self *testLink) SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error {
 	panic("implement me")
 }
 

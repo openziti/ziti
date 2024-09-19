@@ -97,7 +97,7 @@ func Test_Ordering(t *testing.T) {
 				Headers:   nil,
 				Data:      data,
 			}
-			if err := x.SendPayload(payload); err != nil {
+			if err := x.SendPayload(payload, 0, PayloadTypeXg); err != nil {
 				errorCh <- err
 				x.Close()
 				return

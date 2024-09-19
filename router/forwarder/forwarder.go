@@ -43,7 +43,7 @@ type Forwarder struct {
 }
 
 type Destination interface {
-	SendPayload(payload *xgress.Payload) error
+	SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	SendControl(control *xgress.Control) error
 	InspectCircuit(detail *inspect.CircuitInspectDetail)
@@ -165,22 +165,28 @@ func (forwarder *Forwarder) EndCircuit(circuitId string) {
 	forwarder.UnregisterDestinations(circuitId)
 }
 
-func (forwarder *Forwarder) ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload) error {
-	return forwarder.forwardPayload(srcAddr, payload, true)
+func (forwarder *Forwarder) ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error {
+	return forwarder.forwardPayload(srcAddr, payload, true, timeout)
 }
 
 func (forwarder *Forwarder) RetransmitPayload(srcAddr xgress.Address, payload *xgress.Payload) error {
-	return forwarder.forwardPayload(srcAddr, payload, false)
+	return forwarder.forwardPayload(srcAddr, payload, false, 0)
 }
 
-func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgress.Payload, markActive bool) error {
+func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgress.Payload, markActive bool, timeout time.Duration) error {
 	log := pfxlog.ContextLogger(string(srcAddr))
 
 	circuitId := payload.GetCircuitId()
 	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId, markActive); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
 			if dst, found := forwarder.destinations.getDestination(dstAddr); found {
-				if err := dst.SendPayload(payload); err != nil {
+				payloadType := xgress.PayloadTypeXg
+				if !markActive {
+					payloadType = xgress.PayloadTypeRtx
+				} else if timeout == 0 {
+					payloadType = xgress.PayloadTypeFwd
+				}
+				if err := dst.SendPayload(payload, timeout, payloadType); err != nil {
 					return err
 				}
 				log.WithFields(payload.GetLoggerFields()).Debugf("=> %s", string(dstAddr))

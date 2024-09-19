@@ -28,7 +28,6 @@ import (
 )
 
 type PayloadBufferForwarder interface {
-	ForwardPayload(srcAddr Address, payload *Payload) error
 	RetransmitPayload(srcAddr Address, payload *Payload) error
 	ForwardAcknowledgement(srcAddr Address, acknowledgement *Acknowledgement) error
 }

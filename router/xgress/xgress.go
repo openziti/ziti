@@ -349,7 +349,7 @@ func (self *Xgress) Closed() bool {
 	return self.flags.IsSet(closedFlag)
 }
 
-func (self *Xgress) SendPayload(payload *Payload) error {
+func (self *Xgress) SendPayload(payload *Payload, _ time.Duration, _ PayloadType) error {
 	if self.Closed() {
 		return nil
 	}

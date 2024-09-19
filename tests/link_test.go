@@ -210,7 +210,7 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 				Headers:   nil,
 				Data:      []byte{1, 2, 3, 4},
 			}
-			err = xla.getLink().SendPayload(payload)
+			err = xla.getLink().SendPayload(payload, time.Second, xgress.PayloadTypeXg)
 			ctx.Req.NoErrorf(err, "iteration %v", i)
 		}
 	}

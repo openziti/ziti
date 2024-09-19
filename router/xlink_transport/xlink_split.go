@@ -25,24 +25,29 @@ import (
 	"github.com/pkg/errors"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type splitImpl struct {
-	id              string
-	key             string
-	payloadCh       channel.Channel
-	ackCh           channel.Channel
-	routerId        string
-	routerVersion   string
-	linkProtocol    string
-	dialAddress     string
-	closed          atomic.Bool
-	faultsSent      atomic.Bool
-	droppedMsgMeter metrics.Meter
-	dialed          bool
-	iteration       uint32
-	dupsRejected    uint32
-	lock            sync.Mutex
+	id            string
+	key           string
+	payloadCh     channel.Channel
+	ackCh         channel.Channel
+	routerId      string
+	routerVersion string
+	linkProtocol  string
+	dialAddress   string
+	closed        atomic.Bool
+	faultsSent    atomic.Bool
+	dialed        bool
+	iteration     uint32
+	dupsRejected  uint32
+	lock          sync.Mutex
+
+	droppedMsgMeter    metrics.Meter
+	droppedXgMsgMeter  metrics.Meter
+	droppedRtxMsgMeter metrics.Meter
+	droppedFwdMsgMeter metrics.Meter
 }
 
 func (self *splitImpl) Id() string {
@@ -60,6 +65,9 @@ func (self *splitImpl) Iteration() uint32 {
 func (self *splitImpl) Init(metricsRegistry metrics.Registry) error {
 	if self.droppedMsgMeter == nil {
 		self.droppedMsgMeter = metricsRegistry.Meter("link.dropped_msgs:" + self.id)
+		self.droppedXgMsgMeter = metricsRegistry.Meter("link.dropped_xg_msgs:" + self.id)
+		self.droppedRtxMsgMeter = metricsRegistry.Meter("link.dropped_rtx_msgs:" + self.id)
+		self.droppedFwdMsgMeter = metricsRegistry.Meter("link.dropped_fwd_msgs:" + self.id)
 	}
 	return nil
 }
@@ -70,12 +78,23 @@ func (self *splitImpl) syncInit(f func() error) error {
 	return f()
 }
 
-func (self *splitImpl) SendPayload(msg *xgress.Payload) error {
-	sent, err := self.payloadCh.TrySend(msg.Marshall())
-	if err == nil && !sent {
-		self.droppedMsgMeter.Mark(1)
+func (self *splitImpl) SendPayload(msg *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error {
+	if timeout == 0 {
+		sent, err := self.payloadCh.TrySend(msg.Marshall())
+		if err == nil && !sent {
+			self.droppedMsgMeter.Mark(1)
+			if payloadType == xgress.PayloadTypeXg {
+				self.droppedXgMsgMeter.Mark(1)
+			} else if payloadType == xgress.PayloadTypeRtx {
+				self.droppedRtxMsgMeter.Mark(1)
+			} else if payloadType == xgress.PayloadTypeFwd {
+				self.droppedFwdMsgMeter.Mark(1)
+			}
+		}
+		return err
 	}
-	return err
+
+	return msg.Marshall().WithTimeout(timeout).Send(self.payloadCh)
 }
 
 func (self *splitImpl) SendAcknowledgement(msg *xgress.Acknowledgement) error {

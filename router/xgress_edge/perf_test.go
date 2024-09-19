@@ -75,7 +75,7 @@ func (link *mirrorLink) Id() string {
 	return "router1"
 }
 
-func (link *mirrorLink) SendPayload(payload *xgress.Payload) error {
+func (link *mirrorLink) SendPayload(payload *xgress.Payload, _ time.Duration, _ xgress.PayloadType) error {
 	ack := &xgress.Acknowledgement{
 		CircuitId:      "test",
 		Flags:          0,
