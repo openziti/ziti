@@ -62,78 +62,43 @@ func (o Originator) String() string {
 	return "Terminator"
 }
 
-type PayloadFlag uint32
+type Flag uint32
 
 const (
-	PayloadFlagCircuitEnd   PayloadFlag = 1
-	PayloadFlagOriginator   PayloadFlag = 2
-	PayloadFlagCircuitStart PayloadFlag = 4
-	PayloadFlagChunk        PayloadFlag = 8
+	PayloadFlagCircuitEnd   Flag = 1
+	PayloadFlagOriginator   Flag = 2
+	PayloadFlagCircuitStart Flag = 4
+	PayloadFlagChunk        Flag = 8
 )
-
-type Header struct {
-	CircuitId      string
-	Flags          uint32
-	RecvBufferSize uint32
-	RTT            uint16
-}
-
-func (header *Header) GetCircuitId() string {
-	return header.CircuitId
-}
-
-func (header *Header) GetFlags() uint32 {
-	return header.Flags
-}
-
-func (header *Header) GetOriginator() Originator {
-	if isPayloadFlagSet(header.Flags, PayloadFlagOriginator) {
-		return Terminator
-	}
-	return Initiator
-}
-
-func (header *Header) unmarshallHeader(msg *channel.Message) error {
-	circuitId, ok := msg.Headers[HeaderKeyCircuitId]
-	if !ok {
-		return fmt.Errorf("no circuitId found in xgress payload message")
-	}
-
-	// If no flags are present, it just means no flags have been set
-	flags, _ := msg.GetUint32Header(HeaderKeyFlags)
-
-	header.CircuitId = string(circuitId)
-	header.Flags = flags
-	if header.RecvBufferSize, ok = msg.GetUint32Header(HeaderKeyRecvBufferSize); !ok {
-		header.RecvBufferSize = math.MaxUint32
-	}
-
-	header.RTT, _ = msg.GetUint16Header(HeaderKeyRTT)
-
-	return nil
-}
-
-func (header *Header) marshallHeader(msg *channel.Message) {
-	msg.Headers[HeaderKeyCircuitId] = []byte(header.CircuitId)
-	if header.Flags != 0 {
-		msg.PutUint32Header(HeaderKeyFlags, header.Flags)
-	}
-
-	msg.PutUint32Header(HeaderKeyRecvBufferSize, header.RecvBufferSize)
-}
 
 func NewAcknowledgement(circuitId string, originator Originator) *Acknowledgement {
 	return &Acknowledgement{
-		Header: Header{
-			CircuitId: circuitId,
-			Flags:     SetOriginatorFlag(0, originator),
-		},
+		CircuitId: circuitId,
+		Flags:     SetOriginatorFlag(0, originator),
 	}
 }
 
 type Acknowledgement struct {
-	Header
-	Sequence []int32
+	CircuitId      string
+	Flags          uint32
+	RecvBufferSize uint32
+	RTT            uint16
+	Sequence       []int32
+}
+
+func (ack *Acknowledgement) GetCircuitId() string {
+	return ack.CircuitId
+}
+
+func (ack *Acknowledgement) GetFlags() uint32 {
+	return ack.Flags
+}
+
+func (ack *Acknowledgement) GetOriginator() Originator {
+	if isFlagSet(ack.Flags, PayloadFlagOriginator) {
+		return Terminator
+	}
+	return Initiator
 }
 
 func (ack *Acknowledgement) GetSequence() []int32 {
@@ -174,16 +139,33 @@ func (ack *Acknowledgement) unmarshallSequence(data []byte) error {
 func (ack *Acknowledgement) Marshall() *channel.Message {
 	msg := channel.NewMessage(ContentTypeAcknowledgementType, ack.marshallSequence())
 	msg.PutUint16Header(HeaderKeyRTT, ack.RTT)
-	ack.marshallHeader(msg)
+	msg.Headers[HeaderKeyCircuitId] = []byte(ack.CircuitId)
+	if ack.Flags != 0 {
+		msg.PutUint32Header(HeaderKeyFlags, ack.Flags)
+	}
+	msg.PutUint32Header(HeaderKeyRecvBufferSize, ack.RecvBufferSize)
 	return msg
 }
 
 func UnmarshallAcknowledgement(msg *channel.Message) (*Acknowledgement, error) {
 	ack := &Acknowledgement{}
 
-	if err := ack.unmarshallHeader(msg); err != nil {
-		return nil, err
+	circuitId, ok := msg.Headers[HeaderKeyCircuitId]
+	if !ok {
+		return nil, fmt.Errorf("no circuitId found in xgress payload message")
 	}
+
+	// If no flags are present, it just means no flags have been set
+	flags, _ := msg.GetUint32Header(HeaderKeyFlags)
+
+	ack.CircuitId = string(circuitId)
+	ack.Flags = flags
+	if ack.RecvBufferSize, ok = msg.GetUint32Header(HeaderKeyRecvBufferSize); !ok {
+		ack.RecvBufferSize = math.MaxUint32
+	}
+
+	ack.RTT, _ = msg.GetUint16Header(HeaderKeyRTT)
+
 	if err := ack.unmarshallSequence(msg.Body); err != nil {
 		return nil, err
 	}
@@ -201,10 +183,12 @@ func (ack *Acknowledgement) GetLoggerFields() logrus.Fields {
 }
 
 type Payload struct {
-	Header
-	Sequence int32
-	Headers  map[uint8][]byte
-	Data     []byte
+	CircuitId string
+	Flags     uint32
+	RTT       uint16
+	Sequence  int32
+	Headers   map[uint8][]byte
+	Data      []byte
 }
 
 func (payload *Payload) GetSequence() int32 {
@@ -213,15 +197,23 @@ func (payload *Payload) GetSequence() int32 {
 
 func (payload *Payload) Marshall() *channel.Message {
 	msg := channel.NewMessage(ContentTypePayloadType, payload.Data)
-	for key, value := range payload.Headers {
-		msgHeaderKey := MinHeaderKey + int32(key)
-		msg.Headers[msgHeaderKey] = value
+	addPayloadHeadersToMsg(msg, payload.Headers)
+	msg.Headers[HeaderKeyCircuitId] = []byte(payload.CircuitId)
+	if payload.Flags != 0 {
+		msg.PutUint32Header(HeaderKeyFlags, payload.Flags)
 	}
-	payload.marshallHeader(msg)
+
 	msg.PutUint64Header(HeaderKeySequence, uint64(payload.Sequence))
 	msg.PutUint16Header(HeaderKeyRTT, uint16(info.NowInMilliseconds()))
 
 	return msg
+}
+
+func addPayloadHeadersToMsg(msg *channel.Message, headers map[uint8][]byte) {
+	for key, value := range headers {
+		msgHeaderKey := MinHeaderKey + int32(key)
+		msg.Headers[msgHeaderKey] = value
+	}
 }
 
 func UnmarshallPayload(msg *channel.Message) (*Payload, error) {
@@ -241,9 +233,18 @@ func UnmarshallPayload(msg *channel.Message) (*Payload, error) {
 		Data:    msg.Body,
 	}
 
-	if err := payload.unmarshallHeader(msg); err != nil {
-		return nil, err
+	circuitId, ok := msg.Headers[HeaderKeyCircuitId]
+	if !ok {
+		return nil, fmt.Errorf("no circuitId found in xgress payload message")
 	}
+
+	// If no flags are present, it just means no flags have been set
+	flags, _ := msg.GetUint32Header(HeaderKeyFlags)
+
+	payload.CircuitId = string(circuitId)
+	payload.Flags = flags
+
+	payload.RTT, _ = msg.GetUint16Header(HeaderKeyRTT)
 
 	sequence, ok := msg.GetUint64Header(HeaderKeySequence)
 	if !ok {
@@ -254,20 +255,35 @@ func UnmarshallPayload(msg *channel.Message) (*Payload, error) {
 	return payload, nil
 }
 
-func isPayloadFlagSet(flags uint32, flag PayloadFlag) bool {
-	return PayloadFlag(flags)&flag == flag
+func isFlagSet(flags uint32, flag Flag) bool {
+	return Flag(flags)&flag == flag
 }
 
-func setPayloadFlag(flags uint32, flag PayloadFlag) uint32 {
-	return uint32(PayloadFlag(flags) | flag)
+func setPayloadFlag(flags uint32, flag Flag) uint32 {
+	return uint32(Flag(flags) | flag)
+}
+
+func (payload *Payload) GetCircuitId() string {
+	return payload.CircuitId
+}
+
+func (payload *Payload) GetFlags() uint32 {
+	return payload.Flags
 }
 
 func (payload *Payload) IsCircuitEndFlagSet() bool {
-	return isPayloadFlagSet(payload.Flags, PayloadFlagCircuitEnd)
+	return isFlagSet(payload.Flags, PayloadFlagCircuitEnd)
 }
 
 func (payload *Payload) IsCircuitStartFlagSet() bool {
-	return isPayloadFlagSet(payload.Flags, PayloadFlagCircuitStart)
+	return isFlagSet(payload.Flags, PayloadFlagCircuitStart)
+}
+
+func (payload *Payload) GetOriginator() Originator {
+	if isFlagSet(payload.Flags, PayloadFlagOriginator) {
+		return Terminator
+	}
+	return Initiator
 }
 
 func SetOriginatorFlag(flags uint32, originator Originator) uint32 {

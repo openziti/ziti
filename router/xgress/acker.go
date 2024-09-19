@@ -7,7 +7,11 @@ import (
 	"sync/atomic"
 )
 
-var acker *Acker
+var acker ackSender
+
+type ackSender interface {
+	ack(ack *Acknowledgement, address Address)
+}
 
 func InitAcker(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) {
 	acker = NewAcker(forwarder, metrics, closeNotify)

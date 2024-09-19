@@ -46,111 +46,111 @@ func NewRetransmitter(forwarder PayloadBufferForwarder, faultReporter Retransmit
 	return ctrl
 }
 
-func (retransmitter *Retransmitter) queue(p *txPayload) {
-	retransmitter.retransmitIngest <- p
+func (self *Retransmitter) queue(p *txPayload) {
+	self.retransmitIngest <- p
 }
 
-func (retransmitter *Retransmitter) popHead() *txPayload {
-	if retransmitter.retxHead == nil {
+func (self *Retransmitter) popHead() *txPayload {
+	if self.retxHead == nil {
 		return nil
 	}
 
-	result := retransmitter.retxHead
+	result := self.retxHead
 	if result.prev == nil {
-		retransmitter.retxHead = nil
-		retransmitter.retxTail = nil
+		self.retxHead = nil
+		self.retxTail = nil
 	} else {
-		retransmitter.retxHead = result.prev
+		self.retxHead = result.prev
 		result.prev.next = nil
 	}
 
 	result.prev = nil
 	result.next = nil
 
-	atomic.AddInt64(&retransmitter.retransmitsQueueSize, -1)
+	atomic.AddInt64(&self.retransmitsQueueSize, -1)
 
 	return result
 }
 
-func (retransmitter *Retransmitter) pushTail(txp *txPayload) {
-	if txp.prev != nil || txp.next != nil || txp == retransmitter.retxHead {
+func (self *Retransmitter) pushTail(txp *txPayload) {
+	if txp.prev != nil || txp.next != nil || txp == self.retxHead {
 		return
 	}
-	if retransmitter.retxHead == nil {
-		retransmitter.retxTail = txp
-		retransmitter.retxHead = txp
+	if self.retxHead == nil {
+		self.retxTail = txp
+		self.retxHead = txp
 	} else {
-		txp.next = retransmitter.retxTail
-		retransmitter.retxTail.prev = txp
-		retransmitter.retxTail = txp
+		txp.next = self.retxTail
+		self.retxTail.prev = txp
+		self.retxTail = txp
 	}
-	atomic.AddInt64(&retransmitter.retransmitsQueueSize, 1)
+	atomic.AddInt64(&self.retransmitsQueueSize, 1)
 }
 
-func (retransmitter *Retransmitter) delete(txp *txPayload) {
-	if retransmitter.retxHead == txp {
-		retransmitter.popHead()
-	} else if txp == retransmitter.retxTail {
-		retransmitter.retxTail = txp.next
-		retransmitter.retxTail.prev = nil
-		atomic.AddInt64(&retransmitter.retransmitsQueueSize, -1)
+func (self *Retransmitter) delete(txp *txPayload) {
+	if self.retxHead == txp {
+		self.popHead()
+	} else if txp == self.retxTail {
+		self.retxTail = txp.next
+		self.retxTail.prev = nil
+		atomic.AddInt64(&self.retransmitsQueueSize, -1)
 	} else if txp.prev != nil {
 		txp.prev.next = txp.next
 		txp.next.prev = txp.prev
-		atomic.AddInt64(&retransmitter.retransmitsQueueSize, -1)
+		atomic.AddInt64(&self.retransmitsQueueSize, -1)
 	}
 
 	txp.prev = nil
 	txp.next = nil
 }
 
-func (retransmitter *Retransmitter) retransmitIngester() {
+func (self *Retransmitter) retransmitIngester() {
 	var next *txPayload
 	for {
 		if next == nil {
-			next = retransmitter.popHead()
+			next = self.popHead()
 		}
 
 		if next == nil {
 			select {
-			case retransmit := <-retransmitter.retransmitIngest:
-				retransmitter.acceptRetransmit(retransmit)
-			case <-retransmitter.closeNotify:
+			case retransmit := <-self.retransmitIngest:
+				self.acceptRetransmit(retransmit)
+			case <-self.closeNotify:
 				return
 			}
 		} else {
 			select {
-			case retransmit := <-retransmitter.retransmitIngest:
-				retransmitter.acceptRetransmit(retransmit)
-			case retransmitter.retransmitSend <- next:
+			case retransmit := <-self.retransmitIngest:
+				self.acceptRetransmit(retransmit)
+			case self.retransmitSend <- next:
 				next = nil
-			case <-retransmitter.closeNotify:
+			case <-self.closeNotify:
 				return
 			}
 		}
 	}
 }
 
-func (retransmitter *Retransmitter) acceptRetransmit(txp *txPayload) {
+func (self *Retransmitter) acceptRetransmit(txp *txPayload) {
 	if txp.isAcked() {
-		retransmitter.delete(txp)
+		self.delete(txp)
 	} else {
-		retransmitter.pushTail(txp)
+		self.pushTail(txp)
 	}
 }
 
-func (retransmitter *Retransmitter) retransmitSender() {
+func (self *Retransmitter) retransmitSender() {
 	logger := pfxlog.Logger()
 	for {
 		select {
-		case retransmit := <-retransmitter.retransmitSend:
+		case retransmit := <-self.retransmitSend:
 			if !retransmit.isAcked() {
-				if err := retransmitter.forwarder.RetransmitPayload(retransmit.x.address, retransmit.payload); err != nil {
+				if err := self.forwarder.RetransmitPayload(retransmit.x.address, retransmit.payload); err != nil {
 					// if xgress is closed, don't log the error. We still want to try retransmitting in case we're re-sending end of circuit
 					if !retransmit.x.Closed() {
 						logger.WithError(err).Errorf("unexpected error while retransmitting payload from [@/%v]", retransmit.x.address)
 						retransmissionFailures.Mark(1)
-						retransmitter.faultReporter.ReportForwardingFault(retransmit.payload.CircuitId, retransmit.x.ctrlId)
+						self.faultReporter.ReportForwardingFault(retransmit.payload.CircuitId, retransmit.x.ctrlId)
 					} else {
 						logger.WithError(err).Tracef("unexpected error while retransmitting payload from [@/%v] (already closed)", retransmit.x.address)
 					}
@@ -160,7 +160,7 @@ func (retransmitter *Retransmitter) retransmitSender() {
 				}
 				retransmit.dequeued()
 			}
-		case <-retransmitter.closeNotify:
+		case <-self.closeNotify:
 			return
 		}
 	}
