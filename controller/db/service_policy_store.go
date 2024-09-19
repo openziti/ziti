@@ -158,15 +158,19 @@ func (store *servicePolicyStoreImpl) FillEntity(entity *ServicePolicy, bucket *b
 }
 
 func (store *servicePolicyStoreImpl) PersistEntity(entity *ServicePolicy, ctx *boltz.PersistContext) {
+	policyTypeChanged := false
+
+	currentPolicyType := GetPolicyTypeForId(ctx.Bucket.GetInt32WithDefault(FieldServicePolicyType, PolicyTypeDial.Id()))
 	if ctx.ProceedWithSet(FieldServicePolicyType) {
 		if entity.PolicyType != PolicyTypeBind && entity.PolicyType != PolicyTypeDial {
 			ctx.Bucket.SetError(errorz.NewFieldError("invalid policy type", FieldServicePolicyType, entity.PolicyType))
 			return
 		}
+		policyTypeChanged = entity.PolicyType != currentPolicyType
 	} else {
 		// PolicyType needs to be correct in the entity as we use it later
 		// TODO: Add test for this
-		entity.PolicyType = GetPolicyTypeForId(ctx.Bucket.GetInt32WithDefault(FieldServicePolicyType, PolicyTypeDial.Id()))
+		entity.PolicyType = currentPolicyType
 	}
 
 	if err := validateRolesAndIds(FieldIdentityRoles, entity.IdentityRoles); err != nil {
@@ -196,19 +200,78 @@ func (store *servicePolicyStoreImpl) PersistEntity(entity *ServicePolicy, ctx *b
 	sort.Strings(entity.IdentityRoles)
 	sort.Strings(entity.PostureCheckRoles)
 
-	oldIdentityRoles, valueSet := ctx.GetAndSetStringList(FieldIdentityRoles, entity.IdentityRoles)
-	if valueSet && !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
+	if policyTypeChanged && !ctx.IsCreate {
+		// if the policy type has changed, we need to remove all roles for the old policy type and then all the roles
+		// for the new policy type
+
+		updatedFields := ctx.FieldChecker
+		if updatedFields == nil {
+			updatedFields = FieldCheckerF(func(s string) bool {
+				return true
+			})
+		}
+
+		ctx.FieldChecker = FieldCheckerF(func(s string) bool {
+			return s == FieldIdentityRoles || s == FieldServiceRoles || s == FieldPostureCheckRoles || updatedFields.IsUpdated(s)
+		})
+
+		newIdentityRoles := entity.IdentityRoles
+		newServiceRoles := entity.ServiceRoles
+		newPostureCheckRoles := entity.PostureCheckRoles
+
+		entity.IdentityRoles = nil
+		entity.ServiceRoles = nil
+		entity.PostureCheckRoles = nil
+
+		currentIdentityRoles, _ := ctx.GetAndSetStringList(FieldIdentityRoles, entity.IdentityRoles)
+		currentServiceRoles, _ := ctx.GetAndSetStringList(FieldServiceRoles, entity.ServiceRoles)
+		currentPostureCheckRoles, _ := ctx.GetAndSetStringList(FieldPostureCheckRoles, entity.PostureCheckRoles)
+
+		if !updatedFields.IsUpdated(FieldIdentityRoles) {
+			newIdentityRoles = currentIdentityRoles
+		}
+
+		if !updatedFields.IsUpdated(FieldServiceRoles) {
+			newServiceRoles = currentServiceRoles
+		}
+
+		if !updatedFields.IsUpdated(FieldPostureCheckRoles) {
+			newPostureCheckRoles = currentPostureCheckRoles
+		}
+
+		newPolicyType := entity.PolicyType
+		entity.PolicyType = currentPolicyType
+
 		servicePolicyStore.identityRolesUpdated(ctx, entity)
-	}
-
-	oldServiceRoles, valueSet := ctx.GetAndSetStringList(FieldServiceRoles, entity.ServiceRoles)
-	if valueSet && !stringz.EqualSlices(oldServiceRoles, entity.ServiceRoles) {
 		servicePolicyStore.serviceRolesUpdated(ctx, entity)
-	}
-
-	oldPostureCheckRoles, valueSet := ctx.GetAndSetStringList(FieldPostureCheckRoles, entity.PostureCheckRoles)
-	if valueSet && !stringz.EqualSlices(oldPostureCheckRoles, entity.PostureCheckRoles) {
 		servicePolicyStore.postureCheckRolesUpdated(ctx, entity)
+
+		entity.PolicyType = newPolicyType
+		entity.IdentityRoles = newIdentityRoles
+		entity.ServiceRoles = newServiceRoles
+		entity.PostureCheckRoles = newPostureCheckRoles
+
+		_, _ = ctx.GetAndSetStringList(FieldIdentityRoles, entity.IdentityRoles)
+		_, _ = ctx.GetAndSetStringList(FieldServiceRoles, entity.ServiceRoles)
+
+		servicePolicyStore.identityRolesUpdated(ctx, entity)
+		servicePolicyStore.serviceRolesUpdated(ctx, entity)
+		servicePolicyStore.postureCheckRolesUpdated(ctx, entity)
+	} else {
+		currentIdentityRoles, identityRolesSet := ctx.GetAndSetStringList(FieldIdentityRoles, entity.IdentityRoles)
+		currentServiceRoles, serviceRolesSet := ctx.GetAndSetStringList(FieldServiceRoles, entity.ServiceRoles)
+		currentPostureCheckRoles, postureCheckRolesSet := ctx.GetAndSetStringList(FieldPostureCheckRoles, entity.PostureCheckRoles)
+
+		if identityRolesSet && !stringz.EqualSlices(currentIdentityRoles, entity.IdentityRoles) {
+			servicePolicyStore.identityRolesUpdated(ctx, entity)
+		}
+
+		if serviceRolesSet && !stringz.EqualSlices(currentServiceRoles, entity.ServiceRoles) {
+			servicePolicyStore.serviceRolesUpdated(ctx, entity)
+		}
+		if postureCheckRolesSet && !stringz.EqualSlices(currentPostureCheckRoles, entity.PostureCheckRoles) {
+			servicePolicyStore.postureCheckRolesUpdated(ctx, entity)
+		}
 	}
 }
 
@@ -365,4 +428,10 @@ func (store *servicePolicyStoreImpl) CheckIntegrity(mutateCtx boltz.MutateContex
 	}
 
 	return store.BaseStore.CheckIntegrity(mutateCtx, fix, errorSink)
+}
+
+type FieldCheckerF func(string) bool
+
+func (f FieldCheckerF) IsUpdated(s string) bool {
+	return f(s)
 }
