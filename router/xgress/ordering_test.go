@@ -90,15 +90,12 @@ func Test_Ordering(t *testing.T) {
 			data := make([]byte, 8)
 			binary.LittleEndian.PutUint64(data, uint64(i))
 			payload := &Payload{
-				Header: Header{
-					CircuitId:      "test",
-					Flags:          SetOriginatorFlag(0, Terminator),
-					RecvBufferSize: 16000,
-					RTT:            0,
-				},
-				Sequence: int32(i),
-				Headers:  nil,
-				Data:     data,
+				CircuitId: "test",
+				Flags:     SetOriginatorFlag(0, Terminator),
+				RTT:       0,
+				Sequence:  int32(i),
+				Headers:   nil,
+				Data:      data,
 			}
 			if err := x.SendPayload(payload); err != nil {
 				errorCh <- err

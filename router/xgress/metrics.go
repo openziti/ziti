@@ -20,7 +20,7 @@ var buffersBlockedByRemoteWindow int64
 var outstandingPayloads int64
 var outstandingPayloadBytes int64
 
-func InitMetrics(registry metrics.UsageRegistry) {
+func InitMetrics(registry metrics.Registry) {
 	droppedPayloadsMeter = registry.Meter("xgress.dropped_payloads")
 	retransmissions = registry.Meter("xgress.retransmissions")
 	retransmissionFailures = registry.Meter("xgress.retransmission_failures")

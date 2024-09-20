@@ -205,12 +205,10 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 	} else {
 		for i := int32(0); i < 100 && err == nil; i++ {
 			payload := &xgress.Payload{
-				Header: xgress.Header{
-					CircuitId: "hello",
-				},
-				Sequence: i,
-				Headers:  nil,
-				Data:     []byte{1, 2, 3, 4},
+				CircuitId: "hello",
+				Sequence:  i,
+				Headers:   nil,
+				Data:      []byte{1, 2, 3, 4},
 			}
 			err = xla.getLink().SendPayload(payload)
 			ctx.Req.NoErrorf(err, "iteration %v", i)

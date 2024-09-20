@@ -77,12 +77,10 @@ func (link *mirrorLink) Id() string {
 
 func (link *mirrorLink) SendPayload(payload *xgress.Payload) error {
 	ack := &xgress.Acknowledgement{
-		Header: xgress.Header{
-			CircuitId:      "test",
-			Flags:          0,
-			RecvBufferSize: 0,
-			RTT:            payload.RTT,
-		},
+		CircuitId:      "test",
+		Flags:          0,
+		RecvBufferSize: 0,
+		RTT:            payload.RTT,
 	}
 	ack.Sequence = append(ack.Sequence, payload.Sequence)
 	link.acks <- ack

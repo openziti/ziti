@@ -264,24 +264,20 @@ func (self *Xgress) Label() string {
 
 func (self *Xgress) GetStartCircuit() *Payload {
 	startCircuit := &Payload{
-		Header: Header{
-			CircuitId: self.circuitId,
-			Flags:     SetOriginatorFlag(uint32(PayloadFlagCircuitStart), self.originator),
-		},
-		Sequence: self.nextReceiveSequence(),
-		Data:     nil,
+		CircuitId: self.circuitId,
+		Flags:     SetOriginatorFlag(uint32(PayloadFlagCircuitStart), self.originator),
+		Sequence:  self.nextReceiveSequence(),
+		Data:      nil,
 	}
 	return startCircuit
 }
 
 func (self *Xgress) GetEndCircuit() *Payload {
 	endCircuit := &Payload{
-		Header: Header{
-			CircuitId: self.circuitId,
-			Flags:     SetOriginatorFlag(uint32(PayloadFlagCircuitEnd), self.originator),
-		},
-		Sequence: self.nextReceiveSequence(),
-		Data:     nil,
+		CircuitId: self.circuitId,
+		Flags:     SetOriginatorFlag(uint32(PayloadFlagCircuitEnd), self.originator),
+		Sequence:  self.nextReceiveSequence(),
+		Data:      nil,
 	}
 	return endCircuit
 }
@@ -488,7 +484,7 @@ func (self *Xgress) tx() {
 				return false
 			} else {
 				payloadWriteTimer.UpdateSince(start)
-				payloadLogger.Infof("payload sent [%s]", info.ByteCount(int64(n)))
+				payloadLogger.Debugf("payload sent [%s]", info.ByteCount(int64(n)))
 			}
 		}
 		return true
@@ -499,7 +495,7 @@ func (self *Xgress) tx() {
 
 	payloadStarted := false
 	payloadComplete := false
-	var payloadSize int64
+	var payloadSize uint64
 	var payloadWriteOffset int
 
 	for {
@@ -510,7 +506,7 @@ func (self *Xgress) tx() {
 			return
 		}
 
-		if !isPayloadFlagSet(payloadChunk.GetFlags(), PayloadFlagChunk) {
+		if !isFlagSet(payloadChunk.GetFlags(), PayloadFlagChunk) {
 			if !sendPayload(payloadChunk) {
 				return
 			}
@@ -520,18 +516,20 @@ func (self *Xgress) tx() {
 
 		var payloadReadOffset int
 		if !payloadStarted {
-			payloadSize, payloadReadOffset = binary.Varint(payloadChunk.Data)
+			payloadSize, payloadReadOffset = binary.Uvarint(payloadChunk.Data)
 
-			if len(payloadChunk.Data) == 0 || payloadSize+int64(payloadReadOffset) == int64(len(payloadChunk.Data)) {
+			if len(payloadChunk.Data) == 0 || payloadSize+uint64(payloadReadOffset) == uint64(len(payloadChunk.Data)) {
 				payload = payloadChunk
 				payload.Data = payload.Data[payloadReadOffset:]
 				payloadComplete = true
 			} else {
 				payload = &Payload{
-					Header:   payloadChunk.Header,
-					Sequence: payloadChunk.Sequence,
-					Headers:  payloadChunk.Headers,
-					Data:     make([]byte, payloadSize),
+					CircuitId: payloadChunk.CircuitId,
+					Flags:     payloadChunk.Flags,
+					RTT:       payloadChunk.RTT,
+					Sequence:  payloadChunk.Sequence,
+					Headers:   payloadChunk.Headers,
+					Data:      make([]byte, payloadSize),
 				}
 			}
 			payloadStarted = true
@@ -541,7 +539,7 @@ func (self *Xgress) tx() {
 			chunkData := payloadChunk.Data[payloadReadOffset:]
 			copy(payload.Data[payloadWriteOffset:], chunkData)
 			payloadWriteOffset += len(chunkData)
-			payloadComplete = int64(payloadWriteOffset) == payloadSize
+			payloadComplete = uint64(payloadWriteOffset) == payloadSize
 		}
 
 		payloadLogger := log.WithFields(payload.GetLoggerFields())
@@ -625,7 +623,7 @@ func (self *Xgress) rx() {
 			dataTarget := chunk
 			offset := 0
 			if first {
-				offset = binary.PutVarint(chunk, int64(n))
+				offset = binary.PutUvarint(chunk, uint64(n))
 				dataTarget = chunk[offset:]
 			}
 
@@ -633,12 +631,10 @@ func (self *Xgress) rx() {
 			buffer = buffer[written:]
 
 			payload := &Payload{
-				Header: Header{
-					CircuitId: self.circuitId,
-					Flags:     setPayloadFlag(SetOriginatorFlag(0, self.originator), PayloadFlagChunk),
-				},
-				Sequence: self.nextReceiveSequence(),
-				Data:     chunk[:offset+written],
+				CircuitId: self.circuitId,
+				Flags:     setPayloadFlag(SetOriginatorFlag(0, self.originator), PayloadFlagChunk),
+				Sequence:  self.nextReceiveSequence(),
+				Data:      chunk[:offset+written],
 			}
 
 			if first {
@@ -665,13 +661,11 @@ func (self *Xgress) sendUnchunkedBuffer(buf []byte, headers map[uint8][]byte) bo
 	log := pfxlog.ContextLogger(self.Label())
 
 	payload := &Payload{
-		Header: Header{
-			CircuitId: self.circuitId,
-			Flags:     SetOriginatorFlag(0, self.originator),
-		},
-		Sequence: self.nextReceiveSequence(),
-		Data:     buf,
-		Headers:  headers,
+		CircuitId: self.circuitId,
+		Flags:     SetOriginatorFlag(0, self.originator),
+		Sequence:  self.nextReceiveSequence(),
+		Data:      buf,
+		Headers:   headers,
 	}
 
 	log.Debugf("sending unchunked payload. seq: %d, payload size: %d", payload.Sequence, len(payload.Data))
