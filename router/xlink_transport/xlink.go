@@ -23,22 +23,27 @@ import (
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/xgress"
 	"sync/atomic"
+	"time"
 )
 
 type impl struct {
-	id              string
-	key             string
-	ch              channel.Channel
-	routerId        string
-	routerVersion   string
-	linkProtocol    string
-	dialAddress     string
-	closed          atomic.Bool
-	faultsSent      atomic.Bool
-	droppedMsgMeter metrics.Meter
-	dialed          bool
-	iteration       uint32
-	dupsRejected    uint32
+	id            string
+	key           string
+	ch            channel.Channel
+	routerId      string
+	routerVersion string
+	linkProtocol  string
+	dialAddress   string
+	closed        atomic.Bool
+	faultsSent    atomic.Bool
+	dialed        bool
+	iteration     uint32
+	dupsRejected  uint32
+
+	droppedMsgMeter    metrics.Meter
+	droppedXgMsgMeter  metrics.Meter
+	droppedRtxMsgMeter metrics.Meter
+	droppedFwdMsgMeter metrics.Meter
 }
 
 func (self *impl) Id() string {
@@ -56,16 +61,30 @@ func (self *impl) Iteration() uint32 {
 func (self *impl) Init(metricsRegistry metrics.Registry) error {
 	if self.droppedMsgMeter == nil {
 		self.droppedMsgMeter = metricsRegistry.Meter("link.dropped_msgs:" + self.id)
+		self.droppedXgMsgMeter = metricsRegistry.Meter("link.dropped_xg_msgs:" + self.id)
+		self.droppedRtxMsgMeter = metricsRegistry.Meter("link.dropped_rtx_msgs:" + self.id)
+		self.droppedFwdMsgMeter = metricsRegistry.Meter("link.dropped_fwd_msgs:" + self.id)
 	}
 	return nil
 }
 
-func (self *impl) SendPayload(msg *xgress.Payload) error {
-	sent, err := self.ch.TrySend(msg.Marshall())
-	if err == nil && !sent {
-		self.droppedMsgMeter.Mark(1)
+func (self *impl) SendPayload(msg *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error {
+	if timeout == 0 {
+		sent, err := self.ch.TrySend(msg.Marshall())
+		if err == nil && !sent {
+			self.droppedMsgMeter.Mark(1)
+			if payloadType == xgress.PayloadTypeXg {
+				self.droppedXgMsgMeter.Mark(1)
+			} else if payloadType == xgress.PayloadTypeRtx {
+				self.droppedRtxMsgMeter.Mark(1)
+			} else if payloadType == xgress.PayloadTypeFwd {
+				self.droppedFwdMsgMeter.Mark(1)
+			}
+		}
+		return err
 	}
-	return err
+
+	return msg.Marshall().WithTimeout(timeout).Send(self.ch)
 }
 
 func (self *impl) SendAcknowledgement(msg *xgress.Acknowledgement) error {

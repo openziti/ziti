@@ -182,6 +182,14 @@ func (ack *Acknowledgement) GetLoggerFields() logrus.Fields {
 	}
 }
 
+type PayloadType byte
+
+const (
+	PayloadTypeXg  PayloadType = 1
+	PayloadTypeRtx PayloadType = 2
+	PayloadTypeFwd PayloadType = 3
+)
+
 type Payload struct {
 	CircuitId string
 	Flags     uint32

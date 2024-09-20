@@ -114,7 +114,7 @@ type Dialer interface {
 
 type LinkDestination interface {
 	Id() string
-	SendPayload(payload *xgress.Payload) error
+	SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	SendControl(control *xgress.Control) error
 	InspectCircuit(circuitDetail *inspect.CircuitInspectDetail)
@@ -141,7 +141,7 @@ type Xlink interface {
 }
 
 type Forwarder interface {
-	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload) error
+	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error
 	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
 	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
 }

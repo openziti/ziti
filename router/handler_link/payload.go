@@ -47,7 +47,7 @@ func (self *payloadHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 
 	payload, err := xgress.UnmarshallPayload(msg)
 	if err == nil {
-		if err = self.forwarder.ForwardPayload(xgress.Address(self.link.Id()), payload); err != nil {
+		if err = self.forwarder.ForwardPayload(xgress.Address(self.link.Id()), payload, 0); err != nil {
 			log.WithError(err).Debug("unable to forward")
 			self.forwarder.ReportForwardingFault(payload.CircuitId, "")
 		}

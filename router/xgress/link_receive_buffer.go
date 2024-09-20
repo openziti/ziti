@@ -47,6 +47,7 @@ func (buffer *LinkReceiveBuffer) Size() uint32 {
 
 func (buffer *LinkReceiveBuffer) ReceiveUnordered(payload *Payload, maxSize uint32) bool {
 	if payload.GetSequence() <= buffer.sequence {
+		duplicatePayloadsMeter.Mark(1)
 		return true
 	}
 
@@ -64,6 +65,8 @@ func (buffer *LinkReceiveBuffer) ReceiveUnordered(payload *Payload, maxSize uint
 		if payload.Sequence > buffer.maxSequence {
 			buffer.maxSequence = payload.Sequence
 		}
+	} else {
+		duplicatePayloadsMeter.Mark(1)
 	}
 	return true
 }

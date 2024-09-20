@@ -14,6 +14,7 @@ var retransmissionFailures metrics.Meter
 var ackFailures metrics.Meter
 var payloadWriteTimer metrics.Timer
 var duplicateAcksMeter metrics.Meter
+var duplicatePayloadsMeter metrics.Meter
 
 var buffersBlockedByLocalWindow int64
 var buffersBlockedByRemoteWindow int64
@@ -29,6 +30,7 @@ func InitMetrics(registry metrics.Registry) {
 	ackFailures = registry.Meter("xgress.ack_failures")
 	payloadWriteTimer = registry.Timer("xgress.tx_write_time")
 	duplicateAcksMeter = registry.Meter("xgress.ack_duplicates")
+	duplicatePayloadsMeter = registry.Meter("xgress.payload_duplicates")
 
 	registry.FuncGauge("xgress.blocked_by_local_window", func() int64 {
 		return atomic.LoadInt64(&buffersBlockedByLocalWindow)
