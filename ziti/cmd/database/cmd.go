@@ -26,6 +26,7 @@ func NewCmdDb(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(NewCompactAction())
 	cmd.AddCommand(NewDiskUsageAction())
 	cmd.AddCommand(NewAddDebugAdminAction())
+	cmd.AddCommand(NewAnonymizeAction())
 
 	return cmd
 }

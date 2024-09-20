@@ -81,6 +81,7 @@ ziti fabric db start-check-integrity -f
 * github.com/openziti-incubator/cf: v0.0.3 (new)
 * github.com/openziti/dilithium: [v0.3.3 -> v0.3.5](https://github.com/openziti/dilithium/compare/v0.3.3...v0.3.5)
 * github.com/openziti/ziti: [v1.1.11 -> v1.1.12](https://github.com/openziti/ziti/compare/v1.1.11...v1.1.12)
+    * [Issue #2413](https://github.com/openziti/ziti/issues/2413) - Add db anonymization utility
     * [Issue #2415](https://github.com/openziti/ziti/issues/2415) - Fix policy denormalization when service policy type is changed
     * [Issue #2406](https://github.com/openziti/ziti/issues/2406) - ziti agent controller snapshot-db exit code is always successful
     * [Issue #2405](https://github.com/openziti/ziti/issues/2405) - Investigate Older SDKs Not Enrolling Not Connecting in HA
