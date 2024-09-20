@@ -18,14 +18,14 @@ package xgress_common
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/secretstream"
-	"github.com/openziti/secretstream/kx"
 	"github.com/openziti/channel/v3"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/edge/network"
+	"github.com/openziti/secretstream"
+	"github.com/openziti/secretstream/kx"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io"

@@ -13,6 +13,7 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	metrics2 "github.com/openziti/ziti/router/metrics"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -79,6 +80,9 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newControlHandler(self.xlink, self.forwarder))
 	binding.AddPeekHandler(metrics2.NewChannelPeekHandler(self.xlink.Id(), self.forwarder.MetricsRegistry()))
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.xlink.Id(), ch, self.forwarder.TraceController()))
+	if self.xlink.LinkProtocol() == "dtls" {
+		binding.AddTransformHandler(xgress.PayloadTransformer{})
+	}
 	if err := self.xlink.Init(self.forwarder.MetricsRegistry()); err != nil {
 		return err
 	}

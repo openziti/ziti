@@ -41,7 +41,7 @@ type XgressDetail struct {
 	XgressPointer         string                  `json:"xgressPointer"`
 	LinkSendBufferPointer string                  `json:"linkSendBufferPointer"`
 	Goroutines            []string                `json:"goroutines"`
-	Sequence              int32                   `json:"sequence"`
+	Sequence              uint64                  `json:"sequence"`
 	Flags                 string                  `json:"flags"`
 }
 
