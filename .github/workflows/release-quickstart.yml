@@ -141,8 +141,8 @@ jobs:
           tags: ${{ steps.tagprep_qs.outputs.DOCKER_TAGS }}
           build-args: |
             ZITI_VERSION_OVERRIDE=${{ steps.get_version.outputs.ZITI_VERSION_OVERRIDE }}
-            GITHUB_OWNER=${GITHUB_OWNER}
-            GITHUB_REPO=${GITHUB_REPO}
+            GITHUB_REPO_OWNER=${{ github.repository_owner }}
+            GITHUB_REPO_NAME=${{ github.event.repository.name }}
           push: true
 
       - name: Configure Python
