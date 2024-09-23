@@ -608,12 +608,22 @@ func NewAuthQueryZitiMfa() *rest_model.AuthQueryDetail {
 	}
 }
 
-func NewAuthQueryExtJwt(url string) *rest_model.AuthQueryDetail {
+func NewAuthQueryExtJwt(signer *model.ExternalJwtSigner) *rest_model.AuthQueryDetail {
 	provider := rest_model.MfaProvidersURL
+
+	if signer == nil {
+		return &rest_model.AuthQueryDetail{
+			TypeID:   "EXT-JWT",
+			Provider: &provider,
+		}
+	}
+
 	return &rest_model.AuthQueryDetail{
-		HTTPURL:  url,
+		HTTPURL:  stringz.OrEmpty(signer.ExternalAuthUrl),
 		TypeID:   "EXT-JWT",
 		Provider: &provider,
+		Scopes:   signer.Scopes,
+		ClientID: stringz.OrEmpty(signer.ClientId),
 	}
 }
 
@@ -638,12 +648,11 @@ func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
 
 			if err != nil || !authResult.IsSuccessful() {
 				signer, err := ae.Managers.ExternalJwtSigner.Read(*rc.AuthPolicy.Secondary.RequiredExtJwtSigner)
-				authUrl := ""
-				if err == nil {
-					authUrl = stringz.OrEmpty(signer.ExternalAuthUrl)
-				}
 
-				rc.AuthQueries = append(rc.AuthQueries, NewAuthQueryExtJwt(authUrl))
+				if err != nil {
+					pfxlog.Logger().Errorf("could not read required external jwt signer: %s: %s", *rc.AuthPolicy.Secondary.RequiredExtJwtSigner, err)
+				}
+				rc.AuthQueries = append(rc.AuthQueries, NewAuthQueryExtJwt(signer))
 
 			}
 		}
@@ -855,7 +864,7 @@ func (ae *AppEnv) getJwtTokenFromRequest(r *http.Request) *jwt.Token {
 			parsedToken, err := jwt.ParseWithClaims(token, claims, ae.ControllersKeyFunc)
 
 			if err != nil {
-				pfxlog.Logger().WithError(err).Error("error during JWT parsing during API request")
+				pfxlog.Logger().WithError(err).Debug("JWT provided that did not parse and verify against controller public keys, skipping")
 				continue
 			}
 			if parsedToken.Valid {

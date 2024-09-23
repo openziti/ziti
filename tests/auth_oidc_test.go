@@ -3,11 +3,21 @@ package tests
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
+	authenticator2 "github.com/openziti/edge-api/rest_management_api_client/authenticator"
+	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
+	identity2 "github.com/openziti/edge-api/rest_management_api_client/identity"
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/edge-api/rest_util"
+	nfpem "github.com/openziti/foundation/v2/pem"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/oidc_auth"
 	"github.com/zitadel/oidc/v2/pkg/client/rp"
 	httphelper "github.com/zitadel/oidc/v2/pkg/http"
@@ -15,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"testing"
 	"time"
 )
@@ -124,7 +135,7 @@ func newOidcTestRp(apiHost string) (*testRpServer, error) {
 	return result, nil
 }
 
-func Test_Authenticate_Distributed_Auth(t *testing.T) {
+func Test_Authenticate_OIDC_Auth(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
@@ -227,5 +238,133 @@ func Test_Authenticate_Distributed_Auth(t *testing.T) {
 			ctx.Req.NoError(err)
 			ctx.Req.True(accessClaims.IsCertExtendable, "expected isCertExtendable to be true for first party cert auth")
 		})
+	})
+
+	t.Run("test cert auth totp ext-jwt", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		managementApiUrl, err := url.Parse("https://" + ctx.ApiHost + "/edge/management/v1")
+		ctx.Req.NoError(err)
+
+		managementApiUrls := []*url.URL{managementApiUrl}
+
+		managementClient := edge_apis.NewManagementApiClient(managementApiUrls, ctx.ControllerConfig.Id.CA(), func(resp chan string) {
+			resp <- ""
+		})
+
+		adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+
+		apiSession, err := managementClient.Authenticate(adminCreds, nil)
+		ctx.Req.NoError(rest_util.WrapErr(err))
+		ctx.NotNil(apiSession)
+
+		ctx.testContextChanged(t)
+		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy")
+
+		createExtJwtParam := external_jwt_signer.NewCreateExternalJWTSignerParams()
+		createExtJwtParam.ExternalJWTSigner = &rest_model.ExternalJWTSignerCreate{
+			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  B(true),
+			Name:     S("Test JWT Signer - Auth Policy"),
+			Kid:      S(uuid.NewString()),
+			Issuer:   S("test-issuer-99"),
+			Audience: S("test-audience-99"),
+		}
+
+		extJwtCreateResp, err := managementClient.API.ExternalJWTSigner.CreateExternalJWTSigner(createExtJwtParam, nil)
+		ctx.Req.NoError(rest_util.WrapErr(err))
+		ctx.Req.NotNil(extJwtCreateResp)
+
+		createAuthPolicyParams := auth_policy.NewCreateAuthPolicyParams()
+		createAuthPolicyParams.AuthPolicy = &rest_model.AuthPolicyCreate{
+			Name: ToPtr("auth_oidc_test-" + eid.New()),
+			Primary: &rest_model.AuthPolicyPrimary{
+				Cert: &rest_model.AuthPolicyPrimaryCert{
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(true),
+				},
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
+					Allowed:        ToPtr(false),
+					AllowedSigners: []string{},
+				},
+				Updb: &rest_model.AuthPolicyPrimaryUpdb{
+					Allowed:                ToPtr(true),
+					LockoutDurationMinutes: ToPtr(int64(0)),
+					MaxAttempts:            ToPtr(int64(5)),
+					MinPasswordLength:      ToPtr(int64(5)),
+					RequireMixedCase:       ToPtr(false),
+					RequireNumberChar:      ToPtr(false),
+					RequireSpecialChar:     ToPtr(false),
+				},
+			},
+			Secondary: &rest_model.AuthPolicySecondary{
+				RequireExtJWTSigner: ToPtr(extJwtCreateResp.Payload.Data.ID),
+				RequireTotp:         ToPtr(true),
+			},
+		}
+
+		authPolicyCreateResp, err := managementClient.API.AuthPolicy.CreateAuthPolicy(createAuthPolicyParams, nil)
+		ctx.Req.NoError(rest_util.WrapErr(err))
+		ctx.Req.NotNil(authPolicyCreateResp)
+
+		identityName := eid.New()
+		identityExternalId := eid.New()
+		createIdentityParams := identity2.NewCreateIdentityParams()
+		createIdentityParams.Identity = &rest_model.IdentityCreate{
+			AuthPolicyID: ToPtr(authPolicyCreateResp.Payload.Data.ID),
+			ExternalID:   ToPtr(identityExternalId),
+			IsAdmin:      ToPtr(false),
+			Name:         ToPtr(identityName),
+			Type:         ToPtr(rest_model.IdentityTypeDefault),
+		}
+
+		createIdentityResp, err := managementClient.API.Identity.CreateIdentity(createIdentityParams, nil)
+		ctx.Req.NoError(rest_util.WrapErr(err))
+		ctx.Req.NotNil(createIdentityResp)
+
+		identityPassword := eid.New()
+
+		createIdentityUpdbAuthenticator := authenticator2.NewCreateAuthenticatorParams()
+		createIdentityUpdbAuthenticator.Authenticator = &rest_model.AuthenticatorCreate{
+			CertPem:    "",
+			IdentityID: ToPtr(createIdentityResp.Payload.Data.ID),
+			Method:     ToPtr("updb"),
+			Password:   identityPassword,
+			Username:   identityName,
+		}
+
+		createIdentityUpdbAuthenticatorResp, err := managementClient.API.Authenticator.CreateAuthenticator(createIdentityUpdbAuthenticator, nil)
+		ctx.Req.NoError(rest_util.WrapErr(err))
+		ctx.Req.NotNil(createIdentityUpdbAuthenticatorResp)
+
+		t.Run("can authenticate via UPDB", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			identityClient := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
+			identityClient.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
+			resp, err := identityClient.R().Get(rpServer.LoginUri)
+
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
+			ctx.Req.NotEmpty(authRequestId)
+
+			opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username"
+
+			resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId, "username": identityName, "password": identityPassword}).Post(opLoginUri)
+
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			parsedBody := map[string]any{
+				"authQueries": []*rest_model.AuthQueryDetail{},
+			}
+
+			err = json.Unmarshal(resp.Body(), &parsedBody)
+			ctx.Req.NoError(err)
+
+			ctx.Req.Len(parsedBody["authQueries"], 2)
+		})
+
 	})
 }

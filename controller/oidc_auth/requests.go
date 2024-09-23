@@ -5,7 +5,9 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/controller/model"
 	"time"
 
 	"github.com/zitadel/oidc/v2/pkg/oidc"
@@ -14,16 +16,15 @@ import (
 // AuthRequest represents an OIDC authentication request and implements op.AuthRequest
 type AuthRequest struct {
 	oidc.AuthRequest
-	Id                      string
-	CreationDate            time.Time
-	IdentityId              string
-	AuthTime                time.Time
-	ApiSessionId            string
-	SecondaryTotpRequired   bool
-	SecondaryExtJwtRequired bool
-	SecondaryExtJwtId       string
-	ConfigTypes             []string
-	Amr                     map[string]struct{}
+	Id                    string
+	CreationDate          time.Time
+	IdentityId            string
+	AuthTime              time.Time
+	ApiSessionId          string
+	SecondaryTotpRequired bool
+	SecondaryExtJwtSigner *model.ExternalJwtSigner
+	ConfigTypes           []string
+	Amr                   map[string]struct{}
 
 	PeerCerts           []*x509.Certificate
 	RequestedMethod     string
@@ -69,13 +70,17 @@ func (a *AuthRequest) HasPrimaryAuth() bool {
 // HasSecondaryAuth returns true if all applicable secondary authentications have been passed
 func (a *AuthRequest) HasSecondaryAuth() bool {
 	return (!a.SecondaryTotpRequired || a.HasAmr(AuthMethodSecondaryTotp)) &&
-		(!a.SecondaryExtJwtRequired || a.HasAmr(AuthMethodSecondaryExtJwt))
+		(a.SecondaryExtJwtSigner == nil || a.HasAmrExtJwtId(a.SecondaryExtJwtSigner.Id))
 }
 
 // HasAmr returns true if the supplied amr is present
 func (a *AuthRequest) HasAmr(amr string) bool {
 	_, found := a.Amr[amr]
 	return found
+}
+
+func (a *AuthRequest) HasAmrExtJwtId(id string) bool {
+	return a.HasAmr(AuthMethodSecondaryExtJwt + ":" + id)
 }
 
 // AddAmr adds the supplied amr
@@ -157,6 +162,44 @@ func (a *AuthRequest) GetCertFingerprints() []string {
 	}
 
 	return prints
+}
+
+func (a *AuthRequest) NeedsTotp() bool {
+	return a.SecondaryTotpRequired && !a.HasAmr(AuthMethodSecondaryTotp)
+}
+
+func (a *AuthRequest) NeedsSecondaryExtJwt() bool {
+	return a.SecondaryExtJwtSigner != nil && !a.HasAmrExtJwtId(a.SecondaryExtJwtSigner.Id)
+}
+
+func (a *AuthRequest) GetAuthQueries() []*rest_model.AuthQueryDetail {
+	var authQueries []*rest_model.AuthQueryDetail
+
+	if a.NeedsTotp() {
+		provider := rest_model.MfaProvidersZiti
+		authQueries = append(authQueries, &rest_model.AuthQueryDetail{
+			Format:     rest_model.MfaFormatsNumeric,
+			HTTPMethod: "POST",
+			HTTPURL:    "./oidc/login/totp",
+			MaxLength:  8,
+			MinLength:  6,
+			Provider:   &provider,
+			TypeID:     "TOTP",
+		})
+	}
+
+	if a.NeedsSecondaryExtJwt() {
+		provider := rest_model.MfaProvidersURL
+		authQueries = append(authQueries, &rest_model.AuthQueryDetail{
+			ClientID: stringz.OrEmpty(a.SecondaryExtJwtSigner.ClientId),
+			HTTPURL:  stringz.OrEmpty(a.SecondaryExtJwtSigner.ExternalAuthUrl),
+			Scopes:   a.SecondaryExtJwtSigner.Scopes,
+			Provider: &provider,
+			TypeID:   a.SecondaryExtJwtSigner.Id,
+		})
+	}
+
+	return authQueries
 }
 
 // RefreshTokenRequest is a wrapper around RefreshClaims to avoid collisions between go-jwt interface requirements and
