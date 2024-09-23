@@ -12,14 +12,18 @@ on:
 jobs:
   release-quickstart:
     name: Release Quickstart Job
-    # this is only run on the official upstream repo when a PR is merged to the default branch "main" or a release tag
-    # is pushed; merges to main trigger a quickstart release with a commit SHA suffix featuring the previous ziti binary
-    # release version, whereas release tag pushes trigger a quickstart release with the same tag name and the same ziti
-    # binary release version
-    if: github.repository_owner == 'openziti' 
-      && (
-        startsWith(github.ref_name, 'v')
-        || (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'quickstartrelease'))
+    # this is only run on the official upstream repo when a PR is merged to the
+    # default branch "main" or a release tag is pushed or for the same
+    # conditions in a repo fork that overrides the container image repo to push
+    # to; merges to main trigger a quickstart release with a commit SHA suffix
+    # featuring the previous ziti binary release version, whereas release tag
+    # pushes trigger a quickstart release with the same tag name and the same
+    # ziti binary release version
+    if: (github.repository_owner == 'openziti' || vars.ZITI_QUICKSTART_IMAGE != '') && (
+        startsWith(github.ref_name, 'v') || (
+          github.event.pull_request.merged == true 
+          && contains(github.event.pull_request.labels.*.name, 'quickstartrelease')
+        )
       )
     runs-on: ubuntu-latest
     env:
@@ -27,7 +31,7 @@ jobs:
       # use github.ref, not github.head_ref, because this workflow should only run on merged PRs in the target/base
       # branch context, not the PR source branch
       GITHUB_REF:            ${{ github.ref }}
-      # user github.sha, not github.pull_request.head.sha, because this workflow should only run on merged PRs in the
+      # use github.sha, not github.pull_request.head.sha, because this workflow should only run on merged PRs in the
       # target/base branch, not the PR source branch
       GITHUB_SHA:            ${{ github.sha }}
     steps:
@@ -89,32 +93,32 @@ jobs:
 
           if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             # Set output parameters for release tags
-            echo QUICKSTART_VERSION="${GITHUB_REF_NAME}" | tee -a $GITHUB_OUTPUT
+            QUICKSTART_VERSION="${GITHUB_REF_NAME}"
 
           elif [[ "${GITHUB_REF_NAME}" =~ ^main$ ]]; then
             # compute the latest release version to install in the quickstart image
             QUICKSTART_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION})"
-
-            # drop the leading 'v', if any
-            QUICKSTART_VERSION=${QUICKSTART_VERSION#v}
-
             validateSemver "${QUICKSTART_VERSION}"
 
             # Append short SHA to identify quickstart docker images shipped on merge to main
             QUICKSTART_VERSION="${QUICKSTART_VERSION}-$(git rev-parse --short ${GITHUB_SHA})"
-
-            echo QUICKSTART_VERSION="${QUICKSTART_VERSION}" | tee -a $GITHUB_OUTPUT
 
           else
             echo "ERROR: Unexpected GITHUB_REF_NAME=${GITHUB_REF_NAME}" >&2
             exit 1
           fi
 
-          # configure the env var used by the quickstart's Dockerfile to download the correct version of ziti for the
-          # target architecture of each image build by trimming the hyphenated short sha suffix so that the preceding
-          # release version of the ziti executable is installed in the quickstart container image
-          ZITI_OVERRIDE_VERSION=${QUICKSTART_VERSION%-*}
-          echo ZITI_OVERRIDE_VERSION="${ZITI_OVERRIDE_VERSION}" | tee -a $GITHUB_OUTPUT
+          # configure the env var used by the quickstart's Dockerfile to
+          # download the correct version of ziti for the target architecture of
+          # each image build by trimming the hyphenated short sha suffix so that
+          # the preceding release version of the ziti executable is installed in
+          # the quickstart container image; ensure the QUICKSTART_VERSION
+          # (container image tag) does not have a leading 'v' and the
+          # ZITI_VERSION_OVERRIDE (GitHub tag ref) does have a leading 'v'
+
+          QUICKSTART_VERSION="${QUICKSTART_VERSION#v}"
+          echo QUICKSTART_VERSION="${QUICKSTART_VERSION}" | tee -a $GITHUB_OUTPUT
+          echo ZITI_VERSION_OVERRIDE=v${QUICKSTART_VERSION%-*} | tee -a $GITHUB_OUTPUT
 
       # container image tag :latest is published on merge to default branch "main" and on release tags
       - name: Configure Quickstart Container
@@ -146,6 +150,7 @@ jobs:
           python --version
         
       - name: Deploy the CloudFront Function for get.openziti.io
+        if: github.repository_owner == 'openziti'
         shell: bash
         run: python ./dist/cloudfront/get.openziti.io/deploy-cloudfront-function.py
         env:

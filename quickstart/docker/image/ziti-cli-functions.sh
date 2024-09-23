@@ -12,6 +12,9 @@ ASCI_BLUE='\033[00;34m'
 ASCI_PURPLE='\033[00;35m'
 ZITIx_EXPRESS_COMPLETE=""
 
+: "${GITHUB_OWNER:=openziti}"
+: "${GITHUB_REPO:=ziti}"
+
 function WHITE {
   echo "${ASCI_WHITE}${1-}${ASCI_RESTORE}"
 }
@@ -245,7 +248,7 @@ function _check_env_variable() {
         _error=true
       fi
     else
-      echo -e " * $(RED "Unsupported shell, supply a PR or log an issue on https://github.com/openziti/ziti") "
+      echo -e " * $(RED "Unsupported shell, supply a PR or log an issue on https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}") "
       return 1
     fi
   done
@@ -737,7 +740,7 @@ function getZiti {
   fi
 
   # Get the download link
-  zitidl="https://github.com/openziti/ziti/releases/download/${ZITI_BINARIES_VERSION-}/${ZITI_BINARIES_FILE}"
+  zitidl="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${ZITI_BINARIES_VERSION-}/${ZITI_BINARIES_FILE}"
   echo -e 'Downloading '"$(BLUE "${zitidl}")"' to '"$(BLUE "${ziti_binaries_file_abspath}")"
   curl -Ls "${zitidl}" -o "${ziti_binaries_file_abspath}"
 
@@ -1137,7 +1140,7 @@ function getLatestZitiVersion {
 
   _detect_architecture
 
-  ziti_latest=$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/latest)
+  ziti_latest=$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest)
   ZITI_BINARIES_FILE=$(printf "%s" "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
   ZITI_BINARIES_VERSION=$(printf "%s" "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.tag_name')
 }
@@ -1494,7 +1497,7 @@ function _verify_ziti_version_exists {
 
   _detect_architecture
 
-  ziticurl="$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/tags/"${ZITI_VERSION_OVERRIDE}")"
+  ziticurl="$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/tags/"${ZITI_VERSION_OVERRIDE}")"
   ZITI_BINARIES_FILE=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
   ZITI_BINARIES_VERSION=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.tag_name')
 
