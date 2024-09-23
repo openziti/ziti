@@ -109,6 +109,7 @@ func newLogin(store Storage, callback func(context.Context, string) string, issu
 
 func (l *login) createRouter(issuerInterceptor *op.IssuerInterceptor) {
 	l.router = mux.NewRouter()
+	l.router.Path("/auth-queries").Methods("GET").HandlerFunc(l.listAuthQueries)
 	l.router.Path("/password").Methods("GET").HandlerFunc(l.loginHandler)
 	l.router.Path("/password").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.authenticate))
 
@@ -333,7 +334,7 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, callbackUrl, http.StatusFound)
 }
 
-func (l *login) listAuthQuueries(w http.ResponseWriter, r *http.Request) {
+func (l *login) listAuthQueries(w http.ResponseWriter, r *http.Request) {
 	authRequestId := r.URL.Query().Get("id")
 
 	authRequest, err := l.store.GetAuthRequest(authRequestId)
