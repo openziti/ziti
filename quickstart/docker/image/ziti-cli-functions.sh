@@ -650,7 +650,7 @@ function getZiti {
     getLatestZitiVersion  # sets ZITI_BINARIES_FILE & ZITI_BINARIES_VERSION
     default_path="${ZITI_HOME}/ziti-bin/ziti-${ZITI_BINARIES_VERSION}"
     echo -en "The path for ziti binaries has not been set, use the default (${default_path})? (Y/n) "
-    read -r reply
+    read -r reply || true
     if [[ -z "${reply}" || ${reply} =~ [yY] ]]; then
       echo "INFO: using the default path ${default_path}"
       ZITI_BIN_DIR="${default_path}"
@@ -670,16 +670,13 @@ function getZiti {
       return 1
     fi
   else
-    _check_env_variable ZITI_BINARIES_FILE ZITI_BINARIES_VERSION
-    retVal=$?
-    if [[ "${retVal}" != 0 ]]; then
-      return 1
-    fi
-
     # Check if an error occurred while trying to pull desired version (happens with incorrect version or formatting issue)
     if ! _verify_ziti_version_exists; then
         echo -e "  * $(RED "ERROR: The version of ziti requested (${ZITI_VERSION_OVERRIDE}) could not be found for OS (${ZITI_OSTYPE}) and architecture (${ZITI_ARCH}). Please check these details and try again. The version should follow the format \"vx.x.x\".") "
         return 1
+    fi
+    if ! _check_env_variable ZITI_BINARIES_FILE ZITI_BINARIES_VERSION; then
+      return 1
     fi
   fi
 
