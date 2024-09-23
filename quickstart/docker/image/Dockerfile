@@ -1,4 +1,4 @@
-FROM ubuntu:rolling as fetch-ziti-bins
+FROM ubuntu:rolling AS fetch-ziti-bins
 
 # optional arg to specify which version to fetch when local "ziti-bin" directory is not present
 ARG ZITI_VERSION_OVERRIDE
