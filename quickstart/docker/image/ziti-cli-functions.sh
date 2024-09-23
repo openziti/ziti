@@ -686,7 +686,7 @@ function getZiti {
   if ! test -f "${ZITI_BIN_DIR}/ziti"; then
     # Make the directory
     echo -e "No existing binary found, creating the ZITI_BIN_DIR directory ($(BLUE "${ZITI_BIN_DIR}"))"
-    mkdir -p "${ZITI_BIN_DIR}"
+    mkdir -p "${ZITI_BIN_DIR}/ziti-extract"
     retVal=$?
     if [[ "${retVal}" != 0 ]]; then
       echo -e "  * $(RED "ERROR: An error occurred generating the path (${ZITI_BIN_DIR})")"
@@ -706,7 +706,7 @@ function getZiti {
         unset ZITI_BIN_DIR
         _set_ziti_bin_dir
         # Make the directory
-        mkdir -p "${ZITI_BIN_DIR}"
+        mkdir -p "${ZITI_BIN_DIR}/ziti-extract"
         retVal=$?
         if [[ "${retVal}" != 0 ]]; then
           echo -e "  * $(RED "ERROR: An error occurred generating the path (${ZITI_BIN_DIR}")"
@@ -742,7 +742,12 @@ function getZiti {
   curl -Ls "${zitidl}" -o "${ziti_binaries_file_abspath}"
 
   # Unzip the files
-  tar -xf "${ziti_binaries_file_abspath}" --directory "${ZITI_BIN_DIR}"
+  tar -xf "${ziti_binaries_file_abspath}" --directory "${ZITI_BIN_DIR}/ziti-extract"
+  if [ -d "${ZITI_BIN_DIR}/ziti-extract/ziti" ]; then
+    mv "${ZITI_BIN_DIR}/ziti-extract/ziti/ziti" "${ZITI_BIN_DIR}/ziti"
+  else
+    mv "${ZITI_BIN_DIR}/ziti-extract/ziti" "${ZITI_BIN_DIR}/ziti"
+  fi
 
   # Cleanup
   rm "${ziti_binaries_file_abspath}"      # Remove zip
