@@ -12,6 +12,9 @@ ASCI_BLUE='\033[00;34m'
 ASCI_PURPLE='\033[00;35m'
 ZITIx_EXPRESS_COMPLETE=""
 
+: "${GITHUB_REPO_OWNER:=openziti}"
+: "${GITHUB_REPO_NAME:=ziti}"
+
 function WHITE {
   echo "${ASCI_WHITE}${1-}${ASCI_RESTORE}"
 }
@@ -245,7 +248,7 @@ function _check_env_variable() {
         _error=true
       fi
     else
-      echo -e " * $(RED "Unsupported shell, supply a PR or log an issue on https://github.com/openziti/ziti") "
+      echo -e " * $(RED "Unsupported shell, supply a PR or log an issue on https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}") "
       return 1
     fi
   done
@@ -647,7 +650,7 @@ function getZiti {
     getLatestZitiVersion  # sets ZITI_BINARIES_FILE & ZITI_BINARIES_VERSION
     default_path="${ZITI_HOME}/ziti-bin/ziti-${ZITI_BINARIES_VERSION}"
     echo -en "The path for ziti binaries has not been set, use the default (${default_path})? (Y/n) "
-    read -r reply
+    read -r reply || true
     if [[ -z "${reply}" || ${reply} =~ [yY] ]]; then
       echo "INFO: using the default path ${default_path}"
       ZITI_BIN_DIR="${default_path}"
@@ -667,16 +670,13 @@ function getZiti {
       return 1
     fi
   else
-    _check_env_variable ZITI_BINARIES_FILE ZITI_BINARIES_VERSION
-    retVal=$?
-    if [[ "${retVal}" != 0 ]]; then
-      return 1
-    fi
-
     # Check if an error occurred while trying to pull desired version (happens with incorrect version or formatting issue)
     if ! _verify_ziti_version_exists; then
         echo -e "  * $(RED "ERROR: The version of ziti requested (${ZITI_VERSION_OVERRIDE}) could not be found for OS (${ZITI_OSTYPE}) and architecture (${ZITI_ARCH}). Please check these details and try again. The version should follow the format \"vx.x.x\".") "
         return 1
+    fi
+    if ! _check_env_variable ZITI_BINARIES_FILE ZITI_BINARIES_VERSION; then
+      return 1
     fi
   fi
 
@@ -686,7 +686,7 @@ function getZiti {
   if ! test -f "${ZITI_BIN_DIR}/ziti"; then
     # Make the directory
     echo -e "No existing binary found, creating the ZITI_BIN_DIR directory ($(BLUE "${ZITI_BIN_DIR}"))"
-    mkdir -p "${ZITI_BIN_DIR}"
+    mkdir -p "${ZITI_BIN_DIR}/ziti-extract"
     retVal=$?
     if [[ "${retVal}" != 0 ]]; then
       echo -e "  * $(RED "ERROR: An error occurred generating the path (${ZITI_BIN_DIR})")"
@@ -706,7 +706,7 @@ function getZiti {
         unset ZITI_BIN_DIR
         _set_ziti_bin_dir
         # Make the directory
-        mkdir -p "${ZITI_BIN_DIR}"
+        mkdir -p "${ZITI_BIN_DIR}/ziti-extract"
         retVal=$?
         if [[ "${retVal}" != 0 ]]; then
           echo -e "  * $(RED "ERROR: An error occurred generating the path (${ZITI_BIN_DIR}")"
@@ -737,12 +737,17 @@ function getZiti {
   fi
 
   # Get the download link
-  zitidl="https://github.com/openziti/ziti/releases/download/${ZITI_BINARIES_VERSION-}/${ZITI_BINARIES_FILE}"
+  zitidl="https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/download/${ZITI_BINARIES_VERSION-}/${ZITI_BINARIES_FILE}"
   echo -e 'Downloading '"$(BLUE "${zitidl}")"' to '"$(BLUE "${ziti_binaries_file_abspath}")"
   curl -Ls "${zitidl}" -o "${ziti_binaries_file_abspath}"
 
   # Unzip the files
-  tar -xf "${ziti_binaries_file_abspath}" --directory "${ZITI_BIN_DIR}"
+  tar -xf "${ziti_binaries_file_abspath}" --directory "${ZITI_BIN_DIR}/ziti-extract"
+  if [ -d "${ZITI_BIN_DIR}/ziti-extract/ziti" ]; then
+    mv "${ZITI_BIN_DIR}/ziti-extract/ziti/ziti" "${ZITI_BIN_DIR}/ziti"
+  else
+    mv "${ZITI_BIN_DIR}/ziti-extract/ziti" "${ZITI_BIN_DIR}/ziti"
+  fi
 
   # Cleanup
   rm "${ziti_binaries_file_abspath}"      # Remove zip
@@ -1137,7 +1142,7 @@ function getLatestZitiVersion {
 
   _detect_architecture
 
-  ziti_latest=$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/latest)
+  ziti_latest=$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest)
   ZITI_BINARIES_FILE=$(printf "%s" "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
   ZITI_BINARIES_VERSION=$(printf "%s" "${ziti_latest}" | tr '\r\n' ' ' | jq -r '.tag_name')
 }
@@ -1494,7 +1499,7 @@ function _verify_ziti_version_exists {
 
   _detect_architecture
 
-  ziticurl="$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/tags/"${ZITI_VERSION_OVERRIDE}")"
+  ziticurl="$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/tags/"${ZITI_VERSION_OVERRIDE}")"
   ZITI_BINARIES_FILE=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
   ZITI_BINARIES_VERSION=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.tag_name')
 

@@ -72,7 +72,7 @@ if [[ -n "${ZITI_QUICK_DIR:-}" ]]; then
         if [[ -x "${ZITI_QUICK_DIR:-}/docker/createLocalImage.sh" ]]; then
             (
                 cd "${ZITI_QUICK_DIR}/docker"
-                unset ZITI_VERSION ZITI_OVERRIDE_VERSION  # always build the local source
+                unset ZITI_VERSION ZITI_VERSION_OVERRIDE  # always build the local source
                 ./createLocalImage.sh --build "${ZITI_QUICK_TAG}"
             )
         else
