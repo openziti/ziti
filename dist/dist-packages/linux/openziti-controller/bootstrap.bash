@@ -50,6 +50,8 @@ issueLeafCerts() {
   # create server and client keys
   #
 
+  local -a _dns_sans _ip_sans
+
   if [[ "${ZITI_SERVER_FILE}" == "${ZITI_CLIENT_FILE}" ]]; then
     echo "ERROR: ZITI_SERVER_FILE and ZITI_CLIENT_FILE must be different" >&2
     return 1
@@ -71,14 +73,33 @@ issueLeafCerts() {
   ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_SERVER_FILE}.chain.pem"
   if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_SERVER_CERT" ]]; then
     # server cert
+    # if IP address then set IP SAN, else DNS SAN
+    if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS}" =~ ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^([0-9a-fA-F]{1,4}:){7}([0-9a-fA-F]{1,4}|:)$|^::([0-9a-fA-F]{1,4}:){0,6}([0-9a-fA-F]{1,4}|:)$|^([0-9a-fA-F]{1,4}:){1,7}:$|^([0-9a-fA-F]{1,4}:){1,6}(:[0-9a-fA-F]{1,4}){1,6}$|^([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,7}$|^([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,8}$|^([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,9}$|^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,10}$|^([0-9a-fA-F]{1,4}:){1,1}(:[0-9a-fA-F]{1,4}){1,11}$|^:((:[0-9a-fA-F]{1,4}){1,12}|:)$|^fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|^::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; then
+      _dns_sans=("localhost")
+      if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS}" =~ ^(127\.0\.0\.1|::1)$ ]]; then
+        _ip_sans=("127.0.0.1" "::1")
+      else
+        _ip_sans=("${ZITI_CTRL_ADVERTISED_ADDRESS}" "127.0.0.1" "::1")
+      fi
+    else
+      _ip_sans=("127.0.0.1" "::1")
+      if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS}" == "localhost" ]]; then
+        _dns_sans=("localhost")
+      else
+        _dns_sans=("${ZITI_CTRL_ADVERTISED_ADDRESS}" "localhost")
+      fi
+    fi
+    _dns_sans_csv=$(IFS=,; echo "${_dns_sans[*]}")
+    _ip_sans_csv=$(IFS=,; echo "${_ip_sans[*]}")
     ziti pki create server \
       --pki-root "${ZITI_PKI_ROOT}" \
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
       --server-file "${ZITI_SERVER_FILE}" \
-      --dns "localhost,${ZITI_CTRL_ADVERTISED_ADDRESS}" \
-      --ip "127.0.0.1,::1" \
+      --dns "${_dns_sans_csv}" \
+      --ip "${_ip_sans_csv}" \
       --allow-overwrite >&3  # write to debug fd because this runs every startup
+    echo "DEBUG: issued server cert with DNS SANs '${_dns_sans_csv}' and IP SANs '${_ip_sans_csv}'" >&3
   fi
 
   # client cert
@@ -284,13 +305,9 @@ loadEnvFiles() {
 }
 
 promptCtrlAddress() {
-  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" || "${ZITI_CTRL_ADVERTISED_ADDRESS}" =~ ^[:0-9] ]]; then
-    if ! ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter DNS name of the controller [required]: ")"; then
-      echo "ERROR: missing required DNS name ZITI_CTRL_ADVERTISED_ADDRESS in ${BOOT_ENV_FILE}" >&2
-      return 1
-      # if an IP address
-    elif [[ "${ZITI_CTRL_ADVERTISED_ADDRESS}" =~ ^[:0-9] ]]; then
-      echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be a DNS name" >&2
+  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
+    if ! ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter DNS name or IP address of the controller [required]: ")"; then
+      echo "ERROR: missing required DNS name or IP address ZITI_CTRL_ADVERTISED_ADDRESS in ${BOOT_ENV_FILE}" >&2
       return 1
     else
       setAnswer "ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}" "${BOOT_ENV_FILE}"

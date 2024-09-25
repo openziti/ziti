@@ -31,6 +31,16 @@ makeConfig() {
           ZITI_ROUTER_PORT \
           ZITI_ROUTER_LISTENER_BIND_PORT="${ZITI_ROUTER_PORT}"
 
+  # if the address is an IP address then set an IP SAN, else DNS SAN
+  if [[ "${ZITI_ROUTER_ADVERTISED_ADDRESS}" =~ ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^([0-9a-fA-F]{1,4}:){7}([0-9a-fA-F]{1,4}|:)$|^::([0-9a-fA-F]{1,4}:){0,6}([0-9a-fA-F]{1,4}|:)$|^([0-9a-fA-F]{1,4}:){1,7}:$|^([0-9a-fA-F]{1,4}:){1,6}(:[0-9a-fA-F]{1,4}){1,6}$|^([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,7}$|^([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,8}$|^([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,9}$|^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,10}$|^([0-9a-fA-F]{1,4}:){1,1}(:[0-9a-fA-F]{1,4}){1,11}$|^:((:[0-9a-fA-F]{1,4}){1,12}|:)$|^fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|^::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; then
+    echo "DEBUG: ZITI_ROUTER_ADVERTISED_ADDRESS is an IP address, setting ZITI_ROUTER_IP_OVERRIDE" >&3
+    export  ZITI_ROUTER_IP_OVERRIDE="${ZITI_ROUTER_ADVERTISED_ADDRESS}" \
+            ZITI_NETWORK_NAME="localhost"  # this var is appened to the list of DNS SANs and defaults to the hostname, which is invalid for containers
+    unset ZITI_ROUTER_ADVERTISED_ADDRESS
+  else
+    export ZITI_NETWORK_NAME="${ZITI_ROUTER_ADVERTISED_ADDRESS}"
+  fi
+
   if [[ ! -s "${_config_file}" || "${1:-}" == --force ]]; then
     # build config command
     local -a _command=("ziti create config router ${ZITI_ROUTER_TYPE}" \
@@ -52,11 +62,16 @@ makeConfig() {
       _command+=("${ZITI_BOOTSTRAP_CONFIG_ARGS}")
     fi
 
+    # if the advertised address is localhost and the private flag is not already
+    # set, then add it to avoid advertising unreachable link listeners
+    if [[ "${ZITI_ROUTER_ADVERTISED_ADDRESS:-}" == localhost && ! "${_command[@]}" =~ "--private" ]]; then
+      _command+=("--private")
+    fi
+
     if [[ -s "${_config_file}" && "${1:-}" == --force ]]; then
       echo "INFO: recreating config file: ${_config_file}"
       mv --no-clobber "${_config_file}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
     fi
-
 
     exportZitiVars                # export all ZITI_ vars to be used in bootstrap
     # shellcheck disable=SC2068
