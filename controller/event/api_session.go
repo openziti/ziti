@@ -23,12 +23,18 @@ import (
 
 const ApiSessionEventTypeCreated = "created"
 const ApiSessionEventTypeDeleted = "deleted"
+const ApiSessionEventTypeRefreshed = "refreshed"
+const ApiSessionEventTypeExchanged = "exchanged"
 const ApiSessionEventNS = "edge.apiSessions"
+
+const ApiSessionTypeLegacy = "legacy"
+const ApiSessionTypeJwt = "jwt"
 
 type ApiSessionEvent struct {
 	Namespace  string    `json:"namespace"`
 	EventType  string    `json:"event_type"`
 	Id         string    `json:"id"`
+	Type       string    `json:"type"`
 	Timestamp  time.Time `json:"timestamp"`
 	Token      string    `json:"token"`
 	IdentityId string    `json:"identity_id"`

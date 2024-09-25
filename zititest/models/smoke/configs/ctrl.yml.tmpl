@@ -38,9 +38,9 @@ ctrl:
     # connections. The value of newListener must be resolvable both via DNS and validate via certificates
     #newListener: tls:localhost:6262
 
-#events:
-#  jsonLogger:
-#    subscriptions:
+events:
+  jsonLogger:
+    subscriptions:
 #      - type: fabric.routers
 #      - type: fabric.terminators
 #      - type: metrics
@@ -52,16 +52,16 @@ ctrl:
 #      - type: edge.sessions
 #        include:
 #          - created
-#      - type: edge.apiSessions
+      - type: edge.apiSessions
 #      - type: fabric.usage
 #      - type: services
 #      - type: fabric.usage
 #      - type: edge.entityCounts
 #        interval: 5s
-#    handler:
-#      type: file
-#      format: json
-#      path: /tmp/ziti-events.log
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/events.json
 
 healthChecks:
   boltCheck:
