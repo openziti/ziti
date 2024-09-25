@@ -31,12 +31,6 @@ makeConfig() {
           ZITI_ROUTER_PORT \
           ZITI_ROUTER_LISTENER_BIND_PORT="${ZITI_ROUTER_PORT}"
 
-  if [[ "${ZITI_ROUTER_ADVERTISED_ADDRESS}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "DEBUG: ZITI_ROUTER_ADVERTISED_ADDRESS is an IPv4 address, setting ZITI_ROUTER_IP_OVERRIDE" >&3
-    export ZITI_ROUTER_IP_OVERRIDE="${ZITI_ROUTER_ADVERTISED_ADDRESS}"
-    unset ZITI_ROUTER_ADVERTISED_ADDRESS
-  fi
-
   if [[ ! -s "${_config_file}" || "${1:-}" == --force ]]; then
     # build config command
     local -a _command=("ziti create config router ${ZITI_ROUTER_TYPE}" \
@@ -62,6 +56,7 @@ makeConfig() {
       echo "INFO: recreating config file: ${_config_file}"
       mv --no-clobber "${_config_file}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
     fi
+
 
     exportZitiVars                # export all ZITI_ vars to be used in bootstrap
     # shellcheck disable=SC2068
