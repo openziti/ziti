@@ -35,7 +35,7 @@ makeConfig() {
   if [[ "${ZITI_ROUTER_ADVERTISED_ADDRESS}" =~ ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^([0-9a-fA-F]{1,4}:){7}([0-9a-fA-F]{1,4}|:)$|^::([0-9a-fA-F]{1,4}:){0,6}([0-9a-fA-F]{1,4}|:)$|^([0-9a-fA-F]{1,4}:){1,7}:$|^([0-9a-fA-F]{1,4}:){1,6}(:[0-9a-fA-F]{1,4}){1,6}$|^([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,7}$|^([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,8}$|^([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,9}$|^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,10}$|^([0-9a-fA-F]{1,4}:){1,1}(:[0-9a-fA-F]{1,4}){1,11}$|^:((:[0-9a-fA-F]{1,4}){1,12}|:)$|^fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|^::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; then
     echo "DEBUG: ZITI_ROUTER_ADVERTISED_ADDRESS is an IP address, setting ZITI_ROUTER_IP_OVERRIDE" >&3
     export  ZITI_ROUTER_IP_OVERRIDE="${ZITI_ROUTER_ADVERTISED_ADDRESS}" \
-            ZITI_NETWORK_NAME="localhost"  # this var is appened to the list of DNS SANs and defaults to the hostname, which is invalid for containers
+            ZITI_NETWORK_NAME="localhost"
     unset ZITI_ROUTER_ADVERTISED_ADDRESS
   else
     export ZITI_NETWORK_NAME="${ZITI_ROUTER_ADVERTISED_ADDRESS}"
