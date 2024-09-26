@@ -203,25 +203,27 @@ func (o *LoginOptions) Run() error {
 		body = container.String()
 	}
 
-	jsonParsed, err := login(o, host, body)
+	if o.Token == "" {
+		jsonParsed, err := login(o, host, body)
 
-	if err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	if !jsonParsed.ExistsP("data.token") {
-		return fmt.Errorf("no session token returned from login request to %v. Received: %v", host, jsonParsed.String())
-	}
+		if !jsonParsed.ExistsP("data.token") {
+			return fmt.Errorf("no session token returned from login request to %v. Received: %v", host, jsonParsed.String())
+		}
 
-	var ok bool
-	o.Token, ok = jsonParsed.Path("data.token").Data().(string)
+		var ok bool
+		o.Token, ok = jsonParsed.Path("data.token").Data().(string)
 
-	if !ok {
-		return fmt.Errorf("session token returned from login request to %v is not in the expected format. Received: %v", host, jsonParsed.String())
-	}
+		if !ok {
+			return fmt.Errorf("session token returned from login request to %v is not in the expected format. Received: %v", host, jsonParsed.String())
+		}
 
-	if !o.OutputJSONResponse {
-		o.Printf("Token: %v\n", o.Token)
+		if !o.OutputJSONResponse {
+			o.Printf("Token: %v\n", o.Token)
+		}
 	}
 
 	loginIdentity := &util.RestClientEdgeIdentity{
