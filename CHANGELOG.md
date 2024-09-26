@@ -11,8 +11,6 @@
 * github.com/openziti/ziti: [v1.1.12 -> v1.1.13](https://github.com/openziti/ziti/compare/v1.1.12...v1.1.13)
   * [Issue #2427](https://github.com/openziti/ziti/issues/2427) - Add low overhead xgress protocol for DTLS links
   * [Issue #2422](https://github.com/openziti/ziti/issues/2422) - Busy first hop links should backpressure to xgress senders
-  * [Issue #2413](https://github.com/openziti/ziti/issues/2413) - Add db anonymization utility
-  * [Issue #2415](https://github.com/openziti/ziti/issues/2415) - Fix policy denormalization when service policy type is changed
 
 
 # Release 1.1.12
