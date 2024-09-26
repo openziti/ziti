@@ -1,4 +1,4 @@
-* # Release 1.1.13
+# Release 1.1.13
 
 ## What's New
 
