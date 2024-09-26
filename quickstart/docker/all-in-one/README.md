@@ -42,7 +42,9 @@ This is the primary use case for this project: running the `ziti edge quickstart
     docker compose logs --follow
     ```
 
-5. Run the CLI inside the quickstart environment.
+5. Open the console in a browser: [localhost:1280/zac/](https://localhost:1280/zac/). If you override the default controller address then substitute the correct address in the URL like `https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/`.
+
+6. Run the CLI inside the quickstart environment.
 
     ```bash
     docker compose exec quickstart ziti edge list identities
