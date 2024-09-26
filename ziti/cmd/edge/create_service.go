@@ -44,7 +44,7 @@ func newCreateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "service <name>",
 		Short: "creates a service managed by the Ziti Edge Controller",
 		Long:  "creates a service managed by the Ziti Edge Controller",
-		Args:  cobra.MinimumNArgs(1),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
