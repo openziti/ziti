@@ -52,6 +52,7 @@ type LoginOptions struct {
 	ClientKey    string
 	ExtJwt       string
 	File         string
+	Admin        bool
 
 	FileCertCreds *edge_apis.IdentityCredentials
 }
@@ -92,6 +93,7 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&options.ClientKey, "client-key", "k", "", "The key to use with certificate authentication")
 	cmd.Flags().StringVarP(&options.ExtJwt, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
 	cmd.Flags().StringVarP(&options.File, "file", "f", "", "An identity file to use for authentication")
+	cmd.Flags().BoolVar(&options.Admin, "admin", true, "If set false, login to client API instead of management API")
 
 	options.AddCommonFlags(cmd)
 
@@ -120,6 +122,10 @@ func (o *LoginOptions) Run() error {
 
 		if len(cfg.ZtAPIs) > 0 {
 			host = cfg.ZtAPIs[0]
+		}
+
+		if o.Admin {
+			host = strings.Replace(host, "/edge/client/v1", "/edge/management/v1", 1)
 		}
 	}
 
