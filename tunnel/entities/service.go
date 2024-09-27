@@ -153,12 +153,12 @@ type domainAddress struct {
 func (self *domainAddress) Allows(addr interface{}) bool {
 	host, ok := addr.(string)
 	host = strings.ToLower(host)
-	return ok && (strings.HasSuffix(host, self.domain[1:]) || host == self.domain[2:])
+	return ok && (self.domain == "*" || (strings.HasSuffix(host, self.domain[1:]) || host == self.domain[2:]))
 }
 
 func makeAllowedAddress(addr string) (allowedAddress, error) {
 	if addr[0] == '*' {
-		if len(addr) < 3 || addr[1] != '.' {
+		if len(addr) != 1 && (len(addr) < 3 || addr[1] != '.') {
 			return nil, errors.Errorf("invalid domain[%s]", addr)
 		}
 		return &domainAddress{domain: strings.ToLower(addr)}, nil
