@@ -126,6 +126,8 @@ func (o *LoginOptions) Run() error {
 
 		if o.Admin {
 			host = strings.Replace(host, "/edge/client/v1", "/edge/management/v1", 1)
+		} else {
+			host = strings.Replace(host, "/edge/management/v1", "/edge/client/v1", 1)
 		}
 	}
 
