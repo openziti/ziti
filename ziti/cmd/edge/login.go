@@ -125,10 +125,10 @@ func (o *LoginOptions) Run() error {
 
 		parsedZtAPI, err := url.Parse(ztAPI)
 		if err != nil {
-			return errors.Wrap(err, "invalid client API URL in ztAPI property of identity file")
+			return fmt.Errorf("could not parse ztAPI '%s' as a URL", ztAPI)
 		}
 
-		host = parsedZtAPI.Scheme + "://" + parsedZtAPI.Host
+		host = parsedZtAPI.Host
 	}
 
 	id := config.GetIdentity()
