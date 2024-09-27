@@ -38,8 +38,8 @@ jobs:
         shell: bash
         run: |
           go install github.com/mitchellh/gox@latest
-          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
-          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=darwin -arch=arm64 -output=$GOX_OUTPUT ./...
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./ziti/
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=darwin -arch=arm64 -output=$GOX_OUTPUT ./ziti/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -71,7 +71,7 @@ jobs:
         shell: bash
         run: |
           go install github.com/mitchellh/gox@latest
-          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./ziti/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -105,11 +105,11 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci configure-git
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci -t go-build-flags
-          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./ziti/
           CC=arm-linux-gnueabihf-gcc \
-          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./ziti/
           CC=aarch64-linux-gnu-gcc \
-          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./ziti/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
