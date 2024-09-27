@@ -116,14 +116,19 @@ func (o *LoginOptions) Run() error {
 
 		idCredentials := edge_apis.NewIdentityCredentialsFromConfig(cfg.ID)
 		o.FileCertCreds = idCredentials
-		host = cfg.ZtAPI
+		ztAPI := cfg.ZtAPI
 
+		// override with the first HA client API URL if defined
 		if len(cfg.ZtAPIs) > 0 {
-			host = cfg.ZtAPIs[0]
+			ztAPI = cfg.ZtAPIs[0]
 		}
 
-		host = strings.TrimSuffix(host, "/edge/client/v1")
+		parsedZtAPI, err := url.Parse(ztAPI)
+		if err != nil {
+			return errors.Wrap(err, "invalid client API URL in ztAPI property of identity file")
+		}
 
+		host = parsedZtAPI.Scheme + "://" + parsedZtAPI.Host
 	}
 
 	id := config.GetIdentity()
