@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/router/state"
 	"io/fs"
@@ -169,6 +170,10 @@ func (self *Router) GetRouterDataModel() *common.RouterDataModel {
 
 func (self *Router) IsHaEnabled() bool {
 	return self.config.Ha.Enabled
+}
+
+func (self *Router) GetMgmtPipeConfig() *datapipe.Config {
+	return &self.config.Mgmt.Pipe
 }
 
 func Create(config *Config, versionProvider versions.VersionProvider) *Router {

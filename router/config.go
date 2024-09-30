@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/router/env"
 	"io"
@@ -165,7 +166,10 @@ type Config struct {
 	Ha struct {
 		Enabled bool
 	}
-	Proxy   *transport.ProxyConfiguration
+	Proxy *transport.ProxyConfiguration
+	Mgmt  struct {
+		Pipe datapipe.Config
+	}
 	Plugins []string
 	src     map[interface{}]interface{}
 	path    string
@@ -757,6 +761,7 @@ func LoadConfig(path string) (*Config, error) {
 					pfxlog.Logger().Warn("invalid [healthChecks.linkCheck] stanza")
 				}
 			}
+		} else {
 			pfxlog.Logger().Warn("invalid [healthChecks] stanza")
 		}
 	}
@@ -804,6 +809,18 @@ func LoadConfig(path string) (*Config, error) {
 			if enabledValue, found := haMap["enabled"]; found {
 				if enabled, ok := enabledValue.(bool); ok {
 					cfg.Ha.Enabled = enabled
+				}
+			}
+		}
+	}
+
+	if value, found := cfgmap["mgmt"]; found {
+		if subMap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found = subMap["pipe"]; found {
+				if subMap, ok = value.(map[interface{}]interface{}); ok {
+					if err = cfg.Mgmt.Pipe.LoadConfig(subMap); err != nil {
+						return nil, err
+					}
 				}
 			}
 		}
