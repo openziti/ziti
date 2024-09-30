@@ -125,7 +125,7 @@ func (js *jwksServer) handleJWKS(w http.ResponseWriter, _ *http.Request) {
 	var keys []jsonWebKey
 	for _, cert := range js.certificates {
 
-		certBase64 := base64.RawURLEncoding.EncodeToString(cert.Raw)
+		certBase64 := base64.StdEncoding.EncodeToString(cert.Raw)
 		key := jsonWebKey{
 			Kid: cert.Subject.CommonName,
 			X5C: []string{certBase64},
