@@ -19,8 +19,8 @@ package edge
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/ziti/router/xgress_edge_transport"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/router/xgress_edge_transport"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"

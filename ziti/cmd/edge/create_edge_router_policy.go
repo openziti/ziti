@@ -57,7 +57,7 @@ func NewCreateEdgeRouterPolicyCmd(out io.Writer, errOut io.Writer) *cobra.Comman
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVar(&options.edgeRouterRoles, "edge-router-roles", nil, "Edge router roles of the new edge router policy")
 	cmd.Flags().StringSliceVar(&options.identityRoles, "identity-roles", nil, "Identity roles of the new edge router policy")
-	cmd.Flags().StringVar(&options.semantic, "semantic", "AllOf", "Semantic dictating how multiple attributes should be interpreted. Valid values: AnyOf, AllOf")
+	cmd.Flags().StringVar(&options.semantic, "semantic", "AnyOf", "Semantic dictating how multiple attributes should be interpreted. Valid values: AnyOf, AllOf")
 	options.AddCommonFlags(cmd)
 
 	return cmd
