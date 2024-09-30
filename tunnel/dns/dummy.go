@@ -22,6 +22,11 @@ func (d dummy) Lookup(_ net.IP) (string, error) {
 	return "", nil
 }
 
+func (d dummy) LookupIP(_ string) (net.IP, bool) {
+	pfxlog.Logger().Warnf("dummy resolver does not store hostname/ip mappings")
+	return nil, false
+}
+
 func (d dummy) RemoveHostname(_ string) net.IP {
 	return nil
 }
