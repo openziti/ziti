@@ -141,7 +141,7 @@ require (
 	github.com/openziti-incubator/cf v0.0.3 // indirect
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
 	github.com/openziti/dilithium v0.3.5 // indirect
-	github.com/openziti/jwks v1.0.5 // indirect
+	github.com/openziti/jwks v1.0.6 // indirect
 	github.com/openziti/metrics v1.2.58 // indirect
 	github.com/openziti/runzmd v1.0.51 // indirect
 	github.com/openziti/secretstream v0.1.24 // indirect
