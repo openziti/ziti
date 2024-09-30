@@ -179,8 +179,8 @@ func renderPage(w http.ResponseWriter, pageTemplate *template.Template, id strin
 		AdditionalData: additionalData,
 	}
 
-	err = pageTemplate.Execute(w, data)
-	if err != nil {
+	templateErr := pageTemplate.Execute(w, data)
+	if templateErr != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -295,6 +295,7 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 		invalid := apierror.NewInvalidAuth()
 		if method == AuthMethodPassword {
 			renderLogin(w, credentials.AuthRequestId, invalid)
+			w.WriteHeader(invalid.Status)
 			return
 		}
 
