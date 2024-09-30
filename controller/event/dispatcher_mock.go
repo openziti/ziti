@@ -27,6 +27,8 @@ var _ Dispatcher = DispatcherMock{}
 
 type DispatcherMock struct{}
 
+func (d DispatcherMock) AcceptApiSessionEvent(event *ApiSessionEvent) {}
+
 func (d DispatcherMock) AddApiSessionEventHandler(handler ApiSessionEventHandler) {}
 
 func (d DispatcherMock) RemoveApiSessionEventHandler(handler ApiSessionEventHandler) {}

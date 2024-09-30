@@ -124,6 +124,7 @@ type Dispatcher interface {
 	AddEntityCountEventHandler(handler EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool)
 	RemoveEntityCountEventHandler(handler EntityCountEventHandler)
 
+	ApiSessionEventHandler
 	CircuitEventHandler
 	EntityChangeEventHandler
 	LinkEventHandler

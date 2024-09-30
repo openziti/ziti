@@ -12,7 +12,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.18
 	github.com/openziti/channel/v3 v3.0.3
-	github.com/openziti/edge-api v0.26.30
+	github.com/openziti/edge-api v0.26.31
 	github.com/openziti/fablab v0.5.60
 	github.com/openziti/foundation/v2 v2.0.49
 	github.com/openziti/identity v1.0.85
@@ -80,7 +80,7 @@ require (
 	github.com/go-openapi/strfmt v0.23.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-openapi/validate v0.24.0 // indirect
-	github.com/go-resty/resty/v2 v2.15.0 // indirect
+	github.com/go-resty/resty/v2 v2.15.3 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
@@ -182,11 +182,11 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zitadel/oidc/v2 v2.12.2 // indirect
-	go.mongodb.org/mongo-driver v1.16.1 // indirect
+	go.mongodb.org/mongo-driver v1.17.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	go.opentelemetry.io/otel v1.29.0 // indirect
-	go.opentelemetry.io/otel/metric v1.29.0 // indirect
-	go.opentelemetry.io/otel/trace v1.29.0 // indirect
+	go.opentelemetry.io/otel v1.30.0 // indirect
+	go.opentelemetry.io/otel/metric v1.30.0 // indirect
+	go.opentelemetry.io/otel/trace v1.30.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	go4.org v0.0.0-20180809161055-417644f6feb5 // indirect

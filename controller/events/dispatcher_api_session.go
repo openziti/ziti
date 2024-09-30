@@ -48,36 +48,40 @@ func (self *Dispatcher) initApiSessionEvents(stores *db.Stores) {
 	stores.ApiSession.AddEntityEventListenerF(self.apiSessionDeleted, boltz.EntityDeleted)
 }
 
-func (self *Dispatcher) apiSessionCreated(apiSession *db.ApiSession) {
-	event := &event.ApiSessionEvent{
-		Namespace:  event.ApiSessionEventNS,
-		EventType:  event.ApiSessionEventTypeCreated,
-		Id:         apiSession.Id,
-		Timestamp:  time.Now(),
-		Token:      apiSession.Token,
-		IdentityId: apiSession.IdentityId,
-		IpAddress:  apiSession.IPAddress,
-	}
-
+func (self *Dispatcher) AcceptApiSessionEvent(evt *event.ApiSessionEvent) {
 	for _, handler := range self.apiSessionEventHandlers.Value() {
-		go handler.AcceptApiSessionEvent(event)
+		go handler.AcceptApiSessionEvent(evt)
 	}
 }
 
-func (self *Dispatcher) apiSessionDeleted(apiSession *db.ApiSession) {
-	event := &event.ApiSessionEvent{
+func (self *Dispatcher) apiSessionCreated(apiSession *db.ApiSession) {
+	evt := &event.ApiSessionEvent{
 		Namespace:  event.ApiSessionEventNS,
-		EventType:  event.ApiSessionEventTypeDeleted,
+		EventType:  event.ApiSessionEventTypeCreated,
 		Id:         apiSession.Id,
+		Type:       event.ApiSessionTypeLegacy,
 		Timestamp:  time.Now(),
 		Token:      apiSession.Token,
 		IdentityId: apiSession.IdentityId,
 		IpAddress:  apiSession.IPAddress,
 	}
 
-	for _, handler := range self.apiSessionEventHandlers.Value() {
-		go handler.AcceptApiSessionEvent(event)
+	self.AcceptApiSessionEvent(evt)
+}
+
+func (self *Dispatcher) apiSessionDeleted(apiSession *db.ApiSession) {
+	evt := &event.ApiSessionEvent{
+		Namespace:  event.ApiSessionEventNS,
+		EventType:  event.ApiSessionEventTypeDeleted,
+		Id:         apiSession.Id,
+		Type:       event.ApiSessionTypeLegacy,
+		Timestamp:  time.Now(),
+		Token:      apiSession.Token,
+		IdentityId: apiSession.IdentityId,
+		IpAddress:  apiSession.IPAddress,
 	}
+
+	self.AcceptApiSessionEvent(evt)
 }
 
 func (self *Dispatcher) registerApiSessionEventHandler(val interface{}, config map[string]interface{}) error {

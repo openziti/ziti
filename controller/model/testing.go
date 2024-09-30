@@ -51,6 +51,10 @@ type TestContext struct {
 	dispatcher      command.Dispatcher
 }
 
+func (ctx *TestContext) GetEventDispatcher() event.Dispatcher {
+	panic("implement me")
+}
+
 func (self *TestContext) GetCloseNotifyChannel() <-chan struct{} {
 	return self.closeNotify
 }
