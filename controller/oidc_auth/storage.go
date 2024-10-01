@@ -601,6 +601,9 @@ func (s *HybridStorage) parseAccessToken(tokenStr string) (*jwt.Token, *common.A
 // TokenRequestByRefreshToken implements the op.Storage interface
 func (s *HybridStorage) TokenRequestByRefreshToken(_ context.Context, refreshToken string) (op.RefreshTokenRequest, error) {
 	_, token, err := s.parseRefreshToken(refreshToken)
+	if err != nil {
+		return nil, err
+	}
 	return &RefreshTokenRequest{*token}, err
 }
 
