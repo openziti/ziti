@@ -1,3 +1,14 @@
+# Release 1.1.15
+
+## What's New
+
+* Panic fix related to controller HA
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.1.14 -> v1.1.15](https://github.com/openziti/ziti/compare/v1.1.14...v1.1.15)
+    * [Issue #2460](https://github.com/openziti/ziti/issues/2460) - Panic on JWT token refresh
+
 # Release 1.1.14
 
 ## What's New
