@@ -2,10 +2,19 @@
 
 ## What's New
 
-* Panic fix related to controller HA
+* Bug fixes, enhancements and continuing progress on controller HA
 
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/channel/v3: [v3.0.3 -> v3.0.5](https://github.com/openziti/channel/compare/v3.0.3...v3.0.5)
+    * [Issue #146](https://github.com/openziti/channel/issues/146) - Transport options aren't being set in dialer
+    * [Issue #144](https://github.com/openziti/channel/issues/144) - Add ReadAdapter utility
+
+* github.com/openziti/edge-api: [v0.26.31 -> v0.26.32](https://github.com/openziti/edge-api/compare/v0.26.31...v0.26.32)
+* github.com/openziti/sdk-golang: [v0.23.42 -> v0.23.43](https://github.com/openziti/sdk-golang/compare/v0.23.42...v0.23.43)
+    * [Issue #629](https://github.com/openziti/sdk-golang/issues/629) - JWT session refresh interprets expiration date incorrectly
+
+* github.com/openziti/secretstream: [v0.1.24 -> v0.1.25](https://github.com/openziti/secretstream/compare/v0.1.24...v0.1.25)
 * github.com/openziti/ziti: [v1.1.14 -> v1.1.15](https://github.com/openziti/ziti/compare/v1.1.14...v1.1.15)
     * [Issue #2460](https://github.com/openziti/ziti/issues/2460) - Panic on JWT token refresh
 
