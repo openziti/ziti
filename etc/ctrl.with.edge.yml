@@ -79,9 +79,10 @@ ctrl:
     # connections. The value of newListener must be resolvable both via DNS and validate via certificates
     #newListener: tls:localhost:6262
 
-#events:
-#  jsonLogger:
-#    subscriptions:
+events:
+  jsonLogger:
+    subscriptions:
+      - type: connect
 #      - type: entityChange
 #        include:
 #          - services
@@ -103,10 +104,10 @@ ctrl:
 #      - type: services
 #      - type: edge.entityCounts
 #        interval: 5s
-#    handler:
-#      type: file
-#      format: json
-#      path: /tmp/ziti-events.log
+    handler:
+      type: file
+      format: json
+      path: /tmp/ziti-events.log
 #  usageLogger:
 #    subscriptions:
 #      - type: fabric.usage

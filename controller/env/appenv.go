@@ -993,6 +993,19 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 				"url": request.URL,
 			}).Warn("could not mark metrics for REST ApiConfig endpoint, request context start time is zero")
 		}
+
+		if rc.ApiSession != nil {
+			connectEvent := &event.ConnectEvent{
+				Namespace: event.ConnectEventNS,
+				SrcType:   event.ConnectSourceIdentity,
+				SrcId:     rc.ApiSession.IdentityId,
+				SrcAddr:   rc.Request.RemoteAddr,
+				DstId:     ae.HostController.GetNetwork().GetAppId(),
+				DstAddr:   rc.Request.Host + rc.Request.RequestURI,
+				Timestamp: time.Now(),
+			}
+			ae.GetEventDispatcher().AcceptConnectEvent(connectEvent)
+		}
 	})
 }
 

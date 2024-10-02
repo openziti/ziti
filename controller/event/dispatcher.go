@@ -126,6 +126,7 @@ type Dispatcher interface {
 
 	ApiSessionEventHandler
 	CircuitEventHandler
+	ConnectEventHandler
 	EntityChangeEventHandler
 	LinkEventHandler
 	MetricsEventHandler
