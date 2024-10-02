@@ -185,6 +185,26 @@ func (event *JsonClusterEvent) Format() ([]byte, error) {
 	return MarshalJson(event)
 }
 
+type JsonConnectEvent event.ConnectEvent
+
+func (event *JsonConnectEvent) GetEventType() string {
+	return "connect"
+}
+
+func (event *JsonConnectEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
+}
+
+type JsonSdkEvent event.SdkEvent
+
+func (event *JsonSdkEvent) GetEventType() string {
+	return "sdk"
+}
+
+func (event *JsonSdkEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
+}
+
 type JsonEntityChangeEvent event.EntityChangeEvent
 
 func (event *JsonEntityChangeEvent) GetEventType() string {
@@ -275,6 +295,14 @@ func (formatter *JsonFormatter) AcceptUsageEventV3(evt *event.UsageEventV3) {
 
 func (formatter *JsonFormatter) AcceptClusterEvent(evt *event.ClusterEvent) {
 	formatter.AcceptLoggingEvent((*JsonClusterEvent)(evt))
+}
+
+func (formatter *JsonFormatter) AcceptConnectEvent(evt *event.ConnectEvent) {
+	formatter.AcceptLoggingEvent((*JsonConnectEvent)(evt))
+}
+
+func (formatter *JsonFormatter) AcceptSdkEvent(evt *event.SdkEvent) {
+	formatter.AcceptLoggingEvent((*JsonSdkEvent)(evt))
 }
 
 func (formatter *JsonFormatter) AcceptEntityChangeEvent(evt *event.EntityChangeEvent) {

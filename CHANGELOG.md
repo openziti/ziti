@@ -1,10 +1,61 @@
-# Release 1.1.16
+# Release 1.2.0
 
 ## What's New
 
-* [Issue #2468](https://github.com/openziti/ziti/issues/2468) - Controller configuration `edge.api.address` selects the
-  enrollment token signer by matching the DNS SAN of a server certificate. If more than one server certificate
-  matches then the wrong key may sign the tokens causing enrollments to fail with a signature verification error.
+* Connect Events
+
+## Connect Events
+
+These are events generated when a successful connection is made to a controller, from any of:
+
+1. Identity, using the REST API
+2. Router
+3. Controller (peer in an HA cluster)
+
+**Configuration**
+
+```yml
+events:
+  jsonLogger:
+    subscriptions:
+      - type: connect
+    handler:
+      type: file
+      format: json
+      path: /tmp/ziti-events.log
+```
+
+**Example Events**
+
+```json
+{
+  "namespace": "connect",
+  "src_type": "identity",
+  "src_id": "ji2Rt8KJ4",
+  "src_addr": "127.0.0.1:59336",
+  "dst_id": "ctrl_client",
+  "dst_addr": "localhost:1280/edge/management/v1/edge-routers/2L7NeVuGBU",
+  "timestamp": "2024-10-02T12:17:39.501821249-04:00"
+}
+{
+  "namespace": "connect",
+  "src_type": "router",
+  "src_id": "2L7NeVuGBU",
+  "src_addr": "127.0.0.1:42702",
+  "dst_id": "ctrl_client",
+  "dst_addr": "127.0.0.1:6262",
+  "timestamp": "2024-10-02T12:17:40.529865849-04:00"
+}
+{
+  "namespace": "connect",
+  "src_type": "peer",
+  "src_id": "ctrl2",
+  "src_addr": "127.0.0.1:40056",
+  "dst_id": "ctrl1",
+  "dst_addr": "127.0.0.1:6262",
+  "timestamp": "2024-10-02T12:37:04.490859197-04:00"
+}
+```
 
 # Release 1.1.15
 

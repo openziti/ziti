@@ -32,7 +32,6 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/raft"
 	"google.golang.org/protobuf/proto"
 	"math"
 	"os"
@@ -94,7 +93,7 @@ type Network struct {
 	sequence               *sequence.Sequence
 	eventDispatcher        event.Dispatcher
 	traceController        trace.Controller
-	routerPresenceHandlers []RouterPresenceHandler
+	routerPresenceHandlers concurrenz.CopyOnWriteSlice[model.RouterPresenceHandler]
 	capabilities           []string
 	closeNotify            <-chan struct{}
 	watchdogCh             chan struct{}
@@ -354,7 +353,7 @@ func (network *Network) ConnectRouter(r *model.Router) {
 
 	time.AfterFunc(250*time.Millisecond, network.notifyAssembleAndClean)
 
-	for _, h := range network.routerPresenceHandlers {
+	for _, h := range network.routerPresenceHandlers.Value() {
 		go h.RouterConnected(r)
 	}
 	go network.ValidateTerminators(r)
@@ -446,7 +445,7 @@ func (network *Network) DisconnectRouter(r *model.Router) {
 	// 2: remove Router
 	network.Router.MarkDisconnected(r)
 
-	for _, h := range network.routerPresenceHandlers {
+	for _, h := range network.routerPresenceHandlers.Value() {
 		h.RouterDisconnected(r)
 	}
 
@@ -901,8 +900,8 @@ func (network *Network) setLinks(path *model.Path) error {
 	return nil
 }
 
-func (network *Network) AddRouterPresenceHandler(h RouterPresenceHandler) {
-	network.routerPresenceHandlers = append(network.routerPresenceHandlers, h)
+func (network *Network) AddRouterPresenceHandler(h model.RouterPresenceHandler) {
+	network.routerPresenceHandlers.Append(h)
 }
 
 func (network *Network) Run() {
@@ -1228,92 +1227,6 @@ func (network *Network) showOptions() {
 
 type renderConfig interface {
 	RenderJsonConfig() (string, error)
-}
-
-func (network *Network) Inspect(name string) (*string, error) {
-	lc := strings.ToLower(name)
-
-	if lc == "stackdump" {
-		result := debugz.GenerateStack()
-		return &result, nil
-	} else if strings.HasPrefix(lc, "metrics") {
-		msg := network.metricsRegistry.Poll()
-		js, err := json.Marshal(msg)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to marshal metrics to json")
-		}
-		result := string(js)
-		return &result, nil
-	} else if lc == "config" {
-		if rc, ok := network.config.(renderConfig); ok {
-			val, err := rc.RenderJsonConfig()
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to marshal config to json")
-			}
-			return &val, nil
-		}
-	} else if lc == "cluster-config" {
-		if src, ok := network.Dispatcher.(renderConfig); ok {
-			val, err := src.RenderJsonConfig()
-			return &val, err
-		}
-	} else if lc == "connected-routers" {
-		var result []map[string]any
-		for _, r := range network.Router.AllConnected() {
-			status := map[string]any{}
-			status["Id"] = r.Id
-			status["Name"] = r.Name
-			status["Version"] = r.VersionInfo.Version
-			status["ConnectTime"] = r.ConnectTime.Format(time.RFC3339)
-			result = append(result, status)
-		}
-		val, err := json.Marshal(result)
-		strVal := string(val)
-		return &strVal, err
-	} else if lc == "connected-peers" {
-		if raftController, ok := network.Dispatcher.(*raft.Controller); ok {
-			members, err := raftController.ListMembers()
-			if err != nil {
-				return nil, err
-			}
-			result, err := json.Marshal(members)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshall cluster member list to json (%w)", err)
-			}
-			resultStr := string(result)
-			return &resultStr, nil
-		}
-	} else if lc == "router-messaging" {
-		routerMessagingState, err := network.RouterMessaging.Inspect()
-		if err != nil {
-			return nil, err
-		}
-		result, err := json.Marshal(routerMessagingState)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshall router messaging state to json (%w)", err)
-		}
-		resultStr := string(result)
-		return &resultStr, nil
-	} else if strings.HasPrefix(lc, "terminator-costs") {
-		state := inspect.TerminatorCostDetails{}
-		xt.GlobalCosts().IterCosts(func(terminatorId string, cost xt.Cost) {
-			state.Terminators = append(state.Terminators, cost.Inspect(terminatorId))
-		})
-		result, err := json.Marshal(state)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshall terminator cost state to json (%w)", err)
-		}
-		resultStr := string(result)
-		return &resultStr, nil
-	} else {
-		for _, inspectTarget := range network.inspectionTargets.Value() {
-			if handled, val, err := inspectTarget(lc); handled {
-				return val, err
-			}
-		}
-	}
-
-	return nil, nil
 }
 
 func (network *Network) routerDeleted(routerId string) {

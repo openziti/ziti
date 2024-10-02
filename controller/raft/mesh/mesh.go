@@ -395,7 +395,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		binding.AddReceiveHandlerF(RaftDisconnectType, peer.handleReceiveDisconnect)
 		binding.AddCloseHandler(peer)
 
-		return self.PeerConnected(peer)
+		return self.PeerConnected(peer, true)
 	})
 
 	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != nil {
@@ -486,7 +486,7 @@ func ExtractSpiffeId(certs []*x509.Certificate) (string, error) {
 	return "", errors.New("invalid controller certificate, no controller SPIFFE ID in cert")
 }
 
-func (self *impl) PeerConnected(peer *Peer) error {
+func (self *impl) PeerConnected(peer *Peer, dial bool) error {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	if self.Peers[peer.Address] != nil {
@@ -509,6 +509,28 @@ func (self *impl) PeerConnected(peer *Peer) error {
 	})
 
 	self.eventDispatcher.AcceptClusterEvent(evt)
+
+	if !dial {
+		srcAddr := ""
+		dstAddr := ""
+		if ch := peer.Channel; ch != nil {
+			srcAddr = ch.Underlay().GetRemoteAddr().String()
+			dstAddr = ch.Underlay().GetLocalAddr().String()
+		}
+		connectEvent := &event.ConnectEvent{
+			Namespace: event.ConnectEventNS,
+			SrcType:   event.ConnectSourcePeer,
+			DstType:   event.ConnectDestinationController,
+			SrcId:     string(peer.Id),
+			SrcAddr:   srcAddr,
+			DstId:     self.id.Token,
+			DstAddr:   dstAddr,
+			Timestamp: time.Now(),
+		}
+
+		self.eventDispatcher.AcceptConnectEvent(connectEvent)
+	}
+
 	return nil
 }
 
@@ -637,7 +659,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		binding.AddReceiveHandlerF(RaftDataType, peer.handleReceiveData)
 		binding.AddReceiveHandlerF(RaftDisconnectType, peer.handleReceiveDisconnect)
 		binding.AddCloseHandler(peer)
-		return self.PeerConnected(peer)
+		return self.PeerConnected(peer, false)
 	})
 
 	_, err := channel.NewChannelWithUnderlay(ChannelTypeMesh, underlay, bindHandler, channel.DefaultOptions())

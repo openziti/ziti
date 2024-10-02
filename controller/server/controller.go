@@ -138,6 +138,7 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 		handler_edge_ctrl.NewTunnelHealthEventHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewExtendEnrollmentHandler(c.AppEnv),
 		handler_edge_ctrl.NewExtendEnrollmentVerifyHandler(c.AppEnv),
+		handler_edge_ctrl.NewConnectEventsHandler(c.AppEnv),
 	}
 
 	result = append(result, c.AppEnv.Broker.GetReceiveHandlers()...)
@@ -149,6 +150,7 @@ func (c *Controller) GetMgmtHandlers() []channel.TypedReceiveHandler {
 	return []channel.TypedReceiveHandler{
 		handler_edge_mgmt.NewInitEdgeHandler(c.AppEnv),
 		handler_edge_mgmt.NewValidateRouterDataModelHandler(c.AppEnv),
+		handler_edge_mgmt.NewValidateIdentityConnectionStatusesHandler(c.AppEnv),
 	}
 }
 

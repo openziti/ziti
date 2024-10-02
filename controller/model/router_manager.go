@@ -49,6 +49,11 @@ const (
 	RouterDequiesceFlag uint32 = 2
 )
 
+type RouterPresenceHandler interface {
+	RouterConnected(r *Router)
+	RouterDisconnected(r *Router)
+}
+
 func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Router {
 	if name == "" {
 		name = id

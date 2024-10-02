@@ -38,6 +38,7 @@ type NetworkControllers interface {
 	GetAll() map[string]NetworkController
 	GetNetworkController(ctrlId string) NetworkController
 	AnyCtrlChannel() channel.Channel
+	GetIfResponsive(ctrlId string) (channel.Channel, bool)
 	AllResponsiveCtrlChannels() []channel.Channel
 	AnyValidCtrlChannel() channel.Channel
 	GetCtrlChannel(ctrlId string) channel.Channel
@@ -193,6 +194,17 @@ func (self *networkControllers) AllResponsiveCtrlChannels() []channel.Channel {
 		}
 	}
 	return channels
+}
+
+func (self *networkControllers) GetIfResponsive(ctrlId string) (channel.Channel, bool) {
+	ch := self.ctrls.Get(ctrlId)
+	if ch == nil {
+		return nil, false
+	}
+	if ch.IsConnected() && !ch.IsUnresponsive() {
+		return ch.Channel(), true
+	}
+	return nil, true
 }
 
 func (self *networkControllers) AnyValidCtrlChannel() channel.Channel {

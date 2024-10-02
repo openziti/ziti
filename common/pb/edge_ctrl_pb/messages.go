@@ -150,6 +150,10 @@ func (request *UpdateTunnelTerminatorRequest) GetContentType() int32 {
 	return int32(ContentType_UpdateTunnelTerminatorRequestType)
 }
 
+func (request *ConnectEvents) GetContentType() int32 {
+	return int32(ContentType_ConnectEventsTypes)
+}
+
 func GetPrecedence(p ziti.Precedence) TerminatorPrecedence {
 	if p == ziti.PrecedenceRequired {
 		return TerminatorPrecedence_Required

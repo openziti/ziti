@@ -16,14 +16,15 @@ ctrl:
   options:
     advertiseAddress: tls:localhost:6262
 
-#events:
-#  jsonLogger:
-#    subscriptions:
+events:
+  jsonLogger:
+    subscriptions:
+      - type: connect
 #      - type: fabric.cluster
-#    handler:
-#      type: file
-#      format: json
-#      path: /tmp/ziti-events.log
+    handler:
+      type: file
+      format: json
+      path: /tmp/ziti-events.log
 
 edge:
   api:

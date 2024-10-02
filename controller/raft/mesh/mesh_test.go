@@ -59,7 +59,7 @@ func Test_AddPeer_PassesReadonlyWhenVersionsMatch(t *testing.T) {
 
 	p := &Peer{Version: testVersion("1")}
 
-	assert.NoError(t, m.PeerConnected(p))
+	assert.NoError(t, m.PeerConnected(p, true))
 	assert.Equal(t, false, m.readonly.Load(), "Expected readonly to be false, got ", m.readonly.Load())
 }
 
@@ -72,7 +72,7 @@ func Test_AddPeer_TurnsReadonlyWhenVersionsDoNotMatch(t *testing.T) {
 
 	p := &Peer{Version: testVersion("dne")}
 
-	assert.NoError(t, m.PeerConnected(p))
+	assert.NoError(t, m.PeerConnected(p, true))
 	assert.Equal(t, true, m.readonly.Load(), "Expected readonly to be true, got ", m.readonly.Load())
 }
 

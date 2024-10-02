@@ -133,6 +133,21 @@ func (context *inspectRequestContext) processLocal() {
 		} else if lc == "router-controllers" {
 			result := context.handler.env.GetNetworkControllers().Inspect()
 			context.handleJsonResponse(requested, result)
+		} else if lc == "identity-connection-state" {
+			factory, _ := xgress.GlobalRegistry().Factory("edge")
+			if factory == nil {
+				context.appendError("no xgress factory configured for edge binding")
+				continue
+			}
+
+			inspectable, ok := factory.(xgress.Inspectable)
+			if !ok {
+				context.appendError("edge factory is not of type Inspectable")
+				continue
+			}
+
+			result := inspectable.Inspect(lc, time.Second)
+			context.handleJsonResponse(requested, result)
 		}
 	}
 }

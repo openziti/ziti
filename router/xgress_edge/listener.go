@@ -770,7 +770,16 @@ func (self *edgeClientConn) processTokenUpdate(manager state.Manager, req *chann
 		return
 	}
 
-	newApiSession := state.NewApiSessionFromToken(newToken, newClaims)
+	newApiSession, err := state.NewApiSessionFromToken(newToken, newClaims)
+	if err != nil {
+		reply := edge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
+		reply.ReplyTo(req)
+
+		if err := ch.Send(reply); err != nil {
+			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with update failure")
+		}
+		return
+	}
 
 	if err := self.listener.factory.stateManager.UpdateChApiSession(ch, newApiSession); err != nil {
 		reply := edge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
