@@ -598,7 +598,7 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 func NewAuthQueryZitiMfa() *rest_model.AuthQueryDetail {
 	provider := rest_model.MfaProvidersZiti
 	return &rest_model.AuthQueryDetail{
-		TypeID:     "MFA",
+		TypeID:     rest_model.AuthQueryTypeMFA,
 		Format:     rest_model.MfaFormatsAlphaNumeric,
 		HTTPMethod: http.MethodPost,
 		HTTPURL:    "./authenticate/mfa",
@@ -613,17 +613,18 @@ func NewAuthQueryExtJwt(signer *model.ExternalJwtSigner) *rest_model.AuthQueryDe
 
 	if signer == nil {
 		return &rest_model.AuthQueryDetail{
-			TypeID:   "EXT-JWT",
+			TypeID:   rest_model.AuthQueryTypeEXTDashJWT,
 			Provider: &provider,
 		}
 	}
 
 	return &rest_model.AuthQueryDetail{
 		HTTPURL:  stringz.OrEmpty(signer.ExternalAuthUrl),
-		TypeID:   "EXT-JWT",
+		TypeID:   rest_model.AuthQueryTypeEXTDashJWT,
 		Provider: &provider,
 		Scopes:   signer.Scopes,
 		ClientID: stringz.OrEmpty(signer.ClientId),
+		ID:       signer.Id,
 	}
 }
 

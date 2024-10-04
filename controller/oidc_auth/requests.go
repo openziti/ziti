@@ -184,7 +184,7 @@ func (a *AuthRequest) GetAuthQueries() []*rest_model.AuthQueryDetail {
 			MaxLength:  8,
 			MinLength:  6,
 			Provider:   &provider,
-			TypeID:     "TOTP",
+			TypeID:     rest_model.AuthQueryTypeTOTP,
 		})
 	}
 
@@ -195,7 +195,8 @@ func (a *AuthRequest) GetAuthQueries() []*rest_model.AuthQueryDetail {
 			HTTPURL:  stringz.OrEmpty(a.SecondaryExtJwtSigner.ExternalAuthUrl),
 			Scopes:   a.SecondaryExtJwtSigner.Scopes,
 			Provider: &provider,
-			TypeID:   a.SecondaryExtJwtSigner.Id,
+			ID:       a.SecondaryExtJwtSigner.Id,
+			TypeID:   rest_model.AuthQueryTypeEXTDashJWT,
 		})
 	}
 
