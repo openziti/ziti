@@ -520,6 +520,7 @@ func (self *impl) PeerConnected(peer *Peer, dial bool) error {
 		connectEvent := &event.ConnectEvent{
 			Namespace: event.ConnectEventNS,
 			SrcType:   event.ConnectSourcePeer,
+			DstType:   event.ConnectDestinationController,
 			SrcId:     string(peer.Id),
 			SrcAddr:   srcAddr,
 			DstId:     self.id.Token,

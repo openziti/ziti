@@ -138,6 +138,7 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 		handler_edge_ctrl.NewTunnelHealthEventHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewExtendEnrollmentHandler(c.AppEnv),
 		handler_edge_ctrl.NewExtendEnrollmentVerifyHandler(c.AppEnv),
+		handler_edge_ctrl.NewConnectEventsHandler(c.AppEnv),
 	}
 
 	result = append(result, c.AppEnv.Broker.GetReceiveHandlers()...)

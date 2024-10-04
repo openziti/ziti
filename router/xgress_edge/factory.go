@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -38,17 +39,22 @@ import (
 	"time"
 )
 
+type reconnectionHandler interface {
+	NotifyOfReconnect(ch channel.Channel)
+}
+
 type Factory struct {
-	ctrls            env.NetworkControllers
-	enabled          bool
-	routerConfig     *router.Config
-	edgeRouterConfig *edgerouter.Config
-	hostedServices   *hostedServiceRegistry
-	stateManager     state.Manager
-	versionProvider  versions.VersionProvider
-	certChecker      *CertExpirationChecker
-	metricsRegistry  metrics.Registry
-	env              env.RouterEnv
+	ctrls                env.NetworkControllers
+	enabled              bool
+	routerConfig         *router.Config
+	edgeRouterConfig     *edgerouter.Config
+	hostedServices       *hostedServiceRegistry
+	stateManager         state.Manager
+	versionProvider      versions.VersionProvider
+	certChecker          *CertExpirationChecker
+	metricsRegistry      metrics.Registry
+	env                  env.RouterEnv
+	reconnectionHandlers concurrenz.CopyOnWriteSlice[reconnectionHandler]
 }
 
 func (factory *Factory) GetNetworkControllers() env.NetworkControllers {
@@ -78,6 +84,18 @@ func (factory *Factory) NotifyOfReconnect(ch channel.Channel) {
 	factory.hostedServices.HandleReconnect()
 
 	go factory.stateManager.ValidateSessions(ch, factory.edgeRouterConfig.SessionValidateChunkSize, factory.edgeRouterConfig.SessionValidateMinInterval, factory.edgeRouterConfig.SessionValidateMaxInterval)
+
+	for _, handler := range factory.reconnectionHandlers.Value() {
+		go handler.NotifyOfReconnect(ch)
+	}
+}
+
+func (factory *Factory) addReconnectionHandler(h reconnectionHandler) {
+	factory.reconnectionHandlers.Append(h)
+}
+
+func (factory *Factory) removeReconnectionHandler(h reconnectionHandler) {
+	factory.reconnectionHandlers.Append(h)
 }
 
 func (factory *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {

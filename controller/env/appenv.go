@@ -998,6 +998,7 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 			connectEvent := &event.ConnectEvent{
 				Namespace: event.ConnectEventNS,
 				SrcType:   event.ConnectSourceIdentity,
+				DstType:   event.ConnectDestinationController,
 				SrcId:     rc.ApiSession.IdentityId,
 				SrcAddr:   rc.Request.RemoteAddr,
 				DstId:     ae.HostController.GetNetwork().GetAppId(),

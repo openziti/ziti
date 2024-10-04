@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
@@ -28,6 +29,7 @@ import (
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
@@ -37,6 +39,7 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -55,6 +58,7 @@ type IdentityManager struct {
 	baseEntityManager[*Identity, *db.Identity]
 	updateSdkInfoTimer metrics.Timer
 	identityStatusMap  *identityStatusMap
+	connections        *ConnectionTracker
 }
 
 func NewIdentityManager(env Env) *IdentityManager {
@@ -62,6 +66,7 @@ func NewIdentityManager(env Env) *IdentityManager {
 		baseEntityManager:  newBaseEntityManager[*Identity, *db.Identity](env, env.GetStores().Identity),
 		updateSdkInfoTimer: env.GetMetricsRegistry().Timer("identity.update-sdk-info"),
 		identityStatusMap:  newIdentityStatusMap(IdentityActiveIntervalSeconds * time.Second),
+		connections:        newConnectionTracker(),
 	}
 	manager.impl = manager
 
@@ -469,6 +474,10 @@ func (self *IdentityManager) PatchInfo(identity *Identity, changeCtx *change.Con
 	return err
 }
 
+func (self *IdentityManager) GetConnectionTracker() *ConnectionTracker {
+	return self.connections
+}
+
 // SetHasErConnection will register an identity as having an ER connection. The registration has a TTL depending on
 // how the status map was configured.
 func (self *IdentityManager) SetHasErConnection(identityId string) {
@@ -864,6 +873,76 @@ func (statusMap *identityStatusMap) start() {
 			}
 		}
 	}()
+}
+
+type identityConnections struct {
+	connected atomic.Bool
+	routers   map[string]channel.Channel
+}
+
+func newConnectionTracker() *ConnectionTracker {
+	return &ConnectionTracker{
+		connections: cmap.New[*identityConnections](),
+	}
+}
+
+type ConnectionTracker struct {
+	connections cmap.ConcurrentMap[string, *identityConnections]
+}
+
+func (self *ConnectionTracker) MarkConnected(identityId string, ch channel.Channel) {
+	self.connections.Upsert(identityId, nil, func(exist bool, valueInMap *identityConnections, newValue *identityConnections) *identityConnections {
+		if ch.IsClosed() {
+			return valueInMap
+		}
+
+		if valueInMap == nil {
+			valueInMap = &identityConnections{
+				routers: map[string]channel.Channel{},
+			}
+		}
+
+		valueInMap.routers[ch.Id()] = ch
+		valueInMap.connected.Store(true)
+		return valueInMap
+	})
+}
+
+func (self *ConnectionTracker) MarkDisconnected(identityId string, ch channel.Channel) {
+	self.connections.Upsert(identityId, nil, func(exist bool, valueInMap *identityConnections, newValue *identityConnections) *identityConnections {
+		if valueInMap == nil {
+			return nil
+		}
+		current := valueInMap.routers[ch.Id()]
+		if current == nil || current == ch || current.IsClosed() {
+			delete(valueInMap.routers, ch.Id())
+		}
+		valueInMap.connected.Store(len(valueInMap.routers) > 0)
+		return valueInMap
+	})
+}
+
+func (self *ConnectionTracker) IsConnected(identityId string) bool {
+	val, _ := self.connections.Get(identityId)
+	if val == nil {
+		return false
+	}
+	return val.connected.Load()
+}
+
+func (self *ConnectionTracker) SyncAllFromRouter(state *edge_ctrl_pb.ConnectEvents, ch channel.Channel) {
+	m := map[string]bool{}
+	for _, identityState := range state.Events {
+		m[identityState.IdentityId] = identityState.IsConnected
+	}
+
+	for _, identityId := range self.connections.Keys() {
+		if connected := m[identityId]; connected {
+			self.MarkConnected(identityId, ch)
+		} else {
+			self.MarkDisconnected(identityId, ch)
+		}
+	}
 }
 
 type UpdateServiceConfigsCmd struct {
