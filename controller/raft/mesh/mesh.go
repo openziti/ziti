@@ -247,7 +247,7 @@ type impl struct {
 	closeNotify          chan struct{}
 	closed               atomic.Bool
 	raftAccepts          chan net.Conn
-	bindHandler          channel.BindHandler
+	bindHandler          concurrenz.AtomicValue[channel.BindHandler]
 	version              versions.VersionProvider
 	versionEncoded       []byte
 	readonly             atomic.Bool
@@ -261,8 +261,8 @@ func (self *impl) RegisterClusterStateHandler(f func(state ClusterState)) {
 }
 
 func (self *impl) Init(bindHandler channel.BindHandler) {
-	if self.bindHandler == nil {
-		self.bindHandler = bindHandler
+	if self.bindHandler.Load() == nil {
+		self.bindHandler.Store(bindHandler)
 	}
 }
 
@@ -354,10 +354,10 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 
 	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
-		if self.bindHandler == nil {
+		if self.bindHandler.Load() == nil {
 			return errors.New("bindHandler not initialized, cannot initialize new channels")
 		}
-		if err := self.bindHandler.BindChannel(binding); err != nil {
+		if err = self.bindHandler.Load().BindChannel(binding); err != nil {
 			return err
 		}
 
@@ -594,7 +594,11 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 			return errors.Errorf("connection didn't provide id '%v' or address '%v', closing connection", id, addr)
 		}
 
-		if err := binding.Bind(self.bindHandler); err != nil {
+		bh := self.bindHandler.Load()
+		if bh == nil {
+			return errors.New("bindHandler not initialized, can't accept controller connection")
+		}
+		if err = binding.Bind(bh); err != nil {
 			_ = ch.Close()
 			return errors.Wrapf(err, "error while binding channel from id '%v' or address '%v', closing connection", id, addr)
 		}

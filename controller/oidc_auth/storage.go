@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/controller/event"
 	"gopkg.in/go-jose/go-jose.v2"
 	"net/http"
 	"strings"
@@ -403,7 +404,7 @@ func (s *HybridStorage) DeleteAuthRequest(_ context.Context, id string) error {
 
 // CreateAccessToken implements the op.Storage interface
 func (s *HybridStorage) CreateAccessToken(ctx context.Context, request op.TokenRequest) (string, time.Time, error) {
-	accessTokenId, accessClaims, err := s.createAccessToken(request)
+	accessTokenId, accessClaims, err := s.createAccessToken(ctx, request)
 
 	if err != nil {
 		return "", time.Time{}, err
@@ -421,7 +422,7 @@ func (s *HybridStorage) CreateAccessToken(ctx context.Context, request op.TokenR
 }
 
 // createAccessToken converts an op.TokenRequest into an access token
-func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *common.AccessClaims, error) {
+func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenRequest) (string, *common.AccessClaims, error) {
 	now := time.Now()
 
 	claims := &common.AccessClaims{
@@ -440,8 +441,11 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 		CustomClaims: common.CustomClaims{},
 	}
 
+	var eventType = "unhandled"
+
 	switch req := request.(type) {
 	case *AuthRequest:
+		eventType = event.ApiSessionEventTypeCreated
 		claims.CustomClaims.ApiSessionId = req.ApiSessionId
 		claims.CustomClaims.ApplicationId = req.ClientID
 		claims.CustomClaims.ConfigTypes = req.ConfigTypes
@@ -455,11 +459,13 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
 		claims.ClientID = req.ClientID
 	case *RefreshTokenRequest:
+		eventType = event.ApiSessionEventTypeRefreshed
 		claims.CustomClaims = req.CustomClaims
 		claims.AuthTime = req.AuthTime
 		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
 		claims.ClientID = req.ClientID
 	case op.TokenExchangeRequest:
+		eventType = event.ApiSessionEventTypeExchanged
 		mapClaims := req.GetExchangeSubjectTokenClaims()
 		subjectClaims := &common.AccessClaims{}
 		if mapClaims != nil {
@@ -511,12 +517,28 @@ func (s *HybridStorage) createAccessToken(request op.TokenRequest) (string, *com
 	claims.CustomClaims.IsAdmin = identity.IsAdmin
 	claims.CustomClaims.ExternalId = stringz.OrEmpty(identity.ExternalId)
 
+	ipAddr := ""
+	if httpRequest, _ := HttpRequestFromContext(ctx); httpRequest != nil {
+		ipAddr = httpRequest.RemoteAddr
+	}
+
+	evt := &event.ApiSessionEvent{
+		Namespace:  event.ApiSessionEventNS,
+		EventType:  eventType,
+		Id:         claims.ApiSessionId,
+		Type:       event.ApiSessionTypeJwt,
+		Timestamp:  time.Now(),
+		IdentityId: identity.Id,
+		IpAddress:  ipAddr,
+	}
+	s.env.GetEventDispatcher().AcceptApiSessionEvent(evt)
+
 	return claims.JWTID, claims, nil
 }
 
 // CreateAccessAndRefreshTokens implements the op.Storage interface
 func (s *HybridStorage) CreateAccessAndRefreshTokens(ctx context.Context, request op.TokenRequest, currentRefreshToken string) (accessTokenID string, newRefreshToken string, expiration time.Time, err error) {
-	accessTokenId, accessClaims, err := s.createAccessToken(request)
+	accessTokenId, accessClaims, err := s.createAccessToken(ctx, request)
 
 	if err != nil {
 		return "", "", time.Time{}, err
@@ -589,6 +611,9 @@ func (s *HybridStorage) parseAccessToken(tokenStr string) (*jwt.Token, *common.A
 // TokenRequestByRefreshToken implements the op.Storage interface
 func (s *HybridStorage) TokenRequestByRefreshToken(_ context.Context, refreshToken string) (op.RefreshTokenRequest, error) {
 	_, token, err := s.parseRefreshToken(refreshToken)
+	if err != nil {
+		return nil, err
+	}
 	return &RefreshTokenRequest{*token}, err
 }
 

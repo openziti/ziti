@@ -1,3 +1,56 @@
+# Release 1.1.15
+
+## What's New
+
+* Bug fixes, enhancements and continuing progress on controller HA
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v3: [v3.0.3 -> v3.0.5](https://github.com/openziti/channel/compare/v3.0.3...v3.0.5)
+    * [Issue #146](https://github.com/openziti/channel/issues/146) - Transport options aren't being set in dialer
+    * [Issue #144](https://github.com/openziti/channel/issues/144) - Add ReadAdapter utility
+
+* github.com/openziti/edge-api: [v0.26.31 -> v0.26.32](https://github.com/openziti/edge-api/compare/v0.26.31...v0.26.32)
+* github.com/openziti/sdk-golang: [v0.23.42 -> v0.23.43](https://github.com/openziti/sdk-golang/compare/v0.23.42...v0.23.43)
+    * [Issue #629](https://github.com/openziti/sdk-golang/issues/629) - JWT session refresh interprets expiration date incorrectly
+
+* github.com/openziti/secretstream: [v0.1.24 -> v0.1.25](https://github.com/openziti/secretstream/compare/v0.1.24...v0.1.25)
+* github.com/openziti/ziti: [v1.1.14 -> v1.1.15](https://github.com/openziti/ziti/compare/v1.1.14...v1.1.15)
+    * [Issue #2460](https://github.com/openziti/ziti/issues/2460) - Panic on JWT token refresh
+
+# Release 1.1.14
+
+## What's New
+
+* Bug fixes, enhancements and continuing progress on controller HA
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge-api: [v0.26.30 -> v0.26.31](https://github.com/openziti/edge-api/compare/v0.26.30...v0.26.31)
+* github.com/openziti/jwks: [v1.0.5 -> v1.0.6](https://github.com/openziti/jwks/compare/v1.0.5...v1.0.6)
+* github.com/openziti/ziti: [v1.1.13 -> v1.1.14](https://github.com/openziti/ziti/compare/v1.1.13...v1.1.14)
+    * [Issue #2119](https://github.com/openziti/ziti/issues/2119) - Add authentication events
+    * [Issue #2424](https://github.com/openziti/ziti/issues/2424) - Enabling any health check causes WARNING to be logged
+    * [Issue #2454](https://github.com/openziti/ziti/issues/2454) - Fix release archive
+    * [Issue #1479](https://github.com/openziti/ziti/issues/1479) - ziti edge list ... show paginated output but no suggestions on how to go to next page
+    * [Issue #1420](https://github.com/openziti/ziti/issues/1420) - ziti-cli comma+space causes unhelpful error
+    * [Issue #2207](https://github.com/openziti/ziti/issues/2207) - ziti edge login --token -- gets "username and password fields are required"
+    * [Issue #2444](https://github.com/openziti/ziti/issues/2444) - Change default semantic for policies created from the CLI from AllOf to AnyOf
+
+* github.com/openziti/xweb/v2: [v2.1.2 -> v2.1.3](https://github.com/openziti/xweb/compare/v2.1.2...v2.1.3)
+  * [Issue #2454](https://github.com/openziti/ziti/issues/2454) - Fix release archive
+  * [Issue #2429](https://github.com/openziti/ziti/issues/2429) - Controller configurations without default Edge API binding panics 
+* github.com/openziti/ziti: [v1.1.12 -> v1.1.13](https://github.com/openziti/ziti/compare/v1.1.12...v1.1.13)
+  * [Issue #2427](https://github.com/openziti/ziti/issues/2427) - Add low overhead xgress protocol for DTLS links
+  * [Issue #2422](https://github.com/openziti/ziti/issues/2422) - Busy first hop links should backpressure to xgress senders
+  * support using "\*" in host.v1/host.v2 allowedAddresses
+
+
+# Release 1.1.13
+
+This release will not be promoted, as a test binary was unintentionally released in the release archives.
+
+
 # Release 1.1.12
 
 ## What's New

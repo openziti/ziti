@@ -1,8 +1,12 @@
-FROM ubuntu:rolling as fetch-ziti-bins
+FROM ubuntu:rolling AS fetch-ziti-bins
 
 # optional arg to specify which version to fetch when local "ziti-bin" directory is not present
 ARG ZITI_VERSION_OVERRIDE
 ARG DEBIAN_FRONTEND=noninteractive
+ARG GITHUB_REPO_OWNER=openziti
+ARG GITHUB_REPO_NAME=ziti
+ENV GITHUB_REPO_OWNER=${GITHUB_REPO_OWNER}
+ENV GITHUB_REPO_NAME=${GITHUB_REPO_NAME}
 
 RUN apt-get update \
     && apt-get --yes install \

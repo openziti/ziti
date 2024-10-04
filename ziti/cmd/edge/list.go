@@ -42,6 +42,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const filterExamplesTemplate = "  # use skip and limit for paging\n" +
+	"  ziti edge list %s 'skip 10 limit 10'\n\n" +
+	"  # fields can be filtered using =, !=, <, >, <=, >=, in, between, contains and icontains (for case insensitive searches) \n" +
+	"  ziti edge list configs 'name = \"test\"'\n\n" +
+	"  # filters can be combined using and, or and parenthesis\n" +
+	"  ziti edge list service-policies 'name in [\"echo-dial\", \"echo-bind\"] and semantic=\"AllOf\"'\n\n" +
+	"  # roleAttributes is a list and requires a set function like anyOf, allOf, count and isEmpty\n" +
+	"  ziti edge list identities 'anyOf(roleAttributes) contains \"echo\" skip 5 limit 20'\n\n" +
+	"  # datetimes are specified using the RFC3339 format\n" +
+	"  ziti edge list services 'name contains \"test\" or createdAt > datetime(2000-01-02T03:04:05Z)'\n\n" +
+	"  # entities can be searched by tag, using tag.<tagName> with some filter\n" +
+	"  ziti edge list edge-routers 'tags.foo = \"bar\"'"
+
 // newListCmd creates a command object for the "controller list" command
 func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
@@ -52,6 +65,7 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			err := cmd.Help()
 			cmdhelper.CheckErr(err)
 		},
+		Example: fmt.Sprintf(filterExamplesTemplate, "services"),
 	}
 
 	newOptions := func() *api.Options {
@@ -187,6 +201,7 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
+		Example:    fmt.Sprintf(filterExamplesTemplate, entityType),
 	}
 
 	// allow interspersing positional args and flags
@@ -215,6 +230,7 @@ func newListServicesCmd(options *api.Options) *cobra.Command {
 			err := runListServices(asIdentity, configTypes, roleFilters, roleSemantic, options)
 			cmdhelper.CheckErr(err)
 		},
+		Example:    fmt.Sprintf(filterExamplesTemplate, "services"),
 		SuggestFor: []string{},
 	}
 
@@ -247,6 +263,7 @@ func newListEdgeRoutersCmd(options *api.Options) *cobra.Command {
 			err := runListEdgeRouters(roleFilters, roleSemantic, options)
 			cmdhelper.CheckErr(err)
 		},
+		Example:    fmt.Sprintf(filterExamplesTemplate, "edge-routers"),
 		SuggestFor: []string{},
 	}
 
@@ -276,6 +293,7 @@ func newListIdentitiesCmd(options *api.Options) *cobra.Command {
 			err := runListIdentities(roleFilters, roleSemantic, options)
 			cmdhelper.CheckErr(err)
 		},
+		Example:    fmt.Sprintf(filterExamplesTemplate, "identities"),
 		SuggestFor: []string{},
 	}
 
@@ -303,6 +321,7 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 			err := runListChildren(entityType, subType, options, outputF)
 			cmdhelper.CheckErr(err)
 		},
+		Example:    fmt.Sprintf(filterExamplesTemplate, "service configs"),
 		SuggestFor: []string{},
 	}
 

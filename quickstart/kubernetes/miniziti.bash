@@ -1066,7 +1066,7 @@ EOF
     if  ! zitiWrapper edge list service-policies 'name="httpbin-bind-policy"' --csv \
         | grep -q "httpbin-bind-policy"; then
         logDebug "creating service-policy httpbin-bind-policy"
-        zitiWrapper edge create service-policy "httpbin-bind-policy" Bind \
+        zitiWrapper edge create service-policy "httpbin-bind-policy" Bind --semantic "AnyOf" \
             --service-roles '@httpbin-service' --identity-roles '#httpbin-hosts' >&3
     else
         logDebug "ignoring service-policy httpbin-bind-policy"
@@ -1075,7 +1075,7 @@ EOF
     if  ! zitiWrapper edge list service-policies 'name="httpbin-dial-policy"' --csv \
         | grep -q "httpbin-dial-policy"; then
         logDebug "creating service-policy httpbin-dial-policy"
-        zitiWrapper edge create service-policy "httpbin-dial-policy" Dial \
+        zitiWrapper edge create service-policy "httpbin-dial-policy" Dial --semantic "AnyOf" \
             --service-roles '@httpbin-service' --identity-roles '#httpbin-clients' >&3
     else
         logDebug "ignoring service-policy httpbin-dial-policy"
@@ -1094,7 +1094,7 @@ EOF
         | grep -q "public-routers"; then
         logDebug "creating service-edge-router-policy public-routers"
         zitiWrapper edge create service-edge-router-policy "public-routers" \
-            --edge-router-roles '#public-routers' --service-roles '#all' >&3
+            --edge-router-roles '#all' --service-roles '#all' >&3
     else
         logDebug "ignoring service-edge-router-policy public-routers"
     fi

@@ -55,9 +55,9 @@ if($toDir.Trim() -eq "") {
 
 $zipFile="${toDir}${dirSeparator}${name}"
 if($(Test-Path -Path $zipFile -PathType Leaf)) {
-    Write-Output "The file has already been downloading. No need to download again"
+    Write-Output "The distribution has already been downloaded to $zipFile. Not downloading again"
 } else {
-    mkdir -p "${toDir}"
+    New-Item -Force -ItemType Directory -Path "${toDir}"
     Write-Output "Downloading file "
     Write-Output "    from: ${downloadUrl} "
     Write-Output "      to: ${zipFile}"

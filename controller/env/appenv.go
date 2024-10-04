@@ -258,6 +258,10 @@ func (ae *AppEnv) GetManagers() *model.Managers {
 	return ae.Managers
 }
 
+func (ae *AppEnv) GetEventDispatcher() event.Dispatcher {
+	return ae.HostController.GetEventDispatcher()
+}
+
 func (ae *AppEnv) GetConfig() *config.Config {
 	return ae.HostController.GetConfig()
 }

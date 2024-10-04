@@ -185,7 +185,9 @@ func (r *signerRecord) Resolve(force bool) error {
 		for _, key := range jwksResponse.Keys {
 			//if we have an x509chain the first must be the signing key
 			if len(key.X509Chain) != 0 {
-				x509Der, err := base64.RawURLEncoding.DecodeString(key.X509Chain[0])
+				// x5c is the only attribute with padding according to
+				// RFC 7517 Section-4.7 "x5c" (X.509 Certificate Chain) Parameter
+				x509Der, err := base64.StdEncoding.DecodeString(key.X509Chain[0])
 
 				if err != nil {
 					return fmt.Errorf("could not parse JWKS keys: %v", err)

@@ -61,7 +61,7 @@ func newCreateServicePolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVar(&options.serviceRoles, "service-roles", nil, "Service roles of the new service policy")
 	cmd.Flags().StringSliceVar(&options.identityRoles, "identity-roles", nil, "Identity roles of the new service policy")
-	cmd.Flags().StringVar(&options.semantic, "semantic", "AllOf", "Semantic dictating how multiple attributes should be interpreted. Valid values: AnyOf, AllOf")
+	cmd.Flags().StringVar(&options.semantic, "semantic", "AnyOf", "Semantic dictating how multiple attributes should be interpreted. Valid values: AnyOf, AllOf")
 	cmd.Flags().StringSliceVarP(&options.postureCheckRoles, "posture-check-roles", "p", nil, "Posture check roles of the new service policy")
 	options.AddCommonFlags(cmd)
 

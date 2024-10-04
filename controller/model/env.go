@@ -34,6 +34,7 @@ import (
 type Env interface {
 	GetCommandDispatcher() command.Dispatcher
 	GetManagers() *Managers
+	GetEventDispatcher() event.Dispatcher
 	GetConfig() *config.Config
 	GetDb() boltz.Db
 	GetStores() *db.Stores

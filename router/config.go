@@ -757,6 +757,7 @@ func LoadConfig(path string) (*Config, error) {
 					pfxlog.Logger().Warn("invalid [healthChecks.linkCheck] stanza")
 				}
 			}
+		} else {
 			pfxlog.Logger().Warn("invalid [healthChecks] stanza")
 		}
 	}
