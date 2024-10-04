@@ -174,6 +174,8 @@ func (self *TestContext) GetCommandDispatcher() command.Dispatcher {
 	return self.dispatcher
 }
 
+func (self *TestContext) AddRouterPresenceHandler(RouterPresenceHandler) {}
+
 func NewTestContext(t testing.TB) *TestContext {
 	fabricTestContext := db.NewTestContext(t)
 	ctx := &TestContext{

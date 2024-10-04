@@ -61,6 +61,11 @@ enum ContentType {
   ValidateRouterDataModelRequestType = 10109;
   ValidateRouterDataModelResponseType = 10110;
   ValidateRouterDataModelResultType = 10111;
+
+  ValidateIdentityConnectionStatusesRequestType = 10112;
+  ValidateIdentityConnectionStatusesResponseType = 10113;
+  ValidateIdentityConnectionStatusesResultType = 10114;
+
 }
 
 enum Header {
@@ -285,6 +290,24 @@ message ValidateRouterDataModelResponse {
 }
 
 message RouterDataModelDetails {
+  string componentType = 1;
+  string componentId = 2;
+  string componentName = 3;
+  bool validateSuccess = 4;
+  repeated string errors = 5;
+}
+
+message ValidateIdentityConnectionStatusesRequest {
+  string routerFilter = 1;
+}
+
+message ValidateIdentityConnectionStatusesResponse {
+  bool success = 1;
+  string message = 2;
+  uint64 componentCount = 3;
+}
+
+message RouterIdentityConnectionStatusesDetails {
   string componentType = 1;
   string componentId = 2;
   string componentName = 3;

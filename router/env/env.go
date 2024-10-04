@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
+	"time"
 )
 
 type RouterEnv interface {
@@ -44,4 +45,12 @@ type RouterEnv interface {
 	GetCtrlRateLimiter() rate.AdaptiveRateLimitTracker
 	GetVersionInfo() versions.VersionProvider
 	GetRouterDataModel() *common.RouterDataModel
+	GetConnectEventsConfig() *ConnectEventsConfig
+}
+
+type ConnectEventsConfig struct {
+	Enabled          bool
+	BatchInterval    time.Duration
+	MaxQueuedEvents  int64
+	FullSyncInterval time.Duration
 }

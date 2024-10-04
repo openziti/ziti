@@ -101,6 +101,7 @@ func (self *routerEventAdapter) routerChange(eventType event.RouterEventType, r 
 		connectEvent := &event.ConnectEvent{
 			Namespace: event.ConnectEventNS,
 			SrcType:   event.ConnectSourceRouter,
+			DstType:   event.ConnectDestinationController,
 			SrcId:     r.Id,
 			SrcAddr:   srcAddr,
 			DstId:     self.Dispatcher.network.GetAppId(),

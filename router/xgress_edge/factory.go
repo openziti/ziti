@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -38,17 +39,30 @@ import (
 	"time"
 )
 
+type reconnectionHandler interface {
+	NotifyOfReconnect(ch channel.Channel)
+}
+
 type Factory struct {
-	ctrls            env.NetworkControllers
-	enabled          bool
-	routerConfig     *router.Config
-	edgeRouterConfig *edgerouter.Config
-	hostedServices   *hostedServiceRegistry
-	stateManager     state.Manager
-	versionProvider  versions.VersionProvider
-	certChecker      *CertExpirationChecker
-	metricsRegistry  metrics.Registry
-	env              env.RouterEnv
+	ctrls                env.NetworkControllers
+	enabled              bool
+	routerConfig         *router.Config
+	edgeRouterConfig     *edgerouter.Config
+	hostedServices       *hostedServiceRegistry
+	stateManager         state.Manager
+	versionProvider      versions.VersionProvider
+	certChecker          *CertExpirationChecker
+	metricsRegistry      metrics.Registry
+	env                  env.RouterEnv
+	reconnectionHandlers concurrenz.CopyOnWriteSlice[reconnectionHandler]
+	connectionTracker    *connectionTracker
+}
+
+func (factory *Factory) Inspect(key string, timeout time.Duration) any {
+	if strings.HasPrefix(key, "connections") {
+		return factory.connectionTracker.Inspect(key, timeout)
+	}
+	return nil
 }
 
 func (factory *Factory) GetNetworkControllers() env.NetworkControllers {
@@ -78,6 +92,18 @@ func (factory *Factory) NotifyOfReconnect(ch channel.Channel) {
 	factory.hostedServices.HandleReconnect()
 
 	go factory.stateManager.ValidateSessions(ch, factory.edgeRouterConfig.SessionValidateChunkSize, factory.edgeRouterConfig.SessionValidateMinInterval, factory.edgeRouterConfig.SessionValidateMaxInterval)
+
+	for _, handler := range factory.reconnectionHandlers.Value() {
+		go handler.NotifyOfReconnect(ch)
+	}
+}
+
+func (factory *Factory) addReconnectionHandler(h reconnectionHandler) {
+	factory.reconnectionHandlers.Append(h)
+}
+
+func (factory *Factory) removeReconnectionHandler(h reconnectionHandler) {
+	factory.reconnectionHandlers.Append(h)
 }
 
 func (factory *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
@@ -133,13 +159,14 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 // NewFactory constructs a new Edge Xgress Factory instance
 func NewFactory(routerConfig *router.Config, env env.RouterEnv, stateManager state.Manager) *Factory {
 	factory := &Factory{
-		ctrls:           env.GetNetworkControllers(),
-		hostedServices:  newHostedServicesRegistry(env, stateManager),
-		stateManager:    stateManager,
-		versionProvider: env.GetVersionInfo(),
-		routerConfig:    routerConfig,
-		metricsRegistry: env.GetMetricsRegistry(),
-		env:             env,
+		ctrls:             env.GetNetworkControllers(),
+		hostedServices:    newHostedServicesRegistry(env, stateManager),
+		stateManager:      stateManager,
+		versionProvider:   env.GetVersionInfo(),
+		routerConfig:      routerConfig,
+		metricsRegistry:   env.GetMetricsRegistry(),
+		env:               env,
+		connectionTracker: newConnectionTracker(env),
 	}
 	return factory
 }
@@ -267,5 +294,6 @@ func (options *Options) load(data xgress.OptionsData) error {
 	} else {
 		options.channelOptions = channel.DefaultOptions()
 	}
+
 	return nil
 }

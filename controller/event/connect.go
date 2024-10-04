@@ -21,22 +21,27 @@ import (
 )
 
 type ConnectSource string
+type ConnectDestination string
 
 const (
 	ConnectEventNS                      = "connect"
 	ConnectSourceRouter   ConnectSource = "router"
 	ConnectSourcePeer     ConnectSource = "peer"
 	ConnectSourceIdentity ConnectSource = "identity"
+
+	ConnectDestinationController ConnectDestination = "ctrl"
+	ConnectDestinationRouter     ConnectDestination = "router"
 )
 
 type ConnectEvent struct {
-	Namespace string        `json:"namespace"`
-	SrcType   ConnectSource `json:"src_type"`
-	SrcId     string        `json:"src_id"`
-	SrcAddr   string        `json:"src_addr"`
-	DstId     string        `json:"dst_id"`
-	DstAddr   string        `json:"dst_addr"`
-	Timestamp time.Time     `json:"timestamp"`
+	Namespace string             `json:"namespace"`
+	SrcType   ConnectSource      `json:"src_type"`
+	DstType   ConnectDestination `json:"dst_type"`
+	SrcId     string             `json:"src_id"`
+	SrcAddr   string             `json:"src_addr"`
+	DstId     string             `json:"dst_id"`
+	DstAddr   string             `json:"dst_addr"`
+	Timestamp time.Time          `json:"timestamp"`
 }
 
 type ConnectEventHandler interface {

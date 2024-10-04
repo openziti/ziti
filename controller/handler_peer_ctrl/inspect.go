@@ -70,13 +70,13 @@ type inspectRequestContext struct {
 }
 
 func (context *inspectRequestContext) processLocal() {
-	for _, requested := range context.request.RequestedValues {
-		val, err := context.handler.network.Inspect(requested)
-		if err != nil {
-			context.appendError(err.Error())
-		} else if val != nil {
-			context.appendValue(requested, *val)
-		}
+	result := context.handler.network.Inspections.Inspect(context.handler.network.GetAppId(), context.request.RequestedValues)
+	for _, value := range result.Results {
+		context.appendValue(value.Name, value.Value)
+	}
+
+	for _, err := range result.Errors {
+		context.appendError(err)
 	}
 }
 

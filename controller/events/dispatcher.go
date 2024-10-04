@@ -64,6 +64,7 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result.RegisterEventTypeFunctions(event.UsageEventsNs, result.registerUsageEventHandler, result.unregisterUsageEventHandler)
 	result.RegisterEventTypeFunctions(event.ClusterEventsNs, result.registerClusterEventHandler, result.unregisterClusterEventHandler)
 	result.RegisterEventTypeFunctions(event.ConnectEventNS, result.registerConnectEventHandler, result.unregisterConnectEventHandler)
+	result.RegisterEventTypeFunctions(event.SdkEventsNs, result.registerSdkEventHandler, result.unregisterSdkEventHandler)
 
 	result.RegisterEventTypeFunctions(event.ApiSessionEventNS, result.registerApiSessionEventHandler, result.unregisterApiSessionEventHandler)
 	result.RegisterEventTypeFunctions(event.EntityCountEventNS, result.registerEntityCountEventHandler, result.unregisterEntityCountEventHandler)
@@ -95,6 +96,7 @@ type Dispatcher struct {
 	usageEventV3Handlers      concurrenz.CopyOnWriteSlice[event.UsageEventV3Handler]
 	clusterEventHandlers      concurrenz.CopyOnWriteSlice[event.ClusterEventHandler]
 	connectEventHandlers      concurrenz.CopyOnWriteSlice[event.ConnectEventHandler]
+	sdkEventHandlers          concurrenz.CopyOnWriteSlice[event.SdkEventHandler]
 
 	apiSessionEventHandlers  concurrenz.CopyOnWriteSlice[event.ApiSessionEventHandler]
 	entityCountEventHandlers concurrenz.CopyOnWriteSlice[*entityCountState]

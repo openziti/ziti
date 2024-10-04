@@ -171,6 +171,10 @@ func (self *Router) IsHaEnabled() bool {
 	return self.config.Ha.Enabled
 }
 
+func (self *Router) GetConnectEventsConfig() *env.ConnectEventsConfig {
+	return &self.config.ConnectEvents
+}
+
 func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 

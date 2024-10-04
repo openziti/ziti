@@ -35,11 +35,11 @@ func (self *createApiSessionHandler) Label() string {
 func (self *createApiSessionHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	req := &edge_ctrl_pb.CreateApiSessionRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
-		logrus.WithField("router", self.ch.Id()).WithError(err).Error("could not unmarshal CreateApiSessionRequest")
+		logrus.WithField("routerId", self.ch.Id()).WithError(err).Error("could not unmarshal CreateApiSessionRequest")
 		return
 	}
 
-	logrus.WithField("router", self.ch.Id()).Debug("create api session request received")
+	logrus.WithField("routerId", self.ch.Id()).Debug("create api session request received")
 
 	ctx := &createApiSessionRequestContext{
 		baseTunnelRequestContext: baseTunnelRequestContext{
@@ -80,9 +80,9 @@ func (self *createApiSessionHandler) createApiSession(ctx *createApiSessionReque
 	responseMsg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_CreateApiSessionResponseType), body)
 	responseMsg.ReplyTo(ctx.msg)
 	if err = self.ch.Send(responseMsg); err != nil {
-		logrus.WithError(err).Error("failed to send response")
+		logrus.WithField("routerId", self.ch.Id()).WithError(err).Error("failed to send response")
 	} else {
-		logrus.WithField("router", self.ch.Id()).Debug("create api session response sent")
+		logrus.WithField("routerId", self.ch.Id()).Debug("create api session response sent")
 	}
 }
 

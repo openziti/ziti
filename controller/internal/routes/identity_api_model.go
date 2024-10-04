@@ -274,28 +274,31 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		disabledUntil = &until
 	}
 
+	erConnState := identity.EdgeRouterConnectionStatus.String()
+
 	ret := &rest_model.IdentityDetail{
-		BaseEntity:                BaseEntityToRestModel(identity, IdentityLinkFactory),
-		IsAdmin:                   &identity.IsAdmin,
-		IsDefaultAdmin:            &identity.IsDefaultAdmin,
-		Name:                      &identity.Name,
-		RoleAttributes:            &roleAttributes,
-		Type:                      ToEntityRef(identityType.Name, identityType, IdentityTypeLinkFactory),
-		TypeID:                    &identityType.Id,
-		HasEdgeRouterConnection:   &identity.HasErConnection,
-		HasAPISession:             &hasApiSession,
-		DefaultHostingPrecedence:  rest_model.TerminatorPrecedence(identity.DefaultHostingPrecedence.String()),
-		DefaultHostingCost:        &cost,
-		ServiceHostingPrecedences: getRestServiceHostingPrecedences(identity.ServiceHostingPrecedences),
-		ServiceHostingCosts:       getRestServiceHostingCosts(identity.ServiceHostingCosts),
-		IsMfaEnabled:              &isMfaEnabled,
-		AppData:                   &appData,
-		AuthPolicyID:              &identity.AuthPolicyId,
-		AuthPolicy:                authPolicyRef,
-		Disabled:                  &identity.Disabled,
-		DisabledAt:                disabledAt,
-		DisabledUntil:             disabledUntil,
-		ExternalID:                identity.ExternalId,
+		BaseEntity:                 BaseEntityToRestModel(identity, IdentityLinkFactory),
+		AppData:                    &appData,
+		AuthPolicy:                 authPolicyRef,
+		AuthPolicyID:               &identity.AuthPolicyId,
+		DefaultHostingCost:         &cost,
+		DefaultHostingPrecedence:   rest_model.TerminatorPrecedence(identity.DefaultHostingPrecedence.String()),
+		Disabled:                   &identity.Disabled,
+		DisabledAt:                 disabledAt,
+		DisabledUntil:              disabledUntil,
+		EdgeRouterConnectionStatus: &erConnState,
+		ExternalID:                 identity.ExternalId,
+		HasAPISession:              &hasApiSession,
+		HasEdgeRouterConnection:    &identity.HasErConnection,
+		IsAdmin:                    &identity.IsAdmin,
+		IsDefaultAdmin:             &identity.IsDefaultAdmin,
+		IsMfaEnabled:               &isMfaEnabled,
+		Name:                       &identity.Name,
+		RoleAttributes:             &roleAttributes,
+		ServiceHostingCosts:        getRestServiceHostingCosts(identity.ServiceHostingCosts),
+		ServiceHostingPrecedences:  getRestServiceHostingPrecedences(identity.ServiceHostingPrecedences),
+		Type:                       ToEntityRef(identityType.Name, identityType, IdentityTypeLinkFactory),
+		TypeID:                     &identityType.Id,
 	}
 	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 

@@ -25,6 +25,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -81,6 +82,22 @@ const (
 	CtrlRateLimiterMetricWorkTimer = "ctrl_limiter.work_timer"
 
 	CtrlHaMapKey = "ha"
+
+	ConnectEventsMapKey = "connectEvents"
+
+	DefaultConnectEventsEnabled = true
+
+	DefaultConnectEventsBatchInterval = 3 * time.Second
+	MinConnectEventsBatchInterval     = 250 * time.Millisecond
+	MaxConnectEventsBatchInterval     = 10 * time.Minute
+
+	DefaultConnectEventsMaxQueuedEvents = 100_000
+	MinConnectEventsMaxQueuedEvents     = 0
+	MaxConnectEventsMaxQueuedEvents     = 10_000_000
+
+	DefaultConnectEventsFullSyncInterval = 5 * time.Minute
+	MinConnectEventsFullSyncInterval     = time.Second
+	MaxConnectEventsFullSyncInterval     = 24 * time.Hour
 )
 
 // internalConfigKeys is used to distinguish internally defined configuration vs file configuration
@@ -165,10 +182,11 @@ type Config struct {
 	Ha struct {
 		Enabled bool
 	}
-	Proxy   *transport.ProxyConfiguration
-	Plugins []string
-	src     map[interface{}]interface{}
-	path    string
+	ConnectEvents env.ConnectEventsConfig
+	Proxy         *transport.ProxyConfiguration
+	Plugins       []string
+	src           map[interface{}]interface{}
+	path          string
 }
 
 func (config *Config) CurrentCtrlAddress() string {
@@ -808,6 +826,86 @@ func LoadConfig(path string) (*Config, error) {
 				}
 			}
 		}
+	}
+
+	cfg.ConnectEvents.Enabled = DefaultConnectEventsEnabled
+	cfg.ConnectEvents.BatchInterval = DefaultConnectEventsBatchInterval
+	cfg.ConnectEvents.FullSyncInterval = DefaultConnectEventsFullSyncInterval
+	cfg.ConnectEvents.MaxQueuedEvents = DefaultConnectEventsMaxQueuedEvents
+
+	if value, found := cfgmap[ConnectEventsMapKey]; found {
+		if connectEvents, ok := value.(map[interface{}]interface{}); !ok {
+			pfxlog.Logger().Warn("invalid xgress edge listener options value: connectEvents value should be map")
+		} else {
+			if value, found := connectEvents["enabled"]; found {
+				enabled := strings.EqualFold("true", fmt.Sprintf("%v", value))
+				cfg.ConnectEvents.Enabled = enabled
+			}
+
+			if value, found := connectEvents["batchInterval"]; found {
+				if strVal, ok := value.(string); ok {
+					interval, err := time.ParseDuration(strVal)
+					if err != nil {
+						pfxlog.Logger().WithError(err).Warn("invalid value: connectEvents.batchInterval value should be a valid duration")
+					} else {
+						cfg.ConnectEvents.BatchInterval = interval
+					}
+				} else {
+					pfxlog.Logger().Warn("invalid value: connectEvents.batchInterval value should be a string representing a duration")
+				}
+			}
+
+			if value, found := connectEvents["fullSyncInterval"]; found {
+				if strVal, ok := value.(string); ok {
+					interval, err := time.ParseDuration(strVal)
+					if err != nil {
+						pfxlog.Logger().WithError(err).Warn("invalid value: connectEvents.fullSyncInterval value should be a valid duration")
+					} else {
+						cfg.ConnectEvents.FullSyncInterval = interval
+					}
+				} else {
+					pfxlog.Logger().Warn("invalid value: connectEvents.fullSyncInterval value should be a string representing a duration")
+				}
+			}
+
+			if value, found := connectEvents["maxQueuedEvents"]; found {
+				if intVal, ok := value.(int); ok {
+					cfg.ConnectEvents.MaxQueuedEvents = int64(intVal)
+				} else {
+					pfxlog.Logger().Warn("invalid value: connectEvents.fullSyncInterval should be a positive integer value")
+				}
+			}
+		}
+	}
+
+	if cfg.ConnectEvents.BatchInterval < MinConnectEventsBatchInterval {
+		pfxlog.Logger().Warnf("connectEvents.batchInterval less than allowed minimum of %s", MinConnectEventsBatchInterval.String())
+		cfg.ConnectEvents.BatchInterval = MinConnectEventsBatchInterval
+	}
+
+	if cfg.ConnectEvents.BatchInterval > MaxConnectEventsBatchInterval {
+		pfxlog.Logger().Warnf("connectEvents.batchInterval greater than allowed maximum of %s", MaxConnectEventsBatchInterval.String())
+		cfg.ConnectEvents.BatchInterval = MaxConnectEventsBatchInterval
+	}
+
+	if cfg.ConnectEvents.FullSyncInterval < MinConnectEventsBatchInterval {
+		pfxlog.Logger().Warnf("connectEvents.fullSyncInterval less than allowed minimum of %s", MinConnectEventsFullSyncInterval.String())
+		cfg.ConnectEvents.FullSyncInterval = MinConnectEventsFullSyncInterval
+	}
+
+	if cfg.ConnectEvents.FullSyncInterval > MaxConnectEventsBatchInterval {
+		pfxlog.Logger().Warnf("connectEvents.fullSyncInterval greater than allowed maximum of %s", MaxConnectEventsFullSyncInterval.String())
+		cfg.ConnectEvents.FullSyncInterval = MaxConnectEventsFullSyncInterval
+	}
+
+	if cfg.ConnectEvents.MaxQueuedEvents < MinConnectEventsMaxQueuedEvents {
+		pfxlog.Logger().Warnf("connectEvents.maxQueuedEvents less than allowed minimum of %d", MinConnectEventsMaxQueuedEvents)
+		cfg.ConnectEvents.MaxQueuedEvents = MinConnectEventsMaxQueuedEvents
+	}
+
+	if cfg.ConnectEvents.MaxQueuedEvents > MaxConnectEventsMaxQueuedEvents {
+		pfxlog.Logger().Warnf("connectEvents.maxQueuedEvents greater than allowed maximum of %d", MaxConnectEventsMaxQueuedEvents)
+		cfg.ConnectEvents.MaxQueuedEvents = MaxConnectEventsMaxQueuedEvents
 	}
 
 	return cfg, nil
