@@ -296,7 +296,7 @@ func (ae *AppEnv) getEnrollmentTlsCert() (*tls.Certificate, error) {
 				tlsCert.Leaf, err = x509.ParseCertificate(tlsCert.Certificate[0])
 
 				if err != nil {
-					pfxlog.Logger().Warnf("failed to parse leading certificate in a tls configuration while determining enrollment certificate, entry at index %d is skipped, processing other certificates: %w", i, err)
+					pfxlog.Logger().Warnf("failed to parse leading certificate in a tls configuration while determining enrollment certificate, entry at index %d is skipped, processing other certificates: %s", i, err)
 					continue
 				}
 			}
