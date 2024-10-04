@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/go-openapi/swag"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/apierror"
@@ -108,6 +109,7 @@ func newLogin(store Storage, callback func(context.Context, string) string, issu
 
 func (l *login) createRouter(issuerInterceptor *op.IssuerInterceptor) {
 	l.router = mux.NewRouter()
+	l.router.Path("/auth-queries").Methods("GET").HandlerFunc(l.listAuthQueries)
 	l.router.Path("/password").Methods("GET").HandlerFunc(l.loginHandler)
 	l.router.Path("/password").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.authenticate))
 
@@ -150,14 +152,14 @@ func (l *login) loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderLogin(w http.ResponseWriter, id string, err error) {
-	renderPage(w, loginTemplate, id, err)
+	renderPage(w, loginTemplate, id, err, nil)
 }
 
-func renderTotp(w http.ResponseWriter, id string, err error) {
-	renderPage(w, totpTemplate, id, err)
+func renderTotp(w http.ResponseWriter, id string, err error, additionalData any) {
+	renderPage(w, totpTemplate, id, err, additionalData)
 }
 
-func renderPage(w http.ResponseWriter, pageTemplate *template.Template, id string, err error) {
+func renderPage(w http.ResponseWriter, pageTemplate *template.Template, id string, err error, additionalData any) {
 	w.Header().Set("content-type", "text/html; charset=utf-8")
 	var errMsg string
 	errDisplay := "none"
@@ -166,17 +168,19 @@ func renderPage(w http.ResponseWriter, pageTemplate *template.Template, id strin
 		errDisplay = "block"
 	}
 	data := &struct {
-		ID           string
-		Error        string
-		ErrorDisplay string
+		ID             string
+		Error          string
+		ErrorDisplay   string
+		AdditionalData any
 	}{
-		ID:           id,
-		Error:        errMsg,
-		ErrorDisplay: errDisplay,
+		ID:             id,
+		Error:          errMsg,
+		ErrorDisplay:   errDisplay,
+		AdditionalData: additionalData,
 	}
 
-	err = pageTemplate.Execute(w, data)
-	if err != nil {
+	templateErr := pageTemplate.Execute(w, data)
+	if templateErr != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -241,13 +245,13 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		} else {
-			renderTotp(w, id, verifyErr)
+			renderTotp(w, id, verifyErr, nil)
 			return
 		}
 	}
 
 	if !authRequest.HasAmr(AuthMethodSecondaryTotp) {
-		renderTotp(w, id, errors.New("TOTP supplied but not enabled or required on identity"))
+		renderTotp(w, id, errors.New("TOTP supplied but not enabled or required on identity"), nil)
 	}
 
 	callbackUrl := l.callback(r.Context(), id)
@@ -291,6 +295,7 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 		invalid := apierror.NewInvalidAuth()
 		if method == AuthMethodPassword {
 			renderLogin(w, credentials.AuthRequestId, invalid)
+			w.WriteHeader(invalid.Status)
 			return
 		}
 
@@ -302,12 +307,25 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	authRequest.EnvInfo = credentials.EnvInfo
 	authRequest.AuthTime = time.Now()
 
-	if authRequest.SecondaryTotpRequired && !authRequest.HasAmr(AuthMethodSecondaryTotp) {
+	var authQueries []*rest_model.AuthQueryDetail
+
+	if !authRequest.HasSecondaryAuth() {
+		authQueries = authRequest.GetAuthQueries()
+	}
+
+	if authRequest.NeedsTotp() {
 		w.Header().Set(TotpRequiredHeader, "true")
+	}
+
+	if len(authQueries) > 0 {
+
 		if responseType == HtmlContentType {
-			renderTotp(w, credentials.AuthRequestId, err)
+			renderTotp(w, credentials.AuthRequestId, err, authQueries)
 		} else if responseType == JsonContentType {
-			renderJson(w, http.StatusOK, &rest_model.Empty{})
+			respBody := JsonMap(map[string]interface{}{
+				"authQueries": authQueries,
+			})
+			renderJson(w, http.StatusOK, &respBody)
 		}
 
 		return
@@ -315,6 +333,42 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 
 	callbackUrl := l.callback(r.Context(), credentials.AuthRequestId)
 	http.Redirect(w, r, callbackUrl, http.StatusFound)
+}
+
+func (l *login) listAuthQueries(w http.ResponseWriter, r *http.Request) {
+	authRequestId := r.URL.Query().Get("id")
+
+	authRequest, err := l.store.GetAuthRequest(authRequestId)
+
+	if err != nil {
+		invalid := apierror.NewInvalidAuth()
+		http.Error(w, invalid.Message, invalid.Status)
+		return
+	}
+
+	var authQueries []*rest_model.AuthQueryDetail
+
+	if !authRequest.HasSecondaryAuth() {
+		authQueries = authRequest.GetAuthQueries()
+	}
+
+	if authRequest.NeedsTotp() {
+		w.Header().Set(TotpRequiredHeader, "true")
+	}
+
+	respBody := JsonMap(map[string]interface{}{
+		"authQueries": authQueries,
+	})
+	renderJson(w, http.StatusOK, &respBody)
+}
+
+type JsonMap map[string]any
+
+func (m *JsonMap) MarshalBinary() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	return swag.WriteJSON(m)
 }
 
 func (l *login) startEnrollTotp(w http.ResponseWriter, r *http.Request) {

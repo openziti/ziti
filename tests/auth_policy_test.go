@@ -1422,11 +1422,11 @@ func Test_AuthPolicies(t *testing.T) {
 			ctx.Req.NotEmpty(currentApiSessionEnv.Data.AuthQueries)
 
 			//API Session from auth ahs the auth query
-			ctx.Req.Equal("EXT-JWT", apiSession.AuthResponse.AuthQueries[0].TypeID)
+			ctx.Req.Equal(rest_model.AuthQueryTypeEXTDashJWT, apiSession.AuthResponse.AuthQueries[0].TypeID)
 			ctx.Req.Equal(*extJwtSignerAllowed.ExternalAuthURL, apiSession.AuthResponse.AuthQueries[0].HTTPURL)
 
 			//API Session from get current has auth query
-			ctx.Req.Equal("EXT-JWT", currentApiSessionEnv.Data.AuthQueries[0].TypeID)
+			ctx.Req.Equal(rest_model.AuthQueryTypeEXTDashJWT, currentApiSessionEnv.Data.AuthQueries[0].TypeID)
 			ctx.Req.Equal(*extJwtSignerAllowed.ExternalAuthURL, currentApiSessionEnv.Data.AuthQueries[0].HTTPURL)
 
 			t.Run("without bearer token partially authenticated", func(t *testing.T) {

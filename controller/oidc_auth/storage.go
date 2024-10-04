@@ -224,7 +224,17 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 		return nil, err
 	}
 
-	authRequest.SecondaryTotpRequired = mfa != nil && mfa.IsVerified
+	authRequest.SecondaryTotpRequired = (mfa != nil && mfa.IsVerified) || result.AuthPolicy().Secondary.RequireTotp
+
+	extJwtSignerId := stringz.OrEmpty(result.AuthPolicy().Secondary.RequiredExtJwtSigner)
+
+	if extJwtSignerId != "" {
+		authRequest.SecondaryExtJwtSigner, err = s.env.GetManagers().ExternalJwtSigner.Read(extJwtSignerId)
+
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	if authCtx.GetMethod() == AuthMethodCert {
 		if len(authRequest.PeerCerts) == 0 {
