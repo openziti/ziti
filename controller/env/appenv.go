@@ -67,6 +67,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -264,6 +265,49 @@ func (ae *AppEnv) GetEventDispatcher() event.Dispatcher {
 
 func (ae *AppEnv) GetConfig() *config.Config {
 	return ae.HostController.GetConfig()
+}
+
+// GetEnrollmentJwtSigner returns as Signer to use for enrollments based on the edge.api.address hostname
+// or an error if one cannot be located that matches. Hostname matching is done across all identity server
+// certificates, including alternate server certificates.
+func (ae *AppEnv) GetEnrollmentJwtSigner() (jwtsigner.Signer, error) {
+	enrollmentCert, err := ae.getEnrollmentTlsCert()
+
+	if err != nil {
+		return nil, fmt.Errorf("could not determine enrollment signer: %w", err)
+	}
+
+	signMethod := getJwtSigningMethod(enrollmentCert)
+	kid := fmt.Sprintf("%x", sha1.Sum(enrollmentCert.Certificate[0]))
+	return jwtsigner.New(signMethod, enrollmentCert.PrivateKey, kid), nil
+}
+
+func (ae *AppEnv) getEnrollmentTlsCert() (*tls.Certificate, error) {
+	host, _, err := net.SplitHostPort(ae.GetConfig().Edge.Api.Address)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not parse edge.api.address for host and port during enrollment signer selection [%s]", ae.GetConfig().Edge.Api.Address)
+	}
+
+	for i, tlsCert := range ae.GetConfig().Id.ServerCert() {
+		if tlsCert.Leaf == nil {
+			if len(tlsCert.Certificate) > 0 {
+				var err error
+				tlsCert.Leaf, err = x509.ParseCertificate(tlsCert.Certificate[0])
+
+				if err != nil {
+					pfxlog.Logger().Warnf("failed to parse leading certificate in a tls configuration while determining enrollment certificate, entry at index %d is skipped, processing other certificates: %w", i, err)
+					continue
+				}
+			}
+		}
+
+		if tlsCert.Leaf.VerifyHostname(host) == nil {
+			return tlsCert, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find a configured server certificate that matches hostname [%s]", host)
 }
 
 func (ae *AppEnv) GetServerJwtSigner() jwtsigner.Signer {
