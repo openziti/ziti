@@ -75,7 +75,10 @@ import (
 
 var _ model.Env = &AppEnv{}
 
-const ZitiSession = "zt-session"
+const (
+	ZitiSession      = "zt-session"
+	ClientApiBinding = "edge-client"
+)
 
 const (
 	metricAuthLimiterCurrentQueuedCount = "auth.limiter.queued_count"
@@ -285,11 +288,49 @@ func (ae *AppEnv) GetEnrollmentJwtSigner() (jwtsigner.Signer, error) {
 func (ae *AppEnv) getEnrollmentTlsCert() (*tls.Certificate, error) {
 	host, _, err := net.SplitHostPort(ae.GetConfig().Edge.Api.Address)
 
+	var hostnameErrors []error
+
 	if err != nil {
 		return nil, fmt.Errorf("could not parse edge.api.address for host and port during enrollment signer selection [%s]", ae.GetConfig().Edge.Api.Address)
 	}
 
-	for i, tlsCert := range ae.GetConfig().Id.ServerCert() {
+	tlsCert, err := ae.getCertForHostname(ae.GetConfig().Id.ServerCert(), host)
+
+	if err == nil {
+		return tlsCert, nil
+	} else {
+		hostnameErrors = append(hostnameErrors, err)
+	}
+
+	for _, serverConfig := range ae.GetHostController().GetXWebInstance().GetConfig().ServerConfigs {
+		clientApiFound := false
+		for _, curApi := range serverConfig.APIs {
+			if curApi.Binding() == ClientApiBinding {
+				clientApiFound = true
+			}
+		}
+
+		if clientApiFound {
+			tlsCert, err = ae.getCertForHostname(serverConfig.Identity.ServerCert(), host)
+
+			if err != nil {
+				hostnameErrors = append(hostnameErrors, err)
+				continue
+			}
+
+			if tlsCert != nil {
+				return tlsCert, nil
+			}
+		}
+	}
+
+	pfxlog.Logger().WithField("hostnameErrors", hostnameErrors).Errorf("could not find a server certificate for the edge.api.address host [%s]", host)
+
+	return nil, fmt.Errorf("could not find a configured server certificate that matches hostname [%s] in root controller identity nor in xweb identities", host)
+}
+
+func (ae *AppEnv) getCertForHostname(tlsCerts []*tls.Certificate, hostname string) (*tls.Certificate, error) {
+	for i, tlsCert := range tlsCerts {
 		if tlsCert.Leaf == nil {
 			if len(tlsCert.Certificate) > 0 {
 				var err error
@@ -302,12 +343,12 @@ func (ae *AppEnv) getEnrollmentTlsCert() (*tls.Certificate, error) {
 			}
 		}
 
-		if tlsCert.Leaf.VerifyHostname(host) == nil {
+		if tlsCert.Leaf.VerifyHostname(hostname) == nil {
 			return tlsCert, nil
 		}
 	}
 
-	return nil, fmt.Errorf("could not find a configured server certificate that matches hostname [%s]", host)
+	return nil, fmt.Errorf("could not find a configured server certificate that matches hostname [%s]", hostname)
 }
 
 func (ae *AppEnv) GetServerJwtSigner() jwtsigner.Signer {
