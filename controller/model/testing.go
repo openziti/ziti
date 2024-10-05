@@ -25,7 +25,6 @@ import (
 	"testing"
 	"time"
 
-	"errors"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/identity"
@@ -53,7 +52,7 @@ type TestContext struct {
 }
 
 func (ctx *TestContext) GetEnrollmentJwtSigner() (jwtsigner.Signer, error) {
-	return nil, errors.New("not implemented")
+	return ctx, nil
 }
 
 func (ctx *TestContext) GetEventDispatcher() event.Dispatcher {
