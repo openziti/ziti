@@ -48,6 +48,8 @@ type Env interface {
 	GetFingerprintGenerator() cert.FingerprintGenerator
 	HandleServiceUpdatedEventForIdentityId(identityId string)
 
+	GetEnrollmentJwtSigner() (jwtsigner.Signer, error)
+
 	GetServerJwtSigner() jwtsigner.Signer
 	GetServerCert() (*tls.Certificate, string, jwt.SigningMethod)
 	JwtSignerKeyFunc(token *jwt.Token) (interface{}, error)

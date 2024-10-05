@@ -67,6 +67,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -74,7 +75,10 @@ import (
 
 var _ model.Env = &AppEnv{}
 
-const ZitiSession = "zt-session"
+const (
+	ZitiSession      = "zt-session"
+	ClientApiBinding = "edge-client"
+)
 
 const (
 	metricAuthLimiterCurrentQueuedCount = "auth.limiter.queued_count"
@@ -264,6 +268,87 @@ func (ae *AppEnv) GetEventDispatcher() event.Dispatcher {
 
 func (ae *AppEnv) GetConfig() *config.Config {
 	return ae.HostController.GetConfig()
+}
+
+// GetEnrollmentJwtSigner returns as Signer to use for enrollments based on the edge.api.address hostname
+// or an error if one cannot be located that matches. Hostname matching is done across all identity server
+// certificates, including alternate server certificates.
+func (ae *AppEnv) GetEnrollmentJwtSigner() (jwtsigner.Signer, error) {
+	enrollmentCert, err := ae.getEnrollmentTlsCert()
+
+	if err != nil {
+		return nil, fmt.Errorf("could not determine enrollment signer: %w", err)
+	}
+
+	signMethod := getJwtSigningMethod(enrollmentCert)
+	kid := fmt.Sprintf("%x", sha1.Sum(enrollmentCert.Certificate[0]))
+	return jwtsigner.New(signMethod, enrollmentCert.PrivateKey, kid), nil
+}
+
+func (ae *AppEnv) getEnrollmentTlsCert() (*tls.Certificate, error) {
+	host, _, err := net.SplitHostPort(ae.GetConfig().Edge.Api.Address)
+
+	var hostnameErrors []error
+
+	if err != nil {
+		return nil, fmt.Errorf("could not parse edge.api.address for host and port during enrollment signer selection [%s]", ae.GetConfig().Edge.Api.Address)
+	}
+
+	tlsCert, err := ae.getCertForHostname(ae.GetConfig().Id.ServerCert(), host)
+
+	if err == nil {
+		return tlsCert, nil
+	} else {
+		hostnameErrors = append(hostnameErrors, err)
+	}
+
+	for _, serverConfig := range ae.GetHostController().GetXWebInstance().GetConfig().ServerConfigs {
+		clientApiFound := false
+		for _, curApi := range serverConfig.APIs {
+			if curApi.Binding() == ClientApiBinding {
+				clientApiFound = true
+			}
+		}
+
+		if clientApiFound {
+			tlsCert, err = ae.getCertForHostname(serverConfig.Identity.ServerCert(), host)
+
+			if err != nil {
+				hostnameErrors = append(hostnameErrors, err)
+				continue
+			}
+
+			if tlsCert != nil {
+				return tlsCert, nil
+			}
+		}
+	}
+
+	pfxlog.Logger().WithField("hostnameErrors", hostnameErrors).Errorf("could not find a server certificate for the edge.api.address host [%s]", host)
+
+	return nil, fmt.Errorf("could not find a configured server certificate that matches hostname [%s] in root controller identity nor in xweb identities", host)
+}
+
+func (ae *AppEnv) getCertForHostname(tlsCerts []*tls.Certificate, hostname string) (*tls.Certificate, error) {
+	for i, tlsCert := range tlsCerts {
+		if tlsCert.Leaf == nil {
+			if len(tlsCert.Certificate) > 0 {
+				var err error
+				tlsCert.Leaf, err = x509.ParseCertificate(tlsCert.Certificate[0])
+
+				if err != nil {
+					pfxlog.Logger().Warnf("failed to parse leading certificate in a tls configuration while determining enrollment certificate, entry at index %d is skipped, processing other certificates: %s", i, err)
+					continue
+				}
+			}
+		}
+
+		if tlsCert.Leaf.VerifyHostname(hostname) == nil {
+			return tlsCert, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find a configured server certificate that matches hostname [%s]", hostname)
 }
 
 func (ae *AppEnv) GetServerJwtSigner() jwtsigner.Signer {

@@ -76,8 +76,13 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 			Subject:   subject,
 		},
 	}
+	signer, err := env.GetEnrollmentJwtSigner()
 
-	signedJwt, err := env.GetServerJwtSigner().Generate(enrollmentClaims)
+	if err != nil {
+		return fmt.Errorf("could not get enrollment signer: %v", err)
+	}
+
+	signedJwt, err := signer.Generate(enrollmentClaims)
 
 	if err != nil {
 		return err
