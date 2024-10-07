@@ -38,12 +38,15 @@ func (h *apiSessionUpdatedHandler) ContentType() int32 {
 	return env.ApiSessionUpdatedType
 }
 
-func (h *apiSessionUpdatedHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
+func (h *apiSessionUpdatedHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionUpdated{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 			for _, session := range req.ApiSessions {
-				h.sm.UpdateApiSession(session)
+				h.sm.UpdateApiSession(&ApiSession{
+					ApiSession:   session,
+					ControllerId: ch.Id(),
+				})
 			}
 		} else {
 			pfxlog.Logger().Panic("could not convert message as network session updated")

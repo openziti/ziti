@@ -38,7 +38,7 @@ func (h *apiSessionRemovedHandler) ContentType() int32 {
 	return env.ApiSessionRemovedType
 }
 
-func (h *apiSessionRemovedHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
+func (h *apiSessionRemovedHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionRemoved{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
@@ -55,6 +55,7 @@ func (h *apiSessionRemovedHandler) HandleReceive(msg *channel.Message, _ channel
 				pfxlog.Logger().
 					WithField("apiSessionToken", token).
 					WithField("apiSessionId", id).
+					WithField("ctrlId", ch.Id()).
 					Debugf("removing api session [token: %s] [id: %s]", token, id)
 
 				h.sm.RemoveApiSession(token)

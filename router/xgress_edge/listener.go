@@ -136,8 +136,8 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 		pfxlog.Logger().Errorf("connId not set. unable to process connect message")
 		return
 	}
+	ctrlCh := self.apiSession.SelectCtrlCh(self.listener.factory.ctrls)
 
-	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
 	if ctrlCh == nil {
 		errStr := "no controller available, cannot create circuit"
 		log.Error(errStr)
@@ -275,7 +275,8 @@ func (self *edgeClientConn) sendCreateCircuitRequestV2(req *ctrl_msg.CreateCircu
 }
 
 func (self *edgeClientConn) processBind(manager state.Manager, req *channel.Message, ch channel.Channel) {
-	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
+	ctrlCh := self.apiSession.SelectCtrlCh(self.listener.factory.ctrls)
+
 	if ctrlCh == nil {
 		errStr := "no controller available, cannot create terminator"
 		pfxlog.ContextLogger(ch.Label()).
@@ -581,8 +582,8 @@ func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channe
 		log.Error("failed to update bind, no listener found")
 		return
 	}
+	ctrlCh := self.apiSession.SelectCtrlCh(self.listener.factory.ctrls)
 
-	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
 	if ctrlCh == nil {
 		log.Error("no controller available, cannot update terminator")
 		return

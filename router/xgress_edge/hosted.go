@@ -295,7 +295,7 @@ func (self *hostedServiceRegistry) RemoveTerminators(terminatorIds []string) err
 	request := &ctrl_pb.RemoveTerminatorsRequest{
 		TerminatorIds: terminatorIds,
 	}
-
+	
 	ctrls := self.env.GetNetworkControllers()
 	ctrlCh := ctrls.AnyValidCtrlChannel()
 	if ctrlCh == nil {
@@ -560,7 +560,8 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 		request.ApiSessionToken = apiSession.Token
 	}
 
-	ctrlCh := factory.ctrls.AnyCtrlChannel()
+	ctrlCh := terminator.edgeClientConn.apiSession.SelectCtrlCh(factory.ctrls)
+
 	if ctrlCh == nil {
 		errStr := "no controller available, cannot create terminator"
 		log.Error(errStr)

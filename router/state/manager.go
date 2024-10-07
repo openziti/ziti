@@ -72,8 +72,8 @@ type Manager interface {
 	//ApiSessions
 	GetApiSession(token string) *ApiSession
 	GetApiSessionWithTimeout(token string, timeout time.Duration) *ApiSession
-	AddApiSession(apiSession *edge_ctrl_pb.ApiSession)
-	UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession)
+	AddApiSession(apiSession *ApiSession)
+	UpdateApiSession(apiSession *ApiSession)
 	RemoveApiSession(token string)
 	RemoveMissingApiSessions(knownSessions []*edge_ctrl_pb.ApiSession, beforeSessionId string)
 	AddConnectedApiSession(token string)
@@ -114,7 +114,7 @@ var _ Manager = (*ManagerImpl)(nil)
 func NewManager(env Env) Manager {
 	return &ManagerImpl{
 		EventEmmiter:            events.New(),
-		apiSessionsByToken:      cmap.New[*edge_ctrl_pb.ApiSession](),
+		apiSessionsByToken:      cmap.New[*ApiSession](),
 		activeApiSessions:       cmap.New[*MapWithMutex](),
 		sessions:                cmap.New[uint32](),
 		recentlyRemovedSessions: cmap.New[time.Time](),
@@ -126,7 +126,7 @@ func NewManager(env Env) Manager {
 
 type ManagerImpl struct {
 	env                Env
-	apiSessionsByToken cmap.ConcurrentMap[string, *edge_ctrl_pb.ApiSession]
+	apiSessionsByToken cmap.ConcurrentMap[string, *ApiSession]
 
 	activeApiSessions cmap.ConcurrentMap[string, *MapWithMutex]
 	activeChannels    cmap.ConcurrentMap[string, *ApiSession]
@@ -362,7 +362,7 @@ func (sm *ManagerImpl) IsSyncInProgress() bool {
 	return sm.currentSync == ""
 }
 
-func (sm *ManagerImpl) AddApiSession(apiSession *edge_ctrl_pb.ApiSession) {
+func (sm *ManagerImpl) AddApiSession(apiSession *ApiSession) {
 	pfxlog.Logger().
 		WithField("apiSessionId", apiSession.Id).
 		WithField("apiSessionToken", apiSession.Token).
@@ -372,7 +372,7 @@ func (sm *ManagerImpl) AddApiSession(apiSession *edge_ctrl_pb.ApiSession) {
 	sm.Emit(EventAddedApiSession, apiSession)
 }
 
-func (sm *ManagerImpl) UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession) {
+func (sm *ManagerImpl) UpdateApiSession(apiSession *ApiSession) {
 	pfxlog.Logger().
 		WithField("apiSessionId", apiSession.Id).
 		WithField("apiSessionToken", apiSession.Token).
@@ -405,7 +405,7 @@ func (sm *ManagerImpl) RemoveMissingApiSessions(knownApiSessions []*edge_ctrl_pb
 	}
 
 	var tokensToRemove []string
-	sm.apiSessionsByToken.IterCb(func(token string, apiSession *edge_ctrl_pb.ApiSession) {
+	sm.apiSessionsByToken.IterCb(func(token string, apiSession *ApiSession) {
 		if _, ok := validTokens[token]; !ok && (beforeSessionId == "" || apiSession.Id <= beforeSessionId) {
 			tokensToRemove = append(tokensToRemove, token)
 		}
@@ -454,8 +454,21 @@ func (sm *ManagerImpl) GetApiSessionWithTimeout(token string, timeout time.Durat
 
 type ApiSession struct {
 	*edge_ctrl_pb.ApiSession
-	JwtToken *jwt.Token
-	Claims   *common.AccessClaims
+	JwtToken     *jwt.Token
+	Claims       *common.AccessClaims
+	ControllerId string //used for non HA API Sessions
+}
+
+func (a *ApiSession) SelectCtrlCh(ctrls env.NetworkControllers) channel.Channel {
+	if a == nil {
+		return nil
+	}
+
+	if a.ControllerId != "" {
+		return ctrls.GetCtrlChannel(a.ControllerId)
+	}
+
+	return ctrls.AnyCtrlChannel()
 }
 
 func NewApiSessionFromToken(jwtToken *jwt.Token, accessClaims *common.AccessClaims) *ApiSession {
@@ -493,9 +506,7 @@ func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
 	}
 
 	if apiSession, ok := sm.apiSessionsByToken.Get(token); ok {
-		return &ApiSession{
-			ApiSession: apiSession,
-		}
+		return apiSession
 	}
 	return nil
 }
