@@ -266,9 +266,10 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 	claims := &ziti.EnrollmentClaims{
 		EnrollmentMethod: method,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:  fmt.Sprintf(`https://%s/`, ae.GetConfig().Edge.Api.Address),
-			Subject: ca.Id,
-			ID:      ca.Id,
+			Audience: jwt.ClaimStrings{env.JwtAudEnrollment},
+			Issuer:   fmt.Sprintf(`https://%s/`, ae.GetConfig().Edge.Api.Address),
+			Subject:  ca.Id,
+			ID:       ca.Id,
 		},
 	}
 
