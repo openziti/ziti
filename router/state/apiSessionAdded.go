@@ -71,12 +71,15 @@ func (h *apiSessionAddedHandler) ContentType() int32 {
 	return env.ApiSessionAddedType
 }
 
-func (h *apiSessionAddedHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
+func (h *apiSessionAddedHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionAdded{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 			for _, session := range req.ApiSessions {
-				h.sm.AddApiSession(session)
+				h.sm.AddApiSession(&ApiSession{
+					ApiSession:   session,
+					ControllerId: ch.Id(),
+				})
 			}
 
 			if req.IsFullState {
@@ -149,7 +152,9 @@ func (h *apiSessionAddedHandler) syncFailed(err error) {
 func (h *apiSessionAddedHandler) legacySync(reqWithState *apiSessionAddedWithState) {
 	pfxlog.Logger().Warn("using legacy sync logic some connections may be dropped")
 	for _, apiSession := range reqWithState.ApiSessions {
-		h.sm.AddApiSession(apiSession)
+		h.sm.AddApiSession(&ApiSession{
+			ApiSession: apiSession,
+		})
 	}
 
 	h.sm.RemoveMissingApiSessions(reqWithState.ApiSessions, "")

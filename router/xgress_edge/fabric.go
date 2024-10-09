@@ -236,7 +236,9 @@ func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifySdk boo
 		if notifyCtrl {
 			if self.terminatorId != "" {
 				logger.Info("removing terminator on controller")
-				ctrlCh := self.edgeClientConn.listener.factory.ctrls.AnyCtrlChannel()
+
+				ctrlCh := self.edgeClientConn.apiSession.SelectCtrlCh(self.edgeClientConn.listener.factory.ctrls)
+
 				if ctrlCh == nil {
 					logger.Error("no controller available, unable to remove terminator")
 				} else if err := self.edgeClientConn.removeTerminator(ctrlCh, self.token, self.terminatorId); err != nil {
