@@ -90,6 +90,9 @@ func MapApiSessionAuthQueriesToRestEntity(ae *env.AppEnv, rc *response.RequestCo
 			MinLength:  authQuery.MinLength,
 			Provider:   authQuery.Provider,
 			TypeID:     authQuery.TypeID,
+			ClientID:   authQuery.ClientID,
+			Scopes:     authQuery.Scopes,
+			ID:         authQuery.ID,
 		})
 	}
 }
