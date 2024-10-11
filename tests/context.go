@@ -17,6 +17,7 @@
 package tests
 
 import (
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/zitirest"
 	"io"
@@ -184,6 +185,42 @@ func (ctx *TestContext) T() *testing.T {
 
 func (ctx *TestContext) NewTransport() *http.Transport {
 	return ctx.NewTransportWithClientCert(nil, nil)
+}
+
+func (ctx *TestContext) ClientApiUrl() *url.URL {
+	clientApiUrl, err := url.Parse("https://" + ctx.ApiHost + EdgeClientApiPath)
+
+	if err != nil {
+		panic(err)
+	}
+	return clientApiUrl
+}
+
+func (ctx *TestContext) ManagementApiUrl() *url.URL {
+	manApiUrl, err := url.Parse("https://" + ctx.ApiHost + EdgeManagementApiPath)
+
+	if err != nil {
+		panic(err)
+	}
+	return manApiUrl
+}
+
+func (ctx *TestContext) ControllerCaPool() *x509.CertPool {
+	return ctx.ControllerConfig.Id.CA()
+}
+
+func (ctx *TestContext) NewEdgeClientApi(totpProvider func(chan string)) *edge_apis.ClientApiClient {
+	if totpProvider == nil {
+		totpProvider = func(chan string) {}
+	}
+	return edge_apis.NewClientApiClient([]*url.URL{ctx.ClientApiUrl()}, ctx.ControllerCaPool(), totpProvider)
+}
+
+func (ctx *TestContext) NewEdgeManagementApi(totpProvider func(chan string)) *edge_apis.ManagementApiClient {
+	if totpProvider == nil {
+		totpProvider = func(chan string) {}
+	}
+	return edge_apis.NewManagementApiClient([]*url.URL{ctx.ClientApiUrl()}, ctx.ControllerCaPool(), totpProvider)
 }
 
 func (ctx *TestContext) NewTransportWithIdentity(i idlib.Identity) *http.Transport {

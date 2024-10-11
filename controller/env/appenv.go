@@ -78,6 +78,8 @@ var _ model.Env = &AppEnv{}
 const (
 	ZitiSession      = "zt-session"
 	ClientApiBinding = "edge-client"
+
+	JwtAudEnrollment = "openziti-enroller"
 )
 
 const (
