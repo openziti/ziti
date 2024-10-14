@@ -68,29 +68,29 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	var err error
 
 	log := pfxlog.Logger()
-	log.WithField("mode", self.listenOptions.mode).Info("creating interceptor")
-
-	resolver, err := dns.NewResolver(self.listenOptions.resolver)
-	if err != nil {
-		pfxlog.Logger().WithError(err).Error("failed to start DNS resolver. using dummy resolver")
-		resolver = dns.NewDummyResolver()
-	}
-
-	if err = intercept.SetDnsInterceptIpRange(self.listenOptions.dnsSvcIpRange); err != nil {
-		pfxlog.Logger().Errorf("invalid dns service IP range %s: %v", self.listenOptions.dnsSvcIpRange, err)
-		return err
-	}
+	var resolver dns.Resolver
 
 	if strings.HasPrefix(self.listenOptions.mode, "tproxy") {
+		log.WithField("mode", self.listenOptions.mode).Info("creating tproxy interceptor")
+
+		resolver, err = dns.NewResolver(self.listenOptions.resolver)
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("failed to start DNS resolver. using dummy resolver")
+			resolver = dns.NewDummyResolver()
+		}
+
+		if err = intercept.SetDnsInterceptIpRange(self.listenOptions.dnsSvcIpRange); err != nil {
+			pfxlog.Logger().Errorf("invalid dns service IP range %s: %v", self.listenOptions.dnsSvcIpRange, err)
+			return err
+		}
+
 		tproxyConfig := tproxy.Config{
 			LanIf:            self.listenOptions.lanIf,
 			UDPIdleTimeout:   self.listenOptions.udpIdleTimeout,
 			UDPCheckInterval: self.listenOptions.udpCheckInterval,
 		}
 
-		if strings.HasPrefix(self.listenOptions.mode, "tproxy:") {
-			tproxyConfig.Diverter = strings.TrimPrefix(self.listenOptions.mode, "tproxy:")
-		}
+		tproxyConfig.Diverter = strings.TrimPrefix(self.listenOptions.mode, "tproxy:")
 
 		if self.interceptor, err = tproxy.New(tproxyConfig); err != nil {
 			return errors.Wrap(err, "failed to initialize tproxy interceptor")
@@ -99,9 +99,10 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 		self.listenOptions.resolver = ""
 		self.interceptor = host.New()
 	} else if self.listenOptions.mode == "proxy" {
+		log.WithField("mode", self.listenOptions.mode).Info("creating proxy interceptor")
 		self.listenOptions.resolver = ""
 		if self.interceptor, err = proxy.New(net.IPv4zero, self.listenOptions.services); err != nil {
-			return errors.Wrap(err, "failed to initialize tproxy interceptor")
+			return errors.Wrap(err, "failed to initialize proxy interceptor")
 		}
 	} else {
 		return errors.Errorf("unsupported tunnel mode '%v'", self.listenOptions.mode)
