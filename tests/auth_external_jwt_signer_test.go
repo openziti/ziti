@@ -183,13 +183,20 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	validJwtSignerCert, validJwtSignerPrivateKey := newSelfSignedCert("valid signer")
 	validJwtSignerCertPem := nfpem.EncodeToString(validJwtSignerCert)
 
+	validJwtSignerAuthUrl := "https://valid.jwt.signer.url.example.com"
+	validJwtSignerClientId := "valid-client-id"
+	validJwtSignerScopes := []string{"valid-scope1", "valid-scope2"}
+
 	validJwtSigner := &rest_model.ExternalJWTSignerCreate{
-		CertPem:  &validJwtSignerCertPem,
-		Enabled:  B(true),
-		Name:     S("Test JWT Signer - Enabled"),
-		Kid:      S(uuid.NewString()),
-		Issuer:   S("the-very-best-iss"),
-		Audience: S("the-very-best-aud"),
+		CertPem:         &validJwtSignerCertPem,
+		Enabled:         B(true),
+		Name:            S("Test JWT Signer - Enabled"),
+		Kid:             S(uuid.NewString()),
+		Issuer:          S("the-very-best-iss"),
+		Audience:        S("the-very-best-aud"),
+		ClientID:        &validJwtSignerClientId,
+		Scopes:          validJwtSignerScopes,
+		ExternalAuthURL: &validJwtSignerAuthUrl,
 	}
 
 	createResponseEnv = &rest_model.CreateEnvelope{}
@@ -198,6 +205,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	ctx.Req.NoError(err)
 	ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
 
+	validSignerUsingInternalId := createResponseEnv.Data.ID
 	signerIds = append(signerIds, createResponseEnv.Data.ID)
 
 	//valid signer w/ external id
@@ -920,5 +928,110 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		ctx.Req.NotNil(result)
 		ctx.Req.NotNil(result.Data)
 		ctx.Req.NotNil(result.Data.Token)
+	})
+
+	t.Run("can authenticate with cert auth and secondary ext-jwt", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		//create auth policy, new identity w/ policy, create token for authentication
+		authPolicyCertExtJwt := &rest_model.AuthPolicyCreate{
+			Name: ToPtr("createCertJwtAuthPolicy"),
+			Primary: &rest_model.AuthPolicyPrimary{
+				Cert: &rest_model.AuthPolicyPrimaryCert{
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(true),
+				},
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
+					AllowedSigners: []string{},
+					Allowed:        ToPtr(false),
+				},
+				Updb: &rest_model.AuthPolicyPrimaryUpdb{
+					Allowed:                ToPtr(false),
+					LockoutDurationMinutes: ToPtr(int64(0)),
+					MaxAttempts:            ToPtr(int64(3)),
+					MinPasswordLength:      ToPtr(int64(7)),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
+				},
+			},
+			Secondary: &rest_model.AuthPolicySecondary{
+				RequireExtJWTSigner: ToPtr(validSignerUsingInternalId),
+				RequireTotp:         ToPtr(false),
+			},
+		}
+
+		createCertJwtAuthPolicy := &rest_model.CreateEnvelope{}
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(createCertJwtAuthPolicy).SetBody(authPolicyCertExtJwt).Post("/auth-policies")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+		ctx.NotNil(createCertJwtAuthPolicy)
+		ctx.NotNil(createCertJwtAuthPolicy.Data)
+		ctx.NotEmpty(createCertJwtAuthPolicy.Data.ID)
+
+		newId, certAuth := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(uuid.NewString(), false)
+
+		identityPatch := &rest_model.IdentityPatch{
+			AuthPolicyID: ToPtr(createCertJwtAuthPolicy.Data.ID),
+		}
+
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityPatch).Patch("/identities/" + newId)
+		ctx.NoError(err)
+		ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+		jwtToken := jwt.New(jwt.SigningMethodES256)
+		jwtToken.Claims = jwt.RegisteredClaims{
+			Audience:  []string{*validJwtSigner.Audience},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+			ID:        time.Now().String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+			Issuer:    *validJwtSigner.Issuer,
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
+			Subject:   newId,
+		}
+
+		jwtToken.Header["kid"] = *validJwtSigner.Kid
+
+		jwtStrSigned, err := jwtToken.SignedString(validJwtSignerPrivateKey)
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(jwtStrSigned)
+
+		t.Run("authenticating with cert and jwt yields 0 auth queries", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			result := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+			testClient, _, transport := ctx.NewClientComponents(EdgeClientApiPath)
+
+			transport.TLSClientConfig.Certificates = certAuth.TLSCertificates()
+
+			resp, err := testClient.NewRequest().SetResult(result).SetHeader("Authorization", "Bearer "+jwtStrSigned).Post("/authenticate?method=cert")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+			ctx.Req.Empty(result.Data.AuthQueries)
+		})
+
+		t.Run("authenticating with cert and jwt yields 1 ext-jwt auth query", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			result := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+			testClient, _, transport := ctx.NewClientComponents(EdgeClientApiPath)
+
+			transport.TLSClientConfig.Certificates = certAuth.TLSCertificates()
+
+			resp, err := testClient.NewRequest().SetResult(result).Post("/authenticate?method=cert")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+			ctx.Req.Len(result.Data.AuthQueries, 1)
+
+			ctx.Req.Equal(rest_model.AuthQueryTypeEXTDashJWT, result.Data.AuthQueries[0].TypeID)
+			ctx.Req.Equal(validJwtSignerClientId, result.Data.AuthQueries[0].ClientID)
+			ctx.Req.Equal(validJwtSignerScopes[0], result.Data.AuthQueries[0].Scopes[0])
+			ctx.Req.Equal(validJwtSignerScopes[1], result.Data.AuthQueries[0].Scopes[1])
+			ctx.Req.Equal(validJwtSignerAuthUrl, result.Data.AuthQueries[0].HTTPURL)
+			ctx.Req.Equal(validSignerUsingInternalId, result.Data.AuthQueries[0].ID)
+
+		})
 	})
 }
