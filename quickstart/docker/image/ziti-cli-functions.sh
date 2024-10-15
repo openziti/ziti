@@ -784,17 +784,18 @@ function createPki {
   _pki_create_intermediate "${ZITI_GRANDPARENT_INTERMEDIATE}" "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}" 1
 
   echo " "
-  pki_allow_list="localhost,${ZITI_NETWORK}"
+  ctrl_pki_allow_list="localhost,${ZITI_NETWORK}"
   if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" != "" ]]; then
     if ! _is_ip "${ZITI_CTRL_ADVERTISED_ADDRESS-}"; then
-      pki_allow_list="${pki_allow_list},${ZITI_CTRL_ADVERTISED_ADDRESS}"
+      ctrl_pki_allow_list="${ctrl_pki_allow_list},${ZITI_CTRL_ADVERTISED_ADDRESS}"
     else
       echo -e "$(YELLOW "ZITI_CTRL_ADVERTISED_ADDRESS seems to be an IP address, it will not be added to the SANs DNS list.") "
     fi
   fi
+  edge_pki_allow_list="localhost,${ZITI_NETWORK}"
   if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" != "" ]]; then
     if ! _is_ip "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}"; then
-      pki_allow_list="${pki_allow_list},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+      edge_pki_allow_list="${edge_pki_allow_list},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
     else
       echo -e "$(YELLOW "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS seems to be an IP address, it will not be added to the SANs DNS list.") "
     fi
@@ -803,9 +804,8 @@ function createPki {
   if [[ "${ZITI_CTRL_EDGE_IP_OVERRIDE-}" != "" ]]; then
     pki_allow_list_ip="${pki_allow_list_ip},${ZITI_CTRL_EDGE_IP_OVERRIDE}"
   fi
-  _pki_client_server "${pki_allow_list}" "${ZITI_PKI_CTRL_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_ADVERTISED_ADDRESS}"
+  _pki_client_server "${ctrl_pki_allow_list}" "${ZITI_PKI_CTRL_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_ADVERTISED_ADDRESS}"
 
-  pki_allow_list="localhost,${ZITI_NETWORK}"
   if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" != "" ]]; then
     if ! _is_ip "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}"; then
       pki_allow_list="${pki_allow_list},${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
@@ -817,7 +817,7 @@ function createPki {
   if [[ "${ZITI_CTRL_EDGE_IP_OVERRIDE-}" != "" ]]; then
     pki_allow_list_ip="${pki_allow_list_ip},${ZITI_CTRL_EDGE_IP_OVERRIDE}"
   fi
-  _pki_client_server "${pki_allow_list}" "${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
+  _pki_client_server "${edge_pki_allow_list}" "${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
 
   echo -e "$(GREEN "PKI generated successfully")"
   echo -e ""
