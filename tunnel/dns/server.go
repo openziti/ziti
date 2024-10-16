@@ -157,7 +157,7 @@ func (r *resolver) testSystemResolver() error {
 	return nil
 }
 
-func (r *resolver) getHostnameIp(name string) (net.IP, bool) {
+func (r *resolver) LookupIP(name string) (net.IP, bool) {
 	r.namesMtx.Lock()
 	defer r.namesMtx.Unlock()
 	canonical := strings.ToLower(name)
@@ -166,7 +166,7 @@ func (r *resolver) getHostnameIp(name string) (net.IP, bool) {
 }
 
 func (r *resolver) getAddress(name string) (net.IP, error) {
-	a, ok := r.getHostnameIp(name)
+	a, ok := r.LookupIP(name)
 	if ok {
 		return a, nil
 	}
@@ -271,6 +271,8 @@ func (r *resolver) AddHostname(hostname string, ip net.IP) error {
 		log.Infof("adding %s = %s to resolver", hostname, ip.String())
 		r.names[canonical] = ip
 		r.ips[ip.String()] = canonical[0 : len(canonical)-1] // drop the dot
+	} else {
+		log.Infof("hostname %s already assigned (%s)", hostname, r.names[canonical])
 	}
 
 	return nil
