@@ -296,14 +296,9 @@ func (ae *AppEnv) getEnrollmentTlsCert() (*tls.Certificate, error) {
 		return nil, fmt.Errorf("could not parse edge.api.address for host and port during enrollment signer selection [%s]", ae.GetConfig().Edge.Api.Address)
 	}
 
-	tlsCert, err := ae.getCertForHostname(ae.GetConfig().Id.ServerCert(), host)
+	var tlsCert *tls.Certificate
 
-	if err == nil {
-		return tlsCert, nil
-	} else {
-		hostnameErrors = append(hostnameErrors, err)
-	}
-
+	//look at xweb instances and search
 	for _, serverConfig := range ae.GetHostController().GetXWebInstance().GetConfig().ServerConfigs {
 		clientApiFound := false
 		for _, curApi := range serverConfig.APIs {
@@ -324,6 +319,15 @@ func (ae *AppEnv) getEnrollmentTlsCert() (*tls.Certificate, error) {
 				return tlsCert, nil
 			}
 		}
+	}
+
+	//default to root
+	tlsCert, err = ae.getCertForHostname(ae.GetConfig().Id.ServerCert(), host)
+
+	if err == nil {
+		return tlsCert, nil
+	} else {
+		hostnameErrors = append(hostnameErrors, err)
 	}
 
 	pfxlog.Logger().WithField("hostnameErrors", hostnameErrors).Errorf("could not find a server certificate for the edge.api.address host [%s]", host)
