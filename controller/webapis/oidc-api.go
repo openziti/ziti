@@ -103,8 +103,6 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 		appEnv:  ae,
 	}
 
-	serverConfig.BindPoints
-
 	serverCert := serverConfig.Identity.ServerCert()
 
 	cert := serverCert[0].Leaf
