@@ -1,3 +1,11 @@
+# Release 1.1.16
+
+## What's New
+
+* [Issue #2468](https://github.com/openziti/ziti/issues/2468) - Controller configuration `edge.api.address` selects the
+  enrollment token signer by matching the DNS SAN of a server certificate. If more than one server certificate
+  matches then the wrong key may sign the tokens causing enrollments to fail with a signature verification error.
+
 # Release 1.1.15
 
 ## What's New

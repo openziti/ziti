@@ -1,5 +1,9 @@
 #!/bin/bash
 
+set -o errexit
+set -o nounset
+set -o pipefail
+
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
 if [[ "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="ziti-edge-controller"; fi
@@ -15,7 +19,7 @@ fi
 # Wait until the file exists, then give one more second for the file to be completely written
 until [ -f "${ZITI_HOME}/ziti.env" ]
 do
-     sleep 1
+  sleep 1
 done
 sleep 1
 . ${ZITI_HOME}/ziti.env
@@ -32,6 +36,9 @@ if [[ "${_ZITI_ROUTER_NAME}" != "" ]]; then
 fi
 
 _CONFIG_PATH="${ZITI_HOME}/${ZITI_ROUTER_NAME}.yaml"
+# Set an error trap to move _CONFIG_PATH when it's unsafe to assume enrollment succeeded
+trap '[[ -f "${_CONFIG_PATH}" ]] && mv "${_CONFIG_PATH}" "${_CONFIG_PATH}.err"' ERR
+
 if [ ! -f "${_CONFIG_PATH}" ]; then
   echo "config has not been generated, generating config..."
   "${ZITI_BIN_DIR-}/ziti" edge login ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:${ZITI_CTRL_EDGE_ADVERTISED_PORT} -u $ZITI_USER -p $ZITI_PWD -y
@@ -55,8 +62,8 @@ if [ ! -f "${_CONFIG_PATH}" ]; then
     createPrivateRouterConfig "${ZITI_ROUTER_NAME}"
   fi
 
-  found=$("${ZITI_BIN_DIR-}/ziti" edge list edge-routers 'name = "'"${ZITI_ROUTER_NAME}"'"' | grep -c "${ZITI_ROUTER_NAME}")
-  if [[ found -gt 0 ]]; then
+  
+  if "${ZITI_BIN_DIR-}/ziti" edge list edge-routers "name = \"${ZITI_ROUTER_NAME}\"" --csv | grep -q "${ZITI_ROUTER_NAME}"; then
     echo "----------  Found existing edge-router ${ZITI_ROUTER_NAME}...."
   else
     "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_ROUTER_NAME}" -o "${ZITI_HOME}/${ZITI_ROUTER_NAME}.jwt" -t -a "${ZITI_ROUTER_ROLES}"

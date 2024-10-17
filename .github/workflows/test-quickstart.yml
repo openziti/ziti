@@ -1,16 +1,12 @@
 name: Test Quickstart
 on:
   workflow_dispatch:
-  # test quickstart changes after merge
   push:
     branches:
       - main
-    paths:
-      - 'quickstart/**'
-  # test quickstart changes before merge
   pull_request:
-    paths:
-      - 'quickstart/**'
+    branches:
+      - main
 
 # cancel older, redundant runs of same workflow on same branch
 concurrency:
