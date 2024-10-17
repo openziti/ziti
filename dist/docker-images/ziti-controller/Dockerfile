@@ -3,11 +3,8 @@
 ARG ZITI_CLI_TAG="latest"
 ARG ZITI_CLI_IMAGE="docker.io/openziti/ziti-cli"
 
-# provide a default value for the platform-neutral static console files
-ARG TARGETPLATFORM="linux/amd64"
-
 # dependabot bumps this version based on release to Hub
-FROM --platform=${TARGETPLATFORM} openziti/ziti-console-assets:3.5.0 AS ziti-console
+FROM openziti/ziti-console-assets:3.5.0 AS ziti-console
 
 FROM ${ZITI_CLI_IMAGE}:${ZITI_CLI_TAG}
 

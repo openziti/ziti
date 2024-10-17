@@ -261,14 +261,21 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.testContextChanged(t)
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy")
 
+		clientId := "test-client-id-99"
+		scope1 := "test-scope-1-99"
+		scope2 := "test-scope-2-99"
+		extAuthUrl := "https://some.auth.url.example.com/auth"
 		createExtJwtParam := external_jwt_signer.NewCreateExternalJWTSignerParams()
 		createExtJwtParam.ExternalJWTSigner = &rest_model.ExternalJWTSignerCreate{
-			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled:  B(true),
-			Name:     S("Test JWT Signer - Auth Policy"),
-			Kid:      S(uuid.NewString()),
-			Issuer:   S("test-issuer-99"),
-			Audience: S("test-audience-99"),
+			CertPem:         S(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:         B(true),
+			Name:            S("Test JWT Signer - Auth Policy"),
+			Kid:             S(uuid.NewString()),
+			Issuer:          S("test-issuer-99"),
+			Audience:        S("test-audience-99"),
+			ClientID:        &clientId,
+			Scopes:          []string{scope1, scope2},
+			ExternalAuthURL: S(extAuthUrl),
 		}
 
 		extJwtCreateResp, err := managementClient.API.ExternalJWTSigner.CreateExternalJWTSigner(createExtJwtParam, nil)
@@ -337,7 +344,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.NoError(rest_util.WrapErr(err))
 		ctx.Req.NotNil(createIdentityUpdbAuthenticatorResp)
 
-		t.Run("can authenticate via UPDB", func(t *testing.T) {
+		t.Run("can authenticate via UPDB and see two auth queries", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			identityClient := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
 			identityClient.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
@@ -356,14 +363,37 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			ctx.Req.NoError(err)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-			parsedBody := map[string]any{
-				"authQueries": []*rest_model.AuthQueryDetail{},
+			type respBody struct {
+				AuthQueries []*rest_model.AuthQueryDetail `json:"authQueries"`
 			}
 
-			err = json.Unmarshal(resp.Body(), &parsedBody)
+			parsedBody := &respBody{}
+
+			err = json.Unmarshal(resp.Body(), parsedBody)
 			ctx.Req.NoError(err)
 
-			ctx.Req.Len(parsedBody["authQueries"], 2)
+			ctx.Req.Len(parsedBody.AuthQueries, 2)
+
+			extJwtIdx := -1
+			totpIdx := -1
+
+			for i, authQuery := range parsedBody.AuthQueries {
+				if authQuery.TypeID == rest_model.AuthQueryTypeEXTDashJWT {
+					extJwtIdx = i
+				} else if authQuery.TypeID == rest_model.AuthQueryTypeTOTP {
+					totpIdx = i
+				} else {
+					ctx.Req.Failf("unexexpected auth quuery type id encountered: %s", string(authQuery.TypeID))
+				}
+			}
+
+			ctx.Req.True(extJwtIdx >= 0, "expected extJwtIdx to be set")
+			ctx.Req.True(totpIdx >= 0, "expected totpIdx to be set")
+
+			ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].ClientID, clientId)
+			ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].Scopes[0], scope1)
+			ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].Scopes[1], scope2)
+			ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].HTTPURL, extAuthUrl)
 		})
 
 	})
