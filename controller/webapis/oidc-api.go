@@ -108,8 +108,12 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 	cert := serverCert[0].Leaf
 	key := serverCert[0].PrivateKey
 
-	issuer := ae.OidcIssuer()
-	oidcConfig := oidc_auth.NewConfig(issuer, cert, key)
+	var issuers []string
+
+	for _, bindPoint := range serverConfig.BindPoints {
+		issuers = append(issuers, bindPoint.Address)
+	}
+	oidcConfig := oidc_auth.NewConfig(issuers, cert, key)
 
 	if secretVal, ok := options["secret"]; ok {
 		if secret, ok := secretVal.(string); ok {
