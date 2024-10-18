@@ -51,7 +51,7 @@ type Config struct {
 	Enabled                    bool
 	ApiProxy                   ApiProxy
 	EdgeListeners              []*edge_ctrl_pb.Listener
-	Csr                        Csr
+	Csr                        *Csr
 	HeartbeatIntervalSeconds   int
 	SessionValidateChunkSize   uint32
 	SessionValidateMinInterval time.Duration
@@ -85,30 +85,6 @@ func NewConfig(routerConfig *router.Config) *Config {
 	return &Config{
 		RouterConfig: routerConfig,
 	}
-}
-
-func (config *Config) LoadConfig(configMap map[interface{}]interface{}) error {
-	//enrollment config loading is more lax on where the CSR section lives (i.e. under edge: or at the root level)
-
-	if val, ok := configMap["edge"]; ok && val != nil {
-		var edgeConfigMap map[interface{}]interface{}
-		config.Enabled = true
-		if edgeConfigMap, ok = val.(map[interface{}]interface{}); !ok {
-			return fmt.Errorf("expected map as edge configuration")
-		}
-
-		if err := config.loadCsr(edgeConfigMap, "edge"); err != nil {
-			return err
-		}
-	} else if val, ok := configMap["csr"]; ok && val != nil {
-		if err := config.loadCsr(configMap, ""); err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("expected enrollment CSR section")
-	}
-
-	return config.ensureIdentity(configMap)
 }
 
 func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) error {
@@ -201,7 +177,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 		return err
 	}
 
-	if err = config.loadCsr(edgeConfigMap, "edge"); err != nil {
+	if err = config.loadCsr(configMap); err != nil {
 		return err
 	}
 
@@ -368,49 +344,85 @@ func parseEdgeListenerOptions(index int, address string, edgeListenerMap map[int
 	}
 }
 
-func (config *Config) loadCsr(configMap map[interface{}]interface{}, pathPrefix string) error {
-	config.Csr = Csr{}
+// loadCsr search for a root `csr` path or an `edge.csr` path for a CSR definition. The root path is preferred.
+func (config *Config) loadCsr(rootConfigMap map[interface{}]interface{}) error {
+	csrI, ok := rootConfigMap["csr"]
+	csrPath := "csr"
 
-	if configMap == nil {
-		return fmt.Errorf("nil config map")
-	}
+	if !ok {
+		edgeI, ok := rootConfigMap["edge"]
 
-	if pathPrefix != "" {
-		pathPrefix = pathPrefix + "."
-	}
-
-	if value, found := configMap["csr"]; found {
-		submap := value.(map[interface{}]interface{})
-
-		if submap == nil {
-			return fmt.Errorf("required section [%scsr] is not a map", pathPrefix)
+		if !ok {
+			return fmt.Errorf("root [csr] not found, root [edge] not found to check for [edge.csr], could not load any CSR")
 		}
 
-		if err := mapstructure.Decode(submap, &config.Csr); err != nil {
-			return fmt.Errorf("failed to load [%scsr]: %s", pathPrefix, err)
+		edgeMap, ok := edgeI.(map[interface{}]interface{})
+
+		if !ok {
+			return fmt.Errorf("root [csr] not found, root [edge] found but was not a map/object")
 		}
 
-	} else {
-		return fmt.Errorf("required section [%scsr] not found", pathPrefix)
+		csrI, ok = edgeMap["csr"]
+
+		if !ok {
+			return fmt.Errorf("root [csr] not found, root [edge] found but [edge.csr] is not defined, could not load any CSR")
+		}
+
+		csrPath = "edge.csr"
 	}
 
-	for _, uristr := range config.Csr.Sans.UriAddresses {
-		parsedUrl, err := url.Parse(uristr)
-		if err != nil {
-			return fmt.Errorf("invalid SAN URI encountered in configuration file: %s", uristr)
-		}
-		config.Csr.Sans.UriAddressesParsed = append(config.Csr.Sans.UriAddressesParsed, parsedUrl)
+	if csrI == nil {
+		return fmt.Errorf("root [csr] not found, [edge.csr] not found, could not locate any CSR definition")
 	}
 
-	for _, ipstr := range config.Csr.Sans.IpAddresses {
-		ip := net.ParseIP(ipstr)
-		if ip == nil {
-			return fmt.Errorf("invalid SAN IP address encountered in configuration file: %s", ipstr)
-		}
-		config.Csr.Sans.IpAddressesParsed = append(config.Csr.Sans.IpAddressesParsed, ip)
+	csrMap, ok := csrI.(map[interface{}]interface{})
+
+	if !ok {
+		return fmt.Errorf("could not load csr [%s] was found but is not an object/map", csrPath)
 	}
+
+	csr, err := config.parseCsr(csrMap, csrPath)
+
+	if err != nil {
+		return err
+	}
+
+	pfxlog.Logger().Infof("loaded csr info from configuration file at path [%s]", csrPath)
+
+	config.Csr = csr
 
 	return nil
+}
+
+// parseCsr parses the given map as a CSR definition. Error messages are based on the path provided.
+func (config *Config) parseCsr(csrMap map[interface{}]interface{}, path string) (*Csr, error) {
+	targetCsr := &Csr{}
+
+	if csrMap == nil {
+		return nil, fmt.Errorf("nil map")
+	}
+
+	if err := mapstructure.Decode(csrMap, targetCsr); err != nil {
+		return nil, fmt.Errorf("failed to load [%s]: %s", path, err)
+	}
+
+	for _, uristr := range targetCsr.Sans.UriAddresses {
+		parsedUrl, err := url.Parse(uristr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid SAN URI encountered in configuration file: %s", uristr)
+		}
+		targetCsr.Sans.UriAddressesParsed = append(targetCsr.Sans.UriAddressesParsed, parsedUrl)
+	}
+
+	for _, ipstr := range targetCsr.Sans.IpAddresses {
+		ip := net.ParseIP(ipstr)
+		if ip == nil {
+			return nil, fmt.Errorf("invalid SAN IP address encountered in configuration file: %s", ipstr)
+		}
+		targetCsr.Sans.IpAddressesParsed = append(targetCsr.Sans.IpAddressesParsed, ip)
+	}
+
+	return targetCsr, nil
 }
 
 func (config *Config) ensureIdentity(rootConfigMap map[interface{}]interface{}) error {
@@ -462,7 +474,7 @@ func (config *Config) loadTransportConfig(rootConfigMap map[interface{}]interfac
 
 // LoadConfigFromMapForEnrollment loads a minimal subset of the router configuration to allow for enrollment.
 // This process should be used to load edge enabled routers as well as non-edge routers.
-func (config *Config) LoadConfigFromMapForEnrollment(cfgmap map[interface{}]interface{}) interface{} {
+func (config *Config) LoadConfigFromMapForEnrollment(cfgmap map[interface{}]interface{}) error {
 	var err error
 	config.EnrollmentIdentityConfig, err = router.LoadIdentityConfigFromMap(cfgmap)
 
@@ -470,23 +482,9 @@ func (config *Config) LoadConfigFromMapForEnrollment(cfgmap map[interface{}]inte
 		return err
 	}
 
-	edgeVal := cfgmap["edge"]
-
-	if edgeVal != nil {
-		if err := config.loadCsr(cfgmap["edge"].(map[interface{}]interface{}), "edge"); err != nil {
-			pfxlog.Logger().Warnf("could not load [edge.csr]: %v", err)
-		} else {
-			return nil
-		}
+	if err := config.loadCsr(cfgmap); err != nil {
+		return fmt.Errorf("error loading csr: %w", err)
 	}
 
-	//try loading the root csr
-	if rootErr := config.loadCsr(cfgmap, ""); rootErr != nil {
-		pfxlog.Logger().Warnf("could not load [csr]: %v", rootErr)
-
-	} else {
-		return nil
-	}
-
-	return fmt.Errorf("could not load [edge.csr] nor [csr] sections, see warnings")
+	return nil
 }
