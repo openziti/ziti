@@ -10,7 +10,7 @@ import (
 
 // Config represents the configuration necessary to operate an OIDC Provider
 type Config struct {
-	Issuer               string
+	Issuers              []string
 	TokenSecret          string
 	Storage              Storage
 	Certificate          *x509.Certificate
@@ -25,9 +25,9 @@ type Config struct {
 }
 
 // NewConfig will create a Config with default values
-func NewConfig(issuer string, cert *x509.Certificate, key crypto.PrivateKey) Config {
+func NewConfig(issuers []string, cert *x509.Certificate, key crypto.PrivateKey) Config {
 	return Config{
-		Issuer:               issuer,
+		Issuers:              issuers,
 		Certificate:          cert,
 		PrivateKey:           key,
 		RefreshTokenDuration: common.DefaultRefreshTokenDuration,
