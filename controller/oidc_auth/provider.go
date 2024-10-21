@@ -33,35 +33,58 @@ func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Ha
 	cert, kid, method := env.GetServerCert()
 	config.Storage = NewStorage(kid, cert.Leaf.PublicKey, cert.PrivateKey, method, &config, env)
 
-	oidcHandler, err := newHttpRouter(ctx, config)
+	handlers := map[string]http.Handler{}
 
-	openzitiClient := NativeClient(common.ClaimClientIdOpenZiti, config.RedirectURIs, config.PostLogoutURIs)
-	openzitiClient.idTokenDuration = config.IdTokenDuration
-	openzitiClient.loginURL = newLoginResolver(config.Storage)
-	config.Storage.AddClient(openzitiClient)
+	for _, issuer := range config.Issuers {
+		issuerUrl := "https://" + issuer + "/oidc"
+		provider, err := newOidcProvider(ctx, issuerUrl, config)
+		if err != nil {
+			return nil, fmt.Errorf("could not create OpenIdProvider: %w", err)
+		}
 
-	//backwards compatibility client w/ early HA SDKs. Should be removed by the time HA is GA'ed.
-	nativeClient := NativeClient(common.ClaimLegacyNative, config.RedirectURIs, config.PostLogoutURIs)
-	nativeClient.idTokenDuration = config.IdTokenDuration
-	nativeClient.loginURL = newLoginResolver(config.Storage)
-	config.Storage.AddClient(nativeClient)
+		oidcHandler, err := newHttpRouter(provider, config)
 
-	if err != nil {
-		return nil, err
+		openzitiClient := NativeClient(common.ClaimClientIdOpenZiti, config.RedirectURIs, config.PostLogoutURIs)
+		openzitiClient.idTokenDuration = config.IdTokenDuration
+		openzitiClient.loginURL = newLoginResolver(config.Storage)
+		config.Storage.AddClient(openzitiClient)
+
+		//backwards compatibility client w/ early HA SDKs. Should be removed by the time HA is GA'ed.
+		nativeClient := NativeClient(common.ClaimLegacyNative, config.RedirectURIs, config.PostLogoutURIs)
+		nativeClient.idTokenDuration = config.IdTokenDuration
+		nativeClient.loginURL = newLoginResolver(config.Storage)
+		config.Storage.AddClient(nativeClient)
+
+		if err != nil {
+			return nil, err
+		}
+
+		handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			r := request.WithContext(context.WithValue(request.Context(), contextKeyHttpRequest, request))
+			r = request.WithContext(context.WithValue(r.Context(), contextKeyTokenState, &TokenState{}))
+			r = request.WithContext(op.ContextWithIssuer(r.Context(), issuerUrl))
+
+			oidcHandler.ServeHTTP(writer, r)
+		})
+
+		handlers[issuer] = handler
 	}
 
-	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		r := request.WithContext(context.WithValue(request.Context(), contextKeyHttpRequest, request))
-		r = request.WithContext(context.WithValue(r.Context(), contextKeyTokenState, &TokenState{}))
-		r = request.WithContext(op.ContextWithIssuer(r.Context(), config.Issuer))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler, ok := handlers[r.Host]
 
-		oidcHandler.ServeHTTP(writer, r)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+
+		handler.ServeHTTP(w, r)
 	}), nil
 
 }
 
 // newHttpRouter creates an OIDC HTTP router
-func newHttpRouter(ctx context.Context, config Config) (*mux.Router, error) {
+func newHttpRouter(provider op.OpenIDProvider, config Config) (*mux.Router, error) {
 	if config.TokenSecret == "" {
 		return nil, errors.New("token secret must not be empty")
 	}
@@ -74,11 +97,6 @@ func newHttpRouter(ctx context.Context, config Config) (*mux.Router, error) {
 			pfxlog.Logger().Errorf("error serving logged out page: %v", err)
 		}
 	})
-
-	provider, err := newOidcProvider(ctx, config)
-	if err != nil {
-		return nil, fmt.Errorf("could not create OpenIdProvider: %w", err)
-	}
 
 	loginRouter := newLogin(config.Storage, op.AuthCallbackURL(provider), op.NewIssuerInterceptor(provider.IssuerFromRequest))
 
@@ -93,7 +111,7 @@ func newHttpRouter(ctx context.Context, config Config) (*mux.Router, error) {
 }
 
 // newOidcProvider will create an OpenID Provider that allows refresh tokens, authentication via form post and basic auth, and support request object params
-func newOidcProvider(_ context.Context, oidcConfig Config) (op.OpenIDProvider, error) {
+func newOidcProvider(_ context.Context, issuer string, oidcConfig Config) (op.OpenIDProvider, error) {
 	config := &op.Config{
 		CryptoKey:                oidcConfig.Secret(),
 		DefaultLogoutRedirectURI: pathLoggedOut,
@@ -105,7 +123,7 @@ func newOidcProvider(_ context.Context, oidcConfig Config) (op.OpenIDProvider, e
 		SupportedUILocales:       []language.Tag{language.English},
 	}
 
-	handler, err := op.NewOpenIDProvider(oidcConfig.Issuer, config, oidcConfig.Storage)
+	handler, err := op.NewOpenIDProvider(issuer, config, oidcConfig.Storage)
 
 	if err != nil {
 		return nil, err

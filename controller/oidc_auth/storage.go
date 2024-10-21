@@ -91,6 +91,7 @@ type HybridStorage struct {
 	serviceUsers cmap.ConcurrentMap[string, *Client]
 
 	startOnce sync.Once
+	issuer    string
 	config    *Config
 
 	keys cmap.ConcurrentMap[string, *pubKey]
@@ -429,7 +430,7 @@ func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenR
 		AccessTokenClaims: oidc.AccessTokenClaims{
 			TokenClaims: oidc.TokenClaims{
 				JWTID:      uuid.NewString(),
-				Issuer:     s.config.Issuer,
+				Issuer:     op.IssuerFromContext(ctx),
 				Subject:    request.GetSubject(),
 				Audience:   request.GetAudience(),
 				Expiration: oidc.Time(now.Add(s.config.AccessTokenDuration).Unix()),
