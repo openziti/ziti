@@ -108,16 +108,16 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	}
 
 	var err error
-	config := edgerouter.NewConfig(factory.routerConfig)
-	if err = config.LoadConfigFromMap(configMap); err != nil {
+	edgeConfig := edgerouter.NewConfig(factory.routerConfig)
+	if err = edgeConfig.LoadConfigFromMap(configMap); err != nil {
 		return err
 	}
-	if config.Tcfg == nil {
-		config.Tcfg = make(transport.Configuration)
+	if edgeConfig.Tcfg == nil {
+		edgeConfig.Tcfg = make(transport.Configuration)
 	}
-	config.Tcfg["protocol"] = append(config.Tcfg.Protocols(), "ziti-edge", "")
+	edgeConfig.Tcfg["protocol"] = append(edgeConfig.Tcfg.Protocols(), "ziti-edge", "")
 
-	factory.edgeRouterConfig = config
+	factory.edgeRouterConfig = edgeConfig
 
 	if factory.routerConfig.Ha.Enabled {
 		factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
@@ -125,7 +125,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 		factory.stateManager.SetRouterDataModel(common.NewReceiverRouterDataModel(state.RouterDataModelListerBufferSize, factory.env.GetCloseNotify()))
 	}
 
-	go apiproxy.Start(config)
+	go apiproxy.Start(edgeConfig)
 
 	return nil
 }
