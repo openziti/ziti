@@ -90,7 +90,9 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 			UDPCheckInterval: self.listenOptions.udpCheckInterval,
 		}
 
-		tproxyConfig.Diverter = strings.TrimPrefix(self.listenOptions.mode, "tproxy:")
+		if strings.HasPrefix(self.listenOptions.mode, "tproxy:") {
+			tproxyConfig.Diverter = strings.TrimPrefix(self.listenOptions.mode, "tproxy:")
+		}
 
 		if self.interceptor, err = tproxy.New(tproxyConfig); err != nil {
 			return errors.Wrap(err, "failed to initialize tproxy interceptor")
