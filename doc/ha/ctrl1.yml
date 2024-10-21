@@ -1,10 +1,11 @@
 v: 3
 raft:
-  minClusterSize: 3
   dataDir: ./data/ctrl1
-  bootstrapMembers:
+  initialMembers:
     - tls:127.0.0.1:6363
     - tls:127.0.0.1:6464
+
+db: /home/plorenz/work/nf/var/db/ctrl.db
 
 identity:
   cert: ./pki/ctrl1/certs/server.chain.pem

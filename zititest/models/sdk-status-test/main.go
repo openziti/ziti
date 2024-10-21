@@ -139,6 +139,17 @@ var m = &model.Model{
 						},
 					},
 				},
+				"ctrl2": {
+					InstanceType: "c5.xlarge",
+					Components: model.Components{
+						"ctrl2": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Type: &zitilab.ControllerType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
 				"router-us-{{.ScaleIndex}}": {
 					Scope: model.Scope{Tags: model.Tags{"router"}},
 					Components: model.Components{
@@ -167,6 +178,17 @@ var m = &model.Model{
 			Region: "us-west-2",
 			Site:   "us-west-2a",
 			Hosts: model.Hosts{
+				"ctrl3": {
+					InstanceType: "c5.xlarge",
+					Components: model.Components{
+						"ctrl3": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Type: &zitilab.ControllerType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
 				"router-eu-{{.ScaleIndex}}": {
 					Scope: model.Scope{Tags: model.Tags{"router"}},
 					Components: model.Components{
@@ -225,24 +247,13 @@ var m = &model.Model{
 		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
 
-			isHA := len(m.SelectComponents(".ctrl")) > 1
-
 			workflow.AddAction(component.StopInParallel("*", 300))
 			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/* ctrl.db"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
-			if !isHA {
-				workflow.AddAction(component.Exec("#ctrl1", zitilab.ControllerActionInitStandalone))
-			}
-
-			workflow.AddAction(component.Start(".ctrl"))
-
-			if isHA {
-				workflow.AddAction(semaphore.Sleep(2 * time.Second))
-				workflow.AddAction(edge.RaftJoin(".ctrl"))
-				workflow.AddAction(semaphore.Sleep(2 * time.Second))
-				workflow.AddAction(edge.InitRaftController("#ctrl1"))
-			}
+			workflow.AddAction(component.Start("#ctrl1"))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(edge.InitRaftController("#ctrl1"))
 
 			workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
 
@@ -300,6 +311,10 @@ var m = &model.Model{
 			}))
 
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(edge.RaftJoin(".ctrl"))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(component.StartInParallel(".router", 10))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(component.StartInParallel(".host", 50))
@@ -340,7 +355,19 @@ var m = &model.Model{
 			}
 			return nil
 		})),
-		"validate": model.Bind(model.ActionFunc(validateTerminators)),
+		"validate": model.Bind(model.ActionFunc(validateSdkStatus)),
+		"ensureAllStarted": model.ActionBinder(func(m *model.Model) model.Action {
+			workflow := actions.Workflow()
+			workflow.AddAction(component.Start(".ctrl"))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(component.StartInParallel(".router", 10))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(component.StartInParallel(".host", 50))
+			return workflow
+		}),
+		"testIteration": model.Bind(model.ActionFunc(func(run model.Run) error {
+			return run.GetModel().Exec(run, "sowChaos", "validate", "ensureAllStarted", "validateUp", "validate")
+		})),
 	},
 
 	Infrastructure: model.Stages{

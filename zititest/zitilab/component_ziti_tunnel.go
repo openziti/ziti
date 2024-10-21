@@ -113,7 +113,16 @@ func (self *ZitiTunnelType) GetConfigPath(c *model.Component) string {
 	return fmt.Sprintf("/home/%s/fablab/cfg/%s.json", c.GetHost().GetSshUser(), c.Id)
 }
 
-func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
+func (self *ZitiTunnelType) Start(r model.Run, c *model.Component) error {
+	isRunninng, err := self.IsRunning(r, c)
+	if err != nil {
+		return err
+	}
+	if isRunninng {
+		fmt.Printf("ziti tunnel %s already started\n", c.Id)
+		return nil
+	}
+
 	mode := self.Mode
 
 	user := c.GetHost().GetSshUser()

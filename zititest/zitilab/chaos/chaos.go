@@ -75,6 +75,34 @@ func SelectRandom(run model.Run, selector string, f func(count int) int) ([]*mod
 	return result, nil
 }
 
+func StopSelected(run model.Run, list []*model.Component, concurrency int) error {
+	if len(list) == 0 {
+		return nil
+	}
+	return run.GetModel().ForEachComponentIn(list, concurrency, func(c *model.Component) error {
+		if _, ok := c.Type.(model.ServerComponent); ok {
+			if err := c.Type.Stop(run, c); err != nil {
+				return err
+			}
+
+			for {
+				isRunning, err := c.IsRunning(run)
+				if err != nil {
+					return err
+				}
+				if !isRunning {
+					break
+				} else {
+					time.Sleep(250 * time.Millisecond)
+				}
+			}
+			time.Sleep(time.Second)
+			return nil
+		}
+		return fmt.Errorf("component %v isn't of ServerComponent type, is of type %T", c, c.Type)
+	})
+}
+
 func RestartSelected(run model.Run, list []*model.Component, concurrency int) error {
 	if len(list) == 0 {
 		return nil

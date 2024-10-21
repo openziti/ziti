@@ -2,7 +2,29 @@
 
 ## What's New
 
+* HA Bootstrap Changes
 * Connect Events
+
+## HA Bootstrapping Changes
+
+Previously bootstrapping the RAFT cluster and initializing the controller with a 
+default administrator were separate operations.
+Now, the raft cluster will be bootstrapped whenever the controller is initialized. 
+
+The controller can be initilized as follows:
+
+1. Using `ziti agent controller init`
+2. Using `ziti agent controller init-from-db`
+3. Specifying a `db:` entry in the config file. This is equivalent to using `ziti agent controller init-from-db`.
+
+Additionally:
+
+1. `minClusterSize` has been removed. The cluster will always be initialized with a size of 1.
+2. `bootstrapMembers` has been renamed to `initialMembers`. If `initialMembers` are specified,
+   the bootstrapping controller will attempt to add them after bootstrap has been complete. If
+   they are invalid they will be ignored. If they can't be reached (because they're not running
+   yet), the controller will continue to retry until they are reached, or it is restarted.
+
 
 ## Connect Events
 
