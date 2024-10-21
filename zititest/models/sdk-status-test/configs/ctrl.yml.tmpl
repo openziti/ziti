@@ -1,12 +1,8 @@
 v: 3
 
-{{if .Component.GetFlag "ha"}}
 raft:
-  minClusterSize: 3
+  minClusterSize: 1
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
-{{else}}
-db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/ctrl.db
-{{end}}
 
 identity:
   cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.cert

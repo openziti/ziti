@@ -194,16 +194,6 @@ func (self *IdentityManager) ReadOneByQuery(query string) (*Identity, error) {
 }
 
 func (self *IdentityManager) InitializeDefaultAdmin(username, password, name string) error {
-	identity, err := self.ReadDefaultAdmin()
-
-	if err != nil && !boltz.IsErrNotFoundErr(err) {
-		return err
-	}
-
-	if identity != nil {
-		return errors.New("already initialized: Ziti Edge default admin already defined")
-	}
-
 	if len(username) < minDefaultAdminUsernameLength {
 		return errorz.NewFieldError(fmt.Sprintf("username must be at least %v characters", minDefaultAdminUsernameLength), "username", username)
 	}
@@ -228,6 +218,20 @@ func (self *IdentityManager) InitializeDefaultAdmin(username, password, name str
 
 	if err != nil {
 		return err
+	}
+
+	identity, err := self.ReadDefaultAdmin()
+
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return err
+	}
+
+	if identity != nil {
+		return errors.New("already initialized: Ziti Edge default admin already defined")
+	}
+
+	if err = self.env.GetManagers().Dispatcher.Bootstrap(); err != nil {
+		return fmt.Errorf("unable to bootstrap command dispatcher (%w)", err)
 	}
 
 	identityId := eid.New()

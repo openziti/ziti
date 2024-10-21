@@ -54,12 +54,17 @@ type Dispatcher interface {
 	IsLeaderless() bool
 	GetPeers() map[string]channel.Channel
 	GetRateLimiter() rate.RateLimiter
+	Bootstrap() error
 }
 
 // LocalDispatcher should be used when running a non-clustered system
 type LocalDispatcher struct {
 	EncodeDecodeCommands bool
 	Limiter              rate.RateLimiter
+}
+
+func (self *LocalDispatcher) Bootstrap() error {
+	return nil
 }
 
 func (self *LocalDispatcher) IsLeaderOrLeaderless() bool {

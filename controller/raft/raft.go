@@ -139,7 +139,6 @@ type Controller struct {
 	Fsm                        *BoltDbFsm
 	bootstrapped               atomic.Bool
 	clusterLock                sync.Mutex
-	servers                    []raft.Server
 	closeNotify                <-chan struct{}
 	indexTracker               IndexTracker
 	migrationMgr               MigrationManager
@@ -196,6 +195,10 @@ func (self *Controller) IsLeaderOrLeaderless() bool {
 
 func (self *Controller) IsLeaderless() bool {
 	return self.GetLeaderAddr() == ""
+}
+
+func (self *Controller) IsBootstrapped() bool {
+	return self.bootstrapped.Load()
 }
 
 func (self *Controller) IsReadOnlyMode() bool {
@@ -689,10 +692,6 @@ func (self *Controller) Bootstrap() error {
 			return err
 		}
 
-		if err := self.addConfiguredBootstrapMembers(); err != nil {
-			return err
-		}
-
 		req := &cmd_pb.AddPeerRequest{
 			Addr:    string(self.Mesh.GetAdvertiseAddr()),
 			Id:      self.env.GetId().Token,
@@ -702,41 +701,33 @@ func (self *Controller) Bootstrap() error {
 		if err := self.Join(req); err != nil {
 			return err
 		}
+
+		start := time.Now()
+		for {
+			if self.isLeader.Load() {
+				break
+			}
+			if time.Since(start) > time.Second*10 {
+				return fmt.Errorf("node did not bootstrap in time")
+			}
+			time.Sleep(25 * time.Millisecond)
+		}
+
+		go self.addConfiguredInitialMembers()
 	}
 	return nil
 }
 
-func (self *Controller) addBootstrapServer(server raft.Server) {
-	for _, current := range self.servers {
-		if current.ID == server.ID {
-			pfxlog.Logger().Infof("already have bootstrap member with id %v, not adding again", server.ID)
-			return
-		}
-	}
-
-	pfxlog.Logger().Infof("adding bootstrap server id=%v, addr=%v", server.ID, server.Address)
-	self.servers = append(self.servers, server)
-}
-
-func (self *Controller) addConfiguredBootstrapMembers() error {
-	for _, bootstrapMember := range self.Config.BootstrapMembers {
+func (self *Controller) addConfiguredInitialMembers() {
+	for _, bootstrapMember := range self.Config.InitialMembers {
 		_, err := transport.ParseAddress(bootstrapMember)
 		if err != nil {
-			return errors.Wrapf(err, "unable to parse address for bootstrap member [%v]", bootstrapMember)
+			pfxlog.Logger().WithError(err).Errorf("unable to parse address for bootstrap member [%v], it will be ignored", bootstrapMember)
+			continue
 		}
 
-		if id, addr, err := self.Mesh.GetPeerInfo(bootstrapMember, time.Second*5); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("unable to get id for bootstrap member [%v]", bootstrapMember)
-			go self.retryBootstrapMember(bootstrapMember)
-		} else {
-			self.addBootstrapServer(raft.Server{
-				Suffrage: raft.Voter,
-				ID:       id,
-				Address:  addr,
-			})
-		}
+		go self.retryBootstrapMember(bootstrapMember)
 	}
-	return nil
 }
 
 func (self *Controller) retryBootstrapMember(bootstrapMember string) {
@@ -744,15 +735,8 @@ func (self *Controller) retryBootstrapMember(bootstrapMember string) {
 	defer ticker.Stop()
 
 	for {
-		<-ticker.C
-
-		// If we've bootstrapped, exit out
-		if self.bootstrapped.Load() {
-			return
-		}
-
 		if id, addr, err := self.Mesh.GetPeerInfo(bootstrapMember, time.Second*5); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("unable to get id for bootstrap member [%v]", bootstrapMember)
+			pfxlog.Logger().WithError(err).Errorf("unable to get id for bootstrap member [%v], will retry", bootstrapMember)
 		} else {
 			req := &cmd_pb.AddPeerRequest{
 				Addr:    string(addr),
@@ -761,9 +745,11 @@ func (self *Controller) retryBootstrapMember(bootstrapMember string) {
 			}
 
 			if err = self.Join(req); err == nil {
+				pfxlog.Logger().WithError(err).Errorf("erroring adding bootstrap member [%s], stopping attempts to join it to the cluster", bootstrapMember)
 				return
 			}
 		}
+		<-ticker.C
 	}
 }
 
@@ -789,37 +775,23 @@ func (self *Controller) Join(req *cmd_pb.AddPeerRequest) error {
 		suffrage = raft.Nonvoter
 	}
 
-	self.addBootstrapServer(raft.Server{
+	return self.tryBootstrap(raft.Server{
 		ID:       raft.ServerID(req.Id),
 		Address:  raft.ServerAddress(req.Addr),
 		Suffrage: suffrage,
 	})
-
-	return self.tryBootstrap()
 }
 
-func (self *Controller) tryBootstrap() error {
+func (self *Controller) tryBootstrap(servers ...raft.Server) error {
 	log := pfxlog.Logger()
 
-	votingCount := uint32(0)
-	for _, server := range self.servers {
-		if server.Suffrage == raft.Voter {
-			votingCount++
-		}
+	log.Infof("bootstrapping cluster")
+	f := self.GetRaft().BootstrapCluster(raft.Configuration{Servers: servers})
+	if err := f.Error(); err != nil {
+		return errors.Wrapf(err, "failed to bootstrap cluster")
 	}
-
-	if votingCount >= self.Config.MinClusterSize {
-		log.Infof("min cluster member count met, bootstrapping cluster")
-		f := self.GetRaft().BootstrapCluster(raft.Configuration{Servers: self.servers})
-		if err := f.Error(); err != nil {
-			return errors.Wrapf(err, "failed to bootstrap cluster")
-		}
-		self.bootstrapped.Store(true)
-		log.Info("raft cluster bootstrap complete")
-		if err := self.migrationMgr.TryInitializeRaftFromBoltDb(); err != nil {
-			panic(err)
-		}
-	}
+	self.bootstrapped.Store(true)
+	log.Info("raft cluster bootstrap complete")
 
 	return nil
 }
