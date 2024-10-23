@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
@@ -59,7 +60,7 @@ type Factory struct {
 }
 
 func (factory *Factory) Inspect(key string, timeout time.Duration) any {
-	if strings.HasPrefix(key, "connections") {
+	if key == inspect.RouterIdentityConnectionStatusesKey {
 		return factory.connectionTracker.Inspect(key, timeout)
 	}
 	return nil
@@ -93,7 +94,9 @@ func (factory *Factory) NotifyOfReconnect(ch channel.Channel) {
 
 	go factory.stateManager.ValidateSessions(ch, factory.edgeRouterConfig.SessionValidateChunkSize, factory.edgeRouterConfig.SessionValidateMinInterval, factory.edgeRouterConfig.SessionValidateMaxInterval)
 
+	pfxlog.Logger().Infof("control channel reconnected, %d handlers", len(factory.reconnectionHandlers.Value()))
 	for _, handler := range factory.reconnectionHandlers.Value() {
+		pfxlog.Logger().Infof("control channel reconnected, handler %T", handler)
 		go handler.NotifyOfReconnect(ch)
 	}
 }
@@ -103,7 +106,7 @@ func (factory *Factory) addReconnectionHandler(h reconnectionHandler) {
 }
 
 func (factory *Factory) removeReconnectionHandler(h reconnectionHandler) {
-	factory.reconnectionHandlers.Append(h)
+	factory.reconnectionHandlers.Delete(h)
 }
 
 func (factory *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
@@ -168,6 +171,7 @@ func NewFactory(routerConfig *router.Config, env env.RouterEnv, stateManager sta
 		env:               env,
 		connectionTracker: newConnectionTracker(env),
 	}
+	factory.addReconnectionHandler(factory.connectionTracker)
 	return factory
 }
 
@@ -210,7 +214,9 @@ func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 		return nil, err
 	}
 
-	pfxlog.Logger().Infof("xgress edge dialer options: %v", options.ToLoggableString())
+	// CreateDialer is called for every egress route and for inspect and validations
+	// can't log this every time.
+	// pfxlog.Logger().Infof("xgress edge dialer options: %v", options.ToLoggableString())
 
 	return newDialer(factory, options), nil
 }

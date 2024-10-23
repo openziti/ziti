@@ -70,7 +70,7 @@ func (self *identityState) markConnect(ch channel.Channel, queueEvent bool) {
 
 		self.unreported.connects = append(self.unreported.connects, identityConnect{srcAddr: srcAddr, dstAddr: dstAddr, connectTime: time.Now().UnixMilli()})
 	}
-	self.connections = append(self.connections)
+	self.connections = append(self.connections, ch)
 	if len(self.connections) == 1 {
 		self.unreported.stateChanged = true
 	}
@@ -205,6 +205,7 @@ func (self *connectionTracker) notifyNeedsFullSync() {
 }
 
 func (self *connectionTracker) markConnected(identityId string, ch channel.Channel) {
+	pfxlog.Logger().WithField("identityId", identityId).Debug("marking connected")
 	queueEvent := self.queuedEventCounter.Load() < self.maxQueuedEvents
 	self.states.Upsert(identityId, nil, func(exist bool, valueInMap *identityState, newValue *identityState) *identityState {
 		if valueInMap == nil {
@@ -220,6 +221,7 @@ func (self *connectionTracker) markConnected(identityId string, ch channel.Chann
 }
 
 func (self *connectionTracker) markDisconnected(identityId string, ch channel.Channel) {
+	pfxlog.Logger().WithField("identityId", identityId).Debug("marking disconnected")
 	self.states.Upsert(identityId, nil, func(exist bool, valueInMap *identityState, newValue *identityState) *identityState {
 		if valueInMap == nil {
 			valueInMap = &identityState{}
@@ -263,23 +265,29 @@ func (self *connectionTracker) report() {
 		})
 	}
 
-	if self.sendEvents(evts) {
-		if fullSync {
-			self.lastFullSync = startTime
-		}
-
-		self.states.IterCb(func(key string, v *identityState) {
-			clearedCount := v.clearReported()
-			if clearedCount > 0 {
-				self.queuedEventCounter.Add(int64(-clearedCount))
+	if len(evts.Events) > 0 || evts.FullState {
+		if self.sendEvents(evts) {
+			if fullSync {
+				self.lastFullSync = startTime
 			}
-		})
+
+			self.states.IterCb(func(key string, v *identityState) {
+				clearedCount := v.clearReported()
+				if clearedCount > 0 {
+					self.queuedEventCounter.Add(int64(-clearedCount))
+				}
+			})
+		}
+	} else if fullSync {
+		self.lastFullSync = startTime
 	}
 }
 
 func (self *connectionTracker) sendEvents(evts *edge_ctrl_pb.ConnectEvents) bool {
 	successfulSend := false
 	self.controllers.ForEach(func(ctrlId string, ch channel.Channel) {
+		pfxlog.Logger().WithField("ctrlId", ch.Id()).WithField("fullSync", evts.FullState).Debug("sending connect events")
+
 		if err := protobufs.MarshalTyped(evts).WithTimeout(time.Second).Send(ch); err != nil {
 			pfxlog.Logger().WithField("ctrlId", ctrlId).WithError(err).Error("error sending connect events")
 			self.needsFullSync[ctrlId] = ch
@@ -298,17 +306,20 @@ func (self *connectionTracker) sendFullSync() {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
+	pfxlog.Logger().Debug("checking if full sync required")
+
 	ctrls := map[string]channel.Channel{}
 	for k := range self.needsFullSync {
-		ch, exists := self.controllers.GetIfResponsive(k)
-		if !exists {
+		ctrl := self.controllers.GetNetworkController(k)
+		if ctrl == nil {
 			delete(self.needsFullSync, k)
-		} else if ch != nil {
-			ctrls[k] = ch
+		} else if ctrl.IsConnected() {
+			ctrls[k] = ctrl.Channel()
 		}
 	}
 
 	if len(ctrls) == 0 {
+		pfxlog.Logger().Debug("no full syncs required")
 		return
 	}
 
@@ -324,6 +335,7 @@ func (self *connectionTracker) sendFullSync() {
 	})
 
 	for ctrlId, ch := range ctrls {
+		pfxlog.Logger().WithField("ctrlId", ch.Id()).Debug("doing full connection state sync")
 		if err := protobufs.MarshalTyped(evts).WithTimeout(time.Second).Send(ch); err != nil {
 			pfxlog.Logger().WithField("ctrlId", ctrlId).WithError(err).Error("error sending connect events")
 		} else {
@@ -336,6 +348,7 @@ func (self *connectionTracker) NotifyOfReconnect(ch channel.Channel) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
+	pfxlog.Logger().WithField("ctrlId", ch.Id()).Info("sending full sync of connection state after reconnect")
 	self.needsFullSync[ch.Id()] = ch
 	self.notifyNeedsFullSync()
 }
@@ -343,8 +356,12 @@ func (self *connectionTracker) NotifyOfReconnect(ch channel.Channel) {
 func (self *connectionTracker) Inspect(_ string, _ time.Duration) any {
 	self.lock.Lock()
 	result := &inspect.RouterIdentityConnections{
-		LastFullSync:     self.lastFullSync.Format(time.RFC3339),
-		QueuedEventCount: self.queuedEventCounter.Load(),
+		IdentityConnections: map[string]*inspect.RouterIdentityConnectionDetail{},
+		LastFullSync:        self.lastFullSync.Format(time.RFC3339),
+		QueuedEventCount:    self.queuedEventCounter.Load(),
+		MaxQueuedEvents:     self.maxQueuedEvents,
+		BatchInterval:       self.batchInterval.String(),
+		FullSyncInterval:    self.fullSyncInterval.String(),
 	}
 	for ctrlId := range self.needsFullSync {
 		result.NeedFullSync = append(result.NeedFullSync, ctrlId)

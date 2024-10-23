@@ -198,7 +198,7 @@ func (self *Controller) IsLeaderless() bool {
 }
 
 func (self *Controller) IsBootstrapped() bool {
-	return self.bootstrapped.Load()
+	return self.bootstrapped.Load() || self.GetRaft().LastIndex() > 0
 }
 
 func (self *Controller) IsReadOnlyMode() bool {

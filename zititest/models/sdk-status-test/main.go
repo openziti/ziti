@@ -168,6 +168,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
 								Version: TargetZitiVersion,
+								HA:      true,
 							},
 						},
 					},
@@ -207,6 +208,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
 								Version: TargetZitiVersion,
+								HA:      true,
 							},
 						},
 					},
@@ -251,7 +253,7 @@ var m = &model.Model{
 			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/* ctrl.db"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
-			workflow.AddAction(component.Start("#ctrl1"))
+			workflow.AddAction(component.Start(".ctrl"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(edge.InitRaftController("#ctrl1"))
 

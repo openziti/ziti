@@ -55,6 +55,8 @@ func (h *connectEventsHandler) HandleReceive(msg *channel.Message, ch channel.Ch
 			pfxlog.Logger().WithError(err).Error("could not convert message to ConnectEvents")
 		}
 
+		pfxlog.Logger().Infof("got connect events. full state: %v, evts count: %d", req.FullState, len(req.Events))
+
 		identityManager := h.appEnv.Managers.Identity
 
 		if req.FullState {

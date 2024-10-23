@@ -105,7 +105,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(edge.ContentTypeTraceRouteResponse, conn.msgMux.HandleReceive)
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 
-	// Since data is most common type, it gets to dispatch directly
+	// Since data is the most common type, it gets to dispatch directly
 	binding.AddTypedReceiveHandler(conn.msgMux)
 	binding.AddCloseHandler(conn)
 	binding.AddPeekHandler(debugPeekHandler{})
