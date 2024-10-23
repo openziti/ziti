@@ -476,6 +476,7 @@ func NewApiSessionFromToken(jwtToken *jwt.Token, accessClaims *common.AccessClai
 	if err != nil {
 		return nil, fmt.Errorf("unable to get the api session identity from the JWT subject (%w)", err)
 	}
+	jwtToken.Claims.(*common.AccessClaims).Subject = subj
 	return &ApiSession{
 		ApiSession: &edge_ctrl_pb.ApiSession{
 			Token:            jwtToken.Raw,

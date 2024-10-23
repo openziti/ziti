@@ -53,7 +53,7 @@ func validateLinks(run model.Run) error {
 	deadline := time.Now().Add(15 * time.Minute)
 	for _, ctrl := range ctrls {
 		ctrlComponent := ctrl
-		go validateLinksForCtrlWithChan(ctrlComponent, deadline, errC)
+		go validateLinksForCtrlWithChan(run, ctrlComponent, deadline, errC)
 	}
 
 	for i := 0; i < len(ctrls); i++ {
@@ -66,38 +66,14 @@ func validateLinks(run model.Run) error {
 	return nil
 }
 
-func validateLinksForCtrlWithChan(c *model.Component, deadline time.Time, errC chan<- error) {
-	errC <- validateLinksForCtrl(c, deadline)
+func validateLinksForCtrlWithChan(run model.Run, c *model.Component, deadline time.Time, errC chan<- error) {
+	errC <- validateLinksForCtrl(run, c, deadline)
 }
 
-func validateLinksForCtrl(c *model.Component, deadline time.Time) error {
-	username := c.MustStringVariable("credentials.edge.username")
-	password := c.MustStringVariable("credentials.edge.password")
-	edgeApiBaseUrl := c.Host.PublicIp + ":1280"
-
-	var clients *zitirest.Clients
-	loginStart := time.Now()
-	for {
-		var err error
-		clients, err = zitirest.NewManagementClients(edgeApiBaseUrl)
-		if err != nil {
-			if time.Since(loginStart) > time.Minute {
-				return err
-			}
-			pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("failed to initialize mgmt client, trying again in 1s")
-			time.Sleep(time.Second)
-			continue
-		}
-
-		if err = clients.Authenticate(username, password); err != nil {
-			if time.Since(loginStart) > time.Minute {
-				return err
-			}
-			pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("failed to authenticate, trying again in 1s")
-			time.Sleep(time.Second)
-		} else {
-			break
-		}
+func validateLinksForCtrl(run model.Run, c *model.Component, deadline time.Time) error {
+	clients, err := chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
+	if err != nil {
+		return err
 	}
 
 	allLinksPresent := false

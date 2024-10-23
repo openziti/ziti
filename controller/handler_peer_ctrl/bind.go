@@ -20,10 +20,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/latency"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/raft"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/raft"
 	"github.com/sirupsen/logrus"
 	"time"
 )

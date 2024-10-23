@@ -70,7 +70,7 @@ func (self *identityState) markConnect(ch channel.Channel, queueEvent bool) {
 
 		self.unreported.connects = append(self.unreported.connects, identityConnect{srcAddr: srcAddr, dstAddr: dstAddr, connectTime: time.Now().UnixMilli()})
 	}
-	self.connections = append(self.connections)
+	self.connections = append(self.connections, ch)
 	if len(self.connections) == 1 {
 		self.unreported.stateChanged = true
 	}
@@ -152,6 +152,7 @@ func (self *identityState) clearReported() int {
 }
 
 type connectionTracker struct {
+	enabled            bool
 	lock               sync.Mutex
 	controllers        env.NetworkControllers
 	states             cmap.ConcurrentMap[string, *identityState]
@@ -166,6 +167,7 @@ type connectionTracker struct {
 
 func newConnectionTracker(env env.RouterEnv) *connectionTracker {
 	result := &connectionTracker{
+		enabled:          env.GetConnectEventsConfig().Enabled,
 		controllers:      env.GetNetworkControllers(),
 		states:           cmap.New[*identityState](),
 		needsFullSync:    map[string]channel.Channel{},
@@ -205,7 +207,8 @@ func (self *connectionTracker) notifyNeedsFullSync() {
 }
 
 func (self *connectionTracker) markConnected(identityId string, ch channel.Channel) {
-	queueEvent := self.queuedEventCounter.Load() < self.maxQueuedEvents
+	pfxlog.Logger().WithField("identityId", identityId).Trace("marking connected")
+	queueEvent := self.enabled && self.queuedEventCounter.Load() < self.maxQueuedEvents
 	self.states.Upsert(identityId, nil, func(exist bool, valueInMap *identityState, newValue *identityState) *identityState {
 		if valueInMap == nil {
 			valueInMap = &identityState{}
@@ -220,6 +223,7 @@ func (self *connectionTracker) markConnected(identityId string, ch channel.Chann
 }
 
 func (self *connectionTracker) markDisconnected(identityId string, ch channel.Channel) {
+	pfxlog.Logger().WithField("identityId", identityId).Trace("marking disconnected")
 	self.states.Upsert(identityId, nil, func(exist bool, valueInMap *identityState, newValue *identityState) *identityState {
 		if valueInMap == nil {
 			valueInMap = &identityState{}
@@ -263,23 +267,29 @@ func (self *connectionTracker) report() {
 		})
 	}
 
-	if self.sendEvents(evts) {
-		if fullSync {
-			self.lastFullSync = startTime
-		}
-
-		self.states.IterCb(func(key string, v *identityState) {
-			clearedCount := v.clearReported()
-			if clearedCount > 0 {
-				self.queuedEventCounter.Add(int64(-clearedCount))
+	if len(evts.Events) > 0 || evts.FullState {
+		if self.sendEvents(evts) {
+			if fullSync {
+				self.lastFullSync = startTime
 			}
-		})
+
+			self.states.IterCb(func(key string, v *identityState) {
+				clearedCount := v.clearReported()
+				if clearedCount > 0 {
+					self.queuedEventCounter.Add(int64(-clearedCount))
+				}
+			})
+		}
+	} else if fullSync {
+		self.lastFullSync = startTime
 	}
 }
 
 func (self *connectionTracker) sendEvents(evts *edge_ctrl_pb.ConnectEvents) bool {
 	successfulSend := false
 	self.controllers.ForEach(func(ctrlId string, ch channel.Channel) {
+		pfxlog.Logger().WithField("ctrlId", ch.Id()).WithField("fullSync", evts.FullState).Trace("sending connect events")
+
 		if err := protobufs.MarshalTyped(evts).WithTimeout(time.Second).Send(ch); err != nil {
 			pfxlog.Logger().WithField("ctrlId", ctrlId).WithError(err).Error("error sending connect events")
 			self.needsFullSync[ctrlId] = ch
@@ -300,11 +310,11 @@ func (self *connectionTracker) sendFullSync() {
 
 	ctrls := map[string]channel.Channel{}
 	for k := range self.needsFullSync {
-		ch, exists := self.controllers.GetIfResponsive(k)
-		if !exists {
+		ctrl := self.controllers.GetNetworkController(k)
+		if ctrl == nil {
 			delete(self.needsFullSync, k)
-		} else if ch != nil {
-			ctrls[k] = ch
+		} else if ctrl.IsConnected() {
+			ctrls[k] = ctrl.Channel()
 		}
 	}
 
@@ -324,6 +334,7 @@ func (self *connectionTracker) sendFullSync() {
 	})
 
 	for ctrlId, ch := range ctrls {
+		pfxlog.Logger().WithField("ctrlId", ch.Id()).Trace("doing full connection state sync")
 		if err := protobufs.MarshalTyped(evts).WithTimeout(time.Second).Send(ch); err != nil {
 			pfxlog.Logger().WithField("ctrlId", ctrlId).WithError(err).Error("error sending connect events")
 		} else {
@@ -336,6 +347,7 @@ func (self *connectionTracker) NotifyOfReconnect(ch channel.Channel) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
+	pfxlog.Logger().WithField("ctrlId", ch.Id()).Debug("sending full sync of connection state after reconnect")
 	self.needsFullSync[ch.Id()] = ch
 	self.notifyNeedsFullSync()
 }
@@ -343,8 +355,12 @@ func (self *connectionTracker) NotifyOfReconnect(ch channel.Channel) {
 func (self *connectionTracker) Inspect(_ string, _ time.Duration) any {
 	self.lock.Lock()
 	result := &inspect.RouterIdentityConnections{
-		LastFullSync:     self.lastFullSync.Format(time.RFC3339),
-		QueuedEventCount: self.queuedEventCounter.Load(),
+		IdentityConnections: map[string]*inspect.RouterIdentityConnectionDetail{},
+		LastFullSync:        self.lastFullSync.Format(time.RFC3339),
+		QueuedEventCount:    self.queuedEventCounter.Load(),
+		MaxQueuedEvents:     self.maxQueuedEvents,
+		BatchInterval:       self.batchInterval.String(),
+		FullSyncInterval:    self.fullSyncInterval.String(),
 	}
 	for ctrlId := range self.needsFullSync {
 		result.NeedFullSync = append(result.NeedFullSync, ctrlId)
@@ -391,7 +407,7 @@ func newSessionConnectHandler(stateManager state.Manager, options *Options, metr
 	}
 }
 
-func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding, edgeConn *edgeClientConn) error {
+func (handler *sessionConnectionHandler) validateApiSession(binding channel.Binding, edgeConn *edgeClientConn) error {
 	ch := binding.GetChannel()
 	binding.AddCloseHandler(handler)
 
@@ -441,28 +457,34 @@ func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding, ed
 	}
 
 	if isValid {
-		if apiSession.Claims != nil {
-			token = apiSession.Claims.ApiSessionId
-		}
-
-		removeListener := handler.stateManager.AddApiSessionRemovedListener(token, func(token string) {
-			if !ch.IsClosed() {
-				if err := ch.Close(); err != nil {
-					pfxlog.Logger().WithError(err).Error("could not close channel during api session removal")
-				}
-			}
-
-			handler.stateManager.RemoveActiveChannel(ch)
-		})
-
-		handler.stateManager.AddActiveChannel(ch, apiSession)
-		handler.stateManager.AddConnectedApiSessionWithChannel(token, removeListener, ch)
-
 		return nil
 	}
 
 	_ = ch.Close()
 	return errors.New("invalid client certificate for api session")
+}
+
+func (handler *sessionConnectionHandler) completeBinding(binding channel.Binding, edgeConn *edgeClientConn) {
+	ch := binding.GetChannel()
+	apiSession := edgeConn.apiSession
+	byteToken := ch.Underlay().Headers()[edge.SessionTokenHeader]
+	token := string(byteToken)
+	if apiSession.Claims != nil {
+		token = apiSession.Claims.ApiSessionId
+	}
+
+	removeListener := handler.stateManager.AddApiSessionRemovedListener(token, func(token string) {
+		if !ch.IsClosed() {
+			if err := ch.Close(); err != nil {
+				pfxlog.Logger().WithError(err).Error("could not close channel during api session removal")
+			}
+		}
+
+		handler.stateManager.RemoveActiveChannel(ch)
+	})
+
+	handler.stateManager.AddActiveChannel(ch, apiSession)
+	handler.stateManager.AddConnectedApiSessionWithChannel(token, removeListener, ch)
 }
 
 func (handler *sessionConnectionHandler) validateByFingerprint(apiSession *state.ApiSession, clientFingerprint string) bool {

@@ -19,13 +19,14 @@ package raft
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	event2 "github.com/openziti/ziti/controller/event"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
@@ -78,8 +79,12 @@ func (self *BoltDbFsm) GetDb() boltz.Db {
 }
 
 func (self *BoltDbFsm) loadCurrentIndex() (uint64, error) {
+	return self.loadDbIndex(self.db)
+}
+
+func (self *BoltDbFsm) loadDbIndex(zitiDb boltz.Db) (uint64, error) {
 	var result uint64
-	err := self.db.View(func(tx *bbolt.Tx) error {
+	err := zitiDb.View(func(tx *bbolt.Tx) error {
 		result = db.LoadCurrentRaftIndex(tx)
 		return nil
 	})
@@ -193,46 +198,133 @@ func (self *BoltDbFsm) Snapshot() (raft.FSMSnapshot, error) {
 }
 
 func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
+	var currentSnapshotId string
+	var currentIndex uint64
+
+	if self.db != nil {
+		snapshotId, _ := self.db.GetSnapshotId()
+		if snapshotId != nil {
+			currentSnapshotId = *snapshotId
+		}
+		currentIndex, _ = self.loadCurrentIndex()
+	}
+
+	logrus.Info("restoring from snapshot")
+
+	tmpPath := self.dbPath + ".stage"
+	if err := self.restoreSnapshotDbFile(tmpPath, snapshot); err != nil {
+		return err
+	}
+
+	newSnapshotId, newIndex, err := self.GetSnapshotMetadata(tmpPath)
+	if err != nil {
+		return err
+	}
+
+	log := pfxlog.Logger().
+		WithField("currentSnapshotId", currentSnapshotId).
+		WithField("newSnapshotId", newSnapshotId).
+		WithField("currentIndex", currentIndex).
+		WithField("newIndex", newIndex)
+
+	if newIndex > currentIndex {
+		log.Info("new index is greater than current index, restoring snapshot")
+	} else {
+		log.Info("snapshot index is <= current index, no need to restore snapshot")
+		if err = os.Remove(tmpPath); err != nil {
+			pfxlog.Logger().WithError(err).WithField("path", tmpPath).Error("failed to remove temporary snapshot db file")
+		}
+		return nil
+	}
+
 	if self.db != nil {
 		if err := self.db.Close(); err != nil {
 			return err
 		}
 	}
 
-	logrus.Info("restoring from snapshot")
-
 	backup := self.dbPath + ".backup"
-	err := os.Rename(self.dbPath, backup)
+	if err = os.Rename(self.dbPath, backup); err != nil {
+		return fmt.Errorf("failed to copy existing db to backup path (%w)", err)
+	}
+
+	if err = os.Rename(tmpPath, self.dbPath); err != nil {
+		return fmt.Errorf("failed to copy snapshot db to primary db location (%w)", err)
+	}
+
+	// if we're not initializing from a snapshot at startup, restart
+	if self.indexTracker.Index() > 0 {
+		log.Info("restored snapshot to initialized system, restart required. exiting")
+		os.Exit(0)
+	}
+
+	self.db, err = db.Open(self.dbPath)
+	if err == nil {
+		log.Info("restored snapshot to uninitialized system, ok to continue")
+	}
+	return err
+}
+
+func (self *BoltDbFsm) restoreSnapshotDbFile(path string, snapshot io.ReadCloser) error {
+	dbFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
 
-	dbFile, err := os.OpenFile(self.dbPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
-	}
+	success := false
+
+	defer func() {
+		if err = dbFile.Close(); err != nil {
+			pfxlog.Logger().WithError(err).WithField("path", path).Error("failed to close temporary snapshot db file")
+		}
+
+		if !success {
+			if err = os.Remove(path); err != nil {
+				pfxlog.Logger().WithError(err).WithField("path", path).Error("failed to remove temporary snapshot db file")
+			}
+		}
+	}()
 
 	gzReader, err := gzip.NewReader(snapshot)
 	if err != nil {
 		return errors.Wrapf(err, "unable to create gz reader for reading raft snapshot during restore")
 	}
 
-	_, err = io.Copy(dbFile, gzReader)
-	if err != nil {
-		_ = os.Remove(self.dbPath)
-		if renameErr := os.Rename(backup, self.dbPath); renameErr != nil {
-			logrus.WithError(renameErr).Error("failed to move ziti db back to original location")
-		}
+	if _, err = io.Copy(dbFile, gzReader); err != nil {
 		return err
 	}
 
-	// if we're not initializing from a snapshot at startup, restart
-	if self.indexTracker.Index() > 0 {
-		os.Exit(0)
+	success = true
+	return nil
+}
+
+func (self *BoltDbFsm) GetSnapshotMetadata(path string) (string, uint64, error) {
+	newDb, err := db.Open(path)
+	if err != nil {
+		return "", 0, err
 	}
 
-	self.db, err = db.Open(self.dbPath)
-	return err
+	defer func() {
+		if err = newDb.Close(); err != nil {
+			pfxlog.Logger().WithError(err).WithField("path", path).Error("error closing snapshot db")
+		}
+	}()
+
+	snapshotIdP, err := newDb.GetSnapshotId()
+	if err != nil {
+		return "", 0, err
+	}
+	var snapshotId string
+	if snapshotIdP != nil {
+		snapshotId = *snapshotIdP
+	}
+
+	idx, err := self.loadDbIndex(newDb)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return snapshotId, idx, nil
 }
 
 type boltSnapshot struct {

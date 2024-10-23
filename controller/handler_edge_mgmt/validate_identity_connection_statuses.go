@@ -135,7 +135,7 @@ func (handler *validateIdentityConnectionStatusesHandler) validRouterEdgeConnect
 	var identityConnections *inspect.RouterIdentityConnections
 
 	if router.Control != nil && !router.Control.IsClosed() {
-		request := &ctrl_pb.InspectRequest{RequestedValues: []string{"connections"}}
+		request := &ctrl_pb.InspectRequest{RequestedValues: []string{inspect.RouterIdentityConnectionStatusesKey}}
 		resp := &ctrl_pb.InspectResponse{}
 		respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
 		if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
@@ -144,7 +144,7 @@ func (handler *validateIdentityConnectionStatusesHandler) validRouterEdgeConnect
 		}
 
 		for _, val := range resp.Values {
-			if val.Name == "connections" {
+			if val.Name == inspect.RouterIdentityConnectionStatusesKey {
 				if err = json.Unmarshal([]byte(val.Value), &identityConnections); err != nil {
 					handler.reportError(router, err, cb)
 					return

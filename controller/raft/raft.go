@@ -198,7 +198,7 @@ func (self *Controller) IsLeaderless() bool {
 }
 
 func (self *Controller) IsBootstrapped() bool {
-	return self.bootstrapped.Load()
+	return self.bootstrapped.Load() || self.GetRaft().LastIndex() > 0
 }
 
 func (self *Controller) IsReadOnlyMode() bool {
@@ -703,14 +703,20 @@ func (self *Controller) Bootstrap() error {
 		}
 
 		start := time.Now()
+		firstCheckPassed := false
 		for {
+			// make sure this is in a reasonably steady state by waiting a bit longer and checking twice
 			if self.isLeader.Load() {
-				break
+				if firstCheckPassed {
+					break
+				} else {
+					firstCheckPassed = true
+				}
 			}
 			if time.Since(start) > time.Second*10 {
 				return fmt.Errorf("node did not bootstrap in time")
 			}
-			time.Sleep(25 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 
 		go self.addConfiguredInitialMembers()

@@ -512,7 +512,7 @@ func (c *EdgeConfig) loadIdentityStatusConfig(cfgmap map[interface{}]interface{}
 				case "hybrid":
 					c.IdentityStatusConfig.Source = IdentityStatusSourceHybrid
 				default:
-					pfxlog.Logger().Error("invalid value '%v' for identity status config source, valid values: ['heartbeats', 'connect-events', 'hybrid']", strVal)
+					pfxlog.Logger().Errorf("invalid value '%v' for identity status config source, valid values: ['heartbeats', 'connect-events', 'hybrid']", strVal)
 				}
 			}
 

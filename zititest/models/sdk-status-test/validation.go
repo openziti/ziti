@@ -42,7 +42,7 @@ func sowChaos(run model.Run) error {
 	scenario := scenarioCounter + 1
 
 	if scenario&0b001 > 0 {
-		controllers, err = chaos.SelectRandom(run, ".ctrl", chaos.RandomOfTotal())
+		controllers, err = chaos.SelectRandom(run, ".ctrl", chaos.RandomInRange(1, 2))
 		if err != nil {
 			return err
 		}
@@ -65,20 +65,23 @@ func sowChaos(run model.Run) error {
 		}
 	}
 
-	toStop := append(([]*model.Component)(nil), controllers...)
+	fmt.Printf("stopping %d controllers,  %d routers and %d hosts\n", len(controllers), len(routers), len(hosts))
+	if err = chaos.RestartSelected(run, controllers, 3); err != nil {
+		return err
+	}
+	var toStop []*model.Component
 	toStop = append(toStop, routers...)
 	toStop = append(toStop, hosts...)
-	fmt.Printf("stopping %d controllers,  %d routers and %d hosts\n", len(controllers), len(routers), len(hosts))
 	return chaos.StopSelected(run, toStop, 100)
 }
 
 func validateSdkStatus(run model.Run) error {
 	ctrls := run.GetModel().SelectComponents(".ctrl")
 	errC := make(chan error, len(ctrls))
-	deadline := time.Now().Add(15 * time.Minute)
+	deadline := time.Now().Add(8 * time.Minute)
 	for _, ctrl := range ctrls {
 		ctrlComponent := ctrl
-		go validateSdkStatusForCtrlWithChan(ctrlComponent, deadline, errC)
+		go validateSdkStatusForCtrlWithChan(run, ctrlComponent, deadline, errC)
 	}
 
 	for i := 0; i < len(ctrls); i++ {
@@ -91,38 +94,14 @@ func validateSdkStatus(run model.Run) error {
 	return nil
 }
 
-func validateSdkStatusForCtrlWithChan(c *model.Component, deadline time.Time, errC chan<- error) {
-	errC <- validateSdkStatusForCtrl(c, deadline)
+func validateSdkStatusForCtrlWithChan(run model.Run, c *model.Component, deadline time.Time, errC chan<- error) {
+	errC <- validateSdkStatusForCtrl(run, c, deadline)
 }
 
-func validateSdkStatusForCtrl(c *model.Component, deadline time.Time) error {
-	username := c.MustStringVariable("credentials.edge.username")
-	password := c.MustStringVariable("credentials.edge.password")
-	edgeApiBaseUrl := c.Host.PublicIp + ":1280"
-
-	var clients *zitirest.Clients
-	loginStart := time.Now()
-	for {
-		var err error
-		clients, err = zitirest.NewManagementClients(edgeApiBaseUrl)
-		if err != nil {
-			if time.Since(loginStart) > time.Minute {
-				return err
-			}
-			pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("failed to initialize mgmt client, trying again in 1s")
-			time.Sleep(time.Second)
-			continue
-		}
-
-		if err = clients.Authenticate(username, password); err != nil {
-			if time.Since(loginStart) > time.Minute {
-				return err
-			}
-			pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("failed to authenticate, trying again in 1s")
-			time.Sleep(time.Second)
-		} else {
-			break
-		}
+func validateSdkStatusForCtrl(run model.Run, c *model.Component, deadline time.Time) error {
+	clients, err := chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
+	if err != nil {
+		return err
 	}
 
 	start := time.Now()
@@ -138,8 +117,16 @@ func validateSdkStatusForCtrl(c *model.Component, deadline time.Time) error {
 			return err
 		}
 
-		logger.Infof("current count of invalid sdk terminators: %v, elapsed time: %v", count, time.Since(start))
-		time.Sleep(15 * time.Second)
+		logger.Infof("current count of invalid sdk statuses: %v, elapsed time: %v", count, time.Since(start))
+		beforeLogin := time.Now()
+		clients, err = chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
+		if err != nil {
+			return err
+		}
+		elapsed := time.Since(beforeLogin)
+		if elapsed < 5*time.Second {
+			time.Sleep((5 * time.Second) - elapsed)
+		}
 	}
 }
 
@@ -152,7 +139,7 @@ func validateSdkStatuses(id string, clients *zitirest.Clients) (int, error) {
 	handleSdkStatusResults := func(msg *channel.Message, _ channel.Channel) {
 		detail := &mgmt_pb.RouterIdentityConnectionStatusesDetails{}
 		if err := proto.Unmarshal(msg.Body, detail); err != nil {
-			pfxlog.Logger().WithError(err).Error("unable to unmarshal router sdk terminator details")
+			pfxlog.Logger().WithError(err).Error("unable to unmarshal router sdk status details")
 			return
 		}
 		eventNotify <- detail

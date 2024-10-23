@@ -55,6 +55,7 @@ type ZitiTunnelType struct {
 	LocalPath   string
 	ConfigPathF func(c *model.Component) string
 	HA          bool
+	Count       uint8
 }
 
 func (self *ZitiTunnelType) Label() string {
@@ -73,6 +74,9 @@ func (self *ZitiTunnelType) GetActions() map[string]model.ComponentAction {
 
 func (self *ZitiTunnelType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
+	if self.Count < 1 {
+		self.Count = 1
+	}
 }
 
 func (self *ZitiTunnelType) Dump() any {
@@ -113,23 +117,37 @@ func (self *ZitiTunnelType) GetConfigPath(c *model.Component) string {
 	return fmt.Sprintf("/home/%s/fablab/cfg/%s.json", c.GetHost().GetSshUser(), c.Id)
 }
 
-func (self *ZitiTunnelType) Start(r model.Run, c *model.Component) error {
-	isRunninng, err := self.IsRunning(r, c)
+func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
+	pids, err := c.GetHost().FindProcesses(self.getProcessFilter(c))
 	if err != nil {
 		return err
 	}
-	if isRunninng {
-		fmt.Printf("ziti tunnel %s already started\n", c.Id)
+	if len(pids) >= int(self.Count) {
+		fmt.Printf("ziti tunnel(s) %s already started\n", c.Id)
 		return nil
 	}
 
+	count := int(self.Count) - len(pids)
+	start := 0
+	if len(pids) > 0 {
+		start = int(self.Count)
+	}
+	for n := range count {
+		if err = self.StartIndividual(c, start+n); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (self *ZitiTunnelType) StartIndividual(c *model.Component, idx int) error {
 	mode := self.Mode
 
 	user := c.GetHost().GetSshUser()
 
 	binaryPath := GetZitiBinaryPath(c, self.Version)
 	configPath := self.GetConfigPath(c)
-	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
+	logsPath := fmt.Sprintf("/home/%s/logs/%s-%v.log", user, c.Id, idx)
 
 	useSudo := ""
 	if mode == ZitiTunnelModeTproxy {

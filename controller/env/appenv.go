@@ -213,7 +213,7 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 		}
 
 		if serviceAccessClaims.ApiSessionId != *apiSessionId {
-			return nil, fmt.Errorf("invalid api sessoin id, expected %s, got %s", *apiSessionId, serviceAccessClaims.ApiSessionId)
+			return nil, fmt.Errorf("invalid api session id, expected %s, got %s", *apiSessionId, serviceAccessClaims.ApiSessionId)
 		}
 	}
 

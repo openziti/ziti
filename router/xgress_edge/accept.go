@@ -105,12 +105,12 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(edge.ContentTypeTraceRouteResponse, conn.msgMux.HandleReceive)
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 
-	// Since data is most common type, it gets to dispatch directly
+	// Since data is the most common type, it gets to dispatch directly
 	binding.AddTypedReceiveHandler(conn.msgMux)
 	binding.AddCloseHandler(conn)
 	binding.AddPeekHandler(debugPeekHandler{})
 
-	if err := self.sessionBindHandler.BindChannel(binding, conn); err != nil {
+	if err := self.sessionBindHandler.validateApiSession(binding, conn); err != nil {
 		self.connectFailureMeter.Mark(1)
 		return err
 	}
@@ -126,6 +126,8 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 
 	self.connectSuccessMeter.Mark(1)
 	self.connectionCount.Add(1)
+
+	self.sessionBindHandler.completeBinding(binding, conn)
 	return nil
 }
 

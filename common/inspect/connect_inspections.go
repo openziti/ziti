@@ -16,11 +16,18 @@
 
 package inspect
 
+const (
+	RouterIdentityConnectionStatusesKey = "identity-connection-statuses"
+)
+
 type RouterIdentityConnections struct {
 	IdentityConnections map[string]*RouterIdentityConnectionDetail `json:"identity_connections"`
 	LastFullSync        string                                     `json:"last_full_sync"`
 	QueuedEventCount    int64                                      `json:"queued_event_count"`
+	MaxQueuedEvents     int64                                      `json:"max_queued_events"`
 	NeedFullSync        []string                                   `json:"need_full_sync"`
+	BatchInterval       string                                     `json:"batch_interval"`
+	FullSyncInterval    string                                     `json:"full_sync_interval"`
 }
 
 type RouterIdentityConnectionDetail struct {
@@ -39,7 +46,8 @@ type RouterConnectionDetail struct {
 }
 
 type CtrlIdentityConnections struct {
-	Connections map[string]*CtrlIdentityConnectionDetail `json:"connections"`
+	Connections  map[string]*CtrlIdentityConnectionDetail `json:"connections"`
+	ScanInterval string                                   `json:"scanInterval"`
 }
 
 type CtrlIdentityConnectionDetail struct {

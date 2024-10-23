@@ -1002,28 +1002,39 @@ func (self *ConnectionTracker) ScanForDisconnectedRouters() {
 			currentState := entry.Val.calculateState()
 			if lastReportedState != currentState {
 				reportState = &currentState
-				lastReportedState = currentState
 			}
 			entry.Val.Unlock()
 
 			if reportState != nil {
-				self.SendEvent(entry.Key, *reportState)
+				self.SendSdkOnlineStatusChangeEvent(entry.Key, *reportState)
 			}
 		}
+
+		entry.Val.Lock()
+		if len(entry.Val.routers) == 0 {
+			self.connections.RemoveCb(entry.Key, func(key string, v *identityConnections, exists bool) bool {
+				if v != nil {
+					return len(v.routers) == 0
+				}
+				return true
+			})
+		}
+		entry.Val.Unlock()
 	}
 }
 
 func (self *ConnectionTracker) MarkConnected(identityId string, ch channel.Channel) {
+	pfxlog.Logger().WithField("identityId", identityId).WithField("routerId", ch.Id()).Trace("marking identity connected to router")
 	var postUpsertCallback func()
 	self.connections.Upsert(identityId, nil, func(exist bool, valueInMap *identityConnections, newValue *identityConnections) *identityConnections {
-		if ch.IsClosed() {
-			return valueInMap
-		}
-
 		if valueInMap == nil {
 			valueInMap = &identityConnections{
 				routers: map[string]channel.Channel{},
 			}
+		}
+
+		if ch.IsClosed() {
+			return valueInMap
 		}
 
 		valueInMap.Lock()
@@ -1036,7 +1047,7 @@ func (self *ConnectionTracker) MarkConnected(identityId string, ch channel.Chann
 
 		if newState != oldState || newState != lastReportedState {
 			postUpsertCallback = func() {
-				self.SendEvent(identityId, newState)
+				self.SendSdkOnlineStatusChangeEvent(identityId, newState)
 			}
 		}
 		return valueInMap
@@ -1048,10 +1059,13 @@ func (self *ConnectionTracker) MarkConnected(identityId string, ch channel.Chann
 }
 
 func (self *ConnectionTracker) MarkDisconnected(identityId string, ch channel.Channel) {
+	pfxlog.Logger().WithField("identityId", identityId).WithField("routerId", ch.Id()).Trace("marking identity disconnected from router")
 	var postUpsertCallback func()
 	self.connections.Upsert(identityId, nil, func(exist bool, valueInMap *identityConnections, newValue *identityConnections) *identityConnections {
 		if valueInMap == nil {
-			return nil
+			return &identityConnections{
+				routers: map[string]channel.Channel{},
+			}
 		}
 
 		valueInMap.Lock()
@@ -1069,7 +1083,7 @@ func (self *ConnectionTracker) MarkDisconnected(identityId string, ch channel.Ch
 
 		if newState != oldState || newState != lastReportedState {
 			postUpsertCallback = func() {
-				self.SendEvent(identityId, newState)
+				self.SendSdkOnlineStatusChangeEvent(identityId, newState)
 			}
 		}
 		return valueInMap
@@ -1080,7 +1094,7 @@ func (self *ConnectionTracker) MarkDisconnected(identityId string, ch channel.Ch
 	}
 }
 
-func (self *ConnectionTracker) SendEvent(identityId string, state IdentityOnlineState) {
+func (self *ConnectionTracker) SendSdkOnlineStatusChangeEvent(identityId string, state IdentityOnlineState) {
 	var eventType event.SdkEventType
 	if state == IdentityStateOffline {
 		eventType = event.SdkOffline
@@ -1112,12 +1126,13 @@ func (self *ConnectionTracker) SyncAllFromRouter(state *edge_ctrl_pb.ConnectEven
 	m := map[string]bool{}
 	for _, identityState := range state.Events {
 		m[identityState.IdentityId] = identityState.IsConnected
+		if identityState.IsConnected {
+			self.MarkConnected(identityState.IdentityId, ch)
+		}
 	}
 
 	for _, identityId := range self.connections.Keys() {
-		if connected := m[identityId]; connected {
-			self.MarkConnected(identityId, ch)
-		} else {
+		if connected := m[identityId]; !connected {
 			self.MarkDisconnected(identityId, ch)
 		}
 	}
@@ -1125,7 +1140,8 @@ func (self *ConnectionTracker) SyncAllFromRouter(state *edge_ctrl_pb.ConnectEven
 
 func (self *ConnectionTracker) Inspect() *inspect.CtrlIdentityConnections {
 	result := &inspect.CtrlIdentityConnections{
-		Connections: map[string]*inspect.CtrlIdentityConnectionDetail{},
+		Connections:  map[string]*inspect.CtrlIdentityConnectionDetail{},
+		ScanInterval: self.scanInterval.String(),
 	}
 
 	for entry := range self.connections.IterBuffered() {

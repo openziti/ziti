@@ -1,13 +1,12 @@
 v: 3
 
 raft:
-  minClusterSize: 1
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
 
 identity:
-  cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.cert
+  cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem
   key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}-server.key
-  ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem
+  ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}.chain.pem
 
 trustDomain: sdk-hosting-test
 
@@ -38,16 +37,16 @@ ctrl:
     # connections. The value of newListener must be resolvable both via DNS and validate via certificates
     #newListener: tls:localhost:6262
 
-events:
-  jsonLogger:
-    subscriptions:
-      - type: entityChange
-      - type: edge.apiSessions
-      - type: edge.entityCounts
-        interval: 15s
-      - type: edge.sessions
-      - type: fabric.routers
-      - type: fabric.terminators
+#events:
+#  jsonLogger:
+#    subscriptions:
+#      - type: entityChange
+#      - type: edge.apiSessions
+#      - type: edge.entityCounts
+#        interval: 15s
+#      - type: edge.sessions
+#      - type: fabric.routers
+#      - type: fabric.terminators
 #      - type: metrics
 #        sourceFilter: .*
 #        metricFilter: .*egress.*m1_rate*
@@ -59,10 +58,10 @@ events:
 #      - type: fabric.usage
 #      - type: services
 #      - type: fabric.usage
-    handler:
-      type: file
-      format: json
-      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/event.log
+#    handler:
+#      type: file
+#      format: json
+#      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/event.log
 
 healthChecks:
   boltCheck:
@@ -76,6 +75,10 @@ healthChecks:
 # By having an 'edge' section defined, the ziti-controller will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the edge to not run.
 edge:
+  identityStatusConfig:
+    unknownTimeout: 1m
+    scanInterval: 30s
+
   # This section represents the configuration of the Edge API that is served over HTTPS
   api:
     #(optional, default 90s) Alters how frequently heartbeat and last activity values are persisted
@@ -191,13 +194,7 @@ web:
       #   - edge-client
       #   - fabric-management
       - binding: health-checks
-        options: {}
       - binding: fabric
       - binding: edge-management
-        # options - variable optional/required
-        # This section is used to define values that are specified by the API they are associated with.
-        # These settings are per API. The example below is for the `edge-api` and contains both optional values and
-        # required values.
-        options: {}
       - binding: edge-client
-        options: {}
+      - binding: edge-oidc

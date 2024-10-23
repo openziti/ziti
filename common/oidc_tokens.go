@@ -110,7 +110,7 @@ func (r *RefreshClaims) GetIssuer() (string, error) {
 }
 
 func (r *RefreshClaims) GetSubject() (string, error) {
-	return r.TokenClaims.Issuer, nil
+	return r.TokenClaims.Subject, nil
 }
 
 func (r *RefreshClaims) GetAudience() (jwt.ClaimStrings, error) {
@@ -211,7 +211,7 @@ func (r *AccessClaims) GetIssuer() (string, error) {
 }
 
 func (r *AccessClaims) GetSubject() (string, error) {
-	return r.TokenClaims.Issuer, nil
+	return r.TokenClaims.Subject, nil
 }
 
 func (r *AccessClaims) GetAudience() (jwt.ClaimStrings, error) {
@@ -260,7 +260,7 @@ func (r *IdTokenClaims) GetIssuer() (string, error) {
 }
 
 func (r *IdTokenClaims) GetSubject() (string, error) {
-	return r.TokenClaims.Issuer, nil
+	return r.TokenClaims.Subject, nil
 }
 
 func (r *IdTokenClaims) GetAudience() (jwt.ClaimStrings, error) {

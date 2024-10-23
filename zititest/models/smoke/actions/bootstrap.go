@@ -55,7 +55,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	if isHA {
 		workflow.AddAction(semaphore.Sleep(10 * time.Second))
-		workflow.AddAction(edge.RaftJoin(".ctrl"))
+		workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
 		workflow.AddAction(semaphore.Sleep(2 * time.Second))
 		workflow.AddAction(edge.InitRaftController("#ctrl1"))
 	}

@@ -191,7 +191,7 @@ func (ctx *inspectRequestContext) InspectLocal(name string) {
 			state.Terminators = append(state.Terminators, cost.Inspect(terminatorId))
 		})
 		ctx.handleLocalJsonResponse(name, state)
-	} else if lc == "identity-connection-state" {
+	} else if lc == inspect.RouterIdentityConnectionStatusesKey {
 		result := ctx.network.env.GetManagers().Identity.GetConnectionTracker().Inspect()
 		ctx.handleLocalJsonResponse(name, result)
 	} else {
