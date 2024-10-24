@@ -799,12 +799,13 @@ main(){
     }
     local -a _controller_cmd=(upgrade --install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller"
         --namespace "${ZITI_NAMESPACE}" --create-namespace
-        --set ctrlPlane.advertisedHost="miniziti-controller-ctrl.${MINIZITI_INGRESS_ZONE}"
         --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}"
         --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}"
         --set trust-manager.enabled=true
         --set cert-manager.enabled=true
         --values "${ZITI_CHARTS_URL}/ziti-controller/values-ingress-nginx.yaml"
+        --set ctrlPlane.service.enabled=false
+        --set ctrlPlane.ingress.enabled=false
     )
     if [[ -n "${EXTRA_VALUES_DIR:-}" && -s "${EXTRA_VALUES_DIR}/ziti-controller.yaml" ]]; then
         _controller_cmd+=(--values "${EXTRA_VALUES_DIR}/ziti-controller.yaml")
@@ -971,10 +972,11 @@ EOF
         --namespace "${ZITI_NAMESPACE}"
         --set-file enrollmentJwt="$ROUTER_OTT"
         --set edge.advertisedHost="miniziti-router.${MINIZITI_INGRESS_ZONE}"
-        --set linkListeners.transport.advertisedHost="miniziti-router-transport.${MINIZITI_INGRESS_ZONE}"
-        --set "ctrl.endpoint=ziti-controller-ctrl.${ZITI_NAMESPACE}.svc:443"
+        --set ctrl.endpoint="miniziti-controller.${MINIZITI_INGRESS_ZONE}:443"
         --set "tunnel.mode=host"
         --values "${ZITI_CHARTS_URL}/ziti-router/values-ingress-nginx.yaml"
+        --set linkListeners.transport.service.enabled=false
+        --set linkListeners.transport.ingress.enabled=false
     )
     if [[ -n "${EXTRA_VALUES_DIR:-}" && -s "${EXTRA_VALUES_DIR}/ziti-router.yaml" ]]; then
         _router_cmd+=(--values "${EXTRA_VALUES_DIR}/ziti-router.yaml")
