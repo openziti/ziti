@@ -79,21 +79,16 @@ func (handler *ctrlPipeHandler) HandleReceive(msg *channel.Message, ch channel.C
 		return
 	}
 
-	if handler.env.GetMgmtPipeConfig().IsEmbedded() {
-		handler.pipeToEmbeddedSshServer(msg, req)
-		return
-	}
-
 	log.Error("no configured pipe handler")
 	handler.respondError(msg, "no configured pipe handler")
 }
 
 func (handler *ctrlPipeHandler) pipeToLocalPort(msg *channel.Message, req *ctrl_pb.CtrlPipeRequest) {
 	log := pfxlog.ContextLogger(handler.ch.Label()).
-		WithField("destination", fmt.Sprintf("localhost:%d", handler.env.GetMgmtPipeConfig().DestinationPort)).
+		WithField("destination", fmt.Sprintf("127.0.0.1:%d", handler.env.GetMgmtPipeConfig().DestinationPort)).
 		WithField("pipeId", req.ConnId)
 
-	conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", handler.env.GetMgmtPipeConfig().DestinationPort))
+	conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", handler.env.GetMgmtPipeConfig().DestinationPort))
 	if err != nil {
 		log.WithError(err).Error("failed to dial pipe destination")
 		handler.respondError(msg, err.Error())
@@ -126,7 +121,7 @@ func (handler *ctrlPipeHandler) pipeToLocalPort(msg *channel.Message, req *ctrl_
 	go pipe.readLoop()
 }
 
-func (handler *ctrlPipeHandler) pipeToEmbeddedSshServer(msg *channel.Message, req *ctrl_pb.CtrlPipeRequest) {
+func (handler *ctrlPipeHandler) PipeToEmbeddedSshServer(msg *channel.Message, req *ctrl_pb.CtrlPipeRequest) {
 	log := pfxlog.ContextLogger(handler.ch.Label()).
 		WithField("destination", "embedded-ssh-server").
 		WithField("pipeId", req.ConnId)

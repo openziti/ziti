@@ -31,9 +31,8 @@ import (
 type LocalAccessType string
 
 const (
-	LocalAccessTypeNone              LocalAccessType = ""
-	LocalAccessTypePort              LocalAccessType = "local-port"
-	LocalAccessTypeEmbeddedSshServer LocalAccessType = "embedded-ssh-server"
+	LocalAccessTypeNone LocalAccessType = ""
+	LocalAccessTypePort LocalAccessType = "local-port"
 )
 
 type Config struct {
@@ -51,10 +50,6 @@ func (self *Config) IsLocalAccessAllowed() bool {
 
 func (self *Config) IsLocalPort() bool {
 	return self.LocalAccessType == LocalAccessTypePort
-}
-
-func (self *Config) IsEmbedded() bool {
-	return self.LocalAccessType == LocalAccessTypeEmbeddedSshServer
 }
 
 func (self *Config) LoadConfig(m map[interface{}]interface{}) error {
@@ -87,33 +82,13 @@ func (self *Config) LoadConfig(m map[interface{}]interface{}) error {
 					portStr := strings.TrimPrefix(destination, "127.0.0.1:")
 					port, err := strconv.ParseUint(portStr, 10, 16)
 					if err != nil {
-						log.WithError(err).Warn("mgmt.pipe is enabled, but destination not valid. Must be '127.0.0.1:<port>' or 'embedded'")
+						log.WithError(err).Warn("mgmt.pipe is enabled, but destination not valid; must be '127.0.0.1:<port>'")
 						self.Enabled = false
 						return nil
 					}
 					self.DestinationPort = uint16(port)
-				} else if destination == "embedded-ssh-server" {
-					self.LocalAccessType = LocalAccessTypeEmbeddedSshServer
-
-					if v, ok = m["authorizedKeysFile"]; ok {
-						if keysFile, ok := v.(string); ok {
-							self.AuthorizedKeysFile = keysFile
-						} else {
-							log.Warnf("mgmt.pipe is enabled, but 'embedded' destination configured and authorizedKeysFile configuration is not type string, but %T", v)
-							self.Enabled = false
-							return nil
-						}
-					}
-
-					if v, ok = m["shell"]; ok {
-						if s, ok := v.(string); ok {
-							self.ShellPath = s
-						} else {
-							log.Warnf("mgmt.pipe is enabled, but 'embedded' destination configured and shell configuration is not type string, but %T", v)
-						}
-					}
 				} else {
-					log.Warn("mgmt.pipe is enabled, but destination not valid. Must be 'localhost:port' or 'embedded'")
+					log.Warn("mgmt.pipe is enabled, but destination not valid; must be '127.0.0.1:<port>'")
 					self.Enabled = false
 					return nil
 				}

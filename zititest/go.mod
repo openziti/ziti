@@ -13,8 +13,8 @@ require (
 	github.com/openziti/agent v1.0.18
 	github.com/openziti/channel/v3 v3.0.7
 	github.com/openziti/edge-api v0.26.35
-	github.com/openziti/fablab v0.5.60
-	github.com/openziti/foundation/v2 v2.0.49
+	github.com/openziti/fablab v0.5.74
+	github.com/openziti/foundation/v2 v2.0.50
 	github.com/openziti/identity v1.0.87
 	github.com/openziti/sdk-golang v0.23.44
 	github.com/openziti/storage v0.3.2
@@ -39,7 +39,7 @@ require (
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
-	github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239 // indirect
+	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
@@ -67,7 +67,7 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
 	github.com/gaissmai/extnetip v1.1.0 // indirect
-	github.com/gliderlabs/ssh v0.1.1 // indirect
+	github.com/gliderlabs/ssh v0.3.7 // indirect
 	github.com/go-acme/lego/v4 v4.19.2 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
@@ -153,7 +153,7 @@ require (
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
-	github.com/pkg/sftp v1.13.6 // indirect
+	github.com/pkg/sftp v1.13.7 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
