@@ -72,6 +72,11 @@ func (handler *mgmtPipeHandler) HandleReceive(msg *channel.Message, ch channel.C
 		return
 	}
 
+	if handler.pipe != nil {
+		handler.respondError(msg, "pipe already established on this endpoint, start a new mgmt connection to start a new pipe")
+		return
+	}
+
 	if request.DestinationType.CheckControllers() {
 		log.Infof("checking requested destination '%s' against local id '%s'", request.Destination, handler.network.GetAppId())
 		if request.Destination == handler.network.GetAppId() {
@@ -181,22 +186,17 @@ func (handler *mgmtPipeHandler) pipeToLocalhost(msg *channel.Message) {
 		return
 	}
 
-	if cfg.IsEmbedded() {
-		handler.pipeToEmbeddedSshServer(msg, pipeId)
-		return
-	}
-
-	log.Error("mgmt.pipe misconfigured, enabled, but neither localPort nor embedded enabled")
+	log.Error("mgmt.pipe misconfigured, enabled, but no local endpoint configured")
 	handler.respondError(msg, "server is misconfigured, unable to connect pipe")
 }
 
 func (handler *mgmtPipeHandler) pipeToLocalPort(msg *channel.Message, pipeId uint32) {
 	cfg := handler.registry.GetConfig()
 	log := pfxlog.ContextLogger(handler.ch.Label()).
-		WithField("destination", fmt.Sprintf("localhost:%d", cfg.DestinationPort)).
+		WithField("destination", fmt.Sprintf("127.0.0.1:%d", cfg.DestinationPort)).
 		WithField("pipeId", pipeId)
 
-	conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", cfg.DestinationPort))
+	conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", cfg.DestinationPort))
 	if err != nil {
 		log.WithError(err).Error("failed to connect mgmt pipe")
 		handler.respondError(msg, err.Error())
@@ -235,7 +235,7 @@ func (handler *mgmtPipeHandler) pipeToLocalPort(msg *channel.Message, pipeId uin
 	log.Info("started mgmt pipe to local controller")
 }
 
-func (handler *mgmtPipeHandler) pipeToEmbeddedSshServer(msg *channel.Message, pipeId uint32) {
+func (handler *mgmtPipeHandler) PipeToEmbeddedSshServer(msg *channel.Message, pipeId uint32) {
 	log := pfxlog.ContextLogger(handler.ch.Label()).
 		WithField("destination", "embedded-ssh-server").
 		WithField("pipeId", pipeId)
