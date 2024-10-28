@@ -140,7 +140,9 @@ func (store *configStoreImpl) DeleteById(ctx boltz.MutateContext, id string) err
 		}
 		identityId := keys[0]
 		serviceId := keys[1]
-		mapCtx.SetError(fmt.Errorf("config is in use by identity %s for service %s", identityId, serviceId))
+		if store.stores.identity.IsEntityPresent(ctx.Tx(), identityId) && store.stores.service.IsEntityPresent(ctx.Tx(), serviceId) {
+			mapCtx.SetError(fmt.Errorf("config is in use by identity %s for service %s", identityId, serviceId))
+		}
 	})
 	if err != nil {
 		return err

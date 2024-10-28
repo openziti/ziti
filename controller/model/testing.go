@@ -223,12 +223,26 @@ func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
 	return newIdentity
 }
 
-func (ctx *TestContext) requireNewService() *EdgeService {
+func (ctx *TestContext) requireNewService(cfgs ...string) *EdgeService {
 	service := &EdgeService{
-		Name: eid.New(),
+		Name:    eid.New(),
+		Configs: cfgs,
 	}
 	ctx.NoError(ctx.managers.EdgeService.Create(service, change.New()))
 	return service
+}
+
+func (ctx *TestContext) requireNewConfig(configTypeName string, data map[string]any) *Config {
+	cfgType, err := ctx.managers.ConfigType.ReadByName(configTypeName)
+	ctx.NoError(err)
+
+	cfg := &Config{
+		Name:   eid.New(),
+		TypeId: cfgType.Id,
+		Data:   data,
+	}
+	ctx.NoError(ctx.managers.Config.Create(cfg, change.New()))
+	return cfg
 }
 
 func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {

@@ -28,6 +28,7 @@ const (
 	FieldEdgeServiceDialIdentities = "dialIdentities"
 	FieldEdgeServiceBindIdentities = "bindIdentities"
 	FieldServiceEncryptionRequired = "encryptionRequired"
+	FieldServiceIdentityService    = "identityServices"
 )
 
 type EdgeService struct {
@@ -95,6 +96,9 @@ type edgeServiceStoreImpl struct {
 	bindIdentitiesCollection boltz.RefCountedLinkCollection
 	dialIdentitiesCollection boltz.RefCountedLinkCollection
 	edgeRoutersCollection    boltz.RefCountedLinkCollection
+
+	symbolIdentityServices boltz.EntitySetSymbol
+	identityServicesLinks  *boltz.LinkedSetSymbol
 }
 
 func (store *edgeServiceStoreImpl) HandleUpdate(ctx boltz.MutateContext, entity *Service, checker boltz.FieldChecker) (bool, error) {
@@ -142,6 +146,9 @@ func (store *edgeServiceStoreImpl) initializeLocal() {
 	store.symbolEdgeRouters = store.AddFkSetSymbol(FieldEdgeRouters, store.stores.edgeRouter)
 
 	store.indexRoleAttributes.AddListener(store.rolesChanged)
+
+	store.symbolIdentityServices = store.AddSetSymbol(FieldServiceIdentityService, ast.NodeTypeOther)
+	store.identityServicesLinks = &boltz.LinkedSetSymbol{EntitySymbol: store.symbolIdentityServices}
 }
 
 func (store *edgeServiceStoreImpl) initializeLinked() {
@@ -288,6 +295,17 @@ func (store *edgeServiceStoreImpl) cleanupEdgeService(ctx boltz.MutateContext, i
 			ctx.Tx().OnCommit(func() {
 				ServiceEvents.dispatchEventsAsync(servicePolicyEvents)
 			})
+		}
+
+		err := store.symbolIdentityServices.Map(ctx.Tx(), []byte(id), func(mapCtx *boltz.MapContext) {
+			identityId := mapCtx.ValueS()
+			err := store.stores.identity.removeServiceConfigs(ctx.Tx(), identityId, false, func(serviceId, _, _ string) bool {
+				return serviceId == id
+			})
+			mapCtx.SetError(err)
+		})
+		if err != nil {
+			return err
 		}
 	}
 
