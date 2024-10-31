@@ -18,19 +18,12 @@ package verify
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	mgmtc "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
-	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/ziti/ziti/cmd/edge"
-	"github.com/openziti/ziti/ziti/util"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
-	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -43,7 +36,6 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/terminator"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/openziti/ziti/internal/rest/mgmt"
@@ -282,85 +274,6 @@ func waitForTerminator(client *rest_management_api_client.ZitiEdgeManagement, se
 	}
 	log.Fatalf("terminator not found for service: %s", serviceName)
 	return false
-}
-
-func (t *traffic) newMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	if t.user == "" {
-		t.user = os.Getenv("ZITI_USER")
-		if t.user == "" {
-			log.Info("user not supplied nor ZITI_USER set. defaulting to admin")
-			t.user = "admin"
-		}
-	}
-	if t.host == "" {
-		t.host = os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS")
-		if t.host == "" {
-			log.Info("host not supplied nor ZITI_CTRL_EDGE_ADVERTISED_ADDRESS set. defaulting to localhost")
-			t.host = "localhost"
-		}
-	}
-	if t.port == "" {
-		t.port = os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_PORT")
-		if t.port == "" {
-			log.Info("port not supplied nor ZITI_CTRL_EDGE_ADVERTISED_PORT set. defaulting to 1280")
-			t.port = "1280"
-		}
-	}
-
-	if t.pass == "" {
-		p := os.Getenv("ZITI_PWD")
-		t.pass = p
-		if t.pass == "" {
-			pass, err := term.PromptPassword("Enter password: ", false)
-			if err != nil {
-				log.Fatal(err)
-			}
-			t.pass = pass
-		}
-	}
-
-	ctrlAddress := "https://" + t.host + ":" + t.port
-
-	log.Infof("connecting with user %s to %s", t.user, ctrlAddress)
-	caCerts, err := rest_util.GetControllerWellKnownCas(ctrlAddress)
-	if err != nil {
-		log.Fatal(err)
-	}
-	caPool := x509.NewCertPool()
-	for _, ca := range caCerts {
-		caPool.AddCert(ca)
-	}
-
-	cachedCreds, _, loadErr := util.LoadRestClientConfig()
-	if loadErr != nil {
-	    log.Fatal(loadErr)
-	}
-	token := cachedCreds.EdgeIdentities[cachedCreds.Default].Token
-	tlsConfig := &tls.Config{
-		RootCAs: caPool,
-	}
-	
-	transport := &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-
-	// Assign the transport to the default HTTP client
-	http.DefaultClient = &http.Client{
-		Transport: transport,
-	}
-	c, e := rest_util.NewEdgeManagementClientWithToken(http.DefaultClient, ctrlAddress, token)
-	if e != nil {
-		log.Fatal(e)
-	}
-	
-	p := &mgmtc.GetCurrentAPISessionParams{
-		Context: context.Background(),
-	}
-	_, authErr := c.CurrentAPISession.GetCurrentAPISession(p, nil)
-	if authErr != nil {
-		log.Fatal("client not authenticated. login with 'ziti edge login' before executing")
-	}
-	return c, nil
 }
 
 func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name string, roleAttributes rest_model.Attributes) *identity.CreateIdentityCreated {
