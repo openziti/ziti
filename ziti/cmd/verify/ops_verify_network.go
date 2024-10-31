@@ -17,6 +17,7 @@ package verify
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -48,7 +49,7 @@ type stringMapList []interface{}
 
 type StringMap map[string]interface{}
 
-func NewVerifyNetwork() *cobra.Command {
+func NewVerifyNetwork(_ io.Writer, _ io.Writer) *cobra.Command {
 	n := &network{}
 
 	cmd := &cobra.Command{

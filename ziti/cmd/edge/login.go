@@ -56,6 +56,25 @@ type LoginOptions struct {
 	FileCertCreds *edge_apis.IdentityCredentials
 }
 
+func AddLoginFlags(cmd *cobra.Command, options *LoginOptions) {
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+
+	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "username to use for authenticating to the Ziti Edge Controller ")
+	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "password to use for authenticating to the Ziti Edge Controller, if -u is supplied and -p is not, a value will be prompted for")
+	cmd.Flags().StringVarP(&options.Token, "token", "t", "", "if an api token has already been acquired, it can be set in the config with this option. This will set the session to read only by default")
+	cmd.Flags().StringVarP(&options.CaCert, "ca", "", "", "additional root certificates used by the Ziti Edge Controller")
+	cmd.Flags().BoolVar(&options.ReadOnly, "read-only", false, "marks this login as read-only. Note: this is not a guarantee that nothing can be changed on the server. Care should still be taken!")
+	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", false, "If set, responds to prompts with yes. This will result in untrusted certs being accepted or updated.")
+	cmd.Flags().BoolVar(&options.IgnoreConfig, "ignore-config", false, "If set, does not use value from the config file for hostname or username. Values must be entered or will be prompted for.")
+	cmd.Flags().StringVarP(&options.ClientCert, "client-cert", "c", "", "A certificate used to authenticate")
+	cmd.Flags().StringVarP(&options.ClientKey, "client-key", "k", "", "The key to use with certificate authentication")
+	cmd.Flags().StringVarP(&options.ExtJwt, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
+	cmd.Flags().StringVarP(&options.File, "file", "f", "", "An identity file to use for authentication")
+
+	options.AddCommonFlags(cmd)
+}
+
 // NewLoginCmd creates the command
 func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &LoginOptions{
@@ -77,23 +96,8 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		},
 		SuggestFor: []string{},
 	}
-
-	// allow interspersing positional args and flags
-	cmd.Flags().SetInterspersed(true)
-
-	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "username to use for authenticating to the Ziti Edge Controller ")
-	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "password to use for authenticating to the Ziti Edge Controller, if -u is supplied and -p is not, a value will be prompted for")
-	cmd.Flags().StringVarP(&options.Token, "token", "t", "", "if an api token has already been acquired, it can be set in the config with this option. This will set the session to read only by default")
-	cmd.Flags().StringVarP(&options.CaCert, "ca", "", "", "additional root certificates used by the Ziti Edge Controller")
-	cmd.Flags().BoolVar(&options.ReadOnly, "read-only", false, "marks this login as read-only. Note: this is not a guarantee that nothing can be changed on the server. Care should still be taken!")
-	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", false, "If set, responds to prompts with yes. This will result in untrusted certs being accepted or updated.")
-	cmd.Flags().BoolVar(&options.IgnoreConfig, "ignore-config", false, "If set, does not use value from the config file for hostname or username. Values must be entered or will be prompted for.")
-	cmd.Flags().StringVarP(&options.ClientCert, "client-cert", "c", "", "A certificate used to authenticate")
-	cmd.Flags().StringVarP(&options.ClientKey, "client-key", "k", "", "The key to use with certificate authentication")
-	cmd.Flags().StringVarP(&options.ExtJwt, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
-	cmd.Flags().StringVarP(&options.File, "file", "f", "", "An identity file to use for authentication")
-
-	options.AddCommonFlags(cmd)
+	
+	AddLoginFlags(cmd, options)
 
 	return cmd
 }

@@ -17,12 +17,20 @@ package mgmt
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"github.com/openziti/edge-api/rest_management_api_client"
+	rest_mgmt "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/edge-api/rest_util"
+	"github.com/openziti/ziti/ziti/util"
 	log "github.com/sirupsen/logrus"
+	"net/http"
+	"os"
 	"time"
 )
 
@@ -80,4 +88,53 @@ func ServicePolicyFromFilter(client *rest_management_api_client.ZitiEdgeManageme
 
 func NameFilter(name string) string {
 	return `name="` + name + `"`
+}
+
+func NewClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
+	cachedCreds, _, loadErr := util.LoadRestClientConfig()
+	if loadErr != nil {
+		return nil, loadErr
+	}
+
+	cachedId := cachedCreds.EdgeIdentities[cachedCreds.Default] //only support default for now
+	if cachedId == nil {
+		return nil, errors.New("no identity found")
+	}
+	
+	caPool := x509.NewCertPool()
+	if _, cacertErr := os.Stat(cachedId.CaCert); cacertErr == nil {
+		rootPemData, err := os.ReadFile(cachedId.CaCert)
+		if err != nil {
+			return nil, err
+		}
+		caPool.AppendCertsFromPEM(rootPemData)
+	} else {
+		return nil, errors.New("CA cert file not found in config file")
+	}
+	
+	tlsConfig := &tls.Config{
+		RootCAs: caPool,
+	}
+
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+
+	// Assign the transport to the default HTTP client
+	http.DefaultClient = &http.Client{
+		Transport: transport,
+	}
+	c, e := rest_util.NewEdgeManagementClientWithToken(http.DefaultClient, cachedId.Url, cachedId.Token)
+	if e != nil {
+		return nil, e
+	}
+
+	apiSessionParams := &rest_mgmt.GetCurrentAPISessionParams{
+		Context: context.Background(),
+	}
+	_, authErr := c.CurrentAPISession.GetCurrentAPISession(apiSessionParams, nil)
+	if authErr != nil {
+		return nil, errors.New("client not authenticated. login with 'ziti edge login' before executing")
+	}
+	return c, nil
 }
