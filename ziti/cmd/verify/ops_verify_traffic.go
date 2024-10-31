@@ -43,7 +43,7 @@ import (
 
 
 type traffic struct {
-	loginOpts			 edge.LoginOptions
+	loginOpts            edge.LoginOptions
 	prefix               string
 	mode                 string
 	cleanup              bool
