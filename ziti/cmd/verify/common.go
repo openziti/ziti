@@ -20,13 +20,6 @@ import (
 	"runtime"
 )
 
-type controller struct {
-	user string
-	pass string
-	host string
-	port string
-}
-
 func configureLogFormat(level logrus.Level) {
 	logrus.SetLevel(level)
 	logrus.SetFormatter(&logrus.TextFormatter{

@@ -18,13 +18,12 @@ package verify
 import (
 	"bufio"
 	"context"
-	"crypto/x509"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/term"
+	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/sirupsen/logrus"
+	"io"
 	"net"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -37,7 +36,6 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/terminator"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/openziti/ziti/internal/rest/mgmt"
@@ -45,7 +43,7 @@ import (
 
 
 type traffic struct {
-	controller
+	loginOpts            edge.LoginOptions
 	prefix               string
 	mode                 string
 	cleanup              bool
@@ -60,7 +58,7 @@ type traffic struct {
 	dialSPName   string
 }
 
-func NewVerifyTraffic() *cobra.Command {
+func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 	t := &traffic{}
 	cmd := &cobra.Command{
 		Use:   "verify-traffic",
@@ -97,9 +95,16 @@ func NewVerifyTraffic() *cobra.Command {
 			t.clientIdName = t.prefix + ".client"
 			t.bindSPName = t.prefix + ".bind"
 			t.dialSPName = t.prefix + ".dial"
-			client, err := t.newMgmtClient()
+			client, err := mgmt.NewClient()
 			if err != nil {
-				log.Fatal(err)
+				loginErr := t.loginOpts.Run()
+				if loginErr != nil {
+					log.Fatal(err)
+				}
+				client, err = mgmt.NewClient()
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
 			t.client = client
 			if t.cleanup {
@@ -125,13 +130,11 @@ func NewVerifyTraffic() *cobra.Command {
 	cmd.Flags().StringVarP(&t.prefix, "prefix", "x", "", "[optional] The prefix to apply to generated objects, necessary when not using the 'both' role.")
 	cmd.Flags().StringVarP(&t.mode, "mode", "m", "", "[optional, default 'both'] The mode to perform: server, client, both.")
 	cmd.Flags().BoolVar(&t.cleanup, "cleanup", false, "Whether to perform cleanup.")
-	cmd.Flags().BoolVar(&t.verbose, "verbose", false, "Show additional output.")
 	cmd.Flags().BoolVar(&t.allowMultipleServers, "allow-multiple-servers", false, "Whether to allows the same server multiple times.")
 
-	cmd.Flags().StringVarP(&t.user, "username", "u", "", "username to use for authenticating to the Ziti Edge Controller ")
-	cmd.Flags().StringVarP(&t.pass, "password", "p", "", "password to use for authenticating to the Ziti Edge Controller, if -u is supplied and -p is not, a value will be prompted for")
-	cmd.Flags().StringVar(&t.host, "host", "", "the controller host")
-	cmd.Flags().StringVar(&t.port, "port", "", "the controller port")
+	edge.AddLoginFlags(cmd, &t.loginOpts)
+	t.loginOpts.Out = out
+	t.loginOpts.Err = errOut
 
 	return cmd
 }
@@ -267,55 +270,6 @@ func waitForTerminator(client *rest_management_api_client.ZitiEdgeManagement, se
 	}
 	log.Fatalf("terminator not found for service: %s", serviceName)
 	return false
-}
-
-func (t *traffic) newMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	if t.user == "" {
-		t.user = os.Getenv("ZITI_USER")
-		if t.user == "" {
-			log.Info("user not supplied nor ZITI_USER set. defaulting to admin")
-			t.user = "admin"
-		}
-	}
-	if t.host == "" {
-		t.host = os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS")
-		if t.host == "" {
-			log.Info("host not supplied nor ZITI_CTRL_EDGE_ADVERTISED_ADDRESS set. defaulting to localhost")
-			t.host = "localhost"
-		}
-	}
-	if t.port == "" {
-		t.port = os.Getenv("ZITI_CTRL_EDGE_ADVERTISED_PORT")
-		if t.port == "" {
-			log.Info("port not supplied nor ZITI_CTRL_EDGE_ADVERTISED_PORT set. defaulting to 1280")
-			t.port = "1280"
-		}
-	}
-
-	if t.pass == "" {
-		p := os.Getenv("ZITI_PWD")
-		t.pass = p
-		if t.pass == "" {
-			pass, err := term.PromptPassword("Enter password: ", false)
-			if err != nil {
-				log.Fatal(err)
-			}
-			t.pass = pass
-		}
-	}
-
-	ctrlAddress := "https://" + t.host + ":" + t.port
-
-	log.Infof("connecting with user %s to %s", t.user, ctrlAddress)
-	caCerts, err := rest_util.GetControllerWellKnownCas(ctrlAddress)
-	if err != nil {
-		log.Fatal(err)
-	}
-	caPool := x509.NewCertPool()
-	for _, ca := range caCerts {
-		caPool.AddCert(ca)
-	}
-	return rest_util.NewEdgeManagementClientWithUpdb(t.user, t.pass, ctrlAddress, caPool)
 }
 
 func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name string, roleAttributes rest_model.Attributes) *identity.CreateIdentityCreated {
