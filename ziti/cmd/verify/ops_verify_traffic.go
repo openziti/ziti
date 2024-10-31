@@ -43,7 +43,6 @@ import (
 
 
 type traffic struct {
-	controller
 	loginOpts			 edge.LoginOptions
 	prefix               string
 	mode                 string
@@ -136,9 +135,6 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 	edge.AddLoginFlags(cmd, &t.loginOpts)
 	t.loginOpts.Out = out
 	t.loginOpts.Err = errOut
-	
-	cmd.Flags().StringVar(&t.host, "host", "", "the controller host")
-	cmd.Flags().StringVar(&t.port, "port", "", "the controller port")
 
 	return cmd
 }
