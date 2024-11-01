@@ -213,15 +213,17 @@ events:
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v3: [v3.0.5 -> v3.0.6](https://github.com/openziti/channel/compare/v3.0.5...v3.0.6)
-* github.com/openziti/edge-api: [v0.26.32 -> v0.26.34](https://github.com/openziti/edge-api/compare/v0.26.32...v0.26.34)
-* github.com/openziti/identity: [v1.0.85 -> v1.0.86](https://github.com/openziti/identity/compare/v1.0.85...v1.0.86)
+* github.com/openziti/channel/v3: [v3.0.5 -> v3.0.7](https://github.com/openziti/channel/compare/v3.0.5...v3.0.7)
+* github.com/openziti/edge-api: [v0.26.32 -> v0.26.35](https://github.com/openziti/edge-api/compare/v0.26.32...v0.26.35)
+* github.com/openziti/identity: [v1.0.85 -> v1.0.87](https://github.com/openziti/identity/compare/v1.0.85...v1.0.87)
 
 * github.com/openziti/sdk-golang: [v0.23.43 -> v0.23.44](https://github.com/openziti/sdk-golang/compare/v0.23.43...v0.23.44)
-* github.com/openziti/transport/v2: [v2.0.146 -> v2.0.147](https://github.com/openziti/transport/compare/v2.0.146...v2.0.147)
+* github.com/openziti/transport/v2: [v2.0.146 -> v2.0.148](https://github.com/openziti/transport/compare/v2.0.146...v2.0.148)
 * github.com/openziti/ziti: [v1.1.15 -> v1.2.0](https://github.com/openziti/ziti/compare/v1.1.15...v1.2.0)
     * [Issue #2212](https://github.com/openziti/ziti/issues/2212) - Rework distributed control bootstrap mechanism
     * [Issue #1835](https://github.com/openziti/ziti/issues/1835) - Add access log for rest and router connections
+    * [Issue #2234](https://github.com/openziti/ziti/issues/2234) - Emit an event when hasEdgeRouterConnection state changes for an Identity
+    * [Issue #2491](https://github.com/openziti/ziti/issues/2491) - fix router CSR loading
     * [Issue #2478](https://github.com/openziti/ziti/issues/2478) - JWT signer secondary auth: not enough information to continue
     * [Issue #2482](https://github.com/openziti/ziti/issues/2482) - router run command - improperly binds 127.0.0.1:53/udp when tunnel mode is not tproxy
     * [Issue #2474](https://github.com/openziti/ziti/issues/2474) - Enable Ext JWT Enrollment/Generic Trust Bootstrapping

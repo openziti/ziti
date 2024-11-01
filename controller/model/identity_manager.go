@@ -953,6 +953,9 @@ func newConnectionTracker(env Env) *ConnectionTracker {
 		unknownTimeout:  env.GetConfig().Edge.IdentityStatusConfig.UnknownTimeout,
 		closeNotify:     env.GetCloseNotifyChannel(),
 	}
+	if result.scanInterval < 5*time.Second {
+		result.scanInterval = 5 * time.Second
+	}
 	go result.runScanLoop()
 	return result
 }

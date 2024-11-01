@@ -49,6 +49,7 @@ type TestContext struct {
 	metricsRegistry metrics.Registry
 	closeNotify     chan struct{}
 	dispatcher      command.Dispatcher
+	eventDispatcher event.Dispatcher
 }
 
 func (ctx *TestContext) GetEnrollmentJwtSigner() (jwtsigner.Signer, error) {
@@ -56,7 +57,7 @@ func (ctx *TestContext) GetEnrollmentJwtSigner() (jwtsigner.Signer, error) {
 }
 
 func (ctx *TestContext) GetEventDispatcher() event.Dispatcher {
-	panic("implement me")
+	return ctx.eventDispatcher
 }
 
 func (self *TestContext) GetCloseNotifyChannel() <-chan struct{} {
@@ -190,6 +191,7 @@ func NewTestContext(t testing.TB) *TestContext {
 			EncodeDecodeCommands: true,
 			Limiter:              command.NoOpRateLimiter{},
 		},
+		eventDispatcher: event.DispatcherMock{},
 	}
 
 	ctx.TestContext.Init()
