@@ -451,6 +451,11 @@ func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *bol
 		if !serviceFound {
 			// no overrides for service, delete existing
 			configsBucket.DeleteEntity(serviceId)
+
+			if err := store.stores.edgeService.identityServicesLinks.RemoveLink(ctx.Tx(), []byte(serviceId), []byte(entity.Id)); err != nil {
+				serviceBucket.SetError(err)
+				return
+			}
 		}
 
 		if serviceUpdated {
@@ -478,6 +483,11 @@ func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *bol
 				serviceBucket.SetError(err)
 				return
 			}
+		}
+
+		if err := store.stores.edgeService.identityServicesLinks.AddLink(ctx.Tx(), []byte(serviceId), []byte(entity.Id)); err != nil {
+			serviceBucket.SetError(err)
+			return
 		}
 
 		serviceEvents = append(serviceEvents, &ServiceEvent{
@@ -556,14 +566,14 @@ func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) e
 		}
 	}
 
-	if err := store.removeServiceConfigs(ctx.Tx(), id, func(_, _, _ string) bool { return true }); err != nil {
+	if err := store.removeServiceConfigs(ctx.Tx(), id, true, func(_, _, _ string) bool { return true }); err != nil {
 		return err
 	}
 
 	return store.baseStore.DeleteById(ctx, id)
 }
 
-func (store *identityStoreImpl) removeServiceConfigs(tx *bbolt.Tx, identityId string, removeFilter func(serviceId, configTypeId, configId string) bool) error {
+func (store *identityStoreImpl) removeServiceConfigs(tx *bbolt.Tx, identityId string, removeServiceRefs bool, removeFilter func(serviceId, configTypeId, configId string) bool) error {
 	entityBucket := store.GetEntityBucket(tx, []byte(identityId))
 	if entityBucket == nil {
 		return boltz.NewNotFoundError(store.GetSingularEntityType(), "id", identityId)
@@ -574,6 +584,8 @@ func (store *identityStoreImpl) removeServiceConfigs(tx *bbolt.Tx, identityId st
 		return nil
 	}
 
+	var serviceBucketsToRemove []string
+
 	servicesCursor := configsBucket.Cursor()
 	for sKey, _ := servicesCursor.First(); sKey != nil; sKey, _ = servicesCursor.Next() {
 		serviceId := string(sKey)
@@ -583,6 +595,7 @@ func (store *identityStoreImpl) removeServiceConfigs(tx *bbolt.Tx, identityId st
 			continue
 		}
 		cursor := serviceBucket.Cursor()
+		allRemoved := true
 		for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
 			configTypeId := string(k)
 			configId := *boltz.FieldToString(boltz.GetTypeAndValue(v))
@@ -593,6 +606,23 @@ func (store *identityStoreImpl) removeServiceConfigs(tx *bbolt.Tx, identityId st
 				if err := store.stores.config.identityServicesLinks.RemoveCompoundLink(tx, configId, ss(identityId, serviceId)); err != nil {
 					return err
 				}
+			} else {
+				allRemoved = false
+			}
+		}
+
+		if allRemoved {
+			serviceBucketsToRemove = append(serviceBucketsToRemove, serviceId)
+		}
+	}
+
+	for _, serviceId := range serviceBucketsToRemove {
+		// no overrides for service, delete existing
+		configsBucket.DeleteEntity(serviceId)
+
+		if removeServiceRefs {
+			if err := store.stores.edgeService.identityServicesLinks.RemoveLink(tx, []byte(serviceId), []byte(identityId)); err != nil {
+				return err
 			}
 		}
 	}
