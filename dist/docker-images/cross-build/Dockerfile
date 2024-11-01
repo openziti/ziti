@@ -16,8 +16,7 @@ RUN apt-get -y update
 RUN apt-get -y install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
 RUN apt-get -y install wget build-essential
 
-COPY ./linux-build.sh /usr/local/bin/
-RUN chmod a+rx /usr/local/bin/linux-build.sh
+COPY --chmod=0755 ./linux-build.sh /usr/local/bin/
 RUN wget -q https://go.dev/dl/${go_distribution_file}
 RUN tar -xzf ${go_distribution_file} -C /usr/local/
 

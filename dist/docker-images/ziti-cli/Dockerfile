@@ -55,8 +55,7 @@ RUN groupadd --gid ${ZGID} ziggy \
       && chown -R ${ZUID}:${ZGID} ${HOME} \
       && chmod -R g+rwX ${HOME}
 RUN mkdir -p /usr/local/bin
-COPY ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti /usr/local/bin/
-RUN chmod 0755 /usr/local/bin/ziti
+COPY --chmod=0755 ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti /usr/local/bin/
 
 RUN /usr/local/bin/ziti completion bash > /etc/bash_completion.d/ziti_cli
 
