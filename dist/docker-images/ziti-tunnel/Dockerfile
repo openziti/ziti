@@ -22,7 +22,6 @@ RUN   INSTALL_PKGS="util-linux iptables" && \
       microdnf clean all
 
 WORKDIR /netfoundry
-COPY ./entrypoint.sh /
-RUN chmod +x /entrypoint.sh
+COPY --chmod=0755 ./entrypoint.sh /
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "run" ]
