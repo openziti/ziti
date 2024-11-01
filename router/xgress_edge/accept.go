@@ -21,16 +21,23 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/latency"
+	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/cert"
 	"math"
+	"sync/atomic"
 )
 
 type Acceptor struct {
-	uListener          channel.UnderlayListener
-	listener           *listener
-	options            *channel.Options
-	sessionBindHandler *sessionConnectionHandler
+	uListener           channel.UnderlayListener
+	listener            *listener
+	options             *channel.Options
+	sessionBindHandler  *sessionConnectionHandler
+	connectFailureMeter metrics.Meter
+	connectSuccessMeter metrics.Meter
+	disconnectMeter     metrics.Meter
+	connectionCount     atomic.Int64
+	connStateTracker    *connectionTracker
 }
 
 func (self *Acceptor) BindChannel(binding channel.Binding) error {
@@ -39,7 +46,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 
 	fpg := cert.NewFingerprintGenerator()
 
-	proxy := &edgeClientConn{
+	conn := &edgeClientConn{
 		msgMux:       edge.NewCowMapMsgMux(),
 		listener:     self.listener,
 		fingerprints: fpg.FromCerts(binding.GetChannel().Certificates()),
@@ -47,62 +54,81 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		idSeq:        math.MaxUint32 / 2,
 	}
 
-	log.Debug("peer fingerprints ", proxy.fingerprints)
+	log.Debug("peer fingerprints ", conn.fingerprints)
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeConnect,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processConnect(self.listener.factory.stateManager, m, ch)
+			conn.processConnect(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeBind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processBind(self.listener.factory.stateManager, m, ch)
+			conn.processBind(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeUnbind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processUnbind(self.listener.factory.stateManager, m, ch)
+			conn.processUnbind(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeUpdateBind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processUpdateBind(self.listener.factory.stateManager, m, ch)
+			conn.processUpdateBind(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeHealthEvent,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processHealthEvent(self.listener.factory.stateManager, m, ch)
+			conn.processHealthEvent(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeUpdateToken,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processTokenUpdate(self.listener.factory.stateManager, m, ch)
+			conn.processTokenUpdate(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
-	binding.AddReceiveHandlerF(edge.ContentTypeStateClosed, proxy.msgMux.HandleReceive)
+	binding.AddReceiveHandlerF(edge.ContentTypeStateClosed, conn.msgMux.HandleReceive)
 
-	binding.AddReceiveHandlerF(edge.ContentTypeTraceRoute, proxy.processTraceRoute)
+	binding.AddReceiveHandlerF(edge.ContentTypeTraceRoute, conn.processTraceRoute)
 
-	binding.AddReceiveHandlerF(edge.ContentTypeTraceRouteResponse, proxy.msgMux.HandleReceive)
+	binding.AddReceiveHandlerF(edge.ContentTypeTraceRouteResponse, conn.msgMux.HandleReceive)
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 
-	// Since data is most common type, it gets to dispatch directly
-	binding.AddTypedReceiveHandler(proxy.msgMux)
-	binding.AddCloseHandler(proxy)
+	// Since data is the most common type, it gets to dispatch directly
+	binding.AddTypedReceiveHandler(conn.msgMux)
+	binding.AddCloseHandler(conn)
 	binding.AddPeekHandler(debugPeekHandler{})
-	return self.sessionBindHandler.BindChannel(binding, proxy)
+
+	if err := self.sessionBindHandler.validateApiSession(binding, conn); err != nil {
+		self.connectFailureMeter.Mark(1)
+		return err
+	}
+
+	identityId := conn.apiSession.ApiSession.IdentityId
+	self.connStateTracker.markConnected(identityId, conn.ch)
+
+	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+		self.connectionCount.Add(-1)
+		self.disconnectMeter.Mark(1)
+		self.connStateTracker.markDisconnected(identityId, ch)
+	}))
+
+	self.connectSuccessMeter.Mark(1)
+	self.connectionCount.Add(1)
+
+	self.sessionBindHandler.completeBinding(binding, conn)
+	return nil
 }
 
 type debugPeekHandler struct{}
@@ -146,12 +172,22 @@ func NewAcceptor(listener *listener, uListener channel.UnderlayListener, options
 		optionsWithBind = channel.DefaultOptions()
 	}
 
-	return &Acceptor{
-		listener:           listener,
-		uListener:          uListener,
-		options:            optionsWithBind,
-		sessionBindHandler: sessionHandler,
+	result := &Acceptor{
+		listener:            listener,
+		uListener:           uListener,
+		options:             optionsWithBind,
+		sessionBindHandler:  sessionHandler,
+		connStateTracker:    listener.factory.connectionTracker,
+		connectFailureMeter: listener.factory.metricsRegistry.Meter("edge.connect.failures"),
+		connectSuccessMeter: listener.factory.metricsRegistry.Meter("edge.connect.successes"),
+		disconnectMeter:     listener.factory.metricsRegistry.Meter("edge.disconnects"),
 	}
+
+	listener.factory.metricsRegistry.FuncGauge("edge.connections", func() int64 {
+		return result.connectionCount.Load()
+	})
+
+	return result
 }
 
 func (self *Acceptor) Run() {

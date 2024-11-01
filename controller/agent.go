@@ -113,6 +113,15 @@ func (self *Controller) agentOpRaftAddPeer(m *channel.Message, ch channel.Channe
 		return
 	}
 
+	if !self.raftController.IsBootstrapped() {
+		handler_common.SendOpResult(m, ch, "raft.list",
+			"Local instance not initialized. If all instances are uninitialized, initialize one first using"+
+				" 'ziti agent controller init' then add nodes to that instance. If you have existing initialized nodes,"+
+				"  use the 'ziti agent cluster add' command on an initialized node, rather than here.",
+			false)
+		return
+	}
+
 	addr, found := m.GetStringHeader(AgentAddrHeader)
 	if !found {
 		handler_common.SendOpResult(m, ch, "raft.join", "address not supplied", false)

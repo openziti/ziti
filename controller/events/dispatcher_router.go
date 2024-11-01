@@ -89,4 +89,25 @@ func (self *routerEventAdapter) routerChange(eventType event.RouterEventType, r 
 	}
 
 	self.Dispatcher.AcceptRouterEvent(evt)
+
+	if eventType == event.RouterOnline {
+		srcAddr := ""
+		dstAddr := ""
+		if ctrl := r.Control; ctrl != nil {
+			srcAddr = r.Control.Underlay().GetRemoteAddr().String()
+			dstAddr = r.Control.Underlay().GetLocalAddr().String()
+		}
+
+		connectEvent := &event.ConnectEvent{
+			Namespace: event.ConnectEventNS,
+			SrcType:   event.ConnectSourceRouter,
+			DstType:   event.ConnectDestinationController,
+			SrcId:     r.Id,
+			SrcAddr:   srcAddr,
+			DstId:     self.Dispatcher.network.GetAppId(),
+			DstAddr:   dstAddr,
+			Timestamp: time.Now(),
+		}
+		self.Dispatcher.AcceptConnectEvent(connectEvent)
+	}
 }

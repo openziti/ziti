@@ -21,16 +21,21 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -55,6 +60,8 @@ type IdentityManager struct {
 	baseEntityManager[*Identity, *db.Identity]
 	updateSdkInfoTimer metrics.Timer
 	identityStatusMap  *identityStatusMap
+	connections        *ConnectionTracker
+	statusSource       config.IdentityStatusSource
 }
 
 func NewIdentityManager(env Env) *IdentityManager {
@@ -62,6 +69,8 @@ func NewIdentityManager(env Env) *IdentityManager {
 		baseEntityManager:  newBaseEntityManager[*Identity, *db.Identity](env, env.GetStores().Identity),
 		updateSdkInfoTimer: env.GetMetricsRegistry().Timer("identity.update-sdk-info"),
 		identityStatusMap:  newIdentityStatusMap(IdentityActiveIntervalSeconds * time.Second),
+		connections:        newConnectionTracker(env),
+		statusSource:       env.GetConfig().Edge.IdentityStatusConfig.Source,
 	}
 	manager.impl = manager
 
@@ -185,16 +194,6 @@ func (self *IdentityManager) ReadOneByQuery(query string) (*Identity, error) {
 }
 
 func (self *IdentityManager) InitializeDefaultAdmin(username, password, name string) error {
-	identity, err := self.ReadDefaultAdmin()
-
-	if err != nil && !boltz.IsErrNotFoundErr(err) {
-		return err
-	}
-
-	if identity != nil {
-		return errors.New("already initialized: Ziti Edge default admin already defined")
-	}
-
 	if len(username) < minDefaultAdminUsernameLength {
 		return errorz.NewFieldError(fmt.Sprintf("username must be at least %v characters", minDefaultAdminUsernameLength), "username", username)
 	}
@@ -219,6 +218,20 @@ func (self *IdentityManager) InitializeDefaultAdmin(username, password, name str
 
 	if err != nil {
 		return err
+	}
+
+	identity, err := self.ReadDefaultAdmin()
+
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return err
+	}
+
+	if identity != nil {
+		return errors.New("already initialized: Ziti Edge default admin already defined")
+	}
+
+	if err = self.env.GetManagers().Dispatcher.Bootstrap(); err != nil {
+		return fmt.Errorf("unable to bootstrap command dispatcher (%w)", err)
 	}
 
 	identityId := eid.New()
@@ -469,6 +482,10 @@ func (self *IdentityManager) PatchInfo(identity *Identity, changeCtx *change.Con
 	return err
 }
 
+func (self *IdentityManager) GetConnectionTracker() *ConnectionTracker {
+	return self.connections
+}
+
 // SetHasErConnection will register an identity as having an ER connection. The registration has a TTL depending on
 // how the status map was configured.
 func (self *IdentityManager) SetHasErConnection(identityId string) {
@@ -477,7 +494,13 @@ func (self *IdentityManager) SetHasErConnection(identityId string) {
 
 // HasErConnection will return true if the supplied identity id has a current an active ER connection registered.
 func (self *IdentityManager) HasErConnection(id string) bool {
-	return self.identityStatusMap.HasEdgeRouterConnection(id)
+	if self.statusSource == config.IdentityStatusSourceConnectEvents {
+		return self.connections.GetIdentityOnlineState(id) == IdentityStateOnline
+	}
+	if self.statusSource == config.IdentityStatusSourceHeartbeats {
+		return self.identityStatusMap.HasEdgeRouterConnection(id)
+	}
+	return self.connections.GetIdentityOnlineState(id) == IdentityStateOnline || self.identityStatusMap.HasEdgeRouterConnection(id)
 }
 
 func (self *IdentityManager) VisitIdentityAuthenticatorFingerprints(tx *bbolt.Tx, identityId string, visitor func(string) bool) (bool, error) {
@@ -562,6 +585,20 @@ func (self *IdentityManager) Enable(identityId string, ctx *change.Context) erro
 		DisabledAt:    nil,
 		DisabledUntil: nil,
 	}, fieldMap, ctx)
+}
+
+func (self *IdentityManager) GetIdentityStatusMapCopy() map[string]map[string]channel.Channel {
+	result := map[string]map[string]channel.Channel{}
+	for entry := range self.connections.connections.IterBuffered() {
+		routerMap := map[string]channel.Channel{}
+		entry.Val.Lock()
+		for routerId, ch := range entry.Val.routers {
+			routerMap[routerId] = ch
+		}
+		entry.Val.Unlock()
+		result[entry.Key] = routerMap
+	}
+	return result
 }
 
 func (self *IdentityManager) IdentityToProtobuf(entity *Identity) (*edge_cmd_pb.Identity, error) {
@@ -864,6 +901,270 @@ func (statusMap *identityStatusMap) start() {
 			}
 		}
 	}()
+}
+
+type IdentityOnlineState uint32
+
+func (self IdentityOnlineState) String() string {
+	if self == IdentityStateOffline {
+		return "offline"
+	}
+	if self == IdentityStateOnline {
+		return "online"
+	}
+	return "unknown"
+}
+
+const (
+	IdentityStateOffline IdentityOnlineState = 0
+	IdentityStateOnline  IdentityOnlineState = 1
+	IdentityStateUnknown IdentityOnlineState = 2
+)
+
+type identityConnections struct {
+	sync.RWMutex
+	routers           map[string]channel.Channel
+	lastReportedState IdentityOnlineState
+}
+
+func (self *identityConnections) calculateState() IdentityOnlineState {
+	// if any router is connected, the identity is online
+	for _, router := range self.routers {
+		if !router.IsClosed() {
+			return IdentityStateOnline
+		}
+	}
+
+	// if the identity is reported as connected to one or more routers, but they're all offline,
+	// then the identity state is unknown
+	if len(self.routers) > 0 {
+		return IdentityStateUnknown
+	}
+
+	// if the identity has no router connections, it's off-line
+	return IdentityStateOffline
+}
+
+func newConnectionTracker(env Env) *ConnectionTracker {
+	result := &ConnectionTracker{
+		connections:     cmap.New[*identityConnections](),
+		eventDispatcher: env.GetEventDispatcher(),
+		scanInterval:    env.GetConfig().Edge.IdentityStatusConfig.ScanInterval,
+		unknownTimeout:  env.GetConfig().Edge.IdentityStatusConfig.UnknownTimeout,
+		closeNotify:     env.GetCloseNotifyChannel(),
+	}
+	if result.scanInterval < 5*time.Second {
+		result.scanInterval = 5 * time.Second
+	}
+	go result.runScanLoop()
+	return result
+}
+
+type ConnectionTracker struct {
+	connections     cmap.ConcurrentMap[string, *identityConnections]
+	scanInterval    time.Duration
+	unknownTimeout  time.Duration
+	eventDispatcher event.Dispatcher
+	closeNotify     <-chan struct{}
+}
+
+func (self *ConnectionTracker) runScanLoop() {
+	ticker := time.NewTicker(self.scanInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			self.ScanForDisconnectedRouters()
+		case <-self.closeNotify:
+			return
+		}
+	}
+}
+
+func (self *ConnectionTracker) ScanForDisconnectedRouters() {
+	for entry := range self.connections.IterBuffered() {
+		var toRemove []channel.Channel
+		entry.Val.RLock()
+		for _, routerCh := range entry.Val.routers {
+			if routerCh.IsClosed() && routerCh.GetTimeSinceLastRead() > self.unknownTimeout {
+				toRemove = append(toRemove, routerCh)
+			}
+		}
+		entry.Val.RUnlock()
+
+		for _, routerCh := range toRemove {
+			self.MarkDisconnected(entry.Key, routerCh)
+		}
+
+		if len(toRemove) == 0 {
+			var reportState *IdentityOnlineState
+
+			entry.Val.Lock()
+			lastReportedState := entry.Val.lastReportedState
+			currentState := entry.Val.calculateState()
+			if lastReportedState != currentState {
+				reportState = &currentState
+			}
+			entry.Val.Unlock()
+
+			if reportState != nil {
+				self.SendSdkOnlineStatusChangeEvent(entry.Key, *reportState)
+			}
+		}
+
+		entry.Val.Lock()
+		if len(entry.Val.routers) == 0 {
+			self.connections.RemoveCb(entry.Key, func(key string, v *identityConnections, exists bool) bool {
+				if v != nil {
+					return len(v.routers) == 0
+				}
+				return true
+			})
+		}
+		entry.Val.Unlock()
+	}
+}
+
+func (self *ConnectionTracker) MarkConnected(identityId string, ch channel.Channel) {
+	pfxlog.Logger().WithField("identityId", identityId).WithField("routerId", ch.Id()).Trace("marking identity connected to router")
+	var postUpsertCallback func()
+	self.connections.Upsert(identityId, nil, func(exist bool, valueInMap *identityConnections, newValue *identityConnections) *identityConnections {
+		if valueInMap == nil {
+			valueInMap = &identityConnections{
+				routers: map[string]channel.Channel{},
+			}
+		}
+
+		if ch.IsClosed() {
+			return valueInMap
+		}
+
+		valueInMap.Lock()
+		oldState := valueInMap.calculateState()
+		valueInMap.routers[ch.Id()] = ch
+		newState := valueInMap.calculateState()
+		lastReportedState := valueInMap.lastReportedState
+		valueInMap.lastReportedState = newState
+		valueInMap.Unlock()
+
+		if newState != oldState || newState != lastReportedState {
+			postUpsertCallback = func() {
+				self.SendSdkOnlineStatusChangeEvent(identityId, newState)
+			}
+		}
+		return valueInMap
+	})
+
+	if postUpsertCallback != nil {
+		postUpsertCallback()
+	}
+}
+
+func (self *ConnectionTracker) MarkDisconnected(identityId string, ch channel.Channel) {
+	pfxlog.Logger().WithField("identityId", identityId).WithField("routerId", ch.Id()).Trace("marking identity disconnected from router")
+	var postUpsertCallback func()
+	self.connections.Upsert(identityId, nil, func(exist bool, valueInMap *identityConnections, newValue *identityConnections) *identityConnections {
+		if valueInMap == nil {
+			return &identityConnections{
+				routers: map[string]channel.Channel{},
+			}
+		}
+
+		valueInMap.Lock()
+		oldState := valueInMap.calculateState()
+
+		current := valueInMap.routers[ch.Id()]
+		if current == nil || current == ch || current.IsClosed() {
+			delete(valueInMap.routers, ch.Id())
+		}
+
+		newState := valueInMap.calculateState()
+		lastReportedState := valueInMap.lastReportedState
+		valueInMap.lastReportedState = newState
+		valueInMap.Unlock()
+
+		if newState != oldState || newState != lastReportedState {
+			postUpsertCallback = func() {
+				self.SendSdkOnlineStatusChangeEvent(identityId, newState)
+			}
+		}
+		return valueInMap
+	})
+
+	if postUpsertCallback != nil {
+		postUpsertCallback()
+	}
+}
+
+func (self *ConnectionTracker) SendSdkOnlineStatusChangeEvent(identityId string, state IdentityOnlineState) {
+	var eventType event.SdkEventType
+	if state == IdentityStateOffline {
+		eventType = event.SdkOffline
+	} else if state == IdentityStateOnline {
+		eventType = event.SdkOnline
+	} else if state == IdentityStateUnknown {
+		eventType = event.SdkStatusUnknown
+	}
+
+	self.eventDispatcher.AcceptSdkEvent(&event.SdkEvent{
+		Namespace:  event.SdkEventsNs,
+		EventType:  eventType,
+		Timestamp:  time.Now(),
+		IdentityId: identityId,
+	})
+}
+
+func (self *ConnectionTracker) GetIdentityOnlineState(identityId string) IdentityOnlineState {
+	val, _ := self.connections.Get(identityId)
+	if val == nil {
+		return IdentityStateOffline
+	}
+	val.RLock()
+	defer val.RUnlock()
+	return val.calculateState()
+}
+
+func (self *ConnectionTracker) SyncAllFromRouter(state *edge_ctrl_pb.ConnectEvents, ch channel.Channel) {
+	m := map[string]bool{}
+	for _, identityState := range state.Events {
+		m[identityState.IdentityId] = identityState.IsConnected
+		if identityState.IsConnected {
+			self.MarkConnected(identityState.IdentityId, ch)
+		}
+	}
+
+	for _, identityId := range self.connections.Keys() {
+		if connected := m[identityId]; !connected {
+			self.MarkDisconnected(identityId, ch)
+		}
+	}
+}
+
+func (self *ConnectionTracker) Inspect() *inspect.CtrlIdentityConnections {
+	result := &inspect.CtrlIdentityConnections{
+		Connections:  map[string]*inspect.CtrlIdentityConnectionDetail{},
+		ScanInterval: self.scanInterval.String(),
+	}
+
+	for entry := range self.connections.IterBuffered() {
+		entry.Val.Lock()
+		val := &inspect.CtrlIdentityConnectionDetail{
+			ConnectedRouters:  map[string]*inspect.CtrlRouterConnection{},
+			LastReportedState: entry.Val.lastReportedState.String(),
+		}
+		result.Connections[entry.Key] = val
+		for routerId, ch := range entry.Val.routers {
+			val.ConnectedRouters[routerId] = &inspect.CtrlRouterConnection{
+				RouterId:           ch.Id(),
+				Closed:             ch.IsClosed(),
+				TimeSinceLastWrite: ch.GetTimeSinceLastRead().String(),
+			}
+		}
+		entry.Val.Unlock()
+	}
+
+	return result
 }
 
 type UpdateServiceConfigsCmd struct {

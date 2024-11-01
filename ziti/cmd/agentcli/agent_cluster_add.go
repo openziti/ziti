@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -43,11 +42,10 @@ func NewAgentClusterAdd(p common.OptionsProvider) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Use:   "add <addr>",
 		Short: "adds a node to the controller cluster",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
-			cmdhelper.CheckErr(err)
+			return action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
 		},
 	}
 
@@ -72,10 +70,9 @@ func (self *AgentClusterAddAction) makeRequest(ch channel.Channel) error {
 		return err
 	}
 	result := channel.UnmarshalResult(reply)
-	if result.Success {
-		fmt.Println(result.Message)
-	} else {
-		fmt.Printf("error: %v\n", result.Message)
+	if !result.Success {
+		return fmt.Errorf("cluster add failed: %s", result.Message)
 	}
+	fmt.Println(result.Message)
 	return nil
 }

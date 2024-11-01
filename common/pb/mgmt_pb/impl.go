@@ -59,3 +59,15 @@ func (request *ValidateRouterDataModelResponse) GetContentType() int32 {
 func (request *RouterDataModelDetails) GetContentType() int32 {
 	return int32(ContentType_ValidateRouterDataModelResultType)
 }
+
+func (request *ValidateIdentityConnectionStatusesRequest) GetContentType() int32 {
+	return int32(ContentType_ValidateIdentityConnectionStatusesRequestType)
+}
+
+func (request *ValidateIdentityConnectionStatusesResponse) GetContentType() int32 {
+	return int32(ContentType_ValidateIdentityConnectionStatusesResponseType)
+}
+
+func (request *RouterIdentityConnectionStatusesDetails) GetContentType() int32 {
+	return int32(ContentType_ValidateIdentityConnectionStatusesResultType)
+}

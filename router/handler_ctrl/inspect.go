@@ -22,6 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
@@ -132,6 +133,21 @@ func (context *inspectRequestContext) processLocal() {
 			context.handleJsonResponse(requested, result)
 		} else if lc == "router-controllers" {
 			result := context.handler.env.GetNetworkControllers().Inspect()
+			context.handleJsonResponse(requested, result)
+		} else if lc == inspect.RouterIdentityConnectionStatusesKey {
+			factory, _ := xgress.GlobalRegistry().Factory("edge")
+			if factory == nil {
+				context.appendError("no xgress factory configured for edge binding")
+				continue
+			}
+
+			inspectable, ok := factory.(xgress.Inspectable)
+			if !ok {
+				context.appendError("edge factory is not of type Inspectable")
+				continue
+			}
+
+			result := inspectable.Inspect(lc, time.Second)
 			context.handleJsonResponse(requested, result)
 		}
 	}

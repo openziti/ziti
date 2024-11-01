@@ -211,20 +211,17 @@ func LoadConfig(path string) (*Config, error) {
 			} else {
 				return nil, errors.Errorf("raft dataDir configuration missing")
 			}
-			if value, found := submap["minClusterSize"]; found {
-				controllerConfig.Raft.MinClusterSize = uint32(value.(int))
-			}
-			if value, found := submap["bootstrapMembers"]; found {
+			if value, found := submap["initialMembers"]; found {
 				if lst, ok := value.([]interface{}); ok {
 					for idx, val := range lst {
 						if member, ok := val.(string); ok {
-							controllerConfig.Raft.BootstrapMembers = append(controllerConfig.Raft.BootstrapMembers, member)
+							controllerConfig.Raft.InitialMembers = append(controllerConfig.Raft.InitialMembers, member)
 						} else {
-							return nil, errors.Errorf("invalid bootstrapMembers value '%v'at index %v, should be array", idx, val)
+							return nil, errors.Errorf("invalid initialMembers value '%v'at index %v, should be array", idx, val)
 						}
 					}
 				} else {
-					return nil, errors.New("invalid bootstrapMembers value, should be array")
+					return nil, errors.New("invalid initialMembers value, should be array")
 				}
 			}
 
@@ -394,6 +391,12 @@ func LoadConfig(path string) (*Config, error) {
 
 	if spiffeId.Hostname() == "" {
 		panic("unable to determine trust domain from SPIFFE id: hostname was empty")
+	}
+
+	if controllerConfig.Raft != nil {
+		if err = ValidateSpiffeId(controllerConfig.Id, spiffeId); err != nil {
+			panic(err)
+		}
 	}
 
 	//only preserve trust domain
@@ -756,6 +759,17 @@ func GetSpiffeIdFromIdentity(id identity.Identity) (*url.URL, error) {
 	}
 
 	return spiffeId, nil
+}
+
+func ValidateSpiffeId(id *identity.TokenId, spiffeId *url.URL) error {
+	if !strings.HasPrefix(spiffeId.Path, "/controller/") {
+		return fmt.Errorf("invalid SPIFFE id path: %s, should have /controller/ prefix", spiffeId.Path)
+	}
+	idInSpiffeId := strings.TrimPrefix(spiffeId.Path, "/controller/")
+	if idInSpiffeId != id.Token {
+		return fmt.Errorf("spiffe id '%s', does not match subject identifier '%s'", id.Token, idInSpiffeId)
+	}
+	return nil
 }
 
 // GetSpiffeIdFromCertChain cycles through a slice of certificates that goes from leaf up CAs. Each certificate

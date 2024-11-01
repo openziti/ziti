@@ -22,52 +22,49 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/transport/v2"
-	"github.com/openziti/transport/v2/tls"
-	"github.com/openziti/ziti/common/capabilities"
-	"github.com/openziti/ziti/common/concurrency"
-	"github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/events"
-	"github.com/openziti/ziti/controller/handler_peer_ctrl"
-	"github.com/openziti/ziti/controller/webapis"
-	"github.com/openziti/ziti/controller/xt_sticky"
-	"github.com/openziti/ziti/controller/zac"
-	"math/big"
-	"os"
-	"sync"
-	"sync/atomic"
-	"time"
-
-	"github.com/openziti/ziti/controller/db"
-	"github.com/pkg/errors"
-
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/protobufs"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/transport/v2"
+	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/common/capabilities"
+	"github.com/openziti/ziti/common/concurrency"
 	"github.com/openziti/ziti/common/health"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/profiler"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/events"
 	"github.com/openziti/ziti/controller/handler_ctrl"
+	"github.com/openziti/ziti/controller/handler_peer_ctrl"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/raft"
 	"github.com/openziti/ziti/controller/raft/mesh"
+	"github.com/openziti/ziti/controller/webapis"
 	"github.com/openziti/ziti/controller/xctrl"
 	"github.com/openziti/ziti/controller/xmgmt"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/controller/xt_random"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
+	"github.com/openziti/ziti/controller/xt_sticky"
 	"github.com/openziti/ziti/controller/xt_weighted"
+	"github.com/openziti/ziti/controller/zac"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"math/big"
+	"os"
+	"sync"
+	"sync/atomic"
 )
 
 type Controller struct {
@@ -256,8 +253,8 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 
 	c.initWeb() // need to init web before bootstrapping, so we can provide our endpoints to peers
 
-	if c.raftController != nil {
-		if err := c.raftController.Bootstrap(); err != nil {
+	if c.raftController != nil && !c.raftController.IsBootstrapped() {
+		if err = c.TryInitializeRaftFromBoltDb(); err != nil {
 			log.WithError(err).Panic("error bootstrapping raft")
 		}
 	}
@@ -595,15 +592,12 @@ func (c *Controller) TryInitializeRaftFromBoltDb() error {
 func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 	log := pfxlog.Logger()
 
-	log.Info("waiting for raft cluster to settle before syncing raft to database")
-	start := time.Now()
-	for c.raftController.GetLeaderAddr() == "" {
-		if time.Since(start) > time.Second*30 {
-			log.Panic("cannot sync raft to database as cluster has not settled within timeout")
-		} else {
-			log.Info("waiting for raft cluster to elect a leader, to allow syncing db to raft")
-		}
-		time.Sleep(time.Second)
+	if c.raftController == nil {
+		return errors.New("can't initialize non-raft controller using initialize from db")
+	}
+
+	if c.raftController.IsBootstrapped() {
+		return errors.New("raft is already bootstrapped, must start with a uninitialized controller")
 	}
 
 	if _, err := os.Stat(sourceDbPath); err != nil {
@@ -640,6 +634,10 @@ func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 		SnapshotId:   snapshotId,
 		Snapshot:     buf.Bytes(),
 		SnapshotSink: c.network.RestoreSnapshot,
+	}
+
+	if err = c.raftController.Bootstrap(); err != nil {
+		return fmt.Errorf("unable to bootstrap cluster (%w)", err)
 	}
 
 	return c.raftController.Dispatch(cmd)

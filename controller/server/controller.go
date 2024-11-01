@@ -138,6 +138,7 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 		handler_edge_ctrl.NewTunnelHealthEventHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewExtendEnrollmentHandler(c.AppEnv),
 		handler_edge_ctrl.NewExtendEnrollmentVerifyHandler(c.AppEnv),
+		handler_edge_ctrl.NewConnectEventsHandler(c.AppEnv),
 	}
 
 	result = append(result, c.AppEnv.Broker.GetReceiveHandlers()...)
@@ -149,6 +150,7 @@ func (c *Controller) GetMgmtHandlers() []channel.TypedReceiveHandler {
 	return []channel.TypedReceiveHandler{
 		handler_edge_mgmt.NewInitEdgeHandler(c.AppEnv),
 		handler_edge_mgmt.NewValidateRouterDataModelHandler(c.AppEnv),
+		handler_edge_mgmt.NewValidateIdentityConnectionStatusesHandler(c.AppEnv),
 	}
 }
 
@@ -272,7 +274,10 @@ func (c *Controller) checkEdgeInitialized() {
 
 			now := time.Now()
 			if now.Sub(lastWarn) > time.Minute {
-				log.Warn("the Ziti Edge has not been initialized, no default admin exists. Please run 'ziti agent controller init' to configure the default admin'")
+				log.Warnf("the Ziti Edge has not been initialized, no default admin exists. Add this node to a cluster using "+
+					"'ziti agent cluster add %s' against an existing cluster member, or if this is the bootstrap node, run "+
+					"'ziti agent controller init' to configure the default admin and bootstrap the cluster",
+					(*c.AppEnv.HostController.GetEnv().GetConfig().Ctrl.Options.AdvertiseAddress).String())
 				lastWarn = now
 			}
 			time.Sleep(time.Second)

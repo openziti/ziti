@@ -1,66 +1,24 @@
 v: 3
 
-network:
-  # Sets router minimum cost. Defaults to 10
-  minRouterCost: 10
-
-  # Sets how often a new control channel connection can take over for a router with an existing control channel connection
-  # Defaults to 1 minute
-  routerConnectChurnLimit: 1m
-
-# `trustDomain` is used to name and uniquely identify a network. Its main use is as a trust domain in SPIFFE ids.
-# Defining it here is only for single controller environments that are not configured for high
-# availability. Deployments with high availability MUST be configured via x509 certificate URI SANs.
-#
-# For more information on SPIFFE IDs see: https://github.com/spiffe/spiffe/blob/main/standards/X509-SVID.md
-#
-# A trust domain is required, but where it is defined depends on how the network was deployed. The preference is for it
-# to come from SPIFFE ids embedded within x509 certificates. The trust domain is derived from the closest SPIFFE id
-# looking at server cert > intermediate CA > root CA.
-#
-# For non-HA environments, a trust domain will deterministically be generated for you from the root CA if it is not
-# specified. The controller log will have warnings with this value on startup.
-#
-# Trust Domain Resolution:
-# - Single Controllers Non-HA:
-#   - Preference for future continuity is that SPIFFE ids are defined on all CAs and leafs, sharing the same trust domain.
-#   - For pre-existing networks without SPIFFE ids, use of the `trustDomain` file configuration value.
-#   - In situations where `trustDomain` is defined within the configuration and in a SPIFFE id, the SPIFFE id take precedent.
-#   - If no SPIFFE ids are detected, a trust domain will be deterministically generated from the root CA and warnings
-#     will appear in the controller log on startup
-#
-# - High Availability Controllers:
-#  - Must have SPIFFE ids defined on all CAs and leafs for controllers.
-#  - The `trustDomain` configuration value is always ignored.
-#  - If a trust domain cannot be determined the controller will not start.
-trustDomain: ""
-
-# `additionalTrustDomains` is an array of string trust domains that should additionally be trusted. If certificates
-# have been issued through router/identity enrollment with the default generated trust domain or other trust domains
-# previously used, and they should continue to function, they should be added here.
-additionalTrustDomains: []
-
-#trace:
-#  path:                 ctrl.trace
-
-profile:
-#   cpu:
-#       path: /home/plorenz/tmp/ctrl.cpu.pprof
-#  memory:
-#    path: ctrl.memprof
-
-db: ${ZITI_DATA}/db/ctrl.db
+raft:
+  dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
 
 identity:
-  cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-client.cert.pem
-  server_cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-server.cert.pem
-  key: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/ctrl.key.pem
-  ca: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ca-chain.cert.pem
+  cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem
+  key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}-server.key
+  ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}.chain.pem
+
+trustDomain: sdk-hosting-test
+
+commandRateLimiter:
+    enabled:   true
+    maxQueued: 25
 
 # the endpoint that routers will connect to the controller over.
 ctrl:
-  listener: tls:127.0.0.1:6262
+  listener: tls:0.0.0.0:6262
   options:
+    advertiseAddress: tls:{{ .Host.PublicIp }}:6262
     # (optional) settings
     # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
     #maxQueuedConnects:      50
@@ -79,56 +37,31 @@ ctrl:
     # connections. The value of newListener must be resolvable both via DNS and validate via certificates
     #newListener: tls:localhost:6262
 
-events:
-  jsonLogger:
-    subscriptions:
-      - type: connect
-      - type: sdk
+#events:
+#  jsonLogger:
+#    subscriptions:
 #      - type: entityChange
-#        include:
-#          - services
-#          - identities
-#      - type: fabric.circuits
-#      - type: fabric.links
+#      - type: edge.apiSessions
+#      - type: edge.entityCounts
+#        interval: 15s
+#      - type: edge.sessions
 #      - type: fabric.routers
 #      - type: fabric.terminators
 #      - type: metrics
 #        sourceFilter: .*
-#        metricFilter: .*
-#      - type: edge.sessions
-#      - type: edge.apiSessions
-#      - type: fabric.usage
-#        version: 3
+#        metricFilter: .*egress.*m1_rate*
+#      - type: fabric.circuits
 #        include:
-#          - ingress.rx
-#          - egress.rx
-#      - type: services
-#      - type: edge.entityCounts
-#        interval: 5s
-    handler:
-      type: file
-      format: json
-      path: /tmp/ziti-events.log
-#  usageLogger:
-#    subscriptions:
+#          - created
+#        include:
+#          - created
 #      - type: fabric.usage
-#        interval: 5s
+#      - type: services
+#      - type: fabric.usage
 #    handler:
-#      type: amqp
+#      type: file
 #      format: json
-#      url: "amqp://localhost:5672" 
-#      queue: ziti
-#      durable: true      //default:true
-#      autoDelete: false  //default:false
-#      exclusive: false   //default:false
-#      noWait: false      //default:false
-#      bufferSize: 50     //default:50
-
-# xctrl_example
-#
-#example:
-#  enabled:              false
-#  delay:                5
+#      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/event.log
 
 healthChecks:
   boltCheck:
@@ -142,14 +75,9 @@ healthChecks:
 # By having an 'edge' section defined, the ziti-controller will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the edge to not run.
 edge:
-  # This section allows configuring the rate limiter for auth attempts
-  authRateLimiter:
-    # if disabled, no auth rate limiting with be enforced
-    enabled: true
-    # the smallest window size for auth attempts
-    minSize: 5
-    # the largest allowed window size for auth attempts
-    maxSize: 100
+  identityStatusConfig:
+    unknownTimeout: 1m
+    scanInterval: 30s
 
   # This section represents the configuration of the Edge API that is served over HTTPS
   api:
@@ -164,7 +92,7 @@ edge:
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in a bind point's address field for the `edge-client` API in the web section.
-    address: 127.0.0.1:1280
+    address: {{ .Host.PublicIp }}:1280
   # enrollment - required
   # A section containing settings pertaining to enrollment.
   enrollment:
@@ -173,22 +101,23 @@ edge:
     # a signing certificate from the PKI that the Ziti environment is using to sign certificates. The signingCert.cert
     # will be added to the /.well-known CA store that is used to bootstrap trust with the Ziti Controller.
     signingCert:
-      cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/intermediate.cert.pem
-      key: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/intermediate.key.decrypted.pem
+      cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}.cert
+      key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}.key
+
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
     edgeIdentity:
       # duration - optional, default 5m
       # The length of time that a Ziti Edge Identity enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
-      duration: 5m
+      duration: 1h
     # edgeRouter - Optional
     # A section for edge router enrollment specific settings.
     edgeRouter:
       # duration - optional, default 5m
       # The length of time that a Ziti Edge Router enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
-      duration: 5m
+      duration: 1h
 
 
 # web - optional
@@ -206,18 +135,18 @@ web:
     bindPoints:
       #interface - required
       # A host:port string on which network interface to listen on. 0.0.0.0 will listen on all interfaces
-      - interface: 127.0.0.1:1280
+      - interface: 0.0.0.0:1280
 
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
-        address: 127.0.0.1:1280
+        address: {{ .Host.PublicIp }}:1280
 
         # newAddress - optional
         # A host:port string which will be sent out as an HTTP header "ziti-new-address" if specified. If the header
         # is present, clients should update location configuration to immediately use the new address for future
         # connections. The value of newAddress must be resolvable both via DNS and validate via certificates
-        newAddress: localhost:1280
+        #newAddress: localhost:1280
     # identity - optional
     # Allows the webListener to have a specific identity instead of defaulting to the root `identity` section.
     #    identity:
@@ -269,11 +198,3 @@ web:
       - binding: edge-management
       - binding: edge-client
       - binding: edge-oidc
-        options:
-          redirectURIs:
-            - "http://localhost:*/auth/callback"
-            - "http://127.0.0.1:*/auth/callback"
-
-commandRateLimiter:
-    enabled: true
-    maxQueued: 100

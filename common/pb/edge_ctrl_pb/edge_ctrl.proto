@@ -60,6 +60,7 @@ enum ContentType {
 
   CreateTunnelTerminatorRequestV2Type = 20413;
   CreateTunnelTerminatorResponseV2Type = 20414;
+  ConnectEventsTypes = 20415;
 
   DataStateType = 20500;
   DataStateChangeSetType = 20501;
@@ -295,6 +296,7 @@ message ApiSession {
   string token = 1;
   repeated string certFingerprints = 2;
   string id = 3;
+  string identityId = 4;
 }
 
 message ApiSessionAdded {
@@ -554,4 +556,20 @@ message EnrollmentCertsResponse {
 
 message EnrollmentExtendRouterVerifyRequest {
   string clientCertPem = 1;
+}
+
+message ConnectEvents {
+  message ConnectDetails {
+    int64 connectTime = 1;
+    string srcAddr = 2;
+    string dstAddr = 3;
+  }
+  message IdentityConnectEvents {
+    string identityId = 1;
+    bool isConnected = 2;
+    repeated ConnectDetails connectTimes = 3;
+  }
+
+  repeated IdentityConnectEvents events = 1;
+  bool fullState = 2;
 }

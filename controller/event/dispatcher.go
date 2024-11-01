@@ -126,15 +126,17 @@ type Dispatcher interface {
 
 	ApiSessionEventHandler
 	CircuitEventHandler
+	ConnectEventHandler
+	ClusterEventHandler
 	EntityChangeEventHandler
 	LinkEventHandler
 	MetricsEventHandler
 	MetricsMessageHandler
 	RouterEventHandler
+	SdkEventHandler
 	ServiceEventHandler
 	TerminatorEventHandler
 	UsageEventHandler
-	ClusterEventHandler
 }
 
 // A Subscription has information to configure an event handler. It contains the EventType to

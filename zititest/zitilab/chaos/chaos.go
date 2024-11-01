@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/ziti/zitirest"
 	"math/rand"
 	"time"
 )
@@ -29,6 +30,21 @@ func StaticNumber(val int) func(int) int {
 		return val
 	}
 }
+
+func RandomInRange(min, max int) func(int) int {
+	return func(count int) int {
+		if count > max {
+			count = max
+		}
+
+		if count <= min {
+			return count
+		}
+
+		return rand.Intn(count-min) + min
+	}
+}
+
 func RandomOfTotal() func(count int) int {
 	return func(count int) int {
 		return rand.Intn(count) + 1
@@ -73,6 +89,34 @@ func SelectRandom(run model.Run, selector string, f func(count int) int) ([]*mod
 		result = append(result, list[i])
 	}
 	return result, nil
+}
+
+func StopSelected(run model.Run, list []*model.Component, concurrency int) error {
+	if len(list) == 0 {
+		return nil
+	}
+	return run.GetModel().ForEachComponentIn(list, concurrency, func(c *model.Component) error {
+		if _, ok := c.Type.(model.ServerComponent); ok {
+			if err := c.Type.Stop(run, c); err != nil {
+				return err
+			}
+
+			for {
+				isRunning, err := c.IsRunning(run)
+				if err != nil {
+					return err
+				}
+				if !isRunning {
+					break
+				} else {
+					time.Sleep(250 * time.Millisecond)
+				}
+			}
+			time.Sleep(time.Second)
+			return nil
+		}
+		return fmt.Errorf("component %v isn't of ServerComponent type, is of type %T", c, c.Type)
+	})
 }
 
 func RestartSelected(run model.Run, list []*model.Component, concurrency int) error {
@@ -126,4 +170,57 @@ func ValidateUp(run model.Run, spec string, concurrency int, timeout time.Durati
 		pfxlog.Logger().Infof("all %v components for spec '%s' are running", len(components), spec)
 	}
 	return err
+}
+
+func EnsureLoggedIntoCtrl(run model.Run, c *model.Component, timeout time.Duration) (*zitirest.Clients, error) {
+	username := c.MustStringVariable("credentials.edge.username")
+	password := c.MustStringVariable("credentials.edge.password")
+	edgeApiBaseUrl := c.Host.PublicIp + ":1280"
+
+	var clients *zitirest.Clients
+	loginStart := time.Now()
+	for {
+		var err error
+		clients, err = zitirest.NewManagementClients(edgeApiBaseUrl)
+		if err != nil {
+			if time.Since(loginStart) > timeout {
+				return nil, err
+			}
+			pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("failed to initialize mgmt client, trying again in 1s")
+			if err = EnsureRunning(c, run); err != nil {
+				pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("error while trying to ensure ctrl running")
+			}
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if err = clients.Authenticate(username, password); err != nil {
+			if time.Since(loginStart) > timeout {
+				return nil, err
+			}
+			pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("failed to authenticate, trying again in 1s")
+			if err = EnsureRunning(c, run); err != nil {
+				pfxlog.Logger().WithField("ctrlId", c.Id).WithError(err).Info("error while trying to ensure ctrl running")
+			}
+			time.Sleep(time.Second)
+		} else {
+			break
+		}
+	}
+	return clients, nil
+}
+
+func EnsureRunning(c *model.Component, run model.Run) error {
+	if sc, ok := c.Type.(model.ServerComponent); ok {
+		isRunning, err := c.IsRunning(run)
+		if err != nil {
+			return err
+		}
+		if isRunning {
+			return nil
+		}
+		time.Sleep(time.Second)
+		return sc.Start(run, c)
+	}
+	return fmt.Errorf("component %v isn't of ServerComponent type, is of type %T", c, c.Type)
 }

@@ -76,25 +76,26 @@ func (self *SdkInfo) Equals(other *SdkInfo) bool {
 
 type Identity struct {
 	models.BaseEntity
-	Name                      string
-	IdentityTypeId            string
-	IsDefaultAdmin            bool
-	IsAdmin                   bool
-	RoleAttributes            []string
-	EnvInfo                   *EnvInfo
-	SdkInfo                   *SdkInfo
-	HasErConnection           bool
-	DefaultHostingPrecedence  ziti.Precedence
-	DefaultHostingCost        uint16
-	ServiceHostingPrecedences map[string]ziti.Precedence
-	ServiceHostingCosts       map[string]uint16
-	AppData                   map[string]interface{}
-	AuthPolicyId              string
-	ExternalId                *string
-	Disabled                  bool
-	DisabledAt                *time.Time
-	DisabledUntil             *time.Time
-	ServiceConfigs            map[string]map[string]string
+	Name                       string
+	IdentityTypeId             string
+	IsDefaultAdmin             bool
+	IsAdmin                    bool
+	RoleAttributes             []string
+	EnvInfo                    *EnvInfo
+	SdkInfo                    *SdkInfo
+	HasErConnection            bool
+	EdgeRouterConnectionStatus IdentityOnlineState
+	DefaultHostingPrecedence   ziti.Precedence
+	DefaultHostingCost         uint16
+	ServiceHostingPrecedences  map[string]ziti.Precedence
+	ServiceHostingCosts        map[string]uint16
+	AppData                    map[string]interface{}
+	AuthPolicyId               string
+	ExternalId                 *string
+	Disabled                   bool
+	DisabledAt                 *time.Time
+	DisabledUntil              *time.Time
+	ServiceConfigs             map[string]map[string]string
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*db.Identity, error) {
@@ -279,6 +280,7 @@ func (entity *Identity) fillFrom(env Env, _ *bbolt.Tx, boltIdentity *db.Identity
 	entity.IsAdmin = boltIdentity.IsAdmin
 	entity.RoleAttributes = boltIdentity.RoleAttributes
 	entity.HasErConnection = env.GetManagers().Identity.HasErConnection(entity.Id)
+	entity.EdgeRouterConnectionStatus = env.GetManagers().Identity.connections.GetIdentityOnlineState(boltIdentity.Id)
 	entity.DefaultHostingPrecedence = boltIdentity.DefaultHostingPrecedence
 	entity.DefaultHostingCost = boltIdentity.DefaultHostingCost
 	entity.ServiceHostingPrecedences = boltIdentity.ServiceHostingPrecedences

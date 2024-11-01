@@ -64,6 +64,12 @@ const (
 
 	AuthRateLimiterMinSizeValue = 5
 	AuthRateLimiterMaxSizeValue = 1000
+
+	DefaultIdentityOnlineStatusScanInterval = time.Minute
+	MinIdentityOnlineStatusScanInterval     = time.Second
+
+	DefaultIdentityOnlineStatusUnknownTimeout = 5 * time.Minute
+	DefaultIdentityOnlineStatusSource         = IdentityStatusSourceHybrid
 )
 
 type Enrollment struct {
@@ -94,15 +100,15 @@ type Api struct {
 }
 
 type EdgeConfig struct {
-	Enabled    bool
-	Api        Api
-	Enrollment Enrollment
-
-	caPems          *bytes.Buffer
-	caPemsOnce      sync.Once
-	Totp            Totp
-	AuthRateLimiter command.AdaptiveRateLimiterConfig
-	caCerts         []*x509.Certificate
+	Enabled              bool
+	Api                  Api
+	Enrollment           Enrollment
+	IdentityStatusConfig IdentityStatusConfig
+	caPems               *bytes.Buffer
+	caPemsOnce           sync.Once
+	Totp                 Totp
+	AuthRateLimiter      command.AdaptiveRateLimiterConfig
+	caCerts              []*x509.Certificate
 }
 
 type HttpTimeouts struct {
@@ -120,6 +126,20 @@ func DefaultHttpTimeouts() *HttpTimeouts {
 		IdleTimeoutsDuration:      DefaultHttpIdleTimeout,
 	}
 	return httpTimeouts
+}
+
+type IdentityStatusSource uint32
+
+const (
+	IdentityStatusSourceHeartbeats    IdentityStatusSource = 1
+	IdentityStatusSourceConnectEvents IdentityStatusSource = 2
+	IdentityStatusSourceHybrid        IdentityStatusSource = 3
+)
+
+type IdentityStatusConfig struct {
+	Source         IdentityStatusSource
+	ScanInterval   time.Duration
+	UnknownTimeout time.Duration
 }
 
 func NewEdgeConfig() *EdgeConfig {
@@ -453,6 +473,57 @@ func (c *EdgeConfig) loadAuthRateLimiterConfig(cfgmap map[interface{}]interface{
 	return nil
 }
 
+func (c *EdgeConfig) loadIdentityStatusConfig(cfgmap map[interface{}]interface{}) error {
+	c.IdentityStatusConfig.ScanInterval = DefaultIdentityOnlineStatusScanInterval
+	c.IdentityStatusConfig.UnknownTimeout = DefaultIdentityOnlineStatusUnknownTimeout
+	c.IdentityStatusConfig.Source = DefaultIdentityOnlineStatusSource
+
+	if value, found := cfgmap["identityStatusConfig"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["scanInterval"]; found {
+				if interval, err := time.ParseDuration(fmt.Sprintf("%v", value)); err != nil {
+					pfxlog.Logger().WithError(err).Errorf("invalid value '%v' for identity status config scan interval", value)
+				} else {
+					c.IdentityStatusConfig.ScanInterval = interval
+				}
+			}
+
+			if c.IdentityStatusConfig.ScanInterval < MinIdentityOnlineStatusScanInterval {
+				pfxlog.Logger().Errorf("invalid value '%v' for identity status config scan interval, must be at least %s",
+					c.IdentityStatusConfig.ScanInterval, MinIdentityOnlineStatusScanInterval)
+				c.IdentityStatusConfig.ScanInterval = MinIdentityOnlineStatusScanInterval
+			}
+
+			if value, found := submap["unknownTimeout"]; found {
+				if interval, err := time.ParseDuration(fmt.Sprintf("%v", value)); err != nil {
+					pfxlog.Logger().WithError(err).Errorf("invalid value '%v' for identity status config unknown timeout", value)
+				} else {
+					c.IdentityStatusConfig.UnknownTimeout = interval
+				}
+			}
+
+			if value, found := submap["source"]; found {
+				strVal := fmt.Sprintf("%v", value)
+				switch strVal {
+				case "heartbeats":
+					c.IdentityStatusConfig.Source = IdentityStatusSourceHeartbeats
+				case "connect-events":
+					c.IdentityStatusConfig.Source = IdentityStatusSourceConnectEvents
+				case "hybrid":
+					c.IdentityStatusConfig.Source = IdentityStatusSourceHybrid
+				default:
+					pfxlog.Logger().Errorf("invalid value '%v' for identity status config source, valid values: ['heartbeats', 'connect-events', 'hybrid']", strVal)
+				}
+			}
+
+		} else {
+			return errors.Errorf("invalid type for identityStatusConfig, should be map instead of %T", value)
+		}
+	}
+
+	return nil
+}
+
 func LoadEdgeConfigFromMap(configMap map[interface{}]interface{}) (*EdgeConfig, error) {
 	edgeConfig := NewEdgeConfig()
 
@@ -487,6 +558,10 @@ func LoadEdgeConfigFromMap(configMap map[interface{}]interface{}) (*EdgeConfig, 
 	}
 
 	if err = edgeConfig.loadAuthRateLimiterConfig(edgeConfigMap); err != nil {
+		return nil, err
+	}
+
+	if err = edgeConfig.loadIdentityStatusConfig(edgeConfigMap); err != nil {
 		return nil, err
 	}
 

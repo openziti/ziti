@@ -224,7 +224,7 @@ var m = &model.Model{
 
 			workflow.AddAction(component.Start(".ctrl"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(edge.RaftJoin(".ctrl"))
+			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(edge.InitRaftController("#ctrl1"))
 			workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))

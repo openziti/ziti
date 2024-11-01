@@ -213,7 +213,7 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 		}
 
 		if serviceAccessClaims.ApiSessionId != *apiSessionId {
-			return nil, fmt.Errorf("invalid api sessoin id, expected %s, got %s", *apiSessionId, serviceAccessClaims.ApiSessionId)
+			return nil, fmt.Errorf("invalid api session id, expected %s, got %s", *apiSessionId, serviceAccessClaims.ApiSessionId)
 		}
 	}
 
@@ -407,6 +407,10 @@ func (ae *AppEnv) GetPeerSigners() []*x509.Certificate {
 
 func (ae *AppEnv) GetCommandDispatcher() command.Dispatcher {
 	return ae.HostController.GetCommandDispatcher()
+}
+
+func (ae *AppEnv) AddRouterPresenceHandler(h model.RouterPresenceHandler) {
+	ae.HostController.GetNetwork().AddRouterPresenceHandler(h)
 }
 
 type HostController interface {
@@ -1093,6 +1097,20 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 			pfxlog.Logger().WithFields(map[string]interface{}{
 				"url": request.URL,
 			}).Warn("could not mark metrics for REST ApiConfig endpoint, request context start time is zero")
+		}
+
+		if rc.ApiSession != nil {
+			connectEvent := &event.ConnectEvent{
+				Namespace: event.ConnectEventNS,
+				SrcType:   event.ConnectSourceIdentity,
+				DstType:   event.ConnectDestinationController,
+				SrcId:     rc.ApiSession.IdentityId,
+				SrcAddr:   rc.Request.RemoteAddr,
+				DstId:     ae.HostController.GetNetwork().GetAppId(),
+				DstAddr:   rc.Request.Host + rc.Request.RequestURI,
+				Timestamp: time.Now(),
+			}
+			ae.GetEventDispatcher().AcceptConnectEvent(connectEvent)
 		}
 	})
 }

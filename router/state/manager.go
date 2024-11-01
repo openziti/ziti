@@ -471,16 +471,22 @@ func (a *ApiSession) SelectCtrlCh(ctrls env.NetworkControllers) channel.Channel 
 	return ctrls.AnyCtrlChannel()
 }
 
-func NewApiSessionFromToken(jwtToken *jwt.Token, accessClaims *common.AccessClaims) *ApiSession {
+func NewApiSessionFromToken(jwtToken *jwt.Token, accessClaims *common.AccessClaims) (*ApiSession, error) {
+	subj, err := jwtToken.Claims.GetSubject()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the api session identity from the JWT subject (%w)", err)
+	}
+	jwtToken.Claims.(*common.AccessClaims).Subject = subj
 	return &ApiSession{
 		ApiSession: &edge_ctrl_pb.ApiSession{
 			Token:            jwtToken.Raw,
 			CertFingerprints: accessClaims.CertFingerprints,
 			Id:               accessClaims.JWTID,
+			IdentityId:       subj,
 		},
 		JwtToken: jwtToken,
 		Claims:   accessClaims,
-	}
+	}, nil
 }
 
 func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
@@ -498,7 +504,12 @@ func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
 				return nil
 			}
 
-			return NewApiSessionFromToken(jwtToken, accessClaims)
+			if apiSession, err := NewApiSessionFromToken(jwtToken, accessClaims); err != nil {
+				pfxlog.Logger().WithError(err).Error("failed to create api session from JWT")
+				return nil
+			} else {
+				return apiSession
+			}
 		} else {
 			pfxlog.Logger().WithError(err).Error("JWT validation failed")
 			return nil

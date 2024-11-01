@@ -20,11 +20,13 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
@@ -38,17 +40,30 @@ import (
 	"time"
 )
 
+type reconnectionHandler interface {
+	NotifyOfReconnect(ch channel.Channel)
+}
+
 type Factory struct {
-	ctrls            env.NetworkControllers
-	enabled          bool
-	routerConfig     *router.Config
-	edgeRouterConfig *edgerouter.Config
-	hostedServices   *hostedServiceRegistry
-	stateManager     state.Manager
-	versionProvider  versions.VersionProvider
-	certChecker      *CertExpirationChecker
-	metricsRegistry  metrics.Registry
-	env              env.RouterEnv
+	ctrls                env.NetworkControllers
+	enabled              bool
+	routerConfig         *router.Config
+	edgeRouterConfig     *edgerouter.Config
+	hostedServices       *hostedServiceRegistry
+	stateManager         state.Manager
+	versionProvider      versions.VersionProvider
+	certChecker          *CertExpirationChecker
+	metricsRegistry      metrics.Registry
+	env                  env.RouterEnv
+	reconnectionHandlers concurrenz.CopyOnWriteSlice[reconnectionHandler]
+	connectionTracker    *connectionTracker
+}
+
+func (factory *Factory) Inspect(key string, timeout time.Duration) any {
+	if key == inspect.RouterIdentityConnectionStatusesKey {
+		return factory.connectionTracker.Inspect(key, timeout)
+	}
+	return nil
 }
 
 func (factory *Factory) GetNetworkControllers() env.NetworkControllers {
@@ -78,6 +93,14 @@ func (factory *Factory) NotifyOfReconnect(ch channel.Channel) {
 	factory.hostedServices.HandleReconnect()
 
 	go factory.stateManager.ValidateSessions(ch, factory.edgeRouterConfig.SessionValidateChunkSize, factory.edgeRouterConfig.SessionValidateMinInterval, factory.edgeRouterConfig.SessionValidateMaxInterval)
+
+	for _, handler := range factory.reconnectionHandlers.Value() {
+		go handler.NotifyOfReconnect(ch)
+	}
+}
+
+func (factory *Factory) addReconnectionHandler(h reconnectionHandler) {
+	factory.reconnectionHandlers.Append(h)
 }
 
 func (factory *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
@@ -133,14 +156,16 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 // NewFactory constructs a new Edge Xgress Factory instance
 func NewFactory(routerConfig *router.Config, env env.RouterEnv, stateManager state.Manager) *Factory {
 	factory := &Factory{
-		ctrls:           env.GetNetworkControllers(),
-		hostedServices:  newHostedServicesRegistry(env, stateManager),
-		stateManager:    stateManager,
-		versionProvider: env.GetVersionInfo(),
-		routerConfig:    routerConfig,
-		metricsRegistry: env.GetMetricsRegistry(),
-		env:             env,
+		ctrls:             env.GetNetworkControllers(),
+		hostedServices:    newHostedServicesRegistry(env, stateManager),
+		stateManager:      stateManager,
+		versionProvider:   env.GetVersionInfo(),
+		routerConfig:      routerConfig,
+		metricsRegistry:   env.GetMetricsRegistry(),
+		env:               env,
+		connectionTracker: newConnectionTracker(env),
 	}
+	factory.addReconnectionHandler(factory.connectionTracker)
 	return factory
 }
 
@@ -183,7 +208,9 @@ func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 		return nil, err
 	}
 
-	pfxlog.Logger().Infof("xgress edge dialer options: %v", options.ToLoggableString())
+	// CreateDialer is called for every egress route and for inspect and validations
+	// can't log this every time.
+	// pfxlog.Logger().Infof("xgress edge dialer options: %v", options.ToLoggableString())
 
 	return newDialer(factory, options), nil
 }
@@ -267,5 +294,6 @@ func (options *Options) load(data xgress.OptionsData) error {
 	} else {
 		options.channelOptions = channel.DefaultOptions()
 	}
+
 	return nil
 }

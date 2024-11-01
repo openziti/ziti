@@ -11,14 +11,14 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.18
-	github.com/openziti/channel/v3 v3.0.6
-	github.com/openziti/edge-api v0.26.34
-	github.com/openziti/fablab v0.5.60
+	github.com/openziti/channel/v3 v3.0.7
+	github.com/openziti/edge-api v0.26.35
+	github.com/openziti/fablab v0.5.72
 	github.com/openziti/foundation/v2 v2.0.49
-	github.com/openziti/identity v1.0.86
+	github.com/openziti/identity v1.0.87
 	github.com/openziti/sdk-golang v0.23.44
 	github.com/openziti/storage v0.3.2
-	github.com/openziti/transport/v2 v2.0.147
+	github.com/openziti/transport/v2 v2.0.148
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -43,7 +43,7 @@ require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
-	github.com/aws/aws-sdk-go v1.52.6 // indirect
+	github.com/aws/aws-sdk-go v1.55.5 // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
@@ -100,7 +100,7 @@ require (
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0 // indirect
 	github.com/iancoleman/strcase v0.1.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/influxdata/influxdb-client-go/v2 v2.13.0 // indirect
+	github.com/influxdata/influxdb-client-go/v2 v2.14.0 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d // indirect
 	github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.5.9 // indirect

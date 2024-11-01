@@ -11,7 +11,6 @@ import (
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/lib/binding"
-	"github.com/openziti/fablab/kernel/lib/parallel"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
@@ -26,21 +25,13 @@ import (
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
-	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"os"
 	"path"
 	"time"
 )
 
-// const TargetZitiVersion = "v0.31.0"
-
 const TargetZitiVersion = ""
-const TargetZitiEdgeTunnelVersion = ""
-
-//const TargetZitiEdgeTunnelVersion = "0.22.12"
-
-var TunnelType = "!zet"
 
 //go:embed configs
 var configResource embed.FS
@@ -74,10 +65,10 @@ func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 }
 
 var m = &model.Model{
-	Id: "sdk-hosting-test",
+	Id: "sdk-status-test",
 	Scope: model.Scope{
 		Defaults: model.Variables{
-			"environment": "sdk-hosting-test",
+			"environment": "sdk-status-test",
 			"credentials": model.Variables{
 				"aws": model.Variables{
 					"managed_key": true,
@@ -146,6 +137,17 @@ var m = &model.Model{
 						},
 					},
 				},
+				"ctrl2": {
+					InstanceType: "c5.xlarge",
+					Components: model.Components{
+						"ctrl2": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Type: &zitilab.ControllerType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
 				"router-us-{{.ScaleIndex}}": {
 					Scope: model.Scope{Tags: model.Tags{"router"}},
 					Components: model.Components{
@@ -164,6 +166,8 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
 								Version: TargetZitiVersion,
+								HA:      true,
+								Count:   2,
 							},
 						},
 					},
@@ -174,6 +178,17 @@ var m = &model.Model{
 			Region: "us-west-2",
 			Site:   "us-west-2a",
 			Hosts: model.Hosts{
+				"ctrl3": {
+					InstanceType: "c5.xlarge",
+					Components: model.Components{
+						"ctrl3": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Type: &zitilab.ControllerType{
+								Version: TargetZitiVersion,
+							},
+						},
+					},
+				},
 				"router-eu-{{.ScaleIndex}}": {
 					Scope: model.Scope{Tags: model.Tags{"router"}},
 					Components: model.Components{
@@ -192,6 +207,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
 								Version: TargetZitiVersion,
+								HA:      true,
 							},
 						},
 					},
@@ -220,6 +236,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
 								Version: TargetZitiVersion,
+								HA:      true,
 							},
 						},
 					},
@@ -232,24 +249,13 @@ var m = &model.Model{
 		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
 
-			isHA := len(m.SelectComponents(".ctrl")) > 1
-
 			workflow.AddAction(component.StopInParallel("*", 300))
 			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/* ctrl.db"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
-			if !isHA {
-				workflow.AddAction(component.Exec("#ctrl1", zitilab.ControllerActionInitStandalone))
-			}
-
 			workflow.AddAction(component.Start(".ctrl"))
-
-			if isHA {
-				workflow.AddAction(semaphore.Sleep(2 * time.Second))
-				workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
-				workflow.AddAction(semaphore.Sleep(2 * time.Second))
-				workflow.AddAction(edge.InitRaftController("#ctrl1"))
-			}
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(edge.InitRaftController("#ctrl1"))
 
 			workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
 
@@ -268,43 +274,13 @@ var m = &model.Model{
 					"protocol" : "tcp"
 				}`))
 
-			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				var tasks []parallel.Task
-				for i := 0; i < 2000; i++ {
-					name := fmt.Sprintf("service-%04d", i)
-					task := func() error {
-						_, err := cli.Exec(run.GetModel(), "edge", "create", "service", name, "-c", "host-config")
-						return err
-					}
-					tasks = append(tasks, task)
-				}
-				return parallel.Execute(tasks, 25)
-			}))
+			workflow.AddAction(zitilib_actions.Edge("create", "service", "test-svc", "-c", "host-config"))
+			workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "test-svc-policy", "Bind",
+				"--identity-roles", "#all", "--service-roles", "#all"))
 
-			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				identities := getHostNames()
-				serviceIdx := 0
-				var tasks []parallel.Task
-				for i, identity := range identities {
-					name := fmt.Sprintf("service-policy-%03d", i)
-					identityRoles := fmt.Sprintf("@%s", identity)
-					servicesRoles := ""
-					for j := 0; j < 10; j++ {
-						idx := serviceIdx % 2000
-						if j > 0 {
-							servicesRoles += ","
-						}
-						servicesRoles += fmt.Sprintf("@service-%04d", idx)
-						serviceIdx++
-					}
-					tasks = append(tasks, func() error {
-						_, err := cli.Exec(run.GetModel(), "edge", "create", "service-policy", name, "Bind",
-							"--identity-roles", identityRoles, "--service-roles", servicesRoles)
-						return err
-					})
-				}
-				return parallel.Execute(tasks, 25)
-			}))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(component.StartInParallel(".router", 10))
@@ -318,7 +294,9 @@ var m = &model.Model{
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
-		"login": model.Bind(edge.Login("#ctrl1")),
+		"login":  model.Bind(edge.Login("#ctrl1")),
+		"login2": model.Bind(edge.Login("#ctrl2")),
+		"login3": model.Bind(edge.Login("#ctrl3")),
 		"restart": model.ActionBinder(func(run *model.Model) model.Action {
 			workflow := actions.Workflow()
 			workflow.AddAction(component.StopInParallel("*", 100))
@@ -347,7 +325,31 @@ var m = &model.Model{
 			}
 			return nil
 		})),
-		"validate": model.Bind(model.ActionFunc(validateTerminators)),
+		"validate": model.Bind(model.ActionFunc(validateSdkStatus)),
+		"ensureAllStarted": model.ActionBinder(func(m *model.Model) model.Action {
+			workflow := actions.Workflow()
+			workflow.AddAction(component.Start(".ctrl"))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(component.StartInParallel(".router", 10))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(component.StartInParallel(".host", 50))
+			return workflow
+		}),
+		"sleep2Min": model.Bind(model.ActionFunc(func(run model.Run) error {
+			time.Sleep(2 * time.Minute)
+			return nil
+		})),
+		"testIteration": model.Bind(model.ActionFunc(func(run model.Run) error {
+			return run.GetModel().Exec(run,
+				"sowChaos",
+				"validate",
+				"sleep2Min",
+				"validate",
+				"ensureAllStarted",
+				"validateUp",
+				"validate",
+			)
+		})),
 	},
 
 	Infrastructure: model.Stages{

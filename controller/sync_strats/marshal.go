@@ -43,6 +43,7 @@ func apiSessionToProtoWithTx(tx *bbolt.Tx, ae *env.AppEnv, token, identityId, ap
 		Token:            token,
 		CertFingerprints: fingerprints,
 		Id:               apiSessionId,
+		IdentityId:       identityId,
 	}, nil
 }
 

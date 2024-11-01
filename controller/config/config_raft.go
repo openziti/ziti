@@ -9,9 +9,8 @@ import (
 type RaftConfig struct {
 	Recover               bool
 	DataDir               string
-	MinClusterSize        uint32
 	AdvertiseAddress      transport.Address
-	BootstrapMembers      []string
+	InitialMembers        []string
 	CommandHandlerOptions struct {
 		MaxQueueSize uint16
 	}
