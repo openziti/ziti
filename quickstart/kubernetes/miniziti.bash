@@ -193,7 +193,7 @@ validateDnsName(){
         logError "validateDnsName() takes one string param"
         return 1
     fi
-	if grep -qE '^[a-zA-Z0-9]([-a-zA-Z0-9]{2,251})[a-zA-Z0-9]$' <<<"$1"; then
+    if grep -qE '^[a-zA-Z0-9]([-a-zA-Z0-9]{2,251})[a-zA-Z0-9]$' <<<"$1"; then
         logDebug "'$1' is a valid DNS name"
         return 0
     else
