@@ -52,6 +52,11 @@ type TestContext struct {
 	eventDispatcher event.Dispatcher
 }
 
+func (ctx *TestContext) GetControllerId() string {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (ctx *TestContext) GetEnrollmentJwtSigner() (jwtsigner.Signer, error) {
 	return ctx, nil
 }

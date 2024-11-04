@@ -107,6 +107,7 @@ type Stores struct {
 	Config                  ConfigStore
 	ConfigType              ConfigTypeStore
 	Controller              ControllerStore
+	ControllerSetting       ControllerSettingStore
 	EdgeRouter              EdgeRouterStore
 	EdgeRouterPolicy        EdgeRouterPolicyStore
 	EdgeService             EdgeServiceStore
@@ -218,6 +219,7 @@ type stores struct {
 	serviceEdgeRouterPolicy *serviceEdgeRouterPolicyStoreImpl
 	servicePolicy           *servicePolicyStoreImpl
 	session                 *sessionStoreImpl
+	setting                 *controllerSettingStoreImpl
 	transitRouter           *transitRouterStoreImpl
 	enrollment              *enrollmentStoreImpl
 	authenticator           *authenticatorStoreImpl
@@ -275,6 +277,7 @@ func InitStores(db boltz.Db, rateLimiter rate.RateLimiter, signingCert *x509.Cer
 	internalStores.revocation = newRevocationStore(internalStores)
 	internalStores.serviceEdgeRouterPolicy = newServiceEdgeRouterPolicyStore(internalStores)
 	internalStores.servicePolicy = newServicePolicyStore(internalStores)
+	internalStores.setting = newControllerSettingStore(dbProvider, internalStores)
 	internalStores.session = newSessionStore(internalStores)
 	internalStores.postureCheck = newPostureCheckStore(internalStores)
 	internalStores.postureCheckType = newPostureCheckTypeStore(internalStores)
@@ -306,6 +309,7 @@ func InitStores(db boltz.Db, rateLimiter rate.RateLimiter, signingCert *x509.Cer
 		ServiceEdgeRouterPolicy: internalStores.serviceEdgeRouterPolicy,
 		ServicePolicy:           internalStores.servicePolicy,
 		Session:                 internalStores.session,
+		ControllerSetting:       internalStores.setting,
 		Authenticator:           internalStores.authenticator,
 		Enrollment:              internalStores.enrollment,
 		PostureCheck:            internalStores.postureCheck,
