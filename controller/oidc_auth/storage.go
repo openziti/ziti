@@ -91,7 +91,6 @@ type HybridStorage struct {
 	serviceUsers cmap.ConcurrentMap[string, *Client]
 
 	startOnce sync.Once
-//linter issue	issuer    string
 	config    *Config
 
 	keys cmap.ConcurrentMap[string, *pubKey]
