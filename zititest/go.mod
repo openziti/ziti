@@ -10,15 +10,15 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/openziti/agent v1.0.18
-	github.com/openziti/channel/v3 v3.0.7
+	github.com/openziti/agent v1.0.19
+	github.com/openziti/channel/v3 v3.0.10
 	github.com/openziti/edge-api v0.26.35
 	github.com/openziti/fablab v0.5.72
-	github.com/openziti/foundation/v2 v2.0.49
-	github.com/openziti/identity v1.0.87
+	github.com/openziti/foundation/v2 v2.0.50
+	github.com/openziti/identity v1.0.88
 	github.com/openziti/sdk-golang v0.23.44
 	github.com/openziti/storage v0.3.2
-	github.com/openziti/transport/v2 v2.0.148
+	github.com/openziti/transport/v2 v2.0.150
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -60,13 +60,13 @@ require (
 	github.com/ef-ds/deque v1.0.4 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/fatih/color v1.17.0 // indirect
+	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
 	github.com/gaissmai/extnetip v1.1.0 // indirect
-	github.com/go-acme/lego/v4 v4.18.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.2 // indirect
+	github.com/go-acme/lego/v4 v4.19.2 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -103,7 +103,7 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d // indirect
 	github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 // indirect
-	github.com/jedib0t/go-pretty/v6 v6.5.9 // indirect
+	github.com/jedib0t/go-pretty/v6 v6.6.1 // indirect
 	github.com/jessevdk/go-flags v1.6.1 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -142,8 +142,8 @@ require (
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/jwks v1.0.6 // indirect
-	github.com/openziti/metrics v1.2.58 // indirect
-	github.com/openziti/runzmd v1.0.51 // indirect
+	github.com/openziti/metrics v1.2.59 // indirect
+	github.com/openziti/runzmd v1.0.53 // indirect
 	github.com/openziti/secretstream v0.1.25 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.1.3 // indirect
