@@ -52,6 +52,10 @@ type TestContext struct {
 	eventDispatcher event.Dispatcher
 }
 
+func (ctx *TestContext) GetControllerId() string {
+	return ctx.GetId()
+}
+
 func (ctx *TestContext) GetId() string {
 	return ctx.config.Id.Token
 }

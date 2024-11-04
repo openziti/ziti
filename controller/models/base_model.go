@@ -71,11 +71,12 @@ type NameIndexedStore interface {
 }
 
 type BaseEntity struct {
-	Id        string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Tags      map[string]interface{}
-	IsSystem  bool
+	//json tags used by dynamic struct protobuff marshalling
+	Id        string                 `json:"id"`
+	CreatedAt time.Time              `json:"createdAt"`
+	UpdatedAt time.Time              `json:"updatedAt"`
+	Tags      map[string]interface{} `json:"tags"`
+	IsSystem  bool                   `json:"isSystem"`
 }
 
 func (entity *BaseEntity) GetId() string {
