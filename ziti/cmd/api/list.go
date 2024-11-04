@@ -122,7 +122,7 @@ func MapNameToID(api util.API, entityType string, o *Options, idOrName string) (
 func MapNamesToIDs(api util.API, entityType string, o *Options, list ...string) ([]string, error) {
 	var result []string
 	for _, val := range list {
-		if strings.HasPrefix(val, "id") {
+		if strings.HasPrefix(val, "id:") {
 			id := strings.TrimPrefix(val, "id:")
 			result = append(result, id)
 		} else {

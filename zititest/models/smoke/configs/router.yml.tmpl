@@ -17,6 +17,14 @@ identity:
   key:                  /home/{{$ssh_username}}/fablab/cfg/{{$identity}}.key
   ca:                   /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-server.chain.pem
 
+mgmt:
+  pipe:
+    enabled: true
+    enableExperimentalFeature: true
+    destination: embedded-ssh-server
+    authorizedKeysFile: /home/ubuntu/.ssh/authorized_keys
+    shell: /usr/bin/bash
+
 ctrl:
   endpoints: {{ range $host := .Model.MustSelectHosts "component.ctrl" 1 }}
     - tls:{{ $host.PublicIp }}:6262{{end}}

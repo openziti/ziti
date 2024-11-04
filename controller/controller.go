@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/concurrency"
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/common/health"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
@@ -94,7 +95,8 @@ type Controller struct {
 	apiDataBytes []byte
 	apiDataOnce  sync.Once
 
-	xwebInitialized concurrency.InitState
+	xwebInitialized    concurrency.InitState
+	securePipeRegistry *datapipe.Registry
 }
 
 func (c *Controller) GetPeerSigners() []*x509.Certificate {
@@ -223,6 +225,7 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 		versionProvider:     versionProvider,
 		eventDispatcher:     events.NewDispatcher(shutdownC),
 		xwebInitialized:     concurrency.NewInitState(),
+		securePipeRegistry:  datapipe.NewRegistry(&cfg.Mgmt.Pipe),
 	}
 
 	c.xweb = xweb.NewDefaultInstance(c.xwebFactoryRegistry, c.config.Id)
@@ -294,7 +297,7 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
-	fabricManagementFactory := webapis.NewFabricManagementApiFactory(c.config.Id, c.network, &c.xmgmts)
+	fabricManagementFactory := webapis.NewFabricManagementApiFactory(c.config.Id, c.network, &c.xmgmts, c.securePipeRegistry)
 	if err = c.xweb.GetRegistry().Add(fabricManagementFactory); err != nil {
 		logrus.WithError(err).Fatalf("failed to create management api factory")
 	}
@@ -377,7 +380,12 @@ func (c *Controller) Run() error {
 		panic(err)
 	}
 
-	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.config.Ctrl.Options.Options, c.config.Ctrl.Options.RouterHeartbeatOptions, c.config.Trace.Handler)
+	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network,
+		c.xctrls,
+		c.config.Ctrl.Options.Options,
+		c.config.Ctrl.Options.RouterHeartbeatOptions,
+		c.config.Trace.Handler,
+		c.securePipeRegistry)
 
 	ctrlAcceptors := map[string]channel.UnderlayAcceptor{}
 	if c.raftController != nil {

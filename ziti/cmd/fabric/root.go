@@ -37,6 +37,7 @@ func NewFabricCmd(p common.OptionsProvider) *cobra.Command {
 	fabricCmd.AddCommand(newStreamCommand(p))
 	fabricCmd.AddCommand(newRaftCmd(p))
 	fabricCmd.AddCommand(newValidateCommand(p))
+	fabricCmd.AddCommand(NewSshCmd(p))
 	return fabricCmd
 }
 
