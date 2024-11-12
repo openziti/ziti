@@ -162,7 +162,7 @@ var m = &model.Model{
 					Components: model.Components{
 						"host-us-{{ .Host.ScaleIndex }}-{{ .ScaleIndex }}": {
 							Scope: model.Scope{Tags: model.Tags{"host"}},
-							Type: &zitilab.ZitiTunnelType{
+							Type: &zitilab.ZitiEdgeTunnelType{
 								Version: TargetZitiVersion,
 							},
 						},
@@ -171,8 +171,8 @@ var m = &model.Model{
 			},
 		},
 		"eu-west-2": {
-			Region: "us-west-2",
-			Site:   "us-west-2a",
+			Region: "eu-west-2",
+			Site:   "eu-west-2a",
 			Hosts: model.Hosts{
 				"router-eu-{{.ScaleIndex}}": {
 					Scope: model.Scope{Tags: model.Tags{"router"}},
