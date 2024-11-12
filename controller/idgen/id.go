@@ -33,7 +33,6 @@ func New() string {
 
 type Generator interface {
 	NextId() (string, error)
-	NextAlphaNumericPrefixedId() (string, error)
 }
 
 type shortIdGenerator struct {
@@ -41,12 +40,8 @@ type shortIdGenerator struct {
 }
 
 func (self *shortIdGenerator) NextId() (string, error) {
-	return self.Generate()
-}
-
-func (self *shortIdGenerator) NextAlphaNumericPrefixedId() (string, error) {
 	for {
-		id, err := self.NextId()
+		id, err := self.Generate()
 		if err != nil {
 			return "", err
 		}

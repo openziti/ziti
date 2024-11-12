@@ -555,7 +555,7 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 	instanceId, serviceId := parseInstanceIdAndService(service)
 
 	// 1: Allocate Circuit Identifier
-	circuitId, err := network.circuitIdGenerator.NextAlphaNumericPrefixedId()
+	circuitId, err := network.circuitIdGenerator.NextId()
 	if err != nil {
 		network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, CircuitFailureIdGenerationError)
 		return nil, err
