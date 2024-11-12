@@ -1,3 +1,25 @@
+# Release 1.2.1
+
+## What's New
+
+* Bug fixes and continuing progress on controller HA
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.19 -> v1.0.20](https://github.com/openziti/agent/compare/v1.0.19...v1.0.20)
+* github.com/openziti/channel/v3: [v3.0.10 -> v3.0.13](https://github.com/openziti/channel/compare/v3.0.10...v3.0.13)
+* github.com/openziti/foundation/v2: [v2.0.50 -> v2.0.52](https://github.com/openziti/foundation/compare/v2.0.50...v2.0.52)
+* github.com/openziti/identity: [v1.0.88 -> v1.0.90](https://github.com/openziti/identity/compare/v1.0.88...v1.0.90)
+* github.com/openziti/metrics: [v1.2.59 -> v1.2.61](https://github.com/openziti/metrics/compare/v1.2.59...v1.2.61)
+* github.com/openziti/runzmd: [v1.0.53 -> v1.0.55](https://github.com/openziti/runzmd/compare/v1.0.53...v1.0.55)
+* github.com/openziti/storage: [v0.3.2 -> v0.3.6](https://github.com/openziti/storage/compare/v0.3.2...v0.3.6)
+* github.com/openziti/transport/v2: [v2.0.150 -> v2.0.153](https://github.com/openziti/transport/compare/v2.0.150...v2.0.153)
+* github.com/openziti/ziti: [v1.2.0 -> v1.2.1](https://github.com/openziti/ziti/compare/v1.2.0...v1.2.1)
+    * [Issue #2532](https://github.com/openziti/ziti/issues/2532) - When adding an existing HA cluster member, remove/add if suffrage has changed
+    * [Issue #2217](https://github.com/openziti/ziti/issues/2217) - Controller list is empty until peers connect
+    * [Issue #2533](https://github.com/openziti/ziti/issues/2533) - Handle concurrent raft connections
+    * [Issue #2528](https://github.com/openziti/ziti/issues/2528) - Updated router costs are not use when evaluating current path cost in the context of smart rerouting
+
 # Release 1.2.0
 
 ## What's New
