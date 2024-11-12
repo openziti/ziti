@@ -193,11 +193,11 @@ validateDnsName(){
         logError "validateDnsName() takes one string param"
         return 1
     fi
-    if grep -qP '(?=^.{4,253}$)(^(?:[a-zA-Z0-9](?:(?:[a-zA-Z0-9\-]){0,61}[a-zA-Z0-9])?)+[a-zA-Z0-9]$)' <<< "$1"; then
+    if grep -qE '^[a-zA-Z0-9]([-a-zA-Z0-9]{2,251})[a-zA-Z0-9]$' <<<"$1"; then
         logDebug "'$1' is a valid DNS name"
         return 0
     else
-        logError "'$1' could not be validated as an unqualified DNS name which is limited to at least four alphanumeric and hyphen characters, starts with a letter, and does not end with a hyphen."
+        logError "'$1' could not be validated as an unqualified DNS name which is limited to at least four alphanumeric and hyphen characters and does not start nor end with a hyphen."
         return 1
     fi
 }
