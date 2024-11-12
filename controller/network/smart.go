@@ -17,13 +17,11 @@
 package network
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/model"
-	log "github.com/sirupsen/logrus"
 	"sort"
 	"time"
-
-	"github.com/michaelquigley/pfxlog"
 )
 
 func (network *Network) smart() {
@@ -39,7 +37,24 @@ func (network *Network) smart() {
 	}
 }
 
+func (network *Network) calculateCircuitCost(path *model.Path) int64 {
+	var cost int64
+	for _, l := range path.Links {
+		cost += l.GetCost()
+	}
+	for _, cachedRouter := range path.Nodes {
+		if currentRouter := network.GetConnectedRouter(cachedRouter.Id); currentRouter != nil {
+			cost += int64(max(currentRouter.Cost, network.options.MinRouterCost))
+		} else {
+			cost += int64(max(cachedRouter.Cost, network.options.MinRouterCost))
+		}
+	}
+	return cost
+}
+
 func (network *Network) getRerouteCandidates() []*newCircuitPath {
+	log := pfxlog.Logger()
+
 	/*
 	 * Order circuits in decreasing overall latency order
 	 */
@@ -52,17 +67,17 @@ func (network *Network) getRerouteCandidates() []*newCircuitPath {
 
 	minRouterCost := network.options.MinRouterCost
 
-	circuitLatencies := make(map[string]int64)
+	circuitCosts := make(map[string]int64)
 	var orderedCircuits []string
-	for _, s := range circuits {
-		circuitLatencies[s.Id] = s.Path.Cost(minRouterCost)
-		orderedCircuits = append(orderedCircuits, s.Id)
+	for _, circuit := range circuits {
+		circuitCosts[circuit.Id] = network.calculateCircuitCost(circuit.Path)
+		orderedCircuits = append(orderedCircuits, circuit.Id)
 	}
 
 	sort.SliceStable(orderedCircuits, func(i, j int) bool {
 		iId := orderedCircuits[i]
 		jId := orderedCircuits[j]
-		return circuitLatencies[jId] < circuitLatencies[iId]
+		return circuitCosts[jId] < circuitCosts[iId]
 	})
 	/* */
 
@@ -79,11 +94,11 @@ func (network *Network) getRerouteCandidates() []*newCircuitPath {
 		ceiling = int(network.options.Smart.RerouteCap)
 	}
 	log.Tracef("smart reroute ceiling [%d]", ceiling)
-	for _, sId := range orderedCircuits {
-		if circuit, found := network.GetCircuit(sId); found {
+	for _, circuitId := range orderedCircuits {
+		if circuit, found := network.GetCircuit(circuitId); found {
 			if updatedPath, err := network.UpdatePath(circuit.Path); err == nil {
 				pathChanged := !updatedPath.EqualPath(circuit.Path)
-				oldCost := circuit.Path.Cost(minRouterCost)
+				oldCost := circuitCosts[circuitId]
 				newCost := updatedPath.Cost(minRouterCost)
 				costDelta := oldCost - newCost
 				log.Tracef("old cost: %v, new cost: %v, delta: %v", oldCost, newCost, costDelta)
@@ -93,7 +108,7 @@ func (network *Network) getRerouteCandidates() []*newCircuitPath {
 						circuit: circuit,
 						path:    updatedPath,
 					})
-					log.Debugf("rerouting [s/%s] [l:%d] %s ==> %s", circuit.Id, circuitLatencies[circuit.Id], circuit.Path.String(), updatedPath.String())
+					log.Debugf("rerouting [c/%s] [l:%d] %s ==> %s", circuit.Id, circuitCosts[circuit.Id], circuit.Path.String(), updatedPath.String())
 				}
 			}
 		}
