@@ -65,5 +65,7 @@ type Env interface {
 	GetApiAddresses() (map[string][]event.ApiAddress, []byte)
 	GetCloseNotifyChannel() <-chan struct{}
 	GetPeerSigners() []*x509.Certificate
+
+	GetControllerId() string
 	AddRouterPresenceHandler(h RouterPresenceHandler)
 }

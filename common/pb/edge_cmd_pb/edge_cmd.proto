@@ -339,6 +339,21 @@ message Mfa {
   repeated string recoveryCodes = 6;
 }
 
+// ControllerSetting
+
+message ControllerSetting {
+  string id = 1;
+  map<string, TagValue> tags = 2;
+
+  message Oidc {
+    repeated string redirectUri = 1;
+    repeated string postLogoutUri = 2;
+  }
+
+  Oidc oidc = 3;
+
+}
+
 // Posture Checks
 /*
  */
