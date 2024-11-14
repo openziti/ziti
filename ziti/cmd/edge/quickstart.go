@@ -542,9 +542,11 @@ func (o *QuickstartOpts) createMinimalPki() {
 		// indicates we are joining a cluster. don't emit a root-ca, expect it'll be there or error
 	} else {
 		rootCaPath := path.Join(where, "root-ca", "certs", "root-ca.cert")
-		rootCa, statErr := os.Stat(rootCaPath) //pki/root-ca/certs/root-ca.cert
+		rootCa, statErr := os.Stat(rootCaPath)
 		if statErr != nil {
-			logrus.Warnf("cold not check for root-ca? %v", statErr)
+			if !os.IsNotExist(statErr) {
+				logrus.Warnf("could not check for root-ca: %v", statErr)
+			}
 		}
 		if rootCa == nil {
 			ca := pki.NewCmdPKICreateCA(o.out, o.errOut)
