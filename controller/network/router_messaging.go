@@ -327,7 +327,11 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 		return
 	}
 
-	var req ctrl_pb.FilterableValidateTerminatorsRequest
+	var req interface {
+		protobufs.TypedMessage
+		GetTerminators() []*ctrl_pb.Terminator
+	}
+
 	if !supportsVerifyV2 {
 		req = &ctrl_pb.ValidateTerminatorsRequest{Terminators: terminators}
 	} else {

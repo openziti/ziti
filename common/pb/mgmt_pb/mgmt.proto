@@ -44,6 +44,7 @@ enum ContentType {
   RaftRemovePeerRequestType = 10083;
   RaftTransferLeadershipRequestType = 10084;
   RaftInitFromDb = 10085;
+  RaftInit = 10086;
 
   // Validate
   ValidateTerminatorsRequestType = 10100;
@@ -313,4 +314,10 @@ message RouterIdentityConnectionStatusesDetails {
   string componentName = 3;
   bool validateSuccess = 4;
   repeated string errors = 5;
+}
+
+message InitRequest {
+  string username = 1;
+  string password = 2;
+  string name = 3;
 }

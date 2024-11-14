@@ -50,7 +50,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.20
-	github.com/openziti/channel/v3 v3.0.13
+	github.com/openziti/channel/v3 v3.0.14
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.35
 	github.com/openziti/foundation/v2 v2.0.52

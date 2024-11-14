@@ -251,6 +251,12 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 		return nil, err
 	}
 
+	if c.raftController != nil {
+		if err = c.raftController.InitEnv(c.env); err != nil {
+			return nil, err
+		}
+	}
+
 	c.initWeb() // need to init web before bootstrapping, so we can provide our endpoints to peers
 
 	if c.raftController != nil && !c.raftController.IsBootstrapped() {
@@ -294,7 +300,7 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
-	fabricManagementFactory := webapis.NewFabricManagementApiFactory(c.config.Id, c.network, &c.xmgmts)
+	fabricManagementFactory := webapis.NewFabricManagementApiFactory(c.config.Id, c.env, c.network, &c.xmgmts)
 	if err = c.xweb.GetRegistry().Add(fabricManagementFactory); err != nil {
 		logrus.WithError(err).Fatalf("failed to create management api factory")
 	}
@@ -358,10 +364,6 @@ func (c *Controller) Run() error {
 		int32(ctrl_pb.ControlHeaders_CapabilitiesHeader): capabilityMask.Bytes(),
 	}
 
-	if c.raftController != nil {
-		headers[mesh.PeerAddrHeader] = []byte(c.config.Raft.AdvertiseAddress.String())
-	}
-
 	/**
 	 * ctrl listener/accepter.
 	 */
@@ -371,6 +373,11 @@ func (c *Controller) Run() error {
 		Headers:          headers,
 		TransportConfig:  transport.Configuration{"protocol": "ziti-ctrl"},
 	}
+
+	if c.raftController != nil {
+		ctrlChannelListenerConfig.HeadersF = c.raftController.GetListenerHeaders
+	}
+
 	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, ctrlChannelListenerConfig)
 	c.ctrlListener = ctrlListener
 	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {

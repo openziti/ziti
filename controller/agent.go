@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
 	"time"
@@ -36,6 +37,7 @@ func (self *Controller) bindAgentChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftRemovePeerRequestType), self.agentOpRaftRemovePeer)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftTransferLeadershipRequestType), self.agentOpRaftTransferLeadership)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftInitFromDb), self.agentOpInitFromDb)
+	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftInit), self.agentOpInit)
 
 	for _, bh := range self.agentBindHandlers {
 		if err := binding.Bind(bh); err != nil {
@@ -216,4 +218,28 @@ func (self *Controller) agentOpInitFromDb(m *channel.Message, ch channel.Channel
 		return
 	}
 	handler_common.SendOpResult(m, ch, "raft.initFromDb", fmt.Sprintf("success, initialized from [%v]", sourceDbPath), true)
+}
+
+func (self *Controller) agentOpInit(m *channel.Message, ch channel.Channel) {
+	if self.raftController == nil {
+		handler_common.SendOpResult(m, ch, "raft.list", "controller not running in clustered mode", false)
+		return
+	}
+
+	log := pfxlog.Logger().WithField("channel", ch.LogicalName())
+
+	request := &mgmt_pb.InitRequest{}
+	if err := proto.Unmarshal(m.Body, request); err != nil {
+		log.WithError(err).Error("unable to parse InitRequest, closing channel")
+		if err = ch.Close(); err != nil {
+			log.WithError(err).Error("error closing mgmt channel")
+		}
+		return
+	}
+
+	if err := self.env.Managers.Identity.InitializeDefaultAdmin(request.Username, request.Password, request.Name); err != nil {
+		handler_common.SendOpResult(m, ch, "init.edge", err.Error(), false)
+	} else {
+		handler_common.SendOpResult(m, ch, "init.edge", "success", true)
+	}
 }

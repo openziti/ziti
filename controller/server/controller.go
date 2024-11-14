@@ -26,7 +26,6 @@ import (
 	edgeconfig "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/handler_edge_ctrl"
-	"github.com/openziti/ziti/controller/handler_edge_mgmt"
 	"github.com/openziti/ziti/controller/internal/policy"
 	_ "github.com/openziti/ziti/controller/internal/routes"
 	"github.com/openziti/ziti/controller/model"
@@ -39,7 +38,6 @@ import (
 type Controller struct {
 	config          *edgeconfig.EdgeConfig
 	AppEnv          *env.AppEnv
-	xmgmt           *submgmt
 	xctrl           *subctrl
 	policyEngine    runner2.Runner
 	initModulesOnce sync.Once
@@ -81,10 +79,6 @@ func NewController(host env.HostController) (*Controller, error) {
 
 	c.policyEngine = pe
 
-	c.xmgmt = &submgmt{
-		parent: c,
-	}
-
 	c.xctrl = &subctrl{
 		parent: c,
 	}
@@ -99,15 +93,6 @@ func NewController(host env.HostController) (*Controller, error) {
 	if err := host.RegisterXctrl(c.xctrl); err != nil {
 		panic(err)
 	}
-
-	if err := host.RegisterXmgmt(c.xmgmt); err != nil {
-		panic(err)
-	}
-
-	host.RegisterAgentBindHandler(channel.BindHandlerF(func(binding channel.Binding) error {
-		binding.AddTypedReceiveHandler(handler_edge_mgmt.NewInitEdgeHandler(c.AppEnv))
-		return nil
-	}))
 
 	return c, nil
 }
@@ -144,14 +129,6 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 	result = append(result, c.AppEnv.Broker.GetReceiveHandlers()...)
 
 	return result
-}
-
-func (c *Controller) GetMgmtHandlers() []channel.TypedReceiveHandler {
-	return []channel.TypedReceiveHandler{
-		handler_edge_mgmt.NewInitEdgeHandler(c.AppEnv),
-		handler_edge_mgmt.NewValidateRouterDataModelHandler(c.AppEnv),
-		handler_edge_mgmt.NewValidateIdentityConnectionStatusesHandler(c.AppEnv),
-	}
 }
 
 func (c *Controller) Enabled() bool {
@@ -339,28 +316,5 @@ func (c *subctrl) BindChannel(binding channel.Binding) error {
 }
 
 func (c *subctrl) Run(channel.Channel, boltz.Db, chan struct{}) error {
-	return nil
-}
-
-type submgmt struct {
-	parent *Controller
-}
-
-func (m *submgmt) LoadConfig(map[interface{}]interface{}) error {
-	return nil
-}
-
-func (m *submgmt) Enabled() bool {
-	return m.parent.Enabled()
-}
-
-func (m *submgmt) BindChannel(binding channel.Binding) error {
-	for _, h := range m.parent.GetMgmtHandlers() {
-		binding.AddTypedReceiveHandler(h)
-	}
-	return nil
-}
-
-func (m *submgmt) Run(channel.Channel, chan struct{}) error {
 	return nil
 }

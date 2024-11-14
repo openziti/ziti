@@ -20,16 +20,18 @@ import (
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/common/trace"
+	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/xmgmt"
 )
 
 type BindHandler struct {
+	env     *env.AppEnv
 	network *network.Network
 	xmgmts  *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
 }
 
-func NewBindHandler(network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) channel.BindHandler {
+func NewBindHandler(env *env.AppEnv, network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) channel.BindHandler {
 	return &BindHandler{network: network, xmgmts: xmgmts}
 }
 
@@ -56,6 +58,18 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type:    validateSdkTerminatorsRequestHandler.ContentType(),
 		Handler: validateSdkTerminatorsRequestHandler.HandleReceive,
+	})
+
+	validateIdentityConnectionStatusesRequestHandler := newValidateIdentityConnectionStatusesHandler(bindHandler.env)
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type:    validateIdentityConnectionStatusesRequestHandler.ContentType(),
+		Handler: validateIdentityConnectionStatusesRequestHandler.HandleReceive,
+	})
+
+	validateRouterDataModelRequestHandler := newValidateRouterDataModelHandler(bindHandler.env)
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type:    validateRouterDataModelRequestHandler.ContentType(),
+		Handler: validateRouterDataModelRequestHandler.HandleReceive,
 	})
 
 	tracesHandler := newStreamTracesHandler(bindHandler.network)

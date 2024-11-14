@@ -17,7 +17,6 @@
 package ctrl_pb
 
 import (
-	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/ziti/controller/xt"
 )
 
@@ -109,30 +108,4 @@ func (request *UpdateCtrlAddresses) GetContentType() int32 {
 
 func (request *PeerStateChanges) GetContentType() int32 {
 	return int32(ContentType_PeerStateChangeRequestType)
-}
-
-type FilterableValidateTerminatorsRequest interface {
-	protobufs.TypedMessage
-	FilterTerminators(f func(terminator *Terminator) bool)
-	GetTerminators() []*Terminator
-}
-
-func (request *ValidateTerminatorsRequest) FilterTerminators(f func(terminator *Terminator) bool) {
-	var terminators []*Terminator
-	for _, terminator := range request.Terminators {
-		if f(terminator) {
-			terminators = append(terminators, terminator)
-		}
-	}
-	request.Terminators = terminators
-}
-
-func (request *ValidateTerminatorsV2Request) FilterTerminators(f func(terminator *Terminator) bool) {
-	var terminators []*Terminator
-	for _, terminator := range request.Terminators {
-		if f(terminator) {
-			terminators = append(terminators, terminator)
-		}
-	}
-	request.Terminators = terminators
 }

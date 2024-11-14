@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package handler_edge_mgmt
+package handler_mgmt
 
 import (
 	"encoding/json"
@@ -40,7 +40,7 @@ type validateIdentityConnectionStatusesHandler struct {
 	appEnv *env.AppEnv
 }
 
-func NewValidateIdentityConnectionStatusesHandler(appEnv *env.AppEnv) channel.TypedReceiveHandler {
+func newValidateIdentityConnectionStatusesHandler(appEnv *env.AppEnv) channel.TypedReceiveHandler {
 	return &validateIdentityConnectionStatusesHandler{appEnv: appEnv}
 }
 

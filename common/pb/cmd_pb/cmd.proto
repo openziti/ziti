@@ -25,6 +25,7 @@ enum CommandType {
   DeleteTerminatorsBatchType = 4;
 
   SyncSnapshot = 10;
+  InitClusterId = 11;
 }
 
 message ChangeContext {
@@ -74,6 +75,10 @@ message DeleteEntityCommand {
 message SyncSnapshotCommand {
   string snapshotId = 1;
   bytes snapshot = 2;
+}
+
+message InitClusterIdCommand {
+  string clusterId = 1;
 }
 
 message DeleteTerminatorsBatchCommand {

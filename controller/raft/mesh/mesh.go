@@ -40,15 +40,17 @@ import (
 )
 
 const (
-	PeerAddrHeader = 11
+	PeerAddrHeader     = 11
+	SigningCertHeader  = 12
+	ApiAddressesHeader = 13
+	RaftConnIdHeader   = 14
+	ClusterIdHeader    = 15
 
 	RaftConnectType    = 2048
 	RaftDataType       = 2049
-	SigningCertHeader  = 2050
-	ApiAddressesHeader = 2051
 	RaftDisconnectType = 2052
-	RaftConnId         = 2053
-	ChannelTypeMesh    = "ctrl.mesh"
+
+	ChannelTypeMesh = "ctrl.mesh"
 )
 
 type Peer struct {
@@ -96,7 +98,7 @@ func (self *Peer) handleReceiveConnect(m *channel.Message, ch channel.Channel) {
 		log := pfxlog.Logger().WithField("peerId", ch.Id())
 		log.Info("received connect request from raft peer")
 
-		id, ok := m.GetUint32Header(RaftConnId)
+		id, ok := m.GetUint32Header(RaftConnIdHeader)
 		if !ok {
 			response := channel.NewResult(false, "no conn id in connect request")
 			response.ReplyTo(m)
@@ -138,7 +140,7 @@ func (self *Peer) handleReceiveDisconnect(m *channel.Message, ch channel.Channel
 	go func() {
 		log := pfxlog.ContextLogger(ch.Label())
 
-		id, ok := m.GetUint32Header(RaftConnId)
+		id, ok := m.GetUint32Header(RaftConnIdHeader)
 		if !ok {
 			response := channel.NewResult(false, "no conn id in disconnect request")
 			response.ReplyTo(m)
@@ -168,7 +170,7 @@ func (self *Peer) handleReceiveDisconnect(m *channel.Message, ch channel.Channel
 }
 
 func (self *Peer) handleReceiveData(m *channel.Message, ch channel.Channel) {
-	id, ok := m.GetUint32Header(RaftConnId)
+	id, ok := m.GetUint32Header(RaftConnIdHeader)
 	if !ok {
 		pfxlog.Logger().WithField("peerId", ch.Id()).Error("no conn id in data request")
 		return
@@ -190,7 +192,7 @@ func (self *Peer) Connect(timeout time.Duration) (net.Conn, error) {
 
 	id := self.nextRaftPeerId()
 	msg := channel.NewMessage(RaftConnectType, nil)
-	msg.Headers.PutUint32Header(RaftConnId, id)
+	msg.Headers.PutUint32Header(RaftConnIdHeader, id)
 
 	response, err := msg.WithTimeout(timeout).SendForReply(self.Channel)
 	if err != nil {
@@ -230,7 +232,7 @@ func (self *Peer) closeRaftConn(peerConn *raftPeerConn, timeout time.Duration) e
 	log.Info("closed peer connection is current connection, sending disconnect message")
 
 	msg := channel.NewMessage(RaftDisconnectType, nil)
-	msg.Headers.PutUint32Header(RaftConnId, peerConn.id)
+	msg.Headers.PutUint32Header(RaftConnIdHeader, peerConn.id)
 
 	response, err := msg.WithTimeout(timeout).SendForReply(self.Channel)
 	if err != nil {
@@ -275,7 +277,8 @@ const (
 )
 
 type Env interface {
-	GetId() *identity.TokenId
+	GetNodeId() *identity.TokenId
+	GetClusterId() string
 	GetVersionProvider() versions.VersionProvider
 	GetEventDispatcher() event.Dispatcher
 }
@@ -307,7 +310,8 @@ func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProv
 	}
 
 	return &impl{
-		id:       env.GetId(),
+		env:      env,
+		nodeId:   env.GetNodeId(),
 		raftAddr: raftAddr,
 		netAddr: &meshAddr{
 			network: "mesh",
@@ -324,7 +328,8 @@ func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProv
 }
 
 type impl struct {
-	id                   *identity.TokenId
+	env                  Env
+	nodeId               *identity.TokenId
 	raftAddr             raft.ServerAddress
 	netAddr              net.Addr
 	Peers                map[string]*Peer
@@ -410,7 +415,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		return nil, err
 	}
 
-	tlsCert := self.id.ServerCert()
+	tlsCert := self.nodeId.ServerCert()
 	var serverCert []byte
 	if len(tlsCert) != 0 && len(tlsCert[0].Certificate) != 0 {
 		serverCert = tlsCert[0].Certificate[0]
@@ -421,6 +426,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		channel.TypeHeader:         []byte(ChannelTypeMesh),
 		PeerAddrHeader:             []byte(self.raftAddr),
 		SigningCertHeader:          serverCert,
+		ClusterIdHeader:            []byte(self.env.GetClusterId()),
 	}
 
 	for _, headerProvider := range self.helloHeaderProviders {
@@ -428,7 +434,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 
 	dialer := channel.NewClassicDialer(channel.DialerConfig{
-		Identity: self.id,
+		Identity: self.nodeId,
 		Endpoint: addr,
 		Headers:  headers,
 		TransportConfig: transport.Configuration{
@@ -453,6 +459,10 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		}
 
 		peer.Channel = binding.GetChannel()
+
+		if err = self.checkClusterIds(peer.Channel); err != nil {
+			return err
+		}
 
 		underlay := binding.GetChannel().Underlay()
 		id, err := self.extractPeerId(underlay.GetRemoteAddr().String(), underlay.Certificates())
@@ -500,6 +510,14 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	return peer, nil
 }
 
+func (self *impl) checkClusterIds(ch channel.Channel) error {
+	clusterId := string(ch.Underlay().Headers()[ClusterIdHeader])
+	if clusterId != "" && self.env.GetClusterId() != "" && clusterId != self.env.GetClusterId() {
+		return fmt.Errorf("local cluster id %s doesn't match peer cluster id %s", self.env.GetClusterId(), clusterId)
+	}
+	return nil
+}
+
 func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error) {
 	log := pfxlog.Logger().WithField("address", address)
 	addr, err := transport.ParseAddress(address)
@@ -512,6 +530,7 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		channel.HelloVersionHeader: self.versionEncoded,
 		channel.TypeHeader:         []byte(ChannelTypeMesh),
 		PeerAddrHeader:             []byte(self.raftAddr),
+		ClusterIdHeader:            []byte(self.env.GetClusterId()),
 	}
 
 	for _, headerProvider := range self.helloHeaderProviders {
@@ -519,7 +538,7 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 	}
 
 	dialer := channel.NewClassicDialer(channel.DialerConfig{
-		Identity: self.id,
+		Identity: self.nodeId,
 		Endpoint: addr,
 		Headers:  headers,
 		TransportConfig: transport.Configuration{
@@ -538,6 +557,10 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		underlay := binding.GetChannel().Underlay()
 		id, err := self.extractPeerId(underlay.GetRemoteAddr().String(), underlay.Certificates())
 		if err != nil {
+			return err
+		}
+
+		if err = self.checkClusterIds(binding.GetChannel()); err != nil {
 			return err
 		}
 
@@ -612,7 +635,7 @@ func (self *impl) PeerConnected(peer *Peer, dial bool) error {
 			DstType:   event.ConnectDestinationController,
 			SrcId:     string(peer.Id),
 			SrcAddr:   srcAddr,
-			DstId:     self.id.Token,
+			DstId:     self.nodeId.Token,
 			DstAddr:   dstAddr,
 			Timestamp: time.Now(),
 		}
@@ -648,7 +671,7 @@ func (self *impl) GetAllPeersForEvent() []*event.ClusterPeer {
 	}
 	peerList = append(peerList, &Peer{
 		mesh:    self,
-		Id:      raft.ServerID(self.id.Token),
+		Id:      raft.ServerID(self.nodeId.Token),
 		Address: string(self.raftAddr),
 		Version: self.version.AsVersionInfo(),
 	})
@@ -769,6 +792,10 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 			if err := json.Unmarshal(apiAddressesHeader, &peer.ApiAddresses); err != nil {
 				pfxlog.Logger().WithError(err).Error("could not parse peer api addresses header")
 			}
+		}
+
+		if err = self.checkClusterIds(peer.Channel); err != nil {
+			return err
 		}
 
 		peer.Version = versionInfo
