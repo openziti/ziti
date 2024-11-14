@@ -147,17 +147,15 @@ func (o *PKICreateServerOptions) Run() error {
 				}
 			}
 
-			if trustDomain == nil {
-				return errors.New("signing cert doesn't have a spiffe id. unknown trust domain")
+			if trustDomain != nil {
+				spiffeId := *trustDomain
+				sid, serr := url.Parse(o.Flags.SpiffeID)
+				if serr != nil {
+					return serr
+				}
+				spiffeId.Path = sid.Path
+				template.URIs = append(template.URIs, &spiffeId)
 			}
-
-			spiffeId := *trustDomain
-			sid, serr := url.Parse(o.Flags.SpiffeID)
-			if serr != nil {
-				return serr
-			}
-			spiffeId.Path = sid.Path
-			template.URIs = append(template.URIs, &spiffeId)
 		} else {
 			// just use whatever spiffe id was provided
 			sid, serr := url.Parse(o.Flags.SpiffeID)

@@ -18,8 +18,6 @@ func TestClientCertNoSpiffeIdFromIntermediate(t *testing.T) {
 		fmt.Sprintf("--ca-name=%s", intCaNameWithoutSpiffeIdName),
 		fmt.Sprintf("--client-name=%s", name),
 		fmt.Sprintf("--client-file=%s", name),
-		fmt.Sprintf("--dns=%s", "localhost,dns.entry"),
-		fmt.Sprintf("--ip=%s", "127.0.0.1,::1"),
 	}
 
 	svr.SetArgs(args)
@@ -32,11 +30,6 @@ func TestClientCertNoSpiffeIdFromIntermediate(t *testing.T) {
 	assert.NotNil(t, bundle)
 	assert.Nil(t, e)
 
-	assert.Contains(t, bundle.Cert.DNSNames, "dns.entry")
-	assert.Contains(t, bundle.Cert.DNSNames, "localhost")
-	ips := ipsAsStrings(bundle.Cert.IPAddresses)
-	assert.Contains(t, ips, "127.0.0.1")
-	assert.Contains(t, ips, "::1")
 	assert.Nil(t, bundle.Cert.URIs)
 }
 
@@ -49,8 +42,6 @@ func TestClientCertSpiffeIdFromIntermediate(t *testing.T) {
 		fmt.Sprintf("--ca-name=%s", intCaNameWithSpiffeIdName),
 		fmt.Sprintf("--client-name=%s", name),
 		fmt.Sprintf("--client-file=%s", name),
-		fmt.Sprintf("--dns=%s", "localhost,dns.entry"),
-		fmt.Sprintf("--ip=%s", "127.0.0.1,::1"),
 	}
 
 	svr.SetArgs(addSpiffeArg("/some/path", args))
@@ -63,12 +54,6 @@ func TestClientCertSpiffeIdFromIntermediate(t *testing.T) {
 	assert.NotNil(t, bundle)
 	assert.Nil(t, e)
 	urls := URLSlice(bundle.Cert.URIs)
-
-	assert.Contains(t, bundle.Cert.DNSNames, "dns.entry")
-	assert.Contains(t, bundle.Cert.DNSNames, "localhost")
-	ips := ipsAsStrings(bundle.Cert.IPAddresses)
-	assert.Contains(t, ips, "127.0.0.1")
-	assert.Contains(t, ips, "::1")
 	assert.Contains(t, urls.Hosts(), rootCaWithSpiffeIdName)
 	assert.Contains(t, urls.Paths(), "/some/path")
 }

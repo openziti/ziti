@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 	"net/url"
+	"strings"
 )
 
 // PKICreateClientOptions the options for the create spring command
@@ -128,27 +129,34 @@ func (o *PKICreateClientOptions) Run() error {
 	}
 
 	if o.Flags.SpiffeID != "" {
-		var trustDomain *url.URL
-		for _, uri := range signer.Cert.URIs {
-			if uri.Scheme == "spiffe" {
-				if trustDomain != nil {
-					return errors.New("signing cert contained multiple spiffe ids")
+		if !strings.HasPrefix(o.Flags.SpiffeID, "spiffe://") {
+			var trustDomain *url.URL
+			for _, uri := range signer.Cert.URIs {
+				if uri.Scheme == "spiffe" {
+					if trustDomain != nil {
+						return errors.New("signing cert contained multiple spiffe ids")
+					}
+					trustDomain = uri
 				}
-				trustDomain = uri
 			}
-		}
 
-		if trustDomain == nil {
-			return errors.New("signing cert doesn't have a spiffe id. unknown trust domain")
+			if trustDomain != nil {
+				spiffeId := *trustDomain
+				sid, serr := url.Parse(o.Flags.SpiffeID)
+				if serr != nil {
+					return serr
+				}
+				spiffeId.Path = sid.Path
+				template.URIs = append(template.URIs, &spiffeId)
+			}
+		} else {
+			// just use whatever spiffe id was provided
+			sid, serr := url.Parse(o.Flags.SpiffeID)
+			if serr != nil {
+				return serr
+			}
+			template.URIs = append(template.URIs, sid)
 		}
-
-		spiffeId := *trustDomain
-		sid, serr := url.Parse(o.Flags.SpiffeID)
-		if serr != nil {
-			return serr
-		}
-		spiffeId.Path = sid.Path
-		template.URIs = append(template.URIs, &spiffeId)
 	}
 
 	privateKeyOptions, err := o.ObtainPrivateKeyOptions()
