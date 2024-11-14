@@ -82,6 +82,8 @@ func TestServerCertNoSpiffeIdFromIntermediateAddSpiffeId(t *testing.T) {
 		fmt.Sprintf("--ca-name=%s", intCaNameWithoutSpiffeIdName),
 		fmt.Sprintf("--server-name=%s", name),
 		fmt.Sprintf("--server-file=%s", name),
+		fmt.Sprintf("--dns=%s", "localhost,dns.entry"),
+		fmt.Sprintf("--ip=%s", "127.0.0.1,::1"),
 	}
 
 	sid := "spiffe://not-from-ca/the-path"
@@ -107,6 +109,8 @@ func TestServerCertSpiffeIdFromIntermediateAddSpiffeId(t *testing.T) {
 		fmt.Sprintf("--ca-name=%s", intCaNameWithSpiffeIdName),
 		fmt.Sprintf("--server-name=%s", name),
 		fmt.Sprintf("--server-file=%s", name),
+		fmt.Sprintf("--dns=%s", "localhost,dns.entry"),
+		fmt.Sprintf("--ip=%s", "127.0.0.1,::1"),
 	}
 
 	sid := "spiffe://from-ca/the-path"
