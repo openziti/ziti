@@ -23,7 +23,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"os/user"
@@ -73,7 +72,6 @@ type QuickstartOpts struct {
 	verbose            bool
 	nonVoter           bool
 	routerless         bool
-	ha                 bool
 }
 
 func addCommonQuickstartFlags(cmd *cobra.Command, options *QuickstartOpts) {
@@ -663,27 +661,6 @@ func (o *QuickstartOpts) scopedName(name string) string {
 
 func (o *QuickstartOpts) instHome() string {
 	return path.Join(o.Home, o.InstanceID)
-}
-
-var configuredTrustDomain = fmt.Sprintf("spiffe://%s", uuid.New().String())
-
-func (o *QuickstartOpts) trustDomaina() string {
-	if strings.TrimSpace(o.TrustDomain) != "" {
-		spiffeId, err := url.Parse(o.TrustDomain)
-		if spiffeId == nil || err != nil {
-			logrus.Fatal("spiffe id is invalid: " + o.TrustDomain)
-			return "" // placate the foolish warning checker that doesn't realize Fatal is 'fatal'
-		}
-		if spiffeId.Scheme != "" && spiffeId.Scheme != "spiffe" {
-			logrus.Fatal("spiffe id scheme is invalid: " + spiffeId.Scheme)
-		}
-		configuredTrustDomain = fmt.Sprintf("spiffe://%s", spiffeId.Hostname())
-		configuredTrustDomain = strings.TrimSuffix(configuredTrustDomain, "/")
-	} else {
-		logrus.Fatal("trust domain is invalid: " + o.TrustDomain)
-	}
-
-	return configuredTrustDomain
 }
 
 func (o *QuickstartOpts) configureOverlay() {
