@@ -36,12 +36,12 @@ const (
 
 type Controller struct {
 	boltz.BaseExtEntity
-	Name         string     `json:"name"`
-	CtrlAddress  string     `json:"address"`
-	CertPem      string     `json:"certPem"`
-	Fingerprint  string     `json:"fingerprint"`
-	IsOnline     bool       `json:"isOnline"`
-	LastJoinedAt *time.Time `json:"lastJoinedAt"`
+	Name         string    `json:"name"`
+	CtrlAddress  string    `json:"address"`
+	CertPem      string    `json:"certPem"`
+	Fingerprint  string    `json:"fingerprint"`
+	IsOnline     bool      `json:"isOnline"`
+	LastJoinedAt time.Time `json:"lastJoinedAt"`
 	ApiAddresses map[string][]ApiAddress
 }
 
@@ -105,7 +105,7 @@ func (store *controllerStoreImpl) FillEntity(entity *Controller, bucket *boltz.T
 	entity.CertPem = bucket.GetStringOrError(FieldControllerCertPem)
 	entity.Fingerprint = bucket.GetStringOrError(FieldControllerFingerprint)
 	entity.IsOnline = bucket.GetBoolWithDefault(FieldControllerIsOnline, false)
-	entity.LastJoinedAt = bucket.GetTime(FieldControllerLastJoinedAt)
+	entity.LastJoinedAt = bucket.GetTimeOrError(FieldControllerLastJoinedAt)
 	entity.ApiAddresses = map[string][]ApiAddress{}
 
 	apiListBucket := bucket.GetBucket(FieldControllerApiAddresses)
@@ -142,7 +142,7 @@ func (store *controllerStoreImpl) PersistEntity(entity *Controller, ctx *boltz.P
 	ctx.SetString(FieldControllerCertPem, entity.CertPem)
 	ctx.SetString(FieldControllerFingerprint, entity.Fingerprint)
 	ctx.SetBool(FieldControllerIsOnline, entity.IsOnline)
-	ctx.SetTimeP(FieldControllerLastJoinedAt, entity.LastJoinedAt)
+	ctx.SetTimeP(FieldControllerLastJoinedAt, &entity.LastJoinedAt)
 
 	apiListBucket := ctx.Bucket.GetOrCreateBucket(FieldControllerApiAddresses)
 

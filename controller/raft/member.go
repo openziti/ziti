@@ -107,8 +107,8 @@ func (self *Controller) HandleAddPeerAsLeader(req *cmd_pb.AddPeerRequest) error 
 		if srv.ID == id || srv.Address == addr {
 			// However, if *both* the ID and the address are the same, then nothing -- not even
 			// a join operation -- is needed.
-			if srv.ID == id && srv.Address == addr {
-				logrus.Infof("node %s at %s already member of cluster, ignoring join request", id, addr)
+			if srv.ID == id && srv.Address == addr && ((srv.Suffrage == raft.Voter) == req.IsVoter) {
+				logrus.Infof("node %s at %s already member of cluster matching request, ignoring join request", id, addr)
 				return nil
 			}
 

@@ -52,6 +52,8 @@ type EntityRetriever[T Entity] interface {
 	// as fabric and edge services, and fabric and edge routers. However, they should have distinct entity type
 	// ids, so we can figure out to which controller to route commands
 	GetEntityTypeId() string
+
+	IsEntityPresent(id string) (bool, error)
 }
 
 type Entity interface {

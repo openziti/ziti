@@ -22,7 +22,9 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/raft"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"time"
 )
@@ -61,7 +63,7 @@ func (self *commandHandler) ContentType() int32 {
 func (self *commandHandler) HandleReceive(m *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	err := self.pool.Queue(func() {
+	err := self.pool.QueueOrError(func() {
 		if idx, err := self.controller.ApplyEncodedCommand(m.Body); err != nil {
 			sendErrorResponseCalculateType(m, ch, err)
 			return
@@ -70,7 +72,12 @@ func (self *commandHandler) HandleReceive(m *channel.Message, ch channel.Channel
 		}
 	})
 
+	if errors.Is(err, goroutines.QueueFullError) {
+		err = apierror.NewTooManyUpdatesError()
+	}
+
 	if err != nil {
 		log.WithError(err).Error("unable to queue command for processing")
+		go sendErrorResponseCalculateType(m, ch, err)
 	}
 }

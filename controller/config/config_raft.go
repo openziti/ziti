@@ -20,10 +20,10 @@ type RaftConfig struct {
 	TrailingLogs      *uint32
 	MaxAppendEntries  *uint32
 
-	ElectionTimeout    *time.Duration
+	ElectionTimeout    time.Duration
 	CommitTimeout      *time.Duration
-	HeartbeatTimeout   *time.Duration
-	LeaderLeaseTimeout *time.Duration
+	HeartbeatTimeout   time.Duration
+	LeaderLeaseTimeout time.Duration
 
 	LogLevel *string
 	Logger   hclog.Logger

@@ -125,6 +125,7 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 			Precedence:     ctx.req.GetXtPrecedence(),
 			Cost:           uint16(ctx.req.Cost),
 			HostId:         ctx.session.IdentityId,
+			SourceCtrl:     self.appEnv.GetId(),
 		}
 
 		if err := self.appEnv.Managers.Terminator.Create(terminator, ctx.newTunnelChangeContext()); err != nil {

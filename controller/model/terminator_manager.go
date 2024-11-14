@@ -207,6 +207,7 @@ func (self *TerminatorManager) Marshall(entity *Terminator) ([]byte, error) {
 		HostId:          entity.HostId,
 		IsSystem:        entity.IsSystem,
 		SavedPrecedence: savedPrecedence,
+		SourceCtrl:      entity.SourceCtrl,
 	}
 
 	return proto.Marshal(msg)
@@ -251,6 +252,7 @@ func (self *TerminatorManager) Unmarshall(bytes []byte) (*Terminator, error) {
 		PeerData:        msg.PeerData,
 		HostId:          msg.HostId,
 		SavedPrecedence: savedPrecedence,
+		SourceCtrl:      msg.SourceCtrl,
 	}
 
 	return result, nil

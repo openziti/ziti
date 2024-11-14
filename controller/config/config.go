@@ -51,7 +51,7 @@ const (
 	DefaultHealthChecksBoltCheckTimeout      = 20 * time.Second
 	DefaultHealthChecksBoltCheckInitialDelay = 30 * time.Second
 
-	DefaultRaftCommandHandlerMaxQueueSize = 1000
+	DefaultRaftCommandHandlerMaxQueueSize = 250
 
 	// DefaultTlsHandshakeRateLimiterEnabled is whether the tls handshake rate limiter is enabled by default
 	DefaultTlsHandshakeRateLimiterEnabled = false
@@ -204,6 +204,10 @@ func LoadConfig(path string) (*Config, error) {
 	if value, found := cfgmap["raft"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			controllerConfig.Raft = &RaftConfig{}
+
+			controllerConfig.Raft.ElectionTimeout = 5 * time.Second
+			controllerConfig.Raft.HeartbeatTimeout = 3 * time.Second
+			controllerConfig.Raft.LeaderLeaseTimeout = 3 * time.Second
 			controllerConfig.Raft.CommandHandlerOptions.MaxQueueSize = DefaultRaftCommandHandlerMaxQueueSize
 
 			if value, found := submap["dataDir"]; found {
@@ -243,7 +247,7 @@ func LoadConfig(path string) (*Config, error) {
 
 			if value, found := submap["electionTimeout"]; found {
 				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
-					controllerConfig.Raft.ElectionTimeout = &val
+					controllerConfig.Raft.ElectionTimeout = val
 				} else {
 					return nil, errors.Wrapf(err, "failed to parse raft.electionTimeout value '%v", value)
 				}
@@ -251,7 +255,7 @@ func LoadConfig(path string) (*Config, error) {
 
 			if value, found := submap["heartbeatTimeout"]; found {
 				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
-					controllerConfig.Raft.HeartbeatTimeout = &val
+					controllerConfig.Raft.HeartbeatTimeout = val
 				} else {
 					return nil, errors.Wrapf(err, "failed to parse raft.heartbeatTimeout value '%v", value)
 				}
@@ -259,7 +263,7 @@ func LoadConfig(path string) (*Config, error) {
 
 			if value, found := submap["leaderLeaseTimeout"]; found {
 				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
-					controllerConfig.Raft.LeaderLeaseTimeout = &val
+					controllerConfig.Raft.LeaderLeaseTimeout = val
 				} else {
 					return nil, errors.Wrapf(err, "failed to parse raft.leaderLeaseTimeout value '%v", value)
 				}

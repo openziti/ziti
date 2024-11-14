@@ -83,7 +83,7 @@ func (self *Clients) Authenticate(user, password string) error {
 		}
 		return err
 	}
-	pfxlog.Logger().WithField("token", self.token).Info("authenticated successfully")
+	pfxlog.Logger().WithField("token", self.token).Debug("authenticated successfully")
 	self.SetSessionToken(*result.Payload.Data.Token)
 	return nil
 }

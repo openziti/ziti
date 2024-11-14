@@ -21,6 +21,7 @@ type Terminator struct {
 	PeerData        map[uint32][]byte
 	HostId          string
 	SavedPrecedence xt.Precedence
+	SourceCtrl      string
 }
 
 func (entity *Terminator) GetServiceId() string {
@@ -63,6 +64,10 @@ func (entity *Terminator) GetHostId() string {
 	return entity.HostId
 }
 
+func (entity *Terminator) GetSourceCtrl() string {
+	return entity.SourceCtrl
+}
+
 func (entity *Terminator) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.Terminator, error) {
 	return entity.toBoltEntityForCreate(tx, env)
 }
@@ -92,6 +97,7 @@ func (entity *Terminator) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Terminator,
 		PeerData:        entity.PeerData,
 		HostId:          entity.HostId,
 		SavedPrecedence: savedPrecedence,
+		SourceCtrl:      entity.SourceCtrl,
 	}, nil
 }
 
@@ -106,6 +112,7 @@ func (entity *Terminator) fillFrom(_ Env, _ *bbolt.Tx, boltTerminator *db.Termin
 	entity.Cost = boltTerminator.Cost
 	entity.Precedence = xt.GetPrecedenceForName(boltTerminator.Precedence)
 	entity.HostId = boltTerminator.HostId
+	entity.SourceCtrl = boltTerminator.SourceCtrl
 	entity.FillCommon(boltTerminator)
 
 	if boltTerminator.SavedPrecedence != nil {

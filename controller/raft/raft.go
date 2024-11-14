@@ -254,7 +254,7 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 		return errors.New("unable to execute command, cluster has no leader")
 	}
 
-	log.WithField("cmd", reflect.TypeOf(cmd)).WithField("dest", self.GetLeaderAddr()).Info("forwarding command")
+	log.WithField("cmd", reflect.TypeOf(cmd)).WithField("dest", self.GetLeaderAddr()).Debug("forwarding command")
 
 	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)
 	if err != nil {
@@ -335,7 +335,7 @@ func (self *Controller) decodeApiError(data []byte) error {
 		return errors.New(string(data))
 	}
 
-	if cause, ok := m["cause"]; ok {
+	if cause, ok := m["cause"]; ok && cause != nil {
 		if strCause, ok := cause.(string); ok {
 			apiErr.Cause = errors.New(strCause)
 		} else if objCause, ok := cause.(map[string]any); ok {
@@ -587,17 +587,9 @@ func (self *Controller) Configure(ctrlConfig *config.RaftConfig, conf *raft.Conf
 		conf.CommitTimeout = *ctrlConfig.CommitTimeout
 	}
 
-	if ctrlConfig.ElectionTimeout != nil {
-		conf.ElectionTimeout = *ctrlConfig.ElectionTimeout
-	}
-
-	if ctrlConfig.HeartbeatTimeout != nil {
-		conf.HeartbeatTimeout = *ctrlConfig.HeartbeatTimeout
-	}
-
-	if ctrlConfig.LeaderLeaseTimeout != nil {
-		conf.LeaderLeaseTimeout = *ctrlConfig.LeaderLeaseTimeout
-	}
+	conf.ElectionTimeout = ctrlConfig.ElectionTimeout
+	conf.HeartbeatTimeout = ctrlConfig.HeartbeatTimeout
+	conf.LeaderLeaseTimeout = ctrlConfig.LeaderLeaseTimeout
 
 	if ctrlConfig.LogLevel != nil {
 		conf.LogLevel = *ctrlConfig.LogLevel
@@ -619,13 +611,8 @@ func (self *Controller) ConfigureReloadable(ctrlConfig *config.RaftConfig, conf 
 		conf.TrailingLogs = uint64(*ctrlConfig.TrailingLogs)
 	}
 
-	if ctrlConfig.ElectionTimeout != nil {
-		conf.ElectionTimeout = *ctrlConfig.ElectionTimeout
-	}
-
-	if ctrlConfig.HeartbeatTimeout != nil {
-		conf.HeartbeatTimeout = *ctrlConfig.HeartbeatTimeout
-	}
+	conf.ElectionTimeout = ctrlConfig.ElectionTimeout
+	conf.HeartbeatTimeout = ctrlConfig.HeartbeatTimeout
 }
 
 func (self *Controller) validateCert() {
@@ -830,17 +817,23 @@ func (self *Controller) addEventsHandlers() {
 	self.RegisterClusterEventHandler(func(evt ClusterEvent, state ClusterState) {
 		switch evt {
 		case ClusterEventLeadershipGained:
-			self.env.GetEventDispatcher().AcceptClusterEvent(event.NewClusterEvent(event.ClusterLeadershipGained))
+			self.newClusterEvent(event.ClusterLeadershipGained, self.Mesh.GetAllPeersForEvent())
 		case ClusterEventLeadershipLost:
-			self.env.GetEventDispatcher().AcceptClusterEvent(event.NewClusterEvent(event.ClusterLeadershipLost))
+			self.newClusterEvent(event.ClusterLeadershipLost, nil)
 		case ClusterEventReadOnly:
-			self.env.GetEventDispatcher().AcceptClusterEvent(event.NewClusterEvent(event.ClusterStateReadOnly))
+			self.newClusterEvent(event.ClusterStateReadOnly, nil)
 		case ClusterEventReadWrite:
-			self.env.GetEventDispatcher().AcceptClusterEvent(event.NewClusterEvent(event.ClusterStateReadWrite))
+			self.newClusterEvent(event.ClusterStateReadWrite, nil)
 		default:
 			pfxlog.Logger().Errorf("unhandled cluster event type: %v", evt)
 		}
 	})
+}
+
+func (self *Controller) newClusterEvent(eventType event.ClusterEventType, peers []*event.ClusterPeer) {
+	evt := event.NewClusterEvent(eventType)
+	evt.Peers = peers
+	self.env.GetEventDispatcher().AcceptClusterEvent(evt)
 }
 
 type MigrationManager interface {

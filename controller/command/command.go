@@ -52,6 +52,7 @@ type Dispatcher interface {
 	Dispatch(command Command) error
 	IsLeaderOrLeaderless() bool
 	IsLeaderless() bool
+	IsLeader() bool
 	GetPeers() map[string]channel.Channel
 	GetRateLimiter() rate.RateLimiter
 	Bootstrap() error
@@ -65,6 +66,10 @@ type LocalDispatcher struct {
 
 func (self *LocalDispatcher) Bootstrap() error {
 	return nil
+}
+
+func (self *LocalDispatcher) IsLeader() bool {
+	return true
 }
 
 func (self *LocalDispatcher) IsLeaderOrLeaderless() bool {

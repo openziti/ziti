@@ -413,6 +413,10 @@ func (ae *AppEnv) AddRouterPresenceHandler(h model.RouterPresenceHandler) {
 	ae.HostController.GetNetwork().AddRouterPresenceHandler(h)
 }
 
+func (ae *AppEnv) GetId() string {
+	return ae.HostController.GetNetwork().GetAppId()
+}
+
 type HostController interface {
 	GetConfig() *config.Config
 	GetEnv() *AppEnv

@@ -17,6 +17,7 @@
 package mesh
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -26,19 +27,10 @@ import (
 	"time"
 )
 
-func newRaftPeerConn(peer *Peer, localAddr net.Addr) *raftPeerConn {
-	return &raftPeerConn{
-		peer:        peer,
-		localAddr:   localAddr,
-		readTimeout: newDeadline(),
-		readC:       make(chan []byte, 16),
-		closeNotify: make(chan struct{}),
-	}
-}
-
 // raftPeerConn presents a net.Conn API over a channel. This allows us to multiplex raft traffic as well
 // as our own traffic (such as command forwarding) over the same network connection
 type raftPeerConn struct {
+	id            uint32
 	peer          *Peer
 	localAddr     net.Addr
 	readTimeout   *deadline
@@ -118,6 +110,7 @@ func (self *raftPeerConn) Write(b []byte) (n int, err error) {
 	}
 	// logrus.Infof("writing %v bytes to raft peer %v", len(b), self.peer.Id)
 	msg := channel.NewMessage(RaftDataType, b)
+	msg.Headers.PutUint32Header(RaftConnId, self.id)
 	if deadline := self.writeDeadline; !deadline.IsZero() {
 		now := time.Now()
 		if deadline.After(now) {
@@ -129,11 +122,13 @@ func (self *raftPeerConn) Write(b []byte) (n int, err error) {
 }
 
 func (self *raftPeerConn) Close() error {
-	return self.peer.closeRaftConn(5 * time.Second)
+	pfxlog.Logger().WithField("peerId", self.peer.Id).Info("close called on peer connection")
+	return self.peer.closeRaftConn(self, 5*time.Second)
 }
 
 func (self *raftPeerConn) close() bool {
 	if self.closed.CompareAndSwap(false, true) {
+		pfxlog.Logger().WithField("peerId", self.peer.Channel.Id()).Info("closing raft peer connection")
 		close(self.closeNotify)
 		return true
 	}

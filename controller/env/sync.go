@@ -17,9 +17,9 @@
 package env
 
 import (
+	"crypto"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
 	"sync"
@@ -58,7 +58,7 @@ type RouterSyncStrategy interface {
 	Type() RouterSyncStrategyType
 	GetEdgeRouterState(id string) RouterStateValues
 	Stop()
-	GetPublicKeys() map[string]*edge_ctrl_pb.DataState_PublicKey
+	GetPublicKeys() map[string]crypto.PublicKey
 	RouterConnectionHandler
 	RouterSynchronizerEventHandler
 	Validate() []error

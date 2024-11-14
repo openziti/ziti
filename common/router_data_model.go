@@ -18,9 +18,12 @@ package common
 
 import (
 	"compress/gzip"
+	"crypto"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
@@ -93,14 +96,15 @@ type RouterDataModel struct {
 	EventCache
 	listeners map[chan *edge_ctrl_pb.DataState_ChangeSet]struct{}
 
-	ConfigTypes     cmap.ConcurrentMap[string, *ConfigType]                        `json:"configTypes"`
-	Configs         cmap.ConcurrentMap[string, *Config]                            `json:"configs"`
-	Identities      cmap.ConcurrentMap[string, *Identity]                          `json:"identities"`
-	Services        cmap.ConcurrentMap[string, *Service]                           `json:"services"`
-	ServicePolicies cmap.ConcurrentMap[string, *ServicePolicy]                     `json:"servicePolicies"`
-	PostureChecks   cmap.ConcurrentMap[string, *PostureCheck]                      `json:"postureChecks"`
-	PublicKeys      cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_PublicKey]  `json:"publicKeys"`
-	Revocations     cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Revocation] `json:"revocations"`
+	ConfigTypes      cmap.ConcurrentMap[string, *ConfigType]                        `json:"configTypes"`
+	Configs          cmap.ConcurrentMap[string, *Config]                            `json:"configs"`
+	Identities       cmap.ConcurrentMap[string, *Identity]                          `json:"identities"`
+	Services         cmap.ConcurrentMap[string, *Service]                           `json:"services"`
+	ServicePolicies  cmap.ConcurrentMap[string, *ServicePolicy]                     `json:"servicePolicies"`
+	PostureChecks    cmap.ConcurrentMap[string, *PostureCheck]                      `json:"postureChecks"`
+	PublicKeys       cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_PublicKey]  `json:"publicKeys"`
+	Revocations      cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Revocation] `json:"revocations"`
+	CachedPublicKeys concurrenz.AtomicValue[map[string]crypto.PublicKey]
 
 	listenerBufferSize uint
 	lastSaveIndex      *uint64
@@ -433,6 +437,7 @@ func (rdm *RouterDataModel) HandlePublicKeyEvent(event *edge_ctrl_pb.DataState_E
 	} else {
 		rdm.PublicKeys.Set(model.PublicKey.Kid, model.PublicKey)
 	}
+	rdm.recalculateCachedPublicKeys()
 }
 
 // HandleRevocationEvent will apply the delta event to the router data model. It is not restricted by index calculations.
@@ -507,8 +512,33 @@ func (rdm *RouterDataModel) HandleServicePolicyChange(index uint64, model *edge_
 	})
 }
 
-func (rdm *RouterDataModel) GetPublicKeys() map[string]*edge_ctrl_pb.DataState_PublicKey {
-	return rdm.PublicKeys.Items()
+func (rdm *RouterDataModel) GetPublicKeys() map[string]crypto.PublicKey {
+	return rdm.CachedPublicKeys.Load()
+}
+
+func (rdm *RouterDataModel) recalculateCachedPublicKeys() {
+	publicKeys := map[string]crypto.PublicKey{}
+	rdm.PublicKeys.IterCb(func(kid string, pubKey *edge_ctrl_pb.DataState_PublicKey) {
+		log := pfxlog.Logger().WithField("format", pubKey.Format).WithField("kid", kid)
+
+		switch pubKey.Format {
+		case edge_ctrl_pb.DataState_PublicKey_X509CertDer:
+			if cert, err := x509.ParseCertificate(pubKey.GetData()); err != nil {
+				log.WithError(err).Error("error parsing x509 certificate DER")
+			} else {
+				publicKeys[kid] = cert.PublicKey
+			}
+		case edge_ctrl_pb.DataState_PublicKey_PKIXPublicKey:
+			if pub, err := x509.ParsePKIXPublicKey(pubKey.GetData()); err != nil {
+				log.WithError(err).Error("error parsing PKIX public key DER")
+			} else {
+				publicKeys[kid] = pub
+			}
+		default:
+			log.Error("unknown public key format")
+		}
+	})
+	rdm.CachedPublicKeys.Store(publicKeys)
 }
 
 func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {

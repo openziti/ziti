@@ -104,9 +104,9 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 
 	endpoints, err := r.getInitialCtrlEndpoints()
 	req.NoError(err)
-	r.UpdateCtrlEndpoints(endpoints)
+	r.UpdateCtrlEndpoints(endpoints, "")
 
-	r.UpdateCtrlEndpoints([]string{"tls:localhost:6565"})
+	r.UpdateCtrlEndpoints([]string{"tls:localhost:6565"}, "")
 	req.FileExists(path.Join(tmpDir, "endpoints"))
 
 	b, err := os.ReadFile(path.Join(tmpDir, "endpoints"))

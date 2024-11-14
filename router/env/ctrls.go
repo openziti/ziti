@@ -34,10 +34,11 @@ import (
 )
 
 type NetworkControllers interface {
-	UpdateControllerEndpoints(endpoints []string) bool
+	UpdateControllerEndpoints(endpoints []string, leaderId string) bool
 	GetAll() map[string]NetworkController
 	GetNetworkController(ctrlId string) NetworkController
 	AnyCtrlChannel() channel.Channel
+	GetModelUpdateCtrlChannel() channel.Channel
 	GetIfResponsive(ctrlId string) (channel.Channel, bool)
 	AllResponsiveCtrlChannels() []channel.Channel
 	AnyValidCtrlChannel() channel.Channel
@@ -66,9 +67,10 @@ type networkControllers struct {
 	defaultRequestTimeout time.Duration
 	ctrlEndpoints         cmap.ConcurrentMap[string, struct{}]
 	ctrls                 concurrenz.CopyOnWriteMap[string, NetworkController]
+	leaderId              concurrenz.AtomicValue[string]
 }
 
-func (self *networkControllers) UpdateControllerEndpoints(addresses []string) bool {
+func (self *networkControllers) UpdateControllerEndpoints(addresses []string, leaderId string) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
@@ -96,6 +98,10 @@ func (self *networkControllers) UpdateControllerEndpoints(addresses []string) bo
 		log.WithField("endpoint", endpoints).Info("adding new ctrl endpoint")
 		changed = true
 		self.connectToControllerWithBackoff(endpoint)
+	}
+
+	if leaderId != "" {
+		self.leaderId.Store(leaderId)
 	}
 
 	return changed
@@ -177,6 +183,25 @@ func (self *networkControllers) AnyCtrlChannel() channel.Channel {
 	var current NetworkController
 	for _, ctrl := range self.ctrls.AsMap() {
 		if current == nil || ctrl.isMoreResponsive(current) {
+			current = ctrl
+		}
+	}
+	if current == nil {
+		return nil
+	}
+	return current.Channel()
+}
+
+func (self *networkControllers) isLeader(controller NetworkController) bool {
+	return self.leaderId.Load() == controller.Channel().Id()
+}
+
+func (self *networkControllers) GetModelUpdateCtrlChannel() channel.Channel {
+	var current NetworkController
+	for _, ctrl := range self.ctrls.AsMap() {
+		if current == nil ||
+			(ctrl.isMoreResponsive(current) && !self.isLeader(current)) ||
+			(!ctrl.IsUnresponsive() && self.isLeader(ctrl)) {
 			current = ctrl
 		}
 	}
