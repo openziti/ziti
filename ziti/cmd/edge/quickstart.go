@@ -111,6 +111,8 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 		Run: func(cmd *cobra.Command, args []string) {
 			options.out = out
 			options.errOut = errOut
+			options.TrustDomain = "quickstart"
+			options.InstanceID = "quickstart"
 			options.run(context)
 		},
 	}
@@ -138,6 +140,7 @@ func NewQuickStartHaCmd(out io.Writer, errOut io.Writer, context context.Context
 	cmd.Hidden = true
 	return cmd
 }
+
 func NewQuickStartJoinClusterCmd(out io.Writer, errOut io.Writer, context context.Context) *cobra.Command {
 	options := &QuickstartOpts{}
 	cmd := &cobra.Command{
@@ -153,7 +156,7 @@ func NewQuickStartJoinClusterCmd(out io.Writer, errOut io.Writer, context contex
 	addCommonQuickstartFlags(cmd, options)
 	addQuickstartHaFlags(cmd, options)
 	cmd.Flags().IntVarP(&options.MemberPID, "member-pid", "m", 0, "the pid of a cluster member. required")
-	cmd.Flags().BoolVar(&options.nonVoter, "non-voting", true, "used with ha mode. specifies the member is a non-voting member")
+	cmd.Flags().BoolVar(&options.nonVoter, "non-voting", false, "used with ha mode. specifies the member is a non-voting member")
 	cmd.Hidden = true
 	return cmd
 }
@@ -404,24 +407,23 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 			time.Sleep(3 * time.Second) // output this after a bit...
 			nextInstId := incrementStringSuffix(o.InstanceID)
 			fmt.Println()
-			fmt.Println("=======================================================================================")
-			fmt.Println("controller and router started.")
-			fmt.Println("    controller located at  : " + helpers.GetCtrlAdvertisedAddress() + ":" + strconv.Itoa(int(o.ControllerPort)))
-			fmt.Println("    router located at      : " + helpers.GetRouterAdvertisedAddress() + ":" + strconv.Itoa(int(o.RouterPort)))
-			fmt.Println("    config dir located at  : " + o.Home)
-			fmt.Println("    configured trust domain: " + o.TrustDomain)
-			fmt.Printf("    instance pid           : %d\n", os.Getpid())
+			o.printDetails()
 			fmt.Println("=======================================================================================")
 			fmt.Println("Quickly add another member to this cluster using: ")
 			fmt.Printf("  ziti edge quickstart join \\\n")
 			fmt.Printf("    --ctrl-port %d \\\n", o.ControllerPort+1)
 			fmt.Printf("    --router-port %d \\\n", o.RouterPort+1)
 			fmt.Printf("    --home \"%s\" \\\n", o.Home)
+			fmt.Printf("    --trust-domain=\"%s\" \\\n", o.TrustDomain)
 			fmt.Printf("    --member-pid %d\\ \n", os.Getpid())
 			fmt.Printf("    --instance-id \"%s\"\n", nextInstId)
 			fmt.Println("=======================================================================================")
 			fmt.Println()
 		}()
+	} else {
+		fmt.Println()
+		o.printDetails()
+		fmt.Println("=======================================================================================")
 	}
 
 	select {
@@ -431,6 +433,16 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		fmt.Println("Cancellation request received")
 	}
 	o.cleanupHome()
+}
+
+func (o *QuickstartOpts) printDetails() {
+	fmt.Println("=======================================================================================")
+	fmt.Println("controller and router started.")
+	fmt.Println("    controller located at  : " + helpers.GetCtrlAdvertisedAddress() + ":" + strconv.Itoa(int(o.ControllerPort)))
+	fmt.Println("    router located at      : " + helpers.GetRouterAdvertisedAddress() + ":" + strconv.Itoa(int(o.RouterPort)))
+	fmt.Println("    config dir located at  : " + o.Home)
+	fmt.Println("    configured trust domain: " + o.TrustDomain)
+	fmt.Printf("    instance pid           : %d\n", os.Getpid())
 }
 
 func (o *QuickstartOpts) configureRouter(routerName string, configFile string, ctrlUrl string) {
@@ -534,7 +546,6 @@ func (o *QuickstartOpts) createMinimalPki() {
 	where := path.Join(o.Home, "pki")
 	fmt.Println("emitting a minimal PKI")
 
-	intermediateId := fmt.Sprintf("spiffe://%s/intermediate/%s", o.TrustDomain, o.InstanceID)
 	sid := fmt.Sprintf("spiffe://%s/controller/%s", o.TrustDomain, o.InstanceID)
 
 	//ziti pki create ca --pki-root="$pkiDir" --ca-file="root-ca" --ca-name="root-ca" --spiffe-id="whatever"
@@ -575,7 +586,6 @@ func (o *QuickstartOpts) createMinimalPki() {
 		fmt.Sprintf("--ca-name=%s", "root-ca"),
 		fmt.Sprintf("--intermediate-name=%s", o.scopedName("intermediate-ca")),
 		fmt.Sprintf("--intermediate-file=%s", o.scopedName("intermediate-ca")),
-		fmt.Sprintf("--spiffe-id=%s", intermediateId),
 		"--max-path-len=1",
 	})
 	intErr := intermediate.Execute()
@@ -662,7 +672,10 @@ func (o *QuickstartOpts) scopedName(name string) string {
 }
 
 func (o *QuickstartOpts) instHome() string {
-	return path.Join(o.Home, o.InstanceID)
+	if o.isHA {
+		return path.Join(o.Home, o.InstanceID)
+	}
+	return o.Home
 }
 
 func (o *QuickstartOpts) configureOverlay() {

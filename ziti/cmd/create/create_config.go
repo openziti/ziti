@@ -72,6 +72,7 @@ type CtrlValues struct {
 	BindAddress                string
 	AltAdvertisedAddress       string
 	MinClusterSize             int
+	InstanceId                 string
 }
 
 type HealthChecksValues struct {
