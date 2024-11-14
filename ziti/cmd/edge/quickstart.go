@@ -132,6 +132,10 @@ func NewQuickStartHaCmd(out io.Writer, errOut io.Writer, context context.Context
 			options.out = out
 			options.errOut = errOut
 			options.isHA = true
+			if options.TrustDomain == "" {
+				options.TrustDomain = uuid.New().String()
+				fmt.Println("Trust domain was not supplied. Using a random trust domain: " + options.TrustDomain)
+			}
 			options.run(context)
 		},
 	}
