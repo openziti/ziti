@@ -18,7 +18,6 @@ package pki
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,7 +38,7 @@ func TestSpiffedSetFromCa(t *testing.T) {
 	intermediateCmd.SetArgs(intermediateArgs)
 	pkiErr := intermediateCmd.Execute()
 	if pkiErr != nil {
-		logrus.Fatal(pkiErr)
+		t.Fatal(pkiErr)
 	}
 
 	bundle, e := testPki.GetCA(name)

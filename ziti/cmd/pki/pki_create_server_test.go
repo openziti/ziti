@@ -18,7 +18,6 @@ package pki
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,7 +39,7 @@ func TestServerCertNoSpiffeIdFromIntermediate(t *testing.T) {
 	svr.SetArgs(args)
 	svrErr := svr.Execute()
 	if svrErr != nil {
-		logrus.Fatal(svrErr)
+		t.Fatal(svrErr)
 	}
 
 	bundle, e := testPki.GetBundle(intCaNameWithoutSpiffeIdName, name)
@@ -71,7 +70,7 @@ func TestServerCertSpiffeIdFromIntermediate(t *testing.T) {
 	svr.SetArgs(addSpiffeArg("/some/path", args))
 	svrErr := svr.Execute()
 	if svrErr != nil {
-		logrus.Fatal(svrErr)
+		t.Fatal(svrErr)
 	}
 
 	bundle, e := testPki.GetBundle(intCaNameWithSpiffeIdName, name)
@@ -105,7 +104,7 @@ func TestServerCertNoSpiffeIdFromIntermediateAddSpiffeId(t *testing.T) {
 	svr.SetArgs(addSpiffeArg(sid, args))
 	svrErr := svr.Execute()
 	if svrErr != nil {
-		logrus.Fatal(svrErr)
+		t.Fatal(svrErr)
 	}
 
 	bundle, e := testPki.GetBundle(intCaNameWithoutSpiffeIdName, name)
@@ -132,7 +131,7 @@ func TestServerCertSpiffeIdFromIntermediateAddSpiffeId(t *testing.T) {
 	svr.SetArgs(addSpiffeArg(sid, args))
 	svrErr := svr.Execute()
 	if svrErr != nil {
-		logrus.Fatal(svrErr)
+		t.Fatal(svrErr)
 	}
 
 	bundle, e := testPki.GetBundle(intCaNameWithSpiffeIdName, name)

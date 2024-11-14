@@ -18,7 +18,6 @@ package pki
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,7 +37,7 @@ func TestTrustDomain(t *testing.T) {
 	ca.SetArgs(rootCaArgs)
 	pkiErr := ca.Execute()
 	if pkiErr != nil {
-		logrus.Fatal(pkiErr)
+		t.Fatal(pkiErr)
 	}
 
 	bundle, e := testPki.GetCA(name)
@@ -61,7 +60,7 @@ func TestNoTrustDomain(t *testing.T) {
 	ca.SetArgs(rootCaArgs)
 	pkiErr := ca.Execute()
 	if pkiErr != nil {
-		logrus.Fatal(pkiErr)
+		t.Fatal(pkiErr)
 	}
 
 	bundle, e := testPki.GetCA(name)
@@ -85,7 +84,7 @@ func TestTrustDomainSpiffeAppended(t *testing.T) {
 	ca.SetArgs(rootCaArgs)
 	pkiErr := ca.Execute()
 	if pkiErr != nil {
-		logrus.Fatal(pkiErr)
+		t.Fatal(pkiErr)
 	}
 
 	bundle, e := testPki.GetCA(name)
@@ -109,7 +108,7 @@ func TestTrustDomainWithPath(t *testing.T) {
 	ca.SetArgs(rootCaArgs)
 	pkiErr := ca.Execute()
 	if pkiErr != nil {
-		logrus.Fatal(pkiErr)
+		t.Fatal(pkiErr)
 	}
 
 	bundle, e := testPki.GetCA(name)
