@@ -1,17 +1,17 @@
 /*
-	Copyright NetFoundry Inc.
+Copyright NetFoundry Inc.
 
-	Licensed under the Apache License, Version 2.0 (the "License");
-	you may not use this file except in compliance with the License.
-	You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-	https://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
-	Unless required by applicable law or agreed to in writing, software
-	distributed under the License is distributed on an "AS IS" BASIS,
-	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	See the License for the specific language governing permissions and
-	limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 package verify
 
@@ -41,7 +41,6 @@ import (
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
-
 type traffic struct {
 	loginOpts            edge.LoginOptions
 	prefix               string
@@ -56,6 +55,7 @@ type traffic struct {
 	clientIdName string
 	bindSPName   string
 	dialSPName   string
+	haEnabled    bool
 }
 
 func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -72,7 +72,7 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 
 			pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
 			configureLogFormat(logLvl)
-			
+
 			timePrefix := time.Now().Format("2006-01-02-1504")
 			if t.prefix == "" {
 				if t.mode != "both" {
@@ -131,7 +131,9 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&t.mode, "mode", "m", "", "[optional, default 'both'] The mode to perform: server, client, both.")
 	cmd.Flags().BoolVar(&t.cleanup, "cleanup", false, "Whether to perform cleanup.")
 	cmd.Flags().BoolVar(&t.allowMultipleServers, "allow-multiple-servers", false, "Whether to allows the same server multiple times.")
-
+	cmd.Flags().BoolVar(&t.haEnabled, "ha", false, "Enable high availability mode.")
+	_ = cmd.Flags().MarkHidden("ha")
+	
 	edge.AddLoginFlags(cmd, &t.loginOpts)
 	t.loginOpts.Out = out
 	t.loginOpts.Err = errOut
@@ -139,11 +141,13 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func startServer(ctx context.Context, serviceName string, zitiCfg *ziti.Config) error {
+func (t *traffic) startServer(ctx context.Context, serviceName string, zitiCfg *ziti.Config) error {
+	zitiCfg.EnableHa = t.haEnabled
 	c, err := ziti.NewContext(zitiCfg)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	listener, err := c.Listen(serviceName)
 	if err != nil {
 		log.Fatal(err)
@@ -200,8 +204,9 @@ func handleConnection(conn net.Conn) {
 	log.Debugf("responding with : %s", strings.TrimSpace(resp))
 }
 
-func startClient(client *rest_management_api_client.ZitiEdgeManagement, serviceName string, zitiCfg *ziti.Config) error {
+func (t *traffic) startClient(client *rest_management_api_client.ZitiEdgeManagement, serviceName string, zitiCfg *ziti.Config) error {
 	waitForTerminator(client, serviceName, 10*time.Second)
+	zitiCfg.EnableHa = t.haEnabled
 	c, err := ziti.NewContext(zitiCfg)
 	if err != nil {
 		log.Fatal(err)
@@ -279,8 +284,8 @@ func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name 
 		Enrollment: &rest_model.IdentityCreateEnrollment{
 			Ott: true,
 		},
-		IsAdmin:                   &falseVar,
-		Name:                      &name,
+		IsAdmin:        &falseVar,
+		Name:           &name,
 		RoleAttributes: &roleAttributes,
 		Type:           &usrType,
 	}
@@ -395,7 +400,7 @@ func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, id st
 	// Get the identity object
 	params := &identity.DetailIdentityParams{
 		Context: context.Background(),
-		ID: id,
+		ID:      id,
 	}
 	params.SetTimeout(5 * time.Second)
 	resp, err := client.Identity.DetailIdentity(params, nil)
@@ -513,7 +518,7 @@ func (t *traffic) doServer(ctx context.Context, configureServices bool) {
 	}
 	serverCfg := t.configureServer()
 	defer t.cleanupServer()
-	if err := startServer(ctx, t.svcName, serverCfg); err != nil {
+	if err := t.startServer(ctx, t.svcName, serverCfg); err != nil {
 		log.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -521,7 +526,7 @@ func (t *traffic) doServer(ctx context.Context, configureServices bool) {
 func (t *traffic) doClient(cancel context.CancelFunc) {
 	clientCfg := t.configureClient()
 	defer t.cleanupClient()
-	if err := startClient(t.client, t.svcName, clientCfg); err != nil {
+	if err := t.startClient(t.client, t.svcName, clientCfg); err != nil {
 		log.Fatal(err)
 	}
 

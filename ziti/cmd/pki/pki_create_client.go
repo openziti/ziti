@@ -78,7 +78,7 @@ func (o *PKICreateClientOptions) addPKICreateClientFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&o.Flags.CAMaxPath, "max-path-len", "", -1, "Intermediate maximum path length")
 	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the RSA private key, ignored if -curve is set")
 	cmd.Flags().StringVarP(&o.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521")
-	cmd.Flags().StringVar(&o.Flags.SpiffeID, "spiffe-id", "", "Optionally provide the path portion of a SPIFFE id. The trust domain will be taken from the signing certificate.")
+	cmd.Flags().StringVar(&o.Flags.SpiffeID, "spiffe-id", "", "The SPIFFE id to use. If not a complete SPIFFE id, this is treated as the SPIFFE id path and the trust domain will be taken from the signing certificate.")
 	cmd.Flags().BoolVar(&o.Flags.AllowOverwrite, "allow-overwrite", false, "Allow overwrite existing certs")
 }
 
@@ -132,7 +132,7 @@ func (o *PKICreateClientOptions) Run() error {
 		for _, uri := range signer.Cert.URIs {
 			if uri.Scheme == "spiffe" {
 				if trustDomain != nil {
-					return errors.New("signing cert contained multiple spiffe ids, which is not allowed")
+					return errors.New("signing cert contained multiple spiffe ids")
 				}
 				trustDomain = uri
 			}
@@ -142,9 +142,13 @@ func (o *PKICreateClientOptions) Run() error {
 			return errors.New("signing cert doesn't have a spiffe id. unknown trust domain")
 		}
 
-		spiffId := *trustDomain
-		spiffId.Path = o.Flags.SpiffeID
-		template.URIs = append(template.URIs, &spiffId)
+		spiffeId := *trustDomain
+		sid, serr := url.Parse(o.Flags.SpiffeID)
+		if serr != nil {
+			return serr
+		}
+		spiffeId.Path = sid.Path
+		template.URIs = append(template.URIs, &spiffeId)
 	}
 
 	privateKeyOptions, err := o.ObtainPrivateKeyOptions()

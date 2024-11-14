@@ -114,6 +114,11 @@ func (o *PKICreateCAOptions) Run() error {
 		if err != nil {
 			return errors.Wrapf(err, "unable to parse spiffe id [%v]", o.Flags.SpiffeID)
 		}
+
+		if len(spiffeId.Path) > 0 && strings.TrimSpace(spiffeId.Path) != "/" {
+			log.Warnf("trust-domain [%v] includes path information and will be ignored", spiffeId.String())
+			spiffeId.Path = ""
+		}
 		template.URIs = append(template.URIs, spiffeId)
 	}
 

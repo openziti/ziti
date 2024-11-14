@@ -10,7 +10,7 @@ v: 3
 
 {{ if .Controller.Ctrl.MinClusterSize }}
 raft:
-  dataDir:         "{{ .ZitiHome }}/raft"
+  dataDir:         "{{ .ZitiHome }}/raft{{ .InstanceId }}"
   minClusterSize:  {{ .Controller.Ctrl.MinClusterSize }}
 {{ else }}
 db:                     "{{ .Controller.Database.DatabaseFile }}"
@@ -232,6 +232,8 @@ web:
       - binding: edge-client
         options: { }
       - binding: fabric
+        options: { }
+      - binding: edge-oidc
         options: { }
       {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}- binding: zac
       {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}  options:
