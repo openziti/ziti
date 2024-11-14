@@ -68,7 +68,7 @@ timeout=60  # Timeout in seconds
 elapsed=0
 
 while [[ $count -lt 3 ]]; do
-    results=$(ziti fabric list links -j | jq -r '.data[].state')
+    results=$("${BUILD_DIR}/ziti" fabric list links -j | jq -r '.data[].state')
     connected_count=$(echo "$results" | grep -c "Connected")
 
     if [[ $connected_count -eq 3 ]]; then
@@ -86,7 +86,32 @@ while [[ $count -lt 3 ]]; do
     fi
 done
 
-sleep 5
+# three links == things are ready -- tests start below
+output=$("${BUILD_DIR}/ziti" agent cluster list --pid $inst001pid)
+
+echo ""
+echo "$output"
+echo ""
+
+# Extract the columns for LEADER and CONNECTED
+leaders=$(echo "$output" | awk '/│ inst/ {print $4}')
+connected=$(echo "$output" | awk '/│ inst/ {print $6}')
+
+# Check there is only one leader
+leader_count=$(echo "$leaders" | grep -c "true")
+if [[ $leader_count -ne 1 ]]; then
+    echo "Test failed: Expected 1 leader, found $leader_count"
+    exit 1
+fi
+
+# Check all are connected
+disconnected_count=$(echo "$connected" | grep -c "false")
+if [[ $disconnected_count -ne 0 ]]; then
+    echo "Test failed: Some instances are not connected"
+    exit 1
+fi
+
+echo "Test passed: One leader found and all instances are connected"
 
 echo "killing...."
 kill $inst001pid $inst002pid $inst003pid 2>/dev/null
