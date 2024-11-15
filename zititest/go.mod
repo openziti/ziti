@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.20
-	github.com/openziti/channel/v3 v3.0.14
+	github.com/openziti/channel/v3 v3.0.16
 	github.com/openziti/edge-api v0.26.35
 	github.com/openziti/fablab v0.5.72
 	github.com/openziti/foundation/v2 v2.0.52
@@ -28,7 +28,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	go.etcd.io/bbolt v1.3.11
 	golang.org/x/net v0.31.0
-	google.golang.org/protobuf v1.35.1
+	google.golang.org/protobuf v1.35.2
 	gopkg.in/yaml.v2 v2.4.0
 )
 
