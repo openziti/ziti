@@ -84,3 +84,19 @@ jobs:
           ls -lAn ${GOCACHE:-${HOME}/.cache/go-build}/ ${GOPATH:-${HOME}/go}/pkg/mod/
           docker compose --profile test logs
           exit 0
+
+  haQuickstartTest:
+    name: Test HA Quickstart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Shallow checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Build and run a three quickstart in HA mode
+        shell: bash
+        run: ./quickstart/test/ha-test.zsh
