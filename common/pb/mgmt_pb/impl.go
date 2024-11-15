@@ -71,3 +71,7 @@ func (request *ValidateIdentityConnectionStatusesResponse) GetContentType() int3
 func (request *RouterIdentityConnectionStatusesDetails) GetContentType() int32 {
 	return int32(ContentType_ValidateIdentityConnectionStatusesResultType)
 }
+
+func (x *InitRequest) GetContentType() int32 {
+	return int32(ContentType_RaftInit)
+}

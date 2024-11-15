@@ -110,7 +110,7 @@ func (self *raftPeerConn) Write(b []byte) (n int, err error) {
 	}
 	// logrus.Infof("writing %v bytes to raft peer %v", len(b), self.peer.Id)
 	msg := channel.NewMessage(RaftDataType, b)
-	msg.Headers.PutUint32Header(RaftConnId, self.id)
+	msg.Headers.PutUint32Header(RaftConnIdHeader, self.id)
 	if deadline := self.writeDeadline; !deadline.IsZero() {
 		now := time.Now()
 		if deadline.After(now) {

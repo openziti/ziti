@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/protobufs"
-	"github.com/openziti/ziti/common/pb/edge_mgmt_pb"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 )
@@ -54,7 +54,7 @@ func NewAgentCtrlInit(p common.OptionsProvider) *cobra.Command {
 }
 
 func (self *AgentCtrlInitOptions) makeRequest(ch channel.Channel) error {
-	initEdgeRequest := &edge_mgmt_pb.InitEdgeRequest{
+	initEdgeRequest := &mgmt_pb.InitRequest{
 		Username: self.Args[0],
 		Password: self.Args[1],
 		Name:     self.Args[2],

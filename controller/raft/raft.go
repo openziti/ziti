@@ -20,14 +20,18 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/peermsg"
 	"os"
 	"path"
@@ -132,6 +136,7 @@ func NewController(env Env, migrationMgr MigrationManager) *Controller {
 
 // Controller manages RAFT related state and operations
 type Controller struct {
+	clusterId                  concurrenz.AtomicValue[string]
 	env                        Env
 	Config                     *config.RaftConfig
 	Mesh                       mesh.Mesh
@@ -149,6 +154,29 @@ type Controller struct {
 	errorMappers               map[string]func(map[string]any) error
 }
 
+func (self *Controller) GetNodeId() *identity.TokenId {
+	return self.env.GetId()
+}
+
+func (self *Controller) GetClusterId() string {
+	return self.clusterId.Load()
+}
+
+func (self *Controller) GetVersionProvider() versions.VersionProvider {
+	return self.env.GetVersionProvider()
+}
+
+func (self *Controller) GetEventDispatcher() event.Dispatcher {
+	return self.env.GetEventDispatcher()
+}
+
+func (self *Controller) GetListenerHeaders() map[int32][]byte {
+	return map[int32][]byte{
+		mesh.ClusterIdHeader: []byte(self.clusterId.Load()),
+		mesh.PeerAddrHeader:  []byte(self.Config.AdvertiseAddress.String()),
+	}
+}
+
 func (self *Controller) initErrorMappers() {
 	self.errorMappers[fmt.Sprintf("%T", &boltz.RecordNotFoundError{})] = self.parseBoltzNotFoundError
 	self.errorMappers[fmt.Sprintf("%T", &errorz.FieldError{})] = self.parseFieldError
@@ -159,6 +187,16 @@ func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, s
 		f(ClusterEventLeadershipGained, newClusterState(true, !self.Mesh.IsReadOnly()))
 	}
 	self.clusterStateChangeHandlers.Append(f)
+}
+
+func (self *Controller) InitEnv(env model.Env) error {
+	model.RegisterCommand(env, &InitClusterIdCmd{}, &cmd_pb.InitClusterIdCommand{})
+	clusterId, err := db.LoadClusterId(env.GetDb())
+	if err != nil {
+		return err
+	}
+	self.clusterId.Store(clusterId)
+	return nil
 }
 
 // GetRaft returns the managed raft instance
@@ -517,7 +555,7 @@ func (self *Controller) Init() error {
 
 	helloHeaderProviders := self.env.GetHelloHeaderProviders()
 
-	self.Mesh = mesh.New(self.env, localAddr, helloHeaderProviders)
+	self.Mesh = mesh.New(self, localAddr, helloHeaderProviders)
 	self.Mesh.RegisterClusterStateHandler(func(state mesh.ClusterState) {
 		obs := raft.Observation{
 			Raft: self.Raft,
@@ -707,6 +745,13 @@ func (self *Controller) Bootstrap() error {
 		}
 
 		go self.addConfiguredInitialMembers()
+
+		self.clusterId.Store(uuid.NewString())
+		pfxlog.Logger().WithField("clusterId", self.clusterId.Load()).Info("cluster id initialized")
+		return self.Dispatch(&InitClusterIdCmd{
+			ClusterId:      self.clusterId.Load(),
+			raftController: self,
+		})
 	}
 	return nil
 }
@@ -840,4 +885,31 @@ type MigrationManager interface {
 	ValidateMigrationEnvironment() error
 	TryInitializeRaftFromBoltDb() error
 	InitializeRaftFromBoltDb(srcDb string) error
+}
+
+type InitClusterIdCmd struct {
+	ClusterId      string `json:"clusterId"`
+	raftController *Controller
+}
+
+func (self *InitClusterIdCmd) Apply(ctx boltz.MutateContext) error {
+	self.raftController.clusterId.Store(self.ClusterId)
+	return db.InitClusterId(self.raftController.Fsm.GetDb(), ctx, self.ClusterId)
+}
+
+func (self *InitClusterIdCmd) Encode() ([]byte, error) {
+	cmd := &cmd_pb.InitClusterIdCommand{
+		ClusterId: self.ClusterId,
+	}
+	return cmd_pb.EncodeProtobuf(cmd)
+}
+
+func (self *InitClusterIdCmd) Decode(env model.Env, msg *cmd_pb.InitClusterIdCommand) error {
+	self.ClusterId = msg.ClusterId
+	self.raftController = env.GetManagers().Dispatcher.(*Controller)
+	return nil
+}
+
+func (self *InitClusterIdCmd) GetChangeContext() *change.Context {
+	return change.New().SetChangeAuthorType(change.AuthorTypeController)
 }

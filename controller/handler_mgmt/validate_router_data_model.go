@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package handler_edge_mgmt
+package handler_mgmt
 
 import (
 	"fmt"
@@ -33,7 +33,7 @@ type validateRouterDataModelHandler struct {
 	appEnv *env.AppEnv
 }
 
-func NewValidateRouterDataModelHandler(appEnv *env.AppEnv) channel.TypedReceiveHandler {
+func newValidateRouterDataModelHandler(appEnv *env.AppEnv) channel.TypedReceiveHandler {
 	return &validateRouterDataModelHandler{appEnv: appEnv}
 }
 

@@ -55,6 +55,10 @@ func (x *SyncSnapshotCommand) GetCommandType() int32 {
 	return int32(CommandType_SyncSnapshot)
 }
 
+func (x *InitClusterIdCommand) GetCommandType() int32 {
+	return int32(CommandType_InitClusterId)
+}
+
 func EncodeTags(tags map[string]interface{}) (map[string]*TagValue, error) {
 	if len(tags) == 0 {
 		return nil, nil

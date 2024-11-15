@@ -17,6 +17,7 @@
 package db
 
 import (
+	"fmt"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )
@@ -25,6 +26,7 @@ const (
 	RootBucket     = "ziti"
 	MetadataBucket = "metadata"
 	FieldRaftIndex = "raftIndex"
+	FieldClusterId = "clusterId"
 )
 
 func Open(path string) (boltz.Db, error) {
@@ -52,4 +54,32 @@ func LoadCurrentRaftIndex(tx *bbolt.Tx) uint64 {
 		}
 	}
 	return 0
+}
+
+func LoadClusterId(db boltz.Db) (string, error) {
+	var result string
+	err := db.View(func(tx *bbolt.Tx) error {
+		raftBucket := boltz.Path(tx, RootBucket, MetadataBucket)
+		if raftBucket == nil {
+			return nil
+		}
+		result = raftBucket.GetStringWithDefault(FieldClusterId, "")
+		return nil
+	})
+	return result, err
+}
+
+func InitClusterId(db boltz.Db, ctx boltz.MutateContext, clusterId string) error {
+	return db.Update(ctx, func(ctx boltz.MutateContext) error {
+		raftBucket := boltz.GetOrCreatePath(ctx.Tx(), RootBucket, MetadataBucket)
+		if raftBucket.HasError() {
+			return raftBucket.Err
+		}
+		currentId := raftBucket.GetStringWithDefault(FieldClusterId, "")
+		if currentId != "" {
+			return fmt.Errorf("cluster id already initialized to %s", currentId)
+		}
+		raftBucket.SetString(FieldClusterId, clusterId, nil)
+		return raftBucket.Err
+	})
 }
