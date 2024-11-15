@@ -492,6 +492,7 @@ func performQuickstartTest(t *testing.T) {
 	// Create a service that "links" the dial and bind configs
 	createService(client, serviceName, []string{bindSvcConfig.ID, dialSvcConfig.ID})
 
+	time.Sleep(1 * time.Second) //wait one extra second for the controller to be ready
 	// Create a service policy to allow the router to host the web test service
 	fmt.Println("finding hostingRouterName: ", hostingRouterName)
 	hostRouterIdent := getIdentityByName(client, hostingRouterName)
