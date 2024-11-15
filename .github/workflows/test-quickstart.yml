@@ -97,6 +97,12 @@ jobs:
         with:
           go-version-file: ./go.mod
 
+      - name: Build ziti executable
+        shell: bash
+        run: |
+          mkdir -pv /tmp/build
+          go build -o /tmp/build ${GITHUB_WORKSPACE}/...
+
       - name: Build and run a three quickstart in HA mode
         shell: bash
         run: ./quickstart/test/ha-test.sh

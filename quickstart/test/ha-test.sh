@@ -1,12 +1,4 @@
-cd ~/git/github/openziti/nf/ziti/quickstart/docker/all-in-one
-
-export GITHUB_WORKSPACE=$(realpath ../../..)
 BUILD_DIR=/tmp/build
-mkdir -pv ${BUILD_DIR}
-
-cd ${GITHUB_WORKSPACE}
-go build -o "${BUILD_DIR}" "./..."
-cd -
 
 ctrl_port=2001
 router_port=3001
