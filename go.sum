@@ -571,8 +571,8 @@ github.com/openziti-incubator/cf v0.0.3 h1:JKs55DbaIxl87nI/Ra/3DHMiz5iaPpu8JjsuN
 github.com/openziti-incubator/cf v0.0.3/go.mod h1:6abCY06bCjKmK2I9kohij+cp9uXIPFiFwSCNZPdMk8E=
 github.com/openziti/agent v1.0.20 h1:Anzbf+xLTdeeOTEpdUQOWu9Lq/zSLfChcyOpHYQRBhE=
 github.com/openziti/agent v1.0.20/go.mod h1:0MDpC5eu4NXpg84J6M2N3pWEOxbM8DJCqVMYRiIcHzs=
-github.com/openziti/channel/v3 v3.0.14 h1:KRLu+oJnX8l2X7LhA0XndOJlR8+WrTYCMANw4cjz8ds=
-github.com/openziti/channel/v3 v3.0.14/go.mod h1:eU/qMrSx+s4lt+EgkXMXQJ1pUWigSSfJxbCp3EyAfss=
+github.com/openziti/channel/v3 v3.0.16 h1:nxJq4hW6flaO3zCmCdzbpFJnYHBH7/6p+PW+9EUz3Z8=
+github.com/openziti/channel/v3 v3.0.16/go.mod h1:jQvLYTSjQ8B3g2+SKcbujFMcE+5bmKnsTq3mJ6ltpHQ=
 github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQfVXxE=
 github.com/openziti/cobra-to-md v1.0.1/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
 github.com/openziti/dilithium v0.3.5 h1:+envGNzxc3OyVPiuvtxivQmCsOjdZjtOMLpQBeMz7eM=
@@ -1274,8 +1274,8 @@ google.golang.org/protobuf v1.24.0/go.mod h1:r/3tXBNzIEhYS9I1OUVjXDlt8tc493IdKGj
 google.golang.org/protobuf v1.25.0/go.mod h1:9JNX74DMeImyA3h4bdi1ymwjUzf21/xIlbajtzgsN7c=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
 google.golang.org/protobuf v1.26.0/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
-google.golang.org/protobuf v1.35.1 h1:m3LfL6/Ca+fqnjnlqQXNpFPABW1UD7mjh8KO2mKFytA=
-google.golang.org/protobuf v1.35.1/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
+google.golang.org/protobuf v1.35.2 h1:8Ar7bF+apOIoThw1EdZl0p1oWvMqTHmpA2fRTyZO8io=
+google.golang.org/protobuf v1.35.2/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
 gopkg.in/AlecAivazis/survey.v1 v1.8.8 h1:5UtTowJZTz1j7NxVzDGKTz6Lm9IWm8DDF6b7a2wq9VY=
 gopkg.in/AlecAivazis/survey.v1 v1.8.8/go.mod h1:CaHjv79TCgAvXMSFJSVgonHXYWxnhzI3eoHtnX5UgUo=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=
