@@ -22,6 +22,19 @@ function _wait_for_controller {
     echo "CONTROLLER ONLINE AT: https://${advertised_host_port}"
 }
 
+function _stop_instances {
+  echo "killing...."
+  kill "$@" 2>/dev/null
+
+  for pid in "$@"; do
+      while kill -0 "$pid" 2>/dev/null; do
+          echo "Waiting for process $pid to stop..."
+          sleep 1
+      done
+      echo "Process $pid has stopped."
+  done
+}
+
 trap 'kill $inst001pid $inst002pid $inst003pid 2>/dev/null' EXIT
 
 "${BUILD_DIR}/ziti" edge quickstart ha \
@@ -86,13 +99,14 @@ echo "$output"
 echo ""
 
 # Extract the columns for LEADER and CONNECTED
-leaders=$(echo "$output" | awk '/│ inst/ {print $4}')
-connected=$(echo "$output" | awk '/│ inst/ {print $6}')
+leaders=$(echo "$output" | grep inst | awk -F '│' '{print $5}')
+connected=$(echo "$output" | grep inst | awk -F '/│' '{print $6}')
 
 # Check there is only one leader
 leader_count=$(echo "$leaders" | grep -c "true")
 if [[ $leader_count -ne 1 ]]; then
     echo "Test failed: Expected 1 leader, found $leader_count"
+    _stop_instances $inst001pid $inst002pid $inst003pid
     exit 1
 fi
 
@@ -100,18 +114,10 @@ fi
 disconnected_count=$(echo "$connected" | grep -c "false")
 if [[ $disconnected_count -ne 0 ]]; then
     echo "Test failed: Some instances are not connected"
+    _stop_instances $inst001pid $inst002pid $inst003pid
     exit 1
 fi
 
 echo "Test passed: One leader found and all instances are connected"
+_stop_instances $inst001pid $inst002pid $inst003pid
 
-echo "killing...."
-kill $inst001pid $inst002pid $inst003pid 2>/dev/null
-
-for pid in $inst001pid $inst002pid $inst003pid; do
-    while kill -0 "$pid" 2>/dev/null; do
-        echo "Waiting for process $pid to stop..."
-        sleep 1
-    done
-    echo "Process $pid has stopped."
-done
