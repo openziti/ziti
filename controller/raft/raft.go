@@ -783,7 +783,7 @@ func (self *Controller) retryBootstrapMember(bootstrapMember string) {
 			}
 
 			if err = self.Join(req); err == nil {
-				pfxlog.Logger().WithError(err).Errorf("erroring adding bootstrap member [%s], stopping attempts to join it to the cluster", bootstrapMember)
+				pfxlog.Logger().WithError(err).Errorf("error adding bootstrap member [%s], stopping attempts to join it to the cluster", bootstrapMember)
 				return
 			}
 		}

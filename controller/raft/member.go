@@ -213,7 +213,11 @@ func (self *Controller) forwardToLeader(req protobufs.TypedMessage) error {
 		return errors.New("no leader, unable to forward request")
 	}
 
-	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)
+	return self.ForwardToAddr(leader, req)
+}
+
+func (self *Controller) ForwardToAddr(addr string, req protobufs.TypedMessage) error {
+	peer, err := self.GetMesh().GetOrConnectPeer(addr, 5*time.Second)
 	if err != nil {
 		return err
 	}
