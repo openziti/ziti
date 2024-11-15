@@ -148,13 +148,28 @@ func getIdentityByName(client *rest_management_api_client.ZitiEdgeManagement, na
 		Context: context.Background(),
 	}
 	params.SetTimeout(30 * time.Second)
-	resp, err := client.Identity.ListIdentities(params, nil)
-	if err != nil {
-		log.Fatalf("Could not obtain an ID for the identity named %s", name)
-		fmt.Println(err)
-	}
 
-	return resp.GetPayload().Data[0]
+	var resp *identity.ListIdentitiesOK
+	var err error
+
+	timeout := time.After(3 * time.Second)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeout:
+			log.Errorf("Could not obtain an ID for the identity named %s after retries", name)
+			return nil // Return nil if you don't want to panic on failure
+		case <-ticker.C:
+			resp, err = client.Identity.ListIdentities(params, nil)
+			if err == nil && len(resp.GetPayload().Data) > 0 {
+				return resp.GetPayload().Data[0]
+			}
+			// Log and retry
+			fmt.Printf("Retrying to fetch identity %s...\n", name)
+		}
+	}
 }
 
 func getServiceByName(client *rest_management_api_client.ZitiEdgeManagement, name string) *rest_model.ServiceDetail {
@@ -492,7 +507,6 @@ func performQuickstartTest(t *testing.T) {
 	// Create a service that "links" the dial and bind configs
 	createService(client, serviceName, []string{bindSvcConfig.ID, dialSvcConfig.ID})
 
-	time.Sleep(1 * time.Second) //wait one extra second for the controller to be ready
 	// Create a service policy to allow the router to host the web test service
 	fmt.Println("finding hostingRouterName: ", hostingRouterName)
 	hostRouterIdent := getIdentityByName(client, hostingRouterName)
