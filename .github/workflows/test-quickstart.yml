@@ -99,4 +99,4 @@ jobs:
 
       - name: Build and run a three quickstart in HA mode
         shell: bash
-        run: ./quickstart/test/ha-test.zsh
+        run: ./quickstart/test/ha-test.sh
