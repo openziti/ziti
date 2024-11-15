@@ -38,6 +38,7 @@ type CreateConfigRouterOptions struct {
 	IsPrivate    bool
 	TunnelerMode string
 	LanInterface string
+	IsHA         bool
 }
 
 type NewCreateConfigRouterCmd struct {

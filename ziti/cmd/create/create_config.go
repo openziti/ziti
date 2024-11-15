@@ -72,6 +72,7 @@ type CtrlValues struct {
 	BindAddress                string
 	AltAdvertisedAddress       string
 	MinClusterSize             int
+	InstanceId                 string
 }
 
 type HealthChecksValues struct {
@@ -112,8 +113,8 @@ type BindPointsValues struct {
 }
 
 type ConsoleValues struct {
-	Enabled       bool
-	Location      string
+	Enabled  bool
+	Location string
 }
 
 type IdentityValues struct {
@@ -165,6 +166,7 @@ type RouterTemplateValues struct {
 	Wss                WSSRouterTemplateValues
 	Forwarder          RouterForwarderTemplateValues
 	Listener           RouterListenerTemplateValues
+	IsHA               bool
 }
 
 type EdgeRouterTemplateValues struct {

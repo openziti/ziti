@@ -148,13 +148,23 @@ func getIdentityByName(client *rest_management_api_client.ZitiEdgeManagement, na
 		Context: context.Background(),
 	}
 	params.SetTimeout(30 * time.Second)
-	resp, err := client.Identity.ListIdentities(params, nil)
-	if err != nil {
-		log.Fatalf("Could not obtain an ID for the identity named %s", name)
-		fmt.Println(err)
-	}
 
-	return resp.GetPayload().Data[0]
+	timeout := time.Now().Add(3 * time.Second)
+
+	for {
+		resp, err := client.Identity.ListIdentities(params, nil)
+		if err == nil && len(resp.GetPayload().Data) > 0 {
+			return resp.GetPayload().Data[0]
+		}
+
+		if time.Now().After(timeout) {
+			log.Fatalf("Could not obtain an ID for the identity named %s after retries", name)
+			return nil
+		}
+		
+		fmt.Printf("Retrying to fetch identity %s...\n", name)
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func getServiceByName(client *rest_management_api_client.ZitiEdgeManagement, name string) *rest_model.ServiceDetail {
