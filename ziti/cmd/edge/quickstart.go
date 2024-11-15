@@ -354,7 +354,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 			agentJoinCmd := agentcli.NewAgentClusterAdd(p)
 
 			args := []string{
-				fmt.Sprintf(o.ClusterMember),
+				o.ClusterMember,
 				fmt.Sprintf("--pid=%d", os.Getpid()),
 				fmt.Sprintf("--voter=%t", !o.nonVoter),
 			}
