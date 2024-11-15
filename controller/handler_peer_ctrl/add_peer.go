@@ -58,6 +58,11 @@ func (self *addPeerHandler) handleAddPeer(m *channel.Message, ch channel.Channel
 
 	log.Infof("received join request id: %v, addr: %v, voter: %v", req.Id, req.Addr, !req.IsVoter)
 
+	if !self.controller.IsBootstrapped() {
+		sendErrorResponse(m, ch, errors.New("node not member of bootstrapped cluster, unable to add peers"), peermsg.ErrorCodeGeneric)
+		return
+	}
+
 	if err := self.controller.HandleAddPeer(req); err != nil {
 		if errors.Is(err, raft2.ErrNotLeader) {
 			sendErrorResponse(m, ch, err, peermsg.ErrorCodeNotLeader)
