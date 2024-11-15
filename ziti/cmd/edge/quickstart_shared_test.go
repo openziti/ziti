@@ -149,26 +149,20 @@ func getIdentityByName(client *rest_management_api_client.ZitiEdgeManagement, na
 	}
 	params.SetTimeout(30 * time.Second)
 
-	var resp *identity.ListIdentitiesOK
-	var err error
-
-	timeout := time.After(3 * time.Second)
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
+	timeout := time.Now().Add(3 * time.Second)
 
 	for {
-		select {
-		case <-timeout:
-			log.Errorf("Could not obtain an ID for the identity named %s after retries", name)
-			return nil // Return nil if you don't want to panic on failure
-		case <-ticker.C:
-			resp, err = client.Identity.ListIdentities(params, nil)
-			if err == nil && len(resp.GetPayload().Data) > 0 {
-				return resp.GetPayload().Data[0]
-			}
-			// Log and retry
-			fmt.Printf("Retrying to fetch identity %s...\n", name)
+		resp, err := client.Identity.ListIdentities(params, nil)
+		if err == nil && len(resp.GetPayload().Data) > 0 {
+			return resp.GetPayload().Data[0]
 		}
+
+		if time.Now().After(timeout) {
+			log.Fatalf("Could not obtain an ID for the identity named %s after retries", name)
+			return nil
+		}
+
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
