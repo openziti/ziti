@@ -161,7 +161,8 @@ func getIdentityByName(client *rest_management_api_client.ZitiEdgeManagement, na
 			log.Fatalf("Could not obtain an ID for the identity named %s after retries", name)
 			return nil
 		}
-
+		
+		fmt.Printf("Retrying to fetch identity %s...\n", name)
 		time.Sleep(100 * time.Millisecond)
 	}
 }
