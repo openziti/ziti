@@ -202,6 +202,9 @@ func (node *BinaryDatetimeExprNode) EvalBool(s Symbols) bool {
 	rightResult := node.right.EvalDatetime(s)
 
 	if leftResult == nil || rightResult == nil {
+		if node.op == BinaryOpNEQ {
+			return leftResult != rightResult
+		}
 		return false
 	}
 
@@ -254,6 +257,9 @@ func (node *BinaryFloat64ExprNode) EvalBool(s Symbols) bool {
 	rightResult := node.right.EvalFloat64(s)
 
 	if leftResult == nil || rightResult == nil {
+		if node.op == BinaryOpNEQ {
+			return leftResult != rightResult
+		}
 		return false
 	}
 
@@ -306,6 +312,9 @@ func (node *BinaryInt64ExprNode) EvalBool(s Symbols) bool {
 	rightResult := node.right.EvalInt64(s)
 
 	if leftResult == nil || rightResult == nil {
+		if node.op == BinaryOpNEQ {
+			return leftResult != rightResult
+		}
 		return false
 	}
 
@@ -373,6 +382,12 @@ func (node *BinaryStringExprNode) EvalBool(s Symbols) bool {
 	rightResult := node.right.EvalString(s)
 
 	if leftResult == nil || rightResult == nil {
+		if node.op == BinaryOpNEQ {
+			return leftResult != rightResult
+		}
+		if node.op == BinaryOpNotContains || node.op == BinaryOpNotIContains {
+			return true
+		}
 		return false
 	}
 
