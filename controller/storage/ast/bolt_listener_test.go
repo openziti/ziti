@@ -136,6 +136,9 @@ func (symbols *testSymbols) EvalBool(name string) *bool {
 
 func (symbols *testSymbols) EvalString(name string) *string {
 	value := symbols.getValue(name)
+	if value == nil {
+		return nil
+	}
 	typedVal, ok := value.(string)
 	if ok {
 		return &typedVal
@@ -451,6 +454,12 @@ func TestStringFilters(t *testing.T) {
 		{"string not contains, result false", `sn not contains 234`, false},
 		{"string not contains, result true", `sn not contains 321`, true},
 		{"string not contains, result true", `sn not contains 321.123`, true},
+
+		// nil tests
+		{"string is null, result true", `n = null`, true},
+		{"string is not null, result false", `n != null`, false},
+		{"null string equal to value, result false", `n = "foo"`, false},
+		{"null string not equal to value, result true", `n != "foo"`, true},
 
 		/*
 			{"string LT, result true", `s < "jello"`, true},.
