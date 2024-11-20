@@ -22,8 +22,10 @@ import (
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
 	"time"
@@ -128,21 +130,18 @@ func (handler *validateRouterDataModelHandler) ValidateRouterDataModel(includeCt
 				cb(details)
 			}()
 		}
+
+		var dataState *edge_ctrl_pb.DataState
 		for _, router := range result.Entities {
 			connectedRouter := handler.appEnv.GetHostController().GetNetwork().GetConnectedRouter(router.Id)
 			if connectedRouter != nil {
+				if dataState == nil {
+					dataState = handler.appEnv.Broker.GetRouterDataModel().GetDataState()
+				}
 				sem.Acquire()
 				go func() {
 					defer sem.Release()
-
-					details := &mgmt_pb.RouterDataModelDetails{
-						ComponentType:   "router",
-						ComponentId:     router.Id,
-						ComponentName:   router.Name,
-						ValidateSuccess: false,
-						Errors:          []string{"not yet implemented"},
-					}
-					cb(details)
+					handler.ValidateRouterDataModelOnRouter(connectedRouter, dataState, cb)
 				}()
 			} else {
 				details := &mgmt_pb.RouterDataModelDetails{
@@ -163,4 +162,34 @@ func (handler *validateRouterDataModelHandler) ValidateRouterDataModel(includeCt
 	}
 
 	return count, evalF, nil
+}
+
+func (handler *validateRouterDataModelHandler) ValidateRouterDataModelOnRouter(router *model.Router, dataState *edge_ctrl_pb.DataState, cb RouterDataModelValidationCallback) {
+	details := &mgmt_pb.RouterDataModelDetails{
+		ComponentType: "router",
+		ComponentId:   router.Id,
+		ComponentName: router.Name,
+	}
+
+	request := &edge_ctrl_pb.RouterDataModelValidateRequest{
+		State: dataState,
+	}
+	resp := &edge_ctrl_pb.RouterDataModelValidateResponse{}
+	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
+	if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
+		details.Errors = []string{fmt.Sprintf("unable to validate router data (%s)", err.Error())}
+		cb(details)
+		return
+	}
+
+	if len(resp.Diffs) == 0 {
+		details.ValidateSuccess = true
+		cb(details)
+	} else {
+		details.ValidateSuccess = false
+		for _, diff := range resp.Diffs {
+			details.Errors = append(details.Errors, diff.ToDetail())
+		}
+		cb(details)
+	}
 }

@@ -16,6 +16,10 @@
 
 package edge_ctrl_pb
 
+import (
+	"fmt"
+)
+
 func (x *DataState_Identity) GetServiceConfigsAsMap() map[string]map[string]string {
 	if x.ServiceConfigs == nil {
 		return nil
@@ -31,4 +35,16 @@ func (x *DataState_Identity) GetServiceConfigsAsMap() map[string]map[string]stri
 	}
 
 	return result
+}
+
+func (request *RouterDataModelValidateRequest) GetContentType() int32 {
+	return int32(ContentType_ValidateDataStateRequestType)
+}
+
+func (request *RouterDataModelValidateResponse) GetContentType() int32 {
+	return int32(ContentType_ValidateDataStateResponseType)
+}
+
+func (diff *RouterDataModelDiff) ToDetail() string {
+	return fmt.Sprintf("%s id: %s %s: %s", diff.EntityType, diff.EntityId, diff.DiffType, diff.Detail)
 }

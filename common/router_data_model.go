@@ -17,11 +17,13 @@
 package common
 
 import (
+	"bytes"
 	"compress/gzip"
 	"crypto"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/google/go-cmp/cmp"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
@@ -116,6 +118,21 @@ type RouterDataModel struct {
 	stopped       atomic.Bool
 }
 
+// NewBareRouterDataModel creates a new RouterDataModel that is expected to have no buffers, listeners or subscriptions
+func NewBareRouterDataModel() *RouterDataModel {
+	return &RouterDataModel{
+		EventCache:      NewForgetfulEventCache(),
+		ConfigTypes:     cmap.New[*ConfigType](),
+		Configs:         cmap.New[*Config](),
+		Identities:      cmap.New[*Identity](),
+		Services:        cmap.New[*Service](),
+		ServicePolicies: cmap.New[*ServicePolicy](),
+		PostureChecks:   cmap.New[*PostureCheck](),
+		PublicKeys:      cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
+		Revocations:     cmap.New[*edge_ctrl_pb.DataState_Revocation](),
+	}
+}
+
 // NewSenderRouterDataModel creates a new RouterDataModel that will store events in a circular buffer of
 // logSize. listenerBufferSize affects the buffer size of channels returned to listeners of the data model.
 func NewSenderRouterDataModel(logSize uint64, listenerBufferSize uint) *RouterDataModel {
@@ -146,6 +163,30 @@ func NewReceiverRouterDataModel(listenerBufferSize uint, closeNotify <-chan stru
 		PostureChecks:      cmap.New[*PostureCheck](),
 		PublicKeys:         cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
 		Revocations:        cmap.New[*edge_ctrl_pb.DataState_Revocation](),
+		listenerBufferSize: listenerBufferSize,
+		subscriptions:      cmap.New[*IdentitySubscription](),
+		events:             make(chan subscriberEvent),
+		closeNotify:        closeNotify,
+		stopNotify:         make(chan struct{}),
+	}
+	go result.processSubscriberEvents()
+	return result
+}
+
+// NewReceiverRouterDataModel creates a new RouterDataModel that does not store events. listenerBufferSize affects the
+// buffer size of channels returned to listeners of the data model.
+func NewReceiverRouterDataModelFromExisting(existing *RouterDataModel, listenerBufferSize uint, closeNotify <-chan struct{}) *RouterDataModel {
+	result := &RouterDataModel{
+		EventCache:         NewForgetfulEventCache(),
+		ConfigTypes:        existing.ConfigTypes,
+		Configs:            existing.Configs,
+		Identities:         existing.Identities,
+		Services:           existing.Services,
+		ServicePolicies:    existing.ServicePolicies,
+		PostureChecks:      existing.PostureChecks,
+		PublicKeys:         existing.PublicKeys,
+		CachedPublicKeys:   existing.CachedPublicKeys,
+		Revocations:        existing.Revocations,
 		listenerBufferSize: listenerBufferSize,
 		subscriptions:      cmap.New[*IdentitySubscription](),
 		events:             make(chan subscriberEvent),
@@ -514,6 +555,14 @@ func (rdm *RouterDataModel) HandleServicePolicyChange(index uint64, model *edge_
 
 func (rdm *RouterDataModel) GetPublicKeys() map[string]crypto.PublicKey {
 	return rdm.CachedPublicKeys.Load()
+}
+
+func (rdm *RouterDataModel) getPublicKeysAsCmap() cmap.ConcurrentMap[string, crypto.PublicKey] {
+	m := cmap.New[crypto.PublicKey]()
+	for k, v := range rdm.CachedPublicKeys.Load() {
+		m.Set(k, v)
+	}
+	return m
 }
 
 func (rdm *RouterDataModel) recalculateCachedPublicKeys() {
@@ -923,4 +972,107 @@ func (rdm *RouterDataModel) loadIdentityConfig(configId string, log *logrus.Entr
 		Config:     config,
 		ConfigType: configType,
 	}
+}
+
+func (rdm *RouterDataModel) GetEntityCounts() map[string]uint32 {
+	result := map[string]uint32{
+		"configType":         uint32(rdm.ConfigTypes.Count()),
+		"configs":            uint32(rdm.Configs.Count()),
+		"identities":         uint32(rdm.Identities.Count()),
+		"services":           uint32(rdm.Services.Count()),
+		"service-policies":   uint32(rdm.ServicePolicies.Count()),
+		"posture-checks":     uint32(rdm.PostureChecks.Count()),
+		"public-keys":        uint32(rdm.PublicKeys.Count()),
+		"revocations":        uint32(rdm.Revocations.Count()),
+		"cached-public-keys": uint32(rdm.getPublicKeysAsCmap().Count()),
+	}
+	return result
+}
+
+type DiffType string
+
+const (
+	DiffTypeAdd = "added"
+	DiffTypeMod = "modified"
+	DiffTypeSub = "removed"
+)
+
+type DiffSink func(entityType string, id string, diffType DiffType, detail string)
+
+func (rdm *RouterDataModel) Diff(o *RouterDataModel, sink DiffSink) {
+	if o == nil {
+		sink("router-data-model", "root", DiffTypeSub, "router data model not present")
+		return
+	}
+
+	diffType("configType", rdm.ConfigTypes, o.ConfigTypes, sink)
+	diffType("config", rdm.Configs, o.Configs, sink)
+	diffType("identity", rdm.Identities, o.Identities, sink)
+	diffType("service", rdm.Services, o.Services, sink)
+	diffType("service-policy", rdm.ServicePolicies, o.ServicePolicies, sink)
+	diffType("posture-check", rdm.PostureChecks, o.PostureChecks, sink)
+	diffType("public-keys", rdm.PublicKeys, o.PublicKeys, sink)
+	diffType("revocations", rdm.Revocations, o.Revocations, sink)
+	diffType("cached-public-keys", rdm.getPublicKeysAsCmap(), o.getPublicKeysAsCmap(), sink)
+}
+
+func diffType[T any](entityType string, m1 cmap.ConcurrentMap[string, T], m2 cmap.ConcurrentMap[string, T], sink DiffSink) {
+	diffReporter := &compareReporter{
+		f: func(key string, detail string) {
+			sink(entityType, key, DiffTypeMod, detail)
+		},
+	}
+
+	hasMissing := false
+	adapter := cmp.Reporter(diffReporter)
+	m1.IterCb(func(key string, v T) {
+		v2, exists := m2.Get(key)
+		if !exists {
+			sink(entityType, key, DiffTypeSub, "entity missing")
+			hasMissing = true
+		} else {
+			diffReporter.key = key
+			cmp.Diff(v, v2, adapter)
+		}
+	})
+
+	if m1.Count() != m2.Count() || hasMissing {
+		m2.IterCb(func(key string, v2 T) {
+			if _, exists := m1.Get(key); !exists {
+				sink(entityType, key, DiffTypeAdd, "entity unexpected")
+			}
+		})
+	}
+}
+
+type compareReporter struct {
+	steps []cmp.PathStep
+	key   string
+	f     func(key string, detail string)
+}
+
+func (self *compareReporter) PushStep(step cmp.PathStep) {
+	self.steps = append(self.steps, step)
+}
+
+func (self *compareReporter) Report(result cmp.Result) {
+	if !result.Equal() {
+		var step cmp.PathStep
+		path := &bytes.Buffer{}
+		for _, v := range self.steps {
+			path.Write([]byte(v.String()))
+			step = v
+		}
+		if step != nil {
+			vx, vy := step.Values()
+			err := fmt.Sprintf("%s mismatch. orig: %s, copy: %s", path.String(), vx.String(), vy.String())
+			self.f(self.key, err)
+		} else {
+			self.f(self.key, "programming error, empty path stack")
+		}
+	}
+}
+
+func (self *compareReporter) PopStep() {
+	self.steps = self.steps[:len(self.steps)-1]
 }

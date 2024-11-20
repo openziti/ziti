@@ -60,6 +60,7 @@ type DisconnectCB func(token string)
 type Env interface {
 	IsHaEnabled() bool
 	GetCloseNotify() <-chan struct{}
+	DefaultRequestTimeout() time.Duration
 }
 
 type Manager interface {
@@ -876,6 +877,7 @@ func (sm *ManagerImpl) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(NewApiSessionUpdatedHandler(sm))
 	binding.AddTypedReceiveHandler(NewDataStateHandler(sm))
 	binding.AddTypedReceiveHandler(NewDataStateEventHandler(sm))
+	binding.AddTypedReceiveHandler(NewValidateDataStateRequestHandler(sm, sm.env))
 	return nil
 }
 
