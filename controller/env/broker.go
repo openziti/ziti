@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
@@ -37,6 +38,7 @@ const (
 	ApiSessionUpdatedType   = int32(edge_ctrl_pb.ContentType_ApiSessionUpdatedType)
 	RequestClientReSyncType = int32(edge_ctrl_pb.ContentType_RequestClientReSyncType)
 	DataStateType           = int32(edge_ctrl_pb.ContentType_DataStateType)
+	ValidateDataStateType   = int32(edge_ctrl_pb.ContentType_ValidateDataStateRequestType)
 	DataStateChangeSetType  = int32(edge_ctrl_pb.ContentType_DataStateChangeSetType)
 
 	ServerHelloType = int32(edge_ctrl_pb.ContentType_ServerHelloType)
@@ -85,6 +87,10 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 
 func (broker *Broker) ValidateRouterDataModel() []error {
 	return broker.routerSyncStrategy.Validate()
+}
+
+func (broker *Broker) GetRouterDataModel() *common.RouterDataModel {
+	return broker.routerSyncStrategy.GetRouterDataModel()
 }
 
 func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {

@@ -1337,6 +1337,10 @@ func (strategy *InstantStrategy) BuildPostureChecks(index uint64, tx *bbolt.Tx, 
 	return nil
 }
 
+func (strategy *InstantStrategy) GetRouterDataModel() *common.RouterDataModel {
+	return strategy.RouterDataModel
+}
+
 func (strategy *InstantStrategy) Validate() []error {
 	return strategy.ValidateAll(strategy.RouterDataModel)
 }

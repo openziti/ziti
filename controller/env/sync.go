@@ -20,6 +20,7 @@ import (
 	"crypto"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
 	"sync"
@@ -62,6 +63,7 @@ type RouterSyncStrategy interface {
 	RouterConnectionHandler
 	RouterSynchronizerEventHandler
 	Validate() []error
+	GetRouterDataModel() *common.RouterDataModel
 }
 
 // RouterConnectionHandler is responsible for handling router connect/disconnect for synchronizing state.
