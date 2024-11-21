@@ -146,6 +146,7 @@ func Test_EnrollmentRefresh(t *testing.T) {
 
 			ctx.Req.NotEqual(origIdentityGetEnv.Data.Enrollment.Ott.JWT, updatedIdentityGetEnv.Data.Enrollment.Ott.JWT)
 			ctx.Req.NotEqual(origIdentityGetEnv.Data.Enrollment.Ott.ExpiresAt.String(), updatedIdentityGetEnv.Data.Enrollment.Ott.ExpiresAt.String())
+			ctx.Req.NotEqual(origIdentityGetEnv.Data.Enrollment.Ott.Token, updatedIdentityGetEnv.Data.Enrollment.Ott.Token)
 			ctx.Req.Equal(refreshPost.ExpiresAt.String(), updatedIdentityGetEnv.Data.Enrollment.Ott.ExpiresAt.String())
 		})
 	})

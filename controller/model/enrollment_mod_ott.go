@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
+	"time"
 )
 
 type EnrollModuleOtt struct {
@@ -53,6 +54,10 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 
 	if enrollment == nil || enrollment.IdentityId == nil {
 		return nil, apierror.NewInvalidEnrollmentToken()
+	}
+
+	if enrollment.ExpiresAt == nil || enrollment.ExpiresAt.IsZero() || enrollment.ExpiresAt.Before(time.Now()) {
+		return nil, apierror.NewEnrollmentExpired()
 	}
 
 	identity, err := module.env.GetManagers().Identity.Read(*enrollment.IdentityId)
