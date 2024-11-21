@@ -19,6 +19,7 @@ package model
 import (
 	"crypto/x509"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/identity"
@@ -291,7 +292,9 @@ func (self *EnrollmentManager) RefreshJwt(id string, expiresAt time.Time, ctx *c
 		return err
 	}
 
+	enrollment.Token = uuid.New().String()
 	return self.Update(enrollment, fields.UpdatedFieldsMap{
+		db.FieldEnrollmentToken:     struct{}{},
 		db.FieldEnrollmentJwt:       struct{}{},
 		db.FieldEnrollmentExpiresAt: struct{}{},
 		db.FieldEnrollmentIssuedAt:  struct{}{},
