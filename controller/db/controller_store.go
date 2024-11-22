@@ -105,7 +105,7 @@ func (store *controllerStoreImpl) FillEntity(entity *Controller, bucket *boltz.T
 	entity.CertPem = bucket.GetStringOrError(FieldControllerCertPem)
 	entity.Fingerprint = bucket.GetStringOrError(FieldControllerFingerprint)
 	entity.IsOnline = bucket.GetBoolWithDefault(FieldControllerIsOnline, false)
-	entity.LastJoinedAt = bucket.GetTimeOrError(FieldControllerLastJoinedAt)
+	entity.LastJoinedAt = bucket.GetTimeOrDefault(FieldControllerLastJoinedAt, time.Time{})
 	entity.ApiAddresses = map[string][]ApiAddress{}
 
 	apiListBucket := bucket.GetBucket(FieldControllerApiAddresses)

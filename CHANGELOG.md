@@ -1,3 +1,20 @@
+# Release 1.2.2
+
+## What's New
+
+* Bug fixes and continuing progress on controller HA
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/secretstream: [v0.1.25 -> v0.1.26](https://github.com/openziti/secretstream/compare/v0.1.25...v0.1.26)
+* github.com/openziti/storage: [v0.3.6 -> v0.3.8](https://github.com/openziti/storage/compare/v0.3.6...v0.3.8)
+    * [Issue #87](https://github.com/openziti/storage/issues/87) - negative URL filter returns incorrect results
+
+* github.com/openziti/ziti: [v1.2.1 -> v1.2.2](https://github.com/openziti/ziti/compare/v1.2.1...v1.2.2)
+    * [Issue #2559](https://github.com/openziti/ziti/issues/2559) - expired JWTs are allowed to enroll
+    * [Issue #2543](https://github.com/openziti/ziti/issues/2543) - Support adding adding an uninitialized node to a cluster (rather than the reverse)
+
+
 # Release 1.2.1
 
 ## What's New
