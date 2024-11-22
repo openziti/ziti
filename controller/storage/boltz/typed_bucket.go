@@ -553,6 +553,15 @@ func (bucket *TypedBucket) GetTimeOrError(name string) time.Time {
 	return *result
 }
 
+func (bucket *TypedBucket) GetTimeOrDefault(name string, defaultValue time.Time) time.Time {
+	fieldType, value := bucket.getTyped(name)
+	result := FieldToDatetime(fieldType, value, name)
+	if result == nil {
+		return defaultValue
+	}
+	return *result
+}
+
 func (bucket *TypedBucket) SetTime(name string, value time.Time, fieldChecker FieldChecker) *TypedBucket {
 	if bucket.ProceedWithSet(name, fieldChecker) {
 		if fieldBytes, err := value.UTC().MarshalBinary(); err == nil {
