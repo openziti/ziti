@@ -96,8 +96,8 @@ fragment EXP: [Ee] [+\-]? INT;
 fragment ESC: '\\' ["\\fnrt];
 fragment IDENTSEP: '.';
 IDENTIFIER:
-      [A-Za-z] [A-Za-z_]* (IDENTSEP [A-Za-z] [A-Za-z_]*)*
-    | '\'' [A-Za-z] [A-Za-z_]* (IDENTSEP [A-Za-z] [A-Za-z_]*)* '\'';
+      [A-Za-z] [A-Za-z_]* (IDENTSEP [A-Za-z] [A-Za-z_\-]*)*
+    | '\'' [A-Za-z] [A-Za-z_]* (IDENTSEP [A-Za-z] [A-Za-z_\-]*)* '\'';
 
 // Per RFC
 RFC3339_DATE_TIME: FULL_DATE  T  FULL_TIME;
