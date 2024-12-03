@@ -36,7 +36,7 @@ type IdentityService struct {
 }
 
 func (self *IdentityService) Equals(other *IdentityService) bool {
-	if self.Service.Index != other.Service.Index {
+	if self.Service.index != other.Service.index {
 		return false
 	}
 
@@ -67,10 +67,10 @@ func (self *IdentityService) Equals(other *IdentityService) bool {
 		if !ok {
 			return false
 		}
-		if config.Config.Index != otherConfig.Config.Index {
+		if config.Config.index != otherConfig.Config.index {
 			return false
 		}
-		if config.ConfigType.Index != otherConfig.ConfigType.Index {
+		if config.ConfigType.index != otherConfig.ConfigType.index {
 			return false
 		}
 	}
@@ -102,7 +102,7 @@ func (self *IdentitySubscription) identityUpdated(rdm *RouterDataModel, identity
 	var state *IdentityState
 	self.Lock()
 	if self.Identity != nil {
-		if identity.IdentityIndex > self.Identity.IdentityIndex {
+		if identity.identityIndex > self.Identity.identityIndex {
 			self.Identity = identity
 			notify = true
 		}
@@ -198,7 +198,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 		return
 	}
 
-	if oldIdentity.IdentityIndex < newIdentity.IdentityIndex {
+	if oldIdentity.identityIndex < newIdentity.identityIndex {
 		for _, subscriber := range self.Listeners.Value() {
 			subscriber.NotifyIdentityEvent(state, EventIdentityUpdated)
 		}
@@ -235,7 +235,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 				checksChanged = true
 				break
 			}
-			if check.Index != newCheck.Index {
+			if check.index != newCheck.index {
 				checksChanged = true
 				break
 			}
@@ -294,7 +294,10 @@ type identityCreatedEvent struct {
 }
 
 func (self identityCreatedEvent) process(rdm *RouterDataModel) {
-	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).WithField("identityId", self.identity.Id).Info("handling identity created event")
+	pfxlog.Logger().
+		WithField("subs", rdm.subscriptions.Count()).
+		WithField("identityId", self.identity.Id).
+		Debug("handling identity created event")
 
 	if sub, found := rdm.subscriptions.Get(self.identity.Id); found {
 		state := sub.initialize(rdm, self.identity)

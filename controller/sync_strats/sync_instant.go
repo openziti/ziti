@@ -612,11 +612,13 @@ func (strategy *InstantStrategy) ReceiveClientHello(routerId string, msg *channe
 		WithField("os", rtx.Router.VersionInfo.OS).
 		WithField("arch", rtx.Router.VersionInfo.Arch)
 
+	var routerDataModelIndex uint64
 	if supported, ok := msg.Headers.GetBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel)); ok && supported {
 		rtx.SupportsRouterModel = true
 
 		if index, ok := msg.Headers.GetUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex)); ok {
 			rtx.RouterModelIndex = &index
+			routerDataModelIndex = index
 		}
 	}
 
@@ -641,7 +643,13 @@ func (strategy *InstantStrategy) ReceiveClientHello(routerId string, msg *channe
 	rtx.SetVersionInfo(*rtx.Router.VersionInfo)
 
 	serverVersion := build.GetBuildInfo().Version()
-	logger.Infof("edge router sent hello with version [%s] to controller with version [%s]", respHello.Version, serverVersion)
+
+	currentIndex, _ := strategy.CurrentIndex()
+	logger.WithField("routerIndex", routerDataModelIndex).
+		WithField("dataModelIndex", currentIndex).
+		WithField("routerVersion", respHello.Version).
+		WithField("serverVersion", serverVersion).
+		Info("edge router sent hello")
 	strategy.queueClientHello(rtx)
 }
 
@@ -721,6 +729,8 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 			rtx.RouterModelIndex = nil
 			events, ok := strategy.RouterDataModel.ReplayFrom(*replayFrom)
 
+			logger.WithError(err).Infof("replaying %d router data model events to router", len(events))
+
 			if ok {
 				var err error
 				for _, curEvent := range events {
@@ -762,12 +772,12 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 							Error("could not send data state event for peers")
 					}
 				}
-			}
 
-			// no error sync is done, if err try full state
-			if err == nil {
-				rtx.SetSyncStatus(env.RouterSyncDone)
-				return
+				// no error sync is done, if err try full state
+				if err == nil {
+					rtx.SetSyncStatus(env.RouterSyncDone)
+					return
+				}
 			}
 
 			pfxlog.Logger().WithError(err).Error("could not send events for router sync, attempting full state")
@@ -779,9 +789,8 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 		if dataState == nil {
 			return
 		}
-		dataState.EndIndex = strategy.indexProvider.CurrentIndex()
 
-		if err := strategy.sendDataState(rtx, dataState); err != nil {
+		if err = strategy.sendDataState(rtx, dataState); err != nil {
 			logger.WithError(err).Error("failure sending full data state")
 			rtx.SetSyncStatus(env.RouterSyncError)
 			return
@@ -1914,6 +1923,11 @@ func (strategy *InstantStrategy) inspect(val string) (bool, *string, error) {
 		}
 		result := string(js)
 		return true, &result, nil
+	}
+	if val == "router-data-model-index" {
+		idx, _ := strategy.RouterDataModel.CurrentIndex()
+		strVal := fmt.Sprintf("%d", idx)
+		return true, &strVal, nil
 	}
 	return false, nil, nil
 }

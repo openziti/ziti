@@ -266,7 +266,7 @@ var m = &model.Model{
 					task := createNewService(ctrls.getCtrl("ctrl1"))
 					tasks = append(tasks, task)
 				}
-				return parallel.ExecuteLabeled(tasks, 2)
+				return parallel.ExecuteLabeled(tasks, 2, nil)
 			}))
 
 			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
@@ -280,7 +280,7 @@ var m = &model.Model{
 					task := createNewIdentity(ctrls.getCtrl("ctrl1"))
 					tasks = append(tasks, task)
 				}
-				return parallel.ExecuteLabeled(tasks, 2)
+				return parallel.ExecuteLabeled(tasks, 2, nil)
 			}))
 
 			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
@@ -291,10 +291,10 @@ var m = &model.Model{
 
 				var tasks []parallel.LabeledTask
 				for range 100 {
-					task := createNewService(ctrls.getCtrl("ctrl1"))
+					task := createNewServicePolicy(ctrls.getCtrl("ctrl1"))
 					tasks = append(tasks, task)
 				}
-				return parallel.ExecuteLabeled(tasks, 2)
+				return parallel.ExecuteLabeled(tasks, 2, nil)
 			}))
 
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))

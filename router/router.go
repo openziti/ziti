@@ -73,29 +73,29 @@ import (
 )
 
 type Router struct {
-	config          *Config
-	ctrls           env.NetworkControllers
-	ctrlBindhandler channel.BindHandler
-	faulter         *forwarder.Faulter
-	forwarder       *forwarder.Forwarder
-	xrctrls         []env.Xrctrl
-	xlinkFactories  map[string]xlink.Factory
-	xlinkListeners  []xlink.Listener
-	xlinkDialers    []xlink.Dialer
-	xlinkRegistry   xlink.Registry
-	xgressListeners []xgress.Listener
-	linkDialerPool  goroutines.Pool
-	rateLimiterPool goroutines.Pool
-	ctrlRateLimiter rate.AdaptiveRateLimitTracker
-	metricsRegistry metrics.UsageRegistry
-	shutdownC       chan struct{}
-	shutdownDoneC   chan struct{}
-	isShutdown      atomic.Bool
-	metricsReporter metrics.Handler
-	versionProvider versions.VersionProvider
-	debugOperations map[byte]func(c *bufio.ReadWriter) error
-	stateManager    state.Manager
-
+	config              *Config
+	ctrls               env.NetworkControllers
+	ctrlBindhandler     channel.BindHandler
+	faulter             *forwarder.Faulter
+	forwarder           *forwarder.Forwarder
+	xrctrls             []env.Xrctrl
+	xlinkFactories      map[string]xlink.Factory
+	xlinkListeners      []xlink.Listener
+	xlinkDialers        []xlink.Dialer
+	xlinkRegistry       xlink.Registry
+	xgressListeners     []xgress.Listener
+	linkDialerPool      goroutines.Pool
+	rateLimiterPool     goroutines.Pool
+	ctrlRateLimiter     rate.AdaptiveRateLimitTracker
+	metricsRegistry     metrics.UsageRegistry
+	shutdownC           chan struct{}
+	shutdownDoneC       chan struct{}
+	isShutdown          atomic.Bool
+	metricsReporter     metrics.Handler
+	versionProvider     versions.VersionProvider
+	debugOperations     map[byte]func(c *bufio.ReadWriter) error
+	stateManager        state.Manager
+	rdmEnabled          *config.Value[bool]
 	xwebs               []xweb.Instance
 	xwebFactoryRegistry xweb.Registry
 	agentBindHandlers   []channel.BindHandler
@@ -167,29 +167,33 @@ func (self *Router) GetRouterDataModel() *common.RouterDataModel {
 	return self.stateManager.RouterDataModel()
 }
 
-func (self *Router) IsHaEnabled() bool {
-	return self.config.Ha.Enabled
+func (self *Router) IsRouterDataModelEnabled() bool {
+	return self.rdmEnabled.Load()
+}
+
+func (self *Router) GetRouterDataModelEnabledConfig() *config.Value[bool] {
+	return self.rdmEnabled
 }
 
 func (self *Router) GetConnectEventsConfig() *env.ConnectEventsConfig {
 	return &self.config.ConnectEvents
 }
 
-func Create(config *Config, versionProvider versions.VersionProvider) *Router {
+func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
-	if config.Metrics.IntervalAgeThreshold != 0 {
-		metrics.SetIntervalAgeThreshold(config.Metrics.IntervalAgeThreshold)
-		logrus.Infof("set interval age threshold to '%v'", config.Metrics.IntervalAgeThreshold)
+	if cfg.Metrics.IntervalAgeThreshold != 0 {
+		metrics.SetIntervalAgeThreshold(cfg.Metrics.IntervalAgeThreshold)
+		logrus.Infof("set interval age threshold to '%v'", cfg.Metrics.IntervalAgeThreshold)
 	}
-	env.IntervalSize = config.Metrics.ReportInterval
-	metricsRegistry := metrics.NewUsageRegistry(config.Id.Token, map[string]string{}, closeNotify)
+	env.IntervalSize = cfg.Metrics.ReportInterval
+	metricsRegistry := metrics.NewUsageRegistry(cfg.Id.Token, map[string]string{}, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
 
 	linkDialerPoolConfig := goroutines.PoolConfig{
-		QueueSize:   uint32(config.Forwarder.LinkDial.QueueLength),
+		QueueSize:   uint32(cfg.Forwarder.LinkDial.QueueLength),
 		MinWorkers:  0,
-		MaxWorkers:  uint32(config.Forwarder.LinkDial.WorkerCount),
+		MaxWorkers:  uint32(cfg.Forwarder.LinkDial.WorkerCount),
 		IdleTime:    30 * time.Second,
 		CloseNotify: closeNotify,
 		PanicHandler: func(err interface{}) {
@@ -205,7 +209,7 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	}
 
 	router := &Router{
-		config:              config,
+		config:              cfg,
 		metricsRegistry:     metricsRegistry,
 		shutdownC:           closeNotify,
 		shutdownDoneC:       make(chan struct{}),
@@ -213,15 +217,16 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
 		linkDialerPool:      linkDialerPool,
-		ctrlRateLimiter:     command.NewAdaptiveRateLimitTracker(config.Ctrl.RateLimit, metricsRegistry, closeNotify),
+		ctrlRateLimiter:     command.NewAdaptiveRateLimitTracker(cfg.Ctrl.RateLimit, metricsRegistry, closeNotify),
+		rdmEnabled:          config.NewConfigValue[bool](),
 	}
 
 	router.stateManager = state.NewManager(router)
 
-	router.ctrls = env.NewNetworkControllers(config.Ctrl.DefaultRequestTimeout, router.connectToController, &config.Ctrl.Heartbeats)
+	router.ctrls = env.NewNetworkControllers(cfg.Ctrl.DefaultRequestTimeout, router.connectToController, &cfg.Ctrl.Heartbeats)
 	router.xlinkRegistry = link.NewLinkRegistry(router)
-	router.faulter = forwarder.NewFaulter(router.ctrls, config.Forwarder.FaultTxInterval, closeNotify)
-	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, config.Forwarder, closeNotify)
+	router.faulter = forwarder.NewFaulter(router.ctrls, cfg.Forwarder.FaultTxInterval, closeNotify)
+	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, cfg.Forwarder, closeNotify)
 	router.forwarder.StartScanner(router.ctrls)
 
 	xgress.InitPayloadIngester(closeNotify)
