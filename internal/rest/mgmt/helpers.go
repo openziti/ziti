@@ -191,7 +191,7 @@ func PostureCheckFromFilter(client *rest_management_api_client.ZitiEdgeManagemen
 		log.Errorf("Could not obtain an ID for the posture check with filter %s: %v", filter, err)
 		return nil
 	}
-	if resp == nil || resp.Payload == nil || resp.Payload.Data == nil || len(resp.Payload.Data()) == 0 {
+	if resp == nil || resp.Payload == nil || len(resp.Payload.Data()) == 0 {
 		return nil
 	}
 	return &resp.Payload.Data()[0]
