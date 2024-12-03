@@ -26,12 +26,15 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/fablab/kernel/lib/parallel"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/ziti/util"
 	"github.com/openziti/ziti/zitirest"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"google.golang.org/protobuf/proto"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 )
@@ -117,7 +120,24 @@ func sowChaos(run model.Run) error {
 	}
 
 	chaos.Randomize(tasks)
-	return parallel.ExecuteLabeled(tasks, 2)
+
+	retryPolicy := func(task parallel.LabeledTask, attempt int, err error) parallel.ErrorAction {
+		if strings.HasPrefix(task.Type(), "delete.") {
+			var apiErr util.ApiErrorPayload
+			if errors.As(err, &apiErr) {
+				if apiErr.GetPayload().Error.Code == errorz.NotFoundCode {
+					return parallel.ErrActionIgnore
+				}
+			}
+		}
+		if attempt > 3 {
+			return parallel.ErrActionReport
+		}
+		pfxlog.Logger().WithField("attempt", attempt).WithError(err).WithField("task", task.Label()).Error("action failed, retrying")
+		time.Sleep(time.Second)
+		return parallel.ErrActionRetry
+	}
+	return parallel.ExecuteLabeled(tasks, 2, retryPolicy)
 }
 
 func getRestartTasks(run model.Run, _ *CtrlClients) ([]parallel.LabeledTask, error) {
@@ -135,7 +155,7 @@ func getRestartTasks(run model.Run, _ *CtrlClients) ([]parallel.LabeledTask, err
 			return nil, err
 		}
 		for _, controller := range controllers {
-			result = append(result, parallel.TaskWithLabel(fmt.Sprintf("restart controller %s", controller.Id), func() error {
+			result = append(result, parallel.TaskWithLabel("restart.ctrl", fmt.Sprintf("restart controller %s", controller.Id), func() error {
 				return chaos.RestartSelected(run, 1, controller)
 			}))
 		}
@@ -148,7 +168,7 @@ func getRestartTasks(run model.Run, _ *CtrlClients) ([]parallel.LabeledTask, err
 			return nil, err
 		}
 		for _, router := range routers {
-			result = append(result, parallel.TaskWithLabel(fmt.Sprintf("restart router %s", router.Id), func() error {
+			result = append(result, parallel.TaskWithLabel("restart.router", fmt.Sprintf("restart router %s", router.Id), func() error {
 				return chaos.RestartSelected(run, 1, router)
 			}))
 		}
@@ -204,13 +224,13 @@ func getServiceChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTa
 	var result []parallel.LabeledTask
 
 	for i := 0; i < 5; i++ {
-		result = append(result, parallel.TaskWithLabel(fmt.Sprintf("delete service %s", *svcs[i].ID), func() error {
+		result = append(result, parallel.TaskWithLabel("delete.service", fmt.Sprintf("delete service %s", *svcs[i].ID), func() error {
 			return models.DeleteService(ctrls.getRandomCtrl(), *svcs[i].ID, 15*time.Second)
 		}))
 	}
 
 	for i := 5; i < 10; i++ {
-		result = append(result, parallel.TaskWithLabel(fmt.Sprintf("modify service %s", *svcs[i].ID), func() error {
+		result = append(result, parallel.TaskWithLabel("modify.service", fmt.Sprintf("modify service %s", *svcs[i].ID), func() error {
 			svc := svcs[i]
 			svc.RoleAttributes = getRoleAttributesAsAttrPtr(3)
 			svc.Name = newId()
@@ -226,7 +246,7 @@ func getServiceChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTa
 }
 
 func getIdentityChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
-	entities, err := models.ListIdentities(ctrls.getRandomCtrl(), "limit none", 15*time.Second)
+	entities, err := models.ListIdentities(ctrls.getRandomCtrl(), "not isAdmin limit none", 15*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -235,13 +255,13 @@ func getIdentityChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledT
 	var result []parallel.LabeledTask
 
 	for i := 0; i < 5; i++ {
-		result = append(result, parallel.TaskWithLabel(fmt.Sprintf("delete identity %s", *entities[i].ID), func() error {
+		result = append(result, parallel.TaskWithLabel("delete.identity", fmt.Sprintf("delete identity %s", *entities[i].ID), func() error {
 			return models.DeleteIdentity(ctrls.getRandomCtrl(), *entities[i].ID, 15*time.Second)
 		}))
 	}
 
 	for i := 5; i < 10; i++ {
-		result = append(result, parallel.TaskWithLabel(fmt.Sprintf("modify identity %s", *entities[i].ID), func() error {
+		result = append(result, parallel.TaskWithLabel("modify.identity", fmt.Sprintf("modify identity %s", *entities[i].ID), func() error {
 			entity := entities[i]
 			entity.RoleAttributes = getRoleAttributesAsAttrPtr(3)
 			entity.Name = newId()
@@ -266,13 +286,13 @@ func getServicePolicyChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.Lab
 	var result []parallel.LabeledTask
 
 	for i := 0; i < 5; i++ {
-		result = append(result, parallel.TaskWithLabel(fmt.Sprintf("delete service policy %s", *entities[i].ID), func() error {
+		result = append(result, parallel.TaskWithLabel("delete.service-policy", fmt.Sprintf("delete service policy %s", *entities[i].ID), func() error {
 			return models.DeleteServicePolicy(ctrls.getRandomCtrl(), *entities[i].ID, 15*time.Second)
 		}))
 	}
 
 	for i := 5; i < 10; i++ {
-		result = append(result, parallel.TaskWithLabel(fmt.Sprintf("modify service policy %s", *entities[i].ID), func() error {
+		result = append(result, parallel.TaskWithLabel("modify.service-policy", fmt.Sprintf("modify service policy %s", *entities[i].ID), func() error {
 			entity := entities[i]
 			entity.IdentityRoles = getRoles(3)
 			entity.ServiceRoles = getRoles(3)
@@ -290,7 +310,7 @@ func getServicePolicyChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.Lab
 }
 
 func createNewService(ctrl *zitirest.Clients) parallel.LabeledTask {
-	return parallel.TaskWithLabel("create new service", func() error {
+	return parallel.TaskWithLabel("create.service", "create new service", func() error {
 		svc := &rest_model.ServiceCreate{
 			Configs:            nil,
 			EncryptionRequired: newBoolPtr(),
@@ -305,7 +325,7 @@ func createNewService(ctrl *zitirest.Clients) parallel.LabeledTask {
 func createNewIdentity(ctrl *zitirest.Clients) parallel.LabeledTask {
 	isAdmin := false
 	identityType := rest_model.IdentityTypeDefault
-	return parallel.TaskWithLabel("create new identity", func() error {
+	return parallel.TaskWithLabel("create.identity", "create new identity", func() error {
 		svc := &rest_model.IdentityCreate{
 			DefaultHostingCost:        nil,
 			DefaultHostingPrecedence:  "",
@@ -322,7 +342,7 @@ func createNewIdentity(ctrl *zitirest.Clients) parallel.LabeledTask {
 }
 
 func createNewServicePolicy(ctrl *zitirest.Clients) parallel.LabeledTask {
-	return parallel.TaskWithLabel("create new service policy", func() error {
+	return parallel.TaskWithLabel("create.service-policy", "create new service policy", func() error {
 		anyOf := rest_model.SemanticAnyOf
 		policyType := rest_model.DialBindDial
 		if rand.Int()%2 == 0 {

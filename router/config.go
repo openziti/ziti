@@ -179,9 +179,6 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
-	Ha struct {
-		Enabled bool
-	}
 	ConnectEvents env.ConnectEventsConfig
 	Proxy         *transport.ProxyConfiguration
 	Plugins       []string
@@ -199,10 +196,6 @@ func (config *Config) Configure(sub config.Subconfig) error {
 
 func (config *Config) SetFlags(flags map[string]*pflag.Flag) {
 	SetConfigMapFlags(config.src, flags)
-}
-
-func (config *Config) IsHaEnabled() bool {
-	return config.Ha.Enabled
 }
 
 const (
@@ -813,16 +806,6 @@ func LoadConfig(path string) (*Config, error) {
 					tls.SetSharedListenerHandshakeTimeout(val)
 				} else {
 					return nil, errors.Wrapf(err, "failed to parse tls.handshakeTimeout value '%v", value)
-				}
-			}
-		}
-	}
-
-	if value, found := cfgmap[CtrlHaMapKey]; found {
-		if haMap, ok := value.(map[interface{}]interface{}); ok {
-			if enabledValue, found := haMap["enabled"]; found {
-				if enabled, ok := enabledValue.(bool); ok {
-					cfg.Ha.Enabled = enabled
 				}
 			}
 		}

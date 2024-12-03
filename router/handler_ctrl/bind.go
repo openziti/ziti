@@ -117,5 +117,11 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		}
 	}
 
+	if ok, _ := ctrl.GetVersion().HasMinimumVersion("1.3.0"); ok {
+		self.env.GetRouterDataModelEnabledConfig().Store(true)
+	} else {
+		self.env.GetRouterDataModelEnabledConfig().Store(false)
+	}
+
 	return nil
 }

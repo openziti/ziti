@@ -6,10 +6,8 @@ v: 3
 
 enableDebugOps: true
 
-{{if .Component.GetFlag "ha"}}
 ha:
   enabled: true
-{{end}}
 
 identity:
   cert:                 /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-client.cert
