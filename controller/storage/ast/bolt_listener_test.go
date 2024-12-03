@@ -207,18 +207,19 @@ func (cursor *testSymbolsSetCursor) CurrentValue() interface{} {
 
 var ts = &testSymbols{
 	values: map[string]interface{}{
-		"a":        int64(1),
-		"b":        1.0,
-		"c":        2.5,
-		"flag":     true,
-		"n":        nil,
-		"d":        func() time.Time { val, _ := time.Parse(time.RFC3339, "2032-09-03T15:36:50Z"); return val }(),
-		"s":        "hello",
-		"sn":       "123456789",
-		"nci":      int64(123456789),
-		"ncf":      123456789.123,
-		"link.ids": []int64{123, 456, 789},
-		"lunk.ids": []int64{},
+		"a":               int64(1),
+		"b":               1.0,
+		"c":               2.5,
+		"flag":            true,
+		"n":               nil,
+		"d":               func() time.Time { val, _ := time.Parse(time.RFC3339, "2032-09-03T15:36:50Z"); return val }(),
+		"s":               "hello",
+		"sn":              "123456789",
+		"nci":             int64(123456789),
+		"ncf":             123456789.123,
+		"link.ids":        []int64{123, 456, 789},
+		"lunk.ids":        []int64{},
+		"tags.service-id": "1234",
 	},
 	types: map[string]NodeType{
 		"n":        NodeTypeString,
@@ -628,6 +629,18 @@ func TestSetFunctions(t *testing.T) {
 	}
 }
 
+func TestTags(t *testing.T) {
+	tests := []testDef{
+		{"check using dashes identifier segments after first separator", `tags.service-id = "1234"`, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runFilterTest(t, tt)
+		})
+	}
+}
+
 type sortPageTestDef struct {
 	name       string
 	expr       string
@@ -754,6 +767,18 @@ func TestIncompleteInput(t *testing.T) {
 
 	req := require.New(t)
 	parseErrors := zitiql.Parse("updatedAt > datetime(2023-10-02T21:08:58.577Z)sort by updatedAt desc skip 500 limit 500", listener)
+	req.True(len(parseErrors) > 0)
+	fmt.Println(parseErrors[0])
+}
+
+func TestBackslashInInput(t *testing.T) {
+	listener := NewListener()
+	listener.PrintRuleLocation = false
+	listener.PrintChildren = false
+	listener.PrintStackOps = false
+
+	req := require.New(t)
+	parseErrors := zitiql.Parse(`tags.service\id = "1234"`, listener)
 	req.True(len(parseErrors) > 0)
 	fmt.Println(parseErrors[0])
 }
