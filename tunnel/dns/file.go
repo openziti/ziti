@@ -60,6 +60,10 @@ func (h *hostFile) Lookup(_ net.IP) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
+func (h *hostFile) LookupIP(_ string) (net.IP, bool) {
+	return nil, false
+}
+
 func (h *hostFile) AddHostname(hostname string, ip net.IP) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
