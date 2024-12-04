@@ -19,6 +19,7 @@ package upload
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/judedaryl/go-arrayutils"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_client"
@@ -54,6 +55,9 @@ type Upload struct {
 	authPolicyCache    *cache.Cache
 	extJwtSignersCache *cache.Cache
 	identityCache      *cache.Cache
+
+	Out io.Writer
+	Err io.Writer
 }
 
 var log = pfxlog.Logger()
@@ -61,7 +65,11 @@ var log = pfxlog.Logger()
 func NewUploadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	u := &Upload{}
-	uploadCmd := &cobra.Command{
+	u.Out = out
+	u.Err = errOut
+	u.loginOpts = edge.LoginOptions{}
+
+	cmd := &cobra.Command{
 		Use:   "import filename [entity]",
 		Short: "Import ziti entities",
 		Long: "Import all or selected ziti entities from the specified file.\n" +
@@ -108,20 +116,21 @@ func NewUploadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	v.AutomaticEnv()
 
-	uploadCmd.Flags().BoolVar(&u.ofJson, "json", true, "Input parsed as JSON")
-	uploadCmd.Flags().BoolVar(&u.ofYaml, "yaml", false, "Input parsed as YAML")
-	uploadCmd.MarkFlagsMutuallyExclusive("json", "yaml")
+	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().BoolVar(&u.ofJson, "json", true, "Input parsed as JSON")
+	cmd.Flags().BoolVar(&u.ofYaml, "yaml", false, "Input parsed as YAML")
+	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
 
-	uploadCmd.PersistentFlags().BoolVarP(&u.verbose, "verbose", "v", false, "Enable verbose logging")
-
-	edge.AddLoginFlags(uploadCmd, &u.loginOpts)
+	edge.AddLoginFlags(cmd, &u.loginOpts)
 	u.loginOpts.Out = out
 	u.loginOpts.Err = errOut
 
-	return uploadCmd
+	return cmd
 }
 
 func (u *Upload) Init() {
+	u.verbose = u.loginOpts.Verbose
+
 	logLvl := logrus.InfoLevel
 	if u.verbose {
 		logLvl = logrus.DebugLevel
@@ -179,6 +188,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 		}
 	}
 	result["certificateAuthorities"] = cas
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d CertificateAuthorities\r\n", len(cas))
 
 	externalJwtSigners := map[string]string{}
 	if all ||
@@ -200,6 +210,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 				Debug("ExtJWTSigners created")
 		}
 	}
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d ExtJWTSigners\r\n", len(externalJwtSigners))
 	result["externalJwtSigners"] = externalJwtSigners
 
 	authPolicies := map[string]string{}
@@ -221,6 +232,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 				Debug("AuthPolicies created")
 		}
 	}
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d AuthPolicies\r\n", len(authPolicies))
 	result["authPolicies"] = authPolicies
 
 	identities := map[string]string{}
@@ -241,6 +253,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 				Debug("Identities created")
 		}
 	}
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d Identities\r\n", len(identities))
 	result["identities"] = identities
 
 	configTypes := map[string]string{}
@@ -263,6 +276,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 				Debug("ConfigTypes created")
 		}
 	}
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d ConfigTypes\r\n", len(configTypes))
 	result["configTypes"] = configTypes
 
 	configs := map[string]string{}
@@ -284,6 +298,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 				Debug("Configs created")
 		}
 	}
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d Configs\r\n", len(configs))
 	result["configs"] = configs
 
 	services := map[string]string{}
@@ -304,6 +319,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 				Debug("Services created")
 		}
 	}
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d Services\r\n", len(services))
 	result["services"] = services
 
 	postureChecks := map[string]string{}
@@ -324,6 +340,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 				Debug("PostureChecks created")
 		}
 	}
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d PostureChecks\r\n", len(postureChecks))
 	result["postureChecks"] = postureChecks
 
 	routers := map[string]string{}
@@ -345,6 +362,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 				Debug("EdgeRouters created")
 		}
 	}
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d EdgeRouters\r\n", len(routers))
 	result["edgeRouters"] = routers
 
 	serviceEdgeRouterPolicies := map[string]string{}
@@ -365,6 +383,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 				Debug("ServiceEdgeRouterPolicies created")
 		}
 	}
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d ServiceEdgeRouterPolicies\r\n", len(serviceEdgeRouterPolicies))
 	result["serviceEdgeRouterPolicies"] = serviceEdgeRouterPolicies
 
 	servicePolicies := map[string]string{}
@@ -385,6 +404,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 				Debug("ServicePolicies created")
 		}
 	}
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d ServicePolicies\r\n", len(servicePolicies))
 	result["servicePolicies"] = servicePolicies
 
 	routerPolicies := map[string]string{}
@@ -405,6 +425,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 				Debug("EdgeRouterPolicies created")
 		}
 	}
+	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d EdgeRouterPolicies\r\n", len(routerPolicies))
 	result["edgeRouterPolicies"] = routerPolicies
 
 	if u.verbose {

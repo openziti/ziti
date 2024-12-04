@@ -18,6 +18,7 @@ package upload
 
 import (
 	"errors"
+	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -39,10 +40,12 @@ func (u *Upload) ProcessEdgeRouters(input map[string][]interface{}) (map[string]
 				"edgeRouterId": *existing.ID,
 			}).
 				Info("Found existing EdgeRouter, skipping create")
+			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping EdgeRouter %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
+		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating EdgeRouterPolicy %s\r", *create.Name)
 		if u.verbose {
 			log.WithField("name", *create.Name).Debug("Creating EdgeRouter")
 		}

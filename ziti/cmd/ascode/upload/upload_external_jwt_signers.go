@@ -17,6 +17,7 @@
 package upload
 
 import (
+	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -39,10 +40,12 @@ func (u *Upload) ProcessExternalJwtSigners(input map[string][]interface{}) (map[
 				}).
 					Info("Found existing ExtJWTSigner, skipping create")
 			}
+			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping ExtJWTSigner %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
+		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating ExtJWTSigner %s\r", *create.Name)
 		if u.verbose {
 			log.WithField("name", *create.Name).Debug("Creating ExtJWTSigner")
 		}

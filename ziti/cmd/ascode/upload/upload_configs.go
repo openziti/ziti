@@ -19,6 +19,7 @@ package upload
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/antchfx/jsonquery"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
@@ -45,6 +46,7 @@ func (u *Upload) ProcessConfigs(input map[string][]interface{}) (map[string]stri
 					}).
 					Info("Found existing Config, skipping create")
 			}
+			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping Config %s\r", *create.Name)
 			continue
 		}
 
@@ -67,6 +69,7 @@ func (u *Upload) ProcessConfigs(input map[string][]interface{}) (map[string]stri
 		create.ConfigTypeID = configType.(*rest_model.ConfigTypeDetail).ID
 
 		// do the actual create since it doesn't exist
+		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating Config %s\r", *create.Name)
 		if u.verbose {
 			log.WithField("name", *create.Name).Debug("Creating Config")
 		}

@@ -94,11 +94,11 @@ func (output Output) Write(data any) error {
 					"bytes":    bytes,
 					"filename": output.filename,
 				}).
-				Debug("Wrote json data")
+				Debug("Wrote data")
 		} else {
 			log.
 				WithField("bytes", bytes).
-				Debug("Wrote json data")
+				Debug("Wrote data")
 		}
 	}
 

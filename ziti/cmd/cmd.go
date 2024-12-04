@@ -19,6 +19,7 @@ package cmd
 import (
 	goflag "flag"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ascode/upload"
 	"io"
 	"os"
 	"path/filepath"
@@ -147,6 +148,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	opsCommands.AddCommand(verify.NewVerifyNetwork(out, err))
 	opsCommands.AddCommand(verify.NewVerifyTraffic(out, err))
 	opsCommands.AddCommand(download.NewDownloadCmd(out, err))
+	opsCommands.AddCommand(upload.NewUploadCmd(out, err))
 
 	groups := templates.CommandGroups{
 		{

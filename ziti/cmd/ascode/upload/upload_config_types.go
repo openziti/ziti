@@ -17,6 +17,7 @@
 package upload
 
 import (
+	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -39,10 +40,12 @@ func (u *Upload) ProcessConfigTypes(input map[string][]interface{}) (map[string]
 				}).
 					Info("Found existing ConfigType, skipping create")
 			}
+			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping ConfigType %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
+		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating ConfigType %s\r", *create.Name)
 		if u.verbose {
 			log.WithField("name", *create.Name).
 				Debug("Creating ConfigType")

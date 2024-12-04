@@ -19,6 +19,7 @@ package upload
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/antchfx/jsonquery"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
@@ -44,6 +45,7 @@ func (u *Upload) ProcessIdentities(input map[string][]interface{}) (map[string]s
 				}).
 					Info("Found existing Identity, skipping create")
 			}
+			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping Identity %s\r", *create.Name)
 			continue
 		}
 
@@ -55,8 +57,7 @@ func (u *Upload) ProcessIdentities(input map[string][]interface{}) (map[string]s
 		jsonData, _ := json.Marshal(data)
 		doc, jsonQueryErr := jsonquery.Parse(strings.NewReader(string(jsonData)))
 		if jsonQueryErr != nil {
-			log.WithError(jsonQueryErr).
-				Error("Unable to list Identities")
+			log.WithError(jsonQueryErr).Error("Unable to list Identities")
 			return nil, jsonQueryErr
 		}
 		policyName := jsonquery.FindOne(doc, "/authPolicy").Value().(string)[1:]
@@ -73,6 +74,7 @@ func (u *Upload) ProcessIdentities(input map[string][]interface{}) (map[string]s
 		}
 
 		// do the actual create since it doesn't exist
+		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating Identity %s\r", *create.Name)
 		created, createErr := u.client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
@@ -106,13 +108,13 @@ func (u *Upload) lookupIdentities(roles []string) ([]string, error) {
 	for _, role := range roles {
 		if role[0:1] == "@" {
 			value := role[1:]
-			identity, _ := common.GetItemFromCache(u.identityCache, value, func(name string) (interface{}, error) {
+			ident, _ := common.GetItemFromCache(u.identityCache, value, func(name string) (interface{}, error) {
 				return mgmt.IdentityFromFilter(u.client, mgmt.NameFilter(name)), nil
 			})
-			if identity == nil {
+			if ident == nil {
 				return nil, errors.New("error reading Identity: " + value)
 			}
-			identityId := identity.(*rest_model.IdentityDetail).ID
+			identityId := ident.(*rest_model.IdentityDetail).ID
 			identityRoles = append(identityRoles, "@"+*identityId)
 		} else {
 			identityRoles = append(identityRoles, role)

@@ -55,6 +55,9 @@ type Download struct {
 	configTypeCache  *cache.Cache
 	authPolicyCache  *cache.Cache
 	externalJwtCache *cache.Cache
+
+	Out io.Writer
+	Err io.Writer
 }
 
 var output Output
@@ -73,7 +76,11 @@ func NewDownload(loginOpts edge.LoginOptions, client *rest_management_api_client
 func NewDownloadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	d := &Download{}
-	downloadCmd := &cobra.Command{
+	d.Out = out
+	d.Err = errOut
+	d.loginOpts = edge.LoginOptions{}
+
+	cmd := &cobra.Command{
 		Use:   "export [entity]",
 		Short: "Export Ziti entities",
 		Long: "Export all or selected Ziti entities.\n" +
@@ -108,22 +115,23 @@ func NewDownloadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	v.AutomaticEnv()
 
-	downloadCmd.Flags().BoolVar(&d.ofJson, "json", true, "Output in JSON")
-	downloadCmd.Flags().BoolVar(&d.ofYaml, "yaml", false, "Output in YAML")
-	downloadCmd.MarkFlagsMutuallyExclusive("json", "yaml")
+	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().BoolVar(&d.ofJson, "json", true, "Output in JSON")
+	cmd.Flags().BoolVar(&d.ofYaml, "yaml", false, "Output in YAML")
+	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
 
-	downloadCmd.PersistentFlags().StringVarP(&d.filename, "output-file", "o", "", "Write output to local file")
+	cmd.Flags().StringVarP(&d.filename, "output-file", "o", "", "Write output to local file")
 
-	downloadCmd.PersistentFlags().BoolVarP(&d.verbose, "verbose", "v", false, "Enable verbose logging")
-
-	edge.AddLoginFlags(downloadCmd, &d.loginOpts)
+	edge.AddLoginFlags(cmd, &d.loginOpts)
 	d.loginOpts.Out = out
 	d.loginOpts.Err = errOut
 
-	return downloadCmd
+	return cmd
 }
 
 func (d *Download) Init(out io.Writer) error {
+	d.verbose = d.loginOpts.Verbose
+
 	logLvl := logrus.InfoLevel
 	if d.verbose {
 		logLvl = logrus.DebugLevel
@@ -346,7 +354,7 @@ func (d *Download) getEntities(entityName string, count ClientCount, list Client
 	more := true
 	for more {
 		resp, err := list(&offset, &limit)
-		_, _ = fmt.Fprintf(os.Stderr, "\u001B[2KReading %d/%d %s\r", offset, totalCount, entityName)
+		_, _ = fmt.Fprintf(d.Err, "\u001B[2KReading %d/%d %s\r", offset, totalCount, entityName)
 		if err != nil {
 			return nil, errors.Join(errors.New("error reading "+entityName), err)
 		}
@@ -365,7 +373,7 @@ func (d *Download) getEntities(entityName string, count ClientCount, list Client
 		offset += limit
 	}
 
-	_, _ = fmt.Fprintf(os.Stderr, "\u001B[2KRead %d %s\r\n", len(result), entityName)
+	_, _ = fmt.Fprintf(d.Err, "\u001B[2KRead %d %s\r\n", len(result), entityName)
 
 	return result, nil
 

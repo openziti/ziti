@@ -18,6 +18,7 @@ package upload
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/antchfx/jsonquery"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_model"
@@ -47,6 +48,7 @@ func (u *Upload) ProcessAuthPolicies(input map[string][]interface{}) (map[string
 					"authPolicyId": *existing.ID,
 				}).Info("Found existing Auth Policy, skipping create")
 			}
+			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping AuthPolicy %s\r", *create.Name)
 			continue
 		}
 
@@ -75,6 +77,7 @@ func (u *Upload) ProcessAuthPolicies(input map[string][]interface{}) (map[string
 		create.Primary.ExtJWT.AllowedSigners = allowedSignerIds
 
 		// do the actual create since it doesn't exist
+		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating AuthPolicy %s\r", *create.Name)
 		if u.verbose {
 			log.WithField("name", *create.Name).
 				Debug("Creating AuthPolicy")
