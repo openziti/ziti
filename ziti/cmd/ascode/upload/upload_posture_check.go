@@ -74,12 +74,12 @@ func (u *Upload) ProcessPostureChecks(input map[string][]interface{}) (map[strin
 				}).
 					Info("Found existing PostureCheck, skipping create")
 			}
-			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping PostureCheck %s\r", create.Name())
+			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping PostureCheck %s\r", *create.Name())
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating PostureCheck %s\r", create.Name())
+		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating PostureCheck %s\r", *create.Name())
 		if u.verbose {
 			log.WithFields(map[string]interface{}{
 				"name":   *create.Name(),
