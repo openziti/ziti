@@ -530,9 +530,7 @@ func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string)
 func (ctx *TestContext) CreateEnrollAndStartHAEdgeRouter(roleAttributes ...string) *router.Router {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
-	return ctx.startEdgeRouter(func(r *router.Config) {
-		r.Ha.Enabled = true
-	})
+	return ctx.startEdgeRouter(nil)
 }
 
 func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*router.Config)) *router.Router {

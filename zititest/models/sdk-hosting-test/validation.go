@@ -71,7 +71,7 @@ func sowChaos(run model.Run) error {
 	toRestart = append(toRestart, routers...)
 	toRestart = append(toRestart, hosts...)
 	fmt.Printf("restarting %d controllers,  %d routers and %d hosts\n", len(controllers), len(routers), len(hosts))
-	return chaos.RestartSelected(run, toRestart, 100)
+	return chaos.RestartSelected(run, 100, toRestart...)
 }
 
 func validateTerminators(run model.Run) error {

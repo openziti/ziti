@@ -17,11 +17,14 @@
 package common
 
 import (
+	"bytes"
 	"compress/gzip"
 	"crypto"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
@@ -47,36 +50,36 @@ type DataStateIdentity = edge_ctrl_pb.DataState_Identity
 type Identity struct {
 	*DataStateIdentity
 	ServicePolicies map[string]struct{} `json:"servicePolicies"`
-	IdentityIndex   uint64
-	ServiceSetIndex uint64
+	identityIndex   uint64
+	serviceSetIndex uint64
 }
 
 type DataStateConfigType = edge_ctrl_pb.DataState_ConfigType
 
 type ConfigType struct {
 	*DataStateConfigType
-	Index uint64
+	index uint64
 }
 
 type DataStateConfig = edge_ctrl_pb.DataState_Config
 
 type Config struct {
 	*DataStateConfig
-	Index uint64
+	index uint64
 }
 
 type DataStateService = edge_ctrl_pb.DataState_Service
 
 type Service struct {
 	*DataStateService
-	Index uint64
+	index uint64
 }
 
 type DataStatePostureCheck = edge_ctrl_pb.DataState_PostureCheck
 
 type PostureCheck struct {
 	*DataStatePostureCheck
-	Index uint64
+	index uint64
 }
 
 type DataStateServicePolicy = edge_ctrl_pb.DataState_ServicePolicy
@@ -116,6 +119,21 @@ type RouterDataModel struct {
 	stopped       atomic.Bool
 }
 
+// NewBareRouterDataModel creates a new RouterDataModel that is expected to have no buffers, listeners or subscriptions
+func NewBareRouterDataModel() *RouterDataModel {
+	return &RouterDataModel{
+		EventCache:      NewForgetfulEventCache(),
+		ConfigTypes:     cmap.New[*ConfigType](),
+		Configs:         cmap.New[*Config](),
+		Identities:      cmap.New[*Identity](),
+		Services:        cmap.New[*Service](),
+		ServicePolicies: cmap.New[*ServicePolicy](),
+		PostureChecks:   cmap.New[*PostureCheck](),
+		PublicKeys:      cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
+		Revocations:     cmap.New[*edge_ctrl_pb.DataState_Revocation](),
+	}
+}
+
 // NewSenderRouterDataModel creates a new RouterDataModel that will store events in a circular buffer of
 // logSize. listenerBufferSize affects the buffer size of channels returned to listeners of the data model.
 func NewSenderRouterDataModel(logSize uint64, listenerBufferSize uint) *RouterDataModel {
@@ -146,6 +164,30 @@ func NewReceiverRouterDataModel(listenerBufferSize uint, closeNotify <-chan stru
 		PostureChecks:      cmap.New[*PostureCheck](),
 		PublicKeys:         cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
 		Revocations:        cmap.New[*edge_ctrl_pb.DataState_Revocation](),
+		listenerBufferSize: listenerBufferSize,
+		subscriptions:      cmap.New[*IdentitySubscription](),
+		events:             make(chan subscriberEvent),
+		closeNotify:        closeNotify,
+		stopNotify:         make(chan struct{}),
+	}
+	go result.processSubscriberEvents()
+	return result
+}
+
+// NewReceiverRouterDataModel creates a new RouterDataModel that does not store events. listenerBufferSize affects the
+// buffer size of channels returned to listeners of the data model.
+func NewReceiverRouterDataModelFromExisting(existing *RouterDataModel, listenerBufferSize uint, closeNotify <-chan struct{}) *RouterDataModel {
+	result := &RouterDataModel{
+		EventCache:         NewForgetfulEventCache(),
+		ConfigTypes:        existing.ConfigTypes,
+		Configs:            existing.Configs,
+		Identities:         existing.Identities,
+		Services:           existing.Services,
+		ServicePolicies:    existing.ServicePolicies,
+		PostureChecks:      existing.PostureChecks,
+		PublicKeys:         existing.PublicKeys,
+		CachedPublicKeys:   existing.CachedPublicKeys,
+		Revocations:        existing.Revocations,
 		listenerBufferSize: listenerBufferSize,
 		subscriptions:      cmap.New[*IdentitySubscription](),
 		events:             make(chan subscriberEvent),
@@ -313,14 +355,14 @@ func (rdm *RouterDataModel) HandleIdentityEvent(index uint64, event *edge_ctrl_p
 				identity = &Identity{
 					DataStateIdentity: model.Identity,
 					ServicePolicies:   map[string]struct{}{},
-					IdentityIndex:     index,
+					identityIndex:     index,
 				}
 			} else {
 				identity = &Identity{
 					DataStateIdentity: model.Identity,
 					ServicePolicies:   valueInMap.ServicePolicies,
-					IdentityIndex:     index,
-					ServiceSetIndex:   valueInMap.ServiceSetIndex,
+					identityIndex:     index,
+					serviceSetIndex:   valueInMap.serviceSetIndex,
 				}
 			}
 			return identity
@@ -340,10 +382,13 @@ func (rdm *RouterDataModel) HandleIdentityEvent(index uint64, event *edge_ctrl_p
 func (rdm *RouterDataModel) HandleServiceEvent(index uint64, event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Service) {
 	if event.Action == edge_ctrl_pb.DataState_Delete {
 		rdm.Services.Remove(model.Service.Id)
+		rdm.ServicePolicies.IterCb(func(key string, v *ServicePolicy) {
+			delete(v.Services, model.Service.Id)
+		})
 	} else {
 		rdm.Services.Set(model.Service.Id, &Service{
 			DataStateService: model.Service,
-			Index:            index,
+			index:            index,
 		})
 	}
 }
@@ -357,7 +402,7 @@ func (rdm *RouterDataModel) HandleConfigTypeEvent(index uint64, event *edge_ctrl
 	} else {
 		rdm.ConfigTypes.Set(model.ConfigType.Id, &ConfigType{
 			DataStateConfigType: model.ConfigType,
-			Index:               index,
+			index:               index,
 		})
 	}
 }
@@ -371,12 +416,12 @@ func (rdm *RouterDataModel) HandleConfigEvent(index uint64, event *edge_ctrl_pb.
 	} else {
 		rdm.Configs.Set(model.Config.Id, &Config{
 			DataStateConfig: model.Config,
-			Index:           index,
+			index:           index,
 		})
 	}
 }
 
-func (rdm *RouterDataModel) applyUpdateServicePolicyEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
+func (rdm *RouterDataModel) applyUpdateServicePolicyEvent(model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
 	servicePolicy := model.ServicePolicy
 	rdm.ServicePolicies.Upsert(servicePolicy.Id, nil, func(exist bool, valueInMap *ServicePolicy, newValue *ServicePolicy) *ServicePolicy {
 		if valueInMap == nil {
@@ -395,7 +440,7 @@ func (rdm *RouterDataModel) applyUpdateServicePolicyEvent(event *edge_ctrl_pb.Da
 	})
 }
 
-func (rdm *RouterDataModel) applyDeleteServicePolicyEvent(_ *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
+func (rdm *RouterDataModel) applyDeleteServicePolicyEvent(model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
 	rdm.ServicePolicies.Remove(model.ServicePolicy.Id)
 }
 
@@ -406,11 +451,11 @@ func (rdm *RouterDataModel) HandleServicePolicyEvent(event *edge_ctrl_pb.DataSta
 	pfxlog.Logger().WithField("policyId", model.ServicePolicy.Id).WithField("action", event.Action).Debug("applying service policy event")
 	switch event.Action {
 	case edge_ctrl_pb.DataState_Create:
-		rdm.applyUpdateServicePolicyEvent(event, model)
+		rdm.applyUpdateServicePolicyEvent(model)
 	case edge_ctrl_pb.DataState_Update:
-		rdm.applyUpdateServicePolicyEvent(event, model)
+		rdm.applyUpdateServicePolicyEvent(model)
 	case edge_ctrl_pb.DataState_Delete:
-		rdm.applyDeleteServicePolicyEvent(event, model)
+		rdm.applyDeleteServicePolicyEvent(model)
 	}
 }
 
@@ -423,7 +468,7 @@ func (rdm *RouterDataModel) HandlePostureCheckEvent(index uint64, event *edge_ct
 	} else {
 		rdm.PostureChecks.Set(model.PostureCheck.Id, &PostureCheck{
 			DataStatePostureCheck: model.PostureCheck,
-			Index:                 index,
+			index:                 index,
 		})
 	}
 }
@@ -468,7 +513,7 @@ func (rdm *RouterDataModel) HandleServicePolicyChange(index uint64, model *edge_
 					} else {
 						delete(valueInMap.ServicePolicies, model.PolicyId)
 					}
-					valueInMap.ServiceSetIndex = index
+					valueInMap.serviceSetIndex = index
 				}
 				return valueInMap
 			})
@@ -516,6 +561,14 @@ func (rdm *RouterDataModel) GetPublicKeys() map[string]crypto.PublicKey {
 	return rdm.CachedPublicKeys.Load()
 }
 
+func (rdm *RouterDataModel) getPublicKeysAsCmap() cmap.ConcurrentMap[string, crypto.PublicKey] {
+	m := cmap.New[crypto.PublicKey]()
+	for k, v := range rdm.CachedPublicKeys.Load() {
+		m.Set(k, v)
+	}
+	return m
+}
+
 func (rdm *RouterDataModel) recalculateCachedPublicKeys() {
 	publicKeys := map[string]crypto.PublicKey{}
 	rdm.PublicKeys.IterCb(func(kid string, pubKey *edge_ctrl_pb.DataState_PublicKey) {
@@ -544,7 +597,9 @@ func (rdm *RouterDataModel) recalculateCachedPublicKeys() {
 func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
 	var events []*edge_ctrl_pb.DataState_Event
 
-	rdm.EventCache.WhileLocked(func(_ uint64, _ bool) {
+	var index uint64
+	rdm.EventCache.WhileLocked(func(currentIndex uint64, _ bool) {
+		index = currentIndex
 		rdm.ConfigTypes.IterCb(func(key string, v *ConfigType) {
 			newEvent := &edge_ctrl_pb.DataState_Event{
 				Action: edge_ctrl_pb.DataState_Create,
@@ -668,7 +723,8 @@ func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
 	})
 
 	return &edge_ctrl_pb.DataState{
-		Events: events,
+		Events:   events,
+		EndIndex: index,
 	}
 }
 
@@ -923,4 +979,146 @@ func (rdm *RouterDataModel) loadIdentityConfig(configId string, log *logrus.Entr
 		Config:     config,
 		ConfigType: configType,
 	}
+}
+
+func (rdm *RouterDataModel) GetEntityCounts() map[string]uint32 {
+	result := map[string]uint32{
+		"configType":         uint32(rdm.ConfigTypes.Count()),
+		"configs":            uint32(rdm.Configs.Count()),
+		"identities":         uint32(rdm.Identities.Count()),
+		"services":           uint32(rdm.Services.Count()),
+		"service-policies":   uint32(rdm.ServicePolicies.Count()),
+		"posture-checks":     uint32(rdm.PostureChecks.Count()),
+		"public-keys":        uint32(rdm.PublicKeys.Count()),
+		"revocations":        uint32(rdm.Revocations.Count()),
+		"cached-public-keys": uint32(rdm.getPublicKeysAsCmap().Count()),
+	}
+	return result
+}
+
+type DiffType string
+
+const (
+	DiffTypeAdd = "added"
+	DiffTypeMod = "modified"
+	DiffTypeSub = "removed"
+)
+
+type DiffSink func(entityType string, id string, diffType DiffType, detail string)
+
+func (rdm *RouterDataModel) Diff(o *RouterDataModel, sink DiffSink) {
+	if o == nil {
+		sink("router-data-model", "root", DiffTypeSub, "router data model not present")
+		return
+	}
+
+	diffType("configType", rdm.ConfigTypes, o.ConfigTypes, sink, ConfigType{}, DataStateConfigType{})
+	diffType("config", rdm.Configs, o.Configs, sink, Config{}, DataStateConfig{})
+	diffType("identity", rdm.Identities, o.Identities, sink, Identity{}, DataStateIdentity{})
+	diffType("service", rdm.Services, o.Services, sink, Service{}, DataStateService{})
+	diffType("service-policy", rdm.ServicePolicies, o.ServicePolicies, sink, ServicePolicy{}, DataStateServicePolicy{})
+	diffType("posture-check", rdm.PostureChecks, o.PostureChecks, sink, PostureCheck{}, DataStatePostureCheck{})
+	diffType("public-keys", rdm.PublicKeys, o.PublicKeys, sink, edge_ctrl_pb.DataState_PublicKey{})
+	diffType("revocations", rdm.Revocations, o.Revocations, sink, edge_ctrl_pb.DataState_Revocation{})
+	diffMaps("cached-public-keys", rdm.getPublicKeysAsCmap(), o.getPublicKeysAsCmap(), sink, func(a, b crypto.PublicKey) []string {
+		if a == nil || b == nil {
+			return []string{fmt.Sprintf("cached public key is nil: orig: %v, dest: %v", a, a)}
+		}
+		return nil
+	})
+}
+
+type diffF[T any] func(a, b T) []string
+
+func diffMaps[T any](entityType string, m1, m2 cmap.ConcurrentMap[string, T], sink DiffSink, differ diffF[T]) {
+	hasMissing := false
+	m1.IterCb(func(key string, v T) {
+		v2, exists := m2.Get(key)
+		if !exists {
+			sink(entityType, key, DiffTypeSub, "entity missing")
+			hasMissing = true
+		} else {
+			for _, diff := range differ(v, v2) {
+				sink(entityType, key, DiffTypeMod, diff)
+			}
+		}
+	})
+
+	if m1.Count() != m2.Count() || hasMissing {
+		m2.IterCb(func(key string, v2 T) {
+			if _, exists := m1.Get(key); !exists {
+				sink(entityType, key, DiffTypeAdd, "entity unexpected")
+			}
+		})
+	}
+}
+
+func diffType[P any, T *P](entityType string, m1 cmap.ConcurrentMap[string, T], m2 cmap.ConcurrentMap[string, T], sink DiffSink, ignoreTypes ...any) {
+	diffReporter := &compareReporter{
+		f: func(key string, detail string) {
+			sink(entityType, key, DiffTypeMod, detail)
+		},
+	}
+
+	hasMissing := false
+	adapter := cmp.Reporter(diffReporter)
+	m1.IterCb(func(key string, v T) {
+		v2, exists := m2.Get(key)
+		if !exists {
+			sink(entityType, key, DiffTypeSub, "entity missing")
+			hasMissing = true
+		} else {
+			diffReporter.key = key
+			cmp.Diff(v, v2, cmpopts.IgnoreUnexported(ignoreTypes...), adapter)
+		}
+	})
+
+	if m1.Count() != m2.Count() || hasMissing {
+		m2.IterCb(func(key string, v2 T) {
+			if _, exists := m1.Get(key); !exists {
+				sink(entityType, key, DiffTypeAdd, "entity unexpected")
+			}
+		})
+	}
+}
+
+type compareReporter struct {
+	steps []cmp.PathStep
+	key   string
+	f     func(key string, detail string)
+}
+
+func (self *compareReporter) PushStep(step cmp.PathStep) {
+	self.steps = append(self.steps, step)
+}
+
+func (self *compareReporter) Report(result cmp.Result) {
+	if !result.Equal() {
+		var step cmp.PathStep
+		path := &bytes.Buffer{}
+		for _, v := range self.steps {
+			path.Write([]byte(v.String()))
+			step = v
+		}
+		if step != nil {
+			vx, vy := step.Values()
+			var x any
+			var y any
+
+			if vx.IsValid() {
+				x = vx.Interface()
+			}
+			if vy.IsValid() {
+				y = vy.Interface()
+			}
+			err := fmt.Sprintf("%s mismatch. orig: %v, copy: %v", path.String(), x, y)
+			self.f(self.key, err)
+		} else {
+			self.f(self.key, "programming error, empty path stack")
+		}
+	}
+}
+
+func (self *compareReporter) PopStep() {
+	self.steps = self.steps[:len(self.steps)-1]
 }

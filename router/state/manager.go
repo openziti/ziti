@@ -58,8 +58,9 @@ type RemoveListener func()
 type DisconnectCB func(token string)
 
 type Env interface {
-	IsHaEnabled() bool
+	IsRouterDataModelEnabled() bool
 	GetCloseNotify() <-chan struct{}
+	DefaultRequestTimeout() time.Duration
 }
 
 type Manager interface {
@@ -502,7 +503,7 @@ func NewApiSessionFromToken(jwtToken *jwt.Token, accessClaims *common.AccessClai
 }
 
 func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
-	if sm.env.IsHaEnabled() && strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
+	if strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
 		jwtToken, accessClaims, err := sm.ParseJwt(token)
 
 		if err == nil {
@@ -876,6 +877,7 @@ func (sm *ManagerImpl) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(NewApiSessionUpdatedHandler(sm))
 	binding.AddTypedReceiveHandler(NewDataStateHandler(sm))
 	binding.AddTypedReceiveHandler(NewDataStateEventHandler(sm))
+	binding.AddTypedReceiveHandler(NewValidateDataStateRequestHandler(sm, sm.env))
 	return nil
 }
 
