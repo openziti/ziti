@@ -13,10 +13,12 @@
 	See the License for the specific language governing permissions and
 	limitations under the License.
 */
+
 package verify
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/internal"
 	"io"
 	"net"
 	"os"
@@ -36,7 +38,7 @@ var log = pfxlog.Logger()
 type network struct {
 	controllerConfig string
 	routerConfig     string
-	verbose bool
+	verbose          bool
 }
 
 type protoHostPort struct {
@@ -63,7 +65,7 @@ func NewVerifyNetwork(_ io.Writer, _ io.Writer) *cobra.Command {
 			}
 
 			pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
-			configureLogFormat(logLvl)
+			internal.ConfigureLogFormat(logLvl)
 
 			anyFailure := false
 			if n.controllerConfig != "" {
