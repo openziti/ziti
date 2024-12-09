@@ -13,14 +13,15 @@
 	See the License for the specific language governing permissions and
 	limitations under the License.
 */
-package verify
+
+package internal
 
 import (
 	"github.com/sirupsen/logrus"
 	"runtime"
 )
 
-func configureLogFormat(level logrus.Level) {
+func ConfigureLogFormat(level logrus.Level) {
 	logrus.SetLevel(level)
 	logrus.SetFormatter(&logrus.TextFormatter{
 		ForceColors:               true,
