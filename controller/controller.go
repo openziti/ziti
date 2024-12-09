@@ -313,6 +313,10 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create single page application factory")
 	}
 
+	if err = c.xweb.GetRegistry().Add(webapis.NewControllerIsLeaderApiFactory(c.env)); err != nil {
+		logrus.WithError(err).Fatalf("failed to create controller-is-leader api factory")
+	}
+
 	if c.IsEdgeEnabled() {
 		managementApiFactory := webapis.NewManagementApiFactory(c.env)
 		clientApiFactory := webapis.NewClientApiFactory(c.env)
@@ -663,6 +667,8 @@ func getApiPath(binding string) string {
 		return "health-checks"
 	case "edge-oidc":
 		return "/oidc"
+	case "controller-isleader":
+		return "/sys/health"
 	}
 
 	return ""
