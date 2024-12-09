@@ -49,19 +49,19 @@ require (
 	github.com/miekg/dns v1.1.62
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/agent v1.0.20
-	github.com/openziti/channel/v3 v3.0.16
+	github.com/openziti/agent v1.0.21
+	github.com/openziti/channel/v3 v3.0.18
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.35
-	github.com/openziti/foundation/v2 v2.0.52
-	github.com/openziti/identity v1.0.90
+	github.com/openziti/foundation/v2 v2.0.54
+	github.com/openziti/identity v1.0.92
 	github.com/openziti/jwks v1.0.6
-	github.com/openziti/metrics v1.2.61
-	github.com/openziti/runzmd v1.0.55
+	github.com/openziti/metrics v1.2.63
+	github.com/openziti/runzmd v1.0.57
 	github.com/openziti/sdk-golang v0.23.44
 	github.com/openziti/secretstream v0.1.26
-	github.com/openziti/storage v0.3.8
-	github.com/openziti/transport/v2 v2.0.153
+	github.com/openziti/storage v0.3.12
+	github.com/openziti/transport/v2 v2.0.155
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.3
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -76,7 +76,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zitadel/oidc/v2 v2.12.2
