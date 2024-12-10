@@ -25,7 +25,10 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
+	"github.com/openziti/foundation/v2/goroutines"
+	metrics2 "github.com/openziti/metrics"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/oidc_auth"
@@ -37,6 +40,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"math/rand"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -61,6 +65,7 @@ type Env interface {
 	IsRouterDataModelEnabled() bool
 	GetCloseNotify() <-chan struct{}
 	DefaultRequestTimeout() time.Duration
+	GetMetricsRegistry() metrics2.UsageRegistry
 }
 
 type Manager interface {
@@ -86,6 +91,7 @@ type Manager interface {
 
 	RouterDataModel() *common.RouterDataModel
 	SetRouterDataModel(model *common.RouterDataModel)
+	GetRouterDataModelPool() goroutines.Pool
 
 	StartHeartbeat(env env.RouterEnv, seconds int, closeNotify <-chan struct{})
 	ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration)
@@ -113,6 +119,26 @@ type Manager interface {
 var _ Manager = (*ManagerImpl)(nil)
 
 func NewManager(env Env) Manager {
+	routerDataModelPoolConfig := goroutines.PoolConfig{
+		QueueSize:   uint32(1000),
+		MinWorkers:  1,
+		MaxWorkers:  uint32(1),
+		IdleTime:    30 * time.Second,
+		CloseNotify: env.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().
+				WithField(logrus.ErrorKey, err).
+				WithField("backtrace", string(debug.Stack())).Error("panic during router data model event")
+		},
+	}
+
+	metrics.ConfigureGoroutinesPoolMetrics(&routerDataModelPoolConfig, env.GetMetricsRegistry(), "pool.rdm.handler")
+
+	routerDataModelPool, err := goroutines.NewPool(routerDataModelPoolConfig)
+	if err != nil {
+		panic(errors.Wrap(err, "error creating rdm goroutine pool"))
+	}
+
 	return &ManagerImpl{
 		EventEmmiter:            events.New(),
 		apiSessionsByToken:      cmap.New[*ApiSession](),
@@ -122,6 +148,7 @@ func NewManager(env Env) Manager {
 		certCache:               cmap.New[*x509.Certificate](),
 		activeChannels:          cmap.New[*ApiSession](),
 		env:                     env,
+		routerDataModelPool:     routerDataModelPool,
 	}
 }
 
@@ -145,8 +172,13 @@ type ManagerImpl struct {
 	currentSync        string
 	syncLock           sync.Mutex
 
-	certCache       cmap.ConcurrentMap[string, *x509.Certificate]
-	routerDataModel atomic.Pointer[common.RouterDataModel]
+	certCache           cmap.ConcurrentMap[string, *x509.Certificate]
+	routerDataModel     atomic.Pointer[common.RouterDataModel]
+	routerDataModelPool goroutines.Pool
+}
+
+func (sm *ManagerImpl) GetRouterDataModelPool() goroutines.Pool {
+	return sm.routerDataModelPool
 }
 
 func (sm *ManagerImpl) UpdateChApiSession(ch channel.Channel, newApiSession *ApiSession) error {

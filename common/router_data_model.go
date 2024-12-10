@@ -272,15 +272,19 @@ func (rdm *RouterDataModel) sendEvent(event *edge_ctrl_pb.DataState_ChangeSet) {
 // ApplyChangeSet applies the given even to the router data model.
 func (rdm *RouterDataModel) ApplyChangeSet(change *edge_ctrl_pb.DataState_ChangeSet) {
 	changeAccepted := false
+	logger := pfxlog.Logger().
+		WithField("index", change.Index).
+		WithField("synthetic", change.IsSynthetic).
+		WithField("entries", len(change.Changes))
+
 	err := rdm.EventCache.Store(change, func(index uint64, change *edge_ctrl_pb.DataState_ChangeSet) {
 		syncSubscribers := false
 		for idx, event := range change.Changes {
-			pfxlog.Logger().
-				WithField("index", index).
+			logger.
 				WithField("entry", idx).
-				WithField("action", event.Action).
+				WithField("action", event.Action.String()).
 				WithField("type", fmt.Sprintf("%T", event.Model)).
-				Debug("handling change set entry")
+				Info("handling change set entry")
 			if rdm.Handle(index, event) {
 				syncSubscribers = true
 			}
@@ -292,8 +296,12 @@ func (rdm *RouterDataModel) ApplyChangeSet(change *edge_ctrl_pb.DataState_Change
 	})
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).WithField("index", change.Index).
-			Error("could not store identity event")
+		if len(change.Changes) > 0 {
+			logger = logger.WithField("action", change.Changes[0].Action.String()).
+				WithField("type", fmt.Sprintf("%T", change.Changes[0].Model))
+		}
+
+		logger.WithError(err).Error("could not apply change set")
 		return
 	}
 

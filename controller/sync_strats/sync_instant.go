@@ -971,7 +971,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 
 func (strategy *InstantStrategy) BuildAll(rdm *common.RouterDataModel) error {
 	err := strategy.ae.GetDb().View(func(tx *bbolt.Tx) error {
-		index := strategy.indexProvider.CurrentIndex()
+		index := db.LoadCurrentRaftIndex(tx)
 		if err := strategy.BuildConfigTypes(index, tx, rdm); err != nil {
 			return err
 		}
@@ -1000,8 +1000,8 @@ func (strategy *InstantStrategy) BuildAll(rdm *common.RouterDataModel) error {
 			return err
 		}
 
-		rdm.SetCurrentIndex(strategy.indexProvider.CurrentIndex())
-
+		rdm.SetCurrentIndex(index)
+		pfxlog.Logger().WithField("index", index).Info("initialized router data model from db")
 		return nil
 	})
 
@@ -1063,7 +1063,12 @@ func (strategy *InstantStrategy) ValidateIdentities(tx *bbolt.Tx, rdm *common.Ro
 		result = diffVals("identity", t.Id, "default hosting precedence", byte(t.DefaultHostingPrecedence), byte(v.DefaultHostingPrecedence), result)
 		result = diffVals("identity", t.Id, "default hosting cost", uint32(t.DefaultHostingCost), v.DefaultHostingCost, result)
 		result = diffJson("identity", t.Id, "service configs", t.ServiceConfigs, serviceConfigs, result)
-		result = diffJson("identity", t.Id, "app data", t.AppData, v.AppDataJson, result)
+
+		if t.AppData == nil || len(t.AppData) == 0 {
+			result = diffJson("identity", t.Id, "app data", nil, v.AppDataJson, result)
+		} else {
+			result = diffJson("identity", t.Id, "app data", t.AppData, v.AppDataJson, result)
+		}
 		result = diffJson("identity", t.Id, "service hosting costs", t.ServiceHostingCosts, v.ServiceHostingCosts, result)
 		result = diffJson("identity", t.Id, "service hosting precedences", t.ServiceHostingPrecedences, v.ServiceHostingPrecedences, result)
 
@@ -1421,7 +1426,7 @@ func newIdentity(identityModel *db.Identity) *edge_ctrl_pb.DataState_Identity {
 	}
 
 	var appDataJson []byte
-	if identityModel.AppData != nil {
+	if identityModel.AppData != nil && len(identityModel.AppData) > 0 {
 		var err error
 		appDataJson, err = json.Marshal(identityModel.AppData)
 		if err != nil {

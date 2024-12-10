@@ -132,6 +132,7 @@ func (responder *ResponderImpl) RespondWithError(err error) {
 	var ok bool
 
 	if apiError, ok = err.(*errorz.ApiError); !ok {
+		pfxlog.Logger().WithField("uri", responder.rc.GetRequest().RequestURI).WithError(err).Error("unhandled error returned to REST API")
 		apiError = errorz.NewUnhandled(err)
 	}
 
