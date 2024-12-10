@@ -24,12 +24,12 @@ const (
 	RestApiRootPath       = "/edge"
 	ClientRestApiBase     = "/edge/client"
 	ManagementRestApiBase = "/edge/management"
-	ControllerIsLeader    = "/sys/health"
+	ControllerHealthCheck = "/controller/health"
 
-	LegacyClientRestApiBaseUrlV1   = RestApiRootPath + RestApiV1
-	ClientRestApiBaseUrlV1         = ClientRestApiBase + RestApiV1
-	ManagementRestApiBaseUrlV1     = ManagementRestApiBase + RestApiV1
-	ControllerIsLeaderApiBaseUrlV1 = ControllerIsLeader + RestApiV1
+	LegacyClientRestApiBaseUrlV1      = RestApiRootPath + RestApiV1
+	ClientRestApiBaseUrlV1            = ClientRestApiBase + RestApiV1
+	ManagementRestApiBaseUrlV1        = ManagementRestApiBase + RestApiV1
+	ControllerHealthCheckApiBaseUrlV1 = ControllerHealthCheck + RestApiV1
 
 	ClientRestApiBaseUrlLatest     = ClientRestApiBaseUrlV1
 	ManagementRestApiBaseUrlLatest = ManagementRestApiBaseUrlV1
@@ -37,11 +37,11 @@ const (
 	ClientRestApiSpecUrl     = ClientRestApiBaseUrlLatest + "/swagger.json"
 	ManagementRestApiSpecUrl = ManagementRestApiBaseUrlLatest + "/swagger.json"
 
-	LegacyClientApiBinding       = "edge"
-	ClientApiBinding             = "edge-client"
-	ManagementApiBinding         = "edge-management"
-	OidcApiBinding               = "edge-oidc"
-	ControllerIsLeaderApiBinding = "controller-isleader"
+	LegacyClientApiBinding          = "edge"
+	ClientApiBinding                = "edge-client"
+	ManagementApiBinding            = "edge-management"
+	OidcApiBinding                  = "edge-oidc"
+	ControllerHealthCheckApiBinding = "controller-health"
 )
 
 // AllApiBindingVersions is a map of: API Binding -> Api Version -> API Path
@@ -53,7 +53,7 @@ var AllApiBindingVersions = map[string]map[string]string{
 	ManagementApiBinding: {
 		VersionV1: ManagementRestApiBaseUrlV1,
 	},
-	ControllerIsLeaderApiBinding: {
-		VersionV1: ControllerIsLeaderApiBaseUrlV1,
+	ControllerHealthCheckApiBinding: {
+		VersionV1: ControllerHealthCheckApiBaseUrlV1,
 	},
 }
