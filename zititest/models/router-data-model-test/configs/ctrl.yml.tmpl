@@ -1,12 +1,7 @@
 v: 3
 
-{{if .Component.GetFlag "ha"}}
 raft:
-  minClusterSize: 3
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
-{{else}}
-db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/ctrl.db
-{{end}}
 
 identity:
   cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem
@@ -46,12 +41,12 @@ events:
   jsonLogger:
     subscriptions:
       - type: entityChange
-      - type: edge.apiSessions
-      - type: edge.entityCounts
-        interval: 15s
-      - type: edge.sessions
-      - type: fabric.routers
-      - type: fabric.terminators
+#      - type: edge.apiSessions
+#      - type: edge.entityCounts
+#        interval: 15s
+#      - type: edge.sessions
+#      - type: fabric.routers
+#      - type: fabric.terminators
 #      - type: metrics
 #        sourceFilter: .*
 #        metricFilter: .*egress.*m1_rate*

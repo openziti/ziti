@@ -66,10 +66,10 @@ func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 }
 
 var m = &model.Model{
-	Id: "sdk-hosting-test",
+	Id: "router-data-model-test",
 	Scope: model.Scope{
 		Defaults: model.Variables{
-			"environment": "sdk-hosting-test",
+			"environment": "router-data-model-test",
 			"credentials": model.Variables{
 				"aws": model.Variables{
 					"managed_key": true,
@@ -116,15 +116,12 @@ var m = &model.Model{
 			})
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
-			if val, _ := m.GetBoolVariable("ha"); !val {
-				for _, host := range m.SelectHosts("component.ha") {
-					delete(host.Region.Hosts, host.Id)
-				}
-			} else {
-				for _, component := range m.SelectComponents("*") {
-					if ztType, ok := component.Type.(*zitilab.ZitiTunnelType); ok {
-						ztType.HA = true
-					}
+			for _, host := range m.SelectHosts("component.ha") {
+				delete(host.Region.Hosts, host.Id)
+			}
+			for _, component := range m.SelectComponents("*") {
+				if ztType, ok := component.Type.(*zitilab.ZitiTunnelType); ok {
+					ztType.HA = true
 				}
 			}
 			return nil
@@ -224,22 +221,14 @@ var m = &model.Model{
 		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
 
-			isHA := len(m.SelectComponents(".ctrl")) > 1
-
 			workflow.AddAction(component.StopInParallel("*", 300))
 			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/* ctrl.db"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
-			if !isHA {
-				workflow.AddAction(component.Exec("#ctrl1", zitilab.ControllerActionInitStandalone))
-			}
+			workflow.AddAction(component.Start("#ctrl1"))
 
-			workflow.AddAction(component.Start(".ctrl"))
-
-			if isHA {
-				workflow.AddAction(semaphore.Sleep(2 * time.Second))
-				workflow.AddAction(edge.InitRaftController("#ctrl1"))
-			}
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(edge.InitRaftController("#ctrl1"))
 
 			workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
 			workflow.AddAction(edge.Login("#ctrl1"))

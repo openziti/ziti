@@ -19,15 +19,21 @@ func NewDataStateEventHandler(state Manager) channel.TypedReceiveHandler {
 }
 
 func (eventHandler *dataStateChangeSetHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	newEvent := &edge_ctrl_pb.DataState_ChangeSet{}
-	if err := proto.Unmarshal(msg.Body, newEvent); err != nil {
-		pfxlog.Logger().WithError(err).Errorf("could not marshal data state change set message")
-		return
-	}
+	err := eventHandler.state.GetRouterDataModelPool().Queue(func() {
+		newEvent := &edge_ctrl_pb.DataState_ChangeSet{}
+		if err := proto.Unmarshal(msg.Body, newEvent); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("could not marshal data state change set message")
+			return
+		}
 
-	model := eventHandler.state.RouterDataModel()
-	pfxlog.Logger().WithField("index", newEvent.Index).Info("received data state change set")
-	model.ApplyChangeSet(newEvent)
+		model := eventHandler.state.RouterDataModel()
+		pfxlog.Logger().WithField("index", newEvent.Index).Info("received data state change set")
+		model.ApplyChangeSet(newEvent)
+	})
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Errorf("could not queue processing data state change set message")
+	}
 }
 
 func (*dataStateChangeSetHandler) ContentType() int32 {

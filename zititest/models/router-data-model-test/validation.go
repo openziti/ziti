@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/go-openapi/runtime"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
@@ -33,6 +34,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"google.golang.org/protobuf/proto"
+	"io"
 	"math/rand"
 	"strings"
 	"sync"
@@ -122,19 +124,35 @@ func sowChaos(run model.Run) error {
 	chaos.Randomize(tasks)
 
 	retryPolicy := func(task parallel.LabeledTask, attempt int, err error) parallel.ErrorAction {
-		if strings.HasPrefix(task.Type(), "delete.") {
-			var apiErr util.ApiErrorPayload
-			if errors.As(err, &apiErr) {
+		var apiErr util.ApiErrorPayload
+		var msg string
+		if errors.As(err, &apiErr) {
+			if strings.HasPrefix(task.Type(), "delete.") {
 				if apiErr.GetPayload().Error.Code == errorz.NotFoundCode {
 					return parallel.ErrActionIgnore
 				}
 			}
+			msg = apiErr.GetPayload().Error.Message
 		}
+
+		log := pfxlog.Logger().WithField("attempt", attempt).WithError(err).WithField("task", task.Label())
+
+		var runtimeErr *runtime.APIError
+		if errors.As(err, &runtimeErr) {
+			if cp, ok := runtimeErr.Response.(runtime.ClientResponse); ok {
+				body, _ := io.ReadAll(cp.Body())
+				log.WithField("msg", cp.Message()).WithField("body", string(body)).Error("runtime error")
+			}
+		}
+
 		if attempt > 3 {
 			return parallel.ErrActionReport
 		}
-		pfxlog.Logger().WithField("attempt", attempt).WithError(err).WithField("task", task.Label()).Error("action failed, retrying")
-		time.Sleep(time.Second)
+		if msg != "" {
+			log = log.WithField("msg", msg)
+		}
+		log.Error("action failed, retrying")
+		time.Sleep(time.Duration(attempt*3) * time.Second)
 		return parallel.ErrActionRetry
 	}
 	return parallel.ExecuteLabeled(tasks, 2, retryPolicy)
