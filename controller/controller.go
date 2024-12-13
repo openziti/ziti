@@ -58,7 +58,6 @@ import (
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/ziti/controller/xt_sticky"
 	"github.com/openziti/ziti/controller/xt_weighted"
-	"github.com/openziti/ziti/controller/zac"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"math/big"
@@ -309,7 +308,7 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create metrics api factory")
 	}
 
-	if err = c.xweb.GetRegistry().Add(zac.NewZitiAdminConsoleFactory()); err != nil {
+	if err = c.xweb.GetRegistry().Add(webapis.NewZitiAdminConsoleFactory()); err != nil {
 		logrus.WithError(err).Fatalf("failed to create single page application factory")
 	}
 
