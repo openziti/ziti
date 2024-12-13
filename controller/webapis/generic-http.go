@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package spa_handler
+package webapis
 
 import (
 	"net/http"
@@ -23,28 +23,29 @@ import (
 	"strings"
 )
 
-type SinglePageAppHandler struct {
+type GenericHttpHandler struct {
 	HttpHandler http.Handler
 	BindingKey  string
+	ContextRoot string
 }
 
-func (spa *SinglePageAppHandler) Binding() string {
+func (spa *GenericHttpHandler) Binding() string {
 	return spa.BindingKey
 }
 
-func (spa *SinglePageAppHandler) Options() map[interface{}]interface{} {
+func (spa *GenericHttpHandler) Options() map[interface{}]interface{} {
 	return nil
 }
 
-func (spa *SinglePageAppHandler) RootPath() string {
+func (spa *GenericHttpHandler) RootPath() string {
 	return "/" + spa.BindingKey
 }
 
-func (spa *SinglePageAppHandler) IsHandler(r *http.Request) bool {
-	return strings.HasPrefix(r.URL.Path, spa.RootPath()) || strings.HasPrefix(r.URL.Path, "/assets")
+func (spa *GenericHttpHandler) IsHandler(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, spa.ContextRoot) || strings.HasPrefix(r.URL.Path, "/assets")
 }
 
-func (spa *SinglePageAppHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (spa *GenericHttpHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	spa.HttpHandler.ServeHTTP(writer, request)
 }
 
