@@ -34,6 +34,8 @@ type NetworkController interface {
 	GetVersion() *versions.VersionInfo
 	TimeSinceLastContact() time.Duration
 	IsConnected() bool
+	GetLastReportedDataModelIndex() uint64
+	updateDataModelIndex(index uint64)
 }
 
 type networkCtrl struct {
@@ -46,6 +48,7 @@ type networkCtrl struct {
 	unresponsive     atomic.Bool
 	versionInfo      *versions.VersionInfo
 	lastContact      atomic.Int64
+	currentIndex     atomic.Uint64
 }
 
 func (self *networkCtrl) TimeSinceLastContact() time.Duration {
@@ -68,6 +71,14 @@ func (self *networkCtrl) Address() string {
 	return self.address
 }
 
+func (self *networkCtrl) GetLastReportedDataModelIndex() uint64 {
+	return self.currentIndex.Load()
+}
+
+func (self *networkCtrl) updateDataModelIndex(index uint64) {
+	self.currentIndex.Store(index)
+}
+
 func (self *networkCtrl) Latency() time.Duration {
 	return time.Duration(self.latency.Load())
 }
@@ -77,7 +88,11 @@ func (self *networkCtrl) IsUnresponsive() bool {
 }
 
 func (self *networkCtrl) isMoreResponsive(other NetworkController) bool {
-	if self.IsUnresponsive() {
+	if self.IsConnected() && !other.IsConnected() {
+		return true
+	} else if other.IsConnected() && !self.IsConnected() {
+		return false
+	} else if self.IsUnresponsive() {
 		if !other.IsUnresponsive() {
 			return false
 		}

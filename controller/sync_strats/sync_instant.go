@@ -96,6 +96,7 @@ type InstantStrategy struct {
 
 	helloHandler  channel.TypedReceiveHandler
 	resyncHandler channel.TypedReceiveHandler
+	subHandler    channel.TypedReceiveHandler
 	ae            *env.AppEnv
 
 	routerConnectedQueue     chan *RouterSender
@@ -115,8 +116,9 @@ func (strategy *InstantStrategy) AddPublicKey(cert *tls.Certificate) {
 	publicKey := newPublicKey(cert.Certificate[0], edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation, edge_ctrl_pb.DataState_PublicKey_JWTValidation})
 	newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
 	newEvent := &edge_ctrl_pb.DataState_Event{
-		Action: edge_ctrl_pb.DataState_Create,
-		Model:  newModel,
+		Action:      edge_ctrl_pb.DataState_Create,
+		Model:       newModel,
+		IsSynthetic: true,
 	}
 
 	strategy.HandlePublicKeyEvent(newEvent, newModel)
@@ -274,7 +276,7 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 
 	strategy.helloHandler = handler_edge_ctrl.NewHelloHandler(ae, strategy.ReceiveClientHello)
 	strategy.resyncHandler = handler_edge_ctrl.NewResyncHandler(ae, strategy.ReceiveResync)
-
+	strategy.subHandler = handler_edge_ctrl.NewSubscribeToDataModelHandler(ae, strategy.receiveSubscribeRequest)
 	for i := int32(0); i < options.RouterConnectWorkerCount; i++ {
 		go strategy.startHandleRouterConnectWorker()
 	}
@@ -322,7 +324,7 @@ func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, r
 		return
 	}
 
-	rtx := newRouterSender(edgeRouter, router, strategy.RouterTxBufferSize)
+	rtx := newRouterSender(edgeRouter, router, strategy.RouterTxBufferSize, strategy.GetRouterDataModel())
 	rtx.SetSyncStatus(env.RouterSyncQueued)
 	rtx.SetIsOnline(true)
 
@@ -330,7 +332,9 @@ func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, r
 
 	strategy.rtxMap.Add(router.Id, rtx)
 
-	strategy.routerConnectedQueue <- rtx
+	go func() {
+		strategy.routerConnectedQueue <- rtx
+	}()
 }
 
 func (strategy *InstantStrategy) RouterDisconnected(router *model.Router) {
@@ -364,6 +368,10 @@ func (strategy *InstantStrategy) GetReceiveHandlers() []channel.TypedReceiveHand
 	if strategy.resyncHandler != nil {
 		result = append(result, strategy.resyncHandler)
 	}
+	if strategy.subHandler != nil {
+		result = append(result, strategy.subHandler)
+	}
+
 	return result
 }
 
@@ -552,9 +560,26 @@ func (strategy *InstantStrategy) ReceiveResync(routerId string, _ *edge_ctrl_pb.
 
 	rtx.logger().WithField("strategy", strategy.Type()).Info("received resync from router, queuing")
 
-	rtx.RouterModelIndex = nil
-
 	strategy.queueClientHello(rtx)
+}
+
+func (strategy *InstantStrategy) receiveSubscribeRequest(routerId string, request *edge_ctrl_pb.SubscribeToDataModelRequest) {
+	rtx := strategy.rtxMap.Get(routerId)
+
+	if rtx == nil {
+		routerName := "<unable to retrieve>"
+		if router, _ := strategy.ae.Managers.Router.Read(routerId); router != nil {
+			routerName = router.Name
+		}
+		pfxlog.Logger().
+			WithField("strategy", strategy.Type()).
+			WithField("routerId", routerId).
+			WithField("routerName", routerName).
+			Error("received subscribe from router that is currently not tracked by the strategy, dropping subscribe")
+		return
+	}
+
+	rtx.subscribe(request)
 }
 
 func (strategy *InstantStrategy) queueClientHello(rtx *RouterSender) {
@@ -617,7 +642,6 @@ func (strategy *InstantStrategy) ReceiveClientHello(routerId string, msg *channe
 		rtx.SupportsRouterModel = true
 
 		if index, ok := msg.Headers.GetUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex)); ok {
-			rtx.RouterModelIndex = &index
 			routerDataModelIndex = index
 		}
 	}
@@ -723,77 +747,33 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 	}
 
 	if rtx.SupportsRouterModel {
-		replayFrom := rtx.RouterModelIndex
+		var pks []*edge_ctrl_pb.DataState_PublicKey
+		strategy.RouterDataModel.PublicKeys.IterCb(func(_ string, v *edge_ctrl_pb.DataState_PublicKey) {
+			pks = append(pks, v)
+		})
 
-		if replayFrom != nil {
-			rtx.RouterModelIndex = nil
-			events, ok := strategy.RouterDataModel.ReplayFrom(*replayFrom)
-
-			logger.WithError(err).Infof("replaying %d router data model events to router", len(events))
-
-			if ok {
-				var err error
-				for _, curEvent := range events {
-					err = strategy.sendDataStateChangeSet(rtx, curEvent)
-					if err != nil {
-						pfxlog.Logger().WithError(err).
-							WithField("eventIndex", curEvent.Index).
-							WithField("evenType", reflect.TypeOf(curEvent).String()).
-							WithField("eventIsSynthetic", curEvent.IsSynthetic).
-							Error("could not send data state event")
-					}
-				}
-
-				var pks []*edge_ctrl_pb.DataState_PublicKey
-				strategy.RouterDataModel.PublicKeys.IterCb(func(_ string, v *edge_ctrl_pb.DataState_PublicKey) {
-					pks = append(pks, v)
-				})
-
-				for _, pk := range pks {
-					peerEvent := &edge_ctrl_pb.DataState_Event{
-						IsSynthetic: true,
-						Action:      edge_ctrl_pb.DataState_Create,
-						Model: &edge_ctrl_pb.DataState_Event_PublicKey{
-							PublicKey: newPublicKey(pk.Data, pk.Format, pk.Usages),
-						},
-					}
-
-					changeSet := &edge_ctrl_pb.DataState_ChangeSet{
-						Changes: []*edge_ctrl_pb.DataState_Event{peerEvent},
-					}
-
-					err = strategy.sendDataStateChangeSet(rtx, changeSet)
-
-					if err != nil {
-						pfxlog.Logger().WithError(err).
-							WithField("evenType", reflect.TypeOf(peerEvent).String()).
-							WithField("eventAction", peerEvent.Action).
-							WithField("eventIsSynthetic", peerEvent.IsSynthetic).
-							Error("could not send data state event for peers")
-					}
-				}
-
-				// no error sync is done, if err try full state
-				if err == nil {
-					rtx.SetSyncStatus(env.RouterSyncDone)
-					return
-				}
+		for _, pk := range pks {
+			peerEvent := &edge_ctrl_pb.DataState_Event{
+				IsSynthetic: true,
+				Action:      edge_ctrl_pb.DataState_Create,
+				Model: &edge_ctrl_pb.DataState_Event_PublicKey{
+					PublicKey: newPublicKey(pk.Data, pk.Format, pk.Usages),
+				},
 			}
 
-			pfxlog.Logger().WithError(err).Error("could not send events for router sync, attempting full state")
-		}
+			changeSet := &edge_ctrl_pb.DataState_ChangeSet{
+				Changes: []*edge_ctrl_pb.DataState_Event{peerEvent},
+			}
 
-		//full sync
-		dataState := strategy.RouterDataModel.GetDataState()
+			err = strategy.sendDataStateChangeSet(rtx, changeSet)
 
-		if dataState == nil {
-			return
-		}
-
-		if err = strategy.sendDataState(rtx, dataState); err != nil {
-			logger.WithError(err).Error("failure sending full data state")
-			rtx.SetSyncStatus(env.RouterSyncError)
-			return
+			if err != nil {
+				pfxlog.Logger().WithError(err).
+					WithField("evenType", reflect.TypeOf(peerEvent).String()).
+					WithField("eventAction", peerEvent.Action).
+					WithField("eventIsSynthetic", peerEvent.IsSynthetic).
+					Error("could not send data state event for peers")
+			}
 		}
 	}
 
@@ -823,15 +803,15 @@ func (strategy *InstantStrategy) handleRouterModelEvents(eventChannel <-chan *ed
 		select {
 		case newEvent := <-eventChannel:
 			strategy.rtxMap.Range(func(rtx *RouterSender) {
-
-				if !rtx.SupportsRouterModel {
-					return
-				}
-
-				err := strategy.sendDataStateChangeSet(rtx, newEvent)
-
-				if err != nil {
-					pfxlog.Logger().WithError(err).WithField("routerId", rtx.Router.Id).Error("error sending data state to router")
+				// only send synthetic events, as others will be handled by rtx, if router is subscribed
+				if rtx.SupportsRouterModel {
+					if newEvent.IsSynthetic {
+						if err := strategy.sendDataStateChangeSet(rtx, newEvent); err != nil {
+							pfxlog.Logger().WithError(err).WithField("routerId", rtx.Router.Id).Error("error sending data state to router")
+						}
+					} else {
+						rtx.notifyOfModelChange()
+					}
 				}
 			})
 		case <-strategy.ae.HostController.GetCloseNotifyChannel():
@@ -1819,7 +1799,8 @@ func (strategy *InstantStrategy) RevocationDelete(index uint64, revocation *db.R
 
 func (strategy *InstantStrategy) handlePublicKey(index uint64, action edge_ctrl_pb.DataState_Action, publicKey *edge_ctrl_pb.DataState_PublicKey) {
 	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
-		Action: action,
+		Action:      action,
+		IsSynthetic: true,
 		Model: &edge_ctrl_pb.DataState_Event_PublicKey{
 			PublicKey: publicKey,
 		},

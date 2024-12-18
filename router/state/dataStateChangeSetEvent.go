@@ -19,6 +19,15 @@ func NewDataStateEventHandler(state Manager) channel.TypedReceiveHandler {
 }
 
 func (eventHandler *dataStateChangeSetHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	logger := pfxlog.Logger().WithField("ctrlId", ch.Id())
+	currentCtrlId := eventHandler.state.GetCurrentDataModelSource()
+
+	// ignore state from controllers we are not currently subscribed to
+	if currentCtrlId != ch.Id() {
+		logger.WithField("dataModelSrcId", currentCtrlId).Info("data state received from ctrl other than the one currently subscribed to")
+		return
+	}
+
 	err := eventHandler.state.GetRouterDataModelPool().Queue(func() {
 		newEvent := &edge_ctrl_pb.DataState_ChangeSet{}
 		if err := proto.Unmarshal(msg.Body, newEvent); err != nil {

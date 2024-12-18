@@ -54,6 +54,11 @@ type RouterPresenceHandler interface {
 	RouterDisconnected(r *Router)
 }
 
+type SyncRouterPresenceHandler interface {
+	InvokeRouterConnectedSynchronously() bool
+	RouterPresenceHandler
+}
+
 func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Router {
 	if name == "" {
 		name = id

@@ -50,14 +50,16 @@ func (self *ValidateDataStateRequestHandler) HandleReceive(msg *channel.Message,
 		CopyEntityCounts: current.GetEntityCounts(),
 	}
 
-	model.Diff(current, func(entityType string, id string, diffType common.DiffType, detail string) {
+	reportedF := func(entityType string, id string, diffType common.DiffType, detail string) {
 		response.Diffs = append(response.Diffs, &edge_ctrl_pb.RouterDataModelDiff{
 			EntityType: entityType,
 			EntityId:   id,
 			DiffType:   string(diffType),
 			Detail:     detail,
 		})
-	})
+	}
+
+	current.Validate(model, reportedF)
 
 	if len(response.Diffs) > 0 && request.Fix {
 		model = common.NewReceiverRouterDataModelFromExisting(model, RouterDataModelListerBufferSize, self.state.GetEnv().GetCloseNotify())
