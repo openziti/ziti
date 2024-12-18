@@ -221,9 +221,9 @@ func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 		rdmEnabled:          config.NewConfigValue[bool](),
 	}
 
+	router.ctrls = env.NewNetworkControllers(cfg.Ctrl.DefaultRequestTimeout, router.connectToController, &cfg.Ctrl.Heartbeats)
 	router.stateManager = state.NewManager(router)
 
-	router.ctrls = env.NewNetworkControllers(cfg.Ctrl.DefaultRequestTimeout, router.connectToController, &cfg.Ctrl.Heartbeats)
 	router.xlinkRegistry = link.NewLinkRegistry(router)
 	router.faulter = forwarder.NewFaulter(router.ctrls, cfg.Forwarder.FaultTxInterval, closeNotify)
 	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, cfg.Forwarder, closeNotify)
@@ -637,6 +637,7 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 			for _, x := range self.xrctrls {
 				go x.NotifyOfReconnect(ch)
 			}
+			self.ctrls.NotifyOfReconnect(ch.Id())
 		}
 	}
 

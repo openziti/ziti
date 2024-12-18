@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
@@ -207,6 +208,143 @@ func UpdateServicePolicy(clients *zitirest.Clients, id string, entity *rest_mode
 		Context: ctx,
 		ID:      id,
 		Policy:  entity,
+	}, nil)
+
+	return err
+}
+
+func ListConfigs(clients *zitirest.Clients, filter string, timeout time.Duration) ([]*rest_model.ConfigDetail, error) {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	result, err := clients.Edge.Config.ListConfigs(&config.ListConfigsParams{
+		Filter:  &filter,
+		Context: ctx,
+	}, nil)
+
+	if err != nil {
+		return nil, err
+	}
+	return result.Payload.Data, nil
+}
+
+func CreateConfig(clients *zitirest.Clients, entity *rest_model.ConfigCreate, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	_, err := clients.Edge.Config.CreateConfig(&config.CreateConfigParams{
+		Context: ctx,
+		Config:  entity,
+	}, nil)
+
+	return err
+}
+
+func DeleteConfig(clients *zitirest.Clients, id string, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	_, err := clients.Edge.Config.DeleteConfig(&config.DeleteConfigParams{
+		Context: ctx,
+		ID:      id,
+	}, nil)
+
+	return err
+}
+
+func UpdateConfigFromDetail(clients *zitirest.Clients, entity *rest_model.ConfigDetail, timeout time.Duration) error {
+	entityUpdate := &rest_model.ConfigUpdate{
+		Data: entity.Data,
+		Name: entity.Name,
+		Tags: entity.Tags,
+	}
+	return UpdateConfig(clients, *entity.ID, entityUpdate, timeout)
+}
+
+func UpdateConfig(clients *zitirest.Clients, id string, entity *rest_model.ConfigUpdate, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	_, err := clients.Edge.Config.UpdateConfig(&config.UpdateConfigParams{
+		Context: ctx,
+		ID:      id,
+		Config:  entity,
+	}, nil)
+
+	return err
+}
+
+func ListConfigTypes(clients *zitirest.Clients, filter string, timeout time.Duration) ([]*rest_model.ConfigTypeDetail, error) {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	result, err := clients.Edge.Config.ListConfigTypes(&config.ListConfigTypesParams{
+		Filter:  &filter,
+		Context: ctx,
+	}, nil)
+
+	if err != nil {
+		return nil, err
+	}
+	return result.Payload.Data, nil
+}
+
+func ListConfigsOfConfigTypes(clients *zitirest.Clients, id string, timeout time.Duration) ([]*rest_model.ConfigDetail, error) {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	result, err := clients.Edge.Config.ListConfigsForConfigType(&config.ListConfigsForConfigTypeParams{
+		ID:      id,
+		Context: ctx,
+	}, nil)
+
+	if err != nil {
+		return nil, err
+	}
+	return result.Payload.Data, nil
+}
+
+func CreateConfigType(clients *zitirest.Clients, entity *rest_model.ConfigTypeCreate, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	_, err := clients.Edge.Config.CreateConfigType(&config.CreateConfigTypeParams{
+		Context:    ctx,
+		ConfigType: entity,
+	}, nil)
+
+	return err
+}
+
+func DeleteConfigType(clients *zitirest.Clients, id string, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	_, err := clients.Edge.Config.DeleteConfigType(&config.DeleteConfigTypeParams{
+		Context: ctx,
+		ID:      id,
+	}, nil)
+
+	return err
+}
+
+func UpdateConfigTypeFromDetail(clients *zitirest.Clients, entity *rest_model.ConfigTypeDetail, timeout time.Duration) error {
+	entityUpdate := &rest_model.ConfigTypeUpdate{
+		Schema: entity.Schema,
+		Name:   entity.Name,
+		Tags:   entity.Tags,
+	}
+	return UpdateConfigType(clients, *entity.ID, entityUpdate, timeout)
+}
+
+func UpdateConfigType(clients *zitirest.Clients, id string, entity *rest_model.ConfigTypeUpdate, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	_, err := clients.Edge.Config.UpdateConfigType(&config.UpdateConfigTypeParams{
+		Context:    ctx,
+		ID:         id,
+		ConfigType: entity,
 	}, nil)
 
 	return err

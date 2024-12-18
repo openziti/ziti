@@ -67,6 +67,9 @@ enum ContentType {
   UpdateTokenType = 20502;
   ValidateDataStateRequestType = 20503;
   ValidateDataStateResponseType = 20504;
+
+  SubscribeToDataModelRequestType = 20505;
+  CurrentIndexMessageType = 20506;
 }
 
 enum SessionType {
@@ -592,4 +595,10 @@ message RouterDataModelValidateResponse {
   map<string, uint32> origEntityCounts = 1;
   map<string, uint32> copyEntityCounts = 2;
   repeated RouterDataModelDiff diffs = 3;
+}
+
+message SubscribeToDataModelRequest {
+  uint64 currentIndex = 1;
+  uint32 subscriptionDurationSeconds = 2;
+  bool renew = 3;
 }

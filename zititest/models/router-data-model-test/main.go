@@ -124,6 +124,9 @@ var m = &model.Model{
 					ztType.HA = true
 				}
 			}
+			for _, c := range m.SelectComponents(".router") {
+				c.Tags = append(c.Tags, "tunneler")
+			}
 			return nil
 		}),
 		model.NewScaleFactoryWithDefaultEntityFactory(&scaleStrategy{}),

@@ -284,6 +284,7 @@ func (rdm *RouterDataModel) ApplyChangeSet(change *edge_ctrl_pb.DataState_Change
 				WithField("entry", idx).
 				WithField("action", event.Action.String()).
 				WithField("type", fmt.Sprintf("%T", event.Model)).
+				WithField("summary", event.Summarize()).
 				Info("handling change set entry")
 			if rdm.Handle(index, event) {
 				syncSubscribers = true
@@ -857,13 +858,13 @@ func (rdm *RouterDataModel) SubscribeToIdentityChanges(identityId string, subscr
 
 	subscription := rdm.subscriptions.Upsert(identityId, nil, func(exist bool, valueInMap *IdentitySubscription, newValue *IdentitySubscription) *IdentitySubscription {
 		if exist {
-			valueInMap.Listeners.Append(subscriber)
+			valueInMap.listeners.Append(subscriber)
 			return valueInMap
 		}
 		result := &IdentitySubscription{
 			IdentityId: identityId,
 		}
-		result.Listeners.Append(subscriber)
+		result.listeners.Append(subscriber)
 		return result
 	})
 
@@ -1013,6 +1014,13 @@ const (
 )
 
 type DiffSink func(entityType string, id string, diffType DiffType, detail string)
+
+func (rdm *RouterDataModel) Validate(correct *RouterDataModel, sink DiffSink) {
+	correct.Diff(rdm, sink)
+	rdm.subscriptions.IterCb(func(key string, v *IdentitySubscription) {
+		v.Diff(correct, sink)
+	})
+}
 
 func (rdm *RouterDataModel) Diff(o *RouterDataModel, sink DiffSink) {
 	if o == nil {

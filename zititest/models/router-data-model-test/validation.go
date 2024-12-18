@@ -263,8 +263,8 @@ func getServiceChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTa
 	return result, nil
 }
 
-func getIdentityChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
-	entities, err := models.ListIdentities(ctrls.getRandomCtrl(), "not isAdmin limit none", 15*time.Second)
+func getConfigTypeChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
+	entities, err := models.ListConfigTypes(ctrls.getRandomCtrl(), "limit none", 15*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -273,18 +273,57 @@ func getIdentityChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledT
 	var result []parallel.LabeledTask
 
 	for i := 0; i < 5; i++ {
-		result = append(result, parallel.TaskWithLabel("delete.identity", fmt.Sprintf("delete identity %s", *entities[i].ID), func() error {
-			return models.DeleteIdentity(ctrls.getRandomCtrl(), *entities[i].ID, 15*time.Second)
+		result = append(result, parallel.TaskWithLabel("delete.config-type", fmt.Sprintf("delete config type %s", *entities[i].ID), func() error {
+			return models.DeleteConfigType(ctrls.getRandomCtrl(), *entities[i].ID, 15*time.Second)
 		}))
 	}
 
 	for i := 5; i < 10; i++ {
-		result = append(result, parallel.TaskWithLabel("modify.identity", fmt.Sprintf("modify identity %s", *entities[i].ID), func() error {
+		result = append(result, parallel.TaskWithLabel("modify.config-type", fmt.Sprintf("modify config type %s", *entities[i].ID), func() error {
 			entity := entities[i]
-			entity.RoleAttributes = getRoleAttributesAsAttrPtr(3)
 			entity.Name = newId()
+			return models.UpdateConfigTypeFromDetail(ctrls.getRandomCtrl(), entity, 15*time.Second)
+		}))
+	}
+
+	for i := 0; i < 5; i++ {
+		result = append(result, createNewService(ctrls.getRandomCtrl()))
+	}
+
+	return result, nil
+}
+
+func getIdentityChaosTasks(r model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
+	tunnelerCount := len(r.GetModel().SelectComponents("tunneler"))
+	entities, err := models.ListIdentities(ctrls.getRandomCtrl(), "not isAdmin limit none", 15*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	chaos.Randomize(entities)
+
+	var result []parallel.LabeledTask
+
+	var i int
+	for len(result) < 5+(len(entities)-tunnelerCount-100) {
+		entityId := *entities[i].ID
+		if entities[i].Type.Name != "Router" {
+			result = append(result, parallel.TaskWithLabel("delete.identity", fmt.Sprintf("delete identity %s", entityId), func() error {
+				return models.DeleteIdentity(ctrls.getRandomCtrl(), entityId, 15*time.Second)
+			}))
+		}
+		i++
+	}
+
+	for len(result) < 10 {
+		entity := entities[i]
+		result = append(result, parallel.TaskWithLabel("modify.identity", fmt.Sprintf("modify identity %s", *entity.ID), func() error {
+			entity.RoleAttributes = getRoleAttributesAsAttrPtr(3)
+			if entity.Type.Name != "Router" {
+				entity.Name = newId()
+			}
 			return models.UpdateIdentityFromDetail(ctrls.getRandomCtrl(), entity, 15*time.Second)
 		}))
+		i++
 	}
 
 	for i := 0; i < 5; i++ {

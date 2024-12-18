@@ -113,28 +113,29 @@ func (broker *Broker) GetReceiveHandlers() []channel.TypedReceiveHandler {
 	return broker.routerSyncStrategy.GetReceiveHandlers()
 }
 
+func (broker *Broker) InvokeRouterConnectedSynchronously() bool {
+	return true
+}
+
 func (broker *Broker) RouterConnected(router *model.Router) {
-	go func() {
-		fingerprint := ""
-		if router != nil && router.Fingerprint != nil {
-			fingerprint = *router.Fingerprint
-		}
+	fingerprint := ""
+	if router.Fingerprint != nil {
+		fingerprint = *router.Fingerprint
+	}
 
-		log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", fingerprint)
+	log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", fingerprint)
 
-		if fingerprint == "" {
-			log.Errorf("router without fingerprints connecting [id: %s], ignoring", router.Id)
-			return
-		}
+	if fingerprint == "" {
+		log.Errorf("router without fingerprints connecting [id: %s], ignoring", router.Id)
+		return
+	}
 
-		if edgeRouter, _ := broker.ae.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); edgeRouter != nil {
-			log.Infof("broker detected edge router with id %s connecting", router.Id)
-			broker.routerSyncStrategy.RouterConnected(edgeRouter, router)
-		} else {
-			log.Debugf("broker detected non-edge router with id %s connecting", router.Id)
-		}
-
-	}()
+	if edgeRouter, _ := broker.ae.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); edgeRouter != nil {
+		log.Infof("broker detected edge router with id %s connecting", router.Id)
+		broker.routerSyncStrategy.RouterConnected(edgeRouter, router)
+	} else {
+		log.Debugf("broker detected non-edge router with id %s connecting", router.Id)
+	}
 }
 
 func (broker *Broker) RouterDisconnected(r *model.Router) {

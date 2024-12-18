@@ -24,23 +24,32 @@ func (*DataStateHandler) ContentType() int32 {
 }
 
 func (self *DataStateHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	logger := pfxlog.Logger().WithField("ctrlId", ch.Id())
+	currentCtrlId := self.state.GetCurrentDataModelSource()
+
+	// ignore state from controllers we are not currently subscribed to
+	if currentCtrlId != ch.Id() {
+		logger.WithField("dataModelSrcId", currentCtrlId).Info("data state received from ctrl other than the one currently subscribed to")
+		return
+	}
+
 	err := self.state.GetRouterDataModelPool().Queue(func() {
 		newState := &edge_ctrl_pb.DataState{}
 		if err := proto.Unmarshal(msg.Body, newState); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("could not marshal data state event message")
+			logger.WithError(err).Errorf("could not marshal data state event message")
 			return
 		}
 
 		model := common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize, self.state.GetEnv().GetCloseNotify())
 
-		pfxlog.Logger().WithField("index", newState.EndIndex).Info("received full router data model state")
+		logger.WithField("index", newState.EndIndex).Info("received full router data model state")
 		for _, event := range newState.Events {
 			model.Handle(newState.EndIndex, event)
 		}
 
 		model.SetCurrentIndex(newState.EndIndex)
 		self.state.SetRouterDataModel(model)
-		pfxlog.Logger().WithField("index", newState.EndIndex).Info("finished processing full router data model state")
+		logger.WithField("index", newState.EndIndex).Info("finished processing full router data model state")
 	})
 
 	if err != nil {

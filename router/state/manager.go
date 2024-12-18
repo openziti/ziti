@@ -25,6 +25,8 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/protobufs"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/goroutines"
 	metrics2 "github.com/openziti/metrics"
 	"github.com/openziti/ziti/common"
@@ -55,6 +57,7 @@ const (
 	EventRemovedApiSession = "RemovedApiSession"
 
 	RouterDataModelListerBufferSize = 100
+	DefaultSubscriptionTimeout      = 5 * time.Minute
 )
 
 type RemoveListener func()
@@ -66,6 +69,7 @@ type Env interface {
 	GetCloseNotify() <-chan struct{}
 	DefaultRequestTimeout() time.Duration
 	GetMetricsRegistry() metrics2.UsageRegistry
+	GetNetworkControllers() env.NetworkControllers
 }
 
 type Manager interface {
@@ -113,18 +117,20 @@ type Manager interface {
 	GetEnv() Env
 	UpdateChApiSession(channel.Channel, *ApiSession) error
 
+	GetCurrentDataModelSource() string
+
 	env.Xrctrl
 }
 
 var _ Manager = (*ManagerImpl)(nil)
 
-func NewManager(env Env) Manager {
+func NewManager(stateEnv Env) Manager {
 	routerDataModelPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(1000),
 		MinWorkers:  1,
 		MaxWorkers:  uint32(1),
 		IdleTime:    30 * time.Second,
-		CloseNotify: env.GetCloseNotify(),
+		CloseNotify: stateEnv.GetCloseNotify(),
 		PanicHandler: func(err interface{}) {
 			pfxlog.Logger().
 				WithField(logrus.ErrorKey, err).
@@ -132,14 +138,14 @@ func NewManager(env Env) Manager {
 		},
 	}
 
-	metrics.ConfigureGoroutinesPoolMetrics(&routerDataModelPoolConfig, env.GetMetricsRegistry(), "pool.rdm.handler")
+	metrics.ConfigureGoroutinesPoolMetrics(&routerDataModelPoolConfig, stateEnv.GetMetricsRegistry(), "pool.rdm.handler")
 
 	routerDataModelPool, err := goroutines.NewPool(routerDataModelPoolConfig)
 	if err != nil {
 		panic(errors.Wrap(err, "error creating rdm goroutine pool"))
 	}
 
-	return &ManagerImpl{
+	result := &ManagerImpl{
 		EventEmmiter:            events.New(),
 		apiSessionsByToken:      cmap.New[*ApiSession](),
 		activeApiSessions:       cmap.New[*MapWithMutex](),
@@ -147,9 +153,21 @@ func NewManager(env Env) Manager {
 		recentlyRemovedSessions: cmap.New[time.Time](),
 		certCache:               cmap.New[*x509.Certificate](),
 		activeChannels:          cmap.New[*ApiSession](),
-		env:                     env,
+		env:                     stateEnv,
 		routerDataModelPool:     routerDataModelPool,
+		endpointsChanged:        make(chan env.CtrlEvent, 10),
 	}
+
+	stateEnv.GetNetworkControllers().AddChangeListener(env.CtrlEventListenerFunc(func(event env.CtrlEvent) {
+		select {
+		case result.endpointsChanged <- event:
+		default:
+		}
+	}))
+
+	go result.manageRouterDataModelSubscription()
+
+	return result
 }
 
 type ManagerImpl struct {
@@ -175,6 +193,69 @@ type ManagerImpl struct {
 	certCache           cmap.ConcurrentMap[string, *x509.Certificate]
 	routerDataModel     atomic.Pointer[common.RouterDataModel]
 	routerDataModelPool goroutines.Pool
+
+	endpointsChanged    chan env.CtrlEvent
+	dataModelSubCtrlId  concurrenz.AtomicValue[string]
+	dataModelSubTimeout time.Time
+}
+
+func (self *ManagerImpl) GetCurrentDataModelSource() string {
+	return self.dataModelSubCtrlId.Load()
+}
+
+func (self *ManagerImpl) manageRouterDataModelSubscription() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-self.env.GetCloseNotify():
+			return
+		case event := <-self.endpointsChanged:
+			// if the controller we're subscribed to has changed, resubscribe
+			if event.Controller.Channel().Id() == self.GetCurrentDataModelSource() {
+				self.dataModelSubCtrlId.Store("")
+			}
+		case <-ticker.C:
+		}
+		self.checkRouterDataModelSubscription()
+	}
+}
+
+func (self *ManagerImpl) checkRouterDataModelSubscription() {
+	ctrl := self.env.GetNetworkControllers().GetNetworkController(self.dataModelSubCtrlId.Load())
+	if ctrl == nil || time.Now().After(self.dataModelSubTimeout) {
+		if bestCtrl := self.env.GetNetworkControllers().AnyCtrlChannel(); bestCtrl != nil {
+			self.subscribeToDataModelUpdates(bestCtrl)
+		}
+	} else if !ctrl.IsConnected() || ctrl.TimeSinceLastContact() > 30*time.Second {
+		bestCtrl := self.env.GetNetworkControllers().AnyCtrlChannel()
+		if bestCtrl != nil && bestCtrl.Id() != ctrl.Channel().Id() {
+			self.subscribeToDataModelUpdates(bestCtrl)
+		}
+	}
+}
+
+func (self *ManagerImpl) subscribeToDataModelUpdates(ch channel.Channel) {
+	// if we store after success, we may miss an update because the ids don't match yet
+	self.dataModelSubCtrlId.Store(ch.Id())
+
+	currentIndex, _ := self.routerDataModel.Load().CurrentIndex()
+
+	subTimeout := time.Now().Add(DefaultSubscriptionTimeout)
+	req := &edge_ctrl_pb.SubscribeToDataModelRequest{
+		CurrentIndex:                currentIndex,
+		SubscriptionDurationSeconds: uint32(DefaultSubscriptionTimeout.Seconds()),
+		Renew:                       self.dataModelSubCtrlId.Load() == ch.Id(),
+	}
+	logger := pfxlog.Logger().WithField("ctrlId", ch.Id())
+	if err := protobufs.MarshalTyped(req).WithTimeout(self.env.GetNetworkControllers().DefaultRequestTimeout()).SendAndWaitForWire(ch); err != nil {
+		self.dataModelSubCtrlId.Store("")
+		logger.WithError(err).Error("error to subscribing to router data model changes")
+	} else {
+		logger.Info("subscribed to new controller for router data model changes")
+		self.dataModelSubTimeout = subTimeout
+	}
 }
 
 func (sm *ManagerImpl) GetRouterDataModelPool() goroutines.Pool {
@@ -364,15 +445,22 @@ func (sm *ManagerImpl) RouterDataModel() *common.RouterDataModel {
 }
 
 func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel) {
-	publicKeys := model.PublicKeys.Items()
-	pfxlog.Logger().Debugf("number of public keys in rdm: %d", len(publicKeys))
+	index, _ := model.CurrentIndex()
+	logger := pfxlog.Logger().WithField("index", index)
 
+	publicKeys := model.PublicKeys.Items()
+	logger.Debugf("number of public keys in rdm: %d", len(publicKeys))
+
+	logger.Info("replacing router data model")
 	existing := sm.routerDataModel.Swap(model)
 	if existing != nil {
 		existing.Stop()
 		model.InheritSubscribers(existing)
+		existingIndex, _ := existing.CurrentIndex()
+		logger = logger.WithField("existingIndex", existingIndex)
 	}
 	model.SyncAllSubscribers()
+	logger.Info("router data model replacement complete")
 }
 
 func (sm *ManagerImpl) MarkSyncInProgress(trackerId string) {
