@@ -120,6 +120,13 @@ type baseSessionRequestContext struct {
 	accessClaims *common.AccessClaims
 }
 
+func (self *baseSessionRequestContext) getApiSessionId() string {
+	if self.apiSession != nil {
+		return self.apiSession.Id
+	}
+	return ""
+}
+
 func (self *baseSessionRequestContext) newChangeContext() *change.Context {
 	result := change.New().SetSourceType(change.SourceTypeControlChannel).
 		SetSourceMethod(self.handler.Label()).

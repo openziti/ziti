@@ -701,14 +701,6 @@ func LoadConfig(path string) (*Config, error) {
 		} else {
 			return nil, errors.Errorf("invalid raft configuration")
 		}
-	} else if value, found := cfgmap["db"]; found {
-		str, err := db.Open(value.(string))
-		if err != nil {
-			return nil, err
-		}
-		controllerConfig.Db = str
-	} else {
-		panic("controllerConfig must provide [db] or [raft]")
 	}
 
 	edgeConfig, err := LoadEdgeConfigFromMap(cfgmap)

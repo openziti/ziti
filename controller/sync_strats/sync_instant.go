@@ -1048,7 +1048,7 @@ func (strategy *InstantStrategy) ValidateIdentities(tx *bbolt.Tx, rdm *common.Ro
 		result = diffVals("identity", t.Id, "default hosting cost", uint32(t.DefaultHostingCost), v.DefaultHostingCost, result)
 		result = diffJson("identity", t.Id, "service configs", t.ServiceConfigs, serviceConfigs, result)
 
-		if t.AppData == nil || len(t.AppData) == 0 {
+		if len(t.AppData) == 0 {
 			result = diffJson("identity", t.Id, "app data", nil, v.AppDataJson, result)
 		} else {
 			result = diffJson("identity", t.Id, "app data", t.AppData, v.AppDataJson, result)
@@ -1410,7 +1410,7 @@ func newIdentity(identityModel *db.Identity) *edge_ctrl_pb.DataState_Identity {
 	}
 
 	var appDataJson []byte
-	if identityModel.AppData != nil && len(identityModel.AppData) > 0 {
+	if len(identityModel.AppData) > 0 {
 		var err error
 		appDataJson, err = json.Marshal(identityModel.AppData)
 		if err != nil {
@@ -1822,18 +1822,6 @@ func (strategy *InstantStrategy) sendDataStateChangeSet(rtx *RouterSender, state
 
 	return rtx.Send(msg)
 
-}
-
-func (strategy *InstantStrategy) sendDataState(rtx *RouterSender, state *edge_ctrl_pb.DataState) error {
-	content, err := proto.Marshal(state)
-
-	if err != nil {
-		return err
-	}
-
-	msg := channel.NewMessage(env.DataStateType, content)
-
-	return rtx.Send(msg)
 }
 
 func (strategy *InstantStrategy) handleRevocation(index uint64, action edge_ctrl_pb.DataState_Action, revocation *db.Revocation) {

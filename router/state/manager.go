@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	metrics2 "github.com/openziti/metrics"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/runner"
@@ -65,6 +66,7 @@ type RemoveListener func()
 type DisconnectCB func(token string)
 
 type Env interface {
+	GetRouterDataModelEnabledConfig() *config.Value[bool]
 	IsRouterDataModelEnabled() bool
 	GetCloseNotify() <-chan struct{}
 	DefaultRequestTimeout() time.Duration
@@ -204,6 +206,11 @@ func (self *ManagerImpl) GetCurrentDataModelSource() string {
 }
 
 func (self *ManagerImpl) manageRouterDataModelSubscription() {
+	<-self.env.GetRouterDataModelEnabledConfig().GetInitNotifyChannel()
+	if !self.env.IsRouterDataModelEnabled() {
+		return
+	}
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
@@ -240,7 +247,10 @@ func (self *ManagerImpl) subscribeToDataModelUpdates(ch channel.Channel) {
 	// if we store after success, we may miss an update because the ids don't match yet
 	self.dataModelSubCtrlId.Store(ch.Id())
 
-	currentIndex, _ := self.routerDataModel.Load().CurrentIndex()
+	var currentIndex uint64
+	if rdm := self.routerDataModel.Load(); rdm != nil {
+		currentIndex, _ = rdm.CurrentIndex()
+	}
 
 	subTimeout := time.Now().Add(DefaultSubscriptionTimeout)
 	req := &edge_ctrl_pb.SubscribeToDataModelRequest{
