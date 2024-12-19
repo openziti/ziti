@@ -68,8 +68,6 @@ func (self *createTunnelTerminatorHandler) HandleReceive(msg *channel.Message, c
 	ctx := &CreateTunnelTerminatorRequestContext{
 		baseTunnelRequestContext: baseTunnelRequestContext{
 			baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
-			apiSession:                nil,
-			identity:                  nil,
 		},
 		req: req,
 	}

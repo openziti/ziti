@@ -25,7 +25,13 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/protobufs"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/goroutines"
+	metrics2 "github.com/openziti/metrics"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/config"
+	"github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/oidc_auth"
@@ -37,6 +43,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"math/rand"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -51,6 +58,7 @@ const (
 	EventRemovedApiSession = "RemovedApiSession"
 
 	RouterDataModelListerBufferSize = 100
+	DefaultSubscriptionTimeout      = 5 * time.Minute
 )
 
 type RemoveListener func()
@@ -58,8 +66,12 @@ type RemoveListener func()
 type DisconnectCB func(token string)
 
 type Env interface {
-	IsHaEnabled() bool
+	GetRouterDataModelEnabledConfig() *config.Value[bool]
+	IsRouterDataModelEnabled() bool
 	GetCloseNotify() <-chan struct{}
+	DefaultRequestTimeout() time.Duration
+	GetMetricsRegistry() metrics2.UsageRegistry
+	GetNetworkControllers() env.NetworkControllers
 }
 
 type Manager interface {
@@ -85,6 +97,7 @@ type Manager interface {
 
 	RouterDataModel() *common.RouterDataModel
 	SetRouterDataModel(model *common.RouterDataModel)
+	GetRouterDataModelPool() goroutines.Pool
 
 	StartHeartbeat(env env.RouterEnv, seconds int, closeNotify <-chan struct{})
 	ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration)
@@ -106,13 +119,35 @@ type Manager interface {
 	GetEnv() Env
 	UpdateChApiSession(channel.Channel, *ApiSession) error
 
+	GetCurrentDataModelSource() string
+
 	env.Xrctrl
 }
 
 var _ Manager = (*ManagerImpl)(nil)
 
-func NewManager(env Env) Manager {
-	return &ManagerImpl{
+func NewManager(stateEnv Env) Manager {
+	routerDataModelPoolConfig := goroutines.PoolConfig{
+		QueueSize:   uint32(1000),
+		MinWorkers:  1,
+		MaxWorkers:  uint32(1),
+		IdleTime:    30 * time.Second,
+		CloseNotify: stateEnv.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().
+				WithField(logrus.ErrorKey, err).
+				WithField("backtrace", string(debug.Stack())).Error("panic during router data model event")
+		},
+	}
+
+	metrics.ConfigureGoroutinesPoolMetrics(&routerDataModelPoolConfig, stateEnv.GetMetricsRegistry(), "pool.rdm.handler")
+
+	routerDataModelPool, err := goroutines.NewPool(routerDataModelPoolConfig)
+	if err != nil {
+		panic(errors.Wrap(err, "error creating rdm goroutine pool"))
+	}
+
+	result := &ManagerImpl{
 		EventEmmiter:            events.New(),
 		apiSessionsByToken:      cmap.New[*ApiSession](),
 		activeApiSessions:       cmap.New[*MapWithMutex](),
@@ -120,8 +155,21 @@ func NewManager(env Env) Manager {
 		recentlyRemovedSessions: cmap.New[time.Time](),
 		certCache:               cmap.New[*x509.Certificate](),
 		activeChannels:          cmap.New[*ApiSession](),
-		env:                     env,
+		env:                     stateEnv,
+		routerDataModelPool:     routerDataModelPool,
+		endpointsChanged:        make(chan env.CtrlEvent, 10),
 	}
+
+	stateEnv.GetNetworkControllers().AddChangeListener(env.CtrlEventListenerFunc(func(event env.CtrlEvent) {
+		select {
+		case result.endpointsChanged <- event:
+		default:
+		}
+	}))
+
+	go result.manageRouterDataModelSubscription()
+
+	return result
 }
 
 type ManagerImpl struct {
@@ -144,8 +192,84 @@ type ManagerImpl struct {
 	currentSync        string
 	syncLock           sync.Mutex
 
-	certCache       cmap.ConcurrentMap[string, *x509.Certificate]
-	routerDataModel atomic.Pointer[common.RouterDataModel]
+	certCache           cmap.ConcurrentMap[string, *x509.Certificate]
+	routerDataModel     atomic.Pointer[common.RouterDataModel]
+	routerDataModelPool goroutines.Pool
+
+	endpointsChanged    chan env.CtrlEvent
+	dataModelSubCtrlId  concurrenz.AtomicValue[string]
+	dataModelSubTimeout time.Time
+}
+
+func (self *ManagerImpl) GetCurrentDataModelSource() string {
+	return self.dataModelSubCtrlId.Load()
+}
+
+func (self *ManagerImpl) manageRouterDataModelSubscription() {
+	<-self.env.GetRouterDataModelEnabledConfig().GetInitNotifyChannel()
+	if !self.env.IsRouterDataModelEnabled() {
+		return
+	}
+
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-self.env.GetCloseNotify():
+			return
+		case event := <-self.endpointsChanged:
+			// if the controller we're subscribed to has changed, resubscribe
+			if event.Controller.Channel().Id() == self.GetCurrentDataModelSource() {
+				self.dataModelSubCtrlId.Store("")
+			}
+		case <-ticker.C:
+		}
+		self.checkRouterDataModelSubscription()
+	}
+}
+
+func (self *ManagerImpl) checkRouterDataModelSubscription() {
+	ctrl := self.env.GetNetworkControllers().GetNetworkController(self.dataModelSubCtrlId.Load())
+	if ctrl == nil || time.Now().After(self.dataModelSubTimeout) {
+		if bestCtrl := self.env.GetNetworkControllers().AnyCtrlChannel(); bestCtrl != nil {
+			self.subscribeToDataModelUpdates(bestCtrl)
+		}
+	} else if !ctrl.IsConnected() || ctrl.TimeSinceLastContact() > 30*time.Second {
+		bestCtrl := self.env.GetNetworkControllers().AnyCtrlChannel()
+		if bestCtrl != nil && bestCtrl.Id() != ctrl.Channel().Id() {
+			self.subscribeToDataModelUpdates(bestCtrl)
+		}
+	}
+}
+
+func (self *ManagerImpl) subscribeToDataModelUpdates(ch channel.Channel) {
+	// if we store after success, we may miss an update because the ids don't match yet
+	self.dataModelSubCtrlId.Store(ch.Id())
+
+	var currentIndex uint64
+	if rdm := self.routerDataModel.Load(); rdm != nil {
+		currentIndex, _ = rdm.CurrentIndex()
+	}
+
+	subTimeout := time.Now().Add(DefaultSubscriptionTimeout)
+	req := &edge_ctrl_pb.SubscribeToDataModelRequest{
+		CurrentIndex:                currentIndex,
+		SubscriptionDurationSeconds: uint32(DefaultSubscriptionTimeout.Seconds()),
+		Renew:                       self.dataModelSubCtrlId.Load() == ch.Id(),
+	}
+	logger := pfxlog.Logger().WithField("ctrlId", ch.Id())
+	if err := protobufs.MarshalTyped(req).WithTimeout(self.env.GetNetworkControllers().DefaultRequestTimeout()).SendAndWaitForWire(ch); err != nil {
+		self.dataModelSubCtrlId.Store("")
+		logger.WithError(err).Error("error to subscribing to router data model changes")
+	} else {
+		logger.Info("subscribed to new controller for router data model changes")
+		self.dataModelSubTimeout = subTimeout
+	}
+}
+
+func (sm *ManagerImpl) GetRouterDataModelPool() goroutines.Pool {
+	return sm.routerDataModelPool
 }
 
 func (sm *ManagerImpl) UpdateChApiSession(ch channel.Channel, newApiSession *ApiSession) error {
@@ -331,15 +455,22 @@ func (sm *ManagerImpl) RouterDataModel() *common.RouterDataModel {
 }
 
 func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel) {
-	publicKeys := model.PublicKeys.Items()
-	pfxlog.Logger().Debugf("number of public keys in rdm: %d", len(publicKeys))
+	index, _ := model.CurrentIndex()
+	logger := pfxlog.Logger().WithField("index", index)
 
+	publicKeys := model.PublicKeys.Items()
+	logger.Debugf("number of public keys in rdm: %d", len(publicKeys))
+
+	logger.Info("replacing router data model")
 	existing := sm.routerDataModel.Swap(model)
 	if existing != nil {
 		existing.Stop()
 		model.InheritSubscribers(existing)
+		existingIndex, _ := existing.CurrentIndex()
+		logger = logger.WithField("existingIndex", existingIndex)
 	}
 	model.SyncAllSubscribers()
+	logger.Info("router data model replacement complete")
 }
 
 func (sm *ManagerImpl) MarkSyncInProgress(trackerId string) {
@@ -502,7 +633,7 @@ func NewApiSessionFromToken(jwtToken *jwt.Token, accessClaims *common.AccessClai
 }
 
 func (sm *ManagerImpl) GetApiSession(token string) *ApiSession {
-	if sm.env.IsHaEnabled() && strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
+	if strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
 		jwtToken, accessClaims, err := sm.ParseJwt(token)
 
 		if err == nil {
@@ -876,6 +1007,7 @@ func (sm *ManagerImpl) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(NewApiSessionUpdatedHandler(sm))
 	binding.AddTypedReceiveHandler(NewDataStateHandler(sm))
 	binding.AddTypedReceiveHandler(NewDataStateEventHandler(sm))
+	binding.AddTypedReceiveHandler(NewValidateDataStateRequestHandler(sm, sm.env))
 	return nil
 }
 

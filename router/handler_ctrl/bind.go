@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"github.com/openziti/ziti/common/capabilities"
 	"runtime/debug"
 	"time"
 
@@ -116,6 +117,9 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 			return err
 		}
 	}
+
+	enableRouterDataModel := capabilities.IsCapable(binding.GetChannel(), capabilities.RouterDataModel)
+	self.env.GetRouterDataModelEnabledConfig().Store(enableRouterDataModel)
 
 	return nil
 }

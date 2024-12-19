@@ -33,6 +33,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"sync/atomic"
 )
 
 func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, eventDispatcher event2.Dispatcher) *BoltDbFsm {
@@ -50,7 +51,7 @@ type BoltDbFsm struct {
 	decoders        command.Decoders
 	indexTracker    IndexTracker
 	eventDispatcher event2.Dispatcher
-	currentState    *raft.Configuration
+	currentState    atomic.Pointer[raft.Configuration]
 	index           uint64
 }
 
@@ -107,18 +108,20 @@ func (self *BoltDbFsm) updateIndex(index uint64) {
 }
 
 func (self *BoltDbFsm) GetCurrentState(raft *raft.Raft) (uint64, *raft.Configuration) {
-	if self.currentState == nil {
+	currentState := self.currentState.Load()
+	if currentState == nil {
 		if err := raft.GetConfiguration().Error(); err != nil {
 			pfxlog.Logger().WithError(err).Error("error getting configuration future")
 		}
 		cfg := raft.GetConfiguration().Configuration()
-		self.currentState = &cfg
+		currentState = &cfg
+		self.currentState.CompareAndSwap(nil, currentState)
 	}
-	return self.indexTracker.Index(), self.currentState
+	return self.indexTracker.Index(), currentState
 }
 
 func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Configuration) {
-	self.currentState = &configuration
+	self.currentState.Store(&configuration)
 	evt := event2.NewClusterEvent(event2.ClusterMembersChanged)
 	evt.Index = index
 	for _, srv := range configuration.Servers {

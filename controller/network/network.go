@@ -354,7 +354,11 @@ func (network *Network) ConnectRouter(r *model.Router) {
 	time.AfterFunc(250*time.Millisecond, network.notifyAssembleAndClean)
 
 	for _, h := range network.routerPresenceHandlers.Value() {
-		go h.RouterConnected(r)
+		if syncCapableHandler, ok := h.(model.SyncRouterPresenceHandler); ok && syncCapableHandler.InvokeRouterConnectedSynchronously() {
+			h.RouterConnected(r)
+		} else {
+			go h.RouterConnected(r)
+		}
 	}
 	go network.ValidateTerminators(r)
 }
