@@ -563,7 +563,7 @@ func (self *Router) startControlPlane() error {
 	log := pfxlog.Logger()
 	log.Infof("router configured with %v controller endpoints", len(endpoints))
 
-	self.ctrls.UpdateControllerEndpoints(endpoints, "")
+	self.ctrls.UpdateControllerEndpoints(endpoints)
 
 	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
@@ -764,9 +764,9 @@ func (self *Router) getInitialCtrlEndpoints() ([]string, error) {
 	return endpoints, nil
 }
 
-func (self *Router) UpdateCtrlEndpoints(endpoints []string, leaderId string) {
+func (self *Router) UpdateCtrlEndpoints(endpoints []string) {
 	log := pfxlog.Logger().WithField("endpoints", endpoints).WithField("filepath", self.config.Ctrl.DataDir)
-	if changed := self.ctrls.UpdateControllerEndpoints(endpoints, leaderId); changed {
+	if changed := self.ctrls.UpdateControllerEndpoints(endpoints); changed {
 		log.Info("Attempting to save file")
 		endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
 
@@ -780,6 +780,10 @@ func (self *Router) UpdateCtrlEndpoints(endpoints []string, leaderId string) {
 			log.WithError(err).Error("unable to write updated controller endpoints to file")
 		}
 	}
+}
+
+func (self *Router) UpdateLeader(leaderId string) {
+	self.ctrls.UpdateLeader(leaderId)
 }
 
 type connectionToggle interface {

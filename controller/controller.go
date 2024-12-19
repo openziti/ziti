@@ -558,6 +558,14 @@ func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
 			Index:     evt.Index,
 		}
 
+		log := pfxlog.Logger().WithFields(map[string]interface{}{
+			"event":     evt.EventType,
+			"addresses": endpoints,
+			"index":     evt.Index,
+		})
+
+		log.Info("router connected, syncing ctrl addresses")
+
 		for _, r := range c.network.AllConnectedRouters() {
 			if err := protobufs.MarshalTyped(updMsg).Send(r.Control); err != nil {
 				pfxlog.Logger().WithError(err).WithField("routerId", r.Id).Error("unable to update controller endpoints on router")

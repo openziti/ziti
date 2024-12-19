@@ -300,7 +300,6 @@ type Mesh interface {
 
 	RegisterClusterStateHandler(f func(state ClusterState))
 	Init(bindHandler channel.BindHandler)
-	GetAllPeersForEvent() []*event.ClusterPeer
 }
 
 func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProvider) Mesh {
@@ -684,21 +683,6 @@ func (self *impl) GetEventPeerList(peers ...*Peer) []*event.ClusterPeer {
 		})
 	}
 	return result
-}
-
-func (self *impl) GetAllPeersForEvent() []*event.ClusterPeer {
-	peers := self.GetPeers()
-	var peerList []*Peer
-	for _, peer := range peers {
-		peerList = append(peerList, peer)
-	}
-	peerList = append(peerList, &Peer{
-		mesh:    self,
-		Id:      raft.ServerID(self.nodeId.Token),
-		Address: string(self.raftAddr),
-		Version: self.version.AsVersionInfo(),
-	})
-	return self.GetEventPeerList(peerList...)
 }
 
 func (self *impl) GetPeer(addr raft.ServerAddress) *Peer {

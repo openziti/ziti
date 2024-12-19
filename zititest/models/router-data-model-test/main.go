@@ -116,9 +116,9 @@ var m = &model.Model{
 			})
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
-			for _, host := range m.SelectHosts("component.ha") {
-				delete(host.Region.Hosts, host.Id)
-			}
+			//for _, host := range m.SelectHosts("component.ha") {
+			//	delete(host.Region.Hosts, host.Id)
+			//}
 			for _, component := range m.SelectComponents("*") {
 				if ztType, ok := component.Type.(*zitilab.ZitiTunnelType); ok {
 					ztType.HA = true
@@ -228,7 +228,7 @@ var m = &model.Model{
 			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/* ctrl.db"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
-			workflow.AddAction(component.Start("#ctrl1"))
+			workflow.AddAction(component.Start(".ctrl"))
 
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(edge.InitRaftController("#ctrl1"))

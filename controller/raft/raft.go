@@ -864,11 +864,25 @@ func (self *Controller) RenderJsonConfig() (string, error) {
 	return string(b), err
 }
 
+func (self *Controller) getClusterPeersForEvent() []*event.ClusterPeer {
+	var peers []*event.ClusterPeer
+
+	_, cfg := self.Fsm.GetCurrentState(self.Raft)
+	for _, srv := range cfg.Servers {
+		peers = append(peers, &event.ClusterPeer{
+			Id:   string(srv.ID),
+			Addr: string(srv.Address),
+		})
+	}
+
+	return peers
+}
+
 func (self *Controller) addEventsHandlers() {
 	self.RegisterClusterEventHandler(func(evt ClusterEvent, state ClusterState) {
 		switch evt {
 		case ClusterEventLeadershipGained:
-			self.newClusterEvent(event.ClusterLeadershipGained, self.Mesh.GetAllPeersForEvent())
+			self.newClusterEvent(event.ClusterLeadershipGained, self.getClusterPeersForEvent())
 		case ClusterEventLeadershipLost:
 			self.newClusterEvent(event.ClusterLeadershipLost, nil)
 		case ClusterEventReadOnly:
