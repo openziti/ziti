@@ -34,11 +34,6 @@ import (
 	"time"
 )
 
-type syncRequest struct {
-	currentIndex uint64
-	duration     time.Duration
-}
-
 // RouterSender represents a connection from an Edge Router to the controller. Used
 // to asynchronously buffer and send messages to an Edge Router via Start() then Send()
 type RouterSender struct {
