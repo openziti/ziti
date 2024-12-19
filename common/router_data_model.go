@@ -32,6 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"os"
+	"sort"
 	"sync/atomic"
 )
 
@@ -107,7 +108,7 @@ type RouterDataModel struct {
 	PostureChecks    cmap.ConcurrentMap[string, *PostureCheck]                      `json:"postureChecks"`
 	PublicKeys       cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_PublicKey]  `json:"publicKeys"`
 	Revocations      cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Revocation] `json:"revocations"`
-	CachedPublicKeys concurrenz.AtomicValue[map[string]crypto.PublicKey]
+	cachedPublicKeys concurrenz.AtomicValue[map[string]crypto.PublicKey]
 
 	listenerBufferSize uint
 	lastSaveIndex      *uint64
@@ -186,7 +187,7 @@ func NewReceiverRouterDataModelFromExisting(existing *RouterDataModel, listenerB
 		ServicePolicies:    existing.ServicePolicies,
 		PostureChecks:      existing.PostureChecks,
 		PublicKeys:         existing.PublicKeys,
-		CachedPublicKeys:   existing.CachedPublicKeys,
+		cachedPublicKeys:   existing.cachedPublicKeys,
 		Revocations:        existing.Revocations,
 		listenerBufferSize: listenerBufferSize,
 		subscriptions:      cmap.New[*IdentitySubscription](),
@@ -567,12 +568,12 @@ func (rdm *RouterDataModel) HandleServicePolicyChange(index uint64, model *edge_
 }
 
 func (rdm *RouterDataModel) GetPublicKeys() map[string]crypto.PublicKey {
-	return rdm.CachedPublicKeys.Load()
+	return rdm.cachedPublicKeys.Load()
 }
 
 func (rdm *RouterDataModel) getPublicKeysAsCmap() cmap.ConcurrentMap[string, crypto.PublicKey] {
 	m := cmap.New[crypto.PublicKey]()
-	for k, v := range rdm.CachedPublicKeys.Load() {
+	for k, v := range rdm.cachedPublicKeys.Load() {
 		m.Set(k, v)
 	}
 	return m
@@ -600,7 +601,7 @@ func (rdm *RouterDataModel) recalculateCachedPublicKeys() {
 			log.Error("unknown public key format")
 		}
 	})
-	rdm.CachedPublicKeys.Store(publicKeys)
+	rdm.cachedPublicKeys.Store(publicKeys)
 }
 
 func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
@@ -1027,6 +1028,18 @@ func (rdm *RouterDataModel) Diff(o *RouterDataModel, sink DiffSink) {
 		sink("router-data-model", "root", DiffTypeSub, "router data model not present")
 		return
 	}
+
+	rdm.PublicKeys.IterCb(func(key string, v *edge_ctrl_pb.DataState_PublicKey) {
+		sort.Slice(v.Usages, func(i, j int) bool {
+			return v.Usages[i] < v.Usages[j]
+		})
+	})
+
+	o.PublicKeys.IterCb(func(key string, v *edge_ctrl_pb.DataState_PublicKey) {
+		sort.Slice(v.Usages, func(i, j int) bool {
+			return v.Usages[i] < v.Usages[j]
+		})
+	})
 
 	diffType("configType", rdm.ConfigTypes, o.ConfigTypes, sink, ConfigType{}, DataStateConfigType{})
 	diffType("config", rdm.Configs, o.Configs, sink, Config{}, DataStateConfig{})

@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/genext"
 	nfPem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/identity"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common"
@@ -910,14 +911,17 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 	caCerts := nfPem.PemBytesToCertificates(caPEMs)
 
 	for _, caCert := range caCerts {
-		publicKey := newPublicKey(caCert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})
-		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
-		newEvent := &edge_ctrl_pb.DataState_Event{
-			Action: edge_ctrl_pb.DataState_Create,
-			Model:  newModel,
-		}
+		if identity.IsRootCa(caCert) {
+			publicKey := newPublicKey(caCert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})
+			newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
+			newEvent := &edge_ctrl_pb.DataState_Event{
+				Action:      edge_ctrl_pb.DataState_Create,
+				Model:       newModel,
+				IsSynthetic: true,
+			}
 
-		strategy.HandlePublicKeyEvent(newEvent, newModel)
+			strategy.HandlePublicKeyEvent(newEvent, newModel)
+		}
 	}
 
 	for cursor := strategy.ae.GetStores().Ca.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {

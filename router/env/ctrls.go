@@ -58,7 +58,8 @@ type CtrlEvent struct {
 }
 
 type NetworkControllers interface {
-	UpdateControllerEndpoints(endpoints []string, leaderId string) bool
+	UpdateControllerEndpoints(endpoints []string) bool
+	UpdateLeader(leaderId string)
 	GetAll() map[string]NetworkController
 	GetNetworkController(ctrlId string) NetworkController
 	AnyCtrlChannel() channel.Channel
@@ -101,7 +102,7 @@ func (self *networkControllers) AddChangeListener(listener CtrlEventListener) {
 	self.ctrlChangeListeners.Append(listener)
 }
 
-func (self *networkControllers) UpdateControllerEndpoints(addresses []string, leaderId string) bool {
+func (self *networkControllers) UpdateControllerEndpoints(addresses []string) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
@@ -131,11 +132,11 @@ func (self *networkControllers) UpdateControllerEndpoints(addresses []string, le
 		self.connectToControllerWithBackoff(endpoint)
 	}
 
-	if leaderId != "" {
-		self.leaderId.Store(leaderId)
-	}
-
 	return changed
+}
+
+func (self *networkControllers) UpdateLeader(leaderId string) {
+	self.leaderId.Store(leaderId)
 }
 
 func (self *networkControllers) connectToControllerWithBackoff(endpoint string) {
