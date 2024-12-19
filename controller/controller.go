@@ -359,6 +359,11 @@ func (c *Controller) Run() error {
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateTerminatorV2, 1)
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSingleRouterLinkSource, 1)
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateCircuitV2, 1)
+
+	if c.config.RouterDataModel.Enabled || c.raftController != nil {
+		capabilityMask.SetBit(capabilityMask, capabilities.RouterDataModel, 1)
+	}
+
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader:                       versionHeader,
 		int32(ctrl_pb.ControlHeaders_CapabilitiesHeader): capabilityMask.Bytes(),
@@ -703,7 +708,6 @@ func (c *Controller) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
 func (c *Controller) GetHelloHeaderProviders() []mesh.HeaderProvider {
 	providerFunc := func(headers map[int32][]byte) {
 		_, apiDataBytes := c.GetApiAddresses()
-
 		headers[mesh.ApiAddressesHeader] = apiDataBytes
 	}
 

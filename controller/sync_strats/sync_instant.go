@@ -269,7 +269,7 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 		changeSets:               map[uint64]*edge_ctrl_pb.DataState_ChangeSet{},
 	}
 
-	err := strategy.Initialize(10000, 1000)
+	err := strategy.Initialize(ae.GetConfig().RouterDataModel.LogSize, ae.GetConfig().RouterDataModel.ListenerBufferSize)
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Fatal("could not build initial data model for router synchronization")
