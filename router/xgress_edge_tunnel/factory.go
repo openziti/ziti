@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/ziti/router/xgress_edge_tunnel_v2"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
@@ -96,10 +95,10 @@ type XrctrlFactory interface {
 
 // NewFactory constructs a new Edge Xgress Tunnel Factory instance
 func NewFactory(env env.RouterEnv, routerConfig *router.Config, stateManager state.Manager) XrctrlFactory {
-	if routerConfig.Ha.Enabled {
-		return xgress_edge_tunnel_v2.NewFactory(env, routerConfig, stateManager)
-	}
+	return NewFactoryWrapper(env, routerConfig, stateManager)
+}
 
+func NewV1Factory(env env.RouterEnv, routerConfig *router.Config, stateManager state.Manager) XrctrlFactory {
 	factory := &Factory{
 		id:              env.GetRouterId(),
 		routerConfig:    routerConfig,

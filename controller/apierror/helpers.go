@@ -399,3 +399,11 @@ func NewNotRunningInHAModeError() *errorz.ApiError {
 		Status:  ServerNotRunningInHAModeStatus,
 	}
 }
+
+func NewClusterHasNoLeaderError() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    ClusterHasNoLeaderCode,
+		Message: ClusterHasNoLeaderMessage,
+		Status:  ClusterHasNoLeaderStatus,
+	}
+}

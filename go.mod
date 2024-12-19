@@ -49,19 +49,19 @@ require (
 	github.com/miekg/dns v1.1.62
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/agent v1.0.20
-	github.com/openziti/channel/v3 v3.0.16
+	github.com/openziti/agent v1.0.22
+	github.com/openziti/channel/v3 v3.0.20
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.26.35
-	github.com/openziti/foundation/v2 v2.0.52
-	github.com/openziti/identity v1.0.90
+	github.com/openziti/edge-api v0.26.36
+	github.com/openziti/foundation/v2 v2.0.55
+	github.com/openziti/identity v1.0.93
 	github.com/openziti/jwks v1.0.6
-	github.com/openziti/metrics v1.2.61
-	github.com/openziti/runzmd v1.0.55
+	github.com/openziti/metrics v1.2.64
+	github.com/openziti/runzmd v1.0.58
 	github.com/openziti/sdk-golang v0.23.44
-	github.com/openziti/secretstream v0.1.26
-	github.com/openziti/storage v0.3.8
-	github.com/openziti/transport/v2 v2.0.153
+	github.com/openziti/secretstream v0.1.27
+	github.com/openziti/storage v0.3.13
+	github.com/openziti/transport/v2 v2.0.157
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.1.3
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -76,18 +76,18 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zitadel/oidc/v2 v2.12.2
 	go.etcd.io/bbolt v1.3.11
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.29.0
-	golang.org/x/net v0.31.0
+	golang.org/x/crypto v0.31.0
+	golang.org/x/net v0.32.0
 	golang.org/x/oauth2 v0.24.0
-	golang.org/x/sync v0.9.0
-	golang.org/x/sys v0.27.0
-	golang.org/x/text v0.20.0
+	golang.org/x/sync v0.10.0
+	golang.org/x/sys v0.28.0
+	golang.org/x/text v0.21.0
 	google.golang.org/protobuf v1.35.2
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/go-jose/go-jose.v2 v2.6.3
@@ -195,7 +195,7 @@ require (
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/mod v0.21.0 // indirect
-	golang.org/x/term v0.26.0 // indirect
+	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/tools v0.26.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
