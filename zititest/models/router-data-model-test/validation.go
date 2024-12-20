@@ -35,7 +35,9 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"google.golang.org/protobuf/proto"
 	"io"
+	"math"
 	"math/rand"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -99,8 +101,12 @@ func sowChaos(run model.Run) error {
 		return err
 	}
 
-	var tasks []parallel.LabeledTask
 	var err error
+
+	tasks, lastTasks, err := getServiceAndConfigChaosTasks(run, ctrls)
+	if err != nil {
+		return err
+	}
 
 	applyTasks := func(f func(run model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error)) {
 		var t []parallel.LabeledTask
@@ -113,7 +119,6 @@ func sowChaos(run model.Run) error {
 	}
 
 	applyTasks(getRestartTasks)
-	applyTasks(getServiceChaosTasks)
 	applyTasks(getIdentityChaosTasks)
 	applyTasks(getServicePolicyChaosTasks)
 
@@ -122,6 +127,7 @@ func sowChaos(run model.Run) error {
 	}
 
 	chaos.Randomize(tasks)
+	tasks = append(tasks, lastTasks...)
 
 	retryPolicy := func(task parallel.LabeledTask, attempt int, err error) parallel.ErrorAction {
 		var apiErr util.ApiErrorPayload
@@ -232,65 +238,243 @@ func newBoolPtr() *bool {
 	return &b
 }
 
-func getServiceChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
-	svcs, err := models.ListServices(ctrls.getRandomCtrl(), "limit none", 15*time.Second)
-	if err != nil {
-		return nil, err
-	}
-	chaos.Randomize(svcs)
+type taskGenerationContext struct {
+	ctrls *CtrlClients
 
-	var result []parallel.LabeledTask
+	configTypes []*rest_model.ConfigTypeDetail
+	configs     []*rest_model.ConfigDetail
+	services    []*rest_model.ServiceDetail
 
-	for i := 0; i < 5; i++ {
-		result = append(result, parallel.TaskWithLabel("delete.service", fmt.Sprintf("delete service %s", *svcs[i].ID), func() error {
-			return models.DeleteService(ctrls.getRandomCtrl(), *svcs[i].ID, 15*time.Second)
-		}))
-	}
+	configTypesDeleted map[string]struct{}
+	configsDeleted     map[string]struct{}
+	servicesDeleted    map[string]struct{}
 
-	for i := 5; i < 10; i++ {
-		result = append(result, parallel.TaskWithLabel("modify.service", fmt.Sprintf("modify service %s", *svcs[i].ID), func() error {
-			svc := svcs[i]
-			svc.RoleAttributes = getRoleAttributesAsAttrPtr(3)
-			svc.Name = newId()
-			return models.UpdateServiceFromDetail(ctrls.getRandomCtrl(), svc, 15*time.Second)
-		}))
-	}
+	tasks     []parallel.LabeledTask
+	lastTasks []parallel.LabeledTask
 
-	for i := 0; i < 5; i++ {
-		result = append(result, createNewService(ctrls.getRandomCtrl()))
-	}
+	configIdx int
 
-	return result, nil
+	err error
 }
 
-func getConfigTypeChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
-	entities, err := models.ListConfigTypes(ctrls.getRandomCtrl(), "limit none", 15*time.Second)
-	if err != nil {
-		return nil, err
+func (self *taskGenerationContext) loadEntities() {
+	self.configTypes, self.err = models.ListConfigTypes(self.ctrls.getRandomCtrl(), `not (name contains ".v1" or id = "host.v2") limit none`, 15*time.Second)
+	if self.err != nil {
+		return
 	}
-	chaos.Randomize(entities)
+	chaos.Randomize(self.configTypes)
 
-	var result []parallel.LabeledTask
+	self.configs, self.err = models.ListConfigs(self.ctrls.getRandomCtrl(), "limit none", 15*time.Second)
+	if self.err != nil {
+		return
+	}
+	chaos.Randomize(self.configs)
 
-	for i := 0; i < 5; i++ {
-		result = append(result, parallel.TaskWithLabel("delete.config-type", fmt.Sprintf("delete config type %s", *entities[i].ID), func() error {
-			return models.DeleteConfigType(ctrls.getRandomCtrl(), *entities[i].ID, 15*time.Second)
-		}))
+	self.services, self.err = models.ListServices(self.ctrls.getRandomCtrl(), "limit none", 15*time.Second)
+	if self.err != nil {
+		return
+	}
+	chaos.Randomize(self.services)
+}
+
+func (self *taskGenerationContext) getConfigTypeId() string {
+	if len(self.configTypes)-len(self.configTypesDeleted) < 1 {
+		return ""
 	}
 
-	for i := 5; i < 10; i++ {
-		result = append(result, parallel.TaskWithLabel("modify.config-type", fmt.Sprintf("modify config type %s", *entities[i].ID), func() error {
-			entity := entities[i]
+	for {
+		idx := rand.Intn(len(self.configTypes))
+		configType := self.configTypes[idx]
+		if _, deleted := self.configTypesDeleted[*configType.ID]; !deleted {
+			return *configType.ID
+		}
+	}
+}
+
+func (self *taskGenerationContext) getTwoValidConfigs() []string {
+	if len(self.configs)-len(self.configsDeleted) < 1 {
+		return nil
+	}
+	var first *rest_model.ConfigDetail
+	for {
+		if self.configIdx >= len(self.configs) {
+			self.configIdx = 0
+		}
+		next := self.configs[self.configIdx]
+		self.configIdx++
+		if _, deleted := self.configsDeleted[*next.ID]; deleted {
+			continue
+		}
+		if first == nil {
+			first = next
+			continue
+		}
+		if first == next {
+			return []string{*first.ID}
+		}
+		if *first.ConfigTypeID == *next.ConfigTypeID {
+			continue
+		}
+		return []string{*first.ID, *next.ID}
+	}
+}
+
+func (self *taskGenerationContext) generateConfigTypeTasks() {
+	if self.err != nil {
+		return
+	}
+
+	if scenarioCounter%5 == 0 { // only add/remove config types every 5th iteration
+		for i := 0; i < min(2, len(self.configTypes)); i++ {
+			entityId := *self.configTypes[i].ID
+			self.configTypesDeleted[entityId] = struct{}{}
+			self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.config-type", fmt.Sprintf("delete config type %s", entityId), func() error {
+				return models.DeleteConfigType(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
+			}))
+		}
+	}
+
+	for i := 2; i < min(7, len(self.configTypes)); i++ {
+		entity := self.configTypes[i]
+		entityId := *entity.ID
+		self.tasks = append(self.tasks, parallel.TaskWithLabel("modify.config-type", fmt.Sprintf("modify config type %s", entityId), func() error {
 			entity.Name = newId()
-			return models.UpdateConfigTypeFromDetail(ctrls.getRandomCtrl(), entity, 15*time.Second)
+			return models.UpdateConfigTypeFromDetail(self.ctrls.getRandomCtrl(), entity, 15*time.Second)
 		}))
 	}
 
-	for i := 0; i < 5; i++ {
-		result = append(result, createNewService(ctrls.getRandomCtrl()))
+	createConfigTypesCount := 15 - (len(self.configTypes) - len(self.configTypesDeleted)) // target 25 configs available
+	for i := 0; i < createConfigTypesCount; i++ {
+		self.tasks = append(self.tasks, createNewConfigType(self.ctrls.getRandomCtrl()))
+	}
+}
+
+func (self *taskGenerationContext) generateConfigTasks() {
+	if self.err != nil {
+		return
 	}
 
-	return result, nil
+	if scenarioCounter%3 == 0 && len(self.configs) > 2 { // only delete configs every third iteration
+		for i := 0; i < 2; i++ {
+			entityId := *self.configs[i].ID
+			self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.config", fmt.Sprintf("delete config %s", entityId), func() error {
+				return models.DeleteConfig(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
+			}))
+		}
+	}
+
+	// delete any configs used by config types to be deleted
+	if len(self.configTypesDeleted) > 0 {
+		for _, config := range self.configs {
+			if _, deleted := self.configsDeleted[*config.ID]; deleted {
+				continue
+			}
+			if _, deleted := self.configTypesDeleted[*config.ConfigTypeID]; deleted {
+				entityId := *config.ID
+				self.configsDeleted[entityId] = struct{}{}
+				self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.config", fmt.Sprintf("delete config %s", entityId), func() error {
+					return models.DeleteConfig(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
+				}))
+			}
+		}
+	}
+
+	for i := 2; i < min(7, len(self.configs)); i++ {
+		entityId := *self.configs[i].ID
+		self.tasks = append(self.tasks, parallel.TaskWithLabel("modify.config", fmt.Sprintf("modify config %s", entityId), func() error {
+			entity := self.configs[i]
+			entity.Name = newId()
+			entity.Data = map[string]interface{}{
+				"hostname": fmt.Sprintf("https://%s.com", uuid.NewString()),
+				"protocol": func() string {
+					if rand.Int()%2 == 0 {
+						return "tcp"
+					}
+					return "udp"
+				}(),
+				"port": rand.Intn(32000),
+			}
+			return models.UpdateConfigFromDetail(self.ctrls.getRandomCtrl(), entity, 15*time.Second)
+		}))
+	}
+
+	if len(self.configTypes) > 0 {
+		createConfigCount := 25 - (len(self.configs) - len(self.configsDeleted)) // target 25 configs available
+		for i := 0; i < createConfigCount; i++ {
+			self.tasks = append(self.tasks, createNewConfig(self.ctrls.getRandomCtrl(), self.getConfigTypeId()))
+		}
+	}
+}
+
+func (self *taskGenerationContext) generateServiceTasks() {
+	if self.err != nil {
+		return
+	}
+
+	for i := 0; i < min(5, len(self.services)); i++ {
+		entityId := *self.services[i].ID
+		self.servicesDeleted[entityId] = struct{}{}
+		self.tasks = append(self.tasks, parallel.TaskWithLabel("delete.service", fmt.Sprintf("delete service %s", entityId), func() error {
+			return models.DeleteService(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
+		}))
+	}
+
+	modifyServiceTargetIndex := min(10, len(self.services))
+	if len(self.configsDeleted) > 0 {
+		modifyServiceTargetIndex = len(self.services)
+	}
+	for i := 5; i < modifyServiceTargetIndex; i++ {
+		service := self.services[i]
+		doModify := true
+		if len(self.configsDeleted) > 0 {
+			doModify = false
+			for _, configId := range service.Configs {
+				if _, deleted := self.configsDeleted[configId]; deleted {
+					doModify = true
+					break
+				}
+			}
+		}
+		if doModify {
+			self.tasks = append(self.tasks, parallel.TaskWithLabel("modify.service", fmt.Sprintf("modify service %s", *service.ID), func() error {
+				service.RoleAttributes = getRoleAttributesAsAttrPtr(3)
+				service.Name = newId()
+				service.Configs = self.getTwoValidConfigs()
+				return models.UpdateServiceFromDetail(self.ctrls.getRandomCtrl(), service, 15*time.Second)
+			}))
+		}
+	}
+
+	createServicesTarget := 100 - (len(self.services) - len(self.servicesDeleted))
+	for i := 0; i < createServicesTarget; i++ {
+		self.tasks = append(self.tasks, createNewService(self.ctrls.getRandomCtrl(), self.getTwoValidConfigs()))
+	}
+}
+
+func (self *taskGenerationContext) getResults() ([]parallel.LabeledTask, []parallel.LabeledTask, error) {
+	if self.err != nil {
+		return nil, nil, self.err
+	}
+
+	// need to delete configs first, then config types
+	slices.Reverse(self.lastTasks)
+	return self.tasks, self.lastTasks, nil
+}
+
+func getServiceAndConfigChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, []parallel.LabeledTask, error) {
+	ctx := &taskGenerationContext{
+		ctrls:              ctrls,
+		configTypesDeleted: map[string]struct{}{},
+		configsDeleted:     map[string]struct{}{},
+		servicesDeleted:    map[string]struct{}{},
+	}
+
+	ctx.loadEntities()
+	ctx.generateConfigTypeTasks()
+	ctx.generateConfigTasks()
+	ctx.generateServiceTasks()
+
+	return ctx.getResults()
 }
 
 func getIdentityChaosTasks(r model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
@@ -366,16 +550,74 @@ func getServicePolicyChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.Lab
 	return result, nil
 }
 
-func createNewService(ctrl *zitirest.Clients) parallel.LabeledTask {
+func createNewService(ctrl *zitirest.Clients, configs []string) parallel.LabeledTask {
 	return parallel.TaskWithLabel("create.service", "create new service", func() error {
 		svc := &rest_model.ServiceCreate{
-			Configs:            nil,
+			Configs:            configs,
 			EncryptionRequired: newBoolPtr(),
 			Name:               newId(),
 			RoleAttributes:     getRoleAttributes(3),
 			TerminatorStrategy: "smartrouting",
 		}
 		return models.CreateService(ctrl, svc, 15*time.Second)
+	})
+}
+
+func createNewConfigType(ctrl *zitirest.Clients) parallel.LabeledTask {
+	return parallel.TaskWithLabel("create.config-type", "create new config type", func() error {
+		entity := &rest_model.ConfigTypeCreate{
+			Name: newId(),
+			Schema: map[string]interface{}{
+				"$id":                  "https://edge.openziti.org/schemas/test.config.json",
+				"type":                 "object",
+				"additionalProperties": false,
+				"required": []interface{}{
+					"hostname",
+					"port",
+				},
+				"properties": map[string]interface{}{
+					"protocol": map[string]interface{}{
+						"type": []interface{}{
+							"string",
+							"null",
+						},
+						"enum": []interface{}{
+							"tcp",
+							"udp",
+						},
+					},
+					"hostname": map[string]interface{}{
+						"type": "string",
+					},
+					"port": map[string]interface{}{
+						"type":    "integer",
+						"minimum": float64(0),
+						"maximum": float64(math.MaxUint16),
+					},
+				},
+			},
+		}
+		return models.CreateConfigType(ctrl, entity, 15*time.Second)
+	})
+}
+
+func createNewConfig(ctrl *zitirest.Clients, configTypeId string) parallel.LabeledTask {
+	return parallel.TaskWithLabel("create.config", "create new config", func() error {
+		entity := &rest_model.ConfigCreate{
+			Name:         newId(),
+			ConfigTypeID: &configTypeId,
+			Data: map[string]interface{}{
+				"hostname": fmt.Sprintf("https://%s.com", uuid.NewString()),
+				"protocol": func() string {
+					if rand.Int()%2 == 0 {
+						return "tcp"
+					}
+					return "udp"
+				}(),
+				"port": rand.Intn(32000),
+			},
+		}
+		return models.CreateConfig(ctrl, entity, 15*time.Second)
 	})
 }
 

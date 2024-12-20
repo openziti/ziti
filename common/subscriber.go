@@ -107,8 +107,9 @@ func (self *IdentitySubscription) Diff(rdm *RouterDataModel, sink DiffSink) {
 
 	adapter := cmp.Reporter(diffReporter)
 	cmp.Diff(currentState, self, cmpopts.IgnoreUnexported(
-		sync.Mutex{}, IdentitySubscription{},
-		ConfigType{}, DataStateConfigType{},
+		sync.Mutex{}, IdentitySubscription{}, IdentityService{},
+		Config{}, ConfigType{},
+		DataStateConfig{}, DataStateConfigType{},
 		Identity{}, DataStateIdentity{},
 		Service{}, DataStateService{},
 		ServicePolicy{}, DataStateServicePolicy{},

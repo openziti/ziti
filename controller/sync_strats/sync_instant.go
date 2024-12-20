@@ -1907,6 +1907,11 @@ func (strategy *InstantStrategy) inspect(val string) (bool, *string, error) {
 		strVal := fmt.Sprintf("%d", idx)
 		return true, &strVal, nil
 	}
+	if val == "data-model-index" {
+		idx := strategy.indexProvider.CurrentIndex()
+		strVal := fmt.Sprintf("%d", idx)
+		return true, &strVal, nil
+	}
 	return false, nil, nil
 }
 
