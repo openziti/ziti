@@ -50,7 +50,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.22
-	github.com/openziti/channel/v3 v3.0.20
+	github.com/openziti/channel/v3 v3.0.22
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.36
 	github.com/openziti/foundation/v2 v2.0.55
@@ -88,7 +88,7 @@ require (
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.28.0
 	golang.org/x/text v0.21.0
-	google.golang.org/protobuf v1.35.2
+	google.golang.org/protobuf v1.36.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/go-jose/go-jose.v2 v2.6.3
 	gopkg.in/resty.v1 v1.12.0

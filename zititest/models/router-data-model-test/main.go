@@ -255,7 +255,7 @@ var m = &model.Model{
 
 				var tasks []parallel.LabeledTask
 				for range 100 {
-					task := createNewService(ctrls.getCtrl("ctrl1"))
+					task := createNewService(ctrls.getCtrl("ctrl1"), nil)
 					tasks = append(tasks, task)
 				}
 				return parallel.ExecuteLabeled(tasks, 2, nil)
