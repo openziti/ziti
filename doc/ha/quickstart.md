@@ -166,6 +166,14 @@ You can explore Ziti HA by running three local processes on unique TCP ports. Th
     jobs
     ```
 
+    Job 1 belongs to ctrl1, the current leader.
+
+    ```text
+    [1]    running    nohup ziti edge quickstart ha --instance-id="ctrl1" --ctrl-port="1281"       
+    [2]  - running    nohup ziti edge quickstart join --instance-id="ctrl3" --ctrl-port="1283"     
+    [3]  + running    nohup ziti edge quickstart join --instance-id="ctrl2" --ctrl-port="1282"     
+    ```
+
     ```bash
     kill %1
     ```
@@ -188,19 +196,14 @@ You can explore Ziti HA by running three local processes on unique TCP ports. Th
     ╰───────┴────────────────────┴───────┴────────┴─────────────────┴───────────╯
     ```
 
-1. Restart the disconnected member.
+1. Restart any disconnected member.
 
-    This is identical to the original startup command except the log is appended to the existing file.
+    Any member can be restarted with this `ha` subcommand.
 
     ```bash
     nohup ziti edge quickstart ha \
         --instance-id="ctrl1" \
-        --ctrl-port="1281" \
-        --router-port="3021" \
         --home="${PWD}" \
-        --ctrl-address="127.0.0.1" \
-        --router-address="127.0.0.1" \
-        --trust-domain="ha-quickstart" \
     &>> ctrl1.log &
     ```
 
@@ -241,7 +244,7 @@ You can explore Ziti HA by running three local processes on unique TCP ports. Th
     Expected output:
 
     ```text
-    [1]  + done       nohup ziti edge quickstart ha --instance-id="ctrl1" --ctrl-port="1281"                                                                                  
-    [2]    done       nohup ziti edge quickstart join --instance-id="ctrl2" --ctrl-port="1282"     
-    [3]  + done       nohup ziti edge quickstart join --instance-id="ctrl3" --ctrl-port="1283"     
+    [1]  + done       nohup ziti edge quickstart ha --instance-id="ctrl1" --ctrl-port="1281"
+    [2]    done       nohup ziti edge quickstart join --instance-id="ctrl2" --ctrl-port="1282"
+    [3]  + done       nohup ziti edge quickstart join --instance-id="ctrl3" --ctrl-port="1283"
     ```
