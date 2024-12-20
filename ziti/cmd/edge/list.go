@@ -101,7 +101,7 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newListCmdForEntityType("posture-check-types", runListPostureCheckTypes, newOptions()))
 
 	configTypeListRootCmd := newEntityListRootCmd("config-type")
-	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-type", "configs", outputConfigs, newOptions()))
+	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-types", "configs", outputConfigs, newOptions()))
 
 	configListRootCmd := newEntityListRootCmd("config")
 	configListRootCmd.AddCommand(newSubListCmdForEntityType("configs", "services", outputServices, newOptions()))

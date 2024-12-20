@@ -92,14 +92,11 @@ func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 
 			outMsg := protobufs.MarshalTyped(clientHello).ToSendable().Msg()
 
-			if h.stateManager.GetEnv().IsHaEnabled() {
-				if supported, ok := msg.Headers.GetBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel)); ok && supported {
+			if supported, ok := msg.Headers.GetBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel)); ok && supported {
+				outMsg.Headers.PutBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel), true)
 
-					outMsg.Headers.PutBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel), true)
-
-					if index, ok := h.stateManager.RouterDataModel().CurrentIndex(); ok {
-						outMsg.Headers.PutUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex), index)
-					}
+				if index, ok := h.stateManager.RouterDataModel().CurrentIndex(); ok {
+					outMsg.Headers.PutUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex), index)
 				}
 			}
 

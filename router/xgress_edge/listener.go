@@ -183,7 +183,7 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 		PeerData:             peerData,
 	}
 
-	if manager.GetEnv().IsHaEnabled() && xgress_common.IsBearerToken(sessionToken) {
+	if xgress_common.IsBearerToken(sessionToken) {
 		apiSession := manager.GetApiSessionFromCh(ch)
 
 		if apiSession == nil {
@@ -369,7 +369,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 		InstanceSecret: terminatorIdentitySecret,
 	}
 
-	if manager.GetEnv().IsHaEnabled() && xgress_common.IsBearerToken(sessionToken) {
+	if xgress_common.IsBearerToken(sessionToken) {
 		apiSession := manager.GetApiSessionFromCh(ch)
 
 		if apiSession == nil {
@@ -596,7 +596,7 @@ func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channe
 			TerminatorId: terminator.terminatorId,
 		}
 
-		if manager.GetEnv().IsHaEnabled() && xgress_common.IsBearerToken(sessionToken) {
+		if xgress_common.IsBearerToken(sessionToken) {
 			apiSession := manager.GetApiSessionFromCh(ch)
 			request.ApiSessionToken = apiSession.Token
 		}
@@ -663,7 +663,7 @@ func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *chann
 
 	log = log.WithField("terminator", terminator.terminatorId).WithField("checkPassed", checkPassed)
 
-	if manager.GetEnv().IsHaEnabled() && xgress_common.IsBearerToken(sessionToken) {
+	if xgress_common.IsBearerToken(sessionToken) {
 		apiSession := manager.GetApiSessionFromCh(ch)
 		request.ApiSessionToken = apiSession.Token
 	}

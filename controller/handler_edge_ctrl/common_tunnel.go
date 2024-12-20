@@ -49,8 +49,7 @@ type tunnelRequestHandler interface {
 
 type baseTunnelRequestContext struct {
 	baseSessionRequestContext
-	apiSession *model.ApiSession
-	identity   *model.Identity
+	identity *model.Identity
 }
 
 func (self *baseTunnelRequestContext) getTunnelState() *TunnelState {
@@ -196,7 +195,7 @@ func (self *baseTunnelRequestContext) loadServiceForId(id string) {
 			}
 
 			logrus.
-				WithField("apiSessionId", self.apiSession.Id).
+				WithField("apiSessionId", self.getApiSessionId()).
 				WithField("operation", self.handler.Label()).
 				WithField("router", self.sourceRouter.Name).
 				WithField("serviceId", id).

@@ -119,7 +119,7 @@ func StopSelected(run model.Run, list []*model.Component, concurrency int) error
 	})
 }
 
-func RestartSelected(run model.Run, list []*model.Component, concurrency int) error {
+func RestartSelected(run model.Run, concurrency int, list ...*model.Component) error {
 	if len(list) == 0 {
 		return nil
 	}
@@ -223,4 +223,14 @@ func EnsureRunning(c *model.Component, run model.Run) error {
 		return sc.Start(run, c)
 	}
 	return fmt.Errorf("component %v isn't of ServerComponent type, is of type %T", c, c.Type)
+}
+
+func Randomize[T any](s []T) {
+	for i := 0; i < len(s); i++ {
+		idx := rand.Intn(len(s))
+		e1 := s[i]
+		e2 := s[idx]
+		s[i] = e2
+		s[idx] = e1
+	}
 }

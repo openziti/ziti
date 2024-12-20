@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router"
@@ -103,10 +102,6 @@ func (factory *Factory) addReconnectionHandler(h reconnectionHandler) {
 	factory.reconnectionHandlers.Append(h)
 }
 
-func (factory *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
-	return nil
-}
-
 func (factory *Factory) Run(env env.RouterEnv) error {
 	factory.stateManager.StartHeartbeat(env, factory.edgeRouterConfig.HeartbeatIntervalSeconds, env.GetCloseNotify())
 
@@ -141,12 +136,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	edgeConfig.Tcfg["protocol"] = append(edgeConfig.Tcfg.Protocols(), "ziti-edge", "")
 
 	factory.edgeRouterConfig = edgeConfig
-
-	if factory.routerConfig.Ha.Enabled {
-		factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
-	} else {
-		factory.stateManager.SetRouterDataModel(common.NewReceiverRouterDataModel(state.RouterDataModelListerBufferSize, factory.env.GetCloseNotify()))
-	}
+	factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
 
 	go apiproxy.Start(edgeConfig)
 
