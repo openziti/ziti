@@ -88,6 +88,8 @@ jobs:
   haQuickstartTest:
     name: Test HA Quickstart
     runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: /tmp/build  # dir is created by build step and env var used by test script to find ziti executable
     steps:
       - name: Shallow checkout
         uses: actions/checkout@v4
@@ -100,8 +102,8 @@ jobs:
       - name: Build ziti executable
         shell: bash
         run: |
-          mkdir -pv /tmp/build
-          go build -o /tmp/build ${GITHUB_WORKSPACE}/...
+          mkdir -pv ${BUILD_DIR}
+          go build -o ${BUILD_DIR} ${GITHUB_WORKSPACE}/...
 
       - name: Build and run a three quickstart in HA mode
         shell: bash

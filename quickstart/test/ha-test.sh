@@ -88,7 +88,7 @@ nohup "${BUILD_DIR}/ziti" edge quickstart join \
     --ctrl-port="${ctrl_ports[1]}" \
     --router-port="${router_ports[1]}" \
     --instance-id="${INSTANCE_NAMES[1]}" \
-    --member-pid="${PIDS["${INSTANCE_NAMES[0]}"]}" \
+    --cluster-member="127.0.0.1:${ctrl_ports[0]}" \
     &> "${ziti_home}/${INSTANCE_NAMES[1]}.log" &
 PIDS["${INSTANCE_NAMES[1]}"]=$!
 
@@ -98,7 +98,7 @@ nohup "${BUILD_DIR}/ziti" edge quickstart join \
     --ctrl-port="${ctrl_ports[2]}" \
     --router-port="${router_ports[2]}" \
     --instance-id="${INSTANCE_NAMES[2]}" \
-    --member-pid="${PIDS["${INSTANCE_NAMES[0]}"]}" \
+    --cluster-member="127.0.0.1:${ctrl_ports[0]}" \
     &> "${ziti_home}/${INSTANCE_NAMES[2]}.log" &
 PIDS["${INSTANCE_NAMES[2]}"]=$!
 
