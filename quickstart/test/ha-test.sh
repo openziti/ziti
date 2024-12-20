@@ -70,6 +70,8 @@ declare -a INSTANCE_NAMES=(inst001 inst002 inst003)
 declare -A PIDS
 
 nohup "${BUILD_DIR}/ziti" edge quickstart ha \
+    --ctrl-address="127.0.0.1" \
+    --router-address="127.0.0.1" \
     --home="${ziti_home}" \
     --trust-domain="${trust_domain}" \
     --instance-id="${INSTANCE_NAMES[0]}" \
@@ -83,6 +85,8 @@ sleep 5
 echo "controller online"
 
 nohup "${BUILD_DIR}/ziti" edge quickstart join \
+    --ctrl-address="127.0.0.1" \
+    --router-address="127.0.0.1" \
     --home="${ziti_home}" \
     --trust-domain="${trust_domain}" \
     --ctrl-port="${ctrl_ports[1]}" \
@@ -93,6 +97,8 @@ nohup "${BUILD_DIR}/ziti" edge quickstart join \
 PIDS["${INSTANCE_NAMES[1]}"]=$!
 
 nohup "${BUILD_DIR}/ziti" edge quickstart join \
+    --ctrl-address="127.0.0.1" \
+    --router-address="127.0.0.1" \
     --home="${ziti_home}" \
     --trust-domain="${trust_domain}" \
     --ctrl-port="${ctrl_ports[2]}" \
