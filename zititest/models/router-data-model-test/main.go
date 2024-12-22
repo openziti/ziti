@@ -240,13 +240,6 @@ var m = &model.Model{
 			workflow.AddAction(zitilibActions.Edge("create", "edge-router-policy", "all", "--edge-router-roles", "#all", "--identity-roles", "#all"))
 			workflow.AddAction(zitilibActions.Edge("create", "service-edge-router-policy", "all", "--service-roles", "#all", "--edge-router-roles", "#all"))
 
-			workflow.AddAction(zitilibActions.Edge("create", "config", "host-config", "host.v1", `
-				{
-					"address" : "localhost",
-					"port" : 8080,
-					"protocol" : "tcp"
-				}`))
-
 			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
 				ctrls := &CtrlClients{}
 				if err := ctrls.init(run, "#ctrl1"); err != nil {

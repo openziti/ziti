@@ -43,18 +43,18 @@ func IsPassing(accessPolicies *common.AccessPolicies, cache *Cache) (*common.Ser
 			Errors: []error{},
 		}
 
-		for postureCheckId := range policy.PostureChecks {
+		policy.PostureChecks.RangeAll(func(postureCheckId string) {
 			postureCheck, ok := accessPolicies.PostureChecks[postureCheckId]
 
 			if !ok || postureCheck == nil {
 				policyErr.Errors = append(policyErr.Errors, fmt.Errorf("posture check id %s not found model", postureCheckId))
-				continue
+				return
 			}
 
 			if err := EvaluatePostureCheck(postureCheck, cache); err != nil {
 				policyErr.Errors = append(policyErr.Errors, err)
 			}
-		}
+		})
 
 		if len(policyErr.Errors) == 0 {
 			return policy, nil

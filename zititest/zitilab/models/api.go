@@ -2,8 +2,10 @@ package models
 
 import (
 	"context"
+	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
+	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
@@ -345,6 +347,96 @@ func UpdateConfigType(clients *zitirest.Clients, id string, entity *rest_model.C
 		Context:    ctx,
 		ID:         id,
 		ConfigType: entity,
+	}, nil)
+
+	return err
+}
+
+func ListPostureChecks(clients *zitirest.Clients, filter string, timeout time.Duration) ([]rest_model.PostureCheckDetail, error) {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	result, err := clients.Edge.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{
+		Filter:  &filter,
+		Context: ctx,
+	}, nil)
+
+	if err != nil {
+		return nil, err
+	}
+	return result.Payload.Data(), nil
+}
+
+func CreatePostureCheck(clients *zitirest.Clients, entity rest_model.PostureCheckCreate, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	_, err := clients.Edge.PostureChecks.CreatePostureCheck(&posture_checks.CreatePostureCheckParams{
+		Context:      ctx,
+		PostureCheck: entity,
+	}, nil)
+
+	return util.WrapIfApiError(err)
+}
+
+func DeletePostureCheck(clients *zitirest.Clients, id string, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	_, err := clients.Edge.PostureChecks.DeletePostureCheck(&posture_checks.DeletePostureCheckParams{
+		Context: ctx,
+		ID:      id,
+	}, nil)
+
+	return err
+}
+
+func UpdatePostureCheckFromDetail(clients *zitirest.Clients, entity rest_model.PostureCheckDetail, timeout time.Duration) error {
+	var update rest_model.PostureCheckUpdate
+	switch p := entity.(type) {
+	case *rest_model.PostureCheckDomainDetail:
+		update = &rest_model.PostureCheckDomainUpdate{
+			Domains: p.Domains,
+		}
+	case *rest_model.PostureCheckMacAddressDetail:
+		update = &rest_model.PostureCheckMacAddressUpdate{
+			MacAddresses: p.MacAddresses,
+		}
+	case *rest_model.PostureCheckMfaDetail:
+		update = &rest_model.PostureCheckMfaUpdate{
+			PostureCheckMfaProperties: p.PostureCheckMfaProperties,
+		}
+	case *rest_model.PostureCheckOperatingSystemDetail:
+		update = &rest_model.PostureCheckOperatingSystemUpdate{
+			OperatingSystems: p.OperatingSystems,
+		}
+	case *rest_model.PostureCheckProcessDetail:
+		update = &rest_model.PostureCheckProcessUpdate{
+			Process: p.Process,
+		}
+	case *rest_model.PostureCheckProcessMultiDetail:
+		update = &rest_model.PostureCheckProcessMultiUpdate{
+			Semantic:  p.Semantic,
+			Processes: p.Processes,
+		}
+	default:
+		return fmt.Errorf("unhandled posture check type %T", p)
+	}
+
+	update.SetName(entity.Name())
+	update.SetRoleAttributes(entity.RoleAttributes())
+
+	return UpdatePostureCheck(clients, *entity.ID(), update, timeout)
+}
+
+func UpdatePostureCheck(clients *zitirest.Clients, id string, entity rest_model.PostureCheckUpdate, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	_, err := clients.Edge.PostureChecks.UpdatePostureCheck(&posture_checks.UpdatePostureCheckParams{
+		Context:      ctx,
+		ID:           id,
+		PostureCheck: entity,
 	}, nil)
 
 	return err

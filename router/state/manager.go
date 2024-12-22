@@ -470,7 +470,7 @@ func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel) {
 		logger = logger.WithField("existingIndex", existingIndex)
 	}
 	model.SyncAllSubscribers()
-	logger.Info("router data model replacement complete")
+	logger.Infof("router data model replacement complete, old: %p, new: %p", existing, model)
 }
 
 func (sm *ManagerImpl) MarkSyncInProgress(trackerId string) {

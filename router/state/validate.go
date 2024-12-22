@@ -37,12 +37,13 @@ func (self *ValidateDataStateRequestHandler) HandleReceive(msg *channel.Message,
 
 	newState := request.State
 	model := common.NewBareRouterDataModel()
+	model.WhileLocked(func(u uint64, b bool) {
+		for _, event := range newState.Events {
+			model.Handle(newState.EndIndex, event)
+		}
+		model.SetCurrentIndex(newState.EndIndex)
+	})
 
-	for _, event := range newState.Events {
-		model.Handle(newState.EndIndex, event)
-	}
-
-	model.SetCurrentIndex(newState.EndIndex)
 	current := self.state.RouterDataModel()
 
 	response := &edge_ctrl_pb.RouterDataModelValidateResponse{

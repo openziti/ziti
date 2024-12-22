@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/parallel"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/foundation/v2/errorz"
+	ptrutil "github.com/openziti/foundation/v2/util"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/openziti/ziti/zitirest"
@@ -121,6 +122,7 @@ func sowChaos(run model.Run) error {
 	applyTasks(getRestartTasks)
 	applyTasks(getIdentityChaosTasks)
 	applyTasks(getServicePolicyChaosTasks)
+	applyTasks(getPostureTasks)
 
 	if err != nil {
 		return err
@@ -135,6 +137,10 @@ func sowChaos(run model.Run) error {
 		if errors.As(err, &apiErr) {
 			if strings.HasPrefix(task.Type(), "delete.") {
 				if apiErr.GetPayload().Error.Code == errorz.NotFoundCode {
+					return parallel.ErrActionIgnore
+				}
+			} else if strings.HasPrefix(task.Type(), "create.") && attempt > 1 {
+				if apiErr.GetPayload().Error.Code == errorz.CouldNotValidateCode {
 					return parallel.ErrActionIgnore
 				}
 			}
@@ -406,6 +412,63 @@ func (self *taskGenerationContext) generateConfigTasks() {
 	}
 }
 
+func (self *taskGenerationContext) generatePostureCheckTasks() {
+	if self.err != nil {
+		return
+	}
+
+	if scenarioCounter%3 == 0 && len(self.configs) > 2 { // only delete configs every third iteration
+		for i := 0; i < 2; i++ {
+			entityId := *self.configs[i].ID
+			self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.config", fmt.Sprintf("delete config %s", entityId), func() error {
+				return models.DeleteConfig(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
+			}))
+		}
+	}
+
+	// delete any configs used by config types to be deleted
+	if len(self.configTypesDeleted) > 0 {
+		for _, config := range self.configs {
+			if _, deleted := self.configsDeleted[*config.ID]; deleted {
+				continue
+			}
+			if _, deleted := self.configTypesDeleted[*config.ConfigTypeID]; deleted {
+				entityId := *config.ID
+				self.configsDeleted[entityId] = struct{}{}
+				self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.config", fmt.Sprintf("delete config %s", entityId), func() error {
+					return models.DeleteConfig(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
+				}))
+			}
+		}
+	}
+
+	for i := 2; i < min(7, len(self.configs)); i++ {
+		entityId := *self.configs[i].ID
+		self.tasks = append(self.tasks, parallel.TaskWithLabel("modify.config", fmt.Sprintf("modify config %s", entityId), func() error {
+			entity := self.configs[i]
+			entity.Name = newId()
+			entity.Data = map[string]interface{}{
+				"hostname": fmt.Sprintf("https://%s.com", uuid.NewString()),
+				"protocol": func() string {
+					if rand.Int()%2 == 0 {
+						return "tcp"
+					}
+					return "udp"
+				}(),
+				"port": rand.Intn(32000),
+			}
+			return models.UpdateConfigFromDetail(self.ctrls.getRandomCtrl(), entity, 15*time.Second)
+		}))
+	}
+
+	if len(self.configTypes) > 0 {
+		createConfigCount := 25 - (len(self.configs) - len(self.configsDeleted)) // target 25 configs available
+		for i := 0; i < createConfigCount; i++ {
+			self.tasks = append(self.tasks, createNewConfig(self.ctrls.getRandomCtrl(), self.getConfigTypeId()))
+		}
+	}
+}
+
 func (self *taskGenerationContext) generateServiceTasks() {
 	if self.err != nil {
 		return
@@ -472,6 +535,7 @@ func getServiceAndConfigChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.
 	ctx.loadEntities()
 	ctx.generateConfigTypeTasks()
 	ctx.generateConfigTasks()
+	ctx.generatePostureCheckTasks()
 	ctx.generateServiceTasks()
 
 	return ctx.getResults()
@@ -515,6 +579,178 @@ func getIdentityChaosTasks(r model.Run, ctrls *CtrlClients) ([]parallel.LabeledT
 	}
 
 	return result, nil
+}
+
+func getPostureTasks(r model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
+	entities, err := models.ListPostureChecks(ctrls.getRandomCtrl(), "limit none", 15*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	chaos.Randomize(entities)
+
+	var result []parallel.LabeledTask
+
+	var i int
+	for len(result) < 5+(len(entities)-100) {
+		entityId := *entities[i].ID()
+		result = append(result, parallel.TaskWithLabel("delete.posture-check", fmt.Sprintf("delete posture check %s", entityId), func() error {
+			return models.DeletePostureCheck(ctrls.getRandomCtrl(), entityId, 15*time.Second)
+		}))
+		i++
+	}
+
+	for len(result) < min(10, len(entities)) {
+		entity := entities[i]
+		entity.SetName(newId())
+		entity.SetRoleAttributes(getRoleAttributesAsAttrPtr(3))
+
+		switch p := entity.(type) {
+		case *rest_model.PostureCheckDomainDetail:
+			p.Domains = []string{uuid.NewString(), uuid.NewString()}
+		case *rest_model.PostureCheckMacAddressDetail:
+			p.MacAddresses = []string{uuid.NewString(), uuid.NewString()}
+		case *rest_model.PostureCheckMfaDetail:
+			p.IgnoreLegacyEndpoints = *newBoolPtr()
+			p.PromptOnUnlock = *newBoolPtr()
+			p.PromptOnWake = *newBoolPtr()
+			p.TimeoutSeconds = int64(rand.Intn(1000))
+		case *rest_model.PostureCheckOperatingSystemDetail:
+			p.OperatingSystems = getRandomOperatingSystems()
+		case *rest_model.PostureCheckProcessDetail:
+			p.Process = getRandomProcess()
+		case *rest_model.PostureCheckProcessMultiDetail:
+			p.Semantic = ptrutil.Ptr(getRandomSemantic())
+			p.Processes = getRandomProcessMultis()
+		default:
+			return nil, fmt.Errorf("unhandled posture check type: %T", p)
+		}
+
+		result = append(result, parallel.TaskWithLabel("modify.posture-check", fmt.Sprintf("modify %s posture-check %s", entity.TypeID(), *entity.ID()), func() error {
+			return models.UpdatePostureCheckFromDetail(ctrls.getRandomCtrl(), entity, 15*time.Second)
+		}))
+		i++
+	}
+
+	for i := 0; i < 55-len(entities); i++ {
+		result = append(result, createNewPostureCheck(ctrls.getRandomCtrl()))
+	}
+
+	return result, nil
+}
+
+func getRandomSemantic() rest_model.Semantic {
+	if rand.Int()%2 == 0 {
+		return rest_model.SemanticAnyOf
+	}
+	return rest_model.SemanticAllOf
+}
+
+func getRandomOperatingSystems() []*rest_model.OperatingSystem {
+	return getRandom(1, 3, getRandomOperatingSystem)
+}
+
+func getRandomOperatingSystem() *rest_model.OperatingSystem {
+	return &rest_model.OperatingSystem{
+		Type:     ptrutil.Ptr(getRandomOsType()),
+		Versions: getRandom(1, 3, getRandomVersion),
+	}
+}
+
+func getRandomVersion() string {
+	return fmt.Sprintf("%d.%d.%d", rand.Intn(100), rand.Intn(100), rand.Intn(100))
+}
+
+func getRandomProcessMultis() []*rest_model.ProcessMulti {
+	return getRandom(1, 3, getRandomProcessMulti)
+}
+
+func getRandomProcessMulti() *rest_model.ProcessMulti {
+	return &rest_model.ProcessMulti{
+		Hashes:             []string{uuid.NewString(), uuid.NewString()},
+		OsType:             ptrutil.Ptr(getRandomOsType()),
+		Path:               ptrutil.Ptr(uuid.NewString()),
+		SignerFingerprints: []string{uuid.NewString(), uuid.NewString()},
+	}
+}
+
+func getRandomProcess() *rest_model.Process {
+	return &rest_model.Process{
+		Hashes:            []string{uuid.NewString(), uuid.NewString()},
+		OsType:            ptrutil.Ptr(getRandomOsType()),
+		Path:              ptrutil.Ptr(uuid.NewString()),
+		SignerFingerprint: uuid.NewString(),
+	}
+}
+
+func getRandom[T any](min, max int, f func() T) []T {
+	var result []T
+	count := min
+	if max > min {
+		min += rand.Intn(max - min)
+	}
+	for i := 0; i < count; i++ {
+		result = append(result, f())
+	}
+	return result
+}
+
+var osTypes = []rest_model.OsType{
+	rest_model.OsTypeLinux,
+	rest_model.OsTypeWindows,
+	rest_model.OsTypeMacOS,
+	rest_model.OsTypeIOS,
+	rest_model.OsTypeAndroid,
+	rest_model.OsTypeWindowsServer,
+}
+
+func getRandomOsType() rest_model.OsType {
+	return osTypes[rand.Intn(len(osTypes))]
+}
+
+func createNewPostureCheck(ctrl *zitirest.Clients) parallel.LabeledTask {
+	var create rest_model.PostureCheckCreate
+
+	switch rand.Intn(6) {
+	case 0:
+		create = &rest_model.PostureCheckDomainCreate{
+			Domains: []string{uuid.NewString(), uuid.NewString()},
+		}
+
+	case 1:
+		create = &rest_model.PostureCheckMacAddressCreate{
+			MacAddresses: getRandom(1, 3, uuid.NewString),
+		}
+
+	case 2:
+		mfaCreate := &rest_model.PostureCheckMfaCreate{}
+		mfaCreate.IgnoreLegacyEndpoints = *newBoolPtr()
+		mfaCreate.PromptOnUnlock = *newBoolPtr()
+		mfaCreate.PromptOnWake = *newBoolPtr()
+		mfaCreate.TimeoutSeconds = int64(rand.Intn(1000))
+		create = mfaCreate
+	case 3:
+		create = &rest_model.PostureCheckOperatingSystemCreate{
+			OperatingSystems: getRandomOperatingSystems(),
+		}
+	case 4:
+		create = &rest_model.PostureCheckProcessCreate{
+			Process: getRandomProcess(),
+		}
+	case 5:
+		create = &rest_model.PostureCheckProcessMultiCreate{
+			Semantic:  ptrutil.Ptr(getRandomSemantic()),
+			Processes: getRandomProcessMultis(),
+		}
+	default:
+		panic("programming error")
+	}
+
+	create.SetName(newId())
+	create.SetRoleAttributes(getRoleAttributesAsAttrPtr(3))
+
+	return parallel.TaskWithLabel("create.posture-check", fmt.Sprintf("create %s posture check", create.TypeID()), func() error {
+		return models.CreatePostureCheck(ctrl, create, 15*time.Second)
+	})
 }
 
 func getServicePolicyChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
@@ -642,7 +878,6 @@ func createNewIdentity(ctrl *zitirest.Clients) parallel.LabeledTask {
 
 func createNewServicePolicy(ctrl *zitirest.Clients) parallel.LabeledTask {
 	return parallel.TaskWithLabel("create.service-policy", "create new service policy", func() error {
-		anyOf := rest_model.SemanticAnyOf
 		policyType := rest_model.DialBindDial
 		if rand.Int()%2 == 0 {
 			policyType = rest_model.DialBindBind
@@ -651,7 +886,7 @@ func createNewServicePolicy(ctrl *zitirest.Clients) parallel.LabeledTask {
 			Name:              newId(),
 			IdentityRoles:     getRoles(3),
 			PostureCheckRoles: getRoles(3),
-			Semantic:          &anyOf,
+			Semantic:          ptrutil.Ptr(getRandomSemantic()),
 			ServiceRoles:      getRoles(3),
 			Type:              &policyType,
 		}

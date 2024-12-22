@@ -1058,7 +1058,10 @@ func (strategy *InstantStrategy) ValidateIdentities(tx *bbolt.Tx, rdm *common.Ro
 
 		policyList := strategy.ae.GetStores().Identity.GetRelatedEntitiesIdList(tx, t.Id, db.EntityTypeServicePolicies)
 		policySet := genext.SliceToSet(policyList)
-		result = diffSets("identity", t.Id, "service policy", policySet, v.ServicePolicies, result)
+
+		v.ServicePolicies.WithReadLock(func(m map[string]struct{}) {
+			result = diffSets("identity", t.Id, "service policy", policySet, m, result)
+		})
 
 		return result
 	})
@@ -1158,11 +1161,16 @@ func (strategy *InstantStrategy) ValidateServicePolicies(tx *bbolt.Tx, rdm *comm
 
 		policyList := strategy.ae.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, t.Id, db.EntityTypeServices)
 		policySet := genext.SliceToSet(policyList)
-		result = diffSets("service policy", t.Id, "service", policySet, v.Services, result)
+		v.Services.WithReadLock(func(m map[string]struct{}) {
+			result = diffSets("service policy", t.Id, "service", policySet, m, result)
+		})
 
 		policyList = strategy.ae.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, t.Id, db.EntityTypePostureChecks)
 		policySet = genext.SliceToSet(policyList)
-		result = diffSets("service policy", t.Id, "posture check", policySet, v.PostureChecks, result)
+
+		v.PostureChecks.WithReadLock(func(m map[string]struct{}) {
+			result = diffSets("service policy", t.Id, "posture check", policySet, m, result)
+		})
 
 		return result
 	})

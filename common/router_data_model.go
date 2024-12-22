@@ -57,7 +57,7 @@ type DataStateIdentity = edge_ctrl_pb.DataState_Identity
 
 type Identity struct {
 	*DataStateIdentity
-	ServicePolicies map[string]struct{} `json:"servicePolicies"`
+	ServicePolicies *concurrenz.SyncSet[string] `json:"servicePolicies"`
 	identityIndex   uint64
 	serviceSetIndex uint64
 }
@@ -94,8 +94,8 @@ type DataStateServicePolicy = edge_ctrl_pb.DataState_ServicePolicy
 
 type ServicePolicy struct {
 	*DataStateServicePolicy
-	Services      map[string]struct{} `json:"services"`
-	PostureChecks map[string]struct{} `json:"postureChecks"`
+	Services      *concurrenz.SyncSet[string] `json:"services"`
+	PostureChecks *concurrenz.SyncSet[string] `json:"postureChecks"`
 }
 
 // RouterDataModel represents a sub-set of a controller's data model. Enough to validate an identities access to dial/bind
@@ -202,6 +202,8 @@ func NewReceiverRouterDataModelFromExisting(existing *RouterDataModel, listenerB
 		closeNotify:        closeNotify,
 		stopNotify:         make(chan struct{}),
 	}
+	currentIndex, _ := existing.CurrentIndex()
+	result.SetCurrentIndex(currentIndex)
 	go result.processSubscriberEvents()
 	return result
 }
@@ -232,6 +234,7 @@ func NewReceiverRouterDataModelFromFile(path string, listenerBufferSize uint, cl
 
 	err = json.Unmarshal(data, rdmContents)
 	if err != nil {
+		rdmContents.RouterDataModel.Stop()
 		return nil, err
 	}
 
@@ -371,7 +374,7 @@ func (rdm *RouterDataModel) HandleIdentityEvent(index uint64, event *edge_ctrl_p
 			if valueInMap == nil {
 				identity = &Identity{
 					DataStateIdentity: model.Identity,
-					ServicePolicies:   map[string]struct{}{},
+					ServicePolicies:   concurrenz.NewSyncSet[string](),
 					identityIndex:     index,
 				}
 			} else {
@@ -400,7 +403,7 @@ func (rdm *RouterDataModel) HandleServiceEvent(index uint64, event *edge_ctrl_pb
 	if event.Action == edge_ctrl_pb.DataState_Delete {
 		rdm.Services.Remove(model.Service.Id)
 		rdm.ServicePolicies.IterCb(func(key string, v *ServicePolicy) {
-			delete(v.Services, model.Service.Id)
+			v.Services.Remove(model.Service.Id)
 		})
 	} else {
 		rdm.Services.Set(model.Service.Id, &Service{
@@ -444,8 +447,8 @@ func (rdm *RouterDataModel) applyUpdateServicePolicyEvent(model *edge_ctrl_pb.Da
 		if valueInMap == nil {
 			return &ServicePolicy{
 				DataStateServicePolicy: servicePolicy,
-				Services:               map[string]struct{}{},
-				PostureChecks:          map[string]struct{}{},
+				Services:               concurrenz.NewSyncSet[string](),
+				PostureChecks:          concurrenz.NewSyncSet[string](),
 			}
 		} else {
 			return &ServicePolicy{
@@ -526,9 +529,9 @@ func (rdm *RouterDataModel) HandleServicePolicyChange(index uint64, model *edge_
 			rdm.Identities.Upsert(identityId, nil, func(exist bool, valueInMap *Identity, newValue *Identity) *Identity {
 				if valueInMap != nil {
 					if model.Add {
-						valueInMap.ServicePolicies[model.PolicyId] = struct{}{}
+						valueInMap.ServicePolicies.Add(model.PolicyId)
 					} else {
-						delete(valueInMap.ServicePolicies, model.PolicyId)
+						valueInMap.ServicePolicies.Remove(model.PolicyId)
 					}
 					valueInMap.serviceSetIndex = index
 				}
@@ -551,21 +554,21 @@ func (rdm *RouterDataModel) HandleServicePolicyChange(index uint64, model *edge_
 		case edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedService:
 			if model.Add {
 				for _, serviceId := range model.RelatedEntityIds {
-					valueInMap.Services[serviceId] = struct{}{}
+					valueInMap.Services.Add(serviceId)
 				}
 			} else {
 				for _, serviceId := range model.RelatedEntityIds {
-					delete(valueInMap.Services, serviceId)
+					valueInMap.Services.Remove(serviceId)
 				}
 			}
 		case edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedPostureCheck:
 			if model.Add {
 				for _, postureCheckId := range model.RelatedEntityIds {
-					valueInMap.PostureChecks[postureCheckId] = struct{}{}
+					valueInMap.PostureChecks.Add(postureCheckId)
 				}
 			} else {
 				for _, postureCheckId := range model.RelatedEntityIds {
-					delete(valueInMap.PostureChecks, postureCheckId)
+					valueInMap.PostureChecks.Remove(postureCheckId)
 				}
 			}
 		}
@@ -648,7 +651,7 @@ func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
 			}
 			events = append(events, newEvent)
 
-			for policyId := range v.ServicePolicies {
+			v.ServicePolicies.RangeAll(func(policyId string) {
 				change := servicePolicyIdentities[policyId]
 				if change == nil {
 					change = &edge_ctrl_pb.DataState_ServicePolicyChange{
@@ -659,7 +662,7 @@ func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
 					servicePolicyIdentities[policyId] = change
 				}
 				change.RelatedEntityIds = append(change.RelatedEntityIds, v.Id)
-			}
+			})
 		})
 
 		rdm.Services.IterCb(func(key string, v *Service) {
@@ -696,9 +699,9 @@ func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
 				RelatedEntityType: edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedService,
 				Add:               true,
 			}
-			for serviceId := range v.Services {
+			v.Services.RangeAll(func(serviceId string) {
 				addServicesChange.RelatedEntityIds = append(addServicesChange.RelatedEntityIds, serviceId)
-			}
+			})
 			events = append(events, &edge_ctrl_pb.DataState_Event{
 				Model: &edge_ctrl_pb.DataState_Event_ServicePolicyChange{
 					ServicePolicyChange: addServicesChange,
@@ -710,9 +713,9 @@ func (rdm *RouterDataModel) GetDataState() *edge_ctrl_pb.DataState {
 				RelatedEntityType: edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedPostureCheck,
 				Add:               true,
 			}
-			for postureCheckId := range v.PostureChecks {
+			v.PostureChecks.RangeAll(func(postureCheckId string) {
 				addPostureCheckChanges.RelatedEntityIds = append(addPostureCheckChanges.RelatedEntityIds, postureCheckId)
-			}
+			})
 			events = append(events, &edge_ctrl_pb.DataState_Event{
 				Model: &edge_ctrl_pb.DataState_Event_ServicePolicyChange{
 					ServicePolicyChange: addPostureCheckChanges,
@@ -818,28 +821,22 @@ func (rdm *RouterDataModel) GetServiceAccessPolicies(identityId string, serviceI
 
 	postureChecks := map[string]*edge_ctrl_pb.DataState_PostureCheck{}
 
-	for servicePolicyId := range identity.ServicePolicies {
+	identity.ServicePolicies.RangeAll(func(servicePolicyId string) {
 		servicePolicy, ok := rdm.ServicePolicies.Get(servicePolicyId)
 
-		if !ok {
-			continue
-		}
+		if ok && servicePolicy.PolicyType != policyType {
+			policies = append(policies, servicePolicy)
 
-		if servicePolicy.PolicyType != policyType {
-			continue
+			servicePolicy.PostureChecks.RangeAll(func(postureCheckId string) {
+				if _, ok := postureChecks[postureCheckId]; !ok {
+					//ignore ok, if !ok postureCheck == nil which will trigger
+					//failure during evaluation
+					postureCheck, _ := rdm.PostureChecks.Get(postureCheckId)
+					postureChecks[postureCheckId] = postureCheck.DataStatePostureCheck
+				}
+			})
 		}
-
-		policies = append(policies, servicePolicy)
-
-		for postureCheckId := range servicePolicy.PostureChecks {
-			if _, ok := postureChecks[postureCheckId]; !ok {
-				//ignore ok, if !ok postureCheck == nil which will trigger
-				//failure during evaluation
-				postureCheck, _ := rdm.PostureChecks.Get(postureCheckId)
-				postureChecks[postureCheckId] = postureCheck.DataStatePostureCheck
-			}
-		}
-	}
+	})
 
 	return &AccessPolicies{
 		Identity:      identity,
@@ -895,20 +892,20 @@ func (rdm *RouterDataModel) buildServiceList(sub *IdentitySubscription) (map[str
 	services := map[string]*IdentityService{}
 	postureChecks := map[string]*PostureCheck{}
 
-	for policyId := range sub.Identity.ServicePolicies {
+	sub.Identity.ServicePolicies.RangeAll(func(policyId string) {
 		policy, ok := rdm.ServicePolicies.Get(policyId)
 		if !ok {
 			log.WithField("policyId", policyId).Error("could not find service policy")
-			continue
+			return
 		}
 
-		for serviceId := range policy.Services {
+		policy.Services.RangeAll(func(serviceId string) {
 			service, ok := rdm.Services.Get(serviceId)
 			if !ok {
 				log.WithField("policyId", policyId).
 					WithField("serviceId", serviceId).
 					Error("could not find service")
-				continue
+				return
 			}
 
 			identityService, ok := services[serviceId]
@@ -920,16 +917,16 @@ func (rdm *RouterDataModel) buildServiceList(sub *IdentitySubscription) (map[str
 				}
 				services[serviceId] = identityService
 				rdm.loadServiceConfigs(sub.Identity, identityService)
-				rdm.loadServicePostureChecks(sub.Identity, policy, identityService, postureChecks)
 			}
+			rdm.loadServicePostureChecks(sub.Identity, policy, identityService, postureChecks)
 
 			if policy.PolicyType == edge_ctrl_pb.PolicyType_BindPolicy {
 				identityService.BindAllowed = true
 			} else if policy.PolicyType == edge_ctrl_pb.PolicyType_DialPolicy {
 				identityService.DialAllowed = true
 			}
-		}
-	}
+		})
+	})
 
 	return services, postureChecks
 }
@@ -940,7 +937,7 @@ func (rdm *RouterDataModel) loadServicePostureChecks(identity *Identity, policy 
 		WithField("serviceId", svc.Service.Id).
 		WithField("policyId", policy.Id)
 
-	for postureCheckId := range policy.PostureChecks {
+	policy.PostureChecks.RangeAll(func(postureCheckId string) {
 		check, ok := rdm.PostureChecks.Get(postureCheckId)
 		if !ok {
 			log.WithField("postureCheckId", postureCheckId).Error("could not find posture check")
@@ -948,7 +945,7 @@ func (rdm *RouterDataModel) loadServicePostureChecks(identity *Identity, policy 
 			svc.Checks[postureCheckId] = struct{}{}
 			checks[postureCheckId] = check
 		}
-	}
+	})
 }
 
 func (rdm *RouterDataModel) loadServiceConfigs(identity *Identity, svc *IdentityService) {
@@ -1026,7 +1023,7 @@ type DiffSink func(entityType string, id string, diffType DiffType, detail strin
 func (rdm *RouterDataModel) Validate(correct *RouterDataModel, sink DiffSink) {
 	correct.Diff(rdm, sink)
 	rdm.subscriptions.IterCb(func(key string, v *IdentitySubscription) {
-		v.Diff(correct, sink)
+		v.Diff(rdm, sink)
 	})
 }
 
@@ -1053,12 +1050,19 @@ func (rdm *RouterDataModel) Diff(o *RouterDataModel, sink DiffSink) {
 	diffType("identity", rdm.Identities, o.Identities, sink, Identity{}, DataStateIdentity{})
 	diffType("service", rdm.Services, o.Services, sink, Service{}, DataStateService{})
 	diffType("service-policy", rdm.ServicePolicies, o.ServicePolicies, sink, ServicePolicy{}, DataStateServicePolicy{})
-	diffType("posture-check", rdm.PostureChecks, o.PostureChecks, sink, PostureCheck{}, DataStatePostureCheck{})
+	diffType("posture-check", rdm.PostureChecks, o.PostureChecks, sink,
+		PostureCheck{}, DataStatePostureCheck{},
+		edge_ctrl_pb.DataState_PostureCheck_Domains_{}, edge_ctrl_pb.DataState_PostureCheck_Domains{},
+		edge_ctrl_pb.DataState_PostureCheck_Mac_{}, edge_ctrl_pb.DataState_PostureCheck_Mac{},
+		edge_ctrl_pb.DataState_PostureCheck_Mfa_{}, edge_ctrl_pb.DataState_PostureCheck_Mfa{},
+		edge_ctrl_pb.DataState_PostureCheck_OsList_{}, edge_ctrl_pb.DataState_PostureCheck_OsList{}, edge_ctrl_pb.DataState_PostureCheck_Os{},
+		edge_ctrl_pb.DataState_PostureCheck_Process_{}, edge_ctrl_pb.DataState_PostureCheck_Process{},
+		edge_ctrl_pb.DataState_PostureCheck_ProcessMulti_{}, edge_ctrl_pb.DataState_PostureCheck_ProcessMulti{})
 	diffType("public-keys", rdm.PublicKeys, o.PublicKeys, sink, edge_ctrl_pb.DataState_PublicKey{})
 	diffType("revocations", rdm.Revocations, o.Revocations, sink, edge_ctrl_pb.DataState_Revocation{})
 	diffMaps("cached-public-keys", rdm.getPublicKeysAsCmap(), o.getPublicKeysAsCmap(), sink, func(a, b crypto.PublicKey) []string {
 		if a == nil || b == nil {
-			return []string{fmt.Sprintf("cached public key is nil: orig: %v, dest: %v", a, a)}
+			return []string{fmt.Sprintf("cached public key is nil: orig: %v, dest: %v", a, b)}
 		}
 		return nil
 	})
@@ -1098,6 +1102,9 @@ func diffType[P any, T *P](entityType string, m1 cmap.ConcurrentMap[string, T], 
 
 	hasMissing := false
 	adapter := cmp.Reporter(diffReporter)
+	syncSetT := cmp.Transformer("syncSetToMap", func(s *concurrenz.SyncSet[string]) map[string]struct{} {
+		return s.ToMap()
+	})
 	m1.IterCb(func(key string, v T) {
 		v2, exists := m2.Get(key)
 		if !exists {
@@ -1105,7 +1112,7 @@ func diffType[P any, T *P](entityType string, m1 cmap.ConcurrentMap[string, T], 
 			hasMissing = true
 		} else {
 			diffReporter.key = key
-			cmp.Diff(v, v2, cmpopts.IgnoreUnexported(ignoreTypes...), adapter)
+			cmp.Diff(v, v2, syncSetT, cmpopts.IgnoreUnexported(ignoreTypes...), adapter)
 		}
 	})
 

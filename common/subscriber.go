@@ -21,6 +21,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"sync"
 )
 
@@ -106,14 +107,22 @@ func (self *IdentitySubscription) Diff(rdm *RouterDataModel, sink DiffSink) {
 	}
 
 	adapter := cmp.Reporter(diffReporter)
-	cmp.Diff(currentState, self, cmpopts.IgnoreUnexported(
+	syncSetT := cmp.Transformer("syncSetToMap", func(s *concurrenz.SyncSet[string]) map[string]struct{} {
+		return s.ToMap()
+	})
+	cmp.Diff(currentState, self, syncSetT, cmpopts.IgnoreUnexported(
 		sync.Mutex{}, IdentitySubscription{}, IdentityService{},
 		Config{}, ConfigType{},
 		DataStateConfig{}, DataStateConfigType{},
 		Identity{}, DataStateIdentity{},
 		Service{}, DataStateService{},
 		ServicePolicy{}, DataStateServicePolicy{},
-		PostureCheck{}, DataStatePostureCheck{},
+		PostureCheck{}, DataStatePostureCheck{}, edge_ctrl_pb.DataState_PostureCheck_Domains_{}, edge_ctrl_pb.DataState_PostureCheck_Domains{},
+		edge_ctrl_pb.DataState_PostureCheck_Mac_{}, edge_ctrl_pb.DataState_PostureCheck_Mac{},
+		edge_ctrl_pb.DataState_PostureCheck_Mfa_{}, edge_ctrl_pb.DataState_PostureCheck_Mfa{},
+		edge_ctrl_pb.DataState_PostureCheck_OsList_{}, edge_ctrl_pb.DataState_PostureCheck_OsList{}, edge_ctrl_pb.DataState_PostureCheck_Os{},
+		edge_ctrl_pb.DataState_PostureCheck_Process_{}, edge_ctrl_pb.DataState_PostureCheck_Process{},
+		edge_ctrl_pb.DataState_PostureCheck_ProcessMulti_{}, edge_ctrl_pb.DataState_PostureCheck_ProcessMulti{},
 	), adapter)
 }
 
@@ -184,6 +193,11 @@ func (self *IdentitySubscription) initialize(rdm *RouterDataModel, identity *Ide
 }
 
 func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
+	idx, _ := rdm.CurrentIndex()
+	log := pfxlog.Logger().
+		WithField("index", idx).
+		WithField("identity", self.IdentityId)
+
 	self.Lock()
 	newIdentity, ok := rdm.Identities.Get(self.IdentityId)
 	notifyRemoved := !ok && self.Identity != nil
@@ -197,6 +211,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	newServices := self.Services
 	newChecks := self.Checks
 	self.Unlock()
+	log.Debugf("identity subscriber updated. identities old: %p new: %p, rdm: %p", oldIdentity, newIdentity, rdm)
 
 	if notifyRemoved {
 		state := &IdentityState{
