@@ -51,19 +51,37 @@ func (factory ControllerHealthCheckApiFactory) Binding() string {
 }
 
 func (factory ControllerHealthCheckApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
-	return &ControllerHealthCheckApiHandler{
-		healthChecker: factory.healthChecker,
-		appEnv:        factory.appEnv,
+	healthCheckApiHandler, err := NewControllerHealthCheckApiHandler(factory.healthChecker, factory.appEnv, options)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return healthCheckApiHandler, nil
+
+}
+
+func NewControllerHealthCheckApiHandler(healthChecker gosundheit.Health, appEnv *env.AppEnv, options map[interface{}]interface{}) (*ControllerHealthCheckApiHandler, error) {
+	healthCheckApi := &ControllerHealthCheckApiHandler{
+		healthChecker: healthChecker,
+		appEnv:        appEnv,
 		options:       options,
-	}, nil
+	}
+	if value, found := options["enableRaftControllerCheck"]; found {
+		if f, ok := value.(bool); ok {
+			healthCheckApi.enableRaftControllerCheck = f
+		}
+	}
+	return healthCheckApi, nil
 
 }
 
 type ControllerHealthCheckApiHandler struct {
-	handler       http.Handler
-	options       map[interface{}]interface{}
-	appEnv        *env.AppEnv
-	healthChecker gosundheit.Health
+	handler                   http.Handler
+	options                   map[interface{}]interface{}
+	appEnv                    *env.AppEnv
+	enableRaftControllerCheck bool
+	healthChecker             gosundheit.Health
 }
 
 func (self ControllerHealthCheckApiHandler) Binding() string {
@@ -75,7 +93,7 @@ func (self ControllerHealthCheckApiHandler) Options() map[interface{}]interface{
 }
 
 func (self ControllerHealthCheckApiHandler) RootPath() string {
-	return "/controller/health"
+	return "/health-checks"
 }
 
 func (self ControllerHealthCheckApiHandler) IsHandler(r *http.Request) bool {
@@ -94,13 +112,7 @@ func (self *ControllerHealthCheckApiHandler) ServeHTTP(w http.ResponseWriter, re
 	encoder.SetIndent("", "    ")
 
 	results, healthy := self.healthChecker.Results()
-	isLeader := self.appEnv.GetHostController().IsRaftLeader()
-	isRaftEnabled := self.appEnv.GetHostController().IsRaftEnabled()
-	raftData := map[string]interface{}{}
 	data["healthy"] = healthy
-	raftData["isLeader"] = isLeader
-	raftData["isRaftEnabled"] = isRaftEnabled
-	output["raft"] = raftData
 	var checks []map[string]interface{}
 	shortFormat := request.URL.Query().Get("type") == "short"
 
@@ -127,9 +139,18 @@ func (self *ControllerHealthCheckApiHandler) ServeHTTP(w http.ResponseWriter, re
 		}
 	}
 	data["checks"] = checks
+	if self.enableRaftControllerCheck {
+		isRaftEnabled := self.appEnv.GetHostController().IsRaftEnabled()
+		isLeader := self.appEnv.GetHostController().IsRaftLeader()
 
-	if !isLeader && isRaftEnabled {
-		w.WriteHeader(429)
+		if !isLeader && isRaftEnabled {
+			w.WriteHeader(429)
+		}
+
+		raftData := map[string]interface{}{}
+		raftData["isRaftEnabled"] = isRaftEnabled
+		raftData["isLeader"] = isLeader
+		output["raft"] = raftData
 	}
 
 	if err := encoder.Encode(output); err != nil {

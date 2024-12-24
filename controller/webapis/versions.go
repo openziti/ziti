@@ -24,7 +24,7 @@ const (
 	RestApiRootPath       = "/edge"
 	ClientRestApiBase     = "/edge/client"
 	ManagementRestApiBase = "/edge/management"
-	ControllerHealthCheck = "/controller/health"
+	ControllerHealthCheck = "/health-checks"
 
 	LegacyClientRestApiBaseUrlV1      = RestApiRootPath + RestApiV1
 	ClientRestApiBaseUrlV1            = ClientRestApiBase + RestApiV1
@@ -41,7 +41,7 @@ const (
 	ClientApiBinding                = "edge-client"
 	ManagementApiBinding            = "edge-management"
 	OidcApiBinding                  = "edge-oidc"
-	ControllerHealthCheckApiBinding = "controller-health"
+	ControllerHealthCheckApiBinding = "health-checks"
 )
 
 // AllApiBindingVersions is a map of: API Binding -> Api Version -> API Path
