@@ -3,7 +3,6 @@ package main
 import (
 	"embed"
 	_ "embed"
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -356,20 +355,6 @@ var m = &model.Model{
 		terraform.Dispose(),
 		awsSshKeyDispose.Dispose(),
 	},
-}
-
-func getHostNames() []string {
-	var result []string
-	for i := 0; i < 8; i++ {
-		for j := 0; j < 10; j++ {
-			result = append(result, fmt.Sprintf("host-us-%d-%d", i, j))
-			if i < 6 {
-				result = append(result, fmt.Sprintf("host-eu-%d-%d", i, j))
-				result = append(result, fmt.Sprintf("host-ap-%d-%d", i, j))
-			}
-		}
-	}
-	return result
 }
 
 func main() {

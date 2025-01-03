@@ -6,6 +6,8 @@ raft:
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
 {{else}}
 db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrl.db
+routerDataModel:
+  enabled: true
 {{end}}
 
 identity:

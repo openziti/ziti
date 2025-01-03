@@ -54,8 +54,6 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(component.Start(".ctrl"))
 
 	if isHA {
-		workflow.AddAction(semaphore.Sleep(10 * time.Second))
-		workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
 		workflow.AddAction(semaphore.Sleep(2 * time.Second))
 		workflow.AddAction(edge.InitRaftController("#ctrl1"))
 	}
@@ -182,7 +180,9 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "client-routers", "--edge-router-roles", "#client", "--identity-roles", "#client"))
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "host-routers", "--edge-router-roles", "#host", "--identity-roles", "#host"))
 
-	workflow.AddAction(component.Stop(models.ControllerTag))
+	if isHA {
+		workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
+	}
 
 	return workflow
 }

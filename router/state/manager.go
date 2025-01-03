@@ -96,7 +96,7 @@ type Manager interface {
 	ParseJwt(jwtStr string) (*jwt.Token, *common.AccessClaims, error)
 
 	RouterDataModel() *common.RouterDataModel
-	SetRouterDataModel(model *common.RouterDataModel)
+	SetRouterDataModel(model *common.RouterDataModel, resetSubscription bool)
 	GetRouterDataModelPool() goroutines.Pool
 
 	StartHeartbeat(env env.RouterEnv, seconds int, closeNotify <-chan struct{})
@@ -158,6 +158,7 @@ func NewManager(stateEnv Env) Manager {
 		env:                     stateEnv,
 		routerDataModelPool:     routerDataModelPool,
 		endpointsChanged:        make(chan env.CtrlEvent, 10),
+		modelChanged:            make(chan struct{}, 1),
 	}
 
 	stateEnv.GetNetworkControllers().AddChangeListener(env.CtrlEventListenerFunc(func(event env.CtrlEvent) {
@@ -197,6 +198,7 @@ type ManagerImpl struct {
 	routerDataModelPool goroutines.Pool
 
 	endpointsChanged    chan env.CtrlEvent
+	modelChanged        chan struct{}
 	dataModelSubCtrlId  concurrenz.AtomicValue[string]
 	dataModelSubTimeout time.Time
 }
@@ -221,10 +223,29 @@ func (self *ManagerImpl) manageRouterDataModelSubscription() {
 		case event := <-self.endpointsChanged:
 			// if the controller we're subscribed to has changed, resubscribe
 			if event.Controller.Channel().Id() == self.GetCurrentDataModelSource() {
+				pfxlog.Logger().WithField("ctrlId", event.Controller.Channel().Id()).WithField("change", event.Type).
+					Info("currently subscribed controller has changed, resubscribing")
 				self.dataModelSubCtrlId.Store("")
 			}
 		case <-ticker.C:
+		case <-self.modelChanged:
 		}
+
+		allEndpointChangesProcessed := false
+		for !allEndpointChangesProcessed {
+			select {
+			case event := <-self.endpointsChanged:
+				// if the controller we're subscribed to has changed, resubscribe
+				if event.Controller.Channel().Id() == self.GetCurrentDataModelSource() {
+					pfxlog.Logger().WithField("ctrlId", event.Controller.Channel().Id()).WithField("change", event.Type).
+						Info("currently subscribed controller has changed, resubscribing")
+					self.dataModelSubCtrlId.Store("")
+				}
+			default:
+				allEndpointChangesProcessed = true
+			}
+		}
+
 		self.checkRouterDataModelSubscription()
 	}
 }
@@ -233,17 +254,28 @@ func (self *ManagerImpl) checkRouterDataModelSubscription() {
 	ctrl := self.env.GetNetworkControllers().GetNetworkController(self.dataModelSubCtrlId.Load())
 	if ctrl == nil || time.Now().After(self.dataModelSubTimeout) {
 		if bestCtrl := self.env.GetNetworkControllers().AnyCtrlChannel(); bestCtrl != nil {
+			logger := pfxlog.Logger().WithField("ctrlId", bestCtrl.Id()).WithField("prevCtrlId", self.dataModelSubCtrlId.Load())
+			if ctrl == nil {
+				logger.Info("no current data model subscription active, subscribing")
+			} else {
+				logger.Info("current data model subscription expired, resubscribing")
+			}
 			self.subscribeToDataModelUpdates(bestCtrl)
 		}
 	} else if !ctrl.IsConnected() || ctrl.TimeSinceLastContact() > 30*time.Second {
 		bestCtrl := self.env.GetNetworkControllers().AnyCtrlChannel()
 		if bestCtrl != nil && bestCtrl.Id() != ctrl.Channel().Id() {
+			pfxlog.Logger().WithField("ctrlId", bestCtrl.Id()).
+				WithField("prevCtrlId", self.dataModelSubCtrlId.Load()).
+				Info("current data model subscription source unreliable, changing subscription")
 			self.subscribeToDataModelUpdates(bestCtrl)
 		}
 	}
 }
 
 func (self *ManagerImpl) subscribeToDataModelUpdates(ch channel.Channel) {
+	renew := self.dataModelSubCtrlId.Load() == ch.Id()
+
 	// if we store after success, we may miss an update because the ids don't match yet
 	self.dataModelSubCtrlId.Store(ch.Id())
 
@@ -256,9 +288,14 @@ func (self *ManagerImpl) subscribeToDataModelUpdates(ch channel.Channel) {
 	req := &edge_ctrl_pb.SubscribeToDataModelRequest{
 		CurrentIndex:                currentIndex,
 		SubscriptionDurationSeconds: uint32(DefaultSubscriptionTimeout.Seconds()),
-		Renew:                       self.dataModelSubCtrlId.Load() == ch.Id(),
+		Renew:                       renew,
 	}
-	logger := pfxlog.Logger().WithField("ctrlId", ch.Id())
+
+	logger := pfxlog.Logger().
+		WithField("ctrlId", ch.Id()).
+		WithField("currentIndex", req.CurrentIndex).
+		WithField("renew", req.Renew)
+
 	if err := protobufs.MarshalTyped(req).WithTimeout(self.env.GetNetworkControllers().DefaultRequestTimeout()).SendAndWaitForWire(ch); err != nil {
 		self.dataModelSubCtrlId.Store("")
 		logger.WithError(err).Error("error to subscribing to router data model changes")
@@ -341,9 +378,12 @@ func (sm *ManagerImpl) LoadRouterModel(filePath string) {
 			pfxlog.Logger().Infof("router data model file does not exist [%s]", filePath)
 		}
 		model = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize, sm.env.GetCloseNotify())
+	} else {
+		index, _ := model.CurrentIndex()
+		pfxlog.Logger().WithField("path", filePath).WithField("index", index).Info("loaded router model from file")
 	}
 
-	sm.SetRouterDataModel(model)
+	sm.SetRouterDataModel(model, false)
 }
 
 func contains[T comparable](values []T, element T) bool {
@@ -454,13 +494,16 @@ func (sm *ManagerImpl) RouterDataModel() *common.RouterDataModel {
 	return sm.routerDataModel.Load()
 }
 
-func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel) {
+func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, resetSubscription bool) {
 	index, _ := model.CurrentIndex()
 	logger := pfxlog.Logger().WithField("index", index)
 
 	publicKeys := model.PublicKeys.Items()
 	logger.Debugf("number of public keys in rdm: %d", len(publicKeys))
 
+	if resetSubscription {
+		sm.dataModelSubCtrlId.Store("")
+	}
 	logger.Info("replacing router data model")
 	existing := sm.routerDataModel.Swap(model)
 	if existing != nil {
@@ -470,6 +513,15 @@ func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel) {
 		logger = logger.WithField("existingIndex", existingIndex)
 	}
 	model.SyncAllSubscribers()
+
+	if resetSubscription {
+		// notify subscription manager code to resubscribe with updated model and index
+		select {
+		case sm.modelChanged <- struct{}{}:
+		default:
+		}
+	}
+
 	logger.Infof("router data model replacement complete, old: %p, new: %p", existing, model)
 }
 

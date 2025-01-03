@@ -282,6 +282,7 @@ message RouterSdkTerminatorDetail {
 message ValidateRouterDataModelRequest {
   string routerFilter = 1;
   bool validateCtrl = 2;
+  bool fix = 3;
 }
 
 message ValidateRouterDataModelResponse {

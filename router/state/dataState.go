@@ -40,17 +40,11 @@ func (self *DataStateHandler) HandleReceive(msg *channel.Message, ch channel.Cha
 			return
 		}
 
-		model := common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize, self.state.GetEnv().GetCloseNotify())
-
 		logger.WithField("index", newState.EndIndex).Info("received full router data model state")
-		model.WhileLocked(func(u uint64, b bool) {
-			for _, event := range newState.Events {
-				model.Handle(newState.EndIndex, event)
-			}
-			model.SetCurrentIndex(newState.EndIndex)
-		})
 
-		self.state.SetRouterDataModel(model)
+		model := common.NewReceiverRouterDataModelFromDataState(newState, RouterDataModelListerBufferSize, self.state.GetEnv().GetCloseNotify())
+		self.state.SetRouterDataModel(model, false)
+
 		logger.WithField("index", newState.EndIndex).Info("finished processing full router data model state")
 	})
 

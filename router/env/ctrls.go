@@ -47,9 +47,9 @@ func (self CtrlEventListenerFunc) NotifyOfCtrlEvent(event CtrlEvent) {
 type CtrlEventType string
 
 const (
-	ControllerAdded       CtrlEventType = "ADDED"
-	ControllerReconnected CtrlEventType = "ADDED"
-	ControllerRemoved     CtrlEventType = "ADDED"
+	ControllerAdded       CtrlEventType = "Added"
+	ControllerReconnected CtrlEventType = "Reconnected"
+	ControllerRemoved     CtrlEventType = "Removed"
 )
 
 type CtrlEvent struct {
@@ -191,11 +191,7 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 }
 
 func (self *networkControllers) Add(address string, ch channel.Channel) error {
-	ctrl := &networkCtrl{
-		ch:               ch,
-		address:          address,
-		heartbeatOptions: self.heartbeatOptions,
-	}
+	ctrl := newNetworkCtrl(ch, address, self.heartbeatOptions)
 
 	if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
 		if versionInfo, err := versions.StdVersionEncDec.Decode(versionValue); err == nil {

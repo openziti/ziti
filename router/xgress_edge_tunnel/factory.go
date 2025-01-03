@@ -66,7 +66,6 @@ func (self *Factory) Enabled() bool {
 }
 
 func (self *Factory) BindChannel(binding channel.Binding) error {
-	self.serviceListHandler = handler_edge_ctrl.NewServiceListHandler(self.tunneler.servicePoller.handleServiceListUpdate)
 	binding.AddTypedReceiveHandler(self.serviceListHandler)
 	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorResponseType), self.tunneler.fabricProvider.HandleTunnelResponse)
 	return nil
@@ -107,6 +106,7 @@ func NewV1Factory(env env.RouterEnv, routerConfig *router.Config, stateManager s
 		env:             env,
 	}
 	factory.tunneler = newTunneler(factory, stateManager)
+	factory.serviceListHandler = handler_edge_ctrl.NewServiceListHandler(factory.tunneler.servicePoller.handleServiceListUpdate)
 	return factory
 }
 

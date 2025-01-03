@@ -175,7 +175,10 @@ func (rtx *RouterSender) handleSyncRequest(req *edge_ctrl_pb.SubscribeToDataMode
 
 	rtx.syncRdmUntil = time.Now().Add(time.Duration(req.SubscriptionDurationSeconds) * time.Second)
 	pfxlog.Logger().WithField("routerId", rtx.Router.Id).
+		WithField("routerName", rtx.Router.Name).
+		WithField("requestedIndex", req.CurrentIndex).
 		WithField("currentIndex", rtx.currentIndex).
+		WithField("renew", req.Renew).
 		WithField("subscriptionDuration", rtx.syncRdmUntil.String()).
 		Info("data model subscription started")
 
@@ -197,9 +200,9 @@ func (rtx *RouterSender) handleModelChange() {
 
 	var err error
 
-	if ok {
-		logger.Infof("event retrieval ok? %v, event count: %d for replay to router", ok, len(events))
+	logger.Infof("event retrieval ok? %v, event count: %d for replay to router", ok, len(events))
 
+	if ok {
 		for _, curEvent := range events {
 			if err = protobufs.MarshalTyped(curEvent).Send(rtx.Router.Control); err != nil {
 				logger.WithError(err).

@@ -14,7 +14,7 @@ require (
 	github.com/openziti/agent v1.0.23
 	github.com/openziti/channel/v3 v3.0.25
 	github.com/openziti/edge-api v0.26.36
-	github.com/openziti/fablab v0.5.72
+	github.com/openziti/fablab v0.5.83
 	github.com/openziti/foundation/v2 v2.0.56
 	github.com/openziti/identity v1.0.94
 	github.com/openziti/sdk-golang v0.23.44
@@ -150,7 +150,7 @@ require (
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
-	github.com/pkg/sftp v1.13.6 // indirect
+	github.com/pkg/sftp v1.13.7 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect

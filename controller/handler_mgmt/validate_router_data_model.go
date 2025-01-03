@@ -56,7 +56,7 @@ func (handler *validateRouterDataModelHandler) HandleReceive(msg *channel.Messag
 	var count int64
 	var evalF func()
 	if err = proto.Unmarshal(msg.Body, request); err == nil {
-		count, evalF, err = handler.ValidateRouterDataModel(request.ValidateCtrl, request.RouterFilter, func(detail *mgmt_pb.RouterDataModelDetails) {
+		count, evalF, err = handler.ValidateRouterDataModel(request, func(detail *mgmt_pb.RouterDataModelDetails) {
 			if !ch.IsClosed() {
 				if sendErr := protobufs.MarshalTyped(detail).WithTimeout(15 * time.Second).SendAndWaitForWire(ch); sendErr != nil {
 					log.WithError(sendErr).Error("send of router data model detail failed, closing channel")
@@ -100,8 +100,8 @@ func (handler *validateRouterDataModelHandler) HandleReceive(msg *channel.Messag
 
 type RouterDataModelValidationCallback func(detail *mgmt_pb.RouterDataModelDetails)
 
-func (handler *validateRouterDataModelHandler) ValidateRouterDataModel(includeCtrl bool, filter string, cb RouterDataModelValidationCallback) (int64, func(), error) {
-	result, err := handler.appEnv.Managers.Router.BaseList(filter)
+func (handler *validateRouterDataModelHandler) ValidateRouterDataModel(req *mgmt_pb.ValidateRouterDataModelRequest, cb RouterDataModelValidationCallback) (int64, func(), error) {
+	result, err := handler.appEnv.Managers.Router.BaseList(req.RouterFilter)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -109,7 +109,7 @@ func (handler *validateRouterDataModelHandler) ValidateRouterDataModel(includeCt
 	sem := concurrenz.NewSemaphore(10)
 
 	evalF := func() {
-		if includeCtrl {
+		if req.ValidateCtrl {
 			sem.Acquire()
 			go func() {
 				defer sem.Release()
@@ -141,7 +141,7 @@ func (handler *validateRouterDataModelHandler) ValidateRouterDataModel(includeCt
 				sem.Acquire()
 				go func() {
 					defer sem.Release()
-					handler.ValidateRouterDataModelOnRouter(connectedRouter, dataState, cb)
+					handler.ValidateRouterDataModelOnRouter(connectedRouter, dataState, req.Fix, cb)
 				}()
 			} else {
 				details := &mgmt_pb.RouterDataModelDetails{
@@ -157,14 +157,19 @@ func (handler *validateRouterDataModelHandler) ValidateRouterDataModel(includeCt
 	}
 
 	count := int64(len(result.Entities))
-	if includeCtrl {
+	if req.ValidateCtrl {
 		count++
 	}
 
 	return count, evalF, nil
 }
 
-func (handler *validateRouterDataModelHandler) ValidateRouterDataModelOnRouter(router *model.Router, dataState *edge_ctrl_pb.DataState, cb RouterDataModelValidationCallback) {
+func (handler *validateRouterDataModelHandler) ValidateRouterDataModelOnRouter(
+	router *model.Router,
+	dataState *edge_ctrl_pb.DataState,
+	fix bool,
+	cb RouterDataModelValidationCallback) {
+
 	details := &mgmt_pb.RouterDataModelDetails{
 		ComponentType: "router",
 		ComponentId:   router.Id,
@@ -173,7 +178,9 @@ func (handler *validateRouterDataModelHandler) ValidateRouterDataModelOnRouter(r
 
 	request := &edge_ctrl_pb.RouterDataModelValidateRequest{
 		State: dataState,
+		Fix:   fix,
 	}
+
 	resp := &edge_ctrl_pb.RouterDataModelValidateResponse{}
 	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
 	if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {

@@ -19,8 +19,17 @@ func NewDataStateEventHandler(state Manager) channel.TypedReceiveHandler {
 }
 
 func (eventHandler *dataStateChangeSetHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	logger := pfxlog.Logger().WithField("ctrlId", ch.Id())
 	currentCtrlId := eventHandler.state.GetCurrentDataModelSource()
+
+	logger := pfxlog.Logger().WithField("ctrlId", ch.Id())
+
+	newEvent := &edge_ctrl_pb.DataState_ChangeSet{}
+	if err := proto.Unmarshal(msg.Body, newEvent); err != nil {
+		logger.WithError(err).Errorf("could not unmarshal data state change set message")
+		return
+	}
+
+	logger = logger.WithField("index", newEvent.Index).WithField("synthetic", newEvent.IsSynthetic)
 
 	// ignore state from controllers we are not currently subscribed to
 	if currentCtrlId != ch.Id() {
@@ -29,19 +38,13 @@ func (eventHandler *dataStateChangeSetHandler) HandleReceive(msg *channel.Messag
 	}
 
 	err := eventHandler.state.GetRouterDataModelPool().Queue(func() {
-		newEvent := &edge_ctrl_pb.DataState_ChangeSet{}
-		if err := proto.Unmarshal(msg.Body, newEvent); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("could not marshal data state change set message")
-			return
-		}
-
 		model := eventHandler.state.RouterDataModel()
-		pfxlog.Logger().WithField("index", newEvent.Index).Info("received data state change set")
+		logger.Info("received data state change set")
 		model.ApplyChangeSet(newEvent)
 	})
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).Errorf("could not queue processing data state change set message")
+		logger.WithError(err).Errorf("could not queue processing data state change set message")
 	}
 }
 

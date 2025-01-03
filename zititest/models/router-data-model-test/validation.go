@@ -164,7 +164,7 @@ func sowChaos(run model.Run) error {
 			log = log.WithField("msg", msg)
 		}
 		log.Error("action failed, retrying")
-		time.Sleep(time.Duration(attempt*3) * time.Second)
+		time.Sleep(time.Duration(attempt*10) * time.Second)
 		return parallel.ErrActionRetry
 	}
 	return parallel.ExecuteLabeled(tasks, 2, retryPolicy)

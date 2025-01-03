@@ -43,7 +43,7 @@ func IsPassing(accessPolicies *common.AccessPolicies, cache *Cache) (*common.Ser
 			Errors: []error{},
 		}
 
-		policy.PostureChecks.RangeAll(func(postureCheckId string) {
+		policy.PostureChecks.IterCb(func(postureCheckId string, _ struct{}) {
 			postureCheck, ok := accessPolicies.PostureChecks[postureCheckId]
 
 			if !ok || postureCheck == nil {

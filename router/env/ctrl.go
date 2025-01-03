@@ -38,6 +38,16 @@ type NetworkController interface {
 	updateDataModelIndex(index uint64)
 }
 
+func newNetworkCtrl(ch channel.Channel, address string, heartbeatOptions *HeartbeatOptions) *networkCtrl {
+	result := &networkCtrl{
+		ch:               ch,
+		address:          address,
+		heartbeatOptions: heartbeatOptions,
+	}
+	result.lastContact.Store(time.Now().UnixMilli())
+	return result
+}
+
 type networkCtrl struct {
 	ch               channel.Channel
 	address          string
