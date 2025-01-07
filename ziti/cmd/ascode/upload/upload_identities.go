@@ -19,12 +19,12 @@ package upload
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/antchfx/jsonquery"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
-	common "github.com/openziti/ziti/internal/ascode"
+	"github.com/openziti/ziti/internal"
+	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 	"strings"
 )
@@ -38,14 +38,14 @@ func (u *Upload) ProcessIdentities(input map[string][]interface{}) (map[string]s
 
 		existing := mgmt.IdentityFromFilter(u.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if u.verbose {
+			if u.loginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":       *create.Name,
 					"identityId": *existing.ID,
 				}).
 					Info("Found existing Identity, skipping create")
 			}
-			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping Identity %s\r", *create.Name)
+			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping Identity %s\r", *create.Name)
 			continue
 		}
 
@@ -63,7 +63,7 @@ func (u *Upload) ProcessIdentities(input map[string][]interface{}) (map[string]s
 		policyName := jsonquery.FindOne(doc, "/authPolicy").Value().(string)[1:]
 
 		// look up the auth policy id from the name and add to the create, omit if it's the "Default" policy
-		policy, _ := common.GetItemFromCache(u.authPolicyCache, policyName, func(name string) (interface{}, error) {
+		policy, _ := ascode.GetItemFromCache(u.authPolicyCache, policyName, func(name string) (interface{}, error) {
 			return mgmt.AuthPolicyFromFilter(u.client, mgmt.NameFilter(name)), nil
 		})
 		if policy == nil {
@@ -74,7 +74,7 @@ func (u *Upload) ProcessIdentities(input map[string][]interface{}) (map[string]s
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating Identity %s\r", *create.Name)
+		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating Identity %s\r", *create.Name)
 		created, createErr := u.client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
@@ -89,7 +89,7 @@ func (u *Upload) ProcessIdentities(input map[string][]interface{}) (map[string]s
 				return nil, createErr
 			}
 		}
-		if u.verbose {
+		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":       *create.Name,
 				"identityId": created.Payload.Data.ID,
@@ -108,7 +108,7 @@ func (u *Upload) lookupIdentities(roles []string) ([]string, error) {
 	for _, role := range roles {
 		if role[0:1] == "@" {
 			roleName := role[1:]
-			value, lookupErr := common.GetItemFromCache(u.identityCache, roleName, func(name string) (interface{}, error) {
+			value, lookupErr := ascode.GetItemFromCache(u.identityCache, roleName, func(name string) (interface{}, error) {
 				return mgmt.IdentityFromFilter(u.client, mgmt.NameFilter(name)), nil
 			})
 			if lookupErr != nil {

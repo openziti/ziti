@@ -17,10 +17,10 @@
 package upload
 
 import (
-	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
+	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
@@ -33,20 +33,20 @@ func (u *Upload) ProcessExternalJwtSigners(input map[string][]interface{}) (map[
 		// see if the signer already exists
 		existing := mgmt.ExternalJWTSignerFromFilter(u.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if u.verbose {
+			if u.loginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":                *create.Name,
 					"externalJwtSignerId": *existing.ID,
 				}).
 					Info("Found existing ExtJWTSigner, skipping create")
 			}
-			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping ExtJWTSigner %s\r", *create.Name)
+			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping ExtJWTSigner %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating ExtJWTSigner %s\r", *create.Name)
-		if u.verbose {
+		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating ExtJWTSigner %s\r", *create.Name)
+		if u.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating ExtJWTSigner")
 		}
 		created, createErr := u.client.ExternalJWTSigner.CreateExternalJWTSigner(&external_jwt_signer.CreateExternalJWTSignerParams{ExternalJWTSigner: create}, nil)
@@ -64,7 +64,7 @@ func (u *Upload) ProcessExternalJwtSigners(input map[string][]interface{}) (map[
 				return nil, createErr
 			}
 		}
-		if u.verbose {
+		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":                *create.Name,
 				"externalJwtSignerId": created.Payload.Data.ID,

@@ -18,11 +18,11 @@ package upload
 
 import (
 	"errors"
-	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
-	common "github.com/openziti/ziti/internal/ascode"
+	"github.com/openziti/ziti/internal"
+	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
@@ -40,13 +40,13 @@ func (u *Upload) ProcessEdgeRouters(input map[string][]interface{}) (map[string]
 				"edgeRouterId": *existing.ID,
 			}).
 				Info("Found existing EdgeRouter, skipping create")
-			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping EdgeRouter %s\r", *create.Name)
+			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping EdgeRouter %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating EdgeRouterPolicy %s\r", *create.Name)
-		if u.verbose {
+		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
+		if u.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating EdgeRouter")
 		}
 		created, createErr := u.client.EdgeRouter.CreateEdgeRouter(&edge_router.CreateEdgeRouterParams{EdgeRouter: create}, nil)
@@ -61,7 +61,7 @@ func (u *Upload) ProcessEdgeRouters(input map[string][]interface{}) (map[string]
 				return nil, createErr
 			}
 		}
-		if u.verbose {
+		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":         *create.Name,
 				"edgeRouterId": created.Payload.Data.ID,
@@ -80,7 +80,7 @@ func (u *Upload) lookupEdgeRouters(roles []string) ([]string, error) {
 	for _, role := range roles {
 		if role[0:1] == "@" {
 			value := role[1:]
-			edgeRouter, _ := common.GetItemFromCache(u.edgeRouterCache, value, func(name string) (interface{}, error) {
+			edgeRouter, _ := ascode.GetItemFromCache(u.edgeRouterCache, value, func(name string) (interface{}, error) {
 				return mgmt.EdgeRouterFromFilter(u.client, mgmt.NameFilter(name)), nil
 			})
 			if edgeRouter == nil {

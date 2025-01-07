@@ -18,10 +18,10 @@ package upload
 
 import (
 	"errors"
-	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
+	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
@@ -39,7 +39,7 @@ func (u *Upload) ProcessServicePolicies(input map[string][]interface{}) (map[str
 				"servicePolicyId": *existing.ID,
 			}).
 				Info("Found existing ServicePolicy, skipping create")
-			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping ServicePolicy %s\r", *create.Name)
+			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
 			continue
 		}
 
@@ -58,8 +58,8 @@ func (u *Upload) ProcessServicePolicies(input map[string][]interface{}) (map[str
 		create.IdentityRoles = identityRoles
 
 		// do the actual create since it doesn't exist
-		_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping ServicePolicy %s\r", *create.Name)
-		if u.verbose {
+		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
+		if u.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating ServicePolicy")
 		}
 		created, createErr := u.client.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
@@ -75,7 +75,7 @@ func (u *Upload) ProcessServicePolicies(input map[string][]interface{}) (map[str
 				return nil, createErr
 			}
 		}
-		if u.verbose {
+		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":            *create.Name,
 				"servicePolicyId": created.Payload.Data.ID,

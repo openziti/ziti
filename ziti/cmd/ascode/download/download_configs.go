@@ -20,7 +20,7 @@ import (
 	"errors"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
-	common "github.com/openziti/ziti/internal/ascode"
+	"github.com/openziti/ziti/internal/ascode"
 )
 
 func (d Download) GetConfigs() ([]map[string]interface{}, error) {
@@ -59,7 +59,7 @@ func (d Download) GetConfigs() ([]map[string]interface{}, error) {
 			// translate ids to names
 			delete(m, "configType")
 			delete(m, "configTypeId")
-			configType, lookupErr := common.GetItemFromCache(d.configTypeCache, *item.ConfigTypeID, func(id string) (interface{}, error) {
+			configType, lookupErr := ascode.GetItemFromCache(d.configTypeCache, *item.ConfigTypeID, func(id string) (interface{}, error) {
 				return d.client.Config.DetailConfigType(&config.DetailConfigTypeParams{ID: id}, nil)
 			})
 			if lookupErr != nil {

@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
-	common "github.com/openziti/ziti/internal/ascode"
+	"github.com/openziti/ziti/internal/ascode"
 )
 
 func (d Download) GetIdentities() ([]map[string]interface{}, error) {
@@ -72,7 +72,7 @@ func (d Download) GetIdentities() ([]map[string]interface{}, error) {
 				}
 
 				// translate ids to names
-				authPolicy, lookupErr := common.GetItemFromCache(d.authPolicyCache, *item.AuthPolicyID, func(id string) (interface{}, error) {
+				authPolicy, lookupErr := ascode.GetItemFromCache(d.authPolicyCache, *item.AuthPolicyID, func(id string) (interface{}, error) {
 					return d.client.AuthPolicy.DetailAuthPolicy(&auth_policy.DetailAuthPolicyParams{ID: id}, nil)
 				})
 				if lookupErr != nil {

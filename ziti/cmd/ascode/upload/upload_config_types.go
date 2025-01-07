@@ -17,10 +17,10 @@
 package upload
 
 import (
-	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
+	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
@@ -33,20 +33,20 @@ func (u *Upload) ProcessConfigTypes(input map[string][]interface{}) (map[string]
 		// see if the config type already exists
 		existing := mgmt.ConfigTypeFromFilter(u.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if u.verbose {
+			if u.loginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":         *create.Name,
 					"configTypeId": *existing.ID,
 				}).
 					Info("Found existing ConfigType, skipping create")
 			}
-			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping ConfigType %s\r", *create.Name)
+			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping ConfigType %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating ConfigType %s\r", *create.Name)
-		if u.verbose {
+		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating ConfigType %s\r", *create.Name)
+		if u.loginOpts.Verbose {
 			log.WithField("name", *create.Name).
 				Debug("Creating ConfigType")
 		}
@@ -65,7 +65,7 @@ func (u *Upload) ProcessConfigTypes(input map[string][]interface{}) (map[string]
 			return nil, createErr
 		}
 
-		if u.verbose {
+		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":         *create.Name,
 				"configTypeId": created.Payload.Data.ID,

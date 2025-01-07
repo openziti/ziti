@@ -19,12 +19,12 @@ package upload
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/antchfx/jsonquery"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
-	common "github.com/openziti/ziti/internal/ascode"
+	"github.com/openziti/ziti/internal"
+	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 	"strings"
 )
@@ -38,7 +38,7 @@ func (u *Upload) ProcessConfigs(input map[string][]interface{}) (map[string]stri
 		// see if the config already exists
 		existing := mgmt.ConfigFromFilter(u.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if u.verbose {
+			if u.loginOpts.Verbose {
 				log.
 					WithFields(map[string]interface{}{
 						"name":     *create.Name,
@@ -46,7 +46,7 @@ func (u *Upload) ProcessConfigs(input map[string][]interface{}) (map[string]stri
 					}).
 					Info("Found existing Config, skipping create")
 			}
-			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping Config %s\r", *create.Name)
+			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping Config %s\r", *create.Name)
 			continue
 		}
 
@@ -60,7 +60,7 @@ func (u *Upload) ProcessConfigs(input map[string][]interface{}) (map[string]stri
 
 		// look up the config type id from the name and add to the create
 		value := jsonquery.FindOne(doc, "/configType").Value().(string)[1:]
-		configType, _ := common.GetItemFromCache(u.configCache, value, func(name string) (interface{}, error) {
+		configType, _ := ascode.GetItemFromCache(u.configCache, value, func(name string) (interface{}, error) {
 			return mgmt.ConfigTypeFromFilter(u.client, mgmt.NameFilter(name)), nil
 		})
 		if u.configCache == nil {
@@ -69,8 +69,8 @@ func (u *Upload) ProcessConfigs(input map[string][]interface{}) (map[string]stri
 		create.ConfigTypeID = configType.(*rest_model.ConfigTypeDetail).ID
 
 		// do the actual create since it doesn't exist
-		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating Config %s\r", *create.Name)
-		if u.verbose {
+		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating Config %s\r", *create.Name)
+		if u.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating Config")
 		}
 		created, createErr := u.client.Config.CreateConfig(&config.CreateConfigParams{Config: create}, nil)
@@ -86,7 +86,7 @@ func (u *Upload) ProcessConfigs(input map[string][]interface{}) (map[string]stri
 				return nil, createErr
 			}
 		}
-		if u.verbose {
+		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":     *create.Name,
 				"configId": created.Payload.Data.ID,

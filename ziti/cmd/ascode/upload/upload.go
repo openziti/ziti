@@ -19,14 +19,13 @@ package upload
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/judedaryl/go-arrayutils"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 	"github.com/openziti/ziti/ziti/cmd/edge"
-	c "github.com/openziti/ziti/ziti/constants"
+	"github.com/openziti/ziti/ziti/constants"
 	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -40,24 +39,19 @@ import (
 )
 
 type Upload struct {
-	loginOpts edge.LoginOptions
-	client    *rest_management_api_client.ZitiEdgeManagement
-	reader    Reader
-
-	verbose bool
-
-	ofJson bool
-	ofYaml bool
-
+	loginOpts          edge.LoginOptions
+	client             *rest_management_api_client.ZitiEdgeManagement
+	reader             Reader
+	ofJson             bool
+	ofYaml             bool
 	configCache        *cache.Cache
 	serviceCache       *cache.Cache
 	edgeRouterCache    *cache.Cache
 	authPolicyCache    *cache.Cache
 	extJwtSignersCache *cache.Cache
 	identityCache      *cache.Cache
-
-	Out io.Writer
-	Err io.Writer
+	//Out                io.Writer
+	//Err                io.Writer
 }
 
 var log = pfxlog.Logger()
@@ -65,14 +59,12 @@ var log = pfxlog.Logger()
 func NewUploadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	u := &Upload{}
-	u.Out = out
-	u.Err = errOut
 	u.loginOpts = edge.LoginOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "import filename [entity]",
-		Short: "Import ziti entities",
-		Long: "Import all or selected ziti entities from the specified file.\n" +
+		Short: "Import entities",
+		Long: "Import all or selected entities from the specified file.\n" +
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edgerouter-policy|service-edgerouter-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -101,18 +93,14 @@ func NewUploadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			if executeErr != nil {
 				panic(executeErr)
 			}
-			if u.verbose {
-				log.
-					WithField("results", result).
-					Debug("Finished")
-			}
+			log.WithField("results", result).Debug("Finished")
 		},
 		Hidden: true,
 	}
 
 	v := viper.New()
 
-	viper.SetEnvPrefix(c.ZITI) // All env vars we seek will be prefixed with "ZITI_"
+	viper.SetEnvPrefix(constants.ZITI) // All env vars we seek will be prefixed with "ZITI_"
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	v.AutomaticEnv()
 
@@ -129,10 +117,10 @@ func NewUploadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func (u *Upload) Init() {
-	u.verbose = u.loginOpts.Verbose
+	u.loginOpts.Verbose = u.loginOpts.Verbose
 
 	logLvl := logrus.InfoLevel
-	if u.verbose {
+	if u.loginOpts.Verbose {
 		logLvl = logrus.DebugLevel
 	}
 
@@ -172,88 +160,62 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 	if all ||
 		slices.Contains(args, "ca") || slices.Contains(args, "cas") ||
 		slices.Contains(args, "certificate-authority") || slices.Contains(args, "certificate-authorities") {
-		if u.verbose {
-			log.
-				Debug("Processing CertificateAuthorities")
-		}
+		log.Debug("Processing CertificateAuthorities")
 		var err error
 		cas, err = u.ProcessCertificateAuthorities(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("certificateAuthorities", cas).
-				Debug("CertificateAuthorities created")
-		}
+		log.
+			WithField("certificateAuthorities", cas).
+			Debug("CertificateAuthorities created")
 	}
 	result["certificateAuthorities"] = cas
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d CertificateAuthorities\r\n", len(cas))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d CertificateAuthorities\r\n", len(cas))
 
 	externalJwtSigners := map[string]string{}
 	if all ||
 		slices.Contains(args, "external-jwt-signer") || slices.Contains(args, "external-jwt-signers") ||
 		slices.Contains(args, "auth-policy") || slices.Contains(args, "auth-policies") ||
 		slices.Contains(args, "identity") || slices.Contains(args, "identities") {
-		if u.verbose {
-			log.
-				Debug("Processing ExtJWTSigners")
-		}
+		log.Debug("Processing ExtJWTSigners")
 		var err error
 		externalJwtSigners, err = u.ProcessExternalJwtSigners(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("externalJwtSigners", externalJwtSigners).
-				Debug("ExtJWTSigners created")
-		}
+		log.WithField("externalJwtSigners", externalJwtSigners).Debug("ExtJWTSigners created")
 	}
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d ExtJWTSigners\r\n", len(externalJwtSigners))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d ExtJWTSigners\r\n", len(externalJwtSigners))
 	result["externalJwtSigners"] = externalJwtSigners
 
 	authPolicies := map[string]string{}
 	if all ||
 		slices.Contains(args, "auth-policy") || slices.Contains(args, "auth-policies") ||
 		slices.Contains(args, "identity") || slices.Contains(args, "identities") {
-		if u.verbose {
-			log.
-				Debug("Processing AuthPolicies")
-		}
+		log.Debug("Processing AuthPolicies")
 		var err error
 		authPolicies, err = u.ProcessAuthPolicies(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("authPolicies", authPolicies).
-				Debug("AuthPolicies created")
-		}
+		log.WithField("authPolicies", authPolicies).Debug("AuthPolicies created")
 	}
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d AuthPolicies\r\n", len(authPolicies))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d AuthPolicies\r\n", len(authPolicies))
 	result["authPolicies"] = authPolicies
 
 	identities := map[string]string{}
 	if all ||
 		slices.Contains(args, "identity") || slices.Contains(args, "identities") {
-		if u.verbose {
-			log.
-				Debug("Processing Identities")
-		}
+		log.Debug("Processing Identities")
 		var err error
 		identities, err = u.ProcessIdentities(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("identities", identities).
-				Debug("Identities created")
-		}
+		log.WithField("identities", identities).Debug("Identities created")
 	}
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d Identities\r\n", len(identities))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d Identities\r\n", len(identities))
 	result["identities"] = identities
 
 	configTypes := map[string]string{}
@@ -261,177 +223,118 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 		slices.Contains(args, "config-type") || slices.Contains(args, "config-types") ||
 		slices.Contains(args, "config") || slices.Contains(args, "configs") ||
 		slices.Contains(args, "service") || slices.Contains(args, "services") {
-		if u.verbose {
-			log.
-				Debug("Processing ConfigTypes")
-		}
+		log.Debug("Processing ConfigTypes")
 		var err error
 		configTypes, err = u.ProcessConfigTypes(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("configTypes", configTypes).
-				Debug("ConfigTypes created")
-		}
+		log.WithField("configTypes", configTypes).Debug("ConfigTypes created")
 	}
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d ConfigTypes\r\n", len(configTypes))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d ConfigTypes\r\n", len(configTypes))
 	result["configTypes"] = configTypes
 
 	configs := map[string]string{}
 	if all ||
 		slices.Contains(args, "config") || slices.Contains(args, "configs") ||
 		slices.Contains(args, "service") || slices.Contains(args, "services") {
-		if u.verbose {
-			log.
-				Debug("Processing Configs")
-		}
+		log.Debug("Processing Configs")
 		var err error
 		configs, err = u.ProcessConfigs(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("configs", configs).
-				Debug("Configs created")
-		}
+		log.WithField("configs", configs).Debug("Configs created")
 	}
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d Configs\r\n", len(configs))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d Configs\r\n", len(configs))
 	result["configs"] = configs
 
 	services := map[string]string{}
 	if all ||
 		slices.Contains(args, "service") || slices.Contains(args, "services") {
-		if u.verbose {
-			log.
-				Debug("Processing Services")
-		}
+		log.Debug("Processing Services")
 		var err error
 		services, err = u.ProcessServices(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("services", services).
-				Debug("Services created")
-		}
+		log.WithField("services", services).Debug("Services created")
 	}
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d Services\r\n", len(services))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d Services\r\n", len(services))
 	result["services"] = services
 
 	postureChecks := map[string]string{}
 	if all ||
 		slices.Contains(args, "posture-check") || slices.Contains(args, "posture-checks") {
-		if u.verbose {
-			log.
-				Debug("Processing PostureChecks")
-		}
+		log.Debug("Processing PostureChecks")
 		var err error
 		postureChecks, err = u.ProcessPostureChecks(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("postureChecks", postureChecks).
-				Debug("PostureChecks created")
-		}
+		log.WithField("postureChecks", postureChecks).Debug("PostureChecks created")
 	}
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d PostureChecks\r\n", len(postureChecks))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d PostureChecks\r\n", len(postureChecks))
 	result["postureChecks"] = postureChecks
 
 	routers := map[string]string{}
 	if all ||
 		slices.Contains(args, "edge-router") || slices.Contains(args, "edge-routers") ||
 		slices.Contains(args, "ers") || slices.Contains(args, "ers") {
-		if u.verbose {
-			log.
-				Debug("Processing EdgeRouters")
-		}
+		log.Debug("Processing EdgeRouters")
 		var err error
 		routers, err = u.ProcessEdgeRouters(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("edgeRouters", routers).
-				Debug("EdgeRouters created")
-		}
+		log.WithField("edgeRouters", routers).Debug("EdgeRouters created")
 	}
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d EdgeRouters\r\n", len(routers))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d EdgeRouters\r\n", len(routers))
 	result["edgeRouters"] = routers
 
 	serviceEdgeRouterPolicies := map[string]string{}
 	if all ||
 		slices.Contains(args, "service-edgerouter-policy") || slices.Contains(args, "service-edgerouter-policies") {
-		if u.verbose {
-			log.
-				Debug("Processing ServiceRouterPolicies")
-		}
+		log.Debug("Processing ServiceRouterPolicies")
 		var err error
 		serviceEdgeRouterPolicies, err = u.ProcessServiceEdgeRouterPolicies(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("serviceEdgeRouterPolicies", serviceEdgeRouterPolicies).
-				Debug("ServiceEdgeRouterPolicies created")
-		}
+		log.WithField("serviceEdgeRouterPolicies", serviceEdgeRouterPolicies).Debug("ServiceEdgeRouterPolicies created")
 	}
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d ServiceEdgeRouterPolicies\r\n", len(serviceEdgeRouterPolicies))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d ServiceEdgeRouterPolicies\r\n", len(serviceEdgeRouterPolicies))
 	result["serviceEdgeRouterPolicies"] = serviceEdgeRouterPolicies
 
 	servicePolicies := map[string]string{}
 	if all ||
 		slices.Contains(args, "service-policy") || slices.Contains(args, "service-policies") {
-		if u.verbose {
-			log.
-				Debug("Processing ServicePolicies")
-		}
+		log.Debug("Processing ServicePolicies")
 		var err error
 		servicePolicies, err = u.ProcessServicePolicies(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("servicePolicies", servicePolicies).
-				Debug("ServicePolicies created")
-		}
+		log.WithField("servicePolicies", servicePolicies).Debug("ServicePolicies created")
 	}
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d ServicePolicies\r\n", len(servicePolicies))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d ServicePolicies\r\n", len(servicePolicies))
 	result["servicePolicies"] = servicePolicies
 
 	routerPolicies := map[string]string{}
 	if all ||
 		slices.Contains(args, "edgerouter-policy") || slices.Contains(args, "edgerouter-policies") {
-		if u.verbose {
-			log.
-				Debug("Processing EdgeRouterPolicies")
-		}
+		log.Debug("Processing EdgeRouterPolicies")
 		var err error
 		routerPolicies, err = u.ProcessEdgeRouterPolicies(data)
 		if err != nil {
 			return nil, err
 		}
-		if u.verbose {
-			log.
-				WithField("routerPolicies", routerPolicies).
-				Debug("EdgeRouterPolicies created")
-		}
+		log.WithField("routerPolicies", routerPolicies).Debug("EdgeRouterPolicies created")
 	}
-	_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreated %d EdgeRouterPolicies\r\n", len(routerPolicies))
+	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d EdgeRouterPolicies\r\n", len(routerPolicies))
 	result["edgeRouterPolicies"] = routerPolicies
 
-	if u.verbose {
-		log.
-			Info("Upload complete")
-	}
+	log.Info("Upload complete")
 
 	return result, nil
 }

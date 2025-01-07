@@ -17,10 +17,10 @@
 package upload
 
 import (
-	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
+	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
@@ -33,19 +33,19 @@ func (u *Upload) ProcessCertificateAuthorities(input map[string][]interface{}) (
 		// see if the CA already exists
 		existing := mgmt.CertificateAuthorityFromFilter(u.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if u.verbose {
+			if u.loginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":                   *create.Name,
 					"certificateAuthorityId": *existing.ID,
 				}).
 					Info("Found existing CertificateAuthority, skipping create")
 			}
-			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping CertificateAuthority %s\r", *create.Name)
+			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping CertificateAuthority %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating CertificateAuthority %s\r", *create.Name)
+		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating CertificateAuthority %s\r", *create.Name)
 		created, createErr := u.client.CertificateAuthority.CreateCa(&certificate_authority.CreateCaParams{Ca: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
@@ -62,7 +62,7 @@ func (u *Upload) ProcessCertificateAuthorities(input map[string][]interface{}) (
 				return nil, createErr
 			}
 		}
-		if u.verbose {
+		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":                   *create.Name,
 				"certificateAuthorityId": created.Payload.Data.ID,

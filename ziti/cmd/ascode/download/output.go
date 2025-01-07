@@ -19,7 +19,7 @@ package download
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
+	"github.com/openziti/ziti/internal"
 	"gopkg.in/yaml.v3"
 
 	"io"
@@ -31,27 +31,29 @@ type Output struct {
 	outputYaml bool
 	filename   string
 	writer     *bufio.Writer
+	errWriter  io.Writer
 	verbose    bool
 }
 
-func NewOutputToFile(verbose bool, outputJson bool, outputYaml bool, filename string) (*Output, error) {
+func NewOutputToFile(verbose bool, outputJson bool, outputYaml bool, filename string, errWriter io.Writer) (*Output, error) {
 	file, err := os.Create(filename)
 	if err != nil {
 		log.WithError(err).Error("Error creating file for writing")
 		return nil, err
 	}
 	writer := bufio.NewWriter(file)
-	output, err := NewOutputToWriter(verbose, outputJson, outputYaml, writer)
+	output, err := NewOutputToWriter(verbose, outputJson, outputYaml, writer, errWriter)
 	output.filename = filename
 	return output, err
 }
 
-func NewOutputToWriter(verbose bool, outputJson bool, outputYaml bool, writer io.Writer) (*Output, error) {
+func NewOutputToWriter(verbose bool, outputJson bool, outputYaml bool, writer io.Writer, errWriter io.Writer) (*Output, error) {
 	output := Output{}
 	output.verbose = verbose
 	output.outputJson = outputJson
 	output.outputYaml = outputYaml
 	output.writer = bufio.NewWriter(writer)
+	output.errWriter = errWriter
 	return &output, nil
 }
 
@@ -60,12 +62,12 @@ func (output Output) Write(data any) error {
 	var err error
 	if output.outputYaml {
 		if output.verbose {
-			_, _ = fmt.Fprintf(os.Stderr, "\u001B[2KFormatting as Yaml\r\n")
+			_, _ = internal.FPrintFReusingLine(output.errWriter, "Formatting as Yaml\r\n")
 		}
 		formatted, err = output.ToYaml(data)
 	} else {
 		if output.verbose {
-			_, _ = fmt.Fprintf(os.Stderr, "\u001B[2KFormatting as JSON\r\n")
+			_, _ = internal.FPrintFReusingLine(output.errWriter, "Formatting as JSON\r\n")
 		}
 		formatted, err = output.ToJson(data)
 	}
@@ -75,9 +77,9 @@ func (output Output) Write(data any) error {
 
 	if output.verbose {
 		if output.filename != "" {
-			_, _ = fmt.Fprintf(os.Stderr, "\u001B[2KWriting to file: %s\r\n", output.filename)
+			_, _ = internal.FPrintFReusingLine(output.errWriter, "Writing to file: %s\r\n", output.filename)
 		} else {
-			_, _ = fmt.Fprintf(os.Stderr, "\u001B[2KWriting output to writer\r\n")
+			_, _ = internal.FPrintFReusingLine(output.errWriter, "Writing output to writer\r\n")
 		}
 	}
 	bytes, err := output.writer.Write(formatted)

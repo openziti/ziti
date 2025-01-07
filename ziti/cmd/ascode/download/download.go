@@ -19,14 +19,13 @@ package download
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/judedaryl/go-arrayutils"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 	"github.com/openziti/ziti/ziti/cmd/edge"
-	c "github.com/openziti/ziti/ziti/constants"
+	"github.com/openziti/ziti/ziti/constants"
 	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -40,50 +39,29 @@ import (
 var log = pfxlog.Logger()
 
 type Download struct {
-	loginOpts edge.LoginOptions
-	client    *rest_management_api_client.ZitiEdgeManagement
-
-	verbose bool
-
-	ofJson bool
-	ofYaml bool
-
-	file     *os.File
-	filename string
-
+	loginOpts        edge.LoginOptions
+	client           *rest_management_api_client.ZitiEdgeManagement
+	ofJson           bool
+	ofYaml           bool
+	file             *os.File
+	filename         string
 	configCache      *cache.Cache
 	configTypeCache  *cache.Cache
 	authPolicyCache  *cache.Cache
 	externalJwtCache *cache.Cache
-
-	Out io.Writer
-	Err io.Writer
 }
 
 var output Output
 
-func NewDownload(loginOpts edge.LoginOptions, client *rest_management_api_client.ZitiEdgeManagement, ofJson bool, ofYaml bool, file *os.File, filename string) Download {
-	d := Download{}
-	d.loginOpts = loginOpts
-	d.client = client
-	d.ofJson = ofJson
-	d.ofYaml = ofYaml
-	d.file = file
-	d.filename = filename
-	return d
-}
-
 func NewDownloadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	d := &Download{}
-	d.Out = out
-	d.Err = errOut
 	d.loginOpts = edge.LoginOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "export [entity]",
-		Short: "Export Ziti entities",
-		Long: "Export all or selected Ziti entities.\n" +
+		Short: "Export entities",
+		Long: "Export all or selected entities.\n" +
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edgerouter-policy|service-edgerouter-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(0),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -107,7 +85,7 @@ func NewDownloadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	// environment variables are prefixed, d.g. a flag like --number
 	// binds to an environment variable STING_NUMBER. This helps
 	// avoid conflicts.
-	viper.SetEnvPrefix(c.ZITI) // All env vars we seek will be prefixed with "ZITI_"
+	viper.SetEnvPrefix(constants.ZITI) // All env vars we seek will be prefixed with "ZITI_"
 
 	// Environment variables can't have dashes in them, so bind them to their equivalent
 	// keys with underscores, d.g. --favorite-color to STING_FAVORITE_COLOR
@@ -130,10 +108,9 @@ func NewDownloadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func (d *Download) Init(out io.Writer) error {
-	d.verbose = d.loginOpts.Verbose
 
 	logLvl := logrus.InfoLevel
-	if d.verbose {
+	if d.loginOpts.Verbose {
 		logLvl = logrus.DebugLevel
 	}
 
@@ -154,13 +131,13 @@ func (d *Download) Init(out io.Writer) error {
 	d.client = client
 
 	if d.filename != "" {
-		o, err := NewOutputToFile(d.verbose, d.ofJson, d.ofYaml, d.filename)
+		o, err := NewOutputToFile(d.loginOpts.Verbose, d.ofJson, d.ofYaml, d.filename, d.loginOpts.Err)
 		if err != nil {
 			return err
 		}
 		output = *o
 	} else {
-		o, err := NewOutputToWriter(d.verbose, d.ofJson, d.ofYaml, out)
+		o, err := NewOutputToWriter(d.loginOpts.Verbose, d.ofJson, d.ofYaml, out, d.loginOpts.Err)
 		if err != nil {
 			return err
 		}
@@ -185,9 +162,7 @@ func (d *Download) Execute(input []string) error {
 	if all ||
 		slices.Contains(args, "ca") || slices.Contains(args, "cas") ||
 		slices.Contains(args, "certificate-authority") || slices.Contains(args, "certificate-authorities") {
-		if d.verbose {
-			log.Debug("Processing Certificate Authorities")
-		}
+		log.Debug("Processing Certificate Authorities")
 		cas, err := d.GetCertificateAuthorities()
 		if err != nil {
 			return err
@@ -196,9 +171,7 @@ func (d *Download) Execute(input []string) error {
 	}
 	if all ||
 		slices.Contains(args, "identity") || slices.Contains(args, "identities") {
-		if d.verbose {
-			log.Debug("Processing Identities")
-		}
+		log.Debug("Processing Identities")
 		identities, err := d.GetIdentities()
 		if err != nil {
 			return err
@@ -209,9 +182,7 @@ func (d *Download) Execute(input []string) error {
 	if all ||
 		slices.Contains(args, "edge-router") || slices.Contains(args, "edge-routers") ||
 		slices.Contains(args, "er") || slices.Contains(args, "ers") {
-		if d.verbose {
-			log.Debug("Processing Edge Routers")
-		}
+		log.Debug("Processing Edge Routers")
 		routers, err := d.GetEdgeRouters()
 		if err != nil {
 			return err
@@ -220,9 +191,7 @@ func (d *Download) Execute(input []string) error {
 	}
 	if all ||
 		slices.Contains(args, "service") || slices.Contains(args, "services") {
-		if d.verbose {
-			log.Debug("Processing Services")
-		}
+		log.Debug("Processing Services")
 		services, err := d.GetServices()
 		if err != nil {
 			return err
@@ -231,9 +200,7 @@ func (d *Download) Execute(input []string) error {
 	}
 	if all ||
 		slices.Contains(args, "config") || slices.Contains(args, "configs") {
-		if d.verbose {
-			log.Debug("Processing Configs")
-		}
+		log.Debug("Processing Configs")
 		configs, err := d.GetConfigs()
 		if err != nil {
 			return err
@@ -242,9 +209,7 @@ func (d *Download) Execute(input []string) error {
 	}
 	if all ||
 		slices.Contains(args, "config-type") || slices.Contains(args, "config-types") {
-		if d.verbose {
-			log.Debug("Processing Config Types")
-		}
+		log.Debug("Processing Config Types")
 		configTypes, err := d.GetConfigTypes()
 		if err != nil {
 			return err
@@ -253,9 +218,7 @@ func (d *Download) Execute(input []string) error {
 	}
 	if all ||
 		slices.Contains(args, "service-policy") || slices.Contains(args, "service-policies") {
-		if d.verbose {
-			log.Debug("Processing Service Policies")
-		}
+		log.Debug("Processing Service Policies")
 		servicePolicies, err := d.GetServicePolicies()
 		if err != nil {
 			return err
@@ -264,9 +227,7 @@ func (d *Download) Execute(input []string) error {
 	}
 	if all ||
 		slices.Contains(args, "edgerouter-policy") || slices.Contains(args, "edgerouter-policies") {
-		if d.verbose {
-			log.Debug("Processing Router Policies")
-		}
+		log.Debug("Processing Router Policies")
 		routerPolicies, err := d.GetRouterPolicies()
 		if err != nil {
 			return err
@@ -275,9 +236,7 @@ func (d *Download) Execute(input []string) error {
 	}
 	if all ||
 		slices.Contains(args, "service-edgerouter-policy") || slices.Contains(args, "service-edgerouter-policies") {
-		if d.verbose {
-			log.Debug("Processing Service EdgeRouter Policies")
-		}
+		log.Debug("Processing Service EdgeRouter Policies")
 		serviceRouterPolicies, err := d.GetServiceEdgeRouterPolicies()
 		if err != nil {
 			return err
@@ -286,9 +245,7 @@ func (d *Download) Execute(input []string) error {
 	}
 	if all ||
 		slices.Contains(args, "external-jwt-signer") || slices.Contains(args, "external-jwt-signers") {
-		if d.verbose {
-			log.Debug("Processing External JWT Signers")
-		}
+		log.Debug("Processing External JWT Signers")
 		externalJwtSigners, err := d.GetExternalJwtSigners()
 		if err != nil {
 			return err
@@ -297,9 +254,7 @@ func (d *Download) Execute(input []string) error {
 	}
 	if all ||
 		slices.Contains(args, "auth-policy") || slices.Contains(args, "auth-policies") {
-		if d.verbose {
-			log.Debug("Processing Auth Policies")
-		}
+		log.Debug("Processing Auth Policies")
 		authPolicies, err := d.GetAuthPolicies()
 		if err != nil {
 			return err
@@ -308,9 +263,7 @@ func (d *Download) Execute(input []string) error {
 	}
 	if all ||
 		slices.Contains(args, "posture-check") || slices.Contains(args, "posture-checks") {
-		if d.verbose {
-			log.Debug("Processing Posture Checks")
-		}
+		log.Debug("Processing Posture Checks")
 		postureChecks, err := d.GetPostureChecks()
 		if err != nil {
 			return err
@@ -318,9 +271,7 @@ func (d *Download) Execute(input []string) error {
 		result["postureChecks"] = postureChecks
 	}
 
-	if d.verbose {
-		log.Debug("Download complete")
-	}
+	log.Debug("Download complete")
 
 	err := output.Write(result)
 	if err != nil {
@@ -354,7 +305,7 @@ func (d *Download) getEntities(entityName string, count ClientCount, list Client
 	more := true
 	for more {
 		resp, err := list(&offset, &limit)
-		_, _ = fmt.Fprintf(d.Err, "\u001B[2KReading %d/%d %s\r", offset, totalCount, entityName)
+		_, _ = internal.FPrintFReusingLine(d.loginOpts.Err, "Reading %d/%d %s\r", offset, totalCount, entityName)
 		if err != nil {
 			return nil, errors.Join(errors.New("error reading "+entityName), err)
 		}
@@ -373,7 +324,7 @@ func (d *Download) getEntities(entityName string, count ClientCount, list Client
 		offset += limit
 	}
 
-	_, _ = fmt.Fprintf(d.Err, "\u001B[2KRead %d %s\r\n", len(result), entityName)
+	_, _ = internal.FPrintFReusingLine(d.loginOpts.Err, "Read %d %s\r\n", len(result), entityName)
 
 	return result, nil
 

@@ -17,10 +17,10 @@
 package upload
 
 import (
-	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client/service_edge_router_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
+	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
@@ -38,7 +38,7 @@ func (u *Upload) ProcessServiceEdgeRouterPolicies(input map[string][]interface{}
 				"serviceRouterPolicyId": *existing.ID,
 			}).
 				Info("Found existing ServiceEdgeRouterPolicy, skipping create")
-			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping ServiceEdgeRouterPolicy %s\r", *create.Name)
+			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping ServiceEdgeRouterPolicy %s\r", *create.Name)
 			continue
 		}
 
@@ -57,8 +57,8 @@ func (u *Upload) ProcessServiceEdgeRouterPolicies(input map[string][]interface{}
 		create.EdgeRouterRoles = edgeRouterRoles
 
 		// do the actual create since it doesn't exist
-		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating ServiceEdgeRouterPolicy %s\r", *create.Name)
-		if u.verbose {
+		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating ServiceEdgeRouterPolicy %s\r", *create.Name)
+		if u.loginOpts.Verbose {
 			log.WithField("name", *create.Name).
 				Debug("Creating ServiceEdgeRouterPolicy")
 		}
@@ -76,7 +76,7 @@ func (u *Upload) ProcessServiceEdgeRouterPolicies(input map[string][]interface{}
 				return nil, createErr
 			}
 		}
-		if u.verbose {
+		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":                      *create.Name,
 				"serviceEdgeRouterPolicyId": created.Payload.Data.ID,

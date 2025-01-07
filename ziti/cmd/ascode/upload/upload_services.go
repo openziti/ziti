@@ -19,12 +19,12 @@ package upload
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/antchfx/jsonquery"
 	"github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
-	common "github.com/openziti/ziti/internal/ascode"
+	"github.com/openziti/ziti/internal"
+	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 	"strings"
 )
@@ -44,7 +44,7 @@ func (u *Upload) ProcessServices(input map[string][]interface{}) (map[string]str
 				"serviceId": *existing.ID,
 			}).
 				Info("Found existing Service, skipping create")
-			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping Service %s\r", *create.Name)
+			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping Service %s\r", *create.Name)
 			continue
 		}
 
@@ -61,7 +61,7 @@ func (u *Upload) ProcessServices(input map[string][]interface{}) (map[string]str
 		configIds := []string{}
 		for _, configName := range configsNode.ChildNodes() {
 			value := configName.Value().(string)[1:]
-			config, _ := common.GetItemFromCache(u.configCache, value, func(name string) (interface{}, error) {
+			config, _ := ascode.GetItemFromCache(u.configCache, value, func(name string) (interface{}, error) {
 				return mgmt.ConfigFromFilter(u.client, mgmt.NameFilter(name)), nil
 			})
 			if config == nil {
@@ -72,8 +72,8 @@ func (u *Upload) ProcessServices(input map[string][]interface{}) (map[string]str
 		create.Configs = configIds
 
 		// do the actual create since it doesn't exist
-		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating Service %s\r", *create.Name)
-		if u.verbose {
+		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating Service %s\r", *create.Name)
+		if u.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating Service")
 		}
 		created, createErr := u.client.Service.CreateService(&service.CreateServiceParams{Service: create}, nil)
@@ -89,7 +89,7 @@ func (u *Upload) ProcessServices(input map[string][]interface{}) (map[string]str
 				return nil, createErr
 			}
 		}
-		if u.verbose {
+		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":      *create.Name,
 				"serviceId": created.Payload.Data.ID,
@@ -108,7 +108,7 @@ func (u *Upload) lookupServices(roles []string) ([]string, error) {
 	for _, role := range roles {
 		if role[0:1] == "@" {
 			value := role[1:]
-			service, _ := common.GetItemFromCache(u.serviceCache, value, func(name string) (interface{}, error) {
+			service, _ := ascode.GetItemFromCache(u.serviceCache, value, func(name string) (interface{}, error) {
 				return mgmt.ServiceFromFilter(u.client, mgmt.NameFilter(name)), nil
 			})
 			if service == nil {

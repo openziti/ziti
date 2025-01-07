@@ -18,11 +18,11 @@ package upload
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/antchfx/jsonquery"
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
+	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 	"strings"
 )
@@ -66,7 +66,7 @@ func (u *Upload) ProcessPostureChecks(input map[string][]interface{}) (map[strin
 		// see if the posture check already exists
 		existing := mgmt.PostureCheckFromFilter(u.client, mgmt.NameFilter(*create.Name()))
 		if existing != nil {
-			if u.verbose {
+			if u.loginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":           *create.Name(),
 					"postureCheckId": (*existing).ID(),
@@ -74,13 +74,13 @@ func (u *Upload) ProcessPostureChecks(input map[string][]interface{}) (map[strin
 				}).
 					Info("Found existing PostureCheck, skipping create")
 			}
-			_, _ = fmt.Fprintf(u.Err, "\u001B[2KSkipping PostureCheck %s\r", *create.Name())
+			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping PostureCheck %s\r", *create.Name())
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = fmt.Fprintf(u.Err, "\u001B[2KCreating PostureCheck %s\r", *create.Name())
-		if u.verbose {
+		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating PostureCheck %s\r", *create.Name())
+		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":   *create.Name(),
 				"typeId": create.TypeID(),
@@ -100,7 +100,7 @@ func (u *Upload) ProcessPostureChecks(input map[string][]interface{}) (map[strin
 				return nil, createErr
 			}
 		}
-		if u.verbose {
+		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":           *create.Name(),
 				"postureCheckId": created.Payload.Data.ID,
