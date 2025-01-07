@@ -88,6 +88,7 @@ func newApiSessionStore(stores *stores) *apiSessionStoreImpl {
 	store.baseStore = newBaseStore[*ApiSession](stores, store)
 	stores.EventualEventer.AddEventualListener(EventualEventApiSessionDelete, store.onEventualDelete)
 	store.InitImpl(store)
+	store.AddEntityConstraint(store)
 	return store
 }
 
@@ -141,6 +142,7 @@ func (store *apiSessionStoreImpl) GetEventsEmitter() events.EventEmmiter {
 func (store *apiSessionStoreImpl) onEventualDelete(db boltz.Db, name string, apiSessionId []byte) {
 	idCollector := &sessionIdCollector{}
 	indexPath := []string{RootBucket, boltz.IndexesBucket, EntityTypeApiSessions, EntityTypeSessions}
+
 	err := db.View(func(tx *bbolt.Tx) error {
 		path := append(indexPath, string(apiSessionId))
 		if bucket := boltz.Path(tx, path...); bucket != nil {
@@ -224,24 +226,33 @@ func (store *apiSessionStoreImpl) Update(ctx boltz.MutateContext, entity *ApiSes
 	return err
 }
 
-func (store *apiSessionStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+func (store *apiSessionStoreImpl) ProcessPreCommit(state *boltz.EntityChangeState[*ApiSession]) error {
+	if state.ChangeType == boltz.EntityDeleted {
+		return store.handleDeleteCleanup(state.Ctx, state.EntityId)
+	}
+	return nil
+}
+
+func (store *apiSessionStoreImpl) ProcessPostCommit(_ *boltz.EntityChangeState[*ApiSession]) {
+	/* does nothing */
+}
+
+func (store *apiSessionStoreImpl) handleDeleteCleanup(ctx boltz.MutateContext, id string) error {
 	for _, apiSessionCertId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeApiSessionCertificates) {
 		if err := store.stores.apiSessionCertificate.DeleteById(ctx, apiSessionCertId); err != nil {
 			return err
 		}
 	}
 
-	err := store.baseStore.DeleteById(ctx, id)
-
-	if err == nil {
-		if bboltEventualEventer, ok := store.baseStore.stores.EventualEventer.(*EventualEventerBbolt); ok {
-			bboltEventualEventer.AddEventualEventWithCtx(ctx, EventualEventApiSessionDelete, []byte(id))
-		} else {
-			store.baseStore.stores.EventualEventer.AddEventualEvent(EventualEventApiSessionDelete, []byte(id))
+	if bboltEventualEventer, ok := store.baseStore.stores.EventualEventer.(*EventualEventerBbolt); ok {
+		if err := bboltEventualEventer.AddEventualEventWithCtx(ctx, EventualEventApiSessionDelete, []byte(id)); err != nil {
+			return err
 		}
+	} else {
+		store.baseStore.stores.EventualEventer.AddEventualEvent(EventualEventApiSessionDelete, []byte(id))
 	}
 
-	return err
+	return nil
 }
 
 func (store *apiSessionStoreImpl) GetTokenIndex() boltz.ReadIndex {

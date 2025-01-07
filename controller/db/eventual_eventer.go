@@ -328,13 +328,8 @@ func (a *EventualEventerBbolt) initOutstandingEventCount() {
 	}
 }
 
-func (a *EventualEventerBbolt) AddEventualEventWithCtx(ctx boltz.MutateContext, eventType string, data []byte) {
+func (a *EventualEventerBbolt) AddEventualEventWithCtx(ctx boltz.MutateContext, eventType string, data []byte) error {
 	newId := cuid.New()
-	total := atomic.AddInt64(a.outstandingEvents, 1)
-	a.Emit(EventualEventAddedName, &EventualEventAdded{
-		Id:    newId,
-		Total: total,
-	})
 
 	event := &EventualEvent{
 		BaseExtEntity: boltz.BaseExtEntity{
@@ -357,18 +352,21 @@ func (a *EventualEventerBbolt) AddEventualEventWithCtx(ctx boltz.MutateContext, 
 	}
 
 	if err != nil {
-		total := atomic.AddInt64(a.outstandingEvents, -1)
-		a.Emit(EventualEventRemovedName, &EventualEventRemoved{
-			Id:    newId,
-			Total: total,
-		})
 		pfxlog.Logger().WithError(err).Error("error adding event for EventualEventerBbolt")
-		return
+		return err
 	}
+
+	total := atomic.AddInt64(a.outstandingEvents, 1)
+	a.Emit(EventualEventAddedName, &EventualEventAdded{
+		Id:    newId,
+		Total: total,
+	})
+
+	return nil
 }
 
 func (a *EventualEventerBbolt) AddEventualEvent(eventType string, data []byte) {
-	a.AddEventualEventWithCtx(nil, eventType, data)
+	_ = a.AddEventualEventWithCtx(nil, eventType, data)
 }
 
 func (a *EventualEventerBbolt) AddEventualListener(eventType string, listener EventListenerFunc) {
