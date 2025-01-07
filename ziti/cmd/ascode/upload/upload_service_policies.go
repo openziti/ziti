@@ -17,6 +17,7 @@
 package upload
 
 import (
+	"errors"
 	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
@@ -52,7 +53,7 @@ func (u *Upload) ProcessServicePolicies(input map[string][]interface{}) (map[str
 		// look up the identity ids from the name and add to the create
 		identityRoles, err := u.lookupIdentities(create.IdentityRoles)
 		if err != nil {
-			return nil, err
+			return nil, errors.Join(errors.New("Unable to read all identities from ServicePolicy"), err)
 		}
 		create.IdentityRoles = identityRoles
 

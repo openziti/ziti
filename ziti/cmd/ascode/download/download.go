@@ -216,7 +216,7 @@ func (d *Download) Execute(input []string) error {
 		if err != nil {
 			return err
 		}
-		result["routers"] = routers
+		result["edgeRouters"] = routers
 	}
 	if all ||
 		slices.Contains(args, "service") || slices.Contains(args, "services") {

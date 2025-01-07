@@ -107,15 +107,18 @@ func (u *Upload) lookupIdentities(roles []string) ([]string, error) {
 	identityRoles := []string{}
 	for _, role := range roles {
 		if role[0:1] == "@" {
-			value := role[1:]
-			ident, _ := common.GetItemFromCache(u.identityCache, value, func(name string) (interface{}, error) {
+			roleName := role[1:]
+			value, lookupErr := common.GetItemFromCache(u.identityCache, roleName, func(name string) (interface{}, error) {
 				return mgmt.IdentityFromFilter(u.client, mgmt.NameFilter(name)), nil
 			})
-			if ident == nil {
-				return nil, errors.New("error reading Identity: " + value)
+			if lookupErr != nil {
+				return nil, lookupErr
 			}
-			identityId := ident.(*rest_model.IdentityDetail).ID
-			identityRoles = append(identityRoles, "@"+*identityId)
+			ident := value.(*rest_model.IdentityDetail)
+			if ident == nil {
+				return nil, errors.New("error reading Identity: " + roleName)
+			}
+			identityRoles = append(identityRoles, "@"+*ident.ID)
 		} else {
 			identityRoles = append(identityRoles, role)
 		}
