@@ -82,13 +82,13 @@ require (
 	github.com/zitadel/oidc/v2 v2.12.2
 	go.etcd.io/bbolt v1.3.11
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.31.0
-	golang.org/x/net v0.33.0
+	golang.org/x/crypto v0.32.0
+	golang.org/x/net v0.34.0
 	golang.org/x/oauth2 v0.25.0
 	golang.org/x/sync v0.10.0
-	golang.org/x/sys v0.28.0
+	golang.org/x/sys v0.29.0
 	golang.org/x/text v0.21.0
-	google.golang.org/protobuf v1.36.1
+	google.golang.org/protobuf v1.36.2
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/go-jose/go-jose.v2 v2.6.3
 	gopkg.in/resty.v1 v1.12.0
@@ -195,7 +195,7 @@ require (
 	golang.org/x/exp v0.0.0-20241210194714-1829a127f884 // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
+	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/tools v0.28.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
