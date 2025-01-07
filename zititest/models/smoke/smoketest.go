@@ -95,7 +95,7 @@ var Model = &model.Model{
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("*", 1, func(host *model.Host) error {
-				host.InstanceType = "t2.micro"
+				host.InstanceType = "t3.micro"
 				return nil
 			})
 		}),
