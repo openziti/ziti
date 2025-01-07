@@ -18,7 +18,7 @@ package upload
 
 import (
 	"encoding/json"
-	"github.com/antchfx/jsonquery"
+	"github.com/Jeffail/gabs/v2"
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -32,17 +32,17 @@ func (u *Upload) ProcessPostureChecks(input map[string][]interface{}) (map[strin
 	var result = map[string]string{}
 	for _, data := range input["postureChecks"] {
 
-		// convert to a jsonquery doc so we can query inside the json
+		// convert to a json doc so we can query inside the data
 		jsonData, _ := json.Marshal(data)
-		doc, jsonQueryErr := jsonquery.Parse(strings.NewReader(string(jsonData)))
-		if jsonQueryErr != nil {
-			log.WithError(jsonQueryErr).Error("Unable to list ")
-			return nil, jsonQueryErr
+		doc, jsonParseError := gabs.ParseJSON(jsonData)
+		if jsonParseError != nil {
+			log.WithError(jsonParseError).Error("Unable to parse json")
+			return nil, jsonParseError
 		}
-		typeNode := jsonquery.FindOne(doc, "/typeId")
+		typeValue := doc.Path("typeId").Data().(string)
 
 		var create rest_model.PostureCheckCreate
-		switch strings.ToUpper(typeNode.Value().(string)) {
+		switch strings.ToUpper(typeValue) {
 		case "DOMAIN":
 			create = FromMap(data, rest_model.PostureCheckDomainCreate{})
 		case "MAC":

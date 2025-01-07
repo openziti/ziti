@@ -19,14 +19,13 @@ package upload
 import (
 	"encoding/json"
 	"errors"
-	"github.com/antchfx/jsonquery"
+	"github.com/Jeffail/gabs/v2"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
-	"strings"
 )
 
 func (u *Upload) ProcessConfigs(input map[string][]interface{}) (map[string]string, error) {
@@ -50,16 +49,16 @@ func (u *Upload) ProcessConfigs(input map[string][]interface{}) (map[string]stri
 			continue
 		}
 
-		// convert to a jsonquery doc so we can query inside the json
+		// convert to a json doc so we can query inside the data
 		jsonData, _ := json.Marshal(data)
-		doc, jsonQueryErr := jsonquery.Parse(strings.NewReader(string(jsonData)))
-		if jsonQueryErr != nil {
-			log.WithError(jsonQueryErr).Error("Unable to parse json")
-			return nil, jsonQueryErr
+		doc, jsonParseError := gabs.ParseJSON(jsonData)
+		if jsonParseError != nil {
+			log.WithError(jsonParseError).Error("Unable to parse json")
+			return nil, jsonParseError
 		}
 
 		// look up the config type id from the name and add to the create
-		value := jsonquery.FindOne(doc, "/configType").Value().(string)[1:]
+		value := doc.Path("configType").Data().(string)[1:]
 		configType, _ := ascode.GetItemFromCache(u.configCache, value, func(name string) (interface{}, error) {
 			return mgmt.ConfigTypeFromFilter(u.client, mgmt.NameFilter(name)), nil
 		})

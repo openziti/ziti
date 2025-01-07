@@ -19,14 +19,13 @@ package upload
 import (
 	"encoding/json"
 	"errors"
-	"github.com/antchfx/jsonquery"
+	"github.com/Jeffail/gabs/v2"
 	"github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
-	"strings"
 )
 
 func (u *Upload) ProcessServices(input map[string][]interface{}) (map[string]string, error) {
@@ -48,19 +47,19 @@ func (u *Upload) ProcessServices(input map[string][]interface{}) (map[string]str
 			continue
 		}
 
-		// convert to a jsonquery doc so we can query inside the json
+		// convert to a json doc so we can query inside the data
 		jsonData, _ := json.Marshal(data)
-		doc, jsonQueryErr := jsonquery.Parse(strings.NewReader(string(jsonData)))
-		if jsonQueryErr != nil {
-			log.WithError(jsonQueryErr).Error("Unable to ")
-			return nil, jsonQueryErr
+		doc, jsonParseError := gabs.ParseJSON(jsonData)
+		if jsonParseError != nil {
+			log.WithError(jsonParseError).Error("Unable to parse json")
+			return nil, jsonParseError
 		}
-		configsNode := jsonquery.FindOne(doc, "/configs")
+		configsNode := doc.Path("configs")
 
 		// look up each config by name and add to the create
 		configIds := []string{}
-		for _, configName := range configsNode.ChildNodes() {
-			value := configName.Value().(string)[1:]
+		for _, configName := range configsNode.Children() {
+			value := configName.Data().(string)[1:]
 			config, _ := ascode.GetItemFromCache(u.configCache, value, func(name string) (interface{}, error) {
 				return mgmt.ConfigFromFilter(u.client, mgmt.NameFilter(name)), nil
 			})

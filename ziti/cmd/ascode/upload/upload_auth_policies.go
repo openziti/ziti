@@ -18,16 +18,13 @@ package upload
 
 import (
 	"encoding/json"
-	"github.com/Jeffail/gabs"
-	"github.com/antchfx/jsonquery"
+	"github.com/Jeffail/gabs/v2"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
-	"github.com/pkg/errors"
-	"strings"
 )
 
 func (u *Upload) ProcessAuthPolicies(input map[string][]interface{}) (map[string]string, error) {
@@ -54,23 +51,19 @@ func (u *Upload) ProcessAuthPolicies(input map[string][]interface{}) (map[string
 			continue
 		}
 
-		// convert to a jsonquery doc so we can query inside the json
+		// convert to a json doc so we can query inside the data
 		jsonData, _ := json.Marshal(data)
-		doc, jsonParseError := gabs.ParseJSON(strings.NewReader(string(jsonData)))
+		doc, jsonParseError := gabs.ParseJSON(jsonData)
 		if jsonParseError != nil {
-			log.WithError(jsonParseError).Error("Unable to list AuthPolicies")
+			log.WithError(jsonParseError).Error("Unable to parse json")
 			return nil, jsonParseError
 		}
-		allowedSigners, ok := doc.Path("primary.extJwt.allowedSigners").(string[])
-		if ok == false {
-			log.WithField("name", *create.Name).Error("Unable to read allowedSigners")
-			return nil, errors.New("Unable to read allowedSigners")
-		}
+		allowedSigners := doc.Path("primary.extJwt.allowedSigners")
 
 		// look up each signer by name and add to the create
 		allowedSignerIds := []string{}
-		for _, signer := range allowedSigners.ChildNodes() {
-			value := signer.Value().(string)[1:]
+		for _, signer := range allowedSigners.Children() {
+			value := signer.Data().(string)[1:]
 			extJwtSigner, err := ascode.GetItemFromCache(u.extJwtSignersCache, value, func(name string) (interface{}, error) {
 				return mgmt.ExternalJWTSignerFromFilter(u.client, mgmt.NameFilter(name)), nil
 			})

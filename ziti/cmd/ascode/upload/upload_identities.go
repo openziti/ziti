@@ -19,14 +19,13 @@ package upload
 import (
 	"encoding/json"
 	"errors"
-	"github.com/antchfx/jsonquery"
+	"github.com/Jeffail/gabs/v2"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
-	"strings"
 )
 
 func (u *Upload) ProcessIdentities(input map[string][]interface{}) (map[string]string, error) {
@@ -53,14 +52,14 @@ func (u *Upload) ProcessIdentities(input map[string][]interface{}) (map[string]s
 		typ := rest_model.IdentityTypeDefault
 		create.Type = &typ
 
-		// convert to a jsonquery doc so we can query inside the json
+		// convert to a json doc so we can query inside the data
 		jsonData, _ := json.Marshal(data)
-		doc, jsonQueryErr := jsonquery.Parse(strings.NewReader(string(jsonData)))
-		if jsonQueryErr != nil {
-			log.WithError(jsonQueryErr).Error("Unable to list Identities")
-			return nil, jsonQueryErr
+		doc, jsonParseError := gabs.ParseJSON(jsonData)
+		if jsonParseError != nil {
+			log.WithError(jsonParseError).Error("Unable to parse json")
+			return nil, jsonParseError
 		}
-		policyName := jsonquery.FindOne(doc, "/authPolicy").Value().(string)[1:]
+		policyName := doc.Path("authPolicy").Data().(string)[1:]
 
 		// look up the auth policy id from the name and add to the create, omit if it's the "Default" policy
 		policy, _ := ascode.GetItemFromCache(u.authPolicyCache, policyName, func(name string) (interface{}, error) {
