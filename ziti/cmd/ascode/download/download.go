@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/ziti/internal/rest/mgmt"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/constants"
-	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -45,10 +44,10 @@ type Download struct {
 	ofYaml           bool
 	file             *os.File
 	filename         string
-	configCache      *cache.Cache
-	configTypeCache  *cache.Cache
-	authPolicyCache  *cache.Cache
-	externalJwtCache *cache.Cache
+	configCache      map[string]any
+	configTypeCache  map[string]any
+	authPolicyCache  map[string]any
+	externalJwtCache map[string]any
 }
 
 var output Output
@@ -151,10 +150,10 @@ func (d *Download) Execute(input []string) error {
 
 	args := arrayutils.Map(input, strings.ToLower)
 
-	d.authPolicyCache = cache.New(cache.NoExpiration, cache.NoExpiration)
-	d.configCache = cache.New(cache.NoExpiration, cache.NoExpiration)
-	d.configTypeCache = cache.New(cache.NoExpiration, cache.NoExpiration)
-	d.externalJwtCache = cache.New(cache.NoExpiration, cache.NoExpiration)
+	d.authPolicyCache = map[string]any{}
+	d.configCache = map[string]any{}
+	d.configTypeCache = map[string]any{}
+	d.externalJwtCache = map[string]any{}
 
 	result := map[string]interface{}{}
 

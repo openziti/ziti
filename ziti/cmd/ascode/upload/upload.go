@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/ziti/internal/rest/mgmt"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/constants"
-	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -35,7 +34,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 )
 
 type Upload struct {
@@ -44,14 +42,12 @@ type Upload struct {
 	reader             Reader
 	ofJson             bool
 	ofYaml             bool
-	configCache        *cache.Cache
-	serviceCache       *cache.Cache
-	edgeRouterCache    *cache.Cache
-	authPolicyCache    *cache.Cache
-	extJwtSignersCache *cache.Cache
-	identityCache      *cache.Cache
-	//Out                io.Writer
-	//Err                io.Writer
+	configCache        map[string]any
+	serviceCache       map[string]any
+	edgeRouterCache    map[string]any
+	authPolicyCache    map[string]any
+	extJwtSignersCache map[string]any
+	identityCache      map[string]any
 }
 
 var log = pfxlog.Logger()
@@ -146,12 +142,12 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	args := arrayutils.Map(inputArgs, strings.ToLower)
 
-	u.configCache = cache.New(time.Duration(-1), time.Duration(-1))
-	u.serviceCache = cache.New(time.Duration(-1), time.Duration(-1))
-	u.edgeRouterCache = cache.New(time.Duration(-1), time.Duration(-1))
-	u.authPolicyCache = cache.New(time.Duration(-1), time.Duration(-1))
-	u.extJwtSignersCache = cache.New(time.Duration(-1), time.Duration(-1))
-	u.identityCache = cache.New(time.Duration(-1), time.Duration(-1))
+	u.configCache = map[string]any{}
+	u.serviceCache = map[string]any{}
+	u.edgeRouterCache = map[string]any{}
+	u.authPolicyCache = map[string]any{}
+	u.extJwtSignersCache = map[string]any{}
+	u.identityCache = map[string]any{}
 
 	result := map[string]any{}
 	all := slices.Contains(args, "all") || len(args) == 0

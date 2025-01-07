@@ -18,18 +18,17 @@ package ascode
 
 import (
 	"errors"
-	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 	"reflect"
 )
 
 type CacheGetter func(id string) (interface{}, error)
 
-func GetItemFromCache(c *cache.Cache, key string, fn CacheGetter) (interface{}, error) {
+func GetItemFromCache(c map[string]interface{}, key string, fn CacheGetter) (interface{}, error) {
 	if key == "" {
 		return nil, errors.New("key is null, can't resolve from cache or get it from source")
 	}
-	detail, found := c.Get(key)
+	detail, found := c[key]
 	if !found {
 		log.WithFields(map[string]interface{}{"key": key}).Debug("Item not in cache, getting from source")
 		var err error
@@ -40,7 +39,7 @@ func GetItemFromCache(c *cache.Cache, key string, fn CacheGetter) (interface{}, 
 		}
 		if detail != nil && !reflect.ValueOf(detail).IsNil() {
 			log.WithFields(map[string]interface{}{"key": key, "item": detail}).Debug("Item read from source, caching")
-			c.Set(key, detail, cache.NoExpiration)
+			c[key] = detail
 		}
 		return detail, nil
 	}
