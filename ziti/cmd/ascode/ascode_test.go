@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"github.com/antchfx/jsonquery"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/ziti/cmd/ascode/download"
-	"github.com/openziti/ziti/ziti/cmd/ascode/upload"
+	"github.com/openziti/ziti/ziti/cmd/ascode/exporter"
+	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -100,7 +100,7 @@ func performTest(t *testing.T) {
 	errWriter := strings.Builder{}
 
 	uploadWriter := strings.Builder{}
-	uploadCmd := upload.NewUploadCmd(&uploadWriter, &errWriter)
+	uploadCmd := importer.NewImportCmd(&uploadWriter, &errWriter)
 	uploadCmd.SetArgs([]string{"--verbose", "--yaml", "./test.yaml"})
 
 	err := uploadCmd.Execute()
@@ -110,7 +110,7 @@ func performTest(t *testing.T) {
 	}
 
 	downloadWriter := strings.Builder{}
-	downloadCmd := download.NewDownloadCmd(&downloadWriter, &errWriter)
+	downloadCmd := exporter.NewExportCmd(&downloadWriter, &errWriter)
 	downloadCmd.SetArgs([]string{"--json"})
 
 	err = downloadCmd.Execute()

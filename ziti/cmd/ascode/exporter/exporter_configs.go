@@ -14,22 +14,23 @@
 	limitations under the License.
 */
 
-package download
+package exporter
 
 import (
+	"errors"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
-	"slices"
+	"github.com/openziti/ziti/internal/ascode"
 )
 
-func (d Download) GetConfigTypes() ([]map[string]interface{}, error) {
+func (d Exporter) GetConfigs() ([]map[string]interface{}, error) {
 
 	return d.getEntities(
-		"ConfigTypes",
+		"Configs",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: &limit}, nil)
+			resp, err := d.client.Config.ListConfigs(&config.ListConfigsParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -37,7 +38,7 @@ func (d Download) GetConfigTypes() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, _ := d.client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: limit, Offset: offset}, nil)
+			resp, _ := d.client.Config.ListConfigs(&config.ListConfigsParams{Limit: limit, Offset: offset}, nil)
 			entities := make([]interface{}, len(resp.GetPayload().Data))
 			for i, c := range resp.GetPayload().Data {
 				entities[i] = interface{}(c)
@@ -47,17 +48,24 @@ func (d Download) GetConfigTypes() ([]map[string]interface{}, error) {
 
 		func(entity interface{}) (map[string]interface{}, error) {
 
-			item := entity.(*rest_model.ConfigTypeDetail)
-			wellknownTypes := []string{"intercept.v1", "host.v1", "host.v2", "ziti-tunneler-server.v1", "ziti-tunneler-client.v1"}
-
-			// don't include the wellknown types, they already exist when a network is created
-			if slices.Contains(wellknownTypes, *item.Name) {
-				return nil, nil
-			}
+			item := entity.(*rest_model.ConfigDetail)
 
 			// convert to a map of values
 			m := d.ToMap(item)
+
+			// filter unwanted properties
 			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})
+
+			// translate ids to names
+			delete(m, "configType")
+			delete(m, "configTypeId")
+			configType, lookupErr := ascode.GetItemFromCache(d.configTypeCache, *item.ConfigTypeID, func(id string) (interface{}, error) {
+				return d.client.Config.DetailConfigType(&config.DetailConfigTypeParams{ID: id}, nil)
+			})
+			if lookupErr != nil {
+				return nil, errors.Join(errors.New("error reading Auth Policy: "+*item.ConfigTypeID), lookupErr)
+			}
+			m["configType"] = "@" + *configType.(*config.DetailConfigTypeOK).Payload.Data.Name
 
 			return m, nil
 		})

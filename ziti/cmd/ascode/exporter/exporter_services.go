@@ -14,21 +14,24 @@
 	limitations under the License.
 */
 
-package download
+package exporter
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client/service_edge_router_policy"
+	"errors"
+	"github.com/openziti/edge-api/rest_management_api_client/config"
+	"github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/internal/ascode"
 )
 
-func (d Download) GetServiceEdgeRouterPolicies() ([]map[string]interface{}, error) {
+func (d Exporter) GetServices() ([]map[string]interface{}, error) {
 
 	return d.getEntities(
-		"ServiceEdgeRouterPolicies",
+		"Services",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.ServiceEdgeRouterPolicy.ListServiceEdgeRouterPolicies(&service_edge_router_policy.ListServiceEdgeRouterPoliciesParams{Limit: &limit}, nil)
+			resp, err := d.client.Service.ListServices(&service.ListServicesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -36,7 +39,7 @@ func (d Download) GetServiceEdgeRouterPolicies() ([]map[string]interface{}, erro
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.ServiceEdgeRouterPolicy.ListServiceEdgeRouterPolicies(&service_edge_router_policy.ListServiceEdgeRouterPoliciesParams{Limit: limit, Offset: offset}, nil)
+			resp, err := d.client.Service.ListServices(&service.ListServicesParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -49,26 +52,30 @@ func (d Download) GetServiceEdgeRouterPolicies() ([]map[string]interface{}, erro
 
 		func(entity interface{}) (map[string]interface{}, error) {
 
-			item := entity.(*rest_model.ServiceEdgeRouterPolicyDetail)
+			item := entity.(*rest_model.ServiceDetail)
 
 			// convert to a map of values
 			m := d.ToMap(item)
 
-			// translate attributes so they don't reference ids
-			serviceRoles := []string{}
-			for _, role := range item.ServiceRolesDisplay {
-				serviceRoles = append(serviceRoles, role.Name)
-			}
-			m["serviceRoles"] = serviceRoles
-			edgeRouterRoles := []string{}
-			for _, role := range item.EdgeRouterRolesDisplay {
-				edgeRouterRoles = append(edgeRouterRoles, role.Name)
-			}
-			m["edgeRouterRoles"] = edgeRouterRoles
+			d.defaultRoleAttributes(m)
 
 			// filter unwanted properties
 			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
-				"edgeRouterRolesDisplay", "serviceRolesDisplay", "isSystem"})
+				"configs", "config", "data", "postureQueries", "permissions", "maxIdleTimeMillis"})
+
+			// translate ids to names
+			var configNames []string
+			for _, c := range item.Configs {
+				configDetail, lookupErr := ascode.GetItemFromCache(d.configCache, c, func(id string) (interface{}, error) {
+					return d.client.Config.DetailConfig(&config.DetailConfigParams{ID: id}, nil)
+				})
+				if lookupErr != nil {
+					return nil, errors.Join(errors.New("error reading Config: "+c), lookupErr)
+				}
+				configNames = append(configNames, "@"+*configDetail.(*config.DetailConfigOK).Payload.Data.Name)
+			}
+			delete(m, "configs")
+			m["configs"] = configNames
 
 			return m, nil
 		})

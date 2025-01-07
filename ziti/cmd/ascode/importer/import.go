@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package upload
+package importer
 
 import (
 	"encoding/json"
@@ -36,7 +36,7 @@ import (
 	"strings"
 )
 
-type Upload struct {
+type Importer struct {
 	loginOpts          edge.LoginOptions
 	client             *rest_management_api_client.ZitiEdgeManagement
 	reader             Reader
@@ -52,9 +52,9 @@ type Upload struct {
 
 var log = pfxlog.Logger()
 
-func NewUploadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
-	u := &Upload{}
+	u := &Importer{}
 	u.loginOpts = edge.LoginOptions{}
 
 	cmd := &cobra.Command{
@@ -112,7 +112,7 @@ func NewUploadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (u *Upload) Init() {
+func (u *Importer) Init() {
 	u.loginOpts.Verbose = u.loginOpts.Verbose
 
 	logLvl := logrus.InfoLevel
@@ -138,7 +138,7 @@ func (u *Upload) Init() {
 	u.reader = FileReader{}
 }
 
-func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map[string]any, error) {
+func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (map[string]any, error) {
 
 	args := arrayutils.Map(inputArgs, strings.ToLower)
 

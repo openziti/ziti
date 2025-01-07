@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package upload
+package importer
 
 import (
 	"errors"
@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
-func (u *Upload) ProcessEdgeRouters(input map[string][]interface{}) (map[string]string, error) {
+func (u *Importer) ProcessEdgeRouters(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["edgeRouters"] {
@@ -75,7 +75,7 @@ func (u *Upload) ProcessEdgeRouters(input map[string][]interface{}) (map[string]
 	return result, nil
 }
 
-func (u *Upload) lookupEdgeRouters(roles []string) ([]string, error) {
+func (u *Importer) lookupEdgeRouters(roles []string) ([]string, error) {
 	edgeRouterRoles := []string{}
 	for _, role := range roles {
 		if role[0:1] == "@" {

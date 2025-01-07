@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package download
+package exporter
 
 import (
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/ziti/internal/ascode"
 )
 
-func (d Download) GetAuthPolicies() ([]map[string]interface{}, error) {
+func (d Exporter) GetAuthPolicies() ([]map[string]interface{}, error) {
 
 	return d.getEntities(
 		"AuthPolicies",

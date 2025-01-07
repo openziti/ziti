@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package upload
+package importer
 
 import (
 	"encoding/json"
@@ -27,7 +27,7 @@ import (
 	"strings"
 )
 
-func (u *Upload) ProcessPostureChecks(input map[string][]interface{}) (map[string]string, error) {
+func (u *Importer) ProcessPostureChecks(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["postureChecks"] {

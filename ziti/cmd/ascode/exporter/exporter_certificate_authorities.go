@@ -14,21 +14,21 @@
 	limitations under the License.
 */
 
-package download
+package exporter
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
+	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge-api/rest_model"
 )
 
-func (d Download) GetExternalJwtSigners() ([]map[string]interface{}, error) {
+func (d Exporter) GetCertificateAuthorities() ([]map[string]interface{}, error) {
 
 	return d.getEntities(
-		"ExtJWTSigners",
+		"CertificateAuthorities",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.ExternalJWTSigner.ListExternalJWTSigners(&external_jwt_signer.ListExternalJWTSignersParams{Limit: &limit}, nil)
+			resp, err := d.client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -36,8 +36,7 @@ func (d Download) GetExternalJwtSigners() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.ExternalJWTSigner.ListExternalJWTSigners(
-				&external_jwt_signer.ListExternalJWTSignersParams{Offset: offset, Limit: limit}, nil)
+			resp, err := d.client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Offset: offset, Limit: limit}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -50,14 +49,13 @@ func (d Download) GetExternalJwtSigners() ([]map[string]interface{}, error) {
 
 		func(entity interface{}) (map[string]interface{}, error) {
 
-			item := entity.(*rest_model.ExternalJWTSignerDetail)
+			item := entity.(*rest_model.CaDetail)
 
 			// convert to a map of values
 			m := d.ToMap(item)
 
 			// filter unwanted properties
-			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
-				"notBefore", "notAfter", "commonName"})
+			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})
 
 			return m, nil
 		})

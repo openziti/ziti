@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package download
+package exporter
 
 import (
 	"errors"
@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/ziti/internal/ascode"
 )
 
-func (d Download) GetIdentities() ([]map[string]interface{}, error) {
+func (d Exporter) GetIdentities() ([]map[string]interface{}, error) {
 
 	return d.getEntities(
 		"Identities",
@@ -54,7 +54,7 @@ func (d Download) GetIdentities() ([]map[string]interface{}, error) {
 
 			item := entity.(*rest_model.IdentityDetail)
 
-			// only download Default identities and not the default admin
+			// only exporter regular identities and not the default admin
 			if *item.TypeID != "Router" && !*item.IsDefaultAdmin {
 
 				// convert to a map of values

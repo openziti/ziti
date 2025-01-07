@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package upload
+package importer
 
 import (
 	"encoding/json"
@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
-func (u *Upload) ProcessConfigs(input map[string][]interface{}) (map[string]string, error) {
+func (u *Importer) ProcessConfigs(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["configs"] {

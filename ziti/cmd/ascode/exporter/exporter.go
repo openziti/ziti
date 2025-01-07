@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package download
+package exporter
 
 import (
 	"encoding/json"
@@ -37,7 +37,7 @@ import (
 
 var log = pfxlog.Logger()
 
-type Download struct {
+type Exporter struct {
 	loginOpts        edge.LoginOptions
 	client           *rest_management_api_client.ZitiEdgeManagement
 	ofJson           bool
@@ -52,9 +52,9 @@ type Download struct {
 
 var output Output
 
-func NewDownloadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
-	d := &Download{}
+	d := &Exporter{}
 	d.loginOpts = edge.LoginOptions{}
 
 	cmd := &cobra.Command{
@@ -106,7 +106,7 @@ func NewDownloadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (d *Download) Init(out io.Writer) error {
+func (d *Exporter) Init(out io.Writer) error {
 
 	logLvl := logrus.InfoLevel
 	if d.loginOpts.Verbose {
@@ -146,7 +146,7 @@ func (d *Download) Init(out io.Writer) error {
 	return nil
 }
 
-func (d *Download) Execute(input []string) error {
+func (d *Exporter) Execute(input []string) error {
 
 	args := arrayutils.Map(input, strings.ToLower)
 
@@ -270,7 +270,7 @@ func (d *Download) Execute(input []string) error {
 		result["postureChecks"] = postureChecks
 	}
 
-	log.Debug("Download complete")
+	log.Debug("Export complete")
 
 	err := output.Write(result)
 	if err != nil {
@@ -290,7 +290,7 @@ type ClientCount func() (int64, error)
 type ClientList func(offset *int64, limit *int64) ([]interface{}, error)
 type EntityProcessor func(item interface{}) (map[string]interface{}, error)
 
-func (d *Download) getEntities(entityName string, count ClientCount, list ClientList, processor EntityProcessor) ([]map[string]interface{}, error) {
+func (d *Exporter) getEntities(entityName string, count ClientCount, list ClientList, processor EntityProcessor) ([]map[string]interface{}, error) {
 
 	totalCount, countErr := count()
 	if countErr != nil {
@@ -329,7 +329,7 @@ func (d *Download) getEntities(entityName string, count ClientCount, list Client
 
 }
 
-func (d *Download) ToMap(input interface{}) map[string]interface{} {
+func (d *Exporter) ToMap(input interface{}) map[string]interface{} {
 	jsonData, _ := json.MarshalIndent(input, "", "")
 	m := map[string]interface{}{}
 	err := json.Unmarshal(jsonData, &m)
@@ -340,13 +340,13 @@ func (d *Download) ToMap(input interface{}) map[string]interface{} {
 	return m
 }
 
-func (d *Download) defaultRoleAttributes(m map[string]interface{}) {
+func (d *Exporter) defaultRoleAttributes(m map[string]interface{}) {
 	if m["roleAttributes"] == nil {
 		m["roleAttributes"] = []string{}
 	}
 }
 
-func (d *Download) Filter(m map[string]interface{}, properties []string) {
+func (d *Exporter) Filter(m map[string]interface{}, properties []string) {
 
 	// remove any properties that are not requested
 	for k := range m {

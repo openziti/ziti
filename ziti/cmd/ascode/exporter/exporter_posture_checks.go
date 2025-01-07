@@ -14,21 +14,20 @@
 	limitations under the License.
 */
 
-package download
+package exporter
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
-	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 )
 
-func (d Download) GetCertificateAuthorities() ([]map[string]interface{}, error) {
+func (d Exporter) GetPostureChecks() ([]map[string]interface{}, error) {
 
 	return d.getEntities(
-		"CertificateAuthorities",
+		"PostureChecks",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Limit: &limit}, nil)
+			resp, err := d.client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -36,12 +35,9 @@ func (d Download) GetCertificateAuthorities() ([]map[string]interface{}, error) 
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Offset: offset, Limit: limit}, nil)
-			if err != nil {
-				return nil, err
-			}
-			entities := make([]interface{}, len(resp.GetPayload().Data))
-			for i, c := range resp.GetPayload().Data {
+			resp, _ := d.client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: limit, Offset: offset}, nil)
+			entities := make([]interface{}, len(resp.GetPayload().Data()))
+			for i, c := range resp.GetPayload().Data() {
 				entities[i] = interface{}(c)
 			}
 			return entities, nil
@@ -49,13 +45,12 @@ func (d Download) GetCertificateAuthorities() ([]map[string]interface{}, error) 
 
 		func(entity interface{}) (map[string]interface{}, error) {
 
-			item := entity.(*rest_model.CaDetail)
-
 			// convert to a map of values
-			m := d.ToMap(item)
+			m := d.ToMap(entity)
 
 			// filter unwanted properties
-			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})
+			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
+				"version"})
 
 			return m, nil
 		})

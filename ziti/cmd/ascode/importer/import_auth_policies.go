@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package upload
+package importer
 
 import (
 	"encoding/json"
@@ -27,7 +27,7 @@ import (
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
-func (u *Upload) ProcessAuthPolicies(input map[string][]interface{}) (map[string]string, error) {
+func (u *Importer) ProcessAuthPolicies(input map[string][]interface{}) (map[string]string, error) {
 
 	if u.loginOpts.Verbose {
 		log.Debug("Listing all AuthPolicies")

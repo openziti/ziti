@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package upload
+package importer
 
 import (
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
-func (u *Upload) ProcessCertificateAuthorities(input map[string][]interface{}) (map[string]string, error) {
+func (u *Importer) ProcessCertificateAuthorities(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["certificateAuthorities"] {

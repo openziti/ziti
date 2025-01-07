@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package upload
+package importer
 
 import (
 	"encoding/json"
@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
-func (u *Upload) ProcessIdentities(input map[string][]interface{}) (map[string]string, error) {
+func (u *Importer) ProcessIdentities(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 
@@ -102,7 +102,7 @@ func (u *Upload) ProcessIdentities(input map[string][]interface{}) (map[string]s
 	return result, nil
 }
 
-func (u *Upload) lookupIdentities(roles []string) ([]string, error) {
+func (u *Importer) lookupIdentities(roles []string) ([]string, error) {
 	identityRoles := []string{}
 	for _, role := range roles {
 		if role[0:1] == "@" {

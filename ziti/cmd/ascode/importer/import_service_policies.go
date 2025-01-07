@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package upload
+package importer
 
 import (
 	"errors"
@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/ziti/internal/rest/mgmt"
 )
 
-func (u *Upload) ProcessServicePolicies(input map[string][]interface{}) (map[string]string, error) {
+func (u *Importer) ProcessServicePolicies(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["servicePolicies"] {

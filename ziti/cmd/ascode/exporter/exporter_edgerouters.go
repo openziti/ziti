@@ -14,21 +14,20 @@
 	limitations under the License.
 */
 
-package download
+package exporter
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
+	"github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	"github.com/openziti/edge-api/rest_model"
 )
 
-func (d Download) GetServicePolicies() ([]map[string]interface{}, error) {
+func (d Exporter) GetEdgeRouters() ([]map[string]interface{}, error) {
 
 	return d.getEntities(
-		"ServicePolicies",
-
+		"EdgeRouters",
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: &limit}, nil)
+			resp, err := d.client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -36,7 +35,7 @@ func (d Download) GetServicePolicies() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: limit, Offset: offset}, nil)
+			resp, err := d.client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -49,33 +48,16 @@ func (d Download) GetServicePolicies() ([]map[string]interface{}, error) {
 
 		func(entity interface{}) (map[string]interface{}, error) {
 
-			item := entity.(*rest_model.ServicePolicyDetail)
+			item := entity.(*rest_model.EdgeRouterDetail)
 
 			// convert to a map of values
 			m := d.ToMap(item)
-
-			// translate attributes so they don't reference ids
-			identityRoles := []string{}
-			for _, role := range item.IdentityRolesDisplay {
-				identityRoles = append(identityRoles, role.Name)
-			}
-			m["identityRoles"] = identityRoles
-			serviceRoles := []string{}
-			for _, role := range item.ServiceRolesDisplay {
-				serviceRoles = append(serviceRoles, role.Name)
-			}
-			m["serviceRoles"] = serviceRoles
-			postureCheckRoles := []string{}
-			for _, role := range item.PostureCheckRolesDisplay {
-				identityRoles = append(identityRoles, role.Name)
-			}
-			m["postureCheckRoles"] = postureCheckRoles
+			d.defaultRoleAttributes(m)
 
 			// filter unwanted properties
 			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
-				"serviceRolesDisplay", "identityRolesDisplay", "postureCheckRolesDisplay", "isSystem"})
+				"cost", "fingerprint", "isVerified", "isOnline", "enrollmentJwt", "enrollmentCreatedAt", "enrollmentExpiresAt", "syncStatus", "versionInfo", "certPem", "supportedProtocols"})
 
 			return m, nil
-		},
-	)
+		})
 }

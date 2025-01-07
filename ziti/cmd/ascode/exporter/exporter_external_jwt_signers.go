@@ -14,20 +14,21 @@
 	limitations under the License.
 */
 
-package download
+package exporter
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client/edge_router"
+	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
 )
 
-func (d Download) GetEdgeRouters() ([]map[string]interface{}, error) {
+func (d Exporter) GetExternalJwtSigners() ([]map[string]interface{}, error) {
 
 	return d.getEntities(
-		"EdgeRouters",
+		"ExtJWTSigners",
+
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: &limit}, nil)
+			resp, err := d.client.ExternalJWTSigner.ListExternalJWTSigners(&external_jwt_signer.ListExternalJWTSignersParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -35,7 +36,8 @@ func (d Download) GetEdgeRouters() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: limit, Offset: offset}, nil)
+			resp, err := d.client.ExternalJWTSigner.ListExternalJWTSigners(
+				&external_jwt_signer.ListExternalJWTSignersParams{Offset: offset, Limit: limit}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -48,15 +50,14 @@ func (d Download) GetEdgeRouters() ([]map[string]interface{}, error) {
 
 		func(entity interface{}) (map[string]interface{}, error) {
 
-			item := entity.(*rest_model.EdgeRouterDetail)
+			item := entity.(*rest_model.ExternalJWTSignerDetail)
 
 			// convert to a map of values
 			m := d.ToMap(item)
-			d.defaultRoleAttributes(m)
 
 			// filter unwanted properties
 			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
-				"cost", "fingerprint", "isVerified", "isOnline", "enrollmentJwt", "enrollmentCreatedAt", "enrollmentExpiresAt", "syncStatus", "versionInfo", "certPem", "supportedProtocols"})
+				"notBefore", "notAfter", "commonName"})
 
 			return m, nil
 		})

@@ -14,14 +14,14 @@
 	limitations under the License.
 */
 
-package download
+package exporter
 
 import (
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
 	"github.com/openziti/edge-api/rest_model"
 )
 
-func (d Download) GetRouterPolicies() ([]map[string]interface{}, error) {
+func (d Exporter) GetRouterPolicies() ([]map[string]interface{}, error) {
 
 	return d.getEntities(
 		"EdgeRouterPolicies",
