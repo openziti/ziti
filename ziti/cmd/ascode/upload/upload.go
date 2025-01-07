@@ -61,7 +61,7 @@ func NewUploadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "import filename [entity]",
 		Short: "Import entities",
 		Long: "Import all or selected entities from the specified file.\n" +
-			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edgerouter-policy|service-edgerouter-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
+			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			u.Init()
@@ -154,8 +154,8 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	cas := map[string]string{}
 	if all ||
-		slices.Contains(args, "ca") || slices.Contains(args, "cas") ||
-		slices.Contains(args, "certificate-authority") || slices.Contains(args, "certificate-authorities") {
+		slices.Contains(args, "ca") ||
+		slices.Contains(args, "certificate-authority") {
 		log.Debug("Processing CertificateAuthorities")
 		var err error
 		cas, err = u.ProcessCertificateAuthorities(data)
@@ -171,9 +171,9 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	externalJwtSigners := map[string]string{}
 	if all ||
-		slices.Contains(args, "external-jwt-signer") || slices.Contains(args, "external-jwt-signers") ||
-		slices.Contains(args, "auth-policy") || slices.Contains(args, "auth-policies") ||
-		slices.Contains(args, "identity") || slices.Contains(args, "identities") {
+		slices.Contains(args, "external-jwt-signer") ||
+		slices.Contains(args, "auth-policy") ||
+		slices.Contains(args, "identity") {
 		log.Debug("Processing ExtJWTSigners")
 		var err error
 		externalJwtSigners, err = u.ProcessExternalJwtSigners(data)
@@ -187,8 +187,8 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	authPolicies := map[string]string{}
 	if all ||
-		slices.Contains(args, "auth-policy") || slices.Contains(args, "auth-policies") ||
-		slices.Contains(args, "identity") || slices.Contains(args, "identities") {
+		slices.Contains(args, "auth-policy") ||
+		slices.Contains(args, "identity") {
 		log.Debug("Processing AuthPolicies")
 		var err error
 		authPolicies, err = u.ProcessAuthPolicies(data)
@@ -202,7 +202,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	identities := map[string]string{}
 	if all ||
-		slices.Contains(args, "identity") || slices.Contains(args, "identities") {
+		slices.Contains(args, "identity") {
 		log.Debug("Processing Identities")
 		var err error
 		identities, err = u.ProcessIdentities(data)
@@ -216,9 +216,9 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	configTypes := map[string]string{}
 	if all ||
-		slices.Contains(args, "config-type") || slices.Contains(args, "config-types") ||
-		slices.Contains(args, "config") || slices.Contains(args, "configs") ||
-		slices.Contains(args, "service") || slices.Contains(args, "services") {
+		slices.Contains(args, "config-type") ||
+		slices.Contains(args, "config") ||
+		slices.Contains(args, "service") {
 		log.Debug("Processing ConfigTypes")
 		var err error
 		configTypes, err = u.ProcessConfigTypes(data)
@@ -232,8 +232,8 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	configs := map[string]string{}
 	if all ||
-		slices.Contains(args, "config") || slices.Contains(args, "configs") ||
-		slices.Contains(args, "service") || slices.Contains(args, "services") {
+		slices.Contains(args, "config") ||
+		slices.Contains(args, "service") {
 		log.Debug("Processing Configs")
 		var err error
 		configs, err = u.ProcessConfigs(data)
@@ -247,7 +247,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	services := map[string]string{}
 	if all ||
-		slices.Contains(args, "service") || slices.Contains(args, "services") {
+		slices.Contains(args, "service") {
 		log.Debug("Processing Services")
 		var err error
 		services, err = u.ProcessServices(data)
@@ -261,7 +261,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	postureChecks := map[string]string{}
 	if all ||
-		slices.Contains(args, "posture-check") || slices.Contains(args, "posture-checks") {
+		slices.Contains(args, "posture-check") {
 		log.Debug("Processing PostureChecks")
 		var err error
 		postureChecks, err = u.ProcessPostureChecks(data)
@@ -275,8 +275,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	routers := map[string]string{}
 	if all ||
-		slices.Contains(args, "edge-router") || slices.Contains(args, "edge-routers") ||
-		slices.Contains(args, "ers") || slices.Contains(args, "ers") {
+		slices.Contains(args, "edge-router") || slices.Contains(args, "er") {
 		log.Debug("Processing EdgeRouters")
 		var err error
 		routers, err = u.ProcessEdgeRouters(data)
@@ -290,7 +289,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	serviceEdgeRouterPolicies := map[string]string{}
 	if all ||
-		slices.Contains(args, "service-edgerouter-policy") || slices.Contains(args, "service-edgerouter-policies") {
+		slices.Contains(args, "service-edge-router-policy") {
 		log.Debug("Processing ServiceRouterPolicies")
 		var err error
 		serviceEdgeRouterPolicies, err = u.ProcessServiceEdgeRouterPolicies(data)
@@ -304,7 +303,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	servicePolicies := map[string]string{}
 	if all ||
-		slices.Contains(args, "service-policy") || slices.Contains(args, "service-policies") {
+		slices.Contains(args, "service-policy") {
 		log.Debug("Processing ServicePolicies")
 		var err error
 		servicePolicies, err = u.ProcessServicePolicies(data)
@@ -318,7 +317,7 @@ func (u *Upload) Execute(data map[string][]interface{}, inputArgs []string) (map
 
 	routerPolicies := map[string]string{}
 	if all ||
-		slices.Contains(args, "edgerouter-policy") || slices.Contains(args, "edgerouter-policies") {
+		slices.Contains(args, "edge-router-policy") {
 		log.Debug("Processing EdgeRouterPolicies")
 		var err error
 		routerPolicies, err = u.ProcessEdgeRouterPolicies(data)

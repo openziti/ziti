@@ -61,7 +61,7 @@ func NewDownloadCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "export [entity]",
 		Short: "Export entities",
 		Long: "Export all or selected entities.\n" +
-			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edgerouter-policy|service-edgerouter-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
+			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(0),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			err := d.Init(out)
@@ -159,8 +159,8 @@ func (d *Download) Execute(input []string) error {
 
 	all := slices.Contains(args, "all") || len(args) == 0
 	if all ||
-		slices.Contains(args, "ca") || slices.Contains(args, "cas") ||
-		slices.Contains(args, "certificate-authority") || slices.Contains(args, "certificate-authorities") {
+		slices.Contains(args, "ca") ||
+		slices.Contains(args, "certificate-authority") {
 		log.Debug("Processing Certificate Authorities")
 		cas, err := d.GetCertificateAuthorities()
 		if err != nil {
@@ -169,7 +169,7 @@ func (d *Download) Execute(input []string) error {
 		result["certificateAuthorities"] = cas
 	}
 	if all ||
-		slices.Contains(args, "identity") || slices.Contains(args, "identities") {
+		slices.Contains(args, "identity") {
 		log.Debug("Processing Identities")
 		identities, err := d.GetIdentities()
 		if err != nil {
@@ -179,8 +179,8 @@ func (d *Download) Execute(input []string) error {
 	}
 
 	if all ||
-		slices.Contains(args, "edge-router") || slices.Contains(args, "edge-routers") ||
-		slices.Contains(args, "er") || slices.Contains(args, "ers") {
+		slices.Contains(args, "edge-router") ||
+		slices.Contains(args, "er") {
 		log.Debug("Processing Edge Routers")
 		routers, err := d.GetEdgeRouters()
 		if err != nil {
@@ -189,7 +189,7 @@ func (d *Download) Execute(input []string) error {
 		result["edgeRouters"] = routers
 	}
 	if all ||
-		slices.Contains(args, "service") || slices.Contains(args, "services") {
+		slices.Contains(args, "service") {
 		log.Debug("Processing Services")
 		services, err := d.GetServices()
 		if err != nil {
@@ -198,7 +198,7 @@ func (d *Download) Execute(input []string) error {
 		result["services"] = services
 	}
 	if all ||
-		slices.Contains(args, "config") || slices.Contains(args, "configs") {
+		slices.Contains(args, "config") {
 		log.Debug("Processing Configs")
 		configs, err := d.GetConfigs()
 		if err != nil {
@@ -207,7 +207,7 @@ func (d *Download) Execute(input []string) error {
 		result["configs"] = configs
 	}
 	if all ||
-		slices.Contains(args, "config-type") || slices.Contains(args, "config-types") {
+		slices.Contains(args, "config-type") {
 		log.Debug("Processing Config Types")
 		configTypes, err := d.GetConfigTypes()
 		if err != nil {
@@ -216,7 +216,7 @@ func (d *Download) Execute(input []string) error {
 		result["configTypes"] = configTypes
 	}
 	if all ||
-		slices.Contains(args, "service-policy") || slices.Contains(args, "service-policies") {
+		slices.Contains(args, "service-policy") {
 		log.Debug("Processing Service Policies")
 		servicePolicies, err := d.GetServicePolicies()
 		if err != nil {
@@ -225,8 +225,8 @@ func (d *Download) Execute(input []string) error {
 		result["servicePolicies"] = servicePolicies
 	}
 	if all ||
-		slices.Contains(args, "edgerouter-policy") || slices.Contains(args, "edgerouter-policies") {
-		log.Debug("Processing Router Policies")
+		slices.Contains(args, "edge-router-policy") {
+		log.Debug("Processing Edge Router Policies")
 		routerPolicies, err := d.GetRouterPolicies()
 		if err != nil {
 			return err
@@ -234,8 +234,8 @@ func (d *Download) Execute(input []string) error {
 		result["edgeRouterPolicies"] = routerPolicies
 	}
 	if all ||
-		slices.Contains(args, "service-edgerouter-policy") || slices.Contains(args, "service-edgerouter-policies") {
-		log.Debug("Processing Service EdgeRouter Policies")
+		slices.Contains(args, "service-edge-router-policy") {
+		log.Debug("Processing Service Edge Router Policies")
 		serviceRouterPolicies, err := d.GetServiceEdgeRouterPolicies()
 		if err != nil {
 			return err
@@ -243,7 +243,7 @@ func (d *Download) Execute(input []string) error {
 		result["serviceEdgeRouterPolicies"] = serviceRouterPolicies
 	}
 	if all ||
-		slices.Contains(args, "external-jwt-signer") || slices.Contains(args, "external-jwt-signers") {
+		slices.Contains(args, "external-jwt-signer") {
 		log.Debug("Processing External JWT Signers")
 		externalJwtSigners, err := d.GetExternalJwtSigners()
 		if err != nil {
@@ -252,7 +252,7 @@ func (d *Download) Execute(input []string) error {
 		result["externalJwtSigners"] = externalJwtSigners
 	}
 	if all ||
-		slices.Contains(args, "auth-policy") || slices.Contains(args, "auth-policies") {
+		slices.Contains(args, "auth-policy") {
 		log.Debug("Processing Auth Policies")
 		authPolicies, err := d.GetAuthPolicies()
 		if err != nil {
@@ -261,7 +261,7 @@ func (d *Download) Execute(input []string) error {
 		result["authPolicies"] = authPolicies
 	}
 	if all ||
-		slices.Contains(args, "posture-check") || slices.Contains(args, "posture-checks") {
+		slices.Contains(args, "posture-check") {
 		log.Debug("Processing Posture Checks")
 		postureChecks, err := d.GetPostureChecks()
 		if err != nil {
