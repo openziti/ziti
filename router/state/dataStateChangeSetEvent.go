@@ -33,13 +33,13 @@ func (eventHandler *dataStateChangeSetHandler) HandleReceive(msg *channel.Messag
 
 	// ignore state from controllers we are not currently subscribed to
 	if currentCtrlId != ch.Id() {
-		logger.WithField("dataModelSrcId", currentCtrlId).Info("data state received from ctrl other than the one currently subscribed to")
+		logger.WithField("dataModelSrcId", currentCtrlId).Debug("data state received from ctrl other than the one currently subscribed to")
 		return
 	}
 
 	err := eventHandler.state.GetRouterDataModelPool().Queue(func() {
 		model := eventHandler.state.RouterDataModel()
-		logger.Info("received data state change set")
+		logger.Debug("received data state change set")
 		model.ApplyChangeSet(newEvent)
 	})
 

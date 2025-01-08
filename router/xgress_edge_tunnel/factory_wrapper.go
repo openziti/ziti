@@ -13,6 +13,7 @@ import (
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_edge_tunnel_v2"
+	"os"
 	"time"
 )
 
@@ -94,7 +95,12 @@ func NewFactoryWrapper(env env.RouterEnv, routerConfig *router.Config, stateMana
 
 	env.GetRouterDataModelEnabledConfig().AddListener(config.ListenerFunc[bool](func(init bool, old bool, new bool) {
 		if !init && old != new {
-			pfxlog.Logger()
+			if new {
+				pfxlog.Logger().Error("controller has moved from legacy mode to router data model mode, restarting so the router can work with router data model")
+			} else {
+				pfxlog.Logger().Error("controller no longer supports the router data model, restarting so the router can work in legacy mode")
+			}
+			os.Exit(0)
 		}
 	}))
 

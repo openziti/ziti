@@ -144,7 +144,7 @@ func (rtx *RouterSender) subscribe(request *edge_ctrl_pb.SubscribeToDataModelReq
 		return
 	default:
 		// already a request queued, let's try to clear it
-		logger.Info("data model subscription event received, but one already queued, attempting to clear")
+		logger.Debug("data model subscription event received, but one already queued, attempting to clear")
 	}
 
 	select {
@@ -156,7 +156,7 @@ func (rtx *RouterSender) subscribe(request *edge_ctrl_pb.SubscribeToDataModelReq
 	case rtx.requestModelSync <- request:
 		return
 	default:
-		logger.Info("data model subscription event received, still can't queue, exiting")
+		logger.Debug("data model subscription event received, still can't queue, exiting")
 	}
 }
 
@@ -200,7 +200,7 @@ func (rtx *RouterSender) handleModelChange() {
 
 	var err error
 
-	logger.Infof("event retrieval ok? %v, event count: %d for replay to router", ok, len(events))
+	logger.Debugf("event retrieval ok? %v, event count: %d for replay to router", ok, len(events))
 
 	if ok {
 		for _, curEvent := range events {

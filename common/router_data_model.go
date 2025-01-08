@@ -324,7 +324,7 @@ func (rdm *RouterDataModel) ApplyChangeSet(change *edge_ctrl_pb.DataState_Change
 				WithField("action", event.Action.String()).
 				WithField("type", fmt.Sprintf("%T", event.Model)).
 				WithField("summary", event.Summarize()).
-				Info("handling change set entry")
+				Debug("handling change set entry")
 			if rdm.Handle(index, event) {
 				syncSubscribers = true
 			}
