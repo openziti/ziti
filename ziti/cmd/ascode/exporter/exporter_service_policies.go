@@ -19,7 +19,13 @@ package exporter
 import (
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
+	"slices"
 )
+
+func (d Exporter) IsServicePolicyExportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "service-policy")
+}
 
 func (d Exporter) GetServicePolicies() ([]map[string]interface{}, error) {
 

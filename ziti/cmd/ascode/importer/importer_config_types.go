@@ -17,59 +17,68 @@
 package importer
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
+	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
+	"slices"
 )
 
-func (u *Importer) ProcessExternalJwtSigners(input map[string][]interface{}) (map[string]string, error) {
+func (u *Importer) IsConfigTypeImportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "config-type") ||
+		slices.Contains(args, "config") ||
+		slices.Contains(args, "service")
+}
+
+func (u *Importer) ProcessConfigTypes(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
-	for _, data := range input["externalJwtSigners"] {
-		create := FromMap(data, rest_model.ExternalJWTSignerCreate{})
+	for _, data := range input["configTypes"] {
+		create := FromMap(data, rest_model.ConfigTypeCreate{})
 
-		// see if the signer already exists
-		existing := mgmt.ExternalJWTSignerFromFilter(u.client, mgmt.NameFilter(*create.Name))
+		// see if the config type already exists
+		existing := mgmt.ConfigTypeFromFilter(u.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			if u.loginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
-					"name":                *create.Name,
-					"externalJwtSignerId": *existing.ID,
+					"name":         *create.Name,
+					"configTypeId": *existing.ID,
 				}).
-					Info("Found existing ExtJWTSigner, skipping create")
+					Info("Found existing ConfigType, skipping create")
 			}
-			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping ExtJWTSigner %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping ConfigType %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating ExtJWTSigner %s\r", *create.Name)
+		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating ConfigType %s\r", *create.Name)
 		if u.loginOpts.Verbose {
-			log.WithField("name", *create.Name).Debug("Creating ExtJWTSigner")
+			log.WithField("name", *create.Name).
+				Debug("Creating ConfigType")
 		}
-		created, createErr := u.client.ExternalJWTSigner.CreateExternalJWTSigner(&external_jwt_signer.CreateExternalJWTSignerParams{ExternalJWTSigner: create}, nil)
+		created, createErr := u.client.Config.CreateConfigType(&config.CreateConfigTypeParams{ConfigType: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
 					"field":  payloadErr.GetPayload().Error.Cause.APIFieldError.Field,
 					"reason": payloadErr.GetPayload().Error.Cause.APIFieldError.Reason,
-					"err":    payloadErr,
 				}).
-					Error("Unable to create ExtJWTSigner")
-				return nil, createErr
+					Error("Unable to create ConfigType")
 			} else {
-				log.Error("Unable to create ExtJWTSigner")
-				return nil, createErr
+				log.WithError(createErr).
+					Error("Unable to create ConfigType")
 			}
+			return nil, createErr
 		}
+
 		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
-				"name":                *create.Name,
-				"externalJwtSignerId": created.Payload.Data.ID,
+				"name":         *create.Name,
+				"configTypeId": created.Payload.Data.ID,
 			}).
-				Info("Created ExtJWTSigner")
+				Info("Created Config Type")
 		}
 
 		result[*create.Name] = created.Payload.Data.ID

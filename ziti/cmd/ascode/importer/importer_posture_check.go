@@ -24,8 +24,14 @@ import (
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
+	"slices"
 	"strings"
 )
+
+func (u *Importer) IsPostureCheckImportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "posture-check")
+}
 
 func (u *Importer) ProcessPostureChecks(input map[string][]interface{}) (map[string]string, error) {
 
@@ -43,17 +49,17 @@ func (u *Importer) ProcessPostureChecks(input map[string][]interface{}) (map[str
 
 		var create rest_model.PostureCheckCreate
 		switch strings.ToUpper(typeValue) {
-		case "DOMAIN":
+		case string(rest_model.PostureCheckTypeDOMAIN):
 			create = FromMap(data, rest_model.PostureCheckDomainCreate{})
-		case "MAC":
+		case string(rest_model.PostureCheckTypeMAC):
 			create = FromMap(data, rest_model.PostureCheckMacAddressCreate{})
-		case "MFA":
+		case string(rest_model.PostureCheckTypeMFA):
 			create = FromMap(data, rest_model.PostureCheckMfaCreate{})
-		case "OS":
+		case string(rest_model.PostureCheckTypeOS):
 			create = FromMap(data, rest_model.PostureCheckOperatingSystemCreate{})
-		case "PROCESS":
+		case string(rest_model.PostureCheckTypePROCESS):
 			create = FromMap(data, rest_model.PostureCheckProcessCreate{})
-		case "PROCESS-MULTI":
+		case string(rest_model.PostureCheckTypePROCESSMULTI):
 			create = FromMap(data, rest_model.PostureCheckProcessMultiCreate{})
 		default:
 			log.WithFields(map[string]interface{}{
@@ -74,12 +80,12 @@ func (u *Importer) ProcessPostureChecks(input map[string][]interface{}) (map[str
 				}).
 					Info("Found existing PostureCheck, skipping create")
 			}
-			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping PostureCheck %s\r", *create.Name())
+			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping PostureCheck %s\r", *create.Name())
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating PostureCheck %s\r", *create.Name())
+		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating PostureCheck %s\r", *create.Name())
 		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":   *create.Name(),

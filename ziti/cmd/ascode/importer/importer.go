@@ -32,9 +32,10 @@ import (
 	"gopkg.in/yaml.v3"
 	"io"
 	"os"
-	"slices"
 	"strings"
 )
+
+var log = pfxlog.Logger()
 
 type Importer struct {
 	loginOpts          edge.LoginOptions
@@ -49,8 +50,6 @@ type Importer struct {
 	extJwtSignersCache map[string]any
 	identityCache      map[string]any
 }
-
-var log = pfxlog.Logger()
 
 func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
@@ -150,12 +149,9 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 	u.identityCache = map[string]any{}
 
 	result := map[string]any{}
-	all := slices.Contains(args, "all") || len(args) == 0
 
 	cas := map[string]string{}
-	if all ||
-		slices.Contains(args, "ca") ||
-		slices.Contains(args, "certificate-authority") {
+	if u.IsCertificateAuthorityImportRequired(args) {
 		log.Debug("Processing CertificateAuthorities")
 		var err error
 		cas, err = u.ProcessCertificateAuthorities(data)
@@ -167,13 +163,10 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 			Debug("CertificateAuthorities created")
 	}
 	result["certificateAuthorities"] = cas
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d CertificateAuthorities\r\n", len(cas))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d CertificateAuthorities\r\n", len(cas))
 
 	externalJwtSigners := map[string]string{}
-	if all ||
-		slices.Contains(args, "external-jwt-signer") ||
-		slices.Contains(args, "auth-policy") ||
-		slices.Contains(args, "identity") {
+	if u.IsExtJwtSignerImportRequired(args) {
 		log.Debug("Processing ExtJWTSigners")
 		var err error
 		externalJwtSigners, err = u.ProcessExternalJwtSigners(data)
@@ -182,13 +175,11 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 		}
 		log.WithField("externalJwtSigners", externalJwtSigners).Debug("ExtJWTSigners created")
 	}
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d ExtJWTSigners\r\n", len(externalJwtSigners))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d ExtJWTSigners\r\n", len(externalJwtSigners))
 	result["externalJwtSigners"] = externalJwtSigners
 
 	authPolicies := map[string]string{}
-	if all ||
-		slices.Contains(args, "auth-policy") ||
-		slices.Contains(args, "identity") {
+	if u.IsAuthPolicyImportRequired(args) {
 		log.Debug("Processing AuthPolicies")
 		var err error
 		authPolicies, err = u.ProcessAuthPolicies(data)
@@ -197,12 +188,11 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 		}
 		log.WithField("authPolicies", authPolicies).Debug("AuthPolicies created")
 	}
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d AuthPolicies\r\n", len(authPolicies))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d AuthPolicies\r\n", len(authPolicies))
 	result["authPolicies"] = authPolicies
 
 	identities := map[string]string{}
-	if all ||
-		slices.Contains(args, "identity") {
+	if u.IsIdentityImportRequired(args) {
 		log.Debug("Processing Identities")
 		var err error
 		identities, err = u.ProcessIdentities(data)
@@ -211,14 +201,11 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 		}
 		log.WithField("identities", identities).Debug("Identities created")
 	}
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d Identities\r\n", len(identities))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d Identities\r\n", len(identities))
 	result["identities"] = identities
 
 	configTypes := map[string]string{}
-	if all ||
-		slices.Contains(args, "config-type") ||
-		slices.Contains(args, "config") ||
-		slices.Contains(args, "service") {
+	if u.IsConfigTypeImportRequired(args) {
 		log.Debug("Processing ConfigTypes")
 		var err error
 		configTypes, err = u.ProcessConfigTypes(data)
@@ -227,13 +214,11 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 		}
 		log.WithField("configTypes", configTypes).Debug("ConfigTypes created")
 	}
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d ConfigTypes\r\n", len(configTypes))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d ConfigTypes\r\n", len(configTypes))
 	result["configTypes"] = configTypes
 
 	configs := map[string]string{}
-	if all ||
-		slices.Contains(args, "config") ||
-		slices.Contains(args, "service") {
+	if u.IsConfigImportRequired(args) {
 		log.Debug("Processing Configs")
 		var err error
 		configs, err = u.ProcessConfigs(data)
@@ -242,12 +227,11 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 		}
 		log.WithField("configs", configs).Debug("Configs created")
 	}
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d Configs\r\n", len(configs))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d Configs\r\n", len(configs))
 	result["configs"] = configs
 
 	services := map[string]string{}
-	if all ||
-		slices.Contains(args, "service") {
+	if u.IsServiceImportRequired(args) {
 		log.Debug("Processing Services")
 		var err error
 		services, err = u.ProcessServices(data)
@@ -256,12 +240,11 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 		}
 		log.WithField("services", services).Debug("Services created")
 	}
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d Services\r\n", len(services))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d Services\r\n", len(services))
 	result["services"] = services
 
 	postureChecks := map[string]string{}
-	if all ||
-		slices.Contains(args, "posture-check") {
+	if u.IsPostureCheckImportRequired(args) {
 		log.Debug("Processing PostureChecks")
 		var err error
 		postureChecks, err = u.ProcessPostureChecks(data)
@@ -270,12 +253,11 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 		}
 		log.WithField("postureChecks", postureChecks).Debug("PostureChecks created")
 	}
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d PostureChecks\r\n", len(postureChecks))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d PostureChecks\r\n", len(postureChecks))
 	result["postureChecks"] = postureChecks
 
 	routers := map[string]string{}
-	if all ||
-		slices.Contains(args, "edge-router") || slices.Contains(args, "er") {
+	if u.IsEdgeRouterImportRequired(args) {
 		log.Debug("Processing EdgeRouters")
 		var err error
 		routers, err = u.ProcessEdgeRouters(data)
@@ -284,13 +266,12 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 		}
 		log.WithField("edgeRouters", routers).Debug("EdgeRouters created")
 	}
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d EdgeRouters\r\n", len(routers))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d EdgeRouters\r\n", len(routers))
 	result["edgeRouters"] = routers
 
 	serviceEdgeRouterPolicies := map[string]string{}
-	if all ||
-		slices.Contains(args, "service-edge-router-policy") {
-		log.Debug("Processing ServiceRouterPolicies")
+	if u.IsServiceEdgeRouterPolicyImportRequired(args) {
+		log.Debug("Processing ServiceEdgeRouterPolicies")
 		var err error
 		serviceEdgeRouterPolicies, err = u.ProcessServiceEdgeRouterPolicies(data)
 		if err != nil {
@@ -298,12 +279,11 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 		}
 		log.WithField("serviceEdgeRouterPolicies", serviceEdgeRouterPolicies).Debug("ServiceEdgeRouterPolicies created")
 	}
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d ServiceEdgeRouterPolicies\r\n", len(serviceEdgeRouterPolicies))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d ServiceEdgeRouterPolicies\r\n", len(serviceEdgeRouterPolicies))
 	result["serviceEdgeRouterPolicies"] = serviceEdgeRouterPolicies
 
 	servicePolicies := map[string]string{}
-	if all ||
-		slices.Contains(args, "service-policy") {
+	if u.IsServicePolicyImportRequired(args) {
 		log.Debug("Processing ServicePolicies")
 		var err error
 		servicePolicies, err = u.ProcessServicePolicies(data)
@@ -312,12 +292,11 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 		}
 		log.WithField("servicePolicies", servicePolicies).Debug("ServicePolicies created")
 	}
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d ServicePolicies\r\n", len(servicePolicies))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d ServicePolicies\r\n", len(servicePolicies))
 	result["servicePolicies"] = servicePolicies
 
 	routerPolicies := map[string]string{}
-	if all ||
-		slices.Contains(args, "edge-router-policy") {
+	if u.IsEdgeRouterPolicyImportRequired(args) {
 		log.Debug("Processing EdgeRouterPolicies")
 		var err error
 		routerPolicies, err = u.ProcessEdgeRouterPolicies(data)
@@ -326,7 +305,7 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 		}
 		log.WithField("routerPolicies", routerPolicies).Debug("EdgeRouterPolicies created")
 	}
-	_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Created %d EdgeRouterPolicies\r\n", len(routerPolicies))
+	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d EdgeRouterPolicies\r\n", len(routerPolicies))
 	result["edgeRouterPolicies"] = routerPolicies
 
 	log.Info("Upload complete")

@@ -19,7 +19,14 @@ package exporter
 import (
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	"github.com/openziti/edge-api/rest_model"
+	"slices"
 )
+
+func (d Exporter) IsEdgeRouterExportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "edge-router") ||
+		slices.Contains(args, "er")
+}
 
 func (d Exporter) GetEdgeRouters() ([]map[string]interface{}, error) {
 

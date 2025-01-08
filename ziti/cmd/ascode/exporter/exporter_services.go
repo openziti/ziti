@@ -22,7 +22,13 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/internal/ascode"
+	"slices"
 )
+
+func (d Exporter) IsServiceExportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "service")
+}
 
 func (d Exporter) GetServices() ([]map[string]interface{}, error) {
 

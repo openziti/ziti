@@ -22,6 +22,11 @@ import (
 	"slices"
 )
 
+func (d Exporter) IsConfigTypeExportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "config-type")
+}
+
 func (d Exporter) GetConfigTypes() ([]map[string]interface{}, error) {
 
 	return d.getEntities(

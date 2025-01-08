@@ -24,7 +24,14 @@ import (
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
+	"slices"
 )
+
+func (u *Importer) IsEdgeRouterImportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "edge-router") ||
+		slices.Contains(args, "er")
+}
 
 func (u *Importer) ProcessEdgeRouters(input map[string][]interface{}) (map[string]string, error) {
 
@@ -40,12 +47,12 @@ func (u *Importer) ProcessEdgeRouters(input map[string][]interface{}) (map[strin
 				"edgeRouterId": *existing.ID,
 			}).
 				Info("Found existing EdgeRouter, skipping create")
-			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping EdgeRouter %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping EdgeRouter %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
+		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
 		if u.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating EdgeRouter")
 		}

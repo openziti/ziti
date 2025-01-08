@@ -22,7 +22,14 @@ import (
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
+	"slices"
 )
+
+func (u *Importer) IsCertificateAuthorityImportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "ca") ||
+		slices.Contains(args, "certificate-authority")
+}
 
 func (u *Importer) ProcessCertificateAuthorities(input map[string][]interface{}) (map[string]string, error) {
 
@@ -40,12 +47,12 @@ func (u *Importer) ProcessCertificateAuthorities(input map[string][]interface{})
 				}).
 					Info("Found existing CertificateAuthority, skipping create")
 			}
-			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping CertificateAuthority %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping CertificateAuthority %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating CertificateAuthority %s\r", *create.Name)
+		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating CertificateAuthority %s\r", *create.Name)
 		created, createErr := u.client.CertificateAuthority.CreateCa(&certificate_authority.CreateCaParams{Ca: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {

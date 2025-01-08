@@ -18,11 +18,13 @@ package ascode
 
 import (
 	"errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/michaelquigley/pfxlog"
 	"reflect"
 )
 
 type CacheGetter func(id string) (interface{}, error)
+
+var log = pfxlog.Logger()
 
 func GetItemFromCache(c map[string]interface{}, key string, fn CacheGetter) (interface{}, error) {
 	if key == "" {

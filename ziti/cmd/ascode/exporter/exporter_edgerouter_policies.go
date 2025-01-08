@@ -19,9 +19,15 @@ package exporter
 import (
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
 	"github.com/openziti/edge-api/rest_model"
+	"slices"
 )
 
-func (d Exporter) GetRouterPolicies() ([]map[string]interface{}, error) {
+func (d Exporter) IsEdgeRouterPolicyExportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "edge-router-policy")
+}
+
+func (d Exporter) GetEdgeRouterPolicies() ([]map[string]interface{}, error) {
 
 	return d.getEntities(
 		"EdgeRouterPolicies",

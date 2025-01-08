@@ -62,12 +62,12 @@ func (output Output) Write(data any) error {
 	var err error
 	if output.outputYaml {
 		if output.verbose {
-			_, _ = internal.FPrintFReusingLine(output.errWriter, "Formatting as Yaml\r\n")
+			_, _ = internal.FPrintfReusingLine(output.errWriter, "Formatting as Yaml\r\n")
 		}
 		formatted, err = output.ToYaml(data)
 	} else {
 		if output.verbose {
-			_, _ = internal.FPrintFReusingLine(output.errWriter, "Formatting as JSON\r\n")
+			_, _ = internal.FPrintfReusingLine(output.errWriter, "Formatting as JSON\r\n")
 		}
 		formatted, err = output.ToJson(data)
 	}
@@ -77,9 +77,9 @@ func (output Output) Write(data any) error {
 
 	if output.verbose {
 		if output.filename != "" {
-			_, _ = internal.FPrintFReusingLine(output.errWriter, "Writing to file: %s\r\n", output.filename)
+			_, _ = internal.FPrintfReusingLine(output.errWriter, "Writing to file: %s\r\n", output.filename)
 		} else {
-			_, _ = internal.FPrintFReusingLine(output.errWriter, "Writing output to writer\r\n")
+			_, _ = internal.FPrintfReusingLine(output.errWriter, "Writing output to writer\r\n")
 		}
 	}
 	bytes, err := output.writer.Write(formatted)

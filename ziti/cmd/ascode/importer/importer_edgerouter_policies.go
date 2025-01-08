@@ -17,70 +17,76 @@
 package importer
 
 import (
-	"errors"
-	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
+	"github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
+	"slices"
 )
 
-func (u *Importer) ProcessServicePolicies(input map[string][]interface{}) (map[string]string, error) {
+func (u *Importer) IsEdgeRouterPolicyImportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "edge-router-policy")
+}
+
+func (u *Importer) ProcessEdgeRouterPolicies(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
-	for _, data := range input["servicePolicies"] {
-		create := FromMap(data, rest_model.ServicePolicyCreate{})
+	for _, data := range input["edgeRouterPolicies"] {
+		create := FromMap(data, rest_model.EdgeRouterPolicyCreate{})
 
-		// see if the service policy already exists
-		existing := mgmt.ServicePolicyFromFilter(u.client, mgmt.NameFilter(*create.Name))
+		// see if the router already exists
+		existing := mgmt.EdgeRouterPolicyFromFilter(u.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
-				"name":            *create.Name,
-				"servicePolicyId": *existing.ID,
+				"name":               *create.Name,
+				"edgeRouterPolicyId": *existing.ID,
 			}).
-				Info("Found existing ServicePolicy, skipping create")
-			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
+				Info("Found existing EdgeRouterPolicy, skipping create")
+			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping EdgeRouterPolicy %s\r", *create.Name)
 			continue
 		}
 
-		// look up the service ids from the name and add to the create
-		serviceRoles, err := u.lookupServices(create.ServiceRoles)
+		// look up the edgeRouter ids from the name and add to the create
+		edgeRouterRoles, err := u.lookupEdgeRouters(create.EdgeRouterRoles)
 		if err != nil {
 			return nil, err
 		}
-		create.ServiceRoles = serviceRoles
+		create.EdgeRouterRoles = edgeRouterRoles
 
 		// look up the identity ids from the name and add to the create
 		identityRoles, err := u.lookupIdentities(create.IdentityRoles)
 		if err != nil {
-			return nil, errors.Join(errors.New("Unable to read all identities from ServicePolicy"), err)
+			return nil, err
 		}
 		create.IdentityRoles = identityRoles
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
+		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
 		if u.loginOpts.Verbose {
-			log.WithField("name", *create.Name).Debug("Creating ServicePolicy")
+			log.WithField("name", *create.Name).Debug("Creating EdgeRouterPolicy")
 		}
-		created, createErr := u.client.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
+		created, createErr := u.client.EdgeRouterPolicy.CreateEdgeRouterPolicy(&edge_router_policy.CreateEdgeRouterPolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
 					"field":  payloadErr.GetPayload().Error.Cause.APIFieldError.Field,
 					"reason": payloadErr.GetPayload().Error.Cause.APIFieldError.Reason,
 				}).
-					Error("Unable to create ServicePolicy")
+					Error("Unable to create EdgeRouterPolicy")
+				return nil, createErr
 			} else {
-				log.WithError(createErr).Error("Unable to ")
+				log.WithError(createErr).Error("Unable to create EdgeRouterPolicy")
 				return nil, createErr
 			}
 		}
 		if u.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
-				"name":            *create.Name,
-				"servicePolicyId": created.Payload.Data.ID,
+				"name":           *create.Name,
+				"routerPolicyId": created.Payload.Data.ID,
 			}).
-				Info("Created ServicePolicy")
+				Info("Created EdgeRouterPolicy")
 		}
 
 		result[*create.Name] = created.Payload.Data.ID

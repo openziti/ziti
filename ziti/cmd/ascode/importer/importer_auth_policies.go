@@ -25,7 +25,14 @@ import (
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
+	"slices"
 )
+
+func (u *Importer) IsAuthPolicyImportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "auth-policy") ||
+		slices.Contains(args, "identity")
+}
 
 func (u *Importer) ProcessAuthPolicies(input map[string][]interface{}) (map[string]string, error) {
 
@@ -47,7 +54,7 @@ func (u *Importer) ProcessAuthPolicies(input map[string][]interface{}) (map[stri
 					"authPolicyId": *existing.ID,
 				}).Info("Found existing Auth Policy, skipping create")
 			}
-			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping AuthPolicy %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping AuthPolicy %s\r", *create.Name)
 			continue
 		}
 
@@ -76,7 +83,7 @@ func (u *Importer) ProcessAuthPolicies(input map[string][]interface{}) (map[stri
 		create.Primary.ExtJWT.AllowedSigners = allowedSignerIds
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating AuthPolicy %s\r", *create.Name)
+		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating AuthPolicy %s\r", *create.Name)
 		if u.loginOpts.Verbose {
 			log.WithField("name", *create.Name).
 				Debug("Creating AuthPolicy")

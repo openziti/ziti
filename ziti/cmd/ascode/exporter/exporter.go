@@ -157,10 +157,7 @@ func (d *Exporter) Execute(input []string) error {
 
 	result := map[string]interface{}{}
 
-	all := slices.Contains(args, "all") || len(args) == 0
-	if all ||
-		slices.Contains(args, "ca") ||
-		slices.Contains(args, "certificate-authority") {
+	if d.IsCertificateAuthorityExportRequired(args) {
 		log.Debug("Processing Certificate Authorities")
 		cas, err := d.GetCertificateAuthorities()
 		if err != nil {
@@ -168,8 +165,7 @@ func (d *Exporter) Execute(input []string) error {
 		}
 		result["certificateAuthorities"] = cas
 	}
-	if all ||
-		slices.Contains(args, "identity") {
+	if d.IsIdentityExportRequired(args) {
 		log.Debug("Processing Identities")
 		identities, err := d.GetIdentities()
 		if err != nil {
@@ -178,9 +174,7 @@ func (d *Exporter) Execute(input []string) error {
 		result["identities"] = identities
 	}
 
-	if all ||
-		slices.Contains(args, "edge-router") ||
-		slices.Contains(args, "er") {
+	if d.IsEdgeRouterExportRequired(args) {
 		log.Debug("Processing Edge Routers")
 		routers, err := d.GetEdgeRouters()
 		if err != nil {
@@ -188,8 +182,7 @@ func (d *Exporter) Execute(input []string) error {
 		}
 		result["edgeRouters"] = routers
 	}
-	if all ||
-		slices.Contains(args, "service") {
+	if d.IsServiceExportRequired(args) {
 		log.Debug("Processing Services")
 		services, err := d.GetServices()
 		if err != nil {
@@ -197,8 +190,7 @@ func (d *Exporter) Execute(input []string) error {
 		}
 		result["services"] = services
 	}
-	if all ||
-		slices.Contains(args, "config") {
+	if d.IsConfigExportRequired(args) {
 		log.Debug("Processing Configs")
 		configs, err := d.GetConfigs()
 		if err != nil {
@@ -206,8 +198,7 @@ func (d *Exporter) Execute(input []string) error {
 		}
 		result["configs"] = configs
 	}
-	if all ||
-		slices.Contains(args, "config-type") {
+	if d.IsConfigTypeExportRequired(args) {
 		log.Debug("Processing Config Types")
 		configTypes, err := d.GetConfigTypes()
 		if err != nil {
@@ -215,8 +206,7 @@ func (d *Exporter) Execute(input []string) error {
 		}
 		result["configTypes"] = configTypes
 	}
-	if all ||
-		slices.Contains(args, "service-policy") {
+	if d.IsServicePolicyExportRequired(args) {
 		log.Debug("Processing Service Policies")
 		servicePolicies, err := d.GetServicePolicies()
 		if err != nil {
@@ -224,17 +214,15 @@ func (d *Exporter) Execute(input []string) error {
 		}
 		result["servicePolicies"] = servicePolicies
 	}
-	if all ||
-		slices.Contains(args, "edge-router-policy") {
+	if d.IsEdgeRouterExportRequired(args) {
 		log.Debug("Processing Edge Router Policies")
-		routerPolicies, err := d.GetRouterPolicies()
+		routerPolicies, err := d.GetEdgeRouterPolicies()
 		if err != nil {
 			return err
 		}
 		result["edgeRouterPolicies"] = routerPolicies
 	}
-	if all ||
-		slices.Contains(args, "service-edge-router-policy") {
+	if d.IsServiceEdgeRouterPolicyExportRequired(args) {
 		log.Debug("Processing Service Edge Router Policies")
 		serviceRouterPolicies, err := d.GetServiceEdgeRouterPolicies()
 		if err != nil {
@@ -242,8 +230,7 @@ func (d *Exporter) Execute(input []string) error {
 		}
 		result["serviceEdgeRouterPolicies"] = serviceRouterPolicies
 	}
-	if all ||
-		slices.Contains(args, "external-jwt-signer") {
+	if d.IsExtJwtSignerExportRequired(args) {
 		log.Debug("Processing External JWT Signers")
 		externalJwtSigners, err := d.GetExternalJwtSigners()
 		if err != nil {
@@ -251,8 +238,7 @@ func (d *Exporter) Execute(input []string) error {
 		}
 		result["externalJwtSigners"] = externalJwtSigners
 	}
-	if all ||
-		slices.Contains(args, "auth-policy") {
+	if d.IsAuthPolicyExportRequired(args) {
 		log.Debug("Processing Auth Policies")
 		authPolicies, err := d.GetAuthPolicies()
 		if err != nil {
@@ -260,8 +246,7 @@ func (d *Exporter) Execute(input []string) error {
 		}
 		result["authPolicies"] = authPolicies
 	}
-	if all ||
-		slices.Contains(args, "posture-check") {
+	if d.IsPostureCheckExportRequired(args) {
 		log.Debug("Processing Posture Checks")
 		postureChecks, err := d.GetPostureChecks()
 		if err != nil {
@@ -304,7 +289,7 @@ func (d *Exporter) getEntities(entityName string, count ClientCount, list Client
 	more := true
 	for more {
 		resp, err := list(&offset, &limit)
-		_, _ = internal.FPrintFReusingLine(d.loginOpts.Err, "Reading %d/%d %s\r", offset, totalCount, entityName)
+		_, _ = internal.FPrintfReusingLine(d.loginOpts.Err, "Reading %d/%d %s", offset, totalCount, entityName)
 		if err != nil {
 			return nil, errors.Join(errors.New("error reading "+entityName), err)
 		}
@@ -323,7 +308,7 @@ func (d *Exporter) getEntities(entityName string, count ClientCount, list Client
 		offset += limit
 	}
 
-	_, _ = internal.FPrintFReusingLine(d.loginOpts.Err, "Read %d %s\r\n", len(result), entityName)
+	_, _ = internal.FPrintflnReusingLine(d.loginOpts.Err, "Read %d %s", len(result), entityName)
 
 	return result, nil
 

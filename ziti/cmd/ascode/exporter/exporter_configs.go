@@ -21,7 +21,13 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/internal/ascode"
+	"slices"
 )
+
+func (d Exporter) IsConfigExportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "config")
+}
 
 func (d Exporter) GetConfigs() ([]map[string]interface{}, error) {
 

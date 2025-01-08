@@ -26,7 +26,13 @@ import (
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
+	"slices"
 )
+
+func (u *Importer) IsIdentityImportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "identity")
+}
 
 func (u *Importer) ProcessIdentities(input map[string][]interface{}) (map[string]string, error) {
 
@@ -44,7 +50,7 @@ func (u *Importer) ProcessIdentities(input map[string][]interface{}) (map[string
 				}).
 					Info("Found existing Identity, skipping create")
 			}
-			_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Skipping Identity %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping Identity %s\r", *create.Name)
 			continue
 		}
 
@@ -73,7 +79,7 @@ func (u *Importer) ProcessIdentities(input map[string][]interface{}) (map[string
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintFReusingLine(u.loginOpts.Err, "Creating Identity %s\r", *create.Name)
+		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating Identity %s\r", *create.Name)
 		created, createErr := u.client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {

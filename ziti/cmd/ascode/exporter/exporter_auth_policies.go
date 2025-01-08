@@ -21,7 +21,13 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/internal/ascode"
+	"slices"
 )
+
+func (d Exporter) IsAuthPolicyExportRequired(args []string) bool {
+	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
+		slices.Contains(args, "auth-policy")
+}
 
 func (d Exporter) GetAuthPolicies() ([]map[string]interface{}, error) {
 
