@@ -13,6 +13,9 @@ typeset -A KNOWN_STAGES=(
 
 : "${AGE:=30}"  # days
 : "${CI:=0}"    # jfrog CLI is interactive and prompts for confirmation by default
+: "${DRY_RUN:=0}"
+: "${QUIET:=0}"
+
 export CI
 
 while (( $# )); do
@@ -48,14 +51,23 @@ while (( $# )); do
                 echo "ERROR: invalid stage '${STAGE}', valid stages are ${!KNOWN_STAGES[*]}" >&2
                 exit 1
             done
-            echo "INFO: stages are ${STAGES[*]}" >&2
+            echo "INFO: operating on repos from stage(s): ${STAGES[*]}" >&2
             ;;
-        --quiet)
-            CI=1  # disable interactive prompts before destructive actions
+        --quiet)  # suppress jfrog CLI interactive prompts unless --dry-run
+            if (( DRY_RUN )); then
+                echo "WARN: --quiet ignored because --dry-run" >&2
+            else
+                QUIET=1
+                CI=1
+            fi
             shift
             ;;
-        --dry-run)
-            CI=0  # re-enable interactive prompts before destructive actions in case parent env has CI=1
+        --dry-run)  # re-enable jfrog CLI interactive safety prompts before destructive actions in case parent env has CI=1
+            if (( QUIET )); then
+                echo "WARN: --quiet ignored because --dry-run" >&2
+            fi
+            DRY_RUN=1
+            CI=0
             shift
             ;;
         --age)
