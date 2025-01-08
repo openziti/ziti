@@ -22,19 +22,19 @@ import (
 	"slices"
 )
 
-func (d Exporter) IsConfigTypeExportRequired(args []string) bool {
+func (exporter Exporter) IsConfigTypeExportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "config-type")
 }
 
-func (d Exporter) GetConfigTypes() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetConfigTypes() ([]map[string]interface{}, error) {
 
-	return d.getEntities(
+	return exporter.getEntities(
 		"ConfigTypes",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: &limit}, nil)
+			resp, err := exporter.client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +42,7 @@ func (d Exporter) GetConfigTypes() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, _ := d.client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: limit, Offset: offset}, nil)
+			resp, _ := exporter.client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: limit, Offset: offset}, nil)
 			entities := make([]interface{}, len(resp.GetPayload().Data))
 			for i, c := range resp.GetPayload().Data {
 				entities[i] = interface{}(c)
@@ -61,8 +61,8 @@ func (d Exporter) GetConfigTypes() ([]map[string]interface{}, error) {
 			}
 
 			// convert to a map of values
-			m := d.ToMap(item)
-			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})
+			m := exporter.ToMap(item)
+			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})
 
 			return m, nil
 		})

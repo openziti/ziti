@@ -53,8 +53,8 @@ type Importer struct {
 
 func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
-	u := &Importer{}
-	u.loginOpts = edge.LoginOptions{}
+	importer := &Importer{}
+	importer.loginOpts = edge.LoginOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "import filename [entity]",
@@ -63,16 +63,16 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			u.Init()
+			importer.Init()
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			data, err := u.reader.read(args[0])
+			data, err := importer.reader.read(args[0])
 			if err != nil {
 				panic(errors.Join(errors.New("unable to read input"), err))
 			}
 			m := map[string][]interface{}{}
 
-			if u.ofYaml {
+			if importer.ofYaml {
 				err = yaml.Unmarshal(data, &m)
 				if err != nil {
 					panic(errors.Join(errors.New("unable to parse input data as yaml"), err))
@@ -84,7 +84,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 				}
 			}
 
-			result, executeErr := u.Execute(m, args[1:])
+			result, executeErr := importer.Execute(m, args[1:])
 			if executeErr != nil {
 				panic(executeErr)
 			}
@@ -100,22 +100,21 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	v.AutomaticEnv()
 
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVar(&u.ofJson, "json", true, "Input parsed as JSON")
-	cmd.Flags().BoolVar(&u.ofYaml, "yaml", false, "Input parsed as YAML")
+	cmd.Flags().BoolVar(&importer.ofJson, "json", true, "Input parsed as JSON")
+	cmd.Flags().BoolVar(&importer.ofYaml, "yaml", false, "Input parsed as YAML")
 	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
 
-	edge.AddLoginFlags(cmd, &u.loginOpts)
-	u.loginOpts.Out = out
-	u.loginOpts.Err = errOut
+	edge.AddLoginFlags(cmd, &importer.loginOpts)
+	importer.loginOpts.Out = out
+	importer.loginOpts.Err = errOut
 
 	return cmd
 }
 
-func (u *Importer) Init() {
-	u.loginOpts.Verbose = u.loginOpts.Verbose
+func (importer *Importer) Init() {
 
 	logLvl := logrus.InfoLevel
-	if u.loginOpts.Verbose {
+	if importer.loginOpts.Verbose {
 		logLvl = logrus.DebugLevel
 	}
 
@@ -124,7 +123,7 @@ func (u *Importer) Init() {
 
 	client, err := mgmt.NewClient()
 	if err != nil {
-		loginErr := u.loginOpts.Run()
+		loginErr := importer.loginOpts.Run()
 		if loginErr != nil {
 			log.Fatal(err)
 		}
@@ -133,28 +132,28 @@ func (u *Importer) Init() {
 			log.Fatal(err)
 		}
 	}
-	u.client = client
-	u.reader = FileReader{}
+	importer.client = client
+	importer.reader = FileReader{}
 }
 
-func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (map[string]any, error) {
+func (importer *Importer) Execute(data map[string][]interface{}, inputArgs []string) (map[string]any, error) {
 
 	args := arrayutils.Map(inputArgs, strings.ToLower)
 
-	u.configCache = map[string]any{}
-	u.serviceCache = map[string]any{}
-	u.edgeRouterCache = map[string]any{}
-	u.authPolicyCache = map[string]any{}
-	u.extJwtSignersCache = map[string]any{}
-	u.identityCache = map[string]any{}
+	importer.configCache = map[string]any{}
+	importer.serviceCache = map[string]any{}
+	importer.edgeRouterCache = map[string]any{}
+	importer.authPolicyCache = map[string]any{}
+	importer.extJwtSignersCache = map[string]any{}
+	importer.identityCache = map[string]any{}
 
 	result := map[string]any{}
 
 	cas := map[string]string{}
-	if u.IsCertificateAuthorityImportRequired(args) {
+	if importer.IsCertificateAuthorityImportRequired(args) {
 		log.Debug("Processing CertificateAuthorities")
 		var err error
-		cas, err = u.ProcessCertificateAuthorities(data)
+		cas, err = importer.ProcessCertificateAuthorities(data)
 		if err != nil {
 			return nil, err
 		}
@@ -163,149 +162,149 @@ func (u *Importer) Execute(data map[string][]interface{}, inputArgs []string) (m
 			Debug("CertificateAuthorities created")
 	}
 	result["certificateAuthorities"] = cas
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d CertificateAuthorities\r\n", len(cas))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d CertificateAuthorities\r\n", len(cas))
 
 	externalJwtSigners := map[string]string{}
-	if u.IsExtJwtSignerImportRequired(args) {
+	if importer.IsExtJwtSignerImportRequired(args) {
 		log.Debug("Processing ExtJWTSigners")
 		var err error
-		externalJwtSigners, err = u.ProcessExternalJwtSigners(data)
+		externalJwtSigners, err = importer.ProcessExternalJwtSigners(data)
 		if err != nil {
 			return nil, err
 		}
 		log.WithField("externalJwtSigners", externalJwtSigners).Debug("ExtJWTSigners created")
 	}
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d ExtJWTSigners\r\n", len(externalJwtSigners))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d ExtJWTSigners\r\n", len(externalJwtSigners))
 	result["externalJwtSigners"] = externalJwtSigners
 
 	authPolicies := map[string]string{}
-	if u.IsAuthPolicyImportRequired(args) {
+	if importer.IsAuthPolicyImportRequired(args) {
 		log.Debug("Processing AuthPolicies")
 		var err error
-		authPolicies, err = u.ProcessAuthPolicies(data)
+		authPolicies, err = importer.ProcessAuthPolicies(data)
 		if err != nil {
 			return nil, err
 		}
 		log.WithField("authPolicies", authPolicies).Debug("AuthPolicies created")
 	}
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d AuthPolicies\r\n", len(authPolicies))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d AuthPolicies\r\n", len(authPolicies))
 	result["authPolicies"] = authPolicies
 
 	identities := map[string]string{}
-	if u.IsIdentityImportRequired(args) {
+	if importer.IsIdentityImportRequired(args) {
 		log.Debug("Processing Identities")
 		var err error
-		identities, err = u.ProcessIdentities(data)
+		identities, err = importer.ProcessIdentities(data)
 		if err != nil {
 			return nil, err
 		}
 		log.WithField("identities", identities).Debug("Identities created")
 	}
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d Identities\r\n", len(identities))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d Identities\r\n", len(identities))
 	result["identities"] = identities
 
 	configTypes := map[string]string{}
-	if u.IsConfigTypeImportRequired(args) {
+	if importer.IsConfigTypeImportRequired(args) {
 		log.Debug("Processing ConfigTypes")
 		var err error
-		configTypes, err = u.ProcessConfigTypes(data)
+		configTypes, err = importer.ProcessConfigTypes(data)
 		if err != nil {
 			return nil, err
 		}
 		log.WithField("configTypes", configTypes).Debug("ConfigTypes created")
 	}
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d ConfigTypes\r\n", len(configTypes))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d ConfigTypes\r\n", len(configTypes))
 	result["configTypes"] = configTypes
 
 	configs := map[string]string{}
-	if u.IsConfigImportRequired(args) {
+	if importer.IsConfigImportRequired(args) {
 		log.Debug("Processing Configs")
 		var err error
-		configs, err = u.ProcessConfigs(data)
+		configs, err = importer.ProcessConfigs(data)
 		if err != nil {
 			return nil, err
 		}
 		log.WithField("configs", configs).Debug("Configs created")
 	}
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d Configs\r\n", len(configs))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d Configs\r\n", len(configs))
 	result["configs"] = configs
 
 	services := map[string]string{}
-	if u.IsServiceImportRequired(args) {
+	if importer.IsServiceImportRequired(args) {
 		log.Debug("Processing Services")
 		var err error
-		services, err = u.ProcessServices(data)
+		services, err = importer.ProcessServices(data)
 		if err != nil {
 			return nil, err
 		}
 		log.WithField("services", services).Debug("Services created")
 	}
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d Services\r\n", len(services))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d Services\r\n", len(services))
 	result["services"] = services
 
 	postureChecks := map[string]string{}
-	if u.IsPostureCheckImportRequired(args) {
+	if importer.IsPostureCheckImportRequired(args) {
 		log.Debug("Processing PostureChecks")
 		var err error
-		postureChecks, err = u.ProcessPostureChecks(data)
+		postureChecks, err = importer.ProcessPostureChecks(data)
 		if err != nil {
 			return nil, err
 		}
 		log.WithField("postureChecks", postureChecks).Debug("PostureChecks created")
 	}
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d PostureChecks\r\n", len(postureChecks))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d PostureChecks\r\n", len(postureChecks))
 	result["postureChecks"] = postureChecks
 
 	routers := map[string]string{}
-	if u.IsEdgeRouterImportRequired(args) {
+	if importer.IsEdgeRouterImportRequired(args) {
 		log.Debug("Processing EdgeRouters")
 		var err error
-		routers, err = u.ProcessEdgeRouters(data)
+		routers, err = importer.ProcessEdgeRouters(data)
 		if err != nil {
 			return nil, err
 		}
 		log.WithField("edgeRouters", routers).Debug("EdgeRouters created")
 	}
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d EdgeRouters\r\n", len(routers))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d EdgeRouters\r\n", len(routers))
 	result["edgeRouters"] = routers
 
 	serviceEdgeRouterPolicies := map[string]string{}
-	if u.IsServiceEdgeRouterPolicyImportRequired(args) {
+	if importer.IsServiceEdgeRouterPolicyImportRequired(args) {
 		log.Debug("Processing ServiceEdgeRouterPolicies")
 		var err error
-		serviceEdgeRouterPolicies, err = u.ProcessServiceEdgeRouterPolicies(data)
+		serviceEdgeRouterPolicies, err = importer.ProcessServiceEdgeRouterPolicies(data)
 		if err != nil {
 			return nil, err
 		}
 		log.WithField("serviceEdgeRouterPolicies", serviceEdgeRouterPolicies).Debug("ServiceEdgeRouterPolicies created")
 	}
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d ServiceEdgeRouterPolicies\r\n", len(serviceEdgeRouterPolicies))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d ServiceEdgeRouterPolicies\r\n", len(serviceEdgeRouterPolicies))
 	result["serviceEdgeRouterPolicies"] = serviceEdgeRouterPolicies
 
 	servicePolicies := map[string]string{}
-	if u.IsServicePolicyImportRequired(args) {
+	if importer.IsServicePolicyImportRequired(args) {
 		log.Debug("Processing ServicePolicies")
 		var err error
-		servicePolicies, err = u.ProcessServicePolicies(data)
+		servicePolicies, err = importer.ProcessServicePolicies(data)
 		if err != nil {
 			return nil, err
 		}
 		log.WithField("servicePolicies", servicePolicies).Debug("ServicePolicies created")
 	}
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d ServicePolicies\r\n", len(servicePolicies))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d ServicePolicies\r\n", len(servicePolicies))
 	result["servicePolicies"] = servicePolicies
 
 	routerPolicies := map[string]string{}
-	if u.IsEdgeRouterPolicyImportRequired(args) {
+	if importer.IsEdgeRouterPolicyImportRequired(args) {
 		log.Debug("Processing EdgeRouterPolicies")
 		var err error
-		routerPolicies, err = u.ProcessEdgeRouterPolicies(data)
+		routerPolicies, err = importer.ProcessEdgeRouterPolicies(data)
 		if err != nil {
 			return nil, err
 		}
 		log.WithField("routerPolicies", routerPolicies).Debug("EdgeRouterPolicies created")
 	}
-	_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Created %d EdgeRouterPolicies\r\n", len(routerPolicies))
+	_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Created %d EdgeRouterPolicies\r\n", len(routerPolicies))
 	result["edgeRouterPolicies"] = routerPolicies
 
 	log.Info("Upload complete")

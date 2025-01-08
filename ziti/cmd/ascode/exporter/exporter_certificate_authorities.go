@@ -22,20 +22,20 @@ import (
 	"slices"
 )
 
-func (d Exporter) IsCertificateAuthorityExportRequired(args []string) bool {
+func (exporter Exporter) IsCertificateAuthorityExportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "ca") ||
 		slices.Contains(args, "certificate-authority")
 }
 
-func (d Exporter) GetCertificateAuthorities() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetCertificateAuthorities() ([]map[string]interface{}, error) {
 
-	return d.getEntities(
+	return exporter.getEntities(
 		"CertificateAuthorities",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Limit: &limit}, nil)
+			resp, err := exporter.client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -43,7 +43,7 @@ func (d Exporter) GetCertificateAuthorities() ([]map[string]interface{}, error) 
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Offset: offset, Limit: limit}, nil)
+			resp, err := exporter.client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Offset: offset, Limit: limit}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -59,10 +59,10 @@ func (d Exporter) GetCertificateAuthorities() ([]map[string]interface{}, error) 
 			item := entity.(*rest_model.CaDetail)
 
 			// convert to a map of values
-			m := d.ToMap(item)
+			m := exporter.ToMap(item)
 
 			// filter unwanted properties
-			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})
+			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})
 
 			return m, nil
 		})

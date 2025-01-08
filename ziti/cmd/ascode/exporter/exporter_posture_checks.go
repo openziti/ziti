@@ -21,19 +21,19 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func (d Exporter) IsPostureCheckExportRequired(args []string) bool {
+func (exporter Exporter) IsPostureCheckExportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "posture-check")
 }
 
-func (d Exporter) GetPostureChecks() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetPostureChecks() ([]map[string]interface{}, error) {
 
-	return d.getEntities(
+	return exporter.getEntities(
 		"PostureChecks",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: &limit}, nil)
+			resp, err := exporter.client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -41,7 +41,7 @@ func (d Exporter) GetPostureChecks() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, _ := d.client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: limit, Offset: offset}, nil)
+			resp, _ := exporter.client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: limit, Offset: offset}, nil)
 			entities := make([]interface{}, len(resp.GetPayload().Data()))
 			for i, c := range resp.GetPayload().Data() {
 				entities[i] = interface{}(c)
@@ -52,10 +52,10 @@ func (d Exporter) GetPostureChecks() ([]map[string]interface{}, error) {
 		func(entity interface{}) (map[string]interface{}, error) {
 
 			// convert to a map of values
-			m := d.ToMap(entity)
+			m := exporter.ToMap(entity)
 
 			// filter unwanted properties
-			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
+			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
 				"version"})
 
 			return m, nil

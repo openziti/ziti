@@ -22,19 +22,19 @@ import (
 	"slices"
 )
 
-func (d Exporter) IsServiceEdgeRouterPolicyExportRequired(args []string) bool {
+func (exporter Exporter) IsServiceEdgeRouterPolicyExportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "service-edge-router-policy")
 }
 
-func (d Exporter) GetServiceEdgeRouterPolicies() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetServiceEdgeRouterPolicies() ([]map[string]interface{}, error) {
 
-	return d.getEntities(
+	return exporter.getEntities(
 		"ServiceEdgeRouterPolicies",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.ServiceEdgeRouterPolicy.ListServiceEdgeRouterPolicies(&service_edge_router_policy.ListServiceEdgeRouterPoliciesParams{Limit: &limit}, nil)
+			resp, err := exporter.client.ServiceEdgeRouterPolicy.ListServiceEdgeRouterPolicies(&service_edge_router_policy.ListServiceEdgeRouterPoliciesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +42,7 @@ func (d Exporter) GetServiceEdgeRouterPolicies() ([]map[string]interface{}, erro
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.ServiceEdgeRouterPolicy.ListServiceEdgeRouterPolicies(&service_edge_router_policy.ListServiceEdgeRouterPoliciesParams{Limit: limit, Offset: offset}, nil)
+			resp, err := exporter.client.ServiceEdgeRouterPolicy.ListServiceEdgeRouterPolicies(&service_edge_router_policy.ListServiceEdgeRouterPoliciesParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -58,7 +58,7 @@ func (d Exporter) GetServiceEdgeRouterPolicies() ([]map[string]interface{}, erro
 			item := entity.(*rest_model.ServiceEdgeRouterPolicyDetail)
 
 			// convert to a map of values
-			m := d.ToMap(item)
+			m := exporter.ToMap(item)
 
 			// translate attributes so they don't reference ids
 			serviceRoles := []string{}
@@ -73,7 +73,7 @@ func (d Exporter) GetServiceEdgeRouterPolicies() ([]map[string]interface{}, erro
 			m["edgeRouterRoles"] = edgeRouterRoles
 
 			// filter unwanted properties
-			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
+			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
 				"edgeRouterRolesDisplay", "serviceRolesDisplay", "isSystem"})
 
 			return m, nil

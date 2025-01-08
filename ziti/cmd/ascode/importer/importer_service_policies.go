@@ -26,49 +26,49 @@ import (
 	"slices"
 )
 
-func (u *Importer) IsServicePolicyImportRequired(args []string) bool {
+func (importer *Importer) IsServicePolicyImportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "service-policy")
 }
 
-func (u *Importer) ProcessServicePolicies(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessServicePolicies(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["servicePolicies"] {
 		create := FromMap(data, rest_model.ServicePolicyCreate{})
 
 		// see if the service policy already exists
-		existing := mgmt.ServicePolicyFromFilter(u.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ServicePolicyFromFilter(importer.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":            *create.Name,
 				"servicePolicyId": *existing.ID,
 			}).
 				Info("Found existing ServicePolicy, skipping create")
-			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
 			continue
 		}
 
 		// look up the service ids from the name and add to the create
-		serviceRoles, err := u.lookupServices(create.ServiceRoles)
+		serviceRoles, err := importer.lookupServices(create.ServiceRoles)
 		if err != nil {
 			return nil, err
 		}
 		create.ServiceRoles = serviceRoles
 
 		// look up the identity ids from the name and add to the create
-		identityRoles, err := u.lookupIdentities(create.IdentityRoles)
+		identityRoles, err := importer.lookupIdentities(create.IdentityRoles)
 		if err != nil {
 			return nil, errors.Join(errors.New("Unable to read all identities from ServicePolicy"), err)
 		}
 		create.IdentityRoles = identityRoles
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
-		if u.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
+		if importer.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating ServicePolicy")
 		}
-		created, createErr := u.client.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
+		created, createErr := importer.client.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -81,7 +81,7 @@ func (u *Importer) ProcessServicePolicies(input map[string][]interface{}) (map[s
 				return nil, createErr
 			}
 		}
-		if u.loginOpts.Verbose {
+		if importer.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":            *create.Name,
 				"servicePolicyId": created.Payload.Data.ID,

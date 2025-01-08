@@ -28,15 +28,15 @@ import (
 	"slices"
 )
 
-func (u *Importer) IsAuthPolicyImportRequired(args []string) bool {
+func (importer *Importer) IsAuthPolicyImportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "auth-policy") ||
 		slices.Contains(args, "identity")
 }
 
-func (u *Importer) ProcessAuthPolicies(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessAuthPolicies(input map[string][]interface{}) (map[string]string, error) {
 
-	if u.loginOpts.Verbose {
+	if importer.loginOpts.Verbose {
 		log.Debug("Listing all AuthPolicies")
 	}
 
@@ -46,15 +46,15 @@ func (u *Importer) ProcessAuthPolicies(input map[string][]interface{}) (map[stri
 		create := FromMap(data, rest_model.AuthPolicyCreate{})
 
 		// see if the auth policy already exists
-		existing := mgmt.AuthPolicyFromFilter(u.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.AuthPolicyFromFilter(importer.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if u.loginOpts.Verbose {
+			if importer.loginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":         *create.Name,
 					"authPolicyId": *existing.ID,
 				}).Info("Found existing Auth Policy, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping AuthPolicy %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping AuthPolicy %s\r", *create.Name)
 			continue
 		}
 
@@ -71,8 +71,8 @@ func (u *Importer) ProcessAuthPolicies(input map[string][]interface{}) (map[stri
 		allowedSignerIds := []string{}
 		for _, signer := range allowedSigners.Children() {
 			value := signer.Data().(string)[1:]
-			extJwtSigner, err := ascode.GetItemFromCache(u.extJwtSignersCache, value, func(name string) (interface{}, error) {
-				return mgmt.ExternalJWTSignerFromFilter(u.client, mgmt.NameFilter(name)), nil
+			extJwtSigner, err := ascode.GetItemFromCache(importer.extJwtSignersCache, value, func(name string) (interface{}, error) {
+				return mgmt.ExternalJWTSignerFromFilter(importer.client, mgmt.NameFilter(name)), nil
 			})
 			if err != nil {
 				log.WithField("name", *create.Name).Warn("Unable to read ExtJwtSigner")
@@ -83,12 +83,12 @@ func (u *Importer) ProcessAuthPolicies(input map[string][]interface{}) (map[stri
 		create.Primary.ExtJWT.AllowedSigners = allowedSignerIds
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating AuthPolicy %s\r", *create.Name)
-		if u.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating AuthPolicy %s\r", *create.Name)
+		if importer.loginOpts.Verbose {
 			log.WithField("name", *create.Name).
 				Debug("Creating AuthPolicy")
 		}
-		created, createErr := u.client.AuthPolicy.CreateAuthPolicy(&auth_policy.CreateAuthPolicyParams{AuthPolicy: create}, nil)
+		created, createErr := importer.client.AuthPolicy.CreateAuthPolicy(&auth_policy.CreateAuthPolicyParams{AuthPolicy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -103,7 +103,7 @@ func (u *Importer) ProcessAuthPolicies(input map[string][]interface{}) (map[stri
 			}
 		}
 
-		if u.loginOpts.Verbose {
+		if importer.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":         *create.Name,
 				"authPolicyId": created.Payload.Data.ID,

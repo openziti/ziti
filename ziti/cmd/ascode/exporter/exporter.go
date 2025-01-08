@@ -54,8 +54,8 @@ var output Output
 
 func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
-	d := &Exporter{}
-	d.loginOpts = edge.LoginOptions{}
+	exporter := &Exporter{}
+	exporter.loginOpts = edge.LoginOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "export [entity]",
@@ -64,13 +64,13 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(0),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			err := d.Init(out)
+			err := exporter.Init(out)
 			if err != nil {
 				panic(err)
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			err := d.Execute(args)
+			err := exporter.Execute(args)
 			if err != nil {
 				panic(err)
 			}
@@ -93,23 +93,23 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	v.AutomaticEnv()
 
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVar(&d.ofJson, "json", true, "Output in JSON")
-	cmd.Flags().BoolVar(&d.ofYaml, "yaml", false, "Output in YAML")
+	cmd.Flags().BoolVar(&exporter.ofJson, "json", true, "Output in JSON")
+	cmd.Flags().BoolVar(&exporter.ofYaml, "yaml", false, "Output in YAML")
 	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
 
-	cmd.Flags().StringVarP(&d.filename, "output-file", "o", "", "Write output to local file")
+	cmd.Flags().StringVarP(&exporter.filename, "output-file", "o", "", "Write output to local file")
 
-	edge.AddLoginFlags(cmd, &d.loginOpts)
-	d.loginOpts.Out = out
-	d.loginOpts.Err = errOut
+	edge.AddLoginFlags(cmd, &exporter.loginOpts)
+	exporter.loginOpts.Out = out
+	exporter.loginOpts.Err = errOut
 
 	return cmd
 }
 
-func (d *Exporter) Init(out io.Writer) error {
+func (exporter *Exporter) Init(out io.Writer) error {
 
 	logLvl := logrus.InfoLevel
-	if d.loginOpts.Verbose {
+	if exporter.loginOpts.Verbose {
 		logLvl = logrus.DebugLevel
 	}
 
@@ -118,7 +118,7 @@ func (d *Exporter) Init(out io.Writer) error {
 
 	client, err := mgmt.NewClient()
 	if err != nil {
-		loginErr := d.loginOpts.Run()
+		loginErr := exporter.loginOpts.Run()
 		if loginErr != nil {
 			log.Fatal(err)
 		}
@@ -127,16 +127,16 @@ func (d *Exporter) Init(out io.Writer) error {
 			log.Fatal(err)
 		}
 	}
-	d.client = client
+	exporter.client = client
 
-	if d.filename != "" {
-		o, err := NewOutputToFile(d.loginOpts.Verbose, d.ofJson, d.ofYaml, d.filename, d.loginOpts.Err)
+	if exporter.filename != "" {
+		o, err := NewOutputToFile(exporter.loginOpts.Verbose, exporter.ofJson, exporter.ofYaml, exporter.filename, exporter.loginOpts.Err)
 		if err != nil {
 			return err
 		}
 		output = *o
 	} else {
-		o, err := NewOutputToWriter(d.loginOpts.Verbose, d.ofJson, d.ofYaml, out, d.loginOpts.Err)
+		o, err := NewOutputToWriter(exporter.loginOpts.Verbose, exporter.ofJson, exporter.ofYaml, out, exporter.loginOpts.Err)
 		if err != nil {
 			return err
 		}
@@ -146,109 +146,109 @@ func (d *Exporter) Init(out io.Writer) error {
 	return nil
 }
 
-func (d *Exporter) Execute(input []string) error {
+func (exporter *Exporter) Execute(input []string) error {
 
 	args := arrayutils.Map(input, strings.ToLower)
 
-	d.authPolicyCache = map[string]any{}
-	d.configCache = map[string]any{}
-	d.configTypeCache = map[string]any{}
-	d.externalJwtCache = map[string]any{}
+	exporter.authPolicyCache = map[string]any{}
+	exporter.configCache = map[string]any{}
+	exporter.configTypeCache = map[string]any{}
+	exporter.externalJwtCache = map[string]any{}
 
 	result := map[string]interface{}{}
 
-	if d.IsCertificateAuthorityExportRequired(args) {
+	if exporter.IsCertificateAuthorityExportRequired(args) {
 		log.Debug("Processing Certificate Authorities")
-		cas, err := d.GetCertificateAuthorities()
+		cas, err := exporter.GetCertificateAuthorities()
 		if err != nil {
 			return err
 		}
 		result["certificateAuthorities"] = cas
 	}
-	if d.IsIdentityExportRequired(args) {
+	if exporter.IsIdentityExportRequired(args) {
 		log.Debug("Processing Identities")
-		identities, err := d.GetIdentities()
+		identities, err := exporter.GetIdentities()
 		if err != nil {
 			return err
 		}
 		result["identities"] = identities
 	}
 
-	if d.IsEdgeRouterExportRequired(args) {
+	if exporter.IsEdgeRouterExportRequired(args) {
 		log.Debug("Processing Edge Routers")
-		routers, err := d.GetEdgeRouters()
+		routers, err := exporter.GetEdgeRouters()
 		if err != nil {
 			return err
 		}
 		result["edgeRouters"] = routers
 	}
-	if d.IsServiceExportRequired(args) {
+	if exporter.IsServiceExportRequired(args) {
 		log.Debug("Processing Services")
-		services, err := d.GetServices()
+		services, err := exporter.GetServices()
 		if err != nil {
 			return err
 		}
 		result["services"] = services
 	}
-	if d.IsConfigExportRequired(args) {
+	if exporter.IsConfigExportRequired(args) {
 		log.Debug("Processing Configs")
-		configs, err := d.GetConfigs()
+		configs, err := exporter.GetConfigs()
 		if err != nil {
 			return err
 		}
 		result["configs"] = configs
 	}
-	if d.IsConfigTypeExportRequired(args) {
+	if exporter.IsConfigTypeExportRequired(args) {
 		log.Debug("Processing Config Types")
-		configTypes, err := d.GetConfigTypes()
+		configTypes, err := exporter.GetConfigTypes()
 		if err != nil {
 			return err
 		}
 		result["configTypes"] = configTypes
 	}
-	if d.IsServicePolicyExportRequired(args) {
+	if exporter.IsServicePolicyExportRequired(args) {
 		log.Debug("Processing Service Policies")
-		servicePolicies, err := d.GetServicePolicies()
+		servicePolicies, err := exporter.GetServicePolicies()
 		if err != nil {
 			return err
 		}
 		result["servicePolicies"] = servicePolicies
 	}
-	if d.IsEdgeRouterExportRequired(args) {
+	if exporter.IsEdgeRouterExportRequired(args) {
 		log.Debug("Processing Edge Router Policies")
-		routerPolicies, err := d.GetEdgeRouterPolicies()
+		routerPolicies, err := exporter.GetEdgeRouterPolicies()
 		if err != nil {
 			return err
 		}
 		result["edgeRouterPolicies"] = routerPolicies
 	}
-	if d.IsServiceEdgeRouterPolicyExportRequired(args) {
+	if exporter.IsServiceEdgeRouterPolicyExportRequired(args) {
 		log.Debug("Processing Service Edge Router Policies")
-		serviceRouterPolicies, err := d.GetServiceEdgeRouterPolicies()
+		serviceRouterPolicies, err := exporter.GetServiceEdgeRouterPolicies()
 		if err != nil {
 			return err
 		}
 		result["serviceEdgeRouterPolicies"] = serviceRouterPolicies
 	}
-	if d.IsExtJwtSignerExportRequired(args) {
+	if exporter.IsExtJwtSignerExportRequired(args) {
 		log.Debug("Processing External JWT Signers")
-		externalJwtSigners, err := d.GetExternalJwtSigners()
+		externalJwtSigners, err := exporter.GetExternalJwtSigners()
 		if err != nil {
 			return err
 		}
 		result["externalJwtSigners"] = externalJwtSigners
 	}
-	if d.IsAuthPolicyExportRequired(args) {
+	if exporter.IsAuthPolicyExportRequired(args) {
 		log.Debug("Processing Auth Policies")
-		authPolicies, err := d.GetAuthPolicies()
+		authPolicies, err := exporter.GetAuthPolicies()
 		if err != nil {
 			return err
 		}
 		result["authPolicies"] = authPolicies
 	}
-	if d.IsPostureCheckExportRequired(args) {
+	if exporter.IsPostureCheckExportRequired(args) {
 		log.Debug("Processing Posture Checks")
-		postureChecks, err := d.GetPostureChecks()
+		postureChecks, err := exporter.GetPostureChecks()
 		if err != nil {
 			return err
 		}
@@ -261,8 +261,8 @@ func (d *Exporter) Execute(input []string) error {
 	if err != nil {
 		return err
 	}
-	if d.file != nil {
-		err := d.file.Close()
+	if exporter.file != nil {
+		err := exporter.file.Close()
 		if err != nil {
 			return err
 		}
@@ -275,7 +275,7 @@ type ClientCount func() (int64, error)
 type ClientList func(offset *int64, limit *int64) ([]interface{}, error)
 type EntityProcessor func(item interface{}) (map[string]interface{}, error)
 
-func (d *Exporter) getEntities(entityName string, count ClientCount, list ClientList, processor EntityProcessor) ([]map[string]interface{}, error) {
+func (exporter *Exporter) getEntities(entityName string, count ClientCount, list ClientList, processor EntityProcessor) ([]map[string]interface{}, error) {
 
 	totalCount, countErr := count()
 	if countErr != nil {
@@ -289,7 +289,7 @@ func (d *Exporter) getEntities(entityName string, count ClientCount, list Client
 	more := true
 	for more {
 		resp, err := list(&offset, &limit)
-		_, _ = internal.FPrintfReusingLine(d.loginOpts.Err, "Reading %d/%d %s", offset, totalCount, entityName)
+		_, _ = internal.FPrintfReusingLine(exporter.loginOpts.Err, "Reading %d/%d %s", offset, totalCount, entityName)
 		if err != nil {
 			return nil, errors.Join(errors.New("error reading "+entityName), err)
 		}
@@ -308,13 +308,13 @@ func (d *Exporter) getEntities(entityName string, count ClientCount, list Client
 		offset += limit
 	}
 
-	_, _ = internal.FPrintflnReusingLine(d.loginOpts.Err, "Read %d %s", len(result), entityName)
+	_, _ = internal.FPrintflnReusingLine(exporter.loginOpts.Err, "Read %d %s", len(result), entityName)
 
 	return result, nil
 
 }
 
-func (d *Exporter) ToMap(input interface{}) map[string]interface{} {
+func (exporter *Exporter) ToMap(input interface{}) map[string]interface{} {
 	jsonData, _ := json.MarshalIndent(input, "", "")
 	m := map[string]interface{}{}
 	err := json.Unmarshal(jsonData, &m)
@@ -325,13 +325,13 @@ func (d *Exporter) ToMap(input interface{}) map[string]interface{} {
 	return m
 }
 
-func (d *Exporter) defaultRoleAttributes(m map[string]interface{}) {
+func (exporter *Exporter) defaultRoleAttributes(m map[string]interface{}) {
 	if m["roleAttributes"] == nil {
 		m["roleAttributes"] = []string{}
 	}
 }
 
-func (d *Exporter) Filter(m map[string]interface{}, properties []string) {
+func (exporter *Exporter) Filter(m map[string]interface{}, properties []string) {
 
 	// remove any properties that are not requested
 	for k := range m {

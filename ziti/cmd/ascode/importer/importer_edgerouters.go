@@ -27,36 +27,36 @@ import (
 	"slices"
 )
 
-func (u *Importer) IsEdgeRouterImportRequired(args []string) bool {
+func (importer *Importer) IsEdgeRouterImportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "edge-router") ||
 		slices.Contains(args, "er")
 }
 
-func (u *Importer) ProcessEdgeRouters(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessEdgeRouters(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["edgeRouters"] {
 		create := FromMap(data, rest_model.EdgeRouterCreate{})
 
 		// see if the router already exists
-		existing := mgmt.EdgeRouterFromFilter(u.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.EdgeRouterFromFilter(importer.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":         *create.Name,
 				"edgeRouterId": *existing.ID,
 			}).
 				Info("Found existing EdgeRouter, skipping create")
-			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping EdgeRouter %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping EdgeRouter %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
-		if u.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
+		if importer.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating EdgeRouter")
 		}
-		created, createErr := u.client.EdgeRouter.CreateEdgeRouter(&edge_router.CreateEdgeRouterParams{EdgeRouter: create}, nil)
+		created, createErr := importer.client.EdgeRouter.CreateEdgeRouter(&edge_router.CreateEdgeRouterParams{EdgeRouter: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -68,7 +68,7 @@ func (u *Importer) ProcessEdgeRouters(input map[string][]interface{}) (map[strin
 				return nil, createErr
 			}
 		}
-		if u.loginOpts.Verbose {
+		if importer.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":         *create.Name,
 				"edgeRouterId": created.Payload.Data.ID,
@@ -82,13 +82,13 @@ func (u *Importer) ProcessEdgeRouters(input map[string][]interface{}) (map[strin
 	return result, nil
 }
 
-func (u *Importer) lookupEdgeRouters(roles []string) ([]string, error) {
+func (importer *Importer) lookupEdgeRouters(roles []string) ([]string, error) {
 	edgeRouterRoles := []string{}
 	for _, role := range roles {
 		if role[0:1] == "@" {
 			value := role[1:]
-			edgeRouter, _ := ascode.GetItemFromCache(u.edgeRouterCache, value, func(name string) (interface{}, error) {
-				return mgmt.EdgeRouterFromFilter(u.client, mgmt.NameFilter(name)), nil
+			edgeRouter, _ := ascode.GetItemFromCache(importer.edgeRouterCache, value, func(name string) (interface{}, error) {
+				return mgmt.EdgeRouterFromFilter(importer.client, mgmt.NameFilter(name)), nil
 			})
 			if edgeRouter == nil {
 				return nil, errors.New("error reading EdgeRouter: " + value)

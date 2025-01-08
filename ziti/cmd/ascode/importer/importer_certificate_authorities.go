@@ -25,35 +25,35 @@ import (
 	"slices"
 )
 
-func (u *Importer) IsCertificateAuthorityImportRequired(args []string) bool {
+func (importer *Importer) IsCertificateAuthorityImportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "ca") ||
 		slices.Contains(args, "certificate-authority")
 }
 
-func (u *Importer) ProcessCertificateAuthorities(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessCertificateAuthorities(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["certificateAuthorities"] {
 		create := FromMap(data, rest_model.CaCreate{})
 
 		// see if the CA already exists
-		existing := mgmt.CertificateAuthorityFromFilter(u.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.CertificateAuthorityFromFilter(importer.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if u.loginOpts.Verbose {
+			if importer.loginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":                   *create.Name,
 					"certificateAuthorityId": *existing.ID,
 				}).
 					Info("Found existing CertificateAuthority, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping CertificateAuthority %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping CertificateAuthority %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating CertificateAuthority %s\r", *create.Name)
-		created, createErr := u.client.CertificateAuthority.CreateCa(&certificate_authority.CreateCaParams{Ca: create}, nil)
+		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating CertificateAuthority %s\r", *create.Name)
+		created, createErr := importer.client.CertificateAuthority.CreateCa(&certificate_authority.CreateCaParams{Ca: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.
@@ -69,7 +69,7 @@ func (u *Importer) ProcessCertificateAuthorities(input map[string][]interface{})
 				return nil, createErr
 			}
 		}
-		if u.loginOpts.Verbose {
+		if importer.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":                   *create.Name,
 				"certificateAuthorityId": created.Payload.Data.ID,

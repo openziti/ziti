@@ -29,12 +29,12 @@ import (
 	"slices"
 )
 
-func (u *Importer) IsServiceImportRequired(args []string) bool {
+func (importer *Importer) IsServiceImportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "service")
 }
 
-func (u *Importer) ProcessServices(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessServices(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 
@@ -42,14 +42,14 @@ func (u *Importer) ProcessServices(input map[string][]interface{}) (map[string]s
 		create := FromMap(data, rest_model.ServiceCreate{})
 
 		// see if the service already exists
-		existing := mgmt.ServiceFromFilter(u.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ServiceFromFilter(importer.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":      *create.Name,
 				"serviceId": *existing.ID,
 			}).
 				Info("Found existing Service, skipping create")
-			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping Service %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping Service %s\r", *create.Name)
 			continue
 		}
 
@@ -66,8 +66,8 @@ func (u *Importer) ProcessServices(input map[string][]interface{}) (map[string]s
 		configIds := []string{}
 		for _, configName := range configsNode.Children() {
 			value := configName.Data().(string)[1:]
-			config, _ := ascode.GetItemFromCache(u.configCache, value, func(name string) (interface{}, error) {
-				return mgmt.ConfigFromFilter(u.client, mgmt.NameFilter(name)), nil
+			config, _ := ascode.GetItemFromCache(importer.configCache, value, func(name string) (interface{}, error) {
+				return mgmt.ConfigFromFilter(importer.client, mgmt.NameFilter(name)), nil
 			})
 			if config == nil {
 				return nil, errors.New("error reading Config: " + value)
@@ -77,11 +77,11 @@ func (u *Importer) ProcessServices(input map[string][]interface{}) (map[string]s
 		create.Configs = configIds
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating Service %s\r", *create.Name)
-		if u.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating Service %s\r", *create.Name)
+		if importer.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating Service")
 		}
-		created, createErr := u.client.Service.CreateService(&service.CreateServiceParams{Service: create}, nil)
+		created, createErr := importer.client.Service.CreateService(&service.CreateServiceParams{Service: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -94,7 +94,7 @@ func (u *Importer) ProcessServices(input map[string][]interface{}) (map[string]s
 				return nil, createErr
 			}
 		}
-		if u.loginOpts.Verbose {
+		if importer.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":      *create.Name,
 				"serviceId": created.Payload.Data.ID,
@@ -108,13 +108,13 @@ func (u *Importer) ProcessServices(input map[string][]interface{}) (map[string]s
 	return result, nil
 }
 
-func (u *Importer) lookupServices(roles []string) ([]string, error) {
+func (importer *Importer) lookupServices(roles []string) ([]string, error) {
 	serviceRoles := []string{}
 	for _, role := range roles {
 		if role[0:1] == "@" {
 			value := role[1:]
-			service, _ := ascode.GetItemFromCache(u.serviceCache, value, func(name string) (interface{}, error) {
-				return mgmt.ServiceFromFilter(u.client, mgmt.NameFilter(name)), nil
+			service, _ := ascode.GetItemFromCache(importer.serviceCache, value, func(name string) (interface{}, error) {
+				return mgmt.ServiceFromFilter(importer.client, mgmt.NameFilter(name)), nil
 			})
 			if service == nil {
 				return nil, errors.New("error reading Service: " + value)

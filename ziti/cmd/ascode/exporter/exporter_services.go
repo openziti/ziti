@@ -25,19 +25,19 @@ import (
 	"slices"
 )
 
-func (d Exporter) IsServiceExportRequired(args []string) bool {
+func (exporter Exporter) IsServiceExportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "service")
 }
 
-func (d Exporter) GetServices() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetServices() ([]map[string]interface{}, error) {
 
-	return d.getEntities(
+	return exporter.getEntities(
 		"Services",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.Service.ListServices(&service.ListServicesParams{Limit: &limit}, nil)
+			resp, err := exporter.client.Service.ListServices(&service.ListServicesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -45,7 +45,7 @@ func (d Exporter) GetServices() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.Service.ListServices(&service.ListServicesParams{Limit: limit, Offset: offset}, nil)
+			resp, err := exporter.client.Service.ListServices(&service.ListServicesParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -61,19 +61,19 @@ func (d Exporter) GetServices() ([]map[string]interface{}, error) {
 			item := entity.(*rest_model.ServiceDetail)
 
 			// convert to a map of values
-			m := d.ToMap(item)
+			m := exporter.ToMap(item)
 
-			d.defaultRoleAttributes(m)
+			exporter.defaultRoleAttributes(m)
 
 			// filter unwanted properties
-			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
+			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
 				"configs", "config", "data", "postureQueries", "permissions", "maxIdleTimeMillis"})
 
 			// translate ids to names
 			var configNames []string
 			for _, c := range item.Configs {
-				configDetail, lookupErr := ascode.GetItemFromCache(d.configCache, c, func(id string) (interface{}, error) {
-					return d.client.Config.DetailConfig(&config.DetailConfigParams{ID: id}, nil)
+				configDetail, lookupErr := ascode.GetItemFromCache(exporter.configCache, c, func(id string) (interface{}, error) {
+					return exporter.client.Config.DetailConfig(&config.DetailConfigParams{ID: id}, nil)
 				})
 				if lookupErr != nil {
 					return nil, errors.Join(errors.New("error reading Config: "+c), lookupErr)

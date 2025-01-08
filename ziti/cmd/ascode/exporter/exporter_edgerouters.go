@@ -22,19 +22,19 @@ import (
 	"slices"
 )
 
-func (d Exporter) IsEdgeRouterExportRequired(args []string) bool {
+func (exporter Exporter) IsEdgeRouterExportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "edge-router") ||
 		slices.Contains(args, "er")
 }
 
-func (d Exporter) GetEdgeRouters() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetEdgeRouters() ([]map[string]interface{}, error) {
 
-	return d.getEntities(
+	return exporter.getEntities(
 		"EdgeRouters",
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: &limit}, nil)
+			resp, err := exporter.client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +42,7 @@ func (d Exporter) GetEdgeRouters() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: limit, Offset: offset}, nil)
+			resp, err := exporter.client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -58,11 +58,11 @@ func (d Exporter) GetEdgeRouters() ([]map[string]interface{}, error) {
 			item := entity.(*rest_model.EdgeRouterDetail)
 
 			// convert to a map of values
-			m := d.ToMap(item)
-			d.defaultRoleAttributes(m)
+			m := exporter.ToMap(item)
+			exporter.defaultRoleAttributes(m)
 
 			// filter unwanted properties
-			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
+			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
 				"cost", "fingerprint", "isVerified", "isOnline", "enrollmentJwt", "enrollmentCreatedAt", "enrollmentExpiresAt", "syncStatus", "versionInfo", "certPem", "supportedProtocols"})
 
 			return m, nil

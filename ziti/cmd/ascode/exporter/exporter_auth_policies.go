@@ -24,18 +24,18 @@ import (
 	"slices"
 )
 
-func (d Exporter) IsAuthPolicyExportRequired(args []string) bool {
+func (exporter Exporter) IsAuthPolicyExportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "auth-policy")
 }
 
-func (d Exporter) GetAuthPolicies() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetAuthPolicies() ([]map[string]interface{}, error) {
 
-	return d.getEntities(
+	return exporter.getEntities(
 		"AuthPolicies",
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.AuthPolicy.ListAuthPolicies(
+			resp, err := exporter.client.AuthPolicy.ListAuthPolicies(
 				&auth_policy.ListAuthPoliciesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
@@ -44,7 +44,7 @@ func (d Exporter) GetAuthPolicies() ([]map[string]interface{}, error) {
 
 		},
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.AuthPolicy.ListAuthPolicies(
+			resp, err := exporter.client.AuthPolicy.ListAuthPolicies(
 				&auth_policy.ListAuthPoliciesParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
@@ -61,25 +61,25 @@ func (d Exporter) GetAuthPolicies() ([]map[string]interface{}, error) {
 
 			if *item.Name != "Default" {
 				// convert to a map of values
-				m := d.ToMap(item)
+				m := exporter.ToMap(item)
 
 				// filter unwanted properties
-				d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})
+				exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})
 
 				// deleting Primary so we can reconstruct it
 				delete(m, "primary")
-				primary := d.ToMap(item.Primary)
+				primary := exporter.ToMap(item.Primary)
 				m["primary"] = primary
 				// deleting ExtJwt so we can reconstruct it
 				delete(primary, "extJwt")
-				extJwt := d.ToMap(item.Primary.ExtJWT)
+				extJwt := exporter.ToMap(item.Primary.ExtJWT)
 				primary["extJwt"] = extJwt
 				// deleting AllowedSigners because it needs to use a reference to the name instead of the ID
 				delete(extJwt, "allowedSigners")
 				signers := []string{}
 				for _, signer := range item.Primary.ExtJWT.AllowedSigners {
-					extJwtSigner, lookupErr := ascode.GetItemFromCache(d.externalJwtCache, signer, func(id string) (interface{}, error) {
-						return d.client.ExternalJWTSigner.DetailExternalJWTSigner(
+					extJwtSigner, lookupErr := ascode.GetItemFromCache(exporter.externalJwtCache, signer, func(id string) (interface{}, error) {
+						return exporter.client.ExternalJWTSigner.DetailExternalJWTSigner(
 							&external_jwt_signer.DetailExternalJWTSignerParams{ID: id}, nil)
 					})
 					if lookupErr != nil {
@@ -93,14 +93,14 @@ func (d Exporter) GetAuthPolicies() ([]map[string]interface{}, error) {
 				if item.Secondary.RequireExtJWTSigner != nil {
 					// deleting Secondary so we can reconstruct it
 					delete(m, "secondary")
-					secondary := d.ToMap(item.Secondary)
+					secondary := exporter.ToMap(item.Secondary)
 					m["secondary"] = secondary
 
 					// deleting RequiredExtJwtSigner because it needs to use a reference to the name instead of the ID
 					delete(secondary, "requiredExtJwtSigner")
-					requiredExtJwtSigner := d.ToMap(item.Secondary.RequireExtJWTSigner)
-					extJwtSigner, lookupErr := ascode.GetItemFromCache(d.externalJwtCache, *item.Secondary.RequireExtJWTSigner, func(id string) (interface{}, error) {
-						return d.client.ExternalJWTSigner.DetailExternalJWTSigner(&external_jwt_signer.DetailExternalJWTSignerParams{ID: id}, nil)
+					requiredExtJwtSigner := exporter.ToMap(item.Secondary.RequireExtJWTSigner)
+					extJwtSigner, lookupErr := ascode.GetItemFromCache(exporter.externalJwtCache, *item.Secondary.RequireExtJWTSigner, func(id string) (interface{}, error) {
+						return exporter.client.ExternalJWTSigner.DetailExternalJWTSigner(&external_jwt_signer.DetailExternalJWTSignerParams{ID: id}, nil)
 					})
 					if lookupErr != nil {
 						return nil, lookupErr

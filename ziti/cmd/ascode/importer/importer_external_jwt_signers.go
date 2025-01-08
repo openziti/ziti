@@ -25,7 +25,7 @@ import (
 	"slices"
 )
 
-func (u *Importer) IsExtJwtSignerImportRequired(args []string) bool {
+func (importer *Importer) IsExtJwtSignerImportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "ext-jwt-signer") ||
 		slices.Contains(args, "external-jwt-signer") ||
@@ -33,32 +33,32 @@ func (u *Importer) IsExtJwtSignerImportRequired(args []string) bool {
 		slices.Contains(args, "identity")
 }
 
-func (u *Importer) ProcessExternalJwtSigners(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessExternalJwtSigners(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["externalJwtSigners"] {
 		create := FromMap(data, rest_model.ExternalJWTSignerCreate{})
 
 		// see if the signer already exists
-		existing := mgmt.ExternalJWTSignerFromFilter(u.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ExternalJWTSignerFromFilter(importer.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if u.loginOpts.Verbose {
+			if importer.loginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":                *create.Name,
 					"externalJwtSignerId": *existing.ID,
 				}).
 					Info("Found existing ExtJWTSigner, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping ExtJWTSigner %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping ExtJWTSigner %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating ExtJWTSigner %s\r", *create.Name)
-		if u.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating ExtJWTSigner %s\r", *create.Name)
+		if importer.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating ExtJWTSigner")
 		}
-		created, createErr := u.client.ExternalJWTSigner.CreateExternalJWTSigner(&external_jwt_signer.CreateExternalJWTSignerParams{ExternalJWTSigner: create}, nil)
+		created, createErr := importer.client.ExternalJWTSigner.CreateExternalJWTSigner(&external_jwt_signer.CreateExternalJWTSignerParams{ExternalJWTSigner: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -73,7 +73,7 @@ func (u *Importer) ProcessExternalJwtSigners(input map[string][]interface{}) (ma
 				return nil, createErr
 			}
 		}
-		if u.loginOpts.Verbose {
+		if importer.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":                *create.Name,
 				"externalJwtSignerId": created.Payload.Data.ID,

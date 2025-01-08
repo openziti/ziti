@@ -28,12 +28,12 @@ import (
 	"strings"
 )
 
-func (u *Importer) IsPostureCheckImportRequired(args []string) bool {
+func (importer *Importer) IsPostureCheckImportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "posture-check")
 }
 
-func (u *Importer) ProcessPostureChecks(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessPostureChecks(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["postureChecks"] {
@@ -70,9 +70,9 @@ func (u *Importer) ProcessPostureChecks(input map[string][]interface{}) (map[str
 		}
 
 		// see if the posture check already exists
-		existing := mgmt.PostureCheckFromFilter(u.client, mgmt.NameFilter(*create.Name()))
+		existing := mgmt.PostureCheckFromFilter(importer.client, mgmt.NameFilter(*create.Name()))
 		if existing != nil {
-			if u.loginOpts.Verbose {
+			if importer.loginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":           *create.Name(),
 					"postureCheckId": (*existing).ID(),
@@ -80,20 +80,20 @@ func (u *Importer) ProcessPostureChecks(input map[string][]interface{}) (map[str
 				}).
 					Info("Found existing PostureCheck, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Skipping PostureCheck %s\r", *create.Name())
+			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping PostureCheck %s\r", *create.Name())
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(u.loginOpts.Err, "Creating PostureCheck %s\r", *create.Name())
-		if u.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating PostureCheck %s\r", *create.Name())
+		if importer.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":   *create.Name(),
 				"typeId": create.TypeID(),
 			}).
 				Debug("Creating PostureCheck")
 		}
-		created, createErr := u.client.PostureChecks.CreatePostureCheck(&posture_checks.CreatePostureCheckParams{PostureCheck: create}, nil)
+		created, createErr := importer.client.PostureChecks.CreatePostureCheck(&posture_checks.CreatePostureCheckParams{PostureCheck: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -106,7 +106,7 @@ func (u *Importer) ProcessPostureChecks(input map[string][]interface{}) (map[str
 				return nil, createErr
 			}
 		}
-		if u.loginOpts.Verbose {
+		if importer.loginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":           *create.Name(),
 				"postureCheckId": created.Payload.Data.ID,

@@ -25,19 +25,19 @@ import (
 	"slices"
 )
 
-func (d Exporter) IsIdentityExportRequired(args []string) bool {
+func (exporter Exporter) IsIdentityExportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "identity")
 }
 
-func (d Exporter) GetIdentities() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetIdentities() ([]map[string]interface{}, error) {
 
-	return d.getEntities(
+	return exporter.getEntities(
 		"Identities",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.Identity.ListIdentities(&identity.ListIdentitiesParams{Limit: &limit}, nil)
+			resp, err := exporter.client.Identity.ListIdentities(&identity.ListIdentitiesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -45,7 +45,7 @@ func (d Exporter) GetIdentities() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.Identity.ListIdentities(&identity.ListIdentitiesParams{Offset: offset, Limit: limit}, nil)
+			resp, err := exporter.client.Identity.ListIdentities(&identity.ListIdentitiesParams{Offset: offset, Limit: limit}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -64,11 +64,11 @@ func (d Exporter) GetIdentities() ([]map[string]interface{}, error) {
 			if *item.TypeID != "Router" && !*item.IsDefaultAdmin {
 
 				// convert to a map of values
-				m := d.ToMap(item)
-				d.defaultRoleAttributes(m)
+				m := exporter.ToMap(item)
+				exporter.defaultRoleAttributes(m)
 
 				// filter unwanted properties
-				d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
+				exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
 					"defaultHostingCost", "defaultHostingPrecedence", "hasApiSession", "serviceHostingPrecedences", "enrollment",
 					"appData", "sdkInfo", "disabledAt", "disabledUntil", "serviceHostingCosts", "envInfo", "authenticators", "type", "authPolicyId",
 					"hasRouterConnection", "hasEdgeRouterConnection"})
@@ -78,8 +78,8 @@ func (d Exporter) GetIdentities() ([]map[string]interface{}, error) {
 				}
 
 				// translate ids to names
-				authPolicy, lookupErr := ascode.GetItemFromCache(d.authPolicyCache, *item.AuthPolicyID, func(id string) (interface{}, error) {
-					return d.client.AuthPolicy.DetailAuthPolicy(&auth_policy.DetailAuthPolicyParams{ID: id}, nil)
+				authPolicy, lookupErr := ascode.GetItemFromCache(exporter.authPolicyCache, *item.AuthPolicyID, func(id string) (interface{}, error) {
+					return exporter.client.AuthPolicy.DetailAuthPolicy(&auth_policy.DetailAuthPolicyParams{ID: id}, nil)
 				})
 				if lookupErr != nil {
 					return nil, errors.Join(errors.New("error reading Auth Policy: "+*item.AuthPolicyID), lookupErr)

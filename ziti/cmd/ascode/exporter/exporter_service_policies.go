@@ -22,19 +22,19 @@ import (
 	"slices"
 )
 
-func (d Exporter) IsServicePolicyExportRequired(args []string) bool {
+func (exporter Exporter) IsServicePolicyExportRequired(args []string) bool {
 	return slices.Contains(args, "all") || len(args) == 0 || // explicit all or nothing specified
 		slices.Contains(args, "service-policy")
 }
 
-func (d Exporter) GetServicePolicies() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetServicePolicies() ([]map[string]interface{}, error) {
 
-	return d.getEntities(
+	return exporter.getEntities(
 		"ServicePolicies",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := d.client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: &limit}, nil)
+			resp, err := exporter.client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +42,7 @@ func (d Exporter) GetServicePolicies() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := d.client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: limit, Offset: offset}, nil)
+			resp, err := exporter.client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -58,7 +58,7 @@ func (d Exporter) GetServicePolicies() ([]map[string]interface{}, error) {
 			item := entity.(*rest_model.ServicePolicyDetail)
 
 			// convert to a map of values
-			m := d.ToMap(item)
+			m := exporter.ToMap(item)
 
 			// translate attributes so they don't reference ids
 			identityRoles := []string{}
@@ -78,7 +78,7 @@ func (d Exporter) GetServicePolicies() ([]map[string]interface{}, error) {
 			m["postureCheckRoles"] = postureCheckRoles
 
 			// filter unwanted properties
-			d.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
+			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
 				"serviceRolesDisplay", "identityRolesDisplay", "postureCheckRolesDisplay", "isSystem"})
 
 			return m, nil
