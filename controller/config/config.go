@@ -78,7 +78,7 @@ const (
 	DefaultTlsHandshakeRateLimiterMaxWindow = 1000
 
 	DefaultRouterDataModelEnabled            = true
-	DefaultRouterDataModelLogSize            = 10_1000
+	DefaultRouterDataModelLogSize            = 10_000
 	DefaultRouterDataModelListenerBufferSize = 1000
 )
 

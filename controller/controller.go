@@ -552,11 +552,31 @@ func (c *Controller) GetEventDispatcher() event.Dispatcher {
 }
 
 func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
-	if evt.EventType == event.ClusterMembersChanged || evt.EventType == event.ClusterLeadershipGained {
+	if evt.EventType == event.ClusterLeadershipGained {
+		req := &ctrl_pb.UpdateClusterLeader{
+			Index: evt.Index,
+		}
+
+		for _, r := range c.network.AllConnectedRouters() {
+			log := pfxlog.Logger().WithFields(map[string]interface{}{
+				"index": evt.Index,
+			})
+
+			if err := protobufs.MarshalTyped(req).Send(r.Control); err != nil {
+
+				pfxlog.Logger().WithError(err).WithField("routerId", r.Id).Error("unable to update cluster leader on router")
+			} else {
+				log.WithField("routerId", r.Id).WithField("routerName", r.Name).Info("router updated with info on new leader")
+			}
+		}
+	}
+
+	if evt.EventType == event.ClusterMembersChanged {
 		var endpoints []string
 		for _, peer := range evt.Peers {
 			endpoints = append(endpoints, peer.Addr)
 		}
+
 		updMsg := &ctrl_pb.UpdateCtrlAddresses{
 			Addresses: endpoints,
 			IsLeader:  c.raftController.IsLeader(),
@@ -564,16 +584,17 @@ func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
 		}
 
 		log := pfxlog.Logger().WithFields(map[string]interface{}{
-			"event":     evt.EventType,
 			"addresses": endpoints,
 			"index":     evt.Index,
 		})
 
-		log.Info("router connected, syncing ctrl addresses")
+		log.Info("syncing updated ctrl addresses to connected routers")
 
 		for _, r := range c.network.AllConnectedRouters() {
 			if err := protobufs.MarshalTyped(updMsg).Send(r.Control); err != nil {
 				pfxlog.Logger().WithError(err).WithField("routerId", r.Id).Error("unable to update controller endpoints on router")
+			} else {
+				log.WithField("routerId", r.Id).WithField("routerName", r.Name).Info("router updated with latest ctrl addresses")
 			}
 		}
 	}

@@ -39,12 +39,18 @@ func (handler *updateCtrlAddressesHandler) HandleReceive(msg *channel.Message, c
 		"isLeader":      upd.IsLeader,
 	})
 
-	if upd.IsLeader {
-		handler.callback.UpdateLeader(ch.Id())
-	} else if handler.currentVersion == 0 || handler.currentVersion < upd.Index {
-		log.Info("updating to controller endpoints to version")
+	log.Info("update ctrl endpoints message received")
+
+	if handler.currentVersion == 0 || handler.currentVersion < upd.Index {
+		log.Info("updating to newer controller endpoints")
 		handler.callback.UpdateCtrlEndpoints(upd.Addresses)
 		handler.currentVersion = upd.Index
+
+		if upd.IsLeader {
+			handler.callback.UpdateLeader(ch.Id())
+		}
+	} else {
+		log.Info("ignoring outdated controller endpoints")
 	}
 }
 

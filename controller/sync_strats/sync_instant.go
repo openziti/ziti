@@ -128,7 +128,8 @@ func (strategy *InstantStrategy) AddPublicKey(cert *tls.Certificate) {
 // Initialize implements RouterDataModelCache
 func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) error {
 	strategy.RouterDataModel = common.NewSenderRouterDataModel(logSize, bufferSize)
-
+	pfxlog.Logger().WithField("logSize", logSize).WithField("listenerBufferSizes", bufferSize).
+		Info("initialized controller router data model")
 	if strategy.ae.HostController.IsRaftEnabled() {
 		strategy.indexProvider = &RaftIndexProvider{
 			index: strategy.ae.GetHostController().GetRaftIndex(),
@@ -264,7 +265,6 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 		ae:                       ae,
 		routerConnectedQueue:     make(chan *RouterSender, options.MaxQueuedRouterConnects),
 		receivedClientHelloQueue: make(chan *RouterSender, options.MaxQueuedClientHellos),
-		RouterDataModel:          common.NewSenderRouterDataModel(10000, 10000),
 		stopNotify:               make(chan struct{}),
 		changeSets:               map[uint64]*edge_ctrl_pb.DataState_ChangeSet{},
 	}

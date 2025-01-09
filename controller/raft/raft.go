@@ -55,8 +55,6 @@ import (
 	"time"
 )
 
-type RouterDispatchCallback func(*raft.Configuration) error
-
 type ClusterEvent uint32
 
 func (self ClusterEvent) String() string {
