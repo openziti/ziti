@@ -201,6 +201,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		tmpDir, _ := os.MkdirTemp("", "quickstart")
 		o.Home = tmpDir
 		o.cleanOnExit = true
+		logrus.Infof("temporary --home '%s'", o.Home)
 	} else {
 		//normalize path
 		if strings.HasPrefix(o.Home, "~") {

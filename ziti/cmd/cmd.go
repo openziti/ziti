@@ -19,6 +19,7 @@ package cmd
 import (
 	goflag "flag"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
 	"io"
 	"os"
 	"path/filepath"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/openziti/cobra-to-md"
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
+	"github.com/openziti/ziti/ziti/cmd/ascode/exporter"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/create"
 	"github.com/openziti/ziti/ziti/cmd/database"
@@ -136,7 +138,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	demoCmd := demo.NewDemoCmd(p)
 
 	opsCommands := &cobra.Command{
-		Use: "ops",
+		Use:   "ops",
 		Short: "Various utilities useful when operating a Ziti network",
 	}
 
@@ -145,6 +147,8 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
 	opsCommands.AddCommand(verify.NewVerifyNetwork(out, err))
 	opsCommands.AddCommand(verify.NewVerifyTraffic(out, err))
+	opsCommands.AddCommand(exporter.NewExportCmd(out, err))
+	opsCommands.AddCommand(importer.NewImportCmd(out, err))
 
 	groups := templates.CommandGroups{
 		{
