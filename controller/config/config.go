@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/transport/v2"
 	transporttls "github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
@@ -75,6 +76,10 @@ const (
 
 	// DefaultTlsHandshakeRateLimiterMaxWindow is the default max size for the tls handshake rate limiter
 	DefaultTlsHandshakeRateLimiterMaxWindow = 1000
+
+	DefaultRouterDataModelEnabled            = true
+	DefaultRouterDataModelLogSize            = 10_000
+	DefaultRouterDataModelListenerBufferSize = 1000
 )
 
 type Config struct {
@@ -109,6 +114,7 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
+	RouterDataModel         common.RouterDataModelConfig
 	CommandRateLimiter      command.RateLimiterConfig
 	TlsHandshakeRateLimiter command.AdaptiveRateLimiterConfig
 	Src                     map[interface{}]interface{}
@@ -658,6 +664,42 @@ func LoadConfig(path string) (*Config, error) {
 			if err = loadTlsHandshakeRateLimiterConfig(&controllerConfig.TlsHandshakeRateLimiter, tlsMap); err != nil {
 				return nil, err
 			}
+		}
+	}
+
+	controllerConfig.RouterDataModel.Enabled = DefaultRouterDataModelEnabled
+	controllerConfig.RouterDataModel.LogSize = DefaultRouterDataModelLogSize
+	controllerConfig.RouterDataModel.ListenerBufferSize = DefaultRouterDataModelListenerBufferSize
+
+	if value, found := cfgmap["routerDataModel"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["enabled"]; found {
+				controllerConfig.RouterDataModel.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
+			}
+
+			if value, found := submap["logSize"]; found {
+				if val, ok := value.(int); ok {
+					if val < 0 {
+						return nil, errors.Wrapf(err, "failed to parse routerDataModel.logSize, must be >= 0 %v", value)
+					}
+					controllerConfig.RouterDataModel.LogSize = uint64(val)
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse routerDataModel.logSize, should be int not value %T", value)
+				}
+			}
+
+			if value, found := submap["listenerBufferSize"]; found {
+				if val, ok := value.(int); ok {
+					if val < 0 {
+						return nil, errors.Wrapf(err, "failed to parse routerDataModel.listenerBufferSize, must be >= 0 %v", value)
+					}
+					controllerConfig.RouterDataModel.ListenerBufferSize = uint(val)
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse routerDataModel.listenerBufferSize, should be int not value %T", value)
+				}
+			}
+		} else {
+			return nil, errors.Errorf("invalid raft configuration")
 		}
 	}
 

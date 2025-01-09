@@ -33,5 +33,4 @@ type Xrctrl interface {
 	Enabled() bool
 	Run(env RouterEnv) error
 	NotifyOfReconnect(ch channel.Channel)
-	GetTraceDecoders() []channel.TraceMessageDecoder
 }

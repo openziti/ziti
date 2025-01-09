@@ -126,6 +126,11 @@ func (self *ControllerManager) Unmarshall(bytes []byte) (*Controller, error) {
 		return nil, err
 	}
 
+	lastJoinedAt := time.Time{}
+	if msg.LastJoinedAt != nil {
+		lastJoinedAt = *pbTimeToTimePtr(msg.LastJoinedAt)
+	}
+
 	controller := &Controller{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
@@ -136,7 +141,7 @@ func (self *ControllerManager) Unmarshall(bytes []byte) (*Controller, error) {
 		CertPem:      msg.CertPem,
 		Fingerprint:  msg.Fingerprint,
 		IsOnline:     msg.IsOnline,
-		LastJoinedAt: *pbTimeToTimePtr(msg.LastJoinedAt),
+		LastJoinedAt: lastJoinedAt,
 		ApiAddresses: map[string][]ApiAddress{},
 	}
 

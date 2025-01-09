@@ -69,6 +69,16 @@ declare -a INSTANCE_NAMES=(inst001 inst002 inst003)
 # initialize a map of name=pid
 declare -A PIDS
 
+echo "${BUILD_DIR}/ziti" edge quickstart ha \
+    --ctrl-address="127.0.0.1" \
+    --router-address="127.0.0.1" \
+    --home="${ziti_home}" \
+    --trust-domain="${trust_domain}" \
+    --instance-id="${INSTANCE_NAMES[0]}" \
+    --ctrl-port="${ctrl_ports[0]}" \
+    --router-port="${router_ports[0]}" \
+    > /tmp/ha-test.cmds
+
 nohup "${BUILD_DIR}/ziti" edge quickstart ha \
     --ctrl-address="127.0.0.1" \
     --router-address="127.0.0.1" \
@@ -84,6 +94,17 @@ _wait_for_controller "${ctrl_ports[0]}"
 sleep 5
 echo "controller online"
 
+echo "${BUILD_DIR}/ziti" edge quickstart join \
+    --ctrl-address="127.0.0.1" \
+    --router-address="127.0.0.1" \
+    --home="${ziti_home}" \
+    --trust-domain="${trust_domain}" \
+    --ctrl-port="${ctrl_ports[1]}" \
+    --router-port="${router_ports[1]}" \
+    --instance-id="${INSTANCE_NAMES[1]}" \
+    --cluster-member="tls:127.0.0.1:${ctrl_ports[0]}" \
+    >> /tmp/ha-test.cmds
+
 nohup "${BUILD_DIR}/ziti" edge quickstart join \
     --ctrl-address="127.0.0.1" \
     --router-address="127.0.0.1" \
@@ -95,6 +116,17 @@ nohup "${BUILD_DIR}/ziti" edge quickstart join \
     --cluster-member="tls:127.0.0.1:${ctrl_ports[0]}" \
     &> "${ziti_home}/${INSTANCE_NAMES[1]}.log" &
 PIDS["${INSTANCE_NAMES[1]}"]=$!
+
+echo "${BUILD_DIR}/ziti" edge quickstart join \
+    --ctrl-address="127.0.0.1" \
+    --router-address="127.0.0.1" \
+    --home="${ziti_home}" \
+    --trust-domain="${trust_domain}" \
+    --ctrl-port="${ctrl_ports[2]}" \
+    --router-port="${router_ports[2]}" \
+    --instance-id="${INSTANCE_NAMES[2]}" \
+    --cluster-member="tls:127.0.0.1:${ctrl_ports[0]}" \
+    >> /tmp/ha-test.cmds
 
 nohup "${BUILD_DIR}/ziti" edge quickstart join \
     --ctrl-address="127.0.0.1" \
@@ -132,6 +164,8 @@ while [[ ${count} -lt 3 ]]; do
         ((elapsed+=6))
         
         if [[ ${elapsed} -ge ${timeout} ]]; then
+            "${BUILD_DIR}/ziti" fabric list routers
+            "${BUILD_DIR}/ziti" fabric list links
             echo "Timeout reached; not all connections are 'Connected'."
             exit 1
         fi

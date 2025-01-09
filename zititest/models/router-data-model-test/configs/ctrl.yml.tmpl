@@ -1,21 +1,18 @@
 v: 3
 
-{{if .Component.GetFlag "ha"}}
 raft:
-  minClusterSize: 3
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
-{{else}}
-db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrl.db
-routerDataModel:
-  enabled: true
-{{end}}
 
 identity:
   cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem
   key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}-server.key
   ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}.chain.pem
 
-trustDomain: smoke-test
+trustDomain: sdk-hosting-test
+
+commandRateLimiter:
+    enabled:   true
+    maxQueued: 25
 
 # the endpoint that routers will connect to the controller over.
 ctrl:
@@ -43,6 +40,12 @@ ctrl:
 events:
   jsonLogger:
     subscriptions:
+      - type: entityChange
+        propagateAlways: true
+#      - type: edge.apiSessions
+#      - type: edge.entityCounts
+#        interval: 15s
+#      - type: edge.sessions
 #      - type: fabric.routers
 #      - type: fabric.terminators
 #      - type: metrics
@@ -51,19 +54,15 @@ events:
 #      - type: fabric.circuits
 #        include:
 #          - created
-#      - type: edge.sessions
 #        include:
 #          - created
-      - type: edge.apiSessions
 #      - type: fabric.usage
 #      - type: services
 #      - type: fabric.usage
-#      - type: edge.entityCounts
-#        interval: 5s
     handler:
       type: file
       format: json
-      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/events.json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/event.log
 
 healthChecks:
   boltCheck:
@@ -108,14 +107,14 @@ edge:
       # duration - optional, default 5m
       # The length of time that a Ziti Edge Identity enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
-      duration: 5m
+      duration: 1h
     # edgeRouter - Optional
     # A section for edge router enrollment specific settings.
     edgeRouter:
       # duration - optional, default 5m
       # The length of time that a Ziti Edge Router enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
-      duration: 5m
+      duration: 1h
 
 
 # web - optional

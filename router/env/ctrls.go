@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/inspect"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"sync"
@@ -33,8 +34,32 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 )
 
+type CtrlEventListener interface {
+	NotifyOfCtrlEvent(event CtrlEvent)
+}
+
+type CtrlEventListenerFunc func(event CtrlEvent)
+
+func (self CtrlEventListenerFunc) NotifyOfCtrlEvent(event CtrlEvent) {
+	self(event)
+}
+
+type CtrlEventType string
+
+const (
+	ControllerAdded       CtrlEventType = "Added"
+	ControllerReconnected CtrlEventType = "Reconnected"
+	ControllerRemoved     CtrlEventType = "Removed"
+)
+
+type CtrlEvent struct {
+	Type       CtrlEventType
+	Controller NetworkController
+}
+
 type NetworkControllers interface {
-	UpdateControllerEndpoints(endpoints []string, leaderId string) bool
+	UpdateControllerEndpoints(endpoints []string) bool
+	UpdateLeader(leaderId string)
 	GetAll() map[string]NetworkController
 	GetNetworkController(ctrlId string) NetworkController
 	AnyCtrlChannel() channel.Channel
@@ -47,6 +72,8 @@ type NetworkControllers interface {
 	ForEach(f func(ctrlId string, ch channel.Channel))
 	Close() error
 	Inspect() *inspect.ControllerInspectDetails
+	AddChangeListener(listener CtrlEventListener)
+	NotifyOfReconnect(ctrlId string)
 }
 
 type CtrlDialer func(address transport.Address, bindHandler channel.BindHandler) error
@@ -68,9 +95,14 @@ type networkControllers struct {
 	ctrlEndpoints         cmap.ConcurrentMap[string, struct{}]
 	ctrls                 concurrenz.CopyOnWriteMap[string, NetworkController]
 	leaderId              concurrenz.AtomicValue[string]
+	ctrlChangeListeners   concurrenz.CopyOnWriteSlice[CtrlEventListener]
 }
 
-func (self *networkControllers) UpdateControllerEndpoints(addresses []string, leaderId string) bool {
+func (self *networkControllers) AddChangeListener(listener CtrlEventListener) {
+	self.ctrlChangeListeners.Append(listener)
+}
+
+func (self *networkControllers) UpdateControllerEndpoints(addresses []string) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
@@ -100,11 +132,11 @@ func (self *networkControllers) UpdateControllerEndpoints(addresses []string, le
 		self.connectToControllerWithBackoff(endpoint)
 	}
 
-	if leaderId != "" {
-		self.leaderId.Store(leaderId)
-	}
-
 	return changed
+}
+
+func (self *networkControllers) UpdateLeader(leaderId string) {
+	self.leaderId.Store(leaderId)
 }
 
 func (self *networkControllers) connectToControllerWithBackoff(endpoint string) {
@@ -124,6 +156,15 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 	expBackoff.MaxElapsedTime = 100 * 365 * 24 * time.Hour
 
 	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
+		id := binding.GetChannel().Id()
+		binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), func(m *channel.Message, ch channel.Channel) {
+			if idx, ok := m.GetUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex)); ok {
+				if ctrl := self.GetNetworkController(id); ctrl != nil {
+					ctrl.updateDataModelIndex(idx)
+				}
+			}
+		})
+
 		return self.Add(endpoint, binding.GetChannel())
 	})
 
@@ -150,11 +191,7 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 }
 
 func (self *networkControllers) Add(address string, ch channel.Channel) error {
-	ctrl := &networkCtrl{
-		ch:               ch,
-		address:          address,
-		heartbeatOptions: self.heartbeatOptions,
-	}
+	ctrl := newNetworkCtrl(ch, address, self.heartbeatOptions)
 
 	if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
 		if versionInfo, err := versions.StdVersionEncDec.Decode(versionValue); err == nil {
@@ -172,7 +209,25 @@ func (self *networkControllers) Add(address string, ch channel.Channel) error {
 		}
 	}
 	self.ctrls.Put(ch.Id(), ctrl)
+
+	self.notifyOfChange(ctrl, ControllerAdded)
+
 	return nil
+}
+
+func (self *networkControllers) NotifyOfReconnect(ctrlId string) {
+	if ctrl := self.GetNetworkController(ctrlId); ctrl != nil {
+		self.notifyOfChange(ctrl, ControllerReconnected)
+	}
+}
+
+func (self *networkControllers) notifyOfChange(controller NetworkController, eventType CtrlEventType) {
+	for _, l := range self.ctrlChangeListeners.Value() {
+		l.NotifyOfCtrlEvent(CtrlEvent{
+			Type:       eventType,
+			Controller: controller,
+		})
+	}
 }
 
 func (self *networkControllers) GetAll() map[string]NetworkController {
@@ -287,6 +342,7 @@ func (self *networkControllers) CloseAndRemoveByAddress(address string) {
 			if err := ctrl.Channel().Close(); err != nil {
 				pfxlog.Logger().WithField("ctrlId", id).WithField("endpoint", address).WithError(err).Error("error closing channel to controller")
 			}
+			self.notifyOfChange(ctrl, ControllerRemoved)
 		}
 	}
 }

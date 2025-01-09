@@ -154,6 +154,18 @@ func (request *ConnectEvents) GetContentType() int32 {
 	return int32(ContentType_ConnectEventsTypes)
 }
 
+func (request *DataState_ChangeSet) GetContentType() int32 {
+	return int32(ContentType_DataStateChangeSetType)
+}
+
+func (request *DataState) GetContentType() int32 {
+	return int32(ContentType_DataStateType)
+}
+
+func (request *SubscribeToDataModelRequest) GetContentType() int32 {
+	return int32(ContentType_SubscribeToDataModelRequestType)
+}
+
 func GetPrecedence(p ziti.Precedence) TerminatorPrecedence {
 	if p == ziti.PrecedenceRequired {
 		return TerminatorPrecedence_Required

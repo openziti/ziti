@@ -17,8 +17,12 @@
 package common
 
 import (
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"sync"
 )
 
@@ -36,7 +40,7 @@ type IdentityService struct {
 }
 
 func (self *IdentityService) Equals(other *IdentityService) bool {
-	if self.Service.Index != other.Service.Index {
+	if self.Service.index != other.Service.index {
 		return false
 	}
 
@@ -67,10 +71,10 @@ func (self *IdentityService) Equals(other *IdentityService) bool {
 		if !ok {
 			return false
 		}
-		if config.Config.Index != otherConfig.Config.Index {
+		if config.Config.index != otherConfig.Config.index {
 			return false
 		}
-		if config.ConfigType.Index != otherConfig.ConfigType.Index {
+		if config.ConfigType.index != otherConfig.ConfigType.index {
 			return false
 		}
 	}
@@ -82,10 +86,45 @@ type IdentitySubscription struct {
 	IdentityId string
 	Identity   *Identity
 	Services   map[string]*IdentityService
-	Listeners  concurrenz.CopyOnWriteSlice[IdentityEventSubscriber]
 	Checks     map[string]*PostureCheck
 
+	listeners concurrenz.CopyOnWriteSlice[IdentityEventSubscriber]
+
 	sync.Mutex
+}
+
+func (self *IdentitySubscription) Diff(rdm *RouterDataModel, sink DiffSink) {
+	currentState := &IdentitySubscription{IdentityId: self.IdentityId}
+	identity, found := rdm.Identities.Get(currentState.IdentityId)
+	if found {
+		currentState.initialize(rdm, identity)
+	}
+
+	diffReporter := &compareReporter{
+		key: self.IdentityId,
+		f: func(key string, detail string) {
+			sink("subscriber", key, DiffTypeMod, detail)
+		},
+	}
+
+	adapter := cmp.Reporter(diffReporter)
+	syncSetT := cmp.Transformer("syncSetToMap", func(s cmap.ConcurrentMap[string, struct{}]) map[string]struct{} {
+		return CMapToMap(s)
+	})
+	cmp.Diff(currentState, self, syncSetT, cmpopts.IgnoreUnexported(
+		sync.Mutex{}, IdentitySubscription{}, IdentityService{},
+		Config{}, ConfigType{},
+		DataStateConfig{}, DataStateConfigType{},
+		Identity{}, DataStateIdentity{},
+		Service{}, DataStateService{},
+		ServicePolicy{}, DataStateServicePolicy{},
+		PostureCheck{}, DataStatePostureCheck{}, edge_ctrl_pb.DataState_PostureCheck_Domains_{}, edge_ctrl_pb.DataState_PostureCheck_Domains{},
+		edge_ctrl_pb.DataState_PostureCheck_Mac_{}, edge_ctrl_pb.DataState_PostureCheck_Mac{},
+		edge_ctrl_pb.DataState_PostureCheck_Mfa_{}, edge_ctrl_pb.DataState_PostureCheck_Mfa{},
+		edge_ctrl_pb.DataState_PostureCheck_OsList_{}, edge_ctrl_pb.DataState_PostureCheck_OsList{}, edge_ctrl_pb.DataState_PostureCheck_Os{},
+		edge_ctrl_pb.DataState_PostureCheck_Process_{}, edge_ctrl_pb.DataState_PostureCheck_Process{},
+		edge_ctrl_pb.DataState_PostureCheck_ProcessMulti_{}, edge_ctrl_pb.DataState_PostureCheck_ProcessMulti{},
+	), adapter)
 }
 
 func (self *IdentitySubscription) getState() *IdentityState {
@@ -96,13 +135,13 @@ func (self *IdentitySubscription) getState() *IdentityState {
 	}
 }
 
-func (self *IdentitySubscription) identityUpdated(rdm *RouterDataModel, identity *Identity) {
+func (self *IdentitySubscription) identityUpdated(identity *Identity) {
 	notify := false
 	present := false
 	var state *IdentityState
 	self.Lock()
 	if self.Identity != nil {
-		if identity.IdentityIndex > self.Identity.IdentityIndex {
+		if identity.identityIndex > self.Identity.identityIndex {
 			self.Identity = identity
 			notify = true
 		}
@@ -112,11 +151,11 @@ func (self *IdentitySubscription) identityUpdated(rdm *RouterDataModel, identity
 	self.Unlock()
 
 	if !present {
-		for _, subscriber := range self.Listeners.Value() {
+		for _, subscriber := range self.listeners.Value() {
 			subscriber.NotifyIdentityEvent(state, EventFullState)
 		}
 	} else if notify {
-		for _, subscriber := range self.Listeners.Value() {
+		for _, subscriber := range self.listeners.Value() {
 			subscriber.NotifyIdentityEvent(state, EventIdentityUpdated)
 		}
 	}
@@ -136,7 +175,7 @@ func (self *IdentitySubscription) identityRemoved() {
 	self.Unlock()
 
 	if notify {
-		for _, subscriber := range self.Listeners.Value() {
+		for _, subscriber := range self.listeners.Value() {
 			subscriber.NotifyIdentityEvent(state, EventIdentityDeleted)
 		}
 	}
@@ -155,6 +194,11 @@ func (self *IdentitySubscription) initialize(rdm *RouterDataModel, identity *Ide
 }
 
 func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
+	idx, _ := rdm.CurrentIndex()
+	log := pfxlog.Logger().
+		WithField("index", idx).
+		WithField("identity", self.IdentityId)
+
 	self.Lock()
 	newIdentity, ok := rdm.Identities.Get(self.IdentityId)
 	notifyRemoved := !ok && self.Identity != nil
@@ -168,6 +212,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	newServices := self.Services
 	newChecks := self.Checks
 	self.Unlock()
+	log.Debugf("identity subscriber updated. identities old: %p new: %p, rdm: %p", oldIdentity, newIdentity, rdm)
 
 	if notifyRemoved {
 		state := &IdentityState{
@@ -175,7 +220,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 			PostureChecks: oldChecks,
 			Services:      oldServices,
 		}
-		for _, subscriber := range self.Listeners.Value() {
+		for _, subscriber := range self.listeners.Value() {
 			subscriber.NotifyIdentityEvent(state, EventIdentityDeleted)
 		}
 		return
@@ -192,14 +237,14 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	}
 
 	if oldIdentity == nil {
-		for _, subscriber := range self.Listeners.Value() {
+		for _, subscriber := range self.listeners.Value() {
 			subscriber.NotifyIdentityEvent(state, EventFullState)
 		}
 		return
 	}
 
-	if oldIdentity.IdentityIndex < newIdentity.IdentityIndex {
-		for _, subscriber := range self.Listeners.Value() {
+	if oldIdentity.identityIndex < newIdentity.identityIndex {
+		for _, subscriber := range self.listeners.Value() {
 			subscriber.NotifyIdentityEvent(state, EventIdentityUpdated)
 		}
 	}
@@ -207,11 +252,11 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	for svcId, service := range oldServices {
 		newService, ok := newServices[svcId]
 		if !ok {
-			for _, subscriber := range self.Listeners.Value() {
+			for _, subscriber := range self.listeners.Value() {
 				subscriber.NotifyServiceChange(state, service, EventAccessRemoved)
 			}
 		} else if !service.Equals(newService) {
-			for _, subscriber := range self.Listeners.Value() {
+			for _, subscriber := range self.listeners.Value() {
 				subscriber.NotifyServiceChange(state, newService, EventUpdated)
 			}
 		}
@@ -219,7 +264,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 
 	for svcId, service := range newServices {
 		if _, ok := oldServices[svcId]; !ok {
-			for _, subscriber := range self.Listeners.Value() {
+			for _, subscriber := range self.listeners.Value() {
 				subscriber.NotifyServiceChange(state, service, EventAccessGained)
 			}
 		}
@@ -235,7 +280,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 				checksChanged = true
 				break
 			}
-			if check.Index != newCheck.Index {
+			if check.index != newCheck.index {
 				checksChanged = true
 				break
 			}
@@ -243,7 +288,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	}
 
 	if checksChanged {
-		for _, subscriber := range self.Listeners.Value() {
+		for _, subscriber := range self.listeners.Value() {
 			subscriber.NotifyIdentityEvent(state, EventPostureChecksUpdated)
 		}
 	}
@@ -294,11 +339,14 @@ type identityCreatedEvent struct {
 }
 
 func (self identityCreatedEvent) process(rdm *RouterDataModel) {
-	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).WithField("identityId", self.identity.Id).Info("handling identity created event")
+	pfxlog.Logger().
+		WithField("subs", rdm.subscriptions.Count()).
+		WithField("identityId", self.identity.Id).
+		Debug("handling identity created event")
 
 	if sub, found := rdm.subscriptions.Get(self.identity.Id); found {
 		state := sub.initialize(rdm, self.identity)
-		for _, subscriber := range sub.Listeners.Value() {
+		for _, subscriber := range sub.listeners.Value() {
 			subscriber.NotifyIdentityEvent(state, EventFullState)
 		}
 	}
@@ -310,7 +358,7 @@ type identityUpdatedEvent struct {
 
 func (self identityUpdatedEvent) process(rdm *RouterDataModel) {
 	if sub, found := rdm.subscriptions.Get(self.identity.Id); found {
-		sub.identityUpdated(rdm, self.identity)
+		sub.identityUpdated(self.identity)
 	}
 }
 

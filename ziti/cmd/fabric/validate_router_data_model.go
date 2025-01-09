@@ -34,6 +34,7 @@ type validateRouterDataModelAction struct {
 	api.Options
 	validateController  bool
 	includeValidRouters bool
+	fixInvalid          bool
 
 	eventNotify chan *mgmt_pb.RouterDataModelDetails
 }
@@ -56,6 +57,7 @@ func NewValidateRouterDataModelCmd(p common.OptionsProvider) *cobra.Command {
 	action.AddCommonFlags(validateLinksCmd)
 	validateLinksCmd.Flags().BoolVar(&action.validateController, "validate-controller", true, "Validate the router data model in the controller as well")
 	validateLinksCmd.Flags().BoolVar(&action.includeValidRouters, "include-successes", false, "Don't hide results for successes")
+	validateLinksCmd.Flags().BoolVar(&action.fixInvalid, "fix", false, "Reset the data models on routers if errors are found")
 	return validateLinksCmd
 }
 
@@ -84,6 +86,7 @@ func (self *validateRouterDataModelAction) validateRouterDataModel(_ *cobra.Comm
 	request := &mgmt_pb.ValidateRouterDataModelRequest{
 		RouterFilter: filter,
 		ValidateCtrl: self.validateController,
+		Fix:          self.fixInvalid,
 	}
 
 	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Duration(self.Timeout) * time.Second).SendForReply(ch)

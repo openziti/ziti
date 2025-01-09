@@ -41,6 +41,7 @@ enum ContentType {
   DecommissionRouterRequestType = 1043;
 
   PeerStateChangeRequestType = 1050;
+  UpdateClusterLeaderRequestType = 1051;
 }
 
 enum ControlHeaders {
@@ -266,6 +267,10 @@ message UpdateCtrlAddresses {
   repeated string addresses = 1;
   uint64 index = 2;
   bool isLeader = 3;
+}
+
+message UpdateClusterLeader {
+  uint64 index = 1;
 }
 
 enum PeerState {

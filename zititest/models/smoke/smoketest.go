@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
-	semaphore0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
+	semaphore "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
 	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
@@ -39,6 +39,8 @@ import (
 )
 
 const ZitiEdgeTunnelVersion = "v1.2.9"
+const ZitiCtrlVersion = ""
+const ZitiRouterVersion = ""
 
 //go:embed configs
 var configResource embed.FS
@@ -138,7 +140,9 @@ var Model = &model.Model{
 					Components: model.Components{
 						"ctrl1": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
-							Type:  &zitilab.ControllerType{},
+							Type: &zitilab.ControllerType{
+								Version: ZitiCtrlVersion,
+							},
 						},
 					},
 				},
@@ -146,7 +150,9 @@ var Model = &model.Model{
 					Components: model.Components{
 						"ctrl2": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
-							Type:  &zitilab.ControllerType{},
+							Type: &zitilab.ControllerType{
+								Version: ZitiCtrlVersion,
+							},
 						},
 					},
 				},
@@ -156,7 +162,8 @@ var Model = &model.Model{
 						"router-east-1": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client"}},
 							Type: &zitilab.RouterType{
-								Debug: false,
+								Debug:   false,
+								Version: ZitiRouterVersion,
 							},
 						},
 						"zcat": {
@@ -170,7 +177,8 @@ var Model = &model.Model{
 						"router-east-2": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator"}},
 							Type: &zitilab.RouterType{
-								Debug: false,
+								Debug:   false,
+								Version: ZitiRouterVersion,
 							},
 						},
 					},
@@ -179,10 +187,10 @@ var Model = &model.Model{
 					Scope: model.Scope{Tags: model.Tags{"zet-client"}},
 					Components: model.Components{
 						"ziti-edge-tunnel-client": {
-							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client", "zet"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
 								Version:        ZitiEdgeTunnelVersion,
-								VerbosityLevel: 6,
+								VerbosityLevel: 3,
 							},
 						},
 					},
@@ -206,7 +214,9 @@ var Model = &model.Model{
 					Components: model.Components{
 						"ctrl3": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
-							Type:  &zitilab.ControllerType{},
+							Type: &zitilab.ControllerType{
+								Version: ZitiCtrlVersion,
+							},
 						},
 					},
 				},
@@ -216,7 +226,8 @@ var Model = &model.Model{
 						"router-west": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host"}},
 							Type: &zitilab.RouterType{
-								Debug: false,
+								Debug:   false,
+								Version: ZitiRouterVersion,
 							},
 						},
 						"echo-server": {
@@ -240,14 +251,14 @@ var Model = &model.Model{
 				"ziti-edge-tunnel-host": {
 					Components: model.Components{
 						"ziti-edge-tunnel-host": {
-							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host"}},
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host", "zet"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
 								Version:        ZitiEdgeTunnelVersion,
-								VerbosityLevel: 6,
+								VerbosityLevel: 3,
 							},
 						},
 						"iperf-server-zet": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "zet"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 						"caddy-zet": {
@@ -310,7 +321,7 @@ var Model = &model.Model{
 		aws_ssh_key.Express(),
 		&terraform_0.Terraform{
 			Retries: 3,
-			ReadyCheck: &semaphore0.ReadyStage{
+			ReadyCheck: &semaphore.ReadyStage{
 				MaxWait: 90 * time.Second,
 			},
 		},

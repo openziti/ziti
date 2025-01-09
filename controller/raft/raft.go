@@ -21,18 +21,31 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/hashicorp/raft"
+	raftboltdb "github.com/hashicorp/raft-boltdb"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/peermsg"
+	"github.com/openziti/ziti/controller/raft/mesh"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"os"
 	"path"
 	"reflect"
@@ -40,22 +53,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/hashicorp/raft"
-	raftboltdb "github.com/hashicorp/raft-boltdb"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/raft/mesh"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
-
-type RouterDispatchCallback func(*raft.Configuration) error
 
 type ClusterEvent uint32
 
@@ -289,7 +287,7 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 	}
 
 	if self.GetLeaderAddr() == "" {
-		return errors.New("unable to execute command, cluster has no leader")
+		return apierror.NewClusterHasNoLeaderError()
 	}
 
 	log.WithField("cmd", reflect.TypeOf(cmd)).WithField("dest", self.GetLeaderAddr()).Debug("forwarding command")
@@ -511,6 +509,12 @@ func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (int
 	})
 
 	if err != nil {
+		if errors.Is(err, raft.ErrNotLeader) {
+			noLeaderErr := apierror.NewClusterHasNoLeaderError()
+			noLeaderErr.Cause = err
+			err = noLeaderErr
+		}
+
 		return nil, 0, err
 	}
 
@@ -858,11 +862,25 @@ func (self *Controller) RenderJsonConfig() (string, error) {
 	return string(b), err
 }
 
+func (self *Controller) getClusterPeersForEvent() []*event.ClusterPeer {
+	var peers []*event.ClusterPeer
+
+	_, cfg := self.Fsm.GetCurrentState(self.Raft)
+	for _, srv := range cfg.Servers {
+		peers = append(peers, &event.ClusterPeer{
+			Id:   string(srv.ID),
+			Addr: string(srv.Address),
+		})
+	}
+
+	return peers
+}
+
 func (self *Controller) addEventsHandlers() {
 	self.RegisterClusterEventHandler(func(evt ClusterEvent, state ClusterState) {
 		switch evt {
 		case ClusterEventLeadershipGained:
-			self.newClusterEvent(event.ClusterLeadershipGained, self.Mesh.GetAllPeersForEvent())
+			self.newClusterEvent(event.ClusterLeadershipGained, self.getClusterPeersForEvent())
 		case ClusterEventLeadershipLost:
 			self.newClusterEvent(event.ClusterLeadershipLost, nil)
 		case ClusterEventReadOnly:

@@ -117,12 +117,12 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 	}
 
 	if config.Db == "" {
-		config.Db = "./db.json.gzip"
+		config.Db = "./db.proto.gzip"
 
 		if value, found := configMap[router.PathMapKey]; found {
 			configPath := value.(string)
 			configPath = strings.TrimSpace(configPath)
-			config.Db = configPath + ".json.gzip"
+			config.Db = configPath + ".proto.gzip"
 		} else {
 			pfxlog.Logger().Warnf("the db property was not set, using default for cached data model: %s", config.Db)
 		}

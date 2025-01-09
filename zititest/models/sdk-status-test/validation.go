@@ -66,7 +66,7 @@ func sowChaos(run model.Run) error {
 	}
 
 	fmt.Printf("stopping %d controllers,  %d routers and %d hosts\n", len(controllers), len(routers), len(hosts))
-	if err = chaos.RestartSelected(run, controllers, 3); err != nil {
+	if err = chaos.RestartSelected(run, 3, controllers...); err != nil {
 		return err
 	}
 	var toStop []*model.Component

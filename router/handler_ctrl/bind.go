@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"github.com/openziti/ziti/common/capabilities"
 	"runtime/debug"
 	"time"
 
@@ -97,6 +98,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressUpdater))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
 	binding.AddTypedReceiveHandler(newUpdateCtrlAddressesHandler(self.ctrlAddressUpdater))
+	binding.AddTypedReceiveHandler(newUpdateClusterLeaderHandler(self.ctrlAddressUpdater))
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 
@@ -116,6 +118,9 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 			return err
 		}
 	}
+
+	enableRouterDataModel := capabilities.IsCapable(binding.GetChannel(), capabilities.RouterDataModel)
+	self.env.GetRouterDataModelEnabledConfig().Store(enableRouterDataModel)
 
 	return nil
 }

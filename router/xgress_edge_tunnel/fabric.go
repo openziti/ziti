@@ -235,7 +235,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		return errors.New(errStr)
 	}
 
-	if self.factory.routerConfig.Ha.Enabled {
+	if self.factory.stateManager.GetEnv().IsRouterDataModelEnabled() {
 		return self.tunnelServiceV2(service, terminatorInstanceId, conn, halfClose, ctrlCh, peerData, keyPair)
 	}
 

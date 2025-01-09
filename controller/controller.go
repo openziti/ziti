@@ -359,6 +359,11 @@ func (c *Controller) Run() error {
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateTerminatorV2, 1)
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSingleRouterLinkSource, 1)
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateCircuitV2, 1)
+
+	if c.config.RouterDataModel.Enabled || c.raftController != nil {
+		capabilityMask.SetBit(capabilityMask, capabilities.RouterDataModel, 1)
+	}
+
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader:                       versionHeader,
 		int32(ctrl_pb.ControlHeaders_CapabilitiesHeader): capabilityMask.Bytes(),
@@ -547,20 +552,49 @@ func (c *Controller) GetEventDispatcher() event.Dispatcher {
 }
 
 func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
-	if evt.EventType == event.ClusterMembersChanged || evt.EventType == event.ClusterLeadershipGained {
+	if evt.EventType == event.ClusterLeadershipGained {
+		req := &ctrl_pb.UpdateClusterLeader{
+			Index: evt.Index,
+		}
+
+		for _, r := range c.network.AllConnectedRouters() {
+			log := pfxlog.Logger().WithFields(map[string]interface{}{
+				"index": evt.Index,
+			})
+
+			if err := protobufs.MarshalTyped(req).Send(r.Control); err != nil {
+
+				pfxlog.Logger().WithError(err).WithField("routerId", r.Id).Error("unable to update cluster leader on router")
+			} else {
+				log.WithField("routerId", r.Id).WithField("routerName", r.Name).Info("router updated with info on new leader")
+			}
+		}
+	}
+
+	if evt.EventType == event.ClusterMembersChanged {
 		var endpoints []string
 		for _, peer := range evt.Peers {
 			endpoints = append(endpoints, peer.Addr)
 		}
+
 		updMsg := &ctrl_pb.UpdateCtrlAddresses{
 			Addresses: endpoints,
 			IsLeader:  c.raftController.IsLeader(),
 			Index:     evt.Index,
 		}
 
+		log := pfxlog.Logger().WithFields(map[string]interface{}{
+			"addresses": endpoints,
+			"index":     evt.Index,
+		})
+
+		log.Info("syncing updated ctrl addresses to connected routers")
+
 		for _, r := range c.network.AllConnectedRouters() {
 			if err := protobufs.MarshalTyped(updMsg).Send(r.Control); err != nil {
 				pfxlog.Logger().WithError(err).WithField("routerId", r.Id).Error("unable to update controller endpoints on router")
+			} else {
+				log.WithField("routerId", r.Id).WithField("routerName", r.Name).Info("router updated with latest ctrl addresses")
 			}
 		}
 	}
@@ -695,7 +729,6 @@ func (c *Controller) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
 func (c *Controller) GetHelloHeaderProviders() []mesh.HeaderProvider {
 	providerFunc := func(headers map[int32][]byte) {
 		_, apiDataBytes := c.GetApiAddresses()
-
 		headers[mesh.ApiAddressesHeader] = apiDataBytes
 	}
 
