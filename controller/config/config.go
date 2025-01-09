@@ -215,6 +215,7 @@ func LoadConfig(path string) (*Config, error) {
 			controllerConfig.Raft.HeartbeatTimeout = 3 * time.Second
 			controllerConfig.Raft.LeaderLeaseTimeout = 3 * time.Second
 			controllerConfig.Raft.CommandHandlerOptions.MaxQueueSize = DefaultRaftCommandHandlerMaxQueueSize
+			controllerConfig.Raft.WarnWhenLeaderlessFor = time.Minute
 
 			if value, found := submap["dataDir"]; found {
 				controllerConfig.Raft.DataDir = value.(string)
@@ -296,6 +297,18 @@ func LoadConfig(path string) (*Config, error) {
 					return nil, errors.Errorf("invalid value for raft.logLevel [%v]", val)
 				}
 				controllerConfig.Raft.LogLevel = &val
+			}
+
+			if value, found := submap["warnWhenLeaderlessFor"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					if val < 10*time.Second {
+						pfxlog.Logger().Infof("invalid value %s for raft.warnWhenLeaderlessFor, must be >= 10s", val)
+					} else {
+						controllerConfig.Raft.WarnWhenLeaderlessFor = val
+					}
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.warnWhenLeaderlessFor value '%v", value)
+				}
 			}
 
 			if value, found := submap["logFile"]; found {

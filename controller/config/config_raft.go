@@ -27,4 +27,6 @@ type RaftConfig struct {
 
 	LogLevel *string
 	Logger   hclog.Logger
+
+	WarnWhenLeaderlessFor time.Duration
 }

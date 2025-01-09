@@ -667,10 +667,18 @@ func (self *Controller) validateCert() {
 	}
 }
 
+type clusterEventState struct {
+	isReadWrite    bool
+	hasLeader      bool
+	noLeaderAt     time.Time
+	warningEmitted bool
+}
+
 func (self *Controller) ObserveLeaderChanges() {
 	self.Raft.RegisterObserver(raft.NewObserver(self.clusterEvents, true, func(o *raft.Observation) bool {
-		_, ok := o.Data.(raft.RaftState)
-		return ok
+		_, isRaftState := o.Data.(raft.RaftState)
+		_, isLeaderState := o.Data.(raft.LeaderObservation)
+		return isRaftState || isLeaderState
 	}))
 
 	go func() {
@@ -679,31 +687,68 @@ func (self *Controller) ObserveLeaderChanges() {
 			self.handleClusterStateChange(ClusterEventLeadershipGained, newClusterState(true, true))
 		}
 
-		isReadWrite := true
+		leaderAddr, _ := self.Raft.LeaderWithID()
 
-		for observation := range self.clusterEvents {
-			pfxlog.Logger().Tracef("raft observation received: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), isReadWrite)
-			if raftState, ok := observation.Data.(raft.RaftState); ok {
-				if raftState == raft.Leader && !self.isLeader.Load() {
-					self.isLeader.Store(true)
-					self.handleClusterStateChange(ClusterEventLeadershipGained, newClusterState(true, isReadWrite))
-				} else if raftState != raft.Leader && self.isLeader.Load() {
-					self.isLeader.Store(false)
-					self.handleClusterStateChange(ClusterEventLeadershipLost, newClusterState(false, isReadWrite))
-				}
-			} else if state, ok := observation.Data.(mesh.ClusterState); ok {
-				if state == mesh.ClusterReadWrite {
-					isReadWrite = true
-					self.handleClusterStateChange(ClusterEventReadWrite, newClusterState(self.isLeader.Load(), isReadWrite))
-				} else if state == mesh.ClusterReadOnly {
-					isReadWrite = false
-					self.handleClusterStateChange(ClusterEventReadOnly, newClusterState(self.isLeader.Load(), isReadWrite))
+		eventState := &clusterEventState{
+			isReadWrite: true,
+			hasLeader:   leaderAddr != "",
+			noLeaderAt:  time.Now(),
+		}
+
+		ticker := time.NewTicker(time.Second * 5)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case observation := <-self.clusterEvents:
+				self.processRaftObservation(observation, eventState)
+			case <-ticker.C:
+				if !eventState.warningEmitted && !eventState.hasLeader && time.Since(eventState.noLeaderAt) > self.Config.WarnWhenLeaderlessFor {
+					pfxlog.Logger().WithField("timeSinceLeader", time.Since(eventState.noLeaderAt).String()).
+						Warn("cluster running without leader for longer than configured threshold")
+					eventState.warningEmitted = true
 				}
 			}
-
-			pfxlog.Logger().Tracef("raft observation processed: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), isReadWrite)
 		}
 	}()
+}
+
+func (self *Controller) processRaftObservation(observation raft.Observation, eventState *clusterEventState) {
+	pfxlog.Logger().Tracef("raft observation received: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), eventState.isReadWrite)
+
+	if raftState, ok := observation.Data.(raft.RaftState); ok {
+		if raftState == raft.Leader && !self.isLeader.Load() {
+			self.isLeader.Store(true)
+			self.handleClusterStateChange(ClusterEventLeadershipGained, newClusterState(true, eventState.isReadWrite))
+		} else if raftState != raft.Leader && self.isLeader.Load() {
+			self.isLeader.Store(false)
+			self.handleClusterStateChange(ClusterEventLeadershipLost, newClusterState(false, eventState.isReadWrite))
+		}
+	}
+
+	if state, ok := observation.Data.(mesh.ClusterState); ok {
+		if state == mesh.ClusterReadWrite {
+			eventState.isReadWrite = true
+			self.handleClusterStateChange(ClusterEventReadWrite, newClusterState(self.isLeader.Load(), eventState.isReadWrite))
+		} else if state == mesh.ClusterReadOnly {
+			eventState.isReadWrite = false
+			self.handleClusterStateChange(ClusterEventReadOnly, newClusterState(self.isLeader.Load(), eventState.isReadWrite))
+		}
+	}
+
+	if leaderState, ok := observation.Data.(raft.LeaderObservation); ok {
+		if leaderState.LeaderAddr == "" {
+			if eventState.hasLeader {
+				eventState.warningEmitted = false
+				eventState.noLeaderAt = time.Now()
+				eventState.hasLeader = false
+			}
+		} else {
+			eventState.hasLeader = true
+		}
+	}
+
+	pfxlog.Logger().Tracef("raft observation processed: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), eventState.isReadWrite)
 }
 
 func (self *Controller) handleClusterStateChange(event ClusterEvent, state ClusterState) {
