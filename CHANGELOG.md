@@ -1,3 +1,27 @@
+# Release 1.2.3
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.20 -> v1.0.22](https://github.com/openziti/agent/compare/v1.0.20...v1.0.22)
+* github.com/openziti/channel/v3: [v3.0.16 -> v3.0.22](https://github.com/openziti/channel/compare/v3.0.16...v3.0.22)
+* github.com/openziti/edge-api: [v0.26.35 -> v0.26.36](https://github.com/openziti/edge-api/compare/v0.26.35...v0.26.36)
+    * [Issue #138](https://github.com/openziti/edge-api/issues/138) - management api deletes were generally not mapping 404 properly
+
+* github.com/openziti/foundation/v2: [v2.0.52 -> v2.0.55](https://github.com/openziti/foundation/compare/v2.0.52...v2.0.55)
+* github.com/openziti/identity: [v1.0.90 -> v1.0.93](https://github.com/openziti/identity/compare/v1.0.90...v1.0.93)
+* github.com/openziti/metrics: [v1.2.61 -> v1.2.64](https://github.com/openziti/metrics/compare/v1.2.61...v1.2.64)
+* github.com/openziti/runzmd: [v1.0.55 -> v1.0.58](https://github.com/openziti/runzmd/compare/v1.0.55...v1.0.58)
+* github.com/openziti/secretstream: [v0.1.26 -> v0.1.27](https://github.com/openziti/secretstream/compare/v0.1.26...v0.1.27)
+* github.com/openziti/storage: [v0.3.8 -> v0.3.13](https://github.com/openziti/storage/compare/v0.3.8...v0.3.13)
+    * [Issue #91](https://github.com/openziti/storage/issues/91) - Support dashes in identifier segments after the first dot
+
+* github.com/openziti/transport/v2: [v2.0.153 -> v2.0.157](https://github.com/openziti/transport/compare/v2.0.153...v2.0.157)
+* github.com/openziti/ziti: [v1.2.2 -> v1.2.3](https://github.com/openziti/ziti/compare/v1.2.2...v1.2.3)
+
 # Release 1.2.2
 
 ## What's New

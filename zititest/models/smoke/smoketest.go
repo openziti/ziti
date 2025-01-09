@@ -38,7 +38,7 @@ import (
 	"time"
 )
 
-const ZitiEdgeTunnelVersion = "v2.0.0-alpha1"
+const ZitiEdgeTunnelVersion = "v1.2.9"
 
 //go:embed configs
 var configResource embed.FS
@@ -95,7 +95,7 @@ var Model = &model.Model{
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("*", 1, func(host *model.Host) error {
-				host.InstanceType = "t2.micro"
+				host.InstanceType = "t3.micro"
 				return nil
 			})
 		}),
