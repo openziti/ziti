@@ -173,26 +173,26 @@ func performTest(t *testing.T) {
 	assert.Empty(t, jsonquery.Find(posturecheck3, "/process/hashes/*[1]"))
 	assert.Equal(t, "process", jsonquery.FindOne(posturecheck3, "/roleAttributes/*[1]").Value())
 
-	router1 := jsonquery.FindOne(doc, "//routers/*[name='custroutet2']")
+	router1 := jsonquery.FindOne(doc, "//edgeRouters/*[name='custroutet2']")
 	assert.Equal(t, "vis-bind", jsonquery.FindOne(router1, "/roleAttributes/*[1]").Value())
 
-	router2 := jsonquery.FindOne(doc, "//routers/*[name='asd']")
+	router2 := jsonquery.FindOne(doc, "//edgeRouters/*[name='asd']")
 	assert.Empty(t, jsonquery.Find(router2, "/roleAttributes/*[1]"))
 
-	router3 := jsonquery.FindOne(doc, "//routers/*[name='public-router1']")
+	router3 := jsonquery.FindOne(doc, "//edgeRouters/*[name='public-router1']")
 	assert.Equal(t, "public", jsonquery.FindOne(router3, "/roleAttributes/*[1]").Value())
 
-	router4 := jsonquery.FindOne(doc, "//routers/*[name='enroll']")
+	router4 := jsonquery.FindOne(doc, "//edgeRouters/*[name='enroll']")
 	assert.Empty(t, jsonquery.FindOne(router4, "/roleAttributes").Value())
 
-	router5 := jsonquery.FindOne(doc, "//routers/*[name='nfhosted']")
+	router5 := jsonquery.FindOne(doc, "//edgeRouters/*[name='nfhosted']")
 	assert.Equal(t, "public", jsonquery.FindOne(router5, "/roleAttributes/*[1]").Value())
 
-	router6 := jsonquery.FindOne(doc, "//routers/*[name='appdata']")
+	router6 := jsonquery.FindOne(doc, "//edgeRouters/*[name='appdata']")
 	assert.Empty(t, jsonquery.FindOne(router6, "/roleAttributes").Value())
 	assert.Equal(t, "er", jsonquery.FindOne(router6, "/appData/my").Value())
 
-	router7 := jsonquery.FindOne(doc, "//routers/*[name='vis-customer-router']")
+	router7 := jsonquery.FindOne(doc, "//edgeRouters/*[name='vis-customer-router']")
 	assert.Equal(t, "vis-bind", jsonquery.FindOne(router7, "/roleAttributes/*").Value())
 
 	serviceRouterPolicy1 := jsonquery.FindOne(doc, "//serviceEdgeRouterPolicies/*[name='ssep2']")
