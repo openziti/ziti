@@ -196,8 +196,7 @@ github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHk
 github.com/frankban/quicktest v1.14.6/go.mod h1:4ptaffx2x8+WTWXmUCuVU6aPUX1/Mz7zb5vbUoiM6w0=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
-github.com/fsnotify/fsnotify v1.7.0 h1:8JEhPFa5W2WU7YfeZzPNqzMP6Lwt7L2715Ggo0nosvA=
-github.com/fsnotify/fsnotify v1.7.0/go.mod h1:40Bi/Hjc2AVfZrqy+aj+yEI+/bRxZnMJyTJwOpGvigM=
+github.com/fsnotify/fsnotify v1.8.0 h1:dAwr6QBTBZIkG8roQaJjGof0pp0EeF+tNV7YBP3F/8M=
 github.com/fsnotify/fsnotify v1.8.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
 github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa h1:RDBNVkRviHZtvDvId8XSGPu3rmpmSe+wKRcEWNgsfWU=
 github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa/go.mod h1:KnogPXtdwXqoenmZCw6S+25EAm2MkxbG0deNDu4cbSA=
@@ -206,7 +205,6 @@ github.com/gaissmai/extnetip v1.1.0/go.mod h1:Ad+qyjy0r98Uc655JzzWoBTzDW29QR4YZD
 github.com/getkin/kin-openapi v0.13.0/go.mod h1:WGRs2ZMM1Q8LR1QBEwUxC6RJEfaBcD0s+pcEVXFuAjw=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/gliderlabs/ssh v0.1.1/go.mod h1:U7qILu1NlMHj9FlMhZLlkCdDnU1DBEAqr0aevW3Awn0=
-github.com/go-acme/lego/v4 v4.21.0/go.mod h1:HrSWzm3Ckj45Ie3i+p1zKVobbQoMOaGu9m4up0dUeDI=
 github.com/go-acme/lego/v4 v4.21.0 h1:arEW+8o5p7VI8Bk1kr/PDlgD1DrxtTH1gJ4b7mehL8o=
 github.com/go-acme/lego/v4 v4.21.0/go.mod h1:HrSWzm3Ckj45Ie3i+p1zKVobbQoMOaGu9m4up0dUeDI=
 github.com/go-chi/chi v4.0.2+incompatible/go.mod h1:eB3wogJHnLi3x/kFX2A+IbTBlXxmMeXJVKy9tTv1XzQ=
@@ -441,6 +439,8 @@ github.com/json-iterator/go v1.1.11/go.mod h1:KdQUCv79m/52Kvf8AW2vK1V8akMuk1QjK/
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
+github.com/judedaryl/go-arrayutils v0.0.1 h1:89rWXRVp1c1gcE1UEWvFuohVMeYwfA0y4TMZtE8dS58=
+github.com/judedaryl/go-arrayutils v0.0.1/go.mod h1:vqtnlEkOBpDGHS3U3kQtMJZGTOC+SBFAQYj2KcxLf1A=
 github.com/juju/gnuflag v0.0.0-20171113085948-2ce1bb71843d/go.mod h1:2PavIy+JPciBPrBUjwbNvtwB6RQlve+hkpll6QSNmOE=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/kataras/go-events v0.0.3 h1:o5YK53uURXtrlg7qE/vovxd/yKOJcLuFtPQbf1rYMC4=
@@ -619,8 +619,8 @@ github.com/openziti/sdk-golang v0.23.44 h1:TzRO8dz6aAO2g0IXsKC6PvmT+cYyJpw2oJRUq
 github.com/openziti/sdk-golang v0.23.44/go.mod h1:tJ8KXdqWRfAEekvbo/vJsN2PYydbPK/Gh2rAcc65+qE=
 github.com/openziti/secretstream v0.1.28 h1:D+a5TcvbY3i7HOIecoTL0Pq8HJGnJqS0XmUyO1ohObg=
 github.com/openziti/secretstream v0.1.28/go.mod h1:BESAWnpyIr9A+ditH4vk15ZVsnP8zdy6vGi8Qr1lgAg=
-github.com/openziti/storage v0.3.14 h1:8aDIwWWTZyzy8sablxCZkyuz8Os/4EW7phgjQz/sgrY=
-github.com/openziti/storage v0.3.14/go.mod h1:02mnSwL6TzuPtGmU2sKLuJ8HPPHyFSwctXdpdw0guK4=
+github.com/openziti/storage v0.3.15-0.20250110213038-fdfbfe316819 h1:xSMhTaMhdzkyxsnBSqjtwj1PXPYoqGkvEoEi2weRPQU=
+github.com/openziti/storage v0.3.15-0.20250110213038-fdfbfe316819/go.mod h1:02mnSwL6TzuPtGmU2sKLuJ8HPPHyFSwctXdpdw0guK4=
 github.com/openziti/transport/v2 v2.0.159 h1:Ol6vTrXWJdkfRLWYI2hjDTeH2Ji0cYC26UuPnBylALg=
 github.com/openziti/transport/v2 v2.0.159/go.mod h1:Hw4TIlDd97D5m8BrlxTZ3bqO01+hwddTDMSOOzz/4cs=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
@@ -798,7 +798,6 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
-github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
 github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=

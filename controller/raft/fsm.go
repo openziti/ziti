@@ -115,9 +115,7 @@ func (self *BoltDbFsm) loadServers() error {
 		if serversBucket == nil {
 			return nil
 		}
-		return serversBucket.ForEachBucket(func(k []byte) error {
-			serverId := string(k)
-			serverBucket := serversBucket.GetBucket(serverId)
+		return serversBucket.ForEachTypedBucket(func(serverId string, serverBucket *boltz.TypedBucket) error {
 			serverAddr := serverBucket.GetStringWithDefault(ServerAddressField, "")
 			isVoter := serverBucket.GetBoolWithDefault(ServerIsVoterField, false)
 			result = append(result, raft.Server{

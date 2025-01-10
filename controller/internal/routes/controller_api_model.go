@@ -50,7 +50,6 @@ func MapControllerToManagementRestModel(controller *model.Controller) (*rest_mod
 
 	for apiKey, instances := range controller.ApiAddresses {
 		ret.APIAddresses[apiKey] = rest_model.APIAddressArray{}
-
 		for _, instance := range instances {
 			ret.APIAddresses[apiKey] = append(ret.APIAddresses[apiKey], &rest_model.APIAddress{
 				URL:     instance.Url,

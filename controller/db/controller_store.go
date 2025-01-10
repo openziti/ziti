@@ -110,28 +110,17 @@ func (store *controllerStoreImpl) FillEntity(entity *Controller, bucket *boltz.T
 
 	apiListBucket := bucket.GetBucket(FieldControllerApiAddresses)
 	if apiListBucket != nil {
-		apiListCursor := apiListBucket.Cursor()
-
-		for apiKey, _ := apiListCursor.First(); apiKey != nil; apiKey, _ = apiListCursor.Next() {
-			apiBucket := apiListBucket.GetBucket(string(apiKey))
-
-			if apiBucket != nil {
-				entity.ApiAddresses[string(apiKey)] = nil
-				instanceCursor := apiBucket.Cursor()
-
-				for instanceKey, _ := instanceCursor.First(); instanceKey != nil; instanceKey, _ = instanceCursor.Next() {
-					instance := apiBucket.GetBucket(string(instanceKey))
-
-					if instance != nil {
-						newInstance := ApiAddress{
-							Url:     instance.GetStringWithDefault(FieldControllerApiAddressUrl, ""),
-							Version: instance.GetStringWithDefault(FieldControllerApiAddressVersion, ""),
-						}
-						entity.ApiAddresses[string(apiKey)] = append(entity.ApiAddresses[string(apiKey)], newInstance)
-					}
+		bucket.SetError(apiListBucket.ForEachTypedBucket(func(apiKey string, apiBucket *boltz.TypedBucket) error {
+			entity.ApiAddresses[apiKey] = nil
+			return apiBucket.ForEachTypedBucket(func(_ string, instance *boltz.TypedBucket) error {
+				newInstance := ApiAddress{
+					Url:     instance.GetStringWithDefault(FieldControllerApiAddressUrl, ""),
+					Version: instance.GetStringWithDefault(FieldControllerApiAddressVersion, ""),
 				}
-			}
-		}
+				entity.ApiAddresses[apiKey] = append(entity.ApiAddresses[apiKey], newInstance)
+				return nil
+			})
+		}))
 	}
 }
 
@@ -144,13 +133,16 @@ func (store *controllerStoreImpl) PersistEntity(entity *Controller, ctx *boltz.P
 	ctx.SetBool(FieldControllerIsOnline, entity.IsOnline)
 	ctx.SetTimeP(FieldControllerLastJoinedAt, &entity.LastJoinedAt)
 
-	apiListBucket := ctx.Bucket.GetOrCreateBucket(FieldControllerApiAddresses)
+	apiListBucket, err := ctx.Bucket.EmptyBucket(FieldControllerApiAddresses)
+	if err != nil {
+		ctx.Bucket.SetError(err)
+		return
+	}
 
 	for apiKey, apis := range entity.ApiAddresses {
 		apiBucket, _ := apiListBucket.EmptyBucket(apiKey)
 		for i, instance := range apis {
 			instanceBucket := apiBucket.GetOrCreateBucket(strconv.Itoa(i))
-
 			instanceBucket.SetString(FieldControllerApiAddressUrl, instance.Url, ctx.FieldChecker)
 			instanceBucket.SetString(FieldControllerApiAddressVersion, instance.Version, ctx.FieldChecker)
 		}
