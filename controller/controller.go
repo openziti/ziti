@@ -421,6 +421,10 @@ func (c *Controller) Run() error {
 		panic(err)
 	}
 
+	if c.raftController != nil {
+		c.raftController.StartEventGeneration()
+	}
+
 	c.network.Run()
 
 	return nil
