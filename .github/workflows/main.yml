@@ -256,13 +256,6 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [ fablab-smoketest ]
     steps:
-      # allow time for investigation unless the workflow is cancelled or the smoketest succeeded or was skipped
-      #- name: Sleep If Failed
-      #  if: needs.fablab-smoketest.result != 'success' && needs.fablab-smoketest.result != 'skipped' && needs.fablab-smoketest.result != 'cancelled'
-      #  shell: bash
-      #  run: |
-      #    sleep 30m
-
       # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
       - name: Teardown Test Environment
         if: needs.fablab-smoketest.result != 'skipped'
@@ -288,7 +281,7 @@ jobs:
   fablab-ha-smoketest:
     name: Fablab HA Smoketest
     # not applicable to forks. shouldn't run on release build
-    if: false && github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v')
+    if: github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v')
     runs-on: ubuntu-20.04
     steps:
       - name: Git Checkout
@@ -323,14 +316,15 @@ jobs:
           $(go env GOPATH)/bin/smoketest create -d smoketest-ha-${GITHUB_RUN_NUMBER} -n smoketest-ha-${GITHUB_RUN_NUMBER} -l ha=true,environment=gh-fablab-ha-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
           $(go env GOPATH)/bin/smoketest up
 
-      #      - name: Test Ziti Command
-      #        shell: bash
-      #        run: |
-      #          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-      #          pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
+      - name: Test Ziti Command
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
 
       - name: Create fablab instance archive
         if: always()
+        timeout-minutes: 30
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         shell: bash
@@ -339,23 +333,35 @@ jobs:
           cp ~/.fablab/config.yml smoketest-ha-${GITHUB_RUN_NUMBER}/
           tar --exclude *terraform-provider-aws* -czvf - smoketest-ha-${GITHUB_RUN_NUMBER}/ | gpg --symmetric --cipher-algo aes256 --batch --quiet --passphrase ${FABLAB_PASSPHRASE} -o smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
           aws s3 cp ./smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg s3://ziti-smoketest-fablab-instances/
-          
-          #      - name: Test Report Generation
-          #        if: always()
-          #        shell: bash
-          #        run: |
-          #          go install github.com/jstemmer/go-junit-report/v2@latest
-          #$(go env GOPATH)/bin/go-junit-report -in zititest/test.out -out test-report.xml
 
-      #      - name: Test Summary
-      #        uses: test-summary/action@v2
-      #        with:
-      #          paths: |
-      #            test-report.xml
-      #          show: "fail, skip"
-      #        if: always()
+      - name: Create Logs Archive
+        if: always()
+        run: |
+          $(go env GOPATH)/bin/smoketest get files '*' "./logs/{{ .Id }}/" ./logs
 
-      # END linux-build-steps
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: logs-ha-${{ github.run_id }}
+          path: logs/
+          compression-level: 7
+          retention-days: 5
+
+      - name: Test Report Generation
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          go install github.com/jstemmer/go-junit-report/v2@latest
+          $(go env GOPATH)/bin/go-junit-report -in zititest/test.out -out test-report.xml
+
+      - name: Test Summary
+        uses: test-summary/action@v2
+        if: ${{ !cancelled() }}
+        with:
+          paths: |
+            test-report.xml
+          show: "fail, skip"
 
   fablab-ha-smoketest-teardown:
     name: Teardown HA SmokeTest
@@ -363,16 +369,10 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [ fablab-ha-smoketest ]
     steps:
-      # allow time for investigation unless the workflow is cancelled or the smoketest succeeded or was skipped
-      - name: Sleep If Failed
-        if: needs.fablab-ha-smoketest.result != 'success' && needs.fablab-ha-smoketest.result != 'skipped' && needs.fablab-ha-smoketest.result != 'cancelled'
-        shell: bash
-        run: |
-          sleep 30m
-
       # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
       - name: Teardown Test Environment
         if: needs.fablab-smoketest-ha.result != 'skipped'
+        timeout-minutes: 30
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         shell: bash
