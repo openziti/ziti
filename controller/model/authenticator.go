@@ -65,14 +65,21 @@ type AuthContext interface {
 	GetCerts() []*x509.Certificate
 	GetHeaders() map[string]interface{}
 	GetChangeContext() *change.Context
+
+	// GetPrimaryIdentity returns the current in context identity, which should be nil for primary and filled for secondary
+	GetPrimaryIdentity() *Identity
+
+	// SetPrimaryIdentity sets the identity already verified by a primary authentication method, used during secondary methods
+	SetPrimaryIdentity(*Identity)
 }
 
 type AuthContextHttp struct {
-	Method        string
-	Data          map[string]interface{}
-	Certs         []*x509.Certificate
-	Headers       map[string]interface{}
-	ChangeContext *change.Context
+	Method          string
+	Data            map[string]interface{}
+	Certs           []*x509.Certificate
+	Headers         map[string]interface{}
+	ChangeContext   *change.Context
+	PrimaryIdentity *Identity
 }
 
 func NewAuthContextHttp(request *http.Request, method string, data interface{}, ctx *change.Context) AuthContext {
@@ -113,6 +120,12 @@ func (context *AuthContextHttp) GetCerts() []*x509.Certificate {
 
 func (context *AuthContextHttp) GetChangeContext() *change.Context {
 	return context.ChangeContext
+}
+
+func (context *AuthContextHttp) GetPrimaryIdentity() *Identity { return context.PrimaryIdentity }
+
+func (context *AuthContextHttp) SetPrimaryIdentity(primaryIdentity *Identity) {
+	context.PrimaryIdentity = primaryIdentity
 }
 
 var _ AuthResult = &AuthResultBase{}
