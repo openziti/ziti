@@ -67,11 +67,7 @@ func NewControllerHealthCheckApiHandler(healthChecker gosundheit.Health, appEnv 
 		appEnv:        appEnv,
 		options:       options,
 	}
-	if value, found := options["enableRaftControllerCheck"]; found {
-		if f, ok := value.(bool); ok {
-			healthCheckApi.enableRaftControllerCheck = f
-		}
-	}
+	
 	return healthCheckApi, nil
 
 }
@@ -80,7 +76,6 @@ type ControllerHealthCheckApiHandler struct {
 	handler                   http.Handler
 	options                   map[interface{}]interface{}
 	appEnv                    *env.AppEnv
-	enableRaftControllerCheck bool
 	healthChecker             gosundheit.Health
 }
 
@@ -139,7 +134,8 @@ func (self *ControllerHealthCheckApiHandler) ServeHTTP(w http.ResponseWriter, re
 		}
 	}
 	data["checks"] = checks
-	if self.enableRaftControllerCheck {
+
+	if strings.HasSuffix(request.URL.Path, "/controller/raft") {
 		isRaftEnabled := self.appEnv.GetHostController().IsRaftEnabled()
 		isLeader := self.appEnv.GetHostController().IsRaftLeader()
 
