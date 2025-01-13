@@ -153,6 +153,7 @@ func (self *usageEventAdapter) AcceptMetricsMsg(message *metrics_pb.MetricsMessa
 					evt := &event.UsageEvent{
 						Namespace:        event.UsageEventsNs,
 						Version:          event.UsageEventsVersion,
+						EventSrcId:       self.dispatcher.ctrlId,
 						EventType:        name,
 						SourceId:         message.SourceId,
 						CircuitId:        circuitId,
@@ -169,8 +170,9 @@ func (self *usageEventAdapter) AcceptMetricsMsg(message *metrics_pb.MetricsMessa
 				for usageType, usage := range bucket.Values {
 					evt := &event.UsageEvent{
 						Namespace:        event.UsageEventsNs,
-						Version:          2,
+						Version:          event.UsageEventsVersion,
 						EventType:        "usage." + usageType,
+						EventSrcId:       self.dispatcher.ctrlId,
 						SourceId:         message.SourceId,
 						CircuitId:        circuitId,
 						Usage:            usage,
@@ -189,10 +191,11 @@ func (self *usageEventAdapter) AcceptMetricsMsg(message *metrics_pb.MetricsMessa
 			for _, bucket := range interval.Buckets {
 				for circuitId, usage := range bucket.Values {
 					evt := &event.UsageEventV3{
-						Namespace: event.UsageEventsNs,
-						Version:   3,
-						SourceId:  message.SourceId,
-						CircuitId: circuitId,
+						Namespace:  event.UsageEventsNs,
+						Version:    3,
+						EventSrcId: self.dispatcher.ctrlId,
+						SourceId:   message.SourceId,
+						CircuitId:  circuitId,
 						Usage: map[string]uint64{
 							name: usage,
 						},
@@ -210,6 +213,7 @@ func (self *usageEventAdapter) AcceptMetricsMsg(message *metrics_pb.MetricsMessa
 					Namespace:        event.UsageEventsNs,
 					Version:          3,
 					SourceId:         message.SourceId,
+					EventSrcId:       self.dispatcher.ctrlId,
 					CircuitId:        circuitId,
 					Usage:            bucket.Values,
 					IntervalStartUTC: interval.IntervalStartUTC,

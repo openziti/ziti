@@ -34,14 +34,15 @@ const (
 )
 
 type ConnectEvent struct {
-	Namespace string             `json:"namespace"`
-	SrcType   ConnectSource      `json:"src_type"`
-	DstType   ConnectDestination `json:"dst_type"`
-	SrcId     string             `json:"src_id"`
-	SrcAddr   string             `json:"src_addr"`
-	DstId     string             `json:"dst_id"`
-	DstAddr   string             `json:"dst_addr"`
-	Timestamp time.Time          `json:"timestamp"`
+	Namespace  string             `json:"namespace"`
+	EventSrcId string             `json:"event_src_id"`
+	SrcType    ConnectSource      `json:"src_type"`
+	DstType    ConnectDestination `json:"dst_type"`
+	SrcId      string             `json:"src_id"`
+	SrcAddr    string             `json:"src_addr"`
+	DstId      string             `json:"dst_id"`
+	DstAddr    string             `json:"dst_addr"`
+	Timestamp  time.Time          `json:"timestamp"`
 }
 
 type ConnectEventHandler interface {

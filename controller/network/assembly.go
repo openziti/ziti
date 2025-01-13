@@ -77,6 +77,7 @@ func (network *Network) NotifyLinkEvent(link *model.Link, eventType event.LinkEv
 	linkEvent := &event.LinkEvent{
 		Namespace:   event.LinkEventsNs,
 		EventType:   eventType,
+		EventSrcId:  network.GetAppId(),
 		Timestamp:   time.Now(),
 		LinkId:      link.Id,
 		SrcRouterId: link.Src.Id,
@@ -92,6 +93,7 @@ func (network *Network) NotifyLinkConnected(link *model.Link, msg *ctrl_pb.LinkC
 	linkEvent := &event.LinkEvent{
 		Namespace:   event.LinkEventsNs,
 		EventType:   event.LinkConnected,
+		EventSrcId:  network.GetAppId(),
 		Timestamp:   time.Now(),
 		LinkId:      link.Id,
 		SrcRouterId: link.Src.Id,
@@ -114,10 +116,11 @@ func (network *Network) NotifyLinkConnected(link *model.Link, msg *ctrl_pb.LinkC
 
 func (network *Network) NotifyLinkIdEvent(linkId string, eventType event.LinkEventType) {
 	linkEvent := &event.LinkEvent{
-		Namespace: event.LinkEventsNs,
-		EventType: eventType,
-		Timestamp: time.Now(),
-		LinkId:    linkId,
+		Namespace:  event.LinkEventsNs,
+		EventType:  eventType,
+		EventSrcId: network.GetAppId(),
+		Timestamp:  time.Now(),
+		LinkId:     linkId,
 	}
 	network.eventDispatcher.AcceptLinkEvent(linkEvent)
 }

@@ -82,6 +82,7 @@ func (self *serviceEventAdapter) AcceptMetrics(message *metrics_pb.MetricsMessag
 					Namespace:        "service.events",
 					Version:          2,
 					EventType:        name,
+					EventSrcId:       self.ctrlId,
 					ServiceId:        serviceId,
 					TerminatorId:     terminatorId,
 					Count:            count,

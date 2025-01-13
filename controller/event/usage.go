@@ -11,6 +11,7 @@ type UsageEvent struct {
 	Namespace        string            `json:"namespace"`
 	Version          uint32            `json:"version"`
 	EventType        string            `json:"event_type"`
+	EventSrcId       string            `json:"event_src_id"`
 	SourceId         string            `json:"source_id"`
 	CircuitId        string            `json:"circuit_id"`
 	Usage            uint64            `json:"usage"`
@@ -31,6 +32,7 @@ type UsageEventHandler interface {
 type UsageEventV3 struct {
 	Namespace        string            `json:"namespace"`
 	Version          uint32            `json:"version"`
+	EventSrcId       string            `json:"event_src_id"`
 	SourceId         string            `json:"source_id"`
 	CircuitId        string            `json:"circuit_id"`
 	Usage            map[string]uint64 `json:"usage"`

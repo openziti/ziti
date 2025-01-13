@@ -24,10 +24,11 @@ import (
 const EntityCountEventNS = "edge.entityCounts"
 
 type EntityCountEvent struct {
-	Namespace string           `json:"namespace"`
-	Timestamp time.Time        `json:"timestamp"`
-	Counts    map[string]int64 `json:"counts"`
-	Error     string           `json:"error"`
+	Namespace  string           `json:"namespace"`
+	EventSrcId string           `json:"event_src_id"`
+	Timestamp  time.Time        `json:"timestamp"`
+	Counts     map[string]int64 `json:"counts"`
+	Error      string           `json:"error"`
 }
 
 func (event *EntityCountEvent) String() string {
