@@ -698,7 +698,7 @@ func getApiPath(binding string) string {
 	case "fabric":
 		return "/fabric/v1"
 	case "health-checks":
-		return "health-checks"
+		return "/health-checks"
 	case "edge-oidc":
 		return "/oidc"
 	}

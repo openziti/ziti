@@ -37,7 +37,7 @@ NOTE: If the controller a router is connected changes modes, specifically if the
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.20 -> v1.0.23](https://github.com/openziti/agent/compare/v1.0.20...v1.0.23)
-* github.com/openziti/channel/v3: [v3.0.16 -> v3.0.25](https://github.com/openziti/channel/compare/v3.0.16...v3.0.25)
+* github.com/openziti/channel/v3: [v3.0.16 -> v3.0.26](https://github.com/openziti/channel/compare/v3.0.16...v3.0.26)
 * github.com/openziti/edge-api: [v0.26.35 -> v0.26.36](https://github.com/openziti/edge-api/compare/v0.26.35...v0.26.36)
     * [Issue #138](https://github.com/openziti/edge-api/issues/138) - management api deletes were generally not mapping 404 properly
 
@@ -46,11 +46,15 @@ NOTE: If the controller a router is connected changes modes, specifically if the
 * github.com/openziti/metrics: [v1.2.61 -> v1.2.65](https://github.com/openziti/metrics/compare/v1.2.61...v1.2.65)
 * github.com/openziti/runzmd: [v1.0.55 -> v1.0.59](https://github.com/openziti/runzmd/compare/v1.0.55...v1.0.59)
 * github.com/openziti/secretstream: [v0.1.26 -> v0.1.28](https://github.com/openziti/secretstream/compare/v0.1.26...v0.1.28)
-* github.com/openziti/storage: [v0.3.8 -> v0.3.14](https://github.com/openziti/storage/compare/v0.3.8...v0.3.14)
+* github.com/openziti/storage: [v0.3.8 -> v0.3.15](https://github.com/openziti/storage/compare/v0.3.8...v0.3.15)
     * [Issue #91](https://github.com/openziti/storage/issues/91) - Support dashes in identifier segments after the first dot
 
 * github.com/openziti/transport/v2: [v2.0.153 -> v2.0.159](https://github.com/openziti/transport/compare/v2.0.153...v2.0.159)
 * github.com/openziti/ziti: [v1.2.2 -> v1.2.3](https://github.com/openziti/ziti/compare/v1.2.2...v1.2.3)
+    * [Issue #2586](https://github.com/openziti/ziti/issues/2586) - Ziti Controller in HA mode doesn't update binding address in a bolt database after config changed
+    * [Issue #2639](https://github.com/openziti/ziti/issues/2639) - Change cluster events namespace from fabric.cluster to cluster
+    * [Issue #2184](https://github.com/openziti/ziti/issues/2184) - Add Event(s) For Controller Leader Connection State
+    * [Issue #2548](https://github.com/openziti/ziti/issues/2548) - Generate a log message if the cluster is without a leader for some configurable period of time
     * [Issue #2596](https://github.com/openziti/ziti/issues/2596) - Add DisableRouterDataModel config flag to controller
     * [Issue #2599](https://github.com/openziti/ziti/issues/2599) - Routers should only stream model data from one controller
     * [Issue #2232](https://github.com/openziti/ziti/issues/2232) - Standardized REST API Error For Mutation on Non-Consensus Controller

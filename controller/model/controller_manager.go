@@ -262,7 +262,7 @@ func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer, peerCo
 					Error("could not create controller during peer(s) connection")
 			}
 		} else if peerConnectedEvent || existing.IsChanged(newController) {
-			if err = self.Update(existing, nil, changeCtx); err != nil {
+			if err = self.Update(newController, nil, changeCtx); err != nil {
 				pfxlog.Logger().WithError(err).WithField("ctrlId", peer.Id).
 					Error("could not update controller during peer(s) connection")
 			}

@@ -12,13 +12,13 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.23
-	github.com/openziti/channel/v3 v3.0.25
+	github.com/openziti/channel/v3 v3.0.26
 	github.com/openziti/edge-api v0.26.36
 	github.com/openziti/fablab v0.5.83
 	github.com/openziti/foundation/v2 v2.0.56
 	github.com/openziti/identity v1.0.94
 	github.com/openziti/sdk-golang v0.23.44
-	github.com/openziti/storage v0.3.14
+	github.com/openziti/storage v0.3.15
 	github.com/openziti/transport/v2 v2.0.159
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -109,6 +109,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
+	github.com/judedaryl/go-arrayutils v0.0.1 // indirect
 	github.com/kataras/go-events v0.0.3 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kr/fs v0.1.0 // indirect
