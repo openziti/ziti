@@ -1,3 +1,9 @@
+# Release 1.1.16
+
+## What's New
+
+Update golang.org/x dependencies, specifically golang.org/x/crypto, for latest security fixes
+
 # Release 1.1.15
 
 ## What's New
