@@ -161,7 +161,12 @@ func (c *Controller) IsRaftEnabled() bool {
 	return c.raftController != nil
 }
 
-func (c *Controller) IsRaftLeader() bool { return c.raftController.IsLeader() }
+func (c *Controller) IsRaftLeader() bool {
+	if c.raftController == nil {
+		return false
+	}
+	return c.raftController.IsLeader()
+}
 
 func (c *Controller) GetRaftIndex() uint64 {
 	return c.raftController.Raft.LastIndex()

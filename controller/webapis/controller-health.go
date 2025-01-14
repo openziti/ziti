@@ -67,16 +67,15 @@ func NewControllerHealthCheckApiHandler(healthChecker gosundheit.Health, appEnv 
 		appEnv:        appEnv,
 		options:       options,
 	}
-	
+
 	return healthCheckApi, nil
 
 }
 
 type ControllerHealthCheckApiHandler struct {
-	handler                   http.Handler
-	options                   map[interface{}]interface{}
-	appEnv                    *env.AppEnv
-	healthChecker             gosundheit.Health
+	options       map[interface{}]interface{}
+	appEnv        *env.AppEnv
+	healthChecker gosundheit.Health
 }
 
 func (self ControllerHealthCheckApiHandler) Binding() string {
@@ -140,6 +139,8 @@ func (self *ControllerHealthCheckApiHandler) ServeHTTP(w http.ResponseWriter, re
 		isLeader := self.appEnv.GetHostController().IsRaftLeader()
 
 		if !isLeader && isRaftEnabled {
+			// this is uses 429 to be consistent with Vault. 503 seems like it would be more
+			// appropriate, but it just needs to be not 200, so using 429 for consistency
 			w.WriteHeader(429)
 		}
 
