@@ -56,12 +56,13 @@ func (self *ClusterPeer) String() string {
 }
 
 type ClusterEvent struct {
-	Namespace string           `json:"namespace"`
-	EventType ClusterEventType `json:"eventType"`
-	Timestamp time.Time        `json:"timestamp"`
-	Index     uint64           `json:"index,omitempty"`
-	Peers     []*ClusterPeer   `json:"peers,omitempty"`
-	LeaderId  string           `json:"leaderId,omitempty"`
+	Namespace  string           `json:"namespace"`
+	EventType  ClusterEventType `json:"eventType"`
+	EventSrcId string           `json:"event_src_id"`
+	Timestamp  time.Time        `json:"timestamp"`
+	Index      uint64           `json:"index,omitempty"`
+	Peers      []*ClusterPeer   `json:"peers,omitempty"`
+	LeaderId   string           `json:"leaderId,omitempty"`
 }
 
 func (event *ClusterEvent) String() string {

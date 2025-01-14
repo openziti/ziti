@@ -44,6 +44,7 @@ type LinkConnection struct {
 type LinkEvent struct {
 	Namespace   string            `json:"namespace"`
 	EventType   LinkEventType     `json:"event_type"`
+	EventSrcId  string            `json:"event_src_id"`
 	Timestamp   time.Time         `json:"timestamp"`
 	LinkId      string            `json:"link_id"`
 	SrcRouterId string            `json:"src_router_id"`

@@ -525,6 +525,7 @@ func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenR
 	evt := &event.ApiSessionEvent{
 		Namespace:  event.ApiSessionEventNS,
 		EventType:  eventType,
+		EventSrcId: s.env.GetId(),
 		Id:         claims.ApiSessionId,
 		Type:       event.ApiSessionTypeJwt,
 		Timestamp:  time.Now(),

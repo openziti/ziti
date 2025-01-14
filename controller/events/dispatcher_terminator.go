@@ -204,6 +204,7 @@ func (self *terminatorEventAdapter) createTerminatorEvent(eventType event.Termin
 	evt := &event.TerminatorEvent{
 		Namespace:                 event.TerminatorEventsNs,
 		EventType:                 eventType,
+		EventSrcId:                self.Dispatcher.ctrlId,
 		Timestamp:                 time.Now(),
 		ServiceId:                 terminator.Service,
 		TerminatorId:              terminator.Id,

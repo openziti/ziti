@@ -34,6 +34,7 @@ const (
 type SdkEvent struct {
 	Namespace  string       `json:"namespace"`
 	EventType  SdkEventType `json:"event_type"`
+	EventSrcId string       `json:"event_src_id"`
 	Timestamp  time.Time    `json:"timestamp"`
 	IdentityId string       `json:"identity_id"`
 }

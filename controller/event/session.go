@@ -28,6 +28,7 @@ const SessionEventNS = "edge.sessions"
 type SessionEvent struct {
 	Namespace    string    `json:"namespace"`
 	EventType    string    `json:"event_type"`
+	EventSrcId   string    `json:"event_src_id"`
 	SessionType  string    `json:"session_type"`
 	Id           string    `json:"id"`
 	Timestamp    time.Time `json:"timestamp"`

@@ -31,6 +31,7 @@ func (self *Dispatcher) RemoveClusterEventHandler(handler event.ClusterEventHand
 }
 
 func (self *Dispatcher) AcceptClusterEvent(event *event.ClusterEvent) {
+	event.EventSrcId = self.ctrlId
 	go func() {
 		for _, handler := range self.clusterEventHandlers.Value() {
 			handler.AcceptClusterEvent(event)

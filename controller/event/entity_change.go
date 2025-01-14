@@ -35,6 +35,7 @@ type EntityChangeEvent struct {
 	Namespace          string                `json:"namespace"`
 	EventId            string                `json:"eventId"`
 	EventType          EntityChangeEventType `json:"eventType"`
+	EventSrcId         string                `json:"event_src_id"`
 	Timestamp          time.Time             `json:"timestamp"`
 	Metadata           map[string]any        `json:"metadata,omitempty"`
 	EntityType         string                `json:"entityType,omitempty"`

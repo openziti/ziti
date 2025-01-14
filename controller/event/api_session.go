@@ -33,6 +33,7 @@ const ApiSessionTypeJwt = "jwt"
 type ApiSessionEvent struct {
 	Namespace  string    `json:"namespace"`
 	EventType  string    `json:"event_type"`
+	EventSrcId string    `json:"event_src_id"`
 	Id         string    `json:"id"`
 	Type       string    `json:"type"`
 	Timestamp  time.Time `json:"timestamp"`

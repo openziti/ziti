@@ -235,6 +235,7 @@ func (self *entityChangeEventDispatcher) ProcessPreCommit(state boltz.UntypedEnt
 		Namespace:          event.EntityChangeEventsNs,
 		EventId:            state.GetEventId(),
 		EventType:          changeType,
+		EventSrcId:         self.dispatcher.ctrlId,
 		EntityType:         state.GetStore().GetEntityType(),
 		IsParentEvent:      &isParentEvent,
 		Timestamp:          time.Now(),
@@ -265,9 +266,10 @@ func (self *entityChangeEventDispatcher) ProcessPreCommit(state boltz.UntypedEnt
 func (self *entityChangeEventDispatcher) emitRecoveryEvent(eventId string, entityType string) {
 	evt := &event.EntityChangeEvent{
 		Namespace:       event.EntityChangeEventsNs,
+		EventType:       event.EntityChangeTypeCommitted,
+		EventSrcId:      self.dispatcher.ctrlId,
 		EventId:         eventId,
 		EntityType:      entityType,
-		EventType:       event.EntityChangeTypeCommitted,
 		Timestamp:       time.Now(),
 		IsRecoveryEvent: true,
 	}
@@ -280,6 +282,7 @@ func (self *entityChangeEventDispatcher) ProcessPostCommit(state boltz.UntypedEn
 		Namespace:          event.EntityChangeEventsNs,
 		EventId:            state.GetEventId(),
 		EventType:          event.EntityChangeTypeCommitted,
+		EventSrcId:         self.dispatcher.ctrlId,
 		EntityType:         state.GetStore().GetEntityType(),
 		Timestamp:          time.Now(),
 		IsParentEvent:      &isParentEvent,

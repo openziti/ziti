@@ -62,6 +62,7 @@ func Test_FilterMetrics(t *testing.T) {
 	closeNotify := make(chan struct{})
 	defer close(closeNotify)
 	dispatcher := NewDispatcher(closeNotify)
+	dispatcher.ctrlId = "ctrl1"
 
 	unfilteredEventC := make(chan *event.MetricsEvent, 1)
 	adapter := dispatcher.NewFilteredMetricsAdapter(nil, nil, event.MetricsEventHandlerF(func(evt *event.MetricsEvent) {
