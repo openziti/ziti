@@ -982,3 +982,14 @@ func (bucket *TypedBucket) copyImpl(other *TypedBucket, filterF func(path []stri
 	}
 	return nil
 }
+
+func (bucket *TypedBucket) ForEachTypedBucket(f func(key string, bucket *TypedBucket) error) error {
+	return bucket.ForEachBucket(func(k []byte) error {
+		if childBucket := bucket.GetBucketByKey(k); childBucket != nil {
+			if err := f(string(k), childBucket); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
