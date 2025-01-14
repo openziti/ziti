@@ -19,7 +19,7 @@ events:
   jsonLogger:
     subscriptions:
       - type: connect
-#      - type: fabric.cluster
+      - type: cluster
     handler:
       type: file
       format: json

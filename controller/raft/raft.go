@@ -77,6 +77,8 @@ const (
 	ClusterEventReadWrite        ClusterEvent = 1
 	ClusterEventLeadershipGained ClusterEvent = 2
 	ClusterEventLeadershipLost   ClusterEvent = 3
+	ClusterEventHasLeader        ClusterEvent = 4
+	ClusterEventIsLeaderless     ClusterEvent = 5
 
 	isLeaderMask    = 0b01
 	isReadWriteMask = 0b10
@@ -145,7 +147,7 @@ type Controller struct {
 	closeNotify                <-chan struct{}
 	indexTracker               IndexTracker
 	migrationMgr               MigrationManager
-	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState)]
+	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState, leaderId string)]
 	isLeader                   atomic.Bool
 	clusterEvents              chan raft.Observation
 	commandRateLimiter         rate.RateLimiter
@@ -180,9 +182,9 @@ func (self *Controller) initErrorMappers() {
 	self.errorMappers[fmt.Sprintf("%T", &errorz.FieldError{})] = self.parseFieldError
 }
 
-func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, state ClusterState)) {
+func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, state ClusterState, leaderId string)) {
 	if self.isLeader.Load() {
-		f(ClusterEventLeadershipGained, newClusterState(true, !self.Mesh.IsReadOnly()))
+		f(ClusterEventLeadershipGained, newClusterState(true, !self.Mesh.IsReadOnly()), "")
 	}
 	self.clusterStateChangeHandlers.Append(f)
 }
@@ -595,6 +597,12 @@ func (self *Controller) Init() error {
 		return errors.Wrap(err, "failed to initialise raft")
 	}
 
+	r.RegisterObserver(raft.NewObserver(self.clusterEvents, true, func(o *raft.Observation) bool {
+		_, isRaftState := o.Data.(raft.RaftState)
+		_, isLeaderState := o.Data.(raft.LeaderObservation)
+		return isRaftState || isLeaderState
+	}))
+
 	rc := r.ReloadableConfig()
 	self.ConfigureReloadable(raftConfig, &rc)
 	if err = r.ReloadConfig(rc); err != nil {
@@ -602,10 +610,14 @@ func (self *Controller) Init() error {
 	}
 
 	self.Raft = r
-	self.addEventsHandlers()
-	self.ObserveLeaderChanges()
+	self.Fsm.GetCurrentState(self.Raft) // init cached configuration
 
 	return nil
+}
+
+func (self *Controller) StartEventGeneration() {
+	self.addEventsHandlers()
+	self.ObserveLeaderChanges()
 }
 
 func (self *Controller) Configure(ctrlConfig *config.RaftConfig, conf *raft.Config) {
@@ -667,48 +679,99 @@ func (self *Controller) validateCert() {
 	}
 }
 
-func (self *Controller) ObserveLeaderChanges() {
-	self.Raft.RegisterObserver(raft.NewObserver(self.clusterEvents, true, func(o *raft.Observation) bool {
-		_, ok := o.Data.(raft.RaftState)
-		return ok
-	}))
+type clusterEventState struct {
+	isReadWrite    bool
+	hasLeader      bool
+	noLeaderAt     time.Time
+	warningEmitted bool
+	leaderId       string
+}
 
+func (self *Controller) ObserveLeaderChanges() {
 	go func() {
-		if self.Raft.State() == raft.Leader {
-			self.isLeader.Store(true)
-			self.handleClusterStateChange(ClusterEventLeadershipGained, newClusterState(true, true))
+		leaderAddr, leaderId := self.Raft.LeaderWithID()
+
+		eventState := &clusterEventState{
+			isReadWrite: true,
+			hasLeader:   leaderAddr != "",
+			noLeaderAt:  time.Now(),
+			leaderId:    string(leaderId),
 		}
 
-		isReadWrite := true
+		if self.Raft.State() == raft.Leader {
+			self.isLeader.Store(true)
+			self.handleClusterStateChange(ClusterEventLeadershipGained, eventState)
+		}
 
-		for observation := range self.clusterEvents {
-			pfxlog.Logger().Tracef("raft observation received: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), isReadWrite)
-			if raftState, ok := observation.Data.(raft.RaftState); ok {
-				if raftState == raft.Leader && !self.isLeader.Load() {
-					self.isLeader.Store(true)
-					self.handleClusterStateChange(ClusterEventLeadershipGained, newClusterState(true, isReadWrite))
-				} else if raftState != raft.Leader && self.isLeader.Load() {
-					self.isLeader.Store(false)
-					self.handleClusterStateChange(ClusterEventLeadershipLost, newClusterState(false, isReadWrite))
-				}
-			} else if state, ok := observation.Data.(mesh.ClusterState); ok {
-				if state == mesh.ClusterReadWrite {
-					isReadWrite = true
-					self.handleClusterStateChange(ClusterEventReadWrite, newClusterState(self.isLeader.Load(), isReadWrite))
-				} else if state == mesh.ClusterReadOnly {
-					isReadWrite = false
-					self.handleClusterStateChange(ClusterEventReadOnly, newClusterState(self.isLeader.Load(), isReadWrite))
+		if eventState.hasLeader {
+			self.handleClusterStateChange(ClusterEventHasLeader, eventState)
+		} else {
+			self.handleClusterStateChange(ClusterEventIsLeaderless, eventState)
+		}
+
+		ticker := time.NewTicker(time.Second * 5)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case observation := <-self.clusterEvents:
+				self.processRaftObservation(observation, eventState)
+			case <-ticker.C:
+				if !eventState.warningEmitted && !eventState.hasLeader && time.Since(eventState.noLeaderAt) > self.Config.WarnWhenLeaderlessFor {
+					pfxlog.Logger().WithField("timeSinceLeader", time.Since(eventState.noLeaderAt).String()).
+						Warn("cluster running without leader for longer than configured threshold")
+					eventState.warningEmitted = true
 				}
 			}
-
-			pfxlog.Logger().Tracef("raft observation processed: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), isReadWrite)
 		}
 	}()
 }
 
-func (self *Controller) handleClusterStateChange(event ClusterEvent, state ClusterState) {
+func (self *Controller) processRaftObservation(observation raft.Observation, eventState *clusterEventState) {
+	pfxlog.Logger().Tracef("raft observation received: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), eventState.isReadWrite)
+
+	if raftState, ok := observation.Data.(raft.RaftState); ok {
+		if raftState == raft.Leader && !self.isLeader.Load() {
+			self.isLeader.Store(true)
+			self.handleClusterStateChange(ClusterEventLeadershipGained, eventState)
+		} else if raftState != raft.Leader && self.isLeader.Load() {
+			self.isLeader.Store(false)
+			self.handleClusterStateChange(ClusterEventLeadershipLost, eventState)
+		}
+	}
+
+	if state, ok := observation.Data.(mesh.ClusterState); ok {
+		if state == mesh.ClusterReadWrite {
+			eventState.isReadWrite = true
+			self.handleClusterStateChange(ClusterEventReadWrite, eventState)
+		} else if state == mesh.ClusterReadOnly {
+			eventState.isReadWrite = false
+			self.handleClusterStateChange(ClusterEventReadOnly, eventState)
+		}
+	}
+
+	if leaderState, ok := observation.Data.(raft.LeaderObservation); ok {
+		if leaderState.LeaderAddr == "" {
+			if eventState.hasLeader {
+				eventState.warningEmitted = false
+				eventState.noLeaderAt = time.Now()
+				eventState.hasLeader = false
+				eventState.leaderId = ""
+				self.handleClusterStateChange(ClusterEventIsLeaderless, eventState)
+			}
+		} else if !eventState.hasLeader {
+			eventState.hasLeader = true
+			eventState.leaderId = string(leaderState.LeaderID)
+			self.handleClusterStateChange(ClusterEventHasLeader, eventState)
+		}
+	}
+
+	pfxlog.Logger().Tracef("raft observation processed: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), eventState.isReadWrite)
+}
+
+func (self *Controller) handleClusterStateChange(event ClusterEvent, eventState *clusterEventState) {
 	for _, handler := range self.clusterStateChangeHandlers.Value() {
-		handler(event, state)
+		handler(event, newClusterState(self.isLeader.Load(), eventState.isReadWrite), eventState.leaderId)
 	}
 }
 
@@ -849,11 +912,11 @@ func (self *Controller) RemoveServer(id string) error {
 
 func (self *Controller) CtrlAddresses() (uint64, []string) {
 	ret := make([]string, 0)
-	index, cfg := self.Fsm.GetCurrentState(self.Raft)
-	for _, srvr := range cfg.Servers {
+	srvs := self.Fsm.GetCurrentState(self.Raft)
+	for _, srvr := range srvs.Servers {
 		ret = append(ret, string(srvr.Address))
 	}
-	return index, ret
+	return srvs.Index, ret
 }
 
 func (self *Controller) RenderJsonConfig() (string, error) {
@@ -865,8 +928,8 @@ func (self *Controller) RenderJsonConfig() (string, error) {
 func (self *Controller) getClusterPeersForEvent() []*event.ClusterPeer {
 	var peers []*event.ClusterPeer
 
-	_, cfg := self.Fsm.GetCurrentState(self.Raft)
-	for _, srv := range cfg.Servers {
+	srvs := self.Fsm.GetCurrentState(self.Raft)
+	for _, srv := range srvs.Servers {
 		peers = append(peers, &event.ClusterPeer{
 			Id:   string(srv.ID),
 			Addr: string(srv.Address),
@@ -877,26 +940,32 @@ func (self *Controller) getClusterPeersForEvent() []*event.ClusterPeer {
 }
 
 func (self *Controller) addEventsHandlers() {
-	self.RegisterClusterEventHandler(func(evt ClusterEvent, state ClusterState) {
+	self.RegisterClusterEventHandler(func(evt ClusterEvent, state ClusterState, leaderId string) {
 		switch evt {
 		case ClusterEventLeadershipGained:
-			self.newClusterEvent(event.ClusterLeadershipGained, self.getClusterPeersForEvent())
+			clusterEvent := event.NewClusterEvent(event.ClusterLeadershipGained)
+			clusterEvent.Peers = self.getClusterPeersForEvent()
+			self.env.GetEventDispatcher().AcceptClusterEvent(clusterEvent)
 		case ClusterEventLeadershipLost:
-			self.newClusterEvent(event.ClusterLeadershipLost, nil)
+			clusterEvent := event.NewClusterEvent(event.ClusterLeadershipLost)
+			self.env.GetEventDispatcher().AcceptClusterEvent(clusterEvent)
 		case ClusterEventReadOnly:
-			self.newClusterEvent(event.ClusterStateReadOnly, nil)
+			clusterEvent := event.NewClusterEvent(event.ClusterStateReadOnly)
+			self.env.GetEventDispatcher().AcceptClusterEvent(clusterEvent)
 		case ClusterEventReadWrite:
-			self.newClusterEvent(event.ClusterStateReadWrite, nil)
+			clusterEvent := event.NewClusterEvent(event.ClusterStateReadWrite)
+			self.env.GetEventDispatcher().AcceptClusterEvent(clusterEvent)
+		case ClusterEventHasLeader:
+			clusterEvent := event.NewClusterEvent(event.ClusterHasLeader)
+			clusterEvent.LeaderId = leaderId
+			self.env.GetEventDispatcher().AcceptClusterEvent(clusterEvent)
+		case ClusterEventIsLeaderless:
+			clusterEvent := event.NewClusterEvent(event.ClusterIsLeaderless)
+			self.env.GetEventDispatcher().AcceptClusterEvent(clusterEvent)
 		default:
 			pfxlog.Logger().Errorf("unhandled cluster event type: %v", evt)
 		}
 	})
-}
-
-func (self *Controller) newClusterEvent(eventType event.ClusterEventType, peers []*event.ClusterPeer) {
-	evt := event.NewClusterEvent(eventType)
-	evt.Peers = peers
-	self.env.GetEventDispatcher().AcceptClusterEvent(evt)
 }
 
 type MigrationManager interface {

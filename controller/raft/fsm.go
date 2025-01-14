@@ -36,6 +36,12 @@ import (
 	"sync/atomic"
 )
 
+const (
+	ServersBucket      = "servers"
+	ServerAddressField = "address"
+	ServerIsVoterField = "isVoter"
+)
+
 func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, eventDispatcher event2.Dispatcher) *BoltDbFsm {
 	return &BoltDbFsm{
 		decoders:        decoders,
@@ -45,13 +51,18 @@ func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker
 	}
 }
 
+type ServersWithIndex struct {
+	Servers []raft.Server
+	Index   uint64
+}
+
 type BoltDbFsm struct {
 	db              boltz.Db
 	dbPath          string
 	decoders        command.Decoders
 	indexTracker    IndexTracker
 	eventDispatcher event2.Dispatcher
-	currentState    atomic.Pointer[raft.Configuration]
+	currentState    atomic.Pointer[ServersWithIndex]
 	index           uint64
 }
 
@@ -69,8 +80,13 @@ func (self *BoltDbFsm) Init() error {
 	if err != nil {
 		return err
 	}
+
 	self.index = index
 	self.indexTracker.NotifyOfIndex(index)
+
+	if err = self.loadServers(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -92,6 +108,68 @@ func (self *BoltDbFsm) loadDbIndex(zitiDb boltz.Db) (uint64, error) {
 	return result, err
 }
 
+func (self *BoltDbFsm) loadServers() error {
+	var result []raft.Server
+	err := self.db.View(func(tx *bbolt.Tx) error {
+		serversBucket := boltz.Path(tx, db.RootBucket, db.MetadataBucket, ServersBucket)
+		if serversBucket == nil {
+			return nil
+		}
+		return serversBucket.ForEachBucket(func(k []byte) error {
+			serverId := string(k)
+			serverBucket := serversBucket.GetBucket(serverId)
+			serverAddr := serverBucket.GetStringWithDefault(ServerAddressField, "")
+			isVoter := serverBucket.GetBoolWithDefault(ServerIsVoterField, false)
+			result = append(result, raft.Server{
+				Suffrage: func() raft.ServerSuffrage {
+					if isVoter {
+						return raft.Voter
+					}
+					return raft.Nonvoter
+				}(),
+				ID:      raft.ServerID(serverId),
+				Address: raft.ServerAddress(serverAddr),
+			})
+			return nil
+		})
+	})
+	self.currentState.Store(&ServersWithIndex{
+		Servers: result,
+		Index:   self.index,
+	})
+	return err
+}
+
+func (self *BoltDbFsm) storeConfigurationInRaft(index uint64, servers []raft.Server) {
+	err := self.db.Update(nil, func(ctx boltz.MutateContext) error {
+		if err := self.updateIndexInTx(ctx.Tx(), index); err != nil {
+			return err
+		}
+		return self.storeServers(ctx.Tx(), servers)
+	})
+	if err != nil {
+		pfxlog.Logger().WithField("index", index).WithField("servers", servers).
+			WithError(err).Error("failed to store current raft configuration")
+	}
+}
+func (self *BoltDbFsm) storeServers(tx *bbolt.Tx, servers []raft.Server) error {
+	raftBucket := boltz.GetOrCreatePath(tx, db.RootBucket, db.MetadataBucket)
+	if err := raftBucket.DeleteBucket([]byte(ServersBucket)); err != nil {
+		return err
+	}
+
+	for _, server := range servers {
+		serverBucket := boltz.GetOrCreatePath(tx, db.RootBucket, db.MetadataBucket, ServersBucket, string(server.ID))
+		serverBucket.SetString(ServerAddressField, string(server.Address), nil)
+		serverBucket.SetBool(ServerIsVoterField, server.Suffrage == raft.Voter, nil)
+		if serverBucket.HasError() {
+			return serverBucket.GetError()
+		}
+	}
+
+	return nil
+}
+
 func (self *BoltDbFsm) updateIndexInTx(tx *bbolt.Tx, index uint64) error {
 	raftBucket := boltz.GetOrCreatePath(tx, db.RootBucket, db.MetadataBucket)
 	raftBucket.SetInt64(db.FieldRaftIndex, int64(index), nil)
@@ -107,30 +185,43 @@ func (self *BoltDbFsm) updateIndex(index uint64) {
 	}
 }
 
-func (self *BoltDbFsm) GetCurrentState(raft *raft.Raft) (uint64, *raft.Configuration) {
+func (self *BoltDbFsm) GetCurrentState(raft *raft.Raft) *ServersWithIndex {
 	currentState := self.currentState.Load()
 	if currentState == nil {
 		if err := raft.GetConfiguration().Error(); err != nil {
 			pfxlog.Logger().WithError(err).Error("error getting configuration future")
 		}
-		cfg := raft.GetConfiguration().Configuration()
-		currentState = &cfg
-		self.currentState.CompareAndSwap(nil, currentState)
+		cfgFuture := raft.GetConfiguration()
+		cfg := cfgFuture.Configuration()
+		currentState = &ServersWithIndex{
+			Servers: cfg.Servers,
+			Index:   cfgFuture.Index(),
+		}
+		if !self.currentState.CompareAndSwap(nil, currentState) {
+			currentState = self.currentState.Load()
+		}
 	}
-	return self.indexTracker.Index(), currentState
+	return currentState
 }
 
 func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Configuration) {
-	self.currentState.Store(&configuration)
-	evt := event2.NewClusterEvent(event2.ClusterMembersChanged)
-	evt.Index = index
-	for _, srv := range configuration.Servers {
-		evt.Peers = append(evt.Peers, &event2.ClusterPeer{
-			Id:   string(srv.ID),
-			Addr: string(srv.Address),
+	current := self.currentState.Load()
+	if current == nil || current.Index < index {
+		self.storeConfigurationInRaft(index, configuration.Servers)
+		self.currentState.Store(&ServersWithIndex{
+			Servers: configuration.Servers,
+			Index:   index,
 		})
+		evt := event2.NewClusterEvent(event2.ClusterMembersChanged)
+		evt.Index = index
+		for _, srv := range configuration.Servers {
+			evt.Peers = append(evt.Peers, &event2.ClusterPeer{
+				Id:   string(srv.ID),
+				Addr: string(srv.Address),
+			})
+		}
+		self.eventDispatcher.AcceptClusterEvent(evt)
 	}
-	self.eventDispatcher.AcceptClusterEvent(evt)
 }
 
 func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
