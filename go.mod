@@ -28,7 +28,7 @@ require (
 	github.com/go-openapi/strfmt v0.23.0
 	github.com/go-openapi/swag v0.23.0
 	github.com/go-openapi/validate v0.24.0
-	github.com/go-resty/resty/v2 v2.16.2
+	github.com/go-resty/resty/v2 v2.16.3
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
@@ -38,7 +38,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/hashicorp/raft v1.7.1
+	github.com/hashicorp/raft v1.7.2
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0
 	github.com/jedib0t/go-pretty/v6 v6.6.5
 	github.com/jessevdk/go-flags v1.6.1
@@ -134,6 +134,7 @@ require (
 	github.com/gorilla/schema v1.4.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
+	github.com/hashicorp/go-metrics v0.5.4 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.2 // indirect
 	github.com/hashicorp/golang-lru v0.6.0 // indirect
