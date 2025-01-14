@@ -1111,7 +1111,7 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 				SrcId:     rc.ApiSession.IdentityId,
 				SrcAddr:   rc.Request.RemoteAddr,
 				DstId:     ae.HostController.GetNetwork().GetAppId(),
-				DstAddr:   rc.Request.Host + rc.Request.RequestURI,
+				DstAddr:   rc.Request.Host,
 				Timestamp: time.Now(),
 			}
 			ae.GetEventDispatcher().AcceptConnectEvent(connectEvent)
