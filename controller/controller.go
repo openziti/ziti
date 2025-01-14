@@ -35,7 +35,6 @@ import (
 	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/concurrency"
-	"github.com/openziti/ziti/common/health"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/profiler"
@@ -296,7 +295,7 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create health checker")
 	}
 
-	if err = c.xweb.GetRegistry().Add(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
+	if err = c.xweb.GetRegistry().Add(webapis.NewControllerHealthCheckApiFactory(c.env, healthChecker)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
