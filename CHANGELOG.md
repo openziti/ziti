@@ -4,6 +4,7 @@
 
 * Router Data Model enabled by default
 * Bug fixes
+* Controller Health Check HA Update (from @nenkoru)
 
 ## Router Data Model
 
@@ -34,6 +35,40 @@ NOTE: If the controller a router is connected changes modes, specifically if the
       supporting the router data model to not, or vice-versa, the router will shutdown so that it can
       restart with the correct mode.
 
+## Controller Health Check HA Update
+
+This feature was contributed by @nenkoru.
+
+The controller health check can now optionally return information about raft and leadership when the `/controller/raft` path is provided.
+
+```
+$ curl -k https://localhost:1280/health-checks/controller/raft
+{
+    "data": {
+        "checks": [
+            {
+                "healthy": true,
+                "id": "bolt.read",
+                "lastCheckDuration": "0s",
+                "lastCheckTime": "2025-01-14T19:42:13Z"
+            }
+        ],
+        "healthy": true
+    },
+    "meta": {},
+    "raft": {
+        "isLeader": true,
+        "isRaftEnabled": true
+    }
+}
+```
+
+Note the `raft` section, which indicates if raft is enabled and if the queried controller is currently the leader. If the 
+`controller/raft` path isn't present in the request, the result should be unchanged from previous releases. 
+
+When querying the controller/raft health, if raft is enabled but the controller is not the leader, the check will
+return an HTTP status of 429.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.20 -> v1.0.23](https://github.com/openziti/agent/compare/v1.0.20...v1.0.23)
@@ -51,15 +86,20 @@ NOTE: If the controller a router is connected changes modes, specifically if the
 
 * github.com/openziti/transport/v2: [v2.0.153 -> v2.0.159](https://github.com/openziti/transport/compare/v2.0.153...v2.0.159)
 * github.com/openziti/ziti: [v1.2.2 -> v1.2.3](https://github.com/openziti/ziti/compare/v1.2.2...v1.2.3)
+    * [Issue #2582](https://github.com/openziti/ziti/issues/2582) - An endpoint to determine whether a node is a raft leader
+    * [Issue #2619](https://github.com/openziti/ziti/issues/2619) - Add source id to all events
+    * [Issue #2636](https://github.com/openziti/ziti/issues/2636) - Enable HA smoketest
     * [Issue #2586](https://github.com/openziti/ziti/issues/2586) - Ziti Controller in HA mode doesn't update binding address in a bolt database after config changed
     * [Issue #2639](https://github.com/openziti/ziti/issues/2639) - Change cluster events namespace from fabric.cluster to cluster
     * [Issue #2184](https://github.com/openziti/ziti/issues/2184) - Add Event(s) For Controller Leader Connection State
     * [Issue #2548](https://github.com/openziti/ziti/issues/2548) - Generate a log message if the cluster is without a leader for some configurable period of time
+    * [Issue #2624](https://github.com/openziti/ziti/issues/2624) - Remove uri/params from connect events
     * [Issue #2596](https://github.com/openziti/ziti/issues/2596) - Add DisableRouterDataModel config flag to controller
     * [Issue #2599](https://github.com/openziti/ziti/issues/2599) - Routers should only stream model data from one controller
     * [Issue #2232](https://github.com/openziti/ziti/issues/2232) - Standardized REST API Error For Mutation on Non-Consensus Controller
     * [Issue #2566](https://github.com/openziti/ziti/issues/2566) - Remove HA config flag from router
     * [Issue #2550](https://github.com/openziti/ziti/issues/2550) - Router Data Model Chaos Test
+    * [Issue #2625](https://github.com/openziti/ziti/issues/2625) - edge sessions for an ERT may not be cleaned up when the ER/T is deleted 
 
 # Release 1.2.2
 
