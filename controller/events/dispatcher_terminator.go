@@ -55,11 +55,18 @@ func (self *Dispatcher) AcceptTerminatorEvent(event *event.TerminatorEvent) {
 	}()
 }
 
-func (self *Dispatcher) registerTerminatorEventHandler(val interface{}, options map[string]interface{}) error {
+func (self *Dispatcher) registerTerminatorEventHandler(eventType string, val interface{}, options map[string]interface{}) error {
 	handler, ok := val.(event.TerminatorEventHandler)
 
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/TerminatorEventHandler interface.", reflect.TypeOf(val))
+	}
+
+	if eventType != event.TerminatorEventNS {
+		handler = &terminatorEventOldNsAdapter{
+			namespace: eventType,
+			wrapped:   handler,
+		}
 	}
 
 	propagateAlways := false
@@ -99,6 +106,27 @@ func (self *Dispatcher) initTerminatorEvents(n *network.Network) {
 	n.GetStores().Terminator.AddEntityEventListenerF(terminatorEvtAdapter.terminatorDeleted, boltz.EntityDeleted)
 
 	n.AddRouterPresenceHandler(terminatorEvtAdapter)
+}
+
+type terminatorEventOldNsAdapter struct {
+	namespace string
+	wrapped   event.TerminatorEventHandler
+}
+
+func (self *terminatorEventOldNsAdapter) AcceptTerminatorEvent(evt *event.TerminatorEvent) {
+	nsEvent := *evt
+	nsEvent.Namespace = self.namespace
+	self.wrapped.AcceptTerminatorEvent(&nsEvent)
+}
+
+func (self *terminatorEventOldNsAdapter) IsWrapping(value event.TerminatorEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.TerminatorEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }
 
 type terminatorEventFilter struct {
@@ -202,7 +230,7 @@ func (self *terminatorEventAdapter) createTerminatorEvent(eventType event.Termin
 	}
 
 	evt := &event.TerminatorEvent{
-		Namespace:                 event.TerminatorEventsNs,
+		Namespace:                 event.TerminatorEventNS,
 		EventType:                 eventType,
 		EventSrcId:                self.Dispatcher.ctrlId,
 		Timestamp:                 time.Now(),

@@ -30,7 +30,15 @@ func (self *Dispatcher) AddRouterEventHandler(handler event.RouterEventHandler) 
 }
 
 func (self *Dispatcher) RemoveRouterEventHandler(handler event.RouterEventHandler) {
-	self.routerEventHandlers.Delete(handler)
+	self.routerEventHandlers.DeleteIf(func(val event.RouterEventHandler) bool {
+		if val == handler {
+			return true
+		}
+		if w, ok := val.(event.RouterEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) AcceptRouterEvent(event *event.RouterEvent) {
@@ -48,11 +56,18 @@ func (self *Dispatcher) initRouterEvents(n *network.Network) {
 	n.AddRouterPresenceHandler(routerEvtAdapter)
 }
 
-func (self *Dispatcher) registerRouterEventHandler(val interface{}, _ map[string]interface{}) error {
+func (self *Dispatcher) registerRouterEventHandler(eventType string, val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.RouterEventHandler)
 
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/RouterEventHandler interface.", reflect.TypeOf(val))
+	}
+
+	if eventType != event.RouterEventNS {
+		handler = &routerEventOldNsAdapter{
+			namespace: eventType,
+			wrapped:   handler,
+		}
 	}
 
 	self.AddRouterEventHandler(handler)
@@ -64,6 +79,27 @@ func (self *Dispatcher) unregisterRouterEventHandler(val interface{}) {
 	if handler, ok := val.(event.RouterEventHandler); ok {
 		self.RemoveRouterEventHandler(handler)
 	}
+}
+
+type routerEventOldNsAdapter struct {
+	namespace string
+	wrapped   event.RouterEventHandler
+}
+
+func (self *routerEventOldNsAdapter) AcceptRouterEvent(evt *event.RouterEvent) {
+	nsEvent := *evt
+	nsEvent.Namespace = self.namespace
+	self.wrapped.AcceptRouterEvent(&nsEvent)
+}
+
+func (self *routerEventOldNsAdapter) IsWrapping(value event.RouterEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.RouterEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }
 
 // routerEventAdapter converts network router presence events to event.RouterEvent
@@ -81,7 +117,7 @@ func (self *routerEventAdapter) RouterDisconnected(r *model.Router) {
 
 func (self *routerEventAdapter) routerChange(eventType event.RouterEventType, r *model.Router, online bool) {
 	evt := &event.RouterEvent{
-		Namespace:    event.RouterEventsNs,
+		Namespace:    event.RouterEventNS,
 		EventSrcId:   self.ctrlId,
 		EventType:    eventType,
 		Timestamp:    time.Now(),

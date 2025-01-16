@@ -24,19 +24,59 @@ import (
 type SdkEventType string
 
 const (
-	SdkEventsNs = "sdk"
+	SdkEventNS = "sdk"
 
 	SdkOnline        SdkEventType = "sdk-online"
 	SdkOffline       SdkEventType = "sdk-offline"
 	SdkStatusUnknown SdkEventType = "sdk-status-unknown"
 )
 
+// An SdkEvent is emitted when an sdk's connectivity to routers changes.
+//
+// Valid values for sdk event type are:
+//   - sdk-online - identity is online
+//   - sdk-offline - identity is offline
+//   - sdk-status-unknown - status is unknown because the routers that reported the identity online are not connected to the controller
+//
+// Example: SDK identity is online
+//
+//	{
+//	 "namespace": "sdk",
+//	 "event_src_id": "ctrl1",
+//	 "event_type" : "sdk-online",
+//	 "identity_id": "ji2Rt8KJ4",
+//	 "timestamp": "2024-10-02T12:17:39.501821249-04:00"
+//	}
+//
+// Example: SDK identity online status is unknown
+//
+//	{
+//	 "namespace": "sdk",
+//	 "event_src_id": "ctrl1",
+//	 "event_type" : "sdk-status-unknown",
+//	 "identity_id": "ji2Rt8KJ4",
+//	 "timestamp": "2024-10-02T12:17:40.501821249-04:00"
+//	}
+//
+// Example: SDK identit is offline
+//
+//	{
+//	 "namespace": "sdk",
+//	 "event_src_id": "ctrl1",
+//	 "event_type" : "sdk-offline",
+//	 "identity_id": "ji2Rt8KJ4",
+//	 "timestamp": "2024-10-02T12:17:41.501821249-04:00"
+//	}
 type SdkEvent struct {
-	Namespace  string       `json:"namespace"`
-	EventType  SdkEventType `json:"event_type"`
-	EventSrcId string       `json:"event_src_id"`
-	Timestamp  time.Time    `json:"timestamp"`
-	IdentityId string       `json:"identity_id"`
+	Namespace  string    `json:"namespace"`
+	EventSrcId string    `json:"event_src_id"`
+	Timestamp  time.Time `json:"timestamp"`
+
+	// The sdk event type. See above for valid values.
+	EventType SdkEventType `json:"event_type"`
+
+	// The id of the identity whose connectivity state has changed.
+	IdentityId string `json:"identity_id"`
 }
 
 func (event *SdkEvent) String() string {

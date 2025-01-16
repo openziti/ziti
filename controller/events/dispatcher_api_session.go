@@ -86,11 +86,18 @@ func (self *Dispatcher) apiSessionDeleted(apiSession *db.ApiSession) {
 	self.AcceptApiSessionEvent(evt)
 }
 
-func (self *Dispatcher) registerApiSessionEventHandler(val interface{}, config map[string]interface{}) error {
+func (self *Dispatcher) registerApiSessionEventHandler(eventType string, val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(event.ApiSessionEventHandler)
 
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/ApiSessionEventHandler interface.", reflect.TypeOf(val))
+	}
+
+	if eventType != event.ApiSessionEventNS {
+		handler = &apiSessionEventOldNsAdapter{
+			namespace: eventType,
+			wrapped:   handler,
+		}
 	}
 
 	var includeList []string
@@ -135,13 +142,34 @@ type apiSessionEventAdapter struct {
 	includeList []string
 }
 
-func (adapter *apiSessionEventAdapter) AcceptApiSessionEvent(event *event.ApiSessionEvent) {
-	if stringz.Contains(adapter.includeList, event.EventType) {
-		adapter.wrapped.AcceptApiSessionEvent(event)
+func (adapter *apiSessionEventAdapter) AcceptApiSessionEvent(evt *event.ApiSessionEvent) {
+	if stringz.Contains(adapter.includeList, evt.EventType) {
+		adapter.wrapped.AcceptApiSessionEvent(evt)
 	}
 }
 
 func (self *apiSessionEventAdapter) IsWrapping(value event.ApiSessionEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.ApiSessionEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
+}
+
+type apiSessionEventOldNsAdapter struct {
+	namespace string
+	wrapped   event.ApiSessionEventHandler
+}
+
+func (self *apiSessionEventOldNsAdapter) AcceptApiSessionEvent(evt *event.ApiSessionEvent) {
+	nsEvent := *evt
+	nsEvent.Namespace = self.namespace
+	self.wrapped.AcceptApiSessionEvent(&nsEvent)
+}
+
+func (self *apiSessionEventOldNsAdapter) IsWrapping(value event.ApiSessionEventHandler) bool {
 	if self.wrapped == value {
 		return true
 	}

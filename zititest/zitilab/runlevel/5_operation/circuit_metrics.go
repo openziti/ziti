@@ -50,7 +50,7 @@ func (self *circuitMetrics) Execute(run model.Run) error {
 
 	streamEventsRequest := map[string]interface{}{
 		"format":        "json",
-		"subscriptions": []*event.Subscription{{Type: event.CircuitEventsNs}},
+		"subscriptions": []*event.Subscription{{Type: event.CircuitEventNS}},
 	}
 
 	msgBytes, err := json.Marshal(streamEventsRequest)

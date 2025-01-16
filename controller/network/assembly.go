@@ -75,7 +75,7 @@ func (network *Network) assemble() {
 
 func (network *Network) NotifyLinkEvent(link *model.Link, eventType event.LinkEventType) {
 	linkEvent := &event.LinkEvent{
-		Namespace:   event.LinkEventsNs,
+		Namespace:   event.LinkEventNS,
 		EventType:   eventType,
 		EventSrcId:  network.GetAppId(),
 		Timestamp:   time.Now(),
@@ -91,7 +91,7 @@ func (network *Network) NotifyLinkEvent(link *model.Link, eventType event.LinkEv
 
 func (network *Network) NotifyLinkConnected(link *model.Link, msg *ctrl_pb.LinkConnected) {
 	linkEvent := &event.LinkEvent{
-		Namespace:   event.LinkEventsNs,
+		Namespace:   event.LinkEventNS,
 		EventType:   event.LinkConnected,
 		EventSrcId:  network.GetAppId(),
 		Timestamp:   time.Now(),
@@ -116,7 +116,7 @@ func (network *Network) NotifyLinkConnected(link *model.Link, msg *ctrl_pb.LinkC
 
 func (network *Network) NotifyLinkIdEvent(linkId string, eventType event.LinkEventType) {
 	linkEvent := &event.LinkEvent{
-		Namespace:  event.LinkEventsNs,
+		Namespace:  event.LinkEventNS,
 		EventType:  eventType,
 		EventSrcId: network.GetAppId(),
 		Timestamp:  time.Now(),

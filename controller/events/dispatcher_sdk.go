@@ -45,7 +45,7 @@ func (self *Dispatcher) AcceptSdkEvent(evt *event.SdkEvent) {
 	}
 }
 
-func (self *Dispatcher) registerSdkEventHandler(val interface{}, _ map[string]interface{}) error {
+func (self *Dispatcher) registerSdkEventHandler(_ string, val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.SdkEventHandler)
 
 	if !ok {

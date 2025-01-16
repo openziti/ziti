@@ -1136,7 +1136,7 @@ func (request *authenticatedRequests) newTerminatorWatcher() *terminatorWatcher 
 
 	req := &subscriptionRequest{
 		Subscriptions: []*event.Subscription{
-			{Type: event.TerminatorEventsNs},
+			{Type: event.TerminatorEventNS},
 		},
 		Callback: watcher.HandleMessage,
 	}

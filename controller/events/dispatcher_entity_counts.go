@@ -34,11 +34,15 @@ func (self *Dispatcher) AddEntityCountEventHandler(handler event.EntityCountEven
 }
 
 func (self *Dispatcher) RemoveEntityCountEventHandler(handler event.EntityCountEventHandler) {
-	for _, state := range self.entityCountEventHandlers.Value() {
-		if state.handler == handler {
-			self.entityCountEventHandlers.Delete(state)
+	self.entityCountEventHandlers.DeleteIf(func(val *entityCountState) bool {
+		if val.handler == handler {
+			return true
 		}
-	}
+		if w, ok := val.handler.(event.EntityCountEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) initEntityEvents() {
@@ -52,15 +56,15 @@ func (self *Dispatcher) generateEntityEvents() {
 	for {
 		select {
 		case t := <-ticker.C:
-			var event *event.EntityCountEvent
+			var evt *event.EntityCountEvent
 			leader := self.network.Dispatcher.IsLeaderOrLeaderless()
 			for _, state := range self.entityCountEventHandlers.Value() {
 				if !state.onlyLeaderEvents || leader {
 					if t.After(state.nextRun) {
-						if event == nil {
-							event = self.generateEntityCountEvent()
+						if evt == nil {
+							evt = self.generateEntityCountEvent()
 						}
-						state.handler.AcceptEntityCountEvent(event)
+						state.handler.AcceptEntityCountEvent(evt)
 						state.nextRun = state.nextRun.Add(state.interval)
 					}
 				}
@@ -72,7 +76,7 @@ func (self *Dispatcher) generateEntityEvents() {
 }
 
 func (self *Dispatcher) generateEntityCountEvent() *event.EntityCountEvent {
-	event := &event.EntityCountEvent{
+	evt := &event.EntityCountEvent{
 		Namespace:  event.EntityCountEventNS,
 		EventSrcId: self.ctrlId,
 		Timestamp:  time.Now(),
@@ -80,19 +84,26 @@ func (self *Dispatcher) generateEntityCountEvent() *event.EntityCountEvent {
 
 	data, err := self.stores.GetEntityCounts(self.network.GetDb())
 	if err != nil {
-		event.Error = err.Error()
+		evt.Error = err.Error()
 	} else {
-		event.Counts = data
+		evt.Counts = data
 	}
 
-	return event
+	return evt
 }
 
-func (self *Dispatcher) registerEntityCountEventHandler(val interface{}, config map[string]interface{}) error {
+func (self *Dispatcher) registerEntityCountEventHandler(eventType string, val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(event.EntityCountEventHandler)
 
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/events/EntityCountEventHandler interface.", reflect.TypeOf(val))
+	}
+
+	if eventType != event.EntityCountEventNS {
+		handler = &entityCountEventOldNsAdapter{
+			namespace: eventType,
+			wrapped:   handler,
+		}
 	}
 
 	interval := time.Minute * 5
@@ -136,4 +147,25 @@ type entityCountState struct {
 	onlyLeaderEvents bool
 	interval         time.Duration
 	nextRun          time.Time
+}
+
+type entityCountEventOldNsAdapter struct {
+	namespace string
+	wrapped   event.EntityCountEventHandler
+}
+
+func (self *entityCountEventOldNsAdapter) AcceptEntityCountEvent(evt *event.EntityCountEvent) {
+	nsEvent := *evt
+	nsEvent.Namespace = self.namespace
+	self.wrapped.AcceptEntityCountEvent(&nsEvent)
+}
+
+func (self *entityCountEventOldNsAdapter) IsWrapping(value event.EntityCountEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.EntityCountEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }

@@ -1108,7 +1108,7 @@ func (self *ConnectionTracker) SendSdkOnlineStatusChangeEvent(identityId string,
 	}
 
 	self.eventDispatcher.AcceptSdkEvent(&event.SdkEvent{
-		Namespace:  event.SdkEventsNs,
+		Namespace:  event.SdkEventNS,
 		EventType:  eventType,
 		Timestamp:  time.Now(),
 		IdentityId: identityId,

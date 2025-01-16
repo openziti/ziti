@@ -127,7 +127,7 @@ func (d DispatcherMock) AcceptServiceEvent(*ServiceEvent) {}
 
 func (d DispatcherMock) AcceptTerminatorEvent(*TerminatorEvent) {}
 
-func (d DispatcherMock) AcceptUsageEvent(*UsageEvent) {}
+func (d DispatcherMock) AcceptUsageEvent(*UsageEventV2) {}
 
 func (d DispatcherMock) AddClusterEventHandler(ClusterEventHandler) {}
 

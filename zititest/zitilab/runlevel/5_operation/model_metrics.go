@@ -63,7 +63,7 @@ func (self *modelMetrics) Execute(run model.Run) error {
 
 	streamEventsRequest := map[string]interface{}{
 		"format":        "json",
-		"subscriptions": []*event.Subscription{{Type: event.MetricsEventsNs}},
+		"subscriptions": []*event.Subscription{{Type: event.MetricsEventNS}},
 	}
 
 	msgBytes, err := json.Marshal(streamEventsRequest)

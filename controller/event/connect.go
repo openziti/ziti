@@ -33,16 +33,77 @@ const (
 	ConnectDestinationRouter     ConnectDestination = "router"
 )
 
+// A ConnectEvent is emitted when a connection is made to a ziti controller or router.
+//
+// Valid source types are:
+//   - router - router connecting to a controller or another router)
+//   - peer - controller connecting to another controller
+//   - identity - identity connecting to a router or controller
+//
+// Valid destination types are:
+//   - ctrl - connection is being made to a controller
+//   - router - connection is being made to a router
+//
+// Example: Identity Connected to Controller Event
+//
+//	{
+//	   "namespace": "connect",
+//	   "event_src_id": "ctrl_client",
+//	   "timestamp": "2024-10-02T12:17:39.501821249-04:00"
+//	   "src_type": "identity",
+//	   "src_id": "ji2Rt8KJ4",
+//	   "src_addr": "127.0.0.1:59336",
+//	   "dst_id": "ctrl_client",
+//	   "dst_addr": "localhost:1280/edge/management/v1/edge-routers/2L7NeVuGBU",
+//	}
+//
+// Example: Router Connected to Controller Event
+//
+//	{
+//	   "namespace": "connect",
+//	   "event_src_id": "ctrl_client",
+//	   "timestamp": "2024-10-02T12:17:40.529865849-04:00"
+//	   "src_type": "router",
+//	   "src_id": "2L7NeVuGBU",
+//	   "src_addr": "127.0.0.1:42702",
+//	   "dst_id": "ctrl_client",
+//	   "dst_addr": "127.0.0.1:6262",
+//	}
+//
+// Example: Controller Connected to Controller Event
+//
+//	{
+//	   "namespace": "connect",
+//	   "event_src_id": "ctrl1",
+//	   "timestamp": "2024-10-02T12:37:04.490859197-04:00"
+//	   "src_type": "peer",
+//	   "src_id": "ctrl2",
+//	   "src_addr": "127.0.0.1:40056",
+//	   "dst_id": "ctrl1",
+//	   "dst_addr": "127.0.0.1:6262",
+//	}
 type ConnectEvent struct {
-	Namespace  string             `json:"namespace"`
-	EventSrcId string             `json:"event_src_id"`
-	SrcType    ConnectSource      `json:"src_type"`
-	DstType    ConnectDestination `json:"dst_type"`
-	SrcId      string             `json:"src_id"`
-	SrcAddr    string             `json:"src_addr"`
-	DstId      string             `json:"dst_id"`
-	DstAddr    string             `json:"dst_addr"`
-	Timestamp  time.Time          `json:"timestamp"`
+	Namespace  string    `json:"namespace"`
+	EventSrcId string    `json:"event_src_id"`
+	Timestamp  time.Time `json:"timestamp"`
+
+	// The type of software initiating the connection.
+	SrcType ConnectSource `json:"src_type"`
+
+	// The type of software receiving the connection.
+	DstType ConnectDestination `json:"dst_type"`
+
+	// The id of the initiating component.
+	SrcId string `json:"src_id"`
+
+	// The source address of the connection.
+	SrcAddr string `json:"src_addr"`
+
+	// The id of the receiving component.
+	DstId string `json:"dst_id"`
+
+	// The destination address of the connection.
+	DstAddr string `json:"dst_addr"`
 }
 
 type ConnectEventHandler interface {

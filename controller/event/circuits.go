@@ -24,7 +24,8 @@ import (
 type CircuitEventType string
 
 const (
-	CircuitEventsNs                       = "fabric.circuits"
+	CircuitEventNS = "circuit"
+
 	CircuitEventsVersion                  = 2
 	CircuitCreated       CircuitEventType = "created"
 	CircuitUpdated       CircuitEventType = "pathUpdated"
@@ -34,15 +35,32 @@ const (
 
 var CircuitEventTypes = []CircuitEventType{CircuitCreated, CircuitUpdated, CircuitDeleted, CircuitFailed}
 
+// A CircuitPath encapsulates information about the circuit's path.
 type CircuitPath struct {
-	Nodes                []string `json:"nodes"`
-	Links                []string `json:"links"`
-	IngressId            string   `json:"ingress_id"`
-	EgressId             string   `json:"egress_id"`
-	InitiatorLocalAddr   string   `json:"initiator_local_addr,omitempty"`
-	InitiatorRemoteAddr  string   `json:"initiator_remote_addr,omitempty"`
-	TerminatorLocalAddr  string   `json:"terminator_local_addr,omitempty"`
-	TerminatorRemoteAddr string   `json:"terminator_remote_addr,omitempty"`
+	// The routers traversed in the path, going from initiating router to terminating router.
+	Nodes []string `json:"nodes"`
+
+	// The links traversed in the path, going from initiating router to terminating router.
+	// If the initiating and terminating routers are the same, this will be empty.
+	Links []string `json:"links"`
+
+	// The xgress identifier used on the initiating router.
+	IngressId string `json:"ingress_id"`
+
+	// The xgress identifier used on the terminating router.
+	EgressId string `json:"egress_id"`
+
+	// The local address of the connection to the first ziti component.
+	InitiatorLocalAddr string `json:"initiator_local_addr,omitempty"`
+
+	// The remote address of the connection to the first ziti component.
+	InitiatorRemoteAddr string `json:"initiator_remote_addr,omitempty"`
+
+	// The local address on the terminating ziti component.
+	TerminatorLocalAddr string `json:"terminator_local_addr,omitempty"`
+
+	// The remote address on the terminating ziti component.
+	TerminatorRemoteAddr string `json:"terminator_remote_addr,omitempty"`
 }
 
 func (self *CircuitPath) String() string {
@@ -60,24 +78,151 @@ func (self *CircuitPath) String() string {
 	return out
 }
 
+// A CircuitEvent is emitted for various stages of a circuit lifecycle.
+//
+// Note: In version prior to 1.4.0, the namespace was `fabric.circuits`
+//
+// Valid circuit event types are:
+//   - created
+//   - pathUpdated
+//   - deleted
+//   - failed
+//
+// Example: Circuit Created Event
+//
+//	{
+//	 "namespace": "circuit",
+//	 "event_src_id": "ctrl_client",
+//	 "timestamp": "2025-01-17T14:09:13.603009739-05:00",
+//	 "version": 2,
+//	 "event_type": "created",
+//	 "circuit_id": "rqrucElFe",
+//	 "client_id": "cm614ve9h00fb1xj9dfww20le",
+//	 "service_id": "3pjMOKY2icS8fkQ1lfHmrP",
+//	 "terminator_id": "7JgrjMgEAis7V5q1wjvoB4",
+//	 "instance_id": "",
+//	 "creation_timespan": 1035941,
+//	 "path": {
+//	   "nodes": [
+//	     "5g2QrZxFcw"
+//	   ],
+//	   "links": null,
+//	   "ingress_id": "8dN7",
+//	   "egress_id": "ZnXG"
+//	 },
+//	 "link_count": 0,
+//	 "path_cost": 262140,
+//	 "tags": {
+//	   "clientId": "haxn9lB0uc",
+//	   "hostId": "IahyE.5Scw",
+//	   "serviceId": "3pjMOKY2icS8fkQ1lfHmrP"
+//	 }
+//	}
+//
+// Example: Circuit Deleted Event
+//
+//	{
+//	 "namespace": "circuit",
+//	 "event_src_id": "ctrl_client",
+//	 "timestamp": "2025-01-17T14:09:15.138049308-05:00",
+//	 "version": 2,
+//	 "event_type": "deleted",
+//	 "circuit_id": "rqrucElFe",
+//	 "client_id": "cm614ve9h00fb1xj9dfww20le",
+//	 "service_id": "3pjMOKY2icS8fkQ1lfHmrP",
+//	 "terminator_id": "7JgrjMgEAis7V5q1wjvoB4",
+//	 "instance_id": "",
+//	 "path": {
+//	   "nodes": [
+//	     "5g2QrZxFcw"
+//	   ],
+//	   "links": null,
+//	   "ingress_id": "8dN7",
+//	   "egress_id": "ZnXG"
+//	 },
+//	 "link_count": 0,
+//	 "duration": 1535040544,
+//	 "tags": {
+//	   "clientId": "haxn9lB0uc",
+//	   "hostId": "IahyE.5Scw",
+//	   "serviceId": "3pjMOKY2icS8fkQ1lfHmrP"
+//	 }
+//	}
+//
+// Example: Circuit Failed Event
+//
+//	{
+//	 "namespace": "circuit",
+//	 "event_src_id": "ctrl_client",
+//	 "timestamp": "2025-01-17T14:09:30.563045771-05:00",
+//	 "version": 2,
+//	 "event_type": "failed",
+//	 "circuit_id": "JvIucEQHe",
+//	 "client_id": "cm614vrcd00fu1xj931hzepec",
+//	 "service_id": "3pjMOKY2icS8fkQ1lfHmrP",
+//	 "terminator_id": "",
+//	 "instance_id": "",
+//	 "creation_timespan": 20701,
+//	 "path": {
+//	   "nodes": null,
+//	   "links": null,
+//	   "ingress_id": "",
+//	   "egress_id": ""
+//	 },
+//	 "link_count": 0,
+//	 "failure_cause": "NO_TERMINATORS",
+//	 "tags": {
+//	   "clientId": "haxn9lB0uc",
+//	   "serviceId": "3pjMOKY2icS8fkQ1lfHmrP"
+//	 }
+//	}
 type CircuitEvent struct {
-	Namespace        string            `json:"namespace"`
-	Version          uint32            `json:"version"`
-	EventType        CircuitEventType  `json:"event_type"`
-	EventSrcId       string            `json:"event_src_id"`
-	CircuitId        string            `json:"circuit_id"`
-	Timestamp        time.Time         `json:"timestamp"`
-	ClientId         string            `json:"client_id"`
-	ServiceId        string            `json:"service_id"`
-	TerminatorId     string            `json:"terminator_id"`
-	InstanceId       string            `json:"instance_id"`
-	CreationTimespan *time.Duration    `json:"creation_timespan,omitempty"`
-	Path             CircuitPath       `json:"path"`
-	LinkCount        int               `json:"link_count"`
-	Cost             *uint32           `json:"path_cost,omitempty"`
-	FailureCause     *string           `json:"failure_cause,omitempty"`
-	Duration         *time.Duration    `json:"duration,omitempty"`
-	Tags             map[string]string `json:"tags"`
+	Namespace  string    `json:"namespace"`
+	EventSrcId string    `json:"event_src_id"`
+	Timestamp  time.Time `json:"timestamp"`
+
+	// The event format version. Currently 2.
+	Version uint32 `json:"version"`
+
+	// The circuit event type. See above for valid circuit event types.
+	EventType CircuitEventType `json:"event_type"`
+
+	// The circuit id.
+	CircuitId string `json:"circuit_id"`
+
+	// Who the circuit was created for. Usually an edge session id.
+	ClientId string `json:"client_id"`
+
+	// The id of the circuit's service.
+	ServiceId string `json:"service_id"`
+
+	// The terminator the circuit is using.
+	TerminatorId string `json:"terminator_id"`
+
+	// The instance id of the terminator.
+	InstanceId string `json:"instance_id"`
+
+	// How long it look to create the circuit.
+	CreationTimespan *time.Duration `json:"creation_timespan,omitempty"`
+
+	// The circuit's path.
+	Path CircuitPath `json:"path"`
+
+	// How many links the circuit is using.
+	LinkCount int `json:"link_count"`
+
+	// The circuit's cost at the time of creation or update.
+	Cost *uint32 `json:"path_cost,omitempty"`
+
+	// The reason the circuit failed. Only populated for circuit failures.
+	FailureCause *string `json:"failure_cause,omitempty"`
+
+	// How long the circuit has been up. Not populated for circuit creates.
+	Duration *time.Duration `json:"duration,omitempty"`
+
+	// Contains circuit enrichment data. May contain information like the client and/or host
+	// identity ids.
+	Tags map[string]string `json:"tags"`
 }
 
 func (event *CircuitEvent) String() string {
