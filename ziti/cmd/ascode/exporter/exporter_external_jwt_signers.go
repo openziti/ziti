@@ -60,7 +60,10 @@ func (exporter Exporter) GetExternalJwtSigners() ([]map[string]interface{}, erro
 			item := entity.(*rest_model.ExternalJWTSignerDetail)
 
 			// convert to a map of values
-			m := exporter.ToMap(item)
+			m, err := exporter.ToMap(item)
+			if err != nil {
+				log.WithError(err).Error("error converting ExternalJwtSigner to map")
+			}
 
 			// filter unwanted properties
 			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",

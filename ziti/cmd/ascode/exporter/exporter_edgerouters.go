@@ -58,7 +58,10 @@ func (exporter Exporter) GetEdgeRouters() ([]map[string]interface{}, error) {
 			item := entity.(*rest_model.EdgeRouterDetail)
 
 			// convert to a map of values
-			m := exporter.ToMap(item)
+			m, err := exporter.ToMap(item)
+			if err != nil {
+				log.WithError(err).Error("error converting EdgeRouter to map")
+			}
 			exporter.defaultRoleAttributes(m)
 
 			// filter unwanted properties

@@ -314,15 +314,14 @@ func (exporter *Exporter) getEntities(entityName string, count ClientCount, list
 
 }
 
-func (exporter *Exporter) ToMap(input interface{}) map[string]interface{} {
+func (exporter *Exporter) ToMap(input interface{}) (map[string]interface{}, error) {
 	jsonData, _ := json.MarshalIndent(input, "", "")
 	m := map[string]interface{}{}
 	err := json.Unmarshal(jsonData, &m)
 	if err != nil {
-		log.WithError(err).Error("error converting input to map")
-		return map[string]interface{}{}
+		return nil, err
 	}
-	return m
+	return m, nil
 }
 
 func (exporter *Exporter) defaultRoleAttributes(m map[string]interface{}) {

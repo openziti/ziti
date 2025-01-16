@@ -61,7 +61,10 @@ func (exporter Exporter) GetConfigTypes() ([]map[string]interface{}, error) {
 			}
 
 			// convert to a map of values
-			m := exporter.ToMap(item)
+			m, err := exporter.ToMap(item)
+			if err != nil {
+				log.WithError(err).Error("error converting ConfigType to map")
+			}
 			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})
 
 			return m, nil

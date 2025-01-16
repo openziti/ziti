@@ -40,6 +40,26 @@ authPolicies:
     secondary:
       requireTotp: false
     tags: {}
+  - name: ott+secondary
+    primary:
+      cert:
+        allowExpiredCerts: false
+        allowed: true
+      extJwt:
+        allowed: false
+        allowedSigners: []
+      updb:
+        allowed: false
+        lockoutDurationMinutes: 0
+        maxAttempts: 5
+        minPasswordLength: 5
+        requireMixedCase: false
+        requireNumberChar: false
+        requireSpecialChar: false
+    secondary:
+      requireExtJwtSigner: '@Auth0a'
+      requireTotp: false
+    tags: {}
 certificateAuthorities: []
 configTypes:
   - name: Empty Config Type
@@ -208,6 +228,21 @@ externalJwtSigners:
     scopes: null
     tags: {}
     useExternalId: false
+  - audience: openziti
+    certPem: null
+    claimsProperty: email
+    clientId: ab97WjOSpACNes9iToN5EnfGt6bhoJ4K
+    enabled: true
+    externalAuthUrl: https://fake.us.auth0.com
+    fingerprint: null
+    issuer: https://fake.us.auth0.com/
+    jwksEndpoint: https://fake.us.auth0.com/.well-known/jwks.json
+    kid: ""
+    name: Auth0a
+    scopes:
+      - email
+    tags: {}
+    useExternalId: true
 identities:
   - authPolicy: '@Default'
     disabled: false

@@ -57,7 +57,10 @@ func (exporter Exporter) GetConfigs() ([]map[string]interface{}, error) {
 			item := entity.(*rest_model.ConfigDetail)
 
 			// convert to a map of values
-			m := exporter.ToMap(item)
+			m, err := exporter.ToMap(item)
+			if err != nil {
+				log.WithError(err).Error("error converting Config to map")
+			}
 
 			// filter unwanted properties
 			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})

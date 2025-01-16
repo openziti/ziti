@@ -82,6 +82,20 @@ func (importer *Importer) ProcessAuthPolicies(input map[string][]interface{}) (m
 		}
 		create.Primary.ExtJWT.AllowedSigners = allowedSignerIds
 
+		secondarySigner := doc.Path("secondary.requireExtJwtSigner")
+		if secondarySigner.Data() != nil {
+
+			// look up secondary signer by name and add to the create
+			extJwtSigner, err := ascode.GetItemFromCache(importer.extJwtSignersCache, secondarySigner.Data().(string)[1:], func(name string) (interface{}, error) {
+				return mgmt.ExternalJWTSignerFromFilter(importer.client, mgmt.NameFilter(name)), nil
+			})
+			if err != nil {
+				log.WithField("name", *create.Name).Warn("Unable to read ExtJwtSigner")
+				return nil, err
+			}
+			create.Secondary.RequireExtJWTSigner = extJwtSigner.(*rest_model.ExternalJWTSignerDetail).ID
+		}
+
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating AuthPolicy %s\r", *create.Name)
 		if importer.loginOpts.Verbose {
