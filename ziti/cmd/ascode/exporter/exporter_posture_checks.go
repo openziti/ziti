@@ -52,7 +52,10 @@ func (exporter Exporter) GetPostureChecks() ([]map[string]interface{}, error) {
 		func(entity interface{}) (map[string]interface{}, error) {
 
 			// convert to a map of values
-			m := exporter.ToMap(entity)
+			m, err := exporter.ToMap(entity)
+			if err != nil {
+				log.WithError(err).Error("error converting PostureCheck to map")
+			}
 
 			// filter unwanted properties
 			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",

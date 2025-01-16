@@ -64,7 +64,10 @@ func (exporter Exporter) GetIdentities() ([]map[string]interface{}, error) {
 			if *item.TypeID != "Router" && !*item.IsDefaultAdmin {
 
 				// convert to a map of values
-				m := exporter.ToMap(item)
+				m, err := exporter.ToMap(item)
+				if err != nil {
+					log.WithError(err).Error("error converting Identity to map")
+				}
 				exporter.defaultRoleAttributes(m)
 
 				// filter unwanted properties

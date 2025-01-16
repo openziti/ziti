@@ -61,18 +61,27 @@ func (exporter Exporter) GetAuthPolicies() ([]map[string]interface{}, error) {
 
 			if *item.Name != "Default" {
 				// convert to a map of values
-				m := exporter.ToMap(item)
+				m, err := exporter.ToMap(item)
+				if err != nil {
+					log.WithError(err).Error("error converting AuthPolicy input to map")
+				}
 
 				// filter unwanted properties
 				exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt"})
 
 				// deleting Primary so we can reconstruct it
 				delete(m, "primary")
-				primary := exporter.ToMap(item.Primary)
+				primary, err := exporter.ToMap(item.Primary)
+				if err != nil {
+					log.WithError(err).Error("error converting AuthPolicy/Primary to map")
+				}
 				m["primary"] = primary
 				// deleting ExtJwt so we can reconstruct it
 				delete(primary, "extJwt")
-				extJwt := exporter.ToMap(item.Primary.ExtJWT)
+				extJwt, err := exporter.ToMap(item.Primary.ExtJWT)
+				if err != nil {
+					log.WithError(err).Error("error converting AuthPolicy/Primary/ExtJwtSigner to map")
+				}
 				primary["extJwt"] = extJwt
 				// deleting AllowedSigners because it needs to use a reference to the name instead of the ID
 				delete(extJwt, "allowedSigners")
@@ -93,19 +102,21 @@ func (exporter Exporter) GetAuthPolicies() ([]map[string]interface{}, error) {
 				if item.Secondary.RequireExtJWTSigner != nil {
 					// deleting Secondary so we can reconstruct it
 					delete(m, "secondary")
-					secondary := exporter.ToMap(item.Secondary)
+					secondary, err := exporter.ToMap(item.Secondary)
+					if err != nil {
+						log.WithError(err).Error("error converting AuthPolicy/Secondary to map")
+					}
 					m["secondary"] = secondary
 
 					// deleting RequiredExtJwtSigner because it needs to use a reference to the name instead of the ID
-					delete(secondary, "requiredExtJwtSigner")
-					requiredExtJwtSigner := exporter.ToMap(item.Secondary.RequireExtJWTSigner)
+					delete(secondary, "requireExtJwtSigner")
 					extJwtSigner, lookupErr := ascode.GetItemFromCache(exporter.externalJwtCache, *item.Secondary.RequireExtJWTSigner, func(id string) (interface{}, error) {
 						return exporter.client.ExternalJWTSigner.DetailExternalJWTSigner(&external_jwt_signer.DetailExternalJWTSignerParams{ID: id}, nil)
 					})
 					if lookupErr != nil {
 						return nil, lookupErr
 					}
-					requiredExtJwtSigner["requiredExtJwtSigner"] = "@" + *extJwtSigner.(*external_jwt_signer.DetailExternalJWTSignerOK).Payload.Data.Name
+					secondary["requireExtJwtSigner"] = "@" + *extJwtSigner.(*external_jwt_signer.DetailExternalJWTSignerOK).Payload.Data.Name
 				}
 
 				return m, nil

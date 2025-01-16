@@ -58,7 +58,10 @@ func (exporter Exporter) GetEdgeRouterPolicies() ([]map[string]interface{}, erro
 			item := entity.(*rest_model.EdgeRouterPolicyDetail)
 
 			// convert to a map of values
-			m := exporter.ToMap(item)
+			m, err := exporter.ToMap(item)
+			if err != nil {
+				log.WithError(err).Error("error converting EdgeRouterPolicy to map")
+			}
 
 			// translate attributes so they don't reference ids
 			identityRoles := []string{}

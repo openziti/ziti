@@ -61,7 +61,10 @@ func (exporter Exporter) GetServices() ([]map[string]interface{}, error) {
 			item := entity.(*rest_model.ServiceDetail)
 
 			// convert to a map of values
-			m := exporter.ToMap(item)
+			m, err := exporter.ToMap(item)
+			if err != nil {
+				log.WithError(err).Error("error converting Service to map")
+			}
 
 			exporter.defaultRoleAttributes(m)
 
