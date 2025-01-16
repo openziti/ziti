@@ -64,7 +64,7 @@ func (exporter Exporter) GetServices() ([]map[string]interface{}, error) {
 			m, err := exporter.ToMap(item)
 			if err != nil {
 				log.WithError(err).Error("error converting Service to map")
-			}2
+			}
 
 			exporter.defaultRoleAttributes(m)
 
