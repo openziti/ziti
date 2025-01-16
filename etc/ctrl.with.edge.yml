@@ -45,7 +45,7 @@ additionalTrustDomains: []
 
 profile:
 #   cpu:
-#       path: /home/plorenz/tmp/ctrl.cpu.pprof
+#       path: ${TMPDIR}/ziti.ctrl.cpu.pprof
 #  memory:
 #    path: ctrl.memprof
 
@@ -108,7 +108,7 @@ events:
     handler:
       type: file
       format: json
-      path: /tmp/ziti-events.log
+      path: ${TMPDIR}/ziti-events.log
 #  usageLogger:
 #    subscriptions:
 #      - type: fabric.usage
