@@ -16,9 +16,56 @@
 
 package config
 
-import "os"
+import (
+	"github.com/michaelquigley/pfxlog"
+	"os"
+	"runtime"
+	"sync"
+)
+
+var ensureTmpDirEnvOnce sync.Once
+
+func EnsureTempDirEnv() {
+	defaultTemp := "/tmp"
+
+	if runtime.GOOS == "windows" {
+		defaultTemp = os.Getenv("TEMP")
+
+		if defaultTemp == "" {
+			defaultTemp = "C:\\temp"
+		}
+	}
+
+	if os.Getenv("TEMP") != "" {
+		defaultTemp = os.Getenv("TEMP")
+	} else if os.Getenv("TMP") != "" {
+		defaultTemp = os.Getenv("TMP")
+	} else if os.Getenv("TMPDIR") != "" {
+		defaultTemp = os.Getenv("TMPDIR")
+	}
+
+	err := os.Setenv("TMP", defaultTemp)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Warn("Could not set TMP environment variable")
+	}
+
+	err = os.Setenv("TEMP", defaultTemp)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Warn("Could not set TEMP environment variable")
+	}
+
+	err = os.Setenv("TMPDIR", defaultTemp)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Warn("Could not set TMPDIR environment variable")
+	}
+}
 
 func InjectEnv(config map[interface{}]interface{}) {
+	ensureTmpDirEnvOnce.Do(EnsureTempDirEnv)
+
 	for key, v := range config {
 		if str, ok := v.(string); ok {
 			config[key] = os.ExpandEnv(str)
