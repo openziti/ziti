@@ -19,30 +19,13 @@ package config
 import (
 	"github.com/michaelquigley/pfxlog"
 	"os"
-	"runtime"
 	"sync"
 )
 
 var ensureTmpDirEnvOnce sync.Once
 
 func EnsureTempDirEnv() {
-	defaultTemp := "/tmp"
-
-	if runtime.GOOS == "windows" {
-		defaultTemp = os.Getenv("TEMP")
-
-		if defaultTemp == "" {
-			defaultTemp = "C:\\temp"
-		}
-	}
-
-	if os.Getenv("TEMP") != "" {
-		defaultTemp = os.Getenv("TEMP")
-	} else if os.Getenv("TMP") != "" {
-		defaultTemp = os.Getenv("TMP")
-	} else if os.Getenv("TMPDIR") != "" {
-		defaultTemp = os.Getenv("TMPDIR")
-	}
+	defaultTemp := os.TempDir()
 
 	err := os.Setenv("TMP", defaultTemp)
 
@@ -65,7 +48,7 @@ func EnsureTempDirEnv() {
 
 func InjectEnv(config map[interface{}]interface{}) {
 	ensureTmpDirEnvOnce.Do(EnsureTempDirEnv)
-
+	
 	for key, v := range config {
 		if str, ok := v.(string); ok {
 			config[key] = os.ExpandEnv(str)
