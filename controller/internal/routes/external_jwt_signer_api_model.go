@@ -51,6 +51,7 @@ func MapClientExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtS
 		Name:            &externalJwtSigner.Name,
 		ClientID:        externalJwtSigner.ClientId,
 		Scopes:          externalJwtSigner.Scopes,
+        Audience:        externalJwtSigner.Audience,
 	}
 	return ret
 }
