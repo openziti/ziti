@@ -31,7 +31,7 @@ if [[ -n "${ZITI_QUICK_DIR:-}" ]]; then
         fi
     fi
 fi
-# avoid re-using directories from previous runs to keep this one-shot (non-idempotent) script simple because we needn't
+# avoid reusing directories from previous runs to keep this one-shot (non-idempotent) script simple because we needn't
 # consider the state of the test dir
 TESTDIR="$(mktemp -d -t "${BASENAME%.*}.${DATESTAMP}.XXX")"
 

@@ -359,7 +359,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 		})
 	})
 
-	t.Run("create with re-used signing certificate/kid fails", func(t *testing.T) {
+	t.Run("create with reused signing certificate/kid fails", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		jwtSignerCommonName := "soCommon-dupe1"
@@ -387,7 +387,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
 
-		t.Run("re-used cert fails with 400 bad request", func(t *testing.T) {
+		t.Run("reused cert fails with 400 bad request", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			jwtSignerReusedCert := &rest_model.ExternalJWTSignerCreate{
@@ -406,7 +406,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode())
 		})
 
-		t.Run("re-used kid create fails with 400 bad request", func(t *testing.T) {
+		t.Run("reused kid create fails with 400 bad request", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			jwtSignerReusedCert := &rest_model.ExternalJWTSignerCreate{

@@ -33,6 +33,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -520,35 +521,70 @@ func EdgeControllerGetManagementApiBasePathWithPool(host string, caPool *x509.Ce
 	return getManagementApiBasePath(host, client)
 }
 
-func getManagementApiBasePath(host string, client *resty.Client) string {
+func hasJsonContentType(resp *http.Response) bool {
+	contentType := resp.Header.Get("Content-Type")
+	return strings.HasPrefix(contentType, "application/json")
+}
 
-	// check v1 path first
-	resp, err := client.R().Get("/edge/client/v1/version")
-
-	if err != nil || resp.StatusCode() != http.StatusOK {
-		// if v1 path fails, fall back to removed /version path
-		resp, err = client.R().Get("/version")
-
-		if err != nil || resp.StatusCode() != http.StatusOK {
-			return host
-		}
-	}
-
-	data, err := gabs.ParseJSON(resp.Body())
+// parseManagementPath will treat body as JSON from the version endpoint and attempt to
+// return the management path provided in that data. If the data cannot be parsed, empty string
+// is returned.
+func parseManagementPath(body []byte) string {
+	data, err := gabs.ParseJSON(body)
 
 	if err != nil {
-		return host
+		return ""
 	}
 
 	// controller w/ APIs split
 	if data.ExistsP("data.apiVersions.edge-management") {
 		if respPath, ok := data.Path("data.apiVersions.edge-management.v1.path").Data().(string); !ok {
-			return host
+			return ""
 		} else {
+			return respPath
+		}
+	}
+
+	return ""
+}
+
+// getManagementApiBasePath attempts to determine which path prefix to use for the management API. This covers cases
+// where only a host is provided w/ no path prefix or where host provided only hosts the client API and the management
+// API is hosted somewhere else. API locations are determined by inspecting the versions endpoint.
+func getManagementApiBasePath(host string, client *resty.Client) string {
+	resp, err := client.R().Get("/edge/management/v1/version")
+
+	if err == nil && resp.StatusCode() == http.StatusOK && hasJsonContentType(resp.RawResponse) {
+		respPath := parseManagementPath(resp.Body())
+
+		if respPath != "" {
 			return host + respPath
 		}
 	}
 
+	//guessing management first didn't work, maybe we have access to the client API to find the management API
+	resp, err = client.R().Get("/edge/client/v1/version")
+
+	if err == nil && resp.StatusCode() == http.StatusOK && hasJsonContentType(resp.RawResponse) {
+		respPath := parseManagementPath(resp.Body())
+
+		if respPath != "" {
+			return host + respPath
+		}
+	}
+
+	//neither the specific management/client paths worked, maybe the legacy /version path works
+	resp, err = client.R().Get("/version")
+
+	if err == nil && resp.StatusCode() == http.StatusOK && hasJsonContentType(resp.RawResponse) {
+		respPath := parseManagementPath(resp.Body())
+
+		if respPath != "" {
+			return host + respPath
+		}
+	}
+
+	//give up
 	return host
 }
 

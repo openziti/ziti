@@ -229,7 +229,7 @@ generate a config file. A more conventional flow would be:
     1. Two ways that applications can import JWTs are by reading a file or reading a QR code
 
 The reason enrollment is broken into two steps is because we only want the keys and certificates to exist on their final destination. We may transmit the JWT, but once enrollment has completed the JWT
-cannot be re-used. If someone later steals the JWT, they won’t be able to enroll, as the JWT will no longer be valid. If some intercepts the JWT and uses it to enroll before the intended recipient
+cannot be reused. If someone later steals the JWT, they won’t be able to enroll, as the JWT will no longer be valid. If some intercepts the JWT and uses it to enroll before the intended recipient
 does, the intended recipient’s enrollment will fail. This lets us know that something is wrong, we can disable the identity, and the intrusion will have been quickly detected.
 
 <!---action:pause-->

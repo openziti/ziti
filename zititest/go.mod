@@ -13,7 +13,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.23
 	github.com/openziti/channel/v3 v3.0.26
-	github.com/openziti/edge-api v0.26.36
+	github.com/openziti/edge-api v0.26.38
 	github.com/openziti/fablab v0.5.83
 	github.com/openziti/foundation/v2 v2.0.56
 	github.com/openziti/identity v1.0.94
@@ -91,6 +91,7 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
+	github.com/hashicorp/go-metrics v0.5.4 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.2 // indirect
 	github.com/hashicorp/golang-lru v0.6.0 // indirect
