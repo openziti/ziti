@@ -48,6 +48,7 @@ type Exporter struct {
 	configTypeCache  map[string]any
 	authPolicyCache  map[string]any
 	externalJwtCache map[string]any
+	controllerUrl    string
 }
 
 var output Output
@@ -95,6 +96,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVar(&exporter.ofJson, "json", true, "Output in JSON")
 	cmd.Flags().BoolVar(&exporter.ofYaml, "yaml", false, "Output in YAML")
+	cmd.Flags().StringVar(&exporter.controllerUrl, "controller-url", "", "The url of the controller")
 	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
 
 	cmd.Flags().StringVarP(&exporter.filename, "output-file", "o", "", "Write output to local file")
@@ -118,6 +120,9 @@ func (exporter *Exporter) Init(out io.Writer) error {
 
 	client, err := mgmt.NewClient()
 	if err != nil {
+		if exporter.controllerUrl != "" {
+			exporter.loginOpts.Args = []string{exporter.controllerUrl}
+		}
 		loginErr := exporter.loginOpts.Run()
 		if loginErr != nil {
 			log.Fatal(err)
