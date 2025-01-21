@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
@@ -42,14 +41,13 @@ const (
 )
 
 type Factory struct {
-	id                 *identity.TokenId
-	ctrls              env.NetworkControllers
-	routerConfig       *router.Config
-	stateManager       state.Manager
-	serviceListHandler *handler_edge_ctrl.ServiceListHandler
-	tunneler           *tunneler
-	metricsRegistry    metrics.UsageRegistry
-	env                env.RouterEnv
+	id              *identity.TokenId
+	ctrls           env.NetworkControllers
+	routerConfig    *router.Config
+	stateManager    state.Manager
+	tunneler        *tunneler
+	metricsRegistry metrics.UsageRegistry
+	env             env.RouterEnv
 }
 
 func (self *Factory) NotifyOfReconnect(channel.Channel) {
@@ -57,18 +55,17 @@ func (self *Factory) NotifyOfReconnect(channel.Channel) {
 	self.tunneler.HandleReconnect()
 }
 
-func (self *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
-	return nil
-}
-
 func (self *Factory) Enabled() bool {
 	return true
 }
 
 func (self *Factory) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(self.serviceListHandler)
 	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorResponseV2Type), self.tunneler.fabricProvider.HandleTunnelResponse)
 	return nil
+}
+
+func (self *Factory) HandleCreateTunnelTerminatorResponse(msg *channel.Message, ch channel.Channel) {
+	self.tunneler.fabricProvider.HandleTunnelResponse(msg, ch)
 }
 
 func (self *Factory) Run(env env.RouterEnv) error {

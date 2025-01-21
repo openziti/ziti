@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -71,7 +72,7 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 			}
 
 			pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
-			configureLogFormat(logLvl)
+			internal.ConfigureLogFormat(logLvl)
 
 			timePrefix := time.Now().Format("2006-01-02-1504")
 			if t.prefix == "" {
@@ -133,7 +134,7 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().BoolVar(&t.allowMultipleServers, "allow-multiple-servers", false, "Whether to allows the same server multiple times.")
 	cmd.Flags().BoolVar(&t.haEnabled, "ha", false, "Enable high availability mode.")
 	_ = cmd.Flags().MarkHidden("ha")
-	
+
 	edge.AddLoginFlags(cmd, &t.loginOpts)
 	t.loginOpts.Out = out
 	t.loginOpts.Err = errOut

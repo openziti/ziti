@@ -126,6 +126,11 @@ func (self *ControllerManager) Unmarshall(bytes []byte) (*Controller, error) {
 		return nil, err
 	}
 
+	lastJoinedAt := time.Time{}
+	if msg.LastJoinedAt != nil {
+		lastJoinedAt = *pbTimeToTimePtr(msg.LastJoinedAt)
+	}
+
 	controller := &Controller{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
@@ -136,7 +141,7 @@ func (self *ControllerManager) Unmarshall(bytes []byte) (*Controller, error) {
 		CertPem:      msg.CertPem,
 		Fingerprint:  msg.Fingerprint,
 		IsOnline:     msg.IsOnline,
-		LastJoinedAt: *pbTimeToTimePtr(msg.LastJoinedAt),
+		LastJoinedAt: lastJoinedAt,
 		ApiAddresses: map[string][]ApiAddress{},
 	}
 
@@ -257,7 +262,7 @@ func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer, peerCo
 					Error("could not create controller during peer(s) connection")
 			}
 		} else if peerConnectedEvent || existing.IsChanged(newController) {
-			if err = self.Update(existing, nil, changeCtx); err != nil {
+			if err = self.Update(newController, nil, changeCtx); err != nil {
 				pfxlog.Logger().WithError(err).WithField("ctrlId", peer.Id).
 					Error("could not update controller during peer(s) connection")
 			}

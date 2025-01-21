@@ -5,10 +5,18 @@ set -euo pipefail
 BASENAME=$(basename "$0")
 typeset -a  ARTIFACTS=() \
             STAGES=() \
-            KNOWN_ARTIFACTS=(openziti openziti-controller openziti-router ziti-cli ziti-edge-tunnel) \
-            KNOWN_STAGES=(testing release)
-AGE=30  # days
-export CI=0    # jfrog CLI is interactive and prompts for confirmation by default
+            KNOWN_ARTIFACTS=(openziti openziti-controller openziti-router openziti-console zrok zrok-share ziti-edge-tunnel)
+typeset -A KNOWN_STAGES=(
+    [testing]='zitipax-(openziti-(rpm|deb)-test|fork-(rpm|deb)-stable)'
+    [release]='zitipax-openziti-(rpm|deb)-stable'
+)
+
+: "${AGE:=30}"  # days
+: "${CI:=0}"    # jfrog CLI is interactive and prompts for confirmation by default
+: "${DRY_RUN:=0}"
+: "${QUIET:=0}"
+
+export CI
 
 while (( $# )); do
     case ${1} in
@@ -35,36 +43,55 @@ while (( $# )); do
                 shift
             done
             for STAGE in "${STAGES[@]}"; do
-                for KNOWN in "${KNOWN_STAGES[@]}"; do
+                for KNOWN in "${!KNOWN_STAGES[@]}"; do
                     if [[ ${STAGE} == "${KNOWN}" ]]; then
                         continue 2
                     fi
-                echo "ERROR: invalid stage '${STAGE}', valid stages are ${KNOWN_STAGES[*]}" >&2
-                exit 1
                 done
+                echo "ERROR: invalid stage '${STAGE}', valid stages are ${!KNOWN_STAGES[*]}" >&2
+                exit 1
             done
-            echo "INFO: stages are ${STAGES[*]}" >&2
+            echo "INFO: operating on repos from stage(s): ${STAGES[*]}" >&2
             ;;
-        --quiet)
-            CI=1  # disable interactive prompts before destructive actions
+        --quiet)  # suppress jfrog CLI interactive prompts unless --dry-run
+            if (( DRY_RUN )); then
+                echo "WARN: --quiet ignored because --dry-run" >&2
+            else
+                QUIET=1
+                CI=1
+            fi
             shift
             ;;
-        --dry-run)
-            CI=0  # re-enable interactive prompts before destructive actions in case parent env has CI=1
+        --dry-run)  # re-enable jfrog CLI interactive safety prompts before destructive actions in case parent env has CI=1
+            if (( QUIET )); then
+                echo "WARN: --quiet ignored because --dry-run" >&2
+            fi
+            DRY_RUN=1
+            CI=0
             shift
             ;;
         --age)
             shift
             if [[ ${1} =~ ^-- ]]; then
-                echo "ERROR: --age requires an argument" >&2
+                echo "ERROR: --age DAYS requires an integer argument" >&2
                 exit 1
             else
                 AGE="$1"
                 shift
             fi
             ;;
+        --glob)
+            shift
+            if [[ ${1} =~ ^-- ]]; then
+                echo "ERROR: --glob GLOB requires a string argument" >&2
+                exit 1
+            else
+                GLOB="$1"
+                shift
+            fi
+            ;;
         --help|\?|*)
-            echo "Usage: $BASENAME --artifacts ziti-cli ziti-edge-tunnel [--age DAYS|--stages testing release|--dry-run|--quiet]"
+            echo "Usage: $BASENAME --artifacts openziti ziti-edge-tunnel [--age DAYS|--stages testing release|--dry-run|--quiet|--glob GLOB]"
             exit 0
             ;;
     esac
@@ -86,18 +113,19 @@ fi
     echo "WARNING: permanently deleting" >&2;
     sleep 9;
 }
-while read -r REPO; do
-    for STAGE in "${STAGES[@]}"; do
+
+for STAGE in "${STAGES[@]}"; do
+    while read -r REPO; do
         for ARTIFACT in "${ARTIFACTS[@]}"; do
             for META in rpm.metadata.name deb.name; do
-                    echo "INFO: deleting ${REPO}/${STAGE}/${ARTIFACT}" >&2
-                    jf rt search --include 'created;path' --props "${META}=${ARTIFACT}" "${REPO}/*${STAGE}*" \
-                    | jq --arg OLDEST "$(date --date "-${AGE:-30} days" -Is)" '.[]|select(.created < $OLDEST)|.path' \
+                    echo "INFO: deleting ${REPO}/${ARTIFACT}" >&2
+                    jf rt search --include 'created;path' --props "${META}=${ARTIFACT}" "${REPO}/${GLOB:-*}" \
+                    | jq --arg OLDEST "$(date --date "-${AGE} days" -Is)" '.[]|select(.created < $OLDEST)|.path' \
                     | xargs -rl jf rt delete
             done
         done
-    done
-done < <(
-    jf rt cl -sS /api/repositories \
-    | jq --raw-output '.[]|select(.key|match("zitipax-openziti"))|.key'
-)
+    done < <(
+        jf rt cl -sS /api/repositories \
+        | jq --raw-output --arg repo_regex "${KNOWN_STAGES[$STAGE]}" '.[]|select(.key|match($repo_regex))|.key'
+    )
+done

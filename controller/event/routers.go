@@ -33,6 +33,7 @@ const (
 type RouterEvent struct {
 	Namespace    string          `json:"namespace"`
 	EventType    RouterEventType `json:"event_type"`
+	EventSrcId   string          `json:"event_src_id"`
 	Timestamp    time.Time       `json:"timestamp"`
 	RouterId     string          `json:"router_id"`
 	RouterOnline bool            `json:"router_online"`

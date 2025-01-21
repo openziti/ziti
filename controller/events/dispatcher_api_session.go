@@ -58,6 +58,7 @@ func (self *Dispatcher) apiSessionCreated(apiSession *db.ApiSession) {
 	evt := &event.ApiSessionEvent{
 		Namespace:  event.ApiSessionEventNS,
 		EventType:  event.ApiSessionEventTypeCreated,
+		EventSrcId: self.ctrlId,
 		Id:         apiSession.Id,
 		Type:       event.ApiSessionTypeLegacy,
 		Timestamp:  time.Now(),
@@ -73,6 +74,7 @@ func (self *Dispatcher) apiSessionDeleted(apiSession *db.ApiSession) {
 	evt := &event.ApiSessionEvent{
 		Namespace:  event.ApiSessionEventNS,
 		EventType:  event.ApiSessionEventTypeDeleted,
+		EventSrcId: self.ctrlId,
 		Id:         apiSession.Id,
 		Type:       event.ApiSessionTypeLegacy,
 		Timestamp:  time.Now(),

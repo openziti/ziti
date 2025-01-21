@@ -39,6 +39,7 @@ func (self *Dispatcher) RemoveSdkEventHandler(handler event.SdkEventHandler) {
 }
 
 func (self *Dispatcher) AcceptSdkEvent(evt *event.SdkEvent) {
+	evt.EventSrcId = self.ctrlId
 	for _, handler := range self.sdkEventHandlers.Value() {
 		go handler.AcceptSdkEvent(evt)
 	}

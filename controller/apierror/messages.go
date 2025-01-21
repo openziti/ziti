@@ -210,4 +210,8 @@ const (
 	TransferLeadershipErrorCode    string = "TRANSFER_LEADERSHIP_ERROR"
 	TransferLeadershipErrorMessage string = "Error while attempting to transfer leadership"
 	TransferLeadershipErrorStatus         = http.StatusInternalServerError
+
+	ClusterHasNoLeaderCode    string = "CLUSTER_NO_LEADER"
+	ClusterHasNoLeaderMessage string = "Cluster has no leader, unable to make model updates."
+	ClusterHasNoLeaderStatus  int    = http.StatusServiceUnavailable
 )

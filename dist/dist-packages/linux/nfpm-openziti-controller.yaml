@@ -3,7 +3,7 @@
 # check https://nfpm.goreleaser.com/configuration for detailed usage
 #
 name: openziti-controller
-arch: ${GOARCH}
+arch: ${TARGETARCH}
 platform: linux
 version: ${ZITI_VERSION}
 prerelease: ${ZITI_REV}

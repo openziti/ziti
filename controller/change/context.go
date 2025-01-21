@@ -155,6 +155,9 @@ func (self *Context) PopulateMetadata(meta map[string]any) {
 	if traceId, found := self.Attributes[TraceIdKey]; found {
 		meta["trace_id"] = traceId
 	}
+	if self.RaftIndex != 0 {
+		meta["raft_index"] = self.RaftIndex
+	}
 }
 
 func (self *Context) ToProtoBuf() *cmd_pb.ChangeContext {

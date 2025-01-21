@@ -84,6 +84,7 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 var _ event.Dispatcher = (*Dispatcher)(nil)
 
 type Dispatcher struct {
+	ctrlId                    string
 	circuitEventHandlers      concurrenz.CopyOnWriteSlice[event.CircuitEventHandler]
 	entityChangeEventHandlers concurrenz.CopyOnWriteSlice[event.EntityChangeEventHandler]
 	linkEventHandlers         concurrenz.CopyOnWriteSlice[event.LinkEventHandler]
@@ -118,6 +119,7 @@ type Dispatcher struct {
 
 func (self *Dispatcher) InitializeNetworkEvents(n *network.Network) {
 	self.network = n
+	self.ctrlId = n.GetAppId()
 	self.initMetricsEvents(n)
 	self.initRouterEvents(n)
 	self.initServiceEvents(n)

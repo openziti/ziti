@@ -134,8 +134,9 @@ func (self *Dispatcher) unregisterMetricsEventHandler(val interface{}) {
 
 func (self *Dispatcher) newMetricEvent(msg *metrics_pb.MetricsMessage, metricType string, name string, id string) *event.MetricsEvent {
 	result := &event.MetricsEvent{
-		MetricType:    metricType,
 		Namespace:     event.MetricsEventsNs,
+		EventSrcId:    self.ctrlId,
+		MetricType:    metricType,
 		SourceAppId:   msg.SourceId,
 		Timestamp:     msg.Timestamp.AsTime(),
 		Metric:        name,

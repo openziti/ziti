@@ -283,7 +283,7 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	apiErr := parsePayload(r, credentials)
 
 	if apiErr != nil {
-		renderJsonError(w, err)
+		renderJsonError(w, apiErr)
 		return
 	}
 

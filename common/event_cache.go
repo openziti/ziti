@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"sync"
+	"sync/atomic"
 )
 
 type OnStoreSuccess func(index uint64, event *edge_ctrl_pb.DataState_ChangeSet)
@@ -33,7 +34,7 @@ type EventCache interface {
 	CurrentIndex() (uint64, bool)
 
 	// ReplayFrom returns an array of events from startIndex and true if the replay may be facilitated.
-	// An empty slice and true is returned in cases where the requested startIndex is the current index.
+	// An empty slice and true is returned in cases where the requested startIndex is greater than the current index.
 	// An empty slice and false is returned in cases where the replay cannot be facilitated.
 	// This function is blocking.
 	ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.DataState_ChangeSet, bool)
@@ -51,7 +52,7 @@ type EventCache interface {
 // when replaying events is not expected (i.e. in routers)
 type ForgetfulEventCache struct {
 	lock  sync.Mutex
-	index *uint64
+	index uint64
 }
 
 func NewForgetfulEventCache() *ForgetfulEventCache {
@@ -59,9 +60,7 @@ func NewForgetfulEventCache() *ForgetfulEventCache {
 }
 
 func (cache *ForgetfulEventCache) SetCurrentIndex(index uint64) {
-	cache.lock.Lock()
-	defer cache.lock.Unlock()
-	cache.index = &index
+	cache.index = index
 }
 
 func (cache *ForgetfulEventCache) WhileLocked(callback func(uint64, bool)) {
@@ -82,16 +81,14 @@ func (cache *ForgetfulEventCache) Store(event *edge_ctrl_pb.DataState_ChangeSet,
 		return nil
 	}
 
-	if cache.index != nil {
-		if *cache.index >= event.Index {
-			return fmt.Errorf("out of order event detected, currentIndex: %d, receivedIndex: %d, type :%T", *cache.index, event.Index, cache)
-		}
+	if cache.index > 0 && cache.index >= event.Index {
+		return fmt.Errorf("out of order event detected, currentIndex: %d, receivedIndex: %d, type :%T", cache.index, event.Index, cache)
 	}
 
-	cache.index = &event.Index
+	cache.index = event.Index
 
 	if onSuccess != nil {
-		onSuccess(*cache.index, event)
+		onSuccess(cache.index, event)
 	}
 
 	return nil
@@ -102,18 +99,11 @@ func (cache *ForgetfulEventCache) ReplayFrom(_ uint64) ([]*edge_ctrl_pb.DataStat
 }
 
 func (cache *ForgetfulEventCache) CurrentIndex() (uint64, bool) {
-	cache.lock.Lock()
-	defer cache.lock.Unlock()
-
 	return cache.currentIndex()
 }
 
 func (cache *ForgetfulEventCache) currentIndex() (uint64, bool) {
-	if cache.index == nil {
-		return 0, false
-	}
-
-	return *cache.index, true
+	return atomic.LoadUint64(&cache.index), true
 }
 
 // LoggingEventCache stores events in order to support replaying (i.e. in controllers).
@@ -211,6 +201,12 @@ func (cache *LoggingEventCache) ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.D
 	_, eventFound := cache.Events[startIndex]
 
 	if !eventFound {
+		// if we're asked to replay an index we haven't reached yet, return an empty list
+		headIndex := cache.Log[cache.HeadLogIndex]
+		if headIndex < startIndex {
+			return nil, true
+		}
+
 		return nil, false
 	}
 
@@ -228,27 +224,22 @@ func (cache *LoggingEventCache) ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.D
 		return nil, false
 	}
 
-	// no replay
-	if *startLogIndex == cache.HeadLogIndex {
-		return nil, true
-	}
-
-	// ez replay
-	if *startLogIndex < cache.HeadLogIndex {
+	// replay, no loop required
+	if *startLogIndex <= cache.HeadLogIndex {
 		var result []*edge_ctrl_pb.DataState_ChangeSet
-		for _, key := range cache.Log[*startLogIndex:cache.HeadLogIndex] {
+		for _, key := range cache.Log[*startLogIndex : cache.HeadLogIndex+1] {
 			result = append(result, cache.Events[key])
 		}
 		return result, true
 	}
 
-	//looping replay
+	// looping replay
 	var result []*edge_ctrl_pb.DataState_ChangeSet
 	for _, key := range cache.Log[*startLogIndex:] {
 		result = append(result, cache.Events[key])
 	}
 
-	for _, key := range cache.Log[0:cache.HeadLogIndex] {
+	for _, key := range cache.Log[:cache.HeadLogIndex+1] {
 		result = append(result, cache.Events[key])
 	}
 

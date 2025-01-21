@@ -748,7 +748,10 @@ func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
 		extJwtAuthVal := ae.GetAuthRegistry().GetByMethod(model.AuthMethodExtJwt)
 		extJwtAuth := extJwtAuthVal.(*model.AuthModuleExtJwt)
 		if extJwtAuth != nil {
-			authResult, err := extJwtAuth.ProcessSecondary(model.NewAuthContextHttp(rc.Request, model.AuthMethodExtJwt, nil, rc.NewChangeContext()))
+			authCtx := model.NewAuthContextHttp(rc.Request, model.AuthMethodExtJwt, nil, rc.NewChangeContext())
+			authCtx.SetPrimaryIdentity(rc.Identity)
+
+			authResult, err := extJwtAuth.ProcessSecondary(authCtx)
 
 			if err != nil || !authResult.IsSuccessful() {
 				signer, err := ae.Managers.ExternalJwtSigner.Read(*rc.AuthPolicy.Secondary.RequiredExtJwtSigner)
@@ -1111,7 +1114,7 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 				SrcId:     rc.ApiSession.IdentityId,
 				SrcAddr:   rc.Request.RemoteAddr,
 				DstId:     ae.HostController.GetNetwork().GetAppId(),
-				DstAddr:   rc.Request.Host + rc.Request.RequestURI,
+				DstAddr:   rc.Request.Host,
 				Timestamp: time.Now(),
 			}
 			ae.GetEventDispatcher().AcceptConnectEvent(connectEvent)

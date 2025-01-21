@@ -32,7 +32,11 @@ type BindHandler struct {
 }
 
 func NewBindHandler(env *env.AppEnv, network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) channel.BindHandler {
-	return &BindHandler{network: network, xmgmts: xmgmts}
+	return &BindHandler{
+		env:     env,
+		network: network,
+		xmgmts:  xmgmts,
+	}
 }
 
 func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {

@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
@@ -37,6 +38,7 @@ const (
 	ApiSessionUpdatedType   = int32(edge_ctrl_pb.ContentType_ApiSessionUpdatedType)
 	RequestClientReSyncType = int32(edge_ctrl_pb.ContentType_RequestClientReSyncType)
 	DataStateType           = int32(edge_ctrl_pb.ContentType_DataStateType)
+	ValidateDataStateType   = int32(edge_ctrl_pb.ContentType_ValidateDataStateRequestType)
 	DataStateChangeSetType  = int32(edge_ctrl_pb.ContentType_DataStateChangeSetType)
 
 	ServerHelloType = int32(edge_ctrl_pb.ContentType_ServerHelloType)
@@ -87,6 +89,10 @@ func (broker *Broker) ValidateRouterDataModel() []error {
 	return broker.routerSyncStrategy.Validate()
 }
 
+func (broker *Broker) GetRouterDataModel() *common.RouterDataModel {
+	return broker.routerSyncStrategy.GetRouterDataModel()
+}
+
 func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {
 	if clusterEvent.EventType == event.ClusterLeadershipGained {
 		broker.ae.Managers.Controller.PeersConnected(clusterEvent.Peers, false)
@@ -107,28 +113,29 @@ func (broker *Broker) GetReceiveHandlers() []channel.TypedReceiveHandler {
 	return broker.routerSyncStrategy.GetReceiveHandlers()
 }
 
+func (broker *Broker) InvokeRouterConnectedSynchronously() bool {
+	return true
+}
+
 func (broker *Broker) RouterConnected(router *model.Router) {
-	go func() {
-		fingerprint := ""
-		if router != nil && router.Fingerprint != nil {
-			fingerprint = *router.Fingerprint
-		}
+	fingerprint := ""
+	if router.Fingerprint != nil {
+		fingerprint = *router.Fingerprint
+	}
 
-		log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", fingerprint)
+	log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", fingerprint)
 
-		if fingerprint == "" {
-			log.Errorf("router without fingerprints connecting [id: %s], ignoring", router.Id)
-			return
-		}
+	if fingerprint == "" {
+		log.Errorf("router without fingerprints connecting [id: %s], ignoring", router.Id)
+		return
+	}
 
-		if edgeRouter, _ := broker.ae.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); edgeRouter != nil {
-			log.Infof("broker detected edge router with id %s connecting", router.Id)
-			broker.routerSyncStrategy.RouterConnected(edgeRouter, router)
-		} else {
-			log.Debugf("broker detected non-edge router with id %s connecting", router.Id)
-		}
-
-	}()
+	if edgeRouter, _ := broker.ae.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); edgeRouter != nil {
+		log.Infof("broker detected edge router with id %s connecting", router.Id)
+		broker.routerSyncStrategy.RouterConnected(edgeRouter, router)
+	} else {
+		log.Debugf("broker detected non-edge router with id %s connecting", router.Id)
+	}
 }
 
 func (broker *Broker) RouterDisconnected(r *model.Router) {

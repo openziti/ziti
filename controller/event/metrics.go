@@ -29,6 +29,7 @@ const (
 type MetricsEvent struct {
 	MetricType     string                 `json:"metric_type" mapstructure:"metric_type"`
 	Namespace      string                 `json:"namespace"`
+	EventSrcId     string                 `json:"event_src_id"`
 	SourceAppId    string                 `json:"source_id" mapstructure:"source_id"`
 	SourceEntityId string                 `json:"source_entity_id,omitempty"  mapstructure:"source_entity_id,omitempty"`
 	Version        uint32                 `json:"version"`

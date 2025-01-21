@@ -1,0 +1,659 @@
+authPolicies:
+  - name: NetFoundry Console Integration Auth Policy
+    primary:
+      cert:
+        allowExpiredCerts: false
+        allowed: false
+      extJwt:
+        allowed: true
+        allowedSigners:
+          - '@NetFoundry Console Integration External JWT Signer'
+      updb:
+        allowed: false
+        lockoutDurationMinutes: 0
+        maxAttempts: 0
+        minPasswordLength: 5
+        requireMixedCase: false
+        requireNumberChar: false
+        requireSpecialChar: false
+    secondary:
+      requireTotp: false
+    tags:
+      network-id: 25ba1aa3-4468-445a-910e-93f5b425f2c1
+      resource-id: 0b511399-82f4-416c-a074-0e3aba711e22
+  - name: Test123
+    primary:
+      cert:
+        allowExpiredCerts: false
+        allowed: false
+      extJwt:
+        allowed: true
+        allowedSigners: []
+      updb:
+        allowed: true
+        lockoutDurationMinutes: 0
+        maxAttempts: 5
+        minPasswordLength: 5
+        requireMixedCase: false
+        requireNumberChar: false
+        requireSpecialChar: false
+    secondary:
+      requireTotp: false
+    tags: {}
+  - name: ott+secondary
+    primary:
+      cert:
+        allowExpiredCerts: false
+        allowed: true
+      extJwt:
+        allowed: false
+        allowedSigners: []
+      updb:
+        allowed: false
+        lockoutDurationMinutes: 0
+        maxAttempts: 5
+        minPasswordLength: 5
+        requireMixedCase: false
+        requireNumberChar: false
+        requireSpecialChar: false
+    secondary:
+      requireExtJwtSigner: '@Auth0a'
+      requireTotp: false
+    tags: {}
+certificateAuthorities: []
+configTypes:
+  - name: Empty Config Type
+    schema: null
+    tags: {}
+configs:
+  - configType: '@intercept.v1'
+    data:
+      addresses:
+        - mylocal.com
+      portRanges:
+        - high: 547
+          low: 547
+      protocols:
+        - tcp
+        - udp
+    name: service2-intercept-config
+    tags: {}
+  - configType: '@intercept.v1'
+    data:
+      addresses:
+        - testservice.com
+      portRanges:
+        - high: 8083
+          low: 8083
+      protocols:
+        - tcp
+        - udp
+    name: ssssimple-intercept-config
+    tags: {}
+  - configType: '@host.v1'
+    data:
+      address: docker-ac-web-server-1
+      allowedProtocols:
+        - tcp
+      forwardProtocol: true
+      port: 80
+    name: ssssimple-host-config
+    tags: {}
+  - configType: '@host.v1'
+    data:
+      address: 127.0.0.1
+      allowedProtocols:
+        - tcp
+      forwardProtocol: true
+      port: 123
+    name: test-123-host-config
+    tags: {}
+  - configType: '@intercept.v1'
+    data:
+      addresses:
+        - jettylocal.com
+      portRanges:
+        - high: 8080
+          low: 8080
+      protocols:
+        - tcp
+        - udp
+    name: service1-intercept-config
+    tags: {}
+  - configType: '@host.v1'
+    data:
+      address: localhost
+      allowedProtocols:
+        - tcp
+      forwardProtocol: true
+      port: 8080
+    name: service1-host-config
+    tags: {}
+  - configType: '@host.v1'
+    data:
+      address: localhost
+      allowedProtocols:
+        - tcp
+      forwardProtocol: true
+      port: 546
+    name: service2-host-config
+    tags: {}
+  - configType: '@ziti-tunneler-client.v1'
+    data:
+      hostname: 192.168.242.2
+      port: 502
+    name: json
+    tags: {}
+  - configType: '@intercept.v1'
+    data:
+      addresses:
+        - simplesvctest1.ziti
+      portRanges:
+        - high: 321
+          low: 321
+      protocols:
+        - tcp
+        - udp
+    name: rg-test-123-intercept-config
+    tags: {}
+  - configType: '@intercept.v1'
+    data:
+      addresses:
+        - simplesvctest1.ziti
+      portRanges:
+        - high: 123
+          low: 123
+      protocols:
+        - tcp
+        - udp
+    name: test-123-intercept-config
+    tags: {}
+  - configType: '@host.v1'
+    data:
+      address: 127.0.0.1
+      allowedProtocols:
+        - tcp
+      forwardProtocol: true
+      port: 321
+    name: rg-test-123-host-config
+    tags: {}
+edgeRouterPolicies:
+  - edgeRouterRoles:
+      - '@public-router1'
+    identityRoles:
+      - '@identity12'
+    name: routerpolicy1
+    semantic: AnyOf
+    tags: {}
+  - edgeRouterRoles:
+      - '@custroutet2'
+    identityRoles:
+      - '@custroutet2'
+    name: edge-router-D98X8WmjYH-system
+    semantic: AnyOf
+    tags: {}
+  - edgeRouterRoles:
+      - '@asd'
+    identityRoles:
+      - '@asd'
+    name: edge-router-ORKiRq5WIU-system
+    semantic: AnyOf
+    tags: {}
+  - edgeRouterRoles:
+      - '@public-router1'
+    identityRoles:
+      - '@public-router1'
+    name: edge-router-Qo6blWsoY-system
+    semantic: AnyOf
+    tags: {}
+  - edgeRouterRoles:
+      - '@vis-customer-router'
+    identityRoles:
+      - '@vis-customer-router'
+    name: edge-router-w0OpEWmoY-system
+    semantic: AnyOf
+    tags: {}
+externalJwtSigners:
+  - audience: https://gateway.staging.netfoundry.io/cloudziti/25ba1aa3-4468-445a-910e-93f5b425f2c1
+    certPem: null
+    claimsProperty: sub
+    clientId: null
+    enabled: true
+    externalAuthUrl: null
+    fingerprint: null
+    issuer: https://netfoundry.io/jwt/NYFw7IGJKNP9AaG45iwCj
+    jwksEndpoint: https://gateway.staging.netfoundry.io/network-auth/v1/public/.well-known/NYFw7IGJKNP9AaG45iwCj/jwks.json
+    kid: null
+    name: NetFoundry Console Integration External JWT Signer
+    scopes: null
+    tags: {}
+    useExternalId: false
+  - audience: openziti
+    certPem: null
+    claimsProperty: email
+    clientId: ab97WjOSpACNes9iToN5EnfGt6bhoJ4K
+    enabled: true
+    externalAuthUrl: https://fake.us.auth0.com
+    fingerprint: null
+    issuer: https://fake.us.auth0.com/
+    jwksEndpoint: https://fake.us.auth0.com/.well-known/jwks.json
+    kid: ""
+    name: Auth0a
+    scopes:
+      - email
+    tags: {}
+    useExternalId: true
+identities:
+  - authPolicy: '@Default'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: null
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: vis-client
+    roleAttributes:
+      - client
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: f1505b76-38ec-470b-9819-75984623c23d
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: Vinay Lakshmaiah
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: 962818be-b8d5-4c37-8e5b-e5082aa4ddbf
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: harish donepudi
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@Default'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: null
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: identity12
+    roleAttributes:
+      - bind
+    tags: {}
+    typeId: Default
+  - authPolicy: '@Default'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: null
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: Prashant
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: 19fae786-dd8e-4d13-9864-588cee15be95
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: Loren Fouts
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: 1faad12a-1fc0-4d8a-a1e6-b2f993907017
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: kenneth.bingham+kentest@netfoundry.io
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: 8466464f-dcd4-46e9-a794-2bf68acc144b
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: ryan galletto
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: 489ff3ee-52ec-11e8-aa95-12c0467c47be
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: Mike Guthrie
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: 5f854c49-b5fd-44a1-b14f-a9c4aa5a7eba
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: 0dRsg5oRswW9gxv4H_8MX
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@Default'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: null
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: Newone
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: 356e0534-7fb8-4a48-b637-8a8821aa8035
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: Jens Alm
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: e37b3dc5-f375-4403-bf6d-e95a0a85d8e3
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: mahesh eranna
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@Default'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: null
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: admin2_user
+    roleAttributes:
+      - client
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: e3b92baa-0530-4ad9-80fd-57e5b3283bf9
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: Russell Allen
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@Default'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: null
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: AnewAdmin
+    roleAttributes:
+      - client
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: dab489a7-63d8-4e64-85b4-004ec0448037
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: Prashant Savadi
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: 988c2c94-f6dc-42ff-b1a1-8977915194db
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: Edward Moscardini
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: 0ed768fa-7214-4404-8335-a715156dff45
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: MOP Ziti Metrics Processor Service
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@NetFoundry Console Integration Auth Policy'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: 468153e2-1f07-498e-999d-4511e3d3a771
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: Tod Burtchell
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+  - authPolicy: '@Default'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: null
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: rg-windows-dt
+    roleAttributes: []
+    tags:
+      foo: bar
+    typeId: Default
+  - authPolicy: '@Default'
+    disabled: false
+    edgeRouterConnectionStatus: null
+    externalId: null
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    isAdmin: false
+    name: Admin-Registered
+    roleAttributes: []
+    tags: {}
+    typeId: Default
+postureChecks:
+  - macAddresses:
+      - 0123456789ab
+    name: Mac
+    roleAttributes:
+      - mac
+    tags: {}
+    typeId: MAC
+  - name: OS
+    operatingSystems:
+      - type: macOS
+        versions:
+          - 10.3.1
+          - 11.2.3
+    roleAttributes:
+      - os
+    tags: {}
+    typeId: OS
+  - name: MFA
+    roleAttributes:
+      - mfa
+    tags: {}
+    timeoutSeconds: 30
+    typeId: MFA
+  - name: Process
+    process:
+      hashes: null
+      osType: Linux
+      path: /path/something
+    roleAttributes:
+      - process
+    tags: {}
+    typeId: PROCESS
+edgeRouters:
+  - appData: {}
+    disabled: false
+    enrollmentToken: 29818c67-fc39-4f7b-bb05-9db895719107
+    hostname: ""
+    isTunnelerEnabled: true
+    name: custroutet2
+    noTraversal: false
+    roleAttributes:
+      - vis-bind
+    tags:
+      hello: world
+    unverifiedCertPem: null
+    unverifiedFingerprint: null
+  - appData: {}
+    disabled: false
+    enrollmentToken: 5564c079-d089-4e4b-8c76-7fe57b1967da
+    hostname: ""
+    isTunnelerEnabled: true
+    name: asd
+    noTraversal: false
+    roleAttributes: []
+    tags: {}
+    unverifiedCertPem: null
+    unverifiedFingerprint: null
+  - appData: {}
+    disabled: false
+    hostname: e08afdef-cb84-4a7e-b991-10a78575c2fc.staging.netfoundry.io
+    isTunnelerEnabled: true
+    name: public-router1
+    noTraversal: false
+    roleAttributes:
+      - public
+    tags: {}
+    unverifiedCertPem: null
+    unverifiedFingerprint: null
+  - appData: {}
+    disabled: false
+    hostname: 565288cb-039e-47fa-b4d6-cb10d3864d14.staging.netfoundry.io
+    isTunnelerEnabled: false
+    name: enroll
+    noTraversal: false
+    roleAttributes: []
+    tags: {}
+    unverifiedCertPem: null
+    unverifiedFingerprint: null
+  - appData: {}
+    disabled: false
+    hostname: c609f216-d095-4752-844e-52dd8fe022ea.staging.netfoundry.io
+    isTunnelerEnabled: false
+    name: nfhosted
+    noTraversal: false
+    roleAttributes:
+      - public
+    tags: {}
+    unverifiedCertPem: null
+    unverifiedFingerprint: null
+  - appData:
+      my: er
+    disabled: false
+    enrollmentToken: 43bf0e64-62c2-4c6a-a602-58b46c538471
+    hostname: ""
+    isTunnelerEnabled: false
+    name: appdata
+    noTraversal: true
+    roleAttributes: []
+    tags: {}
+    unverifiedCertPem: null
+    unverifiedFingerprint: null
+  - appData: {}
+    disabled: false
+    hostname: e6a40617-8394-49c1-82d3-ed78388551c5.staging.netfoundry.io
+    isTunnelerEnabled: true
+    name: vis-customer-router
+    noTraversal: false
+    roleAttributes:
+      - vis-bind
+    tags: {}
+    unverifiedCertPem: null
+    unverifiedFingerprint: null
+serviceEdgeRouterPolicies:
+  - edgeRouterRoles:
+      - '@custroutet2'
+    name: ssep2
+    semantic: AnyOf
+    serviceRoles:
+      - '@ssssimple'
+    tags: {}
+  - edgeRouterRoles:
+      - '@public-router1'
+    name: sep1
+    semantic: AnyOf
+    serviceRoles:
+      - '@ssssimple'
+    tags: {}
+servicePolicies:
+  - identityRoles:
+      - '@public-router1'
+    name: ssssimple-bind-policy
+    postureCheckRoles: null
+    semantic: AnyOf
+    serviceRoles:
+      - '@ssssimple'
+    tags: {}
+    type: Bind
+  - identityRoles:
+      - '@identity12'
+    name: ssssimple-dial-policy
+    postureCheckRoles: null
+    semantic: AnyOf
+    serviceRoles:
+      - '@ssssimple'
+    tags: {}
+    type: Dial
+services:
+  - configs: []
+    encryptionRequired: true
+    name: asdfasdf
+    roleAttributes:
+      - bcde
+    tags: {}
+    terminatorStrategy: smartrouting
+  - configs:
+      - '@ssssimple-intercept-config'
+      - '@ssssimple-host-config'
+    encryptionRequired: true
+    name: ssssimple
+    roleAttributes:
+      - abcd
+      - service
+    tags:
+      foo: bar
+    terminatorStrategy: smartrouting

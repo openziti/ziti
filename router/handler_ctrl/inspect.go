@@ -131,6 +131,10 @@ func (context *inspectRequestContext) processLocal() {
 		} else if lc == "router-data-model" {
 			result := context.handler.env.GetRouterDataModel()
 			context.handleJsonResponse(requested, result)
+		} else if lc == "router-data-model-index" {
+			idx, _ := context.handler.env.GetRouterDataModel().CurrentIndex()
+			strVal := fmt.Sprintf("%d", idx)
+			context.appendValue(requested, strVal)
 		} else if lc == "router-controllers" {
 			result := context.handler.env.GetNetworkControllers().Inspect()
 			context.handleJsonResponse(requested, result)

@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
 	"go.etcd.io/bbolt"
+	"slices"
 )
 
 const (
@@ -130,6 +131,20 @@ func (store *configStoreImpl) Update(ctx boltz.MutateContext, entity *Config, ch
 func (store *configStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
 	if err := store.createServiceChangeEvents(ctx.Tx(), id); err != nil {
 		return err
+	}
+
+	// clear config from referencing services
+	for _, serviceId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeServices) {
+		service, err := store.stores.edgeService.LoadById(ctx.Tx(), serviceId)
+		if err != nil {
+			return fmt.Errorf("error loading service %s to clear reference to config %s (%w)", serviceId, id, err)
+		}
+		service.Configs = slices.DeleteFunc(service.Configs, func(s string) bool {
+			return s == id
+		})
+		if err = store.stores.edgeService.Update(ctx, service, nil); err != nil {
+			return fmt.Errorf("error updating service %s to clear reference to config %s (%w)", serviceId, id, err)
+		}
 	}
 
 	err := store.symbolIdentityServices.Map(ctx.Tx(), []byte(id), func(mapCtx *boltz.MapContext) {

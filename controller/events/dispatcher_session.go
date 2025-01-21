@@ -52,6 +52,7 @@ func (self *Dispatcher) sessionCreated(session *db.Session) {
 	evt := &event.SessionEvent{
 		Namespace:    event.SessionEventNS,
 		EventType:    event.SessionEventTypeCreated,
+		EventSrcId:   self.ctrlId,
 		Id:           session.Id,
 		SessionType:  session.Type,
 		Timestamp:    time.Now(),
@@ -70,6 +71,7 @@ func (self *Dispatcher) sessionDeleted(session *db.Session) {
 	evt := &event.SessionEvent{
 		Namespace:    event.SessionEventNS,
 		EventType:    event.SessionEventTypeDeleted,
+		EventSrcId:   self.ctrlId,
 		Id:           session.Id,
 		SessionType:  session.Type,
 		Timestamp:    time.Now(),

@@ -39,6 +39,7 @@ func (self *Dispatcher) RemoveConnectEventHandler(handler event.ConnectEventHand
 }
 
 func (self *Dispatcher) AcceptConnectEvent(evt *event.ConnectEvent) {
+	evt.EventSrcId = self.ctrlId
 	for _, handler := range self.connectEventHandlers.Value() {
 		go handler.AcceptConnectEvent(evt)
 	}

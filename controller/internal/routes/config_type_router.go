@@ -21,10 +21,10 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/config"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/fields"
 )
 
 func init() {
@@ -68,7 +68,7 @@ func (r *ConfigTypeRouter) Register(ae *env.AppEnv) {
 	})
 
 	ae.ManagementApi.ConfigListConfigsForConfigTypeHandler = config.ListConfigsForConfigTypeHandlerFunc(func(params config.ListConfigsForConfigTypeParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.ListConfigs(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.ListConfigs(ae, rc) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 }
 
@@ -125,6 +125,6 @@ func (r *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, pa
 	})
 }
 
-func (r *ConfigTypeRouter) ListConfigs(ae *env.AppEnv, rc *response.RequestContext, params config.ListConfigsForConfigTypeParams) {
+func (r *ConfigTypeRouter) ListConfigs(ae *env.AppEnv, rc *response.RequestContext) {
 	ListAssociationWithHandler[*model.ConfigType, *model.Config](ae, rc, ae.Managers.ConfigType, ae.Managers.Config, MapConfigToRestEntity)
 }

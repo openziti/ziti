@@ -64,6 +64,7 @@ type CircuitEvent struct {
 	Namespace        string            `json:"namespace"`
 	Version          uint32            `json:"version"`
 	EventType        CircuitEventType  `json:"event_type"`
+	EventSrcId       string            `json:"event_src_id"`
 	CircuitId        string            `json:"circuit_id"`
 	Timestamp        time.Time         `json:"timestamp"`
 	ClientId         string            `json:"client_id"`

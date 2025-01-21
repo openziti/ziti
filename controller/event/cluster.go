@@ -25,13 +25,15 @@ import (
 type ClusterEventType string
 
 const (
-	ClusterEventsNs = "fabric.cluster"
+	ClusterEventsNs = "cluster"
 
 	ClusterPeerConnected    ClusterEventType = "peer.connected"
 	ClusterPeerDisconnected ClusterEventType = "peer.disconnected"
 	ClusterMembersChanged   ClusterEventType = "members.changed"
 	ClusterLeadershipGained ClusterEventType = "leadership.gained"
 	ClusterLeadershipLost   ClusterEventType = "leadership.lost"
+	ClusterHasLeader        ClusterEventType = "state.has_leader"
+	ClusterIsLeaderless     ClusterEventType = "state.is_leaderless"
 	ClusterStateReadOnly    ClusterEventType = "state.ro"
 	ClusterStateReadWrite   ClusterEventType = "state.rw"
 )
@@ -54,11 +56,13 @@ func (self *ClusterPeer) String() string {
 }
 
 type ClusterEvent struct {
-	Namespace string           `json:"namespace"`
-	EventType ClusterEventType `json:"eventType"`
-	Timestamp time.Time        `json:"timestamp"`
-	Index     uint64           `json:"index,omitempty"`
-	Peers     []*ClusterPeer   `json:"peers,omitempty"`
+	Namespace  string           `json:"namespace"`
+	EventType  ClusterEventType `json:"eventType"`
+	EventSrcId string           `json:"event_src_id"`
+	Timestamp  time.Time        `json:"timestamp"`
+	Index      uint64           `json:"index,omitempty"`
+	Peers      []*ClusterPeer   `json:"peers,omitempty"`
+	LeaderId   string           `json:"leaderId,omitempty"`
 }
 
 func (event *ClusterEvent) String() string {

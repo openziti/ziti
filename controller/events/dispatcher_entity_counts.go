@@ -73,8 +73,9 @@ func (self *Dispatcher) generateEntityEvents() {
 
 func (self *Dispatcher) generateEntityCountEvent() *event.EntityCountEvent {
 	event := &event.EntityCountEvent{
-		Namespace: event.EntityCountEventNS,
-		Timestamp: time.Now(),
+		Namespace:  event.EntityCountEventNS,
+		EventSrcId: self.ctrlId,
+		Timestamp:  time.Now(),
 	}
 
 	data, err := self.stores.GetEntityCounts(self.network.GetDb())

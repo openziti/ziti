@@ -286,8 +286,10 @@ func (self *tunneler) mapRdmIdentityToRest(i *common.Identity) *rest_model.Ident
 	}
 
 	appData := map[string]interface{}{}
-	if err := json.Unmarshal(i.AppDataJson, &appData); err != nil {
-		pfxlog.Logger().WithError(err).WithField("identity", id).Error("failed to unmarshal app data")
+	if len(i.AppDataJson) > 0 {
+		if err := json.Unmarshal(i.AppDataJson, &appData); err != nil {
+			pfxlog.Logger().WithError(err).WithField("identity", id).Error("failed to unmarshal app data")
+		}
 	}
 
 	hostingCosts := map[string]*rest_model.TerminatorCost{}

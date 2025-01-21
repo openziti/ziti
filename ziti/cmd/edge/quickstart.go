@@ -67,7 +67,7 @@ type QuickstartOpts struct {
 	TrustDomain        string
 	isHA               bool
 	InstanceID         string
-	MemberPID          int
+	ClusterMember      string
 	joinCommand        bool
 	verbose            bool
 	nonVoter           bool
@@ -159,7 +159,7 @@ func NewQuickStartJoinClusterCmd(out io.Writer, errOut io.Writer, context contex
 	}
 	addCommonQuickstartFlags(cmd, options)
 	addQuickstartHaFlags(cmd, options)
-	cmd.Flags().IntVarP(&options.MemberPID, "member-pid", "m", 0, "the pid of a cluster member. required")
+	cmd.Flags().StringVarP(&options.ClusterMember, "cluster-member", "m", "", "address of a cluster member. required. example tls:localhost:1280")
 	cmd.Flags().BoolVar(&options.nonVoter, "non-voting", false, "used with ha mode. specifies the member is a non-voting member")
 	cmd.Hidden = true
 	return cmd
@@ -182,9 +182,10 @@ func (o *QuickstartOpts) join(ctx context.Context) {
 		logrus.Fatalf("the home directory must be specified when joining an existing cluster. the root-ca is used to create the server's pki")
 	}
 
-	if o.MemberPID == 0 {
-		logrus.Fatalf("--member-pid is required")
+	if o.ClusterMember == "" {
+		logrus.Fatalf("--cluster-member is required")
 	}
+
 	o.isHA = true
 	o.joinCommand = true
 	o.run(ctx)
@@ -200,6 +201,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		tmpDir, _ := os.MkdirTemp("", "quickstart")
 		o.Home = tmpDir
 		o.cleanOnExit = true
+		logrus.Infof("temporary --home '%s'", o.Home)
 	} else {
 		//normalize path
 		if strings.HasPrefix(o.Home, "~") {
@@ -353,8 +355,8 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 			agentJoinCmd := agentcli.NewAgentClusterAdd(p)
 
 			args := []string{
-				fmt.Sprintf("tls:%s:%s", helpers.GetCtrlAdvertisedAddress(), helpers.GetCtrlAdvertisedPort()),
-				fmt.Sprintf("--pid=%d", o.MemberPID),
+				o.ClusterMember,
+				fmt.Sprintf("--pid=%d", os.Getpid()),
 				fmt.Sprintf("--voter=%t", !o.nonVoter),
 			}
 			agentJoinCmd.SetArgs(args)
@@ -419,7 +421,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 			fmt.Printf("    --router-port %d \\\n", o.RouterPort+1)
 			fmt.Printf("    --home \"%s\" \\\n", o.Home)
 			fmt.Printf("    --trust-domain=\"%s\" \\\n", o.TrustDomain)
-			fmt.Printf("    --member-pid %d\\ \n", os.Getpid())
+			fmt.Printf("    --cluster-member tls:%s:%s\\ \n", ctrlAddy, ctrlPort)
 			fmt.Printf("    --instance-id \"%s\"\n", nextInstId)
 			fmt.Println("=======================================================================================")
 			fmt.Println()

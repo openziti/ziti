@@ -19,6 +19,7 @@ package response
 import (
 	"fmt"
 	"github.com/go-openapi/errors"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/api"
@@ -53,6 +54,7 @@ func (self EdgeResponseMapper) MapApiError(requestId string, apiError *errorz.Ap
 }
 
 func (self EdgeResponseMapper) toRestModel(e *errorz.ApiError, requestId string) *rest_model.APIError {
+	pfxlog.Logger().WithError(e).WithField("code", e.Code).Debug("returning error to REST API")
 	ret := &rest_model.APIError{
 		Args:      nil,
 		Code:      e.Code,

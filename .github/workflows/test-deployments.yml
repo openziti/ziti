@@ -64,7 +64,7 @@ jobs:
           ZITI_MAINTAINER: "OpenZiti Maintainers <developers@openziti.org>"
           ZITI_HOMEPAGE: "https://openziti.io"
           ZITI_VENDOR: "NetFoundry Inc."
-          GOARCH: ${{ matrix.arch.goreleaser }}
+          TARGETARCH: ${{ matrix.arch.goreleaser }}
           MINIMUM_SYSTEMD_VERSION: 232
 
       - name: Upload Package to Build Summary

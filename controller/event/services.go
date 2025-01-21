@@ -26,6 +26,7 @@ type ServiceEvent struct {
 	Namespace        string `json:"namespace"`
 	Version          uint32 `json:"version"`
 	EventType        string `json:"event_type"`
+	EventSrcId       string `json:"event_src_id"`
 	ServiceId        string `json:"service_id"`
 	TerminatorId     string `json:"terminator_id"`
 	Count            uint64 `json:"count"`

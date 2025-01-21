@@ -45,7 +45,7 @@ additionalTrustDomains: []
 
 profile:
 #   cpu:
-#       path: /home/plorenz/tmp/ctrl.cpu.pprof
+#       path: ${TMPDIR}/ziti.ctrl.cpu.pprof
 #  memory:
 #    path: ctrl.memprof
 
@@ -105,11 +105,10 @@ ctrl:
 #      - type: services
 #      - type: edge.entityCounts
 #        interval: 5s
-#    handler:
-#      type: file
-#      format: json
-#      # do not commit uncommented as it causes startup issues for non-linux environments
-#      path: /tmp/ziti-events.log
+    handler:
+      type: file
+      format: json
+      path: ${TMPDIR}/ziti-events.log
 #  usageLogger:
 #    subscriptions:
 #      - type: fabric.usage
