@@ -748,7 +748,10 @@ func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
 		extJwtAuthVal := ae.GetAuthRegistry().GetByMethod(model.AuthMethodExtJwt)
 		extJwtAuth := extJwtAuthVal.(*model.AuthModuleExtJwt)
 		if extJwtAuth != nil {
-			authResult, err := extJwtAuth.ProcessSecondary(model.NewAuthContextHttp(rc.Request, model.AuthMethodExtJwt, nil, rc.NewChangeContext()))
+			authCtx := model.NewAuthContextHttp(rc.Request, model.AuthMethodExtJwt, nil, rc.NewChangeContext())
+			authCtx.SetPrimaryIdentity(rc.Identity)
+
+			authResult, err := extJwtAuth.ProcessSecondary(authCtx)
 
 			if err != nil || !authResult.IsSuccessful() {
 				signer, err := ae.Managers.ExternalJwtSigner.Read(*rc.AuthPolicy.Secondary.RequiredExtJwtSigner)

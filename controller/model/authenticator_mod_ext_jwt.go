@@ -310,11 +310,11 @@ func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 }
 
 func (a *AuthModuleExtJwt) Process(context AuthContext) (AuthResult, error) {
-	return a.process(context, true)
+	return a.process(context)
 }
 
 func (a *AuthModuleExtJwt) ProcessSecondary(context AuthContext) (AuthResult, error) {
-	return a.process(context, false)
+	return a.process(context)
 }
 
 type AuthResultJwt struct {
@@ -352,8 +352,17 @@ func (a *AuthResultJwt) Authenticator() *Authenticator {
 	return authenticator
 }
 
-func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthResult, error) {
+// process attempts to locate a JWT and ExtJwtSigner that  verifies it. If context.GetPrimaryIdentity()==nil, this will be
+// processed as a secondary authentication factor.
+func (a *AuthModuleExtJwt) process(context AuthContext) (AuthResult, error) {
 	logger := pfxlog.Logger().WithField("authMethod", AuthMethodExtJwt)
+
+	isPrimary := context.GetPrimaryIdentity() == nil
+
+	authType := "secondary"
+	if isPrimary {
+		authType = "primary"
+	}
 
 	candidates := a.getJwtsFromAuthHeader(context)
 
@@ -384,11 +393,6 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 		} else {
 			verifyResults = append(verifyResults, verifyResult)
 		}
-	}
-
-	authType := "secondary"
-	if isPrimary {
-		authType = "primary"
 	}
 
 	logger.Errorf("encountered %d candidate JWTs and all failed to validate for %s authentication, see the following log messages", len(verifyResults), authType)
@@ -610,6 +614,8 @@ func (a *AuthModuleExtJwt) verifyAsPrimary(authPolicy *AuthPolicy, extJwt *db.Ex
 func (a *AuthModuleExtJwt) verifyCandidate(context AuthContext, isPrimary bool, jwtStr string) *candidateResult {
 	result := &candidateResult{}
 
+	targetIdentity := context.GetPrimaryIdentity()
+
 	//pubKeyLookup also handles extJwtSigner.enabled checking
 	jwtToken, err := jwt.Parse(jwtStr, a.pubKeyLookup)
 
@@ -700,6 +706,11 @@ func (a *AuthModuleExtJwt) verifyCandidate(context AuthContext, isPrimary bool, 
 
 	if identity == nil {
 		result.Error = fmt.Errorf("no identity found for claims type [%s] and claimd id [%s]: %w", claimIdLookupMethod, claimId, err)
+		return result
+	}
+
+	if targetIdentity != nil && targetIdentity.Id != identity.Id {
+		result.Error = fmt.Errorf("jwt mapped to identity [%s - %s], which does not match the current sessions identity [%s - %s]", identity.Id, identity.Name, targetIdentity.Id, targetIdentity.Name)
 		return result
 	}
 
