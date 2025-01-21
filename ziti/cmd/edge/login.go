@@ -186,7 +186,7 @@ func (o *LoginOptions) Run() error {
 		host = host + ctrlUrl.Path
 	}
 
-	if o.Token != "" && !o.Cmd.Flag("read-only").Changed {
+	if o.Token != "" && o.Cmd != nil && !o.Cmd.Flag("read-only").Changed {
 		o.ReadOnly = true
 		o.Println("NOTE: When using --token the saved identity will be marked as read-only unless --read-only=false is provided")
 	}
