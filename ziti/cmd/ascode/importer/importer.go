@@ -49,6 +49,7 @@ type Importer struct {
 	authPolicyCache    map[string]any
 	extJwtSignersCache map[string]any
 	identityCache      map[string]any
+	controllerUrl      string
 }
 
 func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -102,6 +103,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVar(&importer.ofJson, "json", true, "Input parsed as JSON")
 	cmd.Flags().BoolVar(&importer.ofYaml, "yaml", false, "Input parsed as YAML")
+	cmd.Flags().StringVar(&importer.controllerUrl, "controller-url", "", "The url of the controller")
 	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
 
 	edge.AddLoginFlags(cmd, &importer.loginOpts)
@@ -123,6 +125,9 @@ func (importer *Importer) Init() {
 
 	client, err := mgmt.NewClient()
 	if err != nil {
+		if importer.controllerUrl != "" {
+			importer.loginOpts.Args = []string{importer.controllerUrl}
+		}
 		loginErr := importer.loginOpts.Run()
 		if loginErr != nil {
 			log.Fatal(err)
