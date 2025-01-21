@@ -146,11 +146,24 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 	rpServer.Start()
 	defer rpServer.Stop()
 
-	//clientApiUrl, err := url.Parse("https://" + ctx.ApiHost + EdgeClientApiPath)
-	//ctx.Req.NoError(err)
-	//
-	//managementApiUrl, err := url.Parse("https://" + ctx.ApiHost + EdgeManagementApiPath)
-	//ctx.Req.NoError(err)
+	t.Run("attempt to auth with multipart form data, expect unsupported media type", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
+		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
+
+		loginPath := "https://" + ctx.ApiHost + "/oidc/login/password?authRequestID=12345"
+
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(loginPath)
+
+		resp, err := client.R().SetMultipartFormData(map[string]string{
+			"username": "admin",
+			"password": "admin",
+		}).Post(loginPath)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusUnsupportedMediaType, resp.StatusCode())
+	})
 
 	t.Run("updb", func(t *testing.T) {
 		ctx.testContextChanged(t)
