@@ -248,8 +248,8 @@ github.com/go-openapi/swag v0.23.0 h1:vsEVJDUo2hPJ2tu0/Xc+4noaxyEffXNIs3cOULZ+Gr
 github.com/go-openapi/swag v0.23.0/go.mod h1:esZ8ITTYEsH1V2trKHjAN8Ai7xHb8RV+YSZ577vPjgQ=
 github.com/go-openapi/validate v0.24.0 h1:LdfDKwNbpB6Vn40xhTdNZAnfLECL81w+VX3BumrGD58=
 github.com/go-openapi/validate v0.24.0/go.mod h1:iyeX1sEufmv3nPbBdX3ieNviWnOZaJ1+zquzJEf2BAQ=
-github.com/go-resty/resty/v2 v2.16.3 h1:zacNT7lt4b8M/io2Ahj6yPypL7bqx9n1iprfQuodV+E=
-github.com/go-resty/resty/v2 v2.16.3/go.mod h1:hkJtXbA2iKHzJheXYvQ8snQES5ZLGKMwQ07xAwp/fiA=
+github.com/go-resty/resty/v2 v2.16.4 h1:81IjtszQKwbz7dot4LLYGwhJNUsNwECD2O7nru5q60E=
+github.com/go-resty/resty/v2 v2.16.4/go.mod h1:hkJtXbA2iKHzJheXYvQ8snQES5ZLGKMwQ07xAwp/fiA=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
@@ -595,10 +595,6 @@ github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQ
 github.com/openziti/cobra-to-md v1.0.1/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
 github.com/openziti/dilithium v0.3.5 h1:+envGNzxc3OyVPiuvtxivQmCsOjdZjtOMLpQBeMz7eM=
 github.com/openziti/dilithium v0.3.5/go.mod h1:XONq1iK6te/WwNzkgZHfIDHordMPqb0hMwJ8bs9EfSk=
-github.com/openziti/edge-api v0.26.36 h1:zy2DjmIz/B+WxPpIzhFOAxi/LhM/yeKa8s1Vz2h8cQk=
-github.com/openziti/edge-api v0.26.36/go.mod h1:sYHVpm26Jr1u7VooNJzTb2b2nGSlmCHMnbGC8XfWSng=
-github.com/openziti/edge-api v0.26.37 h1:MQGDQusrya6U5IEW/t6x6IRzBqzBVFF00YNcuPMNtnY=
-github.com/openziti/edge-api v0.26.37/go.mod h1:sYHVpm26Jr1u7VooNJzTb2b2nGSlmCHMnbGC8XfWSng=
 github.com/openziti/edge-api v0.26.38 h1:3xDWC5SFn3qUVR428TIBpRc2lrjVV7Gz0Rx4pQx0JSg=
 github.com/openziti/edge-api v0.26.38/go.mod h1:sYHVpm26Jr1u7VooNJzTb2b2nGSlmCHMnbGC8XfWSng=
 github.com/openziti/foundation/v2 v2.0.56 h1:YXqBmkrN0fYr3TqIlWZSZGluE2QpJxlA29Z6okZyQ5I=
@@ -1309,8 +1305,8 @@ google.golang.org/protobuf v1.24.0/go.mod h1:r/3tXBNzIEhYS9I1OUVjXDlt8tc493IdKGj
 google.golang.org/protobuf v1.25.0/go.mod h1:9JNX74DMeImyA3h4bdi1ymwjUzf21/xIlbajtzgsN7c=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
 google.golang.org/protobuf v1.26.0/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
-google.golang.org/protobuf v1.36.2 h1:R8FeyR1/eLmkutZOM5CWghmo5itiG9z0ktFlTVLuTmU=
-google.golang.org/protobuf v1.36.2/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
+google.golang.org/protobuf v1.36.3 h1:82DV7MYdb8anAVi3qge1wSnMDrnKK7ebr+I0hHRN1BU=
+google.golang.org/protobuf v1.36.3/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
 gopkg.in/AlecAivazis/survey.v1 v1.8.8 h1:5UtTowJZTz1j7NxVzDGKTz6Lm9IWm8DDF6b7a2wq9VY=
 gopkg.in/AlecAivazis/survey.v1 v1.8.8/go.mod h1:CaHjv79TCgAvXMSFJSVgonHXYWxnhzI3eoHtnX5UgUo=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=

@@ -28,7 +28,7 @@ require (
 	github.com/go-openapi/strfmt v0.23.0
 	github.com/go-openapi/swag v0.23.0
 	github.com/go-openapi/validate v0.24.0
-	github.com/go-resty/resty/v2 v2.16.3
+	github.com/go-resty/resty/v2 v2.16.4
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
@@ -91,7 +91,7 @@ require (
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.29.0
 	golang.org/x/text v0.21.0
-	google.golang.org/protobuf v1.36.2
+	google.golang.org/protobuf v1.36.3
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/go-jose/go-jose.v2 v2.6.3
 	gopkg.in/resty.v1 v1.12.0
