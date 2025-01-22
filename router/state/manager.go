@@ -542,7 +542,7 @@ func (sm *ManagerImpl) MarkSyncStopped(trackerId string) {
 func (sm *ManagerImpl) IsSyncInProgress() bool {
 	sm.syncLock.Lock()
 	defer sm.syncLock.Unlock()
-	return sm.currentSync == ""
+	return sm.currentSync != ""
 }
 
 func (sm *ManagerImpl) AddApiSession(apiSession *ApiSession) {
