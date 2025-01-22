@@ -111,6 +111,9 @@ func (h *apiSessionAddedHandler) HandleReceive(msg *channel.Message, ch channel.
 }
 
 func (h *apiSessionAddedHandler) applySync(tracker *apiSessionSyncTracker) {
+	h.trackerLock.Lock()
+	defer h.trackerLock.Unlock()
+
 	lastId := ""
 	apiSessions := tracker.all()
 	for _, apiSession := range apiSessions {
@@ -121,6 +124,7 @@ func (h *apiSessionAddedHandler) applySync(tracker *apiSessionSyncTracker) {
 
 	h.sm.RemoveMissingApiSessions(apiSessions, lastId)
 	h.sm.MarkSyncStopped(tracker.syncId)
+	h.syncTracker = nil
 
 	tracker.isDone.Store(true)
 	duration := tracker.endTime.Sub(tracker.startTime)
