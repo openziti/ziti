@@ -249,12 +249,10 @@ func (o *LoginOptions) Run() error {
 		ReadOnly:  o.ReadOnly,
 	}
 
-	if !o.IgnoreConfig {
-		o.Printf("Saving identity '%v' to %v\n", id, configFile)
-		config.EdgeIdentities[id] = loginIdentity
+	o.Printf("Saving identity '%v' to %v\n", id, configFile)
+	config.EdgeIdentities[id] = loginIdentity
 
-		err = util.PersistRestClientConfig(config)
-	}
+	err = util.PersistRestClientConfig(config)
 
 	return err
 }
