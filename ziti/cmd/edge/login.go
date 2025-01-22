@@ -66,7 +66,7 @@ func AddLoginFlags(cmd *cobra.Command, options *LoginOptions) {
 	cmd.Flags().StringVarP(&options.CaCert, "ca", "", "", "additional root certificates used by the Ziti Edge Controller")
 	cmd.Flags().BoolVar(&options.ReadOnly, "read-only", false, "marks this login as read-only. Note: this is not a guarantee that nothing can be changed on the server. Care should still be taken!")
 	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", false, "If set, responds to prompts with yes. This will result in untrusted certs being accepted or updated.")
-	cmd.Flags().BoolVar(&options.IgnoreConfig, "ignore-config", false, "If set, does not use value from the config file for hostname or username. Values must be entered or will be prompted for.")
+	cmd.Flags().BoolVar(&options.IgnoreConfig, "ignore-config", false, "If set, does not use values from nor write the config file. Values must be entered or will be prompted for.")
 	cmd.Flags().StringVarP(&options.ClientCert, "client-cert", "c", "", "A certificate used to authenticate")
 	cmd.Flags().StringVarP(&options.ClientKey, "client-key", "k", "", "The key to use with certificate authentication")
 	cmd.Flags().StringVarP(&options.ExtJwt, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
@@ -96,7 +96,7 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		},
 		SuggestFor: []string{},
 	}
-	
+
 	AddLoginFlags(cmd, options)
 
 	return cmd
@@ -118,8 +118,10 @@ func (o *LoginOptions) Run() error {
 			return fmt.Errorf("could not read file %s: %w", o.File, err)
 		}
 
-		idCredentials := edge_apis.NewIdentityCredentialsFromConfig(cfg.ID)
-		o.FileCertCreds = idCredentials
+		if !o.IgnoreConfig {
+			idCredentials := edge_apis.NewIdentityCredentialsFromConfig(cfg.ID)
+			o.FileCertCreds = idCredentials
+		}
 		ztAPI := cfg.ZtAPI
 
 		// override with the first HA client API URL if defined
@@ -247,10 +249,12 @@ func (o *LoginOptions) Run() error {
 		ReadOnly:  o.ReadOnly,
 	}
 
-	o.Printf("Saving identity '%v' to %v\n", id, configFile)
-	config.EdgeIdentities[id] = loginIdentity
+	if !o.IgnoreConfig {
+		o.Printf("Saving identity '%v' to %v\n", id, configFile)
+		config.EdgeIdentities[id] = loginIdentity
 
-	err = util.PersistRestClientConfig(config)
+		err = util.PersistRestClientConfig(config)
+	}
 
 	return err
 }
