@@ -17,7 +17,7 @@ func Test_GetHandledHostNames(t *testing.T) {
 		req.Contains(result, "localhost")
 		req.Contains(result, "127.0.0.1:443")
 		req.Contains(result, "127.0.0.1")
-		req.Contains(result, "::1")
+		req.Contains(result, "[::1]")
 		req.Contains(result, "[::1]:443")
 	})
 	t.Run("localhost:1234 returns all local addresses", func(t *testing.T) {
@@ -41,7 +41,7 @@ func Test_GetHandledHostNames(t *testing.T) {
 		req.Contains(result, "localhost")
 		req.Contains(result, "127.0.0.1:443")
 		req.Contains(result, "127.0.0.1")
-		req.Contains(result, "::1")
+		req.Contains(result, "[::1]")
 		req.Contains(result, "[::1]:443")
 	})
 	t.Run("127.0.0.1:1234 returns all local addresses", func(t *testing.T) {
@@ -65,7 +65,7 @@ func Test_GetHandledHostNames(t *testing.T) {
 		req.Contains(result, "localhost")
 		req.Contains(result, "127.0.0.1:443")
 		req.Contains(result, "127.0.0.1")
-		req.Contains(result, "::1")
+		req.Contains(result, "[::1]")
 		req.Contains(result, "[::1]:443")
 	})
 	t.Run("[::1]:1234 returns all local addresses", func(t *testing.T) {

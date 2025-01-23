@@ -111,7 +111,17 @@ func getHandledHostnames(issuer string) []string {
 
 	shouldHandleDefaultPort := port == DefaultTlsPort
 	if shouldHandleDefaultPort {
-		hostsToHandle[hostWithoutPort] = struct{}{}
+
+		ip := net.ParseIP(hostWithoutPort)
+		isIpv6 := ip != nil && ip.To4() == nil
+
+		if isIpv6 {
+			//ipv6 in urls always requires brackets even w/ default ports
+			hostsToHandle["["+hostWithoutPort+"]"] = struct{}{}
+		} else {
+			hostsToHandle[hostWithoutPort] = struct{}{}
+		}
+
 	}
 
 	//local address in use, translate as needed
@@ -123,7 +133,10 @@ func getHandledHostnames(issuer string) []string {
 		if shouldHandleDefaultPort {
 			hostsToHandle[LocalhostName] = struct{}{}
 			hostsToHandle[LocalhostIpv4] = struct{}{}
-			hostsToHandle[LocalhostIpv6] = struct{}{}
+
+			//ipv6 in urls always requires brackets even w/ default ports
+			hostsToHandle["["+LocalhostIpv6+"]"] = struct{}{}
+
 		}
 	}
 

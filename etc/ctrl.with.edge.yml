@@ -164,7 +164,7 @@ edge:
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in a bind point's address field for the `edge-client` API in the web section.
-    address: 127.0.0.1:1280
+    address: "[::1]:443"
   # enrollment - required
   # A section containing settings pertaining to enrollment.
   enrollment:
@@ -206,18 +206,18 @@ web:
     bindPoints:
       #interface - required
       # A host:port string on which network interface to listen on. 0.0.0.0 will listen on all interfaces
-      - interface: 127.0.0.1:1280
+      - interface: "[::1]:443"
 
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
-        address: 127.0.0.1:1280
+        address: "[::1]:443"
 
         # newAddress - optional
         # A host:port string which will be sent out as an HTTP header "ziti-new-address" if specified. If the header
         # is present, clients should update location configuration to immediately use the new address for future
         # connections. The value of newAddress must be resolvable both via DNS and validate via certificates
-        newAddress: localhost:1280
+        newAddress: "[::1]:443"
     # identity - optional
     # Allows the webListener to have a specific identity instead of defaulting to the root `identity` section.
     #    identity:
