@@ -23,7 +23,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/ziti/internal"
-	"github.com/openziti/ziti/internal/rest/mgmt"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/sirupsen/logrus"
@@ -48,7 +47,6 @@ type Exporter struct {
 	configTypeCache  map[string]any
 	authPolicyCache  map[string]any
 	externalJwtCache map[string]any
-	controllerUrl    string
 }
 
 var output Output
@@ -96,7 +94,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVar(&exporter.ofJson, "json", true, "Output in JSON")
 	cmd.Flags().BoolVar(&exporter.ofYaml, "yaml", false, "Output in YAML")
-	cmd.Flags().StringVar(&exporter.controllerUrl, "controller-url", "", "The url of the controller")
+	cmd.Flags().StringVar(&exporter.loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
 
 	cmd.Flags().StringVarP(&exporter.filename, "output-file", "o", "", "Write output to local file")
@@ -118,21 +116,11 @@ func (exporter *Exporter) Init(out io.Writer) error {
 	pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
 	internal.ConfigureLogFormat(logLvl)
 
-	client, err := mgmt.NewClient()
+	var err error
+	exporter.client, err = exporter.loginOpts.NewMgmtClient()
 	if err != nil {
-		if exporter.controllerUrl != "" {
-			exporter.loginOpts.Args = []string{exporter.controllerUrl}
-		}
-		loginErr := exporter.loginOpts.Run()
-		if loginErr != nil {
-			log.Fatal(err)
-		}
-		client, err = mgmt.NewClient()
-		if err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
 	}
-	exporter.client = client
 
 	if exporter.filename != "" {
 		o, err := NewOutputToFile(exporter.loginOpts.Verbose, exporter.ofJson, exporter.ofYaml, exporter.filename, exporter.loginOpts.Err)
