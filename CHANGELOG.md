@@ -1,3 +1,16 @@
+# Release 1.3.1
+
+# What's New
+
+* Bug Fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.3.0 -> v1.3.1](https://github.com/openziti/ziti/compare/v1.3.0...v1.3.1)
+    * [Issue #2682](https://github.com/openziti/ziti/issues/2682) - HA Controller panics when bootstrapping by setting the db variable in the configuration
+    * [Issue #2683](https://github.com/openziti/ziti/issues/2683) - Controller fails to save peer configuration on a fresh install
+    * [Issue #2684](https://github.com/openziti/ziti/issues/2684) - Controller emits duplicate cluster events on startup
+
 # Release 1.3.0
 
 ## What's New

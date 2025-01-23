@@ -19,6 +19,7 @@ package raft
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
@@ -27,7 +28,6 @@ import (
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	event2 "github.com/openziti/ziti/controller/event"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	"io"
@@ -153,7 +153,9 @@ func (self *BoltDbFsm) storeConfigurationInRaft(index uint64, servers []raft.Ser
 func (self *BoltDbFsm) storeServers(tx *bbolt.Tx, servers []raft.Server) error {
 	raftBucket := boltz.GetOrCreatePath(tx, db.RootBucket, db.MetadataBucket)
 	if err := raftBucket.DeleteBucket([]byte(ServersBucket)); err != nil {
-		return err
+		if !errors.Is(err, bbolt.ErrBucketNotFound) {
+			return err
+		}
 	}
 
 	for _, server := range servers {
@@ -261,7 +263,7 @@ func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
 
 			return err
 		} else {
-			return errors.Errorf("log data contained invalid message type. data: %+v", log.Data)
+			return fmt.Errorf("log data contained invalid message type. data: %+v", log.Data)
 		}
 	}
 	return nil
@@ -278,7 +280,7 @@ func (self *BoltDbFsm) Snapshot() (raft.FSMSnapshot, error) {
 	}
 
 	if err = gzWriter.Close(); err != nil {
-		return nil, errors.Wrap(err, "error finishing gz compression of raft snapshot")
+		return nil, fmt.Errorf("error finishing gz compression of raft snapshot (%w)", err)
 	}
 
 	logrus.WithField("id", id).WithField("index", self.indexTracker.Index()).Info("creating snapshot")
@@ -379,7 +381,7 @@ func (self *BoltDbFsm) restoreSnapshotDbFile(path string, snapshot io.ReadCloser
 
 	gzReader, err := gzip.NewReader(snapshot)
 	if err != nil {
-		return errors.Wrapf(err, "unable to create gz reader for reading raft snapshot during restore")
+		return fmt.Errorf("unable to create gz reader for reading raft snapshot during restore (%w)", err)
 	}
 
 	if _, err = io.Copy(dbFile, gzReader); err != nil {
