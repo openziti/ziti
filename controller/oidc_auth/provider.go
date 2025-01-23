@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/zitadel/oidc/v2/pkg/op"
 	"golang.org/x/text/language"
+	"net"
 	"net/http"
 )
 
@@ -67,7 +68,11 @@ func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Ha
 			oidcHandler.ServeHTTP(writer, r)
 		})
 
-		handlers[issuer] = handler
+		hostsToHandle := getHandledHostnames(issuer)
+
+		for _, hostToHandle := range hostsToHandle {
+			handlers[hostToHandle] = handler
+		}
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +86,66 @@ func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Ha
 		handler.ServeHTTP(w, r)
 	}), nil
 
+}
+
+func getHandledHostnames(issuer string) []string {
+	const (
+		DefaultTlsPort = "443"
+		LocalhostName  = "localhost"
+		LocalhostIpv4  = "127.0.0.1"
+		LocalhostIpv6  = "::1"
+	)
+	hostsToHandle := map[string]struct{}{
+		issuer: {},
+	}
+
+	hostWithoutPort, port, err := net.SplitHostPort(issuer)
+	if err != nil {
+		var ret []string
+		for host := range hostsToHandle {
+			ret = append(ret, host)
+		}
+
+		return ret
+	}
+
+	shouldHandleDefaultPort := port == DefaultTlsPort
+	if shouldHandleDefaultPort {
+
+		ip := net.ParseIP(hostWithoutPort)
+		isIpv6 := ip != nil && ip.To4() == nil
+
+		if isIpv6 {
+			//ipv6 in urls always requires brackets even w/ default ports
+			hostsToHandle["["+hostWithoutPort+"]"] = struct{}{}
+		} else {
+			hostsToHandle[hostWithoutPort] = struct{}{}
+		}
+
+	}
+
+	//local address in use, translate as needed
+	if hostWithoutPort == LocalhostName || hostWithoutPort == LocalhostIpv4 || hostWithoutPort == "::1" {
+		hostsToHandle[net.JoinHostPort(LocalhostName, port)] = struct{}{}
+		hostsToHandle[net.JoinHostPort(LocalhostIpv4, port)] = struct{}{}
+		hostsToHandle[net.JoinHostPort(LocalhostIpv6, port)] = struct{}{}
+
+		if shouldHandleDefaultPort {
+			hostsToHandle[LocalhostName] = struct{}{}
+			hostsToHandle[LocalhostIpv4] = struct{}{}
+
+			//ipv6 in urls always requires brackets even w/ default ports
+			hostsToHandle["["+LocalhostIpv6+"]"] = struct{}{}
+
+		}
+	}
+
+	var ret []string
+	for host := range hostsToHandle {
+		ret = append(ret, host)
+	}
+
+	return ret
 }
 
 // newHttpRouter creates an OIDC HTTP router
