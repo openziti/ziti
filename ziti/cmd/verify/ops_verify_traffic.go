@@ -96,18 +96,13 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 			t.clientIdName = t.prefix + ".client"
 			t.bindSPName = t.prefix + ".bind"
 			t.dialSPName = t.prefix + ".dial"
-			client, err := mgmt.NewClient()
+
+			var err error
+			t.client, err = t.loginOpts.NewMgmtClient()
 			if err != nil {
-				loginErr := t.loginOpts.Run()
-				if loginErr != nil {
-					log.Fatal(err)
-				}
-				client, err = mgmt.NewClient()
-				if err != nil {
-					log.Fatal(err)
-				}
+				log.Fatal(err)
 			}
-			t.client = client
+
 			if t.cleanup {
 				log.Info("attempting to cleanup based on parameters. this operation will disconnect the server if it's running.")
 				t.cleanupClient()
@@ -133,6 +128,7 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().BoolVar(&t.cleanup, "cleanup", false, "Whether to perform cleanup.")
 	cmd.Flags().BoolVar(&t.allowMultipleServers, "allow-multiple-servers", false, "Whether to allows the same server multiple times.")
 	cmd.Flags().BoolVar(&t.haEnabled, "ha", false, "Enable high availability mode.")
+	cmd.Flags().StringVar(&t.loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
 	_ = cmd.Flags().MarkHidden("ha")
 
 	edge.AddLoginFlags(cmd, &t.loginOpts)
@@ -346,7 +342,7 @@ func createService(client *rest_management_api_client.ZitiEdgeManagement, name s
 	serviceParams.SetTimeout(5 * time.Second)
 	resp, err := client.Service.CreateService(serviceParams, nil)
 	if resp == nil || err != nil {
-		log.Fatalf("Failed to create service: %s", name)
+		log.Fatalf("Failed to create service: %s. %v", name, err)
 		return nil
 	}
 	return resp.Payload.Data
