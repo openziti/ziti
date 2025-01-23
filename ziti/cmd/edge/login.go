@@ -18,11 +18,16 @@ package edge
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge-api/rest_management_api_client"
+	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/foundation/v2/term"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/internal/rest/mgmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
@@ -41,17 +46,18 @@ import (
 // LoginOptions are the flags for login commands
 type LoginOptions struct {
 	api.Options
-	Username     string
-	Password     string
-	Token        string
-	CaCert       string
-	ReadOnly     bool
-	Yes          bool
-	IgnoreConfig bool
-	ClientCert   string
-	ClientKey    string
-	ExtJwt       string
-	File         string
+	Username      string
+	Password      string
+	Token         string
+	CaCert        string
+	ReadOnly      bool
+	Yes           bool
+	IgnoreConfig  bool
+	ClientCert    string
+	ClientKey     string
+	ExtJwt        string
+	File          string
+	ControllerUrl string
 
 	FileCertCreds *edge_apis.IdentityCredentials
 }
@@ -102,13 +108,55 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
+// NewMgmtClient returns a new management client for use with the controller using the set of login material provided
+func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
+	client, err := mgmt.NewClient()
+	if err == nil {
+		return client, nil
+	}
+
+	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
+		o.Args = []string{o.ControllerUrl}
+	}
+	// any error indicates there are probably no saved credentials. look for login information and use those
+	loginErr := o.Run()
+	if loginErr != nil {
+		pfxlog.Logger().Fatal(loginErr)
+	}
+
+	caPool := x509.NewCertPool()
+	if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
+		rootPemData, err := os.ReadFile(o.CaCert)
+		if err != nil {
+			pfxlog.Logger().Fatalf("error reading CA cert [%s]", o.CaCert)
+		}
+		caPool.AppendCertsFromPEM(rootPemData)
+	} else {
+		pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
+	}
+
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: caPool,
+			},
+		},
+	}
+
+	c, e := rest_util.NewEdgeManagementClientWithToken(httpClient, o.ControllerUrl, o.Token)
+	if e != nil {
+		pfxlog.Logger().Fatal(e)
+	}
+	return c, nil
+}
+
 // Run implements this command
 func (o *LoginOptions) Run() error {
 	var host string
 
-	config, configFile, err := util.LoadRestClientConfig()
-	if err != nil {
-		return err
+	config, configFile, cfgErr := util.LoadRestClientConfig()
+	if cfgErr != nil {
+		return cfgErr
 	}
 
 	if o.File != "" {
@@ -145,6 +193,7 @@ func (o *LoginOptions) Run() error {
 				host = defaultId.Url
 				o.Printf("Using controller url: %v from identity '%v' in config file: %v\n", host, id, configFile)
 			} else {
+				var err error
 				if host, err = term.Prompt("Enter controller host[:port] (default localhost:1280): "); err != nil {
 					return err
 				}
@@ -161,14 +210,14 @@ func (o *LoginOptions) Run() error {
 		host = "https://" + host
 	}
 
-	ctrlUrl, err := url.Parse(host)
-	if err != nil {
-		return errors.Wrap(err, "invalid controller URL")
+	ctrlUrl, urlParseErr := url.Parse(host)
+	if urlParseErr != nil {
+		return errors.Wrap(urlParseErr, "invalid controller URL")
 	}
 
 	host = ctrlUrl.Scheme + "://" + ctrlUrl.Host
 
-	if err = o.ConfigureCerts(host, ctrlUrl); err != nil {
+	if err := o.ConfigureCerts(host, ctrlUrl); err != nil {
 		return err
 	}
 
@@ -196,6 +245,7 @@ func (o *LoginOptions) Run() error {
 	body := "{}"
 	if o.Token == "" && o.ClientCert == "" && o.ExtJwt == "" && o.FileCertCreds == nil {
 		for o.Username == "" {
+			var err error
 			if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
 				o.Username = defaultId.Username
 				o.Printf("Using username: %v from identity '%v' in config file: %v\n", o.Username, id, configFile)
@@ -205,6 +255,7 @@ func (o *LoginOptions) Run() error {
 		}
 
 		if o.Password == "" {
+			var err error
 			if o.Password, err = term.PromptPassword("Enter password: ", false); err != nil {
 				return err
 			}
@@ -240,23 +291,22 @@ func (o *LoginOptions) Run() error {
 		}
 	}
 
-	loginIdentity := &util.RestClientEdgeIdentity{
-		Url:       host,
-		Username:  o.Username,
-		Token:     o.Token,
-		LoginTime: time.Now().Format(time.RFC3339),
-		CaCert:    o.CaCert,
-		ReadOnly:  o.ReadOnly,
-	}
-
+	o.ControllerUrl = host
 	if !o.IgnoreConfig {
+		loginIdentity := &util.RestClientEdgeIdentity{
+			Url:       host,
+			Username:  o.Username,
+			Token:     o.Token,
+			LoginTime: time.Now().Format(time.RFC3339),
+			CaCert:    o.CaCert,
+			ReadOnly:  o.ReadOnly,
+		}
 		o.Printf("Saving identity '%v' to %v\n", id, configFile)
 		config.EdgeIdentities[id] = loginIdentity
 
-		err = util.PersistRestClientConfig(config)
+		return util.PersistRestClientConfig(config)
 	}
-
-	return err
+	return nil
 }
 
 func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
