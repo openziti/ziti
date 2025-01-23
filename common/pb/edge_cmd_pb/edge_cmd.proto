@@ -272,6 +272,7 @@ message ExternalJwtSigner {
   google.protobuf.Timestamp notBefore = 16;
   optional string clientId = 17;
   repeated string scopes = 18;
+  string targetToken = 19;
 }
 
 // Identities

@@ -57,6 +57,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			Audience:        S("you-are-the-audience"),
 			ClientID:        S("you-are-the-client-id"),
 			Scopes:          []string{"scope1", "scope2"},
+			TargetToken:     ToPtr(rest_model.TargetTokenID),
 		}
 
 		createResponseEnv := &rest_model.CreateEnvelope{}
@@ -143,6 +144,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				ctx.Req.Equal(*jwtSigner.Audience, *jwtSignerDetail.Audience)
 				ctx.Req.Equal(*jwtSigner.ClientID, *jwtSignerDetail.ClientID)
 				ctx.Req.Equal(jwtSigner.Scopes, jwtSignerDetail.Scopes)
+				ctx.Req.Equal(string(*jwtSigner.TargetToken), string(rest_model.TargetTokenID))
 			})
 		})
 
@@ -256,6 +258,8 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				ctx.Req.Equal(*jwtSigner.Audience, *jwtSignerDetail.Audience)
 				ctx.Req.Nil(jwtSigner.ClientID)
 				ctx.Req.Nil(jwtSigner.Scopes)
+				ctx.Req.NotNil(jwtSignerDetail.TargetToken)
+				ctx.Req.Equal(string(*jwtSignerDetail.TargetToken), string(rest_model.TargetTokenACCESS))
 			})
 		})
 	})
@@ -444,12 +448,13 @@ func Test_ExternalJWTSigner(t *testing.T) {
 		jwtSignerEnabledUpdated := true
 
 		jwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem:  &jwtSignerCertPem,
-			Enabled:  &jwtSignerEnabled,
-			Name:     &jwtSignerName,
-			Kid:      S(uuid.New().String()),
-			Issuer:   S("origIssues"),
-			Audience: S("origAudience"),
+			CertPem:     &jwtSignerCertPem,
+			Enabled:     &jwtSignerEnabled,
+			Name:        &jwtSignerName,
+			Kid:         S(uuid.New().String()),
+			Issuer:      S("origIssues"),
+			Audience:    S("origAudience"),
+			TargetToken: ToPtr(rest_model.TargetTokenACCESS),
 		}
 
 		createResponseEnv := &rest_model.CreateEnvelope{}
@@ -459,12 +464,13 @@ func Test_ExternalJWTSigner(t *testing.T) {
 		ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
 
 		jwtSignerUpdate := &rest_model.ExternalJWTSignerUpdate{
-			CertPem:  &jwtSignerCertPemUpdated,
-			Enabled:  &jwtSignerEnabledUpdated,
-			Name:     &jwtSignerNameUpdated,
-			Kid:      S(uuid.NewString()),
-			Issuer:   S(uuid.NewString()),
-			Audience: S(uuid.NewString()),
+			CertPem:     &jwtSignerCertPemUpdated,
+			Enabled:     &jwtSignerEnabledUpdated,
+			Name:        &jwtSignerNameUpdated,
+			Kid:         S(uuid.NewString()),
+			Issuer:      S(uuid.NewString()),
+			Audience:    S(uuid.NewString()),
+			TargetToken: ToPtr(rest_model.TargetTokenID),
 		}
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(jwtSignerUpdate).SetResult(createResponseEnv).Put("/external-jwt-signers/" + createResponseEnv.Data.ID)
@@ -497,6 +503,85 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				ctx.Req.Equal(*jwtSignerUpdate.Kid, *jwtSignerDetail.Kid)
 				ctx.Req.Equal(*jwtSignerUpdate.Issuer, *jwtSignerDetail.Issuer)
 				ctx.Req.Equal(*jwtSignerUpdate.Audience, *jwtSignerDetail.Audience)
+				ctx.Req.Equal(string(*jwtSignerUpdate.TargetToken), string(*jwtSignerDetail.TargetToken))
+			})
+		})
+	})
+
+	t.Run("update with null targetToken reverts to ACCESS", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		jwtSignerCommonName := "soCommon3"
+		jwtSignerCommonNameUpdated := "soCommon3UpdatedTargetTokenNil"
+
+		jwtSignerCert, _ := newSelfSignedCert(jwtSignerCommonName) // jwtSignerPrivKey
+		jwtSignerCertUpdated, _ := newSelfSignedCert(jwtSignerCommonNameUpdated)
+
+		jwtSignerCertPem := nfpem.EncodeToString(jwtSignerCert)
+		jwtSignerCertPemUpdated := nfpem.EncodeToString(jwtSignerCertUpdated)
+
+		jwtSignerName := "Test JWT Signer 07"
+		jwtSignerNameUpdated := "Test JWT Signer 07 Updated TargetToken Nil"
+
+		jwtSignerEnabled := false
+		jwtSignerEnabledUpdated := true
+
+		jwtSigner := &rest_model.ExternalJWTSignerCreate{
+			CertPem:     &jwtSignerCertPem,
+			Enabled:     &jwtSignerEnabled,
+			Name:        &jwtSignerName,
+			Kid:         S(uuid.New().String()),
+			Issuer:      S("origIssues"),
+			Audience:    S("origAudience"),
+			TargetToken: ToPtr(rest_model.TargetTokenID),
+		}
+
+		createResponseEnv := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(jwtSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+
+		jwtSignerUpdate := &rest_model.ExternalJWTSignerUpdate{
+			CertPem:     &jwtSignerCertPemUpdated,
+			Enabled:     &jwtSignerEnabledUpdated,
+			Name:        &jwtSignerNameUpdated,
+			Kid:         S(uuid.NewString()),
+			Issuer:      S(uuid.NewString()),
+			Audience:    S(uuid.NewString()),
+			TargetToken: nil,
+		}
+
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(jwtSignerUpdate).SetResult(createResponseEnv).Put("/external-jwt-signers/" + createResponseEnv.Data.ID)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+		t.Run("get after update returns 200 Ok", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			jwtSignerDetailEnv := &rest_model.DetailExternalJWTSignerEnvelope{}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(jwtSignerDetailEnv).Get("/external-jwt-signers/" + createResponseEnv.Data.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			jwtSignerDetail := jwtSignerDetailEnv.Data
+
+			t.Run("has the correct value", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				fingerprint := nfpem.FingerprintFromCertificate(jwtSignerCertUpdated)
+
+				ctx.Req.Equal(jwtSignerNameUpdated, *jwtSignerDetail.Name)
+				ctx.Req.Equal(jwtSignerCommonNameUpdated, *jwtSignerDetail.CommonName)
+				ctx.Req.Equal(jwtSignerCertPemUpdated, *jwtSignerDetail.CertPem)
+				ctx.Req.Equal(jwtSignerEnabledUpdated, *jwtSignerDetail.Enabled)
+				ctx.Req.Equal(jwtSignerCertUpdated.NotBefore, time.Time(*jwtSignerDetail.NotBefore))
+				ctx.Req.Equal(jwtSignerCertUpdated.NotAfter, time.Time(*jwtSignerDetail.NotAfter))
+				ctx.Req.Equal(fingerprint, *jwtSignerDetail.Fingerprint)
+				ctx.Req.Equal(*jwtSignerUpdate.Kid, *jwtSignerDetail.Kid)
+				ctx.Req.Equal(*jwtSignerUpdate.Issuer, *jwtSignerDetail.Issuer)
+				ctx.Req.Equal(*jwtSignerUpdate.Audience, *jwtSignerDetail.Audience)
+				ctx.Req.Equal(string(rest_model.TargetTokenACCESS), string(*jwtSignerDetail.TargetToken))
 			})
 		})
 	})
@@ -518,12 +603,13 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			jwtSignerEnabled := true
 
 			jwtSigner := &rest_model.ExternalJWTSignerCreate{
-				CertPem:  &jwtSignerCertPem,
-				Enabled:  &jwtSignerEnabled,
-				Name:     &jwtSignerName,
-				Kid:      S(uuid.New().String()),
-				Issuer:   S(uuid.NewString()),
-				Audience: S(uuid.NewString()),
+				CertPem:     &jwtSignerCertPem,
+				Enabled:     &jwtSignerEnabled,
+				Name:        &jwtSignerName,
+				Kid:         S(uuid.New().String()),
+				Issuer:      S(uuid.NewString()),
+				Audience:    S(uuid.NewString()),
+				TargetToken: ToPtr(rest_model.TargetTokenID),
 			}
 
 			createResponseEnv := &rest_model.CreateEnvelope{}
@@ -566,6 +652,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 					ctx.Req.Equal(jwtSignerCert.NotAfter, time.Time(*jwtSignerDetail.NotAfter))
 					ctx.Req.Equal(fingerprint, *jwtSignerDetail.Fingerprint)
 					ctx.Req.Equal(*jwtSigner.Kid, *jwtSignerDetail.Kid)
+					ctx.Req.Equal(string(*jwtSigner.TargetToken), string(*jwtSignerDetail.TargetToken))
 				})
 			})
 		})
@@ -586,12 +673,13 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			jwtSignerEnabled := true
 
 			jwtSigner := &rest_model.ExternalJWTSignerCreate{
-				CertPem:  &jwtSignerCertPem,
-				Enabled:  &jwtSignerEnabled,
-				Name:     &jwtSignerName,
-				Kid:      S(uuid.New().String()),
-				Issuer:   S(uuid.NewString()),
-				Audience: S(uuid.NewString()),
+				CertPem:     &jwtSignerCertPem,
+				Enabled:     &jwtSignerEnabled,
+				Name:        &jwtSignerName,
+				Kid:         S(uuid.New().String()),
+				Issuer:      S(uuid.NewString()),
+				Audience:    S(uuid.NewString()),
+				TargetToken: ToPtr(rest_model.TargetTokenID),
 			}
 
 			createResponseEnv := &rest_model.CreateEnvelope{}
@@ -634,6 +722,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 					ctx.Req.Equal(jwtSignerCertPatched.NotAfter, time.Time(*jwtSignerDetail.NotAfter))
 					ctx.Req.Equal(fingerprint, *jwtSignerDetail.Fingerprint)
 					ctx.Req.Equal(*jwtSigner.Kid, *jwtSignerDetail.Kid)
+					ctx.Req.Equal(string(*jwtSigner.TargetToken), string(*jwtSignerDetail.TargetToken))
 				})
 			})
 		})
@@ -652,12 +741,13 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			jwtSignerEnabledPatched := false
 
 			jwtSigner := &rest_model.ExternalJWTSignerCreate{
-				CertPem:  &jwtSignerCertPem,
-				Enabled:  &jwtSignerEnabled,
-				Name:     &jwtSignerName,
-				Kid:      S(uuid.NewString()),
-				Issuer:   S(uuid.NewString()),
-				Audience: S(uuid.NewString()),
+				CertPem:     &jwtSignerCertPem,
+				Enabled:     &jwtSignerEnabled,
+				Name:        &jwtSignerName,
+				Kid:         S(uuid.NewString()),
+				Issuer:      S(uuid.NewString()),
+				Audience:    S(uuid.NewString()),
+				TargetToken: ToPtr(rest_model.TargetTokenID),
 			}
 
 			createResponseEnv := &rest_model.CreateEnvelope{}
@@ -700,6 +790,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 					ctx.Req.Equal(jwtSignerCert.NotAfter, time.Time(*jwtSignerDetail.NotAfter))
 					ctx.Req.Equal(fingerprint, *jwtSignerDetail.Fingerprint)
 					ctx.Req.Equal(*jwtSigner.Kid, *jwtSignerDetail.Kid)
+					ctx.Req.Equal(string(*jwtSigner.TargetToken), string(*jwtSignerDetail.TargetToken))
 				})
 			})
 		})
@@ -717,12 +808,13 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			jwtSignerEnabled := true
 
 			jwtSigner := &rest_model.ExternalJWTSignerCreate{
-				CertPem:  &jwtSignerCertPem,
-				Enabled:  &jwtSignerEnabled,
-				Name:     &jwtSignerName,
-				Kid:      S(uuid.New().String()),
-				Issuer:   S(uuid.NewString()),
-				Audience: S(uuid.NewString()),
+				CertPem:     &jwtSignerCertPem,
+				Enabled:     &jwtSignerEnabled,
+				Name:        &jwtSignerName,
+				Kid:         S(uuid.New().String()),
+				Issuer:      S(uuid.NewString()),
+				Audience:    S(uuid.NewString()),
+				TargetToken: ToPtr(rest_model.TargetTokenID),
 			}
 
 			createResponseEnv := &rest_model.CreateEnvelope{}
@@ -765,6 +857,74 @@ func Test_ExternalJWTSigner(t *testing.T) {
 					ctx.Req.Equal(jwtSignerCert.NotAfter, time.Time(*jwtSignerDetail.NotAfter))
 					ctx.Req.Equal(fingerprint, *jwtSignerDetail.Fingerprint)
 					ctx.Req.Equal(*jwtSignerPatch.Kid, *jwtSignerDetail.Kid)
+					ctx.Req.Equal(string(*jwtSigner.TargetToken), string(*jwtSignerDetail.TargetToken))
+				})
+			})
+		})
+
+		t.Run("targetToken only succeeds", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			jwtSignerCommonName := "soCommon patch targetToken"
+
+			jwtSignerCert, _ := newSelfSignedCert(jwtSignerCommonName) // jwtSignerPrivKey
+
+			jwtSignerCertPem := nfpem.EncodeToString(jwtSignerCert)
+
+			jwtSignerName := "Test JWT Signer Pre-Patch targetToken"
+
+			jwtSignerEnabled := true
+
+			jwtSigner := &rest_model.ExternalJWTSignerCreate{
+				CertPem:     &jwtSignerCertPem,
+				Enabled:     &jwtSignerEnabled,
+				Name:        &jwtSignerName,
+				Kid:         S(uuid.New().String()),
+				Issuer:      S(uuid.NewString()),
+				Audience:    S(uuid.NewString()),
+				TargetToken: ToPtr(rest_model.TargetTokenID),
+			}
+
+			createResponseEnv := &rest_model.CreateEnvelope{}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(jwtSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+
+			jwtSignerPatch := &rest_model.ExternalJWTSignerPatch{
+				TargetToken: ToPtr(rest_model.TargetTokenACCESS),
+			}
+
+			patchResponseEnv := &rest_model.Empty{}
+
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(jwtSignerPatch).SetResult(patchResponseEnv).Patch("/external-jwt-signers/" + createResponseEnv.Data.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			t.Run("get after patch returns 200 Ok", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				jwtSignerDetailEnv := &rest_model.DetailExternalJWTSignerEnvelope{}
+
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(jwtSignerDetailEnv).Get("/external-jwt-signers/" + createResponseEnv.Data.ID)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+				jwtSignerDetail := jwtSignerDetailEnv.Data
+
+				t.Run("has the correct value", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					fingerprint := nfpem.FingerprintFromCertificate(jwtSignerCert)
+
+					ctx.Req.Equal(jwtSignerName, *jwtSignerDetail.Name)
+					ctx.Req.Equal(jwtSignerCommonName, *jwtSignerDetail.CommonName)
+					ctx.Req.Equal(jwtSignerCertPem, *jwtSignerDetail.CertPem)
+					ctx.Req.Equal(*jwtSigner.Enabled, *jwtSignerDetail.Enabled)
+					ctx.Req.Equal(jwtSignerCert.NotBefore, time.Time(*jwtSignerDetail.NotBefore))
+					ctx.Req.Equal(jwtSignerCert.NotAfter, time.Time(*jwtSignerDetail.NotAfter))
+					ctx.Req.Equal(fingerprint, *jwtSignerDetail.Fingerprint)
+					ctx.Req.Equal(*jwtSigner.Kid, *jwtSignerDetail.Kid)
+					ctx.Req.Equal(string(*jwtSignerPatch.TargetToken), string(*jwtSignerDetail.TargetToken))
 				})
 			})
 		})

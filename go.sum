@@ -595,12 +595,8 @@ github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQ
 github.com/openziti/cobra-to-md v1.0.1/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
 github.com/openziti/dilithium v0.3.5 h1:+envGNzxc3OyVPiuvtxivQmCsOjdZjtOMLpQBeMz7eM=
 github.com/openziti/dilithium v0.3.5/go.mod h1:XONq1iK6te/WwNzkgZHfIDHordMPqb0hMwJ8bs9EfSk=
-github.com/openziti/edge-api v0.26.36 h1:zy2DjmIz/B+WxPpIzhFOAxi/LhM/yeKa8s1Vz2h8cQk=
-github.com/openziti/edge-api v0.26.36/go.mod h1:sYHVpm26Jr1u7VooNJzTb2b2nGSlmCHMnbGC8XfWSng=
-github.com/openziti/edge-api v0.26.37 h1:MQGDQusrya6U5IEW/t6x6IRzBqzBVFF00YNcuPMNtnY=
-github.com/openziti/edge-api v0.26.37/go.mod h1:sYHVpm26Jr1u7VooNJzTb2b2nGSlmCHMnbGC8XfWSng=
-github.com/openziti/edge-api v0.26.38 h1:3xDWC5SFn3qUVR428TIBpRc2lrjVV7Gz0Rx4pQx0JSg=
-github.com/openziti/edge-api v0.26.38/go.mod h1:sYHVpm26Jr1u7VooNJzTb2b2nGSlmCHMnbGC8XfWSng=
+github.com/openziti/edge-api v0.26.39 h1:4hb1RqjgpaTJorvbWTL6f2QcjJDn4BXDbLwes8DpM2U=
+github.com/openziti/edge-api v0.26.39/go.mod h1:sYHVpm26Jr1u7VooNJzTb2b2nGSlmCHMnbGC8XfWSng=
 github.com/openziti/foundation/v2 v2.0.56 h1:YXqBmkrN0fYr3TqIlWZSZGluE2QpJxlA29Z6okZyQ5I=
 github.com/openziti/foundation/v2 v2.0.56/go.mod h1:f12R1pwEod348qONZr6esZgackX1ScLGDcEyPF2G5/w=
 github.com/openziti/identity v1.0.94 h1:nF4etu/5LmOlbT24lpSKq9p+90A9jeyLr5U23LemgD4=
