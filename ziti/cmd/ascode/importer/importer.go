@@ -124,7 +124,7 @@ func (importer *Importer) Init() {
 	var err error
 	importer.client, err = importer.loginOpts.NewMgmtClient()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	importer.reader = FileReader{}
 }

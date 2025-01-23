@@ -119,7 +119,7 @@ func (exporter *Exporter) Init(out io.Writer) error {
 	var err error
 	exporter.client, err = exporter.loginOpts.NewMgmtClient()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	if exporter.filename != "" {
