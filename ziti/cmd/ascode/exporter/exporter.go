@@ -62,12 +62,6 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Long: "Export all or selected entities.\n" +
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(0),
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			err := exporter.Init(out)
-			if err != nil {
-				panic(err)
-			}
-		},
 		Run: func(cmd *cobra.Command, args []string) {
 			err := exporter.Execute(args)
 			if err != nil {
@@ -106,7 +100,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (exporter *Exporter) Init(out io.Writer) error {
+func (exporter *Exporter) Execute(input []string) error {
 
 	logLvl := logrus.InfoLevel
 	if exporter.loginOpts.Verbose {
@@ -119,7 +113,7 @@ func (exporter *Exporter) Init(out io.Writer) error {
 	var err error
 	exporter.client, err = exporter.loginOpts.NewMgmtClient()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if exporter.filename != "" {
@@ -129,17 +123,12 @@ func (exporter *Exporter) Init(out io.Writer) error {
 		}
 		output = *o
 	} else {
-		o, err := NewOutputToWriter(exporter.loginOpts.Verbose, exporter.ofJson, exporter.ofYaml, out, exporter.loginOpts.Err)
+		o, err := NewOutputToWriter(exporter.loginOpts.Verbose, exporter.ofJson, exporter.ofYaml, exporter.loginOpts.Out, exporter.loginOpts.Err)
 		if err != nil {
 			return err
 		}
 		output = *o
 	}
-
-	return nil
-}
-
-func (exporter *Exporter) Execute(input []string) error {
 
 	args := arrayutils.Map(input, strings.ToLower)
 
@@ -250,7 +239,7 @@ func (exporter *Exporter) Execute(input []string) error {
 
 	log.Debug("Export complete")
 
-	err := output.Write(result)
+	err = output.Write(result)
 	if err != nil {
 		return err
 	}
