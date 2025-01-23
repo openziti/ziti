@@ -138,8 +138,7 @@ func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeMana
 	httpClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				ClientCAs: caPool,
-				RootCAs:   caPool,
+				RootCAs: caPool,
 			},
 		},
 	}
