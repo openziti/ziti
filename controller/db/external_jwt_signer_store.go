@@ -43,8 +43,11 @@ const (
 	FieldExternalJwtSignerAudience        = "audience"
 	FieldExternalJwtSignerClientId        = "clientId"
 	FieldExternalJwtSignerScopes          = "scopes"
+	FieldExternalJwtSignerTargetToken     = "targetToken"
 
 	DefaultClaimsProperty = "sub"
+
+	TargetTokenAccess = "ACCESS"
 )
 
 type ExternalJwtSigner struct {
@@ -65,6 +68,7 @@ type ExternalJwtSigner struct {
 	Audience        *string    `json:"audience"`
 	ClientId        *string    `json:"clientId"`
 	Scopes          []string   `json:"scopes"`
+	TargetToken     string     `json:"targetToken"`
 }
 
 func (entity *ExternalJwtSigner) GetName() string {
@@ -128,6 +132,7 @@ func (store *externalJwtSignerStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldExternalJwtSignerAudience, ast.NodeTypeString)
 	store.AddSymbol(FieldExternalJwtSignerClientId, ast.NodeTypeString)
 	store.AddSymbol(FieldExternalJwtSignerScopes, ast.NodeTypeString)
+	store.AddSymbol(FieldExternalJwtSignerTargetToken, ast.NodeTypeString)
 
 	store.symbolAuthPolicies = store.AddFkSetSymbol(FieldExternalJwtSignerAuthPolicies, store.stores.authPolicy)
 }
@@ -157,10 +162,16 @@ func (store *externalJwtSignerStoreImpl) FillEntity(entity *ExternalJwtSigner, b
 	entity.Audience = bucket.GetString(FieldExternalJwtSignerAudience)
 	entity.ClientId = bucket.GetString(FieldExternalJwtSignerClientId)
 	entity.Scopes = bucket.GetStringList(FieldExternalJwtSignerScopes)
+	entity.TargetToken = bucket.GetStringWithDefault(FieldExternalJwtSignerTargetToken, TargetTokenAccess)
+
+	if entity.TargetToken == "" {
+		entity.TargetToken = TargetTokenAccess
+	}
 }
 
 func (store *externalJwtSignerStoreImpl) PersistEntity(entity *ExternalJwtSigner, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
+
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringP(FieldExternalJwtSignerCertPem, entity.CertPem)
 	ctx.SetStringP(FieldExternalJwtSignerJwksEndpoint, entity.JwksEndpoint)
@@ -173,6 +184,7 @@ func (store *externalJwtSignerStoreImpl) PersistEntity(entity *ExternalJwtSigner
 	ctx.SetBool(FieldExternalJwtSignerUseExternalId, entity.UseExternalId)
 	ctx.SetStringP(FieldExternalJwtSignerClientId, entity.ClientId)
 	ctx.SetStringList(FieldExternalJwtSignerScopes, entity.Scopes)
+	ctx.SetString(FieldExternalJwtSignerTargetToken, entity.TargetToken)
 
 	if entity.ExternalAuthUrl != nil && strings.TrimSpace(*entity.ExternalAuthUrl) == "" {
 		entity.ExternalAuthUrl = nil

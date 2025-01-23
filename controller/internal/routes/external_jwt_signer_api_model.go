@@ -45,6 +45,8 @@ func MapClientExtJwtSignersToRestEntity(_ *env.AppEnv, _ *response.RequestContex
 }
 
 func MapClientExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner) *rest_model.ClientExternalJWTSignerDetail {
+	targetToken := rest_model.TargetToken(externalJwtSigner.TargetToken)
+
 	ret := &rest_model.ClientExternalJWTSignerDetail{
 		BaseEntity:      BaseEntityToRestModel(externalJwtSigner, ExternalJwtSignerLinkFactory),
 		ExternalAuthURL: externalJwtSigner.ExternalAuthUrl,
@@ -52,6 +54,7 @@ func MapClientExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtS
 		ClientID:        externalJwtSigner.ClientId,
 		Scopes:          externalJwtSigner.Scopes,
 		Audience:        externalJwtSigner.Audience,
+		TargetToken:     &targetToken,
 	}
 	return ret
 }
@@ -59,7 +62,7 @@ func MapClientExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtS
 func MapExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner) *rest_model.ExternalJWTSignerDetail {
 	notAfter := strfmt.DateTime(externalJwtSigner.NotAfter)
 	notBefore := strfmt.DateTime(externalJwtSigner.NotBefore)
-
+	targetToken := rest_model.TargetToken(externalJwtSigner.TargetToken)
 	ret := &rest_model.ExternalJWTSignerDetail{
 		BaseEntity:      BaseEntityToRestModel(externalJwtSigner, ExternalJwtSignerLinkFactory),
 		ClaimsProperty:  externalJwtSigner.ClaimsProperty,
@@ -77,6 +80,7 @@ func MapExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner)
 		CertPem:         externalJwtSigner.CertPem,
 		ClientID:        externalJwtSigner.ClientId,
 		Scopes:          externalJwtSigner.Scopes,
+		TargetToken:     &targetToken,
 	}
 
 	if externalJwtSigner.JwksEndpoint != nil {
@@ -88,6 +92,15 @@ func MapExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner)
 }
 
 func MapCreateExternalJwtSignerToModel(signer *rest_model.ExternalJWTSignerCreate) *model.ExternalJwtSigner {
+	targetToken := string(rest_model.TargetTokenACCESS)
+
+	if signer.TargetToken != nil {
+		targetToken = string(*signer.TargetToken)
+		if targetToken == "" {
+			targetToken = string(rest_model.TargetTokenACCESS)
+		}
+	}
+
 	ret := &model.ExternalJwtSigner{
 		BaseEntity:      models.BaseEntity{},
 		Name:            *signer.Name,
@@ -101,6 +114,7 @@ func MapCreateExternalJwtSignerToModel(signer *rest_model.ExternalJWTSignerCreat
 		CertPem:         signer.CertPem,
 		ClientId:        signer.ClientID,
 		Scopes:          signer.Scopes,
+		TargetToken:     targetToken,
 	}
 
 	if signer.JwksEndpoint != nil {
@@ -115,6 +129,15 @@ func MapUpdateExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWT
 	var tags map[string]interface{}
 	if signer.Tags != nil && signer.Tags.SubTags != nil {
 		tags = signer.Tags.SubTags
+	}
+
+	targetToken := string(rest_model.TargetTokenACCESS)
+
+	if signer.TargetToken != nil {
+		targetToken = string(*signer.TargetToken)
+		if targetToken == "" {
+			targetToken = string(rest_model.TargetTokenACCESS)
+		}
 	}
 
 	ret := &model.ExternalJwtSigner{
@@ -134,6 +157,7 @@ func MapUpdateExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWT
 		Audience:        signer.Audience,
 		ClientId:        signer.ClientID,
 		Scopes:          signer.Scopes,
+		TargetToken:     targetToken,
 	}
 
 	if signer.JwksEndpoint != nil {
@@ -148,6 +172,15 @@ func MapPatchExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWTS
 	var tags map[string]interface{}
 	if signer.Tags != nil && signer.Tags.SubTags != nil {
 		tags = signer.Tags.SubTags
+	}
+
+	targetToken := string(rest_model.TargetTokenACCESS)
+
+	if signer.TargetToken != nil {
+		targetToken = string(*signer.TargetToken)
+		if targetToken == "" {
+			targetToken = string(rest_model.TargetTokenACCESS)
+		}
 	}
 
 	ret := &model.ExternalJwtSigner{
@@ -167,6 +200,7 @@ func MapPatchExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWTS
 		Audience:        signer.Audience,
 		ClientId:        signer.ClientID,
 		Scopes:          signer.Scopes,
+		TargetToken:     targetToken,
 	}
 
 	if signer.JwksEndpoint != nil {

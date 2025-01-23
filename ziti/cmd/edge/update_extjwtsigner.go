@@ -35,6 +35,7 @@ type updateExtJwtOptions struct {
 	nameOrId     string
 	newName      string
 	JwksEndpoint string
+	targetToken  string
 }
 
 // newUpdateExtJwtSignerCmd creates the 'edge controller update authenticator' command
@@ -64,7 +65,7 @@ func newUpdateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "ext-jwt-signer <id|name> [-u <jwksEndpoint>|-p <cert pem>|-f <cert file>] [-n <nameName> -a <audience> -c <claimProperty> --client-id <clientId> --scope <scope1> --scope <scopeN> -xe]",
+		Use:   "ext-jwt-signer <id|name> [-u <jwksEndpoint>|-p <cert pem>|-f <cert file>] [-n <nameName> -a <audience> -c <claimProperty> --client-id <clientId> --scope <scope1> --scope <scopeN> -xe --target-token=ACCESS|ID]",
 		Short: "updates an external jwt signer managed by the Ziti Edge Controller",
 		Long:  "updates an external jwt signer managed by the Ziti Edge Controller",
 		Args: func(cmd *cobra.Command, args []string) error {
@@ -106,6 +107,7 @@ func newUpdateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(options.ExtJwtSigner.Issuer, "issuer", "l", "", "The issuer for the signer")
 	cmd.Flags().StringVarP(options.ExtJwtSigner.ClientID, "client-id", "", "", "The client id for OIDC that should be used")
 	cmd.Flags().StringSliceVarP(&options.ExtJwtSigner.Scopes, "scopes", "", nil, "The scopes for OIDC that should be used")
+	cmd.Flags().StringVarP(&options.targetToken, "target-token", "", "", "The target token SDKs should use")
 	return cmd
 }
 
@@ -195,6 +197,18 @@ func runUpdateExtJwtSigner(options updateExtJwtOptions) error {
 		changed = true
 	} else {
 		options.ExtJwtSigner.ClientID = nil
+	}
+
+	if options.Cmd.Flag("target-token").Changed {
+		changed = true
+
+		if options.targetToken != string(rest_model.TargetTokenACCESS) && options.targetToken != string(rest_model.TargetTokenID) {
+			return fmt.Errorf("target-token must be %s or %s", string(rest_model.TargetTokenACCESS), string(rest_model.TargetTokenID))
+		}
+
+		options.ExtJwtSigner.TargetToken = Ptr(rest_model.TargetToken(options.targetToken))
+	} else {
+		options.ExtJwtSigner.TargetToken = nil
 	}
 
 	if options.TagsProvided() {
