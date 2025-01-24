@@ -28,9 +28,7 @@ import (
 	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/goroutines"
-	metrics2 "github.com/openziti/metrics"
 	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/runner"
@@ -64,16 +62,6 @@ const (
 type RemoveListener func()
 
 type DisconnectCB func(token string)
-
-type Env interface {
-	GetRouterDataModelEnabledConfig() *config.Value[bool]
-	IsRouterDataModelEnabled() bool
-	IsRouterDataModelRequired() bool
-	GetCloseNotify() <-chan struct{}
-	DefaultRequestTimeout() time.Duration
-	GetMetricsRegistry() metrics2.UsageRegistry
-	GetNetworkControllers() env.NetworkControllers
-}
 
 type Manager interface {
 	//"Network" Sessions
@@ -117,7 +105,7 @@ type Manager interface {
 	RemoveActiveChannel(ch channel.Channel)
 	GetApiSessionFromCh(ch channel.Channel) *ApiSession
 
-	GetEnv() Env
+	GetEnv() env.RouterEnv
 	UpdateChApiSession(channel.Channel, *ApiSession) error
 
 	GetCurrentDataModelSource() string
@@ -127,7 +115,7 @@ type Manager interface {
 
 var _ Manager = (*ManagerImpl)(nil)
 
-func NewManager(stateEnv Env) Manager {
+func NewManager(stateEnv env.RouterEnv) Manager {
 	routerDataModelPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(1000),
 		MinWorkers:  1,
@@ -175,7 +163,7 @@ func NewManager(stateEnv Env) Manager {
 }
 
 type ManagerImpl struct {
-	env                Env
+	env                env.RouterEnv
 	apiSessionsByToken cmap.ConcurrentMap[string, *ApiSession]
 
 	activeApiSessions cmap.ConcurrentMap[string, *MapWithMutex]
@@ -289,11 +277,17 @@ func (self *ManagerImpl) subscribeToDataModelUpdates(ch channel.Channel) {
 		currentIndex, _ = rdm.CurrentIndex()
 	}
 
+	timelineId := ""
+	if rdm := self.routerDataModel.Load(); rdm != nil {
+		timelineId = rdm.GetTimelineId()
+	}
+
 	subTimeout := time.Now().Add(DefaultSubscriptionTimeout)
 	req := &edge_ctrl_pb.SubscribeToDataModelRequest{
 		CurrentIndex:                currentIndex,
 		SubscriptionDurationSeconds: uint32(DefaultSubscriptionTimeout.Seconds()),
 		Renew:                       renew,
+		TimelineId:                  timelineId,
 	}
 
 	logger := pfxlog.Logger().
@@ -342,7 +336,7 @@ func (sm *ManagerImpl) UpdateChApiSession(ch channel.Channel, newApiSession *Api
 	return nil
 }
 
-func (sm *ManagerImpl) GetEnv() Env {
+func (sm *ManagerImpl) GetEnv() env.RouterEnv {
 	return sm.env
 }
 
@@ -516,6 +510,9 @@ func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, resetSu
 		model.InheritSubscribers(existing)
 		existingIndex, _ := existing.CurrentIndex()
 		logger = logger.WithField("existingIndex", existingIndex)
+		if index < existingIndex {
+			sm.env.GetIndexWatchers().NotifyOfIndexReset()
+		}
 	}
 	model.SyncAllSubscribers()
 

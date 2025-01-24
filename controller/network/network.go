@@ -32,10 +32,10 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/teris-io/shortid"
+	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"math"
-	"os"
-	"path/filepath"
 	"runtime/debug"
 	"sort"
 	"strings"
@@ -62,7 +62,6 @@ import (
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"go.etcd.io/bbolt"
 )
 
 const SmartRerouteAttempt = 99969996
@@ -193,7 +192,7 @@ func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Co
 	}
 
 	cmd := &command.SyncSnapshotCommand{
-		SnapshotId:   msg.SnapshotId,
+		TimelineId:   msg.SnapshotId,
 		Snapshot:     msg.Snapshot,
 		SnapshotSink: self.RestoreSnapshot,
 	}
@@ -1261,19 +1260,7 @@ func (d dbSnapshotTooFrequentError) Error() string {
 }
 
 func (network *Network) SnapshotDatabase() error {
-	network.lock.Lock()
-	defer network.lock.Unlock()
-
-	if network.lastSnapshot.Add(time.Minute).After(time.Now()) {
-		return DbSnapshotTooFrequentError
-	}
-	pfxlog.Logger().Info("snapshotting database")
-	err := network.GetDb().View(func(tx *bbolt.Tx) error {
-		return network.GetDb().Snapshot(tx)
-	})
-	if err == nil {
-		network.lastSnapshot = time.Now()
-	}
+	_, err := network.SnapshotDatabaseToFile("")
 	return err
 }
 
@@ -1287,62 +1274,39 @@ func (network *Network) SnapshotDatabaseToFile(path string) (string, error) {
 
 	actualPath := path
 	if actualPath == "" {
-		actualPath = "DB_DIR/DB_FILE-DATE-TIME"
+		actualPath = "__DB_DIR__/__DB_FILE__-__DATE__-__TIME__"
 	}
 
 	err := network.GetDb().View(func(tx *bbolt.Tx) error {
-		now := time.Now()
-		dateStr := now.Format("20060102")
-		timeStr := now.Format("150405")
-		actualPath = strings.ReplaceAll(actualPath, "DATE", dateStr)
-		actualPath = strings.ReplaceAll(actualPath, "TIME", timeStr)
-
 		currentIndex := db.LoadCurrentRaftIndex(tx)
+		actualPath = strings.ReplaceAll(actualPath, "__RAFT_INDEX__", fmt.Sprintf("%v", currentIndex))
 		actualPath = strings.ReplaceAll(actualPath, "RAFT_INDEX", fmt.Sprintf("%v", currentIndex))
-		actualPath = strings.ReplaceAll(actualPath, "DB_DIR", filepath.Dir(tx.DB().Path()))
-		actualPath = strings.ReplaceAll(actualPath, "DB_FILE", filepath.Base(tx.DB().Path()))
 
-		pfxlog.Logger().WithField("path", actualPath).Info("snapshotting database to file")
-
-		_, err := os.Stat(actualPath)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return err
-			}
-		} else {
-			pfxlog.Logger().Infof("bolt db backup already exists: %v", actualPath)
-			return errors.Errorf("bolt db backup already exists [%s]", actualPath)
-		}
-
-		file, err := os.OpenFile(actualPath, os.O_WRONLY|os.O_CREATE, 0600)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if err = file.Close(); err != nil {
-				pfxlog.Logger().WithError(err).Errorf("failed to close backup database file %v", actualPath)
-			}
-		}()
-
-		_, err = tx.WriteTo(file)
+		var err error
+		actualPath, _, err = network.GetDb().SnapshotInTx(tx, actualPath)
 		return err
 	})
 
 	if err == nil {
 		network.lastSnapshot = time.Now()
 	}
+
 	return actualPath, err
 }
 
-func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand) error {
+func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index uint64) error {
 	log := pfxlog.Logger()
-	currentSnapshotId, err := network.GetDb().GetSnapshotId()
+	currentTimelineId, err := network.GetDb().GetTimelineId(boltz.TimelineModeDefault, shortid.Generate)
 	if err != nil {
-		log.WithError(err).Error("unable to get current snapshot id")
+		log.WithError(err).Error("unable to get current timeline id")
 	}
-	if currentSnapshotId != nil && *currentSnapshotId == cmd.SnapshotId {
-		log.WithField("snapshotId", cmd.SnapshotId).Info("snapshot already current, skipping reload")
+	if currentTimelineId != "" && currentTimelineId == cmd.TimelineId {
+		log.WithField("timelineId", cmd.TimelineId).Info("snapshot already current, skipping reload")
 		return nil
+	}
+
+	if err != nil {
+		log.WithError(err).Error("unable to read current raft index before DB restore")
 	}
 
 	buf := bytes.NewBuffer(cmd.Snapshot)
@@ -1352,28 +1316,21 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand) error 
 	}
 
 	network.GetDb().RestoreFromReader(reader)
-	return nil
-}
+	err = network.GetDb().Update(nil, func(ctx boltz.MutateContext) error {
+		raftBucket := boltz.GetOrCreatePath(ctx.Tx(), db.RootBucket, db.MetadataBucket)
+		raftBucket.SetInt64(db.FieldRaftIndex, int64(index), nil)
+		return nil
+	})
 
-func (network *Network) SnapshotToRaft() error {
-	buf := &bytes.Buffer{}
-	gzWriter := gzip.NewWriter(buf)
-	snapshotId, err := network.GetDb().SnapshotToWriter(gzWriter)
 	if err != nil {
-		return err
+		log.WithError(err).Errorf("failed to set index after restore")
 	}
 
-	if err = gzWriter.Close(); err != nil {
-		return errors.Wrap(err, "error finishing gz compression of migration snapshot")
-	}
+	time.AfterFunc(5*time.Second, func() {
+		log.Fatal("database restore requires controller restart. exiting...")
+	})
 
-	cmd := &command.SyncSnapshotCommand{
-		SnapshotId:   snapshotId,
-		Snapshot:     buf.Bytes(),
-		SnapshotSink: network.RestoreSnapshot,
-	}
-
-	return network.Managers.Dispatcher.Dispatch(cmd)
+	return nil
 }
 
 func (network *Network) AddInspectTarget(target InspectTarget) {

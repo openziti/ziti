@@ -100,6 +100,7 @@ type Router struct {
 	xwebFactoryRegistry xweb.Registry
 	agentBindHandlers   []channel.BindHandler
 	rdmRequired         atomic.Bool
+	indexWatchers       env.IndexWatchers
 }
 
 func (self *Router) GetRouterId() *identity.TokenId {
@@ -180,6 +181,10 @@ func (self *Router) GetConnectEventsConfig() *env.ConnectEventsConfig {
 	return &self.config.ConnectEvents
 }
 
+func (self *Router) GetIndexWatchers() env.IndexWatchers {
+	return self.indexWatchers
+}
+
 func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
@@ -220,6 +225,7 @@ func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 		linkDialerPool:      linkDialerPool,
 		ctrlRateLimiter:     command.NewAdaptiveRateLimitTracker(cfg.Ctrl.RateLimit, metricsRegistry, closeNotify),
 		rdmEnabled:          config.NewConfigValue[bool](),
+		indexWatchers:       env.NewIndexWatchers(),
 	}
 
 	router.ctrls = env.NewNetworkControllers(cfg.Ctrl.DefaultRequestTimeout, router.connectToController, &cfg.Ctrl.Heartbeats)

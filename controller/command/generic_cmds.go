@@ -1,11 +1,11 @@
 package command
 
 import (
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 )
 
@@ -145,18 +145,19 @@ func (self *DeleteEntityCommand) GetChangeContext() *change.Context {
 }
 
 type SyncSnapshotCommand struct {
-	SnapshotId   string
+	TimelineId   string
 	Snapshot     []byte
-	SnapshotSink func(cmd *SyncSnapshotCommand) error
+	SnapshotSink func(cmd *SyncSnapshotCommand, index uint64) error
 }
 
-func (self *SyncSnapshotCommand) Apply(boltz.MutateContext) error {
-	return self.SnapshotSink(self)
+func (self *SyncSnapshotCommand) Apply(ctx boltz.MutateContext) error {
+	changeCtx := change.FromContext(ctx.Context())
+	return self.SnapshotSink(self, changeCtx.RaftIndex)
 }
 
 func (self *SyncSnapshotCommand) Encode() ([]byte, error) {
 	return cmd_pb.EncodeProtobuf(&cmd_pb.SyncSnapshotCommand{
-		SnapshotId: self.SnapshotId,
+		SnapshotId: self.TimelineId,
 		Snapshot:   self.Snapshot,
 	})
 }

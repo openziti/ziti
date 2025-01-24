@@ -65,6 +65,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	ctrlCmd.AddCommand(NewAgentSnapshotDb(p))
 	ctrlCmd.AddCommand(NewAgentCtrlInit(p))
 	ctrlCmd.AddCommand(NewAgentCtrlInitFromDb(p))
+	ctrlCmd.AddCommand(NewAgentCtrlRestoreFromDb(p))
 
 	clusterCmd := &cobra.Command{
 		Use:   "cluster",

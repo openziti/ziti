@@ -127,7 +127,7 @@ func (strategy *InstantStrategy) AddPublicKey(cert *tls.Certificate) {
 
 // Initialize implements RouterDataModelCache
 func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) error {
-	strategy.RouterDataModel = common.NewSenderRouterDataModel(logSize, bufferSize)
+	strategy.RouterDataModel = common.NewSenderRouterDataModel(strategy.ae.TimelineId(), logSize, bufferSize)
 	pfxlog.Logger().WithField("logSize", logSize).WithField("listenerBufferSizes", bufferSize).
 		Info("initialized controller router data model")
 	if strategy.ae.HostController.IsRaftEnabled() {
@@ -755,11 +755,11 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 
 		for _, pk := range pks {
 			peerEvent := &edge_ctrl_pb.DataState_Event{
-				IsSynthetic: true,
-				Action:      edge_ctrl_pb.DataState_Create,
+				Action: edge_ctrl_pb.DataState_Create,
 				Model: &edge_ctrl_pb.DataState_Event_PublicKey{
 					PublicKey: newPublicKey(pk.Data, pk.Format, pk.Usages),
 				},
+				IsSynthetic: true,
 			}
 
 			changeSet := &edge_ctrl_pb.DataState_ChangeSet{
@@ -883,8 +883,9 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 
 	newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(serverTls[0].Certificate[0], edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})}
 	newEvent := &edge_ctrl_pb.DataState_Event{
-		Action: edge_ctrl_pb.DataState_Create,
-		Model:  newModel,
+		Action:      edge_ctrl_pb.DataState_Create,
+		Model:       newModel,
+		IsSynthetic: true,
 	}
 	strategy.HandlePublicKeyEvent(newEvent, newModel)
 
@@ -901,8 +902,9 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 
 		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})}
 		newEvent := &edge_ctrl_pb.DataState_Event{
-			Action: edge_ctrl_pb.DataState_Create,
-			Model:  newModel,
+			Action:      edge_ctrl_pb.DataState_Create,
+			Model:       newModel,
+			IsSynthetic: true,
 		}
 		strategy.HandlePublicKeyEvent(newEvent, newModel)
 	}
@@ -944,8 +946,9 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 
 		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
 		newEvent := &edge_ctrl_pb.DataState_Event{
-			Action: edge_ctrl_pb.DataState_Create,
-			Model:  newModel,
+			Action:      edge_ctrl_pb.DataState_Create,
+			Model:       newModel,
+			IsSynthetic: true,
 		}
 		rdm.HandlePublicKeyEvent(newEvent, newModel)
 	}
@@ -955,7 +958,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 
 func (strategy *InstantStrategy) BuildAll(rdm *common.RouterDataModel) error {
 	err := strategy.ae.GetDb().View(func(tx *bbolt.Tx) error {
-		index := db.LoadCurrentRaftIndex(tx)
+		index := strategy.indexProvider.CurrentIndex()
 		if err := strategy.BuildConfigTypes(index, tx, rdm); err != nil {
 			return err
 		}
@@ -1895,24 +1898,33 @@ func (strategy *InstantStrategy) completeChangeSet(ctx boltz.MutateContext) {
 }
 
 func (strategy *InstantStrategy) inspect(val string) (bool, *string, error) {
-	if val == "router-data-model" {
-		rdm := strategy.RouterDataModel
-		js, err := json.Marshal(rdm)
+	marshalResult := func(v any) (bool, *string, error) {
+		js, err := json.Marshal(v)
 		if err != nil {
 			return true, nil, err
 		}
 		result := string(js)
 		return true, &result, nil
 	}
+
+	if val == "router-data-model" {
+		return marshalResult(strategy.RouterDataModel)
+	}
 	if val == "router-data-model-index" {
 		idx, _ := strategy.RouterDataModel.CurrentIndex()
-		strVal := fmt.Sprintf("%d", idx)
-		return true, &strVal, nil
+		data := map[string]any{
+			"timeline": strategy.RouterDataModel.GetTimelineId(),
+			"index":    idx,
+		}
+		return marshalResult(data)
 	}
 	if val == "data-model-index" {
 		idx := strategy.indexProvider.CurrentIndex()
-		strVal := fmt.Sprintf("%d", idx)
-		return true, &strVal, nil
+		data := map[string]any{
+			"timeline": strategy.ae.TimelineId(),
+			"index":    idx,
+		}
+		return marshalResult(data)
 	}
 	return false, nil, nil
 }

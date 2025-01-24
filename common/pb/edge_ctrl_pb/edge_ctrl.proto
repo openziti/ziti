@@ -143,6 +143,7 @@ enum ServicePolicyRelatedEntityType {
 message DataState {
   repeated Event events = 1;
   uint64 endIndex = 2;
+  string timelineId = 3;
 
   enum Action {
     Create = 0;
@@ -207,6 +208,7 @@ message DataState {
     uint64 index = 1;
     bool isSynthetic = 2;
     repeated Event changes = 3;
+    string timestampId = 4;
   }
 
   message Event {
@@ -601,4 +603,5 @@ message SubscribeToDataModelRequest {
   uint64 currentIndex = 1;
   uint32 subscriptionDurationSeconds = 2;
   bool renew = 3;
+  string timelineId = 4;
 }

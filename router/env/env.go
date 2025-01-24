@@ -50,6 +50,9 @@ type RouterEnv interface {
 	GetRouterDataModelEnabledConfig() *config.Value[bool]
 	IsRouterDataModelRequired() bool
 	MarkRouterDataModelRequired()
+	GetIndexWatchers() IndexWatchers
+	IsRouterDataModelEnabled() bool
+	DefaultRequestTimeout() time.Duration
 }
 
 type ConnectEventsConfig struct {

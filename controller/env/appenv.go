@@ -65,6 +65,7 @@ import (
 	"github.com/openziti/ziti/controller/xmgmt"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
+	"github.com/teris-io/shortid"
 	"github.com/xeipuuv/gojsonschema"
 	"io"
 	"net"
@@ -115,6 +116,7 @@ type AppEnv struct {
 	ServerCert   *tls.Certificate
 
 	TraceManager *TraceManager
+	timelineId   string
 }
 
 func (ae *AppEnv) GetPeerControllerAddresses() []string {
@@ -797,6 +799,15 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 
 	c := host.GetConfig().Edge
 
+	timelineMode := boltz.TimelineModeDefault
+	if !host.GetConfig().IsRaftEnabled() {
+		timelineMode = boltz.TimelineModeInitIfEmpty
+	}
+	timelineId, err := host.GetConfig().Db.GetTimelineId(timelineMode, shortid.Generate)
+	if err != nil {
+		return nil, err
+	}
+
 	ae := &AppEnv{
 		Stores: stores,
 		Versions: &ziti.Versions{
@@ -820,6 +831,7 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 			WindowSizeMetric: metricAuthLimiterCurrentWindowSize,
 		}, host.GetMetricsRegistry(), host.GetCloseNotifyChannel()),
 		TraceManager: NewTraceManager(host.GetCloseNotifyChannel()),
+		timelineId:   timelineId,
 	}
 
 	ae.identityRefreshMeter = host.GetMetricsRegistry().Meter("identity.refresh")
@@ -1145,4 +1157,16 @@ func (ae *AppEnv) OidcIssuer() string {
 
 func (ae *AppEnv) RootIssuer() string {
 	return "https://" + ae.GetConfig().Edge.Api.Address
+}
+
+func (ae *AppEnv) InitTimelineId(timelineId string) {
+	if ae.timelineId == "" {
+		ae.timelineId = timelineId
+	} else {
+		panic(errors.New("timelineId initialization attempted after startup"))
+	}
+}
+
+func (ae *AppEnv) TimelineId() string {
+	return ae.timelineId
 }

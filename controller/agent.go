@@ -38,6 +38,7 @@ func (self *Controller) bindAgentChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftTransferLeadershipRequestType), self.agentOpRaftTransferLeadership)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftInitFromDb), self.agentOpInitFromDb)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftInit), self.agentOpInit)
+	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftRestoreFromDb), self.agentOpRestoreFromDb)
 
 	for _, bh := range self.agentBindHandlers {
 		if err := binding.Bind(bh); err != nil {
@@ -248,6 +249,25 @@ func (self *Controller) agentOpInitFromDb(m *channel.Message, ch channel.Channel
 	}
 
 	if err := self.InitializeRaftFromBoltDb(sourceDbPath); err != nil {
+		handler_common.SendOpResult(m, ch, "cluster.init-from-db", err.Error(), false)
+		return
+	}
+	handler_common.SendOpResult(m, ch, "cluster.init-from-db", fmt.Sprintf("success, initialized from [%v]", sourceDbPath), true)
+}
+
+func (self *Controller) agentOpRestoreFromDb(m *channel.Message, ch channel.Channel) {
+	if self.raftController == nil {
+		handler_common.SendOpResult(m, ch, "cluster.restore-from-db", "controller not running in clustered mode", false)
+		return
+	}
+
+	sourceDbPath := string(m.Body)
+	if len(sourceDbPath) == 0 {
+		handler_common.SendOpResult(m, ch, "cluster.restore-from-db", "source db not supplied", false)
+		return
+	}
+
+	if err := self.RaftRestoreFromBoltDb(sourceDbPath); err != nil {
 		handler_common.SendOpResult(m, ch, "cluster.init-from-db", err.Error(), false)
 		return
 	}
