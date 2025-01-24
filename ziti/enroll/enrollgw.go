@@ -14,13 +14,14 @@
 	limitations under the License.
 */
 
-package router
+package enroll
 
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/enroll"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -50,7 +51,7 @@ func NewEnrollGwCmd() *cobra.Command {
 func enrollGw(cmd *cobra.Command, args []string) {
 	log := pfxlog.Logger()
 	if cfg, err := router.LoadConfigWithOptions(args[0], false); err == nil {
-		cfg.SetFlags(getFlags(cmd))
+		cfg.SetFlags(common.GetFlags(cmd))
 
 		enroller := enroll.NewRestEnroller(cfg)
 

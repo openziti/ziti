@@ -30,7 +30,7 @@ import (
 	"github.com/openziti/ziti/common/version"
 )
 
-func LogReleaseVersionCheck(zitiComponent string) {
+func LogReleaseVersionCheck() {
 	logger := pfxlog.Logger()
 	if strings.ToLower(os.Getenv("ZITI_CHECK_VERSION")) == "true" {
 		logger.Debug("ZITI_CHECK_VERSION is true. starting version check")
@@ -50,8 +50,7 @@ func LogReleaseVersionCheck(zitiComponent string) {
 		// ignore non-release builds and current release build
 		if currentBuildSemver.EQ(developmentSemver) {
 			logger.Debugf(
-				"this build of %s is unreleased v%s",
-				zitiComponent,
+				"this build of ziti is unreleased v%s",
 				developmentSemver,
 			)
 		} else if latestGithubRelease.SemVer.GT(currentBuildSemver) {
@@ -61,26 +60,23 @@ func LogReleaseVersionCheck(zitiComponent string) {
 				`
 *********************************************************************************
 
-An update with %s is available for %s %s from 
+An updated version of OpenZiti (%s), is available to replace the running version (%s) from 
 https://github.com/openziti/%s/releases/latest/
 
 *********************************************************************************
 `,
 				green("v"+latestGithubRelease.SemVer.String()),
-				zitiComponent,
 				yellow("v"+currentBuildSemver.String()),
 				constants.ZITI,
 			)
 			logger.Debugf(
-				"this v%s build of %s is superseded by v%s",
+				"this v%s build of OpenZiti is superseded by v%s",
 				currentBuildSemver,
-				zitiComponent,
 				latestGithubRelease,
 			)
 		} else if latestGithubRelease.SemVer.EQ(currentBuildSemver) {
 			logger.Debugf(
-				"this build of %s is the latest release v%s",
-				zitiComponent,
+				"this build of OpenZiti is the latest release v%s",
 				currentBuildSemver,
 			)
 		}

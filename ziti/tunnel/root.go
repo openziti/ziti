@@ -19,7 +19,6 @@ package tunnel
 import (
 	"github.com/openziti/sdk-golang/ziti/sdkinfo"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/util"
 	"os"
 	"path/filepath"
@@ -108,7 +107,7 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 	default:
 		// let logrus do its own thing
 	}
-	util.LogReleaseVersionCheck(constants.ZITI_TUNNEL)
+	util.LogReleaseVersionCheck()
 }
 
 func rootPostRun(cmd *cobra.Command, _ []string) {

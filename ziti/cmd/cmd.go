@@ -20,8 +20,11 @@ import (
 	"context"
 	goflag "flag"
 	"fmt"
+	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
 	"github.com/openziti/ziti/ziti/cmd/ops/verify"
+	"github.com/openziti/ziti/ziti/enroll"
+	"github.com/openziti/ziti/ziti/run"
 	"io"
 	"os"
 	"path/filepath"
@@ -39,9 +42,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/pki"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/constants"
-	"github.com/openziti/ziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/internal/log"
-	"github.com/openziti/ziti/ziti/router"
 	"github.com/openziti/ziti/ziti/tunnel"
 	"github.com/openziti/ziti/ziti/util"
 
@@ -94,6 +95,26 @@ func init() {
 }
 
 func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Command {
+	layout := 1
+
+	if cliVersion := os.Getenv("ZITI_CLI_LAYOUT"); cliVersion == "2" {
+		layout = 2
+	} else if cliVersion == "1" {
+		layout = 1
+	} else {
+		if cfg, _, _ := util.LoadRestClientConfig(); cfg != nil && cfg.Layout >= 1 && cfg.Layout <= 2 {
+			layout = cfg.Layout
+		}
+	}
+
+	if layout == 1 {
+		return NewV1CmdRoot(in, out, err, cmd)
+	} else {
+		return NewV2CmdRoot(in, out, err, cmd)
+	}
+}
+
+func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Command {
 	goflag.CommandLine.VisitAll(func(goflag *goflag.Flag) {
 		switch goflag.Name {
 		// Skip things that are dragged in by our dependencies
@@ -117,15 +138,21 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 
 	p := common.NewOptionsProvider(out, err)
 
-	createCommands := create.NewCmdCreate(out, err)
-	controllerCmd := controller.NewControllerCmd()
+	controllerCmd := NewControllerCmd()
+	routerCmd := NewRouterCmd()
 	tunnelCmd := tunnel.NewTunnelCmd(false)
-	routerCmd := router.NewRouterCmd()
+
+	createCommands := create.NewCmdCreate(out, err)
 	agentCommands := agentcli.NewAgentCmd(p)
 	pkiCommands := pki.NewCmdPKI(out, err)
 	fabricCommand := fabric.NewFabricCmd(p)
 	edgeCommand := edge.NewCmdEdge(out, err, p)
+	edgeCommand.AddCommand(run.NewQuickStartCmd(out, err, context.Background()))
+
 	demoCmd := demo.NewDemoCmd(p)
+
+	runCmd := run.NewRunCmd(out, err)
+	runCmd.Hidden = true
 
 	opsCommands := &cobra.Command{
 		Use:   "ops",
@@ -150,6 +177,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 		{
 			Message: "Executing Ziti components:",
 			Commands: []*cobra.Command{
+				runCmd,
 				agentCommands,
 				controllerCmd,
 				routerCmd,
@@ -168,6 +196,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 			Message: "Utilities",
 			Commands: []*cobra.Command{
 				opsCommands,
+				NewDumpCliCmd(),
 			},
 		},
 		{
@@ -187,6 +216,150 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 
 	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
 	return cmd
+}
+
+func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Command {
+	goflag.CommandLine.VisitAll(func(goflag *goflag.Flag) {
+		switch goflag.Name {
+		// Skip things that are dragged in by our dependencies
+		case "alsologtostderr":
+		case "logtostderr":
+		case "log_backtrace_at":
+		case "log_dir":
+		case "stderrthreshold":
+		case "vmodule":
+		case "v":
+
+		default:
+			cmd.PersistentFlags().AddGoFlag(goflag)
+		}
+	})
+
+	viper.SetEnvPrefix(c.ZITI) // All env vars we seek will be prefixed with "ZITI_"
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer("-", "_") // We use underscores in env var names, but use dashes in flag names
+	viper.SetEnvKeyReplacer(replacer)
+
+	p := common.NewOptionsProvider(out, err)
+
+	controllerCmd := NewControllerCmd()
+	controllerCmd.Hidden = true
+
+	routerCmd := NewRouterCmd()
+	routerCmd.Hidden = true
+
+	tunnelCmd := tunnel.NewTunnelCmd(false)
+	tunnelCmd.Hidden = true
+
+	createCommands := create.NewCmdCreate(out, err)
+	agentCommands := agentcli.NewAgentCmd(p)
+	pkiCommands := pki.NewCmdPKI(out, err)
+	fabricCommand := fabric.NewFabricCmd(p)
+	edgeCommand := edge.NewCmdEdge(out, err, p)
+	cmd.AddCommand(run.NewQuickStartCmd(out, err, context.Background()))
+
+	demoCmd := demo.NewDemoCmd(p)
+	runCmd := run.NewRunCmd(out, err)
+
+	opsCommands := &cobra.Command{
+		Use:   "ops",
+		Short: "Various utilities useful when operating a Ziti network",
+	}
+
+	opsCommands.AddCommand(database.NewCmdDb(out, err))
+	opsCommands.AddCommand(fabric.NewClusterCmd(p))
+	opsCommands.AddCommand(NewCmdLogFormat(out, err))
+	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
+	opsCommands.AddCommand(verify.NewVerifyCommand(out, err, context.Background()))
+	opsCommands.AddCommand(exporter.NewExportCmd(out, err))
+	opsCommands.AddCommand(importer.NewImportCmd(out, err))
+
+	groups := templates.CommandGroups{
+		{
+			Message: "Working with Ziti resources:",
+			Commands: []*cobra.Command{
+				createCommands,
+			},
+		},
+		{
+			Message: "Executing Ziti components:",
+			Commands: []*cobra.Command{
+				runCmd,
+				agentCommands,
+				controllerCmd,
+				routerCmd,
+				tunnelCmd,
+				pkiCommands,
+			},
+		},
+		{
+			Message: "Interacting with the Ziti controller",
+			Commands: []*cobra.Command{
+				fabricCommand,
+				edgeCommand,
+			},
+		},
+		{
+			Message: "Utilities",
+			Commands: []*cobra.Command{
+				opsCommands,
+				NewDumpCliCmd(),
+			},
+		},
+		{
+			Message: "Learning Ziti",
+			Commands: []*cobra.Command{
+				demoCmd,
+			},
+		},
+	}
+
+	groups.Add(cmd)
+
+	cmd.Version = version.GetVersion()
+	cmd.SetVersionTemplate("{{printf .Version}}\n")
+	cmd.AddCommand(NewCmdArt(out, err))
+	cmd.AddCommand(common.NewVersionCmd())
+
+	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
+	return cmd
+}
+
+func NewControllerCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "controller",
+		Short: "Ziti Controller",
+	}
+
+	runCtrlCmd := run.NewRunControllerCmd()
+	runCtrlCmd.Use = "run <config>"
+	cmd.AddCommand(runCtrlCmd)
+	cmd.AddCommand(database.NewDeleteSessionsFromConfigCmd())
+	cmd.AddCommand(database.NewDeleteSessionsFromDbCmd())
+
+	versionCmd := common.NewVersionCmd()
+	versionCmd.Hidden = true
+	versionCmd.Deprecated = "use 'ziti version' instead of 'ziti controller version'"
+	cmd.AddCommand(versionCmd)
+
+	edgeSubCmd.AddCommands(cmd, version.GetCmdBuildInfo())
+
+	return cmd
+}
+
+func NewRouterCmd() *cobra.Command {
+	routerCmd := run.NewRunRouterCmd()
+	routerCmd.Use = "router <config>"
+
+	routerCmd.AddCommand(run.NewRunRouterCmd())
+	routerCmd.AddCommand(enroll.NewEnrollGwCmd())
+
+	versionCmd := common.NewVersionCmd()
+	versionCmd.Hidden = true
+	versionCmd.Deprecated = "use 'ziti version' instead of 'ziti router version'"
+	routerCmd.AddCommand(versionCmd)
+
+	return routerCmd
 }
 
 // initConfig reads in config file and ENV variables if set.
