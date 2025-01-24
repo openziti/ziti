@@ -37,20 +37,25 @@ func (handler *updateCtrlAddressesHandler) HandleReceive(msg *channel.Message, c
 		"localVersion":  handler.currentVersion,
 		"remoteVersion": upd.Index,
 		"isLeader":      upd.IsLeader,
+		"ctrlId":        ch.Id(),
 	})
 
 	log.Info("update ctrl endpoints message received")
 
 	if handler.currentVersion == 0 || handler.currentVersion < upd.Index {
-		log.Info("updating to newer controller endpoints")
-		handler.callback.UpdateCtrlEndpoints(upd.Addresses)
-		handler.currentVersion = upd.Index
+		if len(upd.Addresses) > 0 {
+			log.Info("updating to newer controller endpoints")
+			handler.callback.UpdateCtrlEndpoints(upd.Addresses)
+			handler.currentVersion = upd.Index
 
-		if upd.IsLeader {
-			handler.callback.UpdateLeader(ch.Id())
+			if upd.IsLeader {
+				handler.callback.UpdateLeader(ch.Id())
+			}
+		} else {
+			log.Info("ignoring empty controller endpoint list")
 		}
 	} else {
-		log.Info("ignoring outdated controller endpoints")
+		log.Info("ignoring outdated controller endpoint list")
 	}
 }
 
