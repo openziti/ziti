@@ -42,13 +42,22 @@ enum ContentType {
 
   PeerStateChangeRequestType = 1050;
   UpdateClusterLeaderRequestType = 1051;
+
+  // Control Channel Pipes
+  CtrlPipeRequestType = 1060;
+  CtrlPipeResponseType = 1061;
+  CtrlPipeDataType = 1062;
+  CtrlPipeCloseType = 1063;
 }
 
 enum ControlHeaders {
   NoneHeader = 0;
+
   ListenersHeader = 10;
   RouterMetadataHeader = 11;
   CapabilitiesHeader = 12;
+
+  CtrlPipeIdHeader = 20;
 }
 
 enum RouterCapability {
@@ -292,4 +301,15 @@ message PeerStateChanges {
 
 message RouterMetadata {
   repeated RouterCapability capabilities = 1;
+}
+
+message CtrlPipeRequest {
+  string destination = 1;
+  uint64 timeoutMillis = 2;
+  uint32 connId = 3;
+}
+
+message CtrlPipeResponse {
+  bool success = 1;
+  string msg = 2;
 }

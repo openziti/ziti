@@ -8,6 +8,14 @@ func (request *InspectResponse) GetContentType() int32 {
 	return int32(ContentType_InspectResponseType)
 }
 
+func (request *MgmtPipeRequest) GetContentType() int32 {
+	return int32(ContentType_MgmtPipeRequestType)
+}
+
+func (request *MgmtPipeResponse) GetContentType() int32 {
+	return int32(ContentType_MgmtPipeResponseType)
+}
+
 func (request *RaftMemberListResponse) GetContentType() int32 {
 	return int32(ContentType_RaftListMembersResponseType)
 }
@@ -74,4 +82,12 @@ func (request *RouterIdentityConnectionStatusesDetails) GetContentType() int32 {
 
 func (x *InitRequest) GetContentType() int32 {
 	return int32(ContentType_RaftInit)
+}
+
+func (x DestinationType) CheckControllers() bool {
+	return x == DestinationType_Any || x == DestinationType_Controller
+}
+
+func (x DestinationType) CheckRouters() bool {
+	return x == DestinationType_Any || x == DestinationType_Router
 }

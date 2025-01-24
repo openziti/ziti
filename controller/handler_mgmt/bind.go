@@ -19,6 +19,7 @@ package handler_mgmt
 import (
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/common/trace"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/network"
@@ -26,16 +27,18 @@ import (
 )
 
 type BindHandler struct {
-	env     *env.AppEnv
-	network *network.Network
-	xmgmts  *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
+	env                *env.AppEnv
+	network            *network.Network
+	xmgmts             *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
+	securePipeRegistry *datapipe.Registry
 }
 
-func NewBindHandler(env *env.AppEnv, network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) channel.BindHandler {
+func NewBindHandler(env *env.AppEnv, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt], securePipeRegistry *datapipe.Registry) channel.BindHandler {
 	return &BindHandler{
-		env:     env,
-		network: network,
-		xmgmts:  xmgmts,
+		env:                env,
+		network:            env.GetHostController().GetNetwork(),
+		xmgmts:             xmgmts,
+		securePipeRegistry: securePipeRegistry,
 	}
 }
 
@@ -87,6 +90,16 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newTogglePipeTracesHandler(bindHandler.network))
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(bindHandler.network.GetAppId(), binding.GetChannel(), bindHandler.network.GetTraceController()))
+
+	if bindHandler.securePipeRegistry.GetConfig().Enabled {
+		mgmtPipeRequestHandler := newMgmtPipeHandler(bindHandler.network, bindHandler.securePipeRegistry, binding.GetChannel())
+		binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+			Type:    mgmtPipeRequestHandler.ContentType(),
+			Handler: mgmtPipeRequestHandler.HandleReceive,
+		})
+		binding.AddCloseHandler(mgmtPipeRequestHandler)
+		binding.AddTypedReceiveHandler(newMgmtPipeDataHandler(bindHandler.securePipeRegistry))
+	}
 
 	xmgmtDone := make(chan struct{})
 	for _, x := range bindHandler.xmgmts.Value() {

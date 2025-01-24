@@ -113,3 +113,11 @@ func (request *PeerStateChanges) GetContentType() int32 {
 func (request *UpdateClusterLeader) GetContentType() int32 {
 	return int32(ContentType_UpdateClusterLeaderRequestType)
 }
+
+func (request *CtrlPipeRequest) GetContentType() int32 {
+	return int32(ContentType_CtrlPipeRequestType)
+}
+
+func (request *CtrlPipeResponse) GetContentType() int32 {
+	return int32(ContentType_CtrlPipeResponseType)
+}

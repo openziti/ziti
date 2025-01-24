@@ -23,6 +23,12 @@ enum ContentType {
   InspectRequestType = 10048;
   InspectResponseType = 10049;
 
+  // Management Pipes
+  MgmtPipeRequestType = 10060;
+  MgmtPipeResponseType = 10061;
+  MgmtPipeDataType = 10062;
+  MgmtPipeCloseType = 10063;
+
   // Snapshot db
   SnapshotDbRequestType = 10070;
 
@@ -75,6 +81,7 @@ enum Header {
   EventTypeHeader = 10;
   CtrlChanToggle = 11;
   ControllerId = 12;
+  MgmtPipeIdHeader = 20;
 }
 
 //
@@ -166,6 +173,24 @@ message InspectResponse {
     string name = 2;
     string value = 3;
   }
+}
+
+enum DestinationType {
+  Any = 0;
+  Controller = 1;
+  Router = 2;
+}
+
+message MgmtPipeRequest {
+  DestinationType destinationType = 1;
+  string destination = 2;
+  uint64 timeoutMillis = 3;
+}
+
+message MgmtPipeResponse {
+  bool success = 1;
+  uint32 connId = 2;
+  string msg = 3;
 }
 
 // Raft

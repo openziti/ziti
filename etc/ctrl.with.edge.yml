@@ -57,6 +57,14 @@ identity:
   key: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/ctrl.key.pem
   ca: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ca-chain.cert.pem
 
+mgmt:
+  pipe:
+    enabled: true
+    enableExperimentalFeature: true
+    destination: embedded-ssh-server
+    authorizedKeysFile: /home/plorenz/tmp/authorized_keys
+    shell: /usr/bin/bash
+
 # the endpoint that routers will connect to the controller over.
 ctrl:
   listener: tls:127.0.0.1:6262

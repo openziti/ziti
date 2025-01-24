@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/handler_mgmt"
@@ -46,26 +47,28 @@ const (
 var _ xweb.ApiHandlerFactory = &FabricManagementApiFactory{}
 
 type FabricManagementApiFactory struct {
-	InitFunc    func(managementApi *FabricManagementApiHandler) error
-	network     *network.Network
-	env         *env.AppEnv
-	nodeId      identity.Identity
-	xmgmts      *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
-	MakeDefault bool
+	InitFunc           func(managementApi *FabricManagementApiHandler) error
+	network            *network.Network
+	env                *env.AppEnv
+	nodeId             identity.Identity
+	xmgmts             *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]
+	MakeDefault        bool
+	securePipeRegistry *datapipe.Registry
 }
 
 func (factory *FabricManagementApiFactory) Validate(_ *xweb.InstanceConfig) error {
 	return nil
 }
 
-func NewFabricManagementApiFactory(nodeId identity.Identity, env *env.AppEnv, network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) *FabricManagementApiFactory {
+func NewFabricManagementApiFactory(nodeId identity.Identity, env *env.AppEnv, network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt], securityPipeRegistry *datapipe.Registry) *FabricManagementApiFactory {
 	pfxlog.Logger().Infof("initializing management api factory with %d xmgmt instances", len(xmgmts.Value()))
 	return &FabricManagementApiFactory{
-		env:         env,
-		network:     network,
-		nodeId:      nodeId,
-		xmgmts:      xmgmts,
-		MakeDefault: false,
+		env:                env,
+		network:            network,
+		nodeId:             nodeId,
+		xmgmts:             xmgmts,
+		MakeDefault:        false,
+		securePipeRegistry: securityPipeRegistry,
 	}
 }
 
@@ -99,7 +102,7 @@ func (factory *FabricManagementApiFactory) New(_ *xweb.ServerConfig, options map
 		return nil, err
 	}
 
-	managementApiHandler.bindHandler = handler_mgmt.NewBindHandler(factory.env, factory.network, factory.xmgmts)
+	managementApiHandler.bindHandler = handler_mgmt.NewBindHandler(factory.env, factory.xmgmts, factory.securePipeRegistry)
 
 	if factory.InitFunc != nil {
 		if err := factory.InitFunc(managementApiHandler); err != nil {

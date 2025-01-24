@@ -17,19 +17,19 @@
 package handler_ctrl
 
 import (
-	"github.com/openziti/ziti/common/capabilities"
-	"runtime/debug"
-	"time"
-
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/ziti/common/capabilities"
+	"github.com/openziti/ziti/common/datapipe"
 	"github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/trace"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"runtime/debug"
+	"time"
 )
 
 type bindHandler struct {
@@ -38,6 +38,7 @@ type bindHandler struct {
 	xgDialerPool             goroutines.Pool
 	terminatorValidationPool goroutines.Pool
 	ctrlAddressUpdater       CtrlAddressUpdater
+	dataPipeRegistry         *datapipe.Registry
 }
 
 func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctrlAddressUpdater CtrlAddressUpdater) (channel.BindHandler, error) {
@@ -83,6 +84,7 @@ func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctr
 		xgDialerPool:             xgDialerPool,
 		terminatorValidationPool: terminatorValidationPool,
 		ctrlAddressUpdater:       ctrlAddressUpdater,
+		dataPipeRegistry:         datapipe.NewRegistry(routerEnv.GetMgmtPipeConfig()),
 	}, nil
 }
 
@@ -111,6 +113,17 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 
 	if self.env.GetTraceHandler() != nil {
 		binding.AddPeekHandler(self.env.GetTraceHandler())
+	}
+
+	if self.env.GetMgmtPipeConfig().IsLocalAccessAllowed() {
+		sshTunnelRegistry := &pipeRegistry{}
+		sshTunnelRequestHandler := newCtrlPipeHandler(self.env, sshTunnelRegistry, binding.GetChannel())
+		binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+			Type:    sshTunnelRequestHandler.ContentType(),
+			Handler: sshTunnelRequestHandler.HandleReceive,
+		})
+		binding.AddTypedReceiveHandler(newCtrlPipeDataHandler(sshTunnelRegistry))
+		binding.AddTypedReceiveHandler(newCtrlPipeCloseHandler(sshTunnelRegistry))
 	}
 
 	for _, x := range self.env.GetXrctrls() {

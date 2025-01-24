@@ -181,6 +181,10 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	return network, nil
 }
 
+func (self *Network) GetIdentity() *identity.TokenId {
+	return self.config.GetId()
+}
+
 func (self *Network) HandleRouterDelete(id string) {
 	self.routerDeleted(id)
 	self.RouterMessaging.RouterDeleted(id)
