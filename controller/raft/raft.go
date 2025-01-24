@@ -184,7 +184,7 @@ func (self *Controller) initErrorMappers() {
 
 func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, state ClusterState, leaderId string)) {
 	if self.isLeader.Load() {
-		f(ClusterEventLeadershipGained, newClusterState(true, !self.Mesh.IsReadOnly()), "")
+		f(ClusterEventLeadershipGained, newClusterState(true, !self.Mesh.IsReadOnly()), self.env.GetId().Token)
 	}
 	self.clusterStateChangeHandlers.Append(f)
 }
@@ -698,11 +698,6 @@ func (self *Controller) ObserveLeaderChanges() {
 			leaderId:    string(leaderId),
 		}
 
-		if self.Raft.State() == raft.Leader {
-			self.isLeader.Store(true)
-			self.handleClusterStateChange(ClusterEventLeadershipGained, eventState)
-		}
-
 		if eventState.hasLeader {
 			self.handleClusterStateChange(ClusterEventHasLeader, eventState)
 		} else {
@@ -712,11 +707,24 @@ func (self *Controller) ObserveLeaderChanges() {
 		ticker := time.NewTicker(time.Second * 5)
 		defer ticker.Stop()
 
+		first := false
+
 		for {
 			select {
 			case observation := <-self.clusterEvents:
 				self.processRaftObservation(observation, eventState)
 			case <-ticker.C:
+				if first {
+					// delay this check because it seems like raft generates observations for leader state, so if we do this
+					// first we're going to get duplicates
+					if self.Raft.State() == raft.Leader {
+						if wasLeader := self.isLeader.Swap(true); !wasLeader {
+							self.handleClusterStateChange(ClusterEventLeadershipGained, eventState)
+						}
+					}
+					first = false
+				}
+
 				if !eventState.warningEmitted && !eventState.hasLeader && time.Since(eventState.noLeaderAt) > self.Config.WarnWhenLeaderlessFor {
 					pfxlog.Logger().WithField("timeSinceLeader", time.Since(eventState.noLeaderAt).String()).
 						Warn("cluster running without leader for longer than configured threshold")
@@ -731,11 +739,11 @@ func (self *Controller) processRaftObservation(observation raft.Observation, eve
 	pfxlog.Logger().Tracef("raft observation received: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), eventState.isReadWrite)
 
 	if raftState, ok := observation.Data.(raft.RaftState); ok {
-		if raftState == raft.Leader && !self.isLeader.Load() {
-			self.isLeader.Store(true)
-			self.handleClusterStateChange(ClusterEventLeadershipGained, eventState)
-		} else if raftState != raft.Leader && self.isLeader.Load() {
-			self.isLeader.Store(false)
+		if raftState == raft.Leader {
+			if wasLeader := self.isLeader.Swap(true); !wasLeader {
+				self.handleClusterStateChange(ClusterEventLeadershipGained, eventState)
+			}
+		} else if wasLeader := self.isLeader.Swap(false); wasLeader {
 			self.handleClusterStateChange(ClusterEventLeadershipLost, eventState)
 		}
 	}
@@ -798,7 +806,7 @@ func (self *Controller) Bootstrap() error {
 		firstCheckPassed := false
 		for {
 			// make sure this is in a reasonably steady state by waiting a bit longer and checking twice
-			if self.isLeader.Load() {
+			if _, leaderId := self.Raft.LeaderWithID(); leaderId != "" {
 				if firstCheckPassed {
 					break
 				} else {

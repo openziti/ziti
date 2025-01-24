@@ -218,7 +218,8 @@ func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer, peerCo
 		}
 	}
 
-	pfxlog.Logger().Infof("acting as leader, updating controllers with peers, self: %s, peers: %s", nfpem.FingerprintFromCertificate(selfAsPeer.ServerCert[0]), peerFingerprints)
+	pfxlog.Logger().Infof("acting as leader, updating controllers with peers, self: %s, peer count: %d, peers: %s",
+		nfpem.FingerprintFromCertificate(selfAsPeer.ServerCert[0]), len(peers), peerFingerprints)
 
 	if !peerConnectedEvent {
 		// add this controller as a "peer" when leadership is gained
@@ -226,6 +227,11 @@ func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer, peerCo
 	}
 
 	for _, peer := range peers {
+		// Use our locally built peer instance to represent ourselves in the list
+		if peer.Id == selfAsPeer.Id && peer != selfAsPeer {
+			continue
+		}
+
 		if len(peer.ServerCert) < 1 {
 			pfxlog.Logger().Errorf("peer %s has no certificate", peer.Id)
 			continue
