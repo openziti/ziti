@@ -165,7 +165,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.Equal(http.StatusUnsupportedMediaType, resp.StatusCode())
 	})
 
-	t.Run("updb", func(t *testing.T) {
+	t.Run("updb with auth request id in body", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
@@ -181,6 +181,78 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username"
 
 		resp, err = client.R().SetFormData(map[string]string{"id": authRequestId, "username": ctx.AdminAuthenticator.Username, "password": ctx.AdminAuthenticator.Password}).Post(opLoginUri)
+
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+		var outTokens *oidc.Tokens[*oidc.IDTokenClaims]
+
+		select {
+		case tokens := <-rpServer.TokenChan:
+			outTokens = tokens
+		case <-time.After(5 * time.Second):
+			ctx.Fail("no tokens received, hit timeout")
+		}
+
+		ctx.Req.NotNil(outTokens)
+		ctx.Req.NotEmpty(outTokens.IDToken)
+		ctx.Req.NotEmpty(outTokens.IDTokenClaims)
+		ctx.Req.NotEmpty(outTokens.AccessToken)
+		ctx.Req.NotEmpty(outTokens.RefreshToken)
+	})
+
+	t.Run("updb with auth request id in query string", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
+		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
+		resp, err := client.R().Get(rpServer.LoginUri)
+
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+		authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
+		ctx.Req.NotEmpty(authRequestId)
+
+		opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username?authRequestID=" + authRequestId
+
+		resp, err = client.R().SetFormData(map[string]string{"username": ctx.AdminAuthenticator.Username, "password": ctx.AdminAuthenticator.Password}).Post(opLoginUri)
+
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+		var outTokens *oidc.Tokens[*oidc.IDTokenClaims]
+
+		select {
+		case tokens := <-rpServer.TokenChan:
+			outTokens = tokens
+		case <-time.After(5 * time.Second):
+			ctx.Fail("no tokens received, hit timeout")
+		}
+
+		ctx.Req.NotNil(outTokens)
+		ctx.Req.NotEmpty(outTokens.IDToken)
+		ctx.Req.NotEmpty(outTokens.IDTokenClaims)
+		ctx.Req.NotEmpty(outTokens.AccessToken)
+		ctx.Req.NotEmpty(outTokens.RefreshToken)
+	})
+
+	t.Run("updb with id in query string", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
+		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
+		resp, err := client.R().Get(rpServer.LoginUri)
+
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+		authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
+		ctx.Req.NotEmpty(authRequestId)
+
+		opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username?id=" + authRequestId
+
+		resp, err = client.R().SetFormData(map[string]string{"username": ctx.AdminAuthenticator.Username, "password": ctx.AdminAuthenticator.Password}).Post(opLoginUri)
 
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode())

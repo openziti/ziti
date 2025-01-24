@@ -192,8 +192,6 @@ func parsePayload(r *http.Request, out AuthRequestIdHolder) error {
 			return err
 		}
 
-		return nil
-
 	} else if contentType == JsonContentType {
 		body, err := io.ReadAll(r.Body)
 
@@ -216,8 +214,13 @@ func parsePayload(r *http.Request, out AuthRequestIdHolder) error {
 		}
 	}
 
+	//prefer body, if not set use > query string queryAuthRequestID > query string queryAuthRequestIdAlt
 	if out.GetAuthRequestId() == "" {
-		out.SetAuthRequestId(r.URL.Query().Get("id"))
+		if queryAuthRequestId := r.URL.Query().Get(queryAuthRequestID); queryAuthRequestId != "" {
+			out.SetAuthRequestId(queryAuthRequestId)
+		} else if queryId := r.URL.Query().Get(queryAuthRequestIdAlt); queryId != "" {
+			out.SetAuthRequestId(queryId)
+		}
 	}
 
 	return nil
