@@ -19,7 +19,10 @@ package cmd
 import (
 	goflag "flag"
 	"fmt"
+	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
+	"github.com/openziti/ziti/ziti/enroll"
+	"github.com/openziti/ziti/ziti/run"
 	"io"
 	"os"
 	"path/filepath"
@@ -38,9 +41,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/cmd/verify"
 	c "github.com/openziti/ziti/ziti/constants"
-	"github.com/openziti/ziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/internal/log"
-	"github.com/openziti/ziti/ziti/router"
 	"github.com/openziti/ziti/ziti/tunnel"
 	"github.com/openziti/ziti/ziti/util"
 
@@ -114,28 +115,18 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	replacer := strings.NewReplacer("-", "_") // We use underscores in env var names, but use dashes in flag names
 	viper.SetEnvKeyReplacer(replacer)
 
-	// cmd.PersistentFlags().StringVar(&rootCommand.configFile, "config", "", "yaml config file (default is $HOME/.ziti.yaml)")
-	// viper.BindPFlag("config", cmd.PersistentFlags().Lookup("config"))
-	// viper.SetDefault("config", "$HOME/.ziti.yaml")
-
-	// cmd.PersistentFlags().StringVar(&rootCommand.RegistryPath, "state", "", "Location of state storage (ziti 'config' file). Overrides ZITI_STATE_STORE environment variable")
-	// viper.BindPFlag("ZITI_STATE_STORE", cmd.PersistentFlags().Lookup("state"))
-	// viper.BindEnv("ZITI_STATE_STORE")
-
-	// defaultClusterName := os.Getenv("ZITI_CLUSTER_NAME")
-	// cmd.PersistentFlags().StringVarP(&rootCommand.clusterName, "name", "", defaultClusterName, "Name of cluster. Overrides ZITI_CLUSTER_NAME environment variable")
-
 	p := common.NewOptionsProvider(out, err)
 
 	createCommands := create.NewCmdCreate(out, err)
-	controllerCmd := controller.NewControllerCmd()
+	controllerCmd := NewControllerCmd()
 	tunnelCmd := tunnel.NewTunnelCmd(false)
-	routerCmd := router.NewRouterCmd()
+	routerCmd := NewRouterCmd()
 	agentCommands := agentcli.NewAgentCmd(p)
 	pkiCommands := pki.NewCmdPKI(out, err)
 	fabricCommand := fabric.NewFabricCmd(p)
 	edgeCommand := edge.NewCmdEdge(out, err, p)
 	demoCmd := demo.NewDemoCmd(p)
+	runCmd := run.NewRunRouterCmd()
 
 	opsCommands := &cobra.Command{
 		Use:   "ops",
@@ -160,6 +151,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 		{
 			Message: "Executing Ziti components:",
 			Commands: []*cobra.Command{
+				runCmd,
 				agentCommands,
 				controllerCmd,
 				routerCmd,
@@ -178,6 +170,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 			Message: "Utilities",
 			Commands: []*cobra.Command{
 				opsCommands,
+				NewDumpCliCmd(),
 			},
 		},
 		{
@@ -197,6 +190,43 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 
 	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
 	return cmd
+}
+
+func NewControllerCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "controller",
+		Short: "Ziti Controller",
+	}
+
+	runCtrlCmd := run.NewRunControllerCmd()
+	runCtrlCmd.Use = "run <config>"
+	cmd.AddCommand(runCtrlCmd)
+	cmd.AddCommand(database.NewDeleteSessionsFromConfigCmd())
+	cmd.AddCommand(database.NewDeleteSessionsFromDbCmd())
+
+	versionCmd := common.NewVersionCmd()
+	versionCmd.Hidden = true
+	versionCmd.Deprecated = "use 'ziti version' instead of 'ziti controller version'"
+	cmd.AddCommand(versionCmd)
+
+	edgeSubCmd.AddCommands(cmd, version.GetCmdBuildInfo())
+
+	return cmd
+}
+
+func NewRouterCmd() *cobra.Command {
+	routerCmd := run.NewRunRouterCmd()
+	routerCmd.Use = "router <config>"
+
+	routerCmd.AddCommand(run.NewRunRouterCmd())
+	routerCmd.AddCommand(enroll.NewEnrollGwCmd())
+
+	versionCmd := common.NewVersionCmd()
+	versionCmd.Hidden = true
+	versionCmd.Deprecated = "use 'ziti version' instead of 'ziti router version'"
+	routerCmd.AddCommand(versionCmd)
+
+	return routerCmd
 }
 
 // initConfig reads in config file and ENV variables if set.

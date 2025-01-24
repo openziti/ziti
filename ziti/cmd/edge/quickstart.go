@@ -20,6 +20,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/openziti/ziti/ziti/enroll"
+	"github.com/openziti/ziti/ziti/run"
 	"io"
 	"net"
 	"net/http"
@@ -45,8 +47,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/pki"
 	"github.com/openziti/ziti/ziti/constants"
-	ctrlcmd "github.com/openziti/ziti/ziti/controller"
-	"github.com/openziti/ziti/ziti/router"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -304,7 +304,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 
 	fmt.Println("Starting controller...")
 	go func() {
-		runCtrl := ctrlcmd.NewRunCmd()
+		runCtrl := run.NewRunControllerCmd()
 		runCtrl.SetArgs([]string{
 			ctrlYaml,
 		})
@@ -515,7 +515,7 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 		}
 
 		// ziti router enroll ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml --jwt ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt
-		erEnroll := router.NewEnrollGwCmd()
+		erEnroll := enroll.NewEnrollGwCmd()
 		erEnroll.SetArgs([]string{
 			configFile,
 			fmt.Sprintf("--jwt=%s", erJwt),
@@ -535,7 +535,7 @@ func (o *QuickstartOpts) runRouter(configFile string) {
 
 	go func() {
 		// ziti router run ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml &> ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.log &
-		erRunCmd := router.NewRunCmd()
+		erRunCmd := run.NewRunRouterCmd()
 		erRunCmd.SetArgs([]string{
 			configFile,
 		})
