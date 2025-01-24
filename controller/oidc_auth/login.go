@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	queryAuthRequestID = "authRequestID"
+	queryAuthRequestID    = "authRequestID"
+	queryAuthRequestIdAlt = "id"
 
 	//page specific resource keys
 	pageLogin = "login"
