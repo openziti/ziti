@@ -19,7 +19,6 @@ package tunnel
 import (
 	"github.com/openziti/sdk-golang/ziti/sdkinfo"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/util"
 	"os"
 	"path/filepath"
@@ -44,15 +43,11 @@ const (
 	dnsSvcIpRangeFlag = "dnsSvcIpRange"
 )
 
-var hostSpecificCmds []*cobra.Command
+var hostSpecificCmds []func() *cobra.Command
 
-func NewTunnelCmd(standalone bool) *cobra.Command {
-	use := "tunnel "
-	if standalone {
-		use = filepath.Base(os.Args[0])
-	}
+func NewTunnelCmd(legacy bool) *cobra.Command {
 	var root = &cobra.Command{
-		Use:              use,
+		Use:              "tunnel",
 		Short:            "Ziti Tunnel",
 		PersistentPreRun: rootPreRun,
 		Hidden:           true,
@@ -72,7 +67,12 @@ func NewTunnelCmd(standalone bool) *cobra.Command {
 
 	root.AddCommand(NewHostCmd())
 	root.AddCommand(NewProxyCmd())
-	root.AddCommand(hostSpecificCmds...)
+	for _, cmdF := range hostSpecificCmds {
+		cmd := cmdF()
+		if cmd.Name() != "run" || legacy { // only include run in 'ziti tunnel' tree
+			root.AddCommand(cmdF())
+		}
+	}
 
 	versionCmd := common.NewVersionCmd()
 	versionCmd.Hidden = true
@@ -108,7 +108,7 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 	default:
 		// let logrus do its own thing
 	}
-	util.LogReleaseVersionCheck(constants.ZITI_TUNNEL)
+	util.LogReleaseVersionCheck()
 }
 
 func rootPostRun(cmd *cobra.Command, _ []string) {

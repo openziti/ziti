@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package controller
+package run
 
 import (
 	"fmt"
@@ -33,16 +33,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewRunCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "run <config>",
-		Short: "Run controller configuration",
-		Args:  cobra.ExactArgs(1),
-		Run:   run,
+func NewRunControllerCmd() *cobra.Command {
+	action := &ControllerAction{}
+
+	cmd := &cobra.Command{
+		Use:    "controller <config>",
+		Short:  "Run an OpenZiti controller with the given configuration",
+		Args:   cobra.ExactArgs(1),
+		Run:    action.Run,
+		PreRun: action.PreRun,
 	}
+
+	action.BindFlags(cmd)
+	return cmd
 }
 
-func run(cmd *cobra.Command, args []string) {
+type ControllerAction struct {
+	Options
+	fabricController *controller.Controller
+	edgeController   *server.Controller
+}
+
+func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 	startLogger :=
 		logrus.WithField("version", version.GetVersion()).
 			WithField("go-version", version.GetGoVersion()).
@@ -51,59 +63,58 @@ func run(cmd *cobra.Command, args []string) {
 			WithField("build-date", version.GetBuildDate()).
 			WithField("revision", version.GetRevision())
 
-	config, err := config.LoadConfig(args[0])
+	ctrlConfig, err := config.LoadConfig(args[0])
 	if err != nil {
 		startLogger.WithError(err).Error("error starting ziti-controller")
 		panic(err)
 	}
 
-	startLogger = startLogger.WithField("nodeId", config.Id.Token)
+	startLogger = startLogger.WithField("nodeId", ctrlConfig.Id.Token)
 	startLogger.Info("starting ziti-controller")
 
-	var fabricController *controller.Controller
-	if fabricController, err = controller.NewController(config, version.GetCmdBuildInfo()); err != nil {
+	if self.fabricController, err = controller.NewController(ctrlConfig, version.GetCmdBuildInfo()); err != nil {
 		fmt.Printf("unable to create fabric controller %+v\n", err)
 		panic(err)
 	}
 
-	edgeController, err := server.NewController(fabricController)
-
+	self.edgeController, err = server.NewController(self.fabricController)
 	if err != nil {
 		panic(err)
 	}
 
-	edgeController.Initialize()
+	self.edgeController.Initialize()
 
-	if cliAgentEnabled {
+	if self.CliAgentEnabled {
 		options := agent.Options{
-			Addr:       cliAgentAddr,
-			AppId:      config.Id.Token,
+			Addr:       self.CliAgentAddr,
+			AppId:      ctrlConfig.Id.Token,
 			AppType:    "controller",
 			AppVersion: version.GetVersion(),
-			AppAlias:   cliAgentAlias,
+			AppAlias:   self.CliAgentAlias,
 		}
 		options.CustomOps = map[byte]func(conn net.Conn) error{
-			agent.CustomOpAsync: fabricController.HandleCustomAgentAsyncOp,
+			agent.CustomOpAsync: self.fabricController.HandleCustomAgentAsyncOp,
 		}
 		if err := agent.Listen(options); err != nil {
 			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 		}
 	}
 
-	go waitForShutdown(fabricController, edgeController)
-	edgeController.Run()
-	if err := fabricController.Run(); err != nil {
+	go self.waitForShutdown()
+
+	self.edgeController.Run()
+	if err := self.fabricController.Run(); err != nil {
 		panic(err)
 	}
 }
 
-func waitForShutdown(fabricController *controller.Controller, edgeController *server.Controller) {
+func (self *ControllerAction) waitForShutdown() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 
 	<-ch
 
 	pfxlog.Logger().Info("shutting down ziti-controller")
-	edgeController.Shutdown()
-	fabricController.Shutdown()
+	self.edgeController.Shutdown()
+	self.fabricController.Shutdown()
 }

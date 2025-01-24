@@ -16,8 +16,7 @@
 	limitations under the License.
 */
 
-
-package cmd
+package ops
 
 import (
 	"os"

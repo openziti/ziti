@@ -1,5 +1,4 @@
 //go:build linux
-// +build linux
 
 /*
 	Copyright NetFoundry Inc.
@@ -27,7 +26,7 @@ import (
 )
 
 func init() {
-	hostSpecificCmds = append(hostSpecificCmds, NewRunCmd())
+	hostSpecificCmds = append(hostSpecificCmds, NewRunCmd)
 }
 
 func NewRunCmd() *cobra.Command {

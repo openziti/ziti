@@ -34,6 +34,7 @@ const (
 type RestClientConfig struct {
 	EdgeIdentities map[string]*RestClientEdgeIdentity `json:"edgeIdentities"`
 	Default        string                             `json:"default"`
+	Layout         int                                `json:"layout"`
 }
 
 func (self *RestClientConfig) GetIdentity() string {
