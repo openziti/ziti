@@ -64,7 +64,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			result, executeErr := importer.Execute(args)
 			if executeErr != nil {
-				panic(executeErr)
+				log.Fatal(executeErr)
 			}
 			log.WithField("results", result).Debug("Finished")
 		},

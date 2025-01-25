@@ -65,7 +65,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			err := exporter.Execute(args)
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 		},
 		Hidden: true,
