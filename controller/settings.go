@@ -76,6 +76,11 @@ func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *model.Router) {
 		"index":     index,
 	})
 
+	if len(data) == 0 {
+		log.Error("no addresses to send")
+		return
+	}
+
 	log.Info("router connected, syncing ctrl addresses")
 
 	updMsg := &ctrl_pb.UpdateCtrlAddresses{

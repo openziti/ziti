@@ -736,29 +736,31 @@ func (self *Router) getInitialCtrlEndpoints() ([]string, error) {
 
 	if _, err := os.Stat(endpointsFile); err != nil && errors.Is(err, fs.ErrNotExist) {
 		log.Infof("controller endpoints file [%v] doesn't exist. Using initial endpoints from config", endpointsFile)
+	} else {
+		log.Infof("loading controller endpoints from [%v]", endpointsFile)
+
+		b, err := os.ReadFile(endpointsFile)
+		if err != nil {
+			log.WithError(err).Error("unable to read endpoints file, falling back to initial endpoints from config")
+		} else {
+			endpointCfg := &endpointConfig{}
+
+			if err = yaml.Unmarshal(b, endpointCfg); err != nil {
+				log.WithError(err).Error("unable to unmarshall endpoints file, falling back to initial endpoints from config")
+			} else {
+				endpoints = endpointCfg.Endpoints
+				if len(endpoints) == 0 {
+					log.Info("empty endpoint list in endpoints file, falling back to initial endpoints from config")
+				}
+			}
+		}
+	}
+
+	if len(endpoints) == 0 {
+		log.Info("Using initial endpoints from config")
 		for _, ep := range self.config.Ctrl.InitialEndpoints {
 			endpoints = append(endpoints, ep.String())
 		}
-		return endpoints, nil
-	}
-
-	log.Infof("loading controller endpoints from [%v]", endpointsFile)
-
-	b, err := os.ReadFile(endpointsFile)
-	if err != nil {
-		return nil, err
-	}
-
-	endpointCfg := &endpointConfig{}
-
-	if err = yaml.Unmarshal(b, endpointCfg); err != nil {
-		return nil, err
-	}
-
-	endpoints = endpointCfg.Endpoints
-
-	if len(endpoints) == 0 {
-		return nil, errors.Errorf("no controller endpoints found in [%v], consider deleting file", endpointsFile)
 	}
 
 	return endpoints, nil

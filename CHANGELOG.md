@@ -1,3 +1,15 @@
+# Release 1.3.2
+
+# What's New
+
+* Bug Fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.3.1 -> v1.3.2](https://github.com/openziti/ziti/compare/v1.3.1...v1.3.2)
+    * [Issue #2692](https://github.com/openziti/ziti/issues/2692) - Routers get empty ctrl list on upgrade
+    * [Issue #2689](https://github.com/openziti/ziti/issues/2689) - OIDC authentication with form data requires "id" in form data, authReqeustID in query string is ignored
+
 # Release 1.3.1
 
 # What's New

@@ -290,32 +290,6 @@ func (config *Config) Save() error {
 	return err
 }
 
-// UpdateControllerEndpoint updates the runtime configuration address of the controller and the
-// internal map configuration.
-func (config *Config) UpdateControllerEndpoint(address string) error {
-	if parsedAddress, err := transport.ParseAddress(address); parsedAddress != nil && err == nil {
-		if config.Ctrl.InitialEndpoints[0].String() != address {
-			//config file update
-			if ctrlVal, ok := config.src[CtrlMapKey]; ok {
-				if ctrlMap, ok := ctrlVal.(map[interface{}]interface{}); ok {
-					ctrlMap[CtrlEndpointMapKey] = address
-				} else {
-					return errors.New("source ctrl found but not map[interface{}]interface{}")
-				}
-			} else {
-				return errors.New("source ctrl key not found")
-			}
-
-			//runtime update
-			config.Ctrl.InitialEndpoints[0].Store(parsedAddress)
-		}
-	} else {
-		return fmt.Errorf("could not parse address: %v", err)
-	}
-
-	return nil
-}
-
 // UpdatableAddress allows a single address to be passed to multiple channel implementations and be centrally updated
 // in a thread safe manner.
 type UpdatableAddress struct {

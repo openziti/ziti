@@ -131,10 +131,12 @@ func (self *BoltDbFsm) loadServers() error {
 			return nil
 		})
 	})
-	self.currentState.Store(&ServersWithIndex{
-		Servers: result,
-		Index:   self.index,
-	})
+	if len(result) > 0 {
+		self.currentState.Store(&ServersWithIndex{
+			Servers: result,
+			Index:   self.index,
+		})
+	}
 	return err
 }
 
