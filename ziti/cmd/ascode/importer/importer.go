@@ -109,19 +109,19 @@ func (importer *Importer) Execute(input []string) (map[string]any, error) {
 
 	raw, err := importer.reader.read(input[0])
 	if err != nil {
-		panic(errors.Join(errors.New("unable to read input"), err))
+		return nil, errors.Join(errors.New("unable to read input"), err)
 	}
 	data := map[string][]interface{}{}
 
 	if importer.ofYaml {
 		err = yaml.Unmarshal(raw, &data)
 		if err != nil {
-			panic(errors.Join(errors.New("unable to parse input data as yaml"), err))
+			return nil, errors.Join(errors.New("unable to parse input data as yaml"), err)
 		}
 	} else {
 		err = json.Unmarshal(raw, &data)
 		if err != nil {
-			panic(errors.Join(errors.New("unable to parse input data as json"), err))
+			return nil, errors.Join(errors.New("unable to parse input data as json"), err)
 		}
 	}
 
