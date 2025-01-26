@@ -1,3 +1,15 @@
+# Release 1.3.3
+
+# What's New
+
+* Bug Fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.3.2 -> v1.3.3](https://github.com/openziti/ziti/compare/v1.3.2...v1.3.3)
+    * [Issue #2694](https://github.com/openziti/ziti/issues/2694) - Router should use router data model if it has more than one controller configured, regardless of controller configuration
+
+
 # Release 1.3.2
 
 # What's New

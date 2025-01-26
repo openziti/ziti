@@ -27,6 +27,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/openziti/channel/v3"
@@ -74,6 +75,7 @@ type NetworkControllers interface {
 	Inspect() *inspect.ControllerInspectDetails
 	AddChangeListener(listener CtrlEventListener)
 	NotifyOfReconnect(ctrlId string)
+	GetExpectedCtrlCount() uint32
 }
 
 type CtrlDialer func(address transport.Address, bindHandler channel.BindHandler) error
@@ -96,16 +98,22 @@ type networkControllers struct {
 	ctrls                 concurrenz.CopyOnWriteMap[string, NetworkController]
 	leaderId              concurrenz.AtomicValue[string]
 	ctrlChangeListeners   concurrenz.CopyOnWriteSlice[CtrlEventListener]
+	expectedCtrlCount     atomic.Uint32
 }
 
 func (self *networkControllers) AddChangeListener(listener CtrlEventListener) {
 	self.ctrlChangeListeners.Append(listener)
 }
 
+func (self *networkControllers) GetExpectedCtrlCount() uint32 {
+	return self.expectedCtrlCount.Load()
+}
+
 func (self *networkControllers) UpdateControllerEndpoints(addresses []string) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
+	self.expectedCtrlCount.Store(uint32(len(addresses)))
 	changed := false
 
 	log := pfxlog.Logger()
