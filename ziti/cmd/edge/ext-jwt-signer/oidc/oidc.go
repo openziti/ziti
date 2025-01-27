@@ -259,19 +259,12 @@ type OidcVerificationConfig struct {
 	OIDCConfig
 	edge.LoginOptions
 
-	extJwtName       string
 	redirectURL      string
 	additionalScopes []string
 	showIDToken      bool
 	showRefrestToken bool
 	showAccessToken  bool
 }
-
-const (
-	authUrlFlag      = "auth-url"
-	discoveryUrlFlag = "discovery-url"
-	tokenUrlFlag     = "token-url"
-)
 
 func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext context.Context) *cobra.Command {
 	opts := &OidcVerificationConfig{}
