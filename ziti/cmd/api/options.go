@@ -20,11 +20,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
+	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
 )
+
+const CommonFlagKey = "common"
 
 // Options are common options for edge controller commands
 type Options struct {
@@ -50,12 +53,21 @@ func (options *Options) ErrOutputWriter() io.Writer {
 	return options.CommonOptions.Err
 }
 
+func addCommonFlag(cmd *cobra.Command, flagName string) {
+	_ = ziticobra.AddFlagAnnotation(cmd, flagName, CommonFlagKey, "true")
+}
+
 func (options *Options) AddCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&common.CliIdentity, "cli-identity", "i", "", "Specify the saved identity you want the CLI to use when connect to the controller with")
+	addCommonFlag(cmd, "cli-identity")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	addCommonFlag(cmd, "output-json")
 	cmd.Flags().BoolVar(&options.OutputJSONRequest, "output-request-json", false, "Output the full JSON request to the Ziti Edge Controller")
+	addCommonFlag(cmd, "output-request-json")
 	cmd.Flags().IntVarP(&options.Timeout, "timeout", "", 5, "Timeout for REST operations (specified in seconds)")
+	addCommonFlag(cmd, "timeout")
 	cmd.Flags().BoolVarP(&options.Verbose, "verbose", "", false, "Enable verbose logging")
+	addCommonFlag(cmd, "verbose")
 }
 
 func (options *Options) LogCreateResult(entityType string, result *gabs.Container, err error) error {

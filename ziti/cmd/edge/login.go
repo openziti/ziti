@@ -22,11 +22,14 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge-api/rest_client_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/foundation/v2/term"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
+	ziticobra "github.com/openziti/ziti/internal/cobra"
+	int_rest_client "github.com/openziti/ziti/internal/rest/client"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
@@ -62,21 +65,38 @@ type LoginOptions struct {
 	FileCertCreds *edge_apis.IdentityCredentials
 }
 
+const LoginFlagKey = "login"
+
+func addLoginAnnotation(cmd *cobra.Command, flagName string) {
+	_ = ziticobra.AddFlagAnnotation(cmd, flagName, LoginFlagKey, "true")
+}
+
 func AddLoginFlags(cmd *cobra.Command, options *LoginOptions) {
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 
 	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "username to use for authenticating to the Ziti Edge Controller ")
+	addLoginAnnotation(cmd, "username")
 	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "password to use for authenticating to the Ziti Edge Controller, if -u is supplied and -p is not, a value will be prompted for")
+	addLoginAnnotation(cmd, "password")
 	cmd.Flags().StringVarP(&options.Token, "token", "t", "", "if an api token has already been acquired, it can be set in the config with this option. This will set the session to read only by default")
+	addLoginAnnotation(cmd, "token")
 	cmd.Flags().StringVarP(&options.CaCert, "ca", "", "", "additional root certificates used by the Ziti Edge Controller")
+	addLoginAnnotation(cmd, "ca")
 	cmd.Flags().BoolVar(&options.ReadOnly, "read-only", false, "marks this login as read-only. Note: this is not a guarantee that nothing can be changed on the server. Care should still be taken!")
+	addLoginAnnotation(cmd, "read-only")
 	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", false, "If set, responds to prompts with yes. This will result in untrusted certs being accepted or updated.")
+	addLoginAnnotation(cmd, "yes")
 	cmd.Flags().BoolVar(&options.IgnoreConfig, "ignore-config", false, "If set, does not use values from nor write the config file. Required values not specified will be prompted for.")
+	addLoginAnnotation(cmd, "ignore-config")
 	cmd.Flags().StringVarP(&options.ClientCert, "client-cert", "c", "", "A certificate used to authenticate")
+	addLoginAnnotation(cmd, "client-cert")
 	cmd.Flags().StringVarP(&options.ClientKey, "client-key", "k", "", "The key to use with certificate authentication")
+	addLoginAnnotation(cmd, "client-key")
 	cmd.Flags().StringVarP(&options.ExtJwt, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
+	addLoginAnnotation(cmd, "ext-jwt")
 	cmd.Flags().StringVarP(&options.File, "file", "f", "", "An identity file to use for authentication")
+	addLoginAnnotation(cmd, "file")
 
 	options.AddCommonFlags(cmd)
 }
@@ -96,7 +116,9 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Args:  cobra.RangeArgs(0, 1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
-			options.Args = args
+			if len(args) > 0 {
+				options.ControllerUrl = args[0]
+			}
 			err := options.Run()
 			cmdhelper.CheckErr(err)
 		},
@@ -108,13 +130,7 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-// NewMgmtClient returns a new management client for use with the controller using the set of login material provided
-func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	client, err := mgmt.NewClient()
-	if err == nil {
-		return client, nil
-	}
-
+func (o *LoginOptions) newHttpClient() *http.Client {
 	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
 		o.Args = []string{o.ControllerUrl}
 	}
@@ -135,13 +151,39 @@ func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeMana
 		pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
 	}
 
-	httpClient := &http.Client{
+	return &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				RootCAs: caPool,
 			},
 		},
 	}
+}
+
+// NewClientApiClient returns a new management client for use with the controller using the set of login material provided
+func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeClient, error) {
+	client, err := int_rest_client.NewClientApiClient()
+	if err == nil {
+		return client, nil
+	}
+
+	httpClient := o.newHttpClient()
+
+	c, e := rest_util.NewEdgeClientClientWithToken(httpClient, o.ControllerUrl, o.Token)
+	if e != nil {
+		pfxlog.Logger().Fatal(e)
+	}
+	return c, nil
+}
+
+// NewMgmtClient returns a new management client for use with the controller using the set of login material provided
+func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
+	client, err := mgmt.NewClient()
+	if err == nil {
+		return client, nil
+	}
+
+	httpClient := o.newHttpClient()
 
 	c, e := rest_util.NewEdgeManagementClientWithToken(httpClient, o.ControllerUrl, o.Token)
 	if e != nil {
@@ -188,7 +230,7 @@ func (o *LoginOptions) Run() error {
 	id := config.GetIdentity()
 
 	if host == "" {
-		if len(o.Args) == 0 {
+		if o.ControllerUrl == "" {
 			if defaultId := config.EdgeIdentities[id]; defaultId != nil && !o.IgnoreConfig {
 				host = defaultId.Url
 				o.Printf("Using controller url: %v from identity '%v' in config file: %v\n", host, id, configFile)
@@ -202,7 +244,7 @@ func (o *LoginOptions) Run() error {
 				}
 			}
 		} else {
-			host = o.Args[0]
+			host = o.ControllerUrl
 		}
 	}
 
