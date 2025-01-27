@@ -61,31 +61,10 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Long: "Import all or selected entities from the specified file.\n" +
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(1),
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			importer.Init()
-		},
 		Run: func(cmd *cobra.Command, args []string) {
-			data, err := importer.reader.read(args[0])
-			if err != nil {
-				panic(errors.Join(errors.New("unable to read input"), err))
-			}
-			m := map[string][]interface{}{}
-
-			if importer.ofYaml {
-				err = yaml.Unmarshal(data, &m)
-				if err != nil {
-					panic(errors.Join(errors.New("unable to parse input data as yaml"), err))
-				}
-			} else {
-				err = json.Unmarshal(data, &m)
-				if err != nil {
-					panic(errors.Join(errors.New("unable to parse input data as json"), err))
-				}
-			}
-
-			result, executeErr := importer.Execute(m, args[1:])
+			result, executeErr := importer.Execute(args)
 			if executeErr != nil {
-				panic(executeErr)
+				log.Fatal(executeErr)
 			}
 			log.WithField("results", result).Debug("Finished")
 		},
@@ -111,7 +90,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (importer *Importer) Init() {
+func (importer *Importer) Execute(input []string) (map[string]any, error) {
 
 	logLvl := logrus.InfoLevel
 	if importer.loginOpts.Verbose {
@@ -124,14 +103,29 @@ func (importer *Importer) Init() {
 	var err error
 	importer.client, err = importer.loginOpts.NewMgmtClient()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	importer.reader = FileReader{}
-}
 
-func (importer *Importer) Execute(data map[string][]interface{}, inputArgs []string) (map[string]any, error) {
+	raw, err := importer.reader.read(input[0])
+	if err != nil {
+		return nil, errors.Join(errors.New("unable to read input"), err)
+	}
+	data := map[string][]interface{}{}
 
-	args := arrayutils.Map(inputArgs, strings.ToLower)
+	if importer.ofYaml {
+		err = yaml.Unmarshal(raw, &data)
+		if err != nil {
+			return nil, errors.Join(errors.New("unable to parse input data as yaml"), err)
+		}
+	} else {
+		err = json.Unmarshal(raw, &data)
+		if err != nil {
+			return nil, errors.Join(errors.New("unable to parse input data as json"), err)
+		}
+	}
+
+	args := arrayutils.Map(input[1:], strings.ToLower)
 
 	importer.configCache = map[string]any{}
 	importer.serviceCache = map[string]any{}
