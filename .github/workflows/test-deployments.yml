@@ -250,7 +250,7 @@ jobs:
           go-version-file: ./go.mod
 
       - name: Install minikube
-        uses: medyagh/setup-minikube@v0.0.18
+        uses: medyagh/setup-minikube@v0.0.19
         with:
           start: false
 
