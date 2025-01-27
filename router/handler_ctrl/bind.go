@@ -120,7 +120,11 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	}
 
 	enableRouterDataModel := capabilities.IsCapable(binding.GetChannel(), capabilities.RouterDataModel)
-	self.env.GetRouterDataModelEnabledConfig().Store(enableRouterDataModel)
+	if self.env.GetNetworkControllers().GetExpectedCtrlCount() < 2 {
+		self.env.GetRouterDataModelEnabledConfig().Store(enableRouterDataModel)
+	} else {
+		self.env.GetRouterDataModelEnabledConfig().Store(true)
+	}
 
 	return nil
 }
