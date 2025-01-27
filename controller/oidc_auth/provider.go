@@ -29,7 +29,7 @@ const (
 	AuthMethodSecondaryExtJwt = "ejs"
 )
 
-// NewNativeOnlyOP creates an OIDC Provider that allows native clients and only the AutCode PKCE flow.
+// NewNativeOnlyOP creates an OIDC Provider that allows native clients and only the AuthCode PKCE flow.
 func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Handler, error) {
 	cert, kid, method := env.GetServerCert()
 	config.Storage = NewStorage(kid, cert.Leaf.PublicKey, cert.PrivateKey, method, &config, env)
