@@ -86,45 +86,42 @@ func waitForController(ctrlUrl string, done chan struct{}) {
 }
 
 func performTest(t *testing.T) {
-
 	errWriter := strings.Builder{}
 
 	uploadWriter := strings.Builder{}
-	uploadCmd := importer.NewImportCmd(&uploadWriter, &errWriter)
-	uploadCmd.SetArgs([]string{"--yaml", "./test.yaml", "--yes", "--password=admin"})
+	importCmd := importer.NewImportCmd(&uploadWriter, &errWriter)
+	importCmd.SetArgs([]string{"--yaml", "./test.yaml", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin"})
 
-	err := uploadCmd.Execute()
+	err := importCmd.Execute()
 	if err != nil {
-		t.Fail()
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// Create a temporary file in the default temporary directory
-	tempFile, err := os.CreateTemp("", "ascode-output.txt")
+	tempFile, err := os.CreateTemp("", "ascode-output-*.json")
 	if err != nil {
-		log.Fatalf("error creating temp file: %v", err)
+		t.Fatalf("error creating temp file: %v", err)
 	}
 	defer func() { _ = os.Remove(tempFile.Name()) }()
+	log.Info("output file: ", tempFile.Name())
 
-	downloadCmd := exporter.NewExportCmd(os.Stdout, os.Stderr)
-	downloadCmd.SetArgs([]string{"--json", "--yes", "--password=admin", "--output-file=" + tempFile.Name()})
-
-	err = downloadCmd.Execute()
+	exportCmd := exporter.NewExportCmd(os.Stdout, os.Stderr)
+	exportCmd.SetArgs([]string{"all", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin", "--output-file=" + tempFile.Name()})
+	err = exportCmd.Execute()
 	if err != nil {
-		t.Fail()
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	result, err := os.ReadFile(tempFile.Name())
 	if err != nil {
-		log.Fatalf("Error reading file: %v", err)
+		t.Fatalf("Error reading file: %v", err)
 	}
 	sresult := string(result)
-	log.Debug("Read " + sresult)
+	log.Infof("export result: " + sresult)
 
 	doc, err := jsonquery.Parse(strings.NewReader(sresult))
 	if err != nil {
-		panic(err)
+		t.Fatalf("error parsing json: %v", err)
 	}
 
 	assert.NotEqual(t, 0, len(doc.ChildNodes()))

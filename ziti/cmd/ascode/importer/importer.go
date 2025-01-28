@@ -23,6 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/ziti/internal"
+	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/sirupsen/logrus"
@@ -61,12 +62,13 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Long: "Import all or selected entities from the specified file.\n" +
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			result, executeErr := importer.Execute(args)
 			if executeErr != nil {
-				log.Fatal(executeErr)
+				return executeErr
 			}
 			log.WithField("results", result).Debug("Finished")
+			return nil
 		},
 		Hidden: true,
 	}
@@ -77,13 +79,14 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	v.AutomaticEnv()
 
+	edge.AddLoginFlags(cmd, &importer.loginOpts)
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVar(&importer.ofJson, "json", true, "Input parsed as JSON")
 	cmd.Flags().BoolVar(&importer.ofYaml, "yaml", false, "Input parsed as YAML")
 	cmd.Flags().StringVar(&importer.loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
+	ziticobra.SetHelpTemplate(cmd)
 
-	edge.AddLoginFlags(cmd, &importer.loginOpts)
 	importer.loginOpts.Out = out
 	importer.loginOpts.Err = errOut
 
