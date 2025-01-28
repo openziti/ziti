@@ -35,7 +35,7 @@ func (exporter Exporter) GetExternalJwtSigners() ([]map[string]interface{}, erro
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.ExternalJWTSigner.ListExternalJWTSigners(&external_jwt_signer.ListExternalJWTSignersParams{Limit: &limit}, nil)
+			resp, err := exporter.client.API.ExternalJWTSigner.ListExternalJWTSigners(&external_jwt_signer.ListExternalJWTSignersParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -43,7 +43,7 @@ func (exporter Exporter) GetExternalJwtSigners() ([]map[string]interface{}, erro
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := exporter.client.ExternalJWTSigner.ListExternalJWTSigners(
+			resp, err := exporter.client.API.ExternalJWTSigner.ListExternalJWTSigners(
 				&external_jwt_signer.ListExternalJWTSignersParams{Offset: offset, Limit: limit}, nil)
 			if err != nil {
 				return nil, err

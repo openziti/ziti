@@ -22,12 +22,11 @@ import (
 	"github.com/Jeffail/gabs"
 	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/cmd/consts"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
 )
-
-const CommonFlagKey = "common"
 
 // Options are common options for edge controller commands
 type Options struct {
@@ -54,7 +53,7 @@ func (options *Options) ErrOutputWriter() io.Writer {
 }
 
 func addCommonFlag(cmd *cobra.Command, flagName string) {
-	_ = ziticobra.AddFlagAnnotation(cmd, flagName, CommonFlagKey, "true")
+	_ = ziticobra.AddFlagAnnotation(cmd, flagName, cmdconsts.CommonFlagKey, "true")
 }
 
 func (options *Options) AddCommonFlags(cmd *cobra.Command) {

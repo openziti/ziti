@@ -19,19 +19,19 @@ package client
 import (
 	"context"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge-api/rest_client_api_client"
 	"github.com/openziti/edge-api/rest_client_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	internalconsts "github.com/openziti/ziti/internal/rest/consts"
 )
 
-func ExternalJWTSignerFromFilter(client *rest_client_api_client.ZitiEdgeClient, filter string) *rest_model.ClientExternalJWTSignerDetail {
+func ExternalJWTSignerFromFilter(client *edge_apis.ClientApiClient, filter string) *rest_model.ClientExternalJWTSignerDetail {
 	params := &external_jwt_signer.ListExternalJWTSignersParams{
 		Filter:  &filter,
 		Context: context.Background(),
 	}
 	params.SetTimeout(internalconsts.DefaultTimeout)
-	resp, err := client.ExternalJWTSigner.ListExternalJWTSigners(params)
+	resp, err := client.API.ExternalJWTSigner.ListExternalJWTSigners(params)
 	if err != nil {
 		pfxlog.Logger().Errorf("Could not obtain an ID for the external jwt signer with filter %s: %v", filter, err)
 		return nil

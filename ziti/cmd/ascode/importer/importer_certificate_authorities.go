@@ -53,7 +53,7 @@ func (importer *Importer) ProcessCertificateAuthorities(input map[string][]inter
 
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating CertificateAuthority %s\r", *create.Name)
-		created, createErr := importer.client.CertificateAuthority.CreateCa(&certificate_authority.CreateCaParams{Ca: create}, nil)
+		created, createErr := importer.client.API.CertificateAuthority.CreateCa(&certificate_authority.CreateCaParams{Ca: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.

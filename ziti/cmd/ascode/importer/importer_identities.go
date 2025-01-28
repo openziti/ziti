@@ -80,7 +80,7 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating Identity %s\r", *create.Name)
-		created, createErr := importer.client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
+		created, createErr := importer.client.API.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

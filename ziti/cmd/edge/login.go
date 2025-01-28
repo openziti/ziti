@@ -22,15 +22,13 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge-api/rest_client_api_client"
-	"github.com/openziti/edge-api/rest_management_api_client"
-	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/foundation/v2/term"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
 	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
+	cmdconsts "github.com/openziti/ziti/ziti/cmd/consts"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
@@ -63,10 +61,8 @@ type LoginOptions struct {
 	FileCertCreds *edge_apis.IdentityCredentials
 }
 
-const LoginFlagKey = "login"
-
 func addLoginAnnotation(cmd *cobra.Command, flagName string) {
-	_ = ziticobra.AddFlagAnnotation(cmd, flagName, LoginFlagKey, "true")
+	_ = ziticobra.AddFlagAnnotation(cmd, flagName, cmdconsts.LoginFlagKey, "true")
 }
 
 func AddLoginFlags(cmd *cobra.Command, options *LoginOptions) {
@@ -128,54 +124,59 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *LoginOptions) newHttpClient() *http.Client {
-	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
-		o.Args = []string{o.ControllerUrl}
-	}
-	// any error indicates there are probably no saved credentials. look for login information and use those
-	loginErr := o.Run()
-	if loginErr != nil {
-		pfxlog.Logger().Fatal(loginErr)
-	}
-
+func (o *LoginOptions) caPool() (*x509.CertPool, error) {
 	caPool := x509.NewCertPool()
 	if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
 		rootPemData, err := os.ReadFile(o.CaCert)
 		if err != nil {
-			pfxlog.Logger().Fatalf("error reading CA cert [%s]", o.CaCert)
+			return nil, errors.Wrapf(err, "error reading CA cert [%s]", o.CaCert)
 		}
 		caPool.AppendCertsFromPEM(rootPemData)
-	} else {
-		pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
 	}
+	return caPool, nil
+}
 
-	return &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: caPool,
-			},
-		},
+func (o *LoginOptions) controllerUrl() (*url.URL, error) {
+	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
+		o.Args = []string{o.ControllerUrl}
 	}
+	ctrl, urlErr := url.Parse(o.ControllerUrl)
+	if urlErr != nil {
+		return nil, urlErr
+	}
+	return ctrl, nil
 }
 
 // NewClientApiClient returns a new management client for use with the controller using the set of login material provided
-func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeClient, error) {
-	httpClient := o.newHttpClient()
-
-	c, e := rest_util.NewEdgeClientClientWithToken(httpClient, o.ControllerUrl, o.Token)
-	if e != nil {
-		pfxlog.Logger().Fatal(e)
+func (o *LoginOptions) NewClientApiClient() (*edge_apis.ClientApiClient, error) {
+	ctrl, err := o.controllerUrl()
+	if err != nil {
+		return nil, err
+	}
+	caPool, err := o.caPool()
+	if err != nil {
+		return nil, err
+	}
+	c := edge_apis.NewClientApiClient([]*url.URL{ctrl}, caPool, nil)
+	if c == nil {
+		pfxlog.Logger().Fatalf("could not create ClientApiClient?")
 	}
 	return c, nil
 }
 
 // NewMgmtClient returns a new management client for use with the controller using the set of login material provided
-func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	httpClient := o.newHttpClient()
-
-	c, e := rest_util.NewEdgeManagementClientWithToken(httpClient, o.ControllerUrl, o.Token)
-	if e != nil {
-		pfxlog.Logger().Fatal(e)
+func (o *LoginOptions) NewManagementApiClient() (*edge_apis.ManagementApiClient, error) {
+	ctrl, err := o.controllerUrl()
+	if err != nil {
+		return nil, err
+	}
+	caPool, err := o.caPool()
+	if err != nil {
+		return nil, err
+	}
+	c := edge_apis.NewManagementApiClient([]*url.URL{ctrl}, caPool, nil)
+	if c == nil {
+		pfxlog.Logger().Fatalf("could not create ManagementApiClient?")
 	}
 	return c, nil
 }

@@ -67,7 +67,7 @@ func (importer *Importer) ProcessEdgeRouterPolicies(input map[string][]interface
 		if importer.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating EdgeRouterPolicy")
 		}
-		created, createErr := importer.client.EdgeRouterPolicy.CreateEdgeRouterPolicy(&edge_router_policy.CreateEdgeRouterPolicyParams{Policy: create}, nil)
+		created, createErr := importer.client.API.EdgeRouterPolicy.CreateEdgeRouterPolicy(&edge_router_policy.CreateEdgeRouterPolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

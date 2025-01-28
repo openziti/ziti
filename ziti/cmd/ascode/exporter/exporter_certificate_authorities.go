@@ -35,7 +35,7 @@ func (exporter Exporter) GetCertificateAuthorities() ([]map[string]interface{}, 
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Limit: &limit}, nil)
+			resp, err := exporter.client.API.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -43,7 +43,7 @@ func (exporter Exporter) GetCertificateAuthorities() ([]map[string]interface{}, 
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := exporter.client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Offset: offset, Limit: limit}, nil)
+			resp, err := exporter.client.API.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Offset: offset, Limit: limit}, nil)
 			if err != nil {
 				return nil, err
 			}

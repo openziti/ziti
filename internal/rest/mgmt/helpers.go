@@ -19,7 +19,6 @@ package mgmt
 import (
 	"context"
 	"fmt"
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
@@ -32,17 +31,18 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/service_edge_router_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/internal/rest/consts"
 	log "github.com/sirupsen/logrus"
 )
 
-func IdentityFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.IdentityDetail {
+func IdentityFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.IdentityDetail {
 	params := &identity.ListIdentitiesParams{
 		Filter:  &filter,
 		Context: context.Background(),
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.Identity.ListIdentities(params, nil)
+	resp, err := client.API.Identity.ListIdentities(params, nil)
 	if err != nil {
 		log.Debugf("Could not obtain an ID for the identity with filter %s: %v", filter, err)
 		return nil
@@ -54,13 +54,13 @@ func IdentityFromFilter(client *rest_management_api_client.ZitiEdgeManagement, f
 	return resp.Payload.Data[0]
 }
 
-func ServiceFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.ServiceDetail {
+func ServiceFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.ServiceDetail {
 	params := &service.ListServicesParams{
 		Filter:  &filter,
 		Context: context.Background(),
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.Service.ListServices(params, nil)
+	resp, err := client.API.Service.ListServices(params, nil)
 	if err != nil {
 		log.Debugf("Could not obtain an ID for the service with filter %s: %v", filter, err)
 		return nil
@@ -71,13 +71,13 @@ func ServiceFromFilter(client *rest_management_api_client.ZitiEdgeManagement, fi
 	return resp.Payload.Data[0]
 }
 
-func ServicePolicyFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.ServicePolicyDetail {
+func ServicePolicyFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.ServicePolicyDetail {
 	params := &service_policy.ListServicePoliciesParams{
 		Filter:  &filter,
 		Context: context.Background(),
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.ServicePolicy.ListServicePolicies(params, nil)
+	resp, err := client.API.ServicePolicy.ListServicePolicies(params, nil)
 	if err != nil {
 		log.Errorf("Could not obtain an ID for the service policy with filter %s: %v", filter, err)
 		return nil
@@ -88,13 +88,13 @@ func ServicePolicyFromFilter(client *rest_management_api_client.ZitiEdgeManageme
 	return resp.Payload.Data[0]
 }
 
-func AuthPolicyFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.AuthPolicyDetail {
+func AuthPolicyFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.AuthPolicyDetail {
 	params := &auth_policy.ListAuthPoliciesParams{
 		Filter:  &filter,
 		Context: context.Background(),
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.AuthPolicy.ListAuthPolicies(params, nil)
+	resp, err := client.API.AuthPolicy.ListAuthPolicies(params, nil)
 	if err != nil {
 		log.Errorf("Could not obtain an ID for the auth policy with filter %s: %v", filter, err)
 		return nil
@@ -105,13 +105,13 @@ func AuthPolicyFromFilter(client *rest_management_api_client.ZitiEdgeManagement,
 	return resp.Payload.Data[0]
 }
 
-func CertificateAuthorityFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.CaDetail {
+func CertificateAuthorityFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.CaDetail {
 	params := &certificate_authority.ListCasParams{
 		Filter:  &filter,
 		Context: context.Background(),
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.CertificateAuthority.ListCas(params, nil)
+	resp, err := client.API.CertificateAuthority.ListCas(params, nil)
 	if err != nil {
 		log.Errorf("Could not obtain an ID for the certificate authority with filter %s: %v", filter, err)
 		return nil
@@ -122,13 +122,13 @@ func CertificateAuthorityFromFilter(client *rest_management_api_client.ZitiEdgeM
 	return resp.Payload.Data[0]
 }
 
-func ConfigTypeFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.ConfigTypeDetail {
+func ConfigTypeFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.ConfigTypeDetail {
 	params := &config.ListConfigTypesParams{
 		Filter:  &filter,
 		Context: context.Background(),
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.Config.ListConfigTypes(params, nil)
+	resp, err := client.API.Config.ListConfigTypes(params, nil)
 	if err != nil {
 		log.Errorf("Could not obtain an ID for the config type with filter %s: %v", filter, err)
 		return nil
@@ -139,13 +139,13 @@ func ConfigTypeFromFilter(client *rest_management_api_client.ZitiEdgeManagement,
 	return resp.Payload.Data[0]
 }
 
-func ConfigFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.ConfigDetail {
+func ConfigFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.ConfigDetail {
 	params := &config.ListConfigsParams{
 		Filter:  &filter,
 		Context: context.Background(),
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.Config.ListConfigs(params, nil)
+	resp, err := client.API.Config.ListConfigs(params, nil)
 	if err != nil {
 		log.Errorf("Could not obtain an ID for the config with filter %s: %v", filter, err)
 		return nil
@@ -156,13 +156,13 @@ func ConfigFromFilter(client *rest_management_api_client.ZitiEdgeManagement, fil
 	return resp.Payload.Data[0]
 }
 
-func ExternalJWTSignerFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.ExternalJWTSignerDetail {
+func ExternalJWTSignerFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.ExternalJWTSignerDetail {
 	params := &external_jwt_signer.ListExternalJWTSignersParams{
 		Filter:  &filter,
 		Context: context.Background(),
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.ExternalJWTSigner.ListExternalJWTSigners(params, nil)
+	resp, err := client.API.ExternalJWTSigner.ListExternalJWTSigners(params, nil)
 	if err != nil {
 		log.Errorf("Could not obtain an ID for the external jwt signer with filter %s: %v", filter, err)
 		return nil
@@ -173,13 +173,13 @@ func ExternalJWTSignerFromFilter(client *rest_management_api_client.ZitiEdgeMana
 	return resp.Payload.Data[0]
 }
 
-func PostureCheckFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.PostureCheckDetail {
+func PostureCheckFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.PostureCheckDetail {
 	params := &posture_checks.ListPostureChecksParams{
 		Filter:  &filter,
 		Context: context.Background(),
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.PostureChecks.ListPostureChecks(params, nil)
+	resp, err := client.API.PostureChecks.ListPostureChecks(params, nil)
 	if err != nil {
 		log.Errorf("Could not obtain an ID for the posture check with filter %s: %v", filter, err)
 		return nil
@@ -190,12 +190,12 @@ func PostureCheckFromFilter(client *rest_management_api_client.ZitiEdgeManagemen
 	return &resp.Payload.Data()[0]
 }
 
-func EdgeRouterPolicyFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.EdgeRouterPolicyDetail {
+func EdgeRouterPolicyFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.EdgeRouterPolicyDetail {
 	params := &edge_router_policy.ListEdgeRouterPoliciesParams{
 		Filter: &filter,
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.EdgeRouterPolicy.ListEdgeRouterPolicies(params, nil)
+	resp, err := client.API.EdgeRouterPolicy.ListEdgeRouterPolicies(params, nil)
 	if err != nil {
 		log.Errorf("Could not obtain an ID for the edge router policies with filter %s: %v", filter, err)
 		return nil
@@ -206,12 +206,12 @@ func EdgeRouterPolicyFromFilter(client *rest_management_api_client.ZitiEdgeManag
 	return resp.Payload.Data[0]
 }
 
-func EdgeRouterFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.EdgeRouterDetail {
+func EdgeRouterFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.EdgeRouterDetail {
 	params := &edge_router.ListEdgeRoutersParams{
 		Filter: &filter,
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.EdgeRouter.ListEdgeRouters(params, nil)
+	resp, err := client.API.EdgeRouter.ListEdgeRouters(params, nil)
 	if err != nil {
 		log.Errorf("Could not obtain an ID for the edge routers with filter %s: %v", filter, err)
 		return nil
@@ -222,12 +222,12 @@ func EdgeRouterFromFilter(client *rest_management_api_client.ZitiEdgeManagement,
 	return resp.Payload.Data[0]
 }
 
-func ServiceEdgeRouterPolicyFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.ServiceEdgeRouterPolicyDetail {
+func ServiceEdgeRouterPolicyFromFilter(client *edge_apis.ManagementApiClient, filter string) *rest_model.ServiceEdgeRouterPolicyDetail {
 	params := &service_edge_router_policy.ListServiceEdgeRouterPoliciesParams{
 		Filter: &filter,
 	}
 	params.SetTimeout(internal_consts.DefaultTimeout)
-	resp, err := client.ServiceEdgeRouterPolicy.ListServiceEdgeRouterPolicies(params, nil)
+	resp, err := client.API.ServiceEdgeRouterPolicy.ListServiceEdgeRouterPolicies(params, nil)
 	if err != nil {
 		log.Errorf("Could not obtain an ID for the ServiceEdgeRouterPolicy routers with filter %s: %v", filter, err)
 		return nil

@@ -21,8 +21,9 @@ import (
 	"errors"
 	"github.com/judedaryl/go-arrayutils"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge-api/rest_management_api_client"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/internal"
+	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/sirupsen/logrus"
@@ -38,7 +39,7 @@ var log = pfxlog.Logger()
 
 type Exporter struct {
 	loginOpts        edge.LoginOptions
-	client           *rest_management_api_client.ZitiEdgeManagement
+	client           *edge_apis.ManagementApiClient
 	ofJson           bool
 	ofYaml           bool
 	file             *os.File
@@ -85,15 +86,16 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	v.AutomaticEnv()
 
+	edge.AddLoginFlags(cmd, &exporter.loginOpts)
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVar(&exporter.ofJson, "json", true, "Output in JSON")
 	cmd.Flags().BoolVar(&exporter.ofYaml, "yaml", false, "Output in YAML")
 	cmd.Flags().StringVar(&exporter.loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
+	ziticobra.SetHelpTemplate(cmd)
 
 	cmd.Flags().StringVarP(&exporter.filename, "output-file", "o", "", "Write output to local file")
 
-	edge.AddLoginFlags(cmd, &exporter.loginOpts)
 	exporter.loginOpts.Out = out
 	exporter.loginOpts.Err = errOut
 
@@ -111,7 +113,7 @@ func (exporter *Exporter) Execute(input []string) error {
 	internal.ConfigureLogFormat(logLvl)
 
 	var err error
-	exporter.client, err = exporter.loginOpts.NewMgmtClient()
+	exporter.client, err = exporter.loginOpts.NewManagementApiClient()
 	if err != nil {
 		return err
 	}

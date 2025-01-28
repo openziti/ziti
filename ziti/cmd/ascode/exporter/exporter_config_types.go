@@ -34,7 +34,7 @@ func (exporter Exporter) GetConfigTypes() ([]map[string]interface{}, error) {
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: &limit}, nil)
+			resp, err := exporter.client.API.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +42,7 @@ func (exporter Exporter) GetConfigTypes() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, _ := exporter.client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: limit, Offset: offset}, nil)
+			resp, _ := exporter.client.API.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: limit, Offset: offset}, nil)
 			entities := make([]interface{}, len(resp.GetPayload().Data))
 			for i, c := range resp.GetPayload().Data {
 				entities[i] = interface{}(c)

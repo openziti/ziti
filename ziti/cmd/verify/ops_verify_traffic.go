@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/sirupsen/logrus"
@@ -31,7 +32,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
@@ -50,7 +50,7 @@ type traffic struct {
 	verbose              bool
 	allowMultipleServers bool
 
-	client       *rest_management_api_client.ZitiEdgeManagement
+	client       *edge_apis.ManagementApiClient
 	svcName      string
 	serverIdName string
 	clientIdName string
@@ -98,7 +98,7 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 			t.dialSPName = t.prefix + ".dial"
 
 			var err error
-			t.client, err = t.loginOpts.NewMgmtClient()
+			t.client, err = t.loginOpts.NewManagementApiClient()
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -201,7 +201,7 @@ func handleConnection(conn net.Conn) {
 	log.Debugf("responding with : %s", strings.TrimSpace(resp))
 }
 
-func (t *traffic) startClient(client *rest_management_api_client.ZitiEdgeManagement, serviceName string, zitiCfg *ziti.Config) error {
+func (t *traffic) startClient(client *edge_apis.ManagementApiClient, serviceName string, zitiCfg *ziti.Config) error {
 	waitForTerminator(client, serviceName, 10*time.Second)
 	zitiCfg.EnableHa = t.haEnabled
 	c, err := ziti.NewContext(zitiCfg)
@@ -242,14 +242,14 @@ func (t *traffic) startClient(client *rest_management_api_client.ZitiEdgeManagem
 	return nil
 }
 
-func terminatorExists(client *rest_management_api_client.ZitiEdgeManagement, serviceName string) bool {
+func terminatorExists(client *edge_apis.ManagementApiClient, serviceName string) bool {
 	filter := "service.name=\"" + serviceName + "\""
 	params := &terminator.ListTerminatorsParams{
 		Filter:  &filter,
 		Context: context.Background(),
 	}
 
-	resp, err := client.Terminator.ListTerminators(params, nil)
+	resp, err := client.API.Terminator.ListTerminators(params, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -257,7 +257,7 @@ func terminatorExists(client *rest_management_api_client.ZitiEdgeManagement, ser
 	return len(resp.Payload.Data) > 0
 }
 
-func waitForTerminator(client *rest_management_api_client.ZitiEdgeManagement, serviceName string, timeout time.Duration) bool {
+func waitForTerminator(client *edge_apis.ManagementApiClient, serviceName string, timeout time.Duration) bool {
 	log.Infof("waiting %s for terminator for service: %s", timeout, serviceName)
 	startTime := time.Now()
 	for {
@@ -274,7 +274,7 @@ func waitForTerminator(client *rest_management_api_client.ZitiEdgeManagement, se
 	return false
 }
 
-func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name string, roleAttributes rest_model.Attributes) *identity.CreateIdentityCreated {
+func createIdentity(client *edge_apis.ManagementApiClient, name string, roleAttributes rest_model.Attributes) *identity.CreateIdentityCreated {
 	falseVar := false
 	usrType := rest_model.IdentityTypeUser
 	i := &rest_model.IdentityCreate{
@@ -290,7 +290,7 @@ func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name 
 	p.Identity = i
 
 	// Create the identity
-	ident, err := client.Identity.CreateIdentity(p, nil)
+	ident, err := client.API.Identity.CreateIdentity(p, nil)
 	if err != nil {
 		id := mgmt.IdentityFromFilter(client, mgmt.NameFilter(name))
 		if id != nil {
@@ -302,7 +302,7 @@ func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name 
 	return ident
 }
 
-func createServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, name string, servType rest_model.DialBind, identityRoles rest_model.Roles, serviceRoles rest_model.Roles) *rest_model.CreateLocation {
+func createServicePolicy(client *edge_apis.ManagementApiClient, name string, servType rest_model.DialBind, identityRoles rest_model.Roles, serviceRoles rest_model.Roles) *rest_model.CreateLocation {
 	defaultSemantic := rest_model.SemanticAllOf
 	servicePolicy := &rest_model.ServicePolicyCreate{
 		IdentityRoles: identityRoles,
@@ -316,7 +316,7 @@ func createServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, 
 		Context: context.Background(),
 	}
 	params.SetTimeout(5 * time.Second)
-	resp, err := client.ServicePolicy.CreateServicePolicy(params, nil)
+	resp, err := client.API.ServicePolicy.CreateServicePolicy(params, nil)
 	if resp == nil || err != nil {
 		log.Fatalf("Failed to create service policy: %s", name)
 		return nil
@@ -324,7 +324,7 @@ func createServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, 
 	return resp.Payload.Data
 }
 
-func createService(client *rest_management_api_client.ZitiEdgeManagement, name string, serviceConfigs []string, roles rest_model.Attributes) *rest_model.CreateLocation {
+func createService(client *edge_apis.ManagementApiClient, name string, serviceConfigs []string, roles rest_model.Attributes) *rest_model.CreateLocation {
 	encryptOn := true
 	serviceCreate := &rest_model.ServiceCreate{
 		Configs:            serviceConfigs,
@@ -340,7 +340,7 @@ func createService(client *rest_management_api_client.ZitiEdgeManagement, name s
 		Context: context.Background(),
 	}
 	serviceParams.SetTimeout(5 * time.Second)
-	resp, err := client.Service.CreateService(serviceParams, nil)
+	resp, err := client.API.Service.CreateService(serviceParams, nil)
 	if resp == nil || err != nil {
 		log.Fatalf("Failed to create service: %s. %v", name, err)
 		return nil
@@ -348,7 +348,7 @@ func createService(client *rest_management_api_client.ZitiEdgeManagement, name s
 	return resp.Payload.Data
 }
 
-func deleteIdentity(client *rest_management_api_client.ZitiEdgeManagement, toDelete *rest_model.IdentityDetail) {
+func deleteIdentity(client *edge_apis.ManagementApiClient, toDelete *rest_model.IdentityDetail) {
 	if toDelete == nil {
 		return
 	}
@@ -357,13 +357,13 @@ func deleteIdentity(client *rest_management_api_client.ZitiEdgeManagement, toDel
 		ID: idToDel,
 	}
 	deleteParams.SetTimeout(5 * time.Second)
-	_, err := client.Identity.DeleteIdentity(deleteParams, nil)
+	_, err := client.API.Identity.DeleteIdentity(deleteParams, nil)
 	if err != nil {
 		log.Errorf("Failed to delete identity: %s. %v", idToDel, err)
 	}
 }
 
-func deleteService(client *rest_management_api_client.ZitiEdgeManagement, toDelete *rest_model.ServiceDetail) {
+func deleteService(client *edge_apis.ManagementApiClient, toDelete *rest_model.ServiceDetail) {
 	if toDelete == nil {
 		return
 	}
@@ -372,13 +372,13 @@ func deleteService(client *rest_management_api_client.ZitiEdgeManagement, toDele
 		ID: idToDel,
 	}
 	deleteParams.SetTimeout(5 * time.Second)
-	_, err := client.Service.DeleteService(deleteParams, nil)
+	_, err := client.API.Service.DeleteService(deleteParams, nil)
 	if err != nil {
 		log.Errorf("Failed to delete service: %s. %v", idToDel, err)
 	}
 }
 
-func deleteServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, sp *rest_model.ServicePolicyDetail) {
+func deleteServicePolicy(client *edge_apis.ManagementApiClient, sp *rest_model.ServicePolicyDetail) {
 	if sp == nil {
 		return
 	}
@@ -387,20 +387,20 @@ func deleteServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, 
 		ID: id,
 	}
 	deleteParams.SetTimeout(5 * time.Second)
-	_, err := client.ServicePolicy.DeleteServicePolicy(deleteParams, nil)
+	_, err := client.API.ServicePolicy.DeleteServicePolicy(deleteParams, nil)
 	if err != nil {
 		log.Errorf("Failed to delete the service policy: %s. %v", id, err)
 	}
 }
 
-func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, id string) *ziti.Config {
+func enrollIdentity(client *edge_apis.ManagementApiClient, id string) *ziti.Config {
 	// Get the identity object
 	params := &identity.DetailIdentityParams{
 		Context: context.Background(),
 		ID:      id,
 	}
 	params.SetTimeout(5 * time.Second)
-	resp, err := client.Identity.DetailIdentity(params, nil)
+	resp, err := client.API.Identity.DetailIdentity(params, nil)
 
 	if err != nil {
 		log.Fatal(err)

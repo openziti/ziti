@@ -21,8 +21,9 @@ import (
 	"errors"
 	"github.com/judedaryl/go-arrayutils"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge-api/rest_management_api_client"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/internal"
+	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/sirupsen/logrus"
@@ -38,7 +39,7 @@ var log = pfxlog.Logger()
 
 type Importer struct {
 	loginOpts          edge.LoginOptions
-	client             *rest_management_api_client.ZitiEdgeManagement
+	client             *edge_apis.ManagementApiClient
 	reader             Reader
 	ofJson             bool
 	ofYaml             bool
@@ -77,13 +78,14 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	v.AutomaticEnv()
 
+	edge.AddLoginFlags(cmd, &importer.loginOpts)
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVar(&importer.ofJson, "json", true, "Input parsed as JSON")
 	cmd.Flags().BoolVar(&importer.ofYaml, "yaml", false, "Input parsed as YAML")
 	cmd.Flags().StringVar(&importer.loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
+	ziticobra.SetHelpTemplate(cmd)
 
-	edge.AddLoginFlags(cmd, &importer.loginOpts)
 	importer.loginOpts.Out = out
 	importer.loginOpts.Err = errOut
 
@@ -101,7 +103,7 @@ func (importer *Importer) Execute(input []string) (map[string]any, error) {
 	internal.ConfigureLogFormat(logLvl)
 
 	var err error
-	importer.client, err = importer.loginOpts.NewMgmtClient()
+	importer.client, err = importer.loginOpts.NewManagementApiClient()
 	if err != nil {
 		return nil, err
 	}

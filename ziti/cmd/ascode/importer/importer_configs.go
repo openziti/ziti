@@ -79,7 +79,7 @@ func (importer *Importer) ProcessConfigs(input map[string][]interface{}) (map[st
 		if importer.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating Config")
 		}
-		created, createErr := importer.client.Config.CreateConfig(&config.CreateConfigParams{Config: create}, nil)
+		created, createErr := importer.client.API.Config.CreateConfig(&config.CreateConfigParams{Config: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

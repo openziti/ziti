@@ -68,7 +68,7 @@ func (importer *Importer) ProcessServicePolicies(input map[string][]interface{})
 		if importer.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating ServicePolicy")
 		}
-		created, createErr := importer.client.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
+		created, createErr := importer.client.API.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

@@ -27,6 +27,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/securecookie"
 	"github.com/michaelquigley/pfxlog"
+	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/zitadel/oidc/v2/pkg/client/rp"
@@ -41,9 +42,7 @@ import (
 	"time"
 
 	"github.com/openziti/ziti/internal"
-	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/openziti/ziti/internal/rest/client"
-	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 )
 
@@ -395,28 +394,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 	cmd.Flags().BoolVar(&opts.showAccessToken, "access-token", false, "Display the full Access Token to the screen. Use caution.")
 	cmd.Flags().StringVar(&opts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.Flags().StringSliceVarP(&opts.additionalScopes, "additional-scopes", "s", []string{}, "List of additional scopes to add")
-
-	l := ziticobra.GetFlagsForAnnotation(cmd, edge.LoginFlagKey)
-	c := ziticobra.GetFlagsForAnnotation(cmd, api.CommonFlagKey)
-	u := ziticobra.GetFlagsWithoutAnnotations(cmd, edge.LoginFlagKey, api.CommonFlagKey)
-	cmd.SetHelpTemplate(`{{.Long}}
-
-Usage:
-  {{.UseLine}}
-
-Available Commands:
-{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}
-
-Flags:
-` + u + `
-Flags related to logging in:
-` + l + `
-Common flags for all commands:
-` + c + `
-
-Use "{{.CommandPath}} [command] --help" for more information about a command.
-`)
+	ziticobra.SetHelpTemplate(cmd)
 
 	return cmd
 }

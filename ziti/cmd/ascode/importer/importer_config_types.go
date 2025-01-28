@@ -58,7 +58,7 @@ func (importer *Importer) ProcessConfigTypes(input map[string][]interface{}) (ma
 			log.WithField("name", *create.Name).
 				Debug("Creating ConfigType")
 		}
-		created, createErr := importer.client.Config.CreateConfigType(&config.CreateConfigTypeParams{ConfigType: create}, nil)
+		created, createErr := importer.client.API.Config.CreateConfigType(&config.CreateConfigTypeParams{ConfigType: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

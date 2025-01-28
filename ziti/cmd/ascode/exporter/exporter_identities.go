@@ -37,7 +37,7 @@ func (exporter Exporter) GetIdentities() ([]map[string]interface{}, error) {
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.Identity.ListIdentities(&identity.ListIdentitiesParams{Limit: &limit}, nil)
+			resp, err := exporter.client.API.Identity.ListIdentities(&identity.ListIdentitiesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -45,7 +45,7 @@ func (exporter Exporter) GetIdentities() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := exporter.client.Identity.ListIdentities(&identity.ListIdentitiesParams{Offset: offset, Limit: limit}, nil)
+			resp, err := exporter.client.API.Identity.ListIdentities(&identity.ListIdentitiesParams{Offset: offset, Limit: limit}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -82,7 +82,7 @@ func (exporter Exporter) GetIdentities() ([]map[string]interface{}, error) {
 
 				// translate ids to names
 				authPolicy, lookupErr := ascode.GetItemFromCache(exporter.authPolicyCache, *item.AuthPolicyID, func(id string) (interface{}, error) {
-					return exporter.client.AuthPolicy.DetailAuthPolicy(&auth_policy.DetailAuthPolicyParams{ID: id}, nil)
+					return exporter.client.API.AuthPolicy.DetailAuthPolicy(&auth_policy.DetailAuthPolicyParams{ID: id}, nil)
 				})
 				if lookupErr != nil {
 					return nil, errors.Join(errors.New("error reading Auth Policy: "+*item.AuthPolicyID), lookupErr)

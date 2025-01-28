@@ -102,7 +102,7 @@ func (importer *Importer) ProcessAuthPolicies(input map[string][]interface{}) (m
 			log.WithField("name", *create.Name).
 				Debug("Creating AuthPolicy")
 		}
-		created, createErr := importer.client.AuthPolicy.CreateAuthPolicy(&auth_policy.CreateAuthPolicyParams{AuthPolicy: create}, nil)
+		created, createErr := importer.client.API.AuthPolicy.CreateAuthPolicy(&auth_policy.CreateAuthPolicyParams{AuthPolicy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

@@ -58,7 +58,7 @@ func (importer *Importer) ProcessExternalJwtSigners(input map[string][]interface
 		if importer.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating ExtJWTSigner")
 		}
-		created, createErr := importer.client.ExternalJWTSigner.CreateExternalJWTSigner(&external_jwt_signer.CreateExternalJWTSignerParams{ExternalJWTSigner: create}, nil)
+		created, createErr := importer.client.API.ExternalJWTSigner.CreateExternalJWTSigner(&external_jwt_signer.CreateExternalJWTSignerParams{ExternalJWTSigner: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

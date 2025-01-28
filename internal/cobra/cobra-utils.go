@@ -18,6 +18,7 @@ package cobra
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/consts"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -93,4 +94,29 @@ func MaxFlagNameLength(cmd *cobra.Command) int {
 		}
 	})
 	return maxLength
+}
+
+func SetHelpTemplate(cmd *cobra.Command) {
+	l := GetFlagsForAnnotation(cmd, cmdconsts.LoginFlagKey)
+	c := GetFlagsForAnnotation(cmd, cmdconsts.CommonFlagKey)
+	u := GetFlagsWithoutAnnotations(cmd, cmdconsts.LoginFlagKey, cmdconsts.CommonFlagKey)
+
+	cmd.SetHelpTemplate(`{{.Long}}
+
+Usage:
+  {{.UseLine}}
+
+Available Commands:
+{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}
+
+Flags:
+` + u + `
+Flags related to logging in:
+` + l + `
+Common flags for all commands:
+` + c + `
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.
+`)
 }

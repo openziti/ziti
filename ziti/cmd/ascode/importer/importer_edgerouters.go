@@ -56,7 +56,7 @@ func (importer *Importer) ProcessEdgeRouters(input map[string][]interface{}) (ma
 		if importer.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating EdgeRouter")
 		}
-		created, createErr := importer.client.EdgeRouter.CreateEdgeRouter(&edge_router.CreateEdgeRouterParams{EdgeRouter: create}, nil)
+		created, createErr := importer.client.API.EdgeRouter.CreateEdgeRouter(&edge_router.CreateEdgeRouterParams{EdgeRouter: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

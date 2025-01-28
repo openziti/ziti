@@ -68,7 +68,7 @@ func (importer *Importer) ProcessServiceEdgeRouterPolicies(input map[string][]in
 			log.WithField("name", *create.Name).
 				Debug("Creating ServiceEdgeRouterPolicy")
 		}
-		created, createErr := importer.client.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(&service_edge_router_policy.CreateServiceEdgeRouterPolicyParams{Policy: create}, nil)
+		created, createErr := importer.client.API.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(&service_edge_router_policy.CreateServiceEdgeRouterPolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

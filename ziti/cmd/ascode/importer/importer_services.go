@@ -81,7 +81,7 @@ func (importer *Importer) ProcessServices(input map[string][]interface{}) (map[s
 		if importer.loginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating Service")
 		}
-		created, createErr := importer.client.Service.CreateService(&service.CreateServiceParams{Service: create}, nil)
+		created, createErr := importer.client.API.Service.CreateService(&service.CreateServiceParams{Service: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

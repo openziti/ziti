@@ -91,7 +91,7 @@ func performTest(t *testing.T) {
 
 	uploadWriter := strings.Builder{}
 	uploadCmd := importer.NewImportCmd(&uploadWriter, &errWriter)
-	uploadCmd.SetArgs([]string{"--yaml", "./test.yaml", "--yes", "--password=admin"})
+	uploadCmd.SetArgs([]string{"--yaml", "./test.yaml", "--yes", "--controller-url localhost:1280", "--password=admin"})
 
 	err := uploadCmd.Execute()
 	if err != nil {
@@ -107,7 +107,7 @@ func performTest(t *testing.T) {
 	defer func() { _ = os.Remove(tempFile.Name()) }()
 
 	downloadCmd := exporter.NewExportCmd(os.Stdout, os.Stderr)
-	downloadCmd.SetArgs([]string{"--json", "--yes", "--password=admin", "--output-file=" + tempFile.Name()})
+	downloadCmd.SetArgs([]string{"--yaml", "./test.yaml", "--yes", "--controller-url localhost:1280", "--password=admin"})
 
 	err = downloadCmd.Execute()
 	if err != nil {

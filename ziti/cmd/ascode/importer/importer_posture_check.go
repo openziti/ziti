@@ -93,7 +93,7 @@ func (importer *Importer) ProcessPostureChecks(input map[string][]interface{}) (
 			}).
 				Debug("Creating PostureCheck")
 		}
-		created, createErr := importer.client.PostureChecks.CreatePostureCheck(&posture_checks.CreatePostureCheckParams{PostureCheck: create}, nil)
+		created, createErr := importer.client.API.PostureChecks.CreatePostureCheck(&posture_checks.CreatePostureCheckParams{PostureCheck: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

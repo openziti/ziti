@@ -34,7 +34,7 @@ func (exporter Exporter) GetServicePolicies() ([]map[string]interface{}, error) 
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: &limit}, nil)
+			resp, err := exporter.client.API.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +42,7 @@ func (exporter Exporter) GetServicePolicies() ([]map[string]interface{}, error) 
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := exporter.client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: limit, Offset: offset}, nil)
+			resp, err := exporter.client.API.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}
