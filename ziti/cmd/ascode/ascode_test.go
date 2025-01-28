@@ -102,8 +102,7 @@ func performTest(t *testing.T) {
 	// Create a temporary file in the default temporary directory
 	tempFile, err := os.CreateTemp("", "ascode-output.txt")
 	if err != nil {
-		fmt.Println("Error creating temp file:", err)
-		return
+		log.Fatalf("error creating temp file: %v", err)
 	}
 	defer func() { _ = os.Remove(tempFile.Name()) }()
 
