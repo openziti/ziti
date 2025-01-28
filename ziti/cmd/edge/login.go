@@ -29,8 +29,6 @@ import (
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
 	ziticobra "github.com/openziti/ziti/internal/cobra"
-	int_rest_client "github.com/openziti/ziti/internal/rest/client"
-	"github.com/openziti/ziti/internal/rest/mgmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
@@ -162,11 +160,6 @@ func (o *LoginOptions) newHttpClient() *http.Client {
 
 // NewClientApiClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeClient, error) {
-	client, err := int_rest_client.NewClientApiClient()
-	if err == nil {
-		return client, nil
-	}
-
 	httpClient := o.newHttpClient()
 
 	c, e := rest_util.NewEdgeClientClientWithToken(httpClient, o.ControllerUrl, o.Token)
@@ -178,11 +171,6 @@ func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeCli
 
 // NewMgmtClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	client, err := mgmt.NewClient()
-	if err == nil {
-		return client, nil
-	}
-
 	httpClient := o.newHttpClient()
 
 	c, e := rest_util.NewEdgeManagementClientWithToken(httpClient, o.ControllerUrl, o.Token)

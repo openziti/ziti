@@ -40,10 +40,7 @@ func TestYamlUploadAndDownload(t *testing.T) {
 	cmdComplete := make(chan bool)
 	qsCmd := edge.NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
 
-	tmp, _ := os.MkdirTemp("/tmp", "ziti-")
-	qsCmd.SetArgs([]string{"--home", tmp, "--ctrl-address", "127.0.0.1"})
-	os.Setenv("ZITI_CONFIG_DIR", tmp)
-	os.Setenv("ZITI_HOME", tmp)
+	qsCmd.SetArgs([]string{})
 
 	go func() {
 		err := qsCmd.Execute()
@@ -55,21 +52,14 @@ func TestYamlUploadAndDownload(t *testing.T) {
 
 	c := make(chan struct{})
 	go waitForController("https://127.0.0.1:1280", c)
-	timeout, _ := time.ParseDuration("180000000s")
+
 	select {
 	case <-c:
 		//completed normally
 		log.Info("controller online")
-	case <-time.After(timeout):
+	case <-time.After(30 * time.Second):
 		cancel()
 		panic("timed out waiting for controller")
-	}
-
-	login := edge.NewLoginCmd(os.Stdout, os.Stderr)
-	login.SetArgs([]string{"127.0.0.1:1280", "-y", "--username", "admin", "--password", "admin"})
-	err := login.Execute()
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	performTest(t)
@@ -101,7 +91,7 @@ func performTest(t *testing.T) {
 
 	uploadWriter := strings.Builder{}
 	uploadCmd := importer.NewImportCmd(&uploadWriter, &errWriter)
-	uploadCmd.SetArgs([]string{"--verbose", "--yaml", "./test.yaml"})
+	uploadCmd.SetArgs([]string{"--yaml", "./test.yaml", "--yes", "--password=admin"})
 
 	err := uploadCmd.Execute()
 	if err != nil {
@@ -109,9 +99,16 @@ func performTest(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	downloadWriter := strings.Builder{}
-	downloadCmd := exporter.NewExportCmd(&downloadWriter, &errWriter)
-	downloadCmd.SetArgs([]string{"--json"})
+	// Create a temporary file in the default temporary directory
+	tempFile, err := os.CreateTemp("", "ascode-output.txt")
+	if err != nil {
+		fmt.Println("Error creating temp file:", err)
+		return
+	}
+	defer func() { _ = os.Remove(tempFile.Name()) }()
+
+	downloadCmd := exporter.NewExportCmd(os.Stdout, os.Stderr)
+	downloadCmd.SetArgs([]string{"--json", "--yes", "--password=admin", "--output-file=" + tempFile.Name()})
 
 	err = downloadCmd.Execute()
 	if err != nil {
@@ -119,11 +116,14 @@ func performTest(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	result := downloadWriter.String()
+	result, err := os.ReadFile(tempFile.Name())
+	if err != nil {
+		log.Fatalf("Error reading file: %v", err)
+	}
+	sresult := string(result)
+	log.Debug("Read " + sresult)
 
-	log.Debug("Read " + result)
-
-	doc, err := jsonquery.Parse(strings.NewReader(result))
+	doc, err := jsonquery.Parse(strings.NewReader(sresult))
 	if err != nil {
 		panic(err)
 	}

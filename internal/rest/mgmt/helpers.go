@@ -18,15 +18,11 @@ package mgmt
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
 	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
-	rest_mgmt "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
@@ -36,12 +32,8 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/service_edge_router_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/ziti/internal/rest/consts"
-	"github.com/openziti/ziti/ziti/util"
 	log "github.com/sirupsen/logrus"
-	"net/http"
-	"os"
 )
 
 func IdentityFromFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) *rest_model.IdentityDetail {
@@ -248,53 +240,4 @@ func ServiceEdgeRouterPolicyFromFilter(client *rest_management_api_client.ZitiEd
 
 func NameFilter(name string) string {
 	return fmt.Sprintf("name = \"%s\"", name)
-}
-
-func NewClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	cachedCreds, _, loadErr := util.LoadRestClientConfig()
-	if loadErr != nil {
-		return nil, loadErr
-	}
-
-	cachedId := cachedCreds.EdgeIdentities[cachedCreds.Default] //only support default for now
-	if cachedId == nil {
-		return nil, errors.New("no identity found")
-	}
-
-	caPool := x509.NewCertPool()
-	if _, cacertErr := os.Stat(cachedId.CaCert); cacertErr == nil {
-		rootPemData, err := os.ReadFile(cachedId.CaCert)
-		if err != nil {
-			return nil, err
-		}
-		caPool.AppendCertsFromPEM(rootPemData)
-	} else {
-		return nil, errors.New("CA cert file not found in config file")
-	}
-
-	tlsConfig := &tls.Config{
-		RootCAs: caPool,
-	}
-
-	transport := &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-
-	// Assign the transport to the default HTTP client
-	http.DefaultClient = &http.Client{
-		Transport: transport,
-	}
-	c, e := rest_util.NewEdgeManagementClientWithToken(http.DefaultClient, cachedId.Url, cachedId.Token)
-	if e != nil {
-		return nil, e
-	}
-
-	apiSessionParams := &rest_mgmt.GetCurrentAPISessionParams{
-		Context: context.Background(),
-	}
-	_, authErr := c.CurrentAPISession.GetCurrentAPISession(apiSessionParams, nil)
-	if authErr != nil {
-		return nil, errors.New("client not authenticated. login with 'ziti edge login' before executing")
-	}
-	return c, nil
 }
