@@ -65,11 +65,10 @@ func (importer *Importer) ProcessExternalJwtSigners(input map[string][]interface
 					"field":  payloadErr.GetPayload().Error.Cause.APIFieldError.Field,
 					"reason": payloadErr.GetPayload().Error.Cause.APIFieldError.Reason,
 					"err":    payloadErr,
-				}).
-					Error("Unable to create ExtJWTSigner")
+				}).Errorf("Unable to create ExtJWTSigner: %v", createErr)
 				return nil, createErr
 			} else {
-				log.Error("Unable to create ExtJWTSigner")
+				log.Errorf("Unable to create ExtJWTSigner: %v", createErr)
 				return nil, createErr
 			}
 		}

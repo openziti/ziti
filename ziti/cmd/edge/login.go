@@ -140,6 +140,12 @@ func (o *LoginOptions) controllerUrl() (*url.URL, error) {
 	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
 		o.Args = []string{o.ControllerUrl}
 	}
+	if o.ControllerUrl == "" {
+		return nil, fmt.Errorf("no controller url specified")
+	}
+	if !strings.HasPrefix(o.ControllerUrl, "http") {
+		o.ControllerUrl = "https://" + o.ControllerUrl
+	}
 	ctrl, urlErr := url.Parse(o.ControllerUrl)
 	if urlErr != nil {
 		return nil, urlErr
@@ -152,6 +158,11 @@ func (o *LoginOptions) NewClientApiClient() (*edge_apis.ClientApiClient, error) 
 	ctrl, err := o.controllerUrl()
 	if err != nil {
 		return nil, err
+	}
+	// any error indicates there are probably no saved credentials. execute a login
+	loginErr := o.Run()
+	if loginErr != nil {
+		pfxlog.Logger().Fatal(loginErr)
 	}
 	caPool, err := o.caPool()
 	if err != nil {
@@ -170,14 +181,26 @@ func (o *LoginOptions) NewManagementApiClient() (*edge_apis.ManagementApiClient,
 	if err != nil {
 		return nil, err
 	}
+	// any error indicates there are probably no saved credentials. execute a login
+	loginErr := o.Run()
+	if loginErr != nil {
+		return nil, loginErr
+	}
 	caPool, err := o.caPool()
 	if err != nil {
 		return nil, err
 	}
-	c := edge_apis.NewManagementApiClient([]*url.URL{ctrl}, caPool, nil)
+	mgmt := ctrl.String() + "/edge/management/v1"
+	mgmtUrl, err := url.Parse(mgmt)
+	if err != nil {
+		return nil, err
+	}
+	c := edge_apis.NewManagementApiClient([]*url.URL{mgmtUrl}, caPool, nil)
 	if c == nil {
 		pfxlog.Logger().Fatalf("could not create ManagementApiClient?")
 	}
+
+	c.Authenticate(o.Token) //deliberately leaving this broken. this needs to be fixed
 	return c, nil
 }
 

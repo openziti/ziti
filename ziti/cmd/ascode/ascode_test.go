@@ -86,23 +86,22 @@ func waitForController(ctrlUrl string, done chan struct{}) {
 }
 
 func performTest(t *testing.T) {
-
 	errWriter := strings.Builder{}
 
 	uploadWriter := strings.Builder{}
 	uploadCmd := importer.NewImportCmd(&uploadWriter, &errWriter)
-	uploadCmd.SetArgs([]string{"--yaml", "./test.yaml", "--yes", "--controller-url=localhost:1280", "--password=admin"})
+	args := []string{"--yaml", "./test.yaml", "--yes", "--controller-url=localhost:1280", "--password=admin"}
+	uploadCmd.SetArgs(args)
 
 	err := uploadCmd.Execute()
 	if err != nil {
-		t.Fail()
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// Create a temporary file in the default temporary directory
 	tempFile, err := os.CreateTemp("", "ascode-output.txt")
 	if err != nil {
-		log.Fatalf("error creating temp file: %v", err)
+		t.Fatalf("error creating temp file: %v", err)
 	}
 	defer func() { _ = os.Remove(tempFile.Name()) }()
 
@@ -111,13 +110,12 @@ func performTest(t *testing.T) {
 
 	err = downloadCmd.Execute()
 	if err != nil {
-		t.Fail()
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	result, err := os.ReadFile(tempFile.Name())
 	if err != nil {
-		log.Fatalf("Error reading file: %v", err)
+		t.Fatalf("Error reading file: %v", err)
 	}
 	sresult := string(result)
 	log.Debug("Read " + sresult)

@@ -62,12 +62,13 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Long: "Import all or selected entities from the specified file.\n" +
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			result, executeErr := importer.Execute(args)
 			if executeErr != nil {
-				log.Fatal(executeErr)
+				return executeErr
 			}
 			log.WithField("results", result).Debug("Finished")
+			return nil
 		},
 		Hidden: true,
 	}
