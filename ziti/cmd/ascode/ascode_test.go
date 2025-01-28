@@ -117,7 +117,7 @@ func performTest(t *testing.T) {
 		t.Fatalf("Error reading file: %v", err)
 	}
 	sresult := string(result)
-	log.Infof("export result: " + sresult)
+	log.Infof("export result: %s", sresult)
 
 	doc, err := jsonquery.Parse(strings.NewReader(sresult))
 	if err != nil {
