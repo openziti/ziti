@@ -319,7 +319,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 				if opts.Issuer == relyingParty.Issuer() {
 					log.Infof("supplied issuer matches discovered issuer: %s", opts.Issuer)
 				} else {
-					log.Infof("discovered issuer [%s] overidden: %s", relyingParty.Issuer(), opts.Issuer)
+					log.Infof("discovered issuer [%s] overridden: %s", relyingParty.Issuer(), opts.Issuer)
 				}
 			} else {
 				log.Infof("issuer discovered as: %s", relyingParty.Issuer())
