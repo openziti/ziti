@@ -25,7 +25,7 @@ import (
 
 func NewVerifyExtJwtSignerCmd(out io.Writer, errOut io.Writer, initialContext context.Context) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "verify-ext-auth",
+		Use:   "verify-ext-jwt-signer",
 		Short: "test if an external JWT signer is correctly configured",
 		Long:  "tests and verifies an external JWT signer is configured correctly",
 	}

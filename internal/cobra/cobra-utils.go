@@ -119,4 +119,7 @@ Common flags for all commands:
 
 Use "{{.CommandPath}} [command] --help" for more information about a command.
 `)
+	cmd.SetUsageFunc(func(c *cobra.Command) error {
+		return cmd.Help()
+	})
 }
