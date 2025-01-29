@@ -23,10 +23,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"net"
 	"net/url"
-	"os/exec"
 	"strings"
 	"sync"
-	"time"
 )
 
 var log = logrus.StandardLogger()
@@ -38,26 +36,6 @@ type resolver struct {
 	namesMtx   sync.Mutex
 	domains    map[string]*domainEntry
 	domainsMtx sync.Mutex
-}
-
-func flushDnsCaches() {
-	bin, err := exec.LookPath("systemd-resolve")
-	arg := "--flush-caches"
-	if err != nil {
-		bin, err = exec.LookPath("resolvectl")
-		if err != nil {
-			logrus.WithError(err).Warn("unable to find systemd-resolve or resolvectl in path, consider adding a dns flush to your restart process")
-			return
-		}
-		arg = "flush-caches"
-	}
-
-	cmd := exec.Command(bin, arg)
-	if err = cmd.Run(); err != nil {
-		logrus.WithError(err).Warn("unable to flush dns caches, consider adding a dns flush to your restart process")
-	} else {
-		logrus.Info("dns caches flushed")
-	}
 }
 
 func NewResolver(config string) (Resolver, error) {
@@ -83,54 +61,6 @@ func NewResolver(config string) (Resolver, error) {
 	}
 
 	return nil, fmt.Errorf("invalid resolver configuration '%s'. must be 'file://' or 'udp://' URL", config)
-}
-
-func NewDnsServer(addr string) (Resolver, error) {
-	log.Infof("starting dns server...")
-	s := &dns.Server{
-		Addr: addr,
-		Net:  "udp",
-	}
-
-	names := make(map[string]net.IP)
-	r := &resolver{
-		server:     s,
-		names:      names,
-		ips:        make(map[string]string),
-		namesMtx:   sync.Mutex{},
-		domains:    make(map[string]*domainEntry),
-		domainsMtx: sync.Mutex{},
-	}
-	s.Handler = r
-
-	errChan := make(chan error)
-	go func() {
-		errChan <- s.ListenAndServe()
-	}()
-
-	select {
-	case err := <-errChan:
-		if err != nil {
-			return nil, fmt.Errorf("dns server failed to start: %w", err)
-		} else {
-			return nil, fmt.Errorf("dns server stopped prematurely")
-		}
-	case <-time.After(2 * time.Second):
-		log.Infof("dns server running at %s", s.Addr)
-	}
-
-	const resolverConfigHelp = "ziti-tunnel runs an internal DNS server which must be first in the host's\n" +
-		"resolver configuration. On systems that use NetManager/dhclient, this can\n" +
-		"be achieved by adding the following to /etc/dhcp/dhclient.conf:\n" +
-		"\n" +
-		"    prepend domain-name-servers %s;\n\n"
-
-	err := r.testSystemResolver()
-	if err != nil {
-		log.Errorf("system resolver test failed: %s\n\n"+resolverConfigHelp, err, addr)
-	}
-
-	return r, nil
 }
 
 func (r *resolver) testSystemResolver() error {
