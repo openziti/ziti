@@ -1,3 +1,15 @@
+# Release 1.3.4
+
+# What's New
+
+* Moved `ziti ops verify-network` to `ziti ops verify network`
+* Moved `ziti ops verify traffic` to `ziti ops verify traffic`
+* Added `ziti ops verify ext-jwt-signer oidc` to help users with configuring OIDC external auth 
+
+* Bug Fixes
+
+## Component Updates and Bug Fixes
+
 # Release 1.3.3
 
 # What's New

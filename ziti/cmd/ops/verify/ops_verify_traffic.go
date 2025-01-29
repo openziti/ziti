@@ -19,16 +19,14 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/internal"
-	"github.com/openziti/ziti/ziti/cmd/edge"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/openziti/edge-api/rest_management_api_client"
@@ -39,7 +37,9 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/enroll"
+	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
+	"github.com/openziti/ziti/ziti/cmd/edge"
 )
 
 type traffic struct {
@@ -62,7 +62,7 @@ type traffic struct {
 func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 	t := &traffic{}
 	cmd := &cobra.Command{
-		Use:   "verify-traffic",
+		Use:   "traffic",
 		Short: "Verifies traffic",
 		Long:  "A tool to verify traffic can flow over the overlay properly. You must be authenticated to use this tool.",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -85,7 +85,7 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 				t.mode = "both"
 			}
 
-			t.svcName = t.prefix + ".verify-traffic"
+			t.svcName = t.prefix + ".traffic"
 
 			t.serverIdName = t.prefix + ".server"
 			extraSeverIdName := ""
@@ -191,8 +191,8 @@ func handleConnection(conn net.Conn) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if strings.Contains(line, "verify-traffic test") {
-		log.Info("verify-traffic test successfully detected")
+	if strings.Contains(line, "traffic test") {
+		log.Info("traffic test successfully detected")
 	}
 	log.Debugf("read : %s", strings.TrimSpace(line))
 	resp := fmt.Sprintf("you sent me: %s", line)
@@ -224,7 +224,7 @@ func (t *traffic) startClient(client *rest_management_api_client.ZitiEdgeManagem
 	zitiReader := bufio.NewReader(svc)
 	zitiWriter := bufio.NewWriter(svc)
 
-	text := "verify-traffic test\n"
+	text := "traffic test\n"
 	bytesRead, err := zitiWriter.WriteString(text)
 	_ = zitiWriter.Flush()
 	if err != nil {

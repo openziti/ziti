@@ -14,24 +14,26 @@
 	limitations under the License.
 */
 
-package oidc
+package verify
 
 import (
 	"context"
-	"github.com/openziti/ziti/ziti/cmd/edge/ext-jwt-signer/oidc"
-	"github.com/spf13/cobra"
 	"io"
+
+	"github.com/openziti/ziti/ziti/cmd/ops/verify/ext-jwt-signer"
+	"github.com/spf13/cobra"
 )
 
-func NewVerifyExtJwtSignerCmd(out io.Writer, errOut io.Writer, initialContext context.Context) *cobra.Command {
+func NewVerifyCommand(out io.Writer, errOut io.Writer, initialContext context.Context) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "verify-ext-jwt-signer",
-		Short: "test if an external JWT signer is correctly configured",
-		Long:  "tests and verifies an external JWT signer is configured correctly",
+		Use:   "verify",
+		Short: "a group of commands used to verify an overlay is setup properly",
+		Long:  "a group of commands used to verify an overlay is setup properly",
 	}
 
-	oidcCmd := oidc.NewOidcVerificationCmd(out, errOut, initialContext)
-	cmd.AddCommand(oidcCmd)
+	cmd.AddCommand(NewVerifyNetwork(out, errOut))
+	cmd.AddCommand(NewVerifyTraffic(out, errOut))
+	cmd.AddCommand(ext_jwt_signer.NewVerifyExtJwtSignerCmd(out, errOut, initialContext))
 
 	return cmd
 }

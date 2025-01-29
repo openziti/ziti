@@ -21,7 +21,7 @@ import (
 	goflag "flag"
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
-	ext_jwt_signer "github.com/openziti/ziti/ziti/cmd/edge/ext-jwt-signer"
+	"github.com/openziti/ziti/ziti/cmd/ops/verify"
 	"io"
 	"os"
 	"path/filepath"
@@ -38,7 +38,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/fabric"
 	"github.com/openziti/ziti/ziti/cmd/pki"
 	"github.com/openziti/ziti/ziti/cmd/templates"
-	"github.com/openziti/ziti/ziti/cmd/verify"
 	c "github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/internal/log"
@@ -147,9 +146,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	opsCommands.AddCommand(database.NewCmdDb(out, err))
 	opsCommands.AddCommand(NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
-	opsCommands.AddCommand(verify.NewVerifyNetwork(out, err))
-	opsCommands.AddCommand(verify.NewVerifyTraffic(out, err))
-	opsCommands.AddCommand(ext_jwt_signer.NewVerifyExtJwtSignerCmd(out, err, context.Background()))
+	opsCommands.AddCommand(verify.NewVerifyCommand(out, err, context.Background()))
 	opsCommands.AddCommand(exporter.NewExportCmd(out, err))
 	opsCommands.AddCommand(importer.NewImportCmd(out, err))
 
