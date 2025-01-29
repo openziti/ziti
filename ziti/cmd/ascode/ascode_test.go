@@ -40,10 +40,7 @@ func TestYamlUploadAndDownload(t *testing.T) {
 	cmdComplete := make(chan bool)
 	qsCmd := edge.NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
 
-	tmp, _ := os.MkdirTemp("/tmp", "ziti-")
-	qsCmd.SetArgs([]string{"--home", tmp, "--ctrl-address", "127.0.0.1"})
-	os.Setenv("ZITI_CONFIG_DIR", tmp)
-	os.Setenv("ZITI_HOME", tmp)
+	qsCmd.SetArgs([]string{})
 
 	go func() {
 		err := qsCmd.Execute()
@@ -55,21 +52,14 @@ func TestYamlUploadAndDownload(t *testing.T) {
 
 	c := make(chan struct{})
 	go waitForController("https://127.0.0.1:1280", c)
-	timeout, _ := time.ParseDuration("180000000s")
+
 	select {
 	case <-c:
 		//completed normally
 		log.Info("controller online")
-	case <-time.After(timeout):
+	case <-time.After(30 * time.Second):
 		cancel()
 		panic("timed out waiting for controller")
-	}
-
-	login := edge.NewLoginCmd(os.Stdout, os.Stderr)
-	login.SetArgs([]string{"127.0.0.1:1280", "-y", "--username", "admin", "--password", "admin"})
-	err := login.Execute()
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	performTest(t)
@@ -96,36 +86,42 @@ func waitForController(ctrlUrl string, done chan struct{}) {
 }
 
 func performTest(t *testing.T) {
-
 	errWriter := strings.Builder{}
 
 	uploadWriter := strings.Builder{}
-	uploadCmd := importer.NewImportCmd(&uploadWriter, &errWriter)
-	uploadCmd.SetArgs([]string{"--verbose", "--yaml", "./test.yaml"})
+	importCmd := importer.NewImportCmd(&uploadWriter, &errWriter)
+	importCmd.SetArgs([]string{"--yaml", "./test.yaml", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin"})
 
-	err := uploadCmd.Execute()
+	err := importCmd.Execute()
 	if err != nil {
-		t.Fail()
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
-	downloadWriter := strings.Builder{}
-	downloadCmd := exporter.NewExportCmd(&downloadWriter, &errWriter)
-	downloadCmd.SetArgs([]string{"--json"})
-
-	err = downloadCmd.Execute()
+	// Create a temporary file in the default temporary directory
+	tempFile, err := os.CreateTemp("", "ascode-output-*.json")
 	if err != nil {
-		t.Fail()
-		log.Fatal(err)
+		t.Fatalf("error creating temp file: %v", err)
+	}
+	defer func() { _ = os.Remove(tempFile.Name()) }()
+	log.Info("output file: ", tempFile.Name())
+
+	exportCmd := exporter.NewExportCmd(os.Stdout, os.Stderr)
+	exportCmd.SetArgs([]string{"all", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin", "--output-file=" + tempFile.Name()})
+	err = exportCmd.Execute()
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	result := downloadWriter.String()
-
-	log.Debug("Read " + result)
-
-	doc, err := jsonquery.Parse(strings.NewReader(result))
+	result, err := os.ReadFile(tempFile.Name())
 	if err != nil {
-		panic(err)
+		t.Fatalf("Error reading file: %v", err)
+	}
+	sresult := string(result)
+	log.Infof("export result: %s", sresult)
+
+	doc, err := jsonquery.Parse(strings.NewReader(sresult))
+	if err != nil {
+		t.Fatalf("error parsing json: %v", err)
 	}
 
 	assert.NotEqual(t, 0, len(doc.ChildNodes()))

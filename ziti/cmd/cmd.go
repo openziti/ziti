@@ -17,9 +17,11 @@
 package cmd
 
 import (
+	"context"
 	goflag "flag"
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
+	ext_jwt_signer "github.com/openziti/ziti/ziti/cmd/edge/ext-jwt-signer"
 	"io"
 	"os"
 	"path/filepath"
@@ -147,6 +149,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
 	opsCommands.AddCommand(verify.NewVerifyNetwork(out, err))
 	opsCommands.AddCommand(verify.NewVerifyTraffic(out, err))
+	opsCommands.AddCommand(ext_jwt_signer.NewVerifyExtJwtSignerCmd(out, err, context.Background()))
 	opsCommands.AddCommand(exporter.NewExportCmd(out, err))
 	opsCommands.AddCommand(importer.NewImportCmd(out, err))
 
