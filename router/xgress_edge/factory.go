@@ -138,6 +138,8 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	factory.edgeRouterConfig = edgeConfig
 	factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
 
+	factory.env.MarkRouterDataModelRequired()
+
 	go apiproxy.Start(edgeConfig)
 
 	return nil

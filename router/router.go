@@ -99,6 +99,7 @@ type Router struct {
 	xwebs               []xweb.Instance
 	xwebFactoryRegistry xweb.Registry
 	agentBindHandlers   []channel.BindHandler
+	rdmRequired         atomic.Bool
 }
 
 func (self *Router) GetRouterId() *identity.TokenId {
@@ -411,6 +412,14 @@ func (self *Router) GetRateLimiterPool() goroutines.Pool {
 
 func (self *Router) GetCtrlRateLimiter() rate.AdaptiveRateLimitTracker {
 	return self.ctrlRateLimiter
+}
+
+func (self *Router) IsRouterDataModelRequired() bool {
+	return self.rdmRequired.Load()
+}
+
+func (self *Router) MarkRouterDataModelRequired() {
+	self.rdmRequired.Store(true)
 }
 
 func (self *Router) registerComponents() error {

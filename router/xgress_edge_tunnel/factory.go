@@ -112,6 +112,8 @@ func NewV1Factory(env env.RouterEnv, routerConfig *router.Config, stateManager s
 
 // CreateListener creates a new Edge Tunnel Xgress listener
 func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+	self.env.MarkRouterDataModelRequired()
+
 	options := &Options{}
 	if err := options.load(optionsData); err != nil {
 		return nil, err
@@ -125,12 +127,14 @@ func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.List
 
 // CreateDialer creates a new Edge Xgress dialer
 func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+	self.env.MarkRouterDataModelRequired()
+
 	options := &Options{}
 	if err := options.load(optionsData); err != nil {
 		return nil, err
 	}
 
-	pfxlog.Logger().Infof("xgress edge tunnel dialer options: %v", options.ToLoggableString())
+	pfxlog.Logger().Debugf("xgress edge tunnel dialer options: %v", options.ToLoggableString())
 
 	self.tunneler.dialOptions = options
 	return self.tunneler, nil
