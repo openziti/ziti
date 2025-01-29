@@ -19,6 +19,7 @@ package boltz
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -27,14 +28,36 @@ import (
 	"go.etcd.io/bbolt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
 
 const (
-	Metadata   = "meta"
-	SnapshotId = "snapshotId"
+	Metadata      = "meta"
+	SnapshotId    = "snapshotId"
+	ResetTimeline = "resetTimeline"
+	TimelineId    = "timelineId"
 )
+
+type TimelineMode string
+
+const (
+	TimelineModeDefault     TimelineMode = "default"
+	TimelineModeInitIfEmpty TimelineMode = "initIfEmpty"
+	TimelineModeForceReset  TimelineMode = "forceReset"
+)
+
+func (t TimelineMode) forceResetTimeline(timelineId *string) bool {
+	if t == TimelineModeForceReset {
+		return true
+	}
+	if t == TimelineModeInitIfEmpty && timelineId == nil {
+		return true
+	}
+	return false
+}
 
 type Db interface {
 	io.Closer
@@ -43,18 +66,16 @@ type Db interface {
 	View(fn func(tx *bbolt.Tx) error) error
 	RootBucket(tx *bbolt.Tx) (*bbolt.Bucket, error)
 
-	// Snapshot makes a copy of the bolt file
-	Snapshot(tx *bbolt.Tx) error
+	// GetDefaultSnapshotPath returns the default location for a snapshot created now
+	GetDefaultSnapshotPath() string
 
-	// SnapshotToMemory writes a snapshot of the database state to a memory buffer.
-	// The snapshot has a UUID generated and stored at rootBucket/snapshotId
-	// The snapshot id and snapshot are returned
-	SnapshotToMemory() (string, []byte, error)
+	// Snapshot makes a copy of the bolt file at the given location
+	Snapshot(path string) (string, string, error)
 
-	// SnapshotToWriter writes a snapshot of the database state to the given writer
-	// The snapshot has a UUID generated and stored at rootBucket/snapshotId
-	// The snapshot id and snapshot are returned
-	SnapshotToWriter(w io.Writer) (string, error)
+	// SnapshotInTx makes a copy of the bolt file at the given location, using an existing tx
+	SnapshotInTx(tx *bbolt.Tx, path string) (string, string, error)
+
+	StreamToWriter(w io.Writer) error
 
 	// GetSnapshotId returns the id of the last snapshot created/restored
 	GetSnapshotId() (*string, error)
@@ -73,6 +94,9 @@ type Db interface {
 	// AddTxCompleteListener adds a listener which is called all tx processing is complete, including
 	// post-commit hooks
 	AddTxCompleteListener(listener func(ctx MutateContext))
+
+	// GetTimelineId returns the timeline id
+	GetTimelineId(mode TimelineMode, idF func() (string, error)) (string, error)
 }
 
 type DbImpl struct {
@@ -198,38 +222,67 @@ func (self *DbImpl) RootBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
 	return rootBucket, nil
 }
 
-func (self *DbImpl) Snapshot(tx *bbolt.Tx) error {
+func (self *DbImpl) GetDefaultSnapshotPath() string {
+	path := self.db.Path()
+	path += "-" + time.Now().Format("20060102-150405")
+	return path
+}
+
+func (self *DbImpl) Snapshot(path string) (string, string, error) {
+	var actualPath string
+	var snapshotId string
+	err := self.View(func(tx *bbolt.Tx) error {
+		var err error
+		actualPath, snapshotId, err = self.SnapshotInTx(tx, path)
+		return err
+	})
+	if err != nil {
+		return "", "", err
+	}
+	return actualPath, snapshotId, nil
+}
+
+func (self *DbImpl) SnapshotInTx(tx *bbolt.Tx, path string) (string, string, error) {
 	self.reloadLock.RLock()
 	defer self.reloadLock.RUnlock()
 
-	path := self.db.Path()
-	path += "-" + time.Now().Format("20060102-150405")
+	now := time.Now()
+	dateStr := now.Format("20060102")
+	timeStr := now.Format("150405")
+	path = strings.ReplaceAll(path, "DATE", dateStr)
+	path = strings.ReplaceAll(path, "TIME", timeStr)
+	path = strings.ReplaceAll(path, "DB_DIR", filepath.Dir(self.db.Path()))
+	path = strings.ReplaceAll(path, "DB_FILE", filepath.Base(self.db.Path()))
+	path = strings.ReplaceAll(path, "__DATE__", dateStr)
+	path = strings.ReplaceAll(path, "__TIME__", timeStr)
+	path = strings.ReplaceAll(path, "__DB_DIR__", filepath.Dir(self.db.Path()))
+	path = strings.ReplaceAll(path, "__DB_FILE__", filepath.Base(self.db.Path()))
 
-	_, err := os.Stat(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-	} else {
-		pfxlog.Logger().Infof("bolt db backup already made: %v", path)
-		return nil
+	pfxlog.Logger().WithField("path", path).Info("snapshotting database to file")
+
+	if err := tx.CopyFile(path, 0600); err != nil {
+		return "", "", err
 	}
 
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0600)
+	snapshotId, err := self.MarkAsSnapshot(path)
 	if err != nil {
+		if rmErr := os.Remove(path); rmErr != nil {
+			pfxlog.Logger().WithError(rmErr).Error("failed to removed snapshot after failing to mark snapshot")
+		}
+		return "", "", fmt.Errorf("failed to update snapshot metadata: %w", err)
+	}
+
+	return path, snapshotId, nil
+}
+
+func (self *DbImpl) StreamToWriter(w io.Writer) error {
+	self.reloadLock.RLock()
+	defer self.reloadLock.RUnlock()
+
+	return self.db.View(func(tx *bbolt.Tx) error {
+		_, err := tx.WriteTo(w)
 		return err
-	}
-	defer func() {
-		if err = file.Close(); err != nil {
-			pfxlog.Logger().Errorf("failed to close backup database file %v (%v)", path, err)
-		}
-	}()
-
-	_, err = tx.WriteTo(file)
-	if err != nil {
-		pfxlog.Logger().Infof("created bolt db backup: %v", path)
-	}
-	return err
+	})
 }
 
 func (self *DbImpl) RestoreSnapshot(snapshot []byte) {
@@ -293,26 +346,31 @@ func (self *DbImpl) AddRestoreListener(f func()) {
 	self.restoreListeners.Append(f)
 }
 
-func (self *DbImpl) SnapshotToMemory() (string, []byte, error) {
-	buf := &bytes.Buffer{}
-	id, err := self.SnapshotToWriter(buf)
-	return id, buf.Bytes(), err
-}
-
-func (self *DbImpl) SnapshotToWriter(w io.Writer) (string, error) {
-	snapshotId := uuid.NewString()
-	err := self.Update(nil, func(ctx MutateContext) error {
-		b := GetOrCreatePath(ctx.Tx(), Metadata)
-		b.SetString(SnapshotId, snapshotId, nil)
-		if b.HasError() {
-			return b.GetError()
-		}
-		_, err := ctx.Tx().WriteTo(w)
-		return err
-	})
+func (self *DbImpl) MarkAsSnapshot(path string) (string, error) {
+	db, err := Open(path, self.rootBucket)
 	if err != nil {
 		return "", err
 	}
+
+	defer func() {
+		_ = db.Close()
+	}()
+
+	snapshotId := uuid.NewString()
+
+	err = db.Update(nil, func(ctx MutateContext) error {
+		tx := ctx.Tx()
+		b := GetOrCreatePath(tx, Metadata)
+		b.SetString(SnapshotId, snapshotId, nil)
+		b.SetBool(ResetTimeline, true, nil)
+		return b.GetError()
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("error setting snapshot properties %w", err)
+	}
+
+	pfxlog.Logger().Infof("set snapshot id at %s to %s", path, snapshotId)
 	return snapshotId, nil
 }
 
@@ -328,4 +386,48 @@ func (self *DbImpl) GetSnapshotId() (*string, error) {
 		return nil, err
 	}
 	return snapshotId, nil
+}
+
+func (self *DbImpl) GetTimelineId(mode TimelineMode, idF func() (string, error)) (string, error) {
+	timelineId := ""
+	err := self.Update(nil, func(ctx MutateContext) error {
+		b := GetOrCreatePath(ctx.Tx(), Metadata)
+		if b.HasError() {
+			return b.Err
+		}
+		resetRequired := b.GetBoolWithDefault(ResetTimeline, false)
+		idPointer := b.GetString(TimelineId)
+		pfxlog.Logger().Infof("checking timeline id. reset required? %v timelineId: %s", resetRequired, func() string {
+			if idPointer != nil {
+				return *idPointer
+			}
+			return "nil"
+		}())
+
+		if resetRequired || mode.forceResetTimeline(idPointer) {
+			id, err := idF()
+			if err != nil {
+				return err
+			}
+			timelineId = id
+			b.SetString(TimelineId, id, nil)
+			b.SetBool(ResetTimeline, false, nil)
+
+			oldTimelineId := ""
+			if idPointer != nil {
+				oldTimelineId = *idPointer
+			}
+			pfxlog.Logger().Infof("updated timeline id %s -> %s", oldTimelineId, timelineId)
+			return b.GetError()
+		}
+		if idPointer != nil {
+			timelineId = *idPointer
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return timelineId, nil
+
 }
