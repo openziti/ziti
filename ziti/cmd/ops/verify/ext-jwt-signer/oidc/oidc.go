@@ -23,6 +23,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
 	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/gorilla/securecookie"
@@ -34,16 +40,10 @@ import (
 	httphelper "github.com/zitadel/oidc/v2/pkg/http"
 	"github.com/zitadel/oidc/v2/pkg/oidc"
 	"golang.org/x/oauth2"
-	"io"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
 
 	"github.com/openziti/ziti/internal"
 	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/openziti/ziti/internal/rest/client"
-	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 )
 
@@ -277,6 +277,10 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 		Short: "test an external JWT signer for OIDC auth",
 		Long:  "tests and verifies an external JWT signer is configured correctly to authenticate using OIDC",
 		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Force display of the usage template
+			return cmd.Usage()
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			logLvl := logrus.InfoLevel
 			if opts.Verbose {
@@ -396,28 +400,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 	cmd.Flags().StringVar(&opts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.Flags().StringSliceVarP(&opts.additionalScopes, "additional-scopes", "s", []string{}, "List of additional scopes to add")
 
-	l := ziticobra.GetFlagsForAnnotation(cmd, edge.LoginFlagKey)
-	c := ziticobra.GetFlagsForAnnotation(cmd, api.CommonFlagKey)
-	u := ziticobra.GetFlagsWithoutAnnotations(cmd, edge.LoginFlagKey, api.CommonFlagKey)
-	cmd.SetHelpTemplate(`{{.Long}}
-
-Usage:
-  {{.UseLine}}
-
-Available Commands:
-{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}
-
-Flags:
-` + u + `
-Flags related to logging in:
-` + l + `
-Common flags for all commands:
-` + c + `
-
-Use "{{.CommandPath}} [command] --help" for more information about a command.
-`)
-
+	ziticobra.SetHelpTemplate(cmd)
 	return cmd
 }
 

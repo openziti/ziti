@@ -18,7 +18,6 @@ package verify
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/internal"
 	"io"
 	"net"
 	"os"
@@ -31,6 +30,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/internal"
 )
 
 var log = pfxlog.Logger()
@@ -55,7 +55,7 @@ func NewVerifyNetwork(_ io.Writer, _ io.Writer) *cobra.Command {
 	n := &network{}
 
 	cmd := &cobra.Command{
-		Use:   "verify-network",
+		Use:   "network",
 		Short: "Verifies the overlay is configured correctly",
 		Long:  "A tool to verify network configurations, checking controller and router ports or other common problems",
 		Run: func(cmd *cobra.Command, args []string) {
