@@ -67,22 +67,22 @@ func newTunneler(factory *Factory) *tunneler {
 
 func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	var err error
+	var resolver dns.Resolver
 
 	log := pfxlog.Logger()
-	log.WithField("mode", self.listenOptions.mode).Info("creating interceptor")
-
-	resolver, err := dns.NewResolver(self.listenOptions.resolver)
-	if err != nil {
-		pfxlog.Logger().WithError(err).Error("failed to start DNS resolver. using dummy resolver")
-		resolver = dns.NewDummyResolver()
-	}
-
-	if err = intercept.SetDnsInterceptIpRange(self.listenOptions.dnsSvcIpRange); err != nil {
-		pfxlog.Logger().Errorf("invalid dns service IP range %s: %v", self.listenOptions.dnsSvcIpRange, err)
-		return err
-	}
-
 	if strings.HasPrefix(self.listenOptions.mode, "tproxy") {
+		log.WithField("mode", self.listenOptions.mode).Info("creating interceptor")
+		resolver, err = dns.NewResolver(self.listenOptions.resolver)
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("failed to start DNS resolver. using dummy resolver")
+			resolver = dns.NewDummyResolver()
+		}
+
+		if err = intercept.SetDnsInterceptIpRange(self.listenOptions.dnsSvcIpRange); err != nil {
+			pfxlog.Logger().Errorf("invalid dns service IP range %s: %v", self.listenOptions.dnsSvcIpRange, err)
+			return err
+		}
+
 		tproxyConfig := tproxy.Config{
 			LanIf:            self.listenOptions.lanIf,
 			UDPIdleTimeout:   self.listenOptions.udpIdleTimeout,
