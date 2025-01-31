@@ -249,14 +249,15 @@ func (self *DbImpl) SnapshotInTx(tx *bbolt.Tx, path string) (string, string, err
 	now := time.Now()
 	dateStr := now.Format("20060102")
 	timeStr := now.Format("150405")
-	path = strings.ReplaceAll(path, "DATE", dateStr)
-	path = strings.ReplaceAll(path, "TIME", timeStr)
-	path = strings.ReplaceAll(path, "DB_DIR", filepath.Dir(self.db.Path()))
-	path = strings.ReplaceAll(path, "DB_FILE", filepath.Base(self.db.Path()))
+
 	path = strings.ReplaceAll(path, "__DATE__", dateStr)
 	path = strings.ReplaceAll(path, "__TIME__", timeStr)
 	path = strings.ReplaceAll(path, "__DB_DIR__", filepath.Dir(self.db.Path()))
 	path = strings.ReplaceAll(path, "__DB_FILE__", filepath.Base(self.db.Path()))
+	path = strings.ReplaceAll(path, "DATE", dateStr)
+	path = strings.ReplaceAll(path, "TIME", timeStr)
+	path = strings.ReplaceAll(path, "DB_DIR", filepath.Dir(self.db.Path()))
+	path = strings.ReplaceAll(path, "DB_FILE", filepath.Base(self.db.Path()))
 
 	pfxlog.Logger().WithField("path", path).Info("snapshotting database to file")
 
