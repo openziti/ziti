@@ -44,10 +44,10 @@ import (
 	"github.com/go-openapi/swag"
 
 	"github.com/openziti/ziti/controller/rest_server/operations/circuit"
+	"github.com/openziti/ziti/controller/rest_server/operations/cluster"
 	"github.com/openziti/ziti/controller/rest_server/operations/database"
 	"github.com/openziti/ziti/controller/rest_server/operations/inspect"
 	"github.com/openziti/ziti/controller/rest_server/operations/link"
-	"github.com/openziti/ziti/controller/rest_server/operations/raft"
 	"github.com/openziti/ziti/controller/rest_server/operations/router"
 	"github.com/openziti/ziti/controller/rest_server/operations/service"
 	"github.com/openziti/ziti/controller/rest_server/operations/terminator"
@@ -77,6 +77,18 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 
 		DatabaseCheckDataIntegrityHandler: database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.CheckDataIntegrity has not yet been implemented")
+		}),
+		ClusterClusterListMembersHandler: cluster.ClusterListMembersHandlerFunc(func(params cluster.ClusterListMembersParams) middleware.Responder {
+			return middleware.NotImplemented("operation cluster.ClusterListMembers has not yet been implemented")
+		}),
+		ClusterClusterMemberAddHandler: cluster.ClusterMemberAddHandlerFunc(func(params cluster.ClusterMemberAddParams) middleware.Responder {
+			return middleware.NotImplemented("operation cluster.ClusterMemberAdd has not yet been implemented")
+		}),
+		ClusterClusterMemberRemoveHandler: cluster.ClusterMemberRemoveHandlerFunc(func(params cluster.ClusterMemberRemoveParams) middleware.Responder {
+			return middleware.NotImplemented("operation cluster.ClusterMemberRemove has not yet been implemented")
+		}),
+		ClusterClusterTransferLeadershipHandler: cluster.ClusterTransferLeadershipHandlerFunc(func(params cluster.ClusterTransferLeadershipParams) middleware.Responder {
+			return middleware.NotImplemented("operation cluster.ClusterTransferLeadership has not yet been implemented")
 		}),
 		DatabaseCreateDatabaseSnapshotHandler: database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.CreateDatabaseSnapshot has not yet been implemented")
@@ -165,18 +177,6 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		TerminatorPatchTerminatorHandler: terminator.PatchTerminatorHandlerFunc(func(params terminator.PatchTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.PatchTerminator has not yet been implemented")
 		}),
-		RaftRaftListMembersHandler: raft.RaftListMembersHandlerFunc(func(params raft.RaftListMembersParams) middleware.Responder {
-			return middleware.NotImplemented("operation raft.RaftListMembers has not yet been implemented")
-		}),
-		RaftRaftMemberAddHandler: raft.RaftMemberAddHandlerFunc(func(params raft.RaftMemberAddParams) middleware.Responder {
-			return middleware.NotImplemented("operation raft.RaftMemberAdd has not yet been implemented")
-		}),
-		RaftRaftMemberRemoveHandler: raft.RaftMemberRemoveHandlerFunc(func(params raft.RaftMemberRemoveParams) middleware.Responder {
-			return middleware.NotImplemented("operation raft.RaftMemberRemove has not yet been implemented")
-		}),
-		RaftRaftTransferLeadershipHandler: raft.RaftTransferLeadershipHandlerFunc(func(params raft.RaftTransferLeadershipParams) middleware.Responder {
-			return middleware.NotImplemented("operation raft.RaftTransferLeadership has not yet been implemented")
-		}),
 		RouterUpdateRouterHandler: router.UpdateRouterHandlerFunc(func(params router.UpdateRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.UpdateRouter has not yet been implemented")
 		}),
@@ -224,6 +224,14 @@ type ZitiFabricAPI struct {
 
 	// DatabaseCheckDataIntegrityHandler sets the operation handler for the check data integrity operation
 	DatabaseCheckDataIntegrityHandler database.CheckDataIntegrityHandler
+	// ClusterClusterListMembersHandler sets the operation handler for the cluster list members operation
+	ClusterClusterListMembersHandler cluster.ClusterListMembersHandler
+	// ClusterClusterMemberAddHandler sets the operation handler for the cluster member add operation
+	ClusterClusterMemberAddHandler cluster.ClusterMemberAddHandler
+	// ClusterClusterMemberRemoveHandler sets the operation handler for the cluster member remove operation
+	ClusterClusterMemberRemoveHandler cluster.ClusterMemberRemoveHandler
+	// ClusterClusterTransferLeadershipHandler sets the operation handler for the cluster transfer leadership operation
+	ClusterClusterTransferLeadershipHandler cluster.ClusterTransferLeadershipHandler
 	// DatabaseCreateDatabaseSnapshotHandler sets the operation handler for the create database snapshot operation
 	DatabaseCreateDatabaseSnapshotHandler database.CreateDatabaseSnapshotHandler
 	// DatabaseCreateDatabaseSnapshotWithPathHandler sets the operation handler for the create database snapshot with path operation
@@ -282,14 +290,6 @@ type ZitiFabricAPI struct {
 	ServicePatchServiceHandler service.PatchServiceHandler
 	// TerminatorPatchTerminatorHandler sets the operation handler for the patch terminator operation
 	TerminatorPatchTerminatorHandler terminator.PatchTerminatorHandler
-	// RaftRaftListMembersHandler sets the operation handler for the raft list members operation
-	RaftRaftListMembersHandler raft.RaftListMembersHandler
-	// RaftRaftMemberAddHandler sets the operation handler for the raft member add operation
-	RaftRaftMemberAddHandler raft.RaftMemberAddHandler
-	// RaftRaftMemberRemoveHandler sets the operation handler for the raft member remove operation
-	RaftRaftMemberRemoveHandler raft.RaftMemberRemoveHandler
-	// RaftRaftTransferLeadershipHandler sets the operation handler for the raft transfer leadership operation
-	RaftRaftTransferLeadershipHandler raft.RaftTransferLeadershipHandler
 	// RouterUpdateRouterHandler sets the operation handler for the update router operation
 	RouterUpdateRouterHandler router.UpdateRouterHandler
 	// ServiceUpdateServiceHandler sets the operation handler for the update service operation
@@ -375,6 +375,18 @@ func (o *ZitiFabricAPI) Validate() error {
 
 	if o.DatabaseCheckDataIntegrityHandler == nil {
 		unregistered = append(unregistered, "database.CheckDataIntegrityHandler")
+	}
+	if o.ClusterClusterListMembersHandler == nil {
+		unregistered = append(unregistered, "cluster.ClusterListMembersHandler")
+	}
+	if o.ClusterClusterMemberAddHandler == nil {
+		unregistered = append(unregistered, "cluster.ClusterMemberAddHandler")
+	}
+	if o.ClusterClusterMemberRemoveHandler == nil {
+		unregistered = append(unregistered, "cluster.ClusterMemberRemoveHandler")
+	}
+	if o.ClusterClusterTransferLeadershipHandler == nil {
+		unregistered = append(unregistered, "cluster.ClusterTransferLeadershipHandler")
 	}
 	if o.DatabaseCreateDatabaseSnapshotHandler == nil {
 		unregistered = append(unregistered, "database.CreateDatabaseSnapshotHandler")
@@ -462,18 +474,6 @@ func (o *ZitiFabricAPI) Validate() error {
 	}
 	if o.TerminatorPatchTerminatorHandler == nil {
 		unregistered = append(unregistered, "terminator.PatchTerminatorHandler")
-	}
-	if o.RaftRaftListMembersHandler == nil {
-		unregistered = append(unregistered, "raft.RaftListMembersHandler")
-	}
-	if o.RaftRaftMemberAddHandler == nil {
-		unregistered = append(unregistered, "raft.RaftMemberAddHandler")
-	}
-	if o.RaftRaftMemberRemoveHandler == nil {
-		unregistered = append(unregistered, "raft.RaftMemberRemoveHandler")
-	}
-	if o.RaftRaftTransferLeadershipHandler == nil {
-		unregistered = append(unregistered, "raft.RaftTransferLeadershipHandler")
 	}
 	if o.RouterUpdateRouterHandler == nil {
 		unregistered = append(unregistered, "router.UpdateRouterHandler")
@@ -576,6 +576,22 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/database/check-data-integrity"] = database.NewCheckDataIntegrity(o.context, o.DatabaseCheckDataIntegrityHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/cluster/list-members"] = cluster.NewClusterListMembers(o.context, o.ClusterClusterListMembersHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/cluster/add-member"] = cluster.NewClusterMemberAdd(o.context, o.ClusterClusterMemberAddHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/cluster/remove-member"] = cluster.NewClusterMemberRemove(o.context, o.ClusterClusterMemberRemoveHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/cluster/transfer-leadership"] = cluster.NewClusterTransferLeadership(o.context, o.ClusterClusterTransferLeadershipHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
@@ -692,22 +708,6 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}
 	o.handlers["PATCH"]["/terminators/{id}"] = terminator.NewPatchTerminator(o.context, o.TerminatorPatchTerminatorHandler)
-	if o.handlers["GET"] == nil {
-		o.handlers["GET"] = make(map[string]http.Handler)
-	}
-	o.handlers["GET"]["/raft/list-members"] = raft.NewRaftListMembers(o.context, o.RaftRaftListMembersHandler)
-	if o.handlers["POST"] == nil {
-		o.handlers["POST"] = make(map[string]http.Handler)
-	}
-	o.handlers["POST"]["/raft/add-member"] = raft.NewRaftMemberAdd(o.context, o.RaftRaftMemberAddHandler)
-	if o.handlers["POST"] == nil {
-		o.handlers["POST"] = make(map[string]http.Handler)
-	}
-	o.handlers["POST"]["/raft/remove-member"] = raft.NewRaftMemberRemove(o.context, o.RaftRaftMemberRemoveHandler)
-	if o.handlers["POST"] == nil {
-		o.handlers["POST"] = make(map[string]http.Handler)
-	}
-	o.handlers["POST"]["/raft/transfer-leadership"] = raft.NewRaftTransferLeadership(o.context, o.RaftRaftTransferLeadershipHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

@@ -36,7 +36,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/version"
-	"github.com/openziti/ziti/controller/rest_client/raft"
+	"github.com/openziti/ziti/controller/rest_client/cluster"
 	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/api"
@@ -732,7 +732,7 @@ func (o *QuickstartOpts) waitForLeader() bool {
 		if err != nil {
 			return false
 		}
-		members, err := client.Raft.RaftListMembers(&raft.RaftListMembersParams{
+		members, err := client.Cluster.ClusterListMembers(&cluster.ClusterListMembersParams{
 			Context: context.Background(),
 		})
 

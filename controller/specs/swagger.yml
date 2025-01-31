@@ -741,18 +741,18 @@ paths:
           $ref: '#/responses/rateLimitedResponse'
 
   ###################################################################
-  # Raft
+  # Cluster
   ##################################################################
-  '/raft/list-members':
+  '/cluster/list-members':
     get:
       summary: Returns all members of a cluster and their current status
       description: Returns all members of a cluster and their current status
       tags:
-        - Raft
-      operationId: raftListMembers
+        - Cluster
+      operationId: clusterListMembers
       responses:
         '200':
-          $ref: '#/responses/raftListMembersResponse'
+          $ref: '#/responses/clusterListMembersResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
         '401':
@@ -761,20 +761,20 @@ paths:
           $ref: '#/responses/rateLimitedResponse'
 
 
-  '/raft/add-member':
+  '/cluster/add-member':
     post:
-      summary: Add a member to the raft cluster
-      description: Add a member to the raft cluster. Requires admin access.
+      summary: Add a member to the controller cluster
+      description: Add a member to the controller cluster. Requires admin access.
       tags:
-        - Raft
-      operationId: raftMemberAdd
+        - Cluster
+      operationId: clusterMemberAdd
       parameters:
         - name: member
           in: body
           required: true
           description: member parameters
           schema:
-            $ref: '#/definitions/raftMemberAdd'
+            $ref: '#/definitions/clusterMemberAdd'
       responses:
         '200':
           $ref: '#/responses/emptyResponse'
@@ -785,20 +785,20 @@ paths:
         '429':
           $ref: '#/responses/rateLimitedResponse'
 
-  '/raft/remove-member':
+  '/cluster/remove-member':
     post:
-      summary: Remove a member from the raft cluster
-      description: Remove a member from the raft cluster. Requires admin access.
+      summary: Remove a member from the controller cluster
+      description: Remove a member from the controller cluster. Requires admin access.
       tags:
-        - Raft
-      operationId: raftMemberRemove
+        - Cluster
+      operationId: clusterMemberRemove
       parameters:
         - name: member
           in: body
           required: true
           description: member parameters
           schema:
-            $ref: '#/definitions/raftMemberRemove'
+            $ref: '#/definitions/clusterMemberRemove'
       responses:
         '200':
           $ref: '#/responses/emptyResponse'
@@ -811,20 +811,20 @@ paths:
         '429':
           $ref: '#/responses/rateLimitedResponse'
 
-  '/raft/transfer-leadership':
+  '/cluster/transfer-leadership':
     post:
       summary: Attempts to transfer leadership to a different member of the cluster
       description: Attempts to transfer leadership to a different member of the cluster. Requires admin access.
       tags:
-        - Raft
-      operationId: raftTransferLeadership
+        - Cluster
+      operationId: clusterTransferLeadership
       parameters:
         - name: member
           in: body
           required: true
           description: transfer operation parameters
           schema:
-            $ref: '#/definitions/raftTransferLeadership'
+            $ref: '#/definitions/clusterTransferLeadership'
       responses:
         '200':
           $ref: '#/responses/emptyResponse'
@@ -1090,12 +1090,12 @@ responses:
       $ref: '#/definitions/databaseSnapshotCreateResultEnvelope'
 
   ###################################################################
-  # Raft
+  # Cluster
   ##################################################################
-  raftListMembersResponse:
-    description: A response to a raft list-members request
+  clusterListMembersResponse:
+    description: A response to a cluster list-members request
     schema:
-      $ref: '#/definitions/raftMemberListResponse'
+      $ref: '#/definitions/clusterMemberListResponse'
 
 #######################################################################################################################
 #
@@ -1318,7 +1318,7 @@ definitions:
       fixed:
         type: boolean
 
-  raftMemberAdd:
+  clusterMemberAdd:
     type: object
     required:
       - address
@@ -1329,7 +1329,7 @@ definitions:
       isVoter:
         type: boolean
 
-  raftMemberRemove:
+  clusterMemberRemove:
     type: object
     required:
       - id
@@ -1337,7 +1337,7 @@ definitions:
       id:
         type: string
 
-  raftTransferLeadership:
+  clusterTransferLeadership:
     type: object
     properties:
       newLeaderId:
@@ -1953,9 +1953,9 @@ definitions:
         items:
           $ref: '#/definitions/inspectResponseValue'
   ###################################################################
-  # Raft
+  # Cluster
   ##################################################################
-  raftMemberListValue:
+  clusterMemberListValue:
     type: object
     required:
       - id
@@ -1980,13 +1980,13 @@ definitions:
         type: boolean
       readOnly:
         type: boolean
-  raftMemberListResponse:
+  clusterMemberListResponse:
     type: object
     properties:
       data:
         type: array
         items:
-          $ref: '#/definitions/raftMemberListValue'
+          $ref: '#/definitions/clusterMemberListValue'
 
 
 

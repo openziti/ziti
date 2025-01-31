@@ -1,14 +1,23 @@
-# Release 1.3.4
+# Release 1.4.0
 
-# What's New
+## What's New
 
 * Moved `ziti ops verify-network` to `ziti ops verify network`
 * Moved `ziti ops verify traffic` to `ziti ops verify traffic`
 * Added `ziti ops verify ext-jwt-signer oidc` to help users with configuring OIDC external auth 
-
+* Use `cluster` consistently for cluster operations
 * Bug Fixes
 
+## Cluster Operations Naming
+
+The CLI tools under `ziti fabric raft` are now found at `ziti ops cluster`.
+
+The Raft APIs available in the fabric management API are now namespaced under Cluster instead.
+
 ## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.3.3 -> v1.4.0](https://github.com/openziti/ziti/compare/v1.3.3...v1.4.0)
+    * [Issue #2546](https://github.com/openziti/ziti/issues/2546) - Use consistent terminology for HA
 
 # Release 1.3.3
 
