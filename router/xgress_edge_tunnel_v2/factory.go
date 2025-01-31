@@ -99,6 +99,8 @@ func NewFactory(env env.RouterEnv, routerConfig *router.Config, stateManager sta
 
 // CreateListener creates a new Edge Tunnel Xgress listener
 func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+	self.env.MarkRouterDataModelRequired()
+
 	options := &Options{}
 	if err := options.load(optionsData); err != nil {
 		return nil, err
@@ -112,6 +114,8 @@ func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.List
 
 // CreateDialer creates a new Edge Xgress dialer
 func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+	self.env.MarkRouterDataModelRequired()
+
 	options := &Options{}
 	if err := options.load(optionsData); err != nil {
 		return nil, err

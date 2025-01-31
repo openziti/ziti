@@ -68,6 +68,7 @@ type DisconnectCB func(token string)
 type Env interface {
 	GetRouterDataModelEnabledConfig() *config.Value[bool]
 	IsRouterDataModelEnabled() bool
+	IsRouterDataModelRequired() bool
 	GetCloseNotify() <-chan struct{}
 	DefaultRequestTimeout() time.Duration
 	GetMetricsRegistry() metrics2.UsageRegistry
@@ -251,6 +252,10 @@ func (self *ManagerImpl) manageRouterDataModelSubscription() {
 }
 
 func (self *ManagerImpl) checkRouterDataModelSubscription() {
+	if !self.env.IsRouterDataModelRequired() {
+		return
+	}
+
 	ctrl := self.env.GetNetworkControllers().GetNetworkController(self.dataModelSubCtrlId.Load())
 	if ctrl == nil || time.Now().After(self.dataModelSubTimeout) {
 		if bestCtrl := self.env.GetNetworkControllers().AnyCtrlChannel(); bestCtrl != nil {

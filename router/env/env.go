@@ -48,6 +48,8 @@ type RouterEnv interface {
 	GetRouterDataModel() *common.RouterDataModel
 	GetConnectEventsConfig() *ConnectEventsConfig
 	GetRouterDataModelEnabledConfig() *config.Value[bool]
+	IsRouterDataModelRequired() bool
+	MarkRouterDataModelRequired()
 }
 
 type ConnectEventsConfig struct {
