@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"net/http"
 	"testing"
 )
 
@@ -39,12 +40,23 @@ func Test_Endpoints(t *testing.T) {
 		ctx.Req.NotEmpty(resp.Body())
 	})
 
-	t.Run("oidc-configuration works on .well-known", func(t *testing.T) {
+	t.Run("oidc-configuration does not work on root .well-known", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		rootPathClient, _, _ := ctx.NewClientComponents("/")
 
 		resp, err := rootPathClient.R().Get("https://" + ctx.ApiHost + "/.well-known/openid-configuration")
+
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusNotFound, resp.StatusCode())
+	})
+
+	t.Run("oidc-configuration works on oidc/.well-known", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		rootPathClient, _, _ := ctx.NewClientComponents("/")
+
+		resp, err := rootPathClient.R().Get("https://" + ctx.ApiHost + "/oidc/.well-known/openid-configuration")
 
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(200, resp.StatusCode())

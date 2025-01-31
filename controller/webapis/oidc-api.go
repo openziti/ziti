@@ -21,6 +21,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"github.com/openziti/identity"
+	"net"
 	"net/http"
 	"strings"
 
@@ -108,12 +110,10 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 	cert := serverCert[0].Leaf
 	key := serverCert[0].PrivateKey
 
-	var issuers []string
+	issuers := getPossibleIssuers(serverConfig.Identity, serverConfig.BindPoints)
 
-	for _, bindPoint := range serverConfig.BindPoints {
-		issuers = append(issuers, bindPoint.Address)
-	}
 	oidcConfig := oidc_auth.NewConfig(issuers, cert, key)
+	oidcConfig.Identity = serverConfig.Identity
 
 	if secretVal, ok := options["secret"]; ok {
 		if secret, ok := secretVal.(string); ok {
@@ -180,4 +180,73 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 	oidcApi.handler = api.WrapCorsHandler(oidcApi.handler)
 
 	return oidcApi, nil
+}
+
+// getPossibleIssuers inspects the API server's identity and bind points for addresses, SAN DNS, and SAN IP entries
+// that denote valid issuers. It returns a list of hostname:port combinations as a slice. It handles converting
+// :443 to explicit and implicit ports for clients that may silently remove :443
+func getPossibleIssuers(id identity.Identity, bindPoints []*xweb.BindPointConfig) []string {
+	const (
+		DefaultTlsPort = "443"
+	)
+
+	// The expected issuer's list is a combination of the following:
+	// - all explicit expected bind point address ip or hostname and ports
+	// - the IP and DNS SANs from all server certs + the port from the bind point address
+	issuerMap := map[string]struct{}{}
+	portMap := map[string]struct{}{}
+
+	for _, bindPoint := range bindPoints {
+		host, port, err := net.SplitHostPort(bindPoint.Address)
+		if err != nil {
+			continue
+
+		}
+		portMap[port] = struct{}{}
+
+		if port == DefaultTlsPort {
+			issuerMap[host] = struct{}{}
+		}
+
+		issuerMap[bindPoint.Address] = struct{}{}
+	}
+
+	var ports []string
+	for port := range portMap {
+		ports = append(ports, port)
+	}
+
+	for _, curServerCertChain := range id.GetX509ActiveServerCertChains() {
+		if len(curServerCertChain) == 0 {
+			continue
+		}
+		curServerCert := curServerCertChain[0]
+		for _, dnsName := range curServerCert.DNSNames {
+			for _, port := range ports {
+				newIssuer := net.JoinHostPort(dnsName, port)
+				issuerMap[newIssuer] = struct{}{}
+				if port == DefaultTlsPort {
+					issuerMap[dnsName] = struct{}{}
+				}
+			}
+		}
+
+		for _, ipAddr := range curServerCert.IPAddresses {
+			for _, port := range ports {
+				ipStr := ipAddr.String()
+				newIssuer := net.JoinHostPort(ipStr, port)
+				issuerMap[newIssuer] = struct{}{}
+				if port == DefaultTlsPort {
+					issuerMap[ipStr] = struct{}{}
+				}
+			}
+		}
+	}
+
+	var issuers []string
+	for hostPort := range issuerMap {
+		issuers = append(issuers, hostPort)
+	}
+
+	return issuers
 }
