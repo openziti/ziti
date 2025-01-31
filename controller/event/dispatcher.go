@@ -27,7 +27,7 @@ import (
 type TypeRegistrar interface {
 	// Register takes a handler, which may implement multiple event handler
 	// interfaces, and configure it using the configuration map provided
-	Register(handler interface{}, config map[string]interface{}) error
+	Register(eventType string, handler interface{}, config map[string]interface{}) error
 
 	// Unregister will remove give handler, if implements the interface for
 	// this event type and is registered to receive events of this type
@@ -36,7 +36,7 @@ type TypeRegistrar interface {
 
 // A RegistrationHandler can take a handler, which may implement multiple event handler
 // interfaces, and configure it using the configuration map provided
-type RegistrationHandler func(handler interface{}, config map[string]interface{}) error
+type RegistrationHandler func(eventType string, handler interface{}, config map[string]interface{}) error
 
 // A UnregistrationHandler will remove give handler, if implements the interface for
 // this event type and is registered to receive events of this type

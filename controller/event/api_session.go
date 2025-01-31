@@ -25,21 +25,60 @@ const ApiSessionEventTypeCreated = "created"
 const ApiSessionEventTypeDeleted = "deleted"
 const ApiSessionEventTypeRefreshed = "refreshed"
 const ApiSessionEventTypeExchanged = "exchanged"
-const ApiSessionEventNS = "edge.apiSessions"
+const ApiSessionEventNS = "apiSession"
 
 const ApiSessionTypeLegacy = "legacy"
 const ApiSessionTypeJwt = "jwt"
 
+// An ApiSessionEvent is emitted whenever an api session is created, deleted, refreshed or exchanged.
+// Legacy sessions are only ever created or deleted. JWT sessions are created, refreshed and exchanged.
+//
+// Note: In version prior to 1.4.0, the namespace was `edge.apiSessions`
+//
+// Valid api session event types are:
+//   - created
+//   - deleted
+//   - refreshed
+//   - exchanged
+//
+// Valid api session types are:
+//   - jwt
+//   - legacy
+//
+// Example: Api Session Created Event
+//
+//	{
+//	    "namespace": "apiSession",
+//		"event_src_id" : "ctrl1",
+//		"timestamp": "2021-11-08T14:45:45.785561479-05:00",
+//		"event_type": "created",
+//		"id": "ckvr2r4fs0001oigd6si4akc8",
+//		"token": "77cffde5-f68e-4ef0-bbb5-731db36145f5",
+//		"identity_id": "76BB.shC0",
+//		"ip_address": "127.0.0.1"
+//	}
 type ApiSessionEvent struct {
 	Namespace  string    `json:"namespace"`
-	EventType  string    `json:"event_type"`
 	EventSrcId string    `json:"event_src_id"`
-	Id         string    `json:"id"`
-	Type       string    `json:"type"`
 	Timestamp  time.Time `json:"timestamp"`
-	Token      string    `json:"token"`
-	IdentityId string    `json:"identity_id"`
-	IpAddress  string    `json:"ip_address"`
+
+	// The type api session event. See above for valid values.
+	EventType string `json:"event_type"`
+
+	// Id is the api session id.
+	Id string `json:"id"`
+
+	// Type is the api session type. See above for valid values.
+	Type string `json:"type"`
+
+	// The api session token.
+	Token string `json:"token"`
+
+	// The id of the identity that the api session belongs to.
+	IdentityId string `json:"identity_id"`
+
+	// The IP address from which the identity to connected to require the api session.
+	IpAddress string `json:"ip_address"`
 }
 
 func (event *ApiSessionEvent) String() string {

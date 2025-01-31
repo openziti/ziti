@@ -35,8 +35,8 @@ type delegatingRegistrar struct {
 	UnregistrationHandler event.UnregistrationHandler
 }
 
-func (self *delegatingRegistrar) Register(handler interface{}, config map[string]interface{}) error {
-	return self.RegistrationHandler(handler, config)
+func (self *delegatingRegistrar) Register(eventType string, handler interface{}, config map[string]interface{}) error {
+	return self.RegistrationHandler(eventType, handler, config)
 }
 
 func (self *delegatingRegistrar) Unregister(handler interface{}) {
@@ -54,21 +54,30 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	}
 	result.entityChangeEventsDispatcher.dispatcher = result
 
-	result.RegisterEventTypeFunctions(event.CircuitEventsNs, result.registerCircuitEventHandler, result.unregisterCircuitEventHandler)
-	result.RegisterEventTypeFunctions(event.EntityChangeEventsNs, result.registerEntityChangeEventHandler, result.unregisterEntityChangeEventHandler)
-	result.RegisterEventTypeFunctions(event.LinkEventsNs, result.registerLinkEventHandler, result.unregisterLinkEventHandler)
-	result.RegisterEventTypeFunctions(event.MetricsEventsNs, result.registerMetricsEventHandler, result.unregisterMetricsEventHandler)
-	result.RegisterEventTypeFunctions(event.RouterEventsNs, result.registerRouterEventHandler, result.unregisterRouterEventHandler)
-	result.RegisterEventTypeFunctions(event.ServiceEventsNs, result.registerServiceEventHandler, result.unregisterServiceEventHandler)
-	result.RegisterEventTypeFunctions(event.TerminatorEventsNs, result.registerTerminatorEventHandler, result.unregisterTerminatorEventHandler)
-	result.RegisterEventTypeFunctions(event.UsageEventsNs, result.registerUsageEventHandler, result.unregisterUsageEventHandler)
-	result.RegisterEventTypeFunctions(event.ClusterEventsNs, result.registerClusterEventHandler, result.unregisterClusterEventHandler)
-	result.RegisterEventTypeFunctions(event.ConnectEventNS, result.registerConnectEventHandler, result.unregisterConnectEventHandler)
-	result.RegisterEventTypeFunctions(event.SdkEventsNs, result.registerSdkEventHandler, result.unregisterSdkEventHandler)
+	result.RegisterEventTypeFunctions("edge.apiSessions", result.registerApiSessionEventHandler, result.unregisterApiSessionEventHandler)
+	result.RegisterEventTypeFunctions("fabric.circuits", result.registerCircuitEventHandler, result.unregisterCircuitEventHandler)
+	result.RegisterEventTypeFunctions("edge.entityCounts", result.registerEntityCountEventHandler, result.unregisterEntityCountEventHandler)
+	result.RegisterEventTypeFunctions("fabric.links", result.registerLinkEventHandler, result.unregisterLinkEventHandler)
+	result.RegisterEventTypeFunctions("fabric.routers", result.registerRouterEventHandler, result.unregisterRouterEventHandler)
+	result.RegisterEventTypeFunctions("services", result.registerServiceEventHandler, result.unregisterServiceEventHandler) // V2 Handler
+	result.RegisterEventTypeFunctions("edge.sessions", result.registerSessionEventHandler, result.unregisterSessionEventHandler)
+	result.RegisterEventTypeFunctions("fabric.terminators", result.registerTerminatorEventHandler, result.unregisterTerminatorEventHandler)
+	result.RegisterEventTypeFunctions("fabric.usage", result.registerUsageEventHandler, result.unregisterUsageEventHandler)
 
 	result.RegisterEventTypeFunctions(event.ApiSessionEventNS, result.registerApiSessionEventHandler, result.unregisterApiSessionEventHandler)
+	result.RegisterEventTypeFunctions(event.CircuitEventNS, result.registerCircuitEventHandler, result.unregisterCircuitEventHandler)
+	result.RegisterEventTypeFunctions(event.ClusterEventNS, result.registerClusterEventHandler, result.unregisterClusterEventHandler)
+	result.RegisterEventTypeFunctions(event.ConnectEventNS, result.registerConnectEventHandler, result.unregisterConnectEventHandler)
+	result.RegisterEventTypeFunctions(event.EntityChangeEventNS, result.registerEntityChangeEventHandler, result.unregisterEntityChangeEventHandler)
 	result.RegisterEventTypeFunctions(event.EntityCountEventNS, result.registerEntityCountEventHandler, result.unregisterEntityCountEventHandler)
+	result.RegisterEventTypeFunctions(event.LinkEventNS, result.registerLinkEventHandler, result.unregisterLinkEventHandler)
+	result.RegisterEventTypeFunctions(event.MetricsEventNS, result.registerMetricsEventHandler, result.unregisterMetricsEventHandler)
+	result.RegisterEventTypeFunctions(event.RouterEventNS, result.registerRouterEventHandler, result.unregisterRouterEventHandler)
+	result.RegisterEventTypeFunctions(event.ServiceEventNS, result.registerServiceEventHandler, result.unregisterServiceEventHandler)
 	result.RegisterEventTypeFunctions(event.SessionEventNS, result.registerSessionEventHandler, result.unregisterSessionEventHandler)
+	result.RegisterEventTypeFunctions(event.SdkEventNS, result.registerSdkEventHandler, result.unregisterSdkEventHandler)
+	result.RegisterEventTypeFunctions(event.TerminatorEventNS, result.registerTerminatorEventHandler, result.unregisterTerminatorEventHandler)
+	result.RegisterEventTypeFunctions(event.UsageEventNS, result.registerUsageEventHandler, result.unregisterUsageEventHandler)
 
 	result.RegisterFormatterFactory("json", event.FormatterFactoryF(func(sink event.FormattedEventSink) io.Closer {
 		return NewJsonFormatter(16, sink)
@@ -298,7 +307,7 @@ func (self *Dispatcher) ProcessSubscriptions(handler interface{}, subscriptions 
 		logger.WithField("type", sub.Type).Info("Processing subscriptions for event type")
 
 		if registrar, ok := eventTypes[sub.Type]; ok {
-			if err := registrar.Register(handler, sub.Options); err != nil {
+			if err := registrar.Register(sub.Type, handler, sub.Options); err != nil {
 				return err
 			}
 			logger.WithField("type", sub.Type).Info("Registration of event handler succeeded")

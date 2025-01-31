@@ -2,11 +2,48 @@
 
 ## What's New
 
-* Moved `ziti ops verify-network` to `ziti ops verify network`
-* Moved `ziti ops verify traffic` to `ziti ops verify traffic`
-* Added `ziti ops verify ext-jwt-signer oidc` to help users with configuring OIDC external auth 
 * Use `cluster` consistently for cluster operations
-* Bug Fixes
+* Event Doc and Consistency
+* ziti ops verify changes
+    * Moved `ziti ops verify-network` to `ziti ops verify network`
+    * Moved `ziti ops verify traffic` to `ziti ops verify traffic`
+    * Added `ziti ops verify ext-jwt-signer oidc` to help users with configuring OIDC external auth 
+* Bug fixes
+
+## Event Doc and Consistency
+
+The event types are now exhaustively documented as part of the [OpenZiti Reference Documentation](https://openziti.io/docs/reference/events).
+
+During documentation, some inconsistencies were found the following changes were made.
+
+### Namespace Cleanup
+Namespaces have been cleaned up, with the following changes:
+
+* edge.apiSessions -> apiSession
+* fabric.circuits -> circuit
+* edge.entityCount -> entityCount
+* fabric.links -> link
+* fabric.routers -> router
+* services -> service
+* edge.sessions -> session
+* fabric.terminators -> terminator 
+* fabric.usage -> usage 
+
+Note that service events used `services` in the config file, but `service.events` in the event itself.
+The old namespaces still work. If the old event type is used in the config file, the old namespace will be in the events as well
+
+### Timestamp field
+
+The following event types now have a timestamp field:
+
+* service
+* usage
+
+This timestamp is the time the event was generated.
+
+### Event Source ID
+All event types now have a new field: `event_src_id`. This field is the id of the controller 
+which emitted the event. This may be useful in HA environments, during event processing.
 
 ## Cluster Operations Naming
 
@@ -17,11 +54,13 @@ The Raft APIs available in the fabric management API are now namespaced under Cl
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.3.3 -> v1.4.0](https://github.com/openziti/ziti/compare/v1.3.3...v1.4.0)
+    * [Issue #2720](https://github.com/openziti/ziti/issues/2720) - new verify oidc command on prints usage
     * [Issue #2546](https://github.com/openziti/ziti/issues/2546) - Use consistent terminology for HA
+    * [Issue #2713](https://github.com/openziti/ziti/issues/2713) - Routers with no edge components shouldn't subscribe to RDM updates
 
 # Release 1.3.3
 
-# What's New
+## What's New
 
 * Bug Fixes
 
@@ -33,7 +72,7 @@ The Raft APIs available in the fabric management API are now namespaced under Cl
 
 # Release 1.3.2
 
-# What's New
+## What's New
 
 * Bug Fixes
 
@@ -45,7 +84,7 @@ The Raft APIs available in the fabric management API are now namespaced under Cl
 
 # Release 1.3.1
 
-# What's New
+## What's New
 
 * Bug Fixes
 

@@ -55,7 +55,7 @@ func (network *Network) CircuitEvent(eventType event.CircuitEventType, circuit *
 	}
 
 	circuitEvent := &event.CircuitEvent{
-		Namespace:        event.CircuitEventsNs,
+		Namespace:        event.CircuitEventNS,
 		Version:          event.CircuitEventsVersion,
 		EventType:        eventType,
 		EventSrcId:       network.GetAppId(),
@@ -156,7 +156,7 @@ func (network *Network) CircuitFailedEvent(
 
 	elapsed := time.Since(startTime)
 	circuitEvent := &event.CircuitEvent{
-		Namespace:        event.CircuitEventsNs,
+		Namespace:        event.CircuitEventNS,
 		Version:          event.CircuitEventsVersion,
 		EventType:        event.CircuitFailed,
 		EventSrcId:       network.GetAppId(),

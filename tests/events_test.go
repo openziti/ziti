@@ -39,7 +39,7 @@ func (self *eventsCollector) acceptEvent(event interface{}) {
 	fmt.Printf("\nNEXT EVENT: %v: %v %+v\n", reflect.TypeOf(event), event, event)
 }
 
-func (self *eventsCollector) AcceptUsageEvent(event *event.UsageEvent) {
+func (self *eventsCollector) AcceptUsageEvent(event *event.UsageEventV2) {
 	self.acceptEvent(event)
 }
 
@@ -114,24 +114,24 @@ func Test_EventsTest(t *testing.T) {
 	// TODO: Figure out how to make this test faster. Was using ctx.router.GetMetricsRegistry().Flush(), but it's not ideal
 	ctx.Req.NoError(err)
 
-	evt := ec.PopNextEvent(ctx, "edge.sessions.created", time.Second)
+	evt := ec.PopNextEvent(ctx, "sessions.created", time.Second)
 	edgeSession, ok := evt.(*event.SessionEvent)
 	ctx.Req.True(ok)
-	ctx.Req.Equal("edge.sessions", edgeSession.Namespace)
+	ctx.Req.Equal("session", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal(hostIdentity.Id, edgeSession.IdentityId)
 
 	evt = ec.PopNextEvent(ctx, "edge.sessions.created", time.Second)
 	edgeSession, ok = evt.(*event.SessionEvent)
 	ctx.Req.True(ok)
-	ctx.Req.Equal("edge.sessions", edgeSession.Namespace)
+	ctx.Req.Equal("session", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal(clientIdentity.Id, edgeSession.IdentityId)
 
-	evt = ec.PopNextEvent(ctx, "fabric.circuits.created", time.Second)
+	evt = ec.PopNextEvent(ctx, "circuits.created", time.Second)
 	circuitEvent, ok := evt.(*event.CircuitEvent)
 	ctx.Req.True(ok)
-	ctx.Req.Equal("fabric.circuits", circuitEvent.Namespace)
+	ctx.Req.Equal("circuit", circuitEvent.Namespace)
 	ctx.Req.Equal("created", string(circuitEvent.EventType))
 	ctx.Req.Equal(service.Id, circuitEvent.ServiceId)
 	ctx.Req.Equal(edgeSession.Id, circuitEvent.ClientId)
@@ -139,9 +139,9 @@ func Test_EventsTest(t *testing.T) {
 	timeout := time.Minute * 2
 	for i := 0; i < 3; i++ {
 		evt = ec.PopNextEvent(ctx, fmt.Sprintf("usage or circuits deleted %v", i+1), timeout)
-		if usage, ok := evt.(*event.UsageEvent); ok {
+		if usage, ok := evt.(*event.UsageEventV2); ok {
 			timeout = time.Second * 10
-			ctx.Req.Equal("fabric.usage", usage.Namespace)
+			ctx.Req.Equal("usage", usage.Namespace)
 			ctx.Req.Equal(uint32(2), usage.Version)
 			ctx.Req.Equal(circuitEvent.CircuitId, usage.CircuitId)
 			expected := []string{"usage.ingress.rx", "usage.egress.tx"}
@@ -149,7 +149,7 @@ func Test_EventsTest(t *testing.T) {
 			ctx.Req.Equal(ctx.edgeRouterEntity.id, usage.SourceId)
 			ctx.Req.Equal(uint64(26), usage.Usage)
 		} else if circuitEvent, ok := evt.(*event.CircuitEvent); ok {
-			ctx.Req.Equal("fabric.circuits", circuitEvent.Namespace)
+			ctx.Req.Equal("circuit", circuitEvent.Namespace)
 			ctx.Req.Equal("deleted", string(circuitEvent.EventType))
 			ctx.Req.Equal(edgeSession.Id, circuitEvent.ClientId)
 		} else {

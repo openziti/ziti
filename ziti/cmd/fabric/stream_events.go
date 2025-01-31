@@ -35,6 +35,8 @@ type streamEventsAction struct {
 	all          bool
 	apiSessions  bool
 	circuits     bool
+	cluster      bool
+	connect      bool
 	entityChange bool
 	entityCounts bool
 	links        bool
@@ -42,6 +44,7 @@ type streamEventsAction struct {
 	routers      bool
 	services     bool
 	sessions     bool
+	sdk          bool
 	terminators  bool
 	usage        bool
 
@@ -70,11 +73,14 @@ func NewStreamEventsCmd(p common.OptionsProvider) *cobra.Command {
 	streamEventsCmd.Flags().BoolVar(&action.all, "all", false, "Include all events")
 	streamEventsCmd.Flags().BoolVar(&action.apiSessions, "api-sessions", false, "Include api-session events")
 	streamEventsCmd.Flags().BoolVar(&action.circuits, "circuits", false, "Include circuit events")
+	streamEventsCmd.Flags().BoolVar(&action.cluster, "cluster", false, "Include cluster events")
+	streamEventsCmd.Flags().BoolVar(&action.connect, "connect", false, "Include connect events")
 	streamEventsCmd.Flags().BoolVar(&action.entityChange, "entity-change", false, "Include entity change events")
 	streamEventsCmd.Flags().BoolVar(&action.entityCounts, "entity-counts", false, "Include entity count events")
 	streamEventsCmd.Flags().BoolVar(&action.links, "links", false, "Include link events")
 	streamEventsCmd.Flags().BoolVar(&action.metrics, "metrics", false, "Include metrics events")
 	streamEventsCmd.Flags().BoolVar(&action.routers, "routers", false, "Include router events")
+	streamEventsCmd.Flags().BoolVar(&action.sdk, "sdk", false, "Include sdk events")
 	streamEventsCmd.Flags().BoolVar(&action.services, "services", false, "Include service events")
 	streamEventsCmd.Flags().BoolVar(&action.sessions, "sessions", false, "Include session events")
 	streamEventsCmd.Flags().BoolVar(&action.terminators, "terminators", false, "Include terminators events")
@@ -91,26 +97,38 @@ func (self *streamEventsAction) buildSubscriptions(cmd *cobra.Command) []*event.
 
 	if self.apiSessions || (self.all && !cmd.Flags().Changed("api-sessions")) {
 		subscriptions = append(subscriptions, &event.Subscription{
-			Type: "edge.apiSessions",
+			Type: event.ApiSessionEventNS,
 		})
 	}
 
 	if self.circuits || (self.all && !cmd.Flags().Changed("circuits")) {
 		subscriptions = append(subscriptions, &event.Subscription{
-			Type: "fabric.circuits",
+			Type: event.CircuitEventNS,
+		})
+	}
+
+	if self.cluster || (self.all && !cmd.Flags().Changed("cluster")) {
+		subscriptions = append(subscriptions, &event.Subscription{
+			Type: event.ClusterEventNS,
+		})
+	}
+
+	if self.connect || (self.all && !cmd.Flags().Changed("connect")) {
+		subscriptions = append(subscriptions, &event.Subscription{
+			Type: event.ConnectEventNS,
 		})
 	}
 
 	if self.entityChange || (self.all && !cmd.Flags().Changed("entity-change")) {
 		subscription := &event.Subscription{
-			Type: "entityChange",
+			Type: event.EntityChangeEventNS,
 		}
 		subscriptions = append(subscriptions, subscription)
 	}
 
 	if self.entityCounts || (self.all && !cmd.Flags().Changed("entity-counts")) {
 		subscription := &event.Subscription{
-			Type: "edge.entityCounts",
+			Type: event.EntityCountEventNS,
 		}
 		if cmd.Flags().Changed("entity-counts-interval") {
 			subscription.Options = map[string]interface{}{
@@ -122,13 +140,13 @@ func (self *streamEventsAction) buildSubscriptions(cmd *cobra.Command) []*event.
 
 	if self.links || (self.all && !cmd.Flags().Changed("links")) {
 		subscriptions = append(subscriptions, &event.Subscription{
-			Type: "fabric.links",
+			Type: event.LinkEventNS,
 		})
 	}
 
 	if self.metrics || (self.all && !cmd.Flags().Changed("metrics")) {
 		subscription := &event.Subscription{
-			Type:    "metrics",
+			Type:    event.MetricsEventNS,
 			Options: map[string]interface{}{},
 		}
 
@@ -145,31 +163,37 @@ func (self *streamEventsAction) buildSubscriptions(cmd *cobra.Command) []*event.
 
 	if self.routers || (self.all && !cmd.Flags().Changed("routers")) {
 		subscriptions = append(subscriptions, &event.Subscription{
-			Type: "fabric.routers",
+			Type: event.RouterEventNS,
 		})
 	}
 
-	if self.sessions || (self.all && !cmd.Flags().Changed("services")) {
+	if self.sdk || (self.all && !cmd.Flags().Changed("sdk")) {
 		subscriptions = append(subscriptions, &event.Subscription{
-			Type: "services",
+			Type: event.SdkEventNS,
+		})
+	}
+
+	if self.services || (self.all && !cmd.Flags().Changed("services")) {
+		subscriptions = append(subscriptions, &event.Subscription{
+			Type: event.ServiceEventNS,
 		})
 	}
 
 	if self.sessions || (self.all && !cmd.Flags().Changed("sessions")) {
 		subscriptions = append(subscriptions, &event.Subscription{
-			Type: "edge.sessions",
+			Type: event.SessionEventNS,
 		})
 	}
 
 	if self.terminators || (self.all && !cmd.Flags().Changed("terminators")) {
 		subscriptions = append(subscriptions, &event.Subscription{
-			Type: "fabric.terminators",
+			Type: event.TerminatorEventNS,
 		})
 	}
 
 	if self.usage || (self.all && !cmd.Flags().Changed("usage")) {
 		subscription := &event.Subscription{
-			Type: "fabric.usage",
+			Type: event.UsageEventNS,
 			Options: map[string]interface{}{
 				"version": self.usageVersion,
 			},

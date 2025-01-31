@@ -77,6 +77,7 @@ func (self *Dispatcher) sessionDeleted(session *db.Session) {
 		Timestamp:    time.Now(),
 		Token:        session.Token,
 		ApiSessionId: session.ApiSessionId,
+		IdentityId:   session.IdentityId,
 		ServiceId:    session.ServiceId,
 	}
 
@@ -85,11 +86,18 @@ func (self *Dispatcher) sessionDeleted(session *db.Session) {
 	}
 }
 
-func (self *Dispatcher) registerSessionEventHandler(val interface{}, config map[string]interface{}) error {
+func (self *Dispatcher) registerSessionEventHandler(eventType string, val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(event.SessionEventHandler)
 
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/edge/events/SessionEventHandler interface.", reflect.TypeOf(val))
+	}
+
+	if eventType != event.SessionEventNS {
+		handler = &sessionEventOldNsAdapter{
+			namespace: eventType,
+			wrapped:   handler,
+		}
 	}
 
 	var includeList []string
@@ -134,13 +142,34 @@ type sessionEventAdapter struct {
 	includeList []string
 }
 
-func (adapter *sessionEventAdapter) AcceptSessionEvent(event *event.SessionEvent) {
-	if stringz.Contains(adapter.includeList, event.EventType) {
-		adapter.wrapped.AcceptSessionEvent(event)
+func (adapter *sessionEventAdapter) AcceptSessionEvent(evt *event.SessionEvent) {
+	if stringz.Contains(adapter.includeList, evt.EventType) {
+		adapter.wrapped.AcceptSessionEvent(evt)
 	}
 }
 
 func (self *sessionEventAdapter) IsWrapping(value event.SessionEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.SessionEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
+}
+
+type sessionEventOldNsAdapter struct {
+	namespace string
+	wrapped   event.SessionEventHandler
+}
+
+func (self *sessionEventOldNsAdapter) AcceptSessionEvent(evt *event.SessionEvent) {
+	nsEvent := *evt
+	nsEvent.Namespace = self.namespace
+	self.wrapped.AcceptSessionEvent(&nsEvent)
+}
+
+func (self *sessionEventOldNsAdapter) IsWrapping(value event.SessionEventHandler) bool {
 	if self.wrapped == value {
 		return true
 	}

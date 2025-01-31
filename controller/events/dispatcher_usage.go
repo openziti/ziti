@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/pkg/errors"
 	"reflect"
+	"time"
 )
 
 func (self *Dispatcher) AddUsageEventHandler(handler event.UsageEventHandler) {
@@ -29,7 +30,15 @@ func (self *Dispatcher) AddUsageEventHandler(handler event.UsageEventHandler) {
 }
 
 func (self *Dispatcher) RemoveUsageEventHandler(handler event.UsageEventHandler) {
-	self.usageEventHandlers.Delete(handler)
+	self.usageEventHandlers.DeleteIf(func(val event.UsageEventHandler) bool {
+		if val == handler {
+			return true
+		}
+		if w, ok := val.(event.UsageEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) AddUsageEventV3Handler(handler event.UsageEventV3Handler) {
@@ -48,7 +57,7 @@ func (self *Dispatcher) RemoveUsageEventV3Handler(handler event.UsageEventV3Hand
 	})
 }
 
-func (self *Dispatcher) AcceptUsageEvent(event *event.UsageEvent) {
+func (self *Dispatcher) AcceptUsageEvent(event *event.UsageEventV2) {
 	go func() {
 		for _, handler := range self.usageEventHandlers.Value() {
 			handler.AcceptUsageEvent(event)
@@ -64,7 +73,7 @@ func (self *Dispatcher) AcceptUsageEventV3(event *event.UsageEventV3) {
 	}()
 }
 
-func (self *Dispatcher) registerUsageEventHandler(val interface{}, config map[string]interface{}) error {
+func (self *Dispatcher) registerUsageEventHandler(eventType string, val interface{}, config map[string]interface{}) error {
 	version := 2
 
 	if configVal, found := config["version"]; found {
@@ -83,11 +92,24 @@ func (self *Dispatcher) registerUsageEventHandler(val interface{}, config map[st
 		if !ok {
 			return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/UsageEventHandler interface.", reflect.TypeOf(val))
 		}
+		if eventType != event.UsageEventNS {
+			handler = &usageEventV2OldNsAdapter{
+				namespace: eventType,
+				wrapped:   handler,
+			}
+		}
 		self.AddUsageEventHandler(handler)
-	} else if version == 3 {
+	} else {
 		handler, ok := val.(event.UsageEventV3Handler)
 		if !ok {
 			return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/UsageEventV3Handler interface.", reflect.TypeOf(val))
+		}
+
+		if eventType != event.UsageEventNS {
+			handler = &usageEventV3OldNsAdapter{
+				namespace: eventType,
+				wrapped:   handler,
+			}
 		}
 
 		if includeListVal, found := config["include"]; found {
@@ -115,9 +137,8 @@ func (self *Dispatcher) registerUsageEventHandler(val interface{}, config map[st
 		}
 
 		self.AddUsageEventV3Handler(handler)
-	} else {
-		return errors.Errorf("unsupported usage version: %v", version)
 	}
+
 	return nil
 }
 
@@ -150,10 +171,11 @@ func (self *usageEventAdapter) AcceptMetricsMsg(message *metrics_pb.MetricsMessa
 		for name, interval := range message.IntervalCounters {
 			for _, bucket := range interval.Buckets {
 				for circuitId, usage := range bucket.Values {
-					evt := &event.UsageEvent{
-						Namespace:        event.UsageEventsNs,
-						Version:          event.UsageEventsVersion,
+					evt := &event.UsageEventV2{
+						Namespace:        event.UsageEventNS,
 						EventSrcId:       self.dispatcher.ctrlId,
+						Timestamp:        time.Now(),
+						Version:          event.UsageEventsVersion,
 						EventType:        name,
 						SourceId:         message.SourceId,
 						CircuitId:        circuitId,
@@ -168,11 +190,12 @@ func (self *usageEventAdapter) AcceptMetricsMsg(message *metrics_pb.MetricsMessa
 		for _, interval := range message.UsageCounters {
 			for circuitId, bucket := range interval.Buckets {
 				for usageType, usage := range bucket.Values {
-					evt := &event.UsageEvent{
-						Namespace:        event.UsageEventsNs,
+					evt := &event.UsageEventV2{
+						Namespace:        event.UsageEventNS,
+						EventSrcId:       self.dispatcher.ctrlId,
+						Timestamp:        time.Now(),
 						Version:          event.UsageEventsVersion,
 						EventType:        "usage." + usageType,
-						EventSrcId:       self.dispatcher.ctrlId,
 						SourceId:         message.SourceId,
 						CircuitId:        circuitId,
 						Usage:            usage,
@@ -191,9 +214,10 @@ func (self *usageEventAdapter) AcceptMetricsMsg(message *metrics_pb.MetricsMessa
 			for _, bucket := range interval.Buckets {
 				for circuitId, usage := range bucket.Values {
 					evt := &event.UsageEventV3{
-						Namespace:  event.UsageEventsNs,
-						Version:    3,
+						Namespace:  event.UsageEventNS,
 						EventSrcId: self.dispatcher.ctrlId,
+						Timestamp:  time.Now(),
+						Version:    3,
 						SourceId:   message.SourceId,
 						CircuitId:  circuitId,
 						Usage: map[string]uint64{
@@ -210,10 +234,11 @@ func (self *usageEventAdapter) AcceptMetricsMsg(message *metrics_pb.MetricsMessa
 		for _, interval := range message.UsageCounters {
 			for circuitId, bucket := range interval.Buckets {
 				evt := &event.UsageEventV3{
-					Namespace:        event.UsageEventsNs,
+					Namespace:        event.UsageEventNS,
+					EventSrcId:       self.dispatcher.ctrlId,
+					Timestamp:        time.Now(),
 					Version:          3,
 					SourceId:         message.SourceId,
-					EventSrcId:       self.dispatcher.ctrlId,
 					CircuitId:        circuitId,
 					Usage:            bucket.Values,
 					IntervalStartUTC: interval.IntervalStartUTC,
@@ -262,4 +287,46 @@ func (self *filteredUsageV3EventHandler) AcceptUsageEventV3(event *event.UsageEv
 	newEvent := *event
 	newEvent.Usage = usage
 	self.wrapped.AcceptUsageEventV3(&newEvent)
+}
+
+type usageEventV2OldNsAdapter struct {
+	namespace string
+	wrapped   event.UsageEventHandler
+}
+
+func (self *usageEventV2OldNsAdapter) AcceptUsageEvent(event *event.UsageEventV2) {
+	nsEvent := *event
+	nsEvent.Namespace = self.namespace
+	self.wrapped.AcceptUsageEvent(&nsEvent)
+}
+
+func (self *usageEventV2OldNsAdapter) IsWrapping(value event.UsageEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.UsageEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
+}
+
+type usageEventV3OldNsAdapter struct {
+	namespace string
+	wrapped   event.UsageEventV3Handler
+}
+
+func (self *usageEventV3OldNsAdapter) AcceptUsageEventV3(evt *event.UsageEventV3) {
+	nsEvent := *evt
+	nsEvent.Namespace = self.namespace
+	self.wrapped.AcceptUsageEventV3(&nsEvent)
+}
+
+func (self *usageEventV3OldNsAdapter) IsWrapping(value event.UsageEventV3Handler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.UsageEventV3HandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }

@@ -155,7 +155,7 @@ func (event *JsonTerminatorEvent) Format() ([]byte, error) {
 	return MarshalJson(event)
 }
 
-type JsonUsageEvent event.UsageEvent
+type JsonUsageEvent event.UsageEventV2
 
 func (event *JsonUsageEvent) GetEventType() string {
 	return "usage"
@@ -285,7 +285,7 @@ func (formatter *JsonFormatter) AcceptRouterEvent(evt *event.RouterEvent) {
 	formatter.AcceptLoggingEvent((*JsonRouterEvent)(evt))
 }
 
-func (formatter *JsonFormatter) AcceptUsageEvent(evt *event.UsageEvent) {
+func (formatter *JsonFormatter) AcceptUsageEvent(evt *event.UsageEventV2) {
 	formatter.AcceptLoggingEvent((*JsonUsageEvent)(evt))
 }
 

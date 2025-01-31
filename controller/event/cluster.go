@@ -25,7 +25,7 @@ import (
 type ClusterEventType string
 
 const (
-	ClusterEventsNs = "cluster"
+	ClusterEventNS = "cluster"
 
 	ClusterPeerConnected    ClusterEventType = "peer.connected"
 	ClusterPeerDisconnected ClusterEventType = "peer.disconnected"
@@ -38,16 +38,31 @@ const (
 	ClusterStateReadWrite   ClusterEventType = "state.rw"
 )
 
+// A ClusterPeer represents a controller which is a member of the cluster.
 type ClusterPeer struct {
-	Id           string                  `json:"id,omitempty"`
-	Addr         string                  `json:"addr,omitempty"`
-	Version      string                  `json:"version,omitempty"`
-	ServerCert   []*x509.Certificate     `json:"-"`
+	// The controller id.
+	Id string `json:"id,omitempty"`
+
+	// The address at which the controller can be reached.
+	Addr string `json:"addr,omitempty"`
+
+	// The version of the controller.
+	Version string `json:"version,omitempty"`
+
+	ServerCert []*x509.Certificate `json:"-"`
+
+	// The set of api addresses presented by the controller.
 	ApiAddresses map[string][]ApiAddress `json:"apiAddresses"`
 }
 
+// An ApiAddress represents an endpoint on a controller. This may include things
+// like REST management services and health checks.
 type ApiAddress struct {
-	Url     string `json:"url"`
+	// The URL of the API endpoint.
+	Url string `json:"url"`
+
+	// The version of the API endpoint. Endpoints are versioned independently of
+	// the controller version as these are expected to be stable over long periods.
 	Version string `json:"version"`
 }
 
@@ -55,14 +70,105 @@ func (self *ClusterPeer) String() string {
 	return fmt.Sprintf("id=%v addr=%v version=%v", self.Id, self.Addr, self.Version)
 }
 
+// A ClusterEvent marks a change to the controller HA cluster.
+// ClusterEvents can be of the following types:
+//   - peer.connected
+//   - peer.disconnected
+//   - members.changed
+//   - leadership.gained
+//   - leadership.lost
+//   - state.has_leader
+//   - state.is_leaderless
+//   - state.ro
+//   - state.rw
+//
+// Example: Cluster Members Changed Event
+//
+//	{
+//	 "namespace": "cluster",
+//	 "event_src_id": "ctrl1",
+//	 "timestamp": "2025-01-17T13:41:25.817205826-05:00",
+//	 "eventType": "members.changed",
+//	 "index": 7,
+//	 "peers": [
+//	   {
+//	     "id": "ctrl1",
+//	     "addr": "tls:localhost:6262",
+//	     "apiAddresses": null
+//	   },
+//	   {
+//	     "id": "ctrl2",
+//	     "addr": "tls:localhost:6363",
+//	     "apiAddresses": null
+//	   }
+//	 ]
+//	}
+//
+// Example: Peer Connected Event
+//
+//	{
+//	 "namespace": "cluster",
+//	 "event_src_id": "ctrl1",
+//	 "timestamp": "2025-01-17T13:41:25.838625953-05:00",
+//	 "eventType": "peer.connected",
+//	 "peers": [
+//	   {
+//	     "id": "ctrl2",
+//	     "addr": "tls:localhost:6363",
+//	     "version": "v0.0.0",
+//	     "apiAddresses": {
+//	       "edge-client": [
+//	         {
+//	           "url": "https://127.0.0.1:1380/edge/client/v1",
+//	           "version": "v1"
+//	         }
+//	       ],
+//	       "edge-management": [
+//	         {
+//	           "url": "https://127.0.0.1:1380/edge/management/v1",
+//	           "version": "v1"
+//	         }
+//	       ],
+//	       "edge-oidc": [
+//	         {
+//	           "url": "https://127.0.0.1:1380/oidc",
+//	           "version": "v1"
+//	         }
+//	       ],
+//	       "fabric": [
+//	         {
+//	           "url": "https://127.0.0.1:1380/fabric/v1",
+//	           "version": "v1"
+//	         }
+//	       ],
+//	       "health-checks": [
+//	         {
+//	           "url": "https://127.0.0.1:1380/health-checks",
+//	           "version": "v1"
+//	         }
+//	       ]
+//	     }
+//	   }
+//	 ]
+//	}
 type ClusterEvent struct {
-	Namespace  string           `json:"namespace"`
-	EventType  ClusterEventType `json:"eventType"`
-	EventSrcId string           `json:"event_src_id"`
-	Timestamp  time.Time        `json:"timestamp"`
-	Index      uint64           `json:"index,omitempty"`
-	Peers      []*ClusterPeer   `json:"peers,omitempty"`
-	LeaderId   string           `json:"leaderId,omitempty"`
+	Namespace  string    `json:"namespace"`
+	EventSrcId string    `json:"event_src_id"`
+	Timestamp  time.Time `json:"timestamp"`
+
+	// The cluster event type. See above for set of valid types.
+	EventType ClusterEventType `json:"eventType"`
+
+	// The raft index associated with the event.
+	Index uint64 `json:"index,omitempty"`
+
+	// This field is populated with all peers when membership change events
+	// or leadership is gained. It is populated with the connecting peer for connect events and the
+	// disconnecting peer for disconnect events. For other types it is omitted.
+	Peers []*ClusterPeer `json:"peers,omitempty"`
+
+	// The leader id. Only populated for state.has_leader events.
+	LeaderId string `json:"leaderId,omitempty"`
 }
 
 func (event *ClusterEvent) String() string {
@@ -81,7 +187,7 @@ func (f ClusterEventHandlerF) AcceptClusterEvent(event *ClusterEvent) {
 
 func NewClusterEvent(eventType ClusterEventType) *ClusterEvent {
 	return &ClusterEvent{
-		Namespace: ClusterEventsNs,
+		Namespace: ClusterEventNS,
 		EventType: eventType,
 		Timestamp: time.Now(),
 	}

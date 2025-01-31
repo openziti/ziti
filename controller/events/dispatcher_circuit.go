@@ -47,11 +47,18 @@ func (self *Dispatcher) AcceptCircuitEvent(event *event.CircuitEvent) {
 	}()
 }
 
-func (self *Dispatcher) registerCircuitEventHandler(val interface{}, config map[string]interface{}) error {
+func (self *Dispatcher) registerCircuitEventHandler(eventType string, val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(event.CircuitEventHandler)
 
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/CircuitEventHandler interface.", reflect.TypeOf(val))
+	}
+
+	if eventType != event.CircuitEventNS {
+		handler = &circuitEventOldNsAdapter{
+			namespace: eventType,
+			wrapped:   handler,
+		}
 	}
 
 	var includeList []string
@@ -115,8 +122,29 @@ func (self *filteredCircuitEventHandler) IsWrapping(value event.CircuitEventHand
 	return false
 }
 
-func (self *filteredCircuitEventHandler) AcceptCircuitEvent(event *event.CircuitEvent) {
-	if _, found := self.accepted[event.EventType]; found {
-		self.wrapped.AcceptCircuitEvent(event)
+func (self *filteredCircuitEventHandler) AcceptCircuitEvent(evt *event.CircuitEvent) {
+	if _, found := self.accepted[evt.EventType]; found {
+		self.wrapped.AcceptCircuitEvent(evt)
 	}
+}
+
+type circuitEventOldNsAdapter struct {
+	namespace string
+	wrapped   event.CircuitEventHandler
+}
+
+func (self *circuitEventOldNsAdapter) AcceptCircuitEvent(evt *event.CircuitEvent) {
+	nsEvent := *evt
+	nsEvent.Namespace = self.namespace
+	self.wrapped.AcceptCircuitEvent(&nsEvent)
+}
+
+func (self *circuitEventOldNsAdapter) IsWrapping(value event.CircuitEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.CircuitEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }

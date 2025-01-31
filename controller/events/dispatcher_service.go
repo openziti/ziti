@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"reflect"
 	"strings"
+	"time"
 )
 
 func (self *Dispatcher) AddServiceEventHandler(handler event.ServiceEventHandler) {
@@ -30,7 +31,15 @@ func (self *Dispatcher) AddServiceEventHandler(handler event.ServiceEventHandler
 }
 
 func (self *Dispatcher) RemoveServiceEventHandler(handler event.ServiceEventHandler) {
-	self.serviceEventHandlers.Delete(handler)
+	self.serviceEventHandlers.DeleteIf(func(val event.ServiceEventHandler) bool {
+		if val == handler {
+			return true
+		}
+		if w, ok := val.(event.ServiceEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) AcceptServiceEvent(event *event.ServiceEvent) {
@@ -41,13 +50,20 @@ func (self *Dispatcher) AcceptServiceEvent(event *event.ServiceEvent) {
 	}()
 }
 
-func (self *Dispatcher) registerServiceEventHandler(val interface{}, _ map[string]interface{}) error {
+func (self *Dispatcher) registerServiceEventHandler(eventType string, val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.ServiceEventHandler)
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/edge/event/ServiceEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/ServiceEventHandler interface.", reflect.TypeOf(val))
 	}
 
+	if eventType == "services" {
+		handler = &serviceEventOldNsAdapter{
+			namespace: "service.events",
+			wrapped:   handler,
+		}
+	}
 	self.AddServiceEventHandler(handler)
+
 	return nil
 }
 
@@ -61,6 +77,27 @@ func (self *Dispatcher) initServiceEvents(n *network.Network) {
 	n.InitServiceCounterDispatch(&serviceEventAdapter{
 		Dispatcher: self,
 	})
+}
+
+type serviceEventOldNsAdapter struct {
+	namespace string
+	wrapped   event.ServiceEventHandler
+}
+
+func (self *serviceEventOldNsAdapter) AcceptServiceEvent(evt *event.ServiceEvent) {
+	nsEvent := *evt
+	nsEvent.Namespace = self.namespace
+	self.wrapped.AcceptServiceEvent(&nsEvent)
+}
+
+func (self *serviceEventOldNsAdapter) IsWrapping(value event.ServiceEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.ServiceEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }
 
 // serviceEventAdapter converts service interval counters into service events
@@ -79,10 +116,11 @@ func (self *serviceEventAdapter) AcceptMetrics(message *metrics_pb.MetricsMessag
 					terminatorId = ids[1]
 				}
 				evt := &event.ServiceEvent{
-					Namespace:        "service.events",
+					Namespace:        event.ServiceEventNS,
+					EventSrcId:       self.ctrlId,
+					Timestamp:        time.Now(),
 					Version:          2,
 					EventType:        name,
-					EventSrcId:       self.ctrlId,
 					ServiceId:        serviceId,
 					TerminatorId:     terminatorId,
 					Count:            count,

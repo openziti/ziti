@@ -39,7 +39,7 @@ func (self *Dispatcher) AcceptClusterEvent(event *event.ClusterEvent) {
 	}()
 }
 
-func (self *Dispatcher) registerClusterEventHandler(val interface{}, _ map[string]interface{}) error {
+func (self *Dispatcher) registerClusterEventHandler(_ string, val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.ClusterEventHandler)
 
 	if !ok {

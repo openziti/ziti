@@ -45,7 +45,7 @@ func (self *Dispatcher) AcceptConnectEvent(evt *event.ConnectEvent) {
 	}
 }
 
-func (self *Dispatcher) registerConnectEventHandler(val interface{}, _ map[string]interface{}) error {
+func (self *Dispatcher) registerConnectEventHandler(_ string, val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.ConnectEventHandler)
 
 	if !ok {

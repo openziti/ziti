@@ -27,7 +27,15 @@ func (self *Dispatcher) AddLinkEventHandler(handler event.LinkEventHandler) {
 }
 
 func (self *Dispatcher) RemoveLinkEventHandler(handler event.LinkEventHandler) {
-	self.linkEventHandlers.Delete(handler)
+	self.linkEventHandlers.DeleteIf(func(val event.LinkEventHandler) bool {
+		if val == handler {
+			return true
+		}
+		if w, ok := val.(event.LinkEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) AcceptLinkEvent(event *event.LinkEvent) {
@@ -38,14 +46,20 @@ func (self *Dispatcher) AcceptLinkEvent(event *event.LinkEvent) {
 	}()
 }
 
-func (self *Dispatcher) registerLinkEventHandler(val interface{}, _ map[string]interface{}) error {
+func (self *Dispatcher) registerLinkEventHandler(eventType string, val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.LinkEventHandler)
 
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/LinkEventHandler interface.", reflect.TypeOf(val))
 	}
 
-	self.linkEventHandlers.Append(handler)
+	if eventType != event.LinkEventNS {
+		handler = &linkEventOldNsAdapter{
+			namespace: eventType,
+			wrapped:   handler,
+		}
+	}
+	self.AddLinkEventHandler(handler)
 
 	return nil
 }
@@ -54,4 +68,25 @@ func (self *Dispatcher) unregisterLinkEventHandler(val interface{}) {
 	if handler, ok := val.(event.LinkEventHandler); ok {
 		self.RemoveLinkEventHandler(handler)
 	}
+}
+
+type linkEventOldNsAdapter struct {
+	namespace string
+	wrapped   event.LinkEventHandler
+}
+
+func (self *linkEventOldNsAdapter) AcceptLinkEvent(evt *event.LinkEvent) {
+	nsEvent := *evt
+	nsEvent.Namespace = self.namespace
+	self.wrapped.AcceptLinkEvent(&nsEvent)
+}
+
+func (self *linkEventOldNsAdapter) IsWrapping(value event.LinkEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.LinkEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }
