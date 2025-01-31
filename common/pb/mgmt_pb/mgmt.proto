@@ -45,6 +45,7 @@ enum ContentType {
   RaftTransferLeadershipRequestType = 10084;
   RaftInitFromDb = 10085;
   RaftInit = 10086;
+  RaftRestoreFromDb = 10087;
 
   // Validate
   ValidateTerminatorsRequestType = 10100;

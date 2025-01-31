@@ -59,6 +59,7 @@ import (
 	"github.com/openziti/ziti/controller/xt_weighted"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/teris-io/shortid"
 	"math/big"
 	"os"
 	"sync"
@@ -230,7 +231,7 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 
 	c.xweb = xweb.NewDefaultInstance(c.xwebFactoryRegistry, c.config.Id)
 
-	if cfg.Raft != nil {
+	if cfg.IsRaftEnabled() {
 		c.raftController = raft.NewController(c, c)
 		if err := c.raftController.Init(); err != nil {
 			log.WithError(err).Panic("error starting raft")
@@ -665,12 +666,70 @@ func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 		}
 	}()
 
-	log.Infof("initializing from bolt db [%v]", sourceDbPath)
+	timelineId, err := sourceDb.GetTimelineId(boltz.TimelineModeForceReset, shortid.Generate)
+	if err != nil {
+		return err
+	}
+	log.WithField("timelineId", timelineId).WithField("path", sourceDbPath).Info("initializing from bolt db")
 
 	buf := &bytes.Buffer{}
 	gzWriter := gzip.NewWriter(buf)
-	snapshotId, err := sourceDb.SnapshotToWriter(gzWriter)
+	if err = sourceDb.StreamToWriter(gzWriter); err != nil {
+		return err
+	}
+
+	if err = gzWriter.Close(); err != nil {
+		return errors.Wrap(err, "error finishing gz compression of migration snapshot")
+	}
+
+	c.env.InitTimelineId(timelineId)
+
+	cmd := &command.SyncSnapshotCommand{
+		TimelineId:   timelineId,
+		Snapshot:     buf.Bytes(),
+		SnapshotSink: c.network.RestoreSnapshot,
+	}
+
+	if err = c.raftController.Bootstrap(); err != nil {
+		return fmt.Errorf("unable to bootstrap cluster (%w)", err)
+	}
+
+	return c.raftController.Dispatch(cmd)
+}
+
+func (c *Controller) RaftRestoreFromBoltDb(sourceDbPath string) error {
+	log := pfxlog.Logger()
+
+	if c.raftController == nil {
+		return errors.New("can't initialize non-raft controller using initialize from db")
+	}
+
+	if _, err := os.Stat(sourceDbPath); err != nil {
+		if os.IsNotExist(err) {
+			return errors.Wrapf(err, "source db not found at [%v]", sourceDbPath)
+		}
+		return errors.Wrapf(err, "invalid db path [%v]", sourceDbPath)
+	}
+
+	sourceDb, err := db.Open(sourceDbPath)
 	if err != nil {
+		return err
+	}
+	defer func() {
+		if err = sourceDb.Close(); err != nil {
+			log.WithError(err).Error("error closing migration source bolt db")
+		}
+	}()
+
+	timelineId, err := sourceDb.GetTimelineId(boltz.TimelineModeForceReset, shortid.Generate)
+	if err != nil {
+		return err
+	}
+	log.WithField("timelineId", timelineId).WithField("path", sourceDbPath).Info("restoring from bolt db")
+
+	buf := &bytes.Buffer{}
+	gzWriter := gzip.NewWriter(buf)
+	if err = sourceDb.StreamToWriter(gzWriter); err != nil {
 		return err
 	}
 
@@ -679,7 +738,7 @@ func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 	}
 
 	cmd := &command.SyncSnapshotCommand{
-		SnapshotId:   snapshotId,
+		TimelineId:   timelineId,
 		Snapshot:     buf.Bytes(),
 		SnapshotSink: c.network.RestoreSnapshot,
 	}

@@ -125,6 +125,10 @@ type RouterDataModel struct {
 	closeNotify   <-chan struct{}
 	stopNotify    chan struct{}
 	stopped       atomic.Bool
+
+	// timelineId identifies the database that events are flowing from. This will be reset whenever we change the
+	// underlying datastore
+	timelineId string
 }
 
 // NewBareRouterDataModel creates a new RouterDataModel that is expected to have no buffers, listeners or subscriptions
@@ -144,7 +148,7 @@ func NewBareRouterDataModel() *RouterDataModel {
 
 // NewSenderRouterDataModel creates a new RouterDataModel that will store events in a circular buffer of
 // logSize. listenerBufferSize affects the buffer size of channels returned to listeners of the data model.
-func NewSenderRouterDataModel(logSize uint64, listenerBufferSize uint) *RouterDataModel {
+func NewSenderRouterDataModel(timelineId string, logSize uint64, listenerBufferSize uint) *RouterDataModel {
 	return &RouterDataModel{
 		EventCache:         NewLoggingEventCache(logSize),
 		ConfigTypes:        cmap.New[*ConfigType](),
@@ -156,6 +160,7 @@ func NewSenderRouterDataModel(logSize uint64, listenerBufferSize uint) *RouterDa
 		PublicKeys:         cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
 		Revocations:        cmap.New[*edge_ctrl_pb.DataState_Revocation](),
 		listenerBufferSize: listenerBufferSize,
+		timelineId:         timelineId,
 	}
 }
 
@@ -200,6 +205,7 @@ func NewReceiverRouterDataModelFromDataState(dataState *edge_ctrl_pb.DataState, 
 		events:             make(chan subscriberEvent),
 		closeNotify:        closeNotify,
 		stopNotify:         make(chan struct{}),
+		timelineId:         dataState.TimelineId,
 	}
 
 	go result.processSubscriberEvents()
@@ -214,7 +220,7 @@ func NewReceiverRouterDataModelFromDataState(dataState *edge_ctrl_pb.DataState, 
 	return result
 }
 
-// NewReceiverRouterDataModel creates a new RouterDataModel that does not store events. listenerBufferSize affects the
+// NewReceiverRouterDataModelFromExisting creates a new RouterDataModel that does not store events. listenerBufferSize affects the
 // buffer size of channels returned to listeners of the data model.
 func NewReceiverRouterDataModelFromExisting(existing *RouterDataModel, listenerBufferSize uint, closeNotify <-chan struct{}) *RouterDataModel {
 	result := &RouterDataModel{
@@ -306,6 +312,10 @@ func (rdm *RouterDataModel) sendEvent(event *edge_ctrl_pb.DataState_ChangeSet) {
 	for listener := range rdm.listeners {
 		listener <- event
 	}
+}
+
+func (rdm *RouterDataModel) GetTimelineId() string {
+	return rdm.timelineId
 }
 
 // ApplyChangeSet applies the given even to the router data model.
@@ -770,13 +780,15 @@ func (rdm *RouterDataModel) getDataStateAlreadyLocked(index uint64) *edge_ctrl_p
 			Model: &edge_ctrl_pb.DataState_Event_PublicKey{
 				PublicKey: v,
 			},
+			IsSynthetic: true,
 		}
 		events = append(events, newEvent)
 	})
 
 	return &edge_ctrl_pb.DataState{
-		Events:   events,
-		EndIndex: index,
+		Events:     events,
+		EndIndex:   index,
+		TimelineId: rdm.timelineId,
 	}
 }
 

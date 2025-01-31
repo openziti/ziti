@@ -76,7 +76,7 @@ func (stores *Stores) CheckIntegrity(db boltz.Db, ctx context.Context, fix bool,
 func (stores *Stores) CheckIntegrityInTx(db boltz.Db, ctx boltz.MutateContext, fix bool, errorHandler func(error, bool)) error {
 	if fix {
 		pfxlog.Logger().Info("creating database snapshot before attempting to fix data integrity issues")
-		if err := db.Snapshot(ctx.Tx()); err != nil {
+		if _, _, err := db.SnapshotInTx(ctx.Tx(), db.GetDefaultSnapshotPath()); err != nil {
 			return err
 		}
 	}

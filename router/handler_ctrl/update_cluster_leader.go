@@ -4,15 +4,21 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/router/env"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
+	"sync/atomic"
 )
 
 var updateClusterLeaderHandlerInstance *updateClusterLeaderHandler
 
 type updateClusterLeaderHandler struct {
 	callback       CtrlAddressUpdater
-	currentVersion uint64
+	currentVersion atomic.Uint64
+}
+
+func (handler *updateClusterLeaderHandler) NotifyIndexReset() {
+	handler.currentVersion.Store(0)
 }
 
 func (handler *updateClusterLeaderHandler) ContentType() int32 {
@@ -28,24 +34,26 @@ func (handler *updateClusterLeaderHandler) HandleReceive(msg *channel.Message, c
 	}
 
 	log = log.WithFields(logrus.Fields{
-		"localVersion":  handler.currentVersion,
+		"localVersion":  handler.currentVersion.Load(),
 		"remoteVersion": upd.Index,
 		"ctrlId":        ch.Id(),
 	})
 
-	if handler.currentVersion == 0 || handler.currentVersion < upd.Index {
+	if handler.currentVersion.Load() == 0 || handler.currentVersion.Load() < upd.Index {
 		log.Info("handling update of cluster leader")
 		handler.callback.UpdateLeader(ch.Id())
+		handler.currentVersion.Store(upd.Index)
 	} else {
 		log.Info("ignoring outdated update cluster leader message")
 	}
 }
 
-func newUpdateClusterLeaderHandler(callback CtrlAddressUpdater) channel.TypedReceiveHandler {
+func newUpdateClusterLeaderHandler(env env.RouterEnv, callback CtrlAddressUpdater) channel.TypedReceiveHandler {
 	if updateClusterLeaderHandlerInstance == nil {
 		updateClusterLeaderHandlerInstance = &updateClusterLeaderHandler{
 			callback: callback,
 		}
+		env.GetIndexWatchers().AddIndexResetWatcher(updateClusterLeaderHandlerInstance.NotifyIndexReset)
 	}
 	return updateClusterLeaderHandlerInstance
 }

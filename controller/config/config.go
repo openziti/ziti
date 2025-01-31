@@ -129,6 +129,10 @@ func (self *Config) ToJson() (string, error) {
 	return string(b), err
 }
 
+func (self *Config) IsRaftEnabled() bool {
+	return self.Raft != nil
+}
+
 // CtrlOptions extends channel.Options to include support for additional, non-channel specific options
 // (e.g. NewListener)
 type CtrlOptions struct {

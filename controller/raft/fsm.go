@@ -276,32 +276,25 @@ func (self *BoltDbFsm) Snapshot() (raft.FSMSnapshot, error) {
 
 	buf := &bytes.Buffer{}
 	gzWriter := gzip.NewWriter(buf)
-	id, err := self.db.SnapshotToWriter(gzWriter)
-	if err != nil {
+	if err := self.db.StreamToWriter(gzWriter); err != nil {
 		return nil, err
 	}
 
-	if err = gzWriter.Close(); err != nil {
+	if err := gzWriter.Close(); err != nil {
 		return nil, fmt.Errorf("error finishing gz compression of raft snapshot (%w)", err)
 	}
 
-	logrus.WithField("id", id).WithField("index", self.indexTracker.Index()).Info("creating snapshot")
+	logrus.WithField("index", self.indexTracker.Index()).Info("creating snapshot")
 
 	return &boltSnapshot{
-		snapshotId:   id,
 		snapshotData: buf.Bytes(),
 	}, nil
 }
 
 func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
-	var currentSnapshotId string
 	var currentIndex uint64
 
 	if self.db != nil {
-		snapshotId, _ := self.db.GetSnapshotId()
-		if snapshotId != nil {
-			currentSnapshotId = *snapshotId
-		}
 		currentIndex, _ = self.loadCurrentIndex()
 	}
 
@@ -312,14 +305,12 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 		return err
 	}
 
-	newSnapshotId, newIndex, err := self.GetSnapshotMetadata(tmpPath)
+	newIndex, err := self.GetSnapshotMetadata(tmpPath)
 	if err != nil {
 		return err
 	}
 
 	log := pfxlog.Logger().
-		WithField("currentSnapshotId", currentSnapshotId).
-		WithField("newSnapshotId", newSnapshotId).
 		WithField("currentIndex", currentIndex).
 		WithField("newIndex", newIndex)
 
@@ -394,10 +385,10 @@ func (self *BoltDbFsm) restoreSnapshotDbFile(path string, snapshot io.ReadCloser
 	return nil
 }
 
-func (self *BoltDbFsm) GetSnapshotMetadata(path string) (string, uint64, error) {
+func (self *BoltDbFsm) GetSnapshotMetadata(path string) (uint64, error) {
 	newDb, err := db.Open(path)
 	if err != nil {
-		return "", 0, err
+		return 0, err
 	}
 
 	defer func() {
@@ -406,25 +397,15 @@ func (self *BoltDbFsm) GetSnapshotMetadata(path string) (string, uint64, error) 
 		}
 	}()
 
-	snapshotIdP, err := newDb.GetSnapshotId()
-	if err != nil {
-		return "", 0, err
-	}
-	var snapshotId string
-	if snapshotIdP != nil {
-		snapshotId = *snapshotIdP
-	}
-
 	idx, err := self.loadDbIndex(newDb)
 	if err != nil {
-		return "", 0, err
+		return 0, err
 	}
 
-	return snapshotId, idx, nil
+	return idx, nil
 }
 
 type boltSnapshot struct {
-	snapshotId   string
 	snapshotData []byte
 }
 

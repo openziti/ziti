@@ -7,16 +7,17 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	controllerEnv "github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/router/env"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
 
 type ValidateDataStateRequestHandler struct {
 	state Manager
-	env   Env
+	env   env.RouterEnv
 }
 
-func NewValidateDataStateRequestHandler(state Manager, env Env) *ValidateDataStateRequestHandler {
+func NewValidateDataStateRequestHandler(state Manager, env env.RouterEnv) *ValidateDataStateRequestHandler {
 	return &ValidateDataStateRequestHandler{
 		state: state,
 		env:   env,

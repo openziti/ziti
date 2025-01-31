@@ -97,8 +97,8 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newInspectHandler(self.env, self.forwarder))
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressUpdater))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
-	binding.AddTypedReceiveHandler(newUpdateCtrlAddressesHandler(self.ctrlAddressUpdater))
-	binding.AddTypedReceiveHandler(newUpdateClusterLeaderHandler(self.ctrlAddressUpdater))
+	binding.AddTypedReceiveHandler(newUpdateCtrlAddressesHandler(self.env, self.ctrlAddressUpdater))
+	binding.AddTypedReceiveHandler(newUpdateClusterLeaderHandler(self.env, self.ctrlAddressUpdater))
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 

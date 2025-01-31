@@ -50,6 +50,7 @@ type RouterSender struct {
 	syncRdmUntil     time.Time
 	lastIndexSent    uint64
 	running          atomic.Bool
+	timelineId       string
 
 	SupportsRouterModel bool
 
@@ -173,6 +174,8 @@ func (rtx *RouterSender) handleSyncRequest(req *edge_ctrl_pb.SubscribeToDataMode
 		req.SubscriptionDurationSeconds = 360
 	}
 
+	rtx.timelineId = req.TimelineId
+
 	rtx.syncRdmUntil = time.Now().Add(time.Duration(req.SubscriptionDurationSeconds) * time.Second)
 	pfxlog.Logger().WithField("routerId", rtx.Router.Id).
 		WithField("routerName", rtx.Router.Name).
@@ -180,6 +183,7 @@ func (rtx *RouterSender) handleSyncRequest(req *edge_ctrl_pb.SubscribeToDataMode
 		WithField("currentIndex", rtx.currentIndex).
 		WithField("renew", req.Renew).
 		WithField("subscriptionDuration", rtx.syncRdmUntil.String()).
+		WithField("timelineId", rtx.timelineId).
 		Info("data model subscription started")
 
 	rtx.handleModelChange()
@@ -194,7 +198,7 @@ func (rtx *RouterSender) handleModelChange() {
 
 	var events []*edge_ctrl_pb.DataState_ChangeSet
 	var ok bool
-	if rtx.currentIndex > 0 {
+	if rtx.currentIndex > 0 && rtx.timelineId == rtx.routerDataModel.GetTimelineId() {
 		events, ok = rtx.routerDataModel.ReplayFrom(rtx.currentIndex + 1)
 	}
 
@@ -230,7 +234,8 @@ func (rtx *RouterSender) handleModelChange() {
 			logger.WithError(err).Error("failure sending full data state")
 		} else {
 			rtx.currentIndex = dataState.EndIndex
-			logger.Infof("router synced data model to index %d", rtx.currentIndex)
+			rtx.timelineId = dataState.TimelineId
+			logger.Infof("router synced data model to index %d with on timeline: %s", rtx.currentIndex, rtx.timelineId)
 		}
 	}
 }

@@ -2,6 +2,7 @@
 
 ## What's New
 
+* Changes to backup/restore and standalone to HA migrations
 * Use `cluster` consistently for cluster operations
 * Event Doc and Consistency
 * ziti ops verify changes
@@ -51,12 +52,86 @@ The CLI tools under `ziti fabric raft` are now found at `ziti ops cluster`.
 
 The Raft APIs available in the fabric management API are now namespaced under Cluster instead.
 
+
+## Backup/Restore/HA Migrations
+
+What restoring from a DB snapshot has in common with migrating from a standalone setup to 
+a RAFT enabled one, is that the controller is changing in a way that the router might not
+notice. 
+
+Now that routers have a simplified data model, they need know if the controller database
+has gone backwards. In the case of a migration to an HA setup, they need to know that
+the data model index has changed, likely resetting back to close to zero. 
+
+To facilitate this, the database now has a timeline identifier. This is shared among 
+controllers and is sent to routers along with the data state. When the controller 
+restores to a snapshot of previous state, or when the the controller moves to a 
+raft/HA setup, the timeline identifier will change. 
+
+When the router requests data model changes, it will send along the current timeline
+identifier. If the controller sees that the timeline identifier is different, it knows
+to send down the full data state. 
+
+### Implementation Notes
+
+In general this is all handled behind the scenes. The current data model index and
+timeline identifier can be inspected on controllers and routers using:
+
+```
+ziti fabric inspect router-data-model-index
+```
+
+**Example**
+```
+$ ziti fabric inspect router-data-model-index 
+Results: (3)
+ctrl1.router-data-model-index
+index: 25
+timeline: MMt19ldHR
+
+vEcsw2kJ7Q.router-data-model-index
+index: 25
+timeline: MMt19ldHR
+
+ctrl2.router-data-model-index
+index: 25
+timeline: MMt19ldHR
+```
+
+Whenever we create a database snapshot now, the snapshot will contain a flag indicating
+that the timeline identifier needs to be changed. When a standalone controller starts
+up, if that flag is set, the controller changes the timeline identifier and resets the flag.
+
+When an HA cluster is initialized using an existing controller database it also changes the
+timeline id. 
+
+### HA DB Restore
+
+There's a new command to restore an HA cluster to an older DB snapshot.
+
+```
+ziti agent controller restore-from-db </path/to/database.file>
+```
+
+Note that when a controller is already up and running and receives a snapshot to apply, it
+will move the database into place and then shutdown, expecting to be restarted. This is
+because there is caching in various places and restartingi makes sure that everything is
+coherent with the changes database.
+
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/storage: [v0.3.15 -> v0.4.1](https://github.com/openziti/storage/compare/v0.3.15...v0.4.1)
+    * [Issue #94](https://github.com/openziti/storage/issues/94) - Snapshots aren't working correctly
+
 * github.com/openziti/ziti: [v1.3.3 -> v1.4.0](https://github.com/openziti/ziti/compare/v1.3.3...v1.4.0)
+    * [Issue #2549](https://github.com/openziti/ziti/issues/2549) - Handle Index Non HA to HA Transitions During Upgrades
+    * [Issue #2649](https://github.com/openziti/ziti/issues/2649) - Make restoring an HA cluster from a DB backup easier
+    * [Issue #2707](https://github.com/openziti/ziti/issues/2707) - Ensure database restores work with RDM enabled routers
+    * [Issue #2593](https://github.com/openziti/ziti/issues/2593) - Update event documentation with missing event types
     * [Issue #2720](https://github.com/openziti/ziti/issues/2720) - new verify oidc command on prints usage
     * [Issue #2546](https://github.com/openziti/ziti/issues/2546) - Use consistent terminology for HA
     * [Issue #2713](https://github.com/openziti/ziti/issues/2713) - Routers with no edge components shouldn't subscribe to RDM updates
+
 
 # Release 1.3.3
 
@@ -89,6 +164,7 @@ The Raft APIs available in the fabric management API are now namespaced under Cl
 * Bug Fixes
 
 ## Component Updates and Bug Fixes
+
 
 * github.com/openziti/ziti: [v1.3.0 -> v1.3.1](https://github.com/openziti/ziti/compare/v1.3.0...v1.3.1)
     * [Issue #2682](https://github.com/openziti/ziti/issues/2682) - HA Controller panics when bootstrapping by setting the db variable in the configuration

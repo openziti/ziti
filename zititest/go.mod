@@ -18,7 +18,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.56
 	github.com/openziti/identity v1.0.94
 	github.com/openziti/sdk-golang v0.23.44
-	github.com/openziti/storage v0.3.15
+	github.com/openziti/storage v0.4.1
 	github.com/openziti/transport/v2 v2.0.159
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
