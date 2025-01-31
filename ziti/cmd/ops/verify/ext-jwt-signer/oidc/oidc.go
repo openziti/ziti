@@ -277,10 +277,6 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 		Short: "test an external JWT signer for OIDC auth",
 		Long:  "tests and verifies an external JWT signer is configured correctly to authenticate using OIDC",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// Force display of the usage template
-			return cmd.Usage()
-		},
 		Run: func(cmd *cobra.Command, args []string) {
 			logLvl := logrus.InfoLevel
 			if opts.Verbose {
