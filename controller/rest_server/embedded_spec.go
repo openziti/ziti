@@ -165,6 +165,141 @@ func init() {
         }
       ]
     },
+    "/cluster/add-member": {
+      "post": {
+        "description": "Add a member to the controller cluster. Requires admin access.",
+        "tags": [
+          "Cluster"
+        ],
+        "summary": "Add a member to the controller cluster",
+        "operationId": "clusterMemberAdd",
+        "parameters": [
+          {
+            "description": "member parameters",
+            "name": "member",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/clusterMemberAdd"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/emptyResponse"
+          },
+          "400": {
+            "$ref": "#/responses/badRequestResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "429": {
+            "$ref": "#/responses/rateLimitedResponse"
+          }
+        }
+      }
+    },
+    "/cluster/list-members": {
+      "get": {
+        "description": "Returns all members of a cluster and their current status",
+        "tags": [
+          "Cluster"
+        ],
+        "summary": "Returns all members of a cluster and their current status",
+        "operationId": "clusterListMembers",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/clusterListMembersResponse"
+          },
+          "400": {
+            "$ref": "#/responses/badRequestResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "429": {
+            "$ref": "#/responses/rateLimitedResponse"
+          }
+        }
+      }
+    },
+    "/cluster/remove-member": {
+      "post": {
+        "description": "Remove a member from the controller cluster. Requires admin access.",
+        "tags": [
+          "Cluster"
+        ],
+        "summary": "Remove a member from the controller cluster",
+        "operationId": "clusterMemberRemove",
+        "parameters": [
+          {
+            "description": "member parameters",
+            "name": "member",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/clusterMemberRemove"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/emptyResponse"
+          },
+          "400": {
+            "$ref": "#/responses/badRequestResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          },
+          "429": {
+            "$ref": "#/responses/rateLimitedResponse"
+          }
+        }
+      }
+    },
+    "/cluster/transfer-leadership": {
+      "post": {
+        "description": "Attempts to transfer leadership to a different member of the cluster. Requires admin access.",
+        "tags": [
+          "Cluster"
+        ],
+        "summary": "Attempts to transfer leadership to a different member of the cluster",
+        "operationId": "clusterTransferLeadership",
+        "parameters": [
+          {
+            "description": "transfer operation parameters",
+            "name": "member",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/clusterTransferLeadership"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/emptyResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          },
+          "429": {
+            "$ref": "#/responses/rateLimitedResponse"
+          },
+          "500": {
+            "$ref": "#/responses/badRequestResponse"
+          }
+        }
+      }
+    },
     "/database": {
       "post": {
         "security": [
@@ -451,141 +586,6 @@ func init() {
           "$ref": "#/parameters/id"
         }
       ]
-    },
-    "/raft/add-member": {
-      "post": {
-        "description": "Add a member to the raft cluster. Requires admin access.",
-        "tags": [
-          "Raft"
-        ],
-        "summary": "Add a member to the raft cluster",
-        "operationId": "raftMemberAdd",
-        "parameters": [
-          {
-            "description": "member parameters",
-            "name": "member",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/raftMemberAdd"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/emptyResponse"
-          },
-          "400": {
-            "$ref": "#/responses/badRequestResponse"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorizedResponse"
-          },
-          "429": {
-            "$ref": "#/responses/rateLimitedResponse"
-          }
-        }
-      }
-    },
-    "/raft/list-members": {
-      "get": {
-        "description": "Returns all members of a cluster and their current status",
-        "tags": [
-          "Raft"
-        ],
-        "summary": "Returns all members of a cluster and their current status",
-        "operationId": "raftListMembers",
-        "responses": {
-          "200": {
-            "$ref": "#/responses/raftListMembersResponse"
-          },
-          "400": {
-            "$ref": "#/responses/badRequestResponse"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorizedResponse"
-          },
-          "429": {
-            "$ref": "#/responses/rateLimitedResponse"
-          }
-        }
-      }
-    },
-    "/raft/remove-member": {
-      "post": {
-        "description": "Remove a member from the raft cluster. Requires admin access.",
-        "tags": [
-          "Raft"
-        ],
-        "summary": "Remove a member from the raft cluster",
-        "operationId": "raftMemberRemove",
-        "parameters": [
-          {
-            "description": "member parameters",
-            "name": "member",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/raftMemberRemove"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/emptyResponse"
-          },
-          "400": {
-            "$ref": "#/responses/badRequestResponse"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorizedResponse"
-          },
-          "404": {
-            "$ref": "#/responses/notFoundResponse"
-          },
-          "429": {
-            "$ref": "#/responses/rateLimitedResponse"
-          }
-        }
-      }
-    },
-    "/raft/transfer-leadership": {
-      "post": {
-        "description": "Attempts to transfer leadership to a different member of the cluster. Requires admin access.",
-        "tags": [
-          "Raft"
-        ],
-        "summary": "Attempts to transfer leadership to a different member of the cluster",
-        "operationId": "raftTransferLeadership",
-        "parameters": [
-          {
-            "description": "transfer operation parameters",
-            "name": "member",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/raftTransferLeadership"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/emptyResponse"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorizedResponse"
-          },
-          "404": {
-            "$ref": "#/responses/notFoundResponse"
-          },
-          "429": {
-            "$ref": "#/responses/rateLimitedResponse"
-          },
-          "500": {
-            "$ref": "#/responses/badRequestResponse"
-          }
-        }
-      }
     },
     "/routers": {
       "get": {
@@ -1395,6 +1395,86 @@ func init() {
         "$ref": "#/definitions/circuitDetail"
       }
     },
+    "clusterMemberAdd": {
+      "type": "object",
+      "required": [
+        "address",
+        "isVoter"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "isVoter": {
+          "type": "boolean"
+        }
+      }
+    },
+    "clusterMemberListResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/clusterMemberListValue"
+          }
+        }
+      }
+    },
+    "clusterMemberListValue": {
+      "type": "object",
+      "required": [
+        "id",
+        "address",
+        "voter",
+        "leader",
+        "version",
+        "connected",
+        "readOnly"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "leader": {
+          "type": "boolean"
+        },
+        "readOnly": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "string"
+        },
+        "voter": {
+          "type": "boolean"
+        }
+      }
+    },
+    "clusterMemberRemove": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "clusterTransferLeadership": {
+      "type": "object",
+      "properties": {
+        "newLeaderId": {
+          "type": "string"
+        }
+      }
+    },
     "createEnvelope": {
       "type": "object",
       "properties": {
@@ -1925,86 +2005,6 @@ func init() {
           "items": {
             "$ref": "#/definitions/entityRef"
           }
-        }
-      }
-    },
-    "raftMemberAdd": {
-      "type": "object",
-      "required": [
-        "address",
-        "isVoter"
-      ],
-      "properties": {
-        "address": {
-          "type": "string"
-        },
-        "isVoter": {
-          "type": "boolean"
-        }
-      }
-    },
-    "raftMemberListResponse": {
-      "type": "object",
-      "properties": {
-        "data": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/raftMemberListValue"
-          }
-        }
-      }
-    },
-    "raftMemberListValue": {
-      "type": "object",
-      "required": [
-        "id",
-        "address",
-        "voter",
-        "leader",
-        "version",
-        "connected",
-        "readOnly"
-      ],
-      "properties": {
-        "address": {
-          "type": "string"
-        },
-        "connected": {
-          "type": "boolean"
-        },
-        "id": {
-          "type": "string"
-        },
-        "leader": {
-          "type": "boolean"
-        },
-        "readOnly": {
-          "type": "boolean"
-        },
-        "version": {
-          "type": "string"
-        },
-        "voter": {
-          "type": "boolean"
-        }
-      }
-    },
-    "raftMemberRemove": {
-      "type": "object",
-      "required": [
-        "id"
-      ],
-      "properties": {
-        "id": {
-          "type": "string"
-        }
-      }
-    },
-    "raftTransferLeadership": {
-      "type": "object",
-      "properties": {
-        "newLeaderId": {
-          "type": "string"
         }
       }
     },
@@ -2568,6 +2568,12 @@ func init() {
         }
       }
     },
+    "clusterListMembersResponse": {
+      "description": "A response to a cluster list-members request",
+      "schema": {
+        "$ref": "#/definitions/clusterMemberListResponse"
+      }
+    },
     "createResponse": {
       "description": "The create request was successful and the resource has been added at the following location",
       "schema": {
@@ -2718,12 +2724,6 @@ func init() {
       "description": "The patch request was successful and the resource has been altered",
       "schema": {
         "$ref": "#/definitions/empty"
-      }
-    },
-    "raftListMembersResponse": {
-      "description": "A response to a raft list-members request",
-      "schema": {
-        "$ref": "#/definitions/raftMemberListResponse"
       }
     },
     "rateLimitedResponse": {
@@ -3125,6 +3125,499 @@ func init() {
           "required": true
         }
       ]
+    },
+    "/cluster/add-member": {
+      "post": {
+        "description": "Add a member to the controller cluster. Requires admin access.",
+        "tags": [
+          "Cluster"
+        ],
+        "summary": "Add a member to the controller cluster",
+        "operationId": "clusterMemberAdd",
+        "parameters": [
+          {
+            "description": "member parameters",
+            "name": "member",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/clusterMemberAdd"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The resource requested is rate limited and the rate limit has been exceeded",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "causeMessage": "you have hit a rate limit in the requested operation",
+                  "code": "RATE_LIMITED",
+                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cluster/list-members": {
+      "get": {
+        "description": "Returns all members of a cluster and their current status",
+        "tags": [
+          "Cluster"
+        ],
+        "summary": "Returns all members of a cluster and their current status",
+        "operationId": "clusterListMembers",
+        "responses": {
+          "200": {
+            "description": "A response to a cluster list-members request",
+            "schema": {
+              "$ref": "#/definitions/clusterMemberListResponse"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The resource requested is rate limited and the rate limit has been exceeded",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "causeMessage": "you have hit a rate limit in the requested operation",
+                  "code": "RATE_LIMITED",
+                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cluster/remove-member": {
+      "post": {
+        "description": "Remove a member from the controller cluster. Requires admin access.",
+        "tags": [
+          "Cluster"
+        ],
+        "summary": "Remove a member from the controller cluster",
+        "operationId": "clusterMemberRemove",
+        "parameters": [
+          {
+            "description": "member parameters",
+            "name": "member",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/clusterMemberRemove"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The resource requested is rate limited and the rate limit has been exceeded",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "causeMessage": "you have hit a rate limit in the requested operation",
+                  "code": "RATE_LIMITED",
+                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cluster/transfer-leadership": {
+      "post": {
+        "description": "Attempts to transfer leadership to a different member of the cluster. Requires admin access.",
+        "tags": [
+          "Cluster"
+        ],
+        "summary": "Attempts to transfer leadership to a different member of the cluster",
+        "operationId": "clusterTransferLeadership",
+        "parameters": [
+          {
+            "description": "transfer operation parameters",
+            "name": "member",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/clusterTransferLeadership"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The resource requested is rate limited and the rate limit has been exceeded",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "causeMessage": "you have hit a rate limit in the requested operation",
+                  "code": "RATE_LIMITED",
+                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/database": {
       "post": {
@@ -3976,499 +4469,6 @@ func init() {
           "required": true
         }
       ]
-    },
-    "/raft/add-member": {
-      "post": {
-        "description": "Add a member to the raft cluster. Requires admin access.",
-        "tags": [
-          "Raft"
-        ],
-        "summary": "Add a member to the raft cluster",
-        "operationId": "raftMemberAdd",
-        "parameters": [
-          {
-            "description": "member parameters",
-            "name": "member",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/raftMemberAdd"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Base empty response",
-            "schema": {
-              "$ref": "#/definitions/empty"
-            }
-          },
-          "400": {
-            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "cause": {
-                    "details": {
-                      "context": "(root)",
-                      "field": "(root)",
-                      "property": "fooField3"
-                    },
-                    "field": "(root)",
-                    "message": "(root): fooField3 is required",
-                    "type": "required",
-                    "value": {
-                      "fooField": "abc",
-                      "fooField2": "def"
-                    }
-                  },
-                  "causeMessage": "schema validation failed",
-                  "code": "COULD_NOT_VALIDATE",
-                  "message": "The supplied request contains an invalid document",
-                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The currently supplied session does not have the correct access rights to request this resource",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "cause": "",
-                  "causeMessage": "",
-                  "code": "UNAUTHORIZED",
-                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
-                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "The resource requested is rate limited and the rate limit has been exceeded",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "causeMessage": "you have hit a rate limit in the requested operation",
-                  "code": "RATE_LIMITED",
-                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
-                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/raft/list-members": {
-      "get": {
-        "description": "Returns all members of a cluster and their current status",
-        "tags": [
-          "Raft"
-        ],
-        "summary": "Returns all members of a cluster and their current status",
-        "operationId": "raftListMembers",
-        "responses": {
-          "200": {
-            "description": "A response to a raft list-members request",
-            "schema": {
-              "$ref": "#/definitions/raftMemberListResponse"
-            }
-          },
-          "400": {
-            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "cause": {
-                    "details": {
-                      "context": "(root)",
-                      "field": "(root)",
-                      "property": "fooField3"
-                    },
-                    "field": "(root)",
-                    "message": "(root): fooField3 is required",
-                    "type": "required",
-                    "value": {
-                      "fooField": "abc",
-                      "fooField2": "def"
-                    }
-                  },
-                  "causeMessage": "schema validation failed",
-                  "code": "COULD_NOT_VALIDATE",
-                  "message": "The supplied request contains an invalid document",
-                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The currently supplied session does not have the correct access rights to request this resource",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "cause": "",
-                  "causeMessage": "",
-                  "code": "UNAUTHORIZED",
-                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
-                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "The resource requested is rate limited and the rate limit has been exceeded",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "causeMessage": "you have hit a rate limit in the requested operation",
-                  "code": "RATE_LIMITED",
-                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
-                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/raft/remove-member": {
-      "post": {
-        "description": "Remove a member from the raft cluster. Requires admin access.",
-        "tags": [
-          "Raft"
-        ],
-        "summary": "Remove a member from the raft cluster",
-        "operationId": "raftMemberRemove",
-        "parameters": [
-          {
-            "description": "member parameters",
-            "name": "member",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/raftMemberRemove"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Base empty response",
-            "schema": {
-              "$ref": "#/definitions/empty"
-            }
-          },
-          "400": {
-            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "cause": {
-                    "details": {
-                      "context": "(root)",
-                      "field": "(root)",
-                      "property": "fooField3"
-                    },
-                    "field": "(root)",
-                    "message": "(root): fooField3 is required",
-                    "type": "required",
-                    "value": {
-                      "fooField": "abc",
-                      "fooField2": "def"
-                    }
-                  },
-                  "causeMessage": "schema validation failed",
-                  "code": "COULD_NOT_VALIDATE",
-                  "message": "The supplied request contains an invalid document",
-                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The currently supplied session does not have the correct access rights to request this resource",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "cause": "",
-                  "causeMessage": "",
-                  "code": "UNAUTHORIZED",
-                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
-                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The requested resource does not exist",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {
-                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
-                    }
-                  },
-                  "cause": null,
-                  "causeMessage": "",
-                  "code": "NOT_FOUND",
-                  "message": "The resource requested was not found or is no longer available",
-                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "The resource requested is rate limited and the rate limit has been exceeded",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "causeMessage": "you have hit a rate limit in the requested operation",
-                  "code": "RATE_LIMITED",
-                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
-                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/raft/transfer-leadership": {
-      "post": {
-        "description": "Attempts to transfer leadership to a different member of the cluster. Requires admin access.",
-        "tags": [
-          "Raft"
-        ],
-        "summary": "Attempts to transfer leadership to a different member of the cluster",
-        "operationId": "raftTransferLeadership",
-        "parameters": [
-          {
-            "description": "transfer operation parameters",
-            "name": "member",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/raftTransferLeadership"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Base empty response",
-            "schema": {
-              "$ref": "#/definitions/empty"
-            }
-          },
-          "401": {
-            "description": "The currently supplied session does not have the correct access rights to request this resource",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "cause": "",
-                  "causeMessage": "",
-                  "code": "UNAUTHORIZED",
-                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
-                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The requested resource does not exist",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {
-                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
-                    }
-                  },
-                  "cause": null,
-                  "causeMessage": "",
-                  "code": "NOT_FOUND",
-                  "message": "The resource requested was not found or is no longer available",
-                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "The resource requested is rate limited and the rate limit has been exceeded",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "causeMessage": "you have hit a rate limit in the requested operation",
-                  "code": "RATE_LIMITED",
-                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
-                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
-            "schema": {
-              "$ref": "#/definitions/apiErrorEnvelope"
-            },
-            "examples": {
-              "application/json": {
-                "error": {
-                  "args": {
-                    "urlVars": {}
-                  },
-                  "cause": {
-                    "details": {
-                      "context": "(root)",
-                      "field": "(root)",
-                      "property": "fooField3"
-                    },
-                    "field": "(root)",
-                    "message": "(root): fooField3 is required",
-                    "type": "required",
-                    "value": {
-                      "fooField": "abc",
-                      "fooField2": "def"
-                    }
-                  },
-                  "causeMessage": "schema validation failed",
-                  "code": "COULD_NOT_VALIDATE",
-                  "message": "The supplied request contains an invalid document",
-                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
-                },
-                "meta": {
-                  "apiEnrollmentVersion": "0.0.1",
-                  "apiVersion": "0.0.1"
-                }
-              }
-            }
-          }
-        }
-      }
     },
     "/routers": {
       "get": {
@@ -6991,6 +6991,86 @@ func init() {
         "$ref": "#/definitions/circuitDetail"
       }
     },
+    "clusterMemberAdd": {
+      "type": "object",
+      "required": [
+        "address",
+        "isVoter"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "isVoter": {
+          "type": "boolean"
+        }
+      }
+    },
+    "clusterMemberListResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/clusterMemberListValue"
+          }
+        }
+      }
+    },
+    "clusterMemberListValue": {
+      "type": "object",
+      "required": [
+        "id",
+        "address",
+        "voter",
+        "leader",
+        "version",
+        "connected",
+        "readOnly"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "leader": {
+          "type": "boolean"
+        },
+        "readOnly": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "string"
+        },
+        "voter": {
+          "type": "boolean"
+        }
+      }
+    },
+    "clusterMemberRemove": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "clusterTransferLeadership": {
+      "type": "object",
+      "properties": {
+        "newLeaderId": {
+          "type": "string"
+        }
+      }
+    },
     "createEnvelope": {
       "type": "object",
       "properties": {
@@ -7521,86 +7601,6 @@ func init() {
           "items": {
             "$ref": "#/definitions/entityRef"
           }
-        }
-      }
-    },
-    "raftMemberAdd": {
-      "type": "object",
-      "required": [
-        "address",
-        "isVoter"
-      ],
-      "properties": {
-        "address": {
-          "type": "string"
-        },
-        "isVoter": {
-          "type": "boolean"
-        }
-      }
-    },
-    "raftMemberListResponse": {
-      "type": "object",
-      "properties": {
-        "data": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/raftMemberListValue"
-          }
-        }
-      }
-    },
-    "raftMemberListValue": {
-      "type": "object",
-      "required": [
-        "id",
-        "address",
-        "voter",
-        "leader",
-        "version",
-        "connected",
-        "readOnly"
-      ],
-      "properties": {
-        "address": {
-          "type": "string"
-        },
-        "connected": {
-          "type": "boolean"
-        },
-        "id": {
-          "type": "string"
-        },
-        "leader": {
-          "type": "boolean"
-        },
-        "readOnly": {
-          "type": "boolean"
-        },
-        "version": {
-          "type": "string"
-        },
-        "voter": {
-          "type": "boolean"
-        }
-      }
-    },
-    "raftMemberRemove": {
-      "type": "object",
-      "required": [
-        "id"
-      ],
-      "properties": {
-        "id": {
-          "type": "string"
-        }
-      }
-    },
-    "raftTransferLeadership": {
-      "type": "object",
-      "properties": {
-        "newLeaderId": {
-          "type": "string"
         }
       }
     },
@@ -8169,6 +8169,12 @@ func init() {
         }
       }
     },
+    "clusterListMembersResponse": {
+      "description": "A response to a cluster list-members request",
+      "schema": {
+        "$ref": "#/definitions/clusterMemberListResponse"
+      }
+    },
     "createResponse": {
       "description": "The create request was successful and the resource has been added at the following location",
       "schema": {
@@ -8319,12 +8325,6 @@ func init() {
       "description": "The patch request was successful and the resource has been altered",
       "schema": {
         "$ref": "#/definitions/empty"
-      }
-    },
-    "raftListMembersResponse": {
-      "description": "A response to a raft list-members request",
-      "schema": {
-        "$ref": "#/definitions/raftMemberListResponse"
       }
     },
     "rateLimitedResponse": {

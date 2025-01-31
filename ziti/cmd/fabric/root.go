@@ -18,7 +18,7 @@ package fabric
 
 import (
 	"github.com/Jeffail/gabs"
-	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
+	restClient "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
@@ -35,7 +35,6 @@ func NewFabricCmd(p common.OptionsProvider) *cobra.Command {
 	fabricCmd.AddCommand(newInspectCmd(p))
 	fabricCmd.AddCommand(newDbCmd(p))
 	fabricCmd.AddCommand(newStreamCommand(p))
-	fabricCmd.AddCommand(newRaftCmd(p))
 	fabricCmd.AddCommand(newValidateCommand(p))
 	return fabricCmd
 }
@@ -130,7 +129,7 @@ func updateEntityOfType(entityType string, body string, options *api.Options, me
 	return util.ControllerUpdate(util.FabricAPI, entityType, body, options.Out, method, options.OutputJSONRequest, options.OutputJSONResponse, options.Timeout, options.Verbose)
 }
 
-func WithFabricClient(clientOpts util.ClientOpts, f func(client *fabric_rest_client.ZitiFabric) error) error {
+func WithFabricClient(clientOpts util.ClientOpts, f func(client *restClient.ZitiFabric) error) error {
 	client, err := util.NewFabricManagementClient(clientOpts)
 	if err != nil {
 		return err

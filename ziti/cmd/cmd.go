@@ -144,6 +144,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	}
 
 	opsCommands.AddCommand(database.NewCmdDb(out, err))
+	opsCommands.AddCommand(fabric.NewClusterCmd(p))
 	opsCommands.AddCommand(NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
 	opsCommands.AddCommand(verify.NewVerifyCommand(out, err, context.Background()))

@@ -36,10 +36,10 @@ import (
 
 	"github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/rest_server/operations/circuit"
+	"github.com/openziti/ziti/controller/rest_server/operations/cluster"
 	"github.com/openziti/ziti/controller/rest_server/operations/database"
 	"github.com/openziti/ziti/controller/rest_server/operations/inspect"
 	"github.com/openziti/ziti/controller/rest_server/operations/link"
-	"github.com/openziti/ziti/controller/rest_server/operations/raft"
 	"github.com/openziti/ziti/controller/rest_server/operations/router"
 	"github.com/openziti/ziti/controller/rest_server/operations/service"
 	"github.com/openziti/ziti/controller/rest_server/operations/terminator"
@@ -72,6 +72,26 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 	if api.DatabaseCheckDataIntegrityHandler == nil {
 		api.DatabaseCheckDataIntegrityHandler = database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.CheckDataIntegrity has not yet been implemented")
+		})
+	}
+	if api.ClusterClusterListMembersHandler == nil {
+		api.ClusterClusterListMembersHandler = cluster.ClusterListMembersHandlerFunc(func(params cluster.ClusterListMembersParams) middleware.Responder {
+			return middleware.NotImplemented("operation cluster.ClusterListMembers has not yet been implemented")
+		})
+	}
+	if api.ClusterClusterMemberAddHandler == nil {
+		api.ClusterClusterMemberAddHandler = cluster.ClusterMemberAddHandlerFunc(func(params cluster.ClusterMemberAddParams) middleware.Responder {
+			return middleware.NotImplemented("operation cluster.ClusterMemberAdd has not yet been implemented")
+		})
+	}
+	if api.ClusterClusterMemberRemoveHandler == nil {
+		api.ClusterClusterMemberRemoveHandler = cluster.ClusterMemberRemoveHandlerFunc(func(params cluster.ClusterMemberRemoveParams) middleware.Responder {
+			return middleware.NotImplemented("operation cluster.ClusterMemberRemove has not yet been implemented")
+		})
+	}
+	if api.ClusterClusterTransferLeadershipHandler == nil {
+		api.ClusterClusterTransferLeadershipHandler = cluster.ClusterTransferLeadershipHandlerFunc(func(params cluster.ClusterTransferLeadershipParams) middleware.Responder {
+			return middleware.NotImplemented("operation cluster.ClusterTransferLeadership has not yet been implemented")
 		})
 	}
 	if api.DatabaseCreateDatabaseSnapshotHandler == nil {
@@ -217,26 +237,6 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 	if api.TerminatorPatchTerminatorHandler == nil {
 		api.TerminatorPatchTerminatorHandler = terminator.PatchTerminatorHandlerFunc(func(params terminator.PatchTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.PatchTerminator has not yet been implemented")
-		})
-	}
-	if api.RaftRaftListMembersHandler == nil {
-		api.RaftRaftListMembersHandler = raft.RaftListMembersHandlerFunc(func(params raft.RaftListMembersParams) middleware.Responder {
-			return middleware.NotImplemented("operation raft.RaftListMembers has not yet been implemented")
-		})
-	}
-	if api.RaftRaftMemberAddHandler == nil {
-		api.RaftRaftMemberAddHandler = raft.RaftMemberAddHandlerFunc(func(params raft.RaftMemberAddParams) middleware.Responder {
-			return middleware.NotImplemented("operation raft.RaftMemberAdd has not yet been implemented")
-		})
-	}
-	if api.RaftRaftMemberRemoveHandler == nil {
-		api.RaftRaftMemberRemoveHandler = raft.RaftMemberRemoveHandlerFunc(func(params raft.RaftMemberRemoveParams) middleware.Responder {
-			return middleware.NotImplemented("operation raft.RaftMemberRemove has not yet been implemented")
-		})
-	}
-	if api.RaftRaftTransferLeadershipHandler == nil {
-		api.RaftRaftTransferLeadershipHandler = raft.RaftTransferLeadershipHandlerFunc(func(params raft.RaftTransferLeadershipParams) middleware.Responder {
-			return middleware.NotImplemented("operation raft.RaftTransferLeadership has not yet been implemented")
 		})
 	}
 	if api.RouterUpdateRouterHandler == nil {
