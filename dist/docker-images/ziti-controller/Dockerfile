@@ -4,7 +4,7 @@ ARG ZITI_CLI_TAG="latest"
 ARG ZITI_CLI_IMAGE="docker.io/openziti/ziti-cli"
 
 # dependabot bumps this version based on release to Hub
-FROM openziti/ziti-console-assets:3.7.0 AS ziti-console
+FROM openziti/ziti-console-assets:3.8.0 AS ziti-console
 
 FROM ${ZITI_CLI_IMAGE}:${ZITI_CLI_TAG}
 
