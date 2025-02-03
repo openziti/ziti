@@ -45,7 +45,7 @@ func (importer *Importer) ProcessServicePolicies(input map[string][]interface{})
 				"servicePolicyId": *existing.ID,
 			}).
 				Info("Found existing ServicePolicy, skipping create")
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
 			continue
 		}
 
@@ -64,8 +64,8 @@ func (importer *Importer) ProcessServicePolicies(input map[string][]interface{})
 		create.IdentityRoles = identityRoles
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
-		if importer.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
+		if importer.LoginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating ServicePolicy")
 		}
 		created, createErr := importer.client.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
@@ -81,7 +81,7 @@ func (importer *Importer) ProcessServicePolicies(input map[string][]interface{})
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
+		if importer.LoginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":            *create.Name,
 				"servicePolicyId": created.Payload.Data.ID,

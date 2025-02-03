@@ -44,7 +44,7 @@ func (importer *Importer) ProcessEdgeRouterPolicies(input map[string][]interface
 				"edgeRouterPolicyId": *existing.ID,
 			}).
 				Info("Found existing EdgeRouterPolicy, skipping create")
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping EdgeRouterPolicy %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping EdgeRouterPolicy %s\r", *create.Name)
 			continue
 		}
 
@@ -63,8 +63,8 @@ func (importer *Importer) ProcessEdgeRouterPolicies(input map[string][]interface
 		create.IdentityRoles = identityRoles
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
-		if importer.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
+		if importer.LoginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating EdgeRouterPolicy")
 		}
 		created, createErr := importer.client.EdgeRouterPolicy.CreateEdgeRouterPolicy(&edge_router_policy.CreateEdgeRouterPolicyParams{Policy: create}, nil)
@@ -81,7 +81,7 @@ func (importer *Importer) ProcessEdgeRouterPolicies(input map[string][]interface
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
+		if importer.LoginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":           *create.Name,
 				"routerPolicyId": created.Payload.Data.ID,

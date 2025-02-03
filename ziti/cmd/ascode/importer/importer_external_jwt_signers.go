@@ -42,20 +42,20 @@ func (importer *Importer) ProcessExternalJwtSigners(input map[string][]interface
 		// see if the signer already exists
 		existing := mgmt.ExternalJWTSignerFromFilter(importer.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.loginOpts.Verbose {
+			if importer.LoginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":                *create.Name,
 					"externalJwtSignerId": *existing.ID,
 				}).
 					Info("Found existing ExtJWTSigner, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping ExtJWTSigner %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping ExtJWTSigner %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating ExtJWTSigner %s\r", *create.Name)
-		if importer.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Creating ExtJWTSigner %s\r", *create.Name)
+		if importer.LoginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating ExtJWTSigner")
 		}
 		created, createErr := importer.client.ExternalJWTSigner.CreateExternalJWTSigner(&external_jwt_signer.CreateExternalJWTSignerParams{ExternalJWTSigner: create}, nil)
@@ -73,7 +73,7 @@ func (importer *Importer) ProcessExternalJwtSigners(input map[string][]interface
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
+		if importer.LoginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":                *create.Name,
 				"externalJwtSignerId": created.Payload.Data.ID,

@@ -49,7 +49,7 @@ func (importer *Importer) ProcessServices(input map[string][]interface{}) (map[s
 				"serviceId": *existing.ID,
 			}).
 				Info("Found existing Service, skipping create")
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping Service %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping Service %s\r", *create.Name)
 			continue
 		}
 
@@ -77,8 +77,8 @@ func (importer *Importer) ProcessServices(input map[string][]interface{}) (map[s
 		create.Configs = configIds
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating Service %s\r", *create.Name)
-		if importer.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Creating Service %s\r", *create.Name)
+		if importer.LoginOpts.Verbose {
 			log.WithField("name", *create.Name).Debug("Creating Service")
 		}
 		created, createErr := importer.client.Service.CreateService(&service.CreateServiceParams{Service: create}, nil)
@@ -94,7 +94,7 @@ func (importer *Importer) ProcessServices(input map[string][]interface{}) (map[s
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
+		if importer.LoginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":      *create.Name,
 				"serviceId": created.Payload.Data.ID,

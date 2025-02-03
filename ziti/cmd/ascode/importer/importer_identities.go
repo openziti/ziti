@@ -43,14 +43,14 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 
 		existing := mgmt.IdentityFromFilter(importer.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.loginOpts.Verbose {
+			if importer.LoginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":       *create.Name,
 					"identityId": *existing.ID,
 				}).
 					Info("Found existing Identity, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping Identity %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping Identity %s\r", *create.Name)
 			continue
 		}
 
@@ -79,7 +79,7 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating Identity %s\r", *create.Name)
+		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Creating Identity %s\r", *create.Name)
 		created, createErr := importer.client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
@@ -94,7 +94,7 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
+		if importer.LoginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":       *create.Name,
 				"identityId": created.Payload.Data.ID,

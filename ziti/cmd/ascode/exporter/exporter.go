@@ -38,16 +38,16 @@ import (
 var log = pfxlog.Logger()
 
 type Exporter struct {
-	loginOpts        edge.LoginOptions
-	client           *rest_management_api_client.ZitiEdgeManagement
-	ofJson           bool
-	ofYaml           bool
+	LoginOpts        edge.LoginOptions
+	OfJson           bool
+	OfYaml           bool
+	Filename         string
 	file             *os.File
-	filename         string
 	configCache      map[string]any
 	configTypeCache  map[string]any
 	authPolicyCache  map[string]any
 	externalJwtCache map[string]any
+	client           *rest_management_api_client.ZitiEdgeManagement
 }
 
 var output Output
@@ -55,7 +55,7 @@ var output Output
 func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	exporter := &Exporter{}
-	exporter.loginOpts = edge.LoginOptions{}
+	exporter.LoginOpts = edge.LoginOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "export [entity]",
@@ -86,18 +86,18 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	v.AutomaticEnv()
 
-	edge.AddLoginFlags(cmd, &exporter.loginOpts)
+	edge.AddLoginFlags(cmd, &exporter.LoginOpts)
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVar(&exporter.ofJson, "json", true, "Output in JSON")
-	cmd.Flags().BoolVar(&exporter.ofYaml, "yaml", false, "Output in YAML")
-	cmd.Flags().StringVar(&exporter.loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
+	cmd.Flags().BoolVar(&exporter.OfJson, "json", true, "Output in JSON")
+	cmd.Flags().BoolVar(&exporter.OfYaml, "yaml", false, "Output in YAML")
+	cmd.Flags().StringVar(&exporter.LoginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
 	ziticobra.SetHelpTemplate(cmd)
 
-	cmd.Flags().StringVarP(&exporter.filename, "output-file", "o", "", "Write output to local file")
+	cmd.Flags().StringVarP(&exporter.Filename, "output-file", "o", "", "Write output to local file")
 
-	exporter.loginOpts.Out = out
-	exporter.loginOpts.Err = errOut
+	exporter.LoginOpts.Out = out
+	exporter.LoginOpts.Err = errOut
 
 	return cmd
 }
@@ -105,7 +105,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 func (exporter *Exporter) Execute(input []string) error {
 
 	logLvl := logrus.InfoLevel
-	if exporter.loginOpts.Verbose {
+	if exporter.LoginOpts.Verbose {
 		logLvl = logrus.DebugLevel
 	}
 
@@ -113,19 +113,19 @@ func (exporter *Exporter) Execute(input []string) error {
 	internal.ConfigureLogFormat(logLvl)
 
 	var err error
-	exporter.client, err = exporter.loginOpts.NewMgmtClient()
+	exporter.client, err = exporter.LoginOpts.NewMgmtClient()
 	if err != nil {
 		return err
 	}
 
-	if exporter.filename != "" {
-		o, err := NewOutputToFile(exporter.loginOpts.Verbose, exporter.ofJson, exporter.ofYaml, exporter.filename, exporter.loginOpts.Err)
+	if exporter.Filename != "" {
+		o, err := NewOutputToFile(exporter.LoginOpts.Verbose, exporter.OfJson, exporter.OfYaml, exporter.Filename, exporter.LoginOpts.Err)
 		if err != nil {
 			return err
 		}
 		output = *o
 	} else {
-		o, err := NewOutputToWriter(exporter.loginOpts.Verbose, exporter.ofJson, exporter.ofYaml, exporter.loginOpts.Out, exporter.loginOpts.Err)
+		o, err := NewOutputToWriter(exporter.LoginOpts.Verbose, exporter.OfJson, exporter.OfYaml, exporter.LoginOpts.Out, exporter.LoginOpts.Err)
 		if err != nil {
 			return err
 		}
@@ -273,7 +273,7 @@ func (exporter *Exporter) getEntities(entityName string, count ClientCount, list
 	more := true
 	for more {
 		resp, err := list(&offset, &limit)
-		_, _ = internal.FPrintfReusingLine(exporter.loginOpts.Err, "Reading %d/%d %s", offset, totalCount, entityName)
+		_, _ = internal.FPrintfReusingLine(exporter.LoginOpts.Err, "Reading %d/%d %s", offset, totalCount, entityName)
 		if err != nil {
 			return nil, errors.Join(errors.New("error reading "+entityName), err)
 		}
@@ -292,7 +292,7 @@ func (exporter *Exporter) getEntities(entityName string, count ClientCount, list
 		offset += limit
 	}
 
-	_, _ = internal.FPrintflnReusingLine(exporter.loginOpts.Err, "Read %d %s", len(result), entityName)
+	_, _ = internal.FPrintflnReusingLine(exporter.LoginOpts.Err, "Read %d %s", len(result), entityName)
 
 	return result, nil
 

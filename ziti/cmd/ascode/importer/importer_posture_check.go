@@ -72,7 +72,7 @@ func (importer *Importer) ProcessPostureChecks(input map[string][]interface{}) (
 		// see if the posture check already exists
 		existing := mgmt.PostureCheckFromFilter(importer.client, mgmt.NameFilter(*create.Name()))
 		if existing != nil {
-			if importer.loginOpts.Verbose {
+			if importer.LoginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":           *create.Name(),
 					"postureCheckId": (*existing).ID(),
@@ -80,13 +80,13 @@ func (importer *Importer) ProcessPostureChecks(input map[string][]interface{}) (
 				}).
 					Info("Found existing PostureCheck, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping PostureCheck %s\r", *create.Name())
+			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping PostureCheck %s\r", *create.Name())
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating PostureCheck %s\r", *create.Name())
-		if importer.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Creating PostureCheck %s\r", *create.Name())
+		if importer.LoginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":   *create.Name(),
 				"typeId": create.TypeID(),
@@ -106,7 +106,7 @@ func (importer *Importer) ProcessPostureChecks(input map[string][]interface{}) (
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
+		if importer.LoginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":           *create.Name(),
 				"postureCheckId": created.Payload.Data.ID,

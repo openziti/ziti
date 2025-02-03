@@ -41,20 +41,20 @@ func (importer *Importer) ProcessConfigTypes(input map[string][]interface{}) (ma
 		// see if the config type already exists
 		existing := mgmt.ConfigTypeFromFilter(importer.client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.loginOpts.Verbose {
+			if importer.LoginOpts.Verbose {
 				log.WithFields(map[string]interface{}{
 					"name":         *create.Name,
 					"configTypeId": *existing.ID,
 				}).
 					Info("Found existing ConfigType, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping ConfigType %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping ConfigType %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating ConfigType %s\r", *create.Name)
-		if importer.loginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Creating ConfigType %s\r", *create.Name)
+		if importer.LoginOpts.Verbose {
 			log.WithField("name", *create.Name).
 				Debug("Creating ConfigType")
 		}
@@ -73,7 +73,7 @@ func (importer *Importer) ProcessConfigTypes(input map[string][]interface{}) (ma
 			return nil, createErr
 		}
 
-		if importer.loginOpts.Verbose {
+		if importer.LoginOpts.Verbose {
 			log.WithFields(map[string]interface{}{
 				"name":         *create.Name,
 				"configTypeId": created.Payload.Data.ID,
