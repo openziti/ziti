@@ -36,7 +36,6 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/openziti/ziti/router"
-	"github.com/openziti/ziti/router/internal/edgerouter"
 )
 
 type apiPost struct {
@@ -46,37 +45,18 @@ type apiPost struct {
 
 type Enroller interface {
 	Enroll(jwt []byte, silent bool, engine string, keyAlg ziti.KeyAlgVar) error
-	LoadConfig(cfgmap map[interface{}]interface{}) error
 }
 
 type RestEnroller struct {
-	config *edgerouter.Config
+	fullConfig *router.Config
+	config     *router.EdgeConfig
 }
 
-func NewRestEnroller() Enroller {
-	return &RestEnroller{}
-}
-
-func (re *RestEnroller) parseCfgMap(cfgmap map[interface{}]interface{}) (*edgerouter.Config, error) {
-	routerConfig := &router.Config{}
-
-	edgeConfig := edgerouter.NewConfig(routerConfig)
-	if err := edgeConfig.LoadConfigFromMapForEnrollment(cfgmap); err != nil {
-		return nil, fmt.Errorf("could not load edge router config: %v", err)
+func NewRestEnroller(config *router.Config) Enroller {
+	return &RestEnroller{
+		fullConfig: config,
+		config:     config.Edge,
 	}
-
-	return edgeConfig, nil
-}
-
-func (re *RestEnroller) LoadConfig(cfgmap map[interface{}]interface{}) error {
-	var err error
-	re.config, err = re.parseCfgMap(cfgmap)
-
-	if err != nil {
-		return fmt.Errorf("error parsing configuration: %s", err)
-	}
-
-	return nil
 }
 
 func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg ziti.KeyAlgVar) error {
@@ -86,10 +66,9 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 		return errors.New("no configuration provided")
 	}
 
-	identityConfig := re.config.EnrollmentIdentityConfig
+	identityConfig := re.fullConfig.IdConfig
 
 	if re.config.RouterConfig.Id != nil {
-		identityConfig = re.config.RouterConfig.Id.GetConfig()
 		log.Warnf("identity detected, note that any identity information will be overwritten when enrolling")
 	}
 
@@ -201,6 +180,10 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 
 	if err = os.WriteFile(identityConfig.CA, []byte(resp.Ca), 0600); err != nil {
 		return fmt.Errorf("unable to write CA certs to [%s]: %s", identityConfig.CA, err)
+	}
+
+	if err = re.fullConfig.SaveControllerEndpoints(ec.Controllers); err != nil {
+		return err
 	}
 
 	log.Info("registration complete")

@@ -13,8 +13,8 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/internal/edgerouter"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"math/big"
@@ -536,7 +536,7 @@ func newCertChecker() (*CertExpirationChecker, func()) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	return NewCertExpirationChecker(id, &edgerouter.Config{}, ctrls, closeNotify), func() { close(closeNotify) }
+	return NewCertExpirationChecker(id, &router.EdgeConfig{}, ctrls, closeNotify), func() { close(closeNotify) }
 }
 
 type simpleTestUnderlay struct{}

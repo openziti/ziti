@@ -59,15 +59,27 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 		entity.Token = uuid.New().String()
 	}
 
-	peerControllers := env.GetPeerControllerAddresses()
+	ctrls, err := env.GetManagers().Controller.BaseList("true limit none")
+	if err != nil {
+		return fmt.Errorf("could not get controllers to populate JWT %w", err)
+	}
 
-	for i, addr := range peerControllers {
-		peerControllers[i] = "https://" + addr
+	var controllers []string
+	for _, ctrl := range ctrls.Entities {
+		controllers = append(controllers, ctrl.CtrlAddress)
+	}
+
+	if len(controllers) == 0 {
+		if options := env.GetConfig().Ctrl.Options; options != nil {
+			if advertiseAddr := env.GetConfig().Ctrl.Options.AdvertiseAddress; advertiseAddr != nil {
+				controllers = append(controllers, (*advertiseAddr).String())
+			}
+		}
 	}
 
 	enrollmentClaims := &ziti.EnrollmentClaims{
 		EnrollmentMethod: entity.Method,
-		Controllers:      peerControllers,
+		Controllers:      controllers,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Audience:  []string{""},
 			ExpiresAt: &jwt.NumericDate{Time: expiresAt},

@@ -18,9 +18,9 @@ package router
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/router/enroll"
-	"github.com/openziti/ziti/router"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/router"
+	"github.com/openziti/ziti/router/enroll"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -49,15 +49,10 @@ func NewEnrollGwCmd() *cobra.Command {
 
 func enrollGw(cmd *cobra.Command, args []string) {
 	log := pfxlog.Logger()
-	if cfgmap, err := router.LoadConfigMap(args[0]); err == nil {
-		router.SetConfigMapFlags(cfgmap, getFlags(cmd))
+	if cfg, err := router.LoadConfigWithOptions(args[0], false); err == nil {
+		cfg.SetFlags(getFlags(cmd))
 
-		enroller := enroll.NewRestEnroller()
-		err := enroller.LoadConfig(cfgmap)
-
-		if err != nil {
-			log.Panicf("could not load config: %s", err)
-		}
+		enroller := enroll.NewRestEnroller(cfg)
 
 		jwtBuf, err := os.ReadFile(*jwtPath)
 		if err != nil {

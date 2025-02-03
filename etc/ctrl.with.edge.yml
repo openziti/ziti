@@ -61,6 +61,8 @@ identity:
 ctrl:
   listener: tls:127.0.0.1:6262
   options:
+    advertiseAddress: tls:127.0.0.1:6262
+
     # (optional) settings
     # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
     #maxQueuedConnects:      50
@@ -82,7 +84,7 @@ ctrl:
 events:
   jsonLogger:
     subscriptions:
-#      - type: apiSession
+      - type: apiSession
 #      - type: circuit
 #      - type: connect
 #      - type: sdk

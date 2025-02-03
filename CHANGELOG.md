@@ -9,6 +9,7 @@
     * Moved `ziti ops verify-network` to `ziti ops verify network`
     * Moved `ziti ops verify traffic` to `ziti ops verify traffic`
     * Added `ziti ops verify ext-jwt-signer oidc` to help users with configuring OIDC external auth 
+* Router Controller Endpoint Change#s
 * Bug fixes
 
 ## Event Doc and Consistency
@@ -118,12 +119,59 @@ will move the database into place and then shutdown, expecting to be restarted. 
 because there is caching in various places and restartingi makes sure that everything is
 coherent with the changes database.
 
+## Router Controller Endpoint Updates
+
+### Endpoints File Config
+
+The config setting for controller the endpoints file location has changed.
+
+It was:
+
+```
+ctrl:
+  dataDir: /path/to/dir
+```
+
+The endpoints file would live in that directory but always be called endpoints.
+
+This is replaced by a more flexible `endpointsFile`.
+
+```
+ctrl:
+  endpointsFile: /path/to/endpoints.file
+```
+
+The default location is unchanged, which is a file named `endpoints` in the same
+directory as the router config file.
+
+### Enrollment
+
+The router enrollment will now contain the set of known controllers at the time
+the router as enrollled. This also works for standalone controllers, as long as
+the `advertiseAddress` settings is set.
+
+Example
+
+```
+ctrl:
+  listener: tls:0.0.0.0:6262
+  options:
+    advertiseAddress: tls:ctrl1.ziti.example.com
+```
+
+This means that the controller no longer needs to be set manually in the config 
+file, enrollment should handle initializing the value appropriately.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/storage: [v0.3.15 -> v0.4.1](https://github.com/openziti/storage/compare/v0.3.15...v0.4.1)
     * [Issue #94](https://github.com/openziti/storage/issues/94) - Snapshots aren't working correctly
 
 * github.com/openziti/ziti: [v1.3.3 -> v1.4.0](https://github.com/openziti/ziti/compare/v1.3.3...v1.4.0)
+    * [Issue #2724](https://github.com/openziti/ziti/issues/2724) - Allow configuring endpoints file full path instead of directory
+    * [Issue #2728](https://github.com/openziti/ziti/issues/2728) - Write initial router endpoints file based on ctrls in JWT
+    * [Issue #2108](https://github.com/openziti/ziti/issues/2108) - Add `ctrls` property to non-ha router enrollment
+    * [Issue #2729](https://github.com/openziti/ziti/issues/2729) - Enrollment doesn't contain controller which created the enrollment
     * [Issue #2549](https://github.com/openziti/ziti/issues/2549) - Handle Index Non HA to HA Transitions During Upgrades
     * [Issue #2649](https://github.com/openziti/ziti/issues/2649) - Make restoring an HA cluster from a DB backup easier
     * [Issue #2707](https://github.com/openziti/ziti/issues/2707) - Ensure database restores work with RDM enabled routers

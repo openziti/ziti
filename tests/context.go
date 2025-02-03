@@ -467,11 +467,10 @@ func (ctx *TestContext) requireEnrollEdgeRouter(tunneler bool, routerId string) 
 	if tunneler {
 		configFile = TunnelerEdgeRouterConfFile
 	}
-	configMap, err := router.LoadConfigMap(configFile)
+	routerConfig, err := router.LoadConfigWithOptions(configFile, false)
 	ctx.Req.NoError(err)
 
-	enroller := enroll.NewRestEnroller()
-	ctx.Req.NoError(enroller.LoadConfig(configMap))
+	enroller := enroll.NewRestEnroller(routerConfig)
 	var keyAlg ziti.KeyAlgVar
 	_ = keyAlg.Set("RSA")
 	ctx.Req.NoError(enroller.Enroll([]byte(jwt), true, "", keyAlg))
@@ -489,11 +488,10 @@ func (ctx *TestContext) createAndEnrollTransitRouter() *transitRouter {
 	ctx.transitRouterEntity = ctx.AdminManagementSession.requireNewTransitRouter()
 	jwt := ctx.AdminManagementSession.getTransitRouterJwt(ctx.transitRouterEntity.id)
 
-	configMap, err := router.LoadConfigMap(TransitRouterConfFile)
+	routerConfig, err := router.LoadConfigWithOptions(TransitRouterConfFile, false)
 	ctx.Req.NoError(err)
 
-	enroller := enroll.NewRestEnroller()
-	ctx.Req.NoError(enroller.LoadConfig(configMap))
+	enroller := enroll.NewRestEnroller(routerConfig)
 	var keyAlg ziti.KeyAlgVar
 	_ = keyAlg.Set("RSA")
 	ctx.Req.NoError(enroller.Enroll([]byte(jwt), true, "", keyAlg))

@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -31,7 +32,6 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/internal/apiproxy"
-	"github.com/openziti/ziti/router/internal/edgerouter"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
@@ -47,7 +47,7 @@ type Factory struct {
 	ctrls                env.NetworkControllers
 	enabled              bool
 	routerConfig         *router.Config
-	edgeRouterConfig     *edgerouter.Config
+	edgeRouterConfig     *router.EdgeConfig
 	hostedServices       *hostedServiceRegistry
 	stateManager         state.Manager
 	versionProvider      versions.VersionProvider
@@ -119,23 +119,25 @@ func (factory *Factory) Run(env env.RouterEnv) error {
 }
 
 func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error {
-	_, factory.enabled = configMap["edge"]
+	factory.enabled = factory.routerConfig.Edge.Enabled
 
 	if !factory.enabled {
 		return nil
 	}
 
-	var err error
-	edgeConfig := edgerouter.NewConfig(factory.routerConfig)
-	if err = edgeConfig.LoadConfigFromMap(configMap); err != nil {
-		return err
-	}
+	edgeConfig := factory.routerConfig.Edge
 	if edgeConfig.Tcfg == nil {
 		edgeConfig.Tcfg = make(transport.Configuration)
 	}
-	edgeConfig.Tcfg["protocol"] = append(edgeConfig.Tcfg.Protocols(), "ziti-edge", "")
 
-	factory.edgeRouterConfig = edgeConfig
+	if !stringz.Contains(edgeConfig.Tcfg.Protocols(), "ziti-edge") {
+		edgeConfig.Tcfg[transport.KeyProtocol] = append(edgeConfig.Tcfg.Protocols(), "ziti-edge")
+	}
+	if !stringz.Contains(edgeConfig.Tcfg.Protocols(), "") {
+		edgeConfig.Tcfg[transport.KeyProtocol] = append(edgeConfig.Tcfg.Protocols(), "")
+	}
+
+	factory.edgeRouterConfig = factory.routerConfig.Edge
 	factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
 
 	factory.env.MarkRouterDataModelRequired()

@@ -27,9 +27,10 @@ import (
 	"github.com/openziti/ziti/router/state"
 	"io/fs"
 	"os"
-	"path"
+	"path/filepath"
 	"plugin"
 	"runtime/debug"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -267,8 +268,8 @@ func (self *Router) GetConfig() *Config {
 }
 
 func (self *Router) Start() error {
-	if err := os.MkdirAll(self.config.Ctrl.DataDir, 0700); err != nil {
-		logrus.WithField("dir", self.config.Ctrl.DataDir).WithError(err).Error("failed to initialize data directory")
+	if err := os.MkdirAll(filepath.Dir(self.config.Ctrl.EndpointsFile), 0700); err != nil {
+		logrus.WithField("dir", filepath.Dir(self.config.Ctrl.EndpointsFile)).WithError(err).Error("failed to initialize directory for endpoints file")
 		return err
 	}
 
@@ -741,11 +742,11 @@ func (self *Router) RegisterXWebHandlerFactory(x xweb.ApiHandlerFactory) error {
 
 func (self *Router) getInitialCtrlEndpoints() ([]string, error) {
 	log := pfxlog.Logger()
-	if self.config.Ctrl.DataDir == "" {
-		return nil, errors.New("ctrl DataDir not configured")
+	if self.config.Ctrl.EndpointsFile == "" {
+		return nil, errors.New("ctrl endpointsFile not configured")
 	}
 
-	endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
+	endpointsFile := self.config.Ctrl.EndpointsFile
 
 	var endpoints []string
 
@@ -758,12 +759,20 @@ func (self *Router) getInitialCtrlEndpoints() ([]string, error) {
 		if err != nil {
 			log.WithError(err).Error("unable to read endpoints file, falling back to initial endpoints from config")
 		} else {
-			endpointCfg := &endpointConfig{}
+			endpointCfg := map[string]any{}
 
 			if err = yaml.Unmarshal(b, endpointCfg); err != nil {
 				log.WithError(err).Error("unable to unmarshall endpoints file, falling back to initial endpoints from config")
 			} else {
-				endpoints = endpointCfg.Endpoints
+				for k, v := range endpointCfg {
+					if strings.EqualFold("endpoints", k) {
+						keys := v.([]any)
+						for _, key := range keys {
+							endpoints = append(endpoints, key.(string))
+						}
+						break
+					}
+				}
 				if len(endpoints) == 0 {
 					log.Info("empty endpoint list in endpoints file, falling back to initial endpoints from config")
 				}
@@ -782,19 +791,11 @@ func (self *Router) getInitialCtrlEndpoints() ([]string, error) {
 }
 
 func (self *Router) UpdateCtrlEndpoints(endpoints []string) {
-	log := pfxlog.Logger().WithField("endpoints", endpoints).WithField("filepath", self.config.Ctrl.DataDir)
+	log := pfxlog.Logger().WithField("endpoints", endpoints).WithField("filepath", self.config.Ctrl.EndpointsFile)
 	if changed := self.ctrls.UpdateControllerEndpoints(endpoints); changed {
 		log.Info("Attempting to save file")
-		endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
-
-		configData := map[string]interface{}{
-			"Endpoints": endpoints,
-		}
-
-		if data, err := yaml.Marshal(configData); err != nil {
-			log.WithError(err).Error("unable to marshal updated controller endpoints to yaml")
-		} else if err = os.WriteFile(endpointsFile, data, 0600); err != nil {
-			log.WithError(err).Error("unable to write updated controller endpoints to file")
+		if err := self.config.SaveControllerEndpoints(endpoints); err != nil {
+			log.WithError(err).Error("unable to save updated endpoints file")
 		}
 	}
 }
@@ -834,7 +835,7 @@ func (self *controllerPinger) PingContext(context.Context) error {
 }
 
 type endpointConfig struct {
-	Endpoints []string `yaml:"Endpoints"`
+	Endpoints []string `yaml:"endpoints"`
 }
 
 type linkConnDetail struct {
