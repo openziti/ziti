@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package edgerouter
+package router
 
 import (
 	"fmt"
@@ -30,7 +30,6 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 )
@@ -42,12 +41,9 @@ const (
 	DefaultSessionValidateChunkSize   = 1000
 	DefaultSessionValidateMinInterval = "250ms"
 	DefaultSessionValidateMaxInterval = "1500ms"
-
-	FlagsCfgMapKey = "@flags"
 )
 
-type Config struct {
-	FilePath                   string
+type EdgeConfig struct {
 	Enabled                    bool
 	ApiProxy                   ApiProxy
 	EdgeListeners              []*edge_ctrl_pb.Listener
@@ -59,8 +55,7 @@ type Config struct {
 	Tcfg                       transport.Configuration
 	ForceExtendEnrollment      bool
 
-	RouterConfig             *router.Config
-	EnrollmentIdentityConfig *identity.Config
+	RouterConfig *Config
 
 	Db             string
 	DbSaveInterval time.Duration
@@ -81,13 +76,27 @@ type ApiProxy struct {
 	Upstream string
 }
 
-func NewConfig(routerConfig *router.Config) *Config {
-	return &Config{
+type Memory struct {
+	Path     string        `yaml:"path"`
+	Interval time.Duration `yaml:"intervalMs"`
+}
+
+type Sans struct {
+	DnsAddresses       []string `yaml:"dns" mapstructure:"dns"`
+	IpAddresses        []string `yaml:"ip" mapstructure:"ip"`
+	IpAddressesParsed  []net.IP
+	EmailAddresses     []string `yaml:"email" mapstructure:"email"`
+	UriAddresses       []string `yaml:"uri" mapstructure:"uri"`
+	UriAddressesParsed []*url.URL
+}
+
+func NewEdgeConfig(routerConfig *Config) *EdgeConfig {
+	return &EdgeConfig{
 		RouterConfig: routerConfig,
 	}
 }
 
-func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) error {
+func (config *EdgeConfig) LoadEdgeConfigFromMap(configMap map[interface{}]interface{}, loadIdentity bool) error {
 	var err error
 	config.Enabled = false
 
@@ -99,17 +108,25 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 		}
 	}
 
-	var edgeConfigMap map[interface{}]interface{} = nil
+	if err = config.loadCsr(configMap); err != nil {
+		return err
+	}
+
+	var edgeConfigMap map[interface{}]interface{}
 
 	if val, ok := configMap["edge"]; ok && val != nil {
 		config.Enabled = true
 		if edgeConfigMap, ok = val.(map[interface{}]interface{}); !ok {
 			return fmt.Errorf("expected map as edge configuration")
 		}
+	} else {
+		return nil
 	}
 
-	if err := config.ensureIdentity(configMap); err != nil {
-		return err
+	if loadIdentity {
+		if err := config.ensureIdentity(configMap); err != nil {
+			return err
+		}
 	}
 
 	if val, found := edgeConfigMap["db"]; found {
@@ -119,7 +136,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 	if config.Db == "" {
 		config.Db = "./db.proto.gzip"
 
-		if value, found := configMap[router.PathMapKey]; found {
+		if value, found := configMap[PathMapKey]; found {
 			configPath := value.(string)
 			configPath = strings.TrimSpace(configPath)
 			config.Db = configPath + ".proto.gzip"
@@ -127,7 +144,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 			pfxlog.Logger().Warnf("the db property was not set, using default for cached data model: %s", config.Db)
 		}
 
-		pfxlog.Logger().Infof("cached data model file set to: %s", config.Db)
+		pfxlog.Logger().Debugf("cached data model file set to: %s", config.Db)
 	}
 
 	if val, found := edgeConfigMap["dbSaveIntervalSeconds"]; found {
@@ -177,11 +194,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 		return err
 	}
 
-	if err = config.loadCsr(configMap); err != nil {
-		return err
-	}
-
-	if err = config.loadListener(configMap); err != nil {
+	if err = config.loadEdgeListener(configMap); err != nil {
 		return err
 	}
 
@@ -192,7 +205,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 	return nil
 }
 
-func (config *Config) loadApiProxy(edgeConfigMap map[interface{}]interface{}) error {
+func (config *EdgeConfig) loadApiProxy(edgeConfigMap map[interface{}]interface{}) error {
 	config.ApiProxy = ApiProxy{}
 
 	if value, found := edgeConfigMap["apiProxy"]; found {
@@ -231,7 +244,7 @@ func (config *Config) loadApiProxy(edgeConfigMap map[interface{}]interface{}) er
 	return nil
 }
 
-func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) error {
+func (config *EdgeConfig) loadEdgeListener(rootConfigMap map[interface{}]interface{}) error {
 	subArray := rootConfigMap["listeners"]
 
 	listeners, ok := subArray.([]interface{})
@@ -345,7 +358,7 @@ func parseEdgeListenerOptions(index int, address string, edgeListenerMap map[int
 }
 
 // loadCsr search for a root `csr` path or an `edge.csr` path for a CSR definition. The root path is preferred.
-func (config *Config) loadCsr(rootConfigMap map[interface{}]interface{}) error {
+func (config *EdgeConfig) loadCsr(rootConfigMap map[interface{}]interface{}) error {
 	csrI, ok := rootConfigMap["csr"]
 	csrPath := "csr"
 
@@ -395,7 +408,7 @@ func (config *Config) loadCsr(rootConfigMap map[interface{}]interface{}) error {
 }
 
 // parseCsr parses the given map as a CSR definition. Error messages are based on the path provided.
-func (config *Config) parseCsr(csrMap map[interface{}]interface{}, path string) (*Csr, error) {
+func (config *EdgeConfig) parseCsr(csrMap map[interface{}]interface{}, path string) (*Csr, error) {
 	targetCsr := &Csr{}
 
 	if csrMap == nil {
@@ -425,9 +438,9 @@ func (config *Config) parseCsr(csrMap map[interface{}]interface{}, path string) 
 	return targetCsr, nil
 }
 
-func (config *Config) ensureIdentity(rootConfigMap map[interface{}]interface{}) error {
+func (config *EdgeConfig) ensureIdentity(rootConfigMap map[interface{}]interface{}) error {
 	if config.RouterConfig == nil {
-		config.RouterConfig = &router.Config{}
+		config.RouterConfig = &Config{}
 	}
 
 	//if we already have an Id (loaded by the fabric router) use that as is to avoid
@@ -436,7 +449,7 @@ func (config *Config) ensureIdentity(rootConfigMap map[interface{}]interface{}) 
 		return nil
 	}
 
-	idConfig, err := router.LoadIdentityConfigFromMap(rootConfigMap)
+	idConfig, err := LoadIdentityConfigFromMap(rootConfigMap)
 
 	if err != nil {
 		return err
@@ -457,7 +470,7 @@ func (config *Config) ensureIdentity(rootConfigMap map[interface{}]interface{}) 
 	return nil
 }
 
-func (config *Config) loadTransportConfig(rootConfigMap map[interface{}]interface{}) error {
+func (config *EdgeConfig) loadTransportConfig(rootConfigMap map[interface{}]interface{}) error {
 	if val, ok := rootConfigMap["transport"]; ok && val != nil {
 		config.Tcfg = make(transport.Configuration)
 		if tcfg, ok := val.(map[interface{}]interface{}); ok {
@@ -467,23 +480,6 @@ func (config *Config) loadTransportConfig(rootConfigMap map[interface{}]interfac
 		} else {
 			return fmt.Errorf("expected map as transport configuration")
 		}
-	}
-
-	return nil
-}
-
-// LoadConfigFromMapForEnrollment loads a minimal subset of the router configuration to allow for enrollment.
-// This process should be used to load edge enabled routers as well as non-edge routers.
-func (config *Config) LoadConfigFromMapForEnrollment(cfgmap map[interface{}]interface{}) error {
-	var err error
-	config.EnrollmentIdentityConfig, err = router.LoadIdentityConfigFromMap(cfgmap)
-
-	if err != nil {
-		return err
-	}
-
-	if err := config.loadCsr(cfgmap); err != nil {
-		return fmt.Errorf("error loading csr: %w", err)
 	}
 
 	return nil

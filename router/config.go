@@ -129,6 +129,7 @@ func SetConfigMapFlags(cfgmap map[interface{}]interface{}, flags map[string]*pfl
 }
 
 type Config struct {
+	IdConfig       *identity.Config
 	Id             *identity.TokenId
 	EnableDebugOps bool
 	Forwarder      *forwarder.Options
@@ -149,7 +150,7 @@ type Config struct {
 		LocalBinding          string
 		DefaultRequestTimeout time.Duration
 		Options               *channel.Options
-		DataDir               string
+		EndpointsFile         string
 		Heartbeats            env.HeartbeatOptions
 		StartupTimeout        time.Duration
 		RateLimit             command.AdaptiveRateLimiterConfig
@@ -182,6 +183,7 @@ type Config struct {
 	ConnectEvents env.ConnectEventsConfig
 	Proxy         *transport.ProxyConfiguration
 	Plugins       []string
+	Edge          *EdgeConfig
 	src           map[interface{}]interface{}
 	path          string
 }
@@ -369,6 +371,10 @@ func (c *UpdatableAddress) UnmarshalYAML(value *yaml3.Node) error {
 }
 
 func LoadConfig(path string) (*Config, error) {
+	return LoadConfigWithOptions(path, true)
+}
+
+func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 	cfgmap, err := LoadConfigMap(path)
 
 	if err != nil {
@@ -391,13 +397,17 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("unable to load identity: %v", err)
 	}
 
-	if id, err := identity.LoadIdentity(*identityConfig); err != nil {
-		return nil, fmt.Errorf("unable to load identity (%w)", err)
-	} else {
-		cfg.Id = identity.NewIdentity(id)
+	cfg.IdConfig = identityConfig
 
-		if err := cfg.Id.WatchFiles(); err != nil {
-			pfxlog.Logger().Warn("could not enable file watching on identity: %w", err)
+	if loadIdentity {
+		if id, err := identity.LoadIdentity(*identityConfig); err != nil {
+			return nil, fmt.Errorf("unable to load identity (%w)", err)
+		} else {
+			cfg.Id = identity.NewIdentity(id)
+
+			if err := cfg.Id.WatchFiles(); err != nil {
+				pfxlog.Logger().Warn("could not enable file watching on identity: %w", err)
+			}
 		}
 	}
 
@@ -539,10 +549,10 @@ func LoadConfig(path string) (*Config, error) {
 					return nil, errors.Wrap(err, "invalid value for ctrl.startupTimeout")
 				}
 			}
-			if value, found := submap["dataDir"]; found {
-				cfg.Ctrl.DataDir = value.(string)
+			if value, found := submap["endpointsFile"]; found {
+				cfg.Ctrl.EndpointsFile = value.(string)
 			} else {
-				cfg.Ctrl.DataDir = filepath.Dir(cfg.path)
+				cfg.Ctrl.EndpointsFile = filepath.Join(filepath.Dir(cfg.path), "endpoints")
 			}
 			if err = cfg.loadCtrlRateLimiterConfig(submap); err != nil {
 				return nil, err
@@ -865,6 +875,11 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.ConnectEvents.MaxQueuedEvents = MaxConnectEventsMaxQueuedEvents
 	}
 
+	cfg.Edge = NewEdgeConfig(cfg)
+	if err = cfg.Edge.LoadEdgeConfigFromMap(cfgmap, loadIdentity); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
 
@@ -902,6 +917,21 @@ func (c *Config) loadCtrlRateLimiterConfig(cfgmap map[interface{}]interface{}) e
 		}
 	}
 
+	return nil
+}
+
+func (c *Config) SaveControllerEndpoints(endpoints []string) error {
+	endpointsFile := c.Ctrl.EndpointsFile
+
+	configData := map[string]interface{}{
+		"endpoints": endpoints,
+	}
+
+	if data, err := yaml.Marshal(configData); err != nil {
+		return fmt.Errorf("unable to marshal updated controller endpoints to yaml (%w)", err)
+	} else if err = os.WriteFile(endpointsFile, data, 0600); err != nil {
+		return fmt.Errorf("unable to write updated controller endpoints to file '%s' (%w)", c.Ctrl.EndpointsFile, err)
+	}
 	return nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -27,7 +28,7 @@ func Test_initializeCtrlEndpoints_ErrorsWithoutDataDir(t *testing.T) {
 	}
 	_, err = r.getInitialCtrlEndpoints()
 	assert.Error(t, err)
-	assert.ErrorContains(t, err, "ctrl DataDir not configured")
+	assert.ErrorContains(t, err, "ctrl endpointsFile not configured")
 }
 
 func Test_initializeCtrlEndpoints(t *testing.T) {
@@ -48,12 +49,12 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 				LocalBinding          string
 				DefaultRequestTimeout time.Duration
 				Options               *channel.Options
-				DataDir               string
+				EndpointsFile         string
 				Heartbeats            env.HeartbeatOptions
 				StartupTimeout        time.Duration
 				RateLimit             command.AdaptiveRateLimiterConfig
 			}{
-				DataDir:          tmpDir,
+				EndpointsFile:    filepath.Join(tmpDir, "endpoints"),
 				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr)},
 			},
 		},
@@ -90,12 +91,12 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 				LocalBinding          string
 				DefaultRequestTimeout time.Duration
 				Options               *channel.Options
-				DataDir               string
+				EndpointsFile         string
 				Heartbeats            env.HeartbeatOptions
 				StartupTimeout        time.Duration
 				RateLimit             command.AdaptiveRateLimiterConfig
 			}{
-				DataDir:          tmpDir,
+				EndpointsFile:    filepath.Join(tmpDir, "endpoints"),
 				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr), NewUpdatableAddress(addr2)},
 			},
 		},
