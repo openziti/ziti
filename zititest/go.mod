@@ -11,14 +11,14 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/openziti/agent v1.0.23
-	github.com/openziti/channel/v3 v3.0.26
+	github.com/openziti/agent v1.0.24
+	github.com/openziti/channel/v3 v3.0.29
 	github.com/openziti/edge-api v0.26.39
 	github.com/openziti/fablab v0.5.83
-	github.com/openziti/foundation/v2 v2.0.56
-	github.com/openziti/identity v1.0.96
-	github.com/openziti/sdk-golang v0.23.44
-	github.com/openziti/storage v0.4.1
+	github.com/openziti/foundation/v2 v2.0.57
+	github.com/openziti/identity v1.0.97
+	github.com/openziti/sdk-golang v0.24.1
+	github.com/openziti/storage v0.4.2
 	github.com/openziti/transport/v2 v2.0.160
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -82,7 +82,6 @@ require (
 	github.com/go-openapi/validate v0.24.0 // indirect
 	github.com/go-resty/resty/v2 v2.16.5 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
@@ -144,8 +143,8 @@ require (
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/jwks v1.0.6 // indirect
-	github.com/openziti/metrics v1.2.65 // indirect
-	github.com/openziti/runzmd v1.0.59 // indirect
+	github.com/openziti/metrics v1.2.66 // indirect
+	github.com/openziti/runzmd v1.0.63 // indirect
 	github.com/openziti/secretstream v0.1.28 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.2.1 // indirect

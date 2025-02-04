@@ -50,7 +50,7 @@ func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		return nil, xgress.InvalidTerminatorError{InnerError: errors.Errorf("tunnel terminator for destination %v not found", destination)}
 	}
 
-	options, err := tunnel.AppDataToMap(circuitId.Data[edge.AppDataHeader])
+	options, err := tunnel.AppDataToMap(circuitId.Data[uint32(edge.AppDataHeader)])
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +65,11 @@ func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
 
 	xgConn := xgress_common.NewXgressConn(conn, halfClose, false)
 	peerData := make(xt.PeerData, 3)
-	if peerKey, ok := circuitId.Data[edge.PublicKeyHeader]; ok {
+	if peerKey, ok := circuitId.Data[uint32(edge.PublicKeyHeader)]; ok {
 		if publicKey, err := xgConn.SetupServerCrypto(peerKey); err != nil {
 			return nil, err
 		} else {
-			peerData[edge.PublicKeyHeader] = publicKey
+			peerData[uint32(edge.PublicKeyHeader)] = publicKey
 		}
 	}
 

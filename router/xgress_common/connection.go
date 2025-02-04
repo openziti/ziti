@@ -214,7 +214,7 @@ func (self *XgressConn) WritePayload(p []byte, headers map[uint8][]byte) (int, e
 	}
 
 	if flags, found := headers[PayloadFlagsHeader]; found {
-		if flags[0]&edge.FIN != 0 {
+		if flags[0]&byte(edge.FIN) != 0 {
 			defer func() {
 				conn, ok := self.Conn.(edge.CloseWriter)
 				// if connection does not support half-close just let xgress tear it down
