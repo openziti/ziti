@@ -18,8 +18,6 @@ package router
 
 import (
 	"bytes"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/controller/command"
@@ -877,8 +875,6 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 		pfxlog.Logger().Warnf("connectEvents.maxQueuedEvents greater than allowed maximum of %d", MaxConnectEventsMaxQueuedEvents)
 		cfg.ConnectEvents.MaxQueuedEvents = MaxConnectEventsMaxQueuedEvents
 	}
-	var id *identity.Config
-	id = cfg.Id.Identity.GetConfig()
 
 	cfg.Edge = NewEdgeConfig(cfg)
 	if err = cfg.Edge.LoadEdgeConfigFromMap(cfgmap, loadIdentity); err != nil {
