@@ -19,8 +19,7 @@ identity:
 
 trustDomain: usedForLegacyNonHaNetworksWithoutSpiffeIdsInCerts
 
-raft:
-  minClusterSize: 1
+cluster:
   advertiseAddress: tcp:localhost:1380
   bindAddress: tcp:0.0.0.0:1380
   dataDir: /home/plorenz/work/var/data/

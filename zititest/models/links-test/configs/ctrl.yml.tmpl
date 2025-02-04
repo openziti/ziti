@@ -1,7 +1,6 @@
 v: 3
 
-raft:
-  minClusterSize: 3
+cluster:
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
 
 identity:

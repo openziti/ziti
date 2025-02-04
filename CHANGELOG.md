@@ -12,6 +12,17 @@
 * Router Controller Endpoint Change#s
 * Bug fixes
 
+## Config Changes
+
+**NOTE:** For HA configuration, the `raft:` config stanza is now named `cluster:`.
+
+Example:
+
+```yaml
+cluster:
+  dataDir: ./data
+```
+
 ## Event Doc and Consistency
 
 The event types are now exhaustively documented as part of the [OpenZiti Reference Documentation](https://openziti.io/docs/reference/events).

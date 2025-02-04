@@ -71,7 +71,7 @@ type CtrlValues struct {
 	AdvertisedPort             string
 	BindAddress                string
 	AltAdvertisedAddress       string
-	MinClusterSize             int
+	Clustered                  bool
 	InstanceId                 string
 }
 

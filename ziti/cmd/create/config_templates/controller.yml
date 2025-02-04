@@ -8,16 +8,14 @@ v: 3
 #    path: ctrl.memprof
 
 
-{{ if .Controller.Ctrl.MinClusterSize }}
-raft:
+{{ if .Controller.Ctrl.Clustered }}
+cluster:
   dataDir:         "{{ .ZitiHome }}/raft"
-  minClusterSize:  {{ .Controller.Ctrl.MinClusterSize }}
 {{ else }}
 db:                     "{{ .Controller.Database.DatabaseFile }}"
 # uncomment and configure to enable HA
-# raft:
+# cluster:
 #   dataDir:         "{{ .ZitiHome }}/raft"
-#   minClusterSize:  1
 {{ end }}
 
 identity:
