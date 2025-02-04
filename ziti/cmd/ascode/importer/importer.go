@@ -38,6 +38,8 @@ import (
 var log = pfxlog.Logger()
 
 type Importer struct {
+	Out                io.Writer
+	Err                io.Writer
 	LoginOpts          edge.LoginOptions
 	IfJson             bool
 	IfYaml             bool
@@ -86,7 +88,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	ziticobra.SetHelpTemplate(cmd)
 
 	importer.LoginOpts.Out = out
-	importer.LoginOpts.Err = errOut
+	importer.Err = errOut
 
 	return cmd
 }
@@ -150,7 +152,7 @@ func (importer *Importer) Execute(input []string) error {
 			Debug("CertificateAuthorities created")
 	}
 	result["certificateAuthorities"] = cas
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d CertificateAuthorities\r\n", len(cas))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d CertificateAuthorities\r\n", len(cas))
 
 	externalJwtSigners := map[string]string{}
 	if importer.IsExtJwtSignerImportRequired(args) {
@@ -162,7 +164,7 @@ func (importer *Importer) Execute(input []string) error {
 		}
 		log.WithField("externalJwtSigners", externalJwtSigners).Debug("ExtJWTSigners created")
 	}
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d ExtJWTSigners\r\n", len(externalJwtSigners))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d ExtJWTSigners\r\n", len(externalJwtSigners))
 	result["externalJwtSigners"] = externalJwtSigners
 
 	authPolicies := map[string]string{}
@@ -175,7 +177,7 @@ func (importer *Importer) Execute(input []string) error {
 		}
 		log.WithField("authPolicies", authPolicies).Debug("AuthPolicies created")
 	}
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d AuthPolicies\r\n", len(authPolicies))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d AuthPolicies\r\n", len(authPolicies))
 	result["authPolicies"] = authPolicies
 
 	identities := map[string]string{}
@@ -188,7 +190,7 @@ func (importer *Importer) Execute(input []string) error {
 		}
 		log.WithField("identities", identities).Debug("Identities created")
 	}
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d Identities\r\n", len(identities))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d Identities\r\n", len(identities))
 	result["identities"] = identities
 
 	configTypes := map[string]string{}
@@ -201,7 +203,7 @@ func (importer *Importer) Execute(input []string) error {
 		}
 		log.WithField("configTypes", configTypes).Debug("ConfigTypes created")
 	}
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d ConfigTypes\r\n", len(configTypes))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d ConfigTypes\r\n", len(configTypes))
 	result["configTypes"] = configTypes
 
 	configs := map[string]string{}
@@ -214,7 +216,7 @@ func (importer *Importer) Execute(input []string) error {
 		}
 		log.WithField("configs", configs).Debug("Configs created")
 	}
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d Configs\r\n", len(configs))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d Configs\r\n", len(configs))
 	result["configs"] = configs
 
 	services := map[string]string{}
@@ -227,7 +229,7 @@ func (importer *Importer) Execute(input []string) error {
 		}
 		log.WithField("services", services).Debug("Services created")
 	}
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d Services\r\n", len(services))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d Services\r\n", len(services))
 	result["services"] = services
 
 	postureChecks := map[string]string{}
@@ -240,7 +242,7 @@ func (importer *Importer) Execute(input []string) error {
 		}
 		log.WithField("postureChecks", postureChecks).Debug("PostureChecks created")
 	}
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d PostureChecks\r\n", len(postureChecks))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d PostureChecks\r\n", len(postureChecks))
 	result["postureChecks"] = postureChecks
 
 	routers := map[string]string{}
@@ -253,7 +255,7 @@ func (importer *Importer) Execute(input []string) error {
 		}
 		log.WithField("edgeRouters", routers).Debug("EdgeRouters created")
 	}
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d EdgeRouters\r\n", len(routers))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d EdgeRouters\r\n", len(routers))
 	result["edgeRouters"] = routers
 
 	serviceEdgeRouterPolicies := map[string]string{}
@@ -266,7 +268,7 @@ func (importer *Importer) Execute(input []string) error {
 		}
 		log.WithField("serviceEdgeRouterPolicies", serviceEdgeRouterPolicies).Debug("ServiceEdgeRouterPolicies created")
 	}
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d ServiceEdgeRouterPolicies\r\n", len(serviceEdgeRouterPolicies))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d ServiceEdgeRouterPolicies\r\n", len(serviceEdgeRouterPolicies))
 	result["serviceEdgeRouterPolicies"] = serviceEdgeRouterPolicies
 
 	servicePolicies := map[string]string{}
@@ -279,7 +281,7 @@ func (importer *Importer) Execute(input []string) error {
 		}
 		log.WithField("servicePolicies", servicePolicies).Debug("ServicePolicies created")
 	}
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d ServicePolicies\r\n", len(servicePolicies))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d ServicePolicies\r\n", len(servicePolicies))
 	result["servicePolicies"] = servicePolicies
 
 	routerPolicies := map[string]string{}
@@ -292,7 +294,7 @@ func (importer *Importer) Execute(input []string) error {
 		}
 		log.WithField("routerPolicies", routerPolicies).Debug("EdgeRouterPolicies created")
 	}
-	_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Created %d EdgeRouterPolicies\r\n", len(routerPolicies))
+	_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d EdgeRouterPolicies\r\n", len(routerPolicies))
 	result["edgeRouterPolicies"] = routerPolicies
 
 	log.Info("Upload complete")

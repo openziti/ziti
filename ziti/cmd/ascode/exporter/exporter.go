@@ -38,6 +38,8 @@ import (
 var log = pfxlog.Logger()
 
 type Exporter struct {
+	Out              io.Writer
+	Err              io.Writer
 	LoginOpts        edge.LoginOptions
 	OfJson           bool
 	OfYaml           bool
@@ -54,7 +56,10 @@ var output Output
 
 func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
-	exporter := &Exporter{}
+	exporter := &Exporter{
+		Out: out,
+		Err: errOut,
+	}
 	exporter.LoginOpts = edge.LoginOptions{}
 
 	cmd := &cobra.Command{
@@ -96,9 +101,6 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	cmd.Flags().StringVarP(&exporter.Filename, "output-file", "o", "", "Write output to local file")
 
-	exporter.LoginOpts.Out = out
-	exporter.LoginOpts.Err = errOut
-
 	return cmd
 }
 
@@ -119,13 +121,13 @@ func (exporter *Exporter) Execute(input []string) error {
 	}
 
 	if exporter.Filename != "" {
-		o, err := NewOutputToFile(exporter.LoginOpts.Verbose, exporter.OfJson, exporter.OfYaml, exporter.Filename, exporter.LoginOpts.Err)
+		o, err := NewOutputToFile(exporter.LoginOpts.Verbose, exporter.OfJson, exporter.OfYaml, exporter.Filename, exporter.Err)
 		if err != nil {
 			return err
 		}
 		output = *o
 	} else {
-		o, err := NewOutputToWriter(exporter.LoginOpts.Verbose, exporter.OfJson, exporter.OfYaml, exporter.LoginOpts.Out, exporter.LoginOpts.Err)
+		o, err := NewOutputToWriter(exporter.LoginOpts.Verbose, exporter.OfJson, exporter.OfYaml, exporter.Out, exporter.Err)
 		if err != nil {
 			return err
 		}
@@ -273,7 +275,7 @@ func (exporter *Exporter) getEntities(entityName string, count ClientCount, list
 	more := true
 	for more {
 		resp, err := list(&offset, &limit)
-		_, _ = internal.FPrintfReusingLine(exporter.LoginOpts.Err, "Reading %d/%d %s", offset, totalCount, entityName)
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Reading %d/%d %s", offset, totalCount, entityName)
 		if err != nil {
 			return nil, errors.Join(errors.New("error reading "+entityName), err)
 		}
@@ -292,7 +294,7 @@ func (exporter *Exporter) getEntities(entityName string, count ClientCount, list
 		offset += limit
 	}
 
-	_, _ = internal.FPrintflnReusingLine(exporter.LoginOpts.Err, "Read %d %s", len(result), entityName)
+	_, _ = internal.FPrintflnReusingLine(exporter.Err, "Read %d %s", len(result), entityName)
 
 	return result, nil
 
