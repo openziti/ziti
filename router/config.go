@@ -921,7 +921,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 	}
 
 	if len(errs) > 0 {
-		pfxlog.Logger().Fatalf("one or more advertiesed addresses are invalid for the advertised address : %v", errs)
+		pfxlog.Logger().Fatalf("one or more advertiese addresses are invalid: %v", errs)
 	}
 	return cfg, nil
 }
