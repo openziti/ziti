@@ -280,7 +280,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 			fmt.Sprintf("--output=%s", ctrlYaml),
 		}
 		if o.isHA {
-			args = append(args, fmt.Sprintf("--minCluster=%d", 1))
+			args = append(args, "--clustered")
 		}
 		ctrl.SetArgs(args)
 		err = ctrl.Execute()

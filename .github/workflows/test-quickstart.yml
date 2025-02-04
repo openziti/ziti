@@ -23,7 +23,7 @@ jobs:
 
       - name: Install zsh
         shell: bash
-        run: sudo apt-get update && sudo apt-get install --yes zsh
+        run: sudo apt-get update && sudo apt-get install --yes zsh 
 
       - name: Install Go
         uses: actions/setup-go@v5
@@ -108,6 +108,10 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+
+      - name: Install xtail
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install --yes xtail
 
       - name: Build ziti executable
         shell: bash
