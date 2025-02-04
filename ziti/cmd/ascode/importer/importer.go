@@ -42,15 +42,14 @@ var log = pfxlog.Logger()
 type Importer struct {
 	Out                io.Writer
 	Err                io.Writer
-	LoginOpts          edge.LoginOptions
-	InputFormat        InputFormat
+	Data               map[string][]interface{}
 	configCache        map[string]any
 	serviceCache       map[string]any
 	edgeRouterCache    map[string]any
 	authPolicyCache    map[string]any
 	extJwtSignersCache map[string]any
 	identityCache      map[string]any
-	client             *rest_management_api_client.ZitiEdgeManagement
+	verbose            bool
 }
 
 func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -58,17 +57,17 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	importer := &Importer{
 		Out: out,
 		Err: errOut,
-		LoginOpts: edge.LoginOptions{
-			Options: api.Options{
-				CommonOptions: common.CommonOptions{
-					Out: os.Stdout,
-					Err: os.Stderr,
-				},
-			},
-		},
 	}
 
 	var inputFormat string
+	var loginOpts = edge.LoginOptions{
+		Options: api.Options{
+			CommonOptions: common.CommonOptions{
+				Out: os.Stdout,
+				Err: os.Stderr,
+			},
+		},
+	}
 
 	cmd := &cobra.Command{
 		Use:   "import filename [entity]",
@@ -78,15 +77,40 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			importer.verbose = loginOpts.Verbose
+
+			var parsedInputFormat InputFormat
 			if strings.ToUpper(inputFormat) == "JSON" {
-				importer.InputFormat = JSON
+				parsedInputFormat = JSON
 			} else if strings.ToUpper(inputFormat) == "YAML" {
-				importer.InputFormat = YAML
+				parsedInputFormat = YAML
 			} else {
 				log.Fatalf("Invalid input format: %s", inputFormat)
 			}
 
-			executeErr := importer.Execute(args)
+			raw, err := FileReader{
+				filename: args[0],
+			}.read()
+
+			data := map[string][]interface{}{}
+			if parsedInputFormat == YAML {
+				err = yaml.Unmarshal(raw, &data)
+				if err != nil {
+					return errors.Join(errors.New("unable to parse input data as yaml"), err)
+				}
+			} else {
+				err = json.Unmarshal(raw, &data)
+				if err != nil {
+					return errors.Join(errors.New("unable to parse input data as json"), err)
+				}
+			}
+
+			client, err := loginOpts.NewMgmtClient()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			executeErr := importer.Execute(client, args[1:])
 			if executeErr != nil {
 				return executeErr
 			}
@@ -101,51 +125,26 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	v.AutomaticEnv()
 
-	edge.AddLoginFlags(cmd, &importer.LoginOpts)
+	edge.AddLoginFlags(cmd, &loginOpts)
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVar(&inputFormat, "input-format", "JSON", "Input either JSON or YAML. (default JSON)")
-	cmd.Flags().StringVar(&importer.LoginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
+	cmd.Flags().StringVar(&loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
 	ziticobra.SetHelpTemplate(cmd)
 
 	return cmd
 }
 
-func (importer *Importer) Execute(input []string) error {
+func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeManagement, entities []string) error {
 
 	logLvl := logrus.InfoLevel
-	if importer.LoginOpts.Verbose {
+	if importer.verbose {
 		logLvl = logrus.DebugLevel
 	}
 
 	pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
 	internal.ConfigureLogFormat(logLvl)
 
-	var err error
-	importer.client, err = importer.LoginOpts.NewMgmtClient()
-	if err != nil {
-		return err
-	}
-	reader := FileReader{}
-
-	raw, err := reader.read(input[0])
-	if err != nil {
-		return errors.Join(errors.New("unable to read input"), err)
-	}
-	data := map[string][]interface{}{}
-
-	if importer.InputFormat == YAML {
-		err = yaml.Unmarshal(raw, &data)
-		if err != nil {
-			return errors.Join(errors.New("unable to parse input data as yaml"), err)
-		}
-	} else {
-		err = json.Unmarshal(raw, &data)
-		if err != nil {
-			return errors.Join(errors.New("unable to parse input data as json"), err)
-		}
-	}
-
-	args := arrayutils.Map(input[1:], strings.ToLower)
+	args := arrayutils.Map(entities, strings.ToLower)
 
 	importer.configCache = map[string]any{}
 	importer.serviceCache = map[string]any{}
@@ -160,7 +159,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsCertificateAuthorityImportRequired(args) {
 		log.Debug("Processing CertificateAuthorities")
 		var err error
-		cas, err = importer.ProcessCertificateAuthorities(data)
+		cas, err = importer.ProcessCertificateAuthorities(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -175,7 +174,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsExtJwtSignerImportRequired(args) {
 		log.Debug("Processing ExtJWTSigners")
 		var err error
-		externalJwtSigners, err = importer.ProcessExternalJwtSigners(data)
+		externalJwtSigners, err = importer.ProcessExternalJwtSigners(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -188,7 +187,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsAuthPolicyImportRequired(args) {
 		log.Debug("Processing AuthPolicies")
 		var err error
-		authPolicies, err = importer.ProcessAuthPolicies(data)
+		authPolicies, err = importer.ProcessAuthPolicies(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -201,7 +200,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsIdentityImportRequired(args) {
 		log.Debug("Processing Identities")
 		var err error
-		identities, err = importer.ProcessIdentities(data)
+		identities, err = importer.ProcessIdentities(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -214,7 +213,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsConfigTypeImportRequired(args) {
 		log.Debug("Processing ConfigTypes")
 		var err error
-		configTypes, err = importer.ProcessConfigTypes(data)
+		configTypes, err = importer.ProcessConfigTypes(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -227,7 +226,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsConfigImportRequired(args) {
 		log.Debug("Processing Configs")
 		var err error
-		configs, err = importer.ProcessConfigs(data)
+		configs, err = importer.ProcessConfigs(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -240,7 +239,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsServiceImportRequired(args) {
 		log.Debug("Processing Services")
 		var err error
-		services, err = importer.ProcessServices(data)
+		services, err = importer.ProcessServices(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -253,7 +252,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsPostureCheckImportRequired(args) {
 		log.Debug("Processing PostureChecks")
 		var err error
-		postureChecks, err = importer.ProcessPostureChecks(data)
+		postureChecks, err = importer.ProcessPostureChecks(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -266,7 +265,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsEdgeRouterImportRequired(args) {
 		log.Debug("Processing EdgeRouters")
 		var err error
-		routers, err = importer.ProcessEdgeRouters(data)
+		routers, err = importer.ProcessEdgeRouters(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -279,7 +278,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsServiceEdgeRouterPolicyImportRequired(args) {
 		log.Debug("Processing ServiceEdgeRouterPolicies")
 		var err error
-		serviceEdgeRouterPolicies, err = importer.ProcessServiceEdgeRouterPolicies(data)
+		serviceEdgeRouterPolicies, err = importer.ProcessServiceEdgeRouterPolicies(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -292,7 +291,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsServicePolicyImportRequired(args) {
 		log.Debug("Processing ServicePolicies")
 		var err error
-		servicePolicies, err = importer.ProcessServicePolicies(data)
+		servicePolicies, err = importer.ProcessServicePolicies(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -305,7 +304,7 @@ func (importer *Importer) Execute(input []string) error {
 	if importer.IsEdgeRouterPolicyImportRequired(args) {
 		log.Debug("Processing EdgeRouterPolicies")
 		var err error
-		routerPolicies, err = importer.ProcessEdgeRouterPolicies(data)
+		routerPolicies, err = importer.ProcessEdgeRouterPolicies(client, importer.Data)
 		if err != nil {
 			return err
 		}
@@ -335,19 +334,19 @@ func FromMap[T interface{}](input interface{}, v T) *T {
 }
 
 type Reader interface {
-	read(input any) ([]byte, error)
+	read() ([]byte, error)
 }
 
 type FileReader struct {
+	filename string
 }
 
-func (i FileReader) read(input any) ([]byte, error) {
-	file, err := os.ReadFile(input.(string))
+func (i FileReader) read() ([]byte, error) {
+	content, err := os.ReadFile(i.filename)
 	if err != nil {
 		return nil, err
 	}
-
-	return file, nil
+	return content, nil
 }
 
 type InputFormat string

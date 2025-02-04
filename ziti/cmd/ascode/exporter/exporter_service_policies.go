@@ -17,6 +17,7 @@
 package exporter
 
 import (
+	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"slices"
@@ -27,14 +28,14 @@ func (exporter Exporter) IsServicePolicyExportRequired(args []string) bool {
 		slices.Contains(args, "service-policy")
 }
 
-func (exporter Exporter) GetServicePolicies() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetServicePolicies(client *rest_management_api_client.ZitiEdgeManagement) ([]map[string]interface{}, error) {
 
 	return exporter.getEntities(
 		"ServicePolicies",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: &limit}, nil)
+			resp, err := client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +43,7 @@ func (exporter Exporter) GetServicePolicies() ([]map[string]interface{}, error) 
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := exporter.client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: limit, Offset: offset}, nil)
+			resp, err := client.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}

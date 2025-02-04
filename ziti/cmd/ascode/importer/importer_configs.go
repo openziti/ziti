@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/Jeffail/gabs/v2"
+	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -35,16 +36,16 @@ func (importer *Importer) IsConfigImportRequired(args []string) bool {
 		slices.Contains(args, "service")
 }
 
-func (importer *Importer) ProcessConfigs(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessConfigs(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["configs"] {
 		create := FromMap(data, rest_model.ConfigCreate{})
 
 		// see if the config already exists
-		existing := mgmt.ConfigFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ConfigFromFilter(client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.LoginOpts.Verbose {
+			if importer.verbose {
 				log.
 					WithFields(map[string]interface{}{
 						"name":     *create.Name,
@@ -52,7 +53,7 @@ func (importer *Importer) ProcessConfigs(input map[string][]interface{}) (map[st
 					}).
 					Info("Found existing Config, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping Config %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping Config %s\r", *create.Name)
 			continue
 		}
 
@@ -67,7 +68,7 @@ func (importer *Importer) ProcessConfigs(input map[string][]interface{}) (map[st
 		// look up the config type id from the name and add to the create
 		value := doc.Path("configType").Data().(string)[1:]
 		configType, _ := ascode.GetItemFromCache(importer.configCache, value, func(name string) (interface{}, error) {
-			return mgmt.ConfigTypeFromFilter(importer.client, mgmt.NameFilter(name)), nil
+			return mgmt.ConfigTypeFromFilter(client, mgmt.NameFilter(name)), nil
 		})
 		if importer.configCache == nil {
 			return nil, errors.New("error reading ConfigType: " + value)
@@ -75,11 +76,11 @@ func (importer *Importer) ProcessConfigs(input map[string][]interface{}) (map[st
 		create.ConfigTypeID = configType.(*rest_model.ConfigTypeDetail).ID
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Creating Config %s\r", *create.Name)
-		if importer.LoginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Config %s\r", *create.Name)
+		if importer.verbose {
 			log.WithField("name", *create.Name).Debug("Creating Config")
 		}
-		created, createErr := importer.client.Config.CreateConfig(&config.CreateConfigParams{Config: create}, nil)
+		created, createErr := client.Config.CreateConfig(&config.CreateConfigParams{Config: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -92,7 +93,7 @@ func (importer *Importer) ProcessConfigs(input map[string][]interface{}) (map[st
 				return nil, createErr
 			}
 		}
-		if importer.LoginOpts.Verbose {
+		if importer.verbose {
 			log.WithFields(map[string]interface{}{
 				"name":     *create.Name,
 				"configId": created.Payload.Data.ID,

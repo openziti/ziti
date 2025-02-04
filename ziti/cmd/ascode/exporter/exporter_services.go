@@ -18,6 +18,7 @@ package exporter
 
 import (
 	"errors"
+	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_model"
@@ -30,14 +31,14 @@ func (exporter Exporter) IsServiceExportRequired(args []string) bool {
 		slices.Contains(args, "service")
 }
 
-func (exporter Exporter) GetServices() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetServices(client *rest_management_api_client.ZitiEdgeManagement) ([]map[string]interface{}, error) {
 
 	return exporter.getEntities(
 		"Services",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.Service.ListServices(&service.ListServicesParams{Limit: &limit}, nil)
+			resp, err := client.Service.ListServices(&service.ListServicesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -45,7 +46,7 @@ func (exporter Exporter) GetServices() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := exporter.client.Service.ListServices(&service.ListServicesParams{Limit: limit, Offset: offset}, nil)
+			resp, err := client.Service.ListServices(&service.ListServicesParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -76,7 +77,7 @@ func (exporter Exporter) GetServices() ([]map[string]interface{}, error) {
 			var configNames []string
 			for _, c := range item.Configs {
 				configDetail, lookupErr := ascode.GetItemFromCache(exporter.configCache, c, func(id string) (interface{}, error) {
-					return exporter.client.Config.DetailConfig(&config.DetailConfigParams{ID: id}, nil)
+					return client.Config.DetailConfig(&config.DetailConfigParams{ID: id}, nil)
 				})
 				if lookupErr != nil {
 					return nil, errors.Join(errors.New("error reading Config: "+c), lookupErr)

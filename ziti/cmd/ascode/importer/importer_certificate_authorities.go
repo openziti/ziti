@@ -17,6 +17,7 @@
 package importer
 
 import (
+	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -31,29 +32,29 @@ func (importer *Importer) IsCertificateAuthorityImportRequired(args []string) bo
 		slices.Contains(args, "certificate-authority")
 }
 
-func (importer *Importer) ProcessCertificateAuthorities(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessCertificateAuthorities(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["certificateAuthorities"] {
 		create := FromMap(data, rest_model.CaCreate{})
 
 		// see if the CA already exists
-		existing := mgmt.CertificateAuthorityFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.CertificateAuthorityFromFilter(client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.LoginOpts.Verbose {
+			if importer.verbose {
 				log.WithFields(map[string]interface{}{
 					"name":                   *create.Name,
 					"certificateAuthorityId": *existing.ID,
 				}).
 					Info("Found existing CertificateAuthority, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping CertificateAuthority %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping CertificateAuthority %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Creating CertificateAuthority %s\r", *create.Name)
-		created, createErr := importer.client.CertificateAuthority.CreateCa(&certificate_authority.CreateCaParams{Ca: create}, nil)
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating CertificateAuthority %s\r", *create.Name)
+		created, createErr := client.CertificateAuthority.CreateCa(&certificate_authority.CreateCaParams{Ca: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.
@@ -69,7 +70,7 @@ func (importer *Importer) ProcessCertificateAuthorities(input map[string][]inter
 				return nil, createErr
 			}
 		}
-		if importer.LoginOpts.Verbose {
+		if importer.verbose {
 			log.WithFields(map[string]interface{}{
 				"name":                   *create.Name,
 				"certificateAuthorityId": created.Payload.Data.ID,

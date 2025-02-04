@@ -19,6 +19,7 @@ package importer
 import (
 	"encoding/json"
 	"github.com/Jeffail/gabs/v2"
+	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -33,7 +34,7 @@ func (importer *Importer) IsPostureCheckImportRequired(args []string) bool {
 		slices.Contains(args, "posture-check")
 }
 
-func (importer *Importer) ProcessPostureChecks(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessPostureChecks(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["postureChecks"] {
@@ -70,9 +71,9 @@ func (importer *Importer) ProcessPostureChecks(input map[string][]interface{}) (
 		}
 
 		// see if the posture check already exists
-		existing := mgmt.PostureCheckFromFilter(importer.client, mgmt.NameFilter(*create.Name()))
+		existing := mgmt.PostureCheckFromFilter(client, mgmt.NameFilter(*create.Name()))
 		if existing != nil {
-			if importer.LoginOpts.Verbose {
+			if importer.verbose {
 				log.WithFields(map[string]interface{}{
 					"name":           *create.Name(),
 					"postureCheckId": (*existing).ID(),
@@ -80,20 +81,20 @@ func (importer *Importer) ProcessPostureChecks(input map[string][]interface{}) (
 				}).
 					Info("Found existing PostureCheck, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping PostureCheck %s\r", *create.Name())
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping PostureCheck %s\r", *create.Name())
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Creating PostureCheck %s\r", *create.Name())
-		if importer.LoginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating PostureCheck %s\r", *create.Name())
+		if importer.verbose {
 			log.WithFields(map[string]interface{}{
 				"name":   *create.Name(),
 				"typeId": create.TypeID(),
 			}).
 				Debug("Creating PostureCheck")
 		}
-		created, createErr := importer.client.PostureChecks.CreatePostureCheck(&posture_checks.CreatePostureCheckParams{PostureCheck: create}, nil)
+		created, createErr := client.PostureChecks.CreatePostureCheck(&posture_checks.CreatePostureCheckParams{PostureCheck: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -106,7 +107,7 @@ func (importer *Importer) ProcessPostureChecks(input map[string][]interface{}) (
 				return nil, createErr
 			}
 		}
-		if importer.LoginOpts.Verbose {
+		if importer.verbose {
 			log.WithFields(map[string]interface{}{
 				"name":           *create.Name(),
 				"postureCheckId": created.Payload.Data.ID,

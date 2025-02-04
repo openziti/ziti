@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/Jeffail/gabs/v2"
+	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -34,23 +35,23 @@ func (importer *Importer) IsIdentityImportRequired(args []string) bool {
 		slices.Contains(args, "identity")
 }
 
-func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessIdentities(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 
 	for _, data := range input["identities"] {
 		create := FromMap(data, rest_model.IdentityCreate{})
 
-		existing := mgmt.IdentityFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.IdentityFromFilter(client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.LoginOpts.Verbose {
+			if importer.verbose {
 				log.WithFields(map[string]interface{}{
 					"name":       *create.Name,
 					"identityId": *existing.ID,
 				}).
 					Info("Found existing Identity, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping Identity %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping Identity %s\r", *create.Name)
 			continue
 		}
 
@@ -69,7 +70,7 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 
 		// look up the auth policy id from the name and add to the create, omit if it's the "Default" policy
 		policy, _ := ascode.GetItemFromCache(importer.authPolicyCache, policyName, func(name string) (interface{}, error) {
-			return mgmt.AuthPolicyFromFilter(importer.client, mgmt.NameFilter(name)), nil
+			return mgmt.AuthPolicyFromFilter(client, mgmt.NameFilter(name)), nil
 		})
 		if policy == nil {
 			return nil, errors.New("error reading Auth Policy: " + policyName)
@@ -79,8 +80,8 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Creating Identity %s\r", *create.Name)
-		created, createErr := importer.client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Identity %s\r", *create.Name)
+		created, createErr := client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -94,7 +95,7 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 				return nil, createErr
 			}
 		}
-		if importer.LoginOpts.Verbose {
+		if importer.verbose {
 			log.WithFields(map[string]interface{}{
 				"name":       *create.Name,
 				"identityId": created.Payload.Data.ID,
@@ -108,13 +109,13 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 	return result, nil
 }
 
-func (importer *Importer) lookupIdentities(roles []string) ([]string, error) {
+func (importer *Importer) lookupIdentities(client *rest_management_api_client.ZitiEdgeManagement, roles []string) ([]string, error) {
 	identityRoles := []string{}
 	for _, role := range roles {
 		if role[0:1] == "@" {
 			roleName := role[1:]
 			value, lookupErr := ascode.GetItemFromCache(importer.identityCache, roleName, func(name string) (interface{}, error) {
-				return mgmt.IdentityFromFilter(importer.client, mgmt.NameFilter(name)), nil
+				return mgmt.IdentityFromFilter(client, mgmt.NameFilter(name)), nil
 			})
 			if lookupErr != nil {
 				return nil, lookupErr

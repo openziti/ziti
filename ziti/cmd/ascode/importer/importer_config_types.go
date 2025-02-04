@@ -17,6 +17,7 @@
 package importer
 
 import (
+	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -32,33 +33,33 @@ func (importer *Importer) IsConfigTypeImportRequired(args []string) bool {
 		slices.Contains(args, "service")
 }
 
-func (importer *Importer) ProcessConfigTypes(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessConfigTypes(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["configTypes"] {
 		create := FromMap(data, rest_model.ConfigTypeCreate{})
 
 		// see if the config type already exists
-		existing := mgmt.ConfigTypeFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ConfigTypeFromFilter(client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.LoginOpts.Verbose {
+			if importer.verbose {
 				log.WithFields(map[string]interface{}{
 					"name":         *create.Name,
 					"configTypeId": *existing.ID,
 				}).
 					Info("Found existing ConfigType, skipping create")
 			}
-			_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Skipping ConfigType %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping ConfigType %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.LoginOpts.Err, "Creating ConfigType %s\r", *create.Name)
-		if importer.LoginOpts.Verbose {
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ConfigType %s\r", *create.Name)
+		if importer.verbose {
 			log.WithField("name", *create.Name).
 				Debug("Creating ConfigType")
 		}
-		created, createErr := importer.client.Config.CreateConfigType(&config.CreateConfigTypeParams{ConfigType: create}, nil)
+		created, createErr := client.Config.CreateConfigType(&config.CreateConfigTypeParams{ConfigType: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -73,7 +74,7 @@ func (importer *Importer) ProcessConfigTypes(input map[string][]interface{}) (ma
 			return nil, createErr
 		}
 
-		if importer.LoginOpts.Verbose {
+		if importer.verbose {
 			log.WithFields(map[string]interface{}{
 				"name":         *create.Name,
 				"configTypeId": created.Payload.Data.ID,

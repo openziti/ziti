@@ -17,6 +17,7 @@
 package exporter
 
 import (
+	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"slices"
@@ -27,14 +28,14 @@ func (exporter Exporter) IsEdgeRouterPolicyExportRequired(args []string) bool {
 		slices.Contains(args, "edge-router-policy")
 }
 
-func (exporter Exporter) GetEdgeRouterPolicies() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetEdgeRouterPolicies(client *rest_management_api_client.ZitiEdgeManagement) ([]map[string]interface{}, error) {
 
 	return exporter.getEntities(
 		"EdgeRouterPolicies",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.EdgeRouterPolicy.ListEdgeRouterPolicies(&edge_router_policy.ListEdgeRouterPoliciesParams{Limit: &limit}, nil)
+			resp, err := client.EdgeRouterPolicy.ListEdgeRouterPolicies(&edge_router_policy.ListEdgeRouterPoliciesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +43,7 @@ func (exporter Exporter) GetEdgeRouterPolicies() ([]map[string]interface{}, erro
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := exporter.client.EdgeRouterPolicy.ListEdgeRouterPolicies(&edge_router_policy.ListEdgeRouterPoliciesParams{Limit: limit, Offset: offset}, nil)
+			resp, err := client.EdgeRouterPolicy.ListEdgeRouterPolicies(&edge_router_policy.ListEdgeRouterPoliciesParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}
