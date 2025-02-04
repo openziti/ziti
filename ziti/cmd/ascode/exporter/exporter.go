@@ -30,7 +30,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"io"
-	"os"
 	"slices"
 	"strings"
 )
@@ -44,7 +43,6 @@ type Exporter struct {
 	OfJson           bool
 	OfYaml           bool
 	Filename         string
-	file             *os.File
 	configCache      map[string]any
 	configTypeCache  map[string]any
 	authPolicyCache  map[string]any
@@ -246,12 +244,6 @@ func (exporter *Exporter) Execute(input []string) error {
 	err = output.Write(result)
 	if err != nil {
 		return err
-	}
-	if exporter.file != nil {
-		err := exporter.file.Close()
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
