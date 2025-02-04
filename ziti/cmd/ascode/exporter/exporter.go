@@ -24,12 +24,15 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/ziti/internal"
 	ziticobra "github.com/openziti/ziti/internal/cobra"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"io"
+	"os"
 	"slices"
 	"strings"
 )
@@ -40,9 +43,7 @@ type Exporter struct {
 	Out              io.Writer
 	Err              io.Writer
 	LoginOpts        edge.LoginOptions
-	OfJson           bool
-	OfYaml           bool
-	Filename         string
+	OutputFormat     OutputFormat
 	configCache      map[string]any
 	configTypeCache  map[string]any
 	authPolicyCache  map[string]any
@@ -50,15 +51,25 @@ type Exporter struct {
 	client           *rest_management_api_client.ZitiEdgeManagement
 }
 
-var output Output
+var output *Output
 
 func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	exporter := &Exporter{
 		Out: out,
 		Err: errOut,
+		LoginOpts: edge.LoginOptions{
+			Options: api.Options{
+				CommonOptions: common.CommonOptions{
+					Out: os.Stdout,
+					Err: os.Stderr,
+				},
+			},
+		},
 	}
-	exporter.LoginOpts = edge.LoginOptions{}
+
+	var outputFormat string
+	var outputFile string
 
 	cmd := &cobra.Command{
 		Use:   "export [entity]",
@@ -67,6 +78,29 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
+
+			if strings.ToUpper(outputFormat) == "JSON" {
+				exporter.OutputFormat = JSON
+			} else if strings.ToUpper(outputFormat) == "YAML" {
+				exporter.OutputFormat = YAML
+			} else {
+				log.Fatalf("Invalid output format: %s", outputFormat)
+			}
+
+			if outputFile != "" {
+				o, err := NewOutputToFile(exporter.LoginOpts.Verbose, exporter.OutputFormat, outputFile, exporter.Err)
+				if err != nil {
+					log.Fatal(err)
+				}
+				output = o
+			} else {
+				o, err := NewOutputToWriter(exporter.LoginOpts.Verbose, exporter.OutputFormat, exporter.Out, exporter.Err)
+				if err != nil {
+					log.Fatal(err)
+				}
+				output = o
+			}
+
 			err := exporter.Execute(args)
 			if err != nil {
 				log.Fatal(err)
@@ -91,13 +125,11 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	edge.AddLoginFlags(cmd, &exporter.LoginOpts)
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVar(&exporter.OfJson, "json", true, "Output in JSON")
-	cmd.Flags().BoolVar(&exporter.OfYaml, "yaml", false, "Output in YAML")
+	cmd.Flags().StringVar(&outputFormat, "output-format", "JSON", "Output either JSON or YAML. (default JSON)")
 	cmd.Flags().StringVar(&exporter.LoginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
-	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
 	ziticobra.SetHelpTemplate(cmd)
 
-	cmd.Flags().StringVarP(&exporter.Filename, "output-file", "o", "", "Write output to local file")
+	cmd.Flags().StringVarP(&outputFile, "output-file", "o", "", "Write output to local file")
 
 	return cmd
 }
@@ -118,18 +150,12 @@ func (exporter *Exporter) Execute(input []string) error {
 		return err
 	}
 
-	if exporter.Filename != "" {
-		o, err := NewOutputToFile(exporter.LoginOpts.Verbose, exporter.OfJson, exporter.OfYaml, exporter.Filename, exporter.Err)
+	if output == nil {
+		o, err := NewOutputToWriter(exporter.LoginOpts.Verbose, exporter.OutputFormat, exporter.Out, exporter.Err)
 		if err != nil {
 			return err
 		}
-		output = *o
-	} else {
-		o, err := NewOutputToWriter(exporter.LoginOpts.Verbose, exporter.OfJson, exporter.OfYaml, exporter.Out, exporter.Err)
-		if err != nil {
-			return err
-		}
-		output = *o
+		output = o
 	}
 
 	args := arrayutils.Map(input, strings.ToLower)
@@ -317,3 +343,10 @@ func (exporter *Exporter) Filter(m map[string]interface{}, properties []string) 
 		}
 	}
 }
+
+type OutputFormat string
+
+const (
+	JSON OutputFormat = "JSON"
+	YAML              = "YAML"
+)

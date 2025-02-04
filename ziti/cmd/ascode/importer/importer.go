@@ -24,6 +24,8 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/ziti/internal"
 	ziticobra "github.com/openziti/ziti/internal/cobra"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/sirupsen/logrus"
@@ -41,8 +43,7 @@ type Importer struct {
 	Out                io.Writer
 	Err                io.Writer
 	LoginOpts          edge.LoginOptions
-	IfJson             bool
-	IfYaml             bool
+	InputFormat        InputFormat
 	configCache        map[string]any
 	serviceCache       map[string]any
 	edgeRouterCache    map[string]any
@@ -54,8 +55,20 @@ type Importer struct {
 
 func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
-	importer := &Importer{}
-	importer.LoginOpts = edge.LoginOptions{}
+	importer := &Importer{
+		Out: out,
+		Err: errOut,
+		LoginOpts: edge.LoginOptions{
+			Options: api.Options{
+				CommonOptions: common.CommonOptions{
+					Out: os.Stdout,
+					Err: os.Stderr,
+				},
+			},
+		},
+	}
+
+	var inputFormat string
 
 	cmd := &cobra.Command{
 		Use:   "import filename [entity]",
@@ -64,6 +77,15 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			if strings.ToUpper(inputFormat) == "JSON" {
+				importer.InputFormat = JSON
+			} else if strings.ToUpper(inputFormat) == "YAML" {
+				importer.InputFormat = YAML
+			} else {
+				log.Fatalf("Invalid input format: %s", inputFormat)
+			}
+
 			executeErr := importer.Execute(args)
 			if executeErr != nil {
 				return executeErr
@@ -81,14 +103,9 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	edge.AddLoginFlags(cmd, &importer.LoginOpts)
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVar(&importer.IfJson, "json", true, "Input parsed as JSON")
-	cmd.Flags().BoolVar(&importer.IfYaml, "yaml", false, "Input parsed as YAML")
+	cmd.Flags().StringVar(&inputFormat, "input-format", "JSON", "Input either JSON or YAML. (default JSON)")
 	cmd.Flags().StringVar(&importer.LoginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
-	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
 	ziticobra.SetHelpTemplate(cmd)
-
-	importer.LoginOpts.Out = out
-	importer.Err = errOut
 
 	return cmd
 }
@@ -116,7 +133,7 @@ func (importer *Importer) Execute(input []string) error {
 	}
 	data := map[string][]interface{}{}
 
-	if importer.IfYaml {
+	if importer.InputFormat == YAML {
 		err = yaml.Unmarshal(raw, &data)
 		if err != nil {
 			return errors.Join(errors.New("unable to parse input data as yaml"), err)
@@ -332,3 +349,10 @@ func (i FileReader) read(input any) ([]byte, error) {
 
 	return file, nil
 }
+
+type InputFormat string
+
+const (
+	JSON InputFormat = "JSON"
+	YAML             = "YAML"
+)
