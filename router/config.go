@@ -18,6 +18,8 @@ package router
 
 import (
 	"bytes"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/controller/command"
@@ -35,6 +37,7 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	ziti_tls "github.com/openziti/ziti/internal/tls"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
@@ -874,12 +877,52 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 		pfxlog.Logger().Warnf("connectEvents.maxQueuedEvents greater than allowed maximum of %d", MaxConnectEventsMaxQueuedEvents)
 		cfg.ConnectEvents.MaxQueuedEvents = MaxConnectEventsMaxQueuedEvents
 	}
+	var id *identity.Config
+	id = cfg.Id.Identity.GetConfig()
 
 	cfg.Edge = NewEdgeConfig(cfg)
 	if err = cfg.Edge.LoadEdgeConfigFromMap(cfgmap, loadIdentity); err != nil {
 		return nil, err
 	}
 
+	var errs []error
+	// verify any advertised addresses are valid for the certificates provided
+	for _, c := range cfg.Ctrl.InitialEndpoints {
+		e := ziti_tls.ValidFor(cfg.Id, c.String())
+		if e != nil {
+			errs = append(errs, e)
+		}
+	}
+
+	for _, c := range cfg.Link.Listeners {
+		a := c["advertise"]
+		if a != nil {
+			addy := a.(string)
+			e := ziti_tls.ValidFor(cfg.Id, addy)
+			if e != nil {
+				errs = append(errs, e)
+			}
+		}
+	}
+
+	for _, c := range cfg.Listeners {
+		opts := c.options["options"]
+		if opts != nil {
+			optOpts := opts.(map[interface{}]interface{})
+			o := optOpts["advertise"]
+			if o != nil {
+				addy := o.(string)
+				e := ziti_tls.ValidFor(cfg.Id, addy)
+				if e != nil {
+					errs = append(errs, e)
+				}
+			}
+		}
+	}
+
+	if len(errs) > 0 {
+		pfxlog.Logger().Fatalf("one or more advertiesed addresses are invalid for the advertised address : %v", errs)
+	}
 	return cfg, nil
 }
 
