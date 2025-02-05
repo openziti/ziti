@@ -164,104 +164,116 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 	result := map[string]interface{}{}
 
 	if exporter.IsCertificateAuthorityExportRequired(args) {
-		log.Debug("Processing Certificate Authorities")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Certificate Authorities\r")
 		cas, err := exporter.GetCertificateAuthorities(client)
 		if err != nil {
 			return nil, err
 		}
 		result["certificateAuthorities"] = cas
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Certificate Authorities\r\n", len(cas))
 	}
 	if exporter.IsIdentityExportRequired(args) {
-		log.Debug("Processing Identities")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Identities")
 		identities, err := exporter.GetIdentities(client)
 		if err != nil {
 			return nil, err
 		}
 		result["identities"] = identities
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Identities\r\n", len(identities))
 	}
 
 	if exporter.IsEdgeRouterExportRequired(args) {
-		log.Debug("Processing Edge Routers")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Edge Routers\r")
 		routers, err := exporter.GetEdgeRouters(client)
 		if err != nil {
 			return nil, err
 		}
 		result["edgeRouters"] = routers
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Edge Routers\r\n", len(routers))
 	}
 	if exporter.IsServiceExportRequired(args) {
-		log.Debug("Processing Services")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Services\r")
 		services, err := exporter.GetServices(client)
 		if err != nil {
 			return nil, err
 		}
 		result["services"] = services
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Services\r\n", len(services))
 	}
 	if exporter.IsConfigExportRequired(args) {
-		log.Debug("Processing Configs")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Configs\r")
 		configs, err := exporter.GetConfigs(client)
 		if err != nil {
 			return nil, err
 		}
 		result["configs"] = configs
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Configs\r\n", len(configs))
 	}
 	if exporter.IsConfigTypeExportRequired(args) {
-		log.Debug("Processing Config Types")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Config Types\r")
 		configTypes, err := exporter.GetConfigTypes(client)
 		if err != nil {
 			return nil, err
 		}
 		result["configTypes"] = configTypes
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d ConfigTypes\r\n", len(configTypes))
 	}
 	if exporter.IsServicePolicyExportRequired(args) {
-		log.Debug("Processing Service Policies")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Service Policies")
 		servicePolicies, err := exporter.GetServicePolicies(client)
 		if err != nil {
 			return nil, err
 		}
 		result["servicePolicies"] = servicePolicies
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Service Policies\r\n", len(servicePolicies))
 	}
 	if exporter.IsEdgeRouterExportRequired(args) {
-		log.Debug("Processing Edge Router Policies")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Edge Router Policies\r")
 		routerPolicies, err := exporter.GetEdgeRouterPolicies(client)
 		if err != nil {
 			return nil, err
 		}
 		result["edgeRouterPolicies"] = routerPolicies
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Edge Router Policies\r\n", len(routerPolicies))
 	}
 	if exporter.IsServiceEdgeRouterPolicyExportRequired(args) {
-		log.Debug("Processing Service Edge Router Policies")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Service Edge Router Policies")
 		serviceRouterPolicies, err := exporter.GetServiceEdgeRouterPolicies(client)
 		if err != nil {
 			return nil, err
 		}
 		result["serviceEdgeRouterPolicies"] = serviceRouterPolicies
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Service Edge Router Policies\r\n", len(serviceRouterPolicies))
 	}
 	if exporter.IsExtJwtSignerExportRequired(args) {
-		log.Debug("Processing External JWT Signers")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting External JWT Signers")
 		externalJwtSigners, err := exporter.GetExternalJwtSigners(client)
 		if err != nil {
 			return nil, err
 		}
 		result["externalJwtSigners"] = externalJwtSigners
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d External JWT Signers\r\n", len(externalJwtSigners))
 	}
 	if exporter.IsAuthPolicyExportRequired(args) {
-		log.Debug("Processing Auth Policies")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Auth Policies")
 		authPolicies, err := exporter.GetAuthPolicies(client)
 		if err != nil {
 			return nil, err
 		}
 		result["authPolicies"] = authPolicies
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Auth Policies\r\n", len(authPolicies))
 	}
 	if exporter.IsPostureCheckExportRequired(args) {
-		log.Debug("Processing Posture Checks")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Posture Checks")
 		postureChecks, err := exporter.GetPostureChecks(client)
 		if err != nil {
 			return nil, err
 		}
 		result["postureChecks"] = postureChecks
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Posture Checks\r\n", len(postureChecks))
 	}
 
-	log.Debug("Export complete")
+	_, _ = internal.FPrintfReusingLine(exporter.Err, "Export complete\rn")
 
 	return result, nil
 }

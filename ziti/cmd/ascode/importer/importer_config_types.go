@@ -53,8 +53,7 @@ func (importer *Importer) ProcessConfigTypes(client *rest_management_api_client.
 
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ConfigType %s\r", *create.Name)
-		log.WithField("name", *create.Name).
-			Debug("Creating ConfigType")
+		log.WithField("name", *create.Name).Debug("Creating ConfigType")
 		created, createErr := client.Config.CreateConfigType(&config.CreateConfigTypeParams{ConfigType: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {

@@ -37,8 +37,6 @@ func (importer *Importer) IsAuthPolicyImportRequired(args []string) bool {
 
 func (importer *Importer) ProcessAuthPolicies(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
 
-	log.Debug("Listing all AuthPolicies")
-
 	result := map[string]string{}
 
 	for _, data := range input["authPolicies"] {
