@@ -10,7 +10,6 @@ type RaftConfig struct {
 	Recover               bool
 	DataDir               string
 	AdvertiseAddress      transport.Address
-	InitialMembers        []string
 	CommandHandlerOptions struct {
 		MaxQueueSize uint16
 	}

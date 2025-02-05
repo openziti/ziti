@@ -1,9 +1,6 @@
 v: 3
 cluster:
   dataDir: ./data/ctrl1
-#  initialMembers:
-#    - tls:127.0.0.1:6363
-#    - tls:127.0.0.1:6464
 
 identity:
   cert: ./pki/ctrl1/certs/server.chain.pem

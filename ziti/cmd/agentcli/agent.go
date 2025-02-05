@@ -63,9 +63,6 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 
 	agentCmd.AddCommand(ctrlCmd)
 	ctrlCmd.AddCommand(NewAgentSnapshotDb(p))
-	ctrlCmd.AddCommand(NewAgentCtrlInit(p))
-	ctrlCmd.AddCommand(NewAgentCtrlInitFromDb(p))
-	ctrlCmd.AddCommand(NewAgentCtrlRestoreFromDb(p))
 
 	clusterCmd := &cobra.Command{
 		Use:   "cluster",
@@ -79,6 +76,9 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	clusterCmd.AddCommand(NewAgentClusterRemove(p))
 	clusterCmd.AddCommand(NewAgentClusterList(p))
 	clusterCmd.AddCommand(NewAgentTransferLeadership(p))
+	clusterCmd.AddCommand(NewAgentClusterInit(p))
+	clusterCmd.AddCommand(NewAgentClusterInitFromDb(p))
+	clusterCmd.AddCommand(NewAgentClusterRestoreFromDb(p))
 
 	routerCmd := &cobra.Command{
 		Use:     "router",

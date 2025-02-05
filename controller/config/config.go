@@ -226,19 +226,6 @@ func LoadConfig(path string) (*Config, error) {
 			} else {
 				return nil, errors.Errorf("raft dataDir configuration missing")
 			}
-			if value, found := submap["initialMembers"]; found {
-				if lst, ok := value.([]interface{}); ok {
-					for idx, val := range lst {
-						if member, ok := val.(string); ok {
-							controllerConfig.Raft.InitialMembers = append(controllerConfig.Raft.InitialMembers, member)
-						} else {
-							return nil, errors.Errorf("invalid initialMembers value '%v'at index %v, should be array", idx, val)
-						}
-					}
-				} else {
-					return nil, errors.New("invalid initialMembers value, should be array")
-				}
-			}
 
 			if value, found := submap["snapshotInterval"]; found {
 				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {

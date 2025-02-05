@@ -24,14 +24,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type AgentCtrlRestoreFromDbAction struct {
+type AgentClusterRestoreFromDbAction struct {
 	AgentOptions
 	Voter    bool
 	MemberId string
 }
 
-func NewAgentCtrlRestoreFromDb(p common.OptionsProvider) *cobra.Command {
-	action := &AgentCtrlRestoreFromDbAction{
+func NewAgentClusterRestoreFromDb(p common.OptionsProvider) *cobra.Command {
+	action := &AgentClusterRestoreFromDbAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
@@ -52,7 +52,7 @@ func NewAgentCtrlRestoreFromDb(p common.OptionsProvider) *cobra.Command {
 	return cmd
 }
 
-func (self *AgentCtrlRestoreFromDbAction) makeRequest(ch channel.Channel) error {
+func (self *AgentClusterRestoreFromDbAction) makeRequest(ch channel.Channel) error {
 	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftRestoreFromDb), []byte(self.Args[0]))
 
 	reply, err := msg.WithTimeout(self.timeout).SendForReply(ch)
