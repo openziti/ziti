@@ -135,7 +135,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	edge.AddLoginFlags(cmd, &loginOpts)
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringVar(&outputFormat, "output-format", "JSON", "Output either JSON or YAML. (default JSON)")
+	cmd.Flags().StringVar(&outputFormat, "output-format", "JSON", "Output data as either JSON or YAML (default JSON)")
 	cmd.Flags().StringVar(&loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
 	ziticobra.SetHelpTemplate(cmd)
 

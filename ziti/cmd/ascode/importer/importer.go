@@ -104,6 +104,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 					return errors.Join(errors.New("unable to parse input data as json"), err)
 				}
 			}
+			importer.Data = data
 
 			client, err := loginOpts.NewMgmtClient()
 			if err != nil {
@@ -127,7 +128,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	edge.AddLoginFlags(cmd, &loginOpts)
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringVar(&inputFormat, "input-format", "JSON", "Input either JSON or YAML. (default JSON)")
+	cmd.Flags().StringVar(&inputFormat, "input-format", "JSON", "Parse input as either JSON or YAML (default JSON)")
 	cmd.Flags().StringVar(&loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
 	ziticobra.SetHelpTemplate(cmd)
 
