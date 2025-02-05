@@ -58,9 +58,9 @@ type QuickstartOpts struct {
 	AlreadyInitialized bool
 	Home               string
 	ControllerAddress  string
-	ControllerPort     int16
+	ControllerPort     uint16
 	RouterAddress      string
-	RouterPort         int16
+	RouterPort         uint16
 	out                io.Writer
 	errOut             io.Writer
 	cleanOnExit        bool
@@ -88,9 +88,9 @@ func addCommonQuickstartFlags(cmd *cobra.Command, options *QuickstartOpts) {
 	cmd.Flags().StringVar(&options.Home, "home", "", "permanent directory")
 
 	cmd.Flags().StringVar(&options.ControllerAddress, "ctrl-address", "", "sets the advertised address for the control plane and API. current: "+currentCtrlAddy)
-	cmd.Flags().Int16Var(&options.ControllerPort, "ctrl-port", int16(defaultCtrlPort), "sets the port to use for the control plane and API. current: "+currentCtrlPort)
+	cmd.Flags().Uint16Var(&options.ControllerPort, "ctrl-port", uint16(defaultCtrlPort), "sets the port to use for the control plane and API. current: "+currentCtrlPort)
 	cmd.Flags().StringVar(&options.RouterAddress, "router-address", "", "sets the advertised address for the integrated router. current: "+currentRouterAddy)
-	cmd.Flags().Int16Var(&options.RouterPort, "router-port", int16(defaultRouterPort), "sets the port to use for the integrated router. current: "+currentRouterPort)
+	cmd.Flags().Uint16Var(&options.RouterPort, "router-port", uint16(defaultRouterPort), "sets the port to use for the integrated router. current: "+currentRouterPort)
 	cmd.Flags().BoolVar(&options.routerless, "no-router", false, "specifies the quickstart should not start a router")
 
 	cmd.Flags().BoolVar(&options.verbose, "verbose", false, "Show additional output.")
@@ -652,7 +652,7 @@ func waitForController(ctrlUrl string, done chan struct{}) {
 	done <- struct{}{}
 }
 
-func waitForRouter(address string, port int16, done chan struct{}) {
+func waitForRouter(address string, port uint16, done chan struct{}) {
 	for {
 		addr := fmt.Sprintf("%s:%d", address, port)
 		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
