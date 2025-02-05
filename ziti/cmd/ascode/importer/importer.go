@@ -79,12 +79,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 			importer.verbose = loginOpts.Verbose
 
-			var parsedInputFormat InputFormat
-			if strings.ToUpper(inputFormat) == "JSON" {
-				parsedInputFormat = JSON
-			} else if strings.ToUpper(inputFormat) == "YAML" {
-				parsedInputFormat = YAML
-			} else {
+			if strings.ToUpper(inputFormat) != "JSON" && strings.ToUpper(inputFormat) != "YAML" {
 				log.Fatalf("Invalid input format: %s", inputFormat)
 			}
 
@@ -93,7 +88,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			}.read()
 
 			data := map[string][]interface{}{}
-			if parsedInputFormat == YAML {
+			if strings.ToUpper(inputFormat) == "YAML" {
 				err = yaml.Unmarshal(raw, &data)
 				if err != nil {
 					return errors.Join(errors.New("unable to parse input data as yaml"), err)
@@ -349,10 +344,3 @@ func (i FileReader) read() ([]byte, error) {
 	}
 	return content, nil
 }
-
-type InputFormat string
-
-const (
-	JSON InputFormat = "JSON"
-	YAML InputFormat = "YAML"
-)

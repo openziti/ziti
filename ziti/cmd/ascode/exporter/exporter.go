@@ -17,6 +17,7 @@
 package exporter
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"github.com/judedaryl/go-arrayutils"
@@ -31,6 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 	"io"
 	"os"
 	"slices"
@@ -40,7 +42,7 @@ import (
 var log = pfxlog.Logger()
 
 type Exporter struct {
-	Out              io.Writer
+	Out              bufio.Writer
 	Err              io.Writer
 	configCache      map[string]any
 	configTypeCache  map[string]any
@@ -49,12 +51,10 @@ type Exporter struct {
 	verbose          bool
 }
 
-var output *Output
-
 func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	exporter := &Exporter{
-		Out: out,
+		Out: *bufio.NewWriter(out),
 		Err: errOut,
 	}
 
@@ -78,13 +78,15 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 
 			exporter.verbose = loginOpts.Verbose
+			if outputFile != "" {
+				file, err := os.Create(outputFile)
+				if err != nil {
+					log.WithError(err).Fatal("Error creating file for writing")
+				}
+				exporter.Out = *bufio.NewWriter(file)
+			}
 
-			var parsedOutputFormat OutputFormat
-			if strings.ToUpper(outputFormat) == "JSON" {
-				parsedOutputFormat = JSON
-			} else if strings.ToUpper(outputFormat) == "YAML" {
-				parsedOutputFormat = YAML
-			} else {
+			if strings.ToUpper(outputFormat) != "JSON" && strings.ToUpper(outputFormat) != "YAML" {
 				log.Fatalf("Invalid output format: %s", outputFormat)
 			}
 
@@ -98,23 +100,51 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 				log.Fatal(err)
 			}
 
-			if outputFile != "" {
-				o, err := NewOutputToFile(loginOpts.Verbose, parsedOutputFormat, outputFile, exporter.Err)
+			var output []byte
+			if strings.ToUpper(outputFormat) == "YAML" {
+				if exporter.verbose {
+					_, _ = internal.FPrintfReusingLine(exporter.Err, "Formatting output as YAML\r\n")
+				}
+				output, err = yaml.Marshal(result)
 				if err != nil {
 					log.Fatal(err)
 				}
-				output = o
 			} else {
-				o, err := NewOutputToWriter(loginOpts.Verbose, parsedOutputFormat, exporter.Out, exporter.Err)
+				if exporter.verbose {
+					_, _ = internal.FPrintfReusingLine(exporter.Err, "Formatting output as JSON\r\n")
+				}
+				output, err = json.MarshalIndent(result, "", "  ")
 				if err != nil {
 					log.Fatal(err)
 				}
-				output = o
 			}
-			err = output.Write(result)
+
+			if exporter.verbose && outputFile != "" {
+				_, _ = internal.FPrintfReusingLine(exporter.Err, "Writing to file: %s\r\n", outputFile)
+			}
+
+			bytes, err := exporter.Out.Write(output)
 			if err != nil {
 				log.Fatal(err)
 			}
+			err = exporter.Out.Flush()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if outputFile != "" {
+				log.
+					WithFields(map[string]interface{}{
+						"bytes":    bytes,
+						"filename": outputFile,
+					}).
+					Debug("Wrote data")
+			} else {
+				log.
+					WithField("bytes", bytes).
+					Debug("Wrote data")
+			}
+
 		},
 		Hidden: true,
 	}
@@ -273,7 +303,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Posture Checks\r\n", len(postureChecks))
 	}
 
-	_, _ = internal.FPrintfReusingLine(exporter.Err, "Export complete\rn")
+	_, _ = internal.FPrintfReusingLine(exporter.Err, "Export complete\r\n")
 
 	return result, nil
 }
@@ -346,10 +376,3 @@ func (exporter *Exporter) Filter(m map[string]interface{}, properties []string) 
 		}
 	}
 }
-
-type OutputFormat string
-
-const (
-	JSON OutputFormat = "JSON"
-	YAML OutputFormat = "YAML"
-)
