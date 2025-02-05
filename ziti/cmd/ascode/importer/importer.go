@@ -43,13 +43,13 @@ type Importer struct {
 	Out                io.Writer
 	Err                io.Writer
 	Data               map[string][]interface{}
+	Client             *rest_management_api_client.ZitiEdgeManagement
 	configCache        map[string]any
 	serviceCache       map[string]any
 	edgeRouterCache    map[string]any
 	authPolicyCache    map[string]any
 	extJwtSignersCache map[string]any
 	identityCache      map[string]any
-	verbose            bool
 }
 
 func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -77,7 +77,13 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			importer.verbose = loginOpts.Verbose
+			logLvl := logrus.InfoLevel
+			if loginOpts.Verbose {
+				logLvl = logrus.DebugLevel
+			}
+
+			pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
+			internal.ConfigureLogFormat(logLvl)
 
 			if strings.ToUpper(inputFormat) != "JSON" && strings.ToUpper(inputFormat) != "YAML" {
 				log.Fatalf("Invalid input format: %s", inputFormat)
@@ -108,8 +114,9 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			if err != nil {
 				log.Fatal(err)
 			}
+			importer.Client = client
 
-			executeErr := importer.Execute(client, args[1:])
+			executeErr := importer.Execute(args[1:])
 			if executeErr != nil {
 				return executeErr
 			}
@@ -133,15 +140,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeManagement, entities []string) error {
-
-	logLvl := logrus.InfoLevel
-	if importer.verbose {
-		logLvl = logrus.DebugLevel
-	}
-
-	pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
-	internal.ConfigureLogFormat(logLvl)
+func (importer *Importer) Execute(entities []string) error {
 
 	args := arrayutils.Map(entities, strings.ToLower)
 
@@ -158,7 +157,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsCertificateAuthorityImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating CertificateAuthorities")
 		var err error
-		cas, err = importer.ProcessCertificateAuthorities(client, importer.Data)
+		cas, err = importer.ProcessCertificateAuthorities(importer.Data)
 		if err != nil {
 			return err
 		}
@@ -173,7 +172,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsExtJwtSignerImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ExtJWTSigners")
 		var err error
-		externalJwtSigners, err = importer.ProcessExternalJwtSigners(client, importer.Data)
+		externalJwtSigners, err = importer.ProcessExternalJwtSigners(importer.Data)
 		if err != nil {
 			return err
 		}
@@ -186,7 +185,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsAuthPolicyImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating AuthPolicies")
 		var err error
-		authPolicies, err = importer.ProcessAuthPolicies(client, importer.Data)
+		authPolicies, err = importer.ProcessAuthPolicies(importer.Data)
 		if err != nil {
 			return err
 		}
@@ -199,7 +198,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsIdentityImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Identities")
 		var err error
-		identities, err = importer.ProcessIdentities(client, importer.Data)
+		identities, err = importer.ProcessIdentities(importer.Data)
 		if err != nil {
 			return err
 		}
@@ -212,7 +211,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsConfigTypeImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ConfigTypes")
 		var err error
-		configTypes, err = importer.ProcessConfigTypes(client, importer.Data)
+		configTypes, err = importer.ProcessConfigTypes(importer.Data)
 		if err != nil {
 			return err
 		}
@@ -225,7 +224,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsConfigImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Configs")
 		var err error
-		configs, err = importer.ProcessConfigs(client, importer.Data)
+		configs, err = importer.ProcessConfigs(importer.Data)
 		if err != nil {
 			return err
 		}
@@ -238,7 +237,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsServiceImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Services")
 		var err error
-		services, err = importer.ProcessServices(client, importer.Data)
+		services, err = importer.ProcessServices(importer.Data)
 		if err != nil {
 			return err
 		}
@@ -251,7 +250,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsPostureCheckImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating PostureChecks")
 		var err error
-		postureChecks, err = importer.ProcessPostureChecks(client, importer.Data)
+		postureChecks, err = importer.ProcessPostureChecks(importer.Data)
 		if err != nil {
 			return err
 		}
@@ -264,7 +263,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsEdgeRouterImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating EdgeRouters")
 		var err error
-		routers, err = importer.ProcessEdgeRouters(client, importer.Data)
+		routers, err = importer.ProcessEdgeRouters(importer.Data)
 		if err != nil {
 			return err
 		}
@@ -277,7 +276,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsServiceEdgeRouterPolicyImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ServiceEdgeRouterPolicies")
 		var err error
-		serviceEdgeRouterPolicies, err = importer.ProcessServiceEdgeRouterPolicies(client, importer.Data)
+		serviceEdgeRouterPolicies, err = importer.ProcessServiceEdgeRouterPolicies(importer.Data)
 		if err != nil {
 			return err
 		}
@@ -290,7 +289,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsServicePolicyImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ServicePolicies")
 		var err error
-		servicePolicies, err = importer.ProcessServicePolicies(client, importer.Data)
+		servicePolicies, err = importer.ProcessServicePolicies(importer.Data)
 		if err != nil {
 			return err
 		}
@@ -303,7 +302,7 @@ func (importer *Importer) Execute(client *rest_management_api_client.ZitiEdgeMan
 	if importer.IsEdgeRouterPolicyImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating EdgeRouterPolicies")
 		var err error
-		routerPolicies, err = importer.ProcessEdgeRouterPolicies(client, importer.Data)
+		routerPolicies, err = importer.ProcessEdgeRouterPolicies(importer.Data)
 		if err != nil {
 			return err
 		}

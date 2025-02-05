@@ -19,7 +19,6 @@ package importer
 import (
 	"encoding/json"
 	"github.com/Jeffail/gabs/v2"
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -35,7 +34,7 @@ func (importer *Importer) IsAuthPolicyImportRequired(args []string) bool {
 		slices.Contains(args, "identity")
 }
 
-func (importer *Importer) ProcessAuthPolicies(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessAuthPolicies(input map[string][]interface{}) (map[string]string, error) {
 
 	result := map[string]string{}
 
@@ -43,7 +42,7 @@ func (importer *Importer) ProcessAuthPolicies(client *rest_management_api_client
 		create := FromMap(data, rest_model.AuthPolicyCreate{})
 
 		// see if the auth policy already exists
-		existing := mgmt.AuthPolicyFromFilter(client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.AuthPolicyFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":         *create.Name,
@@ -67,7 +66,7 @@ func (importer *Importer) ProcessAuthPolicies(client *rest_management_api_client
 		for _, signer := range allowedSigners.Children() {
 			value := signer.Data().(string)[1:]
 			extJwtSigner, err := ascode.GetItemFromCache(importer.extJwtSignersCache, value, func(name string) (interface{}, error) {
-				return mgmt.ExternalJWTSignerFromFilter(client, mgmt.NameFilter(name)), nil
+				return mgmt.ExternalJWTSignerFromFilter(importer.Client, mgmt.NameFilter(name)), nil
 			})
 			if err != nil {
 				log.WithField("name", *create.Name).Warn("Unable to read ExtJwtSigner")
@@ -82,7 +81,7 @@ func (importer *Importer) ProcessAuthPolicies(client *rest_management_api_client
 
 			// look up secondary signer by name and add to the create
 			extJwtSigner, err := ascode.GetItemFromCache(importer.extJwtSignersCache, secondarySigner.Data().(string)[1:], func(name string) (interface{}, error) {
-				return mgmt.ExternalJWTSignerFromFilter(client, mgmt.NameFilter(name)), nil
+				return mgmt.ExternalJWTSignerFromFilter(importer.Client, mgmt.NameFilter(name)), nil
 			})
 			if err != nil {
 				log.WithField("name", *create.Name).Warn("Unable to read ExtJwtSigner")
@@ -95,7 +94,7 @@ func (importer *Importer) ProcessAuthPolicies(client *rest_management_api_client
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating AuthPolicy %s\r", *create.Name)
 		log.WithField("name", *create.Name).
 			Debug("Creating AuthPolicy")
-		created, createErr := client.AuthPolicy.CreateAuthPolicy(&auth_policy.CreateAuthPolicyParams{AuthPolicy: create}, nil)
+		created, createErr := importer.Client.AuthPolicy.CreateAuthPolicy(&auth_policy.CreateAuthPolicyParams{AuthPolicy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

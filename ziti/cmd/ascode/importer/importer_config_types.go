@@ -17,7 +17,6 @@
 package importer
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -33,14 +32,14 @@ func (importer *Importer) IsConfigTypeImportRequired(args []string) bool {
 		slices.Contains(args, "service")
 }
 
-func (importer *Importer) ProcessConfigTypes(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessConfigTypes(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["configTypes"] {
 		create := FromMap(data, rest_model.ConfigTypeCreate{})
 
 		// see if the config type already exists
-		existing := mgmt.ConfigTypeFromFilter(client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ConfigTypeFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":         *create.Name,
@@ -54,7 +53,7 @@ func (importer *Importer) ProcessConfigTypes(client *rest_management_api_client.
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ConfigType %s\r", *create.Name)
 		log.WithField("name", *create.Name).Debug("Creating ConfigType")
-		created, createErr := client.Config.CreateConfigType(&config.CreateConfigTypeParams{ConfigType: create}, nil)
+		created, createErr := importer.Client.Config.CreateConfigType(&config.CreateConfigTypeParams{ConfigType: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

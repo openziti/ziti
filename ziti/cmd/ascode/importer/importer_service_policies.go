@@ -18,7 +18,6 @@ package importer
 
 import (
 	"errors"
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -32,14 +31,14 @@ func (importer *Importer) IsServicePolicyImportRequired(args []string) bool {
 		slices.Contains(args, "service-policy")
 }
 
-func (importer *Importer) ProcessServicePolicies(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessServicePolicies(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["servicePolicies"] {
 		create := FromMap(data, rest_model.ServicePolicyCreate{})
 
 		// see if the service policy already exists
-		existing := mgmt.ServicePolicyFromFilter(client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ServicePolicyFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":            *create.Name,
@@ -51,14 +50,14 @@ func (importer *Importer) ProcessServicePolicies(client *rest_management_api_cli
 		}
 
 		// look up the service ids from the name and add to the create
-		serviceRoles, err := importer.lookupServices(client, create.ServiceRoles)
+		serviceRoles, err := importer.lookupServices(create.ServiceRoles)
 		if err != nil {
 			return nil, err
 		}
 		create.ServiceRoles = serviceRoles
 
 		// look up the identity ids from the name and add to the create
-		identityRoles, err := importer.lookupIdentities(client, create.IdentityRoles)
+		identityRoles, err := importer.lookupIdentities(create.IdentityRoles)
 		if err != nil {
 			return nil, errors.Join(errors.New("Unable to read all identities from ServicePolicy"), err)
 		}
@@ -67,7 +66,7 @@ func (importer *Importer) ProcessServicePolicies(client *rest_management_api_cli
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping ServicePolicy %s\r", *create.Name)
 		log.WithField("name", *create.Name).Debug("Creating ServicePolicy")
-		created, createErr := client.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
+		created, createErr := importer.Client.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

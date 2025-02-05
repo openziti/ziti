@@ -17,7 +17,6 @@
 package exporter
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"golang.org/x/exp/slices"
 )
@@ -27,14 +26,14 @@ func (exporter Exporter) IsPostureCheckExportRequired(args []string) bool {
 		slices.Contains(args, "posture-check")
 }
 
-func (exporter Exporter) GetPostureChecks(client *rest_management_api_client.ZitiEdgeManagement) ([]map[string]interface{}, error) {
+func (exporter Exporter) GetPostureChecks() ([]map[string]interface{}, error) {
 
 	return exporter.getEntities(
 		"PostureChecks",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: &limit}, nil)
+			resp, err := exporter.Client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +41,7 @@ func (exporter Exporter) GetPostureChecks(client *rest_management_api_client.Zit
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, _ := client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: limit, Offset: offset}, nil)
+			resp, _ := exporter.Client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: limit, Offset: offset}, nil)
 			entities := make([]interface{}, len(resp.GetPayload().Data()))
 			for i, c := range resp.GetPayload().Data() {
 				entities[i] = interface{}(c)

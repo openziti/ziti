@@ -17,7 +17,6 @@
 package exporter
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
@@ -30,13 +29,13 @@ func (exporter Exporter) IsAuthPolicyExportRequired(args []string) bool {
 		slices.Contains(args, "auth-policy")
 }
 
-func (exporter Exporter) GetAuthPolicies(client *rest_management_api_client.ZitiEdgeManagement) ([]map[string]interface{}, error) {
+func (exporter Exporter) GetAuthPolicies() ([]map[string]interface{}, error) {
 
 	return exporter.getEntities(
 		"AuthPolicies",
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := client.AuthPolicy.ListAuthPolicies(
+			resp, err := exporter.Client.AuthPolicy.ListAuthPolicies(
 				&auth_policy.ListAuthPoliciesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
@@ -45,7 +44,7 @@ func (exporter Exporter) GetAuthPolicies(client *rest_management_api_client.Ziti
 
 		},
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := client.AuthPolicy.ListAuthPolicies(
+			resp, err := exporter.Client.AuthPolicy.ListAuthPolicies(
 				&auth_policy.ListAuthPoliciesParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
@@ -89,7 +88,7 @@ func (exporter Exporter) GetAuthPolicies(client *rest_management_api_client.Ziti
 				signers := []string{}
 				for _, signer := range item.Primary.ExtJWT.AllowedSigners {
 					extJwtSigner, lookupErr := ascode.GetItemFromCache(exporter.externalJwtCache, signer, func(id string) (interface{}, error) {
-						return client.ExternalJWTSigner.DetailExternalJWTSigner(
+						return exporter.Client.ExternalJWTSigner.DetailExternalJWTSigner(
 							&external_jwt_signer.DetailExternalJWTSignerParams{ID: id}, nil)
 					})
 					if lookupErr != nil {
@@ -112,7 +111,7 @@ func (exporter Exporter) GetAuthPolicies(client *rest_management_api_client.Ziti
 					// deleting RequiredExtJwtSigner because it needs to use a reference to the name instead of the ID
 					delete(secondary, "requireExtJwtSigner")
 					extJwtSigner, lookupErr := ascode.GetItemFromCache(exporter.externalJwtCache, *item.Secondary.RequireExtJWTSigner, func(id string) (interface{}, error) {
-						return client.ExternalJWTSigner.DetailExternalJWTSigner(&external_jwt_signer.DetailExternalJWTSignerParams{ID: id}, nil)
+						return exporter.Client.ExternalJWTSigner.DetailExternalJWTSigner(&external_jwt_signer.DetailExternalJWTSignerParams{ID: id}, nil)
 					})
 					if lookupErr != nil {
 						return nil, lookupErr

@@ -17,7 +17,6 @@
 package exporter
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge-api/rest_model"
 	"slices"
@@ -29,14 +28,14 @@ func (exporter Exporter) IsCertificateAuthorityExportRequired(args []string) boo
 		slices.Contains(args, "certificate-authority")
 }
 
-func (exporter Exporter) GetCertificateAuthorities(client *rest_management_api_client.ZitiEdgeManagement) ([]map[string]interface{}, error) {
+func (exporter Exporter) GetCertificateAuthorities() ([]map[string]interface{}, error) {
 
 	return exporter.getEntities(
 		"CertificateAuthorities",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Limit: &limit}, nil)
+			resp, err := exporter.Client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -44,7 +43,7 @@ func (exporter Exporter) GetCertificateAuthorities(client *rest_management_api_c
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Offset: offset, Limit: limit}, nil)
+			resp, err := exporter.Client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{Offset: offset, Limit: limit}, nil)
 			if err != nil {
 				return nil, err
 			}

@@ -19,7 +19,6 @@ package importer
 import (
 	"encoding/json"
 	"github.com/Jeffail/gabs/v2"
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -34,7 +33,7 @@ func (importer *Importer) IsPostureCheckImportRequired(args []string) bool {
 		slices.Contains(args, "posture-check")
 }
 
-func (importer *Importer) ProcessPostureChecks(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessPostureChecks(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["postureChecks"] {
@@ -71,7 +70,7 @@ func (importer *Importer) ProcessPostureChecks(client *rest_management_api_clien
 		}
 
 		// see if the posture check already exists
-		existing := mgmt.PostureCheckFromFilter(client, mgmt.NameFilter(*create.Name()))
+		existing := mgmt.PostureCheckFromFilter(importer.Client, mgmt.NameFilter(*create.Name()))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":           *create.Name(),
@@ -90,7 +89,7 @@ func (importer *Importer) ProcessPostureChecks(client *rest_management_api_clien
 			"typeId": create.TypeID(),
 		}).
 			Debug("Creating PostureCheck")
-		created, createErr := client.PostureChecks.CreatePostureCheck(&posture_checks.CreatePostureCheckParams{PostureCheck: create}, nil)
+		created, createErr := importer.Client.PostureChecks.CreatePostureCheck(&posture_checks.CreatePostureCheckParams{PostureCheck: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

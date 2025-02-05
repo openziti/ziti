@@ -17,7 +17,6 @@
 package exporter
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
 	"slices"
@@ -29,14 +28,14 @@ func (exporter Exporter) IsExtJwtSignerExportRequired(args []string) bool {
 		slices.Contains(args, "external-jwt-signer")
 }
 
-func (exporter Exporter) GetExternalJwtSigners(client *rest_management_api_client.ZitiEdgeManagement) ([]map[string]interface{}, error) {
+func (exporter Exporter) GetExternalJwtSigners() ([]map[string]interface{}, error) {
 
 	return exporter.getEntities(
 		"ExtJWTSigners",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := client.ExternalJWTSigner.ListExternalJWTSigners(&external_jwt_signer.ListExternalJWTSignersParams{Limit: &limit}, nil)
+			resp, err := exporter.Client.ExternalJWTSigner.ListExternalJWTSigners(&external_jwt_signer.ListExternalJWTSignersParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -44,7 +43,7 @@ func (exporter Exporter) GetExternalJwtSigners(client *rest_management_api_clien
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := client.ExternalJWTSigner.ListExternalJWTSigners(
+			resp, err := exporter.Client.ExternalJWTSigner.ListExternalJWTSigners(
 				&external_jwt_signer.ListExternalJWTSignersParams{Offset: offset, Limit: limit}, nil)
 			if err != nil {
 				return nil, err

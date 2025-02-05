@@ -17,7 +17,6 @@
 package importer
 
 import (
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/service_edge_router_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -31,14 +30,14 @@ func (importer *Importer) IsServiceEdgeRouterPolicyImportRequired(args []string)
 		slices.Contains(args, "service-edge-router-policy")
 }
 
-func (importer *Importer) ProcessServiceEdgeRouterPolicies(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessServiceEdgeRouterPolicies(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["serviceEdgeRouterPolicies"] {
 		create := FromMap(data, rest_model.ServiceEdgeRouterPolicyCreate{})
 
 		// see if the service router policy already exists
-		existing := mgmt.ServiceEdgeRouterPolicyFromFilter(client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ServiceEdgeRouterPolicyFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":                  *create.Name,
@@ -50,14 +49,14 @@ func (importer *Importer) ProcessServiceEdgeRouterPolicies(client *rest_manageme
 		}
 
 		// look up the service ids from the name and add to the create
-		serviceRoles, err := importer.lookupServices(client, create.ServiceRoles)
+		serviceRoles, err := importer.lookupServices(create.ServiceRoles)
 		if err != nil {
 			return nil, err
 		}
 		create.ServiceRoles = serviceRoles
 
 		// look up the edgeRouter ids from the name and add to the create
-		edgeRouterRoles, err := importer.lookupEdgeRouters(client, create.EdgeRouterRoles)
+		edgeRouterRoles, err := importer.lookupEdgeRouters(create.EdgeRouterRoles)
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +66,7 @@ func (importer *Importer) ProcessServiceEdgeRouterPolicies(client *rest_manageme
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ServiceEdgeRouterPolicy %s\r", *create.Name)
 		log.WithField("name", *create.Name).
 			Debug("Creating ServiceEdgeRouterPolicy")
-		created, createErr := client.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(&service_edge_router_policy.CreateServiceEdgeRouterPolicyParams{Policy: create}, nil)
+		created, createErr := importer.Client.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(&service_edge_router_policy.CreateServiceEdgeRouterPolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{

@@ -18,7 +18,6 @@ package exporter
 
 import (
 	"errors"
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/internal/ascode"
@@ -30,14 +29,14 @@ func (exporter Exporter) IsConfigExportRequired(args []string) bool {
 		slices.Contains(args, "config")
 }
 
-func (exporter Exporter) GetConfigs(client *rest_management_api_client.ZitiEdgeManagement) ([]map[string]interface{}, error) {
+func (exporter Exporter) GetConfigs() ([]map[string]interface{}, error) {
 
 	return exporter.getEntities(
 		"Configs",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := client.Config.ListConfigs(&config.ListConfigsParams{Limit: &limit}, nil)
+			resp, err := exporter.Client.Config.ListConfigs(&config.ListConfigsParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -45,7 +44,7 @@ func (exporter Exporter) GetConfigs(client *rest_management_api_client.ZitiEdgeM
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, _ := client.Config.ListConfigs(&config.ListConfigsParams{Limit: limit, Offset: offset}, nil)
+			resp, _ := exporter.Client.Config.ListConfigs(&config.ListConfigsParams{Limit: limit, Offset: offset}, nil)
 			entities := make([]interface{}, len(resp.GetPayload().Data))
 			for i, c := range resp.GetPayload().Data {
 				entities[i] = interface{}(c)
@@ -70,7 +69,7 @@ func (exporter Exporter) GetConfigs(client *rest_management_api_client.ZitiEdgeM
 			delete(m, "configType")
 			delete(m, "configTypeId")
 			configType, lookupErr := ascode.GetItemFromCache(exporter.configTypeCache, *item.ConfigTypeID, func(id string) (interface{}, error) {
-				return client.Config.DetailConfigType(&config.DetailConfigTypeParams{ID: id}, nil)
+				return exporter.Client.Config.DetailConfigType(&config.DetailConfigTypeParams{ID: id}, nil)
 			})
 			if lookupErr != nil {
 				return nil, errors.Join(errors.New("error reading Auth Policy: "+*item.ConfigTypeID), lookupErr)

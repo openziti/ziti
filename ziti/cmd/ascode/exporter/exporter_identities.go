@@ -18,7 +18,6 @@ package exporter
 
 import (
 	"errors"
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
@@ -31,14 +30,14 @@ func (exporter Exporter) IsIdentityExportRequired(args []string) bool {
 		slices.Contains(args, "identity")
 }
 
-func (exporter Exporter) GetIdentities(client *rest_management_api_client.ZitiEdgeManagement) ([]map[string]interface{}, error) {
+func (exporter Exporter) GetIdentities() ([]map[string]interface{}, error) {
 
 	return exporter.getEntities(
 		"Identities",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := client.Identity.ListIdentities(&identity.ListIdentitiesParams{Limit: &limit}, nil)
+			resp, err := exporter.Client.Identity.ListIdentities(&identity.ListIdentitiesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -46,7 +45,7 @@ func (exporter Exporter) GetIdentities(client *rest_management_api_client.ZitiEd
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := client.Identity.ListIdentities(&identity.ListIdentitiesParams{Offset: offset, Limit: limit}, nil)
+			resp, err := exporter.Client.Identity.ListIdentities(&identity.ListIdentitiesParams{Offset: offset, Limit: limit}, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -83,7 +82,7 @@ func (exporter Exporter) GetIdentities(client *rest_management_api_client.ZitiEd
 
 				// translate ids to names
 				authPolicy, lookupErr := ascode.GetItemFromCache(exporter.authPolicyCache, *item.AuthPolicyID, func(id string) (interface{}, error) {
-					return client.AuthPolicy.DetailAuthPolicy(&auth_policy.DetailAuthPolicyParams{ID: id}, nil)
+					return exporter.Client.AuthPolicy.DetailAuthPolicy(&auth_policy.DetailAuthPolicyParams{ID: id}, nil)
 				})
 				if lookupErr != nil {
 					return nil, errors.Join(errors.New("error reading Auth Policy: "+*item.AuthPolicyID), lookupErr)

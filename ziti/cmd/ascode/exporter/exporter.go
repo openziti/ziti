@@ -48,7 +48,7 @@ type Exporter struct {
 	configTypeCache  map[string]any
 	authPolicyCache  map[string]any
 	externalJwtCache map[string]any
-	verbose          bool
+	Client           *rest_management_api_client.ZitiEdgeManagement
 }
 
 func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -77,7 +77,14 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 
-			exporter.verbose = loginOpts.Verbose
+			logLvl := logrus.InfoLevel
+			if loginOpts.Verbose {
+				logLvl = logrus.DebugLevel
+			}
+
+			pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
+			internal.ConfigureLogFormat(logLvl)
+
 			if outputFile != "" {
 				file, err := os.Create(outputFile)
 				if err != nil {
@@ -94,15 +101,16 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			if err != nil {
 				log.Fatal(err)
 			}
+			exporter.Client = client
 
-			result, err := exporter.Execute(client, args)
+			result, err := exporter.Execute(args)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			var output []byte
 			if strings.ToUpper(outputFormat) == "YAML" {
-				if exporter.verbose {
+				if loginOpts.Verbose {
 					_, _ = internal.FPrintfReusingLine(exporter.Err, "Formatting output as YAML\r\n")
 				}
 				output, err = yaml.Marshal(result)
@@ -110,7 +118,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 					log.Fatal(err)
 				}
 			} else {
-				if exporter.verbose {
+				if loginOpts.Verbose {
 					_, _ = internal.FPrintfReusingLine(exporter.Err, "Formatting output as JSON\r\n")
 				}
 				output, err = json.MarshalIndent(result, "", "  ")
@@ -119,7 +127,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 				}
 			}
 
-			if exporter.verbose && outputFile != "" {
+			if loginOpts.Verbose && outputFile != "" {
 				_, _ = internal.FPrintfReusingLine(exporter.Err, "Writing to file: %s\r\n", outputFile)
 			}
 
@@ -174,15 +182,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeManagement, input []string) (map[string]interface{}, error) {
-
-	logLvl := logrus.InfoLevel
-	if exporter.verbose {
-		logLvl = logrus.DebugLevel
-	}
-
-	pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
-	internal.ConfigureLogFormat(logLvl)
+func (exporter *Exporter) Execute(input []string) (map[string]interface{}, error) {
 
 	args := arrayutils.Map(input, strings.ToLower)
 
@@ -195,7 +195,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 
 	if exporter.IsCertificateAuthorityExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Certificate Authorities\r")
-		cas, err := exporter.GetCertificateAuthorities(client)
+		cas, err := exporter.GetCertificateAuthorities()
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +204,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 	}
 	if exporter.IsIdentityExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Identities")
-		identities, err := exporter.GetIdentities(client)
+		identities, err := exporter.GetIdentities()
 		if err != nil {
 			return nil, err
 		}
@@ -214,7 +214,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 
 	if exporter.IsEdgeRouterExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Edge Routers\r")
-		routers, err := exporter.GetEdgeRouters(client)
+		routers, err := exporter.GetEdgeRouters()
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +223,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 	}
 	if exporter.IsServiceExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Services\r")
-		services, err := exporter.GetServices(client)
+		services, err := exporter.GetServices()
 		if err != nil {
 			return nil, err
 		}
@@ -232,7 +232,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 	}
 	if exporter.IsConfigExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Configs\r")
-		configs, err := exporter.GetConfigs(client)
+		configs, err := exporter.GetConfigs()
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +241,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 	}
 	if exporter.IsConfigTypeExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Config Types\r")
-		configTypes, err := exporter.GetConfigTypes(client)
+		configTypes, err := exporter.GetConfigTypes()
 		if err != nil {
 			return nil, err
 		}
@@ -250,7 +250,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 	}
 	if exporter.IsServicePolicyExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Service Policies")
-		servicePolicies, err := exporter.GetServicePolicies(client)
+		servicePolicies, err := exporter.GetServicePolicies()
 		if err != nil {
 			return nil, err
 		}
@@ -259,7 +259,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 	}
 	if exporter.IsEdgeRouterExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Edge Router Policies\r")
-		routerPolicies, err := exporter.GetEdgeRouterPolicies(client)
+		routerPolicies, err := exporter.GetEdgeRouterPolicies()
 		if err != nil {
 			return nil, err
 		}
@@ -268,7 +268,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 	}
 	if exporter.IsServiceEdgeRouterPolicyExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Service Edge Router Policies")
-		serviceRouterPolicies, err := exporter.GetServiceEdgeRouterPolicies(client)
+		serviceRouterPolicies, err := exporter.GetServiceEdgeRouterPolicies()
 		if err != nil {
 			return nil, err
 		}
@@ -277,7 +277,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 	}
 	if exporter.IsExtJwtSignerExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting External JWT Signers")
-		externalJwtSigners, err := exporter.GetExternalJwtSigners(client)
+		externalJwtSigners, err := exporter.GetExternalJwtSigners()
 		if err != nil {
 			return nil, err
 		}
@@ -286,7 +286,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 	}
 	if exporter.IsAuthPolicyExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Auth Policies")
-		authPolicies, err := exporter.GetAuthPolicies(client)
+		authPolicies, err := exporter.GetAuthPolicies()
 		if err != nil {
 			return nil, err
 		}
@@ -295,7 +295,7 @@ func (exporter *Exporter) Execute(client *rest_management_api_client.ZitiEdgeMan
 	}
 	if exporter.IsPostureCheckExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Posture Checks")
-		postureChecks, err := exporter.GetPostureChecks(client)
+		postureChecks, err := exporter.GetPostureChecks()
 		if err != nil {
 			return nil, err
 		}

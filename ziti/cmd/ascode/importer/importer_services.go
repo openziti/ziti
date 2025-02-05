@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/Jeffail/gabs/v2"
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -35,7 +34,7 @@ func (importer *Importer) IsServiceImportRequired(args []string) bool {
 		slices.Contains(args, "service")
 }
 
-func (importer *Importer) ProcessServices(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessServices(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 
@@ -43,7 +42,7 @@ func (importer *Importer) ProcessServices(client *rest_management_api_client.Zit
 		create := FromMap(data, rest_model.ServiceCreate{})
 
 		// see if the service already exists
-		existing := mgmt.ServiceFromFilter(client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ServiceFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":      *create.Name,
@@ -68,7 +67,7 @@ func (importer *Importer) ProcessServices(client *rest_management_api_client.Zit
 		for _, configName := range configsNode.Children() {
 			value := configName.Data().(string)[1:]
 			config, _ := ascode.GetItemFromCache(importer.configCache, value, func(name string) (interface{}, error) {
-				return mgmt.ConfigFromFilter(client, mgmt.NameFilter(name)), nil
+				return mgmt.ConfigFromFilter(importer.Client, mgmt.NameFilter(name)), nil
 			})
 			if config == nil {
 				return nil, errors.New("error reading Config: " + value)
@@ -80,7 +79,7 @@ func (importer *Importer) ProcessServices(client *rest_management_api_client.Zit
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Service %s\r", *create.Name)
 		log.WithField("name", *create.Name).Debug("Creating Service")
-		created, createErr := client.Service.CreateService(&service.CreateServiceParams{Service: create}, nil)
+		created, createErr := importer.Client.Service.CreateService(&service.CreateServiceParams{Service: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -105,13 +104,13 @@ func (importer *Importer) ProcessServices(client *rest_management_api_client.Zit
 	return result, nil
 }
 
-func (importer *Importer) lookupServices(client *rest_management_api_client.ZitiEdgeManagement, roles []string) ([]string, error) {
+func (importer *Importer) lookupServices(roles []string) ([]string, error) {
 	serviceRoles := []string{}
 	for _, role := range roles {
 		if role[0:1] == "@" {
 			value := role[1:]
 			service, _ := ascode.GetItemFromCache(importer.serviceCache, value, func(name string) (interface{}, error) {
-				return mgmt.ServiceFromFilter(client, mgmt.NameFilter(name)), nil
+				return mgmt.ServiceFromFilter(importer.Client, mgmt.NameFilter(name)), nil
 			})
 			if service == nil {
 				return nil, errors.New("error reading Service: " + value)

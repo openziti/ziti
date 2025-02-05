@@ -18,7 +18,6 @@ package importer
 
 import (
 	"errors"
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -34,14 +33,14 @@ func (importer *Importer) IsEdgeRouterImportRequired(args []string) bool {
 		slices.Contains(args, "er")
 }
 
-func (importer *Importer) ProcessEdgeRouters(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessEdgeRouters(input map[string][]interface{}) (map[string]string, error) {
 
 	var result = map[string]string{}
 	for _, data := range input["edgeRouters"] {
 		create := FromMap(data, rest_model.EdgeRouterCreate{})
 
 		// see if the router already exists
-		existing := mgmt.EdgeRouterFromFilter(client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.EdgeRouterFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":         *create.Name,
@@ -55,7 +54,7 @@ func (importer *Importer) ProcessEdgeRouters(client *rest_management_api_client.
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
 		log.WithField("name", *create.Name).Debug("Creating EdgeRouter")
-		created, createErr := client.EdgeRouter.CreateEdgeRouter(&edge_router.CreateEdgeRouterParams{EdgeRouter: create}, nil)
+		created, createErr := importer.Client.EdgeRouter.CreateEdgeRouter(&edge_router.CreateEdgeRouterParams{EdgeRouter: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -79,13 +78,13 @@ func (importer *Importer) ProcessEdgeRouters(client *rest_management_api_client.
 	return result, nil
 }
 
-func (importer *Importer) lookupEdgeRouters(client *rest_management_api_client.ZitiEdgeManagement, roles []string) ([]string, error) {
+func (importer *Importer) lookupEdgeRouters(roles []string) ([]string, error) {
 	edgeRouterRoles := []string{}
 	for _, role := range roles {
 		if role[0:1] == "@" {
 			value := role[1:]
 			edgeRouter, _ := ascode.GetItemFromCache(importer.edgeRouterCache, value, func(name string) (interface{}, error) {
-				return mgmt.EdgeRouterFromFilter(client, mgmt.NameFilter(name)), nil
+				return mgmt.EdgeRouterFromFilter(importer.Client, mgmt.NameFilter(name)), nil
 			})
 			if edgeRouter == nil {
 				return nil, errors.New("error reading EdgeRouter: " + value)
