@@ -251,9 +251,9 @@ func (c *Controller) checkEdgeInitialized() {
 
 			now := time.Now()
 			if now.Sub(lastWarn) > time.Minute {
-				log.Warnf("the Ziti Edge has not been initialized, no default admin exists. Add this node to a cluster using "+
+				log.Warnf("the controller has not been initialized, no default admin exists. Add this node to a cluster using "+
 					"'ziti agent cluster add %s' against an existing cluster member, or if this is the bootstrap node, run "+
-					"'ziti agent controller init' to configure the default admin and bootstrap the cluster",
+					"'ziti agent cluster init' to configure the default admin and bootstrap the cluster",
 					(*c.AppEnv.HostController.GetEnv().GetConfig().Ctrl.Options.AdvertiseAddress).String())
 				lastWarn = now
 			}

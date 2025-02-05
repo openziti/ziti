@@ -18,6 +18,7 @@ package fabric
 
 import (
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/edge-api/rest_management_api_client"
 	restClient "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
@@ -131,6 +132,14 @@ func updateEntityOfType(entityType string, body string, options *api.Options, me
 
 func WithFabricClient(clientOpts util.ClientOpts, f func(client *restClient.ZitiFabric) error) error {
 	client, err := util.NewFabricManagementClient(clientOpts)
+	if err != nil {
+		return err
+	}
+	return f(client)
+}
+
+func WithEdgeClient(clientOpts util.ClientOpts, f func(client *rest_management_api_client.ZitiEdgeManagement) error) error {
+	client, err := util.NewEdgeManagementClient(clientOpts)
 	if err != nil {
 		return err
 	}
