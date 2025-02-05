@@ -407,6 +407,8 @@ func (s *SimpleTestIdentity) CA() *x509.CertPool {
 	return s.CertPool
 }
 
+func (s *SimpleTestIdentity) ValidFor(_ string) error { return nil }
+
 func (s *SimpleTestIdentity) ServerTLSConfig() *tls.Config {
 	var certs []tls.Certificate
 
