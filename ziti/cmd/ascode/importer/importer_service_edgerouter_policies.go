@@ -65,10 +65,8 @@ func (importer *Importer) ProcessServiceEdgeRouterPolicies(client *rest_manageme
 
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ServiceEdgeRouterPolicy %s\r", *create.Name)
-		if importer.verbose {
-			log.WithField("name", *create.Name).
-				Debug("Creating ServiceEdgeRouterPolicy")
-		}
+		log.WithField("name", *create.Name).
+			Debug("Creating ServiceEdgeRouterPolicy")
 		created, createErr := client.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(&service_edge_router_policy.CreateServiceEdgeRouterPolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
@@ -83,13 +81,11 @@ func (importer *Importer) ProcessServiceEdgeRouterPolicies(client *rest_manageme
 				return nil, createErr
 			}
 		}
-		if importer.verbose {
-			log.WithFields(map[string]interface{}{
-				"name":                      *create.Name,
-				"serviceEdgeRouterPolicyId": created.Payload.Data.ID,
-			}).
-				Info("Created ServiceEdgeRouterPolicy")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":                      *create.Name,
+			"serviceEdgeRouterPolicyId": created.Payload.Data.ID,
+		}).
+			Info("Created ServiceEdgeRouterPolicy")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}

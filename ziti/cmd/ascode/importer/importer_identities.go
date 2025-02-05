@@ -44,13 +44,11 @@ func (importer *Importer) ProcessIdentities(client *rest_management_api_client.Z
 
 		existing := mgmt.IdentityFromFilter(client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.verbose {
-				log.WithFields(map[string]interface{}{
-					"name":       *create.Name,
-					"identityId": *existing.ID,
-				}).
-					Info("Found existing Identity, skipping create")
-			}
+			log.WithFields(map[string]interface{}{
+				"name":       *create.Name,
+				"identityId": *existing.ID,
+			}).
+				Info("Found existing Identity, skipping create")
 			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping Identity %s\r", *create.Name)
 			continue
 		}
@@ -95,13 +93,11 @@ func (importer *Importer) ProcessIdentities(client *rest_management_api_client.Z
 				return nil, createErr
 			}
 		}
-		if importer.verbose {
-			log.WithFields(map[string]interface{}{
-				"name":       *create.Name,
-				"identityId": created.Payload.Data.ID,
-			}).
-				Info("Created identity")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":       *create.Name,
+			"identityId": created.Payload.Data.ID,
+		}).
+			Info("Created identity")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}

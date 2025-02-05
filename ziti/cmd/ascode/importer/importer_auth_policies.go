@@ -37,9 +37,7 @@ func (importer *Importer) IsAuthPolicyImportRequired(args []string) bool {
 
 func (importer *Importer) ProcessAuthPolicies(client *rest_management_api_client.ZitiEdgeManagement, input map[string][]interface{}) (map[string]string, error) {
 
-	if importer.verbose {
-		log.Debug("Listing all AuthPolicies")
-	}
+	log.Debug("Listing all AuthPolicies")
 
 	result := map[string]string{}
 
@@ -49,12 +47,10 @@ func (importer *Importer) ProcessAuthPolicies(client *rest_management_api_client
 		// see if the auth policy already exists
 		existing := mgmt.AuthPolicyFromFilter(client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.verbose {
-				log.WithFields(map[string]interface{}{
-					"name":         *create.Name,
-					"authPolicyId": *existing.ID,
-				}).Info("Found existing Auth Policy, skipping create")
-			}
+			log.WithFields(map[string]interface{}{
+				"name":         *create.Name,
+				"authPolicyId": *existing.ID,
+			}).Info("Found existing Auth Policy, skipping create")
 			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping AuthPolicy %s\r", *create.Name)
 			continue
 		}
@@ -99,10 +95,8 @@ func (importer *Importer) ProcessAuthPolicies(client *rest_management_api_client
 
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating AuthPolicy %s\r", *create.Name)
-		if importer.verbose {
-			log.WithField("name", *create.Name).
-				Debug("Creating AuthPolicy")
-		}
+		log.WithField("name", *create.Name).
+			Debug("Creating AuthPolicy")
 		created, createErr := client.AuthPolicy.CreateAuthPolicy(&auth_policy.CreateAuthPolicyParams{AuthPolicy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
@@ -118,12 +112,10 @@ func (importer *Importer) ProcessAuthPolicies(client *rest_management_api_client
 			}
 		}
 
-		if importer.verbose {
-			log.WithFields(map[string]interface{}{
-				"name":         *create.Name,
-				"authPolicyId": created.Payload.Data.ID,
-			}).Info("Created AuthPolicy")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":         *create.Name,
+			"authPolicyId": created.Payload.Data.ID,
+		}).Info("Created AuthPolicy")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}

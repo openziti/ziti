@@ -41,13 +41,11 @@ func (importer *Importer) ProcessCertificateAuthorities(client *rest_management_
 		// see if the CA already exists
 		existing := mgmt.CertificateAuthorityFromFilter(client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.verbose {
-				log.WithFields(map[string]interface{}{
-					"name":                   *create.Name,
-					"certificateAuthorityId": *existing.ID,
-				}).
-					Info("Found existing CertificateAuthority, skipping create")
-			}
+			log.WithFields(map[string]interface{}{
+				"name":                   *create.Name,
+				"certificateAuthorityId": *existing.ID,
+			}).
+				Info("Found existing CertificateAuthority, skipping create")
 			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping CertificateAuthority %s\r", *create.Name)
 			continue
 		}
@@ -70,13 +68,11 @@ func (importer *Importer) ProcessCertificateAuthorities(client *rest_management_
 				return nil, createErr
 			}
 		}
-		if importer.verbose {
-			log.WithFields(map[string]interface{}{
-				"name":                   *create.Name,
-				"certificateAuthorityId": created.Payload.Data.ID,
-			}).
-				Info("Created CertificateAuthority")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":                   *create.Name,
+			"certificateAuthorityId": created.Payload.Data.ID,
+		}).
+			Info("Created CertificateAuthority")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}

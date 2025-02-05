@@ -88,20 +88,18 @@ func (output Output) Write(data any) error {
 		return err
 	}
 
-	if output.verbose {
-		if output.filename != "" {
-			log.
-				WithError(err).
-				WithFields(map[string]interface{}{
-					"bytes":    bytes,
-					"filename": output.filename,
-				}).
-				Debug("Wrote data")
-		} else {
-			log.
-				WithField("bytes", bytes).
-				Debug("Wrote data")
-		}
+	if output.filename != "" {
+		log.
+			WithError(err).
+			WithFields(map[string]interface{}{
+				"bytes":    bytes,
+				"filename": output.filename,
+			}).
+			Debug("Wrote data")
+	} else {
+		log.
+			WithField("bytes", bytes).
+			Debug("Wrote data")
 	}
 
 	err = output.writer.Flush()

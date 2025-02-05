@@ -42,23 +42,19 @@ func (importer *Importer) ProcessConfigTypes(client *rest_management_api_client.
 		// see if the config type already exists
 		existing := mgmt.ConfigTypeFromFilter(client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.verbose {
-				log.WithFields(map[string]interface{}{
-					"name":         *create.Name,
-					"configTypeId": *existing.ID,
-				}).
-					Info("Found existing ConfigType, skipping create")
-			}
+			log.WithFields(map[string]interface{}{
+				"name":         *create.Name,
+				"configTypeId": *existing.ID,
+			}).
+				Info("Found existing ConfigType, skipping create")
 			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping ConfigType %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ConfigType %s\r", *create.Name)
-		if importer.verbose {
-			log.WithField("name", *create.Name).
-				Debug("Creating ConfigType")
-		}
+		log.WithField("name", *create.Name).
+			Debug("Creating ConfigType")
 		created, createErr := client.Config.CreateConfigType(&config.CreateConfigTypeParams{ConfigType: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
@@ -74,13 +70,11 @@ func (importer *Importer) ProcessConfigTypes(client *rest_management_api_client.
 			return nil, createErr
 		}
 
-		if importer.verbose {
-			log.WithFields(map[string]interface{}{
-				"name":         *create.Name,
-				"configTypeId": created.Payload.Data.ID,
-			}).
-				Info("Created Config Type")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":         *create.Name,
+			"configTypeId": created.Payload.Data.ID,
+		}).
+			Info("Created Config Type")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}

@@ -73,27 +73,23 @@ func (importer *Importer) ProcessPostureChecks(client *rest_management_api_clien
 		// see if the posture check already exists
 		existing := mgmt.PostureCheckFromFilter(client, mgmt.NameFilter(*create.Name()))
 		if existing != nil {
-			if importer.verbose {
-				log.WithFields(map[string]interface{}{
-					"name":           *create.Name(),
-					"postureCheckId": (*existing).ID(),
-					"typeId":         create.TypeID(),
-				}).
-					Info("Found existing PostureCheck, skipping create")
-			}
+			log.WithFields(map[string]interface{}{
+				"name":           *create.Name(),
+				"postureCheckId": (*existing).ID(),
+				"typeId":         create.TypeID(),
+			}).
+				Info("Found existing PostureCheck, skipping create")
 			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping PostureCheck %s\r", *create.Name())
 			continue
 		}
 
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating PostureCheck %s\r", *create.Name())
-		if importer.verbose {
-			log.WithFields(map[string]interface{}{
-				"name":   *create.Name(),
-				"typeId": create.TypeID(),
-			}).
-				Debug("Creating PostureCheck")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":   *create.Name(),
+			"typeId": create.TypeID(),
+		}).
+			Debug("Creating PostureCheck")
 		created, createErr := client.PostureChecks.CreatePostureCheck(&posture_checks.CreatePostureCheckParams{PostureCheck: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
@@ -107,14 +103,12 @@ func (importer *Importer) ProcessPostureChecks(client *rest_management_api_clien
 				return nil, createErr
 			}
 		}
-		if importer.verbose {
-			log.WithFields(map[string]interface{}{
-				"name":           *create.Name(),
-				"postureCheckId": created.Payload.Data.ID,
-				"typeId":         create.TypeID(),
-			}).
-				Info("Created PostureCheck")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":           *create.Name(),
+			"postureCheckId": created.Payload.Data.ID,
+			"typeId":         create.TypeID(),
+		}).
+			Info("Created PostureCheck")
 
 		result[*create.Name()] = created.Payload.Data.ID
 	}

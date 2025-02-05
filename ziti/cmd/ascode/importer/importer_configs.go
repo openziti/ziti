@@ -45,14 +45,12 @@ func (importer *Importer) ProcessConfigs(client *rest_management_api_client.Ziti
 		// see if the config already exists
 		existing := mgmt.ConfigFromFilter(client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.verbose {
-				log.
-					WithFields(map[string]interface{}{
-						"name":     *create.Name,
-						"configId": *existing.ID,
-					}).
-					Info("Found existing Config, skipping create")
-			}
+			log.
+				WithFields(map[string]interface{}{
+					"name":     *create.Name,
+					"configId": *existing.ID,
+				}).
+				Info("Found existing Config, skipping create")
 			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping Config %s\r", *create.Name)
 			continue
 		}
@@ -77,9 +75,7 @@ func (importer *Importer) ProcessConfigs(client *rest_management_api_client.Ziti
 
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Config %s\r", *create.Name)
-		if importer.verbose {
-			log.WithField("name", *create.Name).Debug("Creating Config")
-		}
+		log.WithField("name", *create.Name).Debug("Creating Config")
 		created, createErr := client.Config.CreateConfig(&config.CreateConfigParams{Config: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
@@ -93,13 +89,11 @@ func (importer *Importer) ProcessConfigs(client *rest_management_api_client.Ziti
 				return nil, createErr
 			}
 		}
-		if importer.verbose {
-			log.WithFields(map[string]interface{}{
-				"name":     *create.Name,
-				"configId": created.Payload.Data.ID,
-			}).
-				Info("Created Config")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":     *create.Name,
+			"configId": created.Payload.Data.ID,
+		}).
+			Info("Created Config")
 		result[*create.Name] = created.Payload.Data.ID
 	}
 

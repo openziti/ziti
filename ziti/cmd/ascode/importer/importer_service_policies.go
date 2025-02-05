@@ -66,9 +66,7 @@ func (importer *Importer) ProcessServicePolicies(client *rest_management_api_cli
 
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping ServicePolicy %s\r", *create.Name)
-		if importer.verbose {
-			log.WithField("name", *create.Name).Debug("Creating ServicePolicy")
-		}
+		log.WithField("name", *create.Name).Debug("Creating ServicePolicy")
 		created, createErr := client.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
@@ -82,13 +80,11 @@ func (importer *Importer) ProcessServicePolicies(client *rest_management_api_cli
 				return nil, createErr
 			}
 		}
-		if importer.verbose {
-			log.WithFields(map[string]interface{}{
-				"name":            *create.Name,
-				"servicePolicyId": created.Payload.Data.ID,
-			}).
-				Info("Created ServicePolicy")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":            *create.Name,
+			"servicePolicyId": created.Payload.Data.ID,
+		}).
+			Info("Created ServicePolicy")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}

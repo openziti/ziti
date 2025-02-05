@@ -79,9 +79,7 @@ func (importer *Importer) ProcessServices(client *rest_management_api_client.Zit
 
 		// do the actual create since it doesn't exist
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Service %s\r", *create.Name)
-		if importer.verbose {
-			log.WithField("name", *create.Name).Debug("Creating Service")
-		}
+		log.WithField("name", *create.Name).Debug("Creating Service")
 		created, createErr := client.Service.CreateService(&service.CreateServiceParams{Service: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
@@ -95,13 +93,11 @@ func (importer *Importer) ProcessServices(client *rest_management_api_client.Zit
 				return nil, createErr
 			}
 		}
-		if importer.verbose {
-			log.WithFields(map[string]interface{}{
-				"name":      *create.Name,
-				"serviceId": created.Payload.Data.ID,
-			}).
-				Info("Created Service")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":      *create.Name,
+			"serviceId": created.Payload.Data.ID,
+		}).
+			Info("Created Service")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}
