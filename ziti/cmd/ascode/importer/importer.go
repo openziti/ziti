@@ -72,7 +72,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import filename [entity]",
 		Short: "Import entities",
-		Long: "Import all or selected entities from the specified file.\n" +
+		Long: "Import all or comma separated list of selected entities from the specified file.\n" +
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -354,5 +354,5 @@ type InputFormat string
 
 const (
 	JSON InputFormat = "JSON"
-	YAML             = "YAML"
+	YAML InputFormat = "YAML"
 )

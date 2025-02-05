@@ -72,7 +72,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "export [entity]",
 		Short: "Export entities",
-		Long: "Export all or selected entities.\n" +
+		Long: "Export all or comma separated list of selected entities.\n" +
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -339,5 +339,5 @@ type OutputFormat string
 
 const (
 	JSON OutputFormat = "JSON"
-	YAML              = "YAML"
+	YAML OutputFormat = "YAML"
 )
