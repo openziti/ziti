@@ -74,7 +74,7 @@ func NewCmdPKICreate(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(NewCmdPKICreateClient(out, errOut))
 	cmd.AddCommand(NewCmdPKICreateCSR(out, errOut))
 
-	options.addPKICreateFlags(cmd)
+	// options.addPKICreateFlags(cmd)
 	return cmd
 }
 
@@ -124,7 +124,7 @@ func (o *PKICreateOptions) Run() error {
 func (o *PKICreateOptions) ObtainPKIRoot() (string, error) {
 	pkiRoot := o.Flags.PKIRoot
 	if pkiRoot == "" {
-		pkiRoot = viper.GetString("pki-root")
+		pkiRoot = viper.GetString("pki_root")
 		if pkiRoot == "" {
 			pkiRootDir, err := util.PKIRootDir()
 			if err != nil {
@@ -186,7 +186,7 @@ func (o *PKICreateOptions) ObtainIntermediateCSRFile() (string, error) {
 
 // ObtainCSRFile returns the value for csr-file
 func (o *PKICreateOptions) ObtainCSRFile() (string, error) {
-	csrFile := viper.GetString("csr-file")
+	csrFile := viper.GetString("csr_file")
 	if csrFile == "" {
 		var err error
 		csrFile, err = util.PickValue("Required flag 'csr-file' not specified; Enter CSR name now:", "csr", true)

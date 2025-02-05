@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/ziti/ziti/pki/pki"
 	"github.com/openziti/ziti/ziti/pki/store"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"io"
 )
 
@@ -61,7 +62,12 @@ func NewCmdPKICreateCSR(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func (o *PKICreateCSROptions) addPKICreateCSRFlags(cmd *cobra.Command) {
+	o.addPKICreateFlags(cmd)
+
 	cmd.Flags().StringVarP(&o.Flags.CSRFile, "csr-file", "", "csr", "File in which to store new CSR")
+	err := viper.BindPFlag("csr_file", cmd.Flags().Lookup("csr-file"))
+	o.panicOnErr(err)
+
 	cmd.Flags().StringVarP(&o.Flags.CSRName, "csr-name", "", "NetFoundry Inc. CSR", "Name of CSR")
 	cmd.Flags().StringVarP(&o.Flags.KeyName, "key-name", "", "", "Name of file that contains private key for CSR")
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 365, "Expiration limit in days")
@@ -70,7 +76,6 @@ func (o *PKICreateCSROptions) addPKICreateCSRFlags(cmd *cobra.Command) {
 
 // Run implements this command
 func (o *PKICreateCSROptions) Run() error {
-
 	pkiRoot, err := o.ObtainPKIRoot()
 	if err != nil {
 		return fmt.Errorf("%s", err)
