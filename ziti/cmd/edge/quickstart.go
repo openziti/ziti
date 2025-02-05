@@ -337,7 +337,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		if !o.joinCommand {
 			fmt.Println("waiting three seconds for controller to become ready...")
 			time.Sleep(3 * time.Second)
-			agentInitCmd := agentcli.NewAgentCtrlInit(p)
+			agentInitCmd := agentcli.NewAgentClusterInit(p)
 			pid := os.Getpid()
 			args := []string{
 				o.Username,

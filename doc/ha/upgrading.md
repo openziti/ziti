@@ -47,7 +47,7 @@ There are two ways to initialize an HA cluster from an existing controller datab
 
 1. Leave the `db` configuration in the config file. If this config settings is found, then when the
    raft cluster is bootstrapped it will initialize itself from that database
-2. Use the `ziti agent controller init-from-db <path/to/db>` command. The path will be interpreted
+2. Use the `ziti agent cluster init-from-db <path/to/db>` command. The path will be interpreted
    by the controller.
 
 ### Recommendations

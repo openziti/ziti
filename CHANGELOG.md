@@ -179,6 +179,10 @@ file, enrollment should handle initializing the value appropriately.
     * [Issue #94](https://github.com/openziti/storage/issues/94) - Snapshots aren't working correctly
 
 * github.com/openziti/ziti: [v1.3.3 -> v1.4.0](https://github.com/openziti/ziti/compare/v1.3.3...v1.4.0)
+    * [Issue #2745](https://github.com/openziti/ziti/issues/2745) - Remove cluster initialMembers config
+    * [Issue #2746](https://github.com/openziti/ziti/issues/2746) - Remove agent controllero commands to agent cluster
+    * [Issue #2743](https://github.com/openziti/ziti/issues/2743) - Agent and rest cluster command names should match
+    * [Issue #2731](https://github.com/openziti/ziti/issues/2731) - Rename raft controller config section to cluster
     * [Issue #2724](https://github.com/openziti/ziti/issues/2724) - Allow configuring endpoints file full path instead of directory
     * [Issue #2728](https://github.com/openziti/ziti/issues/2728) - Write initial router endpoints file based on ctrls in JWT
     * [Issue #2108](https://github.com/openziti/ziti/issues/2108) - Add `ctrls` property to non-ha router enrollment

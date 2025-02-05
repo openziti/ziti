@@ -19,31 +19,32 @@ package agentcli
 import (
 	"fmt"
 	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 )
 
-type AgentCtrlInitFromDbAction struct {
+type AgentClusterInitOptions struct {
 	AgentOptions
-	Voter    bool
-	MemberId string
 }
 
-func NewAgentCtrlInitFromDb(p common.OptionsProvider) *cobra.Command {
-	action := &AgentCtrlInitFromDbAction{
+func NewAgentClusterInit(p common.OptionsProvider) *cobra.Command {
+	action := &AgentClusterInitOptions{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.ExactArgs(1),
-		Use:  "init-from-db path/to/source.db",
+		Args: cobra.ExactArgs(3),
+		Use:  "init <username> <password> <name>",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			return action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
+			err := action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
+
+			return err
 		},
 	}
 
@@ -52,16 +53,20 @@ func NewAgentCtrlInitFromDb(p common.OptionsProvider) *cobra.Command {
 	return cmd
 }
 
-func (self *AgentCtrlInitFromDbAction) makeRequest(ch channel.Channel) error {
-	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftInitFromDb), []byte(self.Args[0]))
+func (self *AgentClusterInitOptions) makeRequest(ch channel.Channel) error {
+	initEdgeRequest := &mgmt_pb.InitRequest{
+		Username: self.Args[0],
+		Password: self.Args[1],
+		Name:     self.Args[2],
+	}
 
-	reply, err := msg.WithTimeout(self.timeout).SendForReply(ch)
+	reply, err := protobufs.MarshalTyped(initEdgeRequest).WithTimeout(self.timeout).SendForReply(ch)
 	if err != nil {
 		return err
 	}
 	result := channel.UnmarshalResult(reply)
 	if result.Success {
-		fmt.Println(result.Message)
+		fmt.Println("success")
 	} else {
 		fmt.Printf("error: %v\n", result.Message)
 	}

@@ -268,10 +268,10 @@ func (self *Controller) agentOpRestoreFromDb(m *channel.Message, ch channel.Chan
 	}
 
 	if err := self.RaftRestoreFromBoltDb(sourceDbPath); err != nil {
-		handler_common.SendOpResult(m, ch, "cluster.init-from-db", err.Error(), false)
+		handler_common.SendOpResult(m, ch, "cluster.restore-from-db", err.Error(), false)
 		return
 	}
-	handler_common.SendOpResult(m, ch, "cluster.init-from-db", fmt.Sprintf("success, initialized from [%v]", sourceDbPath), true)
+	handler_common.SendOpResult(m, ch, "cluster.restore-from-db", fmt.Sprintf("success, initialized from [%v]", sourceDbPath), true)
 }
 
 func (self *Controller) agentOpInit(m *channel.Message, ch channel.Channel) {

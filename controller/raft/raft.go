@@ -33,7 +33,6 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
@@ -819,8 +818,6 @@ func (self *Controller) Bootstrap() error {
 			time.Sleep(100 * time.Millisecond)
 		}
 
-		go self.addConfiguredInitialMembers()
-
 		self.clusterId.Store(uuid.NewString())
 		pfxlog.Logger().WithField("clusterId", self.clusterId.Load()).Info("cluster id initialized")
 		return self.Dispatch(&InitClusterIdCmd{
@@ -829,41 +826,6 @@ func (self *Controller) Bootstrap() error {
 		})
 	}
 	return nil
-}
-
-func (self *Controller) addConfiguredInitialMembers() {
-	for _, bootstrapMember := range self.Config.InitialMembers {
-		_, err := transport.ParseAddress(bootstrapMember)
-		if err != nil {
-			pfxlog.Logger().WithError(err).Errorf("unable to parse address for bootstrap member [%v], it will be ignored", bootstrapMember)
-			continue
-		}
-
-		go self.retryBootstrapMember(bootstrapMember)
-	}
-}
-
-func (self *Controller) retryBootstrapMember(bootstrapMember string) {
-	ticker := time.NewTicker(6 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		if id, addr, err := self.Mesh.GetPeerInfo(bootstrapMember, time.Second*5); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("unable to get id for bootstrap member [%v], will retry", bootstrapMember)
-		} else {
-			req := &cmd_pb.AddPeerRequest{
-				Addr:    string(addr),
-				Id:      string(id),
-				IsVoter: true,
-			}
-
-			if err = self.Join(req); err == nil {
-				pfxlog.Logger().WithError(err).Errorf("error adding bootstrap member [%s], stopping attempts to join it to the cluster", bootstrapMember)
-				return
-			}
-		}
-		<-ticker.C
-	}
 }
 
 // Join adds the given node to the raft cluster

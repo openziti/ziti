@@ -48,7 +48,7 @@ func (init *raftInit) Execute(run model.Run) error {
 			return errors.Errorf("component %s is not a controller", c.Id)
 		}
 
-		tmpl := "set -o pipefail; %s agent controller init %s %s default.admin 2>&1 | tee logs/controller.edge.init.log"
+		tmpl := "set -o pipefail; %s agent cluster init %s %s default.admin 2>&1 | tee logs/controller.edge.init.log"
 		if err := host.Exec(c.GetHost(), fmt.Sprintf(tmpl, ctrlType.GetBinaryPath(c), username, password)).Execute(run); err != nil {
 			return err
 		}

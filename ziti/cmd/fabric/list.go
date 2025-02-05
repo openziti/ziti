@@ -18,6 +18,9 @@ package fabric
 
 import (
 	"fmt"
+	"github.com/openziti/edge-api/rest_management_api_client"
+	"github.com/openziti/edge-api/rest_management_api_client/controllers"
+	edge_rest_model "github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/controller/rest_client/circuit"
@@ -54,6 +57,7 @@ func newListCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	listCmd.AddCommand(newListCmdForEntityType("circuits", runListCircuits, newOptions()))
+	listCmd.AddCommand(newListCmdForEntityType("controllers", runListControllers, newOptions()))
 	listCmd.AddCommand(newListCmdForEntityType("links", runListLinks, newOptions()))
 	listCmd.AddCommand(newListCmdForEntityType("routers", runListRouters, newOptions()))
 	listCmd.AddCommand(newListCmdForEntityType("services", runListServices, newOptions()))
@@ -299,7 +303,49 @@ func outputRouters(o *api.Options, result *router.ListRoutersOK) error {
 	return nil
 }
 
+func runListControllers(o *api.Options) error {
+	return WithEdgeClient(o, func(client *rest_management_api_client.ZitiEdgeManagement) error {
+		ctx, cancelF := o.GetContext()
+		defer cancelF()
+
+		result, err := client.Controllers.ListControllers(&controllers.ListControllersParams{
+			Filter:  o.GetFilter(),
+			Context: ctx,
+		}, nil)
+		return outputResult(result, err, o, outputControllers)
+	})
+}
+
+func outputControllers(o *api.Options, result *controllers.ListControllersOK) error {
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Last Connected", "IsOnline"})
+
+	for _, entity := range result.Payload.Data {
+		id := valOrDefault(entity.ID)
+		name := valOrDefault(entity.Name)
+		lastJoinedAt := "never"
+		if entity.LastJoinedAt != nil {
+			lastJoinedAt = entity.LastJoinedAt.String()
+		}
+		isOnline := valOrDefault(entity.IsOnline)
+
+		t.AppendRow(table.Row{id, name, lastJoinedAt, isOnline})
+	}
+
+	api.RenderTable(o, t, getEdgePaging(result.Payload.Meta))
+	return nil
+}
+
 func getPaging(meta *rest_model.Meta) *api.Paging {
+	return &api.Paging{
+		Limit:  *meta.Pagination.Limit,
+		Offset: *meta.Pagination.Offset,
+		Count:  *meta.Pagination.TotalCount,
+	}
+}
+
+func getEdgePaging(meta *edge_rest_model.Meta) *api.Paging {
 	return &api.Paging{
 		Limit:  *meta.Pagination.Limit,
 		Offset: *meta.Pagination.Offset,
