@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	ziti_tls "github.com/openziti/ziti/internal/tls"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
@@ -880,6 +881,44 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 		return nil, err
 	}
 
+	var errs []error
+	// verify any advertised addresses are valid for the certificates provided
+	for _, c := range cfg.Ctrl.InitialEndpoints {
+		e := ziti_tls.ValidFor(cfg.Id, c.String())
+		if e != nil {
+			errs = append(errs, e)
+		}
+	}
+
+	for _, c := range cfg.Link.Listeners {
+		a := c["advertise"]
+		if a != nil {
+			addy := a.(string)
+			e := ziti_tls.ValidFor(cfg.Id, addy)
+			if e != nil {
+				errs = append(errs, e)
+			}
+		}
+	}
+
+	for _, c := range cfg.Listeners {
+		opts := c.options["options"]
+		if opts != nil {
+			optOpts := opts.(map[interface{}]interface{})
+			o := optOpts["advertise"]
+			if o != nil {
+				addy := o.(string)
+				e := ziti_tls.ValidFor(cfg.Id, addy)
+				if e != nil {
+					errs = append(errs, e)
+				}
+			}
+		}
+	}
+
+	if len(errs) > 0 {
+		pfxlog.Logger().Fatalf("one or more advertiese addresses are invalid: %v", errs)
+	}
 	return cfg, nil
 }
 
