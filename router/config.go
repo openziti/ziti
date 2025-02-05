@@ -880,6 +880,51 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 		return nil, err
 	}
 
+	var errs []error
+	// verify any advertised addresses are valid for the certificates provided
+	for _, c := range cfg.Ctrl.InitialEndpoints {
+		// should start with tls:
+		addy := strings.TrimPrefix(c.String(), "tls:")
+		addy = strings.Split(addy, ":")[0]
+		e := cfg.Id.ValidFor(addy)
+		if e != nil {
+			errs = append(errs, fmt.Errorf("invalid ctrl.endpoint: %s, error: %v", c.String(), e))
+		}
+	}
+
+	for _, c := range cfg.Link.Listeners {
+		a := c["advertise"]
+		if a != nil {
+			// should start with tls:
+			addy := strings.TrimPrefix(a.(string), "tls:")
+			addy = strings.Split(addy, ":")[0]
+			e := cfg.Id.ValidFor(addy)
+			if e != nil {
+				errs = append(errs, fmt.Errorf("invalid link.listeners.advertise: %s, error: %v", a.(string), e))
+			}
+		}
+	}
+
+	for _, c := range cfg.Listeners {
+		opts := c.options["options"]
+		if opts != nil {
+			optOpts := opts.(map[interface{}]interface{})
+			o := optOpts["advertise"]
+			if o != nil {
+				// should start with tls:
+				addy := strings.TrimPrefix(o.(string), "tls:")
+				addy = strings.Split(addy, ":")[0]
+				e := cfg.Id.ValidFor(addy)
+				if e != nil {
+					errs = append(errs, fmt.Errorf("invalid listeners.binding.advertise: %s, error: %v", o.(string), e))
+				}
+			}
+		}
+	}
+
+	if len(errs) > 0 {
+		pfxlog.Logger().Fatalf("one or more advertiese addresses are invalid: %v", errs)
+	}
 	return cfg, nil
 }
 

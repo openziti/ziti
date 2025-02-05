@@ -585,6 +585,14 @@ func LoadConfig(path string) (*Config, error) {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
 				}
+				if value != nil {
+					m := value.(map[interface{}]interface{})
+					a := strings.TrimPrefix(m["advertiseAddress"].(string), "tls:")
+					v := controllerConfig.Id.ValidFor(strings.Split(a, ":")[0])
+					if v != nil {
+						pfxlog.Logger().Fatalf("provided value for ctrl/options/advertiseAddress is invalid (%v)", v)
+					}
+				}
 			}
 			if controllerConfig.Raft != nil && controllerConfig.Raft.AdvertiseAddress == nil {
 				return nil, errors.New("[ctrl/options/advertiseAddress] is required when raft is enabled")
@@ -720,6 +728,14 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
+	bpValidation := validateBindPoints(cfgmap)
+	if len(bpValidation) > 0 {
+		for _, bp := range bpValidation {
+			pfxlog.Logger().Errorf("invalid address in bindPoint: %v", bp)
+		}
+		pfxlog.Logger().Fatal("bindPoints validation failed")
+	}
+
 	edgeConfig, err := LoadEdgeConfigFromMap(cfgmap)
 	if err != nil {
 		return nil, err
@@ -727,6 +743,46 @@ func LoadConfig(path string) (*Config, error) {
 	controllerConfig.Edge = edgeConfig
 
 	return controllerConfig, nil
+}
+func validateBindPoints(m map[interface{}]interface{}) []error {
+	var errs []error
+
+	if webList, ok := m["web"].([]interface{}); ok {
+		for _, entry := range webList {
+			if entryMap, ok := entry.(map[interface{}]interface{}); ok {
+				if bindPoints, found := entryMap["bindPoints"].([]interface{}); found {
+
+					if value, found := entryMap["identity"]; found {
+						subMap := value.(map[interface{}]interface{})
+						identityConfig, err1 := identity.NewConfigFromMapWithPathContext(subMap, "identity")
+
+						if err1 != nil {
+							errs = append(errs, err1)
+							continue
+						}
+						id2, err2 := identity.LoadIdentity(*identityConfig)
+						if err2 != nil {
+							errs = append(errs, err2)
+							continue
+						}
+
+						for _, bp := range bindPoints {
+							if bpMap, ok := bp.(map[interface{}]interface{}); ok {
+								if address, exists := bpMap["address"].(string); exists {
+									err3 := id2.ValidFor(strings.Split(address, ":")[0])
+									if err3 != nil {
+										errs = append(errs, err3)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return errs
 }
 
 // isSelfSigned checks if the given certificate is self-signed.
