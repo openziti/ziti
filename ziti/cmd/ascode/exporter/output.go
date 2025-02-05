@@ -27,40 +27,40 @@ import (
 )
 
 type Output struct {
-	outputJson bool
-	outputYaml bool
-	filename   string
-	writer     *bufio.Writer
-	errWriter  io.Writer
-	verbose    bool
+	outputFormat OutputFormat
+	filename     string
+	writer       *bufio.Writer
+	errWriter    io.Writer
+	verbose      bool
 }
 
-func NewOutputToFile(verbose bool, outputJson bool, outputYaml bool, filename string, errWriter io.Writer) (*Output, error) {
+func NewOutputToFile(verbose bool, outputFormat OutputFormat, filename string, errWriter io.Writer) (*Output, error) {
 	file, err := os.Create(filename)
 	if err != nil {
 		log.WithError(err).Error("Error creating file for writing")
 		return nil, err
 	}
 	writer := bufio.NewWriter(file)
-	output, err := NewOutputToWriter(verbose, outputJson, outputYaml, writer, errWriter)
+	output, err := NewOutputToWriter(verbose, outputFormat, writer, errWriter)
 	output.filename = filename
 	return output, err
 }
 
-func NewOutputToWriter(verbose bool, outputJson bool, outputYaml bool, writer io.Writer, errWriter io.Writer) (*Output, error) {
-	output := Output{}
-	output.verbose = verbose
-	output.outputJson = outputJson
-	output.outputYaml = outputYaml
-	output.writer = bufio.NewWriter(writer)
-	output.errWriter = errWriter
+func NewOutputToWriter(verbose bool, outputFormat OutputFormat, writer io.Writer, errWriter io.Writer) (*Output, error) {
+	output := Output{
+		outputFormat: outputFormat,
+		filename:     "",
+		writer:       bufio.NewWriter(writer),
+		errWriter:    errWriter,
+		verbose:      verbose,
+	}
 	return &output, nil
 }
 
 func (output Output) Write(data any) error {
 	var formatted []byte
 	var err error
-	if output.outputYaml {
+	if output.outputFormat == YAML {
 		if output.verbose {
 			_, _ = internal.FPrintfReusingLine(output.errWriter, "Formatting as Yaml\r\n")
 		}

@@ -17,6 +17,7 @@
 package exporter
 
 import (
+	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_model"
 	"slices"
@@ -27,14 +28,14 @@ func (exporter Exporter) IsConfigTypeExportRequired(args []string) bool {
 		slices.Contains(args, "config-type")
 }
 
-func (exporter Exporter) GetConfigTypes() ([]map[string]interface{}, error) {
+func (exporter Exporter) GetConfigTypes(client *rest_management_api_client.ZitiEdgeManagement) ([]map[string]interface{}, error) {
 
 	return exporter.getEntities(
 		"ConfigTypes",
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: &limit}, nil)
+			resp, err := client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +43,7 @@ func (exporter Exporter) GetConfigTypes() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, _ := exporter.client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: limit, Offset: offset}, nil)
+			resp, _ := client.Config.ListConfigTypes(&config.ListConfigTypesParams{Limit: limit, Offset: offset}, nil)
 			entities := make([]interface{}, len(resp.GetPayload().Data))
 			for i, c := range resp.GetPayload().Data {
 				entities[i] = interface{}(c)
