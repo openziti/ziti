@@ -211,7 +211,7 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	if value, found := cfgmap["raft"]; found {
+	if value, found := cfgmap["cluster"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			controllerConfig.Raft = &RaftConfig{}
 

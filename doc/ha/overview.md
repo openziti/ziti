@@ -27,7 +27,7 @@ An HA setup will have:
 The location of all three is controlled by the raft/dataDir config property.
 
 ```yaml
-raft:
+cluster:
   dataDir: /var/ziti/data/
 ```
 
@@ -49,10 +49,9 @@ of 1 is mostly useful for testing and development.
 **Config File Example**
 
 ```yaml
-raft:
+cluster:
   dataDir: /var/ziti/data/
-  minClusterSize: 3
-  bootstrapMembers:
+  initialMembers:
     - tls:192.168.1.100
     - tls:192.168.1.101
 ```

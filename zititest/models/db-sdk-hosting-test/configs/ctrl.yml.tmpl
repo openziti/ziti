@@ -1,8 +1,7 @@
 v: 3
 
 {{if .Component.GetFlag "ha"}}
-raft:
-  minClusterSize: 3
+cluster:
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
 {{else}}
 db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/ctrl.db

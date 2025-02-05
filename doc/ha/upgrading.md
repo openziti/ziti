@@ -16,12 +16,12 @@ certificate.
 
 ### Updating Configuration
 
-Add a `raft` stanza to the configuration. See the
+Add a `cluster` stanza to the configuration. See the
 [relevant configuration reference](https://openziti.io/docs/reference/configuration/controller#raft)
 for information on other fields.
 
 ```yaml
-raft:
+cluster:
   dataDir: /path/to/data/dir
 ```
 

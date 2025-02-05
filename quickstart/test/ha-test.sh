@@ -69,6 +69,14 @@ declare -a INSTANCE_NAMES=(inst001 inst002 inst003)
 # initialize a map of name=pid
 declare -A PIDS
 
+if (( VERBOSE )); then
+    # print from the top and follow instance logs with filename separators
+    xtail "${ziti_home}/" &
+    # add the tail PID to background pids to clean up
+    PIDS["logtail"]=$!
+fi
+
+
 echo "${BUILD_DIR}/ziti" edge quickstart ha \
     --ctrl-address="127.0.0.1" \
     --router-address="127.0.0.1" \
@@ -139,13 +147,6 @@ nohup "${BUILD_DIR}/ziti" edge quickstart join \
     --cluster-member="tls:127.0.0.1:${ctrl_ports[0]}" \
     &> "${ziti_home}/${INSTANCE_NAMES[2]}.log" &
 PIDS["${INSTANCE_NAMES[2]}"]=$!
-
-if (( VERBOSE )); then
-    # print from the top and follow instance logs with filename separators
-    sleep 1; tail -F -n +1 "${ziti_home}/"*.log &
-    # add the tail PID to background pids to clean up
-    PIDS["logtail"]=$!
-fi
 
 count=0
 : "${timeout:=60}"  # Timeout in seconds
