@@ -36,7 +36,7 @@ func newClusterListMembersCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "list-members",
+		Use:   "list",
 		Short: "list cluster members and their status",
 		Args:  cobra.ExactArgs(0),
 		RunE:  action.run,
@@ -84,7 +84,7 @@ func newClusterAddMemberCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "add-member <address>",
+		Use:   "add <address>",
 		Short: "add cluster member",
 		Args:  cobra.ExactArgs(1),
 		RunE:  action.run,
@@ -129,7 +129,7 @@ func newClusterRemoveMemberCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "remove-member <cluster member id>",
+		Use:   "remove <cluster member id>",
 		Short: "remove cluster member",
 		Args:  cobra.ExactArgs(1),
 		RunE:  action.run,
