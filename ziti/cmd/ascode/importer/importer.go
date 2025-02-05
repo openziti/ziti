@@ -86,6 +86,9 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			raw, err := FileReader{
 				filename: args[0],
 			}.read()
+			if err != nil {
+				log.WithError(err).Fatal("error reading file")
+			}
 
 			data := map[string][]interface{}{}
 			if strings.ToUpper(inputFormat) == "YAML" {
