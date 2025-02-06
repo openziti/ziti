@@ -383,6 +383,25 @@ type SimpleTestIdentity struct {
 	setServerCertCalled bool
 }
 
+func (s *SimpleTestIdentity) GetX509ActiveClientCertChain() []*x509.Certificate {
+	return nil
+}
+func (s *SimpleTestIdentity) GetX509ActiveServerCertChains() [][]*x509.Certificate {
+	return nil
+}
+func (s *SimpleTestIdentity) GetX509IdentityServerCertChain() []*x509.Certificate {
+	return nil
+}
+func (s *SimpleTestIdentity) GetX509IdentityAltCertCertChains() [][]*x509.Certificate {
+	return nil
+}
+func (s *SimpleTestIdentity) GetCaPool() *identity.CaPool {
+	return nil
+}
+func (s *SimpleTestIdentity) CheckServerCertSansForConflicts() []identity.SanHostConflictError {
+	return nil
+}
+
 func (s *SimpleTestIdentity) CaPool() *identity.CaPool {
 	return nil
 }
