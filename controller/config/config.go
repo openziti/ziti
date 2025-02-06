@@ -736,46 +736,6 @@ func LoadConfig(path string) (*Config, error) {
 
 	return controllerConfig, nil
 }
-func validateBindPoints(m map[interface{}]interface{}) []error {
-	var errs []error
-
-	if webList, ok := m["web"].([]interface{}); ok {
-		for _, entry := range webList {
-			if entryMap, ok := entry.(map[interface{}]interface{}); ok {
-				if bindPoints, found := entryMap["bindPoints"].([]interface{}); found {
-
-					if value, found := entryMap["identity"]; found {
-						subMap := value.(map[interface{}]interface{})
-						identityConfig, err1 := identity.NewConfigFromMapWithPathContext(subMap, "identity")
-
-						if err1 != nil {
-							errs = append(errs, err1)
-							continue
-						}
-						id2, err2 := identity.LoadIdentity(*identityConfig)
-						if err2 != nil {
-							errs = append(errs, err2)
-							continue
-						}
-
-						for _, bp := range bindPoints {
-							if bpMap, ok := bp.(map[interface{}]interface{}); ok {
-								if address, exists := bpMap["address"].(string); exists {
-									err3 := id2.ValidFor(strings.Split(address, ":")[0])
-									if err3 != nil {
-										errs = append(errs, err3)
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return errs
-}
 
 // isSelfSigned checks if the given certificate is self-signed.
 func isSelfSigned(cert *x509.Certificate) (bool, error) {
