@@ -882,17 +882,6 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 
 	if loadIdentity {
 		var errs []error
-		// verify any advertised addresses are valid for the certificates provided
-		for _, c := range cfg.Ctrl.InitialEndpoints {
-			// should start with tls:
-			addy := strings.TrimPrefix(c.String(), "tls:")
-			addy = strings.Split(addy, ":")[0]
-			e := cfg.Id.ValidFor(addy)
-			if e != nil {
-				errs = append(errs, fmt.Errorf("invalid ctrl.endpoint: %s, error: %v", c.String(), e))
-			}
-		}
-
 		for _, c := range cfg.Link.Listeners {
 			a := c["advertise"]
 			if a != nil {
