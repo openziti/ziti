@@ -572,6 +572,14 @@ func LoadConfig(path string) (*Config, error) {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
 				}
+				if value != nil {
+					m := value.(map[interface{}]interface{})
+					a := strings.TrimPrefix(m["advertiseAddress"].(string), "tls:")
+					v := controllerConfig.Id.ValidFor(strings.Split(a, ":")[0])
+					if v != nil {
+						pfxlog.Logger().Fatalf("provided value for ctrl/options/advertiseAddress is invalid (%v)", v)
+					}
+				}
 			}
 			if controllerConfig.Raft != nil && controllerConfig.Raft.AdvertiseAddress == nil {
 				return nil, errors.New("[ctrl/options/advertiseAddress] is required when raft is enabled")
