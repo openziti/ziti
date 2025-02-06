@@ -728,14 +728,6 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	bpValidation := validateBindPoints(cfgmap)
-	if len(bpValidation) > 0 {
-		for _, bp := range bpValidation {
-			pfxlog.Logger().Errorf("invalid address in bindPoint: %v", bp)
-		}
-		pfxlog.Logger().Fatal("bindPoints validation failed")
-	}
-
 	edgeConfig, err := LoadEdgeConfigFromMap(cfgmap)
 	if err != nil {
 		return nil, err

@@ -10,16 +10,16 @@ require (
 	github.com/go-openapi/runtime v0.28.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
-	github.com/michaelquigley/pfxlog v0.6.10
+	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.23
 	github.com/openziti/channel/v3 v3.0.26
-	github.com/openziti/edge-api v0.26.38
+	github.com/openziti/edge-api v0.26.39
 	github.com/openziti/fablab v0.5.83
 	github.com/openziti/foundation/v2 v2.0.56
-	github.com/openziti/identity v1.0.94
+	github.com/openziti/identity v1.0.96
 	github.com/openziti/sdk-golang v0.23.44
 	github.com/openziti/storage v0.4.1
-	github.com/openziti/transport/v2 v2.0.159
+	github.com/openziti/transport/v2 v2.0.160
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -29,7 +29,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/bbolt v1.3.11
 	golang.org/x/net v0.34.0
-	google.golang.org/protobuf v1.36.2
+	google.golang.org/protobuf v1.36.5
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -39,7 +39,7 @@ require (
 	github.com/MichaelMure/go-term-markdown v0.1.4 // indirect
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
-	github.com/andybalholm/brotli v1.1.0 // indirect
+	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
@@ -80,7 +80,7 @@ require (
 	github.com/go-openapi/strfmt v0.23.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-openapi/validate v0.24.0 // indirect
-	github.com/go-resty/resty/v2 v2.16.3 // indirect
+	github.com/go-resty/resty/v2 v2.16.5 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
@@ -120,7 +120,7 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20240909124753-873cd0166683 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
@@ -128,7 +128,7 @@ require (
 	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/michaelquigley/figlet v0.0.0-20191015203154-054d06db54b4 // indirect
-	github.com/miekg/dns v1.1.62 // indirect
+	github.com/miekg/dns v1.1.63 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -148,7 +148,7 @@ require (
 	github.com/openziti/runzmd v1.0.59 // indirect
 	github.com/openziti/secretstream v0.1.28 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
-	github.com/openziti/xweb/v2 v2.1.3 // indirect
+	github.com/openziti/xweb/v2 v2.2.0 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
@@ -171,7 +171,7 @@ require (
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/spf13/viper v1.19.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125 // indirect
@@ -198,8 +198,8 @@ require (
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/oauth2 v0.25.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/term v0.28.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/tools v0.28.0 // indirect
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8 // indirect
