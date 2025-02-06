@@ -37,14 +37,14 @@ func (importer *Importer) ProcessServiceEdgeRouterPolicies(input map[string][]in
 		create := FromMap(data, rest_model.ServiceEdgeRouterPolicyCreate{})
 
 		// see if the service router policy already exists
-		existing := mgmt.ServiceEdgeRouterPolicyFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ServiceEdgeRouterPolicyFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":                  *create.Name,
 				"serviceRouterPolicyId": *existing.ID,
 			}).
 				Info("Found existing ServiceEdgeRouterPolicy, skipping create")
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping ServiceEdgeRouterPolicy %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping ServiceEdgeRouterPolicy %s\r", *create.Name)
 			continue
 		}
 
@@ -63,12 +63,10 @@ func (importer *Importer) ProcessServiceEdgeRouterPolicies(input map[string][]in
 		create.EdgeRouterRoles = edgeRouterRoles
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating ServiceEdgeRouterPolicy %s\r", *create.Name)
-		if importer.loginOpts.Verbose {
-			log.WithField("name", *create.Name).
-				Debug("Creating ServiceEdgeRouterPolicy")
-		}
-		created, createErr := importer.client.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(&service_edge_router_policy.CreateServiceEdgeRouterPolicyParams{Policy: create}, nil)
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ServiceEdgeRouterPolicy %s\r", *create.Name)
+		log.WithField("name", *create.Name).
+			Debug("Creating ServiceEdgeRouterPolicy")
+		created, createErr := importer.Client.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(&service_edge_router_policy.CreateServiceEdgeRouterPolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -82,13 +80,11 @@ func (importer *Importer) ProcessServiceEdgeRouterPolicies(input map[string][]in
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
-			log.WithFields(map[string]interface{}{
-				"name":                      *create.Name,
-				"serviceEdgeRouterPolicyId": created.Payload.Data.ID,
-			}).
-				Info("Created ServiceEdgeRouterPolicy")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":                      *create.Name,
+			"serviceEdgeRouterPolicyId": created.Payload.Data.ID,
+		}).
+			Info("Created ServiceEdgeRouterPolicy")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}

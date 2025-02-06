@@ -17,6 +17,7 @@
 package exporter
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"github.com/judedaryl/go-arrayutils"
@@ -24,11 +25,14 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/ziti/internal"
 	ziticobra "github.com/openziti/ziti/internal/cobra"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 	"io"
 	"os"
 	"slices"
@@ -38,36 +42,117 @@ import (
 var log = pfxlog.Logger()
 
 type Exporter struct {
-	loginOpts        edge.LoginOptions
-	client           *rest_management_api_client.ZitiEdgeManagement
-	ofJson           bool
-	ofYaml           bool
-	file             *os.File
-	filename         string
+	Out              bufio.Writer
+	Err              io.Writer
 	configCache      map[string]any
 	configTypeCache  map[string]any
 	authPolicyCache  map[string]any
 	externalJwtCache map[string]any
+	Client           *rest_management_api_client.ZitiEdgeManagement
 }
-
-var output Output
 
 func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
-	exporter := &Exporter{}
-	exporter.loginOpts = edge.LoginOptions{}
+	exporter := &Exporter{
+		Out: *bufio.NewWriter(out),
+		Err: errOut,
+	}
+
+	var outputFormat string
+	var outputFile string
+	var loginOpts = edge.LoginOptions{
+		Options: api.Options{
+			CommonOptions: common.CommonOptions{
+				Out: os.Stdout,
+				Err: os.Stderr,
+			},
+		},
+	}
 
 	cmd := &cobra.Command{
 		Use:   "export [entity]",
 		Short: "Export entities",
-		Long: "Export all or selected entities.\n" +
+		Long: "Export all or comma separated list of selected entities.\n" +
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			err := exporter.Execute(args)
+
+			logLvl := logrus.InfoLevel
+			if loginOpts.Verbose {
+				logLvl = logrus.DebugLevel
+			}
+
+			pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
+			internal.ConfigureLogFormat(logLvl)
+
+			if outputFile != "" {
+				file, err := os.Create(outputFile)
+				if err != nil {
+					log.WithError(err).Fatal("Error creating file for writing")
+				}
+				exporter.Out = *bufio.NewWriter(file)
+			}
+
+			if strings.ToUpper(outputFormat) != "JSON" && strings.ToUpper(outputFormat) != "YAML" {
+				log.Fatalf("Invalid output format: %s", outputFormat)
+			}
+
+			client, err := loginOpts.NewMgmtClient()
 			if err != nil {
 				log.Fatal(err)
 			}
+			exporter.Client = client
+
+			result, err := exporter.Execute(args)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			var output []byte
+			if strings.ToUpper(outputFormat) == "YAML" {
+				if loginOpts.Verbose {
+					_, _ = internal.FPrintfReusingLine(exporter.Err, "Formatting output as YAML\r\n")
+				}
+				output, err = yaml.Marshal(result)
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				if loginOpts.Verbose {
+					_, _ = internal.FPrintfReusingLine(exporter.Err, "Formatting output as JSON\r\n")
+				}
+				output, err = json.MarshalIndent(result, "", "  ")
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			if loginOpts.Verbose && outputFile != "" {
+				_, _ = internal.FPrintfReusingLine(exporter.Err, "Writing to file: %s\r\n", outputFile)
+			}
+
+			bytes, err := exporter.Out.Write(output)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = exporter.Out.Flush()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if outputFile != "" {
+				log.
+					WithFields(map[string]interface{}{
+						"bytes":    bytes,
+						"filename": outputFile,
+					}).
+					Debug("Wrote data")
+			} else {
+				log.
+					WithField("bytes", bytes).
+					Debug("Wrote data")
+			}
+
 		},
 		Hidden: true,
 	}
@@ -86,51 +171,18 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	v.AutomaticEnv()
 
-	edge.AddLoginFlags(cmd, &exporter.loginOpts)
+	edge.AddLoginFlags(cmd, &loginOpts)
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVar(&exporter.ofJson, "json", true, "Output in JSON")
-	cmd.Flags().BoolVar(&exporter.ofYaml, "yaml", false, "Output in YAML")
-	cmd.Flags().StringVar(&exporter.loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
-	cmd.MarkFlagsMutuallyExclusive("json", "yaml")
+	cmd.Flags().StringVar(&outputFormat, "output-format", "JSON", "Output data as either JSON or YAML (default JSON)")
+	cmd.Flags().StringVar(&loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
 	ziticobra.SetHelpTemplate(cmd)
 
-	cmd.Flags().StringVarP(&exporter.filename, "output-file", "o", "", "Write output to local file")
-
-	exporter.loginOpts.Out = out
-	exporter.loginOpts.Err = errOut
+	cmd.Flags().StringVarP(&outputFile, "output-file", "o", "", "Write output to local file")
 
 	return cmd
 }
 
-func (exporter *Exporter) Execute(input []string) error {
-
-	logLvl := logrus.InfoLevel
-	if exporter.loginOpts.Verbose {
-		logLvl = logrus.DebugLevel
-	}
-
-	pfxlog.GlobalInit(logLvl, pfxlog.DefaultOptions().Color())
-	internal.ConfigureLogFormat(logLvl)
-
-	var err error
-	exporter.client, err = exporter.loginOpts.NewMgmtClient()
-	if err != nil {
-		return err
-	}
-
-	if exporter.filename != "" {
-		o, err := NewOutputToFile(exporter.loginOpts.Verbose, exporter.ofJson, exporter.ofYaml, exporter.filename, exporter.loginOpts.Err)
-		if err != nil {
-			return err
-		}
-		output = *o
-	} else {
-		o, err := NewOutputToWriter(exporter.loginOpts.Verbose, exporter.ofJson, exporter.ofYaml, exporter.loginOpts.Out, exporter.loginOpts.Err)
-		if err != nil {
-			return err
-		}
-		output = *o
-	}
+func (exporter *Exporter) Execute(input []string) (map[string]interface{}, error) {
 
 	args := arrayutils.Map(input, strings.ToLower)
 
@@ -142,117 +194,118 @@ func (exporter *Exporter) Execute(input []string) error {
 	result := map[string]interface{}{}
 
 	if exporter.IsCertificateAuthorityExportRequired(args) {
-		log.Debug("Processing Certificate Authorities")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Certificate Authorities\r")
 		cas, err := exporter.GetCertificateAuthorities()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["certificateAuthorities"] = cas
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Certificate Authorities\r\n", len(cas))
 	}
 	if exporter.IsIdentityExportRequired(args) {
-		log.Debug("Processing Identities")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Identities")
 		identities, err := exporter.GetIdentities()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["identities"] = identities
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Identities\r\n", len(identities))
 	}
 
 	if exporter.IsEdgeRouterExportRequired(args) {
-		log.Debug("Processing Edge Routers")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Edge Routers\r")
 		routers, err := exporter.GetEdgeRouters()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["edgeRouters"] = routers
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Edge Routers\r\n", len(routers))
 	}
 	if exporter.IsServiceExportRequired(args) {
-		log.Debug("Processing Services")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Services\r")
 		services, err := exporter.GetServices()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["services"] = services
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Services\r\n", len(services))
 	}
 	if exporter.IsConfigExportRequired(args) {
-		log.Debug("Processing Configs")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Configs\r")
 		configs, err := exporter.GetConfigs()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["configs"] = configs
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Configs\r\n", len(configs))
 	}
 	if exporter.IsConfigTypeExportRequired(args) {
-		log.Debug("Processing Config Types")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Config Types\r")
 		configTypes, err := exporter.GetConfigTypes()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["configTypes"] = configTypes
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d ConfigTypes\r\n", len(configTypes))
 	}
 	if exporter.IsServicePolicyExportRequired(args) {
-		log.Debug("Processing Service Policies")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Service Policies")
 		servicePolicies, err := exporter.GetServicePolicies()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["servicePolicies"] = servicePolicies
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Service Policies\r\n", len(servicePolicies))
 	}
 	if exporter.IsEdgeRouterExportRequired(args) {
-		log.Debug("Processing Edge Router Policies")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Edge Router Policies\r")
 		routerPolicies, err := exporter.GetEdgeRouterPolicies()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["edgeRouterPolicies"] = routerPolicies
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Edge Router Policies\r\n", len(routerPolicies))
 	}
 	if exporter.IsServiceEdgeRouterPolicyExportRequired(args) {
-		log.Debug("Processing Service Edge Router Policies")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Service Edge Router Policies")
 		serviceRouterPolicies, err := exporter.GetServiceEdgeRouterPolicies()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["serviceEdgeRouterPolicies"] = serviceRouterPolicies
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Service Edge Router Policies\r\n", len(serviceRouterPolicies))
 	}
 	if exporter.IsExtJwtSignerExportRequired(args) {
-		log.Debug("Processing External JWT Signers")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting External JWT Signers")
 		externalJwtSigners, err := exporter.GetExternalJwtSigners()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["externalJwtSigners"] = externalJwtSigners
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d External JWT Signers\r\n", len(externalJwtSigners))
 	}
 	if exporter.IsAuthPolicyExportRequired(args) {
-		log.Debug("Processing Auth Policies")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Auth Policies")
 		authPolicies, err := exporter.GetAuthPolicies()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["authPolicies"] = authPolicies
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Auth Policies\r\n", len(authPolicies))
 	}
 	if exporter.IsPostureCheckExportRequired(args) {
-		log.Debug("Processing Posture Checks")
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Posture Checks")
 		postureChecks, err := exporter.GetPostureChecks()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result["postureChecks"] = postureChecks
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Posture Checks\r\n", len(postureChecks))
 	}
 
-	log.Debug("Export complete")
+	_, _ = internal.FPrintfReusingLine(exporter.Err, "Export complete\r\n")
 
-	err = output.Write(result)
-	if err != nil {
-		return err
-	}
-	if exporter.file != nil {
-		err := exporter.file.Close()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return result, nil
 }
 
 type ClientCount func() (int64, error)
@@ -273,7 +326,7 @@ func (exporter *Exporter) getEntities(entityName string, count ClientCount, list
 	more := true
 	for more {
 		resp, err := list(&offset, &limit)
-		_, _ = internal.FPrintfReusingLine(exporter.loginOpts.Err, "Reading %d/%d %s", offset, totalCount, entityName)
+		_, _ = internal.FPrintfReusingLine(exporter.Err, "Reading %d/%d %s", offset, totalCount, entityName)
 		if err != nil {
 			return nil, errors.Join(errors.New("error reading "+entityName), err)
 		}
@@ -292,7 +345,7 @@ func (exporter *Exporter) getEntities(entityName string, count ClientCount, list
 		offset += limit
 	}
 
-	_, _ = internal.FPrintflnReusingLine(exporter.loginOpts.Err, "Read %d %s", len(result), entityName)
+	_, _ = internal.FPrintflnReusingLine(exporter.Err, "Read %d %s", len(result), entityName)
 
 	return result, nil
 

@@ -41,16 +41,14 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 	for _, data := range input["identities"] {
 		create := FromMap(data, rest_model.IdentityCreate{})
 
-		existing := mgmt.IdentityFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.IdentityFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.loginOpts.Verbose {
-				log.WithFields(map[string]interface{}{
-					"name":       *create.Name,
-					"identityId": *existing.ID,
-				}).
-					Info("Found existing Identity, skipping create")
-			}
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping Identity %s\r", *create.Name)
+			log.WithFields(map[string]interface{}{
+				"name":       *create.Name,
+				"identityId": *existing.ID,
+			}).
+				Info("Found existing Identity, skipping create")
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping Identity %s\r", *create.Name)
 			continue
 		}
 
@@ -69,7 +67,7 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 
 		// look up the auth policy id from the name and add to the create, omit if it's the "Default" policy
 		policy, _ := ascode.GetItemFromCache(importer.authPolicyCache, policyName, func(name string) (interface{}, error) {
-			return mgmt.AuthPolicyFromFilter(importer.client, mgmt.NameFilter(name)), nil
+			return mgmt.AuthPolicyFromFilter(importer.Client, mgmt.NameFilter(name)), nil
 		})
 		if policy == nil {
 			return nil, errors.New("error reading Auth Policy: " + policyName)
@@ -79,8 +77,8 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating Identity %s\r", *create.Name)
-		created, createErr := importer.client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Identity %s\r", *create.Name)
+		created, createErr := importer.Client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -94,13 +92,11 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
-			log.WithFields(map[string]interface{}{
-				"name":       *create.Name,
-				"identityId": created.Payload.Data.ID,
-			}).
-				Info("Created identity")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":       *create.Name,
+			"identityId": created.Payload.Data.ID,
+		}).
+			Info("Created identity")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}
@@ -114,7 +110,7 @@ func (importer *Importer) lookupIdentities(roles []string) ([]string, error) {
 		if role[0:1] == "@" {
 			roleName := role[1:]
 			value, lookupErr := ascode.GetItemFromCache(importer.identityCache, roleName, func(name string) (interface{}, error) {
-				return mgmt.IdentityFromFilter(importer.client, mgmt.NameFilter(name)), nil
+				return mgmt.IdentityFromFilter(importer.Client, mgmt.NameFilter(name)), nil
 			})
 			if lookupErr != nil {
 				return nil, lookupErr

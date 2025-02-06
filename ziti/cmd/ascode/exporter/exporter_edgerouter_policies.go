@@ -34,7 +34,7 @@ func (exporter Exporter) GetEdgeRouterPolicies() ([]map[string]interface{}, erro
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.EdgeRouterPolicy.ListEdgeRouterPolicies(&edge_router_policy.ListEdgeRouterPoliciesParams{Limit: &limit}, nil)
+			resp, err := exporter.Client.EdgeRouterPolicy.ListEdgeRouterPolicies(&edge_router_policy.ListEdgeRouterPoliciesParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +42,7 @@ func (exporter Exporter) GetEdgeRouterPolicies() ([]map[string]interface{}, erro
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := exporter.client.EdgeRouterPolicy.ListEdgeRouterPolicies(&edge_router_policy.ListEdgeRouterPoliciesParams{Limit: limit, Offset: offset}, nil)
+			resp, err := exporter.Client.EdgeRouterPolicy.ListEdgeRouterPolicies(&edge_router_policy.ListEdgeRouterPoliciesParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}

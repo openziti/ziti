@@ -37,14 +37,14 @@ func (importer *Importer) ProcessEdgeRouterPolicies(input map[string][]interface
 		create := FromMap(data, rest_model.EdgeRouterPolicyCreate{})
 
 		// see if the router already exists
-		existing := mgmt.EdgeRouterPolicyFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.EdgeRouterPolicyFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":               *create.Name,
 				"edgeRouterPolicyId": *existing.ID,
 			}).
 				Info("Found existing EdgeRouterPolicy, skipping create")
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping EdgeRouterPolicy %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping EdgeRouterPolicy %s\r", *create.Name)
 			continue
 		}
 
@@ -63,11 +63,9 @@ func (importer *Importer) ProcessEdgeRouterPolicies(input map[string][]interface
 		create.IdentityRoles = identityRoles
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
-		if importer.loginOpts.Verbose {
-			log.WithField("name", *create.Name).Debug("Creating EdgeRouterPolicy")
-		}
-		created, createErr := importer.client.EdgeRouterPolicy.CreateEdgeRouterPolicy(&edge_router_policy.CreateEdgeRouterPolicyParams{Policy: create}, nil)
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
+		log.WithField("name", *create.Name).Debug("Creating EdgeRouterPolicy")
+		created, createErr := importer.Client.EdgeRouterPolicy.CreateEdgeRouterPolicy(&edge_router_policy.CreateEdgeRouterPolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -81,13 +79,11 @@ func (importer *Importer) ProcessEdgeRouterPolicies(input map[string][]interface
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
-			log.WithFields(map[string]interface{}{
-				"name":           *create.Name,
-				"routerPolicyId": created.Payload.Data.ID,
-			}).
-				Info("Created EdgeRouterPolicy")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":           *create.Name,
+			"routerPolicyId": created.Payload.Data.ID,
+		}).
+			Info("Created EdgeRouterPolicy")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}

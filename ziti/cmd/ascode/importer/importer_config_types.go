@@ -39,26 +39,21 @@ func (importer *Importer) ProcessConfigTypes(input map[string][]interface{}) (ma
 		create := FromMap(data, rest_model.ConfigTypeCreate{})
 
 		// see if the config type already exists
-		existing := mgmt.ConfigTypeFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ConfigTypeFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.loginOpts.Verbose {
-				log.WithFields(map[string]interface{}{
-					"name":         *create.Name,
-					"configTypeId": *existing.ID,
-				}).
-					Info("Found existing ConfigType, skipping create")
-			}
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping ConfigType %s\r", *create.Name)
+			log.WithFields(map[string]interface{}{
+				"name":         *create.Name,
+				"configTypeId": *existing.ID,
+			}).
+				Info("Found existing ConfigType, skipping create")
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping ConfigType %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating ConfigType %s\r", *create.Name)
-		if importer.loginOpts.Verbose {
-			log.WithField("name", *create.Name).
-				Debug("Creating ConfigType")
-		}
-		created, createErr := importer.client.Config.CreateConfigType(&config.CreateConfigTypeParams{ConfigType: create}, nil)
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ConfigType %s\r", *create.Name)
+		log.WithField("name", *create.Name).Debug("Creating ConfigType")
+		created, createErr := importer.Client.Config.CreateConfigType(&config.CreateConfigTypeParams{ConfigType: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -73,13 +68,11 @@ func (importer *Importer) ProcessConfigTypes(input map[string][]interface{}) (ma
 			return nil, createErr
 		}
 
-		if importer.loginOpts.Verbose {
-			log.WithFields(map[string]interface{}{
-				"name":         *create.Name,
-				"configTypeId": created.Payload.Data.ID,
-			}).
-				Info("Created Config Type")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":         *create.Name,
+			"configTypeId": created.Payload.Data.ID,
+		}).
+			Info("Created Config Type")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}

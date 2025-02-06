@@ -38,14 +38,14 @@ func (importer *Importer) ProcessServicePolicies(input map[string][]interface{})
 		create := FromMap(data, rest_model.ServicePolicyCreate{})
 
 		// see if the service policy already exists
-		existing := mgmt.ServicePolicyFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ServicePolicyFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":            *create.Name,
 				"servicePolicyId": *existing.ID,
 			}).
 				Info("Found existing ServicePolicy, skipping create")
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping ServicePolicy %s\r", *create.Name)
 			continue
 		}
 
@@ -64,11 +64,9 @@ func (importer *Importer) ProcessServicePolicies(input map[string][]interface{})
 		create.IdentityRoles = identityRoles
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping ServicePolicy %s\r", *create.Name)
-		if importer.loginOpts.Verbose {
-			log.WithField("name", *create.Name).Debug("Creating ServicePolicy")
-		}
-		created, createErr := importer.client.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping ServicePolicy %s\r", *create.Name)
+		log.WithField("name", *create.Name).Debug("Creating ServicePolicy")
+		created, createErr := importer.Client.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{Policy: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -81,13 +79,11 @@ func (importer *Importer) ProcessServicePolicies(input map[string][]interface{})
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
-			log.WithFields(map[string]interface{}{
-				"name":            *create.Name,
-				"servicePolicyId": created.Payload.Data.ID,
-			}).
-				Info("Created ServicePolicy")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":            *create.Name,
+			"servicePolicyId": created.Payload.Data.ID,
+		}).
+			Info("Created ServicePolicy")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}

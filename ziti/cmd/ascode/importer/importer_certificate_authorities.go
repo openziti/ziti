@@ -38,22 +38,20 @@ func (importer *Importer) ProcessCertificateAuthorities(input map[string][]inter
 		create := FromMap(data, rest_model.CaCreate{})
 
 		// see if the CA already exists
-		existing := mgmt.CertificateAuthorityFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.CertificateAuthorityFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
-			if importer.loginOpts.Verbose {
-				log.WithFields(map[string]interface{}{
-					"name":                   *create.Name,
-					"certificateAuthorityId": *existing.ID,
-				}).
-					Info("Found existing CertificateAuthority, skipping create")
-			}
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping CertificateAuthority %s\r", *create.Name)
+			log.WithFields(map[string]interface{}{
+				"name":                   *create.Name,
+				"certificateAuthorityId": *existing.ID,
+			}).
+				Info("Found existing CertificateAuthority, skipping create")
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping CertificateAuthority %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating CertificateAuthority %s\r", *create.Name)
-		created, createErr := importer.client.CertificateAuthority.CreateCa(&certificate_authority.CreateCaParams{Ca: create}, nil)
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating CertificateAuthority %s\r", *create.Name)
+		created, createErr := importer.Client.CertificateAuthority.CreateCa(&certificate_authority.CreateCaParams{Ca: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.
@@ -69,13 +67,11 @@ func (importer *Importer) ProcessCertificateAuthorities(input map[string][]inter
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
-			log.WithFields(map[string]interface{}{
-				"name":                   *create.Name,
-				"certificateAuthorityId": created.Payload.Data.ID,
-			}).
-				Info("Created CertificateAuthority")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":                   *create.Name,
+			"certificateAuthorityId": created.Payload.Data.ID,
+		}).
+			Info("Created CertificateAuthority")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}

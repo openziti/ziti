@@ -34,7 +34,7 @@ func (exporter Exporter) GetEdgeRouters() ([]map[string]interface{}, error) {
 		"EdgeRouters",
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: &limit}, nil)
+			resp, err := exporter.Client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -42,7 +42,7 @@ func (exporter Exporter) GetEdgeRouters() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, err := exporter.client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: limit, Offset: offset}, nil)
+			resp, err := exporter.Client.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{Limit: limit, Offset: offset}, nil)
 			if err != nil {
 				return nil, err
 			}

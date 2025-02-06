@@ -40,23 +40,21 @@ func (importer *Importer) ProcessEdgeRouters(input map[string][]interface{}) (ma
 		create := FromMap(data, rest_model.EdgeRouterCreate{})
 
 		// see if the router already exists
-		existing := mgmt.EdgeRouterFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.EdgeRouterFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":         *create.Name,
 				"edgeRouterId": *existing.ID,
 			}).
 				Info("Found existing EdgeRouter, skipping create")
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping EdgeRouter %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping EdgeRouter %s\r", *create.Name)
 			continue
 		}
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
-		if importer.loginOpts.Verbose {
-			log.WithField("name", *create.Name).Debug("Creating EdgeRouter")
-		}
-		created, createErr := importer.client.EdgeRouter.CreateEdgeRouter(&edge_router.CreateEdgeRouterParams{EdgeRouter: create}, nil)
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating EdgeRouterPolicy %s\r", *create.Name)
+		log.WithField("name", *create.Name).Debug("Creating EdgeRouter")
+		created, createErr := importer.Client.EdgeRouter.CreateEdgeRouter(&edge_router.CreateEdgeRouterParams{EdgeRouter: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -68,13 +66,11 @@ func (importer *Importer) ProcessEdgeRouters(input map[string][]interface{}) (ma
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
-			log.WithFields(map[string]interface{}{
-				"name":         *create.Name,
-				"edgeRouterId": created.Payload.Data.ID,
-			}).
-				Info("Created EdgeRouter")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":         *create.Name,
+			"edgeRouterId": created.Payload.Data.ID,
+		}).
+			Info("Created EdgeRouter")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}
@@ -88,7 +84,7 @@ func (importer *Importer) lookupEdgeRouters(roles []string) ([]string, error) {
 		if role[0:1] == "@" {
 			value := role[1:]
 			edgeRouter, _ := ascode.GetItemFromCache(importer.edgeRouterCache, value, func(name string) (interface{}, error) {
-				return mgmt.EdgeRouterFromFilter(importer.client, mgmt.NameFilter(name)), nil
+				return mgmt.EdgeRouterFromFilter(importer.Client, mgmt.NameFilter(name)), nil
 			})
 			if edgeRouter == nil {
 				return nil, errors.New("error reading EdgeRouter: " + value)

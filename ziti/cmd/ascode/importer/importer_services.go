@@ -42,14 +42,14 @@ func (importer *Importer) ProcessServices(input map[string][]interface{}) (map[s
 		create := FromMap(data, rest_model.ServiceCreate{})
 
 		// see if the service already exists
-		existing := mgmt.ServiceFromFilter(importer.client, mgmt.NameFilter(*create.Name))
+		existing := mgmt.ServiceFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
 		if existing != nil {
 			log.WithFields(map[string]interface{}{
 				"name":      *create.Name,
 				"serviceId": *existing.ID,
 			}).
 				Info("Found existing Service, skipping create")
-			_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Skipping Service %s\r", *create.Name)
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping Service %s\r", *create.Name)
 			continue
 		}
 
@@ -67,7 +67,7 @@ func (importer *Importer) ProcessServices(input map[string][]interface{}) (map[s
 		for _, configName := range configsNode.Children() {
 			value := configName.Data().(string)[1:]
 			config, _ := ascode.GetItemFromCache(importer.configCache, value, func(name string) (interface{}, error) {
-				return mgmt.ConfigFromFilter(importer.client, mgmt.NameFilter(name)), nil
+				return mgmt.ConfigFromFilter(importer.Client, mgmt.NameFilter(name)), nil
 			})
 			if config == nil {
 				return nil, errors.New("error reading Config: " + value)
@@ -77,11 +77,9 @@ func (importer *Importer) ProcessServices(input map[string][]interface{}) (map[s
 		create.Configs = configIds
 
 		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.loginOpts.Err, "Creating Service %s\r", *create.Name)
-		if importer.loginOpts.Verbose {
-			log.WithField("name", *create.Name).Debug("Creating Service")
-		}
-		created, createErr := importer.client.Service.CreateService(&service.CreateServiceParams{Service: create}, nil)
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Service %s\r", *create.Name)
+		log.WithField("name", *create.Name).Debug("Creating Service")
+		created, createErr := importer.Client.Service.CreateService(&service.CreateServiceParams{Service: create}, nil)
 		if createErr != nil {
 			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
 				log.WithFields(map[string]interface{}{
@@ -94,13 +92,11 @@ func (importer *Importer) ProcessServices(input map[string][]interface{}) (map[s
 				return nil, createErr
 			}
 		}
-		if importer.loginOpts.Verbose {
-			log.WithFields(map[string]interface{}{
-				"name":      *create.Name,
-				"serviceId": created.Payload.Data.ID,
-			}).
-				Info("Created Service")
-		}
+		log.WithFields(map[string]interface{}{
+			"name":      *create.Name,
+			"serviceId": created.Payload.Data.ID,
+		}).
+			Info("Created Service")
 
 		result[*create.Name] = created.Payload.Data.ID
 	}
@@ -114,7 +110,7 @@ func (importer *Importer) lookupServices(roles []string) ([]string, error) {
 		if role[0:1] == "@" {
 			value := role[1:]
 			service, _ := ascode.GetItemFromCache(importer.serviceCache, value, func(name string) (interface{}, error) {
-				return mgmt.ServiceFromFilter(importer.client, mgmt.NameFilter(name)), nil
+				return mgmt.ServiceFromFilter(importer.Client, mgmt.NameFilter(name)), nil
 			})
 			if service == nil {
 				return nil, errors.New("error reading Service: " + value)

@@ -36,7 +36,7 @@ func (exporter Exporter) GetConfigs() ([]map[string]interface{}, error) {
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.Config.ListConfigs(&config.ListConfigsParams{Limit: &limit}, nil)
+			resp, err := exporter.Client.Config.ListConfigs(&config.ListConfigsParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -44,7 +44,7 @@ func (exporter Exporter) GetConfigs() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, _ := exporter.client.Config.ListConfigs(&config.ListConfigsParams{Limit: limit, Offset: offset}, nil)
+			resp, _ := exporter.Client.Config.ListConfigs(&config.ListConfigsParams{Limit: limit, Offset: offset}, nil)
 			entities := make([]interface{}, len(resp.GetPayload().Data))
 			for i, c := range resp.GetPayload().Data {
 				entities[i] = interface{}(c)
@@ -69,7 +69,7 @@ func (exporter Exporter) GetConfigs() ([]map[string]interface{}, error) {
 			delete(m, "configType")
 			delete(m, "configTypeId")
 			configType, lookupErr := ascode.GetItemFromCache(exporter.configTypeCache, *item.ConfigTypeID, func(id string) (interface{}, error) {
-				return exporter.client.Config.DetailConfigType(&config.DetailConfigTypeParams{ID: id}, nil)
+				return exporter.Client.Config.DetailConfigType(&config.DetailConfigTypeParams{ID: id}, nil)
 			})
 			if lookupErr != nil {
 				return nil, errors.Join(errors.New("error reading Auth Policy: "+*item.ConfigTypeID), lookupErr)

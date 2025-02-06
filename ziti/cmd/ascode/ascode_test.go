@@ -90,7 +90,7 @@ func performTest(t *testing.T) {
 
 	uploadWriter := strings.Builder{}
 	importCmd := importer.NewImportCmd(&uploadWriter, &errWriter)
-	importCmd.SetArgs([]string{"--yaml", "./test.yaml", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin"})
+	importCmd.SetArgs([]string{"--input-format=yaml", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin", "./test.yaml"})
 
 	err := importCmd.Execute()
 	if err != nil {
@@ -106,7 +106,7 @@ func performTest(t *testing.T) {
 	log.Info("output file: ", tempFile.Name())
 
 	exportCmd := exporter.NewExportCmd(os.Stdout, os.Stderr)
-	exportCmd.SetArgs([]string{"all", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin", "--output-file=" + tempFile.Name()})
+	exportCmd.SetArgs([]string{"--output-format=json", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin", "--output-file=" + tempFile.Name(), "all"})
 	err = exportCmd.Execute()
 	if err != nil {
 		t.Fatal(err)

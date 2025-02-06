@@ -33,7 +33,7 @@ func (exporter Exporter) GetPostureChecks() ([]map[string]interface{}, error) {
 
 		func() (int64, error) {
 			limit := int64(1)
-			resp, err := exporter.client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: &limit}, nil)
+			resp, err := exporter.Client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: &limit}, nil)
 			if err != nil {
 				return -1, err
 			}
@@ -41,7 +41,7 @@ func (exporter Exporter) GetPostureChecks() ([]map[string]interface{}, error) {
 		},
 
 		func(offset *int64, limit *int64) ([]interface{}, error) {
-			resp, _ := exporter.client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: limit, Offset: offset}, nil)
+			resp, _ := exporter.Client.PostureChecks.ListPostureChecks(&posture_checks.ListPostureChecksParams{Limit: limit, Offset: offset}, nil)
 			entities := make([]interface{}, len(resp.GetPayload().Data()))
 			for i, c := range resp.GetPayload().Data() {
 				entities[i] = interface{}(c)
