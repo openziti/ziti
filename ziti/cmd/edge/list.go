@@ -665,31 +665,29 @@ func runListExtJwtSigners(options *api.Options) error {
 		clientId := stringz.OrEmpty(entity.ClientID)
 		scopes := strings.Join(entity.Scopes, ",")
 
+		outTable.AppendRow(table.Row{id, name, "Audience", audience}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Claim Property", claimsProperty}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Enabled", isEnabled}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Issuer", issuer}, rowConfigAutoMerge)
+
+		var confType string
 		if entity.JwksEndpoint != nil {
-			confType := "JWKS"
+			confType = "JWKS"
 			urlStr := entity.JwksEndpoint.String()
-			outTable.AppendRow(table.Row{id, name, "Audience", audience}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Claim Property", claimsProperty}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Enabled", isEnabled}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Issuer", issuer}, rowConfigAutoMerge)
 			outTable.AppendRow(table.Row{id, name, "JWKS URL", urlStr}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Type", confType}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Use External Id", useExternalId}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "ClientId", clientId}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Scopes", scopes}, rowConfigAutoMerge)
+
 		} else {
-			confType := "CERT"
+			confType = "CERT"
 			fingerprint := *entity.Fingerprint
-			outTable.AppendRow(table.Row{id, name, "Audience", audience}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Claim Property", claimsProperty}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Enabled", isEnabled}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Issuer", issuer}, rowConfigAutoMerge)
 			outTable.AppendRow(table.Row{id, name, "Fingerprint", fingerprint}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Type", confType}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Use External Id", useExternalId}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "ClientId", clientId}, rowConfigAutoMerge)
-			outTable.AppendRow(table.Row{id, name, "Scopes", scopes}, rowConfigAutoMerge)
 		}
+
+		outTable.AppendRow(table.Row{id, name, "Type", confType}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Type", confType}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Use External Id", useExternalId}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "ClientId", clientId}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Scopes", scopes}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "TargetToken", *entity.TargetToken}, rowConfigAutoMerge)
 
 	}
 

@@ -45,6 +45,7 @@ type ExternalJwtSigner struct {
 	Fingerprint *string
 	NotAfter    time.Time
 	NotBefore   time.Time
+	TargetToken string
 }
 
 func (entity *ExternalJwtSigner) toBoltEntity() (*db.ExternalJwtSigner, error) {
@@ -62,6 +63,7 @@ func (entity *ExternalJwtSigner) toBoltEntity() (*db.ExternalJwtSigner, error) {
 		Audience:        entity.Audience,
 		ClientId:        entity.ClientId,
 		Scopes:          entity.Scopes,
+		TargetToken:     entity.TargetToken,
 	}
 
 	if entity.CertPem != nil && *entity.CertPem != "" {
@@ -109,6 +111,7 @@ func (entity *ExternalJwtSigner) fillFrom(_ Env, _ *bbolt.Tx, boltExternalJwtSig
 	entity.Audience = boltExternalJwtSigner.Audience
 	entity.ClientId = boltExternalJwtSigner.ClientId
 	entity.Scopes = boltExternalJwtSigner.Scopes
+	entity.TargetToken = boltExternalJwtSigner.TargetToken
 	return nil
 }
 

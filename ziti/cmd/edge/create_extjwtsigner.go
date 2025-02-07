@@ -36,6 +36,7 @@ type createExtJwtSignerOptions struct {
 	ExtJwtSigner rest_model.ExternalJWTSignerCreate
 	CertFilePath string
 	JwksEndpoint string
+	TargetToken  string
 }
 
 // newCreateExtJwtSignerCmd creates the 'edge controller create ca local' command for the given entity type
@@ -61,7 +62,7 @@ func newCreateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "ext-jwt-signer <name> <issuer> (-u <jwksEndpoint>|-p <cert pem>|-f <cert file>) [-a <audience> -c <claimProperty> --client-id <clientId> --scope <scope1> --scope <scopeN> -xe]",
+		Use:     "ext-jwt-signer <name> <issuer> (-u <jwksEndpoint>|-p <cert pem>|-f <cert file>) [-a <audience> -c <claimProperty> --client-id <clientId> --scope <scope1> --scope <scopeN> -xe --target-token=ACCESS|ID]",
 		Short:   "creates an external JWT signer managed by the Ziti Edge Controller",
 		Long:    "creates an external JWT signer managed by the Ziti Edge Controller",
 		Aliases: []string{"external-jwt-signer"},
@@ -99,6 +100,7 @@ func newCreateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(options.ExtJwtSigner.Kid, "kid", "k", "", "The KID for the signer, required if using -p or -f")
 	cmd.Flags().StringVarP(options.ExtJwtSigner.ClientID, "client-id", "", "", "The client id for OIDC that should be used")
 	cmd.Flags().StringSliceVarP(&options.ExtJwtSigner.Scopes, "scopes", "", nil, "The scopes for OIDC that should be used")
+	cmd.Flags().StringVarP(&options.TargetToken, "target-token", "", "ACCESS", "The target token SDKs should use, defaults to ACCESS")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -125,6 +127,14 @@ func runCreateExtJwtSigner(options *createExtJwtSignerOptions) (err error) {
 
 	if options.ExtJwtSigner.ClaimsProperty != nil && *options.ExtJwtSigner.ClaimsProperty == "" {
 		return errors.New("claims property must not be an empty string")
+	}
+
+	if options.TargetToken == "" {
+		options.ExtJwtSigner.TargetToken = Ptr(rest_model.TargetTokenACCESS)
+	} else if options.TargetToken != "" && (options.TargetToken != string(rest_model.TargetTokenACCESS) && options.TargetToken != string(rest_model.TargetTokenID)) {
+		return fmt.Errorf("target-token must be %s or %s", string(rest_model.TargetTokenACCESS), string(rest_model.TargetTokenID))
+	} else {
+		options.ExtJwtSigner.TargetToken = Ptr(rest_model.TargetToken(options.TargetToken))
 	}
 
 	if options.JwksEndpoint != "" {
