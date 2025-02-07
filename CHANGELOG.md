@@ -12,6 +12,12 @@
 * Router Controller Endpoint Change#s
 * Bug fixes
 
+## Backward Compatibility Note
+
+Linux releases are now being built on Ubuntu 22.04, as version 20.04 is at EOL and will no longer 
+be available to Github Actions. This may affect which versions the linux ziti executable will 
+run on due to changes to libc.
+
 ## Config Changes
 
 **NOTE:** For HA configuration, the `raft:` config stanza is now named `cluster:`.

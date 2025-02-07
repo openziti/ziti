@@ -99,7 +99,7 @@ jobs:
 
   linux-build:
     name: Build Linux binaries
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -135,7 +135,7 @@ jobs:
 
   tests:
     name: Run Unit and Integration Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -166,7 +166,7 @@ jobs:
     name: Fablab Smoketest
     # not applicable to forks. shouldn't run on release build
     if: github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v')
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -180,6 +180,11 @@ jobs:
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
+  
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.5"
 
       - name: Build and Test
         env:
@@ -253,9 +258,14 @@ jobs:
     name: Teardown SmokeTest
     # ensure reasonable timeout-minutes on steps in this un-cancellable job
     if: always()
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: [ fablab-smoketest ]
     steps:
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.5"
+
       # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
       - name: Teardown Test Environment
         if: needs.fablab-smoketest.result != 'skipped'
@@ -282,7 +292,7 @@ jobs:
     name: Fablab HA Smoketest
     # not applicable to forks. shouldn't run on release build
     if: github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v')
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -293,6 +303,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: ./go.mod
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.5"
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -366,9 +381,14 @@ jobs:
   fablab-ha-smoketest-teardown:
     name: Teardown HA SmokeTest
     if: always()
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: [ fablab-ha-smoketest ]
     steps:
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.5"
+
       # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
       - name: Teardown Test Environment
         if: needs.fablab-smoketest-ha.result != 'skipped'
@@ -402,7 +422,7 @@ jobs:
       && (needs.fablab-smoketest.result == 'success' || needs.fablab-smoketest.result == 'skipped')
       && (needs.tests.result == 'success')
       }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     # ensure required job outcomes are specified in "if" expression
     needs: [ tests, linux-build, mac-os-build, windows-build, fablab-smoketest, fablab-ha-smoketest ]
     outputs:
