@@ -182,6 +182,11 @@ jobs:
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
 
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.x
+
       - name: Build and Test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -258,6 +263,11 @@ jobs:
     needs: [ fablab-smoketest ]
     steps:
       # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.x
+
       - name: Teardown Test Environment
         if: needs.fablab-smoketest.result != 'skipped'
         timeout-minutes: 30
@@ -297,6 +307,11 @@ jobs:
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.x
 
       - name: Build and Test
         env:
@@ -371,6 +386,11 @@ jobs:
     needs: [ fablab-ha-smoketest ]
     steps:
       # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.x
+
       - name: Teardown Test Environment
         if: needs.fablab-smoketest-ha.result != 'skipped'
         timeout-minutes: 30
