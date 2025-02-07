@@ -22,7 +22,7 @@ jobs:
     name: SDK Terminator Validation
     # not applicable to forks. shouldn't run on release build
     if: github.repository_owner == 'openziti'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4

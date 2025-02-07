@@ -10,7 +10,7 @@ on:
 
 jobs:
   publish-docker-images:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ZITI_CLI_TAG:          ${{ inputs.ziti-tag || github.event.inputs.ziti-tag }}
       ZITI_CLI_IMAGE:        ${{ vars.ZITI_CLI_IMAGE || 'docker.io/openziti/ziti-cli' }}
