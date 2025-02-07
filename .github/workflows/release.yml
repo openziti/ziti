@@ -101,8 +101,8 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+          apt-get update
+          apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
           $(go env GOPATH)/bin/ziti-ci configure-git
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci -t go-build-flags
