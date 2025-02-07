@@ -10,7 +10,7 @@ require (
 	github.com/go-openapi/runtime v0.28.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
-	github.com/michaelquigley/pfxlog v1.0.0
+	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.23
 	github.com/openziti/channel/v3 v3.0.26
 	github.com/openziti/edge-api v0.26.39
@@ -148,7 +148,7 @@ require (
 	github.com/openziti/runzmd v1.0.59 // indirect
 	github.com/openziti/secretstream v0.1.28 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
-	github.com/openziti/xweb/v2 v2.2.0 // indirect
+	github.com/openziti/xweb/v2 v2.2.1 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect

@@ -38,8 +38,9 @@ func NewAgentClusterInitFromDb(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.ExactArgs(1),
-		Use:  "init-from-db path/to/source.db",
+		Args:  cobra.ExactArgs(1),
+		Use:   "init-from-db path/to/source.db",
+		Short: "Initializes a cluster using an existing database snapshot",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args

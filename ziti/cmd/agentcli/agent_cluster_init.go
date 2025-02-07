@@ -37,8 +37,9 @@ func NewAgentClusterInit(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.ExactArgs(3),
-		Use:  "init <username> <password> <name>",
+		Args:  cobra.ExactArgs(3),
+		Use:   "init <username> <password> <name>",
+		Short: "Initializes a cluster with a default administrator",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args

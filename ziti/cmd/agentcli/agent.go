@@ -77,7 +77,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	clusterCmd.AddCommand(NewAgentClusterList(p))
 	clusterCmd.AddCommand(NewAgentTransferLeadership(p))
 	clusterCmd.AddCommand(NewAgentClusterInit(p))
-	clusterCmd.AddCommand(NewAgentClusterInitFromDb(p))
+	//clusterCmd.AddCommand(NewAgentClusterInitFromDb(p))
 	clusterCmd.AddCommand(NewAgentClusterRestoreFromDb(p))
 
 	routerCmd := &cobra.Command{
