@@ -1,5 +1,10 @@
 # Release 1.4.0
 
+## Backward Compatibility Note
+
+Linux releases are now being built on Ubuntu Bionic 18.04 (GLIBC 2.27) instead of Ubuntu Focal 20.04 (GLIBC 2.31). This
+expands backward compatility to systems with older versions of glibc.
+
 ## What's New
 
 * Changes to backup/restore and standalone to HA migrations
@@ -8,7 +13,7 @@
 * ziti ops verify changes
     * Moved `ziti ops verify-network` to `ziti ops verify network`
     * Moved `ziti ops verify traffic` to `ziti ops verify traffic`
-    * Added `ziti ops verify ext-jwt-signer oidc` to help users with configuring OIDC external auth 
+    * Added `ziti ops verify ext-jwt-signer oidc` to help users with configuring OIDC external auth
 * Router Controller Endpoint Change#s
 * Bug fixes
 
@@ -30,6 +35,7 @@ The event types are now exhaustively documented as part of the [OpenZiti Referen
 During documentation, some inconsistencies were found the following changes were made.
 
 ### Namespace Cleanup
+
 Namespaces have been cleaned up, with the following changes:
 
 * edge.apiSessions -> apiSession
@@ -39,8 +45,8 @@ Namespaces have been cleaned up, with the following changes:
 * fabric.routers -> router
 * services -> service
 * edge.sessions -> session
-* fabric.terminators -> terminator 
-* fabric.usage -> usage 
+* fabric.terminators -> terminator
+* fabric.usage -> usage
 
 Note that service events used `services` in the config file, but `service.events` in the event itself.
 The old namespaces still work. If the old event type is used in the config file, the old namespace will be in the events as well
@@ -55,7 +61,8 @@ The following event types now have a timestamp field:
 This timestamp is the time the event was generated.
 
 ### Event Source ID
-All event types now have a new field: `event_src_id`. This field is the id of the controller 
+
+All event types now have a new field: `event_src_id`. This field is the id of the controller
 which emitted the event. This may be useful in HA environments, during event processing.
 
 ## Cluster Operations Naming
@@ -64,25 +71,24 @@ The CLI tools under `ziti fabric raft` are now found at `ziti ops cluster`.
 
 The Raft APIs available in the fabric management API are now namespaced under Cluster instead.
 
-
 ## Backup/Restore/HA Migrations
 
-What restoring from a DB snapshot has in common with migrating from a standalone setup to 
+What restoring from a DB snapshot has in common with migrating from a standalone setup to
 a RAFT enabled one, is that the controller is changing in a way that the router might not
-notice. 
+notice.
 
 Now that routers have a simplified data model, they need know if the controller database
 has gone backwards. In the case of a migration to an HA setup, they need to know that
-the data model index has changed, likely resetting back to close to zero. 
+the data model index has changed, likely resetting back to close to zero.
 
-To facilitate this, the database now has a timeline identifier. This is shared among 
-controllers and is sent to routers along with the data state. When the controller 
-restores to a snapshot of previous state, or when the the controller moves to a 
-raft/HA setup, the timeline identifier will change. 
+To facilitate this, the database now has a timeline identifier. This is shared among
+controllers and is sent to routers along with the data state. When the controller
+restores to a snapshot of previous state, or when the the controller moves to a
+raft/HA setup, the timeline identifier will change.
 
 When the router requests data model changes, it will send along the current timeline
 identifier. If the controller sees that the timeline identifier is different, it knows
-to send down the full data state. 
+to send down the full data state.
 
 ### Implementation Notes
 
@@ -94,8 +100,9 @@ ziti fabric inspect router-data-model-index
 ```
 
 **Example**
+
 ```
-$ ziti fabric inspect router-data-model-index 
+$ ziti fabric inspect router-data-model-index
 Results: (3)
 ctrl1.router-data-model-index
 index: 25
@@ -115,7 +122,7 @@ that the timeline identifier needs to be changed. When a standalone controller s
 up, if that flag is set, the controller changes the timeline identifier and resets the flag.
 
 When an HA cluster is initialized using an existing controller database it also changes the
-timeline id. 
+timeline id.
 
 ### HA DB Restore
 
@@ -170,7 +177,7 @@ ctrl:
     advertiseAddress: tls:ctrl1.ziti.example.com
 ```
 
-This means that the controller no longer needs to be set manually in the config 
+This means that the controller no longer needs to be set manually in the config
 file, enrollment should handle initializing the value appropriately.
 
 ## Component Updates and Bug Fixes
@@ -203,7 +210,6 @@ file, enrollment should handle initializing the value appropriately.
     * [Issue #2720](https://github.com/openziti/ziti/issues/2720) - new verify oidc command on prints usage
     * [Issue #2546](https://github.com/openziti/ziti/issues/2546) - Use consistent terminology for HA
     * [Issue #2713](https://github.com/openziti/ziti/issues/2713) - Routers with no edge components shouldn't subscribe to RDM updates
-
 
 # Release 1.3.3
 
