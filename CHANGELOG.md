@@ -175,12 +175,21 @@ file, enrollment should handle initializing the value appropriately.
 
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/edge-api: [v0.26.38 -> v0.26.39](https://github.com/openziti/edge-api/compare/v0.26.38...v0.26.39)
+* github.com/openziti/identity: [v1.0.94 -> v1.0.96](https://github.com/openziti/identity/compare/v1.0.94...v1.0.96)
 * github.com/openziti/storage: [v0.3.15 -> v0.4.1](https://github.com/openziti/storage/compare/v0.3.15...v0.4.1)
     * [Issue #94](https://github.com/openziti/storage/issues/94) - Snapshots aren't working correctly
 
+* github.com/openziti/transport/v2: [v2.0.159 -> v2.0.160](https://github.com/openziti/transport/compare/v2.0.159...v2.0.160)
+* github.com/openziti/xweb/v2: [v2.1.3 -> v2.2.1](https://github.com/openziti/xweb/compare/v2.1.3...v2.2.1)
+    * [Issue #18](https://github.com/openziti/xweb/issues/18) - verify advertised host/ip has a certificate defined in the identity block
+
 * github.com/openziti/ziti: [v1.3.3 -> v1.4.0](https://github.com/openziti/ziti/compare/v1.3.3...v1.4.0)
+    * [Issue #2756](https://github.com/openziti/ziti/issues/2756) - Remove ziti agent cluster init-from-db command
+    * [Issue #2723](https://github.com/openziti/ziti/pull/2723) - attempts to probe advertise address on startup to ensure the SANS is correct
+    * [Issue #2722](https://github.com/openziti/ziti/issues/2722) - router: check advertised address on startup
     * [Issue #2745](https://github.com/openziti/ziti/issues/2745) - Remove cluster initialMembers config
-    * [Issue #2746](https://github.com/openziti/ziti/issues/2746) - Remove agent controllero commands to agent cluster
+    * [Issue #2746](https://github.com/openziti/ziti/issues/2746) - Move agent controller commands to agent cluster
     * [Issue #2743](https://github.com/openziti/ziti/issues/2743) - Agent and rest cluster command names should match
     * [Issue #2731](https://github.com/openziti/ziti/issues/2731) - Rename raft controller config section to cluster
     * [Issue #2724](https://github.com/openziti/ziti/issues/2724) - Allow configuring endpoints file full path instead of directory

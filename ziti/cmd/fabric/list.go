@@ -319,7 +319,7 @@ func runListControllers(o *api.Options) error {
 func outputControllers(o *api.Options, result *controllers.ListControllersOK) error {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Name", "Last Connected", "IsOnline"})
+	t.AppendHeader(table.Row{"ID", "Name", "Last Connected", "IsOnline (only valid if cluster has leader)"})
 
 	for _, entity := range result.Payload.Data {
 		id := valOrDefault(entity.ID)

@@ -38,8 +38,9 @@ func NewAgentClusterRestoreFromDb(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.ExactArgs(1),
-		Use:  "restore-from-db path/to/source.db",
+		Args:  cobra.ExactArgs(1),
+		Use:   "restore-from-db path/to/source.db",
+		Short: "Restores a cluster to the state in the given database snapshot",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
