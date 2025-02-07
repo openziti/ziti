@@ -115,17 +115,6 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	replacer := strings.NewReplacer("-", "_") // We use underscores in env var names, but use dashes in flag names
 	viper.SetEnvKeyReplacer(replacer)
 
-	// cmd.PersistentFlags().StringVar(&rootCommand.configFile, "config", "", "yaml config file (default is $HOME/.ziti.yaml)")
-	// viper.BindPFlag("config", cmd.PersistentFlags().Lookup("config"))
-	// viper.SetDefault("config", "$HOME/.ziti.yaml")
-
-	// cmd.PersistentFlags().StringVar(&rootCommand.RegistryPath, "state", "", "Location of state storage (ziti 'config' file). Overrides ZITI_STATE_STORE environment variable")
-	// viper.BindPFlag("ZITI_STATE_STORE", cmd.PersistentFlags().Lookup("state"))
-	// viper.BindEnv("ZITI_STATE_STORE")
-
-	// defaultClusterName := os.Getenv("ZITI_CLUSTER_NAME")
-	// cmd.PersistentFlags().StringVarP(&rootCommand.clusterName, "name", "", defaultClusterName, "Name of cluster. Overrides ZITI_CLUSTER_NAME environment variable")
-
 	p := common.NewOptionsProvider(out, err)
 
 	createCommands := create.NewCmdCreate(out, err)

@@ -23,14 +23,15 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/pki/pki"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"io"
 )
 
 // PKIOptions contains the command line options
 type PKIOptions struct {
 	common.CommonOptions
-
 	Flags PKIFlags
+	viper *viper.Viper
 }
 
 type PKIFlags struct {

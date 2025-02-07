@@ -18,7 +18,7 @@ package pki
 
 import (
 	"fmt"
-	cmd2 "github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/certificate"
@@ -38,10 +38,11 @@ func NewCmdPKICreateKey(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PKICreateKeyOptions{
 		PKICreateOptions: PKICreateOptions{
 			PKIOptions: PKIOptions{
-				CommonOptions: cmd2.CommonOptions{
+				CommonOptions: common.CommonOptions{
 					Out: out,
 					Err: errOut,
 				},
+				viper: common.NewViper(),
 			},
 		},
 	}
@@ -62,45 +63,49 @@ func NewCmdPKICreateKey(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *PKICreateKeyOptions) addPKICreateKeyFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&o.Flags.PKIRoot, "pki-root", "", "", "Directory in which PKI resides")
-	cmd.Flags().StringVarP(&o.Flags.CAName, "ca-name", "", "intermediate", "Name of Intermediate CA (within PKI_ROOT) to use to sign the new Client certificate")
-	cmd.Flags().StringVarP(&o.Flags.KeyFile, "key-file", "", "key", "Name of file (under chosen CA) in which to store new private key")
-	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the RSA private key, ignored if -curve is set")
-	cmd.Flags().StringVarP(&o.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521")
+func (options *PKICreateKeyOptions) addPKICreateKeyFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVarP(&options.Flags.PKIRoot, "pki-root", "", "", "Directory in which to store CA")
+	err := options.viper.BindPFlag("pki_root", cmd.PersistentFlags().Lookup("pki-root"))
+	options.panicOnErr(err)
+
+	cmd.Flags().StringVarP(&options.Flags.PKIRoot, "pki-root", "", "", "Directory in which PKI resides")
+	cmd.Flags().StringVarP(&options.Flags.CAName, "ca-name", "", "intermediate", "Name of Intermediate CA (within PKI_ROOT) to use to sign the new Client certificate")
+	cmd.Flags().StringVarP(&options.Flags.KeyFile, "key-file", "", "key", "Name of file (under chosen CA) in which to store new private key")
+	cmd.Flags().IntVarP(&options.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the RSA private key, ignored if -curve is set")
+	cmd.Flags().StringVarP(&options.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521")
 }
 
 // Run implements this command
-func (o *PKICreateKeyOptions) Run() error {
+func (options *PKICreateKeyOptions) Run() error {
 
-	pkiRoot, err := o.ObtainPKIRoot()
+	pkiRoot, err := options.ObtainPKIRoot()
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
 
-	o.Flags.PKI = &pki.ZitiPKI{Store: &store.Local{}}
-	local := o.Flags.PKI.Store.(*store.Local)
+	options.Flags.PKI = &pki.ZitiPKI{Store: &store.Local{}}
+	local := options.Flags.PKI.Store.(*store.Local)
 	local.Root = pkiRoot
 
-	keyFile, err := o.ObtainKeyFile(true)
+	keyFile, err := options.ObtainKeyFile(true)
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
 
-	caName, err := o.ObtainCAName(pkiRoot)
+	caName, err := options.ObtainCAName(pkiRoot)
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
 
-	template := o.ObtainPKIRequestTemplate("")
+	template := options.ObtainPKIRequestTemplate("")
 	var signer *certificate.Bundle
 
-	signer, err = o.Flags.PKI.GetCA(caName)
+	signer, err = options.Flags.PKI.GetCA(caName)
 	if err != nil {
 		return fmt.Errorf("cannot locate signer: %v", err)
 	}
 
-	privateKeyOptions, err := o.ObtainPrivateKeyOptions()
+	privateKeyOptions, err := options.ObtainPrivateKeyOptions()
 
 	if err != nil {
 		return fmt.Errorf("could not resolve private key options: %w", err)
@@ -113,7 +118,7 @@ func (o *PKICreateKeyOptions) Run() error {
 		PrivateKeyOptions:   privateKeyOptions,
 	}
 
-	if err := o.Flags.PKI.GeneratePrivateKey(signer, req); err != nil {
+	if err := options.Flags.PKI.GeneratePrivateKey(signer, req); err != nil {
 		return fmt.Errorf("cannot Generate Private key: %v", err)
 	}
 

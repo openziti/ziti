@@ -18,13 +18,12 @@ package pki
 
 import (
 	"fmt"
-	cmd2 "github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/pki"
 	"github.com/openziti/ziti/ziti/pki/store"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"io"
 )
 
@@ -38,10 +37,11 @@ func NewCmdPKICreateCSR(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PKICreateCSROptions{
 		PKICreateOptions: PKICreateOptions{
 			PKIOptions: PKIOptions{
-				CommonOptions: cmd2.CommonOptions{
+				CommonOptions: common.CommonOptions{
 					Out: out,
 					Err: errOut,
 				},
+				viper: common.NewViper(),
 			},
 		},
 	}
@@ -65,7 +65,7 @@ func (o *PKICreateCSROptions) addPKICreateCSRFlags(cmd *cobra.Command) {
 	o.addPKICreateFlags(cmd)
 
 	cmd.Flags().StringVarP(&o.Flags.CSRFile, "csr-file", "", "csr", "File in which to store new CSR")
-	err := viper.BindPFlag("csr_file", cmd.Flags().Lookup("csr-file"))
+	err := o.viper.BindPFlag("csr_file", cmd.Flags().Lookup("csr-file"))
 	o.panicOnErr(err)
 
 	cmd.Flags().StringVarP(&o.Flags.CSRName, "csr-name", "", "NetFoundry Inc. CSR", "Name of CSR")
