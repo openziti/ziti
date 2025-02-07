@@ -36,6 +36,10 @@ type PostureCheckMacAddresses struct {
 	MacAddresses []string `json:"macAddresses"`
 }
 
+func (entity *PostureCheckMacAddresses) GetTypeId() string {
+	return PostureCheckTypeMAC
+}
+
 func (entity *PostureCheckMacAddresses) LoadValues(bucket *boltz.TypedBucket) {
 	for _, macAddress := range bucket.GetStringList(FieldPostureCheckMacAddresses) {
 		macAddress = cleanMacAddress(macAddress)
