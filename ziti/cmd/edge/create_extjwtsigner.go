@@ -131,7 +131,7 @@ func runCreateExtJwtSigner(options *createExtJwtSignerOptions) (err error) {
 
 	if options.TargetToken == "" {
 		options.ExtJwtSigner.TargetToken = Ptr(rest_model.TargetTokenACCESS)
-	} else if options.TargetToken != "" && (options.TargetToken != string(rest_model.TargetTokenACCESS) || options.TargetToken != string(rest_model.TargetTokenID)) {
+	} else if options.TargetToken != "" && (options.TargetToken != string(rest_model.TargetTokenACCESS) && options.TargetToken != string(rest_model.TargetTokenID)) {
 		return fmt.Errorf("target-token must be %s or %s", string(rest_model.TargetTokenACCESS), string(rest_model.TargetTokenID))
 	} else {
 		options.ExtJwtSigner.TargetToken = Ptr(rest_model.TargetToken(options.TargetToken))
