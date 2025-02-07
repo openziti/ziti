@@ -155,6 +155,7 @@ func (store *postureCheckStoreImpl) initializeLocal() {
 	store.indexName = store.addUniqueNameField()
 	store.AddSymbol(FieldPostureCheckMfaPromptOnUnlock, ast.NodeTypeBool, PostureCheckTypeMFA)
 	store.AddSymbol(FieldPostureCheckMfaPromptOnWake, ast.NodeTypeBool, PostureCheckTypeMFA)
+	store.AddSymbol(FieldPostureCheckTypeId, ast.NodeTypeString)
 
 	store.symbolRoleAttributes = store.AddSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
 	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
