@@ -185,7 +185,7 @@ jobs:
       - name: Install Terraform CLI
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.x
+          terraform_version: ~1.5
 
       - name: Build and Test
         env:
@@ -266,7 +266,7 @@ jobs:
       - name: Install Terraform CLI
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.x
+          terraform_version: ~1.5
 
       - name: Teardown Test Environment
         if: needs.fablab-smoketest.result != 'skipped'
@@ -311,7 +311,7 @@ jobs:
       - name: Install Terraform CLI
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.x
+          terraform_version: ~1.5
 
       - name: Build and Test
         env:
@@ -389,7 +389,7 @@ jobs:
       - name: Install Terraform CLI
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.x
+          terraform_version: ~1.5
 
       - name: Teardown Test Environment
         if: needs.fablab-smoketest-ha.result != 'skipped'

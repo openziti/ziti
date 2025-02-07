@@ -37,6 +37,11 @@ jobs:
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
 
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
+
       - name: Build and Test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
