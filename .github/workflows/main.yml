@@ -99,7 +99,8 @@ jobs:
 
   linux-build:
     name: Build Linux binaries
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    container: openziti/ziti-builder:v2
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
