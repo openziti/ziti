@@ -41,6 +41,10 @@ func newPostureCheckOperatingSystem() PostureCheckSubType {
 	}
 }
 
+func (entity *PostureCheckOperatingSystem) GetTypeId() string {
+	return PostureCheckTypeOs
+}
+
 func (entity *PostureCheckOperatingSystem) LoadValues(bucket *boltz.TypedBucket) {
 
 	cursor := bucket.Cursor()

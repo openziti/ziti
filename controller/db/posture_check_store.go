@@ -55,6 +55,7 @@ type newPostureCheckSubType func() PostureCheckSubType
 type PostureCheckSubType interface {
 	LoadValues(bucket *boltz.TypedBucket)
 	SetValues(ctx *boltz.PersistContext, bucket *boltz.TypedBucket)
+	GetTypeId() string
 }
 
 func newPostureCheck(typeId string) PostureCheckSubType {
@@ -131,6 +132,11 @@ func (store *postureCheckStoreImpl) FillEntity(entity *PostureCheck, bucket *bol
 
 func (store *postureCheckStoreImpl) PersistEntity(entity *PostureCheck, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
+
+	if entity.TypeId == "" && entity.SubType != nil {
+		entity.TypeId = entity.SubType.GetTypeId()
+	}
+
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetString(FieldPostureCheckTypeId, entity.TypeId)
 	ctx.SetInt64(FieldPostureCheckVersion, entity.Version)

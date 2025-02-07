@@ -48,6 +48,10 @@ func newPostureCheckProcessMulti() PostureCheckSubType {
 	}
 }
 
+func (entity *PostureCheckProcessMulti) GetTypeId() string {
+	return PostureCheckTypeProcessMulti
+}
+
 func (entity *PostureCheckProcessMulti) LoadValues(bucket *boltz.TypedBucket) {
 	entity.Semantic = bucket.GetStringOrError(FieldSemantic)
 

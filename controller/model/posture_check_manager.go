@@ -76,6 +76,10 @@ func (self *PostureCheckManager) ApplyCreate(cmd *command.CreateEntityCommand[*P
 }
 
 func (self *PostureCheckManager) Update(entity *PostureCheck, checker fields.UpdatedFields, ctx *change.Context) error {
+	if entity.TypeId == "" && entity.SubType != nil {
+		entity.TypeId = entity.SubType.TypeId()
+	}
+
 	return DispatchUpdate[*PostureCheck](self, entity, checker, ctx)
 }
 

@@ -43,6 +43,10 @@ func newPostureCheckMfa() PostureCheckSubType {
 	}
 }
 
+func (entity *PostureCheckMfa) GetTypeId() string {
+	return PostureCheckTypeMFA
+}
+
 func (entity *PostureCheckMfa) LoadValues(bucket *boltz.TypedBucket) {
 	entity.TimeoutSeconds = bucket.GetInt64WithDefault(FieldPostureCheckMfaTimeoutSeconds, -1)
 
