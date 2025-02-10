@@ -99,8 +99,8 @@ jobs:
 
   linux-build:
     name: Build Linux binaries
-    runs-on: ubuntu-24.04
-    container: openziti/ziti-builder:v2
+    runs-on: ubuntu-22.04  # pin oldest available Docker host for ABI compatibility
+    container: openziti/ziti-builder:v2  # pin v2 (Ubuntu Focal) for glibc compatibility while leveraging Actions's Node.js
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
