@@ -1,10 +1,5 @@
 # Release 1.4.0
 
-## Backward Compatibility Note
-
-Linux releases are now being built on Ubuntu Bionic 18.04 (GLIBC 2.27) instead of Ubuntu Focal 20.04 (GLIBC 2.31). This
-expands backward compatility to systems with older versions of glibc.
-
 ## What's New
 
 * Changes to backup/restore and standalone to HA migrations
