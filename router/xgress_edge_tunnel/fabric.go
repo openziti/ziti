@@ -219,10 +219,10 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 
 	peerData := make(map[uint32][]byte)
 	if service.IsEncryptionRequired() {
-		peerData[edge.PublicKeyHeader] = keyPair.Public()
+		peerData[uint32(edge.PublicKeyHeader)] = keyPair.Public()
 	}
 	if len(appData) > 0 {
-		peerData[edge.AppDataHeader] = appData
+		peerData[uint32(edge.AppDataHeader)] = appData
 	}
 
 	peerData[uint32(ctrl_msg.InitiatorLocalAddressHeader)] = []byte(conn.LocalAddr().String())
@@ -281,7 +281,7 @@ func (self *fabricProvider) tunnelServiceV1(
 		self.dialSessions.Set(service.GetName(), response.Session.SessionId)
 	}
 
-	peerKey, peerKeyFound := response.PeerData[edge.PublicKeyHeader]
+	peerKey, peerKeyFound := response.PeerData[uint32(edge.PublicKeyHeader)]
 	if service.IsEncryptionRequired() && !peerKeyFound {
 		return errors.New("service requires encryption, but public key header not returned")
 	}
@@ -339,7 +339,7 @@ func (self *fabricProvider) tunnelServiceV2(
 		return err
 	}
 
-	peerKey, peerKeyFound := response.PeerData[edge.PublicKeyHeader]
+	peerKey, peerKeyFound := response.PeerData[uint32(edge.PublicKeyHeader)]
 	if service.IsEncryptionRequired() && !peerKeyFound {
 		return errors.New("service requires encryption, but public key header not returned")
 	}

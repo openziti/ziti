@@ -43,15 +43,15 @@ import (
 )
 
 var peerHeaderRequestMappings = map[uint32]uint32{
-	edge.PublicKeyHeader:        edge.PublicKeyHeader,
-	edge.CallerIdHeader:         edge.CallerIdHeader,
-	edge.AppDataHeader:          edge.AppDataHeader,
-	edge.ConnectionMarkerHeader: edge.ConnectionMarkerHeader,
-	edge.StickinessTokenHeader:  ctrl_msg.XtStickinessToken,
+	uint32(edge.PublicKeyHeader):        uint32(edge.PublicKeyHeader),
+	uint32(edge.CallerIdHeader):         uint32(edge.CallerIdHeader),
+	uint32(edge.AppDataHeader):          uint32(edge.AppDataHeader),
+	uint32(edge.ConnectionMarkerHeader): uint32(edge.ConnectionMarkerHeader),
+	uint32(edge.StickinessTokenHeader):  uint32(ctrl_msg.XtStickinessToken),
 }
 
 var peerHeaderRespMappings = map[uint32]uint32{
-	ctrl_msg.XtStickinessToken: edge.StickinessTokenHeader,
+	ctrl_msg.XtStickinessToken: uint32(edge.StickinessTokenHeader),
 }
 
 type listener struct {
@@ -315,7 +315,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 	hostData := make(map[uint32][]byte)
 	pubKey, hasKey := req.Headers[edge.PublicKeyHeader]
 	if hasKey {
-		hostData[edge.PublicKeyHeader] = pubKey
+		hostData[uint32(edge.PublicKeyHeader)] = pubKey
 	}
 
 	cost := uint16(0)
@@ -464,7 +464,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 
 	hostData := make(map[uint32][]byte)
 	if pubKey, hasKey := req.Headers[edge.PublicKeyHeader]; hasKey {
-		hostData[edge.PublicKeyHeader] = pubKey
+		hostData[uint32(edge.PublicKeyHeader)] = pubKey
 	}
 
 	supportsInspect, _ := req.GetBoolHeader(edge.SupportsInspectHeader)

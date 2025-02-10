@@ -82,7 +82,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 
 	callerId := ""
 	if circuitId.Data != nil {
-		if callerIdBytes, found := circuitId.Data[edge.CallerIdHeader]; found {
+		if callerIdBytes, found := circuitId.Data[uint32(edge.CallerIdHeader)]; found {
 			callerId = string(callerIdBytes)
 		}
 	}
@@ -90,15 +90,15 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 	log.Debug("dialing sdk client hosting service")
 	dialRequest := edge.NewDialMsg(terminator.Id(), terminator.token, callerId)
 	dialRequest.PutStringHeader(edge.CircuitIdHeader, params.GetCircuitId().Token)
-	if pk, ok := circuitId.Data[edge.PublicKeyHeader]; ok {
+	if pk, ok := circuitId.Data[uint32(edge.PublicKeyHeader)]; ok {
 		dialRequest.Headers[edge.PublicKeyHeader] = pk
 	}
 
-	if marker, ok := circuitId.Data[edge.ConnectionMarkerHeader]; ok {
+	if marker, ok := circuitId.Data[uint32(edge.ConnectionMarkerHeader)]; ok {
 		dialRequest.Headers[edge.ConnectionMarkerHeader] = marker
 	}
 
-	appData, hasAppData := circuitId.Data[edge.AppDataHeader]
+	appData, hasAppData := circuitId.Data[uint32(edge.AppDataHeader)]
 	if hasAppData {
 		dialRequest.Headers[edge.AppDataHeader] = appData
 	}

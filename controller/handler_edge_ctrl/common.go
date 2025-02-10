@@ -591,7 +591,7 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 	returnPeerData := map[uint32][]byte{}
 
 	if self.err == nil {
-		if self.service.EncryptionRequired && peerData[edge.PublicKeyHeader] == nil {
+		if self.service.EncryptionRequired && peerData[uint32(edge.PublicKeyHeader)] == nil {
 			self.err = encryptionDataMissing("encryption required on service, initiator did not send public header")
 			return nil, nil
 		}
@@ -620,7 +620,7 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 				returnPeerData[k] = v
 			}
 
-			if self.service.EncryptionRequired && returnPeerData[edge.PublicKeyHeader] == nil {
+			if self.service.EncryptionRequired && returnPeerData[uint32(edge.PublicKeyHeader)] == nil {
 				self.err = encryptionDataMissing("encryption required on service, terminator did not send public header")
 				if err := n.RemoveCircuit(circuit.Id, true); err != nil {
 					logrus.

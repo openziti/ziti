@@ -22,12 +22,12 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/router/xgress_common"
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_common"
 )
 
 type dialer struct {
@@ -72,11 +72,11 @@ func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 
 	xgConn := xgress_common.NewXgressConn(conn, true, true)
 	peerData := make(xt.PeerData, 3)
-	if peerKey, ok := circuitId.Data[edge.PublicKeyHeader]; ok {
+	if peerKey, ok := circuitId.Data[uint32(edge.PublicKeyHeader)]; ok {
 		if publicKey, err := xgConn.SetupServerCrypto(peerKey); err != nil {
 			return nil, err
 		} else {
-			peerData[edge.PublicKeyHeader] = publicKey
+			peerData[uint32(edge.PublicKeyHeader)] = publicKey
 		}
 	}
 
