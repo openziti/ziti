@@ -19,7 +19,7 @@ package pki
 import (
 	"fmt"
 	"github.com/openziti/ziti/controller/idgen"
-	cmd2 "github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/certificate"
@@ -42,10 +42,11 @@ func NewCmdPKICreateCA(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PKICreateCAOptions{
 		PKICreateOptions: PKICreateOptions{
 			PKIOptions: PKIOptions{
-				CommonOptions: cmd2.CommonOptions{
+				CommonOptions: common.CommonOptions{
 					Out: out,
 					Err: errOut,
 				},
+				viper: common.NewViper(),
 			},
 		},
 	}
@@ -68,6 +69,8 @@ func NewCmdPKICreateCA(out io.Writer, errOut io.Writer) *cobra.Command {
 const FlagCaName = "ca-name"
 
 func (o *PKICreateCAOptions) addPKICreateCAFlags(cmd *cobra.Command) {
+	o.addPKICreateFlags(cmd)
+
 	cmd.Flags().StringVarP(&o.Flags.PKIRoot, "pki-root", "", "", "Directory in which PKI resides")
 	cmd.Flags().StringVarP(&o.Flags.CAFile, "ca-file", "", "", "Dir/File name (within PKI_ROOT) in which to store new CA")
 	cmd.Flags().StringVarP(&o.Flags.CAName, FlagCaName, "", "NetFoundry Inc. Certificate Authority", "Name of CA")

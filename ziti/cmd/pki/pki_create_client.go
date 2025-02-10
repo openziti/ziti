@@ -19,7 +19,7 @@ package pki
 import (
 	"fmt"
 	"github.com/openziti/ziti/controller/idgen"
-	cmd2 "github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/certificate"
@@ -42,10 +42,11 @@ func NewCmdPKICreateClient(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PKICreateClientOptions{
 		PKICreateOptions: PKICreateOptions{
 			PKIOptions: PKIOptions{
-				CommonOptions: cmd2.CommonOptions{
+				CommonOptions: common.CommonOptions{
 					Out: out,
 					Err: errOut,
 				},
+				viper: common.NewViper(),
 			},
 		},
 	}
@@ -69,6 +70,8 @@ func NewCmdPKICreateClient(out io.Writer, errOut io.Writer) *cobra.Command {
 const FlagCaClientName = "client-name"
 
 func (o *PKICreateClientOptions) addPKICreateClientFlags(cmd *cobra.Command) {
+	o.addPKICreateFlags(cmd)
+
 	cmd.Flags().StringVarP(&o.Flags.PKIRoot, "pki-root", "", "", "Directory in which PKI resides")
 	cmd.Flags().StringVarP(&o.Flags.CAName, "ca-name", "", "intermediate", "Name of Intermediate CA (within PKI_ROOT) to use to sign the new Client certificate")
 	cmd.Flags().StringVarP(&o.Flags.ClientFile, "client-file", "", "client", "Name of file (under chosen CA) in which to store new Client certificate and private key")

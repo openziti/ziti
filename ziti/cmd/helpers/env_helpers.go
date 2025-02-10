@@ -17,8 +17,8 @@
 package helpers
 
 import (
-	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	edge "github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
 	"os"
@@ -96,10 +96,6 @@ func GetCtrlBindAddress() string {
 
 func GetCtrlAdvertisedAddress() string {
 	return getFromEnv(constants.CtrlAdvertisedAddressVarName, HostnameOrNetworkName)
-}
-
-func GetEdgeRouterIpOvderride() string {
-	return getFromEnv(constants.ZitiEdgeRouterIPOverrideVarName, defaultValue(""))
 }
 
 func GetCtrlAdvertisedPort() string {
