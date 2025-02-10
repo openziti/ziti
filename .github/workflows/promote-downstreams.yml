@@ -18,7 +18,7 @@ env:
 jobs:
   wait_for_release:
     name: Wait for Release Builds to Succeed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Debug action
         uses: hmarr/debug-action@v3
@@ -38,7 +38,7 @@ jobs:
   parse_version:
     needs: wait_for_release
     name: Parse Release Version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.parse.outputs.version }}
     steps:
@@ -57,7 +57,7 @@ jobs:
   promote_docker:
     name: Tag Container Image ${{ matrix.image.repo }}:latest
     needs: parse_version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: true
       matrix:
@@ -100,7 +100,7 @@ jobs:
         packager:
           - rpm
           - deb
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ZITI_DEB_TEST_REPO: ${{ vars.ZITI_DEB_TEST_REPO || 'zitipax-openziti-deb-test' }}
       ZITI_RPM_TEST_REPO: ${{ vars.ZITI_RPM_TEST_REPO || 'zitipax-openziti-rpm-test' }}

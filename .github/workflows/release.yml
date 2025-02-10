@@ -82,7 +82,8 @@ jobs:
 
   linux-build:
     name: Build Linux binaries
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04  # pin oldest available Docker host for ABI compatibility
+    container: openziti/ziti-builder:v2  # pin v2 (Ubuntu Focal) for glibc compatibility while leveraging Actions's Node.js
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -100,8 +101,8 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+          apt-get update
+          apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
           $(go env GOPATH)/bin/ziti-ci configure-git
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci -t go-build-flags
@@ -120,7 +121,7 @@ jobs:
 
   tests:
     name: Run Unit and Integration Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -160,7 +161,7 @@ jobs:
       }}
     # ensure required job outcomes are specified in "if" expression
     needs: [ tests, linux-build, mac-os-build, windows-build ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     outputs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
     steps:
@@ -177,7 +178,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.7'
+          python-version: '3.13'
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1

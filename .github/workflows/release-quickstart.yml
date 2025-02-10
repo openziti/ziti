@@ -25,7 +25,7 @@ jobs:
           && contains(github.event.pull_request.labels.*.name, 'quickstartrelease')
         )
       )
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ZITI_QUICKSTART_IMAGE: ${{ vars.ZITI_QUICKSTART_IMAGE || 'docker.io/openziti/quickstart' }}
       # use github.ref, not github.head_ref, because this workflow should only run on merged PRs in the target/base

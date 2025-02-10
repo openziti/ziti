@@ -19,7 +19,7 @@ env:
 jobs:
   build:
     name: Build and Run
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.repository_owner == 'openziti'
     steps:
       - name: Checkout ziti

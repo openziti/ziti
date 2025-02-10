@@ -16,7 +16,7 @@ concurrency:
 jobs:
   expressInstallTest:
     name: Test expressInstall() Quickstart
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Shallow checkout
         uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
 
   allInOneTest:
     name: Test all-in-one Quickstart
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ZITI_CLI_TAG: local  # override default :latest since we're not pulling from registry
       ARTIFACTS_DIR: ./build  # output dir for `go build`, input dir for `compose up --build`
@@ -87,7 +87,7 @@ jobs:
 
   haQuickstartTest:
     name: Test HA Quickstart
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       BUILD_DIR: /tmp/build  # dir is created by build step and env var used by test script to find ziti executable
     steps:

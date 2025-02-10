@@ -11,7 +11,7 @@ on:
 jobs:
   publish-linux-packages:
     name: ${{ matrix.package_name }} ${{ matrix.arch.gox }} ${{ matrix.packager }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         package_name:

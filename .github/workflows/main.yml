@@ -99,7 +99,8 @@ jobs:
 
   linux-build:
     name: Build Linux binaries
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04  # pin oldest available Docker host for ABI compatibility
+    container: openziti/ziti-builder:v2  # pin v2 (Ubuntu Focal) for glibc compatibility while leveraging Actions's Node.js
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -117,8 +118,8 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+          apt-get update
+          apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
           CC=arm-linux-gnueabihf-gcc \
@@ -135,7 +136,7 @@ jobs:
 
   tests:
     name: Run Unit and Integration Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -166,7 +167,7 @@ jobs:
     name: Fablab Smoketest
     # not applicable to forks. shouldn't run on release build
     if: github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v')
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -180,6 +181,11 @@ jobs:
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
 
       - name: Build and Test
         env:
@@ -253,10 +259,15 @@ jobs:
     name: Teardown SmokeTest
     # ensure reasonable timeout-minutes on steps in this un-cancellable job
     if: always()
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: [ fablab-smoketest ]
     steps:
       # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
+
       - name: Teardown Test Environment
         if: needs.fablab-smoketest.result != 'skipped'
         timeout-minutes: 30
@@ -282,7 +293,7 @@ jobs:
     name: Fablab HA Smoketest
     # not applicable to forks. shouldn't run on release build
     if: github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v')
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -296,6 +307,11 @@ jobs:
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
 
       - name: Build and Test
         env:
@@ -366,10 +382,15 @@ jobs:
   fablab-ha-smoketest-teardown:
     name: Teardown HA SmokeTest
     if: always()
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: [ fablab-ha-smoketest ]
     steps:
       # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
+
       - name: Teardown Test Environment
         if: needs.fablab-smoketest-ha.result != 'skipped'
         timeout-minutes: 30
@@ -402,7 +423,7 @@ jobs:
       && (needs.fablab-smoketest.result == 'success' || needs.fablab-smoketest.result == 'skipped')
       && (needs.tests.result == 'success')
       }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     # ensure required job outcomes are specified in "if" expression
     needs: [ tests, linux-build, mac-os-build, windows-build, fablab-smoketest, fablab-ha-smoketest ]
     outputs:
@@ -421,7 +442,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.7'
+          python-version: '3.13'
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
