@@ -421,6 +421,7 @@ jobs:
       && (needs.mac-os-build.result == 'success' || needs.mac-os-build.result == 'skipped')
       && (needs.windows-build.result == 'success' || needs.windows-build.result == 'skipped')
       && (needs.fablab-smoketest.result == 'success' || needs.fablab-smoketest.result == 'skipped')
+      && (needs.fablab-ha-smoketest.result == 'success' || needs.fablab-ha-smoketest.result == 'skipped')
       && (needs.tests.result == 'success')
       }}
     runs-on: ubuntu-24.04
