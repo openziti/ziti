@@ -203,29 +203,6 @@ func mkCaCert(cn string) (crypto.Signer, *x509.Certificate) {
 	return key, cert
 }
 
-func mkServerAndClientCert(cn string, dns []string) (crypto.Signer, *x509.Certificate) {
-	testSerial++
-
-	key, _ := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
-
-	cert := &x509.Certificate{
-		SerialNumber: big.NewInt(testSerial),
-		Subject: pkix.Name{
-			Organization:       []string{"OpenZiti Identity Tests"},
-			OrganizationalUnit: []string{"Server And Client Certs"},
-			CommonName:         cn,
-		},
-		DNSNames:              dns,
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().Add(1 * time.Hour),
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		BasicConstraintsValid: true,
-	}
-
-	return key, cert
-}
-
 func mkServerCert(cn string, dns []string, ips []net.IP) (crypto.Signer, *x509.Certificate) {
 	testSerial++
 
@@ -268,12 +245,4 @@ func mkClientCert(cn string) (crypto.Signer, *x509.Certificate) {
 	}
 
 	return key, cert
-}
-
-func mapKeys[T comparable, K any](m map[T]K) []T {
-	result := make([]T, 0, len(m))
-	for k := range m {
-		result = append(result, k)
-	}
-	return result
 }
