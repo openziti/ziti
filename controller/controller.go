@@ -479,6 +479,12 @@ func (c *Controller) Shutdown() {
 		}
 
 		go c.xweb.Shutdown()
+
+		if c.raftController != nil {
+			if err := c.raftController.Shutdown(); err != nil {
+				pfxlog.Logger().WithError(err).Error("failed to shutdown raft")
+			}
+		}
 	}
 }
 

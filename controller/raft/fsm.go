@@ -91,6 +91,10 @@ func (self *BoltDbFsm) Init() error {
 	return nil
 }
 
+func (self *BoltDbFsm) Close() error {
+	return self.db.Close()
+}
+
 func (self *BoltDbFsm) GetDb() boltz.Db {
 	return self.db
 }

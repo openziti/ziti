@@ -363,6 +363,13 @@ func (self *impl) Close() error {
 	if self.closed.CompareAndSwap(false, true) {
 		close(self.closeNotify)
 	}
+
+	for _, p := range self.GetPeers() {
+		if err := p.Channel.Close(); err != nil {
+			pfxlog.Logger().WithError(err).Error("failed to close ctrl mesh peer channel")
+		}
+	}
+
 	return nil
 }
 
@@ -382,6 +389,10 @@ func (self *impl) Accept() (net.Conn, error) {
 }
 
 func (self *impl) Dial(address raft.ServerAddress, timeout time.Duration) (net.Conn, error) {
+	if self.closed.Load() {
+		return nil, errors.New("ctrl mesh is closed")
+	}
+
 	log := pfxlog.Logger().WithField("address", address)
 	log.Info("dialing raft peer channel")
 	peer, err := self.GetOrConnectPeer(string(address), timeout)
