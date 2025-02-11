@@ -201,6 +201,17 @@ func Test_verifySpiffId(t *testing.T) {
 		req.False(result)
 	})
 
+	t.Run("extra mid-path encoded slashes returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse(fmt.Sprintf("spiffe://example.com/%sidentity/1234/apiSession/%s", "%2F", expectedApiSessionId))
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
 	t.Run("a trailing slash returns false", func(t *testing.T) {
 		req := require.New(t)
 
