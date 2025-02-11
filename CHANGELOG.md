@@ -178,11 +178,11 @@ file, enrollment should handle initializing the value appropriately.
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/agent: [v1.0.23 -> v1.0.24](https://github.com/openziti/agent/compare/v1.0.23...v1.0.24)
-* github.com/openziti/channel/v3: [v3.0.26 -> v3.0.29](https://github.com/openziti/channel/compare/v3.0.26...v3.0.29)
+* github.com/openziti/agent: [v1.0.23 -> v1.0.25](https://github.com/openziti/agent/compare/v1.0.23...v1.0.25)
+* github.com/openziti/channel/v3: [v3.0.26 -> v3.0.31](https://github.com/openziti/channel/compare/v3.0.26...v3.0.31)
 * github.com/openziti/edge-api: [v0.26.38 -> v0.26.39](https://github.com/openziti/edge-api/compare/v0.26.38...v0.26.39)
 * github.com/openziti/foundation/v2: [v2.0.56 -> v2.0.57](https://github.com/openziti/foundation/compare/v2.0.56...v2.0.57)
-* github.com/openziti/identity: [v1.0.94 -> v1.0.97](https://github.com/openziti/identity/compare/v1.0.94...v1.0.97)
+* github.com/openziti/identity: [v1.0.94 -> v1.0.98](https://github.com/openziti/identity/compare/v1.0.94...v1.0.98)
 * github.com/openziti/metrics: [v1.2.65 -> v1.2.66](https://github.com/openziti/metrics/compare/v1.2.65...v1.2.66)
 * github.com/openziti/runzmd: [v1.0.59 -> v1.0.63](https://github.com/openziti/runzmd/compare/v1.0.59...v1.0.63)
 * github.com/openziti/sdk-golang: [v0.23.44 -> v0.24.1](https://github.com/openziti/sdk-golang/compare/v0.23.44...v0.24.1)
@@ -190,14 +190,16 @@ file, enrollment should handle initializing the value appropriately.
     * [Issue #663](https://github.com/openziti/sdk-golang/issues/663) - Add API to allow controlling proxying connections to controllers and routers.
     * [Issue #659](https://github.com/openziti/sdk-golang/issues/659) - E2E encryption can encounter ordering issues with high-volume concurrent writes
 
-* github.com/openziti/storage: [v0.3.15 -> v0.4.2](https://github.com/openziti/storage/compare/v0.3.15...v0.4.2)
+* github.com/openziti/secretstream: [v0.1.28 -> v0.1.29](https://github.com/openziti/secretstream/compare/v0.1.28...v0.1.29)
+* github.com/openziti/storage: [v0.3.15 -> v0.4.3](https://github.com/openziti/storage/compare/v0.3.15...v0.4.3)
     * [Issue #94](https://github.com/openziti/storage/issues/94) - Snapshots aren't working correctly
 
-* github.com/openziti/transport/v2: [v2.0.159 -> v2.0.160](https://github.com/openziti/transport/compare/v2.0.159...v2.0.160)
+* github.com/openziti/transport/v2: [v2.0.159 -> v2.0.162](https://github.com/openziti/transport/compare/v2.0.159...v2.0.162)
 * github.com/openziti/xweb/v2: [v2.1.3 -> v2.2.1](https://github.com/openziti/xweb/compare/v2.1.3...v2.2.1)
     * [Issue #18](https://github.com/openziti/xweb/issues/18) - verify advertised host/ip has a certificate defined in the identity block
 
 * github.com/openziti/ziti: [v1.3.3 -> v1.4.0](https://github.com/openziti/ziti/compare/v1.3.3...v1.4.0)
+    * [Issue #2774](https://github.com/openziti/ziti/issues/2774) - API Session Certificate SPIFFE IDs fail validation in Routers
     * [Issue #2672](https://github.com/openziti/ziti/issues/2672) - [Bug] Posture check PUT method doesn't update nested structures but works fine with PATCH
     * [Issue #2668](https://github.com/openziti/ziti/issues/2668) - [Feature Request] Filterable field for posture check type
     * [Issue #2681](https://github.com/openziti/ziti/issues/2681) - Support specifying which token to use on external jwt signers
@@ -219,6 +221,7 @@ file, enrollment should handle initializing the value appropriately.
     * [Issue #2720](https://github.com/openziti/ziti/issues/2720) - new verify oidc command on prints usage
     * [Issue #2546](https://github.com/openziti/ziti/issues/2546) - Use consistent terminology for HA
     * [Issue #2713](https://github.com/openziti/ziti/issues/2713) - Routers with no edge components shouldn't subscribe to RDM updates
+
 
 # Release 1.3.3
 
