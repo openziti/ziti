@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v2"
 	"github.com/stretchr/testify/require"
@@ -51,7 +52,7 @@ func Test_getPossibleIssuers(t *testing.T) {
 	childCert3Der, err := x509.CreateCertificate(rand.Reader, childCert3, caCertTemplate, childKey3.Public(), caKey)
 	req.NoError(err)
 
-	childKey4, childCert4 := mkServerCert("Test Child 4", []string{"client4.netfoundry.io"}, []net.IP{net.ParseIP("192.168.0.1")})
+	childKey4, childCert4 := mkServerCert("Test Child 4", []string{"*.wildcard.io"}, []net.IP{net.ParseIP("192.168.0.1")})
 	childCert4Der, err := x509.CreateCertificate(rand.Reader, childCert4, caCertTemplate, childKey4.Public(), caKey)
 	req.NoError(err)
 
@@ -143,33 +144,49 @@ func Test_getPossibleIssuers(t *testing.T) {
 		issuers := getPossibleIssuers(id, bindPoints)
 
 		req.Len(issuers, 21)
-		req.Contains(issuers, "test1.example.com:1234")
-		req.Contains(issuers, "test2.example.com:443")
-		req.Contains(issuers, "test2.example.com")
 
-		req.Contains(issuers, "client2.netfoundry.io:1234")
-		req.Contains(issuers, "client2.netfoundry.io:443")
-		req.Contains(issuers, "client2.netfoundry.io")
+		isValidIssuer := func(address string) error {
+			for _, issuer := range issuers {
+				if err := issuer.ValidFor(address); err == nil {
+					return nil
+				}
+			}
 
-		req.Contains(issuers, "client3.netfoundry.io:1234")
-		req.Contains(issuers, "client3.netfoundry.io:443")
-		req.Contains(issuers, "client3.netfoundry.io")
+			return fmt.Errorf("invalid address, no issuer supports: %s", address)
+		}
 
-		req.Contains(issuers, "client4.netfoundry.io:1234")
-		req.Contains(issuers, "client4.netfoundry.io:443")
-		req.Contains(issuers, "client4.netfoundry.io")
+		req.NoError(isValidIssuer("test1.example.com:1234"))
+		req.NoError(isValidIssuer("test2.example.com:443"))
+		req.NoError(isValidIssuer("test2.example.com"))
 
-		req.Contains(issuers, "127.0.0.1:1234")
-		req.Contains(issuers, "127.0.0.1:443")
-		req.Contains(issuers, "127.0.0.1")
+		req.NoError(isValidIssuer("client2.netfoundry.io:1234"))
+		req.NoError(isValidIssuer("client2.netfoundry.io:443"))
+		req.NoError(isValidIssuer("client2.netfoundry.io"))
 
-		req.Contains(issuers, "10.8.0.1:1234")
-		req.Contains(issuers, "10.8.0.1:443")
-		req.Contains(issuers, "10.8.0.1")
+		req.NoError(isValidIssuer("client3.netfoundry.io:1234"))
+		req.NoError(isValidIssuer("client3.netfoundry.io:443"))
+		req.NoError(isValidIssuer("client3.netfoundry.io"))
 
-		req.Contains(issuers, "192.168.0.1:1234")
-		req.Contains(issuers, "192.168.0.1:443")
-		req.Contains(issuers, "192.168.0.1")
+		req.NoError(isValidIssuer("star.wildcard.io:1234"))
+		req.NoError(isValidIssuer("star.wildcard.io:443"))
+		req.NoError(isValidIssuer("star.wildcard.io"))
+
+		req.NoError(isValidIssuer("127.0.0.1:1234"))
+		req.NoError(isValidIssuer("127.0.0.1:443"))
+		req.NoError(isValidIssuer("127.0.0.1"))
+
+		req.NoError(isValidIssuer("10.8.0.1:1234"))
+		req.NoError(isValidIssuer("10.8.0.1:443"))
+		req.NoError(isValidIssuer("10.8.0.1"))
+
+		req.NoError(isValidIssuer("192.168.0.1:1234"))
+		req.NoError(isValidIssuer("192.168.0.1:443"))
+		req.NoError(isValidIssuer("192.168.0.1"))
+
+		req.Error(isValidIssuer("10.123.123.1"))
+		req.Error(isValidIssuer("star.wildcard.io:555"))
+		req.Error(isValidIssuer("10.8.0.1:555"))
+		req.Error(isValidIssuer("google.com"))
 
 	})
 }

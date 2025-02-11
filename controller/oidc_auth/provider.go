@@ -28,7 +28,6 @@ import (
 	"github.com/zitadel/oidc/v2/pkg/op"
 	"golang.org/x/text/language"
 	"net/http"
-	"strings"
 )
 
 const (
@@ -85,33 +84,29 @@ func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Ha
 	nativeClient.loginURL = newLoginResolver(config.Storage)
 	config.Storage.AddClient(nativeClient)
 
-	handlers := map[string]http.Handler{}
+	handlers := map[Issuer]http.Handler{}
 
 	for _, issuer := range config.Issuers {
-		oidcIssuer := issuer + "/oidc"
+		oidcIssuer := issuer.HostPort() + "/oidc"
 
 		handler, err := createIssuerSpecificOidcProvider(ctx, oidcIssuer, config)
 		if err != nil {
 			return nil, err
 		}
 
-		handlers[oidcIssuer] = handler
+		thisIss := issuer
+		handlers[thisIss] = handler
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		issuer := r.Host
-		if strings.HasPrefix(r.URL.Path, "/oidc") {
-			issuer = r.Host + "/oidc"
+		for iss, handler := range handlers {
+			if err := iss.ValidFor(r.Host); err == nil {
+				handler.ServeHTTP(w, r)
+				return
+			}
 		}
 
-		handler, ok := handlers[issuer]
-
-		if !ok {
-			http.NotFound(w, r)
-			return
-		}
-
-		handler.ServeHTTP(w, r)
+		http.NotFound(w, r)
 	}), nil
 
 }

@@ -185,7 +185,7 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 // getPossibleIssuers inspects the API server's identity and bind points for addresses, SAN DNS, and SAN IP entries
 // that denote valid issuers. It returns a list of hostname:port combinations as a slice. It handles converting
 // :443 to explicit and implicit ports for clients that may silently remove :443
-func getPossibleIssuers(id identity.Identity, bindPoints []*xweb.BindPointConfig) []string {
+func getPossibleIssuers(id identity.Identity, bindPoints []*xweb.BindPointConfig) []oidc_auth.Issuer {
 	const (
 		DefaultTlsPort = "443"
 	)
@@ -243,9 +243,14 @@ func getPossibleIssuers(id identity.Identity, bindPoints []*xweb.BindPointConfig
 		}
 	}
 
-	var issuers []string
-	for hostPort := range issuerMap {
-		issuers = append(issuers, hostPort)
+	var issuers []oidc_auth.Issuer
+	for address := range issuerMap {
+		issuer, err := oidc_auth.NewIssuer(address)
+
+		if err != nil {
+			continue
+		}
+		issuers = append(issuers, issuer)
 	}
 
 	return issuers
