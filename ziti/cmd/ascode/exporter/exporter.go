@@ -257,7 +257,7 @@ func (exporter *Exporter) Execute(input []string) (map[string]interface{}, error
 		result["servicePolicies"] = servicePolicies
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exported %d Service Policies\r\n", len(servicePolicies))
 	}
-	if exporter.IsEdgeRouterExportRequired(args) {
+	if exporter.IsEdgeRouterPolicyExportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(exporter.Err, "Exporting Edge Router Policies\r")
 		routerPolicies, err := exporter.GetEdgeRouterPolicies()
 		if err != nil {
