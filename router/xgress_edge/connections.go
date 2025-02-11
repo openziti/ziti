@@ -522,32 +522,7 @@ func (handler *sessionConnectionHandler) validateBySpiffeId(apiSession *state.Ap
 		return false
 	}
 
-	path := strings.TrimPrefix(spiffeId.Path, "/")
-	path = strings.TrimSuffix(path, "/")
-
-	parts := strings.Split(path, "/")
-
-	if len(parts) != 6 {
-		return false
-	}
-
-	if parts[0] != "identity" {
-		return false
-	}
-
-	if parts[2] != "apiSession" {
-		return false
-	}
-
-	if parts[4] != "apiSessionCertificate" {
-		return false
-	}
-
-	if apiSession.Id == parts[3] {
-		return true
-	}
-
-	return false
+	return verifySpiffId(spiffeId, apiSession.Id)
 }
 
 func verifySpiffId(spiffeId *url.URL, expectedApiSessionId string) bool {
@@ -556,7 +531,6 @@ func verifySpiffId(spiffeId *url.URL, expectedApiSessionId string) bool {
 	}
 
 	path := strings.TrimPrefix(spiffeId.Path, "/")
-
 	parts := strings.Split(path, "/")
 
 	// /identity/<id>/apiSession/<id> or /identity/<id>/apiSession/<id>/apiSessionCertificate/<id>
