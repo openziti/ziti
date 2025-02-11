@@ -88,7 +88,7 @@ func (h OidcApiHandler) RootPath() string {
 }
 
 func (h OidcApiHandler) IsHandler(r *http.Request) bool {
-	return strings.HasPrefix(r.URL.Path, h.RootPath()) || r.URL.Path == oidc_auth.WellKnownOidcConfiguration
+	return strings.HasPrefix(r.URL.Path, h.RootPath())
 }
 
 func (h OidcApiHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
