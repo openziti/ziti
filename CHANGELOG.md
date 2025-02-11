@@ -199,6 +199,8 @@ file, enrollment should handle initializing the value appropriately.
     * [Issue #18](https://github.com/openziti/xweb/issues/18) - verify advertised host/ip has a certificate defined in the identity block
 
 * github.com/openziti/ziti: [v1.3.3 -> v1.4.0](https://github.com/openziti/ziti/compare/v1.3.3...v1.4.0)
+    * [Issue #2785](https://github.com/openziti/ziti/issues/2785) - Controller db state not always updated
+    * [Issue #2737](https://github.com/openziti/ziti/issues/2737) - OIDC issue mismatch with alt server certs
     * [Issue #2774](https://github.com/openziti/ziti/issues/2774) - API Session Certificate SPIFFE IDs fail validation in Routers
     * [Issue #2672](https://github.com/openziti/ziti/issues/2672) - [Bug] Posture check PUT method doesn't update nested structures but works fine with PATCH
     * [Issue #2668](https://github.com/openziti/ziti/issues/2668) - [Feature Request] Filterable field for posture check type
@@ -221,7 +223,6 @@ file, enrollment should handle initializing the value appropriately.
     * [Issue #2720](https://github.com/openziti/ziti/issues/2720) - new verify oidc command on prints usage
     * [Issue #2546](https://github.com/openziti/ziti/issues/2546) - Use consistent terminology for HA
     * [Issue #2713](https://github.com/openziti/ziti/issues/2713) - Routers with no edge components shouldn't subscribe to RDM updates
-
 
 # Release 1.3.3
 
