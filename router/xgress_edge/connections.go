@@ -32,6 +32,7 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/state"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -521,9 +522,19 @@ func (handler *sessionConnectionHandler) validateBySpiffeId(apiSession *state.Ap
 		return false
 	}
 
-	parts := strings.Split(spiffeId.Path, "/")
+	return verifySpiffId(spiffeId, apiSession.Id)
+}
 
-	if len(parts) != 6 {
+func verifySpiffId(spiffeId *url.URL, expectedApiSessionId string) bool {
+	if spiffeId.Scheme != "spiffe" {
+		return false
+	}
+
+	path := strings.TrimPrefix(spiffeId.Path, "/")
+	parts := strings.Split(path, "/")
+
+	// /identity/<id>/apiSession/<id> or /identity/<id>/apiSession/<id>/apiSessionCertificate/<id>
+	if len(parts) != 4 && len(parts) != 6 {
 		return false
 	}
 
@@ -535,13 +546,11 @@ func (handler *sessionConnectionHandler) validateBySpiffeId(apiSession *state.Ap
 		return false
 	}
 
-	if parts[4] != "apiSessionCertificate" {
-		return false
+	if len(parts) == 6 {
+		if parts[4] != "apiSessionCertificate" {
+			return false
+		}
 	}
 
-	if apiSession.Id == parts[3] {
-		return true
-	}
-
-	return false
+	return parts[3] == expectedApiSessionId
 }
