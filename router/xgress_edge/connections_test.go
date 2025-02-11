@@ -19,11 +19,13 @@ package xgress_edge
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router/state"
 	"github.com/stretchr/testify/require"
+	"net/url"
 	"testing"
 )
 
@@ -173,4 +175,160 @@ OA==
 		req.False(result)
 	})
 
+}
+
+func Test_verifySpiffId(t *testing.T) {
+
+	t.Run("a valid format and expected value returns true", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse(fmt.Sprintf("spiffe://example.com/identity/1234/apiSession/%s", expectedApiSessionId))
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.True(result)
+	})
+
+	t.Run("extra mid-path slashes returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse(fmt.Sprintf("spiffe://example.com//identity/1234/apiSession/%s", expectedApiSessionId))
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
+	t.Run("a trailing slash returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse(fmt.Sprintf("spiffe://example.com/identity/1234/apiSession/%s/", expectedApiSessionId))
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
+	t.Run("a valid path, invalid scheme, and expected value returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse(fmt.Sprintf("https://example.com/identity/1234/apiSession/%s", expectedApiSessionId))
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
+	t.Run("a valid format and invalid value returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse(fmt.Sprintf("spiffe://example.com/identity/1234/apiSession/%s", "invalidValue"))
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
+	t.Run("a identity path and valid value returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse(fmt.Sprintf("spiffe://example.com/identityInvalid/1234/apiSession/%s", expectedApiSessionId))
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
+	t.Run("an apiSession path and valid value returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse(fmt.Sprintf("spiffe://example.com/identity/1234/apiSessionInvalid/%s", expectedApiSessionId))
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
+	t.Run("a missing path returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse("spiffe://example.com")
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
+	t.Run("a root path returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse("spiffe://example.com/")
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
+	t.Run("an identity only path returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse("spiffe://example.com/identity")
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
+	t.Run("an identity and value only path returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse("spiffe://example.com/identity/1234")
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
+	t.Run("an identity, value, apiSession only path returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse("spiffe://example.com/identity/1234/apiSession")
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+
+	t.Run("an identity, value, apiSession only path returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse("spiffe://example.com/identity/1234/apiSession")
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
+	t.Run("a too long spiffe id returns false", func(t *testing.T) {
+		req := require.New(t)
+
+		const expectedApiSessionId = "4567"
+		spiffeId, err := url.Parse(fmt.Sprintf("spiffe://example.com/identity/1234/apiSession/%s/iamtoolong", expectedApiSessionId))
+		req.NoError(err)
+
+		result := verifySpiffId(spiffeId, expectedApiSessionId)
+		req.False(result)
+	})
 }
