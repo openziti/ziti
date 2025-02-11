@@ -1,3 +1,19 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package oidc_auth
 
 import (
@@ -11,7 +27,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/zitadel/oidc/v2/pkg/op"
 	"golang.org/x/text/language"
-	"net"
 	"net/http"
 )
 
@@ -29,123 +44,71 @@ const (
 	AuthMethodSecondaryExtJwt = "ejs"
 )
 
+func createIssuerSpecificOidcProvider(ctx context.Context, issuer string, config Config) (http.Handler, error) {
+	issuerUrl := "https://" + issuer
+	provider, err := newOidcProvider(ctx, issuerUrl, config)
+	if err != nil {
+		return nil, fmt.Errorf("could not create OpenIdProvider: %w", err)
+	}
+
+	oidcHandler, err := newHttpRouter(provider, config)
+
+	if err != nil {
+		return nil, err
+	}
+
+	handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		r := request.WithContext(context.WithValue(request.Context(), contextKeyHttpRequest, request))
+		r = request.WithContext(context.WithValue(r.Context(), contextKeyTokenState, &TokenState{}))
+		r = request.WithContext(op.ContextWithIssuer(r.Context(), issuerUrl))
+
+		oidcHandler.ServeHTTP(writer, r)
+	})
+
+	return handler, nil
+}
+
 // NewNativeOnlyOP creates an OIDC Provider that allows native clients and only the AuthCode PKCE flow.
 func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Handler, error) {
 	cert, kid, method := env.GetServerCert()
 	config.Storage = NewStorage(kid, cert.Leaf.PublicKey, cert.PrivateKey, method, &config, env)
 
-	handlers := map[string]http.Handler{}
+	openzitiClient := NativeClient(common.ClaimClientIdOpenZiti, config.RedirectURIs, config.PostLogoutURIs)
+	openzitiClient.idTokenDuration = config.IdTokenDuration
+	openzitiClient.loginURL = newLoginResolver(config.Storage)
+	config.Storage.AddClient(openzitiClient)
+
+	//backwards compatibility client w/ early HA SDKs. Should be removed by the time HA is GA'ed.
+	nativeClient := NativeClient(common.ClaimLegacyNative, config.RedirectURIs, config.PostLogoutURIs)
+	nativeClient.idTokenDuration = config.IdTokenDuration
+	nativeClient.loginURL = newLoginResolver(config.Storage)
+	config.Storage.AddClient(nativeClient)
+
+	handlers := map[Issuer]http.Handler{}
 
 	for _, issuer := range config.Issuers {
-		issuerUrl := "https://" + issuer + "/oidc"
-		provider, err := newOidcProvider(ctx, issuerUrl, config)
-		if err != nil {
-			return nil, fmt.Errorf("could not create OpenIdProvider: %w", err)
-		}
+		oidcIssuer := issuer.HostPort() + "/oidc"
 
-		oidcHandler, err := newHttpRouter(provider, config)
-
-		openzitiClient := NativeClient(common.ClaimClientIdOpenZiti, config.RedirectURIs, config.PostLogoutURIs)
-		openzitiClient.idTokenDuration = config.IdTokenDuration
-		openzitiClient.loginURL = newLoginResolver(config.Storage)
-		config.Storage.AddClient(openzitiClient)
-
-		//backwards compatibility client w/ early HA SDKs. Should be removed by the time HA is GA'ed.
-		nativeClient := NativeClient(common.ClaimLegacyNative, config.RedirectURIs, config.PostLogoutURIs)
-		nativeClient.idTokenDuration = config.IdTokenDuration
-		nativeClient.loginURL = newLoginResolver(config.Storage)
-		config.Storage.AddClient(nativeClient)
-
+		handler, err := createIssuerSpecificOidcProvider(ctx, oidcIssuer, config)
 		if err != nil {
 			return nil, err
 		}
 
-		handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-			r := request.WithContext(context.WithValue(request.Context(), contextKeyHttpRequest, request))
-			r = request.WithContext(context.WithValue(r.Context(), contextKeyTokenState, &TokenState{}))
-			r = request.WithContext(op.ContextWithIssuer(r.Context(), issuerUrl))
-
-			oidcHandler.ServeHTTP(writer, r)
-		})
-
-		hostsToHandle := getHandledHostnames(issuer)
-
-		for _, hostToHandle := range hostsToHandle {
-			handlers[hostToHandle] = handler
-		}
+		thisIss := issuer
+		handlers[thisIss] = handler
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handler, ok := handlers[r.Host]
-
-		if !ok {
-			http.NotFound(w, r)
-			return
+		for iss, handler := range handlers {
+			if err := iss.ValidFor(r.Host); err == nil {
+				handler.ServeHTTP(w, r)
+				return
+			}
 		}
 
-		handler.ServeHTTP(w, r)
+		http.NotFound(w, r)
 	}), nil
 
-}
-
-func getHandledHostnames(issuer string) []string {
-	const (
-		DefaultTlsPort = "443"
-		LocalhostName  = "localhost"
-		LocalhostIpv4  = "127.0.0.1"
-		LocalhostIpv6  = "::1"
-	)
-	hostsToHandle := map[string]struct{}{
-		issuer: {},
-	}
-
-	hostWithoutPort, port, err := net.SplitHostPort(issuer)
-	if err != nil {
-		var ret []string
-		for host := range hostsToHandle {
-			ret = append(ret, host)
-		}
-
-		return ret
-	}
-
-	shouldHandleDefaultPort := port == DefaultTlsPort
-	if shouldHandleDefaultPort {
-
-		ip := net.ParseIP(hostWithoutPort)
-		isIpv6 := ip != nil && ip.To4() == nil
-
-		if isIpv6 {
-			//ipv6 in urls always requires brackets even w/ default ports
-			hostsToHandle["["+hostWithoutPort+"]"] = struct{}{}
-		} else {
-			hostsToHandle[hostWithoutPort] = struct{}{}
-		}
-
-	}
-
-	//local address in use, translate as needed
-	if hostWithoutPort == LocalhostName || hostWithoutPort == LocalhostIpv4 || hostWithoutPort == "::1" {
-		hostsToHandle[net.JoinHostPort(LocalhostName, port)] = struct{}{}
-		hostsToHandle[net.JoinHostPort(LocalhostIpv4, port)] = struct{}{}
-		hostsToHandle[net.JoinHostPort(LocalhostIpv6, port)] = struct{}{}
-
-		if shouldHandleDefaultPort {
-			hostsToHandle[LocalhostName] = struct{}{}
-			hostsToHandle[LocalhostIpv4] = struct{}{}
-
-			//ipv6 in urls always requires brackets even w/ default ports
-			hostsToHandle["["+LocalhostIpv6+"]"] = struct{}{}
-
-		}
-	}
-
-	var ret []string
-	for host := range hostsToHandle {
-		ret = append(ret, host)
-	}
-
-	return ret
 }
 
 // newHttpRouter creates an OIDC HTTP router
