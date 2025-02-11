@@ -111,9 +111,9 @@ The first step is to ensure the GitHub release is not marked "latest," and the h
 
 - Linux packages - Run [zititest/scripts/housekeeper-artifactory-zitipax.bash --help](./zititest/scripts/housekeeper-artifactory-zitipax.bash) for usage hints. The goal is to delete the bad semver from all Linux package repositories (all platforms, all package managers, etc.).
 
-Once the bad semver is removed from the stable repo, it must not be reused.
+    Once the bad semver is removed from the stable repo, it must not be reused.
 
-To use this script, you must target either "testing"  or "release" stages in Artifactory, or both as a space-sep'd list. You must target one or more artifact names. Set `--age 0` to match artifacts of any age.
+    To use this script, you must target either "testing"  or "release" stages in Artifactory, or both as a space-sep'd list. You must target one or more artifact names. Set `--age 0` to match artifacts of any age.
 
 - Container images - The `:latest` tag is moved to the last good release semver. To ready the script, set `GOOD_VERSION`.
 
