@@ -53,18 +53,18 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.24
-	github.com/openziti/channel/v3 v3.0.29
+	github.com/openziti/channel/v3 v3.0.31
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.39
 	github.com/openziti/foundation/v2 v2.0.57
-	github.com/openziti/identity v1.0.97
+	github.com/openziti/identity v1.0.98
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.2.66
 	github.com/openziti/runzmd v1.0.63
 	github.com/openziti/sdk-golang v0.24.1
-	github.com/openziti/secretstream v0.1.28
-	github.com/openziti/storage v0.4.2
-	github.com/openziti/transport/v2 v2.0.160
+	github.com/openziti/secretstream v0.1.29
+	github.com/openziti/storage v0.4.3
+	github.com/openziti/transport/v2 v2.0.162
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.2.1
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -83,15 +83,15 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zitadel/oidc/v2 v2.12.2
-	go.etcd.io/bbolt v1.3.11
+	go.etcd.io/bbolt v1.4.0
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.32.0
+	golang.org/x/crypto v0.33.0
 	golang.org/x/exp v0.0.0-20241210194714-1829a127f884
-	golang.org/x/net v0.34.0
+	golang.org/x/net v0.35.0
 	golang.org/x/oauth2 v0.25.0
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.11.0
 	golang.org/x/sys v0.30.0
-	golang.org/x/text v0.21.0
+	golang.org/x/text v0.22.0
 	google.golang.org/protobuf v1.36.5
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/go-jose/go-jose.v2 v2.6.3
@@ -138,7 +138,7 @@ require (
 	github.com/hashicorp/go-msgpack/v2 v2.1.2 // indirect
 	github.com/hashicorp/golang-lru v0.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/iancoleman/strcase v0.1.3 // indirect
+	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
@@ -166,7 +166,7 @@ require (
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/pion/dtls/v3 v3.0.4 // indirect
-	github.com/pion/logging v0.2.2 // indirect
+	github.com/pion/logging v0.2.3 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
