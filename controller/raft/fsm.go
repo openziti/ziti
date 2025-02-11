@@ -30,6 +30,7 @@ import (
 	event2 "github.com/openziti/ziti/controller/event"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
+	bbolterrors "go.etcd.io/bbolt/errors"
 	"io"
 	"os"
 	"path"
@@ -159,7 +160,7 @@ func (self *BoltDbFsm) storeConfigurationInRaft(index uint64, servers []raft.Ser
 func (self *BoltDbFsm) storeServers(tx *bbolt.Tx, servers []raft.Server) error {
 	raftBucket := boltz.GetOrCreatePath(tx, db.RootBucket, db.MetadataBucket)
 	if err := raftBucket.DeleteBucket([]byte(ServersBucket)); err != nil {
-		if !errors.Is(err, bbolt.ErrBucketNotFound) {
+		if !errors.Is(err, bbolterrors.ErrBucketNotFound) {
 			return err
 		}
 	}
