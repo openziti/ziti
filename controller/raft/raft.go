@@ -141,6 +141,7 @@ type Controller struct {
 	Mesh                       mesh.Mesh
 	Raft                       *raft.Raft
 	Fsm                        *BoltDbFsm
+	raftStore                  *raftboltdb.BoltStore
 	bootstrapped               atomic.Bool
 	clusterLock                sync.Mutex
 	closeNotify                <-chan struct{}
@@ -545,7 +546,8 @@ func (self *Controller) Init() error {
 
 	// Create the log store and stable store.
 	raftBoltFile := path.Join(raftConfig.DataDir, "raft.db")
-	boltDbStore, err := raftboltdb.NewBoltStore(raftBoltFile)
+	var err error
+	self.raftStore, err = raftboltdb.NewBoltStore(raftBoltFile)
 	if err != nil {
 		logrus.WithError(err).Error("failed to initialize raft bolt storage")
 		return err
@@ -578,7 +580,7 @@ func (self *Controller) Init() error {
 	raftTransport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, raftConfig.Logger)
 
 	if raftConfig.Recover {
-		err := raft.RecoverCluster(conf, self.Fsm, boltDbStore, boltDbStore, snapshotStore, raftTransport, raft.Configuration{
+		err := raft.RecoverCluster(conf, self.Fsm, self.raftStore, self.raftStore, snapshotStore, raftTransport, raft.Configuration{
 			Servers: []raft.Server{
 				{ID: conf.LocalID, Address: localAddr},
 			},
@@ -591,7 +593,7 @@ func (self *Controller) Init() error {
 		os.Exit(0)
 	}
 
-	r, err := raft.NewRaft(conf, self.Fsm, boltDbStore, boltDbStore, snapshotStore, raftTransport)
+	r, err := raft.NewRaft(conf, self.Fsm, self.raftStore, self.raftStore, snapshotStore, raftTransport)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialise raft")
 	}
@@ -936,6 +938,36 @@ func (self *Controller) addEventsHandlers() {
 			pfxlog.Logger().Errorf("unhandled cluster event type: %v", evt)
 		}
 	})
+}
+
+func (self *Controller) Shutdown() error {
+	var errs errorz.MultipleErrors
+
+	if self.Raft != nil {
+		if err := self.Raft.Shutdown().Error(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if self.Fsm != nil {
+		if err := self.Fsm.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if self.raftStore != nil {
+		if err := self.raftStore.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if self.Mesh != nil {
+		if err := self.Mesh.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errs.ToError()
 }
 
 type MigrationManager interface {

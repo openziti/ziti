@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
+	bolterrors "go.etcd.io/bbolt/errors"
 	"strings"
 	"time"
 )
@@ -174,7 +175,7 @@ func (store *apiSessionStoreImpl) cleanupSessions(db boltz.Db, name string, apiS
 		indexPath := []string{RootBucket, boltz.IndexesBucket, EntityTypeApiSessions, EntityTypeSessions}
 		if bucket := boltz.Path(ctx.Tx(), indexPath...); bucket != nil {
 			if err := bucket.DeleteBucket(apiSessionId); err != nil {
-				if !errors.Is(err, bbolt.ErrBucketNotFound) {
+				if !errors.Is(err, bolterrors.ErrBucketNotFound) {
 					logger.WithError(err).
 						Error("error deleting for api session index associated to an api session during onEventualDelete")
 				}
