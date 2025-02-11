@@ -48,7 +48,7 @@ require (
 	github.com/kataras/go-events v0.0.3
 	github.com/lucsky/cuid v1.2.1
 	github.com/mdlayher/netlink v1.7.2
-	github.com/michaelquigley/pfxlog v0.6.10
+	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/miekg/dns v1.1.63
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
@@ -57,7 +57,7 @@ require (
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.39
 	github.com/openziti/foundation/v2 v2.0.57
-	github.com/openziti/identity v1.0.97
+	github.com/openziti/identity v1.0.98
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.2.66
 	github.com/openziti/runzmd v1.0.63
@@ -85,13 +85,13 @@ require (
 	github.com/zitadel/oidc/v2 v2.12.2
 	go.etcd.io/bbolt v1.3.11
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.32.0
+	golang.org/x/crypto v0.33.0
 	golang.org/x/exp v0.0.0-20241210194714-1829a127f884
 	golang.org/x/net v0.34.0
 	golang.org/x/oauth2 v0.25.0
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.11.0
 	golang.org/x/sys v0.30.0
-	golang.org/x/text v0.21.0
+	golang.org/x/text v0.22.0
 	google.golang.org/protobuf v1.36.5
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/go-jose/go-jose.v2 v2.6.3
