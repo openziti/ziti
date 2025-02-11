@@ -202,6 +202,7 @@ services:
       - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-edge-controller}
       - ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}
       - ZITI_CTRL_NAME=${ZITI_CTRL_NAME:-ziti-edge-controller}
+      - ZAC_CONTROLLER_URLS=${ZAC_CONTROLLER_URLS:-ziti-edge-controller:1280}
       - PORTTLS=8443
     depends_on:
       ziti-controller:
