@@ -521,7 +521,9 @@ func (handler *sessionConnectionHandler) validateBySpiffeId(apiSession *state.Ap
 		return false
 	}
 
-	parts := strings.Split(spiffeId.Path, "/")
+	path := strings.TrimPrefix(spiffeId.Path, "/")
+
+	parts := strings.Split(path, "/")
 
 	if len(parts) != 6 {
 		return false
