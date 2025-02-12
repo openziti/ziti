@@ -224,7 +224,7 @@ func LoadConfig(path string) (*Config, error) {
 			if value, found := submap["dataDir"]; found {
 				controllerConfig.Raft.DataDir = value.(string)
 			} else {
-				return nil, errors.Errorf("raft dataDir configuration missing")
+				return nil, errors.Errorf("cluster dataDir configuration missing")
 			}
 
 			if value, found := submap["snapshotInterval"]; found {
@@ -326,7 +326,7 @@ func LoadConfig(path string) (*Config, error) {
 				}
 			}
 		} else {
-			return nil, errors.Errorf("invalid raft configuration")
+			return nil, errors.Errorf("invalid cluster configuration")
 		}
 	} else if value, found := cfgmap["db"]; found {
 		str, err := db.Open(value.(string))
@@ -335,7 +335,7 @@ func LoadConfig(path string) (*Config, error) {
 		}
 		controllerConfig.Db = str
 	} else {
-		panic("controllerConfig must provide [db] or [raft]")
+		panic("controllerConfig must provide [db] or [cluster]")
 	}
 
 	//SPIFFE Trust Domain

@@ -212,3 +212,47 @@ func (o *CreateTerminatorTooManyRequests) WriteResponse(rw http.ResponseWriter, 
 		}
 	}
 }
+
+// CreateTerminatorServiceUnavailableCode is the HTTP code returned for type CreateTerminatorServiceUnavailable
+const CreateTerminatorServiceUnavailableCode int = 503
+
+/*CreateTerminatorServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+
+swagger:response createTerminatorServiceUnavailable
+*/
+type CreateTerminatorServiceUnavailable struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewCreateTerminatorServiceUnavailable creates CreateTerminatorServiceUnavailable with default headers values
+func NewCreateTerminatorServiceUnavailable() *CreateTerminatorServiceUnavailable {
+
+	return &CreateTerminatorServiceUnavailable{}
+}
+
+// WithPayload adds the payload to the create terminator service unavailable response
+func (o *CreateTerminatorServiceUnavailable) WithPayload(payload *rest_model.APIErrorEnvelope) *CreateTerminatorServiceUnavailable {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the create terminator service unavailable response
+func (o *CreateTerminatorServiceUnavailable) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *CreateTerminatorServiceUnavailable) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(503)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

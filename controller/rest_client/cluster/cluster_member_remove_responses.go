@@ -77,6 +77,12 @@ func (o *ClusterMemberRemoveReader) ReadResponse(response runtime.ClientResponse
 			return nil, err
 		}
 		return nil, result
+	case 503:
+		result := NewClusterMemberRemoveServiceUnavailable()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -231,6 +237,38 @@ func (o *ClusterMemberRemoveTooManyRequests) GetPayload() *rest_model.APIErrorEn
 }
 
 func (o *ClusterMemberRemoveTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewClusterMemberRemoveServiceUnavailable creates a ClusterMemberRemoveServiceUnavailable with default headers values
+func NewClusterMemberRemoveServiceUnavailable() *ClusterMemberRemoveServiceUnavailable {
+	return &ClusterMemberRemoveServiceUnavailable{}
+}
+
+/* ClusterMemberRemoveServiceUnavailable describes a response with status code 503, with default header values.
+
+The request could not be completed due to the server being busy or in a temporarily bad state
+*/
+type ClusterMemberRemoveServiceUnavailable struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ClusterMemberRemoveServiceUnavailable) Error() string {
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveServiceUnavailable  %+v", 503, o.Payload)
+}
+func (o *ClusterMemberRemoveServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ClusterMemberRemoveServiceUnavailable) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

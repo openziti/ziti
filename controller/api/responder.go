@@ -23,6 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/models"
 	"net/http"
 	"strconv"
 	"strings"
@@ -128,15 +129,12 @@ func (responder *ResponderImpl) RespondWithProducer(producer runtime.Producer, d
 }
 
 func (responder *ResponderImpl) RespondWithError(err error) {
-	var apiError *errorz.ApiError
-	var ok bool
-
-	if apiError, ok = err.(*errorz.ApiError); !ok {
+	apiErr := models.ToApiErrorWithDefault(err, func(err error) *errorz.ApiError {
 		pfxlog.Logger().WithField("uri", responder.rc.GetRequest().RequestURI).WithError(err).Error("unhandled error returned to REST API")
-		apiError = errorz.NewUnhandled(err)
-	}
+		return errorz.NewUnhandled(err)
+	})
 
-	responder.RespondWithApiError(apiError)
+	responder.RespondWithApiError(apiErr)
 }
 
 func (responder *ResponderImpl) RespondWithApiError(apiError *errorz.ApiError) {

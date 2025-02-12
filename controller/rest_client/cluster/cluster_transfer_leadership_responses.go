@@ -77,6 +77,12 @@ func (o *ClusterTransferLeadershipReader) ReadResponse(response runtime.ClientRe
 			return nil, err
 		}
 		return nil, result
+	case 503:
+		result := NewClusterTransferLeadershipServiceUnavailable()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -231,6 +237,38 @@ func (o *ClusterTransferLeadershipInternalServerError) GetPayload() *rest_model.
 }
 
 func (o *ClusterTransferLeadershipInternalServerError) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewClusterTransferLeadershipServiceUnavailable creates a ClusterTransferLeadershipServiceUnavailable with default headers values
+func NewClusterTransferLeadershipServiceUnavailable() *ClusterTransferLeadershipServiceUnavailable {
+	return &ClusterTransferLeadershipServiceUnavailable{}
+}
+
+/* ClusterTransferLeadershipServiceUnavailable describes a response with status code 503, with default header values.
+
+The request could not be completed due to the server being busy or in a temporarily bad state
+*/
+type ClusterTransferLeadershipServiceUnavailable struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ClusterTransferLeadershipServiceUnavailable) Error() string {
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipServiceUnavailable  %+v", 503, o.Payload)
+}
+func (o *ClusterTransferLeadershipServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ClusterTransferLeadershipServiceUnavailable) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/raft"
 	"net/http"
 	"time"
@@ -133,7 +134,9 @@ func (r *ClusterRouter) addMember(n *network.Network, rc api.RequestContext, par
 
 		if err = ClusterController.Join(req); err != nil {
 			msg := fmt.Sprintf("unable to add cluster member for supplied address: [%s]", err.Error())
-			rc.RespondWithApiError(apierror.NewBadRequestFieldError(*errorz.NewFieldError(msg, "address", addr)))
+			rc.RespondWithApiError(models.ToApiErrorWithDefault(err, func(err error) *errorz.ApiError {
+				return apierror.NewBadRequestFieldError(*errorz.NewFieldError(msg, "address", addr))
+			}))
 			return
 		}
 
@@ -153,7 +156,9 @@ func (r *ClusterRouter) removeMember(n *network.Network, rc api.RequestContext, 
 
 		if err := ClusterController.HandleRemovePeer(req); err != nil {
 			msg := fmt.Sprintf("unable to remove cluster member node for supplied node id: [%s]", err.Error())
-			rc.RespondWithApiError(apierror.NewBadRequestFieldError(*errorz.NewFieldError(msg, "id", *params.Member.ID)))
+			rc.RespondWithApiError(models.ToApiErrorWithDefault(err, func(err error) *errorz.ApiError {
+				return apierror.NewBadRequestFieldError(*errorz.NewFieldError(msg, "id", *params.Member.ID))
+			}))
 			return
 		}
 
@@ -172,13 +177,8 @@ func (r *ClusterRouter) transferLeadership(n *network.Network, rc api.RequestCon
 		}
 
 		if err := ClusterController.HandleTransferLeadership(req); err != nil {
-			rc.RespondWithApiError(&errorz.ApiError{
-				Code:        apierror.TransferLeadershipErrorCode,
-				Message:     apierror.TransferLeadershipErrorMessage,
-				Status:      apierror.TransferLeadershipErrorStatus,
-				Cause:       err,
-				AppendCause: true,
-			})
+			apiErr := models.ToApiErrorWithDefault(err, apierror.NewTransferLeadershipError)
+			rc.RespondWithApiError(apiErr)
 			return
 		}
 

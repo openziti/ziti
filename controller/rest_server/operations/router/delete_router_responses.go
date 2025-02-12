@@ -256,3 +256,47 @@ func (o *DeleteRouterTooManyRequests) WriteResponse(rw http.ResponseWriter, prod
 		}
 	}
 }
+
+// DeleteRouterServiceUnavailableCode is the HTTP code returned for type DeleteRouterServiceUnavailable
+const DeleteRouterServiceUnavailableCode int = 503
+
+/*DeleteRouterServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+
+swagger:response deleteRouterServiceUnavailable
+*/
+type DeleteRouterServiceUnavailable struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewDeleteRouterServiceUnavailable creates DeleteRouterServiceUnavailable with default headers values
+func NewDeleteRouterServiceUnavailable() *DeleteRouterServiceUnavailable {
+
+	return &DeleteRouterServiceUnavailable{}
+}
+
+// WithPayload adds the payload to the delete router service unavailable response
+func (o *DeleteRouterServiceUnavailable) WithPayload(payload *rest_model.APIErrorEnvelope) *DeleteRouterServiceUnavailable {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the delete router service unavailable response
+func (o *DeleteRouterServiceUnavailable) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *DeleteRouterServiceUnavailable) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(503)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

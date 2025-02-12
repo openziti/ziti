@@ -17,6 +17,7 @@
 package raft
 
 import (
+	"github.com/openziti/ziti/controller/apierror"
 	"time"
 
 	"github.com/openziti/channel/v3/protobufs"
@@ -210,7 +211,7 @@ func (self *Controller) HandleTransferLeadership(req *cmd_pb.TransferLeadershipR
 func (self *Controller) forwardToLeader(req protobufs.TypedMessage) error {
 	leader := self.GetLeaderAddr()
 	if leader == "" {
-		return errors.New("no leader, unable to forward request")
+		return apierror.NewClusterHasNoLeaderError()
 	}
 
 	return self.ForwardToAddr(leader, req)

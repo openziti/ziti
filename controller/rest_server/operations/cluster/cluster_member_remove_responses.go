@@ -256,3 +256,47 @@ func (o *ClusterMemberRemoveTooManyRequests) WriteResponse(rw http.ResponseWrite
 		}
 	}
 }
+
+// ClusterMemberRemoveServiceUnavailableCode is the HTTP code returned for type ClusterMemberRemoveServiceUnavailable
+const ClusterMemberRemoveServiceUnavailableCode int = 503
+
+/*ClusterMemberRemoveServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+
+swagger:response clusterMemberRemoveServiceUnavailable
+*/
+type ClusterMemberRemoveServiceUnavailable struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewClusterMemberRemoveServiceUnavailable creates ClusterMemberRemoveServiceUnavailable with default headers values
+func NewClusterMemberRemoveServiceUnavailable() *ClusterMemberRemoveServiceUnavailable {
+
+	return &ClusterMemberRemoveServiceUnavailable{}
+}
+
+// WithPayload adds the payload to the cluster member remove service unavailable response
+func (o *ClusterMemberRemoveServiceUnavailable) WithPayload(payload *rest_model.APIErrorEnvelope) *ClusterMemberRemoveServiceUnavailable {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the cluster member remove service unavailable response
+func (o *ClusterMemberRemoveServiceUnavailable) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ClusterMemberRemoveServiceUnavailable) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(503)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
