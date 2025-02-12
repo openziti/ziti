@@ -113,7 +113,7 @@ The first step is to ensure the GitHub release is not marked "latest," and the h
 
     Once the bad semver is removed from the stable repo, it must not be reused.
 
-    To use this script, you must target either "testing"  or "release" stages in Artifactory, or both as a space-sep'd list. You must target one or more artifact names. Set `--age 0` to match artifacts of any age.
+    You must target one or more artifact names, e.g., `--artifacts openziti openziti-console`.
 
 - Container images - The `:latest` tag is moved to the last good release semver. To ready the script, set `GOOD_VERSION`.
 
