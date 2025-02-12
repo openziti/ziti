@@ -40,6 +40,7 @@ typeset -A KNOWN_STAGES=(
 )
 
 DRY_RUN=''
+VERSION=''
 : "${AGE:=0}"  # days
 : "${CI:=0}"    # jfrog CLI is interactive and prompts for confirmation by default
 : "${QUIET:=0}"
@@ -120,6 +121,16 @@ while (( $# )); do
                 shift
             fi
             ;;
+        --version)
+            shift
+            if [[ ${1} =~ ^-- ]]; then
+                echo "ERROR: --version VERSION requires a string argument" >&2
+                exit 1
+            else
+                VERSION="$1"
+                shift
+            fi
+            ;;
         \?|*)
             _usage
             exit 0
@@ -142,11 +153,17 @@ fi
 for STAGE in "${STAGES[@]}"; do
     while read -r REPO; do
         for ARTIFACT in "${ARTIFACTS[@]}"; do
-            for META in rpm.metadata.name deb.name; do
-                    echo "INFO: deleting ${REPO}/${ARTIFACT}" >&2
-                    jf rt search --include 'created;path' --props "${META}=${ARTIFACT}" "${REPO}/${GLOB}" \
-                    | jq --arg OLDEST "$(date --date "-${AGE} days" -Is)" '.[]|select(.created < $OLDEST)|.path' \
-                    | xargs --no-run-if-empty --max-lines=1 --verbose --open-tty jf rt delete ${DRY_RUN:+--dry-run}
+            echo "INFO: deleting ${REPO}/${ARTIFACT} matching '${GLOB}'" >&2
+            for META in rpm.metadata.name,rpm.metadata.version deb.name,deb.version; do
+                _meta_name=${META%%,*}
+                _meta="${_meta_name}=${ARTIFACT}"
+                if [[ -n ${VERSION} ]]; then
+                    _meta_version=${META#*,}
+                    _meta+=";${_meta_version}=${VERSION}"
+                fi
+                jf rt search --include 'created;path' --props "${_meta}" "${REPO}/${GLOB}" \
+                | jq --arg OLDEST "$(date --date "-${AGE} days" -Is)" '.[]|select(.created < $OLDEST)|.path' \
+                | xargs --no-run-if-empty --max-lines=1 --verbose --open-tty jf rt delete ${DRY_RUN:+--dry-run}
             done
         done
     done < <(

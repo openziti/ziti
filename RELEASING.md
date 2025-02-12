@@ -115,6 +115,14 @@ The first step is to ensure the GitHub release is not marked "latest," and the h
 
     You must target one or more artifact names, e.g., `--artifacts openziti openziti-console`.
 
+    ```bash
+    # dry run without confirmation prompts in all stable repos
+    ./housekeeper-artifactory-zitipax.bash --stages release --artifacts openziti --version 2.3.4 --dry-run --quiet
+    
+    # destructive run with confirmation prompts in all stable repos
+    ./housekeeper-artifactory-zitipax.bash --stages release --artifacts openziti --version 2.3.4
+    ```
+
 - Container images - The `:latest` tag is moved to the last good release semver. To ready the script, set `GOOD_VERSION`.
 
     ```bash
