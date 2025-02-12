@@ -87,6 +87,7 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 			APIVersions: map[string]map[string]rest_model.APIVersion{
 				webapis.ClientApiBinding:     {webapis.VersionV1: mapApiVersionToRestModel(webapis.ClientRestApiBaseUrlV1)},
 				webapis.ManagementApiBinding: {webapis.VersionV1: mapApiVersionToRestModel(webapis.ManagementRestApiBaseUrlV1)},
+				webapis.OidcApiBinding:       {webapis.VersionV1: mapApiVersionToRestModel(webapis.OidcRestApiBaseUrl)},
 			},
 			Capabilities: []string{},
 		}
