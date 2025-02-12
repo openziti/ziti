@@ -36,6 +36,7 @@ const (
 	ClusterIsLeaderless     ClusterEventType = "state.is_leaderless"
 	ClusterStateReadOnly    ClusterEventType = "state.ro"
 	ClusterStateReadWrite   ClusterEventType = "state.rw"
+	ClusterPeerNotMember    ClusterEventType = "peer.not_member"
 )
 
 // A ClusterPeer represents a controller which is a member of the cluster.
@@ -72,15 +73,16 @@ func (self *ClusterPeer) String() string {
 
 // A ClusterEvent marks a change to the controller HA cluster.
 // ClusterEvents can be of the following types:
-//   - peer.connected
-//   - peer.disconnected
-//   - members.changed
-//   - leadership.gained
-//   - leadership.lost
-//   - state.has_leader
-//   - state.is_leaderless
-//   - state.ro
-//   - state.rw
+//   - peer.connected - a peer connected
+//   - peer.disconnected - a peer disconnected
+//   - peer.not_member - a peer connected, but was not a member and didn't join the cluster
+//   - members.changed - A peer was added to or removed from the cluster
+//   - leadership.gained - The node become the cluster leader
+//   - leadership.lost - The node lost cluster leadership
+//   - state.has_leader - The cluster gained a leader
+//   - state.is_leaderless - The cluster became leaderless
+//   - state.ro - The cluster is not accepting state changes, likely due to version mismatches in cluster members
+//   - state.rw - The cluster is accepting state changes
 //
 // Example: Cluster Members Changed Event
 //

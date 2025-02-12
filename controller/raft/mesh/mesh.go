@@ -281,6 +281,8 @@ type Env interface {
 	GetClusterId() string
 	GetVersionProvider() versions.VersionProvider
 	GetEventDispatcher() event.Dispatcher
+	IsPeerMember(id string) bool
+	IsLeader() bool
 }
 
 // Mesh provides the networking layer to raft
@@ -823,6 +825,23 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		binding.AddReceiveHandlerF(RaftConnectType, peer.handleReceiveConnect)
 		binding.AddReceiveHandlerF(RaftDisconnectType, peer.handleReceiveDisconnect)
 		binding.AddCloseHandler(peer)
+
+		if self.env.IsLeader() && !self.env.IsPeerMember(id) {
+			time.AfterFunc(time.Minute, func() {
+				if !self.env.IsPeerMember(id) && !binding.GetChannel().IsClosed() {
+					logger := pfxlog.Logger().WithField("peer", peer.Id)
+					logger.Info("disconnecting non-member peer after 1 minute")
+					if err := binding.GetChannel().Close(); err != nil {
+						log.WithError(err).Error("error closing channel to non-member peer")
+					}
+
+					evt := event.NewClusterEvent(event.ClusterPeerNotMember)
+					evt.Peers = self.GetEventPeerList(peer)
+					self.env.GetEventDispatcher().AcceptClusterEvent(evt)
+				}
+			})
+		}
+
 		return self.PeerConnected(peer, false)
 	})
 
