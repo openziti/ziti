@@ -19,8 +19,8 @@ Options:
   --age DAYS              Match artifacts older than DAYS days (default: ${AGE})
   --stages STAGE...       Search repositories from the pre-release or stable sets, or both (default: ${STAGES[*]})
                           Valid stages: ${!KNOWN_STAGES[*]}
-  --version VERSION       Match artifacts with the specified version
-  --glob GLOB             Restrict selection to matching artifact, e.g., '*1.0.0~rc*' (default: ${GLOB})
+  --version VERSION       Narrow selection glob-match artifact version (example: 3.2.1* matches 3.2.1-2 and 3.2.1~234)
+  --glob GLOB             Narrow selection by glob-match artifact name (default: ${GLOB})
   --dry-run               Disable communication with Artifactory
   --quiet                 Skip the delete confirmation prompt
   --help                  Show this help message
