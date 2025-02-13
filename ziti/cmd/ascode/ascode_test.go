@@ -62,7 +62,10 @@ func TestYamlUploadAndDownload(t *testing.T) {
 		panic("timed out waiting for controller")
 	}
 
-	performTest(t)
+	performImport(t)
+	performAllTest(t)
+	performServiceAndConfigTest(t)
+	performIdentitiesTest(t)
 
 	cancel() //terminate the running ctrl/router
 
@@ -85,7 +88,8 @@ func waitForController(ctrlUrl string, done chan struct{}) {
 
 }
 
-func performTest(t *testing.T) {
+func performImport(t *testing.T) {
+
 	errWriter := strings.Builder{}
 
 	uploadWriter := strings.Builder{}
@@ -96,6 +100,10 @@ func performTest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+}
+
+func performAllTest(t *testing.T) {
 
 	// Create a temporary file in the default temporary directory
 	tempFile, err := os.CreateTemp("", "ascode-output-*.json")
@@ -251,5 +259,119 @@ func performTest(t *testing.T) {
 	assert.NotNil(t, service2)
 	assert.Equal(t, "bcde", jsonquery.FindOne(service2, "/roleAttributes/*[1]").Value())
 	assert.Empty(t, jsonquery.Find(service2, "/configs/*"))
+
+}
+
+func performServiceAndConfigTest(t *testing.T) {
+
+	// Create a temporary file in the default temporary directory
+	tempFile, err := os.CreateTemp("", "ascode-output-*.json")
+	if err != nil {
+		t.Fatalf("error creating temp file: %v", err)
+	}
+	defer func() { _ = os.Remove(tempFile.Name()) }()
+	log.Info("output file: ", tempFile.Name())
+
+	exportCmd := exporter.NewExportCmd(os.Stdout, os.Stderr)
+	exportCmd.SetArgs([]string{"--output-format=json", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin", "--output-file=" + tempFile.Name(), "service,config"})
+	err = exportCmd.Execute()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := os.ReadFile(tempFile.Name())
+	if err != nil {
+		t.Fatalf("Error reading file: %v", err)
+	}
+	sresult := string(result)
+	log.Infof("export result: %s", sresult)
+
+	doc, err := jsonquery.Parse(strings.NewReader(sresult))
+	if err != nil {
+		t.Fatalf("error parsing json: %v", err)
+	}
+
+	assert.NotEqual(t, 0, len(doc.ChildNodes()))
+	if len(doc.ChildNodes()) == 0 {
+		// no data, nothing to test
+		return
+	}
+
+	config1 := jsonquery.FindOne(doc, "//configs/*[name='service2-intercept-config']")
+	assert.NotNil(t, config1)
+	assert.Equal(t, "@intercept.v1", jsonquery.FindOne(config1, "/configType").Value())
+	config2 := jsonquery.FindOne(doc, "//configs/*[name='ssssimple-intercept-config']")
+	assert.NotNil(t, config2)
+	assert.Equal(t, "@intercept.v1", jsonquery.FindOne(config2, "/configType").Value())
+	config3 := jsonquery.FindOne(doc, "//configs/*[name='test-123-host-config']")
+	assert.NotNil(t, config3)
+	assert.Equal(t, "@host.v1", jsonquery.FindOne(config3, "/configType").Value())
+	config4 := jsonquery.FindOne(doc, "//configs/*[name='service1-host-config']")
+	assert.NotNil(t, config4)
+	assert.Equal(t, "@host.v1", jsonquery.FindOne(config4, "/configType").Value())
+
+	service1 := jsonquery.FindOne(doc, "//services/*[name='ssssimple']")
+	assert.NotNil(t, service1)
+	assert.Equal(t, "abcd", jsonquery.FindOne(service1, "/roleAttributes/*[1]").Value())
+	assert.Equal(t, "service", jsonquery.FindOne(service1, "/roleAttributes/*[2]").Value())
+	configs1 := []string{}
+	for _, node := range jsonquery.Find(service1, "/configs/*") {
+		configs1 = append(configs1, node.Value().(string))
+	}
+	assert.Contains(t, configs1, "@ssssimple-intercept-config")
+	assert.Contains(t, configs1, "@ssssimple-host-config")
+	service2 := jsonquery.FindOne(doc, "//services/*[name='asdfasdf']")
+	assert.NotNil(t, service2)
+	assert.Equal(t, "bcde", jsonquery.FindOne(service2, "/roleAttributes/*[1]").Value())
+	assert.Empty(t, jsonquery.Find(service2, "/configs/*"))
+
+}
+
+func performIdentitiesTest(t *testing.T) {
+
+	// Create a temporary file in the default temporary directory
+	tempFile, err := os.CreateTemp("", "ascode-output-*.json")
+	if err != nil {
+		t.Fatalf("error creating temp file: %v", err)
+	}
+	defer func() { _ = os.Remove(tempFile.Name()) }()
+	log.Info("output file: ", tempFile.Name())
+
+	exportCmd := exporter.NewExportCmd(os.Stdout, os.Stderr)
+	exportCmd.SetArgs([]string{"--output-format=json", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin", "--output-file=" + tempFile.Name(), "identity"})
+	err = exportCmd.Execute()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := os.ReadFile(tempFile.Name())
+	if err != nil {
+		t.Fatalf("Error reading file: %v", err)
+	}
+	sresult := string(result)
+	log.Infof("export result: %s", sresult)
+
+	doc, err := jsonquery.Parse(strings.NewReader(sresult))
+	if err != nil {
+		t.Fatalf("error parsing json: %v", err)
+	}
+
+	assert.NotEqual(t, 0, len(doc.ChildNodes()))
+	if len(doc.ChildNodes()) == 0 {
+		// no data, nothing to test
+		return
+	}
+
+	identity1 := jsonquery.FindOne(doc, "//identities/*[externalId='f1505b76-38ec-470b-9819-75984623c23d']")
+	assert.NotNil(t, identity1)
+	assert.Equal(t, "Vinay Lakshmaiah", jsonquery.FindOne(identity1, "/name").Value())
+	assert.Empty(t, jsonquery.FindOne(identity1, "/roleAttributes").Value())
+	assert.Equal(t, "@NetFoundry Console Integration Auth Policy", jsonquery.FindOne(identity1, "/authPolicy").Value())
+
+	identity2 := jsonquery.FindOne(doc, "//identities/*[externalId='962818be-b8d5-4c37-8e5b-e5082aa4ddbf']")
+	assert.NotNil(t, identity2)
+	assert.Equal(t, "harish donepudi", jsonquery.FindOne(identity2, "/name").Value())
+	assert.Empty(t, jsonquery.FindOne(identity2, "/roleAttributes").Value())
+	assert.Equal(t, "@NetFoundry Console Integration Auth Policy", jsonquery.FindOne(identity2, "/authPolicy").Value())
 
 }

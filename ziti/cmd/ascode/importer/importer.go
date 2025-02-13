@@ -116,7 +116,14 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			}
 			importer.Client = client
 
-			executeErr := importer.Execute(args[1:])
+			var entities []string
+			if len(args) > 1 {
+				entities = strings.Split(args[1], ",")
+			} else {
+				entities = []string{}
+			}
+
+			executeErr := importer.Execute(entities)
 			if executeErr != nil {
 				return executeErr
 			}

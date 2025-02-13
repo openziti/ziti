@@ -103,7 +103,13 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			}
 			exporter.Client = client
 
-			result, err := exporter.Execute(args)
+			var entities []string
+			if len(args) > 0 {
+				entities = strings.Split(args[0], ",")
+			} else {
+				entities = []string{}
+			}
+			result, err := exporter.Execute(entities)
 			if err != nil {
 				log.Fatal(err)
 			}
