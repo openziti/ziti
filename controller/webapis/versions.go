@@ -30,6 +30,7 @@ const (
 	ClientRestApiBaseUrlV1            = ClientRestApiBase + RestApiV1
 	ManagementRestApiBaseUrlV1        = ManagementRestApiBase + RestApiV1
 	ControllerHealthCheckApiBaseUrlV1 = ControllerHealthCheck + RestApiV1
+	OidcRestApiBaseUrl                = "/oidc"
 
 	ClientRestApiBaseUrlLatest     = ClientRestApiBaseUrlV1
 	ManagementRestApiBaseUrlLatest = ManagementRestApiBaseUrlV1
