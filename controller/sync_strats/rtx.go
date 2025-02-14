@@ -194,7 +194,10 @@ func (rtx *RouterSender) handleModelChange() {
 		return
 	}
 
-	logger := pfxlog.Logger().WithField("routerId", rtx.Router.Id).WithField("currentIndex", rtx.currentIndex)
+	logger := pfxlog.Logger().WithField("routerId", rtx.Router.Id).
+		WithField("currentIndex", rtx.currentIndex).
+		WithField("routerTimelineId", rtx.timelineId).
+		WithField("ctrlTimelineId", rtx.routerDataModel.GetTimelineId())
 
 	var events []*edge_ctrl_pb.DataState_ChangeSet
 	var ok bool

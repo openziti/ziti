@@ -12,14 +12,14 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.25
-	github.com/openziti/channel/v3 v3.0.31
+	github.com/openziti/channel/v3 v3.0.36-0.20250218200147-b0d93314c252
 	github.com/openziti/edge-api v0.26.39
 	github.com/openziti/fablab v0.5.83
-	github.com/openziti/foundation/v2 v2.0.57
-	github.com/openziti/identity v1.0.98
+	github.com/openziti/foundation/v2 v2.0.58
+	github.com/openziti/identity v1.0.100
 	github.com/openziti/sdk-golang v0.24.1
 	github.com/openziti/storage v0.4.3
-	github.com/openziti/transport/v2 v2.0.162
+	github.com/openziti/transport/v2 v2.0.165
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1

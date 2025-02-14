@@ -885,12 +885,14 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 		for _, c := range cfg.Link.Listeners {
 			a := c["advertise"]
 			if a != nil {
-				// should start with tls:
-				addy := strings.TrimPrefix(a.(string), "tls:")
-				addy = strings.Split(addy, ":")[0]
-				e := cfg.Id.ValidFor(addy)
-				if e != nil {
-					errs = append(errs, fmt.Errorf("invalid link.listeners.advertise: %s, error: %v", a.(string), e))
+				// should start with tls: or dtls:
+				parts := strings.Split(a.(string), ":")
+				if parts[0] == "tls" || parts[0] == "dtls" {
+					addy := parts[1]
+					e := cfg.Id.ValidFor(addy)
+					if e != nil {
+						errs = append(errs, fmt.Errorf("invalid link.listeners.advertise: %s, error: %v", a.(string), e))
+					}
 				}
 			}
 		}
@@ -922,6 +924,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 func (c *Config) loadCtrlRateLimiterConfig(cfgmap map[interface{}]interface{}) error {
 	rateLimitConfig := &c.Ctrl.RateLimit
 	rateLimitConfig.SetDefaults()
+	rateLimitConfig.MinSize = 1
 	rateLimitConfig.QueueSizeMetric = CtrlRateLimiterMetricOutstandingCount
 	rateLimitConfig.WindowSizeMetric = CtrlRateLimiterMetricCurrentWindowSize
 	rateLimitConfig.WorkTimerMetric = CtrlRateLimiterMetricWorkTimer

@@ -292,6 +292,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 			s := client.ExternalJWTSignerFromFilter(m, `name="`+args[0]+`"`)
 			if s == nil {
 				log.Fatal("no external JWT signer found with name")
+				return
 			}
 
 			if opts.redirectURL == "" {
@@ -313,6 +314,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 			relyingParty, rpErr := opts.NewRelyingParty()
 			if rpErr != nil {
 				log.Fatalf("error creating relying party %s", rpErr.Error())
+				return
 			}
 
 			if opts.Issuer != "" {

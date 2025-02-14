@@ -239,8 +239,6 @@ var m = &model.Model{
 			workflow.AddAction(component.Start(".ctrl"))
 			workflow.AddAction(semaphore.Sleep(5 * time.Second))
 			workflow.AddAction(edge.InitRaftController("#ctrl1"))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
 			workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
@@ -260,16 +258,29 @@ var m = &model.Model{
 				}`))
 
 			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				var tasks []parallel.Task
+				//encryptionRequired := true
+				var tasks []parallel.LabeledTask
 				for i := 0; i < 2000; i++ {
 					name := fmt.Sprintf("service-%04d", i)
+					//
+					//task := parallel.TaskWithLabel("create.service", "create new service", func() error {
+					//	svc := &rest_model.ServiceCreate{
+					//		Configs:            configs,
+					//		EncryptionRequired: &encryptionRequired,
+					//		Name:               &name,
+					//		TerminatorStrategy: "smartrouting",
+					//	}
+					//	return models.CreateService(ctrl, svc, 15*time.Second)
+					//})
+
 					task := func() error {
 						_, err := cli.Exec(run.GetModel(), "edge", "create", "service", name, "-c", "host-config", "--timeout", "15")
 						return err
 					}
-					tasks = append(tasks, task)
+					tasks = append(tasks, parallel.TaskWithLabel("create.service", "create service "+name, task))
 				}
-				return parallel.Execute(tasks, 25)
+
+				return parallel.ExecuteLabeled(tasks, 5, parallel.AlwaysReport())
 			}))
 
 			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
@@ -294,8 +305,10 @@ var m = &model.Model{
 						return err
 					})
 				}
-				return parallel.Execute(tasks, 25)
+				return parallel.Execute(tasks, 5)
 			}))
+
+			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
 
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(component.StartInParallel(".router", 50))
@@ -307,7 +320,9 @@ var m = &model.Model{
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
-		"login": model.Bind(edge.Login("#ctrl1")),
+		"login":  model.Bind(edge.Login("#ctrl1")),
+		"login2": model.Bind(edge.Login("#ctrl2")),
+		"login3": model.Bind(edge.Login("#ctrl3")),
 		"restart": model.ActionBinder(func(run *model.Model) model.Action {
 			workflow := actions.Workflow()
 			workflow.AddAction(component.StopInParallel("*", 100))
@@ -335,6 +350,13 @@ var m = &model.Model{
 			return nil
 		})),
 		"validate": model.Bind(model.ActionFunc(validateTerminators)),
+		"testIteration": model.Bind(model.ActionFunc(func(run model.Run) error {
+			return run.GetModel().Exec(run,
+				"sowChaos",
+				"validateUp",
+				"validate",
+			)
+		})),
 	},
 
 	Infrastructure: model.Stages{

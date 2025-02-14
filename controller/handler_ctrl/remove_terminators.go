@@ -59,7 +59,33 @@ func (self *removeTerminatorsHandler) HandleReceive(msg *channel.Message, ch cha
 func (self *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Message, ch channel.Channel, request *ctrl_pb.RemoveTerminatorsRequest) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	if err := self.network.Terminator.DeleteBatch(request.TerminatorIds, self.newChangeContext(ch, "fabric.remove.terminators.batch")); err == nil {
+	var terminatorIds []string
+	if self.network.Dispatcher.IsLeader() {
+		for _, id := range request.TerminatorIds {
+			isPresent, err := self.network.Terminator.IsEntityPresent(id)
+			if isPresent || err != nil {
+				terminatorIds = append(terminatorIds, id)
+			} else {
+				log.
+					WithField("routerId", ch.Id()).
+					WithField("terminatorId", id).
+					Info("delete requested of terminator that doesn't exist")
+			}
+		}
+	} else {
+		terminatorIds = request.TerminatorIds
+	}
+
+	if len(terminatorIds) == 0 {
+		log.
+			WithField("routerId", ch.Id()).
+			WithField("terminatorIds", request.TerminatorIds).
+			Info("responding to batch terminator delete for non-present terminators")
+		handler_common.SendSuccess(msg, ch, "")
+		return
+	}
+
+	if err := self.network.Terminator.DeleteBatch(terminatorIds, self.newChangeContext(ch, "fabric.remove.terminators.batch")); err == nil {
 		log.
 			WithField("routerId", ch.Id()).
 			WithField("terminatorIds", request.TerminatorIds).

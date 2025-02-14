@@ -81,7 +81,7 @@ type inspectRequestContext struct {
 }
 
 func (context *inspectRequestContext) inspectXgressDialer(binding string, requested string) {
-	factory, _ := xgress.GlobalRegistry().Factory("edge")
+	factory, _ := xgress.GlobalRegistry().Factory(binding)
 	if factory == nil {
 		context.appendError("no xgress factory configured for edge binding")
 		return

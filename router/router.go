@@ -656,16 +656,22 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 			self.ctrls.NotifyOfReconnect(ch.Id())
 		}
 	}
+	disconnectHandler := func() {
+		if ch := channelRef.Load(); ch != nil {
+			self.ctrls.NotifyOfDisconnect(ch.Id())
+		}
+	}
 
 	if "" != self.config.Ctrl.LocalBinding {
 		logrus.Debugf("Using local interface %s to dial controller", self.config.Ctrl.LocalBinding)
 	}
 	dialer := channel.NewReconnectingDialer(channel.ReconnectingDialerConfig{
-		Identity:         self.config.Id,
-		Endpoint:         addr,
-		LocalBinding:     self.config.Ctrl.LocalBinding,
-		Headers:          attributes,
-		ReconnectHandler: reconnectHandler,
+		Identity:          self.config.Id,
+		Endpoint:          addr,
+		LocalBinding:      self.config.Ctrl.LocalBinding,
+		Headers:           attributes,
+		DisconnectHandler: disconnectHandler,
+		ReconnectHandler:  reconnectHandler,
 		TransportConfig: transport.Configuration{
 			transport.KeyProtocol:                 "ziti-ctrl",
 			transport.KeyCachedProxyConfiguration: self.config.Proxy,

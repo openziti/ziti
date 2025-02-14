@@ -255,11 +255,11 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 
 		if found && err == nil {
 			log.Info("Hosting newly available service")
-			go self.host(svc, self.addrTracker)
+			self.host(svc, self.addrTracker)
 		} else if !found {
 			log.WithError(err).Warnf("service is hostable but no compatible host config found. supported types: [%v, %v, %v]",
 				entities.HostConfigV2, entities.HostConfigV1, entities.ServerConfigV1)
-		} else if err != nil {
+		} else {
 			log.WithError(err).Errorf("service is hostable but unable to decode server config of type %v", configType)
 		}
 	}

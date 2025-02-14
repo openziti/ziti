@@ -42,13 +42,16 @@ func (self *subscribeToDataModelHandler) ContentType() int32 {
 
 func (h *subscribeToDataModelHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	logger := pfxlog.Logger().WithField("routerId", ch.Id())
-	logger.Info("data model subscription request received")
 
 	request := &edge_ctrl_pb.SubscribeToDataModelRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
 		pfxlog.Logger().WithError(err).Error("could not unmarshal SubscribeToDataModelRequest")
 		return
 	}
+
+	logger = logger.WithField("index", request.CurrentIndex).
+		WithField("timelineId", request.TimelineId)
+	logger.Info("data model subscription request received")
 
 	h.callback(ch.Id(), request)
 }

@@ -18,13 +18,12 @@ package xgress_edge_tunnel_v2
 
 import (
 	"fmt"
-	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/secretstream/kx"
 	"github.com/openziti/ziti/common/ctrl_msg"
@@ -36,9 +35,8 @@ import (
 	"github.com/openziti/ziti/tunnel"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/proto"
-	"math"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -142,156 +140,21 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 	id := idgen.NewUUIDString()
 
 	terminator := &tunnelTerminator{
-		id:            id,
-		provider:      self,
-		context:       hostCtx,
-		notifyCreated: make(chan struct{}, 1),
+		id:         id,
+		state:      concurrenz.AtomicValue[xgress_common.TerminatorState]{},
+		provider:   self,
+		context:    hostCtx,
+		createTime: time.Now(),
 	}
+	terminator.state.Store(xgress_common.TerminatorStateEstablishing)
 
-	self.tunneler.terminators.Set(terminator.id, terminator)
-
-	err := self.factory.env.GetRateLimiterPool().QueueWithTimeout(func() {
-		self.establishTerminatorWithRetry(terminator)
-	}, math.MaxInt64)
-
-	if err != nil { // should only happen if router is shutting down
-		self.tunneler.terminators.Remove(terminator.id)
-		return nil, err
-	}
+	self.factory.hostedServices.EstablishTerminator(terminator)
 
 	return terminator, nil
 }
 
-func (self *fabricProvider) establishTerminatorWithRetry(terminator *tunnelTerminator) {
-	log := logrus.WithField("service", terminator.context.ServiceName())
-
-	if terminator.closed.Load() {
-		log.Info("not attempting to establish terminator, service not hostable")
-		return
-	}
-
-	operation := func() error {
-		var err error
-		if !terminator.created.Load() {
-			log.Info("attempting to establish terminator")
-			err = self.establishTerminator(terminator)
-			if err != nil && terminator.closed.Load() {
-				return backoff.Permanent(err)
-			}
-		}
-		return err
-	}
-
-	expBackoff := backoff.NewExponentialBackOff()
-	expBackoff.InitialInterval = 5 * time.Second
-	expBackoff.MaxInterval = 5 * time.Minute
-
-	if err := backoff.Retry(operation, expBackoff); err != nil {
-		log.WithError(err).Error("stopping attempts to establish terminator, service not hostable")
-	}
-}
-
-func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) error {
-	start := time.Now().UnixMilli()
-	log := pfxlog.Logger().
-		WithField("routerId", self.factory.id.Token).
-		WithField("service", terminator.context.ServiceName()).
-		WithField("terminatorId", terminator.id)
-
-	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
-	if terminator.context.ListenOptions().Precedence == ziti.PrecedenceRequired {
-		precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-	} else if terminator.context.ListenOptions().Precedence == ziti.PrecedenceFailed {
-		precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
-	}
-
-	request := &edge_ctrl_pb.CreateTunnelTerminatorRequestV2{
-		ServiceId:  terminator.context.ServiceId(),
-		Address:    terminator.id,
-		Cost:       uint32(terminator.context.ListenOptions().Cost),
-		Precedence: precedence,
-		InstanceId: terminator.context.ListenOptions().Identity,
-		StartTime:  start,
-	}
-
-	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
-	if ctrlCh == nil {
-		errStr := "no controller available, cannot create terminator"
-		log.Error(errStr)
-		return errors.New(errStr)
-	}
-
-	err := protobufs.MarshalTyped(request).WithTimeout(self.factory.DefaultRequestTimeout()).SendAndWaitForWire(ctrlCh)
-	if err != nil {
-		return err
-	}
-
-	if terminator.WaitForCreated(10 * time.Second) {
-		return nil
-	}
-
-	// return an error to indicate that we need to check if a response has come back after the next interval,
-	// and if not, re-send
-	return errors.Errorf("timeout waiting for response to create terminator request for terminator %v on service %v",
-		terminator.id, terminator.context.ServiceName())
-}
-
-func (self *fabricProvider) HandleTunnelResponse(msg *channel.Message, ctrlCh channel.Channel) {
-	log := pfxlog.Logger().WithField("routerId", self.factory.id.Token)
-
-	response := &edge_ctrl_pb.CreateTunnelTerminatorResponseV2{}
-
-	if err := proto.Unmarshal(msg.Body, response); err != nil {
-		log.WithError(err).Error("error unmarshalling create tunnel terminator response")
-		return
-	}
-
-	log = log.WithField("terminatorId", response.TerminatorId)
-
-	terminator, found := self.factory.tunneler.terminators.Get(response.TerminatorId)
-	if !found {
-		log.Error("no terminator found for id")
-		return
-	}
-
-	if terminator.created.CompareAndSwap(false, true) {
-		closeCallback := func() {
-			if err := self.removeTerminator(terminator); err != nil {
-				log.WithError(err).Error("failed to remove terminator after edge session was removed")
-			}
-			terminator.created.Store(false)
-			go self.establishTerminatorWithRetry(terminator)
-		}
-
-		terminator.closeCallback.Store(closeCallback)
-
-		if response.StartTime > 0 {
-			elapsedTime := time.Since(time.UnixMilli(response.StartTime))
-			log = log.WithField("createDuration", elapsedTime)
-			self.factory.metricsRegistry.Timer("xgress_edge_tunnel.terminator.create_timer").Update(elapsedTime)
-		}
-
-		log.Info("received terminator created notification")
-	} else {
-		log.Info("received additional terminator created notification")
-	}
-
-	terminator.NotifyCreated()
-}
-
-func (self *fabricProvider) removeTerminator(terminator *tunnelTerminator) error {
-	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
-	if ctrlCh == nil {
-		return errors.New("no controller available, cannot remove terminator")
-	}
-
-	msg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_RemoveTunnelTerminatorRequestType), []byte(terminator.id))
-	responseMsg, err := msg.WithTimeout(self.factory.DefaultRequestTimeout()).SendForReply(ctrlCh)
-	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTunnelTerminatorResponseType)
-}
-
 func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, precedence *edge.Precedence) error {
-	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
+	ctrlCh := self.factory.ctrls.GetModelUpdateCtrlChannel()
 	if ctrlCh == nil {
 		return errors.New("no controller available, cannot update terminator")
 	}
@@ -357,35 +220,21 @@ func (self *fabricProvider) sendHealthEvent(terminatorId string, checkPassed boo
 }
 
 type tunnelTerminator struct {
-	id            string
-	provider      *fabricProvider
-	context       tunnel.HostingContext
-	created       atomic.Bool
-	closeCallback concurrenz.AtomicValue[func()]
-	closed        atomic.Bool
-	notifyCreated chan struct{}
+	id string
+
+	state             concurrenz.AtomicValue[xgress_common.TerminatorState]
+	provider          *fabricProvider
+	context           tunnel.HostingContext
+	closed            atomic.Bool
+	operationActive   atomic.Bool
+	createTime        time.Time
+	lastAttempt       time.Time
+	rateLimitCallback rate.RateLimitControl
+	lock              sync.Mutex
 }
 
 func (self *tunnelTerminator) SendHealthEvent(pass bool) error {
 	return self.provider.sendHealthEvent(self.id, pass)
-}
-
-func (self *tunnelTerminator) NotifyCreated() {
-	select {
-	case self.notifyCreated <- struct{}{}:
-	default:
-	}
-}
-
-func (self *tunnelTerminator) WaitForCreated(timeout time.Duration) bool {
-	if self.created.Load() {
-		return true
-	}
-	select {
-	case <-self.notifyCreated:
-	case <-time.After(timeout):
-	}
-	return self.created.Load()
 }
 
 func (self *tunnelTerminator) Close() error {
@@ -394,20 +243,11 @@ func (self *tunnelTerminator) Close() error {
 			WithField("routerId", self.provider.factory.id.Token).
 			WithField("terminatorId", self.id)
 
+		self.provider.factory.hostedServices.queueRemoveTerminatorAsync(self, "close called")
+		log.Info("queued tunnel terminator remove")
+
 		log.Debug("closing tunnel terminator context")
 		self.context.OnClose()
-
-		if cb := self.closeCallback.Load(); cb != nil {
-			log.Debug("unregistering session listener for tunnel terminator")
-			cb()
-		}
-
-		log.Debug("removing tunnel terminator")
-		if err := self.provider.removeTerminator(self); err != nil {
-			log.WithError(err).Error("error while removing tunnel terminator")
-			return err
-		}
-		log.Info("removed tunnel terminator")
 		return nil
 	}
 	return nil
@@ -427,4 +267,49 @@ func (self *tunnelTerminator) UpdateCostAndPrecedence(cost uint16, precedence ed
 
 func (self *tunnelTerminator) updateCostAndPrecedence(cost *uint16, precedence *edge.Precedence) error {
 	return self.provider.updateTerminator(self.id, cost, precedence)
+}
+
+func (self *tunnelTerminator) IsEstablishing() bool {
+	return self.state.Load() == xgress_common.TerminatorStateEstablishing
+}
+
+func (self *tunnelTerminator) IsDeleting() bool {
+	return self.state.Load() == xgress_common.TerminatorStateDeleting
+}
+
+func (self *tunnelTerminator) setState(state xgress_common.TerminatorState, reason string) {
+	if oldState := self.state.Load(); oldState != state {
+		self.state.Store(state)
+		pfxlog.Logger().WithField("terminatorId", self.id).
+			WithField("oldState", oldState).
+			WithField("newState", state).
+			WithField("reason", reason).
+			Info("updated state")
+	}
+}
+
+func (self *tunnelTerminator) updateState(oldState, newState xgress_common.TerminatorState, reason string) bool {
+	log := pfxlog.Logger().WithField("terminatorId", self.id).
+		WithField("oldState", oldState).
+		WithField("newState", newState).
+		WithField("reason", reason)
+	success := self.state.CompareAndSwap(oldState, newState)
+	if success {
+		log.Info("updated state")
+	}
+	return success
+}
+
+func (self *tunnelTerminator) SetRateLimitCallback(control rate.RateLimitControl) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.rateLimitCallback = control
+}
+
+func (self *tunnelTerminator) GetAndClearRateLimitCallback() rate.RateLimitControl {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	result := self.rateLimitCallback
+	self.rateLimitCallback = nil
+	return result
 }

@@ -142,7 +142,7 @@ func (self *hostedServiceRegistry) evaluateEstablishQueue() {
 			continue
 		}
 
-		if terminator.state.Load() != TerminatorStateEstablishing {
+		if terminator.state.Load() != xgress_common.TerminatorStateEstablishing {
 			dequeue()
 			continue
 		}
@@ -185,7 +185,7 @@ func (self *hostedServiceRegistry) evaluateDeleteQueue() {
 
 		delete(self.deleteSet, terminatorId)
 
-		if terminator.state.Load() != TerminatorStateDeleting {
+		if terminator.state.Load() != xgress_common.TerminatorStateDeleting {
 			continue
 		}
 
@@ -283,7 +283,7 @@ func (self *hostedServiceRegistry) requeueForDeleteSync(terminators []*edgeTermi
 	for _, terminator := range terminators {
 		existing, _ := self.terminators.Get(terminator.terminatorId)
 		if existing == nil || existing == terminator { // make sure we're still the current terminator
-			terminator.setState(TerminatorStateDeleting, "deleting")
+			terminator.setState(xgress_common.TerminatorStateDeleting, "deleting")
 			terminator.operationActive.Store(false)
 			self.deleteSet[terminator.terminatorId] = terminator
 		}
@@ -400,7 +400,7 @@ func (self *hostedServiceRegistry) requeueRemoveTerminatorAsync(terminator *edge
 
 func (self *hostedServiceRegistry) requeueRemoveTerminatorSync(terminator *edgeTerminator) {
 	existing, _ := self.terminators.Get(terminator.terminatorId)
-	if existing == nil || existing == terminator && terminator.state.Load() == TerminatorStateDeleting { // make sure we're still the current terminator
+	if existing == nil || existing == terminator && terminator.state.Load() == xgress_common.TerminatorStateDeleting { // make sure we're still the current terminator
 		terminator.operationActive.Store(false)
 		self.deleteSet[terminator.terminatorId] = terminator
 	}
@@ -414,7 +414,7 @@ func (self *hostedServiceRegistry) queueRemoveTerminatorSync(terminator *edgeTer
 }
 
 func (self *hostedServiceRegistry) queueRemoveTerminatorUnchecked(terminator *edgeTerminator, reason string) {
-	terminator.setState(TerminatorStateDeleting, reason)
+	terminator.setState(xgress_common.TerminatorStateDeleting, reason)
 	terminator.operationActive.Store(false)
 	self.deleteSet[terminator.terminatorId] = terminator
 }
@@ -430,17 +430,17 @@ func (self *hostedServiceRegistry) scanForRetries() {
 	var retryList []*edgeTerminator
 
 	self.terminators.IterCb(func(_ string, terminator *edgeTerminator) {
-		state := terminator.state.Load()
-		if state.IsWorkRequired() && time.Since(terminator.lastAttempt) > 2*time.Minute {
+		currentState := terminator.state.Load()
+		if currentState.IsWorkRequired() && time.Since(terminator.lastAttempt) > 2*time.Minute {
 			retryList = append(retryList, terminator)
 		}
 	})
 
 	for _, terminator := range retryList {
-		state := terminator.state.Load()
-		if state == TerminatorStateEstablishing {
+		currentState := terminator.state.Load()
+		if currentState == xgress_common.TerminatorStateEstablishing {
 			self.queueEstablishTerminatorSync(terminator)
-		} else if state == TerminatorStateDeleting {
+		} else if currentState == xgress_common.TerminatorStateDeleting {
 			self.requeueRemoveTerminatorSync(terminator)
 		}
 	}
@@ -635,18 +635,18 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 }
 
 func (self *hostedServiceRegistry) HandleReconnect() {
-	var restablishList []*edgeTerminator
+	var reestablishList []*edgeTerminator
 	self.terminators.IterCb(func(_ string, terminator *edgeTerminator) {
-		if terminator.updateState(TerminatorStateEstablished, TerminatorStateEstablishing, "reconnecting") {
-			restablishList = append(restablishList, terminator)
+		if terminator.updateState(xgress_common.TerminatorStateEstablished, xgress_common.TerminatorStateEstablishing, "reconnecting") {
+			reestablishList = append(reestablishList, terminator)
 		}
 	})
 
 	// wait for verify terminator events to come in
 	time.Sleep(10 * time.Second)
 
-	for _, terminator := range restablishList {
-		if terminator.state.Load() == TerminatorStateEstablishing {
+	for _, terminator := range reestablishList {
+		if terminator.state.Load() == xgress_common.TerminatorStateEstablishing {
 			self.queueEstablishTerminatorAsync(terminator)
 		}
 	}
@@ -848,7 +848,7 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 		matches := self.terminator.edgeClientConn == existing.edgeClientConn &&
 			self.terminator.token == existing.token &&
 			self.terminator.MsgChannel.Id() == existing.MsgChannel.Id() &&
-			existing.state.Load() != TerminatorStateDeleting
+			existing.state.Load() != xgress_common.TerminatorStateDeleting
 
 		if matches {
 			log = log.WithField("existingTerminatorId", existing.terminatorId)
@@ -870,7 +870,7 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 			// sometimes things happen close together. we need to try to notify replaced terminators
 			// that they're being closed in case they're the newer, still open connection
 			existing.close(registry, true, false, "found a newer terminator for listener id")
-			existing.setState(TerminatorStateDeleting, "newer terminator found for listener id")
+			existing.setState(xgress_common.TerminatorStateDeleting, "newer terminator found for listener id")
 
 			log = log.WithField("existingTerminatorId", existing.terminatorId)
 			log.Info("taking over terminator from existing bind")
@@ -969,7 +969,7 @@ func (self *markEstablishedEvent) handle(registry *hostedServiceRegistry) {
 		rateLimitCallback.Success()
 	}
 
-	if !self.terminator.updateState(TerminatorStateEstablishing, TerminatorStateEstablished, self.reason) {
+	if !self.terminator.updateState(xgress_common.TerminatorStateEstablishing, xgress_common.TerminatorStateEstablished, self.reason) {
 		log.Info("received additional terminator created notification")
 	} else {
 		log.Info("terminator established")
