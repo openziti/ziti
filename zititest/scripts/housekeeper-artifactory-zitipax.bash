@@ -1,6 +1,35 @@
-#!/usr/in/env bash
+#!/usr/bin/env bash
 
-set -euo pipefail
+set -o errexit
+set -o nounset
+set -o pipefail
+
+function _usage {
+cat <<USAGE
+
+Usage: $BASENAME --artifacts ARTIFACT... [OPTIONS]
+
+Prompts for confirmation before deleting each selected artifact unless --quiet.
+
+Required:
+  --artifacts ARTIFACT...  One or more artifacts to process
+                          Valid artifacts: ${KNOWN_ARTIFACTS[*]}
+
+Options:
+  --age DAYS              Match artifacts older than DAYS days (default: ${AGE})
+  --stages STAGE...       Search repositories from the pre-release or stable sets, or both (default: ${STAGES[*]})
+                          Valid stages: ${!KNOWN_STAGES[*]}
+  --version VERSION       Narrow selection glob-match artifact version (example: 3.2.1* matches 3.2.1-2 and 3.2.1~234)
+  --glob GLOB             Narrow selection by glob-match artifact name (default: ${GLOB})
+  --dry-run               Disable communication with Artifactory
+  --quiet                 Skip the delete confirmation prompt
+  --help                  Show this help message
+
+Example:
+  $BASENAME --artifacts openziti ziti-edge-tunnel --age 60 --stages testing
+USAGE
+    
+}
 
 BASENAME=$(basename "$0")
 typeset -a  ARTIFACTS=() \
@@ -11,15 +40,22 @@ typeset -A KNOWN_STAGES=(
     [release]='zitipax-openziti-(rpm|deb)-stable'
 )
 
-: "${AGE:=30}"  # days
+DRY_RUN=''
+VERSION=''
+: "${AGE:=0}"  # days
 : "${CI:=0}"    # jfrog CLI is interactive and prompts for confirmation by default
-: "${DRY_RUN:=0}"
 : "${QUIET:=0}"
+: "${STAGES:=testing}"
+: "${GLOB:=*}"
 
 export CI
 
 while (( $# )); do
     case ${1} in
+        --help|-h)
+            _usage
+            exit 0
+            ;;
         --artifacts)
             shift
             while [[ $# -gt 0 && ! ${1} =~ ^-- ]]; do
@@ -29,6 +65,8 @@ while (( $# )); do
             for ARTIFACT in "${ARTIFACTS[@]}"; do
                 for KNOWN in "${KNOWN_ARTIFACTS[@]}"; do
                     if [[ ${ARTIFACT} == "${KNOWN}" ]]; then
+                        # De-duplicate the list before continuing
+                        ARTIFACTS=($(printf '%s\n' "${ARTIFACTS[@]}" | sort -u))
                         continue 2
                     fi
                 done
@@ -45,6 +83,8 @@ while (( $# )); do
             for STAGE in "${STAGES[@]}"; do
                 for KNOWN in "${!KNOWN_STAGES[@]}"; do
                     if [[ ${STAGE} == "${KNOWN}" ]]; then
+                        # De-duplicate the list before continuing
+                        STAGES=($(printf '%s\n' "${STAGES[@]}" | sort -u))
                         continue 2
                     fi
                 done
@@ -53,21 +93,13 @@ while (( $# )); do
             done
             echo "INFO: operating on repos from stage(s): ${STAGES[*]}" >&2
             ;;
-        --quiet)  # suppress jfrog CLI interactive prompts unless --dry-run
-            if (( DRY_RUN )); then
-                echo "WARN: --quiet ignored because --dry-run" >&2
-            else
-                QUIET=1
-                CI=1
-            fi
+        --quiet)  # suppress jfrog CLI interactive prompts
+            QUIET=1
+            CI=1
             shift
             ;;
-        --dry-run)  # re-enable jfrog CLI interactive safety prompts before destructive actions in case parent env has CI=1
-            if (( QUIET )); then
-                echo "WARN: --quiet ignored because --dry-run" >&2
-            fi
+        --dry-run)  # disable communication with Artifactory
             DRY_RUN=1
-            CI=0
             shift
             ;;
         --age)
@@ -90,8 +122,18 @@ while (( $# )); do
                 shift
             fi
             ;;
-        --help|\?|*)
-            echo "Usage: $BASENAME --artifacts openziti ziti-edge-tunnel [--age DAYS|--stages testing release|--dry-run|--quiet|--glob GLOB]"
+        --version)
+            shift
+            if [[ ${1} =~ ^-- ]]; then
+                echo "ERROR: --version VERSION requires a string argument" >&2
+                exit 1
+            else
+                VERSION="$1"
+                shift
+            fi
+            ;;
+        \?|*)
+            _usage
             exit 0
             ;;
     esac
@@ -101,27 +143,28 @@ if [[ ${#ARTIFACTS[@]} -eq 0 ]]; then
     echo "ERROR: no artifacts specified, need one or more of ${KNOWN_ARTIFACTS[*]}" >&2
     exit 1
 else
-    echo "INFO: artifacts are ${ARTIFACTS[*]}" >&2
+    echo "INFO: searching for artifacts: ${ARTIFACTS[*]}" >&2
 fi
 
-if [[ ${#STAGES[@]} -eq 0 ]]; then
-    echo "INFO: default stage is 'testing'" >&2
-    STAGES=(testing)
+if (( CI )) && ! (( DRY_RUN )); then
+    echo "WARNING: pausing for 10s before permanently deleting the selected artifacts, press Ctrl-C to abort" >&2;
+    sleep 10;
 fi
-
-(( CI )) && {
-    echo "WARNING: permanently deleting" >&2;
-    sleep 9;
-}
 
 for STAGE in "${STAGES[@]}"; do
     while read -r REPO; do
         for ARTIFACT in "${ARTIFACTS[@]}"; do
-            for META in rpm.metadata.name deb.name; do
-                    echo "INFO: deleting ${REPO}/${ARTIFACT}" >&2
-                    jf rt search --include 'created;path' --props "${META}=${ARTIFACT}" "${REPO}/${GLOB:-*}" \
-                    | jq --arg OLDEST "$(date --date "-${AGE} days" -Is)" '.[]|select(.created < $OLDEST)|.path' \
-                    | xargs -rl jf rt delete
+            echo "INFO: deleting ${REPO}/${ARTIFACT} matching '${GLOB}'" >&2
+            for META in rpm.metadata.name,rpm.metadata.version deb.name,deb.version; do
+                _meta_name=${META%%,*}
+                _meta="${_meta_name}=${ARTIFACT}"
+                if [[ -n ${VERSION} ]]; then
+                    _meta_version=${META#*,}
+                    _meta+=";${_meta_version}=${VERSION}"
+                fi
+                jf rt search --include 'created;path' --props "${_meta}" "${REPO}/${GLOB}" \
+                | jq --arg OLDEST "$(date --date "-${AGE} days" -Is)" '.[]|select(.created < $OLDEST)|.path' \
+                | xargs --no-run-if-empty --max-lines=1 --verbose --open-tty jf rt delete ${DRY_RUN:+--dry-run}
             done
         done
     done < <(

@@ -109,39 +109,18 @@ If a release is found to be faulty, the downstream artifacts can be rolled back 
 
 The first step is to ensure the GitHub release is not marked "latest," and the highest good release is marked "latest." Do not delete the faulty release (assets) or Git tag.
 
-- Linux packages - The released semver is removed from the stable repo and must not be reused. To arm this script, uncomment the `DELETE="--quiet"` line and set `BAD_VERSION`.
+- Linux packages - Run [zititest/scripts/housekeeper-artifactory-zitipax.bash --help](./zititest/scripts/housekeeper-artifactory-zitipax.bash) for usage hints. The goal is to delete the bad semver from all Linux package repositories (all platforms, all package managers, etc.).
+
+    Once the bad semver is removed from the stable repo, it must not be reused.
+
+    You must target one or more artifact names, e.g., `--artifacts openziti openziti-console`.
 
     ```bash
-    (set -euxopipefail
-
-      ARTIFACTORY_REPO='zitipax-openziti-(rpm|deb)-stable'
-      DELETE="--dry-run"
-      : DELETE="--quiet"
-      BAD_VERSION=0.0.1
-
-      declare -a ARTIFACTS=(openziti{,-controller,-router})
-
-      if [[ $DELETE =~ quiet ]] && {
-        echo "WARNING: permanently deleting" >&2;
-        sleep 9;
-      }
-
-      for META in rpm.metadata deb;
-      do
-        for ARTIFACT in ${ARTIFACTS[@]};
-        do
-          while read;
-          do
-            jf rt search --props "${META}.name=${ARTIFACT};${META}.version=${BAD_VERSION}" "${REPLY}/*" \
-            | jq '.[].path' \
-            | xargs -rl jf rt del $DELETE;
-          done< <(
-            jf rt cl -sS /api/repositories \
-            | jq --raw-output --arg artifactory "${ARTIFACTORY_REPO}" '.[]|select(.key|match($artifactory))|.key'
-          )
-        done
-      done
-    )
+    # dry run without confirmation prompts in all stable repos
+    ./housekeeper-artifactory-zitipax.bash --stages release --artifacts openziti --version 2.3.4 --dry-run --quiet
+    
+    # destructive run with confirmation prompts in all stable repos
+    ./housekeeper-artifactory-zitipax.bash --stages release --artifacts openziti --version 2.3.4
     ```
 
 - Container images - The `:latest` tag is moved to the last good release semver. To ready the script, set `GOOD_VERSION`.
