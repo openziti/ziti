@@ -151,9 +151,11 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 	}
 
 	stateEnv.GetNetworkControllers().AddChangeListener(env.CtrlEventListenerFunc(func(event env.CtrlEvent) {
-		select {
-		case result.endpointsChanged <- event:
-		default:
+		if event.Type != env.ControllerLeaderChange {
+			select {
+			case result.endpointsChanged <- event:
+			default:
+			}
 		}
 	}))
 

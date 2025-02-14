@@ -539,6 +539,8 @@ message CreateTunnelTerminatorRequestV2 {
 message CreateTunnelTerminatorResponseV2 {
   string terminatorId = 1;
   int64 startTime = 2;
+  CreateTerminatorResult result = 3;
+  string msg = 4;
 }
 
 message UpdateTunnelTerminatorRequest {

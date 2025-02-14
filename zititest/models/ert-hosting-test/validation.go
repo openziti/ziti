@@ -89,7 +89,7 @@ func validateTerminatorsForCtrlWithChan(c *model.Component, deadline time.Time, 
 }
 
 func validateTerminatorsForCtrl(c *model.Component, deadline time.Time) error {
-	expectedTerminatorCount := int64(6000)
+	expectedTerminatorCount := len(c.GetModel().SelectComponents(".router")) * 10
 	username := c.MustStringVariable("credentials.edge.username")
 	password := c.MustStringVariable("credentials.edge.password")
 	edgeApiBaseUrl := c.Host.PublicIp + ":1280"
@@ -129,7 +129,7 @@ func validateTerminatorsForCtrl(c *model.Component, deadline time.Time) error {
 		if err != nil {
 			return nil
 		}
-		if terminatorCount == expectedTerminatorCount {
+		if terminatorCount == int64(expectedTerminatorCount) {
 			terminatorsPresent = true
 		} else {
 			time.Sleep(5 * time.Second)
@@ -147,7 +147,7 @@ func validateTerminatorsForCtrl(c *model.Component, deadline time.Time) error {
 	}
 
 	for {
-		count, err := validateRouterSdkTerminators(c.Id, clients)
+		count, err := validateRouterErtTerminators(c.Id, clients)
 		if err == nil {
 			return nil
 		}
@@ -156,7 +156,7 @@ func validateTerminatorsForCtrl(c *model.Component, deadline time.Time) error {
 			return err
 		}
 
-		logger.Infof("current count of invalid sdk terminators: %v, elapsed time: %v", count, time.Since(start))
+		logger.Infof("current count of invalid ert terminators: %v, elapsed time: %v", count, time.Since(start))
 		time.Sleep(15 * time.Second)
 	}
 }
@@ -178,23 +178,23 @@ func getTerminatorCount(clients *zitirest.Clients) (int64, error) {
 	return count, nil
 }
 
-func validateRouterSdkTerminators(id string, clients *zitirest.Clients) (int, error) {
+func validateRouterErtTerminators(id string, clients *zitirest.Clients) (int, error) {
 	logger := pfxlog.Logger().WithField("ctrl", id)
 
 	closeNotify := make(chan struct{})
 	eventNotify := make(chan *mgmt_pb.RouterErtTerminatorsDetails, 1)
 
-	handleSdkTerminatorResults := func(msg *channel.Message, _ channel.Channel) {
+	handleErtTerminatorResults := func(msg *channel.Message, _ channel.Channel) {
 		detail := &mgmt_pb.RouterErtTerminatorsDetails{}
 		if err := proto.Unmarshal(msg.Body, detail); err != nil {
-			pfxlog.Logger().WithError(err).Error("unable to unmarshal router sdk terminator details")
+			pfxlog.Logger().WithError(err).Error("unable to unmarshal router ert terminator details")
 			return
 		}
 		eventNotify <- detail
 	}
 
 	bindHandler := func(binding channel.Binding) error {
-		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_ValidateRouterErtTerminatorsResultType), handleSdkTerminatorResults)
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_ValidateRouterErtTerminatorsResultType), handleErtTerminatorResults)
 		binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 			close(closeNotify)
 		}))

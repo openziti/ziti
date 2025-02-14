@@ -20,7 +20,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/ctrl_msg"
-	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/router/xgress"
@@ -30,11 +29,10 @@ import (
 	"time"
 )
 
-func (self *tunneler) IsTerminatorValid(_ string, destination string) bool {
-	terminator, found := self.terminators.Get(destination)
-	if terminator != nil {
-		terminator.created.Store(true)
-		terminator.NotifyCreated()
+func (self *tunneler) IsTerminatorValid(id string, destination string) bool {
+	terminator, found := self.hostedServices.Get(id)
+	if found {
+		self.hostedServices.markEstablished(terminator, "validation message received")
 	}
 	return found
 }
@@ -47,7 +45,7 @@ func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		WithField("binding", "tunnel").
 		WithField("destination", destination)
 
-	terminator, ok := self.terminators.Get(destination)
+	terminator, ok := self.hostedServices.Get(destination)
 	if !ok {
 		return nil, xgress.InvalidTerminatorError{InnerError: errors.Errorf("tunnel terminator for destination %v not found", destination)}
 	}
@@ -85,24 +83,9 @@ func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
 	return peerData, nil
 }
 
-func (self *tunneler) Inspect(key string, _ time.Duration) any {
+func (self *tunneler) Inspect(key string, timeout time.Duration) any {
 	if key == "ert-terminators" {
-		var result []*inspect.ErtTerminatorInspectDetail
-		self.terminators.IterCb(func(key string, terminator *tunnelTerminator) {
-			state := "established"
-			if terminator.closed.Load() {
-				state = "closed"
-			} else if !terminator.created.Load() {
-				state = "pending"
-			}
-
-			detail := &inspect.ErtTerminatorInspectDetail{
-				Key:   key,
-				Id:    terminator.id,
-				State: state,
-			}
-			result = append(result, detail)
-		})
+		return self.hostedServices.Inspect(timeout)
 	}
 	return nil
 }

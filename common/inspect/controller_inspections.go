@@ -28,4 +28,5 @@ type ControllerInspectDetail struct {
 	Latency              string `json:"latency"`
 	Version              string `json:"version"`
 	TimeSinceLastContact string `json:"timeSinceLastContact"`
+	IsLeader             bool   `json:"isLeader"`
 }
