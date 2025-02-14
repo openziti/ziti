@@ -817,6 +817,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		}
 
 		peer.Version = versionInfo
+		peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
 
 		binding.AddReceiveHandlerF(RaftDataType, peer.handleReceiveData)
 		binding.AddReceiveHandlerF(RaftConnectType, peer.handleReceiveConnect)
