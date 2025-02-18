@@ -85,6 +85,10 @@ enum Header {
   RouterDataModelIndex = 1025;
 }
 
+enum CacheType {
+  TerminatorIds = 0;
+}
+
 message ServerHello {
   string version = 1;
   map<string, string> data = 2;
@@ -140,10 +144,15 @@ enum ServicePolicyRelatedEntityType {
   RelatedPostureCheck = 3;
 }
 
+message Cache {
+  map<string, bytes> data = 1;
+}
+
 message DataState {
   repeated Event events = 1;
   uint64 endIndex = 2;
   string timelineId = 3;
+  map<string, Cache> caches = 4;
 
   enum Action {
     Create = 0;

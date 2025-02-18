@@ -509,7 +509,7 @@ func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, resetSu
 	existing := sm.routerDataModel.Swap(model)
 	if existing != nil {
 		existing.Stop()
-		model.InheritSubscribers(existing)
+		model.InheritLocalData(existing)
 		existingIndex, _ := existing.CurrentIndex()
 		logger = logger.WithField("existingIndex", existingIndex)
 		if index < existingIndex {
