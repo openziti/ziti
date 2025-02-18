@@ -60,8 +60,8 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 				Info("Found existing Identity, skipping create")
 			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping Identity %s\r", name)
 
-			// if the identity exists, and it's not a 'default' identity, update the identity's attributes from the input data
-			if strings.ToLower(*existing.TypeID) != "default" {
+			// if the identity exists, and it's not a 'default' identity or it's the default admin, update the identity's attributes from the input data
+			if strings.ToLower(*existing.TypeID) != "default" || *existing.IsDefaultAdmin {
 
 				var attributes = rest_model.Attributes{}
 				for _, attr := range doc.Path("roleAttributes").Data().([]interface{}) {
@@ -98,6 +98,10 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 		}
 
 		create := FromMap(data, rest_model.IdentityCreate{})
+		if "true" == doc.Path("isDefaultAdmin").Data() {
+			log.Debug("Not creating default admin")
+			continue
+		}
 
 		typeId := doc.Path("TypeID").Data()
 		if typeId == nil || strings.ToLower(typeId.(string)) == "default" {
@@ -119,7 +123,7 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 			create.AuthPolicyID = policy.(*rest_model.AuthPolicyDetail).ID
 		}
 
-		// do the actual create since it doesn't exist, but only if it's a "default" identity
+		// do the actual creation since it doesn't exist, but only if it's a "default" identity
 		if *create.Type == rest_model.IdentityTypeDefault {
 			_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Identity %s\r", *create.Name)
 			created, createErr := importer.Client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)

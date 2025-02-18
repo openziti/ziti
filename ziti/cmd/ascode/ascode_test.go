@@ -167,6 +167,10 @@ func performAllTest(t *testing.T) {
 	assert.NotEmpty(t, jsonquery.FindOne(identity2, "/roleAttributes").Value())
 	assert.Equal(t, "ident-attr-1", jsonquery.FindOne(identity2, "/roleAttributes/*[1]").Value())
 	assert.Equal(t, "ident-attr-2", jsonquery.FindOne(identity2, "/roleAttributes/*[2]").Value())
+	identity3 := jsonquery.FindOne(doc, "//identities/*[name='Admin-Registered']")
+	assert.NotNil(t, identity3)
+	assert.NotEmpty(t, jsonquery.FindOne(identity3, "/roleAttributes").Value())
+	assert.Equal(t, "attr1", jsonquery.FindOne(identity3, "/roleAttributes/*[1]").Value())
 
 	config1 := jsonquery.FindOne(doc, "//configs/*[name='service2-intercept-config']")
 	assert.NotNil(t, config1)

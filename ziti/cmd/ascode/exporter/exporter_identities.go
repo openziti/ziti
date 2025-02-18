@@ -60,38 +60,32 @@ func (exporter Exporter) GetIdentities() ([]map[string]interface{}, error) {
 
 			item := entity.(*rest_model.IdentityDetail)
 
-			// only exporter regular identities and not the default admin
-			if !*item.IsDefaultAdmin {
+			// convert to a map of values
+			m, err := exporter.ToMap(item)
+			if err != nil {
+				log.WithError(err).Error("error converting Identity to map")
+			}
+			exporter.defaultRoleAttributes(m)
 
-				// convert to a map of values
-				m, err := exporter.ToMap(item)
-				if err != nil {
-					log.WithError(err).Error("error converting Identity to map")
-				}
-				exporter.defaultRoleAttributes(m)
+			// filter unwanted properties
+			exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
+				"defaultHostingCost", "defaultHostingPrecedence", "hasApiSession", "serviceHostingPrecedences", "enrollment",
+				"appData", "sdkInfo", "disabledAt", "disabledUntil", "serviceHostingCosts", "envInfo", "authenticators", "type", "authPolicyId",
+				"hasRouterConnection", "hasEdgeRouterConnection"})
 
-				// filter unwanted properties
-				exporter.Filter(m, []string{"id", "_links", "createdAt", "updatedAt",
-					"defaultHostingCost", "defaultHostingPrecedence", "hasApiSession", "serviceHostingPrecedences", "enrollment",
-					"appData", "sdkInfo", "disabledAt", "disabledUntil", "serviceHostingCosts", "envInfo", "authenticators", "type", "authPolicyId",
-					"hasRouterConnection", "hasEdgeRouterConnection"})
-
-				if item.DisabledUntil != nil {
-					m["disabledUntil"] = item.DisabledUntil
-				}
-
-				// translate ids to names
-				authPolicy, lookupErr := ascode.GetItemFromCache(exporter.authPolicyCache, *item.AuthPolicyID, func(id string) (interface{}, error) {
-					return exporter.Client.AuthPolicy.DetailAuthPolicy(&auth_policy.DetailAuthPolicyParams{ID: id}, nil)
-				})
-				if lookupErr != nil {
-					return nil, errors.Join(errors.New("error reading Auth Policy: "+*item.AuthPolicyID), lookupErr)
-				}
-				m["authPolicy"] = "@" + *authPolicy.(*auth_policy.DetailAuthPolicyOK).GetPayload().Data.Name
-				return m, nil
+			if item.DisabledUntil != nil {
+				m["disabledUntil"] = item.DisabledUntil
 			}
 
-			return nil, nil
+			// translate ids to names
+			authPolicy, lookupErr := ascode.GetItemFromCache(exporter.authPolicyCache, *item.AuthPolicyID, func(id string) (interface{}, error) {
+				return exporter.Client.AuthPolicy.DetailAuthPolicy(&auth_policy.DetailAuthPolicyParams{ID: id}, nil)
+			})
+			if lookupErr != nil {
+				return nil, errors.Join(errors.New("error reading Auth Policy: "+*item.AuthPolicyID), lookupErr)
+			}
+			m["authPolicy"] = "@" + *authPolicy.(*auth_policy.DetailAuthPolicyOK).GetPayload().Data.Name
+			return m, nil
 		})
 
 }

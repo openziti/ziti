@@ -497,11 +497,12 @@ identities:
     disabled: false
     edgeRouterConnectionStatus: null
     externalId: null
-    isDefaultAdmin: false
+    isDefaultAdmin: true
     isMfaEnabled: false
-    isAdmin: false
+    isAdmin: true
     name: Admin-Registered
-    roleAttributes: []
+    roleAttributes:
+        - attr1
     tags: {}
     typeId: Default
 postureChecks:
