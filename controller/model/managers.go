@@ -53,6 +53,7 @@ type Managers struct {
 	Config                  *ConfigManager
 	ConfigType              *ConfigTypeManager
 	Controller              *ControllerManager
+	ControllerSetting       *ControllerSettingManager
 	EdgeRouter              *EdgeRouterManager
 	EdgeRouterPolicy        *EdgeRouterPolicyManager
 	EdgeService             *EdgeServiceManager
@@ -97,6 +98,7 @@ func (managers *Managers) Init(env Env) *Managers {
 	managers.Config = NewConfigManager(env)
 	managers.ConfigType = NewConfigTypeManager(env)
 	managers.Controller = NewControllerManager(env)
+	managers.ControllerSetting = newControllerSettingManager(env)
 	managers.EdgeRouter = NewEdgeRouterManager(env)
 	managers.EdgeRouterPolicy = NewEdgeRouterPolicyManager(env)
 	managers.EdgeService = NewEdgeServiceManager(env)

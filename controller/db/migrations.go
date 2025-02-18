@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 37
+	CurrentDbVersion = 38
 	FieldVersion     = "version"
 )
 
@@ -176,6 +176,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 37 {
 		m.setAuthenticatorIsIssuedByNetwork(step)
+	}
+
+	if step.CurrentVersion < 38 {
+		m.addGlobalControllerConfig(step)
 	}
 
 	// current version
