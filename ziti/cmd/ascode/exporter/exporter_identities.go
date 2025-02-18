@@ -61,7 +61,7 @@ func (exporter Exporter) GetIdentities() ([]map[string]interface{}, error) {
 			item := entity.(*rest_model.IdentityDetail)
 
 			// only exporter regular identities and not the default admin
-			if *item.TypeID != "Router" && !*item.IsDefaultAdmin {
+			if !*item.IsDefaultAdmin {
 
 				// convert to a map of values
 				m, err := exporter.ToMap(item)

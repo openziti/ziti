@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
 	"slices"
+	"strings"
 )
 
 func (importer *Importer) IsIdentityImportRequired(args []string) bool {
@@ -34,35 +35,77 @@ func (importer *Importer) IsIdentityImportRequired(args []string) bool {
 		slices.Contains(args, "identity")
 }
 
-func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map[string]string, error) {
+func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map[string]string, map[string]string, error) {
 
-	var result = map[string]string{}
+	var createdResult = map[string]string{}
+	var updatedResult = map[string]string{}
 
 	for _, data := range input["identities"] {
-		create := FromMap(data, rest_model.IdentityCreate{})
-
-		existing := mgmt.IdentityFromFilter(importer.Client, mgmt.NameFilter(*create.Name))
-		if existing != nil {
-			log.WithFields(map[string]interface{}{
-				"name":       *create.Name,
-				"identityId": *existing.ID,
-			}).
-				Info("Found existing Identity, skipping create")
-			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping Identity %s\r", *create.Name)
-			continue
-		}
-
-		// set the type because it is not in the input
-		typ := rest_model.IdentityTypeDefault
-		create.Type = &typ
 
 		// convert to a json doc so we can query inside the data
 		jsonData, _ := json.Marshal(data)
 		doc, jsonParseError := gabs.ParseJSON(jsonData)
 		if jsonParseError != nil {
 			log.WithError(jsonParseError).Error("Unable to parse json")
-			return nil, jsonParseError
+			return nil, nil, jsonParseError
 		}
+
+		name := doc.Path("name").Data().(string)
+		existing := mgmt.IdentityFromFilter(importer.Client, mgmt.NameFilter(name))
+		if existing != nil {
+			log.WithFields(map[string]interface{}{
+				"name":       name,
+				"identityId": *existing.ID,
+			}).
+				Info("Found existing Identity, skipping create")
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Skipping Identity %s\r", name)
+
+			// if the identity exists, and it's not a 'default' identity, update the identity's attributes from the input data
+			if strings.ToLower(*existing.TypeID) != "default" {
+
+				var attributes = rest_model.Attributes{}
+				for _, attr := range doc.Path("roleAttributes").Data().([]interface{}) {
+					attributes = append(attributes, ""+attr.(string)+"")
+				}
+				update := rest_model.IdentityPatch{
+					RoleAttributes: &attributes,
+				}
+				_, _ = internal.FPrintfReusingLine(importer.Err, "Updating Identity %s's attributes\r", name)
+				_, updateErr := importer.Client.Identity.PatchIdentity(&identity.PatchIdentityParams{ID: *existing.ID, Identity: &update}, nil)
+				if updateErr != nil {
+					if payloadErr, ok := updateErr.(rest_util.ApiErrorPayload); ok {
+						log.WithFields(map[string]interface{}{
+							"field":  payloadErr.GetPayload().Error.Cause.APIFieldError.Field,
+							"reason": payloadErr.GetPayload().Error.Cause.APIFieldError.Reason,
+						}).
+							Error("Unable to update Identity")
+						return nil, nil, updateErr
+					} else {
+						log.WithError(updateErr).Error("Unable to update Identity")
+						return nil, nil, updateErr
+					}
+				}
+
+				log.WithFields(map[string]interface{}{
+					"name":       name,
+					"identityId": *existing.ID,
+				}).
+					Info("Updated identity")
+
+				updatedResult[name] = *existing.ID
+			}
+			continue
+		}
+
+		create := FromMap(data, rest_model.IdentityCreate{})
+
+		typeId := doc.Path("TypeID").Data()
+		if typeId == nil || strings.ToLower(typeId.(string)) == "default" {
+			create.Type = rest_model.IdentityType.Pointer(rest_model.IdentityTypeDefault)
+		} else if strings.ToLower(typeId.(string)) == "router" {
+			create.Type = rest_model.IdentityType.Pointer(rest_model.IdentityTypeRouter)
+		}
+
 		policyName := doc.Path("authPolicy").Data().(string)[1:]
 
 		// look up the auth policy id from the name and add to the create, omit if it's the "Default" policy
@@ -70,38 +113,41 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 			return mgmt.AuthPolicyFromFilter(importer.Client, mgmt.NameFilter(name)), nil
 		})
 		if policy == nil {
-			return nil, errors.New("error reading Auth Policy: " + policyName)
+			return nil, nil, errors.New("error reading Auth Policy: " + policyName)
 		}
 		if policy != "" && policy != "Default" {
 			create.AuthPolicyID = policy.(*rest_model.AuthPolicyDetail).ID
 		}
 
-		// do the actual create since it doesn't exist
-		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Identity %s\r", *create.Name)
-		created, createErr := importer.Client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
-		if createErr != nil {
-			if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
-				log.WithFields(map[string]interface{}{
-					"field":  payloadErr.GetPayload().Error.Cause.APIFieldError.Field,
-					"reason": payloadErr.GetPayload().Error.Cause.APIFieldError.Reason,
-				}).
-					Error("Unable to create Identity")
-				return nil, createErr
-			} else {
-				log.WithError(createErr).Error("Unable to create Identity")
-				return nil, createErr
+		// do the actual create since it doesn't exist, but only if it's a "default" identity
+		if *create.Type == rest_model.IdentityTypeDefault {
+			_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Identity %s\r", *create.Name)
+			created, createErr := importer.Client.Identity.CreateIdentity(&identity.CreateIdentityParams{Identity: create}, nil)
+			if createErr != nil {
+				if payloadErr, ok := createErr.(rest_util.ApiErrorPayload); ok {
+					log.WithFields(map[string]interface{}{
+						"field":  payloadErr.GetPayload().Error.Cause.APIFieldError.Field,
+						"reason": payloadErr.GetPayload().Error.Cause.APIFieldError.Reason,
+					}).
+						Error("Unable to create Identity")
+					return nil, nil, createErr
+				} else {
+					log.WithError(createErr).Error("Unable to create Identity")
+					return nil, nil, createErr
+				}
 			}
-		}
-		log.WithFields(map[string]interface{}{
-			"name":       *create.Name,
-			"identityId": created.Payload.Data.ID,
-		}).
-			Info("Created identity")
+			log.WithFields(map[string]interface{}{
+				"name":       *create.Name,
+				"identityId": created.Payload.Data.ID,
+			}).
+				Info("Created identity")
 
-		result[*create.Name] = created.Payload.Data.ID
+			createdResult[*create.Name] = created.Payload.Data.ID
+		}
+
 	}
 
-	return result, nil
+	return createdResult, updatedResult, nil
 }
 
 func (importer *Importer) lookupIdentities(roles []string) ([]string, error) {

@@ -33,6 +33,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 	"io"
+	"maps"
 	"os"
 	"strings"
 )
@@ -175,45 +176,6 @@ func (importer *Importer) Execute(entities []string) error {
 	}
 	result["certificateAuthorities"] = cas
 
-	externalJwtSigners := map[string]string{}
-	if importer.IsExtJwtSignerImportRequired(args) {
-		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ExtJWTSigners")
-		var err error
-		externalJwtSigners, err = importer.ProcessExternalJwtSigners(importer.Data)
-		if err != nil {
-			return err
-		}
-		log.WithField("externalJwtSigners", externalJwtSigners).Debug("ExtJWTSigners created")
-		_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d ExtJWTSigners\r\n", len(externalJwtSigners))
-	}
-	result["externalJwtSigners"] = externalJwtSigners
-
-	authPolicies := map[string]string{}
-	if importer.IsAuthPolicyImportRequired(args) {
-		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating AuthPolicies")
-		var err error
-		authPolicies, err = importer.ProcessAuthPolicies(importer.Data)
-		if err != nil {
-			return err
-		}
-		log.WithField("authPolicies", authPolicies).Debug("AuthPolicies created")
-		_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d AuthPolicies\r\n", len(authPolicies))
-	}
-	result["authPolicies"] = authPolicies
-
-	identities := map[string]string{}
-	if importer.IsIdentityImportRequired(args) {
-		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Identities")
-		var err error
-		identities, err = importer.ProcessIdentities(importer.Data)
-		if err != nil {
-			return err
-		}
-		log.WithField("identities", identities).Debug("Identities created")
-		_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d Identities\r\n", len(identities))
-	}
-	result["identities"] = identities
-
 	configTypes := map[string]string{}
 	if importer.IsConfigTypeImportRequired(args) {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ConfigTypes")
@@ -278,6 +240,52 @@ func (importer *Importer) Execute(entities []string) error {
 		_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d EdgeRouters\r\n", len(routers))
 	}
 	result["edgeRouters"] = routers
+
+	externalJwtSigners := map[string]string{}
+	if importer.IsExtJwtSignerImportRequired(args) {
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating ExtJWTSigners")
+		var err error
+		externalJwtSigners, err = importer.ProcessExternalJwtSigners(importer.Data)
+		if err != nil {
+			return err
+		}
+		log.WithField("externalJwtSigners", externalJwtSigners).Debug("ExtJWTSigners created")
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d ExtJWTSigners\r\n", len(externalJwtSigners))
+	}
+	result["externalJwtSigners"] = externalJwtSigners
+
+	authPolicies := map[string]string{}
+	if importer.IsAuthPolicyImportRequired(args) {
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating AuthPolicies")
+		var err error
+		authPolicies, err = importer.ProcessAuthPolicies(importer.Data)
+		if err != nil {
+			return err
+		}
+		log.WithField("authPolicies", authPolicies).Debug("AuthPolicies created")
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d AuthPolicies\r\n", len(authPolicies))
+	}
+	result["authPolicies"] = authPolicies
+
+	identitiesCreated := map[string]string{}
+	identitiesUpdated := map[string]string{}
+	if importer.IsIdentityImportRequired(args) {
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Creating Identities")
+		var err error
+		identitiesCreated, identitiesUpdated, err = importer.ProcessIdentities(importer.Data)
+		if err != nil {
+			return err
+		}
+		log.WithFields(map[string]interface{}{
+			"created": maps.Keys(identitiesCreated),
+			"updated": maps.Keys(identitiesUpdated),
+		}).Debug("Identities created")
+		_, _ = internal.FPrintfReusingLine(importer.Err, "Created %d Identities, Updated %d Identities\r\n", len(identitiesCreated), len(identitiesUpdated))
+	}
+	for k, v := range identitiesUpdated {
+		identitiesCreated[k] = v
+	}
+	result["identities"] = identitiesCreated
 
 	serviceEdgeRouterPolicies := map[string]string{}
 	if importer.IsServiceEdgeRouterPolicyImportRequired(args) {
