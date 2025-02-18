@@ -178,28 +178,36 @@ file, enrollment should handle initializing the value appropriately.
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/agent: [v1.0.23 -> v1.0.25](https://github.com/openziti/agent/compare/v1.0.23...v1.0.25)
-* github.com/openziti/channel/v3: [v3.0.26 -> v3.0.31](https://github.com/openziti/channel/compare/v3.0.26...v3.0.31)
-* github.com/openziti/edge-api: [v0.26.38 -> v0.26.39](https://github.com/openziti/edge-api/compare/v0.26.38...v0.26.39)
-* github.com/openziti/foundation/v2: [v2.0.56 -> v2.0.57](https://github.com/openziti/foundation/compare/v2.0.56...v2.0.57)
-* github.com/openziti/identity: [v1.0.94 -> v1.0.98](https://github.com/openziti/identity/compare/v1.0.94...v1.0.98)
-* github.com/openziti/metrics: [v1.2.65 -> v1.2.66](https://github.com/openziti/metrics/compare/v1.2.65...v1.2.66)
-* github.com/openziti/runzmd: [v1.0.59 -> v1.0.63](https://github.com/openziti/runzmd/compare/v1.0.59...v1.0.63)
+* github.com/openziti/agent: [v1.0.23 -> v1.0.26](https://github.com/openziti/agent/compare/v1.0.23...v1.0.26)
+* github.com/openziti/channel/v3: [v3.0.26 -> v3.0.37](https://github.com/openziti/channel/compare/v3.0.26...v3.0.37)
+    * [Issue #168](https://github.com/openziti/channel/issues/168) - Add DisconnectHandler to reconnecting channel
+
+* github.com/openziti/edge-api: [v0.26.38 -> v0.26.41](https://github.com/openziti/edge-api/compare/v0.26.38...v0.26.41)
+* github.com/openziti/foundation/v2: [v2.0.56 -> v2.0.58](https://github.com/openziti/foundation/compare/v2.0.56...v2.0.58)
+* github.com/openziti/identity: [v1.0.94 -> v1.0.100](https://github.com/openziti/identity/compare/v1.0.94...v1.0.100)
+* github.com/openziti/metrics: [v1.2.65 -> v1.2.69](https://github.com/openziti/metrics/compare/v1.2.65...v1.2.69)
+* github.com/openziti/runzmd: [v1.0.59 -> v1.0.65](https://github.com/openziti/runzmd/compare/v1.0.59...v1.0.65)
 * github.com/openziti/sdk-golang: [v0.23.44 -> v0.24.1](https://github.com/openziti/sdk-golang/compare/v0.23.44...v0.24.1)
     * [Issue #673](https://github.com/openziti/sdk-golang/issues/673) - Add license check to GH workflow
     * [Issue #663](https://github.com/openziti/sdk-golang/issues/663) - Add API to allow controlling proxying connections to controllers and routers.
     * [Issue #659](https://github.com/openziti/sdk-golang/issues/659) - E2E encryption can encounter ordering issues with high-volume concurrent writes
 
-* github.com/openziti/secretstream: [v0.1.28 -> v0.1.29](https://github.com/openziti/secretstream/compare/v0.1.28...v0.1.29)
-* github.com/openziti/storage: [v0.3.15 -> v0.4.3](https://github.com/openziti/storage/compare/v0.3.15...v0.4.3)
+* github.com/openziti/secretstream: [v0.1.28 -> v0.1.31](https://github.com/openziti/secretstream/compare/v0.1.28...v0.1.31)
+* github.com/openziti/storage: [v0.3.15 -> v0.4.5](https://github.com/openziti/storage/compare/v0.3.15...v0.4.5)
     * [Issue #94](https://github.com/openziti/storage/issues/94) - Snapshots aren't working correctly
 
-* github.com/openziti/transport/v2: [v2.0.159 -> v2.0.162](https://github.com/openziti/transport/compare/v2.0.159...v2.0.162)
+* github.com/openziti/transport/v2: [v2.0.159 -> v2.0.165](https://github.com/openziti/transport/compare/v2.0.159...v2.0.165)
 * github.com/openziti/xweb/v2: [v2.1.3 -> v2.2.1](https://github.com/openziti/xweb/compare/v2.1.3...v2.2.1)
     * [Issue #18](https://github.com/openziti/xweb/issues/18) - verify advertised host/ip has a certificate defined in the identity block
 
 * github.com/openziti/ziti: [v1.3.3 -> v1.4.0](https://github.com/openziti/ziti/compare/v1.3.3...v1.4.0)
-    * [Issue #2785](https://github.com/openziti/ziti/issues/2785) - Controller db state not always updated
+    * [Issue #2807](https://github.com/openziti/ziti/issues/2807) - Cache ER/T terminator ids in the router for faster restarts
+    * [Issue #2288](https://github.com/openziti/ziti/issues/2288) - Edge router/tunneler hosting Chaos Test
+    * [Issue #2821](https://github.com/openziti/ziti/issues/2821) - Add --human-readable and --max-depth options to ziti ops db du
+    * [Issue #2742](https://github.com/openziti/ziti/issues/2742) - Add event when non-member peer connects and doesn't join
+    * [Issue #2738](https://github.com/openziti/ziti/issues/2738) - Cluster operations should return 503 not 500 if there's no leader
+    * [Issue #2712](https://github.com/openziti/ziti/issues/2712) - /version is missing OIDC API
+    * [Issue #2785](https://github.com/openziti/ziti/issues/2785) - Peer data model state not always updated
     * [Issue #2737](https://github.com/openziti/ziti/issues/2737) - OIDC issue mismatch with alt server certs
     * [Issue #2774](https://github.com/openziti/ziti/issues/2774) - API Session Certificate SPIFFE IDs fail validation in Routers
     * [Issue #2672](https://github.com/openziti/ziti/issues/2672) - [Bug] Posture check PUT method doesn't update nested structures but works fine with PATCH

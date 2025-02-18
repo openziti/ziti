@@ -409,12 +409,14 @@ func (self *DeleteTerminatorsBatchCommand) Apply(ctx boltz.MutateContext) error 
 func (self *DeleteTerminatorsBatchCommand) Encode() ([]byte, error) {
 	return cmd_pb.EncodeProtobuf(&cmd_pb.DeleteTerminatorsBatchCommand{
 		EntityIds: self.Ids,
+		Ctx:       self.Context.ToProtoBuf(),
 	})
 }
 
 func (self *DeleteTerminatorsBatchCommand) Decode(env Env, msg *cmd_pb.DeleteTerminatorsBatchCommand) error {
 	self.Manager = env.GetManagers().Terminator
 	self.Ids = msg.EntityIds
+	self.Context = change.FromProtoBuf(msg.Ctx)
 	return nil
 }
 

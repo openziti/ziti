@@ -429,7 +429,8 @@ func (self *RouterMessaging) processQueuedDeletes() {
 
 	err := self.routerCommPool.QueueOrError(func() {
 		changeCtx := change.New().SetChangeAuthorName(self.env.GetId()).
-			SetChangeAuthorType(change.AuthorTypeController)
+			SetChangeAuthorType(change.AuthorTypeController).
+			SetSourceType(change.SourceTypeControlChannel)
 		if err := self.env.GetManagers().Terminator.DeleteBatch(toDelete, changeCtx); err != nil {
 			for _, terminatorId := range toDelete {
 				log.WithField("terminatorId", terminatorId).
@@ -588,6 +589,9 @@ func (self *terminatorValidationRespReceived) handle(c *RouterMessaging) {
 		if terminator, ok := states.terminators[terminatorId]; ok {
 			if state.Marker == 0 || state.Marker == terminator.marker {
 				if !state.Valid {
+					pfxlog.Logger().WithField("terminatorId", terminatorId).
+						WithField("reason", state.Reason.String()).
+						Info("terminator not valid, queuing terminator delete")
 					c.queuedTerminatorDeletes[terminatorId] = struct{}{}
 				}
 				delete(states.terminators, terminatorId)

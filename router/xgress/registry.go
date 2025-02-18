@@ -18,24 +18,23 @@ package xgress
 
 import (
 	"fmt"
+	"github.com/openziti/foundation/v2/concurrenz"
 )
 
 type registry struct {
-	factories map[string]Factory
+	factories concurrenz.CopyOnWriteMap[string, Factory]
 }
 
 func NewRegistry() *registry {
-	return &registry{
-		factories: make(map[string]Factory),
-	}
+	return &registry{}
 }
 
 func (registry *registry) Register(name string, factory Factory) {
-	registry.factories[name] = factory
+	registry.factories.Put(name, factory)
 }
 
 func (registry *registry) Factory(name string) (Factory, error) {
-	if factory, found := registry.factories[name]; found {
+	if factory := registry.factories.Get(name); factory != nil {
 		return factory, nil
 	} else {
 		return nil, fmt.Errorf("xgress factory [%s] not found", name)
@@ -44,7 +43,7 @@ func (registry *registry) Factory(name string) (Factory, error) {
 
 func (registry *registry) List() []string {
 	names := make([]string, 0)
-	for k := range registry.factories {
+	for k := range registry.factories.AsMap() {
 		names = append(names, k)
 	}
 	return names
