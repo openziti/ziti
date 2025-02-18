@@ -256,6 +256,19 @@ identities:
       - client
     tags: {}
     typeId: Default
+  - authPolicy: '@Default'
+    disabled: false
+    edgeRouterConnectionStatus: offline
+    externalId: null
+    isAdmin: false
+    isDefaultAdmin: false
+    isMfaEnabled: false
+    name: public-router1
+    roleAttributes:
+      - ident-attr-1
+      - ident-attr-2
+    tags: {}
+    typeId: Router
   - authPolicy: '@NetFoundry Console Integration Auth Policy'
     disabled: false
     edgeRouterConnectionStatus: null
@@ -484,11 +497,12 @@ identities:
     disabled: false
     edgeRouterConnectionStatus: null
     externalId: null
-    isDefaultAdmin: false
+    isDefaultAdmin: true
     isMfaEnabled: false
-    isAdmin: false
+    isAdmin: true
     name: Admin-Registered
-    roleAttributes: []
+    roleAttributes:
+        - attr1
     tags: {}
     typeId: Default
 postureChecks:
