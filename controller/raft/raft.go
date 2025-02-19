@@ -170,6 +170,16 @@ func (self *Controller) GetEventDispatcher() event.Dispatcher {
 	return self.env.GetEventDispatcher()
 }
 
+func (self *Controller) IsPeerMember(id string) bool {
+	result := self.Fsm.GetCurrentState(self.Raft)
+	for _, srv := range result.Servers {
+		if string(srv.ID) == id {
+			return true
+		}
+	}
+	return false
+}
+
 func (self *Controller) GetListenerHeaders() map[int32][]byte {
 	return map[int32][]byte{
 		mesh.ClusterIdHeader: []byte(self.clusterId.Load()),
