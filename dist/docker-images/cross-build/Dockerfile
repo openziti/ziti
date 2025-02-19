@@ -5,7 +5,7 @@ FROM debian:bullseye-slim
 #
 
 ARG TARGETARCH
-ARG golang_version=1.22.1
+ARG golang_version=1.23.2
 ARG go_distribution_file=go${golang_version}.linux-${TARGETARCH}.tar.gz
 ARG go_path=/usr/share/go
 ARG go_root=/usr/local/go
@@ -32,4 +32,3 @@ ENV PATH=${go_path}/bin:${go_root}/bin:$PATH
 RUN go install github.com/mitchellh/gox@latest
 WORKDIR /mnt
 ENTRYPOINT ["linux-build.sh"]
-
