@@ -9,7 +9,6 @@ FROM openziti/ziti-console-assets:3.9.1 AS ziti-console
 FROM ${ZITI_CLI_IMAGE}:${ZITI_CLI_TAG}
 
 ARG CONTROLLER_PACKAGE=./dist/dist-packages/linux/openziti-controller
-ARG DOCKER_BUILD_DIR=.
 
 ### Required Labels for OpenShift 
 LABEL name="openziti/ziti-controller" \
