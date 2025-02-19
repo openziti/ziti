@@ -256,3 +256,47 @@ func (o *UpdateRouterTooManyRequests) WriteResponse(rw http.ResponseWriter, prod
 		}
 	}
 }
+
+// UpdateRouterServiceUnavailableCode is the HTTP code returned for type UpdateRouterServiceUnavailable
+const UpdateRouterServiceUnavailableCode int = 503
+
+/*UpdateRouterServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+
+swagger:response updateRouterServiceUnavailable
+*/
+type UpdateRouterServiceUnavailable struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewUpdateRouterServiceUnavailable creates UpdateRouterServiceUnavailable with default headers values
+func NewUpdateRouterServiceUnavailable() *UpdateRouterServiceUnavailable {
+
+	return &UpdateRouterServiceUnavailable{}
+}
+
+// WithPayload adds the payload to the update router service unavailable response
+func (o *UpdateRouterServiceUnavailable) WithPayload(payload *rest_model.APIErrorEnvelope) *UpdateRouterServiceUnavailable {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the update router service unavailable response
+func (o *UpdateRouterServiceUnavailable) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *UpdateRouterServiceUnavailable) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(503)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

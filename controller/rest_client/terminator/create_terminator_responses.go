@@ -71,6 +71,12 @@ func (o *CreateTerminatorReader) ReadResponse(response runtime.ClientResponse, c
 			return nil, err
 		}
 		return nil, result
+	case 503:
+		result := NewCreateTerminatorServiceUnavailable()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -193,6 +199,38 @@ func (o *CreateTerminatorTooManyRequests) GetPayload() *rest_model.APIErrorEnvel
 }
 
 func (o *CreateTerminatorTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewCreateTerminatorServiceUnavailable creates a CreateTerminatorServiceUnavailable with default headers values
+func NewCreateTerminatorServiceUnavailable() *CreateTerminatorServiceUnavailable {
+	return &CreateTerminatorServiceUnavailable{}
+}
+
+/* CreateTerminatorServiceUnavailable describes a response with status code 503, with default header values.
+
+The request could not be completed due to the server being busy or in a temporarily bad state
+*/
+type CreateTerminatorServiceUnavailable struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *CreateTerminatorServiceUnavailable) Error() string {
+	return fmt.Sprintf("[POST /terminators][%d] createTerminatorServiceUnavailable  %+v", 503, o.Payload)
+}
+func (o *CreateTerminatorServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *CreateTerminatorServiceUnavailable) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

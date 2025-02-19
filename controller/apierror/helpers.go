@@ -407,3 +407,13 @@ func NewClusterHasNoLeaderError() *errorz.ApiError {
 		Status:  ClusterHasNoLeaderStatus,
 	}
 }
+
+func NewTransferLeadershipError(err error) *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:        TransferLeadershipErrorCode,
+		Message:     TransferLeadershipErrorMessage,
+		Status:      TransferLeadershipErrorStatus,
+		Cause:       err,
+		AppendCause: true,
+	}
+}

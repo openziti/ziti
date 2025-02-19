@@ -71,6 +71,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
   '/services/{id}':
     parameters:
@@ -115,6 +117,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
     patch:
       summary: Update the supplied fields on a service
@@ -140,6 +144,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
     delete:
       summary: Delete a service
@@ -158,6 +164,8 @@ paths:
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
   '/services/{id}/terminators':
     parameters:
@@ -228,6 +236,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
   '/routers/{id}':
     parameters:
@@ -272,6 +282,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
     patch:
       summary: Update the supplied fields on a router
@@ -297,6 +309,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
     delete:
       summary: Delete a router
@@ -315,6 +329,8 @@ paths:
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
   '/routers/{id}/terminators':
     parameters:
@@ -387,6 +403,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
   '/terminators/{id}':
     parameters:
@@ -431,6 +449,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
     patch:
       summary: Update the supplied fields on a terminator
@@ -456,6 +476,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
     delete:
       summary: Delete a terminator
@@ -474,6 +496,8 @@ paths:
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
   ###################################################################
   # Links
@@ -541,6 +565,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
     delete:
       summary: Delete a link
@@ -557,6 +583,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
   ###################################################################
   # Circuits
@@ -624,6 +652,8 @@ paths:
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
   ###################################################################
   # Inspections
@@ -784,6 +814,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
   '/cluster/remove-member':
     post:
@@ -810,6 +842,8 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
   '/cluster/transfer-leadership':
     post:
@@ -836,6 +870,8 @@ paths:
           $ref: '#/responses/rateLimitedResponse'
         '500':
           $ref: '#/responses/badRequestResponse'
+        '503':
+          $ref: '#/responses/serverUnavailableResponse'
 
 #######################################################################################################################
 #
@@ -1008,6 +1044,11 @@ responses:
     description: The create request was successful and the resource has been added at the following location
     schema:
       $ref: '#/definitions/createEnvelope'
+  serverUnavailableResponse:
+    description: The request could not be completed due to the server being busy or in a temporarily bad state
+    schema:
+      $ref: '#/definitions/apiErrorEnvelope'
+
   ###################################################################
   # Services
   ##################################################################

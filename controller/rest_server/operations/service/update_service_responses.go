@@ -256,3 +256,47 @@ func (o *UpdateServiceTooManyRequests) WriteResponse(rw http.ResponseWriter, pro
 		}
 	}
 }
+
+// UpdateServiceServiceUnavailableCode is the HTTP code returned for type UpdateServiceServiceUnavailable
+const UpdateServiceServiceUnavailableCode int = 503
+
+/*UpdateServiceServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+
+swagger:response updateServiceServiceUnavailable
+*/
+type UpdateServiceServiceUnavailable struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewUpdateServiceServiceUnavailable creates UpdateServiceServiceUnavailable with default headers values
+func NewUpdateServiceServiceUnavailable() *UpdateServiceServiceUnavailable {
+
+	return &UpdateServiceServiceUnavailable{}
+}
+
+// WithPayload adds the payload to the update service service unavailable response
+func (o *UpdateServiceServiceUnavailable) WithPayload(payload *rest_model.APIErrorEnvelope) *UpdateServiceServiceUnavailable {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the update service service unavailable response
+func (o *UpdateServiceServiceUnavailable) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *UpdateServiceServiceUnavailable) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(503)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

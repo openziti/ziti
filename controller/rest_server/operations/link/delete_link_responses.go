@@ -212,3 +212,47 @@ func (o *DeleteLinkTooManyRequests) WriteResponse(rw http.ResponseWriter, produc
 		}
 	}
 }
+
+// DeleteLinkServiceUnavailableCode is the HTTP code returned for type DeleteLinkServiceUnavailable
+const DeleteLinkServiceUnavailableCode int = 503
+
+/*DeleteLinkServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+
+swagger:response deleteLinkServiceUnavailable
+*/
+type DeleteLinkServiceUnavailable struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewDeleteLinkServiceUnavailable creates DeleteLinkServiceUnavailable with default headers values
+func NewDeleteLinkServiceUnavailable() *DeleteLinkServiceUnavailable {
+
+	return &DeleteLinkServiceUnavailable{}
+}
+
+// WithPayload adds the payload to the delete link service unavailable response
+func (o *DeleteLinkServiceUnavailable) WithPayload(payload *rest_model.APIErrorEnvelope) *DeleteLinkServiceUnavailable {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the delete link service unavailable response
+func (o *DeleteLinkServiceUnavailable) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *DeleteLinkServiceUnavailable) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(503)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

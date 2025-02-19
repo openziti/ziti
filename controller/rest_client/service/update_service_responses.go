@@ -77,6 +77,12 @@ func (o *UpdateServiceReader) ReadResponse(response runtime.ClientResponse, cons
 			return nil, err
 		}
 		return nil, result
+	case 503:
+		result := NewUpdateServiceServiceUnavailable()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -231,6 +237,38 @@ func (o *UpdateServiceTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope
 }
 
 func (o *UpdateServiceTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewUpdateServiceServiceUnavailable creates a UpdateServiceServiceUnavailable with default headers values
+func NewUpdateServiceServiceUnavailable() *UpdateServiceServiceUnavailable {
+	return &UpdateServiceServiceUnavailable{}
+}
+
+/* UpdateServiceServiceUnavailable describes a response with status code 503, with default header values.
+
+The request could not be completed due to the server being busy or in a temporarily bad state
+*/
+type UpdateServiceServiceUnavailable struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *UpdateServiceServiceUnavailable) Error() string {
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceServiceUnavailable  %+v", 503, o.Payload)
+}
+func (o *UpdateServiceServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *UpdateServiceServiceUnavailable) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

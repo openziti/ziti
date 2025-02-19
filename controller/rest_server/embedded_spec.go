@@ -156,6 +156,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -196,6 +199,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       }
@@ -258,6 +264,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       }
@@ -296,6 +305,9 @@ func init() {
           },
           "500": {
             "$ref": "#/responses/badRequestResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       }
@@ -542,6 +554,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -578,6 +593,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -648,6 +666,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       }
@@ -708,6 +729,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -733,6 +757,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -769,6 +796,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -879,6 +909,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       }
@@ -939,6 +972,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -964,6 +1000,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -1000,6 +1039,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -1113,6 +1155,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       }
@@ -1173,6 +1218,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -1198,6 +1246,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -1234,6 +1285,9 @@ func init() {
           },
           "429": {
             "$ref": "#/responses/rateLimitedResponse"
+          },
+          "503": {
+            "$ref": "#/responses/serverUnavailableResponse"
           }
         }
       },
@@ -2749,6 +2803,12 @@ func init() {
         }
       }
     },
+    "serverUnavailableResponse": {
+      "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+      "schema": {
+        "$ref": "#/definitions/apiErrorEnvelope"
+      }
+    },
     "unauthorizedResponse": {
       "description": "The currently supplied session does not have the correct access rights to request this resource",
       "schema": {
@@ -3113,6 +3173,12 @@ func init() {
                 }
               }
             }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            }
           }
         }
       },
@@ -3234,6 +3300,12 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
             }
           }
         }
@@ -3476,6 +3548,12 @@ func init() {
                 }
               }
             }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            }
           }
         }
       }
@@ -3614,6 +3692,12 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
             }
           }
         }
@@ -4320,6 +4404,12 @@ func init() {
                 }
               }
             }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            }
           }
         }
       },
@@ -4456,6 +4546,12 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
             }
           }
         }
@@ -4658,6 +4754,12 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
             }
           }
         }
@@ -4887,6 +4989,12 @@ func init() {
                 }
               }
             }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            }
           }
         }
       },
@@ -5011,6 +5119,12 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
             }
           }
         }
@@ -5148,6 +5262,12 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
             }
           }
         }
@@ -5479,6 +5599,12 @@ func init() {
                 }
               }
             }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            }
           }
         }
       }
@@ -5707,6 +5833,12 @@ func init() {
                 }
               }
             }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            }
           }
         }
       },
@@ -5831,6 +5963,12 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
             }
           }
         }
@@ -5968,6 +6106,12 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
             }
           }
         }
@@ -6336,6 +6480,12 @@ func init() {
                 }
               }
             }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            }
           }
         }
       }
@@ -6564,6 +6714,12 @@ func init() {
                 }
               }
             }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            }
           }
         }
       },
@@ -6688,6 +6844,12 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
             }
           }
         }
@@ -6825,6 +6987,12 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "503": {
+            "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
             }
           }
         }
@@ -8348,6 +8516,12 @@ func init() {
             "apiVersion": "0.0.1"
           }
         }
+      }
+    },
+    "serverUnavailableResponse": {
+      "description": "The request could not be completed due to the server being busy or in a temporarily bad state",
+      "schema": {
+        "$ref": "#/definitions/apiErrorEnvelope"
       }
     },
     "unauthorizedResponse": {

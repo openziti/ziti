@@ -77,6 +77,12 @@ func (o *PatchTerminatorReader) ReadResponse(response runtime.ClientResponse, co
 			return nil, err
 		}
 		return nil, result
+	case 503:
+		result := NewPatchTerminatorServiceUnavailable()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -231,6 +237,38 @@ func (o *PatchTerminatorTooManyRequests) GetPayload() *rest_model.APIErrorEnvelo
 }
 
 func (o *PatchTerminatorTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPatchTerminatorServiceUnavailable creates a PatchTerminatorServiceUnavailable with default headers values
+func NewPatchTerminatorServiceUnavailable() *PatchTerminatorServiceUnavailable {
+	return &PatchTerminatorServiceUnavailable{}
+}
+
+/* PatchTerminatorServiceUnavailable describes a response with status code 503, with default header values.
+
+The request could not be completed due to the server being busy or in a temporarily bad state
+*/
+type PatchTerminatorServiceUnavailable struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *PatchTerminatorServiceUnavailable) Error() string {
+	return fmt.Sprintf("[PATCH /terminators/{id}][%d] patchTerminatorServiceUnavailable  %+v", 503, o.Payload)
+}
+func (o *PatchTerminatorServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *PatchTerminatorServiceUnavailable) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

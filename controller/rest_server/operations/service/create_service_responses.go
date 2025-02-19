@@ -212,3 +212,47 @@ func (o *CreateServiceTooManyRequests) WriteResponse(rw http.ResponseWriter, pro
 		}
 	}
 }
+
+// CreateServiceServiceUnavailableCode is the HTTP code returned for type CreateServiceServiceUnavailable
+const CreateServiceServiceUnavailableCode int = 503
+
+/*CreateServiceServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+
+swagger:response createServiceServiceUnavailable
+*/
+type CreateServiceServiceUnavailable struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewCreateServiceServiceUnavailable creates CreateServiceServiceUnavailable with default headers values
+func NewCreateServiceServiceUnavailable() *CreateServiceServiceUnavailable {
+
+	return &CreateServiceServiceUnavailable{}
+}
+
+// WithPayload adds the payload to the create service service unavailable response
+func (o *CreateServiceServiceUnavailable) WithPayload(payload *rest_model.APIErrorEnvelope) *CreateServiceServiceUnavailable {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the create service service unavailable response
+func (o *CreateServiceServiceUnavailable) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *CreateServiceServiceUnavailable) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(503)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
