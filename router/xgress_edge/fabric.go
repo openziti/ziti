@@ -43,40 +43,6 @@ var headersFromFabric = map[uint8]int32{
 	xgress_common.PayloadFlagsHeader: edge.FlagsHeader,
 }
 
-type terminatorState int
-
-const (
-	TerminatorStateEstablishing terminatorState = 1
-	TerminatorStateEstablished  terminatorState = 2
-	TerminatorStateDeleting     terminatorState = 3
-)
-
-func (self terminatorState) String() string {
-	switch self {
-	case TerminatorStateEstablishing:
-		return "establishing"
-	case TerminatorStateEstablished:
-		return "established"
-	case TerminatorStateDeleting:
-		return "deleting"
-	default:
-		return "unknown"
-	}
-}
-
-func (self terminatorState) IsWorkRequired() bool {
-	switch self {
-	case TerminatorStateEstablishing:
-		return true
-	case TerminatorStateDeleting:
-		return true
-	case TerminatorStateEstablished:
-		return false
-	default:
-		return false
-	}
-}
-
 type edgeTerminator struct {
 	edge.MsgChannel
 	edgeClientConn    *edgeClientConn
@@ -91,7 +57,7 @@ type edgeTerminator struct {
 	assignIds         bool
 	onClose           func()
 	v2                bool
-	state             concurrenz.AtomicValue[terminatorState]
+	state             concurrenz.AtomicValue[xgress_common.TerminatorState]
 	supportsInspect   bool
 	operationActive   atomic.Bool
 	createTime        time.Time
@@ -122,14 +88,14 @@ func (self *edgeTerminator) replace(other *edgeTerminator) {
 }
 
 func (self *edgeTerminator) IsEstablishing() bool {
-	return self.state.Load() == TerminatorStateEstablishing
+	return self.state.Load() == xgress_common.TerminatorStateEstablishing
 }
 
 func (self *edgeTerminator) IsDeleting() bool {
-	return self.state.Load() == TerminatorStateDeleting
+	return self.state.Load() == xgress_common.TerminatorStateDeleting
 }
 
-func (self *edgeTerminator) setState(state terminatorState, reason string) {
+func (self *edgeTerminator) setState(state xgress_common.TerminatorState, reason string) {
 	if oldState := self.state.Load(); oldState != state {
 		self.state.Store(state)
 		pfxlog.Logger().WithField("terminatorId", self.terminatorId).
@@ -140,7 +106,7 @@ func (self *edgeTerminator) setState(state terminatorState, reason string) {
 	}
 }
 
-func (self *edgeTerminator) updateState(oldState, newState terminatorState, reason string) bool {
+func (self *edgeTerminator) updateState(oldState, newState xgress_common.TerminatorState, reason string) bool {
 	log := pfxlog.Logger().WithField("terminatorId", self.terminatorId).
 		WithField("oldState", oldState).
 		WithField("newState", newState).

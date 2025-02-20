@@ -26,13 +26,13 @@ import (
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/pkg/errors"
+	"time"
 )
 
-func (self *tunneler) IsTerminatorValid(_ string, destination string) bool {
-	terminator, found := self.terminators.Get(destination)
-	if terminator != nil {
-		terminator.created.Store(true)
-		terminator.NotifyCreated()
+func (self *tunneler) IsTerminatorValid(id string, destination string) bool {
+	terminator, found := self.hostedServices.Get(id)
+	if found {
+		self.hostedServices.markEstablished(terminator, "validation message received")
 	}
 	return found
 }
@@ -45,7 +45,7 @@ func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		WithField("binding", "tunnel").
 		WithField("destination", destination)
 
-	terminator, ok := self.terminators.Get(destination)
+	terminator, ok := self.hostedServices.Get(destination)
 	if !ok {
 		return nil, xgress.InvalidTerminatorError{InnerError: errors.Errorf("tunnel terminator for destination %v not found", destination)}
 	}
@@ -81,4 +81,11 @@ func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
 	x.Start()
 
 	return peerData, nil
+}
+
+func (self *tunneler) Inspect(key string, timeout time.Duration) any {
+	if key == "ert-terminators" {
+		return self.hostedServices.Inspect(timeout)
+	}
+	return nil
 }

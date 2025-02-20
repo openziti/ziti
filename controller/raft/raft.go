@@ -294,7 +294,10 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 	}
 
 	if self.IsLeader() {
-		_, err := self.applyCommand(cmd)
+		idx, err := self.applyCommand(cmd)
+		if err == nil {
+			return self.indexTracker.WaitForIndex(idx, time.Now().Add(5*time.Second))
+		}
 		return err
 	}
 

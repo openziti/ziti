@@ -487,7 +487,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 		createTime:      time.Now(),
 	}
 
-	terminator.state.Store(TerminatorStateEstablishing)
+	terminator.state.Store(xgress_common.TerminatorStateEstablishing)
 
 	checkResult, err := self.listener.factory.hostedServices.checkForExistingListenerId(terminator)
 	if err != nil {
@@ -496,7 +496,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 	}
 
 	terminator = checkResult.terminator
-	if terminator.state.Load() == TerminatorStateDeleting {
+	if terminator.state.Load() == xgress_common.TerminatorStateDeleting {
 		return
 	}
 

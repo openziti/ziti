@@ -506,6 +506,97 @@ func (self *RouterManager) ReportRouterSdkTerminatorsError(router *Router, err e
 	cb(result)
 }
 
+func (self *RouterManager) ValidateRouterErtTerminators(router *Router, cb func(detail *mgmt_pb.RouterErtTerminatorsDetails)) {
+	request := &ctrl_pb.InspectRequest{RequestedValues: []string{"ert-terminators"}}
+	resp := &ctrl_pb.InspectResponse{}
+	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
+	if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
+		self.ReportRouterErtTerminatorsError(router, err, cb)
+		return
+	}
+
+	var inspectResult *inspect.ErtTerminatorInspectResult
+	for _, val := range resp.Values {
+		if val.Name == "ert-terminators" {
+			if err = json.Unmarshal([]byte(val.Value), &inspectResult); err != nil {
+				self.ReportRouterErtTerminatorsError(router, err, cb)
+				return
+			}
+		}
+	}
+
+	if inspectResult == nil {
+		if len(resp.Errors) > 0 {
+			err = errors.New(strings.Join(resp.Errors, ","))
+			self.ReportRouterErtTerminatorsError(router, err, cb)
+			return
+		}
+		self.ReportRouterErtTerminatorsError(router, errors.New("no terminator details returned from router"), cb)
+		return
+	}
+
+	listResult, err := self.env.GetManagers().Terminator.BaseList(fmt.Sprintf(`router="%s" and binding="tunnel" limit none`, router.Id))
+	if err != nil {
+		self.ReportRouterErtTerminatorsError(router, err, cb)
+		return
+	}
+
+	result := &mgmt_pb.RouterErtTerminatorsDetails{
+		RouterId:        router.Id,
+		RouterName:      router.Name,
+		ValidateSuccess: true,
+	}
+
+	terminators := map[string]*Terminator{}
+
+	for _, terminator := range listResult.Entities {
+		terminators[terminator.Id] = terminator
+	}
+
+	for _, entry := range inspectResult.Entries {
+		detail := &mgmt_pb.RouterErtTerminatorDetail{
+			TerminatorId: entry.Id,
+			RouterState:  entry.State,
+			IsValid:      true,
+		}
+		result.Details = append(result.Details, detail)
+
+		if entry.State != "established" {
+			detail.IsValid = false
+		}
+
+		if _, found := terminators[entry.Id]; found {
+			detail.CtrlState = mgmt_pb.TerminatorState_Valid
+			delete(terminators, entry.Id)
+		} else {
+			detail.CtrlState = mgmt_pb.TerminatorState_Unknown
+			detail.IsValid = false
+		}
+	}
+
+	for _, terminator := range terminators {
+		detail := &mgmt_pb.RouterErtTerminatorDetail{
+			TerminatorId: terminator.Id,
+			CtrlState:    mgmt_pb.TerminatorState_Valid,
+			RouterState:  "unknown",
+			IsValid:      false,
+		}
+		result.Details = append(result.Details, detail)
+	}
+
+	cb(result)
+}
+
+func (self *RouterManager) ReportRouterErtTerminatorsError(router *Router, err error, cb func(detail *mgmt_pb.RouterErtTerminatorsDetails)) {
+	result := &mgmt_pb.RouterErtTerminatorsDetails{
+		RouterId:        router.Id,
+		RouterName:      router.Name,
+		ValidateSuccess: false,
+		Message:         err.Error(),
+	}
+	cb(result)
+}
+
 type RouterLinks struct {
 	sync.Mutex
 	allLinks     atomic.Value
