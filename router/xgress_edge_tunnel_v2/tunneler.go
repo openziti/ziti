@@ -33,6 +33,8 @@ import (
 	"github.com/pkg/errors"
 	"net"
 	"strings"
+	"sync/atomic"
+	"time"
 )
 
 type tunneler struct {
@@ -46,6 +48,8 @@ type tunneler struct {
 	fabricProvider  *fabricProvider
 	hostedServices  *hostedServiceRegistry
 	notifyReconnect chan struct{}
+
+	initialized atomic.Bool
 }
 
 func newTunneler(factory *Factory) *tunneler {
@@ -60,7 +64,9 @@ func newTunneler(factory *Factory) *tunneler {
 	return result
 }
 
-func (self *tunneler) Start(notifyClose <-chan struct{}) error {
+func (self *tunneler) Start() error {
+	defer self.initialized.Store(true)
+
 	var err error
 	var resolver dns.Resolver
 
@@ -106,8 +112,6 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	self.serviceListener = intercept.NewServiceListener(self.interceptor, resolver)
 	self.serviceListener.HandleProviderReady(self.fabricProvider)
 
-	//go self.removeStaleConnections(notifyClose)
-
 	if err = self.env.GetRouterDataModel().SubscribeToIdentityChanges(self.env.GetRouterId().Token, self, true); err != nil {
 		return err
 	}
@@ -115,31 +119,11 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	return nil
 }
 
-//func (self *tunneler) removeStaleConnections(notifyClose <-chan struct{}) {
-//	ticker := time.NewTicker(time.Minute)
-//	defer ticker.Stop()
-//
-//	for {
-//		select {
-//		case <-ticker.C:
-//			var toRemove []string
-//			self.hostedServices.IterCb(func(key string, t *tunnelTerminator) {
-//				if t.closed.Load() {
-//					toRemove = append(toRemove, key)
-//				}
-//			})
-//
-//			for _, key := range toRemove {
-//				if t, found := self.hostedServices.Get(key); found {
-//					self.hostedServices.Remove(key)
-//					pfxlog.Logger().Debugf("removed closed tunnel terminator %v for service %v", key, t.context.ServiceName())
-//				}
-//			}
-//		case <-notifyClose:
-//			return
-//		}
-//	}
-//}
+func (self *tunneler) WaitForInitialized() {
+	for !self.initialized.Load() {
+		time.Sleep(100 * time.Millisecond)
+	}
+}
 
 func (self *tunneler) Listen(_ string, bindHandler xgress.BindHandler) error {
 	self.bindHandler = bindHandler
