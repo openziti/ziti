@@ -12,7 +12,7 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal
 # It uses the same base as the final image to maximize docker cache hits.
 
 ARG ARTIFACTS_DIR=./release
-ARG DOCKER_BUILD_DIR=.
+ARG DOCKER_BUILD_DIR=./dist/docker-images/ziti-cli
 # e.g. linux
 ARG TARGETOS
 # e.g. arm64

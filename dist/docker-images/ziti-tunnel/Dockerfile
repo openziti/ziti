@@ -4,6 +4,8 @@ ARG ZITI_CLI_IMAGE="docker.io/openziti/ziti-cli"
 # this builds docker.io/openziti/ziti-router
 FROM ${ZITI_CLI_IMAGE}:${ZITI_CLI_TAG}
 
+ARG DOCKER_BUILD_DIR=./dist/docker-images/ziti-tunnel
+
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.
 
@@ -22,6 +24,6 @@ RUN   INSTALL_PKGS="util-linux iptables" && \
       microdnf clean all
 
 WORKDIR /netfoundry
-COPY --chmod=0755 ./entrypoint.sh /
+COPY --chmod=0755 ${DOCKER_BUILD_DIR}/entrypoint.sh /
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "run" ]
