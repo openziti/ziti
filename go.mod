@@ -1,9 +1,6 @@
 module github.com/openziti/ziti
 
 go 1.23
-
-toolchain go1.23.0
-
 require (
 	github.com/AppsFlyer/go-sundheit v0.6.0
 	github.com/Jeffail/gabs v1.4.0
@@ -30,7 +27,7 @@ require (
 	github.com/go-openapi/validate v0.24.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/golang-jwt/jwt/v5 v5.2.1
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
@@ -85,7 +82,7 @@ require (
 	github.com/zitadel/oidc/v2 v2.12.2
 	go.etcd.io/bbolt v1.4.0
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.34.0
 	golang.org/x/exp v0.0.0-20241210194714-1829a127f884
 	golang.org/x/net v0.35.0
 	golang.org/x/oauth2 v0.26.0
