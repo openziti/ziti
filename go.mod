@@ -52,18 +52,18 @@ require (
 	github.com/miekg/dns v1.1.63
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/agent v1.0.25
-	github.com/openziti/channel/v3 v3.0.36-0.20250218200147-b0d93314c252
+	github.com/openziti/agent v1.0.26
+	github.com/openziti/channel/v3 v3.0.37
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.26.39
+	github.com/openziti/edge-api v0.26.41
 	github.com/openziti/foundation/v2 v2.0.58
 	github.com/openziti/identity v1.0.100
 	github.com/openziti/jwks v1.0.6
-	github.com/openziti/metrics v1.2.66
-	github.com/openziti/runzmd v1.0.63
+	github.com/openziti/metrics v1.2.69
+	github.com/openziti/runzmd v1.0.65
 	github.com/openziti/sdk-golang v0.24.1
-	github.com/openziti/secretstream v0.1.29
-	github.com/openziti/storage v0.4.3
+	github.com/openziti/secretstream v0.1.31
+	github.com/openziti/storage v0.4.5
 	github.com/openziti/transport/v2 v2.0.165
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.2.1
@@ -76,7 +76,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
@@ -113,7 +113,7 @@ require (
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/c-bata/go-prompt v0.2.6 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect

@@ -11,21 +11,21 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/openziti/agent v1.0.25
-	github.com/openziti/channel/v3 v3.0.36-0.20250218200147-b0d93314c252
-	github.com/openziti/edge-api v0.26.39
+	github.com/openziti/agent v1.0.26
+	github.com/openziti/channel/v3 v3.0.37
+	github.com/openziti/edge-api v0.26.41
 	github.com/openziti/fablab v0.5.83
 	github.com/openziti/foundation/v2 v2.0.58
 	github.com/openziti/identity v1.0.100
 	github.com/openziti/sdk-golang v0.24.1
-	github.com/openziti/storage v0.4.3
+	github.com/openziti/storage v0.4.5
 	github.com/openziti/transport/v2 v2.0.165
 	github.com/openziti/ziti v0.28.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/bbolt v1.4.0
 	golang.org/x/net v0.35.0
@@ -51,7 +51,7 @@ require (
 	github.com/c-bata/go-prompt v0.2.6 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/coreos/go-iptables v0.8.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3 // indirect
 	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663 // indirect
@@ -143,9 +143,9 @@ require (
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/jwks v1.0.6 // indirect
-	github.com/openziti/metrics v1.2.66 // indirect
-	github.com/openziti/runzmd v1.0.63 // indirect
-	github.com/openziti/secretstream v0.1.29 // indirect
+	github.com/openziti/metrics v1.2.69 // indirect
+	github.com/openziti/runzmd v1.0.65 // indirect
+	github.com/openziti/secretstream v0.1.31 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.2.1 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
