@@ -1,6 +1,7 @@
 package xgress_edge_tunnel
 
 import (
+	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -174,9 +175,13 @@ func (self *FactoryWrapper) CreateListener(optionsData xgress.OptionsData) (xgre
 func (self *FactoryWrapper) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
 	// wait till delegate is created. Once delegate is created, we should also be calling CreateDialer on
 	// the delegate directly, as the factory will get replaced in the registry
+	start := time.Now()
 	for {
 		if delegate := self.delegate.Load(); delegate != nil {
 			return delegate.CreateDialer(optionsData)
+		}
+		if time.Since(start) > 2*time.Minute {
+			return nil, errors.New("timeout waiting for dialer to be created")
 		}
 		time.Sleep(100 * time.Millisecond)
 	}

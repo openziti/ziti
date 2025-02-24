@@ -49,6 +49,7 @@ type tunneler struct {
 	hostedServices  *hostedServiceRegistry
 	notifyReconnect chan struct{}
 
+	createTime  time.Time
 	initialized atomic.Bool
 }
 
@@ -57,6 +58,7 @@ func newTunneler(factory *Factory) *tunneler {
 		env:             factory.env,
 		hostedServices:  factory.hostedServices,
 		notifyReconnect: make(chan struct{}, 1),
+		createTime:      time.Now(),
 	}
 
 	result.fabricProvider = newProvider(factory, result)
@@ -120,7 +122,11 @@ func (self *tunneler) Start() error {
 }
 
 func (self *tunneler) WaitForInitialized() {
-	for !self.initialized.Load() {
+	if self.initialized.Load() {
+		return
+	}
+
+	for !self.initialized.Load() && time.Since(self.createTime) < (2*time.Minute) {
 		time.Sleep(100 * time.Millisecond)
 	}
 }
