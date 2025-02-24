@@ -71,6 +71,9 @@ type terminatorEvent interface {
 }
 
 func (self *hostedServiceRegistry) run() {
+	terminatorIdCacheTicker := time.NewTicker(4 * time.Hour)
+	defer terminatorIdCacheTicker.Stop()
+
 	longQueueCheckTicker := time.NewTicker(time.Minute)
 	defer longQueueCheckTicker.Stop()
 
@@ -91,6 +94,8 @@ func (self *hostedServiceRegistry) run() {
 			self.scanForRetries()
 		case <-self.triggerEvalC:
 		case <-rateLimitedTick:
+		case <-terminatorIdCacheTicker.C:
+			self.pruneTerminatorIdCache()
 		}
 
 		// events should be quick to handle, so make sure we do all them before we
@@ -112,6 +117,21 @@ func (self *hostedServiceRegistry) run() {
 		if !self.env.GetCtrlRateLimiter().IsRateLimited() {
 			self.evaluateDeleteQueue()
 		}
+	}
+}
+
+func (self *hostedServiceRegistry) pruneTerminatorIdCache() {
+	cache := self.env.GetRouterDataModel().GetTerminatorIdCache()
+
+	var toRemove []string
+	cache.IterCb(func(key string, v string) {
+		if !self.terminators.Has(v) {
+			toRemove = append(toRemove, key)
+		}
+	})
+
+	for _, key := range toRemove {
+		cache.Remove(key)
 	}
 }
 
@@ -490,6 +510,8 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *tunnelTermina
 		log.Error(errStr)
 		return errors.New(errStr)
 	}
+
+	log = log.WithField("ctrlId", ctrlCh.Id())
 
 	log.Info("sending create tunnel terminator v2 request")
 

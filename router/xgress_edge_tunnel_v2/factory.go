@@ -72,7 +72,9 @@ func (self *Factory) HandleCreateTunnelTerminatorResponse(msg *channel.Message, 
 func (self *Factory) Run(env env.RouterEnv) error {
 	self.ctrls = env.GetNetworkControllers()
 	if self.tunneler.listenOptions != nil {
-		return self.tunneler.Start(env.GetCloseNotify())
+		return self.tunneler.Start()
+	} else {
+		self.tunneler.initialized.Store(true)
 	}
 	return nil
 }
