@@ -44,7 +44,24 @@ type SdkTerminatorInspectDetail struct {
 	AssignIds       bool   `json:"assignIds"`
 	V2              bool   `json:"v2"`
 	SupportsInspect bool   `json:"supportsInspect"`
-	OperationActive bool   `json:"establishActive"`
+	OperationActive bool   `json:"operationActive"`
+	CreateTime      string `json:"createTime"`
+	LastAttempt     string `json:"lastAttempt"`
+}
+
+type ErtTerminatorInspectResult struct {
+	Entries []*ErtTerminatorInspectDetail `json:"entries"`
+	Errors  []string                      `json:"errors"`
+}
+
+type ErtTerminatorInspectDetail struct {
+	Key             string `json:"key"`
+	Id              string `json:"id"`
+	State           string `json:"state"`
+	Instance        string `json:"instance"`
+	Cost            uint16 `json:"cost"`
+	Precedence      string `json:"precedence"`
+	OperationActive bool   `json:"operationActive"`
 	CreateTime      string `json:"createTime"`
 	LastAttempt     string `json:"lastAttempt"`
 }

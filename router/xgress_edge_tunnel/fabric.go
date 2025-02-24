@@ -159,13 +159,7 @@ func (self *fabricProvider) authenticate() error {
 			Type:       "ziti-router:tunnel",
 			Version:    buildInfo.Version(),
 		},
-		ConfigTypes: []string{
-			"f2dd2df0-9c04-4b84-a91e-71437ac229f1", // client v1
-			"cea49285-6c07-42cf-9f52-09a9b115c783", // server v1
-			"g7cIWbcGg",                            // intercept.v1
-			"NH5p4FpGR",                            // host.v1
-			"host.v2",                              // host.v2
-		},
+		ConfigTypes: []string{"all"},
 	}
 
 	ctrlMap := self.factory.ctrls.GetAll()
