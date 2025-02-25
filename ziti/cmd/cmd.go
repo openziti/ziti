@@ -186,6 +186,8 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	cmd.AddCommand(common.NewVersionCmd())
 
 	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
+	cmd.AddCommand(newCommandTreeCmd())
+
 	return cmd
 }
 
@@ -229,6 +231,32 @@ func NewRootCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 'ziti' is a CLI for working with a Ziti deployment.
 `}
 	NewCmdRoot(in, out, err, ret)
-
 	return ret
+}
+
+func newCommandTreeCmd() *cobra.Command {
+	result := &cobra.Command{
+		Use:   "command-tree",
+		Short: "export the tree of ziti sub-commands",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			printCommandAndChildren(cmd.Root(), 0)
+			return nil
+		},
+	}
+	result.Hidden = true
+	return result
+}
+
+func printCommandAndChildren(cmd *cobra.Command, indent int) {
+	for i := 0; i < indent; i++ {
+		fmt.Print("    ")
+	}
+	hidden := ""
+	if cmd.Hidden {
+		hidden = " (hidden)"
+	}
+	fmt.Printf("%s %s\n", cmd.Name(), hidden)
+	for _, child := range cmd.Commands() {
+		printCommandAndChildren(child, indent+1)
+	}
 }
