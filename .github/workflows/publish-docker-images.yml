@@ -134,7 +134,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/dist/docker-images/ziti-tunnel/
+          context: ${{ github.workspace }}/
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_tun.outputs.DOCKER_TAGS }}
           build-args: |
