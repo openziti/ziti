@@ -19,11 +19,14 @@ package database
 import (
 	"fmt"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/common/outputz"
 	"github.com/spf13/cobra"
 	"go.etcd.io/bbolt"
 )
 
 type DiskUsageAction struct {
+	humanReadable bool
+	outputDepth   uint32
 }
 
 func NewDiskUsageAction() *cobra.Command {
@@ -36,11 +39,14 @@ func NewDiskUsageAction() *cobra.Command {
 		RunE:  action.Run,
 	}
 
+	cmd.Flags().BoolVarP(&action.humanReadable, "human-readable", "H", false, "human readable sizes")
+	cmd.Flags().Uint32VarP(&action.outputDepth, "max-depth", "d", 0, "how many levels deep to output")
+
 	return cmd
 }
 
 // Run implements this command
-func (o *DiskUsageAction) Run(cmd *cobra.Command, args []string) error {
+func (self *DiskUsageAction) Run(cmd *cobra.Command, args []string) error {
 	srcOptions := *bbolt.DefaultOptions
 	srcOptions.ReadOnly = true
 
@@ -69,7 +75,7 @@ func (o *DiskUsageAction) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	root.calcSize()
-	root.dump()
+	root.dump(self.humanReadable, self.outputDepth, 1)
 
 	return nil
 }
@@ -87,12 +93,18 @@ func (self *sizeNode) calcSize() {
 	}
 }
 
-func (self *sizeNode) dump() {
+func (self *sizeNode) dump(humanReadable bool, maxDepth uint32, currentDepth uint32) {
 	for _, child := range self.children {
-		child.dump()
+		child.dump(humanReadable, maxDepth, currentDepth+1)
 	}
 
-	fmt.Printf("%v: %v\n", self.path, self.size)
+	if maxDepth == 0 || currentDepth <= maxDepth {
+		if humanReadable {
+			fmt.Printf("%v: %v\n", self.path, outputz.FormatBytes(self.size))
+		} else {
+			fmt.Printf("%v: %v\n", self.path, self.size)
+		}
+	}
 }
 
 type sizeVisitor struct {
