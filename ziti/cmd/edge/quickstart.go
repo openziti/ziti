@@ -342,21 +342,33 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	if o.isHA {
 		p := common.NewOptionsProvider(o.out, o.errOut)
 		fmt.Println("waiting three seconds for controller to become ready...")
-		time.Sleep(300 * time.Second)
-		if !o.joinCommand {
-			agentInitCmd := agentcli.NewAgentClusterInit(p)
-			pid := os.Getpid()
-			args := []string{
-				o.Username,
-				o.Password,
-				o.Username,
-				fmt.Sprintf("--pid=%d", pid),
-			}
-			agentInitCmd.SetArgs(args)
 
-			agentInitErr := agentInitCmd.Execute()
-			if agentInitErr != nil {
-				return agentInitErr
+		if !o.joinCommand {
+			maxRetries := 5
+			for attempt := 1; attempt <= maxRetries; attempt++ {
+				fmt.Printf("initializing controller at port: %d\n", o.ControllerPort)
+				agentInitCmd := agentcli.NewAgentClusterInit(p)
+				pid := os.Getpid()
+				args := []string{
+					o.Username,
+					o.Password,
+					o.Username,
+					fmt.Sprintf("--pid=%d", pid),
+				}
+				agentInitCmd.SetArgs(args)
+
+				agentInitErr := agentInitCmd.Execute()
+				if agentInitErr != nil {
+					if attempt < maxRetries {
+						fmt.Println("initialization failed. waiting two seconds and trying again")
+						time.Sleep(2 * time.Second) // Wait before retrying
+					} else {
+						fmt.Println("Max retries reached. Failing.")
+						return agentInitErr
+					}
+				} else {
+					break
+				}
 			}
 		} else {
 			agentJoinCmd := agentcli.NewAgentClusterAdd(p)
