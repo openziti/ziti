@@ -138,6 +138,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 
 func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.HostControl, error) {
 	id := idgen.NewUUIDString()
+	id = self.GetCachedTerminatorId(hostCtx.ServiceId(), id)
 
 	terminator := &tunnelTerminator{
 		id:         id,
@@ -151,6 +152,21 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 	self.factory.hostedServices.EstablishTerminator(terminator)
 
 	return terminator, nil
+}
+
+func (self *fabricProvider) GetCachedTerminatorId(serviceId string, fallback string) string {
+	cache := self.factory.env.GetRouterDataModel().GetTerminatorIdCache()
+	result, found := cache.Get(serviceId)
+	if found {
+		return result
+	}
+
+	return cache.Upsert(serviceId, fallback, func(exist bool, valueInMap string, newValue string) string {
+		if exist {
+			return valueInMap
+		}
+		return newValue
+	})
 }
 
 func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, precedence *edge.Precedence) error {
@@ -239,6 +255,8 @@ func (self *tunnelTerminator) SendHealthEvent(pass bool) error {
 
 func (self *tunnelTerminator) Close() error {
 	if self.closed.CompareAndSwap(false, true) {
+		self.provider.factory.stateManager.RouterDataModel().GetTerminatorIdCache().Remove(self.context.ServiceId())
+
 		log := logrus.WithField("service", self.context.ServiceName()).
 			WithField("routerId", self.provider.factory.id.Token).
 			WithField("terminatorId", self.id)

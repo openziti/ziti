@@ -125,6 +125,7 @@ func NewFactoryWrapper(env env.RouterEnv, routerConfig *router.Config, stateMana
 		}
 
 		wrapper.delegate.Store(factory)
+		xgress.GlobalRegistry().Register(common.TunnelBinding, factory)
 
 		done := false
 		for !done {
@@ -172,11 +173,18 @@ func (self *FactoryWrapper) CreateListener(optionsData xgress.OptionsData) (xgre
 }
 
 func (self *FactoryWrapper) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
-	if delegate := self.delegate.Load(); delegate != nil {
-		return delegate.CreateDialer(optionsData)
+	// wait till delegate is created. Once delegate is created, we should also be calling CreateDialer on
+	// the delegate directly, as the factory will get replaced in the registry
+	start := time.Now()
+	for {
+		if delegate := self.delegate.Load(); delegate != nil {
+			return delegate.CreateDialer(optionsData)
+		}
+		if time.Since(start) > 2*time.Minute {
+			return nil, errors.New("timeout waiting for dialer to be created")
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
-
-	return nil, errors.New("initialization incomplete, unable to create dialer")
 }
 
 type delegatingListener struct {

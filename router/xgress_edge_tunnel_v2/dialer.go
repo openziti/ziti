@@ -31,6 +31,7 @@ import (
 )
 
 func (self *tunneler) IsTerminatorValid(id string, destination string) bool {
+	self.WaitForInitialized()
 	terminator, found := self.hostedServices.Get(id)
 	if found {
 		self.hostedServices.markEstablished(terminator, "validation message received")

@@ -62,10 +62,10 @@ func (self *clusterListMembersAction) run(cmd *cobra.Command, _ []string) error 
 	members, err := client.Cluster.ClusterListMembers(&cluster.ClusterListMembersParams{
 		Context: context.Background(),
 	})
-	if err != nil {
-		return err
-	}
+	return outputResult(members, err, &self.Options, self.outputClusterMembers)
+}
 
+func (self *clusterListMembersAction) outputClusterMembers(o *api.Options, members *cluster.ClusterListMembersOK) error {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row{"Id", "Address", "Voter", "Leader", "Version", "Connected", "ReadOnly"})
