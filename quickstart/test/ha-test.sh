@@ -81,27 +81,6 @@ for BIN in "${BINS[@]}"; do
     _check_command "$BIN"
 done
 
-function start_instance() {
-    local instance_id=$1
-    local ctrl_port=$2
-    local router_port=$3
-
-    "${BUILD_DIR}/ziti" edge quickstart ha \
-        --ctrl-address="127.0.0.1" \
-        --router-address="127.0.0.1" \
-        --home="${ziti_home}" \
-        --trust-domain="quickstart-ha-test" \
-        --instance-id="${instance_id}" \
-        --ctrl-port="${ctrl_port}" \
-        --router-port="${router_port}" \
-        > >(while IFS= read -r line; do echo "${instance_id}: $line"; done) 2>&1 &
-
-    echo $!  # Return the PID
-}
-
-#pid1=$(start_instance "inst1" 2001 3001)
-
-
 "${BUILD_DIR}/ziti" edge quickstart ha \
     --ctrl-address="127.0.0.1" \
     --router-address="127.0.0.1" \
