@@ -20,6 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/ctrl_msg"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/router/xgress"
@@ -84,7 +85,7 @@ func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
 }
 
 func (self *tunneler) Inspect(key string, timeout time.Duration) any {
-	if key == "ert-terminators" {
+	if key == inspect.ErtTerminatorsKey {
 		return self.hostedServices.Inspect(timeout)
 	}
 	return nil

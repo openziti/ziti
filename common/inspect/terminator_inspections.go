@@ -16,6 +16,11 @@
 
 package inspect
 
+const (
+	SdkTerminatorsKey = "sdk-terminators"
+	ErtTerminatorsKey = "ert-terminators"
+)
+
 type TerminatorCostDetails struct {
 	Terminators []*TerminatorCostDetail `json:"terminators"`
 }

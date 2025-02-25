@@ -258,21 +258,9 @@ var m = &model.Model{
 				}`))
 
 			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				//encryptionRequired := true
 				var tasks []parallel.LabeledTask
 				for i := 0; i < 2000; i++ {
 					name := fmt.Sprintf("service-%04d", i)
-					//
-					//task := parallel.TaskWithLabel("create.service", "create new service", func() error {
-					//	svc := &rest_model.ServiceCreate{
-					//		Configs:            configs,
-					//		EncryptionRequired: &encryptionRequired,
-					//		Name:               &name,
-					//		TerminatorStrategy: "smartrouting",
-					//	}
-					//	return models.CreateService(ctrl, svc, 15*time.Second)
-					//})
-
 					task := func() error {
 						_, err := cli.Exec(run.GetModel(), "edge", "create", "service", name, "-c", "host-config", "--timeout", "15")
 						return err

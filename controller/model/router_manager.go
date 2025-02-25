@@ -413,7 +413,7 @@ func (self *RouterManager) Unmarshall(bytes []byte) (*Router, error) {
 }
 
 func (self *RouterManager) ValidateRouterSdkTerminators(router *Router, cb func(detail *mgmt_pb.RouterSdkTerminatorsDetails)) {
-	request := &ctrl_pb.InspectRequest{RequestedValues: []string{"sdk-terminators"}}
+	request := &ctrl_pb.InspectRequest{RequestedValues: []string{inspect.SdkTerminatorsKey}}
 	resp := &ctrl_pb.InspectResponse{}
 	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
 	if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
@@ -423,7 +423,7 @@ func (self *RouterManager) ValidateRouterSdkTerminators(router *Router, cb func(
 
 	var inspectResult *inspect.SdkTerminatorInspectResult
 	for _, val := range resp.Values {
-		if val.Name == "sdk-terminators" {
+		if val.Name == inspect.SdkTerminatorsKey {
 			if err = json.Unmarshal([]byte(val.Value), &inspectResult); err != nil {
 				self.ReportRouterSdkTerminatorsError(router, err, cb)
 				return
@@ -507,7 +507,7 @@ func (self *RouterManager) ReportRouterSdkTerminatorsError(router *Router, err e
 }
 
 func (self *RouterManager) ValidateRouterErtTerminators(router *Router, cb func(detail *mgmt_pb.RouterErtTerminatorsDetails)) {
-	request := &ctrl_pb.InspectRequest{RequestedValues: []string{"ert-terminators"}}
+	request := &ctrl_pb.InspectRequest{RequestedValues: []string{inspect.ErtTerminatorsKey}}
 	resp := &ctrl_pb.InspectResponse{}
 	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
 	if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
@@ -517,7 +517,7 @@ func (self *RouterManager) ValidateRouterErtTerminators(router *Router, cb func(
 
 	var inspectResult *inspect.ErtTerminatorInspectResult
 	for _, val := range resp.Values {
-		if val.Name == "ert-terminators" {
+		if val.Name == inspect.ErtTerminatorsKey {
 			if err = json.Unmarshal([]byte(val.Value), &inspectResult); err != nil {
 				self.ReportRouterErtTerminatorsError(router, err, cb)
 				return

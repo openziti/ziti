@@ -111,9 +111,9 @@ func (context *inspectRequestContext) processLocal() {
 		} else if lc == "links" {
 			result := context.handler.env.GetXlinkRegistry().Inspect(time.Second)
 			context.handleJsonResponse(requested, result)
-		} else if lc == "sdk-terminators" {
+		} else if lc == inspect.SdkTerminatorsKey {
 			context.inspectXgressDialer("edge", requested)
-		} else if lc == "ert-terminators" {
+		} else if lc == inspect.ErtTerminatorsKey {
 			context.inspectXgressDialer("tunnel", requested)
 		} else if strings.HasPrefix(lc, "circuit:") {
 			circuitId := requested[len("circuit:"):]
