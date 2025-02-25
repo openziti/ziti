@@ -135,6 +135,7 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/
+          file: ${{ github.workspace }}/dist/docker-images/ziti-tunnel/Dockerfile
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_tun.outputs.DOCKER_TAGS }}
           build-args: |
