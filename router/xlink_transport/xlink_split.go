@@ -130,12 +130,12 @@ func (self *splitImpl) Close() error {
 		self.droppedMsgMeter.Dispose()
 	}
 	var err, err2 error
-	if self.payloadCh != nil {
-		err = self.payloadCh.Close()
+	if ch := self.payloadCh; ch != nil {
+		err = ch.Close()
 	}
 
-	if self.ackCh != nil {
-		err2 = self.ackCh.Close()
+	if ch := self.ackCh; ch != nil {
+		err2 = ch.Close()
 	}
 	if err == nil {
 		return err2

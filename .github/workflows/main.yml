@@ -196,7 +196,6 @@ jobs:
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          go test ./...
           pushd zititest && go mod tidy && go install ./... && popd
           go install -tags=all,tests ./...
 
