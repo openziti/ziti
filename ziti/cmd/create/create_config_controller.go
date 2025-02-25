@@ -203,7 +203,7 @@ func SetControllerIdentity(data *ControllerTemplateValues) {
 func SetControllerIdentityCert(c *ControllerTemplateValues) {
 	val := os.Getenv(constants.PkiCtrlCertVarName)
 	if val == "" {
-		val = helpers.GetZitiHome() + "/" + helpers.HostnameOrNetworkName() + ".cert" // default
+		val = helpers.GetZitiHome() + "/" + helpers.HostnameOrNetworkName() + "client.chain.cert" // default
 	}
 	c.Identity.Cert = helpers.NormalizePath(val)
 }

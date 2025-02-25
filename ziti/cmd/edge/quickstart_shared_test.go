@@ -32,7 +32,7 @@ import (
 	"time"
 )
 
-func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, identityID string) *ziti.Config {
+func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, identityID string) (*ziti.Config, error) {
 	// Get the identity object
 	params := &identity.DetailIdentityParams{
 		Context: context.Background(),
@@ -42,13 +42,13 @@ func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, ident
 	resp, err := client.Identity.DetailIdentity(params, nil)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// Enroll the identity
 	tkn, _, err := enroll.ParseToken(resp.GetPayload().Data.Enrollment.Ott.JWT)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	flags := enroll.EnrollmentFlags{
@@ -58,10 +58,10 @@ func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, ident
 	conf, err := enroll.Enroll(flags)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return conf
+	return conf, nil
 }
 
 var zitiContext ziti.Context
@@ -108,8 +108,7 @@ func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name 
 	// Create the identity
 	ident, err := client.Identity.CreateIdentity(p, nil)
 	if err != nil {
-		fmt.Println(err)
-		log.Fatal("Failed to create the identity")
+		log.Fatalf("Failed to create the identity: %v", err)
 	}
 
 	return ident
@@ -161,8 +160,7 @@ func getIdentityByName(client *rest_management_api_client.ZitiEdgeManagement, na
 			log.Fatalf("Could not obtain an ID for the identity named %s after retries", name)
 			return nil
 		}
-		
-		fmt.Printf("Retrying to fetch identity %s...\n", name)
+
 		time.Sleep(100 * time.Millisecond)
 	}
 }
@@ -417,7 +415,7 @@ func performQuickstartTest(t *testing.T) {
 	// Authenticate with the controller
 	caCerts, err := rest_util.GetControllerWellKnownCas(ctrlAddress)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	caPool := x509.NewCertPool()
 	for _, ca := range caCerts {
@@ -425,7 +423,7 @@ func performQuickstartTest(t *testing.T) {
 	}
 	client, err := rest_util.NewEdgeManagementClientWithUpdb(zitiAdminUsername, zitiAdminPassword, ctrlAddress, caPool)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// Create the tester identity
@@ -433,28 +431,28 @@ func performQuickstartTest(t *testing.T) {
 	defer func() { _ = deleteIdentityByID(client, ident.GetPayload().Data.ID) }()
 
 	// Enroll the identity
-	identConfig := enrollIdentity(client, ident.Payload.Data.ID)
+	identConfig, err := enrollIdentity(client, ident.Payload.Data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create a json config file
 	output, err := os.Create(testerUsername + ".json")
 	if err != nil {
-		fmt.Println(err)
-		log.Fatal("Failed to create output config file")
+		t.Fatal("Failed to create output config file")
 	}
 	defer func() {
 		_ = output.Close()
 		err = os.Remove(testerUsername + ".json")
 		if err != nil {
-			fmt.Println(err)
-			log.Fatal("Failed to delete json config file")
+			t.Fatal("Failed to delete json config file")
 		}
 	}()
 	enc := json.NewEncoder(output)
 	enc.SetEscapeHTML(false)
 	encErr := enc.Encode(&identConfig)
 	if encErr != nil {
-		fmt.Println(err)
-		log.Fatal("Failed to generate encoded output")
+		t.Fatal("Failed to generate encoded output")
 	}
 
 	// Verify all identities can access all routers
@@ -469,7 +467,7 @@ func performQuickstartTest(t *testing.T) {
 	serpParams.SetTimeout(30 * time.Second)
 	serp, err := client.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(serpParams, nil)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	defer func() { _ = deleteServiceEdgeRouterPolicyById(client, serp.Payload.Data.ID) }()
 
@@ -486,7 +484,7 @@ func performQuickstartTest(t *testing.T) {
 	erpParams.SetTimeout(30 * time.Second)
 	erp, err := client.EdgeRouterPolicy.CreateEdgeRouterPolicy(erpParams, nil)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	defer func() { _ = deleteEdgeRouterPolicyById(client, erp.Payload.Data.ID) }()
 
@@ -520,7 +518,7 @@ func performQuickstartTest(t *testing.T) {
 	currentCount := getTerminatorCountByRouterName(client, hostingRouterName)
 	termCntReached := waitForTerminatorCountByRouterName(client, hostingRouterName, currentCount+1, 30*time.Second)
 	if !termCntReached {
-		fmt.Println("Unable to detect a terminator for the edge router")
+		t.Fatal("Unable to detect a terminator for the edge router")
 	}
 	helloUrl := fmt.Sprintf("https://%s:%d", serviceName, dialPort)
 	log.Infof("created url: %s", helloUrl)
@@ -528,12 +526,14 @@ func performQuickstartTest(t *testing.T) {
 
 	resp, e := httpClient.Get(helloUrl)
 	if e != nil {
-		panic(e)
+		t.Fatal(e)
 	}
 
 	assert.Equal(t, 200, resp.StatusCode, fmt.Sprintf("Expected successful HTTP status code 200, received %d instead", resp.StatusCode))
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Println(string(body))
+	strBody := string(body)
+	assert.Contains(t, strBody, "\"path\":\"/oidc\"")
+	fmt.Println(strBody)
 }
 
 func toPtr[T any](in T) *T {
