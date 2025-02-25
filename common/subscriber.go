@@ -31,6 +31,10 @@ type IdentityConfig struct {
 	ConfigType *ConfigType
 }
 
+func (self *IdentityConfig) Equals(other *IdentityConfig) bool {
+	return self.Config.Equals(other.Config) && self.ConfigType.Equals(other.ConfigType)
+}
+
 type IdentityService struct {
 	Service     *Service
 	Checks      map[string]struct{}
@@ -40,28 +44,45 @@ type IdentityService struct {
 }
 
 func (self *IdentityService) Equals(other *IdentityService) bool {
-	if self.Service.index != other.Service.index {
+	log := pfxlog.Logger().WithField("serviceId", other.Service.Id).WithField("serviceName", other.Service.Name)
+	if self.Service.Name != other.Service.Name {
+		log.WithField("field", "name").Info("service updated")
+		return false
+	}
+
+	if self.Service.EncryptionRequired != other.Service.EncryptionRequired {
+		log.WithField("field", "encryptionRequired").Info("service updated")
+		return false
+	}
+
+	if len(self.Service.Configs) != len(other.Service.Configs) {
+		log.WithField("field", "configs.len").Info("service updated")
 		return false
 	}
 
 	if len(self.Checks) != len(other.Checks) {
+		log.WithField("field", "checks.len").Info("service updated")
 		return false
 	}
 
 	if len(self.Configs) != len(other.Configs) {
+		log.WithField("field", "identity.configs.len").Info("service updated")
 		return false
 	}
 
 	if self.DialAllowed != other.DialAllowed {
+		log.WithField("field", "dialAllowed").Info("service updated")
 		return false
 	}
 
 	if self.BindAllowed != other.BindAllowed {
+		log.WithField("field", "bindAllowed").Info("service updated")
 		return false
 	}
 
 	for id := range self.Checks {
 		if _, ok := other.Checks[id]; !ok {
+			log.WithField("field", "checks").Info("service updated")
 			return false
 		}
 	}
@@ -69,12 +90,18 @@ func (self *IdentityService) Equals(other *IdentityService) bool {
 	for id, config := range self.Configs {
 		otherConfig, ok := other.Configs[id]
 		if !ok {
+			log.WithField("field", "identity.configs").Info("service updated")
 			return false
 		}
-		if config.Config.index != otherConfig.Config.index {
+		if !config.Equals(otherConfig) {
+			log.WithField("field", "identity.configs").Info("service updated")
 			return false
 		}
-		if config.ConfigType.index != otherConfig.ConfigType.index {
+	}
+
+	for idx, v := range self.Service.Configs {
+		if other.Service.Configs[idx] != v {
+			log.WithField("field", "configs").Info("service updated")
 			return false
 		}
 	}
@@ -142,8 +169,10 @@ func (self *IdentitySubscription) identityUpdated(identity *Identity) {
 	self.Lock()
 	if self.Identity != nil {
 		if identity.identityIndex > self.Identity.identityIndex {
+			if !identity.Equals(self.Identity) {
+				notify = true
+			}
 			self.Identity = identity
-			notify = true
 		}
 		present = true
 		state = self.getState()
@@ -181,16 +210,19 @@ func (self *IdentitySubscription) identityRemoved() {
 	}
 }
 
-func (self *IdentitySubscription) initialize(rdm *RouterDataModel, identity *Identity) *IdentityState {
+func (self *IdentitySubscription) initialize(rdm *RouterDataModel, identity *Identity) (*IdentityState, bool) {
 	self.Lock()
 	defer self.Unlock()
+	wasInitialized := false
 	if self.Identity == nil {
 		self.Identity = identity
 		if self.Services == nil {
 			self.Services, self.Checks = rdm.buildServiceList(self)
 		}
+	} else {
+		wasInitialized = true
 	}
-	return self.getState()
+	return self.getState(), wasInitialized
 }
 
 func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
@@ -244,8 +276,10 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	}
 
 	if oldIdentity.identityIndex < newIdentity.identityIndex {
-		for _, subscriber := range self.listeners.Value() {
-			subscriber.NotifyIdentityEvent(state, EventIdentityUpdated)
+		if !oldIdentity.Equals(newIdentity) {
+			for _, subscriber := range self.listeners.Value() {
+				subscriber.NotifyIdentityEvent(state, EventIdentityUpdated)
+			}
 		}
 	}
 
@@ -296,7 +330,35 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 
 type IdentityEventType byte
 
+func (self IdentityEventType) String() string {
+	switch self {
+	case EventFullState:
+		return "identity.full-state"
+	case EventIdentityUpdated:
+		return "identity.updated"
+	case EventPostureChecksUpdated:
+		return "identity.posture-checks-updated"
+	case EventIdentityDeleted:
+		return "identity.deleted"
+	default:
+		return "unknown"
+	}
+}
+
 type ServiceEventType byte
+
+func (self ServiceEventType) String() string {
+	switch self {
+	case EventAccessGained:
+		return "access.gained"
+	case EventUpdated:
+		return "updated"
+	case EventAccessRemoved:
+		return "access.removed"
+	default:
+		return "unknown"
+	}
+}
 
 const (
 	EventAccessGained  ServiceEventType = 1
@@ -345,9 +407,13 @@ func (self identityCreatedEvent) process(rdm *RouterDataModel) {
 		Debug("handling identity created event")
 
 	if sub, found := rdm.subscriptions.Get(self.identity.Id); found {
-		state := sub.initialize(rdm, self.identity)
-		for _, subscriber := range sub.listeners.Value() {
-			subscriber.NotifyIdentityEvent(state, EventFullState)
+		state, wasInitialized := sub.initialize(rdm, self.identity)
+		if wasInitialized {
+			sub.checkForChanges(rdm)
+		} else {
+			for _, subscriber := range sub.listeners.Value() {
+				subscriber.NotifyIdentityEvent(state, EventFullState)
+			}
 		}
 	}
 }

@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
@@ -69,6 +71,20 @@ func (self *createTunnelTerminatorV2Handler) HandleReceive(msg *channel.Message,
 	go self.CreateTerminator(ctx, startTime)
 }
 
+func (self *createTunnelTerminatorV2Handler) returnError(ctx *createTunnelTerminatorV2RequestContext, resultType edge_ctrl_pb.CreateTerminatorResult, err error, logger *logrus.Entry) {
+	response := &edge_ctrl_pb.CreateTunnelTerminatorResponseV2{
+		TerminatorId: ctx.req.Address,
+		Result:       resultType,
+		Msg:          err.Error(),
+	}
+
+	if sendErr := protobufs.MarshalTyped(response).ReplyTo(ctx.msg).Send(self.ch); sendErr != nil {
+		logger.WithError(err).WithField("sendError", sendErr).Error("failed to send error response")
+	} else {
+		logger.WithError(err).Error("responded with error")
+	}
+}
+
 func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelTerminatorV2RequestContext, startTime time.Time) {
 	logger := logrus.
 		WithField("routerId", self.ch.Id()).
@@ -90,14 +106,17 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 	logger = logger.WithField("serviceId", ctx.req.ServiceId).WithField("service", ctx.service.Name)
 
 	if ctx.req.Cost > math.MaxUint16 {
-		self.returnError(ctx, invalidCost(fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", ctx.req.Cost, math.MaxUint16)))
+		self.returnError(ctx,
+			edge_ctrl_pb.CreateTerminatorResult_FailedOther,
+			invalidCost(fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", ctx.req.Cost, math.MaxUint16)),
+			logger)
 		return
 	}
 
 	terminator, _ := self.getNetwork().Terminator.Read(ctx.req.Address)
 	if terminator != nil {
 		if err := ctx.validateExistingTerminator(terminator, logger); err != nil {
-			self.returnError(ctx, err)
+			self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
 			return
 		}
 	} else {
@@ -123,11 +142,15 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 			// terminator might have been created while we were trying to create.
 			if terminator, _ = self.getNetwork().Terminator.Read(ctx.req.Address); terminator != nil {
 				if validateError := ctx.validateExistingTerminator(terminator, logger); validateError != nil {
-					self.returnError(ctx, validateError)
+					self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, validateError, logger)
 					return
 				}
 			} else {
-				self.returnError(ctx, internalError(err))
+				if command.WasRateLimited(err) {
+					self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedBusy, err, logger)
+					return
+				}
+				self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
 				return
 			}
 		} else {
@@ -138,6 +161,7 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 	response := &edge_ctrl_pb.CreateTunnelTerminatorResponseV2{
 		TerminatorId: ctx.req.Address,
 		StartTime:    ctx.req.StartTime,
+		Result:       edge_ctrl_pb.CreateTerminatorResult_Success,
 	}
 
 	body, err := proto.Marshal(response)

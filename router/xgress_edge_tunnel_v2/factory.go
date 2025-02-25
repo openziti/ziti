@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -41,18 +42,18 @@ const (
 )
 
 type Factory struct {
-	id              *identity.TokenId
-	ctrls           env.NetworkControllers
-	routerConfig    *router.Config
-	stateManager    state.Manager
-	tunneler        *tunneler
-	metricsRegistry metrics.UsageRegistry
-	env             env.RouterEnv
+	id                *identity.TokenId
+	ctrls             env.NetworkControllers
+	routerConfig      *router.Config
+	stateManager      state.Manager
+	tunneler          *tunneler
+	metricsRegistry   metrics.UsageRegistry
+	env               env.RouterEnv
+	hostedServices    *hostedServiceRegistry
+	dialerInitialized atomic.Bool
 }
 
 func (self *Factory) NotifyOfReconnect(channel.Channel) {
-	pfxlog.Logger().Info("control channel reconnected, re-establishing hosted services")
-	self.tunneler.HandleReconnect()
 }
 
 func (self *Factory) Enabled() bool {
@@ -60,12 +61,12 @@ func (self *Factory) Enabled() bool {
 }
 
 func (self *Factory) BindChannel(binding channel.Binding) error {
-	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorResponseV2Type), self.tunneler.fabricProvider.HandleTunnelResponse)
+	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorResponseV2Type), self.hostedServices.HandleCreateTerminatorResponse)
 	return nil
 }
 
 func (self *Factory) HandleCreateTunnelTerminatorResponse(msg *channel.Message, ch channel.Channel) {
-	self.tunneler.fabricProvider.HandleTunnelResponse(msg, ch)
+	self.hostedServices.HandleCreateTerminatorResponse(msg, ch)
 }
 
 func (self *Factory) Run(env env.RouterEnv) error {
@@ -92,6 +93,7 @@ func NewFactory(env env.RouterEnv, routerConfig *router.Config, stateManager sta
 		stateManager:    stateManager,
 		metricsRegistry: env.GetMetricsRegistry(),
 		env:             env,
+		hostedServices:  newHostedServicesRegistry(env, stateManager),
 	}
 	factory.tunneler = newTunneler(factory)
 	return factory
@@ -114,13 +116,17 @@ func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.List
 
 // CreateDialer creates a new Edge Xgress dialer
 func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
-	self.env.MarkRouterDataModelRequired()
+	if self.dialerInitialized.CompareAndSwap(false, true) {
+		self.env.MarkRouterDataModelRequired()
 
-	options := &Options{}
-	if err := options.load(optionsData); err != nil {
-		return nil, err
+		options := &Options{}
+		if err := options.load(optionsData); err != nil {
+			return nil, err
+		}
+
+		self.tunneler.dialOptions = options
 	}
-	self.tunneler.dialOptions = options
+
 	return self.tunneler, nil
 }
 

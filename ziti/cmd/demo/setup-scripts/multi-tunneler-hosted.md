@@ -1,12 +1,12 @@
 # Purpose
 
-This script sets up hosting for an echo service which is hosted by multiple router-embedded tunneler and
-multiple applications.
+This script sets up hosting for an echo service which is hosted by multiple router-embedded tunneler
+and multiple applications.
 
 # Prerequisites
 
-You need at least one controller and an edge router running. for this to work.
-You can use the quick-start script found [here](https://github.com/openziti/ziti/tree/release-next/quickstart).
+You need at least one controller and an edge router running. for this to work. You can use the
+quick-start script found [here](https://github.com/openziti/ziti/tree/release-next/quickstart).
 
 # Setup
 
@@ -36,26 +36,22 @@ ziti edge update identity ${entityName} --role-attributes not-hosting
 
 ## Create the echo-host config
 
-```action:ziti-create-config name=echo-host type=host.v2
+```action:ziti-create-config name=echo-host type=host.v1
 {
-    "terminators" : [
+    "address" : "localhost",
+    "port" : 1234,
+    "protocol" : "tcp",
+    "portChecks" : [
         {
-            "address" : "localhost",
-            "port" : 1234,
-            "protocol" : "tcp",
-            "portChecks" : [
-                {
-                     "address" : "localhost:2234",
-                     "interval" : "1s",
-                     "timeout" : "100ms",
-                     "actions" : [
-                         { "trigger" : "fail", "action" : "mark unhealthy" },
-                         { "trigger" : "pass", "action" : "mark healthy" }
-                     ]
-                }
-           ]
+             "address" : "localhost:2234",
+             "interval" : "1s",
+             "timeout" : "100ms",
+             "actions" : [
+                 { "trigger" : "fail", "action" : "mark unhealthy" },
+                 { "trigger" : "pass", "action" : "mark healthy" }
+             ]
         }
-    ]
+   ]
 }
 ```
 
@@ -68,10 +64,10 @@ ziti edge create service echo -c echo-host -a echo
 ## Create and enroll the hosting identities
 
 ```action:ziti
-ziti edge create identity service echo-host-1 -a echo,echo-host -o echo-host-1.jwt
+ziti edge create identity echo-host-1 -a echo,echo-host -o echo-host-1.jwt
 ziti edge enroll --rm echo-host-1.jwt
 
-ziti edge create identity service echo-host-2 -a echo,echo-host -o echo-host-2.jwt
+ziti edge create identity echo-host-2 -a echo,echo-host -o echo-host-2.jwt
 ziti edge enroll --rm echo-host-2.jwt
 ```
 

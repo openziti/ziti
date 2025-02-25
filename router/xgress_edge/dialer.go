@@ -18,6 +18,7 @@ package xgress_edge
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/common/inspect"
 	"strings"
 	"time"
 
@@ -193,7 +194,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 }
 
 func (dialer *dialer) Inspect(key string, timeout time.Duration) any {
-	if key == "sdk-terminators" {
+	if key == inspect.SdkTerminatorsKey {
 		return dialer.factory.hostedServices.Inspect(timeout)
 	}
 	return nil

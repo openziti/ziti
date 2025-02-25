@@ -48,6 +48,18 @@ func (request *RouterSdkTerminatorsDetails) GetContentType() int32 {
 	return int32(ContentType_ValidateRouterSdkTerminatorsResultType)
 }
 
+func (request *ValidateRouterErtTerminatorsRequest) GetContentType() int32 {
+	return int32(ContentType_ValidateRouterErtTerminatorsRequestType)
+}
+
+func (request *ValidateRouterErtTerminatorsResponse) GetContentType() int32 {
+	return int32(ContentType_ValidateRouterErtTerminatorsResponseType)
+}
+
+func (request *RouterErtTerminatorsDetails) GetContentType() int32 {
+	return int32(ContentType_ValidateRouterErtTerminatorsResultType)
+}
+
 func (request *ValidateRouterDataModelRequest) GetContentType() int32 {
 	return int32(ContentType_ValidateRouterDataModelRequestType)
 }

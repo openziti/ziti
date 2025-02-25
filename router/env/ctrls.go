@@ -48,9 +48,11 @@ func (self CtrlEventListenerFunc) NotifyOfCtrlEvent(event CtrlEvent) {
 type CtrlEventType string
 
 const (
-	ControllerAdded       CtrlEventType = "Added"
-	ControllerReconnected CtrlEventType = "Reconnected"
-	ControllerRemoved     CtrlEventType = "Removed"
+	ControllerAdded        CtrlEventType = "Added"
+	ControllerDisconnected CtrlEventType = "Disconnected"
+	ControllerReconnected  CtrlEventType = "Reconnected"
+	ControllerRemoved      CtrlEventType = "Removed"
+	ControllerLeaderChange CtrlEventType = "LeaderChange"
 )
 
 type CtrlEvent struct {
@@ -74,8 +76,10 @@ type NetworkControllers interface {
 	Close() error
 	Inspect() *inspect.ControllerInspectDetails
 	AddChangeListener(listener CtrlEventListener)
+	NotifyOfDisconnect(ctrlId string)
 	NotifyOfReconnect(ctrlId string)
 	GetExpectedCtrlCount() uint32
+	IsLeaderConnected() bool
 }
 
 type CtrlDialer func(address transport.Address, bindHandler channel.BindHandler) error
@@ -144,7 +148,11 @@ func (self *networkControllers) UpdateControllerEndpoints(addresses []string) bo
 }
 
 func (self *networkControllers) UpdateLeader(leaderId string) {
-	self.leaderId.Store(leaderId)
+	oldLeaderId := self.leaderId.Swap(leaderId)
+	if oldLeaderId != leaderId {
+		leader := self.ctrls.Get(oldLeaderId)
+		self.notifyOfChange(leader, ControllerLeaderChange)
+	}
 }
 
 func (self *networkControllers) connectToControllerWithBackoff(endpoint string) {
@@ -180,7 +188,7 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 		if !self.ctrlEndpoints.Has(endpoint) {
 			return backoff.Permanent(errors.New("controller removed before connection established"))
 		}
-		err := self.ctrlDialer(addr, bindHandler)
+		err = self.ctrlDialer(addr, bindHandler)
 		if err != nil {
 			log.WithError(err).Error("unable to connect controller")
 		}
@@ -213,7 +221,8 @@ func (self *networkControllers) Add(address string, ch channel.Channel) error {
 
 	if existing := self.ctrls.Get(ch.Id()); existing != nil {
 		if !existing.Channel().IsClosed() {
-			return fmt.Errorf("duplicate channel with id %v", ctrl.Channel().Id())
+			// if an existing channel exists, don't keep trying to dial one
+			return backoff.Permanent(fmt.Errorf("duplicate channel with id %v", ctrl.Channel().Id()))
 		}
 	}
 	self.ctrls.Put(ch.Id(), ctrl)
@@ -221,6 +230,12 @@ func (self *networkControllers) Add(address string, ch channel.Channel) error {
 	self.notifyOfChange(ctrl, ControllerAdded)
 
 	return nil
+}
+
+func (self *networkControllers) NotifyOfDisconnect(ctrlId string) {
+	if ctrl := self.GetNetworkController(ctrlId); ctrl != nil {
+		self.notifyOfChange(ctrl, ControllerDisconnected)
+	}
 }
 
 func (self *networkControllers) NotifyOfReconnect(ctrlId string) {
@@ -355,6 +370,11 @@ func (self *networkControllers) CloseAndRemoveByAddress(address string) {
 	}
 }
 
+func (self *networkControllers) IsLeaderConnected() bool {
+	ctrl := self.ctrls.Get(self.leaderId.Load())
+	return ctrl != nil && ctrl.IsConnected()
+}
+
 func (self *networkControllers) Inspect() *inspect.ControllerInspectDetails {
 	result := &inspect.ControllerInspectDetails{
 		Controllers: map[string]*inspect.ControllerInspectDetail{},
@@ -373,6 +393,7 @@ func (self *networkControllers) Inspect() *inspect.ControllerInspectDetails {
 			Latency:              ctrl.Latency().String(),
 			Version:              version,
 			TimeSinceLastContact: ctrl.TimeSinceLastContact().String(),
+			IsLeader:             id == self.leaderId.Load(),
 		}
 	}
 
