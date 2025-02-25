@@ -113,7 +113,10 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 			options.errOut = errOut
 			options.TrustDomain = "quickstart"
 			options.InstanceID = "quickstart"
-			options.run(context)
+			err := options.run(context)
+			if err != nil {
+				logrus.Fatal(err)
+			}
 		},
 	}
 	addCommonQuickstartFlags(cmd, options)
@@ -136,7 +139,10 @@ func NewQuickStartHaCmd(out io.Writer, errOut io.Writer, context context.Context
 				options.TrustDomain = uuid.New().String()
 				fmt.Println("Trust domain was not supplied. Using a random trust domain: " + options.TrustDomain)
 			}
-			options.run(context)
+			err := options.run(context)
+			if err != nil {
+				logrus.Fatal(err)
+			}
 		},
 	}
 	addCommonQuickstartFlags(cmd, options)
@@ -154,7 +160,10 @@ func NewQuickStartJoinClusterCmd(out io.Writer, errOut io.Writer, context contex
 		Run: func(cmd *cobra.Command, args []string) {
 			options.out = out
 			options.errOut = errOut
-			options.join(context)
+			err := options.join(context)
+			if err != nil {
+				logrus.Fatal(err)
+			}
 		},
 	}
 	addCommonQuickstartFlags(cmd, options)
@@ -174,7 +183,7 @@ func (o *QuickstartOpts) cleanupHome() {
 	}
 }
 
-func (o *QuickstartOpts) join(ctx context.Context) {
+func (o *QuickstartOpts) join(ctx context.Context) error {
 	if strings.TrimSpace(o.InstanceID) == "" {
 		logrus.Fatalf("the instance-id is required when joining a cluster")
 	}
@@ -188,10 +197,10 @@ func (o *QuickstartOpts) join(ctx context.Context) {
 
 	o.isHA = true
 	o.joinCommand = true
-	o.run(ctx)
+	return o.run(ctx)
 }
 
-func (o *QuickstartOpts) run(ctx context.Context) {
+func (o *QuickstartOpts) run(ctx context.Context) error {
 	if o.verbose {
 		pfxlog.GlobalInit(logrus.DebugLevel, pfxlog.DefaultOptions().Color())
 	}
@@ -207,8 +216,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		if strings.HasPrefix(o.Home, "~") {
 			usr, err := user.Current()
 			if err != nil {
-				logrus.Fatalf("Could not find user's home directory?")
-				return
+				return fmt.Errorf("could not find user's home directory")
 			}
 			home := usr.HomeDir
 			// Replace only the first instance of ~ in case it appears later in the path
@@ -319,7 +327,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 	ctrlPort := helpers.GetCtrlEdgeAdvertisedPort()
 	ctrlUrl := fmt.Sprintf("https://%s:%s", ctrlAddy, ctrlPort)
 
-	c := make(chan struct{})
+	c := make(chan error)
 	timeout, _ := time.ParseDuration("30s")
 	go waitForController(ctrlUrl, c)
 	select {
@@ -327,16 +335,15 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		//completed normally
 		logrus.Info("Controller online. Continuing...")
 	case <-time.After(timeout):
-		fmt.Println("timed out waiting for controller:", ctrlUrl)
 		o.cleanupHome()
-		return
+		return fmt.Errorf("timed out waiting for controller: %s", ctrlUrl)
 	}
 
 	if o.isHA {
 		p := common.NewOptionsProvider(o.out, o.errOut)
+		fmt.Println("waiting three seconds for controller to become ready...")
+		time.Sleep(300 * time.Second)
 		if !o.joinCommand {
-			fmt.Println("waiting three seconds for controller to become ready...")
-			time.Sleep(3 * time.Second)
 			agentInitCmd := agentcli.NewAgentClusterInit(p)
 			pid := os.Getpid()
 			args := []string{
@@ -349,7 +356,7 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 
 			agentInitErr := agentInitCmd.Execute()
 			if agentInitErr != nil {
-				logrus.Fatal(agentInitErr)
+				return agentInitErr
 			}
 		} else {
 			agentJoinCmd := agentcli.NewAgentClusterAdd(p)
@@ -360,9 +367,6 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 				fmt.Sprintf("--voter=%t", !o.nonVoter),
 			}
 			agentJoinCmd.SetArgs(args)
-
-			fmt.Println("waiting three seconds for controller to become ready...")
-			time.Sleep(3 * time.Second)
 
 			addChan := make(chan struct{})
 			addTimeout := time.Second * 30
@@ -380,15 +384,17 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 				//completed normally
 				logrus.Info("Add command successful. continuing...")
 			case <-time.After(addTimeout):
-				fmt.Println("timed out adding to cluster")
 				o.cleanupHome()
-				return
+				return fmt.Errorf("timed out adding to cluster")
 			}
 		}
 	}
 
 	erConfigFile := path.Join(o.instHome(), routerName+".yaml")
-	o.configureRouter(routerName, erConfigFile, ctrlUrl)
+	err := o.configureRouter(routerName, erConfigFile, ctrlUrl)
+	if err != nil {
+		return err
+	}
 	o.runRouter(erConfigFile)
 
 	ch := make(chan os.Signal, 1)
@@ -402,9 +408,8 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 		case <-r:
 			//completed normally
 		case <-time.After(timeout):
-			fmt.Println("timed out waiting for router:", ctrlUrl)
 			o.cleanupHome()
-			return
+			return fmt.Errorf("timed out waiting for router: %s", ctrlUrl)
 		}
 	}
 
@@ -438,7 +443,9 @@ func (o *QuickstartOpts) run(ctx context.Context) {
 	case <-ctx.Done():
 		fmt.Println("Cancellation request received")
 	}
+
 	o.cleanupHome()
+	return nil
 }
 
 func (o *QuickstartOpts) printDetails() {
@@ -451,9 +458,9 @@ func (o *QuickstartOpts) printDetails() {
 	fmt.Printf("    instance pid           : %d\n", os.Getpid())
 }
 
-func (o *QuickstartOpts) configureRouter(routerName string, configFile string, ctrlUrl string) {
+func (o *QuickstartOpts) configureRouter(routerName string, configFile string, ctrlUrl string) error {
 	if o.routerless {
-		return
+		return nil
 	}
 
 	if !o.AlreadyInitialized {
@@ -524,10 +531,12 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 		o.waitForLeader() //needed?
 		erEnrollErr := erEnroll.Execute()
 		if erEnrollErr != nil {
-			logrus.Fatal(erEnrollErr)
+			return erEnrollErr
 		}
 	}
+	return nil
 }
+
 func (o *QuickstartOpts) runRouter(configFile string) {
 	if o.routerless {
 		return
@@ -638,7 +647,7 @@ func (o *QuickstartOpts) createMinimalPki() {
 	}
 }
 
-func waitForController(ctrlUrl string, done chan struct{}) {
+func waitForController(ctrlUrl string, done chan error) {
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	client := &http.Client{Transport: tr}
 	for {
@@ -649,7 +658,7 @@ func waitForController(ctrlUrl string, done chan struct{}) {
 			break
 		}
 	}
-	done <- struct{}{}
+	done <- nil
 }
 
 func waitForRouter(address string, port uint16, done chan struct{}) {
