@@ -279,8 +279,7 @@ func createServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, 
 	return *resp.GetPayload().Data
 }
 
-func getTerminatorCountByRouterName(client *rest_management_api_client.ZitiEdgeManagement, routerName string) int {
-	filter := "router.name=\"" + routerName + "\""
+func getTerminatorsByFilter(client *rest_management_api_client.ZitiEdgeManagement, filter string) rest_model.TerminatorList {
 	params := &terminator.ListTerminatorsParams{
 		Filter:  &filter,
 		Context: context.Background(),
@@ -292,13 +291,13 @@ func getTerminatorCountByRouterName(client *rest_management_api_client.ZitiEdgeM
 		log.Fatal("An error occurred during terminator query")
 	}
 
-	return len(resp.GetPayload().Data)
+	return resp.GetPayload().Data
 }
 
-func waitForTerminatorCountByRouterName(client *rest_management_api_client.ZitiEdgeManagement, routerName string, count int, timeout time.Duration) bool {
+func waitForTerminatorCount(client *rest_management_api_client.ZitiEdgeManagement, filter string, count int, timeout time.Duration) bool {
 	startTime := time.Now()
 	for {
-		if getTerminatorCountByRouterName(client, routerName) == count {
+		if len(getTerminatorsByFilter(client, filter)) == count {
 			return true
 		}
 		if time.Since(startTime) >= timeout {
@@ -515,8 +514,8 @@ func performQuickstartTest(t *testing.T) {
 	defer func() { _ = deleteServicePolicyByID(client, dialSP.ID) }()
 
 	// Test connectivity with private edge router, wait some time for the terminator to be created
-	currentCount := getTerminatorCountByRouterName(client, hostingRouterName)
-	termCntReached := waitForTerminatorCountByRouterName(client, hostingRouterName, currentCount+1, 30*time.Second)
+	terminatorFilter := "router.name=\"" + hostingRouterName + "\""
+	termCntReached := waitForTerminatorCount(client, terminatorFilter, 1, 30*time.Second)
 	if !termCntReached {
 		t.Fatal("Unable to detect a terminator for the edge router")
 	}
