@@ -37,8 +37,13 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
+
+          set -o xtrace
+
           go install github.com/mitchellh/gox@latest
+
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./ziti/
+
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=darwin -arch=arm64 -output=$GOX_OUTPUT ./ziti/
 
       - name: Upload artifacts
@@ -70,7 +75,11 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
+
+          set -o xtrace
+
           go install github.com/mitchellh/gox@latest
+
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./ziti/
 
       - name: Upload artifacts
@@ -83,7 +92,7 @@ jobs:
   linux-build:
     name: Build Linux binaries
     runs-on: ubuntu-22.04  # pin oldest available Docker host for ABI compatibility
-    container: openziti/ziti-builder:v2  # pin v2 (Ubuntu Focal) for glibc compatibility while leveraging Actions's Node.js
+    container: ${{ vars.ZITI_BUILDER_IMAGE || 'openziti/ziti-builder:v2' }}  # pin v2 (Ubuntu Focal) for glibc compatibility while leveraging Actions's Node.js
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -97,18 +106,30 @@ jobs:
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
+        with:
+          ziti-ci-version: 5060ad52f1e83837a15bd234bbe65b4f7595831e
 
       - name: Build and Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         shell: bash
         run: |
-          apt-get update
-          apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+
+          set -o xtrace
+
           $(go env GOPATH)/bin/ziti-ci configure-git
+
           go install github.com/mitchellh/gox@latest
+
           $(go env GOPATH)/bin/ziti-ci -t go-build-flags
+
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./ziti/
+
           CC=arm-linux-gnueabihf-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./ziti/
+
           CC=aarch64-linux-gnu-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./ziti/
 
@@ -161,6 +182,10 @@ jobs:
       }}
     # ensure required job outcomes are specified in "if" expression
     needs: [ tests, linux-build, mac-os-build, windows-build ]
+    permissions:
+      contents: write  # need write to create the release
+      id-token: write  # need write to get OIDC token for generating attestations
+      attestations: write  # need write to create attestations
     runs-on: ubuntu-24.04
     outputs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
@@ -182,6 +207,8 @@ jobs:
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
+        with:
+          ziti-ci-version: 5060ad52f1e83837a15bd234bbe65b4f7595831e
 
       - name: Download linux release artifact
         uses: actions/download-artifact@v4
@@ -203,21 +230,41 @@ jobs:
           name: windows-release-${{ github.run_id }}
           path: release/
 
-      - name: List downloaded release artifacts
+      - name: Fetch Source Archive
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          ls -lAhR release/
 
-      - name: Restore execute filemode on macOS and Linux release artifacts before publishing
+          set -o xtrace
+
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/${{ github.repository }}/tarball/${{ github.ref_name }} \
+            > ./release/source-${{ github.ref_name }}.tar.gz
+
+      - name: Fetch SBOM from Dependency Graph API
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+
+          # jq fails the step if not valid JSON
+          set -o pipefail
+          set -o xtrace
+
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/${{ github.repository }}/dependency-graph/sbom \
+          | jq . | tee ./release/sbom-${{ github.ref_name }}.spdx.json
+
+      - name: List Release Artifacts
         shell: bash
         run: |
-          find  ./release \
-                -type f \
-                -print0 \
-                -path "./release/*/darwin/ziti" \
-                -o \
-                -path "./release/*/linux/ziti" \
-            | xargs -0 chmod -c +x
+
+          ls -lAhR release/
 
       - name: Publish GitHub Release
         # forks need to run this step with their own GPG key because ziti-ci creates the GH release 
@@ -228,18 +275,30 @@ jobs:
           ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         shell: bash
         run: |
+
+          set -o xtrace
+
           $(go env GOPATH)/bin/ziti-ci configure-git
-          $(go env GOPATH)/bin/ziti-ci publish-to-github -t --prerelease --archive-base "" --dry-run
-          mkdir tmp
-          tar xfzv ./release/ziti-linux-amd64-* -C ./tmp
-          $(go env GOPATH)/bin/ziti-ci verify-current-version -t $(./tmp/ziti version)
-          $(go env GOPATH)/bin/ziti-ci publish-to-github -t --prerelease --archive-base ""
+
+          $(go env GOPATH)/bin/ziti-ci publish-to-github --use-current-tag --prerelease --archive-base "" --dry-run
+
+          tar xfzv ./release/ziti-linux-amd64-* -C /tmp
+          # TODO: should this compare current tag with "ziti --version" instead?
+          $(go env GOPATH)/bin/ziti-ci verify-current-version --use-current-tag "$(/tmp/ziti version)"
+
+          $(go env GOPATH)/bin/ziti-ci publish-to-github --use-current-tag --prerelease --archive-base ""
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-checksums: ./release/attestation-subjects.sha256.txt
 
       # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
       - name: Compute the Ziti Version String used for Linux Packages and Container Image Tags
         id: get_version
         shell: bash
         run: |
+
           # drop the leading 'v', if any
           ZITI_VERSION=${GITHUB_REF_NAME#v}
           echo ZITI_VERSION="${ZITI_VERSION}" | tee -a $GITHUB_OUTPUT
