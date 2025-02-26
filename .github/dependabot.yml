@@ -51,3 +51,17 @@ updates:
         - "major"
         - "minor"
         - "patch"
+
+# bump the kubectl version in the cli image
+- package-ecosystem: docker
+  directory: "/dist/docker-images/ziti-cli"
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+  groups:
+    all:
+      applies-to: version-updates
+      update-types:
+        - "major"
+        - "minor"
+        - "patch"
