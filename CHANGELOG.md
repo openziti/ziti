@@ -73,9 +73,10 @@ cluster:
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/ziti: [v1.4.0 -> v1.4.1](https://github.com/openziti/ziti/compare/v1.4.0...v1.4.1)
-  * [Issue #2825](https://github.com/openziti/ziti/issues/2825) - create config should reference client chain
-  * [Issue #2845](https://github.com/openziti/ziti/issues/2845) - 1.4.x Router - don't fail on invalid cert for heathchecks
+* github.com/openziti/ziti: [v1.4.1 -> v1.5.0](https://github.com/openziti/ziti/compare/v1.4.1...v1.5.0)
+    * [Issue #2854](https://github.com/openziti/ziti/issues/2854) - Fix controller online status
+    * [Issue #2829](https://github.com/openziti/ziti/issues/2829) - Update Raft Configuration Defaults
+    * [Issue #2849](https://github.com/openziti/ziti/issues/2849) - Router endpoints file should have .yml extension by default
 
 # Release 1.4.0
 

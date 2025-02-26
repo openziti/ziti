@@ -898,11 +898,27 @@ func (self *Controller) getClusterPeersForEvent() []*event.ClusterPeer {
 	var peers []*event.ClusterPeer
 
 	srvs := self.Fsm.GetCurrentState(self.Raft)
+	meshPeers := map[string]*mesh.Peer{}
+
+	for _, peer := range self.Mesh.GetPeers() {
+		meshPeers[string(peer.Id)] = peer
+	}
+
 	for _, srv := range srvs.Servers {
-		peers = append(peers, &event.ClusterPeer{
+		peer := &event.ClusterPeer{
 			Id:   string(srv.ID),
 			Addr: string(srv.Address),
-		})
+		}
+
+		if meshPeer := meshPeers[peer.Id]; meshPeer != nil {
+			peer.ServerCert = meshPeer.SigningCerts
+			if meshPeer.Version != nil {
+				peer.Version = meshPeer.Version.Version
+			}
+			peer.ApiAddresses = meshPeer.ApiAddresses
+		}
+
+		peers = append(peers, peer)
 	}
 
 	return peers
