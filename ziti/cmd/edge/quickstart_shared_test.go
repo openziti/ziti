@@ -518,7 +518,7 @@ func performQuickstartTest(t *testing.T) {
 	defer func() { _ = deleteServicePolicyByID(client, dialSP.ID) }()
 
 	// Test connectivity with private edge router, wait some time for the terminator to be created
-	terminatorFilter := "router.name=\"" + hostingRouterName + "\""
+	terminatorFilter := "service.name=\"" + serviceName + "\""
 	termCntReached := waitForTerminatorCount(client, terminatorFilter, 1, 30*time.Second)
 	if !termCntReached {
 		t.Fatal("Unable to detect a terminator for the edge router")
