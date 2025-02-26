@@ -167,7 +167,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
 			})
 
 			t.Run("and with empty server and client CSR fields fails", func(t *testing.T) {
@@ -181,7 +181,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
 			})
 
 			t.Run("and with valid client and missing server CSR fields fails", func(t *testing.T) {
@@ -218,7 +218,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
 			})
 
 			t.Run("and with valid server and missing client CSR fields fails", func(t *testing.T) {
@@ -255,7 +255,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
 			})
 
 			t.Run("and with valid client and server CSR fields succeeds", func(t *testing.T) {

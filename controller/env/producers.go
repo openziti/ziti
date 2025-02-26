@@ -17,30 +17,9 @@
 package env
 
 import (
-	"fmt"
 	"gopkg.in/yaml.v3"
 	"io"
 )
-
-type PemProducer struct{}
-
-func (p PemProducer) Produce(writer io.Writer, i interface{}) error {
-	if buffer, ok := i.([]byte); ok {
-		_, err := writer.Write(buffer)
-		return err
-	} else if reader, ok := i.(io.Reader); ok {
-		buffer, err := io.ReadAll(reader)
-		if err != nil {
-			return err
-		}
-		_, err = writer.Write(buffer)
-		return err
-	} else if buffer, ok := i.(string); ok {
-		_, err := writer.Write([]byte(buffer))
-		return err
-	}
-	return fmt.Errorf("unsupported type for PEM producer: %T", i)
-}
 
 type YamlProducer struct{}
 

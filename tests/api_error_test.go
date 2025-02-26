@@ -103,7 +103,7 @@ func Test_Api_Errors(t *testing.T) {
 		standardErrorJsonResponseTests(resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest, t)
 	})
 
-	t.Run("empty body expected on error for an accept of application/x-pem-file", func(t *testing.T) {
+	t.Run("406 not acceptable type for accept of application/x-pem-file", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		madeUpToken := uuid.New().String()
 
@@ -112,12 +112,6 @@ func Test_Api_Errors(t *testing.T) {
 			Post("enroll?token=" + madeUpToken)
 
 		ctx.Req.NoError(err)
-
-		contentTypeHeaders := resp.Header().Values("content-type")
-
-		ctx.Req.NotEmpty(contentTypeHeaders)
-		ctx.Req.Equal("application/x-pem-file", contentTypeHeaders[0])
-
-		ctx.Req.Empty(resp.Body())
+		ctx.Req.Equal(http.StatusNotAcceptable, resp.StatusCode())
 	})
 }

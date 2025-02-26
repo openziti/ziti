@@ -209,18 +209,22 @@ func (ctx *TestContext) ControllerCaPool() *x509.CertPool {
 	return ctx.ControllerConfig.Id.CA()
 }
 
-func (ctx *TestContext) NewEdgeClientApi(totpProvider func(chan string)) *edge_apis.ClientApiClient {
+func (ctx *TestContext) NewEdgeClientApi(totpProvider func(chan string)) *ClientHelperClient {
 	if totpProvider == nil {
 		totpProvider = func(chan string) {}
 	}
-	return edge_apis.NewClientApiClient([]*url.URL{ctx.ClientApiUrl()}, ctx.ControllerCaPool(), totpProvider)
+	client := edge_apis.NewClientApiClient([]*url.URL{ctx.ClientApiUrl()}, ctx.ControllerCaPool(), totpProvider)
+
+	return &ClientHelperClient{client}
 }
 
-func (ctx *TestContext) NewEdgeManagementApi(totpProvider func(chan string)) *edge_apis.ManagementApiClient {
+func (ctx *TestContext) NewEdgeManagementApi(totpProvider func(chan string)) *ManagementHelperClient {
 	if totpProvider == nil {
 		totpProvider = func(chan string) {}
 	}
-	return edge_apis.NewManagementApiClient([]*url.URL{ctx.ClientApiUrl()}, ctx.ControllerCaPool(), totpProvider)
+	client := edge_apis.NewManagementApiClient([]*url.URL{ctx.ManagementApiUrl()}, ctx.ControllerCaPool(), totpProvider)
+
+	return &ManagementHelperClient{client}
 }
 
 func (ctx *TestContext) NewTransportWithIdentity(i idlib.Identity) *http.Transport {
@@ -669,8 +673,6 @@ func (ctx *TestContext) completeOttCaEnrollment(certAuth *certAuthenticator) {
 	client.SetHostURL("https://" + ctx.ApiHost + EdgeClientApiPath)
 
 	resp, err := client.NewRequest().
-		SetBody("{}").
-		SetHeader("content-type", "application/x-pem-file").
 		Post("enroll?method=ca")
 	ctx.Req.NoError(err)
 	ctx.logJson(resp.Body())

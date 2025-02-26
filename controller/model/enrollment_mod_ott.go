@@ -75,7 +75,7 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 		SetChangeAuthorId(identity.Id).
 		SetChangeAuthorName(identity.Name)
 
-	csrPem := ctx.GetDataAsByteArray()
+	csrPem := ctx.GetData().ClientCsrPem
 
 	csr, err := cert.ParseCsrPem(csrPem)
 
