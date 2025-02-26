@@ -734,7 +734,19 @@ func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
 
 func (self *Router) RegisterXweb(x xweb.Instance) error {
 	if err := self.config.Configure(x); err != nil {
-		return err
+		actualErr := false
+
+		for je := err; je != nil; je = errors.Unwrap(err) {
+			if !errors.Is(je, identity.ErrInvalidAddressForIdentity) {
+				actualErr = true
+			}
+		}
+
+		if actualErr {
+			return err
+		} else {
+			logrus.Warnf("unable to validate XWeb configuration. Router may be unstable: %v", err)
+		}
 	}
 	if x.Enabled() {
 		self.xwebs = append(self.xwebs, x)
