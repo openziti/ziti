@@ -552,7 +552,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 			if value, found := submap["endpointsFile"]; found {
 				cfg.Ctrl.EndpointsFile = value.(string)
 			} else {
-				cfg.Ctrl.EndpointsFile = filepath.Join(filepath.Dir(cfg.path), "endpoints")
+				cfg.Ctrl.EndpointsFile = filepath.Join(filepath.Dir(cfg.path), "endpoints.yml")
 			}
 			if err = cfg.loadCtrlRateLimiterConfig(submap); err != nil {
 				return nil, err
