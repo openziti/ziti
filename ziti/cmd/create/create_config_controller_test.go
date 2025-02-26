@@ -255,7 +255,7 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 
 	// identity:
 	t.Run("TestPKICert", func(t *testing.T) {
-		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".cert"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + "client.chain.cert"
 
 		assert.Equal(t, expectedValue, data.Controller.Identity.Cert)
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Cert)
@@ -469,7 +469,7 @@ func TestCtrlConfigDefaultsWhenEmpty(t *testing.T) {
 
 	// identity:
 	t.Run("TestPKICert", func(t *testing.T) {
-		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + ".cert"
+		expectedValue := cmdhelper.GetZitiHome() + "/" + cmdhelper.HostnameOrNetworkName() + "client.chain.cert"
 
 		assert.Equal(t, expectedValue, data.Controller.Identity.Cert)
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Cert)

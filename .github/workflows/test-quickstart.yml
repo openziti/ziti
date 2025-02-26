@@ -109,10 +109,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Install xtail
-        shell: bash
-        run: sudo apt-get update && sudo apt-get install --yes xtail
-
       - name: Build ziti executable
         shell: bash
         run: |

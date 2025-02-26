@@ -16,38 +16,49 @@ func TestEdgeQuickstartAutomated(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = os.Setenv("ZITI_CTRL_EDGE_ADVERTISED_ADDRESS", "localhost") //force localhost
 	_ = os.Setenv("ZITI_ROUTER_NAME", "quickstart-router")
-	cmdComplete := make(chan bool)
 	qs := NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
+	qs.SetArgs([]string{})
 	go func() {
-		err := qs.Execute()
-		if err != nil {
-			log.Fatal(err)
-		}
-		cmdComplete <- true
+		_ = qs.Execute()
 	}()
 
 	ctrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
 	ctrlPort := helpers.GetCtrlEdgeAdvertisedPort()
 	ctrlUrl := fmt.Sprintf("https://%s:%s", ctrlAddy, ctrlPort)
 
-	c := make(chan struct{})
-	go waitForController(ctrlUrl, c)
-	timeout, _ := time.ParseDuration("60s")
+	cmdComplete := make(chan error)
+	go waitForController(ctrlUrl, cmdComplete)
+	timeout, _ := time.ParseDuration("20s")
 	select {
-	case <-c:
-		//completed normally
+	case e := <-cmdComplete:
+		//completed, check for error
+		if e != nil {
+			t.Fatal(e)
+		}
+		expectedTestDuration, _ := time.ParseDuration("60s")
 		log.Info("controller online")
+		go func() {
+			performQuickstartTest(t)
+			log.Info("Operation completed")
+			cmdComplete <- nil
+		}()
+		select {
+		case e := <-cmdComplete:
+			cancel()
+			if e != nil {
+				time.Sleep(5 * time.Second)
+				t.Fatal(e)
+			} else {
+				time.Sleep(5 * time.Second)
+			}
+		case <-time.After(expectedTestDuration):
+			cancel()
+			time.Sleep(5 * time.Second)
+			t.Fatal("running the test has taken too long")
+		}
 	case <-time.After(timeout):
 		cancel()
-		panic("timed out waiting for controller")
-	}
-
-	performQuickstartTest(t)
-
-	cancel() //terminate the running ctrl/router
-
-	select { //wait for quickstart to cleanup
-	case <-cmdComplete:
-		fmt.Println("Operation completed")
+		time.Sleep(5 * time.Second)
+		t.Fatal("timed out waiting for controller to start")
 	}
 }
