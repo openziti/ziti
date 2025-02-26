@@ -20,7 +20,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/ziti/common"
@@ -68,8 +67,7 @@ import (
 	"github.com/openziti/ziti/router/xgress_transport_udp"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/ziti/router/xlink_transport"
-	pkgerrors "github.com/pkg/errors"
-
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
@@ -214,7 +212,7 @@ func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 
 	linkDialerPool, err := goroutines.NewPool(linkDialerPoolConfig)
 	if err != nil {
-		panic(pkgerrors.Wrap(err, "error creating link dialer pool"))
+		panic(errors.Wrap(err, "error creating link dialer pool"))
 	}
 
 	router := &Router{
@@ -404,7 +402,7 @@ func (self *Router) initRateLimiterPool() error {
 
 	rateLimiterPool, err := goroutines.NewPool(rateLimiterPoolConfig)
 	if err != nil {
-		return pkgerrors.Wrap(err, "error creating rate limited pool")
+		return errors.Wrap(err, "error creating rate limited pool")
 	}
 
 	self.rateLimiterPool = rateLimiterPool
@@ -472,18 +470,18 @@ func (self *Router) registerPlugins() error {
 	for _, pluginPath := range self.config.Plugins {
 		goPlugin, err := plugin.Open(pluginPath)
 		if err != nil {
-			return pkgerrors.Wrapf(err, "router unable to load plugin at path %v", pluginPath)
+			return errors.Wrapf(err, "router unable to load plugin at path %v", pluginPath)
 		}
 		initializeSymbol, err := goPlugin.Lookup("Initialize")
 		if err != nil {
-			return pkgerrors.Wrapf(err, "router plugin at %v does not contain Initialize symbol", pluginPath)
+			return errors.Wrapf(err, "router plugin at %v does not contain Initialize symbol", pluginPath)
 		}
 		initialize, ok := initializeSymbol.(func(*Router) error)
 		if !ok {
-			return pkgerrors.Errorf("router plugin at %v exports Initialize symbol, but it is not of type 'func(router *router.Router) error'", pluginPath)
+			return errors.Errorf("router plugin at %v exports Initialize symbol, but it is not of type 'func(router *router.Router) error'", pluginPath)
 		}
 		if err := initialize(self); err != nil {
-			return pkgerrors.Wrapf(err, "error initializing router plugin at %v", pluginPath)
+			return errors.Wrapf(err, "error initializing router plugin at %v", pluginPath)
 		}
 	}
 	return nil
@@ -631,7 +629,7 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 
 	if len(listeners.Listeners) > 0 {
 		if buf, err := proto.Marshal(listeners); err != nil {
-			return pkgerrors.Wrap(err, "unable to marshal Listeners")
+			return errors.Wrap(err, "unable to marshal Listeners")
 		} else {
 			attributes[int32(ctrl_pb.ControlHeaders_ListenersHeader)] = buf
 		}
@@ -644,7 +642,7 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 	}
 
 	if buf, err := proto.Marshal(routerMeta); err != nil {
-		return pkgerrors.Wrap(err, "unable to router metadata")
+		return errors.Wrap(err, "unable to router metadata")
 	} else {
 		attributes[int32(ctrl_pb.ControlHeaders_RouterMetadataHeader)] = buf
 	}
@@ -736,19 +734,7 @@ func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
 
 func (self *Router) RegisterXweb(x xweb.Instance) error {
 	if err := self.config.Configure(x); err != nil {
-		actualErr := false
-
-		for je := err; je != nil; je = errors.Unwrap(err) {
-			if !pkgerrors.Is(je, identity.ErrInvalidAddressForIdentity) {
-				actualErr = true
-			}
-		}
-
-		if actualErr {
-			return err
-		} else {
-			logrus.Warnf("unable to validate XWeb configuration. Router may be unstable: %v", err)
-		}
+		return err
 	}
 	if x.Enabled() {
 		self.xwebs = append(self.xwebs, x)
@@ -763,14 +749,14 @@ func (self *Router) RegisterXWebHandlerFactory(x xweb.ApiHandlerFactory) error {
 func (self *Router) getInitialCtrlEndpoints() ([]string, error) {
 	log := pfxlog.Logger()
 	if self.config.Ctrl.EndpointsFile == "" {
-		return nil, pkgerrors.New("ctrl endpointsFile not configured")
+		return nil, errors.New("ctrl endpointsFile not configured")
 	}
 
 	endpointsFile := self.config.Ctrl.EndpointsFile
 
 	var endpoints []string
 
-	if _, err := os.Stat(endpointsFile); err != nil && pkgerrors.Is(err, fs.ErrNotExist) {
+	if _, err := os.Stat(endpointsFile); err != nil && errors.Is(err, fs.ErrNotExist) {
 		log.Infof("controller endpoints file [%v] doesn't exist. Using initial endpoints from config", endpointsFile)
 	} else {
 		log.Infof("loading controller endpoints from [%v]", endpointsFile)
@@ -837,7 +823,7 @@ func (self *controllerPinger) PingContext(context.Context) error {
 	ctrls := self.router.ctrls.GetAll()
 
 	if len(ctrls) == 0 {
-		return pkgerrors.New("no control channels established yet")
+		return errors.New("no control channels established yet")
 	}
 
 	hasGoodConn := false
@@ -851,7 +837,7 @@ func (self *controllerPinger) PingContext(context.Context) error {
 	if hasGoodConn {
 		return nil
 	}
-	return pkgerrors.New("control channels are slow")
+	return errors.New("control channels are slow")
 }
 
 type endpointConfig struct {
@@ -918,7 +904,7 @@ func (self *linkHealthCheck) Execute(ctx context.Context) (details interface{}, 
 		}
 	}
 	if len(links) < self.minLinks {
-		return links, pkgerrors.Errorf("link count %v less than configured minimum of %v", len(links), self.minLinks)
+		return links, errors.Errorf("link count %v less than configured minimum of %v", len(links), self.minLinks)
 	}
 	return links, nil
 }
