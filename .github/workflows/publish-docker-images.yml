@@ -17,10 +17,10 @@ jobs:
     env:
       REGISTRY: docker.io
       ZITI_CLI_TAG:          ${{ inputs.ziti-tag || github.event.inputs.ziti-tag }}
-      ZITI_CLI_IMAGE:        ${{ vars.ZITI_CLI_IMAGE || 'docker.io/openziti/ziti-cli' }}
-      ZITI_CONTROLLER_IMAGE: ${{ vars.ZITI_CONTROLLER_IMAGE || 'docker.io/openziti/ziti-controller' }}
-      ZITI_ROUTER_IMAGE:     ${{ vars.ZITI_ROUTER_IMAGE || 'docker.io/openziti/ziti-router' }}
-      ZITI_TUNNEL_IMAGE:     ${{ vars.ZITI_TUNNEL_IMAGE || 'docker.io/openziti/ziti-tunnel' }}
+      ZITI_CLI_IMAGE:        ${{ vars.ZITI_CLI_IMAGE || 'openziti/ziti-cli' }}
+      ZITI_CONTROLLER_IMAGE: ${{ vars.ZITI_CONTROLLER_IMAGE || 'openziti/ziti-controller' }}
+      ZITI_ROUTER_IMAGE:     ${{ vars.ZITI_ROUTER_IMAGE || 'openziti/ziti-router' }}
+      ZITI_TUNNEL_IMAGE:     ${{ vars.ZITI_TUNNEL_IMAGE || 'openziti/ziti-tunnel' }}
     steps:
       - name: Checkout Workspace
         uses: actions/checkout@v4
@@ -49,7 +49,7 @@ jobs:
 
       - name: Set Up Container Image Tags for Base CLI Container
         env:
-          IMAGE_REPO: ${{ env.ZITI_CLI_IMAGE }}
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
           IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}
         id: tagprep_cli
         shell: bash
@@ -81,7 +81,7 @@ jobs:
 
       - name: Set Up Container Image Tags for Controller Container
         env:
-          IMAGE_REPO: ${{ env. ZITI_CONTROLLER_IMAGE }}
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
           IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}
         id: tagprep_ctrl
         shell: bash
@@ -100,7 +100,7 @@ jobs:
           tags: ${{ steps.tagprep_ctrl.outputs.DOCKER_TAGS }}
           build-args: |
             ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}
-            ZITI_CLI_IMAGE=${{ env.ZITI_CLI_IMAGE }}
+            ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
             DOCKER_BUILD_DIR=./dist/docker-images/ziti-controller
           provenance: mode=max
           sbom: true
@@ -115,7 +115,7 @@ jobs:
 
       - name: Set Up Container Image Tags for Router Container
         env:
-          IMAGE_REPO: ${{ env.ZITI_ROUTER_IMAGE }}
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_ROUTER_IMAGE }}
           IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}
         id: tagprep_router
         shell: bash
@@ -134,7 +134,7 @@ jobs:
           tags: ${{ steps.tagprep_router.outputs.DOCKER_TAGS }}
           build-args: |
             ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}
-            ZITI_CLI_IMAGE=${{ env.ZITI_CLI_IMAGE }}
+            ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
             DOCKER_BUILD_DIR=./dist/docker-images/ziti-router
           provenance: mode=max
           sbom: true
@@ -149,7 +149,7 @@ jobs:
 
       - name: Set Up Container Image Tags for Go Tunneler Container
         env:
-          IMAGE_REPO: ${{ env.ZITI_TUNNEL_IMAGE }}
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
           IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}
         id: tagprep_tun
         shell: bash
@@ -168,7 +168,7 @@ jobs:
           tags: ${{ steps.tagprep_tun.outputs.DOCKER_TAGS }}
           build-args: |
             ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}
-            ZITI_CLI_IMAGE=${{ env.ZITI_CLI_IMAGE }}
+            ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
           provenance: mode=max
           sbom: true
           push: true
