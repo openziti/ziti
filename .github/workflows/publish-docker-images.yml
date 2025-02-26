@@ -73,7 +73,7 @@ jobs:
           push: true
 
       - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
           subject-digest: ${{ steps.push_cli.outputs.digest }}
@@ -107,7 +107,7 @@ jobs:
           push: true
 
       - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
           subject-digest: ${{ steps.push_ctrl.outputs.digest }}
@@ -141,7 +141,7 @@ jobs:
           push: true
 
       - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_ROUTER_IMAGE }}
           subject-digest: ${{ steps.push_router.outputs.digest }}
@@ -174,7 +174,7 @@ jobs:
           push: true
 
       - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
           subject-digest: ${{ steps.push_tunnel.outputs.digest }}
