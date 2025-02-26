@@ -7,6 +7,7 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/pkg/errors"
+	"time"
 )
 
 func InitController(componentSpec string) model.Action {
@@ -42,19 +43,27 @@ func (init *raftInit) Execute(run model.Run) error {
 		return errors.New("variable credentials/edge/password must be a string")
 	}
 
-	for _, c := range m.SelectComponents(init.componentSpec) {
-		ctrlType, ok := c.Type.(*zitilab.ControllerType)
-		if !ok {
-			return errors.Errorf("component %s is not a controller", c.Id)
-		}
+	c := m.MustSelectComponent(init.componentSpec)
 
-		tmpl := "set -o pipefail; %s agent cluster init --timeout 20s %s %s default.admin 2>&1 | tee logs/controller.edge.init.log"
-		if err := host.Exec(c.GetHost(), fmt.Sprintf(tmpl, ctrlType.GetBinaryPath(c), username, password)).Execute(run); err != nil {
-			return err
-		}
+	ctrlType, ok := c.Type.(*zitilab.ControllerType)
+	if !ok {
+		return errors.Errorf("component %s is not a controller", c.Id)
 	}
 
-	return nil
+	// retry in case the controller is slow to start up
+	start := time.Now()
+	for {
+		tmpl := "set -o pipefail; %s agent cluster init --timeout 20s %s %s default.admin 2>&1 | tee --append logs/controller.edge.init.log"
+		err := host.Exec(c.GetHost(), fmt.Sprintf(tmpl, ctrlType.GetBinaryPath(c), username, password)).Execute(run)
+		if err == nil {
+			return nil
+		}
+
+		if time.Since(start) > 30*time.Second {
+			return err
+		}
+		time.Sleep(5 * time.Second)
+	}
 }
 
 type raftInit struct {
