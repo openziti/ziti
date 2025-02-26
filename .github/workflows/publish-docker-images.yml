@@ -11,7 +11,11 @@ on:
 jobs:
   publish-docker-images:
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write      # need write to get OIDC token for generating attestations
+      attestations: write  # need write to create attestations
     env:
+      REGISTRY: docker.io
       ZITI_CLI_TAG:          ${{ inputs.ziti-tag || github.event.inputs.ziti-tag }}
       ZITI_CLI_IMAGE:        ${{ vars.ZITI_CLI_IMAGE || 'docker.io/openziti/ziti-cli' }}
       ZITI_CONTROLLER_IMAGE: ${{ vars.ZITI_CONTROLLER_IMAGE || 'docker.io/openziti/ziti-controller' }}
@@ -39,8 +43,7 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          # it is preferable to obtain the username from a var so that
-          # recurrences of the same string are not masked in CI output
+          registry: ${{ env.REGISTRY}}
           username: ${{ vars.DOCKER_HUB_API_USER || secrets.DOCKER_HUB_API_USER }}
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
@@ -54,11 +57,9 @@ jobs:
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
           echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
-      # this is the base image into which is stuffed the Linux binary for each
-      # arch that was downloaded in ./release/, hence the need to specify the
-      # Dockerfile and DOCKER_BUILD_DIR
-      - name: Build & Push Multi-Platform CLI Container Image to Hub
+      - name: Push CLI Image to Hub
         uses: docker/build-push-action@v6
+        id: push_cli
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/
@@ -67,7 +68,16 @@ jobs:
           tags: ${{ steps.tagprep_cli.outputs.DOCKER_TAGS }}
           build-args: |
             DOCKER_BUILD_DIR=./dist/docker-images/ziti-cli
+          provenance: mode=max
+          sbom: true
           push: true
+
+      - name: Publish Attestations to GitHub
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
+          subject-digest: ${{ steps.push_cli.outputs.digest }}
+          push-to-registry: true
 
       - name: Set Up Container Image Tags for Controller Container
         env:
@@ -79,11 +89,9 @@ jobs:
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
           echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
-      # This is a use-case image based on the minimal CLI image. It needs the
-      # ZITI_CLI_TAG env var so it can build from the versioned image that
-      # we pushed in the prior step.
-      - name: Build & Push Multi-Platform Controller Container Image to Hub
+      - name: Push Controller Image to Hub
         uses: docker/build-push-action@v6
+        id: push_ctrl
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/
@@ -94,7 +102,16 @@ jobs:
             ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}
             ZITI_CLI_IMAGE=${{ env.ZITI_CLI_IMAGE }}
             DOCKER_BUILD_DIR=./dist/docker-images/ziti-controller
+          provenance: mode=max
+          sbom: true
           push: true
+
+      - name: Publish Attestations to GitHub
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
+          subject-digest: ${{ steps.push_ctrl.outputs.digest }}
+          push-to-registry: true
 
       - name: Set Up Container Image Tags for Router Container
         env:
@@ -106,8 +123,9 @@ jobs:
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
           echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
-      - name: Build & Push Multi-Platform Router Container Image to Hub
+      - name: Push Router Image to Hub
         uses: docker/build-push-action@v6
+        id: push_router
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/
@@ -118,7 +136,16 @@ jobs:
             ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}
             ZITI_CLI_IMAGE=${{ env.ZITI_CLI_IMAGE }}
             DOCKER_BUILD_DIR=./dist/docker-images/ziti-router
+          provenance: mode=max
+          sbom: true
           push: true
+
+      - name: Publish Attestations to GitHub
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_ROUTER_IMAGE }}
+          subject-digest: ${{ steps.push_router.outputs.digest }}
+          push-to-registry: true
 
       - name: Set Up Container Image Tags for Go Tunneler Container
         env:
@@ -130,8 +157,9 @@ jobs:
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
           echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
-      - name: Build & Push Multi-Platform Go Tunneler Container Image to Hub
+      - name: Push Tunneler Image to Hub
         uses: docker/build-push-action@v6
+        id: push_tunnel
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/
@@ -141,4 +169,13 @@ jobs:
           build-args: |
             ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}
             ZITI_CLI_IMAGE=${{ env.ZITI_CLI_IMAGE }}
+          provenance: mode=max
+          sbom: true
           push: true
+
+      - name: Publish Attestations to GitHub
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
+          subject-digest: ${{ steps.push_tunnel.outputs.digest }}
+          push-to-registry: true
