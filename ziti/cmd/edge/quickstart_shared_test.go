@@ -296,8 +296,10 @@ func getTerminatorsByFilter(client *rest_management_api_client.ZitiEdgeManagemen
 
 func waitForTerminatorCount(client *rest_management_api_client.ZitiEdgeManagement, filter string, count int, timeout time.Duration) bool {
 	startTime := time.Now()
+	var found int
 	for {
-		if len(getTerminatorsByFilter(client, filter)) == count {
+		found = len(getTerminatorsByFilter(client, filter))
+		if found == count {
 			return true
 		}
 		if time.Since(startTime) >= timeout {
@@ -305,6 +307,8 @@ func waitForTerminatorCount(client *rest_management_api_client.ZitiEdgeManagemen
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+
+	log.Infof("waitForTerminatorCount found %d, expected %d for %s", found, count, filter)
 	return false
 }
 
