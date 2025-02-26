@@ -5,6 +5,7 @@
 * Bug fixes and features
 * Change to router endpoints file default name
 * Updated Cluster Defaults
+* Updates to terminator costing
 
 ## Router Endpoints File
 
@@ -39,11 +40,24 @@ cluster:
   trailingLogs: 500
 ```
 
+## Terminator Costing Changes
+
+When a terminator is selected for a service dial, and that dial results in a failure, a failure cost
+is added to that terminator. This will bias future dials towards other terminators, if they are available.
+
+The failure cost can be reduced by successful dials. Failure cost is also reduced over time. In previous
+releases this was a fixed credit of 5, every minute. This is now changing to an exponential 
+amount, based on time since the last failure. The credit is now: `2 ^ (minutes since last failure/5)`.
+
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/ziti: [v1.4.1 -> v1.5.0](https://github.com/openziti/ziti/compare/v1.4.1...v1.5.0)
+* github.com/openziti/ziti: [v1.4.3 -> v1.5.0](https://github.com/openziti/ziti/compare/v1.4.3...v1.5.0)
+    * [Issue #2851](https://github.com/openziti/ziti/issues/2851) - Change terminator failure cost crediting to be exponential based on time since last failure
+    * [Issue #2854](https://github.com/openziti/ziti/issues/2854) - Fix controller online status
     * [Issue #2829](https://github.com/openziti/ziti/issues/2829) - Update Raft Configuration Defaults
     * [Issue #2849](https://github.com/openziti/ziti/issues/2849) - Router endpoints file should have .yml extension by default
+    * [Issue #2875](https://github.com/openziti/ziti/issues/2875) - add --authenticate to `verify ext-jwt-signer oidc`
+    * [Issue #2873](https://github.com/openziti/ziti/issues/2873) - updates to `verify ext-jwt-signer oidc`
 
 # Release 1.4.3
 
