@@ -635,17 +635,9 @@ func (self *Controller) StartEventGeneration() {
 }
 
 func (self *Controller) Configure(ctrlConfig *config.RaftConfig, conf *raft.Config) {
-	if ctrlConfig.SnapshotThreshold != nil {
-		conf.SnapshotThreshold = uint64(*ctrlConfig.SnapshotThreshold)
-	}
-
-	if ctrlConfig.SnapshotInterval != nil {
-		conf.SnapshotInterval = *ctrlConfig.SnapshotInterval
-	}
-
-	if ctrlConfig.TrailingLogs != nil {
-		conf.TrailingLogs = uint64(*ctrlConfig.TrailingLogs)
-	}
+	conf.SnapshotThreshold = uint64(ctrlConfig.SnapshotThreshold)
+	conf.SnapshotInterval = ctrlConfig.SnapshotInterval
+	conf.TrailingLogs = uint64(ctrlConfig.TrailingLogs)
 
 	if ctrlConfig.MaxAppendEntries != nil {
 		conf.MaxAppendEntries = int(*ctrlConfig.MaxAppendEntries)
@@ -667,17 +659,9 @@ func (self *Controller) Configure(ctrlConfig *config.RaftConfig, conf *raft.Conf
 }
 
 func (self *Controller) ConfigureReloadable(ctrlConfig *config.RaftConfig, conf *raft.ReloadableConfig) {
-	if ctrlConfig.SnapshotThreshold != nil {
-		conf.SnapshotThreshold = uint64(*ctrlConfig.SnapshotThreshold)
-	}
-
-	if ctrlConfig.SnapshotInterval != nil {
-		conf.SnapshotInterval = *ctrlConfig.SnapshotInterval
-	}
-
-	if ctrlConfig.TrailingLogs != nil {
-		conf.TrailingLogs = uint64(*ctrlConfig.TrailingLogs)
-	}
+	conf.SnapshotThreshold = uint64(ctrlConfig.SnapshotThreshold)
+	conf.SnapshotInterval = ctrlConfig.SnapshotInterval
+	conf.TrailingLogs = uint64(ctrlConfig.TrailingLogs)
 
 	conf.ElectionTimeout = ctrlConfig.ElectionTimeout
 	conf.HeartbeatTimeout = ctrlConfig.HeartbeatTimeout

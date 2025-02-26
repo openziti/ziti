@@ -80,6 +80,10 @@ const (
 	DefaultRouterDataModelEnabled            = true
 	DefaultRouterDataModelLogSize            = 10_000
 	DefaultRouterDataModelListenerBufferSize = 1000
+
+	DefaultRaftSnapshotInterval  = 2 * time.Minute
+	DefaultRaftSnapshotThreshold = 500
+	DefaultRaftTrailingLogs      = 500
 )
 
 type Config struct {
@@ -221,6 +225,10 @@ func LoadConfig(path string) (*Config, error) {
 			controllerConfig.Raft.CommandHandlerOptions.MaxQueueSize = DefaultRaftCommandHandlerMaxQueueSize
 			controllerConfig.Raft.WarnWhenLeaderlessFor = time.Minute
 
+			controllerConfig.Raft.SnapshotInterval = DefaultRaftSnapshotInterval
+			controllerConfig.Raft.SnapshotThreshold = DefaultRaftSnapshotThreshold
+			controllerConfig.Raft.TrailingLogs = DefaultRaftTrailingLogs
+
 			if value, found := submap["dataDir"]; found {
 				controllerConfig.Raft.DataDir = value.(string)
 			} else {
@@ -229,7 +237,7 @@ func LoadConfig(path string) (*Config, error) {
 
 			if value, found := submap["snapshotInterval"]; found {
 				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
-					controllerConfig.Raft.SnapshotInterval = &val
+					controllerConfig.Raft.SnapshotInterval = val
 				} else {
 					return nil, errors.Wrapf(err, "failed to parse raft.snapshotInterval value '%v", value)
 				}
@@ -269,7 +277,7 @@ func LoadConfig(path string) (*Config, error) {
 
 			if value, found := submap["snapshotThreshold"]; found {
 				val := uint32(value.(int))
-				controllerConfig.Raft.SnapshotThreshold = &val
+				controllerConfig.Raft.SnapshotThreshold = val
 			}
 
 			if value, found := submap["maxAppendEntries"]; found {
@@ -279,7 +287,7 @@ func LoadConfig(path string) (*Config, error) {
 
 			if value, found := submap["trailingLogs"]; found {
 				val := uint32(value.(int))
-				controllerConfig.Raft.TrailingLogs = &val
+				controllerConfig.Raft.TrailingLogs = val
 			}
 
 			if value, found := submap["logLevel"]; found {

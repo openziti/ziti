@@ -4,6 +4,7 @@
 
 * Bug fixes and features
 * Change to router endpoints file default name
+* Updated Cluster Defaults
 
 ## Router Endpoints File
 
@@ -17,9 +18,31 @@ ctrl:
   endpointsFile: /path/to/endpoints.file
 ```
 
+## Updated Cluster Defaults
+
+The following defaults have changed.
+
+```
+cluster:
+  # How many updates before creating a new snapshot. 
+  #
+  # New default: 500
+  # Old default: 8192
+  snapshotThreshold: 500 
+
+  # How many old entries to keep around, so that a stream of
+  # entries can be sent to sync peers, instead of sending an
+  # entire snapshot
+  #
+  # New default: 500
+  # Old default: 10240
+  trailingLogs: 500
+```
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.4.1 -> v1.5.0](https://github.com/openziti/ziti/compare/v1.4.1...v1.5.0)
+    * [Issue #2829](https://github.com/openziti/ziti/issues/2829) - Update Raft Configuration Defaults
     * [Issue #2849](https://github.com/openziti/ziti/issues/2849) - Router endpoints file should have .yml extension by default
 
 # Release 1.4.3
