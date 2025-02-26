@@ -147,6 +147,8 @@ kill $pid1 $pid2 $pid3
 # Wait for both processes to finish
 wait $pid1 $pid2 $pid3
 
+TRAP - EXIT ERR
+
 echo "all processes have exited: $pid1 $pid2 $pid3"
 echo "Test exited with code $test_exit_code"
 exit $test_exit_code  # Fail script if test fails
