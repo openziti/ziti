@@ -1,3 +1,14 @@
+# Release 1.1.18
+
+## What's New
+
+* Backport of exponential terminator cost crediting
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.1.17 -> v1.1.18](https://github.com/openziti/ziti/compare/v1.1.17...v1.1.18)
+    * [Issue #2851](https://github.com/openziti/ziti/issues/2851) - Change terminator failure cost crediting to be exponential based on time since last failure
+
 # Release 1.1.17
 
 ## What's New
