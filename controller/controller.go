@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"crypto/x509"
 	"encoding/json"
+	stderr "errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
@@ -62,6 +63,7 @@ import (
 	"github.com/teris-io/shortid"
 	"math/big"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -228,8 +230,24 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 		eventDispatcher:     events.NewDispatcher(shutdownC),
 		xwebInitialized:     concurrency.NewInitState(),
 	}
+	xwo := xweb.InstanceOptions{
+		InstanceValidators: []xweb.InstanceValidator{func(config *xweb.InstanceConfig) error {
+			var errs []error
+			for i, serverConfig := range config.ServerConfigs {
+				for _, bp := range serverConfig.BindPoints {
+					if ve := serverConfig.Identity.ValidFor(strings.Split(bp.Address, ":")[0]); ve != nil {
+						errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
+					}
+				}
+			}
+			return stderr.Join(errs...)
+		}},
+		DefaultIdentity:        c.config.Id,
+		DefaultIdentitySection: xweb.DefaultIdentitySection,
+		DefaultConfigSection:   xweb.DefaultConfigSection,
+	}
 
-	c.xweb = xweb.NewDefaultInstance(c.xwebFactoryRegistry, c.config.Id)
+	c.xweb = xweb.NewInstance(c.xwebFactoryRegistry, xwo)
 
 	if cfg.IsRaftEnabled() {
 		c.raftController = raft.NewController(c, c)
