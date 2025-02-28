@@ -103,7 +103,6 @@ type Router struct {
 	agentBindHandlers   []channel.BindHandler
 	rdmRequired         atomic.Bool
 	indexWatchers       env.IndexWatchers
-	failOnAddress       bool
 }
 
 func (self *Router) GetRouterId() *identity.TokenId {
@@ -229,7 +228,6 @@ func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 		ctrlRateLimiter:     command.NewAdaptiveRateLimitTracker(cfg.Ctrl.RateLimit, metricsRegistry, closeNotify),
 		rdmEnabled:          config.NewConfigValue[bool](),
 		indexWatchers:       env.NewIndexWatchers(),
-		failOnAddress:       false,
 	}
 
 	router.ctrls = env.NewNetworkControllers(cfg.Ctrl.DefaultRequestTimeout, router.connectToController, &cfg.Ctrl.Heartbeats)
