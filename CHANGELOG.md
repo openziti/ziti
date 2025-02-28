@@ -1,3 +1,12 @@
+# Release 1.4.2
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.4.1 -> v1.4.2](https://github.com/openziti/ziti/compare/v1.4.1...v1.4.2)
+    * [Issue #2860](https://github.com/openziti/ziti/issues/2860) - router healtcheck with invalid address logs error but still doesn't listen
+    
 # Release 1.4.1
 
 ## What's New
