@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	stderr "errors"
 	"fmt"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/ziti/common"
@@ -102,6 +103,7 @@ type Router struct {
 	agentBindHandlers   []channel.BindHandler
 	rdmRequired         atomic.Bool
 	indexWatchers       env.IndexWatchers
+	failOnAddress       bool
 }
 
 func (self *Router) GetRouterId() *identity.TokenId {
@@ -227,6 +229,7 @@ func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 		ctrlRateLimiter:     command.NewAdaptiveRateLimitTracker(cfg.Ctrl.RateLimit, metricsRegistry, closeNotify),
 		rdmEnabled:          config.NewConfigValue[bool](),
 		indexWatchers:       env.NewIndexWatchers(),
+		failOnAddress:       false,
 	}
 
 	router.ctrls = env.NewNetworkControllers(cfg.Ctrl.DefaultRequestTimeout, router.connectToController, &cfg.Ctrl.Heartbeats)
@@ -453,7 +456,29 @@ func (self *Router) registerComponents() error {
 	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
 	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self.ctrls))
 
-	if err := self.RegisterXweb(xweb.NewDefaultInstance(self.xwebFactoryRegistry, self.config.Id)); err != nil {
+	xwo := xweb.InstanceOptions{
+		InstanceValidators: []xweb.InstanceValidator{func(config *xweb.InstanceConfig) error {
+			var errs []error
+			for i, serverConfig := range config.ServerConfigs {
+				for _, bp := range serverConfig.BindPoints {
+					if ve := serverConfig.Identity.ValidFor(strings.Split(bp.Address, ":")[0]); ve != nil {
+						if config.Options.DefaultConfigSection != xweb.DefaultConfigSection {
+							errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
+						} else {
+							// allow xweb bindings in routers to be misconfigured (health checks)
+							pfxlog.Logger().Warnf("unable to validate XWeb configuration. Router may be unstable: %v", ve)
+						}
+					}
+				}
+			}
+			return stderr.Join(errs...)
+		}},
+		DefaultIdentity:        self.config.Id,
+		DefaultIdentitySection: xweb.DefaultIdentitySection,
+		DefaultConfigSection:   xweb.DefaultConfigSection,
+	}
+
+	if err := self.RegisterXweb(xweb.NewInstance(self.xwebFactoryRegistry, xwo)); err != nil {
 		return err
 	}
 
@@ -734,19 +759,7 @@ func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
 
 func (self *Router) RegisterXweb(x xweb.Instance) error {
 	if err := self.config.Configure(x); err != nil {
-		actualErr := false
-
-		for je := err; je != nil; je = errors.Unwrap(err) {
-			if !errors.Is(je, identity.ErrInvalidAddressForIdentity) {
-				actualErr = true
-			}
-		}
-
-		if actualErr {
-			return err
-		} else {
-			logrus.Warnf("unable to validate XWeb configuration. Router may be unstable: %v", err)
-		}
+		return err
 	}
 	if x.Enabled() {
 		self.xwebs = append(self.xwebs, x)
