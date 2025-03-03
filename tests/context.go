@@ -220,7 +220,7 @@ func (ctx *TestContext) NewEdgeManagementApi(totpProvider func(chan string)) *ed
 	if totpProvider == nil {
 		totpProvider = func(chan string) {}
 	}
-	return edge_apis.NewManagementApiClient([]*url.URL{ctx.ClientApiUrl()}, ctx.ControllerCaPool(), totpProvider)
+	return edge_apis.NewManagementApiClient([]*url.URL{ctx.ManagementApiUrl()}, ctx.ControllerCaPool(), totpProvider)
 }
 
 func (ctx *TestContext) NewTransportWithIdentity(i idlib.Identity) *http.Transport {
