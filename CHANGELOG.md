@@ -1,3 +1,14 @@
+# Release 1.4.3
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.4.2 -> v1.4.3](https://github.com/openziti/ziti/compare/v1.4.2...v1.4.3)
+  * [Issue #2865](https://github.com/openziti/ziti/issues/2865) - Connections w/ API Session Certs Fail To Dial
+
 # Release 1.4.2
 
 * Bug fixes
