@@ -50,11 +50,8 @@ const (
 
 	CreateCircuitPeerDataHeader = 10
 
-	CreateCircuitReqSessionTokenHeader = 11
-
-	// CreateCircuitReqFingerprintsHeader is deprecated
-	// CreateCircuitReqFingerprintsHeader         = 12
-
+	CreateCircuitReqSessionTokenHeader         = 11
+	CreateCircuitReqFingerprintsHeader         = 12
 	CreateCircuitReqTerminatorInstanceIdHeader = 13
 	CreateCircuitReqApiSessionTokenHeader      = 14
 
@@ -95,6 +92,7 @@ func NewRouteResultFailedMessage(sessionId string, attempt int, rerr string) *ch
 type CreateCircuitRequest struct {
 	ApiSessionToken      string
 	SessionToken         string
+	Fingerprints         []string
 	TerminatorInstanceId string
 	PeerData             map[uint32][]byte
 }
@@ -105,6 +103,10 @@ func (self *CreateCircuitRequest) GetApiSessionToken() string {
 
 func (self *CreateCircuitRequest) GetSessionToken() string {
 	return self.SessionToken
+}
+
+func (self *CreateCircuitRequest) GetFingerprints() []string {
+	return self.Fingerprints
 }
 
 func (self *CreateCircuitRequest) GetTerminatorInstanceId() string {
@@ -119,6 +121,7 @@ func (self *CreateCircuitRequest) ToMessage() *channel.Message {
 	msg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_CreateCircuitV2RequestType), nil)
 	msg.PutStringHeader(CreateCircuitReqSessionTokenHeader, self.SessionToken)
 	msg.PutStringHeader(CreateCircuitReqApiSessionTokenHeader, self.ApiSessionToken)
+	msg.PutStringSliceHeader(CreateCircuitReqFingerprintsHeader, self.Fingerprints)
 	msg.PutStringHeader(CreateCircuitReqTerminatorInstanceIdHeader, self.TerminatorInstanceId)
 	msg.PutU32ToBytesMapHeader(CreateCircuitPeerDataHeader, self.PeerData)
 	return msg
@@ -132,6 +135,11 @@ func DecodeCreateCircuitRequest(m *channel.Message) (*CreateCircuitRequest, erro
 
 	apiSessionToken, _ := m.GetStringHeader(CreateCircuitReqApiSessionTokenHeader)
 
+	fingerprints, _, err := m.GetStringSliceHeader(CreateCircuitReqFingerprintsHeader)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get create circuit request fingerprints (%w)", err)
+	}
+
 	terminatorInstanceId, _ := m.GetStringHeader(CreateCircuitReqTerminatorInstanceIdHeader)
 	peerData, _, err := m.GetU32ToBytesMapHeader(CreateCircuitPeerDataHeader)
 	if err != nil {
@@ -141,6 +149,7 @@ func DecodeCreateCircuitRequest(m *channel.Message) (*CreateCircuitRequest, erro
 	return &CreateCircuitRequest{
 		ApiSessionToken:      apiSessionToken,
 		SessionToken:         sessionToken,
+		Fingerprints:         fingerprints,
 		TerminatorInstanceId: terminatorInstanceId,
 		PeerData:             peerData,
 	}, nil
