@@ -178,7 +178,6 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 	request := &ctrl_msg.CreateCircuitRequest{
 		ApiSessionToken:      self.apiSession.Token,
 		SessionToken:         sessionToken,
-		Fingerprints:         self.fingerprints.Prints(),
 		TerminatorInstanceId: terminatorIdentity,
 		PeerData:             peerData,
 	}
@@ -232,7 +231,6 @@ func (self *edgeClientConn) sendCreateCircuitRequestV1(req *ctrl_msg.CreateCircu
 	request := &edge_ctrl_pb.CreateCircuitRequest{
 		SessionToken:         req.SessionToken,
 		ApiSessionToken:      req.ApiSessionToken,
-		Fingerprints:         req.Fingerprints,
 		TerminatorInstanceId: req.TerminatorInstanceId,
 		PeerData:             req.PeerData,
 	}

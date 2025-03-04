@@ -81,7 +81,6 @@ func (self *updateTerminatorHandler) UpdateTerminator(ctx *UpdateTerminatorReque
 
 	ctx.loadSession(ctx.req.SessionToken, ctx.req.ApiSessionToken)
 	ctx.checkSessionType(db.SessionTypeBind)
-	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, common.EdgeBinding)
 
 	ctx.updateTerminator(terminator, ctx.req, ctx.newChangeContext())

@@ -542,7 +542,6 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 	request := &edge_ctrl_pb.CreateTerminatorV2Request{
 		Address:        terminator.terminatorId,
 		SessionToken:   terminator.token,
-		Fingerprints:   terminator.edgeClientConn.fingerprints.Prints(),
 		PeerData:       terminator.hostData,
 		Cost:           uint32(terminator.cost),
 		Precedence:     terminator.precedence,

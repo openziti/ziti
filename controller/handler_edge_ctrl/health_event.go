@@ -75,7 +75,6 @@ func (self *healthEventHandler) handleHealthEvent(ctx *HealthEventRequestContext
 
 	ctx.loadSession(ctx.req.SessionToken, ctx.req.ApiSessionToken)
 	ctx.checkSessionType(db.SessionTypeBind)
-	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 
 	if ctx.err == nil {
 		if ctx.req.CheckPassed {

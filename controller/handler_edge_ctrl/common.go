@@ -8,7 +8,6 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
-	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/storage/boltz"
@@ -330,52 +329,6 @@ func (self *baseSessionRequestContext) checkSessionType(sessionType string) {
 				WithError(self.err).Errorf("wrong session type")
 		}
 	}
-}
-
-func (self *baseSessionRequestContext) checkSessionFingerprints(fingerprints []string) {
-	if self.err != nil {
-		return
-	}
-
-	var apiSessionCertFingerprints []string
-	found := false
-
-	if self.accessClaims != nil {
-		apiSessionCertFingerprints = self.accessClaims.CertFingerprints
-
-		for _, fingerprint := range fingerprints {
-			found = stringz.Contains(apiSessionCertFingerprints, fingerprint)
-
-			if found {
-				break
-			}
-		}
-
-	} else {
-		err := self.GetHandler().getAppEnv().Managers.ApiSession.VisitFingerprintsForApiSessionId(self.session.ApiSessionId, func(fingerprint string) bool {
-			apiSessionCertFingerprints = append(apiSessionCertFingerprints, fingerprint)
-			if stringz.Contains(fingerprints, fingerprint) {
-				found = true
-				return true
-			}
-			return false
-		})
-
-		self.err = internalError(err)
-	}
-
-	if self.err != nil || !found {
-		if self.err == nil {
-			self.err = InvalidApiSessionError{}
-		}
-		logrus.
-			WithField("sessionId", self.session.Id).
-			WithField("operation", self.handler.Label()).
-			WithField("apiSessionFingerprints", apiSessionCertFingerprints).
-			WithField("clientFingerprints", fingerprints).
-			Error("matching fingerprint not found for connect")
-	}
-
 }
 
 func (self *baseSessionRequestContext) verifyIdentityEdgeRouterAccess() {

@@ -125,7 +125,6 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 	}
 	ctx.loadSession(ctx.req.GetSessionToken(), ctx.req.GetApiSessionToken())
 	ctx.checkSessionType(db.SessionTypeDial)
-	ctx.checkSessionFingerprints(ctx.req.GetFingerprints())
 	ctx.verifyIdentityEdgeRouterAccess()
 	ctx.loadService()
 	circuitInfo, peerData := ctx.createCircuit(ctx.req.GetTerminatorInstanceId(), ctx.req.GetPeerData(), ctx.newCircuitCreateParms)
@@ -155,7 +154,6 @@ var _ CreateCircuitRequest = (*edge_ctrl_pb.CreateCircuitRequest)(nil)
 type CreateCircuitRequest interface {
 	GetSessionToken() string
 	GetApiSessionToken() string
-	GetFingerprints() []string
 	GetTerminatorInstanceId() string
 	GetPeerData() map[uint32][]byte
 }

@@ -635,6 +635,7 @@ github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY
 github.com/openziti/x509-claims v1.0.3/go.mod h1:Z0WIpBm6c4ecrpRKrou6Gk2wrLWxJO/+tuUwKh8VewE=
 github.com/openziti/xweb/v2 v2.2.1 h1:vPHASmyTlWB75GLIEIvWSSs2ZQgZDsr7do0IXeHf6Ww=
 github.com/openziti/xweb/v2 v2.2.1/go.mod h1:44Jk2F3kdovYXopVWk8BbvnP+156g6f0BhwUWWSBZjs=
+github.com/openziti/xweb/v2 v2.3.0/go.mod h1:pISANxAUfIjaswSotq7XPnI9q28wMEXLsSrEy0xwIXk=
 github.com/openziti/ziti-db-explorer v1.1.3 h1:9JER16MJzagtYPdGEhgDcw2p/BXNCVbf9IgA/sMB52w=
 github.com/openziti/ziti-db-explorer v1.1.3/go.mod h1:pMIMNJoTRSTbkO2e7cZWiBokA3jMdeiGAILP3QhU+v8=
 github.com/orcaman/concurrent-map/v2 v2.0.1 h1:jOJ5Pg2w1oeB6PeDurIYf6k9PQ+aTITr/6lP/L/zp6c=
