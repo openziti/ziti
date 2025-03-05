@@ -66,7 +66,6 @@ ENV ZITI_AUTO_RENEW_CERTS=true
 ENV ZITI_CTRL_ADVERTISED_PORT=1280
 
 # defaults for bootstrapping database
-ENV ZITI_CTRL_DATABASE_FILE=bbolt.db
 ENV ZITI_USER=admin
 
 # run as ziggy (2171:2171) by default
