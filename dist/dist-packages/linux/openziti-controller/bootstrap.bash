@@ -89,6 +89,7 @@ issueLeafCerts() {
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
       --server-file "${ZITI_SERVER_FILE}" \
+      --server-name "${ZITI_CLUSTER_NODE_NAME}" \
       --dns "localhost,${ZITI_CTRL_ADVERTISED_ADDRESS}" \
       --ip "127.0.0.1,::1" \
       --spiffe-id "controller/${ZITI_CLUSTER_NODE_NAME}" \
@@ -105,6 +106,7 @@ issueLeafCerts() {
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
       --client-file "${ZITI_CLIENT_FILE}" \
+      --client-name "${ZITI_CLUSTER_NODE_NAME}" \
       --spiffe-id "controller/${ZITI_CLUSTER_NODE_NAME}" \
       --allow-overwrite >&3  # write to debug fd because this runs every startup
   fi
@@ -400,7 +402,7 @@ bootstrap() {
 
   # make PKI unless explicitly disabled or it already exists
   if [[ "${ZITI_BOOTSTRAP_PKI}"      == true ]]; then
-    if ! [[ -d "${_ctrl_config_file}" ]]; then
+    if ! [[ -s "${_ctrl_config_file}" ]]; then
       # make PKI unless explicitly disabled or a configuration already exists
       makePki
     fi
@@ -418,13 +420,13 @@ bootstrap() {
     return 1
   fi
 
-  ZITI_DATABASE_DIR="$(dataDir "${_ctrl_config_file}")"
-  if [[ -d "${ZITI_DATABASE_DIR}" ]]; then
-    echo "DEBUG: database directory exists in $(realpath "${ZITI_DATABASE_DIR}")" >&3
+  _ctrl_data_dir="$(dataDir "${_ctrl_config_file}")"
+  if [[ -d "${_ctrl_data_dir}" ]]; then
+    echo "DEBUG: database directory exists in $(realpath "${_ctrl_data_dir}")" >&3
   else
-    echo "DEBUG: creating database directory $(realpath "${ZITI_DATABASE_DIR}")" >&3
+    echo "DEBUG: creating database directory $(realpath "${_ctrl_data_dir}")" >&3
     # shellcheck disable=SC2174
-    mkdir -pm0700 "${ZITI_DATABASE_DIR}"
+    mkdir -pm0700 "${_ctrl_data_dir}"
   fi
 
 }
