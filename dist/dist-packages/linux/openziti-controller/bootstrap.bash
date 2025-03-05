@@ -139,8 +139,7 @@ makeConfig() {
           ZITI_PKI_EDGE_CA="${ZITI_PKI_CTRL_CA}"
 
   # build config command
-  local -a _command=("ziti create config controller" \
-            "--output ${_config_file}")
+  local -a _command=(ziti create config controller --clustered --output "${_config_file}")
 
   # append args if ZITI_BOOTSTRAP_CONFIG_ARGS is not empty
   if [[ -n "${ZITI_BOOTSTRAP_CONFIG_ARGS:-}" ]]; then
@@ -193,11 +192,10 @@ makeDatabase() {
     return 0
   fi
 
-  # if the database file is in a subdirectory, create the directory so that "ziti controller edge init" can load the
+  # create the directory so that "ziti controller edge init" can load the
   # controller config.yml which contains a check to ensure the directory exists
-  DB_DIR="$(dirname "${ZITI_CTRL_DATABASE_FILE}")"
-  if ! [[ "$DB_DIR" == "." ]]; then
-    mkdir -p "$DB_DIR"
+  if ! [[ -d "$ZITI_CTRL_DATABASE_DIR" ]]; then
+    mkdir -p "$ZITI_CTRL_DATABASE_DIR"
   fi
 
   if [[ -n "${ZITI_USER:-}" && -n "${ZITI_PWD:-}" ]]; then
@@ -209,7 +207,7 @@ makeDatabase() {
     else
       echo "ERROR: failed to create default admin in database" >&2
       # do not leave behind a partially-initialized database file because it prevents us from trying again
-      rm -f "${ZITI_CTRL_DATABASE_FILE}"
+      rm -rf "${ZITI_CTRL_DATABASE_DIR}"
       return 1
     fi
   else
@@ -320,8 +318,8 @@ promptBootstrap() {
 
 promptPwd() {
   # do nothing if database file has stuff in it
-  if [[ -s "${ZITI_CTRL_DATABASE_FILE}" ]]; then
-      echo "DEBUG: database exists in $(realpath "${ZITI_CTRL_DATABASE_FILE}")" >&3
+  if [[ -d "${ZITI_CTRL_DATABASE_DIR}" ]]; then
+      echo "DEBUG: database directory exists in $(realpath "${ZITI_CTRL_DATABASE_DIR}")" >&3
   # prompt for password token if interactive, unless already answered
   else
     if ! [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
@@ -549,10 +547,10 @@ trap exitHandler EXIT SIGINT SIGTERM
 : "${ZITI_SERVER_FILE:=server}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
-: "${ZITI_CTRL_DATABASE_FILE:=bbolt.db}"  # relative path to working directory
 : "${ZITI_CTRL_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
 : "${ZITI_BOOTSTRAP_LOG_FILE:=$(mktemp)}"  # where the exit handler should concatenate verbose and debug messages
 ZITI_BOOTSTRAP_NOW="$(date --utc --iso-8601=seconds)"
+ZITI_CTRL_DATABASE_DIR=raft  # relative path to working directory; not configurable
 
 # if sourced then only define vars and functions and change working directory; else if exec'd then run bootstrap()
 if ! [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
