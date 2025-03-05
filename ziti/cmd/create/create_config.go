@@ -147,6 +147,8 @@ type ControllerTemplateValues struct {
 	EdgeApi        EdgeApiValues
 	EdgeEnrollment EdgeEnrollmentValues
 	Web            WebValues
+	TrustDomain    string
+	AdditionalTrustDomains []string
 }
 
 type RouterTemplateValues struct {
