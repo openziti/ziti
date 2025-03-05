@@ -33,6 +33,9 @@ services:
       ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-ziti-controller}  # FQDN of the controller
       ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}                   # TCP port of the controller
       ZITI_PWD: ${ZITI_PWD:-}                                                         # password for the default admin user
+      ZITI_BOOTSTRAP_CLUSTER: ${ZITI_BOOTSTRAP_CLUSTER:-true}                          # bootstrap a new cluster if true
+      ZITI_CLUSTER_NODE_NAME: ${ZITI_CLUSTER_NODE_NAME:-ziti-controller}               # name for the initial cluster node
+      ZITI_CLUSTER_TRUST_DOMAIN: ${ZITI_CLUSTER_TRUST_DOMAIN:-ziti}                     # trust domain for cluster PKI
 
       # *** less relevant vars below ***
       ZITI_BOOTSTRAP: true             # bootstrap the controller if "true"

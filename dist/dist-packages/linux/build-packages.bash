@@ -233,14 +233,24 @@ do
 			ZITI_MAINTAINER="Maintainers <developers@openziti.org>" \
 			GOARCH=$ARCH \
 			MINIMUM_SYSTEMD_VERSION=232 \
-			nfpm pkg \
-				--packager $PKG \
-				--target  "$TMPDIR" \
-				--config "./dist/dist-packages/linux/nfpm-${ARTIFACT}.yaml"
+			docker run --rm \
+				-e ZITI_HOMEPAGE \
+				-e ZITI_VENDOR \
+				-e ZITI_MAINTAINER \
+				-e ZITI_VERSION \
+				-e ZITI_REV \
+				-e GOARCH \
+				-e MINIMUM_SYSTEMD_VERSION \
+				-v "$PWD:/mnt/ziti" \
+				-v "$TMPDIR:/mnt/tmp" \
+				-w /mnt/ziti \
+				goreleaser/nfpm package \
+				--config "/mnt/ziti/dist/dist-packages/linux/nfpm-${ARTIFACT}.yaml" \
+				--target "/mnt/tmp" \
+				--packager "$PKG"
 			echo "INFO: Built ${ARTIFACT} for ${ARCH} with ${PKG}"
 		done
 	done
-
 	[[ "${CLEAN}" == true ]] && {
 		if [[ "${ARTIFACT}" =~ openziti-(controller|router) ]]
 		then
@@ -405,3 +415,6 @@ then
 		done
 	done
 fi
+
+echo -e "\nINFO: Packages built in $TMPDIR:"
+find "$TMPDIR" -maxdepth 1 -type f -printf '%p\n' | sort
