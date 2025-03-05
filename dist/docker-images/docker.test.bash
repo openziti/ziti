@@ -54,10 +54,17 @@ export COMPOSE_FILE=\
 :./dist/docker-images/ziti-controller/compose.test.yml\
 :./dist/docker-images/ziti-router/compose.yml\
 :./dist/docker-images/ziti-router/compose.test.yml \
+
+export \
 ZIGGY_UID \
 ZITI_GO_VERSION \
+ZITI_USER="admin" \
 ZITI_PWD="ziggypw" \
-ZITI_CTRL_ADVERTISED_ADDRESS="ctrl1.127.0.0.1.sslip.io" \
+ZITI_CLUSTER_TRUST_DOMAIN="127.0.0.1.sslip.io" \
+ZITI_CLUSTER_NODE_NAME="ctrl1"
+
+export \
+ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_CLUSTER_NODE_NAME}.${ZITI_CLUSTER_TRUST_DOMAIN}" \
 ZITI_CTRL_ADVERTISED_PORT="12800" \
 ZITI_ROUTER_PORT="30222" \
 ZITI_CONTROLLER_IMAGE="ziti-controller:local" \
@@ -106,22 +113,69 @@ docker build \
 --file "./dist/docker-images/ziti-router/Dockerfile" \
 "${PWD}"
 
-docker compose up wait-for-controller
+DEBUG=1 docker compose up wait-for-controller
 
-docker compose run --rm --entrypoint=/bin/bash --env ZITI_ROUTER_NAME ziti-controller -euxc '
+zitiLogin(){
 
-ziti edge login \
-${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} \
+    docker compose exec --no-TTY ziti-controller bash <<BASH
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o xtrace
+
+ziti edge login ${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} \
 --ca=/ziti-controller/pki/root/certs/root.cert \
 --username=${ZITI_USER} \
 --password=${ZITI_PWD} \
 --timeout=1 \
 --verbose;
 
-ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to ~ziggy/.config/ziti/"${ZITI_ROUTER_NAME}.jwt";
-'
+BASH
 
-docker compose up ziti-router --detach
+}
+
+ATTEMPTS=9
+DELAY=3
+until ! (( --ATTEMPTS )) || zitiLogin
+do
+    echo "DEBUG: ${ATTEMPTS} remaining attempts to login"
+    sleep ${DELAY}
+done
+if ! (( ATTEMPTS ))
+then
+    echo "ERROR: ziti login failed" >&2
+    exit 1
+fi
+
+zitiRouter() {
+    docker compose exec --no-TTY ziti-controller bash <<BASH
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o xtrace
+
+ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to ~ziggy/.config/ziti/"${ZITI_ROUTER_NAME}.jwt";
+
+BASH
+}
+
+ATTEMPTS=9
+DELAY=3
+
+until ! (( --ATTEMPTS )) || zitiRouter
+do
+    echo "DEBUG: ${ATTEMPTS} remaining attempts to create router"
+    sleep ${DELAY}
+done
+if ! (( ATTEMPTS ))
+then
+    echo "ERROR: ziti router creation failed" >&2
+    exit 1
+fi
+
+DEBUG=1 docker compose up ziti-router --detach
 
 unset GOOS
 export \
@@ -142,9 +196,9 @@ DELAY=3
 
 # verify console is available
 curl_cmd="curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null \"https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/\""
-until ! (( ATTEMPTS-- )) || eval "${curl_cmd}" &> /dev/null
+until ! (( --ATTEMPTS )) || eval "${curl_cmd}" &> /dev/null
 do
-    echo "Waiting for zac"
+    echo "DEBUG: ${ATTEMPTS} remaining attempts to verify zac"
     sleep ${DELAY}
 done
 eval "${curl_cmd}"

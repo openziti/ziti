@@ -18,9 +18,6 @@ contents:
   - dst: /lib/systemd/system/
     src: ./dist/dist-packages/linux/openziti-router/ziti-router.service
 
-  - dst: /etc/systemd/system/ziti-router.service.d/override.conf
-    src: ./dist/dist-packages/linux/openziti-router/ziti-router.service.override.conf
-
   - dst: /opt/openziti/etc/router
     type: dir
     file_info:

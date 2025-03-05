@@ -1,0 +1,23 @@
+name: NFPM Packager
+description: Build Linux packages using NFPM
+inputs:
+  packager:
+    description: Which packager implementation to use [apk|archlinux|deb|ipk|rpm]
+    required: true
+  config:
+    description: Config file to be used
+    required: true
+  target:
+    description: Where to save the generated package (filename, folder or empty for current folder)
+    required: true
+runs:
+  using: docker
+  image: docker.io/goreleaser/nfpm:v2.42.0@sha256:31c856f5806306ba105111fec19e8679222c67c43ad09921a46f9400d99bbbb1
+  args:
+    - package
+    - --packager
+    - ${{ inputs.packager }}
+    - --config
+    - ${{ inputs.config }}
+    - --target
+    - ${{ inputs.target }}

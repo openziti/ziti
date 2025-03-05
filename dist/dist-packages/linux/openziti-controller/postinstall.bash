@@ -28,9 +28,9 @@ makeEmptyRestrictedFile() {
 
 loadEnvFile() {
   # shellcheck disable=SC1090
-  source "${ZITI_CTRL_SVC_ENV_FILE}"
+  [[ -s "${ZITI_CTRL_SVC_ENV_FILE}" ]] && source "${ZITI_CTRL_SVC_ENV_FILE}"
   # shellcheck disable=SC1090
-  source "${ZITI_CTRL_BOOT_ENV_FILE}"
+  [[ -s "${ZITI_CTRL_BOOT_ENV_FILE}" ]] && source "${ZITI_CTRL_BOOT_ENV_FILE}"
 }
 
 # initialize a file descriptor for debug output
@@ -44,14 +44,14 @@ fi
 
 # Step 1, check if this is a clean install or an upgrade
 if (( $# )); then
-  if  [[ $1 == 1 || ($1 == configure && -z ${2:-}) ]]; then
-    # deb passes $1=configure, rpm passes $1=1
+  if  [[ ($1 == 1 || $1 == configure) && -z "${2:-}" ]]; then
+    # rpm passes $1=1, deb passes $1=configure
     action=install
-  elif [[ $1 == 2 || ($1 == configure && -n ${2:-}) ]]; then
-    # deb passes $1=configure $2=<current version>, rpm passes $1=2
+  elif [[ ($1 == 2 || $1 == configure) && -n "${2:-}" ]]; then
+    # rpm passes $1=2 $2=<number of packages to upgrade>, deb passes $1=configure $2=<current version>
     action=upgrade
   else
-    echo "ERROR: unexpected action '$1'" >&2
+    echo "ERROR: unexpected action '\$1=$1 \$2=$2'" >&2
     exit 1
   fi
 else

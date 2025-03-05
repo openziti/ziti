@@ -66,7 +66,7 @@ makeConfig() {
 }
 
 enroll() {
-  
+
   if [[ -n "${1:-}" && ! "${1}" =~ ^-- ]]; then
     local _config_file="${1}"
     local _ziti_home
@@ -86,7 +86,7 @@ enroll() {
       ziti router enroll "${_config_file}" \
         --jwt "${ZITI_ENROLL_TOKEN}" 2>&1
     else
-      echo  "ERROR: set ZITI_ENROLL_TOKEN to enrollment token" >&2
+      echo  "ERROR: set ZITI_ENROLL_TOKEN to path or string" >&2
       return 1
     fi
   fi
@@ -222,13 +222,25 @@ promptEnrollToken() {
 }
 
 grantNetAdmin() {
-    # grant ambient capabilities to the router process if not already granted
-    if ! grep -qE '^AmbientCapabilities=CAP_NET_ADMIN' "${SVC_FILE}"; then
-        # uncomment the line
-        sed -Ei 's/.*AmbientCapabilities=CAP_NET_ADMIN/AmbientCapabilities=CAP_NET_ADMIN/' "${SVC_FILE}"
+  local dropin_dir="/etc/systemd/system/ziti-router.service.d"
+  local override_file="${dropin_dir}/override.conf"
+  if ! systemctl cat ziti-router.service | grep -qE '^AmbientCapabilities=CAP_NET_ADMIN'; then
+    if [[ ! -s "${override_file}" ]]; then
+      echo "INFO: Creating ${override_file} to grant CAP_NET_ADMIN."
+      mkdir -p "${dropin_dir}"
+      cat > "${override_file}" <<EOF
+[Service]
+AmbientCapabilities=CAP_NET_ADMIN
+EOF
+      systemctl daemon-reload
+    else
+      echo -e "WARNING: not patching existing ${override_file}. Run 'systemctl edit ziti-router.service' to add the following lines:"\
+      "\n\n  [Service]"\
+      "\n  AmbientCapabilities=CAP_NET_ADMIN\n" >&2
     fi
-    systemctl daemon-reload
+  fi
 }
+
 
 promptRouterPort() {
     # if undefined or default value in env file, prompt for router port, preserving default if no answer
@@ -306,21 +318,30 @@ promptCtrlPort() {
       setAnswer "ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}" "${BOOT_ENV_FILE}"
     fi
   fi
-  if [[ "${ZITI_CTRL_ADVERTISED_PORT}" -lt 1024 ]]; then
-    grantNetBindService
-  fi
 }
 
 grantNetBindService() {
-  # grant binding privileged low ports unless already granted
-  if ! grep -qE '^AmbientCapabilities=CAP_NET_BIND_SERVICE' "${SVC_FILE}"; then
-    # uncomment the line
-    sed -Ei 's/.*(AmbientCapabilities=CAP_NET_BIND_SERVICE)/\1/' "${SVC_FILE}"
+  local dropin_dir="/etc/systemd/system/ziti-router.service.d"
+  local override_file="${dropin_dir}/override.conf"
+  if ! systemctl cat ziti-router.service | grep -qE '^AmbientCapabilities=CAP_NET_BIND_SERVICE'; then
+    if [[ ! -s "${override_file}" ]]; then
+      echo "INFO: Creating ${override_file} to grant CAP_NET_BIND_SERVICE."
+      mkdir -p "${dropin_dir}"
+      cat > "${override_file}" <<EOF
+[Service]
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+EOF
+      systemctl daemon-reload
+    else
+      echo -e "WARNING: not patching existing ${override_file}. Run 'systemctl edit ziti-router.service' to add the following lines:"\
+      "\n\n  [Service]"\
+      "\n  AmbientCapabilities=CAP_NET_BIND_SERVICE\n" >&2
+    fi
   fi
-  systemctl daemon-reload
 }
 
-importZitiVars() {
+
+loadEnvVars() {
   # inherit Ziti vars and set answers
   for line in $(set | grep -e "^ZITI_" | sort); do
     # shellcheck disable=SC2013
@@ -469,9 +490,9 @@ else
   fi
 
   prepareWorkingDir "${ZITI_HOME}"
-  loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
-  importZitiVars                # get ZITI_* vars from environment and set in BOOT_ENV_FILE
+  loadEnvVars                   # get ZITI_* vars from environment and set in BOOT_ENV_FILE
   loadEnvStdin                  # slurp answers from stdin if it's not a tty
+  loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
   promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
   promptCtrlAddress             # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
   promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
