@@ -70,14 +70,24 @@ issueLeafCerts() {
   # server cert
   ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_SERVER_FILE}.chain.pem"
   if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_SERVER_CERT" ]]; then
+
+    _dns_sans="localhost"
+    _ip_sans="127.0.0.1,::1"
+    if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ ([0-9]{1,3}\.?){4} ]]; then
+      _ip_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
+    else
+      _dns_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
+    fi
     # server cert
     ziti pki create server \
       --pki-root "${ZITI_PKI_ROOT}" \
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
       --server-file "${ZITI_SERVER_FILE}" \
-      --dns "localhost,${ZITI_CTRL_ADVERTISED_ADDRESS}" \
-      --ip "127.0.0.1,::1" \
+      --server-name "${ZITI_CLUSTER_NODE_NAME}" \
+      --dns "${_dns_sans}" \
+      --ip "${_ip_sans}" \
+      --spiffe-id "controller/${ZITI_CLUSTER_NODE_NAME}" \
       --allow-overwrite >&3  # write to debug fd because this runs every startup
   fi
 
