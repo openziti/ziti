@@ -16,30 +16,43 @@ makePki() {
     return 1
   fi
 
-  if [[ "${ZITI_CA_FILE}" == "${ZITI_INTERMEDIATE_FILE}" ]]; then
-    echo "ERROR: ZITI_CA_FILE and ZITI_INTERMEDIATE_FILE must be different" >&2
-    return 1
-  fi
+  # if creating a new cluster then generate a root and intermediate
+  if [[ "${ZITI_BOOTSTRAP_CLUSTER}" == true ]]; then
+    if [[ -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
+      echo "ERROR: ZITI_CLUSTER_TRUST_DOMAIN must be set" >&2
+      hintLinuxBootstrap "${PWD}"
+      return 1
+    fi
 
-  ZITI_CA_CERT="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
-  if [[ ! -s "${ZITI_CA_CERT}" ]]; then
-    ziti pki create ca \
-      --pki-root "${ZITI_PKI_ROOT}" \
-      --ca-file "${ZITI_CA_FILE}"
-  fi
+    if [[ "${ZITI_CA_FILE}" == "${ZITI_INTERMEDIATE_FILE}" ]]; then
+      echo "ERROR: ZITI_CA_FILE and ZITI_INTERMEDIATE_FILE must be different" >&2
+      return 1
+    fi
 
-  ZITI_PKI_SIGNER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.cert"
-  ZITI_PKI_SIGNER_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_INTERMEDIATE_FILE}.key"
-  if [[ ! -s "$ZITI_PKI_SIGNER_CERT" && ! -s "$ZITI_PKI_SIGNER_KEY" ]]; then
-    ziti pki create intermediate \
-      --pki-root "${ZITI_PKI_ROOT}" \
-      --ca-name "${ZITI_CA_FILE}" \
-      --intermediate-file "${ZITI_INTERMEDIATE_FILE}"
-  elif [[ ! -s "${ZITI_PKI_SIGNER_CERT}" || ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
-    echo "ERROR: ${ZITI_PKI_SIGNER_CERT} and ${ZITI_PKI_SIGNER_KEY} must both exist or neither exist as non-empty files" >&2
-    return 1
+    ZITI_CA_CERT="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
+    if [[ ! -s "${ZITI_CA_CERT}" ]]; then
+      ziti pki create ca \
+        --pki-root "${ZITI_PKI_ROOT}" \
+        --ca-file "${ZITI_CA_FILE}" \
+        --trust-domain "spiffe://${ZITI_CLUSTER_TRUST_DOMAIN}"
+    fi
+
+    ZITI_PKI_SIGNER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.cert"
+    ZITI_PKI_SIGNER_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_INTERMEDIATE_FILE}.key"
+    if [[ ! -s "${ZITI_PKI_SIGNER_CERT}" && ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
+      ziti pki create intermediate \
+        --pki-root "${ZITI_PKI_ROOT}" \
+        --ca-name "${ZITI_CA_FILE}" \
+        --intermediate-file "${ZITI_INTERMEDIATE_FILE}"
+    elif [[ ! -s "${ZITI_PKI_SIGNER_CERT}" || ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
+      echo "ERROR: ${ZITI_PKI_SIGNER_CERT} and ${ZITI_PKI_SIGNER_KEY} must both exist or neither exist as non-empty files" >&2
+      return 1
+    else
+      echo "INFO: edge signer CA exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")"
+    fi
   else
-    echo "INFO: edge signer CA exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")"
+    # install the provided intermediate signing cert in this node's PKI root
+    cp -RT "${ZITI_CLUSTER_NODE_PKI}" "${ZITI_PKI_ROOT}"
   fi
 
   issueLeafCerts
@@ -78,6 +91,7 @@ issueLeafCerts() {
       --server-file "${ZITI_SERVER_FILE}" \
       --dns "localhost,${ZITI_CTRL_ADVERTISED_ADDRESS}" \
       --ip "127.0.0.1,::1" \
+      --spiffe-id "controller/${ZITI_CLUSTER_NODE_NAME}" \
       --allow-overwrite >&3  # write to debug fd because this runs every startup
   fi
 
@@ -91,6 +105,7 @@ issueLeafCerts() {
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
       --key-file "${ZITI_SERVER_FILE}" \
       --client-file "${ZITI_CLIENT_FILE}" \
+      --spiffe-id "controller/${ZITI_CLUSTER_NODE_NAME}" \
       --allow-overwrite >&3  # write to debug fd because this runs every startup
   fi
 
@@ -166,58 +181,6 @@ makeConfig() {
   ${_command[@]}
 }
 
-makeDatabase() {
-
-  #
-  # create default admin in database
-  #
-
-  if [[ -n "${1:-}" ]]; then
-    local _config_file="${1}"
-    shift
-  else
-    echo "ERROR: no config file path provided" >&2
-    return 1
-  fi
-
-  local _db_file
-  _db_file=$(dbFile "${_config_file}")
-  if [[ ! -s "${_db_file}" ]]; then
-    echo "DEBUG: creating database file: ${_db_file}" >&3
-  elif [[ "${1:-}" == --force ]]; then
-    echo "INFO: recreating database file: ${_db_file}"
-    mv --no-clobber "${_db_file}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
-  else
-    echo "INFO: database file exists: ${_db_file}"
-    return 0
-  fi
-
-  # create the directory so that "ziti controller edge init" can load the
-  # controller config.yml which contains a check to ensure the directory exists
-  if ! [[ -d "$ZITI_CTRL_DATABASE_DIR" ]]; then
-    mkdir -p "$ZITI_CTRL_DATABASE_DIR"
-  fi
-
-  if [[ -n "${ZITI_USER:-}" && -n "${ZITI_PWD:-}" ]]; then
-    if ziti controller edge init "${_config_file}" \
-      --username "${ZITI_USER}" \
-      --password "${ZITI_PWD}" 2>&1  # set VERBOSE=1 or DEBUG=1 to see the output
-    then
-      echo "DEBUG: created default admin in database" >&3
-    else
-      echo "ERROR: failed to create default admin in database" >&2
-      # do not leave behind a partially-initialized database file because it prevents us from trying again
-      rm -rf "${ZITI_CTRL_DATABASE_DIR}"
-      return 1
-    fi
-  else
-    echo  "ERROR: unable to create default admin in database because ZITI_USER and ZITI_PWD must both be set" >&2
-    hintLinuxBootstrap "${PWD}"
-    return 1
-  fi
-
-}
-
 isInteractive() {
   # return true if interactive and response is not empty
   if [[ "${DEBIAN_FRONTEND:-}" != "noninteractive" && -t 0 ]]; then
@@ -244,7 +207,7 @@ prompt() {
 
 loadEnvStdin() {
   # if not a tty (stdin is redirected), then slurp answers from stdin, e.g., env
-  # assignments like ZITI_PWD=abcd1234, one per line
+  # assignments like ZITI_THING=abcd1234, one per line
   if [[ ! -t 0 ]]; then
     while read -r line; do
       if [[ "${line:-}" =~ ^ZITI_.*= ]]; then
@@ -282,13 +245,17 @@ loadEnvFiles() {
 }
 
 promptCtrlAddress() {
-  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" || "${ZITI_CTRL_ADVERTISED_ADDRESS}" =~ ^[:0-9] ]]; then
-    if ! ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter DNS name of the controller [required]: ")"; then
+  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
+    if [[ -n "${ZITI_CLUSTER_NODE_NAME:-}" && -n "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
+      ZITI_CTRL_ADVERTISED_ADDRESS="$(
+        prompt "Enter DNS name of the controller [${ZITI_CLUSTER_NODE_NAME}.${ZITI_CLUSTER_TRUST_DOMAIN}]: " \
+        || echo "${ZITI_CLUSTER_NODE_NAME}.${ZITI_CLUSTER_TRUST_DOMAIN}"
+      )"
+    else
+      ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter DNS name of the controller [required]: ")"
+    fi
+    if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
       echo "ERROR: missing required DNS name ZITI_CTRL_ADVERTISED_ADDRESS in ${BOOT_ENV_FILE}" >&2
-      return 1
-      # if an IP address
-    elif [[ "${ZITI_CTRL_ADVERTISED_ADDRESS}" =~ ^[:0-9] ]]; then
-      echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be a DNS name" >&2
       return 1
     else
       setAnswer "ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}" "${BOOT_ENV_FILE}"
@@ -296,6 +263,47 @@ promptCtrlAddress() {
   fi
 }
 
+promptClusterNodePki(){
+  if [[ -n "${ZITI_BOOTSTRAP_CLUSTER:-}" && "${ZITI_BOOTSTRAP_CLUSTER}" == false ]]; then
+    if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" ]]; then
+      if ZITI_CLUSTER_NODE_PKI="$(
+        prompt  "Enter the directory containing the edge signing certificate from the cluster's root CA: " \
+                "Must contain ./${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.chain.pem, ./${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_INTERMEDIATE_FILE}.key"
+      )"; then
+        setAnswer "ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" "${BOOT_ENV_FILE}"
+      fi
+    elif [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" ]]; then
+      echo "ERROR: missing ZITI_CLUSTER_NODE_PKI in ${BOOT_ENV_FILE}; required for joining an existing cluster" >&2
+      return 1
+    fi
+  elif [[ "${ZITI_BOOTSTRAP_CLUSTER}" == true && -n "${ZITI_CLUSTER_NODE_PKI:-}" ]]; then
+    echo "ERROR: ZITI_CLUSTER_NODE_PKI must be unset when bootstrapping a new cluster; it is only used for joining an existing cluster" >&2
+    return 1
+  fi
+}
+
+promptBootstrapCluster(){
+  if [[ -z "${ZITI_BOOTSTRAP_CLUSTER:-}" ]]; then
+    ZITI_BOOTSTRAP_CLUSTER="$(prompt 'Create a new cluster (NO if joining a cluster) [Y/n]: ' || echo 'true')"
+    if [[ "${ZITI_BOOTSTRAP_CLUSTER}" =~ ^([yY]([eE][sS])?|[tT]([rR][uU][eE])?)$ ]]; then
+      ZITI_BOOTSTRAP_CLUSTER=true
+    elif [[ "${ZITI_BOOTSTRAP_CLUSTER}" =~ ^([nN][oO]?|[fF]([aA][lL][sS][eE])?)$ ]]; then
+      ZITI_BOOTSTRAP_CLUSTER=false
+    fi
+    setAnswer "ZITI_BOOTSTRAP_CLUSTER=${ZITI_BOOTSTRAP_CLUSTER}" "${BOOT_ENV_FILE}"
+  fi
+}
+
+promptClusterTrustDomain() {
+  if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == true && -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
+    if ! ZITI_CLUSTER_TRUST_DOMAIN="$(prompt "Enter the cluster trust domain [required]: ")"; then
+      echo "ERROR: missing required ZITI_CLUSTER_TRUST_DOMAIN in ${BOOT_ENV_FILE}" >&2
+      return 1
+    else
+      setAnswer "ZITI_CLUSTER_TRUST_DOMAIN=${ZITI_CLUSTER_TRUST_DOMAIN}" "${BOOT_ENV_FILE}"
+    fi
+  fi
+}
 
 # if bootstrapping was previously explicitly disabled and running interactively then prompt for re-enable, preserving
 # the currently disabled setting if non-interactive or no answer
@@ -314,55 +322,6 @@ promptBootstrap() {
     if [[ -n "${ZITI_BOOTSTRAP:-}" && "${ZITI_BOOTSTRAP}" != true ]]; then
         return 1
     fi
-}
-
-promptPwd() {
-  # do nothing if database file has stuff in it
-  if [[ -d "${ZITI_CTRL_DATABASE_DIR}" ]]; then
-      echo "DEBUG: database directory exists in $(realpath "${ZITI_CTRL_DATABASE_DIR}")" >&3
-  # prompt for password token if interactive, unless already answered
-  else
-    if ! [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
-      echo "WARN: ZITI_BOOTSTRAP_DATABASE is not true in ${SVC_ENV_FILE}" >&2
-    # do nothing if enrollment token is already defined in env file
-    elif [[ -n "${ZITI_PWD:-}" ]]; then
-      echo "DEBUG: ZITI_PWD is defined in ${BOOT_ENV_FILE}" >&3
-    else
-      GEN_PWD=$(head -c128 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^*_+~' | cut -c 1-12)
-      # don't set a generated password if not interactive because it will be unknown
-      if isInteractive && ZITI_PWD="$(prompt "Set password for '${ZITI_USER}' [${GEN_PWD}]: " || echo "${GEN_PWD}")"; then
-        # temporarily set password in env file, then scrub after db init
-        setAnswer "ZITI_PWD=${ZITI_PWD}" "${BOOT_ENV_FILE}"
-      else
-        echo "ERROR: ZITI_PWD is required" >&2
-        return 1
-      fi
-    fi
-fi
-}
-
-# promptBindAddress() {
-#   if [[ -z "${ZITI_CTRL_BIND_ADDRESS:-}" ]]; then
-#     if ZITI_CTRL_BIND_ADDRESS="$(prompt "Enter the bind address for the controller [0.0.0.0]: " || echo '0.0.0.0')"; then
-#       if [[ -n "${ZITI_CTRL_BIND_ADDRESS:-}" ]]; then
-#         setAnswer "ZITI_CTRL_BIND_ADDRESS=${ZITI_CTRL_BIND_ADDRESS}" "${BOOT_ENV_FILE}"
-#       fi
-#     else
-#       echo "WARN: missing ZITI_CTRL_BIND_ADDRESS in ${BOOT_ENV_FILE}" >&2
-#     fi
-#   fi
-# }
-
-promptUser() {
-  if [[ -z "${ZITI_USER:-}" ]]; then
-    if ZITI_USER="$(prompt "Enter the name of the default user [admin]: " || echo 'admin')"; then
-      if [[ -n "${ZITI_USER:-}" ]]; then
-        setAnswer "ZITI_USER=${ZITI_USER}" "${BOOT_ENV_FILE}"
-      fi
-    else
-      echo "WARN: missing ZITI_USER in ${BOOT_ENV_FILE}" >&2
-    fi
-  fi
 }
 
 setAnswer() {
@@ -387,7 +346,7 @@ setAnswer() {
     # append to last file if none matched the key
     echo -e "\n${_key}='${_value}'" >> "${_env_files[${#_env_files[@]}-1]}"
   else
-    echo "ERROR: setAnswer() requires at least two arguments, e.g., setAnswer 'ZITI_PWD=abcd1234' ./some1.env ./some2.env" >&2
+    echo "ERROR: setAnswer() requires at least two arguments, e.g., setAnswer 'ZITI_THING=abcd1234' ./some1.env ./some2.env" >&2
     return 1
   fi
 }
@@ -441,7 +400,7 @@ bootstrap() {
 
   # make PKI unless explicitly disabled or it already exists
   if [[ "${ZITI_BOOTSTRAP_PKI}"      == true ]]; then
-    if ! [[ -s "${_ctrl_config_file}" ]]; then
+    if ! [[ -d "${_ctrl_config_file}" ]]; then
       # make PKI unless explicitly disabled or a configuration already exists
       makePki
     fi
@@ -459,11 +418,13 @@ bootstrap() {
     return 1
   fi
 
-  # make database unless explicitly disabled or it exists
-  if [[ "${ZITI_BOOTSTRAP_DATABASE}" == true ]]; then
-    makeDatabase "${_ctrl_config_file}"
-  elif [[ "${ZITI_BOOTSTRAP_DATABASE}" == force ]]; then
-    makeDatabase "${_ctrl_config_file}" --force
+  ZITI_DATABASE_DIR="$(dataDir "${_ctrl_config_file}")"
+  if [[ -d "${ZITI_DATABASE_DIR}" ]]; then
+    echo "DEBUG: database directory exists in $(realpath "${ZITI_DATABASE_DIR}")" >&3
+  else
+    echo "DEBUG: creating database directory $(realpath "${ZITI_DATABASE_DIR}")" >&3
+    # shellcheck disable=SC2174
+    mkdir -pm0700 "${ZITI_DATABASE_DIR}"
   fi
 
 }
@@ -508,13 +469,13 @@ hintLinuxBootstrap() {
           "\n"
 }
 
-dbFile() {
+dataDir() {
   if ! (( "${#}" )); then
     echo "ERROR: no config file path provided" >&2
     return 1
   fi
   local _config_file="${1}"
-  awk -F: '/^db:/ {print $2}' "${_config_file}"|xargs realpath
+  awk -F: '/^[[:space:]]+dataDir:/ {print $2}' "${_config_file}"|xargs realpath
 }
 
 exitHandler() {
@@ -547,10 +508,10 @@ trap exitHandler EXIT SIGINT SIGTERM
 : "${ZITI_SERVER_FILE:=server}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
+: "${ZITI_CLUSTER_NODE_NAME:=ctrl1}"  # controller node name for spiffe id
 : "${ZITI_CTRL_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
 : "${ZITI_BOOTSTRAP_LOG_FILE:=$(mktemp)}"  # where the exit handler should concatenate verbose and debug messages
 ZITI_BOOTSTRAP_NOW="$(date --utc --iso-8601=seconds)"
-ZITI_CTRL_DATABASE_DIR=raft  # relative path to working directory; not configurable
 
 # if sourced then only define vars and functions and change working directory; else if exec'd then run bootstrap()
 if ! [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -603,10 +564,11 @@ else
   importZitiVars                # get ZITI_* vars from environment and set in BOOT_ENV_FILE
   loadEnvStdin                  # slurp answers from stdin if it's not a tty
   promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
+  promptBootstrapCluster        # prompt for new cluster or existing PKI
+  promptClusterTrustDomain      # prompt for ZITI_CLUSTER_TRUST_DOMAIN if not already set
+  promptClusterNodePki          # prompt for ZITI_CLUSTER_NODE_PKI if not already set and not bootstrapping a new cluster
   promptCtrlAddress             # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
   promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
-  promptUser                    # prompt for ZITI_USER if not already set
-  promptPwd                     # prompt for ZITI_PWD if not already set
   loadEnvFiles                  # reload env files to source new answers from prompts
 
   # suppress normal output during bootstrapping unless VERBOSE
@@ -615,12 +577,11 @@ else
     exec 1>&4
   fi
   
-  # run bootstrap(), set filemodes, and scrub ZITI_PWD
+  # run bootstrap(), set filemodes
   if bootstrap "${@}"
   then
     echo "DEBUG: bootstrap complete" >&3
     finalizeWorkingDir "${ZITI_HOME}"
-    setAnswer "ZITI_PWD=" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
 
     # successfully running this script directly means bootstrapping was enabled
     setAnswer "ZITI_BOOTSTRAP=true" "${SVC_ENV_FILE}"
