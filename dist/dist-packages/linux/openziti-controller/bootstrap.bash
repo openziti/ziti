@@ -16,8 +16,8 @@ makePki() {
     return 1
   fi
 
-  # if creating a new cluster then generate a root and intermediate
-  if [[ "${ZITI_BOOTSTRAP_CLUSTER}" == true ]]; then
+  # generate a root and intermediate unless explicitly disabled or an existing PKI dir was provided
+  if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER}" == true ]]; then
     if [[ -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
       echo "ERROR: ZITI_CLUSTER_TRUST_DOMAIN must be set" >&2
       hintLinuxBootstrap "${PWD}"
@@ -29,6 +29,7 @@ makePki() {
       return 1
     fi
 
+    echo "DEBUG: generating new cluster PKI because ZITI_BOOTSTRAP_CLUSTER=true" >&3
     if [[ ! -s "${ZITI_CA_CERT}" ]]; then
       ziti pki create ca \
         --pki-root "${ZITI_PKI_ROOT}" \
@@ -47,8 +48,11 @@ makePki() {
     else
       echo "INFO: edge signer CA exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")"
     fi
+  elif [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER}" == false ]]; then
+    echo "DEBUG: not generating new cluster PKI because ZITI_BOOTSTRAP_CLUSTER=false and not installing new node PKI because ZITI_CLUSTER_NODE_PKI is not set" >&3
   else
     # install the provided intermediate signing cert in this node's PKI root
+    echo "DEBUG: installing new node PKI from ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" >&3
     cp -RT "${ZITI_CLUSTER_NODE_PKI}" "${ZITI_PKI_ROOT}"
   fi
 
@@ -62,6 +66,12 @@ issueLeafCerts() {
 
   if [[ "${ZITI_SERVER_FILE}" == "${ZITI_CLIENT_FILE}" ]]; then
     echo "ERROR: ZITI_SERVER_FILE and ZITI_CLIENT_FILE must be different" >&2
+    return 1
+  fi
+
+  if [[ -z "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
+    echo "ERROR: ZITI_CLUSTER_NODE_NAME must be set" >&2
+    hintLinuxBootstrap "${PWD}"
     return 1
   fi
 
@@ -265,21 +275,18 @@ promptCtrlAddress() {
 }
 
 promptClusterNodePki(){
-  if [[ -n "${ZITI_BOOTSTRAP_CLUSTER:-}" && "${ZITI_BOOTSTRAP_CLUSTER}" == false ]]; then
-    if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" ]]; then
-      if ZITI_CLUSTER_NODE_PKI="$(
-        prompt  "Enter the directory containing the edge signing certificate from the cluster's root CA: " \
-                "Must contain ./${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.chain.pem, ./${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_INTERMEDIATE_FILE}.key"
-      )"; then
-        setAnswer "ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" "${BOOT_ENV_FILE}"
-      fi
-    elif [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" ]]; then
+  if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == false && -z "${ZITI_CLUSTER_NODE_PKI:-}" ]]; then
+    echo -e "\nThe PKI directory must contain:"\
+            "\n\t${ZITI_CA_CERT}"\
+            "\n\t${ZITI_PKI_SIGNER_CERT}"\
+            "\n\t${ZITI_PKI_SIGNER_KEY}"\
+            "\n"
+    if ZITI_CLUSTER_NODE_PKI="$(prompt  "Enter the path to the new cluster node's PKI directory: " )"; then
+      setAnswer "ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" "${BOOT_ENV_FILE}"
+    else
       echo "ERROR: missing ZITI_CLUSTER_NODE_PKI in ${BOOT_ENV_FILE}; required for joining an existing cluster" >&2
       return 1
     fi
-  elif [[ "${ZITI_BOOTSTRAP_CLUSTER}" == true && -n "${ZITI_CLUSTER_NODE_PKI:-}" ]]; then
-    echo "ERROR: ZITI_CLUSTER_NODE_PKI must be unset when bootstrapping a new cluster; it is only used for joining an existing cluster" >&2
-    return 1
   fi
 }
 
