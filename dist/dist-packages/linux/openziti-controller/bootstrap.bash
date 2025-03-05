@@ -295,9 +295,42 @@ promptBootstrapCluster(){
   fi
 }
 
+promptClusterNodeName(){
+  if [[ -z "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
+    # if the address contains at least two dots then use the first part as the default node name
+    if [[ -n "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" && "${ZITI_CTRL_ADVERTISED_ADDRESS}" =~ .+\..+\..+ ]]; then
+      ZITI_CLUSTER_NODE_NAME="$(
+        prompt "Enter the unique name for this node in the cluster [${ZITI_CTRL_ADVERTISED_ADDRESS%%.*}]: " \
+        || echo "${ZITI_CTRL_ADVERTISED_ADDRESS%%.*}"
+      )"
+    else
+      if ! ZITI_CLUSTER_NODE_NAME="$(prompt "Enter the unique name for this node in the cluster [required]: ")"; then
+        echo "ERROR: missing required ZITI_CLUSTER_NODE_NAME in ${BOOT_ENV_FILE}" >&2
+        return 1
+      fi
+    fi
+    if [[ -n "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
+      setAnswer "ZITI_CLUSTER_NODE_NAME=${ZITI_CLUSTER_NODE_NAME}" "${BOOT_ENV_FILE}"
+    else
+      echo "ERROR: missing required ZITI_CLUSTER_NODE_NAME in ${BOOT_ENV_FILE}" >&2
+      return 1
+    fi
+  fi
+}
+
 promptClusterTrustDomain() {
   if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == true && -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
-    if ! ZITI_CLUSTER_TRUST_DOMAIN="$(prompt "Enter the cluster trust domain [required]: ")"; then
+    local _prompt="Enter the trust domain shared by all nodes in the cluster"
+    # if the address contains at least two dots then use everything after the first dot as the default trust domain
+    if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ .+\..+\..+ ]]; then
+      ZITI_CLUSTER_TRUST_DOMAIN="$(
+        prompt "${_prompt} [${ZITI_CTRL_ADVERTISED_ADDRESS#*.}]: " \
+        || echo "${ZITI_CTRL_ADVERTISED_ADDRESS#*.}"
+      )"
+    else
+      ZITI_CLUSTER_TRUST_DOMAIN="$(prompt "${_prompt} [required]: ")" || true
+    fi
+    if [[ -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
       echo "ERROR: missing required ZITI_CLUSTER_TRUST_DOMAIN in ${BOOT_ENV_FILE}" >&2
       return 1
     else
@@ -509,7 +542,6 @@ trap exitHandler EXIT SIGINT SIGTERM
 : "${ZITI_SERVER_FILE:=server}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
-: "${ZITI_CLUSTER_NODE_NAME:=ctrl1}"  # controller node name for spiffe id
 : "${ZITI_CTRL_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
 : "${ZITI_BOOTSTRAP_LOG_FILE:=$(mktemp)}"  # where the exit handler should concatenate verbose and debug messages
 ZITI_CA_CERT="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
@@ -574,6 +606,7 @@ else
   loadEnvStdin                  # slurp answers from stdin if it's not a tty
   promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
   promptBootstrapCluster        # prompt for new cluster or existing PKI
+  promptClusterNodeName         # prompt for ZITI_CLUSTER_NODE_NAME if not already set
   promptClusterTrustDomain      # prompt for ZITI_CLUSTER_TRUST_DOMAIN if not already set
   promptClusterNodePki          # prompt for ZITI_CLUSTER_NODE_PKI if not already set and not bootstrapping a new cluster
   promptCtrlAddress             # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
