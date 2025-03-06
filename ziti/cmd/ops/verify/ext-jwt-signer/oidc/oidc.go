@@ -45,10 +45,11 @@ import (
 	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/openziti/ziti/internal/rest/client"
 	"github.com/openziti/ziti/ziti/cmd/edge"
+	"github.com/openziti/ziti/ziti/util"
 )
 
 const (
-	DefaultAuthScopes = "openid profile"
+	DefaultAuthScopes = "openid"
 	Timeout           = 30 * time.Second
 )
 
@@ -83,16 +84,15 @@ func pkceFlow[C oidc.IDClaims](ctx context.Context, relyingParty rp.RelyingParty
 	}
 
 	authHandlerWithQueryState := func(party rp.RelyingParty) http.HandlerFunc {
-		var urlParamOpts rp.URLParamOpt
-		for _, v := range config.AdditionalLoginParams {
-			parts := strings.Split(v, "=")
-			urlParamOpts = rp.WithURLParam(parts[0], parts[1])
-		}
-		if urlParamOpts == nil {
-			urlParamOpts = func() []oauth2.AuthCodeOption {
-				return []oauth2.AuthCodeOption{}
+		urlParamOpts := func() []oauth2.AuthCodeOption {
+			var r []oauth2.AuthCodeOption
+			for _, v := range config.AdditionalLoginParams {
+				parts := strings.Split(v, "=")
+				r = append(r, oauth2.SetAuthURLParam(parts[0], parts[1]))
 			}
+			return r
 		}
+
 		return func(w http.ResponseWriter, r *http.Request) {
 			rp.AuthURLHandler(func() string {
 				return uuid.New().String()
@@ -219,6 +219,16 @@ func (c *OIDCConfig) ValidateAndSetDefaults() error {
 	return nil
 }
 
+func (c *OIDCConfig) AuthUrl(party rp.RelyingParty) string {
+	var r []oauth2.AuthCodeOption
+	for _, v := range c.AdditionalLoginParams {
+		parts := strings.Split(v, "=")
+		r = append(r, oauth2.SetAuthURLParam(parts[0], parts[1]))
+	}
+
+	return party.OAuthConfig().AuthCodeURL("state", r...)
+}
+
 type spinnerS struct {
 	message    string
 	cancelFunc context.CancelFunc
@@ -262,7 +272,7 @@ type OidcVerificationConfig struct {
 	redirectURL      string
 	additionalScopes []string
 	showIDToken      bool
-	showRefrestToken bool
+	showRefreshToken bool
 	showAccessToken  bool
 }
 
@@ -284,6 +294,15 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 			}
 			internal.ConfigureLogFormat(logLvl)
 
+			config, _, cfgErr := util.LoadRestClientConfig()
+			if cfgErr == nil {
+				// any error indicates there are probably no saved credentials.
+				id := config.GetIdentity()
+				if defaultId := config.EdgeIdentities[id]; defaultId != nil && !opts.IgnoreConfig {
+					opts.Token = defaultId.Token
+				}
+			}
+
 			m, merr := opts.NewClientApiClient()
 			if merr != nil {
 				log.WithError(merr).Fatal("error creating mgmt")
@@ -300,6 +319,14 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 				log.Infof("using default redirect url: %s", opts.RedirectURL)
 			} else {
 				log.Infof("using supplied redirect url: %s", opts.RedirectURL)
+			}
+
+			if s.Audience != nil {
+				opts.AdditionalLoginParams = append(opts.AdditionalLoginParams, fmt.Sprintf("audience=%s", *s.Audience))
+			}
+
+			if s.Scopes != nil {
+				opts.additionalScopes = append(opts.additionalScopes, s.Scopes...)
 			}
 
 			log.Infof("found external JWT signer")
@@ -327,7 +354,9 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 				log.Infof("issuer discovered as: %s", relyingParty.Issuer())
 			}
 
-			log.Infof("attempting to authenticate")
+			log.Info("attempting to authenticate")
+			log.Debugf("auth url: %s", opts.OIDCConfig.AuthUrl(relyingParty))
+			time.Sleep(100 * time.Millisecond) //allow the logger to log before starting the wait spinner
 
 			tokens, oidcErr := GetTokens(ctx, opts.OIDCConfig, relyingParty)
 			if oidcErr != nil {
@@ -336,54 +365,31 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 
 			log.Tracef("authentication succeeded")
 
+			if idToken, tErr := jwtPayload(tokens.IDToken); tErr != nil {
+				log.Warnf("ID token not parsed: %v", tErr)
+			} else {
+				log.Infof("ID token payload:\n%s", idToken)
+			}
 			if opts.showIDToken {
 				log.Infof("Raw ID token: %s", tokens.IDToken)
 			}
-			idParts := strings.Split(tokens.IDToken, ".")
-			if len(idParts) < 2 {
-				log.Warnf("ID token returned is not a valid JWT! This should not happen, ID tokens are mandated to be JWT per the spec.")
-			} else {
-				// don't bother trying to parse as a JWT, just pull off the part[1] and base64 decode
-				payload := addPadding(idParts[1])
-				decoded, decodeErr := base64.StdEncoding.DecodeString(payload)
-				if decodeErr != nil {
-					log.Warn("access token could not be decoded and is likely an opaque token. This token will require OpenZiti to perform additional work to verify")
-				}
 
-				var prettyJSON bytes.Buffer
-				err := json.Indent(&prettyJSON, []byte(decoded), "", "  ")
-				if err != nil {
-					// just write the contents then...
-					log.Warnf("ID token could not be decoded. This highly unexpected: %v", string(decoded))
-				} else {
-					log.Infof("ID token contents:\n%s", prettyJSON.String())
-				}
-			}
-			if opts.showRefrestToken {
-				log.Infof("Raw Refresh token: %s", tokens.RefreshToken)
+			if accessToken, tErr := jwtPayload(tokens.AccessToken); tErr != nil {
+				log.Warnf("access token not parsed: %v", tErr)
+			} else {
+				log.Infof("access token payload:\n%s", accessToken)
 			}
 			if opts.showAccessToken {
-				log.Infof("Raw Access token: %s", tokens.AccessToken)
+				log.Infof("Raw access token: %s", tokens.AccessToken)
 			}
-			atParts := strings.Split(tokens.AccessToken, ".")
-			if len(atParts) < 2 {
-				log.Warnf("Access token is opaque. This token will require OpenZiti to perform additional work to verify")
-			} else {
-				// don't bother trying to parse as a JWT, just pull off the part[1] and base64 decode
-				payload := addPadding(idParts[1])
-				decoded, decodeErr := base64.StdEncoding.DecodeString(payload)
-				if decodeErr != nil {
-					log.Warn("access token could not be decoded and is likely an opaque token. This token will require OpenZiti to perform additional work to verify")
-				}
 
-				var prettyJSON bytes.Buffer
-				err := json.Indent(&prettyJSON, []byte(decoded), "", "  ")
-				if err != nil {
-					// just write the contents then...
-					log.Infof("access token could not be decoded: %v", string(decoded))
-				} else {
-					log.Infof("access token contents:\n%s", prettyJSON.String())
-				}
+			if refreshToken, tErr := jwtPayload(tokens.RefreshToken); tErr != nil {
+				log.Warnf("refresh token not parsed: %v", tErr)
+			} else {
+				log.Infof("refresh token payload:\n%s", refreshToken)
+			}
+			if opts.showRefreshToken {
+				log.Infof("Raw refresh token: %s", tokens.RefreshToken)
 			}
 		},
 	}
@@ -393,13 +399,37 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 	opts.Err = errOut
 
 	cmd.Flags().BoolVar(&opts.showIDToken, "id-token", false, "Display the full ID Token to the screen. Use caution.")
-	cmd.Flags().BoolVar(&opts.showIDToken, "refresh-token", false, "Display the full Refresh Token to the screen. Use caution.")
+	cmd.Flags().BoolVar(&opts.showRefreshToken, "refresh-token", false, "Display the full Refresh Token to the screen. Use caution.")
 	cmd.Flags().BoolVar(&opts.showAccessToken, "access-token", false, "Display the full Access Token to the screen. Use caution.")
 	cmd.Flags().StringVar(&opts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.Flags().StringSliceVarP(&opts.additionalScopes, "additional-scopes", "s", []string{}, "List of additional scopes to add")
 
 	ziticobra.SetHelpTemplate(cmd)
 	return cmd
+}
+
+/* jwtPayload extracts the payload from a jwt so the contents can be logged and shown to the user
+ */
+func jwtPayload(token string) (string, error) {
+	parts := strings.Split(token, ".")
+	if len(token) < 2 {
+		return "", errors.New("token doesn't appear to be a jwt/is opaque. cannot display payload")
+	} else {
+		// don't bother trying to parse as a JWT, just pull off the part[1] and base64 decode
+		payload := addPadding(parts[1])
+		decoded, decodeErr := base64.StdEncoding.DecodeString(payload)
+		if decodeErr != nil {
+			return "", errors.New("token could not be decoded")
+		}
+
+		var prettyJSON bytes.Buffer
+		err := json.Indent(&prettyJSON, []byte(decoded), "", "  ")
+		if err != nil {
+			return "", fmt.Errorf("token %s could not be decoded", string(decoded))
+		} else {
+			return prettyJSON.String(), nil
+		}
+	}
 }
 
 func addPadding(input string) string {
