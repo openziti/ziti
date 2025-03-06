@@ -272,7 +272,7 @@ type OidcVerificationConfig struct {
 	redirectURL      string
 	additionalScopes []string
 	showIDToken      bool
-	showRefrestToken bool
+	showRefreshToken bool
 	showAccessToken  bool
 }
 
@@ -388,7 +388,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 			} else {
 				log.Infof("refresh token payload:\n%s", refreshToken)
 			}
-			if opts.showRefrestToken {
+			if opts.showRefreshToken {
 				log.Infof("Raw refresh token: %s", tokens.RefreshToken)
 			}
 		},
@@ -399,7 +399,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 	opts.Err = errOut
 
 	cmd.Flags().BoolVar(&opts.showIDToken, "id-token", false, "Display the full ID Token to the screen. Use caution.")
-	cmd.Flags().BoolVar(&opts.showRefrestToken, "refresh-token", false, "Display the full Refresh Token to the screen. Use caution.")
+	cmd.Flags().BoolVar(&opts.showRefreshToken, "refresh-token", false, "Display the full Refresh Token to the screen. Use caution.")
 	cmd.Flags().BoolVar(&opts.showAccessToken, "access-token", false, "Display the full Access Token to the screen. Use caution.")
 	cmd.Flags().StringVar(&opts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.Flags().StringSliceVarP(&opts.additionalScopes, "additional-scopes", "s", []string{}, "List of additional scopes to add")
