@@ -411,7 +411,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 				} else if *s.TargetToken == rest_model.TargetTokenID {
 					token = tokens.IDToken
 				} else {
-					log.Fatalf("invalid target token: %s", s.TargetToken)
+					log.Fatalf("invalid target token: %s", *s.TargetToken)
 				}
 				newAuth := edge.LoginOptions{
 					Options: api.Options{
