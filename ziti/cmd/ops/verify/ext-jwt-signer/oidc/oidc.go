@@ -29,7 +29,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -398,13 +397,6 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 			}
 
 			if opts.attemptAuth {
-				tmpFile, _ := os.CreateTemp("", "ext-auth-*.txt")
-				defer func() {
-					_ = tmpFile.Close()
-					_ = os.Remove(tmpFile.Name())
-					log.Debugf("removed temp file: " + tmpFile.Name())
-				}()
-
 				var token string
 				if s.TargetToken == nil || *s.TargetToken == rest_model.TargetTokenACCESS {
 					token = tokens.AccessToken
