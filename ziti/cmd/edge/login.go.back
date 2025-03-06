@@ -56,8 +56,7 @@ type LoginOptions struct {
 	IgnoreConfig  bool
 	ClientCert    string
 	ClientKey     string
-	ExtJwtFile    string
-	ExtJwtToken   string
+	ExtJwt        string
 	File          string
 	ControllerUrl string
 
@@ -92,7 +91,7 @@ func AddLoginFlags(cmd *cobra.Command, options *LoginOptions) {
 	addLoginAnnotation(cmd, "client-cert")
 	cmd.Flags().StringVarP(&options.ClientKey, "client-key", "k", "", "The key to use with certificate authentication")
 	addLoginAnnotation(cmd, "client-key")
-	cmd.Flags().StringVarP(&options.ExtJwtFile, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
+	cmd.Flags().StringVarP(&options.ExtJwt, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
 	addLoginAnnotation(cmd, "ext-jwt")
 	cmd.Flags().StringVarP(&options.File, "file", "f", "", "An identity file to use for authentication")
 	addLoginAnnotation(cmd, "file")
@@ -118,13 +117,8 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				options.ControllerUrl = args[0]
 			}
-
-			auth, err := os.ReadFile(options.ExtJwtFile)
-			if err != nil {
-				pfxlog.Logger().Fatal(err)
-			}
-			options.ExtJwtToken = string(auth)
-			cmdhelper.CheckErr(options.Run())
+			err := options.Run()
+			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
 	}
@@ -138,7 +132,6 @@ func (o *LoginOptions) newHttpClient() *http.Client {
 	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
 		o.Args = []string{o.ControllerUrl}
 	}
-
 	// any error indicates there are probably no saved credentials. look for login information and use those
 	loginErr := o.Run()
 	if loginErr != nil {
@@ -146,16 +139,14 @@ func (o *LoginOptions) newHttpClient() *http.Client {
 	}
 
 	caPool := x509.NewCertPool()
-	if o.CaCert != "" {
-		if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
-			rootPemData, err := os.ReadFile(o.CaCert)
-			if err != nil {
-				pfxlog.Logger().Fatalf("error reading CA cert [%s]", o.CaCert)
-			}
-			caPool.AppendCertsFromPEM(rootPemData)
-		} else {
-			pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
+	if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
+		rootPemData, err := os.ReadFile(o.CaCert)
+		if err != nil {
+			pfxlog.Logger().Fatalf("error reading CA cert [%s]", o.CaCert)
 		}
+		caPool.AppendCertsFromPEM(rootPemData)
+	} else {
+		pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
 	}
 
 	return &http.Client{
@@ -282,7 +273,7 @@ func (o *LoginOptions) Run() error {
 	}
 
 	body := "{}"
-	if o.Token == "" && o.ClientCert == "" && o.ExtJwtToken == "" && o.FileCertCreds == nil {
+	if o.Token == "" && o.ClientCert == "" && o.ExtJwt == "" && o.FileCertCreds == nil {
 		for o.Username == "" {
 			var err error
 			if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
@@ -307,6 +298,7 @@ func (o *LoginOptions) Run() error {
 		body = container.String()
 	}
 
+	//o.ControllerUrl = host
 	if o.Token == "" {
 		jsonParsed, err := login(o, host, body)
 
@@ -328,6 +320,20 @@ func (o *LoginOptions) Run() error {
 		if !o.OutputJSONResponse {
 			o.Printf("Token: %v\n", o.Token)
 		}
+
+		//if !o.IgnoreConfig {
+		//	loginIdentity := &util.RestClientEdgeIdentity{
+		//		Url:       host,
+		//		Username:  o.Username,
+		//		Token:     o.Token,
+		//		LoginTime: time.Now().Format(time.RFC3339),
+		//		CaCert:    o.CaCert,
+		//		ReadOnly:  o.ReadOnly,
+		//	}
+		//	o.Printf("Saving identity '%v' to %v\n", id, configFile)
+		//	config.EdgeIdentities[id] = loginIdentity
+		//	return util.PersistRestClientConfig(config)
+		//}
 	}
 
 	o.ControllerUrl = host
@@ -475,9 +481,13 @@ func login(o *LoginOptions, url string, authentication string) (*gabs.Container,
 		client.SetRootCertificate(cert)
 	}
 	authHeader := ""
-	if o.ExtJwtToken != "" {
+	if o.ExtJwt != "" {
+		auth, err := os.ReadFile(o.ExtJwt)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't load jwt file at %s: %v", o.ExtJwt, err)
+		}
 		method = "ext-jwt"
-		authHeader = "Bearer " + strings.TrimSpace(o.ExtJwtToken)
+		authHeader = "Bearer " + strings.TrimSpace(string(auth))
 		client.SetHeader("Authorization", authHeader)
 	} else {
 		if o.ClientCert != "" {

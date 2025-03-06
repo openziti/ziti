@@ -23,9 +23,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -274,6 +278,7 @@ type OidcVerificationConfig struct {
 	showIDToken      bool
 	showRefreshToken bool
 	showAccessToken  bool
+	attemptAuth      bool
 }
 
 func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext context.Context) *cobra.Command {
@@ -391,6 +396,42 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 			if opts.showRefreshToken {
 				log.Infof("Raw refresh token: %s", tokens.RefreshToken)
 			}
+
+			if opts.attemptAuth {
+				tmpFile, _ := os.CreateTemp("", "ext-auth-*.txt")
+				defer func() {
+					_ = tmpFile.Close()
+					_ = os.Remove(tmpFile.Name())
+					log.Debugf("removed temp file: " + tmpFile.Name())
+				}()
+
+				var token string
+				if s.TargetToken == nil || *s.TargetToken == rest_model.TargetTokenACCESS {
+					token = tokens.AccessToken
+				} else if *s.TargetToken == rest_model.TargetTokenID {
+					token = tokens.IDToken
+				} else {
+					log.Fatalf("invalid target token: %s", s.TargetToken)
+				}
+				newAuth := edge.LoginOptions{
+					Options: api.Options{
+						CommonOptions: common.CommonOptions{
+							Out: opts.Out,
+							Err: opts.Err,
+						},
+					},
+					ControllerUrl: opts.ControllerUrl,
+					ExtJwtToken:   token,
+					IgnoreConfig:  true,
+				}
+				log.Infof("attempting to authenticate with specified target token type: %s", *s.TargetToken)
+				err := newAuth.Run()
+				if err != nil {
+					log.Fatalf("error authenticating with token: %v", err)
+				} else {
+					log.Info("login succeeded")
+				}
+			}
 		},
 	}
 
@@ -403,6 +444,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 	cmd.Flags().BoolVar(&opts.showAccessToken, "access-token", false, "Display the full Access Token to the screen. Use caution.")
 	cmd.Flags().StringVar(&opts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.Flags().StringSliceVarP(&opts.additionalScopes, "additional-scopes", "s", []string{}, "List of additional scopes to add")
+	cmd.Flags().BoolVar(&opts.attemptAuth, "authenticate", false, "Attempt to authenticate using the supplied ext-jwt-signer")
 
 	ziticobra.SetHelpTemplate(cmd)
 	return cmd
