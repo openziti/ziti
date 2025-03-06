@@ -56,7 +56,7 @@ type LoginOptions struct {
 	IgnoreConfig  bool
 	ClientCert    string
 	ClientKey     string
-	ExtJwtFile    string
+	extJwtFile    string
 	ExtJwtToken   string
 	File          string
 	ControllerUrl string
@@ -92,7 +92,7 @@ func AddLoginFlags(cmd *cobra.Command, options *LoginOptions) {
 	addLoginAnnotation(cmd, "client-cert")
 	cmd.Flags().StringVarP(&options.ClientKey, "client-key", "k", "", "The key to use with certificate authentication")
 	addLoginAnnotation(cmd, "client-key")
-	cmd.Flags().StringVarP(&options.ExtJwtFile, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
+	cmd.Flags().StringVarP(&options.extJwtFile, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
 	addLoginAnnotation(cmd, "ext-jwt")
 	cmd.Flags().StringVarP(&options.File, "file", "f", "", "An identity file to use for authentication")
 	addLoginAnnotation(cmd, "file")
@@ -119,7 +119,7 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 				options.ControllerUrl = args[0]
 			}
 
-			auth, err := os.ReadFile(options.ExtJwtFile)
+			auth, err := os.ReadFile(options.extJwtFile)
 			if err != nil {
 				pfxlog.Logger().Fatal(err)
 			}
