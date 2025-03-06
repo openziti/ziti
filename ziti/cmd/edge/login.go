@@ -56,7 +56,8 @@ type LoginOptions struct {
 	IgnoreConfig  bool
 	ClientCert    string
 	ClientKey     string
-	ExtJwt        string
+	extJwtFile    string
+	ExtJwtToken   string
 	File          string
 	ControllerUrl string
 
@@ -91,7 +92,7 @@ func AddLoginFlags(cmd *cobra.Command, options *LoginOptions) {
 	addLoginAnnotation(cmd, "client-cert")
 	cmd.Flags().StringVarP(&options.ClientKey, "client-key", "k", "", "The key to use with certificate authentication")
 	addLoginAnnotation(cmd, "client-key")
-	cmd.Flags().StringVarP(&options.ExtJwt, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
+	cmd.Flags().StringVarP(&options.extJwtFile, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
 	addLoginAnnotation(cmd, "ext-jwt")
 	cmd.Flags().StringVarP(&options.File, "file", "f", "", "An identity file to use for authentication")
 	addLoginAnnotation(cmd, "file")
@@ -117,8 +118,15 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				options.ControllerUrl = args[0]
 			}
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+
+			if options.extJwtFile != "" {
+				auth, err := os.ReadFile(options.extJwtFile)
+				if err != nil {
+					pfxlog.Logger().Fatal(err)
+				}
+				options.ExtJwtToken = string(auth)
+			}
+			cmdhelper.CheckErr(options.Run())
 		},
 		SuggestFor: []string{},
 	}
@@ -276,7 +284,7 @@ func (o *LoginOptions) Run() error {
 	}
 
 	body := "{}"
-	if o.Token == "" && o.ClientCert == "" && o.ExtJwt == "" && o.FileCertCreds == nil {
+	if o.Token == "" && o.ClientCert == "" && o.ExtJwtToken == "" && o.FileCertCreds == nil {
 		for o.Username == "" {
 			var err error
 			if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
@@ -469,13 +477,9 @@ func login(o *LoginOptions, url string, authentication string) (*gabs.Container,
 		client.SetRootCertificate(cert)
 	}
 	authHeader := ""
-	if o.ExtJwt != "" {
-		auth, err := os.ReadFile(o.ExtJwt)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't load jwt file at %s: %v", o.ExtJwt, err)
-		}
+	if o.ExtJwtToken != "" {
 		method = "ext-jwt"
-		authHeader = "Bearer " + strings.TrimSpace(string(auth))
+		authHeader = "Bearer " + strings.TrimSpace(o.ExtJwtToken)
 		client.SetHeader("Authorization", authHeader)
 	} else {
 		if o.ClientCert != "" {
