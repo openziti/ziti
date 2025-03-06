@@ -84,9 +84,7 @@ func pkceFlow[C oidc.IDClaims](ctx context.Context, relyingParty rp.RelyingParty
 	}
 
 	authHandlerWithQueryState := func(party rp.RelyingParty) http.HandlerFunc {
-		var urlParamOpts rp.URLParamOpt
-
-		urlParamOpts = func() []oauth2.AuthCodeOption {
+		urlParamOpts := func() []oauth2.AuthCodeOption {
 			var r []oauth2.AuthCodeOption
 			for _, v := range config.AdditionalLoginParams {
 				parts := strings.Split(v, "=")
