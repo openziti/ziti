@@ -119,11 +119,13 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 				options.ControllerUrl = args[0]
 			}
 
-			auth, err := os.ReadFile(options.extJwtFile)
-			if err != nil {
-				pfxlog.Logger().Fatal(err)
+			if options.extJwtFile != "" {
+				auth, err := os.ReadFile(options.extJwtFile)
+				if err != nil {
+					pfxlog.Logger().Fatal(err)
+				}
+				options.ExtJwtToken = string(auth)
 			}
-			options.ExtJwtToken = string(auth)
 			cmdhelper.CheckErr(options.Run())
 		},
 		SuggestFor: []string{},
