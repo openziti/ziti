@@ -408,7 +408,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 	return cmd
 }
 
-/* jwtPayload extracts the payload from a jwt so the contents can be logged shown to the user
+/* jwtPayload extracts the payload from a jwt so the contents can be logged and shown to the user
  */
 func jwtPayload(token string) (string, error) {
 	parts := strings.Split(token, ".")
