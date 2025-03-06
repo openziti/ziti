@@ -436,7 +436,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 	cmd.Flags().BoolVar(&opts.showAccessToken, "access-token", false, "Display the full Access Token to the screen. Use caution.")
 	cmd.Flags().StringVar(&opts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.Flags().StringSliceVarP(&opts.additionalScopes, "additional-scopes", "s", []string{}, "List of additional scopes to add")
-	cmd.Flags().BoolVar(&opts.attemptAuth, "authenticate", false, "Attempt to authenticate using the supplied ext-jwt-signer")
+	cmd.Flags().BoolVar(&opts.attemptAuth, "authenticate", false, "Also attempt to authenticate using the supplied ext-jwt-signer")
 
 	ziticobra.SetHelpTemplate(cmd)
 	return cmd
