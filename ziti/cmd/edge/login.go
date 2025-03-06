@@ -132,6 +132,7 @@ func (o *LoginOptions) newHttpClient() *http.Client {
 	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
 		o.Args = []string{o.ControllerUrl}
 	}
+
 	// any error indicates there are probably no saved credentials. look for login information and use those
 	loginErr := o.Run()
 	if loginErr != nil {
@@ -139,14 +140,16 @@ func (o *LoginOptions) newHttpClient() *http.Client {
 	}
 
 	caPool := x509.NewCertPool()
-	if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
-		rootPemData, err := os.ReadFile(o.CaCert)
-		if err != nil {
-			pfxlog.Logger().Fatalf("error reading CA cert [%s]", o.CaCert)
+	if o.CaCert != "" {
+		if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
+			rootPemData, err := os.ReadFile(o.CaCert)
+			if err != nil {
+				pfxlog.Logger().Fatalf("error reading CA cert [%s]", o.CaCert)
+			}
+			caPool.AppendCertsFromPEM(rootPemData)
+		} else {
+			pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
 		}
-		caPool.AppendCertsFromPEM(rootPemData)
-	} else {
-		pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
 	}
 
 	return &http.Client{
