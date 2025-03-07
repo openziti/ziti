@@ -446,7 +446,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
  */
 func jwtPayload(token string) (string, error) {
 	parts := strings.Split(token, ".")
-	if len(token) < 2 {
+	if len(parts) != 3 { // a proper token will need all three fields
 		return "", errors.New("token doesn't appear to be a jwt/is opaque. cannot display payload")
 	} else {
 		// don't bother trying to parse as a JWT, just pull off the part[1] and base64 decode
