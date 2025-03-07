@@ -37,8 +37,8 @@ elif [[ "${1}" =~ check ]]; then
     echo "ERROR: ${2} does not exist" >&2
     hintLinuxBootstrap "${PWD}"
     exit 1
-  elif [[ ! -w "$(dataDir "${2}")" ]]; then
-    echo "ERROR: database file '$(dataDir "${2}")' is not writable" >&2
+  elif [[ ! -w "$(getDataDir "${2}")" ]]; then
+  echo "ERROR: database file '$(getDataDir "${2}")' is not writable" >&2
     hintLinuxBootstrap "${PWD}"
     exit 1
   elif [[ "${ZITI_BOOTSTRAP:-}" == true && "${ZITI_BOOTSTRAP_PKI:-}" == true ]]; then
