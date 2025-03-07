@@ -46,6 +46,7 @@ makePki() {
       echo "ERROR: ${ZITI_PKI_SIGNER_CERT} and ${ZITI_PKI_SIGNER_KEY} must both exist or neither exist as non-empty files" >&2
       return 1
     else
+      # trunk-ignore(shellcheck/SC2312)
       echo "INFO: edge signer CA exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")"
     fi
   elif [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER}" == false ]]; then
@@ -76,7 +77,7 @@ issueLeafCerts() {
   fi
 
   ZITI_PKI_CTRL_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_SERVER_FILE}.key"
-  if ! [[ -s "$ZITI_PKI_CTRL_KEY" ]]; then
+  if ! [[ -s "${ZITI_PKI_CTRL_KEY}" ]]; then
     ziti pki create key \
       --pki-root "${ZITI_PKI_ROOT}" \
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
@@ -89,11 +90,12 @@ issueLeafCerts() {
 
   # server cert
   ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_SERVER_FILE}.chain.pem"
-  if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_SERVER_CERT" ]]; then
+  if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "${ZITI_PKI_CTRL_SERVER_CERT}" ]]; then
 
-    _dns_sans="localhost"
-    _ip_sans="127.0.0.1,::1"
-    if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ ([0-9]{1,3}\.?){4} ]]; then
+    local _dns_sans="localhost"
+    local _ip_sans="127.0.0.1,::1"
+    # trunk-ignore(shellcheck/SC2310)
+    if isIpAddress "${ZITI_CTRL_ADVERTISED_ADDRESS:-}"; then
       _ip_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
     else
       _dns_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
@@ -115,7 +117,7 @@ issueLeafCerts() {
   #   use the server key for both client and server certs until "ziti create config controller" supports separate keys for
   #   each
   ZITI_PKI_CTRL_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_CLIENT_FILE}.chain.pem"
-  if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_CERT" ]]; then
+  if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "${ZITI_PKI_CTRL_CERT}" ]]; then
     ziti pki create client \
       --pki-root "${ZITI_PKI_ROOT}" \
       --ca-name "${ZITI_INTERMEDIATE_FILE}" \
@@ -192,8 +194,57 @@ makeConfig() {
   ${_command[@]}
 }
 
+# return true if the argument is an IP address
+isIpAddress() {
+  # trunk-ignore(shellcheck/SC2310)
+  if isIpV4 "${1}" || isIpV6 "${1}"; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# return true if the argument is an IPv4 address
+isIpV4() {
+  if [[ "${1}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# return true if the argument is an IPv6 address
+isIpV6() {
+  # trunk-ignore(shellcheck/SC2310)
+  # trunk-ignore(shellcheck/SC2312)
+  if [[ "$(unwrapIpLiteral "${1}")" =~ ^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$ ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# return the argument with square brackets removed if it is an IP literal, e.g., an IPv6 address
+unwrapIpLiteral() {
+  if [[ "${1}" =~ ^\[(.*)\]$ ]]; then
+    echo "${BASH_REMATCH[1]}"
+  else
+    echo "${1}"
+  fi
+}
+
+# return true if the argument is a domain name, i.e., ndots >= 1
+isDomainName() {
+  # trunk-ignore(shellcheck/SC2310)
+  if ! isIpAddress "${1}" && [[ "${1}" =~ ^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+$ ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# return true if interactive and response is not empty
 isInteractive() {
-  # return true if interactive and response is not empty
   if [[ "${DEBIAN_FRONTEND:-}" != "noninteractive" && -t 0 ]]; then
     return 0
   else
@@ -201,8 +252,9 @@ isInteractive() {
   fi
 }
 
+# return true if interactive and response is not empty
 prompt() {
-  # return true if interactive and response is not empty
+  # trunk-ignore(shellcheck/SC2310)
   if isInteractive; then
     read -r -p "$1" response
     if [[ -n "${response:-}" ]]; then
@@ -216,9 +268,9 @@ prompt() {
   fi
 }
 
+# if not a tty (stdin is redirected), then slurp answers from stdin, e.g., env
+# assignments like ZITI_THING=abcd1234, one per line
 loadEnvStdin() {
-  # if not a tty (stdin is redirected), then slurp answers from stdin, e.g., env
-  # assignments like ZITI_THING=abcd1234, one per line
   if [[ ! -t 0 ]]; then
     while read -r line; do
       if [[ "${line:-}" =~ ^ZITI_.*= ]]; then
@@ -259,6 +311,7 @@ promptCtrlAddress() {
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
     if [[ -n "${ZITI_CLUSTER_NODE_NAME:-}" && -n "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
       ZITI_CTRL_ADVERTISED_ADDRESS="$(
+        # trunk-ignore(shellcheck/SC2310)
         prompt "Enter DNS name of the controller [${ZITI_CLUSTER_NODE_NAME}.${ZITI_CLUSTER_TRUST_DOMAIN}]: " \
         || echo "${ZITI_CLUSTER_NODE_NAME}.${ZITI_CLUSTER_TRUST_DOMAIN}"
       )"
@@ -281,6 +334,7 @@ promptClusterNodePki(){
             "\n\t${ZITI_PKI_SIGNER_CERT}"\
             "\n\t${ZITI_PKI_SIGNER_KEY}"\
             "\n"
+    # trunk-ignore(shellcheck/SC2310)
     if ZITI_CLUSTER_NODE_PKI="$(prompt  "Enter the path to the new cluster node's PKI directory: " )"; then
       setAnswer "ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" "${BOOT_ENV_FILE}"
     else
@@ -292,6 +346,7 @@ promptClusterNodePki(){
 
 promptBootstrapCluster(){
   if [[ -z "${ZITI_BOOTSTRAP_CLUSTER:-}" ]]; then
+    # trunk-ignore(shellcheck/SC2310)
     ZITI_BOOTSTRAP_CLUSTER="$(prompt 'Create a new cluster (NO if joining a cluster) [Y/n]: ' || echo 'true')"
     if [[ "${ZITI_BOOTSTRAP_CLUSTER}" =~ ^([yY]([eE][sS])?|[tT]([rR][uU][eE])?)$ ]]; then
       ZITI_BOOTSTRAP_CLUSTER=true
@@ -304,13 +359,14 @@ promptBootstrapCluster(){
 
 promptClusterNodeName(){
   if [[ -z "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
-    # if the address contains at least two dots then use the first part as the default node name
-    if [[ -n "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" && "${ZITI_CTRL_ADVERTISED_ADDRESS}" =~ .+\..+\..+ ]]; then
+    # trunk-ignore(shellcheck/SC2310)
+    if isDomainName "${ZITI_CTRL_ADVERTISED_ADDRESS:-}"; then
       ZITI_CLUSTER_NODE_NAME="$(
         prompt "Enter the unique name for this node in the cluster [${ZITI_CTRL_ADVERTISED_ADDRESS%%.*}]: " \
         || echo "${ZITI_CTRL_ADVERTISED_ADDRESS%%.*}"
       )"
     else
+      # trunk-ignore(shellcheck/SC2310)
       if ! ZITI_CLUSTER_NODE_NAME="$(prompt "Enter the unique name for this node in the cluster [required]: ")"; then
         echo "ERROR: missing required ZITI_CLUSTER_NODE_NAME in ${BOOT_ENV_FILE}" >&2
         return 1
@@ -327,14 +383,17 @@ promptClusterNodeName(){
 
 promptClusterTrustDomain() {
   if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == true && -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
-    local _prompt="Enter the trust domain shared by all nodes in the cluster"
-    # if the address contains at least two dots then use everything after the first dot as the default trust domain
-    if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ .+\..+\..+ ]]; then
+    local _prompt="Enter the trust domain for the new cluster"
+    # if the address is a domain name then suggest everything after the first dot for the trust domain
+    # trunk-ignore(shellcheck/SC2310)
+    if isDomainName "${ZITI_CTRL_ADVERTISED_ADDRESS:-}"; then
       ZITI_CLUSTER_TRUST_DOMAIN="$(
+        # trunk-ignore(shellcheck/SC2310)
         prompt "${_prompt} [${ZITI_CTRL_ADVERTISED_ADDRESS#*.}]: " \
         || echo "${ZITI_CTRL_ADVERTISED_ADDRESS#*.}"
       )"
     else
+      # trunk-ignore(shellcheck/SC2310)
       ZITI_CLUSTER_TRUST_DOMAIN="$(prompt "${_prompt} [required]: ")" || true
     fi
     if [[ -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
@@ -346,19 +405,21 @@ promptClusterTrustDomain() {
   fi
 }
 
-# if bootstrapping was previously explicitly disabled and running interactively then prompt for re-enable, preserving
-# the currently disabled setting if non-interactive or no answer
+# bootstrapping is "true" by default, so this function only takes action if no longer "true" i.e., it was explicitly
+# disabled and bootstrap.bash was re-run, indicating a desire to re-enable bootstrapping
 promptBootstrap() {
     # do not prompt if unset or set to true because executing interactively means we want bootstrapping
     if [[ -n "${ZITI_BOOTSTRAP:-}" && "${ZITI_BOOTSTRAP}" != true ]]; then
-        if ZITI_BOOTSTRAP="$(prompt 'Generate a default config [y/N]: ' || echo 'false')"; then
-            if [[ "${ZITI_BOOTSTRAP}" =~ ^([yY]([eE][sS])?|[tT]([rR][uU][eE])?)$ ]]; then
-                ZITI_BOOTSTRAP=true
-            elif [[ "${ZITI_BOOTSTRAP}" =~ ^([nN][oO]?|[fF]([aA][lL][sS][eE])?)$ ]]; then
-                ZITI_BOOTSTRAP=false
-            fi
-        fi
-        setAnswer "ZITI_BOOTSTRAP=${ZITI_BOOTSTRAP}" "${SVC_ENV_FILE}"
+      ZITI_BOOTSTRAP="$(prompt 'Generate a default config [y/N]: ' || echo 'false')"
+      if [[ "${ZITI_BOOTSTRAP}" =~ ^([yY]([eE][sS])?|[tT]([rR][uU][eE])?)$ ]]; then
+          ZITI_BOOTSTRAP=true
+      elif [[ "${ZITI_BOOTSTRAP}" =~ ^([nN][oO]?|[fF]([aA][lL][sS][eE])?)$ ]]; then
+          ZITI_BOOTSTRAP=false
+      else
+          echo "ERROR: unexpected value: ZITI_BOOTSTRAP=${ZITI_BOOTSTRAP}" >&2
+          return 1
+      fi
+      setAnswer "ZITI_BOOTSTRAP=${ZITI_BOOTSTRAP}" "${SVC_ENV_FILE}"
     fi
     if [[ -n "${ZITI_BOOTSTRAP:-}" && "${ZITI_BOOTSTRAP}" != true ]]; then
         return 1
@@ -376,10 +437,10 @@ setAnswer() {
     local -a _env_files=("${@}")  # ordered list of files to seek a matching key to assign value
     for _env_file in "${_env_files[@]}"; do
       # do nothing if already set
-      if grep -qE "^${_key}=['\"]?${_value}['\"]?[\s$]" "${_env_file}"; then
+      if grep -qE "^${_key}=['\"]?${_value}['\"]?[\s$]" "${_env_file}" 2>/dev/null; then
         return 0
       # set if unset
-      elif grep -qE "^${_key}=" "${_env_file}"; then
+      elif grep -qE "^${_key}=" "${_env_file}" 2>/dev/null; then
         sed -Ei "s|^${_key}=.*|${_key}='${_value}'|g" "${_env_file}"
         return 0
       fi
@@ -393,7 +454,6 @@ setAnswer() {
 }
 
 promptCtrlPort() {
-  # if undefined or default value in env file, prompt for router port, preserving default if no answer
   if [[ -z "${ZITI_CTRL_ADVERTISED_PORT:-}" ]]; then
     if ZITI_CTRL_ADVERTISED_PORT="$(prompt 'Enter the controller port [1280]: ' || echo '1280')"; then
       setAnswer "ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}" "${BOOT_ENV_FILE}"
@@ -405,7 +465,6 @@ promptCtrlPort() {
 }
 
 grantNetBindService() {
-  # grant binding privileged low ports unless already granted
   if ! grep -qE '^AmbientCapabilities=CAP_NET_BIND_SERVICE' "${SVC_FILE}"; then
     # uncomment the line
     sed -Ei 's/.*(AmbientCapabilities=CAP_NET_BIND_SERVICE)/\1/' "${SVC_FILE}"
@@ -413,24 +472,24 @@ grantNetBindService() {
   systemctl daemon-reload
 }
 
+# inherit vars and set answers
 importZitiVars() {
-  # inherit Ziti vars and set answers
   for line in $(set | grep -e "^ZITI_" | sort); do
     # shellcheck disable=SC2013
     setAnswer "${line}" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
   done
 }
 
+# make ziti vars available in child processes
 exportZitiVars() {
-  # make ziti vars available in forks
   for line in $(set | grep -e "^ZITI_" | sort); do
     # shellcheck disable=SC2013
     export "${line%=*}"
   done
 }
 
+# generate the requested configuration when run-as root, not as a systemd service
 bootstrap() {
-
   if [[ -n "${1:-}" ]]; then
     local _ctrl_config_file="${1}"
     echo "DEBUG: using config: $(realpath "${_ctrl_config_file}")" >&3
@@ -459,10 +518,13 @@ bootstrap() {
     return 1
   fi
 
-  _ctrl_data_dir="$(dataDir "${_ctrl_config_file}")"
+  local _ctrl_data_dir
+  _ctrl_data_dir="$(getDataDir "${_ctrl_config_file}")"
   if [[ -d "${_ctrl_data_dir}" ]]; then
+    # trunk-ignore(shellcheck/SC2312)
     echo "DEBUG: database directory exists in $(realpath "${_ctrl_data_dir}")" >&3
   else
+    # trunk-ignore(shellcheck/SC2312)
     echo "DEBUG: creating database directory $(realpath "${_ctrl_data_dir}")" >&3
     # shellcheck disable=SC2174
     mkdir -pm0700 "${_ctrl_data_dir}"
@@ -473,6 +535,7 @@ bootstrap() {
 prepareWorkingDir() {
   if [[ -n "${1:-}" ]]; then
     local _config_dir="$1"
+    # trunk-ignore(shellcheck/SC2312)
     echo "DEBUG: preparing working directory: $(realpath "${_config_dir}")" >&3
   else
     echo "ERROR: no working dir path provided" >&2
@@ -485,9 +548,11 @@ prepareWorkingDir() {
   cd "${_config_dir}"
 }
 
+# set filemodes and ownership for the service's working directory
 finalizeWorkingDir() {
   if [[ -n "${1:-}" ]]; then
     local _config_dir="$1"
+    # trunk-ignore(shellcheck/SC2312)
     echo "DEBUG: finalizing working directory: $(realpath "${_config_dir}")" >&3
   else
     echo "ERROR: no working dir path provided" >&2
@@ -500,7 +565,6 @@ finalizeWorkingDir() {
 }
 
 hintLinuxBootstrap() {
-
   local _work_dir="${1:-${PWD}}"
 
   echo -e "\nProvide a configuration in '${_work_dir}' or generate with:"\
@@ -510,13 +574,24 @@ hintLinuxBootstrap() {
           "\n"
 }
 
-dataDir() {
-  if ! (( "${#}" )); then
+# extract the data directory from the config file
+getDataDir() {
+  if ! (( $# )); then
     echo "ERROR: no config file path provided" >&2
     return 1
   fi
-  local _config_file="${1}"
-  awk -F: '/^[[:space:]]+dataDir:/ {print $2}' "${_config_file}"|xargs realpath
+  local _config_file="${1}" _data_dir
+  _data_dir="$(
+    # extract the dataDir value from the config file, preserving spaces
+    awk -F: '/^[[:space:]]+dataDir:/ {print substr($0, index($0,$2))}' "${_config_file}" \
+    | xargs -I {} realpath "{}"
+  )"
+  echo "DEBUG: data directory: ${_data_dir}" >&3
+  if [[ -z "${_data_dir}" ]]; then
+    echo "ERROR: no data directory found in config file: ${_config_file}" >&2
+    return 1
+  fi
+  echo "${_data_dir}"
 }
 
 exitHandler() {
@@ -542,7 +617,7 @@ fi
 
 trap exitHandler EXIT SIGINT SIGTERM
 
-# set defaults
+# defaults
 : "${ZITI_PKI_ROOT:=pki}"  # relative to working directory
 : "${ZITI_CA_FILE:=root}"  # relative to ZITI_PKI_ROOT
 : "${ZITI_INTERMEDIATE_FILE:=intermediate}"  # relative to ZITI_PKI_ROOT
@@ -551,6 +626,8 @@ trap exitHandler EXIT SIGINT SIGTERM
 : "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
 : "${ZITI_CTRL_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
 : "${ZITI_BOOTSTRAP_LOG_FILE:=$(mktemp)}"  # where the exit handler should concatenate verbose and debug messages
+
+# constants
 ZITI_CA_CERT="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
 ZITI_PKI_SIGNER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.cert"
 ZITI_PKI_SIGNER_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_INTERMEDIATE_FILE}.key"
@@ -561,7 +638,7 @@ ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
 ZITI_BOOTSTRAP_NOW="$(date --utc --iso-8601=seconds)"
 
 
-# if sourced then only define vars and functions and change working directory; else if exec'd then run bootstrap()
+# if this file was sourced, then only define vars and functions and change working directory; else if exec'd then run bootstrap()
 if ! [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 
   # ensure ZITI_HOME is working dir to allow paths to be relative or absolute
