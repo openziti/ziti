@@ -432,7 +432,7 @@ checkCommand() {
 
 main(){
     checkBashVersion >&2
-    MINIZITI_DEBUG=0
+
     # require commands
     declare -a BINS=(awk grep helm jq minikube nslookup pgrep sed xargs)
     for BIN in "${BINS[@]}"; do
@@ -441,6 +441,14 @@ main(){
 
     # open a descriptor for debug messages
     exec 3>/dev/null
+
+    # xtrace opt implies --verbose
+    if [[ $- =~ x ]]; then
+        MINIZITI_DEBUG=1
+        exec 3>&1
+    else
+        MINIZITI_DEBUG=0
+    fi
 
     # local strings with defaults that never produce an error
     declare DELETE_MINIZITI=0 \
@@ -768,12 +776,6 @@ main(){
         --selector app.kubernetes.io/component=controller \
         --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
 
-    logDebug "applying Custom Resource Definitions: Certificate, Issuer, and Bundle"
-    kubectlWrapper apply \
-        --filename https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml >&3
-    kubectlWrapper apply \
-        --filename https://raw.githubusercontent.com/cert-manager/trust-manager/v0.7.0/deploy/crds/trust.cert-manager.io_bundles.yaml >&3
-
     declare -A HELM_REPOS
     HELM_REPOS[openziti]="openziti.io/helm-charts"
     HELM_REPOS[jetstack]="charts.jetstack.io"
@@ -788,21 +790,26 @@ main(){
         fi
     done
 
+    helmWrapper upgrade --install cert-manager jetstack/cert-manager \
+        --namespace cert-manager --create-namespace \
+        --set crds.enabled=true
+    kubectlWrapper wait deployments -n cert-manager --for condition=Available --timeout="${MINIZITI_TIMEOUT_SECS}s" --all >&3
+
+    kubectlWrapper get namespace "${ZITI_NAMESPACE}" &>/dev/null || kubectlWrapper create namespace "${ZITI_NAMESPACE}" >&3
+    helmWrapper upgrade --install trust-manager jetstack/trust-manager \
+        --namespace cert-manager \
+        --set crds.keep=false \
+        --set app.trust.namespace="${ZITI_NAMESPACE}"
+    kubectlWrapper wait deployments -n cert-manager --for condition=Available --timeout="${MINIZITI_TIMEOUT_SECS}s" trust-manager >&3
+
     #
     ## Ensure OpenZiti Controller is Upgraded and Ready
     #
 
     logInfo "installing openziti controller chart"
-    (( ZITI_CHARTS_ALT )) && {
-        logDebug "building ${ZITI_CHARTS_REF}/ziti-controller Helm Chart dependencies"
-        helmWrapper dependency build "${ZITI_CHARTS_REF}/ziti-controller" >&3
-    }
     local -a _controller_cmd=(upgrade --install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller"
         --namespace "${ZITI_NAMESPACE}" --create-namespace
         --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}"
-        --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}"
-        --set trust-manager.enabled=true
-        --set cert-manager.enabled=true
         --values "${ZITI_CHARTS_URL}/ziti-controller/values-ingress-nginx.yaml"
         --set ctrlPlane.service.enabled=false
         --set ctrlPlane.ingress.enabled=false
@@ -816,13 +823,11 @@ main(){
         kubectlWrapper config set-context "${MINIKUBE_PROFILE}" \
             --namespace "${ZITI_NAMESPACE}" >&3
 
-    for DEPLOYMENT in ziti-controller-cert-manager trust-manager ziti-controller; do
-        logInfo "waiting for $DEPLOYMENT to be ready"
-        kubectlWrapper wait deployments "$DEPLOYMENT" \
+    logInfo "waiting for ziti-controller to be ready"
+    kubectlWrapper wait deployments ziti-controller \
             --namespace "${ZITI_NAMESPACE}" \
             --for condition=Available=True \
             --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
-    done
 
     #
     ## Ensure Minikube Tunnel is Running on macOS and WSL
@@ -964,10 +969,6 @@ EOF
     fi
 
     logDebug "installing router chart as 'ziti-router'"
-    (( ZITI_CHARTS_ALT )) && {
-        logDebug "building ${ZITI_CHARTS_REF}/ziti-router Helm Chart dependencies"
-        helmWrapper dependency build "${ZITI_CHARTS_REF}/ziti-router" >&3
-    }
     local -a _router_cmd=(upgrade --install "ziti-router" "${ZITI_CHARTS_REF}/ziti-router"
         --namespace "${ZITI_NAMESPACE}"
         --set-file enrollmentJwt="$ROUTER_OTT"
