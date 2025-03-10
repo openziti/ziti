@@ -1,3 +1,27 @@
+# Release 1.5.0
+
+## What's New
+
+* Bug fixes and features
+* Change to router endpoints file default name
+
+## Router Endpoints File
+
+The router endpoints file used to have a default name of `endpoints`. 
+As it is a YAML file, the file now has a default name of `endpoints.yml`. 
+This may affect existing setups running the beta HA code. If this is
+a concern, the endpoints file path can be configured:
+
+```
+ctrl:
+  endpointsFile: /path/to/endpoints.file
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.4.1 -> v1.5.0](https://github.com/openziti/ziti/compare/v1.4.1...v1.5.0)
+    * [Issue #2849](https://github.com/openziti/ziti/issues/2849) - Router endpoints file should have .yml extension by default
+
 # Release 1.4.3
 
 ## What's New
