@@ -24,7 +24,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/ziti/cmd/ascode/exporter"
 	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
-	"github.com/openziti/ziti/ziti/cmd/edge"
+	"github.com/openziti/ziti/ziti/run"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"os"
@@ -38,7 +38,7 @@ var log = pfxlog.Logger()
 func TestYamlUploadAndDownload(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cmdComplete := make(chan bool)
-	qsCmd := edge.NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
+	qsCmd := run.NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
 
 	qsCmd.SetArgs([]string{})
 

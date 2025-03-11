@@ -52,6 +52,9 @@ amount, based on time since the last failure. The credit is now: `2 ^ (minutes s
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.4.3 -> v1.5.0](https://github.com/openziti/ziti/compare/v1.4.3...v1.5.0)
+    * [Issue #2835](https://github.com/openziti/ziti/issues/2835) - Add mechanism for selecting CLI layout
+    * [Issue #2836](https://github.com/openziti/ziti/issues/2836) - Add run subcommand
+    * [Issue #2837](https://github.com/openziti/ziti/issues/2837) - Add enroll subcommand
     * [Issue #2851](https://github.com/openziti/ziti/issues/2851) - Change terminator failure cost crediting to be exponential based on time since last failure
     * [Issue #2854](https://github.com/openziti/ziti/issues/2854) - Fix controller online status
     * [Issue #2829](https://github.com/openziti/ziti/issues/2829) - Update Raft Configuration Defaults

@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package router
+package run
 
 import (
 	"fmt"
@@ -29,29 +29,39 @@ import (
 	"github.com/openziti/ziti/router/xgress_edge"
 	"github.com/openziti/ziti/router/xgress_edge_transport"
 	"github.com/openziti/ziti/router/xgress_edge_tunnel"
+	common2 "github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
-func NewRunCmd() *cobra.Command {
-	var runCmd = &cobra.Command{
-		Use:   "run <config>",
-		Short: "Run router configuration",
-		Args:  cobra.ExactArgs(1),
-		Run:   run,
+func NewRunRouterCmd() *cobra.Command {
+	action := RouterAction{}
+	var cmd = &cobra.Command{
+		Use:    "router <config>",
+		Short:  "Run router configuration",
+		Args:   cobra.ExactArgs(1),
+		Run:    action.run,
+		PreRun: action.PreRun,
 	}
 
+	action.BindFlags(cmd)
+
 	//flags are added to an internal map and read later on, see getFlags()
-	runCmd.Flags().BoolP("extend", "e", false, "force the router on startup to extend enrollment certificates")
-	return runCmd
+	cmd.Flags().BoolVar(&action.EnableDebugOps, "debug-ops", false, "Enable/disable debug agent operations (disabled by default)")
+	cmd.Flags().BoolP("extend", "e", false, "force the router on startup to extend enrollment certificates")
+	return cmd
 }
 
-func run(cmd *cobra.Command, args []string) {
+type RouterAction struct {
+	Options
+	EnableDebugOps bool
+}
+
+func (self *RouterAction) run(cmd *cobra.Command, args []string) {
 	startLogger := logrus.WithField("version", version.GetVersion()).
 		WithField("go-version", version.GetGoVersion()).
 		WithField("os", version.GetOS()).
@@ -65,7 +75,7 @@ func run(cmd *cobra.Command, args []string) {
 		startLogger.WithError(err).Error("error loading ziti router config")
 		panic(err)
 	}
-	config.SetFlags(getFlags(cmd))
+	config.SetFlags(common2.GetFlags(cmd))
 
 	startLogger = startLogger.WithField("routerId", config.Id.Token)
 	startLogger.Info("starting ziti router")
@@ -91,19 +101,19 @@ func run(cmd *cobra.Command, args []string) {
 		logrus.WithError(err).Panic("error registering state manager in framework")
 	}
 
-	if cliAgentEnabled {
+	if self.CliAgentEnabled {
 		options := agent.Options{
-			Addr:       cliAgentAddr,
+			Addr:       self.CliAgentAddr,
 			AppId:      config.Id.Token,
 			AppType:    "router",
 			AppVersion: version.GetVersion(),
-			AppAlias:   cliAgentAlias,
+			AppAlias:   self.CliAgentAlias,
 		}
 		if config.EnableDebugOps {
-			enableDebugOps = true
+			self.EnableDebugOps = true
 		}
-		r.RegisterDefaultAgentOps(enableDebugOps)
-		debugops.RegisterEdgeRouterAgentOps(r, enableDebugOps)
+		r.RegisterDefaultAgentOps(self.EnableDebugOps)
+		debugops.RegisterEdgeRouterAgentOps(r, self.EnableDebugOps)
 
 		options.CustomOps = map[byte]func(conn net.Conn) error{
 			agent.CustomOp:      r.HandleAgentOp,
@@ -115,22 +125,14 @@ func run(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	go waitForShutdown(r)
+	go self.waitForShutdown(r)
 
-	if err := r.Run(); err != nil {
+	if err = r.Run(); err != nil {
 		logrus.WithError(err).Fatal("error starting")
 	}
 }
 
-func getFlags(cmd *cobra.Command) map[string]*pflag.Flag {
-	ret := map[string]*pflag.Flag{}
-	cmd.Flags().Visit(func(f *pflag.Flag) {
-		ret[f.Name] = f
-	})
-	return ret
-}
-
-func waitForShutdown(r *router.Router) {
+func (self *RouterAction) waitForShutdown(r *router.Router) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
 

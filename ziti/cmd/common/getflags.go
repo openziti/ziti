@@ -1,5 +1,3 @@
-//go:build windows
-
 /*
 	Copyright NetFoundry Inc.
 
@@ -16,16 +14,17 @@
 	limitations under the License.
 */
 
-package cmd
+package common
 
-import "os"
+import (
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+)
 
-func getFileMode(isPrivateKey bool) os.FileMode {
-	// Default modes for Windows:
-	// - Private keys: 0600 (rw-------)
-	// - Public files: 0644 (rw-r--r--)
-	if isPrivateKey {
-		return os.FileMode(0600)
-	}
-	return os.FileMode(0644)
+func GetFlags(cmd *cobra.Command) map[string]*pflag.Flag {
+	ret := map[string]*pflag.Flag{}
+	cmd.Flags().Visit(func(f *pflag.Flag) {
+		ret[f.Name] = f
+	})
+	return ret
 }

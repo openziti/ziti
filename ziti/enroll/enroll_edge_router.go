@@ -14,52 +14,56 @@
 	limitations under the License.
 */
 
-package router
+package enroll
 
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/enroll"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 	"os"
 )
 
-var jwtPath *string
-var engine *string
-var keyAlg ziti.KeyAlgVar
+type enrollEdgeRouterAction struct {
+	jwtPath string
+	engine  string
+	keyAlg  ziti.KeyAlgVar
+}
 
-func NewEnrollGwCmd() *cobra.Command {
+func NewEnrollEdgeRouterCmd() *cobra.Command {
+	action := &enrollEdgeRouterAction{}
 	var enrollEdgeRouterCmd = &cobra.Command{
 		Use:   "enroll <config>",
 		Short: "Enroll a router as an edge router",
 		Args:  cobra.ExactArgs(1),
-		Run:   enrollGw,
+		Run:   action.enrollEdgeRouter,
 	}
 
-	jwtPath = enrollEdgeRouterCmd.Flags().StringP("jwt", "j", "", "The path to a JWT file")
-	engine = enrollEdgeRouterCmd.Flags().StringP("engine", "e", "", "An engine")
-	if err := keyAlg.Set("RSA"); err != nil { // set default
+	enrollEdgeRouterCmd.Flags().StringVarP(&action.jwtPath, "jwt", "j", "", "The path to a JWT file")
+	enrollEdgeRouterCmd.Flags().StringVarP(&action.engine, "engine", "e", "", "An engine")
+	if err := action.keyAlg.Set("RSA"); err != nil { // set default
 		panic(err)
 	}
-	enrollEdgeRouterCmd.Flags().VarP(&keyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
+	enrollEdgeRouterCmd.Flags().VarP(&action.keyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
 
 	return enrollEdgeRouterCmd
 }
 
-func enrollGw(cmd *cobra.Command, args []string) {
+func (self *enrollEdgeRouterAction) enrollEdgeRouter(cmd *cobra.Command, args []string) {
 	log := pfxlog.Logger()
 	if cfg, err := router.LoadConfigWithOptions(args[0], false); err == nil {
-		cfg.SetFlags(getFlags(cmd))
+		cfg.SetFlags(common.GetFlags(cmd))
 
 		enroller := enroll.NewRestEnroller(cfg)
 
-		jwtBuf, err := os.ReadFile(*jwtPath)
+		jwtBuf, err := os.ReadFile(self.jwtPath)
 		if err != nil {
-			log.Panicf("could not load JWT file from path [%s]", *jwtPath)
+			log.Panicf("could not load JWT file from path [%s]", self.jwtPath)
 		}
 
-		if err := enroller.Enroll(jwtBuf, true, *engine, keyAlg); err != nil {
+		if err := enroller.Enroll(jwtBuf, true, self.engine, self.keyAlg); err != nil {
 			log.Fatalf("enrollment failure: (%v)", err)
 		}
 	} else {

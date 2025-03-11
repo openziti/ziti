@@ -1,6 +1,6 @@
 //go:build quickstart && automated
 
-package edge
+package run
 
 import (
 	"context"

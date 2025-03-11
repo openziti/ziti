@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package controller
+package database
 
 import (
 	"github.com/michaelquigley/pfxlog"
@@ -45,15 +45,6 @@ func NewDeleteSessionsFromConfigCmd() *cobra.Command {
 		Run:   deleteSessionsFromConfig,
 	}
 }
-
-const (
-	ApiSessionBucketName             = "apiSessions"
-	ApiSessionCertificatesBucketName = "apiSessionCertificates"
-	SessionBucketName                = "sessions"
-	RootBucketName                   = "ziti"
-
-	IndexBucketName = "indexes"
-)
 
 func deleteSessionsFromConfig(_ *cobra.Command, args []string) {
 	if config, err := config.LoadConfig(args[0]); err == nil {
