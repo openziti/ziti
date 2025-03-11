@@ -182,7 +182,7 @@ func (self *ControllerManager) getCurrentAsClusterPeer() *event.ClusterPeer {
 	}
 }
 
-func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer, peerConnectedEvent bool) {
+func (self *ControllerManager) UpdateControllerState(peers []*event.ClusterPeer, peerConnectedEvent bool) {
 	controllers := map[string]*Controller{}
 
 	result, err := self.BaseList("true limit none")
@@ -218,8 +218,8 @@ func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer, peerCo
 		}
 	}
 
-	pfxlog.Logger().Infof("acting as leader, updating controllers with peers, self: %s, peer count: %d, peers: %s",
-		nfpem.FingerprintFromCertificate(selfAsPeer.ServerCert[0]), len(peers), peerFingerprints)
+	pfxlog.Logger().Infof("acting as leader, updating controllers from peers, connectEvt? %v, self: %s, peer count: %d, peers: %s",
+		peerConnectedEvent, nfpem.FingerprintFromCertificate(selfAsPeer.ServerCert[0]), len(peers), peerFingerprints)
 
 	if !peerConnectedEvent {
 		// add this controller as a "peer" when leadership is gained
@@ -271,6 +271,30 @@ func (self *ControllerManager) PeersConnected(peers []*event.ClusterPeer, peerCo
 			if err = self.Update(newController, nil, changeCtx); err != nil {
 				pfxlog.Logger().WithError(err).WithField("ctrlId", peer.Id).
 					Error("could not update controller during peer(s) connection")
+			}
+		}
+	}
+
+	// If we're the new leader, marking any controller not connected to us as offline
+	if !peerConnectedEvent {
+		connectedPeers := map[string]struct{}{}
+		for _, peer := range self.env.GetCommandDispatcher().GetPeers() {
+			connectedPeers[peer.Id()] = struct{}{}
+		}
+
+		disconnectFields := fields.UpdatedFieldsMap{
+			db.FieldControllerIsOnline: struct{}{},
+		}
+
+		for _, controller := range controllers {
+			if controller.IsOnline && controller.Id != selfAsPeer.Id {
+				if _, ok := connectedPeers[controller.Id]; !ok {
+					controller.IsOnline = false
+
+					if err := self.Update(controller, disconnectFields, changeCtx); err != nil {
+						pfxlog.Logger().WithError(err).Error("could not update controller marking peer disconnected")
+					}
+				}
 			}
 		}
 	}
