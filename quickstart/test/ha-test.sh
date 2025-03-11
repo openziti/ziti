@@ -8,7 +8,6 @@ set -o pipefail
 # set defaults
 : "${BUILD_DIR:=./build}"
 : "${PFXLOG_NO_JSON:=true}"; export PFXLOG_NO_JSON  # disable JSON log format
-: "${VERBOSE:=1}"  # 0: no instance logs printed, 1: print instance logs to stdout
 BASE_TMP_DIR="/tmp/ha-quickstart-test"
 mkdir -p "$BASE_TMP_DIR"
 : "${ziti_home:=$(mktemp -d "$BASE_TMP_DIR/ziti_home_XXXXXX")}"
