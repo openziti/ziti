@@ -35,3 +35,4 @@ doc/ha/pki
 doc/ha/data
 simple-transfer-*/
 etc/endpoints
+etc/endpoints.yml
