@@ -3,7 +3,7 @@ name: Promote Downstream Releases
 on: 
   # may be triggered manually on a release tag that represents a prerelease to promote it to a release in the downstream package repositories and Docker Hub
   workflow_dispatch:
-  # automatically trigger if an existing GitHub release is marked "latest"
+  # GitHub release is marked stable, i.e., isPrerelease: false
   release:
     types: [released]  # this release event activity type excludes prereleases
 

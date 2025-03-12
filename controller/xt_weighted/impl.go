@@ -43,7 +43,7 @@ func (self *factory) NewStrategy() xt.Strategy {
 	strategy := &strategy{
 		CostVisitor: *xt_common.NewCostVisitor(2, 20, 2),
 	}
-	strategy.CostVisitor.CreditOverTime(5, time.Minute)
+	strategy.CreditOverTimeExponential(time.Minute, 5*time.Minute)
 	return strategy
 }
 

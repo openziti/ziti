@@ -17,14 +17,12 @@
 package edge
 
 import (
-	"context"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/enroll"
 	"github.com/openziti/ziti/ziti/util"
-	"io"
-
-	"github.com/openziti/ziti/common/enrollment"
 	"github.com/spf13/cobra"
+	"io"
 )
 
 var ExtraEdgeCommands []func(p common.OptionsProvider) *cobra.Command
@@ -48,9 +46,8 @@ func NewCmdEdge(out io.Writer, errOut io.Writer, p common.OptionsProvider) *cobr
 	cmd.AddCommand(newTraceRouteCmd(out, errOut))
 	cmd.AddCommand(newShowCmd(out, errOut))
 	cmd.AddCommand(newReEnrollCmd(out, errOut))
-	cmd.AddCommand(NewQuickStartCmd(out, errOut, context.Background()))
 	cmd.AddCommand(newValidateCommand(p))
-	cmd.AddCommand(enrollment.NewEnrollCommand(p))
+	cmd.AddCommand(enroll.NewEnrollIdentityCommand(p))
 
 	for _, cmdF := range ExtraEdgeCommands {
 		cmd.AddCommand(cmdF(p))

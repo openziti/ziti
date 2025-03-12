@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package enrollment
+package enroll
 
 import (
 	"encoding/json"
@@ -42,8 +42,8 @@ const idnameDesc = "Names the identity. Ignored if not 3rd party auto enrollment
 
 const outFlag = "out"
 
-// EnrollOptions contains the command line options
-type EnrollOptions struct {
+// IdentityEnrollOptions contains the command line options
+type IdentityEnrollOptions struct {
 	common.CommonOptions
 	RemoveJwt  bool
 	KeyAlg     ziti.KeyAlgVar
@@ -57,13 +57,13 @@ type EnrollOptions struct {
 	Password   string
 }
 
-type EnrollAction struct {
-	EnrollOptions
+type IdentityEnrollAction struct {
+	IdentityEnrollOptions
 }
 
-func NewEnrollCommand(p common.OptionsProvider) *cobra.Command {
-	action := &EnrollAction{
-		EnrollOptions: EnrollOptions{
+func NewEnrollIdentityCommand(p common.OptionsProvider) *cobra.Command {
+	action := &IdentityEnrollAction{
+		IdentityEnrollOptions: IdentityEnrollOptions{
 			CommonOptions: p(),
 		},
 	}
@@ -128,7 +128,7 @@ func NewEnrollCommand(p common.OptionsProvider) *cobra.Command {
 	return enrollSubCmd
 }
 
-func (e *EnrollAction) Run() error {
+func (e *IdentityEnrollAction) Run() error {
 	if strings.TrimSpace(e.OutputPath) == "" {
 		out, outErr := outPathFromJwt(e.JwtPath)
 		if outErr != nil {

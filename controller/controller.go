@@ -180,7 +180,7 @@ func (c *Controller) GetRaftInfo() (string, string, string) {
 
 	version := c.GetVersionProvider().Version()
 
-	return string(addr), string(id), version
+	return addr, id, version
 }
 
 func (c *Controller) GetDb() boltz.Db {

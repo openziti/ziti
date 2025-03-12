@@ -635,17 +635,9 @@ func (self *Controller) StartEventGeneration() {
 }
 
 func (self *Controller) Configure(ctrlConfig *config.RaftConfig, conf *raft.Config) {
-	if ctrlConfig.SnapshotThreshold != nil {
-		conf.SnapshotThreshold = uint64(*ctrlConfig.SnapshotThreshold)
-	}
-
-	if ctrlConfig.SnapshotInterval != nil {
-		conf.SnapshotInterval = *ctrlConfig.SnapshotInterval
-	}
-
-	if ctrlConfig.TrailingLogs != nil {
-		conf.TrailingLogs = uint64(*ctrlConfig.TrailingLogs)
-	}
+	conf.SnapshotThreshold = uint64(ctrlConfig.SnapshotThreshold)
+	conf.SnapshotInterval = ctrlConfig.SnapshotInterval
+	conf.TrailingLogs = uint64(ctrlConfig.TrailingLogs)
 
 	if ctrlConfig.MaxAppendEntries != nil {
 		conf.MaxAppendEntries = int(*ctrlConfig.MaxAppendEntries)
@@ -667,17 +659,9 @@ func (self *Controller) Configure(ctrlConfig *config.RaftConfig, conf *raft.Conf
 }
 
 func (self *Controller) ConfigureReloadable(ctrlConfig *config.RaftConfig, conf *raft.ReloadableConfig) {
-	if ctrlConfig.SnapshotThreshold != nil {
-		conf.SnapshotThreshold = uint64(*ctrlConfig.SnapshotThreshold)
-	}
-
-	if ctrlConfig.SnapshotInterval != nil {
-		conf.SnapshotInterval = *ctrlConfig.SnapshotInterval
-	}
-
-	if ctrlConfig.TrailingLogs != nil {
-		conf.TrailingLogs = uint64(*ctrlConfig.TrailingLogs)
-	}
+	conf.SnapshotThreshold = uint64(ctrlConfig.SnapshotThreshold)
+	conf.SnapshotInterval = ctrlConfig.SnapshotInterval
+	conf.TrailingLogs = uint64(ctrlConfig.TrailingLogs)
 
 	conf.ElectionTimeout = ctrlConfig.ElectionTimeout
 	conf.HeartbeatTimeout = ctrlConfig.HeartbeatTimeout
@@ -914,11 +898,27 @@ func (self *Controller) getClusterPeersForEvent() []*event.ClusterPeer {
 	var peers []*event.ClusterPeer
 
 	srvs := self.Fsm.GetCurrentState(self.Raft)
+	meshPeers := map[string]*mesh.Peer{}
+
+	for _, peer := range self.Mesh.GetPeers() {
+		meshPeers[string(peer.Id)] = peer
+	}
+
 	for _, srv := range srvs.Servers {
-		peers = append(peers, &event.ClusterPeer{
+		peer := &event.ClusterPeer{
 			Id:   string(srv.ID),
 			Addr: string(srv.Address),
-		})
+		}
+
+		if meshPeer := meshPeers[peer.Id]; meshPeer != nil {
+			peer.ServerCert = meshPeer.SigningCerts
+			if meshPeer.Version != nil {
+				peer.Version = meshPeer.Version.Version
+			}
+			peer.ApiAddresses = meshPeer.ApiAddresses
+		}
+
+		peers = append(peers, peer)
 	}
 
 	return peers

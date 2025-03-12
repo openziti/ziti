@@ -95,12 +95,12 @@ func (broker *Broker) GetRouterDataModel() *common.RouterDataModel {
 
 func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {
 	if clusterEvent.EventType == event.ClusterLeadershipGained {
-		broker.ae.Managers.Controller.PeersConnected(clusterEvent.Peers, false)
+		broker.ae.Managers.Controller.UpdateControllerState(clusterEvent.Peers, false)
 	}
 
 	if broker.ae.HostController.IsRaftLeader() {
 		if clusterEvent.EventType == event.ClusterPeerConnected {
-			broker.ae.Managers.Controller.PeersConnected(clusterEvent.Peers, true)
+			broker.ae.Managers.Controller.UpdateControllerState(clusterEvent.Peers, true)
 		}
 
 		if clusterEvent.EventType == event.ClusterPeerDisconnected {

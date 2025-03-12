@@ -1,6 +1,6 @@
 //go:build quickstart && manual
 
-package edge
+package run
 
 import (
 	"testing"

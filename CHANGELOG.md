@@ -1,3 +1,67 @@
+# Release 1.5.0
+
+## What's New
+
+* Bug fixes and features
+* Change to router endpoints file default name
+* Updated Cluster Defaults
+* Updates to terminator costing
+
+## Router Endpoints File
+
+The router endpoints file used to have a default name of `endpoints`. 
+As it is a YAML file, the file now has a default name of `endpoints.yml`. 
+This may affect existing setups running the beta HA code. If this is
+a concern, the endpoints file path can be configured:
+
+```
+ctrl:
+  endpointsFile: /path/to/endpoints.file
+```
+
+## Updated Cluster Defaults
+
+The following defaults have changed.
+
+```
+cluster:
+  # How many updates before creating a new snapshot. 
+  #
+  # New default: 500
+  # Old default: 8192
+  snapshotThreshold: 500 
+
+  # How many old entries to keep around, so that a stream of
+  # entries can be sent to sync peers, instead of sending an
+  # entire snapshot
+  #
+  # New default: 500
+  # Old default: 10240
+  trailingLogs: 500
+```
+
+## Terminator Costing Changes
+
+When a terminator is selected for a service dial, and that dial results in a failure, a failure cost
+is added to that terminator. This will bias future dials towards other terminators, if they are available.
+
+The failure cost can be reduced by successful dials. Failure cost is also reduced over time. In previous
+releases this was a fixed credit of 5, every minute. This is now changing to an exponential 
+amount, based on time since the last failure. The credit is now: `2 ^ (minutes since last failure/5)`.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.4.3 -> v1.5.0](https://github.com/openziti/ziti/compare/v1.4.3...v1.5.0)
+    * [Issue #2835](https://github.com/openziti/ziti/issues/2835) - Add mechanism for selecting CLI layout
+    * [Issue #2836](https://github.com/openziti/ziti/issues/2836) - Add run subcommand
+    * [Issue #2837](https://github.com/openziti/ziti/issues/2837) - Add enroll subcommand
+    * [Issue #2851](https://github.com/openziti/ziti/issues/2851) - Change terminator failure cost crediting to be exponential based on time since last failure
+    * [Issue #2854](https://github.com/openziti/ziti/issues/2854) - Fix controller online status
+    * [Issue #2829](https://github.com/openziti/ziti/issues/2829) - Update Raft Configuration Defaults
+    * [Issue #2849](https://github.com/openziti/ziti/issues/2849) - Router endpoints file should have .yml extension by default
+    * [Issue #2875](https://github.com/openziti/ziti/issues/2875) - add --authenticate to `verify ext-jwt-signer oidc`
+    * [Issue #2873](https://github.com/openziti/ziti/issues/2873) - updates to `verify ext-jwt-signer oidc`
+
 # Release 1.4.3
 
 ## What's New
@@ -26,9 +90,10 @@
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/ziti: [v1.4.0 -> v1.4.1](https://github.com/openziti/ziti/compare/v1.4.0...v1.4.1)
-  * [Issue #2825](https://github.com/openziti/ziti/issues/2825) - create config should reference client chain
-  * [Issue #2845](https://github.com/openziti/ziti/issues/2845) - 1.4.x Router - don't fail on invalid cert for heathchecks
+* github.com/openziti/ziti: [v1.4.1 -> v1.5.0](https://github.com/openziti/ziti/compare/v1.4.1...v1.5.0)
+    * [Issue #2854](https://github.com/openziti/ziti/issues/2854) - Fix controller online status
+    * [Issue #2829](https://github.com/openziti/ziti/issues/2829) - Update Raft Configuration Defaults
+    * [Issue #2849](https://github.com/openziti/ziti/issues/2849) - Router endpoints file should have .yml extension by default
 
 # Release 1.4.0
 

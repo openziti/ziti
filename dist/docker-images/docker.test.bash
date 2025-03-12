@@ -124,18 +124,26 @@ ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to ~ziggy/.config/ziti/"${ZI
 docker compose up ziti-router --detach
 
 unset GOOS
+export \
 ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS} \
-ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT} \
-go test -v -count=1 -tags="quickstart manual" ./ziti/cmd/edge/...
+ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}
+
+_test_result=$(go test -v -count=1 -tags="quickstart manual" ./ziti/run/...)
+
+# check for failure modes that don't result in an error exit code
+if [[ "${_test_result}" =~ "no tests to run" ]]
+then
+    echo "ERROR: test failed because no tests to run"
+    exit 1
+fi
 
 ATTEMPTS=5
 DELAY=3
 
 # verify console is available
 curl_cmd="curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null \"https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/\""
-until ! ((ATTEMPTS)) || eval "${curl_cmd}" &> /dev/null
+until ! (( ATTEMPTS-- )) || eval "${curl_cmd}" &> /dev/null
 do
-    (( ATTEMPTS-- ))
     echo "Waiting for zac"
     sleep ${DELAY}
 done

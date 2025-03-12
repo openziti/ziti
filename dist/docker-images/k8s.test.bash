@@ -122,34 +122,40 @@ image:
     pullPolicy: Never
 ROUTER
 
-./quickstart/kubernetes/miniziti.bash start \
+bash -x ./quickstart/kubernetes/miniziti.bash start \
 --profile "${ZITI_NAMESPACE}" \
 --no-hosts \
---debug \
 --values-dir "${EXTRA_VALUES_DIR}"
 
 MINIKUBE_IP="$(minikube --profile "${ZITI_NAMESPACE}" ip)"
+ZITI_CTRL_ADVERTISED_ADDRESS="miniziti-controller.${MINIKUBE_IP}.sslip.io"
 
 # verify console is available
-curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null "https://miniziti-controller.${MINIKUBE_IP}.sslip.io/zac/"
+curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null "https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/"
 
 ZITI_PWD=$(
-minikube kubectl --profile "${ZITI_NAMESPACE}" -- \
---context "${ZITI_NAMESPACE}" \
-get secrets "ziti-controller-admin-secret" \
---namespace "${ZITI_NAMESPACE}" \
---output go-template='{{index .data "admin-password" | base64decode }}'
+    minikube kubectl --profile "${ZITI_NAMESPACE}" -- \
+        --context "${ZITI_NAMESPACE}" \
+        get secrets "ziti-controller-admin-secret" \
+        --namespace "${ZITI_NAMESPACE}" \
+        --output go-template='{{index .data "admin-password" | base64decode }}'
 )
 
 
 export \
 ZITI_PWD \
 ZITI_ROUTER_NAME="miniziti-router" \
-ZITI_CTRL_ADVERTISED_ADDRESS="miniziti-controller.${MINIKUBE_IP}.sslip.io"
+ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}" \
+ZITI_CTRL_EDGE_ADVERTISED_PORT="${ZITI_CTRL_ADVERTISED_PORT}" \
+ZITI_TEST_BIND_ADDRESS="ziti-controller-client.${ZITI_NAMESPACE}.svc.cluster.local"
 
-ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS} \
-ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT} \
-ZITI_TEST_BIND_ADDRESS="ziti-controller-client.${ZITI_NAMESPACE}.svc.cluster.local" \
-go test -v -count=1 -tags="quickstart manual" ./ziti/cmd/edge/...
+_test_result=$(go test -v -count=1 -tags="quickstart manual" ./ziti/run/...)
+
+# check for failure modes that don't result in an error exit code
+if [[ "${_test_result}" =~ "no tests to run" ]]
+then
+    echo "ERROR: test failed because no tests to run"
+    exit 1
+fi
 
 cleanup

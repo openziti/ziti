@@ -19,7 +19,6 @@ package helpers
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/pkg/errors"
 	"net/url"
 	"os"
 	"strings"
@@ -139,11 +138,4 @@ func StandardErrorMessage(err error) (string, bool) {
 		return fmt.Sprintf("Unable to connect to the server: %v", t.Err), true
 	}
 	return "", false
-}
-
-func JFrogAPIKey() string {
-	if h := os.Getenv("JFROG_API_KEY"); h != "" {
-		return h
-	}
-	panic(errors.New("ERROR: the JFROG_API_KEY env variable has not been set"))
 }

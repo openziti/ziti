@@ -45,10 +45,6 @@ func ConfigDir() (string, error) {
 		path = filepath.Join(h, ".ziti")
 	}
 
-	err := os.MkdirAll(path, DefaultWritePermissions)
-	if err != nil {
-		return "", err
-	}
 	return path, nil
 }
 
@@ -57,6 +53,7 @@ func EnvironmentsDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	path := filepath.Join(h, "environments")
 	err = os.MkdirAll(path, DefaultWritePermissions)
 	if err != nil {

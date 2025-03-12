@@ -14,9 +14,9 @@ type RaftConfig struct {
 		MaxQueueSize uint16
 	}
 
-	SnapshotInterval  *time.Duration
-	SnapshotThreshold *uint32
-	TrailingLogs      *uint32
+	SnapshotInterval  time.Duration
+	SnapshotThreshold uint32
+	TrailingLogs      uint32
 	MaxAppendEntries  *uint32
 
 	ElectionTimeout    time.Duration
