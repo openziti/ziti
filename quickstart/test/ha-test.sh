@@ -137,7 +137,7 @@ echo "========================================================="
 ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=localhost \
 ZITI_CTRL_EDGE_ADVERTISED_PORT=2001 \
 ZITI_ROUTER_NAME="router-inst1" \
-go test -tags "quickstart manual" ziti/cmd/edge/quickstart_manual_test.go ziti/cmd/edge/quickstart_shared_test.go
+go test -tags "quickstart manual" ziti/run/quickstart_manual_test.go ziti/run/quickstart_shared_test.go
 test_exit_code=$?
 
 echo "waiting for processes to exit: $pid1 $pid2 $pid3"
