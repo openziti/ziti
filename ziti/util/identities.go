@@ -185,6 +185,7 @@ func LoadRestClientConfig() (*RestClientConfig, string, error) {
 	if err != nil {
 		return nil, "", errors.Wrap(err, "couldn't get config dir while loading cli configuration")
 	}
+
 	configFile := filepath.Join(cfgDir, "ziti-cli.json")
 	_, err = os.Stat(configFile)
 	if err != nil {
@@ -194,6 +195,7 @@ func LoadRestClientConfig() (*RestClientConfig, string, error) {
 		}
 		return nil, "", errors.Wrapf(err, "error while statting config file %v", configFile)
 	}
+
 	result, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "error while reading config file %v", configFile)
@@ -219,7 +221,8 @@ func PersistRestClientConfig(config *RestClientConfig) error {
 	if err != nil {
 		return errors.Wrap(err, "couldn't get config dir while persisting cli configuration")
 	}
-	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+
+	if err = os.MkdirAll(cfgDir, 0700); err != nil {
 		return errors.Wrapf(err, "unable to create config dir %v", cfgDir)
 	}
 
