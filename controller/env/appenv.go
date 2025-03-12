@@ -407,6 +407,10 @@ func (ae *AppEnv) GetPeerSigners() []*x509.Certificate {
 	return ae.HostController.GetPeerSigners()
 }
 
+func (ae *AppEnv) GetControllerId() string {
+	return ae.HostController.Identity().ServerCert()[0].Leaf.Subject.CommonName
+}
+
 func (ae *AppEnv) GetCommandDispatcher() command.Dispatcher {
 	return ae.HostController.GetCommandDispatcher()
 }

@@ -35,6 +35,7 @@ const (
 	EntityTypeIdentities                = "identities"
 	EntityTypeIdentityTypes             = "identityTypes"
 	EntityTypeMfas                      = "mfas"
+	EntityTypeSettings                  = "settings"
 	EntityTypeRevocations               = "revocations"
 	EntityTypeServicePolicies           = "servicePolicies"
 	EntityTypeServiceEdgeRouterPolicies = "serviceEdgeRouterPolicies"
