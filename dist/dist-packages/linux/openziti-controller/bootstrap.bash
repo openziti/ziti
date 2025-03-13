@@ -473,7 +473,7 @@ grantNetBindService() {
 }
 
 # inherit vars and set answers
-importZitiVars() {
+loadEnvVars() {
   for line in $(set | grep -e "^ZITI_" | sort); do
     # shellcheck disable=SC2013
     setAnswer "${line}" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
@@ -686,7 +686,7 @@ else
 
   prepareWorkingDir "${ZITI_HOME}"
   loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
-  importZitiVars                # get ZITI_* vars from environment and set in BOOT_ENV_FILE
+  loadEnvVars               # get ZITI_* vars from environment and set in BOOT_ENV_FILE
   loadEnvStdin                  # slurp answers from stdin if it's not a tty
   promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
   promptBootstrapCluster        # prompt for new cluster or existing PKI
