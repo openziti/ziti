@@ -122,8 +122,10 @@ done
 sudo dpkg --install "${TMPDIR}/openziti_"*.deb
 sudo dpkg --install "${TMPDIR}/openziti-"{controller,router}_*.deb
 
-/opt/openziti/etc/controller/bootstrap.bash
+sudo /opt/openziti/etc/controller/bootstrap.bash
 
+sudo systemctl start ziti-controller.service
+sudo systemd-run \
 --wait --quiet \
 --service-type=oneshot \
 --property=TimeoutStartSec=20s \
@@ -158,7 +160,10 @@ sudo mkdir -p "${ZITI_CONSOLE_LOCATION}"
 sudo tee "${ZITI_CONSOLE_LOCATION}/index.html" <<< "I am ZAC"
 sudo chmod -R +rX "${ZITI_CONSOLE_LOCATION}"
 
+sudo /opt/openziti/etc/router/bootstrap.bash
 
+sudo systemctl start ziti-router.service
+sudo systemd-run \
 --wait --quiet \
 --service-type=oneshot \
 --property=TimeoutStartSec=20s \
@@ -168,7 +173,6 @@ ATTEMPTS=10
 DELAY=3
 until ! (( ATTEMPTS-- )) || [[ $(ziti edge list edge-routers -j | jq '.data[0].isOnline') == "true" ]]
 do
-    (( ATTEMPTS-- ))
     echo "INFO: waiting for router to be online"
     sleep ${DELAY}
 done
