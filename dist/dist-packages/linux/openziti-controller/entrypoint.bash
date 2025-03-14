@@ -34,7 +34,7 @@ if [[ "${ZITI_BOOTSTRAP:-}" == true && "${1}" =~ run ]]; then
   bootstrap "${2}"
 elif [[ "${1}" =~ check ]]; then
   if [[ ! -s "${2}" ]]; then
-    echo "ERROR: ${2} does not exist" >&2
+    echo "ERROR: ${2} is missing or empty" >&2
     hintLinuxBootstrap "${PWD}"
     exit 1
   elif [[ ! -w "$(getDataDir "${2}")" ]]; then
