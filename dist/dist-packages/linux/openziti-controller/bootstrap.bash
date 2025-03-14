@@ -685,9 +685,9 @@ else
   fi
 
   prepareWorkingDir "${ZITI_HOME}"
-  loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
-  loadEnvVars               # get ZITI_* vars from environment and set in BOOT_ENV_FILE
+  loadEnvVars                   # get ZITI_* vars from environment and set in BOOT_ENV_FILE
   loadEnvStdin                  # slurp answers from stdin if it's not a tty
+  loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
   promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
   promptBootstrapCluster        # prompt for new cluster or existing PKI
   promptClusterNodeName         # prompt for ZITI_CLUSTER_NODE_NAME if not already set

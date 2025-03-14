@@ -73,6 +73,7 @@ done
 
 : "${I_AM_ROBOT:=0}"
 : "${ZITI_GO_VERSION:=$(grep -E '^go \d+\.\d*' "./go.mod" | cut -d " " -f2)}"
+: "${ZITI_USER:=admin}"
 : "${ZITI_PWD:=ziggypw}"
 : "${TMPDIR:=$(mktemp -d)}"
 : "${ZITI_CTRL_ADVERTISED_ADDRESS:="ctrl1.127.0.0.1.sslip.io"}"
@@ -85,6 +86,7 @@ done
 
 export \
 ZITI_GO_VERSION \
+ZITI_USER \
 ZITI_PWD \
 ZITI_CTRL_ADVERTISED_ADDRESS \
 ZITI_CTRL_ADVERTISED_PORT \
@@ -122,7 +124,7 @@ done
 sudo dpkg --install "${TMPDIR}/openziti_"*.deb
 sudo dpkg --install "${TMPDIR}/openziti-"{controller,router}_*.deb
 
-sudo /opt/openziti/etc/controller/bootstrap.bash
+sudo -E bash -x /opt/openziti/etc/controller/bootstrap.bash
 
 sudo systemctl start ziti-controller.service
 sudo systemd-run \
@@ -132,27 +134,41 @@ sudo systemd-run \
 systemctl is-active ziti-controller.service
 
 # shellcheck disable=SC2140
-_init_cmd="ziti agent cluster init admin '${ZITI_PWD}' 'Default Admin'"
+initDb(){
+    systemctl show -p MainPID --value ziti-controller.service \
+    | xargs -rIPID sudo nsenter --target PID --mount -- \
+    ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'
+}
 ATTEMPTS=10
 DELAY=3
-until ! (( ATTEMPTS-- )) || "${_init_cmd}"
+until ! (( ATTEMPTS-- )) || initDb
 do
     echo "Waiting for controller initialization"
     sleep ${DELAY}
 done
+if ! (( ATTEMPTS )); then
+    echo "ERROR: timeout waiting for controller initialization" >&2
+    exit 1
+fi
 
 # shellcheck disable=SC2140
-_login_cmd="ziti edge login ${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}"\
-" --yes"\
-" --username admin"\
-" --password ${ZITI_PWD}"
+zitiLogin(){
+    ziti edge login "${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}" \
+    --yes \
+    --username "${ZITI_USER}" \
+    --password "${ZITI_PWD}"
+}
 ATTEMPTS=10
 DELAY=3
-until ! (( ATTEMPTS-- )) || "${_login_cmd}"
+until ! (( ATTEMPTS-- )) || zitiLogin
 do
     echo "Waiting for controller login"
     sleep ${DELAY}
 done
+if ! (( ATTEMPTS )); then
+    echo "ERROR: timeout waiting for controller login" >&2
+    exit 1
+fi
 ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to "${ZITI_ENROLL_TOKEN}"
 
 # mock ziti console html
@@ -160,7 +176,7 @@ sudo mkdir -p "${ZITI_CONSOLE_LOCATION}"
 sudo tee "${ZITI_CONSOLE_LOCATION}/index.html" <<< "I am ZAC"
 sudo chmod -R +rX "${ZITI_CONSOLE_LOCATION}"
 
-sudo /opt/openziti/etc/router/bootstrap.bash
+sudo -E bash -x /opt/openziti/etc/router/bootstrap.bash
 
 sudo systemctl start ziti-router.service
 sudo systemd-run \
@@ -169,14 +185,17 @@ sudo systemd-run \
 --property=TimeoutStartSec=20s \
 systemctl is-active ziti-router.service
 
+isOnline(){
+    ziti edge list edge-routers -j | jq '.data[0].isOnline'
+}
 ATTEMPTS=10
 DELAY=3
-until ! (( ATTEMPTS-- )) || [[ $(ziti edge list edge-routers -j | jq '.data[0].isOnline') == "true" ]]
+until ! (( ATTEMPTS-- )) || [[ "$(isOnline)" == "true" ]]
 do
     echo "INFO: waiting for router to be online"
     sleep ${DELAY}
 done
-if [[ $(ziti edge list edge-routers -j | jq '.data[0].isOnline') == "true" ]]
+if [[ "$(isOnline)" == "true" ]]
 then
     echo "INFO: router is online"
 else
@@ -201,12 +220,18 @@ ATTEMPTS=5
 DELAY=3
 
 # verify console is available
-curl_cmd="curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null \"https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/\""
-until ! (( ATTEMPTS-- )) || "${curl_cmd}" &> /dev/null
+getZac(){
+    curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null "\
+        https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/"
+}
+until ! (( ATTEMPTS-- )) || getZac &> /dev/null
 do
     echo "Waiting for zac"
     sleep ${DELAY}
 done
-"${curl_cmd}"
+if ! (( ATTEMPTS )); then
+    echo "ERROR: timeout waiting for zac" >&2
+    exit 1
+fi
 
 cleanup
