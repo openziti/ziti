@@ -49,8 +49,8 @@ ENV ZITI_BOOTSTRAP=true
 
 # selectively toggle bootstrapping steps
 ENV ZITI_BOOTSTRAP_PKI=true
+ENV ZITI_BOOTSTRAP_CLUSTER=true
 ENV ZITI_BOOTSTRAP_CONFIG=true
-ENV ZITI_BOOTSTRAP_DATABASE=true
 ENV ZITI_BOOTSTRAP_CONSOLE=true
 
 # defaults for bootstrapping PKI
@@ -66,7 +66,6 @@ ENV ZITI_AUTO_RENEW_CERTS=true
 ENV ZITI_CTRL_ADVERTISED_PORT=1280
 
 # defaults for bootstrapping database
-ENV ZITI_CTRL_DATABASE_FILE=bbolt.db
 ENV ZITI_USER=admin
 
 # run as ziggy (2171:2171) by default
