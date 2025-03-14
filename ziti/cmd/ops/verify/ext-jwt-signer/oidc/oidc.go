@@ -272,7 +272,6 @@ type OidcVerificationConfig struct {
 	OIDCConfig
 	edge.LoginOptions
 
-	redirectURL      string
 	additionalScopes []string
 	showIDToken      bool
 	showRefreshToken bool
