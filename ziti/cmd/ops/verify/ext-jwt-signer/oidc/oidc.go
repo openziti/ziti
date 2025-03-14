@@ -179,7 +179,7 @@ func GetTokens(ctx context.Context, config OIDCConfig, relyingParty rp.RelyingPa
 }
 
 func (c *OidcVerificationConfig) NewRelyingParty() (rp.RelyingParty, error) {
-	if err := c.ValidateAndSetDefaults(); err != nil {
+	if err := c.validateAndSetDefaults(); err != nil {
 		return nil, fmt.Errorf("invalid c: %w", err)
 	}
 
@@ -204,8 +204,8 @@ func (c *OidcVerificationConfig) NewRelyingParty() (rp.RelyingParty, error) {
 	return relyingParty, nil
 }
 
-// validateAndSetDefaults validates the config and sets default values.
-func (c *OIDCConfig) ValidateAndSetDefaults() error {
+// validateAndSetDefaults validates the config and sets default values
+func (c *OIDCConfig) validateAndSetDefaults() error {
 	if c.ClientID == "" {
 		return fmt.Errorf("ClientID must be set")
 	}
@@ -272,7 +272,6 @@ type OidcVerificationConfig struct {
 	OIDCConfig
 	edge.LoginOptions
 
-	redirectURL      string
 	additionalScopes []string
 	showIDToken      bool
 	showRefreshToken bool
@@ -318,7 +317,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 				return
 			}
 
-			if opts.redirectURL == "" {
+			if opts.RedirectURL == "" {
 				opts.RedirectURL = "http://localhost:20314/auth/callback"
 				log.Infof("using default redirect url: %s", opts.RedirectURL)
 			} else {
@@ -358,7 +357,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 				log.Infof("issuer discovered as: %s", relyingParty.Issuer())
 			}
 
-			log.Info("attempting to authenticate")
+			log.Info("attempting to authenticate to external provider")
 			log.Debugf("auth url: %s", opts.OIDCConfig.AuthUrl(relyingParty))
 			time.Sleep(100 * time.Millisecond) //allow the logger to log before starting the wait spinner
 
@@ -369,31 +368,43 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 
 			log.Tracef("authentication succeeded")
 
-			if idToken, tErr := jwtPayload(tokens.IDToken); tErr != nil {
-				log.Warnf("ID token not parsed: %v", tErr)
+			if tokens.IDToken != "" {
+				if idToken, tErr := jwtPayload(tokens.IDToken); tErr != nil {
+					log.Warnf("ID token not parsed: %v", tErr)
+				} else {
+					log.Infof("ID token payload:\n%s", idToken)
+				}
+				if opts.showIDToken {
+					log.Infof("Raw ID token: %s", tokens.IDToken)
+				}
 			} else {
-				log.Infof("ID token payload:\n%s", idToken)
-			}
-			if opts.showIDToken {
-				log.Infof("Raw ID token: %s", tokens.IDToken)
+				log.Warnf("no ID token returned")
 			}
 
-			if accessToken, tErr := jwtPayload(tokens.AccessToken); tErr != nil {
-				log.Warnf("access token not parsed: %v", tErr)
+			if tokens.AccessToken != "" {
+				if accessToken, tErr := jwtPayload(tokens.AccessToken); tErr != nil {
+					log.Warnf("access token not parsed: %v", tErr)
+				} else {
+					log.Infof("access token payload:\n%s", accessToken)
+				}
+				if opts.showAccessToken {
+					log.Infof("Raw access token: %s", tokens.AccessToken)
+				}
 			} else {
-				log.Infof("access token payload:\n%s", accessToken)
-			}
-			if opts.showAccessToken {
-				log.Infof("Raw access token: %s", tokens.AccessToken)
+				log.Warnf("no access token returned")
 			}
 
-			if refreshToken, tErr := jwtPayload(tokens.RefreshToken); tErr != nil {
-				log.Warnf("refresh token not parsed: %v", tErr)
+			if tokens.RefreshToken != "" {
+				if refreshToken, tErr := jwtPayload(tokens.RefreshToken); tErr != nil {
+					log.Warnf("refresh token not parsed: %v", tErr)
+				} else {
+					log.Infof("refresh token payload:\n%s", refreshToken)
+				}
+				if opts.showRefreshToken {
+					log.Infof("Raw refresh token: %s", tokens.RefreshToken)
+				}
 			} else {
-				log.Infof("refresh token payload:\n%s", refreshToken)
-			}
-			if opts.showRefreshToken {
-				log.Infof("Raw refresh token: %s", tokens.RefreshToken)
+				log.Warnf("no refresh token returned")
 			}
 
 			if opts.attemptAuth {
@@ -416,7 +427,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 					ExtJwtToken:   token,
 					IgnoreConfig:  true,
 				}
-				log.Infof("attempting to authenticate with specified target token type: %s", *s.TargetToken)
+				log.Infof("attempting to authenticate to controller with specified target token type: %s", *s.TargetToken)
 				err := newAuth.Run()
 				if err != nil {
 					log.Fatalf("error authenticating with token: %v", err)
@@ -437,6 +448,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 	cmd.Flags().StringVar(&opts.ControllerUrl, "controller-url", "", "The url of the controller")
 	cmd.Flags().StringSliceVarP(&opts.additionalScopes, "additional-scopes", "s", []string{}, "List of additional scopes to add")
 	cmd.Flags().BoolVar(&opts.attemptAuth, "authenticate", false, "Also attempt to authenticate using the supplied ext-jwt-signer")
+	cmd.Flags().StringVarP(&opts.RedirectURL, "redirect-url", "r", "http://localhost:20314/auth/callback", "The expected redirect URL to listen to")
 
 	ziticobra.SetHelpTemplate(cmd)
 	return cmd

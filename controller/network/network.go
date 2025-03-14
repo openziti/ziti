@@ -1460,7 +1460,7 @@ func (network *Network) reportRouterLinksError(router *model.Router, err error, 
 }
 
 func minCost(q map[*model.Router]bool, dist map[*model.Router]int64) *model.Router {
-	if dist == nil || len(dist) < 1 {
+	if len(dist) < 1 {
 		return nil
 	}
 
