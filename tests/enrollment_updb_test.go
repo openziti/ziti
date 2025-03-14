@@ -26,6 +26,8 @@ import (
 	"testing"
 )
 
+// Test_EnrollmentUpdb uses the generic legacy and deprecated /enroll endpoint. These test ensure it remains
+// functioning as is as the OpenAPI 2.0 spec and generated clients cannot model it properly.
 func Test_EnrollmentUpdb(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()

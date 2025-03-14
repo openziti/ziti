@@ -3,8 +3,8 @@ package env
 import (
 	openApiErrors "github.com/go-openapi/errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/controller/apierror"
 	"net/http"
 )
 
@@ -25,6 +25,7 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 					//validation errors
 					if validationError, ok := compositeError.Errors[0].(*openApiErrors.Validation); ok {
 						newApiError = errorz.NewCouldNotValidate(validationError)
+						newApiError.Status = int(validationError.Code())
 					}
 				}
 			}

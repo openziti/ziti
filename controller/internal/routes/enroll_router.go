@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"fmt"
 	"github.com/fullsailor/pkcs7"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
@@ -29,12 +30,14 @@ import (
 	management_well_known "github.com/openziti/edge-api/rest_management_api_server/operations/well_known"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/stringz"
 	cert2 "github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -51,27 +54,86 @@ func NewEnrollRouter() *EnrollRouter {
 	return &EnrollRouter{}
 }
 
-func (ro *EnrollRouter) Register(ae *env.AppEnv) {
+func (ro *EnrollRouter) AddMiddleware(ae *env.AppEnv) {
+	ae.ClientApi.AddMiddlewareFor("POST", "/enroll", func(next http.Handler) http.Handler {
+		// This endpoint is hijacked as middleware to stop automatic processing of the body.
+		// This is done due to OpenAPI 2.0 not being able to specify multiple input and output types with/without
+		// schemas. Specifically when dealing with input of a plain text CSR vs JSON (i.e. for ott vs updb)
+		// This endpoint should not be used. The enroll method specific endpoint should be used instead. It is impossible
+		// to define an OpenAPI 2.0 compliant spec for this endpoint. The best we can do is provide one that is
+		// flexible enough to get data in/out for clients and handle the assumptions in code.
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+			fullCt := strings.TrimSpace(r.Header.Get("content-type"))
+
+			method := r.URL.Query().Get("method")
+
+			if method == "" {
+				method = rest_model.EnrollmentCreateMethodOtt
+			}
+
+			//missing content-type, let the normal processing handle the error production
+			//ca is skipped because it may have no body and thus no content type
+			if fullCt == "" && method != "ca" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			mediaType := strings.Split(fullCt, ";")[0]
+
+			switch mediaType {
+			//special handling for legacy clients that are not spec compliant
+			case "application/pkcs7", "application/x-pem-file", "":
+				// empty string = no body (e.g. 3rd party ca)
+				ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+					rc.ResponseWriter.Header().Set("content-type", "application/json")
+					rc.SetProducer(runtime.JSONProducer())
+					ro.legacyGenericEnrollPemHandler(ae, rc)
+				}, r, "", "", permissions.Always()).WriteResponse(w, nil)
+			default:
+				//use spec compliant processing for application/json and or unsupported types (for error generation)
+				next.ServeHTTP(w, r)
+			}
+		})
+	})
+}
+
+func (ro *EnrollRouter) Register(ae *env.AppEnv) {
 	//Enroll
 	ae.ClientApi.EnrollEnrollHandler = enroll.EnrollHandlerFunc(func(params enroll.EnrollParams) middleware.Responder {
-		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.enrollHandler(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.Always())
 	})
 
 	ae.ClientApi.EnrollEnrollCaHandler = enroll.EnrollCaHandlerFunc(func(params enroll.EnrollCaParams) middleware.Responder {
-		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.caHandler(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.Always())
 	})
 
 	ae.ClientApi.EnrollEnrollOttCaHandler = enroll.EnrollOttCaHandlerFunc(func(params enroll.EnrollOttCaParams) middleware.Responder {
-		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.ottCaHandler(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.Always())
 	})
 
 	ae.ClientApi.EnrollEnrollOttHandler = enroll.EnrollOttHandlerFunc(func(params enroll.EnrollOttParams) middleware.Responder {
-		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.ottHandler(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.Always())
 	})
 
 	ae.ClientApi.EnrollEnrollErOttHandler = enroll.EnrollErOttHandlerFunc(func(params enroll.EnrollErOttParams) middleware.Responder {
-		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.erOttHandler(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.Always())
+	})
+
+	ae.ClientApi.EnrollEnrollUpdbHandler = enroll.EnrollUpdbHandlerFunc(func(params enroll.EnrollUpdbParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.updbHandler(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.Always())
 	})
 
 	// Extend Enrollment
@@ -133,16 +195,31 @@ func (ro *EnrollRouter) getCaCerts(ae *env.AppEnv, rc *response.RequestContext) 
 	}
 }
 
-func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContext) {
+func (ro *EnrollRouter) ottHandler(ae *env.AppEnv, rc *response.RequestContext, params enroll.EnrollOttParams) {
+	changeCtx := rc.NewChangeContext()
 
-	enrollContext := &model.EnrollmentContextHttp{}
-	err := enrollContext.FillFromHttpRequest(rc.Request, rc.NewChangeContext())
-
-	if err != nil {
-		rc.RespondWithError(err)
-		return
+	headers := map[string]interface{}{}
+	for h, v := range rc.Request.Header {
+		headers[h] = v
 	}
 
+	enrollContext := &model.EnrollmentContextHttp{
+		Headers: headers,
+		Data: &model.EnrollmentData{
+			ClientCsrPem: []byte(params.OttEnrollmentRequest.ClientCsr),
+		},
+		Certs:         rc.Request.TLS.PeerCertificates,
+		Token:         params.OttEnrollmentRequest.Token,
+		Method:        db.MethodEnrollOtt,
+		ChangeContext: changeCtx,
+	}
+
+	enrollContext.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
+
+	ro.processEnrollContext(ae, rc, enrollContext)
+}
+
+func (ro *EnrollRouter) processEnrollContext(ae *env.AppEnv, rc *response.RequestContext, enrollContext *model.EnrollmentContextHttp) {
 	result, err := ae.Managers.Enrollment.Enroll(enrollContext)
 
 	if err != nil {
@@ -168,17 +245,48 @@ func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContex
 	}
 
 	// for non ott enrollment, always return JSON
-	//prefer JSON if explicitly acceptable
+	//prefer JSON if explicitly acceptableN
 	if enrollContext.GetMethod() != db.MethodEnrollOtt || explicitJsonAccept {
 		rc.SetProducer(runtime.JSONProducer())
 	}
 
-	if producer, ok := rc.GetProducer().(*env.PemProducer); ok {
-		rc.RespondWithProducer(producer, result.TextContent, http.StatusOK)
+	rc.RespondWithOk(result.Content, &rest_model.Meta{})
+}
+
+// legacyGenericEnrollPemHandler handles legacy generic enrollment. It should not be used and is considered deprecated.
+//
+// This endpoint is hijacked as middleware to stop automatic processing of the body.
+// This is done due to OpenAPI 2.0 not being able to specify multiple input and output types with/without
+// schemas. Specifically when dealing with input of a plain text CSR vs JSON (i.e. for ott vs updb)
+// This endpoint should not be used. The enroll method specific endpoint should be used instead. It is impossible
+// to define an OpenAPI 2.0 compliant spec for this endpoint. The best we can do is provide one that is
+// flexible enough to get data in/out for clients and handle the assumptions in code.
+func (ro *EnrollRouter) legacyGenericEnrollPemHandler(ae *env.AppEnv, rc *response.RequestContext) {
+
+	if !willAcceptJson(rc.Request) {
+		rc.RespondWithError(&errorz.ApiError{
+			Code:    "UNSUPPORTED_MEDIA",
+			Message: "No suitable accept media types were detected, supports: application/json",
+			Status:  http.StatusUnsupportedMediaType,
+		})
 		return
 	}
 
-	rc.RespondWithOk(result.Content, &rest_model.Meta{})
+	enrollContext := &model.EnrollmentContextHttp{}
+	err := enrollContext.FillFromHttpRequest(rc.Request, rc.NewChangeContext())
+
+	body, err := io.ReadAll(rc.Request.Body)
+
+	if err != nil {
+		rc.RespondWithError(fmt.Errorf("could not read body: %w", err))
+		return
+	}
+
+	enrollContext.Data = &model.EnrollmentData{
+		ClientCsrPem: body,
+	}
+
+	ro.processEnrollContext(ae, rc, enrollContext)
 }
 
 func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.RequestContext, params enroll.ExtendRouterEnrollmentParams) {
@@ -290,4 +398,159 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 
 	//default unauthorized
 	rc.RespondWithApiError(errorz.NewUnauthorized())
+}
+
+func (ro *EnrollRouter) ottCaHandler(ae *env.AppEnv, rc *response.RequestContext, params enroll.EnrollOttCaParams) {
+	changeCtx := rc.NewChangeContext()
+
+	headers := map[string]interface{}{}
+	for h, v := range rc.Request.Header {
+		headers[h] = v
+	}
+
+	enrollContext := &model.EnrollmentContextHttp{
+		Headers: headers,
+		Data: &model.EnrollmentData{
+			ClientCsrPem: []byte(params.OttEnrollmentRequest.ClientCsr),
+		},
+		Certs:         rc.Request.TLS.PeerCertificates,
+		Token:         params.OttEnrollmentRequest.Token,
+		Method:        db.MethodEnrollOttCa,
+		ChangeContext: changeCtx,
+	}
+
+	enrollContext.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
+
+	ro.processEnrollContext(ae, rc, enrollContext)
+}
+
+func (ro *EnrollRouter) updbHandler(ae *env.AppEnv, rc *response.RequestContext, params enroll.EnrollUpdbParams) {
+	changeCtx := rc.NewChangeContext()
+
+	headers := map[string]interface{}{}
+	for h, v := range rc.Request.Header {
+		headers[h] = v
+	}
+
+	enrollContext := &model.EnrollmentContextHttp{
+		Headers: headers,
+		Data: &model.EnrollmentData{
+			Username: string(params.UpdbCredentials.Username),
+			Password: string(params.UpdbCredentials.Password),
+		},
+		Certs:         rc.Request.TLS.PeerCertificates,
+		Token:         string(params.Token),
+		Method:        db.MethodEnrollUpdb,
+		ChangeContext: changeCtx,
+	}
+
+	enrollContext.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
+
+	ro.processEnrollContext(ae, rc, enrollContext)
+}
+
+func (ro *EnrollRouter) erOttHandler(ae *env.AppEnv, rc *response.RequestContext, params enroll.EnrollErOttParams) {
+	changeCtx := rc.NewChangeContext()
+
+	headers := map[string]interface{}{}
+	for h, v := range rc.Request.Header {
+		headers[h] = v
+	}
+
+	enrollContext := &model.EnrollmentContextHttp{
+		Headers: headers,
+		Data: &model.EnrollmentData{
+			ClientCsrPem: []byte(params.ErOttEnrollmentRequest.ClientCsr),
+		},
+		Certs:         rc.Request.TLS.PeerCertificates,
+		Token:         params.ErOttEnrollmentRequest.Token,
+		Method:        model.MethodEnrollEdgeRouterOtt,
+		ChangeContext: changeCtx,
+	}
+
+	enrollContext.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
+
+	ro.processEnrollContext(ae, rc, enrollContext)
+}
+
+func (ro *EnrollRouter) caHandler(ae *env.AppEnv, rc *response.RequestContext, _ enroll.EnrollCaParams) {
+	changeCtx := rc.NewChangeContext()
+
+	headers := map[string]interface{}{}
+	for h, v := range rc.Request.Header {
+		headers[h] = v
+	}
+
+	enrollContext := &model.EnrollmentContextHttp{
+		Headers:       headers,
+		Certs:         rc.Request.TLS.PeerCertificates,
+		Method:        "ca",
+		ChangeContext: changeCtx,
+	}
+
+	enrollContext.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
+
+	ro.processEnrollContext(ae, rc, enrollContext)
+}
+
+func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContext, params enroll.EnrollParams) {
+	method := stringz.OrEmpty(params.Method)
+	token := ""
+	if params.Token != nil {
+		token = params.Token.String()
+	}
+
+	changeCtx := rc.NewChangeContext()
+
+	headers := map[string]interface{}{}
+	for h, v := range rc.Request.Header {
+		headers[h] = v
+	}
+
+	if params.Body == nil {
+		params.Body = &rest_model.GenericEnroll{}
+	}
+
+	enrollCtx := &model.EnrollmentContextHttp{
+		Headers:    headers,
+		Parameters: nil,
+		Data: &model.EnrollmentData{
+			RequestedName: params.Body.Name,
+			ServerCsrPem:  []byte(params.Body.ServerCertCsr),
+			ClientCsrPem:  []byte(params.Body.ClientCsr),
+			Username:      string(params.Body.Username),
+			Password:      string(params.Body.Password),
+		},
+		Certs:         rc.Request.TLS.PeerCertificates,
+		Token:         token,
+		Method:        method,
+		ChangeContext: changeCtx,
+	}
+
+	if method == model.MethodEnrollEdgeRouterOtt || method == model.MethodEnrollTransitRouterOtt {
+		// enrolling routers use `certCsr` not `clientCsr`
+		enrollCtx.Data.ClientCsrPem = []byte(params.Body.CertCsr)
+	}
+
+	ro.processEnrollContext(ae, rc, enrollCtx)
+}
+
+func willAcceptJson(r *http.Request) bool {
+	acceptHeader := r.Header.Get("Accept")
+
+	// no header is equivalent to */*
+	if acceptHeader == "" {
+		return true
+	}
+
+	// Split by comma to handle multiple media types
+	mediaTypes := strings.Split(acceptHeader, ",")
+	for _, mediaType := range mediaTypes {
+		// Extract the MIME type before a possible semicolon
+		media := strings.TrimSpace(strings.Split(mediaType, ";")[0])
+		if media == "application/json" || media == "*/*" {
+			return true
+		}
+	}
+	return false
 }

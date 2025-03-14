@@ -161,6 +161,12 @@ func (self *EnrollmentManager) getEnrollmentMethod(ctx EnrollmentContext) (strin
 		return "", apierror.NewInvalidEnrollmentToken()
 	}
 
+	// if we have an explicit enroll method we are targeting, ensure it is valid
+	// the enroll method may be blank for the generic enroll endpoint
+	if ctx.GetMethod() != "" && ctx.GetMethod() != enrollment.Method {
+		return "", apierror.NewInvalidEnrollMethod()
+	}
+
 	method = enrollment.Method
 
 	return method, nil

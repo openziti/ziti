@@ -76,17 +76,13 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 		SetChangeAuthorId(identity.Id).
 		SetChangeAuthorName(identity.Name)
 
-	data := ctx.GetDataAsMap()
+	data := ctx.GetData()
 
-	password := ""
-
-	val, ok := data["password"]
-	if !ok {
+	if len(data.Password) == 0 {
 		return nil, errorz.NewUnhandled(errors.New("password expected for updb enrollment"))
 	}
-	password = val.(string)
 
-	hash := Hash(password)
+	hash := Hash(data.Password)
 
 	encodedPassword := base64.StdEncoding.EncodeToString(hash.Hash)
 	encodedSalt := base64.StdEncoding.EncodeToString(hash.Salt)

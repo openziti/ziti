@@ -215,8 +215,14 @@ func (c *Controller) Run() {
 	log.Info("starting edge")
 
 	//after InitPersistence
-	for _, rf := range env.GetRouters() {
-		rf(c.AppEnv)
+	for _, router := range env.GetRouters() {
+		router.Register(c.AppEnv)
+	}
+	// middleware has to be added after all routes are added due to caching mechanisms in the generated code
+	for _, router := range env.GetRouters() {
+		if apiRouterMiddleware, ok := router.(env.ApiRouterMiddleware); ok {
+			apiRouterMiddleware.AddMiddleware(c.AppEnv)
+		}
 	}
 
 	go c.checkEdgeInitialized()

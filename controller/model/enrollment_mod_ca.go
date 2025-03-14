@@ -155,15 +155,7 @@ func (module *EnrollModuleCa) completeCertAuthenticatorEnrollment(log *logrus.En
 	}
 
 	identityId := eid.New()
-	requestedName := ""
-
-	log = log.WithField("identityId", identityId)
-
-	if context.GetDataAsMap() != nil {
-		if dataName, ok := context.GetDataAsMap()["name"]; ok {
-			requestedName = dataName.(string)
-		}
-	}
+	requestedName := context.GetData().RequestedName
 
 	if requestedName == "" {
 		requestedName = identityId
@@ -224,13 +216,7 @@ func (module *EnrollModuleCa) completeExternalIdEnrollment(log *logrus.Entry, co
 
 	log = log.WithField("identityId", identityId).WithField("subMethod", "externalId")
 
-	requestedName := ""
-
-	if context.GetDataAsMap() != nil {
-		if dataName, ok := context.GetDataAsMap()["name"]; ok {
-			requestedName = dataName.(string)
-		}
-	}
+	requestedName := context.GetData().RequestedName
 
 	if requestedName == "" {
 		requestedName = identityId

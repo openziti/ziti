@@ -18,14 +18,9 @@ package model
 
 import (
 	"crypto/x509"
-	"encoding/json"
 	"github.com/go-openapi/runtime"
-	"github.com/openziti/ziti/controller/apierror"
-	fabricApiError "github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
-	"io"
 	"net/http"
-	"strings"
 )
 
 type EnrollmentResult struct {
@@ -67,19 +62,25 @@ func (registry *EnrollmentRegistryImpl) GetByMethod(method string) EnrollmentPro
 type EnrollmentContext interface {
 	GetParameters() map[string]interface{}
 	GetToken() string
-	GetData() interface{}
-	GetDataAsMap() map[string]interface{}
-	GetDataAsByteArray() []byte
+	GetData() *EnrollmentData
 	GetCerts() []*x509.Certificate
 	GetHeaders() map[string]interface{}
 	GetMethod() string
 	GetChangeContext() *change.Context
 }
 
+type EnrollmentData struct {
+	RequestedName string
+	ServerCsrPem  []byte
+	ClientCsrPem  []byte
+	Username      string
+	Password      string
+}
+
 type EnrollmentContextHttp struct {
 	Headers       map[string]interface{}
 	Parameters    map[string]interface{}
-	Data          interface{}
+	Data          *EnrollmentData
 	Certs         []*x509.Certificate
 	Token         string
 	Method        string
@@ -94,32 +95,12 @@ func (context *EnrollmentContextHttp) GetParameters() map[string]interface{} {
 	return context.Parameters
 }
 
-func (context *EnrollmentContextHttp) GetData() interface{} {
+func (context *EnrollmentContextHttp) GetData() *EnrollmentData {
 	return context.Data
-}
-
-func (context *EnrollmentContextHttp) GetDataAsMap() map[string]interface{} {
-	data, ok := context.Data.(map[string]interface{})
-
-	if !ok {
-		return nil
-	}
-
-	return data
 }
 
 func (context *EnrollmentContextHttp) GetMethod() string {
 	return context.Method
-}
-
-func (context *EnrollmentContextHttp) GetDataAsByteArray() []byte {
-	data, ok := context.Data.([]byte)
-
-	if !ok {
-		return nil
-	}
-
-	return data
 }
 
 func (context *EnrollmentContextHttp) GetCerts() []*x509.Certificate {
@@ -148,42 +129,12 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request,
 		}
 	}
 
-	var enrollData interface{}
-	body, _ := io.ReadAll(request.Body)
-
-	contentType := strings.Split(request.Header.Get("content-type"), ";")
-
-	switch contentType[0] {
-	case "application/json":
-		data := map[string]interface{}{}
-		if len(body) > 0 {
-			err := json.Unmarshal(body, &data)
-
-			if err != nil {
-				err = fabricApiError.GetJsonParseError(err, body)
-				apiErr := apierror.NewCouldNotParseBody(err)
-				apiErr.AppendCause = true
-				return apiErr
-			}
-		}
-		enrollData = data
-	case "text/plain":
-		enrollData = body
-	case "application/pkcs7-mime":
-		enrollData = body
-	case "application/x-pem-file":
-		enrollData = body
-	default:
-		return apierror.NewInvalidContentType(contentType[0])
-	}
-
 	headers := map[string]interface{}{}
 	for h, v := range request.Header {
 		headers[h] = v
 	}
 
 	context.Parameters = parameters
-	context.Data = enrollData
 	context.Certs = request.TLS.PeerCertificates
 	context.Headers = headers
 	context.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")

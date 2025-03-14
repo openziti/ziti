@@ -16,7 +16,7 @@
 
 package env
 
-var routerFuncs []AddRouterFunc
+var routers []ApiRouter
 
 type AddRouterFunc func(ae *AppEnv)
 
@@ -24,10 +24,14 @@ type ApiRouter interface {
 	Register(ae *AppEnv)
 }
 
-func AddRouter(rf ApiRouter) {
-	routerFuncs = append(routerFuncs, rf.Register)
+type ApiRouterMiddleware interface {
+	AddMiddleware(ae *AppEnv)
 }
 
-func GetRouters() []AddRouterFunc {
-	return routerFuncs
+func AddRouter(rf ApiRouter) {
+	routers = append(routers, rf)
+}
+
+func GetRouters() []ApiRouter {
+	return routers
 }

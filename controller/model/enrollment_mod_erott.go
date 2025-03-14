@@ -77,21 +77,21 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, apierror.NewEnrollmentExpired()
 	}
 
-	enrollData := context.GetDataAsMap()
+	enrollData := context.GetData()
 
-	serverCertCsrPem, ok := enrollData["serverCertCsr"]
+	serverCertCsrPem := enrollData.ServerCsrPem
 
-	if !ok || serverCertCsrPem == nil {
+	if serverCertCsrPem == nil || len(serverCertCsrPem) == 0 {
 		return nil, apierror.NewInvalidEnrollmentMissingCsr(errors.New("invalid server CSR"))
 	}
 
-	clientCertCsrPem, ok := enrollData["certCsr"]
+	clientCertCsrPem := enrollData.ClientCsrPem
 
-	if !ok || clientCertCsrPem == nil {
+	if clientCertCsrPem == nil || len(clientCertCsrPem) == 0 {
 		return nil, apierror.NewInvalidEnrollmentMissingCsr(errors.New("invalid client CSR"))
 	}
 
-	serverCertRaw, err := module.ProcessServerCsrPem([]byte(serverCertCsrPem.(string)))
+	serverCertRaw, err := module.ProcessServerCsrPem(serverCertCsrPem)
 
 	if err != nil {
 		apiError := apierror.NewCouldNotProcessCsr()
@@ -99,7 +99,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, apiError
 	}
 
-	clientCertRaw, err := module.ProcessClientCsrPem([]byte(clientCertCsrPem.(string)), edgeRouter.Id)
+	clientCertRaw, err := module.ProcessClientCsrPem(clientCertCsrPem, edgeRouter.Id)
 
 	if err != nil {
 		apiError := apierror.NewCouldNotProcessCsr()
@@ -142,7 +142,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 	content := &rest_model.EnrollmentCerts{
 		Ca:         string(module.env.GetConfig().Edge.CaPems()),
 		Cert:       clientChainPem,
-		ServerCert: string(serverCertPem),
+		ServerCert: serverCertPem,
 	}
 
 	return &EnrollmentResult{

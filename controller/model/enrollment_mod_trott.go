@@ -72,9 +72,9 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 	if time.Now().After(*enrollment.ExpiresAt) {
 		return nil, apierror.NewEnrollmentExpired()
 	}
-	enrollData := context.GetDataAsMap()
+	enrollData := context.GetData()
 
-	serverCsr, err := cert.ParseCsrPem([]byte(enrollData["serverCertCsr"].(string)))
+	serverCsr, err := cert.ParseCsrPem(enrollData.ServerCsrPem)
 
 	if err != nil {
 		apiErr := apierror.NewCouldNotProcessCsr()
@@ -102,7 +102,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		return nil, apierror.NewCouldNotProcessCsr()
 	}
 
-	clientCsr, err := cert.ParseCsrPem([]byte(enrollData["certCsr"].(string)))
+	clientCsr, err := cert.ParseCsrPem(enrollData.ClientCsrPem)
 
 	if err != nil {
 		return nil, apierror.NewCouldNotProcessCsr()
@@ -150,7 +150,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 	content := &rest_model.EnrollmentCerts{
 		Ca:         string(module.env.GetConfig().Edge.CaPems()),
 		Cert:       clientChainPem,
-		ServerCert: string(srvPem),
+		ServerCert: srvPem,
 	}
 
 	return &EnrollmentResult{
