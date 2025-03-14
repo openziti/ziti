@@ -19,9 +19,9 @@ package metrics
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/metrics"
 	"time"
 )
 
@@ -93,10 +93,11 @@ func (h *channelPeekHandler) Rx(msg *channel.Message, _ channel.Channel) {
 	h.appRxMsgSizeHistogram.Update(msgSize)
 
 	if msg.ContentType == int32(xgress.ContentTypePayloadType) {
-		if payload, err := xgress.UnmarshallPayload(msg); err != nil {
-			pfxlog.Logger().WithError(err).Error("Failed to unmarshal payload")
+		circuitId, ok := msg.Headers[xgress.HeaderKeyCircuitId]
+		if !ok {
+			pfxlog.Logger().Error("no circuit id in payload")
 		} else {
-			h.usageCounter.Update(circuitUsageSource(payload.CircuitId), "fabric.rx", time.Now(), uint64(len(payload.Data)))
+			h.usageCounter.Update(circuitUsageSource(circuitId), "fabric.rx", time.Now(), uint64(len(msg.Body)))
 		}
 	}
 }
