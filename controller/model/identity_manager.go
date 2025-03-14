@@ -1135,7 +1135,8 @@ func (self *ConnectionTracker) SyncAllFromRouter(state *edge_ctrl_pb.ConnectEven
 	}
 
 	for _, identityId := range self.connections.Keys() {
-		if connected := m[identityId]; !connected {
+		// note: don't mark router itself as disconnected
+		if connected := m[identityId]; !connected && identityId != ch.Id() {
 			self.MarkDisconnected(identityId, ch)
 		}
 	}

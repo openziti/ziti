@@ -133,18 +133,27 @@ func (broker *Broker) RouterConnected(router *model.Router) {
 	if edgeRouter, _ := broker.ae.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); edgeRouter != nil {
 		log.Infof("broker detected edge router with id %s connecting", router.Id)
 		broker.routerSyncStrategy.RouterConnected(edgeRouter, router)
+		if edgeRouter.IsTunnelerEnabled {
+			// note: may be better to send a connect event from the router for itself, rather than special casing this here
+			//       however, the special casing also makes it more reactive, specifically for disconnect
+			broker.ae.Managers.Identity.GetConnectionTracker().MarkConnected(edgeRouter.Id, router.Control)
+		}
 	} else {
 		log.Debugf("broker detected non-edge router with id %s connecting", router.Id)
 	}
 }
 
-func (broker *Broker) RouterDisconnected(r *model.Router) {
+func (broker *Broker) RouterDisconnected(router *model.Router) {
+	if edgeRouter, _ := broker.ae.Managers.EdgeRouter.Read(router.Id); edgeRouter != nil && edgeRouter.IsTunnelerEnabled {
+		broker.ae.Managers.Identity.GetConnectionTracker().MarkDisconnected(edgeRouter.Id, router.Control)
+	}
+
 	go func() {
-		pfxlog.Logger().WithField("routerId", r.Id).
-			WithField("routerName", r.Name).
-			WithField("routerFingerprint", r.Fingerprint).
-			Infof("broker detected router with id %s disconnecting", r.Id)
-		broker.routerSyncStrategy.RouterDisconnected(r)
+		pfxlog.Logger().WithField("routerId", router.Id).
+			WithField("routerName", router.Name).
+			WithField("routerFingerprint", router.Fingerprint).
+			Infof("broker detected router with id %s disconnecting", router.Id)
+		broker.routerSyncStrategy.RouterDisconnected(router)
 	}()
 }
 
