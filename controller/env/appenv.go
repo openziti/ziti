@@ -1167,6 +1167,10 @@ func (ae *AppEnv) InitTimelineId(timelineId string) {
 	}
 }
 
+func (ae *AppEnv) OverrideTimelineId(timelineId string) {
+	ae.timelineId = timelineId
+}
+
 func (ae *AppEnv) TimelineId() string {
 	return ae.timelineId
 }
