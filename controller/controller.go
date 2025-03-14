@@ -706,7 +706,8 @@ func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 		return errors.Wrap(err, "error finishing gz compression of migration snapshot")
 	}
 
-	c.env.InitTimelineId(timelineId)
+	// need to override in case there's an existing db in a restore scenario. See: https://github.com/openziti/ziti/issues/2891
+	c.env.OverrideTimelineId(timelineId)
 
 	cmd := &command.SyncSnapshotCommand{
 		TimelineId:   timelineId,
