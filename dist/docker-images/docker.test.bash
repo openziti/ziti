@@ -54,10 +54,17 @@ export COMPOSE_FILE=\
 :./dist/docker-images/ziti-controller/compose.test.yml\
 :./dist/docker-images/ziti-router/compose.yml\
 :./dist/docker-images/ziti-router/compose.test.yml \
+
+export \
 ZIGGY_UID \
 ZITI_GO_VERSION \
+ZITI_USER="admin" \
 ZITI_PWD="ziggypw" \
-ZITI_CTRL_ADVERTISED_ADDRESS="ctrl1.127.0.0.1.sslip.io" \
+ZITI_CLUSTER_TRUST_DOMAIN="127.0.0.1.sslip.io" \
+ZITI_CLUSTER_NODE_NAME="ctrl1"
+
+export \
+ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_CLUSTER_NODE_NAME}.${ZITI_CLUSTER_TRUST_DOMAIN}" \
 ZITI_CTRL_ADVERTISED_PORT="12800" \
 ZITI_ROUTER_PORT="30222" \
 ZITI_CONTROLLER_IMAGE="ziti-controller:local" \
@@ -106,12 +113,27 @@ docker build \
 --file "./dist/docker-images/ziti-router/Dockerfile" \
 "${PWD}"
 
-docker compose up wait-for-controller
+DEBUG=1 docker compose up wait-for-controller
 
-docker compose run --rm --entrypoint=/bin/bash --env ZITI_ROUTER_NAME ziti-controller -euxc '
+docker compose exec --no-TTY ziti-controller bash <<BASH
 
-ziti edge login \
-${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} \
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o xtrace
+
+ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'
+
+BASH
+
+docker compose exec --no-TTY ziti-controller bash <<BASH
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o xtrace
+
+ziti edge login ${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} \
 --ca=/ziti-controller/pki/root/certs/root.cert \
 --username=${ZITI_USER} \
 --password=${ZITI_PWD} \
@@ -119,7 +141,7 @@ ${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} \
 --verbose;
 
 ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to ~ziggy/.config/ziti/"${ZITI_ROUTER_NAME}.jwt";
-'
+BASH
 
 docker compose up ziti-router --detach
 

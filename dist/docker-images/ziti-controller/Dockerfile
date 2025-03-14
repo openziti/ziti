@@ -49,8 +49,8 @@ ENV ZITI_BOOTSTRAP=true
 
 # selectively toggle bootstrapping steps
 ENV ZITI_BOOTSTRAP_PKI=true
+ENV ZITI_BOOTSTRAP_CLUSTER=true
 ENV ZITI_BOOTSTRAP_CONFIG=true
-ENV ZITI_BOOTSTRAP_DATABASE=true
 ENV ZITI_BOOTSTRAP_CONSOLE=true
 
 # defaults for bootstrapping PKI
