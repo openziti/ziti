@@ -103,6 +103,15 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 				log.Fatal(err)
 			}
 
+			_, err = t.client.CurrentAPISession.GetCurrentAPISession(nil, nil)
+			if err != nil {
+				_ = t.loginOpts.Run() // login and try again...
+				_, err = t.client.CurrentAPISession.GetCurrentAPISession(nil, nil)
+				if err != nil {
+					log.Fatal("unauthenticated. authenticate and then try again")
+				}
+			}
+
 			if t.cleanup {
 				log.Info("attempting to cleanup based on parameters. this operation will disconnect the server if it's running.")
 				t.cleanupClient()

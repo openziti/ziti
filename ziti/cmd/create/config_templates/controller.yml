@@ -8,15 +8,8 @@ v: 3
 #    path: ctrl.memprof
 
 
-{{ if .Controller.Ctrl.Clustered }}
 cluster:
   dataDir:         "{{ .ZitiHome }}/raft"
-{{ else }}
-db:                     "{{ .Controller.Database.DatabaseFile }}"
-# uncomment and configure to enable HA
-# cluster:
-#   dataDir:         "{{ .ZitiHome }}/raft"
-{{ end }}
 
 identity:
   cert:        "{{ .Controller.Identity.Cert }}"
