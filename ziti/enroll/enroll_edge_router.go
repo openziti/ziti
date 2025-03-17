@@ -21,7 +21,6 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/enroll"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -54,8 +53,6 @@ func NewEnrollEdgeRouterCmd() *cobra.Command {
 func (self *enrollEdgeRouterAction) enrollEdgeRouter(cmd *cobra.Command, args []string) {
 	log := pfxlog.Logger()
 	if cfg, err := router.LoadConfigWithOptions(args[0], false); err == nil {
-		cfg.SetFlags(common.GetFlags(cmd))
-
 		enroller := enroll.NewRestEnroller(cfg)
 
 		jwtBuf, err := os.ReadFile(self.jwtPath)

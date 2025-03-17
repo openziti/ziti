@@ -143,7 +143,7 @@ func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
 
 func (self *Router) RenderJsonConfig() (string, error) {
 	jsonMap, err := config.ToJsonCompatibleMap(self.config.src)
-	delete(jsonMap, FlagsCfgMapKey)
+	
 	if err != nil {
 		return "", err
 	}
