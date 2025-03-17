@@ -29,8 +29,8 @@ import (
 	"testing"
 )
 
-// Test_EnrollmetnCaAuto uses the generic enrollment endpoint
-func Test_EnrollmetnCaAuto(t *testing.T) {
+// Test_EnrollmetnCaAutoSpecific uses the ca specific enrollment endpoint rather than the generic enroll endpoint.
+func Test_EnrollmetnCaAutoSpecific(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()

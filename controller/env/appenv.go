@@ -845,8 +845,7 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 
 	//enrollment consumer, leave content unread, allow modules to read
 	clientApi.ApplicationXPemFileConsumer = noOpConsumer
-	clientApi.ApplicationPkcs10Consumer = noOpConsumer
-	clientApi.ApplicationXPemFileProducer = &PemProducer{}
+	clientApi.ApplicationPkcs7Consumer = noOpConsumer
 	clientApi.TextYamlProducer = &YamlProducer{}
 
 	clientApi.Oauth2Auth = func(token string, scopes []string) (principal interface{}, err error) {
