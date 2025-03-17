@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -298,7 +299,7 @@ func (helper *ClientHelperClient) CompleteOttGenericEnrollment(enrollmentToken s
 	if err != nil {
 		return nil, err
 	}
-	
+
 	template := &x509.CertificateRequest{}
 
 	csr, err := x509.CreateCertificateRequest(rand.Reader, template, privateKey)
@@ -339,6 +340,27 @@ func (helper *ClientHelperClient) CompleteOttGenericEnrollment(enrollmentToken s
 
 func (helper *ClientHelperClient) CompleteOttCaEnrollment(enrollmentToken string, clientCert []*x509.Certificate, clientKey crypto.PrivateKey) (*edge_apis.CertCredentials, error) {
 	token := enrollmentToken
+
+	if len(clientCert) == 0 {
+		return nil, fmt.Errorf("no client certificates returned from enrollment")
+	}
+	
+	var rawCerts [][]byte
+
+	for _, cert := range clientCert {
+		rawCerts = append(rawCerts, cert.Raw)
+	}
+
+	tlsCerts := []tls.Certificate{
+		{
+			Certificate: rawCerts,
+			PrivateKey:  clientKey,
+			Leaf:        clientCert[0],
+		},
+	}
+
+	helper.HttpTransport.TLSClientConfig.Certificates = tlsCerts
+	helper.HttpTransport.CloseIdleConnections()
 
 	if IsJwt(token) {
 		jwtParser := jwt.NewParser()
