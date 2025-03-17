@@ -275,6 +275,11 @@ func (ro *EnrollRouter) legacyGenericEnrollPemHandler(ae *env.AppEnv, rc *respon
 	enrollContext := &model.EnrollmentContextHttp{}
 	err := enrollContext.FillFromHttpRequest(rc.Request, rc.NewChangeContext())
 
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	body, err := io.ReadAll(rc.Request.Body)
 
 	if err != nil {

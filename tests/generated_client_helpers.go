@@ -238,6 +238,11 @@ func (helper *ClientHelperClient) CompleteOttEnrollment(enrollmentToken string) 
 	}
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+
+	if err != nil {
+		return nil, err
+	}
+
 	template := &x509.CertificateRequest{}
 
 	csr, err := x509.CreateCertificateRequest(rand.Reader, template, privateKey)
@@ -289,6 +294,11 @@ func (helper *ClientHelperClient) CompleteOttGenericEnrollment(enrollmentToken s
 	}
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+
+	if err != nil {
+		return nil, err
+	}
+	
 	template := &x509.CertificateRequest{}
 
 	csr, err := x509.CreateCertificateRequest(rand.Reader, template, privateKey)

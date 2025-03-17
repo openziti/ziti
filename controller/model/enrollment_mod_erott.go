@@ -81,13 +81,13 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 
 	serverCertCsrPem := enrollData.ServerCsrPem
 
-	if serverCertCsrPem == nil || len(serverCertCsrPem) == 0 {
+	if len(serverCertCsrPem) == 0 {
 		return nil, apierror.NewInvalidEnrollmentMissingCsr(errors.New("invalid server CSR"))
 	}
 
 	clientCertCsrPem := enrollData.ClientCsrPem
 
-	if clientCertCsrPem == nil || len(clientCertCsrPem) == 0 {
+	if len(clientCertCsrPem) == 0 {
 		return nil, apierror.NewInvalidEnrollmentMissingCsr(errors.New("invalid client CSR"))
 	}
 
