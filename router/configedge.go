@@ -31,7 +31,6 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 )
 
 const (
@@ -99,14 +98,6 @@ func NewEdgeConfig(routerConfig *Config) *EdgeConfig {
 func (config *EdgeConfig) LoadEdgeConfigFromMap(configMap map[interface{}]interface{}, loadIdentity bool) error {
 	var err error
 	config.Enabled = false
-
-	if val, ok := configMap[FlagsCfgMapKey]; ok {
-		if flags, ok := val.(map[string]*pflag.Flag); ok {
-			if flag, ok := flags["extend"]; ok {
-				config.ForceExtendEnrollment = flag.Value.String() == "true"
-			}
-		}
-	}
 
 	if err = config.loadCsr(configMap); err != nil {
 		return err

@@ -38,16 +38,11 @@ import (
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
 	yaml3 "gopkg.in/yaml.v3"
 )
 
 const (
-	// FlagsCfgMapKey is used as a key in the source configuration map to pass flags from
-	// higher levels (i.e. CLI arguments) down through the stack w/o colliding w/ file
-	// based configuration values
-	FlagsCfgMapKey = "@flags"
 
 	// PathMapKey is used to store a loaded configuration file's source path
 	PathMapKey = "@file"
@@ -103,7 +98,6 @@ const (
 // internalConfigKeys is used to distinguish internally defined configuration vs file configuration
 var internalConfigKeys = []string{
 	PathMapKey,
-	FlagsCfgMapKey,
 }
 
 func LoadConfigMap(path string) (map[interface{}]interface{}, error) {
@@ -122,10 +116,6 @@ func LoadConfigMap(path string) (map[interface{}]interface{}, error) {
 	cfgmap[PathMapKey] = path
 
 	return cfgmap, nil
-}
-
-func SetConfigMapFlags(cfgmap map[interface{}]interface{}, flags map[string]*pflag.Flag) {
-	cfgmap[FlagsCfgMapKey] = flags
 }
 
 type Config struct {
@@ -194,10 +184,6 @@ func (config *Config) CurrentCtrlAddress() string {
 
 func (config *Config) Configure(sub config.Subconfig) error {
 	return sub.LoadConfig(config.src)
-}
-
-func (config *Config) SetFlags(flags map[string]*pflag.Flag) {
-	SetConfigMapFlags(config.src, flags)
 }
 
 const (

@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/ziti/router/xgress_edge"
 	"github.com/openziti/ziti/router/xgress_edge_transport"
 	"github.com/openziti/ziti/router/xgress_edge_tunnel"
-	common2 "github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net"
@@ -52,13 +51,14 @@ func NewRunRouterCmd() *cobra.Command {
 
 	//flags are added to an internal map and read later on, see getFlags()
 	cmd.Flags().BoolVar(&action.EnableDebugOps, "debug-ops", false, "Enable/disable debug agent operations (disabled by default)")
-	cmd.Flags().BoolP("extend", "e", false, "force the router on startup to extend enrollment certificates")
+	cmd.Flags().BoolVarP(&action.ForceCertificateExtension, "extend", "e", false, "force the router on startup to extend enrollment certificates")
 	return cmd
 }
 
 type RouterAction struct {
 	Options
-	EnableDebugOps bool
+	EnableDebugOps            bool
+	ForceCertificateExtension bool
 }
 
 func (self *RouterAction) run(cmd *cobra.Command, args []string) {
@@ -75,7 +75,8 @@ func (self *RouterAction) run(cmd *cobra.Command, args []string) {
 		startLogger.WithError(err).Error("error loading ziti router config")
 		panic(err)
 	}
-	config.SetFlags(common2.GetFlags(cmd))
+
+	config.Edge.ForceExtendEnrollment = self.ForceCertificateExtension
 
 	startLogger = startLogger.WithField("routerId", config.Id.Token)
 	startLogger.Info("starting ziti router")
