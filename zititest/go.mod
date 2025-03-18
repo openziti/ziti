@@ -14,7 +14,7 @@ require (
 	github.com/openziti/channel/v3 v3.0.5
 	github.com/openziti/edge-api v0.26.32
 	github.com/openziti/fablab v0.5.60
-	github.com/openziti/foundation/v2 v2.0.49
+	github.com/openziti/foundation/v2 v2.0.58
 	github.com/openziti/identity v1.0.85
 	github.com/openziti/sdk-golang v0.23.43
 	github.com/openziti/storage v0.3.2
@@ -25,7 +25,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	go.etcd.io/bbolt v1.3.11
 	golang.org/x/net v0.34.0
 	google.golang.org/protobuf v1.34.2
@@ -142,7 +142,7 @@ require (
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/jwks v1.0.6 // indirect
-	github.com/openziti/metrics v1.2.58 // indirect
+	github.com/openziti/metrics v1.3.0 // indirect
 	github.com/openziti/runzmd v1.0.51 // indirect
 	github.com/openziti/secretstream v0.1.25 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
@@ -196,8 +196,8 @@ require (
 	golang.org/x/mod v0.19.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/term v0.28.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8 // indirect

@@ -139,10 +139,11 @@ func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
 
 func (self *Router) RenderJsonConfig() (string, error) {
 	jsonMap, err := config.ToJsonCompatibleMap(self.config.src)
-	delete(jsonMap, FlagsCfgMapKey)
-	if err != nil {
+        if err != nil {
 		return "", err
 	}
+	delete(jsonMap, FlagsCfgMapKey)
+	
 	b, err := json.Marshal(jsonMap)
 	return string(b), err
 }
@@ -174,12 +175,15 @@ func (self *Router) IsHaEnabled() bool {
 func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
+	metricsConfig := metrics.DefaultUsageRegistryConfig(config.Id.Token, closeNotify)
+	metricsConfig.EventQueueSize = config.Metrics.EventQueueSize
 	if config.Metrics.IntervalAgeThreshold != 0 {
-		metrics.SetIntervalAgeThreshold(config.Metrics.IntervalAgeThreshold)
+		metricsConfig.IntervalAgeThreshold = config.Metrics.IntervalAgeThreshold
 		logrus.Infof("set interval age threshold to '%v'", config.Metrics.IntervalAgeThreshold)
 	}
 	env.IntervalSize = config.Metrics.ReportInterval
-	metricsRegistry := metrics.NewUsageRegistry(config.Id.Token, map[string]string{}, closeNotify)
+
+	metricsRegistry := metrics.NewUsageRegistry(metricsConfig)
 	xgress.InitMetrics(metricsRegistry)
 
 	linkDialerPoolConfig := goroutines.PoolConfig{

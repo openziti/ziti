@@ -1,1 +1,3 @@
 *.json.gzip
+*.proto.gzip
+endpoints.yml

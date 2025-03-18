@@ -65,7 +65,8 @@ func (n noopReceiveHandler) HandleControlReceive(*Control, *Xgress) {}
 
 func Test_Ordering(t *testing.T) {
 	closeNotify := make(chan struct{})
-	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, closeNotify)
+	registryConfig := metrics.DefaultUsageRegistryConfig("test", closeNotify)
+	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 	InitPayloadIngester(closeNotify)
 	InitMetrics(metricsRegistry)
 	InitAcker(&noopForwarder{}, metricsRegistry, closeNotify)

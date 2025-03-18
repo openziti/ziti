@@ -133,7 +133,8 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	req := require.New(b)
 	req.NoError(mux.AddMsgSink(conn))
 
-	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, nil)
+	registryConfig := metrics.DefaultUsageRegistryConfig("test", nil)
+	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 	xgress.InitMetrics(metricsRegistry)
 
 	fwdOptions := forwarder.DefaultOptions()
@@ -210,7 +211,8 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	}
 	xgOptions := xgress.DefaultOptions()
 
-	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, nil)
+	registryConfig := metrics.DefaultUsageRegistryConfig("test", nil)
+	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 	xgress.InitMetrics(metricsRegistry)
 
 	fwdOptions := forwarder.DefaultOptions()
