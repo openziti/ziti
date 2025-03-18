@@ -173,7 +173,9 @@ func newTestLink(reg *linkRegistryImpl) *testLink {
 
 func newTestEnv() *testEnv {
 	closeNotify := make(chan struct{})
-	metricsRegistry := metrics.NewUsageRegistry("test", nil, closeNotify)
+
+	registryConfig := metrics.DefaultUsageRegistryConfig("test", closeNotify)
+	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 
 	ctrls := env.NewNetworkControllers(time.Second, func(address transport.Address, bindHandler channel.BindHandler) error {
 		return errors.New("implement me")

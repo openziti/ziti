@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/controller/xt"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"math"
 	"math/rand"
 	"sync"
 	"testing"
@@ -159,4 +160,14 @@ func TestFailures(t *testing.T) {
 	}
 
 	time.Sleep(10 * time.Second)
+}
+
+func Test_ShowAmounts(t *testing.T) {
+	start := time.Now().Add(-30 * time.Second)
+	for i := 1; i <= 100; i++ {
+		n := time.Since(start)
+		start = start.Add(-time.Minute)
+		credit := math.Max(10, math.Pow(2, float64(n/(5*time.Minute))))
+		fmt.Printf("time since last failure: %s, credit: %f\n", n.String(), credit)
+	}
 }

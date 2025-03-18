@@ -6,6 +6,7 @@
 * Change to router endpoints file default name
 * Updated Cluster Defaults
 * Updates to terminator costing
+* Router metrics change
 
 ## Router Endpoints File
 
@@ -47,11 +48,34 @@ is added to that terminator. This will bias future dials towards other terminato
 
 The failure cost can be reduced by successful dials. Failure cost is also reduced over time. In previous
 releases this was a fixed credit of 5, every minute. This is now changing to an exponential 
-amount, based on time since the last failure. The credit is now: `2 ^ (minutes since last failure/5)`.
+amount, based on time since the last failure. 
+
+If X is minutes since last failure, the credit is now: `min(10, 2 ^ (X/5))`.
+
+## Router Metrics Change
+
+Router metrics has a new configuration setting:
+
+```
+metrics:
+  # Number of usage events to be able to queue. Defaults to 256. If this queue backs up, it can
+  # slow down dispatch of data from an SDK onto the fabric.
+  eventQueueSize: 256
+```
 
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/edge-api: [v0.26.41 -> v0.26.42](https://github.com/openziti/edge-api/compare/v0.26.41...v0.26.42)
+* github.com/openziti/metrics: [v1.2.69 -> v1.3.0](https://github.com/openziti/metrics/compare/v1.2.69...v1.3.0)
+    * [Issue #49](https://github.com/openziti/metrics/issues/49) - Make usage registry event queue size configurable
+    * [Issue #50](https://github.com/openziti/metrics/issues/50) - Do metrics message construction in msg sender goroutine rather than usage/interval event goroutine
+
 * github.com/openziti/ziti: [v1.4.3 -> v1.5.0](https://github.com/openziti/ziti/compare/v1.4.3...v1.5.0)
+    * [Issue #2899](https://github.com/openziti/ziti/issues/2899) - Allow configuring size of router metrics event queue size
+    * [Issue #2896](https://github.com/openziti/ziti/issues/2896) - `ziti router run --extend` does not function
+    * [Issue #2796](https://github.com/openziti/ziti/issues/2796) - Generated API client enrollment operations fail
+    * [Issue #2889](https://github.com/openziti/ziti/issues/2889) - Ensure identity online/offline statuses work correctly for ER/Ts
+    * [Issue #2891](https://github.com/openziti/ziti/issues/2891) - Restore can panic if using import from db
     * [Issue #2835](https://github.com/openziti/ziti/issues/2835) - Add mechanism for selecting CLI layout
     * [Issue #2836](https://github.com/openziti/ziti/issues/2836) - Add run subcommand
     * [Issue #2837](https://github.com/openziti/ziti/issues/2837) - Add enroll subcommand
