@@ -143,7 +143,7 @@ func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
 
 func (self *Router) RenderJsonConfig() (string, error) {
 	jsonMap, err := config.ToJsonCompatibleMap(self.config.src)
-	
+
 	if err != nil {
 		return "", err
 	}
@@ -190,12 +190,15 @@ func (self *Router) GetIndexWatchers() env.IndexWatchers {
 func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
+	metricsConfig := metrics.DefaultUsageRegistryConfig(cfg.Id.Token, closeNotify)
+	metricsConfig.EventQueueSize = cfg.Metrics.EventQueueSize
 	if cfg.Metrics.IntervalAgeThreshold != 0 {
-		metrics.SetIntervalAgeThreshold(cfg.Metrics.IntervalAgeThreshold)
+		metricsConfig.IntervalAgeThreshold = cfg.Metrics.IntervalAgeThreshold
 		logrus.Infof("set interval age threshold to '%v'", cfg.Metrics.IntervalAgeThreshold)
 	}
 	env.IntervalSize = cfg.Metrics.ReportInterval
-	metricsRegistry := metrics.NewUsageRegistry(cfg.Id.Token, map[string]string{}, closeNotify)
+
+	metricsRegistry := metrics.NewUsageRegistry(metricsConfig)
 	xgress.InitMetrics(metricsRegistry)
 
 	linkDialerPoolConfig := goroutines.PoolConfig{

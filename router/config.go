@@ -157,6 +157,7 @@ type Config struct {
 		ReportInterval       time.Duration
 		IntervalAgeThreshold time.Duration
 		MessageQueueSize     int
+		EventQueueSize       int
 	}
 	HealthChecks struct {
 		CtrlPingCheck struct {
@@ -647,6 +648,8 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 
 	cfg.Metrics.ReportInterval = time.Minute
 	cfg.Metrics.MessageQueueSize = 10
+	cfg.Metrics.EventQueueSize = 256
+
 	if value, found := cfgmap["metrics"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap["reportInterval"]; found {
@@ -666,6 +669,13 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 					cfg.Metrics.MessageQueueSize = intVal
 				} else {
 					return nil, errors.New("invalid value for metrics.messageQueueSize")
+				}
+			}
+			if value, found := submap["eventQueueSize"]; found {
+				if intVal, ok := value.(int); ok {
+					cfg.Metrics.EventQueueSize = intVal
+				} else {
+					return nil, errors.New("invalid value for metrics.eventQueueSize")
 				}
 			}
 		}
