@@ -74,7 +74,7 @@ metrics:
     * [Issue #2899](https://github.com/openziti/ziti/issues/2899) - Allow configuring size of router metrics event queue size
     * [Issue #2896](https://github.com/openziti/ziti/issues/2896) - `ziti router run --extend` does not function
     * [Issue #2796](https://github.com/openziti/ziti/issues/2796) - Generated API client enrollment operations fail
-    * [Issue #2889](https://github.com/openziti/ziti/issues/2889) - Ensure identity online/offline statuses work correcty for ER/Ts
+    * [Issue #2889](https://github.com/openziti/ziti/issues/2889) - Ensure identity online/offline statuses work correctly for ER/Ts
     * [Issue #2891](https://github.com/openziti/ziti/issues/2891) - Restore can panic if using import from db
     * [Issue #2835](https://github.com/openziti/ziti/issues/2835) - Add mechanism for selecting CLI layout
     * [Issue #2836](https://github.com/openziti/ziti/issues/2836) - Add run subcommand
