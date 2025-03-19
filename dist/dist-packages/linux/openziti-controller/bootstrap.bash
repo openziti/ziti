@@ -131,7 +131,11 @@ issueLeafCerts() {
 }
 
 makeDatabaseLinux(){
-  # Set up trap to kill the controller process when function exits
+
+  #
+  # called by makeDatabase() if ZITI_RUNTIME=systemd
+  #
+
   local _init_pid=""
   cleanup() {
     if [[ -n "${_init_pid}" ]]; then
@@ -150,11 +154,12 @@ makeDatabaseLinux(){
   _init_pid="$(systemctl show -p MainPID --value ziti-controller.service)"
 
   local _attempts=10
-  until ! (( _attempts-- )) \
+  until ! (( --_attempts )) \
     || nsenter --target "${_init_pid}" --mount -- \
-      ziti agent cluster init admin "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'; do
+      ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'; do
     sleep 1
   done
+  echo "DEBUG: initialized Linux controller database with ${_attempts} remaining attempts" >&3
   if (( _attempts )); then
     return 0
   else
@@ -163,6 +168,11 @@ makeDatabaseLinux(){
 }
 
 makeDatabaseDocker(){
+
+  #
+  # called by makeDatabase() if ZITI_RUNTIME=docker
+  #
+
   if [[ -n "${1:-}" ]]; then
     local _config_file="${1}"
     shift
@@ -185,10 +195,11 @@ makeDatabaseDocker(){
   _init_pid=$!
 
   local _attempts=10
-  until ! (( _attempts-- )) \
-    || ziti agent cluster init admin "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'; do
+  until ! (( --_attempts )) \
+    || ziti agent cluster init bullshit "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'; do
     sleep 1
   done
+  echo "DEBUG: initialized Docker controller database with ${_attempts} remaining attempts" >&3
   if (( _attempts )); then
     return 0
   else
@@ -196,11 +207,10 @@ makeDatabaseDocker(){
   fi
 }
 
-# called by bootstrap() to initialize the database with default admin user and password
 makeDatabase() {
 
   #
-  # create default admin in database
+  # called by bootstrap() to initialize the database with default admin user and password
   #
 
   if [[ -n "${1:-}" ]]; then
@@ -211,48 +221,49 @@ makeDatabase() {
     return 1
   fi
 
-  local _data_dir
-  _data_dir=$(getDataDir "${_config_file}")
-  if [[ ! -d "${_data_dir}" ]]; then
-    echo "DEBUG: creating database directory: ${_data_dir}" >&3
+  # local _data_dir
+  # _data_dir=$(getDataDir "${_config_file}")
+  if [[ ! -d "${ZITI_CTRL_DATABASE_DIR}" ]]; then
+    echo "DEBUG: creating database directory: ${ZITI_CTRL_DATABASE_DIR}" >&3
   elif [[ "${1:-}" == --force ]]; then
-    echo "INFO: recreating database directory: ${_data_dir}"
-    mv --no-clobber "${_data_dir}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
+    echo "INFO: recreating database directory: ${ZITI_CTRL_DATABASE_DIR}"
+    mv --no-clobber "${ZITI_CTRL_DATABASE_DIR}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
   else
     # the presence of the directory indicates that the database has already been initialized
-    echo "INFO: database directory exists: ${_data_dir}"
+    echo "INFO: database directory exists: ${ZITI_CTRL_DATABASE_DIR}"
     return 0
   fi
 
   # shellcheck disable=SC2174
-  mkdir -pm0700 "${_data_dir}"
+  mkdir -pm0700 "${ZITI_CTRL_DATABASE_DIR}"
 
-  if [[ -n "${ZITI_USER:-}" && -n "${ZITI_PWD:-}" ]]; then
-    if systemctl list-unit-files ziti-controller.service &>/dev/null; then
-      makeDatabaseLinux "${_config_file}"
-      echo "DEBUG: initialized Linux controller database" >&3
-    elif makeDatabaseDocker "${_config_file}"; then
-      echo "DEBUG: initialized Docker controller database" >&3
-    else
-      echo "ERROR: failed to initialize database" >&2
-      # do not leave behind a partially-initialized database directory because it prevents us from trying again
-      rm -rf "${_data_dir}"
-      echo "DEBUG: removed partially-initialized database directory: ${_data_dir}" >&3
-      return 1
-    fi
-  else
+  if ! [[ -n "${ZITI_USER:-}" && -n "${ZITI_PWD:-}" ]]; then
     echo  "ERROR: unable to initialize database because ZITI_USER and ZITI_PWD must both be set" >&2
     hintLinuxBootstrap "${PWD}"
     return 1
   fi
 
-  echo "${_data_dir}"
+  if [[ "${ZITI_RUNTIME}" == docker ]] \
+    && makeDatabaseDocker "${_config_file}"; then
+    echo "DEBUG: initialized Docker controller database" >&3
+  elif [[ "${ZITI_RUNTIME}" == systemd ]] \
+    && systemctl list-unit-files ziti-controller.service &>/dev/null \
+    && makeDatabaseLinux; then
+    echo "DEBUG: initialized Linux controller database" >&3
+  else
+    echo "ERROR: failed to initialize database" >&2
+    # do not leave behind a partially-initialized database directory because it prevents us from trying again
+    rm -rf "${ZITI_CTRL_DATABASE_DIR}"
+    echo "DEBUG: removed partially-initialized database directory: ${ZITI_CTRL_DATABASE_DIR}" >&3
+    return 1
+  fi
+
   return 0
 }
 
 makeConfig() {
   #
-  # create config file
+  # called by bootstrap() to create the controller config file
   #
 
   # enforce first argument is a non-empty string that does not begin with "--" (long option prefix)
@@ -391,7 +402,7 @@ prompt() {
 promptUserPwd() {
   # do nothing if database directory exists
   if [[ -d "${ZITI_CTRL_DATABASE_DIR}" ]]; then
-    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because database directory exists in $(realpath "${ZITI_CTRL_DATABASE_DIR}")" >&3
+    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because $(realpath "${ZITI_CTRL_DATABASE_DIR}")" >&3
     return 0
   fi
   # prompt for password token if interactive, unless already answered
@@ -684,9 +695,9 @@ bootstrap() {
 
   # make database unless explicitly disabled or it exists
   if [[ "${ZITI_BOOTSTRAP_DATABASE}" == true ]]; then
-    ZITI_CTRL_DATABASE_DIR="$(makeDatabase "${_ctrl_config_file}")"
+    makeDatabase "${_ctrl_config_file}"
   elif [[ "${ZITI_BOOTSTRAP_DATABASE}" == force ]]; then
-    ZITI_CTRL_DATABASE_DIR="$(makeDatabase "${_ctrl_config_file}" --force)"
+    makeDatabase "${_ctrl_config_file}" --force
   fi
 
 }
@@ -734,24 +745,24 @@ hintLinuxBootstrap() {
 }
 
 # extract the data directory from the config file
-getDataDir() {
-  if ! (( $# )); then
-    echo "ERROR: no config file path provided" >&2
-    return 1
-  fi
-  local _config_file="${1}" _data_dir
-  _data_dir="$(
-    # extract the dataDir value from the config file, preserving spaces
-    awk -F: '/^[[:space:]]+dataDir:/ {print substr($0, index($0,$2))}' "${_config_file}" \
-    | xargs -I {} realpath "{}"
-  )"
-  echo "DEBUG: data directory: ${_data_dir}" >&3
-  if [[ -z "${_data_dir}" ]]; then
-    echo "ERROR: no data directory found in config file: ${_config_file}" >&2
-    return 1
-  fi
-  echo "${_data_dir}"
-}
+# getDataDir() {
+#   if ! (( $# )); then
+#     echo "ERROR: no config file path provided" >&2
+#     return 1
+#   fi
+#   local _config_file="${1}" _data_dir
+#   _data_dir="$(
+#     # extract the dataDir value from the config file, preserving spaces
+#     awk -F: '/^[[:space:]]+dataDir:/ {print substr($0, index($0,$2))}' "${_config_file}" \
+#     | xargs -I {} realpath "{}"
+#   )"
+#   echo "DEBUG: data directory: ${_data_dir}" >&3
+#   if [[ -z "${_data_dir}" ]]; then
+#     echo "ERROR: no data directory found in config file: ${_config_file}" >&2
+#     return 1
+#   fi
+#   echo "${_data_dir}"
+# }
 
 exitHandler() {
   echo "WARN: set VERBOSE=1 or DEBUG=1 for more output" >&2
@@ -795,9 +806,9 @@ ZITI_PKI_CTRL_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_CLIE
 ZITI_PKI_CTRL_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_SERVER_FILE}.key"
 ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
 ZITI_BOOTSTRAP_NOW="$(date --utc --iso-8601=seconds)"
+ZITI_CTRL_DATABASE_DIR="./raft"
 
-
-# if this file was sourced, then only define vars and functions and change working directory; else if exec'd then run bootstrap()
+# if this file was sourced, then only define vars and functions and change working directory; else if exec'd then bootstrap()
 if ! [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 
   # ensure ZITI_HOME is working dir to allow paths to be relative or absolute
