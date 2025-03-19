@@ -136,14 +136,13 @@ makeDatabaseLinux(){
   # called by makeDatabase() if ZITI_RUNTIME=systemd
   #
 
-  local _init_pid=""
-  cleanup() {
-    if [[ -n "${_init_pid}" ]]; then
+  local _init_pid
+  cleanup_linux_pid() {
+    if [[ -n "${_init_pid:-}" ]]; then
       echo "DEBUG: cleaning up controller process ${_init_pid}" >&3
       systemctl kill ziti-controller.service || kill -9 "${_init_pid}"
     fi
   }
-  trap cleanup EXIT
 
   systemctl start ziti-controller.service
   systemd-run \
@@ -152,6 +151,7 @@ makeDatabaseLinux(){
     --property=TimeoutStartSec=10s \
     systemctl is-active ziti-controller.service
   _init_pid="$(systemctl show -p MainPID --value ziti-controller.service)"
+  trap cleanup_linux_pid EXIT
 
   local _attempts=10
   until ! (( --_attempts )) \
@@ -160,6 +160,11 @@ makeDatabaseLinux(){
     sleep 1
   done
   echo "DEBUG: initialized Linux controller database with ${_attempts} remaining attempts" >&3
+  
+  cleanup_linux_pid
+  # Remove trap before returning
+  trap - EXIT
+  
   if (( _attempts )); then
     return 0
   else
@@ -183,23 +188,29 @@ makeDatabaseDocker(){
 
   # Set up trap to kill the controller process when function exits
   local _init_pid=""
-  cleanup() {
-    if [[ -n "${_init_pid}" ]]; then
+  cleanup_docker_pid() {
+    if [[ -n "${_init_pid:-}" ]]; then
       echo "DEBUG: cleaning up controller process ${_init_pid}" >&3
       kill -9 "${_init_pid}"
     fi
   }
-  trap cleanup EXIT
 
   timeout 20s nohup ziti controller run "${_config_file}" &> /tmp/ziti-controller-init.log &
   _init_pid=$!
+  trap cleanup_docker_pid EXIT
 
   local _attempts=10
   until ! (( --_attempts )) \
-    || ziti agent cluster init bullshit "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'; do
+    || ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'; do
     sleep 1
   done
   echo "DEBUG: initialized Docker controller database with ${_attempts} remaining attempts" >&3
+  
+  cleanup_docker_pid
+
+  # Remove trap before returning
+  trap - EXIT
+  
   if (( _attempts )); then
     return 0
   else
