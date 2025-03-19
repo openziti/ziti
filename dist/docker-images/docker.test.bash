@@ -115,18 +115,9 @@ docker build \
 
 DEBUG=1 docker compose up wait-for-controller
 
-docker compose exec --no-TTY ziti-controller bash <<BASH
+zitiLogin(){
 
-set -o errexit
-set -o nounset
-set -o pipefail
-set -o xtrace
-
-ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'
-
-BASH
-
-docker compose exec --no-TTY ziti-controller bash <<BASH
+    docker compose exec --no-TTY ziti-controller bash <<BASH
 
 set -o errexit
 set -o nounset
@@ -140,10 +131,35 @@ ziti edge login ${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} \
 --timeout=1 \
 --verbose;
 
-ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to ~ziggy/.config/ziti/"${ZITI_ROUTER_NAME}.jwt";
 BASH
 
-docker compose up ziti-router --detach
+}
+
+ATTEMPTS=5
+DELAY=3
+until ! (( --ATTEMPTS )) || zitiLogin
+do
+    echo "DEBUG: ${ATTEMPTS} remaining attempts to login"
+    sleep ${DELAY}
+done
+if ! (( ATTEMPTS ))
+then
+    echo "ERROR: ziti login failed" >&2
+    exit 1
+fi
+
+docker compose exec --no-TTY ziti-controller bash <<BASH
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o xtrace
+
+ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to ~ziggy/.config/ziti/"${ZITI_ROUTER_NAME}.jwt";
+
+BASH
+
+DEBUG=1 docker compose up ziti-router --detach
 
 unset GOOS
 export \
@@ -166,7 +182,7 @@ DELAY=3
 curl_cmd="curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null \"https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/\""
 until ! (( --ATTEMPTS )) || eval "${curl_cmd}" &> /dev/null
 do
-    echo "Waiting for zac"
+    echo "DEBUG: ${ATTEMPTS} remaining attempts to verify zac"
     sleep ${DELAY}
 done
 eval "${curl_cmd}"
