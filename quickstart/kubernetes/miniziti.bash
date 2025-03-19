@@ -570,12 +570,12 @@ main(){
             -n|--namespace) ZITI_NAMESPACE="$2"
                             shift 2
             ;;
-            --charts)       ZITI_CHARTS_REF="$2"
-                            ZITI_CHARTS_URL="$2"
+            --charts)       ZITI_CHARTS_REF="${2%"/"}"
+                            ZITI_CHARTS_URL="${2%"/"}"
                             ZITI_CHARTS_ALT=1
                             shift 2
             ;;
-            --values-dir)   EXTRA_VALUES_DIR="$2"
+            --values-dir)   EXTRA_VALUES_DIR="${2%"/"}"
                             shift 2
             ;;
             -q|--quiet)     exec > /dev/null
@@ -1110,14 +1110,16 @@ EOF
 
     if [[ -s "$HTTPBIN_OTT" ]]; then
         logDebug "installing httpbin chart as 'miniziti-httpbin'"
-        if (( ZITI_CHARTS_ALT )) && [[ -s "${ZITI_CHARTS_REF}/httpbin/Chart.lock" ]]; then
-            helmWrapper dependency build "${ZITI_CHARTS_REF}/httpbin" >&3
-        fi
-        helmWrapper upgrade --install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
+        helmWrapper install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
             --set-file zitiEnrollment="$HTTPBIN_OTT" \
             --set zitiServiceName=httpbin-service >&3
         rm -f "$HTTPBIN_OTT"
         logDebug "deleted $HTTPBIN_OTT after installing successfully with miniziti-httpbin chart"
+    else
+        logDebug "upgrading httpbin chart as 'miniziti-httpbin'"
+        helmWrapper upgrade "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
+            --set-file zitiEnrollment=<(echo "enrolled") \
+            --set zitiServiceName=httpbin-service >&3
     fi
 
     echo -e "\n\n"
