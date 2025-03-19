@@ -134,24 +134,6 @@ sudo systemd-run \
 systemctl is-active ziti-controller.service
 
 # shellcheck disable=SC2140
-initDb(){
-    systemctl show -p MainPID --value ziti-controller.service \
-    | xargs -rIPID sudo nsenter --target PID --mount -- \
-    ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'
-}
-ATTEMPTS=10
-DELAY=3
-until ! (( ATTEMPTS-- )) || initDb
-do
-    echo "Waiting for controller initialization"
-    sleep ${DELAY}
-done
-if ! (( ATTEMPTS )); then
-    echo "ERROR: timeout waiting for controller initialization" >&2
-    exit 1
-fi
-
-# shellcheck disable=SC2140
 zitiLogin(){
     ziti edge login "${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}" \
     --yes \
@@ -160,7 +142,7 @@ zitiLogin(){
 }
 ATTEMPTS=10
 DELAY=3
-until ! (( ATTEMPTS-- )) || zitiLogin
+until ! (( --ATTEMPTS )) || zitiLogin
 do
     echo "Waiting for controller login"
     sleep ${DELAY}
@@ -190,7 +172,7 @@ isOnline(){
 }
 ATTEMPTS=10
 DELAY=3
-until ! (( ATTEMPTS-- )) || [[ "$(isOnline)" == "true" ]]
+until ! (( --ATTEMPTS )) || [[ "$(isOnline)" == "true" ]]
 do
     echo "INFO: waiting for router to be online"
     sleep ${DELAY}
@@ -221,10 +203,11 @@ DELAY=3
 
 # verify console is available
 getZac(){
-    curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null "\
-        https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/"
+    curl -kfw '%{http_code}\t%{url}\n' -o/dev/null \
+        "https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/"
 }
-until ! (( ATTEMPTS-- )) || getZac &> /dev/null
+
+until ! (( --ATTEMPTS )) || getZac &> /dev/null
 do
     echo "Waiting for zac"
     sleep ${DELAY}
