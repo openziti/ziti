@@ -140,7 +140,7 @@ zitiLogin(){
     --username "${ZITI_USER}" \
     --password "${ZITI_PWD}"
 }
-ATTEMPTS=10
+ATTEMPTS=9
 DELAY=3
 until ! (( --ATTEMPTS )) || zitiLogin
 do
@@ -151,7 +151,23 @@ if ! (( ATTEMPTS )); then
     echo "ERROR: timeout waiting for controller login" >&2
     exit 1
 fi
-ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to "${ZITI_ENROLL_TOKEN}"
+
+zitiRouter() {
+    ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to "${ZITI_ENROLL_TOKEN}"
+}
+
+ATTEMPTS=9
+DELAY=3
+until ! (( --ATTEMPTS )) || zitiRouter
+do
+    echo "Waiting for router creation"
+    sleep ${DELAY}
+
+done
+if ! (( ATTEMPTS )); then
+    echo "ERROR: timeout waiting for router creation" >&2
+    exit 1
+fi
 
 # mock ziti console html
 sudo mkdir -p "${ZITI_CONSOLE_LOCATION}"
@@ -170,7 +186,7 @@ systemctl is-active ziti-router.service
 isOnline(){
     ziti edge list edge-routers -j | jq '.data[0].isOnline'
 }
-ATTEMPTS=10
+ATTEMPTS=9
 DELAY=3
 until ! (( --ATTEMPTS )) || [[ "$(isOnline)" == "true" ]]
 do
