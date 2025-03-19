@@ -135,7 +135,7 @@ BASH
 
 }
 
-ATTEMPTS=5
+ATTEMPTS=9
 DELAY=3
 until ! (( --ATTEMPTS )) || zitiLogin
 do
@@ -148,7 +148,8 @@ then
     exit 1
 fi
 
-docker compose exec --no-TTY ziti-controller bash <<BASH
+zitiRouter() {
+    docker compose exec --no-TTY ziti-controller bash <<BASH
 
 set -o errexit
 set -o nounset
@@ -158,6 +159,21 @@ set -o xtrace
 ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to ~ziggy/.config/ziti/"${ZITI_ROUTER_NAME}.jwt";
 
 BASH
+}
+
+ATTEMPTS=9
+DELAY=3
+
+until ! (( --ATTEMPTS )) || zitiRouter
+do
+    echo "DEBUG: ${ATTEMPTS} remaining attempts to create router"
+    sleep ${DELAY}
+done
+if ! (( ATTEMPTS ))
+then
+    echo "ERROR: ziti router creation failed" >&2
+    exit 1
+fi
 
 DEBUG=1 docker compose up ziti-router --detach
 
