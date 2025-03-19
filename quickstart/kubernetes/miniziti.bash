@@ -807,6 +807,9 @@ main(){
     #
 
     logInfo "installing openziti controller chart"
+    if (( ZITI_CHARTS_ALT )) && [[ -s "${ZITI_CHARTS_REF}/ziti-controller/Chart.lock" ]]; then
+        helmWrapper dependency build "${ZITI_CHARTS_REF}/ziti-controller" >&3
+    fi
     local -a _controller_cmd=(upgrade --install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller"
         --namespace "${ZITI_NAMESPACE}" --create-namespace
         --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}"
@@ -969,6 +972,9 @@ EOF
     fi
 
     logDebug "installing router chart as 'ziti-router'"
+    if (( ZITI_CHARTS_ALT )) && [[ -s "${ZITI_CHARTS_REF}/ziti-router/Chart.lock" ]]; then
+        helmWrapper dependency build "${ZITI_CHARTS_REF}/ziti-router" >&3
+    fi
     local -a _router_cmd=(upgrade --install "ziti-router" "${ZITI_CHARTS_REF}/ziti-router"
         --namespace "${ZITI_NAMESPACE}"
         --set-file enrollmentJwt="$ROUTER_OTT"
@@ -1104,10 +1110,10 @@ EOF
 
     if [[ -s "$HTTPBIN_OTT" ]]; then
         logDebug "installing httpbin chart as 'miniziti-httpbin'"
-        (( ZITI_CHARTS_ALT )) && {
+        if (( ZITI_CHARTS_ALT )) && [[ -s "${ZITI_CHARTS_REF}/httpbin/Chart.lock" ]]; then
             helmWrapper dependency build "${ZITI_CHARTS_REF}/httpbin" >&3
-        }
-        helmWrapper install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
+        fi
+        helmWrapper upgrade --install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
             --set-file zitiEnrollment="$HTTPBIN_OTT" \
             --set zitiServiceName=httpbin-service >&3
         rm -f "$HTTPBIN_OTT"
