@@ -164,7 +164,7 @@ DELAY=3
 
 # verify console is available
 curl_cmd="curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null \"https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/\""
-until ! (( ATTEMPTS-- )) || eval "${curl_cmd}" &> /dev/null
+until ! (( --ATTEMPTS )) || eval "${curl_cmd}" &> /dev/null
 do
     echo "Waiting for zac"
     sleep ${DELAY}
