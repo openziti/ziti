@@ -66,7 +66,7 @@ makeConfig() {
 }
 
 enroll() {
-  
+
   if [[ -n "${1:-}" && ! "${1}" =~ ^-- ]]; then
     local _config_file="${1}"
     local _ziti_home
@@ -86,7 +86,7 @@ enroll() {
       ziti router enroll "${_config_file}" \
         --jwt "${ZITI_ENROLL_TOKEN}" 2>&1
     else
-      echo  "ERROR: set ZITI_ENROLL_TOKEN to enrollment token" >&2
+      echo  "ERROR: set ZITI_ENROLL_TOKEN to path or string" >&2
       return 1
     fi
   fi

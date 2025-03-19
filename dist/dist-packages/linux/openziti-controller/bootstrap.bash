@@ -130,6 +130,126 @@ issueLeafCerts() {
 
 }
 
+makeDatabaseLinux(){
+  # Set up trap to kill the controller process when function exits
+  local _init_pid=""
+  cleanup() {
+    if [[ -n "${_init_pid}" ]]; then
+      echo "DEBUG: cleaning up controller process ${_init_pid}" >&3
+      systemctl kill ziti-controller.service || kill -9 "${_init_pid}"
+    fi
+  }
+  trap cleanup EXIT
+
+  systemctl start ziti-controller.service
+  systemd-run \
+    --wait --quiet \
+    --service-type=oneshot \
+    --property=TimeoutStartSec=10s \
+    systemctl is-active ziti-controller.service
+  _init_pid="$(systemctl show -p MainPID --value ziti-controller.service)"
+
+  local _attempts=10
+  until ! (( _attempts-- )) \
+    || nsenter --target "${_init_pid}" --mount -- \
+      ziti agent cluster init admin "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'; do
+    sleep 1
+  done
+  if (( _attempts )); then
+    return 0
+  else
+    return 1
+  fi
+}
+
+makeDatabaseDocker(){
+  if [[ -n "${1:-}" ]]; then
+    local _config_file="${1}"
+    shift
+  else
+    echo "ERROR: no config file path provided" >&2
+    return 1
+  fi
+
+  # Set up trap to kill the controller process when function exits
+  local _init_pid=""
+  cleanup() {
+    if [[ -n "${_init_pid}" ]]; then
+      echo "DEBUG: cleaning up controller process ${_init_pid}" >&3
+      kill -9 "${_init_pid}"
+    fi
+  }
+  trap cleanup EXIT
+
+  timeout 20s nohup ziti controller run "${_config_file}" &> /tmp/ziti-controller-init.log &
+  _init_pid=$!
+
+  local _attempts=10
+  until ! (( _attempts-- )) \
+    || ziti agent cluster init admin "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'; do
+    sleep 1
+  done
+  if (( _attempts )); then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# called by bootstrap() to initialize the database with default admin user and password
+makeDatabase() {
+
+  #
+  # create default admin in database
+  #
+
+  if [[ -n "${1:-}" ]]; then
+    local _config_file="${1}"
+    shift
+  else
+    echo "ERROR: no config file path provided" >&2
+    return 1
+  fi
+
+  local _data_dir
+  _data_dir=$(getDataDir "${_config_file}")
+  if [[ ! -d "${_data_dir}" ]]; then
+    echo "DEBUG: creating database directory: ${_data_dir}" >&3
+  elif [[ "${1:-}" == --force ]]; then
+    echo "INFO: recreating database directory: ${_data_dir}"
+    mv --no-clobber "${_data_dir}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
+  else
+    # the presence of the directory indicates that the database has already been initialized
+    echo "INFO: database directory exists: ${_data_dir}"
+    return 0
+  fi
+
+  # shellcheck disable=SC2174
+  mkdir -pm0700 "${_data_dir}"
+
+  if [[ -n "${ZITI_USER:-}" && -n "${ZITI_PWD:-}" ]]; then
+    if systemctl list-unit-files ziti-controller.service &>/dev/null; then
+      makeDatabaseLinux "${_config_file}"
+      echo "DEBUG: initialized Linux controller database" >&3
+    elif makeDatabaseDocker "${_config_file}"; then
+      echo "DEBUG: initialized Docker controller database" >&3
+    else
+      echo "ERROR: failed to initialize database" >&2
+      # do not leave behind a partially-initialized database directory because it prevents us from trying again
+      rm -rf "${_data_dir}"
+      echo "DEBUG: removed partially-initialized database directory: ${_data_dir}" >&3
+      return 1
+    fi
+  else
+    echo  "ERROR: unable to initialize database because ZITI_USER and ZITI_PWD must both be set" >&2
+    hintLinuxBootstrap "${PWD}"
+    return 1
+  fi
+
+  echo "${_data_dir}"
+  return 0
+}
+
 makeConfig() {
   #
   # create config file
@@ -268,6 +388,53 @@ prompt() {
   fi
 }
 
+promptUserPwd() {
+  # do nothing if database directory exists
+  if [[ -d "${ZITI_CTRL_DATABASE_DIR}" ]]; then
+    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because database directory exists in $(realpath "${ZITI_CTRL_DATABASE_DIR}")" >&3
+    return 0
+  fi
+  # prompt for password token if interactive, unless already answered
+  if ! [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
+    echo "WARN: not checking ZITI_USER or ZITI_PWD because ZITI_BOOTSTRAP_DATABASE is not true in ${SVC_ENV_FILE}" >&2
+    return 0
+  fi
+  promptUser
+  promptPwd
+}
+
+promptPwd() {
+  # do nothing if password is already defined in env
+  if [[ -n "${ZITI_PWD:-}" ]]; then
+    echo "DEBUG: ZITI_PWD is defined in ${BOOT_ENV_FILE}" >&3
+    return 0
+  fi
+  GEN_PWD=$(head -c128 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^*_+~' | cut -c 1-12)
+  # don't set a generated password if not interactive because it will be unknown
+  if isInteractive && ZITI_PWD="$(prompt "Set password for '${ZITI_USER}' [${GEN_PWD}]: " || echo "${GEN_PWD}")"; then
+    # temporarily set password in env file, then scrub after db init
+    setAnswer "ZITI_PWD=${ZITI_PWD}" "${BOOT_ENV_FILE}"
+  else
+    echo "ERROR: ZITI_PWD is required" >&2
+    return 1
+  fi
+}
+
+promptUser() {
+  # do nothing if user is already defined in env
+  if [[ -n "${ZITI_USER:-}" ]]; then
+    echo "DEBUG: ZITI_USER is defined in ${BOOT_ENV_FILE}" >&3
+    return 0
+  fi
+  ZITI_USER="$(prompt "Enter the name of the default user [admin]: " || echo 'admin')" || true
+  if [[ -n "${ZITI_USER:-}" ]]; then
+    setAnswer "ZITI_USER=${ZITI_USER}" "${BOOT_ENV_FILE}"
+  else
+    echo "ERROR: missing ZITI_USER in ${BOOT_ENV_FILE}" >&2
+    return 1
+  fi
+}
+
 # if not a tty (stdin is redirected), then slurp answers from stdin, e.g., env
 # assignments like ZITI_THING=abcd1234, one per line
 loadEnvStdin() {
@@ -289,21 +456,18 @@ loadEnvStdin() {
 
 # shellcheck disable=SC2120
 loadEnvFiles() {
-  if (( $#))
-  then
+  if (( $#)); then
     local -a _env_files=("${@}")
   else
     local -a _env_files=("${BOOT_ENV_FILE}" "${SVC_ENV_FILE}")
   fi
-  for _env_file in "${_env_files[@]}"
-  do
-    if [[ -s "${_env_file}" ]]
-    then
+  for _env_file in "${_env_files[@]}"; do
+    if [[ -s "${_env_file}" ]]; then
       # shellcheck disable=SC1090
       source "${_env_file}"
     else
       echo "WARN: missing env file '${_env_file}'" >&2
-    fi 
+    fi
   done
 }
 
@@ -518,16 +682,11 @@ bootstrap() {
     return 1
   fi
 
-  local _ctrl_data_dir
-  _ctrl_data_dir="$(getDataDir "${_ctrl_config_file}")"
-  if [[ -d "${_ctrl_data_dir}" ]]; then
-    # trunk-ignore(shellcheck/SC2312)
-    echo "DEBUG: database directory exists in $(realpath "${_ctrl_data_dir}")" >&3
-  else
-    # trunk-ignore(shellcheck/SC2312)
-    echo "DEBUG: creating database directory $(realpath "${_ctrl_data_dir}")" >&3
-    # shellcheck disable=SC2174
-    mkdir -pm0700 "${_ctrl_data_dir}"
+  # make database unless explicitly disabled or it exists
+  if [[ "${ZITI_BOOTSTRAP_DATABASE}" == true ]]; then
+    ZITI_CTRL_DATABASE_DIR="$(makeDatabase "${_ctrl_config_file}")"
+  elif [[ "${ZITI_BOOTSTRAP_DATABASE}" == force ]]; then
+    ZITI_CTRL_DATABASE_DIR="$(makeDatabase "${_ctrl_config_file}" --force)"
   fi
 
 }
@@ -659,8 +818,7 @@ else
   SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
   : "${ZITI_CONSOLE_LOCATION:=/opt/openziti/share/console}"
 
-  if [[ "${1:-}" =~ ^[-] ]]
-  then
+  if [[ "${1:-}" =~ ^[-] ]]; then
     echo -e "\nUsage:"\
             "\n\t$0 [CONFIG_FILE]"\
             "\n" \
@@ -671,8 +829,7 @@ else
             "\n" >&2
     hintLinuxBootstrap "${ZITI_HOME}"
     exit 1
-  elif (( $# ))
-  then
+  elif (( $# )); then
     set -- "${ZITI_HOME}/$(basename "$1")"
   else
     set -- "${ZITI_HOME}/config.yml"
@@ -695,6 +852,7 @@ else
   promptClusterNodePki          # prompt for ZITI_CLUSTER_NODE_PKI if not already set and not bootstrapping a new cluster
   promptCtrlAddress             # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
   promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
+  promptUserPwd                 # prompt for ZITI_USER and ZITI_PWD if not already set
   loadEnvFiles                  # reload env files to source new answers from prompts
 
   # suppress normal output during bootstrapping unless VERBOSE
@@ -704,8 +862,7 @@ else
   fi
   
   # run bootstrap(), set filemodes
-  if bootstrap "${@}"
-  then
+  if bootstrap "${@}"; then
     echo "DEBUG: bootstrap complete" >&3
     finalizeWorkingDir "${ZITI_HOME}"
 
