@@ -232,8 +232,6 @@ makeDatabase() {
     return 1
   fi
 
-  # local _data_dir
-  # _data_dir=$(getDataDir "${_config_file}")
   if [[ ! -d "${ZITI_CTRL_DATABASE_DIR}" ]]; then
     echo "DEBUG: creating database directory: ${ZITI_CTRL_DATABASE_DIR}" >&3
   elif [[ "${1:-}" == --force ]]; then
@@ -754,26 +752,6 @@ hintLinuxBootstrap() {
           "\n* Run 'systemctl enable --now ziti-controller.service'"\
           "\n"
 }
-
-# extract the data directory from the config file
-# getDataDir() {
-#   if ! (( $# )); then
-#     echo "ERROR: no config file path provided" >&2
-#     return 1
-#   fi
-#   local _config_file="${1}" _data_dir
-#   _data_dir="$(
-#     # extract the dataDir value from the config file, preserving spaces
-#     awk -F: '/^[[:space:]]+dataDir:/ {print substr($0, index($0,$2))}' "${_config_file}" \
-#     | xargs -I {} realpath "{}"
-#   )"
-#   echo "DEBUG: data directory: ${_data_dir}" >&3
-#   if [[ -z "${_data_dir}" ]]; then
-#     echo "ERROR: no data directory found in config file: ${_config_file}" >&2
-#     return 1
-#   fi
-#   echo "${_data_dir}"
-# }
 
 exitHandler() {
   echo "WARN: set VERBOSE=1 or DEBUG=1 for more output" >&2
