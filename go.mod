@@ -48,7 +48,7 @@ require (
 	github.com/kataras/go-events v0.0.3
 	github.com/lucsky/cuid v1.2.1
 	github.com/mdlayher/netlink v1.7.2
-	github.com/michaelquigley/pfxlog v0.6.10
+	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/miekg/dns v1.1.65
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
@@ -121,7 +121,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fsnotify/fsnotify v1.8.0 // indirect
+	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

@@ -753,7 +753,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		})
 
 		t.Run("for patch if the authenticator id is made up", func(t *testing.T) {
-			//access updb's authenticator from cert identity
+			//access updb's authenticator from certs identity
 			resp, err := certNonAdminUserSession.newAuthenticatedRequestWithBody(`{"currentPassword": "123456", "password":"456789"}`).
 				Patch("/current-identity/authenticators/" + eid.New())
 

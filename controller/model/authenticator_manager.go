@@ -530,7 +530,9 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 		return nil, err
 	}
 
-	return newPemCert, nil
+	clientChainPem, err := self.env.GetManagers().Enrollment.GetCertChainPem(newRawCert)
+
+	return []byte(clientChainPem), nil
 }
 
 func (self *AuthenticatorManager) VerifyExtendCertForIdentity(apiSessionId, identityId, authenticatorId string, verifyCertPem string, ctx *change.Context) error {
@@ -562,7 +564,8 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(apiSessionId, iden
 		return apierror.NewAuthenticatorCannotBeUpdated()
 	}
 	verifyCerts := nfpem.PemStringToCertificates(verifyCertPem)
-	if len(verifyCerts) != 1 {
+
+	if len(verifyCerts) == 0 {
 		return apierror.NewInvalidClientCertificate()
 	}
 

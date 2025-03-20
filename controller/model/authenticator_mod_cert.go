@@ -28,7 +28,6 @@ import (
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"net/http"
 	"time"
 )
@@ -41,20 +40,14 @@ const (
 var _ AuthProcessor = &AuthModuleCert{}
 
 type AuthModuleCert struct {
-	env                  Env
-	method               string
-	fingerprintGenerator cert.FingerprintGenerator
-	staticCaCerts        []*x509.Certificate
-	dynamicCaCache       cmap.ConcurrentMap[string, []*x509.Certificate]
+	env    Env
+	method string
 }
 
-func NewAuthModuleCert(env Env, caChain []byte) *AuthModuleCert {
+func NewAuthModuleCert(env Env) *AuthModuleCert {
 	return &AuthModuleCert{
-		env:                  env,
-		method:               db.MethodAuthenticatorCert,
-		fingerprintGenerator: cert.NewFingerprintGenerator(),
-		staticCaCerts:        nfpem.PemBytesToCertificates(caChain),
-		dynamicCaCache:       cmap.New[[]*x509.Certificate](),
+		env:    env,
+		method: db.MethodAuthenticatorCert,
 	}
 }
 
@@ -64,7 +57,7 @@ func (module *AuthModuleCert) CanHandle(method string) bool {
 
 // verifyClientCerts will verify a set of x509.Certificates provided by a client during the TLS handshake. It is
 // required, as it is required by the TLS spec, that the first certificate is the client's identity. Any additional
-// certificates may be provided in order to provide intermediate CAs that map back to a known root CA in the roots
+// certificates may be provided in order to provide intermediate CAs that map back to a known root CA in the `roots`
 // argument. The result is an array of valid chains or an error.
 //
 // Note: this function does not validate expiration times specifically to allow for situations where expired
@@ -130,9 +123,11 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	}
 
 	clientCert := certs[0]
-	cas := module.getCas()
 
-	chains, err := module.verifyClientCerts(certs, cas.roots)
+	activeAuthTrustAnchorPool := module.env.GetManagers().Ca.GetActiveAuthTrustAnchorPool()
+	activeAuthCas := module.env.GetManagers().Ca.GetActiveAuthCas()
+
+	chains, err := module.verifyClientCerts(certs, activeAuthTrustAnchorPool)
 
 	if err != nil {
 		logger.WithError(err).Error("error verifying client certificate")
@@ -144,7 +139,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	targetCa := cas.getCaByChain(chains, module.env.GetFingerprintGenerator())
+	targetCa := getCaByChain(activeAuthCas, chains, module.env.GetFingerprintGenerator())
 
 	externalId := ""
 	if targetCa != nil {
@@ -233,59 +228,9 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	}, nil
 }
 
-// getCas returns a list of trusted CAs that are either part of the Ziti setup configuration or added as 3rd party
-// CAs. The result is a caPool which has both a root x509.CertPool and a map of the CA certificates indexed by
-// their fingerprint.
-func (module *AuthModuleCert) getCas() *caPool {
-	result := &caPool{
-		roots: x509.NewCertPool(),
-		cas:   map[string]*Ca{},
-	}
-
-	for _, caCert := range module.staticCaCerts {
-		result.roots.AddCert(caCert)
-	}
-
-	err := module.env.GetManagers().Ca.Stream("isAuthEnabled = true and isVerified = true", func(ca *Ca, err error) error {
-		if ca == nil && err == nil {
-			return nil
-		}
-
-		if err != nil {
-			//continue on err
-			pfxlog.Logger().Errorf("error streaming cas for authentication: %vs", err)
-			return nil
-		}
-
-		if caCerts, ok := module.dynamicCaCache.Get(ca.Id); ok {
-			for _, caCert := range caCerts {
-				result.roots.AddCert(caCert)
-				fingerprint := module.env.GetFingerprintGenerator().FromCert(caCert)
-				result.cas[fingerprint] = ca
-			}
-		} else {
-			caCerts := nfpem.PemStringToCertificates(ca.CertPem)
-			module.dynamicCaCache.Set(ca.Id, caCerts)
-			for _, caCert := range caCerts {
-				result.roots.AddCert(caCert)
-				fingerprint := module.env.GetFingerprintGenerator().FromCert(caCert)
-				result.cas[fingerprint] = ca
-			}
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil
-	}
-
-	return result
-}
-
 func (module *AuthModuleCert) isEdgeRouter(clientCert *x509.Certificate) bool {
 
-	fingerprint := module.fingerprintGenerator.FromCert(clientCert)
+	fingerprint := module.env.GetFingerprintGenerator().FromCert(clientCert)
 
 	router, err := module.env.GetManagers().EdgeRouter.ReadOneByFingerprint(fingerprint)
 
@@ -406,17 +351,12 @@ func (module *AuthModuleCert) getProxiedClientCerts(ctx AuthContext) ([]*x509.Ce
 	return proxiedCerts, nil
 }
 
-type caPool struct {
-	roots *x509.CertPool
-	cas   map[string]*Ca
-}
-
-func (c *caPool) getCaByChain(chains [][]*x509.Certificate, generator cert.FingerprintGenerator) *Ca {
+func getCaByChain(activeCas map[string]*Ca, chains [][]*x509.Certificate, generator cert.FingerprintGenerator) *Ca {
 	for _, chain := range chains {
 		for _, curCert := range chain {
 			fingerprint := generator.FromCert(curCert)
 
-			if ca, ok := c.cas[fingerprint]; ok {
+			if ca, ok := activeCas[fingerprint]; ok {
 				return ca
 			}
 		}

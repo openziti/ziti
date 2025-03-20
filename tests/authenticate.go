@@ -67,7 +67,7 @@ const (
 var _ authenticator = &certAuthenticator{}
 
 type certAuthenticator struct {
-	cert    *x509.Certificate
+	certs   []*x509.Certificate
 	key     crypto.PrivateKey
 	certPem string
 }
@@ -113,7 +113,7 @@ func (authenticator *certAuthenticator) Authenticate(ctx *TestContext, apiPath s
 	transport := ctx.NewTransport()
 	transport.TLSClientConfig.Certificates = []tls.Certificate{
 		{
-			Certificate: [][]byte{authenticator.cert.Raw},
+			Certificate: authenticator.RawCerts(),
 			PrivateKey:  authenticator.key,
 		},
 	}
@@ -152,16 +152,27 @@ func (authenticator *certAuthenticator) Authenticate(ctx *TestContext, apiPath s
 }
 
 func (authenticator *certAuthenticator) TLSCertificates() []tls.Certificate {
+
 	return []tls.Certificate{
 		{
-			Certificate: [][]byte{authenticator.cert.Raw},
+			Certificate: authenticator.RawCerts(),
 			PrivateKey:  authenticator.key,
 		},
 	}
 }
 
+func (authenticator *certAuthenticator) RawCerts() [][]byte {
+	rawCerts := make([][]byte, len(authenticator.certs))
+
+	for i, curCert := range authenticator.certs {
+		rawCerts[i] = curCert.Raw
+	}
+
+	return rawCerts
+}
+
 func (authenticator *certAuthenticator) Fingerprint() string {
-	return cert.NewFingerprintGenerator().FromRaw(authenticator.cert.Raw)
+	return cert.NewFingerprintGenerator().FromRaw(authenticator.certs[0].Raw)
 }
 
 var _ authenticator = &updbAuthenticator{}

@@ -19,7 +19,6 @@
 package tests
 
 import (
-	"crypto/x509"
 	"github.com/openziti/edge-api/rest_model"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/common/eid"
@@ -353,7 +352,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 
 			certAuth := testCa.CreateSignedCert(eid.New())
 
-			_, err := clientApiClient.CompleteOttCaEnrollment(*newEnrollment.Token, []*x509.Certificate{certAuth.cert}, certAuth.key)
+			_, err := clientApiClient.CompleteOttCaEnrollment(*newEnrollment.Token, certAuth.certs, certAuth.key)
 			ctx.Req.NoError(err)
 
 		})
@@ -418,7 +417,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 
 			certAuth := testCa.CreateSignedCert(eid.New())
 
-			_, err := clientApiClient.CompleteOttCaEnrollment(*newEnrollment.Token, []*x509.Certificate{certAuth.cert}, certAuth.key)
+			_, err := clientApiClient.CompleteOttCaEnrollment(*newEnrollment.Token, certAuth.certs, certAuth.key)
 			ctx.Req.Error(err)
 		})
 	})

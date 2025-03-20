@@ -26,8 +26,8 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/common/eid"
 	"math/big"
 	"sort"
 	"time"
@@ -928,7 +928,7 @@ func (entity *ca) CreateSignedCert(name string) *certAuthenticator {
 	})
 
 	return &certAuthenticator{
-		cert:    clientCert,
+		certs:   []*x509.Certificate{clientCert},
 		key:     clientKey,
 		certPem: clientPEM.String(),
 	}

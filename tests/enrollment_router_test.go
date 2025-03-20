@@ -289,7 +289,6 @@ func Test_RouterEnrollment(t *testing.T) {
 				certs, err := parsePEMBundle([]byte(certPem))
 				ctx.Req.NoError(err)
 				ctx.Req.Len(certs, 2)
-				cert := certs[0]
 
 				ctx.Req.True(enrollmentContainer.ExistsP("data.serverCert"))
 				serverCertPem := enrollmentContainer.Path("data.serverCert").Data().(string)
@@ -403,7 +402,7 @@ func Test_RouterEnrollment(t *testing.T) {
 
 						body := gabs.New()
 
-						resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
+						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
 						standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
@@ -415,7 +414,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						body := gabs.New()
 						_, _ = body.Set("", "certCsr")
 
-						resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
+						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
 						standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
@@ -427,7 +426,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						body := gabs.New()
 						_, _ = body.Set("", "serverCertCsr")
 
-						resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
+						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
 						standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
@@ -440,7 +439,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						_, _ = body.Set("", "serverCertCsr")
 						_, _ = body.Set("", "certCsr")
 
-						resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
+						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
 						standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
@@ -460,7 +459,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						_, _ = extensionBodyContainer.Set("", "serverCertCsr")
 						_, _ = extensionBodyContainer.Set(extensionClientCsrPem, "certCsr")
 
-						resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
+						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
 						standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
@@ -480,7 +479,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						_, _ = extensionBodyContainer.Set(extensionServerCsrPem, "serverCertCsr")
 						_, _ = extensionBodyContainer.Set("", "certCsr")
 
-						resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
+						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
 						standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
@@ -505,7 +504,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						_, _ = extensionBodyContainer.Set(extensionClientCsrPem, "certCsr")
 
 						time.Sleep(time.Second) // make sure the new certs will have different times
-						resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
+						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
 						standardJsonResponseTests(resp, http.StatusOK, t)
@@ -527,8 +526,8 @@ func Test_RouterEnrollment(t *testing.T) {
 
 						t.Run("the new client cert has its NotAfter date increased", func(t *testing.T) {
 							ctx.testContextChanged(t)
-							ctx.Req.NotEqual(extensionClientCerts[0].NotAfter, cert.NotAfter)
-							ctx.Req.True(extensionClientCerts[0].NotAfter.After(cert.NotAfter))
+							ctx.Req.NotEqual(extensionClientCerts[0].NotAfter, certs[0].NotAfter)
+							ctx.Req.True(extensionClientCerts[0].NotAfter.After(certs[0].NotAfter))
 						})
 
 						t.Run("the new client cert has its NotBefore date before now", func(t *testing.T) {

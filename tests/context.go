@@ -244,15 +244,21 @@ func (ctx *TestContext) NewTransportWithIdentity(i idlib.Identity) *http.Transpo
 	}
 }
 
-func (ctx *TestContext) NewTransportWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) *http.Transport {
+func (ctx *TestContext) NewTransportWithClientCert(certs []*x509.Certificate, privateKey crypto.PrivateKey) *http.Transport {
 	// #nosec
 	tlsClientConfig := &cryptoTls.Config{
 		InsecureSkipVerify: true,
 	}
 
-	if cert != nil && privateKey != nil {
+	if certs != nil && privateKey != nil {
+		rawCerts := make([][]byte, len(certs))
+
+		for i, cert := range certs {
+			rawCerts[i] = cert.Raw
+		}
+
 		tlsClientConfig.Certificates = []cryptoTls.Certificate{
-			{Certificate: [][]byte{cert.Raw}, PrivateKey: privateKey, Leaf: cert},
+			{Certificate: rawCerts, PrivateKey: privateKey, Leaf: certs[0]},
 		}
 	}
 
@@ -367,8 +373,8 @@ func (ctx *TestContext) NewWsMgmtChannel(bindHandler channel.BindHandler) (chann
 	return ch, nil
 }
 
-func (ctx *TestContext) NewClientComponentsWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) (*resty.Client, *http.Client, *http.Transport) {
-	clientTransport := ctx.NewTransportWithClientCert(cert, privateKey)
+func (ctx *TestContext) NewClientComponentsWithClientCert(certs []*x509.Certificate, privateKey crypto.PrivateKey) (*resty.Client, *http.Client, *http.Transport) {
+	clientTransport := ctx.NewTransportWithClientCert(certs, privateKey)
 	httpClient := ctx.NewHttpClient(clientTransport)
 	client := resty.NewWithClient(httpClient)
 
@@ -642,8 +648,8 @@ func (ctx *TestContext) newAnonymousManagementApiRequest() *resty.Request {
 		SetHeader("content-type", "application/json")
 }
 
-func (ctx *TestContext) newRequestWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) *resty.Request {
-	client, _, _ := ctx.NewClientComponentsWithClientCert(cert, privateKey)
+func (ctx *TestContext) newRequestWithClientCert(certs []*x509.Certificate, privateKey crypto.PrivateKey) *resty.Request {
+	client, _, _ := ctx.NewClientComponentsWithClientCert(certs, privateKey)
 
 	return client.R().
 		SetHeader("content-type", "application/json")
@@ -669,12 +675,9 @@ func (ctx *TestContext) completeUpdbEnrollment(identityId string, password strin
 
 func (ctx *TestContext) completeOttCaEnrollment(certAuth *certAuthenticator) {
 	trans := ctx.NewTransport()
-	trans.TLSClientConfig.Certificates = []cryptoTls.Certificate{
-		{
-			Certificate: [][]byte{certAuth.cert.Raw},
-			PrivateKey:  certAuth.key,
-		},
-	}
+
+	trans.TLSClientConfig.Certificates = certAuth.TLSCertificates()
+
 	client := resty.NewWithClient(ctx.NewHttpClient(trans))
 	client.SetHostURL("https://" + ctx.ApiHost + EdgeClientApiPath)
 
@@ -687,12 +690,8 @@ func (ctx *TestContext) completeOttCaEnrollment(certAuth *certAuthenticator) {
 
 func (ctx *TestContext) completeCaAutoEnrollmentWithName(certAuth *certAuthenticator, name string) {
 	trans := ctx.NewTransport()
-	trans.TLSClientConfig.Certificates = []cryptoTls.Certificate{
-		{
-			Certificate: [][]byte{certAuth.cert.Raw},
-			PrivateKey:  certAuth.key,
-		},
-	}
+	trans.TLSClientConfig.Certificates = certAuth.TLSCertificates()
+
 	client := resty.NewWithClient(ctx.NewHttpClient(trans))
 	client.SetHostURL("https://" + ctx.ApiHost + EdgeClientApiPath)
 
@@ -749,7 +748,7 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 	ctx.Req.NotEmpty(certs)
 
 	return &certAuthenticator{
-		cert:    certs[0],
+		certs:   certs,
 		key:     privateKey,
 		certPem: envelope.Data.Cert,
 	}

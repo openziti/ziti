@@ -138,7 +138,7 @@ func (c *Controller) Enabled() bool {
 func (c *Controller) initializeAuthModules() {
 	c.initModulesOnce.Do(func() {
 		c.AppEnv.AuthRegistry.Add(model.NewAuthModuleUpdb(c.AppEnv))
-		c.AppEnv.AuthRegistry.Add(model.NewAuthModuleCert(c.AppEnv, c.AppEnv.GetConfig().Edge.CaPems()))
+		c.AppEnv.AuthRegistry.Add(model.NewAuthModuleCert(c.AppEnv))
 		c.AppEnv.AuthRegistry.Add(model.NewAuthModuleExtJwt(c.AppEnv))
 
 		c.AppEnv.EnrollRegistry.Add(model.NewEnrollModuleCa(c.AppEnv))
