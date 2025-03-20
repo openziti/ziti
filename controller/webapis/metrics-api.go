@@ -142,6 +142,8 @@ func (metricsApi *MetricsApiHandler) ServeHTTP(writer http.ResponseWriter, reque
 
 func (metricsApi *MetricsApiHandler) newHandler() http.Handler {
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		// Set Content-Type, see https://github.com/openziti/ziti/issues/2608
+		rw.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
 
 		if nil != metricsApi.scrapeCert {
 			certOk := false
