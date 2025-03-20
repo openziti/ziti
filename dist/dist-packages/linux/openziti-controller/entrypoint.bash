@@ -37,10 +37,6 @@ elif [[ "${1}" =~ check ]]; then
     echo "ERROR: ${2} is missing or empty" >&2
     hintLinuxBootstrap "${PWD}"
     exit 1
-  elif [[ ! -w "${ZITI_CTRL_DATABASE_DIR:-./raft}" ]]; then
-    echo "ERROR: database dir '${ZITI_CTRL_DATABASE_DIR:-./raft}' is not writable" >&2
-    hintLinuxBootstrap "${PWD}"
-    exit 1
   elif [[ "${ZITI_BOOTSTRAP:-}" == true && "${ZITI_BOOTSTRAP_PKI:-}" == true ]]; then
     loadEnvFiles /opt/openziti/etc/controller/bootstrap.env
     issueLeafCerts
