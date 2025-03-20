@@ -70,6 +70,16 @@ issueLeafCerts() {
     return 1
   fi
 
+  if [[ "${ZITI_SERVER_FILE}" == "${ZITI_INTERMEDIATE_FILE}" ]]; then
+    echo "ERROR: ZITI_SERVER_FILE and ZITI_INTERMEDIATE_FILE must be different" >&2
+    return 1
+  fi
+
+  if [[ "${ZITI_CLIENT_FILE}" == "${ZITI_INTERMEDIATE_FILE}" ]]; then
+    echo "ERROR: ZITI_CLIENT_FILE and ZITI_INTERMEDIATE_FILE must be different" >&2
+    return 1
+  fi
+
   if [[ -z "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
     echo "ERROR: ZITI_CLUSTER_NODE_NAME must be set" >&2
     hintLinuxBootstrap "${PWD}"
@@ -232,25 +242,27 @@ makeDatabase() {
     return 1
   fi
 
-  if [[ ! -d "${ZITI_CTRL_DATABASE_DIR}" ]]; then
-    echo "DEBUG: creating database directory: ${ZITI_CTRL_DATABASE_DIR}" >&3
-  elif [[ "${1:-}" == --force ]]; then
-    echo "INFO: recreating database directory: ${ZITI_CTRL_DATABASE_DIR}"
+  if [[ -n "${ZITI_CLUSTER_NODE_PKI:-}" || "${ZITI_BOOTSTRAP_CLUSTER:-}" != true ]]; then
+    echo "DEBUG: skipping database initialization because ZITI_CLUSTER_NODE_PKI is set or ZITI_BOOTSTRAP_CLUSTER is not true" >&3
+    return 0
+  elif [[ -d "${ZITI_CTRL_DATABASE_DIR}" && "${1:-}" == --force ]]; then
+    echo "DEBUG: recreating database directory: ${ZITI_CTRL_DATABASE_DIR}" >&3
     mv --no-clobber "${ZITI_CTRL_DATABASE_DIR}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
-  else
+  elif [[ -d "${ZITI_CTRL_DATABASE_DIR}" ]]; then
     # the presence of the directory indicates that the database has already been initialized
-    echo "INFO: database directory exists: ${ZITI_CTRL_DATABASE_DIR}"
+    echo "DEBUG: database directory exists: ${ZITI_CTRL_DATABASE_DIR}" >&3
     return 0
   fi
 
-  # shellcheck disable=SC2174
-  mkdir -pm0700 "${ZITI_CTRL_DATABASE_DIR}"
-
-  if ! [[ -n "${ZITI_USER:-}" && -n "${ZITI_PWD:-}" ]]; then
+  if [[ -z "${ZITI_USER:-}" || -z "${ZITI_PWD:-}" ]]; then
     echo  "ERROR: unable to initialize database because ZITI_USER and ZITI_PWD must both be set" >&2
     hintLinuxBootstrap "${PWD}"
     return 1
   fi
+
+  # shellcheck disable=SC2174
+  echo "DEBUG: creating database directory: ${ZITI_CTRL_DATABASE_DIR}" >&3
+  mkdir -pm0700 "${ZITI_CTRL_DATABASE_DIR}"
 
   if [[ "${ZITI_RUNTIME}" == docker ]] \
     && makeDatabaseDocker "${_config_file}"; then
@@ -413,9 +425,13 @@ promptUserPwd() {
   if [[ -d "${ZITI_CTRL_DATABASE_DIR}" ]]; then
     echo "DEBUG: not checking ZITI_USER or ZITI_PWD because $(realpath "${ZITI_CTRL_DATABASE_DIR}")" >&3
     return 0
+  # or we're not bootstrapping a cluster
+  elif [[ -n "${ZITI_CLUSTER_NODE_PKI:-}" || "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
+    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because ZITI_CLUSTER_NODE_PKI is set or ZITI_BOOTSTRAP_CLUSTER is not true" >&3
+    return 0
   fi
-  # prompt for password token if interactive, unless already answered
-  if ! [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
+  # prompt for password if interactive, unless already answered
+  if [[ "${ZITI_BOOTSTRAP_DATABASE:-}" != true ]]; then
     echo "WARN: not checking ZITI_USER or ZITI_PWD because ZITI_BOOTSTRAP_DATABASE is not true in ${SVC_ENV_FILE}" >&2
     return 0
   fi
@@ -512,8 +528,8 @@ promptCtrlAddress() {
 }
 
 promptClusterNodePki(){
-  if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == false && -z "${ZITI_CLUSTER_NODE_PKI:-}" ]]; then
-    echo -e "\nThe PKI directory must contain:"\
+  if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
+    echo -e "\nThe new node's PKI directory must contain:"\
             "\n\t${ZITI_CA_CERT}"\
             "\n\t${ZITI_PKI_SIGNER_CERT}"\
             "\n\t${ZITI_PKI_SIGNER_KEY}"\
@@ -529,7 +545,7 @@ promptClusterNodePki(){
 }
 
 promptBootstrapCluster(){
-  if [[ -z "${ZITI_BOOTSTRAP_CLUSTER:-}" ]]; then
+  if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && -z "${ZITI_BOOTSTRAP_CLUSTER:-}" ]]; then
     # trunk-ignore(shellcheck/SC2310)
     ZITI_BOOTSTRAP_CLUSTER="$(prompt 'Create a new cluster (NO if joining a cluster) [Y/n]: ' || echo 'true')"
     if [[ "${ZITI_BOOTSTRAP_CLUSTER}" =~ ^([yY]([eE][sS])?|[tT]([rR][uU][eE])?)$ ]]; then
@@ -566,7 +582,7 @@ promptClusterNodeName(){
 }
 
 promptClusterTrustDomain() {
-  if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == true && -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
+  if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER:-}" == true && -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
     local _prompt="Enter the trust domain for the new cluster"
     # if the address is a domain name then suggest everything after the first dot for the trust domain
     # trunk-ignore(shellcheck/SC2310)
@@ -605,7 +621,7 @@ promptBootstrap() {
       fi
       setAnswer "ZITI_BOOTSTRAP=${ZITI_BOOTSTRAP}" "${SVC_ENV_FILE}"
     fi
-    if [[ -n "${ZITI_BOOTSTRAP:-}" && "${ZITI_BOOTSTRAP}" != true ]]; then
+    if [[ "${ZITI_BOOTSTRAP:-}" == false ]]; then
         return 1
     fi
 }
@@ -861,21 +877,23 @@ else
     exec 1>&4
   fi
   
-  # run bootstrap(), set filemodes
-  if bootstrap "${@}"; then
-    echo "DEBUG: bootstrap complete" >&3
-    finalizeWorkingDir "${ZITI_HOME}"
+  # run bootstrap()
+  bootstrap "${@}"
 
-    # successfully running this script directly means bootstrapping was enabled
-    setAnswer "ZITI_BOOTSTRAP=true" "${SVC_ENV_FILE}"
-    # if verbose then this was already done earlier, else allow stdout now to announce completion
-    if ! (( VERBOSE )); then
-      exec 1>&4
-    fi
-    echo -e "INFO: bootstrap completed successfully and will not run again."\
-            "Adjust ${ZITI_HOME}/config.yml to suit." >&2
-    trap - EXIT  # remove exit trap
-  else
-    echo "ERROR: something went wrong during bootstrapping" >&2
+  # set filemodes
+  finalizeWorkingDir "${ZITI_HOME}"
+
+  # successfully running this script directly means bootstrapping was enabled
+  setAnswer "ZITI_BOOTSTRAP=true" "${SVC_ENV_FILE}"
+
+  # if verbose then this was already done earlier, else allow stdout now to announce completion
+  if ! (( VERBOSE )); then
+    exec 1>&4
   fi
+  echo -e "INFO: bootstrap completed successfully and will not run again."\
+          "Adjust ${ZITI_HOME}/config.yml to suit." >&2
+
+  # remove exit trap
+  trap - EXIT
+
 fi
