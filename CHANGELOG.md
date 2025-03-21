@@ -1,3 +1,32 @@
+# Release 1.1.17
+
+## What's New
+
+* Update to latest metrics library to pick up usage processing fixes
+* Backport of router metrics change
+
+## Router Metrics Change
+
+Router metrics has a new configuration setting:
+
+```
+metrics:
+  # Number of usage events to be able to queue. Defaults to 256. If this queue backs up, it can
+  # slow down dispatch of data from an SDK onto the fabric.
+  eventQueueSize: 256
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/foundation/v2: [v2.0.49 -> v2.0.58](https://github.com/openziti/foundation/compare/v2.0.49...v2.0.58)
+* github.com/openziti/metrics: [v1.2.58 -> v1.3.0](https://github.com/openziti/metrics/compare/v1.2.58...v1.3.0)
+    * [Issue #49](https://github.com/openziti/metrics/issues/49) - Make usage registry event queue size configurable
+    * [Issue #50](https://github.com/openziti/metrics/issues/50) - Do metrics message construction in msg sender goroutine rather than usage/interval event goroutine
+
+* github.com/openziti/ziti: [v1.1.16 -> v1.1.17](https://github.com/openziti/ziti/compare/v1.1.16...v1.1.17)
+    * [Issue #2899](https://github.com/openziti/ziti/issues/2899) - Allow configuring size of router metrics event queue size
+
+
 # Release 1.1.16
 
 ## What's New

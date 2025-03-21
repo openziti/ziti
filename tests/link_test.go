@@ -124,7 +124,8 @@ func (self *testDial) GetIteration() uint32 {
 func setupEnv() link.Env {
 	closeNotify := make(chan struct{})
 	ctrls := env.NewNetworkControllers(time.Second, nil, env.NewDefaultHeartbeatOptions())
-	metricsRegistry := metrics.NewUsageRegistry("test", nil, closeNotify)
+	registryConfig := metrics.DefaultUsageRegistryConfig("test", closeNotify)
+	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 	return &testRegistryEnv{
 		ctrls:           ctrls,
 		closeNotify:     closeNotify,

@@ -123,11 +123,12 @@ type Network struct {
 }
 
 func NewNetwork(config Config, env model.Env) (*Network, error) {
+	metricsConfig := metrics.DefaultUsageRegistryConfig(config.GetId().Token, config.GetCloseNotify())
 	if config.GetOptions().IntervalAgeThreshold != 0 {
-		metrics.SetIntervalAgeThreshold(config.GetOptions().IntervalAgeThreshold)
+		metricsConfig.IntervalAgeThreshold = config.GetOptions().IntervalAgeThreshold
 		logrus.Infof("set interval age threshold to '%v'", config.GetOptions().IntervalAgeThreshold)
 	}
-	serviceEventMetrics := metrics.NewUsageRegistry(config.GetId().Token, nil, config.GetCloseNotify())
+	serviceEventMetrics := metrics.NewUsageRegistry(metricsConfig)
 
 	network := &Network{
 		env:                   env,
