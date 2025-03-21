@@ -158,6 +158,7 @@ type Config struct {
 		IntervalAgeThreshold time.Duration
 		MessageQueueSize     int
 		EventQueueSize       int
+		EnableDataDelayMetric bool
 	}
 	HealthChecks struct {
 		CtrlPingCheck struct {
@@ -677,6 +678,9 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 				} else {
 					return nil, errors.New("invalid value for metrics.eventQueueSize")
 				}
+			}
+			if value, found := submap["enableDataDelayMetric"]; found {
+				cfg.Metrics.EnableDataDelayMetric = strings.EqualFold("true", fmt.Sprintf("%v", value))
 			}
 		}
 	}
