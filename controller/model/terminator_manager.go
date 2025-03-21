@@ -15,11 +15,11 @@ package model
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/protobufs"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
@@ -93,7 +93,7 @@ func (self *TerminatorManager) DeleteBatch(ids []string, ctx *change.Context) er
 }
 
 func (self *TerminatorManager) ApplyDeleteBatch(cmd *DeleteTerminatorsBatchCommand, ctx boltz.MutateContext) error {
-	var errorList errorz.MultipleErrors
+	var errorList []error
 	err := self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		for _, id := range cmd.Ids {
 			if self.Store.IsEntityPresent(ctx.Tx(), id) {
@@ -107,7 +107,7 @@ func (self *TerminatorManager) ApplyDeleteBatch(cmd *DeleteTerminatorsBatchComma
 	if err != nil {
 		errorList = append(errorList, err)
 	}
-	return errorList.ToError()
+	return errors.Join(errorList...)
 }
 
 func (self *TerminatorManager) checkBinding(terminator *Terminator) {
