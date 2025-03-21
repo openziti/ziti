@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/ziti/common/cert"
 	"math"
 	"sync/atomic"
+	"time"
 )
 
 type Acceptor struct {
@@ -106,7 +107,18 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 
 	// Since data is the most common type, it gets to dispatch directly
-	binding.AddTypedReceiveHandler(conn.msgMux)
+	if self.listener.factory.routerConfig.Metrics.EnableDataDelayMetric {
+		delayTimer := self.listener.factory.env.GetMetricsRegistry().Timer("xgress_edge.long_data_queue_time")
+		binding.AddReceiveHandlerF(conn.msgMux.ContentType(), func(m *channel.Message, ch channel.Channel) {
+			start := time.Now()
+			conn.msgMux.HandleReceive(m, ch)
+			if processingTime := time.Since(start); processingTime > 5*time.Millisecond {
+				delayTimer.Update(processingTime)
+			}
+		})
+	} else {
+		binding.AddTypedReceiveHandler(conn.msgMux)
+	}
 	binding.AddCloseHandler(conn)
 	binding.AddPeekHandler(debugPeekHandler{})
 

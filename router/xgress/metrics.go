@@ -21,6 +21,11 @@ var buffersBlockedByRemoteWindow int64
 var outstandingPayloads int64
 var outstandingPayloadBytes int64
 
+var buffersBlockedByLocalWindowMeter metrics.Meter
+var buffersBlockedByRemoteWindowMeter metrics.Meter
+
+var bufferBlockedTime metrics.Timer
+
 func InitMetrics(registry metrics.Registry) {
 	droppedPayloadsMeter = registry.Meter("xgress.dropped_payloads")
 	retransmissions = registry.Meter("xgress.retransmissions")
@@ -47,4 +52,8 @@ func InitMetrics(registry metrics.Registry) {
 	registry.FuncGauge("xgress.tx_unacked_payload_bytes", func() int64 {
 		return atomic.LoadInt64(&outstandingPayloadBytes)
 	})
+
+	buffersBlockedByLocalWindowMeter = registry.Meter("xgress.blocked_by_local_window_rate")
+	buffersBlockedByRemoteWindowMeter = registry.Meter("xgress.blocked_by_remote_window_rate")
+	bufferBlockedTime = registry.Timer("xgress.blocked_time")
 }
