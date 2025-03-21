@@ -6,7 +6,7 @@
 * Change to router endpoints file default name
 * Updated Cluster Defaults
 * Updates to terminator costing
-* Router metrics change
+* Router metrics changes
 
 ## Router Endpoints File
 
@@ -52,15 +52,27 @@ amount, based on time since the last failure.
 
 If X is minutes since last failure, the credit is now: `min(10, 2 ^ (X/5))`.
 
-## Router Metrics Change
+## Router Metrics Changes
 
-Router metrics has a new configuration setting:
+There are four new router metrics, focused on visibility into flow control.
+
+* `xgress.blocked_by_local_window_rate` - meter which ticks whenever an xgress becomes blocked by the local window being full
+* `xgress.blocked_by_remote_window_rate` - meter which ticks whenever an xgress becomes blocked by the remote receive buffer being full
+* `xgress.blocked_time` - timer which tracks how long xgresses are in a blocked state. 
+* `xgress_edge.long_data_queue_time` - timer that tracks times to process incoming data payloads to `xgress_edge`. 
+
+The `xgress_edge.long_data_queue_time` will be controller by a router config file setting. It will default to disabled. The other metrics will always be enabled.
+
+Router metrics has two new configuration setting:
 
 ```
 metrics:
   # Number of usage events to be able to queue. Defaults to 256. If this queue backs up, it can
   # slow down dispatch of data from an SDK onto the fabric.
   eventQueueSize: 256
+
+  # If set to true, enables the xgress_edge.long_data_queue_time metric. Defaults to false.
+  enableDataDelayMetric: false
 ```
 
 ## Component Updates and Bug Fixes
