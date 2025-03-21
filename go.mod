@@ -39,7 +39,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/hashicorp/raft v1.7.2
+	github.com/hashicorp/raft v1.7.3
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/jessevdk/go-flags v1.6.1
