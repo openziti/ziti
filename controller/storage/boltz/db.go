@@ -19,12 +19,11 @@ package boltz
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"io"
 	"os"
@@ -125,7 +124,7 @@ func (self *DbImpl) Open(path string) error {
 
 	var err error
 	if self.db, err = bbolt.Open(path, 0600, &options); err != nil {
-		return errors.Wrapf(err, "unable to open controller database [%s]", path)
+		return fmt.Errorf("unable to open controller database [%s] (%w)", path, err)
 	}
 
 	return nil
@@ -217,7 +216,7 @@ func (self *DbImpl) RootBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
 
 	rootBucket := tx.Bucket([]byte(self.rootBucket))
 	if rootBucket == nil {
-		return nil, errors.Errorf("db missing root bucket [%v]", self.rootBucket)
+		return nil, fmt.Errorf("db missing root bucket [%v]", self.rootBucket)
 	}
 	return rootBucket, nil
 }
@@ -303,16 +302,16 @@ func (self *DbImpl) RestoreFromReader(snapshot io.Reader) {
 	dbPath := self.db.Path()
 
 	if err = self.Close(); err != nil {
-		panic(errors.Wrap(err, "unable to close current database while applying snapshot"))
+		panic(fmt.Errorf("unable to close current database while applying snapshot (%w)", err))
 	}
 
 	backupPath := dbPath + ".previous"
 	if err = os.Rename(dbPath, backupPath); err != nil {
-		panic(errors.Wrapf(err, "unable to rename current db file [%v] to [%v]", dbPath, backupPath))
+		panic(fmt.Errorf("unable to rename current db file [%v] to [%v] (%w)", dbPath, backupPath, err))
 	}
 
 	if err = os.Rename(snapshotPath, dbPath); err != nil {
-		panic(errors.Wrapf(err, "unable to rename new db snapshot file [%v] to [%v]", snapshotPath, dbPath))
+		panic(fmt.Errorf("unable to rename new db snapshot file [%v] to [%v] (%w)", snapshotPath, dbPath, err))
 	}
 
 	if err = self.Open(dbPath); err != nil {
@@ -328,17 +327,17 @@ func (self *DbImpl) persistSnapshot(snapshot io.Reader) (string, error) {
 	tmpPath := self.db.Path() + ".snapshot." + uuid.NewString()
 	f, err := os.Create(tmpPath)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to create snapshot file [%v]", tmpPath)
+		return "", fmt.Errorf("failed to create snapshot file [%v] (%w)", tmpPath, err)
 	}
 	_, err = io.Copy(f, snapshot)
 	if err != nil {
 		if closeErr := f.Close(); closeErr != nil {
-			return "", errors.Wrapf(errorz.MultipleErrors{err, closeErr}, "unable to write snapshot data to file [%v]", tmpPath)
+			return "", fmt.Errorf("unable to write snapshot data to file [%v] (%w)", tmpPath, errors.Join(err, closeErr))
 		}
-		return "", errors.Wrapf(err, "unable to write snapshot data to file [%v]", tmpPath)
+		return "", fmt.Errorf("unable to write snapshot data to file [%v] (%w)", tmpPath, err)
 	}
 	if err = f.Close(); err != nil {
-		return "", errors.Wrapf(err, "unable to close db snapshot file after write [%v]", tmpPath)
+		return "", fmt.Errorf("unable to close db snapshot file after write [%v] (%w)", tmpPath, err)
 	}
 	return tmpPath, nil
 }
