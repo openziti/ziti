@@ -109,7 +109,7 @@ If a release is found to be faulty, the downstream artifacts can be rolled back 
 
 The first step is to ensure the GitHub release is not marked "latest," and the highest good release is marked "latest." Do not delete the faulty release (assets) or Git tag.
 
-- Linux packages - The released semver is removed from the stable repo and must not be re-used. To arm this script, uncomment the `DELETE="--quiet"` line and set `BAD_VERSION`.
+- Linux packages - The released semver is removed from the stable repo and must not be reused. To arm this script, uncomment the `DELETE="--quiet"` line and set `BAD_VERSION`.
 
     ```bash
     (set -euxopipefail

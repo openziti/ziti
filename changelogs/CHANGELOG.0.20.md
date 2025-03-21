@@ -14,7 +14,7 @@
 
 * Bug fix: [edge#712](https://github.com/openziti/edge/issues/712)
     * NF-INTERCEPT chain was getting deleted when any intercept was stopped, not when all intercepts were stopped
-    * IP address could get re-used across DNS entries. Added DNS cache flush on startup to avoid this
+    * IP address could get reused across DNS entries. Added DNS cache flush on startup to avoid this
     * IP address cleanup was broken as all services would see last assigned IP
 * Bug fix: Introduce delay when closing xgress peer after receiving unroute if end of session not yet received
 * Feature: Can now search relevant entities by role attributes
