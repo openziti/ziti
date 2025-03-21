@@ -209,7 +209,7 @@ jobs:
 
       - name: Bootstrap & Run
         shell: bash
-        run: ./dist/dist-packages/linux/linux.test.bash
+        run: ./dist/dist-packages/linux/linux.test.bash </dev/null
 
       - name: Debug Info
         if: always()
