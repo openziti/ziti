@@ -25,6 +25,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -146,10 +147,11 @@ type Config struct {
 	Listeners []listenerBinding
 	Transport map[interface{}]interface{}
 	Metrics   struct {
-		ReportInterval       time.Duration
-		IntervalAgeThreshold time.Duration
-		MessageQueueSize     int
-		EventQueueSize       int
+		ReportInterval        time.Duration
+		IntervalAgeThreshold  time.Duration
+		MessageQueueSize      int
+		EventQueueSize        int
+		EnableDataDelayMetric bool
 	}
 	HealthChecks struct {
 		CtrlPingCheck struct {
@@ -668,6 +670,7 @@ func LoadConfig(path string) (*Config, error) {
 	cfg.Metrics.ReportInterval = time.Minute
 	cfg.Metrics.MessageQueueSize = 10
 	cfg.Metrics.EventQueueSize = 256
+	cfg.Metrics.EnableDataDelayMetric = true
 
 	if value, found := cfgmap["metrics"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
@@ -696,6 +699,9 @@ func LoadConfig(path string) (*Config, error) {
 				} else {
 					return nil, errors.New("invalid value for metrics.eventQueueSize")
 				}
+			}
+			if value, found := submap["enableDataDelayMetric"]; found {
+				cfg.Metrics.EnableDataDelayMetric = strings.EqualFold("true", fmt.Sprintf("%v", value))
 			}
 		}
 	}

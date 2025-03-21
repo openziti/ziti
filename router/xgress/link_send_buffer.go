@@ -58,6 +58,7 @@ type LinkSendBuffer struct {
 	lastRetransmitTime    int64
 	closeWhenEmpty        atomic.Bool
 	inspectRequests       chan *sendBufferInspectEvent
+	blockedSince          time.Time
 }
 
 type txPayload struct {
@@ -160,6 +161,7 @@ func (buffer *LinkSendBuffer) Close() {
 }
 
 func (buffer *LinkSendBuffer) isBlocked() bool {
+	wasBlocked := buffer.blockedByLocalWindow || buffer.blockedByRemoteWindow
 	blocked := false
 
 	if buffer.x.Options.TxPortalMaxSize < buffer.linkRecvBufferSize {
@@ -167,6 +169,7 @@ func (buffer *LinkSendBuffer) isBlocked() bool {
 		if !buffer.blockedByRemoteWindow {
 			buffer.blockedByRemoteWindow = true
 			atomic.AddInt64(&buffersBlockedByRemoteWindow, 1)
+			buffersBlockedByRemoteWindowMeter.Mark(1)
 		}
 	} else if buffer.blockedByRemoteWindow {
 		buffer.blockedByRemoteWindow = false
@@ -178,6 +181,7 @@ func (buffer *LinkSendBuffer) isBlocked() bool {
 		if !buffer.blockedByLocalWindow {
 			buffer.blockedByLocalWindow = true
 			atomic.AddInt64(&buffersBlockedByLocalWindow, 1)
+			buffersBlockedByLocalWindowMeter.Mark(1)
 		}
 	} else if buffer.blockedByLocalWindow {
 		buffer.blockedByLocalWindow = false
@@ -185,7 +189,12 @@ func (buffer *LinkSendBuffer) isBlocked() bool {
 	}
 
 	if blocked {
+		if !wasBlocked {
+			buffer.blockedSince = time.Now()
+		}
 		pfxlog.ContextLogger(buffer.x.Label()).Debugf("blocked=%v win_size=%v tx_buffer_size=%v rx_buffer_size=%v", blocked, buffer.windowsSize, buffer.linkSendBufferSize, buffer.linkRecvBufferSize)
+	} else if wasBlocked {
+		bufferBlockedTime.Update(time.Since(buffer.blockedSince))
 	}
 
 	return blocked

@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/cert"
 	"math"
+	"time"
 )
 
 type Acceptor struct {
@@ -39,7 +40,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 
 	fpg := cert.NewFingerprintGenerator()
 
-	proxy := &edgeClientConn{
+	conn := &edgeClientConn{
 		msgMux:       edge.NewCowMapMsgMux(),
 		listener:     self.listener,
 		fingerprints: fpg.FromCerts(binding.GetChannel().Certificates()),
@@ -47,62 +48,73 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		idSeq:        math.MaxUint32 / 2,
 	}
 
-	log.Debug("peer fingerprints ", proxy.fingerprints)
+	log.Debug("peer fingerprints ", conn.fingerprints)
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeConnect,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processConnect(self.listener.factory.stateManager, m, ch)
+			conn.processConnect(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeBind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processBind(self.listener.factory.stateManager, m, ch)
+			conn.processBind(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeUnbind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processUnbind(self.listener.factory.stateManager, m, ch)
+			conn.processUnbind(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeUpdateBind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processUpdateBind(self.listener.factory.stateManager, m, ch)
+			conn.processUpdateBind(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeHealthEvent,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processHealthEvent(self.listener.factory.stateManager, m, ch)
+			conn.processHealthEvent(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeUpdateToken,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			proxy.processTokenUpdate(self.listener.factory.stateManager, m, ch)
+			conn.processTokenUpdate(self.listener.factory.stateManager, m, ch)
 		},
 	})
 
-	binding.AddReceiveHandlerF(edge.ContentTypeStateClosed, proxy.msgMux.HandleReceive)
+	binding.AddReceiveHandlerF(edge.ContentTypeStateClosed, conn.msgMux.HandleReceive)
 
-	binding.AddReceiveHandlerF(edge.ContentTypeTraceRoute, proxy.processTraceRoute)
+	binding.AddReceiveHandlerF(edge.ContentTypeTraceRoute, conn.processTraceRoute)
 
-	binding.AddReceiveHandlerF(edge.ContentTypeTraceRouteResponse, proxy.msgMux.HandleReceive)
+	binding.AddReceiveHandlerF(edge.ContentTypeTraceRouteResponse, conn.msgMux.HandleReceive)
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 
-	// Since data is most common type, it gets to dispatch directly
-	binding.AddTypedReceiveHandler(proxy.msgMux)
-	binding.AddCloseHandler(proxy)
+	// Since data is the most common type, it gets to dispatch directly
+	if self.listener.factory.routerConfig.Metrics.EnableDataDelayMetric {
+		delayTimer := self.listener.factory.env.GetMetricsRegistry().Timer("xgress_edge.long_data_queue_time")
+		binding.AddReceiveHandlerF(conn.msgMux.ContentType(), func(m *channel.Message, ch channel.Channel) {
+			start := time.Now()
+			conn.msgMux.HandleReceive(m, ch)
+			if processingTime := time.Since(start); processingTime > 5*time.Millisecond {
+				delayTimer.Update(processingTime)
+			}
+		})
+	} else {
+		binding.AddTypedReceiveHandler(conn.msgMux)
+	}
+	binding.AddCloseHandler(conn)
 	binding.AddPeekHandler(debugPeekHandler{})
-	return self.sessionBindHandler.BindChannel(binding, proxy)
+	return self.sessionBindHandler.BindChannel(binding, conn)
 }
 
 type debugPeekHandler struct{}
