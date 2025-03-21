@@ -19,8 +19,16 @@
 package tests
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"github.com/openziti/edge-api/rest_model"
+	nfPem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/identity/certtools"
 	"github.com/openziti/ziti/common/eid"
 	"net/http"
 	"testing"
@@ -388,5 +396,68 @@ func Test_EnrollmentOtt(t *testing.T) {
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(enrollmentCreate).Post("/enrollments")
 		ctx.NoError(err)
 		ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
+	})
+	
+	t.Run("can OTT enroll via text/plain", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		identity := ctx.AdminManagementSession.requireNewIdentity(false)
+
+		enrollmentCreate := &rest_model.EnrollmentCreate{
+			IdentityID: &identity.Id,
+			Method:     S(rest_model.EnrollmentCreateMethodOtt),
+			ExpiresAt:  ST(time.Now().Add(1 * time.Hour).UTC()),
+		}
+
+		enrollmentCreateResp := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(enrollmentCreate).SetResult(enrollmentCreateResp).Post("/enrollments")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+		ctx.NotNil(enrollmentCreateResp)
+		ctx.NotNil(enrollmentCreateResp.Data)
+		ctx.NotEmpty(enrollmentCreateResp.Data.ID)
+
+		t.Run("can enroll", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			result := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("identities/%v", identity.Id))
+
+			tokenValue := result.Path("data.enrollment.ott.token")
+
+			ctx.Req.NotNil(tokenValue)
+			token, ok := tokenValue.Data().(string)
+			ctx.Req.True(ok)
+
+			privateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+			ctx.Req.NoError(err)
+
+			request, err := certtools.NewCertRequest(map[string]string{
+				"C": "US", "O": "NetFoundry-API-Test", "CN": identity.Id,
+			}, nil)
+			ctx.Req.NoError(err)
+
+			csr, err := x509.CreateCertificateRequest(rand.Reader, request, privateKey)
+			ctx.Req.NoError(err)
+
+			csrPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
+
+			resp, err := ctx.newAnonymousClientApiRequest().
+				SetBody(csrPem).
+				SetHeader("content-type", "text/plain").
+				SetHeader("accept", "application/json").
+				Post("enroll?token=" + token)
+			ctx.Req.NoError(err)
+			ctx.logJson(resp.Body())
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			envelope := &rest_model.EnrollmentCertsEnvelope{}
+
+			err = json.Unmarshal(resp.Body(), envelope)
+			ctx.Req.NoError(err)
+
+			certs := nfPem.PemStringToCertificates(envelope.Data.Cert)
+
+			ctx.Req.NotEmpty(certs)
+		})
 	})
 }

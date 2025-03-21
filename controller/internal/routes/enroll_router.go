@@ -83,7 +83,7 @@ func (ro *EnrollRouter) AddMiddleware(ae *env.AppEnv) {
 
 			switch mediaType {
 			//special handling for legacy clients that are not spec compliant
-			case "application/pkcs7", "application/x-pem-file", "":
+			case "application/pkcs7", "application/x-pem-file", "text/plain", "":
 				// empty string = no body (e.g. 3rd party ca)
 				ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 					rc.ResponseWriter.Header().Set("content-type", "application/json")
