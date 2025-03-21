@@ -53,18 +53,18 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.26
-	github.com/openziti/channel/v3 v3.0.37
+	github.com/openziti/channel/v3 v3.0.39
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.42
-	github.com/openziti/foundation/v2 v2.0.58
+	github.com/openziti/foundation/v2 v2.0.59
 	github.com/openziti/identity v1.0.100
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.3.0
-	github.com/openziti/runzmd v1.0.65
+	github.com/openziti/runzmd v1.0.67
 	github.com/openziti/sdk-golang v0.24.1
-	github.com/openziti/secretstream v0.1.31
-	github.com/openziti/storage v0.4.5
-	github.com/openziti/transport/v2 v2.0.165
+	github.com/openziti/secretstream v0.1.32
+	github.com/openziti/storage v0.4.7
+	github.com/openziti/transport/v2 v2.0.167
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.3.0
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -164,7 +164,7 @@ require (
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
-	github.com/pion/dtls/v3 v3.0.4 // indirect
+	github.com/pion/dtls/v3 v3.0.5 // indirect
 	github.com/pion/logging v0.2.3 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
