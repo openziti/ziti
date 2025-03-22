@@ -77,12 +77,20 @@ metrics:
 
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/channel/v3: [v3.0.37 -> v3.0.39](https://github.com/openziti/channel/compare/v3.0.37...v3.0.39)
 * github.com/openziti/edge-api: [v0.26.41 -> v0.26.42](https://github.com/openziti/edge-api/compare/v0.26.41...v0.26.42)
+* github.com/openziti/foundation/v2: [v2.0.58 -> v2.0.59](https://github.com/openziti/foundation/compare/v2.0.58...v2.0.59)
 * github.com/openziti/metrics: [v1.2.69 -> v1.3.0](https://github.com/openziti/metrics/compare/v1.2.69...v1.3.0)
     * [Issue #49](https://github.com/openziti/metrics/issues/49) - Make usage registry event queue size configurable
     * [Issue #50](https://github.com/openziti/metrics/issues/50) - Do metrics message construction in msg sender goroutine rather than usage/interval event goroutine
 
+* github.com/openziti/runzmd: [v1.0.65 -> v1.0.67](https://github.com/openziti/runzmd/compare/v1.0.65...v1.0.67)
+* github.com/openziti/secretstream: [v0.1.31 -> v0.1.32](https://github.com/openziti/secretstream/compare/v0.1.31...v0.1.32)
+* github.com/openziti/storage: [v0.4.5 -> v0.4.7](https://github.com/openziti/storage/compare/v0.4.5...v0.4.7)
+* github.com/openziti/transport/v2: [v2.0.165 -> v2.0.167](https://github.com/openziti/transport/compare/v2.0.165...v2.0.167)
 * github.com/openziti/ziti: [v1.4.3 -> v1.5.0](https://github.com/openziti/ziti/compare/v1.4.3...v1.5.0)
+    * [Issue #2910](https://github.com/openziti/ziti/issues/2910) - Add additional metrics for visibility into flow control backpressure
+    * [Issue #2608](https://github.com/openziti/ziti/issues/2608) - Verify latest Prometheus server
     * [Issue #2899](https://github.com/openziti/ziti/issues/2899) - Allow configuring size of router metrics event queue size
     * [Issue #2896](https://github.com/openziti/ziti/issues/2896) - `ziti router run --extend` does not function
     * [Issue #2796](https://github.com/openziti/ziti/issues/2796) - Generated API client enrollment operations fail

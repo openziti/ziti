@@ -19,6 +19,7 @@ package raft
 import (
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/raft"
@@ -43,7 +44,6 @@ import (
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/peermsg"
 	"github.com/openziti/ziti/controller/raft/mesh"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"os"
 	"path"
@@ -341,7 +341,7 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 		return errors.New(string(result.Body))
 	}
 
-	return errors.Errorf("unexpected response type %v", result.ContentType)
+	return fmt.Errorf("unexpected response type %v", result.ContentType)
 }
 
 func (self *Controller) decodeApiError(data []byte) error {
@@ -443,10 +443,10 @@ func (self *Controller) parseBoltzNotFoundError(m map[string]any) error {
 	result := &boltz.RecordNotFoundError{}
 	err := mapstructure.Decode(m, result)
 	if err != nil {
-		multi := errorz.MultipleErrors{}
-		multi = append(multi, fmt.Errorf("unable to decode RecordNotFoundError (%w)", err))
-		multi = append(multi, self.fallbackMarshallError(m))
-		return multi
+		var errList []error
+		errList = append(errList, fmt.Errorf("unable to decode RecordNotFoundError (%w)", err))
+		errList = append(errList, self.fallbackMarshallError(m))
+		return errors.Join(errList...)
 	}
 	return result
 }
@@ -455,7 +455,7 @@ func (self *Controller) fallbackMarshallError(m map[string]any) error {
 	if b, err := json.Marshal(m); err == nil {
 		return errors.New(string(b))
 	}
-	return errors.New(fmt.Sprintf("%+v", m))
+	return fmt.Errorf("%+v", m)
 }
 
 func (self *Controller) getErrorParser(m map[string]any) func(map[string]any) error {
@@ -587,7 +587,7 @@ func (self *Controller) Init() error {
 	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders(), self.indexTracker, self.env.GetEventDispatcher())
 
 	if err = self.Fsm.Init(); err != nil {
-		return errors.Wrap(err, "failed to init FSM")
+		return fmt.Errorf("failed to init FSM (%w)", err)
 	}
 
 	raftTransport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, raftConfig.Logger)
@@ -599,7 +599,7 @@ func (self *Controller) Init() error {
 			},
 		})
 		if err != nil {
-			return errors.Wrap(err, "failed to recover cluster")
+			return fmt.Errorf("failed to recover cluster (%w)", err)
 		}
 
 		logrus.Info("raft configuration reset to only include local node. exiting.")
@@ -608,7 +608,7 @@ func (self *Controller) Init() error {
 
 	r, err := raft.NewRaft(conf, self.Fsm, self.raftStore, self.raftStore, snapshotStore, raftTransport)
 	if err != nil {
-		return errors.Wrap(err, "failed to initialise raft")
+		return fmt.Errorf("failed to initialise raft (%w)", err)
 	}
 
 	r.RegisterObserver(raft.NewObserver(self.clusterEvents, true, func(o *raft.Observation) bool {
@@ -620,7 +620,7 @@ func (self *Controller) Init() error {
 	rc := r.ReloadableConfig()
 	self.ConfigureReloadable(raftConfig, &rc)
 	if err = r.ReloadConfig(rc); err != nil {
-		return errors.Wrap(err, "error reloading raft configuration")
+		return fmt.Errorf("error reloading raft configuration (%w)", err)
 	}
 
 	self.Raft = r
@@ -833,11 +833,11 @@ func (self *Controller) Join(req *cmd_pb.AddPeerRequest) error {
 	defer self.clusterLock.Unlock()
 
 	if req.Id == "" {
-		return errors.Errorf("invalid server id '%v'", req.Id)
+		return fmt.Errorf("invalid server id '%v'", req.Id)
 	}
 
 	if req.Addr == "" {
-		return errors.Errorf("invalid server addr '%v' for servier %v", req.Addr, req.Id)
+		return fmt.Errorf("invalid server addr '%v' for servier %v", req.Addr, req.Id)
 	}
 
 	if self.bootstrapped.Load() || self.GetRaft().LastIndex() > 0 {
@@ -862,7 +862,7 @@ func (self *Controller) tryBootstrap(servers ...raft.Server) error {
 	log.Infof("bootstrapping cluster")
 	f := self.GetRaft().BootstrapCluster(raft.Configuration{Servers: servers})
 	if err := f.Error(); err != nil {
-		return errors.Wrapf(err, "failed to bootstrap cluster")
+		return fmt.Errorf("failed to bootstrap cluster (%w)", err)
 	}
 	self.bootstrapped.Store(true)
 	log.Info("raft cluster bootstrap complete")
@@ -954,7 +954,7 @@ func (self *Controller) addEventsHandlers() {
 }
 
 func (self *Controller) Shutdown() error {
-	var errs errorz.MultipleErrors
+	var errs []error
 
 	if self.Raft != nil {
 		if err := self.Raft.Shutdown().Error(); err != nil {
@@ -980,7 +980,7 @@ func (self *Controller) Shutdown() error {
 		}
 	}
 
-	return errs.ToError()
+	return errors.Join(errs...)
 }
 
 type MigrationManager interface {

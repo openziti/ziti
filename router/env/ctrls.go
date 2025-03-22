@@ -17,6 +17,7 @@
 package env
 
 import (
+	"errors"
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
@@ -25,14 +26,12 @@ import (
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/pkg/errors"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/foundation/v2/errorz"
 )
 
 type CtrlEventListener interface {
@@ -213,7 +212,7 @@ func (self *networkControllers) Add(address string, ch channel.Channel) error {
 		if versionInfo, err := versions.StdVersionEncDec.Decode(versionValue); err == nil {
 			ctrl.versionInfo = versionInfo
 		} else {
-			return errors.Wrap(err, "could not parse version info from controller hello, closing connection")
+			return fmt.Errorf("could not parse version info from controller hello, closing connection (%w)", err)
 		}
 	} else {
 		return errors.New("no version header provided")
@@ -347,13 +346,13 @@ func (self *networkControllers) ForEach(f func(controllerId string, ch channel.C
 }
 
 func (self *networkControllers) Close() error {
-	var errList errorz.MultipleErrors
+	var errList []error
 	self.ForEach(func(_ string, ch channel.Channel) {
 		if err := ch.Close(); err != nil {
 			errList = append(errList, err)
 		}
 	})
-	return errList.ToError()
+	return errors.Join(errList...)
 }
 
 func (self *networkControllers) CloseAndRemoveByAddress(address string) {

@@ -22,45 +22,33 @@ import (
 	"encoding/json"
 	stderr "errors"
 	"fmt"
-	"github.com/openziti/foundation/v2/rate"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/router/state"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"plugin"
-	"runtime/debug"
-	"strings"
-	"sync/atomic"
-	"time"
-
-	"github.com/openziti/foundation/v2/debugz"
-	"github.com/openziti/foundation/v2/goroutines"
-	"github.com/openziti/xweb/v2"
-	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/ziti/router/link"
-	metrics2 "github.com/rcrowley/go-metrics"
-
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/health"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/profiler"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/handler_ctrl"
 	"github.com/openziti/ziti/router/handler_link"
 	"github.com/openziti/ziti/router/handler_xgress"
+	"github.com/openziti/ziti/router/link"
+	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_proxy"
 	"github.com/openziti/ziti/router/xgress_proxy_udp"
@@ -69,9 +57,18 @@ import (
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/ziti/router/xlink_transport"
 	"github.com/pkg/errors"
+	metrics2 "github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"plugin"
+	"runtime/debug"
+	"strings"
+	"sync/atomic"
+	"time"
 )
 
 type Router struct {
@@ -216,7 +213,7 @@ func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 
 	linkDialerPool, err := goroutines.NewPool(linkDialerPoolConfig)
 	if err != nil {
-		panic(errors.Wrap(err, "error creating link dialer pool"))
+		panic(fmt.Errorf("error creating link dialer pool (%w)", err))
 	}
 
 	router := &Router{
@@ -350,7 +347,7 @@ func (self *Router) Shutdown() error {
 	if len(errs) == 1 {
 		return errs[0]
 	}
-	return errorz.MultipleErrors(errs)
+	return stderr.Join(errs...)
 }
 
 func (self *Router) Run() error {
@@ -504,7 +501,7 @@ func (self *Router) registerPlugins() error {
 		}
 		initialize, ok := initializeSymbol.(func(*Router) error)
 		if !ok {
-			return errors.Errorf("router plugin at %v exports Initialize symbol, but it is not of type 'func(router *router.Router) error'", pluginPath)
+			return fmt.Errorf("router plugin at %v exports Initialize symbol, but it is not of type 'func(router *router.Router) error'", pluginPath)
 		}
 		if err := initialize(self); err != nil {
 			return errors.Wrapf(err, "error initializing router plugin at %v", pluginPath)

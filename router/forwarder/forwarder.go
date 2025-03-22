@@ -17,8 +17,9 @@
 package forwarder
 
 import (
+	"errors"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/inspect"
@@ -27,7 +28,6 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"time"
 )
@@ -139,10 +139,10 @@ func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
 		if !forwarder.HasDestination(xgress.Address(forward.DstAddress)) {
 			if forward.DstType == ctrl_pb.DestType_Link {
 				forwarder.faulter.NotifyInvalidLink(forward.DstAddress)
-				return errors.Errorf("invalid link destination %v", forward.DstAddress)
+				return fmt.Errorf("invalid link destination %v", forward.DstAddress)
 			}
 			if forward.DstType == ctrl_pb.DestType_End {
-				return errors.Errorf("invalid egress destination %v", forward.DstAddress)
+				return fmt.Errorf("invalid egress destination %v", forward.DstAddress)
 			}
 			// It's an ingress destination, which isn't established until after routing has completed
 		}
@@ -192,13 +192,13 @@ func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgre
 				log.WithFields(payload.GetLoggerFields()).Debugf("=> %s", string(dstAddr))
 				return nil
 			} else {
-				return errors.Errorf("cannot forward payload, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
+				return fmt.Errorf("cannot forward payload, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
 			}
 		} else {
-			return errors.Errorf("cannot forward payload, no destination address for circuit=%v src=%v", circuitId, srcAddr)
+			return fmt.Errorf("cannot forward payload, no destination address for circuit=%v src=%v", circuitId, srcAddr)
 		}
 	} else {
-		return errors.Errorf("cannot forward payload, no forward table for circuit=%v src=%v", circuitId, srcAddr)
+		return fmt.Errorf("cannot forward payload, no forward table for circuit=%v src=%v", circuitId, srcAddr)
 	}
 }
 
@@ -216,15 +216,15 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 				return nil
 
 			} else {
-				return errors.Errorf("cannot acknowledge, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
+				return fmt.Errorf("cannot acknowledge, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
 			}
 
 		} else {
-			return errors.Errorf("cannot acknowledge, no destination address for circuit=%v src=%v", circuitId, srcAddr)
+			return fmt.Errorf("cannot acknowledge, no destination address for circuit=%v src=%v", circuitId, srcAddr)
 		}
 
 	} else {
-		return errors.Errorf("cannot acknowledge, no forward table for circuit=%v src=%v", circuitId, srcAddr)
+		return fmt.Errorf("cannot acknowledge, no forward table for circuit=%v src=%v", circuitId, srcAddr)
 	}
 }
 
@@ -247,13 +247,13 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 				err = dst.SendControl(control)
 				log.Debugf("=> %s", string(dstAddr))
 			} else {
-				err = errors.Errorf("cannot forward control, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
+				err = fmt.Errorf("cannot forward control, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
 			}
 		} else {
-			err = errors.Errorf("cannot forward control, no destination address for circuit=%v src=%v", circuitId, srcAddr)
+			err = fmt.Errorf("cannot forward control, no destination address for circuit=%v src=%v", circuitId, srcAddr)
 		}
 	} else {
-		err = errors.Errorf("cannot forward control, no forward table for circuit=%v src=%v", circuitId, srcAddr)
+		err = fmt.Errorf("cannot forward control, no forward table for circuit=%v src=%v", circuitId, srcAddr)
 	}
 
 	if err != nil && control.IsTypeTraceRoute() {
@@ -261,7 +261,7 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 		resp.Headers.PutStringHeader(xgress.ControlError, err.Error())
 		if dst, found := forwarder.destinations.getDestination(srcAddr); found {
 			if fwdErr := dst.SendControl(resp); fwdErr != nil {
-				log.WithError(errorz.MultipleErrors{err, fwdErr}).Error("error sending trace error response")
+				log.WithError(errors.Join(err, fwdErr)).Error("error sending trace error response")
 			}
 		} else {
 			log.WithError(err).Error("unable to send trace error response as destination for source not found")

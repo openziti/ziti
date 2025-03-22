@@ -18,6 +18,7 @@ package xgress_edge_tunnel
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
@@ -25,7 +26,6 @@ import (
 	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/sdkinfo"
@@ -39,7 +39,6 @@ import (
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/tunnel"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"math"
@@ -449,7 +448,7 @@ func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) er
 
 	// return an error to indicate that we need to check if a response has come back after the next interval,
 	// and if not, re-send
-	return errors.Errorf("timeout waiting for response to create terminator request for terminator %v on service %v",
+	return fmt.Errorf("timeout waiting for response to create terminator request for terminator %v on service %v",
 		terminator.id, terminator.context.ServiceName())
 }
 
@@ -700,7 +699,7 @@ func (self *authResults) GetResults() error {
 		case err := <-self.errCh:
 			errList = append(errList, err)
 			if len(errList) == self.ctrlCount {
-				return errorz.MultipleErrors(errList)
+				return errors.Join(errList...)
 			}
 		}
 	}

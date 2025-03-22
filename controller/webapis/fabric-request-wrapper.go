@@ -2,10 +2,10 @@ package webapis
 
 import (
 	"crypto/x509"
+	"errors"
 	"github.com/go-openapi/runtime"
 	openApiMiddleware "github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/ziti/controller/api"
@@ -13,7 +13,6 @@ import (
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/rest_server"
-	"github.com/pkg/errors"
 	"net/http"
 	"time"
 )
@@ -112,7 +111,7 @@ func (self *FabricRequestWrapper) verifyCert(r *http.Request) error {
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 
-	var errorList errorz.MultipleErrors
+	var errorList []error
 
 	for _, cert := range certificates {
 		if _, err := cert.Verify(opts); err == nil {
@@ -122,6 +121,5 @@ func (self *FabricRequestWrapper) verifyCert(r *http.Request) error {
 		}
 	}
 
-	//goland:noinspection GoNilness
-	return errorList.ToError()
+	return errors.Join(errorList...)
 }

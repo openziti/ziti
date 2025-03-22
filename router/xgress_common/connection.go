@@ -17,16 +17,16 @@
 package xgress_common
 
 import (
+	"errors"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/sdk-golang/ziti/edge/network"
 	"github.com/openziti/secretstream"
 	"github.com/openziti/secretstream/kx"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net"
@@ -102,7 +102,7 @@ func (self *XgressConn) SetupClientCrypto(keyPair *kx.KeyPair, peerKey []byte) e
 func (self *XgressConn) SetupServerCrypto(peerKey []byte) ([]byte, error) {
 	keyPair, err := kx.NewKeyPair()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to setup encryption for connection")
+		return nil, fmt.Errorf("unable to setup encryption for connection (%w)", err)
 	}
 	if err = self.setupCrypto(keyPair, peerKey, false); err != nil {
 		return nil, err
@@ -116,17 +116,17 @@ func (self *XgressConn) setupCrypto(keyPair *kx.KeyPair, peerKey []byte, client 
 
 	if client {
 		if rx, tx, err = keyPair.ClientSessionKeys(peerKey); err != nil {
-			return errors.Wrap(err, "failed key exchange")
+			return fmt.Errorf("failed key exchange (%w)", err)
 		}
 	} else {
 		if rx, tx, err = keyPair.ServerSessionKeys(peerKey); err != nil {
-			return errors.Wrap(err, "failed key exchange")
+			return fmt.Errorf("failed key exchange (%w)", err)
 		}
 	}
 
 	var txHeader []byte
 	if self.sender, txHeader, err = secretstream.NewEncryptor(tx); err != nil {
-		return errors.Wrap(err, "failed to establish crypto stream")
+		return fmt.Errorf("failed to establish crypto stream (%w)", err)
 	}
 
 	self.outOfBandTx <- &outOfBand{data: txHeader}
@@ -194,7 +194,7 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 			if err == nil {
 				err = cryptoErr
 			} else {
-				err = network.MultipleErrors{err, cryptoErr}
+				err = errors.Join(err, cryptoErr)
 			}
 		}
 	}
@@ -233,7 +233,7 @@ func (self *XgressConn) WritePayload(p []byte, headers map[uint8][]byte) (int, e
 	// first data message should contain crypto header
 	if self.rxKey != nil {
 		if len(p) != secretstream.StreamHeaderBytes {
-			return 0, errors.Errorf("failed to receive crypto header bytes: read[%d]", len(p))
+			return 0, fmt.Errorf("failed to receive crypto header bytes: read[%d]", len(p))
 		}
 		self.receiver, err = secretstream.NewDecryptor(self.rxKey, p)
 		self.rxKey = nil
@@ -284,5 +284,5 @@ func (self *XgressConn) HandleControlMsg(controlType xgress.ControlType, headers
 		xgress.RespondToTraceRequest(headers, hopType, "", responder)
 		return nil
 	}
-	return errors.Errorf("unhandled control type: %v", controlType)
+	return fmt.Errorf("unhandled control type: %v", controlType)
 }
