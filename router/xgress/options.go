@@ -24,6 +24,7 @@ import (
 
 // Options contains common Xgress configuration options
 type Options struct {
+	AckSender   AckSender
 	Mtu         int32
 	RandomDrops bool
 	Drop1InN    int32

@@ -18,37 +18,36 @@ package xgress_proxy
 
 import (
 	"fmt"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/identity"
-	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 )
 
-func NewFactory(id *identity.TokenId, ctrl env.NetworkControllers, tcfg transport.Configuration) xgress.Factory {
-	return &factory{id: id, ctrl: ctrl, tcfg: tcfg}
+func NewFactory(env env.RouterEnv, tcfg transport.Configuration) xgress.Factory {
+	return &factory{env: env, tcfg: tcfg}
 }
 
-func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+func (self *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
 	options, err := xgress.LoadOptions(optionsData)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")
 	}
+	options.AckSender = self.env.GetAckSender()
 	service := ""
 	if value, found := optionsData["service"]; found {
 		service = value.(string)
 	} else {
 		return nil, fmt.Errorf("missing 'service' configuration option")
 	}
-	return newListener(factory.id, factory.ctrl, options, factory.tcfg, service), nil
+	return newListener(self.env.GetRouterId(), self.env.GetNetworkControllers(), options, self.tcfg, service), nil
 }
 
-func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+func (self *factory) CreateDialer(xgress.OptionsData) (xgress.Dialer, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
 type factory struct {
-	id   *identity.TokenId
-	ctrl env.NetworkControllers
+	env  env.RouterEnv
 	tcfg transport.Configuration
 }

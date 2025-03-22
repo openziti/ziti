@@ -100,6 +100,7 @@ type Router struct {
 	agentBindHandlers   []channel.BindHandler
 	rdmRequired         atomic.Bool
 	indexWatchers       env.IndexWatchers
+	ackSender           xgress.AckSender
 }
 
 func (self *Router) GetRouterId() *identity.TokenId {
@@ -184,6 +185,10 @@ func (self *Router) GetIndexWatchers() env.IndexWatchers {
 	return self.indexWatchers
 }
 
+func (self *Router) GetAckSender() xgress.AckSender {
+	return self.ackSender
+}
+
 func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
@@ -239,7 +244,7 @@ func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 	router.forwarder.StartScanner(router.ctrls)
 
 	xgress.InitPayloadIngester(closeNotify)
-	xgress.InitAcker(router.forwarder, metricsRegistry, closeNotify)
+	router.ackSender = xgress.NewAcker(router.forwarder, metricsRegistry, closeNotify)
 	xgress.InitRetransmitter(router.forwarder, router.forwarder, metricsRegistry, closeNotify)
 
 	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, router.forwarder, router)
@@ -449,10 +454,10 @@ func (self *Router) registerComponents() error {
 
 	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, linkTransportConfig, self.xlinkRegistry, self.metricsRegistry)
 
-	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
-	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self.ctrls))
-	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
-	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self.ctrls))
+	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self, self.config.Transport))
+	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self))
+	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self, self.config.Transport))
+	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self))
 
 	xwo := xweb.InstanceOptions{
 		InstanceValidators: []xweb.InstanceValidator{func(config *xweb.InstanceConfig) error {
