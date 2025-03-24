@@ -166,7 +166,7 @@ makeDatabaseLinux(){
   local _attempts=10
   until ! (( --_attempts )) \
     || nsenter --target "${_init_pid}" --mount -- \
-      ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'; do
+      ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin' 2>&3; do
     sleep 1
   done
   echo "DEBUG: initialized Linux controller database with ${_attempts} remaining attempts" >&3
@@ -211,7 +211,7 @@ makeDatabaseDocker(){
 
   local _attempts=10
   until ! (( --_attempts )) \
-    || ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin'; do
+    || ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin' 2>&3; do
     sleep 1
   done
   echo "DEBUG: initialized Docker controller database with ${_attempts} remaining attempts" >&3
