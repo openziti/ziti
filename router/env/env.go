@@ -54,6 +54,7 @@ type RouterEnv interface {
 	IsRouterDataModelEnabled() bool
 	DefaultRequestTimeout() time.Duration
 	GetAckSender() xgress.AckSender
+	GetXgressBindHandler() xgress.BindHandler
 }
 
 type ConnectEventsConfig struct {

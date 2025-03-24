@@ -313,7 +313,7 @@ func (self *tProxy) acceptTCP() {
 		sourceAddr := self.service.GetSourceAddr(client.RemoteAddr(), client.LocalAddr())
 		appInfo := tunnel.GetAppInfo("tcp", dstHostname, dstIp, dstPort, sourceAddr)
 		identity := self.service.GetDialIdentity(client.RemoteAddr(), client.LocalAddr())
-		go tunnel.DialAndRun(self.service, identity, client, appInfo, true)
+		go tunnel.DialAndRun(self.service.FabricProvider, self.service, identity, client, appInfo, true)
 	}
 }
 

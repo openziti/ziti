@@ -19,9 +19,9 @@ package udp_vconn
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/mempool"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/openziti/ziti/tunnel/entities"
-	"github.com/openziti/foundation/v2/mempool"
 	"io"
 	"net"
 	"strconv"
@@ -103,7 +103,7 @@ func (manager *manager) CreateWriteQueue(targetAddr *net.UDPAddr, srcAddr net.Ad
 	sourceAddr := service.GetSourceAddr(srcAddr, targetAddr)
 	appInfo := tunnel.GetAppInfo("udp", "", targetAddr.IP.String(), strconv.Itoa(targetAddr.Port), sourceAddr)
 	identity := service.GetDialIdentity(srcAddr, targetAddr)
-	go tunnel.DialAndRun(service, identity, conn, appInfo, false)
+	go tunnel.DialAndRun(service.FabricProvider, service, identity, conn, appInfo, false)
 	return conn, nil
 }
 
