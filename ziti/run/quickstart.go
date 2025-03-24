@@ -415,13 +415,14 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	if !o.routerless {
 		r := make(chan struct{})
 		timeout, _ = time.ParseDuration("30s")
+		logrus.Infof("waiting for router at: %s:%d", o.RouterAddress, o.RouterPort)
 		go waitForRouter(o.RouterAddress, o.RouterPort, r)
 		select {
 		case <-r:
 			//completed normally
 		case <-time.After(timeout):
 			o.cleanupHome()
-			return fmt.Errorf("timed out waiting for router: %s", ctrlUrl)
+			return fmt.Errorf("timed out waiting for router on port: %s", o.RouterPort)
 		}
 	}
 
