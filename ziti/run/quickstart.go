@@ -422,7 +422,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 			//completed normally
 		case <-time.After(timeout):
 			o.cleanupHome()
-			return fmt.Errorf("timed out waiting for router on port: %s", o.RouterPort)
+			return fmt.Errorf("timed out waiting for router on port: %d", o.RouterPort)
 		}
 	}
 
