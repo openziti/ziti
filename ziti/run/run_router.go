@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/debugops"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_edge"
 	"github.com/openziti/ziti/router/xgress_edge_transport"
@@ -38,12 +39,16 @@ import (
 )
 
 func NewRunRouterCmd() *cobra.Command {
-	action := RouterAction{}
+	action := &RouterAction{}
+	return NewCustomRunRouterCommand("router", "Start the router with the given configuration", action)
+}
+
+func NewCustomRunRouterCommand(name string, desc string, action *RouterAction) *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:    "router <config>",
-		Short:  "Run router configuration",
+		Use:    fmt.Sprintf("%s <config>", name),
+		Short:  desc,
 		Args:   cobra.ExactArgs(1),
-		Run:    action.run,
+		Run:    action.Run,
 		PreRun: action.PreRun,
 	}
 
@@ -51,17 +56,19 @@ func NewRunRouterCmd() *cobra.Command {
 
 	//flags are added to an internal map and read later on, see getFlags()
 	cmd.Flags().BoolVar(&action.EnableDebugOps, "debug-ops", false, "Enable/disable debug agent operations (disabled by default)")
-	cmd.Flags().BoolVarP(&action.ForceCertificateExtension, "extend", "e", false, "force the router on startup to extend enrollment certificates")
+	cmd.Flags().BoolVarP(&action.ForceCertificateExtension, "extend", "e", false, "force extension of enrollment certificates on startup")
 	return cmd
+
 }
 
 type RouterAction struct {
 	Options
 	EnableDebugOps            bool
 	ForceCertificateExtension bool
+	ConfigureCallback         func(env env.RouterEnv) error
 }
 
-func (self *RouterAction) run(cmd *cobra.Command, args []string) {
+func (self *RouterAction) Run(cmd *cobra.Command, args []string) {
 	startLogger := logrus.WithField("version", version.GetVersion()).
 		WithField("go-version", version.GetGoVersion()).
 		WithField("os", version.GetOS()).
@@ -100,6 +107,12 @@ func (self *RouterAction) run(cmd *cobra.Command, args []string) {
 
 	if err := r.RegisterXrctrl(r.GetStateManager()); err != nil {
 		logrus.WithError(err).Panic("error registering state manager in framework")
+	}
+
+	if self.ConfigureCallback != nil {
+		if err = self.ConfigureCallback(r); err != nil {
+			logrus.WithError(err).Panic("startup error")
+		}
 	}
 
 	if self.CliAgentEnabled {

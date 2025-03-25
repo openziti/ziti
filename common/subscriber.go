@@ -43,6 +43,18 @@ type IdentityService struct {
 	BindAllowed bool
 }
 
+func (self *IdentityService) GetId() string {
+	return self.Service.GetId()
+}
+
+func (self *IdentityService) GetName() string {
+	return self.Service.GetName()
+}
+
+func (self *IdentityService) IsEncryptionRequired() bool {
+	return self.Service.EncryptionRequired
+}
+
 func (self *IdentityService) Equals(other *IdentityService) bool {
 	log := pfxlog.Logger().WithField("serviceId", other.Service.Id).WithField("serviceName", other.Service.Name)
 	if self.Service.Name != other.Service.Name {

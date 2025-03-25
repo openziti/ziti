@@ -101,6 +101,7 @@ type Router struct {
 	rdmRequired         atomic.Bool
 	indexWatchers       env.IndexWatchers
 	ackSender           xgress.AckSender
+	xgBindHandler       xgress.BindHandler
 }
 
 func (self *Router) GetRouterId() *identity.TokenId {
@@ -251,6 +252,12 @@ func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
 	if err != nil {
 		panic(err)
 	}
+
+	router.xgBindHandler = handler_xgress.NewBindHandler(
+		handler_xgress.NewReceiveHandler(router.forwarder),
+		handler_xgress.NewCloseHandler(router.ctrls, router.forwarder),
+		router.forwarder,
+	)
 
 	return router
 }
@@ -435,6 +442,10 @@ func (self *Router) MarkRouterDataModelRequired() {
 	self.rdmRequired.Store(true)
 }
 
+func (self *Router) GetXgressBindHandler() xgress.BindHandler {
+	return self.xgBindHandler
+}
+
 func (self *Router) registerComponents() error {
 	self.xlinkFactories = make(map[string]xlink.Factory)
 	xlinkAccepter := newXlinkAccepter(self.forwarder)
@@ -584,14 +595,7 @@ func (self *Router) startXgressListeners() {
 			address = addressVal.(string)
 		}
 
-		err = listener.Listen(address,
-			handler_xgress.NewBindHandler(
-				handler_xgress.NewReceiveHandler(self.forwarder),
-				handler_xgress.NewCloseHandler(self.ctrls, self.forwarder),
-				self.forwarder,
-			),
-		)
-		if err != nil {
+		if err = listener.Listen(address, self.GetXgressBindHandler()); err != nil {
 			logrus.Fatalf("error listening [%s] (%v)", binding.name, err)
 		}
 		logrus.Infof("created xgress listener [%s] at [%s]", binding.name, address)
@@ -623,7 +627,16 @@ func (self *Router) startControlPlane() error {
 		})
 	}
 
-	_ = self.ctrls.AnyValidCtrlChannel()
+	for {
+		if self.ctrls.AnyCtrlChannel() != nil {
+			break
+		}
+		if self.isShutdown.Load() {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+
 	for _, x := range self.xrctrls {
 		if err := x.Run(self); err != nil {
 			return err

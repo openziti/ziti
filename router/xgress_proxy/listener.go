@@ -20,20 +20,21 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress"
+	"io"
 )
 
 func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options, tcfg transport.Configuration, service string) xgress.Listener {
 	return &listener{
-		id:          id,
-		ctrl:        ctrl,
-		options:     options,
-		tcfg:        tcfg,
-		service:     service,
-		closeHelper: &xgress.CloseHelper{},
+		id:      id,
+		ctrl:    ctrl,
+		options: options,
+		tcfg:    tcfg,
+		service: service,
 	}
 }
 
@@ -49,8 +50,12 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 	acceptF := func(peer transport.Conn) {
 		go listener.handleConnect(peer, bindHandler)
 	}
-	go listener.closeHelper.Init(txAddress.MustListen("tcp", listener.id, acceptF, listener.tcfg))
 
+	socket, err := txAddress.Listen("tcp", listener.id, acceptF, listener.tcfg)
+	if err != nil {
+		return err
+	}
+	listener.socket.Store(socket)
 	return nil
 }
 
@@ -66,14 +71,17 @@ func (listener *listener) handleConnect(peer transport.Conn, bindHandler xgress.
 }
 
 type listener struct {
-	id          *identity.TokenId
-	ctrl        env.NetworkControllers
-	options     *xgress.Options
-	tcfg        transport.Configuration
-	service     string
-	closeHelper *xgress.CloseHelper
+	id      *identity.TokenId
+	ctrl    env.NetworkControllers
+	options *xgress.Options
+	tcfg    transport.Configuration
+	service string
+	socket  concurrenz.AtomicValue[io.Closer]
 }
 
 func (listener *listener) Close() error {
-	return listener.closeHelper.Close()
+	if socket := listener.socket.Load(); socket != nil {
+		return socket.Close()
+	}
+	return nil
 }
