@@ -412,7 +412,7 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 	ch := binding.GetChannel()
 	binding.AddCloseHandler(handler)
 
-	byteToken, ok := ch.Underlay().Headers()[edge.SessionTokenHeader]
+	byteToken, ok := ch.Headers()[edge.SessionTokenHeader]
 
 	if !ok {
 		_ = ch.Close()
@@ -468,7 +468,7 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 func (handler *sessionConnectionHandler) completeBinding(binding channel.Binding, edgeConn *edgeClientConn) {
 	ch := binding.GetChannel()
 	apiSession := edgeConn.apiSession
-	byteToken := ch.Underlay().Headers()[edge.SessionTokenHeader]
+	byteToken := ch.Headers()[edge.SessionTokenHeader]
 	token := string(byteToken)
 	if apiSession.Claims != nil {
 		token = apiSession.Claims.ApiSessionId
@@ -500,7 +500,7 @@ func (handler *sessionConnectionHandler) validateByFingerprint(apiSession *state
 
 func (handler *sessionConnectionHandler) HandleClose(ch channel.Channel) {
 	token := ""
-	if byteToken, ok := ch.Underlay().Headers()[edge.SessionTokenHeader]; ok {
+	if byteToken, ok := ch.Headers()[edge.SessionTokenHeader]; ok {
 		token = string(byteToken)
 
 		handler.stateManager.RemoveConnectedApiSessionWithChannel(token, ch)
