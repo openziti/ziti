@@ -89,7 +89,7 @@ func (self *RouterAction) run(cmd *cobra.Command, args []string) {
 		logrus.WithError(err).Panic("error registering edge in framework")
 	}
 
-	xgressEdgeTransportFactory := xgress_edge_transport.NewFactory()
+	xgressEdgeTransportFactory := xgress_edge_transport.NewFactory(r)
 	xgress.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
 
 	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(r, config, r.GetStateManager())

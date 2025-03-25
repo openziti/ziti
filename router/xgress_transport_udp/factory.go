@@ -19,31 +19,30 @@ package xgress_transport_udp
 import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 )
 
-func NewFactory(id *identity.TokenId, ctrl env.NetworkControllers) xgress.Factory {
-	return &factory{id: id, ctrl: ctrl}
+func NewFactory(env env.RouterEnv) xgress.Factory {
+	return &factory{env: env}
 }
 
-func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+func (self *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
 	options, err := xgress.LoadOptions(optionsData)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")
 	}
-	return newListener(factory.id, factory.ctrl, options), nil
+	options.AckSender = self.env.GetAckSender()
+	return newListener(self.env.GetRouterId(), self.env.GetNetworkControllers(), options), nil
 }
 
-func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+func (self *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
 	options, err := xgress.LoadOptions(optionsData)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")
 	}
-	return newDialer(factory.id, factory.ctrl, options)
+	return newDialer(self.env.GetRouterId(), self.env.GetNetworkControllers(), options)
 }
 
 type factory struct {
-	id   *identity.TokenId
-	ctrl env.NetworkControllers
+	env env.RouterEnv
 }
