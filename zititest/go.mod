@@ -17,7 +17,7 @@ require (
 	github.com/openziti/fablab v0.5.95
 	github.com/openziti/foundation/v2 v2.0.59
 	github.com/openziti/identity v1.0.100
-	github.com/openziti/sdk-golang v0.25.2
+	github.com/openziti/sdk-golang v0.25.3-0.20250402175520-0857e977af79
 	github.com/openziti/storage v0.4.7
 	github.com/openziti/transport/v2 v2.0.168
 	github.com/openziti/ziti v1.5.4

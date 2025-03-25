@@ -127,10 +127,10 @@ func (self *edgeTerminator) inspect(registry *hostedServiceRegistry, fixInvalidT
 
 	var err error
 	isInvalid := false
-	if !self.Channel.IsClosed() {
+	if !self.GetChannel().IsClosed() {
 		msg := channel.NewMessage(edge.ContentTypeConnInspectRequest, nil)
 		msg.PutUint32Header(edge.ConnIdHeader, self.Id())
-		resp, err := msg.WithTimeout(10 * time.Second).SendForReply(self.Channel)
+		resp, err := msg.WithTimeout(10 * time.Second).SendForReply(self.GetControlSender())
 		if err != nil {
 			return nil, fmt.Errorf("unable to check status with sdk client: (%w)", err)
 		}
@@ -183,7 +183,7 @@ func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifySdk boo
 		WithField("token", self.token).
 		WithField("reason", reason)
 
-	if notifySdk && !self.IsClosed() {
+	if notifySdk && !self.GetChannel().IsClosed() {
 		// Notify edge client of close
 		logger.Debug("sending closed to SDK client")
 		closeMsg := edge.NewStateClosedMsg(self.Id(), reason)
@@ -282,7 +282,7 @@ func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, hea
 		self.TraceMsg("write", msg)
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Trace("writing trace response")
 
-		return self.Channel.Send(msg)
+		return self.GetControlSender().Send(msg)
 	}
 
 	if controlType == xgress.ControlTypeTraceRoute {
@@ -302,18 +302,18 @@ func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, hea
 		self.TraceMsg("write", msg)
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Trace("writing trace response")
 
-		return self.Channel.Send(msg)
+		return self.GetControlSender().Send(msg)
 	}
 
 	return errors.Errorf("unhandled control type: %v", controlType)
 }
 
 func (self *edgeXgressConn) LogContext() string {
-	return self.Channel.Label()
+	return self.GetChannel().Label()
 }
 
 func (self *edgeXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
-	log := pfxlog.ContextLogger(self.Channel.Label()).WithField("connId", self.Id())
+	log := pfxlog.ContextLogger(self.GetChannel().Label()).WithField("connId", self.Id())
 
 	msg := self.seq.Pop()
 	if msg == nil {
@@ -368,7 +368,7 @@ func (self *edgeXgressConn) WritePayload(p []byte, headers map[uint8][]byte) (n 
 	self.TraceMsg("write", msg)
 	pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Tracef("writing %v bytes", len(p))
 
-	if err = self.Channel.Send(msg); err != nil {
+	if err = self.GetDefaultSender().Send(msg); err != nil {
 		return 0, err
 	}
 
@@ -391,7 +391,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 		return
 	}
 
-	log := pfxlog.ContextLogger(self.Channel.Label()).WithField("connId", self.Id())
+	log := pfxlog.ContextLogger(self.GetChannel().Label()).WithField("connId", self.Id())
 	log.Debugf("closing edge xgress conn, reason: %v", reason)
 
 	self.mux.RemoveMsgSink(self)
@@ -404,7 +404,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 
 	// we must close the sequencer first, otherwise we can deadlock. The channel rxer can be blocked submitting
 	// the sequencer and then notify send will then be stuck writing to a partially closed channel.
-	if notify && !self.IsClosed() {
+	if notify && !self.GetChannel().IsClosed() {
 		// Notify edge client of close
 		log.Debug("sending closed to SDK client")
 		closeMsg := edge.NewStateClosedMsg(self.Id(), reason)
