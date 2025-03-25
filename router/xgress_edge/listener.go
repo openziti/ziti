@@ -32,8 +32,9 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	channelv3 "github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/protobufs"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
@@ -112,13 +113,13 @@ type edgeClientConn struct {
 	msgMux       edge.MsgMux
 	listener     *listener
 	fingerprints cert.Fingerprints
-	ch           channel.Channel
+	ch           edge.SdkChannel
 	idSeq        uint32
 	apiSession   *state.ApiSession
 }
 
 func (self *edgeClientConn) HandleClose(ch channel.Channel) {
-	log := pfxlog.ContextLogger(self.ch.Label())
+	log := pfxlog.ContextLogger(self.ch.GetChannel().Label())
 	log.Debugf("closing")
 	self.listener.factory.hostedServices.cleanupServices(ch)
 	self.msgMux.Close()
@@ -221,14 +222,14 @@ func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
 	}
 }
 
-func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
+func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitRequest, ctrlCh channelv3.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
 	if capabilities.IsCapable(ctrlCh, capabilities.ControllerCreateCircuitV2) {
 		return self.sendCreateCircuitRequestV2(req, ctrlCh)
 	}
 	return self.sendCreateCircuitRequestV1(req, ctrlCh)
 }
 
-func (self *edgeClientConn) sendCreateCircuitRequestV1(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
+func (self *edgeClientConn) sendCreateCircuitRequestV1(req *ctrl_msg.CreateCircuitRequest, ctrlCh channelv3.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
 	request := &edge_ctrl_pb.CreateCircuitRequest{
 		SessionToken:         req.SessionToken,
 		ApiSessionToken:      req.ApiSessionToken,
@@ -252,7 +253,7 @@ func (self *edgeClientConn) sendCreateCircuitRequestV1(req *ctrl_msg.CreateCircu
 	}, nil
 }
 
-func (self *edgeClientConn) sendCreateCircuitRequestV2(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
+func (self *edgeClientConn) sendCreateCircuitRequestV2(req *ctrl_msg.CreateCircuitRequest, ctrlCh channelv3.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
 	timeout := self.listener.options.Options.GetCircuitTimeout
 	msg, err := req.ToMessage().WithTimeout(timeout).SendForReply(ctrlCh)
 	if err != nil {
@@ -296,7 +297,7 @@ func (self *edgeClientConn) processBind(manager state.Manager, req *channel.Mess
 	}
 }
 
-func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
+func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Message, ch channel.Channel, ctrlCh channelv3.Channel) {
 	sessionToken := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).
@@ -396,7 +397,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 
 	log = log.WithField("terminatorId", terminatorId)
 
-	if terminator.MsgChannel.IsClosed() {
+	if terminator.MsgChannel.GetChannel().IsClosed() {
 		log.Warn("edge channel closed while setting up terminator. cleaning up terminator now")
 		terminator.close(self.listener.factory.hostedServices, false, true, "edge channel closed")
 		return
@@ -409,7 +410,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 	log.Info("created terminator")
 }
 
-func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
+func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Message, ch channel.Channel, ctrlCh channelv3.Channel) {
 	sessionToken := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).
@@ -512,7 +513,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 			notifyMsg := channel.NewMessage(edge.ContentTypeBindSuccess, nil)
 			notifyMsg.PutUint32Header(edge.ConnIdHeader, terminator.MsgChannel.Id())
 
-			if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.Channel); err != nil {
+			if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.GetControlSender()); err != nil {
 				log.WithError(err).Error("failed to send bind success")
 			} else {
 				log.Info("sdk notified of terminator creation")
@@ -559,7 +560,7 @@ func (self *edgeClientConn) processUnbind(manager state.Manager, req *channel.Me
 	}
 }
 
-func (self *edgeClientConn) removeTerminator(ctrlCh channel.Channel, token, terminatorId string) error {
+func (self *edgeClientConn) removeTerminator(ctrlCh channelv3.Channel, token, terminatorId string) error {
 	request := &edge_ctrl_pb.RemoveTerminatorRequest{
 		SessionToken: token,
 		Fingerprints: self.fingerprints.Prints(),
@@ -720,7 +721,8 @@ func (self *edgeClientConn) sendStateConnectedReply(req *channel.Message, hostDa
 	}
 	msg.ReplyTo(req)
 
-	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch)
+	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
+	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 		return
@@ -736,7 +738,7 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Me
 		msg.PutUint32Header(edge.ErrorCodeHeader, errorCode)
 	}
 
-	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch)
+	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 	}
@@ -799,7 +801,7 @@ func (self *edgeClientConn) processTokenUpdate(manager state.Manager, req *chann
 	}
 }
 
-func getResultOrFailure(msg *channel.Message, err error, result protobufs.TypedMessage) error {
+func getResultOrFailure(msg *channelv3.Message, err error, result protobufs.TypedMessage) error {
 	if err != nil {
 		return err
 	}

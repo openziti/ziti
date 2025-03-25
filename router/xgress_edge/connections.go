@@ -21,8 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	channelv3 "github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/protobufs"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/cert"
@@ -157,7 +158,7 @@ type connectionTracker struct {
 	lock               sync.Mutex
 	controllers        env.NetworkControllers
 	states             cmap.ConcurrentMap[string, *identityState]
-	needsFullSync      map[string]channel.Channel
+	needsFullSync      map[string]channelv3.Channel
 	notifyFullSync     chan struct{}
 	batchInterval      time.Duration
 	fullSyncInterval   time.Duration
@@ -171,7 +172,7 @@ func newConnectionTracker(env env.RouterEnv) *connectionTracker {
 		enabled:          env.GetConnectEventsConfig().Enabled,
 		controllers:      env.GetNetworkControllers(),
 		states:           cmap.New[*identityState](),
-		needsFullSync:    map[string]channel.Channel{},
+		needsFullSync:    map[string]channelv3.Channel{},
 		notifyFullSync:   make(chan struct{}, 1),
 		batchInterval:    env.GetConnectEventsConfig().BatchInterval,
 		fullSyncInterval: env.GetConnectEventsConfig().FullSyncInterval,
@@ -288,7 +289,7 @@ func (self *connectionTracker) report() {
 
 func (self *connectionTracker) sendEvents(evts *edge_ctrl_pb.ConnectEvents) bool {
 	successfulSend := false
-	self.controllers.ForEach(func(ctrlId string, ch channel.Channel) {
+	self.controllers.ForEach(func(ctrlId string, ch channelv3.Channel) {
 		pfxlog.Logger().WithField("ctrlId", ch.Id()).WithField("fullSync", evts.FullState).Trace("sending connect events")
 
 		if err := protobufs.MarshalTyped(evts).WithTimeout(time.Second).Send(ch); err != nil {
@@ -309,7 +310,7 @@ func (self *connectionTracker) sendFullSync() {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
-	ctrls := map[string]channel.Channel{}
+	ctrls := map[string]channelv3.Channel{}
 	for k := range self.needsFullSync {
 		ctrl := self.controllers.GetNetworkController(k)
 		if ctrl == nil {
@@ -344,7 +345,7 @@ func (self *connectionTracker) sendFullSync() {
 	}
 }
 
-func (self *connectionTracker) NotifyOfReconnect(ch channel.Channel) {
+func (self *connectionTracker) NotifyOfReconnect(ch channelv3.Channel) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
@@ -412,7 +413,7 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 	ch := binding.GetChannel()
 	binding.AddCloseHandler(handler)
 
-	byteToken, ok := ch.Underlay().Headers()[edge.SessionTokenHeader]
+	byteToken, ok := ch.Headers()[edge.SessionTokenHeader]
 
 	if !ok {
 		_ = ch.Close()
@@ -468,7 +469,7 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 func (handler *sessionConnectionHandler) completeBinding(binding channel.Binding, edgeConn *edgeClientConn) {
 	ch := binding.GetChannel()
 	apiSession := edgeConn.apiSession
-	byteToken := ch.Underlay().Headers()[edge.SessionTokenHeader]
+	byteToken := ch.Headers()[edge.SessionTokenHeader]
 	token := string(byteToken)
 	if apiSession.Claims != nil {
 		token = apiSession.Claims.ApiSessionId
@@ -500,7 +501,7 @@ func (handler *sessionConnectionHandler) validateByFingerprint(apiSession *state
 
 func (handler *sessionConnectionHandler) HandleClose(ch channel.Channel) {
 	token := ""
-	if byteToken, ok := ch.Underlay().Headers()[edge.SessionTokenHeader]; ok {
+	if byteToken, ok := ch.Headers()[edge.SessionTokenHeader]; ok {
 		token = string(byteToken)
 
 		handler.stateManager.RemoveConnectedApiSessionWithChannel(token, ch)

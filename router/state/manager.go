@@ -24,8 +24,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	channelv3 "github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/protobufs"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/ziti/common"
@@ -89,7 +90,7 @@ type Manager interface {
 	GetRouterDataModelPool() goroutines.Pool
 
 	StartHeartbeat(env env.RouterEnv, seconds int, closeNotify <-chan struct{})
-	ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration)
+	ValidateSessions(ch channelv3.Channel, chunkSize uint32, minInterval, maxInterval time.Duration)
 
 	DumpApiSessions(c *bufio.ReadWriter) error
 	MarkSyncInProgress(trackerId string)
@@ -268,7 +269,7 @@ func (self *ManagerImpl) checkRouterDataModelSubscription() {
 	}
 }
 
-func (self *ManagerImpl) subscribeToDataModelUpdates(ch channel.Channel) {
+func (self *ManagerImpl) subscribeToDataModelUpdates(ch channelv3.Channel) {
 	renew := self.dataModelSubCtrlId.Load() == ch.Id()
 
 	// if we store after success, we may miss an update because the ids don't match yet
@@ -646,7 +647,7 @@ type ApiSession struct {
 	ControllerId string //used for non HA API Sessions
 }
 
-func (a *ApiSession) SelectCtrlCh(ctrls env.NetworkControllers) channel.Channel {
+func (a *ApiSession) SelectCtrlCh(ctrls env.NetworkControllers) channelv3.Channel {
 	if a == nil {
 		return nil
 	}
@@ -658,7 +659,7 @@ func (a *ApiSession) SelectCtrlCh(ctrls env.NetworkControllers) channel.Channel 
 	return ctrls.AnyCtrlChannel()
 }
 
-func (a *ApiSession) SelectModelUpdateCtrlCh(ctrls env.NetworkControllers) channel.Channel {
+func (a *ApiSession) SelectModelUpdateCtrlCh(ctrls env.NetworkControllers) channelv3.Channel {
 	if a == nil {
 		return nil
 	}
@@ -987,7 +988,7 @@ func (self *MapWithMutex) Visit(cb func(ch channel.Channel, closeCb func())) {
 	}
 }
 
-func (sm *ManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration) {
+func (sm *ManagerImpl) ValidateSessions(ch channelv3.Channel, chunkSize uint32, minInterval, maxInterval time.Duration) {
 	sessionTokens := sm.sessions.Keys()
 
 	for len(sessionTokens) > 0 {
@@ -1013,7 +1014,7 @@ func (sm *ManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint32, mi
 			return
 		}
 
-		msg := channel.NewMessage(request.GetContentType(), body)
+		msg := channelv3.NewMessage(request.GetContentType(), body)
 		if err := ch.Send(msg); err != nil {
 			logrus.WithError(err).Error("failed to send validate sessions request")
 			return
@@ -1056,7 +1057,7 @@ func (sm *ManagerImpl) LoadConfig(cfgmap map[interface{}]interface{}) error {
 	return nil
 }
 
-func (sm *ManagerImpl) BindChannel(binding channel.Binding) error {
+func (sm *ManagerImpl) BindChannel(binding channelv3.Binding) error {
 	binding.AddTypedReceiveHandler(NewSessionRemovedHandler(sm))
 	binding.AddTypedReceiveHandler(NewApiSessionAddedHandler(sm, binding))
 	binding.AddTypedReceiveHandler(NewApiSessionRemovedHandler(sm))
@@ -1075,9 +1076,9 @@ func (sm *ManagerImpl) Run(env.RouterEnv) error {
 	return nil
 }
 
-func (sm *ManagerImpl) NotifyOfReconnect(ch channel.Channel) {
+func (sm *ManagerImpl) NotifyOfReconnect(ch channelv3.Channel) {
 }
 
-func (sm *ManagerImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
+func (sm *ManagerImpl) GetTraceDecoders() []channelv3.TraceMessageDecoder {
 	return nil
 }

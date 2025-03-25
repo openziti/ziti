@@ -3,7 +3,8 @@ package xgress_edge
 import (
 	"crypto/x509"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	channelv3 "github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/inspect"
@@ -115,14 +116,14 @@ func Benchmark_CowMapWritePerf(b *testing.B) {
 
 func writePerf(b *testing.B, mux edge.MsgMux) {
 	testChannel := &NoopTestChannel{}
-
+	sdkChannel := edge.NewSingleSdkChannel(testChannel)
 	listener := &listener{}
 
 	proxy := &edgeClientConn{
 		msgMux:       mux,
 		listener:     listener,
 		fingerprints: nil,
-		ch:           testChannel,
+		ch:           sdkChannel,
 	}
 
 	conn := &edgeXgressConn{
@@ -201,7 +202,7 @@ func (conn *simpleTestXgConn) WritePayload([]byte, map[uint8][]byte) (int, error
 	panic("implement me")
 }
 
-func (conn *simpleTestXgConn) HandleControlMsg(xgress.ControlType, channel.Headers, xgress.ControlReceiver) error {
+func (conn *simpleTestXgConn) HandleControlMsg(xgress.ControlType, channelv3.Headers, xgress.ControlReceiver) error {
 	return nil
 }
 
@@ -254,6 +255,10 @@ func Benchmark_BaselinePerf(b *testing.B) {
 }
 
 type NoopTestChannel struct {
+}
+
+func (ch *NoopTestChannel) Headers() map[int32][]byte {
+	return nil
 }
 
 func (ch *NoopTestChannel) Underlay() channel.Underlay {

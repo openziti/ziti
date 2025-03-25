@@ -19,7 +19,8 @@ package xgress_edge
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	channelv3 "github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -127,10 +128,10 @@ func (self *edgeTerminator) inspect(registry *hostedServiceRegistry, fixInvalidT
 
 	var err error
 	isInvalid := false
-	if !self.Channel.IsClosed() {
+	if !self.GetChannel().IsClosed() {
 		msg := channel.NewMessage(edge.ContentTypeConnInspectRequest, nil)
 		msg.PutUint32Header(edge.ConnIdHeader, self.Id())
-		resp, err := msg.WithTimeout(10 * time.Second).SendForReply(self.Channel)
+		resp, err := msg.WithTimeout(10 * time.Second).SendForReply(self.GetControlSender())
 		if err != nil {
 			return nil, fmt.Errorf("unable to check status with sdk client: (%w)", err)
 		}
@@ -183,7 +184,7 @@ func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifySdk boo
 		WithField("token", self.token).
 		WithField("reason", reason)
 
-	if notifySdk && !self.IsClosed() {
+	if notifySdk && !self.GetChannel().IsClosed() {
 		// Notify edge client of close
 		logger.Debug("sending closed to SDK client")
 		closeMsg := edge.NewStateClosedMsg(self.Id(), reason)
@@ -264,7 +265,7 @@ type edgeXgressConn struct {
 	ctrlRx  xgress.ControlReceiver
 }
 
-func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel.Headers, responder xgress.ControlReceiver) error {
+func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, headers channelv3.Headers, responder xgress.ControlReceiver) error {
 	if controlType == xgress.ControlTypeTraceRouteResponse {
 		ts, _ := headers.GetUint64Header(xgress.ControlTimestamp)
 		hop, _ := headers.GetUint32Header(xgress.ControlHopCount)
@@ -282,14 +283,14 @@ func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, hea
 		self.TraceMsg("write", msg)
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Trace("writing trace response")
 
-		return self.Channel.Send(msg)
+		return self.GetControlSender().Send(msg)
 	}
 
 	if controlType == xgress.ControlTypeTraceRoute {
 		hop, _ := headers.GetUint32Header(xgress.ControlHopCount)
 		if hop == 1 {
 			// TODO: find a way to get terminator id for hopId
-			xgress.RespondToTraceRequest(channel.Headers(headers), "xgress/edge", "", responder)
+			xgress.RespondToTraceRequest(channelv3.Headers(headers), "xgress/edge", "", responder)
 			return nil
 		}
 
@@ -302,18 +303,18 @@ func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, hea
 		self.TraceMsg("write", msg)
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Trace("writing trace response")
 
-		return self.Channel.Send(msg)
+		return self.GetControlSender().Send(msg)
 	}
 
 	return errors.Errorf("unhandled control type: %v", controlType)
 }
 
 func (self *edgeXgressConn) LogContext() string {
-	return self.Channel.Label()
+	return self.GetChannel().Label()
 }
 
 func (self *edgeXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
-	log := pfxlog.ContextLogger(self.Channel.Label()).WithField("connId", self.Id())
+	log := pfxlog.ContextLogger(self.GetChannel().Label()).WithField("connId", self.Id())
 
 	msg := self.seq.Pop()
 	if msg == nil {
@@ -368,7 +369,7 @@ func (self *edgeXgressConn) WritePayload(p []byte, headers map[uint8][]byte) (n 
 	self.TraceMsg("write", msg)
 	pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Tracef("writing %v bytes", len(p))
 
-	if err = self.Channel.Send(msg); err != nil {
+	if err = self.GetDefaultSender().Send(msg); err != nil {
 		return 0, err
 	}
 
@@ -391,7 +392,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 		return
 	}
 
-	log := pfxlog.ContextLogger(self.Channel.Label()).WithField("connId", self.Id())
+	log := pfxlog.ContextLogger(self.GetChannel().Label()).WithField("connId", self.Id())
 	log.Debugf("closing edge xgress conn, reason: %v", reason)
 
 	self.mux.RemoveMsgSink(self)
@@ -404,7 +405,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 
 	// we must close the sequencer first, otherwise we can deadlock. The channel rxer can be blocked submitting
 	// the sequencer and then notify send will then be stuck writing to a partially closed channel.
-	if notify && !self.IsClosed() {
+	if notify && !self.GetChannel().IsClosed() {
 		// Notify edge client of close
 		log.Debug("sending closed to SDK client")
 		closeMsg := edge.NewStateClosedMsg(self.Id(), reason)
@@ -420,7 +421,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 
 func (self *edgeXgressConn) Accept(msg *channel.Message) {
 	if msg.ContentType == edge.ContentTypeTraceRoute {
-		headers := channel.Headers{}
+		headers := channelv3.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
 		hops, _ := msg.GetUint32Header(edge.TraceHopCountHeader)
 
@@ -431,7 +432,7 @@ func (self *edgeXgressConn) Accept(msg *channel.Message) {
 
 		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRoute, headers)
 	} else if msg.ContentType == edge.ContentTypeTraceRouteResponse {
-		headers := channel.Headers{}
+		headers := channelv3.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
 		hopCount, _ := msg.GetUint32Header(edge.TraceHopCountHeader)
 		hopType, _ := msg.GetStringHeader(edge.TraceHopTypeHeader)

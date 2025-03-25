@@ -130,7 +130,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 			to = timeToDeadline
 		}
 		log.Info("sending dial request to sdk")
-		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(to).SendForReply(terminator.Channel)
+		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(to).SendForReply(terminator.GetControlSender())
 		if err != nil {
 			conn.close(false, err.Error())
 			x.Close()
@@ -156,7 +156,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		return nil, nil
 	} else {
 		log.Debug("router not assigning connId for dial")
-		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(5 * time.Second).SendForReply(terminator.Channel)
+		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(5 * time.Second).SendForReply(terminator.GetControlSender())
 		if err != nil {
 			return nil, err
 		}

@@ -54,6 +54,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.26
 	github.com/openziti/channel/v3 v3.0.39
+	github.com/openziti/channel/v4 v4.0.0-20250326223108-f50f2013e5b9
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.42
 	github.com/openziti/foundation/v2 v2.0.59
@@ -61,7 +62,7 @@ require (
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.3.0
 	github.com/openziti/runzmd v1.0.67
-	github.com/openziti/sdk-golang v0.25.0
+	github.com/openziti/sdk-golang v0.25.1-0.20250326224027-f580cf9ac7e1
 	github.com/openziti/secretstream v0.1.32
 	github.com/openziti/storage v0.4.7
 	github.com/openziti/transport/v2 v2.0.167

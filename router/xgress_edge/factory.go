@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
+	channelv4 "github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/foundation/v2/versions"
@@ -212,7 +213,7 @@ func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 
 type Options struct {
 	xgress.Options
-	channelOptions          *channel.Options
+	channelOptions          *channelv4.Options
 	lookupApiSessionTimeout time.Duration
 	lookupSessionTimeout    time.Duration
 }
@@ -263,7 +264,7 @@ func (options *Options) load(data xgress.OptionsData) error {
 		data = value.(map[interface{}]interface{})
 
 		var err error
-		options.channelOptions, err = channel.LoadOptions(data)
+		options.channelOptions, err = channelv4.LoadOptions(data)
 		if err != nil {
 			return err
 		}
@@ -287,7 +288,7 @@ func (options *Options) load(data xgress.OptionsData) error {
 			options.lookupApiSessionTimeout = timeout
 		}
 	} else {
-		options.channelOptions = channel.DefaultOptions()
+		options.channelOptions = channelv4.DefaultOptions()
 	}
 
 	return nil

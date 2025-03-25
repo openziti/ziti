@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/channel/v3/protobufs"
+	channelv4 "github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
@@ -129,7 +130,7 @@ func (self *hostedServiceRegistry) evaluateEstablishQueue() {
 			WithField("state", terminator.state.Load()).
 			WithField("token", terminator.token)
 
-		if terminator.edgeClientConn.ch.IsClosed() {
+		if terminator.edgeClientConn.ch.GetChannel().IsClosed() {
 			self.Remove(terminator, "sdk connection is closed")
 			log.Infof("terminator sdk channel closed, not trying to establish")
 			dequeue()
@@ -474,7 +475,7 @@ func (self *hostedServiceRegistry) Remove(terminator *edgeTerminator, reason str
 	return removed
 }
 
-func (self *hostedServiceRegistry) cleanupServices(ch channel.Channel) {
+func (self *hostedServiceRegistry) cleanupServices(ch channelv4.Channel) {
 	self.queue(&channelClosedEvent{
 		ch: ch,
 	})
@@ -551,7 +552,7 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 	}
 
 	if xgress_common.IsBearerToken(request.SessionToken) {
-		apiSession := self.stateManager.GetApiSessionFromCh(terminator.Channel)
+		apiSession := self.stateManager.GetApiSessionFromCh(terminator.GetChannel())
 
 		if apiSession == nil {
 			return errors.New("could not find api session for channel, unable to process bind message")
@@ -783,12 +784,12 @@ func (self *inspectTerminatorsEvent) GetResults(timeout time.Duration) ([]*inspe
 }
 
 type channelClosedEvent struct {
-	ch channel.Channel
+	ch channelv4.Channel
 }
 
 func (self *channelClosedEvent) handle(registry *hostedServiceRegistry) {
 	registry.terminators.IterCb(func(_ string, terminator *edgeTerminator) {
-		if terminator.MsgChannel.Channel == self.ch {
+		if terminator.MsgChannel.GetChannel() == self.ch {
 			if terminator.v2 {
 				// we're iterating the map right now, so the terminator can't have changed
 				registry.queueRemoveTerminatorUnchecked(terminator, "channel closed")
@@ -837,7 +838,7 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 		return
 	}
 
-	log := pfxlog.ContextLogger(self.terminator.edgeClientConn.ch.Label()).
+	log := pfxlog.ContextLogger(self.terminator.edgeClientConn.ch.GetChannel().Label()).
 		WithField("token", self.terminator.token).
 		WithField("routerId", self.terminator.edgeClientConn.listener.id.Token).
 		WithField("listenerId", self.terminator.listenerId).

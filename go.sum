@@ -256,8 +256,6 @@ github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5x
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.1/go.mod h1:hp+jE20tsWTFYpLwKvXlhS1hjn+gTNwPg2I6zVXpSg4=
 github.com/gogo/protobuf v1.3.2/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
-github.com/golang-jwt/jwt/v5 v5.2.1 h1:OuVbFODueb089Lh128TAcimifWaLhJwVflnrgM17wHk=
-github.com/golang-jwt/jwt/v5 v5.2.1/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
 github.com/golang-jwt/jwt/v5 v5.2.2 h1:Rl4B7itRWVtYIHFrSNd7vhTiz9UpLdi6gZhZ3wEeDy8=
 github.com/golang-jwt/jwt/v5 v5.2.2/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
@@ -590,6 +588,8 @@ github.com/openziti/agent v1.0.26 h1:5o/yRsX6deRYZrzT51eVAiAruN0U4qAD5cbqOD3uCYk
 github.com/openziti/agent v1.0.26/go.mod h1:RkFCcVEco6mpJ3uWh0IThiDRnL5E+SbXclrtDeZlGAs=
 github.com/openziti/channel/v3 v3.0.39 h1:UM0iY0tbz4EbOVT3tX4mfN1wSAXxkkWIrKmQ7RhE/Hg=
 github.com/openziti/channel/v3 v3.0.39/go.mod h1:7k3mQhtWlgX0HaQBkllDTOH5WAf7DcyyMLqJXrL+/fI=
+github.com/openziti/channel/v4 v4.0.0-20250326223108-f50f2013e5b9 h1:hLI/eXdRfzrcnOfkNj7/sO3FtVdadYFRbNW5otXaqpU=
+github.com/openziti/channel/v4 v4.0.0-20250326223108-f50f2013e5b9/go.mod h1:0bJQDf0Cw+WuTTdEqax/5PzhrbD5okbLFrtIz/7exEU=
 github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQfVXxE=
 github.com/openziti/cobra-to-md v1.0.1/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
 github.com/openziti/dilithium v0.3.5 h1:+envGNzxc3OyVPiuvtxivQmCsOjdZjtOMLpQBeMz7eM=
@@ -606,8 +606,8 @@ github.com/openziti/metrics v1.3.0 h1:oeythnUY2gs48MYM/HelAbJupfP/u81VYKMEwaGHeR
 github.com/openziti/metrics v1.3.0/go.mod h1:MOLcoTxhPNla6+NWUCMVTnl1PNqTU40qrbKVa/lVVgg=
 github.com/openziti/runzmd v1.0.67 h1:VADMieUhVIfikhvIX/jewV8VJeRb9osNym965RWon6g=
 github.com/openziti/runzmd v1.0.67/go.mod h1:xQhCjwznZJbpyhz2V5RdUV/rmYdG/Dv2DdPQFuNvZE0=
-github.com/openziti/sdk-golang v0.25.0 h1:ihLtdDA7ZxqteHRzKSJy+9z4mN2/MBGv8AIfvZ8Y7xc=
-github.com/openziti/sdk-golang v0.25.0/go.mod h1:rnvDXG67Lm82LN2kY4P3P+kx4jfUMM4H6tCKDnWfGbk=
+github.com/openziti/sdk-golang v0.25.1-0.20250326224027-f580cf9ac7e1 h1:syFNuzQ5F9i/PfOVS1QStE7/Z9Mvzu4oZQrPOacwxYs=
+github.com/openziti/sdk-golang v0.25.1-0.20250326224027-f580cf9ac7e1/go.mod h1:HxkzWXvandkTiztQ5t2YMm5ZDc/+SPGpF/6ac53CkNs=
 github.com/openziti/secretstream v0.1.32 h1:89/ZVcwIQjdVmWDfVRfMEChJJXTLXJ59AYBw5j646M4=
 github.com/openziti/secretstream v0.1.32/go.mod h1:8YaIbjyMwBeKQ7eOYcoVPKHT10u+4OVPXpnZAeDzC6o=
 github.com/openziti/storage v0.4.7 h1:3phONUaSrcH2m6D6eQT4DG6b7eZEW9IuewfG2RaUCtA=
