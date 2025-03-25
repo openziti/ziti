@@ -3,9 +3,9 @@ package fabric
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	inspectCommon "github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/controller/rest_client/inspect"
@@ -13,7 +13,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/util"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 	"io"
@@ -143,7 +142,7 @@ func (self *InspectAction) inspect(appRegex string, requestValues ...string) err
 			}
 			if err = self.prettyPrint(out, value.Value, 0); err != nil {
 				if closeErr := file.Close(); closeErr != nil {
-					return errorz.MultipleErrors{err, closeErr}
+					return errors.Join(err, closeErr)
 				}
 				return err
 			}
@@ -197,5 +196,5 @@ func (self *InspectAction) prettyPrint(o io.Writer, val interface{}, indent uint
 		enc.SetIndent("", "    ")
 		return enc.Encode(val)
 	}
-	return errors.Errorf("unsupported format %v", self.format)
+	return fmt.Errorf("unsupported format %v", self.format)
 }

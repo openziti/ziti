@@ -5,11 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"errors"
 	"github.com/openziti/channel/v3"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -84,7 +83,7 @@ func (self *LinkStateChecker) HandleFault(msg *channel.Message, _ channel.Channe
 			link.FaultCount++
 			link.Valid = false
 		} else {
-			self.reportError(errors.Errorf("no link with Id %s found", fault.Id))
+			self.reportError(fmt.Errorf("no link with Id %s found", fault.Id))
 		}
 	}
 }
@@ -98,11 +97,11 @@ func (self *LinkStateChecker) HandleOther(msg *channel.Message, _ channel.Channe
 		return
 	}
 
-	self.reportError(errors.Errorf("unhandled msg of type %v received", msg.ContentType))
+	self.reportError(fmt.Errorf("unhandled msg of type %v received", msg.ContentType))
 }
 
 func (self *LinkStateChecker) RequireNoErrors() {
-	var errList errorz.MultipleErrors
+	var errList []error
 
 	done := false
 	for !done {
@@ -115,7 +114,7 @@ func (self *LinkStateChecker) RequireNoErrors() {
 	}
 
 	if len(errList) > 0 {
-		self.req.NoError(errList)
+		self.req.NoError(errors.Join(errList...))
 	}
 }
 

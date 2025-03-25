@@ -19,14 +19,13 @@ package handler_ctrl
 import (
 	"crypto/sha1"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
-	"github.com/pkg/errors"
+	"github.com/openziti/ziti/controller/network"
 	"time"
 )
 
@@ -53,7 +52,7 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 
 	// verify cert chain
 	if len(certificates) == 0 {
-		return errors.Errorf("no certificates provided, unable to verify dialer, routerId: %v", id)
+		return fmt.Errorf("no certificates provided, unable to verify dialer, routerId: %v", id)
 	}
 
 	config := self.identity.ServerTLSConfig()
@@ -65,7 +64,7 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 	}
 
 	var validFingerPrints []string
-	var errorList errorz.MultipleErrors
+	var errorList []error
 
 	for _, cert := range certificates {
 		if cert.IsCA {
@@ -87,7 +86,7 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 	}
 
 	if len(validFingerPrints) == 0 && len(errorList) > 0 {
-		return errorList.ToError()
+		return errors.Join(errorList...)
 	}
 
 	log.Debugf("peer has [%d] valid certificates out of [%v] submitted", len(validFingerPrints), len(certificates))
@@ -95,7 +94,7 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 	if router := self.network.GetConnectedRouter(id); router != nil {
 		if time.Since(router.ConnectTime) < self.network.GetOptions().RouterConnectChurnLimit {
 			log.WithField("routerName", router.Name).Error("router already connected and churn threshold not met")
-			return errors.Errorf("router already connected id: %s, name: %s", id, router.Name)
+			return fmt.Errorf("router already connected id: %s, name: %s", id, router.Name)
 		}
 		log.WithField("routerName", router.Name).Warn("router already connected, but churn threshold met. replacing connection")
 	}
@@ -103,19 +102,19 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 	if r, err := self.network.GetRouter(id); err == nil {
 		if r.Fingerprint == nil {
 			log.Error("router enrollment incomplete")
-			return errors.Errorf("router enrollment incomplete, routerId: %v", id)
+			return fmt.Errorf("router enrollment incomplete, routerId: %v", id)
 		}
 		if !stringz.Contains(validFingerPrints, *r.Fingerprint) {
 			log.WithField("fp", *r.Fingerprint).WithField("givenFps", validFingerPrints).Error("router fingerprint mismatch")
-			return errors.Errorf("incorrect fingerprint/unenrolled router, routerId: %v, given fingerprints: %v", id, validFingerPrints)
+			return fmt.Errorf("incorrect fingerprint/unenrolled router, routerId: %v, given fingerprints: %v", id, validFingerPrints)
 		}
 		if r.Disabled {
 			log.Error("router disabled")
-			return errors.Errorf("router disabld, routerId: %v", id)
+			return fmt.Errorf("router disabld, routerId: %v", id)
 		}
 	} else {
 		log.Error("unknown/unenrolled router")
-		return errors.Errorf("unknown/unenrolled router, routerId: %v", id)
+		return fmt.Errorf("unknown/unenrolled router, routerId: %v", id)
 	}
 
 	return nil

@@ -20,18 +20,36 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v3/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/foundation/v2/sequence"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
+	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/objectz"
+	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/inspect"
+	"github.com/openziti/ziti/common/logcontext"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/common/trace"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/sirupsen/logrus"
 	"github.com/teris-io/shortid"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -41,27 +59,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/ziti/controller/command"
-
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3/protobufs"
-	"github.com/openziti/foundation/v2/debugz"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/foundation/v2/sequence"
-	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
-	"github.com/openziti/metrics/metrics_pb"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common/ctrl_msg"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/common/trace"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
 const SmartRerouteAttempt = 99969996
@@ -217,7 +214,7 @@ func (network *Network) createRouterCommPool(config Config) (goroutines.Pool, er
 
 	pool, err := goroutines.NewPool(poolConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating router messaging pool")
+		return nil, fmt.Errorf("error creating router messaging pool (%w)", err)
 	}
 	return pool, nil
 }
@@ -527,14 +524,14 @@ func (network *Network) NotifyExistingLink(id string, iteration uint32, linkProt
 func (network *Network) LinkConnected(msg *ctrl_pb.LinkConnected) error {
 	if l, found := network.Link.Get(msg.Id); found {
 		if state := l.CurrentState(); state.Mode != model.Pending {
-			return errors.Errorf("link [l/%v] state is %v, not pending, cannot mark connected", msg.Id, state.Mode)
+			return fmt.Errorf("link [l/%v] state is %v, not pending, cannot mark connected", msg.Id, state.Mode)
 		}
 
 		l.SetState(model.Connected)
 		network.NotifyLinkConnected(l, msg)
 		return nil
 	}
-	return errors.Errorf("no such link [l/%s]", msg.Id)
+	return fmt.Errorf("no such link [l/%s]", msg.Id)
 }
 
 func (network *Network) LinkFaulted(l *model.Link, dupe bool) error {
@@ -557,7 +554,7 @@ func (network *Network) VerifyRouter(routerId string, fingerprints []string) err
 
 	routerFingerprint := router.Fingerprint
 	if routerFingerprint == nil {
-		return errors.Errorf("invalid router %v, not yet enrolled", routerId)
+		return fmt.Errorf("invalid router %v, not yet enrolled", routerId)
 	}
 
 	for _, fp := range fingerprints {
@@ -566,7 +563,7 @@ func (network *Network) VerifyRouter(routerId string, fingerprints []string) err
 		}
 	}
 
-	return errors.Errorf("could not verify fingerprint for router %v", routerId)
+	return fmt.Errorf("could not verify fingerprint for router %v", routerId)
 }
 
 func (network *Network) RerouteLink(l *model.Link) {
@@ -672,7 +669,7 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 					}
 				}
 
-				return nil, errors.Wrapf(circuitErr, "exceeded maximum [%d] retries creating circuit [c/%s]", network.options.CreateCircuitRetries, circuitId)
+				return nil, fmt.Errorf("exceeded maximum [%d] retries creating circuit [c/%s] (%w)", network.options.CreateCircuitRetries, circuitId, circuitErr)
 			}
 		}
 
@@ -775,7 +772,7 @@ func (network *Network) selectPath(params model.CreateCircuitParams, svc *model.
 		if !found {
 			dstR := network.Router.GetConnected(terminator.GetRouterId())
 			if dstR == nil {
-				err := errors.Errorf("router with id=%v on terminator with id=%v for service name=%v is not online",
+				err := fmt.Errorf("router with id=%v on terminator with id=%v for service name=%v is not online",
 					terminator.GetRouterId(), terminator.GetId(), svc.Name)
 				log.Debugf("error while calculating path for service %v: %v", svc.Id, err)
 
@@ -812,7 +809,7 @@ func (network *Network) selectPath(params model.CreateCircuitParams, svc *model.
 
 	if len(weightedTerminators) == 0 {
 		if pathError {
-			return nil, nil, nil, nil, newCircuitErrWrap(CircuitFailureNoPath, errorz.MultipleErrors(errList))
+			return nil, nil, nil, nil, newCircuitErrWrap(CircuitFailureNoPath, errors.Join(errList...))
 		}
 
 		if hasOfflineRouters {
@@ -925,7 +922,7 @@ func (network *Network) setLinks(path *model.Path) error {
 			if link, found := network.Link.LeastExpensiveLink(path.Nodes[i], path.Nodes[i+1]); found {
 				path.Links = append(path.Links, link)
 			} else {
-				return errors.Errorf("no link from r/%v to r/%v", path.Nodes[i].Id, path.Nodes[i+1].Id)
+				return fmt.Errorf("no link from r/%v to r/%v", path.Nodes[i].Id, path.Nodes[i+1].Id)
 			}
 		}
 	}
@@ -1341,7 +1338,7 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	buf := bytes.NewBuffer(cmd.Snapshot)
 	reader, err := gzip.NewReader(buf)
 	if err != nil {
-		return errors.Wrapf(err, "unable to create gz reader for reading migration snapshot during restore")
+		return fmt.Errorf("unable to create gz reader for reading migration snapshot during restore (%w)", err)
 	}
 
 	network.GetDb().RestoreFromReader(reader)

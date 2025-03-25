@@ -18,10 +18,9 @@ package xlink_transport
 
 import (
 	"crypto/x509"
+	"errors"
 	"github.com/openziti/channel/v3"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/identity"
-	"github.com/pkg/errors"
 )
 
 type ConnectionHandler struct {
@@ -41,7 +40,7 @@ func (self *ConnectionHandler) HandleConnection(_ *channel.Hello, certificates [
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 
-	var errorList errorz.MultipleErrors
+	var errorList []error
 
 	for _, cert := range certificates {
 		if _, err := cert.Verify(opts); err == nil {
@@ -51,6 +50,5 @@ func (self *ConnectionHandler) HandleConnection(_ *channel.Hello, certificates [
 		}
 	}
 
-	//goland:noinspection GoNilness
-	return errorList.ToError()
+	return errors.Join(errorList...)
 }
