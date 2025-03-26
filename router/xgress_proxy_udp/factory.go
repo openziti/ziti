@@ -23,30 +23,28 @@ import (
 	"github.com/pkg/errors"
 )
 
-func NewFactory(env env.RouterEnv) xgress.Factory {
-	return &factory{env: env}
+func NewFactory(ctrl env.NetworkControllers) xgress.Factory {
+	return &factory{ctrl: ctrl}
 }
 
-func (self *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+func (f *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
 	options, err := xgress.LoadOptions(optionsData)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")
 	}
-	options.AckSender = self.env.GetAckSender()
-
 	service := ""
 	if value, found := optionsData["service"]; found {
 		service = value.(string)
 	} else {
 		return nil, fmt.Errorf("missing 'service' configuration option")
 	}
-	return newListener(service, self.env.GetNetworkControllers(), options), nil
+	return newListener(service, f.ctrl, options), nil
 }
 
-func (self *factory) CreateDialer(_ xgress.OptionsData) (xgress.Dialer, error) {
+func (f *factory) CreateDialer(_ xgress.OptionsData) (xgress.Dialer, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
 type factory struct {
-	env env.RouterEnv
+	ctrl env.NetworkControllers
 }

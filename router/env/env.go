@@ -53,7 +53,6 @@ type RouterEnv interface {
 	GetIndexWatchers() IndexWatchers
 	IsRouterDataModelEnabled() bool
 	DefaultRequestTimeout() time.Duration
-	GetAckSender() xgress.AckSender
 	GetXgressBindHandler() xgress.BindHandler
 }
 

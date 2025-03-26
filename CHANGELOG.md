@@ -1,3 +1,9 @@
+# Release 1.5.2
+
+## What's New
+
+* This release reverts a change refactoring some flow-control apis, as the change caused a panic
+
 # Release 1.5.1
 
 ## What's New
