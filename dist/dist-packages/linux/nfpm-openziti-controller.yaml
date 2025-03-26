@@ -44,4 +44,5 @@ depends:
   - systemd (>= ${MINIMUM_SYSTEMD_VERSION})
 
 scripts:
+  preinstall: ./dist/dist-packages/linux/openziti-controller/preinstall.bash
   postinstall: ./dist/dist-packages/linux/openziti-controller/postinstall.bash
