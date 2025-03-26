@@ -1,3 +1,9 @@
+# Release 1.5.3
+
+## What's New
+
+* This release updates the Go version from 1.23 to 1.24
+
 # Release 1.5.2
 
 ## What's New
