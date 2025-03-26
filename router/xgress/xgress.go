@@ -842,7 +842,7 @@ func (self *Xgress) PayloadReceived(payload *Payload) {
 		ack.RTT = payload.RTT
 
 		atomic.StoreUint32(&self.linkRxBuffer.lastBufferSizeSent, ack.RecvBufferSize)
-		self.Options.AckSender.SendAck(ack, self.address)
+		acker.ack(ack, self.address)
 	} else {
 		log.Debug("dropped")
 	}
@@ -853,7 +853,7 @@ func (self *Xgress) SendEmptyAck() {
 	ack := NewAcknowledgement(self.circuitId, self.originator)
 	ack.RecvBufferSize = self.linkRxBuffer.Size()
 	atomic.StoreUint32(&self.linkRxBuffer.lastBufferSizeSent, ack.RecvBufferSize)
-	self.Options.AckSender.SendAck(ack, self.address)
+	acker.ack(ack, self.address)
 }
 
 func (self *Xgress) GetSequence() uint64 {

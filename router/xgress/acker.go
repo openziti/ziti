@@ -7,8 +7,14 @@ import (
 	"sync/atomic"
 )
 
-type AckSender interface {
-	SendAck(ack *Acknowledgement, address Address)
+var acker ackSender
+
+type ackSender interface {
+	ack(ack *Acknowledgement, address Address)
+}
+
+func InitAcker(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) {
+	acker = NewAcker(forwarder, metrics, closeNotify)
 }
 
 type ackEntry struct {
@@ -47,7 +53,7 @@ func NewAcker(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeN
 	return result
 }
 
-func (acker *Acker) SendAck(ack *Acknowledgement, address Address) {
+func (acker *Acker) ack(ack *Acknowledgement, address Address) {
 	acker.ackIngest <- &ackEntry{
 		Acknowledgement: ack,
 		Address:         address,

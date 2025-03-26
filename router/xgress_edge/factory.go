@@ -173,7 +173,7 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 	if err := options.load(optionsData); err != nil {
 		return nil, err
 	}
-	options.AckSender = factory.env.GetAckSender()
+
 	pfxlog.Logger().Infof("xgress edge listener options: %v", options.ToLoggableString())
 
 	versionInfo := factory.versionProvider.AsVersionInfo()
@@ -201,7 +201,6 @@ func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 	if err := options.load(optionsData); err != nil {
 		return nil, err
 	}
-	options.AckSender = factory.env.GetAckSender()
 
 	// CreateDialer is called for every egress route and for inspect and validations
 	// can't log this every time.

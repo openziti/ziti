@@ -17,22 +17,17 @@
 package xgress_edge_transport
 
 import (
-	routerEnv "github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 )
 
 const BindingName = "edge_transport"
 
-type factory struct {
-	env routerEnv.RouterEnv
-}
+type factory struct{}
 
 // NewFactory returns a new Transport Xgress factory
-func NewFactory(env routerEnv.RouterEnv) xgress.Factory {
-	return &factory{
-		env: env,
-	}
+func NewFactory() xgress.Factory {
+	return &factory{}
 }
 
 func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
@@ -44,6 +39,5 @@ func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")
 	}
-	options.AckSender = factory.env.GetAckSender()
 	return newDialer(options)
 }

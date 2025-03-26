@@ -147,8 +147,9 @@ func Test_SingleRouterPerf(t *testing.T) {
 	registry := metrics.NewUsageRegistry("router", nil, closeNotify)
 	registry.StartReporting(&eventSink{}, time.Minute, 10)
 	fwd := forwarder.NewForwarder(registry, testFaultReceiver{}, forwarder.DefaultOptions(), closeNotify)
-	options.AckSender = NewAcker(fwd, metricsRegistry, closeNotify)
+
 	xgress.InitPayloadIngester(closeNotify)
+	xgress.InitAcker(fwd, registry, closeNotify)
 	xgress.InitMetrics(registry)
 	xgress.InitRetransmitter(fwd, fwd, registry, closeNotify)
 

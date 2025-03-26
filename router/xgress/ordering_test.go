@@ -69,16 +69,14 @@ func Test_Ordering(t *testing.T) {
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 	InitPayloadIngester(closeNotify)
 	InitMetrics(metricsRegistry)
+	InitAcker(&noopForwarder{}, metricsRegistry, closeNotify)
 
 	conn := &testConn{
 		ch:          make(chan uint64, 1),
 		closeNotify: make(chan struct{}),
 	}
 
-	options := DefaultOptions()
-	options.AckSender = NewAcker(&noopForwarder{}, metricsRegistry, closeNotify)
-
-	x := NewXgress("test", "ctrl", "test", conn, Initiator, options, nil)
+	x := NewXgress("test", "ctrl", "test", conn, Initiator, DefaultOptions(), nil)
 	x.receiveHandler = noopReceiveHandler{}
 	go x.tx()
 

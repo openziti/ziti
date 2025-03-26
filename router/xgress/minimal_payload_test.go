@@ -222,7 +222,7 @@ type testAcker struct {
 	destinations cmap.ConcurrentMap[string, *Xgress]
 }
 
-func (self *testAcker) SendAck(ack *Acknowledgement, address Address) {
+func (self *testAcker) ack(ack *Acknowledgement, address Address) {
 	dest, _ := self.destinations.Get(string(address))
 	if dest != nil {
 		if err := dest.SendAcknowledgement(ack); err != nil {
@@ -267,8 +267,8 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	ackHandler := &testAcker{
 		destinations: cmap.New[*Xgress](),
 	}
+	acker = ackHandler
 	options := DefaultOptions()
-	options.AckSender = ackHandler
 	options.Mtu = 1400
 
 	circuitId := idgen.New()
@@ -325,8 +325,8 @@ func Test_PayloadSize(t *testing.T) {
 	ackHandler := &testAcker{
 		destinations: cmap.New[*Xgress](),
 	}
+	acker = ackHandler
 	options := DefaultOptions()
-	options.AckSender = ackHandler
 	//options.Mtu = 1435
 
 	h := metricsRegistry.Histogram("msg_size")
