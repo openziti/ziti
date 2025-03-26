@@ -699,19 +699,19 @@ func (a *AuthModuleExtJwt) verifyCandidate(context AuthContext, isPrimary bool, 
 	}
 
 	if err != nil {
-		result.Error = fmt.Errorf("error during authentication policy and identity lookup by claims type [%s] and claimd id [%s]: %w", claimIdLookupMethod, claimId, err)
+		result.Error = fmt.Errorf("error during authentication policy and identity lookup by claims type [%s] and claim id [%s]: %w", claimIdLookupMethod, claimId, err)
 		return result
 	}
 
 	if authPolicy == nil {
-		result.Error = fmt.Errorf("no authentication policy found for claims type [%s] and claimd id [%s]: %w", claimIdLookupMethod, claimId, err)
+		result.Error = fmt.Errorf("no authentication policy found for claims type [%s] and claim id [%s]: %w", claimIdLookupMethod, claimId, err)
 		return result
 	}
 
 	result.AuthPolicy = authPolicy
 
 	if identity == nil {
-		result.Error = fmt.Errorf("no identity found for claims type [%s] and claimd id [%s]: %w", claimIdLookupMethod, claimId, err)
+		result.Error = fmt.Errorf("no identity found for claims type [%s] and claim id [%s]: %w", claimIdLookupMethod, claimId, err)
 		return result
 	}
 
