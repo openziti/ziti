@@ -21,7 +21,10 @@ jobs:
   build-linux-packages:
     name: Build ${{ matrix.package_name }} ${{ matrix.arch.gox }} ${{ matrix.packager }}
     runs-on: ubuntu-24.04
-    container: openziti/ziti-builder:v2
+    container:
+      image: openziti/ziti-builder:v2
+      volumes:
+        - "${{ github.action_path }}:${{ github.action_path }}"  # burningalchemist/action-gh-nfpm uses installs the nfpm executable here
     strategy:
       matrix:
         package_name:
