@@ -431,6 +431,14 @@ checkCommand() {
 }
 
 main(){
+    # xtrace opt implies --verbose
+    if [[ $- =~ x ]]; then
+        MINIZITI_DEBUG=1
+        exec 3>&1
+    else
+        MINIZITI_DEBUG=0
+    fi
+
     checkBashVersion >&2
 
     # require commands
@@ -441,14 +449,6 @@ main(){
 
     # open a descriptor for debug messages
     exec 3>/dev/null
-
-    # xtrace opt implies --verbose
-    if [[ $- =~ x ]]; then
-        MINIZITI_DEBUG=1
-        exec 3>&1
-    else
-        MINIZITI_DEBUG=0
-    fi
 
     # local strings with defaults that never produce an error
     declare DELETE_MINIZITI=0 \
