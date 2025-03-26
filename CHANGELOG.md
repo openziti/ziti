@@ -1,3 +1,18 @@
+# Release 1.5.1
+
+## What's New
+
+* Bug fixes and features
+
+* github.com/openziti/sdk-golang: [v0.25.0 -> v0.25.1](https://github.com/openziti/sdk-golang/compare/v0.25.0...v0.25.1)
+  * [Issue #699](https://github.com/openziti/sdk-golang/issues/699) - SDK UPDB enrollment
+
+* github.com/openziti/ziti: [v1.5.0 -> v1.5.1](https://github.com/openziti/ziti/compare/v1.5.0...v1.5.1)
+  * [Issue #2931](https://github.com/openziti/ziti/issues/2931) - help ext-jwt-signer auth by logging incoming jwt audience
+  * [Issue #2934](https://github.com/openziti/ziti/issues/2934) - API Session Certs in HA not connect to ERs in all scenarios
+  * [Issue #2926](https://github.com/openziti/ziti/issues/2926) - Implement minimal Xgress SDK
+
+
 # Release 1.5.0
 
 ## What's New
