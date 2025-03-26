@@ -242,8 +242,8 @@ makeDatabase() {
     return 1
   fi
 
-  if [[ -n "${ZITI_CLUSTER_NODE_PKI:-}" || "${ZITI_BOOTSTRAP_CLUSTER:-}" != true ]]; then
-    echo "DEBUG: skipping database initialization because ZITI_CLUSTER_NODE_PKI is set or ZITI_BOOTSTRAP_CLUSTER is not true" >&3
+  if [[ -n "${ZITI_CLUSTER_NODE_PKI:-}" || "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
+    echo "DEBUG: skipping database initialization because ZITI_CLUSTER_NODE_PKI is set or ZITI_BOOTSTRAP_CLUSTER is false" >&3
     return 0
   elif [[ -d "${ZITI_CTRL_DATABASE_DIR}" && "${1:-}" == --force ]]; then
     echo "DEBUG: recreating database directory: ${ZITI_CTRL_DATABASE_DIR}" >&3
@@ -427,7 +427,7 @@ promptUserPwd() {
     return 0
   # or we're not bootstrapping a cluster
   elif [[ -n "${ZITI_CLUSTER_NODE_PKI:-}" || "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
-    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because ZITI_CLUSTER_NODE_PKI is set or ZITI_BOOTSTRAP_CLUSTER is not true" >&3
+    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because ZITI_CLUSTER_NODE_PKI is set or ZITI_BOOTSTRAP_CLUSTER is false" >&3
     return 0
   fi
   # prompt for password if interactive, unless already answered
@@ -509,15 +509,7 @@ loadEnvFiles() {
 
 promptCtrlAddress() {
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
-    if [[ -n "${ZITI_CLUSTER_NODE_NAME:-}" && -n "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
-      ZITI_CTRL_ADVERTISED_ADDRESS="$(
-        # trunk-ignore(shellcheck/SC2310)
-        prompt "Enter DNS name of the controller [${ZITI_CLUSTER_NODE_NAME}.${ZITI_CLUSTER_TRUST_DOMAIN}]: " \
-        || echo "${ZITI_CLUSTER_NODE_NAME}.${ZITI_CLUSTER_TRUST_DOMAIN}"
-      )"
-    else
-      ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter DNS name of the controller [required]: ")"
-    fi
+    ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter DNS name of the controller [required]: ")"
     if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
       echo "ERROR: missing required DNS name ZITI_CTRL_ADVERTISED_ADDRESS in ${BOOT_ENV_FILE}" >&2
       return 1
