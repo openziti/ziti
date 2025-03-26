@@ -109,8 +109,10 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 	return &EnrollmentResult{
 		Identity:      identity,
 		Authenticator: newAuthenticator,
-		Content:       map[string]interface{}{},
-		Status:        200,
+		Content: map[string]interface{}{
+			"username": *enrollment.Username,
+		},
+		Status: 200,
 	}, nil
 
 }

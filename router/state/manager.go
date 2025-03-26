@@ -680,7 +680,7 @@ func NewApiSessionFromToken(jwtToken *jwt.Token, accessClaims *common.AccessClai
 		ApiSession: &edge_ctrl_pb.ApiSession{
 			Token:            jwtToken.Raw,
 			CertFingerprints: accessClaims.CertFingerprints,
-			Id:               accessClaims.JWTID,
+			Id:               accessClaims.ApiSessionId,
 			IdentityId:       subj,
 		},
 		JwtToken: jwtToken,

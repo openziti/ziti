@@ -53,6 +53,7 @@ type candidateResult struct {
 	ExpectedIssuer          string
 	EncounteredIssuer       string
 	ExpectedAudience        string
+	TokenAudiences          string
 	EncounteredAudiences    []string
 	EncounteredExtJwtSigner *db.ExternalJwtSigner
 	ExpectedExtJwtSignerIds []string
@@ -78,7 +79,8 @@ func (r *candidateResult) LogResult(logger *logrus.Entry, index int) {
 	}
 
 	logger = logger.WithField("issuer", r.ExpectedIssuer)
-	logger = logger.WithField("audience", r.ExpectedAudience)
+	logger = logger.WithField("expectedAudience", r.ExpectedAudience)
+	logger = logger.WithField("tokenAudiences", r.TokenAudiences)
 
 	if r.Error == nil {
 		logger.Debugf("validated candidate JWT at index %d", index)
@@ -640,6 +642,10 @@ func (a *AuthModuleExtJwt) verifyCandidate(context AuthContext, isPrimary bool, 
 	result.EncounteredExtJwtSigner = extJwt
 	result.ExpectedIssuer = stringz.OrEmpty(extJwt.Issuer)
 	result.ExpectedAudience = stringz.OrEmpty(extJwt.Audience)
+	tokenAudience, _ := jwtToken.Claims.GetAudience()
+	if len(tokenAudience) != 0 {
+		result.TokenAudiences = strings.Join(tokenAudience, ",")
+	}
 	result.EncounteredIssuer, _ = mapClaims.GetIssuer()
 	result.EncounteredAudiences, _ = mapClaims.GetAudience()
 
