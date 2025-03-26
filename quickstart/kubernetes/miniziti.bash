@@ -792,14 +792,14 @@ main(){
 
     helmWrapper upgrade --install cert-manager jetstack/cert-manager \
         --namespace cert-manager --create-namespace \
-        --set crds.enabled=true
+        --set crds.enabled=true >&3
     kubectlWrapper wait deployments -n cert-manager --for condition=Available --timeout="${MINIZITI_TIMEOUT_SECS}s" --all >&3
 
     kubectlWrapper get namespace "${ZITI_NAMESPACE}" &>/dev/null || kubectlWrapper create namespace "${ZITI_NAMESPACE}" >&3
     helmWrapper upgrade --install trust-manager jetstack/trust-manager \
         --namespace cert-manager \
         --set crds.keep=false \
-        --set app.trust.namespace="${ZITI_NAMESPACE}"
+        --set app.trust.namespace="${ZITI_NAMESPACE}" >&3
     kubectlWrapper wait deployments -n cert-manager --for condition=Available --timeout="${MINIZITI_TIMEOUT_SECS}s" trust-manager >&3
 
     #
