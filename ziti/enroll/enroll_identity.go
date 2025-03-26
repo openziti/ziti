@@ -198,11 +198,13 @@ func (e *IdentityEnrollAction) Run() error {
 			flags.Password = e.Password
 		}
 
-		err = enroll.EnrollUpdb(flags)
+		resultUsername, err := enroll.EnrollUpdb(flags)
 		if err == nil {
 			if rmErr := os.Remove(e.JwtPath); rmErr != nil {
 				pfxlog.Logger().WithError(rmErr).Warnf("unable to remove JWT file as requested: %v", e.JwtPath)
 			}
+
+			pfxlog.Logger().WithField("username", resultUsername).Info("enrollment successful")
 		}
 		return err
 	}

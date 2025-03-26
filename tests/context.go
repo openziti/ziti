@@ -570,6 +570,11 @@ func (ctx *TestContext) EnrollIdentity(identityId string) *ziti.Config {
 		Token:  tkn,
 		KeyAlg: "RSA",
 	}
+
+	if tkn.EnrollmentMethod == rest_model.EnrollmentCreateMethodUpdb {
+		flags.Password = uuid.NewString() + "!"
+	}
+
 	conf, err := sdkEnroll.Enroll(flags)
 	ctx.Req.NoError(err)
 	return conf

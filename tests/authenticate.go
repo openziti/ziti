@@ -27,6 +27,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/edge-api/rest_model"
@@ -637,6 +638,13 @@ func (request *authenticatedRequests) requireNewIdentity(isAdmin bool, roleAttri
 	return identity
 }
 
+func (request *authenticatedRequests) RequireNewIdentityWithUpdb(isAdmin bool, roleAttributes ...string) *identity {
+	identity := newTestIdentity(isAdmin, roleAttributes...)
+	identity.enrollment = map[string]interface{}{"updb": uuid.NewString()}
+	request.requireCreateEntity(identity)
+	return identity
+}
+
 func (request *authenticatedRequests) RequireNewIdentityWithOtt(isAdmin bool, roleAttributes ...string) *identity {
 	identity := newTestIdentity(isAdmin, roleAttributes...)
 	identity.enrollment = map[string]interface{}{"ott": true}
@@ -1071,8 +1079,26 @@ func (request *authenticatedRequests) getTransitRouterJwt(transitRouterId string
 
 func (request *authenticatedRequests) getIdentityJwt(identityId string) string {
 	jsonBody := request.requireQuery("identities/" + identityId)
-	data := request.testContext.RequireGetNonNilPathValue(jsonBody, "data", "enrollment", "ott", "jwt")
-	return data.Data().(string)
+	identityDetail := &rest_model.IdentityDetail{}
+	data := request.testContext.RequireGetNonNilPathValue(jsonBody, "data")
+
+	err := json.Unmarshal(data.Bytes(), identityDetail)
+	request.testContext.Req.NoError(err)
+
+	if identityDetail.Enrollment.Ott != nil {
+		return identityDetail.Enrollment.Ott.JWT
+	}
+
+	if identityDetail.Enrollment.Updb != nil {
+		return identityDetail.Enrollment.Updb.JWT
+	}
+
+	if identityDetail.Enrollment.Ottca != nil {
+		return identityDetail.Enrollment.Ottca.JWT
+	}
+
+	request.testContext.Fail("identity did not have any enrollment JWTs")
+	return ""
 }
 
 func (request *authenticatedRequests) streamEvents(req *subscriptionRequest) (func(), error) {
