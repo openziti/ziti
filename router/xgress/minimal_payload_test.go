@@ -151,6 +151,7 @@ func (self *testXgConn) HandleControlMsg(controlType ControlType, headers channe
 }
 
 type testIntermediary struct {
+	acker              AckSender
 	circuitId          string
 	dest               *Xgress
 	msgs               channel.MessageStrategy
@@ -159,7 +160,11 @@ type testIntermediary struct {
 	bytesCallback      func([]byte)
 }
 
-func (self *testIntermediary) HandleXgressReceive(payload *Payload, x *Xgress) {
+func (self *testIntermediary) SendAcknowledgement(ack *Acknowledgement, address Address) {
+	self.acker.SendAck(ack, address)
+}
+
+func (self *testIntermediary) SendPayload(payload *Payload, x *Xgress) {
 	m := payload.Marshall()
 	self.payloadTransformer.Tx(m, nil)
 	b, err := self.msgs.GetMarshaller()(m)
@@ -214,7 +219,7 @@ func (self *testIntermediary) validateMessage(m *channel.Message) error {
 	return nil
 }
 
-func (self *testIntermediary) HandleControlReceive(control *Control, x *Xgress) {
+func (self *testIntermediary) SendControlMessage(control *Control, x *Xgress) {
 	panic("implement me")
 }
 
@@ -222,7 +227,7 @@ type testAcker struct {
 	destinations cmap.ConcurrentMap[string, *Xgress]
 }
 
-func (self *testAcker) ack(ack *Acknowledgement, address Address) {
+func (self *testAcker) SendAck(ack *Acknowledgement, address Address) {
 	dest, _ := self.destinations.Get(string(address))
 	if dest != nil {
 		if err := dest.SendAcknowledgement(ack); err != nil {
@@ -267,7 +272,6 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	ackHandler := &testAcker{
 		destinations: cmap.New[*Xgress](),
 	}
-	acker = ackHandler
 	options := DefaultOptions()
 	options.Mtu = 1400
 
@@ -282,13 +286,15 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	ackHandler.destinations.Set("dst", srcXg)
 
 	msgStrategy := channel.DatagramMessageStrategy(UnmarshallPacketPayload)
-	srcXg.receiveHandler = &testIntermediary{
+	srcXg.dataPlane = &testIntermediary{
+		acker:     ackHandler,
 		circuitId: circuitId,
 		dest:      dstXg,
 		msgs:      msgStrategy,
 	}
 
-	dstXg.receiveHandler = &testIntermediary{
+	dstXg.dataPlane = &testIntermediary{
+		acker:     ackHandler,
 		circuitId: circuitId,
 		dest:      srcXg,
 		msgs:      msgStrategy,
@@ -325,7 +331,6 @@ func Test_PayloadSize(t *testing.T) {
 	ackHandler := &testAcker{
 		destinations: cmap.New[*Xgress](),
 	}
-	acker = ackHandler
 	options := DefaultOptions()
 	//options.Mtu = 1435
 
@@ -342,7 +347,8 @@ func Test_PayloadSize(t *testing.T) {
 	ackHandler.destinations.Set("dst", srcXg)
 
 	msgStrategy := channel.DatagramMessageStrategy(UnmarshallPacketPayload)
-	srcXg.receiveHandler = &testIntermediary{
+	srcXg.dataPlane = &testIntermediary{
+		acker:     ackHandler,
 		circuitId: circuitId,
 		dest:      dstXg,
 		msgs:      msgStrategy,
@@ -351,7 +357,8 @@ func Test_PayloadSize(t *testing.T) {
 		},
 	}
 
-	dstXg.receiveHandler = &testIntermediary{
+	dstXg.dataPlane = &testIntermediary{
+		acker:     ackHandler,
 		circuitId: circuitId,
 		dest:      srcXg,
 		msgs:      msgStrategy,

@@ -157,7 +157,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgress.DefaultOptions(), nil)
-	x.SetReceiveHandler(handler_xgress.NewReceiveHandler(fwd))
+	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd))
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)
@@ -235,7 +235,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgOptions, nil)
-	x.SetReceiveHandler(handler_xgress.NewReceiveHandler(fwd))
+	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd))
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)

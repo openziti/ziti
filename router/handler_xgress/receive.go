@@ -24,17 +24,23 @@ import (
 	"time"
 )
 
-type receiveHandler struct {
+type dataPlaneHandler struct {
+	acker     xgress.AckSender
 	forwarder *forwarder.Forwarder
 }
 
-func NewReceiveHandler(forwarder *forwarder.Forwarder) *receiveHandler {
-	return &receiveHandler{
+func (xrh *dataPlaneHandler) SendAcknowledgement(ack *xgress.Acknowledgement, address xgress.Address) {
+	xrh.acker.SendAck(ack, address)
+}
+
+func NewXgressDataPlaneHandler(forwarder *forwarder.Forwarder, acker xgress.AckSender) xgress.DataPlaneHandler {
+	return &dataPlaneHandler{
 		forwarder: forwarder,
+		acker:     acker,
 	}
 }
 
-func (xrh *receiveHandler) HandleXgressReceive(payload *xgress.Payload, x *xgress.Xgress) {
+func (xrh *dataPlaneHandler) SendPayload(payload *xgress.Payload, x *xgress.Xgress) {
 	for {
 		if err := xrh.forwarder.ForwardPayload(x.Address(), payload, time.Second); err != nil {
 			if !channel.IsTimeout(err) {
@@ -48,7 +54,7 @@ func (xrh *receiveHandler) HandleXgressReceive(payload *xgress.Payload, x *xgres
 	}
 }
 
-func (xrh *receiveHandler) HandleControlReceive(control *xgress.Control, x *xgress.Xgress) {
+func (xrh *dataPlaneHandler) SendControlMessage(control *xgress.Control, x *xgress.Xgress) {
 	if err := xrh.forwarder.ForwardControl(x.Address(), control); err != nil {
 		pfxlog.ContextLogger(x.Label()).WithFields(control.GetLoggerFields()).WithError(err).Error("unable to forward control")
 	}

@@ -99,13 +99,13 @@ type ControlReceiver interface {
 	HandleControlReceive(controlType ControlType, headers channel.Headers)
 }
 
-// ReceiveHandler is invoked by an xgress whenever data is received from the connected peer. Generally a ReceiveHandler
+// DataPlaneHandler is invoked by an xgress whenever messages need to be sent to the data plane. Generally a DataPlaneHandler
 // is implemented to connect the xgress to a data plane data transmission system.
-type ReceiveHandler interface {
-	// HandleXgressReceive is invoked when data is received from the connected xgress peer.
-	//
-	HandleXgressReceive(payload *Payload, x *Xgress)
-	HandleControlReceive(control *Control, x *Xgress)
+type DataPlaneHandler interface {
+	// SendPayload is invoked when data is received from the connected xgress peer.
+	SendPayload(payload *Payload, x *Xgress)
+	SendControlMessage(control *Control, x *Xgress)
+	SendAcknowledgement(ack *Acknowledgement, address Address)
 }
 
 // CloseHandler is invoked by an xgress when the connected peer terminates the communication.
@@ -138,6 +138,7 @@ type Connection interface {
 }
 
 type Xgress struct {
+	dataPlane            DataPlaneHandler
 	circuitId            string
 	ctrlId               string
 	address              Address
@@ -148,7 +149,6 @@ type Xgress struct {
 	closeNotify          chan struct{}
 	rxSequence           uint64
 	rxSequenceLock       sync.Mutex
-	receiveHandler       ReceiveHandler
 	payloadBuffer        *LinkSendBuffer
 	linkRxBuffer         *LinkReceiveBuffer
 	closeHandlers        []CloseHandler
@@ -209,8 +209,8 @@ func (self *Xgress) IsTerminator() bool {
 	return self.originator == Terminator
 }
 
-func (self *Xgress) SetReceiveHandler(receiveHandler ReceiveHandler) {
-	self.receiveHandler = receiveHandler
+func (self *Xgress) SetDataPlaneHandler(dataPlaneHandler DataPlaneHandler) {
+	self.dataPlane = dataPlaneHandler
 }
 
 func (self *Xgress) AddCloseHandler(closeHandler CloseHandler) {
@@ -380,7 +380,7 @@ func (self *Xgress) HandleControlReceive(controlType ControlType, headers channe
 		CircuitId: self.circuitId,
 		Headers:   headers,
 	}
-	self.receiveHandler.HandleControlReceive(control, self)
+	self.dataPlane.SendControlMessage(control, self)
 }
 
 func (self *Xgress) payloadIngester(payload *Payload) {
@@ -812,7 +812,7 @@ func (self *Xgress) forwardPayload(payload *Payload) bool {
 		peekHandler.Rx(self, payload)
 	}
 
-	self.receiveHandler.HandleXgressReceive(payload, self)
+	self.dataPlane.SendPayload(payload, self)
 	sendCallback()
 	return true
 }
@@ -842,7 +842,7 @@ func (self *Xgress) PayloadReceived(payload *Payload) {
 		ack.RTT = payload.RTT
 
 		atomic.StoreUint32(&self.linkRxBuffer.lastBufferSizeSent, ack.RecvBufferSize)
-		acker.ack(ack, self.address)
+		self.dataPlane.SendAcknowledgement(ack, self.address)
 	} else {
 		log.Debug("dropped")
 	}
@@ -853,7 +853,7 @@ func (self *Xgress) SendEmptyAck() {
 	ack := NewAcknowledgement(self.circuitId, self.originator)
 	ack.RecvBufferSize = self.linkRxBuffer.Size()
 	atomic.StoreUint32(&self.linkRxBuffer.lastBufferSizeSent, ack.RecvBufferSize)
-	acker.ack(ack, self.address)
+	self.dataPlane.SendAcknowledgement(ack, self.address)
 }
 
 func (self *Xgress) GetSequence() uint64 {

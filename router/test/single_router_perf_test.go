@@ -150,11 +150,10 @@ func Test_SingleRouterPerf(t *testing.T) {
 	registry.StartReporting(&eventSink{}, time.Minute, 10)
 	fwd := forwarder.NewForwarder(registry, testFaultReceiver{}, env.DefaultOptions(), closeNotify)
 	xgress.InitPayloadIngester(closeNotify)
-	xgress.InitAcker(fwd, registry, closeNotify)
 	xgress.InitMetrics(registry)
 	xgress.InitRetransmitter(fwd, fwd, registry, closeNotify)
 
-	bindHandler := handler_xgress.NewBindHandler(handler_xgress.NewReceiveHandler(fwd), testXgCloseHandler{}, fwd)
+	bindHandler := handler_xgress.NewBindHandler(handler_xgress.NewXgressDataPlaneHandler(fwd), testXgCloseHandler{}, fwd)
 
 	srcXg := xgress.NewXgress("test", "ctrl", "src", srcConn, xgress.Initiator, options, nil)
 	bindHandler.HandleXgressBind(srcXg)
