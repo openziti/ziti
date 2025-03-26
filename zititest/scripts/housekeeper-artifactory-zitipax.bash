@@ -34,7 +34,7 @@ USAGE
 BASENAME=$(basename "$0")
 typeset -a  ARTIFACTS=() \
             STAGES=() \
-            KNOWN_ARTIFACTS=(openziti openziti-controller openziti-router openziti-console zrok zrok-share ziti-edge-tunnel)
+            KNOWN_ARTIFACTS=(openziti openziti-controller openziti-router openziti-console zrok zrok-share zrok-agent ziti-edge-tunnel)
 typeset -A KNOWN_STAGES=(
     [testing]='zitipax-(openziti-(rpm|deb)-test|fork-(rpm|deb)-stable)'
     [release]='zitipax-openziti-(rpm|deb)-stable'
