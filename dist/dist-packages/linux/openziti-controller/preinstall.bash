@@ -4,32 +4,25 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-install() {
-  commonActions
-
-}
-
-upgrade() {
-  commonActions
-
-}
-
-commonActions() {
-  loadEnvFile
-}
-
-makeEmptyRestrictedFile() {
-  if ! [ -s "$1" ]; then
-    umask 0177
-    touch "$1"
+abort_if_service_exists() {
+  if systemctl list-unit-files ziti-controller.service &>/dev/null; then
+    echo "ERROR: ziti-controller.service is already defined. Please remove it before installing this package." >&2
+    exit 1
   fi
 }
 
-loadEnvFile() {
-  # shellcheck disable=SC1090
-  [[ -s "${ZITI_ROUTER_SVC_ENV_FILE}" ]] && source "${ZITI_ROUTER_SVC_ENV_FILE}"
-  # shellcheck disable=SC1090
-  [[ -s "${ZITI_ROUTER_BOOT_ENV_FILE}" ]] && source "${ZITI_ROUTER_BOOT_ENV_FILE}"
+commonActions() {
+  abort_if_service_exists
+}
+
+install() {
+  commonActions
+}
+
+upgrade() {
+  # During upgrade, we don't need to abort if the service exists
+  # as this would be the case when upgrading an existing installation
+  :
 }
 
 # initialize a file descriptor for debug output
@@ -58,16 +51,13 @@ else
   exit 1
 fi
 
-ZITI_ROUTER_SVC_ENV_FILE=/opt/openziti/etc/router/service.env
-ZITI_ROUTER_BOOT_ENV_FILE=/opt/openziti/etc/router/bootstrap.env
-
 case "$action" in
   "install")
-    printf "\033[32m completed clean install of openziti-router\033[0m\n"
+    printf "\033[33m checking for existing ziti-controller service...\033[0m\n"
     install
     ;;
   "upgrade")
-    printf "\033[32m completed upgrade of openziti-router\033[0m\n"
+    printf "\033[33m processing upgrade of openziti-controller...\033[0m\n"
     upgrade
     ;;
 esac
