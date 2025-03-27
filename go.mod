@@ -1,9 +1,6 @@
 module github.com/openziti/ziti
 
 go 1.24.0
-
-toolchain go1.24.1
-
 require (
 	github.com/AppsFlyer/go-sundheit v0.6.0
 	github.com/Jeffail/gabs v1.4.0
@@ -78,7 +75,7 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
-	github.com/spf13/viper v1.20.0
+	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
