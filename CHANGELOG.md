@@ -1,3 +1,15 @@
+# Release 1.5.4
+
+## What's new
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.5.3 -> v1.5.4](https://github.com/openziti/ziti/compare/v1.5.3...v1.5.4)
+    * [Issue #2947](https://github.com/openziti/ziti/issues/2947) - Panic on router started up if edge/tunnel bindings not configured
+    * [Issue #2948](https://github.com/openziti/ziti/issues/2948) - Allow ER/T to run without edge listener
+
 # Release 1.5.3
 
 ## What's New
@@ -15,6 +27,8 @@
 ## What's New
 
 * Bug fixes and features
+
+## Component Updates and Bug Fixes
 
 * github.com/openziti/sdk-golang: [v0.25.0 -> v0.25.1](https://github.com/openziti/sdk-golang/compare/v0.25.0...v0.25.1)
   * [Issue #699](https://github.com/openziti/sdk-golang/issues/699) - SDK UPDB enrollment

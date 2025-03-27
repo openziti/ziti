@@ -34,6 +34,7 @@ import (
 	"github.com/openziti/ziti/controller/rest_util"
 	"github.com/openziti/ziti/controller/webapis"
 	"github.com/openziti/ziti/router"
+	"github.com/openziti/ziti/router/env"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -200,7 +201,7 @@ func (ctx *FabricTestContext) StartServerFor(test string, clean bool) {
 }
 
 func (ctx *FabricTestContext) startRouter(index uint8) *router.Router {
-	config, err := router.LoadConfig(fmt.Sprintf(FabricRouterConfFile, index))
+	config, err := env.LoadConfig(fmt.Sprintf(FabricRouterConfFile, index))
 	ctx.Req.NoError(err)
 	r := router.Create(config, versions.NewDefaultVersionProvider())
 	ctx.Req.NoError(r.Start())

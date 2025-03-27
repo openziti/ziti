@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
@@ -44,7 +43,7 @@ const (
 type Factory struct {
 	id                *identity.TokenId
 	ctrls             env.NetworkControllers
-	routerConfig      *router.Config
+	routerConfig      *env.Config
 	stateManager      state.Manager
 	tunneler          *tunneler
 	metricsRegistry   metrics.UsageRegistry
@@ -88,7 +87,7 @@ func (self *Factory) DefaultRequestTimeout() time.Duration {
 }
 
 // NewFactory constructs a new Edge Xgress Tunnel Factory instance
-func NewFactory(env env.RouterEnv, routerConfig *router.Config, stateManager state.Manager) *Factory {
+func NewFactory(env env.RouterEnv, routerConfig *env.Config, stateManager state.Manager) *Factory {
 	factory := &Factory{
 		id:              env.GetRouterId(),
 		routerConfig:    routerConfig,
@@ -103,6 +102,7 @@ func NewFactory(env env.RouterEnv, routerConfig *router.Config, stateManager sta
 
 // CreateListener creates a new Edge Tunnel Xgress listener
 func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+	self.hostedServices.Start()
 	self.env.MarkRouterDataModelRequired()
 
 	options := &Options{}

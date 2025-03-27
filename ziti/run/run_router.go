@@ -77,7 +77,7 @@ func (self *RouterAction) Run(cmd *cobra.Command, args []string) {
 		WithField("revision", version.GetRevision()).
 		WithField("configFile", args[0])
 
-	config, err := router.LoadConfig(args[0])
+	config, err := env.LoadConfig(args[0])
 	if err != nil {
 		startLogger.WithError(err).Error("error loading ziti router config")
 		panic(err)
