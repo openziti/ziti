@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
@@ -87,7 +88,7 @@ func (self *Factory) DefaultRequestTimeout() time.Duration {
 }
 
 type XrctrlFactory interface {
-	xgress.Factory
+	xgress_router.Factory
 	env.Xrctrl
 }
 
@@ -110,7 +111,7 @@ func NewV1Factory(env env.RouterEnv, routerConfig *env.Config, stateManager stat
 }
 
 // CreateListener creates a new Edge Tunnel Xgress listener
-func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	self.env.MarkRouterDataModelRequired()
 
 	options := &Options{}
@@ -125,7 +126,7 @@ func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.List
 }
 
 // CreateDialer creates a new Edge Xgress dialer
-func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {
 	self.env.MarkRouterDataModelRequired()
 
 	options := &Options{}

@@ -13,6 +13,7 @@ import (
 	"github.com/openziti/ziti/router/handler_xgress"
 	metrics2 "github.com/openziti/ziti/router/metrics"
 	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -140,6 +141,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 
 	fwdOptions := env.DefaultOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
+	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
 
 	link := newMirrorLink(fwd)
 
@@ -157,7 +159,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgress.DefaultOptions(), nil)
-	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd))
+	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd, acker))
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)
@@ -218,6 +220,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 
 	fwdOptions := env.DefaultOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
+	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
 
 	link := newMirrorLink(fwd)
 
@@ -235,7 +238,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgOptions, nil)
-	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd))
+	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd, acker))
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)

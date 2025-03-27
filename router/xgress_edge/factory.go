@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/ziti/router/internal/apiproxy"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
@@ -159,7 +160,7 @@ func NewFactory(routerConfig *env.Config, env env.RouterEnv, stateManager state.
 }
 
 // CreateListener creates a new Edge Xgress listener
-func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	if !factory.enabled {
 		return nil, errors.New("edge listener enabled but required configuration section [edge] is missing")
 	}
@@ -187,7 +188,7 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 }
 
 // CreateDialer creates a new Edge Xgress dialer
-func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {
 	if !factory.enabled {
 		return nil, errors.New("edge listener enabled but required configuration section [edge] is missing")
 	}

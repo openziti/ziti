@@ -20,6 +20,7 @@ import (
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/controller/config"
 	env2 "github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/zitirest"
 	"io"
 	"net"
@@ -70,7 +71,6 @@ import (
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/enroll"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_edge"
 	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	"github.com/pkg/errors"
@@ -550,10 +550,10 @@ func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*env2.Config)) *router.Ro
 	ctx.routers = append(ctx.routers, newRouter)
 
 	xgressEdgeFactory := xgress_edge.NewFactory(config, newRouter, newRouter.GetStateManager())
-	xgress.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
+	xgress_router.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
 
 	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(newRouter, config, newRouter.GetStateManager())
-	xgress.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
+	xgress_router.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
 
 	ctx.Req.NoError(newRouter.RegisterXrctrl(xgressEdgeFactory))
 	ctx.Req.NoError(newRouter.RegisterXrctrl(xgressEdgeTunnelFactory))

@@ -5,13 +5,11 @@ import (
 	"sync/atomic"
 )
 
-var ackTxMeter metrics.Meter
 var ackRxMeter metrics.Meter
 var droppedPayloadsMeter metrics.Meter
 var retransmissions metrics.Meter
 var retransmissionFailures metrics.Meter
 
-var ackFailures metrics.Meter
 var payloadWriteTimer metrics.Timer
 var duplicateAcksMeter metrics.Meter
 var duplicatePayloadsMeter metrics.Meter
@@ -31,8 +29,6 @@ func InitMetrics(registry metrics.Registry) {
 	retransmissions = registry.Meter("xgress.retransmissions")
 	retransmissionFailures = registry.Meter("xgress.retransmission_failures")
 	ackRxMeter = registry.Meter("xgress.rx.acks")
-	ackTxMeter = registry.Meter("xgress.tx.acks")
-	ackFailures = registry.Meter("xgress.ack_failures")
 	payloadWriteTimer = registry.Timer("xgress.tx_write_time")
 	duplicateAcksMeter = registry.Meter("xgress.ack_duplicates")
 	duplicatePayloadsMeter = registry.Meter("xgress.payload_duplicates")

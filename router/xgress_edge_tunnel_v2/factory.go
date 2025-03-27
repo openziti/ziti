@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 	"strings"
 	"sync/atomic"
@@ -101,8 +102,7 @@ func NewFactory(env env.RouterEnv, routerConfig *env.Config, stateManager state.
 }
 
 // CreateListener creates a new Edge Tunnel Xgress listener
-func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
-	self.hostedServices.Start()
+func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	self.env.MarkRouterDataModelRequired()
 
 	options := &Options{}
@@ -117,7 +117,7 @@ func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.List
 }
 
 // CreateDialer creates a new Edge Xgress dialer
-func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {
 	if self.dialerInitialized.CompareAndSwap(false, true) {
 		self.env.MarkRouterDataModelRequired()
 

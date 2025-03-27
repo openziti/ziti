@@ -52,6 +52,7 @@ import (
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_proxy"
 	"github.com/openziti/ziti/router/xgress_proxy_udp"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/router/xgress_transport"
 	"github.com/openziti/ziti/router/xgress_transport_udp"
 	"github.com/openziti/ziti/router/xlink"
@@ -82,7 +83,7 @@ type Router struct {
 	xlinkListeners      []xlink.Listener
 	xlinkDialers        []xlink.Dialer
 	xlinkRegistry       xlink.Registry
-	xgressListeners     []xgress.Listener
+	xgressListeners     []xgress_router.Listener
 	linkDialerPool      goroutines.Pool
 	rateLimiterPool     goroutines.Pool
 	ctrlRateLimiter     rate.AdaptiveRateLimitTracker
@@ -245,7 +246,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.forwarder.StartScanner(router.ctrls)
 
 	xgress.InitPayloadIngester(closeNotify)
-	router.ackSender = xgress.NewAcker(router.forwarder, metricsRegistry, closeNotify)
+	router.ackSender = xgress_router.NewAcker(router.forwarder, metricsRegistry, closeNotify)
 	xgress.InitRetransmitter(router.forwarder, router.forwarder, metricsRegistry, closeNotify)
 
 	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, router.forwarder, router)
@@ -465,10 +466,10 @@ func (self *Router) registerComponents() error {
 
 	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, linkTransportConfig, self.xlinkRegistry, self.metricsRegistry)
 
-	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
-	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self.ctrls))
-	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
-	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self.ctrls))
+	xgress_router.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
+	xgress_router.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self.ctrls))
+	xgress_router.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
+	xgress_router.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self.ctrls))
 
 	xwo := xweb.InstanceOptions{
 		InstanceValidators: []xweb.InstanceValidator{func(config *xweb.InstanceConfig) error {
@@ -580,7 +581,7 @@ func (self *Router) setDefaultDialerBindings() {
 
 func (self *Router) startXgressListeners() {
 	for _, binding := range self.config.Listeners {
-		factory, err := xgress.GlobalRegistry().Factory(binding.Name)
+		factory, err := xgress_router.GlobalRegistry().Factory(binding.Name)
 		if err != nil {
 			logrus.Fatalf("error getting xgress factory [%s] (%v)", binding.Name, err)
 		}

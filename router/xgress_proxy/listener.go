@@ -25,10 +25,11 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"io"
 )
 
-func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options, tcfg transport.Configuration, service string) xgress.Listener {
+func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options, tcfg transport.Configuration, service string) xgress_router.Listener {
 	return &listener{
 		id:      id,
 		ctrl:    ctrl,
@@ -62,8 +63,8 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 func (listener *listener) handleConnect(peer transport.Conn, bindHandler xgress.BindHandler) {
 	conn := &proxyXgressConnection{peer}
 	log := pfxlog.ContextLogger(conn.LogContext())
-	request := &xgress.Request{ServiceId: listener.service}
-	response := xgress.CreateCircuit(listener.ctrl, conn, request, bindHandler, listener.options)
+	request := &xgress_router.Request{ServiceId: listener.service}
+	response := xgress_router.CreateCircuit(listener.ctrl, conn, request, bindHandler, listener.options)
 	if !response.Success {
 		log.Errorf("error creating circuit (%s)", response.Message)
 		_ = peer.Close()

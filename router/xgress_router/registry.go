@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package xgress
+package xgress_router
 
 import (
 	"fmt"

@@ -26,10 +26,10 @@ import (
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/debugops"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_edge"
 	"github.com/openziti/ziti/router/xgress_edge_transport"
 	"github.com/openziti/ziti/router/xgress_edge_tunnel"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net"
@@ -91,16 +91,16 @@ func (self *RouterAction) Run(cmd *cobra.Command, args []string) {
 	r := router.Create(config, version.GetCmdBuildInfo())
 
 	xgressEdgeFactory := xgress_edge.NewFactory(config, r, r.GetStateManager())
-	xgress.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
+	xgress_router.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
 	if err := r.RegisterXrctrl(xgressEdgeFactory); err != nil {
 		logrus.WithError(err).Panic("error registering edge in framework")
 	}
 
 	xgressEdgeTransportFactory := xgress_edge_transport.NewFactory()
-	xgress.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
+	xgress_router.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
 
 	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(r, config, r.GetStateManager())
-	xgress.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
+	xgress_router.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
 	if err := r.RegisterXrctrl(xgressEdgeTunnelFactory); err != nil {
 		logrus.WithError(err).Panic("error registering edge tunnel in framework")
 	}
