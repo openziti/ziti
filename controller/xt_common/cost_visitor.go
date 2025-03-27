@@ -1,6 +1,7 @@
 package xt_common
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/controller/xt"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -13,6 +14,7 @@ type TerminatorCosts struct {
 	CircuitCount uint32
 	FailureCost  uint32
 	CachedCost   uint32
+	LastFailure  time.Time
 }
 
 func (self *TerminatorCosts) cache(circuitCost uint32) {
@@ -94,6 +96,7 @@ func (self *CostVisitor) VisitDialFailed(event xt.TerminatorEvent) {
 			cost.FailureCost = math.MaxUint32
 		}
 		cost.cache(self.CircuitCost)
+		cost.LastFailure = time.Now()
 		return cost
 	})
 }
@@ -164,6 +167,52 @@ func (self *CostVisitor) CreditAll(credit uint8) {
 				cost.FailureCost -= uint32(credit)
 			}
 			cost.cache(self.CircuitCost)
+			return cost
+		})
+	}
+}
+
+func (self *CostVisitor) CreditOverTimeExponential(period time.Duration, exponentBasis time.Duration) *time.Ticker {
+	ticker := time.NewTicker(period)
+	go func() {
+		for range ticker.C {
+			self.CreditAllExponential(exponentBasis)
+		}
+	}()
+	return ticker
+}
+
+func (self *CostVisitor) CreditAllExponential(exponentBasis time.Duration) {
+	var keys []string
+	self.Costs.IterCb(func(key string, _ *TerminatorCosts) {
+		keys = append(keys, key)
+	})
+
+	for _, key := range keys {
+		self.Costs.Upsert(key, nil, func(exist bool, valueInMap *TerminatorCosts, newValue *TerminatorCosts) *TerminatorCosts {
+			cost := valueInMap
+			if !exist {
+				cost = &TerminatorCosts{}
+				xt.GlobalCosts().SetDynamicCost(key, cost)
+			} else if cost.FailureCost > 0 {
+				credit64 := uint64(math.Pow(2, float64(time.Since(cost.LastFailure)/exponentBasis)))
+				if credit64 > math.MaxUint32 {
+					credit64 = math.MaxUint32
+				}
+				if credit64 < 10 {
+					credit64 = 10
+				}
+
+				credit32 := uint32(credit64)
+				if credit32 > cost.FailureCost {
+					cost.FailureCost = 0
+				} else {
+					cost.FailureCost -= credit32
+				}
+
+				pfxlog.Logger().Tracef("credit over time, id: %s, credit: %v, new failure cost: %v", key, credit32, cost.FailureCost)
+				cost.cache(self.CircuitCost)
+			}
 			return cost
 		})
 	}
