@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/metrics"
@@ -286,7 +285,7 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	options := DefaultOptions()
 	options.Mtu = 1400
 
-	circuitId := uuid.NewString()
+	circuitId := "circuit1"
 	srcTestConn := newTestXgConn(10_000, 100_000, 0)
 	dstTestConn := newTestXgConn(10_000, 0, 100_000)
 
@@ -348,7 +347,7 @@ func Test_PayloadSize(t *testing.T) {
 
 	h := metricsRegistry.Histogram("msg_size")
 
-	circuitId := uuid.NewString()
+	circuitId := "circuit2"
 	srcTestConn := newTestXgConn(200, 100_000, 0)
 	dstTestConn := newTestXgConn(200, 0, 100_000)
 

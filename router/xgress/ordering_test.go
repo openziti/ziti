@@ -42,20 +42,6 @@ func (conn *testConn) HandleControlMsg(ControlType, channel.Headers, ControlRece
 	return nil
 }
 
-type noopForwarder struct{}
-
-func (n noopForwarder) ForwardPayload(Address, *Payload) error {
-	return nil
-}
-
-func (n noopForwarder) ForwardAcknowledgement(Address, *Acknowledgement) error {
-	return nil
-}
-
-func (n noopForwarder) RetransmitPayload(Address, *Payload) error {
-	return nil
-}
-
 type noopReceiveHandler struct {
 	payloadIngester *PayloadIngester
 }

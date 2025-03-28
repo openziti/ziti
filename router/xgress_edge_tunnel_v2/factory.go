@@ -103,6 +103,7 @@ func NewFactory(env env.RouterEnv, routerConfig *env.Config, stateManager state.
 
 // CreateListener creates a new Edge Tunnel Xgress listener
 func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
+	self.hostedServices.Start()
 	self.env.MarkRouterDataModelRequired()
 
 	options := &Options{}
