@@ -90,14 +90,14 @@ func (buffer *LinkReceiveBuffer) getLastBufferSizeSent() uint32 {
 	return atomic.LoadUint32(&buffer.lastBufferSizeSent)
 }
 
-func (buffer *LinkReceiveBuffer) Inspect() *inspect.XgressRecvBufferDetail {
+func (buffer *LinkReceiveBuffer) Inspect(x *Xgress) *inspect.XgressRecvBufferDetail {
 	timeout := time.After(100 * time.Millisecond)
 	inspectEvent := &receiveBufferInspectEvent{
 		buffer:         buffer,
 		notifyComplete: make(chan *inspect.XgressRecvBufferDetail, 1),
 	}
 
-	if payloadIngester.inspect(inspectEvent, timeout) {
+	if x.dataPlane.GetPayloadIngester().inspect(inspectEvent, timeout) {
 		select {
 		case result := <-inspectEvent.notifyComplete:
 			return result

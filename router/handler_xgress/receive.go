@@ -25,16 +25,18 @@ import (
 )
 
 type dataPlaneHandler struct {
-	acker         xgress.AckSender
-	forwarder     *forwarder.Forwarder
-	retransmitter *xgress.Retransmitter
+	acker           xgress.AckSender
+	forwarder       *forwarder.Forwarder
+	retransmitter   *xgress.Retransmitter
+	payloadIngester *xgress.PayloadIngester
 }
 
-func NewXgressDataPlaneHandler(forwarder *forwarder.Forwarder, acker xgress.AckSender, retransmitter *xgress.Retransmitter) xgress.DataPlaneHandler {
+func NewXgressDataPlaneHandler(forwarder *forwarder.Forwarder, acker xgress.AckSender, retransmitter *xgress.Retransmitter, payloadIngester *xgress.PayloadIngester) xgress.DataPlaneHandler {
 	return &dataPlaneHandler{
-		forwarder:     forwarder,
-		acker:         acker,
-		retransmitter: retransmitter,
+		forwarder:       forwarder,
+		acker:           acker,
+		retransmitter:   retransmitter,
+		payloadIngester: payloadIngester,
 	}
 }
 
@@ -64,4 +66,8 @@ func (xrh *dataPlaneHandler) SendAcknowledgement(ack *xgress.Acknowledgement, ad
 
 func (xrh *dataPlaneHandler) GetRetransmitter() *xgress.Retransmitter {
 	return xrh.retransmitter
+}
+
+func (xrh *dataPlaneHandler) GetPayloadIngester() *xgress.PayloadIngester {
+	return xrh.payloadIngester
 }

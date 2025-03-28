@@ -57,10 +57,16 @@ func (n noopForwarder) RetransmitPayload(Address, *Payload) error {
 	return nil
 }
 
-type noopReceiveHandler struct{}
+type noopReceiveHandler struct {
+	payloadIngester *PayloadIngester
+}
 
 func (n noopReceiveHandler) GetRetransmitter() *Retransmitter {
 	return nil
+}
+
+func (n noopReceiveHandler) GetPayloadIngester() *PayloadIngester {
+	return n.payloadIngester
 }
 
 func (n noopReceiveHandler) SendAcknowledgement(*Acknowledgement, Address) {}
@@ -73,7 +79,6 @@ func Test_Ordering(t *testing.T) {
 	closeNotify := make(chan struct{})
 	registryConfig := metrics.DefaultUsageRegistryConfig("test", closeNotify)
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
-	InitPayloadIngester(closeNotify)
 	InitMetrics(metricsRegistry)
 
 	conn := &testConn{
@@ -82,7 +87,9 @@ func Test_Ordering(t *testing.T) {
 	}
 
 	x := NewXgress("test", "ctrl", "test", conn, Initiator, DefaultOptions(), nil)
-	x.dataPlane = noopReceiveHandler{}
+	x.dataPlane = noopReceiveHandler{
+		payloadIngester: NewPayloadIngester(closeNotify),
+	}
 	go x.tx()
 
 	defer x.Close()

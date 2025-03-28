@@ -73,6 +73,7 @@ type DataPlaneHandler interface {
 	SendControlMessage(control *Control, x *Xgress)
 	SendAcknowledgement(ack *Acknowledgement, address Address)
 	GetRetransmitter() *Retransmitter
+	GetPayloadIngester() *PayloadIngester
 }
 
 // CloseHandler is invoked by an xgress when the connected peer terminates the communication.
@@ -326,7 +327,7 @@ func (self *Xgress) SendPayload(payload *Payload, _ time.Duration, _ PayloadType
 		pfxlog.ContextLogger(self.Label()).Debug("received end of circuit Payload")
 	}
 	atomic.StoreInt64(&self.timeOfLastRxFromLink, info.NowInMilliseconds())
-	payloadIngester.ingest(payload, self)
+	self.dataPlane.GetPayloadIngester().ingest(payload, self)
 
 	return nil
 }
@@ -382,7 +383,7 @@ func (self *Xgress) nextPayload() *Payload {
 	}
 
 	// nothing was available in the txQueue, request more, then wait on txQueue
-	payloadIngester.payloadSendReq <- self
+	self.dataPlane.GetPayloadIngester().payloadSendReq <- self
 
 	select {
 	case payload := <-self.txQueue:
@@ -836,7 +837,7 @@ func (self *Xgress) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 		Originator:            self.originator.String(),
 		TimeSinceLastLinkRx:   timeSinceLastRxFromLink.String(),
 		SendBufferDetail:      self.payloadBuffer.Inspect(),
-		RecvBufferDetail:      self.linkRxBuffer.Inspect(),
+		RecvBufferDetail:      self.linkRxBuffer.Inspect(self),
 		XgressPointer:         fmt.Sprintf("%p", self),
 		LinkSendBufferPointer: fmt.Sprintf("%p", self.payloadBuffer),
 		Sequence:              self.GetSequence(),
