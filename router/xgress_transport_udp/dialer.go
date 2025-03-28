@@ -18,19 +18,20 @@ package xgress_transport_udp
 
 import (
 	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 	"net"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_udp"
-	"github.com/openziti/identity"
 )
 
-func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
+func (txd *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error) {
 	destination := params.GetDestination()
 	circuitId := params.GetCircuitId()
 	address := params.GetAddress()

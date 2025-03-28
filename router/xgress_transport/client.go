@@ -18,9 +18,9 @@ package xgress_transport
 
 import (
 	"errors"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/xgress_router"
 )
 
 // ClientDial dials the given xgress address and handles authentication, returning an authed connection or an error
@@ -30,15 +30,15 @@ func ClientDial(addr transport.Address, id *identity.TokenId, serviceId *identit
 		return nil, err
 	}
 
-	request := &xgress.Request{
+	request := &xgress_router.Request{
 		Id:        id.Token,
 		ServiceId: serviceId.Token,
 	}
-	err = xgress.SendRequest(request, peer)
+	err = xgress_router.SendRequest(request, peer)
 	if err != nil {
 		return nil, err
 	}
-	response, err := xgress.ReceiveResponse(peer)
+	response, err := xgress_router.ReceiveResponse(peer)
 	if err != nil {
 		return nil, err
 	}

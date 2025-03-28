@@ -19,7 +19,6 @@ package xlink_transport
 import (
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/xgress"
 	"sync/atomic"
@@ -147,12 +146,12 @@ func (self *impl) IsClosed() bool {
 	return self.ch.IsClosed()
 }
 
-func (self *impl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
+func (self *impl) InspectCircuit(detail *xgress.CircuitInspectDetail) {
 	detail.LinkDetails[self.id] = self.InspectLink()
 }
 
-func (self *impl) InspectLink() *inspect.LinkInspectDetail {
-	return &inspect.LinkInspectDetail{
+func (self *impl) InspectLink() *xgress.LinkInspectDetail {
+	return &xgress.LinkInspectDetail{
 		Id:          self.Id(),
 		Iteration:   self.Iteration(),
 		Key:         self.key,

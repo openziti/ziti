@@ -12,6 +12,7 @@ import (
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_edge_tunnel_v2"
+	"github.com/openziti/ziti/router/xgress_router"
 	"os"
 	"time"
 )
@@ -124,7 +125,7 @@ func NewFactoryWrapper(env env.RouterEnv, routerConfig *env.Config, stateManager
 		}
 
 		wrapper.delegate.Store(factory)
-		xgress.GlobalRegistry().Register(common.TunnelBinding, factory)
+		xgress_router.GlobalRegistry().Register(common.TunnelBinding, factory)
 
 		done := false
 		for !done {
@@ -163,7 +164,7 @@ func NewFactoryWrapper(env env.RouterEnv, routerConfig *env.Config, stateManager
 	return wrapper
 }
 
-func (self *FactoryWrapper) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+func (self *FactoryWrapper) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	self.listenerOptions <- optionsData
 	return &delegatingListener{
 		factory: self,
@@ -171,7 +172,7 @@ func (self *FactoryWrapper) CreateListener(optionsData xgress.OptionsData) (xgre
 	}, nil
 }
 
-func (self *FactoryWrapper) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+func (self *FactoryWrapper) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {
 	// wait till delegate is created. Once delegate is created, we should also be calling CreateDialer on
 	// the delegate directly, as the factory will get replaced in the registry
 	start := time.Now()
@@ -189,7 +190,7 @@ func (self *FactoryWrapper) CreateDialer(optionsData xgress.OptionsData) (xgress
 type delegatingListener struct {
 	factory  *FactoryWrapper
 	options  xgress.OptionsData
-	delegate concurrenz.AtomicValue[xgress.Listener]
+	delegate concurrenz.AtomicValue[xgress_router.Listener]
 }
 
 type listenArgs struct {

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/sirupsen/logrus"
 	"time"
 
@@ -64,7 +65,7 @@ type listener struct {
 }
 
 // newListener creates a new xgress edge listener
-func newListener(id *identity.TokenId, factory *Factory, options *Options, headers map[int32][]byte) xgress.Listener {
+func newListener(id *identity.TokenId, factory *Factory, options *Options, headers map[int32][]byte) xgress_router.Listener {
 	return &listener{
 		id:      id,
 		factory: factory,

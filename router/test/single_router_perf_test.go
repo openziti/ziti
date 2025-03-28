@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/handler_xgress"
 	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/stretchr/testify/require"
 	"io"
 	"sync/atomic"
@@ -148,13 +149,17 @@ func Test_SingleRouterPerf(t *testing.T) {
 	registryConfig := metrics.DefaultUsageRegistryConfig("router", closeNotify)
 	registry := metrics.NewUsageRegistry(registryConfig)
 	registry.StartReporting(&eventSink{}, time.Minute, 10)
-	fwd := forwarder.NewForwarder(registry, testFaultReceiver{}, env.DefaultOptions(), closeNotify)
-	xgress.InitPayloadIngester(closeNotify)
-	xgress.InitAcker(fwd, registry, closeNotify)
-	xgress.InitMetrics(registry)
-	xgress.InitRetransmitter(fwd, fwd, registry, closeNotify)
+	fwd := forwarder.NewForwarder(registry, testFaultReceiver{}, env.DefaultForwarderOptions(), closeNotify)
 
-	bindHandler := handler_xgress.NewBindHandler(handler_xgress.NewReceiveHandler(fwd), testXgCloseHandler{}, fwd)
+	dataPlaneHandler := handler_xgress.NewXgressDataPlaneHandler(handler_xgress.DataPlaneHandlerConfig{
+		Acker:           xgress_router.NewAcker(fwd, registry, closeNotify),
+		Forwarder:       fwd,
+		Retransmitter:   xgress.NewRetransmitter(fwd, fwd, registry, closeNotify),
+		PayloadIngester: xgress.NewPayloadIngester(closeNotify),
+		Metrics:         xgress.NewMetrics(registry),
+	})
+
+	bindHandler := handler_xgress.NewBindHandler(dataPlaneHandler, testXgCloseHandler{}, fwd)
 
 	srcXg := xgress.NewXgress("test", "ctrl", "src", srcConn, xgress.Initiator, options, nil)
 	bindHandler.HandleXgressBind(srcXg)

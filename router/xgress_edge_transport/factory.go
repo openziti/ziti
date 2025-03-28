@@ -18,6 +18,7 @@ package xgress_edge_transport
 
 import (
 	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 )
 
@@ -26,15 +27,15 @@ const BindingName = "edge_transport"
 type factory struct{}
 
 // NewFactory returns a new Transport Xgress factory
-func NewFactory() xgress.Factory {
+func NewFactory() xgress_router.Factory {
 	return &factory{}
 }
 
-func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	return nil, errors.New("listening not supported")
 }
 
-func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {
 	options, err := xgress.LoadOptions(optionsData)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")

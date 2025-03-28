@@ -18,6 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress_router"
 	"net"
 	"syscall"
 	"time"
@@ -31,7 +32,6 @@ import (
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/router/forwarder"
-	"github.com/openziti/ziti/router/handler_xgress"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -158,19 +158,14 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 
 	log.Debug("route request received")
 
-	if factory, err := xgress.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
+	if factory, err := xgress_router.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
 		if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
-			bindHandler := handler_xgress.NewBindHandler(
-				handler_xgress.NewReceiveHandler(rh.forwarder),
-				handler_xgress.NewCloseHandler(rh.env.GetNetworkControllers(), rh.forwarder),
-				rh.forwarder)
-
 			if rh.forwarder.Options.XgressDialDwellTime > 0 {
 				log.Infof("dwelling [%s] on dial", rh.forwarder.Options.XgressDialDwellTime)
 				time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
 			}
 
-			params := newDialParams(rh.ch.Id(), route, bindHandler, ctx, deadline)
+			params := newDialParams(rh.ch.Id(), route, rh.env.GetXgressBindHandler(), ctx, deadline)
 			if peerData, err := dialer.Dial(params); err == nil {
 				rh.completeRoute(msg, attempt, route, peerData, log)
 			} else {

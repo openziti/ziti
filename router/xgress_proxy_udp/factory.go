@@ -20,14 +20,15 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 )
 
-func NewFactory(ctrl env.NetworkControllers) xgress.Factory {
+func NewFactory(ctrl env.NetworkControllers) xgress_router.Factory {
 	return &factory{ctrl: ctrl}
 }
 
-func (f *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+func (f *factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	options, err := xgress.LoadOptions(optionsData)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")
@@ -41,7 +42,7 @@ func (f *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listene
 	return newListener(service, f.ctrl, options), nil
 }
 
-func (f *factory) CreateDialer(_ xgress.OptionsData) (xgress.Dialer, error) {
+func (f *factory) CreateDialer(_ xgress.OptionsData) (xgress_router.Dialer, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 

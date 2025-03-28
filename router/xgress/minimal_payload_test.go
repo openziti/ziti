@@ -7,7 +7,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/controller/idgen"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	metrics2 "github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
@@ -146,11 +145,14 @@ func (self *testXgConn) WritePayload(buf []byte, m map[uint8][]byte) (int, error
 	return len(buf), nil
 }
 
-func (self *testXgConn) HandleControlMsg(controlType ControlType, headers channel.Headers, responder ControlReceiver) error {
+func (self *testXgConn) HandleControlMsg(ControlType, channel.Headers, ControlReceiver) error {
 	panic("implement me")
 }
 
 type testIntermediary struct {
+	acker              AckSender
+	rtx                *Retransmitter
+	payloadIngester    *PayloadIngester
 	circuitId          string
 	dest               *Xgress
 	msgs               channel.MessageStrategy
@@ -159,7 +161,23 @@ type testIntermediary struct {
 	bytesCallback      func([]byte)
 }
 
-func (self *testIntermediary) HandleXgressReceive(payload *Payload, x *Xgress) {
+func (self *testIntermediary) GetRetransmitter() *Retransmitter {
+	return self.rtx
+}
+
+func (self *testIntermediary) GetPayloadIngester() *PayloadIngester {
+	return self.payloadIngester
+}
+
+func (self *testIntermediary) GetMetrics() Metrics {
+	return noopMetrics{}
+}
+
+func (self *testIntermediary) SendAcknowledgement(ack *Acknowledgement, address Address) {
+	self.acker.SendAck(ack, address)
+}
+
+func (self *testIntermediary) SendPayload(payload *Payload, x *Xgress) {
 	m := payload.Marshall()
 	self.payloadTransformer.Tx(m, nil)
 	b, err := self.msgs.GetMarshaller()(m)
@@ -214,7 +232,7 @@ func (self *testIntermediary) validateMessage(m *channel.Message) error {
 	return nil
 }
 
-func (self *testIntermediary) HandleControlReceive(control *Control, x *Xgress) {
+func (self *testIntermediary) SendControlMessage(control *Control, x *Xgress) {
 	panic("implement me")
 }
 
@@ -222,7 +240,7 @@ type testAcker struct {
 	destinations cmap.ConcurrentMap[string, *Xgress]
 }
 
-func (self *testAcker) ack(ack *Acknowledgement, address Address) {
+func (self *testAcker) SendAck(ack *Acknowledgement, address Address) {
 	dest, _ := self.destinations.Get(string(address))
 	if dest != nil {
 		if err := dest.SendAcknowledgement(ack); err != nil {
@@ -254,24 +272,20 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
 
 	metricsRegistry := metrics.NewRegistry("test", nil)
-	InitMetrics(metricsRegistry)
 
 	closeNotify := make(chan struct{})
 	defer func() {
 		close(closeNotify)
 	}()
 
-	InitPayloadIngester(closeNotify)
-	InitRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
+	payloadIngester := NewPayloadIngester(closeNotify)
+	rtx := NewRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
+	ackHandler := &testAcker{destinations: cmap.New[*Xgress]()}
 
-	ackHandler := &testAcker{
-		destinations: cmap.New[*Xgress](),
-	}
-	acker = ackHandler
 	options := DefaultOptions()
 	options.Mtu = 1400
 
-	circuitId := idgen.New()
+	circuitId := "circuit1"
 	srcTestConn := newTestXgConn(10_000, 100_000, 0)
 	dstTestConn := newTestXgConn(10_000, 0, 100_000)
 
@@ -282,16 +296,22 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	ackHandler.destinations.Set("dst", srcXg)
 
 	msgStrategy := channel.DatagramMessageStrategy(UnmarshallPacketPayload)
-	srcXg.receiveHandler = &testIntermediary{
-		circuitId: circuitId,
-		dest:      dstXg,
-		msgs:      msgStrategy,
+	srcXg.dataPlane = &testIntermediary{
+		acker:           ackHandler,
+		rtx:             rtx,
+		payloadIngester: payloadIngester,
+		circuitId:       circuitId,
+		dest:            dstXg,
+		msgs:            msgStrategy,
 	}
 
-	dstXg.receiveHandler = &testIntermediary{
-		circuitId: circuitId,
-		dest:      srcXg,
-		msgs:      msgStrategy,
+	dstXg.dataPlane = &testIntermediary{
+		acker:           ackHandler,
+		rtx:             rtx,
+		payloadIngester: payloadIngester,
+		circuitId:       circuitId,
+		dest:            srcXg,
+		msgs:            msgStrategy,
 	}
 
 	srcXg.Start()
@@ -312,26 +332,22 @@ func Test_PayloadSize(t *testing.T) {
 	pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
 
 	metricsRegistry := metrics.NewRegistry("test", nil)
-	InitMetrics(metricsRegistry)
 
 	closeNotify := make(chan struct{})
 	defer func() {
 		close(closeNotify)
 	}()
 
-	InitPayloadIngester(closeNotify)
-	InitRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
+	payloadIngester := NewPayloadIngester(closeNotify)
+	rtx := NewRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
+	ackHandler := &testAcker{destinations: cmap.New[*Xgress]()}
 
-	ackHandler := &testAcker{
-		destinations: cmap.New[*Xgress](),
-	}
-	acker = ackHandler
 	options := DefaultOptions()
 	//options.Mtu = 1435
 
 	h := metricsRegistry.Histogram("msg_size")
 
-	circuitId := idgen.New()
+	circuitId := "circuit2"
 	srcTestConn := newTestXgConn(200, 100_000, 0)
 	dstTestConn := newTestXgConn(200, 0, 100_000)
 
@@ -342,19 +358,25 @@ func Test_PayloadSize(t *testing.T) {
 	ackHandler.destinations.Set("dst", srcXg)
 
 	msgStrategy := channel.DatagramMessageStrategy(UnmarshallPacketPayload)
-	srcXg.receiveHandler = &testIntermediary{
-		circuitId: circuitId,
-		dest:      dstXg,
-		msgs:      msgStrategy,
+	srcXg.dataPlane = &testIntermediary{
+		acker:           ackHandler,
+		rtx:             rtx,
+		payloadIngester: payloadIngester,
+		circuitId:       circuitId,
+		dest:            dstXg,
+		msgs:            msgStrategy,
 		bytesCallback: func(bytes []byte) {
 			h.Update(int64(len(bytes)))
 		},
 	}
 
-	dstXg.receiveHandler = &testIntermediary{
-		circuitId: circuitId,
-		dest:      srcXg,
-		msgs:      msgStrategy,
+	dstXg.dataPlane = &testIntermediary{
+		acker:           ackHandler,
+		rtx:             rtx,
+		payloadIngester: payloadIngester,
+		circuitId:       circuitId,
+		dest:            srcXg,
+		msgs:            msgStrategy,
 	}
 
 	srcXg.Start()

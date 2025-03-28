@@ -14,20 +14,31 @@
 	limitations under the License.
 */
 
-package xgress_geneve
+package xgress_router
 
 import (
-	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/ziti/router/xgress_router"
-	"github.com/pkg/errors"
+	"errors"
+	"github.com/openziti/transport/v2"
 )
 
-type Factory struct{}
-
-func (f Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
-	return &listener{}, nil
+func ReadUntilNewline(peer transport.Conn) ([]byte, error) {
+	return ReadUntil(peer, '\n')
 }
 
-func (f Factory) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {
-	return nil, errors.New("dialer not supported")
+func ReadUntil(peer transport.Conn, stop byte) ([]byte, error) {
+	buffer := make([]byte, 0)
+	done := false
+	for !done {
+		next := make([]byte, 1)
+		n, err := peer.Read(next)
+		if err != nil {
+			return nil, err
+		}
+		if n != 1 {
+			return nil, errors.New("short read")
+		}
+		buffer = append(buffer, next[:n]...)
+		done = buffer[len(buffer)-1] == stop
+	}
+	return buffer, nil
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"io"
 )
 
@@ -36,7 +37,7 @@ type listener struct {
 	socket  concurrenz.AtomicValue[io.Closer]
 }
 
-func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options, tcfg transport.Configuration) xgress.Listener {
+func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options, tcfg transport.Configuration) xgress_router.Listener {
 	return &listener{
 		id:      id,
 		ctrl:    ctrl,
@@ -78,10 +79,10 @@ func (listener *listener) handleConnect(peer transport.Conn, bindHandler xgress.
 	conn := &transportXgressConn{Conn: peer}
 	log := pfxlog.ContextLogger(conn.LogContext())
 
-	request, err := xgress.ReceiveRequest(peer)
+	request, err := xgress_router.ReceiveRequest(peer)
 	if err == nil {
-		response := xgress.CreateCircuit(listener.ctrl, conn, request, bindHandler, listener.options)
-		err = xgress.SendResponse(response, peer)
+		response := xgress_router.CreateCircuit(listener.ctrl, conn, request, bindHandler, listener.options)
+		err = xgress_router.SendResponse(response, peer)
 		if err != nil {
 			log.Errorf("error sending response (%s)", err)
 		}

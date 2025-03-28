@@ -18,10 +18,11 @@ package xgress_proxy_udp
 
 import (
 	"fmt"
+	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/router/xgress_udp"
-	"github.com/openziti/foundation/v2/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"net"
@@ -139,8 +140,8 @@ func (l *listener) rx() {
 }
 
 func (l *listener) handleConnect(session xgress_udp.Session) {
-	request := &xgress.Request{ServiceId: l.service}
-	response := xgress.CreateCircuit(l.ctrl, session, request, l.bindHandler, l.options)
+	request := &xgress_router.Request{ServiceId: l.service}
+	response := xgress_router.CreateCircuit(l.ctrl, session, request, l.bindHandler, l.options)
 	if response.Success {
 		session.SetState(xgress_udp.SessionStateEstablished)
 	} else {
@@ -156,7 +157,7 @@ func (l *listener) Close() error {
 	return nil
 }
 
-func newListener(service string, ctrl env.NetworkControllers, options *xgress.Options) xgress.Listener {
+func newListener(service string, ctrl env.NetworkControllers, options *xgress.Options) xgress_router.Listener {
 	return &listener{
 		service:   service,
 		ctrl:      ctrl,

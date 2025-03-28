@@ -34,7 +34,7 @@ type Scanner struct {
 	closeNotify <-chan struct{}
 }
 
-func newScanner(ctrls env.NetworkControllers, options *env.Options, closeNotify <-chan struct{}) *Scanner {
+func newScanner(ctrls env.NetworkControllers, options *env.ForwarderOptions, closeNotify <-chan struct{}) *Scanner {
 	s := &Scanner{
 		ctrls:       ctrls,
 		interval:    options.IdleTxInterval,

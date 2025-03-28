@@ -19,6 +19,7 @@ package xgress_edge
 import (
 	"fmt"
 	"github.com/openziti/ziti/common/inspect"
+	"github.com/openziti/ziti/router/xgress_router"
 	"strings"
 	"time"
 
@@ -57,7 +58,7 @@ func (dialer *dialer) InspectTerminator(id string, destination string, fixInvali
 	return false, "terminator not found"
 }
 
-func newDialer(factory *Factory, options *Options) xgress.Dialer {
+func newDialer(factory *Factory, options *Options) xgress_router.Dialer {
 	txd := &dialer{
 		factory: factory,
 		options: options,
@@ -65,7 +66,7 @@ func newDialer(factory *Factory, options *Options) xgress.Dialer {
 	return txd
 }
 
-func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
+func (dialer *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error) {
 	terminatorAddress := params.GetDestination()
 	circuitId := params.GetCircuitId()
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(params.GetLogContext()).

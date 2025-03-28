@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"strings"
@@ -81,7 +81,7 @@ type inspectRequestContext struct {
 }
 
 func (context *inspectRequestContext) inspectXgressDialer(binding string, requested string) {
-	factory, _ := xgress.GlobalRegistry().Factory(binding)
+	factory, _ := xgress_router.GlobalRegistry().Factory(binding)
 	if factory == nil {
 		context.appendError("no xgress factory configured for edge binding")
 		return
@@ -93,7 +93,7 @@ func (context *inspectRequestContext) inspectXgressDialer(binding string, reques
 		return
 	}
 
-	inspectable, ok := dialer.(xgress.Inspectable)
+	inspectable, ok := dialer.(xgress_router.Inspectable)
 	if !ok {
 		context.appendError(fmt.Sprintf("%s dialer is not of type Inspectable", binding))
 		return
@@ -151,13 +151,13 @@ func (context *inspectRequestContext) processLocal() {
 			result := context.handler.env.GetNetworkControllers().Inspect()
 			context.handleJsonResponse(requested, result)
 		} else if lc == inspect.RouterIdentityConnectionStatusesKey {
-			factory, _ := xgress.GlobalRegistry().Factory("edge")
+			factory, _ := xgress_router.GlobalRegistry().Factory("edge")
 			if factory == nil {
 				context.appendError("no xgress factory configured for edge binding")
 				continue
 			}
 
-			inspectable, ok := factory.(xgress.Inspectable)
+			inspectable, ok := factory.(xgress_router.Inspectable)
 			if !ok {
 				context.appendError("edge factory is not of type Inspectable")
 				continue

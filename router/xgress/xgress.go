@@ -35,10 +35,6 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/identity"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/ziti/controller/xt"
 	"github.com/sirupsen/logrus"
 )
 
@@ -53,39 +49,8 @@ const (
 
 type Address string
 
-type Listener interface {
-	Listen(address string, bindHandler BindHandler) error
-	Close() error
-}
-
-type DialParams interface {
-	GetCtrlId() string
-	GetDestination() string
-	GetCircuitId() *identity.TokenId
-	GetAddress() Address
-	GetBindHandler() BindHandler
-	GetLogContext() logcontext.Context
-	GetDeadline() time.Time
-	GetCircuitTags() map[string]string
-}
-
-type Dialer interface {
-	Dial(params DialParams) (xt.PeerData, error)
-	IsTerminatorValid(id string, destination string) bool
-}
-
-type InspectableDialer interface {
-	Dialer
-	InspectTerminator(id string, destination string, fixInvalid bool) (bool, string)
-}
-
-type Inspectable interface {
-	Inspect(key string, timeout time.Duration) any
-}
-
-type Factory interface {
-	CreateListener(optionsData OptionsData) (Listener, error)
-	CreateDialer(optionsData OptionsData) (Dialer, error)
+type AckSender interface {
+	SendAck(ack *Acknowledgement, address Address)
 }
 
 type OptionsData map[interface{}]interface{}
@@ -99,13 +64,16 @@ type ControlReceiver interface {
 	HandleControlReceive(controlType ControlType, headers channel.Headers)
 }
 
-// ReceiveHandler is invoked by an xgress whenever data is received from the connected peer. Generally a ReceiveHandler
+// DataPlaneHandler is invoked by an xgress whenever messages need to be sent to the data plane. Generally a DataPlaneHandler
 // is implemented to connect the xgress to a data plane data transmission system.
-type ReceiveHandler interface {
-	// HandleXgressReceive is invoked when data is received from the connected xgress peer.
-	//
-	HandleXgressReceive(payload *Payload, x *Xgress)
-	HandleControlReceive(control *Control, x *Xgress)
+type DataPlaneHandler interface {
+	// SendPayload is invoked when data is received from the connected xgress peer.
+	SendPayload(payload *Payload, x *Xgress)
+	SendControlMessage(control *Control, x *Xgress)
+	SendAcknowledgement(ack *Acknowledgement, address Address)
+	GetRetransmitter() *Retransmitter
+	GetPayloadIngester() *PayloadIngester
+	GetMetrics() Metrics
 }
 
 // CloseHandler is invoked by an xgress when the connected peer terminates the communication.
@@ -138,6 +106,7 @@ type Connection interface {
 }
 
 type Xgress struct {
+	dataPlane            DataPlaneHandler
 	circuitId            string
 	ctrlId               string
 	address              Address
@@ -148,7 +117,6 @@ type Xgress struct {
 	closeNotify          chan struct{}
 	rxSequence           uint64
 	rxSequenceLock       sync.Mutex
-	receiveHandler       ReceiveHandler
 	payloadBuffer        *LinkSendBuffer
 	linkRxBuffer         *LinkReceiveBuffer
 	closeHandlers        []CloseHandler
@@ -178,7 +146,7 @@ func NewXgress(circuitId string, ctrlId string, address Address, peer Connection
 		closeNotify:          make(chan struct{}),
 		rxSequence:           0,
 		linkRxBuffer:         NewLinkReceiveBuffer(),
-		timeOfLastRxFromLink: info.NowInMilliseconds(),
+		timeOfLastRxFromLink: time.Now().UnixMilli(),
 		tags:                 tags,
 	}
 	result.payloadBuffer = NewLinkSendBuffer(result)
@@ -209,8 +177,8 @@ func (self *Xgress) IsTerminator() bool {
 	return self.originator == Terminator
 }
 
-func (self *Xgress) SetReceiveHandler(receiveHandler ReceiveHandler) {
-	self.receiveHandler = receiveHandler
+func (self *Xgress) SetDataPlaneHandler(dataPlaneHandler DataPlaneHandler) {
+	self.dataPlane = dataPlaneHandler
 }
 
 func (self *Xgress) AddCloseHandler(closeHandler CloseHandler) {
@@ -358,14 +326,14 @@ func (self *Xgress) SendPayload(payload *Payload, _ time.Duration, _ PayloadType
 	if payload.IsCircuitEndFlagSet() {
 		pfxlog.ContextLogger(self.Label()).Debug("received end of circuit Payload")
 	}
-	atomic.StoreInt64(&self.timeOfLastRxFromLink, info.NowInMilliseconds())
-	payloadIngester.ingest(payload, self)
+	atomic.StoreInt64(&self.timeOfLastRxFromLink, time.Now().UnixMilli())
+	self.dataPlane.GetPayloadIngester().ingest(payload, self)
 
 	return nil
 }
 
 func (self *Xgress) SendAcknowledgement(acknowledgement *Acknowledgement) error {
-	ackRxMeter.Mark(1)
+	self.dataPlane.GetMetrics().MarkAckReceived()
 	self.payloadBuffer.ReceiveAcknowledgement(acknowledgement)
 	return nil
 }
@@ -380,7 +348,7 @@ func (self *Xgress) HandleControlReceive(controlType ControlType, headers channe
 		CircuitId: self.circuitId,
 		Headers:   headers,
 	}
-	self.receiveHandler.HandleControlReceive(control, self)
+	self.dataPlane.SendControlMessage(control, self)
 }
 
 func (self *Xgress) payloadIngester(payload *Payload) {
@@ -415,7 +383,7 @@ func (self *Xgress) nextPayload() *Payload {
 	}
 
 	// nothing was available in the txQueue, request more, then wait on txQueue
-	payloadIngester.payloadSendReq <- self
+	self.dataPlane.GetPayloadIngester().payloadSendReq <- self
 
 	select {
 	case payload := <-self.txQueue:
@@ -481,7 +449,7 @@ func (self *Xgress) tx() {
 				self.Close()
 				return false
 			} else {
-				payloadWriteTimer.UpdateSince(start)
+				self.dataPlane.GetMetrics().PayloadWritten(time.Since(start))
 				payloadLogger.Debugf("payload sent [%s]", info.ByteCount(int64(n)))
 			}
 		}
@@ -812,7 +780,7 @@ func (self *Xgress) forwardPayload(payload *Payload) bool {
 		peekHandler.Rx(self, payload)
 	}
 
-	self.receiveHandler.HandleXgressReceive(payload, self)
+	self.dataPlane.SendPayload(payload, self)
 	sendCallback()
 	return true
 }
@@ -833,7 +801,7 @@ func (self *Xgress) PayloadReceived(payload *Payload) {
 	if self.originator == payload.GetOriginator() {
 		// a payload sent from this xgress has arrived back at this xgress, instead of the other end
 		log.Warn("ouroboros (circuit cycle) detected, dropping payload")
-	} else if self.linkRxBuffer.ReceiveUnordered(payload, self.Options.RxBufferSize) {
+	} else if self.linkRxBuffer.ReceiveUnordered(self, payload, self.Options.RxBufferSize) {
 		log.Debug("ready to acknowledge")
 
 		ack := NewAcknowledgement(self.circuitId, self.originator)
@@ -842,7 +810,7 @@ func (self *Xgress) PayloadReceived(payload *Payload) {
 		ack.RTT = payload.RTT
 
 		atomic.StoreUint32(&self.linkRxBuffer.lastBufferSizeSent, ack.RecvBufferSize)
-		acker.ack(ack, self.address)
+		self.dataPlane.SendAcknowledgement(ack, self.address)
 	} else {
 		log.Debug("dropped")
 	}
@@ -853,7 +821,7 @@ func (self *Xgress) SendEmptyAck() {
 	ack := NewAcknowledgement(self.circuitId, self.originator)
 	ack.RecvBufferSize = self.linkRxBuffer.Size()
 	atomic.StoreUint32(&self.linkRxBuffer.lastBufferSizeSent, ack.RecvBufferSize)
-	acker.ack(ack, self.address)
+	self.dataPlane.SendAcknowledgement(ack, self.address)
 }
 
 func (self *Xgress) GetSequence() uint64 {
@@ -862,25 +830,25 @@ func (self *Xgress) GetSequence() uint64 {
 	return uint64(self.rxSequence)
 }
 
-func (self *Xgress) InspectCircuit(detail *inspect.CircuitInspectDetail) {
-	timeSinceLastRxFromLink := time.Duration(info.NowInMilliseconds()-atomic.LoadInt64(&self.timeOfLastRxFromLink)) * time.Millisecond
-	xgressDetail := &inspect.XgressDetail{
+func (self *Xgress) InspectCircuit(detail *CircuitInspectDetail) {
+	timeSinceLastRxFromLink := time.Duration(time.Now().UnixMilli()-atomic.LoadInt64(&self.timeOfLastRxFromLink)) * time.Millisecond
+	xgressDetail := &InspectDetail{
 		Address:               string(self.address),
 		Originator:            self.originator.String(),
 		TimeSinceLastLinkRx:   timeSinceLastRxFromLink.String(),
 		SendBufferDetail:      self.payloadBuffer.Inspect(),
-		RecvBufferDetail:      self.linkRxBuffer.Inspect(),
+		RecvBufferDetail:      self.linkRxBuffer.Inspect(self),
 		XgressPointer:         fmt.Sprintf("%p", self),
 		LinkSendBufferPointer: fmt.Sprintf("%p", self.payloadBuffer),
 		Sequence:              self.GetSequence(),
 		Flags:                 strconv.FormatUint(uint64(self.flags.Load()), 2),
 	}
 
-	detail.XgressDetails[string(self.address)] = xgressDetail
-
 	if detail.IncludeGoroutines() {
 		xgressDetail.Goroutines = self.getRelatedGoroutines(xgressDetail.XgressPointer, xgressDetail.LinkSendBufferPointer)
 	}
+
+	detail.AddXgressDetail(xgressDetail)
 }
 
 func (self *Xgress) getRelatedGoroutines(contains ...string) []string {

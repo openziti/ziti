@@ -6,12 +6,6 @@ import (
 	"sync/atomic"
 )
 
-var retransmitter *Retransmitter
-
-func InitRetransmitter(forwarder PayloadBufferForwarder, faultReporter RetransmitterFaultReporter, metrics metrics.Registry, closeNotify <-chan struct{}) {
-	retransmitter = NewRetransmitter(forwarder, faultReporter, metrics, closeNotify)
-}
-
 type RetransmitterFaultReporter interface {
 	ReportForwardingFault(circuitId string, ctrlId string)
 }
@@ -25,6 +19,9 @@ type Retransmitter struct {
 	retransmitSend       chan *txPayload
 	retransmitsQueueSize int64
 	closeNotify          <-chan struct{}
+
+	retransmissions        metrics.Meter
+	retransmissionFailures metrics.Meter
 }
 
 func NewRetransmitter(forwarder PayloadBufferForwarder, faultReporter RetransmitterFaultReporter, metrics metrics.Registry, closeNotify <-chan struct{}) *Retransmitter {
@@ -34,6 +31,9 @@ func NewRetransmitter(forwarder PayloadBufferForwarder, faultReporter Retransmit
 		retransmitSend:   make(chan *txPayload, 1),
 		closeNotify:      closeNotify,
 		faultReporter:    faultReporter,
+
+		retransmissions:        metrics.Meter("xgress.retransmissions"),
+		retransmissionFailures: metrics.Meter("xgress.retransmission_failures"),
 	}
 
 	go ctrl.retransmitIngester()
@@ -149,14 +149,14 @@ func (self *Retransmitter) retransmitSender() {
 					// if xgress is closed, don't log the error. We still want to try retransmitting in case we're re-sending end of circuit
 					if !retransmit.x.Closed() {
 						logger.WithError(err).Errorf("unexpected error while retransmitting payload from [@/%v]", retransmit.x.address)
-						retransmissionFailures.Mark(1)
+						self.retransmissionFailures.Mark(1)
 						self.faultReporter.ReportForwardingFault(retransmit.payload.CircuitId, retransmit.x.ctrlId)
 					} else {
 						logger.WithError(err).Tracef("unexpected error while retransmitting payload from [@/%v] (already closed)", retransmit.x.address)
 					}
 				} else {
 					retransmit.markSent()
-					retransmissions.Mark(1)
+					self.retransmissions.Mark(1)
 				}
 				retransmit.dequeued()
 			}

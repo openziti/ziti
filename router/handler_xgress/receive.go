@@ -24,17 +24,33 @@ import (
 	"time"
 )
 
-type receiveHandler struct {
-	forwarder *forwarder.Forwarder
+type dataPlaneHandler struct {
+	acker           xgress.AckSender
+	forwarder       *forwarder.Forwarder
+	retransmitter   *xgress.Retransmitter
+	payloadIngester *xgress.PayloadIngester
+	metrics         xgress.Metrics
 }
 
-func NewReceiveHandler(forwarder *forwarder.Forwarder) *receiveHandler {
-	return &receiveHandler{
-		forwarder: forwarder,
+type DataPlaneHandlerConfig struct {
+	Acker           xgress.AckSender
+	Forwarder       *forwarder.Forwarder
+	Retransmitter   *xgress.Retransmitter
+	PayloadIngester *xgress.PayloadIngester
+	Metrics         xgress.Metrics
+}
+
+func NewXgressDataPlaneHandler(cfg DataPlaneHandlerConfig) xgress.DataPlaneHandler {
+	return &dataPlaneHandler{
+		acker:           cfg.Acker,
+		forwarder:       cfg.Forwarder,
+		retransmitter:   cfg.Retransmitter,
+		payloadIngester: cfg.PayloadIngester,
+		metrics:         cfg.Metrics,
 	}
 }
 
-func (xrh *receiveHandler) HandleXgressReceive(payload *xgress.Payload, x *xgress.Xgress) {
+func (xrh *dataPlaneHandler) SendPayload(payload *xgress.Payload, x *xgress.Xgress) {
 	for {
 		if err := xrh.forwarder.ForwardPayload(x.Address(), payload, time.Second); err != nil {
 			if !channel.IsTimeout(err) {
@@ -48,8 +64,24 @@ func (xrh *receiveHandler) HandleXgressReceive(payload *xgress.Payload, x *xgres
 	}
 }
 
-func (xrh *receiveHandler) HandleControlReceive(control *xgress.Control, x *xgress.Xgress) {
+func (xrh *dataPlaneHandler) SendControlMessage(control *xgress.Control, x *xgress.Xgress) {
 	if err := xrh.forwarder.ForwardControl(x.Address(), control); err != nil {
 		pfxlog.ContextLogger(x.Label()).WithFields(control.GetLoggerFields()).WithError(err).Error("unable to forward control")
 	}
+}
+
+func (xrh *dataPlaneHandler) SendAcknowledgement(ack *xgress.Acknowledgement, address xgress.Address) {
+	xrh.acker.SendAck(ack, address)
+}
+
+func (xrh *dataPlaneHandler) GetRetransmitter() *xgress.Retransmitter {
+	return xrh.retransmitter
+}
+
+func (xrh *dataPlaneHandler) GetPayloadIngester() *xgress.PayloadIngester {
+	return xrh.payloadIngester
+}
+
+func (xrh *dataPlaneHandler) GetMetrics() xgress.Metrics {
+	return xrh.metrics
 }

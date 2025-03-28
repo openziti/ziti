@@ -2,12 +2,6 @@ package xgress
 
 import "time"
 
-var payloadIngester *PayloadIngester
-
-func InitPayloadIngester(closeNotify <-chan struct{}) {
-	payloadIngester = NewPayloadIngester(closeNotify)
-}
-
 type payloadEntry struct {
 	payload *Payload
 	x       *Xgress

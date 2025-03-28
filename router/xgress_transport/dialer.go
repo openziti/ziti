@@ -19,14 +19,15 @@ package xgress_transport
 import (
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress_router"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 )
 
@@ -41,7 +42,7 @@ func (txd *dialer) IsTerminatorValid(string, string) bool {
 	return true
 }
 
-func newDialer(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options, tcfg transport.Configuration) (xgress.Dialer, error) {
+func newDialer(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options, tcfg transport.Configuration) (xgress_router.Dialer, error) {
 	txd := &dialer{
 		id:      id,
 		ctrl:    ctrl,
@@ -51,7 +52,7 @@ func newDialer(id *identity.TokenId, ctrl env.NetworkControllers, options *xgres
 	return txd, nil
 }
 
-func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
+func (txd *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error) {
 	destination := params.GetDestination()
 	circuitId := params.GetCircuitId()
 

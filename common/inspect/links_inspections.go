@@ -17,25 +17,14 @@
 package inspect
 
 import (
+	"github.com/openziti/ziti/router/xgress"
 	"time"
 )
 
 type LinksInspectResult struct {
-	Links        []*LinkInspectDetail `json:"links"`
-	Destinations []*LinkDest          `json:"destinations"`
-	Errors       []string             `json:"errors"`
-}
-
-type LinkInspectDetail struct {
-	Id          string `json:"id"`
-	Iteration   uint32 `json:"iteration"`
-	Key         string `json:"key"`
-	Split       bool   `json:"split"`
-	Protocol    string `json:"protocol"`
-	DialAddress string `json:"dialAddress"`
-	Dest        string `json:"dest"`
-	DestVersion string `json:"destVersion"`
-	Dialed      bool   `json:"dialed"`
+	Links        []*xgress.LinkInspectDetail `json:"links"`
+	Destinations []*LinkDest                 `json:"destinations"`
+	Errors       []string                    `json:"errors"`
 }
 
 type LinkDest struct {

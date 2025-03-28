@@ -17,17 +17,18 @@
 package xgress_transport_udp
 
 import (
+	"github.com/openziti/identity"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/identity"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 )
 
-func NewFactory(id *identity.TokenId, ctrl env.NetworkControllers) xgress.Factory {
+func NewFactory(id *identity.TokenId, ctrl env.NetworkControllers) xgress_router.Factory {
 	return &factory{id: id, ctrl: ctrl}
 }
 
-func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	options, err := xgress.LoadOptions(optionsData)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")
@@ -35,7 +36,7 @@ func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 	return newListener(factory.id, factory.ctrl, options), nil
 }
 
-func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {
 	options, err := xgress.LoadOptions(optionsData)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")

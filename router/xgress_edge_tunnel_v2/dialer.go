@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/pkg/errors"
 	"time"
@@ -39,7 +40,7 @@ func (self *tunneler) IsTerminatorValid(id string, destination string) bool {
 	return found
 }
 
-func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
+func (self *tunneler) Dial(params xgress_router.DialParams) (xt.PeerData, error) {
 	destination := params.GetDestination()
 	circuitId := params.GetCircuitId()
 

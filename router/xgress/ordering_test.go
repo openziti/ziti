@@ -3,7 +3,6 @@ package xgress
 import (
 	"encoding/binary"
 	"github.com/openziti/channel/v3"
-	"github.com/openziti/metrics"
 	"github.com/stretchr/testify/require"
 	"io"
 	"sync/atomic"
@@ -43,33 +42,30 @@ func (conn *testConn) HandleControlMsg(ControlType, channel.Headers, ControlRece
 	return nil
 }
 
-type noopForwarder struct{}
+type noopReceiveHandler struct {
+	payloadIngester *PayloadIngester
+}
 
-func (n noopForwarder) ForwardPayload(Address, *Payload) error {
+func (n noopReceiveHandler) GetMetrics() Metrics {
+	return noopMetrics{}
+}
+
+func (n noopReceiveHandler) GetRetransmitter() *Retransmitter {
 	return nil
 }
 
-func (n noopForwarder) ForwardAcknowledgement(Address, *Acknowledgement) error {
-	return nil
+func (n noopReceiveHandler) GetPayloadIngester() *PayloadIngester {
+	return n.payloadIngester
 }
 
-func (n noopForwarder) RetransmitPayload(Address, *Payload) error {
-	return nil
-}
+func (n noopReceiveHandler) SendAcknowledgement(*Acknowledgement, Address) {}
 
-type noopReceiveHandler struct{}
+func (n noopReceiveHandler) SendPayload(*Payload, *Xgress) {}
 
-func (n noopReceiveHandler) HandleXgressReceive(*Payload, *Xgress) {}
-
-func (n noopReceiveHandler) HandleControlReceive(*Control, *Xgress) {}
+func (n noopReceiveHandler) SendControlMessage(*Control, *Xgress) {}
 
 func Test_Ordering(t *testing.T) {
 	closeNotify := make(chan struct{})
-	registryConfig := metrics.DefaultUsageRegistryConfig("test", closeNotify)
-	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
-	InitPayloadIngester(closeNotify)
-	InitMetrics(metricsRegistry)
-	InitAcker(&noopForwarder{}, metricsRegistry, closeNotify)
 
 	conn := &testConn{
 		ch:          make(chan uint64, 1),
@@ -77,7 +73,9 @@ func Test_Ordering(t *testing.T) {
 	}
 
 	x := NewXgress("test", "ctrl", "test", conn, Initiator, DefaultOptions(), nil)
-	x.receiveHandler = noopReceiveHandler{}
+	x.dataPlane = noopReceiveHandler{
+		payloadIngester: NewPayloadIngester(closeNotify),
+	}
 	go x.tx()
 
 	defer x.Close()
@@ -122,3 +120,29 @@ func Test_Ordering(t *testing.T) {
 		}
 	}
 }
+
+type noopMetrics struct{}
+
+func (n noopMetrics) MarkAckReceived() {}
+
+func (n noopMetrics) MarkPayloadDropped() {}
+
+func (n noopMetrics) MarkDuplicateAck() {}
+
+func (n noopMetrics) MarkDuplicatePayload() {}
+
+func (n noopMetrics) BufferBlockedByLocalWindow() {}
+
+func (n noopMetrics) BufferUnblockedByLocalWindow() {}
+
+func (n noopMetrics) BufferBlockedByRemoteWindow() {}
+
+func (n noopMetrics) BufferUnblockedByRemoteWindow() {}
+
+func (n noopMetrics) PayloadWritten(time.Duration) {}
+
+func (n noopMetrics) BufferUnblocked(time.Duration) {}
+
+func (n noopMetrics) SendPayloadBuffered(int64) {}
+
+func (n noopMetrics) SendPayloadDelivered(int64) {}

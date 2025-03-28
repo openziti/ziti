@@ -14,12 +14,12 @@
 	limitations under the License.
 */
 
-package inspect
+package xgress
 
 type CircuitInspectDetail struct {
 	CircuitId         string                        `json:"circuitId"`
 	Forwards          map[string]string             `json:"forwards"`
-	XgressDetails     map[string]*XgressDetail      `json:"xgressDetails"`
+	XgressDetails     map[string]*InspectDetail     `json:"xgressDetails"`
 	LinkDetails       map[string]*LinkInspectDetail `json:"linkDetails"`
 	includeGoroutines bool
 }
@@ -32,20 +32,28 @@ func (self *CircuitInspectDetail) IncludeGoroutines() bool {
 	return self.includeGoroutines
 }
 
-type XgressDetail struct {
-	Address               string                  `json:"address"`
-	Originator            string                  `json:"originator"`
-	TimeSinceLastLinkRx   string                  `json:"timeSinceLastLinkRx"`
-	SendBufferDetail      *XgressSendBufferDetail `json:"sendBufferDetail"`
-	RecvBufferDetail      *XgressRecvBufferDetail `json:"recvBufferDetail"`
-	XgressPointer         string                  `json:"xgressPointer"`
-	LinkSendBufferPointer string                  `json:"linkSendBufferPointer"`
-	Goroutines            []string                `json:"goroutines"`
-	Sequence              uint64                  `json:"sequence"`
-	Flags                 string                  `json:"flags"`
+func (self *CircuitInspectDetail) AddXgressDetail(xgressDetail *InspectDetail) {
+	self.XgressDetails[xgressDetail.Address] = xgressDetail
 }
 
-type XgressSendBufferDetail struct {
+func (self *CircuitInspectDetail) AddLinkDetail(linkDetail *LinkInspectDetail) {
+	self.LinkDetails[linkDetail.Id] = linkDetail
+}
+
+type InspectDetail struct {
+	Address               string            `json:"address"`
+	Originator            string            `json:"originator"`
+	TimeSinceLastLinkRx   string            `json:"timeSinceLastLinkRx"`
+	SendBufferDetail      *SendBufferDetail `json:"sendBufferDetail"`
+	RecvBufferDetail      *RecvBufferDetail `json:"recvBufferDetail"`
+	XgressPointer         string            `json:"xgressPointer"`
+	LinkSendBufferPointer string            `json:"linkSendBufferPointer"`
+	Goroutines            []string          `json:"goroutines"`
+	Sequence              uint64            `json:"sequence"`
+	Flags                 string            `json:"flags"`
+}
+
+type SendBufferDetail struct {
 	WindowSize            uint32  `json:"windowSize"`
 	LinkSendBufferSize    uint32  `json:"linkSendBufferSize"`
 	LinkRecvBufferSize    uint32  `json:"linkRecvBufferSize"`
@@ -63,7 +71,7 @@ type XgressSendBufferDetail struct {
 	AcquiredSafely        bool    `json:"acquiredSafely"`
 }
 
-type XgressRecvBufferDetail struct {
+type RecvBufferDetail struct {
 	Size           uint32 `json:"size"`
 	PayloadCount   uint32 `json:"payloadCount"`
 	LastSizeSent   uint32 `json:"lastSizeSent"`
@@ -71,4 +79,16 @@ type XgressRecvBufferDetail struct {
 	MaxSequence    int32  `json:"maxSequence"`
 	NextPayload    string `json:"nextPayload"`
 	AcquiredSafely bool   `json:"acquiredSafely"`
+}
+
+type LinkInspectDetail struct {
+	Id          string `json:"id"`
+	Iteration   uint32 `json:"iteration"`
+	Key         string `json:"key"`
+	Split       bool   `json:"split"`
+	Protocol    string `json:"protocol"`
+	DialAddress string `json:"dialAddress"`
+	Dest        string `json:"dest"`
+	DestVersion string `json:"destVersion"`
+	Dialed      bool   `json:"dialed"`
 }

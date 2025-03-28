@@ -20,11 +20,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
-	"github.com/openziti/ziti/router/xgress_udp"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
+	"github.com/openziti/ziti/router/xgress_udp"
 	"net"
 	"time"
 )
@@ -152,20 +153,20 @@ func (l *listener) rx() {
 func (l *listener) handleConnect(initialRequest []byte, session xgress_udp.Session) {
 	log := pfxlog.ContextLogger(session.LogContext())
 
-	var response *xgress.Response
+	var response *xgress_router.Response
 
-	request, err := xgress.RequestFromJSON(initialRequest)
+	request, err := xgress_router.RequestFromJSON(initialRequest)
 	if err != nil {
 		log.Error(err)
-		response = &xgress.Response{Success: false, Message: "invalid request"}
+		response = &xgress_router.Response{Success: false, Message: "invalid request"}
 	} else {
-		response = xgress.CreateCircuit(l.ctrl, session, request, l.bindHandler, l.options)
+		response = xgress_router.CreateCircuit(l.ctrl, session, request, l.bindHandler, l.options)
 	}
 
 	l.eventChan <- &sessionResponse{addr: session.Address(), response: response}
 }
 
-func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options) xgress.Listener {
+func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options) xgress_router.Listener {
 	return &listener{
 		id:        id,
 		ctrl:      ctrl,
@@ -196,7 +197,7 @@ func (response *sessionResponse) Handle(listener xgress_udp.Listener) {
 	respMsg := response.response
 	if !present {
 		// session timed out or some other unexpected failure
-		respMsg = &xgress.Response{Success: false, Message: "timeout"}
+		respMsg = &xgress_router.Response{Success: false, Message: "timeout"}
 		session = xgress_udp.NewPacketSesssion(listener, response.addr, time.Minute.Nanoseconds())
 		logger.Debugf("session [%v] not found for response", sessionId)
 
@@ -210,7 +211,7 @@ func (response *sessionResponse) Handle(listener xgress_udp.Listener) {
 	}
 
 	logger.Debugf("sending response to client for [%v]", sessionId)
-	err := xgress.SendResponse(respMsg, session)
+	err := xgress_router.SendResponse(respMsg, session)
 
 	if err != nil {
 		logger.Errorf("failure sending response (%v)", err)
@@ -219,5 +220,5 @@ func (response *sessionResponse) Handle(listener xgress_udp.Listener) {
 
 type sessionResponse struct {
 	addr     net.Addr
-	response *xgress.Response
+	response *xgress_router.Response
 }
