@@ -148,7 +148,7 @@ func Test_SingleRouterPerf(t *testing.T) {
 	registryConfig := metrics.DefaultUsageRegistryConfig("router", closeNotify)
 	registry := metrics.NewUsageRegistry(registryConfig)
 	registry.StartReporting(&eventSink{}, time.Minute, 10)
-	fwd := forwarder.NewForwarder(registry, testFaultReceiver{}, env.DefaultOptions(), closeNotify)
+	fwd := forwarder.NewForwarder(registry, testFaultReceiver{}, env.DefaultForwarderOptions(), closeNotify)
 	xgress.InitPayloadIngester(closeNotify)
 	xgress.InitMetrics(registry)
 	xgress.InitRetransmitter(fwd, fwd, registry, closeNotify)

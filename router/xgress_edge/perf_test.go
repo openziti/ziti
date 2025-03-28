@@ -139,9 +139,10 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 	xgress.InitMetrics(metricsRegistry)
 
-	fwdOptions := env.DefaultOptions()
+	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
+	retransmitter := xgress.NewRetransmitter(fwd, fwd, metricsRegistry, nil)
 
 	link := newMirrorLink(fwd)
 
@@ -159,7 +160,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgress.DefaultOptions(), nil)
-	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd, acker))
+	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd, acker, retransmitter))
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)
@@ -218,10 +219,10 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 	xgress.InitMetrics(metricsRegistry)
 
-	fwdOptions := env.DefaultOptions()
+	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
-
+	retransmitter := xgress.NewRetransmitter(fwd, fwd, metricsRegistry, nil)
 	link := newMirrorLink(fwd)
 
 	err := fwd.RegisterLink(link)
@@ -238,7 +239,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgOptions, nil)
-	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd, acker))
+	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd, acker, retransmitter))
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)

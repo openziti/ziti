@@ -7,8 +7,6 @@ import (
 
 var ackRxMeter metrics.Meter
 var droppedPayloadsMeter metrics.Meter
-var retransmissions metrics.Meter
-var retransmissionFailures metrics.Meter
 
 var payloadWriteTimer metrics.Timer
 var duplicateAcksMeter metrics.Meter
@@ -26,8 +24,6 @@ var bufferBlockedTime metrics.Timer
 
 func InitMetrics(registry metrics.Registry) {
 	droppedPayloadsMeter = registry.Meter("xgress.dropped_payloads")
-	retransmissions = registry.Meter("xgress.retransmissions")
-	retransmissionFailures = registry.Meter("xgress.retransmission_failures")
 	ackRxMeter = registry.Meter("xgress.rx.acks")
 	payloadWriteTimer = registry.Timer("xgress.tx_write_time")
 	duplicateAcksMeter = registry.Meter("xgress.ack_duplicates")

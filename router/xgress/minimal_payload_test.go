@@ -152,12 +152,17 @@ func (self *testXgConn) HandleControlMsg(controlType ControlType, headers channe
 
 type testIntermediary struct {
 	acker              AckSender
+	rtx                *Retransmitter
 	circuitId          string
 	dest               *Xgress
 	msgs               channel.MessageStrategy
 	payloadTransformer PayloadTransformer
 	counter            uint64
 	bytesCallback      func([]byte)
+}
+
+func (self *testIntermediary) GetRetransmitter() *Retransmitter {
+	return self.rtx
 }
 
 func (self *testIntermediary) SendAcknowledgement(ack *Acknowledgement, address Address) {
@@ -267,7 +272,7 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	}()
 
 	InitPayloadIngester(closeNotify)
-	InitRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
+	rtx := NewRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
 
 	ackHandler := &testAcker{
 		destinations: cmap.New[*Xgress](),
@@ -288,6 +293,7 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	msgStrategy := channel.DatagramMessageStrategy(UnmarshallPacketPayload)
 	srcXg.dataPlane = &testIntermediary{
 		acker:     ackHandler,
+		rtx:       rtx,
 		circuitId: circuitId,
 		dest:      dstXg,
 		msgs:      msgStrategy,
@@ -295,6 +301,7 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 
 	dstXg.dataPlane = &testIntermediary{
 		acker:     ackHandler,
+		rtx:       rtx,
 		circuitId: circuitId,
 		dest:      srcXg,
 		msgs:      msgStrategy,
@@ -326,7 +333,7 @@ func Test_PayloadSize(t *testing.T) {
 	}()
 
 	InitPayloadIngester(closeNotify)
-	InitRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
+	rtx := NewRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
 
 	ackHandler := &testAcker{
 		destinations: cmap.New[*Xgress](),
@@ -349,6 +356,7 @@ func Test_PayloadSize(t *testing.T) {
 	msgStrategy := channel.DatagramMessageStrategy(UnmarshallPacketPayload)
 	srcXg.dataPlane = &testIntermediary{
 		acker:     ackHandler,
+		rtx:       rtx,
 		circuitId: circuitId,
 		dest:      dstXg,
 		msgs:      msgStrategy,
@@ -359,6 +367,7 @@ func Test_PayloadSize(t *testing.T) {
 
 	dstXg.dataPlane = &testIntermediary{
 		acker:     ackHandler,
+		rtx:       rtx,
 		circuitId: circuitId,
 		dest:      srcXg,
 		msgs:      msgStrategy,

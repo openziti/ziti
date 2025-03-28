@@ -289,7 +289,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 	for _, sequence := range ack.Sequence {
 		if txPayload, found := buffer.buffer[sequence]; found {
 			if txPayload.markAcked() { // if it's been queued for retransmission, remove it from the queue
-				retransmitter.queue(txPayload)
+				buffer.x.dataPlane.GetRetransmitter().queue(txPayload)
 			}
 
 			payloadSize := uint32(len(txPayload.payload.Data))
@@ -355,7 +355,7 @@ func (buffer *LinkSendBuffer) retransmit() {
 
 		for _, v := range rtxList {
 			v.markQueued()
-			retransmitter.queue(v)
+			buffer.x.dataPlane.GetRetransmitter().queue(v)
 			retransmitted++
 			buffer.retransmits++
 			if buffer.retransmits >= buffer.x.Options.TxPortalRetxThresh {

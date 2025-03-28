@@ -52,7 +52,7 @@ const (
 	MinUnresponsiveLinkTimeout     = 5 * time.Second
 )
 
-type Options struct {
+type ForwarderOptions struct {
 	FaultTxInterval          time.Duration
 	IdleCircuitTimeout       time.Duration
 	IdleTxInterval           time.Duration
@@ -69,8 +69,8 @@ type WorkerPoolOptions struct {
 	WorkerCount uint16
 }
 
-func DefaultOptions() *Options {
-	return &Options{
+func DefaultForwarderOptions() *ForwarderOptions {
+	return &ForwarderOptions{
 		FaultTxInterval:    DefaultFaultTxInterval,
 		IdleCircuitTimeout: DefaultIdleCircuitTimeout,
 		IdleTxInterval:     DefaultIdleTxInterval,
@@ -92,8 +92,8 @@ func DefaultOptions() *Options {
 	}
 }
 
-func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
-	options := DefaultOptions()
+func LoadForwarderOptions(src map[interface{}]interface{}) (*ForwarderOptions, error) {
+	options := DefaultForwarderOptions()
 
 	if value, found := src["faultTxInterval"]; found {
 		if val, ok := value.(int); ok {

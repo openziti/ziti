@@ -25,18 +25,16 @@ import (
 )
 
 type dataPlaneHandler struct {
-	acker     xgress.AckSender
-	forwarder *forwarder.Forwarder
+	acker         xgress.AckSender
+	forwarder     *forwarder.Forwarder
+	retransmitter *xgress.Retransmitter
 }
 
-func (xrh *dataPlaneHandler) SendAcknowledgement(ack *xgress.Acknowledgement, address xgress.Address) {
-	xrh.acker.SendAck(ack, address)
-}
-
-func NewXgressDataPlaneHandler(forwarder *forwarder.Forwarder, acker xgress.AckSender) xgress.DataPlaneHandler {
+func NewXgressDataPlaneHandler(forwarder *forwarder.Forwarder, acker xgress.AckSender, retransmitter *xgress.Retransmitter) xgress.DataPlaneHandler {
 	return &dataPlaneHandler{
-		forwarder: forwarder,
-		acker:     acker,
+		forwarder:     forwarder,
+		acker:         acker,
+		retransmitter: retransmitter,
 	}
 }
 
@@ -58,4 +56,12 @@ func (xrh *dataPlaneHandler) SendControlMessage(control *xgress.Control, x *xgre
 	if err := xrh.forwarder.ForwardControl(x.Address(), control); err != nil {
 		pfxlog.ContextLogger(x.Label()).WithFields(control.GetLoggerFields()).WithError(err).Error("unable to forward control")
 	}
+}
+
+func (xrh *dataPlaneHandler) SendAcknowledgement(ack *xgress.Acknowledgement, address xgress.Address) {
+	xrh.acker.SendAck(ack, address)
+}
+
+func (xrh *dataPlaneHandler) GetRetransmitter() *xgress.Retransmitter {
+	return xrh.retransmitter
 }

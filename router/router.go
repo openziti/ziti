@@ -102,6 +102,7 @@ type Router struct {
 	rdmRequired         atomic.Bool
 	indexWatchers       env.IndexWatchers
 	ackSender           xgress.AckSender
+	retransmitter       *xgress.Retransmitter
 	xgBindHandler       xgress.BindHandler
 }
 
@@ -191,6 +192,10 @@ func (self *Router) GetAckSender() xgress.AckSender {
 	return self.ackSender
 }
 
+func (self *Router) GetRetransmitter() *xgress.Retransmitter {
+	return self.retransmitter
+}
+
 func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
@@ -247,7 +252,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 
 	xgress.InitPayloadIngester(closeNotify)
 	router.ackSender = xgress_router.NewAcker(router.forwarder, metricsRegistry, closeNotify)
-	xgress.InitRetransmitter(router.forwarder, router.forwarder, metricsRegistry, closeNotify)
+	router.retransmitter = xgress.NewRetransmitter(router.forwarder, router.forwarder, metricsRegistry, closeNotify)
 
 	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, router.forwarder, router)
 	if err != nil {
@@ -255,7 +260,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	}
 
 	router.xgBindHandler = handler_xgress.NewBindHandler(
-		handler_xgress.NewXgressDataPlaneHandler(router.forwarder, router.ackSender),
+		handler_xgress.NewXgressDataPlaneHandler(router.forwarder, router.ackSender, router.retransmitter),
 		handler_xgress.NewCloseHandler(router.ctrls, router.forwarder),
 		router.forwarder,
 	)

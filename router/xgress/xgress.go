@@ -72,6 +72,7 @@ type DataPlaneHandler interface {
 	SendPayload(payload *Payload, x *Xgress)
 	SendControlMessage(control *Control, x *Xgress)
 	SendAcknowledgement(ack *Acknowledgement, address Address)
+	GetRetransmitter() *Retransmitter
 }
 
 // CloseHandler is invoked by an xgress when the connected peer terminates the communication.
