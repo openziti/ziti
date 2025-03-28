@@ -19,7 +19,6 @@ package xlink_transport
 import (
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
@@ -176,12 +175,12 @@ func (self *splitImpl) IsDialed() bool {
 	return self.dialed
 }
 
-func (self *splitImpl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
+func (self *splitImpl) InspectCircuit(detail *xgress.CircuitInspectDetail) {
 	detail.LinkDetails[self.id] = self.InspectLink()
 }
 
-func (self *splitImpl) InspectLink() *inspect.LinkInspectDetail {
-	return &inspect.LinkInspectDetail{
+func (self *splitImpl) InspectLink() *xgress.LinkInspectDetail {
+	return &xgress.LinkInspectDetail{
 		Id:          self.Id(),
 		Iteration:   self.Iteration(),
 		Key:         self.key,

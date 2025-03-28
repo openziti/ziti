@@ -35,7 +35,6 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/ziti/common/inspect"
 	"github.com/sirupsen/logrus"
 )
 
@@ -147,7 +146,7 @@ func NewXgress(circuitId string, ctrlId string, address Address, peer Connection
 		closeNotify:          make(chan struct{}),
 		rxSequence:           0,
 		linkRxBuffer:         NewLinkReceiveBuffer(),
-		timeOfLastRxFromLink: info.NowInMilliseconds(),
+		timeOfLastRxFromLink: time.Now().UnixMilli(),
 		tags:                 tags,
 	}
 	result.payloadBuffer = NewLinkSendBuffer(result)
@@ -327,7 +326,7 @@ func (self *Xgress) SendPayload(payload *Payload, _ time.Duration, _ PayloadType
 	if payload.IsCircuitEndFlagSet() {
 		pfxlog.ContextLogger(self.Label()).Debug("received end of circuit Payload")
 	}
-	atomic.StoreInt64(&self.timeOfLastRxFromLink, info.NowInMilliseconds())
+	atomic.StoreInt64(&self.timeOfLastRxFromLink, time.Now().UnixMilli())
 	self.dataPlane.GetPayloadIngester().ingest(payload, self)
 
 	return nil
@@ -831,9 +830,9 @@ func (self *Xgress) GetSequence() uint64 {
 	return uint64(self.rxSequence)
 }
 
-func (self *Xgress) InspectCircuit(detail *inspect.CircuitInspectDetail) {
-	timeSinceLastRxFromLink := time.Duration(info.NowInMilliseconds()-atomic.LoadInt64(&self.timeOfLastRxFromLink)) * time.Millisecond
-	xgressDetail := &inspect.XgressDetail{
+func (self *Xgress) InspectCircuit(detail *CircuitInspectDetail) {
+	timeSinceLastRxFromLink := time.Duration(time.Now().UnixMilli()-atomic.LoadInt64(&self.timeOfLastRxFromLink)) * time.Millisecond
+	xgressDetail := &InspectDetail{
 		Address:               string(self.address),
 		Originator:            self.originator.String(),
 		TimeSinceLastLinkRx:   timeSinceLastRxFromLink.String(),
@@ -845,11 +844,11 @@ func (self *Xgress) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 		Flags:                 strconv.FormatUint(uint64(self.flags.Load()), 2),
 	}
 
-	detail.XgressDetails[string(self.address)] = xgressDetail
-
 	if detail.IncludeGoroutines() {
 		xgressDetail.Goroutines = self.getRelatedGoroutines(xgressDetail.XgressPointer, xgressDetail.LinkSendBufferPointer)
 	}
+
+	detail.AddXgressDetail(xgressDetail)
 }
 
 func (self *Xgress) getRelatedGoroutines(contains ...string) []string {

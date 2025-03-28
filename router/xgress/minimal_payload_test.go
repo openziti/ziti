@@ -4,10 +4,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/controller/idgen"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	metrics2 "github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
@@ -286,7 +286,7 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	options := DefaultOptions()
 	options.Mtu = 1400
 
-	circuitId := idgen.New()
+	circuitId := uuid.NewString()
 	srcTestConn := newTestXgConn(10_000, 100_000, 0)
 	dstTestConn := newTestXgConn(10_000, 0, 100_000)
 
@@ -348,7 +348,7 @@ func Test_PayloadSize(t *testing.T) {
 
 	h := metricsRegistry.Histogram("msg_size")
 
-	circuitId := idgen.New()
+	circuitId := uuid.NewString()
 	srcTestConn := newTestXgConn(200, 100_000, 0)
 	dstTestConn := newTestXgConn(200, 0, 100_000)
 

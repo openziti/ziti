@@ -6,7 +6,6 @@ import (
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
@@ -46,10 +45,10 @@ func (link *mirrorLink) IsClosed() bool {
 	return false
 }
 
-func (link *mirrorLink) InspectCircuit(circuitDetail *inspect.CircuitInspectDetail) {
+func (link *mirrorLink) InspectCircuit(circuitDetail *xgress.CircuitInspectDetail) {
 }
 
-func (link *mirrorLink) InspectLink() *inspect.LinkInspectDetail {
+func (link *mirrorLink) InspectLink() *xgress.LinkInspectDetail {
 	return nil
 }
 

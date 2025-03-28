@@ -18,8 +18,6 @@ package xgress
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/ziti/common/inspect"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"math"
@@ -71,7 +69,7 @@ type txPayload struct {
 }
 
 func (self *txPayload) markSent() {
-	atomic.StoreInt64(&self.age, info.NowInMilliseconds())
+	atomic.StoreInt64(&self.age, time.Now().UnixMilli())
 }
 
 func (self *txPayload) getAge() int64 {
@@ -325,7 +323,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 
 	buffer.linkRecvBufferSize = ack.RecvBufferSize
 	if ack.RTT > 0 {
-		rtt := uint16(info.NowInMilliseconds()) - ack.RTT
+		rtt := uint16(time.Now().UnixMilli()) - ack.RTT
 		if buffer.lastRtt > 0 {
 			rtt = (rtt + buffer.lastRtt) >> 1
 		}
@@ -335,7 +333,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 }
 
 func (buffer *LinkSendBuffer) retransmit() {
-	now := info.NowInMilliseconds()
+	now := time.Now().UnixMilli()
 	if len(buffer.buffer) > 0 && (now-buffer.lastRetransmitTime) > 64 {
 		log := pfxlog.ContextLogger(buffer.x.Label())
 
@@ -382,9 +380,9 @@ func (buffer *LinkSendBuffer) scale(factor float64) {
 	}
 }
 
-func (buffer *LinkSendBuffer) inspect() *inspect.XgressSendBufferDetail {
-	timeSinceLastRetransmit := time.Duration(info.NowInMilliseconds()-buffer.lastRetransmitTime) * time.Millisecond
-	result := &inspect.XgressSendBufferDetail{
+func (buffer *LinkSendBuffer) inspect() *SendBufferDetail {
+	timeSinceLastRetransmit := time.Duration(time.Now().UnixMilli()-buffer.lastRetransmitTime) * time.Millisecond
+	result := &SendBufferDetail{
 		WindowSize:            buffer.windowsSize,
 		LinkSendBufferSize:    buffer.linkSendBufferSize,
 		LinkRecvBufferSize:    buffer.linkRecvBufferSize,
@@ -403,10 +401,10 @@ func (buffer *LinkSendBuffer) inspect() *inspect.XgressSendBufferDetail {
 	return result
 }
 
-func (buffer *LinkSendBuffer) Inspect() *inspect.XgressSendBufferDetail {
+func (buffer *LinkSendBuffer) Inspect() *SendBufferDetail {
 	timeout := time.After(100 * time.Millisecond)
 	inspectEvent := &sendBufferInspectEvent{
-		notifyComplete: make(chan *inspect.XgressSendBufferDetail, 1),
+		notifyComplete: make(chan *SendBufferDetail, 1),
 	}
 
 	select {
@@ -426,7 +424,7 @@ func (buffer *LinkSendBuffer) Inspect() *inspect.XgressSendBufferDetail {
 }
 
 type sendBufferInspectEvent struct {
-	notifyComplete chan *inspect.XgressSendBufferDetail
+	notifyComplete chan *SendBufferDetail
 }
 
 func (self *sendBufferInspectEvent) handle(buffer *LinkSendBuffer) {

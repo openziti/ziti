@@ -22,7 +22,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/trace"
 	"github.com/openziti/ziti/router/env"
@@ -46,7 +45,7 @@ type Destination interface {
 	SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	SendControl(control *xgress.Control) error
-	InspectCircuit(detail *inspect.CircuitInspectDetail)
+	InspectCircuit(detail *xgress.CircuitInspectDetail)
 }
 
 type XgressDestination interface {
@@ -326,13 +325,13 @@ func (forwarder *Forwarder) getXgressForCircuit(circuitId string) XgressDestinat
 	return nil
 }
 
-func (forwarder *Forwarder) InspectCircuit(circuitId string, getRelatedGoroutines bool) *inspect.CircuitInspectDetail {
+func (forwarder *Forwarder) InspectCircuit(circuitId string, getRelatedGoroutines bool) *xgress.CircuitInspectDetail {
 	if ft, found := forwarder.circuits.circuits.Get(circuitId); found {
-		result := &inspect.CircuitInspectDetail{
+		result := &xgress.CircuitInspectDetail{
 			CircuitId:     circuitId,
 			Forwards:      map[string]string{},
-			XgressDetails: map[string]*inspect.XgressDetail{},
-			LinkDetails:   map[string]*inspect.LinkInspectDetail{},
+			XgressDetails: map[string]*xgress.InspectDetail{},
+			LinkDetails:   map[string]*xgress.LinkInspectDetail{},
 		}
 		result.SetIncludeGoroutines(getRelatedGoroutines)
 
