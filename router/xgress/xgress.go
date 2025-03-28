@@ -74,6 +74,7 @@ type DataPlaneHandler interface {
 	SendAcknowledgement(ack *Acknowledgement, address Address)
 	GetRetransmitter() *Retransmitter
 	GetPayloadIngester() *PayloadIngester
+	GetMetrics() Metrics
 }
 
 // CloseHandler is invoked by an xgress when the connected peer terminates the communication.
@@ -333,7 +334,7 @@ func (self *Xgress) SendPayload(payload *Payload, _ time.Duration, _ PayloadType
 }
 
 func (self *Xgress) SendAcknowledgement(acknowledgement *Acknowledgement) error {
-	ackRxMeter.Mark(1)
+	self.dataPlane.GetMetrics().MarkAckReceived()
 	self.payloadBuffer.ReceiveAcknowledgement(acknowledgement)
 	return nil
 }
@@ -449,7 +450,7 @@ func (self *Xgress) tx() {
 				self.Close()
 				return false
 			} else {
-				payloadWriteTimer.UpdateSince(start)
+				self.dataPlane.GetMetrics().PayloadWritten(time.Since(start))
 				payloadLogger.Debugf("payload sent [%s]", info.ByteCount(int64(n)))
 			}
 		}
@@ -801,7 +802,7 @@ func (self *Xgress) PayloadReceived(payload *Payload) {
 	if self.originator == payload.GetOriginator() {
 		// a payload sent from this xgress has arrived back at this xgress, instead of the other end
 		log.Warn("ouroboros (circuit cycle) detected, dropping payload")
-	} else if self.linkRxBuffer.ReceiveUnordered(payload, self.Options.RxBufferSize) {
+	} else if self.linkRxBuffer.ReceiveUnordered(self, payload, self.Options.RxBufferSize) {
 		log.Debug("ready to acknowledge")
 
 		ack := NewAcknowledgement(self.circuitId, self.originator)

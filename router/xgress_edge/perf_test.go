@@ -137,7 +137,6 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 
 	registryConfig := metrics.DefaultUsageRegistryConfig("test", nil)
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
-	xgress.InitMetrics(metricsRegistry)
 
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
@@ -161,7 +160,14 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgress.DefaultOptions(), nil)
-	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd, acker, retransmitter, payloadIngester))
+	dataPlaneHandler := handler_xgress.NewXgressDataPlaneHandler(handler_xgress.DataPlaneHandlerConfig{
+		Acker:           acker,
+		Forwarder:       fwd,
+		Retransmitter:   retransmitter,
+		PayloadIngester: payloadIngester,
+		Metrics:         xgress.NewMetrics(metricsRegistry),
+	})
+	x.SetDataPlaneHandler(dataPlaneHandler)
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)
@@ -218,7 +224,6 @@ func Benchmark_BaselinePerf(b *testing.B) {
 
 	registryConfig := metrics.DefaultUsageRegistryConfig("test", nil)
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
-	xgress.InitMetrics(metricsRegistry)
 
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
@@ -242,7 +247,15 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgOptions, nil)
-	x.SetDataPlaneHandler(handler_xgress.NewXgressDataPlaneHandler(fwd, acker, retransmitter, payloadIngester))
+
+	dataPlaneHandler := handler_xgress.NewXgressDataPlaneHandler(handler_xgress.DataPlaneHandlerConfig{
+		Acker:           acker,
+		Forwarder:       fwd,
+		Retransmitter:   retransmitter,
+		PayloadIngester: payloadIngester,
+		Metrics:         xgress.NewMetrics(metricsRegistry),
+	})
+	x.SetDataPlaneHandler(dataPlaneHandler)
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)

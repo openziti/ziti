@@ -29,14 +29,24 @@ type dataPlaneHandler struct {
 	forwarder       *forwarder.Forwarder
 	retransmitter   *xgress.Retransmitter
 	payloadIngester *xgress.PayloadIngester
+	metrics         xgress.Metrics
 }
 
-func NewXgressDataPlaneHandler(forwarder *forwarder.Forwarder, acker xgress.AckSender, retransmitter *xgress.Retransmitter, payloadIngester *xgress.PayloadIngester) xgress.DataPlaneHandler {
+type DataPlaneHandlerConfig struct {
+	Acker           xgress.AckSender
+	Forwarder       *forwarder.Forwarder
+	Retransmitter   *xgress.Retransmitter
+	PayloadIngester *xgress.PayloadIngester
+	Metrics         xgress.Metrics
+}
+
+func NewXgressDataPlaneHandler(cfg DataPlaneHandlerConfig) xgress.DataPlaneHandler {
 	return &dataPlaneHandler{
-		forwarder:       forwarder,
-		acker:           acker,
-		retransmitter:   retransmitter,
-		payloadIngester: payloadIngester,
+		acker:           cfg.Acker,
+		forwarder:       cfg.Forwarder,
+		retransmitter:   cfg.Retransmitter,
+		payloadIngester: cfg.PayloadIngester,
+		metrics:         cfg.Metrics,
 	}
 }
 
@@ -70,4 +80,8 @@ func (xrh *dataPlaneHandler) GetRetransmitter() *xgress.Retransmitter {
 
 func (xrh *dataPlaneHandler) GetPayloadIngester() *xgress.PayloadIngester {
 	return xrh.payloadIngester
+}
+
+func (xrh *dataPlaneHandler) GetMetrics() xgress.Metrics {
+	return xrh.metrics
 }

@@ -45,14 +45,14 @@ func (buffer *LinkReceiveBuffer) Size() uint32 {
 	return atomic.LoadUint32(&buffer.size)
 }
 
-func (buffer *LinkReceiveBuffer) ReceiveUnordered(payload *Payload, maxSize uint32) bool {
+func (buffer *LinkReceiveBuffer) ReceiveUnordered(x *Xgress, payload *Payload, maxSize uint32) bool {
 	if payload.GetSequence() <= buffer.sequence {
-		duplicatePayloadsMeter.Mark(1)
+		x.dataPlane.GetMetrics().MarkDuplicatePayload()
 		return true
 	}
 
 	if atomic.LoadUint32(&buffer.size) > maxSize && payload.Sequence > buffer.maxSequence {
-		droppedPayloadsMeter.Mark(1)
+		x.dataPlane.GetMetrics().MarkPayloadDropped()
 		return false
 	}
 
@@ -66,7 +66,7 @@ func (buffer *LinkReceiveBuffer) ReceiveUnordered(payload *Payload, maxSize uint
 			buffer.maxSequence = payload.Sequence
 		}
 	} else {
-		duplicatePayloadsMeter.Mark(1)
+		x.dataPlane.GetMetrics().MarkDuplicatePayload()
 	}
 	return true
 }

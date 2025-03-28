@@ -198,7 +198,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	env.IntervalSize = cfg.Metrics.ReportInterval
 
 	metricsRegistry := metrics.NewUsageRegistry(metricsConfig)
-	xgress.InitMetrics(metricsRegistry)
+	xgMetrics := xgress.NewMetrics(metricsRegistry)
 
 	linkDialerPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(cfg.Forwarder.LinkDial.QueueLength),
@@ -249,8 +249,15 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 		panic(err)
 	}
 
-	router.xgBindHandler = handler_xgress.NewBindHandler(
-		handler_xgress.NewXgressDataPlaneHandler(router.forwarder, ackSender, retransmitter, payloadIngester),
+	dataPlaneHandler := handler_xgress.NewXgressDataPlaneHandler(handler_xgress.DataPlaneHandlerConfig{
+		Acker:           ackSender,
+		Forwarder:       router.forwarder,
+		Retransmitter:   retransmitter,
+		PayloadIngester: payloadIngester,
+		Metrics:         xgMetrics,
+	})
+
+	router.xgBindHandler = handler_xgress.NewBindHandler(dataPlaneHandler,
 		handler_xgress.NewCloseHandler(router.ctrls, router.forwarder),
 		router.forwarder,
 	)

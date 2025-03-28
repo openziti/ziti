@@ -3,7 +3,6 @@ package xgress
 import (
 	"encoding/binary"
 	"github.com/openziti/channel/v3"
-	"github.com/openziti/metrics"
 	"github.com/stretchr/testify/require"
 	"io"
 	"sync/atomic"
@@ -61,6 +60,10 @@ type noopReceiveHandler struct {
 	payloadIngester *PayloadIngester
 }
 
+func (n noopReceiveHandler) GetMetrics() Metrics {
+	return noopMetrics{}
+}
+
 func (n noopReceiveHandler) GetRetransmitter() *Retransmitter {
 	return nil
 }
@@ -77,9 +80,6 @@ func (n noopReceiveHandler) SendControlMessage(*Control, *Xgress) {}
 
 func Test_Ordering(t *testing.T) {
 	closeNotify := make(chan struct{})
-	registryConfig := metrics.DefaultUsageRegistryConfig("test", closeNotify)
-	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
-	InitMetrics(metricsRegistry)
 
 	conn := &testConn{
 		ch:          make(chan uint64, 1),
@@ -134,3 +134,29 @@ func Test_Ordering(t *testing.T) {
 		}
 	}
 }
+
+type noopMetrics struct{}
+
+func (n noopMetrics) MarkAckReceived() {}
+
+func (n noopMetrics) MarkPayloadDropped() {}
+
+func (n noopMetrics) MarkDuplicateAck() {}
+
+func (n noopMetrics) MarkDuplicatePayload() {}
+
+func (n noopMetrics) BufferBlockedByLocalWindow() {}
+
+func (n noopMetrics) BufferUnblockedByLocalWindow() {}
+
+func (n noopMetrics) BufferBlockedByRemoteWindow() {}
+
+func (n noopMetrics) BufferUnblockedByRemoteWindow() {}
+
+func (n noopMetrics) PayloadWritten(time.Duration) {}
+
+func (n noopMetrics) BufferUnblocked(time.Duration) {}
+
+func (n noopMetrics) SendPayloadBuffered(int64) {}
+
+func (n noopMetrics) SendPayloadDelivered(int64) {}

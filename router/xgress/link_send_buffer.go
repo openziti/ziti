@@ -153,6 +153,10 @@ func (buffer *LinkSendBuffer) ReceiveAcknowledgement(ack *Acknowledgement) {
 	}
 }
 
+func (buffer *LinkSendBuffer) metrics() Metrics {
+	return buffer.x.dataPlane.GetMetrics()
+}
+
 func (buffer *LinkSendBuffer) Close() {
 	pfxlog.ContextLogger(buffer.x.Label()).Debugf("[%p] closing", buffer)
 	if buffer.closed.CompareAndSwap(false, true) {
@@ -168,24 +172,22 @@ func (buffer *LinkSendBuffer) isBlocked() bool {
 		blocked = true
 		if !buffer.blockedByRemoteWindow {
 			buffer.blockedByRemoteWindow = true
-			atomic.AddInt64(&buffersBlockedByRemoteWindow, 1)
-			buffersBlockedByRemoteWindowMeter.Mark(1)
+			buffer.metrics().BufferBlockedByRemoteWindow()
 		}
 	} else if buffer.blockedByRemoteWindow {
 		buffer.blockedByRemoteWindow = false
-		atomic.AddInt64(&buffersBlockedByRemoteWindow, -1)
+		buffer.metrics().BufferUnblockedByRemoteWindow()
 	}
 
 	if buffer.windowsSize < buffer.linkSendBufferSize {
 		blocked = true
 		if !buffer.blockedByLocalWindow {
 			buffer.blockedByLocalWindow = true
-			atomic.AddInt64(&buffersBlockedByLocalWindow, 1)
-			buffersBlockedByLocalWindowMeter.Mark(1)
+			buffer.metrics().BufferBlockedByLocalWindow()
 		}
 	} else if buffer.blockedByLocalWindow {
 		buffer.blockedByLocalWindow = false
-		atomic.AddInt64(&buffersBlockedByLocalWindow, -1)
+		buffer.metrics().BufferUnblockedByLocalWindow()
 	}
 
 	if blocked {
@@ -194,7 +196,7 @@ func (buffer *LinkSendBuffer) isBlocked() bool {
 		}
 		pfxlog.ContextLogger(buffer.x.Label()).Debugf("blocked=%v win_size=%v tx_buffer_size=%v rx_buffer_size=%v", blocked, buffer.windowsSize, buffer.linkSendBufferSize, buffer.linkRecvBufferSize)
 	} else if wasBlocked {
-		bufferBlockedTime.Update(time.Since(buffer.blockedSince))
+		buffer.metrics().BufferUnblocked(time.Since(buffer.blockedSince))
 	}
 
 	return blocked
@@ -233,8 +235,7 @@ func (buffer *LinkSendBuffer) run() {
 				buffer.buffer[txPayload.payload.GetSequence()] = txPayload
 				payloadSize := len(txPayload.payload.Data)
 				buffer.linkSendBufferSize += uint32(payloadSize)
-				atomic.AddInt64(&outstandingPayloads, 1)
-				atomic.AddInt64(&outstandingPayloadBytes, int64(payloadSize))
+				buffer.metrics().SendPayloadBuffered(int64(payloadSize))
 				log.Tracef("buffering payload %v with size %v. payload buffer size: %v",
 					txPayload.payload.Sequence, len(txPayload.payload.Data), buffer.linkSendBufferSize)
 			case <-buffer.closeNotify:
@@ -259,8 +260,7 @@ func (buffer *LinkSendBuffer) run() {
 			buffer.buffer[txPayload.payload.GetSequence()] = txPayload
 			payloadSize := len(txPayload.payload.Data)
 			buffer.linkSendBufferSize += uint32(payloadSize)
-			atomic.AddInt64(&outstandingPayloads, 1)
-			atomic.AddInt64(&outstandingPayloadBytes, int64(payloadSize))
+			buffer.metrics().SendPayloadBuffered(int64(payloadSize))
 			log.Tracef("buffering payload %v with size %v. payload buffer size: %v",
 				txPayload.payload.Sequence, len(txPayload.payload.Data), buffer.linkSendBufferSize)
 
@@ -276,10 +276,10 @@ func (buffer *LinkSendBuffer) run() {
 
 func (buffer *LinkSendBuffer) close() {
 	if buffer.blockedByLocalWindow {
-		atomic.AddInt64(&buffersBlockedByLocalWindow, -1)
+		buffer.metrics().BufferUnblockedByLocalWindow()
 	}
 	if buffer.blockedByRemoteWindow {
-		atomic.AddInt64(&buffersBlockedByRemoteWindow, -1)
+		buffer.metrics().BufferUnblockedByRemoteWindow()
 	}
 }
 
@@ -296,8 +296,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 			buffer.accumulator += payloadSize
 			buffer.successfulAcks++
 			delete(buffer.buffer, sequence)
-			atomic.AddInt64(&outstandingPayloads, -1)
-			atomic.AddInt64(&outstandingPayloadBytes, -int64(payloadSize))
+			buffer.metrics().SendPayloadDelivered(int64(payloadSize))
 			buffer.linkSendBufferSize -= payloadSize
 			log.Debugf("removing payload %v with size %v. payload buffer size: %v",
 				txPayload.payload.Sequence, len(txPayload.payload.Data), buffer.linkSendBufferSize)
@@ -315,7 +314,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 				}
 			}
 		} else { // duplicate ack
-			duplicateAcksMeter.Mark(1)
+			buffer.metrics().MarkDuplicateAck()
 			buffer.duplicateAcks++
 			if buffer.duplicateAcks >= buffer.x.Options.TxPortalDupAckThresh {
 				buffer.duplicateAcks = 0

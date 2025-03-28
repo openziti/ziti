@@ -146,7 +146,7 @@ func (self *testXgConn) WritePayload(buf []byte, m map[uint8][]byte) (int, error
 	return len(buf), nil
 }
 
-func (self *testXgConn) HandleControlMsg(controlType ControlType, headers channel.Headers, responder ControlReceiver) error {
+func (self *testXgConn) HandleControlMsg(ControlType, channel.Headers, ControlReceiver) error {
 	panic("implement me")
 }
 
@@ -168,6 +168,10 @@ func (self *testIntermediary) GetRetransmitter() *Retransmitter {
 
 func (self *testIntermediary) GetPayloadIngester() *PayloadIngester {
 	return self.payloadIngester
+}
+
+func (self *testIntermediary) GetMetrics() Metrics {
+	return noopMetrics{}
 }
 
 func (self *testIntermediary) SendAcknowledgement(ack *Acknowledgement, address Address) {
@@ -269,7 +273,6 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
 
 	metricsRegistry := metrics.NewRegistry("test", nil)
-	InitMetrics(metricsRegistry)
 
 	closeNotify := make(chan struct{})
 	defer func() {
@@ -278,10 +281,8 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 
 	payloadIngester := NewPayloadIngester(closeNotify)
 	rtx := NewRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
+	ackHandler := &testAcker{destinations: cmap.New[*Xgress]()}
 
-	ackHandler := &testAcker{
-		destinations: cmap.New[*Xgress](),
-	}
 	options := DefaultOptions()
 	options.Mtu = 1400
 
@@ -332,7 +333,6 @@ func Test_PayloadSize(t *testing.T) {
 	pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
 
 	metricsRegistry := metrics.NewRegistry("test", nil)
-	InitMetrics(metricsRegistry)
 
 	closeNotify := make(chan struct{})
 	defer func() {
@@ -341,10 +341,8 @@ func Test_PayloadSize(t *testing.T) {
 
 	payloadIngester := NewPayloadIngester(closeNotify)
 	rtx := NewRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
+	ackHandler := &testAcker{destinations: cmap.New[*Xgress]()}
 
-	ackHandler := &testAcker{
-		destinations: cmap.New[*Xgress](),
-	}
 	options := DefaultOptions()
 	//options.Mtu = 1435
 
