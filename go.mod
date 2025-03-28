@@ -1,9 +1,6 @@
 module github.com/openziti/ziti
 
 go 1.24.0
-
-toolchain go1.24.1
-
 require (
 	github.com/AppsFlyer/go-sundheit v0.6.0
 	github.com/Jeffail/gabs v1.4.0
@@ -53,7 +50,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.26
-	github.com/openziti/channel/v3 v3.0.39
+	github.com/openziti/channel/v3 v3.0.40
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.42
 	github.com/openziti/foundation/v2 v2.0.59
