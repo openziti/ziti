@@ -24,7 +24,7 @@ func Test_initializeCtrlEndpoints_ErrorsWithoutDataDir(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	r := Router{
-		config: &Config{},
+		config: &env.Config{},
 	}
 	_, err = r.getInitialCtrlEndpoints()
 	assert.Error(t, err)
@@ -43,9 +43,9 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := Router{
-		config: &Config{
+		config: &env.Config{
 			Ctrl: struct {
-				InitialEndpoints      []*UpdatableAddress
+				InitialEndpoints      []*env.UpdatableAddress
 				LocalBinding          string
 				DefaultRequestTimeout time.Duration
 				Options               *channel.Options
@@ -55,7 +55,7 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 				RateLimit             command.AdaptiveRateLimiterConfig
 			}{
 				EndpointsFile:    filepath.Join(tmpDir, "endpoints"),
-				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr)},
+				InitialEndpoints: []*env.UpdatableAddress{env.NewUpdatableAddress(addr)},
 			},
 		},
 	}
@@ -85,9 +85,9 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 	}
 
 	r := Router{
-		config: &Config{
+		config: &env.Config{
 			Ctrl: struct {
-				InitialEndpoints      []*UpdatableAddress
+				InitialEndpoints      []*env.UpdatableAddress
 				LocalBinding          string
 				DefaultRequestTimeout time.Duration
 				Options               *channel.Options
@@ -97,7 +97,7 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 				RateLimit             command.AdaptiveRateLimiterConfig
 			}{
 				EndpointsFile:    filepath.Join(tmpDir, "endpoints"),
-				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr), NewUpdatableAddress(addr2)},
+				InitialEndpoints: []*env.UpdatableAddress{env.NewUpdatableAddress(addr), env.NewUpdatableAddress(addr2)},
 			},
 		},
 		ctrls: env.NewNetworkControllers(time.Minute, ctrlDialer, env.NewDefaultHeartbeatOptions()),

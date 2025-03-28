@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/state"
@@ -44,7 +43,7 @@ const (
 type Factory struct {
 	id                 *identity.TokenId
 	ctrls              env.NetworkControllers
-	routerConfig       *router.Config
+	routerConfig       *env.Config
 	stateManager       state.Manager
 	serviceListHandler *handler_edge_ctrl.ServiceListHandler
 	tunneler           *tunneler
@@ -93,11 +92,11 @@ type XrctrlFactory interface {
 }
 
 // NewFactory constructs a new Edge Xgress Tunnel Factory instance
-func NewFactory(env env.RouterEnv, routerConfig *router.Config, stateManager state.Manager) XrctrlFactory {
+func NewFactory(env env.RouterEnv, routerConfig *env.Config, stateManager state.Manager) XrctrlFactory {
 	return NewFactoryWrapper(env, routerConfig, stateManager)
 }
 
-func NewV1Factory(env env.RouterEnv, routerConfig *router.Config, stateManager state.Manager) XrctrlFactory {
+func NewV1Factory(env env.RouterEnv, routerConfig *env.Config, stateManager state.Manager) XrctrlFactory {
 	factory := &Factory{
 		id:              env.GetRouterId(),
 		routerConfig:    routerConfig,

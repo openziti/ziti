@@ -38,7 +38,7 @@ type Forwarder struct {
 	faulter         FaultReceiver
 	metricsRegistry metrics.UsageRegistry
 	traceController trace.Controller
-	Options         *Options
+	Options         *env.Options
 	CloseNotify     <-chan struct{}
 }
 
@@ -58,7 +58,7 @@ type XgressDestination interface {
 	GetTimeOfLastRxFromLink() int64
 }
 
-func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter FaultReceiver, options *Options, closeNotify <-chan struct{}) *Forwarder {
+func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter FaultReceiver, options *env.Options, closeNotify <-chan struct{}) *Forwarder {
 	f := &Forwarder{
 		circuits:        newCircuitTable(),
 		destinations:    newDestinationTable(),

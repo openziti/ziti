@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/openziti/ziti/router/env"
 	"net/http"
 	"net/url"
 	"os"
@@ -35,7 +36,6 @@ import (
 	"github.com/openziti/identity/certtools"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/enroll"
-	"github.com/openziti/ziti/router"
 )
 
 type apiPost struct {
@@ -48,11 +48,11 @@ type Enroller interface {
 }
 
 type RestEnroller struct {
-	fullConfig *router.Config
-	config     *router.EdgeConfig
+	fullConfig *env.Config
+	config     *env.EdgeConfig
 }
 
-func NewRestEnroller(config *router.Config) Enroller {
+func NewRestEnroller(config *env.Config) Enroller {
 	return &RestEnroller{
 		fullConfig: config,
 		config:     config.Edge,

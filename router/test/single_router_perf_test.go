@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/handler_xgress"
 	"github.com/openziti/ziti/router/xgress"
@@ -144,10 +145,10 @@ func Test_SingleRouterPerf(t *testing.T) {
 		notifyDone:  make(chan struct{}),
 	}
 
-	registry := metrics.NewUsageRegistry("router", nil, closeNotify)
+	registryConfig := metrics.DefaultUsageRegistryConfig("router", closeNotify)
+	registry := metrics.NewUsageRegistry(registryConfig)
 	registry.StartReporting(&eventSink{}, time.Minute, 10)
-	fwd := forwarder.NewForwarder(registry, testFaultReceiver{}, forwarder.DefaultOptions(), closeNotify)
-
+	fwd := forwarder.NewForwarder(registry, testFaultReceiver{}, env.DefaultOptions(), closeNotify)
 	xgress.InitPayloadIngester(closeNotify)
 	xgress.InitAcker(fwd, registry, closeNotify)
 	xgress.InitMetrics(registry)

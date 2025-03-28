@@ -72,7 +72,7 @@ import (
 )
 
 type Router struct {
-	config              *Config
+	config              *env.Config
 	ctrls               env.NetworkControllers
 	ctrlBindhandler     channel.BindHandler
 	faulter             *forwarder.Faulter
@@ -140,7 +140,7 @@ func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
 }
 
 func (self *Router) RenderJsonConfig() (string, error) {
-	jsonMap, err := config.ToJsonCompatibleMap(self.config.src)
+	jsonMap, err := config.ToJsonCompatibleMap(self.config.Src)
 
 	if err != nil {
 		return "", err
@@ -185,7 +185,7 @@ func (self *Router) GetIndexWatchers() env.IndexWatchers {
 	return self.indexWatchers
 }
 
-func Create(cfg *Config, versionProvider versions.VersionProvider) *Router {
+func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
 	metricsConfig := metrics.DefaultUsageRegistryConfig(cfg.Id.Token, closeNotify)
@@ -271,7 +271,7 @@ func (self *Router) GetVersionInfo() versions.VersionProvider {
 	return self.versionProvider
 }
 
-func (self *Router) GetConfig() *Config {
+func (self *Router) GetConfig() *env.Config {
 	return self.config
 }
 
@@ -575,25 +575,25 @@ func (self *Router) setDefaultDialerBindings() {
 
 func (self *Router) startXgressListeners() {
 	for _, binding := range self.config.Listeners {
-		factory, err := xgress.GlobalRegistry().Factory(binding.name)
+		factory, err := xgress.GlobalRegistry().Factory(binding.Name)
 		if err != nil {
-			logrus.Fatalf("error getting xgress factory [%s] (%v)", binding.name, err)
+			logrus.Fatalf("error getting xgress factory [%s] (%v)", binding.Name, err)
 		}
-		listener, err := factory.CreateListener(binding.options)
+		listener, err := factory.CreateListener(binding.Options)
 		if err != nil {
-			logrus.Fatalf("error creating xgress listener [%s] (%v)", binding.name, err)
+			logrus.Fatalf("error creating xgress listener [%s] (%v)", binding.Name, err)
 		}
 		self.xgressListeners = append(self.xgressListeners, listener)
 
 		var address string
-		if addressVal, found := binding.options["address"]; found {
+		if addressVal, found := binding.Options["address"]; found {
 			address = addressVal.(string)
 		}
 
 		if err = listener.Listen(address, self.GetXgressBindHandler()); err != nil {
-			logrus.Fatalf("error listening [%s] (%v)", binding.name, err)
+			logrus.Fatalf("error listening [%s] (%v)", binding.Name, err)
 		}
-		logrus.Infof("created xgress listener [%s] at [%s]", binding.name, address)
+		logrus.Infof("created xgress listener [%s] at [%s]", binding.Name, address)
 	}
 }
 

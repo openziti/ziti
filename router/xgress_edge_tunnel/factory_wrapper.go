@@ -8,7 +8,6 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress"
@@ -19,7 +18,7 @@ import (
 
 type FactoryWrapper struct {
 	env          env.RouterEnv
-	routerConfig *router.Config
+	routerConfig *env.Config
 	stateManager state.Manager
 	initDone     chan struct{}
 	delegate     concurrenz.AtomicValue[XrctrlFactory]
@@ -83,7 +82,7 @@ func (self *FactoryWrapper) NotifyOfReconnect(ch channel.Channel) {
 	}
 }
 
-func NewFactoryWrapper(env env.RouterEnv, routerConfig *router.Config, stateManager state.Manager) XrctrlFactory {
+func NewFactoryWrapper(env env.RouterEnv, routerConfig *env.Config, stateManager state.Manager) XrctrlFactory {
 	wrapper := &FactoryWrapper{
 		env:             env,
 		routerConfig:    routerConfig,

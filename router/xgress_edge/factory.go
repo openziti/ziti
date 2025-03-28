@@ -28,7 +28,6 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/internal/apiproxy"
@@ -46,8 +45,8 @@ type reconnectionHandler interface {
 type Factory struct {
 	ctrls                env.NetworkControllers
 	enabled              bool
-	routerConfig         *router.Config
-	edgeRouterConfig     *router.EdgeConfig
+	routerConfig         *env.Config
+	edgeRouterConfig     *env.EdgeConfig
 	hostedServices       *hostedServiceRegistry
 	stateManager         state.Manager
 	versionProvider      versions.VersionProvider
@@ -105,8 +104,6 @@ func (factory *Factory) addReconnectionHandler(h reconnectionHandler) {
 func (factory *Factory) Run(env env.RouterEnv) error {
 	factory.stateManager.StartHeartbeat(env, factory.edgeRouterConfig.HeartbeatIntervalSeconds, env.GetCloseNotify())
 
-	factory.stateManager.StartRouterModelSave(factory.edgeRouterConfig.Db, factory.edgeRouterConfig.DbSaveInterval)
-
 	factory.certChecker = NewCertExpirationChecker(factory.env.GetRouterId(), factory.edgeRouterConfig, env.GetNetworkControllers(), env.GetCloseNotify())
 
 	go func() {
@@ -138,8 +135,6 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	}
 
 	factory.edgeRouterConfig = factory.routerConfig.Edge
-	factory.stateManager.LoadRouterModel(factory.edgeRouterConfig.Db)
-
 	factory.env.MarkRouterDataModelRequired()
 
 	go apiproxy.Start(edgeConfig)
@@ -148,7 +143,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 }
 
 // NewFactory constructs a new Edge Xgress Factory instance
-func NewFactory(routerConfig *router.Config, env env.RouterEnv, stateManager state.Manager) *Factory {
+func NewFactory(routerConfig *env.Config, env env.RouterEnv, stateManager state.Manager) *Factory {
 	factory := &Factory{
 		ctrls:             env.GetNetworkControllers(),
 		hostedServices:    newHostedServicesRegistry(env, stateManager),

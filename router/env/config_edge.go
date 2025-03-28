@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package router
+package env
 
 import (
 	"fmt"
@@ -99,6 +99,19 @@ func (config *EdgeConfig) LoadEdgeConfigFromMap(configMap map[interface{}]interf
 	var err error
 	config.Enabled = false
 
+	var defaultDbLocation = "./db.proto.gzip"
+
+	if value, found := configMap[PathMapKey]; found {
+		configPath := value.(string)
+		configPath = strings.TrimSpace(configPath)
+		defaultDbLocation = configPath + ".proto.gzip"
+	} else {
+		pfxlog.Logger().Warnf("the db property was not set, using default for cached data model: %s", config.Db)
+	}
+
+	config.Db = defaultDbLocation
+	config.DbSaveInterval = 30 * time.Second
+
 	if err = config.loadCsr(configMap); err != nil {
 		return err
 	}
@@ -125,17 +138,8 @@ func (config *EdgeConfig) LoadEdgeConfigFromMap(configMap map[interface{}]interf
 	}
 
 	if config.Db == "" {
-		config.Db = "./db.proto.gzip"
-
-		if value, found := configMap[PathMapKey]; found {
-			configPath := value.(string)
-			configPath = strings.TrimSpace(configPath)
-			config.Db = configPath + ".proto.gzip"
-		} else {
-			pfxlog.Logger().Warnf("the db property was not set, using default for cached data model: %s", config.Db)
-		}
-
-		pfxlog.Logger().Debugf("cached data model file set to: %s", config.Db)
+		config.Db = defaultDbLocation
+		pfxlog.Logger().Warnf("the db property was not set, using default for cached data model: %s", config.Db)
 	}
 
 	if val, found := edgeConfigMap["dbSaveIntervalSeconds"]; found {

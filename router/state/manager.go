@@ -61,8 +61,6 @@ const (
 
 type RemoveListener func()
 
-type DisconnectCB func(token string)
-
 type Manager interface {
 	//"Network" Sessions
 	RemoveEdgeSession(token string)
@@ -150,6 +148,9 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 		modelChanged:            make(chan struct{}, 1),
 	}
 
+	cfg := stateEnv.GetConfig()
+	result.LoadRouterModel(stateEnv.GetConfig().Edge.Db)
+
 	stateEnv.GetNetworkControllers().AddChangeListener(env.CtrlEventListenerFunc(func(event env.CtrlEvent) {
 		if event.Type != env.ControllerLeaderChange {
 			select {
@@ -160,6 +161,7 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 	}))
 
 	go result.manageRouterDataModelSubscription()
+	result.StartRouterModelSave(cfg.Edge.Db, cfg.Edge.DbSaveInterval)
 
 	return result
 }

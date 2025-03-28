@@ -17,6 +17,7 @@
 package create
 
 import (
+	fabForwarder "github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdHelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/constants"
@@ -27,7 +28,6 @@ import (
 	foundation "github.com/openziti/transport/v2"
 	fabXweb "github.com/openziti/xweb/v2"
 	edge "github.com/openziti/ziti/controller/config"
-	fabForwarder "github.com/openziti/ziti/router/forwarder"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

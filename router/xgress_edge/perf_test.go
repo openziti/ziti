@@ -8,6 +8,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/handler_xgress"
 	metrics2 "github.com/openziti/ziti/router/metrics"
@@ -137,7 +138,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 	xgress.InitMetrics(metricsRegistry)
 
-	fwdOptions := forwarder.DefaultOptions()
+	fwdOptions := env.DefaultOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 
 	link := newMirrorLink(fwd)
@@ -215,7 +216,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 	xgress.InitMetrics(metricsRegistry)
 
-	fwdOptions := forwarder.DefaultOptions()
+	fwdOptions := env.DefaultOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 
 	link := newMirrorLink(fwd)

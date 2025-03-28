@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/enroll"
 	routerEnv "github.com/openziti/ziti/router/env"
 	"github.com/pkg/errors"
@@ -46,7 +45,7 @@ type CertExpirationChecker struct {
 	id           *identity.TokenId
 	closeNotify  <-chan struct{}
 	ctrls        routerEnv.NetworkControllers
-	edgeConfig   *router.EdgeConfig
+	edgeConfig   *routerEnv.EdgeConfig
 	certsUpdated chan struct{}
 
 	isRunning atomic.Bool
@@ -58,7 +57,7 @@ type CertExpirationChecker struct {
 	extender CertExtender
 }
 
-func NewCertExpirationChecker(id *identity.TokenId, edgeConfig *router.EdgeConfig, ctrls routerEnv.NetworkControllers, closeNotify <-chan struct{}) *CertExpirationChecker {
+func NewCertExpirationChecker(id *identity.TokenId, edgeConfig *routerEnv.EdgeConfig, ctrls routerEnv.NetworkControllers, closeNotify <-chan struct{}) *CertExpirationChecker {
 	ret := &CertExpirationChecker{
 		id:              id,
 		closeNotify:     closeNotify,

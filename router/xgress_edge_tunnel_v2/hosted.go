@@ -49,8 +49,7 @@ func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manag
 		establishSet: map[string]*tunnelTerminator{},
 		deleteSet:    map[string]*tunnelTerminator{},
 	}
-	env.GetNetworkControllers().AddChangeListener(routerEnv.CtrlEventListenerFunc(result.NotifyOfCtrlChange))
-	go result.run()
+
 	return result
 }
 
@@ -64,10 +63,18 @@ type hostedServiceRegistry struct {
 	triggerEvalC chan struct{}
 
 	connectedToLeader atomic.Bool
+	started           atomic.Bool
 }
 
 type terminatorEvent interface {
 	handle(registry *hostedServiceRegistry)
+}
+
+func (self *hostedServiceRegistry) Start() {
+	if self.started.CompareAndSwap(false, true) {
+		self.env.GetNetworkControllers().AddChangeListener(routerEnv.CtrlEventListenerFunc(self.NotifyOfCtrlChange))
+		go self.run()
+	}
 }
 
 func (self *hostedServiceRegistry) run() {

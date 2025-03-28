@@ -14,14 +14,13 @@
 	limitations under the License.
 */
 
-package router
+package env
 
 import (
 	"bytes"
 	"fmt"
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/router/env"
 	"io"
 	"os"
 	"path/filepath"
@@ -35,7 +34,6 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -122,7 +120,7 @@ type Config struct {
 	IdConfig       *identity.Config
 	Id             *identity.TokenId
 	EnableDebugOps bool
-	Forwarder      *forwarder.Options
+	Forwarder      *Options
 	Trace          struct {
 		Handler *channel.TraceHandler
 	}
@@ -141,7 +139,7 @@ type Config struct {
 		DefaultRequestTimeout time.Duration
 		Options               *channel.Options
 		EndpointsFile         string
-		Heartbeats            env.HeartbeatOptions
+		Heartbeats            HeartbeatOptions
 		StartupTimeout        time.Duration
 		RateLimit             command.AdaptiveRateLimiterConfig
 	}
@@ -151,13 +149,13 @@ type Config struct {
 		Heartbeats channel.HeartbeatOptions
 	}
 	Dialers   map[string]xgress.OptionsData
-	Listeners []listenerBinding
+	Listeners []ListenerBinding
 	Transport map[interface{}]interface{}
 	Metrics   struct {
-		ReportInterval       time.Duration
-		IntervalAgeThreshold time.Duration
-		MessageQueueSize     int
-		EventQueueSize       int
+		ReportInterval        time.Duration
+		IntervalAgeThreshold  time.Duration
+		MessageQueueSize      int
+		EventQueueSize        int
 		EnableDataDelayMetric bool
 	}
 	HealthChecks struct {
@@ -172,11 +170,11 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
-	ConnectEvents env.ConnectEventsConfig
+	ConnectEvents ConnectEventsConfig
 	Proxy         *transport.ProxyConfiguration
 	Plugins       []string
 	Edge          *EdgeConfig
-	src           map[interface{}]interface{}
+	Src           map[interface{}]interface{}
 	path          string
 }
 
@@ -185,7 +183,7 @@ func (config *Config) CurrentCtrlAddress() string {
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
-	return sub.LoadConfig(config.src)
+	return sub.LoadConfig(config.Src)
 }
 
 const (
@@ -240,7 +238,7 @@ func deepCopyMap(src map[interface{}]interface{}, dest map[interface{}]interface
 // keys like @FlagsCfgMapKey and @PathMapKey.
 func (config *Config) cleanSrcCopy() map[interface{}]interface{} {
 	out := map[interface{}]interface{}{}
-	deepCopyMap(config.src, out)
+	deepCopyMap(config.Src, out)
 
 	for _, internalKey := range internalConfigKeys {
 		delete(out, internalKey)
@@ -377,7 +375,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 		panic("config version mismatch: no configuration version specified")
 	}
 
-	cfg := &Config{src: cfgmap}
+	cfg := &Config{Src: cfgmap}
 
 	identityConfig, err := LoadIdentityConfigFromMap(cfgmap)
 
@@ -409,10 +407,10 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 		}
 	}
 
-	cfg.Forwarder = forwarder.DefaultOptions()
+	cfg.Forwarder = DefaultOptions()
 	if value, found := cfgmap["forwarder"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if options, err := forwarder.LoadOptions(submap); err == nil {
+			if options, err := LoadOptions(submap); err == nil {
 				cfg.Forwarder = options
 			} else {
 				return nil, fmt.Errorf("invalid 'forwarder' stanza (%w)", err)
@@ -462,7 +460,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 
 	cfg.Ctrl.DefaultRequestTimeout = 5 * time.Second
 	cfg.Ctrl.Options = channel.DefaultOptions()
-	cfg.Ctrl.Heartbeats = *env.NewDefaultHeartbeatOptions()
+	cfg.Ctrl.Heartbeats = *NewDefaultHeartbeatOptions()
 	cfg.Ctrl.StartupTimeout = 30 * time.Second
 
 	if value, found := cfgmap[CtrlMapKey]; found {
@@ -517,7 +515,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 						if err != nil {
 							return nil, err
 						}
-						heartbeats, err := env.NewHeartbeatOptions(options)
+						heartbeats, err := NewHeartbeatOptions(options)
 						if err != nil {
 							return nil, err
 						}
@@ -635,7 +633,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 					if !found {
 						return nil, fmt.Errorf("[listener] must provide [binding] (%v)", submap)
 					}
-					cfg.Listeners = append(cfg.Listeners, listenerBinding{name: binding, options: submap})
+					cfg.Listeners = append(cfg.Listeners, ListenerBinding{Name: binding, Options: submap})
 				}
 			}
 		}
@@ -898,7 +896,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 		}
 
 		for _, c := range cfg.Listeners {
-			opts := c.options["options"]
+			opts := c.Options["options"]
 			if opts != nil {
 				optOpts := opts.(map[interface{}]interface{})
 				o := optOpts["advertise"]
@@ -983,7 +981,7 @@ func LoadIdentityConfigFromMap(cfgmap map[interface{}]interface{}) (*identity.Co
 	return nil, fmt.Errorf("identity section not found")
 }
 
-type listenerBinding struct {
-	name    string
-	options xgress.OptionsData
+type ListenerBinding struct {
+	Name    string
+	Options xgress.OptionsData
 }

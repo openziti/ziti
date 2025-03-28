@@ -19,6 +19,7 @@ package tests
 import (
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/controller/config"
+	env2 "github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/zitirest"
 	"io"
 	"net"
@@ -471,7 +472,7 @@ func (ctx *TestContext) requireEnrollEdgeRouter(tunneler bool, routerId string) 
 	if tunneler {
 		configFile = TunnelerEdgeRouterConfFile
 	}
-	routerConfig, err := router.LoadConfigWithOptions(configFile, false)
+	routerConfig, err := env2.LoadConfigWithOptions(configFile, false)
 	ctx.Req.NoError(err)
 
 	enroller := enroll.NewRestEnroller(routerConfig)
@@ -492,7 +493,7 @@ func (ctx *TestContext) createAndEnrollTransitRouter() *transitRouter {
 	ctx.transitRouterEntity = ctx.AdminManagementSession.requireNewTransitRouter()
 	jwt := ctx.AdminManagementSession.getTransitRouterJwt(ctx.transitRouterEntity.id)
 
-	routerConfig, err := router.LoadConfigWithOptions(TransitRouterConfFile, false)
+	routerConfig, err := env2.LoadConfigWithOptions(TransitRouterConfFile, false)
 	ctx.Req.NoError(err)
 
 	enroller := enroll.NewRestEnroller(routerConfig)
@@ -509,7 +510,7 @@ func (ctx *TestContext) createEnrollAndStartTransitRouter() {
 }
 
 func (ctx *TestContext) startTransitRouter() {
-	config, err := router.LoadConfig(TransitRouterConfFile)
+	config, err := env2.LoadConfig(TransitRouterConfFile)
 	ctx.Req.NoError(err)
 	newRouter := router.Create(config, NewVersionProviderTest())
 	ctx.routers = append(ctx.routers, newRouter)
@@ -535,12 +536,12 @@ func (ctx *TestContext) CreateEnrollAndStartHAEdgeRouter(roleAttributes ...strin
 	return ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*router.Config)) *router.Router {
+func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*env2.Config)) *router.Router {
 	configFile := EdgeRouterConfFile
 	if ctx.edgeRouterEntity.isTunnelerEnabled {
 		configFile = TunnelerEdgeRouterConfFile
 	}
-	config, err := router.LoadConfig(configFile)
+	config, err := env2.LoadConfig(configFile)
 	ctx.Req.NoError(err)
 	if cfgTweaks != nil {
 		cfgTweaks(config)
