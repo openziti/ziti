@@ -106,6 +106,10 @@ func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {
 		if clusterEvent.EventType == event.ClusterPeerDisconnected {
 			broker.ae.Managers.Controller.PeersDisconnected(clusterEvent.Peers)
 		}
+
+		if clusterEvent.EventType == event.ClusterMembersChanged {
+			broker.ae.Managers.Controller.DeleteRemovedPeers(clusterEvent.Peers)
+		}
 	}
 }
 
