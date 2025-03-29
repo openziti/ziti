@@ -17,6 +17,8 @@
 package raft
 
 import (
+	"fmt"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/controller/apierror"
 	"time"
 
@@ -92,6 +94,10 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 }
 
 func (self *Controller) HandleAddPeerAsLeader(req *cmd_pb.AddPeerRequest) error {
+	if _, err := transport.ParseAddress(req.Addr); err != nil {
+		return fmt.Errorf("unsupported peer address format '%s'", req.Addr)
+	}
+
 	r := self.GetRaft()
 
 	configFuture := r.GetConfiguration()
