@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"google.golang.org/protobuf/proto"
 	"time"
 )
@@ -62,7 +62,7 @@ func (handler *validateTerminatorsV2Handler) validateTerminators(msg *channel.Me
 	log := pfxlog.ContextLogger(ch.Label())
 
 	log.Debugf("validate terminators route request received: %v terminators", len(req.Terminators))
-	dialers := map[string]xgress.Dialer{}
+	dialers := map[string]xgress_router.Dialer{}
 
 	response := &ctrl_pb.ValidateTerminatorsV2Response{
 		States: map[string]*ctrl_pb.RouterTerminatorState{},
@@ -76,7 +76,7 @@ func (handler *validateTerminatorsV2Handler) validateTerminators(msg *channel.Me
 		binding := terminator.Binding
 		dialer := dialers[binding]
 		if dialer == nil {
-			if factory, err := xgress.GlobalRegistry().Factory(binding); err == nil {
+			if factory, err := xgress_router.GlobalRegistry().Factory(binding); err == nil {
 				if dialer, err = factory.CreateDialer(handler.env.GetDialerCfg()[binding]); err == nil {
 					dialers[binding] = dialer
 				}
@@ -128,8 +128,8 @@ func (handler *validateTerminatorsV2Handler) validateTerminators(msg *channel.Me
 	}
 }
 
-func (handler *validateTerminatorsV2Handler) validateTerminator(dialer xgress.Dialer, terminator *ctrl_pb.Terminator, fixInvalid bool) *ctrl_pb.RouterTerminatorState {
-	if inspectable, ok := dialer.(xgress.InspectableDialer); ok {
+func (handler *validateTerminatorsV2Handler) validateTerminator(dialer xgress_router.Dialer, terminator *ctrl_pb.Terminator, fixInvalid bool) *ctrl_pb.RouterTerminatorState {
+	if inspectable, ok := dialer.(xgress_router.InspectableDialer); ok {
 		valid, state := inspectable.InspectTerminator(terminator.Id, terminator.Address, fixInvalid)
 		if valid {
 			return &ctrl_pb.RouterTerminatorState{

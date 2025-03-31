@@ -21,7 +21,6 @@ import (
 	"github.com/emirpasic/gods/trees/btree"
 	"github.com/emirpasic/gods/utils"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/inspect"
 	"sync/atomic"
 	"time"
 )
@@ -45,14 +44,14 @@ func (buffer *LinkReceiveBuffer) Size() uint32 {
 	return atomic.LoadUint32(&buffer.size)
 }
 
-func (buffer *LinkReceiveBuffer) ReceiveUnordered(payload *Payload, maxSize uint32) bool {
+func (buffer *LinkReceiveBuffer) ReceiveUnordered(x *Xgress, payload *Payload, maxSize uint32) bool {
 	if payload.GetSequence() <= buffer.sequence {
-		duplicatePayloadsMeter.Mark(1)
+		x.dataPlane.GetMetrics().MarkDuplicatePayload()
 		return true
 	}
 
 	if atomic.LoadUint32(&buffer.size) > maxSize && payload.Sequence > buffer.maxSequence {
-		droppedPayloadsMeter.Mark(1)
+		x.dataPlane.GetMetrics().MarkPayloadDropped()
 		return false
 	}
 
@@ -66,7 +65,7 @@ func (buffer *LinkReceiveBuffer) ReceiveUnordered(payload *Payload, maxSize uint
 			buffer.maxSequence = payload.Sequence
 		}
 	} else {
-		duplicatePayloadsMeter.Mark(1)
+		x.dataPlane.GetMetrics().MarkDuplicatePayload()
 	}
 	return true
 }
@@ -90,14 +89,14 @@ func (buffer *LinkReceiveBuffer) getLastBufferSizeSent() uint32 {
 	return atomic.LoadUint32(&buffer.lastBufferSizeSent)
 }
 
-func (buffer *LinkReceiveBuffer) Inspect() *inspect.XgressRecvBufferDetail {
+func (buffer *LinkReceiveBuffer) Inspect(x *Xgress) *RecvBufferDetail {
 	timeout := time.After(100 * time.Millisecond)
 	inspectEvent := &receiveBufferInspectEvent{
 		buffer:         buffer,
-		notifyComplete: make(chan *inspect.XgressRecvBufferDetail, 1),
+		notifyComplete: make(chan *RecvBufferDetail, 1),
 	}
 
-	if payloadIngester.inspect(inspectEvent, timeout) {
+	if x.dataPlane.GetPayloadIngester().inspect(inspectEvent, timeout) {
 		select {
 		case result := <-inspectEvent.notifyComplete:
 			return result
@@ -108,14 +107,14 @@ func (buffer *LinkReceiveBuffer) Inspect() *inspect.XgressRecvBufferDetail {
 	return buffer.inspectIncomplete()
 }
 
-func (buffer *LinkReceiveBuffer) inspectComplete() *inspect.XgressRecvBufferDetail {
+func (buffer *LinkReceiveBuffer) inspectComplete() *RecvBufferDetail {
 	nextPayload := "none"
 	if head := buffer.tree.LeftValue(); head != nil {
 		payload := head.(*Payload)
 		nextPayload = fmt.Sprintf("%v", payload.Sequence)
 	}
 
-	return &inspect.XgressRecvBufferDetail{
+	return &RecvBufferDetail{
 		Size:           buffer.Size(),
 		PayloadCount:   uint32(buffer.tree.Size()),
 		LastSizeSent:   buffer.getLastBufferSizeSent(),
@@ -126,8 +125,8 @@ func (buffer *LinkReceiveBuffer) inspectComplete() *inspect.XgressRecvBufferDeta
 	}
 }
 
-func (buffer *LinkReceiveBuffer) inspectIncomplete() *inspect.XgressRecvBufferDetail {
-	return &inspect.XgressRecvBufferDetail{
+func (buffer *LinkReceiveBuffer) inspectIncomplete() *RecvBufferDetail {
+	return &RecvBufferDetail{
 		Size:           buffer.Size(),
 		LastSizeSent:   buffer.getLastBufferSizeSent(),
 		Sequence:       buffer.sequence,
@@ -139,7 +138,7 @@ func (buffer *LinkReceiveBuffer) inspectIncomplete() *inspect.XgressRecvBufferDe
 
 type receiveBufferInspectEvent struct {
 	buffer         *LinkReceiveBuffer
-	notifyComplete chan *inspect.XgressRecvBufferDetail
+	notifyComplete chan *RecvBufferDetail
 }
 
 func (self *receiveBufferInspectEvent) handle() {

@@ -1,25 +1,16 @@
-package xgress
+package xgress_router
 
 import (
 	"github.com/ef-ds/deque"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/router/xgress"
 	"sync/atomic"
 )
 
-var acker ackSender
-
-type ackSender interface {
-	ack(ack *Acknowledgement, address Address)
-}
-
-func InitAcker(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) {
-	acker = NewAcker(forwarder, metrics, closeNotify)
-}
-
 type ackEntry struct {
-	Address
-	*Acknowledgement
+	xgress.Address
+	*xgress.Acknowledgement
 }
 
 // Note: if altering this struct, be sure to account for 64 bit alignment on 32 bit arm arch
@@ -27,20 +18,25 @@ type ackEntry struct {
 // https://github.com/golang/go/issues/36606
 type Acker struct {
 	acksQueueSize int64
-	forwarder     PayloadBufferForwarder
+	forwarder     xgress.PayloadBufferForwarder
 	acks          *deque.Deque
 	ackIngest     chan *ackEntry
 	ackSend       chan *ackEntry
 	closeNotify   <-chan struct{}
+
+	ackTxMeter  metrics.Meter
+	ackFailures metrics.Meter
 }
 
-func NewAcker(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) *Acker {
+func NewAcker(forwarder xgress.PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) *Acker {
 	result := &Acker{
 		forwarder:   forwarder,
 		acks:        deque.New(),
 		ackIngest:   make(chan *ackEntry, 16),
 		ackSend:     make(chan *ackEntry, 1),
 		closeNotify: closeNotify,
+		ackTxMeter:  metrics.Meter("xgress.tx.acks"),
+		ackFailures: metrics.Meter("xgress.ack_failures"),
 	}
 
 	go result.ackIngester()
@@ -53,7 +49,7 @@ func NewAcker(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeN
 	return result
 }
 
-func (acker *Acker) ack(ack *Acknowledgement, address Address) {
+func (acker *Acker) SendAck(ack *xgress.Acknowledgement, address xgress.Address) {
 	acker.ackIngest <- &ackEntry{
 		Acknowledgement: ack,
 		Address:         address,
@@ -97,9 +93,9 @@ func (acker *Acker) ackSender() {
 		case nextAck := <-acker.ackSend:
 			if err := acker.forwarder.ForwardAcknowledgement(nextAck.Address, nextAck.Acknowledgement); err != nil {
 				logger.WithError(err).Debugf("unexpected error while sending ack from %v", nextAck.Address)
-				ackFailures.Mark(1)
+				acker.ackFailures.Mark(1)
 			} else {
-				ackTxMeter.Mark(1)
+				acker.ackTxMeter.Mark(1)
 			}
 		case <-acker.closeNotify:
 			return

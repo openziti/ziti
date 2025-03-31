@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/router/env"
@@ -92,7 +91,7 @@ func (self *testLink) SendControl(control *xgress.Control) error {
 	panic("implement me")
 }
 
-func (self *testLink) InspectCircuit(circuitDetail *inspect.CircuitInspectDetail) {
+func (self *testLink) InspectCircuit(circuitDetail *xgress.CircuitInspectDetail) {
 	panic("implement me")
 }
 
@@ -136,7 +135,7 @@ func (self *testLink) IsClosed() bool {
 	panic("implement me")
 }
 
-func (self *testLink) InspectLink() *inspect.LinkInspectDetail {
+func (self *testLink) InspectLink() *xgress.LinkInspectDetail {
 	panic("implement me")
 }
 

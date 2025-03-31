@@ -6,13 +6,13 @@ import (
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/handler_xgress"
 	metrics2 "github.com/openziti/ziti/router/metrics"
 	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -45,10 +45,10 @@ func (link *mirrorLink) IsClosed() bool {
 	return false
 }
 
-func (link *mirrorLink) InspectCircuit(circuitDetail *inspect.CircuitInspectDetail) {
+func (link *mirrorLink) InspectCircuit(circuitDetail *xgress.CircuitInspectDetail) {
 }
 
-func (link *mirrorLink) InspectLink() *inspect.LinkInspectDetail {
+func (link *mirrorLink) InspectLink() *xgress.LinkInspectDetail {
 	return nil
 }
 
@@ -136,10 +136,12 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 
 	registryConfig := metrics.DefaultUsageRegistryConfig("test", nil)
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
-	xgress.InitMetrics(metricsRegistry)
 
-	fwdOptions := env.DefaultOptions()
+	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
+	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
+	retransmitter := xgress.NewRetransmitter(fwd, fwd, metricsRegistry, nil)
+	payloadIngester := xgress.NewPayloadIngester(nil)
 
 	link := newMirrorLink(fwd)
 
@@ -157,7 +159,14 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgress.DefaultOptions(), nil)
-	x.SetReceiveHandler(handler_xgress.NewReceiveHandler(fwd))
+	dataPlaneHandler := handler_xgress.NewXgressDataPlaneHandler(handler_xgress.DataPlaneHandlerConfig{
+		Acker:           acker,
+		Forwarder:       fwd,
+		Retransmitter:   retransmitter,
+		PayloadIngester: payloadIngester,
+		Metrics:         xgress.NewMetrics(metricsRegistry),
+	})
+	x.SetDataPlaneHandler(dataPlaneHandler)
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)
@@ -214,10 +223,12 @@ func Benchmark_BaselinePerf(b *testing.B) {
 
 	registryConfig := metrics.DefaultUsageRegistryConfig("test", nil)
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
-	xgress.InitMetrics(metricsRegistry)
 
-	fwdOptions := env.DefaultOptions()
+	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
+	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
+	retransmitter := xgress.NewRetransmitter(fwd, fwd, metricsRegistry, nil)
+	payloadIngester := xgress.NewPayloadIngester(nil)
 
 	link := newMirrorLink(fwd)
 
@@ -235,7 +246,15 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgOptions, nil)
-	x.SetReceiveHandler(handler_xgress.NewReceiveHandler(fwd))
+
+	dataPlaneHandler := handler_xgress.NewXgressDataPlaneHandler(handler_xgress.DataPlaneHandlerConfig{
+		Acker:           acker,
+		Forwarder:       fwd,
+		Retransmitter:   retransmitter,
+		PayloadIngester: payloadIngester,
+		Metrics:         xgress.NewMetrics(metricsRegistry),
+	})
+	x.SetDataPlaneHandler(dataPlaneHandler)
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)

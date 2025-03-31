@@ -1,3 +1,18 @@
+# Release 1.5.5
+
+## What's New
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.5.4 -> v1.5.5](https://github.com/openziti/ziti/compare/v1.5.4...v1.5.5)
+    * [Issue #2919](https://github.com/openziti/ziti/issues/2919) - Make xgress pluggable, so it can be used from the SDK
+    * [Issue #2955](https://github.com/openziti/ziti/issues/2955) - Extract xgress inspection types
+    * [Issue #2954](https://github.com/openziti/ziti/issues/2954) - Encapsulate xgress metrics
+    * [Issue #2952](https://github.com/openziti/ziti/issues/2952) - Remove global payload ingester
+    * [Issue #2951](https://github.com/openziti/ziti/issues/2951) - Remove global xgress retransmitter
+    * [Issue #2950](https://github.com/openziti/ziti/issues/2950) - Move router specific xgress code to a new xgress_router package
+    * [Issue #2920](https://github.com/openziti/ziti/issues/2920) - Make xgress acker configurable
+
 # Release 1.5.4
 
 ## What's new

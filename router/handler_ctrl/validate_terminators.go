@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -61,14 +61,14 @@ func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.Vali
 	log := pfxlog.Logger()
 
 	log.Debugf("validate terminators route request received: %v terminators", len(req.Terminators))
-	dialers := map[string]xgress.Dialer{}
+	dialers := map[string]xgress_router.Dialer{}
 
 	var deleteList []string
 	for _, terminator := range req.Terminators {
 		binding := terminator.Binding
 		dialer := dialers[binding]
 		if dialer == nil {
-			if factory, err := xgress.GlobalRegistry().Factory(binding); err == nil {
+			if factory, err := xgress_router.GlobalRegistry().Factory(binding); err == nil {
 				if dialer, err = factory.CreateDialer(handler.env.GetDialerCfg()[binding]); err == nil {
 					dialers[binding] = dialer
 				}
@@ -82,7 +82,7 @@ func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.Vali
 			deleteList = append(deleteList, terminator.Id)
 			if len(deleteList) >= TerminatorDeleteBatchSize {
 				log.Infof("send batch of %v terminator deletes", len(deleteList))
-				xgress.RemoveTerminators(handler.env.GetNetworkControllers(), deleteList)
+				xgress_router.RemoveTerminators(handler.env.GetNetworkControllers(), deleteList)
 				deleteList = nil
 			}
 		}
@@ -90,7 +90,7 @@ func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.Vali
 
 	if len(deleteList) > 0 {
 		log.Infof("send batch of %v terminator deletes", len(deleteList))
-		xgress.RemoveTerminators(handler.env.GetNetworkControllers(), deleteList)
+		xgress_router.RemoveTerminators(handler.env.GetNetworkControllers(), deleteList)
 	}
 
 }

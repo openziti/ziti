@@ -18,6 +18,7 @@ package xgress_edge_transport
 
 import (
 	"github.com/openziti/ziti/common/ctrl_msg"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 	"time"
 
@@ -38,14 +39,14 @@ func (txd *dialer) IsTerminatorValid(string, string) bool {
 	return true
 }
 
-func newDialer(options *xgress.Options) (xgress.Dialer, error) {
+func newDialer(options *xgress.Options) (xgress_router.Dialer, error) {
 	txd := &dialer{
 		options: options,
 	}
 	return txd, nil
 }
 
-func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
+func (txd *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error) {
 	destination := params.GetDestination()
 	circuitId := params.GetCircuitId()
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(params.GetLogContext()).

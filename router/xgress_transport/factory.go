@@ -17,10 +17,11 @@
 package xgress_transport
 
 import (
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 )
 
@@ -31,11 +32,11 @@ type factory struct {
 }
 
 // NewFactory returns a new Transport Xgress factory
-func NewFactory(id *identity.TokenId, ctrl env.NetworkControllers, tcfg transport.Configuration) xgress.Factory {
+func NewFactory(id *identity.TokenId, ctrl env.NetworkControllers, tcfg transport.Configuration) xgress_router.Factory {
 	return &factory{id: id, ctrl: ctrl, tcfg: tcfg}
 }
 
-func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	options, err := xgress.LoadOptions(optionsData)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")
@@ -43,7 +44,7 @@ func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 	return newListener(factory.id, factory.ctrl, options, factory.tcfg), nil
 }
 
-func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {
 	options, err := xgress.LoadOptions(optionsData)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")

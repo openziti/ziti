@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -14,31 +14,21 @@
 	limitations under the License.
 */
 
-package xgress
+package xgress_router
 
 import (
-	"errors"
-	"github.com/openziti/transport/v2"
+	"sync/atomic"
+	"testing"
 )
 
-func ReadUntilNewline(peer transport.Conn) ([]byte, error) {
-	return ReadUntil(peer, '\n')
-}
+// A simple test to check for failure of alignment on atomic operations for 64 bit variables in a struct
+func Test64BitAlignment(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("One of the variables that was tested is not properly 64-bit aligned.")
+		}
+	}()
 
-func ReadUntil(peer transport.Conn, stop byte) ([]byte, error) {
-	buffer := make([]byte, 0)
-	done := false
-	for !done {
-		next := make([]byte, 1)
-		n, err := peer.Read(next)
-		if err != nil {
-			return nil, err
-		}
-		if n != 1 {
-			return nil, errors.New("short read")
-		}
-		buffer = append(buffer, next[:n]...)
-		done = buffer[len(buffer)-1] == stop
-	}
-	return buffer, nil
+	ackerObj := Acker{}
+	atomic.LoadInt64(&ackerObj.acksQueueSize)
 }

@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package xgress
+package xgress_router
 
 import (
 	"encoding/json"
@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/router/xgress"
 	"github.com/pkg/errors"
 	"io"
 	"time"
@@ -130,7 +131,7 @@ func ReceiveResponse(peer transport.Conn) (*Response, error) {
 type CircuitInfo struct {
 	CtrlId      string
 	CircuitId   *identity.TokenId
-	Address     Address
+	Address     xgress.Address
 	ResponseMsg *channel.Message
 }
 
@@ -179,7 +180,7 @@ func GetCircuit(ctrl networkControllers, ingressId string, service string, timeo
 		return &CircuitInfo{
 			CtrlId:      ch.Id(),
 			CircuitId:   circuitId,
-			Address:     Address(address),
+			Address:     xgress.Address(address),
 			ResponseMsg: reply,
 		}, nil
 
@@ -195,13 +196,13 @@ func GetCircuit(ctrl networkControllers, ingressId string, service string, timeo
 
 }
 
-func CreateCircuit(ctrl networkControllers, peer Connection, request *Request, bindHandler BindHandler, options *Options) *Response {
+func CreateCircuit(ctrl networkControllers, peer xgress.Connection, request *Request, bindHandler xgress.BindHandler, options *xgress.Options) *Response {
 	circuitInfo, err := GetCircuit(ctrl, request.Id, request.ServiceId, options.GetCircuitTimeout, nil)
 	if err != nil {
 		return &Response{Success: false, Message: err.Error()}
 	}
 
-	x := NewXgress(circuitInfo.CircuitId.Token, circuitInfo.CtrlId, circuitInfo.Address, peer, Initiator, options, map[string]string{
+	x := xgress.NewXgress(circuitInfo.CircuitId.Token, circuitInfo.CtrlId, circuitInfo.Address, peer, xgress.Initiator, options, map[string]string{
 		"serviceId": request.ServiceId,
 	})
 	bindHandler.HandleXgressBind(x)

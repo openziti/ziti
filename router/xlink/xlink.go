@@ -117,7 +117,7 @@ type LinkDestination interface {
 	SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	SendControl(control *xgress.Control) error
-	InspectCircuit(circuitDetail *inspect.CircuitInspectDetail)
+	InspectCircuit(circuitDetail *xgress.CircuitInspectDetail)
 }
 
 type Xlink interface {
@@ -132,7 +132,7 @@ type Xlink interface {
 	DialAddress() string
 	CloseOnce(f func())
 	IsClosed() bool
-	InspectLink() *inspect.LinkInspectDetail
+	InspectLink() *xgress.LinkInspectDetail
 	GetAddresses() []*ctrl_pb.LinkConn
 	IsDialed() bool
 	Iteration() uint32

@@ -120,7 +120,7 @@ type Config struct {
 	IdConfig       *identity.Config
 	Id             *identity.TokenId
 	EnableDebugOps bool
-	Forwarder      *Options
+	Forwarder      *ForwarderOptions
 	Trace          struct {
 		Handler *channel.TraceHandler
 	}
@@ -407,10 +407,10 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 		}
 	}
 
-	cfg.Forwarder = DefaultOptions()
+	cfg.Forwarder = DefaultForwarderOptions()
 	if value, found := cfgmap["forwarder"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if options, err := LoadOptions(submap); err == nil {
+			if options, err := LoadForwarderOptions(submap); err == nil {
 				cfg.Forwarder = options
 			} else {
 				return nil, fmt.Errorf("invalid 'forwarder' stanza (%w)", err)

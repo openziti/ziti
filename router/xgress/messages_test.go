@@ -34,12 +34,10 @@ func Test64BitAlignment(t *testing.T) {
 	lsb := Xgress{}
 	tPayload := txPayload{}
 	reTx := Retransmitter{}
-	ackerObj := Acker{}
 
 	atomic.LoadInt64(&lsb.timeOfLastRxFromLink)
 	atomic.LoadInt64(&tPayload.age)
 	atomic.LoadInt64(&reTx.retransmitsQueueSize)
-	atomic.LoadInt64(&ackerObj.acksQueueSize)
 }
 
 func TestSetOriginatorFlag(t *testing.T) {
