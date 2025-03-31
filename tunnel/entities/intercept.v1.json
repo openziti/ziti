@@ -50,6 +50,30 @@
             ],
             "type": "string"
         },
+        "proxyConfiguration": {
+            "properties": {
+                "address": {
+                    "description": "The address of the proxy in host:port format",
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/proxyType",
+                    "description": "The type of the proxy being used"
+                }
+            },
+            "required": [
+                "type",
+                "address"
+            ],
+            "type": "object"
+        },
+        "proxyType": {
+            "description": "supported proxy types",
+            "enum": [
+                "http"
+            ],
+            "type": "string"
+        },
         "timeoutSeconds": {
             "maximum": 2147483647,
             "minimum": 0,
@@ -68,6 +92,19 @@
                     }
                 }
             ]
+        },
+        "allowedSourceAddresses": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/listenAddress"
+                    }
+                }
+            ],
+            "description": "white list of source ips/cidrs that can be intercepted. all ips can be intercepted if this is not set."
         },
         "dialOptions": {
             "additionalProperties": false,
