@@ -64,8 +64,8 @@ services:
         set -o pipefail
         ATTEMPTS=10
         DELAY=3
-        until !((ATTEMPTS)) || ziti $${@}; do
-          (( ATTEMPTS-- ))
+        until ! (( --ATTEMPTS )) || ziti $${@}
+        do
           echo "Waiting for controller to start"
           sleep $${DELAY}
         done
