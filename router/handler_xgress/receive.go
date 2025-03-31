@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-type dataPlaneHandler struct {
+type dataPlaneAdapter struct {
 	acker           xgress.AckSender
 	forwarder       *forwarder.Forwarder
 	retransmitter   *xgress.Retransmitter
@@ -32,7 +32,7 @@ type dataPlaneHandler struct {
 	metrics         xgress.Metrics
 }
 
-type DataPlaneHandlerConfig struct {
+type DataPlaneAdapterConfig struct {
 	Acker           xgress.AckSender
 	Forwarder       *forwarder.Forwarder
 	Retransmitter   *xgress.Retransmitter
@@ -40,8 +40,8 @@ type DataPlaneHandlerConfig struct {
 	Metrics         xgress.Metrics
 }
 
-func NewXgressDataPlaneHandler(cfg DataPlaneHandlerConfig) xgress.DataPlaneHandler {
-	return &dataPlaneHandler{
+func NewXgressDataPlaneAdapter(cfg DataPlaneAdapterConfig) xgress.DataPlaneAdapter {
+	return &dataPlaneAdapter{
 		acker:           cfg.Acker,
 		forwarder:       cfg.Forwarder,
 		retransmitter:   cfg.Retransmitter,
@@ -50,12 +50,12 @@ func NewXgressDataPlaneHandler(cfg DataPlaneHandlerConfig) xgress.DataPlaneHandl
 	}
 }
 
-func (xrh *dataPlaneHandler) SendPayload(payload *xgress.Payload, x *xgress.Xgress) {
+func (adapter *dataPlaneAdapter) ForwardPayload(payload *xgress.Payload, x *xgress.Xgress) {
 	for {
-		if err := xrh.forwarder.ForwardPayload(x.Address(), payload, time.Second); err != nil {
+		if err := adapter.forwarder.ForwardPayload(x.Address(), payload, time.Second); err != nil {
 			if !channel.IsTimeout(err) {
 				pfxlog.ContextLogger(x.Label()).WithFields(payload.GetLoggerFields()).WithError(err).Error("unable to forward payload")
-				xrh.forwarder.ReportForwardingFault(payload.CircuitId, x.CtrlId())
+				adapter.forwarder.ReportForwardingFault(payload.CircuitId, x.CtrlId())
 				return
 			}
 		} else {
@@ -64,24 +64,24 @@ func (xrh *dataPlaneHandler) SendPayload(payload *xgress.Payload, x *xgress.Xgre
 	}
 }
 
-func (xrh *dataPlaneHandler) SendControlMessage(control *xgress.Control, x *xgress.Xgress) {
-	if err := xrh.forwarder.ForwardControl(x.Address(), control); err != nil {
+func (adapter *dataPlaneAdapter) ForwardControlMessage(control *xgress.Control, x *xgress.Xgress) {
+	if err := adapter.forwarder.ForwardControl(x.Address(), control); err != nil {
 		pfxlog.ContextLogger(x.Label()).WithFields(control.GetLoggerFields()).WithError(err).Error("unable to forward control")
 	}
 }
 
-func (xrh *dataPlaneHandler) SendAcknowledgement(ack *xgress.Acknowledgement, address xgress.Address) {
-	xrh.acker.SendAck(ack, address)
+func (adapter *dataPlaneAdapter) ForwardAcknowledgement(ack *xgress.Acknowledgement, address xgress.Address) {
+	adapter.acker.SendAck(ack, address)
 }
 
-func (xrh *dataPlaneHandler) GetRetransmitter() *xgress.Retransmitter {
-	return xrh.retransmitter
+func (adapter *dataPlaneAdapter) GetRetransmitter() *xgress.Retransmitter {
+	return adapter.retransmitter
 }
 
-func (xrh *dataPlaneHandler) GetPayloadIngester() *xgress.PayloadIngester {
-	return xrh.payloadIngester
+func (adapter *dataPlaneAdapter) GetPayloadIngester() *xgress.PayloadIngester {
+	return adapter.payloadIngester
 }
 
-func (xrh *dataPlaneHandler) GetMetrics() xgress.Metrics {
-	return xrh.metrics
+func (adapter *dataPlaneAdapter) GetMetrics() xgress.Metrics {
+	return adapter.metrics
 }

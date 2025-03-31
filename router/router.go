@@ -249,7 +249,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 		panic(err)
 	}
 
-	dataPlaneHandler := handler_xgress.NewXgressDataPlaneHandler(handler_xgress.DataPlaneHandlerConfig{
+	dataPlaneAdapter := handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
 		Acker:           ackSender,
 		Forwarder:       router.forwarder,
 		Retransmitter:   retransmitter,
@@ -257,7 +257,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 		Metrics:         xgMetrics,
 	})
 
-	router.xgBindHandler = handler_xgress.NewBindHandler(dataPlaneHandler,
+	router.xgBindHandler = handler_xgress.NewBindHandler(dataPlaneAdapter,
 		handler_xgress.NewCloseHandler(router.ctrls, router.forwarder),
 		router.forwarder,
 	)

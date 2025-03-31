@@ -23,15 +23,15 @@ import (
 )
 
 type bindHandler struct {
-	receiveHandler     xgress.DataPlaneHandler
+	dataPlaneAdapter   xgress.DataPlaneAdapter
 	closeHandler       xgress.CloseHandler
 	metricsPeekHandler xgress.PeekHandler
 	forwarder          *forwarder.Forwarder
 }
 
-func NewBindHandler(receiveHandler xgress.DataPlaneHandler, closeHandler xgress.CloseHandler, forwarder *forwarder.Forwarder) *bindHandler {
+func NewBindHandler(dataPlaneAdapter xgress.DataPlaneAdapter, closeHandler xgress.CloseHandler, forwarder *forwarder.Forwarder) *bindHandler {
 	return &bindHandler{
-		receiveHandler:     receiveHandler,
+		dataPlaneAdapter:   dataPlaneAdapter,
 		closeHandler:       closeHandler,
 		metricsPeekHandler: metrics.NewXgressPeekHandler(forwarder.MetricsRegistry()),
 		forwarder:          forwarder,
@@ -39,7 +39,7 @@ func NewBindHandler(receiveHandler xgress.DataPlaneHandler, closeHandler xgress.
 }
 
 func (bindHandler *bindHandler) HandleXgressBind(x *xgress.Xgress) {
-	x.SetDataPlaneHandler(bindHandler.receiveHandler)
+	x.SetDataPlaneAdapter(bindHandler.dataPlaneAdapter)
 	x.AddPeekHandler(bindHandler.metricsPeekHandler)
 
 	x.AddCloseHandler(bindHandler.closeHandler)

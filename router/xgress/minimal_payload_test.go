@@ -173,11 +173,11 @@ func (self *testIntermediary) GetMetrics() Metrics {
 	return noopMetrics{}
 }
 
-func (self *testIntermediary) SendAcknowledgement(ack *Acknowledgement, address Address) {
+func (self *testIntermediary) ForwardAcknowledgement(ack *Acknowledgement, address Address) {
 	self.acker.SendAck(ack, address)
 }
 
-func (self *testIntermediary) SendPayload(payload *Payload, x *Xgress) {
+func (self *testIntermediary) ForwardPayload(payload *Payload, x *Xgress) {
 	m := payload.Marshall()
 	self.payloadTransformer.Tx(m, nil)
 	b, err := self.msgs.GetMarshaller()(m)
@@ -232,7 +232,7 @@ func (self *testIntermediary) validateMessage(m *channel.Message) error {
 	return nil
 }
 
-func (self *testIntermediary) SendControlMessage(control *Control, x *Xgress) {
+func (self *testIntermediary) ForwardControlMessage(control *Control, x *Xgress) {
 	panic("implement me")
 }
 

@@ -58,11 +58,11 @@ func (n noopReceiveHandler) GetPayloadIngester() *PayloadIngester {
 	return n.payloadIngester
 }
 
-func (n noopReceiveHandler) SendAcknowledgement(*Acknowledgement, Address) {}
+func (n noopReceiveHandler) ForwardAcknowledgement(*Acknowledgement, Address) {}
 
-func (n noopReceiveHandler) SendPayload(*Payload, *Xgress) {}
+func (n noopReceiveHandler) ForwardPayload(*Payload, *Xgress) {}
 
-func (n noopReceiveHandler) SendControlMessage(*Control, *Xgress) {}
+func (n noopReceiveHandler) ForwardControlMessage(*Control, *Xgress) {}
 
 func Test_Ordering(t *testing.T) {
 	closeNotify := make(chan struct{})
