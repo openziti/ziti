@@ -9,61 +9,92 @@ makePki() {
   # create root and intermediate CA
   #
 
-  # used by "ziti pki create server" as DNS SAN
-  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
-    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set" >&2
+  # generate a root and intermediate unless explicitly disabled or an existing PKI dir was provided
+  if [[ "${ZITI_BOOTSTRAP_CLUSTER}" == true ]]; then
+    echo "DEBUG: not generating new cluster PKI because ZITI_BOOTSTRAP_CLUSTER is not true" >&3
+    return 0
+  fi
+
+  if [[ -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
+    echo "ERROR: ZITI_CLUSTER_TRUST_DOMAIN must be set" >&2
     hintLinuxBootstrap "${PWD}"
     return 1
   fi
 
-  # generate a root and intermediate unless explicitly disabled or an existing PKI dir was provided
-  if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER}" == true ]]; then
-    if [[ -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
-      echo "ERROR: ZITI_CLUSTER_TRUST_DOMAIN must be set" >&2
-      hintLinuxBootstrap "${PWD}"
-      return 1
-    fi
-
-    if [[ "${ZITI_CA_FILE}" == "${ZITI_INTERMEDIATE_FILE}" ]]; then
-      echo "ERROR: ZITI_CA_FILE and ZITI_INTERMEDIATE_FILE must be different" >&2
-      return 1
-    fi
-
-    echo "DEBUG: generating new cluster PKI because ZITI_BOOTSTRAP_CLUSTER=true" >&3
-    if [[ ! -s "${ZITI_CA_CERT}" ]]; then
-      ziti pki create ca \
-        --pki-root "${ZITI_PKI_ROOT}" \
-        --ca-file "${ZITI_CA_FILE}" \
-        --trust-domain "spiffe://${ZITI_CLUSTER_TRUST_DOMAIN}"
-    fi
-
-    if [[ ! -s "${ZITI_PKI_SIGNER_CERT}" && ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
-      ziti pki create intermediate \
-        --pki-root "${ZITI_PKI_ROOT}" \
-        --ca-name "${ZITI_CA_FILE}" \
-        --intermediate-file "${ZITI_INTERMEDIATE_FILE}"
-    elif [[ ! -s "${ZITI_PKI_SIGNER_CERT}" || ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
-      echo "ERROR: ${ZITI_PKI_SIGNER_CERT} and ${ZITI_PKI_SIGNER_KEY} must both exist or neither exist as non-empty files" >&2
-      return 1
-    else
-      # trunk-ignore(shellcheck/SC2312)
-      echo "INFO: edge signer CA exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")"
-    fi
-  elif [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER}" == false ]]; then
-    echo "DEBUG: not generating new cluster PKI because ZITI_BOOTSTRAP_CLUSTER=false and not installing new node PKI because ZITI_CLUSTER_NODE_PKI is not set" >&3
-  else
-    # install the provided intermediate signing cert in this node's PKI root
-    echo "DEBUG: installing new node PKI from ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" >&3
-    cp -RT "${ZITI_CLUSTER_NODE_PKI}" "${ZITI_PKI_ROOT}"
+  ZITI_CA_CERT="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
+  echo "DEBUG: generating new cluster PKI because ZITI_BOOTSTRAP_CLUSTER=true" >&3
+  if [[ ! -s "${ZITI_CA_CERT}" ]]; then
+    ziti pki create ca \
+      --pki-root "${ZITI_PKI_ROOT}" \
+      --ca-file "${ZITI_CA_FILE}" \
+      --trust-domain "$(normalizeTrustDomain ${ZITI_CLUSTER_TRUST_DOMAIN})"
   fi
 
+  issueSignerCert
   issueLeafCerts
+}
+
+issueSignerCert() {
+  if [[ -n "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
+    # controller identity vars
+    ZITI_INTERMEDIATE_FILE="${ZITI_CLUSTER_NODE_NAME}"
+  else
+    echo "ERROR: ZITI_CLUSTER_NODE_NAME must be set to issue a signer certificate" >&2
+    return 1
+  fi
+
+  if [[ "${ZITI_CA_FILE}" == "${ZITI_INTERMEDIATE_FILE}" ]]; then
+    echo "ERROR: ZITI_CA_FILE and ZITI_INTERMEDIATE_FILE must be different" >&2
+    return 1
+  fi
+
+  ZITI_PKI_SIGNER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.cert"
+  ZITI_PKI_SIGNER_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_INTERMEDIATE_FILE}.key"
+  if [[ ! -s "${ZITI_PKI_SIGNER_CERT}" && ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
+    ziti pki create intermediate \
+      --pki-root "${ZITI_PKI_ROOT}" \
+      --ca-name "${ZITI_CA_FILE}" \
+      --intermediate-file "${ZITI_INTERMEDIATE_FILE}" \
+      --intermediate-name "Ziti Edge Signer for $(normalizeTrustDomain ${ZITI_CLUSTER_TRUST_DOMAIN})/controller/${ZITI_CLUSTER_NODE_NAME}"
+  elif [[ ! -s "${ZITI_PKI_SIGNER_CERT}" || ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
+    echo "ERROR: ${ZITI_PKI_SIGNER_CERT} and ${ZITI_PKI_SIGNER_KEY} must both exist or neither exist as non-empty files" >&2
+    return 1
+  else
+    # trunk-ignore(shellcheck/SC2312)
+    echo "DEBUG: edge signer exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")" >&3
+  fi
+}
+
+# ensure string has prefix 'spiffe://'
+normalizeTrustDomain(){
+  if [[ -n "${1:-}" ]]; then
+    local _trust_domain="$1"
+    shift
+  else
+    echo "ERROR: no trust domain provided" >&2
+    return 1
+  fi
+  echo "spiffe://${_trust_domain#spiffe://}"
 }
 
 issueLeafCerts() {
   #
   # create server and client keys
   #
+
+  # used by "ziti pki create server" as DNS SAN
+  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
+    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS must be set to issue leaf certificateS" >&2
+    return 1
+  fi
+
+  if [[ -n "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
+    # controller identity vars
+    ZITI_INTERMEDIATE_FILE="${ZITI_CLUSTER_NODE_NAME}"
+  else
+    echo "ERROR: ZITI_CLUSTER_NODE_NAME must be set to issue leaf certificates" >&2
+    return 1
+  fi
 
   if [[ "${ZITI_SERVER_FILE}" == "${ZITI_CLIENT_FILE}" ]]; then
     echo "ERROR: ZITI_SERVER_FILE and ZITI_CLIENT_FILE must be different" >&2
@@ -110,6 +141,13 @@ issueLeafCerts() {
     else
       _dns_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
     fi
+
+    local _spiffe_id="controller/${ZITI_CLUSTER_NODE_NAME}"
+    if [[ -n "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
+      local _trust_domain=$(normalizeTrustDomain ${ZITI_CLUSTER_TRUST_DOMAIN})
+      _spiffe_id="${_trust_domain}/${_spiffe_id}"
+    fi
+
     # server cert
     ziti pki create server \
       --pki-root "${ZITI_PKI_ROOT}" \
@@ -119,7 +157,7 @@ issueLeafCerts() {
       --server-name "${ZITI_CLUSTER_NODE_NAME}" \
       --dns "${_dns_sans}" \
       --ip "${_ip_sans}" \
-      --spiffe-id "controller/${ZITI_CLUSTER_NODE_NAME}" \
+      --spiffe-id "${_spiffe_id}" \
       --allow-overwrite >&3  # write to debug fd because this runs every startup
   fi
 
@@ -134,7 +172,7 @@ issueLeafCerts() {
       --key-file "${ZITI_SERVER_FILE}" \
       --client-file "${ZITI_CLIENT_FILE}" \
       --client-name "${ZITI_CLUSTER_NODE_NAME}" \
-      --spiffe-id "controller/${ZITI_CLUSTER_NODE_NAME}" \
+      --spiffe-id "${_spiffe_id}" \
       --allow-overwrite >&3  # write to debug fd because this runs every startup
   fi
 
@@ -242,8 +280,8 @@ makeDatabase() {
     return 1
   fi
 
-  if [[ -n "${ZITI_CLUSTER_NODE_PKI:-}" || "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
-    echo "DEBUG: skipping database initialization because ZITI_CLUSTER_NODE_PKI is set or ZITI_BOOTSTRAP_CLUSTER is false" >&3
+  if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
+    echo "DEBUG: skipping database initialization because ZITI_BOOTSTRAP_CLUSTER is false" >&3
     return 0
   elif [[ -d "${ZITI_CTRL_DATABASE_DIR}" && "${1:-}" == --force ]]; then
     echo "DEBUG: recreating database directory: ${ZITI_CTRL_DATABASE_DIR}" >&3
@@ -310,6 +348,19 @@ makeConfig() {
   # set the URI of the edge-client API (uses same TCP port); e.g., ztAPI: ctrl.ziti.example.com:1280
   export  ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_ADVERTISED_ADDRESS}" \
           ZITI_CTRL_EDGE_ADVERTISED_PORT="${ZITI_CTRL_ADVERTISED_PORT:=1280}"
+
+  if [[ -n "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
+    # controller identity vars
+    ZITI_INTERMEDIATE_FILE="${ZITI_CLUSTER_NODE_NAME}"
+  else
+    echo "ERROR: ZITI_CLUSTER_NODE_NAME must be set to generate a configuration" >&2
+    return 1
+  fi
+
+  export  ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_SERVER_FILE}.chain.pem" \
+          ZITI_PKI_CTRL_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_CLIENT_FILE}.chain.pem" \
+          ZITI_PKI_CTRL_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_SERVER_FILE}.key" \
+          ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
 
   # export the vars that were assigned inside this script to set the path to the server and client certs and their common
   # private key, and the intermediate (signer) CA cert and key
@@ -519,22 +570,22 @@ promptCtrlAddress() {
   fi
 }
 
-promptClusterNodePki(){
-  if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
-    echo -e "\nThe new node's PKI directory must contain:"\
-            "\n\t${ZITI_CA_CERT}"\
-            "\n\t${ZITI_PKI_SIGNER_CERT}"\
-            "\n\t${ZITI_PKI_SIGNER_KEY}"\
-            "\n"
-    # trunk-ignore(shellcheck/SC2310)
-    if ZITI_CLUSTER_NODE_PKI="$(prompt  "Enter the path to the new cluster node's PKI directory: " )"; then
-      setAnswer "ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" "${BOOT_ENV_FILE}"
-    else
-      echo "ERROR: missing ZITI_CLUSTER_NODE_PKI in ${BOOT_ENV_FILE}; required for joining an existing cluster" >&2
-      return 1
-    fi
-  fi
-}
+# promptPkiRoot(){
+#   if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
+#     echo -e "\nThe new node's PKI directory must contain:"\
+#             "\n\t${ZITI_CA_CERT}"\
+#             "\n\t${ZITI_PKI_SIGNER_CERT}"\
+#             "\n\t${ZITI_PKI_SIGNER_KEY}"\
+#             "\n"
+#     # trunk-ignore(shellcheck/SC2310)
+#     if ZITI_CLUSTER_NODE_PKI="$(prompt  "Enter the path to the new cluster node's PKI directory: " )"; then
+#       setAnswer "ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" "${BOOT_ENV_FILE}"
+#     else
+#       echo "ERROR: missing ZITI_CLUSTER_NODE_PKI in ${BOOT_ENV_FILE}; required for joining an existing cluster" >&2
+#       return 1
+#     fi
+#   fi
+# }
 
 promptBootstrapCluster(){
   if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && -z "${ZITI_BOOTSTRAP_CLUSTER:-}" ]]; then
@@ -574,7 +625,7 @@ promptClusterNodeName(){
 }
 
 promptClusterTrustDomain() {
-  if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER:-}" == true && -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
+  if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == true && -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
     local _prompt="Enter the trust domain for the new cluster"
     # if the address is a domain name then suggest everything after the first dot for the trust domain
     # trunk-ignore(shellcheck/SC2310)
@@ -785,23 +836,15 @@ fi
 trap exitHandler EXIT SIGINT SIGTERM
 
 # defaults
-: "${ZITI_PKI_ROOT:=pki}"  # relative to working directory
 : "${ZITI_CA_FILE:=root}"  # relative to ZITI_PKI_ROOT
-: "${ZITI_INTERMEDIATE_FILE:=intermediate}"  # relative to ZITI_PKI_ROOT
 : "${ZITI_SERVER_FILE:=server}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
 : "${ZITI_CTRL_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
 : "${ZITI_BOOTSTRAP_LOG_FILE:=$(mktemp)}"  # where the exit handler should concatenate verbose and debug messages
 
-# constants
-ZITI_CA_CERT="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
-ZITI_PKI_SIGNER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.cert"
-ZITI_PKI_SIGNER_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_INTERMEDIATE_FILE}.key"
-ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_SERVER_FILE}.chain.pem"
-ZITI_PKI_CTRL_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_CLIENT_FILE}.chain.pem"
-ZITI_PKI_CTRL_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_SERVER_FILE}.key"
-ZITI_PKI_CTRL_CA="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
+#constants
+ZITI_PKI_ROOT="./pki"  # relative to working directory
 ZITI_BOOTSTRAP_NOW="$(date --utc --iso-8601=seconds)"
 ZITI_CTRL_DATABASE_DIR="./raft"
 
@@ -857,7 +900,7 @@ else
   promptBootstrapCluster        # prompt for new cluster or existing PKI
   promptClusterNodeName         # prompt for ZITI_CLUSTER_NODE_NAME if not already set
   promptClusterTrustDomain      # prompt for ZITI_CLUSTER_TRUST_DOMAIN if not already set
-  promptClusterNodePki          # prompt for ZITI_CLUSTER_NODE_PKI if not already set and not bootstrapping a new cluster
+  # promptClusterNodePki          # prompt for ZITI_CLUSTER_NODE_PKI if not already set and not bootstrapping a new cluster
   promptCtrlAddress             # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
   promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
   promptUserPwd                 # prompt for ZITI_USER and ZITI_PWD if not already set
