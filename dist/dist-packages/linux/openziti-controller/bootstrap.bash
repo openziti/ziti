@@ -6,62 +6,81 @@
 
 makePki() {
   #
-  # create root and intermediate CA
+  # create missing PKI
   #
 
-  # generate a root and intermediate unless explicitly disabled or an existing PKI dir was provided
+  if [[ "${ZITI_BOOTSTRAP_PKI}" == true ]]; then
+    issueRootCert
+    issueSignerCert
+    issueLeafCerts
+  else
+    echo "DEBUG: skipping PKI creation because ZITI_BOOTSTRAP_PKI=${ZITI_BOOTSTRAP_PKI}" >&3
+  fi
+}
+
+issueRootCert(){
+  # generate a root CA unless bootstrapping is disabled or it already exists
   if [[ "${ZITI_BOOTSTRAP_CLUSTER}" == true ]]; then
-    echo "DEBUG: not generating new cluster PKI because ZITI_BOOTSTRAP_CLUSTER is not true" >&3
-    return 0
-  fi
+    if [[ -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
+      echo "ERROR: ZITI_CLUSTER_TRUST_DOMAIN must be set to generate a new cluster PKI" >&2
+      hintLinuxBootstrap "${PWD}"
+      return 1
+    fi
 
-  if [[ -z "${ZITI_CLUSTER_TRUST_DOMAIN:-}" ]]; then
-    echo "ERROR: ZITI_CLUSTER_TRUST_DOMAIN must be set" >&2
-    hintLinuxBootstrap "${PWD}"
-    return 1
+    ZITI_CA_CERT="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
+    ZITI_CA_KEY="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/keys/${ZITI_CA_FILE}.key"
+    if [[ -s "${ZITI_CA_CERT}" && -s "${ZITI_CA_KEY}" ]]; then
+      echo "DEBUG: cluster PKI already exists in $(realpath "${ZITI_CA_CERT}")" >&3
+    elif [[ -s "${ZITI_CA_CERT}" || -s "${ZITI_CA_KEY}" ]]; then
+      echo "ERROR: ${ZITI_CA_CERT} and ${ZITI_CA_KEY} must both exist or neither exist as non-empty files" >&2
+      return 1
+    else
+      # generate private key and issue self-signed root CA cert for new cluster PKI
+      echo "DEBUG: generating new cluster PKI" >&3
+      ziti pki create ca \
+        --pki-root "${ZITI_PKI_ROOT}" \
+        --ca-file "${ZITI_CA_FILE}" \
+        --trust-domain "$(normalizeTrustDomain ${ZITI_CLUSTER_TRUST_DOMAIN})"
+    fi
   fi
-
-  ZITI_CA_CERT="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
-  echo "DEBUG: generating new cluster PKI because ZITI_BOOTSTRAP_CLUSTER=true" >&3
-  if [[ ! -s "${ZITI_CA_CERT}" ]]; then
-    ziti pki create ca \
-      --pki-root "${ZITI_PKI_ROOT}" \
-      --ca-file "${ZITI_CA_FILE}" \
-      --trust-domain "$(normalizeTrustDomain ${ZITI_CLUSTER_TRUST_DOMAIN})"
-  fi
-
-  issueSignerCert
-  issueLeafCerts
 }
 
 issueSignerCert() {
-  if [[ -n "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
-    # controller identity vars
-    ZITI_INTERMEDIATE_FILE="${ZITI_CLUSTER_NODE_NAME}"
-  else
-    echo "ERROR: ZITI_CLUSTER_NODE_NAME must be set to issue a signer certificate" >&2
-    return 1
-  fi
+  #
+  # issue edge signer intermediate CA certificate unless disabled or already exists
+  #
 
-  if [[ "${ZITI_CA_FILE}" == "${ZITI_INTERMEDIATE_FILE}" ]]; then
-    echo "ERROR: ZITI_CA_FILE and ZITI_INTERMEDIATE_FILE must be different" >&2
-    return 1
-  fi
+  if [[ "${ZITI_BOOTSTRAP_NODE:-}" == true ]]; then
+    if [[ -n "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
+      ZITI_INTERMEDIATE_FILE="${ZITI_CLUSTER_NODE_NAME}"
+    else
+      echo "ERROR: ZITI_CLUSTER_NODE_NAME must be set to issue a signer certificate" >&2
+      return 1
+    fi
 
-  ZITI_PKI_SIGNER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.cert"
-  ZITI_PKI_SIGNER_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_INTERMEDIATE_FILE}.key"
-  if [[ ! -s "${ZITI_PKI_SIGNER_CERT}" && ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
-    ziti pki create intermediate \
-      --pki-root "${ZITI_PKI_ROOT}" \
-      --ca-name "${ZITI_CA_FILE}" \
-      --intermediate-file "${ZITI_INTERMEDIATE_FILE}" \
-      --intermediate-name "Ziti Edge Signer for $(normalizeTrustDomain ${ZITI_CLUSTER_TRUST_DOMAIN})/controller/${ZITI_CLUSTER_NODE_NAME}"
-  elif [[ ! -s "${ZITI_PKI_SIGNER_CERT}" || ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
-    echo "ERROR: ${ZITI_PKI_SIGNER_CERT} and ${ZITI_PKI_SIGNER_KEY} must both exist or neither exist as non-empty files" >&2
-    return 1
+    if [[ "${ZITI_CA_FILE}" == "${ZITI_INTERMEDIATE_FILE}" ]]; then
+      echo "ERROR: ZITI_CA_FILE and ZITI_INTERMEDIATE_FILE must be different" >&2
+      return 1
+    fi
+
+    ZITI_PKI_SIGNER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.cert"
+    ZITI_PKI_SIGNER_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_INTERMEDIATE_FILE}.key"
+    if [[ ! -s "${ZITI_PKI_SIGNER_CERT}" && ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
+      echo "DEBUG: generating new signer certificate" >&3
+      ziti pki create intermediate \
+        --pki-root "${ZITI_PKI_ROOT}" \
+        --ca-name "${ZITI_CA_FILE}" \
+        --intermediate-file "${ZITI_INTERMEDIATE_FILE}" \
+        --intermediate-name "Ziti Edge Signer for $(normalizeTrustDomain ${ZITI_CLUSTER_TRUST_DOMAIN})/controller/${ZITI_CLUSTER_NODE_NAME}"
+    elif [[ ! -s "${ZITI_PKI_SIGNER_CERT}" || ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
+      echo "ERROR: ${ZITI_PKI_SIGNER_CERT} and ${ZITI_PKI_SIGNER_KEY} must both exist or neither exist as non-empty files" >&2
+      return 1
+    else
+      # trunk-ignore(shellcheck/SC2312)
+      echo "DEBUG: edge signer exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")" >&3
+    fi
   else
-    # trunk-ignore(shellcheck/SC2312)
-    echo "DEBUG: edge signer exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")" >&3
+    echo "DEBUG: skipping signer certificate creation because ZITI_BOOTSTRAP_NODE=${ZITI_BOOTSTRAP_NODE:-}" >&3
   fi
 }
 
@@ -474,16 +493,16 @@ prompt() {
 promptUserPwd() {
   # do nothing if database directory exists
   if [[ -d "${ZITI_CTRL_DATABASE_DIR}" ]]; then
-    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because $(realpath "${ZITI_CTRL_DATABASE_DIR}")" >&3
+    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because '$(realpath "${ZITI_CTRL_DATABASE_DIR}")' exists" >&3
     return 0
   # or we're not bootstrapping a cluster
-  elif [[ -n "${ZITI_CLUSTER_NODE_PKI:-}" || "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
-    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because ZITI_CLUSTER_NODE_PKI is set or ZITI_BOOTSTRAP_CLUSTER is false" >&3
+  elif [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
+    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because ZITI_BOOTSTRAP_CLUSTER is false" >&3
     return 0
   fi
   # prompt for password if interactive, unless already answered
   if [[ "${ZITI_BOOTSTRAP_DATABASE:-}" != true ]]; then
-    echo "WARN: not checking ZITI_USER or ZITI_PWD because ZITI_BOOTSTRAP_DATABASE is not true in ${SVC_ENV_FILE}" >&2
+    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because ZITI_BOOTSTRAP_DATABASE is not true in ${SVC_ENV_FILE}" >&3
     return 0
   fi
   promptUser
@@ -588,7 +607,7 @@ promptCtrlAddress() {
 # }
 
 promptBootstrapCluster(){
-  if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && -z "${ZITI_BOOTSTRAP_CLUSTER:-}" ]]; then
+  if [[ -z "${ZITI_BOOTSTRAP_CLUSTER:-}" ]]; then
     # trunk-ignore(shellcheck/SC2310)
     ZITI_BOOTSTRAP_CLUSTER="$(prompt 'Create a new cluster (NO if joining a cluster) [Y/n]: ' || echo 'true')"
     if [[ "${ZITI_BOOTSTRAP_CLUSTER}" =~ ^([yY]([eE][sS])?|[tT]([rR][uU][eE])?)$ ]]; then
@@ -741,13 +760,7 @@ bootstrap() {
     return 1
   fi
 
-  # make PKI unless explicitly disabled or it already exists
-  if [[ "${ZITI_BOOTSTRAP_PKI}"      == true ]]; then
-    if ! [[ -s "${_ctrl_config_file}" ]]; then
-      # make PKI unless explicitly disabled or a configuration already exists
-      makePki
-    fi
-  fi
+  makePki
 
   # make config file unless explicitly disabled or it exists, set "force" to overwrite
   if [[ -s "${_ctrl_config_file}" && "${ZITI_BOOTSTRAP_CONFIG}"   != force ]]; then
@@ -756,6 +769,8 @@ bootstrap() {
     makeConfig "${_ctrl_config_file}"
   elif [[ "${ZITI_BOOTSTRAP_CONFIG}" == force ]]; then
     makeConfig "${_ctrl_config_file}" --force
+  elif [[ "${ZITI_BOOTSTRAP_CONFIG}" == false ]]; then
+    echo "DEBUG: skipping config generation because ZITI_BOOTSTRAP_CONFIG=${ZITI_BOOTSTRAP_CONFIG}" >&3
   else
     echo "ERROR: unexpected value in ZITI_BOOTSTRAP_CONFIG=${ZITI_BOOTSTRAP_CONFIG}" >&2
     return 1
@@ -863,7 +878,8 @@ else
   set -o nounset
   set -o pipefail
 
-  export ZITI_HOME=/var/lib/private/ziti-controller
+  : "${ZITI_HOME:=/var/lib/private/ziti-controller}"
+  export ZITI_HOME
   SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
   BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
   SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
