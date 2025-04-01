@@ -1,9 +1,6 @@
 module github.com/openziti/ziti
 
 go 1.24.0
-
-toolchain go1.24.1
-
 require (
 	github.com/AppsFlyer/go-sundheit v0.6.0
 	github.com/Jeffail/gabs v1.4.0
@@ -53,7 +50,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.26
-	github.com/openziti/channel/v3 v3.0.39
+	github.com/openziti/channel/v3 v3.0.40
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.42
 	github.com/openziti/foundation/v2 v2.0.59
@@ -64,7 +61,7 @@ require (
 	github.com/openziti/sdk-golang v0.25.1
 	github.com/openziti/secretstream v0.1.32
 	github.com/openziti/storage v0.4.7
-	github.com/openziti/transport/v2 v2.0.167
+	github.com/openziti/transport/v2 v2.0.168
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.3.0
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -87,7 +84,7 @@ require (
 	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/crypto v0.36.0
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/net v0.37.0
+	golang.org/x/net v0.38.0
 	golang.org/x/oauth2 v0.28.0
 	golang.org/x/sync v0.12.0
 	golang.org/x/sys v0.31.0
@@ -164,7 +161,7 @@ require (
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
-	github.com/pion/dtls/v3 v3.0.5 // indirect
+	github.com/pion/dtls/v3 v3.0.6 // indirect
 	github.com/pion/logging v0.2.3 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
