@@ -12,6 +12,7 @@
     * [Issue #2951](https://github.com/openziti/ziti/issues/2951) - Remove global xgress retransmitter
     * [Issue #2950](https://github.com/openziti/ziti/issues/2950) - Move router specific xgress code to a new xgress_router package
     * [Issue #2920](https://github.com/openziti/ziti/issues/2920) - Make xgress acker configurable
+    * [Issue #2698](https://github.com/openziti/ziti/issues/2698) - Support source IP filtering in intercept.v1 configurations
 
 # Release 1.5.4
 
