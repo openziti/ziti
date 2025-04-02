@@ -57,7 +57,7 @@ jobs:
         id: nfpm
         uses: ./.github/actions/nfpm
         with:
-          image: ${{ env.NFPM_VERSION }}
+          nfpm_version: ${{ env.NFPM_VERSION }}
           packager: ${{ matrix.packager }}
           config: dist/dist-packages/linux/nfpm-${{ matrix.package_name }}.yaml
           target: release/
