@@ -45,7 +45,6 @@ jobs:
       MINIMUM_SYSTEMD_VERSION: 232
       ZITI_DEB_TEST_REPO: ${{ vars.ZITI_DEB_TEST_REPO || 'zitipax-openziti-deb-test' }}
       ZITI_RPM_TEST_REPO: ${{ vars.ZITI_RPM_TEST_REPO || 'zitipax-openziti-rpm-test' }}
-      NFPM_VERSION: "2.38.0"
     steps:
       - name: Checkout Workspace
         uses: actions/checkout@v4
@@ -64,10 +63,8 @@ jobs:
 
       - name: Build Package
         id: nfpm
-        uses: burningalchemist/action-gh-nfpm@eeac96f42da23d091eec0d0088bf05cac0ceb9f3
-        # uses: netfoundry/action-gh-nfpm@main
+        uses: ./.github/actions/nfpm
         with:
-          nfpm_version: ${{ env.NFPM_VERSION }}
           packager: ${{ matrix.packager }}
           config: dist/dist-packages/linux/nfpm-${{ matrix.package_name }}.yaml
           target: release/
