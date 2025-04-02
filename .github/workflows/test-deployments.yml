@@ -15,6 +15,7 @@ concurrency:
 
 env:
   I_AM_ROBOT: 1  # skip destruction warnings when running in CI
+  NFPM_VERSION: docker.io/goreleaser/nfpm:v2.42.0@sha256:31c856f5806306ba105111fec19e8679222c67c43ad09921a46f9400d99bbbb1
 
 jobs:
   build-linux-packages:
@@ -56,6 +57,7 @@ jobs:
         id: nfpm
         uses: ./.github/actions/nfpm
         with:
+          image: ${{ env.NFPM_VERSION }}
           packager: ${{ matrix.packager }}
           config: dist/dist-packages/linux/nfpm-${{ matrix.package_name }}.yaml
           target: release/
@@ -194,18 +196,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: ./go.mod
-
-      - name: Install nfpm
-        shell: bash
-        run: |
-
-          set -o pipefail
-          set -o xtrace
-
-          echo ~/.local/bin >> $GITHUB_PATH
-          mkdir -p ~/.local/bin
-          wget -qO- https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz | tar --directory ~/.local/bin -xz nfpm
-          nfpm --version
 
       - name: Bootstrap & Run
         shell: bash
