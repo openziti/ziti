@@ -66,7 +66,7 @@ BASEDIR="$(cd "$(dirname "${0}")" && pwd)"
 REPOROOT="$(cd "${BASEDIR}/../../.." && pwd)"
 cd "${REPOROOT}"
 
-declare -a BINS=(grep go nc nfpm curl unzip)
+declare -a BINS=(grep go nc docker curl unzip)
 for BIN in "${BINS[@]}"; do
     checkCommand "$BIN"
 done
@@ -83,6 +83,8 @@ done
 : "${ZITI_ROUTER_ADVERTISED_ADDRESS:="${ZITI_ROUTER_NAME}.127.0.0.1.sslip.io"}"
 : "${ZITI_ENROLL_TOKEN:="${TMPDIR}/${ZITI_ROUTER_NAME}.jwt"}"
 : "${ZITI_CONSOLE_LOCATION:="/opt/openziti/share/consoletest"}"
+# default is amd64 manifest
+: "${NFPM_VERSION:=docker.io/goreleaser/nfpm:v2.42.0@sha256:31c856f5806306ba105111fec19e8679222c67c43ad09921a46f9400d99bbbb1}"
 
 export \
 ZITI_GO_VERSION \
@@ -109,15 +111,30 @@ done
 mkdir -p ./release
 go build -o ./release/ ./...
 
+docker_nfpm(){
+    docker run --rm \
+    --user "${UID:-0}" \
+    --volume "${TMPDIR}":/mnt/packages \
+    --volume ./dist:/mnt/dist \
+    --volume ./release:/mnt/release \
+    --workdir /mnt \
+    --env ZITI_VENDOR \
+    --env ZITI_MAINTAINER \
+    --env ZITI_HOMEPAGE \
+    --env MINIMUM_SYSTEMD_VERSION \
+    "${NFPM_VERSION}" \
+    "${@}"
+}
+
 for PKG in openziti{,-controller,-router}
 do
     ZITI_HOMEPAGE="https://openziti.io" \
     ZITI_VENDOR="netfoundry" \
     ZITI_MAINTAINER="Maintainers <developers@openziti.org>" \
     MINIMUM_SYSTEMD_VERSION="232" \
-    nfpm pkg \
+    docker_nfpm pkg \
     --packager deb \
-    --target  "$TMPDIR" \
+    --target  ./packages \
     --config "./dist/dist-packages/linux/nfpm-${PKG}.yaml"
 done
 
