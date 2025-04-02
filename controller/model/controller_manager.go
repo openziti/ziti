@@ -300,6 +300,37 @@ func (self *ControllerManager) UpdateControllerState(peers []*event.ClusterPeer,
 	}
 }
 
+func (self *ControllerManager) DeleteRemovedPeers(peers []*event.ClusterPeer) {
+	controllers := map[string]*Controller{}
+
+	result, err := self.BaseList("true limit none")
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to list controllers")
+		return
+	}
+
+	for _, ctrl := range result.Entities {
+		controllers[ctrl.Id] = ctrl
+	}
+
+	changeCtx := change.New()
+	changeCtx.SetSourceType("raft.peers.changed").
+		SetChangeAuthorType(change.AuthorTypeController)
+
+	peers = append(peers, self.getCurrentAsClusterPeer())
+
+	for _, peer := range peers {
+		delete(controllers, peer.Id)
+	}
+
+	for _, controller := range controllers {
+		if err = self.Delete(controller.Id, changeCtx); err != nil {
+			pfxlog.Logger().WithError(err).WithField("ctrlId", controller.Id).
+				Error("could not delete controller during cluster member change")
+		}
+	}
+}
+
 func (self *ControllerManager) PeersDisconnected(peers []*event.ClusterPeer) {
 	changeCtx := change.New()
 	changeCtx.SetSourceType("raft.peers.disconnected").
