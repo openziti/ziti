@@ -495,14 +495,13 @@ promptUserPwd() {
   if [[ -d "${ZITI_CTRL_DATABASE_DIR}" ]]; then
     echo "DEBUG: not checking ZITI_USER or ZITI_PWD because '$(realpath "${ZITI_CTRL_DATABASE_DIR}")' exists" >&3
     return 0
-  # or we're not bootstrapping a cluster
+  # or we're not bootstrapping a cluster (true, false)
   elif [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
-    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because ZITI_BOOTSTRAP_CLUSTER is false" >&3
+    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because ZITI_BOOTSTRAP_CLUSTER=${ZITI_BOOTSTRAP_CLUSTER}" >&3
     return 0
-  fi
-  # prompt for password if interactive, unless already answered
-  if [[ "${ZITI_BOOTSTRAP_DATABASE:-}" != true ]]; then
-    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because ZITI_BOOTSTRAP_DATABASE is not true in ${SVC_ENV_FILE}" >&3
+  # or we're not bootstrapping a database (true, force, false)
+  elif [[ "${ZITI_BOOTSTRAP_DATABASE:-}" == false ]]; then
+    echo "DEBUG: not checking ZITI_USER or ZITI_PWD because ZITI_BOOTSTRAP_DATABASE=${ZITI_BOOTSTRAP_DATABASE}" >&3
     return 0
   fi
   promptUser
