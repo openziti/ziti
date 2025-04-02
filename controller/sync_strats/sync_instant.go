@@ -45,7 +45,6 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -753,6 +752,10 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 			pks = append(pks, v)
 		})
 
+		changeSet := &edge_ctrl_pb.DataState_ChangeSet{
+			IsSynthetic: true,
+		}
+
 		for _, pk := range pks {
 			peerEvent := &edge_ctrl_pb.DataState_Event{
 				Action: edge_ctrl_pb.DataState_Create,
@@ -762,18 +765,16 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 				IsSynthetic: true,
 			}
 
-			changeSet := &edge_ctrl_pb.DataState_ChangeSet{
-				Changes: []*edge_ctrl_pb.DataState_Event{peerEvent},
-			}
+			changeSet.Changes = append(changeSet.Changes, peerEvent)
+		}
 
+		if len(changeSet.Changes) > 0 {
 			err = strategy.sendDataStateChangeSet(rtx, changeSet)
 
 			if err != nil {
 				pfxlog.Logger().WithError(err).
-					WithField("evenType", reflect.TypeOf(peerEvent).String()).
-					WithField("eventAction", peerEvent.Action).
-					WithField("eventIsSynthetic", peerEvent.IsSynthetic).
-					Error("could not send data state event for peers")
+					WithField("keyCount", len(changeSet.Changes)).
+					Error("could not send public keys data state event for peers")
 			}
 		}
 	}
