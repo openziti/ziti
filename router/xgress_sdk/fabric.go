@@ -19,7 +19,7 @@ package xgress_sdk
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3/protobufs"
+	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"

@@ -16,7 +16,7 @@
 
 package change
 
-import "github.com/openziti/channel/v3"
+import "github.com/openziti/channel/v4"
 
 func NewControlChannelChange(routerId, routerName, method string, ch channel.Channel) *Context {
 	return New().

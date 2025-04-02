@@ -21,7 +21,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/controller/xctrl"
 	"github.com/openziti/storage/boltz"
 	"github.com/sirupsen/logrus"

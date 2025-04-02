@@ -3,7 +3,7 @@ package xgress_edge
 import (
 	"crypto/x509"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
@@ -274,6 +274,10 @@ func Benchmark_BaselinePerf(b *testing.B) {
 }
 
 type NoopTestChannel struct {
+}
+
+func (ch *NoopTestChannel) Headers() map[int32][]byte {
+	return nil
 }
 
 func (ch *NoopTestChannel) Underlay() channel.Underlay {

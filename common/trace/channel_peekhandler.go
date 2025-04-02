@@ -19,8 +19,8 @@ package trace
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
-	"github.com/openziti/channel/v3/trace/pb"
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v4/trace/pb"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/router/xgress"

@@ -3,7 +3,7 @@ package xlink_transport
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
 	"github.com/stretchr/testify/assert"
 	"net"

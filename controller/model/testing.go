@@ -19,7 +19,7 @@ package model
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/controller/models"
 	"testing"

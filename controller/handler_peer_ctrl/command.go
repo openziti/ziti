@@ -18,7 +18,7 @@ package handler_peer_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
