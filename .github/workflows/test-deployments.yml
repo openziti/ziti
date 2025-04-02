@@ -14,7 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NFPM_VERSION: "2.38.0"
   I_AM_ROBOT: 1  # skip destruction warnings when running in CI
 
 jobs:
@@ -23,8 +22,6 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: openziti/ziti-builder:v2
-      volumes:
-        - "${{ github.action_path }}:${{ github.action_path }}"  # burningalchemist/action-gh-nfpm uses installs the nfpm executable here
     strategy:
       matrix:
         package_name:
@@ -57,9 +54,8 @@ jobs:
 
       - name: Build Package
         id: nfpm
-        uses: burningalchemist/action-gh-nfpm@eeac96f42da23d091eec0d0088bf05cac0ceb9f3
+        uses: ./.github/actions/nfpm
         with:
-          nfpm_version: ${{ env.NFPM_VERSION }}
           packager: ${{ matrix.packager }}
           config: dist/dist-packages/linux/nfpm-${{ matrix.package_name }}.yaml
           target: release/
