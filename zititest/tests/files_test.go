@@ -107,8 +107,10 @@ func testFileDownload(t *testing.T, hostSelector string, client smoke.HttpClient
 	}
 
 	success := false
+	testRun := false
 
 	t.Run(fmt.Sprintf("%v-(%s<-%s)-%s-%v", client, hostSelector, hostType, fileSize, encDesk), func(t *testing.T) {
+		testRun = true
 		o, err := smoke.TestFileDownload(hostSelector, client, hostType, encrypted, fileSize)
 		t.Log(o)
 
@@ -125,5 +127,5 @@ func testFileDownload(t *testing.T, hostSelector string, client smoke.HttpClient
 		require.NoError(t, err)
 		success = true
 	})
-	return success
+	return !testRun || success
 }
