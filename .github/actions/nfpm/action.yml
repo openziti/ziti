@@ -15,16 +15,13 @@ inputs:
     required: false
     default: docker.io/goreleaser/nfpm:v2.42.0@sha256:31c856f5806306ba105111fec19e8679222c67c43ad09921a46f9400d99bbbb1
 runs:
-  using: composite
-  steps:
-    - name: Run NFPM in Docker
-      shell: bash
-      run: |
-        docker run --rm \
-          --volume "${{ github.workspace }}:/github/workspace" \
-          --workdir "/github/workspace" \
-          ${{ inputs.nfpm_version }} \
-          package \
-          --packager ${{ inputs.packager }} \
-          --config ${{ inputs.config }} \
-          --target ${{ inputs.target }}
+  using: 'docker'
+  image: ${{ inputs.nfpm_version }}
+  args:
+    - 'package'
+    - '--packager'
+    - ${{ inputs.packager }}
+    - '--config'
+    - ${{ inputs.config }}
+    - '--target'
+    - ${{ inputs.target }}
