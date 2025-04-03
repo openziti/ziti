@@ -80,7 +80,7 @@ for BIN in "${BINS[@]}"; do
     _check_command "$BIN"
 done
 
-"${BUILD_DIR}/ziti" edge quickstart ha \
+"${BUILD_DIR}/ziti" edge quickstart \
     --ctrl-address="127.0.0.1" \
     --router-address="127.0.0.1" \
     --home="${ziti_home}" \
