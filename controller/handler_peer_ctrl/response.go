@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/raft"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/controller/models"

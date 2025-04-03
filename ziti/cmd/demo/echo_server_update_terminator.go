@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/openziti/agent"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"

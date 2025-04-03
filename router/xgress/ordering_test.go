@@ -2,7 +2,7 @@ package xgress
 
 import (
 	"encoding/binary"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/stretchr/testify/require"
 	"io"
 	"sync/atomic"

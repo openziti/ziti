@@ -7,7 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
@@ -631,6 +631,10 @@ func (s simpleTestUnderlay) GetRemoteAddr() net.Addr {
 
 type simpleTestChannel struct {
 	isClosed bool
+}
+
+func (ch *simpleTestChannel) Headers() map[int32][]byte {
+	return nil
 }
 
 func (ch *simpleTestChannel) Bind(h channel.BindHandler) error {

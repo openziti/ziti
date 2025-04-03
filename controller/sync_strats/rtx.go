@@ -18,8 +18,8 @@ package sync_strats
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
-	"github.com/openziti/channel/v3/protobufs"
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"

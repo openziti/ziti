@@ -2,9 +2,19 @@
 
 ## What's New
 
+* Bug fixes and library updates
+
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/channel/v4: [v3.0.39 -> v4.0.2](https://github.com/openziti/channel/compare/v3.0.39...v4.0.2)
+    * [Issue #172](https://github.com/openziti/channel/issues/172) - Support multi-underlay channels
+
+* github.com/openziti/sdk-golang: [v0.25.1 -> v0.25.2](https://github.com/openziti/sdk-golang/compare/v0.25.1...v0.25.2)
+* github.com/openziti/transport/v2: [v2.0.167 -> v2.0.168](https://github.com/openziti/transport/compare/v2.0.167...v2.0.168)
 * github.com/openziti/ziti: [v1.5.4 -> v1.5.5](https://github.com/openziti/ziti/compare/v1.5.4...v1.5.5)
+    * [Issue #2906](https://github.com/openziti/ziti/issues/2906) - Controller not removed from DB controller store when removed from controller
+    * [Issue #2922](https://github.com/openziti/ziti/issues/2922) - Validate node address before adding to cluster
+    * [Issue #2932](https://github.com/openziti/ziti/issues/2932) - Fix router data model 'create public key' related errors
     * [Issue #2919](https://github.com/openziti/ziti/issues/2919) - Make xgress pluggable, so it can be used from the SDK
     * [Issue #2955](https://github.com/openziti/ziti/issues/2955) - Extract xgress inspection types
     * [Issue #2954](https://github.com/openziti/ziti/issues/2954) - Encapsulate xgress metrics
@@ -12,7 +22,7 @@
     * [Issue #2951](https://github.com/openziti/ziti/issues/2951) - Remove global xgress retransmitter
     * [Issue #2950](https://github.com/openziti/ziti/issues/2950) - Move router specific xgress code to a new xgress_router package
     * [Issue #2920](https://github.com/openziti/ziti/issues/2920) - Make xgress acker configurable
-    * [Issue #2698](https://github.com/openziti/ziti/issues/2698) - Support source IP filtering in intercept.v1 configurations
+
 
 # Release 1.5.4
 

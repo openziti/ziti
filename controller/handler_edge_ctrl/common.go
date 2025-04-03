@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/storage/boltz"

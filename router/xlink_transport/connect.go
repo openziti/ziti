@@ -19,7 +19,7 @@ package xlink_transport
 import (
 	"crypto/x509"
 	"errors"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 )
 

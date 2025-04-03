@@ -18,7 +18,7 @@ package env
 
 import (
 	"crypto"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/db"

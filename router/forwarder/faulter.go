@@ -18,8 +18,8 @@ package forwarder
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
-	"github.com/openziti/channel/v3/protobufs"
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	cmap "github.com/orcaman/concurrent-map/v2"

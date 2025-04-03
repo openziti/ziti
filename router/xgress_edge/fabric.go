@@ -19,7 +19,7 @@ package xgress_edge
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/sdk-golang/ziti/edge"

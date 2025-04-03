@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/tunnel/intercept"

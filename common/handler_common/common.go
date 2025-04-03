@@ -2,7 +2,7 @@ package handler_common
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"time"
 )

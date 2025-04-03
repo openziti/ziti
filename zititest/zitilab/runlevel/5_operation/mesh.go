@@ -18,7 +18,7 @@ package zitilib_runlevel_5_operation
 
 import (
 	"fmt"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/transport/v2"

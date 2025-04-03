@@ -17,7 +17,7 @@
 package handler_ctrl
 
 import (
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/handler_common"
 )
 

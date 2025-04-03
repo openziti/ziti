@@ -18,7 +18,7 @@ package agentcli
 
 import (
 	"fmt"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 )

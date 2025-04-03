@@ -29,7 +29,7 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/transport/v2"
 
 	identity2 "github.com/openziti/identity"

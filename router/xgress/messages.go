@@ -19,7 +19,7 @@ package xgress
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/openziti/channel/v3"
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/foundation/v2/uuidz"
 	"github.com/pkg/errors"
