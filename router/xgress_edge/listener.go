@@ -113,13 +113,13 @@ type edgeClientConn struct {
 	msgMux       edge.MsgMux
 	listener     *listener
 	fingerprints cert.Fingerprints
-	ch           channel.Channel
+	ch           edge.SdkChannel
 	idSeq        uint32
 	apiSession   *state.ApiSession
 }
 
 func (self *edgeClientConn) HandleClose(ch channel.Channel) {
-	log := pfxlog.ContextLogger(self.ch.Label())
+	log := pfxlog.ContextLogger(self.ch.GetChannel().Label())
 	log.Debugf("closing")
 	self.listener.factory.hostedServices.cleanupServices(ch)
 	self.msgMux.Close()
@@ -397,7 +397,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 
 	log = log.WithField("terminatorId", terminatorId)
 
-	if terminator.MsgChannel.IsClosed() {
+	if terminator.MsgChannel.GetChannel().IsClosed() {
 		log.Warn("edge channel closed while setting up terminator. cleaning up terminator now")
 		terminator.close(self.listener.factory.hostedServices, false, true, "edge channel closed")
 		return
@@ -513,7 +513,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 			notifyMsg := channel.NewMessage(edge.ContentTypeBindSuccess, nil)
 			notifyMsg.PutUint32Header(edge.ConnIdHeader, terminator.MsgChannel.Id())
 
-			if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.Channel); err != nil {
+			if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.GetControlSender()); err != nil {
 				log.WithError(err).Error("failed to send bind success")
 			} else {
 				log.Info("sdk notified of terminator creation")
@@ -721,7 +721,8 @@ func (self *edgeClientConn) sendStateConnectedReply(req *channel.Message, hostDa
 	}
 	msg.ReplyTo(req)
 
-	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch)
+	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
+	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 		return
@@ -737,7 +738,7 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Me
 		msg.PutUint32Header(edge.ErrorCodeHeader, errorCode)
 	}
 
-	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch)
+	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 	}
