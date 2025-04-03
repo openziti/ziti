@@ -197,94 +197,6 @@ issueLeafCerts() {
 
 }
 
-makeDatabaseLinux(){
-
-  #
-  # called by makeDatabase() if ZITI_RUNTIME=systemd
-  #
-
-  local _init_pid
-  cleanup_linux_pid() {
-    if [[ -n "${_init_pid:-}" ]]; then
-      echo "DEBUG: cleaning up controller process ${_init_pid}" >&3
-      systemctl kill ziti-controller.service || kill -9 "${_init_pid}"
-    fi
-  }
-
-  systemctl start ziti-controller.service
-  systemd-run \
-    --wait --quiet \
-    --service-type=oneshot \
-    --property=TimeoutStartSec=10s \
-    systemctl is-active ziti-controller.service
-  _init_pid="$(systemctl show -p MainPID --value ziti-controller.service)"
-  trap cleanup_linux_pid EXIT
-
-  local _attempts=10
-  until ! (( --_attempts )) \
-    || nsenter --target "${_init_pid}" --mount -- \
-      ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin' 2>&3; do
-    sleep 1
-  done
-  echo "DEBUG: initialized Linux controller database with ${_attempts} remaining attempts" >&3
-  
-  cleanup_linux_pid
-  # Remove trap before returning
-  trap - EXIT
-  
-  if (( _attempts )); then
-    return 0
-  else
-    return 1
-  fi
-}
-
-makeDatabaseDocker(){
-
-  #
-  # called by makeDatabase() if ZITI_RUNTIME=docker
-  #
-
-  if [[ -n "${1:-}" ]]; then
-    local _config_file="${1}"
-    shift
-  else
-    echo "ERROR: no config file path provided" >&2
-    return 1
-  fi
-
-  # Set up trap to kill the controller process when function exits
-  local _init_pid=""
-  cleanup_docker_pid() {
-    if [[ -n "${_init_pid:-}" ]]; then
-      echo "DEBUG: cleaning up controller process ${_init_pid}" >&3
-      kill -9 "${_init_pid}"
-    fi
-  }
-
-  timeout 20s nohup ziti controller run "${_config_file}" &> /tmp/ziti-controller-init.log &
-  _init_pid=$!
-  trap cleanup_docker_pid EXIT
-
-  local _attempts=10
-  until ! (( --_attempts )) \
-    || ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin' 2>&3; do
-    sleep 1
-  done
-  echo "DEBUG: initialized Docker controller database with ${_attempts} remaining attempts" >&3
-  
-  cleanup_docker_pid
-
-  # Remove trap before returning
-  trap - EXIT
-  
-  if (( _attempts )); then
-    return 0
-  else
-    return 1
-  fi
-}
-
 makeDatabase() {
 
   #
@@ -321,13 +233,41 @@ makeDatabase() {
   echo "DEBUG: creating database directory: ${ZITI_CTRL_DATABASE_DIR}" >&3
   mkdir -pm0700 "${ZITI_CTRL_DATABASE_DIR}"
 
-  if [[ "${ZITI_RUNTIME}" == docker ]] \
-    && makeDatabaseDocker "${_config_file}"; then
-    echo "DEBUG: initialized Docker controller database" >&3
-  elif [[ "${ZITI_RUNTIME}" == systemd ]] \
-    && systemctl list-unit-files ziti-controller.service &>/dev/null \
-    && makeDatabaseLinux; then
-    echo "DEBUG: initialized Linux controller database" >&3
+  if [[ -n "${1:-}" ]]; then
+    local _config_file="${1}"
+    shift
+  else
+    echo "ERROR: no config file path provided" >&2
+    return 1
+  fi
+
+  # Set up trap to kill the controller process when function exits
+  local _init_pid=""
+  _cleanup_init_pid() {
+    if [[ -n "${_init_pid:-}" ]]; then
+      echo "DEBUG: cleaning up controller process ${_init_pid}" >&3
+      kill -9 "${_init_pid}"
+    fi
+  }
+
+  timeout 20s nohup ziti controller run "${_config_file}" &> /tmp/ziti-controller-init.log &
+  _init_pid=$!
+  trap _cleanup_init_pid EXIT
+
+  local _attempts=10
+  until ! (( --_attempts )) \
+    || ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin' 2>&3; do
+    sleep 1
+  done
+  echo "DEBUG: initialized Docker controller database with ${_attempts} remaining attempts" >&3
+  
+  _cleanup_init_pid
+
+  # Remove trap before returning
+  trap - EXIT
+  
+  if (( _attempts )); then
+    return 0
   else
     echo "ERROR: failed to initialize database" >&2
     # do not leave behind a partially-initialized database directory because it prevents us from trying again
@@ -335,8 +275,6 @@ makeDatabase() {
     echo "DEBUG: removed partially-initialized database directory: ${ZITI_CTRL_DATABASE_DIR}" >&3
     return 1
   fi
-
-  return 0
 }
 
 makeConfig() {
