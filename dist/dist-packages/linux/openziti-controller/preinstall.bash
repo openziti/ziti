@@ -7,6 +7,11 @@ set -o pipefail
 abort_if_service_exists() {
   if systemctl list-unit-files ziti-controller.service &>/dev/null; then
     echo "ERROR: ziti-controller.service is already defined. Please remove it before installing this package." >&2
+    (
+      set +o errexit
+      systemctl list-unit-files ziti-controller.service
+      echo errexit=$?
+    )
     exit 1
   fi
 }
