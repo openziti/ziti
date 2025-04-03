@@ -233,14 +233,6 @@ makeDatabase() {
   echo "DEBUG: creating database directory: ${ZITI_CTRL_DATABASE_DIR}" >&3
   mkdir -pm0700 "${ZITI_CTRL_DATABASE_DIR}"
 
-  if [[ -n "${1:-}" ]]; then
-    local _config_file="${1}"
-    shift
-  else
-    echo "ERROR: no config file path provided" >&2
-    return 1
-  fi
-
   # Set up trap to kill the controller process when function exits
   local _init_pid=""
   _cleanup_init_pid() {
@@ -250,7 +242,7 @@ makeDatabase() {
     fi
   }
 
-  timeout 20s nohup ziti controller run "${_config_file}" &> /tmp/ziti-controller-init.log &
+  timeout 20s nohup ziti controller run "${_config_file}" &>3 &
   _init_pid=$!
   trap _cleanup_init_pid EXIT
 
@@ -259,14 +251,13 @@ makeDatabase() {
     || ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" 'Default Admin' 2>&3; do
     sleep 1
   done
-  echo "DEBUG: initialized Docker controller database with ${_attempts} remaining attempts" >&3
-  
   _cleanup_init_pid
 
   # Remove trap before returning
   trap - EXIT
   
   if (( _attempts )); then
+    echo "DEBUG: initialized Docker controller database with ${_attempts} remaining attempts" >&3
     return 0
   else
     echo "ERROR: failed to initialize database" >&2
