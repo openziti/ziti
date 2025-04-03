@@ -30,6 +30,7 @@ import (
 	"os/user"
 	"path"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -94,6 +95,7 @@ func addCommonQuickstartFlags(cmd *cobra.Command, options *QuickstartOpts) {
 	cmd.Flags().BoolVar(&options.routerless, "no-router", false, "specifies the quickstart should not start a router")
 
 	cmd.Flags().BoolVar(&options.verbose, "verbose", false, "Show additional output.")
+	cmd.Flags().StringVarP(&options.ClusterMember, "cluster-member", "m", "", "address of a cluster member. required. example tls:localhost:1280")
 }
 
 func addQuickstartHaFlags(cmd *cobra.Command, options *QuickstartOpts) {
@@ -111,29 +113,6 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 		Run: func(cmd *cobra.Command, args []string) {
 			options.out = out
 			options.errOut = errOut
-			options.TrustDomain = "quickstart"
-			options.InstanceID = "quickstart"
-			err := options.run(context)
-			if err != nil {
-				logrus.Fatal(err)
-			}
-		},
-	}
-	addCommonQuickstartFlags(cmd, options)
-	cmd.AddCommand(NewQuickStartJoinClusterCmd(out, errOut, context))
-	cmd.AddCommand(NewQuickStartHaCmd(out, errOut, context))
-	return cmd
-}
-
-func NewQuickStartHaCmd(out io.Writer, errOut io.Writer, context context.Context) *cobra.Command {
-	options := &QuickstartOpts{}
-	cmd := &cobra.Command{
-		Use:   "ha",
-		Short: "runs a Controller and Router in quickstart HA mode and creates the first cluster member",
-		Long:  "runs a Controller and Router in quickstart HA mode and creates the first cluster member with a temporary directory; suitable for testing and development",
-		Run: func(cmd *cobra.Command, args []string) {
-			options.out = out
-			options.errOut = errOut
 			options.isHA = true
 			if options.TrustDomain == "" {
 				options.TrustDomain = uuid.New().String()
@@ -145,9 +124,9 @@ func NewQuickStartHaCmd(out io.Writer, errOut io.Writer, context context.Context
 			}
 		},
 	}
+	cmd.AddCommand(NewQuickStartJoinClusterCmd(out, errOut, context))
 	addCommonQuickstartFlags(cmd, options)
 	addQuickstartHaFlags(cmd, options)
-	cmd.Hidden = true
 	return cmd
 }
 
@@ -168,14 +147,13 @@ func NewQuickStartJoinClusterCmd(out io.Writer, errOut io.Writer, context contex
 	}
 	addCommonQuickstartFlags(cmd, options)
 	addQuickstartHaFlags(cmd, options)
-	cmd.Flags().StringVarP(&options.ClusterMember, "cluster-member", "m", "", "address of a cluster member. required. example tls:localhost:1280")
 	cmd.Flags().BoolVar(&options.nonVoter, "non-voting", false, "used with ha mode. specifies the member is a non-voting member")
 	cmd.Hidden = true
 	return cmd
 }
 
 func (o *QuickstartOpts) cleanupHome() {
-	if o.cleanOnExit {
+	if o.cleanOnExit && !o.joinCommand {
 		fmt.Println("Removing temp directory at: " + o.Home)
 		_ = os.RemoveAll(o.Home)
 	} else {
@@ -315,6 +293,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		runCtrl := NewRunControllerCmd()
 		runCtrl.SetArgs([]string{
 			ctrlYaml,
+			"--cli-agent-alias=quickstart-cluster",
 		})
 		runCtrlErr := runCtrl.Execute()
 		if runCtrlErr != nil {
@@ -432,14 +411,20 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 			nextInstId := incrementStringSuffix(o.InstanceID)
 			fmt.Println()
 			o.printDetails()
+			var nl string
+			if runtime.GOOS == "windows" {
+				nl = "`"
+			} else {
+				nl = "\\"
+			}
 			fmt.Println("=======================================================================================")
 			fmt.Println("Quickly add another member to this cluster using: ")
-			fmt.Printf("  ziti edge quickstart join \\\n")
-			fmt.Printf("    --ctrl-port %d \\\n", o.ControllerPort+1)
-			fmt.Printf("    --router-port %d \\\n", o.RouterPort+1)
-			fmt.Printf("    --home \"%s\" \\\n", o.Home)
-			fmt.Printf("    --trust-domain=\"%s\" \\\n", o.TrustDomain)
-			fmt.Printf("    --cluster-member tls:%s:%s\\ \n", ctrlAddy, ctrlPort)
+			fmt.Printf("  ziti edge quickstart join %s\n", nl)
+			fmt.Printf("    --ctrl-port %d %s\n", o.ControllerPort+1, nl)
+			fmt.Printf("    --router-port %d %s\n", o.RouterPort+1, nl)
+			fmt.Printf("    --home \"%s\" %s\n", o.Home, nl)
+			fmt.Printf("    --trust-domain \"%s\" %s\n", o.TrustDomain, nl)
+			fmt.Printf("    --cluster-member tls:%s:%s %s\n", ctrlAddy, ctrlPort, nl)
 			fmt.Printf("    --instance-id \"%s\"\n", nextInstId)
 			fmt.Println("=======================================================================================")
 			fmt.Println()
