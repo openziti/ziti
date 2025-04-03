@@ -153,6 +153,8 @@ jobs:
               apt-get update
               apt-get install -y systemd                                     # install as impotent dep (not PID 1)
               dpkg --install ./release/openziti_*.${{ matrix.distro.type }}  # install CLI
+              # DEBUG phantom service already exists?
+              systemctl list-unit-files ziti-controller.service || true
               dpkg --install ./release/openziti-*.${{ matrix.distro.type }}  # install controller, router
               ;;
           esac
