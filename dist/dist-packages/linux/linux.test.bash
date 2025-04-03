@@ -83,7 +83,7 @@ done
 : "${ZITI_ROUTER_ADVERTISED_ADDRESS:="${ZITI_ROUTER_NAME}.127.0.0.1.sslip.io"}"
 : "${ZITI_ENROLL_TOKEN:="${TMPDIR}/${ZITI_ROUTER_NAME}.jwt"}"
 : "${ZITI_CONSOLE_LOCATION:="/opt/openziti/share/consoletest"}"
-# default is amd64 manifest
+# default is amd64 image manifest matching .github/actions/nfpm/action.yml
 : "${NFPM_VERSION:=docker.io/goreleaser/nfpm:v2.42.0@sha256:31c856f5806306ba105111fec19e8679222c67c43ad09921a46f9400d99bbbb1}"
 
 export \
