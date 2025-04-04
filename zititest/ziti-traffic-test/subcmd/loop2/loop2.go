@@ -14,18 +14,18 @@
 	limitations under the License.
 */
 
-package loop3
+package loop2
 
 import (
-	"github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd"
+	"github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	subcmd.Root.AddCommand(loop3Cmd)
+	subcmd.Root.AddCommand(loop2Cmd)
 }
 
-var loop3Cmd = &cobra.Command{
-	Use:   "loop3",
-	Short: "Loop testing tool, v3",
+var loop2Cmd = &cobra.Command{
+	Use:   "loop2",
+	Short: "Loop testing tool, v2",
 }

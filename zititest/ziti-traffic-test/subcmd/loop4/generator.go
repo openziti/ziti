@@ -14,36 +14,37 @@
 	limitations under the License.
 */
 
-package loop2
+package loop4
 
 import (
-	"github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/loop2/pb"
-	"github.com/openziti/foundation/v2/info"
 	"crypto/sha512"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/info"
 	"math/rand"
 )
 
-type generator struct {
-	count   int
-	minSize int
-	maxSize int
-	blocks  chan *loop2_pb.Block
-	pool    [][]byte
+type randomHashedBlockGenerator struct {
+	count       int
+	minSize     int
+	maxSize     int
+	latencyFreq int
+	blocks      chan Block
+	pool        [][]byte
 }
 
-func newGenerator(count, minSize, maxSize int) *generator {
-	g := &generator{
-		count:   count,
-		minSize: minSize,
-		maxSize: maxSize,
-		blocks:  make(chan *loop2_pb.Block),
-		pool:    newPool(),
+func newRandomHashedBlockGenerator(count, minSize, maxSize, latencyFreq int) *randomHashedBlockGenerator {
+	g := &randomHashedBlockGenerator{
+		count:       count,
+		minSize:     minSize,
+		maxSize:     maxSize,
+		latencyFreq: latencyFreq,
+		blocks:      make(chan Block),
+		pool:        newPool(),
 	}
 	return g
 }
 
-func (g *generator) run() {
+func (g *randomHashedBlockGenerator) run() {
 	log := pfxlog.Logger()
 	log.Debug("started")
 	defer log.Debug("complete")
@@ -63,8 +64,13 @@ func (g *generator) run() {
 			}
 		}
 		hash := sha512.Sum512(data)
-		g.blocks <- &loop2_pb.Block{
-			Sequence: int32(i),
+		blockType := BlockTypePlain
+		if g.latencyFreq > 0 && i%g.latencyFreq == 0 {
+			blockType = BlockTypeLatencyRequest
+		}
+		g.blocks <- &RandHashedBlock{
+			Type:     blockType,
+			Sequence: uint32(i),
 			Data:     data,
 			Hash:     hash[:],
 		}
@@ -89,4 +95,43 @@ func newPool() [][]byte {
 		}
 	}
 	return pool
+}
+
+func newSeqGenerator(count, minSize, maxSize int) *seqGenerator {
+	g := &seqGenerator{
+		count:   count,
+		minSize: minSize,
+		maxSize: maxSize,
+		blocks:  make(chan Block),
+	}
+	return g
+}
+
+func (g *seqGenerator) run() {
+	log := pfxlog.Logger()
+	log.Debug("started")
+	defer log.Debug("complete")
+
+	var seq uint64
+
+	for i := 0; i < g.count; i++ {
+		size := g.minSize
+		distance := g.maxSize - g.minSize
+		if distance > 0 {
+			size += rand.Intn(distance)
+		}
+		data := make([]byte, size)
+		for idx := 0; idx < size; idx++ {
+			data[idx] = byte(seq)
+			seq++
+		}
+		g.blocks <- SeqBlock(data)
+	}
+}
+
+type seqGenerator struct {
+	count   int
+	minSize int
+	maxSize int
+	blocks  chan Block
 }
