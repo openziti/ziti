@@ -19,9 +19,9 @@ package metrics
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/ziti/router/env"
 	"google.golang.org/protobuf/proto"
 )
 

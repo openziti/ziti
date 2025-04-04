@@ -14,18 +14,33 @@
 	limitations under the License.
 */
 
-package loop2
+package subcmd
 
 import (
-	"github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd"
+	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"os"
+	"path/filepath"
 )
 
 func init() {
-	subcmd.Root.AddCommand(loop2Cmd)
+	Root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 }
 
-var loop2Cmd = &cobra.Command{
-	Use:   "loop2",
-	Short: "Loop testing tool, v2",
+var Root = &cobra.Command{
+	Use:   filepath.Base(os.Args[0]),
+	Short: "Ziti Traffic Test Toolbox",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if verbose {
+			logrus.SetLevel(logrus.DebugLevel)
+		}
+	},
+}
+var verbose bool
+
+func Execute() {
+	if err := Root.Execute(); err != nil {
+		println(fmt.Errorf("error: %s", err))
+	}
 }

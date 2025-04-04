@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package ziti.loop4.pb;
+option go_package = "github.com/openziti/ziti/zititest/ziti-test/subcmd/loop4/pb/loop4_pb";
+
+message Test {
+  string name = 1;
+  int32 txRequests = 2;
+  string txPacing = 3;
+  string txMaxJitter = 4;
+  string txPauseEvery = 5;
+  string txPauseFor = 6;
+  bool txAfterRx = 19;
+
+  int32 rxRequests = 7;
+  int32 rxTimeout = 8;
+  string rxPauseEvery = 9;
+  string rxPauseFor = 10;
+
+  int32 payloadMinBytes = 11;
+  int32 payloadMaxBytes = 12;
+  int32 latencyFrequency = 13;
+  string txBlockType = 14;
+  string rxBlockType = 15;
+  int32 rxSeqBlockSize = 16;
+  string rxPacing = 17;
+  string rxMaxJitter = 18;
+}

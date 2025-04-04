@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/router/xgress_transport"
-	loop2_pb "github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/loop2/pb"
+	loop2_pb "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop2/pb"
 	"github.com/spf13/cobra"
 )
 

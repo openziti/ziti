@@ -9,9 +9,12 @@
 * github.com/openziti/channel/v4: [v3.0.39 -> v4.0.2](https://github.com/openziti/channel/compare/v3.0.39...v4.0.2)
     * [Issue #172](https://github.com/openziti/channel/issues/172) - Support multi-underlay channels
 
+* github.com/openziti/metrics: [v1.3.0 -> v1.4.0](https://github.com/openziti/metrics/compare/v1.3.0...v1.4.0)
 * github.com/openziti/sdk-golang: [v0.25.1 -> v0.25.2](https://github.com/openziti/sdk-golang/compare/v0.25.1...v0.25.2)
 * github.com/openziti/transport/v2: [v2.0.167 -> v2.0.168](https://github.com/openziti/transport/compare/v2.0.167...v2.0.168)
+* github.com/openziti/xweb/v2: [v2.3.0 -> v2.3.1](https://github.com/openziti/xweb/compare/v2.3.0...v2.3.1)
 * github.com/openziti/ziti: [v1.5.4 -> v1.5.5](https://github.com/openziti/ziti/compare/v1.5.4...v1.5.5)
+    * [Issue #2978](https://github.com/openziti/ziti/issues/2978) - Create loop4 sim for testing circuit contention and scale
     * [Issue #2906](https://github.com/openziti/ziti/issues/2906) - Controller not removed from DB controller store when removed from controller
     * [Issue #2922](https://github.com/openziti/ziti/issues/2922) - Validate node address before adding to cluster
     * [Issue #2932](https://github.com/openziti/ziti/issues/2932) - Fix router data model 'create public key' related errors

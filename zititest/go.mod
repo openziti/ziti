@@ -17,6 +17,7 @@ require (
 	github.com/openziti/fablab v0.5.95
 	github.com/openziti/foundation/v2 v2.0.59
 	github.com/openziti/identity v1.0.100
+	github.com/openziti/metrics v1.4.0
 	github.com/openziti/sdk-golang v0.25.2
 	github.com/openziti/storage v0.4.7
 	github.com/openziti/transport/v2 v2.0.168
@@ -142,11 +143,10 @@ require (
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/jwks v1.0.6 // indirect
-	github.com/openziti/metrics v1.3.0 // indirect
 	github.com/openziti/runzmd v1.0.67 // indirect
 	github.com/openziti/secretstream v0.1.32 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
-	github.com/openziti/xweb/v2 v2.3.0 // indirect
+	github.com/openziti/xweb/v2 v2.3.1 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect

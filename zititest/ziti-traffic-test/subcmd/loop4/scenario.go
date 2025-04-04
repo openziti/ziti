@@ -14,26 +14,51 @@
 	limitations under the License.
 */
 
-package loop3
+package loop4
 
 import (
-	loop3_pb "github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/loop3/pb"
+	"fmt"
+	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop4/pb"
 	"gopkg.in/yaml.v2"
 	"os"
 	"time"
 )
 
+type Connector struct {
+	SdkOptions       *SdkConnectOptions       `yaml:"sdk"`
+	TransportOptions *TransportConnectOptions `yaml:"transport"`
+}
+
+type SdkConnectOptions struct {
+	IdentityFile        string `yaml:"identity_file"`
+	DisableMultiChannel bool   `yaml:"disable_multi_channel"`
+}
+
+type TransportConnectOptions struct {
+	Address      string `yaml:"address"`
+	IdentityFile string `yaml:"identity_file"`
+}
+
 type Scenario struct {
-	Workloads       []*Workload `yaml:"workloads"`
-	ConnectionDelay int32       `yaml:"connectionDelay"`
-	Metrics         *Metrics    `yaml:"metrics"`
+	ConnectorConfigs map[string]Connector `yaml:"connectors"`
+	Workloads        []*Workload          `yaml:"workloads"`
+	ConnectionDelay  int32                `yaml:"connectionDelay"`
+	Metrics          *Metrics             `yaml:"metrics"`
 }
 
 type Workload struct {
-	Name        string `yaml:"name"`
-	Concurrency int32  `yaml:"concurrency"`
-	Dialer      Test   `yaml:"dialer"`
-	Listener    Test   `yaml:"listener"`
+	Name           string        `yaml:"name"`
+	Connector      string        `yaml:"connector"`
+	ConnectTimeout time.Duration `yaml:"connect_timeout"`
+	ServiceName    string        `yaml:"service_name"`
+	Iterations     int64         `yaml:"iterations"`
+	Concurrency    int32         `yaml:"concurrency"`
+	Dialer         Test          `yaml:"dialer"`
+	Listener       Test          `yaml:"listener"`
+}
+
+func (self *Workload) GetRunnerName(index int) string {
+	return fmt.Sprintf("%s:%d", self.Name, index)
 }
 
 type Test struct {
@@ -42,6 +67,7 @@ type Test struct {
 	TxMaxJitter  time.Duration `yaml:"txMaxJitter"`
 	TxPauseEvery time.Duration `yaml:"txPauseEvery"`
 	TxPauseFor   time.Duration `yaml:"txPauseFor"`
+	TxAfterRx    bool          `yaml:"txAfterRx"` // only send after receive, to act like a server responding to requests
 
 	RxTimeout    int32         `yaml:"rxTimeout"`
 	RxPacing     time.Duration `yaml:"rxPacing"`
@@ -55,14 +81,15 @@ type Test struct {
 	BlockType        string `yaml:"blockType"`
 }
 
-func (workload *Workload) GetTests() (*loop3_pb.Test, *loop3_pb.Test) {
-	local := &loop3_pb.Test{
+func (workload *Workload) GetTests() (*loopPb.Test, *loopPb.Test) {
+	local := &loopPb.Test{
 		Name:             workload.Name,
 		TxRequests:       workload.Dialer.TxRequests,
 		TxPacing:         workload.Dialer.TxPacing.String(),
 		TxMaxJitter:      workload.Dialer.TxMaxJitter.String(),
 		TxPauseEvery:     workload.Dialer.TxPauseEvery.String(),
 		TxPauseFor:       workload.Dialer.TxPauseFor.String(),
+		TxAfterRx:        workload.Dialer.TxAfterRx,
 		RxRequests:       workload.Listener.TxRequests,
 		RxPacing:         workload.Dialer.RxPacing.String(),
 		RxMaxJitter:      workload.Dialer.RxMaxJitter.String(),
@@ -77,13 +104,14 @@ func (workload *Workload) GetTests() (*loop3_pb.Test, *loop3_pb.Test) {
 		RxBlockType:      workload.Listener.BlockType,
 	}
 
-	remote := &loop3_pb.Test{
+	remote := &loopPb.Test{
 		Name:             workload.Name,
 		TxRequests:       workload.Listener.TxRequests,
 		TxPacing:         workload.Listener.TxPacing.String(),
 		TxMaxJitter:      workload.Listener.TxMaxJitter.String(),
 		TxPauseEvery:     workload.Listener.TxPauseEvery.String(),
 		TxPauseFor:       workload.Listener.TxPauseFor.String(),
+		TxAfterRx:        workload.Listener.TxAfterRx,
 		RxRequests:       workload.Dialer.TxRequests,
 		RxPacing:         workload.Listener.RxPacing.String(),
 		RxMaxJitter:      workload.Listener.RxMaxJitter.String(),
@@ -102,6 +130,7 @@ func (workload *Workload) GetTests() (*loop3_pb.Test, *loop3_pb.Test) {
 }
 
 type Metrics struct {
+	Connector      string        `yaml:"connector"`
 	Service        string        `yaml:"service"`
 	ReportInterval time.Duration `yaml:"interval"`
 	ClientId       string        `yaml:"clientId"`
@@ -113,7 +142,7 @@ func LoadScenario(path string) (*Scenario, error) {
 		return nil, err
 	}
 
-	scenario := &Scenario{ConnectionDelay: 250}
+	scenario := &Scenario{}
 	if err := yaml.Unmarshal(data, scenario); err != nil {
 		return nil, err
 	}
