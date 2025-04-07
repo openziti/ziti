@@ -110,10 +110,9 @@ func (self *CaManager) RefreshActiveAuthCaCertCache() error {
 	newActiveCas := map[string]*Ca{}
 
 	for _, cert := range self.env.GetConfig().Edge.CaCerts() {
-		if identity.IsRootCa(cert) {
-			newStaticRootCas = append(newStaticRootCas, cert)
-			newTrustAnchorPool.AddCert(cert)
-		}
+		//TODO: remove non roots, but be aware that legacy clients that have not extended their cert or enrolled after full chains were provided may stop working.
+		newStaticRootCas = append(newStaticRootCas, cert)
+		newTrustAnchorPool.AddCert(cert)
 	}
 
 	err := self.Stream("isAuthEnabled = true and isVerified = true", func(ca *Ca, err error) error {
