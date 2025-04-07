@@ -105,11 +105,8 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.out = out
 			options.errOut = errOut
-			if options.TrustDomain == "" {
-				options.TrustDomain = uuid.New().String()
-				fmt.Println("Trust domain was not supplied. Using a random trust domain: " + options.TrustDomain)
-			}
-			err := options.run(context)
+			c := make(chan struct{}, 1)
+			err := options.Run(context, c)
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -165,12 +162,17 @@ func (o *QuickstartOpts) join(ctx context.Context) error {
 	}
 
 	o.joinCommand = true
-	return o.run(ctx)
+	return o.Run(ctx, nil)
 }
 
-func (o *QuickstartOpts) run(ctx context.Context) error {
+func (o *QuickstartOpts) Run(ctx context.Context, ready chan struct{}) error {
 	if o.verbose {
 		pfxlog.GlobalInit(logrus.DebugLevel, pfxlog.DefaultOptions().Color())
+	}
+
+	if o.TrustDomain == "" {
+		o.TrustDomain = uuid.New().String()
+		fmt.Println("Trust domain was not supplied. Using a random trust domain: " + o.TrustDomain)
 	}
 
 	//set env vars
@@ -375,6 +377,8 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 			return fmt.Errorf("timed out waiting for router on port: %d", o.RouterPort)
 		}
 	}
+
+	ready <- struct{}{}
 
 	go func() {
 		time.Sleep(3 * time.Second) // output this after a bit... so that it probably is towards the end
