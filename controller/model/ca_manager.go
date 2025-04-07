@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/identity"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
