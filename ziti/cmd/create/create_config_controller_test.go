@@ -18,13 +18,17 @@ import (
 /* BEGIN Controller config template structure */
 
 type ControllerConfig struct {
-	V            string       `yaml:"v"`
-	Db           string       `yaml:"db"`
-	Identity     Identity     `yaml:"identity"`
-	Ctrl         Ctrl         `yaml:"ctrl"`
-	HealthChecks HealthChecks `yaml:"healthChecks"`
-	Edge         Edge         `yaml:"edge"`
-	Web          []Web        `yaml:"web"`
+	V            string         `yaml:"v"`
+	Cluster      ClusterSection `yaml:"cluster"`
+	Identity     Identity       `yaml:"identity"`
+	Ctrl         Ctrl           `yaml:"ctrl"`
+	HealthChecks HealthChecks   `yaml:"healthChecks"`
+	Edge         Edge           `yaml:"edge"`
+	Web          []Web          `yaml:"web"`
+}
+
+type ClusterSection struct {
+	DataDir string `yaml:"dataDir"`
 }
 
 type Identity struct {
@@ -289,7 +293,7 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 	t.Run("TestDatabaseFileConfig", func(t *testing.T) {
 		expectedValue := cmdhelper.GetZitiHome() + "/" + constants.DefaultCtrlDatabaseFile
 
-		assert.Equal(t, expectedValue, ctrlConfig.Db)
+		assert.Equal(t, expectedValue, ctrlConfig.Cluster.DataDir)
 	})
 
 	// ctrl:
@@ -503,7 +507,7 @@ func TestCtrlConfigDefaultsWhenEmpty(t *testing.T) {
 	t.Run("TestDatabaseFileConfig", func(t *testing.T) {
 		expectedValue := cmdhelper.GetZitiHome() + "/" + constants.DefaultCtrlDatabaseFile
 
-		assert.Equal(t, expectedValue, ctrlConfig.Db)
+		assert.Equal(t, expectedValue, ctrlConfig.Cluster.DataDir)
 	})
 
 	// ctrl:
@@ -688,10 +692,10 @@ func TestDatabaseFileNormalization(t *testing.T) {
 
 	if runtime.GOOS == "windows" {
 		assert.Equal(t, "C:/custom/path/file.db", data.Controller.Database.DatabaseFile)
-		assert.Equal(t, "C:/custom/path/file.db", ctrlConfig.Db)
+		assert.Equal(t, "C:/custom/path/file.db", ctrlConfig.Cluster.DataDir)
 	} else {
 		assert.Equal(t, "/custom/path/file.db", data.Controller.Database.DatabaseFile)
-		assert.Equal(t, "/custom/path/file.db", ctrlConfig.Db)
+		assert.Equal(t, "/custom/path/file.db", ctrlConfig.Cluster.DataDir)
 	}
 }
 

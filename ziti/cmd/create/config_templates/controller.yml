@@ -9,7 +9,7 @@ v: 3
 
 
 cluster:
-  dataDir:         "{{ .ZitiHome }}/raft"
+  dataDir:         "{{ .Controller.Database.DatabaseFile }}"
 
 identity:
   cert:        "{{ .Controller.Identity.Cert }}"
