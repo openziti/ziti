@@ -71,7 +71,6 @@ type CtrlValues struct {
 	AdvertisedPort             string
 	BindAddress                string
 	AltAdvertisedAddress       string
-	Clustered                  bool
 	InstanceId                 string
 }
 
@@ -166,7 +165,6 @@ type RouterTemplateValues struct {
 	Wss                WSSRouterTemplateValues
 	Forwarder          RouterForwarderTemplateValues
 	Listener           RouterListenerTemplateValues
-	IsHA               bool
 }
 
 type EdgeRouterTemplateValues struct {
