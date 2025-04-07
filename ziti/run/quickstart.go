@@ -91,9 +91,6 @@ func addCommonQuickstartFlags(cmd *cobra.Command, options *QuickstartOpts) {
 	cmd.Flags().BoolVar(&options.routerless, "no-router", false, "specifies the quickstart should not start a router")
 
 	cmd.Flags().BoolVar(&options.verbose, "verbose", false, "Show additional output.")
-}
-
-func addQuickstartHaFlags(cmd *cobra.Command, options *QuickstartOpts) {
 	cmd.Flags().StringVar(&options.TrustDomain, "trust-domain", "", "the specified trust domain to be used in SPIFFE ids.")
 	cmd.Flags().StringVar(&options.InstanceID, "instance-id", "", "specifies a unique instance id for use in ha mode.")
 }
@@ -140,7 +137,6 @@ func NewQuickStartJoinClusterCmd(out io.Writer, errOut io.Writer, context contex
 		},
 	}
 	addCommonQuickstartFlags(cmd, options)
-	addQuickstartHaFlags(cmd, options)
 	cmd.Flags().StringVarP(&options.ClusterMember, "cluster-member", "m", "", "address of a cluster member. required. example tls:localhost:1280")
 	cmd.Flags().BoolVar(&options.nonVoter, "non-voting", false, "used with ha mode. specifies the member is a non-voting member")
 	cmd.Hidden = true
