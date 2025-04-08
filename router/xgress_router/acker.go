@@ -8,6 +8,10 @@ import (
 	"sync/atomic"
 )
 
+type AckForwarder interface {
+	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
+}
+
 type ackEntry struct {
 	xgress.Address
 	*xgress.Acknowledgement
@@ -18,7 +22,7 @@ type ackEntry struct {
 // https://github.com/golang/go/issues/36606
 type Acker struct {
 	acksQueueSize int64
-	forwarder     xgress.PayloadBufferForwarder
+	forwarder     AckForwarder
 	acks          *deque.Deque
 	ackIngest     chan *ackEntry
 	ackSend       chan *ackEntry
@@ -28,7 +32,7 @@ type Acker struct {
 	ackFailures metrics.Meter
 }
 
-func NewAcker(forwarder xgress.PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) *Acker {
+func NewAcker(forwarder AckForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) *Acker {
 	result := &Acker{
 		forwarder:   forwarder,
 		acks:        deque.New(),

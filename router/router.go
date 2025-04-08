@@ -242,7 +242,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 
 	payloadIngester := xgress.NewPayloadIngester(closeNotify)
 	ackSender := xgress_router.NewAcker(router.forwarder, metricsRegistry, closeNotify)
-	retransmitter := xgress.NewRetransmitter(router.forwarder, router.forwarder, metricsRegistry, closeNotify)
+	retransmitter := xgress.NewRetransmitter(router.forwarder, metricsRegistry, closeNotify)
 
 	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, router.forwarder, router)
 	if err != nil {

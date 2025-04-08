@@ -210,6 +210,11 @@ func (self *testIntermediary) ForwardPayload(payload *Payload, x *Xgress) {
 	//fmt.Printf("transmitted payload %d from %s -> %s\n", payload.Sequence, x.address, self.dest.address)
 }
 
+func (self *testIntermediary) RetransmitPayload(srcAddr Address, payload *Payload) error {
+	//self.ForwardPayload(payload, nil)
+	return nil
+}
+
 func (self *testIntermediary) validateMessage(m *channel.Message) error {
 	circuitId, found := m.GetStringHeader(HeaderKeyCircuitId)
 	if !found {
@@ -251,16 +256,6 @@ func (self *testAcker) SendAck(ack *Acknowledgement, address Address) {
 	}
 }
 
-type mockForwarder struct{}
-
-func (m mockForwarder) RetransmitPayload(srcAddr Address, payload *Payload) error {
-	return nil
-}
-
-func (m mockForwarder) ForwardAcknowledgement(srcAddr Address, acknowledgement *Acknowledgement) error {
-	return nil
-}
-
 type mockFaulter struct{}
 
 func (m mockFaulter) ReportForwardingFault(circuitId string, ctrlId string) {
@@ -279,7 +274,7 @@ func Test_MinimalPayloadMarshalling(t *testing.T) {
 	}()
 
 	payloadIngester := NewPayloadIngester(closeNotify)
-	rtx := NewRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
+	rtx := NewRetransmitter(mockFaulter{}, metricsRegistry, closeNotify)
 	ackHandler := &testAcker{destinations: cmap.New[*Xgress]()}
 
 	options := DefaultOptions()
@@ -339,7 +334,7 @@ func Test_PayloadSize(t *testing.T) {
 	}()
 
 	payloadIngester := NewPayloadIngester(closeNotify)
-	rtx := NewRetransmitter(mockForwarder{}, mockFaulter{}, metricsRegistry, closeNotify)
+	rtx := NewRetransmitter(mockFaulter{}, metricsRegistry, closeNotify)
 	ackHandler := &testAcker{destinations: cmap.New[*Xgress]()}
 
 	options := DefaultOptions()

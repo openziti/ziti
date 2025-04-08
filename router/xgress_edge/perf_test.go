@@ -140,7 +140,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
-	retransmitter := xgress.NewRetransmitter(fwd, fwd, metricsRegistry, nil)
+	retransmitter := xgress.NewRetransmitter(fwd, metricsRegistry, nil)
 	payloadIngester := xgress.NewPayloadIngester(nil)
 
 	link := newMirrorLink(fwd)
@@ -227,7 +227,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
-	retransmitter := xgress.NewRetransmitter(fwd, fwd, metricsRegistry, nil)
+	retransmitter := xgress.NewRetransmitter(fwd, metricsRegistry, nil)
 	payloadIngester := xgress.NewPayloadIngester(nil)
 
 	link := newMirrorLink(fwd)
