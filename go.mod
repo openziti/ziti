@@ -59,14 +59,14 @@ require (
 	github.com/openziti/foundation/v2 v2.0.59
 	github.com/openziti/identity v1.0.100
 	github.com/openziti/jwks v1.0.6
-	github.com/openziti/metrics v1.3.0
+	github.com/openziti/metrics v1.4.0
 	github.com/openziti/runzmd v1.0.67
 	github.com/openziti/sdk-golang v0.25.2
 	github.com/openziti/secretstream v0.1.32
 	github.com/openziti/storage v0.4.7
 	github.com/openziti/transport/v2 v2.0.168
 	github.com/openziti/x509-claims v1.0.3
-	github.com/openziti/xweb/v2 v2.3.0
+	github.com/openziti/xweb/v2 v2.3.1
 	github.com/openziti/ziti-db-explorer v1.1.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
