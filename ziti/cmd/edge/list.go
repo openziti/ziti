@@ -23,6 +23,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
+	"github.com/openziti/edge-api/rest_management_api_client/enrollment"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
@@ -84,6 +85,7 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions(), "erps"))
 	cmd.AddCommand(newListCmdForEntityType("enrollments", runListEnrollments, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("ext-jwt-signers", runListExtJwtSigners, newOptions(), "external-jwt-signers"))
+	cmd.AddCommand(newListCmdForEntityType("network-jwts", runListNetworkJwts, newOptions(), "network-jwts"))
 	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
 	cmd.AddCommand(newListIdentitiesCmd(newOptions()))
 	cmd.AddCommand(newListServicesCmd(newOptions()))
@@ -693,6 +695,50 @@ func runListExtJwtSigners(options *api.Options) error {
 
 	pagingInfo := newPagingInfo(payload.Meta)
 	api.RenderTable(options, outTable, pagingInfo)
+
+	return nil
+}
+
+func runListNetworkJwts(options *api.Options) error {
+	client, err := util.NewEdgeManagementClient(options)
+
+	if err != nil {
+		return err
+	}
+
+	params := enrollment.NewListNetworkJWTsParams()
+
+	result, err := client.Enrollment.ListNetworkJWTs(params)
+
+	if err != nil {
+		return util.WrapIfApiError(err)
+	}
+
+	if options.OutputJSONResponse {
+		return nil
+	}
+
+	payload := result.GetPayload()
+
+	if payload == nil {
+		return errors.New("unexpected empty response payload")
+	}
+
+	for _, curJwt := range payload.Data {
+		name := "<unamed>"
+		token := "<empty>"
+
+		if curJwt.Name != nil {
+			name = *curJwt.Name
+		}
+
+		if curJwt.Token != nil {
+			token = *curJwt.Token
+		}
+
+		fmt.Printf("%s:\n\n", name)
+		fmt.Printf("%s\n\n", token)
+	}
 
 	return nil
 }
