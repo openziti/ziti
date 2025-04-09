@@ -258,7 +258,7 @@ var Model = &model.Model{
 							},
 						},
 						"iperf-server-zet": {
-							Scope: model.Scope{Tags: model.Tags{"iperf", "service"}},
+							Scope: model.Scope{Tags: model.Tags{"iperf", "service", "zet"}},
 							Type:  &zitilab.IPerfServerType{},
 						},
 						"caddy-zet": {

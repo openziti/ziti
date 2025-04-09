@@ -17,10 +17,10 @@
 package loop2
 
 import (
-	"github.com/openziti/ziti/zititest/ziti-fabric-test/subcmd/loop2/pb"
-	"github.com/openziti/foundation/v2/info"
 	"crypto/sha512"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop2/pb"
 	"math/rand"
 )
 
