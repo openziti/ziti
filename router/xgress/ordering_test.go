@@ -46,6 +46,10 @@ type noopReceiveHandler struct {
 	payloadIngester *PayloadIngester
 }
 
+func (n noopReceiveHandler) RetransmitPayload(srcAddr Address, payload *Payload) error {
+	return nil
+}
+
 func (n noopReceiveHandler) GetMetrics() Metrics {
 	return noopMetrics{}
 }

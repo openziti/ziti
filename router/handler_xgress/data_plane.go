@@ -64,6 +64,10 @@ func (adapter *dataPlaneAdapter) ForwardPayload(payload *xgress.Payload, x *xgre
 	}
 }
 
+func (adapter *dataPlaneAdapter) RetransmitPayload(srcAddr xgress.Address, payload *xgress.Payload) error {
+	return adapter.forwarder.RetransmitPayload(srcAddr, payload)
+}
+
 func (adapter *dataPlaneAdapter) ForwardControlMessage(control *xgress.Control, x *xgress.Xgress) {
 	if err := adapter.forwarder.ForwardControl(x.Address(), control); err != nil {
 		pfxlog.ContextLogger(x.Label()).WithFields(control.GetLoggerFields()).WithError(err).Error("unable to forward control")

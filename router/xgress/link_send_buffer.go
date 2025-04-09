@@ -26,11 +26,6 @@ import (
 	"time"
 )
 
-type PayloadBufferForwarder interface {
-	RetransmitPayload(srcAddr Address, payload *Payload) error
-	ForwardAcknowledgement(srcAddr Address, acknowledgement *Acknowledgement) error
-}
-
 // Note: if altering this struct, be sure to account for 64 bit alignment on 32 bit arm arch
 // https://pkg.go.dev/sync/atomic#pkg-note-BUG
 // https://github.com/golang/go/issues/36606

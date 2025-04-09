@@ -70,6 +70,9 @@ type DataPlaneAdapter interface {
 	// ForwardPayload is used to forward data payloads onto the data-plane from an xgress
 	ForwardPayload(payload *Payload, x *Xgress)
 
+	// RetransmitPayload is used to retransmit data payloads onto the data-plane from an xgress
+	RetransmitPayload(srcAddr Address, payload *Payload) error
+
 	// ForwardControlMessage is used to forward control messages onto the data-plane from an xgress
 	ForwardControlMessage(control *Control, x *Xgress)
 
