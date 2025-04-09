@@ -533,7 +533,7 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 				"-c", cidr[0], "-m", cidr[1], "-p", interceptAddr.Proto(),
 				"-o", srcCidr.ip, "-n", srcCidr.prefixLen,
 				"-l", fmt.Sprintf("%d", interceptAddr.LowPort()), "-h", fmt.Sprintf("%d", interceptAddr.HighPort()),
-				"-t", fmt.Sprintf("%d", port.GetPort()))
+				"-t", fmt.Sprintf("%d", port.GetPort()), "-s", *service.ID)
 			cmdLogger := pfxlog.Logger().WithField("command", cmd.String())
 			cmdLogger.Debug("running external diverter")
 			out, err := cmd.CombinedOutput()
@@ -695,7 +695,7 @@ type cidrString = struct {
 func (self *tProxy) getSourceAddressesAsCidrs() []cidrString {
 	var srcAddrs []string
 	if self.service.InterceptV1Config.AllowedSourceAddresses != nil {
-		srcAddrs = self.service.InterceptV1Config.Addresses
+		srcAddrs = self.service.InterceptV1Config.AllowedSourceAddresses
 	} else {
 		srcAddrs = []string{"0.0.0.0/0"}
 	}
