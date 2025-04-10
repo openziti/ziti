@@ -29,10 +29,10 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/env"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity/certtools"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/env"
 	"gopkg.in/resty.v1"
 	"net/http"
 	"testing"
@@ -89,7 +89,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.NotNil(respEnvelope.Data)
 
 		newClientCerts := nfpem.PemStringToCertificates(respEnvelope.Data.ClientCert)
-		ctx.Req.Len(newClientCerts, 1)
+		ctx.Req.Len(newClientCerts, 2)
 
 		t.Run("old cert works pre verify", func(t *testing.T) {
 			ctx.testContextChanged(t)
@@ -153,7 +153,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 				url := fmt.Sprintf("/current-identity/authenticators/%s/extend-verify", *currentAuthenticator.ID)
 				verifyResp, err := identityApiSession.NewRequest().SetBody(verifyRequest).Post(url)
 				ctx.Req.NoError(err)
-				ctx.Req.Equal(http.StatusOK, verifyResp.StatusCode())
+				ctx.Req.Equal(http.StatusOK, verifyResp.StatusCode(), "expected %d, got %d, body: %s", http.StatusOK, verifyResp.Status(), verifyResp.Body())
 
 				t.Run("old cert used for auth fails post verify", func(t *testing.T) {
 					ctx.testContextChanged(t)

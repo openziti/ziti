@@ -57,7 +57,7 @@ require (
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.42
 	github.com/openziti/foundation/v2 v2.0.59
-	github.com/openziti/identity v1.0.100
+	github.com/openziti/identity v1.0.101
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.0
 	github.com/openziti/runzmd v1.0.67
@@ -121,7 +121,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fsnotify/fsnotify v1.8.0 // indirect
+	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

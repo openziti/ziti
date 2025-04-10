@@ -31,7 +31,6 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
-	cert2 "github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
@@ -356,7 +355,7 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 			return
 		}
 
-		serverPem, err := cert2.RawToPem(certs.RawServerCert)
+		serverChainPem, err := ae.Managers.Enrollment.GetCertChainPem(certs.RawServerCert)
 
 		if err != nil {
 			rc.RespondWithError(err)
@@ -365,7 +364,7 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 
 		rc.RespondWithOk(&rest_model.EnrollmentCerts{
 			Cert:       clientChainPem,
-			ServerCert: string(serverPem),
+			ServerCert: serverChainPem,
 		}, &rest_model.Meta{})
 
 		return
@@ -386,7 +385,7 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 			return
 		}
 
-		serverPem, err := cert2.RawToPem(certs.RawServerCert)
+		serverChainPem, err := ae.Managers.Enrollment.GetCertChainPem(certs.RawServerCert)
 
 		if err != nil {
 			rc.RespondWithError(err)
@@ -395,7 +394,7 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 
 		rc.RespondWithOk(&rest_model.EnrollmentCerts{
 			Cert:       clientChainPem,
-			ServerCert: string(serverPem),
+			ServerCert: serverChainPem,
 		}, &rest_model.Meta{})
 
 		return
