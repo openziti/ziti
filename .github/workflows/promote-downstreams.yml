@@ -32,6 +32,21 @@ jobs:
           # comma-separated list of check names (job.<id>.name) to ignore
           ignore-checks: SDK Terminator Validation,Fablab HA Smoketest,POST Webhook
 
+      - name: Diagnose Failed "Wait for Release Builds to Succeed"
+        if: failure()
+        shell: bash
+        run: |
+          set -o pipefail
+          set -o xtrace
+
+          COMMIT_SHA=$(git rev-parse ${GITHUB_REF_NAME}^{commit})
+          for STATUS in cancelled failure
+          do
+            gh run list --repo "${GITHUB_REPOSITORY}" --status "${STATUS}" --commit "${COMMIT_SHA}"
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # the purpose of this job is to enforce that the Git ref promoted is a semver eligible for stable release, i.e., not having a semver pre-release suffix; the extracted version without the leading 'v' is passed to the docker job as the container image tag
   parse_version:
     needs: wait_for_release
