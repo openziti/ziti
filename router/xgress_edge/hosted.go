@@ -129,7 +129,7 @@ func (self *hostedServiceRegistry) evaluateEstablishQueue() {
 			WithField("state", terminator.state.Load()).
 			WithField("token", terminator.token)
 
-		if terminator.edgeClientConn.ch.IsClosed() {
+		if terminator.edgeClientConn.ch.GetChannel().IsClosed() {
 			self.Remove(terminator, "sdk connection is closed")
 			log.Infof("terminator sdk channel closed, not trying to establish")
 			dequeue()
@@ -551,7 +551,7 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 	}
 
 	if xgress_common.IsBearerToken(request.SessionToken) {
-		apiSession := self.stateManager.GetApiSessionFromCh(terminator.Channel)
+		apiSession := self.stateManager.GetApiSessionFromCh(terminator.GetChannel())
 
 		if apiSession == nil {
 			return errors.New("could not find api session for channel, unable to process bind message")
@@ -788,7 +788,7 @@ type channelClosedEvent struct {
 
 func (self *channelClosedEvent) handle(registry *hostedServiceRegistry) {
 	registry.terminators.IterCb(func(_ string, terminator *edgeTerminator) {
-		if terminator.MsgChannel.Channel == self.ch {
+		if terminator.MsgChannel.GetChannel() == self.ch {
 			if terminator.v2 {
 				// we're iterating the map right now, so the terminator can't have changed
 				registry.queueRemoveTerminatorUnchecked(terminator, "channel closed")
@@ -837,7 +837,7 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 		return
 	}
 
-	log := pfxlog.ContextLogger(self.terminator.edgeClientConn.ch.Label()).
+	log := pfxlog.ContextLogger(self.terminator.edgeClientConn.ch.GetChannel().Label()).
 		WithField("token", self.terminator.token).
 		WithField("routerId", self.terminator.edgeClientConn.listener.id.Token).
 		WithField("listenerId", self.terminator.listenerId).
