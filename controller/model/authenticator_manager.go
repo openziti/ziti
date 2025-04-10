@@ -532,6 +532,10 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 
 	clientChainPem, err := self.env.GetManagers().Enrollment.GetCertChainPem(newRawCert)
 
+	if err != nil {
+		return nil, err
+	}
+
 	return []byte(clientChainPem), nil
 }
 
