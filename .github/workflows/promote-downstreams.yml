@@ -12,9 +12,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
-env:
-  RELEASE_REF: ${{ github.ref}}
-
 jobs:
   wait_for_release:
     name: Wait for Release Builds to Succeed
@@ -26,15 +23,16 @@ jobs:
       - name: Wait for all checks on this rev
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
-          ref: ${{ env.RELEASE_REF }}
+          ref: ${{ github.ref_name }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           # seconds between polling the checks api for job statuses
           wait-interval: 30
           # confusingly, this means "pause this step until all jobs from all workflows in same run have completed"
           running-workflow-name: Wait for Release Builds to Succeed
           # comma-separated list of check names (job.<id>.name) to ignore
-          ignore-checks: SDK Terminator Validation,Fablab HA Smoketest
+          ignore-checks: SDK Terminator Validation,Fablab HA Smoketest,POST Webhook
 
+  # the purpose of this job is to enforce that the Git ref promoted is a semver eligible for stable release, i.e., not having a semver pre-release suffix; the extracted version without the leading 'v' is passed to the docker job as the container image tag
   parse_version:
     needs: wait_for_release
     name: Parse Release Version
@@ -46,11 +44,11 @@ jobs:
         id: parse
         shell: bash
         run: |
-          if [[ "${RELEASE_REF}" =~ ^refs\/tags\/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "RELEASE_REF=${RELEASE_REF} is a semver release ref"
-            echo "version=${RELEASE_REF#refs/tags/v}" | tee -a $GITHUB_OUTPUT
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "${GITHUB_REF_NAME} is a semver release ref"
+            echo "version=${GITHUB_REF_NAME#v}" | tee -a $GITHUB_OUTPUT
           else
-            echo "RELEASE_REF=${RELEASE_REF} is not a semver release ref" >&2
+            echo "${GITHUB_REF_NAME} is not a semver release ref" >&2
             exit 1
           fi
 
@@ -119,7 +117,8 @@ jobs:
           jf rt copy
           --recursive=false
           --flat=true
-          ${{ env.ZITI_RPM_TEST_REPO }}/redhat/${{ matrix.arch.rpm }}/${{ matrix.package_name }}-${{ needs.parse_version.outputs.version }}.${{ matrix.arch.rpm }}.rpm
+          --fail-no-op=true
+          ${{ env.ZITI_RPM_TEST_REPO }}/redhat/${{ matrix.arch.rpm }}/${{ matrix.package_name }}-${{ needs.parse_version.outputs.version }}-1.${{ matrix.arch.rpm }}.rpm
           ${{ env.ZITI_RPM_PROD_REPO }}/redhat/${{ matrix.arch.rpm }}/
 
       - name: Copy DEB from test repo to stable repo with jFrog CLI
@@ -129,5 +128,6 @@ jobs:
           jf rt copy
           --recursive=false
           --flat=true
+          --fail-no-op=true
           ${{ env.ZITI_DEB_TEST_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/${{ matrix.package_name }}_${{ needs.parse_version.outputs.version }}_${{ matrix.arch.deb }}.deb
           ${{ env.ZITI_DEB_PROD_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/
