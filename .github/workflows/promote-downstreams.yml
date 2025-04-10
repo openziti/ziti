@@ -93,7 +93,7 @@ jobs:
             rpm: x86_64
           - deb: arm64
             rpm: aarch64
-          - deb: armv7
+          - deb: armhf
             rpm: armv7hl
         packager:
           - rpm
