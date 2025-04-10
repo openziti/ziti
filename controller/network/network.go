@@ -596,6 +596,12 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 	})
 	logger := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx).Entry
 
+	circuit := &model.Circuit{
+		Id:        circuitId,
+		ClientId:  clientId.Token,
+		ServiceId: serviceId,
+	}
+
 	attempt := uint32(0)
 	allCleanups := make(map[string]struct{})
 	rs := network.newRouteSender(circuitId)
@@ -606,7 +612,7 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 		if err != nil {
 			network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, CircuitFailureInvalidService)
 			network.ServiceDialOtherError(serviceId)
-			return nil, err
+			return circuit, err
 		}
 		logger = logger.WithField("serviceName", svc.Name)
 
@@ -615,19 +621,25 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 		if circuitErr != nil {
 			network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, circuitErr.Cause())
 			network.ServiceDialOtherError(serviceId)
-			return nil, circuitErr
+			return circuit, circuitErr
 		}
+
+		circuit.Terminator = terminator
 
 		// 4: Create Path
 		path, pathErr := network.CreatePathWithNodes(pathNodes)
 		if pathErr != nil {
 			network.CircuitFailedEvent(circuitId, params, startTime, nil, terminator, pathErr.Cause())
 			network.ServiceDialOtherError(serviceId)
-			return nil, pathErr
+			return circuit, pathErr
 		}
+
+		circuit.Path = path
 
 		// get circuit tags
 		tags := params.GetCircuitTags(terminator)
+
+		circuit.Tags = tags
 
 		// 4a: Create Route Messages
 		rms := network.CreateRouteMessages(path, attempt, circuitId, terminator, deadline)
@@ -669,7 +681,7 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 					}
 				}
 
-				return nil, fmt.Errorf("exceeded maximum [%d] retries creating circuit [c/%s] (%w)", network.options.CreateCircuitRetries, circuitId, circuitErr)
+				return circuit, fmt.Errorf("exceeded maximum [%d] retries creating circuit [c/%s] (%w)", network.options.CreateCircuitRetries, circuitId, circuitErr)
 			}
 		}
 
@@ -711,17 +723,10 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 
 		now := time.Now()
 		// 6: Create Circuit Object
-		circuit := &model.Circuit{
-			Id:         circuitId,
-			ClientId:   clientId.Token,
-			ServiceId:  svc.Id,
-			Path:       path,
-			Terminator: terminator,
-			PeerData:   peerData,
-			CreatedAt:  now,
-			UpdatedAt:  now,
-			Tags:       tags,
-		}
+		circuit.PeerData = peerData
+		circuit.CreatedAt = now
+		circuit.UpdatedAt = now
+
 		network.Circuit.Add(circuit)
 		creationTimespan := time.Since(startTime)
 		network.CircuitEvent(event.CircuitCreated, circuit, &creationTimespan)

@@ -19,10 +19,15 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/ctrl_msg"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress_router"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
+	"go.uber.org/atomic"
 	"time"
 
 	"github.com/openziti/ziti/common/capabilities"
@@ -62,15 +67,18 @@ type listener struct {
 	bindHandler      xgress.BindHandler
 	underlayListener channel.UnderlayListener
 	headers          map[int32][]byte
+
+	droppedMsgMeter metrics.Meter
 }
 
 // newListener creates a new xgress edge listener
 func newListener(id *identity.TokenId, factory *Factory, options *Options, headers map[int32][]byte) xgress_router.Listener {
 	return &listener{
-		id:      id,
-		factory: factory,
-		options: options,
-		headers: headers,
+		id:              id,
+		factory:         factory,
+		options:         options,
+		headers:         headers,
+		droppedMsgMeter: factory.metricsRegistry.Meter("xgress.edge.dropped_msgs"),
 	}
 }
 
@@ -116,6 +124,8 @@ type edgeClientConn struct {
 	ch           edge.SdkChannel
 	idSeq        uint32
 	apiSession   *state.ApiSession
+	forwarder    env.Forwarder
+	xgCircuits   cmap.ConcurrentMap[string, *xgEdgeForwarder]
 }
 
 func (self *edgeClientConn) HandleClose(ch channel.Channel) {
@@ -123,13 +133,42 @@ func (self *edgeClientConn) HandleClose(ch channel.Channel) {
 	log.Debugf("closing")
 	self.listener.factory.hostedServices.cleanupServices(ch)
 	self.msgMux.Close()
+	self.cleanupXgressCircuits()
+}
+
+func (self *edgeClientConn) cleanupXgressCircuits() {
+	for entry := range self.xgCircuits.IterBuffered() {
+		circuitId := entry.Key
+		log := pfxlog.Logger().WithField("circuitId", circuitId)
+		self.forwarder.EndCircuit(circuitId)
+		self.xgCircuits.Remove(circuitId)
+
+		// Notify the controller of the xgress fault
+		fault := &ctrl_pb.Fault{Id: circuitId}
+		if entry.Val.originator == xgress.Initiator {
+			fault.Subject = ctrl_pb.FaultSubject_IngressFault
+		} else if entry.Val.originator == xgress.Terminator {
+			fault.Subject = ctrl_pb.FaultSubject_EgressFault
+		}
+
+		controllers := self.listener.factory.env.GetNetworkControllers()
+		ch := controllers.GetCtrlChannel(entry.Val.ctrlId)
+		if ch == nil {
+			log.WithField("ctrlId", entry.Val.ctrlId).Error("control channel not available")
+		} else {
+			log.Debug("notifying controller of fault")
+			if err := protobufs.MarshalTyped(fault).Send(ch); err != nil {
+				log.WithError(err).Error("error sending fault")
+			}
+		}
+	}
 }
 
 func (self *edgeClientConn) ContentType() int32 {
 	return edge.ContentTypeData
 }
 
-func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.Message, ch channel.Channel) {
+func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Channel) {
 	sessionToken := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("token", sessionToken).WithFields(edge.GetLoggerFields(req))
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
@@ -146,21 +185,27 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 		return
 	}
 
-	conn := &edgeXgressConn{
-		mux:        self.msgMux,
-		MsgChannel: *edge.NewEdgeMsgChannel(self.ch, connId),
-		seq:        NewMsgQueue(4),
+	connectCtx := &connectContext{
+		sdkConn:      self,
+		log:          log,
+		req:          req,
+		connId:       connId,
+		sessionToken: sessionToken,
+		ctrlCh:       ctrlCh,
 	}
 
-	// need to remove session remove listener on close
-	conn.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(sessionToken, func(token string) {
-		conn.close(true, "session closed")
-	})
+	var handler connectHandler
+	if useXgToSdk, _ := req.GetBoolHeader(edge.UseXgressToSdkHeader); useXgToSdk {
+		handler = &xgEdgeForwarder{
+			edgeClientConn: self,
+			ctrlId:         ctrlCh.Id(),
+			originator:     xgress.Initiator,
+		}
+	} else {
+		handler = &nonXgConnectHandler{}
+	}
 
-	// We can't fix conn id, since it's provided by the client
-	if err := self.msgMux.AddMsgSink(conn); err != nil {
-		log.WithError(err).WithField("token", sessionToken).Error("error adding to msg mux")
-		self.sendStateClosedReply(err.Error(), req)
+	if !handler.Init(connectCtx) {
 		return
 	}
 
@@ -185,6 +230,7 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 	}
 
 	if xgress_common.IsBearerToken(sessionToken) {
+		manager := self.listener.factory.stateManager
 		apiSession := manager.GetApiSessionFromCh(ch)
 
 		if apiSession == nil {
@@ -196,21 +242,7 @@ func (self *edgeClientConn) processConnect(manager state.Manager, req *channel.M
 	}
 
 	response, err := self.sendCreateCircuitRequest(request, ctrlCh)
-	if err != nil {
-		log.WithError(err).Warn("failed to dial fabric")
-		self.sendStateClosedReply(err.Error(), req)
-		conn.close(false, "failed to dial fabric")
-		return
-	}
-
-	self.mapResponsePeerData(response.PeerData)
-
-	x := xgress.NewXgress(response.CircuitId, ctrlCh.Id(), xgress.Address(response.Address), conn, xgress.Initiator, &self.listener.options.Options, response.Tags)
-	self.listener.bindHandler.HandleXgressBind(x)
-	conn.ctrlRx = x
-	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
-	self.sendStateConnectedReply(req, response.PeerData, response.CircuitId)
-	x.Start()
+	handler.FinishConnect(connectCtx, response, err)
 }
 
 func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
@@ -405,7 +437,19 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 
 	log.Debug("registered listener for terminator")
 	log.Debug("returning connection state CONNECTED to client")
-	self.sendStateConnectedReply(req, nil, "")
+
+	msg := edge.NewStateConnectedMsg(connId)
+	msg.ReplyTo(req)
+
+	if assignIds {
+		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
+	}
+
+	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
+	err = msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
+	if err != nil {
+		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send bind success response")
+	}
 
 	log.Info("created terminator")
 }
@@ -525,7 +569,18 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 		}
 	}
 
-	self.sendStateConnectedReply(req, nil, "")
+	msg := edge.NewStateConnectedMsg(connId)
+	msg.ReplyTo(req)
+
+	if assignIds {
+		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
+	}
+
+	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
+	err = msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
+	if err != nil {
+		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send bind success response")
+	}
 
 	if checkResult.replaceExisting {
 		log.Info("sending replacement terminator success to sdk")
@@ -704,7 +759,7 @@ func (self *edgeClientConn) processTraceRoute(msg *channel.Message, ch channel.C
 	}
 }
 
-func (self *edgeClientConn) sendStateConnectedReply(req *channel.Message, hostData map[uint32][]byte, circuitId string) {
+func (self *edgeClientConn) sendBindConnectedReply(req *channel.Message) {
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	msg := edge.NewStateConnectedMsg(connId)
 
@@ -712,14 +767,32 @@ func (self *edgeClientConn) sendStateConnectedReply(req *channel.Message, hostDa
 		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
 	}
 
-	if circuitId != "" {
-		msg.PutStringHeader(edge.CircuitIdHeader, circuitId)
+	msg.ReplyTo(req)
+
+	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
+	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
+	if err != nil {
+		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
+		return
+	}
+}
+
+func (self *edgeClientConn) sendConnectedReply(req *channel.Message, response *ctrl_msg.CreateCircuitResponse) {
+	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
+
+	msg := edge.NewStateConnectedMsg(connId)
+	msg.ReplyTo(req)
+
+	if assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId); assignIds {
+		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
 	}
 
-	for k, v := range hostData {
+	msg.PutStringHeader(edge.CircuitIdHeader, response.CircuitId)
+
+	self.mapResponsePeerData(response.PeerData)
+	for k, v := range response.PeerData {
 		msg.Headers[int32(k)] = v
 	}
-	msg.ReplyTo(req)
 
 	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
 	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
@@ -801,6 +874,52 @@ func (self *edgeClientConn) processTokenUpdate(manager state.Manager, req *chann
 	}
 }
 
+func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Channel) {
+	payload, err := xgress.UnmarshallPayload(msg)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to unmarshal xgress payload")
+		return
+	}
+
+	edgeFwd, _ := self.xgCircuits.Get(payload.CircuitId)
+	if edgeFwd == nil {
+		pfxlog.Logger().WithField("circuitId", payload.CircuitId).Error("no edge forwarder found for edge circuit")
+		return
+	}
+
+	// pfxlog.Logger().Infof("forwarding payload from sdk circuitId: %s, seq: %d", payload.CircuitId, payload.Sequence)
+
+	if err = self.forwarder.ForwardPayload(edgeFwd.address, payload, 0); err != nil {
+		if !channel.IsTimeout(err) {
+			pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Error("unable to forward payload")
+			self.forwarder.ReportForwardingFault(payload.CircuitId, "") // ctrlId will be filled in by forwarder, if possible
+			return
+		} else {
+			pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Error("failed to forward payload")
+		}
+	}
+}
+
+func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, ch channel.Channel) {
+	ack, err := xgress.UnmarshallAcknowledgement(req)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to unmarshal xgress acknowledgement")
+		return
+	}
+
+	edgeFwd, _ := self.xgCircuits.Get(ack.CircuitId)
+	if edgeFwd == nil {
+		pfxlog.Logger().WithField("circuitId", ack.CircuitId).Error("no edge forwarder found for edge circuit")
+		return
+	}
+
+	// pfxlog.Logger().Infof("forwarding ack from sdk circuitId: %s, seq: %d", ack.CircuitId, ack.Sequence)
+
+	if err = self.forwarder.ForwardAcknowledgement(edgeFwd.address, ack); err != nil {
+		pfxlog.Logger().WithFields(ack.GetLoggerFields()).WithError(err).Error("failed to forward acknowledgement")
+	}
+}
+
 func getResultOrFailure(msg *channel.Message, err error, result protobufs.TypedMessage) error {
 	if err != nil {
 		return err
@@ -819,4 +938,190 @@ func getResultOrFailure(msg *channel.Message, err error, result protobufs.TypedM
 	}
 
 	return proto.Unmarshal(msg.Body, result)
+}
+
+type connectHandler interface {
+	Init(ctx *connectContext) bool
+	FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error)
+}
+
+type connectContext struct {
+	sdkConn      *edgeClientConn
+	log          *logrus.Entry
+	req          *channel.Message
+	connId       uint32
+	sessionToken string
+	ctrlCh       channel.Channel
+}
+
+type nonXgConnectHandler struct {
+	conn *edgeXgressConn
+}
+
+func (self *nonXgConnectHandler) Init(ctx *connectContext) bool {
+	self.conn = &edgeXgressConn{
+		mux:        ctx.sdkConn.msgMux,
+		MsgChannel: *edge.NewEdgeMsgChannel(ctx.sdkConn.ch, ctx.connId),
+		seq:        NewMsgQueue(4),
+	}
+
+	// need to remove session remove listener on close
+	stateManager := ctx.sdkConn.listener.factory.stateManager
+	self.conn.onClose = stateManager.AddEdgeSessionRemovedListener(ctx.sessionToken, func(token string) {
+		self.conn.close(true, "session closed")
+	})
+
+	// We can't fix conn id, since it's provided by the client
+	if err := ctx.sdkConn.msgMux.AddMsgSink(self.conn); err != nil {
+		ctx.log.WithError(err).WithField("token", ctx.sessionToken).Error("error adding to msg mux")
+		ctx.sdkConn.sendStateClosedReply(err.Error(), ctx.req)
+		return false
+	}
+
+	return true
+}
+
+func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
+	if err != nil {
+		ctx.log.WithError(err).Warn("failed to dial fabric")
+		ctx.sdkConn.sendStateClosedReply(err.Error(), ctx.req)
+		self.conn.close(false, "failed to dial fabric")
+		return
+	}
+
+	ctx.sdkConn.mapResponsePeerData(response.PeerData)
+
+	xgOptions := &ctx.sdkConn.listener.options.Options
+	x := xgress.NewXgress(response.CircuitId, ctx.ctrlCh.Id(), xgress.Address(response.Address), self.conn, xgress.Initiator, xgOptions, response.Tags)
+	ctx.sdkConn.listener.bindHandler.HandleXgressBind(x)
+	self.conn.ctrlRx = x
+
+	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
+	ctx.sdkConn.sendConnectedReply(ctx.req, response)
+
+	x.Start()
+}
+
+type xgEdgeForwarder struct {
+	*edgeClientConn
+	circuitId  string
+	originator xgress.Originator
+	ctrlId     string
+	address    xgress.Address
+	lastRx     atomic.Int64
+	connId     uint32
+}
+
+func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error {
+	// pfxlog.Logger().Infof("forwarding payload to sdk circuitId: %s, seq: %d", payload.CircuitId, payload.Sequence)
+
+	msg := payload.Marshall()
+	msg.PutUint32Header(edge.ConnIdHeader, self.connId)
+	if timeout == 0 {
+		sent, err := self.ch.GetDefaultSender().TrySend(msg)
+		if err == nil && !sent {
+			self.listener.droppedMsgMeter.Mark(1)
+		}
+		return err
+	}
+
+	self.lastRx.Store(time.Now().UnixMilli())
+
+	if err := msg.WithTimeout(timeout).Send(self.ch.GetDefaultSender()); err != nil {
+		self.listener.droppedMsgMeter.Mark(1)
+		return err
+	}
+
+	return nil
+}
+
+func (self *xgEdgeForwarder) SendAcknowledgement(ack *xgress.Acknowledgement) error {
+	// pfxlog.Logger().Infof("forwarding ack to sdk circuitId: %s, seq: %d", ack.CircuitId, ack.Sequence)
+
+	msg := ack.Marshall()
+	msg.PutUint32Header(edge.ConnIdHeader, self.connId)
+	sent, err := self.ch.GetDefaultSender().TrySend(msg)
+	if err == nil && !sent {
+		self.listener.droppedMsgMeter.Mark(1)
+	}
+
+	self.lastRx.Store(time.Now().UnixMilli())
+
+	return err
+}
+
+func (self *xgEdgeForwarder) SendControl(ctrl *xgress.Control) error {
+	msg := ctrl.Marshall()
+	msg.PutUint32Header(edge.ConnIdHeader, self.connId)
+	sent, err := self.ch.GetDefaultSender().TrySend(msg)
+	if err == nil && !sent {
+		self.listener.droppedMsgMeter.Mark(1)
+	}
+	return err
+}
+
+func (self *xgEdgeForwarder) InspectCircuit(detail *xgress.CircuitInspectDetail) {
+	detail.AddLinkDetail(&xgress.LinkInspectDetail{
+		Id:          fmt.Sprintf("edge-%s", self.ch.GetChannel().Id()),
+		Iteration:   0,
+		Key:         "",
+		Split:       false,
+		Protocol:    "tcp",
+		DialAddress: "",
+		Dest:        "",
+		DestVersion: "",
+		Dialed:      false,
+	})
+}
+
+func (self *xgEdgeForwarder) Init(ctx *connectContext) bool {
+	self.connId = ctx.connId
+	// TODO: figure out how to handle session removed
+	return true
+}
+
+func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
+	if err != nil {
+		ctx.log.WithError(err).Warn("failed to dial fabric")
+		ctx.sdkConn.sendStateClosedReply(err.Error(), ctx.req)
+		return
+	}
+
+	self.circuitId = response.CircuitId
+	self.address = xgress.Address(response.Address)
+	self.forwarder.RegisterDestination(response.CircuitId, self.address, self)
+	self.xgCircuits.Set(self.circuitId, self)
+
+	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
+	connId, _ := ctx.req.GetUint32Header(edge.ConnIdHeader)
+
+	msg := edge.NewStateConnectedMsg(connId)
+	msg.ReplyTo(ctx.req)
+
+	if assignIds, _ := ctx.req.GetBoolHeader(edge.RouterProvidedConnId); assignIds {
+		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
+	}
+
+	msg.PutStringHeader(edge.CircuitIdHeader, response.CircuitId)
+	msg.PutBoolHeader(edge.UseXgressToSdkHeader, true)
+	msg.PutStringHeader(edge.XgressCtrlIdHeader, ctx.ctrlCh.Id())
+	msg.PutStringHeader(edge.XgressAddressHeader, response.Address)
+
+	self.mapResponsePeerData(response.PeerData)
+	for k, v := range response.PeerData {
+		msg.Headers[int32(k)] = v
+	}
+
+	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
+	if err = msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetControlSender()); err != nil {
+		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
+	}
+}
+
+func (self *xgEdgeForwarder) Unrouted() {
+	self.xgCircuits.Remove(self.circuitId)
+}
+
+func (self *xgEdgeForwarder) GetTimeOfLastRxFromLink() int64 {
+	return self.lastRx.Load()
 }

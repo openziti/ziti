@@ -41,19 +41,9 @@ type Forwarder struct {
 	CloseNotify     <-chan struct{}
 }
 
-type Destination interface {
-	SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error
-	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
-	SendControl(control *xgress.Control) error
-	InspectCircuit(detail *xgress.CircuitInspectDetail)
-}
-
 type XgressDestination interface {
-	Destination
+	env.Destination
 	Unrouted()
-	Start()
-	IsTerminator() bool
-	Label() string
 	GetTimeOfLastRxFromLink() int64
 }
 
@@ -89,7 +79,7 @@ func (forwarder *Forwarder) TraceController() trace.Controller {
 	return forwarder.traceController
 }
 
-func (forwarder *Forwarder) RegisterDestination(circuitId string, address xgress.Address, destination Destination) {
+func (forwarder *Forwarder) RegisterDestination(circuitId string, address xgress.Address, destination env.Destination) {
 	forwarder.destinations.addDestination(address, destination)
 	forwarder.destinations.linkDestinationToCircuit(circuitId, address)
 }
@@ -271,6 +261,13 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 }
 
 func (forwarder *Forwarder) ReportForwardingFault(circuitId string, ctrlId string) {
+	if ctrlId == "" {
+		ct, _ := forwarder.circuits.getForwardTable(circuitId, false)
+		if ct != nil {
+			ctrlId = ct.ctrlId
+		}
+	}
+
 	if forwarder.faulter != nil {
 		forwarder.faulter.Report(circuitId, ctrlId)
 	} else {

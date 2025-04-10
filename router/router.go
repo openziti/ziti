@@ -186,6 +186,10 @@ func (self *Router) GetIndexWatchers() env.IndexWatchers {
 	return self.indexWatchers
 }
 
+func (self *Router) GetForwarder() env.Forwarder {
+	return self.forwarder
+}
+
 func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
@@ -540,7 +544,7 @@ func (self *Router) startXlinkDialers() {
 		}
 
 		if factory, found := self.xlinkFactories[binding]; found {
-			dialer, err := factory.CreateDialer(self.config.Id, self.forwarder, lmap)
+			dialer, err := factory.CreateDialer(self.config.Id, lmap)
 			if err != nil {
 				logrus.Fatalf("error creating Xlink dialer (%v)", err)
 			}
@@ -562,7 +566,7 @@ func (self *Router) startXlinkListeners() {
 
 		if factory, found := self.xlinkFactories[binding]; found {
 			lmap[transport.KeyProtocol] = "ziti-link"
-			listener, err := factory.CreateListener(self.config.Id, self.forwarder, lmap)
+			listener, err := factory.CreateListener(self.config.Id, lmap)
 			if err != nil {
 				logrus.Fatalf("error creating Xlink listener (%v)", err)
 			}

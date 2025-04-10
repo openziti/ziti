@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/cert"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"math"
 	"sync/atomic"
 	"time"
@@ -62,6 +63,8 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		fingerprints: fpg.FromCerts(binding.GetChannel().Certificates()),
 		ch:           sdkChannel,
 		idSeq:        math.MaxUint32 / 2,
+		forwarder:    self.listener.factory.env.GetForwarder(),
+		xgCircuits:   cmap.New[*xgEdgeForwarder](),
 	}
 
 	log.Debug("peer fingerprints ", conn.fingerprints)
@@ -69,7 +72,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeConnect,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			conn.processConnect(self.listener.factory.stateManager, m, ch)
+			conn.processConnect(m, ch)
 		},
 	})
 
@@ -115,6 +118,9 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(edge.ContentTypeTraceRouteResponse, conn.msgMux.HandleReceive)
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 
+	binding.AddReceiveHandlerF(edge.ContentTypeXgPayload, conn.handleXgPayload)
+	binding.AddReceiveHandlerF(edge.ContentTypeXgAcknowledgement, conn.handleXgAcknowledgement)
+
 	// Since data is the most common type, it gets to dispatch directly
 	if self.listener.factory.routerConfig.Metrics.EnableDataDelayMetric {
 		delayTimer := self.listener.factory.env.GetMetricsRegistry().Timer("xgress_edge.long_data_queue_time")
@@ -129,7 +135,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		binding.AddTypedReceiveHandler(conn.msgMux)
 	}
 	binding.AddCloseHandler(conn)
-	binding.AddPeekHandler(debugPeekHandler{})
+	// binding.AddPeekHandler(debugPeekHandler{})
 
 	if err := self.sessionBindHandler.validateApiSession(binding, conn); err != nil {
 		self.connectFailureMeter.Mark(1)

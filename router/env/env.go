@@ -55,6 +55,7 @@ type RouterEnv interface {
 	DefaultRequestTimeout() time.Duration
 	GetXgressBindHandler() xgress.BindHandler
 	GetConfig() *Config
+	GetForwarder() Forwarder
 }
 
 type ConnectEventsConfig struct {
@@ -62,4 +63,20 @@ type ConnectEventsConfig struct {
 	BatchInterval    time.Duration
 	MaxQueuedEvents  int64
 	FullSyncInterval time.Duration
+}
+
+type Forwarder interface {
+	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error
+	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
+	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
+	ReportForwardingFault(circuitId string, ctrlId string)
+	RegisterDestination(circuitId string, address xgress.Address, destination Destination)
+	EndCircuit(circuitId string)
+}
+
+type Destination interface {
+	SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error
+	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
+	SendControl(control *xgress.Control) error
+	InspectCircuit(detail *xgress.CircuitInspectDetail)
 }

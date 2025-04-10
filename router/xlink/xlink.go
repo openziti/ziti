@@ -66,10 +66,16 @@ type Registry interface {
 	GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string
 }
 
+type Forwarder interface {
+	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error
+	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
+	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
+}
+
 // A Factory creates link listeners and link dialers
 type Factory interface {
-	CreateListener(id *identity.TokenId, f Forwarder, config transport.Configuration) (Listener, error)
-	CreateDialer(id *identity.TokenId, f Forwarder, config transport.Configuration) (Dialer, error)
+	CreateListener(id *identity.TokenId, config transport.Configuration) (Listener, error)
+	CreateDialer(id *identity.TokenId, config transport.Configuration) (Dialer, error)
 }
 
 type Listener interface {
@@ -138,10 +144,4 @@ type Xlink interface {
 	Iteration() uint32
 	AreFaultsSent() bool
 	DuplicatesRejected() uint32
-}
-
-type Forwarder interface {
-	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error
-	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
-	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
 }
