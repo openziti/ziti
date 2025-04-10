@@ -94,7 +94,7 @@ jobs:
           - deb: arm64
             rpm: aarch64
           - deb: armv7
-            rpm: armv7
+            rpm: armv7hl
         packager:
           - rpm
           - deb
