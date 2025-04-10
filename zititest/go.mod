@@ -10,7 +10,7 @@ require (
 	github.com/go-openapi/runtime v0.28.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
-	github.com/michaelquigley/pfxlog v1.0.0
+	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.26
 	github.com/openziti/channel/v4 v4.0.2
 	github.com/openziti/edge-api v0.26.42
