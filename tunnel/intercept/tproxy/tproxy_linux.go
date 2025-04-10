@@ -705,7 +705,7 @@ func (self *tProxy) getSourceAddressesAsCidrs() []cidrString {
 	for _, srcAddr := range srcAddrs {
 		srcCidr := strings.Split(srcAddr, "/")
 		ip := srcCidr[0]
-		prefixLen := "0"
+		prefixLen := "32"
 		if len(srcCidr) == 2 {
 			prefixLen = srcCidr[1]
 		}
