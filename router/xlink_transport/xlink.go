@@ -19,8 +19,9 @@ package xlink_transport
 import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/router/xgress"
 	"sync/atomic"
 	"time"
 )
@@ -147,11 +148,11 @@ func (self *impl) IsClosed() bool {
 }
 
 func (self *impl) InspectCircuit(detail *xgress.CircuitInspectDetail) {
-	detail.LinkDetails[self.id] = self.InspectLink()
+	detail.AddRelatedEntity("link", self.id, self.InspectLink())
 }
 
-func (self *impl) InspectLink() *xgress.LinkInspectDetail {
-	return &xgress.LinkInspectDetail{
+func (self *impl) InspectLink() *inspect.LinkInspectDetail {
+	return &inspect.LinkInspectDetail{
 		Id:          self.Id(),
 		Iteration:   self.Iteration(),
 		Key:         self.key,

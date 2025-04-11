@@ -48,8 +48,10 @@ func (r *Result) Tx(p *protocol) error {
 		}
 	}
 
-	p.txMsgRate.Mark(1)
-	p.txBytesRate.Mark(int64(4 + 4 + dataLen))
+	p.workloadTxMsgRate.Mark(1)
+	p.simTxMsgRate.Mark(1)
+	p.workloadTxBytesRate.Mark(int64(4 + 4 + dataLen))
+	p.simTxBytesRate.Mark(int64(4 + 4 + dataLen))
 
 	if r.Success {
 		pfxlog.ContextLogger(p.test.Name).Infof("<- [result+]")
@@ -75,8 +77,10 @@ func (r *Result) Rx(p *protocol) error {
 	r.Success = body[0] == 1
 	r.Message = string(body[1:])
 
-	p.rxMsgRate.Mark(1)
-	p.rxBytesRate.Mark(int64(4 + 4 + msgLen))
+	p.workloadRxMsgRate.Mark(1)
+	p.workloadRxBytesRate.Mark(int64(4 + 4 + msgLen))
+	p.simRxMsgRate.Mark(1)
+	p.simRxBytesRate.Mark(int64(4 + 4 + msgLen))
 
 	if r.Success {
 		pfxlog.ContextLogger(p.test.Name).Infof("<- [result+]")
@@ -188,8 +192,10 @@ func (block *RandHashedBlock) Tx(p *protocol) error {
 		return err
 	}
 
-	p.txMsgRate.Mark(1)
-	p.txBytesRate.Mark(int64(8 + dataLen))
+	p.workloadTxMsgRate.Mark(1)
+	p.workloadTxBytesRate.Mark(int64(8 + dataLen))
+	p.simTxMsgRate.Mark(1)
+	p.simTxBytesRate.Mark(int64(8 + dataLen))
 
 	pfxlog.ContextLogger(p.test.Name).Debugf("-> #%d (%s)", block.Sequence, info.ByteCount(int64(len(block.Data))))
 
@@ -229,8 +235,10 @@ func (block *RandHashedBlock) Rx(p *protocol) error {
 	block.Hash = buf.Next(64)
 	block.Data = buf.Bytes()
 
-	p.rxMsgRate.Mark(1)
-	p.rxBytesRate.Mark(int64(8 + length))
+	p.workloadRxMsgRate.Mark(1)
+	p.workloadRxBytesRate.Mark(int64(8 + length))
+	p.simRxMsgRate.Mark(1)
+	p.simRxBytesRate.Mark(int64(8 + length))
 
 	if block.Type == BlockTypeLatencyResponse {
 		elapsed := time.Since(block.Timestamp)

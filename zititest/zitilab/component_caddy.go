@@ -53,6 +53,10 @@ func (self *CaddyType) GetVersion() string {
 	return self.Version
 }
 
+func (self *CaddyType) SetVersion(version string) {
+	self.Version = version
+}
+
 func (self *CaddyType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }

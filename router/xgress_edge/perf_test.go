@@ -5,13 +5,14 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/handler_xgress"
 	metrics2 "github.com/openziti/ziti/router/metrics"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,7 +49,7 @@ func (link *mirrorLink) IsClosed() bool {
 func (link *mirrorLink) InspectCircuit(circuitDetail *xgress.CircuitInspectDetail) {
 }
 
-func (link *mirrorLink) InspectLink() *xgress.LinkInspectDetail {
+func (link *mirrorLink) InspectLink() *inspect.LinkInspectDetail {
 	return nil
 }
 
@@ -167,7 +168,8 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 		Metrics:         xgress.NewMetrics(metricsRegistry),
 	})
 	x.SetDataPlaneAdapter(dataPlaneAdapter)
-	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
+	xgMetrics := metrics2.NewXgressMetrics(metricsRegistry)
+	x.AddPeekHandler(metrics2.NewXgressPeekHandler(xgMetrics))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)
 	fwd.RegisterDestination(x.CircuitId(), x.Address(), x)
@@ -180,7 +182,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	data := make([]byte, 1024)
 
 	for i := 0; i < b.N; i++ {
-		msg := edge.NewDataMsg(1, uint32(i+1), data)
+		msg := edge.NewDataMsg(1, data)
 		mux.HandleReceive(msg, testChannel)
 		b.SetBytes(1024)
 	}
@@ -255,7 +257,8 @@ func Benchmark_BaselinePerf(b *testing.B) {
 		Metrics:         xgress.NewMetrics(metricsRegistry),
 	})
 	x.SetDataPlaneAdapter(dataPlaneAdapter)
-	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
+	xgMetrics := metrics2.NewXgressMetrics(metricsRegistry)
+	x.AddPeekHandler(metrics2.NewXgressPeekHandler(xgMetrics))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)
 	fwd.RegisterDestination(x.CircuitId(), x.Address(), x)
@@ -274,6 +277,10 @@ func Benchmark_BaselinePerf(b *testing.B) {
 }
 
 type NoopTestChannel struct {
+}
+
+func (ch *NoopTestChannel) GetUserData() interface{} {
+	return nil
 }
 
 func (ch *NoopTestChannel) Headers() map[int32][]byte {

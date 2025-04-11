@@ -47,6 +47,10 @@ func (self *ZrokLoopTestType) GetVersion() string {
 	return self.Version
 }
 
+func (self *ZrokLoopTestType) SetVersion(version string) {
+	self.Version = version
+}
+
 func (self *ZrokLoopTestType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 	if self.Iterations == 0 {

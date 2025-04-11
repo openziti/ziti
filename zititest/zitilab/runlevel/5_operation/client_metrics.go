@@ -20,14 +20,15 @@ import (
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -53,13 +54,24 @@ type ClientMetrics struct {
 	idToSelectorMapper func(string) string
 }
 
+func (metrics *ClientMetrics) ActivateAndOperateAction() model.Action {
+	return model.ActionFunc(metrics.ActivateAndOperate)
+}
+
+func (metrics *ClientMetrics) ActivateAndOperate(run model.Run) error {
+	if err := metrics.Execute(run); err != nil {
+		return err
+	}
+	return metrics.Operate(run)
+}
+
 func (metrics *ClientMetrics) Execute(run model.Run) error {
 	if err := zitilib_actions.EdgeExec(run.GetModel(), "delete", "identity", "metrics-host"); err != nil {
 		return err
 	}
 
 	jwtFilePath := run.GetLabel().GetFilePath("metrics-host.jwt")
-	if err := zitilib_actions.EdgeExec(run.GetModel(), "create", "identity", "service", "metrics-host", "-a", "metrics-host", "-o", jwtFilePath); err != nil {
+	if err := zitilib_actions.EdgeExec(run.GetModel(), "create", "identity", "metrics-host", "-a", "metrics-host", "-o", jwtFilePath); err != nil {
 		return err
 	}
 
@@ -89,6 +101,7 @@ func (metrics *ClientMetrics) Operate(run model.Run) error {
 	metrics.listener = listener
 
 	go func() {
+		pfxlog.Logger().Info("ziti client metrics listener started")
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
@@ -117,7 +130,7 @@ func (metrics *ClientMetrics) HandleMetricsConn(conn net.Conn) {
 			return
 		}
 		msgLen := int(binary.LittleEndian.Uint32(lenBuf))
-		if msgLen > 1024*16 {
+		if msgLen > 1024*128 {
 			log.Errorf("got invalid metrics message len: %v, closing connection", msgLen)
 			return
 		}
@@ -143,7 +156,7 @@ func (metrics *ClientMetrics) HandleMetricsConn(conn net.Conn) {
 		if err == nil {
 			modelEvent := metrics.toClientMetricsEvent(event)
 			metrics.model.AcceptHostMetrics(host, modelEvent)
-			log.Infof("<$= [%s]", event.SourceId)
+			log.Infof("<$= [%s] - client metrics", event.SourceId)
 		} else {
 			log.WithError(err).Error("clientMetrics: unable to find host")
 		}
@@ -166,7 +179,11 @@ func (metrics *ClientMetrics) toClientMetricsEvent(fabricEvent *mgmt_pb.StreamMe
 
 	for name, val := range fabricEvent.IntMetrics {
 		group := fabricEvent.MetricGroup[name]
-		modelEvent.Metrics.AddGroupedMetric(group, name, val)
+		if strings.Contains(name, "xgress") {
+			modelEvent.Metrics.AddGroupedMetric(group, name, float64(val))
+		} else {
+			modelEvent.Metrics.AddGroupedMetric(group, name, val)
+		}
 	}
 
 	for name, val := range fabricEvent.FloatMetrics {

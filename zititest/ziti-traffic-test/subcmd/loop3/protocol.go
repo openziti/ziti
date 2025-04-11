@@ -250,7 +250,7 @@ func (p *protocol) verifier() {
 			errStr := fmt.Sprintf("rx timeout exceeded (%d ms.). Last rx: %v. tx count: %v, rx count: %v",
 				p.test.RxTimeout, timeSinceLastRx, atomic.LoadInt32(&p.txCount), atomic.LoadInt32(&p.rxCount))
 			// err := errors.New(errStr)
-			log.Errorf(errStr)
+			log.Error(errStr)
 			// p.errors <- err
 			//if closeErr := p.peer.Close(); closeErr != nil {
 			//	log.Error(closeErr)

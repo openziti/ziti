@@ -53,6 +53,10 @@ func (self *RouterType) GetVersion() string {
 	return self.Version
 }
 
+func (self *RouterType) SetVersion(version string) {
+	self.Version = version
+}
+
 func (self *RouterType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }

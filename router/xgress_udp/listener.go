@@ -17,7 +17,7 @@
 package xgress_udp
 
 import (
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"io"
 	"net"
 )

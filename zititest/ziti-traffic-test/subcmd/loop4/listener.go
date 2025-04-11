@@ -17,9 +17,7 @@
 package loop4
 
 import (
-	"errors"
 	"github.com/michaelquigley/pfxlog"
-	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop4/pb"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net"
@@ -34,7 +32,6 @@ type listenerCmd struct {
 	*Sim
 
 	healthCheckAddr string
-	test            *loopPb.Test
 }
 
 func newListenerCmd() *cobra.Command {
@@ -75,17 +72,17 @@ func (cmd *listenerCmd) run(_ *cobra.Command, args []string) {
 		}()
 	}
 
-	if len(cmd.scenario.Workloads) != 1 {
-		panic(errors.New("only one workflow may be specified in a listener configuration"))
+	for _, workload := range cmd.scenario.Workloads {
+		cmd.runWorkload(workload)
 	}
+}
 
-	workload := cmd.scenario.Workloads[0]
-	_, cmd.test = workload.GetTests()
+func (cmd *listenerCmd) runWorkload(workload *Workload) {
+	log := pfxlog.Logger().WithField("workload", workload.Name)
 
 	listenerF, ok := cmd.listeners[workload.Connector]
 	if !ok {
-		log.WithField("workload", workload.Name).Fatalf("workload '%s' connector '%s' not defined",
-			workload.Name, workload.Connector)
+		log.Fatalf("workload '%s' connector '%s' not defined", workload.Name, workload.Connector)
 		return
 	}
 
@@ -104,12 +101,12 @@ func (cmd *listenerCmd) run(_ *cobra.Command, args []string) {
 }
 
 func (cmd *listenerCmd) handle(conn net.Conn, workload *Workload) {
-	log := pfxlog.Logger()
+	log := pfxlog.Logger().WithField("workload", workload.Name)
+
 	if proto, err := newProtocol(conn, workload.Name, cmd.metrics); err == nil {
-		var test *loopPb.Test
-		if cmd.test != nil && cmd.test.IsRxSequential() {
-			test = cmd.test
-		} else {
+		_, test := workload.GetTests()
+
+		if test == nil || !test.IsRxSequential() {
 			if test, err = proto.rxTest(); err != nil {
 				logrus.WithError(err).Error("failure receiving test parameters, closing")
 				_ = conn.Close()
@@ -118,16 +115,17 @@ func (cmd *listenerCmd) handle(conn net.Conn, workload *Workload) {
 		}
 
 		var result *Result
-		if err := proto.run(test); err == nil {
+		if err = proto.run(test); err == nil {
 			result = &Result{Success: true}
 		} else {
 			result = &Result{Success: false, Message: err.Error()}
 		}
-		if err := result.Tx(proto); err != nil {
+
+		if err = result.Tx(proto); err != nil {
 			log.Errorf("unable to tx result (%s)", err)
 		}
 
 	} else {
-		log.Errorf("error creating new protocol (%s)", err)
+		log.WithError(err).Error("error creating new protocol")
 	}
 }

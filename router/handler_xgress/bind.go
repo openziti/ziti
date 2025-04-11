@@ -17,24 +17,24 @@
 package handler_xgress
 
 import (
-	"github.com/openziti/ziti/router/forwarder"
+	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/metrics"
-	"github.com/openziti/ziti/router/xgress"
 )
 
 type bindHandler struct {
 	dataPlaneAdapter   xgress.DataPlaneAdapter
 	closeHandler       xgress.CloseHandler
 	metricsPeekHandler xgress.PeekHandler
-	forwarder          *forwarder.Forwarder
+	env                env.RouterEnv
 }
 
-func NewBindHandler(dataPlaneAdapter xgress.DataPlaneAdapter, closeHandler xgress.CloseHandler, forwarder *forwarder.Forwarder) *bindHandler {
+func NewBindHandler(env env.RouterEnv, dataPlaneAdapter xgress.DataPlaneAdapter, closeHandler xgress.CloseHandler) *bindHandler {
 	return &bindHandler{
+		env:                env,
 		dataPlaneAdapter:   dataPlaneAdapter,
 		closeHandler:       closeHandler,
-		metricsPeekHandler: metrics.NewXgressPeekHandler(forwarder.MetricsRegistry()),
-		forwarder:          forwarder,
+		metricsPeekHandler: metrics.NewXgressPeekHandler(env.GetXgressMetrics()),
 	}
 }
 
@@ -44,5 +44,9 @@ func (bindHandler *bindHandler) HandleXgressBind(x *xgress.Xgress) {
 
 	x.AddCloseHandler(bindHandler.closeHandler)
 
-	bindHandler.forwarder.RegisterDestination(x.CircuitId(), x.Address(), x)
+	bindHandler.env.GetForwarder().RegisterDestination(x.CircuitId(), x.Address(), x)
+}
+
+func (bindHandler *bindHandler) GetMetricsPeekHandler() xgress.PeekHandler {
+	return bindHandler.metricsPeekHandler
 }

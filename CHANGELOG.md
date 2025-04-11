@@ -3,27 +3,52 @@
 ## What's New
 
 * Bug fixes and library updates
-* Multi-underlay SDK support
+* Experimental multi-underlay SDK support
+* Experimental SDK flow-control support
 
 ## Multi-underlay SDK support
 
-For SDKs which support, the edge router now supports a separate control channel
+For SDKs which support it, the edge router now supports a separate control channel
 connection along side the data connection. If the SDK doesn't request separate
-channels, the edge router will continue to work with a single connection.
+channels, the edge router will continue to work with a single connection. This 
+feature is still experimental and may have bugs, may be changed or be removed.
+
+## SDK Flow-control
+
+For SDKs which support it, the edge router now supports delegating flow control
+to the SDK. This feature is still experimental and may have bugs, may be changed 
+or be removed.
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v4: [v3.0.39 -> v4.0.4](https://github.com/openziti/channel/compare/v3.0.39...v4.0.4)
+* github.com/openziti/channel/v4: [v3.0.39 -> v4.0.6](https://github.com/openziti/channel/compare/v3.0.39...v4.0.6)
+    * [Issue #182](https://github.com/openziti/channel/issues/182) - MultiListener can deadlock
+    * [Issue #180](https://github.com/openziti/channel/issues/180) - Add GetUserData to Channel interface
     * [Issue #176](https://github.com/openziti/channel/issues/176) - Multi-channel need a mechanism to notify the txer that the underlay has closed
     * [Issue #172](https://github.com/openziti/channel/issues/172) - Support multi-underlay channels
 
-* github.com/openziti/metrics: [v1.3.0 -> v1.4.0](https://github.com/openziti/metrics/compare/v1.3.0...v1.4.0)
-* github.com/openziti/sdk-golang: [v0.25.1 -> v1.0.1](https://github.com/openziti/sdk-golang/compare/v0.25.1...v1.0.1)
+* github.com/openziti/identity: [v1.0.100 -> v1.0.101](https://github.com/openziti/identity/compare/v1.0.100...v1.0.101)
+    * [Issue #64](https://github.com/openziti/identity/issues/64) - Support a way to check if a cert/serverCert can be saved
+
+* github.com/openziti/metrics: [v1.3.0 -> v1.4.1](https://github.com/openziti/metrics/compare/v1.3.0...v1.4.1)
+    * [Issue #53](https://github.com/openziti/metrics/issues/53) - Add reporter useful for emitting metrics to stdout
+
+* github.com/openziti/sdk-golang: [v0.25.1 -> v1.1.0](https://github.com/openziti/sdk-golang/compare/v0.25.1...v1.1.0)
+    * [Issue #702](https://github.com/openziti/sdk-golang/issues/702) - [Go SDK] Support xgress flow control from the SDK
+    * [Issue #722](https://github.com/openziti/sdk-golang/issues/722) - Move xgress impl to SDK
+    * [Issue #717](https://github.com/openziti/sdk-golang/issues/717) - ER connection race condition can leak connections
+    * [Issue #689](https://github.com/openziti/sdk-golang/issues/689) - Concurrent map iteration and modification in getEdgeRouterConn causes panic
     * [Issue #701](https://github.com/openziti/sdk-golang/issues/701) - Support multi-underlay channels for edge router connections
 
 * github.com/openziti/transport/v2: [v2.0.167 -> v2.0.168](https://github.com/openziti/transport/compare/v2.0.167...v2.0.168)
 * github.com/openziti/xweb/v2: [v2.3.0 -> v2.3.1](https://github.com/openziti/xweb/compare/v2.3.0...v2.3.1)
 * github.com/openziti/ziti: [v1.5.4 -> v1.6.0](https://github.com/openziti/ziti/compare/v1.5.4...v1.6.0)
+    * [Issue #2986](https://github.com/openziti/ziti/issues/2986) - [Router] Support xgress flow control from the SDK
+    * [Issue #2999](https://github.com/openziti/ziti/issues/2999) - OIDC JWT backed sessions cannot verify extended certs
+    * [Issue #2997](https://github.com/openziti/ziti/issues/2997) - Add Authenticator Id to OIDC JWTs/return for current-api-session
+    * [Issue #2904](https://github.com/openziti/ziti/issues/2904) - Support client certificate authorities in TLS handshake
+    * [Issue #2973](https://github.com/openziti/ziti/issues/2973) - CLI: add a subcommand to retrieve network JWT
+    * [Issue #2984](https://github.com/openziti/ziti/issues/2984) - Extend enrollments does not return a full chain
     * [Issue #2930](https://github.com/openziti/ziti/issues/2930) - Support multi-underlay channels for the edge SDK
     * [Issue #2978](https://github.com/openziti/ziti/issues/2978) - Create loop4 sim for testing circuit contention and scale
     * [Issue #2981](https://github.com/openziti/ziti/issues/2981) - Remove PayloadBufferForwarder API from xgress retransmitter

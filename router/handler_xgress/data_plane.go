@@ -19,8 +19,8 @@ package handler_xgress
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/forwarder"
-	"github.com/openziti/ziti/router/xgress"
 	"time"
 )
 
