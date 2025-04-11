@@ -35,6 +35,7 @@ type Options struct {
 	OutputJSONRequest  bool
 	OutputJSONResponse bool
 	OutputCSV          bool
+	OptionsMap         map[string]any
 }
 
 func (options *Options) OutputResponseJson() bool {

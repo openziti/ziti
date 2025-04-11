@@ -23,6 +23,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
+	"github.com/openziti/edge-api/rest_management_api_client/enrollment"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
@@ -31,6 +32,7 @@ import (
 	"github.com/openziti/ziti/ziti/util"
 	"io"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -71,6 +73,7 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	newOptions := func() *api.Options {
 		return &api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
+			OptionsMap:    map[string]any{},
 		}
 	}
 
@@ -84,6 +87,14 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions(), "erps"))
 	cmd.AddCommand(newListCmdForEntityType("enrollments", runListEnrollments, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("ext-jwt-signers", runListExtJwtSigners, newOptions(), "external-jwt-signers"))
+
+	networkJwtOptions := newOptions()
+	networkJwtOptionOutput := ""
+	networkJwtOptions.OptionsMap["output"] = &networkJwtOptionOutput
+	networkJwtsCmd := newListCmdForEntityType("network-jwts", runListNetworkJwts, networkJwtOptions, "network-jwts")
+	networkJwtsCmd.Flags().StringVarP(&networkJwtOptionOutput, "output", "o", "", "if specified, will output the default network jwt to a file")
+	cmd.AddCommand(networkJwtsCmd)
+
 	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
 	cmd.AddCommand(newListIdentitiesCmd(newOptions()))
 	cmd.AddCommand(newListServicesCmd(newOptions()))
@@ -693,6 +704,88 @@ func runListExtJwtSigners(options *api.Options) error {
 
 	pagingInfo := newPagingInfo(payload.Meta)
 	api.RenderTable(options, outTable, pagingInfo)
+
+	return nil
+}
+
+func runListNetworkJwts(options *api.Options) error {
+	client, err := util.NewEdgeManagementClient(options)
+
+	if err != nil {
+		return err
+	}
+
+	params := enrollment.NewListNetworkJWTsParams()
+
+	result, err := client.Enrollment.ListNetworkJWTs(params)
+
+	if err != nil {
+		return util.WrapIfApiError(err)
+	}
+
+	if options.OutputJSONResponse {
+		return nil
+	}
+
+	payload := result.GetPayload()
+
+	if payload == nil {
+		return errors.New("unexpected empty response payload")
+	}
+
+	outputV := options.OptionsMap["output"]
+
+	if outputV != nil {
+		outputPtr := outputV.(*string)
+		if outputPtr != nil && *outputPtr != "" {
+
+			var targetToken *rest_model.NetworkJWT
+			for _, curJwt := range payload.Data {
+				if curJwt.Name != nil && *curJwt.Name == "default" && curJwt.Token != nil {
+					targetToken = curJwt
+					break
+				}
+			}
+
+			if targetToken == nil {
+				return errors.New("default network jwt not found")
+			}
+
+			file, err := os.OpenFile(*outputPtr, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+
+			if err != nil {
+				return fmt.Errorf("error creating/opening network jwt output file [%s]: %w", *outputPtr, err)
+			}
+
+			defer func() {
+				_ = file.Close()
+			}()
+
+			_, err = file.WriteString(*targetToken.Token)
+
+			if err != nil {
+				return fmt.Errorf("error writing network jwt to output file [%s]: %w", *outputPtr, err)
+			}
+
+			return nil
+		}
+	}
+
+	for _, curJwt := range payload.Data {
+		name := "<unnamed>"
+		token := "<empty>"
+
+		if curJwt.Name != nil {
+			name = *curJwt.Name
+		}
+
+		if curJwt.Token != nil {
+			token = *curJwt.Token
+		}
+
+		fmt.Printf("%s:\n\n", name)
+		fmt.Printf("%s\n\n", token)
+	}
 
 	return nil
 }
