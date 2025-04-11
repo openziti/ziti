@@ -66,7 +66,7 @@ makeConfig() {
 }
 
 enroll() {
-  
+
   if [[ -n "${1:-}" && ! "${1}" =~ ^-- ]]; then
     local _config_file="${1}"
     local _ziti_home
@@ -86,7 +86,7 @@ enroll() {
       ziti router enroll "${_config_file}" \
         --jwt "${ZITI_ENROLL_TOKEN}" 2>&1
     else
-      echo  "ERROR: set ZITI_ENROLL_TOKEN to enrollment token" >&2
+      echo  "ERROR: set ZITI_ENROLL_TOKEN to path or string" >&2
       return 1
     fi
   fi
@@ -320,7 +320,7 @@ grantNetBindService() {
   systemctl daemon-reload
 }
 
-importZitiVars() {
+loadEnvVars() {
   # inherit Ziti vars and set answers
   for line in $(set | grep -e "^ZITI_" | sort); do
     # shellcheck disable=SC2013
@@ -469,9 +469,9 @@ else
   fi
 
   prepareWorkingDir "${ZITI_HOME}"
-  loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
-  importZitiVars                # get ZITI_* vars from environment and set in BOOT_ENV_FILE
+  loadEnvVars                   # get ZITI_* vars from environment and set in BOOT_ENV_FILE
   loadEnvStdin                  # slurp answers from stdin if it's not a tty
+  loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
   promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
   promptCtrlAddress             # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
   promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set

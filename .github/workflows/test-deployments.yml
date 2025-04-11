@@ -14,13 +14,15 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NFPM_VERSION: "2.38.0"
   I_AM_ROBOT: 1  # skip destruction warnings when running in CI
 
 jobs:
   build-linux-packages:
     name: Build ${{ matrix.package_name }} ${{ matrix.arch.gox }} ${{ matrix.packager }}
     runs-on: ubuntu-24.04
+    # this is necessary for testing the artifact in the next check which includes some distros with older glibc than
+    # the ubuntu runner VM
+    container: openziti/ziti-builder:v2
     strategy:
       matrix:
         package_name:
@@ -53,9 +55,8 @@ jobs:
 
       - name: Build Package
         id: nfpm
-        uses: burningalchemist/action-gh-nfpm@eeac96f42da23d091eec0d0088bf05cac0ceb9f3
+        uses: ./.github/actions/nfpm
         with:
-          nfpm_version: ${{ env.NFPM_VERSION }}
           packager: ${{ matrix.packager }}
           config: dist/dist-packages/linux/nfpm-${{ matrix.package_name }}.yaml
           target: release/
@@ -152,6 +153,8 @@ jobs:
               apt-get update
               apt-get install -y systemd                                     # install as impotent dep (not PID 1)
               dpkg --install ./release/openziti_*.${{ matrix.distro.type }}  # install CLI
+              # DEBUG phantom service already exists?
+              systemctl list-unit-files ziti-controller.service || true
               dpkg --install ./release/openziti-*.${{ matrix.distro.type }}  # install controller, router
               ;;
           esac
@@ -195,21 +198,9 @@ jobs:
         with:
           go-version-file: ./go.mod
 
-      - name: Install nfpm
-        shell: bash
-        run: |
-
-          set -o pipefail
-          set -o xtrace
-
-          echo ~/.local/bin >> $GITHUB_PATH
-          mkdir -p ~/.local/bin
-          wget -qO- https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz | tar --directory ~/.local/bin -xz nfpm
-          nfpm --version
-
       - name: Bootstrap & Run
         shell: bash
-        run: ./dist/dist-packages/linux/linux.test.bash
+        run: ./dist/dist-packages/linux/linux.test.bash </dev/null
 
       - name: Debug Info
         if: always()
