@@ -196,6 +196,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 
 	var handler connectHandler
 	if useXgToSdk, _ := req.GetBoolHeader(edge.UseXgressToSdkHeader); useXgToSdk {
+		log.Info("use sdk xgress set, setting up sdk flow-control connection")
 		handler = &xgEdgeForwarder{
 			edgeClientConn: self,
 			ctrlId:         ctrlCh.Id(),
@@ -369,6 +370,8 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 	assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId)
 	log.Debugf("client requested router provided connection ids: %v", assignIds)
 
+	useSdkXgress, _ := req.GetBoolHeader(edge.UseXgressToSdkHeader)
+
 	log.Debug("establishing listener")
 
 	terminator := &edgeTerminator{
@@ -376,6 +379,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 		edgeClientConn: self,
 		token:          sessionToken,
 		assignIds:      assignIds,
+		useSdkXgress:   useSdkXgress,
 		createTime:     time.Now(),
 	}
 
@@ -514,6 +518,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 
 	supportsInspect, _ := req.GetBoolHeader(edge.SupportsInspectHeader)
 	notifyEstablished, _ := req.GetBoolHeader(edge.SupportsBindSuccessHeader)
+	useSdkXgress, _ := req.GetBoolHeader(edge.UseXgressToSdkHeader)
 
 	terminator := &edgeTerminator{
 		terminatorId:    terminatorId,
@@ -527,6 +532,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 		instanceSecret:  terminatorInstanceSecret,
 		hostData:        hostData,
 		assignIds:       assignIds,
+		useSdkXgress:    useSdkXgress,
 		v2:              true,
 		supportsInspect: supportsInspect,
 		createTime:      time.Now(),
@@ -1080,6 +1086,16 @@ func (self *xgEdgeForwarder) Init(ctx *connectContext) bool {
 	return true
 }
 
+func (self *xgEdgeForwarder) RegisterRouting() {
+	self.forwarder.RegisterDestination(self.circuitId, self.address, self)
+	self.xgCircuits.Set(self.circuitId, self)
+}
+
+func (self *xgEdgeForwarder) UnregisterRouting() {
+	self.forwarder.EndCircuit(self.circuitId)
+	self.xgCircuits.Set(self.circuitId, self)
+}
+
 func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
 	if err != nil {
 		ctx.log.WithError(err).Warn("failed to dial fabric")
@@ -1089,8 +1105,7 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 
 	self.circuitId = response.CircuitId
 	self.address = xgress.Address(response.Address)
-	self.forwarder.RegisterDestination(response.CircuitId, self.address, self)
-	self.xgCircuits.Set(self.circuitId, self)
+	self.RegisterRouting()
 
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
 	connId, _ := ctx.req.GetUint32Header(edge.ConnIdHeader)
@@ -1102,7 +1117,7 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
 	}
 
-	msg.PutStringHeader(edge.CircuitIdHeader, response.CircuitId)
+	msg.PutStringHeader(edge.CircuitIdHeader, self.circuitId)
 	msg.PutBoolHeader(edge.UseXgressToSdkHeader, true)
 	msg.PutStringHeader(edge.XgressCtrlIdHeader, ctx.ctrlCh.Id())
 	msg.PutStringHeader(edge.XgressAddressHeader, response.Address)

@@ -55,6 +55,7 @@ type edgeTerminator struct {
 	precedence        edge_ctrl_pb.TerminatorPrecedence
 	hostData          map[uint32][]byte
 	assignIds         bool
+	useSdkXgress      bool
 	onClose           func()
 	v2                bool
 	state             concurrenz.AtomicValue[xgress_common.TerminatorState]
