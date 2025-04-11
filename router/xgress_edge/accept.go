@@ -39,6 +39,7 @@ type Acceptor struct {
 	disconnectMeter     metrics.Meter
 	connectionCount     atomic.Int64
 	connStateTracker    *connectionTracker
+	multiListener       *channel.MultiListener
 }
 
 func (self *Acceptor) BindChannel(binding channel.Binding) error {
@@ -47,11 +48,19 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 
 	fpg := cert.NewFingerprintGenerator()
 
+	var sdkChannel edge.SdkChannel
+	if multiChannel, ok := binding.GetChannel().(channel.MultiChannel); ok {
+		sdkChannel = multiChannel.GetUnderlayHandler().(edge.SdkChannel)
+		sdkChannel.InitChannel(multiChannel)
+	} else {
+		sdkChannel = edge.NewSingleSdkChannel(binding.GetChannel())
+	}
+
 	conn := &edgeClientConn{
 		msgMux:       edge.NewCowMapMsgMux(),
 		listener:     self.listener,
 		fingerprints: fpg.FromCerts(binding.GetChannel().Certificates()),
-		ch:           binding.GetChannel(),
+		ch:           sdkChannel,
 		idSeq:        math.MaxUint32 / 2,
 	}
 
@@ -128,7 +137,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	}
 
 	identityId := conn.apiSession.ApiSession.IdentityId
-	self.connStateTracker.markConnected(identityId, conn.ch)
+	self.connStateTracker.markConnected(identityId, conn.ch.GetChannel())
 
 	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 		self.connectionCount.Add(-1)
@@ -145,10 +154,10 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 
 type debugPeekHandler struct{}
 
-func (d debugPeekHandler) Connect(ch channel.Channel, remoteAddress string) {
+func (d debugPeekHandler) Connect(channel.Channel, string) {
 }
 
-func (d debugPeekHandler) Rx(m *channel.Message, ch channel.Channel) {
+func (d debugPeekHandler) Rx(m *channel.Message, _ channel.Channel) {
 	if m.ContentType == edge.ContentTypeDialSuccess || m.ContentType == edge.ContentTypeDialFailed {
 		connId, _ := m.GetUint32Header(edge.ConnIdHeader)
 		result, err := edge.UnmarshalDialResult(m)
@@ -162,7 +171,7 @@ func (d debugPeekHandler) Rx(m *channel.Message, ch channel.Channel) {
 	}
 }
 
-func (d debugPeekHandler) Tx(m *channel.Message, ch channel.Channel) {
+func (d debugPeekHandler) Tx(m *channel.Message, _ channel.Channel) {
 	if m.ContentType == edge.ContentTypeDial {
 		connId, _ := m.GetUint32Header(edge.ConnIdHeader)
 		newConnId, _ := m.GetUint32Header(edge.RouterProvidedConnId)
@@ -173,7 +182,7 @@ func (d debugPeekHandler) Tx(m *channel.Message, ch channel.Channel) {
 	}
 }
 
-func (d debugPeekHandler) Close(ch channel.Channel) {
+func (d debugPeekHandler) Close(_ channel.Channel) {
 }
 
 func NewAcceptor(listener *listener, uListener channel.UnderlayListener, options *channel.Options) *Acceptor {
@@ -195,6 +204,8 @@ func NewAcceptor(listener *listener, uListener channel.UnderlayListener, options
 		disconnectMeter:     listener.factory.metricsRegistry.Meter("edge.disconnects"),
 	}
 
+	result.multiListener = channel.NewMultiListener(result.handleUnderlay)
+
 	listener.factory.metricsRegistry.FuncGauge("edge.connections", func() int64 {
 		return result.connectionCount.Load()
 	})
@@ -208,11 +219,81 @@ func (self *Acceptor) Run() {
 	defer log.Warn("exiting")
 
 	for {
-		if err := channel.AcceptNextChannel("edge", self.uListener, self, self.options); err != nil {
+		underlay, err := self.uListener.Create(self.options.ConnectTimeout)
+		if err != nil {
 			log.Errorf("error accepting (%v)", err)
 			if errors.Is(err, channel.ListenerClosedError) {
 				return
 			}
 		}
+
+		if underlay != nil {
+			go self.multiListener.AcceptUnderlay(underlay)
+		}
 	}
+}
+
+func (self *Acceptor) handleUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+	if isGrouped, _ := channel.Headers(underlay.Headers()).GetBoolHeader(channel.IsGroupedHeader); isGrouped {
+		sdkChannel := NewListenerSdkChannel(underlay)
+		multiConfig := channel.MultiChannelConfig{
+			LogicalName:     "edge",
+			Options:         self.options,
+			UnderlayHandler: sdkChannel,
+			BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
+				binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+					closeCallback()
+				}))
+				return self.BindChannel(binding)
+			}),
+			Underlay: underlay,
+		}
+		mc, err := channel.NewMultiChannel(&multiConfig)
+
+		if err != nil {
+			pfxlog.Logger().WithError(err).Errorf("failure accepting edge channel %v with mult-underlay", underlay.Label())
+			return nil, err
+		}
+
+		return mc, nil
+	}
+
+	_, err := channel.NewChannelWithUnderlay("edge", underlay, self, self.options)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Errorf("failure accepting edge channel %v with underlay", underlay.Label())
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func NewListenerSdkChannel(underlay channel.Underlay) edge.UnderlayHandlerSdkChannel {
+	result := &ListenerSdkChannel{
+		BaseSdkChannel: *edge.NewBaseSdkChannel(underlay),
+	}
+
+	result.constraints.AddConstraint(edge.ChannelTypeDefault, 1, 1)
+	result.constraints.AddConstraint(edge.ChannelTypeControl, 1, 0)
+
+	return result
+}
+
+type ListenerSdkChannel struct {
+	edge.BaseSdkChannel
+	constraints channel.UnderlayConstraints
+}
+
+func (self *ListenerSdkChannel) Start(channel channel.MultiChannel) {
+	self.constraints.CheckStateValid(channel, true)
+}
+
+func (self *ListenerSdkChannel) HandleUnderlayClose(ch channel.MultiChannel, underlay channel.Underlay) {
+	pfxlog.Logger().
+		WithField("id", ch.Label()).
+		WithField("underlays", ch.GetUnderlayCountsByType()).
+		WithField("underlayType", channel.GetUnderlayType(underlay)).
+		Info("underlay closed")
+	self.UpdateCtrlChannelAvailable(ch)
+	self.constraints.CheckStateValid(ch, true)
 }

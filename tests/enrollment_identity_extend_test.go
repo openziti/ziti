@@ -153,7 +153,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 				url := fmt.Sprintf("/current-identity/authenticators/%s/extend-verify", *currentAuthenticator.ID)
 				verifyResp, err := identityApiSession.NewRequest().SetBody(verifyRequest).Post(url)
 				ctx.Req.NoError(err)
-				ctx.Req.Equal(http.StatusOK, verifyResp.StatusCode())
+				ctx.Req.Equal(http.StatusOK, verifyResp.StatusCode(), "expected %d, got %d, body: %s", http.StatusOK, verifyResp.Status(), verifyResp.Body())
 
 				t.Run("old cert used for auth fails post verify", func(t *testing.T) {
 					ctx.testContextChanged(t)

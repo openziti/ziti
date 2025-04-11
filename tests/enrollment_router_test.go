@@ -522,7 +522,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						extensionServerCertPem := extensionContainer.Path("data.serverCert").Data().(string)
 						extensionServerCert, err := parsePEMBundle([]byte(extensionServerCertPem))
 						ctx.Req.NoError(err)
-						ctx.Req.Len(extensionServerCert, 1)
+						ctx.Req.Len(extensionServerCert, 2)
 
 						t.Run("the new client cert has its NotAfter date increased", func(t *testing.T) {
 							ctx.testContextChanged(t)

@@ -161,6 +161,14 @@ func (self *CertExpirationChecker) AnyCtrlChannelWithTimeout(timeout time.Durati
 }
 
 func (self *CertExpirationChecker) ExtendEnrollment() error {
+	if err := self.id.IsCertSettable(); err != nil {
+		return fmt.Errorf("cannot set 'cert' certificate, cannot extend enrollment: %v", err)
+	}
+
+	if err := self.id.IsServerCertSettable(); err != nil {
+		return fmt.Errorf("cannot set server certificate, cannot extend enrollment: %v", err)
+	}
+
 	if !self.extender.IsRequestingCompareAndSwap(false, true) {
 		return fmt.Errorf("could not send enrollment extension request, a request has already been sent")
 	}

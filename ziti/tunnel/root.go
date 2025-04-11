@@ -188,6 +188,8 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 		entities.HostConfigV2,
 	}
 
+	zitiCfg.EnableSeparateControlPlaneConnection = true
+
 	serviceListener := serviceListenerGroup.NewServiceListener()
 	svcPollRate, _ := cmd.Flags().GetUint(svcPollRateFlag)
 	options := &ziti.Options{

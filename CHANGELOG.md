@@ -1,20 +1,32 @@
-# Release 1.5.5
+# Release 1.6.0
 
 ## What's New
 
 * Bug fixes and library updates
+* Multi-underlay SDK support
+
+## Multi-underlay SDK support
+
+For SDKs which support, the edge router now supports a separate control channel
+connection along side the data connection. If the SDK doesn't request separate
+channels, the edge router will continue to work with a single connection.
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v4: [v3.0.39 -> v4.0.2](https://github.com/openziti/channel/compare/v3.0.39...v4.0.2)
+* github.com/openziti/channel/v4: [v3.0.39 -> v4.0.4](https://github.com/openziti/channel/compare/v3.0.39...v4.0.4)
+    * [Issue #176](https://github.com/openziti/channel/issues/176) - Multi-channel need a mechanism to notify the txer that the underlay has closed
     * [Issue #172](https://github.com/openziti/channel/issues/172) - Support multi-underlay channels
 
 * github.com/openziti/metrics: [v1.3.0 -> v1.4.0](https://github.com/openziti/metrics/compare/v1.3.0...v1.4.0)
-* github.com/openziti/sdk-golang: [v0.25.1 -> v0.25.2](https://github.com/openziti/sdk-golang/compare/v0.25.1...v0.25.2)
+* github.com/openziti/sdk-golang: [v0.25.1 -> v1.0.1](https://github.com/openziti/sdk-golang/compare/v0.25.1...v1.0.1)
+    * [Issue #701](https://github.com/openziti/sdk-golang/issues/701) - Support multi-underlay channels for edge router connections
+
 * github.com/openziti/transport/v2: [v2.0.167 -> v2.0.168](https://github.com/openziti/transport/compare/v2.0.167...v2.0.168)
 * github.com/openziti/xweb/v2: [v2.3.0 -> v2.3.1](https://github.com/openziti/xweb/compare/v2.3.0...v2.3.1)
-* github.com/openziti/ziti: [v1.5.4 -> v1.5.5](https://github.com/openziti/ziti/compare/v1.5.4...v1.5.5)
+* github.com/openziti/ziti: [v1.5.4 -> v1.6.0](https://github.com/openziti/ziti/compare/v1.5.4...v1.6.0)
+    * [Issue #2930](https://github.com/openziti/ziti/issues/2930) - Support multi-underlay channels for the edge SDK
     * [Issue #2978](https://github.com/openziti/ziti/issues/2978) - Create loop4 sim for testing circuit contention and scale
+    * [Issue #2981](https://github.com/openziti/ziti/issues/2981) - Remove PayloadBufferForwarder API from xgress retransmitter
     * [Issue #2906](https://github.com/openziti/ziti/issues/2906) - Controller not removed from DB controller store when removed from controller
     * [Issue #2922](https://github.com/openziti/ziti/issues/2922) - Validate node address before adding to cluster
     * [Issue #2932](https://github.com/openziti/ziti/issues/2932) - Fix router data model 'create public key' related errors
@@ -25,7 +37,6 @@
     * [Issue #2951](https://github.com/openziti/ziti/issues/2951) - Remove global xgress retransmitter
     * [Issue #2950](https://github.com/openziti/ziti/issues/2950) - Move router specific xgress code to a new xgress_router package
     * [Issue #2920](https://github.com/openziti/ziti/issues/2920) - Make xgress acker configurable
-
 
 # Release 1.5.4
 
