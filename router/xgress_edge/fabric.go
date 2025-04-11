@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/pkg/errors"
 	"io"
@@ -356,7 +356,7 @@ func (self *edgeXgressConn) WritePayload(p []byte, headers map[uint8][]byte) (n 
 		}
 	}
 
-	msg := edge.NewDataMsg(self.Id(), self.NextMsgId(), p)
+	msg := edge.NewDataMsg(self.Id(), p)
 	if msgUUID != nil {
 		msg.Headers[edge.UUIDHeader] = msgUUID
 	}

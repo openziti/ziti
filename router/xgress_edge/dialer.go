@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/pkg/errors"
 )
 

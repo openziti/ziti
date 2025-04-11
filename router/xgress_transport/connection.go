@@ -18,7 +18,7 @@ package xgress_transport
 
 import (
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 )

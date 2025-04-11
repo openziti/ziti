@@ -49,7 +49,7 @@ import (
 	"github.com/openziti/ziti/router/handler_xgress"
 	"github.com/openziti/ziti/router/link"
 	"github.com/openziti/ziti/router/state"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_proxy"
 	"github.com/openziti/ziti/router/xgress_proxy_udp"
 	"github.com/openziti/ziti/router/xgress_router"

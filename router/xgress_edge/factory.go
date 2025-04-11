@@ -32,7 +32,7 @@ import (
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/internal/apiproxy"
 	"github.com/openziti/ziti/router/state"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 	"strings"

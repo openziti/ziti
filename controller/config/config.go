@@ -36,7 +36,7 @@ import (
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	"math"

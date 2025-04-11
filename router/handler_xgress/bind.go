@@ -19,7 +19,7 @@ package handler_xgress
 import (
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/metrics"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 )
 
 type bindHandler struct {

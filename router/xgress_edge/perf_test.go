@@ -11,7 +11,7 @@ import (
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/handler_xgress"
 	metrics2 "github.com/openziti/ziti/router/metrics"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

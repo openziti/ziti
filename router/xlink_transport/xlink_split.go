@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/pkg/errors"
 	"sync"
 	"sync/atomic"

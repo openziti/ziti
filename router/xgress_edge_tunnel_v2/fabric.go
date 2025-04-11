@@ -30,7 +30,7 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/router/posture"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/pkg/errors"

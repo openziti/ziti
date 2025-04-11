@@ -13,7 +13,7 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	metrics2 "github.com/openziti/ziti/router/metrics"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

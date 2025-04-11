@@ -12,7 +12,7 @@ import (
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/link"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/ziti/router/xlink_transport"
 	"github.com/openziti/ziti/tests/testutil"

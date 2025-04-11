@@ -18,7 +18,7 @@ package forwarder
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/orcaman/concurrent-map/v2"
 	"reflect"
 	"sync/atomic"

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/trace/pb"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"sync/atomic"

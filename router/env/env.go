@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xlink"
 	"time"
 )

@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/tunnel"

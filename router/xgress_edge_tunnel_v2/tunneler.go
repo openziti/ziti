@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	routerEnv "github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/intercept"
 	"github.com/openziti/ziti/tunnel/intercept/host"
