@@ -163,7 +163,7 @@ for STAGE in "${STAGES[@]}"; do
                     _meta+=";${_meta_version}=${VERSION}"
                 fi
                 jf rt search --include 'created;path' --props "${_meta}" "${REPO}/${GLOB}" \
-                | jq --arg OLDEST "$(date --date "-${AGE} days" -Is)" '.[]|select(.created < $OLDEST)|.path' \
+                | jq --arg OLDEST "$(date --utc --date "-${AGE} days" -Is)" '.[]|select(.created < $OLDEST)|.path' \
                 | xargs --no-run-if-empty --max-lines=1 --verbose --open-tty jf rt delete ${DRY_RUN:+--dry-run}
             done
         done
