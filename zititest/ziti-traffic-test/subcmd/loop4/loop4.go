@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
+	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/metrics"
@@ -159,12 +160,15 @@ func (sim *Sim) InitConnectors() error {
 func (sim *Sim) DialSdk(client ziti.Context, wf *Workload) (net.Conn, error) {
 	dialOptions := &ziti.DialOptions{
 		ConnectTimeout: wf.ConnectTimeout,
+		SdkFlowControl: util.Ptr(true),
 	}
 	return client.DialWithOptions(wf.ServiceName, dialOptions)
 }
 
 func (sim *Sim) ListenSdk(client ziti.Context, wf *Workload) (net.Listener, error) {
-	return client.Listen(wf.ServiceName)
+	listenOptions := ziti.DefaultListenOptions()
+	listenOptions.SdkFlowControl = util.Ptr(true)
+	return client.ListenWithOptions(wf.ServiceName, listenOptions)
 }
 
 func (sim *Sim) DialTransport(addr transport.Address, id *identity.TokenId, wf *Workload) (net.Conn, error) {

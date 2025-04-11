@@ -47,6 +47,7 @@ type SdkTerminatorInspectDetail struct {
 	Cost            uint16 `json:"cost"`
 	Precedence      string `json:"precedence"`
 	AssignIds       bool   `json:"assignIds"`
+	UseSdkXgress    bool   `json:"useSdkXgress"`
 	V2              bool   `json:"v2"`
 	SupportsInspect bool   `json:"supportsInspect"`
 	OperationActive bool   `json:"operationActive"`
