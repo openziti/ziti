@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"crypto/x509"
 	"fmt"
 	"github.com/dgryski/dgoogauth"
 	"github.com/google/uuid"
@@ -44,7 +43,7 @@ func Test_SDK_Events(t *testing.T) {
 		testId := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 		testIdCerts := ctx.completeOttEnrollment(testId.Id)
 
-		testIdCreds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
+		testIdCreds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		testIdCreds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		cfg := &ziti.Config{
@@ -251,7 +250,7 @@ func Test_SDK_Events(t *testing.T) {
 		testId := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 		testIdCerts := ctx.completeOttEnrollment(testId.Id)
 
-		testIdCreds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
+		testIdCreds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		testIdCreds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		serviceName := uuid.NewString()
@@ -334,7 +333,7 @@ func Test_SDK_Events(t *testing.T) {
 		testId := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 		testIdCerts := ctx.completeOttEnrollment(testId.Id)
 
-		testIdCreds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
+		testIdCreds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		testIdCreds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		serviceName := uuid.NewString()
@@ -442,7 +441,7 @@ func Test_SDK_Events(t *testing.T) {
 		testId := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 		testIdCerts := ctx.completeOttEnrollment(testId.Id)
 
-		testIdCreds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
+		testIdCreds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		testIdCreds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		serviceName := uuid.NewString()
@@ -545,7 +544,7 @@ func Test_SDK_Events(t *testing.T) {
 		testId := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 		testIdCerts := ctx.completeOttEnrollment(testId.Id)
 
-		testIdCreds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
+		testIdCreds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		testIdCreds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		serviceName := uuid.NewString()

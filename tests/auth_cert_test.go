@@ -51,18 +51,18 @@ func Test_Authenticate_Cert(t *testing.T) {
 
 	_, certAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment("test", false)
 
-	var tests = &authCertTests{
+	var testCtx = &authCertTests{
 		ctx:               ctx,
 		certAuthenticator: certAuthenticator,
 	}
 
-	t.Run("cert authenticator has full pem for newly created identities", tests.testAuthenticateCertStoresAndFillsFullCert)
-	t.Run("login with valid certificate and no client info", tests.testAuthenticateValidCertEmptyBody)
-	t.Run("login with valid certificate and client info", tests.testAuthenticateValidCertValidClientInfoBody)
-	t.Run("login with valid certificate and invalid JSON client info", tests.testAuthenticateValidCertInvalidJson)
-	t.Run("login with valid certificate and client info with extra properties", tests.testAuthenticateValidCertValidClientInfoWithExtraProperties)
-	t.Run("login with invalid certificate and no client info", tests.testAuthenticateInvalidCert)
-	t.Run("login with valid certificate but expired", tests.testAuthenticateValidCertExpired)
+	t.Run("cert authenticator has full pem for newly created identities", testCtx.testAuthenticateCertStoresAndFillsFullCert)
+	t.Run("login with valid certificate and no client info", testCtx.testAuthenticateValidCertEmptyBody)
+	t.Run("login with valid certificate and client info", testCtx.testAuthenticateValidCertValidClientInfoBody)
+	t.Run("login with valid certificate and invalid JSON client info", testCtx.testAuthenticateValidCertInvalidJson)
+	t.Run("login with valid certificate and client info with extra properties", testCtx.testAuthenticateValidCertValidClientInfoWithExtraProperties)
+	t.Run("login with invalid certificate and no client info", testCtx.testAuthenticateInvalidCert)
+	t.Run("login with valid certificate but expired", testCtx.testAuthenticateValidCertExpired)
 }
 
 type authCertTests struct {
@@ -451,7 +451,7 @@ func (test *authCertTests) testAuthenticateValidCertExpired(t *testing.T) {
 
 	resp, err := test.ctx.AdminManagementSession.NewRequest().SetBody(createIdentity).Post("/identities")
 	test.ctx.Req.NoError(err)
-	test.ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected identity create to pass with %s got %s")
+	test.ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected identity create to pass with %s got %s", http.StatusCreated, resp.StatusCode())
 
 	createIdentityEnvelope := &rest_model.CreateEnvelope{}
 
@@ -498,12 +498,13 @@ func (test *authCertTests) testAuthenticateValidCertExpired(t *testing.T) {
 
 	resp, err = test.ctx.AdminManagementSession.NewRequest().SetBody(createAuthenticator).Post("/authenticators")
 	test.ctx.Req.NoError(err)
-	test.ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected authenticator create to pass with %s got %s")
+	test.ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected authenticator create to pass with %s got %s, body: %s", http.StatusCreated, resp.StatusCode(), string(resp.Body()))
 
-	parsedCert, err := x509.ParseCertificate(certBytes)
+	parsedCerts, err := x509.ParseCertificates(certBytes)
+	parsedCerts = append(parsedCerts, test.ctx.EdgeController.AppEnv.GetConfig().Edge.Enrollment.SigningCert.GetX509ActiveClientCertChain()...)
 	test.ctx.Req.NoError(err)
 	certAuthenticator := &certAuthenticator{
-		cert:    parsedCert,
+		certs:   parsedCerts,
 		key:     privateKey,
 		certPem: string(certPem),
 	}

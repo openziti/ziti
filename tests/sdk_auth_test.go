@@ -3,7 +3,6 @@
 package tests
 
 import (
-	"crypto/x509"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
@@ -71,7 +70,7 @@ func TestSdkAuth(t *testing.T) {
 		testIdMfa := ctx.AdminManagementSession.RequireNewIdentityWithOtt(true)
 		testIdMfaCerts := ctx.completeOttEnrollment(testIdMfa.Id)
 
-		certCreds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdMfaCerts.cert}, testIdMfaCerts.key)
+		certCreds := edge_apis.NewCertCredentials(testIdMfaCerts.certs, testIdMfaCerts.key)
 
 		client := edge_apis.NewClientApiClient([]*url.URL{clientApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
 			strings <- ""
@@ -188,7 +187,7 @@ func TestSdkAuth(t *testing.T) {
 	t.Run("management cert, ca pool on client can authenticate", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		creds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
+		creds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		client := edge_apis.NewManagementApiClient([]*url.URL{managementApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
 			strings <- "123"
 		})
@@ -203,7 +202,7 @@ func TestSdkAuth(t *testing.T) {
 	t.Run("management cert, ca pool on cert can authenticate", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		creds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
+		creds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		creds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		client := edge_apis.NewManagementApiClient([]*url.URL{managementApiUrl}, nil, func(strings chan string) {
@@ -222,7 +221,7 @@ func TestSdkAuth(t *testing.T) {
 	t.Run("client cert, ca pool on client can authenticate", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		creds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
+		creds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 
 		client := edge_apis.NewClientApiClient([]*url.URL{clientApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
 			strings <- "123"
@@ -240,7 +239,7 @@ func TestSdkAuth(t *testing.T) {
 	t.Run("client cert, ca pool on creds can authenticate", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		creds := edge_apis.NewCertCredentials([]*x509.Certificate{testIdCerts.cert}, testIdCerts.key)
+		creds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		creds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		client := edge_apis.NewClientApiClient([]*url.URL{clientApiUrl}, nil, func(strings chan string) {
@@ -506,7 +505,7 @@ func TestSdkAuth(t *testing.T) {
 
 		t.Run("client cert + secondary JWT, ca pool on client", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			creds := edge_apis.NewCertCredentials([]*x509.Certificate{certJwtCerts.cert}, certJwtCerts.key)
+			creds := edge_apis.NewCertCredentials(certJwtCerts.certs, certJwtCerts.key)
 
 			creds.AddJWT(jwtStrSigned)
 

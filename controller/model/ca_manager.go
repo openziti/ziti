@@ -17,7 +17,10 @@
 package model
 
 import (
+	"crypto/x509"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
@@ -29,6 +32,7 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"strings"
+	"sync"
 )
 
 func NewCaManager(env Env) *CaManager {
@@ -39,11 +43,101 @@ func NewCaManager(env Env) *CaManager {
 
 	RegisterManagerDecoder[*Ca](env, manager)
 
+	env.GetStores().Ca.AddEntityEventListenerF(manager.onMutate, boltz.EntityDeletedAsync)
+	env.GetStores().Ca.AddEntityEventListenerF(manager.onMutate, boltz.EntityCreatedAsync)
+	env.GetStores().Ca.AddEntityEventListenerF(manager.onMutate, boltz.EntityUpdatedAsync)
+
 	return manager
 }
 
 type CaManager struct {
 	baseEntityManager[*Ca, *db.Ca]
+
+	cache struct {
+		// static root certificates from the controller's root identity  CA bundle.
+		staticRootCas []*x509.Certificate
+
+		// A cert pool that reflects all trust anchors from the CaStore and all root CAs from the controllers identity
+		// bundle.
+		trustAnchorPool *x509.CertPool
+
+		// all 3rd party CA model items in fingerprint -> Ca form
+		activeCas map[string]*Ca
+
+		sync.RWMutex
+		initOnce sync.Once
+	}
+}
+
+func (self *CaManager) initCache() {
+	err := self.RefreshActiveAuthCaCertCache()
+	if err != nil {
+		pfxlog.Logger().WithError(err).Info("failed to refresh active auth ca cert cache")
+	}
+}
+
+func (self *CaManager) GetActiveAuthTrustAnchorPool() *x509.CertPool {
+	self.cache.initOnce.Do(self.initCache)
+
+	self.cache.RLock()
+	defer self.cache.RUnlock()
+
+	return self.cache.trustAnchorPool
+}
+
+func (self *CaManager) GetActiveAuthCas() map[string]*Ca {
+	self.cache.initOnce.Do(self.initCache)
+
+	self.cache.RLock()
+	defer self.cache.RUnlock()
+
+	result := map[string]*Ca{}
+
+	for k, v := range self.cache.activeCas {
+		result[k] = v
+	}
+
+	return result
+}
+
+func (self *CaManager) RefreshActiveAuthCaCertCache() error {
+	self.cache.Lock()
+	defer self.cache.Unlock()
+
+	newStaticRootCas := []*x509.Certificate{}
+	newTrustAnchorPool := x509.NewCertPool()
+	newActiveCas := map[string]*Ca{}
+
+	for _, cert := range self.env.GetConfig().Edge.CaCerts() {
+		//TODO: remove non roots, but be aware that legacy clients that have not extended their cert or enrolled after full chains were provided may stop working.
+		newStaticRootCas = append(newStaticRootCas, cert)
+		newTrustAnchorPool.AddCert(cert)
+	}
+
+	err := self.Stream("isAuthEnabled = true and isVerified = true", func(ca *Ca, err error) error {
+		if ca == nil && err == nil {
+			return nil
+		}
+
+		if err != nil {
+			return fmt.Errorf("error refreshing ca cert cache: %v", err)
+		}
+
+		caCerts := nfpem.PemStringToCertificates(ca.CertPem)
+
+		if len(caCerts) != 0 {
+			newActiveCas[ca.Fingerprint] = ca
+			newTrustAnchorPool.AddCert(caCerts[0])
+		}
+
+		return nil
+	})
+
+	self.cache.staticRootCas = newStaticRootCas
+	self.cache.trustAnchorPool = newTrustAnchorPool
+	self.cache.activeCas = newActiveCas
+
+	return err
 }
 
 func (self *CaManager) newModelEntity() *Ca {
@@ -56,6 +150,7 @@ func (self *CaManager) Create(entity *Ca, ctx *change.Context) error {
 
 func (self *CaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Ca], ctx boltz.MutateContext) error {
 	_, err := self.createEntity(cmd.Entity, ctx)
+
 	return err
 }
 
@@ -217,6 +312,14 @@ func (self *CaManager) Unmarshall(bytes []byte) (*Ca, error) {
 		IdentityNameFormat:        msg.IdentityNameFormat,
 		ExternalIdClaim:           externalIdClaim,
 	}, nil
+}
+
+func (self *CaManager) onMutate(_ *db.Ca) {
+	err := self.RefreshActiveAuthCaCertCache()
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("error refreshing active auth cas on mutate")
+	}
 }
 
 type CaListResult struct {

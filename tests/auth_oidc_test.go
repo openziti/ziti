@@ -280,7 +280,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 
 		_, certAuth := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment("test", false)
 
-		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransportWithClientCert(certAuth.cert, certAuth.key)))
+		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransportWithClientCert(certAuth.certs, certAuth.key)))
 		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
 		resp, err := client.R().Get(rpServer.LoginUri)
 

@@ -225,7 +225,7 @@ func Test_CA(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		identity := ctx.AdminManagementSession.requireQuery("identities/" + *enrolledSession.AuthResponse.IdentityID)
-		expectedName := fmt.Sprintf("%s - %s - %s - %s - %s", ca.name, ca.id, clientAuthenticator.cert.Subject.CommonName, requestedName, *enrolledSession.AuthResponse.IdentityID)
+		expectedName := fmt.Sprintf("%s - %s - %s - %s - %s", ca.name, ca.id, clientAuthenticator.certs[0].Subject.CommonName, requestedName, *enrolledSession.AuthResponse.IdentityID)
 
 		ctx.Req.Equal(expectedName, identity.Path("data.name").Data().(string))
 	})

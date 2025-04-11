@@ -572,6 +572,7 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(apiSessionId, iden
 		return apierror.NewAuthenticatorCannotBeUpdated()
 	}
 	verifyCerts := nfpem.PemStringToCertificates(verifyCertPem)
+
 	if len(verifyCerts) == 0 {
 		return apierror.NewInvalidClientCertificate()
 	}

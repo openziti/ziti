@@ -19,6 +19,7 @@ package controller
 import (
 	"bytes"
 	"compress/gzip"
+	cryptoTls "crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	stderr "errors"
@@ -230,7 +231,7 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 		eventDispatcher:     events.NewDispatcher(shutdownC),
 		xwebInitialized:     concurrency.NewInitState(),
 	}
-	xwo := xweb.InstanceOptions{
+	xwebInstanceOptions := xweb.InstanceOptions{
 		InstanceValidators: []xweb.InstanceValidator{func(config *xweb.InstanceConfig) error {
 			var errs []error
 			for i, serverConfig := range config.ServerConfigs {
@@ -245,9 +246,36 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 		DefaultIdentity:        c.config.Id,
 		DefaultIdentitySection: xweb.DefaultIdentitySection,
 		DefaultConfigSection:   xweb.DefaultConfigSection,
+		ServerMutators: []xweb.ServerMutator{
+			func(instance xweb.Instance, serverConfig *xweb.ServerConfig, server *xweb.Server) error {
+				for _, httpServer := range server.HttpServers {
+					serverTlsConfig := httpServer.TLSConfig.Clone()
+
+					prev := serverTlsConfig.GetConfigForClient
+					httpServer.TLSConfig.GetConfigForClient = func(info *cryptoTls.ClientHelloInfo) (*cryptoTls.Config, error) {
+						result := serverTlsConfig
+
+						//use inner GetConfigForClient if it was defined
+						if prev != nil {
+							var err error
+							result, err = prev(info)
+
+							if err != nil {
+								return nil, err
+							}
+						}
+						
+						result.ClientCAs = c.env.GetManagers().Ca.GetActiveAuthTrustAnchorPool()
+
+						return result, nil
+					}
+				}
+				return nil
+			},
+		},
 	}
 
-	c.xweb = xweb.NewInstance(c.xwebFactoryRegistry, xwo)
+	c.xweb = xweb.NewInstance(c.xwebFactoryRegistry, xwebInstanceOptions)
 
 	if cfg.IsRaftEnabled() {
 		c.raftController = raft.NewController(c, c)

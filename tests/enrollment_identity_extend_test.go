@@ -57,7 +57,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.NoError(err)
 
 		request, err := certtools.NewCertRequest(map[string]string{
-			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.cert.Subject.CommonName,
+			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.certs[0].Subject.CommonName,
 		}, nil)
 		ctx.NoError(err)
 
@@ -99,15 +99,15 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 
 		t.Run("new cert used for auth fails pre verify", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			origCert := identityAuth.cert
+			origCert := identityAuth.certs
 			origKey := identityAuth.key
 
-			identityAuth.cert = newClientCerts[0]
+			identityAuth.certs = newClientCerts
 			identityAuth.key = newPrivateKey
 			_, err := identityAuth.AuthenticateClientApi(ctx)
 			ctx.Req.Error(err)
 
-			identityAuth.cert = origCert
+			identityAuth.certs = origCert
 			identityAuth.key = origKey
 		})
 
@@ -132,7 +132,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 			t.Run("with an the old client cert fails", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				oldCertPem := nfpem.EncodeToString(identityAuth.cert)
+				oldCertPem := nfpem.EncodeToString(identityAuth.certs[0])
 
 				verifyRequest := &rest_model.IdentityExtendValidateEnrollmentRequest{
 					ClientCert: &oldCertPem,
@@ -163,7 +163,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 
 				t.Run("new cert used for auth succeeds post verify", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					identityAuth.cert = newClientCerts[0]
+					identityAuth.certs = newClientCerts
 					identityAuth.key = newPrivateKey
 					_, err := identityAuth.AuthenticateClientApi(ctx)
 					ctx.Req.NoError(err)
@@ -187,7 +187,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		request, err := certtools.NewCertRequest(map[string]string{
-			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.cert.Subject.CommonName,
+			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.certs[0].Subject.CommonName,
 		}, nil)
 		ctx.Req.NoError(err)
 
@@ -237,7 +237,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		request, err := certtools.NewCertRequest(map[string]string{
-			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.cert.Subject.CommonName,
+			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.certs[0].Subject.CommonName,
 		}, nil)
 		ctx.Req.NoError(err)
 
@@ -311,7 +311,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		request, err := certtools.NewCertRequest(map[string]string{
-			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.cert.Subject.CommonName,
+			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.certs[0].Subject.CommonName,
 		}, nil)
 		ctx.Req.NoError(err)
 
@@ -349,7 +349,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		request, err := certtools.NewCertRequest(map[string]string{
-			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.cert.Subject.CommonName,
+			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.certs[0].Subject.CommonName,
 		}, nil)
 		ctx.Req.NoError(err)
 

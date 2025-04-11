@@ -185,13 +185,13 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 		ctx.NotEmpty(identityCreateEnv.Data.ID)
 
 		certAuth1 := certAuthenticator{
-			cert: clientCert1,
-			key:  clientKey1,
+			certs: []*x509.Certificate{clientCert1},
+			key:   clientKey1,
 		}
 
 		certAuth2 := certAuthenticator{
-			cert: clientCert2,
-			key:  clientKey2,
+			certs: []*x509.Certificate{clientCert2},
+			key:   clientKey2,
 		}
 
 		session1, err := certAuth1.AuthenticateClientApi(ctx)

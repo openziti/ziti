@@ -21,6 +21,7 @@ package tests
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/pem"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/common/eid"
@@ -109,8 +110,8 @@ func Test_EnrollmetnCaAutoSpecific(t *testing.T) {
 					ctx.testContextChanged(t)
 
 					clientCertAuth := &certAuthenticator{
-						cert: clientCert,
-						key:  clientKey,
+						certs: []*x509.Certificate{clientCert},
+						key:   clientKey,
 					}
 
 					apiSession, err := clientCertAuth.AuthenticateClientApi(ctx)
