@@ -195,8 +195,8 @@ github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHk
 github.com/frankban/quicktest v1.14.6/go.mod h1:4ptaffx2x8+WTWXmUCuVU6aPUX1/Mz7zb5vbUoiM6w0=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
-github.com/fsnotify/fsnotify v1.8.0 h1:dAwr6QBTBZIkG8roQaJjGof0pp0EeF+tNV7YBP3F/8M=
-github.com/fsnotify/fsnotify v1.8.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
+github.com/fsnotify/fsnotify v1.9.0 h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=
+github.com/fsnotify/fsnotify v1.9.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
 github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa h1:RDBNVkRviHZtvDvId8XSGPu3rmpmSe+wKRcEWNgsfWU=
 github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa/go.mod h1:KnogPXtdwXqoenmZCw6S+25EAm2MkxbG0deNDu4cbSA=
 github.com/gaissmai/extnetip v1.1.0 h1:ZWEPVPUtw1o//CWh69/Eo79gWEKVYB1STrJjpTR4Q7E=
@@ -595,8 +595,8 @@ github.com/openziti/edge-api v0.26.42 h1:Wi/BUttSUvedT9XGht7vi/zI/TNGc3ApvjkAviW
 github.com/openziti/edge-api v0.26.42/go.mod h1:sYHVpm26Jr1u7VooNJzTb2b2nGSlmCHMnbGC8XfWSng=
 github.com/openziti/foundation/v2 v2.0.59 h1:PJwrcTq62x+cONBeKMlnsuphsTlOvTz8j8prYnehm8o=
 github.com/openziti/foundation/v2 v2.0.59/go.mod h1:76gmsdIBHvv4O3I0TuFBfO58Rv7YN8FA0ojwYz27ZxE=
-github.com/openziti/identity v1.0.100 h1:FTkbhykDCMw1z/wxEeDfmq1aBp2tLRjZ3ggioRT4pg8=
-github.com/openziti/identity v1.0.100/go.mod h1:E4SHqfXaZldDCo/GIdSD/Xg61obuolWYg9Qe8lqGUrQ=
+github.com/openziti/identity v1.0.101 h1:XujPT6eCv3Gqsodh9846EoWfQZwDAFrjPLxm1cipveY=
+github.com/openziti/identity v1.0.101/go.mod h1:OZLcSf2wGqAa7/8SmbwLQxv0Gsv4i4pxTk83WPHIr+o=
 github.com/openziti/jwks v1.0.6 h1:PR+9OVaMO8oHEoVQmHqeUBExWwLWyODEGJQK2DXHaqE=
 github.com/openziti/jwks v1.0.6/go.mod h1:t4xxq8vlXGsPn29kiQVnZBBDDnEoOFqtJoHibkJunQQ=
 github.com/openziti/metrics v1.4.0 h1:uZALaZINoTFqRE3XcVZ/xGuvXJpDhn/a0kxaX586lzE=

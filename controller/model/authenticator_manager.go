@@ -509,6 +509,16 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 	}
 
 	newFingerprint := self.env.GetFingerprintGenerator().FromRaw(newRawCert)
+
+	newPemCertChain, err := self.env.GetManagers().Enrollment.GetCertChainPem(newRawCert)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
 	newPemCert, err := edgeCert.RawToPem(newRawCert)
 
 	if err != nil {
@@ -530,7 +540,7 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 		return nil, err
 	}
 
-	return newPemCert, nil
+	return []byte(newPemCertChain), nil
 }
 
 func (self *AuthenticatorManager) VerifyExtendCertForIdentity(apiSessionId, identityId, authenticatorId string, verifyCertPem string, ctx *change.Context) error {
@@ -562,7 +572,7 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(apiSessionId, iden
 		return apierror.NewAuthenticatorCannotBeUpdated()
 	}
 	verifyCerts := nfpem.PemStringToCertificates(verifyCertPem)
-	if len(verifyCerts) != 1 {
+	if len(verifyCerts) == 0 {
 		return apierror.NewInvalidClientCertificate()
 	}
 

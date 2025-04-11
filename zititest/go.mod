@@ -16,7 +16,7 @@ require (
 	github.com/openziti/edge-api v0.26.42
 	github.com/openziti/fablab v0.5.95
 	github.com/openziti/foundation/v2 v2.0.59
-	github.com/openziti/identity v1.0.100
+	github.com/openziti/identity v1.0.101
 	github.com/openziti/metrics v1.4.0
 	github.com/openziti/sdk-golang v1.0.1
 	github.com/openziti/storage v0.4.7
@@ -64,7 +64,7 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fsnotify/fsnotify v1.8.0 // indirect
+	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
 	github.com/gaissmai/extnetip v1.1.0 // indirect
 	github.com/go-acme/lego/v4 v4.22.2 // indirect

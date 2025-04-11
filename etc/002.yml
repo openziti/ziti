@@ -12,6 +12,18 @@ identity:
 ctrl:
   endpoint:             tls:127.0.0.1:6262
 
+csr:
+  country: US
+  province: NC
+  locality: Charlotte
+  organization: NetFoundry
+  organizationalUnit: Ziti
+  sans:
+    dns:
+      - "localhost"
+    ip:
+      - "127.0.0.1"
+/
 link:
   listeners:
     - binding:          transport

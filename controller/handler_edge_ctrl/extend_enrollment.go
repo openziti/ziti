@@ -19,11 +19,10 @@ package handler_edge_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/models"
 	"google.golang.org/protobuf/proto"
 )
@@ -41,21 +40,21 @@ func newRouterChangeContext(router interface {
 		SetChangeAuthorName(router.GetName())
 }
 
-type extendEnrollmentHandler struct {
+type ExtendEnrollmentHandler struct {
 	appEnv *env.AppEnv
 }
 
-func NewExtendEnrollmentHandler(appEnv *env.AppEnv) *extendEnrollmentHandler {
-	return &extendEnrollmentHandler{
+func NewExtendEnrollmentHandler(appEnv *env.AppEnv) *ExtendEnrollmentHandler {
+	return &ExtendEnrollmentHandler{
 		appEnv: appEnv,
 	}
 }
 
-func (h *extendEnrollmentHandler) ContentType() int32 {
+func (h *ExtendEnrollmentHandler) ContentType() int32 {
 	return env.EnrollmentExtendRouterRequestType
 }
 
-func (h *extendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (h *ExtendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.EnrollmentExtendRouterRequest{}
 		certs := ch.Underlay().Certificates()
@@ -78,8 +77,8 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel
 
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 
-			var clientPem []byte
-			var serverPem []byte
+			var clientPem string
+			var serverPem string
 			var newCerts *model.ExtendedCerts
 
 			if router, _ := h.appEnv.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); router != nil {
@@ -119,21 +118,21 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel
 				return
 			}
 
-			clientPem, err = cert.RawToPem(newCerts.RawClientCert)
+			clientPem, err := h.appEnv.GetManagers().Enrollment.GetCertChainPem(newCerts.RawClientCert)
 
 			if err != nil {
 				log.WithError(err).Error("request to extend router enrollment failed to marshal client certificate to PEM format")
 				return
 			}
-			serverPem, err = cert.RawToPem(newCerts.RawServerCert)
+			serverPem, err = h.appEnv.GetManagers().Enrollment.GetCertChainPem(newCerts.RawServerCert)
 			if err != nil {
 				log.WithError(err).Error("request to extend router enrollment failed to marshal server certificate to PEM format")
 				return
 			}
 
 			data := &edge_ctrl_pb.EnrollmentCertsResponse{
-				ClientCertPem: string(clientPem),
-				ServerCertPem: string(serverPem),
+				ClientCertPem: clientPem,
+				ServerCertPem: serverPem,
 			}
 
 			body, err := proto.Marshal(data)
