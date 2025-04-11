@@ -91,15 +91,17 @@ func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel.Message, ch c
 					Code:    "INVALID_CLIENT_PEM",
 					Message: "request did not contain a parsable PEM certificate",
 				}, msg, ch)
+				return
 			}
 
 			targetCerts := nfpem.PemStringToCertificates(*edgeRouter.UnverifiedCertPem)
 
-			if len(submittedCerts) == 0 {
+			if len(targetCerts) == 0 {
 				h.respond(&edge_ctrl_pb.Error{
 					Code:    "INVALID_CLIENT_PEM",
 					Message: "internal error, target PEM did not parse to a certificate",
 				}, msg, ch)
+				return
 			}
 
 			if !bytes.Equal(targetCerts[0].Raw, submittedCerts[0].Raw) {
