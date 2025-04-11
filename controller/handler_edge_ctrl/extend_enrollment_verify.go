@@ -102,7 +102,7 @@ func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel.Message, ch c
 				}, msg, ch)
 			}
 
-			if bytes.Compare(targetCerts[0].Raw, submittedCerts[0].Raw) != 0 {
+			if !bytes.Equal(targetCerts[0].Raw, submittedCerts[0].Raw) {
 				h.respond(&edge_ctrl_pb.Error{
 					Code:    "INVALID_CLIENT_PEM",
 					Message: "request did not contain a matching client pem",
