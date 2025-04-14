@@ -37,6 +37,7 @@ const (
 	CustomClaimIsAdmin           = "z_ia"
 	CustomClaimsConfigTypes      = "z_ct"
 	CustomClaimsCertFingerprints = "z_cfs"
+	CustomClaimsAuthenticatorId  = "z_authid"
 
 	// CustomClaimsTokenType and other constants below may not appear as referenced, but are used in `json: ""` tags. Provided here for external use.
 	CustomClaimsTokenType       = "z_t"
@@ -68,6 +69,7 @@ type CustomClaims struct {
 	EnvInfo          *rest_model.EnvInfo `json:"z_env"`
 	RemoteAddress    string              `json:"z_ra"`
 	IsCertExtendable bool                `json:"z_ice"`
+	AuthenticatorId  string              `json:"z_authid,omitempty"`
 }
 
 func (c *CustomClaims) ToMap() (map[string]any, error) {

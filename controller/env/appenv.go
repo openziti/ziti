@@ -652,7 +652,7 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 		ExpiresAt:          rc.Claims.Expiration.AsTime(),
 		ExpirationDuration: time.Until(rc.Claims.Expiration.AsTime()),
 		LastActivityAt:     time.Now(),
-		AuthenticatorId:    "oidc",
+		AuthenticatorId:    rc.Claims.AuthenticatorId,
 		IsCertExtendable:   rc.Claims.IsCertExtendable,
 	}
 

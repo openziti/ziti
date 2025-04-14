@@ -263,6 +263,8 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 		}
 	}
 
+	authRequest.AuthenticatorId = result.AuthenticatorId()
+
 	return authRequest, nil
 }
 
@@ -471,6 +473,7 @@ func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenR
 		claims.CustomClaims.SdkInfo = req.SdkInfo
 		claims.CustomClaims.RemoteAddress = req.RemoteAddress
 		claims.CustomClaims.IsCertExtendable = req.IsCertExtendable
+		claims.CustomClaims.AuthenticatorId = req.AuthenticatorId
 		claims.AuthTime = oidc.Time(req.AuthTime.Unix())
 		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
 		claims.ClientID = req.ClientID
@@ -797,7 +800,7 @@ func (s *HybridStorage) GetPrivateClaimsFromScopes(ctx context.Context, identity
 	return s.getPrivateClaims(ctx, identityId, clientID, scopes)
 }
 
-func (s *HybridStorage) getPrivateClaims(ctx context.Context, _, clientId string, scopes []string) (claims map[string]interface{}, err error) {
+func (s *HybridStorage) getPrivateClaims(ctx context.Context, _, _ string, _ []string) (claims map[string]interface{}, err error) {
 	tokenState, err := TokenStateFromContext(ctx)
 
 	if err != nil {
@@ -928,7 +931,7 @@ func tokenTypeToName(oidcType oidc.TokenType) string {
 }
 
 // ValidateTokenExchangeRequest implements the op.TokenExchangeStorage interface
-func (s *HybridStorage) ValidateTokenExchangeRequest(ctx context.Context, request op.TokenExchangeRequest) error {
+func (s *HybridStorage) ValidateTokenExchangeRequest(_ context.Context, request op.TokenExchangeRequest) error {
 	if request.GetRequestedTokenType() == "" {
 		request.SetRequestedTokenType(oidc.RefreshTokenType)
 	}
@@ -972,7 +975,7 @@ func (s *HybridStorage) ValidateTokenExchangeRequest(ctx context.Context, reques
 	return nil
 }
 
-func (s *HybridStorage) CreateTokenExchangeRequest(_ context.Context, req op.TokenExchangeRequest) error {
+func (s *HybridStorage) CreateTokenExchangeRequest(_ context.Context, _ op.TokenExchangeRequest) error {
 	return nil
 }
 

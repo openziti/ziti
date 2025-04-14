@@ -199,6 +199,24 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.NotEmpty(outTokens.IDTokenClaims)
 		ctx.Req.NotEmpty(outTokens.AccessToken)
 		ctx.Req.NotEmpty(outTokens.RefreshToken)
+
+		t.Run("access token has expected values", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			parser := jwt.NewParser()
+
+			accessClaims := &common.AccessClaims{}
+
+			_, _, err := parser.ParseUnverified(outTokens.AccessToken, accessClaims)
+
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
+			ctx.Req.False(accessClaims.IsCertExtendable)
+			ctx.Req.True(accessClaims.IsAdmin)
+			ctx.Req.NotEmpty(accessClaims.ApiSessionId)
+			ctx.Req.NotEmpty(accessClaims.JWTID)
+			ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
+			ctx.Req.NotEmpty(accessClaims.Subject)
+		})
 	})
 
 	t.Run("updb with auth request id in query string", func(t *testing.T) {
@@ -235,6 +253,24 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.NotEmpty(outTokens.IDTokenClaims)
 		ctx.Req.NotEmpty(outTokens.AccessToken)
 		ctx.Req.NotEmpty(outTokens.RefreshToken)
+
+		t.Run("access token has expected values", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			parser := jwt.NewParser()
+
+			accessClaims := &common.AccessClaims{}
+
+			_, _, err := parser.ParseUnverified(outTokens.AccessToken, accessClaims)
+
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
+			ctx.Req.False(accessClaims.IsCertExtendable)
+			ctx.Req.True(accessClaims.IsAdmin)
+			ctx.Req.NotEmpty(accessClaims.ApiSessionId)
+			ctx.Req.NotEmpty(accessClaims.JWTID)
+			ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
+			ctx.Req.NotEmpty(accessClaims.Subject)
+		})
 	})
 
 	t.Run("updb with id in query string", func(t *testing.T) {
@@ -271,6 +307,24 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.NotEmpty(outTokens.IDTokenClaims)
 		ctx.Req.NotEmpty(outTokens.AccessToken)
 		ctx.Req.NotEmpty(outTokens.RefreshToken)
+
+		t.Run("access token has expected values", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			parser := jwt.NewParser()
+
+			accessClaims := &common.AccessClaims{}
+
+			_, _, err := parser.ParseUnverified(outTokens.AccessToken, accessClaims)
+
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
+			ctx.Req.False(accessClaims.IsCertExtendable)
+			ctx.Req.True(accessClaims.IsAdmin)
+			ctx.Req.NotEmpty(accessClaims.ApiSessionId)
+			ctx.Req.NotEmpty(accessClaims.JWTID)
+			ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
+			ctx.Req.NotEmpty(accessClaims.Subject)
+		})
 	})
 
 	t.Run("cert", func(t *testing.T) {
@@ -312,16 +366,22 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.NotEmpty(outTokens.AccessToken)
 		ctx.Req.NotEmpty(outTokens.RefreshToken)
 
-		t.Run("first party cert authentication should have isCertExtendable", func(t *testing.T) {
+		t.Run("access token has expected values", func(t *testing.T) {
 			ctx.testContextChanged(t)
+			parser := jwt.NewParser()
 
 			accessClaims := &common.AccessClaims{}
 
-			parser := jwt.NewParser()
 			_, _, err := parser.ParseUnverified(outTokens.AccessToken, accessClaims)
 
 			ctx.Req.NoError(err)
-			ctx.Req.True(accessClaims.IsCertExtendable, "expected isCertExtendable to be true for first party cert auth")
+			ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
+			ctx.Req.True(accessClaims.IsCertExtendable)
+			ctx.Req.False(accessClaims.IsAdmin)
+			ctx.Req.NotEmpty(accessClaims.ApiSessionId)
+			ctx.Req.NotEmpty(accessClaims.JWTID)
+			ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
+			ctx.Req.NotEmpty(accessClaims.Subject)
 		})
 	})
 

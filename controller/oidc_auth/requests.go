@@ -49,6 +49,7 @@ type AuthRequest struct {
 	EnvInfo             *rest_model.EnvInfo
 	RemoteAddress       string
 	IsCertExtendable    bool
+	AuthenticatorId     string
 }
 
 // GetID returns an AuthRequest's ID and implements op.AuthRequest
