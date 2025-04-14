@@ -226,7 +226,7 @@ func (r *CurrentIdentityAuthenticatorRouter) ExtendVerify(ae *env.AppEnv, rc *re
 		return
 	}
 
-	err = ae.Managers.Authenticator.VerifyExtendCertForIdentity(rc.ApiSession.Id, rc.Identity.Id, authId, *extend.ClientCert, rc.NewChangeContext())
+	err = ae.Managers.Authenticator.VerifyExtendCertForIdentity(rc.IsJwtToken, rc.ApiSession.Id, rc.Identity.Id, authId, *extend.ClientCert, rc.NewChangeContext())
 
 	if err != nil {
 		rc.RespondWithError(err)

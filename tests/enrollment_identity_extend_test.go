@@ -28,13 +28,18 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity/certtools"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/ziti/util"
 	"gopkg.in/resty.v1"
 	"net/http"
+	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -44,7 +49,114 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
-	t.Run("valid cert and csr extends enrollment", func(t *testing.T) {
+	clientApiUrl := ctx.ClientApiUrl()
+
+	t.Run("using oidc auth", func(t *testing.T) {
+		t.Run("valid cert and csr extends enrollment", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			name := eid.New()
+			_, identityAuth := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(name, false)
+
+			ctx.Req.NotNil(identityAuth)
+
+			newPrivateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+			ctx.NoError(err)
+
+			request, err := certtools.NewCertRequest(map[string]string{
+				"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.certs[0].Subject.CommonName,
+			}, nil)
+			ctx.NoError(err)
+
+			csr, err := x509.CreateCertificateRequest(rand.Reader, request, newPrivateKey)
+			ctx.Req.NoError(err)
+
+			csrPem := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr}))
+
+			clientApi := edge_apis.NewClientApiClient([]*url.URL{clientApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+				strings <- "123"
+			})
+
+			clientApi.SetUseOidc(true)
+
+			origCertCreds := edge_apis.NewCertCredentials(identityAuth.certs, identityAuth.key)
+
+			apiSession, err := clientApi.Authenticate(origCertCreds, nil)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(apiSession)
+			ctx.Req.True(strings.HasPrefix(string(apiSession.GetToken()), "ey"), "expected OIDC auth, which results in a JWT")
+
+			listAuthenticatorsParams := current_api_session.NewListCurrentIdentityAuthenticatorsParams()
+			authenticatorListResp, err := clientApi.API.CurrentAPISession.ListCurrentIdentityAuthenticators(listAuthenticatorsParams, nil)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(authenticatorListResp)
+			ctx.Req.NotNil(authenticatorListResp.Payload)
+			ctx.Req.Len(authenticatorListResp.Payload.Data, 1)
+
+			origCertAuthenticator := authenticatorListResp.Payload.Data[0]
+
+			authenticatorExtendParams := current_api_session.NewExtendCurrentIdentityAuthenticatorParams()
+			authenticatorExtendParams.ID = *origCertAuthenticator.ID
+			authenticatorExtendParams.Extend = &rest_model.IdentityExtendEnrollmentRequest{
+				ClientCertCsr: &csrPem,
+			}
+
+			extendResp, err := clientApi.API.CurrentAPISession.ExtendCurrentIdentityAuthenticator(authenticatorExtendParams, nil)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(extendResp)
+
+			newCerts := nfpem.PemStringToCertificates(extendResp.Payload.Data.ClientCert)
+			ctx.Req.Len(newCerts, 2)
+
+			newCertCreds := edge_apis.NewCertCredentials(newCerts, newPrivateKey)
+
+			t.Run("new cert used for auth fails pre verify", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				newApiSession, err := clientApi.Authenticate(newCertCreds, nil)
+
+				ctx.Req.Error(err)
+				ctx.Req.Nil(newApiSession)
+
+				t.Run("can verify using original credentials", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					newApiSession, err := clientApi.Authenticate(origCertCreds, nil)
+					ctx.Req.NoError(err)
+					ctx.Req.NotNil(newApiSession)
+
+					authenticatorExtendVerifyParams := current_api_session.NewExtendVerifyCurrentIdentityAuthenticatorParams()
+
+					authenticatorExtendVerifyParams.ID = *origCertAuthenticator.ID
+					authenticatorExtendVerifyParams.Extend = &rest_model.IdentityExtendValidateEnrollmentRequest{
+						ClientCert: &extendResp.Payload.Data.ClientCert,
+					}
+
+					verifyResp, err := clientApi.API.CurrentAPISession.ExtendVerifyCurrentIdentityAuthenticator(authenticatorExtendVerifyParams, nil)
+					ctx.Req.NoError(util.WrapIfApiError(err))
+					ctx.Req.NotNil(verifyResp)
+
+					t.Run("after verification old cert fails", func(t *testing.T) {
+						newApiSession, err := clientApi.Authenticate(origCertCreds, nil)
+						ctx.Req.Error(err)
+						ctx.Req.Nil(newApiSession)
+
+						t.Run("after verification new cert succeeds", func(t *testing.T) {
+							ctx.testContextChanged(t)
+
+							newApiSession, err := clientApi.Authenticate(newCertCreds, nil)
+
+							ctx.Req.NoError(err)
+							ctx.Req.NotNil(newApiSession)
+						})
+
+					})
+				})
+			})
+		})
+	})
+
+	t.Run("using legacy auth valid cert and csr extends enrollment", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		name := eid.New()
@@ -79,8 +191,8 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.Len(authenticatorsEnvelope.Data, 1)
 		currentAuthenticator := authenticatorsEnvelope.Data[0]
 
-		url := fmt.Sprintf("/current-identity/authenticators/%s/extend", *currentAuthenticator.ID)
-		extendResp, err := identityApiSession.NewRequest().SetBody(csrRequest).Post(url)
+		extendUrl := fmt.Sprintf("/current-identity/authenticators/%s/extend", *currentAuthenticator.ID)
+		extendResp, err := identityApiSession.NewRequest().SetBody(csrRequest).Post(extendUrl)
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(200, extendResp.StatusCode())
 
@@ -123,8 +235,8 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 					ClientCert: &mangledPem,
 				}
 
-				url := fmt.Sprintf("/current-identity/authenticators/%s/extend-verify", *currentAuthenticator.ID)
-				verifyResp, err := identityApiSession.NewRequest().SetBody(verifyRequest).Post(url)
+				extendVerifyUrl := fmt.Sprintf("/current-identity/authenticators/%s/extend-verify", *currentAuthenticator.ID)
+				verifyResp, err := identityApiSession.NewRequest().SetBody(verifyRequest).Post(extendVerifyUrl)
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(http.StatusBadRequest, verifyResp.StatusCode())
 			})
@@ -138,8 +250,8 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 					ClientCert: &oldCertPem,
 				}
 
-				url := fmt.Sprintf("/current-identity/authenticators/%s/extend-verify", *currentAuthenticator.ID)
-				verifyResp, err := identityApiSession.NewRequest().SetBody(verifyRequest).Post(url)
+				extendVerifyUrl := fmt.Sprintf("/current-identity/authenticators/%s/extend-verify", *currentAuthenticator.ID)
+				verifyResp, err := identityApiSession.NewRequest().SetBody(verifyRequest).Post(extendVerifyUrl)
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(http.StatusBadRequest, verifyResp.StatusCode())
 			})
@@ -150,8 +262,8 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 					ClientCert: &respEnvelope.Data.ClientCert,
 				}
 
-				url := fmt.Sprintf("/current-identity/authenticators/%s/extend-verify", *currentAuthenticator.ID)
-				verifyResp, err := identityApiSession.NewRequest().SetBody(verifyRequest).Post(url)
+				extendVerifyUrl := fmt.Sprintf("/current-identity/authenticators/%s/extend-verify", *currentAuthenticator.ID)
+				verifyResp, err := identityApiSession.NewRequest().SetBody(verifyRequest).Post(extendVerifyUrl)
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(http.StatusOK, verifyResp.StatusCode(), "expected %d, got %d, body: %s", http.StatusOK, verifyResp.Status(), verifyResp.Body())
 
@@ -259,9 +371,9 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.Len(authenticatorsEnvelope.Data, 1)
 		currentAuthenticator := authenticatorsEnvelope.Data[0]
 
-		url := fmt.Sprintf("/current-identity/authenticators/%s/extend", *currentAuthenticator.ID)
+		extendUrl := fmt.Sprintf("/current-identity/authenticators/%s/extend", *currentAuthenticator.ID)
 		//use second identity http client w/ first identity's API Session
-		extendResp, err := secondIdentityApiSession.NewRequest().SetHeader(env.ZitiSession, *identityApiSession.AuthResponse.Token).SetBody(csrRequest).Post(url)
+		extendResp, err := secondIdentityApiSession.NewRequest().SetHeader(env.ZitiSession, *identityApiSession.AuthResponse.Token).SetBody(csrRequest).Post(extendUrl)
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(401, extendResp.StatusCode())
 	})
@@ -293,8 +405,8 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.Len(authenticatorsEnvelope.Data, 1)
 		authenticatorFromDifferentIdentity := authenticatorsEnvelope.Data[0]
 
-		url := fmt.Sprintf("/current-identity/authenticators/%s/extend", *authenticatorFromDifferentIdentity.ID)
-		extendResp, err := identityApiSession.NewRequest().SetBody(csrRequest).Post(url)
+		extendUrl := fmt.Sprintf("/current-identity/authenticators/%s/extend", *authenticatorFromDifferentIdentity.ID)
+		extendResp, err := identityApiSession.NewRequest().SetBody(csrRequest).Post(extendUrl)
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(401, extendResp.StatusCode())
 	})
@@ -372,8 +484,8 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.Len(authenticatorsEnvelope.Data, 1)
 		authenticatorFromDifferentIdentity := authenticatorsEnvelope.Data[0]
 
-		url := fmt.Sprintf("/current-identity/authenticators/%s/extend", *authenticatorFromDifferentIdentity.ID)
-		extendResp, err := identityApiSession.NewRequest().SetBody(csrRequest).Post(url)
+		extendUrl := fmt.Sprintf("/current-identity/authenticators/%s/extend", *authenticatorFromDifferentIdentity.ID)
+		extendResp, err := identityApiSession.NewRequest().SetBody(csrRequest).Post(extendUrl)
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(401, extendResp.StatusCode())
 	})

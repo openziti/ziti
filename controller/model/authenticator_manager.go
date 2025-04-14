@@ -543,7 +543,7 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 	return []byte(newPemCertChain), nil
 }
 
-func (self *AuthenticatorManager) VerifyExtendCertForIdentity(apiSessionId, identityId, authenticatorId string, verifyCertPem string, ctx *change.Context) error {
+func (self *AuthenticatorManager) VerifyExtendCertForIdentity(isJwtBacked bool, apiSessionId, identityId, authenticatorId string, verifyCertPem string, ctx *change.Context) error {
 	authenticator, _ := self.Read(authenticatorId)
 
 	if authenticator == nil {
@@ -604,6 +604,11 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(apiSessionId, iden
 		return err
 	}
 
+	if isJwtBacked {
+		return nil
+	}
+
+	//only for legacy API Sessions
 	sessionCert := &db.ApiSessionCertificate{
 		BaseExtEntity: boltz.BaseExtEntity{
 			Id: eid.New(),
