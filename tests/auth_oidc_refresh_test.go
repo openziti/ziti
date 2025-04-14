@@ -109,7 +109,7 @@ func Test_Authenticate_OIDC_Refresh(t *testing.T) {
 			t.Run("the new token has the correct audience and scopes", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				newAccessClaims := &jwt.MapClaims{}
+				newAccessClaims := &common.AccessClaims{}
 				newAccessToken, _, err := jwtParser.ParseUnverified(newTokens.AccessToken, newAccessClaims)
 				ctx.Req.NoError(err)
 				ctx.Req.NotNil(newAccessToken)
@@ -127,7 +127,7 @@ func Test_Authenticate_OIDC_Refresh(t *testing.T) {
 				ctx.Req.Len(newRefreshAudiences, 1, "expected 1 audience")
 				ctx.Equal(originalRefreshAudiences[0], newRefreshAudiences[0])
 
-				newAccessScopes := (*newAccessClaims)["scopes"]
+				newAccessScopes := newAccessClaims.CustomClaims.Scopes
 				ctx.Req.Len(newAccessScopes, 2)
 				ctx.Req.Contains(newAccessScopes, oidc.ScopeOpenID)
 				ctx.Req.Contains(newAccessScopes, oidc.ScopeOfflineAccess)
@@ -137,6 +137,18 @@ func Test_Authenticate_OIDC_Refresh(t *testing.T) {
 				ctx.Req.Contains(newRefreshScopes, oidc.ScopeOpenID)
 				ctx.Req.Contains(newRefreshScopes, oidc.ScopeOfflineAccess)
 
+				t.Run("the new token has the correct claims", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					ctx.Req.NoError(err)
+					ctx.Req.NotEmpty(newAccessClaims.AuthenticatorId)
+					ctx.Req.False(newAccessClaims.IsCertExtendable)
+					ctx.Req.True(newAccessClaims.IsAdmin)
+					ctx.Req.NotEmpty(newAccessClaims.ApiSessionId)
+					ctx.Req.NotEmpty(newAccessClaims.JWTID)
+					ctx.Req.Equal(common.TokenTypeAccess, newAccessClaims.Type)
+					ctx.Req.NotEmpty(newAccessClaims.Subject)
+				})
 			})
 
 			t.Run("can use the new token backed API Session", func(t *testing.T) {
