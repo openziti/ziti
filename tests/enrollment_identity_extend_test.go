@@ -28,11 +28,13 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity/certtools"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/ziti/util"
@@ -52,6 +54,73 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 	clientApiUrl := ctx.ClientApiUrl()
 
 	t.Run("using oidc auth", func(t *testing.T) {
+
+		t.Run("can call extend multiple times", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			name := eid.New()
+			_, identityAuth := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(name, false)
+			ctx.Req.NotNil(identityAuth)
+
+			newPrivateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+			ctx.NoError(err)
+
+			request, err := certtools.NewCertRequest(map[string]string{
+				"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.certs[0].Subject.CommonName,
+			}, nil)
+			ctx.NoError(err)
+
+			csr, err := x509.CreateCertificateRequest(rand.Reader, request, newPrivateKey)
+			ctx.Req.NoError(err)
+
+			csrPem := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr}))
+
+			clientApi := edge_apis.NewClientApiClient([]*url.URL{clientApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+				strings <- "123"
+			})
+
+			clientApi.SetUseOidc(true)
+
+			origCertCreds := edge_apis.NewCertCredentials(identityAuth.certs, identityAuth.key)
+
+			apiSession, err := clientApi.Authenticate(origCertCreds, nil)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(apiSession)
+			apiSessionToken := apiSession.GetToken()
+			ctx.Req.True(strings.HasPrefix(string(apiSession.GetToken()), "ey"), "expected OIDC auth, which results in a JWT")
+
+			jwtParser := jwt.NewParser()
+			accessClaims := &common.AccessClaims{}
+
+			_, _, err = jwtParser.ParseUnverified(string(apiSessionToken), accessClaims)
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
+			ctx.Req.True(accessClaims.IsCertExtendable)
+
+			t.Run("the first extend succeeds", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				authenticatorExtendParams := current_api_session.NewExtendCurrentIdentityAuthenticatorParams()
+				authenticatorExtendParams.ID = accessClaims.AuthenticatorId
+				authenticatorExtendParams.Extend = &rest_model.IdentityExtendEnrollmentRequest{
+					ClientCertCsr: &csrPem,
+				}
+
+				extendResp, err := clientApi.API.CurrentAPISession.ExtendCurrentIdentityAuthenticator(authenticatorExtendParams, nil)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(extendResp)
+
+				t.Run("the second extend succeeds", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					extendResp2, err := clientApi.API.CurrentAPISession.ExtendCurrentIdentityAuthenticator(authenticatorExtendParams, nil)
+					ctx.Req.NoError(err)
+					ctx.Req.NotNil(extendResp2)
+				})
+			})
+
+		})
+
 		t.Run("valid cert and csr extends enrollment", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
@@ -84,7 +153,16 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 			apiSession, err := clientApi.Authenticate(origCertCreds, nil)
 			ctx.Req.NoError(err)
 			ctx.Req.NotNil(apiSession)
+			apiSessionToken := apiSession.GetToken()
 			ctx.Req.True(strings.HasPrefix(string(apiSession.GetToken()), "ey"), "expected OIDC auth, which results in a JWT")
+
+			jwtParser := jwt.NewParser()
+			accessClaims := &common.AccessClaims{}
+
+			_, _, err = jwtParser.ParseUnverified(string(apiSessionToken), accessClaims)
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
+			ctx.Req.True(accessClaims.IsCertExtendable)
 
 			listAuthenticatorsParams := current_api_session.NewListCurrentIdentityAuthenticatorsParams()
 			authenticatorListResp, err := clientApi.API.CurrentAPISession.ListCurrentIdentityAuthenticators(listAuthenticatorsParams, nil)
@@ -93,10 +171,8 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 			ctx.Req.NotNil(authenticatorListResp.Payload)
 			ctx.Req.Len(authenticatorListResp.Payload.Data, 1)
 
-			origCertAuthenticator := authenticatorListResp.Payload.Data[0]
-
 			authenticatorExtendParams := current_api_session.NewExtendCurrentIdentityAuthenticatorParams()
-			authenticatorExtendParams.ID = *origCertAuthenticator.ID
+			authenticatorExtendParams.ID = accessClaims.AuthenticatorId
 			authenticatorExtendParams.Extend = &rest_model.IdentityExtendEnrollmentRequest{
 				ClientCertCsr: &csrPem,
 			}
@@ -127,7 +203,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 
 					authenticatorExtendVerifyParams := current_api_session.NewExtendVerifyCurrentIdentityAuthenticatorParams()
 
-					authenticatorExtendVerifyParams.ID = *origCertAuthenticator.ID
+					authenticatorExtendVerifyParams.ID = accessClaims.AuthenticatorId
 					authenticatorExtendVerifyParams.Extend = &rest_model.IdentityExtendValidateEnrollmentRequest{
 						ClientCert: &extendResp.Payload.Data.ClientCert,
 					}
