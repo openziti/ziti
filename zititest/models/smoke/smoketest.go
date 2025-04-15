@@ -38,7 +38,7 @@ import (
 	"time"
 )
 
-const ZitiEdgeTunnelVersion = "v1.5.4"
+const ZitiEdgeTunnelVersion = "v1.5.10"
 const ZitiCtrlVersion = ""
 const ZitiRouterVersion = ""
 
