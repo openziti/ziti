@@ -18,9 +18,12 @@ package xgress_edge
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"github.com/openziti/metrics"
+	sdkinspect "github.com/openziti/sdk-golang/inspect"
 	"github.com/openziti/ziti/common/ctrl_msg"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/router/env"
@@ -69,6 +72,140 @@ type listener struct {
 	headers          map[int32][]byte
 
 	droppedMsgMeter metrics.Meter
+}
+
+func (listener *listener) Inspect(key string, timeout time.Duration) any {
+	if key == "router-edge-circuits" {
+		result := &inspect.EdgeListenerCircuits{
+			Circuits: map[string]*inspect.EdgeXgFwdInspectDetail{},
+		}
+
+		for entry := range listener.factory.connectionTracker.states.IterBuffered() {
+			v := entry.Val
+			v.Lock()
+			for _, ch := range v.connections {
+				if conn, ok := ch.GetUserData().(*edgeClientConn); ok {
+					for xgCircuitEntry := range conn.xgCircuits.IterBuffered() {
+						xgCircuit := xgCircuitEntry.Val
+						result.Circuits[xgCircuit.circuitId+"/"+string(xgCircuit.address)] = xgCircuit.GetCircuitInspectDetail()
+					}
+				}
+			}
+			v.Unlock()
+		}
+		return result
+	} else if key == "router-sdk-circuits" {
+		result := &inspect.SdkCircuits{
+			Circuits: map[string]*inspect.SdkCircuitDetail{},
+		}
+
+		resultCh := make(chan *sdkCircuitResult, 10)
+		expected := 0
+		for entry := range listener.factory.connectionTracker.states.IterBuffered() {
+			v := entry.Val
+			v.Lock()
+			for _, ch := range v.connections {
+				if conn, ok := ch.GetUserData().(*edgeClientConn); ok {
+					go listener.getSdkCircuits(conn, resultCh)
+					expected++
+				}
+			}
+			v.Unlock()
+		}
+
+		start := time.Now()
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for expected > 0 && time.Since(start) < 5*time.Second {
+			select {
+			case next := <-resultCh:
+				if next.err != nil {
+					result.Errors = append(result.Errors, next.err.Error())
+				}
+				if next.circuits != nil {
+					idBase := next.conn.apiSession.IdentityId + "/" +
+						next.conn.ch.GetChannel().ConnectionId()
+					for _, circuit := range next.circuits.Circuits {
+						detail := &inspect.SdkCircuitDetail{
+							IdentityId:    next.conn.apiSession.IdentityId,
+							ChannelConnId: next.conn.ch.GetChannel().ConnectionId(),
+							CircuitDetail: circuit,
+						}
+						result.Circuits[idBase+"/"+detail.CircuitId] = detail
+					}
+				}
+				expected--
+			case <-ticker.C:
+			}
+		}
+
+		return result
+	}
+
+	return nil
+}
+
+type sdkCircuitResult struct {
+	conn     *edgeClientConn
+	err      error
+	circuits *xgress.CircuitsDetail
+}
+
+func (listener *listener) getSdkCircuits(conn *edgeClientConn, resultCh chan *sdkCircuitResult) {
+	msg := edge.NewInspectRequest(nil, "circuits")
+	reply, err := msg.WithTimeout(4800 * time.Millisecond).SendForReply(conn.ch.GetControlSender())
+	if err != nil {
+		listener.submitErrResponse(conn, resultCh, fmt.Errorf("unable to get circuits from identity '%s' conn '%v' (%w)",
+			conn.apiSession.Id, conn.ch.GetChannel().ConnectionId(), err))
+		return
+	}
+
+	resp := sdkinspect.SdkInspectResponse{}
+	err = json.Unmarshal(reply.Body, &resp)
+	if err != nil {
+		listener.submitErrResponse(conn, resultCh, fmt.Errorf("unable to unmarshal circuits from identity '%s' conn '%v' (%w)",
+			conn.apiSession.Id, conn.ch.GetChannel().ConnectionId(), err))
+		return
+	}
+
+	if v, ok := resp.Values["circuits"]; ok {
+		jsonString, err := json.Marshal(v)
+		if err != nil {
+			listener.submitErrResponse(conn, resultCh, fmt.Errorf("failed to marshal sdk circuits from identity '%s' conn '%v' (%w)",
+				conn.apiSession.Id, conn.ch.GetChannel().ConnectionId(), err))
+			return
+		}
+		circuitsDetails := &xgress.CircuitsDetail{}
+		if err = json.Unmarshal(jsonString, &circuitsDetails); err != nil {
+			listener.submitErrResponse(conn, resultCh, fmt.Errorf("failed to unmarshal sdk circuits from identity '%s' conn '%v' (%w)",
+				conn.apiSession.Id, conn.ch.GetChannel().ConnectionId(), err))
+			return
+		}
+
+		listener.submitResponse(resultCh, &sdkCircuitResult{
+			conn:     conn,
+			circuits: circuitsDetails,
+		})
+
+	} else {
+		listener.submitErrResponse(conn, resultCh, fmt.Errorf("sdk circuit details not returned from identity '%s' conn '%v' (%w)",
+			conn.apiSession.Id, conn.ch.GetChannel().ConnectionId(), err))
+	}
+}
+
+func (listener *listener) submitErrResponse(conn *edgeClientConn, resultCh chan *sdkCircuitResult, err error) {
+	listener.submitResponse(resultCh, &sdkCircuitResult{
+		conn: conn,
+		err:  err,
+	})
+}
+
+func (listener *listener) submitResponse(resultCh chan *sdkCircuitResult, result *sdkCircuitResult) {
+	select {
+	case resultCh <- result:
+	case <-time.After(time.Second):
+	}
 }
 
 // newListener creates a new xgress edge listener
@@ -201,6 +338,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 			edgeClientConn: self,
 			ctrlId:         ctrlCh.Id(),
 			originator:     xgress.Initiator,
+			metrics:        self.listener.factory.env.GetXgressMetrics(),
 		}
 	} else {
 		handler = &nonXgConnectHandler{}
@@ -889,7 +1027,9 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Cha
 
 	edgeFwd, _ := self.xgCircuits.Get(payload.CircuitId)
 	if edgeFwd == nil {
+		// TODO: respond with ack if it's end-of-circuit, otherwise send end of payload
 		pfxlog.Logger().WithField("circuitId", payload.CircuitId).Error("no edge forwarder found for edge circuit")
+		self.responseToMissingXgress(msg, payload)
 		return
 	}
 
@@ -903,7 +1043,23 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Cha
 		} else {
 			pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Error("failed to forward payload")
 		}
+	} else {
+		edgeFwd.metrics.Rx(edgeFwd, edgeFwd.originator, payload)
 	}
+}
+
+func (self *edgeClientConn) responseToMissingXgress(req *channel.Message, payload *xgress.Payload) {
+	var msg *channel.Message
+	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
+	if len(payload.Data) == 0 && payload.IsCircuitEndFlagSet() {
+		ack := xgress.NewAcknowledgement(payload.CircuitId, payload.GetOriginator().Invert())
+		msg = ack.Marshall()
+	} else {
+		msg = edge.NewStateClosedMsg(connId, "xgress closed")
+	}
+
+	msg.PutUint32Header(edge.ConnIdHeader, connId)
+	_, _ = self.ch.GetControlSender().TrySend(msg)
 }
 
 func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, ch channel.Channel) {
@@ -1016,6 +1172,16 @@ type xgEdgeForwarder struct {
 	address    xgress.Address
 	lastRx     atomic.Int64
 	connId     uint32
+	metrics    env.XgressMetrics
+	tags       map[string]string
+}
+
+func (self *xgEdgeForwarder) GetIntervalId() string {
+	return self.circuitId
+}
+
+func (self *xgEdgeForwarder) GetTags() map[string]string {
+	return self.tags
 }
 
 func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error {
@@ -1028,6 +1194,9 @@ func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.D
 		if err == nil && !sent {
 			self.listener.droppedMsgMeter.Mark(1)
 		}
+		if err == nil && sent {
+			self.metrics.Tx(self, self.originator, payload)
+		}
 		return err
 	}
 
@@ -1037,6 +1206,8 @@ func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.D
 		self.listener.droppedMsgMeter.Mark(1)
 		return err
 	}
+
+	self.metrics.Tx(self, self.originator, payload)
 
 	return nil
 }
@@ -1066,20 +1237,6 @@ func (self *xgEdgeForwarder) SendControl(ctrl *xgress.Control) error {
 	return err
 }
 
-func (self *xgEdgeForwarder) InspectCircuit(detail *xgress.CircuitInspectDetail) {
-	detail.AddLinkDetail(&xgress.LinkInspectDetail{
-		Id:          fmt.Sprintf("edge-%s", self.ch.GetChannel().Id()),
-		Iteration:   0,
-		Key:         "",
-		Split:       false,
-		Protocol:    "tcp",
-		DialAddress: "",
-		Dest:        "",
-		DestVersion: "",
-		Dialed:      false,
-	})
-}
-
 func (self *xgEdgeForwarder) Init(ctx *connectContext) bool {
 	self.connId = ctx.connId
 	// TODO: figure out how to handle session removed
@@ -1105,6 +1262,7 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 
 	self.circuitId = response.CircuitId
 	self.address = xgress.Address(response.Address)
+	self.tags = response.Tags
 	self.RegisterRouting()
 
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
@@ -1145,4 +1303,56 @@ func (self *xgEdgeForwarder) Unrouted() {
 
 func (self *xgEdgeForwarder) GetTimeOfLastRxFromLink() int64 {
 	return self.lastRx.Load()
+}
+
+func (self *xgEdgeForwarder) InspectCircuit(detail *xgress.CircuitInspectDetail) {
+	detail.AddRelatedEntity("edge", fmt.Sprintf("%v", self.connId), self.GetCircuitInspectDetail())
+
+	var requestedValue string
+	if detail.IncludeGoroutines() {
+		requestedValue = "circuitandstacks:" + self.circuitId
+	} else {
+		requestedValue = "circuit:" + detail.CircuitId
+	}
+	msg := edge.NewInspectRequest(&self.connId, requestedValue)
+	reply, err := msg.WithTimeout(2 * time.Second).SendForReply(self.ch.GetControlSender())
+	if err != nil {
+		detail.AddError(fmt.Errorf("failed to get sdk xgress response, originator: %s, (%w)", self.originator.String(), err))
+		return
+	}
+
+	resp := &sdkinspect.SdkInspectResponse{}
+	if err = json.Unmarshal(reply.Body, &resp); err != nil {
+		detail.AddError(fmt.Errorf("failed to unmarshall sdk xgress response, originator: %s, (%w)", self.originator.String(), err))
+		return
+	}
+
+	if v, ok := resp.Values[requestedValue]; ok {
+		jsonString, err := json.Marshal(v)
+		if err != nil {
+			detail.AddError(fmt.Errorf("failed to marshall sdk xgress detail, originator: %s, (%w)", self.originator.String(), err))
+			return
+		}
+		sdkXgDetail := &xgress.InspectDetail{}
+		if err = json.Unmarshal(jsonString, &sdkXgDetail); err != nil {
+			detail.AddError(fmt.Errorf("failed to unmarshall sdk xgress detail, originator: %s, (%w)", self.originator.String(), err))
+			return
+		}
+		detail.AddXgressDetail(sdkXgDetail)
+	} else {
+		detail.AddError(fmt.Errorf("sdk xgress state not returned, originator: %s", self.originator.String()))
+	}
+}
+
+func (self *xgEdgeForwarder) GetCircuitInspectDetail() *inspect.EdgeXgFwdInspectDetail {
+	return &inspect.EdgeXgFwdInspectDetail{
+		ChannelConnId:       self.ch.GetChannel().ConnectionId(),
+		IdentityId:          self.apiSession.IdentityId,
+		EdgeConnId:          self.connId,
+		CtrlId:              self.ctrlId,
+		Originator:          self.originator.String(),
+		Address:             string(self.address),
+		TimeSinceLastLinkRx: (time.Duration(time.Now().UnixMilli()-self.lastRx.Load()) * time.Millisecond).String(),
+		Tags:                self.tags,
+	}
 }

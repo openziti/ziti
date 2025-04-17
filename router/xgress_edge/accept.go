@@ -66,6 +66,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		forwarder:    self.listener.factory.env.GetForwarder(),
 		xgCircuits:   cmap.New[*xgEdgeForwarder](),
 	}
+	binding.SetUserData(conn)
 
 	log.Debug("peer fingerprints ", conn.fingerprints)
 

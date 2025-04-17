@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/common"
@@ -48,8 +49,8 @@ import (
 	"github.com/openziti/ziti/router/handler_link"
 	"github.com/openziti/ziti/router/handler_xgress"
 	"github.com/openziti/ziti/router/link"
+	routerMetrics "github.com/openziti/ziti/router/metrics"
 	"github.com/openziti/ziti/router/state"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_proxy"
 	"github.com/openziti/ziti/router/xgress_proxy_udp"
 	"github.com/openziti/ziti/router/xgress_router"
@@ -102,6 +103,7 @@ type Router struct {
 	rdmRequired         atomic.Bool
 	indexWatchers       env.IndexWatchers
 	xgBindHandler       xgress.BindHandler
+	xgMetrics           *routerMetrics.XgressMetrics
 }
 
 func (self *Router) GetRouterId() *identity.TokenId {
@@ -190,6 +192,14 @@ func (self *Router) GetForwarder() env.Forwarder {
 	return self.forwarder
 }
 
+func (self *Router) GetXgressMetrics() env.XgressMetrics {
+	return self.xgMetrics
+}
+
+func (self *Router) GetXgressListeners() []xgress_router.Listener {
+	return self.xgressListeners
+}
+
 func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
@@ -261,9 +271,9 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 		Metrics:         xgMetrics,
 	})
 
-	router.xgBindHandler = handler_xgress.NewBindHandler(dataPlaneAdapter,
+	router.xgMetrics = routerMetrics.NewXgressMetrics(router.metricsRegistry)
+	router.xgBindHandler = handler_xgress.NewBindHandler(router, dataPlaneAdapter,
 		handler_xgress.NewCloseHandler(router.ctrls, router.forwarder),
-		router.forwarder,
 	)
 
 	return router

@@ -25,10 +25,10 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/pkg/errors"
 )
 
@@ -213,6 +213,8 @@ func (dialer *dialer) dialSdkXgress(terminator *edgeTerminator, params xgress_ro
 		ctrlId:         params.GetCtrlId(),
 		address:        params.GetAddress(),
 		connId:         connId,
+		metrics:        dialer.factory.env.GetXgressMetrics(),
+		tags:           params.GetCircuitTags(),
 	}
 
 	edgeForwarder.RegisterRouting()

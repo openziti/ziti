@@ -20,10 +20,10 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/sdk-golang/xgress"
 	"time"
 )
 
@@ -138,7 +138,7 @@ type Xlink interface {
 	DialAddress() string
 	CloseOnce(f func())
 	IsClosed() bool
-	InspectLink() *xgress.LinkInspectDetail
+	InspectLink() *inspect.LinkInspectDetail
 	GetAddresses() []*ctrl_pb.LinkConn
 	IsDialed() bool
 	Iteration() uint32
