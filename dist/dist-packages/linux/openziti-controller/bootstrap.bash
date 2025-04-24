@@ -242,7 +242,7 @@ makeDatabase() {
     fi
   }
 
-  timeout 20s nohup ziti controller run "${_config_file}" &>3 &
+  timeout 20s nohup ziti controller run "${_config_file}" >&3 &
   _init_pid=$!
   trap _cleanup_init_pid EXIT
 
