@@ -731,7 +731,10 @@ prepareWorkingDir() {
 
 # set filemodes and ownership for the service's working directory
 finalizeWorkingDir() {
-  if [[ -n "${1:-}" ]]; then
+  if [[ -n "${1:-}" && "${1}" != "/var/lib/private/ziti-controller" ]]; then
+    echo "DEBUG: not finalizing alternative working dir: $(realpath "${1}")" >&3
+    return 0
+  elif [[ -n "${1:-}" ]]; then
     local _config_dir="$1"
     # trunk-ignore(shellcheck/SC2312)
     echo "DEBUG: finalizing working directory: $(realpath "${_config_dir}")" >&3
