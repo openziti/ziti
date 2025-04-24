@@ -841,12 +841,12 @@ else
   loadEnvStdin                  # slurp answers from stdin if it's not a tty
   loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
   promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
+  promptCtrlAddress             # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
+  promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
   promptBootstrapCluster        # prompt for new cluster or existing PKI
   promptClusterNodeName         # prompt for ZITI_CLUSTER_NODE_NAME if not already set
   promptClusterTrustDomain      # prompt for ZITI_CLUSTER_TRUST_DOMAIN if not already set
   # promptClusterNodePki          # prompt for ZITI_CLUSTER_NODE_PKI if not already set and not bootstrapping a new cluster
-  promptCtrlAddress             # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
-  promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
   promptUserPwd                 # prompt for ZITI_USER and ZITI_PWD if not already set
   loadEnvFiles                  # reload env files to source new answers from prompts
 
