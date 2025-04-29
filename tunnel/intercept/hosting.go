@@ -17,6 +17,7 @@
 package intercept
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
@@ -28,8 +29,11 @@ import (
 	"github.com/openziti/ziti/tunnel/router"
 	"github.com/openziti/ziti/tunnel/utils"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/proxy"
 	"net"
+	"net/netip"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -62,12 +66,42 @@ func newDefaultHostingContext(identity *rest_model.IdentityDetail, service *enti
 		log.Error("configuration specifies 'ForwardProtocol` with zero-lengh 'AllowedProtocols'")
 		return nil
 	}
-	if config.ForwardAddress && len(config.AllowedAddresses) < 1 {
-		log.Error("configuration specifies 'ForwardAddress` with zero-lengh 'AllowedAddresses'")
-		return nil
+
+	var addrTranslations []addrTranslation
+	if config.ForwardAddress {
+		if len(config.AllowedAddresses) < 1 {
+			log.Error("configuration specifies 'ForwardAddress` with zero-lengh 'AllowedAddresses'")
+			return nil
+		}
+		if len(config.ForwardAddressTranslations) > 0 {
+			slices.SortFunc(config.ForwardAddressTranslations, func(a, b entities.AddressTranslation) int {
+				// sort by prefix length so first matching address is the best match
+				return int(b.PrefixLength) - int(a.PrefixLength)
+			})
+
+			addrTranslations = make([]addrTranslation, len(config.ForwardAddressTranslations))
+			for i, cfgX := range config.ForwardAddressTranslations {
+				fromAddr, err := netip.ParseAddr(cfgX.From)
+				if err != nil {
+					log.Errorf("failed to parse 'From' address translation '%s'", cfgX.From)
+					return nil
+				}
+				fromPrefix := netip.PrefixFrom(fromAddr, int(cfgX.PrefixLength))
+				toAddr, err := netip.ParseAddr(cfgX.To)
+				if err != nil {
+					log.Errorf("failed to parse 'To' address translation '%s'", cfgX.To)
+					return nil
+				}
+				toPrefix := netip.PrefixFrom(toAddr, int(cfgX.PrefixLength))
+				addrTranslations[i] = addrTranslation{
+					fromPrefix: fromPrefix,
+					toPrefix:   toPrefix,
+				}
+			}
+		}
 	}
 	if config.ForwardPort && len(config.AllowedPortRanges) < 1 {
-		log.Error("configuration specifies 'ForwardPort` with zero-lengh 'AllowedPortRanges'")
+		log.Error("configuration specifies 'ForwardPort` with zero-length 'AllowedPortRanges'")
 		return nil
 	}
 
@@ -103,24 +137,35 @@ func newDefaultHostingContext(identity *rest_model.IdentityDetail, service *enti
 	}
 
 	return &hostingContext{
-		service:     service,
-		options:     listenOptions,
-		proxyConf:   proxyConf,
-		dialTimeout: config.GetDialTimeout(5 * time.Second),
-		config:      config,
-		addrTracker: tracker,
+		service:          service,
+		options:          listenOptions,
+		proxyConf:        proxyConf,
+		dialTimeout:      config.GetDialTimeout(5 * time.Second),
+		config:           config,
+		addrTracker:      tracker,
+		addrTranslations: addrTranslations,
 	}
 
 }
 
+// map input IP/cidr to output IP/cidr
+type addrTranslation struct {
+	//	from       netip.Addr
+	fromPrefix netip.Prefix
+	//	to         netip.Addr
+	toPrefix netip.Prefix
+	//	prefixLen  uint8
+}
+
 type hostingContext struct {
-	service     *entities.Service
-	options     *ziti.ListenOptions
-	proxyConf   *transport.ProxyConfiguration
-	config      *entities.HostV1Config
-	dialTimeout time.Duration
-	onClose     func()
-	addrTracker AddressTracker
+	service          *entities.Service
+	options          *ziti.ListenOptions
+	proxyConf        *transport.ProxyConfiguration
+	config           *entities.HostV1Config
+	dialTimeout      time.Duration
+	onClose          func()
+	addrTracker      AddressTracker
+	addrTranslations []addrTranslation
 }
 
 func (self *hostingContext) ServiceName() string {
@@ -234,6 +279,88 @@ func (self *hostingContext) GetHealthChecks() []health.CheckDefinition {
 	return self.getHealthChecks(self.config)
 }
 
+func translateIP(ip netip.Addr, fromPrefix, toPrefix netip.Prefix) (netip.Addr, error) {
+	if ip.BitLen() != fromPrefix.Addr().BitLen() {
+		return netip.Addr{}, fmt.Errorf("from and to addresses must be the same IP version")
+	}
+	if fromPrefix.Bits() != toPrefix.Bits() {
+		return netip.Addr{}, fmt.Errorf("from and to addresses must have the same prefix length")
+	}
+	if !fromPrefix.Contains(ip) {
+		return netip.Addr{}, fmt.Errorf("IP %s not in 'from' subnet %s", ip.String(), fromPrefix.String())
+	}
+
+	// Convert IPs to byte slices (IPv4 or IPv6)
+	var ipBytes, tgtNet []byte
+	if ip.Is4() {
+		ipBytes = ip.AsSlice()[:4]
+		tgtNet = toPrefix.Masked().Addr().AsSlice()[:4]
+	} else {
+		ipBytes = ip.AsSlice()[:16]
+		tgtNet = toPrefix.Masked().Addr().AsSlice()[:16]
+	}
+
+	// Calculate host bits and apply to target network
+	result := make([]byte, len(ipBytes))
+	for i := range ipBytes {
+		maskByte := byte(0xFF)
+		if i*8 < fromPrefix.Bits() {
+			bitsLeft := fromPrefix.Bits() - i*8
+			if bitsLeft < 8 {
+				maskByte = ^(0xFF >> bitsLeft)
+			}
+		} else {
+			maskByte = 0
+		}
+
+		hostPart := ipBytes[i] &^ maskByte
+		result[i] = tgtNet[i] | hostPart
+	}
+
+	// Convert back to netip.Addr
+	var finalAddr netip.Addr
+	if ip.Is4() {
+		var out [4]byte
+		copy(out[:], result)
+		finalAddr = netip.AddrFrom4(out)
+	} else {
+		var out [16]byte
+		copy(out[:], result)
+		finalAddr = netip.AddrFrom16(out)
+	}
+
+	return finalAddr, nil
+}
+
+// apply host portion of input address to "to" address of translation with best-matching "from" address. e.g.:
+// translations:
+// - { "from": "192.168.0.0", "to": "10.0.1.0", "prefixLen": 24 }
+// - { "from": "192.168.1.4", "to": "1.2.3.4",  "prefixLen": 32 }
+// 192.168.10.3 --> 10.0.1.3
+// 192.168.1.4  --> 1.2.3.4
+func (self *hostingContext) translateAddress(addr string) (string, error) {
+	a, err := netip.ParseAddr(addr)
+	if err != nil {
+		return addr, nil
+	}
+
+	to := addr
+	// translations have been sorted by prefix length (highest first), so the first matching "from" will be the best match.
+	for _, x := range self.addrTranslations {
+		if x.fromPrefix.Contains(a) {
+			t, err := translateIP(a, x.fromPrefix, x.toPrefix)
+			if err != nil {
+				log.WithError(err).Errorf("failed to translate address %s", addr)
+				continue
+			}
+			to = t.String()
+			break
+		}
+	}
+	// return "to" from first translation "from" that matches addr
+	return to, nil
+}
+
 func (self *hostingContext) Dial(options map[string]interface{}) (net.Conn, bool, error) {
 	if connType, found := options["connType"]; found && connType == "resolver" {
 		return newResolvConn(self)
@@ -248,13 +375,17 @@ func (self *hostingContext) Dial(options map[string]interface{}) (net.Conn, bool
 	if err != nil {
 		return nil, false, err
 	}
+	xAddress, err := self.translateAddress(address)
+	if err != nil {
+		return nil, false, err
+	}
 
 	port, err := self.config.GetPort(options)
 	if err != nil {
 		return nil, false, err
 	}
 
-	return self.dialAddress(options, protocol, address+":"+port)
+	return self.dialAddress(options, protocol, xAddress+":"+port)
 }
 
 func getDefaultOptions(service *entities.Service, identity *rest_model.IdentityDetail, config *entities.HostV1Config) (*ziti.ListenOptions, error) {

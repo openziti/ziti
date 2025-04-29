@@ -108,6 +108,16 @@
             "minItems": 1,
             "type": "array"
         },
+        "addressTranslation": {
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/ipv4AddressTranslation"
+                },
+                {
+                    "$ref": "#/definitions/ipv6AddressTranslation"
+                }
+            ]
+        },
         "dialAddress": {
             "format": "idn-hostname",
             "not": {
@@ -166,6 +176,44 @@
             "minItems": 1,
             "type": "array",
             "uniqueItems": true
+        },
+        "ipv4AddressTranslation": {
+            "additionalProperties": false,
+            "properties": {
+                "from": {
+                    "format": "ipv4",
+                    "type": "string"
+                },
+                "prefixLength": {
+                    "maximum": 32,
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "to": {
+                    "format": "ipv4",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "ipv6AddressTranslation": {
+            "additionalProperties": false,
+            "properties": {
+                "from": {
+                    "format": "ipv6",
+                    "type": "string"
+                },
+                "prefixLength": {
+                    "maximum": 128,
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "to": {
+                    "format": "ipv6",
+                    "type": "string"
+                }
+            },
+            "type": "object"
         },
         "listenAddress": {
             "description": "idn-hostname allows ipv4 and ipv6 addresses, as well as hostnames that might happen to contain '*' and/or '/'. so idn-hostname allows every supported intercept address, although ip addresses, wildcards and cidrs are only being validated as hostnames by this format. client applications will need to look for _valid_ ips, cidrs, and wildcards when parsing intercept addresses and treat them accordingly. anything else should be interpreted as a dns label. this means e.g. that '1.2.3.4/56' should be treated as a dns label, since it is not a valid cidr",
@@ -334,6 +382,19 @@
                 true
             ],
             "type": "boolean"
+        },
+        "forwardAddressTranslations": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/addressTranslation"
+                    }
+                }
+            ],
+            "description": "Translate forwarded addresses according to this table"
         },
         "forwardPort": {
             "description": "Dial the same port that was intercepted at the client tunneler. 'port' and 'forwardPort' are mutually exclusive.",
