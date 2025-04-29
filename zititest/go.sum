@@ -602,8 +602,8 @@ github.com/openziti-incubator/cf v0.0.3 h1:JKs55DbaIxl87nI/Ra/3DHMiz5iaPpu8JjsuN
 github.com/openziti-incubator/cf v0.0.3/go.mod h1:6abCY06bCjKmK2I9kohij+cp9uXIPFiFwSCNZPdMk8E=
 github.com/openziti/agent v1.0.26 h1:5o/yRsX6deRYZrzT51eVAiAruN0U4qAD5cbqOD3uCYk=
 github.com/openziti/agent v1.0.26/go.mod h1:RkFCcVEco6mpJ3uWh0IThiDRnL5E+SbXclrtDeZlGAs=
-github.com/openziti/channel/v4 v4.0.4 h1:t/hMkKuZ2kqgenztcKjhdgrO/a5Kg2xZNNWB217UMvc=
-github.com/openziti/channel/v4 v4.0.4/go.mod h1:ekqQwL27nKufMN8nB0jO+bjj9QfOCiPM0GCPllUSK60=
+github.com/openziti/channel/v4 v4.0.6 h1:pcIn9xNnQXnenHoaOt347nG0dmnsisomnEIPq4F5YHI=
+github.com/openziti/channel/v4 v4.0.6/go.mod h1:sU3S/MToQHES1V22O+xtQbX0QSteoMo6RzQiEMfir+w=
 github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQfVXxE=
 github.com/openziti/cobra-to-md v1.0.1/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
 github.com/openziti/dilithium v0.3.5 h1:+envGNzxc3OyVPiuvtxivQmCsOjdZjtOMLpQBeMz7eM=
@@ -622,8 +622,8 @@ github.com/openziti/metrics v1.4.0 h1:uZALaZINoTFqRE3XcVZ/xGuvXJpDhn/a0kxaX586lz
 github.com/openziti/metrics v1.4.0/go.mod h1:MOLcoTxhPNla6+NWUCMVTnl1PNqTU40qrbKVa/lVVgg=
 github.com/openziti/runzmd v1.0.67 h1:VADMieUhVIfikhvIX/jewV8VJeRb9osNym965RWon6g=
 github.com/openziti/runzmd v1.0.67/go.mod h1:xQhCjwznZJbpyhz2V5RdUV/rmYdG/Dv2DdPQFuNvZE0=
-github.com/openziti/sdk-golang v1.0.1 h1:0oU+S18ZgJIfgrVODxtJTs/VGU52f3CfpydHaF47hzY=
-github.com/openziti/sdk-golang v1.0.1/go.mod h1:syGL+l6UUjfV4o2rPUIuLeL8Y1FVxiy/3BGtgcFRMJ8=
+github.com/openziti/sdk-golang v1.0.2 h1:b9As2opfV/x9ZtELAaQgnz14w17nu07QJcTxYhU7/Uw=
+github.com/openziti/sdk-golang v1.0.2/go.mod h1:syGL+l6UUjfV4o2rPUIuLeL8Y1FVxiy/3BGtgcFRMJ8=
 github.com/openziti/secretstream v0.1.32 h1:89/ZVcwIQjdVmWDfVRfMEChJJXTLXJ59AYBw5j646M4=
 github.com/openziti/secretstream v0.1.32/go.mod h1:8YaIbjyMwBeKQ7eOYcoVPKHT10u+4OVPXpnZAeDzC6o=
 github.com/openziti/storage v0.4.7 h1:3phONUaSrcH2m6D6eQT4DG6b7eZEW9IuewfG2RaUCtA=
@@ -694,8 +694,8 @@ github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
 github.com/rabbitmq/amqp091-go v1.10.0 h1:STpn5XsHlHGcecLmMFCtg7mqq0RnD+zFr4uzukfVhBw=
 github.com/rabbitmq/amqp091-go v1.10.0/go.mod h1:Hy4jKW5kQART1u+JkDTF9YYOQUHXqMuhrgxOEeS7G4o=
-github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 h1:N/ElC8H3+5XpJzTSTfLsJV/mx9Q9g7kxmchpfZyxgzM=
-github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
+github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 h1:bsUq1dX0N8AOIL7EB/X911+m4EHsnWEHeJ0c+3TTBrg=
+github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
