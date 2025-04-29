@@ -22,15 +22,19 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"time"
 )
 
 const (
 	FieldAuthenticatorMethod   = "method"
 	FieldAuthenticatorIdentity = "identity"
 
-	FieldAuthenticatorCertFingerprint       = "certFingerprint"
-	FieldAuthenticatorCertPem               = "certPem"
-	FieldAuthenticatorCertIsIssuedByNetwork = "isIssuedByNetwork"
+	FieldAuthenticatorCertFingerprint        = "certFingerprint"
+	FieldAuthenticatorCertPem                = "certPem"
+	FieldAuthenticatorCertIsIssuedByNetwork  = "isIssuedByNetwork"
+	FieldAuthenticatorCertIsExtendRequested  = "isExtendRequested"
+	FieldAuthenticatorCertIsKeyRollRequested = "isKeyRollRequested"
+	FieldAuthenticatorCertExtendRequestedAt  = "extendRequestedAt"
 
 	FieldAuthenticatorUnverifiedCertPem         = "unverifiedCertPem"
 	FieldAuthenticatorUnverifiedCertFingerprint = "unverifiedCertFingerprint"
@@ -53,10 +57,13 @@ type AuthenticatorSubType interface {
 }
 
 type AuthenticatorCert struct {
-	Authenticator     `json:"-"`
-	Fingerprint       string `json:"fingerprint"`
-	Pem               string `json:"pem"`
-	IsIssuedByNetwork bool   `json:"IsIssuedByNetwork"`
+	Authenticator      `json:"-"`
+	Fingerprint        string     `json:"fingerprint"`
+	Pem                string     `json:"pem"`
+	IsIssuedByNetwork  bool       `json:"isIssuedByNetwork"`
+	IsExtendRequested  bool       `json:"isExtendRequested"`
+	IsKeyRollRequested bool       `json:"isKeyRollRequested"`
+	ExtendRequestedAt  *time.Time `json:"extendRequestedAt"`
 
 	UnverifiedPem         string `json:"unverifiedPem"`
 	UnverifiedFingerprint string `json:"unverifiedFingerprint"`
@@ -148,6 +155,9 @@ func (store *authenticatorStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldAuthenticatorCertFingerprint, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorCertPem, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorCertIsIssuedByNetwork, ast.NodeTypeBool)
+	store.AddSymbol(FieldAuthenticatorCertIsExtendRequested, ast.NodeTypeBool)
+	store.AddSymbol(FieldAuthenticatorCertIsKeyRollRequested, ast.NodeTypeBool)
+	store.AddSymbol(FieldAuthenticatorCertExtendRequestedAt, ast.NodeTypeDatetime)
 	store.AddSymbol(FieldAuthenticatorUpdbUsername, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorUpdbPassword, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorUpdbSalt, ast.NodeTypeString)
@@ -173,6 +183,15 @@ func (store *authenticatorStoreImpl) FillEntity(entity *Authenticator, bucket *b
 		authCert.Pem = bucket.GetStringWithDefault(FieldAuthenticatorCertPem, "")
 		authCert.IsIssuedByNetwork = bucket.GetBoolWithDefault(FieldAuthenticatorCertIsIssuedByNetwork, false)
 
+		if authCert.IsIssuedByNetwork {
+			// can only request extension for ziti issued certs, can only have roll keys if extension is also requested
+			authCert.IsExtendRequested = bucket.GetBoolWithDefault(FieldAuthenticatorCertIsExtendRequested, false)
+			authCert.ExtendRequestedAt = bucket.GetTime(FieldAuthenticatorCertExtendRequestedAt)
+			if authCert.IsExtendRequested {
+				authCert.IsKeyRollRequested = bucket.GetBoolWithDefault(FieldAuthenticatorCertIsKeyRollRequested, false)
+			}
+		}
+
 		authCert.UnverifiedPem = bucket.GetStringWithDefault(FieldAuthenticatorUnverifiedCertPem, "")
 		authCert.UnverifiedFingerprint = bucket.GetStringWithDefault(FieldAuthenticatorUnverifiedCertFingerprint, "")
 		entity.SubType = authCert
@@ -197,9 +216,12 @@ func (store *authenticatorStoreImpl) PersistEntity(entity *Authenticator, ctx *b
 			ctx.SetString(FieldAuthenticatorCertFingerprint, authCert.Fingerprint)
 			ctx.SetString(FieldAuthenticatorCertPem, authCert.Pem)
 			ctx.SetBool(FieldAuthenticatorCertIsIssuedByNetwork, authCert.IsIssuedByNetwork)
+			ctx.SetBool(FieldAuthenticatorCertIsExtendRequested, authCert.IsExtendRequested)
+			ctx.SetBool(FieldAuthenticatorCertIsKeyRollRequested, authCert.IsKeyRollRequested)
 
 			ctx.SetString(FieldAuthenticatorUnverifiedCertFingerprint, authCert.UnverifiedFingerprint)
 			ctx.SetString(FieldAuthenticatorUnverifiedCertPem, authCert.UnverifiedPem)
+			ctx.SetTimeP(FieldAuthenticatorCertExtendRequestedAt, authCert.ExtendRequestedAt)
 		} else {
 			pfxlog.Logger().Panic("type conversion error setting values for AuthenticatorCert")
 		}

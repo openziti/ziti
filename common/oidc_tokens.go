@@ -57,19 +57,21 @@ const (
 )
 
 type CustomClaims struct {
-	ApiSessionId     string              `json:"z_asid,omitempty"`
-	ExternalId       string              `json:"z_eid,omitempty"`
-	IsAdmin          bool                `json:"z_ia,omitempty"`
-	ConfigTypes      []string            `json:"z_ct,omitempty"`
-	ApplicationId    string              `json:"z_aid,omitempty"`
-	Type             string              `json:"z_t"`
-	CertFingerprints []string            `json:"z_cfs"`
-	Scopes           []string            `json:"scopes,omitempty"`
-	SdkInfo          *rest_model.SdkInfo `json:"z_sdk"`
-	EnvInfo          *rest_model.EnvInfo `json:"z_env"`
-	RemoteAddress    string              `json:"z_ra"`
-	IsCertExtendable bool                `json:"z_ice"`
-	AuthenticatorId  string              `json:"z_authid,omitempty"`
+	ApiSessionId           string              `json:"z_asid,omitempty"`
+	ExternalId             string              `json:"z_eid,omitempty"`
+	IsAdmin                bool                `json:"z_ia,omitempty"`
+	ConfigTypes            []string            `json:"z_ct,omitempty"`
+	ApplicationId          string              `json:"z_aid,omitempty"`
+	Type                   string              `json:"z_t"`
+	CertFingerprints       []string            `json:"z_cfs"`
+	Scopes                 []string            `json:"scopes,omitempty"`
+	SdkInfo                *rest_model.SdkInfo `json:"z_sdk"`
+	EnvInfo                *rest_model.EnvInfo `json:"z_env"`
+	RemoteAddress          string              `json:"z_ra"`
+	IsCertExtendable       bool                `json:"z_ice"`
+	AuthenticatorId        string              `json:"z_authid,omitempty"`
+	IsCertExtendRequested  bool                `json:"z_cer"`
+	IsCertKeyRollRequested bool                `json:"z_ckrr"`
 }
 
 func (c *CustomClaims) ToMap() (map[string]any, error) {

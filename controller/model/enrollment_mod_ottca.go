@@ -18,7 +18,6 @@ package model
 
 import (
 	"crypto/x509"
-	"encoding/pem"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/apierror"
 	fabricApiError "github.com/openziti/ziti/controller/apierror"
@@ -93,35 +92,42 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 		return nil, apierror.NewEnrollmentCaNoLongValid()
 	}
 
-	cp := x509.NewCertPool()
-	cp.AppendCertsFromPEM([]byte(ca.CertPem))
+	rootPool := x509.NewCertPool()
+	rootPool.AppendCertsFromPEM([]byte(ca.CertPem))
 
-	vo := x509.VerifyOptions{
-		Roots:     cp,
-		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	intermediatePool := x509.NewCertPool()
+
+	certs := ctx.GetCerts()
+
+	if len(certs) == 0 {
+		return nil, apierror.NewFailedCertificateValidation()
+	}
+	peer := certs[0]
+	chain := certs[1:]
+
+	for _, c := range chain {
+		intermediatePool.AddCert(c)
 	}
 
-	var validCert *x509.Certificate = nil
-
-	for _, c := range ctx.GetCerts() {
-		vc, err := c.Verify(vo)
-
-		if err == nil || vc != nil {
-			validCert = c
-			break
-		}
+	verifyOptions := x509.VerifyOptions{
+		Roots:         rootPool,
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		Intermediates: intermediatePool,
 	}
 
-	if validCert == nil {
-		return nil, apierror.NewCertFailedValidation()
+	validChains, err := peer.Verify(verifyOptions)
+
+	if err != nil || len(validChains) == 0 {
+		return nil, apierror.NewFailedCertificateValidation()
 	}
 
-	fingerprint := module.fingerprintGenerator.FromCert(validCert)
+	chainPem := ""
+	for _, c := range validChains[0] {
+		newPem, _ := cert.RawToPem(c.Raw)
+		chainPem += string(newPem) + "\n"
+	}
 
-	certPem := pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: validCert.Raw,
-	})
+	fingerprint := module.fingerprintGenerator.FromCert(peer)
 
 	existing, _ := module.env.GetManagers().Authenticator.ReadByFingerprint(fingerprint)
 
@@ -141,7 +147,7 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 		IdentityId: identity.Id,
 		SubType: &AuthenticatorCert{
 			Fingerprint:       fingerprint,
-			Pem:               string(certPem),
+			Pem:               chainPem,
 			IsIssuedByNetwork: false,
 		},
 	}

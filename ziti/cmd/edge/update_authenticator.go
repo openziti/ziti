@@ -37,6 +37,7 @@ func newUpdateAuthenticatorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd.AddCommand(newUpdateAuthenticatorUpdb("updb", options))
+	cmd.AddCommand(newUpdateAuthenticatorCert("cert", options))
 
 	return cmd
 }

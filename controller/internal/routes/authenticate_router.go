@@ -163,11 +163,21 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		LastActivityAt:  time.Now().UTC(),
 	}
 
-	if authResult.Authenticator() != nil && authResult.Authenticator().Method == db.MethodAuthenticatorCert {
+	authenticator := authResult.Authenticator()
+
+	if authenticator != nil && authenticator.Method == db.MethodAuthenticatorCert {
 		cert := authResult.Authenticator().ToCert()
 
 		if cert != nil {
 			newApiSession.IsCertExtendable = cert.IsIssuedByNetwork
+
+			header := rc.ResponseWriter.Header()
+			if cert.IsExtendRequested {
+				header.Add(model.ZitiAuthenticatorExtendRquested, "true")
+				if cert.IsKeyRollRequested {
+					header.Add(model.ZitiAuthenticatorRollKeyRequested, "true")
+				}
+			}
 		}
 	}
 
