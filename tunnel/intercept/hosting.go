@@ -150,11 +150,8 @@ func newDefaultHostingContext(identity *rest_model.IdentityDetail, service *enti
 
 // map input IP/cidr to output IP/cidr
 type addrTranslation struct {
-	//	from       netip.Addr
 	fromPrefix netip.Prefix
-	//	to         netip.Addr
-	toPrefix netip.Prefix
-	//	prefixLen  uint8
+	toPrefix   netip.Prefix
 }
 
 type hostingContext struct {
