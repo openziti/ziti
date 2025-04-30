@@ -114,6 +114,9 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 
 	oidcConfig := oidc_auth.NewConfig(issuers, cert, key)
 	oidcConfig.Identity = serverConfig.Identity
+	oidcConfig.AccessTokenDuration = ae.GetConfig().Edge.Oidc.AccessTokenDuration
+	oidcConfig.RefreshTokenDuration = ae.GetConfig().Edge.Oidc.RefreshTokenDuration
+	oidcConfig.IdTokenDuration = ae.GetConfig().Edge.Oidc.IdTokenDuration
 
 	if secretVal, ok := options["secret"]; ok {
 		if secret, ok := secretVal.(string); ok {

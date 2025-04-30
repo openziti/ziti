@@ -154,7 +154,14 @@ edge:
     minSize: 5
     # the largest allowed window size for auth attempts
     maxSize: 100
-
+  oidc:
+    # (optional, default 30m) Sets the time OIDC issued access JWTs are valid for. Must be greater than 1m and must be 1m less
+    # than `refreshTokenDuration`
+    accessTokenDuration: 30m
+    # (optional, default 30m) Sets the time OIDC issued id JWTs are valid for. Must be greater than 1m.
+    idTokenDuration: 30m
+    # (optional, default 24hr)
+    refreshTokenDuration: 24h
   # This section represents the configuration of the Edge API that is served over HTTPS
   api:
     #(optional, default 90s) Alters how frequently heartbeat and last activity values are persisted
