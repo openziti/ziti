@@ -20,6 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/spf13/cobra"
 	"net"
+	"sync/atomic"
 	"time"
 )
 
@@ -77,9 +78,10 @@ func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 
 	for _, workload := range cmd.scenario.Workloads {
 		log.Infof("executing workload [%s] with concurrency [%d]", workload.Name, workload.Concurrency)
+		var active atomic.Int64
 		for i := 0; i < int(workload.Concurrency); i++ {
 			resultCh := resultChs[workload.GetRunnerName(i)]
-			go cmd.RunWorkload(workload, i+1, resultCh)
+			go cmd.RunWorkload(workload, i+1, resultCh, &active)
 		}
 	}
 
@@ -93,7 +95,7 @@ func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 			log.Infof("[%s] -> success", name)
 		}
 	}
-	cmd.DumpMetrics()
+
 	if failed {
 		panic("failures detected")
 	} else {
@@ -101,7 +103,7 @@ func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 	}
 }
 
-func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Result) {
+func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Result, active *atomic.Int64) {
 	log := pfxlog.Logger()
 
 	if workload.ConnectTimeout < time.Second {
@@ -120,6 +122,10 @@ func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Re
 	connectTimes := cmd.Sim.metrics.Timer(workload.Name + ".connect.times")
 	connectFailures := cmd.Sim.metrics.Meter(workload.Name + ".connect.failures")
 	connectSuccesses := cmd.Sim.metrics.Meter(workload.Name + ".connect.successes")
+	completed := cmd.Sim.metrics.Meter(workload.Name + ".completed")
+	cmd.Sim.metrics.FuncGauge(workload.Name+".active", func() int64 {
+		return active.Load()
+	})
 
 	var result *Result
 	for i := int64(0); i < workload.Iterations || workload.Iterations == -1; i++ {
@@ -129,7 +135,6 @@ func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Re
 			}
 			conn = nil
 		}
-
 		startConnect := time.Now()
 		conn, err = cmd.dialers[workload.Connector](workload)
 		connectTimes.UpdateSince(startConnect)
@@ -138,6 +143,8 @@ func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Re
 			continue
 		}
 
+		active.Add(1)
+
 		connectSuccesses.Mark(1)
 		local, remote := workload.GetTests()
 
@@ -145,27 +152,33 @@ func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Re
 			if local.IsTxRandomHashed() {
 				if err = proto.txTest(remote); err != nil {
 					cmd.reportErr(resultCh, err)
+					active.Add(-1)
 					return
 				}
 			}
 
 			if err = proto.run(local); err != nil {
 				cmd.reportErr(resultCh, err)
+				active.Add(-1)
 				return
 			}
 
 			if result, err = proto.rxResult(); err != nil {
 				cmd.reportErr(resultCh, err)
+				active.Add(-1)
 				return
 			}
 
 			if !result.Success {
+				active.Add(-1)
 				resultCh <- result
 				return
 			}
 		}
 
-		pfxlog.Logger().Infof("%s-%d completed iteration %d", workload.Name, idx, i+1)
+		active.Add(-1)
+		completed.Mark(1)
+		pfxlog.Logger().Debugf("%s-%d completed iteration %d", workload.Name, idx, i+1)
 		if cmd.scenario.ConnectionDelay > 0 {
 			time.Sleep(time.Duration(cmd.scenario.ConnectionDelay) * time.Millisecond)
 		}

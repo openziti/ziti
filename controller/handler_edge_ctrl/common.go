@@ -42,8 +42,9 @@ type UpdateTerminatorRequest interface {
 }
 
 type baseRequestHandler struct {
-	ch     channel.Channel
-	appEnv *env.AppEnv
+	ch       channel.Channel
+	appEnv   *env.AppEnv
+	errRespF func(m *channel.Message)
 }
 
 func (self *baseRequestHandler) getNetwork() *network.Network {
@@ -70,6 +71,10 @@ func (self *baseRequestHandler) returnError(ctx requestContext, err controllerEr
 
 	if sessionCtx, ok := ctx.(sessionRequestContext); ok {
 		logger = logger.WithField("token", sessionCtx.GetSessionToken())
+	}
+
+	if self.errRespF != nil {
+		self.errRespF(responseMsg)
 	}
 
 	if sendErr := self.ch.Send(responseMsg); sendErr != nil {
@@ -562,7 +567,7 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 			self.err = internalError(err)
 		}
 
-		if circuit != nil {
+		if circuit != nil && err == nil {
 			//static terminator peer data
 			for k, v := range circuit.Terminator.GetPeerData() {
 				returnPeerData[k] = v
@@ -575,14 +580,14 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 
 			if self.service.EncryptionRequired && returnPeerData[uint32(edge.PublicKeyHeader)] == nil {
 				self.err = encryptionDataMissing("encryption required on service, terminator did not send public header")
-				if err := n.RemoveCircuit(circuit.Id, true); err != nil {
+				if err = n.RemoveCircuit(circuit.Id, true); err != nil {
 					logrus.
 						WithField("operation", self.handler.Label()).
 						WithField("sourceRouter", self.sourceRouter.Id).
 						WithError(err).
-						Error("failed to remove session")
+						Error("failed to remove circuit")
 				}
-				return nil, nil
+				return circuit, nil
 			}
 		}
 	}

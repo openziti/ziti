@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"github.com/google/go-cmp/cmp"
+	"github.com/openziti/metrics"
 	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop4/pb"
 	"github.com/stretchr/testify/require"
 	"reflect"
@@ -36,11 +37,13 @@ func Test_MessageSerDeser(t *testing.T) {
 
 	testBuf := &testPeer{}
 
-	p := &protocol{
-		peer: testBuf,
-		test: &loopPb.Test{
-			Name: "test",
-		},
+	metricsRegistry := metrics.NewRegistry("test", nil)
+
+	p, err := newProtocol(testBuf, "test", metricsRegistry)
+	req.NoError(err)
+
+	p.test = &loopPb.Test{
+		Name: "test",
 	}
 
 	req.NoError(block.Tx(p))

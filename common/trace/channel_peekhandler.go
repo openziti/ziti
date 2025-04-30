@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/channel/v4/trace/pb"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"google.golang.org/protobuf/proto"
 	"sync/atomic"

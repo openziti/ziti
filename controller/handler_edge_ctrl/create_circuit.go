@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/db"
@@ -130,6 +131,11 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 	circuitInfo, peerData := ctx.createCircuit(ctx.req.GetTerminatorInstanceId(), ctx.req.GetPeerData(), ctx.newCircuitCreateParms)
 
 	if ctx.err != nil {
+		if circuitInfo != nil {
+			self.errRespF = func(resp *channel.Message) {
+				resp.PutStringHeader(edge.CircuitIdHeader, circuitInfo.Id)
+			}
+		}
 		self.returnError(ctx, ctx.err)
 		return
 	}

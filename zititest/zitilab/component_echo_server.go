@@ -43,6 +43,10 @@ func (self *EchoServerType) GetVersion() string {
 	return self.Version
 }
 
+func (self *EchoServerType) SetVersion(version string) {
+	self.Version = version
+}
+
 func (self *EchoServerType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }

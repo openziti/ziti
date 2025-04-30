@@ -18,7 +18,8 @@ package forwarder
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/ziti/router/env"
 	"github.com/orcaman/concurrent-map/v2"
 	"reflect"
 	"sync/atomic"
@@ -100,22 +101,22 @@ func (ft *forwardTable) debug() string {
 
 // destinationTable implements a directory of destinations, keyed by Address.
 type destinationTable struct {
-	destinations cmap.ConcurrentMap[string, Destination]
+	destinations cmap.ConcurrentMap[string, env.Destination]
 	xgress       cmap.ConcurrentMap[string, []xgress.Address]
 }
 
 func newDestinationTable() *destinationTable {
 	return &destinationTable{
-		destinations: cmap.New[Destination](),
+		destinations: cmap.New[env.Destination](),
 		xgress:       cmap.New[[]xgress.Address](),
 	}
 }
 
-func (dt *destinationTable) addDestination(addr xgress.Address, destination Destination) {
+func (dt *destinationTable) addDestination(addr xgress.Address, destination env.Destination) {
 	dt.destinations.Set(string(addr), destination)
 }
 
-func (dt *destinationTable) getDestination(addr xgress.Address) (Destination, bool) {
+func (dt *destinationTable) getDestination(addr xgress.Address) (env.Destination, bool) {
 	if dst, found := dt.destinations.Get(string(addr)); found {
 		return dst, true
 	}
@@ -126,8 +127,8 @@ func (dt *destinationTable) removeDestination(addr xgress.Address) {
 	dt.destinations.Remove(string(addr))
 }
 
-func (dt *destinationTable) removeDestinationIfMatches(addr xgress.Address, destination Destination) {
-	dt.destinations.RemoveCb(string(addr), func(key string, v Destination, exists bool) bool {
+func (dt *destinationTable) removeDestinationIfMatches(addr xgress.Address, destination env.Destination) {
+	dt.destinations.RemoveCb(string(addr), func(key string, v env.Destination, exists bool) bool {
 		return exists && destination == v
 	})
 }

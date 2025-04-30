@@ -20,8 +20,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
 	"time"
 )
 
@@ -131,37 +131,9 @@ func (h *channelPeekHandler) Close(channel.Channel) {
 }
 
 // NewXgressPeekHandler creates an xgress PeekHandler which tracks message rates and histograms as well as usage
-func NewXgressPeekHandler(registry metrics.UsageRegistry) xgress.PeekHandler {
-	ingressTxBytesMeter := registry.Meter("ingress.tx.bytesrate")
-	ingressTxMsgMeter := registry.Meter("ingress.tx.msgrate")
-	ingressRxBytesMeter := registry.Meter("ingress.rx.bytesrate")
-	ingressRxMsgMeter := registry.Meter("ingress.rx.msgrate")
-	egressTxBytesMeter := registry.Meter("egress.tx.bytesrate")
-	egressTxMsgMeter := registry.Meter("egress.tx.msgrate")
-	egressRxBytesMeter := registry.Meter("egress.rx.bytesrate")
-	egressRxMsgMeter := registry.Meter("egress.rx.msgrate")
-
-	ingressTxMsgSizeHistogram := registry.Histogram("ingress.tx.msgsize")
-	ingressRxMsgSizeHistogram := registry.Histogram("ingress.rx.msgsize")
-	egressTxMsgSizeHistogram := registry.Histogram("egress.tx.msgsize")
-	egressRxMsgSizeHistogram := registry.Histogram("egress.rx.msgsize")
-
+func NewXgressPeekHandler(xgressMetrics env.XgressMetrics) xgress.PeekHandler {
 	return &xgressPeekHandler{
-		ingressTxBytesMeter: ingressTxBytesMeter,
-		ingressTxMsgMeter:   ingressTxMsgMeter,
-		ingressRxBytesMeter: ingressRxBytesMeter,
-		ingressRxMsgMeter:   ingressRxMsgMeter,
-		egressTxBytesMeter:  egressTxBytesMeter,
-		egressTxMsgMeter:    egressTxMsgMeter,
-		egressRxBytesMeter:  egressRxBytesMeter,
-		egressRxMsgMeter:    egressRxMsgMeter,
-
-		ingressTxMsgSizeHistogram: ingressTxMsgSizeHistogram,
-		ingressRxMsgSizeHistogram: ingressRxMsgSizeHistogram,
-		egressTxMsgSizeHistogram:  egressTxMsgSizeHistogram,
-		egressRxMsgSizeHistogram:  egressRxMsgSizeHistogram,
-
-		usageCounter: registry.UsageCounter("usage", env.IntervalSize),
+		metrics: xgressMetrics,
 	}
 }
 
@@ -176,52 +148,15 @@ func (c circuitUsageSource) GetTags() map[string]string {
 }
 
 type xgressPeekHandler struct {
-	ingressTxBytesMeter metrics.Meter
-	ingressTxMsgMeter   metrics.Meter
-	ingressRxBytesMeter metrics.Meter
-	ingressRxMsgMeter   metrics.Meter
-	egressTxBytesMeter  metrics.Meter
-	egressTxMsgMeter    metrics.Meter
-	egressRxBytesMeter  metrics.Meter
-	egressRxMsgMeter    metrics.Meter
-
-	ingressTxMsgSizeHistogram metrics.Histogram
-	ingressRxMsgSizeHistogram metrics.Histogram
-	egressTxMsgSizeHistogram  metrics.Histogram
-	egressRxMsgSizeHistogram  metrics.Histogram
-
-	usageCounter metrics.UsageCounter
+	metrics env.XgressMetrics
 }
 
 func (handler *xgressPeekHandler) Rx(x *xgress.Xgress, payload *xgress.Payload) {
-	msgSize := int64(len(payload.Data))
-	if x.Originator() == xgress.Initiator {
-		handler.usageCounter.Update(x, "ingress.rx", time.Now(), uint64(msgSize))
-		handler.ingressRxMsgMeter.Mark(1)
-		handler.ingressRxBytesMeter.Mark(msgSize)
-		handler.ingressRxMsgSizeHistogram.Update(msgSize)
-	} else {
-		handler.usageCounter.Update(x, "egress.rx", time.Now(), uint64(msgSize))
-		handler.egressRxMsgMeter.Mark(1)
-		handler.egressRxBytesMeter.Mark(msgSize)
-		handler.egressRxMsgSizeHistogram.Update(msgSize)
-	}
+	handler.metrics.Rx(x, x.Originator(), payload)
 }
 
 func (handler *xgressPeekHandler) Tx(x *xgress.Xgress, payload *xgress.Payload) {
-	msgSize := int64(len(payload.Data))
-	if x.Originator() == xgress.Initiator {
-		handler.usageCounter.Update(x, "ingress.tx", time.Now(), uint64(msgSize))
-
-		handler.ingressTxMsgMeter.Mark(1)
-		handler.ingressTxBytesMeter.Mark(msgSize)
-		handler.ingressTxMsgSizeHistogram.Update(msgSize)
-	} else {
-		handler.usageCounter.Update(x, "egress.tx", time.Now(), uint64(msgSize))
-		handler.egressTxMsgMeter.Mark(1)
-		handler.egressTxBytesMeter.Mark(msgSize)
-		handler.egressTxMsgSizeHistogram.Update(msgSize)
-	}
+	handler.metrics.Tx(x, x.Originator(), payload)
 }
 
 func (handler *xgressPeekHandler) Close(*xgress.Xgress) {

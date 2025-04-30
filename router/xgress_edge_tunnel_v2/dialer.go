@@ -18,12 +18,12 @@ package xgress_edge_tunnel_v2
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/tunnel"

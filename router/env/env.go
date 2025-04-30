@@ -23,9 +23,10 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/router/xlink"
 	"time"
 )
@@ -35,6 +36,7 @@ type RouterEnv interface {
 	GetRouterId() *identity.TokenId
 	GetDialerCfg() map[string]xgress.OptionsData
 	GetXlinkDialers() []xlink.Dialer
+	GetXgressListeners() []xgress_router.Listener
 	GetXrctrls() []Xrctrl
 	GetTraceHandler() *channel.TraceHandler
 	GetXlinkRegistry() xlink.Registry
@@ -55,6 +57,8 @@ type RouterEnv interface {
 	DefaultRequestTimeout() time.Duration
 	GetXgressBindHandler() xgress.BindHandler
 	GetConfig() *Config
+	GetForwarder() Forwarder
+	GetXgressMetrics() XgressMetrics
 }
 
 type ConnectEventsConfig struct {
@@ -62,4 +66,25 @@ type ConnectEventsConfig struct {
 	BatchInterval    time.Duration
 	MaxQueuedEvents  int64
 	FullSyncInterval time.Duration
+}
+
+type Forwarder interface {
+	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error
+	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
+	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
+	ReportForwardingFault(circuitId string, ctrlId string)
+	RegisterDestination(circuitId string, address xgress.Address, destination Destination)
+	EndCircuit(circuitId string)
+}
+
+type Destination interface {
+	SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error
+	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
+	SendControl(control *xgress.Control) error
+	InspectCircuit(detail *xgress.CircuitInspectDetail)
+}
+
+type XgressMetrics interface {
+	Rx(source metrics.UsageSource, originator xgress.Originator, payload *xgress.Payload)
+	Tx(source metrics.UsageSource, originator xgress.Originator, payload *xgress.Payload)
 }

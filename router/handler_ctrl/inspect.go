@@ -127,6 +127,9 @@ func (context *inspectRequestContext) processLocal() {
 			if result != nil {
 				context.handleJsonResponse(requested, result)
 			}
+		} else if lc == "router-circuits" {
+			result := context.handler.fwd.InspectCircuits()
+			context.handleJsonResponse(requested, result)
 		} else if strings.HasPrefix(lc, "metrics") {
 			msg := context.handler.fwd.MetricsRegistry().PollWithoutUsageMetrics()
 			context.handleJsonResponse(requested, msg)
@@ -165,6 +168,19 @@ func (context *inspectRequestContext) processLocal() {
 
 			result := inspectable.Inspect(lc, time.Second)
 			context.handleJsonResponse(requested, result)
+		} else if strings.EqualFold(lc, "router-edge-circuits") || strings.EqualFold(lc, "router-sdk-circuits") {
+			context.inspectXgListener(requested)
+		}
+	}
+}
+
+func (context *inspectRequestContext) inspectXgListener(val string) {
+	for _, l := range context.handler.env.GetXgressListeners() {
+		if inspectable, ok := l.(xgress_router.Inspectable); ok {
+			if result := inspectable.Inspect(val, time.Second); result != nil {
+				context.handleJsonResponse(val, result)
+				break
+			}
 		}
 	}
 }

@@ -19,7 +19,7 @@ package xgress_edge_tunnel
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/router/state"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/intercept"
 	"github.com/openziti/ziti/tunnel/intercept/host"

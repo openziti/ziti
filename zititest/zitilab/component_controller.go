@@ -54,6 +54,10 @@ func (self *ControllerType) GetVersion() string {
 	return self.Version
 }
 
+func (self *ControllerType) SetVersion(version string) {
+	self.Version = version
+}
+
 func (self *ControllerType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }

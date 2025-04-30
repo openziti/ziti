@@ -66,7 +66,7 @@ func NewFactory(accepter xlink.Acceptor,
 	}
 }
 
-func (self *factory) CreateListener(id *identity.TokenId, _ xlink.Forwarder, configData transport.Configuration) (xlink.Listener, error) {
+func (self *factory) CreateListener(id *identity.TokenId, configData transport.Configuration) (xlink.Listener, error) {
 	config, err := loadListenerConfig(configData)
 
 	if err != nil {
@@ -93,7 +93,7 @@ func (self *factory) CreateListener(id *identity.TokenId, _ xlink.Forwarder, con
 	}, nil
 }
 
-func (self *factory) CreateDialer(id *identity.TokenId, _ xlink.Forwarder, configData transport.Configuration) (xlink.Dialer, error) {
+func (self *factory) CreateDialer(id *identity.TokenId, configData transport.Configuration) (xlink.Dialer, error) {
 	config, err := loadDialerConfig(configData)
 	if err != nil {
 		return nil, fmt.Errorf("error loading dialer configuration (%w)", err)

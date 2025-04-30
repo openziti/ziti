@@ -42,18 +42,16 @@ ctrl:
 events:
   jsonLogger:
     subscriptions:
+      - type: entityChange
+      - type: fabric.circuits
+      - type: edge.apiSessions
+      - type: edge.sessions
+
 #      - type: fabric.routers
 #      - type: fabric.terminators
 #      - type: metrics
 #        sourceFilter: .*
 #        metricFilter: .*egress.*m1_rate*
-#      - type: fabric.circuits
-#        include:
-#          - created
-#      - type: edge.sessions
-#        include:
-#          - created
-      - type: edge.apiSessions
 #      - type: fabric.usage
 #      - type: services
 #      - type: fabric.usage

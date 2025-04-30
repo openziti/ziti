@@ -32,6 +32,8 @@ type Connector struct {
 type SdkConnectOptions struct {
 	IdentityFile        string `yaml:"identity_file"`
 	DisableMultiChannel bool   `yaml:"disable_multi_channel"`
+	ReportSdkMetrics    bool   `yaml:"report_sdk_metrics"`
+	TestService         string `yaml:"test_service"`
 }
 
 type TransportConnectOptions struct {

@@ -39,6 +39,10 @@ func (self *ZCatType) GetVersion() string {
 	return self.Version
 }
 
+func (self *ZCatType) SetVersion(version string) {
+	self.Version = version
+}
+
 func (self *ZCatType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }
