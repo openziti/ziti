@@ -23,13 +23,15 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/secretstream"
 	"github.com/openziti/secretstream/kx"
-	"github.com/openziti/sdk-golang/xgress"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net"
+	"os"
+	"time"
 )
 
 const (
@@ -88,6 +90,9 @@ func (self *XgressConn) CloseWrite() error {
 				headers: GetFinHeaders(),
 			}
 			self.flags.Set(outOfBandTxFlag, true)
+			if err := self.Conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -184,7 +189,19 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	}
 
 	buffer := make([]byte, self.bufferSize)
+
 	n, err := self.Conn.Read(buffer)
+
+	if err != nil && os.IsTimeout(err) && self.flags.IsSet(outOfBandTxFlag) {
+		var oob *outOfBand
+		select {
+		case oob = <-self.outOfBandTx:
+			return oob.data, oob.headers, nil
+		default:
+			self.flags.Set(outOfBandTxFlag, false)
+		}
+	}
+
 	buffer = buffer[:n]
 
 	if self.sender != nil && n > 0 {

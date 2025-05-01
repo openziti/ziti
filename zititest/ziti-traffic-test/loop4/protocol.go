@@ -201,7 +201,10 @@ func (p *protocol) run(test *loopPb.Test) error {
 }
 
 func (p *protocol) txer(done chan bool) {
-	log := pfxlog.ContextLogger(p.test.Name)
+	log := pfxlog.ContextLogger(p.test.Name).Entry
+	if p.circuitId != "" {
+		log = log.WithField("circuitId", p.circuitId)
+	}
 	log.Debug("started")
 	defer func() { done <- true }()
 	defer log.Debug("complete")
@@ -249,7 +252,11 @@ func (p *protocol) txer(done chan bool) {
 }
 
 func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error), rxNotifier RxNotifier) {
-	log := pfxlog.ContextLogger(p.test.Name)
+	log := pfxlog.ContextLogger(p.test.Name).Entry
+	if p.circuitId != "" {
+		log = log.WithField("circuitId", p.circuitId)
+	}
+
 	log.Debug("started")
 	defer func() { done <- true }()
 	defer log.Debug("complete")
@@ -297,7 +304,10 @@ func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error), rxNotifie
 }
 
 func (p *protocol) verifier() {
-	log := pfxlog.ContextLogger(p.test.Name)
+	log := pfxlog.ContextLogger(p.test.Name).Entry
+	if p.circuitId != "" {
+		log = log.WithField("circuitId", p.circuitId)
+	}
 	log.Debug("started")
 	defer log.Debug("complete")
 

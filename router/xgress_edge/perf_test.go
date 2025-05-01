@@ -115,7 +115,7 @@ func (link *mirrorLink) Close() error {
 }
 
 func Benchmark_CowMapWritePerf(b *testing.B) {
-	mux := edge.NewCowMapMsgMux()
+	mux := edge.NewMapMsgMux()
 	writePerf(b, mux)
 }
 

@@ -824,7 +824,8 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 
 	var existingList []*edgeTerminator
 	registry.terminators.IterCb(func(_ string, terminator *edgeTerminator) {
-		if terminator.v2 && terminator.listenerId == self.terminator.listenerId {
+		if terminator.v2 && terminator.listenerId == self.terminator.listenerId &&
+			terminator.getIdentityId() == self.terminator.getIdentityId() {
 			existingList = append(existingList, terminator)
 		}
 	})
