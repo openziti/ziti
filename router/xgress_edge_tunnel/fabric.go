@@ -208,7 +208,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		return err
 	}
 
-	log := logrus.WithField("service", service.GetName())
+	log := logrus.WithField("service", service.GetName()).WithField("src", conn.RemoteAddr().String())
 
 	peerData := make(map[uint32][]byte)
 	if service.IsEncryptionRequired() {

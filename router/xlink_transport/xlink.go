@@ -17,7 +17,7 @@
 package xlink_transport
 
 import (
-	"github.com/openziti/channel/v4"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/common/inspect"
@@ -29,7 +29,7 @@ import (
 type impl struct {
 	id            string
 	key           string
-	ch            channel.Channel
+	ch            LinkChannel
 	routerId      string
 	routerVersion string
 	linkProtocol  string
@@ -74,8 +74,9 @@ func (self *impl) Init(metricsRegistry metrics.Registry) error {
 
 func (self *impl) SendPayload(msg *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error {
 	if timeout == 0 {
-		sent, err := self.ch.TrySend(msg.Marshall())
+		sent, err := self.ch.GetDefaultSender().TrySend(msg.Marshall())
 		if err == nil && !sent {
+			pfxlog.Logger().WithField("circuitId", msg.CircuitId).Info("dropped payload")
 			self.droppedMsgMeter.Mark(1)
 			if payloadType == xgress.PayloadTypeXg {
 				self.droppedXgMsgMeter.Mark(1)
@@ -88,11 +89,11 @@ func (self *impl) SendPayload(msg *xgress.Payload, timeout time.Duration, payloa
 		return err
 	}
 
-	return msg.Marshall().WithTimeout(timeout).Send(self.ch)
+	return msg.Marshall().WithTimeout(timeout).Send(self.ch.GetDefaultSender())
 }
 
 func (self *impl) SendAcknowledgement(msg *xgress.Acknowledgement) error {
-	sent, err := self.ch.TrySend(msg.Marshall())
+	sent, err := self.ch.GetAckSender().TrySend(msg.Marshall())
 	if err == nil && !sent {
 		self.droppedMsgMeter.Mark(1)
 	}
@@ -100,7 +101,7 @@ func (self *impl) SendAcknowledgement(msg *xgress.Acknowledgement) error {
 }
 
 func (self *impl) SendControl(msg *xgress.Control) error {
-	sent, err := self.ch.TrySend(msg.Marshall())
+	sent, err := self.ch.GetDefaultSender().TrySend(msg.Marshall())
 	if err == nil && !sent {
 		self.droppedMsgMeter.Mark(1)
 	}
@@ -109,7 +110,7 @@ func (self *impl) SendControl(msg *xgress.Control) error {
 
 func (self *impl) Close() error {
 	self.droppedMsgMeter.Dispose()
-	return self.ch.Close()
+	return self.ch.GetChannel().Close()
 }
 
 func (self *impl) CloseNotified() error {
@@ -148,7 +149,7 @@ func (self *impl) CloseOnce(f func()) {
 }
 
 func (self *impl) IsClosed() bool {
-	return self.ch.IsClosed()
+	return self.ch.GetChannel().IsClosed()
 }
 
 func (self *impl) InspectCircuit(detail *xgress.CircuitInspectDetail) {
@@ -170,15 +171,27 @@ func (self *impl) InspectLink() *inspect.LinkInspectDetail {
 }
 
 func (self *impl) GetAddresses() []*ctrl_pb.LinkConn {
-	localAddr := self.ch.Underlay().GetLocalAddr()
-	remoteAddr := self.ch.Underlay().GetRemoteAddr()
+	underlay := self.ch.GetChannel().Underlay()
+	if underlay != nil {
+		localAddr := self.ch.GetChannel().Underlay().GetLocalAddr()
+		remoteAddr := self.ch.GetChannel().Underlay().GetRemoteAddr()
+		return []*ctrl_pb.LinkConn{
+			{
+				Id:         "single",
+				LocalAddr:  localAddr.Network() + ":" + localAddr.String(),
+				RemoteAddr: remoteAddr.Network() + ":" + remoteAddr.String(),
+			},
+		}
+	}
+
 	return []*ctrl_pb.LinkConn{
 		{
 			Id:         "single",
-			LocalAddr:  localAddr.Network() + ":" + localAddr.String(),
-			RemoteAddr: remoteAddr.Network() + ":" + remoteAddr.String(),
+			LocalAddr:  "disconnected",
+			RemoteAddr: "disconnected",
 		},
 	}
+
 }
 
 func (self *impl) DuplicatesRejected() uint32 {

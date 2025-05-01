@@ -160,8 +160,8 @@ var m = &model.Model{
 			"testErtClient":            true,
 			"testSdkClient":            true,
 			"testSdkHost":              true,
-			"testSdkXgClient":          false,
-			"testSdkXgHost":            false,
+			"testSdkXgClient":          true,
+			"testSdkXgHost":            true,
 		},
 	},
 	StructureFactories: []model.Factory{
