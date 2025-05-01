@@ -7,7 +7,7 @@ You can use this container image to run a Ziti Controller in a Docker container.
 
 The `openziti/ziti-controller` image is thin and is based on the `openziti/ziti-cli` image, which only provides the
 `ziti` CLI. The `ziti-controller` image adds an entrypoint that provides controller bootstrapping when
-`ZITI_BOOTSTRAP=true` and uses the same defaults and options as the Linux package.
+`ZITI_BOOTSTRAP=true` and uses the same defaults and environment variables as the Linux package.
 
 ## Docker Compose
 

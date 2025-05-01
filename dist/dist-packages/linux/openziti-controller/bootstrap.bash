@@ -521,23 +521,6 @@ promptCtrlAddress() {
   fi
 }
 
-# promptPkiRoot(){
-#   if [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER:-}" == false ]]; then
-#     echo -e "\nThe new node's PKI directory must contain:"\
-#             "\n\t${ZITI_CA_CERT}"\
-#             "\n\t${ZITI_PKI_SIGNER_CERT}"\
-#             "\n\t${ZITI_PKI_SIGNER_KEY}"\
-#             "\n"
-#     # trunk-ignore(shellcheck/SC2310)
-#     if ZITI_CLUSTER_NODE_PKI="$(prompt  "Enter the path to the new cluster node's PKI directory: " )"; then
-#       setAnswer "ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" "${BOOT_ENV_FILE}"
-#     else
-#       echo "ERROR: missing ZITI_CLUSTER_NODE_PKI in ${BOOT_ENV_FILE}; required for joining an existing cluster" >&2
-#       return 1
-#     fi
-#   fi
-# }
-
 promptBootstrapCluster(){
   if [[ -z "${ZITI_BOOTSTRAP_CLUSTER:-}" ]]; then
     # trunk-ignore(shellcheck/SC2310)
@@ -853,7 +836,6 @@ else
   promptBootstrapCluster        # prompt for new cluster or existing PKI
   promptClusterNodeName         # prompt for ZITI_CLUSTER_NODE_NAME if not already set
   promptClusterTrustDomain      # prompt for ZITI_CLUSTER_TRUST_DOMAIN if not already set
-  # promptClusterNodePki          # prompt for ZITI_CLUSTER_NODE_PKI if not already set and not bootstrapping a new cluster
   promptUserPwd                 # prompt for ZITI_USER and ZITI_PWD if not already set
   loadEnvFiles                  # reload env files to source new answers from prompts
 
