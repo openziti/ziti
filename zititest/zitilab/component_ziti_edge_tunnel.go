@@ -43,6 +43,10 @@ func (self *ZitiEdgeTunnelType) GetVersion() string {
 	return self.Version
 }
 
+func (self *ZitiEdgeTunnelType) SetVersion(version string) {
+	self.Version = version
+}
+
 func (self *ZitiEdgeTunnelType) GetActions() map[string]model.ComponentAction {
 	return map[string]model.ComponentAction{
 		ZitiTunnelActionsReEnroll: model.ComponentActionF(self.ReEnroll),

@@ -22,12 +22,14 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/trace"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/sirupsen/logrus"
+	"sync/atomic"
 	"time"
 )
 
@@ -41,19 +43,9 @@ type Forwarder struct {
 	CloseNotify     <-chan struct{}
 }
 
-type Destination interface {
-	SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error
-	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
-	SendControl(control *xgress.Control) error
-	InspectCircuit(detail *xgress.CircuitInspectDetail)
-}
-
 type XgressDestination interface {
-	Destination
+	env.Destination
 	Unrouted()
-	Start()
-	IsTerminator() bool
-	Label() string
 	GetTimeOfLastRxFromLink() int64
 }
 
@@ -89,7 +81,7 @@ func (forwarder *Forwarder) TraceController() trace.Controller {
 	return forwarder.traceController
 }
 
-func (forwarder *Forwarder) RegisterDestination(circuitId string, address xgress.Address, destination Destination) {
+func (forwarder *Forwarder) RegisterDestination(circuitId string, address xgress.Address, destination env.Destination) {
 	forwarder.destinations.addDestination(address, destination)
 	forwarder.destinations.linkDestinationToCircuit(circuitId, address)
 }
@@ -271,6 +263,13 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 }
 
 func (forwarder *Forwarder) ReportForwardingFault(circuitId string, ctrlId string) {
+	if ctrlId == "" {
+		ct, _ := forwarder.circuits.getForwardTable(circuitId, false)
+		if ct != nil {
+			ctrlId = ct.ctrlId
+		}
+	}
+
 	if forwarder.faulter != nil {
 		forwarder.faulter.Report(circuitId, ctrlId)
 	} else {
@@ -325,13 +324,28 @@ func (forwarder *Forwarder) getXgressForCircuit(circuitId string) XgressDestinat
 	return nil
 }
 
+func (forwarder *Forwarder) InspectCircuits() *inspect.CircuitsDetail {
+	result := &inspect.CircuitsDetail{
+		Circuits: map[string]*inspect.CircuitDetail{},
+	}
+	forwarder.circuits.circuits.IterCb(func(key string, ft *forwardTable) {
+		result.Circuits[key] = &inspect.CircuitDetail{
+			Id:                key,
+			TimeSinceActivity: (time.Duration(time.Now().UnixMilli()-atomic.LoadInt64(&ft.last)) * time.Millisecond).String(),
+			CtrlId:            ft.ctrlId,
+			Routes:            ft.destinations.Items(),
+		}
+	})
+	return result
+}
+
 func (forwarder *Forwarder) InspectCircuit(circuitId string, getRelatedGoroutines bool) *xgress.CircuitInspectDetail {
 	if ft, found := forwarder.circuits.circuits.Get(circuitId); found {
 		result := &xgress.CircuitInspectDetail{
-			CircuitId:     circuitId,
-			Forwards:      map[string]string{},
-			XgressDetails: map[string]*xgress.InspectDetail{},
-			LinkDetails:   map[string]*xgress.LinkInspectDetail{},
+			CircuitId:       circuitId,
+			Forwards:        map[string]string{},
+			XgressDetails:   map[string]*xgress.InspectDetail{},
+			RelatedEntities: map[string]map[string]any{},
 		}
 		result.SetIncludeGoroutines(getRelatedGoroutines)
 

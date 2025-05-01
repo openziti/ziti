@@ -22,11 +22,12 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -135,7 +136,7 @@ func (self *testLink) IsClosed() bool {
 	panic("implement me")
 }
 
-func (self *testLink) InspectLink() *xgress.LinkInspectDetail {
+func (self *testLink) InspectLink() *inspect.LinkInspectDetail {
 	panic("implement me")
 }
 

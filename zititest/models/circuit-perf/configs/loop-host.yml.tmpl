@@ -1,0 +1,17 @@
+connectors:
+  default:
+    transport:
+      address: tcp:0.0.0.0:3456
+
+workloads:
+  - name: throughput
+    connector: default
+    service_name: throughput
+
+  - name: latency
+    connector: default
+    service_name: latency
+
+  - name: slow
+    connector: default
+    service_name: slow

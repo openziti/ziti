@@ -52,11 +52,16 @@ type protocol struct {
 	latencies    chan *time.Time
 	errors       chan error
 
-	txMsgRate    metrics.Meter
-	txBytesRate  metrics.Meter
-	rxMsgRate    metrics.Meter
-	rxBytesRate  metrics.Meter
-	latencyTimer metrics.Timer
+	simTxMsgRate   metrics.Meter
+	simTxBytesRate metrics.Meter
+	simRxMsgRate   metrics.Meter
+	simRxBytesRate metrics.Meter
+
+	workloadTxMsgRate   metrics.Meter
+	workloadTxBytesRate metrics.Meter
+	workloadRxMsgRate   metrics.Meter
+	workloadRxBytesRate metrics.Meter
+	latencyTimer        metrics.Timer
 }
 
 var MagicHeader = []byte{0xCA, 0xFE, 0xF0, 0x0D}
@@ -65,17 +70,23 @@ func newProtocol(peer io.ReadWriteCloser, name string, registry metrics.Registry
 	p := &protocol{
 		rxSequence: 0,
 		peer:       peer,
-		rxBlocks:   make(chan Block),
+		rxBlocks:   make(chan Block, 16),
 		txCount:    0,
 		rxCount:    0,
 		latencies:  make(chan *time.Time, 1024),
 		errors:     make(chan error, 10240),
 
-		txMsgRate:    registry.Meter(name + ".tx.messages"),
-		txBytesRate:  registry.Meter(name + ".tx.bytes"),
-		rxMsgRate:    registry.Meter(name + ".rx.messages"),
-		rxBytesRate:  registry.Meter(name + ".rx.bytes"),
+		workloadTxMsgRate:   registry.Meter(name + ".tx.messages"),
+		workloadTxBytesRate: registry.Meter(name + ".tx.bytes"),
+		workloadRxMsgRate:   registry.Meter(name + ".rx.messages"),
+		workloadRxBytesRate: registry.Meter(name + ".rx.bytes"),
+
 		latencyTimer: registry.Timer(name + ".latency"),
+
+		simTxMsgRate:   registry.Meter("sim.tx.messages"),
+		simTxBytesRate: registry.Meter("sim.tx.bytes"),
+		simRxMsgRate:   registry.Meter("sim.rx.messages"),
+		simRxBytesRate: registry.Meter("sim.rx.bytes"),
 	}
 	return p, nil
 }
@@ -113,6 +124,10 @@ func (p *protocol) run(test *loopPb.Test) error {
 		rxNotifer = waitForRxNotifier{
 			c: make(chan struct{}, 16),
 		}
+	}
+
+	if test.TxAfterRx && test.RxRequests != test.TxRequests {
+		panic(fmt.Errorf("when txAfterRx is set to true, rxRequests (%d) must equal txRequests (%d)", test.RxRequests, test.TxRequests))
 	}
 
 	if test.IsTxRandomHashed() {
@@ -295,7 +310,7 @@ func (p *protocol) verifier() {
 			errStr := fmt.Sprintf("rx timeout exceeded (%d ms.). Last rx: %v. tx count: %v, rx count: %v",
 				p.test.RxTimeout, timeSinceLastRx, atomic.LoadInt32(&p.txCount), atomic.LoadInt32(&p.rxCount))
 			// err := errors.New(errStr)
-			log.Errorf(errStr)
+			log.Error(errStr)
 			// p.errors <- err
 			//if closeErr := p.peer.Close(); closeErr != nil {
 			//	log.Error(closeErr)

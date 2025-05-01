@@ -20,10 +20,10 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/router/xgress"
 	"time"
 )
 
@@ -66,10 +66,16 @@ type Registry interface {
 	GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string
 }
 
+type Forwarder interface {
+	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error
+	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
+	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
+}
+
 // A Factory creates link listeners and link dialers
 type Factory interface {
-	CreateListener(id *identity.TokenId, f Forwarder, config transport.Configuration) (Listener, error)
-	CreateDialer(id *identity.TokenId, f Forwarder, config transport.Configuration) (Dialer, error)
+	CreateListener(id *identity.TokenId, config transport.Configuration) (Listener, error)
+	CreateDialer(id *identity.TokenId, config transport.Configuration) (Dialer, error)
 }
 
 type Listener interface {
@@ -132,16 +138,10 @@ type Xlink interface {
 	DialAddress() string
 	CloseOnce(f func())
 	IsClosed() bool
-	InspectLink() *xgress.LinkInspectDetail
+	InspectLink() *inspect.LinkInspectDetail
 	GetAddresses() []*ctrl_pb.LinkConn
 	IsDialed() bool
 	Iteration() uint32
 	AreFaultsSent() bool
 	DuplicatesRejected() uint32
-}
-
-type Forwarder interface {
-	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error
-	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
-	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
 }

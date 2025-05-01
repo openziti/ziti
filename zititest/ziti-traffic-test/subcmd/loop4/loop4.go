@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
+	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/metrics"
@@ -57,12 +58,13 @@ func NewSim() *Sim {
 }
 
 type Sim struct {
-	sdkClients  map[string]ziti.Context
-	dialers     map[string]func(workload *Workload) (net.Conn, error)
-	listeners   map[string]func(workload *Workload) (net.Listener, error)
-	closeNotify chan struct{}
-	scenario    *Scenario
-	metrics     metrics.Registry
+	sdkClients           map[string]ziti.Context
+	dialers              map[string]func(workload *Workload) (net.Conn, error)
+	listeners            map[string]func(workload *Workload) (net.Listener, error)
+	sdkMetricsStartHooks []func(ctx ziti.Context) error
+	closeNotify          chan struct{}
+	scenario             *Scenario
+	metrics              metrics.Registry
 }
 
 func (sim *Sim) InitScenario(path string) error {
@@ -82,11 +84,11 @@ func (sim *Sim) InitScenario(path string) error {
 
 	log.Debug(sim.scenario)
 
-	if err = sim.StartMetrics(); err != nil {
+	if err = sim.InitConnectors(); err != nil {
 		return err
 	}
 
-	if err = sim.InitConnectors(); err != nil {
+	if err = sim.StartMetrics(); err != nil {
 		return err
 	}
 
@@ -107,8 +109,12 @@ func (sim *Sim) InitConnectors() error {
 
 			if !connector.SdkOptions.DisableMultiChannel {
 				var cfgI any = cfg
-				if i, ok := cfgI.(interface{ SetSeparateControlPlaneConnectionEnabled(enabled bool) }); ok {
-					i.SetSeparateControlPlaneConnectionEnabled(true)
+				if i, ok := cfgI.(interface {
+					SetMaxControlConnections(val uint32)
+					SetMaxDefaultConnections(val uint32)
+				}); ok {
+					i.SetMaxControlConnections(1)
+					i.SetMaxDefaultConnections(2)
 				}
 			}
 
@@ -117,7 +123,22 @@ func (sim *Sim) InitConnectors() error {
 				return fmt.Errorf("for connector '%s', unable to create ziti sdk context for identity file '%s' (%w)",
 					name, connector.SdkOptions.IdentityFile, err)
 			}
+
+			if connector.SdkOptions.TestService != "" {
+				if conn, err := ctx.Dial(connector.SdkOptions.TestService); err != nil {
+					return err
+				} else {
+					_ = conn.Close()
+				}
+			}
+
 			sim.sdkClients[name] = ctx
+
+			if connector.SdkOptions.ReportSdkMetrics {
+				sim.sdkMetricsStartHooks = append(sim.sdkMetricsStartHooks, func(metricsCtx ziti.Context) error {
+					return sim.StartSdkMetricsReporter(ctx.Metrics(), metricsCtx)
+				})
+			}
 
 			sim.dialers[name] = func(workload *Workload) (net.Conn, error) {
 				return sim.DialSdk(ctx, workload)
@@ -147,6 +168,7 @@ func (sim *Sim) InitConnectors() error {
 			}
 
 			sim.listeners[name] = func(workload *Workload) (net.Listener, error) {
+				log.Infof("starting transport listener '%s' on '%s'", name, addr)
 				return sim.ListenTransport(addr, id, workload)
 			}
 		} else {
@@ -159,12 +181,15 @@ func (sim *Sim) InitConnectors() error {
 func (sim *Sim) DialSdk(client ziti.Context, wf *Workload) (net.Conn, error) {
 	dialOptions := &ziti.DialOptions{
 		ConnectTimeout: wf.ConnectTimeout,
+		SdkFlowControl: util.Ptr(true),
 	}
 	return client.DialWithOptions(wf.ServiceName, dialOptions)
 }
 
 func (sim *Sim) ListenSdk(client ziti.Context, wf *Workload) (net.Listener, error) {
-	return client.Listen(wf.ServiceName)
+	listenOptions := ziti.DefaultListenOptions()
+	listenOptions.SdkFlowControl = util.Ptr(true)
+	return client.ListenWithOptions(wf.ServiceName, listenOptions)
 }
 
 func (sim *Sim) DialTransport(addr transport.Address, id *identity.TokenId, wf *Workload) (net.Conn, error) {
@@ -200,24 +225,35 @@ func (sim *Sim) StartMetrics() error {
 			return fmt.Errorf("sdk connector selected for metrics '%s' does not defined", sim.scenario.Metrics.Connector)
 		}
 
-		if err := sim.StartSdkMetricsReporter(client); err != nil {
+		if err := sim.StartSdkMetricsReporter(sim.metrics, client); err != nil {
 			return err
 		}
+
+		for _, initHook := range sim.sdkMetricsStartHooks {
+			if err := initHook(client); err != nil {
+				return err
+			}
+		}
+
 	} else {
 		sim.metrics = metrics.NewRegistry("no-op", nil)
-		go sim.StartStdoutMetricsReporter()
+
+		sim.StartStdoutMetricsReporter(sim.metrics)
+		for _, ctx := range sim.sdkClients {
+			sim.StartStdoutMetricsReporter(ctx.Metrics())
+		}
 	}
 
 	return nil
 }
 
-func (sim *Sim) StartSdkMetricsReporter(ctx ziti.Context) error {
+func (sim *Sim) StartSdkMetricsReporter(registry metrics.Registry, ctx ziti.Context) error {
 	if sim.scenario.Metrics.ReportInterval == 0 {
 		return errors.New("metrics report interval must be greater than 0")
 	}
 
 	cfg := &trafficMetrics.ZitiReporterConfig{
-		Registry:    sim.metrics,
+		Registry:    registry,
 		Client:      ctx,
 		ClientId:    sim.scenario.Metrics.ClientId,
 		CloseNotify: sim.closeNotify,
@@ -234,65 +270,49 @@ func (sim *Sim) StartSdkMetricsReporter(ctx ziti.Context) error {
 	return nil
 }
 
-func (sim *Sim) StartStdoutMetricsReporter() {
-	timer := time.NewTicker(15 * time.Second)
-	defer timer.Stop()
-
-	for {
-		select {
-		case <-timer.C:
-			sim.DumpMetrics()
-		case <-sim.closeNotify:
-			return
-		}
-	}
-}
-
-func (sim *Sim) DumpMetrics() {
-	emitter := &metricsEmitter{}
-	sim.metrics.AcceptVisitor(emitter)
-	emitter.Dump()
+func (sim *Sim) StartStdoutMetricsReporter(registry metrics.Registry) {
+	reporter := metrics.NewDelegatingReporter(registry, &metricsEmitter{}, sim.closeNotify)
+	go reporter.Start(15 * time.Second)
 }
 
 type metricsEmitter struct {
 	msgs []string
 }
 
-func (em *metricsEmitter) Printf(msg string, args ...interface{}) {
-	em.msgs = append(em.msgs, fmt.Sprintf(msg, args...))
+func (em *metricsEmitter) Filter(name string) bool {
+	return strings.Contains(name, metrics.MetricNameCount) ||
+		strings.Contains(name, metrics.MetricNameRateM1) ||
+		strings.Contains(name, metrics.MetricNameMean) ||
+		strings.Contains(name, metrics.MetricNamePercentile)
 }
 
-func (em *metricsEmitter) Dump() {
+func (em *metricsEmitter) StartReport(metrics.Registry) {}
+
+func (em *metricsEmitter) EndReport(metrics.Registry) {
 	sort.Strings(em.msgs)
 	for _, msg := range em.msgs {
 		fmt.Println(msg)
 	}
+	em.msgs = nil
 }
 
-func (m *metricsEmitter) VisitGauge(name string, gauge metrics.Gauge) {
+func (em *metricsEmitter) AcceptIntMetric(name string, value int64) {
+	em.Printf("%s: %v", name, value)
 }
 
-func (m *metricsEmitter) VisitMeter(name string, metric metrics.Meter) {
-	m.Printf("%s.count: %v", name, metric.Count())
-
-	if strings.Contains(name, "bytes") {
-		m.Printf("%s.avg: %v", name, outputz.FormatBytes(uint64(metric.Rate1())))
-	} else {
-		m.Printf("%s.rate_1m: %v", name, metric.Rate1())
+func (em *metricsEmitter) AcceptFloatMetric(name string, value float64) {
+	if strings.HasSuffix(name, metrics.MetricNameRateM1) && strings.Contains(name, "bytes") {
+		em.Printf("%s: %v", name, outputz.FormatBytes(uint64(value)))
 	}
+	em.Printf("%s: %v", name, value)
 }
 
-func (m *metricsEmitter) VisitHistogram(name string, metric metrics.Histogram) {
-	m.Printf("%s.count: %v", name, metric.Count())
-	m.Printf("%s.avg: %v", name, metric.Mean())
-	m.Printf("%s.p95: %v", name, metric.Percentile(0.95))
+func (em *metricsEmitter) AcceptPercentileMetric(name string, value metrics.PercentileSource) {
+	em.Printf("%s.p95: %v", name, time.Duration(value.Percentile(0.95)))
 }
 
-func (m *metricsEmitter) VisitTimer(name string, metric metrics.Timer) {
-	m.Printf("%s.count: %v", name, metric.Count())
-	m.Printf("%s.rate_1m: %v", name, metric.Rate1())
-	m.Printf("%s.avg: %v", name, time.Duration(int64(metric.Mean())).String())
-	m.Printf("%s.p95: %v", name, time.Duration(int64(metric.Percentile(0.95))))
+func (em *metricsEmitter) Printf(msg string, args ...interface{}) {
+	em.msgs = append(em.msgs, fmt.Sprintf(msg, args...))
 }
 
 type ListenerAdapter struct {

@@ -55,6 +55,10 @@ func (self *ZrokControllerType) GetVersion() string {
 	return self.Version
 }
 
+func (self *ZrokControllerType) SetVersion(version string) {
+	self.Version = version
+}
+
 func (self *ZrokControllerType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }

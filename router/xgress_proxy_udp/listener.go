@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/router/xgress_udp"
 	"github.com/pkg/errors"

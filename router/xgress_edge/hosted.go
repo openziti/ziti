@@ -760,6 +760,7 @@ func (self *inspectTerminatorsEvent) handle(registry *hostedServiceRegistry) {
 			Cost:            terminator.cost,
 			Precedence:      terminator.precedence.String(),
 			AssignIds:       terminator.assignIds,
+			UseSdkXgress:    terminator.useSdkXgress,
 			V2:              terminator.v2,
 			SupportsInspect: terminator.supportsInspect,
 			OperationActive: terminator.operationActive.Load(),

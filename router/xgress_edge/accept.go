@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/cert"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"math"
 	"sync/atomic"
 	"time"
@@ -62,14 +63,17 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		fingerprints: fpg.FromCerts(binding.GetChannel().Certificates()),
 		ch:           sdkChannel,
 		idSeq:        math.MaxUint32 / 2,
+		forwarder:    self.listener.factory.env.GetForwarder(),
+		xgCircuits:   cmap.New[*xgEdgeForwarder](),
 	}
+	binding.SetUserData(conn)
 
 	log.Debug("peer fingerprints ", conn.fingerprints)
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeConnect,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			conn.processConnect(self.listener.factory.stateManager, m, ch)
+			conn.processConnect(m, ch)
 		},
 	})
 
@@ -115,6 +119,10 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(edge.ContentTypeTraceRouteResponse, conn.msgMux.HandleReceive)
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 
+	binding.AddReceiveHandlerF(edge.ContentTypeXgPayload, conn.handleXgPayload)
+	binding.AddReceiveHandlerF(edge.ContentTypeXgAcknowledgement, conn.handleXgAcknowledgement)
+	binding.AddReceiveHandlerF(edge.ContentTypeXgClose, conn.handleXgClose)
+
 	// Since data is the most common type, it gets to dispatch directly
 	if self.listener.factory.routerConfig.Metrics.EnableDataDelayMetric {
 		delayTimer := self.listener.factory.env.GetMetricsRegistry().Timer("xgress_edge.long_data_queue_time")
@@ -129,7 +137,6 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		binding.AddTypedReceiveHandler(conn.msgMux)
 	}
 	binding.AddCloseHandler(conn)
-	binding.AddPeekHandler(debugPeekHandler{})
 
 	if err := self.sessionBindHandler.validateApiSession(binding, conn); err != nil {
 		self.connectFailureMeter.Mark(1)
@@ -152,12 +159,12 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	return nil
 }
 
-type debugPeekHandler struct{}
+type DebugPeekHandler struct{}
 
-func (d debugPeekHandler) Connect(channel.Channel, string) {
+func (d DebugPeekHandler) Connect(channel.Channel, string) {
 }
 
-func (d debugPeekHandler) Rx(m *channel.Message, _ channel.Channel) {
+func (d DebugPeekHandler) Rx(m *channel.Message, _ channel.Channel) {
 	if m.ContentType == edge.ContentTypeDialSuccess || m.ContentType == edge.ContentTypeDialFailed {
 		connId, _ := m.GetUint32Header(edge.ConnIdHeader)
 		result, err := edge.UnmarshalDialResult(m)
@@ -171,7 +178,7 @@ func (d debugPeekHandler) Rx(m *channel.Message, _ channel.Channel) {
 	}
 }
 
-func (d debugPeekHandler) Tx(m *channel.Message, _ channel.Channel) {
+func (d DebugPeekHandler) Tx(m *channel.Message, _ channel.Channel) {
 	if m.ContentType == edge.ContentTypeDial {
 		connId, _ := m.GetUint32Header(edge.ConnIdHeader)
 		newConnId, _ := m.GetUint32Header(edge.RouterProvidedConnId)
@@ -182,7 +189,7 @@ func (d debugPeekHandler) Tx(m *channel.Message, _ channel.Channel) {
 	}
 }
 
-func (d debugPeekHandler) Close(_ channel.Channel) {
+func (d DebugPeekHandler) Close(_ channel.Channel) {
 }
 
 func NewAcceptor(listener *listener, uListener channel.UnderlayListener, options *channel.Options) *Acceptor {

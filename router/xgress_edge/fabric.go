@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router/xgress"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/pkg/errors"
 	"io"
@@ -55,6 +55,7 @@ type edgeTerminator struct {
 	precedence        edge_ctrl_pb.TerminatorPrecedence
 	hostData          map[uint32][]byte
 	assignIds         bool
+	useSdkXgress      bool
 	onClose           func()
 	v2                bool
 	state             concurrenz.AtomicValue[xgress_common.TerminatorState]
@@ -356,7 +357,7 @@ func (self *edgeXgressConn) WritePayload(p []byte, headers map[uint8][]byte) (n 
 		}
 	}
 
-	msg := edge.NewDataMsg(self.Id(), self.NextMsgId(), p)
+	msg := edge.NewDataMsg(self.Id(), p)
 	if msgUUID != nil {
 		msg.Headers[edge.UUIDHeader] = msgUUID
 	}

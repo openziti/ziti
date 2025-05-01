@@ -18,20 +18,18 @@ package api_impl
 
 import (
 	"fmt"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/raft"
-	"net/http"
-	"time"
-
-	"github.com/go-openapi/runtime/middleware"
-	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/raft"
 	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/rest_server/operations/cluster"
+	"net/http"
 )
 
 func init() {
@@ -116,23 +114,13 @@ func (r *ClusterRouter) addMember(n *network.Network, rc api.RequestContext, par
 	ClusterController := r.getClusterController(n)
 	if ClusterController != nil {
 		addr := *params.Member.Address
-		peerId, peerAddr, err := ClusterController.Mesh.GetPeerInfo(addr, 15*time.Second)
-		if err != nil {
-			msg := fmt.Sprintf("unable to retrieve cluster member id [%s] for supplied address", err.Error())
-			rc.RespondWithApiError(apierror.NewBadRequestFieldError(*errorz.NewFieldError(msg, "address", addr)))
-			return
-		}
-
-		id := string(peerId)
-		addr = string(peerAddr)
 
 		req := &cmd_pb.AddPeerRequest{
 			Addr:    addr,
-			Id:      id,
 			IsVoter: *params.Member.IsVoter,
 		}
 
-		if err = ClusterController.Join(req); err != nil {
+		if err := ClusterController.Join(req); err != nil {
 			msg := fmt.Sprintf("unable to add cluster member for supplied address: [%s]", err.Error())
 			rc.RespondWithApiError(models.ToApiErrorWithDefault(err, func(err error) *errorz.ApiError {
 				return apierror.NewBadRequestFieldError(*errorz.NewFieldError(msg, "address", addr))

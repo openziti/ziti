@@ -384,6 +384,7 @@ type SimpleTestIdentity struct {
 
 func (s *SimpleTestIdentity) IsCertSettable() error       { return nil }
 func (s *SimpleTestIdentity) IsServerCertSettable() error { return nil }
+
 func (s *SimpleTestIdentity) GetX509ActiveClientCertChain() []*x509.Certificate {
 	return nil
 }

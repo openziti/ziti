@@ -54,6 +54,10 @@ func (self *ControllerType) GetVersion() string {
 	return self.Version
 }
 
+func (self *ControllerType) SetVersion(version string) {
+	self.Version = version
+}
+
 func (self *ControllerType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 }
@@ -164,8 +168,8 @@ func (self *ControllerType) InitRaft(run model.Run, c *model.Component) error {
 	err := run.GetModel().ForEachComponent("*", 1, func(other *model.Component) error {
 		if _, ok := c.Type.(*ControllerType); ok {
 			binaryPath := GetZitiBinaryPath(c, self.Version)
-			tmpl := "%s agent cluster add %v --id %v"
-			cmd := fmt.Sprintf(tmpl, binaryPath, "tls:"+other.Host.PublicIp+":6262", other.Id)
+			tmpl := "%s agent cluster add %v"
+			cmd := fmt.Sprintf(tmpl, binaryPath, "tls:"+other.Host.PublicIp+":6262")
 			count++
 			return c.GetHost().ExecLogOnlyOnError(cmd)
 		}

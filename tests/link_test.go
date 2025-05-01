@@ -8,11 +8,11 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	id "github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/link"
-	"github.com/openziti/ziti/router/xgress"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/openziti/ziti/router/xlink_transport"
 	"github.com/openziti/ziti/tests/testutil"
@@ -154,7 +154,7 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 	}
 	metricsRegistery := metrics.NewRegistry("test", nil)
 	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, link.NewLinkRegistry(setupEnv()), metricsRegistery)
-	dialer, err := factory.CreateDialer(badId, nil, tcfg)
+	dialer, err := factory.CreateDialer(badId, tcfg)
 	ctx.Req.NoError(err)
 	dialReq := &testDial{
 		Key:          "default->tls:router1->default",
@@ -191,7 +191,7 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 
 	metricsRegistery := metrics.NewRegistry("test", nil)
 	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, link.NewLinkRegistry(setupEnv()), metricsRegistery)
-	dialer, err := factory.CreateDialer(router2Id, nil, tcfg)
+	dialer, err := factory.CreateDialer(router2Id, tcfg)
 	ctx.Req.NoError(err)
 	dialReq := &testDial{
 		Key:          "default->tls:router1->default",

@@ -54,6 +54,10 @@ func (self *ZrokFrontendType) GetVersion() string {
 	return self.Version
 }
 
+func (self *ZrokFrontendType) SetVersion(version string) {
+	self.Version = version
+}
+
 func (self *ZrokFrontendType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 	if self.ZrokCtrlSelector == "" {
