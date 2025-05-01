@@ -75,6 +75,10 @@ issueSignerCert() {
     elif [[ ! -s "${ZITI_PKI_SIGNER_CERT}" || ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
       echo "ERROR: ${ZITI_PKI_SIGNER_CERT} and ${ZITI_PKI_SIGNER_KEY} must both exist or neither exist as non-empty files" >&2
       return 1
+    fi
+
+    if [[ -s "${ZITI_PKI_SIGNER_CERT}" && -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
+      echo "DEBUG: edge signer CA exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")" >&3
     else
       # trunk-ignore(shellcheck/SC2312)
       echo "DEBUG: edge signer exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")" >&3
