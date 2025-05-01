@@ -13,6 +13,8 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
 	clientEnroll "github.com/openziti/edge-api/rest_client_api_client/enroll"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	managementEnrollment "github.com/openziti/edge-api/rest_management_api_client/enrollment"
@@ -20,6 +22,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	nfPem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/identity/certtools"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
 	"math/big"
@@ -29,6 +32,38 @@ import (
 
 type ManagementHelperClient struct {
 	*edge_apis.ManagementApiClient
+	testCtx *TestContext
+}
+
+func (helper *ManagementHelperClient) CreateAndEnrollOttIdentity(isAdmin bool, roleAttributes ...string) (*rest_model.IdentityDetail, *edge_apis.CertCredentials, error) {
+	idLoc, err := helper.CreateIdentity(uuid.NewString(), isAdmin, roleAttributes...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create identity: %w", err)
+	}
+	expiresAt := time.Now().Add(1 * time.Hour)
+
+	ottEnrollLoc, err := helper.CreateEnrollmentOtt(&idLoc.ID, &expiresAt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create ott enrollment: %w", err)
+	}
+
+	ottEnrollment, err := helper.GetEnrollment(ottEnrollLoc.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get enrollment: %w", err)
+	}
+
+	clientClient := helper.testCtx.NewEdgeClientApi(nil)
+	ottCreds, err := clientClient.CompleteOttEnrollment(*ottEnrollment.Token)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to complete ott enrollment: %w", err)
+	}
+
+	identityDetail, err := helper.GetIdentity(idLoc.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get identity: %w", err)
+	}
+
+	return identityDetail, ottCreds, nil
 }
 
 func (helper *ManagementHelperClient) CreateIdentity(name string, isAdmin bool, roleAttributes ...string) (*rest_model.CreateLocation, error) {
@@ -66,7 +101,7 @@ func (helper *ManagementHelperClient) GetIdentity(identityId string) (*rest_mode
 	return resp.Payload.Data, nil
 }
 
-func (helper *ManagementHelperClient) NewEnrollmentOtt(identityId *string, expiresAt *time.Time) (*rest_model.CreateLocation, error) {
+func (helper *ManagementHelperClient) CreateEnrollmentOtt(identityId *string, expiresAt *time.Time) (*rest_model.CreateLocation, error) {
 	var expAt *strfmt.DateTime
 
 	if expiresAt != nil {
@@ -128,7 +163,7 @@ func (helper *ManagementHelperClient) CreateCa(testCa *ca) (*rest_model.CreateLo
 	return resp.Payload.Data, nil
 }
 
-func (helper *ManagementHelperClient) NewEnrollmentOttCa(identityId *string, caId *string, expiresAt *time.Time) (*rest_model.CreateLocation, error) {
+func (helper *ManagementHelperClient) CreateEnrollmentOttCa(identityId *string, caId *string, expiresAt *time.Time) (*rest_model.CreateLocation, error) {
 	var expAt *strfmt.DateTime
 
 	if expiresAt != nil {
@@ -194,7 +229,7 @@ func (helper *ManagementHelperClient) VerifyCa(id string, token string, cert *x5
 	return nil
 }
 
-func (helper *ManagementHelperClient) NewEnrollmentUpdb(identityId *string, username *string, expiresAt *time.Time) (*rest_model.CreateLocation, error) {
+func (helper *ManagementHelperClient) CreateEnrollmentUpdb(identityId *string, username *string, expiresAt *time.Time) (*rest_model.CreateLocation, error) {
 	var expAt *strfmt.DateTime
 
 	if expiresAt != nil {
@@ -219,8 +254,21 @@ func (helper *ManagementHelperClient) NewEnrollmentUpdb(identityId *string, user
 	return resp.Payload.Data, nil
 }
 
+func (helper *ManagementHelperClient) GetIdentityAuthenticators(identityId string) ([]*rest_model.AuthenticatorDetail, error) {
+	getIdAuthenticatorsParams := managementIdentity.NewGetIdentityAuthenticatorsParams()
+	getIdAuthenticatorsParams.ID = identityId
+	resp, err := helper.API.Identity.GetIdentityAuthenticators(getIdAuthenticatorsParams, nil)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve identity authenticators: %w", err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
 type ClientHelperClient struct {
 	*edge_apis.ClientApiClient
+	testCtx *TestContext
 }
 
 func (helper *ClientHelperClient) CompleteOttEnrollment(enrollmentToken string) (*edge_apis.CertCredentials, error) {
@@ -344,7 +392,7 @@ func (helper *ClientHelperClient) CompleteOttCaEnrollment(enrollmentToken string
 	if len(clientCert) == 0 {
 		return nil, fmt.Errorf("no client certificates returned from enrollment")
 	}
-	
+
 	var rawCerts [][]byte
 
 	for _, cert := range clientCert {
@@ -429,6 +477,86 @@ func (helper *ClientHelperClient) CompleteUpdbEnrollment(enrollmentToken string,
 		Username:        username,
 		Password:        password,
 	}, nil
+}
+
+func (helper *ClientHelperClient) ExtendCertsWithAuthenticatorId(authenticatorId string) (*edge_apis.CertCredentials, error) {
+	request, err := certtools.NewCertRequest(map[string]string{
+		"C": "US", "O": "NetFoundry-API-Test", "CN": uuid.NewString(),
+	}, nil)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not create base CSR values: %w", err)
+	}
+
+	newPrivateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("could not generate private key: %w", err)
+	}
+
+	csr, err := x509.CreateCertificateRequest(rand.Reader, request, newPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("could not create CSR: %w", err)
+	}
+
+	csrPem := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr}))
+
+	extendParams := &current_api_session.ExtendCurrentIdentityAuthenticatorParams{
+		Extend: &rest_model.IdentityExtendEnrollmentRequest{
+			ClientCertCsr: &csrPem,
+		},
+		ID: authenticatorId,
+	}
+
+	extendResp, err := helper.API.CurrentAPISession.ExtendCurrentIdentityAuthenticator(extendParams, nil)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not extend current identity authenticator: %w", err)
+	}
+
+	caCerts := nfPem.PemStringToCertificates(extendResp.Payload.Data.Ca)
+	caPool := x509.NewCertPool()
+
+	for _, c := range caCerts {
+		caPool.AddCert(c)
+	}
+
+	newCerts := nfPem.PemStringToCertificates(extendResp.Payload.Data.ClientCert)
+
+	newCreds := &edge_apis.CertCredentials{
+		BaseCredentials: edge_apis.BaseCredentials{
+			CaPool: caPool,
+		},
+		Certs: newCerts,
+		Key:   newPrivateKey,
+	}
+
+	verifyParams := &current_api_session.ExtendVerifyCurrentIdentityAuthenticatorParams{
+		Extend: &rest_model.IdentityExtendValidateEnrollmentRequest{
+			ClientCert: &extendResp.Payload.Data.ClientCert,
+		},
+		ID: authenticatorId,
+	}
+
+	_, err = helper.API.CurrentAPISession.ExtendVerifyCurrentIdentityAuthenticator(verifyParams, nil)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not verify the extension of the authenticator: %w", err)
+	}
+
+	return newCreds, nil
+
+}
+
+func (helper *ClientHelperClient) GetCurrentApiSessionDetail() (*rest_model.CurrentAPISessionDetail, error) {
+	params := &current_api_session.GetCurrentAPISessionParams{}
+
+	resp, err := helper.API.CurrentAPISession.GetCurrentAPISession(params, nil)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not get current api session detail: %w", err)
+	}
+
+	return resp.Payload.Data, nil
 }
 
 func generateCaSignedClientCert(caCert *x509.Certificate, caSigner crypto.Signer, commonName string) (*x509.Certificate, crypto.Signer, error) {
