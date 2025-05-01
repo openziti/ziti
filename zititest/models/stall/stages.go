@@ -20,11 +20,11 @@ func (self *stageFactory) Build(m *model.Model) error {
 	runPhase := fablib_5_operation.NewPhase()
 	//cleanupPhase := fablib_5_operation.NewPhase()
 
-	clientMetrics := zitilib_5_operation.NewClientMetricsWithIdMapper("metrics", runPhase.GetCloser(), func(s string) string {
+	clientMetrics := zitilib_5_operation.NewSimServices(func(s string) string {
 		return "component#" + s
 	})
 
-	m.AddActivationStage(clientMetrics)
+	m.AddActivationStageF(clientMetrics.SetupSimControllerIdentity)
 
 	m.AddOperatingActions("stopSdkApps", "syncModelEdgeState")
 	m.AddOperatingStage(fablib_5_operation.InfluxMetricsReporter())
@@ -42,7 +42,10 @@ func (self *stageFactory) Build(m *model.Model) error {
 		return "component.edgeId:" + id
 	}))
 
-	m.AddOperatingStage(clientMetrics)
+	m.AddOperatingStage(clientMetrics.CollectSimMetricStage("metrics"))
+	m.AddOperatingStageF(model.StageActionF(func(run model.Run) error {
+		return clientMetrics.CloseMetricsListenerOnNotify(runPhase.GetCloser())
+	}))
 
 	//for _, host := range m.SelectHosts("*") {
 	//	m.AddOperatingStage(fablib_5_operation.StreamSarMetrics(host, 5, 3, runPhase, cleanupPhase))

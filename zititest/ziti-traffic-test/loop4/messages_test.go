@@ -1,11 +1,12 @@
-package loop3
+package loop4
 
 import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha512"
 	"github.com/google/go-cmp/cmp"
-	loop3_pb "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop3/pb"
+	"github.com/openziti/metrics"
+	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
@@ -36,11 +37,13 @@ func Test_MessageSerDeser(t *testing.T) {
 
 	testBuf := &testPeer{}
 
-	p := &protocol{
-		peer: testBuf,
-		test: &loop3_pb.Test{
-			Name: "test",
-		},
+	metricsRegistry := metrics.NewRegistry("test", nil)
+
+	p, err := newProtocol(testBuf, "test", metricsRegistry)
+	req.NoError(err)
+
+	p.test = &loopPb.Test{
+		Name: "test",
 	}
 
 	req.NoError(block.Tx(p))

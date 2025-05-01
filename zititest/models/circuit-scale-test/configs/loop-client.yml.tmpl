@@ -1,0 +1,73 @@
+connectors:
+  default:
+    sdk:
+      identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
+      report_sdk_metrics: true
+
+metrics:
+  connector: default
+  service: metrics
+  interval: 5s
+  clientId: {{ .Component.Id }}
+
+workloads:
+  - name:         throughput
+    connector:    default
+    service_name: throughput
+    concurrency:  2
+    iterations:   100
+    dialer:
+      txRequests:       10000
+      txPacing:         0ms
+      txMaxJitter:      0
+      rxTimeout:        240000
+      payloadMinBytes:  10000
+      payloadMaxBytes:  10000
+    listener:
+      txRequests:       0
+      txAfterRx:        false
+      rxTimeout:        240000
+      #rxPacing:         100ms
+      payloadMinBytes:  64
+      payloadMaxBytes:  256
+
+  - name:         latency
+    connector:    default
+    service_name: latency
+    concurrency:  20
+    iterations:   2000
+    dialer:
+      txRequests:       1
+      txPacing:         0
+      txMaxJitter:      0
+      rxTimeout:        240000
+      payloadMinBytes:  64
+      payloadMaxBytes:  256
+      latencyFrequency: 1
+    listener:
+      txRequests:       1
+      txAfterRx:        true
+      rxTimeout:        240000
+      rxPacing:         0
+      payloadMinBytes:  2048
+      payloadMaxBytes:  10000
+
+  - name:         slow
+    connector:    default
+    service_name: slow
+    concurrency:  2
+    iterations:   1
+    dialer:
+      txRequests:       10000
+      txPacing:         0
+      txMaxJitter:      0
+      rxTimeout:        240000
+      payloadMinBytes:  64000
+      payloadMaxBytes:  64000
+    listener:
+      txRequests:       10000
+      txAfterRx:        true
+      rxTimeout:        240000
+      rxPacing:         1s
+      payloadMinBytes:  64
+      payloadMaxBytes:  256

@@ -26,11 +26,11 @@ import (
 	"github.com/openziti/transport/v2/transwarp"
 	"github.com/openziti/transport/v2/transwarptls"
 	"github.com/openziti/transport/v2/wss"
+	_ "github.com/openziti/ziti/zititest/ziti-traffic-test/client"
+	_ "github.com/openziti/ziti/zititest/ziti-traffic-test/loop2"
+	_ "github.com/openziti/ziti/zititest/ziti-traffic-test/loop3"
+	_ "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4"
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd"
-	_ "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/client"
-	_ "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop2"
-	_ "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop3"
-	_ "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop4"
 	"github.com/sirupsen/logrus"
 )
 

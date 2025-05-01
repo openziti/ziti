@@ -17,7 +17,7 @@
 package loop3
 
 import (
-	loop3_pb "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop3/pb"
+	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop3/pb"
 	"gopkg.in/yaml.v2"
 	"os"
 	"time"
