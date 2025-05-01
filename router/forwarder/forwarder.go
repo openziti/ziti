@@ -91,11 +91,11 @@ func (forwarder *Forwarder) UnregisterDestinations(circuitId string) {
 	if addresses, found := forwarder.destinations.getAddressesForCircuit(circuitId); found {
 		for _, address := range addresses {
 			if destination, found := forwarder.destinations.getDestination(address); found {
-				log.Debugf("unregistering destination [@/%v] for circuit", address)
+				log.Infof("unregistering destination [@/%v] for circuit", address)
 				forwarder.destinations.removeDestination(address)
 				go destination.(XgressDestination).Unrouted()
 			} else {
-				log.Debugf("no destinations found for [@/%v] for circuit", address)
+				log.Infof("no destinations found for [@/%v] for circuit", address)
 			}
 		}
 		forwarder.destinations.unlinkCircuit(circuitId)
@@ -142,7 +142,7 @@ func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
 			"circuitId":   circuitId,
 			"source":      forward.SrcAddress,
 			"destination": forward.DstAddress,
-		}).Debug("route added")
+		}).Info("route added")
 	}
 	forwarder.circuits.setForwardTable(circuitId, circuitFt)
 	return nil

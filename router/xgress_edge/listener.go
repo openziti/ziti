@@ -1040,6 +1040,8 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Cha
 		return
 	}
 
+	// pfxlog.Logger().Infof("forwarding payload from sdk circuitId: %s, seq: %d", payload.CircuitId, payload.Sequence)
+
 	if err = self.forwarder.ForwardPayload(edgeFwd.address, payload, 0); err != nil {
 		if !channel.IsTimeout(err) {
 			pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Error("unable to forward payload")
@@ -1074,6 +1076,8 @@ func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, ch cha
 		pfxlog.Logger().WithField("circuitId", ack.CircuitId).Error("no edge forwarder found for edge circuit")
 		return
 	}
+
+	// pfxlog.Logger().Infof("forwarding ack from sdk circuitId: %s, seq: %d", ack.CircuitId, ack.Sequence)
 
 	if err = self.forwarder.ForwardAcknowledgement(edgeFwd.address, ack); err != nil {
 		pfxlog.Logger().WithFields(ack.GetLoggerFields()).WithError(err).Error("failed to forward acknowledgement")
@@ -1187,6 +1191,8 @@ func (self *xgEdgeForwarder) GetTags() map[string]string {
 }
 
 func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.Duration, _ xgress.PayloadType) error {
+	// pfxlog.Logger().Infof("forwarding payload to sdk circuitId: %s, seq: %d", payload.CircuitId, payload.Sequence)
+
 	msg := payload.Marshall()
 	msg.PutUint32Header(edge.ConnIdHeader, self.connId)
 	if timeout == 0 {
@@ -1195,7 +1201,7 @@ func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.D
 			self.listener.droppedMsgMeter.Mark(1)
 			self.listener.droppedPayloadsMeter.Mark(1)
 
-			pfxlog.Logger().WithField("circuitId", payload.CircuitId).Debug("payload to xgress sdk dropped")
+			pfxlog.Logger().WithField("circuitId", payload.CircuitId).Info("payload to xgress sdk dropped")
 			if !payload.IsRetransmitFlagSet() {
 				self.metrics.Tx(self, self.originator, payload)
 			}
@@ -1219,6 +1225,8 @@ func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.D
 }
 
 func (self *xgEdgeForwarder) SendAcknowledgement(ack *xgress.Acknowledgement) error {
+	// pfxlog.Logger().Infof("forwarding ack to sdk circuitId: %s, seq: %d", ack.CircuitId, ack.Sequence)
+
 	msg := ack.Marshall()
 	msg.PutUint32Header(edge.ConnIdHeader, self.connId)
 	sent, err := self.ch.GetDefaultSender().TrySend(msg)
@@ -1249,13 +1257,13 @@ func (self *xgEdgeForwarder) Init(ctx *connectContext) bool {
 }
 
 func (self *xgEdgeForwarder) RegisterRouting() {
-	pfxlog.Logger().WithField("circuitId", self.circuitId).Debug("routing registered")
+	pfxlog.Logger().WithField("circuitId", self.circuitId).Info("routing registered")
 	self.forwarder.RegisterDestination(self.circuitId, self.address, self)
 	self.xgCircuits.Set(self.circuitId, self)
 }
 
 func (self *xgEdgeForwarder) UnregisterRouting() {
-	pfxlog.Logger().WithField("circuitId", self.circuitId).Debug("routing unregistered")
+	pfxlog.Logger().WithField("circuitId", self.circuitId).Info("routing unregistered")
 	self.forwarder.EndCircuit(self.circuitId)
 	self.xgCircuits.Set(self.circuitId, self)
 }
@@ -1298,8 +1306,8 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 }
 
 func (self *xgEdgeForwarder) Unrouted() {
-	pfxlog.Logger().WithField("circuitId", self.circuitId).Debug("unroute: start")
-	defer pfxlog.Logger().WithField("circuitId", self.circuitId).Debug("unroute: complete")
+	pfxlog.Logger().WithField("circuitId", self.circuitId).Info("unroute: start")
+	defer pfxlog.Logger().WithField("circuitId", self.circuitId).Info("unroute: complete")
 	self.xgCircuits.Remove(self.circuitId)
 
 	msg := edge.NewStateClosedMsg(self.connId, "xgress unrouted")

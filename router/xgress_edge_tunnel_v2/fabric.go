@@ -116,7 +116,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		return err
 	}
 
-	log.WithField("circuitId", response.CircuitId).Debug("circuit established")
+	log.WithField("circuitId", response.CircuitId).Info("circuit established")
 
 	peerKey, peerKeyFound := response.PeerData[uint32(edge.PublicKeyHeader)]
 	if service.IsEncryptionRequired() && !peerKeyFound {
