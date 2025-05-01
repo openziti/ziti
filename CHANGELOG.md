@@ -3,8 +3,17 @@
 ## What's New
 
 * Bug fixes and library updates
+* Change to cluster add peer
 * Experimental multi-underlay SDK support
 * Experimental SDK flow-control support
+
+## Cluster Add Peer Change
+
+The `ziti agent cluster add` command no longer supports the `--id` argument 
+for providing the peer id. The add operation will now always connect to the
+peer, verify the certs and get the peer advertise address and id from the 
+peer directly. This will ensure that the peer is reachable and valid before
+it is added to the cluster. 
 
 ## Multi-underlay SDK support
 
@@ -43,6 +52,7 @@ or be removed.
 * github.com/openziti/transport/v2: [v2.0.167 -> v2.0.168](https://github.com/openziti/transport/compare/v2.0.167...v2.0.168)
 * github.com/openziti/xweb/v2: [v2.3.0 -> v2.3.1](https://github.com/openziti/xweb/compare/v2.3.0...v2.3.1)
 * github.com/openziti/ziti: [v1.5.4 -> v1.6.0](https://github.com/openziti/ziti/compare/v1.5.4...v1.6.0)
+    * [Issue #3005](https://github.com/openziti/ziti/issues/3005) - Always check that a controller is reachable and valid before adding it to an HA controller cluster
     * [Issue #2986](https://github.com/openziti/ziti/issues/2986) - [Router] Support xgress flow control from the SDK
     * [Issue #2999](https://github.com/openziti/ziti/issues/2999) - OIDC JWT backed sessions cannot verify extended certs
     * [Issue #2997](https://github.com/openziti/ziti/issues/2997) - Add Authenticator Id to OIDC JWTs/return for current-api-session
@@ -62,6 +72,7 @@ or be removed.
     * [Issue #2951](https://github.com/openziti/ziti/issues/2951) - Remove global xgress retransmitter
     * [Issue #2950](https://github.com/openziti/ziti/issues/2950) - Move router specific xgress code to a new xgress_router package
     * [Issue #2920](https://github.com/openziti/ziti/issues/2920) - Make xgress acker configurable
+
 
 # Release 1.5.4
 

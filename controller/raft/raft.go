@@ -790,15 +790,21 @@ func (self *Controller) Bootstrap() error {
 			return err
 		}
 
-		req := &cmd_pb.AddPeerRequest{
-			Addr:    string(self.Mesh.GetAdvertiseAddr()),
-			Id:      self.env.GetId().Token,
-			IsVoter: true,
-		}
+		log := pfxlog.Logger()
 
-		if err := self.Join(req); err != nil {
-			return err
+		log.Infof("bootstrapping cluster")
+		f := self.GetRaft().BootstrapCluster(raft.Configuration{Servers: []raft.Server{
+			{
+				ID:       raft.ServerID(self.env.GetId().Token),
+				Address:  self.Mesh.GetAdvertiseAddr(),
+				Suffrage: raft.Voter,
+			},
+		}})
+		if err := f.Error(); err != nil {
+			return fmt.Errorf("failed to bootstrap cluster (%w)", err)
 		}
+		self.bootstrapped.Store(true)
+		log.Info("raft cluster bootstrap complete")
 
 		start := time.Now()
 		firstCheckPassed := false
@@ -832,42 +838,11 @@ func (self *Controller) Join(req *cmd_pb.AddPeerRequest) error {
 	self.clusterLock.Lock()
 	defer self.clusterLock.Unlock()
 
-	if req.Id == "" {
-		return fmt.Errorf("invalid server id '%v'", req.Id)
-	}
-
 	if req.Addr == "" {
 		return fmt.Errorf("invalid server addr '%v' for servier %v", req.Addr, req.Id)
 	}
 
-	if self.bootstrapped.Load() || self.GetRaft().LastIndex() > 0 {
-		return self.HandleAddPeer(req)
-	}
-
-	suffrage := raft.Voter
-	if !req.IsVoter {
-		suffrage = raft.Nonvoter
-	}
-
-	return self.tryBootstrap(raft.Server{
-		ID:       raft.ServerID(req.Id),
-		Address:  raft.ServerAddress(req.Addr),
-		Suffrage: suffrage,
-	})
-}
-
-func (self *Controller) tryBootstrap(servers ...raft.Server) error {
-	log := pfxlog.Logger()
-
-	log.Infof("bootstrapping cluster")
-	f := self.GetRaft().BootstrapCluster(raft.Configuration{Servers: servers})
-	if err := f.Error(); err != nil {
-		return fmt.Errorf("failed to bootstrap cluster (%w)", err)
-	}
-	self.bootstrapped.Store(true)
-	log.Info("raft cluster bootstrap complete")
-
-	return nil
+	return self.HandleAddPeer(req)
 }
 
 // RemoveServer removes the node specified by the given id from the raft cluster
