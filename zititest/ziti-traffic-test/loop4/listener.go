@@ -17,6 +17,7 @@
 package loop4
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
@@ -141,9 +142,9 @@ func (cmd *listenerCmd) handle(conn net.Conn, workload *Workload) {
 			result = &Result{Success: true}
 		} else {
 			log.WithError(err).Error("error running test")
-			//if ztConn, ok := conn.(edge.Conn); ok {
-			//	fmt.Println(ztConn.GetState())
-			//}
+			if ztConn, ok := conn.(edge.Conn); ok {
+				fmt.Println(ztConn.GetState())
+			}
 
 			result = &Result{Success: false, Message: err.Error()}
 		}

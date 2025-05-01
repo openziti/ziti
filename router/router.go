@@ -255,7 +255,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, cfg.Forwarder, closeNotify)
 	router.forwarder.StartScanner(router.ctrls)
 
-	payloadIngester := xgress.NewPayloadIngester(closeNotify)
+	payloadIngester := xgress.NewPayloadIngesterWithConfig(64, closeNotify)
 	ackSender := xgress_router.NewAcker(router.forwarder, metricsRegistry, closeNotify)
 	retransmitter := xgress.NewRetransmitter(router.forwarder, metricsRegistry, closeNotify)
 

@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -97,7 +98,11 @@ var Model = &model.Model{
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("*", 1, func(host *model.Host) error {
-				host.InstanceType = "t3.micro"
+				if strings.HasPrefix(host.Id, "ctrl") {
+					host.InstanceType = "t3.medium"
+				} else {
+					host.InstanceType = "c5.large"
+				}
 				return nil
 			})
 		}),

@@ -22,9 +22,9 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/rate"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/pkg/errors"
 	"io"
@@ -66,6 +66,13 @@ type edgeTerminator struct {
 	establishCallback func(result edge_ctrl_pb.CreateTerminatorResult)
 	lock              sync.Mutex
 	rateLimitCallback rate.RateLimitControl
+}
+
+func (self *edgeTerminator) getIdentityId() string {
+	if self.edgeClientConn == nil {
+		return ""
+	}
+	return self.edgeClientConn.getIdentityId()
 }
 
 func (self *edgeTerminator) replace(other *edgeTerminator) {
@@ -333,7 +340,7 @@ func (self *edgeXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	case edge.ContentTypeStateClosed:
 		log.Debug("received close message, closing connection and returning EOF")
 		self.close(false, "close message received")
-		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
+		return nil, nil, xgress.ErrPeerClosed // ErrPeerClosed signals the whole xgress to shutdown
 
 	default:
 		log.Error("unexpected message type, closing connection")
@@ -401,6 +408,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 	// This will cause an io.EOF to be returned to the xgress read loop, which will cause that
 	// to terminate
 	log.Debug("closing channel sequencer, which should cause xgress to close")
+	_ = self.seq.Push(edge.NewStateClosedMsg(self.Id(), "channel closed"))
 	self.seq.Close()
 
 	// we must close the sequencer first, otherwise we can deadlock. The channel rxer can be blocked submitting

@@ -83,18 +83,8 @@ func testIPerf(t *testing.T, hostSelector string, hostType string, encrypted boo
 			return
 		}
 
-		if hostType == "ziti-tunnel" && err != nil {
-			t.Skipf("ziti-tunnel hosted iperf test failed [%v]", err.Error())
-			return
-		}
-
 		if hostSelector == "zet" && err != nil {
 			t.Skipf("zet client iperf test failed [%v]", err.Error())
-			return
-		}
-
-		if hostSelector == "ziti-tunnel" && err != nil {
-			t.Skipf("ziti-tunnel client iperf test failed [%v]", err.Error())
 			return
 		}
 

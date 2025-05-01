@@ -33,9 +33,9 @@ func newInspectCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.AddCommand(action.newInspectSubCmd(p, "links", "gets information from routers about their view of links"))
 	cmd.AddCommand(action.newInspectSubCmd(p, inspectCommon.SdkTerminatorsKey, "gets information from routers about their view of sdk terminators"))
 	cmd.AddCommand(action.newInspectSubCmd(p, inspectCommon.ErtTerminatorsKey, "gets information from routers about their view of ER/T terminators"))
-	cmd.AddCommand(action.newInspectSubCmd(p, "router-circuits", "lists router circuits"))
-	cmd.AddCommand(action.newInspectSubCmd(p, "router-edge-circuits", "lists circuits in the router for edge connections"))
-	cmd.AddCommand(action.newInspectSubCmd(p, "router-sdk-circuits", "lists circuits from sdks connected to the selected routers"))
+	cmd.AddCommand(action.newInspectSubCmd(p, inspectCommon.RouterCircuitsKey, "lists router circuits"))
+	cmd.AddCommand(action.newInspectSubCmd(p, inspectCommon.RouterEdgeCircuitsKey, "lists circuits in the router for edge connections"))
+	cmd.AddCommand(action.newInspectSubCmd(p, inspectCommon.RouterSdkCircuitsKey, "lists circuits from sdks connected to the selected routers"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "router-messaging", "gets information about pending router peer updates and terminator validations"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "router-data-model", "gets information about the router data model"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "router-data-model-index", "gets current index of the router data model"))
@@ -56,14 +56,14 @@ func newInspectAction(p common.OptionsProvider) *InspectAction {
 
 type InspectAction struct {
 	api.Options
-	toFiles bool
-	format  string
+	ToFiles bool
+	Format  string
 }
 
 func (self *InspectAction) addFlags(cmd *cobra.Command) *cobra.Command {
 	self.AddCommonFlags(cmd)
-	cmd.Flags().BoolVarP(&self.toFiles, "file", "f", false, "Output results to a file per result, with the format <instanceId>.<ValueName>")
-	cmd.Flags().StringVar(&self.format, "format", "yaml", "Output format. One of yaml|json")
+	cmd.Flags().BoolVarP(&self.ToFiles, "file", "f", false, "Output results to a file per result, with the format <instanceId>.<ValueName>")
+	cmd.Flags().StringVar(&self.Format, "format", "yaml", "Output format. One of yaml|json")
 	return cmd
 }
 
@@ -129,7 +129,7 @@ func (self *InspectAction) inspect(appRegex string, requestValues ...string) err
 			name := stringz.OrEmpty(value.Name)
 			var out io.Writer
 			var file *os.File
-			if self.toFiles {
+			if self.ToFiles {
 				fmt.Printf("output result to: %v.%v\n", appId, name)
 				file, err = os.Create(fmt.Sprintf("%v.%v", appId, name))
 				if err != nil {
@@ -190,14 +190,14 @@ func (self *InspectAction) prettyPrint(o io.Writer, val interface{}, indent uint
 		return nil
 	}
 
-	if self.format == "yaml" {
+	if self.Format == "yaml" {
 		return yaml.NewEncoder(o).Encode(val)
 	}
 
-	if self.format == "json" {
+	if self.Format == "json" {
 		enc := json.NewEncoder(o)
 		enc.SetIndent("", "    ")
 		return enc.Encode(val)
 	}
-	return fmt.Errorf("unsupported format %v", self.format)
+	return fmt.Errorf("unsupported format %v", self.Format)
 }
