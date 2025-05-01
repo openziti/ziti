@@ -18,7 +18,7 @@ package loop4
 
 import (
 	"fmt"
-	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop4/pb"
+	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	"gopkg.in/yaml.v2"
 	"os"
 	"time"
@@ -42,10 +42,16 @@ type TransportConnectOptions struct {
 }
 
 type Scenario struct {
-	ConnectorConfigs map[string]Connector `yaml:"connectors"`
-	Workloads        []*Workload          `yaml:"workloads"`
-	ConnectionDelay  int32                `yaml:"connectionDelay"`
-	Metrics          *Metrics             `yaml:"metrics"`
+	ConnectorConfigs map[string]Connector    `yaml:"connectors"`
+	Workloads        []*Workload             `yaml:"workloads"`
+	ConnectionDelay  int32                   `yaml:"connectionDelay"`
+	Metrics          *Metrics                `yaml:"metrics"`
+	RemoteControlled RemoteControlledOptions `yaml:"remoteControlled"`
+}
+
+type RemoteControlledOptions struct {
+	Connector string `yaml:"connector"`
+	Service   string `yaml:"service"`
 }
 
 type Workload struct {
