@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package loop3
+package loop4
 
 import (
 	"bytes"
@@ -22,7 +22,8 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop3/pb"
+	"github.com/openziti/metrics"
+	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"io"
@@ -32,7 +33,7 @@ import (
 )
 
 type protocol struct {
-	test         *loop3_pb.Test
+	test         *loopPb.Test
 	blocks       chan Block
 	rxSequence   uint64
 	txPacing     time.Duration
@@ -50,34 +51,91 @@ type protocol struct {
 	lastRx       int64
 	latencies    chan *time.Time
 	errors       chan error
+
+	simTxMsgRate   metrics.Meter
+	simTxBytesRate metrics.Meter
+	simRxMsgRate   metrics.Meter
+	simRxBytesRate metrics.Meter
+
+	workloadTxMsgRate   metrics.Meter
+	workloadTxBytesRate metrics.Meter
+	workloadRxMsgRate   metrics.Meter
+	workloadRxBytesRate metrics.Meter
+	latencyTimer        metrics.Timer
 }
 
 var MagicHeader = []byte{0xCA, 0xFE, 0xF0, 0x0D}
 
-func newProtocol(peer io.ReadWriteCloser) (*protocol, error) {
+func newProtocol(peer io.ReadWriteCloser, name string, registry metrics.Registry) (*protocol, error) {
 	p := &protocol{
 		rxSequence: 0,
 		peer:       peer,
-		rxBlocks:   make(chan Block),
+		rxBlocks:   make(chan Block, 16),
 		txCount:    0,
 		rxCount:    0,
 		latencies:  make(chan *time.Time, 1024),
 		errors:     make(chan error, 10240),
+
+		workloadTxMsgRate:   registry.Meter(name + ".tx.messages"),
+		workloadTxBytesRate: registry.Meter(name + ".tx.bytes"),
+		workloadRxMsgRate:   registry.Meter(name + ".rx.messages"),
+		workloadRxBytesRate: registry.Meter(name + ".rx.bytes"),
+
+		latencyTimer: registry.Timer(name + ".latency"),
+
+		simTxMsgRate:   registry.Meter("sim.tx.messages"),
+		simTxBytesRate: registry.Meter("sim.tx.bytes"),
+		simRxMsgRate:   registry.Meter("sim.rx.messages"),
+		simRxBytesRate: registry.Meter("sim.rx.bytes"),
 	}
 	return p, nil
 }
 
-func (p *protocol) run(test *loop3_pb.Test) error {
+type RxNotifier interface {
+	MsgReceived()
+	OkToSend()
+}
+
+type noopRxNotifier struct{}
+
+func (n noopRxNotifier) MsgReceived() {}
+
+func (n noopRxNotifier) OkToSend() {}
+
+type waitForRxNotifier struct {
+	c chan struct{}
+}
+
+func (self waitForRxNotifier) MsgReceived() {
+	self.c <- struct{}{}
+}
+
+func (self waitForRxNotifier) OkToSend() {
+	<-self.c
+}
+
+func (p *protocol) run(test *loopPb.Test) error {
 	p.test = test
 
 	var rxBlock func() (Block, error)
 
+	var rxNotifer RxNotifier = noopRxNotifier{}
+	if test.TxAfterRx {
+		rxNotifer = waitForRxNotifier{
+			c: make(chan struct{}, 16),
+		}
+	}
+
+	if test.TxAfterRx && test.RxRequests != test.TxRequests {
+		panic(fmt.Errorf("when txAfterRx is set to true, rxRequests (%d) must equal txRequests (%d)", test.RxRequests, test.TxRequests))
+	}
+
 	if test.IsTxRandomHashed() {
-		txGenerator := newRandomHashedBlockGenerator(int(test.TxRequests), int(test.PayloadMinBytes), int(test.PayloadMaxBytes), int(test.LatencyFrequency))
+		txGenerator := newRandomHashedBlockGenerator(int(test.TxRequests), int(test.PayloadMinBytes), int(test.PayloadMaxBytes), int(test.LatencyFrequency), rxNotifer)
 		p.blocks = txGenerator.blocks
 		go txGenerator.run()
 	} else if test.IsTxSequential() {
-		txGenerator := newSeqGenerator(int(test.TxRequests), int(test.PayloadMinBytes), int(test.PayloadMaxBytes))
+		txGenerator := newSeqGenerator(int(test.TxRequests), int(test.PayloadMinBytes), int(test.PayloadMaxBytes), rxNotifer)
 		p.blocks = txGenerator.blocks
 		go txGenerator.run()
 	} else {
@@ -111,7 +169,7 @@ func (p *protocol) run(test *loop3_pb.Test) error {
 	p.rxPauseFor = parseTime(p.test.RxPauseFor)
 
 	rxerDone := make(chan bool)
-	go p.rxer(rxerDone, rxBlock)
+	go p.rxer(rxerDone, rxBlock, rxNotifer)
 	if p.test.RxRequests > 0 {
 		go p.verifier()
 	}
@@ -178,7 +236,7 @@ func (p *protocol) txer(done chan bool) {
 	log.Info("tx count reached")
 }
 
-func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error)) {
+func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error), rxNotifier RxNotifier) {
 	log := pfxlog.ContextLogger(p.test.Name)
 	log.Debug("started")
 	defer func() { done <- true }()
@@ -198,6 +256,8 @@ func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error)) {
 			log.Error(err)
 			return
 		}
+
+		rxNotifier.MsgReceived()
 
 		atomic.AddInt32(&p.rxCount, 1)
 		atomic.StoreInt64(&p.lastRx, info.NowInMilliseconds())
@@ -260,7 +320,7 @@ func (p *protocol) verifier() {
 	}
 }
 
-func (p *protocol) txTest(test *loop3_pb.Test) error {
+func (p *protocol) txTest(test *loopPb.Test) error {
 	if err := p.txPb(test); err != nil {
 		return err
 	}
@@ -268,8 +328,8 @@ func (p *protocol) txTest(test *loop3_pb.Test) error {
 	return nil
 }
 
-func (p *protocol) rxTest() (*loop3_pb.Test, error) {
-	test := &loop3_pb.Test{}
+func (p *protocol) rxTest() (*loopPb.Test, error) {
+	test := &loopPb.Test{}
 	if err := p.rxPb(test); err != nil {
 		return nil, err
 	}

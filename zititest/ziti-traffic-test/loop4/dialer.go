@@ -17,6 +17,8 @@
 package loop4
 
 import (
+	"errors"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/spf13/cobra"
 	"net"
@@ -56,10 +58,18 @@ func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 		panic(err)
 	}
 
+	if err := cmd.runScenario(cmd.scenario); err != nil {
+		log.WithError(err).Fatal("error running scenario")
+	}
+}
+
+func (sim *Sim) runScenario(scenario *Scenario) error {
+	log := pfxlog.Logger()
+
 	resultChs := make(map[string]chan *Result)
-	for _, workload := range cmd.scenario.Workloads {
-		if _, ok := cmd.dialers[workload.Connector]; !ok {
-			log.Fatalf("workload '%s' uses unknown connector '%s'", workload.Name, workload.Connector)
+	for _, workload := range scenario.Workloads {
+		if _, ok := sim.dialers[workload.Connector]; !ok {
+			return fmt.Errorf("workload '%s' uses unknown connector '%s'", workload.Name, workload.Connector)
 		}
 
 		if workload.ConnectTimeout == 0 {
@@ -76,34 +86,31 @@ func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 		}
 	}
 
-	for _, workload := range cmd.scenario.Workloads {
+	for _, workload := range scenario.Workloads {
 		log.Infof("executing workload [%s] with concurrency [%d]", workload.Name, workload.Concurrency)
 		var active atomic.Int64
 		for i := 0; i < int(workload.Concurrency); i++ {
 			resultCh := resultChs[workload.GetRunnerName(i)]
-			go cmd.RunWorkload(workload, i+1, resultCh, &active)
+			go sim.RunWorkload(scenario, workload, i+1, resultCh, &active)
 		}
 	}
 
-	failed := false
+	var errs []error
+
 	for name, resultCh := range resultChs {
 		result := <-resultCh
 		if !result.Success {
-			failed = true
 			log.Errorf("[%s] -> error (%s)", name, result.Message)
+			errs = append(errs, fmt.Errorf("[%s] -> error (%s)", name, result.Message))
 		} else {
 			log.Infof("[%s] -> success", name)
 		}
 	}
 
-	if failed {
-		panic("failures detected")
-	} else {
-		log.Info("success")
-	}
+	return errors.Join(errs...)
 }
 
-func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Result, active *atomic.Int64) {
+func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, resultCh chan *Result, active *atomic.Int64) {
 	log := pfxlog.Logger()
 
 	if workload.ConnectTimeout < time.Second {
@@ -119,11 +126,11 @@ func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Re
 		}
 	}()
 
-	connectTimes := cmd.Sim.metrics.Timer(workload.Name + ".connect.times")
-	connectFailures := cmd.Sim.metrics.Meter(workload.Name + ".connect.failures")
-	connectSuccesses := cmd.Sim.metrics.Meter(workload.Name + ".connect.successes")
-	completed := cmd.Sim.metrics.Meter(workload.Name + ".completed")
-	cmd.Sim.metrics.FuncGauge(workload.Name+".active", func() int64 {
+	connectTimes := sim.metrics.Timer(workload.Name + ".connect.times")
+	connectFailures := sim.metrics.Meter(workload.Name + ".connect.failures")
+	connectSuccesses := sim.metrics.Meter(workload.Name + ".connect.successes")
+	completed := sim.metrics.Meter(workload.Name + ".completed")
+	sim.metrics.FuncGauge(workload.Name+".active", func() int64 {
 		return active.Load()
 	})
 
@@ -136,7 +143,7 @@ func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Re
 			conn = nil
 		}
 		startConnect := time.Now()
-		conn, err = cmd.dialers[workload.Connector](workload)
+		conn, err = sim.dialers[workload.Connector](workload)
 		connectTimes.UpdateSince(startConnect)
 		if err != nil {
 			connectFailures.Mark(1)
@@ -148,23 +155,23 @@ func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Re
 		connectSuccesses.Mark(1)
 		local, remote := workload.GetTests()
 
-		if proto, err := newProtocol(conn, workload.Name, cmd.metrics); err == nil {
+		if proto, err := newProtocol(conn, workload.Name, sim.metrics); err == nil {
 			if local.IsTxRandomHashed() {
 				if err = proto.txTest(remote); err != nil {
-					cmd.reportErr(resultCh, err)
+					sim.reportErr(resultCh, err)
 					active.Add(-1)
 					return
 				}
 			}
 
 			if err = proto.run(local); err != nil {
-				cmd.reportErr(resultCh, err)
+				sim.reportErr(resultCh, err)
 				active.Add(-1)
 				return
 			}
 
 			if result, err = proto.rxResult(); err != nil {
-				cmd.reportErr(resultCh, err)
+				sim.reportErr(resultCh, err)
 				active.Add(-1)
 				return
 			}
@@ -179,8 +186,8 @@ func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Re
 		active.Add(-1)
 		completed.Mark(1)
 		pfxlog.Logger().Debugf("%s-%d completed iteration %d", workload.Name, idx, i+1)
-		if cmd.scenario.ConnectionDelay > 0 {
-			time.Sleep(time.Duration(cmd.scenario.ConnectionDelay) * time.Millisecond)
+		if scenario.ConnectionDelay > 0 {
+			time.Sleep(time.Duration(sim.scenario.ConnectionDelay) * time.Millisecond)
 		}
 	}
 
@@ -189,7 +196,7 @@ func (cmd *dialerCmd) RunWorkload(workload *Workload, idx int, resultCh chan *Re
 	}
 }
 
-func (cmd *dialerCmd) reportErr(resultCh chan *Result, err error) {
+func (sim *Sim) reportErr(resultCh chan *Result, err error) {
 	result := &Result{
 		Success: false,
 		Message: err.Error(),

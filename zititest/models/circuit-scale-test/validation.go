@@ -34,6 +34,7 @@ import (
 	"github.com/openziti/ziti/zitirest"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
+	zitiLibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
 	"google.golang.org/protobuf/proto"
 	"io"
 	"math"
@@ -43,6 +44,25 @@ import (
 	"sync"
 	"time"
 )
+
+func RunSimScenarios(run model.Run, services *zitiLibOps.SimServices) error {
+	simControl, err := services.GetSimController(run, "sim-control")
+	if err != nil {
+		return err
+	}
+
+	err = simControl.WaitForAllConnected(time.Second*30, run.GetModel().SelectComponents(".loop-client"))
+	if err != nil {
+		return err
+	}
+
+	results, err := simControl.StartSimScenarios()
+	if err != nil {
+		return err
+	}
+
+	return results.GetResults(time.Minute)
+}
 
 type CtrlClients struct {
 	ctrls   []*zitirest.Clients

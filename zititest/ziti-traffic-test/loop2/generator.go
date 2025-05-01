@@ -20,7 +20,7 @@ import (
 	"crypto/sha512"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop2/pb"
+	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop2/pb"
 	"math/rand"
 )
 

@@ -10,24 +10,25 @@ import (
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/lib/binding"
-	"github.com/openziti/fablab/kernel/lib/parallel"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
+	fablibOps "github.com/openziti/fablab/kernel/lib/runlevel/5_operation"
 	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
-	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
+	zitilibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -129,6 +130,18 @@ var m = &model.Model{
 		}),
 		model.NewScaleFactoryWithDefaultEntityFactory(&scaleStrategy{}),
 	},
+	Factories: []model.Factory{
+		model.FactoryFunc(func(m *model.Model) error {
+			simServices := zitilibOps.NewSimServices(func(s string) string {
+				return "component#" + s
+			})
+
+			m.AddActivationStageF(simServices.SetupSimControllerIdentity)
+			m.AddOperatingStage(simServices.CollectSimMetricStage("metrics"))
+
+			return nil
+		}),
+	},
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),
 		resources.Binaries:  os.DirFS(path.Join(os.Getenv("GOPATH"), "bin")),
@@ -140,76 +153,145 @@ var m = &model.Model{
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
 				"ctrl1": {
+					InstanceType: "t3.micro",
 					Components: model.Components{
-						"ctrl1": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
-							Type: &zitilab.ControllerType{
-								Version: TargetZitiVersion,
-							},
+						"ctrl": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "underTest"}},
+							Type:  &zitilab.ControllerType{},
 						},
 					},
 				},
-				"router-us-{{.ScaleIndex}}": {
-					Scope: model.Scope{Tags: model.Tags{"router"}},
-					Components: model.Components{
-						"router-us-{{.Host.ScaleIndex}}": {
-							Scope: model.Scope{Tags: model.Tags{"router"}},
-							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
-							},
-						},
-					},
-				},
-			},
-		},
-		"eu-west-2": {
-			Region: "eu-west-2",
-			Site:   "eu-west-2a",
-			Hosts: model.Hosts{
 				"ctrl2": {
+					InstanceType: "t3.micro",
 					Components: model.Components{
-						"ctrl2": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
-							Type: &zitilab.ControllerType{
-								Version: TargetZitiVersion,
+						"ctrl": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "underTest", "ha"}},
+							Type:  &zitilab.ControllerType{},
+						},
+					},
+				},
+				"router-client-1": {
+					Components: model.Components{
+						"router-client-1": {
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client", "test", "underTest"}},
+							Type:  &zitilab.RouterType{},
+						},
+					},
+				},
+				"router-client-2": {
+					Components: model.Components{
+						"router-client-2": {
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client", "test", "underTest"}},
+							Type:  &zitilab.RouterType{},
+						},
+					},
+				},
+				"ert": {
+					Components: model.Components{
+						"ert": {
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client", "test", "underTest"}},
+							Type:  &zitilab.RouterType{},
+						},
+						"loop-client-ert": {
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+							Type: &zitilab.Loop4SimType{
+								Mode: zitilab.Loop4RemoteControlled,
 							},
 						},
 					},
 				},
-				"router-eu-{{.ScaleIndex}}": {
-					Scope: model.Scope{Tags: model.Tags{"router"}},
+				"router-metrics": {
+					InstanceType: "t3.micro",
 					Components: model.Components{
-						"router-eu-{{.Host.ScaleIndex}}": {
-							Scope: model.Scope{Tags: model.Tags{"router"}},
-							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
+						"router-metrics": {
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "no-traversal", "sim-services"}},
+							Type:  &zitilab.RouterType{},
+						},
+					},
+				},
+				"loop-client": {
+					Scope: model.Scope{Tags: model.Tags{"loop-client"}},
+					Components: model.Components{
+						"loop-client": {
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+							Type: &zitilab.Loop4SimType{
+								Mode: zitilab.Loop4RemoteControlled,
+							},
+						},
+					},
+				},
+				"loop-client-xg": {
+					Scope: model.Scope{Tags: model.Tags{"loop-client"}},
+					Components: model.Components{
+						"loop-client-xg": {
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+							Type: &zitilab.Loop4SimType{
+								Mode: zitilab.Loop4RemoteControlled,
 							},
 						},
 					},
 				},
 			},
 		},
-		"ap-southeast-2": {
-			Region: "ap-southeast-2",
-			Site:   "ap-southeast-2a",
+		"us-west-2": {
+			Region: "us-west-2",
+			Site:   "us-west-2b",
 			Hosts: model.Hosts{
 				"ctrl3": {
+					InstanceType: "t3.micro",
 					Components: model.Components{
-						"ctrl3": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
-							Type: &zitilab.ControllerType{
-								Version: TargetZitiVersion,
+						"ctrl": {
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "underTest", "ha"}},
+							Type:  &zitilab.ControllerType{},
+						},
+					},
+				},
+				"router-host-1": {
+					Components: model.Components{
+						"router-host-1": {
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "host", "test", "underTest"}},
+							Type:  &zitilab.RouterType{},
+						},
+					},
+				},
+				"router-host-2": {
+					Components: model.Components{
+						"router-host-2": {
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "host", "test", "underTest"}},
+							Type:  &zitilab.RouterType{},
+						},
+					},
+				},
+				"ert-host": {
+					Components: model.Components{
+						"ert-host": {
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host", "test", "underTest"}},
+							Type:  &zitilab.RouterType{},
+						},
+						"loop-host-ert": {
+							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host"}},
+							Type: &zitilab.Loop4SimType{
+								Mode: zitilab.Loop4Listener,
 							},
 						},
 					},
 				},
-				"router-ap-{{.ScaleIndex}}": {
-					Scope: model.Scope{Tags: model.Tags{"router", "scaled"}},
+				"loop-host": {
 					Components: model.Components{
-						"router-ap-{{.Host.ScaleIndex}}": {
-							Scope: model.Scope{Tags: model.Tags{"router"}},
-							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
+						"loop-host": {
+							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host", "sim-services-host"}},
+							Type: &zitilab.Loop4SimType{
+								Mode: zitilab.Loop4Dialer,
+							},
+						},
+					},
+				},
+				"loop-host-xg": {
+					Components: model.Components{
+						"loop-host-xg": {
+							Scope: model.Scope{Tags: model.Tags{"loop-host-xg", "sdk-app", "host", "sim-services-host"}},
+							Type: &zitilab.Loop4SimType{
+								Mode: zitilab.Loop4Dialer,
 							},
 						},
 					},
@@ -219,77 +301,8 @@ var m = &model.Model{
 	},
 
 	Actions: model.ActionBinders{
-		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
-			workflow := actions.Workflow()
-
-			workflow.AddAction(component.StopInParallel("*", 300))
-			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/* ctrl.db"))
-			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
-
-			workflow.AddAction(component.Start(".ctrl"))
-
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(edge.InitRaftController("#ctrl1"))
-
-			workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
-			workflow.AddAction(edge.Login("#ctrl1"))
-			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 25))
-
-			workflow.AddAction(zitilibActions.Edge("create", "edge-router-policy", "all", "--edge-router-roles", "#all", "--identity-roles", "#all"))
-			workflow.AddAction(zitilibActions.Edge("create", "service-edge-router-policy", "all", "--service-roles", "#all", "--edge-router-roles", "#all"))
-
-			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				ctrls := &CtrlClients{}
-				if err := ctrls.init(run, "#ctrl1"); err != nil {
-					return err
-				}
-
-				var tasks []parallel.LabeledTask
-				for range 100 {
-					task := createNewService(ctrls.getCtrl("ctrl1"), nil)
-					tasks = append(tasks, task)
-				}
-				return parallel.ExecuteLabeled(tasks, 2, nil)
-			}))
-
-			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				ctrls := &CtrlClients{}
-				if err := ctrls.init(run, "#ctrl1"); err != nil {
-					return err
-				}
-
-				var tasks []parallel.LabeledTask
-				for range 100 {
-					task := createNewIdentity(ctrls.getCtrl("ctrl1"))
-					tasks = append(tasks, task)
-				}
-				return parallel.ExecuteLabeled(tasks, 2, nil)
-			}))
-
-			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				ctrls := &CtrlClients{}
-				if err := ctrls.init(run, "#ctrl1"); err != nil {
-					return err
-				}
-
-				var tasks []parallel.LabeledTask
-				for range 100 {
-					task := createNewServicePolicy(ctrls.getCtrl("ctrl1"))
-					tasks = append(tasks, task)
-				}
-				return parallel.ExecuteLabeled(tasks, 2, nil)
-			}))
-
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
-			workflow.AddAction(semaphore.Sleep(5 * time.Second))
-
-			workflow.AddAction(component.StartInParallel(".router", 10))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-
-			return workflow
-		}),
-		"stop": model.Bind(component.StopInParallelHostExclusive("*", 15)),
+		"bootstrap": NewBootstrapAction(),
+		"stop":      model.Bind(component.StopInParallelHostExclusive("*", 15)),
 		"clean": model.Bind(actions.Workflow(
 			component.StopInParallelHostExclusive("*", 15),
 			host.GroupExec("*", 25, "rm -f logs/*"),
@@ -348,6 +361,23 @@ var m = &model.Model{
 	Distribution: model.Stages{
 		distribution.DistributeSshKey("*"),
 		rsync.RsyncStaged(),
+	},
+
+	Operation: model.Stages{
+		model.RunAction("login"),
+		edge.SyncModelEdgeState(models.EdgeRouterTag),
+
+		fablibOps.StreamSarMetrics("*", 5, 1, nil),
+
+		fablibOps.InfluxMetricsReporter(),
+
+		zitilibOps.ModelMetricsWithIdMapper(nil, func(id string) string {
+			if id == "ctrl" {
+				return "#ctrl"
+			}
+			id = strings.ReplaceAll(id, ".", ":")
+			return "component.edgeId:" + id
+		}),
 	},
 
 	Disposal: model.Stages{

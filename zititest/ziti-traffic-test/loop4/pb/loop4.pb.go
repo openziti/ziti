@@ -20,6 +20,104 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type ContentType int32
+
+const (
+	ContentType_ZeroContentType        ContentType = 0
+	ContentType_RunScenarioRequestType ContentType = 1
+	ContentType_RunScenarioResultType  ContentType = 2
+)
+
+// Enum value maps for ContentType.
+var (
+	ContentType_name = map[int32]string{
+		0: "ZeroContentType",
+		1: "RunScenarioRequestType",
+		2: "RunScenarioResultType",
+	}
+	ContentType_value = map[string]int32{
+		"ZeroContentType":        0,
+		"RunScenarioRequestType": 1,
+		"RunScenarioResultType":  2,
+	}
+)
+
+func (x ContentType) Enum() *ContentType {
+	p := new(ContentType)
+	*p = x
+	return p
+}
+
+func (x ContentType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ContentType) Descriptor() protoreflect.EnumDescriptor {
+	return file_loop4_proto_enumTypes[0].Descriptor()
+}
+
+func (ContentType) Type() protoreflect.EnumType {
+	return &file_loop4_proto_enumTypes[0]
+}
+
+func (x ContentType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ContentType.Descriptor instead.
+func (ContentType) EnumDescriptor() ([]byte, []int) {
+	return file_loop4_proto_rawDescGZIP(), []int{0}
+}
+
+type HeaderType int32
+
+const (
+	HeaderType_ZeroHeaderType  HeaderType = 0
+	HeaderType_ScenarioId      HeaderType = 1
+	HeaderType_ScenarioSuccess HeaderType = 2
+)
+
+// Enum value maps for HeaderType.
+var (
+	HeaderType_name = map[int32]string{
+		0: "ZeroHeaderType",
+		1: "ScenarioId",
+		2: "ScenarioSuccess",
+	}
+	HeaderType_value = map[string]int32{
+		"ZeroHeaderType":  0,
+		"ScenarioId":      1,
+		"ScenarioSuccess": 2,
+	}
+)
+
+func (x HeaderType) Enum() *HeaderType {
+	p := new(HeaderType)
+	*p = x
+	return p
+}
+
+func (x HeaderType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (HeaderType) Descriptor() protoreflect.EnumDescriptor {
+	return file_loop4_proto_enumTypes[1].Descriptor()
+}
+
+func (HeaderType) Type() protoreflect.EnumType {
+	return &file_loop4_proto_enumTypes[1]
+}
+
+func (x HeaderType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use HeaderType.Descriptor instead.
+func (HeaderType) EnumDescriptor() ([]byte, []int) {
+	return file_loop4_proto_rawDescGZIP(), []int{1}
+}
+
 type Test struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -211,6 +309,53 @@ func (x *Test) GetRxMaxJitter() string {
 	return ""
 }
 
+type ScenarioComplete struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+}
+
+func (x *ScenarioComplete) Reset() {
+	*x = ScenarioComplete{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_loop4_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ScenarioComplete) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScenarioComplete) ProtoMessage() {}
+
+func (x *ScenarioComplete) ProtoReflect() protoreflect.Message {
+	mi := &file_loop4_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScenarioComplete.ProtoReflect.Descriptor instead.
+func (*ScenarioComplete) Descriptor() ([]byte, []int) {
+	return file_loop4_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ScenarioComplete) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 var File_loop4_proto protoreflect.FileDescriptor
 
 var file_loop4_proto_rawDesc = []byte{
@@ -256,7 +401,20 @@ var file_loop4_proto_rawDesc = []byte{
 	0x69, 0x6e, 0x67, 0x18, 0x11, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x72, 0x78, 0x50, 0x61, 0x63,
 	0x69, 0x6e, 0x67, 0x12, 0x20, 0x0a, 0x0b, 0x72, 0x78, 0x4d, 0x61, 0x78, 0x4a, 0x69, 0x74, 0x74,
 	0x65, 0x72, 0x18, 0x12, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x72, 0x78, 0x4d, 0x61, 0x78, 0x4a,
-	0x69, 0x74, 0x74, 0x65, 0x72, 0x42, 0x46, 0x5a, 0x44, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x69, 0x74, 0x74, 0x65, 0x72, 0x22, 0x2c, 0x0a, 0x10, 0x53, 0x63, 0x65, 0x6e, 0x61, 0x72, 0x69,
+	0x6f, 0x43, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x75, 0x63,
+	0x63, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63,
+	0x65, 0x73, 0x73, 0x2a, 0x59, 0x0a, 0x0b, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x54, 0x79,
+	0x70, 0x65, 0x12, 0x13, 0x0a, 0x0f, 0x5a, 0x65, 0x72, 0x6f, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e,
+	0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0x00, 0x12, 0x1a, 0x0a, 0x16, 0x52, 0x75, 0x6e, 0x53, 0x63,
+	0x65, 0x6e, 0x61, 0x72, 0x69, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x79, 0x70,
+	0x65, 0x10, 0x01, 0x12, 0x19, 0x0a, 0x15, 0x52, 0x75, 0x6e, 0x53, 0x63, 0x65, 0x6e, 0x61, 0x72,
+	0x69, 0x6f, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0x02, 0x2a, 0x45,
+	0x0a, 0x0a, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72, 0x54, 0x79, 0x70, 0x65, 0x12, 0x12, 0x0a, 0x0e,
+	0x5a, 0x65, 0x72, 0x6f, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72, 0x54, 0x79, 0x70, 0x65, 0x10, 0x00,
+	0x12, 0x0e, 0x0a, 0x0a, 0x53, 0x63, 0x65, 0x6e, 0x61, 0x72, 0x69, 0x6f, 0x49, 0x64, 0x10, 0x01,
+	0x12, 0x13, 0x0a, 0x0f, 0x53, 0x63, 0x65, 0x6e, 0x61, 0x72, 0x69, 0x6f, 0x53, 0x75, 0x63, 0x63,
+	0x65, 0x73, 0x73, 0x10, 0x02, 0x42, 0x46, 0x5a, 0x44, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
 	0x63, 0x6f, 0x6d, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x7a, 0x69, 0x74, 0x69, 0x2f, 0x7a, 0x69, 0x74,
 	0x69, 0x2f, 0x7a, 0x69, 0x74, 0x69, 0x74, 0x65, 0x73, 0x74, 0x2f, 0x7a, 0x69, 0x74, 0x69, 0x2d,
 	0x74, 0x65, 0x73, 0x74, 0x2f, 0x73, 0x75, 0x62, 0x63, 0x6d, 0x64, 0x2f, 0x6c, 0x6f, 0x6f, 0x70,
@@ -276,9 +434,13 @@ func file_loop4_proto_rawDescGZIP() []byte {
 	return file_loop4_proto_rawDescData
 }
 
-var file_loop4_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_loop4_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_loop4_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_loop4_proto_goTypes = []interface{}{
-	(*Test)(nil), // 0: ziti.loop4.pb.Test
+	(ContentType)(0),         // 0: ziti.loop4.pb.ContentType
+	(HeaderType)(0),          // 1: ziti.loop4.pb.HeaderType
+	(*Test)(nil),             // 2: ziti.loop4.pb.Test
+	(*ScenarioComplete)(nil), // 3: ziti.loop4.pb.ScenarioComplete
 }
 var file_loop4_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -306,19 +468,32 @@ func file_loop4_proto_init() {
 				return nil
 			}
 		}
+		file_loop4_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ScenarioComplete); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_loop4_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   1,
+			NumEnums:      2,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_loop4_proto_goTypes,
 		DependencyIndexes: file_loop4_proto_depIdxs,
+		EnumInfos:         file_loop4_proto_enumTypes,
 		MessageInfos:      file_loop4_proto_msgTypes,
 	}.Build()
 	File_loop4_proto = out.File
