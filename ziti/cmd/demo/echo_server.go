@@ -62,6 +62,7 @@ type echoServer struct {
 	cliAgentAddr    string
 	cliAgentAlias   string
 	ha              bool
+	sdkFlowControl  bool
 }
 
 func newEchoServerCmd() *cobra.Command {
@@ -88,6 +89,7 @@ func newEchoServerCmd() *cobra.Command {
 	cmd.Flags().StringVar(&server.cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 	cmd.Flags().BoolVar(&server.ha, "ha", false, "Enable HA controller compatibility")
 	cmd.Flags().Uint8("max-terminators", 3, "max terminators to create")
+	cmd.Flags().BoolVar(&server.sdkFlowControl, "sdk-flow-control", false, "Enable SDK flow control")
 	return cmd
 }
 
@@ -161,6 +163,10 @@ func (self *echoServer) run(*cobra.Command, []string) {
 			log.WithError(err).Fatalf("ziti: unable to load ziti identity from [%v]", self.configFile)
 		}
 		zitiConfig.EnableHa = self.ha
+		if self.sdkFlowControl {
+			zitiConfig.MaxDefaultConnections = 2
+			zitiConfig.MaxControlConnections = 1
+		}
 		self.zitiIdentity, err = identity.LoadIdentity(zitiConfig.ID)
 		if err != nil {
 			log.WithError(err).Fatalf("ziti: unable to create ziti identity from [%v]", self.configFile)
@@ -186,6 +192,7 @@ func (self *echoServer) run(*cobra.Command, []string) {
 		listenOptions.Cost = uint16(*zitiIdentity.DefaultHostingCost)
 		listenOptions.Precedence = ziti.GetPrecedenceForLabel(string(zitiIdentity.DefaultHostingPrecedence))
 		listenOptions.MaxTerminators = int(self.maxTerminators)
+		listenOptions.SdkFlowControl = &self.sdkFlowControl
 
 		svc, found := zitiContext.GetService(self.service)
 		if !found {

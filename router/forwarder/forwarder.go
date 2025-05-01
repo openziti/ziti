@@ -138,6 +138,11 @@ func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
 			// It's an ingress destination, which isn't established until after routing has completed
 		}
 		circuitFt.setForwardAddress(xgress.Address(forward.SrcAddress), xgress.Address(forward.DstAddress))
+		pfxlog.Logger().WithFields(logrus.Fields{
+			"circuitId":   circuitId,
+			"source":      forward.SrcAddress,
+			"destination": forward.DstAddress,
+		}).Debug("route added")
 	}
 	forwarder.circuits.setForwardTable(circuitId, circuitFt)
 	return nil
@@ -147,6 +152,7 @@ func (forwarder *Forwarder) Unroute(circuitId string, now bool) {
 	if now {
 		forwarder.circuits.removeForwardTable(circuitId)
 		forwarder.EndCircuit(circuitId)
+		pfxlog.Logger().WithField("circuitId", circuitId).Info("circuit unrouted")
 	} else {
 		go forwarder.unrouteTimeout(circuitId, forwarder.Options.XgressCloseCheckInterval)
 	}

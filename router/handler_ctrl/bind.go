@@ -46,6 +46,10 @@ type bindHandler struct {
 	ctrlAddressUpdater       CtrlAddressUpdater
 }
 
+func XgressDialerWorker(_ uint32, f func()) {
+	f()
+}
+
 func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder, ctrlAddressUpdater CtrlAddressUpdater) (channel.BindHandler, error) {
 	xgDialerPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(forwarder.Options.XgressDial.QueueLength),
@@ -56,6 +60,7 @@ func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder, 
 		PanicHandler: func(err interface{}) {
 			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during xgress dial")
 		},
+		WorkerFunction: XgressDialerWorker,
 	}
 
 	metrics.ConfigureGoroutinesPoolMetrics(&xgDialerPoolConfig, routerEnv.GetMetricsRegistry(), "pool.route.handler")

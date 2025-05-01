@@ -64,9 +64,14 @@ func NewClient() *resty.Client {
 }
 
 func getRequest(verbose bool) *resty.Request {
-	return NewClient().
+	request := NewClient().
 		SetDebug(verbose).
 		R()
+
+	if githubToken := os.Getenv("GITHUB_TOKEN"); githubToken != "" {
+		request = request.SetHeader("Authorization", fmt.Sprintf("Bearer %s", githubToken))
+	}
+	return request
 }
 
 func GetLatestGitHubReleaseVersion(org, zitiApp string, verbose bool) (semver.Version, error) {

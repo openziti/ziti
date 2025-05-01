@@ -19,8 +19,8 @@ package handler_link
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xlink"
 )
 
@@ -50,9 +50,6 @@ func (self *payloadHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 		if err = self.forwarder.ForwardPayload(xgress.Address(self.link.Id()), payload, 0); err != nil {
 			log.WithError(err).Debug("unable to forward")
 			self.forwarder.ReportForwardingFault(payload.CircuitId, "")
-		}
-		if payload.IsCircuitEndFlagSet() {
-			self.forwarder.EndCircuit(payload.GetCircuitId())
 		}
 	} else {
 		log.WithError(err).Errorf("error unmarshalling payload")

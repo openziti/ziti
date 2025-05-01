@@ -206,9 +206,9 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 
 		if err = proto.run(local); err != nil {
 			log.WithError(err).Error("error running test")
-			//if ztConn, ok := conn.(edge.Conn); ok {
-			//	fmt.Println(ztConn.GetState())
-			//}
+			if ztConn, ok := conn.(edge.Conn); ok {
+				fmt.Println(ztConn.GetState())
+			}
 			sim.reportErr(resultCh, err, circuitId)
 			active.Add(-1)
 			return

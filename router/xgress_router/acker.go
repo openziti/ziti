@@ -54,9 +54,9 @@ func NewAcker(forwarder AckForwarder, metrics metrics.Registry, closeNotify <-ch
 }
 
 func (acker *Acker) SendAck(ack *xgress.Acknowledgement, address xgress.Address) {
-	acker.ackIngest <- &ackEntry{
-		Acknowledgement: ack,
-		Address:         address,
+	select {
+	case acker.ackIngest <- &ackEntry{Acknowledgement: ack, Address: address}:
+	case <-acker.closeNotify:
 	}
 }
 
