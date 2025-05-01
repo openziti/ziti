@@ -65,6 +65,9 @@ message Authenticator {
     string unverifiedFingerprint = 3;
     string unverifiedPem = 4;
     bool isIssuedByNetwork = 5;
+    bool isExtendRequested = 6;
+    bool isKeyRollRequested = 7;
+    google.protobuf.Timestamp extendRequestedAt = 8;
   }
 
   message Updb {

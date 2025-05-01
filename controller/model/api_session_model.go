@@ -28,18 +28,20 @@ import (
 
 type ApiSession struct {
 	models.BaseEntity
-	Token              string
-	IdentityId         string
-	Identity           *Identity
-	IPAddress          string
-	ConfigTypes        map[string]struct{}
-	MfaComplete        bool
-	MfaRequired        bool
-	ExpiresAt          time.Time
-	ExpirationDuration time.Duration
-	LastActivityAt     time.Time
-	AuthenticatorId    string
-	IsCertExtendable   bool
+	Token                  string
+	IdentityId             string
+	Identity               *Identity
+	IPAddress              string
+	ConfigTypes            map[string]struct{}
+	MfaComplete            bool
+	MfaRequired            bool
+	ExpiresAt              time.Time
+	ExpirationDuration     time.Duration
+	LastActivityAt         time.Time
+	AuthenticatorId        string
+	IsCertExtendable       bool
+	IsCertExtendRequested  bool
+	IsCertKeyRollRequested bool
 }
 
 func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, env Env) (*db.ApiSession, error) {
@@ -86,13 +88,28 @@ func (entity *ApiSession) fillFrom(env Env, tx *bbolt.Tx, boltApiSession *db.Api
 	entity.IsCertExtendable = boltApiSession.IsCertExtendable
 
 	boltIdentity, err := env.GetStores().Identity.LoadById(tx, boltApiSession.IdentityId)
+
 	if err != nil {
 		return err
 	}
 	modelIdentity := &Identity{}
+
 	if err := modelIdentity.fillFrom(env, tx, boltIdentity); err != nil {
 		return err
 	}
 	entity.Identity = modelIdentity
+
+	boltAuthenticator, _ := env.GetStores().Authenticator.LoadById(tx, boltApiSession.AuthenticatorId)
+	
+	if boltAuthenticator != nil {
+		boltCertAuth := boltAuthenticator.ToCert()
+
+		if boltCertAuth != nil {
+			entity.IsCertExtendRequested = boltCertAuth.IsExtendRequested
+			entity.IsCertKeyRollRequested = boltCertAuth.IsKeyRollRequested
+		}
+
+	}
+
 	return nil
 }

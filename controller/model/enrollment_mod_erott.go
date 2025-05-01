@@ -112,14 +112,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, err
 	}
 
-	clientCertPem, err := cert.RawToPem(clientCertRaw)
-	if err != nil {
-		return nil, err
-	}
-
 	module.env.GetApiServerCsrSigner()
-
-	clientCertPemStr := string(clientCertPem)
 
 	clientCertFingerprint := module.fingerprintGenerator.FromRaw(clientCertRaw)
 
@@ -128,7 +121,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, err
 	}
 
-	edgeRouter.CertPem = &clientCertPemStr
+	edgeRouter.CertPem = &clientChainPem
 	edgeRouter.IsVerified = true
 	edgeRouter.Fingerprint = &clientCertFingerprint
 	if err := module.env.GetManagers().EdgeRouter.Update(edgeRouter, true, nil, context.GetChangeContext()); err != nil {

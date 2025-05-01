@@ -17,6 +17,7 @@
 package routes
 
 import (
+	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
@@ -68,8 +69,11 @@ func MapCreateToAuthenticatorModel(in *rest_model.AuthenticatorCreate) (*model.A
 		}
 
 		subType = &model.AuthenticatorCert{
-			Pem:               in.CertPem,
-			IsIssuedByNetwork: false,
+			Pem:                in.CertPem,
+			IsIssuedByNetwork:  false,
+			IsExtendRequested:  false,
+			IsKeyRollRequested: false,
+			ExtendRequestedAt:  nil,
 		}
 	case db.MethodAuthenticatorUpdb:
 		if in.Username == "" {
@@ -169,6 +173,13 @@ func MapAuthenticatorToRestModel(ae *env.AppEnv, i *model.Authenticator) (*rest_
 		result.CertPem = subType.Pem
 		result.Fingerprint = subType.Fingerprint
 		result.IsIssuedByNetwork = subType.IsIssuedByNetwork
+		result.IsExtendRequested = subType.IsExtendRequested
+		result.IsKeyRollRequested = subType.IsKeyRollRequested
+
+		if subType.ExtendRequestedAt != nil {
+			extendRequestedAt := strfmt.DateTime(*subType.ExtendRequestedAt)
+			result.ExtendRequestedAt = &extendRequestedAt
+		}
 	}
 
 	return result, nil

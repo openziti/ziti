@@ -490,7 +490,7 @@ func outputAuthenticators(o *api.Options, children []*gabs.Container, pagingInfo
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Method", "Identity Id", "Identity Name", "Username/Fingerprint", "Ca Id", "IsIssuedByNetwork"})
+	t.AppendHeader(table.Row{"ID", "Method", "Identity Id", "Identity Name", "Uname/Print", "Ca Id", "1st Party", "Extend", "KeyRoll", "ExtendAt"})
 
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
@@ -511,16 +511,31 @@ func outputAuthenticators(o *api.Options, children []*gabs.Container, pagingInfo
 		}
 
 		isIssuedByNetwork := "n/a"
+		isKeyRollRequested := "n/a"
+		isExtendRequested := "n/a"
+		extendRequestedAt := "n/a"
 
 		if method == "cert" {
+			isIssuedByNetwork = "false"
+			isKeyRollRequested = "false"
+			isExtendRequested = "false"
+			extendRequestedAt = ""
 			if entity.Path("isIssuedByNetwork").Data().(bool) {
 				isIssuedByNetwork = "true"
-			} else {
-				isIssuedByNetwork = "false"
+
+				if entity.Exists("isExtendRequested") && entity.Path("isExtendRequested").Data().(bool) {
+					isExtendRequested = "true"
+
+					if entity.Exists("isKeyRollRequested") && entity.Path("isKeyRollRequested").Data().(bool) {
+						isKeyRollRequested = "true"
+					}
+
+					extendRequestedAt = entity.Path("extendRequestedAt").Data().(string)
+				}
 			}
 		}
 
-		t.AppendRow(table.Row{id, method, identityId, identityName, printOrName, caId, isIssuedByNetwork})
+		t.AppendRow(table.Row{id, method, identityId, identityName, printOrName, caId, isIssuedByNetwork, isExtendRequested, isKeyRollRequested, extendRequestedAt})
 	}
 	api.RenderTable(o, t, pagingInfo)
 	return nil
@@ -1578,7 +1593,7 @@ func runListApiSessions(o *api.Options) error {
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Token", "Identity Name"})
+	t.AppendHeader(table.Row{"ID", "Token", "Identity Name", "Extend", "Roll", "Auth Id"})
 
 	for _, entity := range children {
 		wrapper := api.Wrap(entity)
@@ -1586,6 +1601,9 @@ func runListApiSessions(o *api.Options) error {
 			wrapper.String("id"),
 			wrapper.String("token"),
 			wrapper.String("identity.name"),
+			wrapper.Bool("isCertExtendRequested"),
+			wrapper.Bool("isCertKeyRollRequested"),
+			wrapper.String("authenticatorId"),
 		})
 	}
 	api.RenderTable(o, t, pagingInfo)

@@ -109,6 +109,7 @@ type EdgeConfig struct {
 	Totp                 Totp
 	AuthRateLimiter      command.AdaptiveRateLimiterConfig
 	caCerts              []*x509.Certificate
+	caCertPool           *x509.CertPool
 }
 
 type HttpTimeouts struct {
@@ -169,6 +170,14 @@ func (c *EdgeConfig) CaCerts() []*x509.Certificate {
 	return c.caCerts
 }
 
+func (c *EdgeConfig) CaCertsPool() *x509.CertPool {
+	c.caPemsOnce.Do(func() {
+		c.RefreshCas()
+	})
+
+	return c.caCertPool
+}
+
 // AddCaPems adds a byte array of certificates to the current buffered list of CAs. The certificates
 // should be in PEM format separated by new lines. RefreshCas should be called after all
 // calls to AddCaPems are completed.
@@ -180,6 +189,11 @@ func (c *EdgeConfig) AddCaPems(caPems []byte) {
 func (c *EdgeConfig) RefreshCas() {
 	c.caPems = CalculateCaPems(c.caPems)
 	c.caCerts = nfpem.PemBytesToCertificates(c.caPems.Bytes())
+	c.caCertPool = x509.NewCertPool()
+
+	for _, cert := range c.caCerts {
+		c.caCertPool.AddCert(cert)
+	}
 }
 
 func (c *EdgeConfig) loadTotpSection(edgeConfigMap map[any]any) error {

@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"reflect"
+	"time"
 )
 
 type Authenticator struct {
@@ -68,11 +69,13 @@ func (entity *Authenticator) fillFrom(_ Env, _ *bbolt.Tx, boltAuthenticator *db.
 		}
 	case *db.AuthenticatorCert:
 		entity.SubType = &AuthenticatorCert{
-			Authenticator:     entity,
-			Fingerprint:       boltAuth.Fingerprint,
-			Pem:               boltAuth.Pem,
-			IsIssuedByNetwork: boltAuth.IsIssuedByNetwork,
-
+			Authenticator:         entity,
+			Fingerprint:           boltAuth.Fingerprint,
+			Pem:                   boltAuth.Pem,
+			IsIssuedByNetwork:     boltAuth.IsIssuedByNetwork,
+			IsExtendRequested:     boltAuth.IsExtendRequested,
+			IsKeyRollRequested:    boltAuth.IsKeyRollRequested,
+			ExtendRequestedAt:     boltAuth.ExtendRequestedAt,
 			UnverifiedPem:         boltAuth.UnverifiedPem,
 			UnverifiedFingerprint: boltAuth.UnverifiedFingerprint,
 		}
@@ -120,6 +123,9 @@ func (entity *Authenticator) toBoltEntity() (*db.Authenticator, error) {
 			UnverifiedFingerprint: certModel.UnverifiedFingerprint,
 			UnverifiedPem:         certModel.UnverifiedPem,
 			IsIssuedByNetwork:     certModel.IsIssuedByNetwork,
+			IsExtendRequested:     certModel.IsExtendRequested,
+			IsKeyRollRequested:    certModel.IsKeyRollRequested,
+			ExtendRequestedAt:     certModel.ExtendRequestedAt,
 		}
 
 	default:
@@ -163,9 +169,12 @@ func (entity *Authenticator) ToUpdb() *AuthenticatorUpdb {
 
 type AuthenticatorCert struct {
 	*Authenticator
-	Fingerprint       string
-	Pem               string
-	IsIssuedByNetwork bool
+	Fingerprint        string
+	Pem                string
+	IsIssuedByNetwork  bool
+	IsExtendRequested  bool
+	IsKeyRollRequested bool
+	ExtendRequestedAt  *time.Time
 
 	UnverifiedFingerprint string
 	UnverifiedPem         string

@@ -17,7 +17,6 @@
 package model
 
 import (
-	"encoding/pem"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
@@ -97,11 +96,6 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 
 	fp := module.fingerprintGenerator.FromRaw(certRaw)
 
-	certPem := pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certRaw,
-	})
-
 	clientChainPem, err := module.env.GetManagers().Enrollment.GetCertChainPem(certRaw)
 	if err != nil {
 		return nil, err
@@ -115,7 +109,7 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 		IdentityId: *enrollment.IdentityId,
 		SubType: &AuthenticatorCert{
 			Fingerprint:       fp,
-			Pem:               string(certPem),
+			Pem:               clientChainPem,
 			IsIssuedByNetwork: true,
 		},
 	}
@@ -134,7 +128,7 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 		Identity:      identity,
 		Authenticator: newAuthenticator,
 		Content:       content,
-		TextContent:   certPem,
+		TextContent:   []byte(clientChainPem),
 		Status:        200,
 	}, nil
 

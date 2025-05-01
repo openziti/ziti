@@ -216,7 +216,10 @@ func (ctx *TestContext) NewEdgeClientApi(totpProvider func(chan string)) *Client
 	}
 	client := edge_apis.NewClientApiClient([]*url.URL{ctx.ClientApiUrl()}, ctx.ControllerCaPool(), totpProvider)
 
-	return &ClientHelperClient{client}
+	return &ClientHelperClient{
+		ClientApiClient: client,
+		testCtx:         ctx,
+	}
 }
 
 func (ctx *TestContext) NewEdgeManagementApi(totpProvider func(chan string)) *ManagementHelperClient {
@@ -225,7 +228,10 @@ func (ctx *TestContext) NewEdgeManagementApi(totpProvider func(chan string)) *Ma
 	}
 	client := edge_apis.NewManagementApiClient([]*url.URL{ctx.ManagementApiUrl()}, ctx.ControllerCaPool(), totpProvider)
 
-	return &ManagementHelperClient{client}
+	return &ManagementHelperClient{
+		ManagementApiClient: client,
+		testCtx:             ctx,
+	}
 }
 
 func (ctx *TestContext) NewTransportWithIdentity(i idlib.Identity) *http.Transport {

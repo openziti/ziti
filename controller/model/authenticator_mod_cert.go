@@ -35,6 +35,9 @@ import (
 const (
 	ClientCertHeader       = "X-Client-CertPem"
 	EdgeRouterProxyRequest = "X-Edge-Router-Proxy-Request"
+
+	ZitiAuthenticatorExtendRquested   = "ziti-authenticator-extend-requested"
+	ZitiAuthenticatorRollKeyRequested = "ziti-authenticator-extend-requested"
 )
 
 var _ AuthProcessor = &AuthModuleCert{}

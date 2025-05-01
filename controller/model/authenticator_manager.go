@@ -38,6 +38,7 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"reflect"
 	"strings"
 	"time"
@@ -418,6 +419,15 @@ func (self *AuthenticatorManager) ReadForIdentity(identityId string, authenticat
 }
 
 func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authenticatorId string, peerCerts []*x509.Certificate, csrPem string, ctx *change.Context) ([]byte, error) {
+	if len(peerCerts) == 0 {
+		return nil, errorz.NewUnauthorized()
+	}
+
+	peer := peerCerts[0]
+	peerChain := peerCerts[1:]
+
+	fingerprint := self.env.GetFingerprintGenerator().FromCert(peer)
+
 	authenticator, _ := self.Read(authenticatorId)
 
 	if authenticator == nil {
@@ -446,33 +456,34 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 		return nil, apierror.NewAuthenticatorCannotBeUpdated()
 	}
 
-	var validClientCert *x509.Certificate = nil
-	for _, cert := range peerCerts {
-		fingerprint := self.env.GetFingerprintGenerator().FromCert(cert)
-		if fingerprint == authenticatorCert.Fingerprint {
-			validClientCert = cert
-			break
-		}
+	authFingerprints := authenticatorCert.Fingerprints()
+	if len(authFingerprints) == 0 {
+		return nil, apierror.NewAuthenticatorCannotBeUpdated()
 	}
 
-	if validClientCert == nil {
-		return nil, errorz.NewUnauthorized()
+	if authFingerprints[0] != fingerprint {
+		return nil, apierror.NewAuthenticatorCannotBeUpdated()
 	}
 
-	caPool := x509.NewCertPool()
-	config := self.env.GetConfig().Edge
-	caPool.AddCert(config.Enrollment.SigningCert.Cert().Leaf)
+	rootPool := self.env.GetConfig().Edge.CaCertsPool()
+	intermediatePool := x509.NewCertPool()
+	intermediatePool.AddCert(self.env.GetConfig().Edge.Enrollment.SigningCert.Cert().Leaf)
 
-	validClientCert.NotBefore = time.Now().Add(-1 * time.Hour)
-	validClientCert.NotAfter = time.Now().Add(+1 * time.Hour)
+	for _, c := range peerChain {
+		intermediatePool.AddCert(c)
+	}
 
-	validChain, err := validClientCert.Verify(x509.VerifyOptions{
-		Roots:     caPool,
-		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	peer.NotBefore = time.Now().Add(-1 * time.Hour)
+	peer.NotAfter = time.Now().Add(+1 * time.Hour)
+
+	validChain, err := peer.Verify(x509.VerifyOptions{
+		Roots:         rootPool,
+		Intermediates: intermediatePool,
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	})
 
 	if len(validChain) == 0 || err != nil {
-		return nil, apierror.NewAuthenticatorCannotBeUpdated()
+		return nil, errorz.NewUnauthorized()
 	}
 
 	csr, err := edgeCert.ParseCsrPem([]byte(csrPem))
@@ -487,7 +498,7 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 
 	currentCerts := nfpem.PemStringToCertificates(authenticatorCert.Pem)
 
-	if len(currentCerts) != 1 {
+	if len(currentCerts) == 0 {
 		return nil, errorz.NewUnhandled(errors.New("could not parse current certificates pem"))
 	}
 	currentCert := currentCerts[0]
@@ -590,11 +601,16 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(isJwtBacked bool, 
 
 	authenticatorCert.UnverifiedFingerprint = ""
 	authenticatorCert.UnverifiedPem = ""
+	authenticatorCert.IsExtendRequested = false
+	authenticatorCert.IsKeyRollRequested = false
 
 	err := self.env.GetManagers().Authenticator.Update(authenticatorCert.Authenticator, true, fields.UpdatedFieldsMap{
 		"fingerprint":                                  struct{}{},
 		db.FieldAuthenticatorUnverifiedCertPem:         struct{}{},
 		db.FieldAuthenticatorUnverifiedCertFingerprint: struct{}{},
+		db.FieldAuthenticatorCertExtendRequestedAt:     struct{}{},
+		db.FieldAuthenticatorCertIsExtendRequested:     struct{}{},
+		db.FieldAuthenticatorCertIsKeyRollRequested:    struct{}{},
 
 		db.FieldAuthenticatorCertPem:         struct{}{},
 		db.FieldAuthenticatorCertFingerprint: struct{}{},
@@ -738,6 +754,12 @@ func (self *AuthenticatorManager) AuthenticatorToProtobuf(entity *Authenticator)
 	}
 
 	if cert := entity.ToCert(); cert != nil {
+		var extendedAt *timestamppb.Timestamp
+
+		if cert.ExtendRequestedAt != nil {
+			extendedAt = timestamppb.New(*cert.ExtendRequestedAt)
+		}
+
 		msg.Subtype = &edge_cmd_pb.Authenticator_Cert_{
 			Cert: &edge_cmd_pb.Authenticator_Cert{
 				Fingerprint:           cert.Fingerprint,
@@ -745,8 +767,12 @@ func (self *AuthenticatorManager) AuthenticatorToProtobuf(entity *Authenticator)
 				UnverifiedFingerprint: cert.UnverifiedFingerprint,
 				UnverifiedPem:         cert.UnverifiedPem,
 				IsIssuedByNetwork:     cert.IsIssuedByNetwork,
+				IsExtendRequested:     cert.IsExtendRequested,
+				IsKeyRollRequested:    cert.IsKeyRollRequested,
+				ExtendRequestedAt:     extendedAt,
 			},
 		}
+
 	} else if updb := entity.ToUpdb(); updb != nil {
 		msg.Subtype = &edge_cmd_pb.Authenticator_Updb_{
 			Updb: &edge_cmd_pb.Authenticator_Updb{
@@ -802,6 +828,9 @@ func (self *AuthenticatorManager) ProtobufToAuthenticator(msg *edge_cmd_pb.Authe
 			IsIssuedByNetwork:     st.Cert.IsIssuedByNetwork,
 			UnverifiedFingerprint: st.Cert.UnverifiedFingerprint,
 			UnverifiedPem:         st.Cert.UnverifiedPem,
+			IsKeyRollRequested:    st.Cert.IsKeyRollRequested,
+			IsExtendRequested:     st.Cert.IsExtendRequested,
+			ExtendRequestedAt:     pbTimeToTimePtr(st.Cert.ExtendRequestedAt),
 		}
 		authenticator.Method = db.MethodAuthenticatorCert
 	case *edge_cmd_pb.Authenticator_Updb_:
@@ -819,6 +848,38 @@ func (self *AuthenticatorManager) ProtobufToAuthenticator(msg *edge_cmd_pb.Authe
 	}
 
 	return authenticator, nil
+}
+
+func (self *AuthenticatorManager) RequestExtend(authenticatorId string, rollKeys bool, ctx *change.Context) error {
+	authenticator, err := self.Read(authenticatorId)
+
+	if err != nil {
+		return err
+	}
+
+	if authenticator == nil {
+		return errorz.NewNotFound()
+	}
+
+	certAuthenticator := authenticator.ToCert()
+
+	if certAuthenticator == nil {
+		apiErr := errorz.NewUnauthorized()
+		apiErr.AppendCause = true
+		apiErr.Cause = errors.New("authenticator is not a certificate authenticator")
+		return apiErr
+	}
+
+	now := time.Now()
+	certAuthenticator.IsExtendRequested = true
+	certAuthenticator.IsKeyRollRequested = rollKeys
+	certAuthenticator.ExtendRequestedAt = &now
+
+	return self.Update(authenticator, true, fields.UpdatedFieldsMap{
+		db.FieldAuthenticatorCertExtendRequestedAt:  struct{}{},
+		db.FieldAuthenticatorCertIsExtendRequested:  struct{}{},
+		db.FieldAuthenticatorCertIsKeyRollRequested: struct{}{},
+	}, ctx)
 }
 
 type HashedPassword struct {

@@ -50,7 +50,7 @@ func Test_EnrollmentUpdbSpecific(t *testing.T) {
 
 		newEnrollmentExpiresAt := time.Now().Add(10 * time.Minute).UTC()
 		username := eid.New()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentUpdb(&newIdentityLoc.ID, &username, &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentUpdb(&newIdentityLoc.ID, &username, &newEnrollmentExpiresAt)
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newEnrollmentLoc)
 

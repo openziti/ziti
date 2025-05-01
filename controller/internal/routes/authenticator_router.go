@@ -19,12 +19,12 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/authenticator"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -72,6 +72,12 @@ func (r *AuthenticatorRouter) Register(ae *env.AppEnv) {
 	ae.ManagementApi.AuthenticatorReEnrollAuthenticatorHandler = authenticator.ReEnrollAuthenticatorHandlerFunc(func(params authenticator.ReEnrollAuthenticatorParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.ReEnroll(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.ManagementApi.AuthenticatorRequestExtendAuthenticatorHandler = authenticator.RequestExtendAuthenticatorHandlerFunc(func(params authenticator.RequestExtendAuthenticatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.RequestExtend(ae, rc, params)
 		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 }
@@ -141,4 +147,27 @@ func (r *AuthenticatorRouter) ReEnroll(ae *env.AppEnv, rc *response.RequestConte
 		rc.RespondWithError(err)
 		return
 	}
+}
+
+func (r *AuthenticatorRouter) RequestExtend(ae *env.AppEnv, rc *response.RequestContext, params authenticator.RequestExtendAuthenticatorParams) {
+	id, err := rc.GetEntityId()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if id == "" {
+		rc.RespondWithError(errors.New("entity id missing"))
+		return
+	}
+
+	err = ae.Managers.Authenticator.RequestExtend(id, params.RequestExtendAuthenticator.RollKeys, rc.NewChangeContext())
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	rc.RespondWithEmptyOk()
 }

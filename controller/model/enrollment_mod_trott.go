@@ -96,7 +96,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		return nil, apierror.NewCouldNotProcessCsr()
 	}
 
-	srvPem, err := module.env.GetManagers().Enrollment.GetCertChainPem(srvCert)
+	serverChainPem, err := module.env.GetManagers().Enrollment.GetCertChainPem(srvCert)
 
 	if err != nil {
 		return nil, apierror.NewCouldNotProcessCsr()
@@ -150,7 +150,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 	content := &rest_model.EnrollmentCerts{
 		Ca:         string(module.env.GetConfig().Edge.CaPems()),
 		Cert:       clientChainPem,
-		ServerCert: srvPem,
+		ServerCert: serverChainPem,
 	}
 
 	return &EnrollmentResult{

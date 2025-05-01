@@ -42,14 +42,16 @@ type AuthRequest struct {
 	ConfigTypes           []string
 	Amr                   map[string]struct{}
 
-	PeerCerts           []*x509.Certificate
-	RequestedMethod     string
-	BearerTokenDetected bool
-	SdkInfo             *rest_model.SdkInfo
-	EnvInfo             *rest_model.EnvInfo
-	RemoteAddress       string
-	IsCertExtendable    bool
-	AuthenticatorId     string
+	PeerCerts              []*x509.Certificate
+	RequestedMethod        string
+	BearerTokenDetected    bool
+	SdkInfo                *rest_model.SdkInfo
+	EnvInfo                *rest_model.EnvInfo
+	RemoteAddress          string
+	IsCertExtendable       bool
+	IsCertExtendRequested  bool
+	IsCertKeyRollRequested bool
+	AuthenticatorId        string
 }
 
 // GetID returns an AuthRequest's ID and implements op.AuthRequest

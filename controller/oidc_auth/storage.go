@@ -260,7 +260,11 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 
 		if certAuth != nil {
 			authRequest.IsCertExtendable = certAuth.IsIssuedByNetwork
+			authRequest.IsCertExtendable = true
+			authRequest.IsCertKeyRollRequested = certAuth.IsKeyRollRequested
+
 		}
+
 	}
 
 	authRequest.AuthenticatorId = result.AuthenticatorId()
@@ -473,6 +477,8 @@ func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenR
 		claims.CustomClaims.SdkInfo = req.SdkInfo
 		claims.CustomClaims.RemoteAddress = req.RemoteAddress
 		claims.CustomClaims.IsCertExtendable = req.IsCertExtendable
+		claims.CustomClaims.IsCertExtendRequested = req.IsCertExtendRequested
+		claims.CustomClaims.IsCertKeyRollRequested = req.IsCertKeyRollRequested
 		claims.CustomClaims.AuthenticatorId = req.AuthenticatorId
 		claims.AuthTime = oidc.Time(req.AuthTime.Unix())
 		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()

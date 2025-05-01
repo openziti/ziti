@@ -54,7 +54,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NotNil(newIdentity)
 
 		newEnrollmentExpiresAt := time.Now().Add(10 * time.Minute).UTC()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOtt(newIdentity.ID, &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOtt(newIdentity.ID, &newEnrollmentExpiresAt)
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newEnrollmentLoc)
 
@@ -113,7 +113,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NotNil(newIdentity)
 
 		newEnrollmentExpiresAt := time.Now().Add(2 * time.Second).UTC()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOtt(newIdentity.ID, &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOtt(newIdentity.ID, &newEnrollmentExpiresAt)
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newEnrollmentLoc)
 
@@ -178,7 +178,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NotNil(newIdentity)
 
 		newEnrollmentExpiresAt := time.Now().Add(5 * time.Second).UTC()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOtt(newIdentity.ID, &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOtt(newIdentity.ID, &newEnrollmentExpiresAt)
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newEnrollmentLoc)
 
@@ -189,7 +189,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		t.Run("creating second OTT enrollment fails", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			secondEnrollmentExpiresAt := time.Now().Add(5 * time.Second).UTC()
-			secondEnrollmentLoc, err := managementApiClient.NewEnrollmentOtt(newIdentity.ID, &secondEnrollmentExpiresAt)
+			secondEnrollmentLoc, err := managementApiClient.CreateEnrollmentOtt(newIdentity.ID, &secondEnrollmentExpiresAt)
 			ctx.Req.Error(err)
 			ctx.Req.Nil(secondEnrollmentLoc)
 		})
@@ -207,7 +207,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NotNil(adminManApiSession)
 
 		newEnrollmentExpiresAt := time.Now().Add(5 * time.Second).UTC()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOtt(ToPtr("i-do-not-exist"), &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOtt(ToPtr("i-do-not-exist"), &newEnrollmentExpiresAt)
 		ctx.Req.Error(err)
 		ctx.Req.Nil(newEnrollmentLoc)
 	})
@@ -224,7 +224,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NotNil(adminManApiSession)
 
 		newEnrollmentExpiresAt := time.Now().Add(5 * time.Second).UTC()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOtt(nil, &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOtt(nil, &newEnrollmentExpiresAt)
 		ctx.Req.Error(err)
 		ctx.Req.Nil(newEnrollmentLoc)
 	})
@@ -250,7 +250,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NotNil(newIdentity)
 
 		newEnrollmentExpiresAt := time.Now().Add(-5 * time.Hour).UTC()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOtt(newIdentity.ID, &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOtt(newIdentity.ID, &newEnrollmentExpiresAt)
 		ctx.Req.Error(err)
 		ctx.Req.Nil(newEnrollmentLoc)
 	})
@@ -275,7 +275,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newIdentity)
 
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOtt(newIdentity.ID, nil)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOtt(newIdentity.ID, nil)
 		ctx.Req.Error(err)
 		ctx.Req.Nil(newEnrollmentLoc)
 	})
@@ -316,7 +316,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		newEnrollmentExpiresAt := time.Now().Add(10 * time.Minute).UTC()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOttCa(newIdentity.ID, newCa.ID, &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOttCa(newIdentity.ID, newCa.ID, &newEnrollmentExpiresAt)
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newEnrollmentLoc)
 
@@ -394,7 +394,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		newEnrollmentExpiresAt := time.Now().Add(5 * time.Second).UTC()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOttCa(newIdentity.ID, newCa.ID, &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOttCa(newIdentity.ID, newCa.ID, &newEnrollmentExpiresAt)
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newEnrollmentLoc)
 
@@ -458,7 +458,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		newEnrollmentExpiresAt := time.Now().Add(5 * time.Hour).UTC()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOttCa(newIdentity.ID, newCa.ID, &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOttCa(newIdentity.ID, newCa.ID, &newEnrollmentExpiresAt)
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newEnrollmentLoc)
 
@@ -466,7 +466,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			secondEnrollmentExpiresAt := time.Now().Add(5 * time.Hour).UTC()
-			secondEnrollmentLoc, err := managementApiClient.NewEnrollmentOttCa(newIdentity.ID, newCa.ID, &secondEnrollmentExpiresAt)
+			secondEnrollmentLoc, err := managementApiClient.CreateEnrollmentOttCa(newIdentity.ID, newCa.ID, &secondEnrollmentExpiresAt)
 			ctx.Req.Error(err)
 			ctx.Req.Nil(secondEnrollmentLoc)
 		})
@@ -493,7 +493,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NotNil(newIdentity)
 
 		newEnrollmentExpiresAt := time.Now().Add(5 * time.Hour).UTC()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOttCa(newIdentity.ID, ToPtr("i-do-not-exist"), &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOttCa(newIdentity.ID, ToPtr("i-do-not-exist"), &newEnrollmentExpiresAt)
 		ctx.Req.Error(err)
 		ctx.Req.Nil(newEnrollmentLoc)
 	})
@@ -519,7 +519,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NotNil(newIdentity)
 
 		newEnrollmentExpiresAt := time.Now().Add(5 * time.Hour).UTC()
-		newEnrollmentLoc, err := managementApiClient.NewEnrollmentOttCa(newIdentity.ID, nil, &newEnrollmentExpiresAt)
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOttCa(newIdentity.ID, nil, &newEnrollmentExpiresAt)
 		ctx.Req.Error(err)
 		ctx.Req.Nil(newEnrollmentLoc)
 	})
