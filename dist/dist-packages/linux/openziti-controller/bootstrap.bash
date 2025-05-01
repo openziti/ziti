@@ -736,6 +736,9 @@ finalizeWorkingDir() {
 }
 
 hintLinuxBootstrap() {
+  if [[ "${ZITI_RUNTIME}" != 'systemd' ]]; then
+    return 0
+  fi
   local _work_dir="${1:-${PWD}}"
 
   echo -e "\nProvide a configuration in '${_work_dir}' or generate with:"\
