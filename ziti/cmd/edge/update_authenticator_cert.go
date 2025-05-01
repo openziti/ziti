@@ -30,9 +30,8 @@ import (
 
 type updateCertOptions struct {
 	*api.Options
-	authenticatorId string
-	requestExtend   bool
-	requestKeyRoll  bool
+	requestExtend  bool
+	requestKeyRoll bool
 }
 
 func newUpdateAuthenticatorCert(idType string, options api.Options) *cobra.Command {
