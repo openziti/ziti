@@ -98,6 +98,11 @@ func (self *Controller) HandleAddPeerAsLeader(req *cmd_pb.AddPeerRequest) error 
 		return fmt.Errorf("unsupported peer address format '%s'", req.Addr)
 	}
 
+	peerId, peerAddr, err := self.Mesh.GetPeerInfo(req.Addr, 15*time.Second)
+	if err != nil {
+		return err
+	}
+
 	r := self.GetRaft()
 
 	configFuture := r.GetConfiguration()
@@ -105,8 +110,8 @@ func (self *Controller) HandleAddPeerAsLeader(req *cmd_pb.AddPeerRequest) error 
 		return errors.Wrap(err, "failed to get raft configuration")
 	}
 
-	id := raft.ServerID(req.Id)
-	addr := raft.ServerAddress(req.Addr)
+	id := peerId
+	addr := peerAddr
 
 	for _, srv := range configFuture.Configuration().Servers {
 		// If a node already exists with either the joining node's ID or address,

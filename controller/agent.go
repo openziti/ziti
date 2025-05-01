@@ -127,18 +127,6 @@ func (self *Controller) agentOpRaftAddPeer(m *channel.Message, ch channel.Channe
 		return
 	}
 
-	id, found := m.GetStringHeader(AgentIdHeader)
-	if !found {
-		peerId, peerAddr, err := self.raftController.Mesh.GetPeerInfo(addr, 15*time.Second)
-		if err != nil {
-			errMsg := fmt.Sprintf("id not supplied and unable to retrieve [%v]", err.Error())
-			handler_common.SendOpResult(m, ch, "cluster.add-peer", errMsg, false)
-			return
-		}
-		id = string(peerId)
-		addr = string(peerAddr)
-	}
-
 	isVoter, found := m.GetBoolHeader(AgentIsVoterHeader)
 	if !found {
 		isVoter = true
@@ -146,7 +134,6 @@ func (self *Controller) agentOpRaftAddPeer(m *channel.Message, ch channel.Channe
 
 	req := &cmd_pb.AddPeerRequest{
 		Addr:    addr,
-		Id:      id,
 		IsVoter: isVoter,
 	}
 
@@ -154,7 +141,8 @@ func (self *Controller) agentOpRaftAddPeer(m *channel.Message, ch channel.Channe
 		handler_common.SendOpResult(m, ch, "cluster.add-peer", err.Error(), false)
 		return
 	}
-	handler_common.SendOpResult(m, ch, "cluster.add-peer", fmt.Sprintf("success, added %v at %v to cluster", id, addr), true)
+
+	handler_common.SendOpResult(m, ch, "cluster.add-peer", fmt.Sprintf("success, added peer at %v to cluster", addr), true)
 }
 
 func (self *Controller) agentOpRaftJoinCluster(m *channel.Message, ch channel.Channel) {

@@ -28,8 +28,7 @@ import (
 
 type AgentClusterAddAction struct {
 	AgentOptions
-	Voter    bool
-	MemberId string
+	Voter bool
 }
 
 func NewAgentClusterAdd(p common.OptionsProvider) *cobra.Command {
@@ -55,7 +54,6 @@ func NewAgentClusterAdd(p common.OptionsProvider) *cobra.Command {
 
 	action.AddAgentOptions(cmd)
 	cmd.Flags().BoolVar(&action.Voter, "voter", true, "Is this member a voting member")
-	cmd.Flags().StringVar(&action.MemberId, "id", "", "The member id. If not provided, it will be looked up")
 
 	return cmd
 }
@@ -64,10 +62,6 @@ func (self *AgentClusterAddAction) makeRequest(ch channel.Channel) error {
 	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftAddPeerRequestType), nil)
 	msg.PutStringHeader(controller.AgentAddrHeader, self.Args[0])
 	msg.PutBoolHeader(controller.AgentIsVoterHeader, self.Voter)
-
-	if self.MemberId != "" {
-		msg.PutStringHeader(controller.AgentIdHeader, self.MemberId)
-	}
 
 	reply, err := msg.WithTimeout(self.timeout).SendForReply(ch)
 	if err != nil {
