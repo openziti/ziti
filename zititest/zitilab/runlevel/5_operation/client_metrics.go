@@ -213,7 +213,7 @@ func (self *SimServices) toClientMetricsEvent(fabricEvent *mgmt_pb.StreamMetrics
 	return modelEvent
 }
 
-func (self *SimServices) GetSimController(run model.Run, service string) (*loop4.RemoteController, error) {
+func (self *SimServices) GetSimController(run model.Run, service string, callback loop4.ControllerCallback) (*loop4.RemoteController, error) {
 	zitiContext, err := self.GetZitiContext(run)
 	if err != nil {
 		return nil, err
@@ -223,7 +223,7 @@ func (self *SimServices) GetSimController(run model.Run, service string) (*loop4
 	defer self.lock.Unlock()
 
 	if self.remoteController == nil {
-		simControl := loop4.NewRemoteController(zitiContext)
+		simControl := loop4.NewRemoteController(zitiContext, callback)
 		if err = simControl.AcceptConnections(service); err != nil {
 			return nil, err
 		}

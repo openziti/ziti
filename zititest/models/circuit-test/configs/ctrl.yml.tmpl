@@ -71,6 +71,15 @@ events:
       format: json
       path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/router.log
 
+  usageEventsLogger:
+    subscriptions:
+      - type: usage
+        version: 3
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/usage.log
+
 healthChecks:
   boltCheck:
     # How often to try entering a bolt read tx. Defaults to 30 seconds

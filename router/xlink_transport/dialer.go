@@ -17,13 +17,14 @@
 package xlink_transport
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/transport/v2"
 	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -75,7 +76,8 @@ func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
 	if self.config.split {
 		xli, err = self.dialSplit(linkId, address, connId, dial)
 	} else {
-		xli, err = self.dialSingle(linkId, address, connId, dial)
+		// xli, err = self.dialSingle(linkId, address, connId, dial)
+		xli, err = self.dialMulti(linkId, address, connId, dial)
 	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "error dialing outgoing link [l/%s@%v]", linkId.Token, dial.GetIteration())
@@ -202,13 +204,90 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 	return bindHandler.link, nil
 }
 
+func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
+	log := pfxlog.Logger().WithFields(logrus.Fields{
+		"linkId": linkId.Token,
+		"connId": connId,
+	})
+
+	log.Info("dialing link with single channel")
+
+	headers := channel.Headers{
+		LinkHeaderRouterId:      []byte(self.id.Token),
+		LinkHeaderConnId:        []byte(connId),
+		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
+		LinkHeaderBinding:       []byte(self.GetBinding()),
+	}
+	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
+	headers.PutBoolHeader(channel.IsGroupedHeader, true)
+	headers.PutStringHeader(channel.TypeHeader, ChannelTypeDefault)
+
+	linkDialer := channel.NewClassicDialer(channel.DialerConfig{
+		Identity:        linkId,
+		Endpoint:        address,
+		LocalBinding:    self.config.localBinding,
+		Headers:         headers,
+		TransportConfig: self.transportConfig,
+		MessageStrategy: channel.DatagramMessageStrategy(xgress.UnmarshallPacketPayload),
+	})
+
+	bindHandler := &dialBindHandler{
+		dialer: self,
+		link: &impl{
+			id:            dial.GetLinkId(),
+			key:           dial.GetLinkKey(),
+			routerId:      dial.GetRouterId(),
+			linkProtocol:  dial.GetLinkProtocol(),
+			routerVersion: dial.GetRouterVersion(),
+			dialAddress:   dial.GetAddress(),
+			iteration:     dial.GetIteration(),
+			dialed:        true,
+		},
+	}
+
+	underlay, err := linkDialer.CreateWithHeaders(self.config.options.ConnectTimeout, headers)
+	if err != nil {
+		return nil, fmt.Errorf("error dialing link [l/%s] (%w)", linkId.Token, err)
+	}
+
+	if isGrouped, _ := channel.Headers(underlay.Headers()).GetBoolHeader(channel.IsGroupedHeader); isGrouped {
+		var dialLinkChannel = NewDialLinkChannel(linkDialer, underlay, 3, 1)
+		multiChannelConfig := &channel.MultiChannelConfig{
+			LogicalName:     fmt.Sprintf("ziti-link[router=%v]", address.String()),
+			Options:         self.config.options,
+			UnderlayHandler: dialLinkChannel,
+			BindHandler:     bindHandler,
+			Underlay:        underlay,
+		}
+		_, err = channel.NewMultiChannel(multiChannelConfig)
+	} else {
+		_, err = channel.NewChannelWithUnderlay(fmt.Sprintf("ziti-link[router=%v]", address.String()), underlay, bindHandler, self.config.options)
+	}
+
+	if err != nil {
+		return nil, errors.Wrapf(err, "error dialing link [l/%s]", linkId.Token)
+	}
+
+	return bindHandler.link, nil
+}
+
 type dialBindHandler struct {
 	dialer *dialer
 	link   *impl
 }
 
 func (self *dialBindHandler) BindChannel(binding channel.Binding) error {
-	self.link.ch = binding.GetChannel()
+	if mc, ok := binding.GetChannel().(channel.MultiChannel); ok {
+		if linkChan, ok := mc.GetUnderlayHandler().(LinkChannel); ok {
+			linkChan.InitChannel(mc)
+			self.link.ch = linkChan
+		}
+	}
+
+	if self.link.ch == nil {
+		self.link.ch = NewSingleLinkChannel(binding.GetChannel())
+	}
+
 	bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, true, false)
 	return bindHandler.BindChannel(binding)
 }

@@ -40,6 +40,7 @@ link:
       advertise:        tls:{{$router_ip}}:6000
   dialers:
     - binding:          transport
+      split: false
       options:
         connectTimeout: 30s
 

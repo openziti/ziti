@@ -185,11 +185,14 @@ func (self *SimMetricsValidator) ValidateCollected() error {
 				if metrics.err != nil {
 					errList = append(errList, metrics.err)
 				}
-				if metrics.failures.Count > 0 {
-					errList = append(errList, fmt.Errorf("%s: service %s has %v failures", host.Id, service, metrics.failures.Count))
-				}
-				if metrics.successes.Count == 0 && isLast {
-					errList = append(errList, fmt.Errorf("%s: service %s has no successes", host.Id, service))
+
+				if isLast {
+					if metrics.failures.Count > 0 {
+						errList = append(errList, fmt.Errorf("%s: service %s has %v failures", host.Id, service, metrics.failures.Count))
+					}
+					if metrics.successes.Count == 0 {
+						errList = append(errList, fmt.Errorf("%s: service %s has no successes", host.Id, service))
+					}
 				}
 
 				// ignore the first latency measurement

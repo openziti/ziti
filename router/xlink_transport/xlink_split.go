@@ -17,6 +17,7 @@
 package xlink_transport
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
@@ -86,6 +87,7 @@ func (self *splitImpl) SendPayload(msg *xgress.Payload, timeout time.Duration, p
 	if timeout == 0 {
 		sent, err := self.payloadCh.TrySend(msg.Marshall())
 		if err == nil && !sent {
+			pfxlog.Logger().WithField("circuitId", msg.CircuitId).Info("dropped payload")
 			self.droppedMsgMeter.Mark(1)
 			if payloadType == xgress.PayloadTypeXg {
 				self.droppedXgMsgMeter.Mark(1)

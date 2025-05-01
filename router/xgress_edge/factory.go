@@ -285,5 +285,9 @@ func (options *Options) load(data xgress.OptionsData) error {
 		options.channelOptions = channel.DefaultOptions()
 	}
 
+	if options.channelOptions.OutQueueSize == channel.DefaultOutQueueSize {
+		options.channelOptions.OutQueueSize = 64
+	}
+
 	return nil
 }

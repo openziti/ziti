@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -201,7 +202,10 @@ func (p *protocol) run(test *loopPb.Test) error {
 }
 
 func (p *protocol) txer(done chan bool) {
-	log := pfxlog.ContextLogger(p.test.Name)
+	log := pfxlog.ContextLogger(p.test.Name).Entry
+	if p.circuitId != "" {
+		log = log.WithField("circuitId", p.circuitId)
+	}
 	log.Debug("started")
 	defer func() { done <- true }()
 	defer log.Debug("complete")
@@ -249,24 +253,47 @@ func (p *protocol) txer(done chan bool) {
 }
 
 func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error), rxNotifier RxNotifier) {
-	log := pfxlog.ContextLogger(p.test.Name)
+	log := pfxlog.ContextLogger(p.test.Name).Entry
+	if p.circuitId != "" {
+		log = log.WithField("circuitId", p.circuitId)
+	}
+
 	log.Debug("started")
 	defer func() { done <- true }()
 	defer log.Debug("complete")
 
 	lastRx := time.Now()
 	lastPause := time.Now()
+
+	first := true
+	notifyDone := make(chan struct{})
+
 	for p.rxCount < p.test.RxRequests {
 		now := time.Now()
 		if p.rxPauseEvery > 0 && now.Sub(lastPause) > p.rxPauseEvery {
 			time.Sleep(p.rxPauseFor)
 			lastPause = time.Now()
 		}
+		if first {
+			go func() {
+				select {
+				case <-notifyDone:
+				case <-time.After(p.rxTimeout - 3*time.Second):
+					p.logStack()
+					triggerInspect(p.circuitId)
+				}
+			}()
+		}
 		block, err := rxBlock()
 		if err != nil {
 			p.errors <- err
 			log.Error(err)
 			return
+		}
+
+		if first {
+			close(notifyDone)
+			first = false
 		}
 
 		rxNotifier.MsgReceived()
@@ -296,8 +323,23 @@ func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error), rxNotifie
 	log.Info("rx count reached")
 }
 
+func (p *protocol) logStack() {
+	log := pfxlog.ContextLogger(p.test.Name).Entry
+	if p.circuitId != "" {
+		log = log.WithField("circuitId", p.circuitId)
+	}
+	if err := debugz.DumpStackToFile(fmt.Sprintf("/home/ubuntu/logs/%s.stack", p.circuitId)); err != nil {
+		log.WithError(err).Error("failed to dump stack")
+	} else {
+		log.Info("dumped stack after rx delay on first rx")
+	}
+}
+
 func (p *protocol) verifier() {
-	log := pfxlog.ContextLogger(p.test.Name)
+	log := pfxlog.ContextLogger(p.test.Name).Entry
+	if p.circuitId != "" {
+		log = log.WithField("circuitId", p.circuitId)
+	}
 	log.Debug("started")
 	defer log.Debug("complete")
 
