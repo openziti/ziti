@@ -11,7 +11,7 @@ how a hosting tunneler should translate destination IPs from the client when con
 application.
 
 ## Component Updates and Bug Fixes
-* github.com/openziti/ziti: [v1.6.0 -> v1.6.1](https://github.com/openziti/ziti/compare/v1.6.0...v1.6.1)
+* github.com/openziti/ziti: [v1.6.1 -> v1.6.2](https://github.com/openziti/ziti/compare/v1.6.1...v1.6.2)
     * [Issue #2963](https://github.com/openziti/ziti/issues/2963) - support intercept.v1 --> host.v1 address translation
 
 # Release 1.6.1
