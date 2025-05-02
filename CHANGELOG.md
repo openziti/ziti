@@ -1,3 +1,55 @@
+# Release 1.6.1
+
+## What's New
+
+* Bug fixes and library updates
+* Ability to request that SDKs extend and optionally roll their key
+
+## Ability to request that SDKs extend and optionally roll their key
+
+It is now possible for administrators to flag specific certificate authenticators as needed to `extend` their current
+certificate early and/or optionally roll the keypair that underpins the certificate. This capability only works for
+certificates issued by the OpenZiti network. If '3rd party CAs' are in use, those certificate authenticators will not
+work with this system.
+
+SDKs must support this capability for it to have any effect, and the application utilizing the SDK must respond to the 
+certificate extension events to store certificate credentials.
+
+This capability is located in the Management API at `/edge/management/v1/authenticators/{id>/request-extend`.
+Its payload is currently and optional boolean value for `rollKeys` that can be set to true/false and defaults to
+false if not provided. 
+
+This can also be issued via the CLI:
+
+```
+> ziti edge update authenticator cert -h
+Request a specific certificate authenticator to --requestExtend or --requestKeyRoll, --requestKeyRoll implies --requestExtend
+
+Usage:
+  ziti edge update authenticator cert <authenticatorId> [--requestExtend] [--requestKeyRoll] [flags]
+
+Flags:
+  -h, --help             help for cert
+  -e, --requestExtend    Specify the certificate authenticator should be flagged for extension
+  -r, --requestKeyRoll   Specify the certificate authenticator should be flagged for key rolling, implies --requestExtend
+```
+
+Requesting an extension flags new fields on a certificate authenticator in the values `isExtendRequest` and
+`isKeyRollRequested`. These values are set to false after the client performs a certificate extension. The CLI
+has been updated to report these values on certificate authenticators via `ziti edge list authenticators`.
+
+These values are also present on the `/edge/client/v1/current-api-session` endpoint when a client has use certificate
+authentication to initiate an API Session using a certificate authenticator.
+
+Additionally, a log of key rolling activity per authenticator will be available in a future release.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge-api: [v0.26.42 -> v0.26.43](https://github.com/openziti/edge-api/compare/v0.26.42...v0.26.43)
+* github.com/openziti/ziti: [v1.6.0 -> v1.6.1](https://github.com/openziti/ziti/compare/v1.6.0...v1.6.1)
+  * [Issue #2996](https://github.com/openziti/ziti/issues/2996) - Add ability to signal SDKs to extend cert authenticator
+
+
 # Release 1.6.0
 
 ## What's New
