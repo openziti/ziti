@@ -462,7 +462,7 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 	}
 
 	if authFingerprints[0] != fingerprint {
-		return nil, apierror.NewAuthenticatorCannotBeUpdated()
+		return nil, errorz.NewUnauthorized()
 	}
 
 	rootPool := self.env.GetConfig().Edge.CaCertsPool()
