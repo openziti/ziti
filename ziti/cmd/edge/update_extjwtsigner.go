@@ -153,6 +153,8 @@ func runUpdateExtJwtSigner(options updateExtJwtOptions) error {
 
 	if options.Cmd.Flag("jwks-endpoint").Changed {
 		changed = true
+		val := strfmt.URI(options.JwksEndpoint)
+		options.ExtJwtSigner.JwksEndpoint = &val
 	} else {
 		options.ExtJwtSigner.JwksEndpoint = nil
 	}
