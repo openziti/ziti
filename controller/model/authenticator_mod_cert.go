@@ -111,7 +111,7 @@ func (module *AuthModuleCert) isCertExpirationValid(clientCert *x509.Certificate
 // 6) obtain the target identity's auth policy
 // 7) verify according to auth policy
 func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
-	logger := pfxlog.Logger().WithField("authMethod", module.method)
+	logger := pfxlog.Logger().WithField("authMethod", module.method).WithField("changeContext", context.GetChangeContext().Attributes)
 
 	certs, err := module.getClientCerts(context)
 
@@ -127,26 +127,50 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 
 	clientCert := certs[0]
 
-	activeAuthTrustAnchorPool := module.env.GetManagers().Ca.GetActiveAuthTrustAnchorPool()
-	activeAuthCas := module.env.GetManagers().Ca.GetActiveAuthCas()
+	trustCache := module.env.GetManagers().Ca.GetTrustCache()
 
-	chains, err := module.verifyClientCerts(certs, activeAuthTrustAnchorPool)
+	trustCache.RLock()
+	defer trustCache.RUnlock()
+
+	var targetThirdPartyCa *Ca
+	chains, err := module.verifyClientCerts(certs, trustCache.staticFirstPartyRootPool)
 
 	if err != nil {
-		logger.WithError(err).Error("error verifying client certificate")
-		return nil, apierror.NewInvalidAuth()
+		logger.WithError(err).Error("error verifying client certificate via static root pool, trying other pools")
 	}
 
 	if len(chains) == 0 {
-		logger.Error("failed to verify client, no valid roots")
+		logger.Debug("certificate validation failed vai root only pool, trying other pools")
+		chains, err = module.verifyClientCerts(certs, trustCache.staticFirstPartyTrustAnchorPool)
+
+		if err != nil {
+			logger.WithError(err).Error("error verifying client certificate via static trust anchor pool, trying other pools")
+		}
+
+		if len(chains) == 0 {
+			logger.Debug("certificate validation failed vai root+intermediate pool, trying third party pool")
+			chains, err = module.verifyClientCerts(certs, trustCache.thirdPartyTrustAnchorPool)
+
+			if err == nil {
+				targetThirdPartyCa = getCaByChain(trustCache.activeThirdPartyCas, chains, module.env.GetFingerprintGenerator())
+
+				if len(chains) == 0 {
+					logger.Debug("certificate validation failed vai third party pool")
+				}
+			} else {
+				logger.WithError(err).Error("error verifying client certificate via third party anchor pool")
+			}
+		}
+	}
+
+	if len(chains) == 0 {
+		logger.Error("failed to verify client via all pools, no valid roots")
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	targetCa := getCaByChain(activeAuthCas, chains, module.env.GetFingerprintGenerator())
-
 	externalId := ""
-	if targetCa != nil {
-		externalId, err = targetCa.GetExternalId(clientCert)
+	if targetThirdPartyCa != nil {
+		externalId, err = targetThirdPartyCa.GetExternalId(clientCert)
 		if err != nil {
 			logger.WithError(err).Error("encountered an error getting externalId from x509.Certificate")
 		}

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/identity"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
@@ -50,23 +51,49 @@ func NewCaManager(env Env) *CaManager {
 	return manager
 }
 
+type TrustCache struct {
+	// static root certificates from the controller's root identity CA bundle (roots and intermediates)
+	staticFirstPartyTrustAnchors []*x509.Certificate
+
+	// a cert pool that mirrors `staticFirstPartyTrustAnchors`
+	staticFirstPartyTrustAnchorPool *x509.CertPool
+
+	// static root certificates from the controller's root identity CA bundle (roots only)
+	staticFirstPartyRoots []*x509.Certificate
+
+	// a cert pool that mirrors `staticFirstPartyRoots`
+	staticFirstPartyRootPool *x509.CertPool
+
+	// a set of trust anchors registered as 3rd party CAs that are active for authentication
+	thirdPartyTrustAnchors []*x509.Certificate
+
+	// a cert pool that mirrors `thirdPartyTrustAnchors`
+	thirdPartyTrustAnchorPool *x509.CertPool
+
+	// all 3rd party CA model items in fingerprint -> Ca form
+	activeThirdPartyCas map[string]*Ca
+
+	// a pool of all roots, intermediates and 3rd parties
+	allPool *x509.CertPool
+
+	sync.RWMutex
+	initOnce sync.Once
+}
+
+func (self *TrustCache) GetAllPool() *x509.CertPool {
+	self.RLock()
+	defer self.RUnlock()
+
+	if self.allPool == nil {
+		return x509.NewCertPool()
+	}
+
+	return self.allPool
+}
+
 type CaManager struct {
 	baseEntityManager[*Ca, *db.Ca]
-
-	cache struct {
-		// static root certificates from the controller's root identity  CA bundle.
-		staticRootCas []*x509.Certificate
-
-		// A cert pool that reflects all trust anchors from the CaStore and all root CAs from the controllers identity
-		// bundle.
-		trustAnchorPool *x509.CertPool
-
-		// all 3rd party CA model items in fingerprint -> Ca form
-		activeCas map[string]*Ca
-
-		sync.RWMutex
-		initOnce sync.Once
-	}
+	cache TrustCache
 }
 
 func (self *CaManager) initCache() {
@@ -76,42 +103,41 @@ func (self *CaManager) initCache() {
 	}
 }
 
-func (self *CaManager) GetActiveAuthTrustAnchorPool() *x509.CertPool {
+func (self *CaManager) GetTrustCache() *TrustCache {
 	self.cache.initOnce.Do(self.initCache)
-
-	self.cache.RLock()
-	defer self.cache.RUnlock()
-
-	return self.cache.trustAnchorPool
-}
-
-func (self *CaManager) GetActiveAuthCas() map[string]*Ca {
-	self.cache.initOnce.Do(self.initCache)
-
-	self.cache.RLock()
-	defer self.cache.RUnlock()
-
-	result := map[string]*Ca{}
-
-	for k, v := range self.cache.activeCas {
-		result[k] = v
-	}
-
-	return result
+	return &self.cache
 }
 
 func (self *CaManager) RefreshActiveAuthCaCertCache() error {
 	self.cache.Lock()
 	defer self.cache.Unlock()
 
-	newStaticRootCas := []*x509.Certificate{}
-	newTrustAnchorPool := x509.NewCertPool()
-	newActiveCas := map[string]*Ca{}
+	// for TLS config
+	allPool := x509.NewCertPool()
+
+	//legacy root + intermediates
+	var newStaticFirstPartyTrustAnchors []*x509.Certificate
+	newStaticFirstPartyTrustAnchorPool := x509.NewCertPool()
+
+	// ha and forward root only
+	var newStaticFirstPartyRoots []*x509.Certificate
+	newStaticFirstPartyRootPool := x509.NewCertPool()
+
+	var newThirdPartyTrustAnchors []*x509.Certificate
+	newThirdPartyTrustAnchorPool := x509.NewCertPool()
+
+	newActiveThirdPartyCas := map[string]*Ca{}
 
 	for _, cert := range self.env.GetConfig().Edge.CaCerts() {
-		//TODO: remove non roots, but be aware that legacy clients that have not extended their cert or enrolled after full chains were provided may stop working.
-		newStaticRootCas = append(newStaticRootCas, cert)
-		newTrustAnchorPool.AddCert(cert)
+		//TODO: remove legacy trust anchors (root + intermediate) and use root only
+		newStaticFirstPartyTrustAnchors = append(newStaticFirstPartyTrustAnchors, cert)
+		newStaticFirstPartyTrustAnchorPool.AddCert(cert)
+		allPool.AddCert(cert)
+
+		if identity.IsRootCa(cert) {
+			newStaticFirstPartyRoots = append(newStaticFirstPartyRoots, cert)
+			newStaticFirstPartyRootPool.AddCert(cert)
+		}
 	}
 
 	err := self.Stream("isAuthEnabled = true and isVerified = true", func(ca *Ca, err error) error {
@@ -126,16 +152,26 @@ func (self *CaManager) RefreshActiveAuthCaCertCache() error {
 		caCerts := nfpem.PemStringToCertificates(ca.CertPem)
 
 		if len(caCerts) != 0 {
-			newActiveCas[ca.Fingerprint] = ca
-			newTrustAnchorPool.AddCert(caCerts[0])
+			newActiveThirdPartyCas[ca.Fingerprint] = ca
+			newThirdPartyTrustAnchors = append(newThirdPartyTrustAnchors, caCerts[0])
+			newThirdPartyTrustAnchorPool.AddCert(caCerts[0])
+			allPool.AddCert(caCerts[0])
 		}
 
 		return nil
 	})
 
-	self.cache.staticRootCas = newStaticRootCas
-	self.cache.trustAnchorPool = newTrustAnchorPool
-	self.cache.activeCas = newActiveCas
+	self.cache.staticFirstPartyTrustAnchors = newStaticFirstPartyTrustAnchors
+	self.cache.staticFirstPartyTrustAnchorPool = newStaticFirstPartyTrustAnchorPool
+
+	self.cache.staticFirstPartyRoots = newStaticFirstPartyRoots
+	self.cache.staticFirstPartyRootPool = newStaticFirstPartyRootPool
+
+	self.cache.thirdPartyTrustAnchors = newThirdPartyTrustAnchors
+	self.cache.thirdPartyTrustAnchorPool = newThirdPartyTrustAnchorPool
+	self.cache.activeThirdPartyCas = newActiveThirdPartyCas
+
+	self.cache.allPool = allPool
 
 	return err
 }
