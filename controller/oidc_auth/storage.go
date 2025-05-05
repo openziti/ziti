@@ -228,6 +228,15 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 	authRequest.IdentityId = result.Identity().Id
 	authRequest.AddAmr(authCtx.GetMethod())
 
+	authenticator := result.Authenticator()
+
+	if authenticator != nil {
+		if certAuth := authenticator.ToCert(); certAuth != nil {
+			authRequest.IsCertExtendRequested = certAuth.IsExtendRequested
+			authRequest.IsCertKeyRollRequested = certAuth.IsKeyRollRequested
+		}
+	}
+
 	configTypeIds := s.env.GetManagers().ConfigType.MapConfigTypeNamesToIds(configTypes, authRequest.IdentityId)
 
 	for configId := range configTypeIds {
