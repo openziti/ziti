@@ -291,6 +291,30 @@ var tunnelDefinitions = map[string]interface{}{
 			},
 		},
 	},
+	"ipv4AddressTranslation": map[string]interface{}{
+		"type":                 "object",
+		"additionalProperties": false,
+		"properties": map[string]interface{}{
+			"from":         map[string]interface{}{"type": "string", "format": "ipv4"},
+			"to":           map[string]interface{}{"type": "string", "format": "ipv4"},
+			"prefixLength": map[string]interface{}{"type": "integer", "minimum": 0, "maximum": 32},
+		},
+	},
+	"ipv6AddressTranslation": map[string]interface{}{
+		"type":                 "object",
+		"additionalProperties": false,
+		"properties": map[string]interface{}{
+			"from":         map[string]interface{}{"type": "string", "format": "ipv6"},
+			"to":           map[string]interface{}{"type": "string", "format": "ipv6"},
+			"prefixLength": map[string]interface{}{"type": "integer", "minimum": 0, "maximum": 128},
+		},
+	},
+	"addressTranslation": map[string]interface{}{
+		"oneOf": []interface{}{
+			map[string]interface{}{"$ref": "#/definitions/ipv4AddressTranslation"},
+			map[string]interface{}{"$ref": "#/definitions/ipv6AddressTranslation"},
+		},
+	},
 }
 
 // hostV1 schema with ["$id"] and ["definitions"] excluded
@@ -329,6 +353,13 @@ var hostV1SchemaSansDefs = map[string]interface{}{
 					map[string]interface{}{"items": map[string]interface{}{"$ref": "#/definitions/listenAddress"}},
 				},
 				"description": "Only allow addresses from this set to be dialed",
+			},
+			"forwardAddressTranslations": map[string]interface{}{
+				"allOf": []interface{}{
+					map[string]interface{}{"$ref": "#/definitions/inhabitedSet"},
+					map[string]interface{}{"items": map[string]interface{}{"$ref": "#/definitions/addressTranslation"}},
+				},
+				"description": "Translate forwarded addresses according to this table",
 			},
 			"port": map[string]interface{}{
 				"$ref":        "#/definitions/portNumber",

@@ -82,17 +82,24 @@ type HostV1ListenOptions struct {
 	Precedence            *string
 }
 
+type AddressTranslation struct {
+	From         string
+	To           string
+	PrefixLength uint8
+}
+
 type HostV1Config struct {
-	Protocol               string
-	ForwardProtocol        bool
-	AllowedProtocols       []string
-	Address                string
-	ForwardAddress         bool
-	AllowedAddresses       []string
-	Port                   int
-	ForwardPort            bool
-	AllowedPortRanges      []*PortRange
-	AllowedSourceAddresses []string
+	Protocol                   string
+	ForwardProtocol            bool
+	AllowedProtocols           []string
+	Address                    string
+	ForwardAddress             bool
+	ForwardAddressTranslations []AddressTranslation
+	AllowedAddresses           []string
+	Port                       int
+	ForwardPort                bool
+	AllowedPortRanges          []*PortRange
+	AllowedSourceAddresses     []string
 
 	PortChecks []*health.PortCheckDefinition
 	HttpChecks []*health.HttpCheckDefinition
@@ -352,7 +359,7 @@ func (self *Service) GetConfigOfType(configType string, target interface{}) (boo
 		return false, fmt.Errorf("unable construct decoder (%w)", err)
 	}
 	if err := decoder.Decode(configMap); err != nil {
-		pfxlog.Logger().WithError(err).Debugf("unable to decode service configuration for of type %v defined for service %v", configType, *self.Name)
+		pfxlog.Logger().WithError(err).Debugf("unable to decode service configuration of type %v defined for service %v", configType, *self.Name)
 		return true, fmt.Errorf("unable to decode service config structure: %w", err)
 	}
 	return true, nil

@@ -1,3 +1,19 @@
+# Release 1.6.2
+
+# What's New
+*
+* Address translations can now be specified in host.v1 service configuration
+
+## host.v1 Address Translation
+
+The host.v1 service configuration type now includes a `forwardAddressTranslations` field that specifies
+how a hosting tunneler should translate destination IPs from the client when connecting to the underlay
+application.
+
+## Component Updates and Bug Fixes
+* github.com/openziti/ziti: [v1.6.1 -> v1.6.2](https://github.com/openziti/ziti/compare/v1.6.1...v1.6.2)
+    * [Issue #2963](https://github.com/openziti/ziti/issues/2963) - support intercept.v1 --> host.v1 address translation
+
 # Release 1.6.1
 
 ## What's New
