@@ -1,25 +1,10 @@
-# Release 1.6.2
-
-# What's New
-*
-* Address translations can now be specified in host.v1 service configuration
-
-## host.v1 Address Translation
-
-The host.v1 service configuration type now includes a `forwardAddressTranslations` field that specifies
-how a hosting tunneler should translate destination IPs from the client when connecting to the underlay
-application.
-
-## Component Updates and Bug Fixes
-* github.com/openziti/ziti: [v1.6.1 -> v1.6.2](https://github.com/openziti/ziti/compare/v1.6.1...v1.6.2)
-    * [Issue #2963](https://github.com/openziti/ziti/issues/2963) - support intercept.v1 --> host.v1 address translation
-
 # Release 1.6.1
 
 ## What's New
 
 * Bug fixes and library updates
 * Ability to request that SDKs extend and optionally roll their key
+* Address translations can now be specified in host.v1 service configuration
 
 ## Ability to request that SDKs extend and optionally roll their key
 
@@ -59,11 +44,18 @@ authentication to initiate an API Session using a certificate authenticator.
 
 Additionally, a log of key rolling activity per authenticator will be available in a future release.
 
+## host.v1 Address Translation
+
+The host.v1 service configuration type now includes a `forwardAddressTranslations` field that specifies
+how a hosting tunneler should translate destination IPs from the client when connecting to the underlay
+application.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/edge-api: [v0.26.42 -> v0.26.43](https://github.com/openziti/edge-api/compare/v0.26.42...v0.26.43)
 * github.com/openziti/ziti: [v1.6.0 -> v1.6.1](https://github.com/openziti/ziti/compare/v1.6.0...v1.6.1)
   * [Issue #2996](https://github.com/openziti/ziti/issues/2996) - Add ability to signal SDKs to extend cert authenticator
+  * [Issue #2963](https://github.com/openziti/ziti/issues/2963) - support intercept.v1 --> host.v1 address translation
 
 
 # Release 1.6.0
