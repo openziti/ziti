@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func Test_Cert_Request_Extend(t *testing.T) {
+func Test_Cert_Request_Extend_Legacy_Auth(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
