@@ -642,11 +642,23 @@ promptCtrlPort() {
 }
 
 grantNetBindService() {
-  if ! grep -qE '^AmbientCapabilities=CAP_NET_BIND_SERVICE' "${SVC_FILE}"; then
-    # uncomment the line
-    sed -Ei 's/.*(AmbientCapabilities=CAP_NET_BIND_SERVICE)/\1/' "${SVC_FILE}"
+  local dropin_dir="/etc/systemd/system/ziti-controller.service.d"
+  local override_file="${dropin_dir}/override.conf"
+  if ! systemctl cat ziti-controller.service | grep -qE '^AmbientCapabilities=CAP_NET_BIND_SERVICE'; then
+    if [[ ! -s "${override_file}" ]]; then
+      echo "INFO: Creating ${override_file} to grant CAP_NET_BIND_SERVICE."
+      mkdir -p "${dropin_dir}"
+      cat > "${override_file}" <<EOF
+[Service]
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+EOF
+      systemctl daemon-reload
+    else
+      echo -e "WARNING: not patching existing ${override_file}. Run 'systemctl edit ziti-controller.service' to add the following lines:"\
+      "\n\n  [Service]"\
+      "\n  AmbientCapabilities=CAP_NET_BIND_SERVICE\n" >&2
+    fi
   fi
-  systemctl daemon-reload
 }
 
 # inherit vars and set answers
@@ -803,7 +815,6 @@ else
   export ZITI_HOME
   SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
   BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
-  SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf
   : "${ZITI_CONSOLE_LOCATION:=/opt/openziti/share/console}"
 
   if [[ "${1:-}" =~ ^[-] ]]; then
