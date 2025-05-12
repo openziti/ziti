@@ -188,7 +188,7 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 		entities.HostConfigV2,
 	}
 
-	zitiCfg.MaxControlConnections = 1
+	zitiCfg.MaxControlConnections = 0
 
 	serviceListener := serviceListenerGroup.NewServiceListener()
 	svcPollRate, _ := cmd.Flags().GetUint(svcPollRateFlag)

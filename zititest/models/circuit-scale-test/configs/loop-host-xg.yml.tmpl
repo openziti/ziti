@@ -2,6 +2,7 @@ connectors:
   default:
     sdk:
       identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
+      ha: true
 
 workloads:
   - name: throughput

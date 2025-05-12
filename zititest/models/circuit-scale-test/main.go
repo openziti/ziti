@@ -11,8 +11,8 @@ import (
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
+	semaphore_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
+	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
 	fablibOps "github.com/openziti/fablab/kernel/lib/runlevel/5_operation"
@@ -37,38 +37,67 @@ const TargetZitiVersion = ""
 //go:embed configs
 var configResource embed.FS
 
-type scaleStrategy struct{}
+var throughputWorkload = "" +
+	`concurrency:  1
+    iterations:   10
+    dialer:
+      txRequests:       10000
+      txPacing:         0ms
+      txMaxJitter:      0
+      rxTimeout:        240000
+      payloadMinBytes:  10000
+      payloadMaxBytes:  10000
+    listener:
+      txRequests:       0
+      txAfterRx:        false
+      rxTimeout:        240000
+      #rxPacing:         100ms
+      payloadMinBytes:  64
+      payloadMaxBytes:  256`
 
-func (self scaleStrategy) IsScaled(entity model.Entity) bool {
-	if entity.GetType() == model.EntityTypeHost {
-		return entity.GetScope().HasTag("router") || entity.GetScope().HasTag("host")
-	}
-	return entity.GetType() == model.EntityTypeComponent && entity.GetScope().HasTag("host")
-}
+var latencyWorkload = "" +
+	`concurrency:  5
+    iterations:   200
+    dialer:
+      txRequests:       1
+      txPacing:         0
+      txMaxJitter:      0
+      rxTimeout:        240000
+      payloadMinBytes:  64
+      payloadMaxBytes:  256
+      latencyFrequency: 1
+    listener:
+      txRequests:       1
+      txAfterRx:        true
+      rxTimeout:        240000
+      rxPacing:         0
+      payloadMinBytes:  2048
+      payloadMaxBytes:  10000
+`
 
-func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
-	if entity.GetType() == model.EntityTypeHost {
-		if entity.GetScope().HasTag("router") {
-			return 2
-		}
-		if entity.GetScope().HasTag("host") {
-			h := entity.(*model.Host)
-			if h.Region.Id == "us-east-1" {
-				return 8
-			}
-			return 6
-		}
-	}
-	if entity.GetType() == model.EntityTypeComponent {
-		return 10
-	}
-	return 1
-}
+var slowWorkload = "" +
+	`concurrency:  1
+    iterations:   1
+    dialer:
+      txRequests:       1000
+      txPacing:         0
+      txMaxJitter:      0
+      rxTimeout:        240000
+      payloadMinBytes:  64000
+      payloadMaxBytes:  64000
+    listener:
+      txRequests:       10000
+      txAfterRx:        true
+      rxTimeout:        240000
+      rxPacing:         1s
+      payloadMinBytes:  64
+      payloadMaxBytes:  256`
 
 var m = &model.Model{
-	Id: "circuit-test",
+	Id: "circuit-scale-test",
 	Scope: model.Scope{
 		Defaults: model.Variables{
+			"ha":          "true",
 			"environment": "circuit-scale-test",
 			"credentials": model.Variables{
 				"aws": model.Variables{
@@ -88,6 +117,9 @@ var m = &model.Model{
 					"db":  "ziti",
 				},
 			},
+			"throughputWorkload": throughputWorkload,
+			"latencyWorkload":    latencyWorkload,
+			"slowWorkload":       slowWorkload,
 		},
 	},
 	StructureFactories: []model.Factory{
@@ -110,10 +142,7 @@ var m = &model.Model{
 				return err
 			}
 
-			return m.ForEachComponent(".host", 1, func(c *model.Component) error {
-				c.Type.(*zitilab.ZitiTunnelType).Mode = zitilab.ZitiTunnelModeHost
-				return nil
-			})
+			return nil
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			if val, _ := m.GetBoolVariable("ha"); !val {
@@ -128,7 +157,6 @@ var m = &model.Model{
 
 			return nil
 		}),
-		model.NewScaleFactoryWithDefaultEntityFactory(&scaleStrategy{}),
 	},
 	Factories: []model.Factory{
 		model.FactoryFunc(func(m *model.Model) error {
@@ -138,6 +166,9 @@ var m = &model.Model{
 
 			m.AddActivationStageF(simServices.SetupSimControllerIdentity)
 			m.AddOperatingStage(simServices.CollectSimMetricStage("metrics"))
+			m.AddActionF("runSimWorkload", func(run model.Run) error {
+				return RunSimScenarios(run, simServices)
+			})
 
 			return nil
 		}),
@@ -155,7 +186,7 @@ var m = &model.Model{
 				"ctrl1": {
 					InstanceType: "t3.micro",
 					Components: model.Components{
-						"ctrl": {
+						"ctrl1": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl", "underTest"}},
 							Type:  &zitilab.ControllerType{},
 						},
@@ -164,7 +195,7 @@ var m = &model.Model{
 				"ctrl2": {
 					InstanceType: "t3.micro",
 					Components: model.Components{
-						"ctrl": {
+						"ctrl2": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl", "underTest", "ha"}},
 							Type:  &zitilab.ControllerType{},
 						},
@@ -192,12 +223,12 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client", "test", "underTest"}},
 							Type:  &zitilab.RouterType{},
 						},
-						"loop-client-ert": {
-							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
-							Type: &zitilab.Loop4SimType{
-								Mode: zitilab.Loop4RemoteControlled,
-							},
-						},
+						//"loop-client-ert": {
+						//	Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+						//	Type: &zitilab.Loop4SimType{
+						//		Mode: zitilab.Loop4RemoteControlled,
+						//	},
+						//},
 					},
 				},
 				"router-metrics": {
@@ -210,7 +241,14 @@ var m = &model.Model{
 					},
 				},
 				"loop-client": {
-					Scope: model.Scope{Tags: model.Tags{"loop-client"}},
+					Scope: model.Scope{
+						Tags: model.Tags{"loop-client"},
+						Defaults: model.Variables{
+							"throughput-services": []string{"throughput", "throughput-xg", "throughput-ert"},
+							"latency-services":    []string{"latency", "latency-xg", "latency-ert"},
+							"slow-services":       []string{"slow-xg", "slow-ert"},
+						},
+					},
 					Components: model.Components{
 						"loop-client": {
 							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
@@ -220,17 +258,17 @@ var m = &model.Model{
 						},
 					},
 				},
-				"loop-client-xg": {
-					Scope: model.Scope{Tags: model.Tags{"loop-client"}},
-					Components: model.Components{
-						"loop-client-xg": {
-							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
-							Type: &zitilab.Loop4SimType{
-								Mode: zitilab.Loop4RemoteControlled,
-							},
-						},
-					},
-				},
+				//"loop-client-xg": {
+				//	Scope: model.Scope{Tags: model.Tags{"loop-client"}},
+				//	Components: model.Components{
+				//		"loop-client-xg": {
+				//			Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+				//			Type: &zitilab.Loop4SimType{
+				//				Mode: zitilab.Loop4RemoteControlled,
+				//			},
+				//		},
+				//	},
+				//},
 			},
 		},
 		"us-west-2": {
@@ -240,7 +278,7 @@ var m = &model.Model{
 				"ctrl3": {
 					InstanceType: "t3.micro",
 					Components: model.Components{
-						"ctrl": {
+						"ctrl3": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl", "underTest", "ha"}},
 							Type:  &zitilab.ControllerType{},
 						},
@@ -265,7 +303,7 @@ var m = &model.Model{
 				"ert-host": {
 					Components: model.Components{
 						"ert-host": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host", "test", "underTest"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "loop-host-ert", "test", "underTest"}},
 							Type:  &zitilab.RouterType{},
 						},
 						"loop-host-ert": {
@@ -281,7 +319,7 @@ var m = &model.Model{
 						"loop-host": {
 							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host", "sim-services-host"}},
 							Type: &zitilab.Loop4SimType{
-								Mode: zitilab.Loop4Dialer,
+								Mode: zitilab.Loop4Listener,
 							},
 						},
 					},
@@ -291,7 +329,7 @@ var m = &model.Model{
 						"loop-host-xg": {
 							Scope: model.Scope{Tags: model.Tags{"loop-host-xg", "sdk-app", "host", "sim-services-host"}},
 							Type: &zitilab.Loop4SimType{
-								Mode: zitilab.Loop4Dialer,
+								Mode: zitilab.Loop4Listener,
 							},
 						},
 					},
@@ -338,14 +376,14 @@ var m = &model.Model{
 			}
 			return nil
 		})),
-		"validate": model.Bind(model.ActionFunc(validateRouterDataModel)),
-		"testIteration": model.Bind(model.ActionFunc(func(run model.Run) error {
+		"validate": model.BindF(validateRouterDataModel),
+		"testIteration": model.BindF(func(run model.Run) error {
 			return run.GetModel().Exec(run,
 				"sowChaos",
 				"validateUp",
 				"validate",
 			)
-		})),
+		}),
 	},
 
 	Infrastructure: model.Stages{
@@ -361,6 +399,11 @@ var m = &model.Model{
 	Distribution: model.Stages{
 		distribution.DistributeSshKey("*"),
 		rsync.RsyncStaged(),
+	},
+
+	Activation: model.Stages{
+		model.RunAction("stop"),
+		model.RunAction("bootstrap"),
 	},
 
 	Operation: model.Stages{
@@ -387,8 +430,6 @@ var m = &model.Model{
 }
 
 func main() {
-	m.AddActivationActions("stop", "bootstrap")
-
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
 

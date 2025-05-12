@@ -94,6 +94,8 @@ func (self *RemoteController) handleConnection(conn net.Conn) error {
 
 	self.clients.Set(ch.Id(), ch)
 
+	pfxlog.Logger().WithField("id", ch.Id()).Info("new sim connection established")
+
 	return nil
 }
 
