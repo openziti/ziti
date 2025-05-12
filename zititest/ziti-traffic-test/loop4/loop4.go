@@ -107,15 +107,15 @@ func (sim *Sim) InitConnectors() error {
 					name, connector.SdkOptions.IdentityFile, err)
 			}
 
-			if !connector.SdkOptions.DisableMultiChannel {
-				var cfgI any = cfg
-				if i, ok := cfgI.(interface {
-					SetMaxControlConnections(val uint32)
-					SetMaxDefaultConnections(val uint32)
-				}); ok {
-					i.SetMaxControlConnections(1)
-					i.SetMaxDefaultConnections(2)
-				}
+			cfg.EnableHa = connector.SdkOptions.Ha
+
+			var cfgI any = cfg
+			if i, ok := cfgI.(interface {
+				SetMaxControlConnections(val uint32)
+				SetMaxDefaultConnections(val uint32)
+			}); ok {
+				i.SetMaxControlConnections(connector.SdkOptions.MaxControlUnderlays)
+				i.SetMaxDefaultConnections(connector.SdkOptions.MaxDataUnderlays)
 			}
 
 			ctx, err := ziti.NewContext(cfg)
@@ -141,7 +141,11 @@ func (sim *Sim) InitConnectors() error {
 			}
 
 			sim.dialers[name] = func(workload *Workload) (net.Conn, error) {
-				return sim.DialSdk(ctx, workload)
+				dialOptions := &ziti.DialOptions{
+					ConnectTimeout: workload.ConnectTimeout,
+					SdkFlowControl: &connector.SdkOptions.EnableSdkXgress,
+				}
+				return ctx.DialWithOptions(workload.ServiceName, dialOptions)
 			}
 
 			sim.listeners[name] = func(workload *Workload) (net.Listener, error) {
@@ -176,14 +180,6 @@ func (sim *Sim) InitConnectors() error {
 		}
 	}
 	return nil
-}
-
-func (sim *Sim) DialSdk(client ziti.Context, wf *Workload) (net.Conn, error) {
-	dialOptions := &ziti.DialOptions{
-		ConnectTimeout: wf.ConnectTimeout,
-		SdkFlowControl: util.Ptr(true),
-	}
-	return client.DialWithOptions(wf.ServiceName, dialOptions)
 }
 
 func (sim *Sim) ListenSdk(client ziti.Context, wf *Workload) (net.Listener, error) {
