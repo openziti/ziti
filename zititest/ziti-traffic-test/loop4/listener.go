@@ -73,12 +73,17 @@ func (cmd *listenerCmd) run(_ *cobra.Command, args []string) {
 	}
 
 	for _, workload := range cmd.scenario.Workloads {
-		cmd.runWorkload(workload)
+		go cmd.runWorkload(workload)
 	}
+
+	closeCh := make(chan struct{})
+	<-closeCh
 }
 
 func (cmd *listenerCmd) runWorkload(workload *Workload) {
 	log := pfxlog.Logger().WithField("workload", workload.Name)
+
+	log.Info("starting workload")
 
 	listenerF, ok := cmd.listeners[workload.Connector]
 	if !ok {

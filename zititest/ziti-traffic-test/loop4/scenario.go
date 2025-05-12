@@ -31,9 +31,12 @@ type Connector struct {
 
 type SdkConnectOptions struct {
 	IdentityFile        string `yaml:"identity_file"`
-	DisableMultiChannel bool   `yaml:"disable_multi_channel"`
+	MaxControlUnderlays uint32 `yaml:"max_control_underlays"`
+	MaxDataUnderlays    uint32 `yaml:"max_data_underlays"`
+	EnableSdkXgress     bool   `yaml:"enable_sdk_xgress"`
 	ReportSdkMetrics    bool   `yaml:"report_sdk_metrics"`
 	TestService         string `yaml:"test_service"`
+	Ha                  bool   `yaml:"ha"`
 }
 
 type TransportConnectOptions struct {

@@ -57,8 +57,8 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 		workflow.AddAction(edge.InitRaftController("#ctrl1"))
 	}
 
-	workflow.AddAction(edge.ControllerAvailable("#ctrl", 30*time.Second))
-	workflow.AddAction(edge.Login("#ctrl"))
+	workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
+	workflow.AddAction(edge.Login("#ctrl1"))
 
 	workflow.AddAction(component.StopInParallel(models.EdgeRouterTag, 25))
 	workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))
@@ -107,9 +107,10 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
 	workflow.AddAction(semaphore.Sleep(5 * time.Second))
 
-	workflow.AddAction(component.StartInParallel(".router", 10))
+	workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 10))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
-	workflow.AddAction(component.StartInParallel(".host", 50))
+	workflow.AddAction(component.StartInParallel(".sim-services-host", 50))
+	workflow.AddAction(component.StartInParallel(".sim-services-client", 50))
 
 	return workflow
 }
