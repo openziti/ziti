@@ -170,6 +170,7 @@ jobs:
           go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
 
       - name: Run Unit and Integration Tests
+        if: ${{ vars.ZITI_SKIP_INTEGRATION_TESTS != 'true' }}
         timeout-minutes: 10
         shell: bash
         run: |

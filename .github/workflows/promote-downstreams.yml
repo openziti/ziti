@@ -30,7 +30,13 @@ jobs:
           # confusingly, this means "pause this step until all jobs from all workflows in same run have completed"
           running-workflow-name: Wait for Release Builds to Succeed
           # comma-separated list of check names (job.<id>.name) to ignore
-          ignore-checks: SDK Terminator Validation,Fablab HA Smoketest,POST Webhook
+          ignore-checks: SDK Terminator Validation,Fablab HA Smoketest,POST Webhook,Release Quickstart Job
+
+      - name: Git Checkout
+        if: failure()
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Diagnose Failed "Wait for Release Builds to Succeed"
         if: failure()
