@@ -54,8 +54,7 @@ jobs:
         id: tagprep_cli
         shell: bash
         run: |
-          DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
+          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
 
       - name: Push CLI Image to Hub
         uses: docker/build-push-action@v6
@@ -79,6 +78,39 @@ jobs:
           subject-digest: ${{ steps.push_cli.outputs.digest }}
           push-to-registry: true
 
+      - name: Set Up Container Image Tags for Boring CLI Container
+        env:
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
+          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-boring
+        id: tagprep_cli_boring
+        shell: bash
+        run: |
+          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
+
+      - name: Push Boring CLI Image to Hub
+        uses: docker/build-push-action@v6
+        id: push_cli_boring
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ github.workspace }}/
+          file: ${{ github.workspace }}/dist/docker-images/ziti-cli/boring.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tagprep_cli_boring.outputs.DOCKER_TAGS }}
+          build-args: |
+            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}
+            ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
+            DOCKER_BUILD_DIR=./dist/docker-images/ziti-cli
+          provenance: mode=max
+          sbom: true
+          push: true
+
+      - name: Publish Attestations to GitHub
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
+          subject-digest: ${{ steps.push_cli_boring.outputs.digest }}
+          push-to-registry: true
+
       - name: Set Up Container Image Tags for Controller Container
         env:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
@@ -86,8 +118,7 @@ jobs:
         id: tagprep_ctrl
         shell: bash
         run: |
-          DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
+          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
 
       - name: Push Controller Image to Hub
         uses: docker/build-push-action@v6
@@ -113,6 +144,39 @@ jobs:
           subject-digest: ${{ steps.push_ctrl.outputs.digest }}
           push-to-registry: true
 
+      - name: Set Up Container Image Tags for Boring Controller Container
+        env:
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
+          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-boring
+        id: tagprep_ctrl_boring
+        shell: bash
+        run: |
+          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
+
+      - name: Push Boring Controller Image to Hub
+        uses: docker/build-push-action@v6
+        id: push_ctrl_boring
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ github.workspace }}/
+          file: ${{ github.workspace }}/dist/docker-images/ziti-controller/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tagprep_ctrl_boring.outputs.DOCKER_TAGS }}
+          build-args: |
+            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-boring
+            ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
+            DOCKER_BUILD_DIR=./dist/docker-images/ziti-controller
+          provenance: mode=max
+          sbom: true
+          push: true
+
+      - name: Publish Attestations to GitHub
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
+          subject-digest: ${{ steps.push_ctrl_boring.outputs.digest }}
+          push-to-registry: true
+
       - name: Set Up Container Image Tags for Router Container
         env:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_ROUTER_IMAGE }}
@@ -120,8 +184,7 @@ jobs:
         id: tagprep_router
         shell: bash
         run: |
-          DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
+          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
 
       - name: Push Router Image to Hub
         uses: docker/build-push-action@v6
@@ -147,6 +210,39 @@ jobs:
           subject-digest: ${{ steps.push_router.outputs.digest }}
           push-to-registry: true
 
+      - name: Set Up Container Image Tags for Boring Router Container
+        env:
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_ROUTER_IMAGE }}
+          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-boring
+        id: tagprep_router_boring
+        shell: bash
+        run: |
+          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
+
+      - name: Push Boring Router Image to Hub
+        uses: docker/build-push-action@v6
+        id: push_router_boring
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ github.workspace }}/
+          file: ${{ github.workspace }}/dist/docker-images/ziti-router/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tagprep_router_boring.outputs.DOCKER_TAGS }}
+          build-args: |
+            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-boring
+            ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
+            DOCKER_BUILD_DIR=./dist/docker-images/ziti-router
+          provenance: mode=max
+          sbom: true
+          push: true
+
+      - name: Publish Attestations to GitHub
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_ROUTER_IMAGE }}
+          subject-digest: ${{ steps.push_router_boring.outputs.digest }}
+          push-to-registry: true
+
       - name: Set Up Container Image Tags for Go Tunneler Container
         env:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
@@ -154,8 +250,7 @@ jobs:
         id: tagprep_tun
         shell: bash
         run: |
-          DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
+          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
 
       - name: Push Tunneler Image to Hub
         uses: docker/build-push-action@v6
@@ -178,4 +273,36 @@ jobs:
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
           subject-digest: ${{ steps.push_tunnel.outputs.digest }}
+          push-to-registry: true
+
+      - name: Set Up Container Image Tags for Boring Tunneler Container
+        env:
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
+          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-boring
+        id: tagprep_tun_boring
+        shell: bash
+        run: |
+          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
+
+      - name: Push Boring Tunneler Image to Hub
+        uses: docker/build-push-action@v6
+        id: push_tunnel_boring
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ github.workspace }}/
+          file: ${{ github.workspace }}/dist/docker-images/ziti-tunnel/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tagprep_tun_boring.outputs.DOCKER_TAGS }}
+          build-args: |
+            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-boring
+            ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
+          provenance: mode=max
+          sbom: true
+          push: true
+
+      - name: Publish Attestations to GitHub
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
+          subject-digest: ${{ steps.push_tunnel_boring.outputs.digest }}
           push-to-registry: true
