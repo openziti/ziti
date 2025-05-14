@@ -128,7 +128,7 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./ziti/
 
           GOEXPERIMENT=boringcrypto \
-          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=amd64 -output="${GOX_OUTPUT}-fips" ./ziti/
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=amd64 -output="${GOX_OUTPUT}-fips" ./ziti/
 
           CC=arm-linux-gnueabihf-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./ziti/
