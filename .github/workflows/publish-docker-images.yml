@@ -81,7 +81,7 @@ jobs:
       - name: Set Up Container Image Tags for Boring CLI Container
         env:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
-          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-boring
+          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-fips
         id: tagprep_cli_boring
         shell: bash
         run: |
@@ -147,7 +147,7 @@ jobs:
       - name: Set Up Container Image Tags for Boring Controller Container
         env:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
-          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-boring
+          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-fips
         id: tagprep_ctrl_boring
         shell: bash
         run: |
@@ -163,7 +163,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_ctrl_boring.outputs.DOCKER_TAGS }}
           build-args: |
-            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-boring
+            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-fips
             ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
             DOCKER_BUILD_DIR=./dist/docker-images/ziti-controller
           provenance: mode=max
@@ -213,7 +213,7 @@ jobs:
       - name: Set Up Container Image Tags for Boring Router Container
         env:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_ROUTER_IMAGE }}
-          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-boring
+          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-fips
         id: tagprep_router_boring
         shell: bash
         run: |
@@ -229,7 +229,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_router_boring.outputs.DOCKER_TAGS }}
           build-args: |
-            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-boring
+            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-fips
             ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
             DOCKER_BUILD_DIR=./dist/docker-images/ziti-router
           provenance: mode=max
@@ -278,7 +278,7 @@ jobs:
       - name: Set Up Container Image Tags for Boring Tunneler Container
         env:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
-          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-boring
+          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-fips
         id: tagprep_tun_boring
         shell: bash
         run: |
@@ -294,7 +294,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_tun_boring.outputs.DOCKER_TAGS }}
           build-args: |
-            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-boring
+            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-fips
             ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
           provenance: mode=max
           sbom: true

@@ -12,4 +12,4 @@ ARG TARGETOS
 # e.g. arm64
 ARG TARGETARCH
 
-COPY --chmod=0755 ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti-boring /usr/local/bin/ziti
+COPY --chmod=0755 ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti-fips /usr/local/bin/ziti

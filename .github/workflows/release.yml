@@ -128,14 +128,14 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./ziti/
 
           GOEXPERIMENT=boringcrypto \
-          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=amd64 -output="${GOX_OUTPUT}-boring" ./ziti/
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=amd64 -output="${GOX_OUTPUT}-fips" ./ziti/
 
           CC=arm-linux-gnueabihf-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./ziti/
 
           GOEXPERIMENT=boringcrypto \
           CC=aarch64-linux-gnu-gcc \
-          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm64 -output="${GOX_OUTPUT}-boring" ./ziti/
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm64 -output="${GOX_OUTPUT}-fips" ./ziti/
           CC=aarch64-linux-gnu-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./ziti/
 
@@ -288,7 +288,7 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci configure-git
 
           # workaround: prune the boring builds from release tarballs so it will not force the regular ziti binary into a nested path /ziti/ziti
-          rm -fv ./release/{amd,arm}64/linux/ziti-boring
+          rm -fv ./release/{amd,arm}64/linux/ziti-fips
 
           # dry run to build release tarball we'll use to double-check the internal version matches the tag
           $(go env GOPATH)/bin/ziti-ci publish-to-github --use-current-tag --prerelease --archive-base "" --dry-run
