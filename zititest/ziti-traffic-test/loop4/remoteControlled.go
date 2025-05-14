@@ -30,17 +30,23 @@ import (
 	"time"
 )
 
+const (
+	HeaderClientId = 100
+)
+
 func init() {
 	loop4Cmd.AddCommand(newRemoteControlledCmd())
 }
 
 type remoteControlledCmd struct {
 	*Sim
+	notifyClose chan struct{}
 }
 
 func newRemoteControlledCmd() *cobra.Command {
 	dialer := &remoteControlledCmd{
-		Sim: NewSim(),
+		Sim:         NewSim(),
+		notifyClose: make(chan struct{}, 1),
 	}
 
 	cmd := &cobra.Command{
@@ -54,7 +60,6 @@ func newRemoteControlledCmd() *cobra.Command {
 }
 
 func (cmd *remoteControlledCmd) runRemoteControlled(_ *cobra.Command, args []string) {
-
 	defer close(cmd.closeNotify)
 
 	if err := cmd.InitScenario(args[0]); err != nil {
@@ -79,12 +84,17 @@ func (cmd *remoteControlledCmd) runRemoteControlled(_ *cobra.Command, args []str
 		return
 	}
 
+	var lastLog time.Time
+
 	attempt := 1
 	for {
 		log = log.WithField("attempt", attempt)
 		conn, err := sdkClient.Dial(cmd.scenario.RemoteControlled.Service)
 		if err != nil {
-			log.Error("unable to dial remote controller")
+			if time.Since(lastLog) > 5*time.Minute {
+				log.Errorf("unable to dial remote controller")
+				lastLog = time.Now()
+			}
 			time.Sleep(1 * time.Second)
 			attempt++
 			continue
@@ -97,11 +107,8 @@ func (cmd *remoteControlledCmd) runRemoteControlled(_ *cobra.Command, args []str
 			continue
 		}
 
-		break
+		<-cmd.notifyClose
 	}
-
-	waitC := make(chan struct{})
-	<-waitC
 }
 
 func (cmd *remoteControlledCmd) handleRemoteControlConn(sdk ziti.Context, conn net.Conn) error {
@@ -110,7 +117,14 @@ func (cmd *remoteControlledCmd) handleRemoteControlConn(sdk ziti.Context, conn n
 		return err
 	}
 
-	dialer := channel.NewExistingConnDialer(tokenId, conn, nil)
+	currentIdentity, err := sdk.GetCurrentIdentity()
+	if err != nil {
+		return err
+	}
+
+	dialer := channel.NewExistingConnDialer(tokenId, conn, map[int32][]byte{
+		HeaderClientId: []byte(*currentIdentity.Name),
+	})
 	options := channel.DefaultOptions()
 
 	_, err = channel.NewChannel("control", dialer, channel.BindHandlerF(cmd.BindChannel), options)
@@ -123,6 +137,12 @@ func (cmd *remoteControlledCmd) handleRemoteControlConn(sdk ziti.Context, conn n
 
 func (cmd *remoteControlledCmd) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(int32(loop4Pb.ContentType_RunScenarioRequestType), cmd.HandleRunScenario)
+	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+		select {
+		case cmd.notifyClose <- struct{}{}:
+		default:
+		}
+	}))
 	return nil
 }
 
@@ -144,6 +164,10 @@ func (cmd *remoteControlledCmd) sendScenarioResult(ch channel.Channel, id string
 
 func (cmd *remoteControlledCmd) runRemoteScenario(scenarioId string, scenario *Scenario, ch channel.Channel) {
 	log := pfxlog.Logger()
+
+	// reset metrics
+	cmd.Sim.metrics.DisposeAll()
+
 	err := cmd.runScenario(scenario)
 
 	runSucceeded := true

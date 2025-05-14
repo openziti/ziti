@@ -76,12 +76,12 @@ func newProtocol(peer io.ReadWriteCloser, name string, registry metrics.Registry
 		latencies:  make(chan *time.Time, 1024),
 		errors:     make(chan error, 10240),
 
-		workloadTxMsgRate:   registry.Meter(name + ".tx.messages"),
-		workloadTxBytesRate: registry.Meter(name + ".tx.bytes"),
-		workloadRxMsgRate:   registry.Meter(name + ".rx.messages"),
-		workloadRxBytesRate: registry.Meter(name + ".rx.bytes"),
+		workloadTxMsgRate:   registry.Meter("service.tx.messages:" + name),
+		workloadTxBytesRate: registry.Meter("service.tx.bytes:" + name),
+		workloadRxMsgRate:   registry.Meter("service.rx.messages:" + name),
+		workloadRxBytesRate: registry.Meter("service.rx.bytes:" + name),
 
-		latencyTimer: registry.Timer(name + ".latency"),
+		latencyTimer: registry.Timer("service.latency:" + name),
 
 		simTxMsgRate:   registry.Meter("sim.tx.messages"),
 		simTxBytesRate: registry.Meter("sim.tx.bytes"),

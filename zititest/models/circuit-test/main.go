@@ -39,7 +39,7 @@ var configResource embed.FS
 
 var throughputWorkload = "" +
 	`concurrency:  1
-    iterations:   10
+    iterations:   15
     dialer:
       txRequests:       10000
       txPacing:         0ms
@@ -57,7 +57,7 @@ var throughputWorkload = "" +
 
 var latencyWorkload = "" +
 	`concurrency:  5
-    iterations:   200
+    iterations:  300
     dialer:
       txRequests:       1
       txPacing:         0
@@ -79,14 +79,14 @@ var slowWorkload = "" +
 	`concurrency:  1
     iterations:   1
     dialer:
-      txRequests:       1000
+      txRequests:       120
       txPacing:         0
       txMaxJitter:      0
       rxTimeout:        240000
       payloadMinBytes:  64000
       payloadMaxBytes:  64000
     listener:
-      txRequests:       10000
+      txRequests:       120
       txAfterRx:        true
       rxTimeout:        240000
       rxPacing:         1s
@@ -94,11 +94,11 @@ var slowWorkload = "" +
       payloadMaxBytes:  256`
 
 var m = &model.Model{
-	Id: "circuit-scale-test",
+	Id: "circuit-test",
 	Scope: model.Scope{
 		Defaults: model.Variables{
 			"ha":          "true",
-			"environment": "circuit-scale-test",
+			"environment": "circuit-test",
 			"credentials": model.Variables{
 				"aws": model.Variables{
 					"managed_key": true,
@@ -166,8 +166,21 @@ var m = &model.Model{
 
 			m.AddActivationStageF(simServices.SetupSimControllerIdentity)
 			m.AddOperatingStage(simServices.CollectSimMetricStage("metrics"))
-			m.AddActionF("runSimWorkload", func(run model.Run) error {
+			m.AddActionF("runSimScenario", func(run model.Run) error {
 				return RunSimScenarios(run, simServices)
+			})
+
+			m.AddActionF("startSimMetrics", func(run model.Run) error {
+				return simServices.CollectSimMetrics(run, "metrics")
+			})
+
+			metricsValidator := &SimMetricsValidator{
+				events: map[*model.Host][]*MetricsEvent{},
+			}
+			metricsValidator.AddToModel(m)
+
+			m.AddActionF("validateSimMetrics", func(run model.Run) error {
+				return metricsValidator.ValidateCollected()
 			})
 
 			return nil
@@ -220,15 +233,15 @@ var m = &model.Model{
 				"ert": {
 					Components: model.Components{
 						"ert": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client", "test", "underTest"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "test", "loop-client", "underTest"}},
 							Type:  &zitilab.RouterType{},
 						},
-						//"loop-client-ert": {
-						//	Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
-						//	Type: &zitilab.Loop4SimType{
-						//		Mode: zitilab.Loop4RemoteControlled,
-						//	},
-						//},
+						"loop-client-ert": {
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+							Type: &zitilab.Loop4SimType{
+								Mode: zitilab.Loop4RemoteControlled,
+							},
+						},
 					},
 				},
 				"router-metrics": {
@@ -246,7 +259,6 @@ var m = &model.Model{
 						Defaults: model.Variables{
 							"throughput-services": []string{"throughput", "throughput-xg", "throughput-ert"},
 							"latency-services":    []string{"latency", "latency-xg", "latency-ert"},
-							"slow-services":       []string{"slow-xg", "slow-ert"},
 						},
 					},
 					Components: model.Components{
@@ -258,17 +270,24 @@ var m = &model.Model{
 						},
 					},
 				},
-				//"loop-client-xg": {
-				//	Scope: model.Scope{Tags: model.Tags{"loop-client"}},
-				//	Components: model.Components{
-				//		"loop-client-xg": {
-				//			Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
-				//			Type: &zitilab.Loop4SimType{
-				//				Mode: zitilab.Loop4RemoteControlled,
-				//			},
-				//		},
-				//	},
-				//},
+				"loop-client-xg": {
+					Scope: model.Scope{
+						Tags: model.Tags{"loop-client"},
+						Defaults: model.Variables{
+							"throughput-services": []string{"throughput", "throughput-xg", "throughput-ert"},
+							"latency-services":    []string{"latency", "latency-xg", "latency-ert"},
+							"slow-services":       []string{"slow-xg", "slow-ert"},
+						},
+					},
+					Components: model.Components{
+						"loop-client-xg": {
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+							Type: &zitilab.Loop4SimType{
+								Mode: zitilab.Loop4RemoteControlled,
+							},
+						},
+					},
+				},
 			},
 		},
 		"us-west-2": {
@@ -307,7 +326,7 @@ var m = &model.Model{
 							Type:  &zitilab.RouterType{},
 						},
 						"loop-host-ert": {
-							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host"}},
+							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host", "sim-services-host"}},
 							Type: &zitilab.Loop4SimType{
 								Mode: zitilab.Loop4Listener,
 							},
@@ -379,9 +398,8 @@ var m = &model.Model{
 		"validate": model.BindF(validateRouterDataModel),
 		"testIteration": model.BindF(func(run model.Run) error {
 			return run.GetModel().Exec(run,
-				"sowChaos",
-				"validateUp",
-				"validate",
+				"runSimScenario",
+				"validateSimMetrics",
 			)
 		}),
 	},

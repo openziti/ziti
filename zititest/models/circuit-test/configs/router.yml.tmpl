@@ -47,7 +47,11 @@ listeners:
 {{if .Component.HasTag "tunneler"}}
   - binding: tunnel
     options:
+{{if .Component.HasTag "loop-client"}}
+      mode: tproxy
+{{else}}
       mode: host
+{{end}}
 {{end}}
   - binding: edge
     address: tls:0.0.0.0:6262

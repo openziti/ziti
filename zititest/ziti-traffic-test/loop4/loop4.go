@@ -108,15 +108,8 @@ func (sim *Sim) InitConnectors() error {
 			}
 
 			cfg.EnableHa = connector.SdkOptions.Ha
-
-			var cfgI any = cfg
-			if i, ok := cfgI.(interface {
-				SetMaxControlConnections(val uint32)
-				SetMaxDefaultConnections(val uint32)
-			}); ok {
-				i.SetMaxControlConnections(connector.SdkOptions.MaxControlUnderlays)
-				i.SetMaxDefaultConnections(connector.SdkOptions.MaxDataUnderlays)
-			}
+			cfg.SetMaxControlConnections(connector.SdkOptions.MaxControlUnderlays)
+			cfg.SetMaxDefaultConnections(connector.SdkOptions.MaxDataUnderlays)
 
 			ctx, err := ziti.NewContext(cfg)
 			if err != nil {

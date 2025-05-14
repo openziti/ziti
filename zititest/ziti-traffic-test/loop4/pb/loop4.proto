@@ -11,8 +11,8 @@ enum ContentType {
 
 enum HeaderType {
   ZeroHeaderType = 0;
-  ScenarioId = 1;
-  ScenarioSuccess = 2;
+  ScenarioId = 100;
+  ScenarioSuccess = 101;
 }
 
 message Test {

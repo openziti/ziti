@@ -89,12 +89,13 @@ func (self *RemoteController) handleConnection(conn net.Conn) error {
 	var ch channel.Channel
 	ch, err = channel.NewChannel("control", listener, channel.BindHandlerF(self.BindChannel), options)
 	if err != nil {
-		return fmt.Errorf("unable to establish connection to sim controller (%w)", err)
+		return fmt.Errorf("unable to establish connection from sim (%w)", err)
 	}
 
-	self.clients.Set(ch.Id(), ch)
+	clientId := string(ch.Headers()[HeaderClientId])
+	self.clients.Set(clientId, ch)
 
-	pfxlog.Logger().WithField("id", ch.Id()).Info("new sim connection established")
+	pfxlog.Logger().WithField("id", clientId).Info("new sim connection established")
 
 	return nil
 }
@@ -115,15 +116,23 @@ func (self *RemoteController) handleScenarioResult(msg *channel.Message, ch chan
 			return
 		}
 
+		clientId := string(ch.Headers()[HeaderClientId])
+
 		success, _ := msg.GetBoolHeader(int32(loop4Pb.HeaderType_ScenarioSuccess))
 		result := &ScenarioResult{
 			success: success,
 			message: string(msg.Body),
 		}
-		results.results.Set(ch.Id(), *result)
+		results.results.Set(clientId, *result)
 		if results.results.Count() == results.expectedResults {
 			close(results.complete)
 		}
+		pfxlog.Logger().
+			WithField("scenarioId", id).
+			WithField("clientId", clientId).
+			WithField("success", success).
+			Info("scenario result message received")
+
 	}
 }
 
@@ -156,6 +165,7 @@ func (self *RemoteController) MissingComponents(components []*model.Component) [
 
 func (self *RemoteController) StartSimScenarios() (*ScenarioResults, error) {
 	scenarioId := uuid.NewString()
+	log := pfxlog.Logger().WithField("scenarioId", scenarioId)
 
 	results := &ScenarioResults{
 		id:              scenarioId,
@@ -172,6 +182,7 @@ func (self *RemoteController) StartSimScenarios() (*ScenarioResults, error) {
 		if err := msg.WithTimeout(10 * time.Second).SendAndWaitForWire(client); err != nil {
 			return nil, err
 		}
+		log.WithField("clientId", client.Id()).Info("scenario run request sent")
 	}
 
 	return results, nil
@@ -193,6 +204,7 @@ func (self *ScenarioResults) GetResults(timeout time.Duration) error {
 	var err error
 	select {
 	case <-self.complete:
+		pfxlog.Logger().WithField("scenarioId", self.id).Info("all scenario results gathered")
 	case <-time.After(timeout):
 		err = fmt.Errorf("timed out waiting for scenario results")
 	}

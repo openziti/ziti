@@ -31,6 +31,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -50,6 +51,7 @@ type SimServices struct {
 	idToSelectorMapper func(string) string
 	lock               sync.Mutex
 	zitiContext        ziti.Context
+	metricsStarted     atomic.Bool
 
 	remoteController *loop4.RemoteController
 }
@@ -77,8 +79,14 @@ func (self *SimServices) GetZitiContext(run model.Run) (ziti.Context, error) {
 	defer self.lock.Unlock()
 	if self.zitiContext == nil {
 		identityConfigPath := run.GetLabel().GetFilePath("sim-controller.json")
-
-		context, err := ziti.NewContextFromFile(identityConfigPath)
+		pfxlog.Logger().Infof("loading ziti config from [%s]", identityConfigPath)
+		cfg, err := ziti.NewConfigFromFile(identityConfigPath)
+		if err != nil {
+			return nil, err
+		}
+		cfg.EnableHa = true
+		pfxlog.Logger().Infof("loading ziti context from [%s]", identityConfigPath)
+		context, err := ziti.NewContext(cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -89,6 +97,10 @@ func (self *SimServices) GetZitiContext(run model.Run) (ziti.Context, error) {
 }
 
 func (self *SimServices) CollectSimMetrics(run model.Run, service string) error {
+	if !self.metricsStarted.CompareAndSwap(false, true) {
+		return nil
+	}
+
 	self.model = run.GetModel()
 
 	context, err := self.GetZitiContext(run)
@@ -163,7 +175,7 @@ func (self *SimServices) HandleMetricsConn(conn net.Conn) {
 		if err == nil {
 			modelEvent := self.toClientMetricsEvent(event)
 			self.model.AcceptHostMetrics(host, modelEvent)
-			log.Infof("<$= [%s] - client metrics", event.SourceId)
+			log.Debugf("<$= [%s] - client metrics", event.SourceId)
 		} else {
 			log.WithError(err).Error("clientMetrics: unable to find host")
 		}
