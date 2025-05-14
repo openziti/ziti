@@ -140,6 +140,9 @@ jobs:
           CC=arm-linux-gnueabihf-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
 
+          GOEXPERIMENT=boringcrypto \
+          CC=aarch64-linux-gnu-gcc \
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm64 -output="${GOX_OUTPUT}-fips" ./...
           CC=aarch64-linux-gnu-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
