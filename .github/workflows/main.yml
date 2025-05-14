@@ -134,6 +134,9 @@ jobs:
 
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
 
+          GOEXPERIMENT=boringcrypto \
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=amd64 -output="${GOX_OUTPUT}-fips" ./...
+
           CC=arm-linux-gnueabihf-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
 
@@ -171,6 +174,7 @@ jobs:
           go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
 
       - name: Run Unit and Integration Tests
+        if: ${{ vars.ZITI_SKIP_INTEGRATION_TESTS != 'true' }}
         timeout-minutes: 10
         shell: bash
         run: |
@@ -493,8 +497,8 @@ jobs:
                 -print0 \
                 -path "./release/*/darwin/ziti" \
                 -o \
-                -path "./release/*/linux/ziti" \
-            | xargs -0 chmod -c +x
+                -path "./release/*/linux/ziti*" \
+          | xargs -0 chmod -c +x
 
       # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
       - name: Get next version for downstream release candidates
