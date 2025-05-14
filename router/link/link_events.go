@@ -134,8 +134,16 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 
 	// anything left is an orphaned link entry
 	for linkKey := range currentLinkKeys {
-		// this will prevent the link from being recreated once closed
-		delete(dest.linkMap, linkKey)
+		if v, ok := dest.linkMap[linkKey]; ok {
+			// this will prevent the link from being recreated once closed
+			delete(dest.linkMap, linkKey)
+			if v.link != nil {
+				log := pfxlog.Logger().WithField("routerId", self.id).
+					WithField("linkKey", linkKey)
+				log.Info("closing link as link groups no longer align")
+				_ = v.link.Close()
+			}
+		}
 	}
 }
 

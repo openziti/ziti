@@ -87,7 +87,7 @@ func (sim *Sim) runScenario(scenario *Scenario) error {
 	}
 
 	for _, workload := range scenario.Workloads {
-		log.Infof("executing workload [%s] with concurrency [%d]", workload.Name, workload.Concurrency)
+		log.Infof("executing workload [%s] with concurrency [%d], %d iterations", workload.Name, workload.Concurrency, workload.Iterations)
 		var active atomic.Int64
 		for i := 0; i < int(workload.Concurrency); i++ {
 			resultCh := resultChs[workload.GetRunnerName(i)]
@@ -103,7 +103,7 @@ func (sim *Sim) runScenario(scenario *Scenario) error {
 			log.Errorf("[%s] -> error (%s)", name, result.Message)
 			errs = append(errs, fmt.Errorf("[%s] -> error (%s)", name, result.Message))
 		} else {
-			log.Infof("[%s] -> success", name)
+			log.Infof("workload %s complete: success", name)
 		}
 	}
 
@@ -112,10 +112,6 @@ func (sim *Sim) runScenario(scenario *Scenario) error {
 
 func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, resultCh chan *Result, active *atomic.Int64) {
 	log := pfxlog.Logger()
-
-	if workload.ConnectTimeout < time.Second {
-		workload.ConnectTimeout = time.Second
-	}
 
 	var err error
 	var conn net.Conn
@@ -126,11 +122,11 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 		}
 	}()
 
-	connectTimes := sim.metrics.Timer(workload.Name + ".connect.times")
-	connectFailures := sim.metrics.Meter(workload.Name + ".connect.failures")
-	connectSuccesses := sim.metrics.Meter(workload.Name + ".connect.successes")
-	completed := sim.metrics.Meter(workload.Name + ".completed")
-	sim.metrics.FuncGauge(workload.Name+".active", func() int64 {
+	connectTimes := sim.metrics.Timer("service.connect.times:" + workload.Name)
+	connectFailures := sim.metrics.Meter("service.connect.failures:" + workload.Name)
+	connectSuccesses := sim.metrics.Meter("service.connect.successes:" + workload.Name)
+	completed := sim.metrics.Meter("service.completed:" + workload.Name)
+	sim.metrics.FuncGauge("service.active:"+workload.Name, func() int64 {
 		return active.Load()
 	})
 
@@ -146,6 +142,7 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 		conn, err = sim.dialers[workload.Connector](workload)
 		connectTimes.UpdateSince(startConnect)
 		if err != nil {
+			log.WithField("workload", fmt.Sprintf("%s-%d.%d", workload.Name, idx, i)).WithError(err).Error("failed to dial")
 			connectFailures.Mark(1)
 			continue
 		}

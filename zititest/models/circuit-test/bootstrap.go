@@ -72,16 +72,72 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 			"protocol" : "tcp"
 		}`))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "throughput", "-a", "loop,loop-host"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "latency", "-a", "loop,loop-host"))
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "throughput-intercept", "intercept.v1", `
+		{
+			"addresses": ["throughput.ziti"],
+			"portRanges" : [ { "low": 3456, "high": 3456 } ],
+			"protocols": ["tcp"]
+		}`))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "throughput-xg", "-a", "loop,loop-host-xg"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "latency-xg", "-a", "loop,loop-host-xg"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "slow-xg", "-a", "loop,loop-host-xg"))
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "latency-intercept", "intercept.v1", `
+		{
+			"addresses": ["latency.ziti"],
+			"portRanges" : [ { "low": 3456, "high": 3456 } ],
+			"protocols": ["tcp"]
+		}`))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "throughput-ert", "-a", "loop,loop-host-ert", "-c", "loop-host"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "latency-ert", "-a", "loop,loop-host-ert", "-c", "loop-host"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "slow-ert", "-a", "loop,loop-host-ert", "-c", "loop-host"))
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "throughput-xg-intercept", "intercept.v1", `
+		{
+			"addresses": ["throughput-xg.ziti"],
+			"portRanges" : [ { "low": 3456, "high": 3456 } ],
+			"protocols": ["tcp"]
+		}`))
+
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "latency-xg-intercept", "intercept.v1", `
+		{
+			"addresses": ["latency-xg.ziti"],
+			"portRanges" : [ { "low": 3456, "high": 3456 } ],
+			"protocols": ["tcp"]
+		}`))
+
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "slow-xg-intercept", "intercept.v1", `
+		{
+			"addresses": ["slow-xg.ziti"],
+			"portRanges" : [ { "low": 3456, "high": 3456 } ],
+			"protocols": ["tcp"]
+		}`))
+
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "throughput-ert-intercept", "intercept.v1", `
+		{
+			"addresses": ["throughput-ert.ziti"],
+			"portRanges" : [ { "low": 3456, "high": 3456 } ],
+			"protocols": ["tcp"]
+		}`))
+
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "latency-ert-intercept", "intercept.v1", `
+		{
+			"addresses": ["latency-ert.ziti"],
+			"portRanges" : [ { "low": 3456, "high": 3456 } ],
+			"protocols": ["tcp"]
+		}`))
+
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "slow-ert-intercept", "intercept.v1", `
+		{
+			"addresses": ["slow-ert.ziti"],
+			"portRanges" : [ { "low": 3456, "high": 3456 } ],
+			"protocols": ["tcp"]
+		}`))
+
+	workflow.AddAction(zitilib_actions.Edge("create", "service", "throughput", "-a", "loop,loop-host", "-c", "throughput-intercept"))
+	workflow.AddAction(zitilib_actions.Edge("create", "service", "latency", "-a", "loop,loop-host", "-c", "latency-intercept"))
+
+	workflow.AddAction(zitilib_actions.Edge("create", "service", "throughput-xg", "-a", "loop,loop-host-xg", "-c", "throughput-xg-intercept"))
+	workflow.AddAction(zitilib_actions.Edge("create", "service", "latency-xg", "-a", "loop,loop-host-xg", "-c", "latency-xg-intercept"))
+	workflow.AddAction(zitilib_actions.Edge("create", "service", "slow-xg", "-a", "loop,loop-host-xg", "-c", "slow-xg-intercept"))
+
+	workflow.AddAction(zitilib_actions.Edge("create", "service", "throughput-ert", "-a", "loop,loop-host-ert", "-c", "loop-host,throughput-ert-intercept"))
+	workflow.AddAction(zitilib_actions.Edge("create", "service", "latency-ert", "-a", "loop,loop-host-ert", "-c", "loop-host,latency-ert-intercept"))
+	workflow.AddAction(zitilib_actions.Edge("create", "service", "slow-ert", "-a", "loop,loop-host-ert", "-c", "loop-host,slow-ert-intercept"))
 
 	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "loop-hosts", "Bind", "--service-roles", "#loop-host", "--identity-roles", "#loop-host"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "loop-hosts-xg", "Bind", "--service-roles", "#loop-host-xg", "--identity-roles", "#loop-host-xg"))

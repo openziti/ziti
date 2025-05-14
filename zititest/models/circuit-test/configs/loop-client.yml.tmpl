@@ -3,6 +3,9 @@ connectors:
     sdk:
       identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
       report_sdk_metrics: true
+      ha: {{ .Component.GetFlag "ha"}}
+      max_control_underlays: 1
+      test_service: latency
 
 remoteControlled:
   connector: default
@@ -27,11 +30,4 @@ workloads:
     service_name: {{ . }}
     connector:    default
     {{ $.Model.MustVariable "latencyWorkload" }}
-{{ end }}
-
-{{ range .Component.MustVariable "slow-services" }}
-  - name:         {{ . }}
-    connector:    default
-    service_name: {{ . }}
-    {{ $.Model.MustVariable "slowWorkload" }}
 {{ end }}

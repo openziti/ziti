@@ -71,7 +71,7 @@ func NewZitiReporter(cfg *ZitiReporterConfig) (*ZitiReporter, error) {
 }
 
 func (r *ZitiReporter) Run(reportInterval time.Duration) {
-	log := pfxlog.Logger().WithField("clientId", r.client).WithField("service", r.service)
+	log := pfxlog.Logger().WithField("clientId", r.clientId).WithField("service", r.service)
 	log.Infof("reporting metrics every %v", reportInterval)
 
 	ticker := time.NewTicker(reportInterval)
@@ -88,16 +88,25 @@ func (r *ZitiReporter) Run(reportInterval time.Duration) {
 
 	lenBuf := make([]byte, 4)
 
+	errLoggedSinceLastSuccess := false
+
 	for {
 		select {
 		case <-ticker.C:
 			if conn == nil {
 				conn, err = r.client.Dial(r.service)
 				if err != nil {
-					log.WithError(err).Error("failed to dial metrics services")
+					if errLoggedSinceLastSuccess {
+						log.WithError(err).Debug("failed to dial metrics services")
+					} else {
+						log.WithError(err).Error("failed to dial metrics services")
+						errLoggedSinceLastSuccess = true
+					}
 					continue
 				}
 			}
+
+			errLoggedSinceLastSuccess = false
 
 			event := r.createMetricsEvent()
 			buf, err := proto.Marshal(event)
@@ -106,7 +115,7 @@ func (r *ZitiReporter) Run(reportInterval time.Duration) {
 			} else {
 				length := len(buf)
 				binary.LittleEndian.PutUint32(lenBuf, uint32(length))
-				log.Infof("sending metrics message with len %v, %+v", length, lenBuf)
+				log.Debugf("sending metrics message with len %v, %+v", length, lenBuf)
 				if _, err = conn.Write(lenBuf); err != nil {
 					log.WithError(err).Error("failed to write metrics message length")
 					_ = conn.Close()
@@ -116,7 +125,7 @@ func (r *ZitiReporter) Run(reportInterval time.Duration) {
 					_ = conn.Close()
 					conn = nil
 				} else {
-					log.Info("reported metrics")
+					log.Debug("reported metrics")
 				}
 			}
 		case <-r.closer:

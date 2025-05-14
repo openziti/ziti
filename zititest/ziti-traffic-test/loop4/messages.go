@@ -54,9 +54,9 @@ func (r *Result) Tx(p *protocol) error {
 	p.simTxBytesRate.Mark(int64(4 + 4 + dataLen))
 
 	if r.Success {
-		pfxlog.ContextLogger(p.test.Name).Infof("<- [result+]")
+		pfxlog.ContextLogger(p.test.Name).Infof("complete: success")
 	} else {
-		pfxlog.ContextLogger(p.test.Name).Infof("<- [result-]")
+		pfxlog.ContextLogger(p.test.Name).Infof("complete: failure")
 	}
 
 	return nil

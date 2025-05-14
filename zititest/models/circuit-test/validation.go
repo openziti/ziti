@@ -46,6 +46,10 @@ import (
 )
 
 func RunSimScenarios(run model.Run, services *zitiLibOps.SimServices) error {
+	if err := run.GetModel().Exec(run, "startSimMetrics"); err != nil {
+		return err
+	}
+
 	simControl, err := services.GetSimController(run, "sim-control")
 	if err != nil {
 		return err
@@ -61,7 +65,7 @@ func RunSimScenarios(run model.Run, services *zitiLibOps.SimServices) error {
 		return err
 	}
 
-	return results.GetResults(time.Minute)
+	return results.GetResults(3 * time.Minute)
 }
 
 type CtrlClients struct {
