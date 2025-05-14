@@ -1,7 +1,7 @@
 
 # HA Quickstart
 
-You can explore Ziti HA by running three local processes on unique TCP ports. This is an interactive quickstart based on the [the HA test script](/quickstart/test/ha-test.sh).
+You can explore Ziti HA by running three local processes on unique TCP ports. This interactive tutorial is self-contained, so you don't need to do anything else before or after this to have a working, local cluster.
 
 1. Create an empty working directory. All commands are run here.
 
