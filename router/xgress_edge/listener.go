@@ -1184,6 +1184,10 @@ type xgEdgeForwarder struct {
 	tags       map[string]string
 }
 
+func (self *xgEdgeForwarder) GetDestinationType() string {
+	return "xg-edge-fwd"
+}
+
 func (self *xgEdgeForwarder) GetIntervalId() string {
 	return self.circuitId
 }

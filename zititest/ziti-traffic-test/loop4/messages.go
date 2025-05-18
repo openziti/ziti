@@ -203,13 +203,42 @@ func (block *RandHashedBlock) Tx(p *protocol) error {
 }
 
 func (block *RandHashedBlock) Rx(p *protocol) error {
-	length, err := p.rxHeader()
-	if err != nil {
+	log := pfxlog.Logger().WithField("name", p.test.Name).WithField("src", p.peer.LocalAddr())
+	if err := p.peer.SetReadDeadline(time.Now().Add(p.rxTimeout)); err != nil {
 		return err
 	}
 
+	start := time.Now()
+	defer func() {
+		if err := p.peer.SetReadDeadline(time.Time{}); err != nil {
+			log.WithError(err).Error("error resetting read deadline")
+		}
+	}()
+
+	if err := p.rxMagicHeader(); err != nil {
+		log.WithError(err).WithField("sinceStart", time.Since(start).String()).Error("error reading magic header")
+		return fmt.Errorf("error reading magic header (%w)", err)
+	}
+
+	headerRead := time.Now()
+
+	length, err := p.rxLength()
+	if err != nil {
+		log.WithError(err).
+			WithField("sinceStart", time.Since(start).String()).
+			WithField("sinceHeader", time.Since(headerRead).String()).
+			Error("error reading body length")
+		return fmt.Errorf("error reading body length (%w)", err)
+	}
+
+	lengthRead := time.Now()
+
 	body, err := p.rxMsgBody(length)
 	if err != nil {
+		log.WithError(err).
+			WithField("sinceStart", time.Since(start).String()).
+			WithField("sinceLength", time.Since(lengthRead).String()).
+			Error("error reading body")
 		return err
 	}
 

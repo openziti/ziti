@@ -28,6 +28,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"io"
 	"math/rand"
+	"net"
 	"sync/atomic"
 	"time"
 )
@@ -44,7 +45,8 @@ type protocol struct {
 	rxMaxJitter  time.Duration
 	rxPauseEvery time.Duration
 	rxPauseFor   time.Duration
-	peer         io.ReadWriteCloser
+	rxTimeout    time.Duration
+	peer         net.Conn
 	rxBlocks     chan Block
 	txCount      int32
 	rxCount      int32
@@ -66,7 +68,7 @@ type protocol struct {
 
 var MagicHeader = []byte{0xCA, 0xFE, 0xF0, 0x0D}
 
-func newProtocol(peer io.ReadWriteCloser, name string, registry metrics.Registry) (*protocol, error) {
+func newProtocol(peer net.Conn, name string, registry metrics.Registry) (*protocol, error) {
 	p := &protocol{
 		rxSequence: 0,
 		peer:       peer,
@@ -167,6 +169,7 @@ func (p *protocol) run(test *loopPb.Test) error {
 	p.rxMaxJitter = parseTime(p.test.RxMaxJitter)
 	p.rxPauseEvery = parseTime(p.test.RxPauseEvery)
 	p.rxPauseFor = parseTime(p.test.RxPauseFor)
+	p.rxTimeout = parseTime(p.test.RxTimeout)
 
 	rxerDone := make(chan bool)
 	go p.rxer(rxerDone, rxBlock, rxNotifer)
@@ -305,7 +308,7 @@ func (p *protocol) verifier() {
 				return
 			}
 
-		case <-time.After(time.Duration(p.test.RxTimeout) * time.Millisecond):
+		case <-time.After(p.rxTimeout):
 			timeSinceLastRx := info.NowInMilliseconds() - atomic.LoadInt64(&p.lastRx)
 			errStr := fmt.Sprintf("rx timeout exceeded (%d ms.). Last rx: %v. tx count: %v, rx count: %v",
 				p.test.RxTimeout, timeSinceLastRx, atomic.LoadInt32(&p.txCount), atomic.LoadInt32(&p.rxCount))
@@ -496,16 +499,20 @@ func (p *protocol) rxMagicHeader() error {
 
 func (p *protocol) rxHeader() (int, error) {
 	if err := p.rxMagicHeader(); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("error reading header (%w)", err)
 	}
-	return p.rxLength()
+	length, err := p.rxLength()
+	if err != nil {
+		return 0, fmt.Errorf("error reading body length (%w)", err)
+	}
+	return length, nil
 }
 
 func (p *protocol) rxMsgBody(length int) ([]byte, error) {
 	data := make([]byte, length)
 	_, err := io.ReadFull(p.peer, data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading msg body (%w)", err)
 	}
 	return data, err
 }

@@ -118,10 +118,11 @@ func (sim *Sim) InitConnectors() error {
 			}
 
 			if connector.SdkOptions.TestService != "" {
-				if conn, err := ctx.Dial(connector.SdkOptions.TestService); err != nil {
-					return err
-				} else {
+				conn, err := ctx.Dial(connector.SdkOptions.TestService)
+				if conn != nil {
 					_ = conn.Close()
+				} else {
+					log.WithError(err).Info("unable to dial test service")
 				}
 			}
 
@@ -347,4 +348,42 @@ func (self *ListenerAdapter) Close() error {
 
 func (self *ListenerAdapter) Addr() net.Addr {
 	return self
+}
+
+type dialResult struct {
+	conn net.Conn
+	err  error
+}
+
+type AdvanceDialer struct {
+	dialer      func() (net.Conn, error)
+	connCh      chan dialResult
+	closeNotify chan struct{}
+	started     atomic.Bool
+}
+
+func (self *AdvanceDialer) Dial(workload *Workload) (net.Conn, error) {
+	if self.started.CompareAndSwap(false, true) {
+		go self.Run()
+	}
+
+	select {
+	case result := <-self.connCh:
+		return result.conn, result.err
+	case <-time.After(workload.ConnectTimeout):
+		return nil, errors.New("dial timed out")
+	case <-self.closeNotify:
+		return nil, errors.New("sim stopped")
+	}
+}
+
+func (self *AdvanceDialer) Run() {
+	for {
+		conn, err := self.dialer()
+		select {
+		case self.connCh <- dialResult{conn, err}:
+		case <-self.closeNotify:
+			return
+		}
+	}
 }

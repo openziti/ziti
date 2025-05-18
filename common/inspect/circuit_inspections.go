@@ -2,7 +2,11 @@ package inspect
 
 import "github.com/openziti/sdk-golang/xgress"
 
-type CircuitsDetail struct {
+const (
+	RouterCircuitsKey = "router-circuits"
+)
+
+type ForwarderCircuits struct {
 	Circuits map[string]*CircuitDetail `json:"circuits"`
 }
 
@@ -11,6 +15,7 @@ type CircuitDetail struct {
 	TimeSinceActivity string            `json:"timeSinceActivity"`
 	CtrlId            string            `json:"ctrlId"`
 	Routes            map[string]string `json:"routes"`
+	Destinations      map[string]string `json:"destinations"`
 }
 
 type EdgeXgFwdInspectDetail struct {

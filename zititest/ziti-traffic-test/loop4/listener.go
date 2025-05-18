@@ -108,13 +108,18 @@ func (cmd *listenerCmd) runWorkload(workload *Workload) {
 func (cmd *listenerCmd) handle(conn net.Conn, workload *Workload) {
 	log := pfxlog.Logger().WithField("workload", workload.Name)
 
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.WithError(err).Error("error closing connection")
+		}
+	}()
+
 	if proto, err := newProtocol(conn, workload.Name, cmd.metrics); err == nil {
 		_, test := workload.GetTests()
 
 		if test == nil || !test.IsRxSequential() {
 			if test, err = proto.rxTest(); err != nil {
 				logrus.WithError(err).Error("failure receiving test parameters, closing")
-				_ = conn.Close()
 				return
 			}
 		}

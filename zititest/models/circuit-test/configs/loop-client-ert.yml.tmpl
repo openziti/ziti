@@ -45,34 +45,50 @@ metrics:
   clientId: {{ .Component.Id }}
 
 workloads:
+{{ if .Component.BoolVariable "testSdkHost" }}
   - name:         throughput
     connector:    throughput
-    {{ $.Model.MustVariable "throughputWorkload" }}
+    {{ $.Model.MustVariable "gentleThroughputWorkload" }}
+{{ end }}
 
+{{ if .Component.BoolVariable "testSdkXgHost" }}
   - name:         throughput-xg
     connector:    throughput-xg
     {{ $.Model.MustVariable "throughputWorkload" }}
+{{end}}
 
+{{ if .Component.BoolVariable "testErtHost" }}
   - name:         throughput-ert
     connector:    throughput-ert
     {{ $.Model.MustVariable "throughputWorkload" }}
+{{end}}
 
+{{ if .Component.BoolVariable "testSdkHost" }}
   - name:         latency
     connector:    latency
     {{ $.Model.MustVariable "latencyWorkload" }}
+{{end}}
 
+{{ if .Component.BoolVariable "testSdkXgHost" }}
   - name:         latency-xg
     connector:    latency-xg
     {{ $.Model.MustVariable "latencyWorkload" }}
+{{end}}
 
+{{ if .Component.BoolVariable "testErtHost" }}
   - name:         latency-ert
     connector:    latency-ert
     {{ $.Model.MustVariable "latencyWorkload" }}
+{{end}}
 
+{{ if .Component.BoolVariable "testSdkXgHost" }}
   - name:         slow-xg
     connector:    slow-xg
     {{ $.Model.MustVariable "slowWorkload" }}
+{{end}}
 
+{{ if .Component.BoolVariable "testErtHost" }}
   - name:         slow-ert
     connector:    slow-ert
     {{ $.Model.MustVariable "slowWorkload" }}
+{{end}}

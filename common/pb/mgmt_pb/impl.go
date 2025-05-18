@@ -87,3 +87,19 @@ func (request *RouterIdentityConnectionStatusesDetails) GetContentType() int32 {
 func (x *InitRequest) GetContentType() int32 {
 	return int32(ContentType_RaftInit)
 }
+
+func (request *ValidateCircuitsRequest) GetContentType() int32 {
+	return int32(ContentType_ValidateCircuitsRequestType)
+}
+
+func (request *ValidateCircuitsResponse) GetContentType() int32 {
+	return int32(ContentType_ValidateCircuitsResponseType)
+}
+
+func (request *RouterCircuitDetails) GetContentType() int32 {
+	return int32(ContentType_ValidateCircuitsResultType)
+}
+
+func (msg *RouterCircuitDetail) IsInErrorState() bool {
+	return msg.MissingInCtrl || msg.MissingInForwarder || msg.MissingInEdge || msg.MissingInSdk
+}
