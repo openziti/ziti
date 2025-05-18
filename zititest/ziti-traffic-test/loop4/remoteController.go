@@ -201,10 +201,13 @@ type ScenarioResults struct {
 }
 
 func (self *ScenarioResults) GetResults(timeout time.Duration) error {
+	start := time.Now()
 	var err error
 	select {
 	case <-self.complete:
-		pfxlog.Logger().WithField("scenarioId", self.id).Info("all scenario results gathered")
+		pfxlog.Logger().WithField("scenarioId", self.id).
+			WithField("elapsed", time.Since(start)).
+			Info("all scenario results gathered")
 	case <-time.After(timeout):
 		err = fmt.Errorf("timed out waiting for scenario results")
 	}

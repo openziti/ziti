@@ -25,7 +25,7 @@ message Test {
   bool txAfterRx = 19;
 
   int32 rxRequests = 7;
-  int32 rxTimeout = 8;
+  string rxTimeout = 8;
   string rxPauseEvery = 9;
   string rxPauseFor = 10;
 
@@ -37,6 +37,7 @@ message Test {
   int32 rxSeqBlockSize = 16;
   string rxPacing = 17;
   string rxMaxJitter = 18;
+  str
 }
 
 message ScenarioComplete {

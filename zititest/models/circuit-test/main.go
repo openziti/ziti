@@ -39,38 +39,43 @@ var configResource embed.FS
 
 var throughputWorkload = "" +
 	`concurrency:  1
-    iterations:   15
+    iterations:   2
     dialer:
-      txRequests:       10000
-      txPacing:         0ms
-      txMaxJitter:      0
-      rxTimeout:        240000
+      txRequests:       80000
+      rxTimeout:        1s
       payloadMinBytes:  10000
       payloadMaxBytes:  10000
     listener:
-      txRequests:       0
-      txAfterRx:        false
-      rxTimeout:        240000
-      #rxPacing:         100ms
-      payloadMinBytes:  64
-      payloadMaxBytes:  256`
+      rxTimeout:        1s
+`
+
+var gentleThroughputWorkload = "" +
+	`concurrency:  2
+    iterations:   2
+    dialer:
+      txRequests:       7000
+      txPacing:         1ms
+      txMaxJitter:      0
+      rxTimeout:        1s
+      payloadMinBytes:  10000
+      payloadMaxBytes:  10000
+    listener:
+      rxTimeout:        1s
+`
 
 var latencyWorkload = "" +
 	`concurrency:  5
-    iterations:  300
+    iterations:  400
     dialer:
       txRequests:       1
-      txPacing:         0
-      txMaxJitter:      0
-      rxTimeout:        240000
+      rxTimeout:        1s
       payloadMinBytes:  64
       payloadMaxBytes:  256
       latencyFrequency: 1
     listener:
       txRequests:       1
       txAfterRx:        true
-      rxTimeout:        240000
-      rxPacing:         0
+      rxTimeout:        1s
       payloadMinBytes:  2048
       payloadMaxBytes:  10000
 `
@@ -79,16 +84,14 @@ var slowWorkload = "" +
 	`concurrency:  1
     iterations:   1
     dialer:
-      txRequests:       120
-      txPacing:         0
-      txMaxJitter:      0
-      rxTimeout:        240000
+      txRequests:       60
+      rxTimeout:        10s
       payloadMinBytes:  64000
       payloadMaxBytes:  64000
     listener:
-      txRequests:       120
+      txRequests:       60
       txAfterRx:        true
-      rxTimeout:        240000
+      rxTimeout:        10s
       rxPacing:         1s
       payloadMinBytes:  64
       payloadMaxBytes:  256`
@@ -117,15 +120,24 @@ var m = &model.Model{
 					"db":  "ziti",
 				},
 			},
-			"throughputWorkload": throughputWorkload,
-			"latencyWorkload":    latencyWorkload,
-			"slowWorkload":       slowWorkload,
+			"throughputWorkload":       throughputWorkload,
+			"gentleThroughputWorkload": gentleThroughputWorkload,
+			"latencyWorkload":          latencyWorkload,
+			"slowWorkload":             slowWorkload,
+			"testErtHost":              true,
+			"testErtClient":            true,
+			"testSdkClient":            true,
+			"testSdkHost":              true,
+			"testSdkXgClient":          true,
+			"testSdkXgHost":            true,
 		},
 	},
 	StructureFactories: []model.Factory{
 		model.FactoryFunc(func(m *model.Model) error {
-			err := m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
-				host.InstanceType = "c5.xlarge"
+			err := m.ForEachHost("*", 1, func(host *model.Host) error {
+				if host.InstanceType == "" {
+					host.InstanceType = "c5.xlarge"
+				}
 				return nil
 			})
 
@@ -133,8 +145,8 @@ var m = &model.Model{
 				return err
 			}
 
-			err = m.ForEachHost("component.router", 1, func(host *model.Host) error {
-				host.InstanceType = "c5.xlarge"
+			err = m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
+				host.InstanceType = "t3.micro"
 				return nil
 			})
 
@@ -151,10 +163,22 @@ var m = &model.Model{
 				}
 			}
 
-			for _, c := range m.SelectComponents(".router") {
-				c.Tags = append(c.Tags, "tunneler")
+			return nil
+		}),
+		model.FactoryFunc(func(m *model.Model) error {
+			for _, host := range m.SelectHosts("*") {
+				for _, component := range host.Components {
+					if rc, ok := component.Type.(*zitilab.Loop4SimType); ok && rc.Mode == zitilab.Loop4RemoteControlled {
+						if component.Id == "loop-client" && !m.BoolVariable("testSdkClient") {
+							delete(host.Components, component.Id)
+						} else if component.Id == "loop-client-xg" && !m.BoolVariable("testSdkXgClient") {
+							delete(host.Components, component.Id)
+						} else if component.Id == "loop-client-ert" && !m.BoolVariable("testErtClient") {
+							delete(host.Components, component.Id)
+						}
+					}
+				}
 			}
-
 			return nil
 		}),
 	},
@@ -182,6 +206,8 @@ var m = &model.Model{
 			m.AddActionF("validateSimMetrics", func(run model.Run) error {
 				return metricsValidator.ValidateCollected()
 			})
+
+			m.AddActionF("enableMetrics", metricsValidator.StartCollecting)
 
 			return nil
 		}),
@@ -254,13 +280,7 @@ var m = &model.Model{
 					},
 				},
 				"loop-client": {
-					Scope: model.Scope{
-						Tags: model.Tags{"loop-client"},
-						Defaults: model.Variables{
-							"throughput-services": []string{"throughput", "throughput-xg", "throughput-ert"},
-							"latency-services":    []string{"latency", "latency-xg", "latency-ert"},
-						},
-					},
+					Scope: model.Scope{Tags: model.Tags{"loop-client"}},
 					Components: model.Components{
 						"loop-client": {
 							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
@@ -271,14 +291,7 @@ var m = &model.Model{
 					},
 				},
 				"loop-client-xg": {
-					Scope: model.Scope{
-						Tags: model.Tags{"loop-client"},
-						Defaults: model.Variables{
-							"throughput-services": []string{"throughput", "throughput-xg", "throughput-ert"},
-							"latency-services":    []string{"latency", "latency-xg", "latency-ert"},
-							"slow-services":       []string{"slow-xg", "slow-ert"},
-						},
-					},
+					Scope: model.Scope{Tags: model.Tags{"loop-client"}},
 					Components: model.Components{
 						"loop-client-xg": {
 							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
@@ -378,7 +391,6 @@ var m = &model.Model{
 			workflow.AddAction(component.StartInParallel(".host", 50))
 			return workflow
 		}),
-		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
 		"validateUp": model.Bind(model.ActionFunc(func(run model.Run) error {
 			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
 				return err
@@ -395,11 +407,13 @@ var m = &model.Model{
 			}
 			return nil
 		})),
-		"validate": model.BindF(validateRouterDataModel),
+		"validateCircuits": model.BindF(validateCircuits),
 		"testIteration": model.BindF(func(run model.Run) error {
 			return run.GetModel().Exec(run,
+				"enableMetrics",
 				"runSimScenario",
 				"validateSimMetrics",
+				"validateCircuits",
 			)
 		}),
 	},

@@ -19,24 +19,59 @@ metrics:
   interval: 5s
   clientId: {{ .Component.Id }}
 
-{{ range .Component.MustVariable "throughput-services" }}
 workloads:
-  - name:         {{ . }}
-    service_name: {{ . }}
+{{ if .Component.BoolVariable "testSdkHost" }}
+  - name:         throughput
+    service_name: throughput
+    connector:    default
+    {{ $.Model.MustVariable "gentleThroughputWorkload" }}
+{{ end }}
+
+{{ if .Component.BoolVariable "testSdkXgHost" }}
+  - name:         throughput-xg
+    service_name: throughput-xg
     connector:    default
     {{ $.Model.MustVariable "throughputWorkload" }}
-{{ end }}
+{{end}}
 
-{{ range .Component.MustVariable "latency-services" }}
-  - name:         {{ . }}
-    service_name: {{ . }}
+{{ if .Component.BoolVariable "testErtHost" }}
+  - name:         throughput-ert
+    service_name: throughput-ert
+    connector:    default
+    {{ $.Model.MustVariable "throughputWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testSdkHost" }}
+  - name:         latency
+    service_name: latency
     connector:    default
     {{ $.Model.MustVariable "latencyWorkload" }}
-{{ end }}
+{{end}}
 
-{{ range .Component.MustVariable "slow-services" }}
-  - name:         {{ . }}
+{{ if .Component.BoolVariable "testSdkXgHost" }}
+  - name:         latency-xg
+    service_name: latency-xg
     connector:    default
-    service_name: {{ . }}
+    {{ $.Model.MustVariable "latencyWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testErtHost" }}
+  - name:         latency-ert
+    service_name: latency-ert
+    connector:    default
+    {{ $.Model.MustVariable "latencyWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testSdkXgHost" }}
+  - name:         slow-xg
+    service_name: slow-xg
+    connector:    default
     {{ $.Model.MustVariable "slowWorkload" }}
-{{ end }}
+{{end}}
+
+{{ if .Component.BoolVariable "testErtHost" }}
+  - name:         slow-ert
+    service_name: slow-ert
+    connector:    default
+    {{ $.Model.MustVariable "slowWorkload" }}
+{{end}}

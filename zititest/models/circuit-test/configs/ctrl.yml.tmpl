@@ -42,27 +42,19 @@ events:
     subscriptions:
       - type: entityChange
         propagateAlways: true
-#      - type: edge.apiSessions
-#      - type: edge.entityCounts
-#        interval: 15s
-#      - type: edge.sessions
-#      - type: fabric.routers
-#      - type: fabric.terminators
-#      - type: metrics
-#        sourceFilter: .*
-#        metricFilter: .*egress.*m1_rate*
-#      - type: fabric.circuits
-#        include:
-#          - created
-#        include:
-#          - created
-#      - type: fabric.usage
-#      - type: services
-#      - type: fabric.usage
     handler:
       type: file
       format: json
-      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/event.log
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/entity-change.log
+
+events:
+  jsonLogger:
+    subscriptions:
+      - type: fabric.circuits
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/circuits.log
 
 healthChecks:
   boltCheck:

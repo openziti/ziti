@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/spf13/cobra"
 	"net"
 	"sync/atomic"
@@ -107,17 +108,20 @@ func (sim *Sim) runScenario(scenario *Scenario) error {
 		}
 	}
 
+	log.Infof("scenario completed with %d errors", len(errs))
+
 	return errors.Join(errs...)
 }
 
 func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, resultCh chan *Result, active *atomic.Int64) {
-	log := pfxlog.Logger()
+	log := pfxlog.Logger().WithField("workload", fmt.Sprintf("%s:%d", workload.Name, idx))
 
 	var err error
 	var conn net.Conn
 
 	defer func() {
 		if conn != nil {
+			log.Info("closing connection")
 			_ = conn.Close()
 		}
 	}()
@@ -132,19 +136,29 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 
 	var result *Result
 	for i := int64(0); i < workload.Iterations || workload.Iterations == -1; i++ {
+		log = log.WithField("iteration", i+1)
 		if conn != nil {
+			log.Info("closing connection")
 			if err = conn.Close(); err != nil {
 				log.Errorf("unable to close connection for workload [%s]: %v", workload.Name, err)
 			}
 			conn = nil
 		}
+
 		startConnect := time.Now()
 		conn, err = sim.dialers[workload.Connector](workload)
 		connectTimes.UpdateSince(startConnect)
 		if err != nil {
-			log.WithField("workload", fmt.Sprintf("%s-%d.%d", workload.Name, idx, i)).WithError(err).Error("failed to dial")
+			log.WithError(err).Error("failed to dial")
 			connectFailures.Mark(1)
 			continue
+		}
+
+		log = log.WithField("src", conn.LocalAddr().String())
+
+		circuitId := "unknown"
+		if ztConn, ok := conn.(edge.Conn); ok {
+			circuitId = ztConn.GetCircuitId()
 		}
 
 		active.Add(1)
@@ -152,37 +166,47 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 		connectSuccesses.Mark(1)
 		local, remote := workload.GetTests()
 
-		if proto, err := newProtocol(conn, workload.Name, sim.metrics); err == nil {
-			if local.IsTxRandomHashed() {
-				if err = proto.txTest(remote); err != nil {
-					sim.reportErr(resultCh, err)
-					active.Add(-1)
-					return
-				}
-			}
+		var proto *protocol
+		proto, err = newProtocol(conn, workload.Name, sim.metrics)
+		if err != nil {
+			log.WithError(err).Error("error creating protocol")
+			sim.reportErr(resultCh, err, circuitId)
+			active.Add(-1)
+			return
+		}
 
-			if err = proto.run(local); err != nil {
-				sim.reportErr(resultCh, err)
+		if local.IsTxRandomHashed() {
+			if err = proto.txTest(remote); err != nil {
+				log.WithError(err).Error("error sending test to host")
+				sim.reportErr(resultCh, err, circuitId)
 				active.Add(-1)
-				return
-			}
-
-			if result, err = proto.rxResult(); err != nil {
-				sim.reportErr(resultCh, err)
-				active.Add(-1)
-				return
-			}
-
-			if !result.Success {
-				active.Add(-1)
-				resultCh <- result
 				return
 			}
 		}
 
+		if err = proto.run(local); err != nil {
+			log.WithError(err).Error("error running test")
+			sim.reportErr(resultCh, err, circuitId)
+			active.Add(-1)
+			return
+		}
+
+		if result, err = proto.rxResult(); err != nil {
+			log.WithError(err).Error("error receiving test result")
+			sim.reportErr(resultCh, err, circuitId)
+			active.Add(-1)
+			return
+		}
+
+		if !result.Success {
+			active.Add(-1)
+			resultCh <- result
+			return
+		}
+
 		active.Add(-1)
 		completed.Mark(1)
-		pfxlog.Logger().Debugf("%s-%d completed iteration %d", workload.Name, idx, i+1)
+		log.Debug("completed iteration")
 		if scenario.ConnectionDelay > 0 {
 			time.Sleep(time.Duration(sim.scenario.ConnectionDelay) * time.Millisecond)
 		}
@@ -193,7 +217,8 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 	}
 }
 
-func (sim *Sim) reportErr(resultCh chan *Result, err error) {
+func (sim *Sim) reportErr(resultCh chan *Result, err error, circuitId string) {
+	err = fmt.Errorf("circuit failure, circuitId: (%s), %w", circuitId, err)
 	result := &Result{
 		Success: false,
 		Message: err.Error(),

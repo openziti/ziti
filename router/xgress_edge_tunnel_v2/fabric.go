@@ -24,13 +24,13 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/rate"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/secretstream/kx"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/router/posture"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/pkg/errors"
@@ -75,7 +75,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		return err
 	}
 
-	log := logrus.WithField("service", service.GetName())
+	log := logrus.WithField("service", service.GetName()).WithField("src", conn.RemoteAddr().String())
 
 	peerData := make(map[uint32][]byte)
 	if service.IsEncryptionRequired() {
@@ -115,6 +115,8 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		log.WithError(err).Warn("failed to dial fabric")
 		return err
 	}
+
+	log.WithField("circuitId", response.CircuitId).Info("circuit established")
 
 	peerKey, peerKeyFound := response.PeerData[uint32(edge.PublicKeyHeader)]
 	if service.IsEncryptionRequired() && !peerKeyFound {
