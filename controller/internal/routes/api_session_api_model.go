@@ -64,20 +64,21 @@ func MapApiSessionToRestModel(ae *env.AppEnv, apiSession *model.ApiSession) (*re
 	lastActivityAt := strfmt.DateTime(apiSession.LastActivityAt)
 
 	ret := &rest_model.APISessionDetail{
-		BaseEntity:             BaseEntityToRestModel(apiSession, ApiSessionLinkFactory),
-		IdentityID:             &apiSession.IdentityId,
-		Identity:               ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
-		Token:                  &apiSession.Token,
-		IPAddress:              &apiSession.IPAddress,
-		ConfigTypes:            stringz.SetToSlice(apiSession.ConfigTypes),
-		AuthQueries:            rest_model.AuthQueryList{}, //not in a request context, can't fill
-		IsMfaComplete:          &apiSession.MfaComplete,
-		IsMfaRequired:          &apiSession.MfaRequired,
-		LastActivityAt:         lastActivityAt,
-		AuthenticatorID:        &apiSession.AuthenticatorId,
-		IsCertExtendable:       &apiSession.IsCertExtendable,
-		IsCertExtendRequested:  apiSession.IsCertExtendRequested,
-		IsCertKeyRollRequested: apiSession.IsCertKeyRollRequested,
+		BaseEntity:              BaseEntityToRestModel(apiSession, ApiSessionLinkFactory),
+		IdentityID:              &apiSession.IdentityId,
+		Identity:                ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
+		Token:                   &apiSession.Token,
+		IPAddress:               &apiSession.IPAddress,
+		ConfigTypes:             stringz.SetToSlice(apiSession.ConfigTypes),
+		AuthQueries:             rest_model.AuthQueryList{}, //not in a request context, can't fill
+		IsMfaComplete:           &apiSession.MfaComplete,
+		IsMfaRequired:           &apiSession.MfaRequired,
+		LastActivityAt:          lastActivityAt,
+		AuthenticatorID:         &apiSession.AuthenticatorId,
+		IsCertExtendable:        &apiSession.IsCertExtendable,
+		IsCertExtendRequested:   apiSession.IsCertExtendRequested,
+		IsCertKeyRollRequested:  apiSession.IsCertKeyRollRequested,
+		ImproperClientCertChain: apiSession.ImproperClientCertChain,
 	}
 
 	if ret.ConfigTypes == nil {

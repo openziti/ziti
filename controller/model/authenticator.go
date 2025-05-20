@@ -20,7 +20,9 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/event"
 	"net/http"
+	"time"
 )
 
 type AuthResult interface {
@@ -30,6 +32,7 @@ type AuthResult interface {
 	Authenticator() *Authenticator
 	AuthPolicy() *AuthPolicy
 	IsSuccessful() bool
+	ImproperClientCertChain() bool
 }
 
 type AuthProcessor interface {
@@ -65,6 +68,7 @@ type AuthContext interface {
 	GetCerts() []*x509.Certificate
 	GetHeaders() map[string]interface{}
 	GetChangeContext() *change.Context
+	GetRemoteAddr() string
 
 	// GetPrimaryIdentity returns the current in context identity, which should be nil for primary and filled for secondary
 	GetPrimaryIdentity() *Identity
@@ -80,6 +84,7 @@ type AuthContextHttp struct {
 	Headers         map[string]interface{}
 	ChangeContext   *change.Context
 	PrimaryIdentity *Identity
+	RemoteAddr      string
 }
 
 func NewAuthContextHttp(request *http.Request, method string, data interface{}, ctx *change.Context) AuthContext {
@@ -99,6 +104,7 @@ func NewAuthContextHttp(request *http.Request, method string, data interface{}, 
 		Certs:         request.TLS.PeerCertificates,
 		Headers:       headers,
 		ChangeContext: ctx,
+		RemoteAddr:    request.RemoteAddr,
 	}
 }
 
@@ -128,15 +134,24 @@ func (context *AuthContextHttp) SetPrimaryIdentity(primaryIdentity *Identity) {
 	context.PrimaryIdentity = primaryIdentity
 }
 
+func (context *AuthContextHttp) GetRemoteAddr() string {
+	return context.RemoteAddr
+}
+
+func (context *AuthContextHttp) SetRemoteAddr(addr string) {
+	context.RemoteAddr = addr
+}
+
 var _ AuthResult = &AuthResultBase{}
 
 type AuthResultBase struct {
-	identity        *Identity
-	authenticatorId string
-	authenticator   *Authenticator
-	sessionCerts    []*x509.Certificate
-	authPolicy      *AuthPolicy
-	env             Env
+	identity                *Identity
+	authenticatorId         string
+	authenticator           *Authenticator
+	sessionCerts            []*x509.Certificate
+	authPolicy              *AuthPolicy
+	improperClientCertChain bool
+	env                     Env
 }
 
 func (a *AuthResultBase) AuthenticatorId() string {
@@ -158,10 +173,85 @@ func (a *AuthResultBase) Authenticator() *Authenticator {
 	return a.authenticator
 }
 
+func (a *AuthResultBase) ImproperClientCertChain() bool {
+	return a.improperClientCertChain
+}
+
 func (a *AuthResultBase) AuthPolicy() *AuthPolicy {
 	return a.authPolicy
 }
 
 func (a *AuthResultBase) IsSuccessful() bool {
 	return a.identity != nil
+}
+
+type AuthBundle struct {
+	Authenticator           *Authenticator
+	Identity                *Identity
+	AuthPolicy              *AuthPolicy
+	ExternalJwtSigner       *ExternalJwtSigner
+	ImproperClientCertChain bool
+}
+
+func (a *AuthBundle) Apply(event *event.AuthenticationEvent) {
+	if a.Authenticator != nil {
+		event.AuthenticatorId = a.Authenticator.Id
+
+		// set in scenarios where identity is not fetch explicitly
+		event.IdentityId = a.Authenticator.IdentityId
+	}
+
+	if a.Identity != nil {
+		event.IdentityId = a.Identity.Id
+	}
+
+	if a.AuthPolicy != nil {
+		event.AuthPolicyId = a.AuthPolicy.Id
+	}
+
+	if a.ExternalJwtSigner != nil {
+		event.ExternalJwtSignerId = a.ExternalJwtSigner.Id
+	}
+
+	event.ImproperClientCertChain = a.ImproperClientCertChain
+}
+
+type BaseAuthenticator struct {
+	method string
+	env    Env
+}
+
+func (a *BaseAuthenticator) NewAuthEventFailure(authCtx AuthContext, bundle *AuthBundle, reason string) *event.AuthenticationEvent {
+	result := &event.AuthenticationEvent{
+		Namespace:     event.AuthenticationEventNS,
+		EventSrcId:    a.env.GetId(),
+		Timestamp:     time.Now(),
+		EventType:     event.AuthenticationEventTypeFail,
+		Method:        a.method,
+		FailureReason: reason,
+		RemoteAddress: authCtx.GetRemoteAddr(),
+	}
+
+	bundle.Apply(result)
+
+	return result
+}
+
+func (a *BaseAuthenticator) NewAuthEventSuccess(authCtx AuthContext, bundle *AuthBundle) *event.AuthenticationEvent {
+	result := &event.AuthenticationEvent{
+		Namespace:     event.AuthenticationEventNS,
+		EventSrcId:    a.env.GetId(),
+		Timestamp:     time.Now(),
+		EventType:     event.AuthenticationEventTypeSuccess,
+		Method:        a.method,
+		RemoteAddress: authCtx.GetRemoteAddr(),
+	}
+
+	bundle.Apply(result)
+
+	return result
+}
+
+func (a *BaseAuthenticator) DispatchEvent(event *event.AuthenticationEvent) {
+	a.env.GetEventDispatcher().AcceptAuthenticationEvent(event)
 }

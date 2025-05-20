@@ -20,6 +20,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/apierror"
@@ -33,15 +34,16 @@ var _ AuthProcessor = &AuthModuleUpdb{}
 const AuthMethodPassword = "password"
 
 type AuthModuleUpdb struct {
-	env                       Env
-	method                    string
+	BaseAuthenticator
 	attemptsByAuthenticatorId cmap.ConcurrentMap[string, int64]
 }
 
 func NewAuthModuleUpdb(env Env) *AuthModuleUpdb {
 	return &AuthModuleUpdb{
-		env:                       env,
-		method:                    AuthMethodPassword,
+		BaseAuthenticator: BaseAuthenticator{
+			env:    env,
+			method: AuthMethodPassword,
+		},
 		attemptsByAuthenticatorId: cmap.New[int64](),
 	}
 }
@@ -52,6 +54,8 @@ func (module *AuthModuleUpdb) CanHandle(method string) bool {
 
 func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 	logger := pfxlog.Logger().WithField("authMethod", module.method)
+
+	bundle := &AuthBundle{}
 
 	data := context.GetData()
 
@@ -66,55 +70,91 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 	}
 
 	if username == "" || password == "" {
-		return nil, errorz.NewCouldNotValidate(errors.New("username and password fields are required"))
+		reason := "username and password fields are required"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+
+		module.DispatchEvent(failEvent)
+		return nil, errorz.NewCouldNotValidate(errors.New(reason))
 	}
 
 	logger = logger.WithField("username", username)
-	authenticator, err := module.env.GetManagers().Authenticator.ReadByUsername(username)
+
+	var err error
+	bundle.Authenticator, err = module.env.GetManagers().Authenticator.ReadByUsername(username)
 
 	if err != nil {
-		logger.WithError(err).Error("could not authenticate, authenticator lookup by username errored")
+		reason := "could not authenticate, authenticator lookup by username errored"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+
+		module.DispatchEvent(failEvent)
+		logger.WithError(err).Error(reason)
+
 		return nil, err
 	}
 
-	if authenticator == nil {
-		logger.WithError(err).Error("could not authenticate, authenticator lookup returned nil")
+	if bundle.Authenticator == nil {
+		reason := "could not authenticate, authenticator lookup returned nil"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+
+		module.DispatchEvent(failEvent)
+		logger.WithError(err).Error(reason)
+
 		return nil, apierror.NewInvalidAuth()
 	}
 
 	logger = logger.
-		WithField("authenticatorId", authenticator.Id).
-		WithField("identityId", authenticator.IdentityId)
+		WithField("authenticatorId", bundle.Authenticator.Id).
+		WithField("identityId", bundle.Authenticator.IdentityId)
 
-	authPolicy, identity, err := getAuthPolicyByIdentityId(module.env, module.method, authenticator.Id, authenticator.IdentityId)
+	bundle.AuthPolicy, bundle.Identity, err = getAuthPolicyByIdentityId(module.env, module.method, bundle.Authenticator.Id, bundle.Authenticator.IdentityId)
 
 	if err != nil {
-		logger.WithError(err).Errorf("could not look up auth policy by identity id")
+		reason := "could not look up auth policy by identity id"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+
+		module.DispatchEvent(failEvent)
+		logger.WithError(err).Error(reason)
+
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	if authPolicy == nil {
-		logger.Error("auth policy look up returned nil")
+	if bundle.AuthPolicy == nil {
+		reason := "auth policy look up returned nil"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+
+		module.DispatchEvent(failEvent)
+		logger.WithError(err).Error(reason)
+
+		logger.Error(reason)
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	if identity.Disabled {
+	if bundle.Identity.Disabled {
+		reason := fmt.Sprintf("identity is disabled, disabledAt: %v, disabledUntil: %v", bundle.Identity.DisabledAt, bundle.Identity.DisabledUntil)
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+
+		module.DispatchEvent(failEvent)
 		logger.
-			WithField("disabledAt", identity.DisabledAt).
-			WithField("disabledUntil", identity.DisabledUntil).
-			Error("authentication failed, identity is disabled")
+			WithField("disabledAt", bundle.Identity.DisabledAt).
+			WithField("disabledUntil", bundle.Identity.DisabledUntil).
+			Error(reason)
+
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	logger = logger.WithField("authPolicyId", authPolicy.Id)
+	logger = logger.WithField("authPolicyId", bundle.AuthPolicy.Id)
 
-	if !authPolicy.Primary.Updb.Allowed {
-		logger.Error("auth policy does not allow updb authentication")
+	if !bundle.AuthPolicy.Primary.Updb.Allowed {
+		reason := fmt.Sprintf("auth policy does not allow updb authentication, authPolicyId: %v", bundle.AuthPolicy.Id)
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+
+		module.DispatchEvent(failEvent)
+		logger.WithField("authPolicyId", bundle.AuthPolicy.Id).Error(reason)
 		return nil, apierror.NewInvalidAuth()
 	}
 
 	attempts := int64(0)
-	module.attemptsByAuthenticatorId.Upsert(authenticator.Id, 0, func(exist bool, prevAttempts int64, newValue int64) int64 {
+	module.attemptsByAuthenticatorId.Upsert(bundle.Authenticator.Id, 0, func(exist bool, prevAttempts int64, newValue int64) int64 {
 		if exist {
 			attempts = prevAttempts + 1
 			return attempts
@@ -123,37 +163,56 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 		return 0
 	})
 
-	if authPolicy.Primary.Updb.MaxAttempts != db.UpdbUnlimitedAttemptsLimit && attempts > authPolicy.Primary.Updb.MaxAttempts {
-		logger.WithField("attempts", attempts).WithField("maxAttempts", authPolicy.Primary.Updb.MaxAttempts).Error("updb auth failed, max attempts exceeded")
+	if bundle.AuthPolicy.Primary.Updb.MaxAttempts != db.UpdbUnlimitedAttemptsLimit && attempts > bundle.AuthPolicy.Primary.Updb.MaxAttempts {
+		reason := fmt.Sprintf("updb auth failed, max attempts exceeded, attempts: %v, maxAttempts: %v", attempts, bundle.AuthPolicy.Primary.Updb.MaxAttempts)
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
 
-		duration := time.Duration(authPolicy.Primary.Updb.LockoutDurationMinutes) * time.Minute
-		if err = module.env.GetManagers().Identity.Disable(authenticator.IdentityId, duration, context.GetChangeContext()); err != nil {
+		module.DispatchEvent(failEvent)
+		logger.WithField("attempts", attempts).WithField("maxAttempts", bundle.AuthPolicy.Primary.Updb.MaxAttempts).Error(reason)
+
+		duration := time.Duration(bundle.AuthPolicy.Primary.Updb.LockoutDurationMinutes) * time.Minute
+		if err = module.env.GetManagers().Identity.Disable(bundle.Authenticator.IdentityId, duration, context.GetChangeContext()); err != nil {
 			logger.WithError(err).Error("could not lock identity, unhandled error")
 		}
 
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	updb := authenticator.ToUpdb()
+	updb := bundle.Authenticator.ToUpdb()
 
 	salt, err := DecodeSalt(updb.Salt)
 
 	if err != nil {
+		reason := "could not decode salt"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+
+		module.DispatchEvent(failEvent)
+		logger.Error(reason)
+
 		return nil, apierror.NewInvalidAuth()
 	}
 
 	hr := module.env.GetManagers().Authenticator.ReHashPassword(password, salt)
 
 	if subtle.ConstantTimeCompare([]byte(updb.Password), []byte(hr.Password)) != 1 {
+		reason := "could not authenticate, password does not match"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+
+		module.DispatchEvent(failEvent)
+		logger.Error(reason)
+
 		return nil, apierror.NewInvalidAuth()
 	}
 
+	successEvent := module.NewAuthEventSuccess(context, bundle)
+	module.DispatchEvent(successEvent)
+
 	return &AuthResultBase{
-		identity:        identity,
-		authenticator:   authenticator,
-		authenticatorId: authenticator.Id,
+		identity:        bundle.Identity,
+		authenticator:   bundle.Authenticator,
+		authenticatorId: bundle.Authenticator.Id,
 		env:             module.env,
-		authPolicy:      authPolicy,
+		authPolicy:      bundle.AuthPolicy,
 	}, nil
 }
 

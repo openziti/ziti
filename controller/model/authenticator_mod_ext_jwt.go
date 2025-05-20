@@ -91,15 +91,16 @@ func (r *candidateResult) LogResult(logger *logrus.Entry, index int) {
 }
 
 type AuthModuleExtJwt struct {
-	env     Env
-	method  string
+	BaseAuthenticator
 	signers cmap.ConcurrentMap[string, *signerRecord]
 }
 
 func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
 	ret := &AuthModuleExtJwt{
-		env:     env,
-		method:  AuthMethodExtJwt,
+		BaseAuthenticator: BaseAuthenticator{
+			method: AuthMethodExtJwt,
+			env:    env,
+		},
 		signers: cmap.New[*signerRecord](),
 	}
 
@@ -371,7 +372,12 @@ func (a *AuthModuleExtJwt) process(context AuthContext) (AuthResult, error) {
 	var verifyResults []*candidateResult
 
 	if len(candidates) == 0 {
-		logger.Error("encountered 0 candidate JWTs, verification cannot occur")
+		reason := "encountered 0 candidate JWTs, verification cannot occur"
+		failEvent := a.NewAuthEventFailure(context, &AuthBundle{}, reason)
+
+		logger.Error(reason)
+		a.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
 		return nil, apierror.NewInvalidAuth()
 	}
 
@@ -389,6 +395,21 @@ func (a *AuthModuleExtJwt) process(context AuthContext) (AuthResult, error) {
 				externalJwtSigner: verifyResult.EncounteredExtJwtSigner,
 			}
 
+			bundle := &AuthBundle{
+				Authenticator: nil,
+				Identity:      verifyResult.Identity,
+				AuthPolicy:    verifyResult.AuthPolicy,
+			}
+
+			if verifyResult.EncounteredExtJwtSigner != nil {
+				extJwtSigner := &ExternalJwtSigner{}
+				_ = extJwtSigner.fillFrom(nil, nil, verifyResult.EncounteredExtJwtSigner)
+				bundle.ExternalJwtSigner = extJwtSigner
+			}
+
+			successEvent := a.NewAuthEventSuccess(context, bundle)
+			a.env.GetEventDispatcher().AcceptAuthenticationEvent(successEvent)
+
 			verifyResult.LogResult(logger, i)
 
 			return result, nil
@@ -401,6 +422,10 @@ func (a *AuthModuleExtJwt) process(context AuthContext) (AuthResult, error) {
 	for i, result := range verifyResults {
 		result.LogResult(logger, i)
 	}
+
+	reason := fmt.Sprintf("encountered %d candidate JWTs and all failed to validate for %s authentication", len(verifyResults), authType)
+	failEvent := a.NewAuthEventFailure(context, &AuthBundle{}, reason)
+	a.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
 
 	return nil, apierror.NewInvalidAuth()
 }

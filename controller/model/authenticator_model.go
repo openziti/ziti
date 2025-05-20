@@ -69,15 +69,18 @@ func (entity *Authenticator) fillFrom(_ Env, _ *bbolt.Tx, boltAuthenticator *db.
 		}
 	case *db.AuthenticatorCert:
 		entity.SubType = &AuthenticatorCert{
-			Authenticator:         entity,
-			Fingerprint:           boltAuth.Fingerprint,
-			Pem:                   boltAuth.Pem,
-			IsIssuedByNetwork:     boltAuth.IsIssuedByNetwork,
-			IsExtendRequested:     boltAuth.IsExtendRequested,
-			IsKeyRollRequested:    boltAuth.IsKeyRollRequested,
-			ExtendRequestedAt:     boltAuth.ExtendRequestedAt,
-			UnverifiedPem:         boltAuth.UnverifiedPem,
-			UnverifiedFingerprint: boltAuth.UnverifiedFingerprint,
+			Authenticator:          entity,
+			Fingerprint:            boltAuth.Fingerprint,
+			Pem:                    boltAuth.Pem,
+			IsIssuedByNetwork:      boltAuth.IsIssuedByNetwork,
+			IsExtendRequested:      boltAuth.IsExtendRequested,
+			IsKeyRollRequested:     boltAuth.IsKeyRollRequested,
+			ExtendRequestedAt:      boltAuth.ExtendRequestedAt,
+			UnverifiedPem:          boltAuth.UnverifiedPem,
+			UnverifiedFingerprint:  boltAuth.UnverifiedFingerprint,
+			PublicKeyPrint:         boltAuth.PublicKeyPrint,
+			LastAuthResolvedToRoot: boltAuth.LastAuthResolvedToRoot,
+			LastExtendRolledKeys:   boltAuth.LastExtendRolledKeys,
 		}
 	default:
 		pfxlog.Logger().Panicf("unexpected type %v when filling model %s", reflect.TypeOf(boltSubType), "authenticator")
@@ -117,15 +120,18 @@ func (entity *Authenticator) toBoltEntity() (*db.Authenticator, error) {
 		}
 
 		subType = &db.AuthenticatorCert{
-			Authenticator:         *boltEntity,
-			Fingerprint:           certModel.Fingerprint,
-			Pem:                   certModel.Pem,
-			UnverifiedFingerprint: certModel.UnverifiedFingerprint,
-			UnverifiedPem:         certModel.UnverifiedPem,
-			IsIssuedByNetwork:     certModel.IsIssuedByNetwork,
-			IsExtendRequested:     certModel.IsExtendRequested,
-			IsKeyRollRequested:    certModel.IsKeyRollRequested,
-			ExtendRequestedAt:     certModel.ExtendRequestedAt,
+			Authenticator:          *boltEntity,
+			Fingerprint:            certModel.Fingerprint,
+			Pem:                    certModel.Pem,
+			UnverifiedFingerprint:  certModel.UnverifiedFingerprint,
+			UnverifiedPem:          certModel.UnverifiedPem,
+			IsIssuedByNetwork:      certModel.IsIssuedByNetwork,
+			IsExtendRequested:      certModel.IsExtendRequested,
+			IsKeyRollRequested:     certModel.IsKeyRollRequested,
+			ExtendRequestedAt:      certModel.ExtendRequestedAt,
+			PublicKeyPrint:         certModel.PublicKeyPrint,
+			LastAuthResolvedToRoot: certModel.LastAuthResolvedToRoot,
+			LastExtendRolledKeys:   certModel.LastExtendRolledKeys,
 		}
 
 	default:
@@ -169,12 +175,15 @@ func (entity *Authenticator) ToUpdb() *AuthenticatorUpdb {
 
 type AuthenticatorCert struct {
 	*Authenticator
-	Fingerprint        string
-	Pem                string
-	IsIssuedByNetwork  bool
-	IsExtendRequested  bool
-	IsKeyRollRequested bool
-	ExtendRequestedAt  *time.Time
+	Fingerprint            string
+	PublicKeyPrint         string
+	Pem                    string
+	IsIssuedByNetwork      bool
+	IsExtendRequested      bool
+	IsKeyRollRequested     bool
+	ExtendRequestedAt      *time.Time
+	LastAuthResolvedToRoot bool
+	LastExtendRolledKeys   bool
 
 	UnverifiedFingerprint string
 	UnverifiedPem         string

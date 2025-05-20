@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	nfpem "github.com/openziti/foundation/v2/pem"
@@ -36,21 +37,22 @@ const (
 	ClientCertHeader       = "X-Client-CertPem"
 	EdgeRouterProxyRequest = "X-Edge-Router-Proxy-Request"
 
-	ZitiAuthenticatorExtendRquested   = "ziti-authenticator-extend-requested"
+	ZitiAuthenticatorExtendRequested  = "ziti-authenticator-extend-requested"
 	ZitiAuthenticatorRollKeyRequested = "ziti-authenticator-extend-requested"
 )
 
 var _ AuthProcessor = &AuthModuleCert{}
 
 type AuthModuleCert struct {
-	env    Env
-	method string
+	BaseAuthenticator
 }
 
 func NewAuthModuleCert(env Env) *AuthModuleCert {
 	return &AuthModuleCert{
-		env:    env,
-		method: db.MethodAuthenticatorCert,
+		BaseAuthenticator: BaseAuthenticator{
+			env:    env,
+			method: db.MethodAuthenticatorCert,
+		},
 	}
 }
 
@@ -113,15 +115,25 @@ func (module *AuthModuleCert) isCertExpirationValid(clientCert *x509.Certificate
 func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	logger := pfxlog.Logger().WithField("authMethod", module.method).WithField("changeContext", context.GetChangeContext().Attributes)
 
+	bundle := &AuthBundle{}
+
 	certs, err := module.getClientCerts(context)
 
 	if err != nil {
+		reason := fmt.Sprintf("error obtaining client certificates: %v", err)
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+		module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
 		logger.WithError(err).Error("error obtaining client certificates")
 		return nil, err
 	}
 
 	if len(certs) == 0 {
-		logger.Error("no client certificates found")
+		reason := "no client certificates found"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+		module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
+		logger.Error(reason)
 		return nil, apierror.NewInvalidAuth()
 	}
 
@@ -140,6 +152,9 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	}
 
 	if len(chains) == 0 {
+		//we didn't verify to the root w/o using legacy pools with intermediates baked in
+		bundle.ImproperClientCertChain = true
+
 		logger.Debug("certificate validation failed vai root only pool, trying other pools")
 		chains, err = module.verifyClientCerts(certs, trustCache.staticFirstPartyTrustAnchorPool)
 
@@ -164,7 +179,12 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	}
 
 	if len(chains) == 0 {
-		logger.Error("failed to verify client via all pools, no valid roots")
+		reason := "failed to verify client via all pools, no valid roots"
+		logger.Error(reason)
+
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+		module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
 		return nil, apierror.NewInvalidAuth()
 	}
 
@@ -242,16 +262,17 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	}
 
 	if authenticator.Method == db.MethodAuthenticatorCert {
-		module.ensureAuthenticatorCertPem(authenticator, clientCert, context.GetChangeContext())
+		module.ensureAuthenticatorIsUpToDate(authenticator, clientCert, bundle.ImproperClientCertChain, context.GetChangeContext())
 	}
 
 	return &AuthResultBase{
-		identity:        identity,
-		authenticatorId: authenticator.Id,
-		authenticator:   authenticator,
-		sessionCerts:    []*x509.Certificate{clientCert},
-		authPolicy:      authPolicy,
-		env:             module.env,
+		identity:                identity,
+		authenticatorId:         authenticator.Id,
+		authenticator:           authenticator,
+		sessionCerts:            []*x509.Certificate{clientCert},
+		authPolicy:              authPolicy,
+		env:                     module.env,
+		improperClientCertChain: bundle.ImproperClientCertChain,
 	}, nil
 }
 
@@ -289,19 +310,38 @@ func (module *AuthModuleCert) getClientCerts(ctx AuthContext) ([]*x509.Certifica
 	return peerCerts, nil
 }
 
-// ensureAuthenticatorCertPem ensures that a client's certificate is stored in `cert` authenticators. Older versions
-// of Ziti did not store this information on enrollment.
-func (module *AuthModuleCert) ensureAuthenticatorCertPem(authenticator *Authenticator, clientCert *x509.Certificate, ctx *change.Context) {
+// ensureAuthenticatorIsUpToDate ensures that a client's pem, public print, and root status is stored in `cert` authenticators.
+func (module *AuthModuleCert) ensureAuthenticatorIsUpToDate(authenticator *Authenticator, clientCert *x509.Certificate, verifiedToRoot bool, ctx *change.Context) {
 	if authCert, ok := authenticator.SubType.(*AuthenticatorCert); ok {
+
+		needsUpdate := false
+
 		if authCert.Pem == "" {
+			needsUpdate = true
 			certPem := pem.EncodeToMemory(&pem.Block{
 				Type:  "CERTIFICATE",
 				Bytes: clientCert.Raw,
 			})
 
 			authCert.Pem = string(certPem)
+
+		}
+
+		if authCert.PublicKeyPrint == "" {
+			needsUpdate = true
+			authCert.PublicKeyPrint = PublicKeySha256(clientCert)
+		}
+
+		if authCert.IsIssuedByNetwork {
+			if authCert.LastAuthResolvedToRoot != verifiedToRoot {
+				needsUpdate = true
+				authCert.LastAuthResolvedToRoot = verifiedToRoot
+			}
+		}
+
+		if needsUpdate {
 			if err := module.env.GetManagers().Authenticator.Update(authenticator, false, nil, ctx); err != nil {
-				pfxlog.Logger().WithError(err).Errorf("error during cert auth attempting to update PEM")
+				pfxlog.Logger().WithError(err).Errorf("error during cert auth update attempt")
 			}
 		}
 	}

@@ -121,10 +121,14 @@ type Dispatcher interface {
 	AddSessionEventHandler(handler SessionEventHandler)
 	RemoveSessionEventHandler(handler SessionEventHandler)
 
+	AddAuthenticationEventHandler(handler AuthenticationEventHandler)
+	RemoveAuthenticationEventHandler(handler AuthenticationEventHandler)
+
 	AddEntityCountEventHandler(handler EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool)
 	RemoveEntityCountEventHandler(handler EntityCountEventHandler)
 
 	ApiSessionEventHandler
+	AuthenticationEventHandler
 	CircuitEventHandler
 	ConnectEventHandler
 	ClusterEventHandler

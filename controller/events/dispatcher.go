@@ -63,6 +63,7 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result.RegisterEventTypeFunctions("edge.sessions", result.registerSessionEventHandler, result.unregisterSessionEventHandler)
 	result.RegisterEventTypeFunctions("fabric.terminators", result.registerTerminatorEventHandler, result.unregisterTerminatorEventHandler)
 	result.RegisterEventTypeFunctions("fabric.usage", result.registerUsageEventHandler, result.unregisterUsageEventHandler)
+	result.RegisterEventTypeFunctions("edge.authentications", result.registerAuthenticationEventHandler, result.unregisterAuthenticationEventHandler)
 
 	result.RegisterEventTypeFunctions(event.ApiSessionEventNS, result.registerApiSessionEventHandler, result.unregisterApiSessionEventHandler)
 	result.RegisterEventTypeFunctions(event.CircuitEventNS, result.registerCircuitEventHandler, result.unregisterCircuitEventHandler)
@@ -108,9 +109,10 @@ type Dispatcher struct {
 	connectEventHandlers      concurrenz.CopyOnWriteSlice[event.ConnectEventHandler]
 	sdkEventHandlers          concurrenz.CopyOnWriteSlice[event.SdkEventHandler]
 
-	apiSessionEventHandlers  concurrenz.CopyOnWriteSlice[event.ApiSessionEventHandler]
-	entityCountEventHandlers concurrenz.CopyOnWriteSlice[*entityCountState]
-	sessionEventHandlers     concurrenz.CopyOnWriteSlice[event.SessionEventHandler]
+	authenticationEventHandlers concurrenz.CopyOnWriteSlice[event.AuthenticationEventHandler]
+	apiSessionEventHandlers     concurrenz.CopyOnWriteSlice[event.ApiSessionEventHandler]
+	entityCountEventHandlers    concurrenz.CopyOnWriteSlice[*entityCountState]
+	sessionEventHandlers        concurrenz.CopyOnWriteSlice[event.SessionEventHandler]
 
 	metricsMappers concurrenz.CopyOnWriteSlice[event.MetricsMapper]
 

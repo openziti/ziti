@@ -68,6 +68,9 @@ message Authenticator {
     bool isExtendRequested = 6;
     bool isKeyRollRequested = 7;
     google.protobuf.Timestamp extendRequestedAt = 8;
+    string publicKeyPrint = 9;
+    bool lastExtendPublicKeyChanged = 10;
+    bool lastAuthResolvedToRoot = 11;
   }
 
   message Updb {
