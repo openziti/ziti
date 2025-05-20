@@ -51,21 +51,21 @@ require (
 	github.com/miekg/dns v1.1.65
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/agent v1.0.26
-	github.com/openziti/channel/v4 v4.0.6
+	github.com/openziti/agent v1.0.27
+	github.com/openziti/channel/v4 v4.1.3
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.26.43
-	github.com/openziti/foundation/v2 v2.0.59
+	github.com/openziti/edge-api v0.26.44
+	github.com/openziti/foundation/v2 v2.0.63
 	github.com/openziti/identity v1.0.101
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.1
-	github.com/openziti/runzmd v1.0.67
+	github.com/openziti/runzmd v1.0.71
 	github.com/openziti/sdk-golang v1.1.0
-	github.com/openziti/secretstream v0.1.32
-	github.com/openziti/storage v0.4.7
-	github.com/openziti/transport/v2 v2.0.168
+	github.com/openziti/secretstream v0.1.34
+	github.com/openziti/storage v0.4.11
+	github.com/openziti/transport/v2 v2.0.171
 	github.com/openziti/x509-claims v1.0.3
-	github.com/openziti/xweb/v2 v2.3.1
+	github.com/openziti/xweb/v2 v2.3.2
 	github.com/openziti/ziti-db-explorer v1.1.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -85,13 +85,13 @@ require (
 	go.etcd.io/bbolt v1.4.0
 	go.uber.org/atomic v1.9.0
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.37.0
+	golang.org/x/crypto v0.38.0
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/net v0.39.0
+	golang.org/x/net v0.40.0
 	golang.org/x/oauth2 v0.29.0
-	golang.org/x/sync v0.13.0
-	golang.org/x/sys v0.32.0
-	golang.org/x/text v0.24.0
+	golang.org/x/sync v0.14.0
+	golang.org/x/sys v0.33.0
+	golang.org/x/text v0.25.0
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/go-jose/go-jose.v2 v2.6.3
@@ -198,7 +198,7 @@ require (
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/term v0.31.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/tools v0.31.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	nhooyr.io/websocket v1.8.17 // indirect
