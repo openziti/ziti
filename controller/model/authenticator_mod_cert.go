@@ -151,9 +151,10 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		logger.WithError(err).Error("error verifying client certificate via static root pool, trying other pools")
 	}
 
+	failedRootOnlyBundle := false
+
 	if len(chains) == 0 {
-		//we didn't verify to the root w/o using legacy pools with intermediates baked in
-		bundle.ImproperClientCertChain = true
+		failedRootOnlyBundle = true
 
 		logger.Debug("certificate validation failed vai root only pool, trying other pools")
 		chains, err = module.verifyClientCerts(certs, trustCache.staticFirstPartyTrustAnchorPool)
@@ -204,7 +205,12 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		identity, _ = module.env.GetManagers().Identity.ReadByExternalId(externalId)
 
 		if identity == nil {
-			logger.Error("failed to find identity by externalId")
+			reason := "failed to find identity by externalId"
+			failEvent := module.NewAuthEventFailure(context, bundle, reason)
+			module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
+			logger.Error(reason)
+
 			return nil, apierror.NewInvalidAuth()
 		}
 
@@ -217,7 +223,12 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		authenticator, _ = module.env.GetManagers().Authenticator.ReadByFingerprint(fingerprint)
 
 		if authenticator == nil {
-			logger.Error("failed to find authenticator by fingerprint")
+			reason := "failed to find authenticator by fingerprint"
+			failEvent := module.NewAuthEventFailure(context, bundle, reason)
+			module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
+			logger.Error(reason)
+
 			return nil, apierror.NewInvalidAuth()
 		}
 
@@ -225,7 +236,12 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	}
 
 	if identity == nil {
-		logger.Error("failed to find a valid identity for authentication")
+		reason := "failed to find a valid identity for authentication"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+		module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
+		logger.Error(reason)
+
 		return nil, apierror.NewInvalidAuth()
 	}
 
@@ -235,35 +251,71 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		WithField("authPolicyId", identity.AuthPolicyId)
 
 	if identity.Disabled {
-		logger.
-			WithField("disabledAt", identity.DisabledAt).
-			WithField("disabledUntil", identity.DisabledUntil).
-			Error("authentication failed, identity is disabled")
+		until := "forever"
+		if identity.DisabledUntil != nil {
+			until = identity.DisabledUntil.Format(time.RFC3339)
+		}
+
+		at := "unknown"
+		if identity.DisabledAt != nil {
+			at = identity.DisabledAt.Format(time.RFC3339)
+		}
+		reason := fmt.Sprintf("authentication failed, identity is disabled (disabledAt: %s, disabledUntil: %s)", at, until)
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+		module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
+		logger.WithField("disabledUntil", until).WithField("disabledAt", at).Error(reason)
+
 		return nil, apierror.NewInvalidAuth()
 	}
 
 	authPolicy, _ := module.env.GetManagers().AuthPolicy.Read(identity.AuthPolicyId)
 
 	if authPolicy == nil {
-		logger.Error("failed to obtain authPolicy by id")
+		reason := "failed to obtain authPolicy by id"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+		module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
+		logger.Error(reason)
 		return nil, apierror.NewInvalidAuth()
 	}
 
 	if !authPolicy.Primary.Cert.Allowed {
-		logger.Error("invalid certificate authentication, not allowed by auth policy")
+		reason := "invalid certificate authentication, not allowed by auth policy"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+		module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
+		logger.Error(reason)
+
 		return nil, apierror.NewInvalidAuth()
 	}
 
 	if !authPolicy.Primary.Cert.AllowExpiredCerts {
 		if !module.isCertExpirationValid(clientCert) {
-			logger.Error("failed to verify expiration period of client certificate")
+			reason := "failed to verify expiration period of client certificate"
+			failEvent := module.NewAuthEventFailure(context, bundle, reason)
+			module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
+			logger.Error(reason)
+
 			return nil, apierror.NewInvalidAuth()
 		}
 	}
+	certAuth := authenticator.ToCert()
 
-	if authenticator.Method == db.MethodAuthenticatorCert {
-		module.ensureAuthenticatorIsUpToDate(authenticator, clientCert, bundle.ImproperClientCertChain, context.GetChangeContext())
+	if certAuth == nil {
+		reason := "failed to convert authenticator to cert auth"
+		failEvent := module.NewAuthEventFailure(context, bundle, reason)
+		module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
+		logger.Error(reason)
+
+		return nil, apierror.NewInvalidAuth()
 	}
+
+	module.ensureAuthenticatorIsUpToDate(certAuth, clientCert, bundle.ImproperClientCertChain, context.GetChangeContext())
+
+	improperClientCertChain := certAuth.IsIssuedByNetwork && failedRootOnlyBundle
 
 	return &AuthResultBase{
 		identity:                identity,
@@ -272,7 +324,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		sessionCerts:            []*x509.Certificate{clientCert},
 		authPolicy:              authPolicy,
 		env:                     module.env,
-		improperClientCertChain: bundle.ImproperClientCertChain,
+		improperClientCertChain: improperClientCertChain,
 	}, nil
 }
 
@@ -311,38 +363,36 @@ func (module *AuthModuleCert) getClientCerts(ctx AuthContext) ([]*x509.Certifica
 }
 
 // ensureAuthenticatorIsUpToDate ensures that a client's pem, public print, and root status is stored in `cert` authenticators.
-func (module *AuthModuleCert) ensureAuthenticatorIsUpToDate(authenticator *Authenticator, clientCert *x509.Certificate, verifiedToRoot bool, ctx *change.Context) {
-	if authCert, ok := authenticator.SubType.(*AuthenticatorCert); ok {
+func (module *AuthModuleCert) ensureAuthenticatorIsUpToDate(authCert *AuthenticatorCert, clientCert *x509.Certificate, verifiedToRoot bool, ctx *change.Context) {
 
-		needsUpdate := false
+	needsUpdate := false
 
-		if authCert.Pem == "" {
+	if authCert.Pem == "" {
+		needsUpdate = true
+		certPem := pem.EncodeToMemory(&pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: clientCert.Raw,
+		})
+
+		authCert.Pem = string(certPem)
+
+	}
+
+	if authCert.PublicKeyPrint == "" {
+		needsUpdate = true
+		authCert.PublicKeyPrint = PublicKeySha256(clientCert)
+	}
+
+	if authCert.IsIssuedByNetwork {
+		if authCert.LastAuthResolvedToRoot != verifiedToRoot {
 			needsUpdate = true
-			certPem := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: clientCert.Raw,
-			})
-
-			authCert.Pem = string(certPem)
-
+			authCert.LastAuthResolvedToRoot = verifiedToRoot
 		}
+	}
 
-		if authCert.PublicKeyPrint == "" {
-			needsUpdate = true
-			authCert.PublicKeyPrint = PublicKeySha256(clientCert)
-		}
-
-		if authCert.IsIssuedByNetwork {
-			if authCert.LastAuthResolvedToRoot != verifiedToRoot {
-				needsUpdate = true
-				authCert.LastAuthResolvedToRoot = verifiedToRoot
-			}
-		}
-
-		if needsUpdate {
-			if err := module.env.GetManagers().Authenticator.Update(authenticator, false, nil, ctx); err != nil {
-				pfxlog.Logger().WithError(err).Errorf("error during cert auth update attempt")
-			}
+	if needsUpdate {
+		if err := module.env.GetManagers().Authenticator.Update(authCert.Authenticator, false, nil, ctx); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("error during cert auth update attempt")
 		}
 	}
 }
