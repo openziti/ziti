@@ -156,7 +156,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	if len(chains) == 0 {
 		failedRootOnlyBundle = true
 
-		logger.Debug("certificate validation failed vai root only pool, trying other pools")
+		logger.Debug("certificate validation failed via root only pool, trying other pools")
 		chains, err = module.verifyClientCerts(certs, trustCache.staticFirstPartyTrustAnchorPool)
 
 		if err != nil {
@@ -164,14 +164,14 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		}
 
 		if len(chains) == 0 {
-			logger.Debug("certificate validation failed vai root+intermediate pool, trying third party pool")
+			logger.Debug("certificate validation failed via root+intermediate pool, trying third party pool")
 			chains, err = module.verifyClientCerts(certs, trustCache.thirdPartyTrustAnchorPool)
 
 			if err == nil {
 				targetThirdPartyCa = getCaByChain(trustCache.activeThirdPartyCas, chains, module.env.GetFingerprintGenerator())
 
 				if len(chains) == 0 {
-					logger.Debug("certificate validation failed vai third party pool")
+					logger.Debug("certificate validation failed via third party pool")
 				}
 			} else {
 				logger.WithError(err).Error("error verifying client certificate via third party anchor pool")
