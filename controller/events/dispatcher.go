@@ -66,6 +66,7 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result.RegisterEventTypeFunctions("edge.authentications", result.registerAuthenticationEventHandler, result.unregisterAuthenticationEventHandler)
 
 	result.RegisterEventTypeFunctions(event.ApiSessionEventNS, result.registerApiSessionEventHandler, result.unregisterApiSessionEventHandler)
+	result.RegisterEventTypeFunctions(event.AuthenticationEventNS, result.registerAuthenticationEventHandler, result.unregisterAuthenticationEventHandler)
 	result.RegisterEventTypeFunctions(event.CircuitEventNS, result.registerCircuitEventHandler, result.unregisterCircuitEventHandler)
 	result.RegisterEventTypeFunctions(event.ClusterEventNS, result.registerClusterEventHandler, result.unregisterClusterEventHandler)
 	result.RegisterEventTypeFunctions(event.ConnectEventNS, result.registerConnectEventHandler, result.unregisterConnectEventHandler)
