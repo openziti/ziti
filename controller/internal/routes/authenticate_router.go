@@ -155,12 +155,13 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 
 	logger.Debugf("client %v requesting configTypes: %v", identity.Name, configTypes)
 	newApiSession := &model.ApiSession{
-		IdentityId:      identity.Id,
-		Token:           token,
-		ConfigTypes:     configTypes,
-		IPAddress:       remoteIpStr,
-		AuthenticatorId: authResult.AuthenticatorId(),
-		LastActivityAt:  time.Now().UTC(),
+		IdentityId:              identity.Id,
+		Token:                   token,
+		ConfigTypes:             configTypes,
+		IPAddress:               remoteIpStr,
+		AuthenticatorId:         authResult.AuthenticatorId(),
+		LastActivityAt:          time.Now().UTC(),
+		ImproperClientCertChain: authResult.ImproperClientCertChain(),
 	}
 
 	authenticator := authResult.Authenticator()
@@ -173,7 +174,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 
 			header := rc.ResponseWriter.Header()
 			if cert.IsExtendRequested {
-				header.Add(model.ZitiAuthenticatorExtendRquested, "true")
+				header.Add(model.ZitiAuthenticatorExtendRequested, "true")
 				if cert.IsKeyRollRequested {
 					header.Add(model.ZitiAuthenticatorRollKeyRequested, "true")
 				}

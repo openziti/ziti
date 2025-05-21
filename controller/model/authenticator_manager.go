@@ -17,8 +17,10 @@
 package model
 
 import (
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
@@ -599,6 +601,19 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(isJwtBacked bool, 
 	authenticatorCert.Pem = authenticatorCert.UnverifiedPem
 	authenticatorCert.Fingerprint = authenticatorCert.UnverifiedFingerprint
 
+	newPublicKeyPrint := PublicKeySha256(verifyCerts[0])
+
+	if authenticatorCert.PublicKeyPrint == "" {
+		//if we don't have a saved value, parse and calculate
+		certs := nfpem.PemStringToCertificates(authenticatorCert.Pem)
+		if len(certs) > 0 {
+			authenticatorCert.PublicKeyPrint = PublicKeySha256(certs[0])
+		}
+	}
+
+	authenticatorCert.LastExtendRolledKeys = newPublicKeyPrint != authenticatorCert.PublicKeyPrint
+	authenticatorCert.PublicKeyPrint = newPublicKeyPrint
+
 	authenticatorCert.UnverifiedFingerprint = ""
 	authenticatorCert.UnverifiedPem = ""
 	authenticatorCert.IsExtendRequested = false
@@ -611,9 +626,10 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(isJwtBacked bool, 
 		db.FieldAuthenticatorCertExtendRequestedAt:     struct{}{},
 		db.FieldAuthenticatorCertIsExtendRequested:     struct{}{},
 		db.FieldAuthenticatorCertIsKeyRollRequested:    struct{}{},
-
-		db.FieldAuthenticatorCertPem:         struct{}{},
-		db.FieldAuthenticatorCertFingerprint: struct{}{},
+		db.FieldAuthenticatorCertLastExtendRolledKeys:  struct{}{},
+		db.FieldAuthenticatorCertPublicKeyPrint:        struct{}{},
+		db.FieldAuthenticatorCertPem:                   struct{}{},
+		db.FieldAuthenticatorCertFingerprint:           struct{}{},
 	}, ctx)
 
 	if err != nil {
@@ -643,6 +659,15 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(isJwtBacked bool, 
 		}
 		return self.env.GetStores().ApiSessionCertificate.DeleteWhere(mutateCtx, fmt.Sprintf("%s=\"%s\"", db.FieldApiSessionCertificateFingerprint, oldFingerprint))
 	})
+}
+
+func PublicKeySha256(cert *x509.Certificate) string {
+	pubKeyBytes, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
+	if err != nil {
+		return ""
+	}
+	hash := sha256.Sum256(pubKeyBytes)
+	return hex.EncodeToString(hash[:])
 }
 
 // ReEnroll converts the given authenticator `id` back to an enrollment of the same type with the same
@@ -762,14 +787,16 @@ func (self *AuthenticatorManager) AuthenticatorToProtobuf(entity *Authenticator)
 
 		msg.Subtype = &edge_cmd_pb.Authenticator_Cert_{
 			Cert: &edge_cmd_pb.Authenticator_Cert{
-				Fingerprint:           cert.Fingerprint,
-				Pem:                   cert.Pem,
-				UnverifiedFingerprint: cert.UnverifiedFingerprint,
-				UnverifiedPem:         cert.UnverifiedPem,
-				IsIssuedByNetwork:     cert.IsIssuedByNetwork,
-				IsExtendRequested:     cert.IsExtendRequested,
-				IsKeyRollRequested:    cert.IsKeyRollRequested,
-				ExtendRequestedAt:     extendedAt,
+				Fingerprint:            cert.Fingerprint,
+				Pem:                    cert.Pem,
+				UnverifiedFingerprint:  cert.UnverifiedFingerprint,
+				UnverifiedPem:          cert.UnverifiedPem,
+				IsIssuedByNetwork:      cert.IsIssuedByNetwork,
+				IsExtendRequested:      cert.IsExtendRequested,
+				IsKeyRollRequested:     cert.IsKeyRollRequested,
+				ExtendRequestedAt:      extendedAt,
+				LastAuthResolvedToRoot: cert.LastAuthResolvedToRoot,
+				PublicKeyPrint:         cert.PublicKeyPrint,
 			},
 		}
 
@@ -822,15 +849,17 @@ func (self *AuthenticatorManager) ProtobufToAuthenticator(msg *edge_cmd_pb.Authe
 		}
 
 		authenticator.SubType = &AuthenticatorCert{
-			Authenticator:         authenticator,
-			Fingerprint:           st.Cert.Fingerprint,
-			Pem:                   st.Cert.Pem,
-			IsIssuedByNetwork:     st.Cert.IsIssuedByNetwork,
-			UnverifiedFingerprint: st.Cert.UnverifiedFingerprint,
-			UnverifiedPem:         st.Cert.UnverifiedPem,
-			IsKeyRollRequested:    st.Cert.IsKeyRollRequested,
-			IsExtendRequested:     st.Cert.IsExtendRequested,
-			ExtendRequestedAt:     pbTimeToTimePtr(st.Cert.ExtendRequestedAt),
+			Authenticator:          authenticator,
+			Fingerprint:            st.Cert.Fingerprint,
+			Pem:                    st.Cert.Pem,
+			IsIssuedByNetwork:      st.Cert.IsIssuedByNetwork,
+			UnverifiedFingerprint:  st.Cert.UnverifiedFingerprint,
+			UnverifiedPem:          st.Cert.UnverifiedPem,
+			IsKeyRollRequested:     st.Cert.IsKeyRollRequested,
+			IsExtendRequested:      st.Cert.IsExtendRequested,
+			ExtendRequestedAt:      pbTimeToTimePtr(st.Cert.ExtendRequestedAt),
+			LastAuthResolvedToRoot: st.Cert.LastAuthResolvedToRoot,
+			PublicKeyPrint:         st.Cert.PublicKeyPrint,
 		}
 		authenticator.Method = db.MethodAuthenticatorCert
 	case *edge_cmd_pb.Authenticator_Updb_:

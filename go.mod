@@ -54,7 +54,7 @@ require (
 	github.com/openziti/agent v1.0.26
 	github.com/openziti/channel/v4 v4.0.6
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.26.43
+	github.com/openziti/edge-api v0.26.44
 	github.com/openziti/foundation/v2 v2.0.59
 	github.com/openziti/identity v1.0.101
 	github.com/openziti/jwks v1.0.6

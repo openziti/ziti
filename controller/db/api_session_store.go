@@ -32,15 +32,16 @@ import (
 )
 
 const (
-	FieldApiSessionIdentity         = "identity"
-	FieldApiSessionToken            = "token"
-	FieldApiSessionConfigTypes      = "configTypes"
-	FieldApiSessionIPAddress        = "ipAddress"
-	FieldApiSessionMfaComplete      = "mfaComplete"
-	FieldApiSessionMfaRequired      = "mfaRequired"
-	FieldApiSessionLastActivityAt   = "lastActivityAt"
-	FieldApiSessionAuthenticator    = "authenticator"
-	FieldApiSessionIsCertExtendable = "isCertExtendable"
+	FieldApiSessionIdentity                = "identity"
+	FieldApiSessionToken                   = "token"
+	FieldApiSessionConfigTypes             = "configTypes"
+	FieldApiSessionIPAddress               = "ipAddress"
+	FieldApiSessionMfaComplete             = "mfaComplete"
+	FieldApiSessionMfaRequired             = "mfaRequired"
+	FieldApiSessionLastActivityAt          = "lastActivityAt"
+	FieldApiSessionAuthenticator           = "authenticator"
+	FieldApiSessionIsCertExtendable        = "isCertExtendable"
+	FieldApiSessionImproperClientCertChain = "improperClientCertChain"
 
 	EventFullyAuthenticated events.EventName = "FULLY_AUTHENTICATED"
 
@@ -49,15 +50,16 @@ const (
 
 type ApiSession struct {
 	boltz.BaseExtEntity
-	IdentityId       string    `json:"identityId"`
-	Token            string    `json:"-"`
-	IPAddress        string    `json:"ipAddress"`
-	ConfigTypes      []string  `json:"configTypes"`
-	MfaComplete      bool      `json:"mfaComplete"`
-	MfaRequired      bool      `json:"mfaRequired"`
-	LastActivityAt   time.Time `json:"lastActivityAt"`
-	AuthenticatorId  string    `json:"authenticatorId"`
-	IsCertExtendable bool      `json:"isCertExtendable"`
+	IdentityId              string    `json:"identityId"`
+	Token                   string    `json:"-"`
+	IPAddress               string    `json:"ipAddress"`
+	ConfigTypes             []string  `json:"configTypes"`
+	MfaComplete             bool      `json:"mfaComplete"`
+	MfaRequired             bool      `json:"mfaRequired"`
+	LastActivityAt          time.Time `json:"lastActivityAt"`
+	AuthenticatorId         string    `json:"authenticatorId"`
+	IsCertExtendable        bool      `json:"isCertExtendable"`
+	ImproperClientCertChain bool      `json:"improperClientCertChain"`
 }
 
 func NewApiSession(identityId string) *ApiSession {
@@ -116,6 +118,7 @@ func (store *apiSessionStoreImpl) FillEntity(entity *ApiSession, bucket *boltz.T
 	entity.MfaRequired = bucket.GetBoolWithDefault(FieldApiSessionMfaRequired, false)
 	entity.AuthenticatorId = bucket.GetStringWithDefault(FieldApiSessionAuthenticator, "")
 	entity.IsCertExtendable = bucket.GetBoolWithDefault(FieldApiSessionIsCertExtendable, false)
+	entity.ImproperClientCertChain = bucket.GetBoolWithDefault(FieldApiSessionImproperClientCertChain, false)
 	lastActivityAt := bucket.GetTime(FieldApiSessionLastActivityAt) //not orError due to migration v18
 
 	if lastActivityAt != nil {
@@ -134,6 +137,7 @@ func (store *apiSessionStoreImpl) PersistEntity(entity *ApiSession, ctx *boltz.P
 	ctx.SetString(FieldApiSessionAuthenticator, entity.AuthenticatorId)
 	ctx.SetTimeP(FieldApiSessionLastActivityAt, &entity.LastActivityAt)
 	ctx.SetBool(FieldApiSessionIsCertExtendable, entity.IsCertExtendable)
+	ctx.SetBool(FieldApiSessionImproperClientCertChain, entity.ImproperClientCertChain)
 }
 
 func (store *apiSessionStoreImpl) GetEventsEmitter() events.EventEmmiter {
@@ -269,7 +273,9 @@ func (store *apiSessionStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldApiSessionAuthenticator, ast.NodeTypeString)
 	store.AddSymbol(FieldApiSessionIdentity, ast.NodeTypeString)
 	store.AddSymbol(FieldApiSessionIPAddress, ast.NodeTypeString)
-	store.AddSymbol(FieldApiSessionLastActivityAt, ast.NodeTypeDatetime)
+	store.AddSymbol(FieldApiSessionMfaComplete, ast.NodeTypeBool)
+	store.AddSymbol(FieldApiSessionMfaRequired, ast.NodeTypeBool)
+	store.AddSymbol(FieldApiSessionImproperClientCertChain, ast.NodeTypeBool)
 
 	store.AddFkConstraint(store.symbolIdentity, false, boltz.CascadeDelete)
 	store.apiSessionCertsSymbol = store.AddFkSetSymbol(EntityTypeApiSessionCertificates, store.stores.apiSessionCertificate)

@@ -28,8 +28,10 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
 	nfPem "github.com/openziti/foundation/v2/pem"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/change"
@@ -63,6 +65,10 @@ func Test_Authenticate_Cert(t *testing.T) {
 	t.Run("login with valid certificate and client info with extra properties", testCtx.testAuthenticateValidCertValidClientInfoWithExtraProperties)
 	t.Run("login with invalid certificate and no client info", testCtx.testAuthenticateInvalidCert)
 	t.Run("login with valid certificate but expired", testCtx.testAuthenticateValidCertExpired)
+	t.Run("legacy auth sets improper client cert chain", testCtx.testLegacyAuthenticateValidCertImproperClientChain)
+	t.Run("oidc auth sets improper client cert chain", testCtx.testOidcAuthenticateValidCertImproperClientChain)
+	t.Run("legacy auth does not set improper client cert chain with valid chain", testCtx.testLegacyAuthenticateValidCertProperClientChain)
+	t.Run("oidc auth does not set improper client cert chain with valid chain", testCtx.testOidcAuthenticateValidCertProperClientChain)
 }
 
 type authCertTests struct {
@@ -129,66 +135,6 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 		r.True(ok, "authenticator was not a certificate type, got: %s", reflect.TypeOf(authenticator.SubType))
 
 		r.NotEmpty(certAuth.Pem, "cert authenticator pem was empty/blank after authenticating")
-	})
-}
-
-func (test *authCertTests) testAuthenticateValidCertEmptyBody(t *testing.T) {
-	testClient, _, transport := test.ctx.NewClientComponents(EdgeClientApiPath)
-
-	transport.TLSClientConfig.Certificates = test.certAuthenticator.TLSCertificates()
-	resp, err := testClient.NewRequest().
-		SetHeader("content-type", "application/json").
-		Post("/authenticate?method=cert")
-
-	t.Run("returns without error", func(t *testing.T) {
-		require.New(t).NoError(err)
-	})
-
-	standardJsonResponseTests(resp, http.StatusOK, t)
-
-	t.Run("returns a session token HTTP headers", func(t *testing.T) {
-		require.New(t).NotEmpty(resp.Header().Get(env.ZitiSession), fmt.Sprintf("HTTP header %s is empty", env.ZitiSession))
-	})
-
-	t.Run("returns a session token in body", func(t *testing.T) {
-		r := require.New(t)
-		data, err := gabs.ParseJSON(resp.Body())
-
-		r.NoError(err)
-
-		r.True(data.ExistsP("data.token"), "session token property in 'data.token' as not found")
-		r.NotEmpty(data.Path("data.token").String(), "session token property in 'data.token' is empty")
-
-		t.Run("the api session reports the cert is extendable", func(t *testing.T) {
-			r := require.New(t)
-
-			isCertExtendable, ok := data.Path("data.isCertExtendable").Data().(bool)
-			r.True(ok, "expected isCertExtendable to be a bool")
-			r.True(isCertExtendable, "expected isCertExtendable to be true")
-		})
-	})
-
-	t.Run("body session token matches HTTP header token", func(t *testing.T) {
-		r := require.New(t)
-		data, err := gabs.ParseJSON(resp.Body())
-
-		r.NoError(err)
-
-		bodyToken := data.Path("data.token").Data().(string)
-		headerToken := resp.Header().Get(env.ZitiSession)
-		r.Equal(bodyToken, headerToken)
-	})
-
-	t.Run("returns an identity", func(t *testing.T) {
-		r := require.New(t)
-		data, err := gabs.ParseJSON(resp.Body())
-
-		r.NoError(err)
-
-		r.True(data.ExistsP("data.identity"), "session token property in 'data.token' as not found")
-
-		_, err = data.ObjectP("data.identity")
-		r.NoError(err, "session token property in 'data.token' is empty")
 	})
 }
 
@@ -409,7 +355,7 @@ rv1CXRECfHglY+vO0CFumQOV5bec2R8=
 	blocks := nfPem.DecodeAll([]byte(certAndKeyPem))
 	r.Len(blocks, 3, "cert & key pair pem blocks did not parse, expected 2 blocks, got: %d", len(blocks))
 
-	cert, err := x509.ParseCertificate(blocks[0].Bytes)
+	clientCert, err := x509.ParseCertificate(blocks[0].Bytes)
 	r.NoError(err)
 
 	key, err := x509.ParseECPrivateKey(blocks[2].Bytes)
@@ -417,7 +363,7 @@ rv1CXRECfHglY+vO0CFumQOV5bec2R8=
 
 	transport.TLSClientConfig.Certificates = []tls.Certificate{
 		{
-			Certificate: [][]byte{cert.Raw},
+			Certificate: [][]byte{clientCert.Raw},
 			PrivateKey:  key,
 		},
 	}
@@ -517,4 +463,167 @@ func (test *authCertTests) testAuthenticateValidCertExpired(t *testing.T) {
 
 	test.ctx.Req.NoError(err)
 	standardJsonResponseTests(resp, http.StatusOK, t)
+}
+
+func (test *authCertTests) testAuthenticateValidCertEmptyBody(t *testing.T) {
+	testClient, _, transport := test.ctx.NewClientComponents(EdgeClientApiPath)
+
+	transport.TLSClientConfig.Certificates = test.certAuthenticator.TLSCertificates()
+	resp, err := testClient.NewRequest().
+		SetHeader("content-type", "application/json").
+		Post("/authenticate?method=cert")
+
+	t.Run("returns without error", func(t *testing.T) {
+		require.New(t).NoError(err)
+	})
+
+	standardJsonResponseTests(resp, http.StatusOK, t)
+
+	t.Run("returns a session token HTTP headers", func(t *testing.T) {
+		require.New(t).NotEmpty(resp.Header().Get(env.ZitiSession), fmt.Sprintf("HTTP header %s is empty", env.ZitiSession))
+	})
+
+	t.Run("returns a session token in body", func(t *testing.T) {
+		r := require.New(t)
+		data, err := gabs.ParseJSON(resp.Body())
+
+		r.NoError(err)
+
+		r.True(data.ExistsP("data.token"), "session token property in 'data.token' as not found")
+		r.NotEmpty(data.Path("data.token").String(), "session token property in 'data.token' is empty")
+
+		t.Run("the api session reports the cert is extendable", func(t *testing.T) {
+			r := require.New(t)
+
+			isCertExtendable, ok := data.Path("data.isCertExtendable").Data().(bool)
+			r.True(ok, "expected isCertExtendable to be a bool")
+			r.True(isCertExtendable, "expected isCertExtendable to be true")
+		})
+	})
+
+	t.Run("body session token matches HTTP header token", func(t *testing.T) {
+		r := require.New(t)
+		data, err := gabs.ParseJSON(resp.Body())
+
+		r.NoError(err)
+
+		bodyToken := data.Path("data.token").Data().(string)
+		headerToken := resp.Header().Get(env.ZitiSession)
+		r.Equal(bodyToken, headerToken)
+	})
+
+	t.Run("returns an identity", func(t *testing.T) {
+		r := require.New(t)
+		data, err := gabs.ParseJSON(resp.Body())
+
+		r.NoError(err)
+
+		r.True(data.ExistsP("data.identity"), "session token property in 'data.token' as not found")
+
+		_, err = data.ObjectP("data.identity")
+		r.NoError(err, "session token property in 'data.token' is empty")
+	})
+}
+
+func (test *authCertTests) testLegacyAuthenticateValidCertImproperClientChain(t *testing.T) {
+	clientApiClient := test.ctx.NewEdgeClientApi(nil)
+
+	clientCerts := test.certAuthenticator.certs
+	leafOnlyCerts := clientCerts[0:1]
+
+	certCreds := edge_apis.NewCertCredentials(leafOnlyCerts, test.certAuthenticator.key)
+
+	apiSession, err := clientApiClient.Authenticate(certCreds, nil)
+
+	t.Run("returns without error", func(t *testing.T) {
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(apiSession)
+	})
+
+	t.Run("current api session reports improper client cert chain", func(t *testing.T) {
+		params := current_api_session.NewGetCurrentAPISessionParams()
+
+		resp, err := clientApiClient.API.CurrentAPISession.GetCurrentAPISession(params, nil)
+
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(resp)
+
+		test.ctx.Req.True(resp.Payload.Data.ImproperClientCertChain)
+	})
+}
+
+func (test *authCertTests) testOidcAuthenticateValidCertImproperClientChain(t *testing.T) {
+	clientApiClient := test.ctx.NewEdgeClientApi(nil)
+	clientApiClient.SetUseOidc(true)
+
+	clientCerts := test.certAuthenticator.certs
+	leafOnlyCerts := clientCerts[0:1]
+
+	certCreds := edge_apis.NewCertCredentials(leafOnlyCerts, test.certAuthenticator.key)
+
+	apiSession, err := clientApiClient.Authenticate(certCreds, nil)
+
+	t.Run("returns without error", func(t *testing.T) {
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(apiSession)
+	})
+
+	t.Run("current api session reports improper client cert chain", func(t *testing.T) {
+		params := current_api_session.NewGetCurrentAPISessionParams()
+
+		resp, err := clientApiClient.API.CurrentAPISession.GetCurrentAPISession(params, nil)
+
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(resp)
+
+		test.ctx.Req.True(resp.Payload.Data.ImproperClientCertChain)
+	})
+}
+
+func (test *authCertTests) testLegacyAuthenticateValidCertProperClientChain(t *testing.T) {
+	clientApiClient := test.ctx.NewEdgeClientApi(nil)
+
+	certCreds := edge_apis.NewCertCredentials(test.certAuthenticator.certs, test.certAuthenticator.key)
+
+	apiSession, err := clientApiClient.Authenticate(certCreds, nil)
+
+	t.Run("returns without error", func(t *testing.T) {
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(apiSession)
+	})
+
+	t.Run("current api session reports improper client cert chain", func(t *testing.T) {
+		params := current_api_session.NewGetCurrentAPISessionParams()
+
+		resp, err := clientApiClient.API.CurrentAPISession.GetCurrentAPISession(params, nil)
+
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(resp)
+
+		test.ctx.Req.False(resp.Payload.Data.ImproperClientCertChain)
+	})
+}
+func (test *authCertTests) testOidcAuthenticateValidCertProperClientChain(t *testing.T) {
+	clientApiClient := test.ctx.NewEdgeClientApi(nil)
+	clientApiClient.SetUseOidc(true)
+
+	certCreds := edge_apis.NewCertCredentials(test.certAuthenticator.certs, test.certAuthenticator.key)
+
+	apiSession, err := clientApiClient.Authenticate(certCreds, nil)
+
+	t.Run("returns without error", func(t *testing.T) {
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(apiSession)
+	})
+
+	t.Run("current api session reports improper client cert chain", func(t *testing.T) {
+		params := current_api_session.NewGetCurrentAPISessionParams()
+
+		resp, err := clientApiClient.API.CurrentAPISession.GetCurrentAPISession(params, nil)
+
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(resp)
+
+		test.ctx.Req.False(resp.Payload.Data.ImproperClientCertChain)
+	})
 }

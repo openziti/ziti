@@ -264,8 +264,8 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 								return nil, err
 							}
 						}
-						
-						result.ClientCAs = c.env.GetManagers().Ca.GetActiveAuthTrustAnchorPool()
+
+						result.ClientCAs = c.env.GetManagers().Ca.GetTrustCache().GetAllPool()
 
 						return result, nil
 					}

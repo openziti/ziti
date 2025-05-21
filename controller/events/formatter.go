@@ -245,6 +245,16 @@ func (event *JsonEntityCountEvent) Format() ([]byte, error) {
 	return MarshalJson(event)
 }
 
+type JsonAuthenticationEvent event.AuthenticationEvent
+
+func (event *JsonAuthenticationEvent) GetEventType() string {
+	return "authentication"
+}
+
+func (event *JsonAuthenticationEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
+}
+
 func NewJsonFormatter(queueDepth int, sink event.FormattedEventSink) *JsonFormatter {
 	result := &JsonFormatter{
 		BaseFormatter: BaseFormatter{
@@ -319,6 +329,10 @@ func (formatter *JsonFormatter) AcceptSessionEvent(event *event.SessionEvent) {
 
 func (formatter *JsonFormatter) AcceptEntityCountEvent(event *event.EntityCountEvent) {
 	formatter.AcceptLoggingEvent((*JsonEntityCountEvent)(event))
+}
+
+func (formatter *JsonFormatter) AcceptAuthenticationEvent(event *event.AuthenticationEvent) {
+	formatter.AcceptLoggingEvent((*JsonAuthenticationEvent)(event))
 }
 
 var histogramBuckets = map[string]string{"p50": "0.50", "p75": "0.75", "p95": "0.95", "p99": "0.99", "p999": "0.999", "p9999": "0.9999"}

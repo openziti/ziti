@@ -29,12 +29,15 @@ const (
 	FieldAuthenticatorMethod   = "method"
 	FieldAuthenticatorIdentity = "identity"
 
-	FieldAuthenticatorCertFingerprint        = "certFingerprint"
-	FieldAuthenticatorCertPem                = "certPem"
-	FieldAuthenticatorCertIsIssuedByNetwork  = "isIssuedByNetwork"
-	FieldAuthenticatorCertIsExtendRequested  = "isExtendRequested"
-	FieldAuthenticatorCertIsKeyRollRequested = "isKeyRollRequested"
-	FieldAuthenticatorCertExtendRequestedAt  = "extendRequestedAt"
+	FieldAuthenticatorCertFingerprint            = "certFingerprint"
+	FieldAuthenticatorCertPem                    = "certPem"
+	FieldAuthenticatorCertIsIssuedByNetwork      = "isIssuedByNetwork"
+	FieldAuthenticatorCertIsExtendRequested      = "isExtendRequested"
+	FieldAuthenticatorCertIsKeyRollRequested     = "isKeyRollRequested"
+	FieldAuthenticatorCertExtendRequestedAt      = "extendRequestedAt"
+	FieldAuthenticatorCertPublicKeyPrint         = "publicKeyPrint"
+	FieldAuthenticatorCertLastAuthResolvedToRoot = "lastAuthResolvedToRoot"
+	FieldAuthenticatorCertLastExtendRolledKeys   = "lastExtendRolledKeys"
 
 	FieldAuthenticatorUnverifiedCertPem         = "unverifiedCertPem"
 	FieldAuthenticatorUnverifiedCertFingerprint = "unverifiedCertFingerprint"
@@ -65,8 +68,12 @@ type AuthenticatorCert struct {
 	IsKeyRollRequested bool       `json:"isKeyRollRequested"`
 	ExtendRequestedAt  *time.Time `json:"extendRequestedAt"`
 
+	PublicKeyPrint         string `json:"publicKeyPrint"`
+	LastAuthResolvedToRoot bool   `json:"lastAuthResolvedToRoot"`
+
 	UnverifiedPem         string `json:"unverifiedPem"`
 	UnverifiedFingerprint string `json:"unverifiedFingerprint"`
+	LastExtendRolledKeys  bool   `json:"lastExtendRolledKeys"`
 }
 
 func (entity *AuthenticatorCert) Fingerprints() []string {
@@ -158,6 +165,9 @@ func (store *authenticatorStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldAuthenticatorCertIsExtendRequested, ast.NodeTypeBool)
 	store.AddSymbol(FieldAuthenticatorCertIsKeyRollRequested, ast.NodeTypeBool)
 	store.AddSymbol(FieldAuthenticatorCertExtendRequestedAt, ast.NodeTypeDatetime)
+	store.AddSymbol(FieldAuthenticatorCertPublicKeyPrint, ast.NodeTypeString)
+	store.AddSymbol(FieldAuthenticatorCertLastAuthResolvedToRoot, ast.NodeTypeBool)
+	store.AddSymbol(FieldAuthenticatorCertLastExtendRolledKeys, ast.NodeTypeBool)
 	store.AddSymbol(FieldAuthenticatorUpdbUsername, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorUpdbPassword, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorUpdbSalt, ast.NodeTypeString)
@@ -190,6 +200,10 @@ func (store *authenticatorStoreImpl) FillEntity(entity *Authenticator, bucket *b
 			if authCert.IsExtendRequested {
 				authCert.IsKeyRollRequested = bucket.GetBoolWithDefault(FieldAuthenticatorCertIsKeyRollRequested, false)
 			}
+
+			authCert.PublicKeyPrint = bucket.GetStringWithDefault(FieldAuthenticatorCertPublicKeyPrint, "")
+			authCert.LastAuthResolvedToRoot = bucket.GetBoolWithDefault(FieldAuthenticatorCertLastAuthResolvedToRoot, false)
+			authCert.LastExtendRolledKeys = bucket.GetBoolWithDefault(FieldAuthenticatorCertLastExtendRolledKeys, false)
 		}
 
 		authCert.UnverifiedPem = bucket.GetStringWithDefault(FieldAuthenticatorUnverifiedCertPem, "")
@@ -222,6 +236,9 @@ func (store *authenticatorStoreImpl) PersistEntity(entity *Authenticator, ctx *b
 			ctx.SetString(FieldAuthenticatorUnverifiedCertFingerprint, authCert.UnverifiedFingerprint)
 			ctx.SetString(FieldAuthenticatorUnverifiedCertPem, authCert.UnverifiedPem)
 			ctx.SetTimeP(FieldAuthenticatorCertExtendRequestedAt, authCert.ExtendRequestedAt)
+			ctx.SetString(FieldAuthenticatorCertPublicKeyPrint, authCert.PublicKeyPrint)
+			ctx.SetBool(FieldAuthenticatorCertLastExtendRolledKeys, authCert.LastExtendRolledKeys)
+			ctx.SetBool(FieldAuthenticatorCertLastAuthResolvedToRoot, authCert.LastAuthResolvedToRoot)
 		} else {
 			pfxlog.Logger().Panic("type conversion error setting values for AuthenticatorCert")
 		}
