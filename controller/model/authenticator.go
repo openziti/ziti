@@ -197,7 +197,7 @@ func (a *AuthBundle) Apply(event *event.AuthenticationEvent) {
 	if a.Authenticator != nil {
 		event.AuthenticatorId = a.Authenticator.Id
 
-		// set in scenarios where identity is not fetch explicitly
+		// set in scenarios where the identity is not fetched explicitly
 		event.IdentityId = a.Authenticator.IdentityId
 	}
 

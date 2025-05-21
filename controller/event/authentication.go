@@ -31,7 +31,7 @@ const (
 // An AuthenticationEvent is emitted when an authentication attempt is made
 //
 // Types of authentication events
-//   - failed - authentication failed
+//   - fail - authentication failed
 //   - success - authentication succeeded
 //
 // Types of authentication methods
