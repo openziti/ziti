@@ -39,6 +39,8 @@ const (
 
 	ZitiAuthenticatorExtendRequested  = "ziti-authenticator-extend-requested"
 	ZitiAuthenticatorRollKeyRequested = "ziti-authenticator-extend-requested"
+
+	internalCertAuthenticatorId = "internal"
 )
 
 var _ AuthProcessor = &AuthModuleCert{}
@@ -301,21 +303,26 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 			return nil, apierror.NewInvalidAuth()
 		}
 	}
-	certAuth := authenticator.ToCert()
 
-	if certAuth == nil {
-		reason := "failed to convert authenticator to cert auth"
-		failEvent := module.NewAuthEventFailure(context, bundle, reason)
-		module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+	improperClientCertChain := false
 
-		logger.Error(reason)
+	if authenticator.Id != internalCertAuthenticatorId {
+		certAuth := authenticator.ToCert()
 
-		return nil, apierror.NewInvalidAuth()
+		if certAuth == nil {
+			reason := "failed to convert authenticator to cert auth"
+			failEvent := module.NewAuthEventFailure(context, bundle, reason)
+			module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
+			logger.Error(reason)
+
+			return nil, apierror.NewInvalidAuth()
+		}
+
+		module.ensureAuthenticatorIsUpToDate(certAuth, clientCert, bundle.ImproperClientCertChain, context.GetChangeContext())
+
+		improperClientCertChain = certAuth.IsIssuedByNetwork && failedRootOnlyBundle
 	}
-
-	module.ensureAuthenticatorIsUpToDate(certAuth, clientCert, bundle.ImproperClientCertChain, context.GetChangeContext())
-
-	improperClientCertChain := certAuth.IsIssuedByNetwork && failedRootOnlyBundle
 
 	return &AuthResultBase{
 		identity:                identity,
@@ -402,7 +409,7 @@ func (module *AuthModuleCert) ensureAuthenticatorIsUpToDate(authCert *Authentica
 func (module *AuthModuleCert) authenticatorExternalId(identityId string, clientCert *x509.Certificate) *Authenticator {
 	authenticator := &Authenticator{
 		BaseEntity: models.BaseEntity{
-			Id:        "internal",
+			Id:        internalCertAuthenticatorId,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 			Tags:      nil,
