@@ -21,7 +21,7 @@ To help determine which identities have issues, the system has been augmented to
 certificate authenticators. Firstly, authenticators have flags on them that are set during authentication to detect
 the current behavior of a specific client that owns and is invoking the certificate authenticator.
 
-### Detecting Improper Client Cert Chains As An Client API Client/SDK
+### Detecting Improper Client Cert Chains As A Client SDK
 
 The current API Sessions endpoint (`https://<host>/edge/client/v1/current-api-session`) now returns a value named
 `improperClientCertChain` as a boolean value. If it is not present or `false` no action should be taken. If `true`
@@ -29,7 +29,7 @@ it means that the current API Session was authenticated with an internal PKI iss
 did not provide a full chain to the root CA during authentication; indicating a problem with the certificate storage
 mechanism in the application or due to the controller version used during enrollment/extension not providing a chain. 
 The SDK should proactively opt to begin certificate extension on its own to obtain a proper chain. Authentication
-succeded simply because the controller relied upon a deprecated certificate pool that happen to include the necessary
+succeded in this case because the controller relied upon a deprecated certificate pool that happen to include the necessary
 intermediate CAs.
 
 ### Detecting Clients Without Proper Chains
