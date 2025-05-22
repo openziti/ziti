@@ -608,8 +608,8 @@ github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQ
 github.com/openziti/cobra-to-md v1.0.1/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
 github.com/openziti/dilithium v0.3.5 h1:+envGNzxc3OyVPiuvtxivQmCsOjdZjtOMLpQBeMz7eM=
 github.com/openziti/dilithium v0.3.5/go.mod h1:XONq1iK6te/WwNzkgZHfIDHordMPqb0hMwJ8bs9EfSk=
-github.com/openziti/edge-api v0.26.44 h1:/ltLcroq4NP67RrsKiHUYmoPBGn5qS5xb/LvhWBTu34=
-github.com/openziti/edge-api v0.26.44/go.mod h1:sYHVpm26Jr1u7VooNJzTb2b2nGSlmCHMnbGC8XfWSng=
+github.com/openziti/edge-api v0.26.45 h1:M5rR28yEIIpbVo7F7c5tF+z2qNKqvN55pK6bZqQHn+8=
+github.com/openziti/edge-api v0.26.45/go.mod h1:sYHVpm26Jr1u7VooNJzTb2b2nGSlmCHMnbGC8XfWSng=
 github.com/openziti/fablab v0.5.97 h1:zb7CgBYRwAAaRF7Q5lk3H6jrJDidAqgXt5LLtmMw7B4=
 github.com/openziti/fablab v0.5.97/go.mod h1:gCX89ySJasIDimqV5ihOye/aZIWtJ3eVtcK94vm0g78=
 github.com/openziti/foundation/v2 v2.0.59 h1:PJwrcTq62x+cONBeKMlnsuphsTlOvTz8j8prYnehm8o=

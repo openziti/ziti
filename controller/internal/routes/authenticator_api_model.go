@@ -175,6 +175,7 @@ func MapAuthenticatorToRestModel(ae *env.AppEnv, i *model.Authenticator) (*rest_
 		result.IsIssuedByNetwork = subType.IsIssuedByNetwork
 		result.IsExtendRequested = subType.IsExtendRequested
 		result.IsKeyRollRequested = subType.IsKeyRollRequested
+		result.LastAuthResolvedToRoot = subType.LastAuthResolvedToRoot
 
 		if subType.ExtendRequestedAt != nil {
 			extendRequestedAt := strfmt.DateTime(*subType.ExtendRequestedAt)
