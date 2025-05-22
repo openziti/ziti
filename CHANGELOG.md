@@ -1,3 +1,207 @@
+# Release 1.6.2
+
+## What's New
+
+* System Certificate Authentication Improper Chain Detection
+* Authentication Events
+
+## System Certificate Authentication Improper Chain Detection
+
+Previous versions of SDKs and controllers issued and sored client certificate chains with differing levels of fidelity.
+Depending on when an identity was enrolled, it may or may not have a proper client certificate chain. In single
+controller environments, the controller will automatically include its known intermediates to help create valid
+x509 certificate chains back to the network's Root CA. 
+
+In HA environments, each controller does not know of all the intermediates in the system by default. In order to support
+dynamically scaling controllers, clients must store and provide a proper client certificate chain (a leaf certificate 
+followed by all necessary intermediate CA certs). Identities enrolled with SDKs that did not store the chain
+or controllers that did not provide the chain will encounter authentication issues in multi-controller environments.
+
+To help determine which identities have issues, the system has been augmented to allow detection of problematic 
+certificate authenticators. Firstly, authenticators have flags on them that are set during authentication to detect
+the current behavior of a specific client that owns and is invoking the certificate authenticator.
+
+### Detecting Clients Without Proper Chains
+
+After a client has authenticated with the system via a network-issued certificate at least one time, a number of fields
+are set depending on what the client provided. These values can be reviewed via the Edge Management API for 
+Authenticators (`edge/management/v1/authenticators`). Where an authenticator has `isIssuedByNetwork` set to `true` and
+`lastAuthResolvedToRoot` set to `false`, indicates that the related identity/client is not providing a chain when it
+should.
+
+Additionally, if authenticator events are enabled and being processed, events will have a field 
+`improper_client_cert_chain` set to `true` (see Authentication Events below)
+
+## Rectifying Clients Without Proper Chains
+
+Once an authenticator has been identified as problematic, an administrator should verify the client is using the newest
+possible versions of its SDK and either re-enroll it or request the identity to extend the next time it 
+authenticates. Both scenarios result in a new certificate and chain being provided to the client.
+
+- **Re-Enrollment** removes the current authenticator, making authentication impossible until enrollment is completed.
+  Once completed, a new authenticator is created, and the new certificate generated from the process can be used to 
+  authenticate. Humans or other external automation processes have to deliver and consume the new enrollment JWT.
+- **Extension** leaves the authenticator in place and authentication can still occur. When the extension process is
+  completed, the authenticator is updated and will use the new certificate generated from the process. SDKs will 
+  handle the process by raising SDK specific events to drive the process.
+
+While related and similar, using one over the other depends on the situation. Re-Enrollment is best for when
+an client or its host are unrecoverable; either through damage, decommissioning, or suspected to be compromised.
+Extension is useful when the client and host are in a known good status and one simply wants to issue new
+certificates to said client. Extension is also "hands off" from the client as long as the client is using 
+SDKs that support enrollment request/key rolling.
+
+## Useful Authenticator Values
+
+Authenticators are an entity within OpenZiti and can be queried via the CLI (`ziti edge list authenticators`) or
+Edge Management API (`GET https://<host>/edge/management/v1/authenticators`). Below are properties that are 
+useful for determining clients with improper chains.
+
+- `isIssuedByNetwork` (boolean) indicates the authenticator is a certificate that was issued by the network
+- `isExtendRequested` (boolean) indicated the authenticator will report to the client to extend its certificate on next
+  authentication.
+- `isKeyRollRequested` (boolean) indicates if key rolling is requested with an outstanding `isExtendRequested`
+- `extendRequestedAt` (string, date time) indicates when an outstanding extension was requested, otherwise `null`
+  or not provided
+- `lastAuthResolvedToRoot` (boolean) indicates if the last time the client authenticated, it provided a certificate
+  chain that resolved to the root CA. Only valid if `isIssuedByNetwork` is `true`.
+
+### Re-Enrollment
+
+Re-enrollment can be accomplished via the CLI or the Edge Management API. Re-enrollment removes the current authenticator,
+stopping the client from authenticating. All of the underlying configuration for the related identity is preserved. 
+The newly created enrollment will have a new enrollment JWT that will be consumed during the enrollment process and 
+will result in a new client certificate and chain.
+
+**CLI:**
+
+`ziti edge update authenticator cert <id> --re-enroll [--duration <duration>]`
+
+**Edge Management API:**
+
+```http request
+POST /edge/management/v1/authenticators/:id/re-enroll
+
+{
+    expiresAt: "2025-05-21T13:47:26Z"
+}
+```
+
+Both of the above provide an enrollment id and or enrollment JWT token as output. These can be consumed in various
+OpenZiti applications or CLI commands.
+
+**CLI Enrollment**
+
+```
+ ziti edge enroll -h
+enroll an identity
+
+Usage:
+  ziti edge enroll path/to/jwt [flags]
+
+Flags:
+      --ca string         Additional trusted certificates
+  -c, --cert string       The certificate to present when establishing a connection.
+  -h, --help              help for enroll
+  -n, --idname string     Names the identity. Ignored if not 3rd party auto enrollment
+  -j, --jwt string        Enrollment token (JWT file). Required
+  -k, --key string        The key to use with the certificate. Optionally specify the engine to use. supported engines: [parsec]
+  -a, --keyAlg RSA|EC     Crypto algorithm to use when generating private key (default RSA)
+  -o, --out string        Output configuration file.
+  -p, --password string   Password for updb enrollment, prompted if not provided and necessary
+      --rm                Remove the JWT on success
+  -u, --username string   Username for updb enrollment, prompted if not provided and necessary
+  -v, --verbose           Enable verbose logging
+```
+
+**OpenZiti Tunneler Enrollment**
+
+`ziti-edge-tunnel add --jwt "$(< ./in-file.jwt)" --identity myIdentityName`
+
+### Request Extension
+
+Extension leaves the authenticator in place, but notifies SDKs that they should generate a CSR to request a new
+certificate. Once the process is complete, the client will have a new certificate and chain that must be used
+for later authentication requests. This can be initiated through the CLI or Edge Management API.
+
+**CLI:**
+
+`ziti edge update authenticator cert <id> --request-extend [--request-key-roll]`
+
+**Edge Management API:**
+
+```http request
+POST /edge/management/v1/authenticators/:id/request-extend
+
+{
+    rollKeys: true,
+}
+```
+
+These commands will cause the authenticator to be updated to have `isExtendRequested`, extendRequestedAt`, and
+optionally `isKeyRollRequested` updated on the authenticator. These values will be used to signal the client to
+extend their certificate on the next successful authentication attempt.
+
+## Authentication Events
+
+A new event names space `authentication` has been added for events with two types `success` and `fail`. These can be 
+enabled via the controller configuration files.
+
+Event Documentation:
+
+```
+// An AuthenticationEvent is emitted when an authentication attempt is made
+//
+// Types of authentication events
+//   - fail - authentication failed
+//   - success - authentication succeeded
+//
+// Types of authentication methods
+//   - updb - username password from the internal database
+//   - cert - a certificate, either first party or 3rd party
+//   - ext-jwt - an external JWT from an IDP
+```
+
+Example Controller Configuration:
+
+```yaml
+events:
+  jsonLogger:
+    subscriptions:
+      - type: authentication
+#          - success
+#          - fail
+    handler:
+      type: file
+      format: json
+      path: ${TMPDIR}/ziti-events.log
+```
+
+Example Output:
+```json
+{
+  "namespace": "authentication",
+  "event_src_id": "ctrl_client",
+  "timestamp": "2025-05-21T10:24:32.6532054-04:00",
+  "event_type": "fail",
+  "type": "password",
+  "authenticator_id": "B0JrMDPGxd",
+  "external_jwt_signer_id": "",
+  "identity_id": "BGJabPP0K",
+  "auth_policy_id": "default",
+  "remote_address": "127.0.0.1:51587",
+  "success": false,
+  "reason": "could not authenticate, password does not match",
+  "improper_client_cert_chain": false
+}
+```
+
+## Component Updates and  Bug Fixes
+
+* github.com/openziti/edge-api: [v0.26.43 -> v0.26.44](https://github.com/openziti/edge-api/compare/v0.26.43...v0.26.44)
+* github.com/openziti/ziti: [v1.6.1 -> v1.6.2](https://github.com/openziti/ziti/compare/v1.6.1...v1.6.2)
+
+
 # Release 1.6.1
 
 ## What's New
@@ -893,6 +1097,9 @@ connectEvents:
   "dst_addr": "localhost:1280/edge/management/v1/edge-routers/2L7NeVuGBU",
   "timestamp": "2024-10-02T12:17:39.501821249-04:00"
 }
+```
+
+```json
 {
   "namespace": "connect",
   "src_type": "router",
@@ -902,6 +1109,9 @@ connectEvents:
   "dst_addr": "127.0.0.1:6262",
   "timestamp": "2024-10-02T12:17:40.529865849-04:00"
 }
+```
+
+```json
 {
   "namespace": "connect",
   "src_type": "peer",
@@ -935,14 +1145,18 @@ events:
   "identity_id": "ji2Rt8KJ4",
   "timestamp": "2024-10-02T12:17:39.501821249-04:00"
 }
+```
 
+```json
 {
   "namespace": "sdk",
   "event_type" : "sdk-status-unknown",
   "identity_id": "ji2Rt8KJ4",
   "timestamp": "2024-10-02T12:17:40.501821249-04:00"
 }
+```
 
+```json
 {
   "namespace": "sdk",
   "event_type" : "sdk-offline",
