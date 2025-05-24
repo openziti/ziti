@@ -211,7 +211,7 @@ func NewAcceptor(listener *listener, uListener channel.UnderlayListener, options
 		disconnectMeter:     listener.factory.metricsRegistry.Meter("edge.disconnects"),
 	}
 
-	result.multiListener = channel.NewMultiListener(result.handleUnderlay)
+	result.multiListener = channel.NewMultiListener(result.handleGroupedUnderlay, result.handleUngroupedUnderlay)
 
 	listener.factory.metricsRegistry.FuncGauge("edge.connections", func() int64 {
 		return result.connectionCount.Load()
@@ -240,39 +240,39 @@ func (self *Acceptor) Run() {
 	}
 }
 
-func (self *Acceptor) handleUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
-	if isGrouped, _ := channel.Headers(underlay.Headers()).GetBoolHeader(channel.IsGroupedHeader); isGrouped {
-		sdkChannel := NewListenerSdkChannel(underlay)
-		multiConfig := channel.MultiChannelConfig{
-			LogicalName:     "edge",
-			Options:         self.options,
-			UnderlayHandler: sdkChannel,
-			BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
-				binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
-					closeCallback()
-				}))
-				return self.BindChannel(binding)
-			}),
-			Underlay: underlay,
-		}
-		mc, err := channel.NewMultiChannel(&multiConfig)
+func (self *Acceptor) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+	sdkChannel := NewListenerSdkChannel(underlay)
+	multiConfig := channel.MultiChannelConfig{
+		LogicalName:     "edge",
+		Options:         self.options,
+		UnderlayHandler: sdkChannel,
+		BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
+			binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+				closeCallback()
+			}))
+			return self.BindChannel(binding)
+		}),
+		Underlay: underlay,
+	}
+	mc, err := channel.NewMultiChannel(&multiConfig)
 
-		if err != nil {
-			pfxlog.Logger().WithError(err).Errorf("failure accepting edge channel %v with mult-underlay", underlay.Label())
-			return nil, err
-		}
-
-		return mc, nil
+	if err != nil {
+		pfxlog.Logger().WithError(err).Errorf("failure accepting edge channel %v with mult-underlay", underlay.Label())
+		return nil, err
 	}
 
+	return mc, nil
+}
+
+func (self *Acceptor) handleUngroupedUnderlay(underlay channel.Underlay) error {
 	_, err := channel.NewChannelWithUnderlay("edge", underlay, self, self.options)
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failure accepting edge channel %v with underlay", underlay.Label())
-		return nil, err
+		return err
 	}
 
-	return nil, nil
+	return nil
 }
 
 func NewListenerSdkChannel(underlay channel.Underlay) edge.UnderlayHandlerSdkChannel {
