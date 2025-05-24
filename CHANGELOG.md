@@ -1,3 +1,32 @@
+# Release 1.6.2
+
+## What's New
+
+* Multi-underlay channel group secret
+
+## Multi-underlay channel group secret
+
+For additional security the experimental multi-underlay channel code now requires that 
+clients provide a shared secret. This ensures that channels are get the expected 
+underlays without requiring much larger group ids. On the client side this will require
+channel v1.1.0 or greater. 
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.26 -> v1.0.27](https://github.com/openziti/agent/compare/v1.0.26...v1.0.27)
+* github.com/openziti/channel/v4: [v4.0.6 -> v4.1.3](https://github.com/openziti/channel/compare/v4.0.6...v4.1.3)
+    * [Issue #187](https://github.com/openziti/channel/issues/187) - Allow fallback to regular channel when 'is grouped' isn't set when using multi-listener
+    * [Issue #185](https://github.com/openziti/channel/issues/185) - Add group secret for multi-underlay channels
+
+* github.com/openziti/edge-api: [v0.26.43 -> v0.26.45](https://github.com/openziti/edge-api/compare/v0.26.43...v0.26.45)
+* github.com/openziti/foundation/v2: [v2.0.59 -> v2.0.63](https://github.com/openziti/foundation/compare/v2.0.59...v2.0.63)
+* github.com/openziti/runzmd: [v1.0.67 -> v1.0.71](https://github.com/openziti/runzmd/compare/v1.0.67...v1.0.71)
+* github.com/openziti/secretstream: [v0.1.32 -> v0.1.34](https://github.com/openziti/secretstream/compare/v0.1.32...v0.1.34)
+* github.com/openziti/storage: [v0.4.7 -> v0.4.11](https://github.com/openziti/storage/compare/v0.4.7...v0.4.11)
+* github.com/openziti/transport/v2: [v2.0.168 -> v2.0.171](https://github.com/openziti/transport/compare/v2.0.168...v2.0.171)
+* github.com/openziti/xweb/v2: [v2.3.1 -> v2.3.2](https://github.com/openziti/xweb/compare/v2.3.1...v2.3.2)
+* github.com/openziti/ziti: [v1.6.1 -> v1.6.2](https://github.com/openziti/ziti/compare/v1.6.1...v1.6.2)
+
 # Release 1.6.1
 
 ## What's New
