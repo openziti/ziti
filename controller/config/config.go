@@ -18,32 +18,33 @@ package config
 
 import (
 	"bytes"
-	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-hclog"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/identity"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/transport/v2"
-	transporttls "github.com/openziti/transport/v2/tls"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/sdk-golang/xgress"
-	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 	"math"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/hashicorp/go-hclog"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/identity"
+	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/transport/v2"
+	transporttls "github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/common"
+	certfprint "github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/common/config"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -781,9 +782,7 @@ func generateDefaultSpiffeId(id identity.Identity) (*url.URL, error) {
 		return nil, errors.New("candidate root CA is not self signed")
 	}
 
-	rawHash := sha1.Sum(candidateRoot.Raw)
-
-	fingerprint := fmt.Sprintf("%x", rawHash)
+	fingerprint := certfprint.Shake256HexN(candidateRoot.Raw, 20)
 	idStr := "spiffe://" + fingerprint
 
 	spiffeId, err := url.Parse(idStr)

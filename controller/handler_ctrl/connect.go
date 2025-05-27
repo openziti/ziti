@@ -17,16 +17,17 @@
 package handler_ctrl
 
 import (
-	"crypto/sha1"
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
+	certfprint "github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/network"
-	"time"
 )
 
 type ConnectHandler struct {
@@ -75,7 +76,7 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 	for i, cert := range certificates {
 		if !cert.IsCA {
 			if _, err := cert.Verify(opts); err == nil {
-				fingerprint := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
+				fingerprint := certfprint.Shake256HexN(cert.Raw, 20)
 				validFingerPrints = append(validFingerPrints, fingerprint)
 				log.Debugf("%d): peer certificate fingerprint [%s]", i, fingerprint)
 				log.Debugf("%d): peer common name [%s]", i, cert.Subject.CommonName)

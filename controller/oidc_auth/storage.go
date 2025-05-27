@@ -19,17 +19,18 @@ package oidc_auth
 import (
 	"context"
 	"crypto"
-	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/controller/event"
-	"gopkg.in/go-jose/go-jose.v2"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/openziti/foundation/v2/errorz"
+	certfprint "github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/controller/event"
+	"gopkg.in/go-jose/go-jose.v2"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
@@ -707,7 +708,7 @@ func (s *HybridStorage) KeySet(_ context.Context) ([]op.Key, error) {
 	signers := s.env.GetPeerSigners()
 
 	for _, cert := range signers {
-		kid := fmt.Sprintf("%s", sha1.Sum(cert.Raw))
+		kid := certfprint.Shake256HexN(cert.Raw, 20)
 
 		if _, found := s.keys.Get(kid); found {
 			continue
@@ -719,7 +720,7 @@ func (s *HybridStorage) KeySet(_ context.Context) ([]op.Key, error) {
 			pfxlog.Logger().
 				WithField("issuer", cert.Issuer).
 				WithField("subject", cert.Subject).
-				WithField("kid", fmt.Sprintf("%x", sha1.Sum(cert.Raw))).
+				WithField("kid", kid).
 				WithField("publicKeyType", fmt.Sprintf("%T", cert.PublicKey)).
 				Error("could not convert cert to JWKS key, unknown signing method")
 		}

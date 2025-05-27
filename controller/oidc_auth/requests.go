@@ -17,15 +17,15 @@
 package oidc_auth
 
 import (
-	"crypto/sha1"
 	"crypto/x509"
-	"fmt"
+	"time"
+
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/model"
-	"time"
 
+	certfprint "github.com/openziti/ziti/common/cert"
 	"github.com/zitadel/oidc/v2/pkg/oidc"
 )
 
@@ -178,7 +178,7 @@ func (a *AuthRequest) GetCertFingerprints() []string {
 	var prints []string
 
 	for _, cert := range a.PeerCerts {
-		prints = append(prints, fmt.Sprintf("%x", sha1.Sum(cert.Raw)))
+		prints = append(prints, certfprint.Shake256HexN(cert.Raw, 20))
 	}
 
 	return prints

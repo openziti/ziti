@@ -17,10 +17,12 @@
 package cert
 
 import (
-	"crypto/sha1"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+
+	"golang.org/x/crypto/sha3"
 )
 
 type Fingerprints map[string]*x509.Certificate
@@ -117,6 +119,14 @@ func (fpg *defaultFingerprintGenerator) FromCerts(certs []*x509.Certificate) Fin
 }
 
 func (fpg *defaultFingerprintGenerator) FromRaw(raw []byte) string {
-	// #nosec
-	return fmt.Sprintf("%x", sha1.Sum(raw))
+	return fmt.Sprintf("%x", Shake256HexN(raw, 20))
+}
+
+// Shake256HexN returns a SHAKE256 hash of "length" bytes as a hex string (2*length = count of hex characters).
+func Shake256HexN(data []byte, length int) string {
+	hash := make([]byte, length)
+	hasher := sha3.NewShake256()
+	hasher.Write(data)
+	hasher.Read(hash)
+	return hex.EncodeToString(hash)
 }

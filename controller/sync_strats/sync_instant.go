@@ -18,11 +18,14 @@ package sync_strats
 
 import (
 	"context"
-	"crypto/sha1"
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -34,6 +37,7 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/build"
+	certfprint "github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
@@ -45,9 +49,6 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -1522,7 +1523,7 @@ func newService(storeModel *db.EdgeService) *edge_ctrl_pb.DataState_Service {
 func newPublicKey(data []byte, format edge_ctrl_pb.DataState_PublicKey_Format, usages []edge_ctrl_pb.DataState_PublicKey_Usage) *edge_ctrl_pb.DataState_PublicKey {
 	return &edge_ctrl_pb.DataState_PublicKey{
 		Data:   data,
-		Kid:    fmt.Sprintf("%x", sha1.Sum(data)),
+		Kid:    certfprint.Shake256HexN(data, 20),
 		Usages: usages,
 		Format: format,
 	}

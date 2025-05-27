@@ -17,18 +17,17 @@
 package handler_edge_ctrl
 
 import (
-	"crypto/sha1"
-	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
+	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/identity"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type extendEnrollmentCertsHandler struct {
@@ -121,7 +120,7 @@ func (h *extendEnrollmentCertsHandler) HandleReceive(msg *channel.Message, ch ch
 				log.WithError(err).Errorf("could not reload extended certificates, please manually restart the router")
 			}
 
-			newFingerprint := fmt.Sprintf("%x", sha1.Sum(h.id.Cert().Certificate[0]))
+			newFingerprint := cert.Shake256HexN(h.id.Cert().Certificate[0], 20)
 
 			log.WithField("newFingerprint", newFingerprint).Info("enrollment extension done")
 		} else {

@@ -21,10 +21,15 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
-	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
 	openApiMiddleware "github.com/go-openapi/runtime/middleware"
@@ -67,11 +72,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/teris-io/shortid"
 	"github.com/xeipuuv/gojsonschema"
-	"io"
-	"net"
-	"net/http"
-	"strings"
-	"time"
 )
 
 var _ model.Env = &AppEnv{}
@@ -285,7 +285,7 @@ func (ae *AppEnv) GetEnrollmentJwtSigner() (jwtsigner.Signer, error) {
 	}
 
 	signMethod := getJwtSigningMethod(enrollmentCert)
-	kid := fmt.Sprintf("%x", sha1.Sum(enrollmentCert.Certificate[0]))
+	kid := cert.Shake256HexN(enrollmentCert.Certificate[0], 20)
 	return jwtsigner.New(signMethod, enrollmentCert.PrivateKey, kid), nil
 }
 
@@ -1149,7 +1149,7 @@ func (ae *AppEnv) SetServerCert(serverCert *tls.Certificate) {
 	ae.ServerCert = serverCert
 
 	signMethod := getJwtSigningMethod(serverCert)
-	kid := fmt.Sprintf("%x", sha1.Sum(serverCert.Certificate[0]))
+	kid := cert.Shake256HexN(serverCert.Certificate[0], 20)
 	ae.serverSigner = jwtsigner.New(signMethod, serverCert.PrivateKey, kid)
 }
 

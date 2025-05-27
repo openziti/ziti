@@ -18,15 +18,9 @@ package config
 
 import (
 	"bytes"
-	"crypto/sha1"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/identity"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/pkg/errors"
 	"net"
 	"net/url"
 	"os"
@@ -35,6 +29,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/identity"
+	certfprint "github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -693,9 +694,8 @@ func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
 					Warn("block is not a CA, block will be ignored")
 				continue
 			}
-			// #nosec
-			hash := sha1.Sum(block.Bytes)
-			fingerprint := toHex(hash[:])
+			hashHex := certfprint.Shake256HexN(block.Bytes, 20)
+			fingerprint := strings.ToUpper(insertColons(hashHex))
 			newPem := pem.EncodeToMemory(block)
 			caPemMap[fingerprint] = newPem
 		} else {
@@ -711,14 +711,18 @@ func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
 	return &newCaPems
 }
 
-// toHex takes a byte array returns a hex formatted fingerprint
-func toHex(data []byte) string {
-	var buf bytes.Buffer
-	for i, b := range data {
+// insertColons inserts colons every two characters in a hex string
+func insertColons(hexStr string) string {
+	var buf strings.Builder
+	for i := 0; i < len(hexStr); i += 2 {
 		if i > 0 {
-			_, _ = fmt.Fprintf(&buf, ":")
+			buf.WriteString(":")
 		}
-		_, _ = fmt.Fprintf(&buf, "%02x", b)
+		end := i + 2
+		if end > len(hexStr) {
+			end = len(hexStr)
+		}
+		buf.WriteString(hexStr[i:end])
 	}
-	return strings.ToUpper(buf.String())
+	return buf.String()
 }

@@ -19,11 +19,12 @@ package pki
 import (
 	"crypto"
 	"crypto/rand"
-	"crypto/sha1"
 	"crypto/x509"
 	"fmt"
 	"math/big"
 	"time"
+
+	certfprint "github.com/openziti/ziti/common/cert"
 )
 
 func defaultTemplate(genReq *Request, publicKey crypto.PublicKey) error {
@@ -32,8 +33,8 @@ func defaultTemplate(genReq *Request, publicKey crypto.PublicKey) error {
 	if err != nil {
 		return fmt.Errorf("failed marshaling public key: %v", err)
 	}
-	subjectKeyID := sha1.Sum(publicKeyBytes)
-	genReq.Template.SubjectKeyId = subjectKeyID[:]
+	subjectKeyID := certfprint.Shake256HexN(publicKeyBytes, 20)
+	genReq.Template.SubjectKeyId = []byte(subjectKeyID)
 
 	// Random serial number.
 	snLimit := new(big.Int).Lsh(big.NewInt(1), 128)

@@ -17,10 +17,11 @@
 package fabric
 
 import (
-	"crypto/sha1"
 	"fmt"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/identity/certtools"
+	certfprint "github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
@@ -78,7 +79,7 @@ func (o *createRouterOptions) createRouter(_ *cobra.Command, args []string) erro
 	if o.name != "" {
 		name = o.name
 	}
-	fingerprint := fmt.Sprintf("%x", sha1.Sum(cert[0].Raw))
+	fingerprint := certfprint.Shake256HexN(cert[0].Raw, 20)
 	api.SetJSONValue(entityData, id, "id")
 	api.SetJSONValue(entityData, name, "name")
 	api.SetJSONValue(entityData, fingerprint, "fingerprint")
