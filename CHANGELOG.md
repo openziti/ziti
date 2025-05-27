@@ -7,7 +7,7 @@
 
 ## System Certificate Authentication Improper Chain Detection
 
-Previous versions of SDKs and controllers issued and sored client certificate chains with differing levels of fidelity.
+Previous versions of SDKs and controllers issued and stored client certificate chains with differing levels of fidelity.
 Depending on when an identity was enrolled, it may or may not have a proper client certificate chain. In single
 controller environments, the controller will automatically include its known intermediates to help create valid
 x509 certificate chains back to the network's Root CA. 
@@ -29,7 +29,7 @@ it means that the current API Session was authenticated with an internal PKI iss
 did not provide a full chain to the root CA during authentication; indicating a problem with the certificate storage
 mechanism in the application or due to the controller version used during enrollment/extension not providing a chain. 
 The SDK should proactively opt to begin certificate extension on its own to obtain a proper chain. Authentication
-succeded in this case because the controller relied upon a deprecated certificate pool that happen to include the necessary
+succeeded in this case because the controller relied upon a deprecated certificate pool that happen to include the necessary
 intermediate CAs.
 
 ### Detecting Clients Without Proper Chains
@@ -43,7 +43,7 @@ should.
 Additionally, if authenticator events are enabled and being processed, events will have a field 
 `improper_client_cert_chain` set to `true` (see Authentication Events below)
 
-## Rectifying Clients Without Proper Chains
+## Fixing Clients Chains
 
 Once an authenticator has been identified as problematic, an administrator should verify the client is using the newest
 possible versions of its SDK and either re-enroll it or request the identity to extend the next time it 
