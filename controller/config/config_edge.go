@@ -99,9 +99,16 @@ type Api struct {
 	HttpTimeouts  HttpTimeouts
 }
 
+type Oidc struct {
+	AccessTokenDuration  time.Duration
+	RefreshTokenDuration time.Duration
+	IdTokenDuration      time.Duration
+}
+
 type EdgeConfig struct {
 	Enabled              bool
 	Api                  Api
+	Oidc                 Oidc
 	Enrollment           Enrollment
 	IdentityStatusConfig IdentityStatusConfig
 	caPems               *bytes.Buffer
@@ -230,6 +237,66 @@ func (c *EdgeConfig) loadTotpSection(edgeConfigMap map[any]any) error {
 				} else {
 					return fmt.Errorf("[edge.totp.hostname] must be a string")
 				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *EdgeConfig) loadOidcSection(edgeConfigMap map[any]any) error {
+	c.Oidc.AccessTokenDuration = 30 * time.Minute
+	c.Oidc.RefreshTokenDuration = 24 * time.Hour
+	c.Oidc.IdTokenDuration = 30 * time.Minute
+
+	if value, found := edgeConfigMap["oidc"]; found {
+		oidcSubMap := value.(map[interface{}]interface{})
+
+		if oidcSubMap != nil {
+			if val, ok := oidcSubMap["accessTokenDuration"]; ok {
+				strValue := val.(string)
+				durationValue, err := time.ParseDuration(strValue)
+				if err != nil {
+					return errors.Errorf("error parsing [edge.oidc.accessTokenDuration], invalid duration string %s, cannot parse as duration (e.g. 1m): %v", strValue, err)
+				}
+
+				if durationValue < 1*time.Minute {
+					pfxlog.Logger().Warn("field [edge.oidc.accessTokenDuration] is too short, setting to 1m")
+					durationValue = 1 * time.Minute
+				}
+
+				c.Oidc.AccessTokenDuration = durationValue
+			}
+
+			if val, ok := oidcSubMap["idTokenDuration"]; ok {
+				strValue := val.(string)
+				durationValue, err := time.ParseDuration(strValue)
+				if err != nil {
+					return errors.Errorf("error parsing [edge.oidc.idTokenDuration], invalid duration string %s, cannot parse as duration (e.g. 1m): %v", strValue, err)
+				}
+
+				if durationValue < 1*time.Minute {
+					pfxlog.Logger().Warn("field [edge.oidc.idTokenDuration] is too short, setting to 1m")
+					durationValue = 1 * time.Minute
+				}
+
+				c.Oidc.AccessTokenDuration = durationValue
+			}
+
+			if val, ok := oidcSubMap["refreshTokenDuration"]; ok {
+				strValue := val.(string)
+				durationValue, err := time.ParseDuration(strValue)
+				if err != nil {
+					return errors.Errorf("error parsing [edge.oidc.refreshTokenDuration], invalid duration string %s, cannot parse as duration (e.g. 1m): %v", strValue, err)
+				}
+
+				if durationValue-1*time.Minute < c.Oidc.AccessTokenDuration {
+					newVal := c.Oidc.AccessTokenDuration + 1 + time.Minute
+					pfxlog.Logger().Warnf("field [edge.oidc.refreshTokenDuration] is too short [%s], must be larger than access token duration by 1 minute, setting to "+newVal.String(), durationValue.String())
+					durationValue = newVal
+				}
+
+				c.Oidc.AccessTokenDuration = durationValue
 			}
 		}
 	}
@@ -560,6 +627,10 @@ func LoadEdgeConfigFromMap(configMap map[interface{}]interface{}) (*EdgeConfig, 
 	var err error
 
 	if err = edgeConfig.loadApiSection(edgeConfigMap); err != nil {
+		return nil, err
+	}
+
+	if err = edgeConfig.loadOidcSection(edgeConfigMap); err != nil {
 		return nil, err
 	}
 
