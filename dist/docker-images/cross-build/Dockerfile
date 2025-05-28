@@ -31,5 +31,5 @@ ENV GOCACHE=${go_cache}
 ENV PATH=${go_path}/bin:${go_root}/bin:$PATH
 ENV CGO_ENABLED=1
 RUN go install github.com/mitchellh/gox@latest
-WORKDIR /mnt
+WORKDIR /mnt/ziti
 ENTRYPOINT ["linux-build.sh"]
