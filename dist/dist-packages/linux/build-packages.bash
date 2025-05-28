@@ -14,6 +14,9 @@ declare -a ARCHS=(amd64)
 : "${PUSH:=false}"
 : "${DOCKER:=false}"
 : "${CLEAN:=false}"
+BASENAME=$(basename $0)
+DIRNAME=$(dirname $0)
+cd "${DIRNAME}/../../.."
 
 while (( $# )); do
 	case $1 in
@@ -60,7 +63,7 @@ while (( $# )); do
 			;;
 		--help)
 			exec 1>&4  # restore stdout from 4
-			echo -e "Usage: $(basename $0) FLAGS"\
+			echo -e "Usage: ${BASENAME} FLAGS"\
 				"\n\t--artifacts\tbuild space-separated - any of openziti, openziti-controller, openziti-router (default: all)"\
 				"\n\t--install\tinstall Debian packages"\
 				"\n\t--clean\t\tpurge Debian package files"\
@@ -81,8 +84,6 @@ ARTIFACTS_DIR=./release
 # export to nfpm and assign right after building ziti binary
 export ZITI_VERSION ZITI_REV
 : ${HUB_USER:=kbinghamnetfoundry}
-
-cd ~/Sites/netfoundry/github/ziti
 
 function setArtifactVars {
 	case ${1} in
@@ -119,8 +120,10 @@ for ARTIFACT in "${ARTIFACTS_DESC[@]}"
 do
 
 	setArtifactVars "$ARTIFACT"
-	for ARCH in "${ARCHS[@]}"; do
-		if [[ ${ARTIFACT} == openziti ]]; then
+	for ARCH in "${ARCHS[@]}"
+	do
+		if [[ ${ARTIFACT} == openziti ]]
+		then
 			# build the builder
 			docker buildx build \
 				--tag=ziti-go-builder \
@@ -128,13 +131,31 @@ do
 				--load \
 				./dist/docker-images/cross-build/ 2>&3
 			echo "INFO: Built ziti-go-builder"
+			# Detect go.work and add bind mounts for each 'use' path (other than '.')
+			GO_WORK_FILE="$PWD/go.work"
+			GO_WORK_MOUNTS=""
+			if [[ -s "$GO_WORK_FILE" ]]
+			then
+				while read -r path
+				do
+					path="${path//\"/}" # Remove quotes if any
+					if [[ "$path" != "." && -n "$path" ]]
+					then
+						abs_path="$(realpath "$path")"
+						base_path="$(basename "$path")"
+						GO_WORK_MOUNTS+=" --volume=$abs_path:/mnt/$base_path"
+					fi
+				done < <(awk '/use *\(/, /\)/ { if ($1 != "use" && $1 != "(" && $1 != ")") print $1 }' "$GO_WORK_FILE")
+			fi
 			docker run \
 				--rm \
 				--user "$UID" \
 				--name=ziti-go-builder \
-				--volume="$PWD:/mnt" \
+				--volume="$PWD:/mnt/ziti" \
+				${GO_WORK_MOUNTS} \
 				--volume="${GOCACHE:-${HOME}/.cache/go-build}:/.cache/go-build" \
-				--env GOEXPERIMENT="${GOEXPERIMENT:-}" \
+				${GOEXPERIMENT:+--env GOEXPERIMENT="${GOEXPERIMENT:-}"} \
+				${GOFIPS140:+--env GOFIPS140="${GOFIPS140:-}"} \
 				--env=GOCACHE=/.cache/go-build \
 				ziti-go-builder $ARCH
 			echo "INFO: Built ${ARTIFACT} for ${ARCH}"
@@ -149,31 +170,32 @@ do
 		ZITI_REV="$(git rev-parse --short HEAD)"
 		echo "DEBUG: Version ${ZITI_VERSION}-${ZITI_REV}" >&3
 
-		for PKG in deb rpm; do
+		for PKG in deb rpm
+		do
 			ZITI_HOMEPAGE="https://openziti.io" \
 			ZITI_VENDOR=netfoundry \
 			ZITI_MAINTAINER="Maintainers <developers@openziti.org>" \
 			GOARCH=$ARCH \
 			MINIMUM_SYSTEMD_VERSION=232 \
-				nfpm pkg \
-					--packager $PKG \
-					--target  "$TMPDIR" \
-					--config "./dist/dist-packages/linux/nfpm-${ARTIFACT}.yaml"
+			nfpm pkg \
+				--packager $PKG \
+				--target  "$TMPDIR" \
+				--config "./dist/dist-packages/linux/nfpm-${ARTIFACT}.yaml"
 			echo "INFO: Built ${ARTIFACT} for ${ARCH} with ${PKG}"
 		done
 	done
 
 	[[ "${CLEAN}" == true ]] && {
-		if [[ "${ARTIFACT}" =~ openziti-(controller|router) ]]; then
-			for SVC in ${ARTIFACT_SHORT}.service; do
-				#if systemctl list-unit-files | grep -qF "${SVC}"; then
+		if [[ "${ARTIFACT}" =~ openziti-(controller|router) ]]
+		then
+			for SVC in ${ARTIFACT_SHORT}.service
+			do
 				(set +e
 					sudo systemctl stop "${SVC}"
 					sudo systemctl disable --now "${SVC}"
 					sudo systemctl reset-failed "${SVC}"
 					sudo systemctl clean --what=state "${SVC}"
 				)||true
-				#fi
 				echo "INFO: Cleaned ${SVC}"
 				if [[ -n "$(sudo ls -A "${ZITI_HOME:-}" 2>/dev/null)" ]]
 				then
@@ -183,10 +205,12 @@ do
 			done
 			sudo apt-get remove --purge --yes "${ARTIFACT}"
 			echo "INFO: apt purged ${ARTIFACT}"
-			if [[ -f "${ZITI_ENV_FILE:-}" ]]; then
+			if [[ -f "${ZITI_ENV_FILE:-}" ]]
+			then
 				sudo rm -fv "${ZITI_ENV_FILE}"
 			fi
-			if [[ -f "${ZITI_CRED_FILE:-}" ]]; then
+			if [[ -f "${ZITI_CRED_FILE:-}" ]]
+			then
 				sudo rm -fv "${ZITI_CRED_FILE}"
 			fi
 		else
@@ -194,23 +218,22 @@ do
 		fi
 	}
 
-	if [[ ${INSTALL} == true && ${ARCH} == amd64 ]]; then
+	if [[ ${INSTALL} == true && ${ARCH} == amd64 ]]
+	then
 		sudo apt-get install --reinstall --yes --allow-downgrades "${TMPDIR}/${ARTIFACT}_${ZITI_VERSION#v}~${ZITI_REV}_${ARCH}.deb"
-		# sudo apt-mark manual "${ARTIFACT}"
 		echo "INFO: apt installed ${TMPDIR}/${ARTIFACT}_${ZITI_VERSION#v}~${ZITI_REV}_amd64.deb"
 
-		if [[ ${ARTIFACT} == openziti ]]; then
+		if [[ ${ARTIFACT} == openziti ]]
+		then
 			BUILDSUM=$(sha256sum $ARTIFACTS_DIR/$ARCH/linux/ziti | awk '{print $1}')
 			INSTALLSUM=$(sha256sum /opt/openziti/bin/ziti | awk '{print $1}')
-			if [[ $BUILDSUM != "$INSTALLSUM" ]]; then
+			if [[ $BUILDSUM != "$INSTALLSUM" ]]
+			then
 				echo "Checksums do not match"
 				exit 1
 			fi
 		fi
 	fi
-	
-	# the first two build args are ignored by the ziti-cli Dockerfile and used only by controller and router builds to
-	# source the CLI image
 done
 
 if [[ ${DOCKER} == true ]]
