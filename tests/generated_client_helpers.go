@@ -260,10 +260,33 @@ func (helper *ManagementHelperClient) GetIdentityAuthenticators(identityId strin
 	resp, err := helper.API.Identity.GetIdentityAuthenticators(getIdAuthenticatorsParams, nil)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve identity authenticators: %w", err)
+		return nil, fmt.Errorf("failed to retrieve identity authenticators: %w", rest_util.WrapErr(err))
 	}
 
 	return resp.Payload.Data, nil
+}
+
+func (helper *ManagementHelperClient) RefreshEnrollmentJwt(id string) (*rest_model.EnrollmentDetail, error) {
+	refreshParams := &managementEnrollment.RefreshEnrollmentParams{
+		ID: id,
+		Refresh: &rest_model.EnrollmentRefresh{
+			ExpiresAt: ToPtr(strfmt.DateTime(time.Now().Add(time.Hour * 24))),
+		},
+	}
+	_, err := helper.API.Enrollment.RefreshEnrollment(refreshParams, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	detail, err := helper.GetEnrollment(id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return detail, nil
+
 }
 
 type ClientHelperClient struct {

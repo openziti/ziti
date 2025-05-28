@@ -19,9 +19,14 @@
 package tests
 
 import (
+	"errors"
+	"github.com/go-openapi/runtime"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/common/eid"
+	"io"
 	"testing"
 	"time"
 )
@@ -32,6 +37,90 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 	defer ctx.Teardown()
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
+
+	t.Run("refresh jwts", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		managementApiClient := ctx.NewEdgeManagementApi(nil)
+		ctx.Req.NotNil(managementApiClient)
+
+		adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+		adminManApiSession, err := managementApiClient.Authenticate(adminCreds, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(adminManApiSession)
+
+		newIdentityLoc, err := managementApiClient.CreateIdentity(eid.New(), false)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(newIdentityLoc)
+		ctx.Req.NotEmpty(newIdentityLoc.ID)
+
+		newIdentity, err := managementApiClient.GetIdentity(newIdentityLoc.ID)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(newIdentity)
+
+		newEnrollmentExpiresAt := time.Now().Add(10 * time.Minute).UTC()
+		newEnrollmentLoc, err := managementApiClient.CreateEnrollmentOtt(newIdentity.ID, &newEnrollmentExpiresAt)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(newEnrollmentLoc)
+
+		newEnrollment, err := managementApiClient.GetEnrollment(newEnrollmentLoc.ID)
+		ctx.NoError(err)
+		ctx.NotNil(newEnrollment)
+
+		t.Run("can be generated", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			refreshedEnrollment, err := managementApiClient.RefreshEnrollmentJwt(*newEnrollment.ID)
+
+			if err != nil {
+				var apiErr *runtime.APIError
+				errors.As(err, &apiErr)
+
+				clientResp := apiErr.Response.(runtime.ClientResponse)
+				body, _ := io.ReadAll(clientResp.Body())
+				println(string(body))
+			}
+
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(refreshedEnrollment)
+
+			t.Run("has a different JWT than the original and refresh id equals the internal token id", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				parser := jwt.NewParser()
+
+				tokenClaims := &ziti.EnrollmentClaims{}
+				token, _, err := parser.ParseUnverified(refreshedEnrollment.JWT, tokenClaims)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(token)
+				ctx.Req.NotEmpty(tokenClaims.ID)
+
+				ctx.Req.Equal(*refreshedEnrollment.Token, tokenClaims.ID)
+
+				ctx.Req.NotEqual(newEnrollment.JWT, refreshedEnrollment.JWT)
+
+				t.Run("the original jwt fails for enrollment", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					clientApiClient := ctx.NewEdgeClientApi(nil)
+
+					newIdentityCertAuth, err := clientApiClient.CompleteOttEnrollment(*newEnrollment.Token)
+					ctx.Req.Error(err)
+					ctx.Req.Nil(newIdentityCertAuth)
+				})
+
+				t.Run("the new jwt can be used for enrollment", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					clientApiClient := ctx.NewEdgeClientApi(nil)
+
+					newIdentityCertAuth, err := clientApiClient.CompleteOttEnrollment(*refreshedEnrollment.Token)
+					ctx.Req.NoError(err)
+					ctx.Req.NotNil(newIdentityCertAuth)
+				})
+			})
+		})
+	})
 
 	t.Run("can create an OTT enrollment", func(t *testing.T) {
 		ctx.testContextChanged(t)

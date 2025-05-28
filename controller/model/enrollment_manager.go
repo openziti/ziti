@@ -294,11 +294,12 @@ func (self *EnrollmentManager) RefreshJwt(id string, expiresAt time.Time, ctx *c
 		return errorz.NewFieldError("must be after the current date and time", "expiresAt", expiresAt)
 	}
 
+	enrollment.Token = uuid.New().String()
+
 	if err = enrollment.FillJwtInfoWithExpiresAt(self.env, *enrollment.IdentityId, expiresAt); err != nil {
 		return err
 	}
 
-	enrollment.Token = uuid.New().String()
 	return self.Update(enrollment, fields.UpdatedFieldsMap{
 		db.FieldEnrollmentToken:     struct{}{},
 		db.FieldEnrollmentJwt:       struct{}{},
