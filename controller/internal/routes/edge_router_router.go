@@ -154,7 +154,7 @@ func (r *EdgeRouterRouter) listIdentities(ae *env.AppEnv, rc *response.RequestCo
 
 func (r *EdgeRouterRouter) listServices(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from serviceEdgeRouterPolicies where anyOf(routers) = "%v")`
-	ListAssociationsWithFilter[*model.ServiceDetail](ae, rc, filterTemplate, ae.Managers.EdgeService.GetDetailLister(), MapServiceToRestEntity)
+	ListAssociationsWithFilter[*model.ServiceDetail](ae, rc, filterTemplate, ae.Managers.EdgeService.GetDetailLister(), GetServiceMapper(ae))
 }
 
 func (r *EdgeRouterRouter) ReEnroll(ae *env.AppEnv, rc *response.RequestContext) {

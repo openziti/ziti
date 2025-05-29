@@ -5,6 +5,7 @@
 * System Certificate Authentication Improper Chain Detection
 * Authentication Events
 * Multi-underlay channel group secret
+* Flag to disable posture check functionality
 
 ## System Certificate Authentication Improper Chain Detection
 
@@ -215,6 +216,19 @@ clients provide a shared secret. This ensures that channels are get the expected
 underlays without requiring much larger group ids. On the client side this will require
 the go sdk version to be v1.1.1 or greater. 
 
+## Disabling posture check functionality
+
+As posture check functionality can have performance impacts, it can now be disabled, for users
+who don't need it.
+
+This is controlled in the controller config file.
+
+```
+edge:
+  # Set to true to disable posture check functionality
+  disablePostureChecks: false
+```
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.26 -> v1.0.27](https://github.com/openziti/agent/compare/v1.0.26...v1.0.27)
@@ -226,11 +240,16 @@ the go sdk version to be v1.1.1 or greater.
 * github.com/openziti/edge-api: [v0.26.43 -> v0.26.45](https://github.com/openziti/edge-api/compare/v0.26.43...v0.26.45)
 * github.com/openziti/foundation/v2: [v2.0.59 -> v2.0.63](https://github.com/openziti/foundation/compare/v2.0.59...v2.0.63)
 * github.com/openziti/runzmd: [v1.0.67 -> v1.0.72](https://github.com/openziti/runzmd/compare/v1.0.67...v1.0.72)
+* github.com/openziti/sdk-golang: [v1.1.0 -> v1.1.1](https://github.com/openziti/sdk-golang/compare/v1.1.0...v1.1.1)
+    * [Issue #735](https://github.com/openziti/sdk-golang/issues/735) - Ensure Authenticate can't be called in parallel
+
 * github.com/openziti/secretstream: [v0.1.32 -> v0.1.34](https://github.com/openziti/secretstream/compare/v0.1.32...v0.1.34)
 * github.com/openziti/storage: [v0.4.7 -> v0.4.11](https://github.com/openziti/storage/compare/v0.4.7...v0.4.11)
 * github.com/openziti/transport/v2: [v2.0.168 -> v2.0.171](https://github.com/openziti/transport/compare/v2.0.168...v2.0.171)
 * github.com/openziti/xweb/v2: [v2.3.1 -> v2.3.2](https://github.com/openziti/xweb/compare/v2.3.1...v2.3.2)
 * github.com/openziti/ziti: [v1.6.1 -> v1.6.2](https://github.com/openziti/ziti/compare/v1.6.1...v1.6.2)
+    * [Issue #3063](https://github.com/openziti/ziti/issues/3063) - Allow disabling posture check functionality
+    * [Issue #3052](https://github.com/openziti/ziti/issues/3052) - Terminator Create events for addressable terminators
     * [Issue #3059](https://github.com/openziti/ziti/issues/3059) - Refresh JWTs can desync internal validation token
     * [Issue #3008](https://github.com/openziti/ziti/issues/3008) - UPDB Enroll w/ 1.5.1 `ziti` panics against 1.5.0 and lower controllers
     * [Issue #3048](https://github.com/openziti/ziti/issues/3048) - Add improper client cert chain flag

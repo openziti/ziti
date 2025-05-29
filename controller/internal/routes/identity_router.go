@@ -255,7 +255,7 @@ func (r *IdentityRouter) listServices(ae *env.AppEnv, rc *response.RequestContex
 	}
 
 	filterTemplate := `not isEmpty(from servicePolicies where anyOf(identities) = "%v"` + typeFilter + ")"
-	ListAssociationsWithFilter[*model.ServiceDetail](ae, rc, filterTemplate, ae.Managers.EdgeService.GetDetailLister(), MapServiceToRestEntity)
+	ListAssociationsWithFilter[*model.ServiceDetail](ae, rc, filterTemplate, ae.Managers.EdgeService.GetDetailLister(), GetServiceMapper(ae))
 }
 
 func (r *IdentityRouter) listAuthenticators(ae *env.AppEnv, rc *response.RequestContext) {
