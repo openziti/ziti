@@ -64,7 +64,7 @@ func NewTunnelCmd(legacy bool) *cobra.Command {
 	root.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	root.PersistentFlags().StringVar(&cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 	root.PersistentFlags().BoolVar(&ha, "ha", false, "Enable HA controller compatibility")
-
+	root.PersistentFlags().BoolVar(&separateCtrlConn, "separate-ctrl-connection", false, "enables a separate control connection")
 	root.AddCommand(NewHostCmd())
 	root.AddCommand(NewProxyCmd())
 	for _, cmdF := range hostSpecificCmds {
@@ -88,6 +88,7 @@ var cliAgentEnabled bool
 var cliAgentAddr string
 var cliAgentAlias string
 var ha bool
+var separateCtrlConn bool
 
 func rootPreRun(cmd *cobra.Command, _ []string) {
 	verbose, err := cmd.Flags().GetBool("verbose")
@@ -188,7 +189,13 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 		entities.HostConfigV2,
 	}
 
-	zitiCfg.MaxControlConnections = 1
+	if cmd.Flags().Changed("ha") {
+		zitiCfg.EnableHa = ha
+	}
+
+	if separateCtrlConn {
+		zitiCfg.MaxControlConnections = 1
+	}
 
 	serviceListener := serviceListenerGroup.NewServiceListener()
 	svcPollRate, _ := cmd.Flags().GetUint(svcPollRateFlag)
@@ -207,10 +214,6 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Fatal("could not create ziti sdk context")
-	}
-
-	if ha {
-		rootPrivateContext.(*ziti.ContextImpl).CtrlClt.SetUseOidc(true)
 	}
 
 	for {
