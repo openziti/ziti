@@ -189,14 +189,14 @@ func (module *EnrollModuleCa) completeCertAuthenticatorEnrollment(log *logrus.En
 		},
 	}
 
-	_, authenticatorId, err := module.env.GetManagers().Identity.CreateWithAuthenticator(identity, newAuthenticator, context.GetChangeContext())
+	_, authenticatorIds, err := module.env.GetManagers().Identity.CreateWithAuthenticators(identity, []*Authenticator{newAuthenticator}, context.GetChangeContext())
 
 	if err != nil {
 		log.WithError(err).Error("failed to create identity with authenticator")
 		return nil, err
 	}
 
-	log.WithField("authenticatorId", authenticatorId).Info("identity and authenticator created, enrollment success")
+	log.WithField("authenticatorId", authenticatorIds[0]).Info("identity and authenticator created, enrollment success")
 
 	return &EnrollmentResult{
 		Identity:      identity,

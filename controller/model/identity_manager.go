@@ -76,6 +76,7 @@ func NewIdentityManager(env Env) *IdentityManager {
 
 	RegisterManagerDecoder[*Identity](env, manager)
 	RegisterCommand(env, &CreateIdentityWithEnrollmentsCmd{}, &edge_cmd_pb.CreateIdentityWithEnrollmentsCmd{})
+	RegisterCommand(env, &CreateIdentityWithAuthenticatorsCmd{}, &edge_cmd_pb.CreateIdentityWithAuthenticatorsCmd{})
 	RegisterCommand(env, &UpdateServiceConfigsCmd{}, &edge_cmd_pb.UpdateServiceConfigsCmd{})
 
 	return manager
@@ -141,6 +142,74 @@ func (self *IdentityManager) ApplyCreateWithEnrollments(cmd *CreateIdentityWithE
 				return err
 			}
 		}
+		return nil
+	})
+}
+
+func (self *IdentityManager) CreateWithAuthenticators(identity *Identity, authenticators []*Authenticator, ctx *change.Context) (string, []string, error) {
+	if identity.Id == "" {
+		identity.Id = eid.New()
+	}
+
+	var authenticatorIds []string
+	for _, authenticator := range authenticators {
+		if authenticator.Id == "" {
+			authenticator.Id = eid.New()
+		}
+		authenticator.IdentityId = identity.Id
+		authenticatorIds = append(authenticatorIds, authenticator.Id)
+	}
+
+	identityType, err := self.env.GetManagers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
+
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return "", nil, err
+	}
+
+	if identityType == nil {
+		apiErr := errorz.NewNotFound()
+		apiErr.Cause = errorz.NewFieldError("typeId not found", "typeId", identity.IdentityTypeId)
+		apiErr.AppendCause = true
+		return "", nil, apiErr
+	}
+
+	cmd := &CreateIdentityWithAuthenticatorsCmd{
+		manager:        self,
+		identity:       identity,
+		authenticators: authenticators,
+		ctx:            ctx,
+	}
+
+	err = self.Dispatch(cmd)
+
+	if err != nil {
+		return "", nil, nil
+	}
+
+	return identity.Id, authenticatorIds, nil
+}
+
+func (self *IdentityManager) ApplyCreateWithAuthenticators(cmd *CreateIdentityWithAuthenticatorsCmd, ctx boltz.MutateContext) error {
+	return self.env.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		boltIdentity, err := cmd.identity.toBoltEntityForCreate(ctx.Tx(), self.env)
+		if err != nil {
+			return err
+		}
+
+		if err = self.env.GetStores().Identity.Create(ctx, boltIdentity); err != nil {
+			return err
+		}
+
+		for _, authenticator := range cmd.authenticators {
+			boltAuthenticator, err := authenticator.toBoltEntityForCreate(ctx.Tx(), self.env)
+			if err != nil {
+				return err
+			}
+			if err = self.env.GetStores().Authenticator.Create(ctx, boltAuthenticator); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 }
@@ -336,63 +405,6 @@ func (self *IdentityManager) collectEnrollmentsInTx(tx *bbolt.Tx, id string, col
 		}
 	}
 	return nil
-}
-
-func (self *IdentityManager) CreateWithAuthenticator(identity *Identity, authenticator *Authenticator, ctx *change.Context) (string, string, error) {
-	if identity.Id == "" {
-		identity.Id = eid.New()
-	}
-
-	if authenticator.Id == "" {
-		authenticator.Id = eid.New()
-	}
-
-	if authenticator.IdentityId == "" {
-		authenticator.IdentityId = identity.Id
-	}
-
-	identityType, err := self.env.GetManagers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
-
-	if err != nil && !boltz.IsErrNotFoundErr(err) {
-		return "", "", err
-	}
-
-	if identityType == nil {
-		apiErr := errorz.NewNotFound()
-		apiErr.Cause = errorz.NewFieldError("typeId not found", "typeId", identity.IdentityTypeId)
-		apiErr.AppendCause = true
-		return "", "", apiErr
-	}
-
-	err = self.env.GetDb().Update(ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
-		boltIdentity, err := identity.toBoltEntityForCreate(ctx.Tx(), self.env)
-
-		if err != nil {
-			return err
-		}
-
-		if err = self.env.GetStores().Identity.Create(ctx, boltIdentity); err != nil {
-			return err
-		}
-
-		boltAuthenticator, err := authenticator.toBoltEntityForCreate(ctx.Tx(), self.env)
-
-		if err != nil {
-			return err
-		}
-
-		if err = self.env.GetStores().Authenticator.Create(ctx, boltAuthenticator); err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return "", "", err
-	}
-
-	return identity.Id, authenticator.Id, nil
 }
 
 func (self *IdentityManager) AssignServiceConfigs(id string, serviceConfigs []ServiceConfig, ctx *change.Context) error {
@@ -807,7 +819,7 @@ func (self *CreateIdentityWithEnrollmentsCmd) Encode() ([]byte, error) {
 		}
 		cmd.Enrollments = append(cmd.Enrollments, enrollmentMsg)
 	}
-
+	cmd.GetCommandType()
 	return cmd_pb.EncodeProtobuf(cmd)
 }
 
@@ -832,6 +844,63 @@ func (self *CreateIdentityWithEnrollmentsCmd) Decode(env Env, msg *edge_cmd_pb.C
 }
 
 func (self *CreateIdentityWithEnrollmentsCmd) GetChangeContext() *change.Context {
+	return self.ctx
+}
+
+type CreateIdentityWithAuthenticatorsCmd struct {
+	manager        *IdentityManager
+	identity       *Identity
+	authenticators []*Authenticator
+	ctx            *change.Context
+}
+
+func (self *CreateIdentityWithAuthenticatorsCmd) Apply(ctx boltz.MutateContext) error {
+	return self.manager.ApplyCreateWithAuthenticators(self, ctx)
+}
+
+func (self *CreateIdentityWithAuthenticatorsCmd) Encode() ([]byte, error) {
+	identityMsg, err := self.manager.IdentityToProtobuf(self.identity)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := &edge_cmd_pb.CreateIdentityWithAuthenticatorsCmd{
+		Identity: identityMsg,
+		Ctx:      ContextToProtobuf(self.ctx),
+	}
+
+	for _, authenticator := range self.authenticators {
+		authenticatorMsg, err := self.manager.GetEnv().GetManagers().Authenticator.AuthenticatorToProtobuf(authenticator)
+		if err != nil {
+			return nil, err
+		}
+		cmd.Authenticators = append(cmd.Authenticators, authenticatorMsg)
+	}
+
+	return cmd_pb.EncodeProtobuf(cmd)
+}
+
+func (self *CreateIdentityWithAuthenticatorsCmd) Decode(env Env, msg *edge_cmd_pb.CreateIdentityWithAuthenticatorsCmd) error {
+	self.manager = env.GetManagers().Identity
+
+	identity, err := self.manager.ProtobufToIdentity(msg.Identity)
+	if err != nil {
+		return err
+	}
+	self.identity = identity
+	self.ctx = ProtobufToContext(msg.Ctx)
+	for _, authenticatorMsg := range msg.Authenticators {
+		enrollment, err := self.manager.GetEnv().GetManagers().Authenticator.ProtobufToAuthenticator(authenticatorMsg)
+		if err != nil {
+			return err
+		}
+		self.authenticators = append(self.authenticators, enrollment)
+	}
+
+	return nil
+}
+
+func (self *CreateIdentityWithAuthenticatorsCmd) GetChangeContext() *change.Context {
 	return self.ctx
 }
 

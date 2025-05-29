@@ -520,7 +520,7 @@ func outputAuthenticators(o *api.Options, children []*gabs.Container, pagingInfo
 			isKeyRollRequested = "false"
 			isExtendRequested = "false"
 			extendRequestedAt = ""
-			if entity.Path("isIssuedByNetwork").Data().(bool) {
+			if isNetwork, ok := entity.Path("isIssuedByNetwork").Data().(bool); ok && isNetwork {
 				isIssuedByNetwork = "true"
 
 				if entity.Exists("isExtendRequested") && entity.Path("isExtendRequested").Data().(bool) {

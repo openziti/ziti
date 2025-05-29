@@ -14,6 +14,7 @@ enum CommandType {
   CreateIdentityWithEnrollmentsType = 1004;
   UpdateServiceConfigsType = 1005;
   ReEnrollEdgeRouterType = 1006;
+  CreateIdentityWithAuthenticatorsType = 1007;
 }
 
 message ChangeContext {
@@ -332,6 +333,13 @@ message Identity {
 message CreateIdentityWithEnrollmentsCmd {
   Identity identity = 1;
   repeated Enrollment enrollments = 2;
+
+  ChangeContext ctx = 3;
+}
+
+message CreateIdentityWithAuthenticatorsCmd {
+  Identity identity = 1;
+  repeated Authenticator authenticators = 2;
 
   ChangeContext ctx = 3;
 }
