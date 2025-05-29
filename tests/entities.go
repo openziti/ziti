@@ -25,6 +25,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/common/eid"
@@ -760,6 +761,7 @@ func newTestCaCert() (*x509.Certificate, *ecdsa.PrivateKey, *bytes.Buffer) {
 			Country:      []string{"US"},
 			Province:     []string{"Anywhere"},
 			Locality:     []string{"Anytime"},
+			CommonName:   "randomTestCa-" + uuid.NewString(),
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(0, 0, 1),
