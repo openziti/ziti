@@ -11,16 +11,16 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/openziti/agent v1.0.26
-	github.com/openziti/channel/v4 v4.0.6
+	github.com/openziti/agent v1.0.27
+	github.com/openziti/channel/v4 v4.2.0
 	github.com/openziti/edge-api v0.26.45
 	github.com/openziti/fablab v0.5.97
-	github.com/openziti/foundation/v2 v2.0.59
+	github.com/openziti/foundation/v2 v2.0.63
 	github.com/openziti/identity v1.0.101
 	github.com/openziti/metrics v1.4.1
-	github.com/openziti/sdk-golang v1.1.0
-	github.com/openziti/storage v0.4.7
-	github.com/openziti/transport/v2 v2.0.168
+	github.com/openziti/sdk-golang v1.1.1
+	github.com/openziti/storage v0.4.11
+	github.com/openziti/transport/v2 v2.0.171
 	github.com/openziti/ziti v1.5.4
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -29,7 +29,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/bbolt v1.4.0
-	golang.org/x/net v0.39.0
+	golang.org/x/net v0.40.0
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -84,7 +84,7 @@ require (
 	github.com/go-resty/resty/v2 v2.16.5 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
+	github.com/gomarkdown/markdown v0.0.0-20250311123330-531bef5e742b // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/schema v1.4.1 // indirect
@@ -143,10 +143,10 @@ require (
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/jwks v1.0.6 // indirect
-	github.com/openziti/runzmd v1.0.67 // indirect
-	github.com/openziti/secretstream v0.1.32 // indirect
+	github.com/openziti/runzmd v1.0.72 // indirect
+	github.com/openziti/secretstream v0.1.34 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
-	github.com/openziti/xweb/v2 v2.3.1 // indirect
+	github.com/openziti/xweb/v2 v2.3.2 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
@@ -190,15 +190,15 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	go4.org v0.0.0-20180809161055-417644f6feb5 // indirect
-	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/oauth2 v0.29.0 // indirect
-	golang.org/x/sync v0.13.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
-	golang.org/x/term v0.31.0 // indirect
-	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/oauth2 v0.30.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/tools v0.31.0 // indirect
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect

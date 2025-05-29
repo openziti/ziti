@@ -4,6 +4,7 @@
 
 * System Certificate Authentication Improper Chain Detection
 * Authentication Events
+* Multi-underlay channel group secret
 
 ## System Certificate Authentication Improper Chain Detection
 
@@ -207,11 +208,33 @@ Example Output:
 }
 ```
 
-## Component Updates and  Bug Fixes
+## Multi-underlay channel group secret
 
-* github.com/openziti/edge-api: [v0.26.43 -> v0.26.44](https://github.com/openziti/edge-api/compare/v0.26.43...v0.26.44)
+For additional security the experimental multi-underlay channel code now requires that 
+clients provide a shared secret. This ensures that channels are get the expected 
+underlays without requiring much larger group ids. On the client side this will require
+the go sdk version to be v1.1.1 or greater. 
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.26 -> v1.0.27](https://github.com/openziti/agent/compare/v1.0.26...v1.0.27)
+* github.com/openziti/channel/v4: [v4.0.6 -> v4.2.0](https://github.com/openziti/channel/compare/v4.0.6...v4.2.0)
+    * [Issue #190](https://github.com/openziti/channel/issues/190) - Allow setting a context.Context for channel send timeouts/cancellation
+    * [Issue #187](https://github.com/openziti/channel/issues/187) - Allow fallback to regular channel when 'is grouped' isn't set when using multi-listener
+    * [Issue #185](https://github.com/openziti/channel/issues/185) - Add group secret for multi-underlay channels
+
+* github.com/openziti/edge-api: [v0.26.43 -> v0.26.45](https://github.com/openziti/edge-api/compare/v0.26.43...v0.26.45)
+* github.com/openziti/foundation/v2: [v2.0.59 -> v2.0.63](https://github.com/openziti/foundation/compare/v2.0.59...v2.0.63)
+* github.com/openziti/runzmd: [v1.0.67 -> v1.0.72](https://github.com/openziti/runzmd/compare/v1.0.67...v1.0.72)
+* github.com/openziti/secretstream: [v0.1.32 -> v0.1.34](https://github.com/openziti/secretstream/compare/v0.1.32...v0.1.34)
+* github.com/openziti/storage: [v0.4.7 -> v0.4.11](https://github.com/openziti/storage/compare/v0.4.7...v0.4.11)
+* github.com/openziti/transport/v2: [v2.0.168 -> v2.0.171](https://github.com/openziti/transport/compare/v2.0.168...v2.0.171)
+* github.com/openziti/xweb/v2: [v2.3.1 -> v2.3.2](https://github.com/openziti/xweb/compare/v2.3.1...v2.3.2)
 * github.com/openziti/ziti: [v1.6.1 -> v1.6.2](https://github.com/openziti/ziti/compare/v1.6.1...v1.6.2)
-
+    * [Issue #3059](https://github.com/openziti/ziti/issues/3059) - Refresh JWTs can desync internal validation token
+    * [Issue #3008](https://github.com/openziti/ziti/issues/3008) - UPDB Enroll w/ 1.5.1 `ziti` panics against 1.5.0 and lower controllers
+    * [Issue #3048](https://github.com/openziti/ziti/issues/3048) - Add improper client cert chain flag
+    * [Issue #2614](https://github.com/openziti/ziti/issues/2614) - Add Configuration for OIDC RefreshToken/Access Token
 
 # Release 1.6.1
 
