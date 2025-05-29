@@ -175,7 +175,7 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 				return nil, err
 			}
 
-			apiEntities, err = modelToApi(ae, rc, MapServiceToRestEntity, result.GetEntities())
+			apiEntities, err = modelToApi(ae, rc, GetServiceMapper(ae), result.GetEntities())
 			if err != nil {
 				return nil, err
 			}
@@ -237,7 +237,7 @@ func (r *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 		if err != nil {
 			return nil, err
 		}
-		return MapServiceToRestEntity(ae, rc, svc)
+		return GetServiceMapper(ae)(ae, rc, svc)
 	})
 }
 

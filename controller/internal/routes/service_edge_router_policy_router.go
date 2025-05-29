@@ -20,10 +20,10 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/service_edge_router_policy"
 	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/fields"
 )
 
 func init() {
@@ -112,5 +112,5 @@ func (r *ServiceEdgeRouterPolicyRouter) ListEdgeRouters(ae *env.AppEnv, rc *resp
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler[*model.ServiceEdgeRouterPolicy, *model.ServiceDetail](ae, rc, ae.Managers.ServiceEdgeRouterPolicy, ae.Managers.EdgeService.GetDetailLister(), MapServiceToRestEntity)
+	ListAssociationWithHandler[*model.ServiceEdgeRouterPolicy, *model.ServiceDetail](ae, rc, ae.Managers.ServiceEdgeRouterPolicy, ae.Managers.EdgeService.GetDetailLister(), GetServiceMapper(ae))
 }

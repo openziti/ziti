@@ -21,11 +21,13 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/ast"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/response"
+	"go.etcd.io/bbolt"
 	"strings"
 	"time"
 )
@@ -104,16 +106,38 @@ func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.
 	return ret
 }
 
-func MapServiceToRestEntity(ae *env.AppEnv, rc *response.RequestContext, service *model.ServiceDetail) (interface{}, error) {
-	return MapServiceToRestModel(ae, rc, service)
+func GetServiceMapper(ae *env.AppEnv) func(ae *env.AppEnv, rc *response.RequestContext, service *model.ServiceDetail) (any, error) {
+	fillPostureData := FillServicePostureCheckData(ae)
+	return func(ae *env.AppEnv, rc *response.RequestContext, service *model.ServiceDetail) (any, error) {
+		return MapServiceToRestEntity(ae, rc, service, fillPostureData)
+	}
+}
+
+func MapServiceToRestEntity(ae *env.AppEnv, rc *response.RequestContext, service *model.ServiceDetail, fillPostureData bool) (interface{}, error) {
+	return MapServiceToRestModel(ae, rc, service, fillPostureData)
+}
+
+func FillServicePostureCheckData(ae *env.AppEnv) bool {
+	if ae.GetHostController().GetConfig().Edge.DisablePostureChecks {
+		return false
+	}
+
+	arePostureChecksDefined := false
+	_ = ae.GetDb().View(func(tx *bbolt.Tx) error {
+		arePostureChecksDefined = !ae.GetStores().PostureCheck.IterateIds(tx, ast.BoolNodeTrue).IsValid()
+		return nil
+	})
+
+	return arePostureChecksDefined
 }
 
 func MapServicesToRestEntity(ae *env.AppEnv, rc *response.RequestContext, es []*model.ServiceDetail) ([]interface{}, error) {
 	// can't use modelToApi b/c it require list of network.Entity
 	restModel := make([]interface{}, 0)
 
+	fillPostureData := FillServicePostureCheckData(ae)
 	for _, e := range es {
-		al, err := MapServiceToRestEntity(ae, rc, e)
+		al, err := MapServiceToRestEntity(ae, rc, e, fillPostureData)
 
 		if err != nil {
 			return nil, err
@@ -125,7 +149,7 @@ func MapServicesToRestEntity(ae *env.AppEnv, rc *response.RequestContext, es []*
 	return restModel, nil
 }
 
-func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service *model.ServiceDetail) (*rest_model.ServiceDetail, error) {
+func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service *model.ServiceDetail, fillPostureData bool) (*rest_model.ServiceDetail, error) {
 	roleAttributes := rest_model.Attributes(service.RoleAttributes)
 
 	maxIdleTime := service.MaxIdleTime.Milliseconds()
@@ -147,7 +171,11 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 
 	validChecks := map[string]bool{} //cache individual check status
 
-	policyPostureCheckMap := ae.GetManagers().EdgeService.GetPolicyPostureChecks(rc.Identity.Id, *ret.ID)
+	var policyPostureCheckMap map[string]*model.PolicyPostureChecks
+
+	if !ae.GetHostController().GetConfig().Edge.DisablePostureChecks {
+		policyPostureCheckMap = ae.GetManagers().EdgeService.GetPolicyPostureChecks(rc.Identity.Id, *ret.ID)
+	}
 
 	if len(policyPostureCheckMap) == 0 {
 		for _, permission := range ret.Permissions {

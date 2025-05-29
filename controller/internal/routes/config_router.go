@@ -129,5 +129,5 @@ func (r *ConfigRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params
 }
 
 func (r *ConfigRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler[*model.Config, *model.ServiceDetail](ae, rc, ae.Managers.Config, ae.Managers.EdgeService.GetDetailLister(), MapServiceToRestEntity)
+	ListAssociationWithHandler[*model.Config, *model.ServiceDetail](ae, rc, ae.Managers.Config, ae.Managers.EdgeService.GetDetailLister(), GetServiceMapper(ae))
 }

@@ -55,13 +55,15 @@ func newPostureCache(env Env) *PostureCache {
 		env:                      env,
 	}
 
-	pc.run(env.GetCloseNotifyChannel())
+	if !env.GetConfig().Edge.DisablePostureChecks {
+		pc.run(env.GetCloseNotifyChannel())
 
-	env.GetStores().ApiSession.AddEntityEventListenerF(pc.ApiSessionCreated, boltz.EntityCreatedAsync)
-	env.GetStores().ApiSession.AddEntityEventListenerF(pc.ApiSessionDeleted, boltz.EntityDeletedAsync)
-	env.GetStores().Identity.AddEntityEventListenerF(pc.IdentityDeleted, boltz.EntityDeletedAsync)
+		env.GetStores().ApiSession.AddEntityEventListenerF(pc.ApiSessionCreated, boltz.EntityCreatedAsync)
+		env.GetStores().ApiSession.AddEntityEventListenerF(pc.ApiSessionDeleted, boltz.EntityDeletedAsync)
+		env.GetStores().Identity.AddEntityEventListenerF(pc.IdentityDeleted, boltz.EntityDeletedAsync)
 
-	env.GetStores().PostureCheckType.AddListener(pc.PostureCheckChanged, boltz.EntityCreatedAsync, boltz.EntityUpdatedAsync)
+		env.GetStores().PostureCheckType.AddListener(pc.PostureCheckChanged, boltz.EntityCreatedAsync, boltz.EntityUpdatedAsync)
+	}
 
 	return pc
 }

@@ -163,6 +163,10 @@ edge:
     idTokenDuration: 30m
     # (optional, default 24hr)
     refreshTokenDuration: 24h
+
+  # Set to true to disable posture check functionality
+  disablePostureChecks: false
+
   # This section represents the configuration of the Edge API that is served over HTTPS
   api:
     #(optional, default 90s) Alters how frequently heartbeat and last activity values are persisted

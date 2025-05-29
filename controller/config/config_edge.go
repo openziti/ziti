@@ -117,6 +117,7 @@ type EdgeConfig struct {
 	AuthRateLimiter      command.AdaptiveRateLimiterConfig
 	caCerts              []*x509.Certificate
 	caCertPool           *x509.CertPool
+	DisablePostureChecks bool
 }
 
 type HttpTimeouts struct {
@@ -648,6 +649,16 @@ func LoadEdgeConfigFromMap(configMap map[interface{}]interface{}) (*EdgeConfig, 
 
 	if err = edgeConfig.loadIdentityStatusConfig(edgeConfigMap); err != nil {
 		return nil, err
+	}
+
+	if v, ok := edgeConfigMap["disablePostureChecks"]; ok {
+		if boolVal, ok := v.(bool); ok {
+			edgeConfig.DisablePostureChecks = boolVal
+		} else if strVal, ok := v.(string); ok {
+			edgeConfig.DisablePostureChecks = strings.EqualFold("true", strVal)
+		} else {
+			return nil, fmt.Errorf("invalid type for 'enablePostureChecks' config %T", v)
+		}
 	}
 
 	return edgeConfig, nil
