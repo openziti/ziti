@@ -143,6 +143,9 @@ type TerminatorEvent struct {
 	// Optional identifier indicating what is hosting the terminator. If hosted by the edge, will be an identity id.
 	HostId string `json:"host_id"`
 
+	// The instance id of the terminator
+	InstanceId string `json:"instance_id"`
+
 	// Indicates if the terminator's router is online.
 	RouterOnline bool `json:"router_online"`
 

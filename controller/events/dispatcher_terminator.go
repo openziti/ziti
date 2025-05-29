@@ -238,6 +238,7 @@ func (self *terminatorEventAdapter) createTerminatorEvent(eventType event.Termin
 		TerminatorId:              terminator.Id,
 		RouterId:                  terminator.Router,
 		HostId:                    terminator.HostId,
+		InstanceId:                terminator.InstanceId,
 		RouterOnline:              self.Network.ConnectedRouter(terminator.Router),
 		Precedence:                terminator.Precedence,
 		StaticCost:                terminator.Cost,
