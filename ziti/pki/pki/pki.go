@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/pki/certificate"
 	"github.com/openziti/ziti/ziti/pki/store"
+	"golang.org/x/crypto/ed25519"
 	"time"
 
 	"github.com/openziti/identity/certtools"
@@ -64,9 +65,15 @@ var _ PrivateKeyOptions = &EcPrivateKeyOptions{}
 
 type EcPrivateKeyOptions struct {
 	Curve elliptic.Curve
+	// check this if using Curve25519
+	Curve25519 bool
 }
 
 func (e *EcPrivateKeyOptions) GenerateKey() (crypto.PrivateKey, error) {
+	if e.Curve25519 {
+		_, privateKey, _ := ed25519.GenerateKey(rand.Reader)
+		return privateKey, nil
+	}
 	return ecdsa.GenerateKey(e.Curve, rand.Reader)
 }
 
@@ -196,6 +203,8 @@ func publicKeyFromPrivate(key crypto.PrivateKey) (crypto.PublicKey, error) {
 		return &pk.PublicKey, nil
 	case *ecdsa.PrivateKey:
 		return &pk.PublicKey, nil
+	case ed25519.PrivateKey:
+		return pk.Public(), nil
 	}
 
 	return nil, errors.New("unsupported key type")
