@@ -22,6 +22,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/ed25519"
 	"gopkg.in/go-jose/go-jose.v2"
 )
 
@@ -95,6 +96,8 @@ func getSigningMethod(cert *x509.Certificate) jwt.SigningMethod {
 		}
 	case *rsa.PublicKey:
 		return jwt.SigningMethodRS256
+	case ed25519.PublicKey:
+		return jwt.SigningMethodEdDSA
 	}
 
 	return nil
