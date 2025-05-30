@@ -77,7 +77,7 @@ func (o *PKICreateIntermediateOptions) addPKICreateIntermediateFlags(cmd *cobra.
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 3650, "Expiration limit in days")
 	cmd.Flags().IntVarP(&o.Flags.CAMaxPath, "max-path-len", "", 0, "Intermediate maximum path length")
 	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the RSA private key, ignored if -curve is set")
-	cmd.Flags().StringVarP(&o.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521")
+	cmd.Flags().StringVarP(&o.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521, Curve25519")
 }
 
 // Run implements this command
