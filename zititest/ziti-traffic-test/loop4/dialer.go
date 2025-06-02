@@ -33,6 +33,7 @@ func init() {
 
 type dialerCmd struct {
 	*Sim
+	debugOnFailure bool
 }
 
 func newDialerCmd() *cobra.Command {
@@ -47,6 +48,9 @@ func newDialerCmd() *cobra.Command {
 		Run:   dialer.run,
 	}
 
+	cmd.Flags().BoolVarP(&dialer.debugOnFailure, "debug-on-failure", "d", false,
+		"keep running on failure to allow debugging")
+
 	return cmd
 }
 
@@ -60,12 +64,20 @@ func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 	}
 
 	if err := cmd.runScenario(cmd.scenario); err != nil {
-		log.WithError(err).Fatal("error running scenario")
+		if cmd.debugOnFailure {
+			log.WithError(err).Error("error running scenario")
+			log.Info("not exiting to allow debugging")
+			doneC := make(chan struct{})
+			<-doneC
+		} else {
+			log.WithError(err).Fatal("error running scenario")
+		}
 	}
 }
 
 func (sim *Sim) runScenario(scenario *Scenario) error {
 	log := pfxlog.Logger()
+	log.Info("starting scenario run")
 
 	resultChs := make(map[string]chan *Result)
 	for _, workload := range scenario.Workloads {

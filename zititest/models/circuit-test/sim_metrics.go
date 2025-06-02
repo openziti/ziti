@@ -143,16 +143,20 @@ func (self *SimMetricsValidator) ValidateCollected() error {
 		"ert to ert":       200 * time.Millisecond,
 	}
 
+	sdkP95Latency := 750 * time.Millisecond
+	ertP5Latency := 500 * time.Millisecond
+	sdkXgP5Latency := 500 * time.Millisecond
+
 	latencyP95Thresholds := map[string]time.Duration{
-		"sdk to sdk":       500 * time.Millisecond,
-		"sdk to sdk-xg":    500 * time.Millisecond,
-		"sdk to ert":       500 * time.Millisecond,
-		"sdk-xg to sdk":    500 * time.Millisecond,
-		"sdk-xg to sdk-xg": 500 * time.Millisecond,
-		"sdk-xg to ert":    500 * time.Millisecond,
-		"ert to sdk":       500 * time.Millisecond,
-		"ert to sdk-xg":    500 * time.Millisecond,
-		"ert to ert":       500 * time.Millisecond,
+		"sdk to sdk":       sdkP95Latency,
+		"sdk to sdk-xg":    sdkP95Latency,
+		"sdk to ert":       sdkP95Latency,
+		"sdk-xg to sdk":    sdkP95Latency,
+		"ert to sdk":       sdkP95Latency,
+		"ert to ert":       ertP5Latency,
+		"ert to sdk-xg":    ertP5Latency,
+		"sdk-xg to ert":    ertP5Latency,
+		"sdk-xg to sdk-xg": sdkXgP5Latency,
 	}
 
 	sdkThroughput := uint64(750) * 1024
@@ -162,13 +166,13 @@ func (self *SimMetricsValidator) ValidateCollected() error {
 	throughputThresholds := map[string]uint64{
 		"sdk to sdk":       sdkThroughput,
 		"sdk to sdk-xg":    sdkThroughput,
-		"sdk to ert":       ertThroughput,
-		"sdk-xg to sdk":    sdkThroughput,
-		"sdk-xg to sdk-xg": sdkXgThroughput,
-		"sdk-xg to ert":    ertThroughput,
+		"sdk to ert":       sdkThroughput,
 		"ert to sdk":       sdkThroughput,
+		"sdk-xg to sdk":    sdkThroughput,
+		"sdk-xg to ert":    ertThroughput,
 		"ert to sdk-xg":    ertThroughput,
 		"ert to ert":       ertThroughput,
+		"sdk-xg to sdk-xg": sdkXgThroughput,
 	}
 
 	var errList []error

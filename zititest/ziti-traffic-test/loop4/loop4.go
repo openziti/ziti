@@ -143,7 +143,7 @@ func (sim *Sim) InitConnectors() error {
 			}
 
 			sim.listeners[name] = func(workload *Workload) (net.Listener, error) {
-				return sim.ListenSdk(ctx, workload)
+				return sim.ListenSdk(ctx, workload, connector.SdkOptions.EnableSdkXgress)
 			}
 		} else if connector.TransportOptions != nil {
 			log.Infof("loading transport connector '%s'", name)
@@ -176,9 +176,9 @@ func (sim *Sim) InitConnectors() error {
 	return nil
 }
 
-func (sim *Sim) ListenSdk(client ziti.Context, wf *Workload) (net.Listener, error) {
+func (sim *Sim) ListenSdk(client ziti.Context, wf *Workload, useSdkFlowControl bool) (net.Listener, error) {
 	listenOptions := ziti.DefaultListenOptions()
-	listenOptions.SdkFlowControl = util.Ptr(true)
+	listenOptions.SdkFlowControl = util.Ptr(useSdkFlowControl)
 	return client.ListenWithOptions(wf.ServiceName, listenOptions)
 }
 
@@ -225,13 +225,21 @@ func (sim *Sim) StartMetrics() error {
 			}
 		}
 
-	} else {
-		sim.metrics = metrics.NewRegistry("no-op", nil)
+	}
+
+	if sim.scenario.Metrics != nil && sim.scenario.Metrics.WriteToStdout {
+		if sim.metrics == nil {
+			sim.metrics = metrics.NewRegistry("no-op", nil)
+		}
 
 		sim.StartStdoutMetricsReporter(sim.metrics)
 		for _, ctx := range sim.sdkClients {
 			sim.StartStdoutMetricsReporter(ctx.Metrics())
 		}
+	}
+
+	if sim.metrics == nil {
+		sim.metrics = metrics.NewRegistry("no-op", nil)
 	}
 
 	return nil

@@ -5,6 +5,7 @@ connectors:
       ha: {{ .Component.GetFlag "ha"}}
       max_control_underlays: 1
       max_data_underlays: 2
+      enable_sdk_xgress: true
 
 workloads:
   - name: throughput

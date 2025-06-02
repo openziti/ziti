@@ -3,7 +3,7 @@ connectors:
     sdk:
       identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
       ha: {{ .Component.GetFlag "ha"}}
-
+      max_control_underlays: 1
 
 workloads:
   - name: throughput

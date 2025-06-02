@@ -159,6 +159,8 @@ func (cmd *remoteControlledCmd) sendScenarioResult(ch channel.Channel, id string
 	msg.PutBoolHeader(int32(loop4Pb.HeaderType_ScenarioSuccess), success)
 	if err := msg.WithTimeout(10 * time.Second).Send(ch); err != nil {
 		log.WithError(err).Error("unable to send scenario run result message")
+	} else {
+		log.Info("scenario result successfully reported")
 	}
 }
 

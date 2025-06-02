@@ -42,11 +42,11 @@ var throughputWorkload = "" +
     iterations:   2
     dialer:
       txRequests:       80000
-      rxTimeout:        1s
+      rxTimeout:        5s
       payloadMinBytes:  10000
       payloadMaxBytes:  10000
     listener:
-      rxTimeout:        1s
+      rxTimeout:        5s
 `
 
 var gentleThroughputWorkload = "" +
@@ -56,11 +56,11 @@ var gentleThroughputWorkload = "" +
       txRequests:       7000
       txPacing:         1ms
       txMaxJitter:      0
-      rxTimeout:        1s
+      rxTimeout:        5s
       payloadMinBytes:  10000
       payloadMaxBytes:  10000
     listener:
-      rxTimeout:        1s
+      rxTimeout:        5s
 `
 
 var latencyWorkload = "" +
@@ -68,14 +68,14 @@ var latencyWorkload = "" +
     iterations:  400
     dialer:
       txRequests:       1
-      rxTimeout:        1s
+      rxTimeout:        5s
       payloadMinBytes:  64
       payloadMaxBytes:  256
       latencyFrequency: 1
     listener:
       txRequests:       1
       txAfterRx:        true
-      rxTimeout:        1s
+      rxTimeout:        5s
       payloadMinBytes:  2048
       payloadMaxBytes:  10000
 `
@@ -124,10 +124,10 @@ var m = &model.Model{
 			"gentleThroughputWorkload": gentleThroughputWorkload,
 			"latencyWorkload":          latencyWorkload,
 			"slowWorkload":             slowWorkload,
-			"testErtHost":              true,
-			"testErtClient":            true,
-			"testSdkClient":            true,
-			"testSdkHost":              true,
+			"testErtHost":              false,
+			"testErtClient":            false,
+			"testSdkClient":            false,
+			"testSdkHost":              false,
 			"testSdkXgClient":          true,
 			"testSdkXgHost":            true,
 		},

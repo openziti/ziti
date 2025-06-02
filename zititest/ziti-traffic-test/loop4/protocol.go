@@ -310,7 +310,7 @@ func (p *protocol) verifier() {
 
 		case <-time.After(p.rxTimeout):
 			timeSinceLastRx := info.NowInMilliseconds() - atomic.LoadInt64(&p.lastRx)
-			errStr := fmt.Sprintf("rx timeout exceeded (%d ms.). Last rx: %v. tx count: %v, rx count: %v",
+			errStr := fmt.Sprintf("rx timeout exceeded %v. Time since last rx: %dms. tx count: %v, rx count: %v",
 				p.test.RxTimeout, timeSinceLastRx, atomic.LoadInt32(&p.txCount), atomic.LoadInt32(&p.rxCount))
 			// err := errors.New(errStr)
 			log.Error(errStr)

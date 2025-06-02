@@ -145,6 +145,7 @@ type Metrics struct {
 	Service        string        `yaml:"service"`
 	ReportInterval time.Duration `yaml:"interval"`
 	ClientId       string        `yaml:"clientId"`
+	WriteToStdout  bool          `yaml:"writeToStdout"`
 }
 
 func LoadScenario(path string) (*Scenario, error) {
