@@ -335,7 +335,7 @@ func (sm *ManagerImpl) UpdateChApiSession(ch channel.Channel, newApiSession *Api
 		return fmt.Errorf("bearer token api session ids did not match, current: %s, new: %s", currentApiSession.Claims.ApiSessionId, newApiSession.Claims.ApiSessionId)
 	}
 
-	sm.activeChannels.Set(ch.Id(), newApiSession)
+	sm.activeChannels.Set(ch.ConnectionId(), newApiSession)
 
 	return nil
 }
@@ -345,17 +345,17 @@ func (sm *ManagerImpl) GetEnv() env.RouterEnv {
 }
 
 func (sm *ManagerImpl) GetApiSessionFromCh(ch channel.Channel) *ApiSession {
-	apiSession, _ := sm.activeChannels.Get(ch.Id())
+	apiSession, _ := sm.activeChannels.Get(ch.ConnectionId())
 
 	return apiSession
 }
 
 func (sm *ManagerImpl) AddActiveChannel(ch channel.Channel, session *ApiSession) {
-	sm.activeChannels.Set(ch.Id(), session)
+	sm.activeChannels.Set(ch.ConnectionId(), session)
 }
 
 func (sm *ManagerImpl) RemoveActiveChannel(ch channel.Channel) {
-	sm.activeChannels.Remove(ch.Id())
+	sm.activeChannels.Remove(ch.ConnectionId())
 }
 
 func (sm *ManagerImpl) StartRouterModelSave(filePath string, duration time.Duration) {

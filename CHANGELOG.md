@@ -248,12 +248,15 @@ edge:
 * github.com/openziti/transport/v2: [v2.0.168 -> v2.0.171](https://github.com/openziti/transport/compare/v2.0.168...v2.0.171)
 * github.com/openziti/xweb/v2: [v2.3.1 -> v2.3.2](https://github.com/openziti/xweb/compare/v2.3.1...v2.3.2)
 * github.com/openziti/ziti: [v1.6.1 -> v1.6.2](https://github.com/openziti/ziti/compare/v1.6.1...v1.6.2)
+    * [Issue #3072](https://github.com/openziti/ziti/issues/3072) - router active channel map is using client supplied id, which can cause map collisions
+    * [Issue #3068](https://github.com/openziti/ziti/issues/3068) - Auto CA enrollments do not dispatch events in HA
     * [Issue #3063](https://github.com/openziti/ziti/issues/3063) - Allow disabling posture check functionality
     * [Issue #3052](https://github.com/openziti/ziti/issues/3052) - Terminator Create events for addressable terminators
     * [Issue #3059](https://github.com/openziti/ziti/issues/3059) - Refresh JWTs can desync internal validation token
     * [Issue #3008](https://github.com/openziti/ziti/issues/3008) - UPDB Enroll w/ 1.5.1 `ziti` panics against 1.5.0 and lower controllers
     * [Issue #3048](https://github.com/openziti/ziti/issues/3048) - Add improper client cert chain flag
     * [Issue #2614](https://github.com/openziti/ziti/issues/2614) - Add Configuration for OIDC RefreshToken/Access Token
+
 
 # Release 1.6.1
 
