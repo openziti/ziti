@@ -154,7 +154,7 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 	case dns.TypeAAAA:
 		// Always respond with NOERROR for AAAA queries (success, but empty answer)
 		msg.Authoritative = true
-		msg.Rcode = dns.StringToRcode["NOERROR"]
+		msg.Rcode = dns.RcodeSuccess
 	}
 	log.Tracef("response:\n%s\n", msg.String())
 	err := w.WriteMsg(&msg)
