@@ -151,6 +151,11 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 		} else {
 			msg.Rcode = dns.RcodeRefused // fail fast, and inspire resolver to query next name server in its list.
 		}
+	case dns.TypeAAAA:
+		// Always respond with NOERROR for AAAA queries (success, but empty answer); enables MUSL getaddrinfo() to resolve the intercept domain to IPv4 address
+		log.Debugf("NOERROR for AAAA query: %s", q.Name)
+		msg.Authoritative = true
+		msg.Rcode = dns.StringToRcode["NOERROR"]
 	}
 	log.Tracef("response:\n%s\n", msg.String())
 	err := w.WriteMsg(&msg)
