@@ -141,7 +141,7 @@ If downstream promotion failed for any reason, e.g., a check failure on the same
 is probably best to create a new release that fixes the problem. Manually promoting downstreams is possible, but error
 prone and tedious.
 
-1. In GitHub, find "latest." This is the highest version that's not a pre-release, and should be available in the Linux repos.
+1. In GitHub, find [the latest stable release](https://github.com/openziti/ziti/releases/latest). This is the highest version that's not a pre-release, and should be available in the Linux repos.
 1. In Artifactory, explore the available non-tunneler packages. They're organized together because they are OS
    version-neutral, while the tunneler packages are organized separately by OS version. DEB and RPM repos have distinct
    layouts, but these links alone will answer "Is the latest stable CLI available?".
