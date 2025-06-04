@@ -141,14 +141,20 @@ If downstream promotion failed for any reason, e.g., a check failure on the same
 is probably best to create a new release that fixes the problem. Manually promoting downstreams is possible, but error
 prone and tedious.
 
-1. In GitHub, find [the latest stable release](https://github.com/openziti/ziti/releases/latest). This is the highest version that's not a pre-release, and should be available in the Linux repos.
-1. In Artifactory, explore the available non-tunneler packages. They're organized together because they are OS
-   version-neutral, while the tunneler packages are organized separately by OS version. DEB and RPM repos have distinct
-   layouts, but these links alone will answer "Is the latest stable CLI available?".
-   - [the `debian` tree](https://packages.openziti.org/zitipax-openziti-deb-stable/pool/openziti/amd64/)
-   - [the `redhat` tree](https://packages.openziti.org/zitipax-openziti-rpm-stable/redhat/x86_64/)
+The first step is to identify the version that *should* be available in the downstream repos. In GitHub, find [the latest stable release](https://github.com/openziti/ziti/releases/latest). This is the highest version that's not a pre-release, and should be available in the downstream repos, i.e., Linux packages, Docker images, etc.
 
-#### RedHat Packages
+#### Manually Promoting Linux Packages
+
+In Artifactory, explore the available non-tunneler packages. They're organized together because they are OS
+version-neutral, while the tunneler packages are organized separately by OS version. DEB and RPM repos have distinct
+layouts, but these links alone can answer "Is the latest stable CLI available?" by identifying the highest version of the `openziti` package, e.g., `openziti_1.5.4_amd64.deb`.
+
+- [the `debian` tree](https://packages.openziti.org/zitipax-openziti-deb-stable/pool/openziti/amd64/)
+- [the `redhat` tree](https://packages.openziti.org/zitipax-openziti-rpm-stable/redhat/x86_64/)
+
+##### Manually Promoting RedHat Packages
+
+Modify this example script to suit your needs.
 
 ```bash
 (set -euxo pipefail
@@ -167,7 +173,9 @@ done
 )
 ```
 
-#### Debian Packages
+##### Manually Promoting Debian Packages
+
+Modify this example script to suit your needs.
 
 ```bash
 (set -euxo pipefail
@@ -188,6 +196,25 @@ done
 ```
 
 The `openziti-console` package is controlled separately by that project's release process in [openziti/ziti-console](https://github.com/openziti/ziti-console/blob/app-ziti-console-v3.12.3/.github/workflows/linux-publish.yml#L143).
+
+#### Manually Promoting Docker Images
+
+Docker images are routinely "promoted" by re-tagging the release tag, e.g., `:1.5.4`, as `:latest`.
+
+Modify this example script to suit your needs.
+
+```bash
+(set -euxo pipefail
+# V=$(curl -sSf https://api.github.com/repos/openziti/ziti/releases/latest | jq -r '.tag_name')
+V=1.5.4
+test -n "${V}"
+for R in ziti-{cli,controller,router,tunnel}; do
+  docker buildx imagetools create --tag openziti/${R}:latest openziti/${R}:${V}
+done
+)
+```
+
+Note: The `openziti/ziti-console-assets` image is controlled separately by the workflow in [openziti/ziti-console](https://github.com/openziti/ziti-console/blob/app-ziti-console-v3.12.3/.github/workflows/docker-publish.yml#L48).
 
 ## Quickstart Releases
 
