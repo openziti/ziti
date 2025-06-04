@@ -138,8 +138,56 @@ The first step is to ensure the GitHub release is not marked "latest," and the h
 ### Manually Promoting Downstreams
 
 If downstream promotion failed for any reason, e.g., a check failure on the same Git revision blocked promotion, then it
-is best to create a new release that fixes the problem. Manually promoting downstreams is hypothetically possible, has
-never been attempted, is error prone and tedious, and should probably be avoided.
+is probably best to create a new release that fixes the problem. Manually promoting downstreams is possible, but error
+prone and tedious.
+
+1. In GitHub, find "latest." This is the highest version that's not a pre-release, and should be available in the Linux repos.
+1. In Artifactory, explore the available non-tunneler packages. They're organized together because they are OS
+   version-neutral, while the tunneler packages are organized separately by OS version. DEB and RPM repos have distinct
+   layouts, but these links alone will answer "Is the latest stable CLI available?".
+   - [the `debian` tree](https://packages.openziti.org/zitipax-openziti-deb-stable/pool/openziti/amd64/)
+   - [the `redhat` tree](https://packages.openziti.org/zitipax-openziti-rpm-stable/redhat/x86_64/)
+
+#### RedHat Packages
+
+```bash
+(set -euxo pipefail
+# curl -sSf https://api.github.com/repos/openziti/ziti/releases/latest | jq -r '.tag_name'
+V=1.5.4
+test -n "${V}"
+for A in x86_64 aarch64 armv7hl; do
+  for P in openziti{,-controller,-router}; do
+    jf rt cp \
+      --recursive=false \
+      --flat=true \
+      --fail-no-op=true \
+      zitipax-openziti-rpm-{test,stable}/redhat/${A}/${P}-${V}-1.${A}.rpm
+  done
+done
+)
+```
+
+#### Debian Packages
+
+```bash
+(set -euxo pipefail
+# V=$(curl -sSf https://api.github.com/repos/openziti/ziti/releases/latest | jq -r '.tag_name')
+V=1.5.4
+test -n "${V}"
+
+for A in amd64 arm64 armhf; do
+  for P in openziti{,-controller,-router}; do
+    jf rt cp \
+      --recursive=false \
+      --flat=true \
+      --fail-no-op=true \
+      zitipax-openziti-deb-{test,stable}/pool/${P}/${A}/${P}_${V}_${A}.deb
+  done
+done
+)
+```
+
+The `openziti-console` package is controlled separately by that project's release process in [openziti/ziti-console](https://github.com/openziti/ziti-console/blob/app-ziti-console-v3.12.3/.github/workflows/linux-publish.yml#L143).
 
 ## Quickstart Releases
 
