@@ -132,26 +132,39 @@ do
 				./dist/docker-images/cross-build/ 2>&3
 			echo "INFO: Built ziti-go-builder"
 			# Detect go.work and add bind mounts for each 'use' path (other than '.')
-			GO_WORK_FILE="$PWD/go.work"
+			typeset -a GO_WORK_FILES=("$PWD/go.work" "$PWD/../go.work")
 			GO_WORK_MOUNTS=""
-			if [[ -s "$GO_WORK_FILE" ]]
-			then
-				while read -r path
-				do
-					path="${path//\"/}" # Remove quotes if any
-					if [[ "$path" != "." && -n "$path" ]]
+			for W in ${GO_WORK_FILES[@]}
+			do
+				# use highest precedence workspace file
+				if [[ -s "$W" ]]
+				then
+					while read -r path
+					do
+						path="${path//\"/}" # Remove quotes if any
+						if [[ "$path" != "." && -n "$path" ]]
+						then
+							abs_path="$(realpath "$(dirname ${W})/$path")"
+							base_path="$(basename "$path")"
+							GO_WORK_MOUNTS+=" --volume=$abs_path:/mnt/$base_path"
+						fi
+					done < <(awk '/use *\(/, /\)/ { if ($1 != "use" && $1 != "(" && $1 != ")") print $1 }' "$W")
+					if [[ "$(realpath ${W})" == "$(realpath ${PWD}/../go.work)" ]]
 					then
-						abs_path="$(realpath "$path")"
-						base_path="$(basename "$path")"
-						GO_WORK_MOUNTS+=" --volume=$abs_path:/mnt/$base_path"
+						GO_WORK_MOUNTS+=" --volume=${W}:/mnt/go.work"
+						GO_WORK_MOUNTS+=" --volume=${W}.sum:/mnt/go.work.sum"
 					fi
-				done < <(awk '/use *\(/, /\)/ { if ($1 != "use" && $1 != "(" && $1 != ")") print $1 }' "$GO_WORK_FILE")
+					break
+				fi
+			done
+			if ! grep -qE '\b/mnt/ziti\b' <<< "${GO_WORK_MOUNTS}"
+			then
+				GO_WORK_MOUNTS+=" --volume=$PWD:/mnt/ziti"
 			fi
 			docker run \
 				--rm \
 				--user "$UID" \
 				--name=ziti-go-builder \
-				--volume="$PWD:/mnt/ziti" \
 				${GO_WORK_MOUNTS} \
 				--volume="${GOCACHE:-${HOME}/.cache/go-build}:/.cache/go-build" \
 				${GOEXPERIMENT:+--env GOEXPERIMENT="${GOEXPERIMENT:-}"} \
