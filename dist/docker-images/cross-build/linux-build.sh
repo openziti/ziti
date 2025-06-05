@@ -31,6 +31,11 @@ else
     PROCS_PER_JOB=0 # invokes gox default to use all CPUs-1
 fi
 
+TAGS=""
+if [[ "${GOEXPERIMENT:-}" == *"boringcrypto"* ]]; then
+    TAGS+="fips"
+fi
+
 for ARCH in ${JOBS[@]}; do
     GOX_CMD="
         gox \
@@ -39,6 +44,7 @@ for ARCH in ${JOBS[@]}; do
             -arch=${ARCH} \
             -output=${GOX_OUTPUT} \
             -parallel=${PROCS_PER_JOB} \
+            ${TAGS+-tags=${TAGS}} \
             ./ziti/
     "
 case ${ARCH} in
