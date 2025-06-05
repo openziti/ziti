@@ -151,6 +151,10 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 		} else {
 			msg.Rcode = dns.RcodeRefused // fail fast, and inspire resolver to query next name server in its list.
 		}
+	case dns.TypeAAAA:
+		// Always respond with NOERROR for AAAA queries (success, but empty answer)
+		msg.Authoritative = true
+		msg.Rcode = dns.RcodeSuccess
 	}
 	log.Tracef("response:\n%s\n", msg.String())
 	err := w.WriteMsg(&msg)

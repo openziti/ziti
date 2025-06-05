@@ -105,7 +105,7 @@ func (self *tunneler) Start() error {
 	} else if self.listenOptions.mode == "proxy" {
 		self.listenOptions.resolver = ""
 		if self.interceptor, err = proxy.New(net.IPv4zero, self.listenOptions.services); err != nil {
-			return errors.Wrap(err, "failed to initialize tproxy interceptor")
+			return errors.Wrap(err, "failed to initialize proxy interceptor")
 		}
 	} else {
 		return errors.Errorf("unsupported tunnel mode '%v'", self.listenOptions.mode)
