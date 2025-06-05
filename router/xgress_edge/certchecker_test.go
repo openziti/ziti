@@ -442,6 +442,7 @@ func (s *SimpleTestIdentity) ServerTLSConfig() *tls.Config {
 		RootCAs:      s.CertPool,
 		ClientAuth:   tls.RequireAnyClientCert,
 		MinVersion:   tlz.GetMinTlsVersion(),
+		MaxVersion:   tlz.GetMaxTlsVersion(),
 		CipherSuites: tlz.GetCipherSuites(),
 	}
 }
