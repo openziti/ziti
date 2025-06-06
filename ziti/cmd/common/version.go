@@ -18,16 +18,31 @@ package common
 
 import (
 	"fmt"
+	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/ziti/common/version"
 	"github.com/spf13/cobra"
 )
 
 func NewVersionCmd() *cobra.Command {
-	return &cobra.Command{
+	var verbose bool
+
+	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Show component version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println(version.GetVersion())
+			if verbose {
+				fmt.Printf("Version:      %s\n", version.GetVersion())
+				fmt.Printf("Revision:     %s\n", version.GetRevision())
+				fmt.Printf("Build Date:   %s\n", version.GetBuildDate())
+				fmt.Printf("Go Version:   %s\n", version.GetGoVersion())
+				fmt.Printf("OS/Arch:      %s/%s\n", version.GetOS(), version.GetArchitecture())
+				fmt.Printf("FIPS:         %v\n", tlz.FipsEnabled())
+			} else {
+				fmt.Println(version.GetVersion())
+			}
 		},
 	}
+
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose version information")
+	return cmd
 }
