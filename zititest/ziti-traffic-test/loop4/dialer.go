@@ -33,7 +33,7 @@ func init() {
 
 type dialerCmd struct {
 	*Sim
-	debugOnFailure bool
+	debugWhenDone bool
 }
 
 func newDialerCmd() *cobra.Command {
@@ -48,8 +48,8 @@ func newDialerCmd() *cobra.Command {
 		Run:   dialer.run,
 	}
 
-	cmd.Flags().BoolVarP(&dialer.debugOnFailure, "debug-on-failure", "d", false,
-		"keep running on failure to allow debugging")
+	cmd.Flags().BoolVarP(&dialer.debugWhenDone, "debug-when-done", "d", false,
+		"keep running on when to allow debugging")
 
 	return cmd
 }
@@ -64,14 +64,17 @@ func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 	}
 
 	if err := cmd.runScenario(cmd.scenario); err != nil {
-		if cmd.debugOnFailure {
+		if cmd.debugWhenDone {
 			log.WithError(err).Error("error running scenario")
-			log.Info("not exiting to allow debugging")
-			doneC := make(chan struct{})
-			<-doneC
 		} else {
 			log.WithError(err).Fatal("error running scenario")
 		}
+	}
+
+	if cmd.debugWhenDone {
+		log.Info("not exiting to allow debugging")
+		doneC := make(chan struct{})
+		<-doneC
 	}
 }
 

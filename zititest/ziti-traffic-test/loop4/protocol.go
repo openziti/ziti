@@ -23,6 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
@@ -53,6 +54,7 @@ type protocol struct {
 	lastRx       int64
 	latencies    chan *time.Time
 	errors       chan error
+	circuitId    string
 
 	simTxMsgRate   metrics.Meter
 	simTxBytesRate metrics.Meter
@@ -90,6 +92,11 @@ func newProtocol(peer net.Conn, name string, registry metrics.Registry) (*protoc
 		simRxMsgRate:   registry.Meter("sim.rx.messages"),
 		simRxBytesRate: registry.Meter("sim.rx.bytes"),
 	}
+
+	if edgePeer, _ := peer.(edge.Conn); edgePeer != nil {
+		p.circuitId = edgePeer.GetCircuitId()
+	}
+
 	return p, nil
 }
 

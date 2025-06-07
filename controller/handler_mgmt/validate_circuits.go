@@ -125,9 +125,13 @@ func (handler *validateCircuitsHandler) ValidateCircuits(filter string, cb Circu
 
 func (handler *validateCircuitsHandler) validRouterCircuits(router *model.Router, cb CircuitValidationCallback) {
 	var forwarderCircuits *inspect.ForwarderCircuits
+	var edgeListenerCircuits *inspect.EdgeListenerCircuits
+	var sdkCircuits *inspect.SdkCircuits
 
 	if router.Control != nil && !router.Control.IsClosed() {
-		request := &ctrl_pb.InspectRequest{RequestedValues: []string{inspect.RouterCircuitsKey}}
+		request := &ctrl_pb.InspectRequest{
+			RequestedValues: []string{inspect.RouterCircuitsKey, inspect.RouterEdgeCircuitsKey, inspect.RouterSdkCircuitsKey},
+		}
 		resp := &ctrl_pb.InspectResponse{}
 		respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
 		if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
@@ -138,6 +142,16 @@ func (handler *validateCircuitsHandler) validRouterCircuits(router *model.Router
 		for _, val := range resp.Values {
 			if val.Name == inspect.RouterCircuitsKey {
 				if err = json.Unmarshal([]byte(val.Value), &forwarderCircuits); err != nil {
+					handler.reportError(router, err, cb)
+					return
+				}
+			} else if val.Name == inspect.RouterEdgeCircuitsKey {
+				if err = json.Unmarshal([]byte(val.Value), &edgeListenerCircuits); err != nil {
+					handler.reportError(router, err, cb)
+					return
+				}
+			} else if val.Name == inspect.RouterSdkCircuitsKey {
+				if err = json.Unmarshal([]byte(val.Value), &sdkCircuits); err != nil {
 					handler.reportError(router, err, cb)
 					return
 				}
@@ -181,13 +195,21 @@ func (handler *validateCircuitsHandler) validRouterCircuits(router *model.Router
 		}
 
 		detail := &mgmt_pb.RouterCircuitDetail{
-			CircuitId:     circuit.Id,
-			MissingInCtrl: false,
+			CircuitId:          circuit.Id,
+			MissingInCtrl:      false,
+			MissingInForwarder: true,
 		}
 
 		if fwdDetails, inForwarder := forwarderCircuits.Circuits[circuit.Id]; inForwarder {
 			detail.MissingInForwarder = false
 			detail.Destinations = fwdDetails.Destinations
+
+			for _, v := range fwdDetails.Destinations {
+				if v == "xg-edge-fwd" {
+					detail.MissingInEdge = true
+					detail.MissingInSdk = true
+				}
+			}
 		}
 
 		details.Details[circuit.Id] = detail
@@ -205,6 +227,43 @@ func (handler *validateCircuitsHandler) validRouterCircuits(router *model.Router
 				MissingInCtrl: true,
 			}
 			details.Details[circuitId] = detail
+		}
+	}
+
+	for circuitId, inspectDetail := range edgeListenerCircuits.Circuits {
+		if inspectDetail.CtrlId != handler.appEnv.GetId() {
+			continue
+		}
+
+		detail := details.Details[circuitId]
+		if detail == nil {
+			detail = &mgmt_pb.RouterCircuitDetail{
+				CircuitId:          circuitId,
+				MissingInCtrl:      true,
+				MissingInForwarder: true,
+			}
+			details.Details[circuitId] = detail
+		} else {
+			detail.MissingInEdge = false
+		}
+	}
+
+	for circuitId, inspectDetail := range sdkCircuits.Circuits {
+		if inspectDetail.CtrlId != handler.appEnv.GetId() {
+			continue
+		}
+
+		detail := details.Details[circuitId]
+		if detail == nil {
+			detail = &mgmt_pb.RouterCircuitDetail{
+				CircuitId:          circuitId,
+				MissingInCtrl:      true,
+				MissingInForwarder: true,
+				MissingInEdge:      true,
+			}
+			details.Details[circuitId] = detail
+		} else {
+			detail.MissingInSdk = false
 		}
 	}
 

@@ -87,7 +87,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeUnbind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			conn.processUnbind(self.listener.factory.stateManager, m, ch)
+			conn.processUnbind(m, ch)
 		},
 	})
 
@@ -108,7 +108,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: edge.ContentTypeUpdateToken,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			conn.processTokenUpdate(self.listener.factory.stateManager, m, ch)
+			conn.processTokenUpdate(m, ch)
 		},
 	})
 
