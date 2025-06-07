@@ -197,13 +197,20 @@ func (block *RandHashedBlock) Tx(p *protocol) error {
 	p.simTxMsgRate.Mark(1)
 	p.simTxBytesRate.Mark(int64(8 + dataLen))
 
-	pfxlog.ContextLogger(p.test.Name).Debugf("-> #%d (%s)", block.Sequence, info.ByteCount(int64(len(block.Data))))
+	log := pfxlog.Logger().WithField("name", p.test.Name).WithField("src", p.peer.LocalAddr())
+	if p.circuitId != "" {
+		log = log.WithField("circuitId", p.circuitId)
+	}
+	log.Debugf("-> #%d (%s)", block.Sequence, info.ByteCount(int64(len(block.Data))))
 
 	return nil
 }
 
 func (block *RandHashedBlock) Rx(p *protocol) error {
 	log := pfxlog.Logger().WithField("name", p.test.Name).WithField("src", p.peer.LocalAddr())
+	if p.circuitId != "" {
+		log = log.WithField("circuitId", p.circuitId)
+	}
 	if err := p.peer.SetReadDeadline(time.Now().Add(p.rxTimeout)); err != nil {
 		return err
 	}

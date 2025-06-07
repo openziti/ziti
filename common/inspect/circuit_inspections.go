@@ -3,7 +3,9 @@ package inspect
 import "github.com/openziti/sdk-golang/xgress"
 
 const (
-	RouterCircuitsKey = "router-circuits"
+	RouterCircuitsKey     = "router-circuits"
+	RouterEdgeCircuitsKey = "router-edge-circuits"
+	RouterSdkCircuitsKey  = "router-sdk-circuits"
 )
 
 type ForwarderCircuits struct {

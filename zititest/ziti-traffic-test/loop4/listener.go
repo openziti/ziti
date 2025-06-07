@@ -42,7 +42,7 @@ func newListenerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "listener",
 		Short: "Start loop3 listener",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.ExactArgs(1),
 		Run:   result.run,
 	}
 

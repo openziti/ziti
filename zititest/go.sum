@@ -98,6 +98,7 @@ github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3d
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.55.6 h1:cSg4pvZ3m8dgYcgqB97MrcdjUmZ1BeMYKUxMMB89IPk=
 github.com/aws/aws-sdk-go v1.55.6/go.mod h1:eRwEWoyTWFMVYVQzKMNHWP5/RV4xIUGMQfXQHfHkpNU=
+github.com/aws/aws-sdk-go v1.55.7/go.mod h1:eRwEWoyTWFMVYVQzKMNHWP5/RV4xIUGMQfXQHfHkpNU=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
@@ -612,6 +613,8 @@ github.com/openziti/edge-api v0.26.45 h1:M5rR28yEIIpbVo7F7c5tF+z2qNKqvN55pK6bZqQ
 github.com/openziti/edge-api v0.26.45/go.mod h1:sYHVpm26Jr1u7VooNJzTb2b2nGSlmCHMnbGC8XfWSng=
 github.com/openziti/fablab v0.5.97 h1:zb7CgBYRwAAaRF7Q5lk3H6jrJDidAqgXt5LLtmMw7B4=
 github.com/openziti/fablab v0.5.97/go.mod h1:gCX89ySJasIDimqV5ihOye/aZIWtJ3eVtcK94vm0g78=
+github.com/openziti/fablab v0.5.105 h1:K9q0owOq7yNZSJoiQ+OPgHo+LxBAS9xhooZuaazfez0=
+github.com/openziti/fablab v0.5.105/go.mod h1:thR2vvdf8ZVWTNl1cb1bWNQWVCydjOGUSPsoC9NiaBY=
 github.com/openziti/foundation/v2 v2.0.63 h1:7D8JhHT3i4H5owF+XnTdyjCKn809xEcFD8/RG1h9QYA=
 github.com/openziti/foundation/v2 v2.0.63/go.mod h1:sAtu+ulsxJWJ2iZ16UMBZVocRB3beBpHOE6Wy5RuvJI=
 github.com/openziti/identity v1.0.101 h1:XujPT6eCv3Gqsodh9846EoWfQZwDAFrjPLxm1cipveY=
@@ -655,6 +658,8 @@ github.com/pkg/profile v1.5.0/go.mod h1:qBsxPvzyUincmltOk6iyRVxHYg4adc0OFOv72ZdL
 github.com/pkg/sftp v1.10.1/go.mod h1:lYOWFsE0bwd1+KfKJaKeuokY15vzFx25BLbzYYoAxZI=
 github.com/pkg/sftp v1.13.8 h1:Xt7eJ/xqXv7s0VuzFw7JXhZj6Oc1zI6l4GK8KP9sFB0=
 github.com/pkg/sftp v1.13.8/go.mod h1:DmvEkvKE2lshEeuo2JMp06yqcx9HVnR7e3zqQl42F3U=
+github.com/pkg/sftp v1.13.9 h1:4NGkvGudBL7GteO3m6qnaQ4pC0Kvf0onSVc9gR3EWBw=
+github.com/pkg/sftp v1.13.9/go.mod h1:OBN7bVXdstkFFN/gdnHPUb5TE8eb8G1Rp9wCItqjkkA=
 github.com/pkg/term v1.2.0-beta.2 h1:L3y/h2jkuBVFdWiJvNfYfKmzcCnILw7mJWm2JQuMppw=
 github.com/pkg/term v1.2.0-beta.2/go.mod h1:E25nymQcrSllhX42Ok8MRm1+hyBdHY0dCeiKZ9jpNGw=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
