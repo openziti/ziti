@@ -395,6 +395,12 @@ func (o *PKICreateOptions) ObtainIPsAndDNSNames() ([]net.IP, []string, error) {
 
 // ObtainPrivateKeyOptions returns the private key options necessary to generate a private key
 func (o *PKICreateOptions) ObtainPrivateKeyOptions() (pki.PrivateKeyOptions, error) {
+	// check Curve 25519 first
+	isEd25519 := strings.ToLower(o.Flags.EcCurve) == "curve25519"
+	if isEd25519 {
+		return o.obtainCurve25519Options()
+	}
+	// then check ec curve
 	isEc := o.Flags.EcCurve != ""
 
 	if isEc {
@@ -433,6 +439,11 @@ func (o *PKICreateOptions) obtainEcOptions() (pki.PrivateKeyOptions, error) {
 		validCurveString = validCurveString + strings.Replace(validCurve.Params().Name, "-", "", -1)
 	}
 	return nil, fmt.Errorf("unknown curve name '%s', valid curves (case and dash insensitive) %s", o.Flags.EcCurve, validCurveString)
+}
+func (o *PKICreateOptions) obtainCurve25519Options() (pki.PrivateKeyOptions, error) {
+	return &pki.EcPrivateKeyOptions{
+		Curve25519: true,
+	}, nil
 }
 
 func (o *PKICreateOptions) obtainRsaOptions() (pki.PrivateKeyOptions, error) {

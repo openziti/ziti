@@ -67,6 +67,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/teris-io/shortid"
 	"github.com/xeipuuv/gojsonschema"
+	"golang.org/x/crypto/ed25519"
 	"io"
 	"net"
 	"net/http"
@@ -964,6 +965,8 @@ func getJwtSigningMethod(cert *tls.Certificate) jwt.SigningMethod {
 		}
 	case *rsa.PublicKey:
 		sm = jwt.SigningMethodRS256
+	case ed25519.PublicKey:
+		sm = jwt.SigningMethodEdDSA
 	default:
 		pfxlog.Logger().Panic("unknown certificate type, unable to determine signing method")
 	}
