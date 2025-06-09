@@ -1384,6 +1384,45 @@ definitions:
       newLeaderId:
         type: string
 
+  interface:
+    description: A resource describing a network interface
+    type: object
+    required:
+      - name
+      - hardwareAddress
+      - mtu
+      - index
+      - isUp
+      - isRunning
+      - isLoopback
+      - isBroadcast
+      - isMulticast
+      - addresses
+    properties:
+      name:
+        type: string
+      hardwareAddress:
+        type: string
+      mtu:
+        type: integer
+        minimum: 0
+      index:
+        type: integer
+        minimum: 0
+      isUp:
+        type: boolean
+      isRunning:
+        type: boolean
+      isLoopback:
+        type: boolean
+      isBroadcast:
+        type: boolean
+      isMulticast:
+        type: boolean
+      addresses:
+        type: array
+        items:
+          type: string
 
   ###################################################################
   # Errors
@@ -1572,6 +1611,10 @@ definitions:
               $ref: '#/definitions/routerListener'
           versionInfo:
             $ref: '#/definitions/versionInfo'
+          interfaces:
+            type: array
+            items:
+              $ref: '#/definitions/interface'
   routerListener:
     type: object
     required:

@@ -48,6 +48,7 @@ import (
 	"github.com/openziti/ziti/router/handler_ctrl"
 	"github.com/openziti/ziti/router/handler_link"
 	"github.com/openziti/ziti/router/handler_xgress"
+	"github.com/openziti/ziti/router/interfaces"
 	"github.com/openziti/ziti/router/link"
 	routerMetrics "github.com/openziti/ziti/router/metrics"
 	"github.com/openziti/ziti/router/state"
@@ -659,6 +660,8 @@ func (self *Router) startControlPlane() error {
 			return err
 		}
 	}
+
+	interfaces.StartInterfaceReporter(self.ctrls, self.GetCloseNotify(), self.config.IfaceDiscovery)
 
 	return nil
 }

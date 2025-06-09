@@ -230,6 +230,27 @@ func (self *RouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router]
 		return self.ApplyDequiesce(cmd, ctx)
 	}
 
+	if cmd.UpdatedFields.IsUpdated(db.FieldInterfaces) {
+		ctx.AddPreCommitAction(func(ctx boltz.MutateContext) error {
+			er, _, err := self.env.GetStores().EdgeRouter.FindById(ctx.Tx(), cmd.Entity.Id)
+			if err != nil {
+				return err
+			}
+			if er != nil && er.IsTunnelerEnabled {
+				id, err := self.env.GetStores().Identity.LoadById(ctx.Tx(), cmd.Entity.Id)
+				if err != nil {
+					pfxlog.Logger().Error("er/t is missing associated identity")
+					return nil
+				}
+				id.Interfaces = InterfacesToBolt(cmd.Entity.Interfaces)
+				return self.env.GetStores().Identity.Update(ctx, id, fields.UpdatedFieldsMap{
+					db.FieldInterfaces: struct{}{},
+				})
+			}
+			return nil
+		})
+	}
+
 	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
@@ -291,6 +312,24 @@ func (self *RouterManager) ApplyDequiesce(cmd *command.UpdateEntityCommand[*Rout
 			db.FieldTerminatorSavedPrecedence: struct{}{},
 		})
 	})
+}
+
+func (self *RouterManager) UpdateRouterInterfaces(routerId string, interfaces []*Interface, ctx *change.Context) error {
+	r, err := self.Read(routerId)
+	if err != nil {
+		return err
+	}
+
+	if !didInterfacesChange(interfaces, r.Interfaces) {
+		pfxlog.Logger().WithField("routerId", routerId).Debug("network interfaces submitted, but no change detected")
+		return nil
+	}
+
+	r.Interfaces = interfaces
+	updatedFields := fields.UpdatedFieldsMap{
+		db.FieldInterfaces: struct{}{},
+	}
+	return self.Update(r, updatedFields, ctx)
 }
 
 func (self *RouterManager) UpdateTerminators(router *Router, ctx boltz.MutateContext, f func(terminator *db.Terminator) error) error {
@@ -384,6 +423,17 @@ func (self *RouterManager) Marshall(entity *Router) ([]byte, error) {
 		Tags:        tags,
 	}
 
+	for _, intf := range entity.Interfaces {
+		msg.Interfaces = append(msg.Interfaces, &cmd_pb.Interface{
+			Name:            intf.Name,
+			HardwareAddress: intf.HardwareAddress,
+			Mtu:             intf.MTU,
+			Index:           intf.Index,
+			Flags:           intf.Flags,
+			Addresses:       intf.Addresses,
+		})
+	}
+
 	return proto.Marshal(msg)
 }
 
@@ -399,7 +449,7 @@ func (self *RouterManager) Unmarshall(bytes []byte) (*Router, error) {
 		fingerprint = &tmp
 	}
 
-	return &Router{
+	result := &Router{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
 			Tags: cmd_pb.DecodeTags(msg.Tags),
@@ -409,7 +459,20 @@ func (self *RouterManager) Unmarshall(bytes []byte) (*Router, error) {
 		Cost:        uint16(msg.Cost),
 		NoTraversal: msg.NoTraversal,
 		Disabled:    msg.Disabled,
-	}, nil
+	}
+
+	for _, intf := range msg.Interfaces {
+		result.Interfaces = append(result.Interfaces, &Interface{
+			Name:            intf.Name,
+			HardwareAddress: intf.HardwareAddress,
+			MTU:             intf.Mtu,
+			Index:           intf.Index,
+			Flags:           intf.Flags,
+			Addresses:       intf.Addresses,
+		})
+	}
+
+	return result, nil
 }
 
 func (self *RouterManager) ValidateRouterSdkTerminators(router *Router, cb func(detail *mgmt_pb.RouterSdkTerminatorsDetails)) {

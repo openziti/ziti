@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 const (
@@ -32,11 +33,12 @@ const (
 
 type Router struct {
 	boltz.BaseExtEntity
-	Name        string  `json:"name"`
-	Fingerprint *string `json:"fingerprint"`
-	Cost        uint16  `json:"cost"`
-	NoTraversal bool    `json:"noTraversal"`
-	Disabled    bool    `json:"disabled"`
+	Name        string       `json:"name"`
+	Fingerprint *string      `json:"fingerprint"`
+	Cost        uint16       `json:"cost"`
+	NoTraversal bool         `json:"noTraversal"`
+	Disabled    bool         `json:"disabled"`
+	Interfaces  []*Interface `json:"interfaces"`
 }
 
 func (entity *Router) GetEntityType() string {
@@ -93,6 +95,7 @@ func (self *routerStoreImpl) FillEntity(entity *Router, bucket *boltz.TypedBucke
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldRouterCost, 0))
 	entity.NoTraversal = bucket.GetBoolWithDefault(FieldRouterNoTraversal, false)
 	entity.Disabled = bucket.GetBoolWithDefault(FieldRouterDisabled, false)
+	entity.Interfaces = loadInterfaces(bucket)
 }
 
 func (self *routerStoreImpl) PersistEntity(entity *Router, ctx *boltz.PersistContext) {
@@ -102,6 +105,13 @@ func (self *routerStoreImpl) PersistEntity(entity *Router, ctx *boltz.PersistCon
 	ctx.SetInt32(FieldRouterCost, int32(entity.Cost))
 	ctx.SetBool(FieldRouterNoTraversal, entity.NoTraversal)
 	ctx.SetBool(FieldRouterDisabled, entity.Disabled)
+	storeInterfaces(entity.Interfaces, ctx)
+}
+
+func (self *routerStoreImpl) UpdateInterfaces(entity *Router, interfaces map[string]*Interface, ctx *boltz.PersistContext) {
+	now := time.Now()
+	ctx.Bucket.SetTimeP(boltz.FieldUpdatedAt, &now, nil)
+
 }
 
 func (store *routerStoreImpl) GetNameIndex() boltz.ReadIndex {

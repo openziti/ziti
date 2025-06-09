@@ -31,10 +31,10 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	yaml3 "gopkg.in/yaml.v3"
@@ -91,6 +91,8 @@ const (
 	DefaultConnectEventsFullSyncInterval = 5 * time.Minute
 	MinConnectEventsFullSyncInterval     = time.Second
 	MaxConnectEventsFullSyncInterval     = 24 * time.Hour
+
+	InterfaceDiscoveryMapKey = "interfaceDiscovery"
 )
 
 // internalConfigKeys is used to distinguish internally defined configuration vs file configuration
@@ -114,6 +116,12 @@ func LoadConfigMap(path string) (map[interface{}]interface{}, error) {
 	cfgmap[PathMapKey] = path
 
 	return cfgmap, nil
+}
+
+type InterfaceDiscoveryConfig struct {
+	Disabled          bool
+	CheckInterval     time.Duration
+	MinReportInterval time.Duration
 }
 
 type Config struct {
@@ -170,12 +178,13 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
-	ConnectEvents ConnectEventsConfig
-	Proxy         *transport.ProxyConfiguration
-	Plugins       []string
-	Edge          *EdgeConfig
-	Src           map[interface{}]interface{}
-	path          string
+	ConnectEvents  ConnectEventsConfig
+	Proxy          *transport.ProxyConfiguration
+	Plugins        []string
+	Edge           *EdgeConfig
+	IfaceDiscovery InterfaceDiscoveryConfig
+	Src            map[interface{}]interface{}
+	path           string
 }
 
 func (config *Config) CurrentCtrlAddress() string {
@@ -916,6 +925,48 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 			pfxlog.Logger().Fatalf("one or more advertise addresses are invalid: %v", errs)
 		}
 	}
+
+	cfg.IfaceDiscovery.Disabled = false
+	cfg.IfaceDiscovery.CheckInterval = time.Minute
+	cfg.IfaceDiscovery.MinReportInterval = 24 * time.Hour
+
+	if value, found := cfgmap[InterfaceDiscoveryMapKey]; found {
+		if subMap, ok := value.(map[interface{}]interface{}); !ok {
+			return nil, errors.New("invalid interfaceDiscovery value, should be map")
+		} else {
+			if value, found := subMap["disabled"]; found {
+				disabled := strings.EqualFold("true", fmt.Sprintf("%v", value))
+				cfg.IfaceDiscovery.Disabled = disabled
+			}
+
+			if value, found := subMap["checkInterval"]; found {
+				if strVal, ok := value.(string); ok {
+					interval, err := time.ParseDuration(strVal)
+					if err != nil {
+						return nil, errors.New("invalid value: interfaceDiscovery.checkInterval value should be a valid duration")
+					} else {
+						cfg.IfaceDiscovery.CheckInterval = interval
+					}
+				} else {
+					return nil, errors.New("invalid value: interfaceDiscovery.checkInterval value should be a string representing a duration")
+				}
+			}
+
+			if value, found := subMap["minReportInterval"]; found {
+				if strVal, ok := value.(string); ok {
+					interval, err := time.ParseDuration(strVal)
+					if err != nil {
+						return nil, errors.New("invalid value: interfaceDiscovery.minReportInterval value should be a valid duration")
+					} else {
+						cfg.IfaceDiscovery.CheckInterval = interval
+					}
+				} else {
+					return nil, errors.New("invalid value: interfaceDiscovery.minReportInterval value should be a string representing a duration")
+				}
+			}
+		}
+	}
+
 	return cfg, nil
 }
 
