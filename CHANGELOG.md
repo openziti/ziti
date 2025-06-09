@@ -1,3 +1,163 @@
+# Release 1.6.3
+
+## What's New
+
+* Router Network Interface Discovery
+
+## Router Interface Discovery
+
+Routers can now discover their network interfaces and publish this information to the
+controller. 
+
+This feature will be used in the future to allow controller side configuration of
+router link listeners and edge listeners. 
+
+### Update Router Configuration
+
+There is new router configuration to manage this:
+
+```
+interfaceDiscovery:
+  # This feature is enabled by default, but can be disabled by setting this to true
+  disabled: false
+
+  # How often to poll for interface changes. Defaults to 1 minute
+  checkInterval: 1m
+
+  # How often to report the current set of interfaces, when nothing has changed.
+  # This is a failsafe reporting mechanism, in the very unlikely event that an 
+  # earlier change report was lost or disregarded due to distributed controller
+  # eventual consistency
+  minReportInterval: 24h
+```
+
+### Update REST APIs
+
+Network interfaces, where reported, can now be viewed on the following endpoints.
+
+* routers
+* edge-routers
+* identities (if the router is an ER/T, with an associated identities)
+
+At some point in the future, we expect to allow SDKs to also optionally report their
+network interfaces as well. Those will be available via the `identities` REST API.
+
+Example:
+
+```
+$ ziti fabric list routers 'name="edge-router-1"' -j | jq
+{
+  "data": [
+    {
+      "_links": {
+        "self": {
+          "href": "./routers/oLvcT6VepI"
+        },
+        "terminators": {
+          "href": "./routers/oLvcT6VepI/terminators"
+        }
+      },
+      "createdAt": "2025-03-24T04:35:59.077Z",
+      "id": "oLvcT6VepI",
+      "tags": {},
+      "updatedAt": "2025-06-11T14:29:22.083Z",
+      "connected": false,
+      "cost": 0,
+      "disabled": false,
+      "fingerprint": "b7b03c55be77df0ec57e49d8fe2610e0b99fa61c",
+      "interfaces": [
+        {
+          "addresses": [
+            "192.168.3.29/24",
+            "aaaa::aaaa:aaaa:aaaa:aaaa/64"
+          ],
+          "hardwareAddress": "aa:aa:aa:aa:aa:aa",
+          "index": 4,
+          "isBroadcast": true,
+          "isLoopback": false,
+          "isMulticast": true,
+          "isRunning": true,
+          "isUp": true,
+          "mtu": 1500,
+          "name": "wifi0"
+        },
+        {
+          "addresses": null,
+          "hardwareAddress": "aa:aa:aa:aa:aa:aa",
+          "index": 2,
+          "isBroadcast": true,
+          "isLoopback": false,
+          "isMulticast": true,
+          "isRunning": false,
+          "isUp": true,
+          "mtu": 1500,
+          "name": "eth1"
+        },
+        {
+          "addresses": [
+            "192.168.1.2/24",
+            "aaaa::aaaa:aaa:aaaa:aaaa/64"
+          ],
+          "hardwareAddress": "aa:aa:aa:aa:aa:aa",
+          "index": 16,
+          "isBroadcast": true,
+          "isLoopback": false,
+          "isMulticast": true,
+          "isRunning": true,
+          "isUp": true,
+          "mtu": 1500,
+          "name": "eth0"
+        },
+        {
+          "addresses": [
+            "127.0.0.1/8",
+            "::1/128"
+          ],
+          "hardwareAddress": "",
+          "index": 1,
+          "isBroadcast": false,
+          "isLoopback": true,
+          "isMulticast": false,
+          "isRunning": true,
+          "isUp": true,
+          "mtu": 65536,
+          "name": "lo"
+        }
+      ],
+      "listenerAddresses": null,
+      "name": "edge-router-1",
+      "noTraversal": false
+    }
+  ],
+  "meta": {
+    "filterableFields": [
+      "id",
+      "isSystem",
+      "name",
+      "fingerprint",
+      "cost",
+      "createdAt",
+      "updatedAt",
+      "tags",
+      "noTraversal",
+      "disabled",
+      "connected"
+    ],
+    "pagination": {
+      "limit": 10,
+      "offset": 0,
+      "totalCount": 1
+    }
+  }
+}
+```
+
+Note that addresses have been sanitized.
+
+
+## Component Updates and Bug Fixes
+
+
 # Release 1.6.2
 
 ## What's New

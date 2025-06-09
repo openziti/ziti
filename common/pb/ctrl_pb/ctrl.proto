@@ -42,6 +42,8 @@ enum ContentType {
 
   PeerStateChangeRequestType = 1050;
   UpdateClusterLeaderRequestType = 1051;
+
+  UpdateRouterInterfaces = 1052;
 }
 
 enum ControlHeaders {
@@ -292,4 +294,17 @@ message PeerStateChanges {
 
 message RouterMetadata {
   repeated RouterCapability capabilities = 1;
+}
+
+message Interface {
+  string name = 1;
+  string hardwareAddress = 2;
+  int64 mtu = 3;
+  int64 index = 4;
+  uint64 flags = 5;
+  repeated string addresses = 6;
+}
+
+message RouterInterfacesUpdate {
+  repeated Interface interfaces = 1;
 }

@@ -1832,6 +1832,57 @@ func init() {
         }
       }
     },
+    "interface": {
+      "description": "A resource describing a network interface",
+      "type": "object",
+      "required": [
+        "name",
+        "hardwareAddress",
+        "mtu",
+        "index",
+        "isUp",
+        "isRunning",
+        "isLoopback",
+        "isBroadcast",
+        "isMulticast",
+        "addresses"
+      ],
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hardwareAddress": {
+          "type": "string"
+        },
+        "index": {
+          "type": "integer"
+        },
+        "isBroadcast": {
+          "type": "boolean"
+        },
+        "isLoopback": {
+          "type": "boolean"
+        },
+        "isMulticast": {
+          "type": "boolean"
+        },
+        "isRunning": {
+          "type": "boolean"
+        },
+        "isUp": {
+          "type": "boolean"
+        },
+        "mtu": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
     "link": {
       "description": "A link to another resource",
       "type": "object",
@@ -2126,6 +2177,12 @@ func init() {
             },
             "fingerprint": {
               "type": "string"
+            },
+            "interfaces": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/interface"
+              }
             },
             "listenerAddresses": {
               "type": "array",
@@ -7542,6 +7599,59 @@ func init() {
         }
       }
     },
+    "interface": {
+      "description": "A resource describing a network interface",
+      "type": "object",
+      "required": [
+        "name",
+        "hardwareAddress",
+        "mtu",
+        "index",
+        "isUp",
+        "isRunning",
+        "isLoopback",
+        "isBroadcast",
+        "isMulticast",
+        "addresses"
+      ],
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hardwareAddress": {
+          "type": "string"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "isBroadcast": {
+          "type": "boolean"
+        },
+        "isLoopback": {
+          "type": "boolean"
+        },
+        "isMulticast": {
+          "type": "boolean"
+        },
+        "isRunning": {
+          "type": "boolean"
+        },
+        "isUp": {
+          "type": "boolean"
+        },
+        "mtu": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
     "link": {
       "description": "A link to another resource",
       "type": "object",
@@ -7838,6 +7948,12 @@ func init() {
             },
             "fingerprint": {
               "type": "string"
+            },
+            "interfaces": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/interface"
+              }
             },
             "listenerAddresses": {
               "type": "array",

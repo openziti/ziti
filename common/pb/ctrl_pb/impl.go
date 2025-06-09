@@ -113,3 +113,7 @@ func (request *PeerStateChanges) GetContentType() int32 {
 func (request *UpdateClusterLeader) GetContentType() int32 {
 	return int32(ContentType_UpdateClusterLeaderRequestType)
 }
+
+func (request *RouterInterfacesUpdate) GetContentType() int32 {
+	return int32(ContentType_UpdateRouterInterfaces)
+}

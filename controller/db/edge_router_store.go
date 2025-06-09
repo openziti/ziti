@@ -180,7 +180,6 @@ func (store *edgeRouterStoreImpl) FillEntity(entity *EdgeRouter, bucket *boltz.T
 
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 	entity.AppData = bucket.GetMap(FieldEdgeRouterAppData)
-
 }
 
 func (store *edgeRouterStoreImpl) PersistEntity(entity *EdgeRouter, ctx *boltz.PersistContext) {
