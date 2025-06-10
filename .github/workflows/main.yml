@@ -74,7 +74,7 @@ jobs:
     name: Build Windows binaries
     # allow fors to opt-out of time-consuming Windows builds
     if: vars.ZITI_SKIP_WINDOWS_BUILD != 'true'
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -135,14 +135,14 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
 
           GOEXPERIMENT=boringcrypto \
-          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=amd64 -output="${GOX_OUTPUT}-fips" ./...
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=amd64 -tags=fips -output="${GOX_OUTPUT}-fips" ./...
 
           CC=arm-linux-gnueabihf-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
 
           GOEXPERIMENT=boringcrypto \
           CC=aarch64-linux-gnu-gcc \
-          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm64 -output="${GOX_OUTPUT}-fips" ./...
+          $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm64 -tags=fips -output="${GOX_OUTPUT}-fips" ./...
           CC=aarch64-linux-gnu-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
