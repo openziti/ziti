@@ -74,7 +74,7 @@ jobs:
     name: Build Windows binaries
     # allow fors to opt-out of time-consuming Windows builds
     if: vars.ZITI_SKIP_WINDOWS_BUILD != 'true'
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
