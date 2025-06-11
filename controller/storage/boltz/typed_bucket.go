@@ -908,6 +908,9 @@ func (bucket *TypedBucket) PutList(name string, value []interface{}, checker Fie
 
 func (bucket *TypedBucket) GetList(name string) []interface{} {
 	listBucket := bucket.GetBucket(name)
+	if listBucket == nil {
+		return nil
+	}
 	size := listBucket.GetInt32(ListSizeKeyName)
 	if size == nil {
 		return nil
