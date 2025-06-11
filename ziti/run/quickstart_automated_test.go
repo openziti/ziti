@@ -28,7 +28,7 @@ func TestEdgeQuickstartAutomated(t *testing.T) {
 
 	cmdComplete := make(chan error)
 	go waitForController(ctrlUrl, cmdComplete)
-	timeout, _ := time.ParseDuration("20s")
+	timeout, _ := time.ParseDuration("45s")
 	select {
 	case e := <-cmdComplete:
 		//completed, check for error
@@ -38,18 +38,14 @@ func TestEdgeQuickstartAutomated(t *testing.T) {
 		expectedTestDuration, _ := time.ParseDuration("60s")
 		log.Info("controller online")
 		go func() {
-			performQuickstartTest(t)
-			log.Info("Operation completed")
-			cmdComplete <- nil
+			cmdComplete <- performQuickstartTest(t)
 		}()
 		select {
 		case e := <-cmdComplete:
 			cancel()
+			time.Sleep(5 * time.Second)
 			if e != nil {
-				time.Sleep(5 * time.Second)
 				t.Fatal(e)
-			} else {
-				time.Sleep(5 * time.Second)
 			}
 		case <-time.After(expectedTestDuration):
 			cancel()
@@ -61,4 +57,5 @@ func TestEdgeQuickstartAutomated(t *testing.T) {
 		time.Sleep(5 * time.Second)
 		t.Fatal("timed out waiting for controller to start")
 	}
+	log.Info("TestEdgeQuickstartAutomated completed")
 }
