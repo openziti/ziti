@@ -972,7 +972,7 @@ func (bucket *TypedBucket) copyImpl(other *TypedBucket, filterF func(path []stri
 		}
 		childBucket := other.Bucket.Bucket(key)
 		if childBucket == nil {
-			if err := bucket.Bucket.Put(key, value); err != nil {
+			if err := bucket.Put(key, value); err != nil {
 				return err
 			}
 		} else {

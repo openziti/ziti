@@ -137,15 +137,15 @@ func ParseZqlString(text string) string {
 	t := strings.TrimSuffix(strings.TrimPrefix(text, `"`), `"`)
 
 	//remove golang string back slash escaping
-	t = strings.Replace(t, `\\`, `\`, -1)
+	t = strings.ReplaceAll(t, `\\`, `\`)
 
 	//remove ZitiQL string escaping
-	t = strings.Replace(t, `\"`, `"`, -1)
-	t = strings.Replace(t, `\f`, "\f", -1)
-	t = strings.Replace(t, `\n`, "\n", -1)
-	t = strings.Replace(t, `\r`, "\r", -1)
-	t = strings.Replace(t, `\t`, "\t", -1)
-	t = strings.Replace(t, `\\`, `\`, -1)
+	t = strings.ReplaceAll(t, `\"`, `"`)
+	t = strings.ReplaceAll(t, `\f`, "\f")
+	t = strings.ReplaceAll(t, `\n`, "\n")
+	t = strings.ReplaceAll(t, `\r`, "\r")
+	t = strings.ReplaceAll(t, `\t`, "\t")
+	t = strings.ReplaceAll(t, `\\`, `\`)
 
 	return t
 }
