@@ -36,7 +36,7 @@ func NewVersionCmd() *cobra.Command {
 				fmt.Printf("Build Date:   %s\n", version.GetBuildDate())
 				fmt.Printf("Go Version:   %s\n", version.GetGoVersion())
 				fmt.Printf("OS/Arch:      %s/%s\n", version.GetOS(), version.GetArchitecture())
-				fmt.Printf("FIPS:         %v\n", tlz.FipsEnabled())
+				fmt.Printf("FIPS mode:    %v\n", tlz.FipsEnabled())
 			} else {
 				fmt.Println(version.GetVersion())
 			}
