@@ -466,11 +466,12 @@ func (bl *ToBoltListener) exitInArrayOp() {
 	if !bl.HasError() {
 		node := NewInArrayExprNode(left, right)
 
-		if op == BinaryOpIn {
+		switch op {
+		case BinaryOpIn:
 			bl.pushStack(node)
-		} else if op == BinaryOpNotIn {
+		case BinaryOpNotIn:
 			bl.pushStack(&NotExprNode{expr: node})
-		} else {
+		default:
 			bl.SetError(errors.Errorf("Unexpected operation: %v", op))
 		}
 	}
@@ -495,11 +496,12 @@ func (bl *ToBoltListener) exitBetweenOp() {
 	if !bl.HasError() {
 		node := &BetweenExprNode{left: left, lower: lower, upper: upper}
 
-		if op == BinaryOpBetween {
+		switch op {
+		case BinaryOpBetween:
 			bl.pushStack(node)
-		} else if op == BinaryOpNotBetween {
+		case BinaryOpNotBetween:
 			bl.pushStack(&NotExprNode{expr: node})
-		} else {
+		default:
 			bl.SetError(errors.Errorf("Unexpected operation: %v", op))
 		}
 	}

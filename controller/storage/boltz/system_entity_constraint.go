@@ -18,9 +18,9 @@ type systemEntityConstraint struct {
 	systemFlagSymbol EntitySymbol
 }
 
-func (index *systemEntityConstraint) Label() string {
+func (self *systemEntityConstraint) Label() string {
 	return fmt.Sprintf("system entity constraint %s.%s",
-		index.systemFlagSymbol.GetStore().GetEntityType(), index.systemFlagSymbol.GetName())
+		self.systemFlagSymbol.GetStore().GetEntityType(), self.systemFlagSymbol.GetName())
 }
 
 func (self *systemEntityConstraint) checkOperation(operation string, ctx *IndexingContext) error {

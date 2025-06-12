@@ -552,7 +552,7 @@ func (store *BaseStore[E]) CheckIntegrity(ctx MutateContext, fix bool, errorSink
 			return err
 		}
 	}
-	for _, constraint := range store.Indexer.constraints {
+	for _, constraint := range store.constraints {
 		if err := constraint.CheckIntegrity(ctx, fix, errorSink); err != nil {
 			pfxlog.Logger().WithError(err).Infof("error checking link constraint: %s", constraint.Label())
 			return errors.Wrapf(err, "error checking constraint: %s", constraint.Label())
