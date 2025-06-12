@@ -72,7 +72,7 @@ func (options *PKICreateKeyOptions) addPKICreateKeyFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&options.Flags.CAName, "ca-name", "", "intermediate", "Name of Intermediate CA (within PKI_ROOT) to use to sign the new Client certificate")
 	cmd.Flags().StringVarP(&options.Flags.KeyFile, "key-file", "", "key", "Name of file (under chosen CA) in which to store new private key")
 	cmd.Flags().IntVarP(&options.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the RSA private key, ignored if -curve is set")
-	cmd.Flags().StringVarP(&options.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521")
+	cmd.Flags().StringVarP(&options.Flags.EcCurve, "curve", "", "", "If set an EC private key is generated and -private-key-size is ignored, options: P224, P256, P384, P521, Curve25519")
 }
 
 // Run implements this command
