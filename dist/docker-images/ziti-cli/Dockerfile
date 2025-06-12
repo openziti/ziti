@@ -13,10 +13,10 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal
 
 ARG ARTIFACTS_DIR=./release
 ARG DOCKER_BUILD_DIR=./dist/docker-images/ziti-cli
-# e.g. linux
-ARG TARGETOS
 # e.g. arm64
 ARG TARGETARCH
+# e.g. linux
+ARG TARGETOS
 
 ARG ZUID=2171
 ARG ZGID=2171
