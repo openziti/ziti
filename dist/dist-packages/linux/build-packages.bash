@@ -169,6 +169,7 @@ do
 				--volume="${GOCACHE:-${HOME}/.cache/go-build}:/.cache/go-build" \
 				${GOEXPERIMENT:+--env GOEXPERIMENT="${GOEXPERIMENT:-}"} \
 				${GOFIPS140:+--env GOFIPS140="${GOFIPS140:-}"} \
+				--env=TAGS \
 				--env=GOCACHE=/.cache/go-build \
 				ziti-go-builder $ARCH
 			echo "INFO: Built ${ARTIFACT} for ${ARCH}"

@@ -1,0 +1,21 @@
+# this script addresses the problem of /etc/profile not being sourced
+# because ziggy's BASH shell is not a "login shell." /etc/profile is
+# intended to be sourced only once by the first shell, but it never runs
+# automatically upon login because the first shell isn't invoked as a login
+# shell. .bashrc runs for all interactive shells, so we can use it to
+# replace the current shell process with a login shell.
+
+set -euo pipefail
+USER="${USER:-$( id -u )}"
+SHELL="${SHELL:-$( getent passwd "${USER}" | cut -d : -f 7 )}"
+if [ -z "${SHELL}" ] ; then
+    echo 1>&2 "${0}: can't set SHELL; giving up"
+    exit 1
+fi
+HOME="${HOME:-$( getent passwd "${USER}" | cut -d : -f 6 )}"
+if [ -z "${HOME}" ] ; then
+    echo 1>&2 "${0}: can't set HOME; giving up"
+    exit 1
+fi
+cd "${HOME}"
+SHELL="${SHELL}" exec -a "-${SHELL##*/}" "${SHELL}"
