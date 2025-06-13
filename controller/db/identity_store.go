@@ -112,6 +112,7 @@ type Identity struct {
 	DisabledUntil             *time.Time                   `json:"disabledUntil"`
 	Disabled                  bool                         `json:"disabled"`
 	ServiceConfigs            map[string]map[string]string `json:"serviceConfigs"`
+	Interfaces                []*Interface                 `json:"interfaces"`
 }
 
 func (entity *Identity) GetEntityType() string {
@@ -268,6 +269,7 @@ func (store *identityStoreImpl) FillEntity(entity *Identity, bucket *boltz.Typed
 	}
 
 	store.fillServiceConfig(entity, bucket)
+	entity.Interfaces = loadInterfaces(bucket)
 }
 
 func (store *identityStoreImpl) fillServiceConfig(entity *Identity, entityBucket *boltz.TypedBucket) {
@@ -383,6 +385,7 @@ func (store *identityStoreImpl) PersistEntity(entity *Identity, ctx *boltz.Persi
 	}
 
 	store.persistServiceConfigs(entity, ctx)
+	storeInterfaces(entity.Interfaces, ctx)
 }
 
 func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *boltz.PersistContext) {

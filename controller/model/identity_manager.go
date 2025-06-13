@@ -690,6 +690,17 @@ func (self *IdentityManager) IdentityToProtobuf(entity *Identity) (*edge_cmd_pb.
 		}
 	}
 
+	for _, intf := range entity.Interfaces {
+		msg.Interfaces = append(msg.Interfaces, &edge_cmd_pb.Interface{
+			Name:            intf.Name,
+			HardwareAddress: intf.HardwareAddress,
+			Mtu:             intf.MTU,
+			Index:           intf.Index,
+			Flags:           intf.Flags,
+			Addresses:       intf.Addresses,
+		})
+	}
+
 	return msg, nil
 }
 
@@ -756,7 +767,7 @@ func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Ide
 		serviceMap[serviceConfig.ConfigTypeId] = serviceConfig.ConfigId
 	}
 
-	return &Identity{
+	result := &Identity{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
 			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
@@ -779,7 +790,20 @@ func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Ide
 		DisabledAt:                pbTimeToTimePtr(msg.DisabledAt),
 		DisabledUntil:             pbTimeToTimePtr(msg.DisabledUntil),
 		ServiceConfigs:            serviceConfigs,
-	}, nil
+	}
+
+	for _, intf := range msg.Interfaces {
+		result.Interfaces = append(result.Interfaces, &Interface{
+			Name:            intf.Name,
+			HardwareAddress: intf.HardwareAddress,
+			MTU:             intf.Mtu,
+			Index:           intf.Index,
+			Flags:           intf.Flags,
+			Addresses:       intf.Addresses,
+		})
+	}
+
+	return result, nil
 }
 
 func (self *IdentityManager) Unmarshall(bytes []byte) (*Identity, error) {

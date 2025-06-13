@@ -12,15 +12,15 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.27
-	github.com/openziti/channel/v4 v4.2.0
-	github.com/openziti/edge-api v0.26.45
+	github.com/openziti/channel/v4 v4.2.5
+	github.com/openziti/edge-api v0.26.46
 	github.com/openziti/fablab v0.5.97
-	github.com/openziti/foundation/v2 v2.0.63
-	github.com/openziti/identity v1.0.101
+	github.com/openziti/foundation/v2 v2.0.66
+	github.com/openziti/identity v1.0.105
 	github.com/openziti/metrics v1.4.1
 	github.com/openziti/sdk-golang v1.1.1
-	github.com/openziti/storage v0.4.11
-	github.com/openziti/transport/v2 v2.0.171
+	github.com/openziti/storage v0.4.17
+	github.com/openziti/transport/v2 v2.0.175
 	github.com/openziti/ziti v1.5.4
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -28,7 +28,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
-	go.etcd.io/bbolt v1.4.0
+	go.etcd.io/bbolt v1.4.1
 	golang.org/x/net v0.40.0
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v2 v2.4.0
@@ -146,7 +146,7 @@ require (
 	github.com/openziti/runzmd v1.0.72 // indirect
 	github.com/openziti/secretstream v0.1.34 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
-	github.com/openziti/xweb/v2 v2.3.2 // indirect
+	github.com/openziti/xweb/v2 v2.3.3 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect

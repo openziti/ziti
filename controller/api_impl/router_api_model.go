@@ -17,6 +17,7 @@
 package api_impl
 
 import (
+	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
@@ -133,6 +134,22 @@ func (RouterModelMapper) ToApi(n *network.Network, _ api.RequestContext, router 
 				Protocol: &linkProtocol,
 			})
 		}
+	}
+
+	for _, intf := range router.Interfaces {
+		apiIntf := &rest_model.Interface{
+			HardwareAddress: &intf.HardwareAddress,
+			Index:           &intf.Index,
+			IsBroadcast:     util.Ptr(intf.IsBroadcast()),
+			IsLoopback:      util.Ptr(intf.IsLoopback()),
+			IsMulticast:     util.Ptr(intf.IsMulticast()),
+			IsRunning:       util.Ptr(intf.IsRunning()),
+			IsUp:            util.Ptr(intf.IsUp()),
+			Mtu:             &intf.MTU,
+			Name:            &intf.Name,
+			Addresses:       intf.Addresses,
+		}
+		ret.Interfaces = append(ret.Interfaces, apiIntf)
 	}
 
 	return ret, nil

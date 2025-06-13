@@ -40,6 +40,7 @@ type EdgeRouter struct {
 	Cost                  uint16
 	NoTraversal           bool
 	Disabled              bool
+	Interfaces            []*Interface
 }
 
 func (self *EdgeRouter) GetName() string {
@@ -54,6 +55,7 @@ func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.EdgeRouter,
 			Cost:          entity.Cost,
 			NoTraversal:   entity.NoTraversal,
 			Disabled:      entity.Disabled,
+			Interfaces:    InterfacesToBolt(entity.Interfaces),
 		},
 		RoleAttributes:    entity.RoleAttributes,
 		IsVerified:        false,
@@ -73,6 +75,7 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldCheck
 			Cost:          entity.Cost,
 			NoTraversal:   entity.NoTraversal,
 			Disabled:      entity.Disabled,
+			Interfaces:    InterfacesToBolt(entity.Interfaces),
 		},
 		RoleAttributes:        entity.RoleAttributes,
 		IsVerified:            entity.IsVerified,
@@ -98,6 +101,6 @@ func (entity *EdgeRouter) fillFrom(_ Env, _ *bbolt.Tx, boltEdgeRouter *db.EdgeRo
 	entity.Cost = boltEdgeRouter.Cost
 	entity.NoTraversal = boltEdgeRouter.NoTraversal
 	entity.Disabled = boltEdgeRouter.Disabled
-
+	entity.Interfaces = InterfacesFromBolt(boltEdgeRouter.Interfaces)
 	return nil
 }

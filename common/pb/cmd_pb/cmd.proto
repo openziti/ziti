@@ -111,6 +111,7 @@ message Router {
   bool noTraversal = 5;
   bool disabled = 6;
   map<string, TagValue> tags = 7;
+  repeated Interface interfaces = 8;
 }
 
 message Terminator {
@@ -129,4 +130,13 @@ message Terminator {
   bool isSystem = 13;
   uint32 savedPrecedence = 14;
   string sourceCtrl = 15;
+}
+
+message Interface {
+  string name = 1;
+  string hardwareAddress = 2;
+  int64 mtu = 3;
+  int64 index = 4;
+  uint64 flags = 5;
+  repeated string addresses = 6;
 }

@@ -73,6 +73,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newQuiesceRouterHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newDequiesceRouterHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newDecommissionRouterHandler(self.router, self.network))
+	binding.AddTypedReceiveHandler(newUpdateRouterInterfacesHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newPingHandler())
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type:    int32(ctrl_pb.ContentType_ValidateTerminatorsV2ResponseType),

@@ -195,6 +195,15 @@ message ApiAddress {
   string Version = 2;
 }
 
+message Interface {
+  string name = 1;
+  string hardwareAddress = 2;
+  int64 mtu = 3;
+  int64 index = 4;
+  uint64 flags = 5;
+  repeated string addresses = 6;
+}
+
 // Edge Routers
 message EdgeRouter {
   string id = 1;
@@ -212,6 +221,7 @@ message EdgeRouter {
   uint32 cost = 13;
   bool noTraversal = 14;
   bool disabled = 15;
+  repeated Interface interfaces = 16;
 }
 
 message ReEnrollEdgeRouterCmd {
@@ -328,6 +338,7 @@ message Identity {
   optional google.protobuf.Timestamp disabledAt = 18;
   optional google.protobuf.Timestamp disabledUntil = 19;
   repeated ServiceConfig serviceConfigs = 20;
+  repeated Interface interfaces = 21;
 }
 
 message CreateIdentityWithEnrollmentsCmd {
