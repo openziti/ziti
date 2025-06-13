@@ -34,6 +34,10 @@ type mirrorLink struct {
 	acks chan *xgress.Acknowledgement
 }
 
+func (link *mirrorLink) GetDestinationType() string {
+	return "link"
+}
+
 func (link *mirrorLink) DialAddress() string {
 	return "tcp:localhost:1234"
 }

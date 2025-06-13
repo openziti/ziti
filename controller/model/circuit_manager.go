@@ -92,7 +92,7 @@ type CircuitManager struct {
 	store    *objectz.ObjectStore[*Circuit]
 }
 
-func NewCircuitController() *CircuitManager {
+func NewCircuitManager() *CircuitManager {
 	result := &CircuitManager{
 		circuits: cmap.New[*Circuit](),
 	}

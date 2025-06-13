@@ -62,6 +62,10 @@ func (self *splitImpl) Iteration() uint32 {
 	return self.iteration
 }
 
+func (self *splitImpl) GetDestinationType() string {
+	return "link"
+}
+
 func (self *splitImpl) Init(metricsRegistry metrics.Registry) error {
 	if self.droppedMsgMeter == nil {
 		self.droppedMsgMeter = metricsRegistry.Meter("link.dropped_msgs:" + self.id)

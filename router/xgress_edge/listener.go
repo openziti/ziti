@@ -76,8 +76,8 @@ type listener struct {
 	droppedAcksMeter     metrics.Meter
 }
 
-func (listener *listener) Inspect(key string, timeout time.Duration) any {
-	if key == "router-edge-circuits" {
+func (listener *listener) Inspect(key string, _ time.Duration) any {
+	if key == inspect.RouterEdgeCircuitsKey {
 		result := &inspect.EdgeListenerCircuits{
 			Circuits: map[string]*inspect.EdgeXgFwdInspectDetail{},
 		}
@@ -96,7 +96,7 @@ func (listener *listener) Inspect(key string, timeout time.Duration) any {
 			v.Unlock()
 		}
 		return result
-	} else if key == "router-sdk-circuits" {
+	} else if key == inspect.RouterSdkCircuitsKey {
 		result := &inspect.SdkCircuits{
 			Circuits: map[string]*inspect.SdkCircuitDetail{},
 		}
@@ -1182,6 +1182,10 @@ type xgEdgeForwarder struct {
 	connId     uint32
 	metrics    env.XgressMetrics
 	tags       map[string]string
+}
+
+func (self *xgEdgeForwarder) GetDestinationType() string {
+	return "xg-edge-fwd"
 }
 
 func (self *xgEdgeForwarder) GetIntervalId() string {

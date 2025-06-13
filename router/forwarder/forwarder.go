@@ -324,19 +324,36 @@ func (forwarder *Forwarder) getXgressForCircuit(circuitId string) XgressDestinat
 	return nil
 }
 
-func (forwarder *Forwarder) InspectCircuits() *inspect.CircuitsDetail {
-	result := &inspect.CircuitsDetail{
+func (forwarder *Forwarder) InspectCircuits() *inspect.ForwarderCircuits {
+	result := &inspect.ForwarderCircuits{
 		Circuits: map[string]*inspect.CircuitDetail{},
 	}
 	forwarder.circuits.circuits.IterCb(func(key string, ft *forwardTable) {
-		result.Circuits[key] = &inspect.CircuitDetail{
+		routes := ft.destinations.Items()
+		detail := &inspect.CircuitDetail{
 			Id:                key,
 			TimeSinceActivity: (time.Duration(time.Now().UnixMilli()-atomic.LoadInt64(&ft.last)) * time.Millisecond).String(),
 			CtrlId:            ft.ctrlId,
-			Routes:            ft.destinations.Items(),
+			Routes:            routes,
+			Destinations:      map[string]string{},
 		}
+
+		for k, v := range routes {
+			forwarder.InspectDestination(k, detail)
+			forwarder.InspectDestination(v, detail)
+		}
+
+		result.Circuits[key] = detail
 	})
 	return result
+}
+
+func (forwarder *Forwarder) InspectDestination(address string, detail *inspect.CircuitDetail) {
+	if dest, _ := forwarder.destinations.getDestination(xgress.Address(address)); dest != nil {
+		detail.Destinations[address] = dest.GetDestinationType()
+	} else {
+		detail.Destinations[address] = "missing"
+	}
 }
 
 func (forwarder *Forwarder) InspectCircuit(circuitId string, getRelatedGoroutines bool) *xgress.CircuitInspectDetail {

@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/ziti/controller/model"
 	"time"
 
-	"github.com/zitadel/oidc/v2/pkg/oidc"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 )
 
 // AuthRequest represents an OIDC authentication request and implements op.AuthRequest

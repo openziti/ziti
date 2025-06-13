@@ -6,7 +6,7 @@ import (
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/oidc_auth"
-	"github.com/zitadel/oidc/v2/pkg/oidc"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"golang.org/x/oauth2"
 	"net/url"
 	"testing"

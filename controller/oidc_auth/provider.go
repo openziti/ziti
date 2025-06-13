@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/pkg/errors"
-	"github.com/zitadel/oidc/v2/pkg/op"
+	"github.com/zitadel/oidc/v3/pkg/op"
 	"golang.org/x/text/language"
 	"net/http"
 )
@@ -128,12 +128,12 @@ func newHttpRouter(provider op.OpenIDProvider, config Config) (*mux.Router, erro
 
 	loginRouter := newLogin(config.Storage, op.AuthCallbackURL(provider), op.NewIssuerInterceptor(provider.IssuerFromRequest))
 
-	router.Handle("/oidc/"+WellKnownOidcConfiguration, http.StripPrefix("/oidc", provider.HttpHandler()))
-	router.Handle(WellKnownOidcConfiguration, provider.HttpHandler())
+	router.Handle("/oidc/"+WellKnownOidcConfiguration, http.StripPrefix("/oidc", provider))
+	router.Handle(WellKnownOidcConfiguration, provider)
 
 	router.PathPrefix("/oidc/login").Handler(http.StripPrefix("/oidc/login", loginRouter.router))
 
-	router.PathPrefix("/oidc").Handler(http.StripPrefix("/oidc", provider.HttpHandler()))
+	router.PathPrefix("/oidc").Handler(http.StripPrefix("/oidc", provider))
 
 	return router, nil
 }
@@ -151,7 +151,7 @@ func newOidcProvider(_ context.Context, issuer string, oidcConfig Config) (op.Op
 		SupportedUILocales:       []language.Tag{language.English},
 	}
 
-	handler, err := op.NewOpenIDProvider(issuer, config, oidcConfig.Storage)
+	handler, err := op.NewProvider(config, oidcConfig.Storage, op.StaticIssuer(issuer))
 
 	if err != nil {
 		return nil, err

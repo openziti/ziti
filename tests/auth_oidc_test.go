@@ -19,9 +19,9 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/oidc_auth"
-	"github.com/zitadel/oidc/v2/pkg/client/rp"
-	httphelper "github.com/zitadel/oidc/v2/pkg/http"
-	"github.com/zitadel/oidc/v2/pkg/oidc"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
+	httphelper "github.com/zitadel/oidc/v3/pkg/http"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -105,7 +105,7 @@ func newOidcTestRp(apiHost string) (*testRpServer, error) {
 		rp.WithPKCE(cookieHandler),
 	}
 
-	provider, err := rp.NewRelyingPartyOIDC(issuer, clientID, clientSecret, result.CallbackUri, scopes, options...)
+	provider, err := rp.NewRelyingPartyOIDC(context.Background(), issuer, clientID, clientSecret, result.CallbackUri, scopes, options...)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not create rp OIDC: %w", err)

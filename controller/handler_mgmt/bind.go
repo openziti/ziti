@@ -46,6 +46,12 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 		Handler: inspectRequestHandler.HandleReceive,
 	})
 
+	validateCircuitsRequestHandler := newValidateCircuitsHandler(bindHandler.env)
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type:    validateCircuitsRequestHandler.ContentType(),
+		Handler: validateCircuitsRequestHandler.HandleReceive,
+	})
+
 	validateTerminatorsRequestHandler := newValidateTerminatorsHandler(bindHandler.network)
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type:    validateTerminatorsRequestHandler.ContentType(),

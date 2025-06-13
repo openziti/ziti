@@ -82,7 +82,7 @@ func NewManagers() *Managers {
 
 func (managers *Managers) Init(env Env) *Managers {
 	managers.Dispatcher = env.GetCommandDispatcher()
-	managers.Circuit = NewCircuitController()
+	managers.Circuit = NewCircuitManager()
 	managers.Command = newCommandManager(env, managers.Registry)
 	managers.Link = NewLinkManager(env)
 	managers.Router = newRouterManager(env)

@@ -38,10 +38,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/zitadel/oidc/v2/pkg/client/rp"
-	"github.com/zitadel/oidc/v2/pkg/client/rp/cli"
-	httphelper "github.com/zitadel/oidc/v2/pkg/http"
-	"github.com/zitadel/oidc/v2/pkg/oidc"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
+	"github.com/zitadel/oidc/v3/pkg/client/rp/cli"
+	httphelper "github.com/zitadel/oidc/v3/pkg/http"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"golang.org/x/oauth2"
 
 	"github.com/openziti/ziti/internal"
@@ -197,7 +197,7 @@ func (c *OidcVerificationConfig) NewRelyingParty() (rp.RelyingParty, error) {
 		options = append(options, rp.WithPKCE(cookieHandler))
 	}
 
-	relyingParty, err := rp.NewRelyingPartyOIDC(c.Issuer, c.ClientID, c.ClientSecret, c.RedirectURL, c.Scopes, options...)
+	relyingParty, err := rp.NewRelyingPartyOIDC(context.Background(), c.Issuer, c.ClientID, c.ClientSecret, c.RedirectURL, c.Scopes, options...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating relyingParty %s", err.Error())
 	}
