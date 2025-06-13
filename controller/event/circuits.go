@@ -181,7 +181,7 @@ type CircuitEvent struct {
 	EventSrcId string    `json:"event_src_id"`
 	Timestamp  time.Time `json:"timestamp"`
 
-	// The event format version. Currently 2.
+	// The event format version. The most recent version is 2.
 	Version uint32 `json:"version"`
 
 	// The circuit event type. See above for valid circuit event types.
@@ -202,7 +202,7 @@ type CircuitEvent struct {
 	// The instance id of the terminator.
 	InstanceId string `json:"instance_id"`
 
-	// How long it look to create the circuit.
+	// How long it took to create the circuit.
 	CreationTimespan *time.Duration `json:"creation_timespan,omitempty"`
 
 	// The circuit's path.

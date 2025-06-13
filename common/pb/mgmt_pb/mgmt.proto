@@ -71,6 +71,10 @@ enum ContentType {
   ValidateRouterErtTerminatorsRequestType = 10115;
   ValidateRouterErtTerminatorsResponseType = 10116;
   ValidateRouterErtTerminatorsResultType = 10117;
+
+  ValidateCircuitsRequestType = 10118;
+  ValidateCircuitsResponseType = 10119;
+  ValidateCircuitsResultType = 10120;
 }
 
 enum Header {
@@ -350,4 +354,32 @@ message InitRequest {
   string username = 1;
   string password = 2;
   string name = 3;
+}
+
+message ValidateCircuitsRequest {
+  string routerFilter = 1;
+}
+
+message ValidateCircuitsResponse {
+  bool success = 1;
+  string message = 2;
+  uint64 routerCount = 3;
+}
+
+message RouterCircuitDetails {
+  string routerId = 1;
+  string routerName = 2;
+  bool validateSuccess = 3;
+  string message = 4;
+  map<string, RouterCircuitDetail> details = 5;
+}
+
+message RouterCircuitDetail {
+  string circuitId = 1;
+  bool missingInCtrl = 2;
+  bool missingInForwarder = 3;
+  bool missingInEdge = 4;
+  bool missingInSdk = 5;
+
+  map<string, string> destinations = 6;
 }
