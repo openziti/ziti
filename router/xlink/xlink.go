@@ -124,6 +124,7 @@ type LinkDestination interface {
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	SendControl(control *xgress.Control) error
 	InspectCircuit(circuitDetail *xgress.CircuitInspectDetail)
+	GetDestinationType() string
 }
 
 type Xlink interface {

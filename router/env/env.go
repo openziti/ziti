@@ -82,6 +82,7 @@ type Destination interface {
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	SendControl(control *xgress.Control) error
 	InspectCircuit(detail *xgress.CircuitInspectDetail)
+	GetDestinationType() string
 }
 
 type XgressMetrics interface {
