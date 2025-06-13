@@ -230,38 +230,38 @@ func (handler *validateCircuitsHandler) validRouterCircuits(router *model.Router
 		}
 	}
 
-	for circuitId, inspectDetail := range edgeListenerCircuits.Circuits {
+	for _, inspectDetail := range edgeListenerCircuits.Circuits {
 		if inspectDetail.CtrlId != handler.appEnv.GetId() {
 			continue
 		}
 
-		detail := details.Details[circuitId]
+		detail := details.Details[inspectDetail.CircuitId]
 		if detail == nil {
 			detail = &mgmt_pb.RouterCircuitDetail{
-				CircuitId:          circuitId,
+				CircuitId:          inspectDetail.CircuitId,
 				MissingInCtrl:      true,
 				MissingInForwarder: true,
 			}
-			details.Details[circuitId] = detail
+			details.Details[inspectDetail.CircuitId] = detail
 		} else {
 			detail.MissingInEdge = false
 		}
 	}
 
-	for circuitId, inspectDetail := range sdkCircuits.Circuits {
+	for _, inspectDetail := range sdkCircuits.Circuits {
 		if inspectDetail.CtrlId != handler.appEnv.GetId() {
 			continue
 		}
 
-		detail := details.Details[circuitId]
+		detail := details.Details[inspectDetail.CircuitId]
 		if detail == nil {
 			detail = &mgmt_pb.RouterCircuitDetail{
-				CircuitId:          circuitId,
+				CircuitId:          inspectDetail.CircuitId,
 				MissingInCtrl:      true,
 				MissingInForwarder: true,
 				MissingInEdge:      true,
 			}
-			details.Details[circuitId] = detail
+			details.Details[inspectDetail.CircuitId] = detail
 		} else {
 			detail.MissingInSdk = false
 		}

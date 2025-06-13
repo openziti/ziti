@@ -1327,7 +1327,8 @@ func (self *xgEdgeForwarder) Unrouted() {
 	msg := edge.NewStateClosedMsg(self.connId, "xgress unrouted")
 	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
-		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state closed")
+		pfxlog.Logger().WithField("circuitId", self.circuitId).
+			WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state closed")
 	}
 }
 

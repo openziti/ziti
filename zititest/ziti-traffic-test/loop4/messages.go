@@ -201,6 +201,9 @@ func (block *RandHashedBlock) Tx(p *protocol) error {
 	if p.circuitId != "" {
 		log = log.WithField("circuitId", p.circuitId)
 	}
+	if p.connId != 0 {
+		log = log.WithField("connId", p.connId)
+	}
 	log.Debugf("-> #%d (%s)", block.Sequence, info.ByteCount(int64(len(block.Data))))
 
 	return nil
@@ -211,6 +214,10 @@ func (block *RandHashedBlock) Rx(p *protocol) error {
 	if p.circuitId != "" {
 		log = log.WithField("circuitId", p.circuitId)
 	}
+	if p.connId != 0 {
+		log = log.WithField("connId", p.connId)
+	}
+
 	if err := p.peer.SetReadDeadline(time.Now().Add(p.rxTimeout)); err != nil {
 		return err
 	}

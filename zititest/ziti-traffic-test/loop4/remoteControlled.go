@@ -22,6 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	edgeApis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
 	loop4Pb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
@@ -169,6 +170,14 @@ func (cmd *remoteControlledCmd) runRemoteScenario(scenarioId string, scenario *S
 
 	// reset metrics
 	cmd.Sim.metrics.DisposeAll()
+
+	time.AfterFunc(time.Second, func() {
+		cmd.Sim.metrics.EachMetric(func(name string, metric metrics.Metric) {
+			if histogram, ok := metric.(metrics.Histogram); ok {
+				histogram.Clear()
+			}
+		})
+	})
 
 	err := cmd.runScenario(scenario)
 

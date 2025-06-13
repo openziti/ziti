@@ -109,10 +109,9 @@ func (self *Faulter) run() {
 						log.WithError(err).Error("error sending fault report")
 					}
 				} else { // send to all controllers
-					fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_UnknownOwnerForwardFault, Id: circuitIds}
-
 					self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
 						log := pfxlog.Logger().WithField("ctrlId", ctrlId)
+						fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_UnknownOwnerForwardFault, Id: circuitIds}
 						if err := protobufs.MarshalTyped(fault).Send(ch); err == nil {
 							log.WithField("circuitCount", len(workload)).Warn("reported forwarding faults")
 						} else {

@@ -19,6 +19,7 @@ package link
 import (
 	"container/heap"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/xlink"
 	"math/rand"
@@ -53,7 +54,7 @@ func newLinkDest(destId string) *linkDest {
 
 type linkDest struct {
 	id          string
-	version     string
+	version     concurrenz.AtomicValue[string]
 	healthy     bool
 	unhealthyAt time.Time
 	linkMap     map[string]*linkState
@@ -67,7 +68,7 @@ func (self *linkDest) update(update *linkDestUpdate) {
 	self.healthy = update.healthy
 
 	if update.healthy {
-		self.version = update.version
+		self.version.Store(update.version)
 	}
 }
 
@@ -131,7 +132,7 @@ func (self *linkState) GetLinkProtocol() string {
 }
 
 func (self *linkState) GetRouterVersion() string {
-	return self.dest.version
+	return self.dest.version.Load()
 }
 
 func (self *linkState) GetIteration() uint32 {

@@ -174,12 +174,17 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 		circuitId := "unknown"
 		if ztConn, ok := conn.(edge.Conn); ok {
 			circuitId = ztConn.GetCircuitId()
+			log = log.WithField("circuitId", circuitId).
+				WithField("connId", ztConn.Id()).
+				WithField("routerId", ztConn.GetRouterId())
 		}
 
 		active.Add(1)
 
 		connectSuccesses.Mark(1)
 		local, remote := workload.GetTests()
+
+		log.Info("new connection established")
 
 		var proto *protocol
 		proto, err = newProtocol(conn, workload.Name, sim.metrics)

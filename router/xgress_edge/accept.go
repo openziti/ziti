@@ -58,7 +58,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	}
 
 	conn := &edgeClientConn{
-		msgMux:       edge.NewCowMapMsgMux(),
+		msgMux:       edge.NewMapMsgMux(),
 		listener:     self.listener,
 		fingerprints: fpg.FromCerts(binding.GetChannel().Certificates()),
 		ch:           sdkChannel,

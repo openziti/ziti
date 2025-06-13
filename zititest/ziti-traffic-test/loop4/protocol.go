@@ -55,6 +55,7 @@ type protocol struct {
 	latencies    chan *time.Time
 	errors       chan error
 	circuitId    string
+	connId       int
 
 	simTxMsgRate   metrics.Meter
 	simTxBytesRate metrics.Meter
@@ -95,6 +96,7 @@ func newProtocol(peer net.Conn, name string, registry metrics.Registry) (*protoc
 
 	if edgePeer, _ := peer.(edge.Conn); edgePeer != nil {
 		p.circuitId = edgePeer.GetCircuitId()
+		p.connId = int(edgePeer.Id())
 	}
 
 	return p, nil

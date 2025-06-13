@@ -46,21 +46,21 @@ func NewValidateCircuitsCmd(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
-	validateLinksCmd := &cobra.Command{
+	validateCircuitsCmd := &cobra.Command{
 		Use:     "circuits <router filter>",
 		Short:   "Validate circuits",
 		Example: "ziti fabric validate circuits --filter 'name=\"my-router\"'",
 		Args:    cobra.MaximumNArgs(1),
-		RunE:    action.validateRouterLinks,
+		RunE:    action.validateRouterCircuits,
 	}
 
-	action.AddCommonFlags(validateLinksCmd)
-	validateLinksCmd.Flags().BoolVar(&action.includeValidCircuits, "include-valid", false, "Don't hide results for valid circuits")
-	validateLinksCmd.Flags().BoolVar(&action.includeValidRouters, "include-valid-routers", false, "Don't hide results for valid routers")
-	return validateLinksCmd
+	action.AddCommonFlags(validateCircuitsCmd)
+	validateCircuitsCmd.Flags().BoolVar(&action.includeValidCircuits, "include-valid", false, "Don't hide results for valid circuits")
+	validateCircuitsCmd.Flags().BoolVar(&action.includeValidRouters, "include-valid-routers", false, "Don't hide results for valid routers")
+	return validateCircuitsCmd
 }
 
-func (self *validateCircuitsAction) validateRouterLinks(_ *cobra.Command, args []string) error {
+func (self *validateCircuitsAction) validateRouterCircuits(_ *cobra.Command, args []string) error {
 	closeNotify := make(chan struct{})
 	self.eventNotify = make(chan *mgmt_pb.RouterCircuitDetails, 1)
 
@@ -116,7 +116,7 @@ func (self *validateCircuitsAction) validateRouterLinks(_ *cobra.Command, args [
 
 			routerHeaderDone := false
 			outputRouterHeader := func() {
-				fmt.Printf("routerId: %s, routerName: %v, links: %v, %s\n",
+				fmt.Printf("routerId: %s, routerName: %v, circuits: %v, %s\n",
 					routerDetail.RouterId, routerDetail.RouterName, len(routerDetail.Details), result)
 				routerHeaderDone = true
 			}

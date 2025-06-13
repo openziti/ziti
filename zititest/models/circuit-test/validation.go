@@ -144,8 +144,9 @@ func validateCircuitsForCtrl(run model.Run, c *model.Component, deadline time.Ti
 
 	logger := pfxlog.Logger().WithField("ctrl", c.Id)
 
+	first := true
 	for {
-		count, err := validateCircuitsForCtrlOnce(c.Id, clients)
+		count, err := validateCircuitsForCtrlOnce(c.Id, clients, first)
 		if err == nil {
 			return nil
 		}
@@ -161,10 +162,11 @@ func validateCircuitsForCtrl(run model.Run, c *model.Component, deadline time.Ti
 		if err != nil {
 			return err
 		}
+		first = false
 	}
 }
 
-func validateCircuitsForCtrlOnce(id string, clients *zitirest.Clients) (int, error) {
+func validateCircuitsForCtrlOnce(id string, clients *zitirest.Clients, first bool) (int, error) {
 	logger := pfxlog.Logger().WithField("ctrl", id)
 
 	closeNotify := make(chan struct{})
@@ -223,12 +225,15 @@ func validateCircuitsForCtrlOnce(id string, clients *zitirest.Clients) (int, err
 		case detail := <-eventNotify:
 			if !detail.ValidateSuccess {
 				invalid++
+				fmt.Printf("error validating router %s using ctrl %s: %s", detail.RouterId, id, detail.Message)
 			}
 			for _, details := range detail.Details {
 				if details.IsInErrorState() {
-					fmt.Printf("\tcircuit: %s ctrl: %v, fwd: %v, edge: %v, sdk: %v, dest: %+v\n",
-						details.CircuitId, details.MissingInCtrl, details.MissingInForwarder,
-						details.MissingInEdge, details.MissingInSdk, details.Destinations)
+					if !first {
+						fmt.Printf("\tcircuit: %s ctrl: %v, fwd: %v, edge: %v, sdk: %v, dest: %+v\n",
+							details.CircuitId, details.MissingInCtrl, details.MissingInForwarder,
+							details.MissingInEdge, details.MissingInSdk, details.Destinations)
+					}
 					invalid++
 				}
 			}

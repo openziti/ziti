@@ -93,12 +93,12 @@ func (network *Network) CreateRouteMessages(path *model.Path, attempt uint32, ci
 }
 
 func (network *Network) CreatePathWithNodes(nodes []*model.Router) (*model.Path, CircuitError) {
-	ingressId, err := network.sequence.NextHash()
+	ingressId, err := network.idGenerator.NextId()
 	if err != nil {
 		return nil, newCircuitErrWrap(CircuitFailureIdGenerationError, err)
 	}
 
-	egressId, err := network.sequence.NextHash()
+	egressId, err := network.idGenerator.NextId()
 	if err != nil {
 		return nil, newCircuitErrWrap(CircuitFailureIdGenerationError, err)
 	}

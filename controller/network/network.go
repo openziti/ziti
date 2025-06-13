@@ -27,7 +27,6 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"
-	"github.com/openziti/foundation/v2/sequence"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -84,9 +83,8 @@ type Network struct {
 	options                *config.NetworkConfig
 	assembleAndCleanC      chan struct{}
 	forwardingFaults       chan struct{}
-	circuitIdGenerator     idgen.Generator
+	idGenerator            idgen.Generator
 	routeSenderController  *routeSenderController
-	sequence               *sequence.Sequence
 	eventDispatcher        event.Dispatcher
 	traceController        trace.Controller
 	routerPresenceHandlers concurrenz.CopyOnWriteSlice[model.RouterPresenceHandler]
@@ -132,9 +130,8 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 		options:               config.GetOptions(),
 		assembleAndCleanC:     make(chan struct{}, 1),
 		forwardingFaults:      make(chan struct{}, 1),
-		circuitIdGenerator:    idgen.NewGenerator(),
+		idGenerator:           idgen.NewGenerator(),
 		routeSenderController: newRouteSenderController(),
-		sequence:              sequence.NewSequence(),
 		eventDispatcher:       config.GetEventDispatcher(),
 		traceController:       trace.NewController(config.GetCloseNotify()),
 		closeNotify:           config.GetCloseNotify(),
@@ -584,7 +581,7 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 	instanceId, serviceId := parseInstanceIdAndService(service)
 
 	// 1: Allocate Circuit Identifier
-	circuitId, err := network.circuitIdGenerator.NextId()
+	circuitId, err := network.idGenerator.NextId()
 	if err != nil {
 		network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, CircuitFailureIdGenerationError)
 		return nil, err
@@ -899,12 +896,12 @@ func (network *Network) RemoveCircuit(circuitId string, now bool) error {
 }
 
 func (network *Network) CreatePath(srcR, dstR *model.Router) (*model.Path, error) {
-	ingressId, err := network.sequence.NextHash()
+	ingressId, err := network.idGenerator.NextId()
 	if err != nil {
 		return nil, err
 	}
 
-	egressId, err := network.sequence.NextHash()
+	egressId, err := network.idGenerator.NextId()
 	if err != nil {
 		return nil, err
 	}

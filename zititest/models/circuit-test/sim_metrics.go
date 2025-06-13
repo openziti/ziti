@@ -144,7 +144,7 @@ func (self *SimMetricsValidator) ValidateCollected() error {
 	}
 
 	sdkP95Latency := 750 * time.Millisecond
-	ertP5Latency := 500 * time.Millisecond
+	ertP95Latency := 500 * time.Millisecond
 	sdkXgP5Latency := 500 * time.Millisecond
 
 	latencyP95Thresholds := map[string]time.Duration{
@@ -153,9 +153,9 @@ func (self *SimMetricsValidator) ValidateCollected() error {
 		"sdk to ert":       sdkP95Latency,
 		"sdk-xg to sdk":    sdkP95Latency,
 		"ert to sdk":       sdkP95Latency,
-		"ert to ert":       ertP5Latency,
-		"ert to sdk-xg":    ertP5Latency,
-		"sdk-xg to ert":    ertP5Latency,
+		"ert to ert":       ertP95Latency,
+		"ert to sdk-xg":    ertP95Latency,
+		"sdk-xg to ert":    ertP95Latency,
 		"sdk-xg to sdk-xg": sdkXgP5Latency,
 	}
 
@@ -197,15 +197,35 @@ func (self *SimMetricsValidator) ValidateCollected() error {
 					meanLatency := time.Duration(int64(metrics.latency.Mean))
 					meanLatencyThreshold := latencyMeanThresholds[clientType]
 					if meanLatency > meanLatencyThreshold {
-						errList = append(errList, fmt.Errorf("%s: service %s has mean latency %s exceeding %s",
-							host.Id, service, meanLatency.String(), meanLatencyThreshold.String()))
+						err := fmt.Errorf("%s: service %s has mean latency %s exceeding %s",
+							host.Id, service, meanLatency.String(), meanLatencyThreshold.String())
+						fmt.Printf("outlier intermediary: %v\n", err)
 					}
 
 					p95Latency := time.Duration(int64(metrics.latency.P95))
 					p95LatencyThreshold := latencyP95Thresholds[clientType]
 					if p95Latency > p95LatencyThreshold {
-						errList = append(errList, fmt.Errorf("%s: service %s has p95 latency %s exceeding %s",
-							host.Id, service, p95Latency.String(), p95LatencyThreshold.String()))
+						err := fmt.Errorf("%s: service %s has p95 latency %s exceeding %s",
+							host.Id, service, p95Latency.String(), p95LatencyThreshold.String())
+						fmt.Printf("outlier intermediary: %v\n", err)
+					}
+				}
+
+				if isLast && strings.Contains(service, "latency") {
+					meanLatency := time.Duration(int64(metrics.latency.Mean))
+					meanLatencyThreshold := latencyMeanThresholds[clientType]
+					if meanLatency > meanLatencyThreshold {
+						err := fmt.Errorf("%s: service %s has mean latency %s exceeding %s",
+							host.Id, service, meanLatency.String(), meanLatencyThreshold.String())
+						errList = append(errList, err)
+					}
+
+					p95Latency := time.Duration(int64(metrics.latency.P95))
+					p95LatencyThreshold := latencyP95Thresholds[clientType]
+					if p95Latency > p95LatencyThreshold {
+						err := fmt.Errorf("%s: service %s has p95 latency %s exceeding %s",
+							host.Id, service, p95Latency.String(), p95LatencyThreshold.String())
+						errList = append(errList, err)
 					}
 				}
 

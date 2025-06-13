@@ -18,6 +18,7 @@ package loop4
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net"
@@ -108,7 +109,18 @@ func (cmd *listenerCmd) runWorkload(workload *Workload) {
 func (cmd *listenerCmd) handle(conn net.Conn, workload *Workload) {
 	log := pfxlog.Logger().WithField("workload", workload.Name)
 
+	if edgeConn, ok := conn.(edge.Conn); ok {
+		log = log.WithFields(logrus.Fields{
+			"connId":    edgeConn.Id(),
+			"circuitId": edgeConn.GetCircuitId(),
+			"routerId":  edgeConn.GetRouterId(),
+		})
+	}
+
+	log.Info("connection received")
+
 	defer func() {
+		log.Info("closing connection")
 		if err := conn.Close(); err != nil {
 			log.WithError(err).Error("error closing connection")
 		}
@@ -119,7 +131,7 @@ func (cmd *listenerCmd) handle(conn net.Conn, workload *Workload) {
 
 		if test == nil || !test.IsRxSequential() {
 			if test, err = proto.rxTest(); err != nil {
-				logrus.WithError(err).Error("failure receiving test parameters, closing")
+				log.WithError(err).Error("failure receiving test parameters, closing")
 				return
 			}
 		}
