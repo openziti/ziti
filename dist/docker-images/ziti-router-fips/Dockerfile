@@ -1,11 +1,11 @@
-ARG ZITI_CLI_TAG="latest"
+ARG ZITI_CLI_TAG="latest-fips"
 ARG ZITI_CLI_IMAGE="docker.io/openziti/ziti-cli"
+
 # this builds docker.io/openziti/ziti-router
 FROM ${ZITI_CLI_IMAGE}:${ZITI_CLI_TAG}
 
 ARG ROUTER_PACKAGE=./dist/dist-packages/linux/openziti-router
 
-### Required OpenShift Labels
 LABEL name="openziti/ziti-router" \
       maintainer="developers@openziti.org" \
       vendor="NetFoundry" \
@@ -15,9 +15,10 @@ LABEL name="openziti/ziti-router" \
 # set up image as root, then drop privs to ziggy
 USER root
 
-RUN INSTALL_PKGS="util-linux iptables libbpf iproute" && \
-      microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
-      microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS}
+RUN INSTALL_PKGS="util-linux libbpf0 iptables iproute2" \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends $INSTALL_PKGS \
+    && rm -rf /var/lib/apt/lists/*
 
 # set a var for entrypoint.bash to find this script
 ENV ZITI_ROUTER_BOOTSTRAP_BASH=/bootstrap.bash
