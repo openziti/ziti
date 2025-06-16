@@ -14,8 +14,8 @@ require (
 	github.com/openziti/agent v1.0.27
 	github.com/openziti/channel/v4 v4.2.1
 	github.com/openziti/edge-api v0.26.45
-	github.com/openziti/fablab v0.5.97
-	github.com/openziti/foundation/v2 v2.0.65
+	github.com/openziti/fablab v0.5.108
+	github.com/openziti/foundation/v2 v2.0.66
 	github.com/openziti/identity v1.0.103
 	github.com/openziti/metrics v1.4.1
 	github.com/openziti/sdk-golang v1.1.2
@@ -45,7 +45,7 @@ require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
-	github.com/aws/aws-sdk-go v1.55.6 // indirect
+	github.com/aws/aws-sdk-go v1.55.7 // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
@@ -151,7 +151,7 @@ require (
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
-	github.com/pkg/sftp v1.13.8 // indirect
+	github.com/pkg/sftp v1.13.9 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect

@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop4"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/sirupsen/logrus"
@@ -29,53 +30,43 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
-func NewClientMetrics(service string, closer <-chan struct{}) *ClientMetrics {
-	return NewClientMetricsWithIdMapper(service, closer, func(id string) string {
-		return "#" + id
-	})
-}
+const (
+	SimControllerName = "sim-controller"
+)
 
-func NewClientMetricsWithIdMapper(service string, closer <-chan struct{}, f func(string) string) *ClientMetrics {
-	return &ClientMetrics{
-		service:            service,
-		closer:             closer,
-		idToSelectorMapper: f,
+func NewSimServices(hostSelectorF func(string) string) *SimServices {
+	return &SimServices{
+		idToSelectorMapper: hostSelectorF,
 	}
 }
 
-type ClientMetrics struct {
-	service            string
+type SimServices struct {
 	listener           net.Listener
-	closer             <-chan struct{}
 	model              *model.Model
 	idToSelectorMapper func(string) string
+	lock               sync.Mutex
+	zitiContext        ziti.Context
+	metricsStarted     atomic.Bool
+
+	remoteController *loop4.RemoteController
 }
 
-func (metrics *ClientMetrics) ActivateAndOperateAction() model.Action {
-	return model.ActionFunc(metrics.ActivateAndOperate)
-}
-
-func (metrics *ClientMetrics) ActivateAndOperate(run model.Run) error {
-	if err := metrics.Execute(run); err != nil {
-		return err
-	}
-	return metrics.Operate(run)
-}
-
-func (metrics *ClientMetrics) Execute(run model.Run) error {
-	if err := zitilib_actions.EdgeExec(run.GetModel(), "delete", "identity", "metrics-host"); err != nil {
+func (self *SimServices) SetupSimControllerIdentity(run model.Run) error {
+	if err := zitilib_actions.EdgeExec(run.GetModel(), "delete", "identity", SimControllerName); err != nil {
 		return err
 	}
 
-	jwtFilePath := run.GetLabel().GetFilePath("metrics-host.jwt")
-	if err := zitilib_actions.EdgeExec(run.GetModel(), "create", "identity", "metrics-host", "-a", "metrics-host", "-o", jwtFilePath); err != nil {
+	jwtFilePath := run.GetLabel().GetFilePath("sim-controller.jwt")
+	if err := zitilib_actions.EdgeExec(run.GetModel(), "create", "identity", SimControllerName, "-a", "metrics-host,sim-services-host", "-o", jwtFilePath); err != nil {
 		return err
 	}
 
-	identityConfigPath := run.GetLabel().GetFilePath("metrics-host.json")
+	identityConfigPath := run.GetLabel().GetFilePath("sim-controller.json")
 	if _, err := cli.Exec(run.GetModel(), "edge", "enroll", jwtFilePath, "-o", identityConfigPath); err != nil {
 		return err
 	}
@@ -83,22 +74,46 @@ func (metrics *ClientMetrics) Execute(run model.Run) error {
 	return nil
 }
 
-func (metrics *ClientMetrics) Operate(run model.Run) error {
-	metrics.model = run.GetModel()
+func (self *SimServices) GetZitiContext(run model.Run) (ziti.Context, error) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if self.zitiContext == nil {
+		identityConfigPath := run.GetLabel().GetFilePath("sim-controller.json")
+		pfxlog.Logger().Infof("loading ziti config from [%s]", identityConfigPath)
+		cfg, err := ziti.NewConfigFromFile(identityConfigPath)
+		if err != nil {
+			return nil, err
+		}
+		cfg.EnableHa = true
+		pfxlog.Logger().Infof("loading ziti context from [%s]", identityConfigPath)
+		context, err := ziti.NewContext(cfg)
+		if err != nil {
+			return nil, err
+		}
+		self.zitiContext = context
+	}
 
-	identityConfigPath := run.GetLabel().GetFilePath("metrics-host.json")
+	return self.zitiContext, nil
+}
 
-	context, err := ziti.NewContextFromFile(identityConfigPath)
+func (self *SimServices) CollectSimMetrics(run model.Run, service string) error {
+	if !self.metricsStarted.CompareAndSwap(false, true) {
+		return nil
+	}
+
+	self.model = run.GetModel()
+
+	context, err := self.GetZitiContext(run)
 	if err != nil {
 		return err
 	}
 
-	listener, err := context.Listen(metrics.service)
+	listener, err := context.Listen(service)
 	if err != nil {
 		return err
 	}
 
-	metrics.listener = listener
+	self.listener = listener
 
 	go func() {
 		pfxlog.Logger().Info("ziti client metrics listener started")
@@ -108,16 +123,20 @@ func (metrics *ClientMetrics) Operate(run model.Run) error {
 				pfxlog.Logger().WithError(err).Info("metrics listener closed, returning")
 				return
 			}
-			go metrics.HandleMetricsConn(conn)
+			go self.HandleMetricsConn(conn)
 		}
 	}()
-
-	go metrics.runMetrics()
 
 	return nil
 }
 
-func (metrics *ClientMetrics) HandleMetricsConn(conn net.Conn) {
+func (self *SimServices) CollectSimMetricStage(service string) model.Stage {
+	return model.StageActionF(func(run model.Run) error {
+		return self.CollectSimMetrics(run, service)
+	})
+}
+
+func (self *SimServices) HandleMetricsConn(conn net.Conn) {
 	defer func() { _ = conn.Close() }()
 
 	log := pfxlog.Logger()
@@ -151,27 +170,27 @@ func (metrics *ClientMetrics) HandleMetricsConn(conn net.Conn) {
 			return
 		}
 
-		hostSelector := metrics.idToSelectorMapper(event.SourceId)
-		host, err := metrics.model.SelectHost(hostSelector)
+		hostSelector := self.idToSelectorMapper(event.SourceId)
+		host, err := self.model.SelectHost(hostSelector)
 		if err == nil {
-			modelEvent := metrics.toClientMetricsEvent(event)
-			metrics.model.AcceptHostMetrics(host, modelEvent)
-			log.Infof("<$= [%s] - client metrics", event.SourceId)
+			modelEvent := self.toClientMetricsEvent(event)
+			self.model.AcceptHostMetrics(host, modelEvent)
+			log.Debugf("<$= [%s] - client metrics", event.SourceId)
 		} else {
 			log.WithError(err).Error("clientMetrics: unable to find host")
 		}
 	}
 }
 
-func (metrics *ClientMetrics) runMetrics() {
+func (self *SimServices) CloseMetricsListenerOnNotify(closeNotify <-chan struct{}) error {
 	logrus.Infof("starting")
 	defer logrus.Infof("exiting")
 
-	<-metrics.closer
-	_ = metrics.listener.Close()
+	<-closeNotify
+	return self.listener.Close()
 }
 
-func (metrics *ClientMetrics) toClientMetricsEvent(fabricEvent *mgmt_pb.StreamMetricsEvent) *model.MetricsEvent {
+func (self *SimServices) toClientMetricsEvent(fabricEvent *mgmt_pb.StreamMetricsEvent) *model.MetricsEvent {
 	modelEvent := &model.MetricsEvent{
 		Timestamp: time.Unix(fabricEvent.Timestamp.Seconds, int64(fabricEvent.Timestamp.Nanos)),
 		Metrics:   model.MetricSet{},
@@ -192,4 +211,24 @@ func (metrics *ClientMetrics) toClientMetricsEvent(fabricEvent *mgmt_pb.StreamMe
 	}
 
 	return modelEvent
+}
+
+func (self *SimServices) GetSimController(run model.Run, service string) (*loop4.RemoteController, error) {
+	zitiContext, err := self.GetZitiContext(run)
+	if err != nil {
+		return nil, err
+	}
+
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	if self.remoteController == nil {
+		simControl := loop4.NewRemoteController(zitiContext)
+		if err = simControl.AcceptConnections(service); err != nil {
+			return nil, err
+		}
+		self.remoteController = simControl
+	}
+
+	return self.remoteController, nil
 }

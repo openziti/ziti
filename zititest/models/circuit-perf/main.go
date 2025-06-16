@@ -21,23 +21,23 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
-	actions "github.com/openziti/fablab/kernel/lib/actions"
+	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	semaphore0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
-	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
+	terraformInit "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
 	fablibOps "github.com/openziti/fablab/kernel/lib/runlevel/5_operation"
-	aws_ssh_key2 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
+	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
-	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
+	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	zitilibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
@@ -104,6 +104,21 @@ var Model = &model.Model{
 				}
 				return fmt.Errorf("component %s of type %T doesn't support setting version", component.Id, component.Type)
 			})
+		}),
+		model.FactoryFunc(func(m *model.Model) error {
+			simServices := zitilibOps.NewSimServices(func(s string) string {
+				return "component#" + s
+			})
+
+			m.AddActivationStageF(simServices.SetupSimControllerIdentity)
+			m.AddOperatingStage(simServices.CollectSimMetricStage("metrics"))
+
+			m.AddOperatingStageF(func(run model.Run) error {
+				time.Sleep(time.Hour * 24)
+				return nil
+			})
+
+			return nil
 		}),
 	},
 
@@ -206,8 +221,8 @@ var Model = &model.Model{
 			workflow.AddAction(component.StartInParallel("loop-host", 5))
 
 			workflow.AddAction(edge.Login("#ctrl"))
-			workflow.AddAction(zitilib_actions.Edge("list", "edge-routers", "limit none"))
-			workflow.AddAction(zitilib_actions.Edge("list", "terminators", "limit none"))
+			workflow.AddAction(zitilibActions.Edge("list", "edge-routers", "limit none"))
+			workflow.AddAction(zitilibActions.Edge("list", "terminators", "limit none"))
 
 			return workflow.Execute(run)
 		}),
@@ -225,7 +240,7 @@ var Model = &model.Model{
 
 	Infrastructure: model.Stages{
 		aws_ssh_key.Express(),
-		&terraform_0.Terraform{
+		&terraformInit.Terraform{
 			Retries: 3,
 			ReadyCheck: &semaphore0.ReadyStage{
 				MaxWait: 90 * time.Second,
@@ -240,7 +255,7 @@ var Model = &model.Model{
 
 	Disposal: model.Stages{
 		terraform.Dispose(),
-		aws_ssh_key2.Dispose(),
+		awsSshKeyDispose.Dispose(),
 	},
 
 	Operation: model.Stages{
@@ -248,10 +263,6 @@ var Model = &model.Model{
 		edge.SyncModelEdgeState(models.EdgeRouterTag),
 
 		fablibOps.StreamSarMetrics("*", 5, 1, nil),
-
-		zitilibOps.NewClientMetricsWithIdMapper("metrics", nil, func(s string) string {
-			return "component#" + s
-		}).ActivateAndOperateAction(),
 
 		fablibOps.InfluxMetricsReporter(),
 
@@ -265,11 +276,6 @@ var Model = &model.Model{
 
 		component.Stop("loop-client"),
 		component.Start("loop-client"),
-
-		model.StageActionF(func(run model.Run) error {
-			time.Sleep(time.Hour * 24)
-			return nil
-		}),
 	},
 }
 

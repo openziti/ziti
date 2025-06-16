@@ -1,0 +1,77 @@
+connectors:
+  default:
+    sdk:
+      identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
+      report_sdk_metrics: true
+      ha: {{ .Component.GetFlag "ha"}}
+      max_control_underlays: 1
+      max_data_underlays: 3
+      enable_sdk_xgress: true
+      test_service: latency
+
+remoteControlled:
+  connector: default
+  service: sim-control
+
+metrics:
+  connector: default
+  service: metrics
+  interval: 5s
+  clientId: {{ .Component.Id }}
+
+workloads:
+{{ if .Component.BoolVariable "testSdkHost" }}
+  - name:         throughput
+    service_name: throughput
+    connector:    default
+    {{ $.Model.MustVariable "gentleThroughputWorkload" }}
+{{ end }}
+
+{{ if .Component.BoolVariable "testSdkXgHost" }}
+  - name:         throughput-xg
+    service_name: throughput-xg
+    connector:    default
+    {{ $.Model.MustVariable "throughputWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testErtHost" }}
+  - name:         throughput-ert
+    service_name: throughput-ert
+    connector:    default
+    {{ $.Model.MustVariable "throughputWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testSdkHost" }}
+  - name:         latency
+    service_name: latency
+    connector:    default
+    {{ $.Model.MustVariable "latencyWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testSdkXgHost" }}
+  - name:         latency-xg
+    service_name: latency-xg
+    connector:    default
+    {{ $.Model.MustVariable "latencyWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testErtHost" }}
+  - name:         latency-ert
+    service_name: latency-ert
+    connector:    default
+    {{ $.Model.MustVariable "latencyWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testSdkXgHost" }}
+  - name:         slow-xg
+    service_name: slow-xg
+    connector:    default
+    {{ $.Model.MustVariable "slowWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testErtHost" }}
+  - name:         slow-ert
+    service_name: slow-ert
+    connector:    default
+    {{ $.Model.MustVariable "slowWorkload" }}
+{{end}}
