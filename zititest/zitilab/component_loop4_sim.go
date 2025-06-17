@@ -35,13 +35,16 @@ func (self Loop4Mode) String() string {
 		return "dialer"
 	} else if self == Loop4Listener {
 		return "listener"
+	} else if self == Loop4RemoteControlled {
+		return "remote-controlled"
 	}
 	panic(fmt.Errorf("unknown loop4 mode '%d'", self))
 }
 
 const (
-	Loop4Dialer   Loop4Mode = 0
-	Loop4Listener Loop4Mode = 1
+	Loop4Dialer           Loop4Mode = 0
+	Loop4Listener         Loop4Mode = 1
+	Loop4RemoteControlled Loop4Mode = 2
 )
 
 type Loop4SimType struct {
@@ -65,6 +68,7 @@ func (self *Loop4SimType) Dump() any {
 		"type_id":       "ziti-traffic-test/loop4",
 		"local_path":    self.LocalPath,
 		"config_source": self.ConfigSource,
+		"mode":          self.Mode.String(),
 	}
 }
 

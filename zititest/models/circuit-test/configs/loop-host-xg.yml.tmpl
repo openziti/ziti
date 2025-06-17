@@ -1,0 +1,21 @@
+connectors:
+  default:
+    sdk:
+      identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
+      ha: {{ .Component.GetFlag "ha"}}
+      max_control_underlays: 1
+      max_data_underlays: 2
+      enable_sdk_xgress: true
+
+workloads:
+  - name: throughput
+    connector: default
+    service_name: throughput-xg
+
+  - name: latency
+    connector: default
+    service_name: latency-xg
+
+  - name: slow
+    connector: default
+    service_name: slow-xg

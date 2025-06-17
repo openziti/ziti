@@ -1,0 +1,94 @@
+connectors:
+  default:
+    sdk:
+      identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
+      report_sdk_metrics: true
+      ha: {{ .Component.GetFlag "ha"}}
+      max_control_underlays: 1
+      max_data_underlays: 1
+      enable_sdk_xgress: true
+      test_service: latency
+  throughput:
+    transport:
+      address: tcp:throughput.ziti:3456
+  throughput-xg:
+    transport:
+      address: tcp:throughput-xg.ziti:3456
+  throughput-ert:
+    transport:
+      address: tcp:throughput-ert.ziti:3456
+  latency:
+    transport:
+      address: tcp:latency.ziti:3456
+  latency-xg:
+    transport:
+      address: tcp:latency-xg.ziti:3456
+  latency-ert:
+    transport:
+      address: tcp:latency-ert.ziti:3456
+  slow-xg:
+    transport:
+      address: tcp:slow-xg.ziti:3456
+  slow-ert:
+    transport:
+      address: tcp:slow-ert.ziti:3456
+
+
+remoteControlled:
+  connector: default
+  service: sim-control
+
+metrics:
+  connector: default
+  service: metrics
+  interval: 5s
+  clientId: {{ .Component.Id }}
+
+workloads:
+{{ if .Component.BoolVariable "testSdkHost" }}
+  - name:         throughput
+    connector:    throughput
+    {{ $.Model.MustVariable "gentleThroughputWorkload" }}
+{{ end }}
+
+{{ if .Component.BoolVariable "testSdkXgHost" }}
+  - name:         throughput-xg
+    connector:    throughput-xg
+    {{ $.Model.MustVariable "throughputWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testErtHost" }}
+  - name:         throughput-ert
+    connector:    throughput-ert
+    {{ $.Model.MustVariable "throughputWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testSdkHost" }}
+  - name:         latency
+    connector:    latency
+    {{ $.Model.MustVariable "latencyWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testSdkXgHost" }}
+  - name:         latency-xg
+    connector:    latency-xg
+    {{ $.Model.MustVariable "latencyWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testErtHost" }}
+  - name:         latency-ert
+    connector:    latency-ert
+    {{ $.Model.MustVariable "latencyWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testSdkXgHost" }}
+  - name:         slow-xg
+    connector:    slow-xg
+    {{ $.Model.MustVariable "slowWorkload" }}
+{{end}}
+
+{{ if .Component.BoolVariable "testErtHost" }}
+  - name:         slow-ert
+    connector:    slow-ert
+    {{ $.Model.MustVariable "slowWorkload" }}
+{{end}}

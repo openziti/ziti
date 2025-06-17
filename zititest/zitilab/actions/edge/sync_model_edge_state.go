@@ -3,7 +3,7 @@ package edge
 import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/fablab/kernel/model"
-	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
+	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -20,7 +20,7 @@ func (action *syncModelEdgeStateAction) Execute(run model.Run) error {
 		return errors.Errorf("no router components found for selector '%v'", action.componentSpec)
 	}
 
-	output, err := zitilib_actions.EdgeExecWithOutput(run.GetModel(), "list", "edge-routers", "--output-json", "true limit none")
+	output, err := zitilibActions.EdgeExecWithOutput(run.GetModel(), "list", "edge-routers", "--output-json", "true limit none")
 	if err != nil {
 		return err
 	}

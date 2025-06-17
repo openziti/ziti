@@ -38,31 +38,38 @@ ctrl:
     #newListener: tls:localhost:6262
 
 events:
-  jsonLogger:
+  entityChangeEventsLogger:
     subscriptions:
       - type: entityChange
         propagateAlways: true
-#      - type: edge.apiSessions
-#      - type: edge.entityCounts
-#        interval: 15s
-#      - type: edge.sessions
-#      - type: fabric.routers
-#      - type: fabric.terminators
-#      - type: metrics
-#        sourceFilter: .*
-#        metricFilter: .*egress.*m1_rate*
-#      - type: fabric.circuits
-#        include:
-#          - created
-#        include:
-#          - created
-#      - type: fabric.usage
-#      - type: services
-#      - type: fabric.usage
     handler:
       type: file
       format: json
-      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/event.log
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/entity-change.log
+
+  circuitEventsLogger:
+    subscriptions:
+      - type: circuit
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/circuits.log
+
+  linkEventsLogger:
+    subscriptions:
+      - type: link
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/links.log
+
+  routerEventsLogger:
+    subscriptions:
+      - type: router
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/router.log
 
 healthChecks:
   boltCheck:
