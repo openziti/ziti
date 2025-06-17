@@ -19,8 +19,8 @@ package oidc_auth
 import (
 	"time"
 
-	"github.com/zitadel/oidc/v2/pkg/oidc"
-	"github.com/zitadel/oidc/v2/pkg/op"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
+	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
 // Client represents an OIDC Client and implements op.Client

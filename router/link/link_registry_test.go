@@ -76,6 +76,10 @@ type testLink struct {
 	destId string
 }
 
+func (self *testLink) GetDestinationType() string {
+	return "link"
+}
+
 func (self *testLink) Id() string {
 	return self.id
 }

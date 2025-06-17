@@ -58,6 +58,10 @@ func (self *impl) Iteration() uint32 {
 	return self.iteration
 }
 
+func (self *impl) GetDestinationType() string {
+	return "link"
+}
+
 func (self *impl) Init(metricsRegistry metrics.Registry) error {
 	if self.droppedMsgMeter == nil {
 		self.droppedMsgMeter = metricsRegistry.Meter("link.dropped_msgs:" + self.id)

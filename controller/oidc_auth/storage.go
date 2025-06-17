@@ -23,9 +23,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/event"
-	"gopkg.in/go-jose/go-jose.v2"
 	"net/http"
 	"strings"
 	"sync"
@@ -43,8 +43,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/zitadel/oidc/v2/pkg/oidc"
-	"github.com/zitadel/oidc/v2/pkg/op"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
+	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
 var (

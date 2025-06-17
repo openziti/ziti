@@ -127,7 +127,7 @@ func (context *inspectRequestContext) processLocal() {
 			if result != nil {
 				context.handleJsonResponse(requested, result)
 			}
-		} else if lc == "router-circuits" {
+		} else if lc == inspect.RouterCircuitsKey {
 			result := context.handler.fwd.InspectCircuits()
 			context.handleJsonResponse(requested, result)
 		} else if strings.HasPrefix(lc, "metrics") {
@@ -168,7 +168,7 @@ func (context *inspectRequestContext) processLocal() {
 
 			result := inspectable.Inspect(lc, time.Second)
 			context.handleJsonResponse(requested, result)
-		} else if strings.EqualFold(lc, "router-edge-circuits") || strings.EqualFold(lc, "router-sdk-circuits") {
+		} else if strings.EqualFold(lc, inspect.RouterEdgeCircuitsKey) || strings.EqualFold(lc, inspect.RouterSdkCircuitsKey) {
 			context.inspectXgListener(requested)
 		}
 	}

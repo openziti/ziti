@@ -27,7 +27,7 @@ import (
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/pkg/errors"
-	"github.com/zitadel/oidc/v2/pkg/op"
+	"github.com/zitadel/oidc/v3/pkg/op"
 	"html/template"
 	"io"
 	"net/http"
