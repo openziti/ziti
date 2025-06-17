@@ -49,6 +49,7 @@ type Router struct {
 	NoTraversal bool
 	Disabled    bool
 	Metadata    *ctrl_pb.RouterMetadata
+	Interfaces  []*Interface
 }
 
 func (entity *Router) GetLinks() []*Link {
@@ -67,6 +68,7 @@ func (entity *Router) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Router, error) 
 		Cost:          entity.Cost,
 		NoTraversal:   entity.NoTraversal,
 		Disabled:      entity.Disabled,
+		Interfaces:    InterfacesToBolt(entity.Interfaces),
 	}, nil
 }
 
@@ -76,6 +78,7 @@ func (entity *Router) fillFrom(_ Env, _ *bbolt.Tx, boltRouter *db.Router) error 
 	entity.Cost = boltRouter.Cost
 	entity.NoTraversal = boltRouter.NoTraversal
 	entity.Disabled = boltRouter.Disabled
+	entity.Interfaces = InterfacesFromBolt(boltRouter.Interfaces)
 	entity.FillCommon(boltRouter)
 	return nil
 }

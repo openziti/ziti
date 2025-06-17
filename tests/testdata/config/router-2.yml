@@ -53,3 +53,6 @@ link:
     - binding: transport
       bind: tls:127.0.0.1:6005
       advertise: tls:127.0.0.1:6005
+
+interfaceDiscovery:
+  disabled: true

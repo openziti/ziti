@@ -84,12 +84,12 @@ ctrl:
 events:
   jsonLogger:
     subscriptions:
-      - type: apiSession
-      - type: authentication
+#      - type: apiSession
+#      - type: authentication
 #      - type: circuit
 #      - type: connect
 #      - type: sdk
-#      - type: entityChange
+      - type: entityChange
 #        include:
 #          - services
 #          - identities

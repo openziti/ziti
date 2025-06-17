@@ -23,6 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
@@ -300,6 +301,23 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		Type:                       ToEntityRef(identityType.Name, identityType, IdentityTypeLinkFactory),
 		TypeID:                     &identityType.Id,
 	}
+
+	for _, intf := range identity.Interfaces {
+		apiIntf := &rest_model.Interface{
+			HardwareAddress: &intf.HardwareAddress,
+			Index:           &intf.Index,
+			IsBroadcast:     util.Ptr(intf.IsBroadcast()),
+			IsLoopback:      util.Ptr(intf.IsLoopback()),
+			IsMulticast:     util.Ptr(intf.IsMulticast()),
+			IsRunning:       util.Ptr(intf.IsRunning()),
+			IsUp:            util.Ptr(intf.IsUp()),
+			Mtu:             &intf.MTU,
+			Name:            &intf.Name,
+			Addresses:       intf.Addresses,
+		}
+		ret.Interfaces = append(ret.Interfaces, apiIntf)
+	}
+
 	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 
 	ret.Authenticators = &rest_model.IdentityAuthenticators{}

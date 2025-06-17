@@ -1,3 +1,186 @@
+# Release 1.6.3
+
+## What's New
+
+* Router Network Interface Discovery
+
+## Router Interface Discovery
+
+Routers can now discover their network interfaces and publish this information to the
+controller. 
+
+This feature will be used in the future to allow controller side configuration of
+router link listeners and edge listeners. 
+
+### Update Router Configuration
+
+There is new router configuration to manage this:
+
+```
+interfaceDiscovery:
+  # This feature is enabled by default, but can be disabled by setting this to true
+  disabled: false
+
+  # How often to poll for interface changes. Defaults to 1 minute
+  checkInterval: 1m
+
+  # How often to report the current set of interfaces, when nothing has changed.
+  # This is a failsafe reporting mechanism, in the very unlikely event that an 
+  # earlier change report was lost or disregarded due to distributed controller
+  # eventual consistency
+  minReportInterval: 24h
+```
+
+### Update REST APIs
+
+Network interfaces, where reported, can now be viewed on the following endpoints.
+
+* routers
+* edge-routers
+* identities (if the router is an ER/T, with an associated identities)
+
+At some point in the future, we expect to allow SDKs to also optionally report their
+network interfaces as well. Those will be available via the `identities` REST API.
+
+Example:
+
+```
+$ ziti fabric list routers 'name="edge-router-1"' -j | jq
+{
+  "data": [
+    {
+      "_links": {
+        "self": {
+          "href": "./routers/oLvcT6VepI"
+        },
+        "terminators": {
+          "href": "./routers/oLvcT6VepI/terminators"
+        }
+      },
+      "createdAt": "2025-03-24T04:35:59.077Z",
+      "id": "oLvcT6VepI",
+      "tags": {},
+      "updatedAt": "2025-06-11T14:29:22.083Z",
+      "connected": false,
+      "cost": 0,
+      "disabled": false,
+      "fingerprint": "b7b03c55be77df0ec57e49d8fe2610e0b99fa61c",
+      "interfaces": [
+        {
+          "addresses": [
+            "192.168.3.29/24",
+            "aaaa::aaaa:aaaa:aaaa:aaaa/64"
+          ],
+          "hardwareAddress": "aa:aa:aa:aa:aa:aa",
+          "index": 4,
+          "isBroadcast": true,
+          "isLoopback": false,
+          "isMulticast": true,
+          "isRunning": true,
+          "isUp": true,
+          "mtu": 1500,
+          "name": "wifi0"
+        },
+        {
+          "addresses": null,
+          "hardwareAddress": "aa:aa:aa:aa:aa:aa",
+          "index": 2,
+          "isBroadcast": true,
+          "isLoopback": false,
+          "isMulticast": true,
+          "isRunning": false,
+          "isUp": true,
+          "mtu": 1500,
+          "name": "eth1"
+        },
+        {
+          "addresses": [
+            "192.168.1.2/24",
+            "aaaa::aaaa:aaa:aaaa:aaaa/64"
+          ],
+          "hardwareAddress": "aa:aa:aa:aa:aa:aa",
+          "index": 16,
+          "isBroadcast": true,
+          "isLoopback": false,
+          "isMulticast": true,
+          "isRunning": true,
+          "isUp": true,
+          "mtu": 1500,
+          "name": "eth0"
+        },
+        {
+          "addresses": [
+            "127.0.0.1/8",
+            "::1/128"
+          ],
+          "hardwareAddress": "",
+          "index": 1,
+          "isBroadcast": false,
+          "isLoopback": true,
+          "isMulticast": false,
+          "isRunning": true,
+          "isUp": true,
+          "mtu": 65536,
+          "name": "lo"
+        }
+      ],
+      "listenerAddresses": null,
+      "name": "edge-router-1",
+      "noTraversal": false
+    }
+  ],
+  "meta": {
+    "filterableFields": [
+      "id",
+      "isSystem",
+      "name",
+      "fingerprint",
+      "cost",
+      "createdAt",
+      "updatedAt",
+      "tags",
+      "noTraversal",
+      "disabled",
+      "connected"
+    ],
+    "pagination": {
+      "limit": 10,
+      "offset": 0,
+      "totalCount": 1
+    }
+  }
+}
+```
+
+Note that addresses have been sanitized.
+
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v4: [v4.2.0 -> v4.2.5](https://github.com/openziti/channel/compare/v4.2.0...v4.2.5)
+* github.com/openziti/edge-api: [v0.26.45 -> v0.26.46](https://github.com/openziti/edge-api/compare/v0.26.45...v0.26.46)
+    * [Issue #155](https://github.com/openziti/edge-api/issues/155) - Add network interface list to routers and identities
+
+* github.com/openziti/foundation/v2: [v2.0.63 -> v2.0.66](https://github.com/openziti/foundation/compare/v2.0.63...v2.0.66)
+* github.com/openziti/identity: [v1.0.101 -> v1.0.105](https://github.com/openziti/identity/compare/v1.0.101...v1.0.105)
+* github.com/openziti/sdk-golang: [v1.1.1 -> v1.1.2](https://github.com/openziti/sdk-golang/compare/v1.1.1...v1.1.2)
+    * [Issue #742](https://github.com/openziti/sdk-golang/issues/742) - Additional CtrlId and GetDestinationType for inspect support
+    * [Issue #739](https://github.com/openziti/sdk-golang/issues/739) - go-jose v2.6.3 CVE-2025-27144 resolution
+    * [Issue #735](https://github.com/openziti/sdk-golang/issues/735) - Ensure Authenticate can't be called in parallel
+
+* github.com/openziti/storage: [v0.4.11 -> v0.4.17](https://github.com/openziti/storage/compare/v0.4.11...v0.4.17)
+    * [Issue #106](https://github.com/openziti/storage/issues/106) - panic in TypedBucket.GetList
+
+* github.com/openziti/transport/v2: [v2.0.171 -> v2.0.175](https://github.com/openziti/transport/compare/v2.0.171...v2.0.175)
+* github.com/openziti/xweb/v2: [v2.3.2 -> v2.3.3](https://github.com/openziti/xweb/compare/v2.3.2...v2.3.3)
+* github.com/openziti/ziti: [v1.6.2 -> v1.6.3](https://github.com/openziti/ziti/compare/v1.6.2...v1.6.3)
+    * [Issue #3082](https://github.com/openziti/ziti/issues/3082) - Add network interfaces to controller data model
+    * [Issue #3083](https://github.com/openziti/ziti/issues/3083) - Add optional network interface discovery to routers
+    * [Issue #2862](https://github.com/openziti/ziti/issues/2862) - Large scale data-flow test
+    * [Issue #3102](https://github.com/openziti/ziti/issues/3102) - Implement remote control for ziti-traffic-test/loop4
+    * [Issue #3098](https://github.com/openziti/ziti/issues/3098) - Implement circuit validation API and CLI
+
+
 # Release 1.6.2
 
 ## What's New

@@ -96,6 +96,7 @@ type Identity struct {
 	DisabledAt                 *time.Time
 	DisabledUntil              *time.Time
 	ServiceConfigs             map[string]map[string]string
+	Interfaces                 []*Interface
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*db.Identity, error) {
@@ -136,6 +137,7 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*db.Identit
 		DisabledAt:                entity.DisabledAt,
 		DisabledUntil:             entity.DisabledUntil,
 		ServiceConfigs:            entity.ServiceConfigs,
+		Interfaces:                InterfacesToBolt(entity.Interfaces),
 	}
 
 	if entity.EnvInfo != nil {
@@ -246,6 +248,7 @@ func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker bol
 		DisabledUntil:             entity.DisabledUntil,
 		IsAdmin:                   entity.IsAdmin,
 		ServiceConfigs:            entity.ServiceConfigs,
+		Interfaces:                InterfacesToBolt(entity.Interfaces),
 	}
 
 	identityStore := env.GetManagers().Identity.GetStore()
@@ -291,6 +294,7 @@ func (entity *Identity) fillFrom(env Env, _ *bbolt.Tx, boltIdentity *db.Identity
 	entity.DisabledAt = boltIdentity.DisabledAt
 	entity.Disabled = boltIdentity.Disabled
 	entity.ServiceConfigs = boltIdentity.ServiceConfigs
+	entity.Interfaces = InterfacesFromBolt(boltIdentity.Interfaces)
 	fillModelInfo(entity, boltIdentity.EnvInfo, boltIdentity.SdkInfo)
 
 	return nil
