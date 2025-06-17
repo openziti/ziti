@@ -94,7 +94,10 @@ func (operation *heartbeatOperation) beat(tokens []string) {
 
 	operation.env.GetNetworkControllers().ForEach(func(ctrlId string, ch channel.Channel) {
 		for _, msg := range msgs {
-			if err := ch.Send(msg); err != nil {
+			// can't send the same messages across channels, will run into problems with channel heartbeats and
+			// concurrent writes
+			msgCopy := channel.NewMessage(msg.ContentType, msg.Body)
+			if err := ch.Send(msgCopy); err != nil {
 				pfxlog.Logger().WithError(err).Error("could not send heartbeats on control channel")
 			}
 
