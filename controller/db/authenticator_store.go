@@ -184,6 +184,7 @@ func (store *authenticatorStoreImpl) NewEntity() *Authenticator {
 }
 
 func (store *authenticatorStoreImpl) FillEntity(entity *Authenticator, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
 	entity.Type = bucket.GetStringOrError(FieldAuthenticatorMethod)
 	entity.IdentityId = bucket.GetStringOrError(FieldAuthenticatorIdentity)
 

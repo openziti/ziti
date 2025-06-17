@@ -526,6 +526,7 @@ func (test *authCertTests) testAuthenticateValidCertEmptyBody(t *testing.T) {
 }
 
 func (test *authCertTests) testLegacyAuthenticateValidCertImproperClientChain(t *testing.T) {
+	test.ctx.testContextChanged(t)
 	clientApiClient := test.ctx.NewEdgeClientApi(nil)
 
 	clientCerts := test.certAuthenticator.certs
@@ -536,11 +537,13 @@ func (test *authCertTests) testLegacyAuthenticateValidCertImproperClientChain(t 
 	apiSession, err := clientApiClient.Authenticate(certCreds, nil)
 
 	t.Run("returns without error", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
 		test.ctx.Req.NoError(err)
 		test.ctx.Req.NotNil(apiSession)
 	})
 
 	t.Run("current api session reports improper client cert chain", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
 		params := current_api_session.NewGetCurrentAPISessionParams()
 
 		resp, err := clientApiClient.API.CurrentAPISession.GetCurrentAPISession(params, nil)
@@ -549,10 +552,28 @@ func (test *authCertTests) testLegacyAuthenticateValidCertImproperClientChain(t 
 		test.ctx.Req.NotNil(resp)
 
 		test.ctx.Req.True(resp.Payload.Data.ImproperClientCertChain)
+	})
+
+	t.Run("the authenticator reports improper client cert chain", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
+
+		params := current_api_session.NewListCurrentIdentityAuthenticatorsParams()
+
+		resp, err := clientApiClient.API.CurrentAPISession.ListCurrentIdentityAuthenticators(params, nil)
+
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(resp)
+
+		test.ctx.Req.Len(resp.Payload.Data, 1)
+
+		test.ctx.Req.False(resp.Payload.Data[0].LastAuthResolvedToRoot)
+		test.ctx.Req.False(resp.Payload.Data[0].CreatedAt.IsZero())
+		test.ctx.Req.False(resp.Payload.Data[0].UpdatedAt.IsZero())
 	})
 }
 
 func (test *authCertTests) testOidcAuthenticateValidCertImproperClientChain(t *testing.T) {
+	test.ctx.testContextChanged(t)
 	clientApiClient := test.ctx.NewEdgeClientApi(nil)
 	clientApiClient.SetUseOidc(true)
 
@@ -564,11 +585,13 @@ func (test *authCertTests) testOidcAuthenticateValidCertImproperClientChain(t *t
 	apiSession, err := clientApiClient.Authenticate(certCreds, nil)
 
 	t.Run("returns without error", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
 		test.ctx.Req.NoError(err)
 		test.ctx.Req.NotNil(apiSession)
 	})
 
 	t.Run("current api session reports improper client cert chain", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
 		params := current_api_session.NewGetCurrentAPISessionParams()
 
 		resp, err := clientApiClient.API.CurrentAPISession.GetCurrentAPISession(params, nil)
@@ -578,9 +601,27 @@ func (test *authCertTests) testOidcAuthenticateValidCertImproperClientChain(t *t
 
 		test.ctx.Req.True(resp.Payload.Data.ImproperClientCertChain)
 	})
+
+	t.Run("the authenticator reports improper client cert chain", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
+
+		params := current_api_session.NewListCurrentIdentityAuthenticatorsParams()
+
+		resp, err := clientApiClient.API.CurrentAPISession.ListCurrentIdentityAuthenticators(params, nil)
+
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(resp)
+
+		test.ctx.Req.Len(resp.Payload.Data, 1)
+
+		test.ctx.Req.False(resp.Payload.Data[0].LastAuthResolvedToRoot)
+		test.ctx.Req.False(resp.Payload.Data[0].CreatedAt.IsZero())
+		test.ctx.Req.False(resp.Payload.Data[0].UpdatedAt.IsZero())
+	})
 }
 
 func (test *authCertTests) testLegacyAuthenticateValidCertProperClientChain(t *testing.T) {
+	test.ctx.testContextChanged(t)
 	clientApiClient := test.ctx.NewEdgeClientApi(nil)
 
 	certCreds := edge_apis.NewCertCredentials(test.certAuthenticator.certs, test.certAuthenticator.key)
@@ -588,11 +629,13 @@ func (test *authCertTests) testLegacyAuthenticateValidCertProperClientChain(t *t
 	apiSession, err := clientApiClient.Authenticate(certCreds, nil)
 
 	t.Run("returns without error", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
 		test.ctx.Req.NoError(err)
 		test.ctx.Req.NotNil(apiSession)
 	})
 
-	t.Run("current api session reports improper client cert chain", func(t *testing.T) {
+	t.Run("current api session reports proper client cert chain", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
 		params := current_api_session.NewGetCurrentAPISessionParams()
 
 		resp, err := clientApiClient.API.CurrentAPISession.GetCurrentAPISession(params, nil)
@@ -602,8 +645,26 @@ func (test *authCertTests) testLegacyAuthenticateValidCertProperClientChain(t *t
 
 		test.ctx.Req.False(resp.Payload.Data.ImproperClientCertChain)
 	})
+
+	t.Run("the authenticator reports proper client cert chain", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
+
+		params := current_api_session.NewListCurrentIdentityAuthenticatorsParams()
+
+		resp, err := clientApiClient.API.CurrentAPISession.ListCurrentIdentityAuthenticators(params, nil)
+
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(resp)
+
+		test.ctx.Req.Len(resp.Payload.Data, 1)
+
+		test.ctx.Req.True(resp.Payload.Data[0].LastAuthResolvedToRoot)
+		test.ctx.Req.False(resp.Payload.Data[0].CreatedAt.IsZero())
+		test.ctx.Req.False(resp.Payload.Data[0].UpdatedAt.IsZero())
+	})
 }
 func (test *authCertTests) testOidcAuthenticateValidCertProperClientChain(t *testing.T) {
+	test.ctx.testContextChanged(t)
 	clientApiClient := test.ctx.NewEdgeClientApi(nil)
 	clientApiClient.SetUseOidc(true)
 
@@ -612,11 +673,13 @@ func (test *authCertTests) testOidcAuthenticateValidCertProperClientChain(t *tes
 	apiSession, err := clientApiClient.Authenticate(certCreds, nil)
 
 	t.Run("returns without error", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
 		test.ctx.Req.NoError(err)
 		test.ctx.Req.NotNil(apiSession)
 	})
 
-	t.Run("current api session reports improper client cert chain", func(t *testing.T) {
+	t.Run("current api session reports proper client cert chain", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
 		params := current_api_session.NewGetCurrentAPISessionParams()
 
 		resp, err := clientApiClient.API.CurrentAPISession.GetCurrentAPISession(params, nil)
@@ -625,5 +688,22 @@ func (test *authCertTests) testOidcAuthenticateValidCertProperClientChain(t *tes
 		test.ctx.Req.NotNil(resp)
 
 		test.ctx.Req.False(resp.Payload.Data.ImproperClientCertChain)
+	})
+
+	t.Run("the authenticator reports proper client cert chain", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
+
+		params := current_api_session.NewListCurrentIdentityAuthenticatorsParams()
+
+		resp, err := clientApiClient.API.CurrentAPISession.ListCurrentIdentityAuthenticators(params, nil)
+
+		test.ctx.Req.NoError(err)
+		test.ctx.Req.NotNil(resp)
+
+		test.ctx.Req.Len(resp.Payload.Data, 1)
+
+		test.ctx.Req.True(resp.Payload.Data[0].LastAuthResolvedToRoot)
+		test.ctx.Req.False(resp.Payload.Data[0].CreatedAt.IsZero())
+		test.ctx.Req.False(resp.Payload.Data[0].UpdatedAt.IsZero())
 	})
 }

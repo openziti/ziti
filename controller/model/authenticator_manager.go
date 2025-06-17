@@ -186,6 +186,7 @@ func (self *AuthenticatorManager) Update(entity *Authenticator, unrestricted boo
 
 func (self *AuthenticatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Authenticator], ctx boltz.MutateContext) error {
 	authenticator := cmd.Entity
+
 	if updb := authenticator.ToUpdb(); updb != nil {
 		if cmd.UpdatedFields == nil || cmd.UpdatedFields.IsUpdated("password") {
 			hashResult := self.HashPassword(updb.Password)
