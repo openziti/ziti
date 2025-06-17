@@ -107,16 +107,9 @@ func (sim *Sim) InitConnectors() error {
 					name, connector.SdkOptions.IdentityFile, err)
 			}
 
-			if !connector.SdkOptions.DisableMultiChannel {
-				var cfgI any = cfg
-				if i, ok := cfgI.(interface {
-					SetMaxControlConnections(val uint32)
-					SetMaxDefaultConnections(val uint32)
-				}); ok {
-					i.SetMaxControlConnections(1)
-					i.SetMaxDefaultConnections(2)
-				}
-			}
+			cfg.EnableHa = connector.SdkOptions.Ha
+			cfg.SetMaxControlConnections(connector.SdkOptions.MaxControlUnderlays)
+			cfg.SetMaxDefaultConnections(connector.SdkOptions.MaxDataUnderlays)
 
 			ctx, err := ziti.NewContext(cfg)
 			if err != nil {
@@ -125,10 +118,11 @@ func (sim *Sim) InitConnectors() error {
 			}
 
 			if connector.SdkOptions.TestService != "" {
-				if conn, err := ctx.Dial(connector.SdkOptions.TestService); err != nil {
-					return err
-				} else {
+				conn, err := ctx.Dial(connector.SdkOptions.TestService)
+				if conn != nil {
 					_ = conn.Close()
+				} else {
+					log.WithError(err).Info("unable to dial test service")
 				}
 			}
 
@@ -141,11 +135,15 @@ func (sim *Sim) InitConnectors() error {
 			}
 
 			sim.dialers[name] = func(workload *Workload) (net.Conn, error) {
-				return sim.DialSdk(ctx, workload)
+				dialOptions := &ziti.DialOptions{
+					ConnectTimeout: workload.ConnectTimeout,
+					SdkFlowControl: &connector.SdkOptions.EnableSdkXgress,
+				}
+				return ctx.DialWithOptions(workload.ServiceName, dialOptions)
 			}
 
 			sim.listeners[name] = func(workload *Workload) (net.Listener, error) {
-				return sim.ListenSdk(ctx, workload)
+				return sim.ListenSdk(ctx, workload, connector.SdkOptions.EnableSdkXgress)
 			}
 		} else if connector.TransportOptions != nil {
 			log.Infof("loading transport connector '%s'", name)
@@ -178,17 +176,9 @@ func (sim *Sim) InitConnectors() error {
 	return nil
 }
 
-func (sim *Sim) DialSdk(client ziti.Context, wf *Workload) (net.Conn, error) {
-	dialOptions := &ziti.DialOptions{
-		ConnectTimeout: wf.ConnectTimeout,
-		SdkFlowControl: util.Ptr(true),
-	}
-	return client.DialWithOptions(wf.ServiceName, dialOptions)
-}
-
-func (sim *Sim) ListenSdk(client ziti.Context, wf *Workload) (net.Listener, error) {
+func (sim *Sim) ListenSdk(client ziti.Context, wf *Workload, useSdkFlowControl bool) (net.Listener, error) {
 	listenOptions := ziti.DefaultListenOptions()
-	listenOptions.SdkFlowControl = util.Ptr(true)
+	listenOptions.SdkFlowControl = util.Ptr(useSdkFlowControl)
 	return client.ListenWithOptions(wf.ServiceName, listenOptions)
 }
 
@@ -235,13 +225,21 @@ func (sim *Sim) StartMetrics() error {
 			}
 		}
 
-	} else {
-		sim.metrics = metrics.NewRegistry("no-op", nil)
+	}
+
+	if sim.scenario.Metrics != nil && sim.scenario.Metrics.WriteToStdout {
+		if sim.metrics == nil {
+			sim.metrics = metrics.NewRegistry("no-op", nil)
+		}
 
 		sim.StartStdoutMetricsReporter(sim.metrics)
 		for _, ctx := range sim.sdkClients {
 			sim.StartStdoutMetricsReporter(ctx.Metrics())
 		}
+	}
+
+	if sim.metrics == nil {
+		sim.metrics = metrics.NewRegistry("no-op", nil)
 	}
 
 	return nil
@@ -358,4 +356,42 @@ func (self *ListenerAdapter) Close() error {
 
 func (self *ListenerAdapter) Addr() net.Addr {
 	return self
+}
+
+type dialResult struct {
+	conn net.Conn
+	err  error
+}
+
+type AdvanceDialer struct {
+	dialer      func() (net.Conn, error)
+	connCh      chan dialResult
+	closeNotify chan struct{}
+	started     atomic.Bool
+}
+
+func (self *AdvanceDialer) Dial(workload *Workload) (net.Conn, error) {
+	if self.started.CompareAndSwap(false, true) {
+		go self.Run()
+	}
+
+	select {
+	case result := <-self.connCh:
+		return result.conn, result.err
+	case <-time.After(workload.ConnectTimeout):
+		return nil, errors.New("dial timed out")
+	case <-self.closeNotify:
+		return nil, errors.New("sim stopped")
+	}
+}
+
+func (self *AdvanceDialer) Run() {
+	for {
+		conn, err := self.dialer()
+		select {
+		case self.connCh <- dialResult{conn, err}:
+		case <-self.closeNotify:
+			return
+		}
+	}
 }

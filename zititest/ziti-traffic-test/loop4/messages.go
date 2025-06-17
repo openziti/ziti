@@ -54,9 +54,9 @@ func (r *Result) Tx(p *protocol) error {
 	p.simTxBytesRate.Mark(int64(4 + 4 + dataLen))
 
 	if r.Success {
-		pfxlog.ContextLogger(p.test.Name).Infof("<- [result+]")
+		pfxlog.ContextLogger(p.test.Name).Infof("complete: success")
 	} else {
-		pfxlog.ContextLogger(p.test.Name).Infof("<- [result-]")
+		pfxlog.ContextLogger(p.test.Name).Infof("complete: failure")
 	}
 
 	return nil
@@ -197,19 +197,62 @@ func (block *RandHashedBlock) Tx(p *protocol) error {
 	p.simTxMsgRate.Mark(1)
 	p.simTxBytesRate.Mark(int64(8 + dataLen))
 
-	pfxlog.ContextLogger(p.test.Name).Debugf("-> #%d (%s)", block.Sequence, info.ByteCount(int64(len(block.Data))))
+	log := pfxlog.Logger().WithField("name", p.test.Name).WithField("src", p.peer.LocalAddr())
+	if p.circuitId != "" {
+		log = log.WithField("circuitId", p.circuitId)
+	}
+	if p.connId != 0 {
+		log = log.WithField("connId", p.connId)
+	}
+	log.Debugf("-> #%d (%s)", block.Sequence, info.ByteCount(int64(len(block.Data))))
 
 	return nil
 }
 
 func (block *RandHashedBlock) Rx(p *protocol) error {
-	length, err := p.rxHeader()
-	if err != nil {
+	log := pfxlog.Logger().WithField("name", p.test.Name).WithField("src", p.peer.LocalAddr())
+	if p.circuitId != "" {
+		log = log.WithField("circuitId", p.circuitId)
+	}
+	if p.connId != 0 {
+		log = log.WithField("connId", p.connId)
+	}
+
+	if err := p.peer.SetReadDeadline(time.Now().Add(p.rxTimeout)); err != nil {
 		return err
 	}
 
+	start := time.Now()
+	defer func() {
+		if err := p.peer.SetReadDeadline(time.Time{}); err != nil {
+			log.WithError(err).Error("error resetting read deadline")
+		}
+	}()
+
+	if err := p.rxMagicHeader(); err != nil {
+		log.WithError(err).WithField("sinceStart", time.Since(start).String()).Error("error reading magic header")
+		return fmt.Errorf("error reading magic header (%w)", err)
+	}
+
+	headerRead := time.Now()
+
+	length, err := p.rxLength()
+	if err != nil {
+		log.WithError(err).
+			WithField("sinceStart", time.Since(start).String()).
+			WithField("sinceHeader", time.Since(headerRead).String()).
+			Error("error reading body length")
+		return fmt.Errorf("error reading body length (%w)", err)
+	}
+
+	lengthRead := time.Now()
+
 	body, err := p.rxMsgBody(length)
 	if err != nil {
+		log.WithError(err).
+			WithField("sinceStart", time.Since(start).String()).
+			WithField("sinceLength", time.Since(lengthRead).String()).
+			Error("error reading body")
 		return err
 	}
 

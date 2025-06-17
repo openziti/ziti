@@ -18,6 +18,7 @@ package loop4
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net"
@@ -42,7 +43,7 @@ func newListenerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "listener",
 		Short: "Start loop3 listener",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.ExactArgs(1),
 		Run:   result.run,
 	}
 
@@ -73,12 +74,17 @@ func (cmd *listenerCmd) run(_ *cobra.Command, args []string) {
 	}
 
 	for _, workload := range cmd.scenario.Workloads {
-		cmd.runWorkload(workload)
+		go cmd.runWorkload(workload)
 	}
+
+	closeCh := make(chan struct{})
+	<-closeCh
 }
 
 func (cmd *listenerCmd) runWorkload(workload *Workload) {
 	log := pfxlog.Logger().WithField("workload", workload.Name)
+
+	log.Info("starting workload")
 
 	listenerF, ok := cmd.listeners[workload.Connector]
 	if !ok {
@@ -103,13 +109,29 @@ func (cmd *listenerCmd) runWorkload(workload *Workload) {
 func (cmd *listenerCmd) handle(conn net.Conn, workload *Workload) {
 	log := pfxlog.Logger().WithField("workload", workload.Name)
 
+	if edgeConn, ok := conn.(edge.Conn); ok {
+		log = log.WithFields(logrus.Fields{
+			"connId":    edgeConn.Id(),
+			"circuitId": edgeConn.GetCircuitId(),
+			"routerId":  edgeConn.GetRouterId(),
+		})
+	}
+
+	log.Info("connection received")
+
+	defer func() {
+		log.Info("closing connection")
+		if err := conn.Close(); err != nil {
+			log.WithError(err).Error("error closing connection")
+		}
+	}()
+
 	if proto, err := newProtocol(conn, workload.Name, cmd.metrics); err == nil {
 		_, test := workload.GetTests()
 
 		if test == nil || !test.IsRxSequential() {
 			if test, err = proto.rxTest(); err != nil {
-				logrus.WithError(err).Error("failure receiving test parameters, closing")
-				_ = conn.Close()
+				log.WithError(err).Error("failure receiving test parameters, closing")
 				return
 			}
 		}

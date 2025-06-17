@@ -18,7 +18,7 @@ package loop4
 
 import (
 	"fmt"
-	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd/loop4/pb"
+	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	"gopkg.in/yaml.v2"
 	"os"
 	"time"
@@ -31,9 +31,12 @@ type Connector struct {
 
 type SdkConnectOptions struct {
 	IdentityFile        string `yaml:"identity_file"`
-	DisableMultiChannel bool   `yaml:"disable_multi_channel"`
+	MaxControlUnderlays uint32 `yaml:"max_control_underlays"`
+	MaxDataUnderlays    uint32 `yaml:"max_data_underlays"`
+	EnableSdkXgress     bool   `yaml:"enable_sdk_xgress"`
 	ReportSdkMetrics    bool   `yaml:"report_sdk_metrics"`
 	TestService         string `yaml:"test_service"`
+	Ha                  bool   `yaml:"ha"`
 }
 
 type TransportConnectOptions struct {
@@ -42,10 +45,16 @@ type TransportConnectOptions struct {
 }
 
 type Scenario struct {
-	ConnectorConfigs map[string]Connector `yaml:"connectors"`
-	Workloads        []*Workload          `yaml:"workloads"`
-	ConnectionDelay  int32                `yaml:"connectionDelay"`
-	Metrics          *Metrics             `yaml:"metrics"`
+	ConnectorConfigs map[string]Connector    `yaml:"connectors"`
+	Workloads        []*Workload             `yaml:"workloads"`
+	ConnectionDelay  int32                   `yaml:"connectionDelay"`
+	Metrics          *Metrics                `yaml:"metrics"`
+	RemoteControlled RemoteControlledOptions `yaml:"remoteControlled"`
+}
+
+type RemoteControlledOptions struct {
+	Connector string `yaml:"connector"`
+	Service   string `yaml:"service"`
 }
 
 type Workload struct {
@@ -71,7 +80,7 @@ type Test struct {
 	TxPauseFor   time.Duration `yaml:"txPauseFor"`
 	TxAfterRx    bool          `yaml:"txAfterRx"` // only send after receive, to act like a server responding to requests
 
-	RxTimeout    int32         `yaml:"rxTimeout"`
+	RxTimeout    time.Duration `yaml:"rxTimeout"`
 	RxPacing     time.Duration `yaml:"rxPacing"`
 	RxMaxJitter  time.Duration `yaml:"rxMaxJitter"`
 	RxPauseEvery time.Duration `yaml:"rxPauseEvery"`
@@ -97,7 +106,7 @@ func (workload *Workload) GetTests() (*loopPb.Test, *loopPb.Test) {
 		RxMaxJitter:      workload.Dialer.RxMaxJitter.String(),
 		RxPauseEvery:     workload.Dialer.RxPauseEvery.String(),
 		RxPauseFor:       workload.Dialer.RxPauseFor.String(),
-		RxTimeout:        workload.Dialer.RxTimeout,
+		RxTimeout:        workload.Dialer.RxTimeout.String(),
 		RxSeqBlockSize:   workload.Listener.PayloadMinBytes,
 		PayloadMinBytes:  workload.Dialer.PayloadMinBytes,
 		PayloadMaxBytes:  workload.Dialer.PayloadMaxBytes,
@@ -117,7 +126,7 @@ func (workload *Workload) GetTests() (*loopPb.Test, *loopPb.Test) {
 		RxRequests:       workload.Dialer.TxRequests,
 		RxPacing:         workload.Listener.RxPacing.String(),
 		RxMaxJitter:      workload.Listener.RxMaxJitter.String(),
-		RxTimeout:        workload.Listener.RxTimeout,
+		RxTimeout:        workload.Listener.RxTimeout.String(),
 		RxPauseEvery:     workload.Listener.RxPauseEvery.String(),
 		RxPauseFor:       workload.Listener.RxPauseFor.String(),
 		RxSeqBlockSize:   workload.Dialer.PayloadMinBytes,
@@ -136,6 +145,7 @@ type Metrics struct {
 	Service        string        `yaml:"service"`
 	ReportInterval time.Duration `yaml:"interval"`
 	ClientId       string        `yaml:"clientId"`
+	WriteToStdout  bool          `yaml:"writeToStdout"`
 }
 
 func LoadScenario(path string) (*Scenario, error) {

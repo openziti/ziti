@@ -3,6 +3,18 @@ syntax = "proto3";
 package ziti.loop4.pb;
 option go_package = "github.com/openziti/ziti/zititest/ziti-test/subcmd/loop4/pb/loop4_pb";
 
+enum ContentType {
+  ZeroContentType = 0;
+  RunScenarioRequestType = 1;
+  RunScenarioResultType = 2;
+}
+
+enum HeaderType {
+  ZeroHeaderType = 0;
+  ScenarioId = 100;
+  ScenarioSuccess = 101;
+}
+
 message Test {
   string name = 1;
   int32 txRequests = 2;
@@ -13,7 +25,7 @@ message Test {
   bool txAfterRx = 19;
 
   int32 rxRequests = 7;
-  int32 rxTimeout = 8;
+  string rxTimeout = 8;
   string rxPauseEvery = 9;
   string rxPauseFor = 10;
 
@@ -25,4 +37,9 @@ message Test {
   int32 rxSeqBlockSize = 16;
   string rxPacing = 17;
   string rxMaxJitter = 18;
+  str
+}
+
+message ScenarioComplete {
+  bool success = 1;
 }
