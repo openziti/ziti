@@ -53,18 +53,18 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.27
-	github.com/openziti/channel/v4 v4.2.5
+	github.com/openziti/channel/v4 v4.2.7
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.46
 	github.com/openziti/foundation/v2 v2.0.66
 	github.com/openziti/identity v1.0.105
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.1
-	github.com/openziti/runzmd v1.0.72
+	github.com/openziti/runzmd v1.0.73
 	github.com/openziti/sdk-golang v1.1.2
-	github.com/openziti/secretstream v0.1.34
+	github.com/openziti/secretstream v0.1.36
 	github.com/openziti/storage v0.4.17
-	github.com/openziti/transport/v2 v2.0.175
+	github.com/openziti/transport/v2 v2.0.176
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.3.3
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -86,13 +86,13 @@ require (
 	go.etcd.io/bbolt v1.4.1
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.38.0
+	golang.org/x/crypto v0.39.0
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/net v0.40.0
+	golang.org/x/net v0.41.0
 	golang.org/x/oauth2 v0.30.0
-	golang.org/x/sync v0.14.0
+	golang.org/x/sync v0.15.0
 	golang.org/x/sys v0.33.0
-	golang.org/x/text v0.25.0
+	golang.org/x/text v0.26.0
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/resty.v1 v1.12.0
@@ -199,9 +199,9 @@ require (
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/image v0.18.0 // indirect
-	golang.org/x/mod v0.24.0 // indirect
+	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
-	golang.org/x/tools v0.32.0 // indirect
+	golang.org/x/tools v0.33.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	nhooyr.io/websocket v1.8.17 // indirect
 )
