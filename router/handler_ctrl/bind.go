@@ -18,6 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/openziti/ziti/common/capabilities"
+	"github.com/openziti/ziti/router/xgress_router"
 	"runtime/debug"
 	"time"
 
@@ -32,15 +33,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type InspectRouterEnv interface {
+	env.RouterEnv
+	GetXgressListeners() []xgress_router.Listener
+}
+
 type bindHandler struct {
-	env                      env.RouterEnv
+	env                      InspectRouterEnv
 	forwarder                *forwarder.Forwarder
 	xgDialerPool             goroutines.Pool
 	terminatorValidationPool goroutines.Pool
 	ctrlAddressUpdater       CtrlAddressUpdater
 }
 
-func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctrlAddressUpdater CtrlAddressUpdater) (channel.BindHandler, error) {
+func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder, ctrlAddressUpdater CtrlAddressUpdater) (channel.BindHandler, error) {
 	xgDialerPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(forwarder.Options.XgressDial.QueueLength),
 		MinWorkers:  0,

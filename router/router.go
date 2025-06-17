@@ -327,6 +327,8 @@ func (self *Router) Start() error {
 		return err
 	}
 
+	xgress_router.GlobalRegistry().Initialize(self)
+
 	self.startXlinkDialers()
 	self.startXlinkListeners()
 	self.setDefaultDialerBindings()

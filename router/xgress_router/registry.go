@@ -17,20 +17,48 @@
 package xgress_router
 
 import (
+	"errors"
 	"fmt"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/router/env"
+	"sync"
 )
 
 type registry struct {
-	factories concurrenz.CopyOnWriteMap[string, Factory]
+	factories   concurrenz.CopyOnWriteMap[string, Factory]
+	factoryF    map[string]func(env.RouterEnv) Factory
+	initialized bool
+	lock        sync.Mutex
 }
 
 func NewRegistry() *registry {
-	return &registry{}
+	return &registry{
+		factoryF: make(map[string]func(env.RouterEnv) Factory),
+	}
 }
 
 func (registry *registry) Register(name string, factory Factory) {
 	registry.factories.Put(name, factory)
+}
+
+func (registry *registry) RegisterF(name string, f func(routerEnv env.RouterEnv) Factory) error {
+	registry.lock.Lock()
+	defer registry.lock.Unlock()
+	if registry.initialized {
+		return errors.New("cannot add factory function after registry has already been initialized")
+	}
+	registry.factoryF[name] = f
+	return nil
+}
+
+func (registry *registry) Initialize(env env.RouterEnv) {
+	registry.lock.Lock()
+	defer registry.lock.Unlock()
+	for k, f := range registry.factoryF {
+		registry.Register(k, f(env))
+	}
+	registry.factoryF = nil
+	registry.initialized = true
 }
 
 func (registry *registry) Factory(name string) (Factory, error) {
