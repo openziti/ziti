@@ -52,9 +52,36 @@ updates:
         - "minor"
         - "patch"
 
+- package-ecosystem: docker
+  directory: "/dist/docker-images/ziti-controller-fips"
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+  groups:
+    all:
+      applies-to: version-updates
+      update-types:
+        - "major"
+        - "minor"
+        - "patch"
+
 # bump the kubectl version in the cli image
 - package-ecosystem: docker
   directory: "/dist/docker-images/ziti-cli"
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+  groups:
+    all:
+      applies-to: version-updates
+      update-types:
+        - "major"
+        - "minor"
+        - "patch"
+
+# bump the kubectl version in the cli fips image
+- package-ecosystem: docker
+  directory: "/dist/docker-images/ziti-cli-fips"
   schedule:
     interval: weekly
   open-pull-requests-limit: 10
