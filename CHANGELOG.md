@@ -157,29 +157,37 @@ Note that addresses have been sanitized.
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v4: [v4.2.0 -> v4.2.5](https://github.com/openziti/channel/compare/v4.2.0...v4.2.5)
+* github.com/openziti/agent: [v1.0.27 -> v1.0.29](https://github.com/openziti/agent/compare/v1.0.27...v1.0.29)
+* github.com/openziti/channel/v4: [v4.2.0 -> v4.2.8](https://github.com/openziti/channel/compare/v4.2.0...v4.2.8)
 * github.com/openziti/edge-api: [v0.26.45 -> v0.26.46](https://github.com/openziti/edge-api/compare/v0.26.45...v0.26.46)
     * [Issue #155](https://github.com/openziti/edge-api/issues/155) - Add network interface list to routers and identities
 
 * github.com/openziti/foundation/v2: [v2.0.63 -> v2.0.66](https://github.com/openziti/foundation/compare/v2.0.63...v2.0.66)
 * github.com/openziti/identity: [v1.0.101 -> v1.0.105](https://github.com/openziti/identity/compare/v1.0.101...v1.0.105)
+* github.com/openziti/runzmd: [v1.0.72 -> v1.0.73](https://github.com/openziti/runzmd/compare/v1.0.72...v1.0.73)
 * github.com/openziti/sdk-golang: [v1.1.1 -> v1.1.2](https://github.com/openziti/sdk-golang/compare/v1.1.1...v1.1.2)
     * [Issue #742](https://github.com/openziti/sdk-golang/issues/742) - Additional CtrlId and GetDestinationType for inspect support
     * [Issue #739](https://github.com/openziti/sdk-golang/issues/739) - go-jose v2.6.3 CVE-2025-27144 resolution
     * [Issue #735](https://github.com/openziti/sdk-golang/issues/735) - Ensure Authenticate can't be called in parallel
 
+* github.com/openziti/secretstream: [v0.1.34 -> v0.1.36](https://github.com/openziti/secretstream/compare/v0.1.34...v0.1.36)
 * github.com/openziti/storage: [v0.4.11 -> v0.4.17](https://github.com/openziti/storage/compare/v0.4.11...v0.4.17)
     * [Issue #106](https://github.com/openziti/storage/issues/106) - panic in TypedBucket.GetList
 
-* github.com/openziti/transport/v2: [v2.0.171 -> v2.0.175](https://github.com/openziti/transport/compare/v2.0.171...v2.0.175)
+* github.com/openziti/transport/v2: [v2.0.171 -> v2.0.177](https://github.com/openziti/transport/compare/v2.0.171...v2.0.177)
 * github.com/openziti/xweb/v2: [v2.3.2 -> v2.3.3](https://github.com/openziti/xweb/compare/v2.3.2...v2.3.3)
 * github.com/openziti/ziti: [v1.6.2 -> v1.6.3](https://github.com/openziti/ziti/compare/v1.6.2...v1.6.3)
+    * [Issue #3124](https://github.com/openziti/ziti/issues/3124) - ids used by circuits and ingress/egress can conflict in an HA setup
+    * [Issue #3117](https://github.com/openziti/ziti/issues/3117) - authenticators LastAuthResolvedToRoot not set, createdAt/lastUpdateAt zero zulu
+    * [Issue #3111](https://github.com/openziti/ziti/issues/3111) - Add API for xgress router factories allowing router env injection
+    * [Issue #3119](https://github.com/openziti/ziti/issues/3119) - Using the same heartbeatmsg instance across channels causes data race
+    * [Issue #3115](https://github.com/openziti/ziti/issues/3115) - Fix racy link state access in router link registry
+    * [Issue #3113](https://github.com/openziti/ziti/issues/3113) - Close links when link groups no longer indicate that a link should be allowed
     * [Issue #3082](https://github.com/openziti/ziti/issues/3082) - Add network interfaces to controller data model
     * [Issue #3083](https://github.com/openziti/ziti/issues/3083) - Add optional network interface discovery to routers
     * [Issue #2862](https://github.com/openziti/ziti/issues/2862) - Large scale data-flow test
     * [Issue #3102](https://github.com/openziti/ziti/issues/3102) - Implement remote control for ziti-traffic-test/loop4
     * [Issue #3098](https://github.com/openziti/ziti/issues/3098) - Implement circuit validation API and CLI
-
 
 # Release 1.6.2
 

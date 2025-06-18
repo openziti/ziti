@@ -51,10 +51,20 @@ func (self *shortIdGenerator) NextId() (string, error) {
 	}
 }
 
-func NewUUIDString() string {
+func MustNewUUIDString() string {
 	id := uuid.New()
 	v := &big.Int{}
 	v.SetBytes(id[:])
-	result, _ := basex.EncodeInt(v)
+	result, err := basex.EncodeInt(v)
+	if err != nil {
+		panic(err)
+	}
 	return result
+}
+
+func NewUUIDString() (string, error) {
+	id := uuid.New()
+	v := &big.Int{}
+	v.SetBytes(id[:])
+	return basex.EncodeInt(v)
 }

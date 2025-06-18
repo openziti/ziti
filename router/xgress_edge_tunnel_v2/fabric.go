@@ -24,13 +24,13 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/rate"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/secretstream/kx"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/router/posture"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/pkg/errors"
@@ -137,7 +137,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 }
 
 func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.HostControl, error) {
-	id := idgen.NewUUIDString()
+	id := idgen.MustNewUUIDString()
 	id = self.GetCachedTerminatorId(hostCtx.ServiceId(), id)
 
 	terminator := &tunnelTerminator{

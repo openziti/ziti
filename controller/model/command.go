@@ -112,7 +112,7 @@ type updater[T models.Entity] interface {
 
 func DispatchCreate[T models.Entity](c creator[T], entity T, ctx *change.Context) error {
 	if entity.GetId() == "" {
-		id := idgen.NewUUIDString()
+		id := idgen.MustNewUUIDString()
 		entity.SetId(id)
 	}
 
