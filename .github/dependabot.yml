@@ -1,7 +1,7 @@
 version: 2
 updates:
 - package-ecosystem: gomod
-  directory: "/"
+  directory: /
   schedule:
     interval: daily
   open-pull-requests-limit: 10
@@ -9,16 +9,16 @@ updates:
     openziti:
       applies-to: version-updates
       update-types:
-        - "minor"
-        - "patch"
+        - minor
+        - patch
       patterns:
         - "*openziti*"
 
     third-party:
       applies-to: version-updates
       update-types:
-        - "minor"
-        - "patch"
+        - minor
+        - patch
       exclude-patterns:
         - "*openziti*"
         - "*rabbitmq*"
@@ -26,7 +26,7 @@ updates:
         - "*zitadel*"
 
 - package-ecosystem: github-actions
-  directory: "/"
+  directory: /
   schedule:
     interval: weekly
   open-pull-requests-limit: 10
@@ -34,13 +34,13 @@ updates:
     all:
       applies-to: version-updates
       update-types:
-        - "major"
-        - "minor"
-        - "patch"
+        - major
+        - minor
+        - patch
 
 # bump the console SPA version that is built in to the controller image
 - package-ecosystem: docker
-  directory: "/dist/docker-images/ziti-controller"
+  directory: /dist/docker-images/ziti-controller
   schedule:
     interval: weekly
   open-pull-requests-limit: 10
@@ -48,12 +48,12 @@ updates:
     all:
       applies-to: version-updates
       update-types:
-        - "major"
-        - "minor"
-        - "patch"
+        - major
+        - minor
+        - patch
 
 - package-ecosystem: docker
-  directory: "/dist/docker-images/ziti-controller-fips"
+  directory: /dist/docker-images/ziti-controller-fips
   schedule:
     interval: weekly
   open-pull-requests-limit: 10
@@ -61,34 +61,38 @@ updates:
     all:
       applies-to: version-updates
       update-types:
-        - "major"
-        - "minor"
-        - "patch"
+        - major
+        - minor
+        - patch
 
 # bump the kubectl version in the cli image
 - package-ecosystem: docker
-  directory: "/dist/docker-images/ziti-cli"
+  directory: /dist/docker-images/ziti-cli
   schedule:
     interval: weekly
   open-pull-requests-limit: 10
+  allow:
+    - dependency-name: bitnami/kubectl
   groups:
     all:
       applies-to: version-updates
       update-types:
-        - "major"
-        - "minor"
-        - "patch"
+        - major
+        - minor
+        - patch
 
-# bump the kubectl version in the cli fips image
+# bump the kubectl version in the fips cli image
 - package-ecosystem: docker
-  directory: "/dist/docker-images/ziti-cli-fips"
+  directory: /dist/docker-images/ziti-cli-fips
   schedule:
     interval: weekly
   open-pull-requests-limit: 10
+  allow:
+    - dependency-name: bitnami/kubectl
   groups:
     all:
       applies-to: version-updates
       update-types:
-        - "major"
-        - "minor"
-        - "patch"
+        - major
+        - minor
+        - patch
