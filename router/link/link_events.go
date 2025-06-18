@@ -157,7 +157,7 @@ func (self *dialRequest) Handle(registry *linkRegistryImpl) {
 
 	if dest == nil {
 		dest = newLinkDest(self.dial.RouterId)
-		dest.version = self.dial.RouterVersion
+		dest.version.Store(self.dial.RouterVersion)
 		registry.destinations[self.dial.RouterId] = dest
 	}
 
@@ -300,7 +300,7 @@ func (self *inspectLinkStatesEvent) Handle(registry *linkRegistryImpl) {
 	for _, dest := range registry.destinations {
 		inspectDest := &inspect.LinkDest{
 			Id:      dest.id,
-			Version: dest.version,
+			Version: dest.version.Load(),
 			Healthy: dest.healthy,
 		}
 		unhealthySince := dest.unhealthyAt
