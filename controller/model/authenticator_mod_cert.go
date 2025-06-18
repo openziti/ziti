@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
 	"net/http"
 	"time"
@@ -153,11 +154,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		logger.WithError(err).Error("error verifying client certificate via static root pool, trying other pools")
 	}
 
-	failedRootOnlyBundle := false
-
 	if len(chains) == 0 {
-		failedRootOnlyBundle = true
-
 		logger.Debug("certificate validation failed via root only pool, trying other pools")
 		chains, err = module.verifyClientCerts(certs, trustCache.staticFirstPartyTrustAnchorPool)
 
@@ -165,7 +162,10 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 			logger.WithError(err).Error("error verifying client certificate via static trust anchor pool, trying other pools")
 		}
 
-		if len(chains) == 0 {
+		if len(chains) != 0 {
+			//succeeded on augmented trust pool, client didn't supply a chain
+			bundle.ImproperClientCertChain = true
+		} else {
 			logger.Debug("certificate validation failed via root+intermediate pool, trying third party pool")
 			chains, err = module.verifyClientCerts(certs, trustCache.thirdPartyTrustAnchorPool)
 
@@ -304,8 +304,6 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		}
 	}
 
-	improperClientCertChain := false
-
 	if authenticator.Id != internalCertAuthenticatorId {
 		certAuth := authenticator.ToCert()
 
@@ -319,9 +317,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 			return nil, apierror.NewInvalidAuth()
 		}
 
-		module.ensureAuthenticatorIsUpToDate(certAuth, clientCert, bundle.ImproperClientCertChain, context.GetChangeContext())
-
-		improperClientCertChain = certAuth.IsIssuedByNetwork && failedRootOnlyBundle
+		module.ensureAuthenticatorIsUpToDate(certAuth, clientCert, !bundle.ImproperClientCertChain, context.GetChangeContext())
 	}
 
 	return &AuthResultBase{
@@ -331,7 +327,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		sessionCerts:            []*x509.Certificate{clientCert},
 		authPolicy:              authPolicy,
 		env:                     module.env,
-		improperClientCertChain: improperClientCertChain,
+		improperClientCertChain: bundle.ImproperClientCertChain,
 	}, nil
 }
 
@@ -371,8 +367,9 @@ func (module *AuthModuleCert) getClientCerts(ctx AuthContext) ([]*x509.Certifica
 
 // ensureAuthenticatorIsUpToDate ensures that a client's pem, public print, and root status is stored in `cert` authenticators.
 func (module *AuthModuleCert) ensureAuthenticatorIsUpToDate(authCert *AuthenticatorCert, clientCert *x509.Certificate, verifiedToRoot bool, ctx *change.Context) {
-
 	needsUpdate := false
+
+	fieldChecker := fields.UpdatedFieldsMap{}
 
 	if authCert.Pem == "" {
 		needsUpdate = true
@@ -383,22 +380,27 @@ func (module *AuthModuleCert) ensureAuthenticatorIsUpToDate(authCert *Authentica
 
 		authCert.Pem = string(certPem)
 
+		fieldChecker.AddField(db.FieldAuthenticatorCertPem)
 	}
 
 	if authCert.PublicKeyPrint == "" {
 		needsUpdate = true
 		authCert.PublicKeyPrint = PublicKeySha256(clientCert)
+
+		fieldChecker.AddField(db.FieldAuthenticatorCertPublicKeyPrint)
 	}
 
 	if authCert.IsIssuedByNetwork {
 		if authCert.LastAuthResolvedToRoot != verifiedToRoot {
 			needsUpdate = true
 			authCert.LastAuthResolvedToRoot = verifiedToRoot
+
+			fieldChecker.AddField(db.FieldAuthenticatorCertLastAuthResolvedToRoot)
 		}
 	}
 
 	if needsUpdate {
-		if err := module.env.GetManagers().Authenticator.Update(authCert.Authenticator, false, nil, ctx); err != nil {
+		if err := module.env.GetManagers().Authenticator.Update(authCert.Authenticator, false, fieldChecker, ctx); err != nil {
 			pfxlog.Logger().WithError(err).Errorf("error during cert auth update attempt")
 		}
 	}
