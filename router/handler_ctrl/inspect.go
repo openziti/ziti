@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
@@ -34,11 +33,11 @@ import (
 )
 
 type inspectHandler struct {
-	env env.RouterEnv
+	env InspectRouterEnv
 	fwd *forwarder.Forwarder
 }
 
-func newInspectHandler(env env.RouterEnv, fwd *forwarder.Forwarder) *inspectHandler {
+func newInspectHandler(env InspectRouterEnv, fwd *forwarder.Forwarder) *inspectHandler {
 	return &inspectHandler{
 		env: env,
 		fwd: fwd,

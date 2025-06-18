@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/router/xlink"
 	"time"
 )
@@ -36,7 +35,6 @@ type RouterEnv interface {
 	GetRouterId() *identity.TokenId
 	GetDialerCfg() map[string]xgress.OptionsData
 	GetXlinkDialers() []xlink.Dialer
-	GetXgressListeners() []xgress_router.Listener
 	GetXrctrls() []Xrctrl
 	GetTraceHandler() *channel.TraceHandler
 	GetXlinkRegistry() xlink.Registry
