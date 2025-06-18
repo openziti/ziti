@@ -628,7 +628,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 		return
 	}
 
-	terminatorId := idgen.NewUUIDString()
+	terminatorId := idgen.MustNewUUIDString()
 	log = log.WithField("bindConnId", connId).WithField("terminatorId", terminatorId)
 
 	listenerId, _ := req.GetStringHeader(edge.ListenerId)

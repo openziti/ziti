@@ -31,7 +31,6 @@ import (
 
 type LinkManager struct {
 	linkTable      *linkTable
-	idGenerator    idgen.Generator
 	lock           sync.Mutex
 	initialLatency time.Duration
 	store          *objectz.ObjectStore[*Link]
@@ -45,7 +44,6 @@ func NewLinkManager(env Env) *LinkManager {
 
 	result := &LinkManager{
 		linkTable:      newLinkTable(),
-		idGenerator:    idgen.NewGenerator(),
 		initialLatency: initialLatency,
 	}
 
@@ -260,7 +258,7 @@ func (self *LinkManager) MissingLinks(routers []*Router, pendingTimeout time.Dur
 			if srcR != dstR && len(dstR.Listeners) > 0 {
 				for _, listener := range dstR.Listeners {
 					if !self.hasLink(srcR, dstR, listener.GetProtocol(), pendingLimit) {
-						id := idgen.NewUUIDString()
+						id := idgen.MustNewUUIDString()
 						link := newLink(id, listener.GetProtocol(), listener.GetAddress(), self.initialLatency)
 						link.Src = srcR
 						link.Dst.Store(dstR)

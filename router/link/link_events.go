@@ -109,7 +109,7 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 				if !ok {
 					newLinkState := &linkState{
 						linkKey:      linkKey,
-						linkId:       idgen.NewUUIDString(),
+						linkId:       idgen.MustNewUUIDString(),
 						status:       StatusPending,
 						dest:         dest,
 						listener:     listener,
@@ -178,7 +178,7 @@ func (self *dialRequest) Handle(registry *linkRegistryImpl) {
 			if !ok {
 				newLinkState := &linkState{
 					linkKey: linkKey,
-					linkId:  idgen.NewUUIDString(),
+					linkId:  idgen.MustNewUUIDString(),
 					status:  StatusPending,
 					dest:    dest,
 					listener: &ctrl_pb.Listener{

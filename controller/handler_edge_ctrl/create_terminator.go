@@ -90,7 +90,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 		return
 	}
 
-	id := idgen.NewUUIDString()
+	id := idgen.MustNewUUIDString()
 
 	terminator := &model.Terminator{
 		BaseEntity: models.BaseEntity{

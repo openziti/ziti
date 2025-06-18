@@ -165,8 +165,8 @@ func (self *testLink) DuplicatesRejected() uint32 {
 }
 
 func newTestLink(reg *linkRegistryImpl) *testLink {
-	linkId := idgen.NewUUIDString()
-	destId := idgen.NewUUIDString()
+	linkId := idgen.MustNewUUIDString()
+	destId := idgen.MustNewUUIDString()
 	linkKey := reg.GetLinkKey("", "tls", destId, "")
 	return &testLink{
 		id:     linkId,
@@ -202,7 +202,7 @@ func Test_gcLinkMetrics(t *testing.T) {
 	req := require.New(t)
 	req.Equal(0, len(orphaned))
 
-	linkId := idgen.NewUUIDString()
+	linkId := idgen.MustNewUUIDString()
 	registry := routerEnv.metricsRegistry
 
 	linkMetric := func(linkId, name string) string {
@@ -296,10 +296,10 @@ func Test_gcLinkMetrics(t *testing.T) {
 
 	req.Equal(2, len(getRegistryMetrics()))
 
-	linkId2 := idgen.NewUUIDString()
+	linkId2 := idgen.MustNewUUIDString()
 	link3 := newTestLink(reg)
 	link4 := newTestLink(reg)
-	linkId5 := idgen.NewUUIDString()
+	linkId5 := idgen.MustNewUUIDString()
 
 	reg.linkByIdMap[link3.id] = link3
 	reg.linkMap[link3.Key()] = link4

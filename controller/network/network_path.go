@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/pkg/errors"
@@ -93,12 +94,12 @@ func (network *Network) CreateRouteMessages(path *model.Path, attempt uint32, ci
 }
 
 func (network *Network) CreatePathWithNodes(nodes []*model.Router) (*model.Path, CircuitError) {
-	ingressId, err := network.sequence.NextHash()
+	ingressId, err := idgen.NewUUIDString()
 	if err != nil {
 		return nil, newCircuitErrWrap(CircuitFailureIdGenerationError, err)
 	}
 
-	egressId, err := network.sequence.NextHash()
+	egressId, err := idgen.NewUUIDString()
 	if err != nil {
 		return nil, newCircuitErrWrap(CircuitFailureIdGenerationError, err)
 	}
