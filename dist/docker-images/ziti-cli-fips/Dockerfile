@@ -1,4 +1,4 @@
-FROM ubuntu:22.04 AS openssl-fips
+FROM ubuntu:24.04 AS openssl-fips
 
 ARG TARGETARCH
 
@@ -30,7 +30,7 @@ RUN PROC_COUNT=$(nproc); \
 
 RUN make install_sw install_ssldirs install_fips
 
-FROM mcr.microsoft.com/oss/go/microsoft/golang:1.24.1-1-bookworm AS msgo
+FROM mcr.microsoft.com/oss/go/microsoft/golang:1.24.4-1-bookworm AS msgo
 
 ARG GO_LDFLAGS
 
@@ -59,7 +59,7 @@ FROM bitnami/kubectl:1.33 AS bitnami-kubectl
 # FIXME: This repo requires terms acceptance and is only available on registry.redhat.io.
 # FROM registry.access.redhat.com/openshift4/ose-cli AS openshift-cli
 
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.
 
