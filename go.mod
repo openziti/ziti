@@ -52,19 +52,19 @@ require (
 	github.com/miekg/dns v1.1.66
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/agent v1.0.27
-	github.com/openziti/channel/v4 v4.2.5
+	github.com/openziti/agent v1.0.29
+	github.com/openziti/channel/v4 v4.2.8
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.46
 	github.com/openziti/foundation/v2 v2.0.66
 	github.com/openziti/identity v1.0.105
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.1
-	github.com/openziti/runzmd v1.0.72
+	github.com/openziti/runzmd v1.0.73
 	github.com/openziti/sdk-golang v1.1.2
-	github.com/openziti/secretstream v0.1.34
+	github.com/openziti/secretstream v0.1.36
 	github.com/openziti/storage v0.4.17
-	github.com/openziti/transport/v2 v2.0.175
+	github.com/openziti/transport/v2 v2.0.177
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.3.3
 	github.com/openziti/ziti-db-explorer v1.1.3
