@@ -96,7 +96,13 @@ jobs:
         run: |
           set -eoxo pipefail
 
-          echo GO_LDFLAGS="$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" | tee -a $GITHUB_OUTPUT
+          if [[ "$ZITI_CLI_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            # use current version tag
+            echo GO_LDFLAGS="$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" | tee -a $GITHUB_OUTPUT
+          else
+            # predict next version tag
+            echo GO_LDFLAGS="$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" | tee -a $GITHUB_OUTPUT
+          fi
 
       - name: Push FIPS CLI Image to Hub
         env:
