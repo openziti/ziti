@@ -37,11 +37,13 @@ a candidate for release.
 
 ### Shell Script to Tidy Dependencies
 
+Fetch updates for all non-main modules whose path contains 'ziti'.
+
 ```bash
 (
   set -euxo pipefail
-  go list -m -f '{{ .Path }} {{ .Main }}' all \
-    | grep ziti | grep -v "$(go list -m)" | grep -v dilithium | cut -f 1 -d ' ' \
+  go list -m -f '{{.Main}} {{.Path}}' all \
+    | awk '$1 == "false" && $2 ~ /ziti/ {print $2}' \
     | xargs -n1 /bin/bash -c 'echo "Checking for updates to $@";go get -u -v $@;' ''
   go mod tidy
   if git diff --quiet go.mod go.sum; then

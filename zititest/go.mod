@@ -2,7 +2,14 @@ module github.com/openziti/ziti/zititest
 
 go 1.24.1
 
+// use parent project
 replace github.com/openziti/ziti => ../
+replace github.com/michaelquigley/pfxlog => github.com/michaelquigley/pfxlog v0.6.10
+
+// pinned
+replace github.com/openziti/dilithium => github.com/openziti/dilithium v0.3.5
+
+replace github.com/michaelquigley/pfxlog => github.com/michaelquigley/pfxlog v0.6.10
 
 require (
 	github.com/Jeffail/gabs v1.4.0
