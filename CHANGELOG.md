@@ -1,3 +1,17 @@
+# Release 1.6.5
+
+## What's New
+
+Bugfixes and dependency updates.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.3 -> v1.6.5](https://github.com/openziti/ziti/compare/v1.6.3...v1.6.5)
+
+# Release 1.6.4
+
+This version was intentionally skipped and not released because the 1.6.3 FIPS binary had an erroneous internal version of 1.6.4.
+
 # Release 1.6.3
 
 ## What's New
