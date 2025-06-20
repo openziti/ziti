@@ -6,6 +6,12 @@ Bugfixes and dependency updates.
 
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/channel/v4: [v4.2.8 -> v4.2.9](https://github.com/openziti/channel/compare/v4.2.8...v4.2.9)
+* github.com/openziti/foundation/v2: [v2.0.66 -> v2.0.67](https://github.com/openziti/foundation/compare/v2.0.66...v2.0.67)
+* github.com/openziti/identity: [v1.0.105 -> v1.0.106](https://github.com/openziti/identity/compare/v1.0.105...v1.0.106)
+* github.com/openziti/runzmd: [v1.0.73 -> v1.0.74](https://github.com/openziti/runzmd/compare/v1.0.73...v1.0.74)
+* github.com/openziti/storage: [v0.4.17 -> v0.4.18](https://github.com/openziti/storage/compare/v0.4.17...v0.4.18)
+* github.com/openziti/transport/v2: [v2.0.177 -> v2.0.178](https://github.com/openziti/transport/compare/v2.0.177...v2.0.178)
 * github.com/openziti/ziti: [v1.6.3 -> v1.6.5](https://github.com/openziti/ziti/compare/v1.6.3...v1.6.5)
 
 # Release 1.6.4
