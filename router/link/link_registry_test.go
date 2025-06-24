@@ -144,7 +144,7 @@ func (self *testLink) InspectLink() *inspect.LinkInspectDetail {
 	panic("implement me")
 }
 
-func (self *testLink) GetAddresses() []*ctrl_pb.LinkConn {
+func (self *testLink) GetLinkConnState() *ctrl_pb.LinkConnState {
 	panic("implement me")
 }
 

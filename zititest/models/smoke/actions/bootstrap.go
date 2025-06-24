@@ -182,6 +182,9 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	if isHA {
 		workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
+		workflow.AddAction(semaphore.Sleep(6 * time.Second))
+		workflow.AddAction(component.Start(".ctrl"))
+		time.Sleep(15 * time.Second) // give controllers a chance to sync
 	}
 
 	return workflow

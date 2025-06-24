@@ -140,14 +140,20 @@ func (self *linkState) GetIteration() uint32 {
 }
 
 func (self *linkState) addPendingLinkFault(linkId string, iteration uint32) {
-	for _, fault := range self.linkFaults {
+	log := pfxlog.Logger().WithField("linkId", linkId).WithField("iteration", iteration)
+	for idx, fault := range self.linkFaults {
 		if fault.linkId == linkId {
 			if fault.iteration < iteration {
-				fault.iteration = iteration
+				log.Info("updating link fault")
+				// note 'fault' is not a pointer, so it's a copy and if we update it, the entry in the slice won't change
+				self.linkFaults[idx].iteration = iteration
+			} else {
+				log.Info("link fault covered by existing link fault")
 			}
 			return
 		}
 	}
+
 	self.linkFaults = append(self.linkFaults, linkFault{
 		linkId:    linkId,
 		iteration: iteration,
@@ -176,7 +182,7 @@ func (self *linkState) clearFault(toClear linkFault) {
 	}
 }
 
-func (self *linkState) dialFailed(registry *linkRegistryImpl) {
+func (self *linkState) dialFailed(registry *linkRegistryImpl, applyFailed bool) {
 	if self.allowedDials > 0 {
 		self.allowedDials--
 	}
@@ -206,6 +212,12 @@ func (self *linkState) dialFailed(registry *linkRegistryImpl) {
 	}
 
 	self.nextDial = time.Now().Add(self.retryDelay)
+
+	if applyFailed {
+		// if apply failed, likely due to a duplication, apply a random delay to the redial to try and avoid
+		// conflicting dials
+		self.nextDial = self.nextDial.Add(time.Duration(rand.Int31n(4)+1) * time.Second)
+	}
 
 	heap.Push(registry.linkStateQueue, self)
 }

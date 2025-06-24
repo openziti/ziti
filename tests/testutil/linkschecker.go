@@ -92,7 +92,8 @@ func (self *LinkStateChecker) HandleOther(msg *channel.Message, _ channel.Channe
 	//  -33 = reconnect ping
 	//    5 = heartbeat
 	// 1007 = metrics message
-	if msg.ContentType == -33 || msg.ContentType == 5 || msg.ContentType == 1007 {
+	// 1053 = LinkState
+	if msg.ContentType == -33 || msg.ContentType == 5 || msg.ContentType == 1007 || msg.ContentType == 1053 {
 		logrus.Debug("ignoring heartbeats, reconnect pings and metrics")
 		return
 	}

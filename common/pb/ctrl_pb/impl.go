@@ -117,3 +117,7 @@ func (request *UpdateClusterLeader) GetContentType() int32 {
 func (request *RouterInterfacesUpdate) GetContentType() int32 {
 	return int32(ContentType_UpdateRouterInterfaces)
 }
+
+func (request *LinkStateUpdate) GetContentType() int32 {
+	return int32(ContentType_LinkState)
+}

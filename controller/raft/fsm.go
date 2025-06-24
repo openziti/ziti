@@ -35,6 +35,7 @@ import (
 	"os"
 	"path"
 	"sync/atomic"
+	"time"
 )
 
 const (
@@ -65,6 +66,7 @@ type BoltDbFsm struct {
 	eventDispatcher event2.Dispatcher
 	currentState    atomic.Pointer[ServersWithIndex]
 	index           uint64
+	dbReferenced    atomic.Bool
 }
 
 func (self *BoltDbFsm) Init() error {
@@ -97,6 +99,7 @@ func (self *BoltDbFsm) Close() error {
 }
 
 func (self *BoltDbFsm) GetDb() boltz.Db {
+	self.dbReferenced.Store(true)
 	return self.db
 }
 
@@ -330,7 +333,7 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 	}
 
 	if self.db != nil {
-		if err := self.db.Close(); err != nil {
+		if err = self.db.Close(); err != nil {
 			return err
 		}
 	}
@@ -345,9 +348,13 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 	}
 
 	// if we're not initializing from a snapshot at startup, restart
-	if self.indexTracker.Index() > 0 {
-		log.Info("restored snapshot to initialized system, restart required. exiting")
-		os.Exit(0)
+	if self.indexTracker.Index() > 0 || self.dbReferenced.Load() {
+		log.Info("restored snapshot to initialized system, restart required. exiting in 5s")
+		time.AfterFunc(5*time.Second, func() {
+			log.Info("restored snapshot to initialized system, restart required. exiting now")
+			os.Exit(0)
+		})
+		return nil
 	}
 
 	self.db, err = db.Open(self.dbPath)

@@ -132,6 +132,9 @@ func (self *validateRouterLinksAction) validateRouterLinks(_ *cobra.Command, arg
 					fmt.Printf("\tlinkId: %s, destConnected: %v, ctrlState: %v, routerState: %v, dest: %v, dialed: %v \n",
 						linkDetail.LinkId, linkDetail.DestConnected, linkDetail.CtrlState, linkDetail.RouterState.String(),
 						linkDetail.DestRouterId, linkDetail.Dialed)
+					for _, msg := range linkDetail.Messages {
+						fmt.Printf("\t\t%s\n", msg)
+					}
 				}
 				if !linkDetail.IsValid {
 					errCount++

@@ -31,6 +31,7 @@ const (
 	LinkFromRouterNew              LinkEventType = "routerLinkNew"
 	LinkFromRouterKnown            LinkEventType = "routerLinkKnown"
 	LinkFromRouterDisconnectedDest LinkEventType = "routerLinkDisconnectedDest"
+	LinkConnectionsChanged         LinkEventType = "connectionsChanged"
 
 	// LinkDialed is only used when legacy controller link management is enabled
 	LinkDialed LinkEventType = "dialed"
@@ -126,19 +127,19 @@ type LinkEvent struct {
 	LinkId string `json:"link_id"`
 
 	// The id of the dialing router.
-	SrcRouterId string `json:"src_router_id"`
+	SrcRouterId string `json:"src_router_id,omitempty"`
 
 	// The id of the accepting router.
-	DstRouterId string `json:"dst_router_id"`
+	DstRouterId string `json:"dst_router_id,omitempty"`
 
 	// The link protocol.
-	Protocol string `json:"protocol"`
+	Protocol string `json:"protocol,omitempty"`
 
 	// The address dialed.
-	DialAddress string `json:"dial_address"`
+	DialAddress string `json:"dial_address,omitempty"`
 
 	// The link cost.
-	Cost int32 `json:"cost"`
+	Cost int32 `json:"cost,omitempty"`
 
 	// The connections making up the link.
 	Connections []*LinkConnection `json:"connections,omitempty"`

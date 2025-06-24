@@ -86,6 +86,16 @@ func (network *Network) NotifyLinkEvent(link *model.Link, eventType event.LinkEv
 		Cost:        link.GetStaticCost(),
 		DialAddress: link.DialAddress,
 	}
+
+	if connState := link.GetConnsState(); connState != nil {
+		for _, c := range connState.GetConns() {
+			linkEvent.Connections = append(linkEvent.Connections, &event.LinkConnection{
+				Id:         c.Type,
+				LocalAddr:  c.LocalAddr,
+				RemoteAddr: c.RemoteAddr,
+			})
+		}
+	}
 	network.eventDispatcher.AcceptLinkEvent(linkEvent)
 }
 
@@ -105,7 +115,7 @@ func (network *Network) NotifyLinkConnected(link *model.Link, msg *ctrl_pb.LinkC
 
 	for _, conn := range msg.Conns {
 		linkEvent.Connections = append(linkEvent.Connections, &event.LinkConnection{
-			Id:         conn.Id,
+			Id:         conn.Type,
 			LocalAddr:  conn.LocalAddr,
 			RemoteAddr: conn.RemoteAddr,
 		})
