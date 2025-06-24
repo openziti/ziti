@@ -316,6 +316,7 @@ func (self *linkRegistryImpl) SendRouterLinkMessage(link xlink.Xlink, channels .
 				LinkProtocol: link.LinkProtocol(),
 				DialAddress:  link.DialAddress(),
 				Iteration:    link.Iteration(),
+				Conns:        link.GetAddresses(),
 			},
 		},
 	}
@@ -395,6 +396,7 @@ func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 				LinkProtocol: link.LinkProtocol(),
 				DialAddress:  link.DialAddress(),
 				Iteration:    link.Iteration(),
+				Conns:        link.GetAddresses(),
 			})
 		}
 	}
@@ -723,6 +725,7 @@ func (self *linkRegistryImpl) sendNewLinks(links []stateAndLink) {
 			LinkProtocol: link.LinkProtocol(),
 			DialAddress:  link.DialAddress(),
 			Iteration:    link.Iteration(),
+			Conns:        link.GetAddresses(),
 		})
 	}
 

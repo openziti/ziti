@@ -29,7 +29,7 @@ import (
 type impl struct {
 	id            string
 	key           string
-	ch            channel.Channel
+	ch            LinkChannel
 	routerId      string
 	routerVersion string
 	linkProtocol  string
@@ -74,7 +74,7 @@ func (self *impl) Init(metricsRegistry metrics.Registry) error {
 
 func (self *impl) SendPayload(msg *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error {
 	if timeout == 0 {
-		sent, err := self.ch.TrySend(msg.Marshall())
+		sent, err := self.ch.GetDefaultSender().TrySend(msg.Marshall())
 		if err == nil && !sent {
 			self.droppedMsgMeter.Mark(1)
 			if payloadType == xgress.PayloadTypeXg {
@@ -88,11 +88,11 @@ func (self *impl) SendPayload(msg *xgress.Payload, timeout time.Duration, payloa
 		return err
 	}
 
-	return msg.Marshall().WithTimeout(timeout).Send(self.ch)
+	return msg.Marshall().WithTimeout(timeout).Send(self.ch.GetDefaultSender())
 }
 
 func (self *impl) SendAcknowledgement(msg *xgress.Acknowledgement) error {
-	sent, err := self.ch.TrySend(msg.Marshall())
+	sent, err := self.ch.GetAckSender().TrySend(msg.Marshall())
 	if err == nil && !sent {
 		self.droppedMsgMeter.Mark(1)
 	}
@@ -100,7 +100,7 @@ func (self *impl) SendAcknowledgement(msg *xgress.Acknowledgement) error {
 }
 
 func (self *impl) SendControl(msg *xgress.Control) error {
-	sent, err := self.ch.TrySend(msg.Marshall())
+	sent, err := self.ch.GetDefaultSender().TrySend(msg.Marshall())
 	if err == nil && !sent {
 		self.droppedMsgMeter.Mark(1)
 	}
@@ -109,7 +109,7 @@ func (self *impl) SendControl(msg *xgress.Control) error {
 
 func (self *impl) Close() error {
 	self.droppedMsgMeter.Dispose()
-	return self.ch.Close()
+	return self.ch.GetChannel().Close()
 }
 
 func (self *impl) CloseNotified() error {
@@ -148,7 +148,7 @@ func (self *impl) CloseOnce(f func()) {
 }
 
 func (self *impl) IsClosed() bool {
-	return self.ch.IsClosed()
+	return self.ch.GetChannel().IsClosed()
 }
 
 func (self *impl) InspectCircuit(detail *xgress.CircuitInspectDetail) {
@@ -156,7 +156,7 @@ func (self *impl) InspectCircuit(detail *xgress.CircuitInspectDetail) {
 }
 
 func (self *impl) InspectLink() *inspect.LinkInspectDetail {
-	return &inspect.LinkInspectDetail{
+	result := &inspect.LinkInspectDetail{
 		Id:          self.Id(),
 		Iteration:   self.Iteration(),
 		Key:         self.key,
@@ -166,19 +166,36 @@ func (self *impl) InspectLink() *inspect.LinkInspectDetail {
 		Dest:        self.DestinationId(),
 		DestVersion: self.DestVersion(),
 		Dialed:      self.dialed,
+		Underlays:   self.ch.GetChannel().GetUnderlayCountsByType(),
 	}
+
+	for _, c := range self.GetAddresses() {
+		result.Connections = append(result.Connections, &inspect.LinkConnection{
+			Type:   c.Type,
+			Source: c.LocalAddr,
+			Dest:   c.RemoteAddr,
+		})
+	}
+
+	return result
 }
 
 func (self *impl) GetAddresses() []*ctrl_pb.LinkConn {
-	localAddr := self.ch.Underlay().GetLocalAddr()
-	remoteAddr := self.ch.Underlay().GetRemoteAddr()
-	return []*ctrl_pb.LinkConn{
-		{
-			Id:         "single",
+	var result []*ctrl_pb.LinkConn
+	for _, u := range self.ch.GetChannel().GetUnderlays() {
+		localAddr := u.GetLocalAddr()
+		remoteAddr := u.GetRemoteAddr()
+		t := channel.GetUnderlayType(u)
+		if t == "" {
+			t = "single"
+		}
+		result = append(result, &ctrl_pb.LinkConn{
+			Type:       t,
 			LocalAddr:  localAddr.Network() + ":" + localAddr.String(),
 			RemoteAddr: remoteAddr.Network() + ":" + remoteAddr.String(),
-		},
+		})
 	}
+	return result
 }
 
 func (self *impl) DuplicatesRejected() uint32 {

@@ -483,12 +483,12 @@ func (network *Network) notifyAssembleAndClean() {
 	}
 }
 
-func (network *Network) NotifyExistingLink(id string, iteration uint32, linkProtocol, dialAddress string, srcRouter *model.Router, dstRouterId string) {
+func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink *ctrl_pb.RouterLinks_RouterLink) {
 	log := pfxlog.Logger().
 		WithField("routerId", srcRouter.Id).
-		WithField("linkId", id).
-		WithField("destRouterId", dstRouterId).
-		WithField("iteration", iteration)
+		WithField("linkId", reportedLink.Id).
+		WithField("destRouterId", reportedLink.DestRouterId).
+		WithField("iteration", reportedLink.Iteration)
 
 	src := network.Router.GetConnected(srcRouter.Id)
 	if src == nil {
@@ -501,12 +501,12 @@ func (network *Network) NotifyExistingLink(id string, iteration uint32, linkProt
 		return
 	}
 
-	dst := network.Router.GetConnected(dstRouterId)
+	dst := network.Router.GetConnected(reportedLink.DestRouterId)
 	if dst == nil {
-		network.NotifyLinkIdEvent(id, event.LinkFromRouterDisconnectedDest)
+		network.NotifyLinkIdEvent(reportedLink.Id, event.LinkFromRouterDisconnectedDest)
 	}
 
-	link, created := network.Link.RouterReportedLink(id, iteration, linkProtocol, dialAddress, srcRouter, dst, dstRouterId)
+	link, created := network.Link.RouterReportedLink(reportedLink, src, dst)
 	if created {
 		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
 		log.Info("router reported link added")

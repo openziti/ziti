@@ -71,5 +71,14 @@ func MapLinkToRestModel(n *network.Network, _ api.RequestContext, link *model.Li
 		Protocol:      &link.Protocol,
 		Iteration:     &iteration,
 	}
+
+	for _, c := range link.GetConns() {
+		ret.Connections = append(ret.Connections, &rest_model.LinkConnection{
+			Dest:   c.RemoteAddr,
+			Source: c.LocalAddr,
+			Type:   c.Type,
+		})
+	}
+
 	return ret, nil
 }

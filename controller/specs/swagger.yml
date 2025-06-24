@@ -1882,6 +1882,17 @@ definitions:
     type: array
     items:
       $ref: '#/definitions/linkDetail'
+
+  linkConnection:
+    type: object
+    properties:
+      type:
+        type:  string
+      source: 
+        type: string
+      dest: 
+        type: string
+
   linkDetail:
     type: object
     required:
@@ -1919,6 +1930,11 @@ definitions:
         type: integer
       iteration:
         type: integer
+      connections:
+        type: array
+        items:
+          $ref: '#/definitions/linkConnection'
+          
   linkPatch:
     type: object
     properties:

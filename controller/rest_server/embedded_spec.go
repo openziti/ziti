@@ -1902,6 +1902,20 @@ func init() {
         }
       }
     },
+    "linkConnection": {
+      "type": "object",
+      "properties": {
+        "dest": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
     "linkDetail": {
       "type": "object",
       "required": [
@@ -1918,6 +1932,12 @@ func init() {
         "iteration"
       ],
       "properties": {
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/linkConnection"
+          }
+        },
         "cost": {
           "type": "integer"
         },
@@ -7671,6 +7691,20 @@ func init() {
         }
       }
     },
+    "linkConnection": {
+      "type": "object",
+      "properties": {
+        "dest": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
     "linkDetail": {
       "type": "object",
       "required": [
@@ -7687,6 +7721,12 @@ func init() {
         "iteration"
       ],
       "properties": {
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/linkConnection"
+          }
+        },
         "cost": {
           "type": "integer"
         },

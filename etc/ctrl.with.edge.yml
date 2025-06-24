@@ -89,12 +89,12 @@ events:
 #      - type: circuit
 #      - type: connect
 #      - type: sdk
-      - type: entityChange
+#      - type: entityChange
 #        include:
 #          - services
 #          - identities
 #      - type: entityCount
-#      - type: link
+      - type: link
 #      - type: metrics
 #        sourceFilter: .*
 #        metricFilter: .*
