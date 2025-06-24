@@ -21,15 +21,16 @@ import (
 )
 
 type LinkInspectDetail struct {
-	Id          string `json:"id"`
-	Iteration   uint32 `json:"iteration"`
-	Key         string `json:"key"`
-	Split       bool   `json:"split"`
-	Protocol    string `json:"protocol"`
-	DialAddress string `json:"dialAddress"`
-	Dest        string `json:"dest"`
-	DestVersion string `json:"destVersion"`
-	Dialed      bool   `json:"dialed"`
+	Id          string         `json:"id"`
+	Iteration   uint32         `json:"iteration"`
+	Key         string         `json:"key"`
+	Split       bool           `json:"split"`
+	Protocol    string         `json:"protocol"`
+	DialAddress string         `json:"dialAddress"`
+	Dest        string         `json:"dest"`
+	DestVersion string         `json:"destVersion"`
+	Dialed      bool           `json:"dialed"`
+	Underlays   map[string]int `json:"underlays"`
 }
 
 type LinksInspectResult struct {

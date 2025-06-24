@@ -31,6 +31,7 @@ const (
 	LinkFromRouterNew              LinkEventType = "routerLinkNew"
 	LinkFromRouterKnown            LinkEventType = "routerLinkKnown"
 	LinkFromRouterDisconnectedDest LinkEventType = "routerLinkDisconnectedDest"
+	LinkConnectionsChanged         LinkEventType = "connectionsChanged"
 
 	// LinkDialed is only used when legacy controller link management is enabled
 	LinkDialed LinkEventType = "dialed"

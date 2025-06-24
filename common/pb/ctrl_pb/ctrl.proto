@@ -44,6 +44,7 @@ enum ContentType {
   UpdateClusterLeaderRequestType = 1051;
 
   UpdateRouterInterfaces = 1052;
+  LinkState = 1053;
 }
 
 enum ControlHeaders {
@@ -307,4 +308,9 @@ message Interface {
 
 message RouterInterfacesUpdate {
   repeated Interface interfaces = 1;
+}
+
+message LinkStateUpdate {
+  string id = 1;
+  repeated LinkConn underlays = 2;
 }

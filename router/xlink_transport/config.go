@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/router/link"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/link"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"reflect"
@@ -147,7 +147,11 @@ type listenerConfig struct {
 }
 
 func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
-	config := &dialerConfig{split: true}
+	config := &dialerConfig{
+		split:                 false,
+		maxDefaultConnections: 3,
+		maxAckConnections:     1,
+	}
 
 	if value, found := data["split"]; found {
 		if split, ok := value.(bool); ok {
@@ -317,6 +321,8 @@ func (self *backoffConfig) load(data map[interface{}]interface{}) error {
 
 type dialerConfig struct {
 	split                  bool
+	maxDefaultConnections  uint8
+	maxAckConnections      uint8
 	localBinding           string
 	groups                 []string
 	options                *channel.Options
