@@ -20,7 +20,6 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/mitchellh/mapstructure"
 	clientApiAuthentication "github.com/openziti/edge-api/rest_client_api_server/operations/authentication"
 	managementApiAuthentication "github.com/openziti/edge-api/rest_management_api_server/operations/authentication"
 	"github.com/openziti/edge-api/rest_model"
@@ -107,39 +106,10 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	}
 
 	changeCtx := rc.NewChangeContext()
+	err = ae.GetManagers().Identity.UpdateSdkEnvInfo(identity, authContext.GetEnvInfo(), authContext.GetSdkInfo(), changeCtx)
 
-	if dataMap := authContext.GetData(); dataMap != nil {
-		shouldUpdate := false
-
-		if envInfoInterface := dataMap["envInfo"]; envInfoInterface != nil {
-			if envInfoMap := envInfoInterface.(map[string]interface{}); envInfoMap != nil {
-				var envInfo *model.EnvInfo
-				if err := mapstructure.Decode(envInfoMap, &envInfo); err != nil {
-					logger.WithError(err).Error("error processing env info")
-				} else if !identity.EnvInfo.Equals(envInfo) {
-					identity.EnvInfo = envInfo
-					shouldUpdate = true
-				}
-			}
-		}
-
-		if sdkInfoInterface := dataMap["sdkInfo"]; sdkInfoInterface != nil {
-			if sdkInfoMap := sdkInfoInterface.(map[string]interface{}); sdkInfoMap != nil {
-				var sdkInfo *model.SdkInfo
-				if err := mapstructure.Decode(sdkInfoMap, &sdkInfo); err != nil {
-					logger.WithError(err).Error("error processing sdk info")
-				} else if !identity.SdkInfo.Equals(sdkInfo) {
-					identity.SdkInfo = sdkInfo
-					shouldUpdate = true
-				}
-			}
-		}
-
-		if shouldUpdate {
-			if err := ae.GetManagers().Identity.PatchInfo(identity, changeCtx); err != nil {
-				logger.WithError(err).Errorf("failed to update sdk/env info on identity [%s] auth", identity.Id)
-			}
-		}
+	if err != nil {
+		pfxlog.Logger().WithError(err).Errorf("failed to update sdk and env info: %s, continuining to process authentication", err)
 	}
 
 	token := uuid.New().String()

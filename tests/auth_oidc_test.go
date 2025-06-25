@@ -327,6 +327,117 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
 			ctx.Req.NotEmpty(accessClaims.Subject)
 		})
+
+		t.Run("updb sdk and env info", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
+			client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
+			resp, err := client.R().Get(rpServer.LoginUri)
+
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
+			ctx.Req.NotEmpty(authRequestId)
+
+			opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username?id=" + authRequestId
+
+			payload := &oidc_auth.OidcUpdbCreds{
+				Authenticate: rest_model.Authenticate{
+					EnvInfo: &rest_model.EnvInfo{
+						Arch:      "ARCH1",
+						Domain:    "DOMAIN1",
+						Hostname:  "HOSTNAME1",
+						Os:        "OS1",
+						OsRelease: "OSRELEASE1",
+						OsVersion: "1.1.1",
+					},
+					Password: rest_model.Password(ctx.AdminAuthenticator.Password),
+					SdkInfo: &rest_model.SdkInfo{
+						AppID:      "APPID1",
+						AppVersion: "2.2.2",
+						Branch:     "BRANCH1",
+						Revision:   "REVISION1",
+						Type:       "TEST1",
+						Version:    "3.3.3",
+					},
+					Username: rest_model.Username(ctx.AdminAuthenticator.Username),
+				},
+				AuthRequestBody: oidc_auth.AuthRequestBody{
+					AuthRequestId: authRequestId,
+				},
+			}
+
+			resp, err = client.R().SetBody(payload).Post(opLoginUri)
+
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			var outTokens *oidc.Tokens[*oidc.IDTokenClaims]
+
+			select {
+			case tokens := <-rpServer.TokenChan:
+				outTokens = tokens
+			case <-time.After(5 * time.Second):
+				ctx.Fail("no tokens received, hit timeout")
+			}
+
+			ctx.Req.NotNil(outTokens)
+			ctx.Req.NotEmpty(outTokens.IDToken)
+			ctx.Req.NotEmpty(outTokens.IDTokenClaims)
+			ctx.Req.NotEmpty(outTokens.AccessToken)
+			ctx.Req.NotEmpty(outTokens.RefreshToken)
+
+			t.Run("access token has expected values", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				parser := jwt.NewParser()
+
+				accessClaims := &common.AccessClaims{}
+
+				_, _, err := parser.ParseUnverified(outTokens.AccessToken, accessClaims)
+
+				ctx.Req.NoError(err)
+				ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
+				ctx.Req.False(accessClaims.IsCertExtendable)
+				ctx.Req.True(accessClaims.IsAdmin)
+				ctx.Req.NotEmpty(accessClaims.ApiSessionId)
+				ctx.Req.NotEmpty(accessClaims.JWTID)
+				ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
+				ctx.Req.NotEmpty(accessClaims.Subject)
+
+				t.Run("has the correct sdk and env info", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					managementClient := ctx.NewEdgeManagementApi(nil)
+					apiSessionOidc := &edge_apis.ApiSessionOidc{
+						OidcTokens:     outTokens,
+						RequestHeaders: nil,
+					}
+
+					apiSession := edge_apis.ApiSession(apiSessionOidc)
+					managementClient.ApiSession.Store(&apiSession)
+
+					identityDetail, err := managementClient.GetIdentity(accessClaims.Subject)
+
+					ctx.Req.NoError(err)
+
+					ctx.Req.Equal(payload.SdkInfo.AppID, identityDetail.SdkInfo.AppID)
+					ctx.Req.Equal(payload.SdkInfo.AppVersion, identityDetail.SdkInfo.AppVersion)
+					ctx.Req.Equal(payload.SdkInfo.Branch, identityDetail.SdkInfo.Branch)
+					ctx.Req.Equal(payload.SdkInfo.Revision, identityDetail.SdkInfo.Revision)
+					ctx.Req.Equal(payload.SdkInfo.Type, identityDetail.SdkInfo.Type)
+					ctx.Req.Equal(payload.SdkInfo.Version, identityDetail.SdkInfo.Version)
+
+					ctx.Req.Equal(payload.EnvInfo.Arch, identityDetail.EnvInfo.Arch)
+					ctx.Req.Equal(payload.EnvInfo.Domain, identityDetail.EnvInfo.Domain)
+					ctx.Req.Equal(payload.EnvInfo.Hostname, identityDetail.EnvInfo.Hostname)
+					ctx.Req.Equal(payload.EnvInfo.Os, identityDetail.EnvInfo.Os)
+					ctx.Req.Equal(payload.EnvInfo.OsRelease, identityDetail.EnvInfo.OsRelease)
+					ctx.Req.Equal(payload.EnvInfo.OsVersion, identityDetail.EnvInfo.OsVersion)
+				})
+			})
+		})
 	})
 
 	t.Run("cert", func(t *testing.T) {
@@ -348,7 +459,31 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 
 		opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/cert"
 
-		resp, err = client.R().SetFormData(map[string]string{"id": authRequestId}).Post(opLoginUri)
+		payload := &oidc_auth.OidcUpdbCreds{
+			Authenticate: rest_model.Authenticate{
+				EnvInfo: &rest_model.EnvInfo{
+					Arch:      "ARCH1",
+					Domain:    "DOMAIN1",
+					Hostname:  "HOSTNAME1",
+					Os:        "OS1",
+					OsRelease: "OSRELEASE1",
+					OsVersion: "1.1.1",
+				},
+				SdkInfo: &rest_model.SdkInfo{
+					AppID:      "APPID1",
+					AppVersion: "2.2.2",
+					Branch:     "BRANCH1",
+					Revision:   "REVISION1",
+					Type:       "TEST1",
+					Version:    "3.3.3",
+				},
+			},
+			AuthRequestBody: oidc_auth.AuthRequestBody{
+				AuthRequestId: authRequestId,
+			},
+		}
+
+		resp, err = client.R().SetBody(payload).Post(opLoginUri)
 
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
@@ -384,7 +519,43 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			ctx.Req.NotEmpty(accessClaims.JWTID)
 			ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
 			ctx.Req.NotEmpty(accessClaims.Subject)
+
+			t.Run("has the correct sdk and env info", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				managementClient := ctx.NewEdgeManagementApi(nil)
+				apiSessionOidc := &edge_apis.ApiSessionLegacy{
+					Detail: &rest_model.CurrentAPISessionDetail{
+						APISessionDetail:  ctx.AdminManagementSession.session.AuthResponse.APISessionDetail,
+						ExpirationSeconds: nil,
+						ExpiresAt:         nil,
+					},
+					RequestHeaders: nil,
+				}
+
+				apiSession := edge_apis.ApiSession(apiSessionOidc)
+				managementClient.ApiSession.Store(&apiSession)
+
+				identityDetail, err := managementClient.GetIdentity(accessClaims.Subject)
+
+				ctx.Req.NoError(err)
+
+				ctx.Req.Equal(payload.SdkInfo.AppID, identityDetail.SdkInfo.AppID)
+				ctx.Req.Equal(payload.SdkInfo.AppVersion, identityDetail.SdkInfo.AppVersion)
+				ctx.Req.Equal(payload.SdkInfo.Branch, identityDetail.SdkInfo.Branch)
+				ctx.Req.Equal(payload.SdkInfo.Revision, identityDetail.SdkInfo.Revision)
+				ctx.Req.Equal(payload.SdkInfo.Type, identityDetail.SdkInfo.Type)
+				ctx.Req.Equal(payload.SdkInfo.Version, identityDetail.SdkInfo.Version)
+
+				ctx.Req.Equal(payload.EnvInfo.Arch, identityDetail.EnvInfo.Arch)
+				ctx.Req.Equal(payload.EnvInfo.Domain, identityDetail.EnvInfo.Domain)
+				ctx.Req.Equal(payload.EnvInfo.Hostname, identityDetail.EnvInfo.Hostname)
+				ctx.Req.Equal(payload.EnvInfo.Os, identityDetail.EnvInfo.Os)
+				ctx.Req.Equal(payload.EnvInfo.OsRelease, identityDetail.EnvInfo.OsRelease)
+				ctx.Req.Equal(payload.EnvInfo.OsVersion, identityDetail.EnvInfo.OsVersion)
+			})
 		})
+
 	})
 
 	t.Run("test cert auth totp ext-jwt", func(t *testing.T) {

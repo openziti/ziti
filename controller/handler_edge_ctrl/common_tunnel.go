@@ -395,7 +395,7 @@ func (self *baseTunnelRequestContext) updateIdentityInfo(envInfo *edge_ctrl_pb.E
 		}
 
 		if updateIdentity {
-			self.err = internalError(self.handler.getAppEnv().GetManagers().Identity.PatchInfo(self.identity, self.newTunnelChangeContext()))
+			self.err = internalError(self.handler.getAppEnv().GetManagers().Identity.PatchInfo(self.identity, nil, self.newTunnelChangeContext()))
 		}
 	}
 }

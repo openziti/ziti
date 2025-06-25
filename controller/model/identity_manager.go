@@ -470,21 +470,24 @@ func (self *IdentityManager) QueryRoleAttributes(queryString string) ([]string, 
 	return self.queryRoleAttributes(index, queryString)
 }
 
-func (self *IdentityManager) PatchInfo(identity *Identity, changeCtx *change.Context) error {
+func (self *IdentityManager) PatchInfo(identity *Identity, checker boltz.FieldChecker, changeCtx *change.Context) error {
 	start := time.Now()
-	checker := boltz.MapFieldChecker{
-		db.FieldIdentityEnvInfoArch:       struct{}{},
-		db.FieldIdentityEnvInfoOs:         struct{}{},
-		db.FieldIdentityEnvInfoOsRelease:  struct{}{},
-		db.FieldIdentityEnvInfoOsVersion:  struct{}{},
-		db.FieldIdentityEnvInfoDomain:     struct{}{},
-		db.FieldIdentityEnvInfoHostname:   struct{}{},
-		db.FieldIdentitySdkInfoBranch:     struct{}{},
-		db.FieldIdentitySdkInfoRevision:   struct{}{},
-		db.FieldIdentitySdkInfoType:       struct{}{},
-		db.FieldIdentitySdkInfoVersion:    struct{}{},
-		db.FieldIdentitySdkInfoAppId:      struct{}{},
-		db.FieldIdentitySdkInfoAppVersion: struct{}{},
+
+	if checker == nil {
+		checker = boltz.MapFieldChecker{
+			db.FieldIdentityEnvInfoArch:       struct{}{},
+			db.FieldIdentityEnvInfoOs:         struct{}{},
+			db.FieldIdentityEnvInfoOsRelease:  struct{}{},
+			db.FieldIdentityEnvInfoOsVersion:  struct{}{},
+			db.FieldIdentityEnvInfoDomain:     struct{}{},
+			db.FieldIdentityEnvInfoHostname:   struct{}{},
+			db.FieldIdentitySdkInfoBranch:     struct{}{},
+			db.FieldIdentitySdkInfoRevision:   struct{}{},
+			db.FieldIdentitySdkInfoType:       struct{}{},
+			db.FieldIdentitySdkInfoVersion:    struct{}{},
+			db.FieldIdentitySdkInfoAppId:      struct{}{},
+			db.FieldIdentitySdkInfoAppVersion: struct{}{},
+		}
 	}
 
 	err := self.updateEntityBatch(identity, checker, changeCtx)
@@ -702,6 +705,45 @@ func (self *IdentityManager) IdentityToProtobuf(entity *Identity) (*edge_cmd_pb.
 	}
 
 	return msg, nil
+}
+
+func (self *IdentityManager) UpdateSdkEnvInfo(identity *Identity, envInfo *EnvInfo, sdkInfo *SdkInfo, changeCtx *change.Context) error {
+	updateFields := fields.UpdatedFieldsMap{}
+
+	if identity.EnvInfo == nil {
+		identity.EnvInfo = &EnvInfo{}
+	}
+
+	if identity.SdkInfo == nil {
+		identity.SdkInfo = &SdkInfo{}
+	}
+
+	if envInfo != nil && !identity.EnvInfo.Equals(envInfo) {
+		updateFields.AddFields(db.FieldIdentityEnvInfoOs,
+			db.FieldIdentityEnvInfoOsRelease,
+			db.FieldIdentityEnvInfoOsVersion,
+			db.FieldIdentityEnvInfoHostname,
+			db.FieldIdentityEnvInfoArch,
+			db.FieldIdentityEnvInfoDomain)
+		identity.EnvInfo = envInfo
+	}
+
+	if sdkInfo != nil && !identity.SdkInfo.Equals(sdkInfo) {
+		updateFields.AddFields(db.FieldIdentitySdkInfoRevision,
+			db.FieldIdentitySdkInfoVersion,
+			db.FieldIdentitySdkInfoType,
+			db.FieldIdentitySdkInfoBranch,
+			db.FieldIdentitySdkInfoAppVersion,
+			db.FieldIdentitySdkInfoAppId)
+		identity.SdkInfo = sdkInfo
+	}
+
+	if len(updateFields) != 0 {
+
+		return self.PatchInfo(identity, updateFields, changeCtx)
+	}
+
+	return nil
 }
 
 func (self *IdentityManager) Marshall(entity *Identity) ([]byte, error) {

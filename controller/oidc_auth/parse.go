@@ -33,12 +33,12 @@ type TotpRequestBody struct {
 	Code string `json:"code"`
 }
 
-type updbCreds struct {
+type OidcUpdbCreds struct {
 	rest_model.Authenticate
 	AuthRequestBody
 }
 
-func (u *updbCreds) Translate(in string, paths ...string) (string, bool) {
+func (u *OidcUpdbCreds) Translate(in string, paths ...string) (string, bool) {
 	if len(paths) > 0 {
 		last := paths[len(paths)-1:][0]
 
