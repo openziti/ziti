@@ -78,62 +78,6 @@ jobs:
           subject-digest: ${{ steps.push_cli.outputs.digest }}
           push-to-registry: true
 
-      - name: Set Up Container Image Tags for FIPS CLI Container
-        env:
-          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
-          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-fips
-        id: tagprep_cli_fips
-        shell: bash
-        run: |
-          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
-
-      - name: Install Ziti CI
-        uses: openziti/ziti-ci@v1
-
-      - name: Define Go ldflags
-        id: go_ldflags
-        shell: bash
-        run: |
-          set -eoxo pipefail
-
-          if [[ "$ZITI_CLI_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            # use current version tag
-            echo GO_LDFLAGS="$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" | tee -a $GITHUB_OUTPUT
-          else
-            # predict next version tag
-            echo GO_LDFLAGS="$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" | tee -a $GITHUB_OUTPUT
-          fi
-
-      - name: Push FIPS CLI Image to Hub
-        env:
-          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
-          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-fips
-        uses: docker/build-push-action@v6
-        id: push_cli_fips
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/
-          file: ${{ github.workspace }}/dist/docker-images/ziti-cli-fips/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.tagprep_cli_fips.outputs.DOCKER_TAGS }}
-          build-args: |
-            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}
-            ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
-            DOCKER_BUILD_DIR=./dist/docker-images/ziti-cli-fips
-            GO_LDFLAGS=${{ steps.go_ldflags.outputs.GO_LDFLAGS }}
-          cache-from: type=registry,ref=${{ env.IMAGE_REPO }}-buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}-buildcache,mode=max
-          provenance: mode=max
-          sbom: true
-          push: true
-
-      - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
-          subject-digest: ${{ steps.push_cli_fips.outputs.digest }}
-          push-to-registry: true
-
       - name: Set Up Container Image Tags for Controller Container
         env:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
@@ -165,39 +109,6 @@ jobs:
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
           subject-digest: ${{ steps.push_ctrl.outputs.digest }}
-          push-to-registry: true
-
-      - name: Set Up Container Image Tags for FIPS Controller Container
-        env:
-          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
-          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-fips
-        id: tagprep_ctrl_fips
-        shell: bash
-        run: |
-          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
-
-      - name: Push FIPS Controller Image to Hub
-        uses: docker/build-push-action@v6
-        id: push_ctrl_fips
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/
-          file: ${{ github.workspace }}/dist/docker-images/ziti-controller-fips/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.tagprep_ctrl_fips.outputs.DOCKER_TAGS }}
-          build-args: |
-            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-fips
-            ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
-            DOCKER_BUILD_DIR=./dist/docker-images/ziti-controller-fips
-          provenance: mode=max
-          sbom: true
-          push: true
-
-      - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
-          subject-digest: ${{ steps.push_ctrl_fips.outputs.digest }}
           push-to-registry: true
 
       - name: Set Up Container Image Tags for Router Container
@@ -233,39 +144,6 @@ jobs:
           subject-digest: ${{ steps.push_router.outputs.digest }}
           push-to-registry: true
 
-      - name: Set Up Container Image Tags for FIPS Router Container
-        env:
-          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_ROUTER_IMAGE }}
-          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-fips
-        id: tagprep_router_fips
-        shell: bash
-        run: |
-          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
-
-      - name: Push FIPS Router Image to Hub
-        uses: docker/build-push-action@v6
-        id: push_router_fips
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/
-          file: ${{ github.workspace }}/dist/docker-images/ziti-router-fips/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.tagprep_router_fips.outputs.DOCKER_TAGS }}
-          build-args: |
-            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-fips
-            ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
-            DOCKER_BUILD_DIR=./dist/docker-images/ziti-router-fips
-          provenance: mode=max
-          sbom: true
-          push: true
-
-      - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_ROUTER_IMAGE }}
-          subject-digest: ${{ steps.push_router_fips.outputs.digest }}
-          push-to-registry: true
-
       - name: Set Up Container Image Tags for Go Tunneler Container
         env:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
@@ -296,36 +174,4 @@ jobs:
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
           subject-digest: ${{ steps.push_tunnel.outputs.digest }}
-          push-to-registry: true
-
-      - name: Set Up Container Image Tags for FIPS Tunneler Container
-        env:
-          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
-          IMAGE_TAG: ${{ env.ZITI_CLI_TAG }}-fips
-        id: tagprep_tun_fips
-        shell: bash
-        run: |
-          echo DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
-
-      - name: Push FIPS Tunneler Image to Hub
-        uses: docker/build-push-action@v6
-        id: push_tunnel_fips
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/
-          file: ${{ github.workspace }}/dist/docker-images/ziti-tunnel-fips/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.tagprep_tun_fips.outputs.DOCKER_TAGS }}
-          build-args: |
-            ZITI_CLI_TAG=${{ env.ZITI_CLI_TAG }}-fips
-            ZITI_CLI_IMAGE=${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
-          provenance: mode=max
-          sbom: true
-          push: true
-
-      - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
-          subject-digest: ${{ steps.push_tunnel_fips.outputs.digest }}
           push-to-registry: true
