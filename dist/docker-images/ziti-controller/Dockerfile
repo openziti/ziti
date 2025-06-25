@@ -33,11 +33,11 @@ COPY ${CONTROLLER_PACKAGE}/bootstrap.bash ${ZITI_CTRL_BOOTSTRAP_BASH}
 COPY ${CONTROLLER_PACKAGE}/entrypoint.bash /
 
 # copy the console SPA build files
-COPY --from=ziti-console /usr/src/app/dist/app-ziti-console /ziti-console
 ENV ZITI_CONSOLE_LOCATION=/ziti-console
+COPY --from=ziti-console /usr/src/app/dist/app-ziti-console ${ZITI_CONSOLE_LOCATION}
 
 RUN mkdir -p /ziti-controller
-RUN chown -R ziggy:ziggy /ziti-controller /ziti-console
+RUN chown -R ziggy:ziggy /ziti-controller ${ZITI_CONSOLE_LOCATION}
 WORKDIR /ziti-controller
 ENV ZITI_HOME=/ziti-controller
 
