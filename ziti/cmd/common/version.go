@@ -18,7 +18,6 @@ package common
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/ziti/common/version"
 	"github.com/spf13/cobra"
 )
@@ -36,7 +35,6 @@ func NewVersionCmd() *cobra.Command {
 				fmt.Printf("Build Date:   %s\n", version.GetBuildDate())
 				fmt.Printf("Go Version:   %s\n", version.GetGoVersion())
 				fmt.Printf("OS/Arch:      %s/%s\n", version.GetOS(), version.GetArchitecture())
-				fmt.Printf("FIPS mode:    %v\n", tlz.FipsEnabled())
 			} else {
 				fmt.Println(version.GetVersion())
 			}
