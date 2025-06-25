@@ -637,6 +637,16 @@ type simpleTestChannel struct {
 	isClosed bool
 }
 
+func (ch *simpleTestChannel) GetUnderlays() []channel.Underlay {
+	return []channel.Underlay{simpleTestUnderlay{}}
+}
+
+func (ch *simpleTestChannel) GetUnderlayCountsByType() map[string]int {
+	return map[string]int{
+		"single": 1,
+	}
+}
+
 func (ch *simpleTestChannel) Headers() map[int32][]byte {
 	return nil
 }

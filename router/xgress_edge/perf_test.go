@@ -283,6 +283,14 @@ func Benchmark_BaselinePerf(b *testing.B) {
 type NoopTestChannel struct {
 }
 
+func (ch *NoopTestChannel) GetUnderlays() []channel.Underlay {
+	panic("implement me")
+}
+
+func (ch *NoopTestChannel) GetUnderlayCountsByType() map[string]int {
+	panic("implement me")
+}
+
 func (ch *NoopTestChannel) GetUserData() interface{} {
 	return nil
 }
@@ -292,7 +300,6 @@ func (ch *NoopTestChannel) Headers() map[int32][]byte {
 }
 
 func (ch *NoopTestChannel) Underlay() channel.Underlay {
-	//TODO implement me
 	panic("implement me")
 }
 
