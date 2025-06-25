@@ -18,7 +18,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.29
-	github.com/openziti/channel/v4 v4.2.11
+	github.com/openziti/channel/v4 v4.2.12
 	github.com/openziti/edge-api v0.26.46
 	github.com/openziti/fablab v0.5.108
 	github.com/openziti/foundation/v2 v2.0.68
@@ -193,9 +193,9 @@ require (
 	go.mongodb.org/mongo-driver v1.17.4 // indirect
 	go.mozilla.org/pkcs7 v0.9.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/otel v1.36.0 // indirect
-	go.opentelemetry.io/otel/metric v1.36.0 // indirect
-	go.opentelemetry.io/otel/trace v1.36.0 // indirect
+	go.opentelemetry.io/otel v1.37.0 // indirect
+	go.opentelemetry.io/otel/metric v1.37.0 // indirect
+	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	go4.org v0.0.0-20180809161055-417644f6feb5 // indirect
