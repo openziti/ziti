@@ -19,6 +19,9 @@ package model
 import (
 	"crypto/x509"
 	"encoding/json"
+	"fmt"
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/event"
 	"net/http"
@@ -70,6 +73,9 @@ type AuthContext interface {
 	GetChangeContext() *change.Context
 	GetRemoteAddr() string
 
+	GetEnvInfo() *EnvInfo
+	GetSdkInfo() *SdkInfo
+
 	// GetPrimaryIdentity returns the current in context identity, which should be nil for primary and filled for secondary
 	GetPrimaryIdentity() *Identity
 
@@ -85,6 +91,16 @@ type AuthContextHttp struct {
 	ChangeContext   *change.Context
 	PrimaryIdentity *Identity
 	RemoteAddr      string
+	SdkInfo         *SdkInfo
+	EnvInfo         *EnvInfo
+}
+
+func (context *AuthContextHttp) GetEnvInfo() *EnvInfo {
+	return context.EnvInfo
+}
+
+func (context *AuthContextHttp) GetSdkInfo() *SdkInfo {
+	return context.SdkInfo
 }
 
 func NewAuthContextHttp(request *http.Request, method string, data interface{}, ctx *change.Context) AuthContext {
@@ -98,6 +114,12 @@ func NewAuthContextHttp(request *http.Request, method string, data interface{}, 
 		headers[h] = v
 	}
 
+	sdkInfo, envInfo, err := parseSdkEnvInfo(mapData)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to parse sdk and env info, continuing with authentication processing but sdk and env info will not be updated")
+	}
+
 	return &AuthContextHttp{
 		Method:        method,
 		Data:          mapData,
@@ -105,7 +127,33 @@ func NewAuthContextHttp(request *http.Request, method string, data interface{}, 
 		Headers:       headers,
 		ChangeContext: ctx,
 		RemoteAddr:    request.RemoteAddr,
+		SdkInfo:       sdkInfo,
+		EnvInfo:       envInfo,
 	}
+}
+
+func parseSdkEnvInfo(data map[string]any) (*SdkInfo, *EnvInfo, error) {
+
+	var sdkInfo *SdkInfo
+	var envInfo *EnvInfo
+
+	if envInfoInterface := data["envInfo"]; envInfoInterface != nil {
+		if envInfoMap := envInfoInterface.(map[string]interface{}); envInfoMap != nil {
+			if err := mapstructure.Decode(envInfoMap, &envInfo); err != nil {
+				return nil, nil, fmt.Errorf("could not decode key [envInfo] of type %T as %T", envInfoMap, envInfo)
+			}
+		}
+	}
+
+	if sdkInfoInterface := data["sdkInfo"]; sdkInfoInterface != nil {
+		if sdkInfoMap := sdkInfoInterface.(map[string]interface{}); sdkInfoMap != nil {
+			if err := mapstructure.Decode(sdkInfoMap, &sdkInfo); err != nil {
+				return nil, nil, fmt.Errorf("could not decode key [sdkInfo] of type %T as %T", sdkInfoMap, sdkInfo)
+			}
+		}
+	}
+
+	return sdkInfo, envInfo, nil
 }
 
 func (context *AuthContextHttp) GetMethod() string {
