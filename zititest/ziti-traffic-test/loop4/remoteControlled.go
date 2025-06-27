@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	edgeApis "github.com/openziti/sdk-golang/edge-apis"
@@ -165,8 +166,34 @@ func (cmd *remoteControlledCmd) sendScenarioResult(ch channel.Channel, id string
 	}
 }
 
+func (cmd *remoteControlledCmd) sendDiagnosticRequest(ch channel.Channel, requestId string) {
+	log := pfxlog.Logger().WithField("requestId", requestId)
+	msg := channel.NewMessage(int32(loop4Pb.ContentType_RequestDiagnostic), nil)
+	msg.PutStringHeader(int32(loop4Pb.HeaderType_RequestIdHeader), requestId)
+	if err := msg.WithTimeout(10 * time.Second).Send(ch); err != nil {
+		log.WithError(err).Error("unable to send diagnostic request message")
+	} else {
+		log.Info("diagnostic successfully requested")
+	}
+}
+
+var triggerInspectAtomic concurrenz.AtomicValue[func(circuitId string)]
+
+func triggerInspect(circuitId string) {
+	cb := triggerInspectAtomic.Load()
+	if cb == nil {
+		pfxlog.Logger().WithField("circuitId", circuitId).Info("trigger inspect not available")
+		return
+	}
+	cb(circuitId)
+}
+
 func (cmd *remoteControlledCmd) runRemoteScenario(scenarioId string, scenario *Scenario, ch channel.Channel) {
 	log := pfxlog.Logger()
+
+	triggerInspectAtomic.Store(func(circuitId string) {
+		cmd.sendDiagnosticRequest(ch, circuitId)
+	})
 
 	// reset metrics
 	cmd.Sim.metrics.DisposeAll()

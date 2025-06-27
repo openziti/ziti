@@ -7,12 +7,14 @@ enum ContentType {
   ZeroContentType = 0;
   RunScenarioRequestType = 1;
   RunScenarioResultType = 2;
+  RequestDiagnostic = 3;
 }
 
 enum HeaderType {
   ZeroHeaderType = 0;
   ScenarioId = 100;
   ScenarioSuccess = 101;
+  RequestIdHeader = 102;
 }
 
 message Test {
@@ -37,7 +39,6 @@ message Test {
   int32 rxSeqBlockSize = 16;
   string rxPacing = 17;
   string rxMaxJitter = 18;
-  str
 }
 
 message ScenarioComplete {

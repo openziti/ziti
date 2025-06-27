@@ -140,6 +140,11 @@ func (cmd *listenerCmd) handle(conn net.Conn, workload *Workload) {
 		if err = proto.run(test); err == nil {
 			result = &Result{Success: true}
 		} else {
+			log.WithError(err).Error("error running test")
+			//if ztConn, ok := conn.(edge.Conn); ok {
+			//	fmt.Println(ztConn.GetState())
+			//}
+
 			result = &Result{Success: false, Message: err.Error()}
 		}
 
