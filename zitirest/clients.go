@@ -22,7 +22,9 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	openApiRuntime "github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -30,9 +32,10 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/authentication"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/controller/env"
-	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
+	fabricRestClient "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"io"
@@ -40,18 +43,21 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
 type Clients struct {
 	host           string
 	wellKnownCerts []byte
-	token          string
-	Fabric         *fabric_rest_client.ZitiFabric
+	token          concurrenz.AtomicValue[string]
+	Fabric         *fabricRestClient.ZitiFabric
 	Edge           *rest_management_api_client.ZitiEdgeManagement
 
 	FabricRuntime *httptransport.Runtime
 	EdgeRuntime   *httptransport.Runtime
+	lastAuth      time.Time
+	lock          sync.Mutex
 }
 
 func (self *Clients) NewTlsClientConfig() *tls.Config {
@@ -63,7 +69,20 @@ func (self *Clients) NewTlsClientConfig() *tls.Config {
 	}
 }
 
+func (self *Clients) AuthenticateIfNeeded(user, password string, maxTimeBetweenLogins time.Duration) error {
+	self.lock.Lock()
+	doAuth := time.Since(self.lastAuth) > maxTimeBetweenLogins
+	self.lock.Unlock()
+	if doAuth {
+		return self.Authenticate(user, password)
+	}
+	return nil
+}
+
 func (self *Clients) Authenticate(user, password string) error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
 	ctx, cancelF := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancelF()
 
@@ -83,21 +102,20 @@ func (self *Clients) Authenticate(user, password string) error {
 		}
 		return err
 	}
-	pfxlog.Logger().WithField("token", self.token).Debug("authenticated successfully")
+
 	self.SetSessionToken(*result.Payload.Data.Token)
+	pfxlog.Logger().WithField("token", self.token.Load()).Debug("authenticated successfully")
+	self.lastAuth = time.Now()
+
 	return nil
 }
 
+func (self *Clients) AuthenticateRequest(request openApiRuntime.ClientRequest, registry strfmt.Registry) error {
+	return request.SetHeaderParam("zt-session", self.token.Load())
+}
+
 func (self *Clients) SetSessionToken(token string) {
-	self.token = token
-	self.FabricRuntime.DefaultAuthentication = &util.EdgeManagementAuth{
-		Token: self.token,
-	}
-
-	self.EdgeRuntime.DefaultAuthentication = &util.EdgeManagementAuth{
-		Token: self.token,
-	}
-
+	self.token.Store(token)
 }
 
 func (self *Clients) NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.Channel, error) {
@@ -112,7 +130,7 @@ func (self *Clients) NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.
 	}
 
 	result := http.Header{}
-	result.Set(env.ZitiSession, self.token)
+	result.Set(env.ZitiSession, self.token.Load())
 
 	conn, resp, err := dialer.Dial(wsUrl, result)
 	if err != nil {
@@ -203,13 +221,16 @@ func NewManagementClients(host string) (*Clients, error) {
 	}
 
 	clients.FabricRuntime = httptransport.NewWithClient(parsedHost.Host,
-		fabric_rest_client.DefaultBasePath, fabric_rest_client.DefaultSchemes, httpClient)
+		fabricRestClient.DefaultBasePath, fabricRestClient.DefaultSchemes, httpClient)
 
 	clients.EdgeRuntime = httptransport.NewWithClient(parsedHost.Host,
 		rest_management_api_client.DefaultBasePath, rest_management_api_client.DefaultSchemes, httpClient)
 
-	clients.Fabric = fabric_rest_client.New(clients.FabricRuntime, nil)
+	clients.Fabric = fabricRestClient.New(clients.FabricRuntime, nil)
 	clients.Edge = rest_management_api_client.New(clients.EdgeRuntime, nil)
+
+	clients.FabricRuntime.DefaultAuthentication = clients
+	clients.EdgeRuntime.DefaultAuthentication = clients
 
 	return clients, nil
 }

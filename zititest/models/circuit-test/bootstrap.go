@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"time"
@@ -163,10 +164,21 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
 	workflow.AddAction(semaphore.Sleep(5 * time.Second))
 
+	workflow.AddAction(component.StartInParallel(".tcpdump", 10))
 	workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 10))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(component.StartInParallel(".sim-services-host", 50))
 	workflow.AddAction(component.StartInParallel(".sim-services-client", 50))
+
+	workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+		if run.GetModel().BoolVariable("tcpdump") {
+			time.Sleep(30 * time.Second)
+			return run.GetModel().ForEachComponent(".tcpdump", 10, func(c *model.Component) error {
+				return c.Host.ExecLogOnlyOnError(fmt.Sprintf("cp /home/ubuntu/logs/%s.pcap0 /home/ubuntu/logs/%s.pcap.first", c.Id, c.Id))
+			})
+		}
+		return nil
+	}))
 
 	return workflow
 }

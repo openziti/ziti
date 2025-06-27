@@ -28,14 +28,20 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"net"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
-func NewRemoteController(client ziti.Context) *RemoteController {
+type ControllerCallback interface {
+	DiagnosticRequested(msg *channel.Message, ch channel.Channel)
+}
+
+func NewRemoteController(client ziti.Context, cb ControllerCallback) *RemoteController {
 	return &RemoteController{
 		client:         client,
 		clients:        cmap.New[channel.Channel](),
 		resultsTracker: cmap.New[*ScenarioResults](),
+		cb:             cb,
 	}
 }
 
@@ -43,6 +49,7 @@ type RemoteController struct {
 	client   ziti.Context
 	clients  cmap.ConcurrentMap[string, channel.Channel]
 	listener net.Listener
+	cb       ControllerCallback
 
 	resultsTracker cmap.ConcurrentMap[string, *ScenarioResults]
 }
@@ -102,6 +109,7 @@ func (self *RemoteController) handleConnection(conn net.Conn) error {
 
 func (self *RemoteController) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(int32(loop4Pb.ContentType_RunScenarioResultType), self.handleScenarioResult)
+	binding.AddReceiveHandlerF(int32(loop4Pb.ContentType_RequestDiagnostic), self.cb.DiagnosticRequested)
 	return nil
 }
 
@@ -118,6 +126,12 @@ func (self *RemoteController) handleScenarioResult(msg *channel.Message, ch chan
 
 		clientId := string(ch.Headers()[HeaderClientId])
 
+		pfxlog.Logger().
+			WithField("scenarioId", id).
+			WithField("clientId", clientId).
+			WithField("success", success).
+			Info("scenario result message received")
+
 		success, _ := msg.GetBoolHeader(int32(loop4Pb.HeaderType_ScenarioSuccess))
 		result := &ScenarioResult{
 			success: success,
@@ -125,14 +139,10 @@ func (self *RemoteController) handleScenarioResult(msg *channel.Message, ch chan
 		}
 		results.results.Set(clientId, *result)
 		if results.results.Count() == results.expectedResults {
-			close(results.complete)
+			if results.completed.CompareAndSwap(false, true) {
+				close(results.complete)
+			}
 		}
-		pfxlog.Logger().
-			WithField("scenarioId", id).
-			WithField("clientId", clientId).
-			WithField("success", success).
-			Info("scenario result message received")
-
 	}
 }
 
@@ -197,6 +207,7 @@ type ScenarioResults struct {
 	id              string
 	results         cmap.ConcurrentMap[string, ScenarioResult]
 	complete        chan struct{}
+	completed       atomic.Bool
 	expectedResults int
 }
 

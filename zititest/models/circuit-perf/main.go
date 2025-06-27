@@ -114,7 +114,8 @@ var Model = &model.Model{
 			m.AddOperatingStage(simServices.CollectSimMetricStage("metrics"))
 
 			m.AddOperatingStageF(func(run model.Run) error {
-				time.Sleep(time.Hour * 24)
+				waitC := make(chan struct{})
+				<-waitC
 				return nil
 			})
 
