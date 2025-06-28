@@ -370,9 +370,8 @@ func deleteServicePolicyByID(t *testing.T, client *rest_management_api_client.Zi
 
 // in order to share test code between quickstart_test.go and quickstart_test_manual.go, this function had to be
 // created. I couldn't find a way to share the code any other way. Happy to learn a better way!
-func performQuickstartTest(t *testing.T) {
+func performQuickstartTest(t *testing.T) error {
 	// Wait for the controller to become available
-	logrus.StandardLogger().Level = logrus.TraceLevel
 	zitiAdminUsername := os.Getenv("ZITI_USER")
 	if zitiAdminUsername == "" {
 		zitiAdminUsername = "admin"
@@ -413,15 +412,26 @@ func performQuickstartTest(t *testing.T) {
 	// Authenticate with the controller
 	caCerts, err := rest_util.GetControllerWellKnownCas(ctrlAddress)
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
 	caPool := x509.NewCertPool()
 	for _, ca := range caCerts {
 		caPool.AddCert(ca)
 	}
-	client, err := rest_util.NewEdgeManagementClientWithUpdb(zitiAdminUsername, zitiAdminPassword, ctrlAddress, caPool)
-	if err != nil {
-		t.Fatal(err)
+	var client *rest_management_api_client.ZitiEdgeManagement
+	for i := 0; ; i++ {
+		c, err := rest_util.NewEdgeManagementClientWithUpdb(zitiAdminUsername, zitiAdminPassword, ctrlAddress, caPool)
+		if err != nil {
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		log.Infof("created authenticated client after %d attempts (%f seconds)", i+1, float64(i)*0.5)
+		client = c
+		break
+	}
+
+	if client == nil {
+		return fmt.Errorf("Failed to connect to Ziti")
 	}
 
 	// Create the tester identity
@@ -431,26 +441,26 @@ func performQuickstartTest(t *testing.T) {
 	// Enroll the identity
 	identConfig, err := enrollIdentity(client, ident.Payload.Data.ID)
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
 
 	// Create a json config file
 	output, err := os.Create(testerUsername + ".json")
 	if err != nil {
-		t.Fatal("Failed to create output config file")
+		return err
 	}
 	defer func() {
 		_ = output.Close()
 		err = os.Remove(testerUsername + ".json")
 		if err != nil {
-			t.Fatal("Failed to delete json config file")
+			logrus.Warnf("Failed to delete json config file: %s", err)
 		}
 	}()
 	enc := json.NewEncoder(output)
 	enc.SetEscapeHTML(false)
 	encErr := enc.Encode(&identConfig)
 	if encErr != nil {
-		t.Fatal("Failed to generate encoded output")
+		return err
 	}
 
 	// Verify all identities can access all routers
@@ -465,7 +475,7 @@ func performQuickstartTest(t *testing.T) {
 	serpParams.SetTimeout(30 * time.Second)
 	serp, err := client.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(serpParams, nil)
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
 	defer func() { _ = deleteServiceEdgeRouterPolicyById(t, client, serp.Payload.Data.ID) }()
 
@@ -482,7 +492,7 @@ func performQuickstartTest(t *testing.T) {
 	erpParams.SetTimeout(30 * time.Second)
 	erp, err := client.EdgeRouterPolicy.CreateEdgeRouterPolicy(erpParams, nil)
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
 	defer func() { _ = deleteEdgeRouterPolicyById(t, client, erp.Payload.Data.ID) }()
 
@@ -524,7 +534,7 @@ func performQuickstartTest(t *testing.T) {
 
 	resp, e := httpClient.Get(helloUrl)
 	if e != nil {
-		t.Fatal(e)
+		return err
 	}
 
 	assert.Equal(t, 200, resp.StatusCode, fmt.Sprintf("Expected successful HTTP status code 200, received %d instead", resp.StatusCode))
@@ -532,6 +542,7 @@ func performQuickstartTest(t *testing.T) {
 	strBody := string(body)
 	assert.Contains(t, strBody, "\"path\":\"/oidc\"")
 	fmt.Println(strBody)
+	return nil
 }
 
 func toPtr[T any](in T) *T {
