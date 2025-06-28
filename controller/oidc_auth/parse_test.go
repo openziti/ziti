@@ -74,7 +74,7 @@ func Test_Map(t *testing.T) {
 			"configTypes":   {"one", "two"},
 		}
 
-		dst := &updbCreds{}
+		dst := &OidcUpdbCreds{}
 
 		err := MapToStruct(srcMap, dst)
 

@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-openapi/swag"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/apierror"
@@ -296,7 +297,7 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 		method = AuthMethodPassword
 	}
 
-	credentials := &updbCreds{}
+	credentials := &OidcUpdbCreds{}
 	apiErr := parsePayload(r, credentials)
 
 	if apiErr != nil {
@@ -346,6 +347,12 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 		}
 
 		return
+	}
+
+	apiErr = l.store.UpdateSdkEnvInfo(authRequest)
+
+	if apiErr != nil {
+		pfxlog.Logger().WithError(apiErr).Errorf("cannot update sdk env info, continuing with authentication")
 	}
 
 	callbackUrl := l.callback(r.Context(), credentials.AuthRequestId)
