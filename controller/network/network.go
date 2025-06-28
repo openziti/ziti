@@ -193,7 +193,7 @@ func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Co
 	return cmd, nil
 }
 
-func RouterCommunicationsWorker(f func()) {
+func routerCommunicationsWorker(_ uint32, f func()) {
 	f()
 }
 
@@ -207,7 +207,7 @@ func (network *Network) createRouterCommPool(config Config) (goroutines.Pool, er
 		PanicHandler: func(err interface{}) {
 			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during message send to router")
 		},
-		WorkerFunction: RouterCommunicationsWorker,
+		WorkerFunction: routerCommunicationsWorker,
 	}
 
 	fabricMetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, config.GetMetricsRegistry(), "pool.router.messaging")

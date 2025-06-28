@@ -36,10 +36,10 @@ import (
 const TargetZitiVersion = ""
 
 var entityCounts = map[string]uint32{
-	"loop-client":    2,
-	"loop-host":      2,
-	"loop-client-xg": 2,
-	"loop-host-xg":   2,
+	"loop-client":    1,
+	"loop-host":      1,
+	"loop-client-xg": 1,
+	"loop-host-xg":   1,
 }
 
 type scaleStrategy struct{}

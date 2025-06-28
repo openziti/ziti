@@ -46,7 +46,7 @@ type bindHandler struct {
 	ctrlAddressUpdater       CtrlAddressUpdater
 }
 
-func XgressDialerWorker(f func()) {
+func XgressDialerWorker(_ uint32, f func()) {
 	f()
 }
 
