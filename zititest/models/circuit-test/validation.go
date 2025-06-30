@@ -25,21 +25,44 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/zitirest"
+	loop4Pb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	zitiLibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
 	"google.golang.org/protobuf/proto"
-	"math/rand"
-	"sync"
 	"time"
 )
 
+type simCallback struct {
+	ctrlClients *chaos.CtrlClients
+}
+
+func (self *simCallback) DiagnosticRequested(msg *channel.Message, ch channel.Channel) {
+	circuitId, _ := msg.GetStringHeader(int32(loop4Pb.HeaderType_RequestIdHeader))
+	inspectKeys := []string{"stackdump", "circuitAndStacks:" + circuitId}
+
+	err := self.ctrlClients.Inspect("ctrl1", ".*", "/home/plorenz/work/support/flow/"+circuitId, "yaml", inspectKeys...)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Errorf("failed to run inspect, diagnostic requested by circuit  %s", circuitId)
+	} else {
+		pfxlog.Logger().Infof("inspect run, diagnostic requested by circuit  %s", circuitId)
+	}
+}
+
 func RunSimScenarios(run model.Run, services *zitiLibOps.SimServices) error {
+	ctrlClients, err := chaos.NewCtrlClients(run, "#ctrl1")
+	if err != nil {
+		return err
+	}
+
 	if err := run.GetModel().Exec(run, "startSimMetrics"); err != nil {
 		return err
 	}
 
-	simControl, err := services.GetSimController(run, "sim-control")
+	cb := &simCallback{
+		ctrlClients: ctrlClients,
+	}
+	simControl, err := services.GetSimController(run, "sim-control", cb)
 	if err != nil {
 		return err
 	}
@@ -60,55 +83,6 @@ func RunSimScenarios(run model.Run, services *zitiLibOps.SimServices) error {
 	}
 
 	return results.GetResults(5 * time.Minute)
-}
-
-type CtrlClients struct {
-	ctrls   []*zitirest.Clients
-	ctrlMap map[string]*zitirest.Clients
-	sync.Mutex
-}
-
-func (self *CtrlClients) init(run model.Run, selector string) error {
-	self.ctrlMap = map[string]*zitirest.Clients{}
-	ctrls := run.GetModel().SelectComponents(selector)
-	resultC := make(chan struct {
-		err     error
-		id      string
-		clients *zitirest.Clients
-	}, len(ctrls))
-
-	for _, ctrl := range ctrls {
-		go func() {
-			clients, err := chaos.EnsureLoggedIntoCtrl(run, ctrl, time.Minute)
-			resultC <- struct {
-				err     error
-				id      string
-				clients *zitirest.Clients
-			}{
-				err:     err,
-				id:      ctrl.Id,
-				clients: clients,
-			}
-		}()
-	}
-
-	for i := 0; i < len(ctrls); i++ {
-		result := <-resultC
-		if result.err != nil {
-			return result.err
-		}
-		self.ctrls = append(self.ctrls, result.clients)
-		self.ctrlMap[result.id] = result.clients
-	}
-	return nil
-}
-
-func (self *CtrlClients) getRandomCtrl() *zitirest.Clients {
-	return self.ctrls[rand.Intn(len(self.ctrls))]
-}
-
-func (self *CtrlClients) getCtrl(id string) *zitirest.Clients {
-	return self.ctrlMap[id]
 }
 
 func validateCircuits(run model.Run) error {

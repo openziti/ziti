@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	_ "embed"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -33,6 +34,36 @@ import (
 )
 
 const TargetZitiVersion = ""
+
+var entityCounts = map[string]uint32{
+	"loop-client":    1,
+	"loop-host":      1,
+	"loop-client-xg": 1,
+	"loop-host-xg":   1,
+}
+
+type scaleStrategy struct{}
+
+func (self scaleStrategy) IsScaled(entity model.Entity) bool {
+	return entity.GetScope().HasTag("scaled")
+}
+
+func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
+	if entity.GetType() == model.EntityTypeHost {
+		for _, tag := range entity.GetScope().Tags {
+			if strings.HasPrefix(tag, "scale-tag:") {
+				hostType := strings.TrimPrefix(tag, "scale-tag:")
+				count, ok := entityCounts[hostType]
+				if !ok {
+					panic(fmt.Errorf("no scale was found in map for %s with scale tag %s", entity.GetId(), hostType))
+				}
+				return count
+			}
+		}
+		panic(fmt.Errorf("no scale tag found for host %s", entity.GetId()))
+	}
+	return 1
+}
 
 //go:embed configs
 var configResource embed.FS
@@ -101,6 +132,7 @@ var m = &model.Model{
 	Scope: model.Scope{
 		Defaults: model.Variables{
 			"ha":          "true",
+			"tcpdump":     "false",
 			"environment": "circuit-test",
 			"credentials": model.Variables{
 				"aws": model.Variables{
@@ -128,11 +160,12 @@ var m = &model.Model{
 			"testErtClient":            true,
 			"testSdkClient":            true,
 			"testSdkHost":              true,
-			"testSdkXgClient":          true,
-			"testSdkXgHost":            true,
+			"testSdkXgClient":          false,
+			"testSdkXgHost":            false,
 		},
 	},
 	StructureFactories: []model.Factory{
+		model.NewScaleFactoryWithDefaultEntityFactory(scaleStrategy{}),
 		model.FactoryFunc(func(m *model.Model) error {
 			err := m.ForEachHost("*", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
@@ -163,17 +196,29 @@ var m = &model.Model{
 				}
 			}
 
+			if val, _ := m.GetBoolVariable("tcpdump"); !val {
+				for _, c := range m.SelectComponents("tcpdump") {
+					delete(c.Host.Components, c.Id)
+				}
+			}
+
 			return nil
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			for _, host := range m.SelectHosts("*") {
+				host.InstanceResourceType = "ondemand_iops"
+				host.EC2.Volume = model.EC2Volume{
+					Type:   "gp3",
+					SizeGB: 20,
+					IOPS:   1000,
+				}
 				for _, component := range host.Components {
 					if rc, ok := component.Type.(*zitilab.Loop4SimType); ok && rc.Mode == zitilab.Loop4RemoteControlled {
-						if component.Id == "loop-client" && !m.BoolVariable("testSdkClient") {
+						if component.HasTag("loop-client-no-xg") && !m.BoolVariable("testSdkClient") {
 							delete(host.Components, component.Id)
-						} else if component.Id == "loop-client-xg" && !m.BoolVariable("testSdkXgClient") {
+						} else if component.HasTag("loop-client-xg") && !m.BoolVariable("testSdkXgClient") {
 							delete(host.Components, component.Id)
-						} else if component.Id == "loop-client-ert" && !m.BoolVariable("testErtClient") {
+						} else if component.HasTag("loop-client-ert") && !m.BoolVariable("testErtClient") {
 							delete(host.Components, component.Id)
 						}
 					}
@@ -246,6 +291,13 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client", "test", "underTest"}},
 							Type:  &zitilab.RouterType{},
 						},
+						"tcpdump-client-1": {
+							Scope: model.Scope{Tags: model.Tags{"tcpdump", "client"}},
+							Type: &zitilab.TcpDumpType{
+								Filter:          "port 6000 or port 6262",
+								MaxFileSizeInMb: 200,
+							},
+						},
 					},
 				},
 				"router-client-2": {
@@ -253,6 +305,13 @@ var m = &model.Model{
 						"router-client-2": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client", "test", "underTest"}},
 							Type:  &zitilab.RouterType{},
+						},
+						"tcpdump-client-2": {
+							Scope: model.Scope{Tags: model.Tags{"tcpdump", "client"}},
+							Type: &zitilab.TcpDumpType{
+								Filter:          "port 6000 or port 6262",
+								MaxFileSizeInMb: 200,
+							},
 						},
 					},
 				},
@@ -263,9 +322,16 @@ var m = &model.Model{
 							Type:  &zitilab.RouterType{},
 						},
 						"loop-client-ert": {
-							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "loop-client-ert", "sdk-app", "client", "sim-services-client"}},
 							Type: &zitilab.Loop4SimType{
 								Mode: zitilab.Loop4RemoteControlled,
+							},
+						},
+						"tcpdump-ert": {
+							Scope: model.Scope{Tags: model.Tags{"tcpdump", "client"}},
+							Type: &zitilab.TcpDumpType{
+								Filter:          "port 6000 or port 6262",
+								MaxFileSizeInMb: 200,
 							},
 						},
 					},
@@ -279,24 +345,26 @@ var m = &model.Model{
 						},
 					},
 				},
-				"loop-client": {
-					Scope: model.Scope{Tags: model.Tags{"loop-client"}},
+				"loop-client-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"loop-client", "scaled", "scale-tag:loop-client"}},
 					Components: model.Components{
-						"loop-client": {
-							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+						"loop-client-{{.Host.ScaleIndex}}": {
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "loop-client-no-xg", "sdk-app", "client", "sim-services-client"}},
 							Type: &zitilab.Loop4SimType{
-								Mode: zitilab.Loop4RemoteControlled,
+								ConfigSource: "loop-client.yml.tmpl",
+								Mode:         zitilab.Loop4RemoteControlled,
 							},
 						},
 					},
 				},
-				"loop-client-xg": {
-					Scope: model.Scope{Tags: model.Tags{"loop-client"}},
+				"loop-client-xg-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"loop-client", "scaled", "scale-tag:loop-client-xg"}},
 					Components: model.Components{
-						"loop-client-xg": {
-							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+						"loop-client-xg-{{.Host.ScaleIndex}}": {
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "loop-client-xg", "sdk-app", "client", "sim-services-client"}},
 							Type: &zitilab.Loop4SimType{
-								Mode: zitilab.Loop4RemoteControlled,
+								ConfigSource: "loop-client-xg.yml.tmpl",
+								Mode:         zitilab.Loop4RemoteControlled,
 							},
 						},
 					},
@@ -322,6 +390,13 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "host", "test", "underTest"}},
 							Type:  &zitilab.RouterType{},
 						},
+						"tcpdump-host-1": {
+							Scope: model.Scope{Tags: model.Tags{"tcpdump", "host"}},
+							Type: &zitilab.TcpDumpType{
+								Filter:          "port 6000 or port 6262",
+								MaxFileSizeInMb: 200,
+							},
+						},
 					},
 				},
 				"router-host-2": {
@@ -329,6 +404,13 @@ var m = &model.Model{
 						"router-host-2": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "host", "test", "underTest"}},
 							Type:  &zitilab.RouterType{},
+						},
+						"tcpdump-host-2": {
+							Scope: model.Scope{Tags: model.Tags{"tcpdump", "host"}},
+							Type: &zitilab.TcpDumpType{
+								Filter:          "port 6000 or port 6262",
+								MaxFileSizeInMb: 200,
+							},
 						},
 					},
 				},
@@ -344,24 +426,35 @@ var m = &model.Model{
 								Mode: zitilab.Loop4Listener,
 							},
 						},
-					},
-				},
-				"loop-host": {
-					Components: model.Components{
-						"loop-host": {
-							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host", "sim-services-host"}},
-							Type: &zitilab.Loop4SimType{
-								Mode: zitilab.Loop4Listener,
+						"tcpdump-ert-host": {
+							Scope: model.Scope{Tags: model.Tags{"tcpdump", "host"}},
+							Type: &zitilab.TcpDumpType{
+								Filter:          "port 6000 or port 6262",
+								MaxFileSizeInMb: 200,
 							},
 						},
 					},
 				},
-				"loop-host-xg": {
+				"loop-host-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"loop-host", "scaled", "scale-tag:loop-host"}},
 					Components: model.Components{
-						"loop-host-xg": {
+						"loop-host-{{.Host.ScaleIndex}}": {
+							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host", "sim-services-host"}},
+							Type: &zitilab.Loop4SimType{
+								ConfigSource: "loop-host.yml.tmpl",
+								Mode:         zitilab.Loop4Listener,
+							},
+						},
+					},
+				},
+				"loop-host-xg-{{.ScaleIndex}}": {
+					Scope: model.Scope{Tags: model.Tags{"loop-host-xg", "scaled", "scale-tag:loop-host-xg"}},
+					Components: model.Components{
+						"loop-host-xg-{{.Host.ScaleIndex}}": {
 							Scope: model.Scope{Tags: model.Tags{"loop-host-xg", "sdk-app", "host", "sim-services-host"}},
 							Type: &zitilab.Loop4SimType{
-								Mode: zitilab.Loop4Listener,
+								ConfigSource: "loop-host-xg.yml.tmpl",
+								Mode:         zitilab.Loop4Listener,
 							},
 						},
 					},
@@ -371,6 +464,11 @@ var m = &model.Model{
 	},
 
 	Actions: model.ActionBinders{
+		"deleteLogs": model.BindF(func(run model.Run) error {
+			return run.GetModel().ForEachHost("*", 10, func(host *model.Host) error {
+				return host.ExecLogOnlyOnError("rm -rf ./logs/*")
+			})
+		}),
 		"bootstrap": NewBootstrapAction(),
 		"stop":      model.Bind(component.StopInParallelHostExclusive("*", 15)),
 		"clean": model.Bind(actions.Workflow(
@@ -429,6 +527,7 @@ var m = &model.Model{
 	},
 
 	Distribution: model.Stages{
+		model.RunAction("deleteLogs"),
 		distribution.DistributeSshKey("*"),
 		rsync.RsyncStaged(),
 	},
