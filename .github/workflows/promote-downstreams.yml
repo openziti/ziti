@@ -56,17 +56,16 @@ jobs:
   # the purpose of this job is to enforce that the Git ref promoted is a semver eligible for stable release, i.e., not having a semver pre-release suffix; the extracted version without the leading 'v' is passed to the docker job as the container image tag
   parse_version:
     needs: wait_for_release
-    name: Parse Release Version
+    name: Parse Tag Regex
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.parse.outputs.version }}
     steps:
-      - name: Parse Release Version
+      - name: Parse the Semantic Version from the Tag
         id: parse
         shell: bash
         run: |
           if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "${GITHUB_REF_NAME} is a semver release ref"
             echo "version=${GITHUB_REF_NAME#v}" | tee -a $GITHUB_OUTPUT
           else
             echo "${GITHUB_REF_NAME} is not a semver release ref" >&2
@@ -152,3 +151,29 @@ jobs:
           --fail-no-op=true
           ${{ env.ZITI_DEB_TEST_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/${{ matrix.package_name }}_${{ needs.parse_version.outputs.version }}_${{ matrix.arch.deb }}.deb
           ${{ env.ZITI_DEB_PROD_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/
+
+  repository-dispatch:
+    needs:
+      - parse_version
+      - promote_docker
+    name: Repository Dispatch Event
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Send repository_dispatch event
+        env:
+          # this token has fine-grained permission to send repository_dispatch events to the downstream private repo
+          GH_TOKEN: ${{ secrets.GH_FGPAT_NF_REPO_DISPATCH }}
+        shell: bash
+        run: |
+          set -o pipefail
+          set -o xtrace
+
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/netfoundry/ziti-fips/dispatches \
+            -f "event_type=ziti_promote_stable" \
+            -F "client_payload[version]=${{ needs.parse_version.outputs.version }}" \
+            -F "client_payload[run_id]=${{ github.run_id }}" \
+            -F "client_payload[repo]=${{ github.repository }}"

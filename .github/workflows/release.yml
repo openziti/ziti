@@ -334,24 +334,24 @@ jobs:
     needs:
       - publish
       - call-publish-docker-images
-    name: Trigger Repository Dispatch
+    name: Repository Dispatch Event
     runs-on: ubuntu-24.04
     steps:
-      - name: Git Checkout
-        uses: actions/checkout@v4
-
-      - name: Trigger repository_dispatch
+      - name: Send repository_dispatch event
         env:
           # this token has fine-grained permission to send repository_dispatch events to the downstream private repo
           GH_TOKEN: ${{ secrets.GH_FGPAT_NF_REPO_DISPATCH }}
         shell: bash
         run: |
+          set -o pipefail
+          set -o xtrace
+
           gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             /repos/netfoundry/ziti-fips/dispatches \
-            -f "event_type=ziti_repository_dispatch" \
+            -f "event_type=ziti_release" \
             -F "client_payload[version]=${{ needs.publish.outputs.ZITI_VERSION }}" \
             -F "client_payload[run_id]=${{ github.run_id }}" \
             -F "client_payload[repo]=${{ github.repository }}"
